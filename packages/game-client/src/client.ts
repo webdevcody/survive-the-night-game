@@ -4,6 +4,7 @@ import { EntityDto, SocketManager } from "./managers/socket";
 import { Entities, Entity } from "@survive-the-night/game-server";
 import { PlayerClient } from "./entities/player";
 import { CameraManager } from "./managers/camera";
+import { MapManager } from "./managers/map";
 
 export class GameClient {
   private entities: Entity[] = [];
@@ -11,6 +12,7 @@ export class GameClient {
   private socketManager: SocketManager;
   private inputManager;
   private cameraManager: CameraManager;
+  private mapManager: MapManager;
 
   constructor(serverUrl: string, canvas: HTMLCanvasElement) {
     this.ctx = canvas.getContext("2d")!;
@@ -19,6 +21,8 @@ export class GameClient {
     canvas.height = window.innerHeight;
 
     this.cameraManager = new CameraManager(this.ctx);
+
+    this.mapManager = new MapManager();
 
     this.socketManager = new SocketManager(serverUrl, {
       onGameStateUpdate: (entities: EntityDto[]) => {
@@ -119,6 +123,7 @@ export class GameClient {
 
   private render(): void {
     this.clearCanvas();
+    this.mapManager.render(this.ctx);
     this.renderEntities();
   }
 }
