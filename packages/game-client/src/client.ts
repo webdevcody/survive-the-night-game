@@ -116,6 +116,7 @@ export class GameClient {
     const transform = this.ctx.getTransform();
     const offsetX = -transform.e;
     const offsetY = -transform.f;
+    this.ctx.imageSmoothingEnabled = false;
     // this.ctx.clearRect(0, 0, width, height);
     this.ctx.fillStyle = "black";
     this.ctx.fillRect(offsetX, offsetY, width * 2, height * 2);

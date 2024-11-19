@@ -3,7 +3,7 @@ import { Player, roundVector2 } from "@survive-the-night/game-server";
 export class PlayerClient extends Player implements Renderable {
   private image = new Image();
   private lastRenderPosition = { x: 0, y: 0 };
-  private readonly LERP_FACTOR = 0.05;
+  private readonly LERP_FACTOR = 0.1;
 
   constructor(id: string) {
     super(id);
