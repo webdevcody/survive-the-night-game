@@ -1,8 +1,8 @@
-import { io, Socket } from "socket.io-client";
 import { InputManager } from "./managers/input";
-import { Entity } from "./entities/entity";
 import { Renderable } from "./traits/renderable";
-import { SocketManager } from "./managers/socket";
+import { EntityDto, SocketManager } from "./managers/socket";
+import { Entities, Entity } from "@survive-the-night/game-server";
+import { PlayerClient } from "./entities/player";
 
 export class GameClient {
   private entities: Entity[] = [];
@@ -14,8 +14,32 @@ export class GameClient {
     this.ctx = canvas.getContext("2d")!;
 
     this.socketManager = new SocketManager(serverUrl, {
-      onGameStateUpdate: (entities: Entity[]) => {
-        this.entities = entities;
+      onGameStateUpdate: (entities: EntityDto[]) => {
+        for (const entityData of entities) {
+          const existingEntity = this.entities.find(
+            (e) => e.getId() === entityData.id
+          );
+
+          if (existingEntity) {
+            Object.assign(existingEntity, entityData);
+            continue;
+          }
+
+          if (entityData.type === Entities.PLAYER) {
+            const player = new PlayerClient(entityData.id);
+            player.setPosition(entityData.position);
+            this.entities.push(player);
+            continue;
+          } else {
+            console.warn("Unknown entity type", entityData);
+          }
+        }
+      },
+      onEntityRemoval: (id: string) => {
+        const index = this.entities.findIndex((e) => e.getId() === id);
+        if (index !== -1) {
+          this.entities.splice(index, 1);
+        }
       },
     });
 

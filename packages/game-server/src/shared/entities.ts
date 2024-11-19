@@ -1,3 +1,7 @@
+export const Entities = {
+  PLAYER: "player",
+};
+
 export abstract class Entity {
   private type: string;
   private id: string;

@@ -1,25 +1,28 @@
 import { io, Socket } from "socket.io-client";
-import { Entity } from "../entities/entity";
+import { Entity, Events } from "@survive-the-night/game-server";
 
-export const Events = {
-  PLAYER_INPUT: "playerInput",
-};
+export type EntityDto = { id: string } & any;
 
 export class SocketManager {
   private socket: Socket;
 
   constructor(
     serverUrl: string,
-    handlers: { onGameStateUpdate: (entities: Entity[]) => void }
+    handlers: {
+      onGameStateUpdate: (entities: Entity[]) => void;
+      onEntityRemoval: (id: string) => void;
+    }
   ) {
     this.socket = io(serverUrl);
 
-    // Listen for game state updates
-    this.socket.on("gameState", (entities: Entity[]) => {
+    this.socket.on(Events.GAME_STATE_UPDATE, (entities: EntityDto[]) => {
       handlers.onGameStateUpdate(entities);
     });
 
-    // Handle connection events
+    this.socket.on(Events.ENTITY_REMOVAL, (id: string) => {
+      handlers.onEntityRemoval(id);
+    });
+
     this.socket.on("connect", () => {
       console.log("Connected to game server");
     });

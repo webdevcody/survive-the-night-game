@@ -1,12 +1,7 @@
 import { Server, Socket } from "socket.io";
 import { createServer } from "http";
-import { Vector2 } from "./shared/physics";
-
-interface Player {
-  id: string;
-  position: Vector2;
-  velocity: Vector2;
-}
+import { Player } from "./shared/entities/player";
+import { Events } from "./shared/events";
 
 export const FPS = 30;
 export const PLAYER_SPEED = 50;
@@ -34,20 +29,16 @@ class GameServer {
     this.io.on("connection", (socket: Socket) => {
       console.log(`Player connected: ${socket.id}`);
 
-      // Create new player
-      this.players.set(socket.id, {
-        id: socket.id,
-        position: { x: 0, y: 0 },
-        velocity: { x: 0, y: 0 },
-      });
+      const player = new Player(socket.id);
+      this.players.set(socket.id, player);
 
       socket.on("playerInput", (input: { dx: number; dy: number }) => {
         const player = this.players.get(socket.id);
         if (player) {
-          player.velocity = {
+          player.setVelocity({
             x: input.dx * PLAYER_SPEED,
             y: input.dy * PLAYER_SPEED,
-          };
+          });
         }
       });
 
@@ -55,6 +46,7 @@ class GameServer {
       socket.on("disconnect", () => {
         console.log(`Player disconnected: ${socket.id}`);
         this.players.delete(socket.id);
+        this.broadcastEntityRemoval(socket.id);
       });
     });
   }
@@ -75,13 +67,19 @@ class GameServer {
 
   private updatePositions(deltaTime: number): void {
     for (const player of this.players.values()) {
-      player.position.x += player.velocity.x * deltaTime;
-      player.position.y += player.velocity.y * deltaTime;
+      player.setPosition({
+        x: player.getPosition().x + player.getVelocity().x * deltaTime,
+        y: player.getPosition().y + player.getVelocity().y * deltaTime,
+      });
     }
   }
 
   private broadcastGameState(): void {
-    this.io.emit("gameState", Array.from(this.players.values()));
+    this.io.emit(Events.GAME_STATE_UPDATE, Array.from(this.players.values()));
+  }
+
+  private broadcastEntityRemoval(id: string): void {
+    this.io.emit(Events.ENTITY_REMOVAL, id);
   }
 }
 
