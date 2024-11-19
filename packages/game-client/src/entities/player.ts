@@ -1,5 +1,5 @@
 import { Renderable } from "../traits/renderable";
-import { Player } from "@survive-the-night/game-server";
+import { Player, roundVector2 } from "@survive-the-night/game-server";
 export class PlayerClient extends Player implements Renderable {
   private playerSize = 5;
 
@@ -8,15 +8,12 @@ export class PlayerClient extends Player implements Renderable {
   }
 
   render(ctx: CanvasRenderingContext2D): void {
+    const position = roundVector2(this.getPosition());
+
     ctx.fillStyle = "red";
-    ctx.fillRect(
-      this.getPosition().x,
-      this.getPosition().y,
-      this.playerSize,
-      this.playerSize
-    );
+    ctx.fillRect(position.x, position.y, this.playerSize, this.playerSize);
 
     ctx.fillStyle = "white";
-    ctx.fillText(this.getId(), this.playerSize, this.playerSize);
+    ctx.fillText(this.getId(), position.x, position.y);
   }
 }

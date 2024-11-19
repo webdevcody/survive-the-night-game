@@ -67,9 +67,17 @@ class GameServer {
 
   private updatePositions(deltaTime: number): void {
     for (const player of this.players.values()) {
+      const velocity = player.getVelocity();
+      // Normalize diagonal movement
+      if (velocity.x !== 0 && velocity.y !== 0) {
+        const normalizer = 1 / Math.sqrt(2);
+        velocity.x *= normalizer;
+        velocity.y *= normalizer;
+      }
+
       player.setPosition({
-        x: player.getPosition().x + player.getVelocity().x * deltaTime,
-        y: player.getPosition().y + player.getVelocity().y * deltaTime,
+        x: player.getPosition().x + velocity.x * deltaTime,
+        y: player.getPosition().y + velocity.y * deltaTime,
       });
     }
   }

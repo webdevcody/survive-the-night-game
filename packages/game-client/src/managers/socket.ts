@@ -32,6 +32,10 @@ export class SocketManager {
     });
   }
 
+  public getId(): string | undefined {
+    return this.socket.id;
+  }
+
   public sendInput(input: { dx: number; dy: number }) {
     this.socket.emit(Events.PLAYER_INPUT, input);
   }
