@@ -13,6 +13,7 @@ export class GameClient {
   private inputManager;
   private cameraManager: CameraManager;
   private mapManager: MapManager;
+  private latestEntities: EntityDto[] = [];
 
   constructor(serverUrl: string, canvas: HTMLCanvasElement) {
     this.ctx = canvas.getContext("2d")!;
@@ -26,25 +27,7 @@ export class GameClient {
 
     this.socketManager = new SocketManager(serverUrl, {
       onGameStateUpdate: (entities: EntityDto[]) => {
-        for (const entityData of entities) {
-          const existingEntity = this.entities.find(
-            (e) => e.getId() === entityData.id
-          );
-
-          if (existingEntity) {
-            Object.assign(existingEntity, entityData);
-            continue;
-          }
-
-          if (entityData.type === Entities.PLAYER) {
-            const player = new PlayerClient(entityData.id);
-            player.setPosition(entityData.position);
-            this.entities.push(player);
-            continue;
-          } else {
-            console.warn("Unknown entity type", entityData);
-          }
-        }
+        this.latestEntities = entities;
       },
       onEntityRemoval: (id: string) => {
         const index = this.entities.findIndex((e) => e.getId() === id);
@@ -67,16 +50,41 @@ export class GameClient {
     return this.entities.find((e) => e.getId() === id) as PlayerClient;
   }
 
+  private updateEntities(): void {
+    for (const entityData of this.latestEntities) {
+      const existingEntity = this.entities.find(
+        (e) => e.getId() === entityData.id
+      );
+
+      if (existingEntity) {
+        Object.assign(existingEntity, entityData);
+        continue;
+      }
+
+      if (entityData.type === Entities.PLAYER) {
+        const player = new PlayerClient(entityData.id);
+        player.setPosition(entityData.position);
+        this.entities.push(player);
+        continue;
+      } else {
+        console.warn("Unknown entity type", entityData);
+      }
+    }
+  }
+
   private update(): void {
     if (this.inputManager.getHasChanged()) {
       this.sendInput(this.inputManager.getInputs());
     }
+
+    this.updateEntities();
 
     this.positionCameraOnPlayer();
   }
 
   private positionCameraOnPlayer(): void {
     const playerId = this.socketManager.getId();
+
     if (!playerId) {
       return;
     }

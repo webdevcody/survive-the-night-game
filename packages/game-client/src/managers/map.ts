@@ -1,5 +1,10 @@
+const tileLocations: Record<string, [number, number]> = {
+  ["0"]: [4 * 16, 0],
+  ["1"]: [3 * 16, 2 * 16],
+};
+
 export class MapManager {
-  private tileSize = 32;
+  private tileSize = 16;
 
   private map: number[][] = [
     [1, 0, 1, 0, 1, 0, 1, 0, 1, 0],
@@ -11,13 +16,24 @@ export class MapManager {
     [1, 0, 1, 0, 1, 0, 1, 0, 1, 0],
   ];
 
-  constructor() {}
+  private tilesheet = new Image();
+
+  constructor() {
+    this.tilesheet.src = "/tiles.png";
+    this.tilesheet.onload = () => {
+      // this.columns = Math.floor(this.tilesheet.width / this.tileSize);
+    };
+  }
 
   render(ctx: CanvasRenderingContext2D) {
     this.map.forEach((row, y) => {
       row.forEach((cell, x) => {
-        ctx.fillStyle = cell === 1 ? "#E3E3E3" : "black";
-        ctx.fillRect(
+        ctx.drawImage(
+          this.tilesheet,
+          tileLocations[cell][0],
+          tileLocations[cell][1],
+          this.tileSize,
+          this.tileSize,
           x * this.tileSize,
           y * this.tileSize,
           this.tileSize,
