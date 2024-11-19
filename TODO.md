@@ -1,0 +1,39 @@
+- client
+  - [ ] create an entry point function for the client code which creates a canvas, connects to a server, and starts the game loop
+  - [ ] a user shall be able to move their player around with w,s,a,d
+  - [ ] a user shall be able to move in a diagonal direction
+  - [ ] a user shall be able to attack using space
+  - [ ] a user shall be able to see a mini map which helps them know where they are
+  - [ ] a user shall be able to see a health bar which shows how much health they have
+  - [ ] a user shall be able to run using shift
+  - [ ] a user shall be able to see stamina bar which recharges slowly over time
+- dashboard
+  - [ ] create an next.js application which will use the client code to render the game
+  - [ ] a user shall be able to browse lobbies
+  - [ ] a user shall be able to join a lobby
+  - [ ] a user shall be able to create a new lobby
+  - [ ] a lobby leader shall be able to start the game
+  - [ ] a lobby leader shall be able to leave the lobby (which will promote another user to the leader)
+- server
+  - [ ] create initial server logic for the game
+  - [ ] the game server should be able handle multiple active games
+  - [ ] when the lobby starts, the game server should spin up a new game instance and register all connections to the new game
+  - [ ] on game start, load the map and spawn all players in the map, assign connection ids to the player entities so they know who they are controlling
+  - [ ] start the "day" cycle which allows 5 minutes for players to build, explore, and gather resources
+  - [ ] start the "night" cycle which spawns waves of zombies for 5 minutes which the players need to survive
+  - [ ] when a player dies, they can be revived by other players if they hold E on them for 5 seconds
+  - [ ] if all players die, the game ends
+  - [ ] when a player is killed, notify all players in the game a player has died
+  - [ ] a user shall be able to view a mini map which helps them know where they are
+  - [ ] a user can cut down trees which drops wood
+  - [ ] a user can pick up wood which puts it in their inventory
+  - [ ] a user can build a barricade with wood which have 10 hp and forces the zombies to attack the barricade before they can get to the players. The barricade does not block path finding, meaning zombies will intentially try to run into them if it's the best path between them and the player.
+  - [ ] a user can move up, down, left, and right
+  - [ ] a user can fire in the direction they are facing
+  - [ ] a user should be able to destroy barricades (if they are stuck, hold X for 3 seconds)
+  - [ ] a user can drop items from their inventory
+  - [ ] a user can hold one weapon at a time
+  - [ ] a user spawns with a baseball bat (melee weapon, slow attack speed, has knock back)
+  - [ ] a user can search a dead zombie body for items (randomly drop items)
+  - [ ] a user can search cabinets for items (randomly drop items)
+  - [ ] a zombie can attack a player (when they get close enough to a player, we need an attack animation and only hurt the player if they close enough by the time the animation reaches a certain point)

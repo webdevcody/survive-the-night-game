@@ -1,0 +1,21 @@
+{
+  "name": "@survive-the-night/game-server",
+  "version": "1.0.0",
+  "main": "src/index.ts",
+  "scripts": {
+   "dev": "tsx watch src/server.ts"
+  },
+  "keywords": [],
+  "type": "module",
+  "author": "",
+  "license": "MIT",
+  "description": "",
+  "devDependencies": {
+    "@types/node": "^22.9.0",
+    "ts-node": "^10.9.2",
+    "tsx": "^4.19.2"
+  },
+  "dependencies": {
+    "socket.io": "^4.8.1"
+  }
+}
