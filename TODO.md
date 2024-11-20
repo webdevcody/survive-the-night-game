@@ -18,6 +18,7 @@
   - [ ] create initial server logic for the game
   - [ ] the game server should be able handle multiple active games
   - [ ] when the lobby starts, the game server should spin up a new game instance and register all connections to the new game
+  - [ ] communication between server/client should be encoded and sent as binary to improve performance
   - [ ] on game start, load the map and spawn all players in the map, assign connection ids to the player entities so they know who they are controlling
   - [ ] start the "day" cycle which allows 5 minutes for players to build, explore, and gather resources
   - [ ] start the "night" cycle which spawns waves of zombies for 5 minutes which the players need to survive
