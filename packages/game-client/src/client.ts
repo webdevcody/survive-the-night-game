@@ -52,9 +52,7 @@ export class GameClient {
 
   private updateEntities(): void {
     for (const entityData of this.latestEntities) {
-      const existingEntity = this.entities.find(
-        (e) => e.getId() === entityData.id
-      );
+      const existingEntity = this.entities.find((e) => e.getId() === entityData.id);
 
       if (existingEntity) {
         Object.assign(existingEntity, entityData);

@@ -10,10 +10,7 @@ export class InputManager {
   };
 
   private checkIfChanged() {
-    if (
-      this.inputs.dx !== this.lastInputs.dx ||
-      this.inputs.dy !== this.lastInputs.dy
-    ) {
+    if (this.inputs.dx !== this.lastInputs.dx || this.inputs.dy !== this.lastInputs.dy) {
       this.hasChanged = true;
     }
   }
