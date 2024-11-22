@@ -1,5 +1,7 @@
-import { Renderable } from "../traits/renderable";
 import { Player, roundVector2 } from "@survive-the-night/game-server";
+import { Renderable } from "./util";
+import { GameState } from "@/state";
+
 export class PlayerClient extends Player implements Renderable {
   private image = new Image();
   private lastRenderPosition = { x: 0, y: 0 };
@@ -10,7 +12,7 @@ export class PlayerClient extends Player implements Renderable {
     this.image.src = "/player.png";
   }
 
-  render(ctx: CanvasRenderingContext2D): void {
+  render(ctx: CanvasRenderingContext2D, gameState: GameState): void {
     const targetPosition = this.getPosition();
 
     this.lastRenderPosition.x +=

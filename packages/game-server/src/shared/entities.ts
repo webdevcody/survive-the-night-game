@@ -1,21 +1,24 @@
 export const Entities = {
   PLAYER: "player",
-};
+  TREE: "tree",
+} as const;
+
+type EntityType = (typeof Entities)[keyof typeof Entities];
 
 export abstract class Entity {
-  private type: string;
+  private type: EntityType;
   private id: string;
 
-  constructor(type: string, id: string) {
+  constructor(type: EntityType, id: string) {
     this.type = type;
     this.id = id;
   }
 
-  setType(type: string) {
+  setType(type: EntityType) {
     this.type = type;
   }
 
-  getType(): string {
+  getType(): EntityType {
     return this.type;
   }
 
