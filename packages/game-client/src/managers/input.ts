@@ -3,16 +3,23 @@ export class InputManager {
   private lastInputs = {
     dx: 0,
     dy: 0,
+    harvest: false,
   };
   private inputs = {
     dx: 0,
     dy: 0,
+    harvest: false,
   };
 
   private checkIfChanged() {
-    if (this.inputs.dx !== this.lastInputs.dx || this.inputs.dy !== this.lastInputs.dy) {
+    if (
+      this.inputs.dx !== this.lastInputs.dx ||
+      this.inputs.dy !== this.lastInputs.dy ||
+      this.inputs.harvest !== this.lastInputs.harvest
+    ) {
       this.hasChanged = true;
     }
+    this.lastInputs = { ...this.inputs };
   }
 
   constructor() {
@@ -29,6 +36,9 @@ export class InputManager {
           break;
         case "d":
           this.inputs.dx = 1;
+          break;
+        case "e":
+          this.inputs.harvest = true;
           break;
       }
 
@@ -49,6 +59,9 @@ export class InputManager {
         case "d":
           this.inputs.dx = this.inputs.dx === 1 ? 0 : this.inputs.dx;
           break;
+        case "e":
+          this.inputs.harvest = false;
+          break;
       }
 
       this.checkIfChanged();
@@ -61,5 +74,9 @@ export class InputManager {
 
   getInputs() {
     return this.inputs;
+  }
+
+  reset() {
+    this.hasChanged = false;
   }
 }

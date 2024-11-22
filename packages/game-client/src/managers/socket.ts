@@ -9,8 +9,8 @@ export class SocketManager {
   constructor(
     serverUrl: string,
     handlers: {
-      onGameStateUpdate: (entities: Entity[]) => void;
-      onEntityRemoval: (id: string) => void;
+      onGameStateUpdate: (entities: EntityDto[]) => void;
+      onConnect: (playerId: string) => void;
     }
   ) {
     this.socket = io(serverUrl);
@@ -19,12 +19,8 @@ export class SocketManager {
       handlers.onGameStateUpdate(entities);
     });
 
-    this.socket.on(Events.ENTITY_REMOVAL, (id: string) => {
-      handlers.onEntityRemoval(id);
-    });
-
     this.socket.on("connect", () => {
-      console.log("Connected to game server");
+      handlers.onConnect(this.getId()!);
     });
 
     this.socket.on("disconnect", () => {
@@ -36,7 +32,7 @@ export class SocketManager {
     return this.socket.id;
   }
 
-  public sendInput(input: { dx: number; dy: number }) {
+  public sendInput(input: { dx: number; dy: number; harvest: boolean }) {
     this.socket.emit(Events.PLAYER_INPUT, input);
   }
 }

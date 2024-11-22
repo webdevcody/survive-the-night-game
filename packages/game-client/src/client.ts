@@ -1,19 +1,21 @@
 import { InputManager } from "./managers/input";
-import { Renderable } from "./traits/renderable";
 import { EntityDto, SocketManager } from "./managers/socket";
-import { Entities, Entity } from "@survive-the-night/game-server";
+import { Entities, Entity, Positionable } from "@survive-the-night/game-server";
 import { PlayerClient } from "./entities/player";
 import { CameraManager } from "./managers/camera";
 import { MapManager } from "./managers/map";
+import { TreeClient } from "./entities/tree";
+import { GameState, getEntityById } from "./state";
+import { Renderable } from "./entities/util";
 
 export class GameClient {
-  private entities: Entity[] = [];
   private ctx: CanvasRenderingContext2D;
   private socketManager: SocketManager;
   private inputManager;
   private cameraManager: CameraManager;
   private mapManager: MapManager;
   private latestEntities: EntityDto[] = [];
+  private gameState: GameState;
 
   constructor(serverUrl: string, canvas: HTMLCanvasElement) {
     this.ctx = canvas.getContext("2d")!;
@@ -21,19 +23,26 @@ export class GameClient {
     canvas.width = window.innerWidth;
     canvas.height = window.innerHeight;
 
+    window.addEventListener("resize", () => {
+      canvas.width = window.innerWidth;
+      canvas.height = window.innerHeight;
+    });
+
     this.cameraManager = new CameraManager(this.ctx);
 
     this.mapManager = new MapManager();
 
+    this.gameState = {
+      playerId: "",
+      entities: [],
+    };
+
     this.socketManager = new SocketManager(serverUrl, {
+      onConnect: (playerId: string) => {
+        this.gameState.playerId = playerId;
+      },
       onGameStateUpdate: (entities: EntityDto[]) => {
         this.latestEntities = entities;
-      },
-      onEntityRemoval: (id: string) => {
-        const index = this.entities.findIndex((e) => e.getId() === id);
-        if (index !== -1) {
-          this.entities.splice(index, 1);
-        }
       },
     });
 
@@ -42,17 +51,21 @@ export class GameClient {
     this.startRenderLoop();
   }
 
-  public sendInput(input: { dx: number; dy: number }): void {
+  public sendInput(input: { dx: number; dy: number; harvest: boolean }): void {
     this.socketManager.sendInput(input);
   }
 
-  public getPlayerById(id: string): PlayerClient | undefined {
-    return this.entities.find((e) => e.getId() === id) as PlayerClient;
-  }
-
   private updateEntities(): void {
+    for (let i = 0; i < this.getEntities().length; i++) {
+      const entity = this.getEntities()[i];
+      if (!this.latestEntities.find((e) => e.id === entity.getId())) {
+        this.getEntities().splice(i, 1);
+        i--;
+      }
+    }
+
     for (const entityData of this.latestEntities) {
-      const existingEntity = this.entities.find((e) => e.getId() === entityData.id);
+      const existingEntity = this.getEntities().find((e) => e.getId() === entityData.id);
 
       if (existingEntity) {
         Object.assign(existingEntity, entityData);
@@ -62,7 +75,12 @@ export class GameClient {
       if (entityData.type === Entities.PLAYER) {
         const player = new PlayerClient(entityData.id);
         player.setPosition(entityData.position);
-        this.entities.push(player);
+        this.getEntities().push(player);
+        continue;
+      } else if (entityData.type === Entities.TREE) {
+        const tree = new TreeClient(entityData.id);
+        tree.setPosition(entityData.position);
+        this.getEntities().push(tree);
         continue;
       } else {
         console.warn("Unknown entity type", entityData);
@@ -73,6 +91,7 @@ export class GameClient {
   private update(): void {
     if (this.inputManager.getHasChanged()) {
       this.sendInput(this.inputManager.getInputs());
+      this.inputManager.reset();
     }
 
     this.updateEntities();
@@ -87,7 +106,7 @@ export class GameClient {
       return;
     }
 
-    const playerToFollow = this.getPlayerById(playerId);
+    const playerToFollow = getEntityById(this.gameState, playerId) as Positionable | undefined;
 
     if (playerToFollow) {
       this.cameraManager.translateTo(playerToFollow.getPosition());
@@ -104,7 +123,7 @@ export class GameClient {
   }
 
   private getRenderableEntities(): Renderable[] {
-    return this.entities.filter((entity) => {
+    return this.getEntities().filter((entity) => {
       return "render" in entity;
     }) as Renderable[];
   }
@@ -120,11 +139,15 @@ export class GameClient {
     this.ctx.fillRect(offsetX, offsetY, width * 2, height * 2);
   }
 
+  private getEntities(): Entity[] {
+    return this.gameState.entities;
+  }
+
   private renderEntities(): void {
     const renderableEntities = this.getRenderableEntities();
 
     renderableEntities.forEach((entity) => {
-      entity.render(this.ctx);
+      entity.render(this.ctx, this.gameState);
     });
   }
 
