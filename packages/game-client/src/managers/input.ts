@@ -4,18 +4,21 @@ export class InputManager {
     dx: 0,
     dy: 0,
     harvest: false,
+    fire: false,
   };
   private inputs = {
     dx: 0,
     dy: 0,
     harvest: false,
+    fire: false,
   };
 
   private checkIfChanged() {
     if (
       this.inputs.dx !== this.lastInputs.dx ||
       this.inputs.dy !== this.lastInputs.dy ||
-      this.inputs.harvest !== this.lastInputs.harvest
+      this.inputs.harvest !== this.lastInputs.harvest ||
+      this.inputs.fire !== this.lastInputs.fire
     ) {
       this.hasChanged = true;
     }
@@ -40,6 +43,9 @@ export class InputManager {
         case "e":
           this.inputs.harvest = true;
           break;
+        case "space":
+          this.inputs.fire = true;
+          break;
       }
 
       this.checkIfChanged();
@@ -61,6 +67,9 @@ export class InputManager {
           break;
         case "e":
           this.inputs.harvest = false;
+          break;
+        case "space":
+          this.inputs.fire = false;
           break;
       }
 

@@ -6,7 +6,7 @@ import { CameraManager } from "./managers/camera";
 import { MapManager } from "./managers/map";
 import { TreeClient } from "./entities/tree";
 import { GameState, getEntityById } from "./state";
-import { Renderable } from "./entities/util";
+import { IClientEntity, Renderable } from "./entities/util";
 
 export class GameClient {
   private ctx: CanvasRenderingContext2D;
@@ -43,6 +43,9 @@ export class GameClient {
       },
       onGameStateUpdate: (entities: EntityDto[]) => {
         this.latestEntities = entities;
+      },
+      onYourId: (playerId: string) => {
+        this.gameState.playerId = playerId;
       },
     });
 
@@ -102,7 +105,7 @@ export class GameClient {
   }
 
   private positionCameraOnPlayer(): void {
-    const playerId = this.socketManager.getId();
+    const playerId = this.gameState.playerId;
 
     if (!playerId) {
       return;
@@ -143,7 +146,7 @@ export class GameClient {
     this.ctx.fillRect(offsetX, offsetY, width * 2, height * 2);
   }
 
-  private getEntities(): Entity[] {
+  private getEntities(): IClientEntity[] {
     return this.gameState.entities;
   }
 

@@ -1,23 +1,42 @@
 import {
   distance,
   Entities,
-  Entity,
+  EntityType,
   HARVEST_DISTANCE,
   Positionable,
   Vector2,
 } from "@survive-the-night/game-server";
 import { getEntityById, type GameState } from "../state";
-import { Renderable } from "./util";
+import { IClientEntity, Renderable } from "./util";
 
 const TREE_SIZE = 16;
 
-export class TreeClient extends Entity implements Renderable, Positionable {
+export class TreeClient implements Renderable, Positionable, IClientEntity {
   private image = new Image();
+  private type: EntityType;
+  private id: string;
   private position: Vector2 = { x: 0, y: 0 };
 
   constructor(id: string) {
-    super(Entities.TREE, id);
+    this.id = id;
+    this.type = Entities.TREE;
     this.image.src = "/tree.png";
+  }
+
+  getId(): string {
+    return this.id;
+  }
+
+  getType(): EntityType {
+    return this.type;
+  }
+
+  setType(type: EntityType): void {
+    this.type = type;
+  }
+
+  setId(id: string): void {
+    this.id = id;
   }
 
   getPosition(): Vector2 {

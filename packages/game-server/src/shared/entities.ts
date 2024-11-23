@@ -1,17 +1,22 @@
+import { EntityManager } from "@/managers/entity-manager";
+
 export const Entities = {
   PLAYER: "player",
   TREE: "tree",
+  BULLET: "bullet",
 } as const;
 
-type EntityType = (typeof Entities)[keyof typeof Entities];
+export type EntityType = (typeof Entities)[keyof typeof Entities];
 
 export abstract class Entity {
   private type: EntityType;
   private id: string;
+  private entityManager: EntityManager;
 
-  constructor(type: EntityType, id: string) {
+  constructor(entityManager: EntityManager, type: EntityType) {
     this.type = type;
-    this.id = id;
+    this.id = entityManager.generateEntityId();
+    this.entityManager = entityManager;
   }
 
   setType(type: EntityType) {
@@ -24,5 +29,13 @@ export abstract class Entity {
 
   getId(): string {
     return this.id;
+  }
+
+  setId(id: string) {
+    this.id = id;
+  }
+
+  getEntityManager(): EntityManager {
+    return this.entityManager;
   }
 }

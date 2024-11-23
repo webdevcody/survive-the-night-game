@@ -12,3 +12,8 @@ export interface Positionable {
   setPosition: (position: Vector2) => void;
   getCenterPosition: () => Vector2;
 }
+
+export interface Movable {
+  getVelocity: () => Vector2;
+  setVelocity: (velocity: Vector2) => void;
+}

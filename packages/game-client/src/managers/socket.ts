@@ -11,12 +11,17 @@ export class SocketManager {
     handlers: {
       onGameStateUpdate: (entities: EntityDto[]) => void;
       onConnect: (playerId: string) => void;
+      onYourId: (playerId: string) => void;
     }
   ) {
     this.socket = io(serverUrl);
 
     this.socket.on(Events.GAME_STATE_UPDATE, (entities: EntityDto[]) => {
       handlers.onGameStateUpdate(entities);
+    });
+
+    this.socket.on(Events.YOUR_ID, (playerId: string) => {
+      handlers.onYourId(playerId);
     });
 
     this.socket.on("connect", () => {

@@ -6,15 +6,23 @@ import { Entity } from "./shared/entities";
 import { Tree } from "./shared/entities/tree";
 import { distance, Vector2 } from "./shared/physics";
 import { Harvestable, Positionable } from "./shared/traits";
+import { EntityManager } from "./managers/entity-manager";
 
 export const FPS = 30;
 export const PLAYER_SPEED = 50;
 
+export type Input = {
+  dx: number;
+  dy: number;
+  harvest: boolean;
+  fire: boolean;
+};
+
 class GameServer {
   private io: Server;
   private players: Map<string, Player> = new Map();
-  private entities: Entity[] = [];
   private lastUpdateTime: number = Date.now();
+  private entityManager: EntityManager;
 
   constructor(port: number = 3001) {
     const httpServer = createServer();
@@ -27,24 +35,17 @@ class GameServer {
 
     this.setupSocketHandlers();
     httpServer.listen(port);
-    this.startGameLoop();
 
-    // TODO: TEMP, remove this later
-    const tree = new Tree("tree1");
+    this.entityManager = new EntityManager();
+    const tree = new Tree(this.entityManager);
     tree.setPosition({ x: 100, y: 50 });
-    this.entities.push(tree);
+    this.entityManager.addEntity(tree);
 
-    const tree2 = new Tree("tree2");
-    tree2.setPosition({ x: 120, y: 75 });
-    this.entities.push(tree2);
-
-    const tree3 = new Tree("tree3");
-    tree3.setPosition({ x: 80, y: 40 });
-    this.entities.push(tree3);
+    this.startGameLoop();
   }
 
   private getPositionableEntities() {
-    return this.entities.filter((entity) => {
+    return this.entityManager.getEntities().filter((entity) => {
       return "getPosition" in entity;
     }) as unknown as Positionable[];
   }
@@ -65,47 +66,45 @@ class GameServer {
     this.io.on("connection", (socket: Socket) => {
       console.log(`Player connected: ${socket.id}`);
 
-      const player = new Player(socket.id);
+      const player = new Player(this.entityManager);
       this.players.set(socket.id, player);
+      socket.emit(Events.YOUR_ID, player.getId());
 
-      socket.on(
-        "playerInput",
-        (input: { dx: number; dy: number; harvest: boolean }) => {
-          const player = this.players.get(socket.id);
-          if (player) {
-            const dx =
-              input.dx !== 0 && input.dy !== 0
-                ? input.dx / Math.sqrt(2)
-                : input.dx;
+      socket.on("playerInput", (input: Input) => {
+        const player = this.players.get(socket.id);
+        if (player) {
+          const dx =
+            input.dx !== 0 && input.dy !== 0
+              ? input.dx / Math.sqrt(2)
+              : input.dx;
 
-            const dy =
-              input.dx !== 0 && input.dy !== 0
-                ? input.dy / Math.sqrt(2)
-                : input.dy;
+          const dy =
+            input.dx !== 0 && input.dy !== 0
+              ? input.dy / Math.sqrt(2)
+              : input.dy;
 
-            player.setVelocity({
-              x: dx * PLAYER_SPEED,
-              y: dy * PLAYER_SPEED,
-            });
+          player.setVelocity({
+            x: dx * PLAYER_SPEED,
+            y: dy * PLAYER_SPEED,
+          });
 
-            if (input.harvest) {
-              const nearbyEntities = this.getNearbyEntities(
-                player.getPosition(),
-                10
-              );
+          if (input.harvest) {
+            const nearbyEntities = this.getNearbyEntities(
+              player.getPosition(),
+              10
+            );
 
-              const harvestableEntities =
-                this.filterHarvestableEntities(nearbyEntities);
+            const harvestableEntities =
+              this.filterHarvestableEntities(nearbyEntities);
 
-              const first = harvestableEntities[0];
+            const first = harvestableEntities[0];
 
-              if (first) {
-                first.harvest();
-              }
+            if (first) {
+              first.harvest();
             }
           }
         }
-      );
+      });
 
       // Handle disconnection
       socket.on("disconnect", () => {
@@ -126,17 +125,23 @@ class GameServer {
     const deltaTime = (currentTime - this.lastUpdateTime) / 1000;
     this.updatePositions(deltaTime);
     this.removeHarvestedEntities();
+    this.entityManager.pruneEntities();
     this.broadcastGameState();
     this.lastUpdateTime = currentTime;
   }
 
   private removeHarvestedEntities(): void {
-    const harvestables = this.filterHarvestableEntities(this.entities);
+    const harvestables = this.filterHarvestableEntities(
+      this.entityManager.getEntities()
+    );
 
     for (let i = 0; i < harvestables.length; i++) {
       const harvestable = harvestables[i];
       if (harvestable.getIsHarvested()) {
-        this.entities.splice(i, 1);
+        console.log("removing harvested entity");
+        this.entityManager.markEntityForRemoval(
+          harvestable as unknown as Entity
+        );
       }
     }
   }
@@ -153,10 +158,18 @@ class GameServer {
   }
 
   private broadcastGameState(): void {
-    this.io.emit(Events.GAME_STATE_UPDATE, [
+    const gameState = [
       ...Array.from(this.players.values()),
-      ...this.entities,
-    ]);
+      ...this.entityManager.getEntities(),
+    ].map((entity) => ({
+      id: entity.getId(),
+      position: "getPosition" in entity ? entity.getPosition() : undefined,
+      type: entity.getType(),
+      isHarvested:
+        "getIsHarvested" in entity ? entity.getIsHarvested() : undefined,
+    }));
+
+    this.io.emit(Events.GAME_STATE_UPDATE, gameState);
   }
 }
 

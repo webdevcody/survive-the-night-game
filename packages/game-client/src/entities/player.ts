@@ -1,15 +1,53 @@
-import { Player, roundVector2 } from "@survive-the-night/game-server";
-import { Renderable } from "./util";
+import {
+  Entities,
+  EntityType,
+  Positionable,
+  roundVector2,
+  Vector2,
+} from "@survive-the-night/game-server";
+import { IClientEntity, Renderable } from "./util";
 import { GameState } from "@/state";
 
-export class PlayerClient extends Player implements Renderable {
+export class PlayerClient implements IClientEntity, Renderable, Positionable {
   private image = new Image();
   private lastRenderPosition = { x: 0, y: 0 };
   private readonly LERP_FACTOR = 0.1;
+  private position: Vector2 = { x: 0, y: 0 };
+  private id: string;
+  private type: EntityType;
 
   constructor(id: string) {
-    super(id);
+    this.id = id;
+    this.type = Entities.PLAYER;
     this.image.src = "/player.png";
+  }
+
+  getId(): string {
+    return this.id;
+  }
+
+  setId(id: string): void {
+    this.id = id;
+  }
+
+  getType(): EntityType {
+    return this.type;
+  }
+
+  setType(type: EntityType): void {
+    this.type = type;
+  }
+
+  getPosition(): Vector2 {
+    return this.position;
+  }
+
+  setPosition(position: Vector2): void {
+    this.position = position;
+  }
+
+  getCenterPosition(): Vector2 {
+    return this.position;
   }
 
   render(ctx: CanvasRenderingContext2D, gameState: GameState): void {

@@ -1,3 +1,4 @@
+import { EntityManager } from "@/managers/entity-manager";
 import { Entities, Entity } from "../entities";
 import { Vector2 } from "../physics";
 import { Harvestable, Positionable } from "../traits";
@@ -6,8 +7,8 @@ export class Tree extends Entity implements Harvestable, Positionable {
   private isHarvested = false;
   private position: Vector2 = { x: 0, y: 0 };
 
-  constructor(id: string) {
-    super(Entities.TREE, id);
+  constructor(entityManager: EntityManager) {
+    super(entityManager, Entities.TREE);
   }
 
   harvest(): void {
