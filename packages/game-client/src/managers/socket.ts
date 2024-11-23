@@ -1,5 +1,6 @@
 import { io, Socket } from "socket.io-client";
-import { Entity, Events } from "@survive-the-night/game-server";
+import { Entity, Events, GameStateEvent } from "@survive-the-night/game-server";
+import { GameState } from "@/state";
 
 export type EntityDto = { id: string } & any;
 
@@ -9,15 +10,16 @@ export class SocketManager {
   constructor(
     serverUrl: string,
     handlers: {
-      onGameStateUpdate: (entities: EntityDto[]) => void;
+      onGameStateUpdate: (gameStateEvent: GameStateEvent) => void;
       onConnect: (playerId: string) => void;
       onYourId: (playerId: string) => void;
     }
   ) {
     this.socket = io(serverUrl);
 
-    this.socket.on(Events.GAME_STATE_UPDATE, (entities: EntityDto[]) => {
-      handlers.onGameStateUpdate(entities);
+    this.socket.on(Events.GAME_STATE_UPDATE, (gameState: { entities: EntityDto[] }) => {
+      const gameStateEvent = new GameStateEvent(gameState);
+      handlers.onGameStateUpdate(gameStateEvent);
     });
 
     this.socket.on(Events.YOUR_ID, (playerId: string) => {

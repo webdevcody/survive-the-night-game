@@ -1,6 +1,6 @@
 import { InputManager } from "./managers/input";
 import { EntityDto, SocketManager } from "./managers/socket";
-import { Entities, Entity, Positionable } from "@survive-the-night/game-server";
+import { Entities, GameStateEvent, Positionable } from "@survive-the-night/game-server";
 import { PlayerClient } from "./entities/player";
 import { CameraManager } from "./managers/camera";
 import { MapManager } from "./managers/map";
@@ -42,8 +42,8 @@ export class GameClient {
       onConnect: (playerId: string) => {
         this.gameState.playerId = playerId;
       },
-      onGameStateUpdate: (entities: EntityDto[]) => {
-        this.latestEntities = entities;
+      onGameStateUpdate: (gameStateEvent: GameStateEvent) => {
+        this.latestEntities = gameStateEvent.getPayload().entities;
       },
       onYourId: (playerId: string) => {
         this.gameState.playerId = playerId;
@@ -56,7 +56,6 @@ export class GameClient {
   }
 
   public sendInput(input: { dx: number; dy: number; harvest: boolean; fire: boolean }): void {
-    console.log("Sending input to server:", input);
     this.socketManager.sendInput(input);
   }
 

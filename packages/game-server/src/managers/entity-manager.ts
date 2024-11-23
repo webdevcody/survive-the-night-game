@@ -1,4 +1,6 @@
+import { distance, Vector2 } from "@/shared/physics";
 import { Entity } from "../shared/entities";
+import { Harvestable, Positionable } from "@/shared/traits";
 
 export class EntityManager {
   private entities: Entity[];
@@ -26,9 +28,33 @@ export class EntityManager {
   }
 
   pruneEntities() {
-    this.entities = this.entities.filter(
-      (e) => !this.entitiesToRemove.includes(e.getId())
-    );
+    this.entities = this.entities.filter((e) => !this.entitiesToRemove.includes(e.getId()));
     this.entitiesToRemove = [];
+  }
+
+  clear() {
+    this.entities = [];
+  }
+
+  addEntities(entities: Entity[]) {
+    this.entities.push(...entities);
+  }
+
+  getNearbyEntities(position: Vector2, radius: number): Entity[] {
+    return this.getPositionableEntities().filter((entity) => {
+      return distance(entity.getPosition(), position) <= radius;
+    }) as unknown as Entity[];
+  }
+
+  getPositionableEntities(): Positionable[] {
+    return this.entities.filter((entity) => {
+      return "getPosition" in entity;
+    }) as unknown as Positionable[];
+  }
+
+  filterHarvestableEntities(entities: Entity[]): Harvestable[] {
+    return entities.filter((entity) => {
+      return "harvest" in entity;
+    }) as unknown as Harvestable[];
   }
 }
