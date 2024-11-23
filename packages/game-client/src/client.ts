@@ -38,10 +38,9 @@ export class GameClient {
       entities: [],
     };
 
+    this.inputManager = new InputManager();
+
     this.socketManager = new SocketManager(serverUrl, {
-      onConnect: (playerId: string) => {
-        this.gameState.playerId = playerId;
-      },
       onGameStateUpdate: (gameStateEvent: GameStateEvent) => {
         this.latestEntities = gameStateEvent.getPayload().entities;
       },
@@ -49,8 +48,6 @@ export class GameClient {
         this.gameState.playerId = playerId;
       },
     });
-
-    this.inputManager = new InputManager();
 
     this.startRenderLoop();
   }
@@ -60,6 +57,7 @@ export class GameClient {
   }
 
   private updateEntities(): void {
+    // remove dead entities
     for (let i = 0; i < this.getEntities().length; i++) {
       const entity = this.getEntities()[i];
       if (!this.latestEntities.find((e) => e.id === entity.getId())) {
@@ -68,6 +66,7 @@ export class GameClient {
       }
     }
 
+    // add new / update entities
     for (const entityData of this.latestEntities) {
       const existingEntity = this.getEntities().find((e) => e.getId() === entityData.id);
 

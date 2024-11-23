@@ -66,12 +66,10 @@ export class Player extends Entity implements Movable, Positionable, Updatable {
       this.fireCooldown = FIRE_COOLDOWN;
 
       const bullet = new Bullet(this.getEntityManager());
-
       bullet.setPosition({
         x: this.position.x + Player.PLAYER_WIDTH / 2,
         y: this.position.y + Player.PLAYER_HEIGHT / 2,
       });
-
       bullet.setDirectionFromVelocity(this.velocity);
       this.getEntityManager().addEntity(bullet);
     }

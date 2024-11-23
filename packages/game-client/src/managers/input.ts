@@ -44,7 +44,6 @@ export class InputManager {
           this.inputs.harvest = true;
           break;
         case " ":
-          console.log("Space pressed - setting fire to true");
           this.inputs.fire = true;
           break;
       }
@@ -70,7 +69,6 @@ export class InputManager {
           this.inputs.harvest = false;
           break;
         case " ":
-          console.log("Space released - setting fire to false");
           this.inputs.fire = false;
           break;
       }

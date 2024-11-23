@@ -1,6 +1,5 @@
 import { io, Socket } from "socket.io-client";
-import { Entity, Events, GameStateEvent } from "@survive-the-night/game-server";
-import { GameState } from "@/state";
+import { Events, GameStateEvent } from "@survive-the-night/game-server";
 
 export type EntityDto = { id: string } & any;
 
@@ -11,7 +10,6 @@ export class SocketManager {
     serverUrl: string,
     handlers: {
       onGameStateUpdate: (gameStateEvent: GameStateEvent) => void;
-      onConnect: (playerId: string) => void;
       onYourId: (playerId: string) => void;
     }
   ) {
@@ -27,16 +25,12 @@ export class SocketManager {
     });
 
     this.socket.on("connect", () => {
-      handlers.onConnect(this.getId()!);
+      // handlers.onConnect(this.getId()!);
     });
 
     this.socket.on("disconnect", () => {
       console.log("Disconnected from game server");
     });
-  }
-
-  public getId(): string | undefined {
-    return this.socket.id;
   }
 
   public sendInput(input: { dx: number; dy: number; harvest: boolean; fire: boolean }) {

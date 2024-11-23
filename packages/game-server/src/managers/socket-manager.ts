@@ -34,6 +34,7 @@ export class SocketManager {
     }
   }
 
+  // TODO: I feel like this should live in the player entity itself?
   private onPlayerInput(socket: Socket, input: Input): void {
     const player = this.players.get(socket.id);
 

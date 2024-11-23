@@ -46,6 +46,7 @@ class GameServer {
     this.lastUpdateTime = currentTime;
   }
 
+  // TODO: I feel like this should live in the tree or harvestable trait itself?
   private removeHarvestedEntities(): void {
     const harvestables = this.entityManager.filterHarvestableEntities(
       this.entityManager.getEntities()
@@ -62,6 +63,8 @@ class GameServer {
 
   private updateEntities(deltaTime: number): void {
     for (const entity of this.entityManager.getEntities()) {
+      // TODO: this should look like this
+      // entity.update(deltaTime)
       if (entity.getType() === Entities.BULLET) {
         (entity as unknown as Updatable).update(deltaTime);
       } else if (entity.getType() === Entities.PLAYER) {
