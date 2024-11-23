@@ -53,10 +53,8 @@ export class PlayerClient implements IClientEntity, Renderable, Positionable {
   render(ctx: CanvasRenderingContext2D, gameState: GameState): void {
     const targetPosition = this.getPosition();
 
-    this.lastRenderPosition.x +=
-      (targetPosition.x - this.lastRenderPosition.x) * this.LERP_FACTOR;
-    this.lastRenderPosition.y +=
-      (targetPosition.y - this.lastRenderPosition.y) * this.LERP_FACTOR;
+    this.lastRenderPosition.x += (targetPosition.x - this.lastRenderPosition.x) * this.LERP_FACTOR;
+    this.lastRenderPosition.y += (targetPosition.y - this.lastRenderPosition.y) * this.LERP_FACTOR;
 
     const renderPosition = roundVector2(this.lastRenderPosition);
 

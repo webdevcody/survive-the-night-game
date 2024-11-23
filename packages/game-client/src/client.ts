@@ -68,9 +68,7 @@ export class GameClient {
     }
 
     for (const entityData of this.latestEntities) {
-      const existingEntity = this.getEntities().find(
-        (e) => e.getId() === entityData.id
-      );
+      const existingEntity = this.getEntities().find((e) => e.getId() === entityData.id);
 
       if (existingEntity) {
         Object.assign(existingEntity, entityData);
@@ -111,9 +109,7 @@ export class GameClient {
       return;
     }
 
-    const playerToFollow = getEntityById(this.gameState, playerId) as
-      | Positionable
-      | undefined;
+    const playerToFollow = getEntityById(this.gameState, playerId) as Positionable | undefined;
 
     if (playerToFollow) {
       this.cameraManager.translateTo(playerToFollow.getPosition());

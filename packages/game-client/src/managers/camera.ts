@@ -18,10 +18,8 @@ export class CameraManager {
     this.targetPosition = position;
 
     // Lerp the current position towards the target
-    this.position.x +=
-      (this.targetPosition.x - this.position.x) * this.LERP_FACTOR;
-    this.position.y +=
-      (this.targetPosition.y - this.position.y) * this.LERP_FACTOR;
+    this.position.x += (this.targetPosition.x - this.position.x) * this.LERP_FACTOR;
+    this.position.y += (this.targetPosition.y - this.position.y) * this.LERP_FACTOR;
 
     const canvas = this.ctx.canvas;
     const centerX = canvas.width / 2;
