@@ -1,5 +1,7 @@
 import {
+  Direction,
   Entity,
+  type Facing,
   Movable,
   Positionable,
   Updatable,
@@ -13,7 +15,8 @@ import { Bullet } from "./bullet";
 
 export const FIRE_COOLDOWN = 0.4;
 
-export class Player extends Entity implements Movable, Positionable, Updatable {
+export class Player extends Entity implements Facing, Movable, Positionable, Updatable {
+  public direction = Direction.Right;
   private fireCooldown = 0;
   private position: Vector2 = { x: 0, y: 0 };
   private velocity: Vector2 = { x: 0, y: 0 };
