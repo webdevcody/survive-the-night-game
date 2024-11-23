@@ -3,7 +3,7 @@
 import { useEffect, useRef } from "react";
 import { GameClient } from "@survive-the-night/game-client";
 
-export default function Home() {
+export default function HomePage() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
   useEffect(() => {
