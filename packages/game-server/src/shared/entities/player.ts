@@ -73,8 +73,6 @@ export class Player extends Entity implements Movable, Positionable, Updatable {
       });
 
       bullet.setDirectionFromVelocity(this.velocity);
-
-      console.log("Bullet created with velocity:", bullet.getVelocity());
       this.getEntityManager().addEntity(bullet);
     }
   }

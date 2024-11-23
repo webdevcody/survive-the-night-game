@@ -42,12 +42,12 @@ export class BulletClient implements IClientEntity, Renderable, Positionable {
   }
 
   render(ctx: CanvasRenderingContext2D, gameState: GameState): void {
-    ctx.fillStyle = "yellow";
+    ctx.fillStyle = "orange";
     ctx.beginPath();
     ctx.arc(this.position.x, this.position.y, HITBOX_RADIUS, 0, Math.PI * 2);
     ctx.fill();
 
-    ctx.strokeStyle = "orange";
+    ctx.strokeStyle = "red";
     ctx.lineWidth = 1;
     ctx.stroke();
   }

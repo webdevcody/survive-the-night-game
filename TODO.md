@@ -8,6 +8,10 @@ Refactor:
 - [ ] sometimes auto import will not work depending on if you are editing a file in the client or server. It's like the types don't get picked up correctly between the sub projects.
 - [ ] apply delta compression to the server game state updates
 
+DevEx:
+
+- [ ] after saving game-client changes, the changes are not reflected in the dashboard until a hard refresh. it would be better if it was hot reloaded
+
 Backlog:
 
 - client
