@@ -7,6 +7,7 @@ import { MapManager } from "./managers/map";
 import { TreeClient } from "./entities/tree";
 import { GameState, getEntityById } from "./state";
 import { IClientEntity, Renderable } from "./entities/util";
+import { BulletClient } from "./entities/bullet";
 
 export class GameClient {
   private ctx: CanvasRenderingContext2D;
@@ -54,7 +55,8 @@ export class GameClient {
     this.startRenderLoop();
   }
 
-  public sendInput(input: { dx: number; dy: number; harvest: boolean }): void {
+  public sendInput(input: { dx: number; dy: number; harvest: boolean; fire: boolean }): void {
+    console.log("Sending input to server:", input);
     this.socketManager.sendInput(input);
   }
 
@@ -71,6 +73,9 @@ export class GameClient {
       const existingEntity = this.getEntities().find((e) => e.getId() === entityData.id);
 
       if (existingEntity) {
+        if (entityData.velocity && "setVelocity" in existingEntity) {
+          existingEntity.setVelocity(entityData.velocity);
+        }
         Object.assign(existingEntity, entityData);
         continue;
       }
@@ -78,12 +83,20 @@ export class GameClient {
       if (entityData.type === Entities.PLAYER) {
         const player = new PlayerClient(entityData.id);
         player.setPosition(entityData.position);
+        if (entityData.velocity) {
+          player.setVelocity(entityData.velocity);
+        }
         this.getEntities().push(player);
         continue;
       } else if (entityData.type === Entities.TREE) {
         const tree = new TreeClient(entityData.id);
         tree.setPosition(entityData.position);
         this.getEntities().push(tree);
+        continue;
+      } else if (entityData.type === Entities.BULLET) {
+        const bullet = new BulletClient(entityData.id);
+        bullet.setPosition(entityData.position);
+        this.getEntities().push(bullet);
         continue;
       } else {
         console.warn("Unknown entity type", entityData);

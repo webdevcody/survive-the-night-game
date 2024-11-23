@@ -2,14 +2,13 @@ import { Server, Socket } from "socket.io";
 import { createServer } from "http";
 import { Player } from "./shared/entities/player";
 import { Events } from "./shared/events";
-import { Entity } from "./shared/entities";
+import { Entities, Entity } from "./shared/entities";
 import { Tree } from "./shared/entities/tree";
 import { distance, Vector2 } from "./shared/physics";
-import { Harvestable, Positionable } from "./shared/traits";
+import { Harvestable, Positionable, Updatable } from "./shared/traits";
 import { EntityManager } from "./managers/entity-manager";
 
 export const FPS = 30;
-export const PLAYER_SPEED = 50;
 
 export type Input = {
   dx: number;
@@ -73,32 +72,13 @@ class GameServer {
       socket.on("playerInput", (input: Input) => {
         const player = this.players.get(socket.id);
         if (player) {
-          const dx =
-            input.dx !== 0 && input.dy !== 0
-              ? input.dx / Math.sqrt(2)
-              : input.dx;
-
-          const dy =
-            input.dx !== 0 && input.dy !== 0
-              ? input.dy / Math.sqrt(2)
-              : input.dy;
-
-          player.setVelocity({
-            x: dx * PLAYER_SPEED,
-            y: dy * PLAYER_SPEED,
-          });
+          player.setVelocityFromInput(input.dx, input.dy);
+          player.setInput(input);
 
           if (input.harvest) {
-            const nearbyEntities = this.getNearbyEntities(
-              player.getPosition(),
-              10
-            );
-
-            const harvestableEntities =
-              this.filterHarvestableEntities(nearbyEntities);
-
+            const nearbyEntities = this.getNearbyEntities(player.getPosition(), 10);
+            const harvestableEntities = this.filterHarvestableEntities(nearbyEntities);
             const first = harvestableEntities[0];
-
             if (first) {
               first.harvest();
             }
@@ -131,32 +111,38 @@ class GameServer {
   }
 
   private removeHarvestedEntities(): void {
-    const harvestables = this.filterHarvestableEntities(
-      this.entityManager.getEntities()
-    );
+    const harvestables = this.filterHarvestableEntities(this.entityManager.getEntities());
 
     for (let i = 0; i < harvestables.length; i++) {
       const harvestable = harvestables[i];
       if (harvestable.getIsHarvested()) {
         console.log("removing harvested entity");
-        this.entityManager.markEntityForRemoval(
-          harvestable as unknown as Entity
-        );
+        this.entityManager.markEntityForRemoval(harvestable as unknown as Entity);
       }
     }
   }
 
   private updatePositions(deltaTime: number): void {
+    // Update players
     for (const player of this.players.values()) {
       const velocity = player.getVelocity();
-
       player.setPosition({
         x: player.getPosition().x + velocity.x * deltaTime,
         y: player.getPosition().y + velocity.y * deltaTime,
       });
+      player.update(deltaTime);
+    }
+
+    // Update bullets
+    for (const entity of this.entityManager.getEntities()) {
+      if (entity.getType() === Entities.BULLET) {
+        (entity as unknown as Updatable).update(deltaTime);
+      }
     }
   }
 
+  // TODO: This is a bit of a hack to get the game state to the client.
+  // We should probably have a more elegant way to do this.
   private broadcastGameState(): void {
     const gameState = [
       ...Array.from(this.players.values()),
@@ -164,9 +150,9 @@ class GameServer {
     ].map((entity) => ({
       id: entity.getId(),
       position: "getPosition" in entity ? entity.getPosition() : undefined,
+      velocity: "getVelocity" in entity ? entity.getVelocity() : undefined,
       type: entity.getType(),
-      isHarvested:
-        "getIsHarvested" in entity ? entity.getIsHarvested() : undefined,
+      isHarvested: "getIsHarvested" in entity ? entity.getIsHarvested() : undefined,
     }));
 
     this.io.emit(Events.GAME_STATE_UPDATE, gameState);

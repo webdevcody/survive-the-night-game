@@ -17,3 +17,7 @@ export interface Movable {
   getVelocity: () => Vector2;
   setVelocity: (velocity: Vector2) => void;
 }
+
+export interface Updatable {
+  update: (deltaTime: number) => void;
+}

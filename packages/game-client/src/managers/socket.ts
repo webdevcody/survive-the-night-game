@@ -37,7 +37,7 @@ export class SocketManager {
     return this.socket.id;
   }
 
-  public sendInput(input: { dx: number; dy: number; harvest: boolean }) {
+  public sendInput(input: { dx: number; dy: number; harvest: boolean; fire: boolean }) {
     this.socket.emit(Events.PLAYER_INPUT, input);
   }
 }
