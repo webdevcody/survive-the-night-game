@@ -2,7 +2,7 @@ export const BULLET_SPEED = 100;
 import { EntityManager } from "../../managers/entity-manager";
 import { Entities } from "../entities";
 import { Entity } from "../entities";
-import { Vector2 } from "../physics";
+import { Vector2, normalizeVector } from "../physics";
 import { Movable, Positionable, Updatable } from "../traits";
 
 const MAX_TRAVEL_DISTANCE = 400;
@@ -20,18 +20,17 @@ export class Bullet extends Entity implements Positionable, Movable, Updatable {
   }
 
   setDirectionFromVelocity(velocity: Vector2) {
-    const speed = Math.sqrt(velocity.x * velocity.x + velocity.y * velocity.y);
-
-    if (speed > 0) {
-      // Normalize and scale by bullet speed
-      this.velocity = {
-        x: (velocity.x / speed) * Bullet.BULLET_SPEED,
-        y: (velocity.y / speed) * Bullet.BULLET_SPEED,
-      };
-    } else {
+    if (velocity.x === 0 && velocity.y === 0) {
       // Default direction (right) if no velocity
       this.velocity = { x: Bullet.BULLET_SPEED, y: 0 };
+      return;
     }
+
+    const normalized = normalizeVector(velocity);
+    this.velocity = {
+      x: normalized.x * Bullet.BULLET_SPEED,
+      y: normalized.y * Bullet.BULLET_SPEED,
+    };
   }
 
   update(deltaTime: number) {

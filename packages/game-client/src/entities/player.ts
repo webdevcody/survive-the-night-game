@@ -4,6 +4,7 @@ import {
   Positionable,
   roundVector2,
   Vector2,
+  normalizeVector,
 } from "@survive-the-night/game-server";
 import { IClientEntity, Renderable } from "./util";
 import { GameState } from "@/state";
@@ -68,10 +69,7 @@ export class PlayerClient implements IClientEntity, Renderable, Positionable {
 
     const speed = Math.sqrt(this.velocity.x * this.velocity.x + this.velocity.y * this.velocity.y);
     if (speed > 0) {
-      const direction = {
-        x: this.velocity.x / speed,
-        y: this.velocity.y / speed,
-      };
+      const direction = normalizeVector(this.velocity);
 
       const arrowStart = {
         x: renderPosition.x + this.image.width / 2,

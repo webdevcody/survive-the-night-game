@@ -7,3 +7,12 @@ export function roundVector2(vector: Vector2): Vector2 {
 export function distance(a: Vector2, b: Vector2): number {
   return Math.sqrt((a.x - b.x) ** 2 + (a.y - b.y) ** 2);
 }
+
+export function normalizeVector(vector: Vector2): Vector2 {
+  const magnitude = Math.sqrt(vector.x * vector.x + vector.y * vector.y);
+  if (magnitude === 0) return { x: 0, y: 0 };
+  return {
+    x: vector.x / magnitude,
+    y: vector.y / magnitude,
+  };
+}

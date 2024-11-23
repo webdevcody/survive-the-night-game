@@ -1,4 +1,11 @@
-import { Entity, Movable, Positionable, Updatable, Vector2 } from "@survive-the-night/game-server";
+import {
+  Entity,
+  Movable,
+  Positionable,
+  Updatable,
+  Vector2,
+  normalizeVector,
+} from "@survive-the-night/game-server";
 import { Entities } from "@survive-the-night/game-server";
 import { Input } from "../../server";
 import { EntityManager } from "../../managers/entity-manager";
@@ -24,13 +31,15 @@ export class Player extends Entity implements Movable, Positionable, Updatable {
   }
 
   setVelocityFromInput(dx: number, dy: number): void {
-    // Normalize diagonal movement
-    const normalizedDx = dx !== 0 && dy !== 0 ? dx / Math.sqrt(2) : dx;
-    const normalizedDy = dx !== 0 && dy !== 0 ? dy / Math.sqrt(2) : dy;
+    if (dx === 0 && dy === 0) {
+      this.velocity = { x: 0, y: 0 };
+      return;
+    }
 
+    const normalized = normalizeVector({ x: dx, y: dy });
     this.velocity = {
-      x: normalizedDx * Player.PLAYER_SPEED,
-      y: normalizedDy * Player.PLAYER_SPEED,
+      x: normalized.x * Player.PLAYER_SPEED,
+      y: normalized.y * Player.PLAYER_SPEED,
     };
   }
 
