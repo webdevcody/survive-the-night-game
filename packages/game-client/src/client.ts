@@ -17,19 +17,19 @@ export class GameClient {
   private mapManager: MapManager;
   private latestEntities: EntityDto[] = [];
   private gameState: GameState;
+  private scale: number;
+  private unmountQueue: Function[] = [];
 
   constructor(serverUrl: string, canvas: HTMLCanvasElement) {
+    this.scale = 8;
     this.ctx = canvas.getContext("2d")!;
+    this.setupCanvas();
 
-    canvas.width = window.innerWidth;
-    canvas.height = window.innerHeight;
+    const handleResize = () => this.setupCanvas();
+    window.addEventListener("resize", handleResize);
+    this.unmountQueue.push(() => window.removeEventListener("resize", handleResize));
 
-    window.addEventListener("resize", () => {
-      canvas.width = window.innerWidth;
-      canvas.height = window.innerHeight;
-    });
-
-    this.cameraManager = new CameraManager(this.ctx);
+    this.cameraManager = new CameraManager(this.ctx, this.scale);
 
     this.mapManager = new MapManager();
 
@@ -50,6 +50,10 @@ export class GameClient {
     });
 
     this.startRenderLoop();
+  }
+
+  unmount() {
+    this.unmountQueue.forEach((cb) => cb());
   }
 
   public sendInput(input: { dx: number; dy: number; harvest: boolean; fire: boolean }): void {
@@ -142,15 +146,22 @@ export class GameClient {
     }) as Renderable[];
   }
 
+  private setupCanvas(): void {
+    this.ctx.canvas.width = window.innerWidth * window.devicePixelRatio;
+    this.ctx.canvas.height = window.innerHeight * window.devicePixelRatio;
+    this.ctx.canvas.style.width = `${window.innerWidth}px`;
+    this.ctx.canvas.style.height = `${window.innerHeight}px`;
+
+    this.ctx.imageSmoothingEnabled = false;
+    this.ctx.scale(window.devicePixelRatio, window.devicePixelRatio);
+  }
+
   private clearCanvas(): void {
     const { width, height } = this.ctx.canvas;
-    const transform = this.ctx.getTransform();
-    const offsetX = -transform.e;
-    const offsetY = -transform.f;
-    this.ctx.imageSmoothingEnabled = false;
-    // this.ctx.clearRect(0, 0, width, height);
-    this.ctx.fillStyle = "black";
-    this.ctx.fillRect(offsetX, offsetY, width * 2, height * 2);
+    this.ctx.save();
+    this.ctx.setTransform(1, 0, 0, 1, 0, 0);
+    this.ctx.clearRect(0, 0, width, height);
+    this.ctx.restore();
   }
 
   private getEntities(): IClientEntity[] {
