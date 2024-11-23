@@ -8,6 +8,7 @@ import { TreeClient } from "./entities/tree";
 import { GameState, getEntityById } from "./state";
 import { IClientEntity, Renderable } from "./entities/util";
 import { BulletClient } from "./entities/bullet";
+import { StorageManager } from "./managers/storage";
 
 export class GameClient {
   private ctx: CanvasRenderingContext2D;
@@ -15,21 +16,22 @@ export class GameClient {
   private inputManager;
   private cameraManager: CameraManager;
   private mapManager: MapManager;
+  private storageManager: StorageManager;
   private latestEntities: EntityDto[] = [];
   private gameState: GameState;
   private scale: number;
   private unmountQueue: Function[] = [];
 
   constructor(serverUrl: string, canvas: HTMLCanvasElement) {
-    this.scale = 8;
     this.ctx = canvas.getContext("2d")!;
     this.setupCanvas();
+    this.addBrowserListeners();
 
-    const handleResize = () => this.setupCanvas();
-    window.addEventListener("resize", handleResize);
-    this.unmountQueue.push(() => window.removeEventListener("resize", handleResize));
+    this.storageManager = new StorageManager();
+    this.scale = this.storageManager.getScale(4);
 
-    this.cameraManager = new CameraManager(this.ctx, this.scale);
+    this.cameraManager = new CameraManager(this.ctx);
+    this.cameraManager.setScale(this.scale);
 
     this.mapManager = new MapManager();
 
@@ -52,12 +54,36 @@ export class GameClient {
     this.startRenderLoop();
   }
 
-  unmount() {
+  public sendInput(input: { dx: number; dy: number; harvest: boolean; fire: boolean }): void {
+    this.socketManager.sendInput(input);
+  }
+
+  public unmount() {
     this.unmountQueue.forEach((cb) => cb());
   }
 
-  public sendInput(input: { dx: number; dy: number; harvest: boolean; fire: boolean }): void {
-    this.socketManager.sendInput(input);
+  public getScale() {
+    return this.scale;
+  }
+
+  public zoomIn() {
+    this.zoom(+1);
+  }
+
+  public zoomOut() {
+    this.zoom(-1);
+  }
+
+  private addBrowserListeners() {
+    const handleResize = () => this.setupCanvas();
+    window.addEventListener("resize", handleResize);
+    this.unmountQueue.push(() => window.removeEventListener("resize", handleResize));
+  }
+
+  private zoom(amount: number) {
+    this.scale += amount;
+    this.storageManager.setScale(this.scale);
+    this.cameraManager.setScale(this.scale);
   }
 
   private updateEntities(): void {
@@ -160,7 +186,8 @@ export class GameClient {
     const { width, height } = this.ctx.canvas;
     this.ctx.save();
     this.ctx.setTransform(1, 0, 0, 1, 0, 0);
-    this.ctx.clearRect(0, 0, width, height);
+    this.ctx.fillStyle = "black";
+    this.ctx.fillRect(0, 0, width, height);
     this.ctx.restore();
   }
 

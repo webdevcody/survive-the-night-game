@@ -2,18 +2,21 @@ import { Vector2 } from "@survive-the-night/game-server";
 
 export class CameraManager {
   private ctx: CanvasRenderingContext2D;
-  private scale: number;
+  private scale: number = 1;
   private position: Vector2 = { x: 0, y: 0 };
   private targetPosition: Vector2 = { x: 0, y: 0 };
   private readonly LERP_FACTOR = 0.05;
 
-  constructor(ctx: CanvasRenderingContext2D, scale: number) {
+  constructor(ctx: CanvasRenderingContext2D) {
     this.ctx = ctx;
-    this.scale = scale;
   }
 
   getPosition(): Vector2 {
     return this.position;
+  }
+
+  setScale(scale: number): void {
+    this.scale = scale;
   }
 
   translateTo(position: Vector2): void {
