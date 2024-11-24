@@ -21,6 +21,7 @@ class GameServer {
   private entityManager: EntityManager;
   private mapManager: MapManager;
   private socketManager: SocketManager;
+  private timer: ReturnType<typeof setInterval> | null = null;
 
   constructor(port: number = 3001) {
     this.entityManager = new EntityManager();
@@ -30,8 +31,14 @@ class GameServer {
     this.startGameLoop();
   }
 
+  public stop() {
+    if (this.timer) {
+      clearInterval(this.timer);
+    }
+  }
+
   private startGameLoop(): void {
-    setInterval(() => {
+    this.timer = setInterval(() => {
       this.update();
     }, 1000 / FPS);
   }
@@ -104,3 +111,5 @@ export type RawEntity = {
   type: EntityType;
   isHarvested: boolean | undefined;
 };
+
+process.on("SIGINT", () => gameServer.stop());
