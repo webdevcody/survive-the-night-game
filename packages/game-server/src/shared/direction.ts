@@ -36,30 +36,23 @@ export function determineDirection(vector: Vector2, fallback: Direction): Direct
 }
 
 export function normalizeDirection(direction: Direction): Vector2 {
-  switch (direction) {
-    case Direction.Down: {
-      return { x: 0, y: -1 };
-    }
-    case Direction.DownLeft: {
-      return { x: -1, y: -1 };
-    }
-    case Direction.DownRight: {
-      return { x: 1, y: -1 };
-    }
-    case Direction.Left: {
-      return { x: -1, y: 0 };
-    }
-    case Direction.Right: {
-      return { x: 1, y: 0 };
-    }
-    case Direction.Up: {
-      return { x: 0, y: 1 };
-    }
-    case Direction.UpLeft: {
-      return { x: -1, y: 1 };
-    }
-    case Direction.UpRight: {
-      return { x: 1, y: 1 };
-    }
+  const result = { x: 0, y: 0 };
+
+  if ([Direction.Left, Direction.DownLeft, Direction.UpLeft].includes(direction)) {
+    result.x -= 1;
   }
+
+  if ([Direction.Down, Direction.DownLeft, Direction.DownRight].includes(direction)) {
+    result.y -= 1;
+  }
+
+  if ([Direction.Right, Direction.DownRight, Direction.UpRight].includes(direction)) {
+    result.x += 1;
+  }
+
+  if ([Direction.Up, Direction.UpLeft, Direction.UpRight].includes(direction)) {
+    result.y += 1;
+  }
+
+  return result;
 }
