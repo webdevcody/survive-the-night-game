@@ -3,14 +3,14 @@ import { EntityManager } from "../../managers/entity-manager";
 import { Direction, normalizeDirection } from "../direction";
 import { Entities } from "../entities";
 import { Entity } from "../entities";
-import { Vector2, normalizeVector } from "../physics";
-import { Movable, Positionable, Updatable } from "../traits";
+import { Vector2, distance, normalizeVector } from "../physics";
+import { Collidable, Hitbox, Movable, Positionable, Updatable } from "../traits";
 
 const MAX_TRAVEL_DISTANCE = 400;
 
 export const HITBOX_RADIUS = 1;
 
-export class Bullet extends Entity implements Positionable, Movable, Updatable {
+export class Bullet extends Entity implements Positionable, Movable, Updatable, Collidable {
   private traveledDistance: number = 0;
   private position: Vector2 = { x: 0, y: 0 };
   private velocity: Vector2 = { x: 0, y: 0 };
@@ -26,6 +26,14 @@ export class Bullet extends Entity implements Positionable, Movable, Updatable {
     this.velocity = {
       x: normalized.x * Bullet.BULLET_SPEED,
       y: normalized.y * Bullet.BULLET_SPEED,
+    }
+  }
+    
+  getHitbox(): Hitbox {
+    return {
+      ...this.position,
+      width: 1,
+      height: 1,
     };
   }
 
@@ -44,14 +52,20 @@ export class Bullet extends Entity implements Positionable, Movable, Updatable {
   }
 
   update(deltaTime: number) {
-    const oldPos = { ...this.position };
-    this.position.x += this.velocity.x * deltaTime;
-    this.position.y += this.velocity.y * deltaTime;
+    const lastPosition = { ...this.getPosition() };
+    this.setPosition({
+      x: this.position.x + this.velocity.x * deltaTime,
+      y: this.position.y + this.velocity.y * deltaTime,
+    });
 
-    this.traveledDistance +=
-      Math.sqrt(this.velocity.x * this.velocity.x + this.velocity.y * this.velocity.y) * deltaTime;
+    this.traveledDistance += distance(lastPosition, this.getPosition());
 
     if (this.traveledDistance > MAX_TRAVEL_DISTANCE) {
+      this.getEntityManager().markEntityForRemoval(this);
+    }
+
+    if (this.getEntityManager().isColliding(this)) {
+      // TODO: add damage logic to hurt zombies or other entities
       this.getEntityManager().markEntityForRemoval(this);
     }
   }
