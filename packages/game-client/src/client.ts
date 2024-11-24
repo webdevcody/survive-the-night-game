@@ -8,6 +8,7 @@ import { TreeClient } from "./entities/tree";
 import { GameState, getEntityById } from "./state";
 import { IClientEntity, Renderable } from "./entities/util";
 import { BulletClient } from "./entities/bullet";
+import { StorageManager } from "./managers/storage";
 import { WallClient } from "./entities/wall";
 export class GameClient {
   private ctx: CanvasRenderingContext2D;
@@ -15,21 +16,22 @@ export class GameClient {
   private inputManager;
   private cameraManager: CameraManager;
   private mapManager: MapManager;
+  private storageManager: StorageManager;
   private latestEntities: EntityDto[] = [];
   private gameState: GameState;
+  private scale: number;
+  private unmountQueue: Function[] = [];
 
   constructor(serverUrl: string, canvas: HTMLCanvasElement) {
     this.ctx = canvas.getContext("2d")!;
+    this.setupCanvas();
+    this.addBrowserListeners();
 
-    canvas.width = window.innerWidth;
-    canvas.height = window.innerHeight;
-
-    window.addEventListener("resize", () => {
-      canvas.width = window.innerWidth;
-      canvas.height = window.innerHeight;
-    });
+    this.storageManager = new StorageManager();
+    this.scale = this.storageManager.getScale(4);
 
     this.cameraManager = new CameraManager(this.ctx);
+    this.cameraManager.setScale(this.scale);
 
     this.mapManager = new MapManager();
 
@@ -54,6 +56,34 @@ export class GameClient {
 
   public sendInput(input: { dx: number; dy: number; harvest: boolean; fire: boolean }): void {
     this.socketManager.sendInput(input);
+  }
+
+  public unmount() {
+    this.unmountQueue.forEach((cb) => cb());
+  }
+
+  public getScale() {
+    return this.scale;
+  }
+
+  public zoomIn() {
+    this.zoom(+1);
+  }
+
+  public zoomOut() {
+    this.zoom(-1);
+  }
+
+  private addBrowserListeners() {
+    const handleResize = () => this.setupCanvas();
+    window.addEventListener("resize", handleResize);
+    this.unmountQueue.push(() => window.removeEventListener("resize", handleResize));
+  }
+
+  private zoom(amount: number) {
+    this.scale += amount;
+    this.storageManager.setScale(this.scale);
+    this.cameraManager.setScale(this.scale);
   }
 
   private updateEntities(): void {
@@ -148,15 +178,23 @@ export class GameClient {
     }) as Renderable[];
   }
 
+  private setupCanvas(): void {
+    this.ctx.canvas.width = window.innerWidth * window.devicePixelRatio;
+    this.ctx.canvas.height = window.innerHeight * window.devicePixelRatio;
+    this.ctx.canvas.style.width = `${window.innerWidth}px`;
+    this.ctx.canvas.style.height = `${window.innerHeight}px`;
+
+    this.ctx.imageSmoothingEnabled = false;
+    this.ctx.scale(window.devicePixelRatio, window.devicePixelRatio);
+  }
+
   private clearCanvas(): void {
     const { width, height } = this.ctx.canvas;
-    const transform = this.ctx.getTransform();
-    const offsetX = -transform.e;
-    const offsetY = -transform.f;
-    this.ctx.imageSmoothingEnabled = false;
-    // this.ctx.clearRect(0, 0, width, height);
+    this.ctx.save();
+    this.ctx.setTransform(1, 0, 0, 1, 0, 0);
     this.ctx.fillStyle = "black";
-    this.ctx.fillRect(offsetX, offsetY, width * 2, height * 2);
+    this.ctx.fillRect(0, 0, width, height);
+    this.ctx.restore();
   }
 
   private getEntities(): IClientEntity[] {

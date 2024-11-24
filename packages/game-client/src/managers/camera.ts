@@ -2,6 +2,7 @@ import { Vector2 } from "@survive-the-night/game-server";
 
 export class CameraManager {
   private ctx: CanvasRenderingContext2D;
+  private scale: number = 1;
   private position: Vector2 = { x: 0, y: 0 };
   private targetPosition: Vector2 = { x: 0, y: 0 };
   private readonly LERP_FACTOR = 0.05;
@@ -12,6 +13,10 @@ export class CameraManager {
 
   getPosition(): Vector2 {
     return this.position;
+  }
+
+  setScale(scale: number): void {
+    this.scale = scale;
   }
 
   translateTo(position: Vector2): void {
@@ -25,15 +30,13 @@ export class CameraManager {
     const centerX = canvas.width / 2;
     const centerY = canvas.height / 2;
 
-    const scale = 2;
-
     this.ctx.setTransform(
-      scale,
+      this.scale,
       0,
       0,
-      scale,
-      Math.round(centerX - this.position.x * scale),
-      Math.round(centerY - this.position.y * scale)
+      this.scale,
+      Math.round(centerX - this.position.x * this.scale),
+      Math.round(centerY - this.position.y * this.scale)
     );
   }
 }
