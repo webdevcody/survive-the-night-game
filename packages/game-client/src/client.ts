@@ -1,3 +1,4 @@
+import { AssetManager } from "./managers/asset";
 import { InputManager } from "./managers/input";
 import { EntityDto, SocketManager } from "./managers/socket";
 import { Entities, GameStateEvent, Positionable } from "@survive-the-night/game-server";
@@ -10,10 +11,12 @@ import { IClientEntity, Renderable } from "./entities/util";
 import { BulletClient } from "./entities/bullet";
 import { StorageManager } from "./managers/storage";
 import { WallClient } from "./entities/wall";
+
 export class GameClient {
   private ctx: CanvasRenderingContext2D;
+  private assetManager = new AssetManager();
   private socketManager: SocketManager;
-  private inputManager;
+  private inputManager: InputManager;
   private cameraManager: CameraManager;
   private mapManager: MapManager;
   private storageManager: StorageManager;
@@ -21,6 +24,9 @@ export class GameClient {
   private gameState: GameState;
   private scale: number;
   private unmountQueue: Function[] = [];
+  private reqId: number | null = null;
+  private running = false;
+  private mounted = true;
 
   constructor(serverUrl: string, canvas: HTMLCanvasElement) {
     this.ctx = canvas.getContext("2d")!;
@@ -50,8 +56,10 @@ export class GameClient {
         this.gameState.playerId = playerId;
       },
     });
+  }
 
-    this.startRenderLoop();
+  public async loadAssets() {
+    await this.assetManager.load();
   }
 
   public sendInput(input: { dx: number; dy: number; harvest: boolean; fire: boolean }): void {
@@ -59,11 +67,13 @@ export class GameClient {
   }
 
   public unmount() {
-    this.unmountQueue.forEach((cb) => cb());
-  }
+    if (!this.mounted) {
+      return;
+    }
 
-  public getScale() {
-    return this.scale;
+    this.stop();
+    this.unmountQueue.forEach((cb) => cb());
+    this.mounted = false;
   }
 
   public zoomIn() {
@@ -72,6 +82,35 @@ export class GameClient {
 
   public zoomOut() {
     this.zoom(-1);
+  }
+
+  public start(): void {
+    if (!this.mounted || this.running) {
+      return;
+    }
+
+    this.running = true;
+
+    const tick = () => {
+      this.update();
+      this.render();
+      this.reqId = requestAnimationFrame(tick);
+    };
+
+    tick();
+  }
+
+  public stop(): void {
+    if (!this.running) {
+      return;
+    }
+
+    if (this.reqId) {
+      cancelAnimationFrame(this.reqId);
+      this.reqId = null;
+    }
+
+    this.running = false;
   }
 
   private addBrowserListeners() {
@@ -110,7 +149,7 @@ export class GameClient {
 
       // TODO: consider a better way to handle this
       if (entityData.type === Entities.PLAYER) {
-        const player = new PlayerClient(entityData.id);
+        const player = new PlayerClient(entityData.id, this.assetManager);
         player.setPosition(entityData.position);
         if (entityData.velocity) {
           player.setVelocity(entityData.velocity);
@@ -118,17 +157,17 @@ export class GameClient {
         this.getEntities().push(player);
         continue;
       } else if (entityData.type === Entities.TREE) {
-        const tree = new TreeClient(entityData.id);
+        const tree = new TreeClient(entityData.id, this.assetManager);
         tree.setPosition(entityData.position);
         this.getEntities().push(tree);
         continue;
       } else if (entityData.type === Entities.BULLET) {
-        const bullet = new BulletClient(entityData.id);
+        const bullet = new BulletClient(entityData.id, this.assetManager);
         bullet.setPosition(entityData.position);
         this.getEntities().push(bullet);
         continue;
       } else if (entityData.type === Entities.WALL) {
-        const wall = new WallClient(entityData.id);
+        const wall = new WallClient(entityData.id, this.assetManager);
         wall.setPosition(entityData.position);
         this.getEntities().push(wall);
         continue;
@@ -161,15 +200,6 @@ export class GameClient {
     if (playerToFollow) {
       this.cameraManager.translateTo(playerToFollow.getPosition());
     }
-  }
-
-  private startRenderLoop(): void {
-    const render = () => {
-      this.update();
-      this.render();
-      requestAnimationFrame(render);
-    };
-    render();
   }
 
   private getRenderableEntities(): Renderable[] {

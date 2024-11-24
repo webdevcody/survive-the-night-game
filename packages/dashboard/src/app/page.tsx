@@ -8,9 +8,18 @@ export default function HomePage() {
   const clientRef = useRef<GameClient | null>(null);
 
   useEffect(() => {
-    if (canvasRef.current) {
+    async function initClient(): Promise<void> {
+      if (!canvasRef.current) {
+        return;
+      }
+
       clientRef.current = new GameClient(process.env.NEXT_PUBLIC_WEBSOCKET_URL!, canvasRef.current);
+
+      await clientRef.current.loadAssets();
+      clientRef.current.start();
     }
+
+    void initClient();
 
     return () => {
       clientRef.current?.unmount();

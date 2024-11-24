@@ -74,7 +74,7 @@ export class Player extends Entity implements Facing, Movable, Positionable, Upd
   }
 
   handleAttack(deltaTime: number) {
-    this.facing = determineDirection(this.velocity, this.facing);
+    this.facing = determineDirection(this.velocity) ?? this.facing;
     this.fireCooldown -= deltaTime;
 
     if (this.input.fire && this.fireCooldown <= 0) {
@@ -91,25 +91,20 @@ export class Player extends Entity implements Facing, Movable, Positionable, Upd
   }
 
   handleMovement(deltaTime: number) {
-    const velocity = this.getVelocity();
-    const currentPosition = { ...this.getPosition() };
-    const previousPosition = { ...currentPosition };
+    const previousX = this.position.x;
+    const previousY = this.position.y;
 
-    // Try moving on X axis
-    currentPosition.x += velocity.x * deltaTime;
-    this.setPosition(currentPosition);
+    this.position.x += this.velocity.x * deltaTime;
+
     if (this.getEntityManager().isColliding(this)) {
-      currentPosition.x = previousPosition.x;
+      this.position.x = previousX;
     }
 
-    // Try moving on Y axis
-    currentPosition.y += velocity.y * deltaTime;
-    this.setPosition(currentPosition);
-    if (this.getEntityManager().isColliding(this)) {
-      currentPosition.y = previousPosition.y;
-    }
+    this.position.y += this.velocity.y * deltaTime;
 
-    this.setPosition(currentPosition);
+    if (this.getEntityManager().isColliding(this)) {
+      this.position.y = previousY;
+    }
   }
 
   update(deltaTime: number) {

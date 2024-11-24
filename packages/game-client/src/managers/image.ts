@@ -24,7 +24,7 @@ export class ImageManager {
       ctx.scale(-1, 1);
     }
 
-    ctx.drawImage(image, x, y, image.width, image.height, 0, 0, canvas.width, canvas.height);
+    ctx.drawImage(image, x, y, canvas.width, canvas.height, 0, 0, canvas.width, canvas.height);
 
     const url = canvas.toDataURL();
     return await this.load(url);
