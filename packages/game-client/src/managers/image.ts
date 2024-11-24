@@ -7,49 +7,39 @@ export interface CropOptions {
 }
 
 export class ImageManager {
-  private canvas = document.createElement("canvas");
-  private ctx = this.canvas.getContext("2d")!;
-  private image = new Image();
-
   public async crop(
     image: HTMLImageElement,
     { flipX, x, y, width, height }: CropOptions
   ): Promise<HTMLImageElement> {
-    this.canvas.width = width;
-    this.canvas.height = height;
+    const canvas = document.createElement("canvas");
+    const ctx = canvas.getContext("2d")!;
 
-    this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+    canvas.width = width;
+    canvas.height = height;
+
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
 
     if (flipX) {
-      this.ctx.translate(this.canvas.width, 0);
-      this.ctx.scale(-1, 1);
+      ctx.translate(canvas.width, 0);
+      ctx.scale(-1, 1);
     }
 
-    this.ctx.drawImage(
-      image,
-      x,
-      y,
-      image.width,
-      image.height,
-      0,
-      0,
-      this.canvas.width,
-      this.canvas.height
-    );
+    ctx.drawImage(image, x, y, image.width, image.height, 0, 0, canvas.width, canvas.height);
 
-    const url = this.canvas.toDataURL();
+    const url = canvas.toDataURL();
     return await this.load(url);
   }
 
   public async load(path: string): Promise<HTMLImageElement> {
-    return await new Promise((resolve, reject) => {
-      this.image.src = path;
+    const image = new Image();
+    image.src = path;
 
-      this.image.onload = () => {
-        resolve(this.image);
+    return await new Promise((resolve, reject) => {
+      image.onload = () => {
+        resolve(image);
       };
 
-      this.image.onerror = (err) => {
+      image.onerror = (err) => {
         reject(err);
       };
     });
