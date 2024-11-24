@@ -1,6 +1,7 @@
 import { distance, isColliding, Vector2 } from "@/shared/physics";
-import { Entity } from "../shared/entities";
+import { Entities, Entity } from "../shared/entities";
 import { Collidable, Harvestable, Positionable, Updatable } from "@/shared/traits";
+import { Player } from "@/shared/entities/player";
 
 export class EntityManager {
   private entities: Entity[];
@@ -58,6 +59,12 @@ export class EntityManager {
     }) as unknown as Positionable[];
   }
 
+  getPlayerEntities(): Player[] {
+    return this.entities.filter((entity) => {
+      return entity.getType() === Entities.PLAYER;
+    }) as unknown as Player[];
+  }
+
   filterHarvestableEntities(entities: Entity[]): Harvestable[] {
     return entities.filter((entity) => {
       return "harvest" in entity;
@@ -68,6 +75,30 @@ export class EntityManager {
     return this.entities.filter((entity) => {
       return "getHitbox" in entity;
     }) as unknown as Collidable[];
+  }
+
+  getClosestPlayer(entity: Positionable): Player | null {
+    const players = this.getPlayerEntities();
+
+    if (players.length === 0) {
+      return null;
+    }
+
+    const entityPosition = entity.getPosition();
+    let closestPlayerIdx = 0;
+    let closestPlayerDistance = distance(entityPosition, players[closestPlayerIdx].getPosition());
+
+    for (let i = 1; i < players.length; i++) {
+      const player = players[i];
+      const playerDistance = distance(entityPosition, player.getPosition());
+
+      if (playerDistance < closestPlayerDistance) {
+        closestPlayerIdx = i;
+        closestPlayerDistance = playerDistance;
+      }
+    }
+
+    return players[closestPlayerIdx];
   }
 
   isColliding(entity: Collidable): boolean {
