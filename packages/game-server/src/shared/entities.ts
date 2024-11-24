@@ -1,6 +1,7 @@
 import { EntityManager } from "@/managers/entity-manager";
 
 export const Entities = {
+  ZOMBIE: "zombie",
   PLAYER: "player",
   TREE: "tree",
   BULLET: "bullet",
