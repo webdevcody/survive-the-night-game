@@ -6,6 +6,7 @@ import {
   Positionable,
   Updatable,
   Vector2,
+  determineDirection,
   normalizeVector,
 } from "@survive-the-night/game-server";
 import { Entities } from "@survive-the-night/game-server";
@@ -16,7 +17,7 @@ import { Bullet } from "./bullet";
 export const FIRE_COOLDOWN = 0.4;
 
 export class Player extends Entity implements Facing, Movable, Positionable, Updatable {
-  public direction = Direction.Right;
+  public facing = Direction.Right;
   private fireCooldown = 0;
   private position: Vector2 = { x: 0, y: 0 };
   private velocity: Vector2 = { x: 0, y: 0 };
@@ -63,6 +64,7 @@ export class Player extends Entity implements Facing, Movable, Positionable, Upd
   }
 
   update(deltaTime: number) {
+    this.facing = determineDirection(this.velocity, this.facing);
     this.fireCooldown -= deltaTime;
 
     if (this.input.fire && this.fireCooldown <= 0) {
@@ -73,7 +75,7 @@ export class Player extends Entity implements Facing, Movable, Positionable, Upd
         x: this.position.x + Player.PLAYER_WIDTH / 2,
         y: this.position.y + Player.PLAYER_HEIGHT / 2,
       });
-      bullet.setDirectionFromVelocity(this.velocity);
+      bullet.setDirection(this.facing);
       this.getEntityManager().addEntity(bullet);
     }
   }

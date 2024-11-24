@@ -1,8 +1,9 @@
 export const BULLET_SPEED = 100;
 import { EntityManager } from "../../managers/entity-manager";
+import { Direction } from "../direction";
 import { Entities } from "../entities";
 import { Entity } from "../entities";
-import { Vector2, normalizeVector } from "../physics";
+import { Vector2, normalizeDirection, normalizeVector } from "../physics";
 import { Movable, Positionable, Updatable } from "../traits";
 
 const MAX_TRAVEL_DISTANCE = 400;
@@ -17,6 +18,15 @@ export class Bullet extends Entity implements Positionable, Movable, Updatable {
 
   constructor(entityManager: EntityManager) {
     super(entityManager, Entities.BULLET);
+  }
+
+  setDirection(direction: Direction) {
+    const normalized = normalizeDirection(direction);
+
+    this.velocity = {
+      x: normalized.x * Bullet.BULLET_SPEED,
+      y: normalized.y * Bullet.BULLET_SPEED,
+    };
   }
 
   setDirectionFromVelocity(velocity: Vector2) {
