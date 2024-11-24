@@ -1,6 +1,7 @@
 import { Tree } from "@/shared/entities/tree";
 import { Entities } from "../shared/entities";
 import { EntityManager } from "./entity-manager";
+import { Wall } from "@/shared/entities/wall";
 
 const MAPS = {
   testing: {
@@ -20,6 +21,14 @@ const MAPS = {
       {
         type: Entities.TREE,
         position: { x: 60, y: 100 },
+      },
+      {
+        type: Entities.WALL,
+        position: { x: 100, y: 100 },
+      },
+      {
+        type: Entities.WALL,
+        position: { x: 40, y: 50 },
       },
     ],
     map: [
@@ -53,6 +62,10 @@ export class MapManager {
         const tree = new Tree(this.entityManager);
         tree.setPosition(entity.position);
         this.entityManager.addEntity(tree);
+      } else if (entity.type === Entities.WALL) {
+        const wall = new Wall(this.entityManager);
+        wall.setPosition(entity.position);
+        this.entityManager.addEntity(wall);
       }
     }
   }

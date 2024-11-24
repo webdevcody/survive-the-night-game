@@ -62,20 +62,8 @@ class GameServer {
   }
 
   private updateEntities(deltaTime: number): void {
-    for (const entity of this.entityManager.getEntities()) {
-      // TODO: this should look like this
-      // entity.update(deltaTime)
-      if (entity.getType() === Entities.BULLET) {
-        (entity as unknown as Updatable).update(deltaTime);
-      } else if (entity.getType() === Entities.PLAYER) {
-        const player = entity as unknown as Player;
-        const velocity = player.getVelocity();
-        player.setPosition({
-          x: player.getPosition().x + velocity.x * deltaTime,
-          y: player.getPosition().y + velocity.y * deltaTime,
-        });
-        player.update(deltaTime);
-      }
+    for (const entity of this.entityManager.getUpdatableEntities()) {
+      entity.update(deltaTime);
     }
   }
 

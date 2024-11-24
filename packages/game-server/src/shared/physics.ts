@@ -1,3 +1,5 @@
+import { Hitbox } from "./traits";
+
 export type Vector2 = { x: number; y: number };
 
 export function roundVector2(vector: Vector2): Vector2 {
@@ -15,4 +17,8 @@ export function normalizeVector(vector: Vector2): Vector2 {
     x: vector.x / magnitude,
     y: vector.y / magnitude,
   };
+}
+
+export function isColliding(a: Hitbox, b: Hitbox): boolean {
+  return a.x < b.x + b.width && a.x + a.width > b.x && a.y < b.y + b.height && a.y + a.height > b.y;
 }

@@ -54,3 +54,5 @@ Backlog:
   - [ ] a user can search a dead zombie body for items (randomly drop items)
   - [ ] a user can search cabinets for items (randomly drop items)
   - [ ] a zombie can attack a player (when they get close enough to a player, we need an attack animation and only hurt the player if they close enough by the time the animation reaches a certain point)
+  - [ ] add in lighting / flashlight (maybe look into shaders?)
+  - [ ] add in collidable entities (barrels, boxes, etc.)
