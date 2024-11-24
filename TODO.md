@@ -7,6 +7,10 @@ Refactor:
 - [ ] needing to place the images inside the next project when they belong to the client feels strange; I'm not sure if static asset bundling is a better approach
 - [ ] sometimes auto import will not work depending on if you are editing a file in the client or server. It's like the types don't get picked up correctly between the sub projects.
 
+Other Tasks:
+
+- [ ] use scroll wheel instead of +/- buttons
+
 DevEx:
 
 - [ ] after saving game-client changes, the changes are not reflected in the dashboard until a hard refresh. it would be better if it was hot reloaded
