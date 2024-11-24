@@ -1,3 +1,4 @@
+import { Direction } from "./direction";
 import { Vector2 } from "./physics";
 
 export interface Harvestable {
@@ -6,6 +7,10 @@ export interface Harvestable {
 }
 
 export const HARVEST_DISTANCE = 10;
+
+export interface Facing {
+  facing: Direction;
+}
 
 export interface Positionable {
   getPosition: () => Vector2;

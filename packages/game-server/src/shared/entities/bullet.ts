@@ -1,5 +1,6 @@
 export const BULLET_SPEED = 100;
 import { EntityManager } from "../../managers/entity-manager";
+import { Direction, normalizeDirection } from "../direction";
 import { Entities } from "../entities";
 import { Entity } from "../entities";
 import { Vector2, distance, normalizeVector } from "../physics";
@@ -19,6 +20,15 @@ export class Bullet extends Entity implements Positionable, Movable, Updatable, 
     super(entityManager, Entities.BULLET);
   }
 
+  setDirection(direction: Direction) {
+    const normalized = normalizeDirection(direction);
+
+    this.velocity = {
+      x: normalized.x * Bullet.BULLET_SPEED,
+      y: normalized.y * Bullet.BULLET_SPEED,
+    }
+  }
+    
   getHitbox(): Hitbox {
     return {
       ...this.position,
