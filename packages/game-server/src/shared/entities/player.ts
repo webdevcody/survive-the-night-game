@@ -1,7 +1,7 @@
 import {
   Direction,
   Entity,
-  type Facing,
+  Facing,
   Movable,
   Positionable,
   Updatable,
