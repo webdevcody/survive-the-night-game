@@ -14,7 +14,7 @@ export enum Direction {
 export function determineDirection(vector: Vector2): Direction | null {
   if (vector.x < 0 && vector.y > 0) {
     return Direction.DownLeft;
-  } else if (vector.x > 0 && vector.y < 0) {
+  } else if (vector.x > 0 && vector.y > 0) {
     return Direction.DownRight;
   } else if (vector.x < 0 && vector.y < 0) {
     return Direction.UpLeft;
