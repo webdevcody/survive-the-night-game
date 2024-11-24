@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "main": "src/index.ts",
   "scripts": {
-   "dev": "tsx watch src/server.ts"
+    "dev": "tsx watch src/server.ts"
   },
   "keywords": [],
   "type": "module",
@@ -11,7 +11,7 @@
   "license": "MIT",
   "description": "",
   "devDependencies": {
-    "@types/node": "^22.9.0",
+    "@types/node": "^22.9.3",
     "ts-node": "^10.9.2",
     "tsx": "^4.19.2"
   },
