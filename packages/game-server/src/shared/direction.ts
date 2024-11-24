@@ -34,3 +34,32 @@ export function determineDirection(vector: Vector2, fallback: Direction): Direct
 
   return fallback;
 }
+
+export function normalizeDirection(direction: Direction): Vector2 {
+  switch (direction) {
+    case Direction.Down: {
+      return { x: 0, y: -1 };
+    }
+    case Direction.DownLeft: {
+      return { x: -1, y: -1 };
+    }
+    case Direction.DownRight: {
+      return { x: 1, y: -1 };
+    }
+    case Direction.Left: {
+      return { x: -1, y: 0 };
+    }
+    case Direction.Right: {
+      return { x: 1, y: 0 };
+    }
+    case Direction.Up: {
+      return { x: 0, y: 1 };
+    }
+    case Direction.UpLeft: {
+      return { x: -1, y: 1 };
+    }
+    case Direction.UpRight: {
+      return { x: 1, y: 1 };
+    }
+  }
+}

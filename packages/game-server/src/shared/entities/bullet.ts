@@ -1,9 +1,9 @@
 export const BULLET_SPEED = 100;
 import { EntityManager } from "../../managers/entity-manager";
-import { Direction } from "../direction";
+import { Direction, normalizeDirection } from "../direction";
 import { Entities } from "../entities";
 import { Entity } from "../entities";
-import { Vector2, normalizeDirection, normalizeVector } from "../physics";
+import { Vector2, normalizeVector } from "../physics";
 import { Movable, Positionable, Updatable } from "../traits";
 
 const MAX_TRAVEL_DISTANCE = 400;
