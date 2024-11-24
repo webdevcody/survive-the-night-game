@@ -9,7 +9,7 @@ import { GameState, getEntityById } from "./state";
 import { IClientEntity, Renderable } from "./entities/util";
 import { BulletClient } from "./entities/bullet";
 import { StorageManager } from "./managers/storage";
-
+import { WallClient } from "./entities/wall";
 export class GameClient {
   private ctx: CanvasRenderingContext2D;
   private socketManager: SocketManager;
@@ -108,6 +108,7 @@ export class GameClient {
         continue;
       }
 
+      // TODO: consider a better way to handle this
       if (entityData.type === Entities.PLAYER) {
         const player = new PlayerClient(entityData.id);
         player.setPosition(entityData.position);
@@ -125,6 +126,11 @@ export class GameClient {
         const bullet = new BulletClient(entityData.id);
         bullet.setPosition(entityData.position);
         this.getEntities().push(bullet);
+        continue;
+      } else if (entityData.type === Entities.WALL) {
+        const wall = new WallClient(entityData.id);
+        wall.setPosition(entityData.position);
+        this.getEntities().push(wall);
         continue;
       } else {
         console.warn("Unknown entity type", entityData);

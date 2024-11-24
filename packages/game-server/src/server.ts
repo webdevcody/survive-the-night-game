@@ -21,6 +21,7 @@ class GameServer {
   private entityManager: EntityManager;
   private mapManager: MapManager;
   private socketManager: SocketManager;
+  private timer: ReturnType<typeof setInterval> | null = null;
 
   constructor(port: number = 3001) {
     this.entityManager = new EntityManager();
@@ -30,8 +31,14 @@ class GameServer {
     this.startGameLoop();
   }
 
+  public stop() {
+    if (this.timer) {
+      clearInterval(this.timer);
+    }
+  }
+
   private startGameLoop(): void {
-    setInterval(() => {
+    this.timer = setInterval(() => {
       this.update();
     }, 1000 / FPS);
   }
@@ -62,20 +69,8 @@ class GameServer {
   }
 
   private updateEntities(deltaTime: number): void {
-    for (const entity of this.entityManager.getEntities()) {
-      // TODO: this should look like this
-      // entity.update(deltaTime)
-      if (entity.getType() === Entities.BULLET) {
-        (entity as unknown as Updatable).update(deltaTime);
-      } else if (entity.getType() === Entities.PLAYER) {
-        const player = entity as unknown as Player;
-        const velocity = player.getVelocity();
-        player.setPosition({
-          x: player.getPosition().x + velocity.x * deltaTime,
-          y: player.getPosition().y + velocity.y * deltaTime,
-        });
-        player.update(deltaTime);
-      }
+    for (const entity of this.entityManager.getUpdatableEntities()) {
+      entity.update(deltaTime);
     }
   }
 
@@ -104,3 +99,5 @@ export type RawEntity = {
   type: EntityType;
   isHarvested: boolean | undefined;
 };
+
+process.on("SIGINT", () => gameServer.stop());
