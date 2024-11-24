@@ -87,24 +87,21 @@ export class Player extends Entity implements Movable, Positionable, Updatable, 
 
   handleMovement(deltaTime: number) {
     const velocity = this.getVelocity();
-
-    const previousX = this.getPosition().x;
-    const previousY = this.getPosition().y;
-
     const currentPosition = { ...this.getPosition() };
+    const previousPosition = { ...currentPosition };
 
+    // Try moving on X axis
     currentPosition.x += velocity.x * deltaTime;
     this.setPosition(currentPosition);
     if (this.getEntityManager().isColliding(this)) {
-      currentPosition.x = previousX;
-      this.setPosition(currentPosition);
+      currentPosition.x = previousPosition.x;
     }
 
+    // Try moving on Y axis
     currentPosition.y += velocity.y * deltaTime;
     this.setPosition(currentPosition);
     if (this.getEntityManager().isColliding(this)) {
-      currentPosition.y = previousY;
-      this.setPosition(currentPosition);
+      currentPosition.y = previousPosition.y;
     }
 
     this.setPosition(currentPosition);
