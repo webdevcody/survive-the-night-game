@@ -1,6 +1,6 @@
-import { distance, Vector2 } from "@/shared/physics";
+import { distance, isColliding, Vector2 } from "@/shared/physics";
 import { Entity } from "../shared/entities";
-import { Harvestable, Positionable } from "@/shared/traits";
+import { Collidable, Harvestable, Positionable, Updatable } from "@/shared/traits";
 
 export class EntityManager {
   private entities: Entity[];
@@ -17,6 +17,12 @@ export class EntityManager {
 
   getEntities(): Entity[] {
     return this.entities;
+  }
+
+  getUpdatableEntities(): Updatable[] {
+    return this.entities.filter((entity) => {
+      return "update" in entity;
+    }) as unknown as Updatable[];
   }
 
   markEntityForRemoval(entity: Entity) {
@@ -56,5 +62,22 @@ export class EntityManager {
     return entities.filter((entity) => {
       return "harvest" in entity;
     }) as unknown as Harvestable[];
+  }
+
+  getCollidableEntities(): Collidable[] {
+    return this.entities.filter((entity) => {
+      return "getHitbox" in entity;
+    }) as unknown as Collidable[];
+  }
+
+  isColliding(entity: Collidable): boolean {
+    const collidables = this.getCollidableEntities();
+    for (const collidable of collidables) {
+      if (collidable === entity) continue;
+      if (isColliding(entity.getHitbox(), collidable.getHitbox())) {
+        return true;
+      }
+    }
+    return false;
   }
 }

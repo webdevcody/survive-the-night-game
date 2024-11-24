@@ -26,3 +26,14 @@ export interface Movable {
 export interface Updatable {
   update: (deltaTime: number) => void;
 }
+
+export type Hitbox = {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+};
+
+export interface Collidable {
+  getHitbox: () => Hitbox;
+}

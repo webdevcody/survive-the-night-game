@@ -1,7 +1,9 @@
 import {
   Direction,
+  Collidable,
   Entity,
   Facing,
+  Hitbox,
   Movable,
   Positionable,
   Updatable,
@@ -16,7 +18,7 @@ import { Bullet } from "./bullet";
 
 export const FIRE_COOLDOWN = 0.4;
 
-export class Player extends Entity implements Facing, Movable, Positionable, Updatable {
+export class Player extends Entity implements Facing, Movable, Positionable, Updatable, Collidable {
   public facing = Direction.Right;
   private fireCooldown = 0;
   private position: Vector2 = { x: 0, y: 0 };
@@ -32,6 +34,14 @@ export class Player extends Entity implements Facing, Movable, Positionable, Upd
 
   getCenterPosition(): Vector2 {
     return this.position;
+  }
+
+  getHitbox(): Hitbox {
+    return {
+      ...this.position,
+      width: Player.PLAYER_WIDTH,
+      height: Player.PLAYER_HEIGHT,
+    };
   }
 
   setVelocityFromInput(dx: number, dy: number): void {
@@ -63,7 +73,7 @@ export class Player extends Entity implements Facing, Movable, Positionable, Upd
     this.position = position;
   }
 
-  update(deltaTime: number) {
+  handleAttack(deltaTime: number) {
     this.facing = determineDirection(this.velocity, this.facing);
     this.fireCooldown -= deltaTime;
 
@@ -78,6 +88,33 @@ export class Player extends Entity implements Facing, Movable, Positionable, Upd
       bullet.setDirection(this.facing);
       this.getEntityManager().addEntity(bullet);
     }
+  }
+
+  handleMovement(deltaTime: number) {
+    const velocity = this.getVelocity();
+    const currentPosition = { ...this.getPosition() };
+    const previousPosition = { ...currentPosition };
+
+    // Try moving on X axis
+    currentPosition.x += velocity.x * deltaTime;
+    this.setPosition(currentPosition);
+    if (this.getEntityManager().isColliding(this)) {
+      currentPosition.x = previousPosition.x;
+    }
+
+    // Try moving on Y axis
+    currentPosition.y += velocity.y * deltaTime;
+    this.setPosition(currentPosition);
+    if (this.getEntityManager().isColliding(this)) {
+      currentPosition.y = previousPosition.y;
+    }
+
+    this.setPosition(currentPosition);
+  }
+
+  update(deltaTime: number) {
+    this.handleAttack(deltaTime);
+    this.handleMovement(deltaTime);
   }
 
   setInput(input: Input) {
