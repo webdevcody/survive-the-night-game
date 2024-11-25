@@ -5,29 +5,26 @@ export class InputManager {
     dy: 0,
     harvest: false,
     fire: false,
+    inventoryItem: 0,
   };
   private inputs = {
     dx: 0,
     dy: 0,
     harvest: false,
     fire: false,
+    inventoryItem: 0,
   };
 
   private checkIfChanged() {
-    if (
-      this.inputs.dx !== this.lastInputs.dx ||
-      this.inputs.dy !== this.lastInputs.dy ||
-      this.inputs.harvest !== this.lastInputs.harvest ||
-      this.inputs.fire !== this.lastInputs.fire
-    ) {
-      this.hasChanged = true;
-    }
+    this.hasChanged = JSON.stringify(this.inputs) !== JSON.stringify(this.lastInputs);
     this.lastInputs = { ...this.inputs };
   }
 
   constructor() {
     window.addEventListener("keydown", (e) => {
-      switch (e.key.toLowerCase()) {
+      const eventKey = e.key.toLowerCase();
+
+      switch (eventKey) {
         case "w":
           this.inputs.dy = -1;
           break;
@@ -52,7 +49,16 @@ export class InputManager {
     });
 
     window.addEventListener("keyup", (e) => {
-      switch (e.key.toLowerCase()) {
+      const eventKey = e.key.toLowerCase();
+
+      switch (eventKey) {
+        case "1":
+        case "2":
+        case "3":
+        case "4":
+        case "5":
+          this.inputs.inventoryItem = Number.parseInt(eventKey, 10) - 1;
+          break;
         case "w":
           this.inputs.dy = this.inputs.dy === -1 ? 0 : this.inputs.dy;
           break;
