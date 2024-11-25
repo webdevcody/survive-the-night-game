@@ -10,6 +10,19 @@ export function distance(a: Vector2, b: Vector2): number {
   return Math.sqrt((a.x - b.x) ** 2 + (a.y - b.y) ** 2);
 }
 
+export function velocityTowards(a: Vector2, b: Vector2): Vector2 {
+  const d = distance(a, b);
+
+  if (d === 0) {
+    return { x: 0, y: 0 };
+  }
+
+  return {
+    x: (b.x - a.x) / d,
+    y: (b.y - a.y) / d,
+  };
+}
+
 export function normalizeVector(vector: Vector2): Vector2 {
   const magnitude = Math.sqrt(vector.x * vector.x + vector.y * vector.y);
   if (magnitude === 0) return { x: 0, y: 0 };

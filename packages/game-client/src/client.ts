@@ -3,6 +3,7 @@ import { InputManager } from "./managers/input";
 import { EntityDto, SocketManager } from "./managers/socket";
 import { Entities, GameStateEvent, Positionable } from "@survive-the-night/game-server";
 import { PlayerClient } from "./entities/player";
+import { ZombieClient } from "./entities/zombie";
 import { CameraManager } from "./managers/camera";
 import { MapManager } from "./managers/map";
 import { TreeClient } from "./entities/tree";
@@ -170,6 +171,14 @@ export class GameClient {
         const wall = new WallClient(entityData.id, this.assetManager);
         wall.setPosition(entityData.position);
         this.getEntities().push(wall);
+        continue;
+      } else if (entityData.type === Entities.ZOMBIE) {
+        const zombie = new ZombieClient(entityData.id);
+        zombie.setPosition(entityData.position);
+        if (entityData.velocity) {
+          zombie.setVelocity(entityData.velocity);
+        }
+        this.getEntities().push(zombie);
         continue;
       } else {
         console.warn("Unknown entity type", entityData);
