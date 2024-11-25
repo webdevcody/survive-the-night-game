@@ -63,17 +63,18 @@ export class MapManager {
     this.entityManager.clear();
 
     for (const entity of mapToLoad.entities) {
+      const entityPosition = { ...entity.position };
       if (entity.type === Entities.TREE) {
         const tree = new Tree(this.entityManager);
-        tree.setPosition(entity.position);
+        tree.setPosition(entityPosition);
         this.entityManager.addEntity(tree);
       } else if (entity.type === Entities.WALL) {
         const wall = new Wall(this.entityManager);
-        wall.setPosition(entity.position);
+        wall.setPosition(entityPosition);
         this.entityManager.addEntity(wall);
       } else if (entity.type === Entities.ZOMBIE) {
         const zombie = new Zombie(this.entityManager);
-        zombie.setPosition(entity.position);
+        zombie.setPosition(entityPosition);
         this.entityManager.addEntity(zombie);
       }
     }

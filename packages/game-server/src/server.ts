@@ -25,9 +25,9 @@ class GameServer {
 
   constructor(port: number = 3001) {
     this.entityManager = new EntityManager();
-    this.socketManager = new SocketManager(this.entityManager, port);
     this.mapManager = new MapManager(this.entityManager);
     this.mapManager.loadMap("testing");
+    this.socketManager = new SocketManager(this.entityManager, this.mapManager, port);
     this.startGameLoop();
   }
 
