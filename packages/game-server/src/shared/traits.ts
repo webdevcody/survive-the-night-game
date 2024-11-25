@@ -37,3 +37,8 @@ export type Hitbox = {
 export interface Collidable {
   getHitbox: () => Hitbox;
 }
+
+export interface Damageable {
+  damage: (damage: number) => void;
+  getHealth: () => number;
+}

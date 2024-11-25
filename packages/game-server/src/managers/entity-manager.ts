@@ -101,14 +101,14 @@ export class EntityManager {
     return players[closestPlayerIdx];
   }
 
-  isColliding(entity: Collidable): boolean {
+  isColliding(entity: Collidable): Collidable | null {
     const collidables = this.getCollidableEntities();
     for (const collidable of collidables) {
       if (collidable === entity) continue;
       if (isColliding(entity.getHitbox(), collidable.getHitbox())) {
-        return true;
+        return collidable;
       }
     }
-    return false;
+    return null;
   }
 }

@@ -4,7 +4,7 @@ import { Direction, normalizeDirection } from "../direction";
 import { Entities } from "../entities";
 import { Entity } from "../entities";
 import { Vector2, distance, normalizeVector } from "../physics";
-import { Collidable, Hitbox, Movable, Positionable, Updatable } from "../traits";
+import { Collidable, Damageable, Hitbox, Movable, Positionable, Updatable } from "../traits";
 
 const MAX_TRAVEL_DISTANCE = 400;
 
@@ -26,9 +26,9 @@ export class Bullet extends Entity implements Positionable, Movable, Updatable, 
     this.velocity = {
       x: normalized.x * Bullet.BULLET_SPEED,
       y: normalized.y * Bullet.BULLET_SPEED,
-    }
+    };
   }
-    
+
   getHitbox(): Hitbox {
     return {
       ...this.position,
@@ -64,9 +64,14 @@ export class Bullet extends Entity implements Positionable, Movable, Updatable, 
       this.getEntityManager().markEntityForRemoval(this);
     }
 
-    if (this.getEntityManager().isColliding(this)) {
+    const collidingWith = this.getEntityManager().isColliding(this);
+    if (collidingWith) {
       // TODO: add damage logic to hurt zombies or other entities
       this.getEntityManager().markEntityForRemoval(this);
+      if ("damage" in collidingWith) {
+        const damageable = collidingWith as Damageable;
+        damageable.damage(1);
+      }
     }
   }
 

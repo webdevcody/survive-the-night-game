@@ -9,17 +9,22 @@ import {
   Updatable,
   Vector2,
   velocityTowards,
+  Damageable,
 } from "@survive-the-night/game-server";
 import { Entities } from "@survive-the-night/game-server";
 import { EntityManager } from "../../managers/entity-manager";
 
-export class Zombie extends Entity implements Facing, Movable, Positionable, Updatable, Collidable {
+export class Zombie
+  extends Entity
+  implements Facing, Damageable, Movable, Positionable, Updatable, Collidable
+{
   public facing = Direction.Right;
   private position: Vector2 = { x: 0, y: 0 };
   private velocity: Vector2 = { x: 0, y: 0 };
   private static readonly ZOMBIE_WIDTH = 16;
   private static readonly ZOMBIE_HEIGHT = 16;
   private static readonly ZOMBIE_SPEED = 35;
+  private health = 2;
 
   constructor(entityManager: EntityManager) {
     super(entityManager, Entities.ZOMBIE);
@@ -47,6 +52,18 @@ export class Zombie extends Entity implements Facing, Movable, Positionable, Upd
 
   getPosition(): Vector2 {
     return this.position;
+  }
+
+  damage(damage: number) {
+    this.health -= damage;
+
+    if (this.health <= 0) {
+      this.getEntityManager().markEntityForRemoval(this);
+    }
+  }
+
+  getHealth(): number {
+    return this.health;
   }
 
   setPosition(position: Vector2) {

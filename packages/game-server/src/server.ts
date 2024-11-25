@@ -83,6 +83,7 @@ class GameServer {
       velocity: "getVelocity" in entity ? entity.getVelocity() : undefined,
       type: entity.getType(),
       isHarvested: "getIsHarvested" in entity ? entity.getIsHarvested() : undefined,
+      health: "getHealth" in entity ? entity.getHealth() : undefined,
     }));
 
     const gameStateEvent = new GameStateEvent({ entities: rawEntities });

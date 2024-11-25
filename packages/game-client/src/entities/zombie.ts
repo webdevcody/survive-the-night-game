@@ -16,6 +16,7 @@ export class ZombieClient implements IClientEntity, Renderable, Positionable {
   private velocity: Vector2 = { x: 0, y: 0 };
   private id: string;
   private type: EntityType;
+  private health = 2;
 
   constructor(id: string) {
     this.id = id;
@@ -63,6 +64,21 @@ export class ZombieClient implements IClientEntity, Renderable, Positionable {
 
     const renderPosition = roundVector2(this.lastRenderPosition);
 
+    // Draw the zombie
     ctx.drawImage(this.image, renderPosition.x, renderPosition.y);
+
+    // Draw health bar
+    const healthBarWidth = 16; // Same as zombie width
+    const healthBarHeight = 2;
+    const healthBarY = renderPosition.y - healthBarHeight - 2; // 2 pixels above zombie
+
+    // Background (red)
+    ctx.fillStyle = "#ff0000";
+    ctx.fillRect(renderPosition.x, healthBarY, healthBarWidth, healthBarHeight);
+
+    // Foreground (green) - scales with health
+    ctx.fillStyle = "#00ff00";
+    const healthPercentage = this.health / 2; // 2 is max health
+    ctx.fillRect(renderPosition.x, healthBarY, healthBarWidth * healthPercentage, healthBarHeight);
   }
 }
