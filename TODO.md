@@ -18,7 +18,7 @@ DevEx:
 Backlog:
 
 - client
-  - [ ] create an entry point function for the client code which creates a canvas, connects to a server, and starts the game loop
+  - [x] create an entry point function for the client code which creates a canvas, connects to a server, and starts the game loop
   - [x] a user shall be able to move their player around with w,s,a,d
   - [x] a user shall be able to move in a diagonal direction
   - [x] a user shall be able to attack using space

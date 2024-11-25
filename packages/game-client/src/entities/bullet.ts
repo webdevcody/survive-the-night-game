@@ -1,16 +1,19 @@
 import { Entities, EntityType, Positionable, Vector2 } from "@survive-the-night/game-server";
+import { AssetManager } from "@/managers/asset";
 import { GameState } from "../state";
 import { IClientEntity, Renderable } from "./util";
 import { HITBOX_RADIUS } from "@survive-the-night/game-server/src/shared/entities/bullet";
 
 export class BulletClient implements IClientEntity, Renderable, Positionable {
+  private assetManager: AssetManager;
   private position: Vector2 = { x: 0, y: 0 };
   private type: EntityType;
   private id: string;
 
-  constructor(id: string) {
+  constructor(id: string, assetManager: AssetManager) {
     this.id = id;
     this.type = Entities.BULLET;
+    this.assetManager = assetManager;
   }
 
   getId(): string {
