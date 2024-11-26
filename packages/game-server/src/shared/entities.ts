@@ -10,6 +10,12 @@ export const Entities = {
 
 export type EntityType = (typeof Entities)[keyof typeof Entities];
 
+export type RawEntity = {
+  id: string;
+  type: EntityType;
+  [key: string]: any;
+};
+
 export abstract class Entity {
   private type: EntityType;
   private id: string;
@@ -23,6 +29,13 @@ export abstract class Entity {
 
   setType(type: EntityType) {
     this.type = type;
+  }
+
+  serialize(): RawEntity {
+    return {
+      id: this.id,
+      type: this.type,
+    };
   }
 
   getType(): EntityType {

@@ -1,5 +1,5 @@
 import { distance, isColliding, Vector2 } from "@/shared/physics";
-import { Entities, Entity } from "../shared/entities";
+import { Entities, Entity, EntityType } from "../shared/entities";
 import { Collidable, Harvestable, Positionable, Updatable } from "@/shared/traits";
 import { Player } from "@/shared/entities/player";
 
@@ -101,10 +101,12 @@ export class EntityManager {
     return players[closestPlayerIdx];
   }
 
-  isColliding(entity: Collidable): Collidable | null {
+  isColliding(entity: Collidable, ignoreTypes?: EntityType[]): Collidable | null {
     const collidables = this.getCollidableEntities();
     for (const collidable of collidables) {
       if (collidable === entity) continue;
+      if (ignoreTypes && ignoreTypes.includes((collidable as unknown as Entity).getType()))
+        continue;
       if (isColliding(entity.getHitbox(), collidable.getHitbox())) {
         return collidable;
       }

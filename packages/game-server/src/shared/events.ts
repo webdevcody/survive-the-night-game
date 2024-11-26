@@ -1,5 +1,4 @@
-import { EntityType } from "./entities";
-import { Vector2 } from "./physics";
+import { RawEntity } from "./entities";
 
 export const Events = {
   GAME_STATE_UPDATE: "gameState",
@@ -11,14 +10,6 @@ export type Event = (typeof Events)[keyof typeof Events];
 
 type GameState = {
   entities: RawEntity[];
-};
-
-type RawEntity = {
-  id: string;
-  position: Vector2 | undefined;
-  velocity: Vector2 | undefined;
-  type: EntityType;
-  isHarvested: boolean | undefined;
 };
 
 export class GameStateEvent implements IEvent {

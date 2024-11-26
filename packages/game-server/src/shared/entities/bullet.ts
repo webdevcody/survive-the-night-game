@@ -1,4 +1,5 @@
 export const BULLET_SPEED = 100;
+import { RawEntity } from "@/server";
 import { EntityManager } from "../../managers/entity-manager";
 import { Direction, normalizeDirection } from "../direction";
 import { Entities } from "../entities";
@@ -66,13 +67,20 @@ export class Bullet extends Entity implements Positionable, Movable, Updatable, 
 
     const collidingWith = this.getEntityManager().isColliding(this);
     if (collidingWith) {
-      // TODO: add damage logic to hurt zombies or other entities
       this.getEntityManager().markEntityForRemoval(this);
       if ("damage" in collidingWith) {
-        const damageable = collidingWith as Damageable;
+        const damageable = collidingWith as unknown as Damageable;
         damageable.damage(1);
       }
     }
+  }
+
+  serialize(): RawEntity {
+    return {
+      ...super.serialize(),
+      position: this.position,
+      velocity: this.velocity,
+    };
   }
 
   getPosition(): Vector2 {

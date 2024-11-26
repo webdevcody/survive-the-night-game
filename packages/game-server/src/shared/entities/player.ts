@@ -10,6 +10,7 @@ import {
   Vector2,
   determineDirection,
   normalizeVector,
+  RawEntity,
 } from "@survive-the-night/game-server";
 import { Entities } from "@survive-the-night/game-server";
 import { Input } from "../../server";
@@ -23,7 +24,7 @@ export class Player extends Entity implements Facing, Movable, Positionable, Upd
   private fireCooldown = 0;
   private position: Vector2 = { x: 0, y: 0 };
   private velocity: Vector2 = { x: 0, y: 0 };
-  private input: Input = { dx: 0, dy: 0, harvest: false, fire: false };
+  private input: Input = { inventoryItem: 1, dx: 0, dy: 0, harvest: false, fire: false };
   private static readonly PLAYER_WIDTH = 16;
   private static readonly PLAYER_HEIGHT = 16;
   private static readonly PLAYER_SPEED = 60;
@@ -34,6 +35,15 @@ export class Player extends Entity implements Facing, Movable, Positionable, Upd
 
   getCenterPosition(): Vector2 {
     return this.position;
+  }
+
+  serialize(): RawEntity {
+    return {
+      ...super.serialize(),
+      position: this.position,
+      facing: this.facing,
+      velocity: this.velocity,
+    };
   }
 
   getHitbox(): Hitbox {
@@ -96,13 +106,13 @@ export class Player extends Entity implements Facing, Movable, Positionable, Upd
 
     this.position.x += this.velocity.x * deltaTime;
 
-    if (this.getEntityManager().isColliding(this)) {
+    if (this.getEntityManager().isColliding(this, [Entities.PLAYER])) {
       this.position.x = previousX;
     }
 
     this.position.y += this.velocity.y * deltaTime;
 
-    if (this.getEntityManager().isColliding(this)) {
+    if (this.getEntityManager().isColliding(this, [Entities.PLAYER])) {
       this.position.y = previousY;
     }
   }

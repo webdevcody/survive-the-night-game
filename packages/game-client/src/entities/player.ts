@@ -10,7 +10,7 @@ import {
 } from "@survive-the-night/game-server";
 import { AssetManager } from "@/managers/asset";
 import { InventoryManager } from "@/managers/inventory";
-import { IClientEntity, Renderable } from "./util";
+import { IClientEntity, RawEntity, Renderable } from "./util";
 import { GameState } from "@/state";
 
 export class PlayerClient implements IClientEntity, Renderable, Positionable {

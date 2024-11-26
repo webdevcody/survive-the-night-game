@@ -1,8 +1,6 @@
-import { Player } from "./shared/entities/player";
 import { GameStateEvent } from "./shared/events";
-import { Entities, Entity, EntityType } from "./shared/entities";
+import { Entity, EntityType } from "./shared/entities";
 import { Vector2 } from "./shared/physics";
-import { Updatable } from "./shared/traits";
 import { EntityManager } from "./managers/entity-manager";
 import { MapManager } from "./managers/map-manager";
 import { SocketManager } from "./managers/socket-manager";
@@ -14,6 +12,7 @@ export type Input = {
   dy: number;
   harvest: boolean;
   fire: boolean;
+  inventoryItem: number;
 };
 
 class GameServer {
@@ -77,28 +76,12 @@ class GameServer {
   // TODO: This is a bit of a hack to get the game state to the client.
   // We should probably have a more elegant way to do this.
   private broadcastGameState(): void {
-    const rawEntities: RawEntity[] = [...this.entityManager.getEntities()].map((entity) => ({
-      id: entity.getId(),
-      position: "getPosition" in entity ? entity.getPosition() : undefined,
-      velocity: "getVelocity" in entity ? entity.getVelocity() : undefined,
-      type: entity.getType(),
-      isHarvested: "getIsHarvested" in entity ? entity.getIsHarvested() : undefined,
-      health: "getHealth" in entity ? entity.getHealth() : undefined,
-    }));
-
+    const rawEntities = [...this.entityManager.getEntities()].map((entity) => entity.serialize());
     const gameStateEvent = new GameStateEvent({ entities: rawEntities });
     this.socketManager.broadcastEvent(gameStateEvent);
   }
 }
 
 const gameServer = new GameServer();
-
-export type RawEntity = {
-  id: string;
-  position: Vector2 | undefined;
-  velocity: Vector2 | undefined;
-  type: EntityType;
-  isHarvested: boolean | undefined;
-};
 
 process.on("SIGINT", () => gameServer.stop());

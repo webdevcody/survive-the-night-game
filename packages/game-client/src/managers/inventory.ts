@@ -5,6 +5,8 @@ interface InventoryItem {
   key: string;
 }
 
+const MAX_ITEMS = 5;
+
 export class InventoryManager {
   private inputManager: InputManager;
 
@@ -42,6 +44,6 @@ export class InventoryManager {
   }
 
   public getItemsNumber(): number {
-    return 5;
+    return MAX_ITEMS;
   }
 }

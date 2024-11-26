@@ -1,5 +1,5 @@
 import { EntityManager } from "@/managers/entity-manager";
-import { Entities, Entity } from "../entities";
+import { Entities, Entity, RawEntity } from "../entities";
 import { Vector2 } from "../physics";
 import { Harvestable, Positionable } from "../traits";
 
@@ -13,6 +13,13 @@ export class Tree extends Entity implements Harvestable, Positionable {
 
   harvest(): void {
     this.isHarvested = true;
+  }
+
+  serialize(): RawEntity {
+    return {
+      ...super.serialize(),
+      position: this.position,
+    };
   }
 
   getIsHarvested(): boolean {

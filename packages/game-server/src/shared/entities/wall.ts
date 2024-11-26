@@ -1,5 +1,5 @@
 import { EntityManager } from "@/managers/entity-manager";
-import { Entity, Entities } from "../entities";
+import { Entity, Entities, RawEntity } from "../entities";
 import { Collidable, Hitbox, Positionable } from "../traits";
 import { Vector2 } from "../physics";
 
@@ -19,6 +19,13 @@ export class Wall extends Entity implements Collidable, Positionable {
 
   setPosition(position: Vector2): void {
     this.position = position;
+  }
+
+  serialize(): RawEntity {
+    return {
+      ...super.serialize(),
+      position: this.position,
+    };
   }
 
   getCenterPosition(): Vector2 {

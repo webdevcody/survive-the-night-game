@@ -10,6 +10,7 @@ import {
   Vector2,
   velocityTowards,
   Damageable,
+  RawEntity,
 } from "@survive-the-night/game-server";
 import { Entities } from "@survive-the-night/game-server";
 import { EntityManager } from "../../managers/entity-manager";
@@ -64,6 +65,16 @@ export class Zombie
 
   getHealth(): number {
     return this.health;
+  }
+
+  serialize(): RawEntity {
+    return {
+      ...super.serialize(),
+      health: this.health,
+      position: this.position,
+      facing: this.facing,
+      velocity: this.velocity,
+    };
   }
 
   setPosition(position: Vector2) {

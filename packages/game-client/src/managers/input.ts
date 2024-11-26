@@ -1,18 +1,14 @@
 export class InputManager {
   private hasChanged = false;
-  private lastInputs = {
-    dx: 0,
-    dy: 0,
-    harvest: false,
-    fire: false,
-    inventoryItem: 0,
-  };
   private inputs = {
     dx: 0,
     dy: 0,
     harvest: false,
     fire: false,
     inventoryItem: 0,
+  };
+  private lastInputs = {
+    ...this.inputs,
   };
 
   private checkIfChanged() {
