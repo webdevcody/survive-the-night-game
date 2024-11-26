@@ -177,7 +177,7 @@ export class GameClient {
         this.getEntities().push(wall);
         continue;
       } else if (entityData.type === Entities.ZOMBIE) {
-        const zombie = new ZombieClient(entityData.id);
+        const zombie = new ZombieClient(entityData.id, this.assetManager);
         zombie.setPosition(entityData.position);
         if (entityData.velocity) {
           zombie.setVelocity(entityData.velocity);

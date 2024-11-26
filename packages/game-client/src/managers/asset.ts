@@ -34,6 +34,11 @@ export const assetsMap = {
   PlayerFacingUp: assetMap({ x: 493, y: 171 }),
   Tree: assetMap({ x: 221, y: 209 }),
   Wall: assetMap({ x: 357, y: 95 }),
+  ZombieFacingCenter: assetMap({ x: 493, y: 76 }),
+  ZombieFacingDown: assetMap({ x: 493, y: 76 }),
+  ZombieFacingLeft: assetMap({ x: 493, y: 95 }),
+  ZombieFacingRight: assetMap({ x: 493, y: 95, flipX: true }),
+  ZombieFacingUp: assetMap({ x: 493, y: 57 }),
 } as const;
 
 export type Asset = keyof typeof assetsMap;
@@ -100,6 +105,20 @@ export class AssetManager {
       return direction && isDirectionLeft(direction)
         ? this.get("ShotgunFacingLeft")
         : this.get("ShotgunFacingRight");
+    }
+
+    if (key === "Zombie") {
+      if (direction && isDirectionLeft(direction)) {
+        return this.get("ZombieFacingLeft");
+      } else if (direction && isDirectionRight(direction)) {
+        return this.get("ZombieFacingRight");
+      } else if (direction && isDirectionDown(direction)) {
+        return this.get("ZombieFacingDown");
+      } else if (direction && isDirectionUp(direction)) {
+        return this.get("ZombieFacingUp");
+      }
+
+      return this.get("ZombieFacingCenter");
     }
 
     throw new Error(`Tried getting an asset with direction that is not registered '${key}'`);
