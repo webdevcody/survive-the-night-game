@@ -1,3 +1,10 @@
+import {
+  Direction,
+  isDirectionDown,
+  isDirectionLeft,
+  isDirectionRight,
+  isDirectionUp,
+} from "@survive-the-night/game-server";
 import { CropOptions, ImageManager } from "./image";
 
 const tileSize = 16;
@@ -14,6 +21,12 @@ function assetMap({
 
 // sheet gaps: 1px horizontally, 3px vertically
 export const assetsMap = {
+  KnifeFacingLeft: assetMap({ x: 17, y: 171, flipX: true }),
+  KnifeFacingRight: assetMap({ x: 17, y: 171 }),
+  PistolFacingLeft: assetMap({ x: 17, y: 149, flipX: true }),
+  PistolFacingRight: assetMap({ x: 17, y: 149 }),
+  ShotgunFacingLeft: assetMap({ x: 17, y: 133, flipX: true }),
+  ShotgunFacingRight: assetMap({ x: 17, y: 133 }),
   PlayerFacingCenter: assetMap({ x: 493, y: 190 }),
   PlayerFacingDown: assetMap({ x: 493, y: 190 }),
   PlayerFacingLeft: assetMap({ x: 493, y: 209, flipX: true }),
@@ -21,6 +34,11 @@ export const assetsMap = {
   PlayerFacingUp: assetMap({ x: 493, y: 171 }),
   Tree: assetMap({ x: 221, y: 209 }),
   Wall: assetMap({ x: 357, y: 95 }),
+  ZombieFacingCenter: assetMap({ x: 493, y: 76 }),
+  ZombieFacingDown: assetMap({ x: 493, y: 76 }),
+  ZombieFacingLeft: assetMap({ x: 493, y: 95 }),
+  ZombieFacingRight: assetMap({ x: 493, y: 95, flipX: true }),
+  ZombieFacingUp: assetMap({ x: 493, y: 57 }),
 } as const;
 
 export type Asset = keyof typeof assetsMap;
@@ -53,6 +71,57 @@ export class AssetManager {
       );
     }
     return asset;
+  }
+
+  // direction can be null so player can face center
+  public getWithDirection(key: string, direction: Direction | null): HTMLImageElement {
+    if (key === "Knife") {
+      return direction && isDirectionLeft(direction)
+        ? this.get("KnifeFacingLeft")
+        : this.get("KnifeFacingRight");
+    }
+
+    if (key === "Pistol") {
+      return direction && isDirectionLeft(direction)
+        ? this.get("PistolFacingLeft")
+        : this.get("PistolFacingRight");
+    }
+
+    if (key === "Player") {
+      if (direction && isDirectionLeft(direction)) {
+        return this.get("PlayerFacingLeft");
+      } else if (direction && isDirectionRight(direction)) {
+        return this.get("PlayerFacingRight");
+      } else if (direction && isDirectionDown(direction)) {
+        return this.get("PlayerFacingDown");
+      } else if (direction && isDirectionUp(direction)) {
+        return this.get("PlayerFacingUp");
+      }
+
+      return this.get("PlayerFacingCenter");
+    }
+
+    if (key === "Shotgun") {
+      return direction && isDirectionLeft(direction)
+        ? this.get("ShotgunFacingLeft")
+        : this.get("ShotgunFacingRight");
+    }
+
+    if (key === "Zombie") {
+      if (direction && isDirectionLeft(direction)) {
+        return this.get("ZombieFacingLeft");
+      } else if (direction && isDirectionRight(direction)) {
+        return this.get("ZombieFacingRight");
+      } else if (direction && isDirectionDown(direction)) {
+        return this.get("ZombieFacingDown");
+      } else if (direction && isDirectionUp(direction)) {
+        return this.get("ZombieFacingUp");
+      }
+
+      return this.get("ZombieFacingCenter");
+    }
+
+    throw new Error(`Tried getting an asset with direction that is not registered '${key}'`);
   }
 
   public getSheet(): HTMLImageElement {

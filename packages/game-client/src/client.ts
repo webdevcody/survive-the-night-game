@@ -5,10 +5,12 @@ import { Entities, GameStateEvent, Positionable } from "@survive-the-night/game-
 import { PlayerClient } from "./entities/player";
 import { ZombieClient } from "./entities/zombie";
 import { CameraManager } from "./managers/camera";
+import { InventoryManager } from "./managers/inventory";
 import { MapManager } from "./managers/map";
 import { TreeClient } from "./entities/tree";
 import { GameState, getEntityById } from "./state";
 import { IClientEntity, Renderable } from "./entities/util";
+import { HotbarClient } from "./ui/hotbar";
 import { BulletClient } from "./entities/bullet";
 import { StorageManager } from "./managers/storage";
 import { WallClient } from "./entities/wall";
@@ -18,6 +20,7 @@ export class GameClient {
   private assetManager = new AssetManager();
   private socketManager: SocketManager;
   private inputManager: InputManager;
+  private inventoryManager: InventoryManager;
   private cameraManager: CameraManager;
   private mapManager: MapManager;
   private storageManager: StorageManager;
@@ -41,13 +44,14 @@ export class GameClient {
     this.cameraManager.setScale(this.scale);
 
     this.mapManager = new MapManager();
+    this.inputManager = new InputManager();
+    this.inventoryManager = new InventoryManager(this.inputManager);
 
     this.gameState = {
       playerId: "",
+      hotbar: new HotbarClient(this.assetManager, this.inputManager, this.inventoryManager),
       entities: [],
     };
-
-    this.inputManager = new InputManager();
 
     this.socketManager = new SocketManager(serverUrl, {
       onGameStateUpdate: (gameStateEvent: GameStateEvent) => {
@@ -150,7 +154,7 @@ export class GameClient {
 
       // TODO: consider a better way to handle this
       if (entityData.type === Entities.PLAYER) {
-        const player = new PlayerClient(entityData.id, this.assetManager);
+        const player = new PlayerClient(entityData.id, this.assetManager, this.inventoryManager);
         player.setPosition(entityData.position);
         if (entityData.velocity) {
           player.setVelocity(entityData.velocity);
@@ -173,7 +177,7 @@ export class GameClient {
         this.getEntities().push(wall);
         continue;
       } else if (entityData.type === Entities.ZOMBIE) {
-        const zombie = new ZombieClient(entityData.id);
+        const zombie = new ZombieClient(entityData.id, this.assetManager);
         zombie.setPosition(entityData.position);
         if (entityData.velocity) {
           zombie.setVelocity(entityData.velocity);
@@ -248,9 +252,14 @@ export class GameClient {
     });
   }
 
+  private renderHotbar(): void {
+    this.gameState.hotbar.render(this.ctx, this.gameState);
+  }
+
   private render(): void {
     this.clearCanvas();
     this.mapManager.render(this.ctx);
     this.renderEntities();
+    this.renderHotbar();
   }
 }

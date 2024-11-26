@@ -2,16 +2,19 @@ import { Server, Socket } from "socket.io";
 import { createServer } from "http";
 import { Events, IEvent } from "@/shared/events";
 import { EntityManager } from "./entity-manager";
+import { MapManager } from "./map-manager";
 import { Input } from "@/server";
 import { Player } from "@/shared/entities/player";
 
 export class SocketManager {
   private io: Server;
   private entityManager: EntityManager;
+  private mapManager: MapManager;
   private players: Map<string, Player> = new Map();
 
-  constructor(entityManager: EntityManager, port: number) {
+  constructor(entityManager: EntityManager, mapManager: MapManager, port: number) {
     this.entityManager = entityManager;
+    this.mapManager = mapManager;
 
     const httpServer = createServer();
     this.io = new Server(httpServer, {
@@ -31,6 +34,10 @@ export class SocketManager {
     this.players.delete(socket.id);
     if (player) {
       this.entityManager.markEntityForRemoval(player);
+    }
+
+    if (this.players.size === 0) {
+      this.mapManager.loadMap("testing");
     }
   }
 

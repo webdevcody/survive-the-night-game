@@ -2,14 +2,16 @@ import {
   Entities,
   EntityType,
   Positionable,
+  determineDirection,
   roundVector2,
   Vector2,
 } from "@survive-the-night/game-server";
+import { AssetManager } from "@/managers/asset";
 import { IClientEntity, Renderable } from "./util";
 import { GameState } from "@/state";
 
 export class ZombieClient implements IClientEntity, Renderable, Positionable {
-  private image = new Image();
+  private assetManager: AssetManager;
   private lastRenderPosition = { x: 0, y: 0 };
   private readonly LERP_FACTOR = 0.1;
   private position: Vector2 = { x: 0, y: 0 };
@@ -18,10 +20,10 @@ export class ZombieClient implements IClientEntity, Renderable, Positionable {
   private type: EntityType;
   private health = 2;
 
-  constructor(id: string) {
+  constructor(id: string, assetManager: AssetManager) {
     this.id = id;
     this.type = Entities.ZOMBIE;
-    this.image.src = "/zombie.png";
+    this.assetManager = assetManager;
   }
 
   getId(): string {
@@ -63,9 +65,11 @@ export class ZombieClient implements IClientEntity, Renderable, Positionable {
     this.lastRenderPosition.y += (targetPosition.y - this.lastRenderPosition.y) * this.LERP_FACTOR;
 
     const renderPosition = roundVector2(this.lastRenderPosition);
+    const direction = determineDirection(this.velocity);
 
     // Draw the zombie
-    ctx.drawImage(this.image, renderPosition.x, renderPosition.y);
+    const image = this.assetManager.getWithDirection("Zombie", direction);
+    ctx.drawImage(image, renderPosition.x, renderPosition.y);
 
     // Draw health bar
     const healthBarWidth = 16; // Same as zombie width
