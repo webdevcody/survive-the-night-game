@@ -2,15 +2,14 @@ import {
   Direction,
   Collidable,
   Entity,
-  Facing,
   Hitbox,
   Movable,
   Positionable,
   Updatable,
   Vector2,
-  determineDirection,
   normalizeVector,
   RawEntity,
+  InventoryItem,
 } from "@survive-the-night/game-server";
 import { Entities } from "@survive-the-night/game-server";
 import { Input } from "../../server";
@@ -31,6 +30,20 @@ export class Player extends Entity implements Movable, Positionable, Updatable, 
     harvest: false,
     fire: false,
   };
+  private inventory: InventoryItem[] = [
+    {
+      key: "Knife",
+      hotbarPosition: 0,
+    },
+    {
+      key: "Pistol",
+      hotbarPosition: 1,
+    },
+    {
+      key: "Shotgun",
+      hotbarPosition: 2,
+    },
+  ];
   private static readonly PLAYER_WIDTH = 16;
   private static readonly PLAYER_HEIGHT = 16;
   private static readonly PLAYER_SPEED = 60;
@@ -82,6 +95,10 @@ export class Player extends Entity implements Movable, Positionable, Updatable, 
 
   getPosition(): Vector2 {
     return this.position;
+  }
+
+  getInventory(): InventoryItem[] {
+    return this.inventory;
   }
 
   setPosition(position: Vector2) {

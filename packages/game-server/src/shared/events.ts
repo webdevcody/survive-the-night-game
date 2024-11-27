@@ -5,6 +5,7 @@ export const Events = {
   PLAYER_INPUT: "playerInput",
   MAP: "map",
   YOUR_ID: "yourId",
+  INVENTORY: "inventory",
 } as const;
 
 export type Event = (typeof Events)[keyof typeof Events];
