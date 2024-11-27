@@ -9,12 +9,14 @@ import {
   determineDirection,
 } from "@survive-the-night/game-server";
 import { AssetManager } from "@/managers/asset";
+import { InputManager } from "@/managers/input";
 import { InventoryManager } from "@/managers/inventory";
-import { IClientEntity, RawEntity, Renderable } from "./util";
+import { IClientEntity, Renderable } from "./util";
 import { GameState } from "@/state";
 
 export class PlayerClient implements IClientEntity, Renderable, Positionable {
   private assetManager: AssetManager;
+  private inputManager: InputManager;
   private inventoryManager: InventoryManager;
   private lastRenderPosition = { x: 0, y: 0 };
   private readonly LERP_FACTOR = 0.1;
@@ -24,10 +26,16 @@ export class PlayerClient implements IClientEntity, Renderable, Positionable {
   private type: EntityType;
   private readonly ARROW_LENGTH = 20;
 
-  constructor(id: string, assetManager: AssetManager, inventoryManager: InventoryManager) {
+  constructor(
+    id: string,
+    assetManager: AssetManager,
+    inputManager: InputManager,
+    inventoryManager: InventoryManager
+  ) {
     this.id = id;
     this.type = Entities.PLAYER;
     this.assetManager = assetManager;
+    this.inputManager = inputManager;
     this.inventoryManager = inventoryManager;
   }
 
@@ -65,8 +73,8 @@ export class PlayerClient implements IClientEntity, Renderable, Positionable {
 
   render(ctx: CanvasRenderingContext2D, gameState: GameState): void {
     const targetPosition = this.getPosition();
-    const direction = determineDirection(this.velocity);
-    const image = this.assetManager.getWithDirection("Player", direction);
+    const { facing } = this.inputManager.getInputs();
+    const image = this.assetManager.getWithDirection("Player", facing);
 
     this.lastRenderPosition.x += (targetPosition.x - this.lastRenderPosition.x) * this.LERP_FACTOR;
     this.lastRenderPosition.y += (targetPosition.y - this.lastRenderPosition.y) * this.LERP_FACTOR;
@@ -74,7 +82,7 @@ export class PlayerClient implements IClientEntity, Renderable, Positionable {
     const renderPosition = roundVector2(this.lastRenderPosition);
 
     ctx.drawImage(image, renderPosition.x, renderPosition.y);
-    this.renderWeapon(ctx, direction, renderPosition);
+    this.renderWeapon(ctx, renderPosition);
 
     const speed = Math.sqrt(this.velocity.x * this.velocity.x + this.velocity.y * this.velocity.y);
 
@@ -121,19 +129,15 @@ export class PlayerClient implements IClientEntity, Renderable, Positionable {
     ctx.fill();
   }
 
-  renderWeapon(
-    ctx: CanvasRenderingContext2D,
-    direction: Direction | null,
-    renderPosition: Vector2
-  ) {
+  renderWeapon(ctx: CanvasRenderingContext2D, renderPosition: Vector2) {
     const activeInventoryItem = this.inventoryManager.getActive();
 
     if (activeInventoryItem === null) {
       return;
     }
 
-    // TODO: use direction coming from server, aka direction player is facing
-    const image = this.assetManager.getWithDirection(activeInventoryItem.key, direction);
+    const { facing } = this.inputManager.getInputs();
+    const image = this.assetManager.getWithDirection(activeInventoryItem.key, facing);
     ctx.drawImage(image, renderPosition.x + 2, renderPosition.y);
   }
 }

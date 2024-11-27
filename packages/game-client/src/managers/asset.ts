@@ -21,20 +21,24 @@ function assetMap({
 
 // sheet gaps: 1px horizontally, 3px vertically
 export const assetsMap = {
+  KnifeFacingDown: assetMap({ x: 51, y: 171 }),
   KnifeFacingLeft: assetMap({ x: 17, y: 171, flipX: true }),
   KnifeFacingRight: assetMap({ x: 17, y: 171 }),
+  KnifeFacingUp: assetMap({ x: 34, y: 171 }),
+  PistolFacingDown: assetMap({ x: 51, y: 149 }),
   PistolFacingLeft: assetMap({ x: 17, y: 149, flipX: true }),
   PistolFacingRight: assetMap({ x: 17, y: 149 }),
+  PistolFacingUp: assetMap({ x: 34, y: 149 }),
+  ShotgunFacingDown: assetMap({ x: 51, y: 133 }),
   ShotgunFacingLeft: assetMap({ x: 17, y: 133, flipX: true }),
   ShotgunFacingRight: assetMap({ x: 17, y: 133 }),
-  PlayerFacingCenter: assetMap({ x: 493, y: 190 }),
+  ShotgunFacingUp: assetMap({ x: 34, y: 133 }),
   PlayerFacingDown: assetMap({ x: 493, y: 190 }),
   PlayerFacingLeft: assetMap({ x: 493, y: 209, flipX: true }),
   PlayerFacingRight: assetMap({ x: 493, y: 209 }),
   PlayerFacingUp: assetMap({ x: 493, y: 171 }),
   Tree: assetMap({ x: 221, y: 209 }),
   Wall: assetMap({ x: 357, y: 95 }),
-  ZombieFacingCenter: assetMap({ x: 493, y: 76 }),
   ZombieFacingDown: assetMap({ x: 493, y: 76 }),
   ZombieFacingLeft: assetMap({ x: 493, y: 95 }),
   ZombieFacingRight: assetMap({ x: 493, y: 95, flipX: true }),
@@ -74,51 +78,65 @@ export class AssetManager {
   }
 
   // direction can be null so player can face center
-  public getWithDirection(key: string, direction: Direction | null): HTMLImageElement {
+  public getWithDirection(key: string, direction: Direction): HTMLImageElement {
     if (key === "Knife") {
-      return direction && isDirectionLeft(direction)
-        ? this.get("KnifeFacingLeft")
-        : this.get("KnifeFacingRight");
+      if (isDirectionLeft(direction)) {
+        return this.get("KnifeFacingLeft");
+      } else if (isDirectionRight(direction)) {
+        return this.get("KnifeFacingRight");
+      } else if (isDirectionDown(direction)) {
+        return this.get("KnifeFacingDown");
+      } else if (isDirectionUp(direction)) {
+        return this.get("KnifeFacingUp");
+      }
     }
 
     if (key === "Pistol") {
-      return direction && isDirectionLeft(direction)
-        ? this.get("PistolFacingLeft")
-        : this.get("PistolFacingRight");
+      if (isDirectionLeft(direction)) {
+        return this.get("PistolFacingLeft");
+      } else if (isDirectionRight(direction)) {
+        return this.get("PistolFacingRight");
+      } else if (isDirectionDown(direction)) {
+        return this.get("PistolFacingDown");
+      } else if (isDirectionUp(direction)) {
+        return this.get("PistolFacingUp");
+      }
     }
 
     if (key === "Player") {
-      if (direction && isDirectionLeft(direction)) {
+      if (isDirectionLeft(direction)) {
         return this.get("PlayerFacingLeft");
-      } else if (direction && isDirectionRight(direction)) {
+      } else if (isDirectionRight(direction)) {
         return this.get("PlayerFacingRight");
-      } else if (direction && isDirectionDown(direction)) {
+      } else if (isDirectionDown(direction)) {
         return this.get("PlayerFacingDown");
-      } else if (direction && isDirectionUp(direction)) {
+      } else if (isDirectionUp(direction)) {
         return this.get("PlayerFacingUp");
       }
-
-      return this.get("PlayerFacingCenter");
     }
 
     if (key === "Shotgun") {
-      return direction && isDirectionLeft(direction)
-        ? this.get("ShotgunFacingLeft")
-        : this.get("ShotgunFacingRight");
+      if (isDirectionLeft(direction)) {
+        return this.get("ShotgunFacingLeft");
+      } else if (isDirectionRight(direction)) {
+        return this.get("ShotgunFacingRight");
+      } else if (isDirectionDown(direction)) {
+        return this.get("ShotgunFacingDown");
+      } else if (isDirectionUp(direction)) {
+        return this.get("ShotgunFacingUp");
+      }
     }
 
     if (key === "Zombie") {
-      if (direction && isDirectionLeft(direction)) {
+      if (isDirectionLeft(direction)) {
         return this.get("ZombieFacingLeft");
-      } else if (direction && isDirectionRight(direction)) {
+      } else if (isDirectionRight(direction)) {
         return this.get("ZombieFacingRight");
-      } else if (direction && isDirectionDown(direction)) {
+      } else if (isDirectionDown(direction)) {
         return this.get("ZombieFacingDown");
-      } else if (direction && isDirectionUp(direction)) {
+      } else if (isDirectionUp(direction)) {
         return this.get("ZombieFacingUp");
       }
-
-      return this.get("ZombieFacingCenter");
     }
 
     throw new Error(`Tried getting an asset with direction that is not registered '${key}'`);

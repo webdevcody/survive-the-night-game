@@ -1,46 +1,45 @@
+import { InventoryItem } from "@survive-the-night/game-server";
 import { InputManager } from "./input";
-
-interface InventoryItem {
-  active: boolean;
-  key: string;
-}
 
 const MAX_ITEMS = 5;
 
 export class InventoryManager {
   private inputManager: InputManager;
+  private items: InventoryItem[] = [];
 
   public constructor(inputManager: InputManager) {
     this.inputManager = inputManager;
   }
 
-  public getActive(): InventoryItem | null {
-    return this.getItems().find((item) => item.active) ?? null;
+  public setItems(items: InventoryItem[]) {
+    this.items = items;
   }
 
-  public getItems(): InventoryItem[] {
-    const items = [
-      {
-        active: false,
-        key: "Knife",
-      },
-      {
-        active: false,
-        key: "Pistol",
-      },
-      {
-        active: false,
-        key: "Shotgun",
-      },
-    ];
+  public getActive(): InventoryItem | null {
+    const { inventoryItem } = this.inputManager.getInputs();
 
-    const activeItem = items[this.inputManager.getInputs().inventoryItem];
-
-    if (activeItem !== undefined) {
-      activeItem.active = true;
+    for (const item of this.items) {
+      if (item.hotbarPosition === inventoryItem) {
+        return item;
+      }
     }
 
-    return items;
+    return null;
+  }
+
+  public getHotbarItems(): InventoryItem[] {
+    const hotbarItems: InventoryItem[] = [];
+
+    for (let i = 0; i < MAX_ITEMS; i++) {
+      for (const item of this.items) {
+        if (item.hotbarPosition === i) {
+          hotbarItems.push(item);
+          break;
+        }
+      }
+    }
+
+    return hotbarItems;
   }
 
   public getItemsNumber(): number {

@@ -8,10 +8,6 @@ export interface Harvestable {
 
 export const HARVEST_DISTANCE = 10;
 
-export interface Facing {
-  facing: Direction;
-}
-
 export interface Positionable {
   getPosition: () => Vector2;
   setPosition: (position: Vector2) => void;

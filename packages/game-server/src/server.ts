@@ -1,3 +1,4 @@
+import { Direction } from "./shared/direction";
 import { GameStateEvent } from "./shared/events";
 import { Entity, EntityType } from "./shared/entities";
 import { Vector2 } from "./shared/physics";
@@ -8,6 +9,7 @@ import { SocketManager } from "./managers/socket-manager";
 export const FPS = 30;
 
 export type Input = {
+  facing: Direction;
   dx: number;
   dy: number;
   harvest: boolean;

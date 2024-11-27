@@ -1,7 +1,12 @@
 import { AssetManager } from "./managers/asset";
 import { InputManager } from "./managers/input";
 import { EntityDto, SocketManager } from "./managers/socket";
-import { Entities, GameStateEvent, Positionable } from "@survive-the-night/game-server";
+import {
+  Entities,
+  GameStateEvent,
+  InventoryItem,
+  Positionable,
+} from "@survive-the-night/game-server";
 import { PlayerClient } from "./entities/player";
 import { ZombieClient } from "./entities/zombie";
 import { CameraManager } from "./managers/camera";
@@ -54,6 +59,12 @@ export class GameClient {
     };
 
     this.socketManager = new SocketManager(serverUrl, {
+      onInventory: (items: InventoryItem[]) => {
+        this.inventoryManager.setItems(items);
+      },
+      onMap: (map: number[][]) => {
+        this.mapManager.setMap(map);
+      },
       onGameStateUpdate: (gameStateEvent: GameStateEvent) => {
         this.latestEntities = gameStateEvent.getPayload().entities;
       },
@@ -154,7 +165,13 @@ export class GameClient {
 
       // TODO: consider a better way to handle this
       if (entityData.type === Entities.PLAYER) {
-        const player = new PlayerClient(entityData.id, this.assetManager, this.inventoryManager);
+        const player = new PlayerClient(
+          entityData.id,
+          this.assetManager,
+          this.inputManager,
+          this.inventoryManager
+        );
+
         player.setPosition(entityData.position);
         if (entityData.velocity) {
           player.setVelocity(entityData.velocity);
