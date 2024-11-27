@@ -1,6 +1,10 @@
+import { determineDirection, Direction } from "@survive-the-night/game-server";
+import { Input } from "@survive-the-night/game-server/src/server";
+
 export class InputManager {
   private hasChanged = false;
-  private inputs = {
+  private inputs: Input = {
+    facing: Direction.Right,
     dx: 0,
     dy: 0,
     harvest: false,
@@ -23,6 +27,7 @@ export class InputManager {
       switch (eventKey) {
         case "w":
           this.inputs.dy = -1;
+          this.inputs.facing = Direction.Up;
           break;
         case "s":
           this.inputs.dy = 1;
@@ -41,6 +46,7 @@ export class InputManager {
           break;
       }
 
+      this.updateDirection();
       this.checkIfChanged();
     });
 
@@ -75,8 +81,14 @@ export class InputManager {
           break;
       }
 
+      this.updateDirection();
       this.checkIfChanged();
     });
+  }
+
+  private updateDirection() {
+    const vec = { x: this.inputs.dx, y: this.inputs.dy };
+    this.inputs.facing = determineDirection(vec) ?? this.inputs.facing;
   }
 
   getHasChanged() {

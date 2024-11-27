@@ -54,6 +54,9 @@ export class GameClient {
     };
 
     this.socketManager = new SocketManager(serverUrl, {
+      onMap: (map: number[][]) => {
+        this.mapManager.setMap(map);
+      },
       onGameStateUpdate: (gameStateEvent: GameStateEvent) => {
         this.latestEntities = gameStateEvent.getPayload().entities;
       },
@@ -154,7 +157,13 @@ export class GameClient {
 
       // TODO: consider a better way to handle this
       if (entityData.type === Entities.PLAYER) {
-        const player = new PlayerClient(entityData.id, this.assetManager, this.inventoryManager);
+        const player = new PlayerClient(
+          entityData.id,
+          this.assetManager,
+          this.inputManager,
+          this.inventoryManager
+        );
+
         player.setPosition(entityData.position);
         if (entityData.velocity) {
           player.setVelocity(entityData.velocity);

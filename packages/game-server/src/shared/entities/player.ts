@@ -19,12 +19,18 @@ import { Bullet } from "./bullet";
 
 export const FIRE_COOLDOWN = 0.4;
 
-export class Player extends Entity implements Facing, Movable, Positionable, Updatable, Collidable {
-  public facing = Direction.Right;
+export class Player extends Entity implements Movable, Positionable, Updatable, Collidable {
   private fireCooldown = 0;
   private position: Vector2 = { x: 0, y: 0 };
   private velocity: Vector2 = { x: 0, y: 0 };
-  private input: Input = { inventoryItem: 1, dx: 0, dy: 0, harvest: false, fire: false };
+  private input: Input = {
+    facing: Direction.Right,
+    inventoryItem: 1,
+    dx: 0,
+    dy: 0,
+    harvest: false,
+    fire: false,
+  };
   private static readonly PLAYER_WIDTH = 16;
   private static readonly PLAYER_HEIGHT = 16;
   private static readonly PLAYER_SPEED = 60;
@@ -41,7 +47,6 @@ export class Player extends Entity implements Facing, Movable, Positionable, Upd
     return {
       ...super.serialize(),
       position: this.position,
-      facing: this.facing,
       velocity: this.velocity,
     };
   }
@@ -84,7 +89,6 @@ export class Player extends Entity implements Facing, Movable, Positionable, Upd
   }
 
   handleAttack(deltaTime: number) {
-    this.facing = determineDirection(this.velocity) ?? this.facing;
     this.fireCooldown -= deltaTime;
 
     if (this.input.fire && this.fireCooldown <= 0) {
@@ -95,7 +99,7 @@ export class Player extends Entity implements Facing, Movable, Positionable, Upd
         x: this.position.x + Player.PLAYER_WIDTH / 2,
         y: this.position.y + Player.PLAYER_HEIGHT / 2,
       });
-      bullet.setDirection(this.facing);
+      bullet.setDirection(this.input.facing);
       this.getEntityManager().addEntity(bullet);
     }
   }

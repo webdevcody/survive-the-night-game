@@ -67,6 +67,7 @@ export class SocketManager {
     this.players.set(socket.id, player);
     this.entityManager.addEntity(player);
 
+    socket.emit(Events.MAP, this.mapManager.getMap());
     socket.emit(Events.YOUR_ID, player.getId());
 
     socket.on("playerInput", (input: Input) => this.onPlayerInput(socket, input));

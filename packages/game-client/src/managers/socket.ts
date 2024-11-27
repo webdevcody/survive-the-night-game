@@ -9,6 +9,7 @@ export class SocketManager {
   constructor(
     serverUrl: string,
     handlers: {
+      onMap: (map: number[][]) => void;
       onGameStateUpdate: (gameStateEvent: GameStateEvent) => void;
       onYourId: (playerId: string) => void;
     }
@@ -18,6 +19,10 @@ export class SocketManager {
     this.socket.on(Events.GAME_STATE_UPDATE, (gameState: { entities: EntityDto[] }) => {
       const gameStateEvent = new GameStateEvent(gameState);
       handlers.onGameStateUpdate(gameStateEvent);
+    });
+
+    this.socket.on(Events.MAP, (map: number[][]) => {
+      handlers.onMap(map);
     });
 
     this.socket.on(Events.YOUR_ID, (playerId: string) => {
