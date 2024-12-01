@@ -64,16 +64,21 @@ const MAPS = {
 type MapId = keyof typeof MAPS;
 
 export class MapManager {
-  // private map: number[][] = [];
+  private map: number[][] = [];
   private entityManager: EntityManager;
 
   constructor(entityManager: EntityManager) {
     this.entityManager = entityManager;
   }
 
+  public getMap(): number[][] {
+    return this.map;
+  }
+
   loadMap(mapId: MapId) {
     const mapToLoad = MAPS[mapId];
     this.entityManager.clear();
+    this.map = mapToLoad.map.map((row) => [...row]);
 
     for (const entity of mapToLoad.entities) {
       const entityPosition = { ...entity.position };
