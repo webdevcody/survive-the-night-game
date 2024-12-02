@@ -3,7 +3,6 @@ import { HotbarClient } from "./ui/hotbar";
 
 export type GameState = {
   playerId: string;
-  hotbar: HotbarClient;
   entities: Entity[];
 };
 

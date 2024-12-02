@@ -1,9 +1,8 @@
-import { AssetManager } from "@/managers/asset";
+import { AssetManager, getItemAssetKey } from "../managers/asset";
 import { Renderable } from "../entities/util";
 import { GameState } from "@/state";
 import { InputManager } from "@/managers/input";
-import { InventoryManager } from "@/managers/inventory";
-import { Direction } from "@survive-the-night/game-server";
+import { Direction, InventoryItem, MAX_INVENTORY_SLOTS } from "@survive-the-night/game-server";
 
 const HOTBAR_SETTINGS = {
   Inventory: {
@@ -27,16 +26,16 @@ const HOTBAR_SETTINGS = {
 export class HotbarClient implements Renderable {
   private assetManager: AssetManager;
   private inputManager: InputManager;
-  private inventoryManager: InventoryManager;
+  private getInventory: () => InventoryItem[];
 
   public constructor(
     assetManager: AssetManager,
     inputManager: InputManager,
-    inventoryManager: InventoryManager
+    getInventory: () => InventoryItem[]
   ) {
     this.assetManager = assetManager;
     this.inputManager = inputManager;
-    this.inventoryManager = inventoryManager;
+    this.getInventory = getInventory;
   }
 
   public render(ctx: CanvasRenderingContext2D, gameState: GameState): void {
@@ -49,7 +48,7 @@ export class HotbarClient implements Renderable {
 
     const { slotSize, padding, slotsGap, screenMarginBottom, background, active } =
       HOTBAR_SETTINGS.Inventory;
-    const slotsNumber = this.inventoryManager.getItemsNumber();
+    const slotsNumber = MAX_INVENTORY_SLOTS;
 
     ctx.save();
     ctx.setTransform(1, 0, 0, 1, 0, 0);
@@ -69,8 +68,8 @@ export class HotbarClient implements Renderable {
 
     const slotsLeft = canvasWidth / 2 - hotbarWidth / 2 + padding.left;
     const slotsTop = canvasHeight - hotbarHeight - screenMarginBottom + padding.top;
-    const items = this.inventoryManager.getHotbarItems();
-    const activeItemIdx = this.inputManager.getInputs().inventoryItem;
+    const items = this.getInventory();
+    const activeItemIdx = this.inputManager.getInputs().inventoryItem - 1;
 
     for (let i = 0; i < slotsNumber; i++) {
       const slotLeft = slotsLeft + i * (slotSize + slotsGap);
@@ -84,7 +83,10 @@ export class HotbarClient implements Renderable {
         continue;
       }
 
-      const image = this.assetManager.getWithDirection(inventoryItem.key, Direction.Right);
+      const image = this.assetManager.getWithDirection(
+        getItemAssetKey(inventoryItem),
+        Direction.Right
+      );
       ctx.drawImage(image, slotLeft, slotsTop, slotSize, slotSize);
     }
 

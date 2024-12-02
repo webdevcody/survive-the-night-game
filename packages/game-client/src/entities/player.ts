@@ -1,23 +1,20 @@
 import {
-  Direction,
   Entities,
   EntityType,
   Positionable,
   roundVector2,
   Vector2,
   normalizeVector,
-  determineDirection,
+  InventoryItem,
 } from "@survive-the-night/game-server";
-import { AssetManager } from "@/managers/asset";
+import { AssetManager, getItemAssetKey } from "../managers/asset";
 import { InputManager } from "@/managers/input";
-import { InventoryManager } from "@/managers/inventory";
 import { IClientEntity, Renderable } from "./util";
 import { GameState } from "@/state";
 
 export class PlayerClient implements IClientEntity, Renderable, Positionable {
   private assetManager: AssetManager;
   private inputManager: InputManager;
-  private inventoryManager: InventoryManager;
   private lastRenderPosition = { x: 0, y: 0 };
   private readonly LERP_FACTOR = 0.1;
   private position: Vector2 = { x: 0, y: 0 };
@@ -25,18 +22,18 @@ export class PlayerClient implements IClientEntity, Renderable, Positionable {
   private id: string;
   private type: EntityType;
   private readonly ARROW_LENGTH = 20;
+  private inventory: InventoryItem[] = [];
+  private activeItem: InventoryItem | null = null;
 
-  constructor(
-    id: string,
-    assetManager: AssetManager,
-    inputManager: InputManager,
-    inventoryManager: InventoryManager
-  ) {
+  constructor(id: string, assetManager: AssetManager, inputManager: InputManager) {
     this.id = id;
     this.type = Entities.PLAYER;
     this.assetManager = assetManager;
     this.inputManager = inputManager;
-    this.inventoryManager = inventoryManager;
+  }
+
+  getInventory(): InventoryItem[] {
+    return this.inventory;
   }
 
   getId(): string {
@@ -130,14 +127,11 @@ export class PlayerClient implements IClientEntity, Renderable, Positionable {
   }
 
   renderWeapon(ctx: CanvasRenderingContext2D, renderPosition: Vector2) {
-    const activeInventoryItem = this.inventoryManager.getActive();
-
-    if (activeInventoryItem === null) {
+    if (this.activeItem === null) {
       return;
     }
-
     const { facing } = this.inputManager.getInputs();
-    const image = this.assetManager.getWithDirection(activeInventoryItem.key, facing);
+    const image = this.assetManager.getWithDirection(getItemAssetKey(this.activeItem), facing);
     ctx.drawImage(image, renderPosition.x + 2, renderPosition.y);
   }
 }

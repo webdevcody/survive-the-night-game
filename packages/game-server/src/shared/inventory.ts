@@ -1,4 +1,5 @@
+export type ItemType = "Knife" | "Shotgun" | "Pistol" | "Wood";
+
 export interface InventoryItem {
-  key: "Knife" | "Shotgun" | "Pistol";
-  hotbarPosition: number | null;
+  key: ItemType;
 }

@@ -1,5 +1,6 @@
 import {
   Direction,
+  InventoryItem,
   isDirectionDown,
   isDirectionLeft,
   isDirectionRight,
@@ -21,24 +22,29 @@ function assetMap({
 
 // sheet gaps: 1px horizontally, 3px vertically
 export const assetsMap = {
+  Knife: assetMap({ x: 17, y: 171 }),
   KnifeFacingDown: assetMap({ x: 51, y: 171 }),
   KnifeFacingLeft: assetMap({ x: 17, y: 171, flipX: true }),
   KnifeFacingRight: assetMap({ x: 17, y: 171 }),
   KnifeFacingUp: assetMap({ x: 34, y: 171 }),
+  Pistol: assetMap({ x: 17, y: 149 }),
   PistolFacingDown: assetMap({ x: 51, y: 149 }),
   PistolFacingLeft: assetMap({ x: 17, y: 149, flipX: true }),
   PistolFacingRight: assetMap({ x: 17, y: 149 }),
   PistolFacingUp: assetMap({ x: 34, y: 149 }),
+  Shotgun: assetMap({ x: 17, y: 133 }),
   ShotgunFacingDown: assetMap({ x: 51, y: 133 }),
   ShotgunFacingLeft: assetMap({ x: 17, y: 133, flipX: true }),
   ShotgunFacingRight: assetMap({ x: 17, y: 133 }),
   ShotgunFacingUp: assetMap({ x: 34, y: 133 }),
+  Player: assetMap({ x: 493, y: 209 }),
   PlayerFacingDown: assetMap({ x: 493, y: 190 }),
   PlayerFacingLeft: assetMap({ x: 493, y: 209, flipX: true }),
   PlayerFacingRight: assetMap({ x: 493, y: 209 }),
   PlayerFacingUp: assetMap({ x: 493, y: 171 }),
   Tree: assetMap({ x: 221, y: 209 }),
   Wall: assetMap({ x: 357, y: 95 }),
+  Zombie: assetMap({ x: 493, y: 76 }),
   ZombieFacingDown: assetMap({ x: 493, y: 76 }),
   ZombieFacingLeft: assetMap({ x: 493, y: 95 }),
   ZombieFacingRight: assetMap({ x: 493, y: 95, flipX: true }),
@@ -68,78 +74,44 @@ export class AssetManager {
   }
 
   public get(assetKey: Asset): HTMLImageElement {
-    const asset = assetsCache[assetKey];
-    if (asset === undefined) {
+    if (!this.loaded) {
       throw new Error(
-        "Tried getting an asset without having it cached, make sure to call `.load()` first"
+        "Tried getting an asset without having it loaded, make sure to call `.load()` first"
       );
     }
+    const asset = assetsCache[assetKey];
     return asset;
   }
 
-  // direction can be null so player can face center
-  public getWithDirection(key: string, direction: Direction): HTMLImageElement {
-    if (key === "Knife") {
+  public getWithDirection(key: Asset, direction: Direction | null): HTMLImageElement {
+    let suffix = "";
+
+    if (direction) {
       if (isDirectionLeft(direction)) {
-        return this.get("KnifeFacingLeft");
+        suffix = "FacingLeft";
       } else if (isDirectionRight(direction)) {
-        return this.get("KnifeFacingRight");
+        suffix = "FacingRight";
       } else if (isDirectionDown(direction)) {
-        return this.get("KnifeFacingDown");
+        suffix = "FacingDown";
       } else if (isDirectionUp(direction)) {
-        return this.get("KnifeFacingUp");
+        suffix = "FacingUp";
       }
     }
 
-    if (key === "Pistol") {
-      if (isDirectionLeft(direction)) {
-        return this.get("PistolFacingLeft");
-      } else if (isDirectionRight(direction)) {
-        return this.get("PistolFacingRight");
-      } else if (isDirectionDown(direction)) {
-        return this.get("PistolFacingDown");
-      } else if (isDirectionUp(direction)) {
-        return this.get("PistolFacingUp");
-      }
+    const keyWithDirection = `${key}${suffix}` as Asset;
+
+    let asset = this.get(keyWithDirection);
+    if (asset === undefined) {
+      asset = this.get(key);
     }
 
-    if (key === "Player") {
-      if (isDirectionLeft(direction)) {
-        return this.get("PlayerFacingLeft");
-      } else if (isDirectionRight(direction)) {
-        return this.get("PlayerFacingRight");
-      } else if (isDirectionDown(direction)) {
-        return this.get("PlayerFacingDown");
-      } else if (isDirectionUp(direction)) {
-        return this.get("PlayerFacingUp");
-      }
+    if (asset === undefined) {
+      throw new Error(
+        `Tried getting an asset with direction that is not registered '${keyWithDirection}'`
+      );
     }
 
-    if (key === "Shotgun") {
-      if (isDirectionLeft(direction)) {
-        return this.get("ShotgunFacingLeft");
-      } else if (isDirectionRight(direction)) {
-        return this.get("ShotgunFacingRight");
-      } else if (isDirectionDown(direction)) {
-        return this.get("ShotgunFacingDown");
-      } else if (isDirectionUp(direction)) {
-        return this.get("ShotgunFacingUp");
-      }
-    }
-
-    if (key === "Zombie") {
-      if (isDirectionLeft(direction)) {
-        return this.get("ZombieFacingLeft");
-      } else if (isDirectionRight(direction)) {
-        return this.get("ZombieFacingRight");
-      } else if (isDirectionDown(direction)) {
-        return this.get("ZombieFacingDown");
-      } else if (isDirectionUp(direction)) {
-        return this.get("ZombieFacingUp");
-      }
-    }
-
-    throw new Error(`Tried getting an asset with direction that is not registered '${key}'`);
+    return asset;
   }
 
   public getSheet(): HTMLImageElement {
@@ -163,4 +135,18 @@ export class AssetManager {
       })
     );
   }
+}
+
+export function getItemAssetKey(item: InventoryItem): Asset {
+  if (item.key === "Knife") {
+    return "Knife";
+  } else if (item.key === "Shotgun") {
+    return "Shotgun";
+  } else if (item.key === "Pistol") {
+    return "Pistol";
+  } else if (item.key === "Wood") {
+    return "Tree";
+  }
+
+  throw new Error(`Unknown item type '${item.key}'`);
 }

@@ -9,7 +9,7 @@ export class InputManager {
     dy: 0,
     harvest: false,
     fire: false,
-    inventoryItem: 0,
+    inventoryItem: 1,
   };
   private lastInputs = {
     ...this.inputs,
@@ -59,7 +59,7 @@ export class InputManager {
         case "3":
         case "4":
         case "5":
-          this.inputs.inventoryItem = Number.parseInt(eventKey, 10) - 1;
+          this.inputs.inventoryItem = Number.parseInt(eventKey, 10);
           break;
         case "w":
           this.inputs.dy = this.inputs.dy === -1 ? 0 : this.inputs.dy;

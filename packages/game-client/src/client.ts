@@ -1,16 +1,10 @@
 import { AssetManager } from "./managers/asset";
 import { InputManager } from "./managers/input";
 import { EntityDto, SocketManager } from "./managers/socket";
-import {
-  Entities,
-  GameStateEvent,
-  InventoryItem,
-  Positionable,
-} from "@survive-the-night/game-server";
+import { Entities, GameStateEvent, Positionable } from "@survive-the-night/game-server";
 import { PlayerClient } from "./entities/player";
 import { ZombieClient } from "./entities/zombie";
 import { CameraManager } from "./managers/camera";
-import { InventoryManager } from "./managers/inventory";
 import { MapManager } from "./managers/map";
 import { TreeClient } from "./entities/tree";
 import { GameState, getEntityById } from "./state";
@@ -25,7 +19,6 @@ export class GameClient {
   private assetManager = new AssetManager();
   private socketManager: SocketManager;
   private inputManager: InputManager;
-  private inventoryManager: InventoryManager;
   private cameraManager: CameraManager;
   private mapManager: MapManager;
   private storageManager: StorageManager;
@@ -36,6 +29,7 @@ export class GameClient {
   private reqId: number | null = null;
   private running = false;
   private mounted = true;
+  private hotbar: HotbarClient;
 
   constructor(serverUrl: string, canvas: HTMLCanvasElement) {
     this.ctx = canvas.getContext("2d")!;
@@ -50,18 +44,26 @@ export class GameClient {
 
     this.mapManager = new MapManager();
     this.inputManager = new InputManager();
-    this.inventoryManager = new InventoryManager(this.inputManager);
+    this.hotbar = new HotbarClient(this.assetManager, this.inputManager, () => {
+      if (this.gameState.playerId) {
+        const player = getEntityById(
+          this.gameState,
+          this.gameState.playerId
+        ) as unknown as PlayerClient;
+        if (player) {
+          return player.getInventory();
+        }
+      }
+
+      return [];
+    });
 
     this.gameState = {
       playerId: "",
-      hotbar: new HotbarClient(this.assetManager, this.inputManager, this.inventoryManager),
       entities: [],
     };
 
     this.socketManager = new SocketManager(serverUrl, {
-      onInventory: (items: InventoryItem[]) => {
-        this.inventoryManager.setItems(items);
-      },
       onMap: (map: number[][]) => {
         this.mapManager.setMap(map);
       },
@@ -165,12 +167,7 @@ export class GameClient {
 
       // TODO: consider a better way to handle this
       if (entityData.type === Entities.PLAYER) {
-        const player = new PlayerClient(
-          entityData.id,
-          this.assetManager,
-          this.inputManager,
-          this.inventoryManager
-        );
+        const player = new PlayerClient(entityData.id, this.assetManager, this.inputManager);
 
         player.setPosition(entityData.position);
         if (entityData.velocity) {
@@ -269,14 +266,10 @@ export class GameClient {
     });
   }
 
-  private renderHotbar(): void {
-    this.gameState.hotbar.render(this.ctx, this.gameState);
-  }
-
   private render(): void {
     this.clearCanvas();
     this.mapManager.render(this.ctx);
     this.renderEntities();
-    this.renderHotbar();
+    this.hotbar.render(this.ctx, this.gameState);
   }
 }

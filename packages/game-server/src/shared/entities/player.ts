@@ -10,6 +10,7 @@ import {
   normalizeVector,
   RawEntity,
   InventoryItem,
+  Harvestable,
 } from "@survive-the-night/game-server";
 import { Entities } from "@survive-the-night/game-server";
 import { Input } from "../../server";
@@ -17,6 +18,7 @@ import { EntityManager } from "../../managers/entity-manager";
 import { Bullet } from "./bullet";
 
 export const FIRE_COOLDOWN = 0.4;
+export const MAX_INVENTORY_SLOTS = 8;
 
 export class Player extends Entity implements Movable, Positionable, Updatable, Collidable {
   private fireCooldown = 0;
@@ -24,24 +26,25 @@ export class Player extends Entity implements Movable, Positionable, Updatable, 
   private velocity: Vector2 = { x: 0, y: 0 };
   private input: Input = {
     facing: Direction.Right,
-    inventoryItem: 1,
+    inventoryItem: 1, // 1 based index
     dx: 0,
     dy: 0,
     harvest: false,
     fire: false,
   };
+  private activeItem: InventoryItem | null = null;
   private inventory: InventoryItem[] = [
     {
       key: "Knife",
-      hotbarPosition: 0,
     },
     {
       key: "Pistol",
-      hotbarPosition: 1,
     },
     {
       key: "Shotgun",
-      hotbarPosition: 2,
+    },
+    {
+      key: "Wood",
     },
   ];
   private static readonly PLAYER_WIDTH = 16;
@@ -52,6 +55,10 @@ export class Player extends Entity implements Movable, Positionable, Updatable, 
     super(entityManager, Entities.PLAYER);
   }
 
+  isInventoryFull(): boolean {
+    return this.inventory.length >= MAX_INVENTORY_SLOTS;
+  }
+
   getCenterPosition(): Vector2 {
     return this.position;
   }
@@ -59,6 +66,8 @@ export class Player extends Entity implements Movable, Positionable, Updatable, 
   serialize(): RawEntity {
     return {
       ...super.serialize(),
+      inventory: this.inventory,
+      activeItem: this.activeItem,
       position: this.position,
       velocity: this.velocity,
     };
@@ -138,9 +147,25 @@ export class Player extends Entity implements Movable, Positionable, Updatable, 
     }
   }
 
+  handleInteract(deltaTime: number) {
+    if (this.input.harvest) {
+      const nearbyHarvestables = this.getEntityManager()
+        .getNearbyEntities(this.position, 10)
+        .filter((entity) => "harvest" in entity) as unknown as Harvestable[];
+      if (nearbyHarvestables.length > 0) {
+        nearbyHarvestables[0].harvest(this);
+      }
+    }
+  }
+
   update(deltaTime: number) {
+    if (this.input.inventoryItem !== null) {
+      this.activeItem = this.inventory[this.input.inventoryItem - 1];
+    }
+
     this.handleAttack(deltaTime);
     this.handleMovement(deltaTime);
+    this.handleInteract(deltaTime);
   }
 
   setInput(input: Input) {

@@ -1,9 +1,8 @@
-import { Direction } from "./direction";
 import { Vector2 } from "./physics";
+import { Player } from "./entities/player";
 
 export interface Harvestable {
-  harvest(): void;
-  getIsHarvested(): boolean;
+  harvest(player: Player): void;
 }
 
 export const HARVEST_DISTANCE = 10;

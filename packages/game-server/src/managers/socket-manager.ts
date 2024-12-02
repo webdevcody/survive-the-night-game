@@ -41,22 +41,12 @@ export class SocketManager {
     }
   }
 
-  // TODO: I feel like this should live in the player entity itself?
   private onPlayerInput(socket: Socket, input: Input): void {
     const player = this.players.get(socket.id);
 
     if (player) {
       player.setVelocityFromInput(input.dx, input.dy);
       player.setInput(input);
-
-      if (input.harvest) {
-        const nearbyEntities = this.entityManager.getNearbyEntities(player.getPosition(), 10);
-        const harvestableEntities = this.entityManager.filterHarvestableEntities(nearbyEntities);
-        const first = harvestableEntities[0];
-        if (first) {
-          first.harvest();
-        }
-      }
     }
   }
 
@@ -69,7 +59,6 @@ export class SocketManager {
 
     socket.emit(Events.MAP, this.mapManager.getMap());
     socket.emit(Events.YOUR_ID, player.getId());
-    socket.emit(Events.INVENTORY, player.getInventory());
 
     socket.on("playerInput", (input: Input) => this.onPlayerInput(socket, input));
 

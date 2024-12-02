@@ -2,17 +2,24 @@ import { EntityManager } from "@/managers/entity-manager";
 import { Entities, Entity, RawEntity } from "../entities";
 import { Vector2 } from "../physics";
 import { Harvestable, Positionable } from "../traits";
+import { Player } from "./player";
 
 export class Tree extends Entity implements Harvestable, Positionable {
-  private isHarvested = false;
   private position: Vector2 = { x: 0, y: 0 };
 
   constructor(entityManager: EntityManager) {
     super(entityManager, Entities.TREE);
   }
 
-  harvest(): void {
-    this.isHarvested = true;
+  harvest(player: Player): void {
+    if (player.isInventoryFull()) {
+      return;
+    }
+
+    player.getInventory().push({
+      key: "Wood",
+    });
+    this.getEntityManager().markEntityForRemoval(this);
   }
 
   serialize(): RawEntity {
@@ -20,10 +27,6 @@ export class Tree extends Entity implements Harvestable, Positionable {
       ...super.serialize(),
       position: this.position,
     };
-  }
-
-  getIsHarvested(): boolean {
-    return this.isHarvested;
   }
 
   getPosition(): Vector2 {

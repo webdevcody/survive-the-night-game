@@ -48,25 +48,9 @@ class GameServer {
     const currentTime = Date.now();
     const deltaTime = (currentTime - this.lastUpdateTime) / 1000;
     this.updateEntities(deltaTime);
-    this.removeHarvestedEntities();
     this.entityManager.pruneEntities();
     this.broadcastGameState();
     this.lastUpdateTime = currentTime;
-  }
-
-  // TODO: I feel like this should live in the tree or harvestable trait itself?
-  private removeHarvestedEntities(): void {
-    const harvestables = this.entityManager.filterHarvestableEntities(
-      this.entityManager.getEntities()
-    );
-
-    for (let i = 0; i < harvestables.length; i++) {
-      const harvestable = harvestables[i];
-      if (harvestable.getIsHarvested()) {
-        console.log("removing harvested entity");
-        this.entityManager.markEntityForRemoval(harvestable as unknown as Entity);
-      }
-    }
   }
 
   private updateEntities(deltaTime: number): void {
