@@ -16,12 +16,15 @@ import { Entities } from "@survive-the-night/game-server";
 import { Input } from "../../server";
 import { EntityManager } from "../../managers/entity-manager";
 import { Bullet } from "./bullet";
+import { Tree } from "./tree";
 
 export const FIRE_COOLDOWN = 0.4;
 export const MAX_INVENTORY_SLOTS = 8;
 
 export class Player extends Entity implements Movable, Positionable, Updatable, Collidable {
   private fireCooldown = 0;
+  private dropCooldown = 0;
+  private harvestCooldown = 0;
   private position: Vector2 = { x: 0, y: 0 };
   private velocity: Vector2 = { x: 0, y: 0 };
   private input: Input = {
@@ -31,6 +34,7 @@ export class Player extends Entity implements Movable, Positionable, Updatable, 
     dy: 0,
     harvest: false,
     fire: false,
+    drop: false,
   };
   private activeItem: InventoryItem | null = null;
   private inventory: InventoryItem[] = [
@@ -50,6 +54,8 @@ export class Player extends Entity implements Movable, Positionable, Updatable, 
   private static readonly PLAYER_WIDTH = 16;
   private static readonly PLAYER_HEIGHT = 16;
   private static readonly PLAYER_SPEED = 60;
+  private static readonly DROP_COOLDOWN = 1;
+  private static readonly HARVEST_COOLDOWN = 1;
 
   constructor(entityManager: EntityManager) {
     super(entityManager, Entities.PLAYER);
@@ -148,12 +154,56 @@ export class Player extends Entity implements Movable, Positionable, Updatable, 
   }
 
   handleInteract(deltaTime: number) {
-    if (this.input.harvest) {
+    this.harvestCooldown -= deltaTime;
+
+    if (this.input.harvest && this.harvestCooldown <= 0) {
+      this.harvestCooldown = Player.HARVEST_COOLDOWN;
       const nearbyHarvestables = this.getEntityManager()
         .getNearbyEntities(this.position, 10)
         .filter((entity) => "harvest" in entity) as unknown as Harvestable[];
       if (nearbyHarvestables.length > 0) {
         nearbyHarvestables[0].harvest(this);
+      }
+    }
+  }
+
+  handleDrop(deltaTime: number) {
+    this.dropCooldown -= deltaTime;
+
+    if (this.input.drop && this.dropCooldown <= 0 && this.input.inventoryItem !== null) {
+      this.dropCooldown = Player.DROP_COOLDOWN;
+      const itemIndex = this.input.inventoryItem - 1;
+      const item = this.inventory[itemIndex];
+
+      if (item) {
+        // Remove item from inventory
+        this.inventory.splice(itemIndex, 1);
+
+        // Create new entity based on item type
+        let entity: Entity;
+        switch (item.key) {
+          case "Wood":
+            entity = new Tree(this.getEntityManager());
+            break;
+          default:
+            console.warn("Unknown item type:", item.key);
+            return;
+        }
+
+        // Position the entity at player's center
+        if ("setPosition" in entity) {
+          (entity as unknown as Positionable).setPosition({
+            x: this.position.x + Player.PLAYER_WIDTH / 2,
+            y: this.position.y + Player.PLAYER_HEIGHT / 2,
+          });
+        }
+
+        this.getEntityManager().addEntity(entity);
+
+        // Clear active item if it was dropped
+        if (this.activeItem === item) {
+          this.activeItem = null;
+        }
       }
     }
   }
@@ -166,6 +216,7 @@ export class Player extends Entity implements Movable, Positionable, Updatable, 
     this.handleAttack(deltaTime);
     this.handleMovement(deltaTime);
     this.handleInteract(deltaTime);
+    this.handleDrop(deltaTime);
   }
 
   setInput(input: Input) {

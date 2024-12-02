@@ -15,6 +15,7 @@ export type Input = {
   harvest: boolean;
   fire: boolean;
   inventoryItem: number;
+  drop: boolean;
 };
 
 class GameServer {

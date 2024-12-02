@@ -10,6 +10,7 @@ export class InputManager {
     harvest: false,
     fire: false,
     inventoryItem: 1,
+    drop: false,
   };
   private lastInputs = {
     ...this.inputs,
@@ -43,6 +44,9 @@ export class InputManager {
           break;
         case " ":
           this.inputs.fire = true;
+          break;
+        case "g":
+          this.inputs.drop = true;
           break;
       }
 
@@ -78,6 +82,9 @@ export class InputManager {
           break;
         case " ":
           this.inputs.fire = false;
+          break;
+        case "g":
+          this.inputs.drop = false;
           break;
       }
 
