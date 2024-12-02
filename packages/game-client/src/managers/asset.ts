@@ -146,6 +146,8 @@ export function getItemAssetKey(item: InventoryItem): Asset {
     return "Pistol";
   } else if (item.key === "Wood") {
     return "Tree";
+  } else if (item.key === "Wall") {
+    return "Wall";
   }
 
   throw new Error(`Unknown item type '${item.key}'`);

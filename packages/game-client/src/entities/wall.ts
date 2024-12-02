@@ -1,6 +1,13 @@
-import { Entities, EntityType, Positionable, Vector2 } from "@survive-the-night/game-server";
+import {
+  distance,
+  Entities,
+  EntityType,
+  MAX_HARVEST_RADIUS,
+  Positionable,
+  Vector2,
+} from "@survive-the-night/game-server";
 import { AssetManager } from "@/managers/asset";
-import { GameState } from "../state";
+import { GameState, getEntityById } from "../state";
 import { IClientEntity, Renderable } from "./util";
 
 const WALL_SIZE = 16;
@@ -50,6 +57,17 @@ export class WallClient implements Renderable, Positionable, IClientEntity {
 
   render(ctx: CanvasRenderingContext2D, gameState: GameState): void {
     const image = this.assetManager.get("Wall");
+    ctx.drawImage(image, this.getPosition().x, this.getPosition().y);
+
+    const myPlayer = getEntityById(gameState, gameState.playerId) as Positionable | undefined;
+    if (myPlayer && distance(myPlayer.getPosition(), this.getPosition()) < MAX_HARVEST_RADIUS) {
+      ctx.fillStyle = "white";
+      ctx.font = "6px Arial";
+      const text = "pick up (e)";
+      const textWidth = ctx.measureText(text).width;
+      ctx.fillText(text, this.getCenterPosition().x - textWidth / 2, this.getPosition().y - 3);
+    }
+
     ctx.drawImage(image, this.getPosition().x, this.getPosition().y);
   }
 }

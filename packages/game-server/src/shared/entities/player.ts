@@ -17,9 +17,11 @@ import { Input } from "../../server";
 import { EntityManager } from "../../managers/entity-manager";
 import { Bullet } from "./bullet";
 import { Tree } from "./tree";
+import { Wall } from "./wall";
 
 export const FIRE_COOLDOWN = 0.4;
 export const MAX_INVENTORY_SLOTS = 8;
+export const MAX_HARVEST_RADIUS = 20;
 
 export class Player extends Entity implements Movable, Positionable, Updatable, Collidable {
   private fireCooldown = 0;
@@ -159,7 +161,7 @@ export class Player extends Entity implements Movable, Positionable, Updatable, 
     if (this.input.harvest && this.harvestCooldown <= 0) {
       this.harvestCooldown = Player.HARVEST_COOLDOWN;
       const nearbyHarvestables = this.getEntityManager()
-        .getNearbyEntities(this.position, 10)
+        .getNearbyEntities(this.position, MAX_HARVEST_RADIUS)
         .filter((entity) => "harvest" in entity) as unknown as Harvestable[];
       if (nearbyHarvestables.length > 0) {
         nearbyHarvestables[0].harvest(this);
@@ -185,6 +187,9 @@ export class Player extends Entity implements Movable, Positionable, Updatable, 
           case "Wood":
             entity = new Tree(this.getEntityManager());
             break;
+          case "Wall":
+            entity = new Wall(this.getEntityManager());
+            break;
           default:
             console.warn("Unknown item type:", item.key);
             return;
@@ -192,9 +197,23 @@ export class Player extends Entity implements Movable, Positionable, Updatable, 
 
         // Position the entity at player's center
         if ("setPosition" in entity) {
+          const offset = 16;
+          let dx = 0;
+          let dy = 0;
+
+          if (this.input.facing === Direction.Up) {
+            dy = -offset;
+          } else if (this.input.facing === Direction.Down) {
+            dy = offset;
+          } else if (this.input.facing === Direction.Left) {
+            dx = -offset;
+          } else if (this.input.facing === Direction.Right) {
+            dx = offset;
+          }
+
           (entity as unknown as Positionable).setPosition({
-            x: this.position.x + Player.PLAYER_WIDTH / 2,
-            y: this.position.y + Player.PLAYER_HEIGHT / 2,
+            x: this.getPosition().x + dx,
+            y: this.getPosition().y + dy,
           });
         }
 
