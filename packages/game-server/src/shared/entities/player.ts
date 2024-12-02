@@ -54,8 +54,8 @@ export class Player extends Entity implements Movable, Positionable, Updatable, 
   private static readonly PLAYER_WIDTH = 16;
   private static readonly PLAYER_HEIGHT = 16;
   private static readonly PLAYER_SPEED = 60;
-  private static readonly DROP_COOLDOWN = 1;
-  private static readonly HARVEST_COOLDOWN = 1;
+  private static readonly DROP_COOLDOWN = 0.5;
+  private static readonly HARVEST_COOLDOWN = 0.5;
 
   constructor(entityManager: EntityManager) {
     super(entityManager, Entities.PLAYER);
