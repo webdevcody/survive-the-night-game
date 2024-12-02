@@ -11,6 +11,9 @@ export type Event = (typeof Events)[keyof typeof Events];
 
 type GameState = {
   entities: RawEntity[];
+  dayNumber: number;
+  untilNextCycle: number;
+  isDay: boolean;
 };
 
 export class GameStateEvent implements IEvent {

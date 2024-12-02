@@ -13,6 +13,7 @@ import { HotbarClient } from "./ui/hotbar";
 import { BulletClient } from "./entities/bullet";
 import { StorageManager } from "./managers/storage";
 import { WallClient } from "./entities/wall";
+import { Hud } from "./ui/hud";
 
 export class GameClient {
   private ctx: CanvasRenderingContext2D;
@@ -24,6 +25,7 @@ export class GameClient {
   private storageManager: StorageManager;
   private latestEntities: EntityDto[] = [];
   private gameState: GameState;
+  private hud: Hud;
   private scale: number;
   private unmountQueue: Function[] = [];
   private reqId: number | null = null;
@@ -43,6 +45,7 @@ export class GameClient {
     this.cameraManager.setScale(this.scale);
 
     this.mapManager = new MapManager();
+    this.hud = new Hud();
     this.inputManager = new InputManager();
     this.hotbar = new HotbarClient(this.assetManager, this.inputManager, () => {
       if (this.gameState.playerId) {
@@ -61,6 +64,9 @@ export class GameClient {
     this.gameState = {
       playerId: "",
       entities: [],
+      dayNumber: 0,
+      untilNextCycle: 0,
+      isDay: true,
     };
 
     this.socketManager = new SocketManager(serverUrl, {
@@ -69,6 +75,9 @@ export class GameClient {
       },
       onGameStateUpdate: (gameStateEvent: GameStateEvent) => {
         this.latestEntities = gameStateEvent.getPayload().entities;
+        this.gameState.dayNumber = gameStateEvent.getPayload().dayNumber;
+        this.gameState.untilNextCycle = gameStateEvent.getPayload().untilNextCycle;
+        this.gameState.isDay = gameStateEvent.getPayload().isDay;
       },
       onYourId: (playerId: string) => {
         this.gameState.playerId = playerId;
@@ -270,6 +279,15 @@ export class GameClient {
     this.clearCanvas();
     this.mapManager.render(this.ctx);
     this.renderEntities();
+
+    this.ctx.setTransform(1, 0, 0, 1, 0, 0);
+
+    if (!this.gameState.isDay) {
+      this.ctx.fillStyle = "rgba(0, 0, 0, 0.3)";
+      this.ctx.fillRect(0, 0, this.ctx.canvas.width, this.ctx.canvas.height);
+    }
+
     this.hotbar.render(this.ctx, this.gameState);
+    this.hud.render(this.ctx, this.gameState);
   }
 }

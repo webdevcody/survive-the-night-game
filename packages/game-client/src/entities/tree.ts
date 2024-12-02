@@ -2,7 +2,7 @@ import {
   distance,
   Entities,
   EntityType,
-  HARVEST_DISTANCE,
+  MAX_HARVEST_RADIUS,
   Positionable,
   Vector2,
 } from "@survive-the-night/game-server";
@@ -59,7 +59,7 @@ export class TreeClient implements Renderable, Positionable, IClientEntity {
     const image = this.assetManager.get("Tree");
     const myPlayer = getEntityById(gameState, gameState.playerId) as Positionable | undefined;
 
-    if (myPlayer && distance(myPlayer.getPosition(), this.getPosition()) < HARVEST_DISTANCE) {
+    if (myPlayer && distance(myPlayer.getPosition(), this.getPosition()) < MAX_HARVEST_RADIUS) {
       ctx.fillStyle = "white";
       ctx.font = "6px Arial";
       const text = "harvest (e)";

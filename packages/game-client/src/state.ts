@@ -1,9 +1,11 @@
 import { Entity } from "@survive-the-night/game-server";
-import { HotbarClient } from "./ui/hotbar";
 
 export type GameState = {
   playerId: string;
   entities: Entity[];
+  dayNumber: number;
+  untilNextCycle: number;
+  isDay: boolean;
 };
 
 export function getEntityById(gameState: GameState, id: string): Entity | undefined {

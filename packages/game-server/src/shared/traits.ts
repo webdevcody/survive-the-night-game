@@ -5,8 +5,6 @@ export interface Harvestable {
   harvest(player: Player): void;
 }
 
-export const HARVEST_DISTANCE = 10;
-
 export interface Positionable {
   getPosition: () => Vector2;
   setPosition: (position: Vector2) => void;
