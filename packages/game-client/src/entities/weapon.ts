@@ -82,7 +82,7 @@ export class WeaponClient implements Renderable, Animatable, Positionable, IClie
     if (myPlayer && distance(myPlayer.getPosition(), this.getPosition()) < MAX_HARVEST_RADIUS) {
       ctx.fillStyle = "white";
       ctx.font = "6px Arial";
-      const text = "harvest (e)";
+      const text = "pick up (e)";
       const textWidth = ctx.measureText(text).width;
       ctx.fillText(text, this.getCenterPosition().x - textWidth / 2, this.getPosition().y - 3);
     }

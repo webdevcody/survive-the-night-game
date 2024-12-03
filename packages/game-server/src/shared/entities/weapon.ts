@@ -4,7 +4,12 @@ import { Vector2 } from "../physics";
 import { Harvestable, Positionable } from "../traits";
 import { Player } from "./player";
 
-export type WeaponType = "Knife" | "Shotgun" | "Pistol";
+export const WEAPON_TYPES = {
+  KNIFE: "Knife",
+  SHOTGUN: "Shotgun",
+  PISTOL: "Pistol",
+} as const;
+export type WeaponType = (typeof WEAPON_TYPES)[keyof typeof WEAPON_TYPES];
 
 export class Weapon extends Entity implements Harvestable, Positionable {
   private weaponType: WeaponType;

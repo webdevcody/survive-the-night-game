@@ -1,8 +1,6 @@
 import { Tree } from "../shared/entities/tree";
 import { EntityManager } from "./entity-manager";
-import { Wall } from "@/shared/entities/wall";
-import { Zombie } from "@/shared/entities/zombie";
-import { Weapon } from "@/shared/entities/weapon";
+import { Weapon, WEAPON_TYPES } from "../shared/entities/weapon";
 import { Boundary } from "../shared/entities/boundary";
 
 export const TILE_IDS = {
@@ -11,6 +9,12 @@ export const TILE_IDS = {
   FOREST: 2,
   WATER: 3,
 };
+
+const WEAPON_SPAWN_CHANCE = {
+  PISTOL: 0.002,
+  SHOTGUN: 0.002,
+  KNIFE: 0.002,
+} as const;
 
 const Biomes = {
   CAMPSITE: [
@@ -128,11 +132,28 @@ export class MapManager {
     // Spawn trees randomly in empty spaces
     for (let y = 0; y < totalSize; y++) {
       for (let x = 0; x < totalSize; x++) {
-        if ((this.map[y][x] === 0 || this.map[y][x] === 1) && Math.random() < 0.05) {
-          // 30% chance for a tree
-          const tree = new Tree(this.entityManager);
-          tree.setPosition({ x: x * 16, y: y * 16 }); // Assuming 32 is your tile size
-          this.entityManager.addEntity(tree);
+        if (this.map[y][x] === 0 || this.map[y][x] === 1) {
+          if (Math.random() < 0.05) {
+            // 30% chance for a tree
+            const tree = new Tree(this.entityManager);
+            tree.setPosition({ x: x * 16, y: y * 16 }); // Assuming 32 is your tile size
+            this.entityManager.addEntity(tree);
+          } else if (Math.random() < WEAPON_SPAWN_CHANCE.PISTOL) {
+            // 0.1% chance for a pistol
+            const weapon = new Weapon(this.entityManager, WEAPON_TYPES.PISTOL);
+            weapon.setPosition({ x: x * 16, y: y * 16 });
+            this.entityManager.addEntity(weapon);
+          } else if (Math.random() < WEAPON_SPAWN_CHANCE.SHOTGUN) {
+            // 0.1% chance for a shotgun
+            const weapon = new Weapon(this.entityManager, WEAPON_TYPES.SHOTGUN);
+            weapon.setPosition({ x: x * 16, y: y * 16 });
+            this.entityManager.addEntity(weapon);
+          } else if (Math.random() < WEAPON_SPAWN_CHANCE.KNIFE) {
+            // 0.1% chance for a knife
+            const weapon = new Weapon(this.entityManager, WEAPON_TYPES.KNIFE);
+            weapon.setPosition({ x: x * 16, y: y * 16 });
+            this.entityManager.addEntity(weapon);
+          }
         }
       }
     }
