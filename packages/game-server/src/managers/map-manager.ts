@@ -3,6 +3,7 @@ import { Entities } from "../shared/entities";
 import { EntityManager } from "./entity-manager";
 import { Wall } from "@/shared/entities/wall";
 import { Zombie } from "@/shared/entities/zombie";
+import { Weapon } from "@/shared/entities/weapon";
 
 const MAPS = {
   testing: {
@@ -34,6 +35,36 @@ const MAPS = {
       {
         type: Entities.ZOMBIE,
         position: { x: 80, y: 80 },
+      },
+      {
+        type: Entities.WEAPON,
+        weaponType: "Knife",
+        position: { x: 120, y: 120 },
+      },
+      {
+        type: Entities.WEAPON,
+        weaponType: "Pistol",
+        position: { x: 100, y: 120 },
+      },
+      {
+        type: Entities.WEAPON,
+        weaponType: "Shotgun",
+        position: { x: 100, y: 140 },
+      },
+      {
+        type: Entities.WEAPON,
+        weaponType: "Knife",
+        position: { x: 150, y: 100 },
+      },
+      {
+        type: Entities.WEAPON,
+        weaponType: "Pistol",
+        position: { x: 150, y: 120 },
+      },
+      {
+        type: Entities.WEAPON,
+        weaponType: "Shotgun",
+        position: { x: 150, y: 140 },
       },
     ],
     map: [
@@ -94,6 +125,10 @@ export class MapManager {
         const zombie = new Zombie(this.entityManager);
         zombie.setPosition(entityPosition);
         this.entityManager.addEntity(zombie);
+      } else if (entity.type === Entities.WEAPON) {
+        const weapon = new Weapon(this.entityManager, entity.weaponType);
+        weapon.setPosition(entityPosition);
+        this.entityManager.addEntity(weapon);
       }
     }
   }

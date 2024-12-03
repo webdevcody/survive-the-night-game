@@ -14,6 +14,7 @@ import { BulletClient } from "./entities/bullet";
 import { StorageManager } from "./managers/storage";
 import { WallClient } from "./entities/wall";
 import { Hud } from "./ui/hud";
+import { WeaponClient } from "./entities/weapon";
 
 export class GameClient {
   private ctx: CanvasRenderingContext2D;
@@ -62,6 +63,7 @@ export class GameClient {
     });
 
     this.gameState = {
+      startedAt: Date.now(),
       playerId: "",
       entities: [],
       dayNumber: 0,
@@ -206,6 +208,11 @@ export class GameClient {
           zombie.setVelocity(entityData.velocity);
         }
         this.getEntities().push(zombie);
+        continue;
+      } else if (entityData.type === Entities.WEAPON) {
+        const weapon = new WeaponClient(entityData.id, this.assetManager, entityData.weaponType);
+        weapon.setPosition(entityData.position);
+        this.getEntities().push(weapon);
         continue;
       } else {
         console.warn("Unknown entity type", entityData);
