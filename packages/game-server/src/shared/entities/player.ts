@@ -82,10 +82,12 @@ export class Player extends Entity implements Movable, Positionable, Updatable, 
   }
 
   getHitbox(): Hitbox {
+    const amount = 2;
     return {
-      ...this.position,
-      width: Player.PLAYER_WIDTH,
-      height: Player.PLAYER_HEIGHT,
+      x: this.position.x + amount,
+      y: this.position.y + amount,
+      width: Player.PLAYER_WIDTH - amount * 2,
+      height: Player.PLAYER_HEIGHT - amount * 2,
     };
   }
 

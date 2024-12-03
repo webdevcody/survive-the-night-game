@@ -6,6 +6,7 @@ export const Entities = {
   TREE: "tree",
   BULLET: "bullet",
   WALL: "wall",
+  BOUNDARY: "boundary",
 } as const;
 
 export type EntityType = (typeof Entities)[keyof typeof Entities];
