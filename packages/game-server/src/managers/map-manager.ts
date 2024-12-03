@@ -1,5 +1,8 @@
 import { Tree } from "../shared/entities/tree";
 import { EntityManager } from "./entity-manager";
+import { Wall } from "@/shared/entities/wall";
+import { Zombie } from "@/shared/entities/zombie";
+import { Weapon } from "@/shared/entities/weapon";
 import { Boundary } from "../shared/entities/boundary";
 
 export const TILE_IDS = {

@@ -2,6 +2,7 @@ import {
   Direction,
   Collidable,
   Entity,
+  Weapon,
   Hitbox,
   Movable,
   Positionable,
@@ -10,6 +11,7 @@ import {
   normalizeVector,
   RawEntity,
   InventoryItem,
+  ItemType,
   Harvestable,
 } from "@survive-the-night/game-server";
 import { Entities } from "@survive-the-night/game-server";
@@ -39,20 +41,7 @@ export class Player extends Entity implements Movable, Positionable, Updatable, 
     drop: false,
   };
   private activeItem: InventoryItem | null = null;
-  private inventory: InventoryItem[] = [
-    {
-      key: "Knife",
-    },
-    {
-      key: "Pistol",
-    },
-    {
-      key: "Shotgun",
-    },
-    {
-      key: "Wood",
-    },
-  ];
+  private inventory: InventoryItem[] = [];
   private static readonly PLAYER_WIDTH = 16;
   private static readonly PLAYER_HEIGHT = 16;
   private static readonly PLAYER_SPEED = 60;
@@ -65,6 +54,10 @@ export class Player extends Entity implements Movable, Positionable, Updatable, 
 
   isInventoryFull(): boolean {
     return this.inventory.length >= MAX_INVENTORY_SLOTS;
+  }
+
+  hasInInventory(key: ItemType): boolean {
+    return this.inventory.some((it) => it.key === key);
   }
 
   getCenterPosition(): Vector2 {
@@ -120,14 +113,20 @@ export class Player extends Entity implements Movable, Positionable, Updatable, 
     return this.inventory;
   }
 
+  getActiveWeapon(): InventoryItem | null {
+    const activeKey = this.activeItem?.key ?? "";
+    return ["Knife", "Shotgun", "Pistol"].includes(activeKey) ? this.activeItem : null;
+  }
+
   setPosition(position: Vector2) {
     this.position = position;
   }
 
   handleAttack(deltaTime: number) {
+    const activeWeapon = this.getActiveWeapon();
     this.fireCooldown -= deltaTime;
 
-    if (this.input.fire && this.fireCooldown <= 0) {
+    if (this.input.fire && activeWeapon !== null && this.fireCooldown <= 0) {
       this.fireCooldown = FIRE_COOLDOWN;
 
       const bullet = new Bullet(this.getEntityManager());
@@ -186,6 +185,11 @@ export class Player extends Entity implements Movable, Positionable, Updatable, 
         // Create new entity based on item type
         let entity: Entity;
         switch (item.key) {
+          case "Knife":
+          case "Pistol":
+          case "Shotgun":
+            entity = new Weapon(this.getEntityManager(), item.key);
+            break;
           case "Wood":
             entity = new Tree(this.getEntityManager());
             break;
@@ -193,8 +197,7 @@ export class Player extends Entity implements Movable, Positionable, Updatable, 
             entity = new Wall(this.getEntityManager());
             break;
           default:
-            console.warn("Unknown item type:", item.key);
-            return;
+            throw new Error(`Unknown item type: '${item.key}'`);
         }
 
         // Position the entity at player's center
