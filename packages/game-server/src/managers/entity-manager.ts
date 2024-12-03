@@ -1,15 +1,21 @@
-import { distance, isColliding, Vector2 } from "@/shared/physics";
+import { distance, isColliding, Vector2 } from "../shared/physics";
 import { Entities, Entity, EntityType } from "../shared/entities";
-import { Collidable, Harvestable, Positionable, Updatable } from "@/shared/traits";
-import { Player } from "@/shared/entities/player";
+import { Collidable, Harvestable, Positionable, Updatable } from "../shared/traits";
+import { Player } from "../shared/entities/player";
+import { SpatialGrid } from "./spatial-grid";
 
 export class EntityManager {
   private entities: Entity[];
   private entitiesToRemove: string[] = [];
   private id: number = 0;
+  private spatialGrid: SpatialGrid | null = null;
 
   constructor() {
     this.entities = [];
+  }
+
+  setMapSize(width: number, height: number) {
+    this.spatialGrid = new SpatialGrid(width, height);
   }
 
   addEntity(entity: Entity) {
@@ -102,15 +108,53 @@ export class EntityManager {
   }
 
   isColliding(entity: Collidable, ignoreTypes?: EntityType[]): Collidable | null {
-    const collidables = this.getCollidableEntities();
-    for (const collidable of collidables) {
-      if (collidable === entity) continue;
-      if (ignoreTypes && ignoreTypes.includes((collidable as unknown as Entity).getType()))
-        continue;
-      if (isColliding(entity.getHitbox(), collidable.getHitbox())) {
-        return collidable;
+    if (!this.spatialGrid) {
+      return null;
+    }
+
+    const nearbyEntities = this.spatialGrid.getNearbyEntities(entity.getPosition());
+    for (const otherEntity of nearbyEntities) {
+      if ("getHitbox" in otherEntity) {
+        const collidable = otherEntity as unknown as Collidable;
+
+        if (collidable === entity) {
+          continue;
+        }
+
+        if (ignoreTypes && ignoreTypes.includes((collidable as unknown as Entity).getType())) {
+          continue;
+        }
+        if (isColliding(entity.getHitbox(), collidable.getHitbox())) {
+          return collidable;
+        }
       }
     }
+
     return null;
+  }
+
+  update(deltaTime: number) {
+    for (const entity of this.getUpdatableEntities()) {
+      entity.update(deltaTime);
+    }
+
+    // Then refresh the spatial grid
+    this.refreshSpatialGrid();
+  }
+
+  private refreshSpatialGrid() {
+    if (!this.spatialGrid) {
+      return;
+    }
+
+    // Clear the existing grid
+    this.spatialGrid.clear();
+
+    // Re-add all entities that have a position
+    this.entities.forEach((entity) => {
+      if ("getPosition" in entity) {
+        this.spatialGrid!.addEntity(entity);
+      }
+    });
   }
 }

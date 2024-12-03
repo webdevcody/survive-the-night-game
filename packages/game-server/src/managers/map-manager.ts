@@ -2,6 +2,7 @@ import { Tree } from "../shared/entities/tree";
 import { EntityManager } from "./entity-manager";
 import { Weapon, WEAPON_TYPES } from "../shared/entities/weapon";
 import { Boundary } from "../shared/entities/boundary";
+import { Zombie } from "../shared/entities/zombie";
 
 export const TILE_IDS = {
   GRASS1: 0,
@@ -15,6 +16,8 @@ const WEAPON_SPAWN_CHANCE = {
   SHOTGUN: 0.002,
   KNIFE: 0.002,
 } as const;
+
+const ZOMBIE_SPAWN_CHANCE = 0.001;
 
 const Biomes = {
   CAMPSITE: [
@@ -75,6 +78,7 @@ const Biomes = {
 
 const BIOME_SIZE = 16;
 const MAP_SIZE = 7;
+const TILE_SIZE = 16;
 
 export class MapManager {
   private map: number[][] = [];
@@ -88,8 +92,24 @@ export class MapManager {
     return this.map;
   }
 
+  public spawnZombies(dayNumber: number) {
+    for (let y = 0; y < this.map.length; y++) {
+      for (let x = 0; x < this.map[y].length; x++) {
+        if (this.map[y][x] === 0 && Math.random() < ZOMBIE_SPAWN_CHANCE * dayNumber) {
+          const zombie = new Zombie(this.entityManager);
+          zombie.setPosition({ x: x * TILE_SIZE, y: y * TILE_SIZE });
+          this.entityManager.addEntity(zombie);
+        }
+      }
+    }
+  }
+
   generateMap() {
     this.entityManager.clear();
+    this.entityManager.setMapSize(
+      BIOME_SIZE * MAP_SIZE * TILE_SIZE,
+      BIOME_SIZE * MAP_SIZE * TILE_SIZE
+    );
 
     const totalSize = BIOME_SIZE * MAP_SIZE;
     this.map = Array(totalSize)
@@ -105,13 +125,12 @@ export class MapManager {
         if (biomeX === 0 || biomeX === MAP_SIZE - 1 || biomeY === 0 || biomeY === MAP_SIZE - 1) {
           const boundary = new Boundary(this.entityManager);
           boundary.setPosition({
-            x: biomeX * BIOME_SIZE * 16,
-            y: biomeY * BIOME_SIZE * 16,
+            x: biomeX * BIOME_SIZE * TILE_SIZE,
+            y: biomeY * BIOME_SIZE * TILE_SIZE,
           });
-          // Set size to cover entire biome (16x16 tiles)
           boundary.setSize({
-            x: BIOME_SIZE * 16,
-            y: BIOME_SIZE * 16,
+            x: BIOME_SIZE * TILE_SIZE,
+            y: BIOME_SIZE * TILE_SIZE,
           });
           this.entityManager.addEntity(boundary);
         }
@@ -123,7 +142,7 @@ export class MapManager {
       for (let x = 0; x < totalSize; x++) {
         if (this.map[y][x] === TILE_IDS.FOREST) {
           const boundary = new Boundary(this.entityManager);
-          boundary.setPosition({ x: x * 16, y: y * 16 });
+          boundary.setPosition({ x: x * TILE_SIZE, y: y * TILE_SIZE });
           this.entityManager.addEntity(boundary);
         }
       }
@@ -136,22 +155,22 @@ export class MapManager {
           if (Math.random() < 0.05) {
             // 30% chance for a tree
             const tree = new Tree(this.entityManager);
-            tree.setPosition({ x: x * 16, y: y * 16 }); // Assuming 32 is your tile size
+            tree.setPosition({ x: x * TILE_SIZE, y: y * TILE_SIZE });
             this.entityManager.addEntity(tree);
           } else if (Math.random() < WEAPON_SPAWN_CHANCE.PISTOL) {
             // 0.1% chance for a pistol
             const weapon = new Weapon(this.entityManager, WEAPON_TYPES.PISTOL);
-            weapon.setPosition({ x: x * 16, y: y * 16 });
+            weapon.setPosition({ x: x * TILE_SIZE, y: y * TILE_SIZE });
             this.entityManager.addEntity(weapon);
           } else if (Math.random() < WEAPON_SPAWN_CHANCE.SHOTGUN) {
             // 0.1% chance for a shotgun
             const weapon = new Weapon(this.entityManager, WEAPON_TYPES.SHOTGUN);
-            weapon.setPosition({ x: x * 16, y: y * 16 });
+            weapon.setPosition({ x: x * TILE_SIZE, y: y * TILE_SIZE });
             this.entityManager.addEntity(weapon);
           } else if (Math.random() < WEAPON_SPAWN_CHANCE.KNIFE) {
             // 0.1% chance for a knife
             const weapon = new Weapon(this.entityManager, WEAPON_TYPES.KNIFE);
-            weapon.setPosition({ x: x * 16, y: y * 16 });
+            weapon.setPosition({ x: x * TILE_SIZE, y: y * TILE_SIZE });
             this.entityManager.addEntity(weapon);
           }
         }

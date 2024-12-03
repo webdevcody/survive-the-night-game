@@ -1,7 +1,5 @@
 import { Direction } from "./shared/direction";
 import { GameStateEvent } from "./shared/events";
-import { Entity, EntityType } from "./shared/entities";
-import { Vector2 } from "./shared/physics";
 import { EntityManager } from "./managers/entity-manager";
 import { MapManager } from "./managers/map-manager";
 import { SocketManager } from "./managers/socket-manager";
@@ -18,8 +16,11 @@ export type Input = {
   drop: boolean;
 };
 
-export const DAY_DURATION = 10;
-export const NIGHT_DURATION = 10;
+export const DAY_DURATION = 30;
+export const NIGHT_DURATION = 30;
+
+const PERFORMANCE_LOG_INTERVAL = 5000; // Log every 5 seconds
+const TICK_RATE_MS = 1000 / FPS; // ~33.33ms for 30 FPS
 
 class GameServer {
   private lastUpdateTime: number = Date.now();
@@ -30,6 +31,8 @@ class GameServer {
   private dayNumber: number = 1;
   private untilNextCycle: number = 0;
   private isDay: boolean = true;
+  private updateTimes: number[] = [];
+  private lastPerformanceLog: number = Date.now();
 
   constructor(port: number = 3001) {
     this.entityManager = new EntityManager();
@@ -60,9 +63,12 @@ class GameServer {
 
   private onNightStart(): void {
     console.log("Night started");
+    this.mapManager.spawnZombies(this.dayNumber);
   }
 
   private update(): void {
+    const updateStartTime = performance.now();
+
     const currentTime = Date.now();
     const deltaTime = (currentTime - this.lastUpdateTime) / 1000;
 
@@ -81,13 +87,45 @@ class GameServer {
     this.updateEntities(deltaTime);
     this.entityManager.pruneEntities();
     this.broadcastGameState();
+
+    // Track performance
+    const updateDuration = performance.now() - updateStartTime;
+    this.updateTimes.push(updateDuration);
+
+    // Warn if update took longer than tick rate
+    if (updateDuration > TICK_RATE_MS) {
+      console.warn(
+        `Warning: Slow update detected - took ${updateDuration.toFixed(
+          2
+        )}ms (>${TICK_RATE_MS.toFixed(2)}ms threshold)`
+      );
+    }
+
+    // Log performance stats every PERFORMANCE_LOG_INTERVAL ms
+    if (currentTime - this.lastPerformanceLog > PERFORMANCE_LOG_INTERVAL) {
+      const avgUpdateTime = this.updateTimes.reduce((a, b) => a + b, 0) / this.updateTimes.length;
+      const maxUpdateTime = Math.max(...this.updateTimes);
+      const slowUpdates = this.updateTimes.filter((time) => time > TICK_RATE_MS).length;
+      console.log(`Performance stats:
+        Avg update time: ${avgUpdateTime.toFixed(2)}ms
+        Max update time: ${maxUpdateTime.toFixed(2)}ms
+        Total Entities: ${this.entityManager.getEntities().length}
+        Updates tracked: ${this.updateTimes.length}
+        Slow updates: ${slowUpdates} (${((slowUpdates / this.updateTimes.length) * 100).toFixed(
+        1
+      )}%)
+      `);
+
+      // Reset tracking
+      this.updateTimes = [];
+      this.lastPerformanceLog = currentTime;
+    }
+
     this.lastUpdateTime = currentTime;
   }
 
   private updateEntities(deltaTime: number): void {
-    for (const entity of this.entityManager.getUpdatableEntities()) {
-      entity.update(deltaTime);
-    }
+    this.entityManager.update(deltaTime);
   }
 
   // TODO: This is a bit of a hack to get the game state to the client.
