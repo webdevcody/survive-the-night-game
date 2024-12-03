@@ -16,7 +16,7 @@ export type Input = {
   drop: boolean;
 };
 
-export const DAY_DURATION = 30;
+export const DAY_DURATION = 300;
 export const NIGHT_DURATION = 30;
 
 const PERFORMANCE_LOG_INTERVAL = 5000; // Log every 5 seconds

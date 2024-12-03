@@ -1,4 +1,4 @@
-import { EntityManager } from "@/managers/entity-manager";
+import { EntityManager } from "../../managers/entity-manager";
 import { Entities, Entity, RawEntity } from "../entities";
 import { Vector2 } from "../physics";
 import { Harvestable, Positionable } from "../traits";

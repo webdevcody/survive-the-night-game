@@ -1,25 +1,15 @@
-import {
-  Direction,
-  Collidable,
-  Entity,
-  Weapon,
-  Hitbox,
-  Movable,
-  Positionable,
-  Updatable,
-  Vector2,
-  normalizeVector,
-  RawEntity,
-  InventoryItem,
-  ItemType,
-  Harvestable,
-} from "@survive-the-night/game-server";
-import { Entities } from "@survive-the-night/game-server";
+import { Entities, Entity, RawEntity } from "../entities";
 import { Input } from "../../server";
 import { EntityManager } from "../../managers/entity-manager";
 import { Bullet } from "./bullet";
 import { Tree } from "./tree";
 import { Wall } from "./wall";
+import { Collidable, Harvestable, Hitbox } from "../traits";
+import { Movable, Positionable, Updatable } from "../traits";
+import { normalizeVector, Vector2 } from "../physics";
+import { Direction } from "../direction";
+import { InventoryItem, ItemType } from "../inventory";
+import { Weapon } from "./weapon";
 
 export const FIRE_COOLDOWN = 0.4;
 export const MAX_INVENTORY_SLOTS = 8;

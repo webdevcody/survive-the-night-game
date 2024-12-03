@@ -3,7 +3,6 @@ import { GameState } from "../state";
 
 export interface Animation {
   duration: number;
-
   frames: {
     [k: number]: Vector2;
   };

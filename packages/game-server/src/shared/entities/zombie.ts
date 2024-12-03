@@ -1,23 +1,13 @@
-import {
-  Direction,
-  Collidable,
-  Entity,
-  Facing,
-  Hitbox,
-  Movable,
-  Positionable,
-  Updatable,
-  Vector2,
-  velocityTowards,
-  Damageable,
-  RawEntity,
-} from "@survive-the-night/game-server";
-import { Entities } from "@survive-the-night/game-server";
 import { EntityManager } from "../../managers/entity-manager";
+import { MapManager } from "../../managers/map-manager";
+import { Direction } from "../direction";
+import { Entity, Entities, RawEntity } from "../entities";
+import { Vector2, pathTowards } from "../physics";
+import { Damageable, Movable, Positionable, Updatable, Collidable, Hitbox } from "../traits";
 
 export class Zombie
   extends Entity
-  implements Facing, Damageable, Movable, Positionable, Updatable, Collidable
+  implements Damageable, Movable, Positionable, Updatable, Collidable
 {
   public facing = Direction.Right;
   private position: Vector2 = { x: 0, y: 0 };
@@ -26,9 +16,11 @@ export class Zombie
   private static readonly ZOMBIE_HEIGHT = 16;
   private static readonly ZOMBIE_SPEED = 35;
   private health = 2;
+  private mapManager: MapManager;
 
-  constructor(entityManager: EntityManager) {
+  constructor(entityManager: EntityManager, mapManager: MapManager) {
     super(entityManager, Entities.ZOMBIE);
+    this.mapManager = mapManager;
   }
 
   getCenterPosition(): Vector2 {
@@ -36,10 +28,12 @@ export class Zombie
   }
 
   getHitbox(): Hitbox {
+    const amount = 2;
     return {
-      ...this.position,
-      width: Zombie.ZOMBIE_WIDTH,
-      height: Zombie.ZOMBIE_HEIGHT,
+      x: this.position.x + amount,
+      y: this.position.y + amount,
+      width: Zombie.ZOMBIE_WIDTH - amount * 2,
+      height: Zombie.ZOMBIE_HEIGHT - amount * 2,
     };
   }
 
@@ -107,7 +101,11 @@ export class Zombie
       return;
     }
 
-    const newVelocity = velocityTowards(this.position, player.getPosition());
+    const newVelocity = pathTowards(
+      this.getCenterPosition(),
+      player.getCenterPosition(),
+      this.mapManager.getMap()
+    );
     this.velocity.x = newVelocity.x * Zombie.ZOMBIE_SPEED;
     this.velocity.y = newVelocity.y * Zombie.ZOMBIE_SPEED;
 

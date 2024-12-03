@@ -9,7 +9,7 @@ import {
 } from "@survive-the-night/game-server";
 import { AssetManager } from "../managers/asset";
 import { getEntityById, GameState } from "../state";
-import { Animatable, animate, IClientEntity, Renderable } from "./util";
+import { Animatable, animate, Animation, IClientEntity, Renderable } from "./util";
 
 const WEAPON_SIZE = 16;
 
@@ -27,10 +27,9 @@ export class WeaponClient implements Renderable, Animatable, Positionable, IClie
     this.weaponType = weaponType;
   }
 
-  public getAnimation() {
+  public getAnimation(): Animation {
     return {
       duration: 700,
-
       frames: {
         0: {
           x: 0,

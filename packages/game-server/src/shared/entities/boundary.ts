@@ -1,4 +1,4 @@
-import { EntityManager } from "@/managers/entity-manager";
+import { EntityManager } from "../../managers/entity-manager";
 import { Entity, Entities, RawEntity } from "../entities";
 import { Collidable, Hitbox, Positionable, ServerOnly } from "../traits";
 import { Vector2 } from "../physics";

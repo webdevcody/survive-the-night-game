@@ -1,8 +1,7 @@
 export const BULLET_SPEED = 100;
-import { RawEntity } from "@/server";
 import { EntityManager } from "../../managers/entity-manager";
 import { Direction, normalizeDirection } from "../direction";
-import { Entities } from "../entities";
+import { Entities, RawEntity } from "../entities";
 import { Entity } from "../entities";
 import { Vector2, distance, normalizeVector } from "../physics";
 import { Collidable, Damageable, Hitbox, Movable, Positionable, Updatable } from "../traits";

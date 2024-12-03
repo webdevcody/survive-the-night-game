@@ -1,4 +1,4 @@
-import { EntityManager } from "@/managers/entity-manager";
+import { EntityManager } from "../managers/entity-manager";
 
 export const Entities = {
   WEAPON: "weapon",
