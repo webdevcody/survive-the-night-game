@@ -36,9 +36,13 @@ export class WeaponClient implements Renderable, Animatable, Positionable, IClie
           x: 0,
           y: 0,
         },
-        50: {
+        20: {
           x: 0,
-          y: WEAPON_SIZE * 0.4,
+          y: WEAPON_SIZE * 0.1,
+        },
+        40: {
+          x: 0,
+          y: 0,
         },
       },
     };
