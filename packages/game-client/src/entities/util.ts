@@ -43,10 +43,10 @@ export function animate(startedAt: number, position: Vector2, animation: Animati
       ? 100 - currentFrameStep + nextFrameStep
       : nextFrameStep - currentFrameStep;
 
-  const frameProgress = ((currentProgress - currentFrameStep) * 100) / frameLength;
+  const frameProgress = (currentProgress - currentFrameStep) / frameLength;
 
   return {
-    x: position.x + x0 + ((x1 - x0) * frameProgress) / 100,
-    y: position.y + y0 + ((y1 - y0) * frameProgress) / 100,
+    x: position.x + x0 + (x1 - x0) * frameProgress,
+    y: position.y + y0 + (y1 - y0) * frameProgress,
   };
 }
