@@ -77,7 +77,7 @@ const Biomes = {
 };
 
 const BIOME_SIZE = 16;
-const MAP_SIZE = 7;
+const MAP_SIZE = 5;
 const TILE_SIZE = 16;
 
 export class MapManager {
@@ -120,20 +120,6 @@ export class MapManager {
     for (let biomeY = 0; biomeY < MAP_SIZE; biomeY++) {
       for (let biomeX = 0; biomeX < MAP_SIZE; biomeX++) {
         this.placeBiome(biomeX, biomeY);
-
-        // Create large boundary for water biomes
-        if (biomeX === 0 || biomeX === MAP_SIZE - 1 || biomeY === 0 || biomeY === MAP_SIZE - 1) {
-          const boundary = new Boundary(this.entityManager);
-          boundary.setPosition({
-            x: biomeX * BIOME_SIZE * TILE_SIZE,
-            y: biomeY * BIOME_SIZE * TILE_SIZE,
-          });
-          boundary.setSize({
-            x: BIOME_SIZE * TILE_SIZE,
-            y: BIOME_SIZE * TILE_SIZE,
-          });
-          this.entityManager.addEntity(boundary);
-        }
       }
     }
 
@@ -179,21 +165,24 @@ export class MapManager {
   }
 
   private placeBiome(biomeX: number, biomeY: number) {
-    // Place water biomes around the edges
+    // Place forest biomes around the edges
     if (biomeX === 0 || biomeX === MAP_SIZE - 1 || biomeY === 0 || biomeY === MAP_SIZE - 1) {
-      // Place water biome
+      // Place forest biome
       for (let y = 0; y < BIOME_SIZE; y++) {
         for (let x = 0; x < BIOME_SIZE; x++) {
           const mapY = biomeY * BIOME_SIZE + y;
           const mapX = biomeX * BIOME_SIZE + x;
-          this.map[mapY][mapX] = TILE_IDS.WATER;
+          this.map[mapY][mapX] = TILE_IDS.FOREST;
         }
       }
       return;
     }
 
     // Adjust the center position for the campsite (now at 3,3 due to water border)
-    const biome = biomeX === 3 && biomeY === 3 ? Biomes.CAMPSITE : Biomes.FOREST;
+    const biome =
+      biomeX === Math.floor(MAP_SIZE / 2) && biomeY === Math.floor(MAP_SIZE / 2)
+        ? Biomes.CAMPSITE
+        : Biomes.FOREST;
 
     for (let y = 0; y < BIOME_SIZE; y++) {
       for (let x = 0; x < BIOME_SIZE; x++) {
