@@ -34,7 +34,7 @@ class GameServer {
   constructor(port: number = 3001) {
     this.entityManager = new EntityManager();
     this.mapManager = new MapManager(this.entityManager);
-    this.mapManager.loadMap("testing");
+    this.mapManager.generateMap();
     this.socketManager = new SocketManager(this.entityManager, this.mapManager, port);
     this.untilNextCycle = DAY_DURATION;
     this.isDay = true;
@@ -93,7 +93,9 @@ class GameServer {
   // TODO: This is a bit of a hack to get the game state to the client.
   // We should probably have a more elegant way to do this.
   private broadcastGameState(): void {
-    const rawEntities = [...this.entityManager.getEntities()].map((entity) => entity.serialize());
+    const rawEntities = [...this.entityManager.getEntities()]
+      .filter((entity) => !("isServerOnly" in entity))
+      .map((entity) => entity.serialize());
     const gameStateEvent = new GameStateEvent({
       entities: rawEntities,
       dayNumber: this.dayNumber,

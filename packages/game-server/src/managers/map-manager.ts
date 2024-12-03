@@ -1,98 +1,76 @@
-import { Tree } from "@/shared/entities/tree";
-import { Entities } from "../shared/entities";
+import { Tree } from "../shared/entities/tree";
 import { EntityManager } from "./entity-manager";
 import { Wall } from "@/shared/entities/wall";
 import { Zombie } from "@/shared/entities/zombie";
 import { Weapon } from "@/shared/entities/weapon";
+import { Boundary } from "../shared/entities/boundary";
 
-const MAPS = {
-  testing: {
-    entities: [
-      {
-        type: Entities.TREE,
-        position: { x: 40, y: 40 },
-      },
-      {
-        type: Entities.TREE,
-        position: { x: 60, y: 60 },
-      },
-      {
-        type: Entities.TREE,
-        position: { x: 80, y: 60 },
-      },
-      {
-        type: Entities.TREE,
-        position: { x: 60, y: 100 },
-      },
-      {
-        type: Entities.WALL,
-        position: { x: 100, y: 100 },
-      },
-      {
-        type: Entities.WALL,
-        position: { x: 40, y: 50 },
-      },
-      {
-        type: Entities.ZOMBIE,
-        position: { x: 80, y: 80 },
-      },
-      {
-        type: Entities.WEAPON,
-        weaponType: "Knife",
-        position: { x: 120, y: 120 },
-      },
-      {
-        type: Entities.WEAPON,
-        weaponType: "Pistol",
-        position: { x: 100, y: 120 },
-      },
-      {
-        type: Entities.WEAPON,
-        weaponType: "Shotgun",
-        position: { x: 100, y: 140 },
-      },
-      {
-        type: Entities.WEAPON,
-        weaponType: "Knife",
-        position: { x: 150, y: 100 },
-      },
-      {
-        type: Entities.WEAPON,
-        weaponType: "Pistol",
-        position: { x: 150, y: 120 },
-      },
-      {
-        type: Entities.WEAPON,
-        weaponType: "Shotgun",
-        position: { x: 150, y: 140 },
-      },
-    ],
-    map: [
-      [1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0],
-      [0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1],
-      [1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0],
-      [0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1],
-      [1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0],
-      [0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1],
-      [1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0],
-      [0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1],
-      [1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0],
-      [0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1],
-      [1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0],
-      [0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1],
-      [1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0],
-      [0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1],
-      [1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0],
-      [0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1],
-      [1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0],
-      [0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1],
-      [1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0],
-      [0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1],
-    ],
-  },
-} as const;
+export const TILE_IDS = {
+  GRASS1: 0,
+  GRASS2: 1,
+  FOREST: 2,
+  WATER: 3,
+};
 
-type MapId = keyof typeof MAPS;
+const Biomes = {
+  CAMPSITE: [
+    [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+    [0, 1, 1, 1, 1, 0, 0, 0, 0, 0, 1, 1, 1, 1, 0, 0],
+    [0, 1, 0, 0, 1, 0, 0, 0, 0, 0, 1, 0, 0, 1, 0, 0],
+    [0, 1, 0, 0, 1, 0, 0, 0, 0, 0, 1, 0, 0, 1, 0, 0],
+    [0, 1, 1, 1, 1, 0, 0, 0, 0, 0, 1, 1, 1, 1, 0, 0],
+    [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+    [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+    [0, 0, 0, 0, 0, 0, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0],
+    [0, 0, 0, 0, 0, 0, 1, 0, 1, 0, 0, 0, 0, 0, 0, 0],
+    [0, 0, 0, 0, 0, 0, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0],
+    [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+    [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+    [0, 1, 1, 1, 1, 0, 0, 0, 0, 0, 1, 1, 1, 1, 0, 0],
+    [0, 1, 0, 0, 1, 0, 0, 0, 0, 0, 1, 0, 0, 1, 0, 0],
+    [0, 1, 0, 0, 1, 0, 0, 0, 0, 0, 1, 0, 0, 1, 0, 0],
+    [0, 1, 1, 1, 1, 0, 0, 0, 0, 0, 1, 1, 1, 1, 0, 0],
+  ],
+  FOREST: [
+    [0, 2, 0, 2, 0, 2, 0, 0, 0, 0, 0, 2, 2, 0, 0, 0],
+    [0, 2, 2, 2, 0, 0, 0, 0, 0, 2, 2, 2, 2, 2, 0, 0],
+    [2, 2, 2, 0, 0, 0, 0, 0, 0, 2, 0, 2, 2, 2, 2, 2],
+    [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2, 0, 2, 2],
+    [0, 0, 0, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 0, 2],
+    [0, 0, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 2, 0, 0],
+    [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2, 0, 0, 0, 0, 0],
+    [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+    [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+    [0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+    [0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2, 0],
+    [0, 2, 0, 0, 0, 0, 0, 0, 0, 2, 0, 0, 0, 2, 2, 0],
+    [0, 2, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2, 0, 0],
+    [0, 2, 2, 0, 0, 0, 0, 0, 0, 0, 0, 2, 2, 2, 2, 0],
+    [2, 2, 2, 2, 0, 0, 2, 0, 0, 0, 2, 2, 2, 2, 2, 0],
+    [2, 2, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2, 2, 0, 2],
+  ],
+  WATER: [
+    [4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4],
+    [4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4],
+    [4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4],
+    [4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4],
+    [4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4],
+    [4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4],
+    [4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4],
+    [4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4],
+    [4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4],
+    [4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4],
+    [4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4],
+    [4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4],
+    [4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4],
+    [4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4],
+    [4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4],
+    [4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4],
+  ],
+};
+
+const BIOME_SIZE = 16;
+const MAP_SIZE = 7;
 
 export class MapManager {
   private map: number[][] = [];
@@ -106,29 +84,82 @@ export class MapManager {
     return this.map;
   }
 
-  loadMap(mapId: MapId) {
-    const mapToLoad = MAPS[mapId];
+  generateMap() {
     this.entityManager.clear();
-    this.map = mapToLoad.map.map((row) => [...row]);
 
-    for (const entity of mapToLoad.entities) {
-      const entityPosition = { ...entity.position };
-      if (entity.type === Entities.TREE) {
-        const tree = new Tree(this.entityManager);
-        tree.setPosition(entityPosition);
-        this.entityManager.addEntity(tree);
-      } else if (entity.type === Entities.WALL) {
-        const wall = new Wall(this.entityManager);
-        wall.setPosition(entityPosition);
-        this.entityManager.addEntity(wall);
-      } else if (entity.type === Entities.ZOMBIE) {
-        const zombie = new Zombie(this.entityManager);
-        zombie.setPosition(entityPosition);
-        this.entityManager.addEntity(zombie);
-      } else if (entity.type === Entities.WEAPON) {
-        const weapon = new Weapon(this.entityManager, entity.weaponType);
-        weapon.setPosition(entityPosition);
-        this.entityManager.addEntity(weapon);
+    const totalSize = BIOME_SIZE * MAP_SIZE;
+    this.map = Array(totalSize)
+      .fill(0)
+      .map(() => Array(totalSize).fill(0));
+
+    // Fill map with biomes
+    for (let biomeY = 0; biomeY < MAP_SIZE; biomeY++) {
+      for (let biomeX = 0; biomeX < MAP_SIZE; biomeX++) {
+        this.placeBiome(biomeX, biomeY);
+
+        // Create large boundary for water biomes
+        if (biomeX === 0 || biomeX === MAP_SIZE - 1 || biomeY === 0 || biomeY === MAP_SIZE - 1) {
+          const boundary = new Boundary(this.entityManager);
+          boundary.setPosition({
+            x: biomeX * BIOME_SIZE * 16,
+            y: biomeY * BIOME_SIZE * 16,
+          });
+          // Set size to cover entire biome (16x16 tiles)
+          boundary.setSize({
+            x: BIOME_SIZE * 16,
+            y: BIOME_SIZE * 16,
+          });
+          this.entityManager.addEntity(boundary);
+        }
+      }
+    }
+
+    // Create boundaries for forest tiles (keeping this as individual tiles)
+    for (let y = 0; y < totalSize; y++) {
+      for (let x = 0; x < totalSize; x++) {
+        if (this.map[y][x] === TILE_IDS.FOREST) {
+          const boundary = new Boundary(this.entityManager);
+          boundary.setPosition({ x: x * 16, y: y * 16 });
+          this.entityManager.addEntity(boundary);
+        }
+      }
+    }
+
+    // Spawn trees randomly in empty spaces
+    for (let y = 0; y < totalSize; y++) {
+      for (let x = 0; x < totalSize; x++) {
+        if ((this.map[y][x] === 0 || this.map[y][x] === 1) && Math.random() < 0.05) {
+          // 30% chance for a tree
+          const tree = new Tree(this.entityManager);
+          tree.setPosition({ x: x * 16, y: y * 16 }); // Assuming 32 is your tile size
+          this.entityManager.addEntity(tree);
+        }
+      }
+    }
+  }
+
+  private placeBiome(biomeX: number, biomeY: number) {
+    // Place water biomes around the edges
+    if (biomeX === 0 || biomeX === MAP_SIZE - 1 || biomeY === 0 || biomeY === MAP_SIZE - 1) {
+      // Place water biome
+      for (let y = 0; y < BIOME_SIZE; y++) {
+        for (let x = 0; x < BIOME_SIZE; x++) {
+          const mapY = biomeY * BIOME_SIZE + y;
+          const mapX = biomeX * BIOME_SIZE + x;
+          this.map[mapY][mapX] = TILE_IDS.WATER;
+        }
+      }
+      return;
+    }
+
+    // Adjust the center position for the campsite (now at 3,3 due to water border)
+    const biome = biomeX === 3 && biomeY === 3 ? Biomes.CAMPSITE : Biomes.FOREST;
+
+    for (let y = 0; y < BIOME_SIZE; y++) {
+      for (let x = 0; x < BIOME_SIZE; x++) {
+        const mapY = biomeY * BIOME_SIZE + y;
+        const mapX = biomeX * BIOME_SIZE + x;
+        this.map[mapY][mapX] = biome[y][x];
       }
     }
   }

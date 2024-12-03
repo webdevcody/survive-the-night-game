@@ -11,6 +11,10 @@ export interface Positionable {
   getCenterPosition: () => Vector2;
 }
 
+export interface ServerOnly {
+  isServerOnly: () => boolean;
+}
+
 export interface Movable {
   getVelocity: () => Vector2;
   setVelocity: (velocity: Vector2) => void;

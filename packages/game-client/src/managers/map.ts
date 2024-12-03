@@ -1,6 +1,10 @@
+import { TILE_IDS } from "@survive-the-night/game-server/src/managers/map-manager";
+
 const tileLocations: Record<string, [number, number]> = {
-  ["0"]: [4 * 16, 0],
-  ["1"]: [3 * 16, 2 * 16],
+  [TILE_IDS.GRASS1]: [4 * 16, 0],
+  [TILE_IDS.GRASS2]: [3 * 16, 2 * 16],
+  [TILE_IDS.FOREST]: [8 * 16, 2 * 16],
+  [TILE_IDS.WATER]: [9 * 16, 2 * 16],
 };
 
 export class MapManager {

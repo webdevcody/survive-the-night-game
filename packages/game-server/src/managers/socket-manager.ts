@@ -37,7 +37,7 @@ export class SocketManager {
     }
 
     if (this.players.size === 0) {
-      this.mapManager.loadMap("testing");
+      this.mapManager.generateMap();
     }
   }
 
@@ -54,10 +54,16 @@ export class SocketManager {
     console.log(`Player connected: ${socket.id}`);
 
     const player = new Player(this.entityManager);
+
+    const map = this.mapManager.getMap();
+    const centerX = (map.length * 16) / 2;
+    const centerY = (map[0].length * 16) / 2;
+    player.setPosition({ x: centerX, y: centerY });
+
     this.players.set(socket.id, player);
     this.entityManager.addEntity(player);
 
-    socket.emit(Events.MAP, this.mapManager.getMap());
+    socket.emit(Events.MAP, map);
     socket.emit(Events.YOUR_ID, player.getId());
 
     socket.on("playerInput", (input: Input) => this.onPlayerInput(socket, input));
