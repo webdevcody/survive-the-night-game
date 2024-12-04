@@ -9,7 +9,7 @@ import { MapManager } from "./managers/map";
 import { TreeClient } from "./entities/tree";
 import { GameState, getEntityById } from "./state";
 import { IClientEntity, Renderable } from "./entities/util";
-import { HotbarClient } from "./ui/hotbar";
+import { Hotbar } from "./ui/hotbar";
 import { BulletClient } from "./entities/bullet";
 import { StorageManager } from "./managers/storage";
 import { WallClient } from "./entities/wall";
@@ -32,7 +32,7 @@ export class GameClient {
   private reqId: number | null = null;
   private running = false;
   private mounted = true;
-  private hotbar: HotbarClient;
+  private hotbar: Hotbar;
 
   constructor(serverUrl: string, canvas: HTMLCanvasElement) {
     this.ctx = canvas.getContext("2d")!;
@@ -48,7 +48,7 @@ export class GameClient {
     this.mapManager = new MapManager();
     this.hud = new Hud();
     this.inputManager = new InputManager();
-    this.hotbar = new HotbarClient(this.assetManager, this.inputManager, () => {
+    this.hotbar = new Hotbar(this.assetManager, this.inputManager, () => {
       if (this.gameState.playerId) {
         const player = getEntityById(
           this.gameState,
