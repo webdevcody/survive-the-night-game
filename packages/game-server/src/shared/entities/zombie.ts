@@ -1,8 +1,8 @@
 import { EntityManager } from "../../managers/entity-manager";
-import { MapManager } from "../../managers/map-manager";
+import { MapManager, TILE_SIZE } from "../../managers/map-manager";
 import { Direction } from "../direction";
 import { Entity, Entities, RawEntity } from "../entities";
-import { Vector2, pathTowards } from "../physics";
+import { Vector2, pathTowards, velocityTowards } from "../physics";
 import { Damageable, Movable, Positionable, Updatable, Collidable, Hitbox } from "../traits";
 
 export class Zombie
@@ -17,6 +17,8 @@ export class Zombie
   private static readonly ZOMBIE_SPEED = 35;
   private health = 2;
   private mapManager: MapManager;
+  private currentWaypoint: Vector2 | null = null;
+  private static readonly POSITION_THRESHOLD = 1;
 
   constructor(entityManager: EntityManager, mapManager: MapManager) {
     super(entityManager, Entities.ZOMBIE);
@@ -24,11 +26,14 @@ export class Zombie
   }
 
   getCenterPosition(): Vector2 {
-    return this.position;
+    return {
+      x: this.position.x + Zombie.ZOMBIE_WIDTH / 2,
+      y: this.position.y + Zombie.ZOMBIE_HEIGHT / 2,
+    };
   }
 
   getHitbox(): Hitbox {
-    const amount = 2;
+    const amount = 4;
     return {
       x: this.position.x + amount,
       y: this.position.y + amount,
@@ -94,20 +99,37 @@ export class Zombie
     }
   }
 
+  private isAtWaypoint(): boolean {
+    if (!this.currentWaypoint) return true;
+
+    const dx = Math.abs(this.getCenterPosition().x - this.currentWaypoint.x);
+    const dy = Math.abs(this.getCenterPosition().y - this.currentWaypoint.y);
+
+    return dx <= Zombie.POSITION_THRESHOLD && dy <= Zombie.POSITION_THRESHOLD;
+  }
+
   update(deltaTime: number) {
     const player = this.getEntityManager().getClosestPlayer(this);
+    if (player === null) return;
 
-    if (player === null) {
-      return;
+    // Get new waypoint when we reach the current one or don't have one
+    if (this.isAtWaypoint()) {
+      this.currentWaypoint = pathTowards(
+        this.getCenterPosition(),
+        player.getCenterPosition(),
+        this.mapManager.getMap()
+      );
     }
 
-    const newVelocity = pathTowards(
-      this.getCenterPosition(),
-      player.getCenterPosition(),
-      this.mapManager.getMap()
-    );
-    this.velocity.x = newVelocity.x * Zombie.ZOMBIE_SPEED;
-    this.velocity.y = newVelocity.y * Zombie.ZOMBIE_SPEED;
+    // Update velocity to move towards waypoint if we have one
+    if (this.currentWaypoint) {
+      const velocityVector = velocityTowards(this.getCenterPosition(), this.currentWaypoint);
+      this.velocity.x = velocityVector.x * Zombie.ZOMBIE_SPEED;
+      this.velocity.y = velocityVector.y * Zombie.ZOMBIE_SPEED;
+    } else {
+      this.velocity.x = 0;
+      this.velocity.y = 0;
+    }
 
     this.handleMovement(deltaTime);
   }

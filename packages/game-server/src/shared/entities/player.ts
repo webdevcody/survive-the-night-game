@@ -51,7 +51,10 @@ export class Player extends Entity implements Movable, Positionable, Updatable, 
   }
 
   getCenterPosition(): Vector2 {
-    return this.position;
+    return {
+      x: this.position.x + Player.PLAYER_WIDTH / 2,
+      y: this.position.y + Player.PLAYER_HEIGHT / 2,
+    };
   }
 
   serialize(): RawEntity {

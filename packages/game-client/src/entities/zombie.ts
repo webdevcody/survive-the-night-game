@@ -5,6 +5,7 @@ import {
   determineDirection,
   roundVector2,
   Vector2,
+  DEBUG,
 } from "@survive-the-night/game-server";
 import { AssetManager } from "@/managers/asset";
 import { IClientEntity, Renderable } from "./util";
@@ -84,5 +85,23 @@ export class ZombieClient implements IClientEntity, Renderable, Positionable {
     ctx.fillStyle = "#00ff00";
     const healthPercentage = this.health / 2; // 2 is max health
     ctx.fillRect(renderPosition.x, healthBarY, healthBarWidth * healthPercentage, healthBarHeight);
+
+    if (DEBUG) {
+      const hitbox = {
+        x: renderPosition.x + 2,
+        y: renderPosition.y + 2,
+        width: 12,
+        height: 12,
+      };
+      ctx.strokeStyle = "yellow";
+      ctx.lineWidth = 1;
+      ctx.strokeRect(hitbox.x, hitbox.y, hitbox.width, hitbox.height);
+
+      // Draw centroid point
+      ctx.fillStyle = "yellow";
+      ctx.textAlign = "center";
+      ctx.font = "3px Arial";
+      ctx.fillText(".", renderPosition.x + 8, renderPosition.y + 8);
+    }
   }
 }

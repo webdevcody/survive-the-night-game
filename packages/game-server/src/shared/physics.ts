@@ -24,123 +24,122 @@ export function velocityTowards(a: Vector2, b: Vector2): Vector2 {
   };
 }
 
-type Node = {
+interface Node {
   x: number;
   y: number;
-  f: number;
-  g: number;
-  h: number;
+  g: number; // Cost from start to this node
+  h: number; // Estimated cost from this node to end
+  f: number; // g + h
   parent: Node | null;
-};
+}
 
-export function pathTowards(a: Vector2, b: Vector2, map: number[][]): Vector2 {
-  const startX = Math.floor((a.x + TILE_SIZE / 2) / TILE_SIZE);
-  const startY = Math.floor((a.y + TILE_SIZE / 2) / TILE_SIZE);
-  const endX = Math.floor((b.x + TILE_SIZE / 2) / TILE_SIZE);
-  const endY = Math.floor((b.y + TILE_SIZE / 2) / TILE_SIZE);
+export function pathTowards(a: Vector2, b: Vector2, map: number[][]): Vector2 | null {
+  const startX = Math.floor(a.x / TILE_SIZE);
+  const startY = Math.floor(a.y / TILE_SIZE);
+  const endX = Math.floor(b.x / TILE_SIZE);
+  const endY = Math.floor(b.y / TILE_SIZE);
 
-  console.log("\n=== Zombie Pathfinding Debug ===");
-  console.log(`Zombie world pos: (${a.x.toFixed(2)}, ${a.y.toFixed(2)})`);
-  console.log(
-    `Zombie center: (${(a.x + TILE_SIZE / 2).toFixed(2)}, ${(a.y + TILE_SIZE / 2).toFixed(2)})`
-  );
-  console.log(`Zombie grid pos: (${startX}, ${startY})`);
-  console.log(`Target world pos: (${b.x.toFixed(2)}, ${b.y.toFixed(2)})`);
-  console.log(
-    `Target center: (${(b.x + TILE_SIZE / 2).toFixed(2)}, ${(b.y + TILE_SIZE / 2).toFixed(2)})`
-  );
-  console.log(`Target grid pos: (${endX}, ${endY})`);
+  if (
+    endX < 0 ||
+    endX >= map[0].length ||
+    endY < 0 ||
+    endY >= map.length ||
+    map[endY][endX] === 2 // Forest tile ID
+  ) {
+    return null;
+  }
 
-  // Correct row-by-column access (map[y][x])
-  const canMoveLeft = startX > 0 && map[startY][startX - 1] <= 1;
-  const canMoveRight = startX < map[0].length - 1 && map[startY][startX + 1] <= 1;
-  const canMoveUp = startY > 0 && map[startY - 1][startX] <= 1;
-  const canMoveDown = startY < map.length - 1 && map[startY + 1][startX] <= 1;
+  const openSet: Node[] = [];
+  const closedSet = new Set<string>();
 
-  // Debug visualization with correct coordinates
-  console.log("\nSurrounding area (Z=Zombie, P=Player, #=Wall):");
-  for (let y = startY - 3; y <= startY + 3; y++) {
-    let row = "";
-    for (let x = startX - 3; x <= startX + 3; x++) {
-      if (x === startX && y === startY) {
-        row += "Z ";
-      } else if (x === endX && y === endY) {
-        row += "P ";
-      } else if (y >= 0 && y < map.length && x >= 0 && x < map[0].length) {
-        row += map[y][x] > 1 ? "# " : ". ";
+  openSet.push({
+    x: startX,
+    y: startY,
+    g: 0,
+    h: Math.abs(endX - startX) + Math.abs(endY - startY),
+    f: 0,
+    parent: null,
+  });
+
+  while (openSet.length > 0) {
+    let current = openSet[0];
+    let currentIndex = 0;
+    openSet.forEach((node, index) => {
+      if (node.f < current.f) {
+        current = node;
+        currentIndex = index;
+      }
+    });
+
+    if (current.x === endX && current.y === endY) {
+      // Find the first step in the path by traversing up the parent chain
+      let firstStep = current;
+      while (firstStep.parent && firstStep.parent.parent) {
+        firstStep = firstStep.parent;
+      }
+
+      // Return the center position of the next tile to move to
+      return {
+        x: firstStep.x * TILE_SIZE + TILE_SIZE / 2,
+        y: firstStep.y * TILE_SIZE + TILE_SIZE / 2,
+      };
+    }
+
+    openSet.splice(currentIndex, 1);
+    closedSet.add(`${current.x},${current.y}`);
+
+    const neighbors = [
+      { dx: 0, dy: -1 },
+      { dx: 1, dy: 0 },
+      { dx: 0, dy: 1 },
+      { dx: -1, dy: 0 },
+    ];
+
+    for (const { dx, dy } of neighbors) {
+      const newX = current.x + dx;
+      const newY = current.y + dy;
+
+      if (
+        newX < 0 ||
+        newX >= map[0].length ||
+        newY < 0 ||
+        newY >= map.length ||
+        map[newY][newX] >= 2 // Forest tile ID
+      ) {
+        continue;
+      }
+
+      if (closedSet.has(`${newX},${newY}`)) {
+        continue;
+      }
+
+      const g = current.g + 1;
+      const h = Math.abs(endX - newX) + Math.abs(endY - newY);
+      const f = g + h;
+
+      const existingNode = openSet.find((node) => node.x === newX && node.y === newY);
+      if (existingNode && g >= existingNode.g) {
+        continue;
+      }
+
+      if (!existingNode) {
+        openSet.push({
+          x: newX,
+          y: newY,
+          g,
+          h,
+          f,
+          parent: current,
+        });
       } else {
-        row += "X ";
+        existingNode.g = g;
+        existingNode.f = f;
+        existingNode.parent = current;
       }
     }
-    console.log(row);
   }
 
-  const dx = endX - startX;
-  const dy = endY - startY;
-  console.log(`\nDistance to target: dx=${dx}, dy=${dy}`);
-
-  // Check available moves using grid coordinates
-  console.log("Available moves:");
-  console.log(`  Left: ${canMoveLeft} (tile: ${startX > 0 ? map[startY][startX - 1] : "OOB"})`);
-  console.log(
-    `  Right: ${canMoveRight} (tile: ${
-      startX < map[0].length - 1 ? map[startY][startX + 1] : "OOB"
-    })`
-  );
-  console.log(`  Up: ${canMoveUp} (tile: ${startY > 0 ? map[startY - 1][startX] : "OOB"})`);
-  console.log(
-    `  Down: ${canMoveDown} (tile: ${startY < map.length - 1 ? map[startY + 1][startX] : "OOB"})`
-  );
-
-  // Simple movement logic - try to move in the direction that's both available and reduces distance
-  if (Math.abs(dx) > Math.abs(dy)) {
-    // Prefer horizontal movement
-    if (dx < 0 && canMoveLeft) {
-      console.log("Decision: Moving left (primary direction)");
-      return { x: -1, y: 0 };
-    }
-    if (dx > 0 && canMoveRight) {
-      console.log("Decision: Moving right (primary direction)");
-      return { x: 1, y: 0 };
-    }
-    // If horizontal blocked, try vertical
-    if (dy < 0 && canMoveUp) {
-      console.log("Decision: Moving up (secondary direction)");
-      return { x: 0, y: -1 };
-    }
-    if (dy > 0 && canMoveDown) {
-      console.log("Decision: Moving down (secondary direction)");
-      return { x: 0, y: 1 };
-    }
-  } else {
-    // Prefer vertical movement
-    if (dy < 0 && canMoveUp) {
-      console.log("Decision: Moving up (primary direction)");
-      return { x: 0, y: -1 };
-    }
-    if (dy > 0 && canMoveDown) {
-      console.log("Decision: Moving down (primary direction)");
-      return { x: 0, y: 1 };
-    }
-    // If vertical blocked, try horizontal
-    if (dx < 0 && canMoveLeft) {
-      console.log("Decision: Moving left (secondary direction)");
-      return { x: -1, y: 0 };
-    }
-    if (dx > 0 && canMoveRight) {
-      console.log("Decision: Moving right (secondary direction)");
-      return { x: 1, y: 0 };
-    }
-  }
-
-  // If no direct path, try any available move
-  if (canMoveLeft) return { x: -1, y: 0 };
-  if (canMoveRight) return { x: 1, y: 0 };
-  if (canMoveUp) return { x: 0, y: -1 };
-  if (canMoveDown) return { x: 0, y: 1 };
-
-  console.log("Decision: NO VALID MOVEMENT FOUND");
-  return { x: 0, y: 0 };
+  return null;
 }
 
 export function normalizeVector(vector: Vector2): Vector2 {

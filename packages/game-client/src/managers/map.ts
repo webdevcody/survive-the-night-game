@@ -1,3 +1,4 @@
+import { DEBUG } from "@survive-the-night/game-server";
 import { TILE_IDS } from "@survive-the-night/game-server/src/managers/map-manager";
 
 const tileLocations: Record<string, [number, number]> = {
@@ -43,6 +44,29 @@ export class MapManager {
           this.tileSize,
           this.tileSize
         );
+
+        if (DEBUG) {
+          // Draw row,col text
+          ctx.font = "3px Arial";
+          ctx.fillStyle = "white";
+          ctx.textAlign = "left";
+          ctx.fillText(`${y},${x}`, x * this.tileSize + 1, y * this.tileSize + 3);
+
+          // Draw a small 0 at the center of the tile
+          ctx.font = "3px Arial";
+          ctx.fillStyle = "white";
+          ctx.textAlign = "center";
+          ctx.fillText(
+            ".",
+            x * this.tileSize + this.tileSize / 2,
+            y * this.tileSize + this.tileSize / 2
+          );
+
+          // Draw white rectangle border around tile
+          ctx.strokeStyle = "white";
+          ctx.lineWidth = 0.5;
+          ctx.strokeRect(x * this.tileSize, y * this.tileSize, this.tileSize, this.tileSize);
+        }
       });
     });
   }

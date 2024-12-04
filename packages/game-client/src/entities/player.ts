@@ -6,6 +6,7 @@ import {
   Vector2,
   normalizeVector,
   InventoryItem,
+  DEBUG,
 } from "@survive-the-night/game-server";
 import { AssetManager, getItemAssetKey } from "../managers/asset";
 import { InputManager } from "@/managers/input";
@@ -85,6 +86,25 @@ export class PlayerClient implements IClientEntity, Renderable, Positionable {
 
     if (speed > 0) {
       this.renderArrow(ctx, image, renderPosition);
+    }
+
+    if (DEBUG) {
+      // Draw hitbox
+      const hitbox = {
+        x: renderPosition.x + 2,
+        y: renderPosition.y + 2,
+        width: 12,
+        height: 12,
+      };
+      ctx.strokeStyle = "blue";
+      ctx.lineWidth = 1;
+      ctx.strokeRect(hitbox.x, hitbox.y, hitbox.width, hitbox.height);
+
+      // Draw centroid point
+      ctx.fillStyle = "blue";
+      ctx.textAlign = "center";
+      ctx.font = "3px Arial";
+      ctx.fillText(".", renderPosition.x + 8, renderPosition.y + 8);
     }
   }
 
