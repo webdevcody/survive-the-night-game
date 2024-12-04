@@ -7,4 +7,4 @@ export * from "./shared/inventory";
 export * from "./shared/traits";
 export * from "./shared/direction";
 
-export const DEBUG = true;
+export const DEBUG = false;

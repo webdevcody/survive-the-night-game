@@ -88,13 +88,13 @@ export class Zombie
 
     this.position.x += this.velocity.x * deltaTime;
 
-    if (this.getEntityManager().isColliding(this)) {
+    if (this.getEntityManager().isColliding(this, [Entities.ZOMBIE])) {
       this.position.x = previousX;
     }
 
     this.position.y += this.velocity.y * deltaTime;
 
-    if (this.getEntityManager().isColliding(this)) {
+    if (this.getEntityManager().isColliding(this, [Entities.ZOMBIE])) {
       this.position.y = previousY;
     }
   }

@@ -163,6 +163,7 @@ export class MapManager {
       }
     }
 
+    // TEMP
     // Spawn a single zombie near the middle of the map
     const middleX = Math.floor(totalSize / 2) * TILE_SIZE;
     const middleY = Math.floor(totalSize / 2) * TILE_SIZE;
