@@ -1,5 +1,24 @@
 import { GameState } from "../state";
 
+const HUD_SETTINGS = {
+  ControlsList: {
+    innerText: "Harvest [E]\nCraft [Q]\nLeft [A]\nRight [D]\nDown [S]\nUp [W]",
+
+    background: "rgba(0, 0, 0, 0.8)",
+    color: "rgb(255, 255, 255)",
+    font: "32px Arial",
+    lineHeight: 40,
+    left: 20,
+    top: 20,
+    padding: {
+      bottom: 20,
+      left: 20,
+      right: 20,
+      top: 20,
+    },
+  },
+};
+
 export class Hud {
   constructor() {}
 
@@ -23,5 +42,64 @@ export class Hud {
     const gap = 50;
     ctx.fillText(dayText, width - dayTextWidth - margin, margin);
     ctx.fillText(cycleText, width - cycleTextWidth - margin, margin + gap);
+
+    this.renderControlsList(ctx);
+  }
+
+  public renderControlsList(ctx: CanvasRenderingContext2D): void {
+    ctx.save();
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+
+    ctx.font = HUD_SETTINGS.ControlsList.font;
+
+    const lines = HUD_SETTINGS.ControlsList.innerText.split("\n");
+    let maxLineWidth = 0;
+    let maxLineHeight = 0;
+
+    for (const line of lines) {
+      const metrics = ctx.measureText(line);
+
+      if (maxLineWidth < metrics.width) {
+        maxLineWidth = metrics.width;
+      }
+
+      if (maxLineHeight < metrics.fontBoundingBoxAscent + metrics.fontBoundingBoxDescent) {
+        maxLineHeight = metrics.fontBoundingBoxAscent + metrics.fontBoundingBoxDescent;
+      }
+    }
+
+    const lineHeight =
+      HUD_SETTINGS.ControlsList.lineHeight > maxLineHeight
+        ? HUD_SETTINGS.ControlsList.lineHeight
+        : maxLineHeight;
+
+    const height =
+      lineHeight * lines.length +
+      HUD_SETTINGS.ControlsList.padding.top +
+      HUD_SETTINGS.ControlsList.padding.bottom;
+
+    const width =
+      maxLineWidth +
+      HUD_SETTINGS.ControlsList.padding.left +
+      HUD_SETTINGS.ControlsList.padding.right;
+
+    ctx.fillStyle = HUD_SETTINGS.ControlsList.background;
+    ctx.fillRect(HUD_SETTINGS.ControlsList.left, HUD_SETTINGS.ControlsList.top, width, height);
+
+    ctx.textBaseline = "top";
+    ctx.fillStyle = HUD_SETTINGS.ControlsList.color;
+
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i];
+      const offsetTop = i * lineHeight + (HUD_SETTINGS.ControlsList.lineHeight - maxLineHeight) / 2;
+
+      ctx.fillText(
+        line,
+        HUD_SETTINGS.ControlsList.left + HUD_SETTINGS.ControlsList.padding.left,
+        offsetTop + HUD_SETTINGS.ControlsList.top + HUD_SETTINGS.ControlsList.padding.top
+      );
+    }
+
+    ctx.restore();
   }
 }
