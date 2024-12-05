@@ -2,7 +2,19 @@ import { GameState } from "../state";
 
 const HUD_SETTINGS = {
   ControlsList: {
-    innerText: "Harvest [E]\nCraft [Q]\nLeft [A]\nRight [D]\nDown [S]\nUp [W]",
+    innerText:
+      "Harvest [E]\n" +
+      "Craft [Q]\n" +
+      "Left [A]\n" +
+      "Right [D]\n" +
+      "Down [S]\n" +
+      "Up [W]\n" +
+      "Fire [SPACE]\n" +
+      "\n" +
+      "When Crafting:\n" +
+      "Down [S]\n" +
+      "Up [W]\n" +
+      "Craft [SPACE]",
 
     background: "rgba(0, 0, 0, 0.8)",
     color: "rgb(255, 255, 255)",

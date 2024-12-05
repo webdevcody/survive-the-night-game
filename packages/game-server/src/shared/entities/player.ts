@@ -10,6 +10,7 @@ import { normalizeVector, Vector2 } from "../physics";
 import { Direction } from "../direction";
 import { InventoryItem, ItemType } from "../inventory";
 import { Weapon } from "./weapon";
+import { recipes, RecipeType } from "../recipes";
 
 export const FIRE_COOLDOWN = 0.4;
 export const MAX_INVENTORY_SLOTS = 8;
@@ -113,6 +114,16 @@ export class Player extends Entity implements Movable, Positionable, Updatable, 
 
   setPosition(position: Vector2) {
     this.position = position;
+  }
+
+  craftRecipe(recipe: RecipeType): void {
+    const foundRecipe = recipes.find((it) => it.getType() === recipe);
+
+    if (foundRecipe === undefined) {
+      return;
+    }
+
+    this.inventory = foundRecipe.craft(this.inventory);
   }
 
   handleAttack(deltaTime: number) {
