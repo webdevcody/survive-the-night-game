@@ -5,6 +5,7 @@ import { EntityManager } from "./entity-manager";
 import { MapManager } from "./map-manager";
 import { Input } from "../server";
 import { Player } from "../shared/entities/player";
+import { RecipeType } from "@/shared/recipes";
 
 export class SocketManager {
   private io: Server;
@@ -41,6 +42,14 @@ export class SocketManager {
     }
   }
 
+  private onCraftRequest(socket: Socket, recipe: RecipeType): void {
+    const player = this.players.get(socket.id);
+
+    if (player) {
+      player.craftRecipe(recipe);
+    }
+  }
+
   private onPlayerInput(socket: Socket, input: Input): void {
     const player = this.players.get(socket.id);
 
@@ -67,6 +76,7 @@ export class SocketManager {
     socket.emit(Events.YOUR_ID, player.getId());
 
     socket.on("playerInput", (input: Input) => this.onPlayerInput(socket, input));
+    socket.on(Events.CRAFT_REQUEST, (recipe: RecipeType) => this.onCraftRequest(socket, recipe));
 
     socket.on("disconnect", () => {
       this.onDisconnect(socket);

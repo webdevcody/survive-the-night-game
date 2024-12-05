@@ -1,6 +1,7 @@
 import { RawEntity } from "./entities";
 
 export const Events = {
+  CRAFT_REQUEST: "craftRequest",
   GAME_STATE_UPDATE: "gameState",
   PLAYER_INPUT: "playerInput",
   MAP: "map",

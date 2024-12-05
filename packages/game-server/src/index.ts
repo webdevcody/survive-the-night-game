@@ -4,6 +4,7 @@ export * from "./shared/entities/player";
 export * from "./shared/entities/weapon";
 export * from "./shared/events";
 export * from "./shared/inventory";
+export * from "./shared/recipes";
 export * from "./shared/traits";
 export * from "./shared/direction";
 

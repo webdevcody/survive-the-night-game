@@ -23,7 +23,7 @@ const HOTBAR_SETTINGS = {
   },
 };
 
-export class HotbarClient implements Renderable {
+export class Hotbar implements Renderable {
   private assetManager: AssetManager;
   private inputManager: InputManager;
   private getInventory: () => InventoryItem[];

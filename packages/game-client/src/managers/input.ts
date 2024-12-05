@@ -1,6 +1,13 @@
 import { determineDirection, Direction } from "@survive-the-night/game-server";
 import { Input } from "@survive-the-night/game-server/src/server";
 
+export interface InputManagerOptions {
+  onCraft?: () => unknown;
+  onDown?: () => boolean;
+  onFire?: () => boolean;
+  onUp?: () => boolean;
+}
+
 export class InputManager {
   private hasChanged = false;
   private inputs: Input = {
@@ -21,17 +28,24 @@ export class InputManager {
     this.lastInputs = { ...this.inputs };
   }
 
-  constructor() {
+  constructor({ onCraft, onDown, onFire, onUp }: InputManagerOptions = {}) {
     window.addEventListener("keydown", (e) => {
       const eventKey = e.key.toLowerCase();
 
       switch (eventKey) {
+        case "q":
+          onCraft?.();
+          break;
         case "w":
-          this.inputs.dy = -1;
-          this.inputs.facing = Direction.Up;
+          if (!onUp?.()) {
+            this.inputs.dy = -1;
+            this.inputs.facing = Direction.Up;
+          }
           break;
         case "s":
-          this.inputs.dy = 1;
+          if (!onDown?.()) {
+            this.inputs.dy = 1;
+          }
           break;
         case "a":
           this.inputs.dx = -1;
@@ -43,7 +57,9 @@ export class InputManager {
           this.inputs.harvest = true;
           break;
         case " ":
-          this.inputs.fire = true;
+          if (!onFire?.()) {
+            this.inputs.fire = true;
+          }
           break;
         case "g":
           this.inputs.drop = true;

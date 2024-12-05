@@ -9,7 +9,8 @@ import { MapManager } from "./managers/map";
 import { TreeClient } from "./entities/tree";
 import { GameState, getEntityById } from "./state";
 import { IClientEntity, Renderable } from "./entities/util";
-import { HotbarClient } from "./ui/hotbar";
+import { Hotbar } from "./ui/hotbar";
+import { CraftingTable } from "./ui/crafting-table";
 import { BulletClient } from "./entities/bullet";
 import { StorageManager } from "./managers/storage";
 import { WallClient } from "./entities/wall";
@@ -27,12 +28,13 @@ export class GameClient {
   private latestEntities: EntityDto[] = [];
   private gameState: GameState;
   private hud: Hud;
+  private craftingTable: CraftingTable;
   private scale: number;
   private unmountQueue: Function[] = [];
   private reqId: number | null = null;
   private running = false;
   private mounted = true;
-  private hotbar: HotbarClient;
+  private hotbar: Hotbar;
 
   constructor(serverUrl: string, canvas: HTMLCanvasElement) {
     this.ctx = canvas.getContext("2d")!;
@@ -45,10 +47,7 @@ export class GameClient {
     this.cameraManager = new CameraManager(this.ctx);
     this.cameraManager.setScale(this.scale);
 
-    this.mapManager = new MapManager();
-    this.hud = new Hud();
-    this.inputManager = new InputManager();
-    this.hotbar = new HotbarClient(this.assetManager, this.inputManager, () => {
+    const getInventory = () => {
       if (this.gameState.playerId) {
         const player = getEntityById(
           this.gameState,
@@ -60,7 +59,43 @@ export class GameClient {
       }
 
       return [];
+    };
+
+    this.mapManager = new MapManager();
+    this.hud = new Hud();
+
+    this.craftingTable = new CraftingTable(this.assetManager, {
+      getInventory,
+      onCraft: (recipe) => {
+        this.socketManager.sendCraftRequest(recipe);
+      },
     });
+
+    this.inputManager = new InputManager({
+      onCraft: () => {
+        this.craftingTable.toggle();
+      },
+      onDown: () => {
+        if (this.craftingTable.isVisible()) {
+          this.craftingTable.onDown();
+        }
+        return this.craftingTable.isVisible();
+      },
+      onFire: () => {
+        if (this.craftingTable.isVisible()) {
+          this.craftingTable.onSelect();
+        }
+        return this.craftingTable.isVisible();
+      },
+      onUp: () => {
+        if (this.craftingTable.isVisible()) {
+          this.craftingTable.onUp();
+        }
+        return this.craftingTable.isVisible();
+      },
+    });
+
+    this.hotbar = new Hotbar(this.assetManager, this.inputManager, getInventory);
 
     this.gameState = {
       startedAt: Date.now(),
@@ -296,5 +331,6 @@ export class GameClient {
 
     this.hotbar.render(this.ctx, this.gameState);
     this.hud.render(this.ctx, this.gameState);
+    this.craftingTable.render(this.ctx, this.gameState);
   }
 }

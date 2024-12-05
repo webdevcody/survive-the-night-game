@@ -1,5 +1,5 @@
 import { io, Socket } from "socket.io-client";
-import { Events, GameStateEvent, InventoryItem } from "@survive-the-night/game-server";
+import { Events, GameStateEvent, RecipeType } from "@survive-the-night/game-server";
 
 export type EntityDto = { id: string } & any;
 
@@ -36,6 +36,10 @@ export class SocketManager {
     this.socket.on("disconnect", () => {
       console.log("Disconnected from game server");
     });
+  }
+
+  public sendCraftRequest(recipe: RecipeType) {
+    this.socket.emit(Events.CRAFT_REQUEST, recipe);
   }
 
   public sendInput(input: { dx: number; dy: number; harvest: boolean; fire: boolean }) {
