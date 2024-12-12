@@ -38,4 +38,15 @@ export interface Collidable {
 export interface Damageable {
   damage: (damage: number) => void;
   getHealth: () => number;
+  getDamageBox: () => Hitbox;
 }
+
+export const DamageableKey = "damage";
+
+export const IntersectionMethodIdentifiers = {
+  Collidable: "getHitbox",
+  Damageable: "getDamageBox",
+} as const;
+
+export type IntersectionMethodName =
+  (typeof IntersectionMethodIdentifiers)[keyof typeof IntersectionMethodIdentifiers];

@@ -11,6 +11,7 @@ import { Direction } from "../direction";
 import { InventoryItem, ItemType } from "../inventory";
 import { Weapon } from "./weapon";
 import { recipes, RecipeType } from "../recipes";
+import { DEBUG } from "../../index";
 
 export const FIRE_COOLDOWN = 0.4;
 export const MAX_INVENTORY_SLOTS = 8;
@@ -41,6 +42,15 @@ export class Player extends Entity implements Movable, Positionable, Updatable, 
 
   constructor(entityManager: EntityManager) {
     super(entityManager, Entities.PLAYER);
+    if (DEBUG) {
+      this.inventory = [
+        { key: "Knife" },
+        { key: "Pistol" },
+        { key: "Shotgun" },
+        { key: "Wood" },
+        { key: "Wall" },
+      ];
+    }
   }
 
   isInventoryFull(): boolean {

@@ -5,13 +5,16 @@ import {
   determineDirection,
   roundVector2,
   Vector2,
-  DEBUG,
+  Damageable,
+  Hitbox,
 } from "@survive-the-night/game-server";
 import { AssetManager } from "@/managers/asset";
 import { IClientEntity, Renderable } from "./util";
 import { GameState } from "@/state";
+import { debugDrawHitbox } from "../util/debug";
+import { Zombie } from "@survive-the-night/game-server/src/shared/entities/zombie";
 
-export class ZombieClient implements IClientEntity, Renderable, Positionable {
+export class ZombieClient implements IClientEntity, Renderable, Positionable, Damageable {
   private assetManager: AssetManager;
   private lastRenderPosition = { x: 0, y: 0 };
   private readonly LERP_FACTOR = 0.1;
@@ -43,6 +46,14 @@ export class ZombieClient implements IClientEntity, Renderable, Positionable {
     this.type = type;
   }
 
+  getHealth(): number {
+    return this.health;
+  }
+
+  damage(damage: number): void {
+    this.health -= damage;
+  }
+
   getPosition(): Vector2 {
     return this.position;
   }
@@ -57,6 +68,10 @@ export class ZombieClient implements IClientEntity, Renderable, Positionable {
 
   setVelocity(velocity: Vector2): void {
     this.velocity = velocity;
+  }
+
+  getDamageBox(): Hitbox {
+    return Zombie.getDamageBox(this.position);
   }
 
   render(ctx: CanvasRenderingContext2D, gameState: GameState): void {
@@ -86,22 +101,7 @@ export class ZombieClient implements IClientEntity, Renderable, Positionable {
     const healthPercentage = this.health / 2; // 2 is max health
     ctx.fillRect(renderPosition.x, healthBarY, healthBarWidth * healthPercentage, healthBarHeight);
 
-    if (DEBUG) {
-      const hitbox = {
-        x: renderPosition.x + 2,
-        y: renderPosition.y + 2,
-        width: 12,
-        height: 12,
-      };
-      ctx.strokeStyle = "yellow";
-      ctx.lineWidth = 1;
-      ctx.strokeRect(hitbox.x, hitbox.y, hitbox.width, hitbox.height);
-
-      // Draw centroid point
-      ctx.fillStyle = "yellow";
-      ctx.textAlign = "center";
-      ctx.font = "3px Arial";
-      ctx.fillText(".", renderPosition.x + 8, renderPosition.y + 8);
-    }
+    debugDrawHitbox(ctx, Zombie.getHitbox(this.position));
+    debugDrawHitbox(ctx, Zombie.getDamageBox(this.position), "red");
   }
 }

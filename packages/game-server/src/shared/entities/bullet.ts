@@ -4,7 +4,16 @@ import { Direction, normalizeDirection } from "../direction";
 import { Entities, RawEntity } from "../entities";
 import { Entity } from "../entities";
 import { Vector2, distance, normalizeVector } from "../physics";
-import { Collidable, Damageable, Hitbox, Movable, Positionable, Updatable } from "../traits";
+import {
+  Collidable,
+  Damageable,
+  DamageableKey,
+  Hitbox,
+  IntersectionMethodIdentifiers,
+  Movable,
+  Positionable,
+  Updatable,
+} from "../traits";
 
 const MAX_TRAVEL_DISTANCE = 400;
 
@@ -64,11 +73,14 @@ export class Bullet extends Entity implements Positionable, Movable, Updatable, 
       this.getEntityManager().markEntityForRemoval(this);
     }
 
-    const collidingWith = this.getEntityManager().isColliding(this);
-    if (collidingWith) {
+    const intersectingEntity = this.getEntityManager().getIntersectingEntityByType(
+      this,
+      IntersectionMethodIdentifiers.Damageable
+    );
+    if (intersectingEntity) {
       this.getEntityManager().markEntityForRemoval(this);
-      if ("damage" in collidingWith) {
-        const damageable = collidingWith as unknown as Damageable;
+      if (DamageableKey in intersectingEntity) {
+        const damageable = intersectingEntity as unknown as Damageable;
         damageable.damage(1);
       }
     }

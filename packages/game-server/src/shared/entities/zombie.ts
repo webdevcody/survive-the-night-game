@@ -1,13 +1,14 @@
 import { EntityManager } from "../../managers/entity-manager";
-import { MapManager, TILE_SIZE } from "../../managers/map-manager";
+import { MapManager } from "../../managers/map-manager";
 import { Direction } from "../direction";
 import { Entity, Entities, RawEntity } from "../entities";
 import { Vector2, pathTowards, velocityTowards } from "../physics";
 import { Damageable, Movable, Positionable, Updatable, Collidable, Hitbox } from "../traits";
+import { getHitboxWithPadding } from "./util";
 
 export class Zombie
   extends Entity
-  implements Damageable, Movable, Positionable, Updatable, Collidable
+  implements Damageable, Movable, Positionable, Updatable, Collidable, Damageable
 {
   public facing = Direction.Right;
   private position: Vector2 = { x: 0, y: 0 };
@@ -33,13 +34,19 @@ export class Zombie
   }
 
   getHitbox(): Hitbox {
-    const amount = 4;
-    return {
-      x: this.position.x + amount,
-      y: this.position.y + amount,
-      width: Zombie.ZOMBIE_WIDTH - amount * 2,
-      height: Zombie.ZOMBIE_HEIGHT - amount * 2,
-    };
+    return Zombie.getHitbox(this.position);
+  }
+
+  getDamageBox(): Hitbox {
+    return Zombie.getDamageBox(this.position);
+  }
+
+  static getDamageBox(position: Vector2): Hitbox {
+    return getHitboxWithPadding(position, 0);
+  }
+
+  static getHitbox(position: Vector2): Hitbox {
+    return getHitboxWithPadding(position, 4);
   }
 
   setVelocity(velocity: Vector2) {

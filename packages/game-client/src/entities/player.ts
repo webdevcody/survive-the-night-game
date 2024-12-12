@@ -6,14 +6,17 @@ import {
   Vector2,
   normalizeVector,
   InventoryItem,
-  DEBUG,
+  Damageable,
+  Hitbox,
 } from "@survive-the-night/game-server";
 import { AssetManager, getItemAssetKey } from "../managers/asset";
 import { InputManager } from "@/managers/input";
 import { IClientEntity, Renderable } from "./util";
 import { GameState } from "@/state";
+import { getHitboxWithPadding } from "@survive-the-night/game-server/src/shared/entities/util";
+import { debugDrawHitbox } from "../util/debug";
 
-export class PlayerClient implements IClientEntity, Renderable, Positionable {
+export class PlayerClient implements IClientEntity, Renderable, Positionable, Damageable {
   private assetManager: AssetManager;
   private inputManager: InputManager;
   private lastRenderPosition = { x: 0, y: 0 };
@@ -23,6 +26,7 @@ export class PlayerClient implements IClientEntity, Renderable, Positionable {
   private id: string;
   private type: EntityType;
   private readonly ARROW_LENGTH = 20;
+  private health = 10;
   private inventory: InventoryItem[] = [];
   private activeItem: InventoryItem | null = null;
 
@@ -69,6 +73,18 @@ export class PlayerClient implements IClientEntity, Renderable, Positionable {
     this.velocity = velocity;
   }
 
+  getDamageBox(): Hitbox {
+    return getHitboxWithPadding(this.position, 0);
+  }
+
+  damage(damage: number): void {
+    this.health -= damage;
+  }
+
+  getHealth(): number {
+    return this.health;
+  }
+
   render(ctx: CanvasRenderingContext2D, gameState: GameState): void {
     const targetPosition = this.getPosition();
     const { facing } = this.inputManager.getInputs();
@@ -88,24 +104,7 @@ export class PlayerClient implements IClientEntity, Renderable, Positionable {
       this.renderArrow(ctx, image, renderPosition);
     }
 
-    if (DEBUG) {
-      // Draw hitbox
-      const hitbox = {
-        x: renderPosition.x + 2,
-        y: renderPosition.y + 2,
-        width: 12,
-        height: 12,
-      };
-      ctx.strokeStyle = "blue";
-      ctx.lineWidth = 1;
-      ctx.strokeRect(hitbox.x, hitbox.y, hitbox.width, hitbox.height);
-
-      // Draw centroid point
-      ctx.fillStyle = "blue";
-      ctx.textAlign = "center";
-      ctx.font = "3px Arial";
-      ctx.fillText(".", renderPosition.x + 8, renderPosition.y + 8);
-    }
+    debugDrawHitbox(ctx, this.getDamageBox(), "red");
   }
 
   renderArrow(ctx: CanvasRenderingContext2D, image: HTMLImageElement, renderPosition: Vector2) {

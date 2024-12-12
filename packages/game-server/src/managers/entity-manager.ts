@@ -1,6 +1,15 @@
 import { distance, isColliding, Vector2 } from "../shared/physics";
 import { Entities, Entity, EntityType } from "../shared/entities";
-import { Collidable, Harvestable, Positionable, Updatable } from "../shared/traits";
+import {
+  Collidable,
+  Damageable,
+  FunctionIdentifier,
+  Harvestable,
+  IntersectionMethodIdentifiers,
+  IntersectionMethodName,
+  Positionable,
+  Updatable,
+} from "../shared/traits";
 import { Player } from "../shared/entities/player";
 import { SpatialGrid } from "./spatial-grid";
 
@@ -107,30 +116,56 @@ export class EntityManager {
     return players[closestPlayerIdx];
   }
 
-  isColliding(entity: Collidable, ignoreTypes?: EntityType[]): Collidable | null {
+  /**
+   * This function will return the first entity that intersects with the source entity, but it requires
+   * that the entity has a method with the name of the functionIdentifier.
+   */
+  getIntersectingEntityByType(
+    sourceEntity: Collidable,
+    functionIdentifier: IntersectionMethodName,
+    ignoreTypes?: EntityType[]
+  ): Collidable | Damageable | null {
     if (!this.spatialGrid) {
       return null;
     }
 
-    const nearbyEntities = this.spatialGrid.getNearbyEntities(entity.getPosition());
+    const nearbyEntities = this.spatialGrid.getNearbyEntities(sourceEntity.getPosition());
     for (const otherEntity of nearbyEntities) {
-      if ("getHitbox" in otherEntity) {
-        const collidable = otherEntity as unknown as Collidable;
+      if (ignoreTypes && ignoreTypes.includes(otherEntity.getType())) {
+        continue;
+      }
 
-        if (collidable === entity) {
+      const intersectionMethod = otherEntity[functionIdentifier] as any;
+      if (intersectionMethod) {
+        const targetEntity = otherEntity as unknown as Collidable;
+
+        if (targetEntity === sourceEntity) {
           continue;
         }
 
-        if (ignoreTypes && ignoreTypes.includes((collidable as unknown as Entity).getType())) {
-          continue;
-        }
-        if (isColliding(entity.getHitbox(), collidable.getHitbox())) {
-          return collidable;
+        if (isColliding(sourceEntity.getHitbox(), intersectionMethod.call(targetEntity))) {
+          return targetEntity;
         }
       }
     }
 
     return null;
+  }
+
+  isColliding(sourceEntity: Collidable, ignoreTypes?: EntityType[]): Collidable | null {
+    return this.getIntersectingEntityByType(
+      sourceEntity,
+      IntersectionMethodIdentifiers.Collidable,
+      ignoreTypes
+    ) as Collidable | null;
+  }
+
+  isDamaging(sourceEntity: Collidable, ignoreTypes?: EntityType[]): Damageable | null {
+    return this.getIntersectingEntityByType(
+      sourceEntity,
+      IntersectionMethodIdentifiers.Damageable,
+      ignoreTypes
+    ) as Damageable | null;
   }
 
   update(deltaTime: number) {
