@@ -1,4 +1,4 @@
-import { Vector2 } from "@survive-the-night/game-server";
+import { Positionable, Vector2 } from "@survive-the-night/game-server";
 import { GameState } from "../state";
 
 export interface Animation {
@@ -48,4 +48,27 @@ export function animate(startedAt: number, position: Vector2, animation: Animati
     x: position.x + x0 + (x1 - x0) * frameProgress,
     y: position.y + y0 + (y1 - y0) * frameProgress,
   };
+}
+
+export function drawHealthBar(
+  ctx: CanvasRenderingContext2D,
+  positionable: Positionable,
+  health: number,
+  maxHealth: number
+) {
+  const healthBarWidth = 16;
+  const healthBarHeight = 2;
+  const healthBarY = positionable.getPosition().y - healthBarHeight - 2;
+
+  ctx.fillStyle = "#ff0000";
+  ctx.fillRect(positionable.getPosition().x, healthBarY, healthBarWidth, healthBarHeight);
+
+  ctx.fillStyle = "#00ff00";
+  const healthPercentage = health / maxHealth;
+  ctx.fillRect(
+    positionable.getPosition().x,
+    healthBarY,
+    healthBarWidth * healthPercentage,
+    healthBarHeight
+  );
 }

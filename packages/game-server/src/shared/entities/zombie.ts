@@ -16,10 +16,14 @@ export class Zombie
   private static readonly ZOMBIE_WIDTH = 16;
   private static readonly ZOMBIE_HEIGHT = 16;
   private static readonly ZOMBIE_SPEED = 35;
-  private health = 2;
+  private health = 3;
   private mapManager: MapManager;
   private currentWaypoint: Vector2 | null = null;
   private static readonly POSITION_THRESHOLD = 1;
+  private static readonly ATTACK_RADIUS = 24;
+  private static readonly ATTACK_DAMAGE = 1;
+  private static readonly ATTACK_COOLDOWN = 1000; // 1 second in milliseconds
+  private lastAttackTime = 0;
 
   constructor(entityManager: EntityManager, mapManager: MapManager) {
     super(entityManager, Entities.ZOMBIE);
@@ -35,6 +39,10 @@ export class Zombie
 
   getHitbox(): Hitbox {
     return Zombie.getHitbox(this.position);
+  }
+
+  getMaxHealth(): number {
+    return 3;
   }
 
   getDamageBox(): Hitbox {
@@ -115,9 +123,27 @@ export class Zombie
     return dx <= Zombie.POSITION_THRESHOLD && dy <= Zombie.POSITION_THRESHOLD;
   }
 
+  private attackNearbyPlayer() {
+    const player = this.getEntityManager().getClosestAlivePlayer(this);
+    if (!player) return;
+
+    const currentTime = Date.now();
+    if (currentTime - this.lastAttackTime < Zombie.ATTACK_COOLDOWN) return;
+
+    const distance = Math.hypot(
+      player.getCenterPosition().x - this.getCenterPosition().x,
+      player.getCenterPosition().y - this.getCenterPosition().y
+    );
+
+    if (distance <= Zombie.ATTACK_RADIUS) {
+      player.damage(Zombie.ATTACK_DAMAGE);
+      this.lastAttackTime = currentTime;
+    }
+  }
+
   update(deltaTime: number) {
-    const player = this.getEntityManager().getClosestPlayer(this);
-    if (player === null) return;
+    const player = this.getEntityManager().getClosestAlivePlayer(this);
+    if (!player) return;
 
     // Get new waypoint when we reach the current one or don't have one
     if (this.isAtWaypoint()) {
@@ -139,5 +165,8 @@ export class Zombie
     }
 
     this.handleMovement(deltaTime);
+
+    // Add attack check
+    this.attackNearbyPlayer();
   }
 }

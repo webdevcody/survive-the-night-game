@@ -116,6 +116,30 @@ export class EntityManager {
     return players[closestPlayerIdx];
   }
 
+  getClosestAlivePlayer(entity: Positionable): Player | null {
+    const players = this.getPlayerEntities().filter((player) => !player.isDead());
+
+    if (players.length === 0) {
+      return null;
+    }
+
+    const entityPosition = entity.getPosition();
+    let closestPlayerIdx = 0;
+    let closestPlayerDistance = distance(entityPosition, players[closestPlayerIdx].getPosition());
+
+    for (let i = 1; i < players.length; i++) {
+      const player = players[i];
+      const playerDistance = distance(entityPosition, player.getPosition());
+
+      if (playerDistance < closestPlayerDistance && !player.isDead()) {
+        closestPlayerIdx = i;
+        closestPlayerDistance = playerDistance;
+      }
+    }
+
+    return players[closestPlayerIdx];
+  }
+
   /**
    * This function will return the first entity that intersects with the source entity, but it requires
    * that the entity has a method with the name of the functionIdentifier.

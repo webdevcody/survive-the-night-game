@@ -39,6 +39,8 @@ export interface Damageable {
   damage: (damage: number) => void;
   getHealth: () => number;
   getDamageBox: () => Hitbox;
+  isDead: () => boolean;
+  getMaxHealth: () => number;
 }
 
 export const DamageableKey = "damage";

@@ -8,10 +8,11 @@ import {
   InventoryItem,
   Damageable,
   Hitbox,
+  MAX_HEALTH,
 } from "@survive-the-night/game-server";
 import { AssetManager, getItemAssetKey } from "../managers/asset";
 import { InputManager } from "@/managers/input";
-import { IClientEntity, Renderable } from "./util";
+import { drawHealthBar, IClientEntity, Renderable } from "./util";
 import { GameState } from "@/state";
 import { getHitboxWithPadding } from "@survive-the-night/game-server/src/shared/entities/util";
 import { debugDrawHitbox } from "../util/debug";
@@ -26,7 +27,7 @@ export class PlayerClient implements IClientEntity, Renderable, Positionable, Da
   private id: string;
   private type: EntityType;
   private readonly ARROW_LENGTH = 20;
-  private health = 10;
+  private health = MAX_HEALTH;
   private inventory: InventoryItem[] = [];
   private activeItem: InventoryItem | null = null;
 
@@ -43,6 +44,14 @@ export class PlayerClient implements IClientEntity, Renderable, Positionable, Da
 
   getId(): string {
     return this.id;
+  }
+
+  getMaxHealth(): number {
+    return MAX_HEALTH;
+  }
+
+  isDead(): boolean {
+    return this.health <= 0;
   }
 
   setId(id: string): void {
@@ -88,21 +97,33 @@ export class PlayerClient implements IClientEntity, Renderable, Positionable, Da
   render(ctx: CanvasRenderingContext2D, gameState: GameState): void {
     const targetPosition = this.getPosition();
     const { facing } = this.inputManager.getInputs();
-    const image = this.assetManager.getWithDirection("Player", facing);
+    const image = this.assetManager.getWithDirection("Player", this.isDead() ? "down" : facing);
 
     this.lastRenderPosition.x += (targetPosition.x - this.lastRenderPosition.x) * this.LERP_FACTOR;
     this.lastRenderPosition.y += (targetPosition.y - this.lastRenderPosition.y) * this.LERP_FACTOR;
 
     const renderPosition = roundVector2(this.lastRenderPosition);
 
-    ctx.drawImage(image, renderPosition.x, renderPosition.y);
-    this.renderWeapon(ctx, renderPosition);
+    ctx.save();
+
+    if (this.isDead()) {
+      ctx.translate(renderPosition.x + image.width / 2, renderPosition.y + image.height / 2);
+      ctx.rotate(Math.PI / 2);
+      ctx.drawImage(image, -image.width / 2, -image.height / 2);
+    } else {
+      ctx.drawImage(image, renderPosition.x, renderPosition.y);
+      this.renderWeapon(ctx, renderPosition);
+    }
+
+    ctx.restore();
 
     const speed = Math.sqrt(this.velocity.x * this.velocity.x + this.velocity.y * this.velocity.y);
 
-    if (speed > 0) {
+    if (speed > 0 && !this.isDead()) {
       this.renderArrow(ctx, image, renderPosition);
     }
+
+    drawHealthBar(ctx, this, this.health, this.getMaxHealth());
 
     debugDrawHitbox(ctx, this.getDamageBox(), "red");
   }

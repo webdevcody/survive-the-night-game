@@ -9,7 +9,7 @@ import {
   Hitbox,
 } from "@survive-the-night/game-server";
 import { AssetManager } from "@/managers/asset";
-import { IClientEntity, Renderable } from "./util";
+import { drawHealthBar, IClientEntity, Renderable } from "./util";
 import { GameState } from "@/state";
 import { debugDrawHitbox } from "../util/debug";
 import { Zombie } from "@survive-the-night/game-server/src/shared/entities/zombie";
@@ -22,12 +22,16 @@ export class ZombieClient implements IClientEntity, Renderable, Positionable, Da
   private velocity: Vector2 = { x: 0, y: 0 };
   private id: string;
   private type: EntityType;
-  private health = 2;
+  private health = 3;
 
   constructor(id: string, assetManager: AssetManager) {
     this.id = id;
     this.type = Entities.ZOMBIE;
     this.assetManager = assetManager;
+  }
+
+  getMaxHealth(): number {
+    return 3;
   }
 
   getId(): string {
@@ -87,19 +91,7 @@ export class ZombieClient implements IClientEntity, Renderable, Positionable, Da
     const image = this.assetManager.getWithDirection("Zombie", direction);
     ctx.drawImage(image, renderPosition.x, renderPosition.y);
 
-    // Draw health bar
-    const healthBarWidth = 16; // Same as zombie width
-    const healthBarHeight = 2;
-    const healthBarY = renderPosition.y - healthBarHeight - 2; // 2 pixels above zombie
-
-    // Background (red)
-    ctx.fillStyle = "#ff0000";
-    ctx.fillRect(renderPosition.x, healthBarY, healthBarWidth, healthBarHeight);
-
-    // Foreground (green) - scales with health
-    ctx.fillStyle = "#00ff00";
-    const healthPercentage = this.health / 2; // 2 is max health
-    ctx.fillRect(renderPosition.x, healthBarY, healthBarWidth * healthPercentage, healthBarHeight);
+    drawHealthBar(ctx, this, this.health, this.getMaxHealth());
 
     debugDrawHitbox(ctx, Zombie.getHitbox(this.position));
     debugDrawHitbox(ctx, Zombie.getDamageBox(this.position), "red");

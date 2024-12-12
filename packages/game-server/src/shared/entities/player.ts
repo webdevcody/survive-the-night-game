@@ -4,7 +4,7 @@ import { EntityManager } from "../../managers/entity-manager";
 import { Bullet } from "./bullet";
 import { Tree } from "./tree";
 import { Wall } from "./wall";
-import { Collidable, Harvestable, Hitbox } from "../traits";
+import { Collidable, Damageable, Harvestable, Hitbox } from "../traits";
 import { Movable, Positionable, Updatable } from "../traits";
 import { normalizeVector, Vector2 } from "../physics";
 import { Direction } from "../direction";
@@ -16,8 +16,12 @@ import { DEBUG } from "../../index";
 export const FIRE_COOLDOWN = 0.4;
 export const MAX_INVENTORY_SLOTS = 8;
 export const MAX_HARVEST_RADIUS = 20;
+export const MAX_HEALTH = 3;
 
-export class Player extends Entity implements Movable, Positionable, Updatable, Collidable {
+export class Player
+  extends Entity
+  implements Movable, Positionable, Updatable, Collidable, Damageable
+{
   private fireCooldown = 0;
   private dropCooldown = 0;
   private harvestCooldown = 0;
@@ -39,6 +43,7 @@ export class Player extends Entity implements Movable, Positionable, Updatable, 
   private static readonly PLAYER_SPEED = 60;
   private static readonly DROP_COOLDOWN = 0.5;
   private static readonly HARVEST_COOLDOWN = 0.5;
+  private health = MAX_HEALTH;
 
   constructor(entityManager: EntityManager) {
     super(entityManager, Entities.PLAYER);
@@ -51,6 +56,31 @@ export class Player extends Entity implements Movable, Positionable, Updatable, 
         { key: "Wall" },
       ];
     }
+  }
+
+  isDead(): boolean {
+    return this.health <= 0;
+  }
+
+  getHealth(): number {
+    return this.health;
+  }
+
+  getMaxHealth(): number {
+    return MAX_HEALTH;
+  }
+
+  getDamageBox(): Hitbox {
+    return {
+      x: this.position.x,
+      y: this.position.y,
+      width: Player.PLAYER_WIDTH,
+      height: Player.PLAYER_HEIGHT,
+    };
+  }
+
+  damage(damage: number): void {
+    this.health = Math.max(this.health - damage, 0);
   }
 
   isInventoryFull(): boolean {
@@ -75,6 +105,7 @@ export class Player extends Entity implements Movable, Positionable, Updatable, 
       activeItem: this.activeItem,
       position: this.position,
       velocity: this.velocity,
+      health: this.health,
     };
   }
 
@@ -247,6 +278,10 @@ export class Player extends Entity implements Movable, Positionable, Updatable, 
   }
 
   update(deltaTime: number) {
+    if (this.isDead()) {
+      return;
+    }
+
     if (this.input.inventoryItem !== null) {
       this.activeItem = this.inventory[this.input.inventoryItem - 1];
     }
