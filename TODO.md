@@ -1,19 +1,62 @@
-High Priority (Core Mechanics):
+# For once in my life, finish one single game!
 
-- [ ] a user shall be able to run using shift
-- [ ] a user shall be able to see stamina bar which recharges slowly over time
+Feel free to pick any item listed out here to work on.
+
+## High Priority (Core Mechanics):
+
+### Gameplay
+
+- [ ] a zombie can attack walls (walls have hp)
 - [ ] if all players die, the game ends
 - [ ] show a message that the players lost, and show a leaderboard with how many kills each player got
 - [ ] add in melee weapon logic
 - [ ] when a player is killed, notify all players in the game a player has died
 - [ ] players should be able to revive other dead players
+- [ ] the guns should need ammo to fire
+- [ ] a player should be able to pick up multiple guns (could later sell at the merchant or give other friends)
+- [ ] items should have a weight associated with them
+- [ ] your inventory weight should slow you down
+- [ ] a player should be able to leave the game
+
+### HUD
+
+- [ ] make the player health look nicer (could use hearts like zelda, or progress bar like in the game "dying light")
+- [ ] add a way to toggle the instructions on and off
+- [ ] add a nice indicator for the day / night cycle (could use a sun and moon icon; checkout don't starve together)
+
+### Lobby
+
 - [ ] a user shall be able to browse lobbies
 - [ ] a user shall be able to join a lobby
 - [ ] a user shall be able to create a new lobby
 - [ ] a lobby leader shall be able to start the game
 - [ ] a lobby leader shall be able to leave the lobby (which will promote another user to the leader)
 
-Medium Priority (Enhancements):
+### Map Generation
+
+- [ ] create a "farm" zone which has a small farm building, a tractor, and trees
+- [ ] create a "city" zone which has a building and roads
+- [ ] create a "road" zone which is used to connect cities and farms (road going up or down)
+- [ ] generate larger maps containing farms, cities, and roads that connect them.
+
+### Game Feel
+
+- [ ] the player should have a running animation (keep it simple), 2 frames with legs going up and down
+- [ ] the zombies need running animations as well
+- [ ] need sound effects for
+  - [ ] zombie attacking
+  - [ ] zombie dying
+  - [ ] zombie walking
+  - [ ] player dying
+  - [ ] player attacking
+  - [ ] player shooting
+  - [ ] player walking
+  - [ ] new items crafted
+  - [ ] items picked up
+  - [ ] items dropped
+  - [ ] ambient background music that can be turned off
+
+## Medium Priority (Enhancements):
 
 - [ ] a user shall be able to see a mini map which helps them know where they are
 - [ ] a user can search a dead zombie body for items (randomly drop items)
@@ -23,20 +66,22 @@ Medium Priority (Enhancements):
 - [ ] add in lighting / flashlight (maybe look into shaders?)
 - [ ] a player can pick a custom name to display over his head
 - [ ] a player can chat with other players in their game via text
+- [ ] a user shall be able to see stamina bar which recharges slowly over time
+- [ ] a user shall be able to run using shift
 
-Low Priority (Polish):
+## Low Priority (Polish):
 
 - [ ] use scroll wheel instead of +/- buttons
 - [ ] display user friendly message whenever there's a connection problem
 
-Refactoring (Tech Debt Plz Fix):
+## Refactoring (Tech Debt Plz Fix):
 
 - [ ] after saving game-client changes, the changes are not reflected in the dashboard until a hard refresh. it would be better if it was hot reloaded
 - [ ] needing to place the images inside the next project when they belong to the client feels strange; I'm not sure if static asset bundling is a better approach
 - [ ] sometimes auto import will not work depending on if you are editing a file in the client or server. It's like the types don't get picked up correctly between the sub projects.
 - [ ] apply delta compression to the server game state updates
 
-Completed (Let's GO!):
+## Completed (Let's GO!):
 
 - [x] a user can drop items from their inventory
 - [x] a user shall be able to harvest trees
