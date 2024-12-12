@@ -107,9 +107,11 @@ export class PlayerClient implements IClientEntity, Renderable, Positionable, Da
     ctx.save();
 
     if (this.isDead()) {
+      ctx.globalAlpha = 0.7;
       ctx.translate(renderPosition.x + image.width / 2, renderPosition.y + image.height / 2);
       ctx.rotate(Math.PI / 2);
       ctx.drawImage(image, -image.width / 2, -image.height / 2);
+      ctx.globalAlpha = 1.0;
     } else {
       ctx.drawImage(image, renderPosition.x, renderPosition.y);
       this.renderWeapon(ctx, renderPosition);
