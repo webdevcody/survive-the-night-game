@@ -3,6 +3,7 @@ import {
   Entities,
   EntityType,
   MAX_HARVEST_RADIUS,
+  Player,
   Positionable,
   Vector2,
   WeaponType,
@@ -82,7 +83,10 @@ export class WeaponClient implements Renderable, Animatable, Positionable, IClie
     const image = this.assetManager.get(this.weaponType);
     const myPlayer = getEntityById(gameState, gameState.playerId) as Positionable | undefined;
 
-    if (myPlayer && distance(myPlayer.getPosition(), this.getPosition()) < MAX_HARVEST_RADIUS) {
+    if (
+      myPlayer &&
+      distance(myPlayer.getPosition(), this.getPosition()) < Player.MAX_INTERACT_RADIUS
+    ) {
       ctx.fillStyle = "white";
       ctx.font = "6px Arial";
       const text = "pick up (e)";

@@ -62,16 +62,11 @@ export class TreeClient implements Renderable, Positionable, IClientEntity {
     if (myPlayer && distance(myPlayer.getPosition(), this.getPosition()) < MAX_HARVEST_RADIUS) {
       ctx.fillStyle = "white";
       ctx.font = "6px Arial";
-      const text = "harvest (e)";
+      const text = "pick up (e)";
       const textWidth = ctx.measureText(text).width;
       ctx.fillText(text, this.getCenterPosition().x - textWidth / 2, this.getPosition().y - 3);
     }
 
     ctx.drawImage(image, this.getPosition().x, this.getPosition().y);
-
-    // hitbox
-    // const serverPosition = roundVector2(targetPosition);
-    // ctx.fillStyle = "red";
-    // ctx.fillRect(serverPosition.x, serverPosition.y, 10, 10);
   }
 }

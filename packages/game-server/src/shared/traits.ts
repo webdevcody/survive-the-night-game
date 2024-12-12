@@ -1,9 +1,11 @@
 import { Vector2 } from "./physics";
 import { Player } from "./entities/player";
 
-export interface Harvestable {
-  harvest(player: Player): void;
+export interface Interactable {
+  interact(player: Player): void;
 }
+
+export const InteractableKey = "interact";
 
 export interface Positionable {
   getPosition: () => Vector2;

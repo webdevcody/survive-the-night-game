@@ -10,7 +10,7 @@ export type Input = {
   facing: Direction;
   dx: number;
   dy: number;
-  harvest: boolean;
+  interact: boolean;
   fire: boolean;
   inventoryItem: number;
   drop: boolean;

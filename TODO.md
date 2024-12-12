@@ -4,10 +4,21 @@ Feel free to pick any item listed out here to work on.
 
 ## High Priority (Core Mechanics):
 
+### Refactoring
+
+- [ ] find a way to reduce the amount of duplicate code
+- [ ] the client entities feels very duplicates to the server entities, find a way reuse code maybe?
+- [ ] sometimes when doing @ imports, the entire app breaks forcing us to use relative... figure out why
+- [ ] serialize should be more automated, I often forget to update it when I add new properties
+
+### Bugs
+
+- [ ] when DEBUG = true, all the HUD overlays seem to shift, including the "pickup (e)" text over items
+
 ### Gameplay
 
-- [ ] a zombie can attack walls (walls have hp)
-- [ ] if all players die, the game ends
+- [ ] during daytime, zombies should just wander around randomly, but will attack players if they get close
+- [ ] if ALL players die, the game ends
 - [ ] show a message that the players lost, and show a leaderboard with how many kills each player got
 - [ ] add in melee weapon logic
 - [ ] when a player is killed, notify all players in the game a player has died
@@ -102,3 +113,6 @@ Feel free to pick any item listed out here to work on.
 - [x] a user can pick up wood and place into inventory
 - [x] a user can build a barricade using wood
 - [x] a user can fire in the direction they are facing
+- [x] a zombie can attack walls (walls have hp)
+- [x] picking up a damaged walled shouldn't restore it's health back to full when replacing
+- [x] when picking up items, it should pick up the CLOSEST item first

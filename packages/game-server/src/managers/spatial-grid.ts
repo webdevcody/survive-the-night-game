@@ -1,5 +1,5 @@
 import { Positionable } from "..";
-import { Entity } from "../shared/entities";
+import { Entity, EntityType } from "../shared/entities";
 import { Vector2 } from "../shared/physics";
 
 export class SpatialGrid {
@@ -43,7 +43,11 @@ export class SpatialGrid {
     return y >= 0 && y < this.cells.length && x >= 0 && x < this.cells[0].length;
   }
 
-  getNearbyEntities(position: Vector2, radius: number = this.cellSize): Entity[] {
+  getNearbyEntities(
+    position: Vector2,
+    radius: number = this.cellSize,
+    filter?: EntityType[]
+  ): Entity[] {
     const [cellX, cellY] = this.getCellCoords(position);
     const cellRadius = Math.ceil(radius / this.cellSize);
     const nearby: Entity[] = [];
@@ -54,7 +58,12 @@ export class SpatialGrid {
         const checkY = cellY + y;
 
         if (this.isValidCell(checkX, checkY)) {
-          this.cells[checkY][checkX].forEach((entity) => nearby.push(entity));
+          this.cells[checkY][checkX].forEach((entity) => {
+            if (filter && !filter.includes(entity.getType())) {
+              return;
+            }
+            nearby.push(entity);
+          });
         }
       }
     }

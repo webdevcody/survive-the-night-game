@@ -38,6 +38,28 @@ export class Bullet extends Entity implements Positionable, Movable, Updatable, 
     };
   }
 
+  setDirectionWithOffset(direction: Direction, offsetAngle: number) {
+    const normalized = normalizeDirection(direction);
+
+    // Convert offsetAngle from degrees to radians
+    const radians = (offsetAngle * Math.PI) / 180;
+
+    // Apply rotation to the normalized vector
+    const cos = Math.cos(radians);
+    const sin = Math.sin(radians);
+
+    const rotatedX = normalized.x * cos - normalized.y * sin;
+    const rotatedY = normalized.x * sin + normalized.y * cos;
+
+    // Normalize the rotated vector
+    const length = Math.sqrt(rotatedX * rotatedX + rotatedY * rotatedY);
+
+    this.velocity = {
+      x: (rotatedX / length) * Bullet.BULLET_SPEED,
+      y: (rotatedY / length) * Bullet.BULLET_SPEED,
+    };
+  }
+
   getHitbox(): Hitbox {
     return {
       ...this.position,
@@ -75,7 +97,8 @@ export class Bullet extends Entity implements Positionable, Movable, Updatable, 
 
     const intersectingEntity = this.getEntityManager().getIntersectingEntityByType(
       this,
-      IntersectionMethodIdentifiers.Damageable
+      IntersectionMethodIdentifiers.Damageable,
+      [Entities.WALL]
     );
     if (intersectingEntity) {
       this.getEntityManager().markEntityForRemoval(this);

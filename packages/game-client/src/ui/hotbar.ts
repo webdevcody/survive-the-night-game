@@ -2,7 +2,7 @@ import { AssetManager, getItemAssetKey } from "../managers/asset";
 import { Renderable } from "../entities/util";
 import { GameState } from "@/state";
 import { InputManager } from "@/managers/input";
-import { Direction, InventoryItem, MAX_INVENTORY_SLOTS } from "@survive-the-night/game-server";
+import { Direction, InventoryItem, Player } from "@survive-the-night/game-server";
 
 const HOTBAR_SETTINGS = {
   Inventory: {
@@ -48,7 +48,7 @@ export class Hotbar implements Renderable {
 
     const { slotSize, padding, slotsGap, screenMarginBottom, background, active } =
       HOTBAR_SETTINGS.Inventory;
-    const slotsNumber = MAX_INVENTORY_SLOTS;
+    const slotsNumber = Player.MAX_INVENTORY_SLOTS;
 
     ctx.save();
     ctx.setTransform(1, 0, 0, 1, 0, 0);

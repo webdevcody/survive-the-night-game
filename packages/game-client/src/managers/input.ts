@@ -14,7 +14,7 @@ export class InputManager {
     facing: Direction.Right,
     dx: 0,
     dy: 0,
-    harvest: false,
+    interact: false,
     fire: false,
     inventoryItem: 1,
     drop: false,
@@ -54,7 +54,7 @@ export class InputManager {
           this.inputs.dx = 1;
           break;
         case "e":
-          this.inputs.harvest = true;
+          this.inputs.interact = true;
           break;
         case " ":
           if (!onFire?.()) {
@@ -99,7 +99,7 @@ export class InputManager {
           this.inputs.dx = this.inputs.dx === 1 ? 0 : this.inputs.dx;
           break;
         case "e":
-          this.inputs.harvest = false;
+          this.inputs.interact = false;
           break;
         case " ":
           this.inputs.fire = false;

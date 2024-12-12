@@ -8,7 +8,7 @@ import {
   InventoryItem,
   Damageable,
   Hitbox,
-  MAX_HEALTH,
+  Player,
 } from "@survive-the-night/game-server";
 import { AssetManager, getItemAssetKey } from "../managers/asset";
 import { InputManager } from "@/managers/input";
@@ -18,16 +18,17 @@ import { getHitboxWithPadding } from "@survive-the-night/game-server/src/shared/
 import { debugDrawHitbox } from "../util/debug";
 
 export class PlayerClient implements IClientEntity, Renderable, Positionable, Damageable {
+  private readonly LERP_FACTOR = 0.1;
+  private readonly ARROW_LENGTH = 20;
+
   private assetManager: AssetManager;
   private inputManager: InputManager;
   private lastRenderPosition = { x: 0, y: 0 };
-  private readonly LERP_FACTOR = 0.1;
   private position: Vector2 = { x: 0, y: 0 };
   private velocity: Vector2 = { x: 0, y: 0 };
   private id: string;
   private type: EntityType;
-  private readonly ARROW_LENGTH = 20;
-  private health = MAX_HEALTH;
+  private health = Player.MAX_HEALTH;
   private inventory: InventoryItem[] = [];
   private activeItem: InventoryItem | null = null;
 
@@ -47,7 +48,7 @@ export class PlayerClient implements IClientEntity, Renderable, Positionable, Da
   }
 
   getMaxHealth(): number {
-    return MAX_HEALTH;
+    return Player.MAX_HEALTH;
   }
 
   isDead(): boolean {

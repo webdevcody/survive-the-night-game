@@ -1,17 +1,17 @@
 import { EntityManager } from "../../managers/entity-manager";
 import { Entities, Entity, RawEntity } from "../entities";
 import { Vector2 } from "../physics";
-import { Harvestable, Positionable } from "../traits";
+import { Interactable, Positionable } from "../traits";
 import { Player } from "./player";
 
-export class Tree extends Entity implements Harvestable, Positionable {
+export class Tree extends Entity implements Interactable, Positionable {
   private position: Vector2 = { x: 0, y: 0 };
 
   constructor(entityManager: EntityManager) {
     super(entityManager, Entities.TREE);
   }
 
-  harvest(player: Player): void {
+  interact(player: Player): void {
     if (player.isInventoryFull()) {
       return;
     }
@@ -19,6 +19,7 @@ export class Tree extends Entity implements Harvestable, Positionable {
     player.getInventory().push({
       key: "Wood",
     });
+
     this.getEntityManager().markEntityForRemoval(this);
   }
 

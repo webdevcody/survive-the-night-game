@@ -4,46 +4,48 @@ import { EntityManager } from "../../managers/entity-manager";
 import { Bullet } from "./bullet";
 import { Tree } from "./tree";
 import { Wall } from "./wall";
-import { Collidable, Damageable, Harvestable, Hitbox } from "../traits";
+import { Collidable, Damageable, Interactable, Hitbox, InteractableKey } from "../traits";
 import { Movable, Positionable, Updatable } from "../traits";
-import { normalizeVector, Vector2 } from "../physics";
+import { distance, normalizeVector, Vector2 } from "../physics";
 import { Direction } from "../direction";
 import { InventoryItem, ItemType } from "../inventory";
 import { Weapon } from "./weapon";
 import { recipes, RecipeType } from "../recipes";
 import { DEBUG } from "../../index";
-
-export const FIRE_COOLDOWN = 0.4;
-export const MAX_INVENTORY_SLOTS = 8;
-export const MAX_HARVEST_RADIUS = 20;
-export const MAX_HEALTH = 3;
+import { Cooldown } from "./util/cooldown";
 
 export class Player
   extends Entity
   implements Movable, Positionable, Updatable, Collidable, Damageable
 {
-  private fireCooldown = 0;
-  private dropCooldown = 0;
-  private harvestCooldown = 0;
-  private position: Vector2 = { x: 0, y: 0 };
-  private velocity: Vector2 = { x: 0, y: 0 };
-  private input: Input = {
-    facing: Direction.Right,
-    inventoryItem: 1, // 1 based index
-    dx: 0,
-    dy: 0,
-    harvest: false,
-    fire: false,
-    drop: false,
-  };
-  private activeItem: InventoryItem | null = null;
-  private inventory: InventoryItem[] = [];
+  public static readonly MAX_INVENTORY_SLOTS = 8;
+  public static readonly MAX_HEALTH = 3;
+  public static readonly MAX_INTERACT_RADIUS = 20;
+
   private static readonly PLAYER_WIDTH = 16;
   private static readonly PLAYER_HEIGHT = 16;
   private static readonly PLAYER_SPEED = 60;
   private static readonly DROP_COOLDOWN = 0.5;
   private static readonly HARVEST_COOLDOWN = 0.5;
-  private health = MAX_HEALTH;
+  private static readonly FIRE_COOLDOWN = 0.4;
+
+  private fireCooldown = new Cooldown(Player.FIRE_COOLDOWN);
+  private dropCooldown = new Cooldown(Player.DROP_COOLDOWN);
+  private interactCooldown = new Cooldown(Player.HARVEST_COOLDOWN);
+  private position: Vector2 = { x: 0, y: 0 };
+  private velocity: Vector2 = { x: 0, y: 0 };
+  private input: Input = {
+    facing: Direction.Right,
+    inventoryItem: 1,
+    dx: 0,
+    dy: 0,
+    interact: false,
+    fire: false,
+    drop: false,
+  };
+  private activeItem: InventoryItem | null = null;
+  private inventory: InventoryItem[] = [];
+  private health = Player.MAX_HEALTH;
 
   constructor(entityManager: EntityManager) {
     super(entityManager, Entities.PLAYER);
@@ -53,6 +55,8 @@ export class Player
         { key: "Pistol" },
         { key: "Shotgun" },
         { key: "Wood" },
+        { key: "Wall" },
+        { key: "Wall" },
         { key: "Wall" },
       ];
     }
@@ -67,7 +71,7 @@ export class Player
   }
 
   getMaxHealth(): number {
-    return MAX_HEALTH;
+    return Player.MAX_HEALTH;
   }
 
   getDamageBox(): Hitbox {
@@ -84,7 +88,7 @@ export class Player
   }
 
   isInventoryFull(): boolean {
-    return this.inventory.length >= MAX_INVENTORY_SLOTS;
+    return this.inventory.length >= Player.MAX_INVENTORY_SLOTS;
   }
 
   hasInInventory(key: ItemType): boolean {
@@ -168,19 +172,37 @@ export class Player
   }
 
   handleAttack(deltaTime: number) {
+    this.fireCooldown.update(deltaTime);
+
+    if (!this.input.fire) return;
+
     const activeWeapon = this.getActiveWeapon();
-    this.fireCooldown -= deltaTime;
+    if (activeWeapon === null) return;
 
-    if (this.input.fire && activeWeapon !== null && this.fireCooldown <= 0) {
-      this.fireCooldown = FIRE_COOLDOWN;
+    if (this.fireCooldown.isReady()) {
+      this.fireCooldown.reset();
 
-      const bullet = new Bullet(this.getEntityManager());
-      bullet.setPosition({
-        x: this.position.x + Player.PLAYER_WIDTH / 2,
-        y: this.position.y + Player.PLAYER_HEIGHT / 2,
-      });
-      bullet.setDirection(this.input.facing);
-      this.getEntityManager().addEntity(bullet);
+      if (activeWeapon.key === "Pistol") {
+        const bullet = new Bullet(this.getEntityManager());
+        bullet.setPosition({
+          x: this.position.x + Player.PLAYER_WIDTH / 2,
+          y: this.position.y + Player.PLAYER_HEIGHT / 2,
+        });
+        bullet.setDirection(this.input.facing);
+        this.getEntityManager().addEntity(bullet);
+      } else if (activeWeapon.key === "Shotgun") {
+        // Create 3 bullets with spread
+        const spreadAngle = 2; // degrees
+        for (let i = -1; i <= 1; i++) {
+          const bullet = new Bullet(this.getEntityManager());
+          bullet.setPosition({
+            x: this.position.x + Player.PLAYER_WIDTH / 2,
+            y: this.position.y + Player.PLAYER_HEIGHT / 2,
+          });
+          bullet.setDirectionWithOffset(this.input.facing, i * spreadAngle);
+          this.getEntityManager().addEntity(bullet);
+        }
+      }
     }
   }
 
@@ -202,24 +224,35 @@ export class Player
   }
 
   handleInteract(deltaTime: number) {
-    this.harvestCooldown -= deltaTime;
+    this.interactCooldown.update(deltaTime);
 
-    if (this.input.harvest && this.harvestCooldown <= 0) {
-      this.harvestCooldown = Player.HARVEST_COOLDOWN;
-      const nearbyHarvestables = this.getEntityManager()
-        .getNearbyEntities(this.position, MAX_HARVEST_RADIUS)
-        .filter((entity) => "harvest" in entity) as unknown as Harvestable[];
-      if (nearbyHarvestables.length > 0) {
-        nearbyHarvestables[0].harvest(this);
+    if (!this.input.interact) return;
+
+    if (this.interactCooldown.isReady()) {
+      this.interactCooldown.reset();
+      // TODO: make a more abstract method where I can pass in an InteractableKey and get the correct entities back
+      const entities = this.getEntityManager()
+        .getNearbyEntities(this.position, Player.MAX_INTERACT_RADIUS)
+        .filter((entity) => InteractableKey in entity) as unknown as Interactable[];
+
+      // TODO: feels like this could be a helper
+      const byProximity = entities.sort((a, b) => {
+        return distance(this.position, a.getPosition()) - distance(this.position, b.getPosition());
+      });
+
+      if (byProximity.length > 0) {
+        byProximity[0].interact(this);
       }
     }
   }
 
   handleDrop(deltaTime: number) {
-    this.dropCooldown -= deltaTime;
+    this.dropCooldown.update(deltaTime);
 
-    if (this.input.drop && this.dropCooldown <= 0 && this.input.inventoryItem !== null) {
-      this.dropCooldown = Player.DROP_COOLDOWN;
+    if (!this.input.drop) return;
+
+    if (this.dropCooldown.isReady() && this.input.inventoryItem !== null) {
+      this.dropCooldown.reset();
       const itemIndex = this.input.inventoryItem - 1;
       const item = this.inventory[itemIndex];
 
@@ -239,7 +272,7 @@ export class Player
             entity = new Tree(this.getEntityManager());
             break;
           case "Wall":
-            entity = new Wall(this.getEntityManager());
+            entity = new Wall(this.getEntityManager(), item.state?.health);
             break;
           default:
             throw new Error(`Unknown item type: '${item.key}'`);

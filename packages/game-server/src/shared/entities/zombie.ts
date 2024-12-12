@@ -5,25 +5,28 @@ import { Entity, Entities, RawEntity } from "../entities";
 import { Vector2, pathTowards, velocityTowards } from "../physics";
 import { Damageable, Movable, Positionable, Updatable, Collidable, Hitbox } from "../traits";
 import { getHitboxWithPadding } from "./util";
+import { Wall } from "./wall";
 
 export class Zombie
   extends Entity
   implements Damageable, Movable, Positionable, Updatable, Collidable, Damageable
 {
-  public facing = Direction.Right;
-  private position: Vector2 = { x: 0, y: 0 };
-  private velocity: Vector2 = { x: 0, y: 0 };
   private static readonly ZOMBIE_WIDTH = 16;
   private static readonly ZOMBIE_HEIGHT = 16;
   private static readonly ZOMBIE_SPEED = 35;
-  private health = 3;
-  private mapManager: MapManager;
-  private currentWaypoint: Vector2 | null = null;
   private static readonly POSITION_THRESHOLD = 1;
   private static readonly ATTACK_RADIUS = 24;
   private static readonly ATTACK_DAMAGE = 1;
   private static readonly ATTACK_COOLDOWN = 1000; // 1 second in milliseconds
+
+  private currentWaypoint: Vector2 | null = null;
+  private position: Vector2 = { x: 0, y: 0 };
+  private velocity: Vector2 = { x: 0, y: 0 };
+  private health = 3;
+  private mapManager: MapManager;
   private lastAttackTime = 0;
+
+  public facing = Direction.Right;
 
   constructor(entityManager: EntityManager, mapManager: MapManager) {
     super(entityManager, Entities.ZOMBIE);
@@ -43,6 +46,10 @@ export class Zombie
 
   getMaxHealth(): number {
     return 3;
+  }
+
+  isDead(): boolean {
+    return this.health <= 0;
   }
 
   getDamageBox(): Hitbox {
@@ -123,22 +130,10 @@ export class Zombie
     return dx <= Zombie.POSITION_THRESHOLD && dy <= Zombie.POSITION_THRESHOLD;
   }
 
-  private attackNearbyPlayer() {
+  private attackNearbyPlayers() {
     const player = this.getEntityManager().getClosestAlivePlayer(this);
     if (!player) return;
-
-    const currentTime = Date.now();
-    if (currentTime - this.lastAttackTime < Zombie.ATTACK_COOLDOWN) return;
-
-    const distance = Math.hypot(
-      player.getCenterPosition().x - this.getCenterPosition().x,
-      player.getCenterPosition().y - this.getCenterPosition().y
-    );
-
-    if (distance <= Zombie.ATTACK_RADIUS) {
-      player.damage(Zombie.ATTACK_DAMAGE);
-      this.lastAttackTime = currentTime;
-    }
+    return this.attemptAttackEntity(player);
   }
 
   update(deltaTime: number) {
@@ -165,8 +160,44 @@ export class Zombie
     }
 
     this.handleMovement(deltaTime);
+    this.handleAttack(deltaTime);
+  }
 
-    // Add attack check
-    this.attackNearbyPlayer();
+  private handleAttack(deltaTime: number) {
+    if (!this.attackNearbyPlayers()) {
+      this.attackNearbyWalls();
+    }
+  }
+
+  private attackNearbyWalls() {
+    const nearbyWalls = this.getEntityManager().getNearbyEntities(this.getPosition(), undefined, [
+      Entities.WALL,
+    ]) as Wall[];
+
+    if (nearbyWalls.length > 0) {
+      const nearbyWall = nearbyWalls[0];
+      this.attemptAttackEntity(nearbyWall);
+    }
+  }
+
+  private withinAttackRange(entity: Positionable): boolean {
+    const distance = Math.hypot(
+      entity.getCenterPosition().x - this.getCenterPosition().x,
+      entity.getCenterPosition().y - this.getCenterPosition().y
+    );
+
+    return distance <= Zombie.ATTACK_RADIUS;
+  }
+
+  private attemptAttackEntity(entity: Damageable & Positionable) {
+    const currentTime = Date.now();
+    if (currentTime - this.lastAttackTime < Zombie.ATTACK_COOLDOWN) return;
+
+    const withinRange = this.withinAttackRange(entity);
+    if (!withinRange) return false;
+
+    entity.damage(Zombie.ATTACK_DAMAGE);
+    this.lastAttackTime = currentTime;
+    return true;
   }
 }

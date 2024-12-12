@@ -1,7 +1,7 @@
 import { EntityManager } from "../../managers/entity-manager";
 import { Entity, Entities, RawEntity } from "../entities";
 import { Vector2 } from "../physics";
-import { Harvestable, Positionable } from "../traits";
+import { Interactable, Positionable } from "../traits";
 import { Player } from "./player";
 
 export const WEAPON_TYPES = {
@@ -11,7 +11,7 @@ export const WEAPON_TYPES = {
 } as const;
 export type WeaponType = (typeof WEAPON_TYPES)[keyof typeof WEAPON_TYPES];
 
-export class Weapon extends Entity implements Harvestable, Positionable {
+export class Weapon extends Entity implements Interactable, Positionable {
   private weaponType: WeaponType;
   private position: Vector2 = { x: 0, y: 0 };
 
@@ -20,8 +20,8 @@ export class Weapon extends Entity implements Harvestable, Positionable {
     this.weaponType = weaponType;
   }
 
-  public harvest(player: Player): void {
-    if (player.isInventoryFull() || player.hasInInventory(this.weaponType)) {
+  public interact(player: Player): void {
+    if (player.isInventoryFull()) {
       return;
     }
 

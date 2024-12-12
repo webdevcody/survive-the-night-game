@@ -3,8 +3,8 @@ import { Entities, Entity, EntityType } from "../shared/entities";
 import {
   Collidable,
   Damageable,
-  FunctionIdentifier,
-  Harvestable,
+  Interactable,
+  InteractableKey,
   IntersectionMethodIdentifiers,
   IntersectionMethodName,
   Positionable,
@@ -62,10 +62,8 @@ export class EntityManager {
     this.entities.push(...entities);
   }
 
-  getNearbyEntities(position: Vector2, radius: number): Entity[] {
-    return this.getPositionableEntities().filter((entity) => {
-      return distance(entity.getPosition(), position) <= radius;
-    }) as unknown as Entity[];
+  getNearbyEntities(position: Vector2, radius?: number, filter?: EntityType[]): Entity[] {
+    return this.spatialGrid?.getNearbyEntities(position, radius, filter) ?? [];
   }
 
   getPositionableEntities(): Positionable[] {
@@ -80,10 +78,10 @@ export class EntityManager {
     }) as unknown as Player[];
   }
 
-  filterHarvestableEntities(entities: Entity[]): Harvestable[] {
+  filterInteractableEntities(entities: Entity[]): Interactable[] {
     return entities.filter((entity) => {
-      return "harvest" in entity;
-    }) as unknown as Harvestable[];
+      return InteractableKey in entity;
+    }) as unknown as Interactable[];
   }
 
   getCollidableEntities(): Collidable[] {
@@ -127,7 +125,7 @@ export class EntityManager {
     let closestPlayerIdx = 0;
     let closestPlayerDistance = distance(entityPosition, players[closestPlayerIdx].getPosition());
 
-    for (let i = 1; i < players.length; i++) {
+    for (let i = 0; i < players.length; i++) {
       const player = players[i];
       const playerDistance = distance(entityPosition, player.getPosition());
 

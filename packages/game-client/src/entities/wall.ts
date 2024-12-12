@@ -1,27 +1,56 @@
 import {
+  Damageable,
   distance,
   Entities,
   EntityType,
+  Hitbox,
   MAX_HARVEST_RADIUS,
   Positionable,
   Vector2,
 } from "@survive-the-night/game-server";
 import { AssetManager } from "@/managers/asset";
 import { GameState, getEntityById } from "../state";
-import { IClientEntity, Renderable } from "./util";
+import { drawHealthBar, IClientEntity, Renderable } from "./util";
+import { WALL_MAX_HEALTH } from "@survive-the-night/game-server/src/shared/entities/wall";
 
 const WALL_SIZE = 16;
 
-export class WallClient implements Renderable, Positionable, IClientEntity {
+export class WallClient implements Renderable, Positionable, IClientEntity, Damageable {
   private assetManager: AssetManager;
   private type: EntityType;
   private id: string;
   private position: Vector2 = { x: 0, y: 0 };
+  private health: number = 0;
 
   constructor(id: string, assetManager: AssetManager) {
     this.id = id;
     this.type = Entities.WALL;
     this.assetManager = assetManager;
+  }
+
+  damage(damage: number): void {
+    this.health -= damage;
+  }
+
+  getHealth(): number {
+    return this.health;
+  }
+
+  isDead(): boolean {
+    return this.health <= 0;
+  }
+
+  getDamageBox(): Hitbox {
+    return {
+      x: this.position.x,
+      y: this.position.y,
+      width: WALL_SIZE,
+      height: WALL_SIZE,
+    };
+  }
+
+  getMaxHealth(): number {
+    return WALL_MAX_HEALTH;
   }
 
   getId(): string {
@@ -69,5 +98,7 @@ export class WallClient implements Renderable, Positionable, IClientEntity {
     }
 
     ctx.drawImage(image, this.getPosition().x, this.getPosition().y);
+
+    drawHealthBar(ctx, this, this.getHealth(), this.getMaxHealth());
   }
 }

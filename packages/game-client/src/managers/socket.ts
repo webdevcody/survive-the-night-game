@@ -42,7 +42,7 @@ export class SocketManager {
     this.socket.emit(Events.CRAFT_REQUEST, recipe);
   }
 
-  public sendInput(input: { dx: number; dy: number; harvest: boolean; fire: boolean }) {
+  public sendInput(input: { dx: number; dy: number; interact: boolean; fire: boolean }) {
     this.socket.emit(Events.PLAYER_INPUT, input);
   }
 }

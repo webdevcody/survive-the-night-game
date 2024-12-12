@@ -126,7 +126,7 @@ export class GameClient {
     await this.assetManager.load();
   }
 
-  public sendInput(input: { dx: number; dy: number; harvest: boolean; fire: boolean }): void {
+  public sendInput(input: { dx: number; dy: number; interact: boolean; fire: boolean }): void {
     this.socketManager.sendInput(input);
   }
 
