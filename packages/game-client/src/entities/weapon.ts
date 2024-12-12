@@ -2,7 +2,6 @@ import {
   distance,
   Entities,
   EntityType,
-  MAX_HARVEST_RADIUS,
   Player,
   Positionable,
   Vector2,

@@ -4,7 +4,7 @@ import {
   Entities,
   EntityType,
   Hitbox,
-  MAX_HARVEST_RADIUS,
+  Player,
   Positionable,
   Vector2,
 } from "@survive-the-night/game-server";
@@ -89,7 +89,10 @@ export class WallClient implements Renderable, Positionable, IClientEntity, Dama
     ctx.drawImage(image, this.getPosition().x, this.getPosition().y);
 
     const myPlayer = getEntityById(gameState, gameState.playerId) as Positionable | undefined;
-    if (myPlayer && distance(myPlayer.getPosition(), this.getPosition()) < MAX_HARVEST_RADIUS) {
+    if (
+      myPlayer &&
+      distance(myPlayer.getPosition(), this.getPosition()) < Player.MAX_INTERACT_RADIUS
+    ) {
       ctx.fillStyle = "white";
       ctx.font = "6px Arial";
       const text = "pick up (e)";

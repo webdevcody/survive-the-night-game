@@ -14,6 +14,7 @@ Feel free to pick any item listed out here to work on.
 ### Bugs
 
 - [ ] when DEBUG = true, all the HUD overlays seem to shift, including the "pickup (e)" text over items
+- [ ] the health bars need to be attached to the player group so that when they interpolate they don't lag behindw
 
 ### Gameplay
 
