@@ -10,6 +10,7 @@ Feel free to pick any item listed out here to work on.
 - [ ] the client entities feels very duplicates to the server entities, find a way reuse code maybe?
 - [ ] sometimes when doing @ imports, the entire app breaks forcing us to use relative... figure out why
 - [ ] serialize should be more automated, I often forget to update it when I add new properties
+- [ ] rename hotbar to item belt
 
 ### Bugs
 
@@ -24,6 +25,7 @@ Feel free to pick any item listed out here to work on.
 
 ### Gameplay
 
+- [ ] a player should drop all items when they die and scatter them around their body
 - [ ] during daytime, zombies should just wander around randomly, but will attack players if they get close
 - [ ] if ALL players die, the game ends
 - [ ] show a message that the players lost, and show a leaderboard with how many kills each player got

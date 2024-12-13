@@ -1,7 +1,7 @@
 import { AssetManager } from "./managers/asset";
 import { InputManager } from "./managers/input";
 import { EntityDto, SocketManager } from "./managers/socket";
-import { Entities, GameStateEvent, Positionable } from "@survive-the-night/game-server";
+import { Entities, EntityType, GameStateEvent, Positionable } from "@survive-the-night/game-server";
 import { PlayerClient } from "./entities/player";
 import { ZombieClient } from "./entities/zombie";
 import { CameraManager } from "./managers/camera";
@@ -37,6 +37,44 @@ export class GameClient {
   private running = false;
   private mounted = true;
   private hotbar: Hotbar;
+
+  private entityFactories: Record<EntityType, (entityData: EntityDto) => IClientEntity> = {
+    [Entities.PLAYER]: (data) => {
+      const entity = new PlayerClient(data.id, this.assetManager, this.inputManager);
+      this.initializeEntity(entity, data);
+      return entity;
+    },
+    [Entities.TREE]: (data) => {
+      const entity = new TreeClient(data.id, this.assetManager);
+      this.initializeEntity(entity, data);
+      return entity;
+    },
+    [Entities.BULLET]: (data) => {
+      const entity = new BulletClient(data.id, this.assetManager);
+      this.initializeEntity(entity, data);
+      return entity;
+    },
+    [Entities.WALL]: (data) => {
+      const entity = new WallClient(data.id, this.assetManager);
+      this.initializeEntity(entity, data);
+      return entity;
+    },
+    [Entities.WEAPON]: (data) => {
+      const entity = new WeaponClient(data.id, this.assetManager, data.weaponType);
+      this.initializeEntity(entity, data);
+      return entity;
+    },
+    [Entities.BANDAGE]: (data) => {
+      const entity = new BandageClient(data.id, this.assetManager);
+      this.initializeEntity(entity, data);
+      return entity;
+    },
+    [Entities.ZOMBIE]: (data) => {
+      const entity = new ZombieClient(data.id, this.assetManager);
+      this.initializeEntity(entity, data);
+      return entity;
+    },
+  };
 
   constructor(serverUrl: string, canvas: HTMLCanvasElement) {
     this.ctx = canvas.getContext("2d")!;
@@ -235,6 +273,10 @@ export class GameClient {
     this.cameraManager.setScale(this.scale);
   }
 
+  private initializeEntity(entity: IClientEntity, data: EntityDto): void {
+    Object.assign(entity, data);
+  }
+
   private updateEntities(): void {
     // remove dead entities
     for (let i = 0; i < this.getEntities().length; i++) {
@@ -250,56 +292,14 @@ export class GameClient {
       const existingEntity = this.getEntities().find((e) => e.getId() === entityData.id);
 
       if (existingEntity) {
-        if (entityData.velocity && "setVelocity" in existingEntity) {
-          existingEntity.setVelocity(entityData.velocity);
-        }
         Object.assign(existingEntity, entityData);
         continue;
       }
 
-      // TODO: consider a better way to handle this
-      if (entityData.type === Entities.PLAYER) {
-        const player = new PlayerClient(entityData.id, this.assetManager, this.inputManager);
-
-        player.setPosition(entityData.position);
-        if (entityData.velocity) {
-          player.setVelocity(entityData.velocity);
-        }
-        this.getEntities().push(player);
-        continue;
-      } else if (entityData.type === Entities.TREE) {
-        const tree = new TreeClient(entityData.id, this.assetManager);
-        tree.setPosition(entityData.position);
-        this.getEntities().push(tree);
-        continue;
-      } else if (entityData.type === Entities.BULLET) {
-        const bullet = new BulletClient(entityData.id, this.assetManager);
-        bullet.setPosition(entityData.position);
-        this.getEntities().push(bullet);
-        continue;
-      } else if (entityData.type === Entities.WALL) {
-        const wall = new WallClient(entityData.id, this.assetManager);
-        wall.setPosition(entityData.position);
-        this.getEntities().push(wall);
-        continue;
-      } else if (entityData.type === Entities.ZOMBIE) {
-        const zombie = new ZombieClient(entityData.id, this.assetManager);
-        zombie.setPosition(entityData.position);
-        if (entityData.velocity) {
-          zombie.setVelocity(entityData.velocity);
-        }
-        this.getEntities().push(zombie);
-        continue;
-      } else if (entityData.type === Entities.WEAPON) {
-        const weapon = new WeaponClient(entityData.id, this.assetManager, entityData.weaponType);
-        weapon.setPosition(entityData.position);
-        this.getEntities().push(weapon);
-        continue;
-      } else if (entityData.type === Entities.BANDAGE) {
-        const bandage = new BandageClient(entityData.id, this.assetManager);
-        bandage.setPosition(entityData.position);
-        this.getEntities().push(bandage);
-        continue;
+      const factory = this.entityFactories[entityData.type];
+      if (factory) {
+        const entity = factory(entityData);
+        this.getEntities().push(entity);
       } else {
         console.warn("Unknown entity type", entityData);
       }

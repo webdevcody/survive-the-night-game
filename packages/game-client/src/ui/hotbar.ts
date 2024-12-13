@@ -77,6 +77,11 @@ export class Hotbar implements Renderable {
       ctx.fillStyle = activeItemIdx === i ? active.background : background;
       ctx.fillRect(slotLeft, slotsTop, slotSize, slotSize);
 
+      ctx.fillStyle = "white";
+      ctx.font = "32px Arial";
+      ctx.textAlign = "left";
+      ctx.fillText(`${i + 1}`, slotLeft + 4, slotsTop + 20);
+
       const inventoryItem = items[i];
 
       if (inventoryItem === undefined) {
