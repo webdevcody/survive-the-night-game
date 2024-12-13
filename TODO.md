@@ -19,6 +19,9 @@ Feel free to pick any item listed out here to work on.
 
 ### Crafting
 
+- [ ] the crafting recipe should be red or grayed out if you don't have enough items to craft it
+- [ ] pressing space while crafting an item you don't have enough resources to craft should not auto close the crafting menu
+
 ### Gameplay
 
 - [ ] during daytime, zombies should just wander around randomly, but will attack players if they get close
