@@ -8,6 +8,7 @@ export const Entities = {
   BULLET: "bullet",
   WALL: "wall",
   BOUNDARY: "boundary",
+  BANDAGE: "bandage",
 } as const;
 
 export type EntityType = (typeof Entities)[keyof typeof Entities];

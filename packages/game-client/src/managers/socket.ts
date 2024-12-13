@@ -50,7 +50,13 @@ export class SocketManager {
     this.socket.emit(Events.STOP_CRAFTING);
   }
 
-  public sendInput(input: { dx: number; dy: number; interact: boolean; fire: boolean }) {
+  public sendInput(input: {
+    dx: number;
+    dy: number;
+    interact: boolean;
+    fire: boolean;
+    consume: boolean;
+  }) {
     this.socket.emit(Events.PLAYER_INPUT, input);
   }
 }

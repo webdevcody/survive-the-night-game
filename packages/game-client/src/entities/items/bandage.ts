@@ -7,12 +7,12 @@ import {
   Vector2,
 } from "@survive-the-night/game-server";
 import { AssetManager } from "@/managers/asset";
-import { getEntityById, GameState } from "../state";
-import { IClientEntity, Renderable } from "./util";
+import { getEntityById, GameState } from "../../state";
+import { IClientEntity, Renderable } from "../util";
 
 const TREE_SIZE = 16;
 
-export class TreeClient implements Renderable, Positionable, IClientEntity {
+export class BandageClient implements Renderable, Positionable, IClientEntity {
   private assetManager: AssetManager;
   private type: EntityType;
   private id: string;
@@ -20,7 +20,7 @@ export class TreeClient implements Renderable, Positionable, IClientEntity {
 
   constructor(id: string, assetManager: AssetManager) {
     this.id = id;
-    this.type = Entities.TREE;
+    this.type = Entities.BANDAGE;
     this.assetManager = assetManager;
   }
 
@@ -56,7 +56,7 @@ export class TreeClient implements Renderable, Positionable, IClientEntity {
   }
 
   render(ctx: CanvasRenderingContext2D, gameState: GameState): void {
-    const image = this.assetManager.get("Tree");
+    const image = this.assetManager.get("Bandage");
     const myPlayer = getEntityById(gameState, gameState.playerId) as Positionable | undefined;
 
     if (
@@ -65,7 +65,7 @@ export class TreeClient implements Renderable, Positionable, IClientEntity {
     ) {
       ctx.fillStyle = "white";
       ctx.font = "6px Arial";
-      const text = "twigs (e)";
+      const text = "bandage (e)";
       const textWidth = ctx.measureText(text).width;
       ctx.fillText(text, this.getCenterPosition().x - textWidth / 2, this.getPosition().y - 3);
     }

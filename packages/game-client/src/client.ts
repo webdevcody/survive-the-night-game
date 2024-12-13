@@ -17,6 +17,7 @@ import { WallClient } from "./entities/wall";
 import { Hud } from "./ui/hud";
 import { WeaponClient } from "./entities/weapon";
 import { Input } from "@survive-the-night/game-server/src/server";
+import { BandageClient } from "./entities/items/bandage";
 
 export class GameClient {
   private ctx: CanvasRenderingContext2D;
@@ -293,6 +294,11 @@ export class GameClient {
         const weapon = new WeaponClient(entityData.id, this.assetManager, entityData.weaponType);
         weapon.setPosition(entityData.position);
         this.getEntities().push(weapon);
+        continue;
+      } else if (entityData.type === Entities.BANDAGE) {
+        const bandage = new BandageClient(entityData.id, this.assetManager);
+        bandage.setPosition(entityData.position);
+        this.getEntities().push(bandage);
         continue;
       } else {
         console.warn("Unknown entity type", entityData);

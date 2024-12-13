@@ -11,6 +11,7 @@ const HUD_SETTINGS = {
       "Down [S]\n" +
       "Up [W]\n" +
       "Fire [SPACE]\n" +
+      "Consume [F]\n" +
       "\n" +
       "When Crafting:\n" +
       "Down [S]\n" +

@@ -88,7 +88,7 @@ export class WeaponClient implements Renderable, Animatable, Positionable, IClie
     ) {
       ctx.fillStyle = "white";
       ctx.font = "6px Arial";
-      const text = "pick up (e)";
+      const text = `${this.weaponType} (e)`;
       const textWidth = ctx.measureText(text).width;
       ctx.fillText(text, this.getCenterPosition().x - textWidth / 2, this.getPosition().y - 3);
     }

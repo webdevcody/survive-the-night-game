@@ -14,6 +14,7 @@ export type Input = {
   fire: boolean;
   inventoryItem: number;
   drop: boolean;
+  consume: boolean;
 };
 
 export const DAY_DURATION = 300;

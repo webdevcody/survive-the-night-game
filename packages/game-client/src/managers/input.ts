@@ -22,6 +22,7 @@ export class InputManager {
     fire: false,
     inventoryItem: 1,
     drop: false,
+    consume: false,
   };
   private lastInputs = {
     ...this.inputs,
@@ -60,6 +61,9 @@ export class InputManager {
           break;
         case "g":
           callbacks.onDrop?.(this.inputs);
+          break;
+        case "f":
+          this.inputs.consume = true;
           break;
       }
 
@@ -103,6 +107,9 @@ export class InputManager {
           break;
         case "g":
           this.inputs.drop = false;
+          break;
+        case "f":
+          this.inputs.consume = false;
           break;
       }
 

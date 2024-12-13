@@ -49,6 +49,7 @@ export const assetsMap = {
   ZombieFacingLeft: assetMap({ x: 493, y: 95 }),
   ZombieFacingRight: assetMap({ x: 493, y: 95, flipX: true }),
   ZombieFacingUp: assetMap({ x: 493, y: 57 }),
+  Bandage: assetMap({ x: 34, y: 190 }),
 } as const;
 
 export type Asset = keyof typeof assetsMap;
@@ -148,6 +149,8 @@ export function getItemAssetKey(item: InventoryItem): Asset {
     return "Tree";
   } else if (item.key === "Wall") {
     return "Wall";
+  } else if (item.key === "Bandage") {
+    return "Bandage";
   }
 
   throw new Error(`Unknown item type '${item.key}'`);

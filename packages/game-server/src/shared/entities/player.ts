@@ -4,7 +4,15 @@ import { EntityManager } from "../../managers/entity-manager";
 import { Bullet } from "./bullet";
 import { Tree } from "./tree";
 import { Wall } from "./wall";
-import { Collidable, Damageable, Interactable, Hitbox, InteractableKey } from "../traits";
+import {
+  Collidable,
+  Damageable,
+  Interactable,
+  Hitbox,
+  InteractableKey,
+  Consumable,
+  ConsumableKey,
+} from "../traits";
 import { Movable, Positionable, Updatable } from "../traits";
 import { distance, normalizeVector, Vector2 } from "../physics";
 import { Direction } from "../direction";
@@ -13,6 +21,7 @@ import { Weapon } from "./weapon";
 import { recipes, RecipeType } from "../recipes";
 import { DEBUG } from "../../index";
 import { Cooldown } from "./util/cooldown";
+import { Bandage } from "./items/bandage";
 
 export class Player
   extends Entity
@@ -28,10 +37,12 @@ export class Player
   private static readonly DROP_COOLDOWN = 0.5;
   private static readonly HARVEST_COOLDOWN = 0.5;
   private static readonly FIRE_COOLDOWN = 0.4;
+  private static readonly CONSUME_COOLDOWN = 0.5;
 
   private fireCooldown = new Cooldown(Player.FIRE_COOLDOWN);
   private dropCooldown = new Cooldown(Player.DROP_COOLDOWN);
   private interactCooldown = new Cooldown(Player.HARVEST_COOLDOWN);
+  private consumeCooldown = new Cooldown(Player.CONSUME_COOLDOWN);
   private position: Vector2 = { x: 0, y: 0 };
   private velocity: Vector2 = { x: 0, y: 0 };
   private input: Input = {
@@ -42,6 +53,7 @@ export class Player
     interact: false,
     fire: false,
     drop: false,
+    consume: false,
   };
   private activeItem: InventoryItem | null = null;
   private inventory: InventoryItem[] = [];
@@ -289,6 +301,9 @@ export class Player
           case "Wall":
             entity = new Wall(this.getEntityManager(), item.state?.health);
             break;
+          case "Bandage":
+            entity = new Bandage(this.getEntityManager());
+            break;
           default:
             throw new Error(`Unknown item type: '${item.key}'`);
         }
@@ -325,6 +340,42 @@ export class Player
     }
   }
 
+  handleConsume(deltaTime: number) {
+    this.consumeCooldown.update(deltaTime);
+
+    if (!this.input.consume) return;
+
+    if (this.consumeCooldown.isReady() && this.input.inventoryItem !== null) {
+      this.consumeCooldown.reset();
+      const itemIndex = this.input.inventoryItem - 1;
+      const item = this.inventory[itemIndex];
+
+      if (item) {
+        // Create temporary entity to check if it's consumable
+        let entity: Entity;
+        switch (item.key) {
+          case "Bandage":
+            entity = new Bandage(this.getEntityManager());
+            break;
+          default:
+            return; // Not a consumable item
+        }
+
+        if (ConsumableKey in entity) {
+          const consumable = entity as unknown as Consumable;
+
+          if (consumable.consume(this)) {
+            this.inventory.splice(itemIndex, 1);
+
+            if (this.activeItem === item) {
+              this.activeItem = null;
+            }
+          }
+        }
+      }
+    }
+  }
+
   update(deltaTime: number) {
     if (this.isCrafting) {
       return;
@@ -342,9 +393,14 @@ export class Player
     this.handleMovement(deltaTime);
     this.handleInteract(deltaTime);
     this.handleDrop(deltaTime);
+    this.handleConsume(deltaTime);
   }
 
   setInput(input: Input) {
     this.input = input;
+  }
+
+  heal(amount: number): void {
+    this.health = Math.min(this.health + amount, Player.MAX_HEALTH);
   }
 }

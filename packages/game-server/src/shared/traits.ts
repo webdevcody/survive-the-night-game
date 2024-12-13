@@ -43,9 +43,16 @@ export interface Damageable {
   getDamageBox: () => Hitbox;
   isDead: () => boolean;
   getMaxHealth: () => number;
+  heal: (amount: number) => void;
 }
 
 export const DamageableKey = "damage";
+
+export interface Consumable {
+  consume: (player: Player) => boolean;
+}
+
+export const ConsumableKey = "consume";
 
 export const IntersectionMethodIdentifiers = {
   Collidable: "getHitbox",
