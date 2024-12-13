@@ -2,6 +2,7 @@ import { Direction, InventoryItem, recipes, RecipeType } from "@survive-the-nigh
 import { Renderable } from "../entities/util";
 import { GameState } from "@/state";
 import { AssetManager, getItemAssetKey } from "../managers/asset";
+import { PlayerClient } from "@/entities/player";
 
 const CRAFTING_TABLE_SETTINGS = {
   Container: {
@@ -49,19 +50,24 @@ const CRAFTING_TABLE_SETTINGS = {
 export interface CraftingTableOptions {
   getInventory: () => InventoryItem[];
   onCraft: (recipe: RecipeType) => unknown;
+  getPlayer: () => PlayerClient | null;
 }
 
 export class CraftingTable implements Renderable {
   private assetManager: AssetManager;
   private activeRecipe = 0;
-  private visible = false;
   private getInventory: () => InventoryItem[];
   private onCraft: (recipe: RecipeType) => unknown;
+  private getPlayer: () => PlayerClient | null;
 
-  public constructor(assetManager: AssetManager, { getInventory, onCraft }: CraftingTableOptions) {
+  public constructor(
+    assetManager: AssetManager,
+    { getInventory, onCraft, getPlayer }: CraftingTableOptions
+  ) {
     this.assetManager = assetManager;
     this.getInventory = getInventory;
     this.onCraft = onCraft;
+    this.getPlayer = getPlayer;
   }
 
   public onDown() {
@@ -85,11 +91,11 @@ export class CraftingTable implements Renderable {
   }
 
   public isVisible() {
-    return this.visible;
+    return this.getPlayer()?.getIsCrafting() ?? false;
   }
 
   public render(ctx: CanvasRenderingContext2D, gameState: GameState): void {
-    if (!this.visible) {
+    if (!this.isVisible()) {
       return;
     }
 
@@ -197,7 +203,7 @@ export class CraftingTable implements Renderable {
   }
 
   public toggle(): void {
-    this.visible = !this.visible;
+    // this.visible = !this.visible;
     this.activeRecipe = 0;
   }
 }

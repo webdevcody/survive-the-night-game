@@ -16,6 +16,7 @@ import { StorageManager } from "./managers/storage";
 import { WallClient } from "./entities/wall";
 import { Hud } from "./ui/hud";
 import { WeaponClient } from "./entities/weapon";
+import { Input } from "@survive-the-night/game-server/src/server";
 
 export class GameClient {
   private ctx: CanvasRenderingContext2D;
@@ -61,11 +62,20 @@ export class GameClient {
       return [];
     };
 
+    const getPlayer = () => {
+      if (this.gameState.playerId) {
+        return getEntityById(this.gameState, this.gameState.playerId) as unknown as PlayerClient;
+      }
+
+      return null;
+    };
+
     this.mapManager = new MapManager();
     this.hud = new Hud();
 
     this.craftingTable = new CraftingTable(this.assetManager, {
       getInventory,
+      getPlayer,
       onCraft: (recipe) => {
         this.socketManager.sendCraftRequest(recipe);
       },
@@ -74,30 +84,53 @@ export class GameClient {
     this.inputManager = new InputManager({
       onCraft: () => {
         this.craftingTable.toggle();
-
         if (this.craftingTable.isVisible()) {
-          this.socketManager.sendStartCrafting();
-        } else {
           this.socketManager.sendStopCrafting();
+        } else {
+          this.socketManager.sendStartCrafting();
         }
       },
-      onDown: () => {
+      onDown: (inputs: Input) => {
         if (this.craftingTable.isVisible()) {
           this.craftingTable.onDown();
+        } else {
+          inputs.dy = 1;
         }
-        return this.craftingTable.isVisible();
       },
-      onFire: () => {
+      onRight: (inputs: Input) => {
+        if (!this.craftingTable.isVisible()) {
+          inputs.dx = 1;
+        }
+      },
+      onLeft: (inputs: Input) => {
+        if (!this.craftingTable.isVisible()) {
+          inputs.dx = -1;
+        }
+      },
+      onInteract: (inputs: Input) => {
+        if (!this.craftingTable.isVisible()) {
+          inputs.interact = true;
+        }
+      },
+      onDrop: (inputs: Input) => {
+        if (!this.craftingTable.isVisible()) {
+          inputs.drop = true;
+        }
+      },
+      onFire: (inputs: Input) => {
         if (this.craftingTable.isVisible()) {
           this.craftingTable.onSelect();
         }
-        return this.craftingTable.isVisible();
+        if (!this.craftingTable.isVisible()) {
+          inputs.fire = true;
+        }
       },
-      onUp: () => {
+      onUp: (inputs: Input) => {
         if (this.craftingTable.isVisible()) {
           this.craftingTable.onUp();
+        } else {
+          inputs.dy = -1;
         }
-        return this.craftingTable.isVisible();
       },
     });
 

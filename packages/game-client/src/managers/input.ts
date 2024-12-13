@@ -3,9 +3,13 @@ import { Input } from "@survive-the-night/game-server/src/server";
 
 export interface InputManagerOptions {
   onCraft?: () => unknown;
-  onDown?: () => boolean;
-  onFire?: () => boolean;
-  onUp?: () => boolean;
+  onDown?: (inputs: Input) => void;
+  onFire?: (inputs: Input) => void;
+  onUp?: (inputs: Input) => void;
+  onLeft?: (inputs: Input) => void;
+  onRight?: (inputs: Input) => void;
+  onInteract?: (inputs: Input) => void;
+  onDrop?: (inputs: Input) => void;
 }
 
 export class InputManager {
@@ -28,41 +32,34 @@ export class InputManager {
     this.lastInputs = { ...this.inputs };
   }
 
-  constructor({ onCraft, onDown, onFire, onUp }: InputManagerOptions = {}) {
+  constructor(callbacks: InputManagerOptions = {}) {
     window.addEventListener("keydown", (e) => {
       const eventKey = e.key.toLowerCase();
 
       switch (eventKey) {
         case "q":
-          onCraft?.();
+          callbacks.onCraft?.();
           break;
         case "w":
-          if (!onUp?.()) {
-            this.inputs.dy = -1;
-            this.inputs.facing = Direction.Up;
-          }
+          callbacks.onUp?.(this.inputs);
           break;
         case "s":
-          if (!onDown?.()) {
-            this.inputs.dy = 1;
-          }
+          callbacks.onDown?.(this.inputs);
           break;
         case "a":
-          this.inputs.dx = -1;
+          callbacks.onLeft?.(this.inputs);
           break;
         case "d":
-          this.inputs.dx = 1;
+          callbacks.onRight?.(this.inputs);
           break;
         case "e":
-          this.inputs.interact = true;
+          callbacks.onInteract?.(this.inputs);
           break;
         case " ":
-          if (!onFire?.()) {
-            this.inputs.fire = true;
-          }
+          callbacks.onFire?.(this.inputs);
           break;
         case "g":
-          this.inputs.drop = true;
+          callbacks.onDrop?.(this.inputs);
           break;
       }
 

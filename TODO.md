@@ -17,7 +17,8 @@ Feel free to pick any item listed out here to work on.
 
 ### Crafting
 
-- [ ] a player shouldn't be able to move when crafting
+- [ ] fix the size of the wrench icon
+- [ ] figure out why the wrench icon becomes small when near a tree
 - [ ] a player shouldn't be able to open the craft menu when dead; also close it if they die while crafting
 - [ ] close the crafting menu after making an item
 - [ ] we have too manhy duplicate recipes in the crafting menu
@@ -124,3 +125,4 @@ Feel free to pick any item listed out here to work on.
 - [x] picking up a damaged walled shouldn't restore it's health back to full when replacing
 - [x] when picking up items, it should pick up the CLOSEST item first
 - [x] the health bars need to be attached to the player group so that when they interpolate they don't lag behindw
+- [x] a player shouldn't be able to move when crafting

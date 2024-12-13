@@ -94,6 +94,10 @@ export class Player
 
   damage(damage: number): void {
     this.health = Math.max(this.health - damage, 0);
+
+    if (this.health <= 0) {
+      this.setIsCrafting(false);
+    }
   }
 
   isInventoryFull(): boolean {

@@ -13,7 +13,7 @@ import {
 } from "@survive-the-night/game-server";
 import { AssetManager, getItemAssetKey } from "../managers/asset";
 import { InputManager } from "@/managers/input";
-import { drawHealthBar, IClientEntity, Renderable } from "./util";
+import { animate, drawHealthBar, IClientEntity, Renderable } from "./util";
 import { GameState } from "@/state";
 import { getHitboxWithPadding } from "@survive-the-night/game-server/src/shared/entities/util";
 import { debugDrawHitbox } from "../util/debug";
@@ -43,6 +43,10 @@ export class PlayerClient implements IClientEntity, Renderable, Positionable, Da
 
   getInventory(): InventoryItem[] {
     return this.inventory;
+  }
+
+  getIsCrafting(): boolean {
+    return this.isCrafting;
   }
 
   getId(): string {
@@ -131,7 +135,21 @@ export class PlayerClient implements IClientEntity, Renderable, Positionable, Da
     debugDrawHitbox(ctx, this.getDamageBox(), "red");
 
     if (this.isCrafting) {
-      ctx.fillText("🔧", renderPosition.x, renderPosition.y);
+      ctx.font = "8px Arial";
+      const animatedPosition = animate(gameState.startedAt, renderPosition, {
+        duration: 2000,
+        frames: {
+          0: {
+            x: 0,
+            y: 0,
+          },
+          50: {
+            x: 0,
+            y: 5,
+          },
+        },
+      });
+      ctx.fillText("🔧", animatedPosition.x + 3, animatedPosition.y - 6);
     }
   }
 
