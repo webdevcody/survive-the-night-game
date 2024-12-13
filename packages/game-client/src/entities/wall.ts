@@ -102,6 +102,6 @@ export class WallClient implements Renderable, Positionable, IClientEntity, Dama
 
     ctx.drawImage(image, this.getPosition().x, this.getPosition().y);
 
-    drawHealthBar(ctx, this, this.getHealth(), this.getMaxHealth());
+    drawHealthBar(ctx, this.getPosition(), this.getHealth(), this.getMaxHealth());
   }
 }

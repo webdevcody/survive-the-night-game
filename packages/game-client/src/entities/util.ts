@@ -52,23 +52,18 @@ export function animate(startedAt: number, position: Vector2, animation: Animati
 
 export function drawHealthBar(
   ctx: CanvasRenderingContext2D,
-  positionable: Positionable,
+  position: Vector2,
   health: number,
   maxHealth: number
 ) {
   const healthBarWidth = 16;
   const healthBarHeight = 2;
-  const healthBarY = positionable.getPosition().y - healthBarHeight - 2;
+  const healthBarY = position.y - healthBarHeight - 2;
 
   ctx.fillStyle = "#ff0000";
-  ctx.fillRect(positionable.getPosition().x, healthBarY, healthBarWidth, healthBarHeight);
+  ctx.fillRect(position.x, healthBarY, healthBarWidth, healthBarHeight);
 
   ctx.fillStyle = "#00ff00";
   const healthPercentage = health / maxHealth;
-  ctx.fillRect(
-    positionable.getPosition().x,
-    healthBarY,
-    healthBarWidth * healthPercentage,
-    healthBarHeight
-  );
+  ctx.fillRect(position.x, healthBarY, healthBarWidth * healthPercentage, healthBarHeight);
 }

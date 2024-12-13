@@ -126,7 +126,7 @@ export class PlayerClient implements IClientEntity, Renderable, Positionable, Da
       this.renderArrow(ctx, image, renderPosition);
     }
 
-    drawHealthBar(ctx, this, this.health, this.getMaxHealth());
+    drawHealthBar(ctx, renderPosition, this.health, this.getMaxHealth());
 
     debugDrawHitbox(ctx, this.getDamageBox(), "red");
   }

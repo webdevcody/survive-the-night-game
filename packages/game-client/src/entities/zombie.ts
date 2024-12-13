@@ -34,6 +34,10 @@ export class ZombieClient implements IClientEntity, Renderable, Positionable, Da
     return 3;
   }
 
+  isDead(): boolean {
+    return this.health <= 0;
+  }
+
   getId(): string {
     return this.id;
   }
@@ -91,7 +95,7 @@ export class ZombieClient implements IClientEntity, Renderable, Positionable, Da
     const image = this.assetManager.getWithDirection("Zombie", direction);
     ctx.drawImage(image, renderPosition.x, renderPosition.y);
 
-    drawHealthBar(ctx, this, this.health, this.getMaxHealth());
+    drawHealthBar(ctx, renderPosition, this.health, this.getMaxHealth());
 
     debugDrawHitbox(ctx, Zombie.getHitbox(this.position));
     debugDrawHitbox(ctx, Zombie.getDamageBox(this.position), "red");

@@ -14,7 +14,12 @@ Feel free to pick any item listed out here to work on.
 ### Bugs
 
 - [ ] when DEBUG = true, all the HUD overlays seem to shift, including the "pickup (e)" text over items
-- [ ] the health bars need to be attached to the player group so that when they interpolate they don't lag behindw
+
+### Crafting
+
+- [ ] a player shouldn't be able to move when crafting
+- [ ] close the crafting menu after making an item
+- [ ] we have too manhy duplicate recipes in the crafting menu
 
 ### Gameplay
 
@@ -117,3 +122,4 @@ Feel free to pick any item listed out here to work on.
 - [x] a zombie can attack walls (walls have hp)
 - [x] picking up a damaged walled shouldn't restore it's health back to full when replacing
 - [x] when picking up items, it should pick up the CLOSEST item first
+- [x] the health bars need to be attached to the player group so that when they interpolate they don't lag behindw

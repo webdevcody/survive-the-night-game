@@ -5,14 +5,7 @@ export enum RecipeType {
   Wall = "wall",
 }
 
-export const recipes: Recipe[] = [
-  // added multiple same here so can test arrows up/down
-  new WallRecipe(),
-  new WallRecipe(),
-  new WallRecipe(),
-  new WallRecipe(),
-  new WallRecipe(),
-];
+export const recipes: Recipe[] = [new WallRecipe()];
 
 export interface RecipeComponent {
   type: ItemType;
