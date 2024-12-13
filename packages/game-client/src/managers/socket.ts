@@ -42,6 +42,14 @@ export class SocketManager {
     this.socket.emit(Events.CRAFT_REQUEST, recipe);
   }
 
+  public sendStartCrafting() {
+    this.socket.emit(Events.START_CRAFTING);
+  }
+
+  public sendStopCrafting() {
+    this.socket.emit(Events.STOP_CRAFTING);
+  }
+
   public sendInput(input: { dx: number; dy: number; interact: boolean; fire: boolean }) {
     this.socket.emit(Events.PLAYER_INPUT, input);
   }

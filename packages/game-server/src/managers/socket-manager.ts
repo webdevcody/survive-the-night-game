@@ -52,11 +52,15 @@ export class SocketManager {
 
   private onPlayerInput(socket: Socket, input: Input): void {
     const player = this.players.get(socket.id);
+    if (!player) return;
+    player.setVelocityFromInput(input.dx, input.dy);
+    player.setInput(input);
+  }
 
-    if (player) {
-      player.setVelocityFromInput(input.dx, input.dy);
-      player.setInput(input);
-    }
+  private setPlayerCrafting(socket: Socket, isCrafting: boolean): void {
+    const player = this.players.get(socket.id);
+    if (!player) return;
+    player.setIsCrafting(isCrafting);
   }
 
   private onConnection(socket: Socket): void {
@@ -77,6 +81,8 @@ export class SocketManager {
 
     socket.on("playerInput", (input: Input) => this.onPlayerInput(socket, input));
     socket.on(Events.CRAFT_REQUEST, (recipe: RecipeType) => this.onCraftRequest(socket, recipe));
+    socket.on(Events.START_CRAFTING, (recipe: RecipeType) => this.setPlayerCrafting(socket, true));
+    socket.on(Events.STOP_CRAFTING, (recipe: RecipeType) => this.setPlayerCrafting(socket, false));
 
     socket.on("disconnect", () => {
       this.onDisconnect(socket);

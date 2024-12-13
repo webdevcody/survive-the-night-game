@@ -46,6 +46,7 @@ export class Player
   private activeItem: InventoryItem | null = null;
   private inventory: InventoryItem[] = [];
   private health = Player.MAX_HEALTH;
+  private isCrafting = false;
 
   constructor(entityManager: EntityManager) {
     super(entityManager, Entities.PLAYER);
@@ -60,6 +61,14 @@ export class Player
         { key: "Wall" },
       ];
     }
+  }
+
+  setIsCrafting(isCrafting: boolean): void {
+    this.isCrafting = isCrafting;
+  }
+
+  getIsCrafting(): boolean {
+    return this.isCrafting;
   }
 
   isDead(): boolean {
@@ -110,6 +119,7 @@ export class Player
       position: this.position,
       velocity: this.velocity,
       health: this.health,
+      isCrafting: this.isCrafting,
     };
   }
 
@@ -311,6 +321,10 @@ export class Player
   }
 
   update(deltaTime: number) {
+    if (this.isCrafting) {
+      return;
+    }
+
     if (this.isDead()) {
       return;
     }

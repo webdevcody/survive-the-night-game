@@ -9,6 +9,7 @@ import {
   Damageable,
   Hitbox,
   Player,
+  normalizeDirection,
 } from "@survive-the-night/game-server";
 import { AssetManager, getItemAssetKey } from "../managers/asset";
 import { InputManager } from "@/managers/input";
@@ -30,6 +31,7 @@ export class PlayerClient implements IClientEntity, Renderable, Positionable, Da
   private type: EntityType;
   private health = Player.MAX_HEALTH;
   private inventory: InventoryItem[] = [];
+  private isCrafting = false;
   private activeItem: InventoryItem | null = null;
 
   constructor(id: string, assetManager: AssetManager, inputManager: InputManager) {
@@ -120,19 +122,26 @@ export class PlayerClient implements IClientEntity, Renderable, Positionable, Da
 
     ctx.restore();
 
-    const speed = Math.sqrt(this.velocity.x * this.velocity.x + this.velocity.y * this.velocity.y);
-
-    if (speed > 0 && !this.isDead()) {
+    if (!this.isDead()) {
       this.renderArrow(ctx, image, renderPosition);
     }
 
     drawHealthBar(ctx, renderPosition, this.health, this.getMaxHealth());
 
     debugDrawHitbox(ctx, this.getDamageBox(), "red");
+
+    if (this.isCrafting) {
+      ctx.fillText("🔧", renderPosition.x, renderPosition.y);
+    }
   }
 
   renderArrow(ctx: CanvasRenderingContext2D, image: HTMLImageElement, renderPosition: Vector2) {
-    const direction = normalizeVector(this.velocity);
+    const { facing } = this.inputManager.getInputs();
+    const direction = normalizeDirection(facing);
+
+    if (direction === null) {
+      return;
+    }
 
     const arrowStart = {
       x: renderPosition.x + image.width / 2,
@@ -144,14 +153,9 @@ export class PlayerClient implements IClientEntity, Renderable, Positionable, Da
       y: arrowStart.y + direction.y * this.ARROW_LENGTH,
     };
 
-    ctx.beginPath();
-    ctx.moveTo(arrowStart.x, arrowStart.y);
-    ctx.lineTo(arrowEnd.x, arrowEnd.y);
-    ctx.strokeStyle = "red";
-    ctx.lineWidth = 2;
-    ctx.stroke();
+    const arrowColor = "white";
 
-    const headLength = 8;
+    const headLength = 5;
     const angle = Math.atan2(direction.y, direction.x);
 
     ctx.beginPath();
@@ -165,7 +169,7 @@ export class PlayerClient implements IClientEntity, Renderable, Positionable, Da
       arrowEnd.y - headLength * Math.sin(angle + Math.PI / 6)
     );
     ctx.closePath();
-    ctx.fillStyle = "red";
+    ctx.fillStyle = arrowColor;
     ctx.fill();
   }
 

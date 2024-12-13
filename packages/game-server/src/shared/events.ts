@@ -6,6 +6,8 @@ export const Events = {
   PLAYER_INPUT: "playerInput",
   MAP: "map",
   YOUR_ID: "yourId",
+  START_CRAFTING: "startCrafting",
+  STOP_CRAFTING: "stopCrafting",
 } as const;
 
 export type Event = (typeof Events)[keyof typeof Events];

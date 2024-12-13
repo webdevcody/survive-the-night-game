@@ -18,6 +18,7 @@ Feel free to pick any item listed out here to work on.
 ### Crafting
 
 - [ ] a player shouldn't be able to move when crafting
+- [ ] a player shouldn't be able to open the craft menu when dead; also close it if they die while crafting
 - [ ] close the crafting menu after making an item
 - [ ] we have too manhy duplicate recipes in the crafting menu
 
