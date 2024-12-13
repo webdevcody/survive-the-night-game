@@ -19,9 +19,6 @@ Feel free to pick any item listed out here to work on.
 
 ### Crafting
 
-- [ ] a player shouldn't be able to open the craft menu when dead; also close it if they die while crafting
-- [ ] close the crafting menu after making an item
-
 ### Gameplay
 
 - [ ] during daytime, zombies should just wander around randomly, but will attack players if they get close
@@ -127,3 +124,5 @@ Feel free to pick any item listed out here to work on.
 - [x] a player shouldn't be able to move when crafting
 - [x] fix the size of the wrench icon
 - [x] figure out why the wrench icon becomes small when near a tree
+- [x] close the crafting menu after making an item
+- [x] a player shouldn't be able to open the craft menu when dead; also close it if they die while crafting

@@ -83,6 +83,12 @@ export class GameClient {
 
     this.inputManager = new InputManager({
       onCraft: () => {
+        const player = getPlayer();
+
+        if (player?.isDead()) {
+          return;
+        }
+
         this.craftingTable.toggle();
         if (this.craftingTable.isVisible()) {
           this.socketManager.sendStopCrafting();
