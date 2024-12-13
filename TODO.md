@@ -14,14 +14,13 @@ Feel free to pick any item listed out here to work on.
 ### Bugs
 
 - [ ] when DEBUG = true, all the HUD overlays seem to shift, including the "pickup (e)" text over items
+- [ ] every player faces the same direction as YOUR player which is a bug
+- [ ] when a player is killed by a zombie, it seems like the zombie gets stuck either on the player, or thinks it still needs to attack the player.... debug this
 
 ### Crafting
 
-- [ ] fix the size of the wrench icon
-- [ ] figure out why the wrench icon becomes small when near a tree
 - [ ] a player shouldn't be able to open the craft menu when dead; also close it if they die while crafting
 - [ ] close the crafting menu after making an item
-- [ ] we have too manhy duplicate recipes in the crafting menu
 
 ### Gameplay
 
@@ -126,3 +125,5 @@ Feel free to pick any item listed out here to work on.
 - [x] when picking up items, it should pick up the CLOSEST item first
 - [x] the health bars need to be attached to the player group so that when they interpolate they don't lag behindw
 - [x] a player shouldn't be able to move when crafting
+- [x] fix the size of the wrench icon
+- [x] figure out why the wrench icon becomes small when near a tree

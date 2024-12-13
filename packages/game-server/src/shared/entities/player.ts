@@ -183,6 +183,7 @@ export class Player
     }
 
     this.inventory = foundRecipe.craft(this.inventory);
+    this.setIsCrafting(false);
   }
 
   handleAttack(deltaTime: number) {
