@@ -61,6 +61,11 @@ const playerLeftFrameOrigins = getFrameOrigins({ startX: 493, startY: 209, total
 const playerUpFrameOrigins = getFrameOrigins({ startX: 493, startY: 171, totalFrames: 3 });
 const playerRightFrameOrigins = getFrameOrigins({ startX: 493, startY: 209, totalFrames: 3 });
 
+const zombieUpFrameOrigins = getFrameOrigins({ startX: 496, startY: 57, totalFrames: 3 });
+const zombieDownFrameOrigins = getFrameOrigins({ startX: 496, startY: 76, totalFrames: 3 });
+const zombieLeftFrameOrigins = getFrameOrigins({ startX: 496, startY: 95, totalFrames: 3 });
+const zombieRightFrameOrigins = getFrameOrigins({ startX: 496, startY: 95, totalFrames: 3 });
+
 // sheet gaps: 1px horizontally, 3px vertically
 export const assetsMap = {
   Knife: assetMap({ x: 17, y: 171 }),
@@ -98,10 +103,22 @@ export const assetsMap = {
   Tree: assetMap({ x: 221, y: 209 }),
   Wall: assetMap({ x: 357, y: 95 }),
   Zombie: assetMap({ x: 493, y: 76 }),
-  ZombieFacingDown: assetMap({ x: 493, y: 76 }),
-  ZombieFacingLeft: assetMap({ x: 493, y: 95 }),
-  ZombieFacingRight: assetMap({ x: 493, y: 95, flipX: true }),
-  ZombieFacingUp: assetMap({ x: 493, y: 57 }),
+  ZombieFacingDown: assetMap(zombieDownFrameOrigins[0]),
+  ZombieFacingDown0: assetMap(zombieDownFrameOrigins[0]),
+  ZombieFacingDown1: assetMap(zombieDownFrameOrigins[1]),
+  ZombieFacingDown2: assetMap(zombieDownFrameOrigins[2]),
+  ZombieFacingLeft: assetMap(zombieLeftFrameOrigins[0]),
+  ZombieFacingLeft0: assetMap(zombieLeftFrameOrigins[0]),
+  ZombieFacingLeft1: assetMap(zombieLeftFrameOrigins[1]),
+  ZombieFacingLeft2: assetMap(zombieLeftFrameOrigins[2]),
+  ZombieFacingRight: loadFlipXAsset(zombieRightFrameOrigins[0]),
+  ZombieFacingRight0: loadFlipXAsset(zombieRightFrameOrigins[0]),
+  ZombieFacingRight1: loadFlipXAsset(zombieRightFrameOrigins[1]),
+  ZombieFacingRight2: loadFlipXAsset(zombieRightFrameOrigins[2]),
+  ZombieFacingUp: assetMap(zombieUpFrameOrigins[0]),
+  ZombieFacingUp0: assetMap(zombieUpFrameOrigins[0]),
+  ZombieFacingUp1: assetMap(zombieUpFrameOrigins[1]),
+  ZombieFacingUp2: assetMap(zombieUpFrameOrigins[2]),
   Bandage: assetMap({ x: 34, y: 190 }),
 } as const;
 

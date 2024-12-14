@@ -12,24 +12,13 @@ export enum Direction {
 }
 
 export function determineDirection(vector: Vector2): Direction | null {
-  if (vector.x < 0 && vector.y > 0) {
-    return Direction.DownLeft;
-  } else if (vector.x > 0 && vector.y > 0) {
-    return Direction.DownRight;
-  } else if (vector.x < 0 && vector.y < 0) {
-    return Direction.UpLeft;
-  } else if (vector.x > 0 && vector.y < 0) {
-    return Direction.UpRight;
-  }
+  const absX = Math.abs(vector.x);
+  const absY = Math.abs(vector.y);
 
-  if (vector.y > 0) {
-    return Direction.Down;
-  } else if (vector.x < 0) {
-    return Direction.Left;
-  } else if (vector.x > 0) {
-    return Direction.Right;
-  } else if (vector.y < 0) {
-    return Direction.Up;
+  if (absX > absY) {
+    return vector.x > 0 ? Direction.Right : Direction.Left;
+  } else if (absY > absX) {
+    return vector.y > 0 ? Direction.Down : Direction.Up;
   }
 
   return null;

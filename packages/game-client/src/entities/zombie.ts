@@ -9,7 +9,7 @@ import {
   Hitbox,
 } from "@survive-the-night/game-server";
 import { AssetManager } from "@/managers/asset";
-import { drawHealthBar, IClientEntity, Renderable } from "./util";
+import { drawHealthBar, getFrameIndex, IClientEntity, Renderable } from "./util";
 import { GameState } from "@/state";
 import { debugDrawHitbox } from "../util/debug";
 import { Zombie } from "@survive-the-night/game-server/src/shared/entities/zombie";
@@ -32,6 +32,10 @@ export class ZombieClient implements IClientEntity, Renderable, Positionable, Da
 
   getMaxHealth(): number {
     return 3;
+  }
+
+  heal(amount: number): void {
+    this.health += amount;
   }
 
   isDead(): boolean {
@@ -89,10 +93,14 @@ export class ZombieClient implements IClientEntity, Renderable, Positionable, Da
     this.lastRenderPosition.y += (targetPosition.y - this.lastRenderPosition.y) * this.LERP_FACTOR;
 
     const renderPosition = roundVector2(this.lastRenderPosition);
-    const direction = determineDirection(this.velocity);
+    const facing = determineDirection(this.velocity);
 
-    // Draw the zombie
-    const image = this.assetManager.getWithDirection("Zombie", direction);
+    const frameIndex = getFrameIndex(gameState.startedAt, {
+      duration: 500,
+      frames: 3,
+    });
+    const image = this.assetManager.getFrameWithDirection("Zombie", facing, frameIndex);
+
     ctx.drawImage(image, renderPosition.x, renderPosition.y);
 
     drawHealthBar(ctx, renderPosition, this.health, this.getMaxHealth());
