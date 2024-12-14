@@ -18,6 +18,21 @@ export interface Renderable {
 
 export interface IClientEntity {}
 
+export function getFrameIndex(
+  startedAt: number,
+  animation: {
+    frames: number;
+    duration: number;
+  }
+) {
+  const { duration, frames } = animation;
+  const elapsed = Date.now() - startedAt;
+  const cyclePosition = elapsed % duration;
+  const frameLength = duration / frames;
+  const currentFrame = Math.floor(cyclePosition / frameLength);
+  return currentFrame;
+}
+
 export function animate(startedAt: number, position: Vector2, animation: Animation): Vector2 {
   const { duration, frames } = animation;
   const currentProgress = (((Date.now() - startedAt) % duration) * 100) / duration;

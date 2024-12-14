@@ -25,13 +25,12 @@ Feel free to pick any item listed out here to work on.
 
 ### Gameplay
 
-- [ ] a player should drop all items when they die and scatter them around their body
+- [ ] zombie should use walk animation as well
 - [ ] during daytime, zombies should just wander around randomly, but will attack players if they get close
 - [ ] if ALL players die, the game ends
 - [ ] show a message that the players lost, and show a leaderboard with how many kills each player got
 - [ ] add in melee weapon logic
 - [ ] when a player is killed, notify all players in the game a player has died
-- [ ] players should be able to revive other dead players
 - [ ] the guns should need ammo to fire
 - [ ] a player should be able to pick up multiple guns (could later sell at the merchant or give other friends)
 - [ ] items should have a weight associated with them
@@ -61,7 +60,6 @@ Feel free to pick any item listed out here to work on.
 
 ### Game Feel
 
-- [ ] the player should have a running animation (keep it simple), 2 frames with legs going up and down
 - [ ] the zombies need running animations as well
 - [ ] need sound effects for
   - [ ] zombie attacking
@@ -131,3 +129,5 @@ Feel free to pick any item listed out here to work on.
 - [x] figure out why the wrench icon becomes small when near a tree
 - [x] close the crafting menu after making an item
 - [x] a player shouldn't be able to open the craft menu when dead; also close it if they die while crafting
+- [x] a player should drop all items when they die and scatter them around their body
+- [x] the player should have a running animation (keep it simple), 2 frames with legs going up and down

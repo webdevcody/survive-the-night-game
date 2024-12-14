@@ -20,6 +20,47 @@ function assetMap({
   return { flipX, x, y, width, height };
 }
 
+function getFrameOrigin({
+  startX,
+  startY,
+  frameIndex,
+}: {
+  startX: number;
+  startY: number;
+  frameIndex: number;
+}) {
+  return {
+    x: startX + (tileSize + 1) * frameIndex,
+    y: startY,
+  };
+}
+
+function getFrameOrigins({ startX, startY, totalFrames }: FrameInfo): FrameOrigin[] {
+  return Array.from({ length: totalFrames }, (_, index) =>
+    getFrameOrigin({ startX, startY, frameIndex: index })
+  );
+}
+
+function loadFlipXAsset(frameOrigin: FrameOrigin) {
+  return assetMap({ ...frameOrigin, flipX: true });
+}
+
+type FrameInfo = {
+  startX: number;
+  startY: number;
+  totalFrames: number;
+};
+
+type FrameOrigin = {
+  x: number;
+  y: number;
+};
+
+const playerDownFrameOrigins = getFrameOrigins({ startX: 493, startY: 190, totalFrames: 3 });
+const playerLeftFrameOrigins = getFrameOrigins({ startX: 493, startY: 209, totalFrames: 3 });
+const playerUpFrameOrigins = getFrameOrigins({ startX: 493, startY: 171, totalFrames: 3 });
+const playerRightFrameOrigins = getFrameOrigins({ startX: 493, startY: 209, totalFrames: 3 });
+
 // sheet gaps: 1px horizontally, 3px vertically
 export const assetsMap = {
   Knife: assetMap({ x: 17, y: 171 }),
@@ -38,10 +79,22 @@ export const assetsMap = {
   ShotgunFacingRight: assetMap({ x: 17, y: 133 }),
   ShotgunFacingUp: assetMap({ x: 34, y: 133 }),
   Player: assetMap({ x: 493, y: 209 }),
-  PlayerFacingDown: assetMap({ x: 493, y: 190 }),
-  PlayerFacingLeft: assetMap({ x: 493, y: 209, flipX: true }),
-  PlayerFacingRight: assetMap({ x: 493, y: 209 }),
-  PlayerFacingUp: assetMap({ x: 493, y: 171 }),
+  PlayerFacingDown: assetMap(playerDownFrameOrigins[0]),
+  PlayerFacingDown0: assetMap(playerDownFrameOrigins[0]),
+  PlayerFacingDown1: assetMap(playerDownFrameOrigins[1]),
+  PlayerFacingDown2: assetMap(playerDownFrameOrigins[2]),
+  PlayerFacingLeft: loadFlipXAsset(playerLeftFrameOrigins[0]),
+  PlayerFacingLeft0: loadFlipXAsset(playerLeftFrameOrigins[0]),
+  PlayerFacingLeft1: loadFlipXAsset(playerLeftFrameOrigins[1]),
+  PlayerFacingLeft2: loadFlipXAsset(playerLeftFrameOrigins[2]),
+  PlayerFacingRight: assetMap(playerRightFrameOrigins[0]),
+  PlayerFacingRight0: assetMap(playerRightFrameOrigins[0]),
+  PlayerFacingRight1: assetMap(playerRightFrameOrigins[1]),
+  PlayerFacingRight2: assetMap(playerRightFrameOrigins[2]),
+  PlayerFacingUp: assetMap(playerUpFrameOrigins[0]),
+  PlayerFacingUp0: assetMap(playerUpFrameOrigins[0]),
+  PlayerFacingUp1: assetMap(playerUpFrameOrigins[1]),
+  PlayerFacingUp2: assetMap(playerUpFrameOrigins[2]),
   Tree: assetMap({ x: 221, y: 209 }),
   Wall: assetMap({ x: 357, y: 95 }),
   Zombie: assetMap({ x: 493, y: 76 }),
@@ -84,10 +137,22 @@ export class AssetManager {
     return asset;
   }
 
-  public getWithDirection(key: Asset, direction: Direction | null): HTMLImageElement {
+  public getFrameWithDirection(key: Asset, direction: Direction | null, frameIndex: number) {
+    const keyWithDirection = this.addDirectionSuffix(key, direction);
+    const keyWithFrame = `${keyWithDirection}${frameIndex}`;
+    return this.get(keyWithFrame as Asset);
+  }
+
+  /**
+   * Adds a direction suffix to asset key such as "Player" -> "PlayerFacingLeft"
+   * @param key - The asset key
+   * @param direction - The direction
+   * @returns The asset key with the direction suffix
+   */
+  addDirectionSuffix(key: Asset, direction: Direction | null) {
     let suffix = "";
 
-    if (direction) {
+    if (direction !== null) {
       if (isDirectionLeft(direction)) {
         suffix = "FacingLeft";
       } else if (isDirectionRight(direction)) {
@@ -100,6 +165,11 @@ export class AssetManager {
     }
 
     const keyWithDirection = `${key}${suffix}` as Asset;
+    return keyWithDirection;
+  }
+
+  public getWithDirection(key: Asset, direction: Direction | null): HTMLImageElement {
+    const keyWithDirection = this.addDirectionSuffix(key, direction);
 
     let asset = this.get(keyWithDirection);
     if (asset === undefined) {

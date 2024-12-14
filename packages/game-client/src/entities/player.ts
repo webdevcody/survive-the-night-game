@@ -10,10 +10,11 @@ import {
   Hitbox,
   Player,
   normalizeDirection,
+  Direction,
 } from "@survive-the-night/game-server";
 import { AssetManager, getItemAssetKey } from "../managers/asset";
 import { InputManager } from "@/managers/input";
-import { animate, drawHealthBar, IClientEntity, Renderable } from "./util";
+import { animate, drawHealthBar, getFrameIndex, IClientEntity, Renderable } from "./util";
 import { GameState } from "@/state";
 import { getHitboxWithPadding } from "@survive-the-night/game-server/src/shared/entities/util";
 import { debugDrawHitbox } from "../util/debug";
@@ -39,6 +40,10 @@ export class PlayerClient implements IClientEntity, Renderable, Positionable, Da
     this.type = Entities.PLAYER;
     this.assetManager = assetManager;
     this.inputManager = inputManager;
+  }
+
+  heal(amount: number): void {
+    this.health += amount;
   }
 
   getInventory(): InventoryItem[] {
@@ -104,7 +109,22 @@ export class PlayerClient implements IClientEntity, Renderable, Positionable, Da
   render(ctx: CanvasRenderingContext2D, gameState: GameState): void {
     const targetPosition = this.getPosition();
     const { facing } = this.inputManager.getInputs();
-    const image = this.assetManager.getWithDirection("Player", this.isDead() ? "down" : facing);
+    // const image = this.assetManager.getWithDirection("Player", this.isDead() ? "down" : facing);
+    const isMoving = this.velocity.x !== 0 || this.velocity.y !== 0;
+
+    let image: HTMLImageElement;
+
+    if (this.isDead()) {
+      image = this.assetManager.getWithDirection("Player", Direction.Down);
+    } else if (!isMoving) {
+      image = this.assetManager.getWithDirection("Player", facing);
+    } else {
+      const frameIndex = getFrameIndex(gameState.startedAt, {
+        duration: 500,
+        frames: 3,
+      });
+      image = this.assetManager.getFrameWithDirection("Player", facing, frameIndex);
+    }
 
     this.lastRenderPosition.x += (targetPosition.x - this.lastRenderPosition.x) * this.LERP_FACTOR;
     this.lastRenderPosition.y += (targetPosition.y - this.lastRenderPosition.y) * this.LERP_FACTOR;
