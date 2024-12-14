@@ -22,7 +22,7 @@ import { recipes, RecipeType } from "../recipes";
 import { DEBUG } from "../../index";
 import { Cooldown } from "./util/cooldown";
 import { Bandage } from "./items/bandage";
-import { Sound } from "./sound";
+import { Sound, SOUND_TYPES } from "./sound";
 
 export class Player
   extends Entity
@@ -107,6 +107,10 @@ export class Player
 
   damage(damage: number): void {
     this.health = Math.max(this.health - damage, 0);
+
+    const sound = new Sound(this.getEntityManager(), SOUND_TYPES.PLAYER_HURT);
+    sound.setPosition(this.getCenterPosition());
+    this.getEntityManager().addEntity(sound);
 
     if (this.health <= 0) {
       this.onDeath();

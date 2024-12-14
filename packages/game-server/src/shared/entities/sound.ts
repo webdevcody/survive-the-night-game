@@ -8,6 +8,7 @@ import { Vector2 } from "../physics";
 export const SOUND_TYPES = {
   PISTOL: "pistol",
   SHOTGUN: "shotgun",
+  PLAYER_HURT: "player_hurt",
 } as const;
 
 export type SoundType = (typeof SOUND_TYPES)[keyof typeof SOUND_TYPES];

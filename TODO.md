@@ -43,6 +43,21 @@ Feel free to pick any item listed out here to work on.
 - [ ] add a way to toggle the instructions on and off
 - [ ] add a nice indicator for the day / night cycle (could use a sun and moon icon; checkout don't starve together)
 
+### Sounds
+
+- [ ] before playing a new sound, determine distance from player and reduce volume if the sound was far away
+- [ ] auto clean up sound entities after 5 seconds.
+- [ ] add sound for shotgun
+- [ ] add sound for knife
+- [ ] add sound for player walking
+- [ ] add sound for zombie walking
+- [ ] add sound for player hurt
+- [ ] add sound for zombie hurt
+- [ ] add sound for zombie attack
+- [ ] add sound for item pickup
+- [ ] add sound for item drop
+- [ ] add sound for player death
+
 ### Lobby
 
 - [ ] a user shall be able to browse lobbies
