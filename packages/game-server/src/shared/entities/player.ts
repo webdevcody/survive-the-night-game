@@ -108,8 +108,27 @@ export class Player
     this.health = Math.max(this.health - damage, 0);
 
     if (this.health <= 0) {
-      this.setIsCrafting(false);
+      this.onDeath();
     }
+  }
+
+  onDeath(): void {
+    this.setIsCrafting(false);
+    this.scatterInventory();
+  }
+
+  scatterInventory(): void {
+    const offset = 32;
+    this.inventory.forEach((item) => {
+      const entity = this.convertItemToEntity(item);
+      const theta = Math.random() * 2 * Math.PI;
+      const radius = Math.random() * offset;
+      (entity as unknown as Positionable).setPosition({
+        x: this.position.x + radius * Math.cos(theta),
+        y: this.position.y + radius * Math.sin(theta),
+      });
+      this.getEntityManager().addEntity(entity);
+    });
   }
 
   isInventoryFull(): boolean {
@@ -273,6 +292,30 @@ export class Player
     }
   }
 
+  convertItemToEntity(item: InventoryItem): Entity {
+    let entity: Entity;
+    switch (item.key) {
+      case "Knife":
+      case "Pistol":
+      case "Shotgun":
+        entity = new Weapon(this.getEntityManager(), item.key);
+        break;
+      case "Wood":
+        entity = new Tree(this.getEntityManager());
+        break;
+      case "Wall":
+        entity = new Wall(this.getEntityManager(), item.state?.health);
+        break;
+      case "Bandage":
+        entity = new Bandage(this.getEntityManager());
+        break;
+      default:
+        throw new Error(`Unknown item type: '${item.key}'`);
+    }
+
+    return entity;
+  }
+
   handleDrop(deltaTime: number) {
     this.dropCooldown.update(deltaTime);
 
@@ -288,25 +331,7 @@ export class Player
         this.inventory.splice(itemIndex, 1);
 
         // Create new entity based on item type
-        let entity: Entity;
-        switch (item.key) {
-          case "Knife":
-          case "Pistol":
-          case "Shotgun":
-            entity = new Weapon(this.getEntityManager(), item.key);
-            break;
-          case "Wood":
-            entity = new Tree(this.getEntityManager());
-            break;
-          case "Wall":
-            entity = new Wall(this.getEntityManager(), item.state?.health);
-            break;
-          case "Bandage":
-            entity = new Bandage(this.getEntityManager());
-            break;
-          default:
-            throw new Error(`Unknown item type: '${item.key}'`);
-        }
+        const entity = this.convertItemToEntity(item);
 
         // Position the entity at player's center
         if ("setPosition" in entity) {
