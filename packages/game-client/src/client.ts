@@ -18,6 +18,7 @@ import { Hud } from "./ui/hud";
 import { WeaponClient } from "./entities/weapon";
 import { Input } from "@survive-the-night/game-server/src/server";
 import { BandageClient } from "./entities/items/bandage";
+import { SoundClient } from "./entities/sound";
 
 export class GameClient {
   private ctx: CanvasRenderingContext2D;
@@ -71,6 +72,11 @@ export class GameClient {
     },
     [Entities.ZOMBIE]: (data) => {
       const entity = new ZombieClient(data.id, this.assetManager);
+      this.initializeEntity(entity, data);
+      return entity;
+    },
+    [Entities.SOUND]: (data) => {
+      const entity = new SoundClient(data.id, data.soundType);
       this.initializeEntity(entity, data);
       return entity;
     },

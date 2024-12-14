@@ -22,6 +22,7 @@ import { recipes, RecipeType } from "../recipes";
 import { DEBUG } from "../../index";
 import { Cooldown } from "./util/cooldown";
 import { Bandage } from "./items/bandage";
+import { Sound } from "./sound";
 
 export class Player
   extends Entity
@@ -236,6 +237,13 @@ export class Player
         });
         bullet.setDirection(this.input.facing);
         this.getEntityManager().addEntity(bullet);
+
+        const sound = new Sound(this.getEntityManager(), "pistol");
+        sound.setPosition({
+          x: this.position.x + Player.PLAYER_WIDTH / 2,
+          y: this.position.y + Player.PLAYER_HEIGHT / 2,
+        });
+        this.getEntityManager().addEntity(sound);
       } else if (activeWeapon.key === "Shotgun") {
         // Create 3 bullets with spread
         const spreadAngle = 2; // degrees
