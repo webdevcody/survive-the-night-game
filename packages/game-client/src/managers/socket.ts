@@ -1,5 +1,5 @@
 import { io, Socket } from "socket.io-client";
-import { Events, GameStateEvent, RecipeType } from "@survive-the-night/game-server";
+import { Events, GameStateEvent, Input, RecipeType } from "@survive-the-night/game-server";
 
 export type EntityDto = { id: string } & any;
 
@@ -50,13 +50,7 @@ export class SocketManager {
     this.socket.emit(Events.STOP_CRAFTING);
   }
 
-  public sendInput(input: {
-    dx: number;
-    dy: number;
-    interact: boolean;
-    fire: boolean;
-    consume: boolean;
-  }) {
+  public sendInput(input: Input) {
     this.socket.emit(Events.PLAYER_INPUT, input);
   }
 }

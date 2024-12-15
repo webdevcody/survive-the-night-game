@@ -23,6 +23,7 @@ import { DEBUG } from "../../index";
 import { Cooldown } from "./util/cooldown";
 import { Bandage } from "./items/bandage";
 import { Sound, SOUND_TYPES } from "./sound";
+import { Input } from "../input";
 
 export class Player
   extends Entity
@@ -161,6 +162,7 @@ export class Player
       velocity: this.velocity,
       health: this.health,
       isCrafting: this.isCrafting,
+      input: this.input,
     };
   }
 

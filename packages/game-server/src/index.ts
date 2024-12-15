@@ -7,5 +7,6 @@ export * from "./shared/inventory";
 export * from "./shared/recipes";
 export * from "./shared/traits";
 export * from "./shared/direction";
+export * from "./shared/input";
 
 export const DEBUG = false;

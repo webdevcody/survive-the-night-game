@@ -1,21 +1,9 @@
-import { Direction } from "./shared/direction";
 import { GameStateEvent } from "./shared/events";
 import { EntityManager } from "./managers/entity-manager";
 import { MapManager } from "./managers/map-manager";
 import { SocketManager } from "./managers/socket-manager";
 
 export const FPS = 30;
-
-export type Input = {
-  facing: Direction;
-  dx: number;
-  dy: number;
-  interact: boolean;
-  fire: boolean;
-  inventoryItem: number;
-  drop: boolean;
-  consume: boolean;
-};
 
 export const DAY_DURATION = 300;
 export const NIGHT_DURATION = 30;
