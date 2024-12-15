@@ -17,11 +17,8 @@ Feel free to pick any item listed out here to work on.
 - [ ] when DEBUG = true, all the HUD overlays seem to shift, including the "pickup (e)" text over items
 - [ ] when a player is killed by a zombie, it seems like the zombie gets stuck either on the player, or thinks it still needs to attack the player.... debug this
 
-### Crafting
-
 ### Gameplay
 
-- [ ] zombie should use walk animation as well
 - [ ] during daytime, zombies should just wander around randomly, but will attack players if they get close
 - [ ] if ALL players die, the game ends
 - [ ] show a message that the players lost, and show a leaderboard with how many kills each player got
@@ -51,8 +48,10 @@ Feel free to pick any item listed out here to work on.
 - [ ] add sound for zombie hurt
 - [ ] add sound for zombie attack
 - [ ] add sound for item pickup
+- [ ] add sound for item craft
 - [ ] add sound for item drop
 - [ ] add sound for player death
+- [ ] ambient background music that can be turned off
 
 ### Lobby
 
@@ -68,22 +67,6 @@ Feel free to pick any item listed out here to work on.
 - [ ] create a "city" zone which has a building and roads
 - [ ] create a "road" zone which is used to connect cities and farms (road going up or down)
 - [ ] generate larger maps containing farms, cities, and roads that connect them.
-
-### Game Feel
-
-- [ ] the zombies need running animations as well
-- [ ] need sound effects for
-  - [ ] zombie attacking
-  - [ ] zombie dying
-  - [ ] zombie walking
-  - [ ] player dying
-  - [ ] player attacking
-  - [ ] player shooting
-  - [ ] player walking
-  - [ ] new items crafted
-  - [ ] items picked up
-  - [ ] items dropped
-  - [ ] ambient background music that can be turned off
 
 ## Medium Priority (Enhancements):
 
@@ -145,3 +128,4 @@ Feel free to pick any item listed out here to work on.
 - [x] every player faces the same direction as YOUR player which is a bug
 - [x] the crafting recipe should be red or grayed out if you don't have enough items to craft it
 - [x] pressing space while crafting an item you don't have enough resources to craft should not auto close the crafting menu
+- [x] zombie should use walk animation as well
