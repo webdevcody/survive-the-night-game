@@ -428,10 +428,6 @@ export class Player
       return;
     }
 
-    if (this.input.inventoryItem !== null) {
-      this.activeItem = this.inventory[this.input.inventoryItem - 1];
-    }
-
     this.handleAttack(deltaTime);
     this.handleMovement(deltaTime);
     this.handleInteract(deltaTime);
@@ -441,6 +437,12 @@ export class Player
 
   setInput(input: Input) {
     this.input = input;
+
+    if (this.input.inventoryItem !== null) {
+      this.activeItem = this.inventory[this.input.inventoryItem - 1] ?? null;
+    } else {
+      this.activeItem = null;
+    }
   }
 
   heal(amount: number): void {
