@@ -4,7 +4,7 @@
   "main": "src/index.ts",
   "scripts": {
     "dev": "tsx watch src/server.ts",
-    "build": "tsc"
+    "build": "tsup src/server.ts"
   },
   "keywords": [],
   "type": "module",
@@ -13,8 +13,8 @@
   "description": "",
   "devDependencies": {
     "@types/node": "^22.9.3",
-    "tsx": "^4.19.2",
-    "typescript": "^5.7.2"
+    "tsup": "^8.3.5",
+    "tsx": "^4.19.2"
   },
   "dependencies": {
     "socket.io": "^4.8.1"
