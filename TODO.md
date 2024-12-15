@@ -19,8 +19,6 @@ Feel free to pick any item listed out here to work on.
 
 ### Crafting
 
-- [ ] pressing space while crafting an item you don't have enough resources to craft should not auto close the crafting menu
-
 ### Gameplay
 
 - [ ] zombie should use walk animation as well
@@ -146,3 +144,4 @@ Feel free to pick any item listed out here to work on.
 - [x] the player should have a running animation (keep it simple), 2 frames with legs going up and down
 - [x] every player faces the same direction as YOUR player which is a bug
 - [x] the crafting recipe should be red or grayed out if you don't have enough items to craft it
+- [x] pressing space while crafting an item you don't have enough resources to craft should not auto close the crafting menu

@@ -79,7 +79,11 @@ export class CraftingTable implements Renderable {
   }
 
   public onSelect() {
-    this.onCraft(recipes[this.activeRecipe].getType());
+    const recipe = recipes[this.activeRecipe];
+
+    if (recipe.canBeCrafted(this.getInventory())) {
+      this.onCraft(recipe.getType());
+    }
   }
 
   public onUp() {
