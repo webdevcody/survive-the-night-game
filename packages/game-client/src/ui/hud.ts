@@ -3,21 +3,6 @@ import { GameState, getEntityById } from "../state";
 
 const HUD_SETTINGS = {
   ControlsList: {
-    innerText:
-      "Harvest [E]\n" +
-      "Craft [Q]\n" +
-      "Left [A]\n" +
-      "Right [D]\n" +
-      "Down [S]\n" +
-      "Up [W]\n" +
-      "Fire [SPACE]\n" +
-      "Consume [F]\n" +
-      "\n" +
-      "When Crafting:\n" +
-      "Down [S]\n" +
-      "Up [W]\n" +
-      "Craft [SPACE]",
-
     background: "rgba(0, 0, 0, 0.8)",
     color: "rgb(255, 255, 255)",
     font: "32px Arial",
@@ -66,16 +51,29 @@ export class Hud {
       ctx.fillText(healthText, width - healthTextWidth - margin, margin + gap * 2);
     }
 
-    this.renderControlsList(ctx);
+    this.renderControlsList(ctx, gameState);
   }
 
-  public renderControlsList(ctx: CanvasRenderingContext2D): void {
+  public renderControlsList(ctx: CanvasRenderingContext2D, gameState: GameState): void {
+    const regularText =
+      "Left [A]\n" +
+      "Right [D]\n" +
+      "Down [S]\n" +
+      "Up [W]\n" +
+      "Fire [SPACE]\n" +
+      "Consume [F]\n" +
+      "Harvest [E]\n" +
+      "Craft [Q]\n";
+
+    const craftingText = "Down [S]\nUp [W]\nCraft [SPACE]";
+    const innerText = gameState.crafting ? craftingText : regularText;
+
     ctx.save();
     ctx.setTransform(1, 0, 0, 1, 0, 0);
 
     ctx.font = HUD_SETTINGS.ControlsList.font;
 
-    const lines = HUD_SETTINGS.ControlsList.innerText.split("\n");
+    const lines = innerText.trim().split("\n");
     let maxLineWidth = 0;
     let maxLineHeight = 0;
 

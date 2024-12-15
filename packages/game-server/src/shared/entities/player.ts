@@ -1,5 +1,4 @@
 import { Entities, Entity, RawEntity } from "../entities";
-import { Input } from "../../server";
 import { EntityManager } from "../../managers/entity-manager";
 import { Bullet } from "./bullet";
 import { Tree } from "./tree";
@@ -23,6 +22,7 @@ import { DEBUG } from "../../index";
 import { Cooldown } from "./util/cooldown";
 import { Bandage } from "./items/bandage";
 import { Sound, SOUND_TYPES } from "./sound";
+import { Input } from "../input";
 
 export class Player
   extends Entity
@@ -106,6 +106,10 @@ export class Player
   }
 
   damage(damage: number): void {
+    if (this.isDead()) {
+      return;
+    }
+
     this.health = Math.max(this.health - damage, 0);
 
     const sound = new Sound(this.getEntityManager(), SOUND_TYPES.PLAYER_HURT);
@@ -120,6 +124,7 @@ export class Player
   onDeath(): void {
     this.setIsCrafting(false);
     this.scatterInventory();
+    this.inventory = [];
   }
 
   scatterInventory(): void {
@@ -160,6 +165,7 @@ export class Player
       velocity: this.velocity,
       health: this.health,
       isCrafting: this.isCrafting,
+      input: this.input,
     };
   }
 
@@ -250,7 +256,7 @@ export class Player
         this.getEntityManager().addEntity(sound);
       } else if (activeWeapon.key === "Shotgun") {
         // Create 3 bullets with spread
-        const spreadAngle = 2; // degrees
+        const spreadAngle = 8; // degrees
         for (let i = -1; i <= 1; i++) {
           const bullet = new Bullet(this.getEntityManager());
           bullet.setPosition({
@@ -423,10 +429,6 @@ export class Player
       return;
     }
 
-    if (this.input.inventoryItem !== null) {
-      this.activeItem = this.inventory[this.input.inventoryItem - 1];
-    }
-
     this.handleAttack(deltaTime);
     this.handleMovement(deltaTime);
     this.handleInteract(deltaTime);
@@ -436,6 +438,12 @@ export class Player
 
   setInput(input: Input) {
     this.input = input;
+
+    if (this.input.inventoryItem !== null) {
+      this.activeItem = this.inventory[this.input.inventoryItem - 1] ?? null;
+    } else {
+      this.activeItem = null;
+    }
   }
 
   heal(amount: number): void {

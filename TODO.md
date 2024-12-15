@@ -15,17 +15,9 @@ Feel free to pick any item listed out here to work on.
 ### Bugs
 
 - [ ] when DEBUG = true, all the HUD overlays seem to shift, including the "pickup (e)" text over items
-- [ ] every player faces the same direction as YOUR player which is a bug
-- [ ] when a player is killed by a zombie, it seems like the zombie gets stuck either on the player, or thinks it still needs to attack the player.... debug this
-
-### Crafting
-
-- [ ] the crafting recipe should be red or grayed out if you don't have enough items to craft it
-- [ ] pressing space while crafting an item you don't have enough resources to craft should not auto close the crafting menu
 
 ### Gameplay
 
-- [ ] zombie should use walk animation as well
 - [ ] during daytime, zombies should just wander around randomly, but will attack players if they get close
 - [ ] if ALL players die, the game ends
 - [ ] show a message that the players lost, and show a leaderboard with how many kills each player got
@@ -55,8 +47,10 @@ Feel free to pick any item listed out here to work on.
 - [ ] add sound for zombie hurt
 - [ ] add sound for zombie attack
 - [ ] add sound for item pickup
+- [ ] add sound for item craft
 - [ ] add sound for item drop
 - [ ] add sound for player death
+- [ ] ambient background music that can be turned off
 
 ### Lobby
 
@@ -73,22 +67,6 @@ Feel free to pick any item listed out here to work on.
 - [ ] create a "road" zone which is used to connect cities and farms (road going up or down)
 - [ ] generate larger maps containing farms, cities, and roads that connect them.
 
-### Game Feel
-
-- [ ] the zombies need running animations as well
-- [ ] need sound effects for
-  - [ ] zombie attacking
-  - [ ] zombie dying
-  - [ ] zombie walking
-  - [ ] player dying
-  - [ ] player attacking
-  - [ ] player shooting
-  - [ ] player walking
-  - [ ] new items crafted
-  - [ ] items picked up
-  - [ ] items dropped
-  - [ ] ambient background music that can be turned off
-
 ## Medium Priority (Enhancements):
 
 - [ ] a user shall be able to see a mini map which helps them know where they are
@@ -101,6 +79,8 @@ Feel free to pick any item listed out here to work on.
 - [ ] a player can chat with other players in their game via text
 - [ ] a user shall be able to see stamina bar which recharges slowly over time
 - [ ] a user shall be able to run using shift
+- [ ] zombie never stops walking, even when killed all players
+- [ ] person hosting game server should be able to login as admin in console and have ability to ban/kick/teleport players (by Aaron)
 
 ## Low Priority (Polish):
 
@@ -146,3 +126,8 @@ Feel free to pick any item listed out here to work on.
 - [x] a player shouldn't be able to open the craft menu when dead; also close it if they die while crafting
 - [x] a player should drop all items when they die and scatter them around their body
 - [x] the player should have a running animation (keep it simple), 2 frames with legs going up and down
+- [x] every player faces the same direction as YOUR player which is a bug
+- [x] the crafting recipe should be red or grayed out if you don't have enough items to craft it
+- [x] pressing space while crafting an item you don't have enough resources to craft should not auto close the crafting menu
+- [x] zombie should use walk animation as well
+- [x] when a player is killed by a zombie, it seems like the zombie gets stuck either on the player, or thinks it still needs to attack the player

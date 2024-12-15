@@ -1,7 +1,14 @@
 import { AssetManager } from "./managers/asset";
 import { InputManager } from "./managers/input";
 import { EntityDto, SocketManager } from "./managers/socket";
-import { Entities, EntityType, GameStateEvent, Positionable } from "@survive-the-night/game-server";
+import {
+  Direction,
+  Entities,
+  EntityType,
+  GameStateEvent,
+  Input,
+  Positionable,
+} from "@survive-the-night/game-server";
 import { PlayerClient } from "./entities/player";
 import { ZombieClient } from "./entities/zombie";
 import { CameraManager } from "./managers/camera";
@@ -16,7 +23,6 @@ import { StorageManager } from "./managers/storage";
 import { WallClient } from "./entities/wall";
 import { Hud } from "./ui/hud";
 import { WeaponClient } from "./entities/weapon";
-import { Input } from "@survive-the-night/game-server/src/server";
 import { BandageClient } from "./entities/items/bandage";
 import { SoundClient } from "./entities/sound";
 
@@ -41,7 +47,7 @@ export class GameClient {
 
   private entityFactories: Record<EntityType, (entityData: EntityDto) => IClientEntity> = {
     [Entities.PLAYER]: (data) => {
-      const entity = new PlayerClient(data.id, this.assetManager, this.inputManager);
+      const entity = new PlayerClient(data.id, this.assetManager);
       this.initializeEntity(entity, data);
       return entity;
     },
@@ -123,6 +129,7 @@ export class GameClient {
       getPlayer,
       onCraft: (recipe) => {
         this.socketManager.sendCraftRequest(recipe);
+        this.gameState.crafting = false;
       },
     });
 
@@ -134,11 +141,13 @@ export class GameClient {
           return;
         }
 
-        this.craftingTable.toggle();
-        if (this.craftingTable.isVisible()) {
-          this.socketManager.sendStopCrafting();
-        } else {
+        this.craftingTable.reset();
+        this.gameState.crafting = !this.craftingTable.isVisible();
+
+        if (this.gameState.crafting) {
           this.socketManager.sendStartCrafting();
+        } else {
+          this.socketManager.sendStopCrafting();
         }
       },
       onDown: (inputs: Input) => {
@@ -146,16 +155,19 @@ export class GameClient {
           this.craftingTable.onDown();
         } else {
           inputs.dy = 1;
+          inputs.facing = Direction.Down;
         }
       },
       onRight: (inputs: Input) => {
         if (!this.craftingTable.isVisible()) {
           inputs.dx = 1;
+          inputs.facing = Direction.Right;
         }
       },
       onLeft: (inputs: Input) => {
         if (!this.craftingTable.isVisible()) {
           inputs.dx = -1;
+          inputs.facing = Direction.Left;
         }
       },
       onInteract: (inputs: Input) => {
@@ -181,6 +193,7 @@ export class GameClient {
           this.craftingTable.onUp();
         } else {
           inputs.dy = -1;
+          inputs.facing = Direction.Up;
         }
       },
     });
@@ -194,6 +207,7 @@ export class GameClient {
       dayNumber: 0,
       untilNextCycle: 0,
       isDay: true,
+      crafting: false,
     };
 
     this.socketManager = new SocketManager(serverUrl, {
@@ -216,7 +230,7 @@ export class GameClient {
     await this.assetManager.load();
   }
 
-  public sendInput(input: { dx: number; dy: number; interact: boolean; fire: boolean }): void {
+  public sendInput(input: Input): void {
     this.socketManager.sendInput(input);
   }
 

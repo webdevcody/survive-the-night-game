@@ -79,10 +79,14 @@ export class Zombie
   heal(amount: number): void {}
 
   damage(damage: number) {
+    if (this.isDead()) {
+      return;
+    }
+
     this.health -= damage;
 
     if (this.health <= 0) {
-      this.getEntityManager().markEntityForRemoval(this);
+      this.getEntityManager().markEntityForRemoval(this, 5000);
     }
   }
 
@@ -139,6 +143,10 @@ export class Zombie
   }
 
   update(deltaTime: number) {
+    if (this.isDead()) {
+      return;
+    }
+
     const player = this.getEntityManager().getClosestAlivePlayer(this);
     if (!player) return;
 

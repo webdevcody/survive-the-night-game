@@ -4,16 +4,15 @@ import {
   Positionable,
   roundVector2,
   Vector2,
-  normalizeVector,
   InventoryItem,
   Damageable,
   Hitbox,
   Player,
   normalizeDirection,
   Direction,
+  Input,
 } from "@survive-the-night/game-server";
 import { AssetManager, getItemAssetKey } from "../managers/asset";
-import { InputManager } from "@/managers/input";
 import { animate, drawHealthBar, getFrameIndex, IClientEntity, Renderable } from "./util";
 import { GameState } from "@/state";
 import { getHitboxWithPadding } from "@survive-the-night/game-server/src/shared/entities/util";
@@ -24,7 +23,6 @@ export class PlayerClient implements IClientEntity, Renderable, Positionable, Da
   private readonly ARROW_LENGTH = 20;
 
   private assetManager: AssetManager;
-  private inputManager: InputManager;
   private lastRenderPosition = { x: 0, y: 0 };
   private position: Vector2 = { x: 0, y: 0 };
   private velocity: Vector2 = { x: 0, y: 0 };
@@ -35,11 +33,21 @@ export class PlayerClient implements IClientEntity, Renderable, Positionable, Da
   private isCrafting = false;
   private activeItem: InventoryItem | null = null;
 
-  constructor(id: string, assetManager: AssetManager, inputManager: InputManager) {
+  private input: Input = {
+    facing: Direction.Right,
+    inventoryItem: 1,
+    dx: 0,
+    dy: 0,
+    interact: false,
+    fire: false,
+    drop: false,
+    consume: false,
+  };
+
+  constructor(id: string, assetManager: AssetManager) {
     this.id = id;
     this.type = Entities.PLAYER;
     this.assetManager = assetManager;
-    this.inputManager = inputManager;
   }
 
   heal(amount: number): void {
@@ -108,7 +116,7 @@ export class PlayerClient implements IClientEntity, Renderable, Positionable, Da
 
   render(ctx: CanvasRenderingContext2D, gameState: GameState): void {
     const targetPosition = this.getPosition();
-    const { facing } = this.inputManager.getInputs();
+    const { facing } = this.input;
     // const image = this.assetManager.getWithDirection("Player", this.isDead() ? "down" : facing);
     const isMoving = this.velocity.x !== 0 || this.velocity.y !== 0;
 
@@ -141,7 +149,7 @@ export class PlayerClient implements IClientEntity, Renderable, Positionable, Da
       ctx.globalAlpha = 1.0;
     } else {
       ctx.drawImage(image, renderPosition.x, renderPosition.y);
-      this.renderWeapon(ctx, renderPosition);
+      this.renderInventoryItem(ctx, renderPosition);
     }
 
     ctx.restore();
@@ -174,7 +182,7 @@ export class PlayerClient implements IClientEntity, Renderable, Positionable, Da
   }
 
   renderArrow(ctx: CanvasRenderingContext2D, image: HTMLImageElement, renderPosition: Vector2) {
-    const { facing } = this.inputManager.getInputs();
+    const { facing } = this.input;
     const direction = normalizeDirection(facing);
 
     if (direction === null) {
@@ -211,11 +219,11 @@ export class PlayerClient implements IClientEntity, Renderable, Positionable, Da
     ctx.fill();
   }
 
-  renderWeapon(ctx: CanvasRenderingContext2D, renderPosition: Vector2) {
+  renderInventoryItem(ctx: CanvasRenderingContext2D, renderPosition: Vector2) {
     if (this.activeItem === null) {
       return;
     }
-    const { facing } = this.inputManager.getInputs();
+    const { facing } = this.input;
     const image = this.assetManager.getWithDirection(getItemAssetKey(this.activeItem), facing);
     ctx.drawImage(image, renderPosition.x + 2, renderPosition.y);
   }

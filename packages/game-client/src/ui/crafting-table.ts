@@ -28,7 +28,7 @@ const CRAFTING_TABLE_SETTINGS = {
       borderColor: "green",
     },
     disabled: {
-      opacity: 50,
+      background: "#F07878",
     },
   },
   Slot: {
@@ -79,7 +79,11 @@ export class CraftingTable implements Renderable {
   }
 
   public onSelect() {
-    this.onCraft(recipes[this.activeRecipe].getType());
+    const recipe = recipes[this.activeRecipe];
+
+    if (recipe.canBeCrafted(this.getInventory())) {
+      this.onCraft(recipe.getType());
+    }
   }
 
   public onUp() {
@@ -141,8 +145,6 @@ export class CraftingTable implements Renderable {
       const components = recipe.components();
       const resulting = recipe.resultingComponent();
 
-      ctx.globalAlpha = disabled ? Recipe.disabled.opacity / 100 : 1;
-
       let recipeHeight = Slot.size + Recipe.borderWidth * 2;
       let recipeWidth = maxRecipeWidth;
       let recipeOffsetTop = offsetTop + Container.padding.top + i * recipeHeight + i * Recipes.gapY;
@@ -159,7 +161,7 @@ export class CraftingTable implements Renderable {
       recipeWidth -= Recipe.borderWidth * 2;
 
       // draw recipe background
-      ctx.fillStyle = Recipe.background;
+      ctx.fillStyle = disabled ? Recipe.disabled.background : Recipe.background;
       ctx.fillRect(recipeOffsetLeft, recipeOffsetTop, recipeWidth, recipeHeight);
 
       const slotWidth = Slot.size - Slot.padding.left - Slot.padding.right;
@@ -195,14 +197,12 @@ export class CraftingTable implements Renderable {
 
       // draw resulting component
       ctx.drawImage(slotImage, slotLeft, slotTop, slotWidth, slotHeight);
-
-      ctx.globalAlpha = 1;
     }
 
     ctx.restore();
   }
 
-  public toggle(): void {
+  public reset(): void {
     // this.visible = !this.visible;
     this.activeRecipe = 0;
   }
