@@ -15,12 +15,10 @@ Feel free to pick any item listed out here to work on.
 ### Bugs
 
 - [ ] when DEBUG = true, all the HUD overlays seem to shift, including the "pickup (e)" text over items
-- [ ] every player faces the same direction as YOUR player which is a bug
 - [ ] when a player is killed by a zombie, it seems like the zombie gets stuck either on the player, or thinks it still needs to attack the player.... debug this
 
 ### Crafting
 
-- [ ] the crafting recipe should be red or grayed out if you don't have enough items to craft it
 - [ ] pressing space while crafting an item you don't have enough resources to craft should not auto close the crafting menu
 
 ### Gameplay
@@ -146,3 +144,5 @@ Feel free to pick any item listed out here to work on.
 - [x] a player shouldn't be able to open the craft menu when dead; also close it if they die while crafting
 - [x] a player should drop all items when they die and scatter them around their body
 - [x] the player should have a running animation (keep it simple), 2 frames with legs going up and down
+- [x] every player faces the same direction as YOUR player which is a bug
+- [x] the crafting recipe should be red or grayed out if you don't have enough items to craft it
