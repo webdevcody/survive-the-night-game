@@ -256,7 +256,7 @@ export class Player
         this.getEntityManager().addEntity(sound);
       } else if (activeWeapon.key === "Shotgun") {
         // Create 3 bullets with spread
-        const spreadAngle = 16; // degrees
+        const spreadAngle = 8; // degrees
         for (let i = -1; i <= 1; i++) {
           const bullet = new Bullet(this.getEntityManager());
           bullet.setPosition({

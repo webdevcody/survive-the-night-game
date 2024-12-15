@@ -15,7 +15,6 @@ Feel free to pick any item listed out here to work on.
 ### Bugs
 
 - [ ] when DEBUG = true, all the HUD overlays seem to shift, including the "pickup (e)" text over items
-- [ ] when a player is killed by a zombie, it seems like the zombie gets stuck either on the player, or thinks it still needs to attack the player.... debug this
 
 ### Gameplay
 
@@ -80,6 +79,8 @@ Feel free to pick any item listed out here to work on.
 - [ ] a player can chat with other players in their game via text
 - [ ] a user shall be able to see stamina bar which recharges slowly over time
 - [ ] a user shall be able to run using shift
+- [ ] zombie never stops walking, even when killed all players
+- [ ] person hosting game server should be able to login as admin in console and have ability to ban/kick/teleport players (by Aaron)
 
 ## Low Priority (Polish):
 
@@ -129,3 +130,4 @@ Feel free to pick any item listed out here to work on.
 - [x] the crafting recipe should be red or grayed out if you don't have enough items to craft it
 - [x] pressing space while crafting an item you don't have enough resources to craft should not auto close the crafting menu
 - [x] zombie should use walk animation as well
+- [x] when a player is killed by a zombie, it seems like the zombie gets stuck either on the player, or thinks it still needs to attack the player

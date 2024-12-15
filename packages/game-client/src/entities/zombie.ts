@@ -99,13 +99,18 @@ export class ZombieClient implements IClientEntity, Renderable, Positionable, Da
       duration: 500,
       frames: 3,
     });
-    const image = this.assetManager.getFrameWithDirection("Zombie", facing, frameIndex);
+
+    const image = this.isDead()
+      ? this.assetManager.get("ZombieDead")
+      : this.assetManager.getFrameWithDirection("Zombie", facing, frameIndex);
 
     ctx.drawImage(image, renderPosition.x, renderPosition.y);
 
-    drawHealthBar(ctx, renderPosition, this.health, this.getMaxHealth());
+    if (!this.isDead()) {
+      drawHealthBar(ctx, renderPosition, this.health, this.getMaxHealth());
 
-    debugDrawHitbox(ctx, Zombie.getHitbox(this.position));
-    debugDrawHitbox(ctx, Zombie.getDamageBox(this.position), "red");
+      debugDrawHitbox(ctx, Zombie.getHitbox(this.position));
+      debugDrawHitbox(ctx, Zombie.getDamageBox(this.position), "red");
+    }
   }
 }

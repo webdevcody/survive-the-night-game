@@ -15,7 +15,7 @@ import { SpatialGrid } from "./spatial-grid";
 
 export class EntityManager {
   private entities: Entity[];
-  private entitiesToRemove: string[] = [];
+  private entitiesToRemove: Array<{ id: string; expiration: number }> = [];
   private id: number = 0;
   private spatialGrid: SpatialGrid | null = null;
 
@@ -41,8 +41,11 @@ export class EntityManager {
     }) as unknown as Updatable[];
   }
 
-  markEntityForRemoval(entity: Entity) {
-    this.entitiesToRemove.push(entity.getId());
+  markEntityForRemoval(entity: Entity, expiration = 0) {
+    this.entitiesToRemove.push({
+      id: entity.getId(),
+      expiration: Date.now() + expiration,
+    });
   }
 
   generateEntityId(): string {
@@ -50,8 +53,29 @@ export class EntityManager {
   }
 
   pruneEntities() {
-    this.entities = this.entities.filter((e) => !this.entitiesToRemove.includes(e.getId()));
-    this.entitiesToRemove = [];
+    const now = Date.now();
+
+    if (this.entities.length === 0 || this.entitiesToRemove.length === 0) {
+      return;
+    }
+
+    for (let i = this.entities.length - 1; i >= 0; i--) {
+      const entity = this.entities[i];
+      const removeRecordIndex = this.entitiesToRemove.findIndex((it) => it.id === entity.getId());
+
+      if (removeRecordIndex === -1) {
+        continue;
+      }
+
+      const removeRecord = this.entitiesToRemove[removeRecordIndex];
+
+      if (now < removeRecord.expiration) {
+        continue;
+      }
+
+      this.entities.splice(i, 1);
+      this.entitiesToRemove.splice(removeRecordIndex, 1);
+    }
   }
 
   clear() {
@@ -161,7 +185,7 @@ export class EntityManager {
       if (intersectionMethod) {
         const targetEntity = otherEntity as unknown as Collidable;
 
-        if (targetEntity === sourceEntity) {
+        if (targetEntity === sourceEntity || ("isDead" in targetEntity && targetEntity.isDead())) {
           continue;
         }
 

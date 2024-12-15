@@ -103,6 +103,7 @@ export const assetsMap = {
   Tree: assetMap({ x: 221, y: 209 }),
   Wall: assetMap({ x: 357, y: 95 }),
   Zombie: assetMap({ x: 493, y: 76 }),
+  ZombieDead: assetMap({ x: 289, y: 19 }),
   ZombieFacingDown: assetMap(zombieDownFrameOrigins[0]),
   ZombieFacingDown0: assetMap(zombieDownFrameOrigins[0]),
   ZombieFacingDown1: assetMap(zombieDownFrameOrigins[1]),
