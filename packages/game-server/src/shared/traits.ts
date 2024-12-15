@@ -1,5 +1,5 @@
-import { Vector2 } from "./physics.js";
-import { Player } from "./entities/player.js";
+import { Vector2 } from "./physics";
+import { Player } from "./entities/player";
 
 export interface Interactable {
   interact(player: Player): void;

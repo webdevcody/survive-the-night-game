@@ -1,9 +1,9 @@
-import { Entities, RawEntity } from "../entities.js";
+import { Entities, RawEntity } from "../entities";
 
-import { EntityManager } from "@/managers/entity-manager.js";
-import { Entity } from "../entities.js";
-import { Positionable } from "../traits.js";
-import { Vector2 } from "../physics.js";
+import { EntityManager } from "@/managers/entity-manager";
+import { Entity } from "../entities";
+import { Positionable } from "../traits";
+import { Vector2 } from "../physics";
 
 export const SOUND_TYPES = {
   PISTOL: "pistol",

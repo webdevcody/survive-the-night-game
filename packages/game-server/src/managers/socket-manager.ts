@@ -1,11 +1,11 @@
 import { Server, Socket } from "socket.io";
 import { createServer } from "http";
-import { Events, IEvent } from "../shared/events.js";
-import { EntityManager } from "./entity-manager.js";
-import { MapManager } from "./map-manager.js";
-import { Input } from "../server.js";
-import { Player } from "../shared/entities/player.js";
-import { RecipeType } from "@/shared/recipes.js";
+import { Events, IEvent } from "../shared/events";
+import { EntityManager } from "./entity-manager";
+import { MapManager } from "./map-manager";
+import { Input } from "../server";
+import { Player } from "../shared/entities/player";
+import { RecipeType } from "@/shared/recipes";
 
 export class SocketManager {
   private io: Server;

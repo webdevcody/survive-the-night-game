@@ -1,9 +1,9 @@
 export const BULLET_SPEED = 100;
-import { EntityManager } from "../../managers/entity-manager.js";
-import { Direction, normalizeDirection } from "../direction.js";
-import { Entities, RawEntity } from "../entities.js";
-import { Entity } from "../entities.js";
-import { Vector2, distance, normalizeVector } from "../physics.js";
+import { EntityManager } from "../../managers/entity-manager";
+import { Direction, normalizeDirection } from "../direction";
+import { Entities, RawEntity } from "../entities";
+import { Entity } from "../entities";
+import { Vector2, distance, normalizeVector } from "../physics";
 import {
   Collidable,
   Damageable,
@@ -13,7 +13,7 @@ import {
   Movable,
   Positionable,
   Updatable,
-} from "../traits.js";
+} from "../traits";
 
 const MAX_TRAVEL_DISTANCE = 400;
 

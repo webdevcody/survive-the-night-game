@@ -1,5 +1,5 @@
-import { distance, isColliding, Vector2 } from "../shared/physics.js";
-import { Entities, Entity, EntityType } from "../shared/entities.js";
+import { distance, isColliding, Vector2 } from "../shared/physics";
+import { Entities, Entity, EntityType } from "../shared/entities";
 import {
   Collidable,
   Damageable,
@@ -9,9 +9,9 @@ import {
   IntersectionMethodName,
   Positionable,
   Updatable,
-} from "../shared/traits.js";
-import { Player } from "../shared/entities/player.js";
-import { SpatialGrid } from "./spatial-grid.js";
+} from "../shared/traits";
+import { Player } from "../shared/entities/player";
+import { SpatialGrid } from "./spatial-grid";
 
 export class EntityManager {
   private entities: Entity[];

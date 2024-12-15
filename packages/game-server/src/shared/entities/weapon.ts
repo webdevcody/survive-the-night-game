@@ -1,8 +1,8 @@
-import { EntityManager } from "../../managers/entity-manager.js";
-import { Entity, Entities, RawEntity } from "../entities.js";
-import { Vector2 } from "../physics.js";
-import { Interactable, Positionable } from "../traits.js";
-import { Player } from "./player.js";
+import { EntityManager } from "../../managers/entity-manager";
+import { Entity, Entities, RawEntity } from "../entities";
+import { Vector2 } from "../physics";
+import { Interactable, Positionable } from "../traits";
+import { Player } from "./player";
 
 export const WEAPON_TYPES = {
   KNIFE: "Knife",

@@ -1,11 +1,11 @@
-import { EntityManager } from "../../managers/entity-manager.js";
-import { MapManager } from "../../managers/map-manager.js";
-import { Direction } from "../direction.js";
-import { Entity, Entities, RawEntity } from "../entities.js";
-import { Vector2, pathTowards, velocityTowards } from "../physics.js";
-import { Damageable, Movable, Positionable, Updatable, Collidable, Hitbox } from "../traits.js";
-import { getHitboxWithPadding } from "./util/index.js";
-import { Wall } from "./wall.js";
+import { EntityManager } from "../../managers/entity-manager";
+import { MapManager } from "../../managers/map-manager";
+import { Direction } from "../direction";
+import { Entity, Entities, RawEntity } from "../entities";
+import { Vector2, pathTowards, velocityTowards } from "../physics";
+import { Damageable, Movable, Positionable, Updatable, Collidable, Hitbox } from "../traits";
+import { getHitboxWithPadding } from "./util";
+import { Wall } from "./wall";
 
 export class Zombie
   extends Entity
@@ -32,8 +32,6 @@ export class Zombie
     super(entityManager, Entities.ZOMBIE);
     this.mapManager = mapManager;
   }
-
-  heal(amount: number): void {}
 
   getCenterPosition(): Vector2 {
     return {
@@ -77,6 +75,8 @@ export class Zombie
   getPosition(): Vector2 {
     return this.position;
   }
+
+  heal(amount: number): void {}
 
   damage(damage: number) {
     this.health -= damage;

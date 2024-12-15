@@ -1,9 +1,9 @@
-import { Entities, Entity, RawEntity } from "../entities.js";
-import { Input } from "../../server.js";
-import { EntityManager } from "../../managers/entity-manager.js";
-import { Bullet } from "./bullet.js";
-import { Tree } from "./tree.js";
-import { Wall } from "./wall.js";
+import { Entities, Entity, RawEntity } from "../entities";
+import { Input } from "../../server";
+import { EntityManager } from "../../managers/entity-manager";
+import { Bullet } from "./bullet";
+import { Tree } from "./tree";
+import { Wall } from "./wall";
 import {
   Collidable,
   Damageable,
@@ -12,17 +12,17 @@ import {
   InteractableKey,
   Consumable,
   ConsumableKey,
-} from "../traits.js";
-import { Movable, Positionable, Updatable } from "../traits.js";
-import { distance, normalizeVector, Vector2 } from "../physics.js";
-import { Direction } from "../direction.js";
-import { InventoryItem, ItemType } from "../inventory.js";
-import { Weapon } from "./weapon.js";
-import { recipes, RecipeType } from "../recipes.js";
-import { DEBUG } from "../../index.js";
-import { Cooldown } from "./util/cooldown.js";
-import { Bandage } from "./items/bandage.js";
-import { Sound, SOUND_TYPES } from "./sound.js";
+} from "../traits";
+import { Movable, Positionable, Updatable } from "../traits";
+import { distance, normalizeVector, Vector2 } from "../physics";
+import { Direction } from "../direction";
+import { InventoryItem, ItemType } from "../inventory";
+import { Weapon } from "./weapon";
+import { recipes, RecipeType } from "../recipes";
+import { DEBUG } from "../../index";
+import { Cooldown } from "./util/cooldown";
+import { Bandage } from "./items/bandage";
+import { Sound, SOUND_TYPES } from "./sound";
 
 export class Player
   extends Entity

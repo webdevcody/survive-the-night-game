@@ -1,5 +1,5 @@
-import { Vector2 } from "@/shared/physics.js";
-import { Hitbox } from "@/shared/traits.js";
+import { Vector2 } from "@/shared/physics";
+import { Hitbox } from "@/shared/traits";
 
 export function getHitboxWithPadding(position: Vector2, amount: number = 4): Hitbox {
   return {

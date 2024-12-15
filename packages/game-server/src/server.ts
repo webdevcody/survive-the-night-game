@@ -1,8 +1,8 @@
-import { Direction } from "./shared/direction.js";
-import { GameStateEvent } from "./shared/events.js";
-import { EntityManager } from "./managers/entity-manager.js";
-import { MapManager } from "./managers/map-manager.js";
-import { SocketManager } from "./managers/socket-manager.js";
+import { Direction } from "./shared/direction";
+import { GameStateEvent } from "./shared/events";
+import { EntityManager } from "./managers/entity-manager";
+import { MapManager } from "./managers/map-manager";
+import { SocketManager } from "./managers/socket-manager";
 
 export const FPS = 30;
 
