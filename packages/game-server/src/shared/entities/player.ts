@@ -1,5 +1,4 @@
 import { Entities, Entity, RawEntity } from "../entities";
-import { Input } from "../../server";
 import { EntityManager } from "../../managers/entity-manager";
 import { Bullet } from "./bullet";
 import { Tree } from "./tree";
@@ -107,6 +106,10 @@ export class Player
   }
 
   damage(damage: number): void {
+    if (this.isDead()) {
+      return;
+    }
+
     this.health = Math.max(this.health - damage, 0);
 
     const sound = new Sound(this.getEntityManager(), SOUND_TYPES.PLAYER_HURT);
