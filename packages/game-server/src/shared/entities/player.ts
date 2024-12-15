@@ -291,7 +291,8 @@ export class Player
       // TODO: make a more abstract method where I can pass in an InteractableKey and get the correct entities back
       const entities = this.getEntityManager()
         .getNearbyEntities(this.position, Player.MAX_INTERACT_RADIUS)
-        .filter((entity) => InteractableKey in entity) as unknown as Interactable[];
+        .filter((entity) => InteractableKey in entity) as unknown as (Interactable &
+        Positionable)[];
 
       // TODO: feels like this could be a helper
       const byProximity = entities.sort((a, b) => {

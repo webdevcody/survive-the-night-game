@@ -19,6 +19,8 @@ export class Wall extends Entity implements Collidable, Positionable, Interactab
     this.health = health ?? WALL_MAX_HEALTH;
   }
 
+  heal(amount: number): void {}
+
   damage(damage: number): void {
     this.health -= damage;
 

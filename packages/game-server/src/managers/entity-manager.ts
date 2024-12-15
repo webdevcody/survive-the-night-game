@@ -151,12 +151,13 @@ export class EntityManager {
       return null;
     }
 
-    const nearbyEntities = this.spatialGrid.getNearbyEntities(sourceEntity.getPosition());
+    const nearbyEntities = this.spatialGrid.getNearbyEntities(sourceEntity.getHitbox());
     for (const otherEntity of nearbyEntities) {
       if (ignoreTypes && ignoreTypes.includes(otherEntity.getType())) {
         continue;
       }
 
+      // @ts-expect-error
       const intersectionMethod = otherEntity[functionIdentifier] as any;
       if (intersectionMethod) {
         const targetEntity = otherEntity as unknown as Collidable;
@@ -210,6 +211,7 @@ export class EntityManager {
     // Re-add all entities that have a position
     this.entities.forEach((entity) => {
       if ("getPosition" in entity) {
+        // @ts-expect-error
         this.spatialGrid!.addEntity(entity);
       }
     });

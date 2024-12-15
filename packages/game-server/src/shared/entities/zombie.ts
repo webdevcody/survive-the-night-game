@@ -76,6 +76,8 @@ export class Zombie
     return this.position;
   }
 
+  heal(amount: number): void {}
+
   damage(damage: number) {
     this.health -= damage;
 
