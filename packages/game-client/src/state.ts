@@ -7,6 +7,7 @@ export type GameState = {
   dayNumber: number;
   untilNextCycle: number;
   isDay: boolean;
+  crafting: boolean;
 };
 
 export function getEntityById(gameState: GameState, id: string): Entity | undefined {

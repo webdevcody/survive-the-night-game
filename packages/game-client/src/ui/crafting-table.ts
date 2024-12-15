@@ -202,7 +202,7 @@ export class CraftingTable implements Renderable {
     ctx.restore();
   }
 
-  public toggle(): void {
+  public reset(): void {
     // this.visible = !this.visible;
     this.activeRecipe = 0;
   }

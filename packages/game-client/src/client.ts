@@ -134,11 +134,13 @@ export class GameClient {
           return;
         }
 
-        this.craftingTable.toggle();
-        if (this.craftingTable.isVisible()) {
-          this.socketManager.sendStopCrafting();
-        } else {
+        this.craftingTable.reset();
+        this.gameState.crafting = !this.craftingTable.isVisible();
+
+        if (this.gameState.crafting) {
           this.socketManager.sendStartCrafting();
+        } else {
+          this.socketManager.sendStopCrafting();
         }
       },
       onDown: (inputs: Input) => {
@@ -194,6 +196,7 @@ export class GameClient {
       dayNumber: 0,
       untilNextCycle: 0,
       isDay: true,
+      crafting: false,
     };
 
     this.socketManager = new SocketManager(serverUrl, {
