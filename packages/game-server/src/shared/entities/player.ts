@@ -120,6 +120,7 @@ export class Player
   onDeath(): void {
     this.setIsCrafting(false);
     this.scatterInventory();
+    this.inventory = [];
   }
 
   scatterInventory(): void {
