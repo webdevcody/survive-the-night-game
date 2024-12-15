@@ -1,9 +1,9 @@
-import { Tree } from "../shared/entities/tree";
-import { EntityManager } from "./entity-manager";
-import { Weapon, WEAPON_TYPES } from "../shared/entities/weapon";
-import { Boundary } from "../shared/entities/boundary";
-import { Zombie } from "../shared/entities/zombie";
-import { Bandage } from "../shared/entities/items/bandage";
+import { Tree } from "../shared/entities/tree.js";
+import { EntityManager } from "./entity-manager.js";
+import { Weapon, WEAPON_TYPES } from "../shared/entities/weapon.js";
+import { Boundary } from "../shared/entities/boundary.js";
+import { Zombie } from "../shared/entities/zombie.js";
+import { Bandage } from "../shared/entities/items/bandage.js";
 
 export const TILE_IDS = {
   GRASS1: 0,

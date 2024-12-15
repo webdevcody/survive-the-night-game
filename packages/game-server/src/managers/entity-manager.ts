@@ -1,5 +1,5 @@
-import { distance, isColliding, Vector2 } from "../shared/physics";
-import { Entities, Entity, EntityType } from "../shared/entities";
+import { distance, isColliding, Vector2 } from "../shared/physics.js";
+import { Entities, Entity, EntityType } from "../shared/entities.js";
 import {
   Collidable,
   Damageable,
@@ -9,9 +9,9 @@ import {
   IntersectionMethodName,
   Positionable,
   Updatable,
-} from "../shared/traits";
-import { Player } from "../shared/entities/player";
-import { SpatialGrid } from "./spatial-grid";
+} from "../shared/traits.js";
+import { Player } from "../shared/entities/player.js";
+import { SpatialGrid } from "./spatial-grid.js";
 
 export class EntityManager {
   private entities: Entity[];
@@ -151,12 +151,13 @@ export class EntityManager {
       return null;
     }
 
-    const nearbyEntities = this.spatialGrid.getNearbyEntities(sourceEntity.getPosition());
+    const nearbyEntities = this.spatialGrid.getNearbyEntities(sourceEntity.getHitbox());
     for (const otherEntity of nearbyEntities) {
       if (ignoreTypes && ignoreTypes.includes(otherEntity.getType())) {
         continue;
       }
 
+      // @ts-expect-error
       const intersectionMethod = otherEntity[functionIdentifier] as any;
       if (intersectionMethod) {
         const targetEntity = otherEntity as unknown as Collidable;
@@ -210,6 +211,7 @@ export class EntityManager {
     // Re-add all entities that have a position
     this.entities.forEach((entity) => {
       if ("getPosition" in entity) {
+        // @ts-expect-error
         this.spatialGrid!.addEntity(entity);
       }
     });

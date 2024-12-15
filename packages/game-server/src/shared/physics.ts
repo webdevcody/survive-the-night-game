@@ -1,5 +1,5 @@
-import { TILE_SIZE } from "../managers/map-manager";
-import { Hitbox } from "./traits";
+import { TILE_SIZE } from "../managers/map-manager.js";
+import { Hitbox } from "./traits.js";
 
 export type Vector2 = { x: number; y: number };
 

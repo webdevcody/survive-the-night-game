@@ -1,5 +1,11 @@
-import { InventoryItem } from "../inventory";
-import { craftRecipe, Recipe, recipeCanBeCrafted, RecipeComponent, RecipeType } from "../recipes";
+import { InventoryItem } from "../inventory.js";
+import {
+  craftRecipe,
+  Recipe,
+  recipeCanBeCrafted,
+  RecipeComponent,
+  RecipeType,
+} from "../recipes.js";
 
 export class WallRecipe implements Recipe {
   public getType(): RecipeType {

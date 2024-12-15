@@ -1,8 +1,8 @@
-import { EntityManager } from "../../../managers/entity-manager";
-import { Entity, Entities, RawEntity } from "../../entities";
-import { Interactable, Hitbox, Positionable, Consumable } from "../../traits";
-import { Vector2 } from "../../physics";
-import { Player } from "../player";
+import { EntityManager } from "../../../managers/entity-manager.js";
+import { Entity, Entities, RawEntity } from "../../entities.js";
+import { Interactable, Hitbox, Positionable, Consumable } from "../../traits.js";
+import { Vector2 } from "../../physics.js";
+import { Player } from "../player.js";
 
 export class Bandage extends Entity implements Positionable, Interactable, Consumable {
   private position: Vector2 = {

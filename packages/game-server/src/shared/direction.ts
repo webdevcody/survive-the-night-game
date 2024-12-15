@@ -1,4 +1,4 @@
-import { Vector2 } from "./physics";
+import { Vector2 } from "./physics.js";
 
 export enum Direction {
   Down,

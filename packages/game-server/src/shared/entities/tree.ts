@@ -1,8 +1,8 @@
-import { EntityManager } from "../../managers/entity-manager";
-import { Entities, Entity, RawEntity } from "../entities";
-import { Vector2 } from "../physics";
-import { Interactable, Positionable } from "../traits";
-import { Player } from "./player";
+import { EntityManager } from "../../managers/entity-manager.js";
+import { Entities, Entity, RawEntity } from "../entities.js";
+import { Vector2 } from "../physics.js";
+import { Interactable, Positionable } from "../traits.js";
+import { Player } from "./player.js";
 
 export class Tree extends Entity implements Interactable, Positionable {
   private position: Vector2 = { x: 0, y: 0 };

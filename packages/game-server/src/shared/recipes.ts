@@ -1,5 +1,5 @@
-import { InventoryItem, ItemType } from "./inventory";
-import { WallRecipe } from "./recipes/wall-recipe";
+import { InventoryItem, ItemType } from "./inventory.js";
+import { WallRecipe } from "./recipes/wall-recipe.js";
 
 export enum RecipeType {
   Wall = "wall",

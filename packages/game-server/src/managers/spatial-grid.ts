@@ -1,6 +1,6 @@
 import { Positionable } from "..";
-import { Entity, EntityType } from "../shared/entities";
-import { Vector2 } from "../shared/physics";
+import { Entity, EntityType } from "../shared/entities.js";
+import { Vector2 } from "../shared/physics.js";
 
 export class SpatialGrid {
   private cells: Map<string, Entity>[][] = [];

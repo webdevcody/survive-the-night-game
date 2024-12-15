@@ -1,4 +1,4 @@
-import { RawEntity } from "./entities";
+import { RawEntity } from "./entities.js";
 
 export const Events = {
   CRAFT_REQUEST: "craftRequest",

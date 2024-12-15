@@ -1,7 +1,7 @@
-import { EntityManager } from "../../managers/entity-manager";
-import { Entity, Entities, RawEntity } from "../entities";
-import { Collidable, Hitbox, Positionable, ServerOnly } from "../traits";
-import { Vector2 } from "../physics";
+import { EntityManager } from "../../managers/entity-manager.js";
+import { Entity, Entities, RawEntity } from "../entities.js";
+import { Collidable, Hitbox, Positionable, ServerOnly } from "../traits.js";
+import { Vector2 } from "../physics.js";
 
 export class Boundary extends Entity implements Collidable, Positionable, ServerOnly {
   private position: Vector2 = {
