@@ -312,7 +312,6 @@ export class Player
         const p2 = "getPosition" in b ? b.getPosition() : b.getExt(Positionable).getPosition();
         return distance(this.position, p1) - distance(this.position, p2);
       });
-      console.log(entities, byProximity);
 
       if (byProximity.length > 0) {
         const entity = byProximity[0];

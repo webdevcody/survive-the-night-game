@@ -32,8 +32,6 @@ export class ClothClient extends GenericEntity implements Renderable {
       const text = "collect (e)";
       const textWidth = ctx.measureText(text).width;
       ctx.fillText(text, position.x + ENTITY_SIZE / 2 - textWidth / 2, position.y - 3);
-
-      console.log(textWidth);
     }
 
     ctx.drawImage(image, position.x, position.y);
