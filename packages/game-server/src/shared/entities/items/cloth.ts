@@ -4,11 +4,13 @@ import { Interactive, Positionable } from "../../extensions";
 import { Player } from "../player";
 
 export class Cloth extends Entity {
+  public static readonly Size = 16;
+
   constructor(entityManager: EntityManager) {
     super(entityManager, Entities.CLOTH);
 
     this.extensions = [
-      new Positionable(this),
+      new Positionable(this).setSize(Cloth.Size),
       new Interactive(this).onInteract(this.interact.bind(this)),
     ];
   }

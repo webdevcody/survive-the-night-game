@@ -54,7 +54,7 @@ export class GameClient {
     },
     [Entities.TREE]: (data) => {
       const entity = new TreeClient(data.id, this.assetManager);
-      this.initializeEntity(entity, data);
+      entity.deserialize(data);
       return entity;
     },
     [Entities.BULLET]: (data) => {
@@ -69,12 +69,12 @@ export class GameClient {
     },
     [Entities.WEAPON]: (data) => {
       const entity = new WeaponClient(data.id, this.assetManager, data.weaponType);
-      this.initializeEntity(entity, data);
+      entity.deserialize(data);
       return entity;
     },
     [Entities.BANDAGE]: (data) => {
       const entity = new BandageClient(data.id, this.assetManager);
-      this.initializeEntity(entity, data);
+      entity.deserialize(data);
       return entity;
     },
     [Entities.CLOTH]: (data) => {

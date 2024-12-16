@@ -4,13 +4,14 @@ import { Consumable, Interactive, Positionable } from "../../extensions";
 import { Player } from "../player";
 
 export class Bandage extends Entity {
+  public static readonly Size = 16;
   public static readonly healingAmount = 5;
 
   constructor(entityManager: EntityManager) {
     super(entityManager, Entities.BANDAGE);
 
     this.extensions = [
-      new Positionable(this),
+      new Positionable(this).setSize(Bandage.Size),
       new Consumable(this).onConsume(this.consume.bind(this)),
       new Interactive(this).onInteract(this.interact.bind(this)),
     ];
