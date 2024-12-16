@@ -150,6 +150,9 @@ export class GameClient {
           this.socketManager.sendStopCrafting();
         }
       },
+      onToggleInstructions: () => {
+        this.hud.toggleInstructions();
+      },
       onDown: (inputs: Input) => {
         if (this.craftingTable.isVisible()) {
           this.craftingTable.onDown();

@@ -9,6 +9,7 @@ export interface InputManagerOptions {
   onRight?: (inputs: Input) => void;
   onInteract?: (inputs: Input) => void;
   onDrop?: (inputs: Input) => void;
+  onToggleInstructions?: () => void;
 }
 
 export class InputManager {
@@ -63,6 +64,9 @@ export class InputManager {
           break;
         case "f":
           this.inputs.consume = true;
+          break;
+        case "i":
+          callbacks.onToggleInstructions?.();
           break;
       }
 

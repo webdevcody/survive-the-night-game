@@ -19,9 +19,15 @@ const HUD_SETTINGS = {
 };
 
 export class Hud {
+  private showInstructions: boolean = true;
+
   constructor() {}
 
   update(gameState: GameState): void {}
+
+  public toggleInstructions(): void {
+    this.showInstructions = !this.showInstructions;
+  }
 
   public render(ctx: CanvasRenderingContext2D, gameState: GameState): void {
     const { width } = ctx.canvas;
@@ -55,6 +61,26 @@ export class Hud {
   }
 
   public renderControlsList(ctx: CanvasRenderingContext2D, gameState: GameState): void {
+    if (!this.showInstructions) {
+      ctx.save();
+      ctx.setTransform(1, 0, 0, 1, 0, 0);
+
+      const text = 'Press "i" for instructions';
+      ctx.font = "32px Arial";
+      const metrics = ctx.measureText(text);
+
+      // Draw background panel
+      ctx.fillStyle = "rgba(0, 0, 0, 0.5)";
+      ctx.fillRect(10, 10, metrics.width + 20, 40);
+
+      // Draw text
+      ctx.fillStyle = "white";
+      ctx.fillText(text, 20, 40);
+
+      ctx.restore();
+      return;
+    }
+
     const regularText =
       "Left [A]\n" +
       "Right [D]\n" +
@@ -63,7 +89,8 @@ export class Hud {
       "Fire [SPACE]\n" +
       "Consume [F]\n" +
       "Harvest [E]\n" +
-      "Craft [Q]\n";
+      "Craft [Q]\n" +
+      "Toggle Instructions [I]";
 
     const craftingText = "Down [S]\nUp [W]\nCraft [SPACE]";
     const innerText = gameState.crafting ? craftingText : regularText;
