@@ -1,4 +1,5 @@
 export const ExtensionNames = {
+  consumable: "consumable",
   interactive: "interactive",
   positionable: "positionable",
 } as const;

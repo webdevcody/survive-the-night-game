@@ -1,7 +1,6 @@
 import { EntityManager } from "../../../managers/entity-manager";
 import { Entity, Entities } from "../../entities";
 import { Interactive, Positionable } from "../../extensions";
-import { Events } from "../../events";
 import { Player } from "../player";
 
 export class Cloth extends Entity {
@@ -10,20 +9,16 @@ export class Cloth extends Entity {
 
     this.extensions = [
       new Positionable(this),
-      new Interactive(this).init({
-        eventName: Events.INTERACT,
-      }),
+      new Interactive(this).onInteract(this.interact.bind(this)),
     ];
+  }
 
-    this.addEventListener(Events.INTERACT, (evt: CustomEventInit<Player>) => {
-      const player = evt.detail;
+  private interact(player: Player): void {
+    if (player.isInventoryFull()) {
+      return;
+    }
 
-      if (player?.isInventoryFull()) {
-        return;
-      }
-
-      player?.getInventory().push({ key: "Cloth" });
-      this.getEntityManager().markEntityForRemoval(this);
-    });
+    player.getInventory().push({ key: "Cloth" });
+    this.getEntityManager().markEntityForRemoval(this);
   }
 }

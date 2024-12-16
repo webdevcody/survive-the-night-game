@@ -56,16 +56,12 @@ export class Zombie
   }
 
   onDeath(): void {
-    this.extensions.push(
-      new Interactive(this).init({
-        eventName: Events.SCATTER_LOOT,
-      })
-    );
+    this.extensions.push(new Interactive(this).onInteract(this.afterDeathInteract.bind(this)));
+  }
 
-    this.addEventListener(Events.SCATTER_LOOT, () => {
-      this.scatterLoot();
-      this.getEntityManager().markEntityForRemoval(this);
-    });
+  afterDeathInteract(): void {
+    this.scatterLoot();
+    this.getEntityManager().markEntityForRemoval(this);
   }
 
   scatterLoot(): void {

@@ -4,6 +4,7 @@ import { Weapon, WEAPON_TYPES } from "../shared/entities/weapon";
 import { Boundary } from "../shared/entities/boundary";
 import { Zombie } from "../shared/entities/zombie";
 import { Bandage } from "../shared/entities/items/bandage";
+import { Positionable } from "../shared/extensions";
 
 export const TILE_IDS = {
   GRASS1: 0,
@@ -173,7 +174,7 @@ export class MapManager {
     this.entityManager.addEntity(zombie);
 
     const bandage = new Bandage(this.entityManager);
-    bandage.setPosition({ x: middleX + 16 * 6, y: middleY });
+    bandage.getExt(Positionable).setPosition({ x: middleX + 16 * 6, y: middleY });
     this.entityManager.addEntity(bandage);
   }
 

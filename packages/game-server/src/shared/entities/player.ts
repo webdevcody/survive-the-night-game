@@ -3,15 +3,7 @@ import { EntityManager } from "../../managers/entity-manager";
 import { Bullet } from "./bullet";
 import { Tree } from "./tree";
 import { Wall } from "./wall";
-import {
-  Collidable,
-  Damageable,
-  Interactable,
-  Hitbox,
-  InteractableKey,
-  Consumable,
-  ConsumableKey,
-} from "../traits";
+import { Collidable, Damageable, Interactable, Hitbox, InteractableKey } from "../traits";
 import { Movable, PositionableTrait, Updatable } from "../traits";
 import { distance, normalizeVector, Vector2 } from "../physics";
 import { Direction } from "../direction";
@@ -25,7 +17,7 @@ import { Cloth } from "./items/cloth";
 import { Sound, SOUND_TYPES } from "./sound";
 import { Input } from "../input";
 import { SocketManager } from "@/managers/socket-manager";
-import { Interactive, Positionable } from "../extensions";
+import { Consumable, Interactive, Positionable } from "../extensions";
 
 export class Player
   extends Entity
@@ -59,7 +51,6 @@ export class Player
     drop: false,
     consume: false,
   };
-  private activeItem: InventoryItem | null = null;
   private inventory: InventoryItem[] = [];
   private health = Player.MAX_HEALTH;
   private isCrafting = false;
@@ -79,6 +70,14 @@ export class Player
         { key: "Wall" },
       ];
     }
+  }
+
+  get activeItem(): InventoryItem | null {
+    if (this.input.inventoryItem === null) {
+      return null;
+    }
+
+    return this.inventory[this.input.inventoryItem - 1] ?? null;
   }
 
   setIsCrafting(isCrafting: boolean): void {
@@ -404,11 +403,6 @@ export class Player
         }
 
         this.getEntityManager().addEntity(entity);
-
-        // Clear active item if it was dropped
-        if (this.activeItem === item) {
-          this.activeItem = null;
-        }
       }
     }
   }
@@ -426,6 +420,7 @@ export class Player
       if (item) {
         // Create temporary entity to check if it's consumable
         let entity: Entity;
+
         switch (item.key) {
           case "Bandage":
             entity = new Bandage(this.getEntityManager());
@@ -434,17 +429,7 @@ export class Player
             return; // Not a consumable item
         }
 
-        if (ConsumableKey in entity) {
-          const consumable = entity as unknown as Consumable;
-
-          if (consumable.consume(this)) {
-            this.inventory.splice(itemIndex, 1);
-
-            if (this.activeItem === item) {
-              this.activeItem = null;
-            }
-          }
-        }
+        entity.getExt(Consumable).consume(this, itemIndex);
       }
     }
   }
@@ -467,12 +452,6 @@ export class Player
 
   setInput(input: Input) {
     this.input = input;
-
-    if (this.input.inventoryItem !== null) {
-      this.activeItem = this.inventory[this.input.inventoryItem - 1] ?? null;
-    } else {
-      this.activeItem = null;
-    }
   }
 
   heal(amount: number): void {
