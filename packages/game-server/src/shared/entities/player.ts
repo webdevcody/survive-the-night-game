@@ -21,6 +21,7 @@ import { recipes, RecipeType } from "../recipes";
 import { DEBUG, PlayerDeathEvent } from "../../index";
 import { Cooldown } from "./util/cooldown";
 import { Bandage } from "./items/bandage";
+import { Cloth } from "./items/cloth";
 import { Sound, SOUND_TYPES } from "./sound";
 import { Input } from "../input";
 import { SocketManager } from "@/managers/socket-manager";
@@ -138,10 +139,17 @@ export class Player
       const entity = this.convertItemToEntity(item);
       const theta = Math.random() * 2 * Math.PI;
       const radius = Math.random() * offset;
-      (entity as unknown as PositionableTrait).setPosition({
+      const pos: Vector2 = {
         x: this.position.x + radius * Math.cos(theta),
         y: this.position.y + radius * Math.sin(theta),
-      });
+      };
+
+      if ("setPosition" in entity) {
+        (entity as unknown as PositionableTrait).setPosition(pos);
+      } else if (entity.hasExt(Positionable)) {
+        entity.getExt(Positionable).setPosition(pos);
+      }
+
       this.getEntityManager().addEntity(entity);
     });
   }
@@ -342,6 +350,9 @@ export class Player
       case "Bandage":
         entity = new Bandage(this.getEntityManager());
         break;
+      case "Cloth":
+        entity = new Cloth(this.getEntityManager());
+        break;
       default:
         throw new Error(`Unknown item type: '${item.key}'`);
     }
@@ -366,26 +377,30 @@ export class Player
         // Create new entity based on item type
         const entity = this.convertItemToEntity(item);
 
+        const offset = 16;
+        let dx = 0;
+        let dy = 0;
+
+        if (this.input.facing === Direction.Up) {
+          dy = -offset;
+        } else if (this.input.facing === Direction.Down) {
+          dy = offset;
+        } else if (this.input.facing === Direction.Left) {
+          dx = -offset;
+        } else if (this.input.facing === Direction.Right) {
+          dx = offset;
+        }
+
+        const pos: Vector2 = {
+          x: this.getPosition().x + dx,
+          y: this.getPosition().y + dy,
+        };
+
         // Position the entity at player's center
         if ("setPosition" in entity) {
-          const offset = 16;
-          let dx = 0;
-          let dy = 0;
-
-          if (this.input.facing === Direction.Up) {
-            dy = -offset;
-          } else if (this.input.facing === Direction.Down) {
-            dy = offset;
-          } else if (this.input.facing === Direction.Left) {
-            dx = -offset;
-          } else if (this.input.facing === Direction.Right) {
-            dx = offset;
-          }
-
-          (entity as unknown as PositionableTrait).setPosition({
-            x: this.getPosition().x + dx,
-            y: this.getPosition().y + dy,
-          });
+          (entity as unknown as PositionableTrait).setPosition(pos);
+        } else if (entity.hasExt(Positionable)) {
+          entity.getExt(Positionable).setPosition(pos);
         }
 
         this.getEntityManager().addEntity(entity);
