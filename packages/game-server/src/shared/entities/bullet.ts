@@ -11,7 +11,7 @@ import {
   Hitbox,
   IntersectionMethodIdentifiers,
   Movable,
-  Positionable,
+  PositionableTrait,
   Updatable,
 } from "../traits";
 
@@ -19,7 +19,7 @@ const MAX_TRAVEL_DISTANCE = 400;
 
 export const HITBOX_RADIUS = 1;
 
-export class Bullet extends Entity implements Positionable, Movable, Updatable, Collidable {
+export class Bullet extends Entity implements PositionableTrait, Movable, Updatable, Collidable {
   private traveledDistance: number = 0;
   private position: Vector2 = { x: 0, y: 0 };
   private velocity: Vector2 = { x: 0, y: 0 };

@@ -12,7 +12,7 @@ import {
   Consumable,
   ConsumableKey,
 } from "../traits";
-import { Movable, Positionable, Updatable } from "../traits";
+import { Movable, PositionableTrait, Updatable } from "../traits";
 import { distance, normalizeVector, Vector2 } from "../physics";
 import { Direction } from "../direction";
 import { InventoryItem, ItemType } from "../inventory";
@@ -24,10 +24,11 @@ import { Bandage } from "./items/bandage";
 import { Sound, SOUND_TYPES } from "./sound";
 import { Input } from "../input";
 import { SocketManager } from "@/managers/socket-manager";
+import { Interactive, Positionable } from "../extensions";
 
 export class Player
   extends Entity
-  implements Movable, Positionable, Updatable, Collidable, Damageable
+  implements Movable, PositionableTrait, Updatable, Collidable, Damageable
 {
   public static readonly MAX_INVENTORY_SLOTS = 8;
   public static readonly MAX_HEALTH = 3;
@@ -137,7 +138,7 @@ export class Player
       const entity = this.convertItemToEntity(item);
       const theta = Math.random() * 2 * Math.PI;
       const radius = Math.random() * offset;
-      (entity as unknown as Positionable).setPosition({
+      (entity as unknown as PositionableTrait).setPosition({
         x: this.position.x + radius * Math.cos(theta),
         y: this.position.y + radius * Math.sin(theta),
       });
@@ -301,16 +302,26 @@ export class Player
       // TODO: make a more abstract method where I can pass in an InteractableKey and get the correct entities back
       const entities = this.getEntityManager()
         .getNearbyEntities(this.position, Player.MAX_INTERACT_RADIUS)
-        .filter((entity) => InteractableKey in entity) as unknown as (Interactable &
-        Positionable)[];
+        .filter((entity) => {
+          return InteractableKey in entity || entity.hasExt(Interactive);
+        });
 
       // TODO: feels like this could be a helper
       const byProximity = entities.sort((a, b) => {
-        return distance(this.position, a.getPosition()) - distance(this.position, b.getPosition());
+        const p1 = "getPosition" in a ? a.getPosition() : a.getExt(Positionable).getPosition();
+        const p2 = "getPosition" in b ? b.getPosition() : b.getExt(Positionable).getPosition();
+        return distance(this.position, p1) - distance(this.position, p2);
       });
+      console.log(entities, byProximity);
 
       if (byProximity.length > 0) {
-        byProximity[0].interact(this);
+        const entity = byProximity[0];
+
+        if (InteractableKey in entity) {
+          (entity as Interactable).interact(this);
+        } else {
+          entity.getExt(Interactive).interact(this);
+        }
       }
     }
   }
@@ -372,7 +383,7 @@ export class Player
             dx = offset;
           }
 
-          (entity as unknown as Positionable).setPosition({
+          (entity as unknown as PositionableTrait).setPosition({
             x: this.getPosition().x + dx,
             y: this.getPosition().y + dy,
           });

@@ -1,7 +1,7 @@
 import { EntityManager } from "../../managers/entity-manager";
 import { Entity, Entities, RawEntity } from "../entities";
 import { Vector2 } from "../physics";
-import { Interactable, Positionable } from "../traits";
+import { Interactable, PositionableTrait } from "../traits";
 import { Player } from "./player";
 
 export const WEAPON_TYPES = {
@@ -11,7 +11,7 @@ export const WEAPON_TYPES = {
 } as const;
 export type WeaponType = (typeof WEAPON_TYPES)[keyof typeof WEAPON_TYPES];
 
-export class Weapon extends Entity implements Interactable, Positionable {
+export class Weapon extends Entity implements Interactable, PositionableTrait {
   private weaponType: WeaponType;
   private position: Vector2 = { x: 0, y: 0 };
 

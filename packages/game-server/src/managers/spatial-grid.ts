@@ -26,8 +26,9 @@ export class SpatialGrid {
     }
   }
 
-  addEntity(entity: Entity & Positionable) {
-    const pos = entity.getPosition();
+  addEntity(entity: Entity) {
+    const pos =
+      "getPosition" in entity ? entity.getPosition() : entity.getExt(Positionable).getPosition();
     const [cellX, cellY] = this.getCellCoords(pos);
 
     if (this.isValidCell(cellX, cellY)) {

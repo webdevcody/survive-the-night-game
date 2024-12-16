@@ -1,10 +1,10 @@
 import { EntityManager } from "../../managers/entity-manager";
 import { Entities, Entity, RawEntity } from "../entities";
 import { Vector2 } from "../physics";
-import { Interactable, Positionable } from "../traits";
+import { Interactable, PositionableTrait } from "../traits";
 import { Player } from "./player";
 
-export class Tree extends Entity implements Interactable, Positionable {
+export class Tree extends Entity implements Interactable, PositionableTrait {
   private position: Vector2 = { x: 0, y: 0 };
 
   constructor(entityManager: EntityManager) {

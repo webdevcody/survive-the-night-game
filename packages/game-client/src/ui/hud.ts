@@ -1,4 +1,4 @@
-import { Damageable, Positionable } from "@survive-the-night/game-server";
+import { Damageable } from "@survive-the-night/game-server";
 import { GameState, getEntityById } from "../state";
 
 const HUD_SETTINGS = {

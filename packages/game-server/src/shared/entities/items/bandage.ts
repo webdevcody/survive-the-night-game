@@ -1,10 +1,10 @@
 import { EntityManager } from "../../../managers/entity-manager";
 import { Entity, Entities, RawEntity } from "../../entities";
-import { Interactable, Hitbox, Positionable, Consumable } from "../../traits";
+import { Interactable, PositionableTrait, Consumable } from "../../traits";
 import { Vector2 } from "../../physics";
 import { Player } from "../player";
 
-export class Bandage extends Entity implements Positionable, Interactable, Consumable {
+export class Bandage extends Entity implements PositionableTrait, Interactable, Consumable {
   private position: Vector2 = {
     x: 0,
     y: 0,

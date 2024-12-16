@@ -1,4 +1,5 @@
 import { EntityManager } from "../managers/entity-manager";
+import { Extension, ExtensionCtor, ExtensionSerialized, extensionsMap } from "./extensions";
 
 export const Entities = {
   WEAPON: "weapon",
@@ -9,6 +10,7 @@ export const Entities = {
   WALL: "wall",
   BOUNDARY: "boundary",
   BANDAGE: "bandage",
+  CLOTH: "cloth",
   SOUND: "sound",
 } as const;
 
@@ -20,26 +22,16 @@ export type RawEntity = {
   [key: string]: any;
 };
 
-export abstract class Entity {
-  private type: EntityType;
+export class GenericEntity extends EventTarget {
   private id: string;
-  private entityManager: EntityManager;
+  private type: EntityType;
+  protected extensions: Extension[] = [];
 
-  constructor(entityManager: EntityManager, type: EntityType) {
-    this.type = type;
-    this.id = entityManager.generateEntityId();
-    this.entityManager = entityManager;
-  }
-
-  setType(type: EntityType) {
-    this.type = type;
-  }
-
-  serialize(): RawEntity {
-    return {
-      id: this.id,
-      type: this.type,
-    };
+  public constructor(data: RawEntity) {
+    super();
+    this.id = data.id;
+    this.type = data.type;
+    this.extensions = [];
   }
 
   getType(): EntityType {
@@ -54,7 +46,57 @@ export abstract class Entity {
     this.id = id;
   }
 
-  getEntityManager(): EntityManager {
+  setType(type: EntityType) {
+    this.type = type;
+  }
+
+  public hasExt<T>(ext: ExtensionCtor<T>): boolean {
+    return this.extensions.some((it) => it instanceof ext);
+  }
+
+  public getExt<T>(ext: ExtensionCtor<T>): T {
+    const found = this.extensions.find((it) => it instanceof ext);
+
+    if (found === undefined) {
+      throw new Error("Unable to find extension");
+    }
+
+    return found;
+  }
+
+  public deserialize(data: RawEntity): void {
+    if (Array.isArray(data.extensions)) {
+      const dataExtensions: ExtensionSerialized[] = data.extensions;
+
+      this.extensions = dataExtensions.map((extData) => {
+        const Ext = extensionsMap[extData.name];
+        return new Ext(this).deserialize(extData);
+      });
+    }
+  }
+
+  public serialize(): RawEntity {
+    return {
+      id: this.id,
+      type: this.type,
+      extensions: this.extensions.map((it) => it.serialize()),
+    };
+  }
+}
+
+export abstract class Entity extends GenericEntity {
+  private entityManager: EntityManager;
+
+  constructor(entityManager: EntityManager, type: EntityType) {
+    super({
+      id: entityManager.generateEntityId(),
+      type,
+    });
+
+    this.entityManager = entityManager;
+  }
+
+  public getEntityManager(): EntityManager {
     return this.entityManager;
   }
 }

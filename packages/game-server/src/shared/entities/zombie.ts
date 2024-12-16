@@ -2,14 +2,17 @@ import { EntityManager } from "../../managers/entity-manager";
 import { MapManager } from "../../managers/map-manager";
 import { Direction } from "../direction";
 import { Entity, Entities, RawEntity } from "../entities";
+import { Events } from "../events";
 import { Vector2, pathTowards, velocityTowards } from "../physics";
-import { Damageable, Movable, Positionable, Updatable, Collidable, Hitbox } from "../traits";
+import { Damageable, Movable, PositionableTrait, Updatable, Collidable, Hitbox } from "../traits";
+import { Interactive, Positionable } from "../extensions";
+import { Cloth } from "./items/cloth";
 import { getHitboxWithPadding } from "./util";
 import { Wall } from "./wall";
 
 export class Zombie
   extends Entity
-  implements Damageable, Movable, Positionable, Updatable, Collidable, Damageable
+  implements Damageable, Movable, PositionableTrait, Updatable, Collidable, Damageable
 {
   private static readonly ZOMBIE_WIDTH = 16;
   private static readonly ZOMBIE_HEIGHT = 16;
@@ -52,6 +55,42 @@ export class Zombie
     return this.health <= 0;
   }
 
+  onDeath(): void {
+    this.extensions.push(
+      new Interactive(this).init({
+        eventName: Events.SCATTER_LOOT,
+      })
+    );
+
+    this.addEventListener(Events.SCATTER_LOOT, () => {
+      this.scatterLoot();
+      this.getEntityManager().markEntityForRemoval(this);
+    });
+  }
+
+  scatterLoot(): void {
+    const offset = 32;
+    const entities = [
+      new Cloth(this.getEntityManager()),
+      new Cloth(this.getEntityManager()),
+      new Cloth(this.getEntityManager()),
+    ];
+
+    for (const entity of entities) {
+      const theta = Math.random() * 2 * Math.PI;
+      const radius = Math.random() * offset;
+
+      if (entity.hasExt(Positionable)) {
+        entity.getExt(Positionable).setPosition({
+          x: this.position.x + radius * Math.cos(theta),
+          y: this.position.y + radius * Math.sin(theta),
+        });
+      }
+
+      this.getEntityManager().addEntity(entity);
+    }
+  }
+
   getDamageBox(): Hitbox {
     return Zombie.getDamageBox(this.position);
   }
@@ -87,6 +126,7 @@ export class Zombie
 
     if (this.health <= 0) {
       this.getEntityManager().markEntityForRemoval(this, 5000);
+      this.onDeath();
     }
   }
 
@@ -190,7 +230,7 @@ export class Zombie
     }
   }
 
-  private withinAttackRange(entity: Positionable): boolean {
+  private withinAttackRange(entity: PositionableTrait): boolean {
     const distance = Math.hypot(
       entity.getCenterPosition().x - this.getCenterPosition().x,
       entity.getCenterPosition().y - this.getCenterPosition().y

@@ -1,9 +1,9 @@
 import { EntityManager } from "../../managers/entity-manager";
 import { Entity, Entities, RawEntity } from "../entities";
-import { Collidable, Hitbox, Positionable, ServerOnly } from "../traits";
+import { Collidable, Hitbox, PositionableTrait, ServerOnly } from "../traits";
 import { Vector2 } from "../physics";
 
-export class Boundary extends Entity implements Collidable, Positionable, ServerOnly {
+export class Boundary extends Entity implements Collidable, PositionableTrait, ServerOnly {
   private position: Vector2 = {
     x: 0,
     y: 0,

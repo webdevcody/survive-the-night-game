@@ -1,4 +1,4 @@
-import { Positionable, Vector2 } from "@survive-the-night/game-server";
+import { Vector2 } from "@survive-the-night/game-server";
 import { GameState } from "../state";
 
 export interface Animation {

@@ -2,7 +2,7 @@ import { Entities, RawEntity } from "../entities";
 
 import { EntityManager } from "@/managers/entity-manager";
 import { Entity } from "../entities";
-import { Positionable } from "../traits";
+import { PositionableTrait } from "../traits";
 import { Vector2 } from "../physics";
 
 export const SOUND_TYPES = {
@@ -13,7 +13,7 @@ export const SOUND_TYPES = {
 
 export type SoundType = (typeof SOUND_TYPES)[keyof typeof SOUND_TYPES];
 
-export class Sound extends Entity implements Positionable {
+export class Sound extends Entity implements PositionableTrait {
   private position: Vector2 = { x: 0, y: 0 };
   private soundType: SoundType;
   public constructor(entityManager: EntityManager, soundType: SoundType) {

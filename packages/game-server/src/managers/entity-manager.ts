@@ -7,11 +7,12 @@ import {
   InteractableKey,
   IntersectionMethodIdentifiers,
   IntersectionMethodName,
-  Positionable,
+  PositionableTrait,
   Updatable,
 } from "../shared/traits";
 import { Player } from "../shared/entities/player";
 import { SpatialGrid } from "./spatial-grid";
+import { Positionable } from "@/shared/extensions";
 
 export class EntityManager {
   private entities: Entity[];
@@ -61,7 +62,10 @@ export class EntityManager {
 
     for (let i = this.entities.length - 1; i >= 0; i--) {
       const entity = this.entities[i];
-      const removeRecordIndex = this.entitiesToRemove.findIndex((it) => it.id === entity.getId());
+
+      const removeRecordIndex = this.entitiesToRemove.findLastIndex(
+        (it) => it.id === entity.getId()
+      );
 
       if (removeRecordIndex === -1) {
         continue;
@@ -76,6 +80,8 @@ export class EntityManager {
       this.entities.splice(i, 1);
       this.entitiesToRemove.splice(removeRecordIndex, 1);
     }
+
+    this.entitiesToRemove = this.entitiesToRemove.filter((it) => now < it.expiration);
   }
 
   clear() {
@@ -90,10 +96,10 @@ export class EntityManager {
     return this.spatialGrid?.getNearbyEntities(position, radius, filter) ?? [];
   }
 
-  getPositionableEntities(): Positionable[] {
+  getPositionableEntities(): PositionableTrait[] {
     return this.entities.filter((entity) => {
       return "getPosition" in entity;
-    }) as unknown as Positionable[];
+    }) as unknown as PositionableTrait[];
   }
 
   getPlayerEntities(): Player[] {
@@ -114,7 +120,7 @@ export class EntityManager {
     }) as unknown as Collidable[];
   }
 
-  getClosestPlayer(entity: Positionable): Player | null {
+  getClosestPlayer(entity: PositionableTrait): Player | null {
     const players = this.getPlayerEntities();
 
     if (players.length === 0) {
@@ -138,7 +144,7 @@ export class EntityManager {
     return players[closestPlayerIdx];
   }
 
-  getClosestAlivePlayer(entity: Positionable): Player | null {
+  getClosestAlivePlayer(entity: PositionableTrait): Player | null {
     const players = this.getPlayerEntities().filter((player) => !player.isDead());
 
     if (players.length === 0) {
@@ -181,7 +187,6 @@ export class EntityManager {
         continue;
       }
 
-      // @ts-expect-error
       const intersectionMethod = otherEntity[functionIdentifier] as any;
       if (intersectionMethod) {
         const targetEntity = otherEntity as unknown as Collidable;
@@ -234,8 +239,7 @@ export class EntityManager {
 
     // Re-add all entities that have a position
     this.entities.forEach((entity) => {
-      if ("getPosition" in entity) {
-        // @ts-expect-error
+      if ("getPosition" in entity || entity.hasExt(Positionable)) {
         this.spatialGrid!.addEntity(entity);
       }
     });

@@ -1,13 +1,16 @@
 import { EntityManager } from "../../managers/entity-manager";
 import { Entity, Entities, RawEntity } from "../entities";
-import { Collidable, Damageable, Interactable, Hitbox, Positionable } from "../traits";
+import { Collidable, Damageable, Interactable, Hitbox, PositionableTrait } from "../traits";
 import { Vector2 } from "../physics";
 import { Player } from "./player";
 import { TILE_SIZE } from "../../managers/map-manager";
 
 export const WALL_MAX_HEALTH = 5;
 
-export class Wall extends Entity implements Collidable, Positionable, Interactable, Damageable {
+export class Wall
+  extends Entity
+  implements Collidable, PositionableTrait, Interactable, Damageable
+{
   private position: Vector2 = {
     x: 0,
     y: 0,

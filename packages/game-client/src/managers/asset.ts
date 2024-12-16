@@ -68,6 +68,7 @@ const zombieRightFrameOrigins = getFrameOrigins({ startX: 496, startY: 95, total
 
 // sheet gaps: 1px horizontally, 3px vertically
 export const assetsMap = {
+  Cloth: assetMap({ x: 51, y: 228 }),
   Knife: assetMap({ x: 17, y: 171 }),
   KnifeFacingDown: assetMap({ x: 51, y: 171 }),
   KnifeFacingLeft: assetMap({ x: 17, y: 171, flipX: true }),
@@ -239,6 +240,8 @@ export function getItemAssetKey(item: InventoryItem): Asset {
     return "Wall";
   } else if (item.key === "Bandage") {
     return "Bandage";
+  } else if (item.key === "Cloth") {
+    return "Cloth";
   }
 
   throw new Error(`Unknown item type '${item.key}'`);
