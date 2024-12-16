@@ -7,7 +7,7 @@ import {
   EntityType,
   GameStateEvent,
   Input,
-  Positionable,
+  PositionableTrait,
 } from "@survive-the-night/game-server";
 import { PlayerClient } from "./entities/player";
 import { ZombieClient } from "./entities/zombie";
@@ -24,6 +24,7 @@ import { WallClient } from "./entities/wall";
 import { Hud } from "./ui/hud";
 import { WeaponClient } from "./entities/weapon";
 import { BandageClient } from "./entities/items/bandage";
+import { ClothClient } from "./entities/items/cloth";
 import { SoundClient } from "./entities/sound";
 
 export class GameClient {
@@ -74,6 +75,11 @@ export class GameClient {
     [Entities.BANDAGE]: (data) => {
       const entity = new BandageClient(data.id, this.assetManager);
       this.initializeEntity(entity, data);
+      return entity;
+    },
+    [Entities.CLOTH]: (data) => {
+      const entity = new ClothClient(data.id, this.assetManager);
+      entity.deserialize(data);
       return entity;
     },
     [Entities.ZOMBIE]: (data) => {
@@ -318,7 +324,12 @@ export class GameClient {
       const existingEntity = this.getEntities().find((e) => e.getId() === entityData.id);
 
       if (existingEntity) {
-        Object.assign(existingEntity, entityData);
+        if ("deserialize" in existingEntity) {
+          existingEntity.deserialize(entityData);
+        } else {
+          Object.assign(existingEntity, entityData);
+        }
+
         continue;
       }
 
@@ -352,7 +363,7 @@ export class GameClient {
       return;
     }
 
-    const playerToFollow = getEntityById(this.gameState, playerId) as Positionable | undefined;
+    const playerToFollow = getEntityById(this.gameState, playerId) as PositionableTrait | undefined;
 
     if (playerToFollow) {
       this.cameraManager.translateTo(playerToFollow.getPosition());

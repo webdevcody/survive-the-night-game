@@ -3,7 +3,7 @@ import {
   Entities,
   EntityType,
   Player,
-  Positionable,
+  PositionableTrait,
   Vector2,
   WeaponType,
 } from "@survive-the-night/game-server";
@@ -13,7 +13,7 @@ import { Animatable, animate, Animation, IClientEntity, Renderable } from "./uti
 
 const WEAPON_SIZE = 16;
 
-export class WeaponClient implements Renderable, Animatable, Positionable, IClientEntity {
+export class WeaponClient implements Renderable, Animatable, PositionableTrait, IClientEntity {
   private assetManager: AssetManager;
   private type: EntityType;
   private weaponType: WeaponType;
@@ -80,7 +80,7 @@ export class WeaponClient implements Renderable, Animatable, Positionable, IClie
 
   public render(ctx: CanvasRenderingContext2D, gameState: GameState): void {
     const image = this.assetManager.get(this.weaponType);
-    const myPlayer = getEntityById(gameState, gameState.playerId) as Positionable | undefined;
+    const myPlayer = getEntityById(gameState, gameState.playerId) as PositionableTrait | undefined;
 
     if (
       myPlayer &&

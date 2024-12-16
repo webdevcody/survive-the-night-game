@@ -1,7 +1,7 @@
 import {
   Entities,
   EntityType,
-  Positionable,
+  PositionableTrait,
   roundVector2,
   Vector2,
   InventoryItem,
@@ -18,7 +18,7 @@ import { GameState } from "@/state";
 import { getHitboxWithPadding } from "@survive-the-night/game-server/src/shared/entities/util";
 import { debugDrawHitbox } from "../util/debug";
 
-export class PlayerClient implements IClientEntity, Renderable, Positionable, Damageable {
+export class PlayerClient implements IClientEntity, Renderable, PositionableTrait, Damageable {
   private readonly LERP_FACTOR = 0.1;
   private readonly ARROW_LENGTH = 20;
 

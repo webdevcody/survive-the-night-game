@@ -5,7 +5,7 @@ import {
   EntityType,
   Hitbox,
   Player,
-  Positionable,
+  PositionableTrait,
   Vector2,
 } from "@survive-the-night/game-server";
 import { AssetManager } from "@/managers/asset";
@@ -15,7 +15,7 @@ import { WALL_MAX_HEALTH } from "@survive-the-night/game-server/src/shared/entit
 
 const WALL_SIZE = 16;
 
-export class WallClient implements Renderable, Positionable, IClientEntity, Damageable {
+export class WallClient implements Renderable, PositionableTrait, IClientEntity, Damageable {
   private assetManager: AssetManager;
   private type: EntityType;
   private id: string;
@@ -88,7 +88,7 @@ export class WallClient implements Renderable, Positionable, IClientEntity, Dama
     const image = this.assetManager.get("Wall");
     ctx.drawImage(image, this.getPosition().x, this.getPosition().y);
 
-    const myPlayer = getEntityById(gameState, gameState.playerId) as Positionable | undefined;
+    const myPlayer = getEntityById(gameState, gameState.playerId) as PositionableTrait | undefined;
     if (
       myPlayer &&
       distance(myPlayer.getPosition(), this.getPosition()) < Player.MAX_INTERACT_RADIUS

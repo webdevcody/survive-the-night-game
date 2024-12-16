@@ -3,7 +3,7 @@ import {
   Entities,
   EntityType,
   Player,
-  Positionable,
+  PositionableTrait,
   Vector2,
 } from "@survive-the-night/game-server";
 import { AssetManager } from "@/managers/asset";
@@ -12,7 +12,7 @@ import { IClientEntity, Renderable } from "../util";
 
 const TREE_SIZE = 16;
 
-export class BandageClient implements Renderable, Positionable, IClientEntity {
+export class BandageClient implements Renderable, PositionableTrait, IClientEntity {
   private assetManager: AssetManager;
   private type: EntityType;
   private id: string;
@@ -57,7 +57,7 @@ export class BandageClient implements Renderable, Positionable, IClientEntity {
 
   render(ctx: CanvasRenderingContext2D, gameState: GameState): void {
     const image = this.assetManager.get("Bandage");
-    const myPlayer = getEntityById(gameState, gameState.playerId) as Positionable | undefined;
+    const myPlayer = getEntityById(gameState, gameState.playerId) as PositionableTrait | undefined;
 
     if (
       myPlayer &&

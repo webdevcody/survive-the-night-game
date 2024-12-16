@@ -7,7 +7,7 @@ export interface Interactable {
 
 export const InteractableKey = "interact";
 
-export interface Positionable {
+export interface PositionableTrait {
   getPosition: () => Vector2;
   setPosition: (position: Vector2) => void;
   getCenterPosition: () => Vector2;

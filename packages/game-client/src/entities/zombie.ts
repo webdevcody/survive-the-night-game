@@ -1,20 +1,22 @@
 import {
   Entities,
   EntityType,
-  Positionable,
+  PositionableTrait,
   determineDirection,
   roundVector2,
   Vector2,
   Damageable,
   Hitbox,
+  Player,
+  distance,
 } from "@survive-the-night/game-server";
 import { AssetManager } from "@/managers/asset";
 import { drawHealthBar, getFrameIndex, IClientEntity, Renderable } from "./util";
-import { GameState } from "@/state";
+import { GameState, getEntityById } from "../state";
 import { debugDrawHitbox } from "../util/debug";
 import { Zombie } from "@survive-the-night/game-server/src/shared/entities/zombie";
 
-export class ZombieClient implements IClientEntity, Renderable, Positionable, Damageable {
+export class ZombieClient implements IClientEntity, Renderable, PositionableTrait, Damageable {
   private assetManager: AssetManager;
   private lastRenderPosition = { x: 0, y: 0 };
   private readonly LERP_FACTOR = 0.1;
@@ -106,9 +108,23 @@ export class ZombieClient implements IClientEntity, Renderable, Positionable, Da
 
     ctx.drawImage(image, renderPosition.x, renderPosition.y);
 
-    if (!this.isDead()) {
-      drawHealthBar(ctx, renderPosition, this.health, this.getMaxHealth());
+    if (this.isDead()) {
+      const myPlayer = getEntityById(gameState, gameState.playerId) as
+        | PositionableTrait
+        | undefined;
 
+      if (
+        myPlayer !== undefined &&
+        distance(myPlayer.getPosition(), this.getPosition()) < Player.MAX_INTERACT_RADIUS
+      ) {
+        ctx.fillStyle = "white";
+        ctx.font = "6px Arial";
+        const text = "loot (e)";
+        const textWidth = ctx.measureText(text).width;
+        ctx.fillText(text, this.getCenterPosition().x - textWidth / 2, this.getPosition().y - 3);
+      }
+    } else {
+      drawHealthBar(ctx, renderPosition, this.health, this.getMaxHealth());
       debugDrawHitbox(ctx, Zombie.getHitbox(this.position));
       debugDrawHitbox(ctx, Zombie.getDamageBox(this.position), "red");
     }
