@@ -18,6 +18,10 @@ export class Cloth extends Entity {
     this.addEventListener(Events.INTERACT, (evt: CustomEventInit<Player>) => {
       const player = evt.detail;
 
+      if (player?.isInventoryFull()) {
+        return;
+      }
+
       player?.getInventory().push({ key: "Cloth" });
       this.getEntityManager().markEntityForRemoval(this);
     });

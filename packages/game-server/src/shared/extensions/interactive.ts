@@ -24,10 +24,6 @@ export default class Interactive implements Extension {
   }
 
   public interact(player: Player): void {
-    if (player.isInventoryFull()) {
-      return;
-    }
-
     if (this.eventName !== null) {
       this.self.dispatchEvent(
         new CustomEvent(this.eventName, {
