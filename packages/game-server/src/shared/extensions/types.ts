@@ -1,5 +1,7 @@
 export const ExtensionNames = {
+  collidable: "collidable",
   consumable: "consumable",
+  destructible: "destructible",
   interactive: "interactive",
   positionable: "positionable",
 } as const;

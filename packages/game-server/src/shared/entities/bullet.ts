@@ -5,7 +5,7 @@ import { Entities, RawEntity } from "../entities";
 import { Entity } from "../entities";
 import { Vector2, distance, normalizeVector } from "../physics";
 import {
-  Collidable,
+  CollidableTrait,
   Damageable,
   DamageableKey,
   Hitbox,
@@ -19,7 +19,10 @@ const MAX_TRAVEL_DISTANCE = 400;
 
 export const HITBOX_RADIUS = 1;
 
-export class Bullet extends Entity implements PositionableTrait, Movable, Updatable, Collidable {
+export class Bullet
+  extends Entity
+  implements PositionableTrait, Movable, Updatable, CollidableTrait
+{
   private traveledDistance: number = 0;
   private position: Vector2 = { x: 0, y: 0 };
   private velocity: Vector2 = { x: 0, y: 0 };

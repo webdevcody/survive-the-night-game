@@ -3,7 +3,7 @@ import { EntityManager } from "../../managers/entity-manager";
 import { Bullet } from "./bullet";
 import { Tree } from "./tree";
 import { Wall } from "./wall";
-import { Collidable, Damageable, Interactable, Hitbox, InteractableKey } from "../traits";
+import { CollidableTrait, Damageable, Interactable, Hitbox, InteractableKey } from "../traits";
 import { Movable, PositionableTrait, Updatable } from "../traits";
 import { distance, normalizeVector, Vector2 } from "../physics";
 import { Direction } from "../direction";
@@ -21,7 +21,7 @@ import { Consumable, Interactive, Positionable } from "../extensions";
 
 export class Player
   extends Entity
-  implements Movable, PositionableTrait, Updatable, Collidable, Damageable
+  implements Movable, PositionableTrait, Updatable, CollidableTrait, Damageable
 {
   public static readonly MAX_INVENTORY_SLOTS = 8;
   public static readonly MAX_HEALTH = 3;

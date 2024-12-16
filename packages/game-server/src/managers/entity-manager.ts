@@ -1,7 +1,7 @@
 import { distance, isColliding, Vector2 } from "../shared/physics";
 import { Entities, Entity, EntityType } from "../shared/entities";
 import {
-  Collidable,
+  CollidableTrait,
   Damageable,
   Interactable,
   InteractableKey,
@@ -12,7 +12,7 @@ import {
 } from "../shared/traits";
 import { Player } from "../shared/entities/player";
 import { SpatialGrid } from "./spatial-grid";
-import { Positionable } from "@/shared/extensions";
+import { Collidable, Destructible, Positionable } from "@/shared/extensions";
 
 export class EntityManager {
   private entities: Entity[];
@@ -114,10 +114,10 @@ export class EntityManager {
     }) as unknown as Interactable[];
   }
 
-  getCollidableEntities(): Collidable[] {
+  getCollidableEntities(): CollidableTrait[] {
     return this.entities.filter((entity) => {
-      return "getHitbox" in entity;
-    }) as unknown as Collidable[];
+      return "getHitbox" in entity || entity.hasExt(Collidable);
+    }) as unknown as CollidableTrait[];
   }
 
   getClosestPlayer(entity: PositionableTrait): Player | null {
@@ -173,46 +173,69 @@ export class EntityManager {
    * that the entity has a method with the name of the functionIdentifier.
    */
   getIntersectingEntityByType(
-    sourceEntity: Collidable,
+    sourceEntity: Entity,
     functionIdentifier: IntersectionMethodName,
     ignoreTypes?: EntityType[]
-  ): Collidable | Damageable | null {
+  ): Entity | null {
     if (!this.spatialGrid) {
       return null;
     }
 
-    const nearbyEntities = this.spatialGrid.getNearbyEntities(sourceEntity.getHitbox());
+    const hitBox =
+      "getHitbox" in sourceEntity
+        ? sourceEntity.getHitbox()
+        : sourceEntity.getExt(Collidable).getHitBox();
+
+    const nearbyEntities = this.spatialGrid.getNearbyEntities(hitBox);
+
     for (const otherEntity of nearbyEntities) {
       if (ignoreTypes && ignoreTypes.includes(otherEntity.getType())) {
         continue;
       }
 
-      const intersectionMethod = otherEntity[functionIdentifier] as any;
-      if (intersectionMethod) {
-        const targetEntity = otherEntity as unknown as Collidable;
+      const hasMethod =
+        functionIdentifier === "getDamageBox"
+          ? "getDamageBox" in otherEntity || otherEntity.hasExt(Destructible)
+          : "getHitbox" in otherEntity || otherEntity.hasExt(Collidable);
 
-        if (targetEntity === sourceEntity || ("isDead" in targetEntity && targetEntity.isDead())) {
-          continue;
-        }
+      if (!hasMethod) {
+        continue;
+      }
 
-        if (isColliding(sourceEntity.getHitbox(), intersectionMethod.call(targetEntity))) {
-          return targetEntity;
-        }
+      const targetBox =
+        functionIdentifier === "getDamageBox"
+          ? "getDamageBox" in otherEntity
+            ? otherEntity.getDamageBox()
+            : otherEntity.getExt(Destructible).getDamageBox()
+          : "getHitbox" in otherEntity
+          ? otherEntity.getHitbox()
+          : otherEntity.getExt(Collidable).getHitBox();
+
+      const dead =
+        ("isDead" in otherEntity && otherEntity.isDead()) ||
+        (otherEntity.hasExt(Destructible) && otherEntity.getExt(Destructible).isDead());
+
+      if (otherEntity === sourceEntity || dead) {
+        continue;
+      }
+
+      if (isColliding(hitBox, targetBox)) {
+        return otherEntity;
       }
     }
 
     return null;
   }
 
-  isColliding(sourceEntity: Collidable, ignoreTypes?: EntityType[]): Collidable | null {
+  isColliding(sourceEntity: Entity, ignoreTypes?: EntityType[]): CollidableTrait | null {
     return this.getIntersectingEntityByType(
       sourceEntity,
       IntersectionMethodIdentifiers.Collidable,
       ignoreTypes
-    ) as Collidable | null;
+    ) as CollidableTrait | null;
   }
 
-  isDamaging(sourceEntity: Collidable, ignoreTypes?: EntityType[]): Damageable | null {
+  isDamaging(sourceEntity: Entity, ignoreTypes?: EntityType[]): Damageable | null {
     return this.getIntersectingEntityByType(
       sourceEntity,
       IntersectionMethodIdentifiers.Damageable,

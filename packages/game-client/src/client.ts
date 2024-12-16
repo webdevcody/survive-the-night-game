@@ -64,7 +64,7 @@ export class GameClient {
     },
     [Entities.WALL]: (data) => {
       const entity = new WallClient(data.id, this.assetManager);
-      this.initializeEntity(entity, data);
+      entity.deserialize(data);
       return entity;
     },
     [Entities.WEAPON]: (data) => {

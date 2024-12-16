@@ -25,7 +25,7 @@ export class Weapon extends Entity {
     ];
   }
 
-  public interact(player: Player): void {
+  private interact(player: Player): void {
     if (player.isInventoryFull()) {
       return;
     }

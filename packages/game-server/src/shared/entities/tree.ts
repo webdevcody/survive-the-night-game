@@ -15,7 +15,7 @@ export class Tree extends Entity {
     ];
   }
 
-  interact(player: Player): void {
+  private interact(player: Player): void {
     if (player.isInventoryFull()) {
       return;
     }

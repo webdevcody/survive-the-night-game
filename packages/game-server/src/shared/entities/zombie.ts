@@ -4,15 +4,22 @@ import { Direction } from "../direction";
 import { Entity, Entities, RawEntity } from "../entities";
 import { Events } from "../events";
 import { Vector2, pathTowards, velocityTowards } from "../physics";
-import { Damageable, Movable, PositionableTrait, Updatable, Collidable, Hitbox } from "../traits";
-import { Interactive, Positionable } from "../extensions";
+import {
+  Damageable,
+  Movable,
+  PositionableTrait,
+  Updatable,
+  CollidableTrait,
+  Hitbox,
+} from "../traits";
+import { Destructible, Interactive, Positionable } from "../extensions";
 import { Cloth } from "./items/cloth";
 import { getHitboxWithPadding } from "./util";
 import { Wall } from "./wall";
 
 export class Zombie
   extends Entity
-  implements Damageable, Movable, PositionableTrait, Updatable, Collidable, Damageable
+  implements Damageable, Movable, PositionableTrait, Updatable, CollidableTrait, Damageable
 {
   private static readonly ZOMBIE_WIDTH = 16;
   private static readonly ZOMBIE_HEIGHT = 16;
@@ -226,23 +233,33 @@ export class Zombie
     }
   }
 
-  private withinAttackRange(entity: PositionableTrait): boolean {
+  private withinAttackRange(entity: Entity): boolean {
+    const centerPosition =
+      "getCenterPosition" in entity
+        ? entity.getCenterPosition()
+        : entity.getExt(Positionable).getCenterPosition();
+
     const distance = Math.hypot(
-      entity.getCenterPosition().x - this.getCenterPosition().x,
-      entity.getCenterPosition().y - this.getCenterPosition().y
+      centerPosition.x - this.getCenterPosition().x,
+      centerPosition.y - this.getCenterPosition().y
     );
 
     return distance <= Zombie.ATTACK_RADIUS;
   }
 
-  private attemptAttackEntity(entity: Damageable & Positionable) {
+  private attemptAttackEntity(entity: Entity) {
     const currentTime = Date.now();
     if (currentTime - this.lastAttackTime < Zombie.ATTACK_COOLDOWN) return;
 
     const withinRange = this.withinAttackRange(entity);
     if (!withinRange) return false;
 
-    entity.damage(Zombie.ATTACK_DAMAGE);
+    if ("damage" in entity) {
+      entity.damage(Zombie.ATTACK_DAMAGE);
+    } else {
+      entity.getExt(Destructible).damage(Zombie.ATTACK_DAMAGE);
+    }
+
     this.lastAttackTime = currentTime;
     return true;
   }

@@ -33,7 +33,7 @@ export type Hitbox = {
   height: number;
 };
 
-export interface Collidable {
+export interface CollidableTrait {
   getHitbox: () => Hitbox;
 }
 
