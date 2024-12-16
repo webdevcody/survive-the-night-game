@@ -3,15 +3,7 @@ import { EntityManager } from "../../managers/entity-manager";
 import { Bullet } from "./bullet";
 import { Tree } from "./tree";
 import { Wall } from "./wall";
-import {
-  Collidable,
-  Damageable,
-  Interactable,
-  Hitbox,
-  InteractableKey,
-  Consumable,
-  ConsumableKey,
-} from "../traits";
+import { CollidableTrait, Damageable, Interactable, Hitbox, InteractableKey } from "../traits";
 import { Movable, PositionableTrait, Updatable } from "../traits";
 import { distance, normalizeVector, Vector2 } from "../physics";
 import { Direction } from "../direction";
@@ -21,14 +13,15 @@ import { recipes, RecipeType } from "../recipes";
 import { DEBUG, PlayerDeathEvent } from "../../index";
 import { Cooldown } from "./util/cooldown";
 import { Bandage } from "./items/bandage";
+import { Cloth } from "./items/cloth";
 import { Sound, SOUND_TYPES } from "./sound";
 import { Input } from "../input";
 import { SocketManager } from "@/managers/socket-manager";
-import { Interactive, Positionable } from "../extensions";
+import { Consumable, Interactive, Positionable } from "../extensions";
 
 export class Player
   extends Entity
-  implements Movable, PositionableTrait, Updatable, Collidable, Damageable
+  implements Movable, PositionableTrait, Updatable, CollidableTrait, Damageable
 {
   public static readonly MAX_INVENTORY_SLOTS = 8;
   public static readonly MAX_HEALTH = 3;
@@ -58,7 +51,6 @@ export class Player
     drop: false,
     consume: false,
   };
-  private activeItem: InventoryItem | null = null;
   private inventory: InventoryItem[] = [];
   private health = Player.MAX_HEALTH;
   private isCrafting = false;
@@ -78,6 +70,14 @@ export class Player
         { key: "Wall" },
       ];
     }
+  }
+
+  get activeItem(): InventoryItem | null {
+    if (this.input.inventoryItem === null) {
+      return null;
+    }
+
+    return this.inventory[this.input.inventoryItem - 1] ?? null;
   }
 
   setIsCrafting(isCrafting: boolean): void {
@@ -138,10 +138,17 @@ export class Player
       const entity = this.convertItemToEntity(item);
       const theta = Math.random() * 2 * Math.PI;
       const radius = Math.random() * offset;
-      (entity as unknown as PositionableTrait).setPosition({
+      const pos: Vector2 = {
         x: this.position.x + radius * Math.cos(theta),
         y: this.position.y + radius * Math.sin(theta),
-      });
+      };
+
+      if ("setPosition" in entity) {
+        (entity as unknown as PositionableTrait).setPosition(pos);
+      } else if (entity.hasExt(Positionable)) {
+        entity.getExt(Positionable).setPosition(pos);
+      }
+
       this.getEntityManager().addEntity(entity);
     });
   }
@@ -342,6 +349,9 @@ export class Player
       case "Bandage":
         entity = new Bandage(this.getEntityManager());
         break;
+      case "Cloth":
+        entity = new Cloth(this.getEntityManager());
+        break;
       default:
         throw new Error(`Unknown item type: '${item.key}'`);
     }
@@ -366,34 +376,33 @@ export class Player
         // Create new entity based on item type
         const entity = this.convertItemToEntity(item);
 
+        const offset = 16;
+        let dx = 0;
+        let dy = 0;
+
+        if (this.input.facing === Direction.Up) {
+          dy = -offset;
+        } else if (this.input.facing === Direction.Down) {
+          dy = offset;
+        } else if (this.input.facing === Direction.Left) {
+          dx = -offset;
+        } else if (this.input.facing === Direction.Right) {
+          dx = offset;
+        }
+
+        const pos: Vector2 = {
+          x: this.getPosition().x + dx,
+          y: this.getPosition().y + dy,
+        };
+
         // Position the entity at player's center
         if ("setPosition" in entity) {
-          const offset = 16;
-          let dx = 0;
-          let dy = 0;
-
-          if (this.input.facing === Direction.Up) {
-            dy = -offset;
-          } else if (this.input.facing === Direction.Down) {
-            dy = offset;
-          } else if (this.input.facing === Direction.Left) {
-            dx = -offset;
-          } else if (this.input.facing === Direction.Right) {
-            dx = offset;
-          }
-
-          (entity as unknown as PositionableTrait).setPosition({
-            x: this.getPosition().x + dx,
-            y: this.getPosition().y + dy,
-          });
+          (entity as unknown as PositionableTrait).setPosition(pos);
+        } else if (entity.hasExt(Positionable)) {
+          entity.getExt(Positionable).setPosition(pos);
         }
 
         this.getEntityManager().addEntity(entity);
-
-        // Clear active item if it was dropped
-        if (this.activeItem === item) {
-          this.activeItem = null;
-        }
       }
     }
   }
@@ -411,6 +420,7 @@ export class Player
       if (item) {
         // Create temporary entity to check if it's consumable
         let entity: Entity;
+
         switch (item.key) {
           case "Bandage":
             entity = new Bandage(this.getEntityManager());
@@ -419,17 +429,7 @@ export class Player
             return; // Not a consumable item
         }
 
-        if (ConsumableKey in entity) {
-          const consumable = entity as unknown as Consumable;
-
-          if (consumable.consume(this)) {
-            this.inventory.splice(itemIndex, 1);
-
-            if (this.activeItem === item) {
-              this.activeItem = null;
-            }
-          }
-        }
+        entity.getExt(Consumable).consume(this, itemIndex);
       }
     }
   }
@@ -452,12 +452,6 @@ export class Player
 
   setInput(input: Input) {
     this.input = input;
-
-    if (this.input.inventoryItem !== null) {
-      this.activeItem = this.inventory[this.input.inventoryItem - 1] ?? null;
-    } else {
-      this.activeItem = null;
-    }
   }
 
   heal(amount: number): void {

@@ -1,56 +1,39 @@
 import { EntityManager } from "../../../managers/entity-manager";
-import { Entity, Entities, RawEntity } from "../../entities";
-import { Interactable, PositionableTrait, Consumable } from "../../traits";
-import { Vector2 } from "../../physics";
+import { Entity, Entities } from "../../entities";
+import { Consumable, Interactive, Positionable } from "../../extensions";
 import { Player } from "../player";
 
-export class Bandage extends Entity implements PositionableTrait, Interactable, Consumable {
-  private position: Vector2 = {
-    x: 0,
-    y: 0,
-  };
+export class Bandage extends Entity {
+  public static readonly Size = 16;
   public static readonly healingAmount = 5;
 
   constructor(entityManager: EntityManager) {
     super(entityManager, Entities.BANDAGE);
+
+    this.extensions = [
+      new Positionable(this).setSize(Bandage.Size),
+      new Consumable(this).onConsume(this.consume.bind(this)),
+      new Interactive(this).onInteract(this.interact.bind(this)),
+    ];
   }
 
-  getPosition(): Vector2 {
-    return this.position;
+  private consume(player: Player, idx: number): void {
+    const healAmount = Math.min(Bandage.healingAmount, player.getMaxHealth() - player.getHealth());
+
+    if (healAmount === 0) {
+      return;
+    }
+
+    player.heal(healAmount);
+    player.getInventory().splice(idx, 1);
   }
 
-  interact(player: Player): void {
+  private interact(player: Player): void {
     if (player.isInventoryFull()) {
       return;
     }
-    player.getInventory().push({
-      key: "Bandage",
-    });
+
+    player.getInventory().push({ key: "Bandage" });
     this.getEntityManager().markEntityForRemoval(this);
-  }
-
-  setPosition(position: Vector2): void {
-    this.position = position;
-  }
-
-  serialize(): RawEntity {
-    return {
-      ...super.serialize(),
-      position: this.position,
-    };
-  }
-
-  getCenterPosition(): Vector2 {
-    return this.position;
-  }
-
-  consume(player: Player): boolean {
-    const healAmount = Math.min(Bandage.healingAmount, player.getMaxHealth() - player.getHealth());
-
-    if (healAmount > 0) {
-      player.heal(healAmount);
-      return true;
-    }
-    return false;
   }
 }

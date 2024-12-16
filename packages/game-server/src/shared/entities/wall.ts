@@ -1,91 +1,42 @@
 import { EntityManager } from "../../managers/entity-manager";
-import { Entity, Entities, RawEntity } from "../entities";
-import { Collidable, Damageable, Interactable, Hitbox, PositionableTrait } from "../traits";
-import { Vector2 } from "../physics";
+import { Entity, Entities } from "../entities";
+import { Collidable, Destructible, Interactive, Positionable } from "../extensions";
 import { Player } from "./player";
-import { TILE_SIZE } from "../../managers/map-manager";
 
-export const WALL_MAX_HEALTH = 5;
-
-export class Wall
-  extends Entity
-  implements Collidable, PositionableTrait, Interactable, Damageable
-{
-  private position: Vector2 = {
-    x: 0,
-    y: 0,
-  };
-  private health: number = WALL_MAX_HEALTH;
+export class Wall extends Entity {
+  public static readonly MaxHealth = 5;
+  public static readonly Size = 16;
 
   constructor(entityManager: EntityManager, health?: number) {
     super(entityManager, Entities.WALL);
-    this.health = health ?? WALL_MAX_HEALTH;
+
+    this.extensions = [
+      new Positionable(this).setSize(Wall.Size),
+      new Collidable(this),
+      new Destructible(this)
+        .setMaxHealth(Wall.MaxHealth)
+        .setHealth(health ?? Wall.MaxHealth)
+        .onDeath(this.onDeath.bind(this)),
+      new Interactive(this).onInteract(this.interact.bind(this)),
+    ];
   }
 
-  heal(amount: number): void {}
-
-  damage(damage: number): void {
-    this.health -= damage;
-
-    if (this.isDead()) {
-      this.getEntityManager().markEntityForRemoval(this);
-    }
-  }
-
-  getHealth(): number {
-    return this.health;
-  }
-
-  getMaxHealth(): number {
-    return WALL_MAX_HEALTH;
-  }
-
-  getPosition(): Vector2 {
-    return this.position;
-  }
-
-  interact(player: Player): void {
-    if (player.isInventoryFull()) {
-      return;
-    }
-    player.getInventory().push({
-      key: "Wall",
-      state: {
-        health: this.health,
-      },
-    });
+  private onDeath() {
     this.getEntityManager().markEntityForRemoval(this);
   }
 
-  setPosition(position: Vector2): void {
-    this.position = position;
-  }
+  private interact(player: Player): void {
+    if (player.isInventoryFull()) {
+      return;
+    }
 
-  serialize(): RawEntity {
-    return {
-      ...super.serialize(),
-      position: this.position,
-      health: this.health,
-    };
-  }
+    player.getInventory().push({
+      key: "Wall",
+      state: {
+        health: this.getExt(Destructible).getHealth(),
+      },
+    });
 
-  getCenterPosition(): Vector2 {
-    return this.position;
-  }
-
-  getHitbox(): Hitbox {
-    return {
-      ...this.position,
-      width: TILE_SIZE,
-      height: TILE_SIZE,
-    };
-  }
-
-  getDamageBox() {
-    return this.getHitbox();
-  }
-
-  isDead(): boolean {
-    return this.health <= 0;
+    this.getEntityManager().markEntityForRemoval(this);
   }
 }

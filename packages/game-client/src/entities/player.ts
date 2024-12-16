@@ -13,10 +13,11 @@ import {
   Input,
 } from "@survive-the-night/game-server";
 import { AssetManager, getItemAssetKey } from "../managers/asset";
-import { animate, drawHealthBar, getFrameIndex, IClientEntity, Renderable } from "./util";
+import { drawHealthBar, getFrameIndex, IClientEntity, Renderable } from "./util";
 import { GameState } from "@/state";
 import { getHitboxWithPadding } from "@survive-the-night/game-server/src/shared/entities/util";
 import { debugDrawHitbox } from "../util/debug";
+import { animate } from "../animations";
 
 export class PlayerClient implements IClientEntity, Renderable, PositionableTrait, Damageable {
   private readonly LERP_FACTOR = 0.1;

@@ -4,6 +4,7 @@ import { Weapon, WEAPON_TYPES } from "../shared/entities/weapon";
 import { Boundary } from "../shared/entities/boundary";
 import { Zombie } from "../shared/entities/zombie";
 import { Bandage } from "../shared/entities/items/bandage";
+import { Positionable } from "../shared/extensions";
 
 export const TILE_IDS = {
   GRASS1: 0,
@@ -142,22 +143,22 @@ export class MapManager {
           if (Math.random() < 0.05) {
             // 30% chance for a tree
             const tree = new Tree(this.entityManager);
-            tree.setPosition({ x: x * TILE_SIZE, y: y * TILE_SIZE });
+            tree.getExt(Positionable).setPosition({ x: x * TILE_SIZE, y: y * TILE_SIZE });
             this.entityManager.addEntity(tree);
           } else if (Math.random() < WEAPON_SPAWN_CHANCE.PISTOL) {
             // 0.1% chance for a pistol
             const weapon = new Weapon(this.entityManager, WEAPON_TYPES.PISTOL);
-            weapon.setPosition({ x: x * TILE_SIZE, y: y * TILE_SIZE });
+            weapon.getExt(Positionable).setPosition({ x: x * TILE_SIZE, y: y * TILE_SIZE });
             this.entityManager.addEntity(weapon);
           } else if (Math.random() < WEAPON_SPAWN_CHANCE.SHOTGUN) {
             // 0.1% chance for a shotgun
             const weapon = new Weapon(this.entityManager, WEAPON_TYPES.SHOTGUN);
-            weapon.setPosition({ x: x * TILE_SIZE, y: y * TILE_SIZE });
+            weapon.getExt(Positionable).setPosition({ x: x * TILE_SIZE, y: y * TILE_SIZE });
             this.entityManager.addEntity(weapon);
           } else if (Math.random() < WEAPON_SPAWN_CHANCE.KNIFE) {
             // 0.1% chance for a knife
             const weapon = new Weapon(this.entityManager, WEAPON_TYPES.KNIFE);
-            weapon.setPosition({ x: x * TILE_SIZE, y: y * TILE_SIZE });
+            weapon.getExt(Positionable).setPosition({ x: x * TILE_SIZE, y: y * TILE_SIZE });
             this.entityManager.addEntity(weapon);
           }
         }
@@ -173,7 +174,7 @@ export class MapManager {
     this.entityManager.addEntity(zombie);
 
     const bandage = new Bandage(this.entityManager);
-    bandage.setPosition({ x: middleX + 16 * 6, y: middleY });
+    bandage.getExt(Positionable).setPosition({ x: middleX + 16 * 6, y: middleY });
     this.entityManager.addEntity(bandage);
   }
 

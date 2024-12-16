@@ -76,6 +76,10 @@ export class GenericEntity extends EventTarget {
   }
 
   public serialize(): RawEntity {
+    return this.baseSerialize();
+  }
+
+  protected baseSerialize(): RawEntity {
     return {
       id: this.id,
       type: this.type,

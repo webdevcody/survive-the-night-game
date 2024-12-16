@@ -33,7 +33,7 @@ export type Hitbox = {
   height: number;
 };
 
-export interface Collidable {
+export interface CollidableTrait {
   getHitbox: () => Hitbox;
 }
 
@@ -47,12 +47,6 @@ export interface Damageable {
 }
 
 export const DamageableKey = "damage";
-
-export interface Consumable {
-  consume: (player: Player) => boolean;
-}
-
-export const ConsumableKey = "consume";
 
 export const IntersectionMethodIdentifiers = {
   Collidable: "getHitbox",
