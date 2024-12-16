@@ -9,7 +9,11 @@ export class SoundClient implements IClientEntity {
     this.id = id;
     this.soundType = soundType;
     const audio = new Audio(`/sounds/${soundType}.mp3`);
-    audio.play();
+    try {
+      audio.play();
+    } catch (error) {
+      console.error("Error playing sound", error);
+    }
   }
 
   public getId(): string {
