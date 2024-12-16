@@ -341,6 +341,8 @@ export class GameClient {
     this.updateEntities();
 
     this.positionCameraOnPlayer();
+
+    this.hud.update(this.gameState);
   }
 
   private positionCameraOnPlayer(): void {
