@@ -12,6 +12,7 @@ export class SocketManager {
       onMap: (map: number[][]) => void;
       onGameStateUpdate: (gameStateEvent: GameStateEvent) => void;
       onYourId: (playerId: string) => void;
+      onPlayerDeath: (playerId: string) => void;
     }
   ) {
     this.socket = io(serverUrl);
@@ -27,6 +28,10 @@ export class SocketManager {
 
     this.socket.on(Events.YOUR_ID, (playerId: string) => {
       handlers.onYourId(playerId);
+    });
+
+    this.socket.on(Events.PLAYER_DEATH, (playerId: string) => {
+      handlers.onPlayerDeath(playerId);
     });
 
     this.socket.on("connect", () => {

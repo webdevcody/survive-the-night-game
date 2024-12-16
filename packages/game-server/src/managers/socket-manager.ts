@@ -3,7 +3,7 @@ import { createServer } from "http";
 import { Events, IEvent } from "../shared/events";
 import { EntityManager } from "./entity-manager";
 import { MapManager } from "./map-manager";
-import { Input } from "../server";
+import { Input } from "../shared/input";
 import { Player } from "../shared/entities/player";
 import { RecipeType } from "@/shared/recipes";
 
@@ -66,7 +66,7 @@ export class SocketManager {
   private onConnection(socket: Socket): void {
     console.log(`Player connected: ${socket.id}`);
 
-    const player = new Player(this.entityManager);
+    const player = new Player(this.entityManager, this);
 
     const map = this.mapManager.getMap();
     const centerX = (map.length * 16) / 2;

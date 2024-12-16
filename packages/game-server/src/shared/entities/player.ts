@@ -18,11 +18,12 @@ import { Direction } from "../direction";
 import { InventoryItem, ItemType } from "../inventory";
 import { Weapon } from "./weapon";
 import { recipes, RecipeType } from "../recipes";
-import { DEBUG } from "../../index";
+import { DEBUG, PlayerDeathEvent } from "../../index";
 import { Cooldown } from "./util/cooldown";
 import { Bandage } from "./items/bandage";
 import { Sound, SOUND_TYPES } from "./sound";
 import { Input } from "../input";
+import { SocketManager } from "@/managers/socket-manager";
 
 export class Player
   extends Entity
@@ -60,9 +61,11 @@ export class Player
   private inventory: InventoryItem[] = [];
   private health = Player.MAX_HEALTH;
   private isCrafting = false;
+  private socketManager: SocketManager;
 
-  constructor(entityManager: EntityManager) {
+  constructor(entityManager: EntityManager, socketManager: SocketManager) {
     super(entityManager, Entities.PLAYER);
+    this.socketManager = socketManager;
     if (DEBUG) {
       this.inventory = [
         { key: "Knife" },
@@ -124,6 +127,7 @@ export class Player
   onDeath(): void {
     this.setIsCrafting(false);
     this.scatterInventory();
+    this.socketManager.broadcastEvent(new PlayerDeathEvent(this.getId()));
     this.inventory = [];
   }
 

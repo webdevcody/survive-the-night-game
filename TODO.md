@@ -18,11 +18,11 @@ Feel free to pick any item listed out here to work on.
 
 ### Gameplay
 
+- [ ] when a player is killed, notify all players in the game a player has died
 - [ ] during daytime, zombies should just wander around randomly, but will attack players if they get close
 - [ ] if ALL players die, the game ends
 - [ ] show a message that the players lost, and show a leaderboard with how many kills each player got
 - [ ] add in melee weapon logic
-- [ ] when a player is killed, notify all players in the game a player has died
 - [ ] the guns should need ammo to fire
 - [ ] a player should be able to pick up multiple guns (could later sell at the merchant or give other friends)
 - [ ] items should have a weight associated with them
@@ -32,7 +32,6 @@ Feel free to pick any item listed out here to work on.
 ### HUD
 
 - [ ] make the player health look nicer (could use hearts like zelda, or progress bar like in the game "dying light")
-- [ ] add a way to toggle the instructions on and off
 - [ ] add a nice indicator for the day / night cycle (could use a sun and moon icon; checkout don't starve together)
 
 ### Sounds
@@ -94,8 +93,9 @@ Feel free to pick any item listed out here to work on.
 - [ ] sometimes auto import will not work depending on if you are editing a file in the client or server. It's like the types don't get picked up correctly between the sub projects.
 - [ ] apply delta compression to the server game state updates
 
-## Completed (Let's GO!):
+## Change Log:
 
+- [x] 12/15/2024: add a way to toggle the instructions on and off
 - [x] a user can drop items from their inventory
 - [x] a user shall be able to harvest trees
 - [x] create an entry point function for the client code which creates a canvas, connects to a server, and starts the game loop

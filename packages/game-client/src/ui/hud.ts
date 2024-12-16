@@ -20,10 +20,16 @@ const HUD_SETTINGS = {
 
 export class Hud {
   private showInstructions: boolean = true;
+  private playerDeathMessages: { message: string; timestamp: number }[] = [];
+  private playerDeathMessageTimeout: number = 5000;
 
   constructor() {}
 
-  update(gameState: GameState): void {}
+  update(gameState: GameState): void {
+    this.playerDeathMessages = this.playerDeathMessages.filter(
+      (message) => Date.now() - message.timestamp < this.playerDeathMessageTimeout
+    );
+  }
 
   public toggleInstructions(): void {
     this.showInstructions = !this.showInstructions;
@@ -58,6 +64,22 @@ export class Hud {
     }
 
     this.renderControlsList(ctx, gameState);
+    this.renderPlayerDeathMessages(ctx);
+  }
+
+  public showPlayerDeath(playerId: string): void {
+    this.playerDeathMessages.push({
+      message: `${playerId} has died`,
+      timestamp: Date.now(),
+    });
+  }
+
+  public renderPlayerDeathMessages(ctx: CanvasRenderingContext2D): void {
+    for (const message of this.playerDeathMessages) {
+      const metrics = ctx.measureText(message.message);
+      const x = (ctx.canvas.width - metrics.width) / 2;
+      ctx.fillText(message.message, x, 50);
+    }
   }
 
   public renderControlsList(ctx: CanvasRenderingContext2D, gameState: GameState): void {

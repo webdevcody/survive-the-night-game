@@ -226,6 +226,9 @@ export class GameClient {
       onYourId: (playerId: string) => {
         this.gameState.playerId = playerId;
       },
+      onPlayerDeath: (playerId: string) => {
+        this.hud.showPlayerDeath(playerId);
+      },
     });
   }
 

@@ -8,6 +8,7 @@ export const Events = {
   YOUR_ID: "yourId",
   START_CRAFTING: "startCrafting",
   STOP_CRAFTING: "stopCrafting",
+  PLAYER_DEATH: "playerDeath",
 } as const;
 
 export type Event = (typeof Events)[keyof typeof Events];
@@ -50,4 +51,30 @@ export interface IEvent {
   getPayload(): any;
   serialize(): any;
   deserialize(data: any): IEvent;
+}
+
+export class PlayerDeathEvent implements IEvent {
+  private type: Event;
+  private playerId: string;
+
+  constructor(playerId: string) {
+    this.type = Events.PLAYER_DEATH;
+    this.playerId = playerId;
+  }
+
+  getType(): Event {
+    return this.type;
+  }
+
+  getPayload(): string {
+    return this.playerId;
+  }
+
+  serialize(): any {
+    return this.playerId;
+  }
+
+  deserialize(data: any): IEvent {
+    return new PlayerDeathEvent(data);
+  }
 }
