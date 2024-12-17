@@ -18,7 +18,7 @@ import { GameState } from "@/state";
 import { getHitboxWithPadding } from "@survive-the-night/game-server/src/shared/entities/util";
 import { debugDrawHitbox } from "../util/debug";
 import { animate } from "../animations";
-
+import { Z_INDEX } from "@survive-the-night/game-server/src/managers/map-manager";
 export class PlayerClient implements IClientEntity, Renderable, PositionableTrait, Damageable {
   private readonly LERP_FACTOR = 0.1;
   private readonly ARROW_LENGTH = 20;
@@ -44,6 +44,10 @@ export class PlayerClient implements IClientEntity, Renderable, PositionableTrai
     drop: false,
     consume: false,
   };
+
+  public getZIndex(): number {
+    return Z_INDEX.PLAYERS;
+  }
 
   constructor(id: string, assetManager: AssetManager) {
     this.id = id;

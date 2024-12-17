@@ -20,7 +20,6 @@ export default class Triggerable implements Extension {
 
   public getTriggerBox(): Rectangle {
     const positionable = this.self.getExt(Positionable);
-
     return new Rectangle(
       positionable.getPosition().x,
       positionable.getPosition().y,

@@ -3,6 +3,7 @@ import { Renderable } from "../entities/util";
 import { GameState } from "@/state";
 import { InputManager } from "@/managers/input";
 import { Direction, InventoryItem, Player } from "@survive-the-night/game-server";
+import { Z_INDEX } from "@survive-the-night/game-server/src/managers/map-manager";
 
 const HOTBAR_SETTINGS = {
   Inventory: {
@@ -41,6 +42,10 @@ export class Hotbar implements Renderable {
   public render(ctx: CanvasRenderingContext2D, gameState: GameState): void {
     // TODO: add health bar
     this.renderInventory(ctx, gameState);
+  }
+
+  public getZIndex(): number {
+    return Z_INDEX.UI;
   }
 
   private renderInventory(ctx: CanvasRenderingContext2D, gameState: GameState): void {

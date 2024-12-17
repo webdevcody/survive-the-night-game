@@ -59,7 +59,7 @@ export class GenericEntity extends EventTarget {
     const found = this.extensions.find((it) => it instanceof ext);
 
     if (found === undefined) {
-      throw new Error("Unable to find extension");
+      throw new Error(`Unable to find extension ${ext.name}`);
     }
 
     return found as T;

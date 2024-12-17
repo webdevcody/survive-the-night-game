@@ -7,6 +7,15 @@ import { Bandage } from "../shared/entities/items/bandage";
 import { Positionable } from "../shared/extensions";
 import { Spikes } from "../shared/entities/buildings/spikes";
 
+export const Z_INDEX = {
+  GROUND: 0,
+  ITEMS: 1,
+  BUILDINGS: 2,
+  PLAYERS: 3,
+  PROJECTILES: 4,
+  UI: 5,
+};
+
 export const TILE_IDS = {
   GRASS1: 0,
   GRASS2: 1,
@@ -166,21 +175,22 @@ export class MapManager {
       }
     }
 
-    // TODO: Remove this
-    // Spawn a single zombie near the middle of the map
+    // TODO: Remove this eventually
     const middleX = Math.floor(totalSize / 2) * TILE_SIZE;
     const middleY = Math.floor(totalSize / 2) * TILE_SIZE;
-    const zombie = new Zombie(this.entityManager, this);
-    zombie.setPosition({ x: middleX + 16 * 4, y: middleY });
-    this.entityManager.addEntity(zombie);
+
+    const spikes = new Spikes(this.entityManager);
+    spikes.getExt(Positionable).setPosition({ x: middleX + 16 * 4, y: middleY - 32 });
+    this.entityManager.addEntity(spikes);
 
     const bandage = new Bandage(this.entityManager);
     bandage.getExt(Positionable).setPosition({ x: middleX + 16 * 6, y: middleY });
     this.entityManager.addEntity(bandage);
 
-    const spikes = new Spikes(this.entityManager);
-    spikes.getExt(Positionable).setPosition({ x: middleX + 16 * 8, y: middleY });
-    this.entityManager.addEntity(spikes);
+    // Spawn a single zombie near the middle of the map
+    const zombie = new Zombie(this.entityManager, this);
+    zombie.setPosition({ x: middleX + 16 * 4, y: middleY });
+    this.entityManager.addEntity(zombie);
   }
 
   private placeBiome(biomeX: number, biomeY: number) {

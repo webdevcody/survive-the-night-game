@@ -3,6 +3,7 @@ import { AssetManager } from "@/managers/asset";
 import { GameState } from "../state";
 import { IClientEntity, Renderable } from "./util";
 import { HITBOX_RADIUS } from "@survive-the-night/game-server/src/shared/entities/bullet";
+import { Z_INDEX } from "@survive-the-night/game-server/src/managers/map-manager";
 
 export class BulletClient implements IClientEntity, Renderable, PositionableTrait {
   private assetManager: AssetManager;
@@ -53,5 +54,9 @@ export class BulletClient implements IClientEntity, Renderable, PositionableTrai
     ctx.strokeStyle = "red";
     ctx.lineWidth = 1;
     ctx.stroke();
+  }
+
+  public getZIndex(): number {
+    return Z_INDEX.PROJECTILES;
   }
 }

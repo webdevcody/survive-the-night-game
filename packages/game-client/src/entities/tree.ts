@@ -9,6 +9,7 @@ import {
 import { AssetManager } from "@/managers/asset";
 import { GameState, getEntityById } from "../state";
 import { Renderable } from "./util";
+import { Z_INDEX } from "@survive-the-night/game-server/src/managers/map-manager";
 
 export class TreeClient extends GenericEntity implements Renderable {
   private assetManager: AssetManager;
@@ -34,5 +35,9 @@ export class TreeClient extends GenericEntity implements Renderable {
     }
 
     ctx.drawImage(image, position.x, position.y);
+  }
+
+  public getZIndex(): number {
+    return Z_INDEX.ITEMS;
   }
 }

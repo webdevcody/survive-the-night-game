@@ -95,7 +95,7 @@ export class GameClient {
     },
     [Entities.SPIKES]: (data) => {
       const entity = new SpikesClient(data.id, this.assetManager);
-      this.initializeEntity(entity, data);
+      entity.deserialize(data);
       return entity;
     },
   };
@@ -407,6 +407,8 @@ export class GameClient {
 
   private renderEntities(): void {
     const renderableEntities = this.getRenderableEntities();
+
+    renderableEntities.sort((a, b) => a.getZIndex() - b.getZIndex());
 
     renderableEntities.forEach((entity) => {
       entity.render(this.ctx, this.gameState);

@@ -3,6 +3,7 @@ import { Renderable } from "../entities/util";
 import { GameState } from "@/state";
 import { AssetManager, getItemAssetKey } from "../managers/asset";
 import { PlayerClient } from "@/entities/player";
+import { Z_INDEX } from "@survive-the-night/game-server/src/managers/map-manager";
 
 const CRAFTING_TABLE_SETTINGS = {
   Container: {
@@ -68,6 +69,10 @@ export class CraftingTable implements Renderable {
     this.getInventory = getInventory;
     this.onCraft = onCraft;
     this.getPlayer = getPlayer;
+  }
+
+  public getZIndex(): number {
+    return Z_INDEX.UI;
   }
 
   public onDown() {

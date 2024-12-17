@@ -15,6 +15,7 @@ import { drawHealthBar, getFrameIndex, IClientEntity, Renderable } from "./util"
 import { GameState, getEntityById } from "../state";
 import { debugDrawHitbox } from "../util/debug";
 import { Zombie } from "@survive-the-night/game-server/src/shared/entities/zombie";
+import { Z_INDEX } from "@survive-the-night/game-server/src/managers/map-manager";
 
 export class ZombieClient implements IClientEntity, Renderable, PositionableTrait, Damageable {
   private assetManager: AssetManager;
@@ -42,6 +43,10 @@ export class ZombieClient implements IClientEntity, Renderable, PositionableTrai
 
   isDead(): boolean {
     return this.health <= 0;
+  }
+
+  public getZIndex(): number {
+    return Z_INDEX.PLAYERS;
   }
 
   getId(): string {

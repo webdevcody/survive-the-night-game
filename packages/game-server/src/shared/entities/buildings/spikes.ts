@@ -1,7 +1,7 @@
 import { Rectangle } from "../../geom/rectangle";
 import { distance } from "../../physics";
 import { EntityManager } from "../../../managers/entity-manager";
-import { Entity, Entities } from "../../entities";
+import { Entity, Entities, RawEntity } from "../../entities";
 import { Positionable } from "../../extensions";
 import Triggerable from "../../extensions/trigger";
 import Updatable from "../../extensions/updatable";
@@ -12,14 +12,15 @@ import { Zombie } from "../zombie";
  */
 export class Spikes extends Entity {
   private static readonly DAMAGE = 1;
-  private static readonly RADIUS = 20;
+  private static readonly RADIUS = 5;
+  private static readonly SIZE = 16;
 
   constructor(entityManager: EntityManager) {
     super(entityManager, Entities.SPIKES);
 
     this.extensions = [
       new Positionable(this),
-      new Triggerable(this, 100, 100),
+      new Triggerable(this, Spikes.SIZE, Spikes.SIZE),
       new Updatable(this, (deltaTime: number) => {
         const entityManager = this.getEntityManager();
         const zombies = entityManager.getNearbyEntities(
@@ -28,10 +29,10 @@ export class Spikes extends Entity {
           [Entities.ZOMBIE]
         ) as Zombie[];
 
-        for (const zombie of zombies) {
-          const triggerBox = this.getExt(Triggerable).getTriggerBox();
-          const triggerCenter = triggerBox.getCenter();
+        const triggerBox = this.getExt(Triggerable).getTriggerBox();
+        const triggerCenter = triggerBox.getCenter();
 
+        for (const zombie of zombies) {
           const zombieHitbox = new Rectangle(zombie.getHitbox().x, zombie.getHitbox().y, 16, 16);
           const zombieCenter = zombieHitbox.getCenter();
 

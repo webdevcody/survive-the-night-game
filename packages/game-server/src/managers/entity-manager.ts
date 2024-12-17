@@ -1,5 +1,5 @@
 import { distance, isColliding, Vector2 } from "../shared/physics";
-import { Entities, Entity, EntityType } from "../shared/entities";
+import { Entities, Entity, EntityType, GenericEntity } from "../shared/entities";
 import {
   CollidableTrait,
   Damageable,
@@ -8,11 +8,10 @@ import {
   IntersectionMethodIdentifiers,
   IntersectionMethodName,
   PositionableTrait,
-  Updatable,
 } from "../shared/traits";
 import { Player } from "../shared/entities/player";
 import { SpatialGrid } from "./spatial-grid";
-import { Collidable, Destructible, Positionable } from "@/shared/extensions";
+import { Collidable, Destructible, Positionable, Updatable } from "@/shared/extensions";
 
 export class EntityManager {
   private entities: Entity[];
@@ -246,6 +245,17 @@ export class EntityManager {
   update(deltaTime: number) {
     for (const entity of this.getUpdatableEntities()) {
       entity.update(deltaTime);
+    }
+
+    // TODO: if we refactor all other entities to use extensions, we can remove the above
+    for (const entity of this.getEntities()) {
+      if ("getExt" in entity) {
+        const baseEntity = entity as unknown as GenericEntity;
+        if (baseEntity.hasExt(Updatable)) {
+          const updatable = baseEntity.getExt(Updatable);
+          updatable?.update(deltaTime);
+        }
+      }
     }
 
     // Then refresh the spatial grid

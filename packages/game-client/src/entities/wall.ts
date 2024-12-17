@@ -10,6 +10,7 @@ import {
 import { AssetManager } from "@/managers/asset";
 import { GameState, getEntityById } from "../state";
 import { Renderable, drawHealthBar } from "./util";
+import { Z_INDEX } from "@survive-the-night/game-server/src/managers/map-manager";
 
 export class WallClient extends GenericEntity implements Renderable {
   private assetManager: AssetManager;
@@ -17,6 +18,10 @@ export class WallClient extends GenericEntity implements Renderable {
   constructor(data: RawEntity, assetManager: AssetManager) {
     super(data);
     this.assetManager = assetManager;
+  }
+
+  public getZIndex(): number {
+    return Z_INDEX.BUILDINGS;
   }
 
   render(ctx: CanvasRenderingContext2D, gameState: GameState): void {

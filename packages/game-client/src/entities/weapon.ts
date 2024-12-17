@@ -11,6 +11,7 @@ import { AssetManager } from "../managers/asset";
 import { GameState, getEntityById } from "../state";
 import { Renderable } from "./util";
 import { animate, bounce } from "../animations";
+import { Z_INDEX } from "@survive-the-night/game-server/src/managers/map-manager";
 
 export class WeaponClient extends GenericEntity implements Renderable {
   private assetManager: AssetManager;
@@ -20,6 +21,10 @@ export class WeaponClient extends GenericEntity implements Renderable {
     super(data);
     this.assetManager = assetManager;
     this.weaponType = weaponType;
+  }
+
+  public getZIndex(): number {
+    return Z_INDEX.ITEMS;
   }
 
   public render(ctx: CanvasRenderingContext2D, gameState: GameState): void {
