@@ -26,6 +26,7 @@ import { WeaponClient } from "./entities/weapon";
 import { BandageClient } from "./entities/items/bandage";
 import { ClothClient } from "./entities/items/cloth";
 import { SoundClient } from "./entities/sound";
+import { SpikesClient } from "./entities/buildings/spikes";
 
 export class GameClient {
   private ctx: CanvasRenderingContext2D;
@@ -89,6 +90,11 @@ export class GameClient {
     },
     [Entities.SOUND]: (data) => {
       const entity = new SoundClient(data.id, data.soundType);
+      this.initializeEntity(entity, data);
+      return entity;
+    },
+    [Entities.SPIKES]: (data) => {
+      const entity = new SpikesClient(data.id, this.assetManager);
       this.initializeEntity(entity, data);
       return entity;
     },

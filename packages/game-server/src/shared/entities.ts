@@ -62,7 +62,7 @@ export class GenericEntity extends EventTarget {
       throw new Error("Unable to find extension");
     }
 
-    return found;
+    return found as T;
   }
 
   public deserialize(data: RawEntity): void {

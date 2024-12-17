@@ -68,6 +68,7 @@ const zombieRightFrameOrigins = getFrameOrigins({ startX: 496, startY: 95, total
 
 // sheet gaps: 1px horizontally, 3px vertically
 export const assetsMap = {
+  Spikes: assetMap({ x: 357, y: 57 }),
   Cloth: assetMap({ x: 51, y: 228 }),
   Knife: assetMap({ x: 17, y: 171 }),
   KnifeFacingDown: assetMap({ x: 51, y: 171 }),

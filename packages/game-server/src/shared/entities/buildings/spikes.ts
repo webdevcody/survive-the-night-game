@@ -1,11 +1,11 @@
+import { Rectangle } from "../../geom/rectangle";
+import { distance } from "../../physics";
 import { EntityManager } from "../../../managers/entity-manager";
 import { Entity, Entities } from "../../entities";
 import { Positionable } from "../../extensions";
-import Triggerable from "@/shared/extensions/trigger";
-import Updatable from "@/shared/extensions/updatable";
+import Triggerable from "../../extensions/trigger";
+import Updatable from "../../extensions/updatable";
 import { Zombie } from "../zombie";
-import { Rectangle } from "@/shared/geom/rectangle";
-import { distance } from "@/shared/physics";
 
 /**
  * A spike trap which only hurts zombies who step on it.  After it fires, it'll be removed from the map.
