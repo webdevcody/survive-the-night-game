@@ -4,6 +4,8 @@ export const ExtensionNames = {
   destructible: "destructible",
   interactive: "interactive",
   positionable: "positionable",
+  trigger: "trigger",
+  updatable: "updatable",
 } as const;
 
 export interface Extension {

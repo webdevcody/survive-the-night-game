@@ -9,6 +9,8 @@ export const Events = {
   START_CRAFTING: "startCrafting",
   STOP_CRAFTING: "stopCrafting",
   PLAYER_DEATH: "playerDeath",
+  ON_ENTER_TRIGGER: "onEnterTrigger",
+  ON_EXIT_TRIGGER: "onExitTrigger",
 } as const;
 
 export type Event = (typeof Events)[keyof typeof Events];
