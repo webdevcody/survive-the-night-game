@@ -1,36 +1,27 @@
-import { Entities, RawEntity } from "../entities";
-
-import { EntityManager } from "@/managers/entity-manager";
-import { Entity } from "../entities";
-import { PositionableTrait } from "../traits";
+import { EntityManager } from "../../managers/entity-manager";
+import { Entity, Entities, RawEntity } from "../entities";
+import { Positionable } from "../extensions";
+import { Expirable } from "../extensions";
 import { Vector2 } from "../physics";
 
+// these values must match the sound files in the client
 export const SOUND_TYPES = {
   PISTOL: "pistol",
   SHOTGUN: "shotgun",
   PLAYER_HURT: "player_hurt",
+  PICK_UP_ITEM: "pick_up_item",
+  DROP_ITEM: "drop_item",
 } as const;
 
 export type SoundType = (typeof SOUND_TYPES)[keyof typeof SOUND_TYPES];
 
-export class Sound extends Entity implements PositionableTrait {
-  private position: Vector2 = { x: 0, y: 0 };
+export class Sound extends Entity {
   private soundType: SoundType;
-  public constructor(entityManager: EntityManager, soundType: SoundType) {
+
+  constructor(entityManager: EntityManager, soundType: SoundType) {
     super(entityManager, Entities.SOUND);
     this.soundType = soundType;
-  }
-
-  public getPosition(): Vector2 {
-    return this.position;
-  }
-
-  public setPosition(position: Vector2): void {
-    this.position = position;
-  }
-
-  public getCenterPosition(): Vector2 {
-    return this.position;
+    this.extensions = [new Positionable(this), new Expirable(this, entityManager, 5000)];
   }
 
   public serialize(): RawEntity {
@@ -40,3 +31,14 @@ export class Sound extends Entity implements PositionableTrait {
     };
   }
 }
+
+export const createSoundAtPosition = (
+  entityManager: EntityManager,
+  soundType: SoundType,
+  position: Vector2
+) => {
+  const sound = new Sound(entityManager, soundType);
+  sound.getExt(Positionable).setPosition(position);
+  entityManager.addEntity(sound);
+  return sound;
+};

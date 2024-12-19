@@ -2,7 +2,7 @@ export class Cooldown {
   private timeRemaining: number = 0;
   private duration: number;
 
-  constructor(duration: number, startReady: boolean) {
+  constructor(duration: number, startReady = false) {
     this.duration = duration;
     if (startReady) {
       this.setAsReady();

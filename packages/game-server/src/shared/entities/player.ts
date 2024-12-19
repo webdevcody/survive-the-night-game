@@ -14,7 +14,7 @@ import { DEBUG, PlayerDeathEvent } from "../../index";
 import { Cooldown } from "./util/cooldown";
 import { Bandage } from "./items/bandage";
 import { Cloth } from "./items/cloth";
-import { Sound, SOUND_TYPES } from "./sound";
+import { createSoundAtPosition, Sound, SOUND_TYPES } from "./sound";
 import { Input } from "../input";
 import { SocketManager } from "@/managers/socket-manager";
 import { Consumable, Interactive, Positionable } from "../extensions";
@@ -116,9 +116,11 @@ export class Player
 
     this.health = Math.max(this.health - damage, 0);
 
-    const sound = new Sound(this.getEntityManager(), SOUND_TYPES.PLAYER_HURT);
-    sound.setPosition(this.getCenterPosition());
-    this.getEntityManager().addEntity(sound);
+    createSoundAtPosition(
+      this.getEntityManager(),
+      SOUND_TYPES.PLAYER_HURT,
+      this.getCenterPosition()
+    );
 
     if (this.health <= 0) {
       this.onDeath();
@@ -403,6 +405,12 @@ export class Player
         }
 
         this.getEntityManager().addEntity(entity);
+
+        createSoundAtPosition(
+          this.getEntityManager(),
+          SOUND_TYPES.DROP_ITEM,
+          this.getCenterPosition()
+        );
       }
     }
   }

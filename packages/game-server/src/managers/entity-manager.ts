@@ -48,7 +48,7 @@ export class EntityManager {
     }) as unknown as Updatable[];
   }
 
-  markEntityForRemoval(entity: Entity, expiration = 0) {
+  markEntityForRemoval(entity: GenericEntity, expiration = 0) {
     this.entitiesToRemove.push({
       id: entity.getId(),
       expiration: Date.now() + expiration,

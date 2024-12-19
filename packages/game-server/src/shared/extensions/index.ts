@@ -1,6 +1,7 @@
 import Collidable from "./collidable";
 import Consumable from "./consumable";
 import Destructible from "./destructible";
+import Expirable from "./expirable";
 import Interactive from "./interactive";
 import Positionable from "./positionable";
 import Triggerable from "./trigger";
@@ -16,6 +17,7 @@ export const extensionsMap = {
   [Triggerable.Name]: Triggerable,
   [Updatable.Name]: Updatable,
   [TriggerCooldownAttacker.Name]: TriggerCooldownAttacker,
+  [Expirable.Name]: Expirable,
 } as const;
 
 export {
@@ -27,5 +29,6 @@ export {
   Triggerable,
   Updatable,
   TriggerCooldownAttacker,
+  Expirable,
 };
 export * from "./types";
