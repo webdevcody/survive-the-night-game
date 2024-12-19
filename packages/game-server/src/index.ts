@@ -10,4 +10,4 @@ export * from "./shared/direction";
 export * from "./shared/input";
 export * from "./shared/extensions";
 
-export const DEBUG = true;
+export const DEBUG = false;

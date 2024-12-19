@@ -79,7 +79,7 @@ export class SocketManager {
     socket.emit(Events.MAP, map);
     socket.emit(Events.YOUR_ID, player.getId());
 
-    socket.on("playerInput", (input: Input) => this.onPlayerInput(socket, input));
+    socket.on(Events.PLAYER_INPUT, (input: Input) => this.onPlayerInput(socket, input));
     socket.on(Events.CRAFT_REQUEST, (recipe: RecipeType) => this.onCraftRequest(socket, recipe));
     socket.on(Events.START_CRAFTING, (recipe: RecipeType) => this.setPlayerCrafting(socket, true));
     socket.on(Events.STOP_CRAFTING, (recipe: RecipeType) => this.setPlayerCrafting(socket, false));

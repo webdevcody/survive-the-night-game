@@ -4,29 +4,20 @@ import { EntityDto, SocketManager } from "./managers/socket";
 import {
   Direction,
   Entities,
-  EntityType,
   GameStateEvent,
   Input,
   PositionableTrait,
 } from "@survive-the-night/game-server";
 import { PlayerClient } from "./entities/player";
-import { ZombieClient } from "./entities/zombie";
 import { CameraManager } from "./managers/camera";
 import { MapManager } from "./managers/map";
-import { TreeClient } from "./entities/tree";
 import { GameState, getEntityById } from "./state";
 import { IClientEntity, Renderable } from "./entities/util";
 import { Hotbar } from "./ui/hotbar";
 import { CraftingTable } from "./ui/crafting-table";
-import { BulletClient } from "./entities/bullet";
 import { StorageManager } from "./managers/storage";
-import { WallClient } from "./entities/wall";
 import { Hud } from "./ui/hud";
-import { WeaponClient } from "./entities/weapon";
-import { BandageClient } from "./entities/items/bandage";
-import { ClothClient } from "./entities/items/cloth";
-import { SoundClient } from "./entities/sound";
-import { SpikesClient } from "./entities/buildings/spikes";
+import { EntityFactory } from "./entities/entity-factory";
 
 export class GameClient {
   private ctx: CanvasRenderingContext2D;
@@ -36,7 +27,7 @@ export class GameClient {
   private cameraManager: CameraManager;
   private mapManager: MapManager;
   private storageManager: StorageManager;
-  private latestEntities: EntityDto[] = [];
+  private entitiesFromServer: EntityDto[] = [];
   private gameState: GameState;
   private hud: Hud;
   private craftingTable: CraftingTable;
@@ -46,59 +37,6 @@ export class GameClient {
   private running = false;
   private mounted = true;
   private hotbar: Hotbar;
-
-  private entityFactories: Record<EntityType, (entityData: EntityDto) => IClientEntity> = {
-    [Entities.PLAYER]: (data) => {
-      const entity = new PlayerClient(data.id, this.assetManager);
-      this.initializeEntity(entity, data);
-      return entity;
-    },
-    [Entities.TREE]: (data) => {
-      const entity = new TreeClient(data.id, this.assetManager);
-      entity.deserialize(data);
-      return entity;
-    },
-    [Entities.BULLET]: (data) => {
-      const entity = new BulletClient(data.id, this.assetManager);
-      this.initializeEntity(entity, data);
-      return entity;
-    },
-    [Entities.WALL]: (data) => {
-      const entity = new WallClient(data.id, this.assetManager);
-      entity.deserialize(data);
-      return entity;
-    },
-    [Entities.WEAPON]: (data) => {
-      const entity = new WeaponClient(data.id, this.assetManager, data.weaponType);
-      entity.deserialize(data);
-      return entity;
-    },
-    [Entities.BANDAGE]: (data) => {
-      const entity = new BandageClient(data.id, this.assetManager);
-      entity.deserialize(data);
-      return entity;
-    },
-    [Entities.CLOTH]: (data) => {
-      const entity = new ClothClient(data.id, this.assetManager);
-      entity.deserialize(data);
-      return entity;
-    },
-    [Entities.ZOMBIE]: (data) => {
-      const entity = new ZombieClient(data.id, this.assetManager);
-      this.initializeEntity(entity, data);
-      return entity;
-    },
-    [Entities.SOUND]: (data) => {
-      const entity = new SoundClient(data.id, data.soundType);
-      this.initializeEntity(entity, data);
-      return entity;
-    },
-    [Entities.SPIKES]: (data) => {
-      const entity = new SpikesClient(data.id, this.assetManager);
-      entity.deserialize(data);
-      return entity;
-    },
-  };
 
   constructor(serverUrl: string, canvas: HTMLCanvasElement) {
     this.ctx = canvas.getContext("2d")!;
@@ -230,7 +168,7 @@ export class GameClient {
         this.mapManager.setMap(map);
       },
       onGameStateUpdate: (gameStateEvent: GameStateEvent) => {
-        this.latestEntities = gameStateEvent.getPayload().entities;
+        this.entitiesFromServer = gameStateEvent.getPayload().entities;
         this.gameState.dayNumber = gameStateEvent.getPayload().dayNumber;
         this.gameState.untilNextCycle = gameStateEvent.getPayload().untilNextCycle;
         this.gameState.isDay = gameStateEvent.getPayload().isDay;
@@ -311,22 +249,18 @@ export class GameClient {
     this.cameraManager.setScale(this.scale);
   }
 
-  private initializeEntity(entity: IClientEntity, data: EntityDto): void {
-    Object.assign(entity, data);
-  }
-
   private updateEntities(): void {
     // remove dead entities
     for (let i = 0; i < this.getEntities().length; i++) {
       const entity = this.getEntities()[i];
-      if (!this.latestEntities.find((e) => e.id === entity.getId())) {
+      if (!this.entitiesFromServer.find((e) => e.id === entity.getId())) {
         this.getEntities().splice(i, 1);
         i--;
       }
     }
 
     // add new / update entities
-    for (const entityData of this.latestEntities) {
+    for (const entityData of this.entitiesFromServer) {
       const existingEntity = this.getEntities().find((e) => e.getId() === entityData.id);
 
       if (existingEntity) {
@@ -339,13 +273,9 @@ export class GameClient {
         continue;
       }
 
-      const factory = this.entityFactories[entityData.type];
-      if (factory) {
-        const entity = factory(entityData);
-        this.getEntities().push(entity);
-      } else {
-        console.warn("Unknown entity type", entityData);
-      }
+      const factory = new EntityFactory(this.assetManager);
+      const entity = factory.createEntity(entityData.type, entityData);
+      this.getEntities().push(entity);
     }
   }
 

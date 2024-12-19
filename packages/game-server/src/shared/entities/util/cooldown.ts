@@ -2,9 +2,17 @@ export class Cooldown {
   private timeRemaining: number = 0;
   private duration: number;
 
-  constructor(duration: number) {
+  constructor(duration: number, startReady: boolean) {
     this.duration = duration;
-    this.reset();
+    if (startReady) {
+      this.setAsReady();
+    } else {
+      this.reset();
+    }
+  }
+
+  setAsReady() {
+    this.timeRemaining = 0;
   }
 
   update(deltaTime: number): void {
