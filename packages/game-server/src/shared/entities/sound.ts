@@ -11,6 +11,10 @@ export const SOUND_TYPES = {
   PLAYER_HURT: "player_hurt",
   PICK_UP_ITEM: "pick_up_item",
   DROP_ITEM: "drop_item",
+  PLAYER_DEATH: "player_death",
+  ZOMBIE_DEATH: "zombie_death",
+  ZOMBIE_HURT: "zombie_hurt",
+  SHOTGUN_FIRE: "shotgun_fire",
 } as const;
 
 export type SoundType = (typeof SOUND_TYPES)[keyof typeof SOUND_TYPES];

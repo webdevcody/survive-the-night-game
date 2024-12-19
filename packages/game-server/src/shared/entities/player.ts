@@ -132,6 +132,12 @@ export class Player
     this.scatterInventory();
     this.socketManager.broadcastEvent(new PlayerDeathEvent(this.getId()));
     this.inventory = [];
+
+    createSoundAtPosition(
+      this.getEntityManager(),
+      SOUND_TYPES.PLAYER_DEATH,
+      this.getCenterPosition()
+    );
   }
 
   scatterInventory(): void {
@@ -262,12 +268,11 @@ export class Player
         bullet.setDirection(this.input.facing);
         this.getEntityManager().addEntity(bullet);
 
-        const sound = new Sound(this.getEntityManager(), "pistol");
-        sound.setPosition({
-          x: this.position.x + Player.PLAYER_WIDTH / 2,
-          y: this.position.y + Player.PLAYER_HEIGHT / 2,
-        });
-        this.getEntityManager().addEntity(sound);
+        createSoundAtPosition(
+          this.getEntityManager(),
+          SOUND_TYPES.PISTOL,
+          this.getCenterPosition()
+        );
       } else if (activeWeapon.key === "Shotgun") {
         // Create 3 bullets with spread
         const spreadAngle = 8; // degrees
@@ -279,6 +284,12 @@ export class Player
           });
           bullet.setDirectionWithOffset(this.input.facing, i * spreadAngle);
           this.getEntityManager().addEntity(bullet);
+
+          createSoundAtPosition(
+            this.getEntityManager(),
+            SOUND_TYPES.SHOTGUN_FIRE,
+            this.getCenterPosition()
+          );
         }
       }
     }

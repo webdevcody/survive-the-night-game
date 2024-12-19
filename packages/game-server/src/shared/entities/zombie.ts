@@ -16,6 +16,8 @@ import { Destructible, Interactive, Positionable } from "../extensions";
 import { Cloth } from "./items/cloth";
 import { getHitboxWithPadding } from "./util";
 import { Wall } from "./wall";
+import { createSoundAtPosition } from "./sound";
+import { SOUND_TYPES } from "./sound";
 
 export class Zombie
   extends Entity
@@ -69,6 +71,12 @@ export class Zombie
   afterDeathInteract(): void {
     this.scatterLoot();
     this.getEntityManager().markEntityForRemoval(this);
+
+    createSoundAtPosition(
+      this.getEntityManager(),
+      SOUND_TYPES.ZOMBIE_DEATH,
+      this.getCenterPosition()
+    );
   }
 
   scatterLoot(): void {
@@ -126,6 +134,12 @@ export class Zombie
     }
 
     this.health -= damage;
+
+    createSoundAtPosition(
+      this.getEntityManager(),
+      SOUND_TYPES.ZOMBIE_HURT,
+      this.getCenterPosition()
+    );
 
     if (this.health <= 0) {
       this.getEntityManager().markEntityForRemoval(this, 5000);
