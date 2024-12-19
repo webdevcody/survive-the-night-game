@@ -6,6 +6,7 @@ export default class Updatable implements Extension {
 
   private self: GenericEntity;
   private updateFunction: (deltaTime: number) => void;
+
   /**
    * will create a trigger box around an entity which should be used for various purposes.
    */

@@ -6,7 +6,9 @@ export interface Renderable {
   getZIndex: () => number;
 }
 
-export interface IClientEntity {}
+export interface IClientEntity {
+  getId: () => string;
+}
 
 export function getFrameIndex(
   startedAt: number,

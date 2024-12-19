@@ -18,7 +18,6 @@ Feel free to pick any item listed out here to work on.
 
 ### Gameplay
 
-- [ ] when a player is killed, notify all players in the game a player has died
 - [ ] during daytime, zombies should just wander around randomly, but will attack players if they get close
 - [ ] if ALL players die, the game ends
 - [ ] show a message that the players lost, and show a leaderboard with how many kills each player got
@@ -28,6 +27,17 @@ Feel free to pick any item listed out here to work on.
 - [ ] items should have a weight associated with them
 - [ ] your inventory weight should slow you down
 - [ ] a player should be able to leave the game
+
+### Stuff
+
+- [ ] melee attack
+- [ ] all players spawn with a random melee weapon
+- [ ] lighting system (night cycle is pitch black, small fov near players)
+- [ ] craft torch (wood, cloth, flint)
+- [ ] place torch (acts as lighting)
+- [ ] more base structures (spike floor trap, hurts zombies if they walk over it)
+- [ ] zombies who vomit (range attack)
+- [ ] ammo system
 
 ### HUD
 
@@ -96,6 +106,7 @@ Feel free to pick any item listed out here to work on.
 ## Change Log:
 
 - [x] 12/15/2024: add a way to toggle the instructions on and off
+- [x] 12/18/2024: when a player is killed, notify all players in the game a player has died
 - [x] a user can drop items from their inventory
 - [x] a user shall be able to harvest trees
 - [x] create an entry point function for the client code which creates a canvas, connects to a server, and starts the game loop

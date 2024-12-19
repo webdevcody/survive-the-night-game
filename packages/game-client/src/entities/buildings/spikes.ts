@@ -1,9 +1,9 @@
 import {
-  DEBUG,
   GenericEntity,
   Positionable,
   RawEntity,
   Triggerable,
+  TriggerCooldownAttacker,
 } from "@survive-the-night/game-server";
 import { AssetManager } from "../../managers/asset";
 import { GameState } from "../../state";
@@ -27,7 +27,15 @@ export class SpikesClient extends GenericEntity implements Renderable {
     const image = this.assetManager.get("Spikes");
     const positionable = this.getExt(Positionable);
     const centerPosition = positionable.getCenterPosition();
-    ctx.drawImage(image, centerPosition.x, centerPosition.y);
+    const extension = this.getExt(TriggerCooldownAttacker);
+
+    if (extension.isReady) {
+      ctx.drawImage(image, centerPosition.x, centerPosition.y);
+    } else {
+      ctx.globalAlpha = 0.5;
+      ctx.drawImage(image, centerPosition.x, centerPosition.y);
+      ctx.globalAlpha = 1;
+    }
 
     debugDrawHitbox(ctx, this.getExt(Triggerable).getTriggerBox(), "red");
   }

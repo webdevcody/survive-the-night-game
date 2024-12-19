@@ -11,7 +11,14 @@ import {
 } from "../shared/traits";
 import { Player } from "../shared/entities/player";
 import { SpatialGrid } from "./spatial-grid";
-import { Collidable, Destructible, Positionable, Updatable } from "@/shared/extensions";
+import {
+  Collidable,
+  Destructible,
+  ExtensionNames,
+  Positionable,
+  TriggerCooldownAttacker,
+  Updatable,
+} from "@/shared/extensions";
 
 export class EntityManager {
   private entities: Entity[];
@@ -243,23 +250,26 @@ export class EntityManager {
   }
 
   update(deltaTime: number) {
+    // TODO: this might go away after refactoring old entities to new ECS system
     for (const entity of this.getUpdatableEntities()) {
       entity.update(deltaTime);
     }
 
-    // TODO: if we refactor all other entities to use extensions, we can remove the above
+    // all entities are made up of extensions, so we need to update them here
     for (const entity of this.getEntities()) {
-      if ("getExt" in entity) {
-        const baseEntity = entity as unknown as GenericEntity;
-        if (baseEntity.hasExt(Updatable)) {
-          const updatable = baseEntity.getExt(Updatable);
-          updatable?.update(deltaTime);
-        }
-      }
+      this.updateExtensions(entity, deltaTime);
     }
 
-    // Then refresh the spatial grid
     this.refreshSpatialGrid();
+  }
+
+  // as of right now, just allow any extension to have an optional update method
+  updateExtensions(entity: Entity, deltaTime: number) {
+    for (const extension of entity.getExtensions()) {
+      if ("update" in extension) {
+        (extension as any).update(deltaTime);
+      }
+    }
   }
 
   private refreshSpatialGrid() {

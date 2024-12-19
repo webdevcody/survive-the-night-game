@@ -1,5 +1,11 @@
 import { EntityManager } from "../managers/entity-manager";
-import { Extension, ExtensionCtor, ExtensionSerialized, extensionsMap } from "./extensions";
+import {
+  Extension,
+  ExtensionCtor,
+  ExtensionSerialized,
+  extensionsMap,
+  TriggerCooldownAttacker,
+} from "./extensions";
 
 export const Entities = {
   WEAPON: "weapon",
@@ -35,20 +41,24 @@ export class GenericEntity extends EventTarget {
     this.extensions = [];
   }
 
-  getType(): EntityType {
+  public getType(): EntityType {
     return this.type;
   }
 
-  getId(): string {
+  public getId(): string {
     return this.id;
   }
 
-  setId(id: string) {
+  public setId(id: string) {
     this.id = id;
   }
 
-  setType(type: EntityType) {
+  public setType(type: EntityType) {
     this.type = type;
+  }
+
+  public getExtensions(): Extension[] {
+    return this.extensions;
   }
 
   public hasExt<T>(ext: ExtensionCtor<T>): boolean {
@@ -69,9 +79,16 @@ export class GenericEntity extends EventTarget {
     if (Array.isArray(data.extensions)) {
       const dataExtensions: ExtensionSerialized[] = data.extensions;
 
-      this.extensions = dataExtensions.map((extData) => {
-        const Ext = extensionsMap[extData.name];
-        return new Ext(this).deserialize(extData);
+      this.extensions = dataExtensions.map((dataFromServer) => {
+        const ExtensionConstructor = extensionsMap[dataFromServer.name];
+        // TODO: this feels hacky, we shouldn't need to remember to update this when an extension needs more server managers
+        if (dataFromServer.name === TriggerCooldownAttacker.Name) {
+          return new TriggerCooldownAttacker(this, this.entityManager, dataFromServer).deserialize(
+            dataFromServer
+          );
+        } else {
+          return new ExtensionConstructor(this).deserialize(dataFromServer);
+        }
       });
     }
   }

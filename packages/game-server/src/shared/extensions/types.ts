@@ -6,11 +6,13 @@ export const ExtensionNames = {
   positionable: "positionable",
   trigger: "trigger",
   updatable: "updatable",
+  triggerCooldownAttacker: "triggerCooldownAttacker",
 } as const;
 
 export interface Extension {
   deserialize: (data: ExtensionSerialized) => this;
   serialize: () => ExtensionSerialized;
+  update?: (deltaTime: number) => void;
 }
 
 export type ExtensionCtor<T = any> = { new (...args: any[]): T };
