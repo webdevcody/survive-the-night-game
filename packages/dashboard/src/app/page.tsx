@@ -37,14 +37,14 @@ export default function HomePage() {
       <div className="fixed right-4 bottom-4 flex flex-col">
         <button
           className={zoomButtonClass}
-          onClick={() => clientRef.current?.zoomIn()}
+          onClick={() => clientRef.current?.getZoomController().zoomIn()}
           type="button"
         >
           +
         </button>
         <button
           className={zoomButtonClass}
-          onClick={() => clientRef.current?.zoomOut()}
+          onClick={() => clientRef.current?.getZoomController().zoomOut()}
           type="button"
         >
           -

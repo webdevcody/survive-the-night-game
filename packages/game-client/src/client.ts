@@ -3,7 +3,6 @@ import { InputManager } from "./managers/input";
 import { EntityDto, ClientSocketManager } from "./managers/client-socket-manager";
 import {
   Direction,
-  Entities,
   GameStateEvent,
   Input,
   MapEvent,
@@ -16,12 +15,15 @@ import { PlayerClient } from "./entities/player";
 import { CameraManager } from "./managers/camera";
 import { MapManager } from "./managers/map";
 import { GameState, getEntityById } from "./state";
-import { IClientEntity, Renderable } from "./entities/util";
+import { IClientEntity } from "./entities/util";
 import { Hotbar } from "./ui/hotbar";
 import { CraftingTable } from "./ui/crafting-table";
 import { StorageManager } from "./managers/storage";
 import { Hud } from "./ui/hud";
 import { EntityFactory } from "./entities/entity-factory";
+import { Renderer } from "./renderer";
+import { ZoomController } from "./zoom-controller";
+import { ResizeController } from "./resize-controller";
 
 export class GameClient {
   private ctx: CanvasRenderingContext2D;
@@ -31,12 +33,13 @@ export class GameClient {
   private cameraManager: CameraManager;
   private mapManager: MapManager;
   private storageManager: StorageManager;
+  private zoomController: ZoomController;
   private entitiesFromServer: EntityDto[] = [];
   private gameState: GameState;
   private hud: Hud;
   private craftingTable: CraftingTable;
-  private scale: number;
-  private unmountQueue: Function[] = [];
+  private resizeController: ResizeController;
+  private renderer: Renderer;
   private reqId: number | null = null;
   private running = false;
   private mounted = true;
@@ -44,14 +47,10 @@ export class GameClient {
 
   constructor(serverUrl: string, canvas: HTMLCanvasElement) {
     this.ctx = canvas.getContext("2d")!;
-    this.setupCanvas();
-    this.addBrowserListeners();
 
     this.storageManager = new StorageManager();
-    this.scale = this.storageManager.getScale(4);
-
     this.cameraManager = new CameraManager(this.ctx);
-    this.cameraManager.setScale(this.scale);
+    this.zoomController = new ZoomController(this.storageManager, this.cameraManager);
 
     const getInventory = () => {
       if (this.gameState.playerId) {
@@ -167,6 +166,17 @@ export class GameClient {
       crafting: false,
     };
 
+    this.renderer = new Renderer(
+      this.ctx,
+      this.gameState,
+      this.mapManager,
+      this.hotbar,
+      this.hud,
+      this.craftingTable
+    );
+
+    this.resizeController = new ResizeController(this.renderer);
+
     this.socketManager = new ClientSocketManager(serverUrl);
 
     this.socketManager.on(ServerSentEvents.GAME_STATE_UPDATE, (gameStateEvent: GameStateEvent) => {
@@ -189,6 +199,10 @@ export class GameClient {
     });
   }
 
+  public getZoomController(): ZoomController {
+    return this.zoomController;
+  }
+
   public async loadAssets() {
     await this.assetManager.load();
   }
@@ -203,16 +217,8 @@ export class GameClient {
     }
 
     this.stop();
-    this.unmountQueue.forEach((cb) => cb());
+    this.resizeController.cleanUp();
     this.mounted = false;
-  }
-
-  public zoomIn() {
-    this.zoom(+1);
-  }
-
-  public zoomOut() {
-    this.zoom(-1);
   }
 
   public start(): void {
@@ -224,7 +230,7 @@ export class GameClient {
 
     const tick = () => {
       this.update();
-      this.render();
+      this.renderer.render();
       this.reqId = requestAnimationFrame(tick);
     };
 
@@ -242,18 +248,6 @@ export class GameClient {
     }
 
     this.running = false;
-  }
-
-  private addBrowserListeners() {
-    const handleResize = () => this.setupCanvas();
-    window.addEventListener("resize", handleResize);
-    this.unmountQueue.push(() => window.removeEventListener("resize", handleResize));
-  }
-
-  private zoom(amount: number) {
-    this.scale += amount;
-    this.storageManager.setScale(this.scale);
-    this.cameraManager.setScale(this.scale);
   }
 
   private updateEntities(): void {
@@ -314,59 +308,7 @@ export class GameClient {
     }
   }
 
-  private getRenderableEntities(): Renderable[] {
-    return this.getEntities().filter((entity) => {
-      return "render" in entity;
-    }) as Renderable[];
-  }
-
-  private setupCanvas(): void {
-    this.ctx.canvas.width = window.innerWidth * window.devicePixelRatio;
-    this.ctx.canvas.height = window.innerHeight * window.devicePixelRatio;
-    this.ctx.canvas.style.width = `${window.innerWidth}px`;
-    this.ctx.canvas.style.height = `${window.innerHeight}px`;
-
-    this.ctx.imageSmoothingEnabled = false;
-    this.ctx.scale(window.devicePixelRatio, window.devicePixelRatio);
-  }
-
-  private clearCanvas(): void {
-    const { width, height } = this.ctx.canvas;
-    this.ctx.save();
-    this.ctx.setTransform(1, 0, 0, 1, 0, 0);
-    this.ctx.fillStyle = "black";
-    this.ctx.fillRect(0, 0, width, height);
-    this.ctx.restore();
-  }
-
   private getEntities(): IClientEntity[] {
     return this.gameState.entities;
-  }
-
-  private renderEntities(): void {
-    const renderableEntities = this.getRenderableEntities();
-
-    renderableEntities.sort((a, b) => a.getZIndex() - b.getZIndex());
-
-    renderableEntities.forEach((entity) => {
-      entity.render(this.ctx, this.gameState);
-    });
-  }
-
-  private render(): void {
-    this.clearCanvas();
-    this.mapManager.render(this.ctx);
-    this.renderEntities();
-
-    this.ctx.setTransform(1, 0, 0, 1, 0, 0);
-
-    if (!this.gameState.isDay) {
-      this.ctx.fillStyle = "rgba(0, 0, 0, 0.3)";
-      this.ctx.fillRect(0, 0, this.ctx.canvas.width, this.ctx.canvas.height);
-    }
-
-    this.hotbar.render(this.ctx, this.gameState);
-    this.hud.render(this.ctx, this.gameState);
-    this.craftingTable.render(this.ctx, this.gameState);
   }
 }
