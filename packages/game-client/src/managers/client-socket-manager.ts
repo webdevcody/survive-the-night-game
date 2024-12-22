@@ -1,11 +1,13 @@
 import { io, Socket } from "socket.io-client";
 import {
-  Events,
   Input,
   RecipeType,
   ServerSentEvents,
   GameStateEvent,
   PlayerDeathEvent,
+  MapEvent,
+  YourIdEvent,
+  ClientSentEvents,
 } from "@survive-the-night/game-server";
 
 export type EntityDto = { id: string } & any;
@@ -13,9 +15,9 @@ export type EntityDto = { id: string } & any;
 const SERVER_EVENT_MAP = {
   [ServerSentEvents.GAME_STATE_UPDATE]: GameStateEvent,
   [ServerSentEvents.PLAYER_DEATH]: PlayerDeathEvent,
+  [ServerSentEvents.MAP]: MapEvent,
+  [ServerSentEvents.YOUR_ID]: YourIdEvent,
 } as const;
-
-type ServerEvent = (typeof SERVER_EVENT_MAP)[keyof typeof SERVER_EVENT_MAP];
 
 export class ClientSocketManager {
   private socket: Socket;
@@ -30,22 +32,8 @@ export class ClientSocketManager {
     });
   }
 
-  constructor(
-    serverUrl: string,
-    handlers: {
-      onMap: (map: number[][]) => void;
-      onYourId: (playerId: string) => void;
-    }
-  ) {
+  constructor(serverUrl: string) {
     this.socket = io(serverUrl);
-
-    this.socket.on(Events.MAP, (map: number[][]) => {
-      handlers.onMap(map);
-    });
-
-    this.socket.on(Events.YOUR_ID, (playerId: string) => {
-      handlers.onYourId(playerId);
-    });
 
     this.socket.on("connect", () => {
       // handlers.onConnect(this.getId()!);
@@ -57,18 +45,18 @@ export class ClientSocketManager {
   }
 
   public sendCraftRequest(recipe: RecipeType) {
-    this.socket.emit(Events.CRAFT_REQUEST, recipe);
+    this.socket.emit(ClientSentEvents.CRAFT_REQUEST, recipe);
   }
 
   public sendStartCrafting() {
-    this.socket.emit(Events.START_CRAFTING);
+    this.socket.emit(ClientSentEvents.START_CRAFTING);
   }
 
   public sendStopCrafting() {
-    this.socket.emit(Events.STOP_CRAFTING);
+    this.socket.emit(ClientSentEvents.STOP_CRAFTING);
   }
 
   public sendInput(input: Input) {
-    this.socket.emit(Events.PLAYER_INPUT, input);
+    this.socket.emit(ClientSentEvents.PLAYER_INPUT, input);
   }
 }

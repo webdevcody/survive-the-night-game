@@ -1,6 +1,6 @@
 import { Server, Socket } from "socket.io";
 import { createServer } from "http";
-import { Events } from "../shared/events/events";
+import { ClientSentEvents, Events, ServerSentEvents } from "../shared/events/events";
 import { EntityManager } from "./entity-manager";
 import { MapManager } from "./map-manager";
 import { Input } from "../shared/input";
@@ -81,13 +81,19 @@ export class ServerSocketManager {
     this.players.set(socket.id, player);
     this.entityManager.addEntity(player);
 
-    socket.emit(Events.MAP, map);
-    socket.emit(Events.YOUR_ID, player.getId());
+    socket.emit(ServerSentEvents.MAP, map);
+    socket.emit(ServerSentEvents.YOUR_ID, player.getId());
 
-    socket.on(Events.PLAYER_INPUT, (input: Input) => this.onPlayerInput(socket, input));
-    socket.on(Events.CRAFT_REQUEST, (recipe: RecipeType) => this.onCraftRequest(socket, recipe));
-    socket.on(Events.START_CRAFTING, (recipe: RecipeType) => this.setPlayerCrafting(socket, true));
-    socket.on(Events.STOP_CRAFTING, (recipe: RecipeType) => this.setPlayerCrafting(socket, false));
+    socket.on(ClientSentEvents.PLAYER_INPUT, (input: Input) => this.onPlayerInput(socket, input));
+    socket.on(ClientSentEvents.CRAFT_REQUEST, (recipe: RecipeType) =>
+      this.onCraftRequest(socket, recipe)
+    );
+    socket.on(ClientSentEvents.START_CRAFTING, (recipe: RecipeType) =>
+      this.setPlayerCrafting(socket, true)
+    );
+    socket.on(ClientSentEvents.STOP_CRAFTING, (recipe: RecipeType) =>
+      this.setPlayerCrafting(socket, false)
+    );
 
     socket.on("disconnect", () => {
       this.onDisconnect(socket);

@@ -6,9 +6,11 @@ import {
   Entities,
   GameStateEvent,
   Input,
+  MapEvent,
   PlayerDeathEvent,
   PositionableTrait,
   ServerSentEvents,
+  YourIdEvent,
 } from "@survive-the-night/game-server";
 import { PlayerClient } from "./entities/player";
 import { CameraManager } from "./managers/camera";
@@ -165,14 +167,7 @@ export class GameClient {
       crafting: false,
     };
 
-    this.socketManager = new ClientSocketManager(serverUrl, {
-      onMap: (map: number[][]) => {
-        this.mapManager.setMap(map);
-      },
-      onYourId: (playerId: string) => {
-        this.gameState.playerId = playerId;
-      },
-    });
+    this.socketManager = new ClientSocketManager(serverUrl);
 
     this.socketManager.on(ServerSentEvents.GAME_STATE_UPDATE, (gameStateEvent: GameStateEvent) => {
       this.entitiesFromServer = gameStateEvent.getGameState().entities;
@@ -183,6 +178,14 @@ export class GameClient {
 
     this.socketManager.on(ServerSentEvents.PLAYER_DEATH, (playerDeathEvent: PlayerDeathEvent) => {
       this.hud.showPlayerDeath(playerDeathEvent.getPlayerId());
+    });
+
+    this.socketManager.on(ServerSentEvents.MAP, (mapEvent: MapEvent) => {
+      this.mapManager.setMap(mapEvent.getMap());
+    });
+
+    this.socketManager.on(ServerSentEvents.YOUR_ID, (yourIdEvent: YourIdEvent) => {
+      this.gameState.playerId = yourIdEvent.getPlayerId();
     });
   }
 
