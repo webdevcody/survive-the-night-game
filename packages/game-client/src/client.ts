@@ -27,27 +27,36 @@ import { ResizeController } from "./resize-controller";
 
 export class GameClient {
   private ctx: CanvasRenderingContext2D;
-  private assetManager = new AssetManager();
+
+  // Managers
+  private assetManager: AssetManager;
   private socketManager: ClientSocketManager;
   private inputManager: InputManager;
   private cameraManager: CameraManager;
   private mapManager: MapManager;
   private storageManager: StorageManager;
+
+  // Controllers
+  private resizeController: ResizeController;
   private zoomController: ZoomController;
-  private entitiesFromServer: EntityDto[] = [];
-  private gameState: GameState;
+
+  // UI
+  private renderer: Renderer;
   private hud: Hud;
   private craftingTable: CraftingTable;
-  private resizeController: ResizeController;
-  private renderer: Renderer;
-  private reqId: number | null = null;
+  private hotbar: Hotbar;
+
+  // State
+  private gameState: GameState;
+  private entitiesFromServer: EntityDto[] = [];
+  private animationFrameId: number | null = null;
   private running = false;
   private mounted = true;
-  private hotbar: Hotbar;
 
   constructor(serverUrl: string, canvas: HTMLCanvasElement) {
     this.ctx = canvas.getContext("2d")!;
 
+    this.assetManager = new AssetManager();
     this.storageManager = new StorageManager();
     this.cameraManager = new CameraManager(this.ctx);
     this.zoomController = new ZoomController(this.storageManager, this.cameraManager);
@@ -231,7 +240,7 @@ export class GameClient {
     const tick = () => {
       this.update();
       this.renderer.render();
-      this.reqId = requestAnimationFrame(tick);
+      this.animationFrameId = requestAnimationFrame(tick);
     };
 
     tick();
@@ -242,9 +251,9 @@ export class GameClient {
       return;
     }
 
-    if (this.reqId) {
-      cancelAnimationFrame(this.reqId);
-      this.reqId = null;
+    if (this.animationFrameId) {
+      cancelAnimationFrame(this.animationFrameId);
+      this.animationFrameId = null;
     }
 
     this.running = false;
