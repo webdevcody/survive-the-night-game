@@ -1,16 +1,7 @@
 import { AssetManager } from "./managers/asset";
 import { InputManager } from "./managers/input";
 import { EntityDto, ClientSocketManager } from "./managers/client-socket-manager";
-import {
-  Direction,
-  GameStateEvent,
-  Input,
-  MapEvent,
-  PlayerDeathEvent,
-  PositionableTrait,
-  ServerSentEvents,
-  YourIdEvent,
-} from "@survive-the-night/game-server";
+import { Direction, Input, PositionableTrait } from "@survive-the-night/game-server";
 import { PlayerClient } from "./entities/player";
 import { CameraManager } from "./managers/camera";
 import { MapManager } from "./managers/map";
@@ -24,6 +15,7 @@ import { EntityFactory } from "./entities/entity-factory";
 import { Renderer } from "./renderer";
 import { ZoomController } from "./zoom-controller";
 import { ResizeController } from "./resize-controller";
+import { ClientEventListener } from "./client-event-listener";
 
 export class GameClient {
   private ctx: CanvasRenderingContext2D;
@@ -35,6 +27,7 @@ export class GameClient {
   private cameraManager: CameraManager;
   private mapManager: MapManager;
   private storageManager: StorageManager;
+  private clientEventListener: ClientEventListener;
 
   // Controllers
   private resizeController: ResizeController;
@@ -48,10 +41,10 @@ export class GameClient {
 
   // State
   private gameState: GameState;
-  private entitiesFromServer: EntityDto[] = [];
+  private updatedEntitiesBuffer: EntityDto[] = [];
   private animationFrameId: number | null = null;
-  private running = false;
-  private mounted = true;
+  private isStarted = false;
+  private isMounted = true;
 
   constructor(serverUrl: string, canvas: HTMLCanvasElement) {
     this.ctx = canvas.getContext("2d")!;
@@ -86,6 +79,7 @@ export class GameClient {
     this.mapManager = new MapManager();
     this.hud = new Hud();
 
+    // TODO: refactor to use event emitter
     this.craftingTable = new CraftingTable(this.assetManager, {
       getInventory,
       getPlayer,
@@ -95,6 +89,7 @@ export class GameClient {
       },
     });
 
+    // TODO: refactor to use event emitter
     this.inputManager = new InputManager({
       onCraft: () => {
         const player = getPlayer();
@@ -187,25 +182,27 @@ export class GameClient {
     this.resizeController = new ResizeController(this.renderer);
 
     this.socketManager = new ClientSocketManager(serverUrl);
+    this.clientEventListener = new ClientEventListener(this, this.socketManager);
+  }
 
-    this.socketManager.on(ServerSentEvents.GAME_STATE_UPDATE, (gameStateEvent: GameStateEvent) => {
-      this.entitiesFromServer = gameStateEvent.getGameState().entities;
-      this.gameState.dayNumber = gameStateEvent.getGameState().dayNumber;
-      this.gameState.untilNextCycle = gameStateEvent.getGameState().untilNextCycle;
-      this.gameState.isDay = gameStateEvent.getGameState().isDay;
-    });
+  public getGameState(): GameState {
+    return this.gameState;
+  }
 
-    this.socketManager.on(ServerSentEvents.PLAYER_DEATH, (playerDeathEvent: PlayerDeathEvent) => {
-      this.hud.showPlayerDeath(playerDeathEvent.getPlayerId());
-    });
+  public getSocketManager(): ClientSocketManager {
+    return this.socketManager;
+  }
 
-    this.socketManager.on(ServerSentEvents.MAP, (mapEvent: MapEvent) => {
-      this.mapManager.setMap(mapEvent.getMap());
-    });
+  public setUpdatedEntitiesBuffer(entities: EntityDto[]) {
+    this.updatedEntitiesBuffer = entities;
+  }
 
-    this.socketManager.on(ServerSentEvents.YOUR_ID, (yourIdEvent: YourIdEvent) => {
-      this.gameState.playerId = yourIdEvent.getPlayerId();
-    });
+  public getMapManager(): MapManager {
+    return this.mapManager;
+  }
+
+  public getHud(): Hud {
+    return this.hud;
   }
 
   public getZoomController(): ZoomController {
@@ -221,21 +218,21 @@ export class GameClient {
   }
 
   public unmount() {
-    if (!this.mounted) {
+    if (!this.isMounted) {
       return;
     }
 
     this.stop();
     this.resizeController.cleanUp();
-    this.mounted = false;
+    this.isMounted = false;
   }
 
   public start(): void {
-    if (!this.mounted || this.running) {
+    if (!this.isMounted || this.isStarted) {
       return;
     }
 
-    this.running = true;
+    this.isStarted = true;
 
     const tick = () => {
       this.update();
@@ -247,7 +244,7 @@ export class GameClient {
   }
 
   public stop(): void {
-    if (!this.running) {
+    if (!this.isStarted) {
       return;
     }
 
@@ -256,21 +253,21 @@ export class GameClient {
       this.animationFrameId = null;
     }
 
-    this.running = false;
+    this.isStarted = false;
   }
 
   private updateEntities(): void {
     // remove dead entities
     for (let i = 0; i < this.getEntities().length; i++) {
       const entity = this.getEntities()[i];
-      if (!this.entitiesFromServer.find((e) => e.id === entity.getId())) {
+      if (!this.updatedEntitiesBuffer.find((e) => e.id === entity.getId())) {
         this.getEntities().splice(i, 1);
         i--;
       }
     }
 
     // add new / update entities
-    for (const entityData of this.entitiesFromServer) {
+    for (const entityData of this.updatedEntitiesBuffer) {
       const existingEntity = this.getEntities().find((e) => e.getId() === entityData.id);
 
       if (existingEntity) {
