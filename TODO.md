@@ -48,17 +48,11 @@ Feel free to pick any item listed out here to work on.
 
 - [ ] before playing a new sound, determine distance from player and reduce volume if the sound was far away
 - [ ] auto clean up sound entities after 5 seconds.
-- [ ] add sound for shotgun
 - [ ] add sound for knife
 - [ ] add sound for player walking
 - [ ] add sound for zombie walking
-- [ ] add sound for player hurt
-- [ ] add sound for zombie hurt
 - [ ] add sound for zombie attack
-- [ ] add sound for item pickup
 - [ ] add sound for item craft
-- [ ] add sound for item drop
-- [ ] add sound for player death
 - [ ] ambient background music that can be turned off
 
 ### Lobby
@@ -79,7 +73,6 @@ Feel free to pick any item listed out here to work on.
 ## Medium Priority (Enhancements):
 
 - [ ] a user shall be able to see a mini map which helps them know where they are
-- [ ] a user can search a dead zombie body for items (randomly drop items)
 - [ ] a user can search cabinets for items (randomly drop items)
 - [ ] a user shall be able to view a mini map which helps them know where they are
 - [ ] implement a fog of war effect in the mini map for unexplored areas
@@ -105,6 +98,13 @@ Feel free to pick any item listed out here to work on.
 
 ## Change Log:
 
+- [x] a user can search a dead zombie body for items (randomly drop items)
+- [x] 12/19/2024: add sound for shotgun
+- [x] 12/19/2024: add sound for player hurt
+- [x] 12/19/2024: add sound for zombie hurt
+- [x] 12/19/2024: add sound for item pickup
+- [x] 12/19/2024: add sound for item drop
+- [x] 12/19/2024: add sound for player death
 - [x] 12/15/2024: add a way to toggle the instructions on and off
 - [x] 12/18/2024: when a player is killed, notify all players in the game a player has died
 - [x] a user can drop items from their inventory

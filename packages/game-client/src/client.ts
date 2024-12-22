@@ -267,13 +267,14 @@ export class GameClient {
         if ("deserialize" in existingEntity) {
           existingEntity.deserialize(entityData);
         } else {
+          // TODO: this will go awaya when we refactor all entities to use ECS
           Object.assign(existingEntity, entityData);
         }
 
         continue;
       }
 
-      const factory = new EntityFactory(this.assetManager);
+      const factory = new EntityFactory(this.assetManager, this.gameState);
       const entity = factory.createEntity(entityData.type, entityData);
       this.getEntities().push(entity);
     }

@@ -12,12 +12,15 @@ import { SoundClient } from "./sound";
 import { SpikesClient } from "./buildings/spikes";
 import { EntityDto } from "../managers/socket";
 import { AssetManager } from "@/managers/asset";
+import { GameState } from "@/state";
 
 export class EntityFactory {
   private assetManager: AssetManager;
+  private gameState: GameState;
 
-  constructor(assetManager: AssetManager) {
+  constructor(assetManager: AssetManager, gameState: GameState) {
     this.assetManager = assetManager;
+    this.gameState = gameState;
   }
 
   public createEntity(entityType: EntityType, entityData: EntityDto) {
@@ -65,8 +68,8 @@ export class EntityFactory {
         return entity;
       },
       [Entities.SOUND]: (data: EntityDto) => {
-        const entity = new SoundClient(data.id, data.soundType);
-        this.initializeEntity(entity, data);
+        const entity = new SoundClient(data, this.gameState);
+        entity.deserialize(data);
         return entity;
       },
       [Entities.SPIKES]: (data: EntityDto) => {
