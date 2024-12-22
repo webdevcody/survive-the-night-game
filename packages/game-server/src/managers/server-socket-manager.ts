@@ -1,13 +1,18 @@
 import { Server, Socket } from "socket.io";
 import { createServer } from "http";
-import { Events, IEvent } from "../shared/events";
+import { Events } from "../shared/events/events";
 import { EntityManager } from "./entity-manager";
 import { MapManager } from "./map-manager";
 import { Input } from "../shared/input";
 import { Player } from "../shared/entities/player";
 import { RecipeType } from "@/shared/recipes";
+import { GameEvent } from "@/shared/events/types";
 
-export class SocketManager {
+/**
+ * Any and all functionality related to sending server side events
+ * or listening for client side events should live here.
+ */
+export class ServerSocketManager {
   private io: Server;
   private entityManager: EntityManager;
   private mapManager: MapManager;
@@ -89,7 +94,7 @@ export class SocketManager {
     });
   }
 
-  public broadcastEvent(event: IEvent): void {
-    this.io.emit(event.getType(), event.getPayload());
+  public broadcastEvent(event: GameEvent<any>): void {
+    this.io.emit(event.getType(), event.serialize());
   }
 }

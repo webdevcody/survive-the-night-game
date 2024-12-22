@@ -1,12 +1,14 @@
 import { AssetManager } from "./managers/asset";
 import { InputManager } from "./managers/input";
-import { EntityDto, SocketManager } from "./managers/socket";
+import { EntityDto, ClientSocketManager } from "./managers/client-socket-manager";
 import {
   Direction,
   Entities,
   GameStateEvent,
   Input,
+  PlayerDeathEvent,
   PositionableTrait,
+  ServerSentEvents,
 } from "@survive-the-night/game-server";
 import { PlayerClient } from "./entities/player";
 import { CameraManager } from "./managers/camera";
@@ -22,7 +24,7 @@ import { EntityFactory } from "./entities/entity-factory";
 export class GameClient {
   private ctx: CanvasRenderingContext2D;
   private assetManager = new AssetManager();
-  private socketManager: SocketManager;
+  private socketManager: ClientSocketManager;
   private inputManager: InputManager;
   private cameraManager: CameraManager;
   private mapManager: MapManager;
@@ -163,22 +165,24 @@ export class GameClient {
       crafting: false,
     };
 
-    this.socketManager = new SocketManager(serverUrl, {
+    this.socketManager = new ClientSocketManager(serverUrl, {
       onMap: (map: number[][]) => {
         this.mapManager.setMap(map);
-      },
-      onGameStateUpdate: (gameStateEvent: GameStateEvent) => {
-        this.entitiesFromServer = gameStateEvent.getPayload().entities;
-        this.gameState.dayNumber = gameStateEvent.getPayload().dayNumber;
-        this.gameState.untilNextCycle = gameStateEvent.getPayload().untilNextCycle;
-        this.gameState.isDay = gameStateEvent.getPayload().isDay;
       },
       onYourId: (playerId: string) => {
         this.gameState.playerId = playerId;
       },
-      onPlayerDeath: (playerId: string) => {
-        this.hud.showPlayerDeath(playerId);
-      },
+    });
+
+    this.socketManager.on(ServerSentEvents.GAME_STATE_UPDATE, (gameStateEvent: GameStateEvent) => {
+      this.entitiesFromServer = gameStateEvent.getGameState().entities;
+      this.gameState.dayNumber = gameStateEvent.getGameState().dayNumber;
+      this.gameState.untilNextCycle = gameStateEvent.getGameState().untilNextCycle;
+      this.gameState.isDay = gameStateEvent.getGameState().isDay;
+    });
+
+    this.socketManager.on(ServerSentEvents.PLAYER_DEATH, (playerDeathEvent: PlayerDeathEvent) => {
+      this.hud.showPlayerDeath(playerDeathEvent.getPlayerId());
     });
   }
 

@@ -2,7 +2,7 @@ import { EntityManager } from "../../managers/entity-manager";
 import { MapManager } from "../../managers/map-manager";
 import { Direction } from "../direction";
 import { Entity, Entities, RawEntity } from "../entities";
-import { Events } from "../events";
+import { Events } from "../events/events";
 import { Vector2, pathTowards, velocityTowards } from "../physics";
 import {
   Damageable,

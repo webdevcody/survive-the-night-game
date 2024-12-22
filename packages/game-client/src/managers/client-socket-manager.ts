@@ -1,26 +1,43 @@
 import { io, Socket } from "socket.io-client";
-import { Events, GameStateEvent, Input, RecipeType } from "@survive-the-night/game-server";
+import {
+  Events,
+  Input,
+  RecipeType,
+  ServerSentEvents,
+  GameStateEvent,
+  PlayerDeathEvent,
+} from "@survive-the-night/game-server";
 
 export type EntityDto = { id: string } & any;
 
-export class SocketManager {
+const SERVER_EVENT_MAP = {
+  [ServerSentEvents.GAME_STATE_UPDATE]: GameStateEvent,
+  [ServerSentEvents.PLAYER_DEATH]: PlayerDeathEvent,
+} as const;
+
+type ServerEvent = (typeof SERVER_EVENT_MAP)[keyof typeof SERVER_EVENT_MAP];
+
+export class ClientSocketManager {
   private socket: Socket;
+
+  public on<K extends keyof typeof SERVER_EVENT_MAP>(
+    eventType: K,
+    handler: (event: SERVER_EVENT_MAP[K]) => void
+  ) {
+    this.socket.on(eventType, (serializedEvent: any) => {
+      const event = new SERVER_EVENT_MAP[eventType](serializedEvent);
+      handler(event);
+    });
+  }
 
   constructor(
     serverUrl: string,
     handlers: {
       onMap: (map: number[][]) => void;
-      onGameStateUpdate: (gameStateEvent: GameStateEvent) => void;
       onYourId: (playerId: string) => void;
-      onPlayerDeath: (playerId: string) => void;
     }
   ) {
     this.socket = io(serverUrl);
-
-    this.socket.on(Events.GAME_STATE_UPDATE, (gameState: { entities: EntityDto[] }) => {
-      const gameStateEvent = new GameStateEvent(gameState);
-      handlers.onGameStateUpdate(gameStateEvent);
-    });
 
     this.socket.on(Events.MAP, (map: number[][]) => {
       handlers.onMap(map);
@@ -28,10 +45,6 @@ export class SocketManager {
 
     this.socket.on(Events.YOUR_ID, (playerId: string) => {
       handlers.onYourId(playerId);
-    });
-
-    this.socket.on(Events.PLAYER_DEATH, (playerId: string) => {
-      handlers.onPlayerDeath(playerId);
     });
 
     this.socket.on("connect", () => {

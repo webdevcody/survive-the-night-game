@@ -1,7 +1,7 @@
-import { GameStateEvent } from "./shared/events";
 import { EntityManager } from "./managers/entity-manager";
 import { MapManager } from "./managers/map-manager";
-import { SocketManager } from "./managers/socket-manager";
+import { ServerSocketManager } from "./managers/server-socket-manager";
+import { GameStateEvent } from "./shared/events/server-sent";
 
 export const FPS = 30;
 
@@ -15,7 +15,7 @@ class GameServer {
   private lastUpdateTime: number = Date.now();
   private entityManager: EntityManager;
   private mapManager: MapManager;
-  private socketManager: SocketManager;
+  private socketManager: ServerSocketManager;
   private timer: ReturnType<typeof setInterval> | null = null;
   private dayNumber: number = 1;
   private untilNextCycle: number = 0;
@@ -27,7 +27,7 @@ class GameServer {
     this.entityManager = new EntityManager();
     this.mapManager = new MapManager(this.entityManager);
     this.mapManager.generateMap();
-    this.socketManager = new SocketManager(this.entityManager, this.mapManager, port);
+    this.socketManager = new ServerSocketManager(this.entityManager, this.mapManager, port);
     this.untilNextCycle = DAY_DURATION;
     this.isDay = true;
     this.dayNumber = 1;

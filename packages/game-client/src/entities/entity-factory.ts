@@ -10,7 +10,7 @@ import { ClothClient } from "./items/cloth";
 import { ZombieClient } from "./zombie";
 import { SoundClient } from "./sound";
 import { SpikesClient } from "./buildings/spikes";
-import { EntityDto } from "../managers/socket";
+import { EntityDto } from "../managers/client-socket-manager";
 import { AssetManager } from "@/managers/asset";
 import { GameState } from "@/state";
 
