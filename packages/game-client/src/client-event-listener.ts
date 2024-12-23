@@ -6,6 +6,8 @@ import { ServerSentEvents } from "@survive-the-night/game-server";
 import { GameClient } from "./client";
 import { ClientSocketManager } from "./managers/client-socket-manager";
 import { GameState } from "./state";
+import { SOUND_TYPES } from "@survive-the-night/game-server/src/shared/entities/sound";
+import { PlayerClient } from "./entities/player";
 
 export class ClientEventListener {
   private socketManager: ClientSocketManager;
@@ -26,6 +28,15 @@ export class ClientEventListener {
 
     this.socketManager.on(ServerSentEvents.PLAYER_DEATH, (playerDeathEvent: PlayerDeathEvent) => {
       this.gameClient.getHud().showPlayerDeath(playerDeathEvent.getPlayerId());
+
+      const player = this.gameClient.getEntityById(playerDeathEvent.getPlayerId());
+      if (!player) return;
+
+      const playerPosition = (player as unknown as PlayerClient).getCenterPosition();
+
+      this.gameClient
+        .getSoundManager()
+        .playPositionalSound(SOUND_TYPES.PLAYER_DEATH, playerPosition);
     });
 
     this.socketManager.on(ServerSentEvents.MAP, (mapEvent: MapEvent) => {

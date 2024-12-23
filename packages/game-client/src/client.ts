@@ -1,7 +1,7 @@
 import { AssetManager } from "./managers/asset";
 import { InputManager } from "./managers/input";
 import { EntityDto, ClientSocketManager } from "./managers/client-socket-manager";
-import { Direction, Input, PositionableTrait } from "@survive-the-night/game-server";
+import { Direction, Entity, Input, PositionableTrait } from "@survive-the-night/game-server";
 import { PlayerClient } from "./entities/player";
 import { CameraManager } from "./managers/camera";
 import { MapManager } from "./managers/map";
@@ -16,6 +16,7 @@ import { Renderer } from "./renderer";
 import { ZoomController } from "./zoom-controller";
 import { ResizeController } from "./resize-controller";
 import { ClientEventListener } from "./client-event-listener";
+import { SoundManager } from "./managers/sound-manager";
 
 export class GameClient {
   private ctx: CanvasRenderingContext2D;
@@ -28,6 +29,7 @@ export class GameClient {
   private mapManager: MapManager;
   private storageManager: StorageManager;
   private clientEventListener: ClientEventListener;
+  private soundManager: SoundManager;
 
   // Controllers
   private resizeController: ResizeController;
@@ -53,6 +55,7 @@ export class GameClient {
     this.storageManager = new StorageManager();
     this.cameraManager = new CameraManager(this.ctx);
     this.zoomController = new ZoomController(this.storageManager, this.cameraManager);
+    this.soundManager = new SoundManager(this);
 
     const getInventory = () => {
       if (this.gameState.playerId) {
@@ -185,12 +188,22 @@ export class GameClient {
     this.clientEventListener = new ClientEventListener(this, this.socketManager);
   }
 
+  public getSoundManager(): SoundManager {
+    return this.soundManager;
+  }
+
   public getGameState(): GameState {
     return this.gameState;
   }
 
   public getSocketManager(): ClientSocketManager {
     return this.socketManager;
+  }
+
+  public getMyPlayer(): PlayerClient | null {
+    return this.gameState.playerId
+      ? (getEntityById(this.gameState, this.gameState.playerId) as unknown as PlayerClient)
+      : null;
   }
 
   public setUpdatedEntitiesBuffer(entities: EntityDto[]) {
@@ -225,6 +238,10 @@ export class GameClient {
     this.stop();
     this.resizeController.cleanUp();
     this.isMounted = false;
+  }
+
+  public getEntityById(id: string): Entity | undefined {
+    return getEntityById(this.gameState, id);
   }
 
   public start(): void {
