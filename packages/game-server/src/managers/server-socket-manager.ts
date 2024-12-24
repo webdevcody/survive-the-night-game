@@ -7,6 +7,7 @@ import { Input } from "../shared/input";
 import { Player } from "../shared/entities/player";
 import { RecipeType } from "@/shared/recipes";
 import { GameEvent } from "@/shared/events/types";
+import { DEBUG_EVENTS } from "@/config";
 
 /**
  * Any and all functionality related to sending server side events
@@ -101,6 +102,9 @@ export class ServerSocketManager {
   }
 
   public broadcastEvent(event: GameEvent<any>): void {
+    if (DEBUG_EVENTS && event.getType() !== ServerSentEvents.GAME_STATE_UPDATE) {
+      console.log(`Broadcasting event: ${event.getType()}`);
+    }
     this.io.emit(event.getType(), event.serialize());
   }
 }

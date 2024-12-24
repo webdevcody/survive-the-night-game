@@ -3,8 +3,8 @@ import { EventType, ServerSentEvents } from "../events";
 import { GameEvent } from "../types";
 
 export class GameStateEvent implements GameEvent<GameState> {
-  private type: EventType;
-  private gameState: GameState;
+  private readonly type: EventType;
+  private readonly gameState: GameState;
 
   constructor(gameState: GameState) {
     this.type = ServerSentEvents.GAME_STATE_UPDATE;
@@ -21,9 +21,5 @@ export class GameStateEvent implements GameEvent<GameState> {
 
   getGameState(): GameState {
     return this.gameState;
-  }
-
-  deserialize(data: any): GameStateEvent {
-    return new GameStateEvent(data);
   }
 }

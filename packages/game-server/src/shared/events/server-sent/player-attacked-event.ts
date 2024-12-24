@@ -1,34 +1,38 @@
+import { WeaponKey } from "@/shared/inventory";
 import { EventType, ServerSentEvents } from "../events";
 import { GameEvent } from "../types";
 
-export class PlayerAttackedEvent implements GameEvent<string> {
-  private type: EventType;
-  private playerId: string;
-  private weaponKey: string;
+interface PlayerAttackedEventData {
+  playerId: string;
+  weaponKey: WeaponKey;
+}
 
-  constructor(playerId: string, weaponKey: string) {
-    this.type = ServerSentEvents.PLAYER_ATTACKED;
-    this.playerId = playerId;
-    this.weaponKey = weaponKey;
+export class PlayerAttackedEvent implements GameEvent<PlayerAttackedEventData> {
+  private readonly type: EventType = ServerSentEvents.PLAYER_ATTACKED;
+  private readonly playerId: string;
+  private readonly weaponKey: WeaponKey;
+
+  constructor(data: PlayerAttackedEventData) {
+    this.playerId = data.playerId;
+    this.weaponKey = data.weaponKey;
   }
 
   getType(): EventType {
     return this.type;
   }
 
-  serialize(): string {
-    return this.playerId;
-  }
-
   getPlayerId(): string {
     return this.playerId;
   }
 
-  getWeaponKey(): string {
+  getWeaponKey(): WeaponKey {
     return this.weaponKey;
   }
 
-  deserialize(data: any): PlayerAttackedEvent {
-    return new PlayerAttackedEvent(data);
+  serialize(): PlayerAttackedEventData {
+    return {
+      playerId: this.playerId,
+      weaponKey: this.weaponKey,
+    };
   }
 }

@@ -20,6 +20,7 @@ import { PlayerHurtEvent } from "../events/server-sent/player-hurt-event";
 import { PlayerAttackedEvent } from "../events/server-sent/player-attacked-event";
 import { PlayerDroppedItemEvent } from "../events/server-sent/player-dropped-item-event";
 import { ServerSocketManager } from "../../managers/server-socket-manager";
+import { DEBUG_WEAPONS } from "../../config";
 
 export class Player
   extends Entity
@@ -61,7 +62,7 @@ export class Player
   constructor(entityManager: EntityManager, socketManager: ServerSocketManager) {
     super(entityManager, Entities.PLAYER);
     this.socketManager = socketManager;
-    if (DEBUG) {
+    if (DEBUG_WEAPONS) {
       this.inventory = [
         { key: "Knife" },
         { key: "Pistol" },
@@ -260,7 +261,12 @@ export class Player
         bullet.setDirection(this.input.facing);
         this.getEntityManager().addEntity(bullet);
 
-        this.socketManager.broadcastEvent(new PlayerAttackedEvent(this.getId(), activeWeapon.key));
+        this.socketManager.broadcastEvent(
+          new PlayerAttackedEvent({
+            playerId: this.getId(),
+            weaponKey: activeWeapon.key,
+          })
+        );
       } else if (activeWeapon.key === "Shotgun") {
         // Create 3 bullets with spread
         const spreadAngle = 8; // degrees
@@ -274,7 +280,10 @@ export class Player
           this.getEntityManager().addEntity(bullet);
 
           this.socketManager.broadcastEvent(
-            new PlayerAttackedEvent(this.getId(), activeWeapon.key)
+            new PlayerAttackedEvent({
+              playerId: this.getId(),
+              weaponKey: activeWeapon.key,
+            })
           );
         }
       }
@@ -403,7 +412,12 @@ export class Player
 
         this.getEntityManager().addEntity(entity);
 
-        this.socketManager.broadcastEvent(new PlayerDroppedItemEvent(this.getId(), item.key));
+        this.socketManager.broadcastEvent(
+          new PlayerDroppedItemEvent({
+            playerId: this.getId(),
+            itemKey: item.key,
+          })
+        );
       }
     }
   }

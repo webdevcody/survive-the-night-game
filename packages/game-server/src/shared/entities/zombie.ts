@@ -15,8 +15,6 @@ import { Destructible, Interactive, Positionable } from "../extensions";
 import { Cloth } from "./items/cloth";
 import { getHitboxWithPadding } from "./util";
 import { Wall } from "./wall";
-import { createSoundAtPosition } from "./sound";
-import { SOUND_TYPES } from "./sound";
 import { ZombieDeathEvent } from "../events/server-sent/zombie-death-event";
 import { ServerSocketManager } from "@/managers/server-socket-manager";
 import { ZombieHurtEvent } from "../events/server-sent/zombie-hurt-event";
@@ -138,11 +136,6 @@ export class Zombie
 
     this.health -= damage;
 
-    createSoundAtPosition(
-      this.getEntityManager(),
-      SOUND_TYPES.ZOMBIE_HURT,
-      this.getCenterPosition()
-    );
     this.socketManager.broadcastEvent(new ZombieHurtEvent(this.getId()));
 
     if (this.health <= 0) {

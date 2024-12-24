@@ -8,7 +8,6 @@ import { WeaponClient } from "./weapon";
 import { BandageClient } from "./items/bandage";
 import { ClothClient } from "./items/cloth";
 import { ZombieClient } from "./zombie";
-import { SoundClient } from "./sound";
 import { SpikesClient } from "./buildings/spikes";
 import { EntityDto } from "../managers/client-socket-manager";
 import { AssetManager } from "@/managers/asset";
@@ -65,11 +64,6 @@ export class EntityFactory {
       [Entities.ZOMBIE]: (data: EntityDto) => {
         const entity = new ZombieClient(data.id, this.assetManager);
         this.initializeEntity(entity, data);
-        return entity;
-      },
-      [Entities.SOUND]: (data: EntityDto) => {
-        const entity = new SoundClient(data, this.gameState);
-        entity.deserialize(data);
         return entity;
       },
       [Entities.SPIKES]: (data: EntityDto) => {
