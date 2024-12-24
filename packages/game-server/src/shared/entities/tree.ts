@@ -27,6 +27,11 @@ export class Tree extends Entity {
     player.getInventory().push({ key: "Wood" });
     this.getEntityManager().markEntityForRemoval(this);
 
-    this.socketManager.broadcastEvent(new PlayerPickedUpItemEvent(this.getId(), "Wood"));
+    this.socketManager.broadcastEvent(
+      new PlayerPickedUpItemEvent({
+        playerId: player.getId(),
+        itemKey: "Wood",
+      })
+    );
   }
 }

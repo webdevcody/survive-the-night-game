@@ -1,15 +1,20 @@
 import { EventType, ServerSentEvents } from "../events";
 import { GameEvent } from "../types";
 
-export class PlayerDroppedItemEvent implements GameEvent<string> {
-  private type: EventType;
-  private playerId: string;
-  private itemKey: string;
+interface PlayerDroppedItemEventData {
+  playerId: string;
+  itemKey: string;
+}
 
-  constructor(playerId: string, itemKey: string) {
+export class PlayerDroppedItemEvent implements GameEvent<PlayerDroppedItemEventData> {
+  private readonly type: EventType;
+  private readonly playerId: string;
+  private readonly itemKey: string;
+
+  constructor(data: PlayerDroppedItemEventData) {
     this.type = ServerSentEvents.PLAYER_DROPPED_ITEM;
-    this.playerId = playerId;
-    this.itemKey = itemKey;
+    this.playerId = data.playerId;
+    this.itemKey = data.itemKey;
   }
 
   getType(): EventType {
@@ -20,14 +25,10 @@ export class PlayerDroppedItemEvent implements GameEvent<string> {
     return this.playerId;
   }
 
-  serialize(): any {
+  serialize(): PlayerDroppedItemEventData {
     return {
       playerId: this.playerId,
       itemKey: this.itemKey,
     };
-  }
-
-  deserialize(data: any): PlayerDroppedItemEvent {
-    return new PlayerDroppedItemEvent(data.playerId, data.itemKey);
   }
 }

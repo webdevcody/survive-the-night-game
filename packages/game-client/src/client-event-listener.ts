@@ -6,7 +6,6 @@ import { ServerSentEvents } from "@survive-the-night/game-server";
 import { GameClient } from "./client";
 import { ClientSocketManager } from "./managers/client-socket-manager";
 import { GameState } from "./state";
-import { SOUND_TYPES } from "@survive-the-night/game-server/src/shared/entities/sound";
 import { PlayerClient } from "./entities/player";
 import { PlayerHurtEvent } from "@survive-the-night/game-server/src/shared/events/server-sent/player-hurt-event";
 import { PlayerAttackedEvent } from "@survive-the-night/game-server/src/shared/events/server-sent/player-attacked-event";
@@ -15,6 +14,7 @@ import { ZombieClient } from "./entities/zombie";
 import { ZombieHurtEvent } from "@survive-the-night/game-server/src/shared/events/server-sent/zombie-hurt-event";
 import { PlayerDroppedItemEvent } from "@survive-the-night/game-server/src/shared/events/server-sent/player-dropped-item-event";
 import { PlayerPickedUpItemEvent } from "@survive-the-night/game-server/src/shared/events/server-sent/pickup-item-event";
+import { SOUND_TYPES } from "./managers/sound-manager";
 
 export class ClientEventListener {
   private socketManager: ClientSocketManager;

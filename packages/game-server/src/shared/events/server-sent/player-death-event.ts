@@ -2,8 +2,8 @@ import { EventType, ServerSentEvents } from "../events";
 import { GameEvent } from "../types";
 
 export class PlayerDeathEvent implements GameEvent<string> {
-  private type: EventType;
-  private playerId: string;
+  private readonly type: EventType;
+  private readonly playerId: string;
 
   constructor(playerId: string) {
     this.type = ServerSentEvents.PLAYER_DEATH;
@@ -18,11 +18,7 @@ export class PlayerDeathEvent implements GameEvent<string> {
     return this.playerId;
   }
 
-  serialize(): any {
+  serialize(): string {
     return this.playerId;
-  }
-
-  deserialize(data: any): PlayerDeathEvent {
-    return new PlayerDeathEvent(data);
   }
 }

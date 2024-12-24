@@ -2,8 +2,8 @@ import { EventType, ServerSentEvents } from "../events";
 import { GameEvent } from "../types";
 
 export class MapEvent implements GameEvent<number[][]> {
-  private type: EventType;
-  private map: number[][];
+  private readonly type: EventType;
+  private readonly map: number[][];
 
   constructor(map: number[][]) {
     this.type = ServerSentEvents.MAP;
@@ -18,11 +18,7 @@ export class MapEvent implements GameEvent<number[][]> {
     return this.map;
   }
 
-  serialize(): any {
+  serialize(): number[][] {
     return this.map;
-  }
-
-  deserialize(data: any): MapEvent {
-    return new MapEvent(data);
   }
 }
