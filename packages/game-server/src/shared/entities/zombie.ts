@@ -2,7 +2,6 @@ import { EntityManager } from "../../managers/entity-manager";
 import { MapManager } from "../../managers/map-manager";
 import { Direction } from "../direction";
 import { Entity, Entities, RawEntity } from "../entities";
-import { Events } from "../events/events";
 import { Vector2, pathTowards, velocityTowards } from "../physics";
 import {
   Damageable,
@@ -18,6 +17,9 @@ import { getHitboxWithPadding } from "./util";
 import { Wall } from "./wall";
 import { createSoundAtPosition } from "./sound";
 import { SOUND_TYPES } from "./sound";
+import { ZombieDeathEvent } from "../events/server-sent/zombie-death-event";
+import { ServerSocketManager } from "@/managers/server-socket-manager";
+import { ZombieHurtEvent } from "../events/server-sent/zombie-hurt-event";
 
 export class Zombie
   extends Entity
@@ -36,13 +38,19 @@ export class Zombie
   private velocity: Vector2 = { x: 0, y: 0 };
   private health = 3;
   private mapManager: MapManager;
+  private socketManager: ServerSocketManager;
   private lastAttackTime = 0;
 
   public facing = Direction.Right;
 
-  constructor(entityManager: EntityManager, mapManager: MapManager) {
+  constructor(
+    entityManager: EntityManager,
+    mapManager: MapManager,
+    socketManager: ServerSocketManager
+  ) {
     super(entityManager, Entities.ZOMBIE);
     this.mapManager = mapManager;
+    this.socketManager = socketManager;
   }
 
   getCenterPosition(): Vector2 {
@@ -71,12 +79,7 @@ export class Zombie
   afterDeathInteract(): void {
     this.scatterLoot();
     this.getEntityManager().markEntityForRemoval(this);
-
-    createSoundAtPosition(
-      this.getEntityManager(),
-      SOUND_TYPES.ZOMBIE_DEATH,
-      this.getCenterPosition()
-    );
+    this.socketManager.broadcastEvent(new ZombieDeathEvent(this.getId()));
   }
 
   scatterLoot(): void {
@@ -140,6 +143,7 @@ export class Zombie
       SOUND_TYPES.ZOMBIE_HURT,
       this.getCenterPosition()
     );
+    this.socketManager.broadcastEvent(new ZombieHurtEvent(this.getId()));
 
     if (this.health <= 0) {
       this.getEntityManager().markEntityForRemoval(this, 5000);

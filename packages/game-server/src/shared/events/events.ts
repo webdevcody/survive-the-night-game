@@ -1,7 +1,13 @@
 export const ServerSentEvents = {
   GAME_STATE_UPDATE: "gameStateUpdate",
   PLAYER_DEATH: "playerDeath",
+  PLAYER_HURT: "playerHurt",
   YOUR_ID: "yourId",
+  PLAYER_ATTACKED: "playerAttacked",
+  PLAYER_DROPPED_ITEM: "playerDroppedItem",
+  PLAYER_PICKED_UP_ITEM: "playerPickedUpItem",
+  ZOMBIE_DEATH: "zombieDeath",
+  ZOMBIE_HURT: "zombieHurt",
   MAP: "map",
 } as const;
 

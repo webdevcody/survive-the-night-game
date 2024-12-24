@@ -28,6 +28,7 @@ class GameServer {
     this.mapManager = new MapManager(this.entityManager);
     this.mapManager.generateMap();
     this.socketManager = new ServerSocketManager(this.entityManager, this.mapManager, port);
+    this.mapManager.setSocketManager(this.socketManager);
     this.untilNextCycle = DAY_DURATION;
     this.isDay = true;
     this.dayNumber = 1;
