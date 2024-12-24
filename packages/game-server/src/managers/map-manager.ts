@@ -6,6 +6,7 @@ import { Zombie } from "../shared/entities/zombie";
 import { Bandage } from "../shared/entities/items/bandage";
 import { Positionable } from "../shared/extensions";
 import { Spikes } from "../shared/entities/buildings/spikes";
+import { ServerSocketManager } from "./server-socket-manager";
 
 export const Z_INDEX = {
   GROUND: 0,
@@ -95,9 +96,14 @@ export const TILE_SIZE = 16;
 export class MapManager {
   private map: number[][] = [];
   private entityManager: EntityManager;
+  private socketManager?: ServerSocketManager;
 
   constructor(entityManager: EntityManager) {
     this.entityManager = entityManager;
+  }
+
+  public setSocketManager(socketManager: ServerSocketManager) {
+    this.socketManager = socketManager;
   }
 
   public getMap(): number[][] {
@@ -108,7 +114,7 @@ export class MapManager {
     for (let y = 0; y < this.map.length; y++) {
       for (let x = 0; x < this.map[y].length; x++) {
         if (this.map[y][x] === 0 && Math.random() < ZOMBIE_SPAWN_CHANCE * dayNumber) {
-          const zombie = new Zombie(this.entityManager, this);
+          const zombie = new Zombie(this.entityManager, this, this.socketManager!);
           zombie.setPosition({ x: x * TILE_SIZE, y: y * TILE_SIZE });
           this.entityManager.addEntity(zombie);
         }
@@ -152,7 +158,7 @@ export class MapManager {
         if (this.map[y][x] === 0 || this.map[y][x] === 1) {
           if (Math.random() < 0.05) {
             // 30% chance for a tree
-            const tree = new Tree(this.entityManager);
+            const tree = new Tree(this.entityManager, this.socketManager!);
             tree.getExt(Positionable).setPosition({ x: x * TILE_SIZE, y: y * TILE_SIZE });
             this.entityManager.addEntity(tree);
           } else if (Math.random() < WEAPON_SPAWN_CHANCE.PISTOL) {
@@ -188,7 +194,7 @@ export class MapManager {
     this.entityManager.addEntity(bandage);
 
     // Spawn a single zombie near the middle of the map
-    const zombie = new Zombie(this.entityManager, this);
+    const zombie = new Zombie(this.entityManager, this, this.socketManager!);
     zombie.setPosition({ x: middleX + 16 * 4, y: middleY });
     this.entityManager.addEntity(zombie);
   }

@@ -14,10 +14,12 @@ import { DEBUG, PlayerDeathEvent } from "../../index";
 import { Cooldown } from "./util/cooldown";
 import { Bandage } from "./items/bandage";
 import { Cloth } from "./items/cloth";
-import { createSoundAtPosition, Sound, SOUND_TYPES } from "./sound";
 import { Input } from "../input";
-import { SocketManager } from "@/managers/socket-manager";
 import { Consumable, Interactive, Positionable } from "../extensions";
+import { PlayerHurtEvent } from "../events/server-sent/player-hurt-event";
+import { PlayerAttackedEvent } from "../events/server-sent/player-attacked-event";
+import { PlayerDroppedItemEvent } from "../events/server-sent/player-dropped-item-event";
+import { ServerSocketManager } from "../../managers/server-socket-manager";
 
 export class Player
   extends Entity
@@ -54,9 +56,9 @@ export class Player
   private inventory: InventoryItem[] = [];
   private health = Player.MAX_HEALTH;
   private isCrafting = false;
-  private socketManager: SocketManager;
+  private socketManager: ServerSocketManager;
 
-  constructor(entityManager: EntityManager, socketManager: SocketManager) {
+  constructor(entityManager: EntityManager, socketManager: ServerSocketManager) {
     super(entityManager, Entities.PLAYER);
     this.socketManager = socketManager;
     if (DEBUG) {
@@ -116,11 +118,7 @@ export class Player
 
     this.health = Math.max(this.health - damage, 0);
 
-    createSoundAtPosition(
-      this.getEntityManager(),
-      SOUND_TYPES.PLAYER_HURT,
-      this.getCenterPosition()
-    );
+    this.socketManager.broadcastEvent(new PlayerHurtEvent(this.getId()));
 
     if (this.health <= 0) {
       this.onDeath();
@@ -130,14 +128,8 @@ export class Player
   onDeath(): void {
     this.setIsCrafting(false);
     this.scatterInventory();
-    this.socketManager.broadcastEvent(new PlayerDeathEvent(this.getId()));
     this.inventory = [];
-
-    createSoundAtPosition(
-      this.getEntityManager(),
-      SOUND_TYPES.PLAYER_DEATH,
-      this.getCenterPosition()
-    );
+    this.socketManager.broadcastEvent(new PlayerDeathEvent(this.getId()));
   }
 
   scatterInventory(): void {
@@ -268,11 +260,7 @@ export class Player
         bullet.setDirection(this.input.facing);
         this.getEntityManager().addEntity(bullet);
 
-        createSoundAtPosition(
-          this.getEntityManager(),
-          SOUND_TYPES.PISTOL,
-          this.getCenterPosition()
-        );
+        this.socketManager.broadcastEvent(new PlayerAttackedEvent(this.getId(), activeWeapon.key));
       } else if (activeWeapon.key === "Shotgun") {
         // Create 3 bullets with spread
         const spreadAngle = 8; // degrees
@@ -285,10 +273,8 @@ export class Player
           bullet.setDirectionWithOffset(this.input.facing, i * spreadAngle);
           this.getEntityManager().addEntity(bullet);
 
-          createSoundAtPosition(
-            this.getEntityManager(),
-            SOUND_TYPES.SHOTGUN_FIRE,
-            this.getCenterPosition()
+          this.socketManager.broadcastEvent(
+            new PlayerAttackedEvent(this.getId(), activeWeapon.key)
           );
         }
       }
@@ -354,7 +340,7 @@ export class Player
         entity = new Weapon(this.getEntityManager(), item.key);
         break;
       case "Wood":
-        entity = new Tree(this.getEntityManager());
+        entity = new Tree(this.getEntityManager(), this.socketManager!);
         break;
       case "Wall":
         entity = new Wall(this.getEntityManager(), item.state?.health);
@@ -417,11 +403,7 @@ export class Player
 
         this.getEntityManager().addEntity(entity);
 
-        createSoundAtPosition(
-          this.getEntityManager(),
-          SOUND_TYPES.DROP_ITEM,
-          this.getCenterPosition()
-        );
+        this.socketManager.broadcastEvent(new PlayerDroppedItemEvent(this.getId(), item.key));
       }
     }
   }

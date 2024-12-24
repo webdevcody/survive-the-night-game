@@ -318,13 +318,7 @@ export class GameClient {
   }
 
   private positionCameraOnPlayer(): void {
-    const playerId = this.gameState.playerId;
-
-    if (!playerId) {
-      return;
-    }
-
-    const playerToFollow = getEntityById(this.gameState, playerId) as PositionableTrait | undefined;
+    const playerToFollow = this.getMyPlayer() as PositionableTrait | undefined;
 
     if (playerToFollow) {
       this.cameraManager.translateTo(playerToFollow.getPosition());

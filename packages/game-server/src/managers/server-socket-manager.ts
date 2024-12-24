@@ -1,6 +1,6 @@
 import { Server, Socket } from "socket.io";
 import { createServer } from "http";
-import { ClientSentEvents, Events, ServerSentEvents } from "../shared/events/events";
+import { ClientSentEvents, ServerSentEvents } from "../shared/events/events";
 import { EntityManager } from "./entity-manager";
 import { MapManager } from "./map-manager";
 import { Input } from "../shared/input";

@@ -9,6 +9,12 @@ import {
   YourIdEvent,
   ClientSentEvents,
 } from "@survive-the-night/game-server";
+import { PlayerHurtEvent } from "@survive-the-night/game-server/src/shared/events/server-sent/player-hurt-event";
+import { PlayerAttackedEvent } from "@survive-the-night/game-server/src/shared/events/server-sent/player-attacked-event";
+import { ZombieDeathEvent } from "@survive-the-night/game-server/src/shared/events/server-sent/zombie-death-event";
+import { ZombieHurtEvent } from "@survive-the-night/game-server/src/shared/events/server-sent/zombie-hurt-event";
+import { PlayerDroppedItemEvent } from "@survive-the-night/game-server/src/shared/events/server-sent/player-dropped-item-event";
+import { PlayerPickedUpItemEvent } from "@survive-the-night/game-server/src/shared/events/server-sent/pickup-item-event";
 
 export type EntityDto = { id: string } & any;
 
@@ -17,6 +23,12 @@ const SERVER_EVENT_MAP = {
   [ServerSentEvents.PLAYER_DEATH]: PlayerDeathEvent,
   [ServerSentEvents.MAP]: MapEvent,
   [ServerSentEvents.YOUR_ID]: YourIdEvent,
+  [ServerSentEvents.PLAYER_HURT]: PlayerHurtEvent,
+  [ServerSentEvents.PLAYER_ATTACKED]: PlayerAttackedEvent,
+  [ServerSentEvents.ZOMBIE_DEATH]: ZombieDeathEvent,
+  [ServerSentEvents.ZOMBIE_HURT]: ZombieHurtEvent,
+  [ServerSentEvents.PLAYER_DROPPED_ITEM]: PlayerDroppedItemEvent,
+  [ServerSentEvents.PLAYER_PICKED_UP_ITEM]: PlayerPickedUpItemEvent,
 } as const;
 
 export class ClientSocketManager {
