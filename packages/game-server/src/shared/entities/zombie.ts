@@ -12,13 +12,13 @@ import {
   Hitbox,
 } from "../traits";
 import { Destructible, Interactive, Inventory, Positionable } from "../extensions";
-import { Cloth } from "./items/cloth";
 import { getHitboxWithPadding } from "./util";
 import { Wall } from "./wall";
 import { ZombieDeathEvent } from "../events/server-sent/zombie-death-event";
 import { ServerSocketManager } from "@/managers/server-socket-manager";
 import { ZombieHurtEvent } from "../events/server-sent/zombie-hurt-event";
 
+// TODO: refactor to use extensions
 export class Zombie
   extends Entity
   implements Damageable, Movable, PositionableTrait, Updatable, CollidableTrait, Damageable
@@ -50,11 +50,8 @@ export class Zombie
     this.mapManager = mapManager;
     this.socketManager = socketManager;
 
-    // TODO: this is temporary to test zombie inventory
     const inventory = new Inventory(this, socketManager);
-    inventory.addItem({ key: "Cloth" });
-    inventory.addItem({ key: "Cloth" });
-    inventory.addItem({ key: "Cloth" });
+    inventory.addRandomItem(0.2);
     this.extensions.push(inventory);
   }
 
@@ -78,41 +75,18 @@ export class Zombie
   }
 
   onDeath(): void {
-    // get inventory
-    const inventory = this.getExt(Inventory);
-    if (inventory) {
-      inventory.scatterItems(this.getPosition());
-    }
     this.extensions.push(new Interactive(this).onInteract(this.afterDeathInteract.bind(this)));
   }
 
   afterDeathInteract(): void {
-    this.scatterLoot();
+    const inventory = this.getExt(Inventory);
+    if (inventory) {
+      inventory.scatterItems(this.getPosition());
+    }
+
     this.getEntityManager().markEntityForRemoval(this);
     this.socketManager.broadcastEvent(new ZombieDeathEvent(this.getId()));
-  }
-
-  scatterLoot(): void {
-    const offset = 32;
-    const entities = [
-      new Cloth(this.getEntityManager()),
-      new Cloth(this.getEntityManager()),
-      new Cloth(this.getEntityManager()),
-    ];
-
-    for (const entity of entities) {
-      const theta = Math.random() * 2 * Math.PI;
-      const radius = Math.random() * offset;
-
-      if (entity.hasExt(Positionable)) {
-        entity.getExt(Positionable).setPosition({
-          x: this.position.x + radius * Math.cos(theta),
-          y: this.position.y + radius * Math.sin(theta),
-        });
-      }
-
-      this.getEntityManager().addEntity(entity);
-    }
+    this.getEntityManager().markEntityForRemoval(this);
   }
 
   getDamageBox(): Hitbox {
@@ -151,7 +125,6 @@ export class Zombie
     this.socketManager.broadcastEvent(new ZombieHurtEvent(this.getId()));
 
     if (this.health <= 0) {
-      this.getEntityManager().markEntityForRemoval(this, 5000);
       this.onDeath();
     }
   }

@@ -1,6 +1,6 @@
 import { Entity, GenericEntity } from "../entities";
 import { Extension, ExtensionNames, ExtensionSerialized } from "./types";
-import { InventoryItem, ItemType } from "../inventory";
+import { InventoryItem, ITEM_TYPES, ItemType } from "../inventory";
 import { recipes, RecipeType } from "../recipes";
 import { ServerSocketManager } from "../../managers/server-socket-manager";
 import { PlayerDroppedItemEvent } from "../events/server-sent/player-dropped-item-event";
@@ -63,6 +63,14 @@ export default class Inventory implements Extension {
     const foundRecipe = recipes.find((it) => it.getType() === recipe);
     if (foundRecipe === undefined) return;
     this.items = foundRecipe.craft(this.items);
+  }
+
+  public addRandomItem(chance = 1): void {
+    const items = ITEM_TYPES;
+    if (Math.random() < chance) {
+      const item = { key: items[Math.floor(Math.random() * items.length)] };
+      this.addItem(item);
+    }
   }
 
   public scatterItems(position: { x: number; y: number }): void {
