@@ -24,14 +24,21 @@ class GameServer {
   private lastPerformanceLog: number = Date.now();
 
   constructor(port: number = 3001) {
-    this.entityManager = new EntityManager();
+    this.socketManager = new ServerSocketManager(port);
+    this.entityManager = new EntityManager(this.socketManager);
+
     this.mapManager = new MapManager(this.entityManager);
-    this.mapManager.generateMap();
-    this.socketManager = new ServerSocketManager(this.entityManager, this.mapManager, port);
     this.mapManager.setSocketManager(this.socketManager);
+    this.mapManager.generateMap();
+
     this.untilNextCycle = DAY_DURATION;
     this.isDay = true;
     this.dayNumber = 1;
+
+    this.socketManager.setEntityManager(this.entityManager);
+    this.socketManager.setMapManager(this.mapManager);
+    this.socketManager.listen();
+
     this.startGameLoop();
   }
 

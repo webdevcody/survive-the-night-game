@@ -2,14 +2,14 @@ import { Renderable } from "./entities/util";
 import { MapManager } from "./managers/map";
 import { GameState } from "./state";
 import { CraftingTable } from "./ui/crafting-table";
-import { Hotbar } from "./ui/hotbar";
+import { InventoryBarUI } from "./ui/inventory-bar";
 import { Hud } from "./ui/hud";
 
 export class Renderer {
   private ctx: CanvasRenderingContext2D;
   private gameState: GameState;
   private mapManager: MapManager;
-  private hotbar: Hotbar;
+  private hotbar: InventoryBarUI;
   private hud: Hud;
   private craftingTable: CraftingTable;
 
@@ -17,7 +17,7 @@ export class Renderer {
     ctx: CanvasRenderingContext2D,
     gameState: GameState,
     mapManager: MapManager,
-    hotbar: Hotbar,
+    hotbar: InventoryBarUI,
     hud: Hud,
     craftingTable: CraftingTable
   ) {

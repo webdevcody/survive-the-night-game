@@ -1,32 +1,27 @@
 import { Entities, Entity, RawEntity } from "../entities";
 import { EntityManager } from "../../managers/entity-manager";
 import { Bullet } from "./bullet";
-import { Tree } from "./tree";
-import { Wall } from "./wall";
 import { CollidableTrait, Damageable, Interactable, Hitbox, InteractableKey } from "../traits";
 import { Movable, PositionableTrait, Updatable } from "../traits";
 import { distance, normalizeVector, Vector2 } from "../physics";
 import { Direction } from "../direction";
 import { InventoryItem, ItemType } from "../inventory";
-import { Weapon } from "./weapon";
 import { recipes, RecipeType } from "../recipes";
 import { DEBUG, PlayerDeathEvent } from "../../index";
 import { Cooldown } from "./util/cooldown";
-import { Bandage } from "./items/bandage";
-import { Cloth } from "./items/cloth";
 import { Input } from "../input";
-import { Consumable, Interactive, Positionable } from "../extensions";
+import { Consumable, Interactive, Positionable, Inventory } from "../extensions";
 import { PlayerHurtEvent } from "../events/server-sent/player-hurt-event";
 import { PlayerAttackedEvent } from "../events/server-sent/player-attacked-event";
 import { PlayerDroppedItemEvent } from "../events/server-sent/player-dropped-item-event";
 import { ServerSocketManager } from "../../managers/server-socket-manager";
 import { DEBUG_WEAPONS } from "../../config";
+import { Bandage } from "./items/bandage";
 
 export class Player
   extends Entity
   implements Movable, PositionableTrait, Updatable, CollidableTrait, Damageable
 {
-  public static readonly MAX_INVENTORY_SLOTS = 8;
   public static readonly MAX_HEALTH = 3;
   public static readonly MAX_INTERACT_RADIUS = 20;
 
@@ -54,7 +49,6 @@ export class Player
     drop: false,
     consume: false,
   };
-  private inventory: InventoryItem[] = [];
   private health = Player.MAX_HEALTH;
   private isCrafting = false;
   private socketManager: ServerSocketManager;
@@ -62,25 +56,25 @@ export class Player
   constructor(entityManager: EntityManager, socketManager: ServerSocketManager) {
     super(entityManager, Entities.PLAYER);
     this.socketManager = socketManager;
+
+    this.extensions = [new Inventory(this as any, socketManager)];
+
     if (DEBUG_WEAPONS) {
-      this.inventory = [
-        { key: "Knife" },
-        { key: "Pistol" },
-        { key: "Shotgun" },
-        { key: "Wood" },
-        { key: "Wall" },
-        { key: "Wall" },
-        { key: "Wall" },
-      ];
+      const inventory = this.getExt(Inventory);
+      [
+        { key: "Knife" as const },
+        { key: "Pistol" as const },
+        { key: "Shotgun" as const },
+        { key: "Wood" as const },
+        { key: "Wall" as const },
+        { key: "Wall" as const },
+        { key: "Wall" as const },
+      ].forEach((item) => inventory.addItem(item));
     }
   }
 
   get activeItem(): InventoryItem | null {
-    if (this.input.inventoryItem === null) {
-      return null;
-    }
-
-    return this.inventory[this.input.inventoryItem - 1] ?? null;
+    return this.getExt(Inventory).getActiveItem(this.input.inventoryItem);
   }
 
   setIsCrafting(isCrafting: boolean): void {
@@ -128,38 +122,16 @@ export class Player
 
   onDeath(): void {
     this.setIsCrafting(false);
-    this.scatterInventory();
-    this.inventory = [];
+    this.getExt(Inventory).scatterItems(this.position);
     this.socketManager.broadcastEvent(new PlayerDeathEvent(this.getId()));
   }
 
-  scatterInventory(): void {
-    const offset = 32;
-    this.inventory.forEach((item) => {
-      const entity = this.convertItemToEntity(item);
-      const theta = Math.random() * 2 * Math.PI;
-      const radius = Math.random() * offset;
-      const pos: Vector2 = {
-        x: this.position.x + radius * Math.cos(theta),
-        y: this.position.y + radius * Math.sin(theta),
-      };
-
-      if ("setPosition" in entity) {
-        (entity as unknown as PositionableTrait).setPosition(pos);
-      } else if (entity.hasExt(Positionable)) {
-        entity.getExt(Positionable).setPosition(pos);
-      }
-
-      this.getEntityManager().addEntity(entity);
-    });
-  }
-
   isInventoryFull(): boolean {
-    return this.inventory.length >= Player.MAX_INVENTORY_SLOTS;
+    return this.getExt(Inventory).isFull();
   }
 
   hasInInventory(key: ItemType): boolean {
-    return this.inventory.some((it) => it.key === key);
+    return this.getExt(Inventory).hasItem(key);
   }
 
   getCenterPosition(): Vector2 {
@@ -172,7 +144,7 @@ export class Player
   serialize(): RawEntity {
     return {
       ...super.serialize(),
-      inventory: this.inventory,
+      inventory: this.getExt(Inventory).getItems(),
       activeItem: this.activeItem,
       position: this.position,
       velocity: this.velocity,
@@ -218,12 +190,11 @@ export class Player
   }
 
   getInventory(): InventoryItem[] {
-    return this.inventory;
+    return this.getExt(Inventory).getItems();
   }
 
   getActiveWeapon(): InventoryItem | null {
-    const activeKey = this.activeItem?.key ?? "";
-    return ["Knife", "Shotgun", "Pistol"].includes(activeKey) ? this.activeItem : null;
+    return this.getExt(Inventory).getActiveWeapon(this.activeItem);
   }
 
   setPosition(position: Vector2) {
@@ -231,13 +202,7 @@ export class Player
   }
 
   craftRecipe(recipe: RecipeType): void {
-    const foundRecipe = recipes.find((it) => it.getType() === recipe);
-
-    if (foundRecipe === undefined) {
-      return;
-    }
-
-    this.inventory = foundRecipe.craft(this.inventory);
+    this.getExt(Inventory).craftRecipe(recipe);
     this.setIsCrafting(false);
   }
 
@@ -314,17 +279,21 @@ export class Player
 
     if (this.interactCooldown.isReady()) {
       this.interactCooldown.reset();
-      // TODO: make a more abstract method where I can pass in an InteractableKey and get the correct entities back
       const entities = this.getEntityManager()
         .getNearbyEntities(this.position, Player.MAX_INTERACT_RADIUS)
         .filter((entity) => {
           return InteractableKey in entity || entity.hasExt(Interactive);
         });
 
-      // TODO: feels like this could be a helper
       const byProximity = entities.sort((a, b) => {
-        const p1 = "getPosition" in a ? a.getPosition() : a.getExt(Positionable).getPosition();
-        const p2 = "getPosition" in b ? b.getPosition() : b.getExt(Positionable).getPosition();
+        const p1 =
+          "getPosition" in a
+            ? (a as unknown as PositionableTrait).getPosition()
+            : (a as Entity).getExt(Positionable).getPosition();
+        const p2 =
+          "getPosition" in b
+            ? (b as unknown as PositionableTrait).getPosition()
+            : (b as Entity).getExt(Positionable).getPosition();
         return distance(this.position, p1) - distance(this.position, p2);
       });
 
@@ -334,37 +303,10 @@ export class Player
         if (InteractableKey in entity) {
           (entity as Interactable).interact(this);
         } else {
-          entity.getExt(Interactive).interact(this);
+          (entity as Entity).getExt(Interactive).interact(this);
         }
       }
     }
-  }
-
-  convertItemToEntity(item: InventoryItem): Entity {
-    let entity: Entity;
-    switch (item.key) {
-      case "Knife":
-      case "Pistol":
-      case "Shotgun":
-        entity = new Weapon(this.getEntityManager(), item.key);
-        break;
-      case "Wood":
-        entity = new Tree(this.getEntityManager(), this.socketManager!);
-        break;
-      case "Wall":
-        entity = new Wall(this.getEntityManager(), item.state?.health);
-        break;
-      case "Bandage":
-        entity = new Bandage(this.getEntityManager());
-        break;
-      case "Cloth":
-        entity = new Cloth(this.getEntityManager());
-        break;
-      default:
-        throw new Error(`Unknown item type: '${item.key}'`);
-    }
-
-    return entity;
   }
 
   handleDrop(deltaTime: number) {
@@ -375,14 +317,10 @@ export class Player
     if (this.dropCooldown.isReady() && this.input.inventoryItem !== null) {
       this.dropCooldown.reset();
       const itemIndex = this.input.inventoryItem - 1;
-      const item = this.inventory[itemIndex];
+      const item = this.getExt(Inventory).removeItem(itemIndex);
 
       if (item) {
-        // Remove item from inventory
-        this.inventory.splice(itemIndex, 1);
-
-        // Create new entity based on item type
-        const entity = this.convertItemToEntity(item);
+        const entity = this.getEntityManager().createEntityFromItem(item);
 
         const offset = 16;
         let dx = 0;
@@ -403,7 +341,6 @@ export class Player
           y: this.getPosition().y + dy,
         };
 
-        // Position the entity at player's center
         if ("setPosition" in entity) {
           (entity as unknown as PositionableTrait).setPosition(pos);
         } else if (entity.hasExt(Positionable)) {
@@ -430,10 +367,9 @@ export class Player
     if (this.consumeCooldown.isReady() && this.input.inventoryItem !== null) {
       this.consumeCooldown.reset();
       const itemIndex = this.input.inventoryItem - 1;
-      const item = this.inventory[itemIndex];
+      const item = this.getExt(Inventory).getItems()[itemIndex];
 
       if (item) {
-        // Create temporary entity to check if it's consumable
         let entity: Entity;
 
         switch (item.key) {

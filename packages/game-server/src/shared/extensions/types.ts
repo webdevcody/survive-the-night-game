@@ -8,6 +8,7 @@ export const ExtensionNames = {
   updatable: "updatable",
   triggerCooldownAttacker: "triggerCooldownAttacker",
   expirable: "expirable",
+  inventory: "inventory",
 } as const;
 
 export interface Extension {

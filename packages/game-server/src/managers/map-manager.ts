@@ -106,6 +106,14 @@ export class MapManager {
     this.socketManager = socketManager;
   }
 
+  public getSocketManager(): ServerSocketManager {
+    if (!this.socketManager) {
+      throw new Error("MapManager: Socket manager was not set");
+    }
+
+    return this.socketManager;
+  }
+
   public getMap(): number[][] {
     return this.map;
   }
@@ -114,7 +122,7 @@ export class MapManager {
     for (let y = 0; y < this.map.length; y++) {
       for (let x = 0; x < this.map[y].length; x++) {
         if (this.map[y][x] === 0 && Math.random() < ZOMBIE_SPAWN_CHANCE * dayNumber) {
-          const zombie = new Zombie(this.entityManager, this, this.socketManager!);
+          const zombie = new Zombie(this.entityManager, this, this.socketManager);
           zombie.setPosition({ x: x * TILE_SIZE, y: y * TILE_SIZE });
           this.entityManager.addEntity(zombie);
         }
@@ -194,7 +202,7 @@ export class MapManager {
     this.entityManager.addEntity(bandage);
 
     // Spawn a single zombie near the middle of the map
-    const zombie = new Zombie(this.entityManager, this, this.socketManager!);
+    const zombie = new Zombie(this.entityManager, this, this.getSocketManager());
     zombie.setPosition({ x: middleX + 16 * 4, y: middleY });
     this.entityManager.addEntity(zombie);
   }

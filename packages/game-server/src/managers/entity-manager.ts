@@ -19,15 +19,24 @@ import {
   TriggerCooldownAttacker,
   Updatable,
 } from "@/shared/extensions";
+import { InventoryItem } from "../shared/inventory";
+import { Weapon } from "../shared/entities/weapon";
+import { Tree } from "../shared/entities/tree";
+import { Wall } from "../shared/entities/wall";
+import { Bandage } from "../shared/entities/items/bandage";
+import { Cloth } from "../shared/entities/items/cloth";
+import { ServerSocketManager } from "./server-socket-manager";
 
 export class EntityManager {
   private entities: Entity[];
   private entitiesToRemove: Array<{ id: string; expiration: number }> = [];
   private id: number = 0;
   private spatialGrid: SpatialGrid | null = null;
+  private socketManager: ServerSocketManager;
 
-  constructor() {
+  constructor(socketManager: ServerSocketManager) {
     this.entities = [];
+    this.socketManager = socketManager;
   }
 
   setMapSize(width: number, height: number) {
@@ -286,5 +295,31 @@ export class EntityManager {
         this.spatialGrid!.addEntity(entity);
       }
     });
+  }
+
+  public createEntityFromItem(item: InventoryItem): Entity {
+    let entity: Entity;
+    switch (item.key) {
+      case "Knife":
+      case "Pistol":
+      case "Shotgun":
+        entity = new Weapon(this, item.key);
+        break;
+      case "Wood":
+        entity = new Tree(this, this.socketManager);
+        break;
+      case "Wall":
+        entity = new Wall(this, item.state?.health);
+        break;
+      case "Bandage":
+        entity = new Bandage(this);
+        break;
+      case "Cloth":
+        entity = new Cloth(this);
+        break;
+      default:
+        throw new Error(`Unknown item type: '${item.key}'`);
+    }
+    return entity;
   }
 }

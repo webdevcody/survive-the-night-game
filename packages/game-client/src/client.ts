@@ -7,7 +7,7 @@ import { CameraManager } from "./managers/camera";
 import { MapManager } from "./managers/map";
 import { GameState, getEntityById } from "./state";
 import { IClientEntity } from "./entities/util";
-import { Hotbar } from "./ui/hotbar";
+import { InventoryBarUI } from "./ui/inventory-bar";
 import { CraftingTable } from "./ui/crafting-table";
 import { StorageManager } from "./managers/storage";
 import { Hud } from "./ui/hud";
@@ -39,7 +39,7 @@ export class GameClient {
   private renderer: Renderer;
   private hud: Hud;
   private craftingTable: CraftingTable;
-  private hotbar: Hotbar;
+  private hotbar: InventoryBarUI;
 
   // State
   private gameState: GameState;
@@ -161,7 +161,7 @@ export class GameClient {
       },
     });
 
-    this.hotbar = new Hotbar(this.assetManager, this.inputManager, getInventory);
+    this.hotbar = new InventoryBarUI(this.assetManager, this.inputManager, getInventory);
 
     this.gameState = {
       startedAt: Date.now(),

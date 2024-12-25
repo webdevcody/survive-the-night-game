@@ -15,16 +15,16 @@ import { DEBUG_EVENTS } from "@/config";
  */
 export class ServerSocketManager {
   private io: Server;
-  private entityManager: EntityManager;
-  private mapManager: MapManager;
   private players: Map<string, Player> = new Map();
+  private port: number;
+  private httpServer: any;
+  private entityManager?: EntityManager;
+  private mapManager?: MapManager;
 
-  constructor(entityManager: EntityManager, mapManager: MapManager, port: number) {
-    this.entityManager = entityManager;
-    this.mapManager = mapManager;
-
-    const httpServer = createServer();
-    this.io = new Server(httpServer, {
+  constructor(port: number) {
+    this.port = port;
+    this.httpServer = createServer();
+    this.io = new Server(this.httpServer, {
       cors: {
         origin: "*",
         methods: ["GET", "POST"],
@@ -32,19 +32,43 @@ export class ServerSocketManager {
     });
 
     this.io.on("connection", (socket: Socket) => this.onConnection(socket));
+  }
 
-    httpServer.listen(port);
+  public getEntityManager(): EntityManager {
+    if (!this.entityManager) {
+      throw new Error("Entity manager not set");
+    }
+    return this.entityManager;
+  }
+
+  public getMapManager(): MapManager {
+    if (!this.mapManager) {
+      throw new Error("Map manager not set");
+    }
+    return this.mapManager;
+  }
+
+  public setEntityManager(entityManager: EntityManager): void {
+    this.entityManager = entityManager;
+  }
+
+  public setMapManager(mapManager: MapManager): void {
+    this.mapManager = mapManager;
+  }
+
+  public listen(): void {
+    this.io.listen(this.port);
   }
 
   private onDisconnect(socket: Socket): void {
     const player = this.players.get(socket.id);
     this.players.delete(socket.id);
     if (player) {
-      this.entityManager.markEntityForRemoval(player);
+      this.getEntityManager().markEntityForRemoval(player);
     }
 
     if (this.players.size === 0) {
-      this.mapManager.generateMap();
+      this.getMapManager().generateMap();
     }
   }
 
@@ -72,15 +96,15 @@ export class ServerSocketManager {
   private onConnection(socket: Socket): void {
     console.log(`Player connected: ${socket.id}`);
 
-    const player = new Player(this.entityManager, this);
+    const player = new Player(this.getEntityManager(), this);
 
-    const map = this.mapManager.getMap();
+    const map = this.getMapManager().getMap();
     const centerX = (map.length * 16) / 2;
     const centerY = (map[0].length * 16) / 2;
     player.setPosition({ x: centerX, y: centerY });
 
     this.players.set(socket.id, player);
-    this.entityManager.addEntity(player);
+    this.getEntityManager().addEntity(player);
 
     socket.emit(ServerSentEvents.MAP, map);
     socket.emit(ServerSentEvents.YOUR_ID, player.getId());

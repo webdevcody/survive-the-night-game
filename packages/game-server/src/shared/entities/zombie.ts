@@ -11,7 +11,7 @@ import {
   CollidableTrait,
   Hitbox,
 } from "../traits";
-import { Destructible, Interactive, Positionable } from "../extensions";
+import { Destructible, Interactive, Inventory, Positionable } from "../extensions";
 import { Cloth } from "./items/cloth";
 import { getHitboxWithPadding } from "./util";
 import { Wall } from "./wall";
@@ -49,6 +49,13 @@ export class Zombie
     super(entityManager, Entities.ZOMBIE);
     this.mapManager = mapManager;
     this.socketManager = socketManager;
+
+    // TODO: this is temporary to test zombie inventory
+    const inventory = new Inventory(this, socketManager);
+    inventory.addItem({ key: "Cloth" });
+    inventory.addItem({ key: "Cloth" });
+    inventory.addItem({ key: "Cloth" });
+    this.extensions.push(inventory);
   }
 
   getCenterPosition(): Vector2 {
@@ -71,6 +78,11 @@ export class Zombie
   }
 
   onDeath(): void {
+    // get inventory
+    const inventory = this.getExt(Inventory);
+    if (inventory) {
+      inventory.scatterItems(this.getPosition());
+    }
     this.extensions.push(new Interactive(this).onInteract(this.afterDeathInteract.bind(this)));
   }
 
