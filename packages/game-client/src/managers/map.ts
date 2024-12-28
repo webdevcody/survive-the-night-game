@@ -1,4 +1,4 @@
-import { DEBUG } from "@survive-the-night/game-server";
+import { DEBUG_SHOW_HITBOXES } from "@survive-the-night/game-server/src/config";
 import { TILE_IDS } from "@survive-the-night/game-server/src/managers/map-manager";
 
 const tileLocations: Record<string, [number, number]> = {
@@ -45,7 +45,7 @@ export class MapManager {
           this.tileSize
         );
 
-        if (DEBUG) {
+        if (DEBUG_SHOW_HITBOXES) {
           // Draw row,col text
           ctx.font = "3px Arial";
           ctx.fillStyle = "white";

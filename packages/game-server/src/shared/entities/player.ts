@@ -7,7 +7,7 @@ import { distance, normalizeVector, Vector2 } from "../physics";
 import { Direction } from "../direction";
 import { InventoryItem, ItemType } from "../inventory";
 import { recipes, RecipeType } from "../recipes";
-import { DEBUG, PlayerDeathEvent } from "../../index";
+import { PlayerDeathEvent } from "../../index";
 import { Cooldown } from "./util/cooldown";
 import { Input } from "../input";
 import { Consumable, Interactive, Positionable, Inventory } from "../extensions";
@@ -20,8 +20,7 @@ import { Bandage } from "./items/bandage";
 
 export class Player
   extends Entity
-  implements Movable, PositionableTrait, Updatable, CollidableTrait, Damageable
-{
+  implements Movable, PositionableTrait, Updatable, CollidableTrait, Damageable {
   public static readonly MAX_HEALTH = 3;
   public static readonly MAX_INTERACT_RADIUS = 20;
 
