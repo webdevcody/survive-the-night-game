@@ -176,10 +176,10 @@ export class Zombie extends Entity {
     movable.setVelocity(velocity);
 
     this.handleMovement(deltaTime);
-    this.handleAttack(deltaTime);
+    this.handleAttack();
   }
 
-  private handleAttack(deltaTime: number) {
+  private handleAttack() {
     if (!this.attackNearbyPlayers()) {
       this.attackNearbyWalls();
     }

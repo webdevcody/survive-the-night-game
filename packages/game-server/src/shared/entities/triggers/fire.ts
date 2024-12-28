@@ -1,27 +1,24 @@
 
 import { EntityManager } from "../../../managers/entity-manager";
-import { Entity, Entities } from "../../entities";
-import { Interactive, Positionable } from "../../extensions";
-import { Player } from "../player";
+import { Entity, Entities, GenericEntity } from "../../entities";
+import { Ignitable, Positionable, Triggerable } from "../../extensions";
 
-export class Cloth extends Entity {
+export class Fire extends Entity {
   public static readonly Size = 16;
 
   constructor(entityManager: EntityManager) {
-    super(entityManager, Entities.CLOTH);
+    super(entityManager, Entities.FIRE);
 
     this.extensions = [
-      new Positionable(this).setSize(Cloth.Size),
-      new Interactive(this).onInteract(this.interact.bind(this)),
+      new Positionable(this).setSize(16),
+      new Triggerable(this, 16, 16)
+        .setOnEntityEntered(this.catchFire.bind(this))
     ];
   }
 
-  private interact(player: Player): void {
-    if (player.isInventoryFull()) {
-      return;
+  catchFire(entity: GenericEntity) {
+    if (!entity.hasExt(Ignitable)) {
+      entity.addExtension(new Ignitable(entity));
     }
-
-    player.getInventory().push({ key: "Cloth" });
-    this.getEntityManager().markEntityForRemoval(this);
   }
 }

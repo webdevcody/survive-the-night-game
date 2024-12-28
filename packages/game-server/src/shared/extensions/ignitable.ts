@@ -9,6 +9,8 @@ export default class Ignitable implements Extension {
   private self: GenericEntity;
   private cooldown: Cooldown;
 
+
+  // TODO: this should be configurable for damage / cooldown
   public constructor(self: GenericEntity) {
     this.self = self;
     this.cooldown = new Cooldown(1);

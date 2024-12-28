@@ -7,6 +7,7 @@ import { Bandage } from "../shared/entities/items/bandage";
 import { Positionable } from "../shared/extensions";
 import { Spikes } from "../shared/entities/buildings/spikes";
 import { ServerSocketManager } from "./server-socket-manager";
+import { Fire } from "../shared/entities/triggers/fire";
 
 export const Z_INDEX = {
   GROUND: 0,
@@ -205,6 +206,13 @@ export class MapManager {
     const zombie = new Zombie(this.entityManager, this, this.getSocketManager());
     zombie.setPosition({ x: middleX + 16 * 4, y: middleY });
     this.entityManager.addEntity(zombie);
+
+    const fire = new Fire(this.entityManager);
+    fire.getExt(Positionable).setPosition({
+      x: middleX + 32,
+      y: middleY + 16
+    });
+    this.entityManager.addEntity(fire);
   }
 
   private placeBiome(biomeX: number, biomeY: number) {

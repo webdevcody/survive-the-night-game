@@ -50,6 +50,10 @@ export class GenericEntity extends EventTarget {
     return this.id;
   }
 
+  public addExtension(extension: Extension) {
+    this.extensions.push(extension);
+  }
+
   public setId(id: string) {
     this.id = id;
   }

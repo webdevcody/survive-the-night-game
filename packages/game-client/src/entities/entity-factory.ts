@@ -12,6 +12,7 @@ import { SpikesClient } from "./buildings/spikes";
 import { EntityDto } from "../managers/client-socket-manager";
 import { AssetManager } from "@/managers/asset";
 import { GameState } from "@/state";
+import { FireClient } from "./traps/fire";
 
 export class EntityFactory {
   private assetManager: AssetManager;
@@ -48,6 +49,11 @@ export class EntityFactory {
       },
       [Entities.WEAPON]: (data: EntityDto) => {
         const entity = new WeaponClient(data, this.assetManager, data.weaponType);
+        entity.deserialize(data);
+        return entity;
+      },
+      [Entities.FIRE]: (data: EntityDto) => {
+        const entity = new FireClient(data, this.assetManager);
         entity.deserialize(data);
         return entity;
       },
