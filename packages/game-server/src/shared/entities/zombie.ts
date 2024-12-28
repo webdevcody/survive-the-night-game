@@ -3,8 +3,8 @@ import { MapManager } from "../../managers/map-manager";
 import { Direction } from "../direction";
 import { Entity, Entities, RawEntity } from "../entities";
 import { Vector2, pathTowards, velocityTowards } from "../physics";
-import { Updatable, CollidableTrait, Hitbox } from "../traits";
-import { Collidable, Destructible, Interactive, Inventory, Positionable } from "../extensions";
+import { CollidableTrait, Hitbox } from "../traits";
+import { Collidable, Destructible, Interactive, Inventory, Positionable, Updatable } from "../extensions";
 import { getHitboxWithPadding } from "./util";
 import { Wall } from "./wall";
 import { ZombieDeathEvent } from "../events/server-sent/zombie-death-event";
@@ -13,7 +13,7 @@ import { ServerSocketManager } from "../../managers/server-socket-manager";
 import Movable from "../extensions/movable";
 
 // TODO: refactor to use extensions
-export class Zombie extends Entity implements Updatable, CollidableTrait {
+export class Zombie extends Entity implements CollidableTrait {
   private static readonly ZOMBIE_WIDTH = 16;
   private static readonly ZOMBIE_HEIGHT = 16;
   private static readonly ZOMBIE_SPEED = 35;
@@ -54,6 +54,10 @@ export class Zombie extends Entity implements Updatable, CollidableTrait {
 
     this.extensions.push(new Collidable(this));
     this.extensions.push(new Movable(this));
+
+    this.extensions.push(
+      new Updatable(this, this.updateZombie.bind(this))
+    );
   }
 
   getCenterPosition(): Vector2 {
@@ -94,12 +98,6 @@ export class Zombie extends Entity implements Updatable, CollidableTrait {
     const position = positionable.getPosition();
     return position;
   }
-
-  // serialize(): RawEntity {
-  //   return {
-  //     ...super.serialize(),
-  //   };
-  // }
 
   setPosition(position: Vector2) {
     const positionable = this.getExt(Positionable);
@@ -143,7 +141,7 @@ export class Zombie extends Entity implements Updatable, CollidableTrait {
     return this.attemptAttackEntity(player);
   }
 
-  update(deltaTime: number) {
+  updateZombie(deltaTime: number) {
     const destructible = this.getExt(Destructible);
     if (destructible.isDead()) {
       return;

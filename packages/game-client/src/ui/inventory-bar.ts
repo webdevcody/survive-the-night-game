@@ -85,7 +85,6 @@ export class InventoryBarUI implements Renderable {
       ctx.fillStyle = "white";
       ctx.font = "32px Arial";
       ctx.textAlign = "left";
-      ctx.fillText(`${i + 1}`, slotLeft + 4, slotsTop + 20);
 
       const inventoryItem = items[i];
 
@@ -98,6 +97,7 @@ export class InventoryBarUI implements Renderable {
         Direction.Right
       );
       ctx.drawImage(image, slotLeft, slotsTop, slotSize, slotSize);
+      ctx.fillText(`${i + 1}`, slotLeft + 4, slotsTop + 20);
     }
 
     ctx.restore();
