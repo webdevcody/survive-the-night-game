@@ -11,18 +11,17 @@ import {
   CollidableTrait,
   Hitbox,
 } from "../traits";
-import { Destructible, Interactive, Inventory, Positionable } from "../extensions";
+import { Collidable, Destructible, Interactive, Inventory, Positionable } from "../extensions";
 import { getHitboxWithPadding } from "./util";
 import { Wall } from "./wall";
 import { ZombieDeathEvent } from "../events/server-sent/zombie-death-event";
-import { ServerSocketManager } from "@/managers/server-socket-manager";
+// import { ServerSocketManager } from "@/managers/server-socket-manager";
 import { ZombieHurtEvent } from "../events/server-sent/zombie-hurt-event";
+import Ignitable from "../extensions/ignitable";
+import { ServerSocketManager } from "../../managers/server-socket-manager";
 
 // TODO: refactor to use extensions
-export class Zombie
-  extends Entity
-  implements Damageable, Movable, PositionableTrait, Updatable, CollidableTrait, Damageable
-{
+export class Zombie extends Entity implements Movable, Updatable, CollidableTrait {
   private static readonly ZOMBIE_WIDTH = 16;
   private static readonly ZOMBIE_HEIGHT = 16;
   private static readonly ZOMBIE_SPEED = 35;
@@ -32,7 +31,6 @@ export class Zombie
   private static readonly ATTACK_COOLDOWN = 1000; // 1 second in milliseconds
 
   private currentWaypoint: Vector2 | null = null;
-  private position: Vector2 = { x: 0, y: 0 };
   private velocity: Vector2 = { x: 0, y: 0 };
   private health = 3;
   private mapManager: MapManager;
@@ -53,28 +51,37 @@ export class Zombie
     const inventory = new Inventory(this, socketManager);
     inventory.addRandomItem(0.2);
     this.extensions.push(inventory);
+
+    const destructible = new Destructible(this);
+    destructible.setMaxHealth(3);
+    destructible.setHealth(3);
+    destructible.onDeath(this.onDeath.bind(this));
+    this.extensions.push(destructible);
+
+    this.extensions.push(new Positionable(this).setSize(Zombie.ZOMBIE_WIDTH));
+
+    this.extensions.push(new Collidable(this));
   }
 
   getCenterPosition(): Vector2 {
+    const positionable = this.getExt(Positionable);
+    const position = positionable.getPosition();
     return {
-      x: this.position.x + Zombie.ZOMBIE_WIDTH / 2,
-      y: this.position.y + Zombie.ZOMBIE_HEIGHT / 2,
+      x: position.x + Zombie.ZOMBIE_WIDTH / 2,
+      y: position.y + Zombie.ZOMBIE_HEIGHT / 2,
     };
   }
 
+  static getHitbox(position: Vector2): Hitbox {
+    return getHitboxWithPadding(position, 4);
+  }
+
   getHitbox(): Hitbox {
-    return Zombie.getHitbox(this.position);
-  }
-
-  getMaxHealth(): number {
-    return 3;
-  }
-
-  isDead(): boolean {
-    return this.health <= 0;
+    return Zombie.getHitbox(this.getPosition());
   }
 
   onDeath(): void {
+    this.socketManager.broadcastEvent(new ZombieHurtEvent(this.getId()));
     this.extensions.push(new Interactive(this).onInteract(this.afterDeathInteract.bind(this)));
   }
 
@@ -89,18 +96,6 @@ export class Zombie
     this.getEntityManager().markEntityForRemoval(this);
   }
 
-  getDamageBox(): Hitbox {
-    return Zombie.getDamageBox(this.position);
-  }
-
-  static getDamageBox(position: Vector2): Hitbox {
-    return getHitboxWithPadding(position, 0);
-  }
-
-  static getHitbox(position: Vector2): Hitbox {
-    return getHitboxWithPadding(position, 4);
-  }
-
   setVelocity(velocity: Vector2) {
     this.velocity = velocity;
   }
@@ -110,60 +105,45 @@ export class Zombie
   }
 
   getPosition(): Vector2 {
-    return this.position;
-  }
-
-  heal(amount: number): void {}
-
-  damage(damage: number) {
-    if (this.isDead()) {
-      return;
-    }
-
-    this.health -= damage;
-
-    this.socketManager.broadcastEvent(new ZombieHurtEvent(this.getId()));
-
-    if (this.health <= 0) {
-      this.onDeath();
-    }
-  }
-
-  getHealth(): number {
-    return this.health;
+    const positionable = this.getExt(Positionable);
+    const position = positionable.getPosition();
+    return position;
   }
 
   serialize(): RawEntity {
     return {
       ...super.serialize(),
       health: this.health,
-      position: this.position,
       facing: this.facing,
       velocity: this.velocity,
     };
   }
 
   setPosition(position: Vector2) {
-    this.position = position;
+    const positionable = this.getExt(Positionable);
+    positionable.setPosition(position);
   }
 
   // TODO: this function is a copy one from Player.
   //   Would be better to merge them
   handleMovement(deltaTime: number) {
-    const previousX = this.position.x;
-    const previousY = this.position.y;
+    const position = this.getPosition();
+    const previousX = position.x;
+    const previousY = position.y;
 
-    this.position.x += this.velocity.x * deltaTime;
-
-    if (this.getEntityManager().isColliding(this, [Entities.ZOMBIE])) {
-      this.position.x = previousX;
-    }
-
-    this.position.y += this.velocity.y * deltaTime;
+    position.x += this.velocity.x * deltaTime;
 
     if (this.getEntityManager().isColliding(this, [Entities.ZOMBIE])) {
-      this.position.y = previousY;
+      position.x = previousX;
     }
+
+    position.y += this.velocity.y * deltaTime;
+
+    if (this.getEntityManager().isColliding(this, [Entities.ZOMBIE])) {
+      position.y = previousY;
+    }
+
+    this.setPosition(position);
   }
 
   private isAtWaypoint(): boolean {
@@ -182,7 +162,8 @@ export class Zombie
   }
 
   update(deltaTime: number) {
-    if (this.isDead()) {
+    const destructible = this.getExt(Destructible);
+    if (destructible.isDead()) {
       return;
     }
 

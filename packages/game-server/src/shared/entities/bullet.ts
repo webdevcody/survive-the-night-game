@@ -3,6 +3,7 @@ import { EntityManager } from "../../managers/entity-manager";
 import { Direction, normalizeDirection } from "../direction";
 import { Entities, RawEntity } from "../entities";
 import { Entity } from "../entities";
+import { Destructible } from "../extensions";
 import { Vector2, distance, normalizeVector } from "../physics";
 import {
   CollidableTrait,
@@ -108,6 +109,9 @@ export class Bullet
       if (DamageableKey in intersectingEntity) {
         const damageable = intersectingEntity as unknown as Damageable;
         damageable.damage(1);
+      } else if (intersectingEntity.hasExt(Destructible)) {
+        const destructible = intersectingEntity.getExt(Destructible);
+        destructible.damage(1);
       }
     }
   }

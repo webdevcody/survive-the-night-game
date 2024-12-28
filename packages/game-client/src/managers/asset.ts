@@ -85,6 +85,7 @@ export const assetsMap = {
   ShotgunFacingLeft: assetMap({ x: 17, y: 133, flipX: true }),
   ShotgunFacingRight: assetMap({ x: 17, y: 133 }),
   ShotgunFacingUp: assetMap({ x: 34, y: 133 }),
+  Fire: assetMap({ x: 51, y: 265 }),
   Player: assetMap({ x: 493, y: 209 }),
   PlayerFacingDown: assetMap(playerDownFrameOrigins[0]),
   PlayerFacingDown0: assetMap(playerDownFrameOrigins[0]),
@@ -105,6 +106,12 @@ export const assetsMap = {
   Tree: assetMap({ x: 221, y: 209 }),
   Wall: assetMap({ x: 357, y: 95 }),
   Zombie: assetMap({ x: 493, y: 76 }),
+  // TODO: we should probably explicitly have something for Idle
+  // TODO: the fact we are hard coding frame 0, 1, 2 is super brittle....
+  // TODO: it might be better, if these things lived in the zombie entity (co location is nice)
+  Zombie0: assetMap(zombieDownFrameOrigins[0]),
+  Zombie1: assetMap(zombieDownFrameOrigins[1]),
+  Zombie2: assetMap(zombieDownFrameOrigins[2]),
   ZombieDead: assetMap({ x: 289, y: 19 }),
   ZombieFacingDown: assetMap(zombieDownFrameOrigins[0]),
   ZombieFacingDown0: assetMap(zombieDownFrameOrigins[0]),

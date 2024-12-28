@@ -9,6 +9,7 @@ export const ExtensionNames = {
   triggerCooldownAttacker: "triggerCooldownAttacker",
   expirable: "expirable",
   inventory: "inventory",
+  ignitable: "ignitable"
 } as const;
 
 export interface Extension {
@@ -17,7 +18,7 @@ export interface Extension {
   update?: (deltaTime: number) => void;
 }
 
-export type ExtensionCtor<T = any> = { new (...args: any[]): T };
+export type ExtensionCtor<T = any> = { new(...args: any[]): T };
 
 export interface ExtensionSerialized {
   name: keyof typeof ExtensionNames;

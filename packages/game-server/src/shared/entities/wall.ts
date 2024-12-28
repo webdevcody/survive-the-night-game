@@ -1,6 +1,7 @@
 import { EntityManager } from "../../managers/entity-manager";
 import { Entity, Entities } from "../entities";
 import { Collidable, Destructible, Interactive, Positionable } from "../extensions";
+import Ignitable from "../extensions/ignitable";
 import { Player } from "./player";
 
 export class Wall extends Entity {

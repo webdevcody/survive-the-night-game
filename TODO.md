@@ -2,6 +2,11 @@
 
 Feel free to pick any item listed out here to work on.
 
+
+### Stream TODO
+
+- [ ] try to refactor the zombie entity to use ECS
+
 ## High Priority (Core Mechanics):
 
 ### Refactoring

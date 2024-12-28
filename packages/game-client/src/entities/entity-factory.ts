@@ -62,8 +62,8 @@ export class EntityFactory {
         return entity;
       },
       [Entities.ZOMBIE]: (data: EntityDto) => {
-        const entity = new ZombieClient(data.id, this.assetManager);
-        this.initializeEntity(entity, data);
+        const entity = new ZombieClient(data, this.assetManager);
+        entity.deserialize(data);
         return entity;
       },
       [Entities.SPIKES]: (data: EntityDto) => {

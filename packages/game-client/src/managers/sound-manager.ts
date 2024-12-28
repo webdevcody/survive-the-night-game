@@ -1,6 +1,7 @@
 import { GameClient } from "@/client";
 import { linearFalloff } from "../util/math";
 import { distance, Vector2 } from "@survive-the-night/game-server";
+import { DEBUG_DISABLE_SOUNDS } from "@survive-the-night/game-server/src/config";
 
 // these values must match the sound files in the client
 export const SOUND_TYPES = {
@@ -47,7 +48,10 @@ export class SoundManager {
     const audio = this.audioCache.get(sound)?.cloneNode() as HTMLAudioElement;
     if (audio) {
       audio.volume = volume;
-      audio.play();
+
+      if (!DEBUG_DISABLE_SOUNDS) {
+        audio.play();
+      }
     }
   }
 

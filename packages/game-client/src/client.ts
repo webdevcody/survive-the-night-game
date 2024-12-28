@@ -1,7 +1,13 @@
 import { AssetManager } from "./managers/asset";
 import { InputManager } from "./managers/input";
 import { EntityDto, ClientSocketManager } from "./managers/client-socket-manager";
-import { Direction, Entity, Input, PositionableTrait } from "@survive-the-night/game-server";
+import {
+  Direction,
+  Entities,
+  Entity,
+  Input,
+  PositionableTrait,
+} from "@survive-the-night/game-server";
 import { PlayerClient } from "./entities/player";
 import { CameraManager } from "./managers/camera";
 import { MapManager } from "./managers/map";
@@ -273,6 +279,7 @@ export class GameClient {
     this.isStarted = false;
   }
 
+  // TODO: clean this up with delta compression and a different approach for new / old entities
   private updateEntities(): void {
     // remove dead entities
     for (let i = 0; i < this.getEntities().length; i++) {
@@ -288,6 +295,10 @@ export class GameClient {
       const existingEntity = this.getEntities().find((e) => e.getId() === entityData.id);
 
       if (existingEntity) {
+        if (existingEntity.type === Entities.ZOMBIE) {
+          console.log("existingEntity.type", existingEntity);
+        }
+        // The new ECS approach for how entities are created
         if ("deserialize" in existingEntity) {
           existingEntity.deserialize(entityData);
         } else {
@@ -298,6 +309,7 @@ export class GameClient {
         continue;
       }
 
+      // NEW ENTITY HERE
       const factory = new EntityFactory(this.assetManager, this.gameState);
       const entity = factory.createEntity(entityData.type, entityData);
       this.getEntities().push(entity);

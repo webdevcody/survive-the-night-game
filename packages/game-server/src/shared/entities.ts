@@ -19,6 +19,7 @@ export const Entities = {
   CLOTH: "cloth",
   SOUND: "sound",
   SPIKES: "spikes",
+  FIRE: "fire",
 } as const;
 
 export type EntityType = (typeof Entities)[keyof typeof Entities];

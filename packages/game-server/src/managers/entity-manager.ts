@@ -223,8 +223,8 @@ export class EntityManager {
             ? otherEntity.getDamageBox()
             : otherEntity.getExt(Destructible).getDamageBox()
           : "getHitbox" in otherEntity
-          ? otherEntity.getHitbox()
-          : otherEntity.getExt(Collidable).getHitBox();
+            ? otherEntity.getHitbox()
+            : otherEntity.getExt(Collidable).getHitBox();
 
       const dead =
         ("isDead" in otherEntity && otherEntity.isDead()) ||
