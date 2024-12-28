@@ -1,11 +1,10 @@
 import { EntityManager } from "../../managers/entity-manager";
 import { MapManager } from "../../managers/map-manager";
 import { Direction } from "../direction";
-import { Entity, Entities, RawEntity } from "../entities";
+import { Entity, Entities } from "../entities";
 import { Vector2, pathTowards, velocityTowards } from "../physics";
-import { CollidableTrait, Hitbox } from "../traits";
+import { Hitbox } from "../traits";
 import { Collidable, Destructible, Interactive, Inventory, Positionable, Updatable } from "../extensions";
-import { getHitboxWithPadding } from "./util";
 import { Wall } from "./wall";
 import { ZombieDeathEvent } from "../events/server-sent/zombie-death-event";
 import { ZombieHurtEvent } from "../events/server-sent/zombie-hurt-event";
@@ -23,8 +22,6 @@ export class Zombie extends Entity {
   private static readonly ATTACK_COOLDOWN = 1000; // 1 second in milliseconds
 
   private currentWaypoint: Vector2 | null = null;
-  private velocity: Vector2 = { x: 0, y: 0 };
-  private health = 3;
   private mapManager: MapManager;
   private socketManager: ServerSocketManager;
   private lastAttackTime = 0;
@@ -111,13 +108,17 @@ export class Zombie extends Entity {
     const previousX = position.x;
     const previousY = position.y;
 
-    position.x += this.velocity.x * deltaTime;
+
+    const movable = this.getExt(Movable);
+    const velocity = movable.getVelocity();
+
+    position.x += velocity.x * deltaTime;
 
     if (this.getEntityManager().isColliding(this, [Entities.ZOMBIE])) {
       position.x = previousX;
     }
 
-    position.y += this.velocity.y * deltaTime;
+    position.y += velocity.y * deltaTime;
 
     if (this.getEntityManager().isColliding(this, [Entities.ZOMBIE])) {
       position.y = previousY;
@@ -159,15 +160,20 @@ export class Zombie extends Entity {
       );
     }
 
+    const movable = this.getExt(Movable);
+    const velocity = movable.getVelocity();
+
     // Update velocity to move towards waypoint if we have one
     if (this.currentWaypoint) {
       const velocityVector = velocityTowards(this.getCenterPosition(), this.currentWaypoint);
-      this.velocity.x = velocityVector.x * Zombie.ZOMBIE_SPEED;
-      this.velocity.y = velocityVector.y * Zombie.ZOMBIE_SPEED;
+      velocity.x = velocityVector.x * Zombie.ZOMBIE_SPEED;
+      velocity.y = velocityVector.y * Zombie.ZOMBIE_SPEED;
     } else {
-      this.velocity.x = 0;
-      this.velocity.y = 0;
+      velocity.x = 0;
+      velocity.y = 0;
     }
+
+    movable.setVelocity(velocity);
 
     this.handleMovement(deltaTime);
     this.handleAttack(deltaTime);
