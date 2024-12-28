@@ -11,4 +11,5 @@ export * from "./shared/events/events";
 export * from "./shared/events/server-sent";
 export * from "./shared/extensions";
 
+// TODO: move to config
 export const DEBUG = false;

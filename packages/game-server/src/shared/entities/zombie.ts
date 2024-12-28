@@ -3,25 +3,17 @@ import { MapManager } from "../../managers/map-manager";
 import { Direction } from "../direction";
 import { Entity, Entities, RawEntity } from "../entities";
 import { Vector2, pathTowards, velocityTowards } from "../physics";
-import {
-  Damageable,
-  Movable,
-  PositionableTrait,
-  Updatable,
-  CollidableTrait,
-  Hitbox,
-} from "../traits";
+import { Updatable, CollidableTrait, Hitbox } from "../traits";
 import { Collidable, Destructible, Interactive, Inventory, Positionable } from "../extensions";
 import { getHitboxWithPadding } from "./util";
 import { Wall } from "./wall";
 import { ZombieDeathEvent } from "../events/server-sent/zombie-death-event";
-// import { ServerSocketManager } from "@/managers/server-socket-manager";
 import { ZombieHurtEvent } from "../events/server-sent/zombie-hurt-event";
-import Ignitable from "../extensions/ignitable";
 import { ServerSocketManager } from "../../managers/server-socket-manager";
+import Movable from "../extensions/movable";
 
 // TODO: refactor to use extensions
-export class Zombie extends Entity implements Movable, Updatable, CollidableTrait {
+export class Zombie extends Entity implements Updatable, CollidableTrait {
   private static readonly ZOMBIE_WIDTH = 16;
   private static readonly ZOMBIE_HEIGHT = 16;
   private static readonly ZOMBIE_SPEED = 35;
@@ -61,6 +53,7 @@ export class Zombie extends Entity implements Movable, Updatable, CollidableTrai
     this.extensions.push(new Positionable(this).setSize(Zombie.ZOMBIE_WIDTH));
 
     this.extensions.push(new Collidable(this));
+    this.extensions.push(new Movable(this));
   }
 
   getCenterPosition(): Vector2 {
@@ -96,28 +89,17 @@ export class Zombie extends Entity implements Movable, Updatable, CollidableTrai
     this.getEntityManager().markEntityForRemoval(this);
   }
 
-  setVelocity(velocity: Vector2) {
-    this.velocity = velocity;
-  }
-
-  getVelocity(): Vector2 {
-    return this.velocity;
-  }
-
   getPosition(): Vector2 {
     const positionable = this.getExt(Positionable);
     const position = positionable.getPosition();
     return position;
   }
 
-  serialize(): RawEntity {
-    return {
-      ...super.serialize(),
-      health: this.health,
-      facing: this.facing,
-      velocity: this.velocity,
-    };
-  }
+  // serialize(): RawEntity {
+  //   return {
+  //     ...super.serialize(),
+  //   };
+  // }
 
   setPosition(position: Vector2) {
     const positionable = this.getExt(Positionable);

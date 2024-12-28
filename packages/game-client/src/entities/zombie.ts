@@ -16,24 +16,16 @@ import { GameState, getEntityById } from "../state";
 import { debugDrawHitbox } from "../util/debug";
 import { Zombie } from "@survive-the-night/game-server/src/shared/entities/zombie";
 import { Z_INDEX } from "@survive-the-night/game-server/src/managers/map-manager";
+import Movable from "@survive-the-night/game-server/src/shared/extensions/movable";
 
-export class ZombieClient
-  extends GenericEntity
-  implements IClientEntity, Renderable, PositionableTrait
-{
+export class ZombieClient extends GenericEntity implements IClientEntity, Renderable {
   private assetManager: AssetManager;
   private lastRenderPosition = { x: 0, y: 0 };
   private readonly LERP_FACTOR = 0.1;
-  private velocity: Vector2 = { x: 0, y: 0 };
-  private health = 3;
 
   constructor(data: RawEntity, assetManager: AssetManager) {
     super(data);
     this.assetManager = assetManager;
-  }
-
-  getMaxHealth(): number {
-    return 3;
   }
 
   public getZIndex(): number {
@@ -52,7 +44,23 @@ export class ZombieClient
   }
 
   setVelocity(velocity: Vector2): void {
-    this.velocity = velocity;
+    const movable = this.getExt(Movable);
+    movable.setVelocity(velocity);
+  }
+
+  getVelocity(): Vector2 {
+    const movable = this.getExt(Movable);
+    return movable.getVelocity();
+  }
+
+  getMaxHealth(): number {
+    const destructible = this.getExt(Destructible);
+    return destructible.getMaxHealth();
+  }
+
+  getHealth(): number {
+    const destructible = this.getExt(Destructible);
+    return destructible.getHealth();
   }
 
   render(ctx: CanvasRenderingContext2D, gameState: GameState): void {
@@ -62,7 +70,7 @@ export class ZombieClient
     this.lastRenderPosition.y += (targetPosition.y - this.lastRenderPosition.y) * this.LERP_FACTOR;
 
     const renderPosition = roundVector2(this.lastRenderPosition);
-    const facing = determineDirection(this.velocity);
+    const facing = determineDirection(this.getVelocity());
 
     const frameIndex = getFrameIndex(gameState.startedAt, {
       duration: 500,
@@ -94,16 +102,9 @@ export class ZombieClient
         ctx.fillText(text, this.getCenterPosition().x - textWidth / 2, this.getPosition().y - 3);
       }
     } else {
-      drawHealthBar(ctx, renderPosition, this.health, this.getMaxHealth());
+      drawHealthBar(ctx, renderPosition, this.getHealth(), this.getMaxHealth());
       debugDrawHitbox(ctx, Zombie.getHitbox(this.getPosition()));
-      // TODO: add this back in
-      // debugDrawHitbox(ctx, destructible.getDamageBox(), "red");
+      debugDrawHitbox(ctx, destructible.getDamageBox(), "red");
     }
-  }
-
-  override deserialize(data: RawEntity): void {
-    super.deserialize(data);
-    this.setVelocity(data.velocity);
-    this.health = data.health;
   }
 }

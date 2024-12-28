@@ -9,6 +9,7 @@ import TriggerCooldownAttacker from "./trigger-cooldown-attacker";
 import Updatable from "./updatable";
 import Inventory from "./inventory";
 import Ignitable from "./ignitable";
+import Movable from "./movable";
 
 export const extensionsMap = {
   [Collidable.Name]: Collidable,
@@ -22,6 +23,7 @@ export const extensionsMap = {
   [Expirable.Name]: Expirable,
   [Inventory.Name]: Inventory,
   [Ignitable.Name]: Ignitable,
+  [Movable.Name]: Movable,
 } as const;
 
 export {
@@ -35,6 +37,6 @@ export {
   TriggerCooldownAttacker,
   Expirable,
   Inventory,
-  Ignitable
+  Ignitable,
 };
 export * from "./types";

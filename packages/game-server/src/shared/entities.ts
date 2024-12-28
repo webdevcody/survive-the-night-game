@@ -82,6 +82,12 @@ export class GenericEntity extends EventTarget {
 
       this.extensions = dataExtensions.map((dataFromServer) => {
         const ExtensionConstructor = extensionsMap[dataFromServer.name];
+
+        if (!ExtensionConstructor) {
+          throw new Error(
+            `Unable to find extension ${dataFromServer.name}, please update the extensionsMap`
+          );
+        }
         // TODO: this feels hacky, we shouldn't need to remember to update this when an extension needs more server managers
         if (dataFromServer.name === TriggerCooldownAttacker.Name) {
           return new TriggerCooldownAttacker(this, this.entityManager, dataFromServer).deserialize(

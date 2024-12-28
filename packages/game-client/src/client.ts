@@ -295,9 +295,6 @@ export class GameClient {
       const existingEntity = this.getEntities().find((e) => e.getId() === entityData.id);
 
       if (existingEntity) {
-        if (existingEntity.type === Entities.ZOMBIE) {
-          console.log("existingEntity.type", existingEntity);
-        }
         // The new ECS approach for how entities are created
         if ("deserialize" in existingEntity) {
           existingEntity.deserialize(entityData);

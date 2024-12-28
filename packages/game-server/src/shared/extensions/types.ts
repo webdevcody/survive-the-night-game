@@ -9,7 +9,8 @@ export const ExtensionNames = {
   triggerCooldownAttacker: "triggerCooldownAttacker",
   expirable: "expirable",
   inventory: "inventory",
-  ignitable: "ignitable"
+  ignitable: "ignitable",
+  movable: "movable"
 } as const;
 
 export interface Extension {
