@@ -20,7 +20,7 @@ export default class Triggerable implements Extension {
     this.size = { x: width, y: height };
   }
 
-  setOnEntityEntered(cb: any) {
+  setOnEntityEntered(cb: (entity: Entity) => void) {
     this.onEntityEntered = cb;
     return this;
   }
@@ -47,7 +47,6 @@ export default class Triggerable implements Extension {
       }
     }
   }
-
 
   public getTriggerBox(): Rectangle {
     const positionable = this.self.getExt(Positionable);

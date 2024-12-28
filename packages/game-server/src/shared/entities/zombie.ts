@@ -1,15 +1,22 @@
 import { EntityManager } from "../../managers/entity-manager";
 import { MapManager } from "../../managers/map-manager";
-import { Direction } from "../direction";
 import { Entity, Entities } from "../entities";
 import { Vector2, pathTowards, velocityTowards } from "../physics";
 import { Hitbox } from "../traits";
-import { Collidable, Destructible, Interactive, Inventory, Positionable, Updatable } from "../extensions";
+import {
+  Collidable,
+  Destructible,
+  Interactive,
+  Inventory,
+  Positionable,
+  Updatable,
+} from "../extensions";
 import { Wall } from "./wall";
 import { ZombieDeathEvent } from "../events/server-sent/zombie-death-event";
 import { ZombieHurtEvent } from "../events/server-sent/zombie-hurt-event";
 import { ServerSocketManager } from "../../managers/server-socket-manager";
 import Movable from "../extensions/movable";
+import { Cooldown } from "./util/cooldown";
 
 // TODO: refactor to use extensions
 export class Zombie extends Entity {
@@ -19,14 +26,12 @@ export class Zombie extends Entity {
   private static readonly POSITION_THRESHOLD = 1;
   private static readonly ATTACK_RADIUS = 24;
   private static readonly ATTACK_DAMAGE = 1;
-  private static readonly ATTACK_COOLDOWN = 1000; // 1 second in milliseconds
+  private static readonly ATTACK_COOLDOWN = 1;
 
   private currentWaypoint: Vector2 | null = null;
   private mapManager: MapManager;
   private socketManager: ServerSocketManager;
-  private lastAttackTime = 0;
-
-  public facing = Direction.Right;
+  private attackCooldown: Cooldown;
 
   constructor(
     entityManager: EntityManager,
@@ -34,6 +39,8 @@ export class Zombie extends Entity {
     socketManager: ServerSocketManager
   ) {
     super(entityManager, Entities.ZOMBIE);
+
+    this.attackCooldown = new Cooldown(Zombie.ATTACK_COOLDOWN);
     this.mapManager = mapManager;
     this.socketManager = socketManager;
 
@@ -49,15 +56,10 @@ export class Zombie extends Entity {
 
     this.extensions.push(new Positionable(this).setSize(Zombie.ZOMBIE_WIDTH));
 
-    this.extensions.push(new Collidable(this)
-      .setSize(8)
-      .setOffset(4)
-    );
+    this.extensions.push(new Collidable(this).setSize(8).setOffset(4));
     this.extensions.push(new Movable(this));
 
-    this.extensions.push(
-      new Updatable(this, this.updateZombie.bind(this))
-    );
+    this.extensions.push(new Updatable(this, this.updateZombie.bind(this)));
   }
 
   getCenterPosition(): Vector2 {
@@ -71,7 +73,7 @@ export class Zombie extends Entity {
 
   getHitbox(): Hitbox {
     const collidable = this.getExt(Collidable);
-    return collidable.getHitBox()
+    return collidable.getHitBox();
   }
 
   onDeath(): void {
@@ -108,7 +110,6 @@ export class Zombie extends Entity {
     const previousX = position.x;
     const previousY = position.y;
 
-
     const movable = this.getExt(Movable);
     const velocity = movable.getVelocity();
 
@@ -143,6 +144,8 @@ export class Zombie extends Entity {
   }
 
   updateZombie(deltaTime: number) {
+    this.attackCooldown.update(deltaTime);
+
     const destructible = this.getExt(Destructible);
     if (destructible.isDead()) {
       return;
@@ -211,8 +214,7 @@ export class Zombie extends Entity {
   }
 
   private attemptAttackEntity(entity: Entity) {
-    const currentTime = Date.now();
-    if (currentTime - this.lastAttackTime < Zombie.ATTACK_COOLDOWN) return;
+    if (!this.attackCooldown.isReady()) return;
 
     const withinRange = this.withinAttackRange(entity);
     if (!withinRange) return false;
@@ -223,7 +225,7 @@ export class Zombie extends Entity {
       entity.getExt(Destructible).damage(Zombie.ATTACK_DAMAGE);
     }
 
-    this.lastAttackTime = currentTime;
+    this.attackCooldown.reset();
     return true;
   }
 }

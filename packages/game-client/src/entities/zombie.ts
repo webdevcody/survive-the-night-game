@@ -10,19 +10,51 @@ import {
   Destructible,
   Positionable,
   Collidable,
+  Ignitable,
 } from "@survive-the-night/game-server";
 import { AssetManager } from "@/managers/asset";
 import { drawHealthBar, getFrameIndex, IClientEntity, Renderable } from "./util";
 import { GameState, getEntityById } from "../state";
 import { debugDrawHitbox } from "../util/debug";
-import { Zombie } from "@survive-the-night/game-server/src/shared/entities/zombie";
 import { Z_INDEX } from "@survive-the-night/game-server/src/managers/map-manager";
 import Movable from "@survive-the-night/game-server/src/shared/extensions/movable";
+
+const flashCanvas = document.createElement("canvas");
+const flashCtx = flashCanvas.getContext("2d")!;
+
+function createFlashEffect(
+  image: HTMLImageElement,
+  color: string = "rgba(255, 0, 0, 0.5)"
+): HTMLCanvasElement {
+  // Resize canvas if needed
+  if (flashCanvas.width !== image.width || flashCanvas.height !== image.height) {
+    flashCanvas.width = image.width;
+    flashCanvas.height = image.height;
+  }
+
+  // Clear previous content
+  flashCtx.clearRect(0, 0, flashCanvas.width, flashCanvas.height);
+
+  // Draw colored rectangle
+  flashCtx.fillStyle = color;
+  flashCtx.fillRect(0, 0, image.width, image.height);
+
+  // Use sprite as mask
+  flashCtx.globalCompositeOperation = "destination-in";
+  flashCtx.drawImage(image, 0, 0);
+
+  // Reset composite operation
+  flashCtx.globalCompositeOperation = "source-over";
+
+  return flashCanvas;
+}
 
 export class ZombieClient extends GenericEntity implements IClientEntity, Renderable {
   private assetManager: AssetManager;
   private lastRenderPosition = { x: 0, y: 0 };
   private readonly LERP_FACTOR = 0.1;
+  private previousHealth: number | undefined;
+  private damageFlashUntil: number = 0;
 
   constructor(data: RawEntity, assetManager: AssetManager) {
     super(data);
@@ -65,6 +97,13 @@ export class ZombieClient extends GenericEntity implements IClientEntity, Render
   }
 
   render(ctx: CanvasRenderingContext2D, gameState: GameState): void {
+    const currentHealth = this.getHealth();
+
+    if (this.previousHealth !== undefined && currentHealth < this.previousHealth) {
+      this.damageFlashUntil = Date.now() + 250;
+    }
+    this.previousHealth = currentHealth;
+
     const targetPosition = this.getPosition();
 
     this.lastRenderPosition.x += (targetPosition.x - this.lastRenderPosition.x) * this.LERP_FACTOR;
@@ -87,6 +126,11 @@ export class ZombieClient extends GenericEntity implements IClientEntity, Render
 
     ctx.drawImage(image, renderPosition.x, renderPosition.y);
 
+    if (this.hasExt(Ignitable) && !isDead) {
+      const fireImg = this.assetManager.get("Fire");
+      ctx.drawImage(fireImg, renderPosition.x, renderPosition.y);
+    }
+
     if (isDead) {
       const myPlayer = getEntityById(gameState, gameState.playerId) as
         | PositionableTrait
@@ -107,6 +151,11 @@ export class ZombieClient extends GenericEntity implements IClientEntity, Render
       drawHealthBar(ctx, renderPosition, this.getHealth(), this.getMaxHealth());
       debugDrawHitbox(ctx, collidable.getHitBox());
       debugDrawHitbox(ctx, destructible.getDamageBox(), "red");
+    }
+
+    if (Date.now() < this.damageFlashUntil) {
+      const flashEffect = createFlashEffect(image);
+      ctx.drawImage(flashEffect, renderPosition.x, renderPosition.y);
     }
   }
 }

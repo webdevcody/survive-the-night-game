@@ -1,4 +1,3 @@
-
 import {
   GenericEntity,
   Player,
@@ -6,6 +5,7 @@ import {
   PositionableTrait,
   RawEntity,
   distance,
+  Expirable,
 } from "@survive-the-night/game-server";
 import { GameState, getEntityById } from "../../state";
 import { Renderable } from "../util";
