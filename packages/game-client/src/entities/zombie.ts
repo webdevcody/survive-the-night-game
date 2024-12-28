@@ -9,6 +9,7 @@ import {
   RawEntity,
   Destructible,
   Positionable,
+  Collidable,
 } from "@survive-the-night/game-server";
 import { AssetManager } from "@/managers/asset";
 import { drawHealthBar, getFrameIndex, IClientEntity, Renderable } from "./util";
@@ -102,8 +103,9 @@ export class ZombieClient extends GenericEntity implements IClientEntity, Render
         ctx.fillText(text, this.getCenterPosition().x - textWidth / 2, this.getPosition().y - 3);
       }
     } else {
+      const collidable = this.getExt(Collidable);
       drawHealthBar(ctx, renderPosition, this.getHealth(), this.getMaxHealth());
-      debugDrawHitbox(ctx, Zombie.getHitbox(this.getPosition()));
+      debugDrawHitbox(ctx, collidable.getHitBox());
       debugDrawHitbox(ctx, destructible.getDamageBox(), "red");
     }
   }

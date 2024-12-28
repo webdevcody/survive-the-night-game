@@ -13,7 +13,7 @@ import { ServerSocketManager } from "../../managers/server-socket-manager";
 import Movable from "../extensions/movable";
 
 // TODO: refactor to use extensions
-export class Zombie extends Entity implements CollidableTrait {
+export class Zombie extends Entity {
   private static readonly ZOMBIE_WIDTH = 16;
   private static readonly ZOMBIE_HEIGHT = 16;
   private static readonly ZOMBIE_SPEED = 35;
@@ -52,7 +52,10 @@ export class Zombie extends Entity implements CollidableTrait {
 
     this.extensions.push(new Positionable(this).setSize(Zombie.ZOMBIE_WIDTH));
 
-    this.extensions.push(new Collidable(this));
+    this.extensions.push(new Collidable(this)
+      .setSize(8)
+      .setOffset(4)
+    );
     this.extensions.push(new Movable(this));
 
     this.extensions.push(
@@ -69,12 +72,9 @@ export class Zombie extends Entity implements CollidableTrait {
     };
   }
 
-  static getHitbox(position: Vector2): Hitbox {
-    return getHitboxWithPadding(position, 4);
-  }
-
   getHitbox(): Hitbox {
-    return Zombie.getHitbox(this.getPosition());
+    const collidable = this.getExt(Collidable);
+    return collidable.getHitBox()
   }
 
   onDeath(): void {
