@@ -2,7 +2,7 @@ import { Entities, Entity, RawEntity } from "../entities";
 import { EntityManager } from "../../managers/entity-manager";
 import { Bullet } from "./bullet";
 import { Interactable, Hitbox, InteractableKey } from "../traits";
-import { Movable, PositionableTrait, Updatable } from "../traits";
+import { PositionableTrait } from "../traits";
 import { distance, normalizeVector, Vector2 } from "../physics";
 import { Direction } from "../direction";
 import { InventoryItem, ItemType } from "../inventory";
@@ -17,6 +17,8 @@ import {
   Collidable,
   Destructible,
   Interactive,
+  Updatable,
+  Movable,
 } from "../extensions";
 import { PlayerHurtEvent } from "../events/server-sent/player-hurt-event";
 import { PlayerAttackedEvent } from "../events/server-sent/player-attacked-event";
@@ -25,7 +27,7 @@ import { ServerSocketManager } from "../../managers/server-socket-manager";
 import { DEBUG_WEAPONS } from "../../config";
 import { Bandage } from "./items/bandage";
 
-export class Player extends Entity implements Movable, Updatable {
+export class Player extends Entity {
   public static readonly MAX_HEALTH = 3;
   public static readonly MAX_INTERACT_RADIUS = 20;
 
@@ -41,7 +43,6 @@ export class Player extends Entity implements Movable, Updatable {
   private dropCooldown = new Cooldown(Player.DROP_COOLDOWN);
   private interactCooldown = new Cooldown(Player.HARVEST_COOLDOWN);
   private consumeCooldown = new Cooldown(Player.CONSUME_COOLDOWN);
-  private velocity: Vector2 = { x: 0, y: 0 };
   private input: Input = {
     facing: Direction.Right,
     inventoryItem: 1,
@@ -67,6 +68,8 @@ export class Player extends Entity implements Movable, Updatable {
         .setHealth(Player.MAX_HEALTH)
         .setMaxHealth(Player.MAX_HEALTH)
         .onDeath(() => this.onDeath()),
+      new Updatable(this, this.updatePlayer.bind(this)),
+      new Movable(this),
     ];
 
     if (DEBUG_WEAPONS) {
@@ -158,23 +161,19 @@ export class Player extends Entity implements Movable, Updatable {
 
   setVelocityFromInput(dx: number, dy: number): void {
     if (dx === 0 && dy === 0) {
-      this.velocity = { x: 0, y: 0 };
+      this.getExt(Movable).setVelocity({ x: 0, y: 0 });
       return;
     }
 
     const normalized = normalizeVector({ x: dx, y: dy });
-    this.velocity = {
+    this.getExt(Movable).setVelocity({
       x: normalized.x * Player.PLAYER_SPEED,
       y: normalized.y * Player.PLAYER_SPEED,
-    };
-  }
-
-  setVelocity(velocity: Vector2) {
-    this.velocity = velocity;
+    });
   }
 
   getVelocity(): Vector2 {
-    return this.velocity;
+    return this.getExt(Movable).getVelocity();
   }
 
   getPosition(): Vector2 {
@@ -249,25 +248,27 @@ export class Player extends Entity implements Movable, Updatable {
   }
 
   handleMovement(deltaTime: number) {
-    const positionable = this.getExt(Positionable);
-    const position = positionable.getPosition();
+    const position = this.getPosition();
     const previousX = position.x;
     const previousY = position.y;
 
-    position.x += this.velocity.x * deltaTime;
-    positionable.setPosition(position);
+    const movable = this.getExt(Movable);
+    const velocity = movable.getVelocity();
+
+    position.x += velocity.x * deltaTime;
+    this.setPosition(position);
 
     if (this.getEntityManager().isColliding(this, [Entities.PLAYER])) {
       position.x = previousX;
-      positionable.setPosition(position);
+      this.setPosition(position);
     }
 
-    position.y += this.velocity.y * deltaTime;
-    positionable.setPosition(position);
+    position.y += velocity.y * deltaTime;
+    this.setPosition(position);
 
     if (this.getEntityManager().isColliding(this, [Entities.PLAYER])) {
       position.y = previousY;
-      positionable.setPosition(position);
+      this.setPosition(position);
     }
   }
 
@@ -384,7 +385,7 @@ export class Player extends Entity implements Movable, Updatable {
     }
   }
 
-  update(deltaTime: number) {
+  private updatePlayer(deltaTime: number) {
     if (this.isCrafting) {
       return;
     }

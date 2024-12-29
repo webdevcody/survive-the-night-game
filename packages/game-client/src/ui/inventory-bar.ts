@@ -88,6 +88,8 @@ export class InventoryBarUI implements Renderable {
 
       const inventoryItem = items[i];
 
+      ctx.fillText(`${i + 1}`, slotLeft + 4, slotsTop + 20);
+
       if (inventoryItem === undefined) {
         continue;
       }
@@ -97,7 +99,6 @@ export class InventoryBarUI implements Renderable {
         Direction.Right
       );
       ctx.drawImage(image, slotLeft, slotsTop, slotSize, slotSize);
-      ctx.fillText(`${i + 1}`, slotLeft + 4, slotsTop + 20);
     }
 
     ctx.restore();

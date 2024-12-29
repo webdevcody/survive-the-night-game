@@ -1,5 +1,5 @@
 import { IClientEntity } from "./util";
-import { Entities, EntityType } from "@survive-the-night/game-server";
+import { Entities } from "@survive-the-night/game-server";
 import { PlayerClient } from "./player";
 import { TreeClient } from "./tree";
 import { BulletClient } from "./bullet";
@@ -13,6 +13,7 @@ import { EntityDto } from "../managers/client-socket-manager";
 import { AssetManager } from "@/managers/asset";
 import { GameState } from "@/state";
 import { FireClient } from "./traps/fire";
+import { EntityType } from "@survive-the-night/game-server/src/shared/entity-types";
 
 export class EntityFactory {
   private assetManager: AssetManager;
@@ -39,7 +40,7 @@ export class EntityFactory {
       },
       [Entities.BULLET]: (data: EntityDto) => {
         const entity = new BulletClient(data.id, this.assetManager);
-        this.initializeEntity(entity, data);
+        entity.deserialize(data);
         return entity;
       },
       [Entities.WALL]: (data: EntityDto) => {
