@@ -107,7 +107,7 @@ export class EntityManager {
     this.entities.push(...entities);
   }
 
-  getNearbyEntities(position: Vector2, radius?: number, filter?: EntityType[]): Entity[] {
+  getNearbyEntities(position: Vector2, radius: number = 64, filter?: EntityType[]): Entity[] {
     return this.spatialGrid?.getNearbyEntities(position, radius, filter) ?? [];
   }
 
@@ -223,8 +223,8 @@ export class EntityManager {
             ? otherEntity.getDamageBox()
             : otherEntity.getExt(Destructible).getDamageBox()
           : "getHitbox" in otherEntity
-            ? otherEntity.getHitbox()
-            : otherEntity.getExt(Collidable).getHitBox();
+          ? otherEntity.getHitbox()
+          : otherEntity.getExt(Collidable).getHitBox();
 
       const dead =
         ("isDead" in otherEntity && otherEntity.isDead()) ||

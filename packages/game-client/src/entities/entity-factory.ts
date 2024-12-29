@@ -28,8 +28,8 @@ export class EntityFactory {
     // it's easy to forget.
     const entityMap = {
       [Entities.PLAYER]: (data: EntityDto) => {
-        const entity = new PlayerClient(data.id, this.assetManager);
-        this.initializeEntity(entity, data);
+        const entity = new PlayerClient(data, this.assetManager);
+        entity.deserialize(data);
         return entity;
       },
       [Entities.TREE]: (data: EntityDto) => {

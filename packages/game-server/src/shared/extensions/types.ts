@@ -10,7 +10,8 @@ export const ExtensionNames = {
   expirable: "expirable",
   inventory: "inventory",
   ignitable: "ignitable",
-  movable: "movable"
+  movable: "movable",
+  combustible: "combustible",
 } as const;
 
 export interface Extension {
@@ -19,7 +20,7 @@ export interface Extension {
   update?: (deltaTime: number) => void;
 }
 
-export type ExtensionCtor<T = any> = { new(...args: any[]): T };
+export type ExtensionCtor<T = any> = { new (...args: any[]): T };
 
 export interface ExtensionSerialized {
   name: keyof typeof ExtensionNames;

@@ -290,14 +290,14 @@ export class GameClient {
       }
     }
 
-    // add new / update entities
+    // EXISTING ENTITIES
     for (const entityData of this.updatedEntitiesBuffer) {
       const existingEntity = this.getEntities().find((e) => e.getId() === entityData.id);
 
       if (existingEntity) {
         // The new ECS approach for how entities are created
         if ("deserialize" in existingEntity) {
-          existingEntity.deserialize(entityData);
+          (existingEntity as any).deserialize(entityData);
         } else {
           // TODO: this will go awaya when we refactor all entities to use ECS
           Object.assign(existingEntity, entityData);
@@ -327,7 +327,7 @@ export class GameClient {
   }
 
   private positionCameraOnPlayer(): void {
-    const playerToFollow = this.getMyPlayer() as PositionableTrait | undefined;
+    const playerToFollow = this.getMyPlayer() as PlayerClient | undefined;
 
     if (playerToFollow) {
       this.cameraManager.translateTo(playerToFollow.getPosition());

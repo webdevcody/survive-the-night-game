@@ -1,4 +1,5 @@
 import { EntityManager } from "../managers/entity-manager";
+import { EntityType } from "./entity-types";
 import {
   Extension,
   ExtensionCtor,
@@ -6,23 +7,7 @@ import {
   extensionsMap,
   TriggerCooldownAttacker,
 } from "./extensions";
-
-export const Entities = {
-  WEAPON: "weapon",
-  ZOMBIE: "zombie",
-  PLAYER: "player",
-  TREE: "tree",
-  BULLET: "bullet",
-  WALL: "wall",
-  BOUNDARY: "boundary",
-  BANDAGE: "bandage",
-  CLOTH: "cloth",
-  SOUND: "sound",
-  SPIKES: "spikes",
-  FIRE: "fire",
-} as const;
-
-export type EntityType = (typeof Entities)[keyof typeof Entities];
+export { Entities } from "./entity-types";
 
 export type RawEntity = {
   id: string;
@@ -52,6 +37,13 @@ export class GenericEntity extends EventTarget {
 
   public addExtension(extension: Extension) {
     this.extensions.push(extension);
+  }
+
+  public removeExtension(extension: Extension) {
+    const index = this.extensions.indexOf(extension);
+    if (index > -1) {
+      this.extensions.splice(index, 1);
+    }
   }
 
   public setId(id: string) {

@@ -1,7 +1,4 @@
 import {
-  Entities,
-  EntityType,
-  PositionableTrait,
   roundVector2,
   Vector2,
   InventoryItem,
@@ -11,6 +8,11 @@ import {
   normalizeDirection,
   Direction,
   Input,
+  GenericEntity,
+  RawEntity,
+  Positionable,
+  Destructible,
+  Ignitable,
 } from "@survive-the-night/game-server";
 import { AssetManager, getItemAssetKey } from "../managers/asset";
 import { drawHealthBar, getFrameIndex, IClientEntity, Renderable } from "./util";
@@ -19,20 +21,20 @@ import { getHitboxWithPadding } from "@survive-the-night/game-server/src/shared/
 import { debugDrawHitbox } from "../util/debug";
 import { animate } from "../animations";
 import { Z_INDEX } from "@survive-the-night/game-server/src/managers/map-manager";
-export class PlayerClient implements IClientEntity, Renderable, PositionableTrait, Damageable {
+import { createFlashEffect } from "../util/render";
+
+export class PlayerClient extends GenericEntity implements IClientEntity, Renderable {
   private readonly LERP_FACTOR = 0.1;
   private readonly ARROW_LENGTH = 20;
 
   private assetManager: AssetManager;
   private lastRenderPosition = { x: 0, y: 0 };
-  private position: Vector2 = { x: 0, y: 0 };
   private velocity: Vector2 = { x: 0, y: 0 };
-  private id: string;
-  private type: EntityType;
-  private health = Player.MAX_HEALTH;
   private inventory: InventoryItem[] = [];
   private isCrafting = false;
   private activeItem: InventoryItem | null = null;
+  private previousHealth: number | undefined;
+  private damageFlashUntil: number = 0;
 
   private input: Input = {
     facing: Direction.Right,
@@ -49,14 +51,13 @@ export class PlayerClient implements IClientEntity, Renderable, PositionableTrai
     return Z_INDEX.PLAYERS;
   }
 
-  constructor(id: string, assetManager: AssetManager) {
-    this.id = id;
-    this.type = Entities.PLAYER;
+  constructor(data: RawEntity, assetManager: AssetManager) {
+    super(data);
+    this.inventory = data.inventory;
+    this.isCrafting = data.isCrafting;
+    this.activeItem = data.activeItem;
+    this.input = data.input;
     this.assetManager = assetManager;
-  }
-
-  heal(amount: number): void {
-    this.health += amount;
   }
 
   getInventory(): InventoryItem[] {
@@ -67,40 +68,27 @@ export class PlayerClient implements IClientEntity, Renderable, PositionableTrai
     return this.isCrafting;
   }
 
-  getId(): string {
-    return this.id;
-  }
-
   getMaxHealth(): number {
     return Player.MAX_HEALTH;
   }
 
   isDead(): boolean {
-    return this.health <= 0;
-  }
-
-  setId(id: string): void {
-    this.id = id;
-  }
-
-  getType(): EntityType {
-    return this.type;
-  }
-
-  setType(type: EntityType): void {
-    this.type = type;
+    return this.getExt(Destructible).isDead();
   }
 
   getPosition(): Vector2 {
-    return this.position;
+    const positionable = this.getExt(Positionable);
+    return positionable.getPosition();
   }
 
   setPosition(position: Vector2): void {
-    this.position = position;
+    const positionable = this.getExt(Positionable);
+    positionable.setPosition(position);
   }
 
   getCenterPosition(): Vector2 {
-    return this.position;
+    const positionable = this.getExt(Positionable);
+    return positionable.getPosition();
   }
 
   setVelocity(velocity: Vector2): void {
@@ -108,18 +96,22 @@ export class PlayerClient implements IClientEntity, Renderable, PositionableTrai
   }
 
   getDamageBox(): Hitbox {
-    return getHitboxWithPadding(this.position, 0);
-  }
-
-  damage(damage: number): void {
-    this.health -= damage;
+    const positionable = this.getExt(Positionable);
+    return getHitboxWithPadding(positionable.getPosition(), 0);
   }
 
   getHealth(): number {
-    return this.health;
+    return this.getExt(Destructible).getHealth();
   }
 
   render(ctx: CanvasRenderingContext2D, gameState: GameState): void {
+    const currentHealth = this.getHealth();
+
+    if (this.previousHealth !== undefined && currentHealth < this.previousHealth) {
+      this.damageFlashUntil = Date.now() + 250;
+    }
+    this.previousHealth = currentHealth;
+
     const targetPosition = this.getPosition();
     const { facing } = this.input;
     // const image = this.assetManager.getWithDirection("Player", this.isDead() ? "down" : facing);
@@ -154,7 +146,18 @@ export class PlayerClient implements IClientEntity, Renderable, PositionableTrai
       ctx.globalAlpha = 1.0;
     } else {
       ctx.drawImage(image, renderPosition.x, renderPosition.y);
+
+      if (this.hasExt(Ignitable)) {
+        const fireImg = this.assetManager.get("Fire");
+        ctx.drawImage(fireImg, renderPosition.x, renderPosition.y);
+      }
+
       this.renderInventoryItem(ctx, renderPosition);
+    }
+
+    if (Date.now() < this.damageFlashUntil) {
+      const flashEffect = createFlashEffect(image);
+      ctx.drawImage(flashEffect, renderPosition.x, renderPosition.y);
     }
 
     ctx.restore();
@@ -163,7 +166,7 @@ export class PlayerClient implements IClientEntity, Renderable, PositionableTrai
       this.renderArrow(ctx, image, renderPosition);
     }
 
-    drawHealthBar(ctx, renderPosition, this.health, this.getMaxHealth());
+    drawHealthBar(ctx, renderPosition, this.getHealth(), this.getMaxHealth());
 
     debugDrawHitbox(ctx, this.getDamageBox(), "red");
 
@@ -231,5 +234,13 @@ export class PlayerClient implements IClientEntity, Renderable, PositionableTrai
     const { facing } = this.input;
     const image = this.assetManager.getWithDirection(getItemAssetKey(this.activeItem), facing);
     ctx.drawImage(image, renderPosition.x + 2, renderPosition.y);
+  }
+
+  deserialize(data: RawEntity): void {
+    super.deserialize(data);
+    this.inventory = data.inventory;
+    this.isCrafting = data.isCrafting;
+    this.activeItem = data.activeItem;
+    this.input = data.input;
   }
 }

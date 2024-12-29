@@ -1,5 +1,5 @@
 import { EntityManager } from "../../../managers/entity-manager";
-import { Entity, Entities, GenericEntity } from "../../entities";
+import { Entities, Entity } from "../../entities";
 import { Expirable, Ignitable, Positionable, Triggerable } from "../../extensions";
 
 export class Fire extends Entity {
@@ -10,12 +10,14 @@ export class Fire extends Entity {
 
     this.extensions = [
       new Positionable(this).setSize(16),
-      new Triggerable(this, 16, 16).setOnEntityEntered(this.catchFire.bind(this)),
+      new Triggerable(this, 16, 16, [Entities.ZOMBIE, Entities.PLAYER]).setOnEntityEntered(
+        this.catchFire.bind(this)
+      ),
       new Expirable(this, 8),
     ];
   }
 
-  catchFire(entity: GenericEntity) {
+  catchFire(entity: Entity) {
     if (!entity.hasExt(Ignitable)) {
       entity.addExtension(new Ignitable(entity));
     }
