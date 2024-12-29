@@ -10,6 +10,7 @@ import Updatable from "./updatable";
 import Inventory from "./inventory";
 import Ignitable from "./ignitable";
 import Movable from "./movable";
+import Combustible from "./combustible";
 
 export const extensionsMap = {
   [Collidable.Name]: Collidable,
@@ -24,6 +25,7 @@ export const extensionsMap = {
   [Inventory.Name]: Inventory,
   [Ignitable.Name]: Ignitable,
   [Movable.Name]: Movable,
+  [Combustible.Name]: Combustible,
 } as const;
 
 export {
@@ -38,5 +40,8 @@ export {
   Expirable,
   Inventory,
   Ignitable,
+  Combustible,
+  Movable,
 };
+
 export * from "./types";

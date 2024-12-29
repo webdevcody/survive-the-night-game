@@ -8,18 +8,29 @@ export default class Ignitable implements Extension {
 
   private self: GenericEntity;
   private cooldown: Cooldown;
+  private maxDamage: number;
+  private totalDamage: number;
+  private damage: number;
 
   // TODO: this should be configurable for damage / cooldown
-  public constructor(self: GenericEntity) {
+  public constructor(self: GenericEntity, maxDamage = 2) {
     this.self = self;
     this.cooldown = new Cooldown(1);
+    this.maxDamage = maxDamage;
+    this.totalDamage = 0;
+    this.damage = 1;
   }
 
   public update(deltaTime: number) {
     this.cooldown.update(deltaTime);
     if (this.cooldown.isReady()) {
-      this.self.getExt(Destructible).damage(1);
       this.cooldown.reset();
+      this.self.getExt(Destructible).damage(this.damage);
+      this.totalDamage += this.damage;
+
+      if (this.totalDamage >= this.maxDamage) {
+        this.self.removeExtension(this);
+      }
     }
   }
 

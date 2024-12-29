@@ -1,16 +1,16 @@
 import { Entities, Entity, RawEntity } from "../entities";
 import { EntityManager } from "../../managers/entity-manager";
 import { Bullet } from "./bullet";
-import { CollidableTrait, Damageable, Interactable, Hitbox, InteractableKey } from "../traits";
+import { Damageable, Interactable, Hitbox, InteractableKey } from "../traits";
 import { Movable, PositionableTrait, Updatable } from "../traits";
 import { distance, normalizeVector, Vector2 } from "../physics";
 import { Direction } from "../direction";
 import { InventoryItem, ItemType } from "../inventory";
-import { recipes, RecipeType } from "../recipes";
+import { RecipeType } from "../recipes";
 import { PlayerDeathEvent } from "../../index";
 import { Cooldown } from "./util/cooldown";
 import { Input } from "../input";
-import { Consumable, Interactive, Positionable, Inventory } from "../extensions";
+import { Consumable, Interactive, Positionable, Inventory, Collidable } from "../extensions";
 import { PlayerHurtEvent } from "../events/server-sent/player-hurt-event";
 import { PlayerAttackedEvent } from "../events/server-sent/player-attacked-event";
 import { PlayerDroppedItemEvent } from "../events/server-sent/player-dropped-item-event";
@@ -18,9 +18,7 @@ import { ServerSocketManager } from "../../managers/server-socket-manager";
 import { DEBUG_WEAPONS } from "../../config";
 import { Bandage } from "./items/bandage";
 
-export class Player
-  extends Entity
-  implements Movable, PositionableTrait, Updatable, CollidableTrait, Damageable {
+export class Player extends Entity implements Movable, Updatable, Damageable {
   public static readonly MAX_HEALTH = 3;
   public static readonly MAX_INTERACT_RADIUS = 20;
 
@@ -36,7 +34,6 @@ export class Player
   private dropCooldown = new Cooldown(Player.DROP_COOLDOWN);
   private interactCooldown = new Cooldown(Player.HARVEST_COOLDOWN);
   private consumeCooldown = new Cooldown(Player.CONSUME_COOLDOWN);
-  private position: Vector2 = { x: 0, y: 0 };
   private velocity: Vector2 = { x: 0, y: 0 };
   private input: Input = {
     facing: Direction.Right,
@@ -56,7 +53,11 @@ export class Player
     super(entityManager, Entities.PLAYER);
     this.socketManager = socketManager;
 
-    this.extensions = [new Inventory(this as any, socketManager)];
+    this.extensions = [
+      new Inventory(this as any, socketManager),
+      new Collidable(this).setSize(Player.PLAYER_WIDTH),
+      new Positionable(this),
+    ];
 
     if (DEBUG_WEAPONS) {
       const inventory = this.getExt(Inventory);
@@ -98,8 +99,8 @@ export class Player
 
   getDamageBox(): Hitbox {
     return {
-      x: this.position.x,
-      y: this.position.y,
+      x: this.getPosition().x,
+      y: this.getPosition().y,
       width: Player.PLAYER_WIDTH,
       height: Player.PLAYER_HEIGHT,
     };
@@ -121,7 +122,8 @@ export class Player
 
   onDeath(): void {
     this.setIsCrafting(false);
-    this.getExt(Inventory).scatterItems(this.position);
+
+    this.getExt(Inventory).scatterItems(this.getPosition());
     this.socketManager.broadcastEvent(new PlayerDeathEvent(this.getId()));
   }
 
@@ -134,10 +136,8 @@ export class Player
   }
 
   getCenterPosition(): Vector2 {
-    return {
-      x: this.position.x + Player.PLAYER_WIDTH / 2,
-      y: this.position.y + Player.PLAYER_HEIGHT / 2,
-    };
+    const positionable = this.getExt(Positionable);
+    return positionable.getPosition();
   }
 
   serialize(): RawEntity {
@@ -145,7 +145,6 @@ export class Player
       ...super.serialize(),
       inventory: this.getExt(Inventory).getItems(),
       activeItem: this.activeItem,
-      position: this.position,
       velocity: this.velocity,
       health: this.health,
       isCrafting: this.isCrafting,
@@ -154,13 +153,9 @@ export class Player
   }
 
   getHitbox(): Hitbox {
-    const amount = 2;
-    return {
-      x: this.position.x + amount,
-      y: this.position.y + amount,
-      width: Player.PLAYER_WIDTH - amount * 2,
-      height: Player.PLAYER_HEIGHT - amount * 2,
-    };
+    const collidable = this.getExt(Collidable);
+    const hitbox = collidable.getHitBox();
+    return hitbox;
   }
 
   setVelocityFromInput(dx: number, dy: number): void {
@@ -185,7 +180,8 @@ export class Player
   }
 
   getPosition(): Vector2 {
-    return this.position;
+    const positionable = this.getExt(Positionable);
+    return positionable.getPosition();
   }
 
   getInventory(): InventoryItem[] {
@@ -197,7 +193,7 @@ export class Player
   }
 
   setPosition(position: Vector2) {
-    this.position = position;
+    this.getExt(Positionable).setPosition(position);
   }
 
   craftRecipe(recipe: RecipeType): void {
@@ -219,8 +215,8 @@ export class Player
       if (activeWeapon.key === "Pistol") {
         const bullet = new Bullet(this.getEntityManager());
         bullet.setPosition({
-          x: this.position.x + Player.PLAYER_WIDTH / 2,
-          y: this.position.y + Player.PLAYER_HEIGHT / 2,
+          x: this.getPosition().x + Player.PLAYER_WIDTH / 2,
+          y: this.getPosition().y + Player.PLAYER_HEIGHT / 2,
         });
         bullet.setDirection(this.input.facing);
         this.getEntityManager().addEntity(bullet);
@@ -237,8 +233,8 @@ export class Player
         for (let i = -1; i <= 1; i++) {
           const bullet = new Bullet(this.getEntityManager());
           bullet.setPosition({
-            x: this.position.x + Player.PLAYER_WIDTH / 2,
-            y: this.position.y + Player.PLAYER_HEIGHT / 2,
+            x: this.getPosition().x + Player.PLAYER_WIDTH / 2,
+            y: this.getPosition().y + Player.PLAYER_HEIGHT / 2,
           });
           bullet.setDirectionWithOffset(this.input.facing, i * spreadAngle);
           this.getEntityManager().addEntity(bullet);
@@ -255,19 +251,25 @@ export class Player
   }
 
   handleMovement(deltaTime: number) {
-    const previousX = this.position.x;
-    const previousY = this.position.y;
+    const positionable = this.getExt(Positionable);
+    const position = positionable.getPosition();
+    const previousX = position.x;
+    const previousY = position.y;
 
-    this.position.x += this.velocity.x * deltaTime;
+    position.x += this.velocity.x * deltaTime;
+    positionable.setPosition(position);
 
     if (this.getEntityManager().isColliding(this, [Entities.PLAYER])) {
-      this.position.x = previousX;
+      position.x = previousX;
+      positionable.setPosition(position);
     }
 
-    this.position.y += this.velocity.y * deltaTime;
+    position.y += this.velocity.y * deltaTime;
+    positionable.setPosition(position);
 
     if (this.getEntityManager().isColliding(this, [Entities.PLAYER])) {
-      this.position.y = previousY;
+      position.y = previousY;
+      positionable.setPosition(position);
     }
   }
 
@@ -279,7 +281,7 @@ export class Player
     if (this.interactCooldown.isReady()) {
       this.interactCooldown.reset();
       const entities = this.getEntityManager()
-        .getNearbyEntities(this.position, Player.MAX_INTERACT_RADIUS)
+        .getNearbyEntities(this.getPosition(), Player.MAX_INTERACT_RADIUS)
         .filter((entity) => {
           return InteractableKey in entity || entity.hasExt(Interactive);
         });
@@ -293,7 +295,7 @@ export class Player
           "getPosition" in b
             ? (b as unknown as PositionableTrait).getPosition()
             : (b as Entity).getExt(Positionable).getPosition();
-        return distance(this.position, p1) - distance(this.position, p2);
+        return distance(this.getPosition(), p1) - distance(this.getPosition(), p2);
       });
 
       if (byProximity.length > 0) {

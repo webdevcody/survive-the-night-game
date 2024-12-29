@@ -8,6 +8,7 @@ import { Player } from "../shared/entities/player";
 import { RecipeType } from "@/shared/recipes";
 import { GameEvent } from "@/shared/events/types";
 import { DEBUG_EVENTS } from "@/config";
+import Positionable from "@/shared/extensions/positionable";
 
 /**
  * Any and all functionality related to sending server side events
@@ -101,7 +102,7 @@ export class ServerSocketManager {
     const map = this.getMapManager().getMap();
     const centerX = (map.length * 16) / 2;
     const centerY = (map[0].length * 16) / 2;
-    player.setPosition({ x: centerX, y: centerY });
+    player.getExt(Positionable).setPosition({ x: centerX, y: centerY });
 
     this.players.set(socket.id, player);
     this.getEntityManager().addEntity(player);

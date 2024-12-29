@@ -1,7 +1,4 @@
 import {
-  Entities,
-  EntityType,
-  PositionableTrait,
   roundVector2,
   Vector2,
   InventoryItem,
@@ -11,6 +8,9 @@ import {
   normalizeDirection,
   Direction,
   Input,
+  GenericEntity,
+  RawEntity,
+  Positionable,
 } from "@survive-the-night/game-server";
 import { AssetManager, getItemAssetKey } from "../managers/asset";
 import { drawHealthBar, getFrameIndex, IClientEntity, Renderable } from "./util";
@@ -19,16 +19,14 @@ import { getHitboxWithPadding } from "@survive-the-night/game-server/src/shared/
 import { debugDrawHitbox } from "../util/debug";
 import { animate } from "../animations";
 import { Z_INDEX } from "@survive-the-night/game-server/src/managers/map-manager";
-export class PlayerClient implements IClientEntity, Renderable, PositionableTrait, Damageable {
+
+export class PlayerClient extends GenericEntity implements IClientEntity, Renderable, Damageable {
   private readonly LERP_FACTOR = 0.1;
   private readonly ARROW_LENGTH = 20;
 
   private assetManager: AssetManager;
   private lastRenderPosition = { x: 0, y: 0 };
-  private position: Vector2 = { x: 0, y: 0 };
   private velocity: Vector2 = { x: 0, y: 0 };
-  private id: string;
-  private type: EntityType;
   private health = Player.MAX_HEALTH;
   private inventory: InventoryItem[] = [];
   private isCrafting = false;
@@ -49,9 +47,13 @@ export class PlayerClient implements IClientEntity, Renderable, PositionableTrai
     return Z_INDEX.PLAYERS;
   }
 
-  constructor(id: string, assetManager: AssetManager) {
-    this.id = id;
-    this.type = Entities.PLAYER;
+  constructor(data: RawEntity, assetManager: AssetManager) {
+    super(data);
+    this.inventory = data.inventory;
+    this.isCrafting = data.isCrafting;
+    this.activeItem = data.activeItem;
+    this.health = data.health;
+    this.input = data.input;
     this.assetManager = assetManager;
   }
 
@@ -67,10 +69,6 @@ export class PlayerClient implements IClientEntity, Renderable, PositionableTrai
     return this.isCrafting;
   }
 
-  getId(): string {
-    return this.id;
-  }
-
   getMaxHealth(): number {
     return Player.MAX_HEALTH;
   }
@@ -79,28 +77,19 @@ export class PlayerClient implements IClientEntity, Renderable, PositionableTrai
     return this.health <= 0;
   }
 
-  setId(id: string): void {
-    this.id = id;
-  }
-
-  getType(): EntityType {
-    return this.type;
-  }
-
-  setType(type: EntityType): void {
-    this.type = type;
-  }
-
   getPosition(): Vector2 {
-    return this.position;
+    const positionable = this.getExt(Positionable);
+    return positionable.getPosition();
   }
 
   setPosition(position: Vector2): void {
-    this.position = position;
+    const positionable = this.getExt(Positionable);
+    positionable.setPosition(position);
   }
 
   getCenterPosition(): Vector2 {
-    return this.position;
+    const positionable = this.getExt(Positionable);
+    return positionable.getPosition();
   }
 
   setVelocity(velocity: Vector2): void {
@@ -108,7 +97,8 @@ export class PlayerClient implements IClientEntity, Renderable, PositionableTrai
   }
 
   getDamageBox(): Hitbox {
-    return getHitboxWithPadding(this.position, 0);
+    const positionable = this.getExt(Positionable);
+    return getHitboxWithPadding(positionable.getPosition(), 0);
   }
 
   damage(damage: number): void {
@@ -120,6 +110,7 @@ export class PlayerClient implements IClientEntity, Renderable, PositionableTrai
   }
 
   render(ctx: CanvasRenderingContext2D, gameState: GameState): void {
+    console.log(this.health);
     const targetPosition = this.getPosition();
     const { facing } = this.input;
     // const image = this.assetManager.getWithDirection("Player", this.isDead() ? "down" : facing);
@@ -231,5 +222,14 @@ export class PlayerClient implements IClientEntity, Renderable, PositionableTrai
     const { facing } = this.input;
     const image = this.assetManager.getWithDirection(getItemAssetKey(this.activeItem), facing);
     ctx.drawImage(image, renderPosition.x + 2, renderPosition.y);
+  }
+
+  deserialize(data: RawEntity): void {
+    super.deserialize(data);
+    this.inventory = data.inventory;
+    this.isCrafting = data.isCrafting;
+    this.activeItem = data.activeItem;
+    this.health = data.health;
+    this.input = data.input;
   }
 }

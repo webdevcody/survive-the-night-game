@@ -10,13 +10,15 @@ import {
   Inventory,
   Positionable,
   Updatable,
+  Combustible,
+  Movable,
 } from "../extensions";
 import { Wall } from "./wall";
 import { ZombieDeathEvent } from "../events/server-sent/zombie-death-event";
 import { ZombieHurtEvent } from "../events/server-sent/zombie-hurt-event";
 import { ServerSocketManager } from "../../managers/server-socket-manager";
-import Movable from "../extensions/movable";
 import { Cooldown } from "./util/cooldown";
+import { Fire } from "./triggers/fire";
 
 // TODO: refactor to use extensions
 export class Zombie extends Entity {
@@ -60,6 +62,7 @@ export class Zombie extends Entity {
     this.extensions.push(new Movable(this));
 
     this.extensions.push(new Updatable(this, this.updateZombie.bind(this)));
+    this.extensions.push(new Combustible(this, (type) => new Fire(this.getEntityManager())));
   }
 
   getCenterPosition(): Vector2 {
@@ -79,6 +82,7 @@ export class Zombie extends Entity {
   onDeath(): void {
     this.socketManager.broadcastEvent(new ZombieHurtEvent(this.getId()));
     this.extensions.push(new Interactive(this).onInteract(this.afterDeathInteract.bind(this)));
+    this.getExt(Combustible).onDeath();
   }
 
   afterDeathInteract(): void {
@@ -200,10 +204,9 @@ export class Zombie extends Entity {
   }
 
   private withinAttackRange(entity: Entity): boolean {
-    const centerPosition =
-      "getCenterPosition" in entity
-        ? entity.getCenterPosition()
-        : entity.getExt(Positionable).getCenterPosition();
+    const centerPosition = entity.hasExt(Positionable)
+      ? entity.getExt(Positionable).getCenterPosition()
+      : (entity as any).getCenterPosition();
 
     const distance = Math.hypot(
       centerPosition.x - this.getCenterPosition().x,
@@ -219,10 +222,10 @@ export class Zombie extends Entity {
     const withinRange = this.withinAttackRange(entity);
     if (!withinRange) return false;
 
-    if ("damage" in entity) {
-      entity.damage(Zombie.ATTACK_DAMAGE);
-    } else {
+    if (entity.hasExt(Destructible)) {
       entity.getExt(Destructible).damage(Zombie.ATTACK_DAMAGE);
+    } else if ("damage" in entity && typeof (entity as any).damage === "function") {
+      (entity as any).damage(Zombie.ATTACK_DAMAGE);
     }
 
     this.attackCooldown.reset();
