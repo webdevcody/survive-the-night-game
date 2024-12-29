@@ -5,7 +5,7 @@ import { Entities, RawEntity } from "../entities";
 import { Entity } from "../entities";
 import { Destructible, Positionable, Movable, Updatable, Collidable } from "../extensions";
 import { Vector2, distance, normalizeVector } from "../physics";
-import { Damageable, DamageableKey, Hitbox, IntersectionMethodIdentifiers } from "../traits";
+import { Hitbox } from "../traits";
 
 const MAX_TRAVEL_DISTANCE = 400;
 export const HITBOX_RADIUS = 1;
@@ -90,20 +90,15 @@ export class Bullet extends Entity {
       this.getEntityManager().markEntityForRemoval(this);
     }
 
-    const intersectingEntity = this.getEntityManager().getIntersectingEntityByType(
+    const intersectingEntity = this.getEntityManager().getIntersectingDestructableEntities(
       this,
-      IntersectionMethodIdentifiers.Damageable,
-      [Entities.WALL]
+      this.getHitbox()
     );
+
     if (intersectingEntity) {
       this.getEntityManager().markEntityForRemoval(this);
-      if (DamageableKey in intersectingEntity) {
-        const damageable = intersectingEntity as unknown as Damageable;
-        damageable.damage(1);
-      } else if (intersectingEntity.hasExt(Destructible)) {
-        const destructible = intersectingEntity.getExt(Destructible);
-        destructible.damage(1);
-      }
+      const destructible = intersectingEntity.getExt(Destructible);
+      destructible.damage(1);
     }
   }
 

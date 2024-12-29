@@ -1,24 +1,15 @@
 import { distance, isColliding, Vector2 } from "../shared/physics";
-import { Entities, Entity, EntityType, GenericEntity } from "../shared/entities";
+import { Entities, Entity, GenericEntity } from "../shared/entities";
 import {
   CollidableTrait,
-  Damageable,
-  Interactable,
-  InteractableKey,
+  Hitbox,
   IntersectionMethodIdentifiers,
   IntersectionMethodName,
   PositionableTrait,
 } from "../shared/traits";
 import { Player } from "../shared/entities/player";
 import { SpatialGrid } from "./spatial-grid";
-import {
-  Collidable,
-  Destructible,
-  ExtensionNames,
-  Positionable,
-  TriggerCooldownAttacker,
-  Updatable,
-} from "@/shared/extensions";
+import { Collidable, Destructible, Positionable, Updatable } from "@/shared/extensions";
 import { InventoryItem } from "../shared/inventory";
 import { Weapon } from "../shared/entities/weapon";
 import { Tree } from "../shared/entities/tree";
@@ -26,6 +17,7 @@ import { Wall } from "../shared/entities/wall";
 import { Bandage } from "../shared/entities/items/bandage";
 import { Cloth } from "../shared/entities/items/cloth";
 import { ServerSocketManager } from "./server-socket-manager";
+import { EntityType } from "@/shared/entity-types";
 
 export class EntityManager {
   private entities: Entity[];
@@ -123,18 +115,6 @@ export class EntityManager {
     }) as unknown as Player[];
   }
 
-  filterInteractableEntities(entities: Entity[]): Interactable[] {
-    return entities.filter((entity) => {
-      return InteractableKey in entity;
-    }) as unknown as Interactable[];
-  }
-
-  getCollidableEntities(): CollidableTrait[] {
-    return this.entities.filter((entity) => {
-      return "getHitbox" in entity || entity.hasExt(Collidable);
-    }) as unknown as CollidableTrait[];
-  }
-
   getClosestPlayer(entity: PositionableTrait): Player | null {
     const players = this.getPlayerEntities();
 
@@ -181,6 +161,36 @@ export class EntityManager {
     }
 
     return players[closestPlayerIdx];
+  }
+
+  getIntersectingDestructableEntities(sourceEntity: Entity, sourceHitbox: Hitbox): Entity | null {
+    if (!this.spatialGrid) {
+      return null;
+    }
+
+    const hitBox = sourceHitbox;
+
+    const nearbyEntities = this.spatialGrid.getNearbyEntities(hitBox);
+
+    for (const otherEntity of nearbyEntities) {
+      if (!otherEntity.hasExt(Destructible)) {
+        continue;
+      }
+
+      const targetBox = otherEntity.getExt(Destructible).getDamageBox();
+
+      const isDead = otherEntity.getExt(Destructible).isDead();
+
+      if (otherEntity === sourceEntity || isDead) {
+        continue;
+      }
+
+      if (isColliding(hitBox, targetBox)) {
+        return otherEntity;
+      }
+    }
+
+    return null;
   }
 
   /**
@@ -248,14 +258,6 @@ export class EntityManager {
       IntersectionMethodIdentifiers.Collidable,
       ignoreTypes
     ) as CollidableTrait | null;
-  }
-
-  isDamaging(sourceEntity: Entity, ignoreTypes?: EntityType[]): Damageable | null {
-    return this.getIntersectingEntityByType(
-      sourceEntity,
-      IntersectionMethodIdentifiers.Damageable,
-      ignoreTypes
-    ) as Damageable | null;
   }
 
   update(deltaTime: number) {

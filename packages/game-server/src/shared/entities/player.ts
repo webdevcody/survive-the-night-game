@@ -1,7 +1,7 @@
 import { Entities, Entity, RawEntity } from "../entities";
 import { EntityManager } from "../../managers/entity-manager";
 import { Bullet } from "./bullet";
-import { Interactable, Hitbox, InteractableKey } from "../traits";
+import { Hitbox } from "../traits";
 import { PositionableTrait } from "../traits";
 import { distance, normalizeVector, Vector2 } from "../physics";
 import { Direction } from "../direction";
@@ -147,7 +147,6 @@ export class Player extends Entity {
       ...super.serialize(),
       inventory: this.getExt(Inventory).getItems(),
       activeItem: this.activeItem,
-      velocity: this.velocity,
       isCrafting: this.isCrafting,
       input: this.input,
     };
@@ -282,7 +281,7 @@ export class Player extends Entity {
       const entities = this.getEntityManager()
         .getNearbyEntities(this.getPosition(), Player.MAX_INTERACT_RADIUS)
         .filter((entity) => {
-          return InteractableKey in entity || entity.hasExt(Interactive);
+          return entity.hasExt(Interactive);
         });
 
       const byProximity = entities.sort((a, b) => {
@@ -299,12 +298,7 @@ export class Player extends Entity {
 
       if (byProximity.length > 0) {
         const entity = byProximity[0];
-
-        if (InteractableKey in entity) {
-          (entity as Interactable).interact(this);
-        } else {
-          (entity as Entity).getExt(Interactive).interact(this);
-        }
+        (entity as Entity).getExt(Interactive).interact(this);
       }
     }
   }

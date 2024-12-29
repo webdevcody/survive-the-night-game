@@ -1,5 +1,5 @@
-import { Damageable } from "@survive-the-night/game-server";
-import { GameState, getEntityById } from "../state";
+import { GameState } from "../state";
+import { getPlayer } from "../util/get-player";
 
 const HUD_SETTINGS = {
   ControlsList: {
@@ -54,7 +54,7 @@ export class Hud {
     ctx.fillText(dayText, width - dayTextWidth - margin, margin);
     ctx.fillText(cycleText, width - cycleTextWidth - margin, margin + gap);
 
-    const myPlayer = getEntityById(gameState, gameState.playerId) as Damageable | undefined;
+    const myPlayer = getPlayer(gameState);
 
     if (myPlayer) {
       const health = myPlayer.getHealth();

@@ -2,7 +2,6 @@ import {
   roundVector2,
   Vector2,
   InventoryItem,
-  Damageable,
   Hitbox,
   Player,
   normalizeDirection,

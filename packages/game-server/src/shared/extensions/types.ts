@@ -26,3 +26,5 @@ export interface ExtensionSerialized {
   name: keyof typeof ExtensionNames;
   [key: string]: any;
 }
+
+export type ExtensionType = keyof typeof ExtensionNames;
