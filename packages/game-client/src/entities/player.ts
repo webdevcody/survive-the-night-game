@@ -11,6 +11,8 @@ import {
   GenericEntity,
   RawEntity,
   Positionable,
+  Destructible,
+  Ignitable,
 } from "@survive-the-night/game-server";
 import { AssetManager, getItemAssetKey } from "../managers/asset";
 import { drawHealthBar, getFrameIndex, IClientEntity, Renderable } from "./util";
@@ -19,18 +21,20 @@ import { getHitboxWithPadding } from "@survive-the-night/game-server/src/shared/
 import { debugDrawHitbox } from "../util/debug";
 import { animate } from "../animations";
 import { Z_INDEX } from "@survive-the-night/game-server/src/managers/map-manager";
+import { createFlashEffect } from "../util/render";
 
-export class PlayerClient extends GenericEntity implements IClientEntity, Renderable, Damageable {
+export class PlayerClient extends GenericEntity implements IClientEntity, Renderable {
   private readonly LERP_FACTOR = 0.1;
   private readonly ARROW_LENGTH = 20;
 
   private assetManager: AssetManager;
   private lastRenderPosition = { x: 0, y: 0 };
   private velocity: Vector2 = { x: 0, y: 0 };
-  private health = Player.MAX_HEALTH;
   private inventory: InventoryItem[] = [];
   private isCrafting = false;
   private activeItem: InventoryItem | null = null;
+  private previousHealth: number | undefined;
+  private damageFlashUntil: number = 0;
 
   private input: Input = {
     facing: Direction.Right,
@@ -52,13 +56,8 @@ export class PlayerClient extends GenericEntity implements IClientEntity, Render
     this.inventory = data.inventory;
     this.isCrafting = data.isCrafting;
     this.activeItem = data.activeItem;
-    this.health = data.health;
     this.input = data.input;
     this.assetManager = assetManager;
-  }
-
-  heal(amount: number): void {
-    this.health += amount;
   }
 
   getInventory(): InventoryItem[] {
@@ -74,7 +73,7 @@ export class PlayerClient extends GenericEntity implements IClientEntity, Render
   }
 
   isDead(): boolean {
-    return this.health <= 0;
+    return this.getExt(Destructible).isDead();
   }
 
   getPosition(): Vector2 {
@@ -101,16 +100,18 @@ export class PlayerClient extends GenericEntity implements IClientEntity, Render
     return getHitboxWithPadding(positionable.getPosition(), 0);
   }
 
-  damage(damage: number): void {
-    this.health -= damage;
-  }
-
   getHealth(): number {
-    return this.health;
+    return this.getExt(Destructible).getHealth();
   }
 
   render(ctx: CanvasRenderingContext2D, gameState: GameState): void {
-    console.log(this.health);
+    const currentHealth = this.getHealth();
+
+    if (this.previousHealth !== undefined && currentHealth < this.previousHealth) {
+      this.damageFlashUntil = Date.now() + 250;
+    }
+    this.previousHealth = currentHealth;
+
     const targetPosition = this.getPosition();
     const { facing } = this.input;
     // const image = this.assetManager.getWithDirection("Player", this.isDead() ? "down" : facing);
@@ -145,7 +146,18 @@ export class PlayerClient extends GenericEntity implements IClientEntity, Render
       ctx.globalAlpha = 1.0;
     } else {
       ctx.drawImage(image, renderPosition.x, renderPosition.y);
+
+      if (this.hasExt(Ignitable)) {
+        const fireImg = this.assetManager.get("Fire");
+        ctx.drawImage(fireImg, renderPosition.x, renderPosition.y);
+      }
+
       this.renderInventoryItem(ctx, renderPosition);
+    }
+
+    if (Date.now() < this.damageFlashUntil) {
+      const flashEffect = createFlashEffect(image);
+      ctx.drawImage(flashEffect, renderPosition.x, renderPosition.y);
     }
 
     ctx.restore();
@@ -154,7 +166,7 @@ export class PlayerClient extends GenericEntity implements IClientEntity, Render
       this.renderArrow(ctx, image, renderPosition);
     }
 
-    drawHealthBar(ctx, renderPosition, this.health, this.getMaxHealth());
+    drawHealthBar(ctx, renderPosition, this.getHealth(), this.getMaxHealth());
 
     debugDrawHitbox(ctx, this.getDamageBox(), "red");
 
@@ -229,7 +241,6 @@ export class PlayerClient extends GenericEntity implements IClientEntity, Render
     this.inventory = data.inventory;
     this.isCrafting = data.isCrafting;
     this.activeItem = data.activeItem;
-    this.health = data.health;
     this.input = data.input;
   }
 }

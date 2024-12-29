@@ -1,7 +1,7 @@
 import { Entities, Entity, RawEntity } from "../entities";
 import { EntityManager } from "../../managers/entity-manager";
 import { Bullet } from "./bullet";
-import { Damageable, Interactable, Hitbox, InteractableKey } from "../traits";
+import { Interactable, Hitbox, InteractableKey } from "../traits";
 import { Movable, PositionableTrait, Updatable } from "../traits";
 import { distance, normalizeVector, Vector2 } from "../physics";
 import { Direction } from "../direction";
@@ -10,7 +10,14 @@ import { RecipeType } from "../recipes";
 import { PlayerDeathEvent } from "../../index";
 import { Cooldown } from "./util/cooldown";
 import { Input } from "../input";
-import { Consumable, Interactive, Positionable, Inventory, Collidable } from "../extensions";
+import {
+  Consumable,
+  Positionable,
+  Inventory,
+  Collidable,
+  Destructible,
+  Interactive,
+} from "../extensions";
 import { PlayerHurtEvent } from "../events/server-sent/player-hurt-event";
 import { PlayerAttackedEvent } from "../events/server-sent/player-attacked-event";
 import { PlayerDroppedItemEvent } from "../events/server-sent/player-dropped-item-event";
@@ -18,7 +25,7 @@ import { ServerSocketManager } from "../../managers/server-socket-manager";
 import { DEBUG_WEAPONS } from "../../config";
 import { Bandage } from "./items/bandage";
 
-export class Player extends Entity implements Movable, Updatable, Damageable {
+export class Player extends Entity implements Movable, Updatable {
   public static readonly MAX_HEALTH = 3;
   public static readonly MAX_INTERACT_RADIUS = 20;
 
@@ -45,7 +52,6 @@ export class Player extends Entity implements Movable, Updatable, Damageable {
     drop: false,
     consume: false,
   };
-  private health = Player.MAX_HEALTH;
   private isCrafting = false;
   private socketManager: ServerSocketManager;
 
@@ -57,6 +63,10 @@ export class Player extends Entity implements Movable, Updatable, Damageable {
       new Inventory(this as any, socketManager),
       new Collidable(this).setSize(Player.PLAYER_WIDTH),
       new Positionable(this),
+      new Destructible(this)
+        .setHealth(Player.MAX_HEALTH)
+        .setMaxHealth(Player.MAX_HEALTH)
+        .onDeath(() => this.onDeath()),
     ];
 
     if (DEBUG_WEAPONS) {
@@ -86,24 +96,19 @@ export class Player extends Entity implements Movable, Updatable, Damageable {
   }
 
   isDead(): boolean {
-    return this.health <= 0;
+    return this.getExt(Destructible).isDead();
   }
 
   getHealth(): number {
-    return this.health;
+    return this.getExt(Destructible).getHealth();
   }
 
   getMaxHealth(): number {
-    return Player.MAX_HEALTH;
+    return this.getExt(Destructible).getMaxHealth();
   }
 
   getDamageBox(): Hitbox {
-    return {
-      x: this.getPosition().x,
-      y: this.getPosition().y,
-      width: Player.PLAYER_WIDTH,
-      height: Player.PLAYER_HEIGHT,
-    };
+    return this.getExt(Destructible).getDamageBox();
   }
 
   damage(damage: number): void {
@@ -111,18 +116,12 @@ export class Player extends Entity implements Movable, Updatable, Damageable {
       return;
     }
 
-    this.health = Math.max(this.health - damage, 0);
-
+    this.getExt(Destructible).damage(damage);
     this.socketManager.broadcastEvent(new PlayerHurtEvent(this.getId()));
-
-    if (this.health <= 0) {
-      this.onDeath();
-    }
   }
 
   onDeath(): void {
     this.setIsCrafting(false);
-
     this.getExt(Inventory).scatterItems(this.getPosition());
     this.socketManager.broadcastEvent(new PlayerDeathEvent(this.getId()));
   }
@@ -146,7 +145,6 @@ export class Player extends Entity implements Movable, Updatable, Damageable {
       inventory: this.getExt(Inventory).getItems(),
       activeItem: this.activeItem,
       velocity: this.velocity,
-      health: this.health,
       isCrafting: this.isCrafting,
       input: this.input,
     };
@@ -407,6 +405,6 @@ export class Player extends Entity implements Movable, Updatable, Damageable {
   }
 
   heal(amount: number): void {
-    this.health = Math.min(this.health + amount, Player.MAX_HEALTH);
+    this.getExt(Destructible).heal(amount);
   }
 }

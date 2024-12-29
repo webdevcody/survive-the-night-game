@@ -18,36 +18,7 @@ import { GameState, getEntityById } from "../state";
 import { debugDrawHitbox } from "../util/debug";
 import { Z_INDEX } from "@survive-the-night/game-server/src/managers/map-manager";
 import Movable from "@survive-the-night/game-server/src/shared/extensions/movable";
-
-const flashCanvas = document.createElement("canvas");
-const flashCtx = flashCanvas.getContext("2d")!;
-
-function createFlashEffect(
-  image: HTMLImageElement,
-  color: string = "rgba(255, 0, 0, 0.5)"
-): HTMLCanvasElement {
-  // Resize canvas if needed
-  if (flashCanvas.width !== image.width || flashCanvas.height !== image.height) {
-    flashCanvas.width = image.width;
-    flashCanvas.height = image.height;
-  }
-
-  // Clear previous content
-  flashCtx.clearRect(0, 0, flashCanvas.width, flashCanvas.height);
-
-  // Draw colored rectangle
-  flashCtx.fillStyle = color;
-  flashCtx.fillRect(0, 0, image.width, image.height);
-
-  // Use sprite as mask
-  flashCtx.globalCompositeOperation = "destination-in";
-  flashCtx.drawImage(image, 0, 0);
-
-  // Reset composite operation
-  flashCtx.globalCompositeOperation = "source-over";
-
-  return flashCanvas;
-}
+import { createFlashEffect } from "../util/render";
 
 export class ZombieClient extends GenericEntity implements IClientEntity, Renderable {
   private assetManager: AssetManager;
