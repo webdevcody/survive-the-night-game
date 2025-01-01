@@ -129,9 +129,17 @@ export class PlayerClient extends GenericEntity implements IClientEntity, Render
       });
       image = this.assetManager.getFrameWithDirection("Player", facing, frameIndex);
     }
+    const dx = targetPosition.x - this.lastRenderPosition.x;
+    const dy = targetPosition.y - this.lastRenderPosition.y;
+    const distance = Math.sqrt(dx * dx + dy * dy);
 
-    this.lastRenderPosition.x += (targetPosition.x - this.lastRenderPosition.x) * this.LERP_FACTOR;
-    this.lastRenderPosition.y += (targetPosition.y - this.lastRenderPosition.y) * this.LERP_FACTOR;
+    if (distance > 100) {
+      this.lastRenderPosition.x = targetPosition.x;
+      this.lastRenderPosition.y = targetPosition.y;
+    } else {
+      this.lastRenderPosition.x += dx * this.LERP_FACTOR;
+      this.lastRenderPosition.y += dy * this.LERP_FACTOR;
+    }
 
     const renderPosition = roundVector2(this.lastRenderPosition);
 

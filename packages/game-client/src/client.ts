@@ -79,7 +79,7 @@ export class GameClient {
       return null;
     };
 
-    this.mapManager = new MapManager();
+    this.mapManager = new MapManager(this);
     this.hud = new Hud();
 
     // TODO: refactor to use event emitter

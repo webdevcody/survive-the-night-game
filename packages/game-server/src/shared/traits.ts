@@ -1,5 +1,3 @@
-import { Vector2 } from "./physics";
-
 export interface ServerOnly {
   isServerOnly: () => boolean;
 }

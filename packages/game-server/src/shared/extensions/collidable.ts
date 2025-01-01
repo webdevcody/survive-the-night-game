@@ -21,6 +21,10 @@ export default class Collidable implements Extension {
     return this;
   }
 
+  public getSize(): number {
+    return this.size;
+  }
+
   public setOffset(newOffset: number) {
     this.offset = newOffset;
     return this;
@@ -37,7 +41,7 @@ export default class Collidable implements Extension {
     return {
       ...position,
       width: this.size,
-      height: this.size
+      height: this.size,
     };
   }
 
@@ -51,7 +55,7 @@ export default class Collidable implements Extension {
     return {
       name: Collidable.Name,
       offset: this.offset,
-      size: this.size
+      size: this.size,
     };
   }
 }

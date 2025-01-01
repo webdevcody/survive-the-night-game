@@ -1,12 +1,13 @@
-import { Triggerable } from ".";
+import { Destructible, Triggerable } from ".";
 import { distance } from "../physics";
 import { Positionable } from "./index";
-import { EntityType, GenericEntity } from "../entities";
+import { GenericEntity } from "../entities";
 import { Extension, ExtensionNames, ExtensionSerialized } from "./types";
 import { Zombie } from "../entities/zombie";
 import { Rectangle } from "../geom/rectangle";
 import { Cooldown } from "../entities/util/cooldown";
 import { EntityManager } from "@/managers/entity-manager";
+import { EntityType } from "../entity-types";
 
 /**
  * This extension will cause the entity to fire an attack when the cooldown is ready.
@@ -59,6 +60,11 @@ export default class TriggerCooldownAttacker implements Extension {
     const triggerCenter = triggerBox.getCenter();
 
     for (const entity of entities) {
+      if (!entity.hasExt(Destructible)) {
+        continue;
+      }
+
+      const destructible = entity.getExt(Destructible);
       const entityHitbox = new Rectangle(entity.getHitbox().x, entity.getHitbox().y, 16, 16);
       const entityCenter = entityHitbox.getCenter();
 
@@ -66,7 +72,7 @@ export default class TriggerCooldownAttacker implements Extension {
 
       if (centerDistance < TriggerCooldownAttacker.RADIUS) {
         if (this.attackCooldown.isReady()) {
-          entity.damage(this.options.damage);
+          destructible.damage(this.options.damage);
           this.attackCooldown.reset();
           break;
         }

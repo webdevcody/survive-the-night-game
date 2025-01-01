@@ -21,10 +21,17 @@ export class CameraManager {
 
   translateTo(position: Vector2): void {
     this.targetPosition = position;
+    const dx = this.targetPosition.x - this.position.x;
+    const dy = this.targetPosition.y - this.position.y;
+    const distance = Math.sqrt(dx * dx + dy * dy);
 
-    // Lerp the current position towards the target
-    this.position.x += (this.targetPosition.x - this.position.x) * this.LERP_FACTOR;
-    this.position.y += (this.targetPosition.y - this.position.y) * this.LERP_FACTOR;
+    if (distance > 100) {
+      this.position.x = this.targetPosition.x;
+      this.position.y = this.targetPosition.y;
+    } else {
+      this.position.x += dx * this.LERP_FACTOR;
+      this.position.y += dy * this.LERP_FACTOR;
+    }
 
     const canvas = this.ctx.canvas;
     const centerX = canvas.width / 2;

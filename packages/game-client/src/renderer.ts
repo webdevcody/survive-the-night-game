@@ -33,7 +33,7 @@ export class Renderer {
   private getRenderableEntities(): Renderable[] {
     return this.gameState.entities.filter((entity) => {
       return "render" in entity;
-    }) as Renderable[];
+    }) as unknown as Renderable[];
   }
 
   public resizeCanvas(): void {
@@ -70,13 +70,15 @@ export class Renderer {
     this.mapManager.render(this.ctx);
     this.renderEntities();
 
-    this.ctx.setTransform(1, 0, 0, 1, 0, 0);
-
     if (!this.gameState.isDay) {
+      this.ctx.setTransform(1, 0, 0, 1, 0, 0);
       this.ctx.fillStyle = "rgba(0, 0, 0, 0.3)";
       this.ctx.fillRect(0, 0, this.ctx.canvas.width, this.ctx.canvas.height);
+    } else {
+      this.mapManager.renderDarkness(this.ctx);
     }
 
+    this.ctx.setTransform(1, 0, 0, 1, 0, 0);
     this.hotbar.render(this.ctx, this.gameState);
     this.hud.render(this.ctx, this.gameState);
     this.craftingTable.render(this.ctx, this.gameState);
