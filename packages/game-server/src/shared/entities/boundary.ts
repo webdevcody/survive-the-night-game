@@ -1,54 +1,34 @@
 import { EntityManager } from "../../managers/entity-manager";
 import { Entity, Entities, RawEntity } from "../entities";
-import { CollidableTrait, Hitbox, PositionableTrait, ServerOnly } from "../traits";
+import { ServerOnly } from "../traits";
 import { Vector2 } from "../physics";
+import { Collidable, Positionable } from "../extensions";
 
-export class Boundary extends Entity implements CollidableTrait, PositionableTrait, ServerOnly {
-  private position: Vector2 = {
-    x: 0,
-    y: 0,
-  };
-  private size: Vector2 = {
-    x: 16,
-    y: 16,
-  };
-
+export class Boundary extends Entity implements ServerOnly {
   constructor(entityManager: EntityManager) {
     super(entityManager, Entities.BOUNDARY);
+
+    this.extensions = [new Positionable(this).setSize(16), new Collidable(this).setSize(16)];
   }
 
   isServerOnly(): boolean {
     return true;
   }
 
-  getPosition(): Vector2 {
-    return this.position;
-  }
-
   setPosition(position: Vector2): void {
-    this.position = position;
+    this.getExt(Positionable).setPosition(position);
   }
 
   setSize(size: Vector2): void {
-    this.size = size;
+    const sizeValue = Math.max(size.x, size.y);
+    this.getExt(Positionable).setSize(sizeValue);
+    this.getExt(Collidable).setSize(sizeValue);
   }
 
   serialize(): RawEntity {
     return {
       ...super.serialize(),
-      position: this.position,
-    };
-  }
-
-  getCenterPosition(): Vector2 {
-    return this.position;
-  }
-
-  getHitbox(): Hitbox {
-    return {
-      ...this.position,
-      width: this.size.x,
-      height: this.size.y,
+      position: this.getExt(Positionable).getPosition(),
     };
   }
 }

@@ -2,14 +2,14 @@ import {
   GenericEntity,
   Player,
   Positionable,
-  PositionableTrait,
   RawEntity,
   distance,
 } from "@survive-the-night/game-server";
 import { AssetManager } from "@/managers/asset";
-import { GameState, getEntityById } from "../../state";
+import { GameState } from "../../state";
 import { Renderable } from "../util";
 import { Z_INDEX } from "@survive-the-night/game-server/src/managers/map-manager";
+import { getPlayer } from "../../util/get-player";
 
 export class ClothClient extends GenericEntity implements Renderable {
   private assetManager: AssetManager;
@@ -25,7 +25,7 @@ export class ClothClient extends GenericEntity implements Renderable {
 
   public render(ctx: CanvasRenderingContext2D, gameState: GameState): void {
     const image = this.assetManager.get("Cloth");
-    const myPlayer = getEntityById(gameState, gameState.playerId) as PositionableTrait | undefined;
+    const myPlayer = getPlayer(gameState);
     const positionable = this.getExt(Positionable);
     const centerPosition = positionable.getCenterPosition();
     const position = positionable.getPosition();

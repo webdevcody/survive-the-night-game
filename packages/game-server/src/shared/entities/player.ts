@@ -2,7 +2,6 @@ import { Entities, Entity, RawEntity } from "../entities";
 import { EntityManager } from "../../managers/entity-manager";
 import { Bullet } from "./bullet";
 import { Hitbox } from "../traits";
-import { PositionableTrait } from "../traits";
 import { distance, normalizeVector, Vector2 } from "../physics";
 import { Direction } from "../direction";
 import { InventoryItem, ItemType } from "../inventory";
@@ -285,14 +284,8 @@ export class Player extends Entity {
         });
 
       const byProximity = entities.sort((a, b) => {
-        const p1 =
-          "getPosition" in a
-            ? (a as unknown as PositionableTrait).getPosition()
-            : (a as Entity).getExt(Positionable).getPosition();
-        const p2 =
-          "getPosition" in b
-            ? (b as unknown as PositionableTrait).getPosition()
-            : (b as Entity).getExt(Positionable).getPosition();
+        const p1 = (a as Entity).getExt(Positionable).getPosition();
+        const p2 = (b as Entity).getExt(Positionable).getPosition();
         return distance(this.getPosition(), p1) - distance(this.getPosition(), p2);
       });
 
@@ -335,9 +328,7 @@ export class Player extends Entity {
           y: this.getPosition().y + dy,
         };
 
-        if ("setPosition" in entity) {
-          (entity as unknown as PositionableTrait).setPosition(pos);
-        } else if (entity.hasExt(Positionable)) {
+        if (entity.hasExt(Positionable)) {
           entity.getExt(Positionable).setPosition(pos);
         }
 

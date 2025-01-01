@@ -1,5 +1,4 @@
 import {
-  PositionableTrait,
   determineDirection,
   roundVector2,
   Vector2,
@@ -14,11 +13,12 @@ import {
 } from "@survive-the-night/game-server";
 import { AssetManager } from "@/managers/asset";
 import { drawHealthBar, getFrameIndex, IClientEntity, Renderable } from "./util";
-import { GameState, getEntityById } from "../state";
+import { GameState } from "../state";
 import { debugDrawHitbox } from "../util/debug";
 import { Z_INDEX } from "@survive-the-night/game-server/src/managers/map-manager";
 import Movable from "@survive-the-night/game-server/src/shared/extensions/movable";
 import { createFlashEffect } from "../util/render";
+import { getPlayer } from "../util/get-player";
 
 export class ZombieClient extends GenericEntity implements IClientEntity, Renderable {
   private assetManager: AssetManager;
@@ -103,12 +103,10 @@ export class ZombieClient extends GenericEntity implements IClientEntity, Render
     }
 
     if (isDead) {
-      const myPlayer = getEntityById(gameState, gameState.playerId) as
-        | PositionableTrait
-        | undefined;
+      const myPlayer = getPlayer(gameState);
 
       if (
-        myPlayer !== undefined &&
+        myPlayer &&
         distance(myPlayer.getPosition(), this.getPosition()) < Player.MAX_INTERACT_RADIUS
       ) {
         ctx.fillStyle = "white";

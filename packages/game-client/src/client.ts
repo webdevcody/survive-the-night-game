@@ -1,13 +1,7 @@
 import { AssetManager } from "./managers/asset";
 import { InputManager } from "./managers/input";
 import { EntityDto, ClientSocketManager } from "./managers/client-socket-manager";
-import {
-  Direction,
-  Entities,
-  Entity,
-  Input,
-  PositionableTrait,
-} from "@survive-the-night/game-server";
+import { Direction, Entity, Input } from "@survive-the-night/game-server";
 import { PlayerClient } from "./entities/player";
 import { CameraManager } from "./managers/camera";
 import { MapManager } from "./managers/map";

@@ -1,12 +1,6 @@
 import { distance, isColliding, Vector2 } from "../shared/physics";
 import { Entities, Entity, GenericEntity } from "../shared/entities";
-import {
-  CollidableTrait,
-  Hitbox,
-  IntersectionMethodIdentifiers,
-  IntersectionMethodName,
-  PositionableTrait,
-} from "../shared/traits";
+import { Hitbox } from "../shared/traits";
 import { Player } from "../shared/entities/player";
 import { SpatialGrid } from "./spatial-grid";
 import { Collidable, Destructible, Positionable, Updatable } from "@/shared/extensions";
@@ -103,26 +97,24 @@ export class EntityManager {
     return this.spatialGrid?.getNearbyEntities(position, radius, filter) ?? [];
   }
 
-  getPositionableEntities(): PositionableTrait[] {
-    return this.entities.filter((entity) => {
-      return "getPosition" in entity;
-    }) as unknown as PositionableTrait[];
-  }
-
   getPlayerEntities(): Player[] {
     return this.entities.filter((entity) => {
       return entity.getType() === Entities.PLAYER;
     }) as unknown as Player[];
   }
 
-  getClosestPlayer(entity: PositionableTrait): Player | null {
+  getClosestPlayer(entity: Entity): Player | null {
+    if (!entity.hasExt(Positionable)) {
+      return null;
+    }
+
     const players = this.getPlayerEntities();
 
     if (players.length === 0) {
       return null;
     }
 
-    const entityPosition = entity.getPosition();
+    const entityPosition = entity.getExt(Positionable).getPosition();
     let closestPlayerIdx = 0;
     let closestPlayerDistance = distance(entityPosition, players[closestPlayerIdx].getPosition());
 
@@ -139,14 +131,18 @@ export class EntityManager {
     return players[closestPlayerIdx];
   }
 
-  getClosestAlivePlayer(entity: PositionableTrait): Player | null {
+  getClosestAlivePlayer(entity: Entity): Player | null {
+    if (!entity.hasExt(Positionable)) {
+      return null;
+    }
+
     const players = this.getPlayerEntities().filter((player) => !player.isDead());
 
     if (players.length === 0) {
       return null;
     }
 
-    const entityPosition = entity.getPosition();
+    const entityPosition = entity.getExt(Positionable).getPosition();
     let closestPlayerIdx = 0;
     let closestPlayerDistance = distance(entityPosition, players[closestPlayerIdx].getPosition());
 
@@ -197,19 +193,15 @@ export class EntityManager {
    * This function will return the first entity that intersects with the source entity, but it requires
    * that the entity has a method with the name of the functionIdentifier.
    */
-  getIntersectingEntityByType(
+  getIntersectingCollidableEntities(
     sourceEntity: Entity,
-    functionIdentifier: IntersectionMethodName,
     ignoreTypes?: EntityType[]
   ): Entity | null {
     if (!this.spatialGrid) {
       return null;
     }
 
-    const hitBox =
-      "getHitbox" in sourceEntity
-        ? sourceEntity.getHitbox()
-        : sourceEntity.getExt(Collidable).getHitBox();
+    const hitBox = sourceEntity.getExt(Collidable).getHitBox();
 
     const nearbyEntities = this.spatialGrid.getNearbyEntities(hitBox);
 
@@ -218,29 +210,15 @@ export class EntityManager {
         continue;
       }
 
-      const hasMethod =
-        functionIdentifier === "getDamageBox"
-          ? "getDamageBox" in otherEntity || otherEntity.hasExt(Destructible)
-          : "getHitbox" in otherEntity || otherEntity.hasExt(Collidable);
+      const hasMethod = otherEntity.hasExt(Collidable);
 
       if (!hasMethod) {
         continue;
       }
 
-      const targetBox =
-        functionIdentifier === "getDamageBox"
-          ? "getDamageBox" in otherEntity
-            ? otherEntity.getDamageBox()
-            : otherEntity.getExt(Destructible).getDamageBox()
-          : "getHitbox" in otherEntity
-          ? otherEntity.getHitbox()
-          : otherEntity.getExt(Collidable).getHitBox();
+      const targetBox = otherEntity.getExt(Collidable).getHitBox();
 
-      const dead =
-        ("isDead" in otherEntity && otherEntity.isDead()) ||
-        (otherEntity.hasExt(Destructible) && otherEntity.getExt(Destructible).isDead());
-
-      if (otherEntity === sourceEntity || dead) {
+      if (otherEntity === sourceEntity) {
         continue;
       }
 
@@ -252,12 +230,8 @@ export class EntityManager {
     return null;
   }
 
-  isColliding(sourceEntity: Entity, ignoreTypes?: EntityType[]): CollidableTrait | null {
-    return this.getIntersectingEntityByType(
-      sourceEntity,
-      IntersectionMethodIdentifiers.Collidable,
-      ignoreTypes
-    ) as CollidableTrait | null;
+  isColliding(sourceEntity: Entity, ignoreTypes?: EntityType[]): Entity | null {
+    return this.getIntersectingCollidableEntities(sourceEntity, ignoreTypes);
   }
 
   update(deltaTime: number) {
