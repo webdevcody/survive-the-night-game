@@ -5,7 +5,7 @@ import { Vector2 } from "@survive-the-night/game-server/src/shared/physics";
 import { Entity } from "@survive-the-night/game-server/src/shared/entities";
 import { distance } from "@survive-the-night/game-server/src/shared/physics";
 import Positionable from "@survive-the-night/game-server/src/shared/extensions/positionable";
-import { Illuminated } from "@survive-the-night/game-server";
+import { Illuminated } from "@survive-the-night/game-server/src/shared/extensions";
 
 const tileLocations: Record<string, [number, number]> = {
   [TILE_IDS.GRASS1]: [4 * 16, 0],
@@ -17,6 +17,8 @@ const tileLocations: Record<string, [number, number]> = {
 // Higher values make darkness increase more quickly with distance (0.5 to 2.0 recommended)
 const DARKNESS_RATE = 0.4;
 const DEFAULT_LIGHT_RADIUS = 150;
+const PULSE_SPEED = 0.001; // Speed of the pulse (lower = slower)
+const PULSE_INTENSITY = 0.05; // How much the light radius varies (0.0 to 1.0)
 
 interface LightSource {
   position: Vector2;
@@ -28,6 +30,7 @@ export class MapManager {
   private map: number[][] | null = null;
   private tilesheet = new Image();
   private client: GameClient;
+  private lastRenderTime: number;
 
   constructor(client: GameClient) {
     this.client = client;
@@ -35,6 +38,7 @@ export class MapManager {
     this.tilesheet.onload = () => {
       // this.columns = Math.floor(this.tilesheet.width / this.tileSize);
     };
+    this.lastRenderTime = Date.now();
   }
 
   setMap(map: number[][]) {
@@ -44,13 +48,16 @@ export class MapManager {
   private getLightSources(): LightSource[] {
     const sources: LightSource[] = [];
     const entities = this.client.getGameState().entities;
+    const currentTime = Date.now();
+    const pulseOffset = Math.sin(currentTime * PULSE_SPEED);
+    const radiusMultiplier = 1 + pulseOffset * PULSE_INTENSITY;
 
     // Add player as default light source
     const player = this.client.getMyPlayer();
     if (player) {
       sources.push({
         position: player.getExt(Positionable).getPosition(),
-        radius: DEFAULT_LIGHT_RADIUS,
+        radius: DEFAULT_LIGHT_RADIUS * radiusMultiplier,
       });
     }
 
@@ -58,9 +65,12 @@ export class MapManager {
     entities.forEach((entity) => {
       const gameEntity = entity as Entity;
       if (gameEntity.hasExt(Illuminated)) {
-        const radius = gameEntity.getExt(Illuminated).getRadius();
+        const baseRadius = gameEntity.getExt(Illuminated).getRadius();
         const position = gameEntity.getExt(Positionable).getPosition();
-        sources.push({ position, radius });
+        sources.push({
+          position,
+          radius: baseRadius * radiusMultiplier,
+        });
       }
     });
 
