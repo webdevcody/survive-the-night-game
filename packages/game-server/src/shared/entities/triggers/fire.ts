@@ -1,6 +1,6 @@
 import { EntityManager } from "../../../managers/entity-manager";
 import { Entities, Entity } from "../../entities";
-import { Expirable, Ignitable, Positionable, Triggerable } from "../../extensions";
+import { Expirable, Ignitable, Illuminated, Positionable, Triggerable } from "../../extensions";
 
 export class Fire extends Entity {
   public static readonly Size = 16;
@@ -14,6 +14,7 @@ export class Fire extends Entity {
         this.catchFire.bind(this)
       ),
       new Expirable(this, 8),
+      new Illuminated(this, 150),
     ];
   }
 

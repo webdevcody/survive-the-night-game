@@ -12,6 +12,7 @@ export const ExtensionNames = {
   ignitable: "ignitable",
   movable: "movable",
   combustible: "combustible",
+  illuminated: "illuminated",
 } as const;
 
 export interface Extension {

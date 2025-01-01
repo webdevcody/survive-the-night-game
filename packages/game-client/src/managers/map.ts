@@ -1,7 +1,11 @@
 import { GameClient } from "@/client";
-import { Collidable, Positionable } from "@survive-the-night/game-server";
 import { DEBUG_SHOW_HITBOXES } from "@survive-the-night/game-server/src/config";
 import { TILE_IDS } from "@survive-the-night/game-server/src/managers/map-manager";
+import { Vector2 } from "@survive-the-night/game-server/src/shared/physics";
+import { Entity } from "@survive-the-night/game-server/src/shared/entities";
+import { distance } from "@survive-the-night/game-server/src/shared/physics";
+import Positionable from "@survive-the-night/game-server/src/shared/extensions/positionable";
+import { Illuminated } from "@survive-the-night/game-server";
 
 const tileLocations: Record<string, [number, number]> = {
   [TILE_IDS.GRASS1]: [4 * 16, 0],
@@ -12,14 +16,17 @@ const tileLocations: Record<string, [number, number]> = {
 
 // Higher values make darkness increase more quickly with distance (0.5 to 2.0 recommended)
 const DARKNESS_RATE = 0.4;
+const DEFAULT_LIGHT_RADIUS = 150;
+
+interface LightSource {
+  position: Vector2;
+  radius: number;
+}
 
 export class MapManager {
   private tileSize = 16;
-
   private map: number[][] | null = null;
-
   private tilesheet = new Image();
-
   private client: GameClient;
 
   constructor(client: GameClient) {
@@ -34,41 +41,65 @@ export class MapManager {
     this.map = map;
   }
 
-  renderDarkness(ctx: CanvasRenderingContext2D) {
+  private getLightSources(): LightSource[] {
+    const sources: LightSource[] = [];
+    const entities = this.client.getGameState().entities;
+
+    // Add player as default light source
     const player = this.client.getMyPlayer();
-    if (!player || !this.map) {
-      return;
+    if (player) {
+      sources.push({
+        position: player.getExt(Positionable).getPosition(),
+        radius: DEFAULT_LIGHT_RADIUS,
+      });
     }
 
-    const playerPosition = player.getExt(Positionable).getPosition();
-    const maxViewDistance = 300;
+    // Add any other illuminated entities
+    entities.forEach((entity) => {
+      const gameEntity = entity as Entity;
+      if (gameEntity.hasExt(Illuminated)) {
+        const radius = gameEntity.getExt(Illuminated).getRadius();
+        const position = gameEntity.getExt(Positionable).getPosition();
+        sources.push({ position, radius });
+      }
+    });
 
-    // Calculate the visible range in tiles
-    const tilesInView = Math.ceil(maxViewDistance / this.tileSize);
-    const playerTileX = Math.floor(playerPosition.x / this.tileSize);
-    const playerTileY = Math.floor(playerPosition.y / this.tileSize);
+    return sources;
+  }
 
-    // Render darkness tiles
+  renderDarkness(ctx: CanvasRenderingContext2D) {
+    if (!this.map) return;
+
+    const lightSources = this.getLightSources();
+    if (lightSources.length === 0) return;
+
+    const maxViewDistance = Math.max(...lightSources.map((source) => source.radius));
+    const visibleRangeTiles = Math.ceil(maxViewDistance / this.tileSize);
+
     for (let y = 0; y < this.map.length; y++) {
       for (let x = 0; x < this.map[y].length; x++) {
-        // Calculate distance from player in tiles
-        const dx = x - playerTileX;
-        const dy = y - playerTileY;
-        const distanceInTiles = Math.sqrt(dx * dx + dy * dy);
+        const tileX = x * this.tileSize;
+        const tileY = y * this.tileSize;
+        const tileCenter = {
+          x: tileX + this.tileSize / 2,
+          y: tileY + this.tileSize / 2,
+        };
 
-        // Skip tiles that are too far to be visible
-        if (distanceInTiles > tilesInView) {
-          continue;
+        // Calculate minimum opacity from all light sources
+        let minOpacity = 1;
+        for (const source of lightSources) {
+          const dist = distance(source.position, tileCenter);
+          if (dist > source.radius) continue;
+
+          const opacity = Math.pow(dist / source.radius, DARKNESS_RATE);
+          minOpacity = Math.min(minOpacity, opacity);
         }
 
-        // Calculate opacity based on distance with darkness rate
-        const distance = distanceInTiles * this.tileSize;
-        let opacity = Math.pow(distance / maxViewDistance, DARKNESS_RATE);
-        opacity = Math.min(Math.max(opacity, 0), 1); // Clamp between 0 and 1
+        // Skip fully transparent tiles
+        if (minOpacity <= 0) continue;
 
-        // Draw black tile with calculated opacity
-        ctx.fillStyle = `rgba(0, 0, 0, ${opacity})`;
-        ctx.fillRect(x * this.tileSize, y * this.tileSize, this.tileSize, this.tileSize);
+        ctx.fillStyle = `rgba(0, 0, 0, ${minOpacity})`;
+        ctx.fillRect(tileX, tileY, this.tileSize, this.tileSize);
       }
     }
   }

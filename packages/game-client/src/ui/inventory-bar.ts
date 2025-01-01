@@ -2,8 +2,9 @@ import { AssetManager, getItemAssetKey } from "../managers/asset";
 import { Renderable } from "../entities/util";
 import { GameState } from "@/state";
 import { InputManager } from "@/managers/input";
-import { Direction, Inventory, InventoryItem, Player } from "@survive-the-night/game-server";
+import { Direction, InventoryItem } from "@survive-the-night/game-server";
 import { Z_INDEX } from "@survive-the-night/game-server/src/managers/map-manager";
+import Inventory from "@survive-the-night/game-server/src/shared/extensions/inventory";
 
 const HOTBAR_SETTINGS = {
   Inventory: {

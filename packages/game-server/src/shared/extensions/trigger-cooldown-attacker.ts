@@ -1,6 +1,4 @@
-import { Destructible, Triggerable } from ".";
 import { distance } from "../physics";
-import { Positionable } from "./index";
 import { GenericEntity } from "../entities";
 import { Extension, ExtensionNames, ExtensionSerialized } from "./types";
 import { Zombie } from "../entities/zombie";
@@ -8,6 +6,9 @@ import { Rectangle } from "../geom/rectangle";
 import { Cooldown } from "../entities/util/cooldown";
 import { EntityManager } from "@/managers/entity-manager";
 import { EntityType } from "../entity-types";
+import Positionable from "./positionable";
+import Triggerable from "./trigger";
+import Destructible from "./destructible";
 
 /**
  * This extension will cause the entity to fire an attack when the cooldown is ready.
