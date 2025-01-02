@@ -18,6 +18,7 @@ import {
   Interactive,
   Updatable,
   Movable,
+  Illuminated,
 } from "../extensions";
 import { PlayerHurtEvent } from "../events/server-sent/player-hurt-event";
 import { PlayerAttackedEvent } from "../events/server-sent/player-attacked-event";
@@ -69,6 +70,7 @@ export class Player extends Entity {
         .onDeath(() => this.onDeath()),
       new Updatable(this, this.updatePlayer.bind(this)),
       new Movable(this),
+      new Illuminated(this, 200),
     ];
 
     if (DEBUG_WEAPONS) {

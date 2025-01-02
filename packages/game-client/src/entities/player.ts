@@ -17,7 +17,7 @@ import { AssetManager, getItemAssetKey } from "../managers/asset";
 import { drawHealthBar, getFrameIndex, IClientEntity, Renderable } from "./util";
 import { GameState } from "@/state";
 import { getHitboxWithPadding } from "@survive-the-night/game-server/src/shared/entities/util";
-import { debugDrawHitbox } from "../util/debug";
+import { debugDrawHitbox, drawCenterPositionWithLabel } from "../util/debug";
 import { animate } from "../animations";
 import { Z_INDEX } from "@survive-the-night/game-server/src/managers/map-manager";
 import { createFlashEffect } from "../util/render";
@@ -87,7 +87,7 @@ export class PlayerClient extends GenericEntity implements IClientEntity, Render
 
   getCenterPosition(): Vector2 {
     const positionable = this.getExt(Positionable);
-    return positionable.getPosition();
+    return positionable.getCenterPosition();
   }
 
   setVelocity(velocity: Vector2): void {
@@ -142,40 +142,45 @@ export class PlayerClient extends GenericEntity implements IClientEntity, Render
     }
 
     const renderPosition = roundVector2(this.lastRenderPosition);
+    const renderPositionWithOffset = {
+      x: renderPosition.x - image.width / 2,
+      y: renderPosition.y - image.height / 2,
+    };
 
     ctx.save();
 
     if (this.isDead()) {
       ctx.globalAlpha = 0.7;
-      ctx.translate(renderPosition.x + image.width / 2, renderPosition.y + image.height / 2);
+      ctx.translate(renderPositionWithOffset.x, renderPositionWithOffset.y);
       ctx.rotate(Math.PI / 2);
       ctx.drawImage(image, -image.width / 2, -image.height / 2);
       ctx.globalAlpha = 1.0;
     } else {
-      ctx.drawImage(image, renderPosition.x, renderPosition.y);
+      ctx.drawImage(image, renderPositionWithOffset.x, renderPositionWithOffset.y);
 
       if (this.hasExt(Ignitable)) {
         const fireImg = this.assetManager.get("Fire");
-        ctx.drawImage(fireImg, renderPosition.x, renderPosition.y);
+        ctx.drawImage(fireImg, renderPositionWithOffset.x, renderPositionWithOffset.y);
       }
 
-      this.renderInventoryItem(ctx, renderPosition);
+      this.renderInventoryItem(ctx, renderPositionWithOffset);
     }
 
     if (Date.now() < this.damageFlashUntil) {
       const flashEffect = createFlashEffect(image);
-      ctx.drawImage(flashEffect, renderPosition.x, renderPosition.y);
+      ctx.drawImage(flashEffect, renderPositionWithOffset.x, renderPositionWithOffset.y);
     }
 
     ctx.restore();
 
     if (!this.isDead()) {
-      this.renderArrow(ctx, image, renderPosition);
+      this.renderArrow(ctx, image, renderPositionWithOffset);
     }
 
-    drawHealthBar(ctx, renderPosition, this.getHealth(), this.getMaxHealth());
+    drawHealthBar(ctx, renderPositionWithOffset, this.getHealth(), this.getMaxHealth());
 
     debugDrawHitbox(ctx, this.getDamageBox(), "red");
+    drawCenterPositionWithLabel(ctx, this.getCenterPosition());
 
     if (this.isCrafting) {
       ctx.font = "8px Arial";

@@ -52,22 +52,14 @@ export class MapManager {
     const pulseOffset = Math.sin(currentTime * PULSE_SPEED);
     const radiusMultiplier = 1 + pulseOffset * PULSE_INTENSITY;
 
-    // Add player as default light source
-    const player = this.client.getMyPlayer();
-    if (player) {
-      sources.push({
-        position: player.getExt(Positionable).getPosition(),
-        radius: DEFAULT_LIGHT_RADIUS * radiusMultiplier,
-      });
-    }
-
     // Add any other illuminated entities
     entities.forEach((entity) => {
       const gameEntity = entity as Entity;
       if (gameEntity.hasExt(Illuminated)) {
         const baseRadius = gameEntity.getExt(Illuminated).getRadius();
-        const position = gameEntity.getExt(Positionable).getPosition();
+        const position = gameEntity.getExt(Positionable).getCenterPosition();
         sources.push({
+          type: gameEntity.getType(),
           position,
           radius: baseRadius * radiusMultiplier,
         });
@@ -83,9 +75,6 @@ export class MapManager {
     const lightSources = this.getLightSources();
     if (lightSources.length === 0) return;
 
-    const maxViewDistance = Math.max(...lightSources.map((source) => source.radius));
-    const visibleRangeTiles = Math.ceil(maxViewDistance / this.tileSize);
-
     for (let y = 0; y < this.map.length; y++) {
       for (let x = 0; x < this.map[y].length; x++) {
         const tileX = x * this.tileSize;
@@ -95,7 +84,6 @@ export class MapManager {
           y: tileY + this.tileSize / 2,
         };
 
-        // Calculate minimum opacity from all light sources
         let minOpacity = 1;
         for (const source of lightSources) {
           const dist = distance(source.position, tileCenter);
@@ -105,7 +93,6 @@ export class MapManager {
           minOpacity = Math.min(minOpacity, opacity);
         }
 
-        // Skip fully transparent tiles
         if (minOpacity <= 0) continue;
 
         ctx.fillStyle = `rgba(0, 0, 0, ${minOpacity})`;

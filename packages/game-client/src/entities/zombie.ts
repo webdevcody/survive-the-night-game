@@ -14,7 +14,7 @@ import {
 import { AssetManager } from "@/managers/asset";
 import { drawHealthBar, getFrameIndex, IClientEntity, Renderable } from "./util";
 import { GameState } from "../state";
-import { debugDrawHitbox } from "../util/debug";
+import { debugDrawHitbox, drawCenterPositionWithLabel } from "../util/debug";
 import { Z_INDEX } from "@survive-the-night/game-server/src/managers/map-manager";
 import Movable from "@survive-the-night/game-server/src/shared/extensions/movable";
 import { createFlashEffect } from "../util/render";
@@ -120,6 +120,7 @@ export class ZombieClient extends GenericEntity implements IClientEntity, Render
       drawHealthBar(ctx, renderPosition, this.getHealth(), this.getMaxHealth());
       debugDrawHitbox(ctx, collidable.getHitBox());
       debugDrawHitbox(ctx, destructible.getDamageBox(), "red");
+      drawCenterPositionWithLabel(ctx, this.getCenterPosition());
     }
 
     if (Date.now() < this.damageFlashUntil) {
