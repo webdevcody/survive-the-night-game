@@ -1,9 +1,8 @@
-import { Entity, GenericEntity } from "../entities";
+import { Entity } from "../entities";
 import { Extension, ExtensionNames, ExtensionSerialized } from "./types";
 import { InventoryItem, ITEM_TYPES, ItemType } from "../inventory";
 import { recipes, RecipeType } from "../recipes";
 import { ServerSocketManager } from "../../managers/server-socket-manager";
-import { PlayerDroppedItemEvent } from "../events/server-sent/player-dropped-item-event";
 import { PlayerPickedUpItemEvent } from "../events/server-sent/pickup-item-event";
 import { Positionable } from "./index";
 

@@ -14,6 +14,7 @@ import { AssetManager } from "@/managers/asset";
 import { GameState } from "@/state";
 import { FireClient } from "./traps/fire";
 import { EntityType } from "@survive-the-night/game-server/src/shared/entity-types";
+import { TorchClient } from "./items/torch";
 
 export class EntityFactory {
   private assetManager: AssetManager;
@@ -75,6 +76,11 @@ export class EntityFactory {
       },
       [Entities.SPIKES]: (data: EntityDto) => {
         const entity = new SpikesClient(data, this.assetManager);
+        entity.deserialize(data);
+        return entity;
+      },
+      [Entities.TORCH]: (data: EntityDto) => {
+        const entity = new TorchClient(data, this.assetManager);
         entity.deserialize(data);
         return entity;
       },

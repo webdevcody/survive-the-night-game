@@ -1,7 +1,10 @@
 import { GameClient } from "@/client";
 import { linearFalloff } from "../util/math";
 import { distance, Vector2 } from "@survive-the-night/game-server";
-import { DEBUG_DISABLE_SOUNDS } from "@survive-the-night/game-server/src/config";
+import {
+  DEBUG_DISABLE_SOUNDS,
+  DEBUG_VOLUME_REDUCTION,
+} from "@survive-the-night/game-server/src/config";
 
 // these values must match the sound files in the client
 export const SOUND_TYPES = {
@@ -42,9 +45,8 @@ export class SoundManager {
     if (!myPlayer) return;
 
     const dist = distance(myPlayer.getPosition(), position);
-    const volume = linearFalloff(dist, SoundManager.MAX_DISTANCE);
+    const volume = linearFalloff(dist, SoundManager.MAX_DISTANCE) * DEBUG_VOLUME_REDUCTION;
 
-    // Clone the cached audio element to play multiple instances
     const audio = this.audioCache.get(sound)?.cloneNode() as HTMLAudioElement;
     if (audio) {
       audio.volume = volume;

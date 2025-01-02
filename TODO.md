@@ -2,7 +2,6 @@
 
 Feel free to pick any item listed out here to work on.
 
-
 ### Stream TODO
 
 - [ ] try to refactor the zombie entity to use ECS
@@ -11,6 +10,7 @@ Feel free to pick any item listed out here to work on.
 
 ### Refactoring
 
+- [ ] why does positionable have a size? remove if not necessary
 - [ ] find a way to reduce the amount of duplicate code
 - [ ] the client entities feels very duplicates to the server entities, find a way reuse code maybe?
 - [ ] sometimes when doing @ imports, the entire app breaks forcing us to use relative... figure out why

@@ -78,7 +78,7 @@ export class Player extends Entity {
         { key: "Pistol" as const },
         { key: "Shotgun" as const },
         { key: "Wood" as const },
-        { key: "Wall" as const },
+        { key: "Torch" as const },
         { key: "Wall" as const },
         { key: "Wall" as const },
       ].forEach((item) => inventory.addItem(item));

@@ -12,6 +12,7 @@ import {
   Updatable,
   Combustible,
   Movable,
+  Illuminated,
 } from "../extensions";
 import { Wall } from "./wall";
 import { ZombieDeathEvent } from "../events/server-sent/zombie-death-event";

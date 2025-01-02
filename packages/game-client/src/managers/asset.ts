@@ -85,6 +85,7 @@ export const assetsMap = {
   ShotgunFacingLeft: assetMap({ x: 17, y: 133, flipX: true }),
   ShotgunFacingRight: assetMap({ x: 17, y: 133 }),
   ShotgunFacingUp: assetMap({ x: 34, y: 133 }),
+  Torch: assetMap({ x: 68, y: 266 }),
   Fire: assetMap({ x: 51, y: 265 }),
   Player: assetMap({ x: 493, y: 209 }),
   PlayerFacingDown: assetMap(playerDownFrameOrigins[0]),
@@ -250,6 +251,8 @@ export function getItemAssetKey(item: InventoryItem): Asset {
     return "Bandage";
   } else if (item.key === "Cloth") {
     return "Cloth";
+  } else if (item.key === "Torch") {
+    return "Torch";
   }
 
   throw new Error(`Unknown item type '${item.key}'`);
