@@ -25,7 +25,7 @@ export class WallClient extends GenericEntity implements Renderable {
   }
 
   render(ctx: CanvasRenderingContext2D, gameState: GameState): void {
-    const image = this.assetManager.get("Wall");
+    const image = this.assetManager.get("wall");
     const myPlayer = getPlayer(gameState);
     const destructible = this.getExt(Destructible);
     const positionable = this.getExt(Positionable);

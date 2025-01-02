@@ -68,76 +68,74 @@ const zombieRightFrameOrigins = getFrameOrigins({ startX: 496, startY: 95, total
 
 // sheet gaps: 1px horizontally, 3px vertically
 export const assetsMap = {
-  Spikes: assetMap({ x: 357, y: 57 }),
-  Cloth: assetMap({ x: 51, y: 228 }),
-  Knife: assetMap({ x: 17, y: 171 }),
-  KnifeFacingDown: assetMap({ x: 51, y: 171 }),
-  KnifeFacingLeft: assetMap({ x: 17, y: 171, flipX: true }),
-  KnifeFacingRight: assetMap({ x: 17, y: 171 }),
-  KnifeFacingUp: assetMap({ x: 34, y: 171 }),
-  Pistol: assetMap({ x: 17, y: 149 }),
-  PistolFacingDown: assetMap({ x: 51, y: 149 }),
-  PistolFacingLeft: assetMap({ x: 17, y: 149, flipX: true }),
-  PistolFacingRight: assetMap({ x: 17, y: 149 }),
-  PistolFacingUp: assetMap({ x: 34, y: 149 }),
-  Shotgun: assetMap({ x: 17, y: 133 }),
-  ShotgunFacingDown: assetMap({ x: 51, y: 133 }),
-  ShotgunFacingLeft: assetMap({ x: 17, y: 133, flipX: true }),
-  ShotgunFacingRight: assetMap({ x: 17, y: 133 }),
-  ShotgunFacingUp: assetMap({ x: 34, y: 133 }),
-  Flame: assetMap({ x: 85, y: 266 }),
-  Flame0: assetMap({ x: 85, y: 266 }),
-  Flame1: assetMap({ x: 102, y: 266 }),
-  Flame2: assetMap({ x: 119, y: 266 }),
-  Flame3: assetMap({ x: 136, y: 266 }),
-  Flame4: assetMap({ x: 153, y: 266 }),
-  Torch: assetMap({ x: 68, y: 266 }),
-  Fire: assetMap({ x: 51, y: 265 }),
-  Gasoline: assetMap({ x: 255, y: 38 }),
-  Player: assetMap({ x: 493, y: 209 }),
-  PlayerFacingDown: assetMap(playerDownFrameOrigins[0]),
-  PlayerFacingDown0: assetMap(playerDownFrameOrigins[0]),
-  PlayerFacingDown1: assetMap(playerDownFrameOrigins[1]),
-  PlayerFacingDown2: assetMap(playerDownFrameOrigins[2]),
-  PlayerFacingLeft: loadFlipXAsset(playerLeftFrameOrigins[0]),
-  PlayerFacingLeft0: loadFlipXAsset(playerLeftFrameOrigins[0]),
-  PlayerFacingLeft1: loadFlipXAsset(playerLeftFrameOrigins[1]),
-  PlayerFacingLeft2: loadFlipXAsset(playerLeftFrameOrigins[2]),
-  PlayerFacingRight: assetMap(playerRightFrameOrigins[0]),
-  PlayerFacingRight0: assetMap(playerRightFrameOrigins[0]),
-  PlayerFacingRight1: assetMap(playerRightFrameOrigins[1]),
-  PlayerFacingRight2: assetMap(playerRightFrameOrigins[2]),
-  PlayerFacingUp: assetMap(playerUpFrameOrigins[0]),
-  PlayerFacingUp0: assetMap(playerUpFrameOrigins[0]),
-  PlayerFacingUp1: assetMap(playerUpFrameOrigins[1]),
-  PlayerFacingUp2: assetMap(playerUpFrameOrigins[2]),
-  Tree: assetMap({ x: 221, y: 209 }),
-  Wall: assetMap({ x: 357, y: 95 }),
-  Zombie: assetMap({ x: 493, y: 76 }),
-  // TODO: we should probably explicitly have something for Idle
-  // TODO: the fact we are hard coding frame 0, 1, 2 is super brittle....
-  // TODO: it might be better, if these things lived in the zombie entity (co location is nice)
-  Zombie0: assetMap(zombieDownFrameOrigins[0]),
-  Zombie1: assetMap(zombieDownFrameOrigins[1]),
-  Zombie2: assetMap(zombieDownFrameOrigins[2]),
-  ZombieDead: assetMap({ x: 289, y: 19 }),
-  ZombieFacingDown: assetMap(zombieDownFrameOrigins[0]),
-  ZombieFacingDown0: assetMap(zombieDownFrameOrigins[0]),
-  ZombieFacingDown1: assetMap(zombieDownFrameOrigins[1]),
-  ZombieFacingDown2: assetMap(zombieDownFrameOrigins[2]),
-  ZombieFacingLeft: assetMap(zombieLeftFrameOrigins[0]),
-  ZombieFacingLeft0: assetMap(zombieLeftFrameOrigins[0]),
-  ZombieFacingLeft1: assetMap(zombieLeftFrameOrigins[1]),
-  ZombieFacingLeft2: assetMap(zombieLeftFrameOrigins[2]),
-  ZombieFacingRight: loadFlipXAsset(zombieRightFrameOrigins[0]),
-  ZombieFacingRight0: loadFlipXAsset(zombieRightFrameOrigins[0]),
-  ZombieFacingRight1: loadFlipXAsset(zombieRightFrameOrigins[1]),
-  ZombieFacingRight2: loadFlipXAsset(zombieRightFrameOrigins[2]),
-  ZombieFacingUp: assetMap(zombieUpFrameOrigins[0]),
-  ZombieFacingUp0: assetMap(zombieUpFrameOrigins[0]),
-  ZombieFacingUp1: assetMap(zombieUpFrameOrigins[1]),
-  ZombieFacingUp2: assetMap(zombieUpFrameOrigins[2]),
-  Bandage: assetMap({ x: 34, y: 190 }),
+  spikes: assetMap({ x: 357, y: 57 }),
+  cloth: assetMap({ x: 51, y: 228 }),
+  knife: assetMap({ x: 17, y: 171 }),
+  knife_facing_down: assetMap({ x: 51, y: 171 }),
+  knife_facing_left: assetMap({ x: 17, y: 171, flipX: true }),
+  knife_facing_right: assetMap({ x: 17, y: 171 }),
+  knife_facing_up: assetMap({ x: 34, y: 171 }),
+  pistol: assetMap({ x: 17, y: 149 }),
+  pistol_facing_down: assetMap({ x: 51, y: 149 }),
+  pistol_facing_left: assetMap({ x: 17, y: 149, flipX: true }),
+  pistol_facing_right: assetMap({ x: 17, y: 149 }),
+  pistol_facing_up: assetMap({ x: 34, y: 149 }),
+  shotgun: assetMap({ x: 17, y: 133 }),
+  shotgun_facing_down: assetMap({ x: 51, y: 133 }),
+  shotgun_facing_left: assetMap({ x: 17, y: 133, flipX: true }),
+  shotgun_facing_right: assetMap({ x: 17, y: 133 }),
+  shotgun_facing_up: assetMap({ x: 34, y: 133 }),
+  flame: assetMap({ x: 85, y: 266 }),
+  flame_0: assetMap({ x: 85, y: 266 }),
+  flame_1: assetMap({ x: 102, y: 266 }),
+  flame_2: assetMap({ x: 119, y: 266 }),
+  flame_3: assetMap({ x: 136, y: 266 }),
+  flame_4: assetMap({ x: 153, y: 266 }),
+  torch: assetMap({ x: 68, y: 266 }),
+  fire: assetMap({ x: 51, y: 265 }),
+  gasoline: assetMap({ x: 255, y: 38 }),
+  player: assetMap({ x: 493, y: 209 }),
+  player_facing_down: assetMap(playerDownFrameOrigins[0]),
+  player_facing_down_0: assetMap(playerDownFrameOrigins[0]),
+  player_facing_down_1: assetMap(playerDownFrameOrigins[1]),
+  player_facing_down_2: assetMap(playerDownFrameOrigins[2]),
+  player_facing_left: loadFlipXAsset(playerLeftFrameOrigins[0]),
+  player_facing_left_0: loadFlipXAsset(playerLeftFrameOrigins[0]),
+  player_facing_left_1: loadFlipXAsset(playerLeftFrameOrigins[1]),
+  player_facing_left_2: loadFlipXAsset(playerLeftFrameOrigins[2]),
+  player_facing_right: assetMap(playerRightFrameOrigins[0]),
+  player_facing_right_0: assetMap(playerRightFrameOrigins[0]),
+  player_facing_right_1: assetMap(playerRightFrameOrigins[1]),
+  player_facing_right_2: assetMap(playerRightFrameOrigins[2]),
+  player_facing_up: assetMap(playerUpFrameOrigins[0]),
+  player_facing_up_0: assetMap(playerUpFrameOrigins[0]),
+  player_facing_up_1: assetMap(playerUpFrameOrigins[1]),
+  player_facing_up_2: assetMap(playerUpFrameOrigins[2]),
+  tree: assetMap({ x: 221, y: 209 }),
+  wood: assetMap({ x: 221, y: 209 }),
+  wall: assetMap({ x: 357, y: 95 }),
+  zombie: assetMap({ x: 493, y: 76 }),
+  zombie_0: assetMap(zombieDownFrameOrigins[0]),
+  zombie_1: assetMap(zombieDownFrameOrigins[1]),
+  zombie_2: assetMap(zombieDownFrameOrigins[2]),
+  zombie_dead: assetMap({ x: 289, y: 19 }),
+  zombie_facing_down: assetMap(zombieDownFrameOrigins[0]),
+  zombie_facing_down_0: assetMap(zombieDownFrameOrigins[0]),
+  zombie_facing_down_1: assetMap(zombieDownFrameOrigins[1]),
+  zombie_facing_down_2: assetMap(zombieDownFrameOrigins[2]),
+  zombie_facing_left: assetMap(zombieLeftFrameOrigins[0]),
+  zombie_facing_left_0: assetMap(zombieLeftFrameOrigins[0]),
+  zombie_facing_left_1: assetMap(zombieLeftFrameOrigins[1]),
+  zombie_facing_left_2: assetMap(zombieLeftFrameOrigins[2]),
+  zombie_facing_right: loadFlipXAsset(zombieRightFrameOrigins[0]),
+  zombie_facing_right_0: loadFlipXAsset(zombieRightFrameOrigins[0]),
+  zombie_facing_right_1: loadFlipXAsset(zombieRightFrameOrigins[1]),
+  zombie_facing_right_2: loadFlipXAsset(zombieRightFrameOrigins[2]),
+  zombie_facing_up: assetMap(zombieUpFrameOrigins[0]),
+  zombie_facing_up_0: assetMap(zombieUpFrameOrigins[0]),
+  zombie_facing_up_1: assetMap(zombieUpFrameOrigins[1]),
+  zombie_facing_up_2: assetMap(zombieUpFrameOrigins[2]),
+  bandage: assetMap({ x: 34, y: 190 }),
 } as const;
 
 export type Asset = keyof typeof assetsMap;
@@ -173,13 +171,13 @@ export class AssetManager {
   }
 
   public getFrameIndex(key: Asset, frameIndex: number) {
-    const keyWithFrame = `${key}${frameIndex}`;
+    const keyWithFrame = `${key}_${frameIndex}`;
     return this.get(keyWithFrame as Asset);
   }
 
   public getFrameWithDirection(key: Asset, direction: Direction | null, frameIndex: number) {
     const keyWithDirection = this.addDirectionSuffix(key, direction);
-    const keyWithFrame = `${keyWithDirection}${frameIndex}`;
+    const keyWithFrame = `${keyWithDirection}_${frameIndex}`;
     return this.get(keyWithFrame as Asset);
   }
 
@@ -194,13 +192,13 @@ export class AssetManager {
 
     if (direction !== null) {
       if (isDirectionLeft(direction)) {
-        suffix = "FacingLeft";
+        suffix = "_facing_left";
       } else if (isDirectionRight(direction)) {
-        suffix = "FacingRight";
+        suffix = "_facing_right";
       } else if (isDirectionDown(direction)) {
-        suffix = "FacingDown";
+        suffix = "_facing_down";
       } else if (isDirectionUp(direction)) {
-        suffix = "FacingUp";
+        suffix = "_facing_up";
       }
     }
 
@@ -249,27 +247,5 @@ export class AssetManager {
 }
 
 export function getItemAssetKey(item: InventoryItem): Asset {
-  if (item.key === "Knife") {
-    return "Knife";
-  } else if (item.key === "Shotgun") {
-    return "Shotgun";
-  } else if (item.key === "Pistol") {
-    return "Pistol";
-  } else if (item.key === "Wood") {
-    return "Tree";
-  } else if (item.key === "Wall") {
-    return "Wall";
-  } else if (item.key === "Bandage") {
-    return "Bandage";
-  } else if (item.key === "Cloth") {
-    return "Cloth";
-  } else if (item.key === "Torch") {
-    return "Torch";
-  } else if (item.key === "Gasoline") {
-    return "Gasoline";
-  } else if (item.key === "Spikes") {
-    return "Spikes";
-  }
-
-  throw new Error(`Unknown item type '${item.key}'`);
+  return item.key as Asset;
 }

@@ -13,13 +13,13 @@ export class WallRecipe implements Recipe {
   public components(): RecipeComponent[] {
     return [
       {
-        type: "Wood",
+        type: "wood",
       },
       {
-        type: "Wood",
+        type: "wood",
       },
       {
-        type: "Wood",
+        type: "wood",
       },
     ];
   }
@@ -30,7 +30,7 @@ export class WallRecipe implements Recipe {
 
   public resultingComponent(): RecipeComponent {
     return {
-      type: "Wall",
+      type: "wall",
     };
   }
 }

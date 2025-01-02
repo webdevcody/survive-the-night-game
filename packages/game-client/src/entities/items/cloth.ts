@@ -19,7 +19,7 @@ export class ClothClient extends GenericEntity implements Renderable {
   }
 
   public render(ctx: CanvasRenderingContext2D, gameState: GameState): void {
-    const image = this.assetManager.get("Cloth");
+    const image = this.assetManager.get("cloth");
     const myPlayer = getPlayer(gameState);
     const positionable = this.getExt(Positionable);
     const centerPosition = positionable.getCenterPosition();

@@ -1,8 +1,8 @@
 import { Entity } from "../entities";
-import { Extension, ExtensionNames, ExtensionSerialized } from "./types";
+import { Extension, ExtensionSerialized } from "./types";
 import { Player } from "../entities/player";
 import { ItemType } from "../inventory";
-import { EntityManager } from "../../managers/entity-manager";
+import { PlayerPickedUpItemEvent } from "../events/server-sent/pickup-item-event";
 
 export default class Carryable implements Extension {
   public static readonly Name = "carryable" as const;
@@ -13,12 +13,6 @@ export default class Carryable implements Extension {
   public constructor(self: Entity, itemKey: ItemType) {
     this.self = self;
     this.itemKey = itemKey;
-
-    // Auto-register this entity type for the given item key
-    // SERVER ONLY LOGIC
-    self
-      .getEntityManager?.()
-      .registerItem(itemKey, self.constructor as new (entityManager: EntityManager) => Entity);
   }
 
   public pickup(player: Player): boolean {
@@ -28,6 +22,17 @@ export default class Carryable implements Extension {
 
     player.getInventory().push({ key: this.itemKey });
     this.self.getEntityManager().markEntityForRemoval(this.self);
+
+    this.self
+      .getEntityManager()
+      .getSocketManager()
+      .broadcastEvent(
+        new PlayerPickedUpItemEvent({
+          playerId: player.getId(),
+          itemKey: this.itemKey,
+        })
+      );
+
     return true;
   }
 

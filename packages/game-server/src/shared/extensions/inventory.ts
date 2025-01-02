@@ -55,7 +55,7 @@ export default class Inventory implements Extension {
 
   public getActiveWeapon(activeItem: InventoryItem | null): InventoryItem | null {
     const activeKey = activeItem?.key ?? "";
-    return ["Knife", "Shotgun", "Pistol"].includes(activeKey) ? activeItem : null;
+    return ["knife", "shotgun", "pistol"].includes(activeKey) ? activeItem : null;
   }
 
   public craftRecipe(recipe: RecipeType): void {

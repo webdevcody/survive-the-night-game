@@ -27,7 +27,7 @@ export class SpikesClient extends GenericEntity implements Renderable {
   }
 
   public render(ctx: CanvasRenderingContext2D, gameState: GameState): void {
-    const image = this.assetManager.get("Spikes");
+    const image = this.assetManager.get("spikes");
     const positionable = this.getExt(Positionable);
     const centerPosition = positionable.getCenterPosition();
     const position = positionable.getPosition();

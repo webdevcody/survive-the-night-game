@@ -24,7 +24,7 @@ export class BandageClient extends GenericEntity implements Renderable {
   }
 
   public render(ctx: CanvasRenderingContext2D, gameState: GameState): void {
-    const image = this.assetManager.get("Bandage");
+    const image = this.assetManager.get("bandage");
     const myPlayer = getPlayer(gameState);
     const positionable = this.getExt(Positionable);
     const centerPosition = positionable.getCenterPosition();

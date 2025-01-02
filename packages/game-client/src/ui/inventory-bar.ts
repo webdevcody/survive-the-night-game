@@ -95,10 +95,7 @@ export class InventoryBarUI implements Renderable {
         continue;
       }
 
-      const image = this.assetManager.getWithDirection(
-        getItemAssetKey(inventoryItem),
-        Direction.Right
-      );
+      const image = this.assetManager.get(getItemAssetKey(inventoryItem));
       ctx.drawImage(image, slotLeft, slotsTop, slotSize, slotSize);
     }
 

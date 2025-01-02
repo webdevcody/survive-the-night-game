@@ -1,4 +1,4 @@
-import { Entities, Vector2, GenericEntity, RawEntity } from "@survive-the-night/game-server";
+import { Vector2, GenericEntity, RawEntity } from "@survive-the-night/game-server";
 import { AssetManager } from "@/managers/asset";
 import { GameState } from "../state";
 import { IClientEntity, Renderable } from "./util";

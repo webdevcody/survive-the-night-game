@@ -24,7 +24,7 @@ export class Spikes extends Entity {
         cooldown: 1,
       }),
       new Interactive(this).onInteract(this.interact.bind(this)),
-      new Carryable(this, "Spikes"),
+      new Carryable(this, "spikes"),
     ];
   }
 

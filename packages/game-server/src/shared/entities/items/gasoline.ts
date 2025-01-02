@@ -22,7 +22,7 @@ export class Gasoline extends Entity {
       new Interactive(this).onInteract(this.interact.bind(this)),
       new Destructible(this).setMaxHealth(1).setHealth(1).onDeath(this.onDeath.bind(this)),
       new Combustible(this, (type) => new Fire(this.getEntityManager()), 12, 64), // More fires and larger spread than default
-      new Carryable(this, "Gasoline"),
+      new Carryable(this, "gasoline"),
     ];
   }
 

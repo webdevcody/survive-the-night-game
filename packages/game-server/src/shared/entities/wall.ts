@@ -18,7 +18,7 @@ export class Wall extends Entity {
         .setMaxHealth(Wall.MAX_HEALTH)
         .setHealth(health ?? Wall.MAX_HEALTH)
         .onDeath(() => this.onDeath()),
-      new Carryable(this, "Wall"),
+      new Carryable(this, "wall"),
     ];
   }
 

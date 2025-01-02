@@ -12,10 +12,10 @@ export class Cloth extends Entity {
     this.extensions = [
       new Positionable(this).setSize(Cloth.Size),
       new Interactive(this).onInteract(this.interact.bind(this)),
-      new Carryable(this, "Cloth"),
+      new Carryable(this, "cloth"),
     ];
 
-    entityManager.registerItem("Cloth", Cloth);
+    entityManager.registerItem("cloth", Cloth);
   }
 
   private interact(player: Player): void {

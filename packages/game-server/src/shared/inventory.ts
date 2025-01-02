@@ -1,14 +1,14 @@
 export const ITEM_TYPES = [
-  "Knife",
-  "Shotgun",
-  "Pistol",
-  "Wood",
-  "Wall",
-  "Bandage",
-  "Cloth",
-  "Torch",
-  "Gasoline",
-  "Spikes",
+  "knife",
+  "shotgun",
+  "pistol",
+  "wood",
+  "wall",
+  "bandage",
+  "cloth",
+  "torch",
+  "gasoline",
+  "spikes",
 ] as const;
 export type ItemType = (typeof ITEM_TYPES)[number];
 
@@ -17,4 +17,4 @@ export interface InventoryItem {
   state?: any;
 }
 
-export type WeaponKey = "Knife" | "Shotgun" | "Pistol";
+export type WeaponKey = "knife" | "shotgun" | "pistol";

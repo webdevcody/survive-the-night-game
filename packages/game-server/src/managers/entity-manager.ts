@@ -5,16 +5,19 @@ import { Player } from "../shared/entities/player";
 import { SpatialGrid } from "./spatial-grid";
 import { Collidable, Destructible, Positionable, Updatable } from "../shared/extensions";
 import { InventoryItem, ItemType } from "../shared/inventory";
-import { Weapon, WEAPON_TYPES } from "../shared/entities/weapon";
-import { Tree } from "../shared/entities/items/tree";
-import { Wall } from "../shared/entities/wall";
-import { Bandage } from "../shared/entities/items/bandage";
-import { Cloth } from "../shared/entities/items/cloth";
 import { ServerSocketManager } from "./server-socket-manager";
 import { EntityType } from "../shared/entity-types";
-import { Torch } from "../shared/entities/items/torch";
 import { Gasoline } from "../shared/entities/items/gasoline";
+import { Bandage } from "../shared/entities/items/bandage";
+import { Torch } from "../shared/entities/items/torch";
+import { Cloth } from "../shared/entities/items/cloth";
+import { Tree } from "../shared/entities/items/tree";
+import { Wall } from "../shared/entities/wall";
 import { Spikes } from "../shared/entities/items/spikes";
+import { Weapon } from "../shared/entities/weapon";
+
+type EntityConstructor = new (entityManager: EntityManager, ...args: any[]) => Entity;
+type EntityFactory = (entityManager: EntityManager) => Entity;
 
 export class EntityManager {
   private entities: Entity[];
@@ -22,14 +25,53 @@ export class EntityManager {
   private id: number = 0;
   private spatialGrid: SpatialGrid | null = null;
   private socketManager: ServerSocketManager;
-  private itemConstructors = new Map<
-    ItemType,
-    new (entityManager: EntityManager, ...args: any[]) => Entity
-  >();
+  private itemConstructors = new Map<ItemType, EntityConstructor | EntityFactory>();
 
   constructor(socketManager: ServerSocketManager) {
     this.entities = [];
     this.socketManager = socketManager;
+    this.registerDefaultItems();
+  }
+
+  private registerDefaultItems() {
+    // Register all available item types upfront
+    this.registerItem("gasoline", Gasoline);
+    this.registerItem("bandage", Bandage);
+    this.registerItem("torch", Torch);
+    this.registerItem("cloth", Cloth);
+    this.registerItem("wood", (em: EntityManager) => new Tree(em, this.socketManager));
+    this.registerItem("wall", Wall);
+    this.registerItem("spikes", Spikes);
+
+    // Register weapons
+    this.registerItem("knife", (em: EntityManager) => new Weapon(em, "knife"));
+    this.registerItem("shotgun", (em: EntityManager) => new Weapon(em, "shotgun"));
+    this.registerItem("pistol", (em: EntityManager) => new Weapon(em, "pistol"));
+  }
+
+  public registerItem(type: ItemType, constructor: EntityConstructor | EntityFactory): void {
+    if (!this.itemConstructors.has(type)) {
+      this.itemConstructors.set(type, constructor);
+    }
+  }
+
+  public hasRegisteredItem(type: ItemType): boolean {
+    return this.itemConstructors.has(type);
+  }
+
+  public createEntityFromItem(item: InventoryItem): Entity {
+    const constructor = this.itemConstructors.get(item.key);
+    if (!constructor) {
+      throw new Error(`Unknown item type: '${item.key}'`);
+    }
+
+    if (typeof constructor === "function" && !constructor.prototype) {
+      // It's a factory function
+      return (constructor as EntityFactory)(this);
+    } else {
+      // It's a constructor
+      return new (constructor as EntityConstructor)(this);
+    }
   }
 
   setMapSize(width: number, height: number) {
@@ -278,54 +320,6 @@ export class EntityManager {
         this.spatialGrid!.addEntity(entity);
       }
     });
-  }
-
-  public registerItem(
-    type: ItemType,
-    constructor: new (entityManager: EntityManager, ...args: any[]) => Entity
-  ): void {
-    if (!this.itemConstructors.has(type)) {
-      this.itemConstructors.set(type, constructor);
-    }
-  }
-
-  public hasRegisteredItem(type: ItemType): boolean {
-    return this.itemConstructors.has(type);
-  }
-
-  public createEntityFromItem(item: InventoryItem): Entity {
-    const constructor = this.itemConstructors.get(item.key);
-    if (constructor) {
-      // For weapons, we need to pass the type
-      if (Object.values(WEAPON_TYPES).includes(item.key as any)) {
-        return new constructor(this, item.key);
-      }
-      return new constructor(this);
-    }
-
-    // Fallback to switch statement for backward compatibility
-    switch (item.key) {
-      case "Knife":
-      case "Pistol":
-      case "Shotgun":
-        return new Weapon(this, item.key);
-      case "Wood":
-        return new Tree(this, this.socketManager);
-      case "Wall":
-        return new Wall(this, item.state?.health);
-      case "Bandage":
-        return new Bandage(this);
-      case "Cloth":
-        return new Cloth(this);
-      case "Torch":
-        return new Torch(this);
-      case "Gasoline":
-        return new Gasoline(this);
-      case "Spikes":
-        return new Spikes(this);
-      default:
-        throw new Error(`Unknown item type: '${item.key}'`);
-    }
   }
 
   public getSocketManager(): ServerSocketManager {

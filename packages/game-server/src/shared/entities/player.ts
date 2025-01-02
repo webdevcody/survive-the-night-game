@@ -34,14 +34,14 @@ export class Player extends Entity {
   private static readonly PLAYER_WIDTH = 16;
   private static readonly PLAYER_HEIGHT = 16;
   private static readonly PLAYER_SPEED = 60;
-  private static readonly DROP_COOLDOWN = 0.5;
-  private static readonly HARVEST_COOLDOWN = 0.5;
+  private static readonly DROP_COOLDOWN = 0.25;
+  private static readonly INTERACT_COOLDOWN = 0.25;
   private static readonly FIRE_COOLDOWN = 0.4;
   private static readonly CONSUME_COOLDOWN = 0.5;
 
   private fireCooldown = new Cooldown(Player.FIRE_COOLDOWN);
   private dropCooldown = new Cooldown(Player.DROP_COOLDOWN);
-  private interactCooldown = new Cooldown(Player.HARVEST_COOLDOWN);
+  private interactCooldown = new Cooldown(Player.INTERACT_COOLDOWN);
   private consumeCooldown = new Cooldown(Player.CONSUME_COOLDOWN);
   private input: Input = {
     facing: Direction.Right,
@@ -76,13 +76,13 @@ export class Player extends Entity {
     if (DEBUG_WEAPONS) {
       const inventory = this.getExt(Inventory);
       [
-        { key: "Knife" as const },
-        { key: "Pistol" as const },
-        { key: "Shotgun" as const },
-        { key: "Wood" as const },
-        { key: "Torch" as const },
-        { key: "Gasoline" as const },
-        { key: "Spikes" as const },
+        { key: "knife" as const },
+        { key: "pistol" as const },
+        { key: "shotgun" as const },
+        { key: "wood" as const },
+        { key: "torch" as const },
+        { key: "gasoline" as const },
+        { key: "spikes" as const },
       ].forEach((item) => inventory.addItem(item));
     }
   }
@@ -209,7 +209,7 @@ export class Player extends Entity {
     if (this.fireCooldown.isReady()) {
       this.fireCooldown.reset();
 
-      if (activeWeapon.key === "Pistol") {
+      if (activeWeapon.key === "pistol") {
         const bullet = new Bullet(this.getEntityManager());
         bullet.setPosition({
           x: this.getPosition().x + Player.PLAYER_WIDTH / 2,
@@ -224,7 +224,7 @@ export class Player extends Entity {
             weaponKey: activeWeapon.key,
           })
         );
-      } else if (activeWeapon.key === "Shotgun") {
+      } else if (activeWeapon.key === "shotgun") {
         // Create 3 bullets with spread
         const spreadAngle = 8; // degrees
         for (let i = -1; i <= 1; i++) {
@@ -360,7 +360,7 @@ export class Player extends Entity {
         let entity: Entity;
 
         switch (item.key) {
-          case "Bandage":
+          case "bandage":
             entity = new Bandage(this.getEntityManager());
             break;
           default:

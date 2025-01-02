@@ -24,7 +24,7 @@ export class TorchClient extends GenericEntity implements Renderable {
   }
 
   public render(ctx: CanvasRenderingContext2D, gameState: GameState): void {
-    const image = this.assetManager.get("Torch");
+    const image = this.assetManager.get("torch");
     const myPlayer = getPlayer(gameState);
     const positionable = this.getExt(Positionable);
     const centerPosition = positionable.getCenterPosition();

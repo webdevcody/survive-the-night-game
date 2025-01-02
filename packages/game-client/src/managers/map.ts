@@ -52,14 +52,12 @@ export class MapManager {
     const pulseOffset = Math.sin(currentTime * PULSE_SPEED);
     const radiusMultiplier = 1 + pulseOffset * PULSE_INTENSITY;
 
-    // Add any other illuminated entities
     entities.forEach((entity) => {
       const gameEntity = entity as Entity;
       if (gameEntity.hasExt(Illuminated)) {
         const baseRadius = gameEntity.getExt(Illuminated).getRadius();
         const position = gameEntity.getExt(Positionable).getCenterPosition();
         sources.push({
-          type: gameEntity.getType(),
           position,
           radius: baseRadius * radiusMultiplier,
         });

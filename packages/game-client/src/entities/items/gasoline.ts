@@ -24,7 +24,7 @@ export class GasolineClient extends GenericEntity implements Renderable {
   }
 
   public render(ctx: CanvasRenderingContext2D, gameState: GameState): void {
-    const image = this.assetManager.get("Gasoline");
+    const image = this.assetManager.get("gasoline");
     const myPlayer = getPlayer(gameState);
     const positionable = this.getExt(Positionable);
     const centerPosition = positionable.getCenterPosition();

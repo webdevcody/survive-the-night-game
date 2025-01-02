@@ -92,8 +92,8 @@ export class ZombieClient extends GenericEntity implements IClientEntity, Render
     const isDead = destructible.isDead();
 
     const image = isDead
-      ? this.assetManager.get("ZombieDead")
-      : this.assetManager.getFrameWithDirection("Zombie", facing, frameIndex);
+      ? this.assetManager.get("zombie_dead")
+      : this.assetManager.getFrameWithDirection("zombie", facing, frameIndex);
 
     ctx.drawImage(image, renderPosition.x, renderPosition.y);
 
@@ -102,7 +102,7 @@ export class ZombieClient extends GenericEntity implements IClientEntity, Render
         duration: 500,
         frames: 5,
       });
-      const fireImg = this.assetManager.getFrameIndex("Flame", frameIndex);
+      const fireImg = this.assetManager.getFrameIndex("flame", frameIndex);
       ctx.drawImage(fireImg, renderPosition.x, renderPosition.y);
     }
 

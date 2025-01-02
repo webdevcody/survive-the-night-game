@@ -119,15 +119,15 @@ export class PlayerClient extends GenericEntity implements IClientEntity, Render
     let image: HTMLImageElement;
 
     if (this.isDead()) {
-      image = this.assetManager.getWithDirection("Player", Direction.Down);
+      image = this.assetManager.getWithDirection("player", Direction.Down);
     } else if (!isMoving) {
-      image = this.assetManager.getWithDirection("Player", facing);
+      image = this.assetManager.getWithDirection("player", facing);
     } else {
       const frameIndex = getFrameIndex(gameState.startedAt, {
         duration: 500,
         frames: 3,
       });
-      image = this.assetManager.getFrameWithDirection("Player", facing, frameIndex);
+      image = this.assetManager.getFrameWithDirection("player", facing, frameIndex);
     }
     const dx = targetPosition.x - this.lastRenderPosition.x;
     const dy = targetPosition.y - this.lastRenderPosition.y;
@@ -163,7 +163,7 @@ export class PlayerClient extends GenericEntity implements IClientEntity, Render
           duration: 500,
           frames: 5,
         });
-        const fireImg = this.assetManager.getFrameIndex("Flame", frameIndex);
+        const fireImg = this.assetManager.getFrameIndex("flame", frameIndex);
         ctx.drawImage(fireImg, renderPositionWithOffset.x, renderPositionWithOffset.y);
       }
 

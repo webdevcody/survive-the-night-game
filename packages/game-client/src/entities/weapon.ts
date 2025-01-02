@@ -7,7 +7,7 @@ import {
   distance,
 } from "@survive-the-night/game-server";
 import { AssetManager } from "../managers/asset";
-import { GameState, getEntityById } from "../state";
+import { GameState } from "../state";
 import { Renderable } from "./util";
 import { animate, bounce } from "../animations";
 import { Z_INDEX } from "@survive-the-night/game-server/src/managers/map-manager";

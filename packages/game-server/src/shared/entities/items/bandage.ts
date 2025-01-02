@@ -14,7 +14,7 @@ export class Bandage extends Entity {
       new Positionable(this).setSize(Bandage.Size),
       new Interactive(this).onInteract(this.interact.bind(this)),
       new Consumable(this).onConsume(this.consume.bind(this)),
-      new Carryable(this, "Bandage"),
+      new Carryable(this, "bandage"),
     ];
   }
 

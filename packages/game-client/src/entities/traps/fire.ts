@@ -22,7 +22,7 @@ export class FireClient extends GenericEntity implements Renderable {
       frames: 5,
     });
 
-    const image = this.assetManager.getFrameIndex("Flame", frameIndex);
+    const image = this.assetManager.getFrameIndex("flame", frameIndex);
 
     const positionable = this.getExt(Positionable);
     const position = positionable.getPosition();

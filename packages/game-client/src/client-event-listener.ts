@@ -1,4 +1,9 @@
-import { MapEvent, PlayerDeathEvent, YourIdEvent } from "@survive-the-night/game-server";
+import {
+  MapEvent,
+  PlayerDeathEvent,
+  WEAPON_TYPES,
+  YourIdEvent,
+} from "@survive-the-night/game-server";
 
 import { GameStateEvent } from "@survive-the-night/game-server";
 
@@ -83,9 +88,9 @@ export class ClientEventListener {
 
     const playerPosition = (player as unknown as PlayerClient).getCenterPosition();
 
-    if (playerAttackedEvent.getWeaponKey() === "Pistol") {
+    if (playerAttackedEvent.getWeaponKey() === WEAPON_TYPES.PISTOL) {
       this.gameClient.getSoundManager().playPositionalSound(SOUND_TYPES.PISTOL, playerPosition);
-    } else if (playerAttackedEvent.getWeaponKey() === "Shotgun") {
+    } else if (playerAttackedEvent.getWeaponKey() === WEAPON_TYPES.SHOTGUN) {
       this.gameClient
         .getSoundManager()
         .playPositionalSound(SOUND_TYPES.SHOTGUN_FIRE, playerPosition);

@@ -12,7 +12,7 @@ export class Torch extends Entity {
     this.extensions = [
       new Positionable(this).setSize(Torch.Size),
       new Interactive(this).onInteract(this.interact.bind(this)),
-      new Carryable(this, "Torch"),
+      new Carryable(this, "torch"),
       new Illuminated(this, 200),
     ];
   }
