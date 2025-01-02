@@ -71,10 +71,6 @@ export class Renderer {
     this.renderEntities();
 
     if (!this.gameState.isDay) {
-      this.ctx.setTransform(1, 0, 0, 1, 0, 0);
-      this.ctx.fillStyle = "rgba(0, 0, 0, 0.3)";
-      this.ctx.fillRect(0, 0, this.ctx.canvas.width, this.ctx.canvas.height);
-    } else {
       this.mapManager.renderDarkness(this.ctx);
     }
 

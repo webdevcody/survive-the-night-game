@@ -5,8 +5,8 @@ import { GameStateEvent } from "./shared/events/server-sent";
 
 export const FPS = 30;
 
-export const DAY_DURATION = 300;
-export const NIGHT_DURATION = 30;
+export const DAY_DURATION = 10;
+export const NIGHT_DURATION = 20;
 
 const PERFORMANCE_LOG_INTERVAL = 5000; // Log every 5 seconds
 const TICK_RATE_MS = 1000 / FPS; // ~33.33ms for 30 FPS
