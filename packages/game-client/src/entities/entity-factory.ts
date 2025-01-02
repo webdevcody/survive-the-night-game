@@ -15,6 +15,7 @@ import { GameState } from "@/state";
 import { FireClient } from "./traps/fire";
 import { EntityType } from "@survive-the-night/game-server/src/shared/entity-types";
 import { TorchClient } from "./items/torch";
+import { GasolineClient } from "./items/gasoline";
 
 export class EntityFactory {
   private assetManager: AssetManager;
@@ -66,6 +67,11 @@ export class EntityFactory {
       },
       [Entities.CLOTH]: (data: EntityDto) => {
         const entity = new ClothClient(data, this.assetManager);
+        entity.deserialize(data);
+        return entity;
+      },
+      [Entities.GASOLINE]: (data: EntityDto) => {
+        const entity = new GasolineClient(data, this.assetManager);
         entity.deserialize(data);
         return entity;
       },

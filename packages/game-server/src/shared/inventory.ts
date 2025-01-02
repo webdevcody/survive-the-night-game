@@ -7,6 +7,7 @@ export const ITEM_TYPES = [
   "Bandage",
   "Cloth",
   "Torch",
+  "Gasoline",
 ] as const;
 export type ItemType = (typeof ITEM_TYPES)[number];
 

@@ -13,6 +13,7 @@ import { Cloth } from "../shared/entities/items/cloth";
 import { ServerSocketManager } from "./server-socket-manager";
 import { EntityType } from "@/shared/entity-types";
 import { Torch } from "@/shared/entities/items/torch";
+import { Gasoline } from "../shared/entities/items/gasoline";
 
 export class EntityManager {
   private entities: Entity[];
@@ -296,6 +297,9 @@ export class EntityManager {
         break;
       case "Torch":
         entity = new Torch(this);
+        break;
+      case "Gasoline":
+        entity = new Gasoline(this);
         break;
       default:
         throw new Error(`Unknown item type: '${item.key}'`);

@@ -10,6 +10,8 @@ Feel free to pick any item listed out here to work on.
 
 ### Refactoring
 
+- [ ] there is a lot of duplicate code related to showing the "pickup (e)" text over items
+- [ ] there is a lot of places I have to manually update when I add new entities (refactor this)
 - [ ] why does positionable have a size? remove if not necessary
 - [ ] find a way to reduce the amount of duplicate code
 - [ ] the client entities feels very duplicates to the server entities, find a way reuse code maybe?
