@@ -10,6 +10,8 @@ Feel free to pick any item listed out here to work on.
 
 ### Refactoring
 
+- [ ] I shouldn't need to manually call combustible.onDeath() when the zombie dies - lean into event emitters more if possible
+- [ ] revisit the player entity, the bullets come from his feet, not the center of his body
 - [ ] there is a lot of duplicate code related to showing the "pickup (e)" text over items
 - [ ] there is a lot of places I have to manually update when I add new entities (refactor this)
 - [ ] why does positionable have a size? remove if not necessary
@@ -25,6 +27,14 @@ Feel free to pick any item listed out here to work on.
 
 ### Gameplay
 
+- [ ] add throwable items (grenades to start with)
+- [ ] decoy items (a fire cracker to distract zombies)
+- [ ] add a spitter zombie
+- [ ] potion items (health, speed, invincibility, etc.)
+- [ ] add an exploding zombie
+- [ ] add a fast zombie
+- [ ] add a tank zombie (with knock back)
+- [ ] zombie that can only be damanged while on fire (maybe?)
 - [ ] during daytime, zombies should just wander around randomly, but will attack players if they get close
 - [ ] if ALL players die, the game ends
 - [ ] show a message that the players lost, and show a leaderboard with how many kills each player got

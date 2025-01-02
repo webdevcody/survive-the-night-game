@@ -58,12 +58,9 @@ export class Zombie extends Entity {
     this.extensions.push(destructible);
 
     this.extensions.push(new Positionable(this).setSize(Zombie.ZOMBIE_WIDTH));
-
     this.extensions.push(new Collidable(this).setSize(8).setOffset(4));
     this.extensions.push(new Movable(this));
-
     this.extensions.push(new Updatable(this, this.updateZombie.bind(this)));
-    this.extensions.push(new Combustible(this, (type) => new Fire(this.getEntityManager())));
   }
 
   getCenterPosition(): Vector2 {
@@ -83,7 +80,6 @@ export class Zombie extends Entity {
   onDeath(): void {
     this.socketManager.broadcastEvent(new ZombieHurtEvent(this.getId()));
     this.extensions.push(new Interactive(this).onInteract(this.afterDeathInteract.bind(this)));
-    this.getExt(Combustible).onDeath();
   }
 
   afterDeathInteract(): void {
