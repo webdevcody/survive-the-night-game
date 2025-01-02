@@ -3,17 +3,18 @@ import { Entities, Entity, GenericEntity } from "../shared/entities";
 import { Hitbox } from "../shared/traits";
 import { Player } from "../shared/entities/player";
 import { SpatialGrid } from "./spatial-grid";
-import { Collidable, Destructible, Positionable, Updatable } from "@/shared/extensions";
-import { InventoryItem } from "../shared/inventory";
-import { Weapon } from "../shared/entities/weapon";
-import { Tree } from "../shared/entities/tree";
+import { Collidable, Destructible, Positionable, Updatable } from "../shared/extensions";
+import { InventoryItem, ItemType } from "../shared/inventory";
+import { Weapon, WEAPON_TYPES } from "../shared/entities/weapon";
+import { Tree } from "../shared/entities/items/tree";
 import { Wall } from "../shared/entities/wall";
 import { Bandage } from "../shared/entities/items/bandage";
 import { Cloth } from "../shared/entities/items/cloth";
 import { ServerSocketManager } from "./server-socket-manager";
-import { EntityType } from "@/shared/entity-types";
-import { Torch } from "@/shared/entities/items/torch";
+import { EntityType } from "../shared/entity-types";
+import { Torch } from "../shared/entities/items/torch";
 import { Gasoline } from "../shared/entities/items/gasoline";
+import { Spikes } from "../shared/entities/items/spikes";
 
 export class EntityManager {
   private entities: Entity[];
@@ -21,6 +22,10 @@ export class EntityManager {
   private id: number = 0;
   private spatialGrid: SpatialGrid | null = null;
   private socketManager: ServerSocketManager;
+  private itemConstructors = new Map<
+    ItemType,
+    new (entityManager: EntityManager, ...args: any[]) => Entity
+  >();
 
   constructor(socketManager: ServerSocketManager) {
     this.entities = [];
@@ -275,35 +280,55 @@ export class EntityManager {
     });
   }
 
+  public registerItem(
+    type: ItemType,
+    constructor: new (entityManager: EntityManager, ...args: any[]) => Entity
+  ): void {
+    if (!this.itemConstructors.has(type)) {
+      this.itemConstructors.set(type, constructor);
+    }
+  }
+
+  public hasRegisteredItem(type: ItemType): boolean {
+    return this.itemConstructors.has(type);
+  }
+
   public createEntityFromItem(item: InventoryItem): Entity {
-    let entity: Entity;
+    const constructor = this.itemConstructors.get(item.key);
+    if (constructor) {
+      // For weapons, we need to pass the type
+      if (Object.values(WEAPON_TYPES).includes(item.key as any)) {
+        return new constructor(this, item.key);
+      }
+      return new constructor(this);
+    }
+
+    // Fallback to switch statement for backward compatibility
     switch (item.key) {
       case "Knife":
       case "Pistol":
       case "Shotgun":
-        entity = new Weapon(this, item.key);
-        break;
+        return new Weapon(this, item.key);
       case "Wood":
-        entity = new Tree(this, this.socketManager);
-        break;
+        return new Tree(this, this.socketManager);
       case "Wall":
-        entity = new Wall(this, item.state?.health);
-        break;
+        return new Wall(this, item.state?.health);
       case "Bandage":
-        entity = new Bandage(this);
-        break;
+        return new Bandage(this);
       case "Cloth":
-        entity = new Cloth(this);
-        break;
+        return new Cloth(this);
       case "Torch":
-        entity = new Torch(this);
-        break;
+        return new Torch(this);
       case "Gasoline":
-        entity = new Gasoline(this);
-        break;
+        return new Gasoline(this);
+      case "Spikes":
+        return new Spikes(this);
       default:
         throw new Error(`Unknown item type: '${item.key}'`);
     }
-    return entity;
+  }
+
+  public getSocketManager(): ServerSocketManager {
+    return this.socketManager;
   }
 }

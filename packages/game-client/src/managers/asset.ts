@@ -85,6 +85,12 @@ export const assetsMap = {
   ShotgunFacingLeft: assetMap({ x: 17, y: 133, flipX: true }),
   ShotgunFacingRight: assetMap({ x: 17, y: 133 }),
   ShotgunFacingUp: assetMap({ x: 34, y: 133 }),
+  Flame: assetMap({ x: 85, y: 266 }),
+  Flame0: assetMap({ x: 85, y: 266 }),
+  Flame1: assetMap({ x: 102, y: 266 }),
+  Flame2: assetMap({ x: 119, y: 266 }),
+  Flame3: assetMap({ x: 136, y: 266 }),
+  Flame4: assetMap({ x: 153, y: 266 }),
   Torch: assetMap({ x: 68, y: 266 }),
   Fire: assetMap({ x: 51, y: 265 }),
   Gasoline: assetMap({ x: 255, y: 38 }),
@@ -164,6 +170,11 @@ export class AssetManager {
     }
     const asset = assetsCache[assetKey];
     return asset;
+  }
+
+  public getFrameIndex(key: Asset, frameIndex: number) {
+    const keyWithFrame = `${key}${frameIndex}`;
+    return this.get(keyWithFrame as Asset);
   }
 
   public getFrameWithDirection(key: Asset, direction: Direction | null, frameIndex: number) {
@@ -256,6 +267,8 @@ export function getItemAssetKey(item: InventoryItem): Asset {
     return "Torch";
   } else if (item.key === "Gasoline") {
     return "Gasoline";
+  } else if (item.key === "Spikes") {
+    return "Spikes";
   }
 
   throw new Error(`Unknown item type '${item.key}'`);

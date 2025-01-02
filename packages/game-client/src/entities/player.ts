@@ -159,7 +159,11 @@ export class PlayerClient extends GenericEntity implements IClientEntity, Render
       ctx.drawImage(image, renderPositionWithOffset.x, renderPositionWithOffset.y);
 
       if (this.hasExt(Ignitable)) {
-        const fireImg = this.assetManager.get("Fire");
+        const frameIndex = getFrameIndex(gameState.startedAt, {
+          duration: 500,
+          frames: 5,
+        });
+        const fireImg = this.assetManager.getFrameIndex("Flame", frameIndex);
         ctx.drawImage(fireImg, renderPositionWithOffset.x, renderPositionWithOffset.y);
       }
 

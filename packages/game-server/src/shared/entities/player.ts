@@ -82,7 +82,7 @@ export class Player extends Entity {
         { key: "Wood" as const },
         { key: "Torch" as const },
         { key: "Gasoline" as const },
-        { key: "Wall" as const },
+        { key: "Spikes" as const },
       ].forEach((item) => inventory.addItem(item));
     }
   }

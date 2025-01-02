@@ -1,6 +1,6 @@
 import { EntityManager } from "../../../managers/entity-manager";
 import { Entity, Entities } from "../../entities";
-import { Consumable, Interactive, Positionable } from "../../extensions";
+import { Consumable, Interactive, Positionable, Carryable } from "../../extensions";
 import { Player } from "../player";
 
 export class Bandage extends Entity {
@@ -12,8 +12,9 @@ export class Bandage extends Entity {
 
     this.extensions = [
       new Positionable(this).setSize(Bandage.Size),
-      new Consumable(this).onConsume(this.consume.bind(this)),
       new Interactive(this).onInteract(this.interact.bind(this)),
+      new Consumable(this).onConsume(this.consume.bind(this)),
+      new Carryable(this, "Bandage"),
     ];
   }
 
@@ -29,11 +30,6 @@ export class Bandage extends Entity {
   }
 
   private interact(player: Player): void {
-    if (player.isInventoryFull()) {
-      return;
-    }
-
-    player.getInventory().push({ key: "Bandage" });
-    this.getEntityManager().markEntityForRemoval(this);
+    this.getExt(Carryable).pickup(player);
   }
 }

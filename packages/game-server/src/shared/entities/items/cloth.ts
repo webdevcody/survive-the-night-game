@@ -1,6 +1,6 @@
 import { EntityManager } from "../../../managers/entity-manager";
 import { Entity, Entities } from "../../entities";
-import { Interactive, Positionable } from "../../extensions";
+import { Interactive, Positionable, Carryable } from "../../extensions";
 import { Player } from "../player";
 
 export class Cloth extends Entity {
@@ -12,15 +12,13 @@ export class Cloth extends Entity {
     this.extensions = [
       new Positionable(this).setSize(Cloth.Size),
       new Interactive(this).onInteract(this.interact.bind(this)),
+      new Carryable(this, "Cloth"),
     ];
+
+    entityManager.registerItem("Cloth", Cloth);
   }
 
   private interact(player: Player): void {
-    if (player.isInventoryFull()) {
-      return;
-    }
-
-    player.getInventory().push({ key: "Cloth" });
-    this.getEntityManager().markEntityForRemoval(this);
+    this.getExt(Carryable).pickup(player);
   }
 }

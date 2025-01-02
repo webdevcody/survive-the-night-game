@@ -1,11 +1,11 @@
-import { Tree } from "../shared/entities/tree";
+import { Tree } from "../shared/entities/items/tree";
 import { EntityManager } from "./entity-manager";
 import { Weapon, WEAPON_TYPES } from "../shared/entities/weapon";
 import { Boundary } from "../shared/entities/boundary";
 import { Zombie } from "../shared/entities/zombie";
 import { Bandage } from "../shared/entities/items/bandage";
 import { Positionable } from "../shared/extensions";
-import { Spikes } from "../shared/entities/buildings/spikes";
+import { Spikes } from "../shared/entities/items/spikes";
 import { ServerSocketManager } from "./server-socket-manager";
 import { Fire } from "../shared/entities/triggers/fire";
 
@@ -191,28 +191,24 @@ export class MapManager {
     }
 
     // TODO: Remove this eventually
-    const middleX = Math.floor(totalSize / 2) * TILE_SIZE;
-    const middleY = Math.floor(totalSize / 2) * TILE_SIZE;
+    // const middleX = Math.floor(totalSize / 2) * TILE_SIZE;
+    // const middleY = Math.floor(totalSize / 2) * TILE_SIZE;
 
-    const spikes = new Spikes(this.entityManager);
-    spikes.getExt(Positionable).setPosition({ x: middleX + 16 * 4, y: middleY - 32 });
-    this.entityManager.addEntity(spikes);
-
-    const bandage = new Bandage(this.entityManager);
-    bandage.getExt(Positionable).setPosition({ x: middleX + 16 * 6, y: middleY });
-    this.entityManager.addEntity(bandage);
+    // const spikes = new Spikes(this.entityManager);
+    // spikes.getExt(Positionable).setPosition({ x: middleX + 16 * 4, y: middleY - 32 });
+    // this.entityManager.addEntity(spikes);
 
     // Spawn a single zombie near the middle of the map
-    const zombie = new Zombie(this.entityManager, this, this.getSocketManager());
-    zombie.setPosition({ x: middleX + 16 * 4, y: middleY });
-    this.entityManager.addEntity(zombie);
+    // const zombie = new Zombie(this.entityManager, this, this.getSocketManager());
+    // zombie.setPosition({ x: middleX + 16 * 4, y: middleY });
+    // this.entityManager.addEntity(zombie);
 
-    const fire = new Fire(this.entityManager);
-    fire.getExt(Positionable).setPosition({
-      x: middleX + 32,
-      y: middleY + 16,
-    });
-    this.entityManager.addEntity(fire);
+    // const fire = new Fire(this.entityManager);
+    // fire.getExt(Positionable).setPosition({
+    //   x: middleX + 32,
+    //   y: middleY + 16,
+    // });
+    // this.entityManager.addEntity(fire);
   }
 
   private placeBiome(biomeX: number, biomeY: number) {

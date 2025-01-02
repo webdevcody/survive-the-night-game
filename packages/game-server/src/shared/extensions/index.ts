@@ -12,6 +12,7 @@ import Ignitable from "./ignitable";
 import Movable from "./movable";
 import Combustible from "./combustible";
 import Illuminated from "./illuminated";
+import Carryable from "./carryable";
 
 export const extensionsMap = {
   [Collidable.Name]: Collidable,
@@ -28,6 +29,7 @@ export const extensionsMap = {
   [Movable.Name]: Movable,
   [Combustible.Name]: Combustible,
   [Illuminated.Name]: Illuminated,
+  [Carryable.Name]: Carryable,
 } as const;
 
 export {
@@ -45,6 +47,7 @@ export {
   Combustible,
   Movable,
   Illuminated,
+  Carryable,
 };
 
 export * from "./types";

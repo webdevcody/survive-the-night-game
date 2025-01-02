@@ -13,6 +13,7 @@ export const ExtensionNames = {
   movable: "movable",
   combustible: "combustible",
   illuminated: "illuminated",
+  carryable: "carryable",
 } as const;
 
 export interface Extension {

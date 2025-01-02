@@ -98,7 +98,11 @@ export class ZombieClient extends GenericEntity implements IClientEntity, Render
     ctx.drawImage(image, renderPosition.x, renderPosition.y);
 
     if (this.hasExt(Ignitable) && !isDead) {
-      const fireImg = this.assetManager.get("Fire");
+      const frameIndex = getFrameIndex(gameState.startedAt, {
+        duration: 500,
+        frames: 5,
+      });
+      const fireImg = this.assetManager.getFrameIndex("Flame", frameIndex);
       ctx.drawImage(fireImg, renderPosition.x, renderPosition.y);
     }
 

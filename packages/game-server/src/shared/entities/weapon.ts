@@ -1,6 +1,6 @@
 import { EntityManager } from "../../managers/entity-manager";
 import { Entity, Entities, RawEntity } from "../entities";
-import { Interactive, Positionable } from "../extensions";
+import { Interactive, Positionable, Carryable } from "../extensions";
 import { Player } from "./player";
 
 export const WEAPON_TYPES = {
@@ -22,16 +22,12 @@ export class Weapon extends Entity {
     this.extensions = [
       new Positionable(this).setSize(Weapon.Size),
       new Interactive(this).onInteract(this.interact.bind(this)),
+      new Carryable(this, weaponType),
     ];
   }
 
   private interact(player: Player): void {
-    if (player.isInventoryFull()) {
-      return;
-    }
-
-    player.getInventory().push({ key: this.weaponType });
-    this.getEntityManager().markEntityForRemoval(this);
+    this.getExt(Carryable).pickup(player);
   }
 
   public serialize(): RawEntity {

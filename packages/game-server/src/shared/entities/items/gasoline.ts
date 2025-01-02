@@ -1,6 +1,13 @@
 import { EntityManager } from "../../../managers/entity-manager";
 import { Entity, Entities } from "../../entities";
-import { Combustible, Interactive, Positionable, Collidable, Destructible } from "../../extensions";
+import {
+  Combustible,
+  Interactive,
+  Positionable,
+  Collidable,
+  Destructible,
+  Carryable,
+} from "../../extensions";
 import { Player } from "../player";
 import { Fire } from "../triggers/fire";
 
@@ -14,17 +21,13 @@ export class Gasoline extends Entity {
       new Positionable(this).setSize(Gasoline.Size),
       new Interactive(this).onInteract(this.interact.bind(this)),
       new Destructible(this).setMaxHealth(1).setHealth(1).onDeath(this.onDeath.bind(this)),
-      new Combustible(this, (type) => new Fire(this.getEntityManager()), 12, 32), // More fires and larger spread than default
+      new Combustible(this, (type) => new Fire(this.getEntityManager()), 12, 64), // More fires and larger spread than default
+      new Carryable(this, "Gasoline"),
     ];
   }
 
   private interact(player: Player): void {
-    if (player.isInventoryFull()) {
-      return;
-    }
-
-    player.getInventory().push({ key: "Gasoline" });
-    this.getEntityManager().markEntityForRemoval(this);
+    this.getExt(Carryable).pickup(player);
   }
 
   private onDeath(): void {

@@ -19,10 +19,8 @@ export function getFrameIndex(
 ) {
   const { duration, frames } = animation;
   const elapsed = Date.now() - startedAt;
-  const cyclePosition = elapsed % duration;
-  const frameLength = duration / frames;
-  const currentFrame = Math.floor(cyclePosition / frameLength);
-  return currentFrame;
+  const frameDuration = duration / frames;
+  return Math.floor(elapsed / frameDuration) % frames;
 }
 
 export function drawHealthBar(
