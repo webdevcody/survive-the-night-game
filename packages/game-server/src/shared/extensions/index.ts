@@ -13,7 +13,9 @@ import Movable from "./movable";
 import Combustible from "./combustible";
 import Illuminated from "./illuminated";
 import Carryable from "./carryable";
+import Groupable from "./groupable";
 
+// TODO: THERE ARE TOO MANY PLACES TO UPDATE WHEN I ADD NEW EXTENSIONS
 export const extensionsMap = {
   [Collidable.Name]: Collidable,
   [Consumable.Name]: Consumable,
@@ -30,6 +32,7 @@ export const extensionsMap = {
   [Combustible.Name]: Combustible,
   [Illuminated.Name]: Illuminated,
   [Carryable.Name]: Carryable,
+  [Groupable.Name]: Groupable,
 } as const;
 
 export {
@@ -48,6 +51,7 @@ export {
   Movable,
   Illuminated,
   Carryable,
+  Groupable,
 };
 
 export * from "./types";

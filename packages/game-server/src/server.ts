@@ -64,11 +64,25 @@ class GameServer {
   }
 
   private update(): void {
+    // setup
     const updateStartTime = performance.now();
-
     const currentTime = Date.now();
     const deltaTime = (currentTime - this.lastUpdateTime) / 1000;
 
+    // logic
+    this.updateEntities(deltaTime);
+
+    this.handleDayNightCycle(deltaTime);
+    this.handleIfGameOver();
+
+    // cleanup
+    this.entityManager.pruneEntities();
+    this.broadcastGameState();
+    this.trackPerformance(updateStartTime, currentTime);
+    this.lastUpdateTime = currentTime;
+  }
+
+  private handleDayNightCycle(deltaTime: number) {
     this.untilNextCycle -= deltaTime;
     if (this.untilNextCycle <= 0) {
       this.isDay = !this.isDay;
@@ -81,14 +95,16 @@ class GameServer {
         this.onNightStart();
       }
     }
-    this.updateEntities(deltaTime);
-    this.entityManager.pruneEntities();
-    this.broadcastGameState();
-
-    this.trackPerformance(updateStartTime, currentTime);
-
-    this.lastUpdateTime = currentTime;
   }
+
+  private handleIfGameOver(): void {
+    const players = this.entityManager.getPlayerEntities();
+    if (players.every((player) => player.isDead())) {
+      this.endGame();
+    }
+  }
+
+  private endGame(): void {}
 
   private trackPerformance(updateStartTime: number, currentTime: number) {
     const updateDuration = performance.now() - updateStartTime;

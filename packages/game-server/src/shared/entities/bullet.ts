@@ -4,6 +4,7 @@ import { Direction, normalizeDirection } from "../direction";
 import { Entities, RawEntity } from "../entities";
 import { Entity } from "../entities";
 import { Destructible, Positionable, Movable, Updatable, Collidable } from "../extensions";
+import Groupable from "../extensions/groupable";
 import { Vector2, distance, normalizeVector } from "../physics";
 import { Hitbox } from "../traits";
 
@@ -74,6 +75,12 @@ export class Bullet extends Entity {
   }
 
   private updateBullet(deltaTime: number) {
+    const lastPosition = this.updatePositions(deltaTime);
+    this.handleMaxDistanceLogic(lastPosition);
+    this.handleIntersections();
+  }
+
+  private updatePositions(deltaTime: number) {
     const lastPosition = { ...this.getPosition() };
     const movable = this.getExt(Movable);
     const velocity = movable.getVelocity();
@@ -83,22 +90,31 @@ export class Bullet extends Entity {
       x: positionable.getPosition().x + velocity.x * deltaTime,
       y: positionable.getPosition().y + velocity.y * deltaTime,
     });
+    return lastPosition;
+  }
 
+  private handleIntersections() {
+    // TODO: find a helper function for this
+    const isEnemy = (entity: Entity) =>
+      entity.hasExt(Groupable) && entity.getExt(Groupable).getGroup() === "enemy";
+
+    const enemies = this.getEntityManager()
+      .getNearbyIntersectingDestructableEntities(this, this.getHitbox())
+      .filter(isEnemy);
+
+    if (enemies.length > 0) {
+      const firstEnemy = enemies[0];
+      this.getEntityManager().markEntityForRemoval(this);
+      const destructible = firstEnemy.getExt(Destructible);
+      destructible.damage(1);
+    }
+  }
+
+  private handleMaxDistanceLogic(lastPosition: { x: number; y: number }) {
     this.traveledDistance += distance(lastPosition, this.getPosition());
 
     if (this.traveledDistance > MAX_TRAVEL_DISTANCE) {
       this.getEntityManager().markEntityForRemoval(this);
-    }
-
-    const intersectingEntity = this.getEntityManager().getIntersectingDestructableEntities(
-      this,
-      this.getHitbox()
-    );
-
-    if (intersectingEntity) {
-      this.getEntityManager().markEntityForRemoval(this);
-      const destructible = intersectingEntity.getExt(Destructible);
-      destructible.damage(1);
     }
   }
 

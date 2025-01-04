@@ -10,7 +10,6 @@ export default class Inventory implements Extension {
   public static readonly Name = ExtensionNames.inventory;
   public static readonly MAX_SLOTS = 8;
 
-  // TODO: should this be a GenericEntity or just Entity?  I need access to the entity manager.
   private self: Entity;
   private items: InventoryItem[] = [];
   private socketManager: ServerSocketManager;
@@ -64,12 +63,13 @@ export default class Inventory implements Extension {
     this.items = foundRecipe.craft(this.items);
   }
 
-  public addRandomItem(chance = 1): void {
+  public addRandomItem(chance = 1): this {
     const items = ITEM_TYPES;
     if (Math.random() < chance) {
       const item = { key: items[Math.floor(Math.random() * items.length)] };
       this.addItem(item);
     }
+    return this;
   }
 
   public scatterItems(position: { x: number; y: number }): void {

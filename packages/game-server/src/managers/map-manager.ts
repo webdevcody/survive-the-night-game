@@ -3,19 +3,18 @@ import { EntityManager } from "./entity-manager";
 import { Weapon, WEAPON_TYPES } from "../shared/entities/weapon";
 import { Boundary } from "../shared/entities/boundary";
 import { Zombie } from "../shared/entities/zombie";
-import { Bandage } from "../shared/entities/items/bandage";
 import { Positionable } from "../shared/extensions";
-import { Spikes } from "../shared/entities/items/spikes";
 import { ServerSocketManager } from "./server-socket-manager";
-import { Fire } from "../shared/entities/environment/fire";
+import { DEBUG_START_ZOMBIE } from "../config";
 
 export const Z_INDEX = {
   GROUND: 0,
   ITEMS: 1,
   BUILDINGS: 2,
-  PLAYERS: 3,
-  PROJECTILES: 4,
-  UI: 5,
+  ENEMIES: 3,
+  PLAYERS: 4,
+  PROJECTILES: 5,
+  UI: 6,
 };
 
 export const TILE_IDS = {
@@ -190,25 +189,14 @@ export class MapManager {
       }
     }
 
-    // TODO: Remove this eventually
-    // const middleX = Math.floor(totalSize / 2) * TILE_SIZE;
-    // const middleY = Math.floor(totalSize / 2) * TILE_SIZE;
+    if (DEBUG_START_ZOMBIE) {
+      const middleX = Math.floor(totalSize / 2) * TILE_SIZE;
+      const middleY = Math.floor(totalSize / 2) * TILE_SIZE;
 
-    // const spikes = new Spikes(this.entityManager);
-    // spikes.getExt(Positionable).setPosition({ x: middleX + 16 * 4, y: middleY - 32 });
-    // this.entityManager.addEntity(spikes);
-
-    // Spawn a single zombie near the middle of the map
-    // const zombie = new Zombie(this.entityManager, this, this.getSocketManager());
-    // zombie.setPosition({ x: middleX + 16 * 4, y: middleY });
-    // this.entityManager.addEntity(zombie);
-
-    // const fire = new Fire(this.entityManager);
-    // fire.getExt(Positionable).setPosition({
-    //   x: middleX + 32,
-    //   y: middleY + 16,
-    // });
-    // this.entityManager.addEntity(fire);
+      const zombie = new Zombie(this.entityManager, this, this.getSocketManager());
+      zombie.setPosition({ x: middleX + 16 * 4, y: middleY });
+      this.entityManager.addEntity(zombie);
+    }
   }
 
   private placeBiome(biomeX: number, biomeY: number) {

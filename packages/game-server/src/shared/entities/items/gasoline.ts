@@ -4,9 +4,9 @@ import {
   Combustible,
   Interactive,
   Positionable,
-  Collidable,
   Destructible,
   Carryable,
+  Groupable,
 } from "../../extensions";
 import { Player } from "../player";
 import { Fire } from "../environment/fire";
@@ -23,6 +23,7 @@ export class Gasoline extends Entity {
       new Destructible(this).setMaxHealth(1).setHealth(1).onDeath(this.onDeath.bind(this)),
       new Combustible(this, (type) => new Fire(this.getEntityManager()), 12, 64), // More fires and larger spread than default
       new Carryable(this, "gasoline"),
+      new Groupable(this, "enemy"),
     ];
   }
 

@@ -14,6 +14,7 @@ export const ExtensionNames = {
   combustible: "combustible",
   illuminated: "illuminated",
   carryable: "carryable",
+  groupable: "groupable",
 } as const;
 
 export interface Extension {

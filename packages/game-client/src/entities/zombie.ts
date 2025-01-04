@@ -2,8 +2,6 @@ import {
   determineDirection,
   roundVector2,
   Vector2,
-  Player,
-  distance,
   GenericEntity,
   RawEntity,
   Destructible,
@@ -34,7 +32,7 @@ export class ZombieClient extends GenericEntity implements IClientEntity, Render
   }
 
   public getZIndex(): number {
-    return Z_INDEX.PLAYERS;
+    return Z_INDEX.ENEMIES;
   }
 
   private getPosition(): Vector2 {
@@ -82,54 +80,84 @@ export class ZombieClient extends GenericEntity implements IClientEntity, Render
     this.lastRenderPosition.y += (targetPosition.y - this.lastRenderPosition.y) * this.LERP_FACTOR;
 
     const renderPosition = roundVector2(this.lastRenderPosition);
-    const facing = determineDirection(this.getVelocity());
-
-    const frameIndex = getFrameIndex(gameState.startedAt, {
-      duration: 500,
-      frames: 3,
-    });
 
     const destructible = this.getExt(Destructible);
     const isDead = destructible.isDead();
 
-    const image = isDead
-      ? this.assetManager.get("zombie_dead")
-      : this.assetManager.getFrameWithDirection("zombie", facing, frameIndex);
+    isDead
+      ? this.renderZombieDead(gameState, ctx, renderPosition)
+      : this.renderZombieAlive(gameState, ctx, renderPosition, destructible);
+  }
 
+  private renderFlames(
+    gameState: GameState,
+    ctx: CanvasRenderingContext2D,
+    renderPosition: Vector2
+  ) {
+    const isOnFire = this.hasExt(Ignitable);
+    if (!isOnFire) return;
+
+    const frameIndex = getFrameIndex(gameState.startedAt, {
+      duration: 500,
+      frames: 5,
+    });
+    const fireImg = this.assetManager.getFrameIndex("flame", frameIndex);
+    ctx.drawImage(fireImg, renderPosition.x, renderPosition.y);
+  }
+
+  private renderZombieAlive(
+    gameState: GameState,
+    ctx: CanvasRenderingContext2D,
+    renderPosition: Vector2,
+    destructible: Destructible
+  ) {
+    const collidable = this.getExt(Collidable);
+    const facing = determineDirection(this.getVelocity());
+    const frameIndex = getFrameIndex(gameState.startedAt, {
+      duration: 500,
+      frames: 3,
+    });
+    const image = this.assetManager.getFrameWithDirection("zombie", facing, frameIndex);
+    ctx.drawImage(image, renderPosition.x, renderPosition.y);
+    drawHealthBar(ctx, renderPosition, this.getHealth(), this.getMaxHealth());
+    debugDrawHitbox(ctx, collidable.getHitBox());
+    debugDrawHitbox(ctx, destructible.getDamageBox(), "red");
+    drawCenterPositionWithLabel(ctx, this.getCenterPosition());
+
+    this.renderFlames(gameState, ctx, renderPosition);
+    this.renderFlashEffect(image, ctx, renderPosition);
+  }
+
+  private renderFlashEffect(
+    image: HTMLImageElement,
+    ctx: CanvasRenderingContext2D,
+    renderPosition: Vector2
+  ) {
+    if (Date.now() > this.damageFlashUntil) {
+      return;
+    }
+
+    const flashEffect = createFlashEffect(image);
+    ctx.drawImage(flashEffect, renderPosition.x, renderPosition.y);
+  }
+
+  private renderZombieDead(
+    gameState: GameState,
+    ctx: CanvasRenderingContext2D,
+    renderPosition: Vector2
+  ) {
+    const myPlayer = getPlayer(gameState);
+    const image = this.assetManager.get("zombie_dead");
     ctx.drawImage(image, renderPosition.x, renderPosition.y);
 
-    if (this.hasExt(Ignitable) && !isDead) {
-      const frameIndex = getFrameIndex(gameState.startedAt, {
-        duration: 500,
-        frames: 5,
-      });
-      const fireImg = this.assetManager.getFrameIndex("flame", frameIndex);
-      ctx.drawImage(fireImg, renderPosition.x, renderPosition.y);
-    }
-
-    if (isDead) {
-      const myPlayer = getPlayer(gameState);
-
-      if (myPlayer) {
-        renderInteractionText(
-          ctx,
-          "loot (e)",
-          this.getCenterPosition(),
-          this.getPosition(),
-          myPlayer.getPosition()
-        );
-      }
-    } else {
-      const collidable = this.getExt(Collidable);
-      drawHealthBar(ctx, renderPosition, this.getHealth(), this.getMaxHealth());
-      debugDrawHitbox(ctx, collidable.getHitBox());
-      debugDrawHitbox(ctx, destructible.getDamageBox(), "red");
-      drawCenterPositionWithLabel(ctx, this.getCenterPosition());
-    }
-
-    if (Date.now() < this.damageFlashUntil) {
-      const flashEffect = createFlashEffect(image);
-      ctx.drawImage(flashEffect, renderPosition.x, renderPosition.y);
+    if (myPlayer) {
+      renderInteractionText(
+        ctx,
+        "loot (e)",
+        this.getCenterPosition(),
+        this.getPosition(),
+        myPlayer.getPosition()
+      );
     }
   }
 }

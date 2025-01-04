@@ -208,14 +208,17 @@ export class EntityManager {
     return players[closestPlayerIdx];
   }
 
-  getIntersectingDestructableEntities(sourceEntity: Entity, sourceHitbox: Hitbox): Entity | null {
+  // TODO: we might benefit from abstracting this into a more generic function that takes in a type or something
+  getNearbyIntersectingDestructableEntities(sourceEntity: Entity, sourceHitbox: Hitbox) {
     if (!this.spatialGrid) {
-      return null;
+      return [];
     }
 
     const hitBox = sourceHitbox;
 
     const nearbyEntities = this.spatialGrid.getNearbyEntities(hitBox);
+
+    const interactingEntities: Entity[] = [];
 
     for (const otherEntity of nearbyEntities) {
       if (!otherEntity.hasExt(Destructible)) {
@@ -231,21 +234,18 @@ export class EntityManager {
       }
 
       if (isColliding(hitBox, targetBox)) {
-        return otherEntity;
+        interactingEntities.push(otherEntity);
       }
     }
 
-    return null;
+    return interactingEntities;
   }
 
   /**
    * This function will return the first entity that intersects with the source entity, but it requires
    * that the entity has a method with the name of the functionIdentifier.
    */
-  getIntersectingCollidableEntities(
-    sourceEntity: Entity,
-    ignoreTypes?: EntityType[]
-  ): Entity | null {
+  getIntersectingCollidableEntity(sourceEntity: Entity, ignoreTypes?: EntityType[]): Entity | null {
     if (!this.spatialGrid) {
       return null;
     }
@@ -254,14 +254,19 @@ export class EntityManager {
 
     const nearbyEntities = this.spatialGrid.getNearbyEntities(hitBox);
 
+    // TODO: look into refactoring this
     for (const otherEntity of nearbyEntities) {
       if (ignoreTypes && ignoreTypes.includes(otherEntity.getType())) {
         continue;
       }
 
-      const hasMethod = otherEntity.hasExt(Collidable);
+      const isCollidable = otherEntity.hasExt(Collidable);
 
-      if (!hasMethod) {
+      if (!isCollidable) {
+        continue;
+      }
+
+      if (!otherEntity.getExt(Collidable).isEnabled()) {
         continue;
       }
 
@@ -280,7 +285,7 @@ export class EntityManager {
   }
 
   isColliding(sourceEntity: Entity, ignoreTypes?: EntityType[]): Entity | null {
-    return this.getIntersectingCollidableEntities(sourceEntity, ignoreTypes);
+    return this.getIntersectingCollidableEntity(sourceEntity, ignoreTypes);
   }
 
   update(deltaTime: number) {

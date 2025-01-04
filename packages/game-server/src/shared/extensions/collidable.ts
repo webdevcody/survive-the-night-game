@@ -9,11 +9,22 @@ export default class Collidable implements Extension {
   private self: GenericEntity;
   private size: number;
   private offset: number;
+  private enabled: boolean;
 
   public constructor(self: GenericEntity) {
     this.self = self;
     this.size = 16;
     this.offset = 0;
+    this.enabled = true;
+  }
+
+  public setEnabled(enabled: boolean) {
+    this.enabled = enabled;
+    return this;
+  }
+
+  public isEnabled() {
+    return this.enabled;
   }
 
   public setSize(newSize: number) {

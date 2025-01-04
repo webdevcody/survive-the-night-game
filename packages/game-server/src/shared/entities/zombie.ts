@@ -10,16 +10,14 @@ import {
   Inventory,
   Positionable,
   Updatable,
-  Combustible,
   Movable,
-  Illuminated,
 } from "../extensions";
 import { Wall } from "./items/wall";
 import { ZombieDeathEvent } from "../events/server-sent/zombie-death-event";
 import { ZombieHurtEvent } from "../events/server-sent/zombie-hurt-event";
 import { ServerSocketManager } from "../../managers/server-socket-manager";
 import { Cooldown } from "./util/cooldown";
-import { Fire } from "./environment/fire";
+import Groupable from "../extensions/groupable";
 
 // TODO: refactor to use extensions
 export class Zombie extends Entity {
@@ -47,20 +45,15 @@ export class Zombie extends Entity {
     this.mapManager = mapManager;
     this.socketManager = socketManager;
 
-    const inventory = new Inventory(this, socketManager);
-    inventory.addRandomItem(0.2);
-    this.extensions.push(inventory);
-
-    const destructible = new Destructible(this);
-    destructible.setMaxHealth(3);
-    destructible.setHealth(3);
-    destructible.onDeath(this.onDeath.bind(this));
-    this.extensions.push(destructible);
-
-    this.extensions.push(new Positionable(this).setSize(Zombie.ZOMBIE_WIDTH));
-    this.extensions.push(new Collidable(this).setSize(8).setOffset(4));
-    this.extensions.push(new Movable(this));
-    this.extensions.push(new Updatable(this, this.updateZombie.bind(this)));
+    this.extensions = [
+      new Inventory(this, socketManager).addRandomItem(0.2),
+      new Destructible(this).setMaxHealth(3).setHealth(3).onDeath(this.onDeath.bind(this)),
+      new Groupable(this, "enemy"),
+      new Positionable(this).setSize(Zombie.ZOMBIE_WIDTH),
+      new Collidable(this).setSize(8).setOffset(4),
+      new Movable(this),
+      new Updatable(this, this.updateZombie.bind(this)),
+    ];
   }
 
   getCenterPosition(): Vector2 {
@@ -82,6 +75,7 @@ export class Zombie extends Entity {
     this.extensions.push(
       new Interactive(this).onInteract(this.afterDeathInteract.bind(this)).setDisplayName("loot")
     );
+    this.getExt(Collidable).setEnabled(false);
   }
 
   afterDeathInteract(): void {

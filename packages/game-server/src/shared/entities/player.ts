@@ -26,6 +26,7 @@ import { PlayerDroppedItemEvent } from "../events/server-sent/player-dropped-ite
 import { ServerSocketManager } from "../../managers/server-socket-manager";
 import { DEBUG_WEAPONS } from "../../config";
 import { Bandage } from "./items/bandage";
+import Groupable from "../extensions/groupable";
 
 export class Player extends Entity {
   public static readonly MAX_HEALTH = 3;
@@ -71,6 +72,7 @@ export class Player extends Entity {
       new Updatable(this, this.updatePlayer.bind(this)),
       new Movable(this),
       new Illuminated(this, 200),
+      new Groupable(this, "friendly"),
     ];
 
     if (DEBUG_WEAPONS) {
@@ -140,7 +142,7 @@ export class Player extends Entity {
 
   getCenterPosition(): Vector2 {
     const positionable = this.getExt(Positionable);
-    return positionable.getPosition();
+    return positionable.getCenterPosition();
   }
 
   serialize(): RawEntity {
