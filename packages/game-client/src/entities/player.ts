@@ -12,6 +12,7 @@ import {
   Positionable,
   Destructible,
   Ignitable,
+  Movable,
 } from "@survive-the-night/game-server";
 import { AssetManager, getItemAssetKey } from "../managers/asset";
 import { drawHealthBar, getFrameIndex, IClientEntity, Renderable } from "./util";
@@ -28,7 +29,6 @@ export class PlayerClient extends GenericEntity implements IClientEntity, Render
 
   private assetManager: AssetManager;
   private lastRenderPosition = { x: 0, y: 0 };
-  private velocity: Vector2 = { x: 0, y: 0 };
   private inventory: InventoryItem[] = [];
   private isCrafting = false;
   private activeItem: InventoryItem | null = null;
@@ -90,8 +90,9 @@ export class PlayerClient extends GenericEntity implements IClientEntity, Render
     return positionable.getCenterPosition();
   }
 
-  setVelocity(velocity: Vector2): void {
-    this.velocity = velocity;
+  getVelocity(): Vector2 {
+    const movable = this.getExt(Movable);
+    return movable.getVelocity();
   }
 
   getDamageBox(): Hitbox {
@@ -114,7 +115,7 @@ export class PlayerClient extends GenericEntity implements IClientEntity, Render
     const targetPosition = this.getPosition();
     const { facing } = this.input;
     // const image = this.assetManager.getWithDirection("Player", this.isDead() ? "down" : facing);
-    const isMoving = this.velocity.x !== 0 || this.velocity.y !== 0;
+    const isMoving = this.getVelocity().x !== 0 || this.getVelocity().y !== 0;
 
     let image: HTMLImageElement;
 
@@ -142,16 +143,12 @@ export class PlayerClient extends GenericEntity implements IClientEntity, Render
     }
 
     const renderPosition = roundVector2(this.lastRenderPosition);
-    const renderPositionWithOffset = {
-      x: renderPosition.x - image.width / 2,
-      y: renderPosition.y - image.height / 2,
-    };
 
     ctx.save();
 
     if (this.isDead()) {
       ctx.globalAlpha = 0.7;
-      ctx.translate(renderPositionWithOffset.x, renderPositionWithOffset.y);
+      ctx.translate(renderPosition.x, renderPosition.y);
       ctx.rotate(Math.PI / 2);
       ctx.drawImage(image, -image.width / 2, -image.height / 2);
       ctx.globalAlpha = 1.0;
@@ -172,16 +169,16 @@ export class PlayerClient extends GenericEntity implements IClientEntity, Render
 
     if (Date.now() < this.damageFlashUntil) {
       const flashEffect = createFlashEffect(image);
-      ctx.drawImage(flashEffect, renderPositionWithOffset.x, renderPositionWithOffset.y);
+      ctx.drawImage(flashEffect, renderPosition.x, renderPosition.y);
     }
 
     ctx.restore();
 
     if (!this.isDead()) {
-      this.renderArrow(ctx, image, renderPositionWithOffset);
+      this.renderArrow(ctx, image, renderPosition);
     }
 
-    drawHealthBar(ctx, renderPositionWithOffset, this.getHealth(), this.getMaxHealth());
+    drawHealthBar(ctx, renderPosition, this.getHealth(), this.getMaxHealth());
 
     debugDrawHitbox(ctx, this.getDamageBox(), "red");
     drawCenterPositionWithLabel(ctx, this.getCenterPosition());
