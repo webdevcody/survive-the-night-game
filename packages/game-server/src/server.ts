@@ -85,7 +85,12 @@ class GameServer {
     this.entityManager.pruneEntities();
     this.broadcastGameState();
 
-    // Track performance
+    this.trackPerformance(updateStartTime, currentTime);
+
+    this.lastUpdateTime = currentTime;
+  }
+
+  private trackPerformance(updateStartTime: number, currentTime: number) {
     const updateDuration = performance.now() - updateStartTime;
     this.updateTimes.push(updateDuration);
 
@@ -117,8 +122,6 @@ class GameServer {
       this.updateTimes = [];
       this.lastPerformanceLog = currentTime;
     }
-
-    this.lastUpdateTime = currentTime;
   }
 
   private updateEntities(deltaTime: number): void {
