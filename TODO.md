@@ -4,12 +4,18 @@ Feel free to pick any item listed out here to work on.
 
 ### Stream TODO
 
-- [ ] try to refactor the zombie entity to use ECS
-
 ## High Priority (Core Mechanics):
 
 ### Refactoring
 
+- [ ] for renderInteractionText, can we bake this into the extension or ClientEntity so that it'll automatically display the render text if the player is close enough?
+- [ ] refactor the player update method, it's complex, and also abstract the way we handle the fired weapon
+- [ ] refactor the z ordering by sorting the entities by y position (on top of the z index rendering, go to Renderer)
+- [ ] THERE ARE TOO MANY PLACES TO UPDATE WHEN I ADD NEW EXTENSIONS
+- [ ] THERE ARE TOO MANY PLACES TO UPDATE WHEN I ADD NEW ENTITY
+- [ ] I'm noticing that we use GenericEntity and Entity on some of the extensions? which one should extensions know about? I'm ok using Entity, but I wasn't sure if there was a reason for the GenericEntity.
+- [ ]
+- [ ] the velocity / position updating should be in an extension to make it reusable (see the bullet entity for an example)
 - [ ] I shouldn't need to manually call combustible.onDeath() when the zombie dies - lean into event emitters more if possible
 - [ ] revisit the player entity, the bullets come from his feet, not the center of his body
 - [ ] there is a lot of duplicate code related to showing the "pickup (e)" text over items
@@ -116,7 +122,13 @@ Feel free to pick any item listed out here to work on.
 
 ## Change Log:
 
-- [x] a user can search a dead zombie body for items (randomly drop items)
+- [x] 1/4/2025: a player shouldn't be colliding with a dead zombie
+- [x] 1/4/2025: fix bullet from coming out of players head
+- [x] 1/4/2025: a bullet was not blowing up the gas can (because I forgot to add the groupable extension to the gas can)
+- [x] 1/4/2025: a user can search a dead zombie body for items (randomly drop items)
+- [x] 1/4/2025: a zombie should be lootable, but the label isn't showing
+- [x] 1/4/2025: refactor the zombie constructor
+
 - [x] 12/19/2024: add sound for shotgun
 - [x] 12/19/2024: add sound for player hurt
 - [x] 12/19/2024: add sound for zombie hurt
@@ -125,6 +137,7 @@ Feel free to pick any item listed out here to work on.
 - [x] 12/19/2024: add sound for player death
 - [x] 12/15/2024: add a way to toggle the instructions on and off
 - [x] 12/18/2024: when a player is killed, notify all players in the game a player has died
+
 - [x] a user can drop items from their inventory
 - [x] a user shall be able to harvest trees
 - [x] create an entry point function for the client code which creates a canvas, connects to a server, and starts the game loop
@@ -160,3 +173,4 @@ Feel free to pick any item listed out here to work on.
 - [x] pressing space while crafting an item you don't have enough resources to craft should not auto close the crafting menu
 - [x] zombie should use walk animation as well
 - [x] when a player is killed by a zombie, it seems like the zombie gets stuck either on the player, or thinks it still needs to attack the player
+- [x] a player is able to shoot themself, this is bad
