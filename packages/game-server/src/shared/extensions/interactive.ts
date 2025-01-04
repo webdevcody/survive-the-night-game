@@ -9,6 +9,7 @@ export default class Interactive implements Extension {
 
   private self: GenericEntity;
   private handler: InteractiveHandler | null = null;
+  private displayName: string = "";
 
   public constructor(self: GenericEntity) {
     this.self = self;
@@ -19,17 +20,30 @@ export default class Interactive implements Extension {
     return this;
   }
 
+  public setDisplayName(name: string): this {
+    this.displayName = name;
+    return this;
+  }
+
+  public getDisplayName(): string {
+    return this.displayName;
+  }
+
   public interact(player: Player): void {
     this.handler?.(player);
   }
 
   public deserialize(data: ExtensionSerialized): this {
+    if (data.displayName) {
+      this.displayName = data.displayName;
+    }
     return this;
   }
 
   public serialize(): ExtensionSerialized {
     return {
       name: Interactive.Name,
+      displayName: this.displayName,
     };
   }
 }

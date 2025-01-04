@@ -1,7 +1,7 @@
-import { EntityManager } from "../../managers/entity-manager";
-import { Entity, Entities, RawEntity } from "../entities";
-import { Collidable, Destructible, Interactive, Positionable, Carryable } from "../extensions";
-import { Player } from "./player";
+import { EntityManager } from "../../../managers/entity-manager";
+import { Entity, Entities, RawEntity } from "../../entities";
+import { Collidable, Destructible, Interactive, Positionable, Carryable } from "../../extensions";
+import { Player } from "../player";
 
 export class Wall extends Entity {
   public static readonly Size = 16;
@@ -13,7 +13,7 @@ export class Wall extends Entity {
     this.extensions = [
       new Positionable(this).setSize(Wall.Size),
       new Collidable(this).setSize(Wall.Size),
-      new Interactive(this).onInteract(this.interact.bind(this)),
+      new Interactive(this).onInteract(this.interact.bind(this)).setDisplayName("wall"),
       new Destructible(this)
         .setMaxHealth(Wall.MAX_HEALTH)
         .setHealth(health ?? Wall.MAX_HEALTH)

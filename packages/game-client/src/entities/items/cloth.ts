@@ -1,12 +1,10 @@
-import { GenericEntity, Positionable, RawEntity } from "@survive-the-night/game-server";
+import { RawEntity, Positionable } from "@survive-the-night/game-server";
 import { AssetManager } from "@/managers/asset";
 import { GameState } from "../../state";
-import { Renderable } from "../util";
 import { Z_INDEX } from "@survive-the-night/game-server/src/managers/map-manager";
-import { getPlayer } from "../../util/get-player";
-import { renderInteractionText } from "../../util/interaction-text";
+import { ClientEntity } from "../client-entity";
 
-export class ClothClient extends GenericEntity implements Renderable {
+export class ClothClient extends ClientEntity {
   private assetManager: AssetManager;
 
   constructor(data: RawEntity, assetManager: AssetManager) {
@@ -19,16 +17,10 @@ export class ClothClient extends GenericEntity implements Renderable {
   }
 
   public render(ctx: CanvasRenderingContext2D, gameState: GameState): void {
+    super.render(ctx, gameState);
+
     const image = this.assetManager.get("cloth");
-    const myPlayer = getPlayer(gameState);
-    const positionable = this.getExt(Positionable);
-    const centerPosition = positionable.getCenterPosition();
-    const position = positionable.getPosition();
-
-    if (myPlayer) {
-      renderInteractionText(ctx, "collect (e)", centerPosition, position, myPlayer.getPosition());
-    }
-
+    const position = this.getExt(Positionable).getPosition();
     ctx.drawImage(image, position.x, position.y);
   }
 }

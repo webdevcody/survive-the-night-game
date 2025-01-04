@@ -7,7 +7,7 @@ import { Bandage } from "../shared/entities/items/bandage";
 import { Positionable } from "../shared/extensions";
 import { Spikes } from "../shared/entities/items/spikes";
 import { ServerSocketManager } from "./server-socket-manager";
-import { Fire } from "../shared/entities/triggers/fire";
+import { Fire } from "../shared/entities/environment/fire";
 
 export const Z_INDEX = {
   GROUND: 0,

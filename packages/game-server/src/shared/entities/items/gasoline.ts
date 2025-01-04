@@ -9,7 +9,7 @@ import {
   Carryable,
 } from "../../extensions";
 import { Player } from "../player";
-import { Fire } from "../triggers/fire";
+import { Fire } from "../environment/fire";
 
 export class Gasoline extends Entity {
   public static readonly Size = 16;
@@ -19,7 +19,7 @@ export class Gasoline extends Entity {
 
     this.extensions = [
       new Positionable(this).setSize(Gasoline.Size),
-      new Interactive(this).onInteract(this.interact.bind(this)),
+      new Interactive(this).onInteract(this.interact.bind(this)).setDisplayName("gasoline"),
       new Destructible(this).setMaxHealth(1).setHealth(1).onDeath(this.onDeath.bind(this)),
       new Combustible(this, (type) => new Fire(this.getEntityManager()), 12, 64), // More fires and larger spread than default
       new Carryable(this, "gasoline"),

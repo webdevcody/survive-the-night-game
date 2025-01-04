@@ -14,12 +14,12 @@ import {
   Movable,
   Illuminated,
 } from "../extensions";
-import { Wall } from "./wall";
+import { Wall } from "./items/wall";
 import { ZombieDeathEvent } from "../events/server-sent/zombie-death-event";
 import { ZombieHurtEvent } from "../events/server-sent/zombie-hurt-event";
 import { ServerSocketManager } from "../../managers/server-socket-manager";
 import { Cooldown } from "./util/cooldown";
-import { Fire } from "./triggers/fire";
+import { Fire } from "./environment/fire";
 
 // TODO: refactor to use extensions
 export class Zombie extends Entity {
@@ -79,7 +79,9 @@ export class Zombie extends Entity {
 
   onDeath(): void {
     this.socketManager.broadcastEvent(new ZombieHurtEvent(this.getId()));
-    this.extensions.push(new Interactive(this).onInteract(this.afterDeathInteract.bind(this)));
+    this.extensions.push(
+      new Interactive(this).onInteract(this.afterDeathInteract.bind(this)).setDisplayName("loot")
+    );
   }
 
   afterDeathInteract(): void {

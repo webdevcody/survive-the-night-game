@@ -21,7 +21,7 @@ export class Weapon extends Entity {
 
     this.extensions = [
       new Positionable(this).setSize(Weapon.Size),
-      new Interactive(this).onInteract(this.interact.bind(this)),
+      new Interactive(this).onInteract(this.interact.bind(this)).setDisplayName(weaponType),
       new Carryable(this, weaponType),
     ];
   }

@@ -63,7 +63,7 @@ export class Player extends Entity {
     this.extensions = [
       new Inventory(this as any, socketManager),
       new Collidable(this).setSize(Player.PLAYER_WIDTH),
-      new Positionable(this),
+      new Positionable(this).setSize(Player.PLAYER_WIDTH),
       new Destructible(this)
         .setHealth(Player.MAX_HEALTH)
         .setMaxHealth(Player.MAX_HEALTH)
@@ -212,8 +212,8 @@ export class Player extends Entity {
       if (activeWeapon.key === "pistol") {
         const bullet = new Bullet(this.getEntityManager());
         bullet.setPosition({
-          x: this.getPosition().x + Player.PLAYER_WIDTH / 2,
-          y: this.getPosition().y + Player.PLAYER_HEIGHT / 2,
+          x: this.getCenterPosition().x,
+          y: this.getCenterPosition().y,
         });
         bullet.setDirection(this.input.facing);
         this.getEntityManager().addEntity(bullet);
@@ -230,8 +230,8 @@ export class Player extends Entity {
         for (let i = -1; i <= 1; i++) {
           const bullet = new Bullet(this.getEntityManager());
           bullet.setPosition({
-            x: this.getPosition().x + Player.PLAYER_WIDTH / 2,
-            y: this.getPosition().y + Player.PLAYER_HEIGHT / 2,
+            x: this.getCenterPosition().x,
+            y: this.getCenterPosition().y,
           });
           bullet.setDirectionWithOffset(this.input.facing, i * spreadAngle);
           this.getEntityManager().addEntity(bullet);

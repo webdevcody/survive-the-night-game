@@ -6,12 +6,13 @@ import {
   WeaponType,
   distance,
 } from "@survive-the-night/game-server";
-import { AssetManager } from "../managers/asset";
-import { GameState } from "../state";
-import { Renderable } from "./util";
-import { animate, bounce } from "../animations";
+import { AssetManager } from "../../managers/asset";
+import { GameState } from "../../state";
+import { Renderable } from "../util";
+import { animate, bounce } from "../../animations";
 import { Z_INDEX } from "@survive-the-night/game-server/src/managers/map-manager";
-import { getPlayer } from "../util/get-player";
+import { getPlayer } from "../../util/get-player";
+import { renderInteractionText } from "../../util/interaction-text";
 
 export class WeaponClient extends GenericEntity implements Renderable {
   private assetManager: AssetManager;
@@ -34,12 +35,14 @@ export class WeaponClient extends GenericEntity implements Renderable {
     const centerPosition = positionable.getCenterPosition();
     const position = positionable.getPosition();
 
-    if (myPlayer && distance(myPlayer.getPosition(), position) < Player.MAX_INTERACT_RADIUS) {
-      ctx.fillStyle = "white";
-      ctx.font = "6px Arial";
-      const text = `${this.weaponType} (e)`;
-      const textWidth = ctx.measureText(text).width;
-      ctx.fillText(text, centerPosition.x - textWidth / 2, position.y - 3);
+    if (myPlayer) {
+      renderInteractionText(
+        ctx,
+        `${this.weaponType} (e)`,
+        centerPosition,
+        position,
+        myPlayer.getPosition()
+      );
     }
 
     const animation = bounce(positionable.getSize());

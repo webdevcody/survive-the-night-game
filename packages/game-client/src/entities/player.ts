@@ -156,7 +156,7 @@ export class PlayerClient extends GenericEntity implements IClientEntity, Render
       ctx.drawImage(image, -image.width / 2, -image.height / 2);
       ctx.globalAlpha = 1.0;
     } else {
-      ctx.drawImage(image, renderPositionWithOffset.x, renderPositionWithOffset.y);
+      ctx.drawImage(image, renderPosition.x, renderPosition.y);
 
       if (this.hasExt(Ignitable)) {
         const frameIndex = getFrameIndex(gameState.startedAt, {
@@ -164,10 +164,10 @@ export class PlayerClient extends GenericEntity implements IClientEntity, Render
           frames: 5,
         });
         const fireImg = this.assetManager.getFrameIndex("flame", frameIndex);
-        ctx.drawImage(fireImg, renderPositionWithOffset.x, renderPositionWithOffset.y);
+        ctx.drawImage(fireImg, renderPosition.x, renderPosition.y);
       }
 
-      this.renderInventoryItem(ctx, renderPositionWithOffset);
+      this.renderInventoryItem(ctx, renderPosition);
     }
 
     if (Date.now() < this.damageFlashUntil) {

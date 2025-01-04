@@ -12,7 +12,7 @@ import { Bandage } from "../shared/entities/items/bandage";
 import { Torch } from "../shared/entities/items/torch";
 import { Cloth } from "../shared/entities/items/cloth";
 import { Tree } from "../shared/entities/items/tree";
-import { Wall } from "../shared/entities/wall";
+import { Wall } from "../shared/entities/items/wall";
 import { Spikes } from "../shared/entities/items/spikes";
 import { Weapon } from "../shared/entities/weapon";
 

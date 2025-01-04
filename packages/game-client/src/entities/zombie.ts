@@ -19,6 +19,7 @@ import { Z_INDEX } from "@survive-the-night/game-server/src/managers/map-manager
 import Movable from "@survive-the-night/game-server/src/shared/extensions/movable";
 import { createFlashEffect } from "../util/render";
 import { getPlayer } from "../util/get-player";
+import { renderInteractionText } from "../util/interaction-text";
 
 export class ZombieClient extends GenericEntity implements IClientEntity, Renderable {
   private assetManager: AssetManager;
@@ -109,15 +110,14 @@ export class ZombieClient extends GenericEntity implements IClientEntity, Render
     if (isDead) {
       const myPlayer = getPlayer(gameState);
 
-      if (
-        myPlayer &&
-        distance(myPlayer.getPosition(), this.getPosition()) < Player.MAX_INTERACT_RADIUS
-      ) {
-        ctx.fillStyle = "white";
-        ctx.font = "6px Arial";
-        const text = "loot (e)";
-        const textWidth = ctx.measureText(text).width;
-        ctx.fillText(text, this.getCenterPosition().x - textWidth / 2, this.getPosition().y - 3);
+      if (myPlayer) {
+        renderInteractionText(
+          ctx,
+          "loot (e)",
+          this.getCenterPosition(),
+          this.getPosition(),
+          myPlayer.getPosition()
+        );
       }
     } else {
       const collidable = this.getExt(Collidable);

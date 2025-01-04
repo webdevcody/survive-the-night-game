@@ -11,7 +11,7 @@ export class Cloth extends Entity {
 
     this.extensions = [
       new Positionable(this).setSize(Cloth.Size),
-      new Interactive(this).onInteract(this.interact.bind(this)),
+      new Interactive(this).onInteract(this.interact.bind(this)).setDisplayName("cloth"),
       new Carryable(this, "cloth"),
     ];
 

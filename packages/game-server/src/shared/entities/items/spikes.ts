@@ -10,7 +10,6 @@ import { Player } from "../player";
 export class Spikes extends Entity {
   private static readonly DAMAGE = 1;
   private static readonly SIZE = 16;
-  private static readonly MAX_HEALTH = 100;
 
   constructor(entityManager: EntityManager) {
     super(entityManager, Entities.SPIKES);
@@ -23,7 +22,7 @@ export class Spikes extends Entity {
         victimType: Entities.ZOMBIE,
         cooldown: 1,
       }),
-      new Interactive(this).onInteract(this.interact.bind(this)),
+      new Interactive(this).onInteract(this.interact.bind(this)).setDisplayName("spikes"),
       new Carryable(this, "spikes"),
     ];
   }

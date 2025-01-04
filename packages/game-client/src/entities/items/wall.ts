@@ -6,11 +6,12 @@ import {
   RawEntity,
   distance,
 } from "@survive-the-night/game-server";
-import { AssetManager } from "@/managers/asset";
-import { GameState } from "../state";
-import { Renderable, drawHealthBar } from "./util";
+import { AssetManager } from "../../managers/asset";
+import { GameState } from "../../state";
+import { Renderable, drawHealthBar } from "../util";
 import { Z_INDEX } from "@survive-the-night/game-server/src/managers/map-manager";
-import { getPlayer } from "../util/get-player";
+import { getPlayer } from "../../util/get-player";
+import { renderInteractionText } from "../../util/interaction-text";
 
 export class WallClient extends GenericEntity implements Renderable {
   private assetManager: AssetManager;
@@ -32,12 +33,8 @@ export class WallClient extends GenericEntity implements Renderable {
     const centerPosition = positionable.getCenterPosition();
     const position = positionable.getPosition();
 
-    if (myPlayer && distance(myPlayer.getPosition(), position) < Player.MAX_INTERACT_RADIUS) {
-      ctx.fillStyle = "white";
-      ctx.font = "6px Arial";
-      const text = "pick up (e)";
-      const textWidth = ctx.measureText(text).width;
-      ctx.fillText(text, centerPosition.x - textWidth / 2, position.y - 3);
+    if (myPlayer) {
+      renderInteractionText(ctx, "pick up (e)", centerPosition, position, myPlayer.getPosition());
     }
 
     ctx.drawImage(image, position.x, position.y);

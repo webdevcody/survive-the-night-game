@@ -23,6 +23,7 @@ Feel free to pick any item listed out here to work on.
 
 ### Bugs
 
+- [ ] trap fires constaly on dead zombies
 - [ ] when DEBUG = true, all the HUD overlays seem to shift, including the "pickup (e)" text over items
 
 ### Gameplay

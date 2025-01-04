@@ -13,6 +13,7 @@ import { Renderable } from "../util";
 import { debugDrawHitbox } from "../../util/debug";
 import { Z_INDEX } from "@survive-the-night/game-server/src/managers/map-manager";
 import { getPlayer } from "../../util/get-player";
+import { renderInteractionText } from "../../util/interaction-text";
 
 export class SpikesClient extends GenericEntity implements Renderable {
   private assetManager: AssetManager;
@@ -34,12 +35,8 @@ export class SpikesClient extends GenericEntity implements Renderable {
     const extension = this.getExt(TriggerCooldownAttacker);
     const myPlayer = getPlayer(gameState);
 
-    if (myPlayer && distance(myPlayer.getPosition(), position) < Player.MAX_INTERACT_RADIUS) {
-      ctx.fillStyle = "white";
-      ctx.font = "6px Arial";
-      const text = "collect (e)";
-      const textWidth = ctx.measureText(text).width;
-      ctx.fillText(text, centerPosition.x - textWidth / 2, position.y - 3);
+    if (myPlayer) {
+      renderInteractionText(ctx, "collect (e)", centerPosition, position, myPlayer.getPosition());
     }
 
     if (extension.isReady) {
