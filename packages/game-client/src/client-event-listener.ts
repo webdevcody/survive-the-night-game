@@ -19,6 +19,7 @@ import { ZombieClient } from "./entities/zombie";
 import { ZombieHurtEvent } from "@survive-the-night/game-server/src/shared/events/server-sent/zombie-hurt-event";
 import { PlayerDroppedItemEvent } from "@survive-the-night/game-server/src/shared/events/server-sent/player-dropped-item-event";
 import { PlayerPickedUpItemEvent } from "@survive-the-night/game-server/src/shared/events/server-sent/pickup-item-event";
+import { GameOverEvent } from "@survive-the-night/game-server/src/shared/events/server-sent/game-over-event";
 import { SOUND_TYPES } from "./managers/sound-manager";
 
 export class ClientEventListener {
@@ -39,6 +40,7 @@ export class ClientEventListener {
     this.socketManager.on(ServerSentEvents.PLAYER_ATTACKED, this.onPlayerAttacked.bind(this));
     this.socketManager.on(ServerSentEvents.ZOMBIE_DEATH, this.onZombieDeath.bind(this));
     this.socketManager.on(ServerSentEvents.ZOMBIE_HURT, this.onZombieHurt.bind(this));
+    this.socketManager.on(ServerSentEvents.GAME_OVER, this.onGameOver.bind(this));
     this.socketManager.on(
       ServerSentEvents.PLAYER_DROPPED_ITEM,
       this.onPlayerDroppedItem.bind(this)
@@ -70,6 +72,10 @@ export class ClientEventListener {
 
     const playerPosition = (player as unknown as PlayerClient).getCenterPosition();
     this.gameClient.getSoundManager().playPositionalSound(SOUND_TYPES.PLAYER_HURT, playerPosition);
+  }
+
+  onGameOver(gameOverEvent: GameOverEvent) {
+    this.gameClient.getGameOverDialog().show();
   }
 
   onPlayerDeath(playerDeathEvent: PlayerDeathEvent) {

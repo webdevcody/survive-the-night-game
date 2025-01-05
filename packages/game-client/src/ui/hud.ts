@@ -22,7 +22,6 @@ export class Hud {
   private showInstructions: boolean = true;
   private playerDeathMessages: { message: string; timestamp: number }[] = [];
   private playerDeathMessageTimeout: number = 5000;
-
   constructor() {}
 
   update(gameState: GameState): void {

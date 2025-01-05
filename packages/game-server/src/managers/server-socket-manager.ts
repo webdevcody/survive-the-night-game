@@ -9,6 +9,7 @@ import { RecipeType } from "@/shared/recipes";
 import { GameEvent } from "@/shared/events/types";
 import { DEBUG_EVENTS } from "@/config";
 import Positionable from "@/shared/extensions/positionable";
+import { GameServer } from "@/server";
 
 /**
  * Any and all functionality related to sending server side events
@@ -21,8 +22,9 @@ export class ServerSocketManager {
   private httpServer: any;
   private entityManager?: EntityManager;
   private mapManager?: MapManager;
+  private gameServer: GameServer;
 
-  constructor(port: number) {
+  constructor(port: number, gameServer: GameServer) {
     this.port = port;
     this.httpServer = createServer();
     this.io = new Server(this.httpServer, {
@@ -31,6 +33,8 @@ export class ServerSocketManager {
         methods: ["GET", "POST"],
       },
     });
+
+    this.gameServer = gameServer;
 
     this.io.on("connection", (socket: Socket) => this.onConnection(socket));
   }
@@ -96,6 +100,11 @@ export class ServerSocketManager {
 
   private onConnection(socket: Socket): void {
     console.log(`Player connected: ${socket.id}`);
+
+    const totalPlayers = this.getEntityManager().getPlayerEntities().length;
+    if (totalPlayers === 0) {
+      this.gameServer.startNewGame();
+    }
 
     const player = new Player(this.getEntityManager(), this);
 

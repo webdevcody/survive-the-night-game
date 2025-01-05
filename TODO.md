@@ -8,6 +8,7 @@ Feel free to pick any item listed out here to work on.
 
 ### Refactoring
 
+- [ ] refactor the use the new style sheets I created using aseprite
 - [ ] for renderInteractionText, can we bake this into the extension or ClientEntity so that it'll automatically display the render text if the player is close enough?
 - [ ] refactor the player update method, it's complex, and also abstract the way we handle the fired weapon
 - [ ] refactor the z ordering by sorting the entities by y position (on top of the z index rendering, go to Renderer)

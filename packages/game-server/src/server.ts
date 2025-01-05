@@ -2,6 +2,7 @@ import { EntityManager } from "./managers/entity-manager";
 import { MapManager } from "./managers/map-manager";
 import { ServerSocketManager } from "./managers/server-socket-manager";
 import { GameStateEvent } from "./shared/events/server-sent";
+import { GameOverEvent } from "./shared/events/server-sent/game-over-event";
 
 export const FPS = 30;
 
@@ -11,7 +12,7 @@ export const NIGHT_DURATION = 100;
 const PERFORMANCE_LOG_INTERVAL = 5000; // Log every 5 seconds
 const TICK_RATE_MS = 1000 / FPS; // ~33.33ms for 30 FPS
 
-class GameServer {
+export class GameServer {
   private lastUpdateTime: number = Date.now();
   private entityManager: EntityManager;
   private mapManager: MapManager;
@@ -22,24 +23,28 @@ class GameServer {
   private isDay: boolean = true;
   private updateTimes: number[] = [];
   private lastPerformanceLog: number = Date.now();
+  private isGameOver: boolean = false;
 
   constructor(port: number = 3001) {
-    this.socketManager = new ServerSocketManager(port);
+    this.socketManager = new ServerSocketManager(port, this);
     this.entityManager = new EntityManager(this.socketManager);
 
     this.mapManager = new MapManager(this.entityManager);
     this.mapManager.setSocketManager(this.socketManager);
-    this.mapManager.generateMap();
-
-    this.untilNextCycle = DAY_DURATION;
-    this.isDay = true;
-    this.dayNumber = 1;
 
     this.socketManager.setEntityManager(this.entityManager);
     this.socketManager.setMapManager(this.mapManager);
     this.socketManager.listen();
 
     this.startGameLoop();
+  }
+
+  public startNewGame(): void {
+    this.isGameOver = false;
+    this.dayNumber = 1;
+    this.untilNextCycle = DAY_DURATION;
+    this.isDay = true;
+    this.mapManager.generateMap();
   }
 
   public stop() {
@@ -63,6 +68,10 @@ class GameServer {
     this.mapManager.spawnZombies(this.dayNumber);
   }
 
+  public setIsGameOver(isGameOver: boolean): void {
+    this.isGameOver = isGameOver;
+  }
+
   private update(): void {
     // setup
     const updateStartTime = performance.now();
@@ -70,6 +79,10 @@ class GameServer {
     const deltaTime = (currentTime - this.lastUpdateTime) / 1000;
 
     // logic
+    if (this.isGameOver) {
+      return;
+    }
+
     this.updateEntities(deltaTime);
 
     this.handleDayNightCycle(deltaTime);
@@ -99,12 +112,16 @@ class GameServer {
 
   private handleIfGameOver(): void {
     const players = this.entityManager.getPlayerEntities();
-    if (players.every((player) => player.isDead())) {
+    if (players.length > 0 && players.every((player) => player.isDead())) {
       this.endGame();
     }
   }
 
-  private endGame(): void {}
+  private endGame(): void {
+    console.log("Game over");
+    this.isGameOver = true;
+    this.socketManager.broadcastEvent(new GameOverEvent());
+  }
 
   private trackPerformance(updateStartTime: number, currentTime: number) {
     const updateDuration = performance.now() - updateStartTime;

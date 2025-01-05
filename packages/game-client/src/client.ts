@@ -17,6 +17,7 @@ import { ZoomController } from "./zoom-controller";
 import { ResizeController } from "./resize-controller";
 import { ClientEventListener } from "./client-event-listener";
 import { SoundManager } from "./managers/sound-manager";
+import { GameOverDialogUI } from "./ui/game-over-dialog";
 
 export class GameClient {
   private ctx: CanvasRenderingContext2D;
@@ -40,6 +41,7 @@ export class GameClient {
   private hud: Hud;
   private craftingTable: CraftingTable;
   private hotbar: InventoryBarUI;
+  private gameOverDialog: GameOverDialogUI;
 
   // State
   private gameState: GameState;
@@ -81,6 +83,7 @@ export class GameClient {
 
     this.mapManager = new MapManager(this);
     this.hud = new Hud();
+    this.gameOverDialog = new GameOverDialogUI();
 
     // TODO: refactor to use event emitter
     this.craftingTable = new CraftingTable(this.assetManager, {
@@ -179,13 +182,18 @@ export class GameClient {
       this.mapManager,
       this.hotbar,
       this.hud,
-      this.craftingTable
+      this.craftingTable,
+      this.gameOverDialog
     );
 
     this.resizeController = new ResizeController(this.renderer);
 
     this.socketManager = new ClientSocketManager(serverUrl);
     this.clientEventListener = new ClientEventListener(this, this.socketManager);
+  }
+
+  public getGameOverDialog(): GameOverDialogUI {
+    return this.gameOverDialog;
   }
 
   public getSoundManager(): SoundManager {

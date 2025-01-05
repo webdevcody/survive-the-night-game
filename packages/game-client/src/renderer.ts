@@ -4,6 +4,7 @@ import { GameState } from "./state";
 import { CraftingTable } from "./ui/crafting-table";
 import { InventoryBarUI } from "./ui/inventory-bar";
 import { Hud } from "./ui/hud";
+import { GameOverDialogUI } from "./ui/game-over-dialog";
 
 export class Renderer {
   private ctx: CanvasRenderingContext2D;
@@ -12,6 +13,7 @@ export class Renderer {
   private hotbar: InventoryBarUI;
   private hud: Hud;
   private craftingTable: CraftingTable;
+  private gameOverDialog: GameOverDialogUI;
 
   constructor(
     ctx: CanvasRenderingContext2D,
@@ -19,7 +21,8 @@ export class Renderer {
     mapManager: MapManager,
     hotbar: InventoryBarUI,
     hud: Hud,
-    craftingTable: CraftingTable
+    craftingTable: CraftingTable,
+    gameOverDialog: GameOverDialogUI
   ) {
     this.ctx = ctx;
     this.gameState = gameState;
@@ -27,6 +30,7 @@ export class Renderer {
     this.hotbar = hotbar;
     this.hud = hud;
     this.craftingTable = craftingTable;
+    this.gameOverDialog = gameOverDialog;
     this.resizeCanvas();
   }
 
@@ -78,5 +82,6 @@ export class Renderer {
     this.hotbar.render(this.ctx, this.gameState);
     this.hud.render(this.ctx, this.gameState);
     this.craftingTable.render(this.ctx, this.gameState);
+    this.gameOverDialog.render(this.ctx, this.gameState);
   }
 }
