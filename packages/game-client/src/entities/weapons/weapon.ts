@@ -18,10 +18,10 @@ export class WeaponClient extends GenericEntity implements Renderable {
   private assetManager: AssetManager;
   private weaponType: WeaponType;
 
-  constructor(data: RawEntity, assetManager: AssetManager, weaponType: WeaponType) {
+  constructor(data: RawEntity, assetManager: AssetManager) {
     super(data);
     this.assetManager = assetManager;
-    this.weaponType = weaponType;
+    this.weaponType = data.weaponType;
   }
 
   public getZIndex(): number {
