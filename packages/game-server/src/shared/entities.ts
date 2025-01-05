@@ -66,7 +66,7 @@ export class GenericEntity extends EventTarget {
     const found = this.extensions.find((it) => it instanceof ext);
 
     if (found === undefined) {
-      throw new Error(`Unable to find extension ${ext.name}`);
+      throw new Error(`Unable to find extension ${ext.type}`);
     }
 
     return found as T;
@@ -77,15 +77,16 @@ export class GenericEntity extends EventTarget {
       const dataExtensions: ExtensionSerialized[] = data.extensions;
 
       this.extensions = dataExtensions.map((dataFromServer) => {
-        const ExtensionConstructor = extensionsMap[dataFromServer.name];
+        const ExtensionConstructor =
+          extensionsMap[dataFromServer.type as keyof typeof extensionsMap];
 
         if (!ExtensionConstructor) {
           throw new Error(
-            `Unable to find extension ${dataFromServer.name}, please update the extensionsMap`
+            `Unable to find extension ${dataFromServer.type}, please update the extensionsMap`
           );
         }
         // TODO: this feels hacky, we shouldn't need to remember to update this when an extension needs more server managers
-        if (dataFromServer.name === TriggerCooldownAttacker.Name) {
+        if (dataFromServer.type === TriggerCooldownAttacker.type) {
           return new TriggerCooldownAttacker(this, this.entityManager, dataFromServer).deserialize(
             dataFromServer
           );

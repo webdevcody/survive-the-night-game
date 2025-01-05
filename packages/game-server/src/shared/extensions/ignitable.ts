@@ -1,10 +1,10 @@
 import { GenericEntity } from "../entities";
-import { Extension, ExtensionNames, ExtensionSerialized } from "./types";
+import { Extension, ExtensionSerialized } from "./types";
 import { Cooldown } from "../entities/util/cooldown";
 import Destructible from "./destructible";
 
 export default class Ignitable implements Extension {
-  public static readonly Name = ExtensionNames.ignitable;
+  public static readonly type = "ignitable";
 
   private self: GenericEntity;
   private cooldown: Cooldown;
@@ -40,7 +40,7 @@ export default class Ignitable implements Extension {
 
   public serialize(): ExtensionSerialized {
     return {
-      name: Ignitable.Name,
+      type: Ignitable.type,
     };
   }
 }

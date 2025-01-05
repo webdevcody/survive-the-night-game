@@ -1,10 +1,10 @@
 import { Entity } from "../entities";
-import { Extension, ExtensionNames, ExtensionSerialized } from "./types";
+import { Extension, ExtensionSerialized } from "./types";
 import { Cooldown } from "../entities/util/cooldown";
 
 // an extension which will automatically remove the entity after a certain amount of time.
 export default class Expirable implements Extension {
-  public static readonly Name = ExtensionNames.expirable;
+  public static readonly type = "expirable";
 
   private self: Entity;
   private expireCooldown: Cooldown;
@@ -28,7 +28,7 @@ export default class Expirable implements Extension {
 
   public serialize(): ExtensionSerialized {
     return {
-      name: Expirable.Name,
+      type: Expirable.type,
     };
   }
 }

@@ -1,22 +1,3 @@
-export const ExtensionNames = {
-  collidable: "collidable",
-  consumable: "consumable",
-  destructible: "destructible",
-  interactive: "interactive",
-  positionable: "positionable",
-  trigger: "trigger",
-  updatable: "updatable",
-  triggerCooldownAttacker: "triggerCooldownAttacker",
-  expirable: "expirable",
-  inventory: "inventory",
-  ignitable: "ignitable",
-  movable: "movable",
-  combustible: "combustible",
-  illuminated: "illuminated",
-  carryable: "carryable",
-  groupable: "groupable",
-} as const;
-
 export interface Extension {
   deserialize: (data: ExtensionSerialized) => this;
   serialize: () => ExtensionSerialized;
@@ -26,8 +7,6 @@ export interface Extension {
 export type ExtensionCtor<T = any> = { new (...args: any[]): T };
 
 export interface ExtensionSerialized {
-  name: keyof typeof ExtensionNames;
+  type: string;
   [key: string]: any;
 }
-
-export type ExtensionType = keyof typeof ExtensionNames;

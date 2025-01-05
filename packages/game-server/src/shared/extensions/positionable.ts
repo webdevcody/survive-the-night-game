@@ -1,9 +1,9 @@
 import { GenericEntity } from "../entities";
-import { Extension, ExtensionNames, ExtensionSerialized } from "./types";
+import { Extension, ExtensionSerialized } from "./types";
 import { Vector2 } from "../physics";
 
 export default class Positionable implements Extension {
-  public static readonly Name = ExtensionNames.positionable;
+  public static readonly type = "positionable";
 
   private self: GenericEntity;
   private x = 0;
@@ -48,7 +48,7 @@ export default class Positionable implements Extension {
 
   public serialize(): ExtensionSerialized {
     return {
-      name: Positionable.Name,
+      type: Positionable.type,
       x: this.x,
       y: this.y,
       size: this.size,

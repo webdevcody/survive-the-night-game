@@ -17,22 +17,22 @@ import Groupable from "./groupable";
 
 // TODO: THERE ARE TOO MANY PLACES TO UPDATE WHEN I ADD NEW EXTENSIONS
 export const extensionsMap = {
-  [Collidable.Name]: Collidable,
-  [Consumable.Name]: Consumable,
-  [Destructible.Name]: Destructible,
-  [Interactive.Name]: Interactive,
-  [Positionable.Name]: Positionable,
-  [Triggerable.Name]: Triggerable,
-  [Updatable.Name]: Updatable,
-  [TriggerCooldownAttacker.Name]: TriggerCooldownAttacker,
-  [Expirable.Name]: Expirable,
-  [Inventory.Name]: Inventory,
-  [Ignitable.Name]: Ignitable,
-  [Movable.Name]: Movable,
-  [Combustible.Name]: Combustible,
-  [Illuminated.Name]: Illuminated,
-  [Carryable.Name]: Carryable,
-  [Groupable.Name]: Groupable,
+  [Collidable.type]: Collidable,
+  [Consumable.type]: Consumable,
+  [Destructible.type]: Destructible,
+  [Interactive.type]: Interactive,
+  [Positionable.type]: Positionable,
+  [Triggerable.type]: Triggerable,
+  [Updatable.type]: Updatable,
+  [TriggerCooldownAttacker.type]: TriggerCooldownAttacker,
+  [Expirable.type]: Expirable,
+  [Inventory.type]: Inventory,
+  [Ignitable.type]: Ignitable,
+  [Movable.type]: Movable,
+  [Combustible.type]: Combustible,
+  [Illuminated.type]: Illuminated,
+  [Carryable.type]: Carryable,
+  [Groupable.type]: Groupable,
 } as const;
 
 export {

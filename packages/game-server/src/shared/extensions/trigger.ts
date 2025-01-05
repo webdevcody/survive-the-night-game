@@ -1,14 +1,13 @@
-import { Entities, Entity, GenericEntity } from "../entities";
-import { Extension, ExtensionNames, ExtensionSerialized } from "./types";
+import { Entity } from "../entities";
+import { Extension, ExtensionSerialized } from "./types";
 import { distance, Vector2 } from "../physics";
 import { Rectangle } from "../geom/rectangle";
 import Positionable from "./positionable";
-import { Zombie } from "../entities/zombie";
 import { EntityType } from "../entity-types";
 import Collidable from "./collidable";
 
 export default class Triggerable implements Extension {
-  public static readonly Name = ExtensionNames.trigger;
+  public static readonly type = "trigger";
   private static readonly TriggerRadius = 10;
 
   private self: Entity;
@@ -73,7 +72,7 @@ export default class Triggerable implements Extension {
 
   public serialize(): ExtensionSerialized {
     return {
-      name: Triggerable.Name,
+      type: Triggerable.type,
       width: this.size.x,
       height: this.size.y,
     };

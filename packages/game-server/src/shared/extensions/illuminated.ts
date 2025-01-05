@@ -1,8 +1,8 @@
 import { GenericEntity } from "../entities";
-import { Extension, ExtensionNames, ExtensionSerialized } from "./types";
+import { Extension, ExtensionSerialized } from "./types";
 
 export default class Illuminated implements Extension {
-  public static readonly Name = ExtensionNames.illuminated;
+  public static readonly type = "illuminated";
 
   private self: GenericEntity;
   private radius: number;
@@ -28,7 +28,7 @@ export default class Illuminated implements Extension {
 
   public serialize(): ExtensionSerialized {
     return {
-      name: Illuminated.Name,
+      type: Illuminated.type,
       radius: this.radius,
     };
   }

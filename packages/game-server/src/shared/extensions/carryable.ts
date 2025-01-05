@@ -5,7 +5,7 @@ import { ItemType } from "../inventory";
 import { PlayerPickedUpItemEvent } from "../events/server-sent/pickup-item-event";
 
 export default class Carryable implements Extension {
-  public static readonly Name = "carryable" as const;
+  public static readonly type = "carryable" as const;
 
   private self: Entity;
   private itemKey: ItemType;
@@ -43,7 +43,7 @@ export default class Carryable implements Extension {
 
   public serialize(): ExtensionSerialized {
     return {
-      name: Carryable.Name,
+      type: Carryable.type,
       itemKey: this.itemKey,
     };
   }

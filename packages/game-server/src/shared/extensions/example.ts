@@ -1,8 +1,8 @@
 import { GenericEntity } from "../entities";
-import { Extension, ExtensionNames, ExtensionSerialized } from "./types";
+import { Extension, ExtensionSerialized } from "./types";
 
 export default class Example implements Extension {
-  public static readonly Name = ExtensionNames.positionable;
+  public static readonly type = "example";
 
   private self: GenericEntity;
 
@@ -16,7 +16,7 @@ export default class Example implements Extension {
 
   public serialize(): ExtensionSerialized {
     return {
-      name: Example.Name,
+      type: Example.type,
     };
   }
 }

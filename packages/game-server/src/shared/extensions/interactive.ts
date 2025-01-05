@@ -1,11 +1,11 @@
 import { GenericEntity } from "../entities";
 import { Player } from "../entities/player";
-import { Extension, ExtensionNames, ExtensionSerialized } from "./types";
+import { Extension, ExtensionSerialized } from "./types";
 
 type InteractiveHandler = (player: Player) => void;
 
 export default class Interactive implements Extension {
-  public static readonly Name = ExtensionNames.interactive;
+  public static readonly type = "interactive";
 
   private self: GenericEntity;
   private handler: InteractiveHandler | null = null;
@@ -42,7 +42,7 @@ export default class Interactive implements Extension {
 
   public serialize(): ExtensionSerialized {
     return {
-      name: Interactive.Name,
+      type: Interactive.type,
       displayName: this.displayName,
     };
   }

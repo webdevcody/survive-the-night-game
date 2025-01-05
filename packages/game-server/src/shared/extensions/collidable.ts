@@ -1,10 +1,10 @@
-import { Extension, ExtensionNames, ExtensionSerialized } from "./types";
+import { Extension, ExtensionSerialized } from "./types";
 import { GenericEntity } from "../entities";
 import { Hitbox } from "../traits";
 import Positionable from "./positionable";
 
 export default class Collidable implements Extension {
-  public static readonly Name = ExtensionNames.collidable;
+  public static readonly type = "collidable";
 
   private self: GenericEntity;
   private size: number;
@@ -64,7 +64,7 @@ export default class Collidable implements Extension {
 
   public serialize(): ExtensionSerialized {
     return {
-      name: Collidable.Name,
+      type: Collidable.type,
       offset: this.offset,
       size: this.size,
     };

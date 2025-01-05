@@ -1,6 +1,6 @@
 import { distance } from "../physics";
 import { GenericEntity } from "../entities";
-import { Extension, ExtensionNames, ExtensionSerialized } from "./types";
+import { Extension, ExtensionSerialized } from "./types";
 import { Zombie } from "../entities/zombie";
 import { Rectangle } from "../geom/rectangle";
 import { Cooldown } from "../entities/util/cooldown";
@@ -15,7 +15,7 @@ import Destructible from "./destructible";
  * You can pass in the type of victim you should attack.
  */
 export default class TriggerCooldownAttacker implements Extension {
-  public static readonly Name = ExtensionNames.triggerCooldownAttacker;
+  public static readonly type = "trigger-cooldown-attacker";
   private static readonly RADIUS = 16;
 
   private self: GenericEntity;
@@ -88,7 +88,7 @@ export default class TriggerCooldownAttacker implements Extension {
 
   public serialize(): ExtensionSerialized {
     return {
-      name: TriggerCooldownAttacker.Name,
+      type: TriggerCooldownAttacker.type,
       isReady: this.isReady,
     };
   }

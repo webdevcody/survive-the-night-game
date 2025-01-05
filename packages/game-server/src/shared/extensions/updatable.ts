@@ -1,10 +1,10 @@
 import { GenericEntity } from "../entities";
-import { Extension, ExtensionNames, ExtensionSerialized } from "./types";
+import { Extension, ExtensionSerialized } from "./types";
 
 type UpdateFunction = (deltaTime: number) => void;
 
 export default class Updatable implements Extension {
-  public static readonly Name = ExtensionNames.updatable;
+  public static readonly type = "updatable";
 
   private self: GenericEntity;
   private updateFunction: UpdateFunction;
@@ -32,7 +32,7 @@ export default class Updatable implements Extension {
 
   public serialize(): ExtensionSerialized {
     return {
-      name: Updatable.Name,
+      type: Updatable.type,
     };
   }
 }

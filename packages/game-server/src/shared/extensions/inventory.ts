@@ -1,5 +1,5 @@
 import { Entity } from "../entities";
-import { Extension, ExtensionNames, ExtensionSerialized } from "./types";
+import { Extension, ExtensionSerialized } from "./types";
 import { InventoryItem, ITEM_TYPES, ItemType } from "../inventory";
 import { recipes, RecipeType } from "../recipes";
 import { ServerSocketManager } from "../../managers/server-socket-manager";
@@ -7,7 +7,7 @@ import { PlayerPickedUpItemEvent } from "../events/server-sent/pickup-item-event
 import { Positionable } from "./index";
 
 export default class Inventory implements Extension {
-  public static readonly Name = ExtensionNames.inventory;
+  public static readonly type = "inventory";
   public static readonly MAX_SLOTS = 8;
 
   private self: Entity;
@@ -108,7 +108,7 @@ export default class Inventory implements Extension {
 
   public serialize(): ExtensionSerialized {
     return {
-      name: Inventory.Name,
+      type: Inventory.type,
       items: this.items,
     };
   }

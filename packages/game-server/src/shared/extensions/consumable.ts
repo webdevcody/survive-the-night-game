@@ -1,11 +1,11 @@
 import { GenericEntity } from "../entities";
-import { Extension, ExtensionNames, ExtensionSerialized } from "./types";
+import { Extension, ExtensionSerialized } from "./types";
 import { Player } from "../entities/player";
 
 type ConsumableHandler = (player: Player, idx: number) => void;
 
 export default class Consumable implements Extension {
-  public static readonly Name = ExtensionNames.consumable;
+  public static readonly type = "consumable";
 
   private self: GenericEntity;
   private handler: ConsumableHandler | null = null;
@@ -29,7 +29,7 @@ export default class Consumable implements Extension {
 
   public serialize(): ExtensionSerialized {
     return {
-      name: Consumable.Name,
+      type: Consumable.type,
     };
   }
 }

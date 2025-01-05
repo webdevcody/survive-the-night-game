@@ -1,4 +1,4 @@
-import { Extension, ExtensionNames, ExtensionSerialized } from "./types";
+import { Extension, ExtensionSerialized } from "./types";
 import { Positionable } from "./index";
 import { Vector2 } from "../physics";
 import { Entity } from "../entities";
@@ -7,7 +7,7 @@ import { EntityType, Entities } from "../entity-types";
 type EntityFactory = (type: EntityType) => Entity;
 
 export default class Combustible implements Extension {
-  public static readonly Name = ExtensionNames.combustible;
+  public static readonly type = "combustible";
 
   private self: Entity;
   private entityFactory: EntityFactory;
@@ -47,7 +47,7 @@ export default class Combustible implements Extension {
 
   public serialize(): ExtensionSerialized {
     return {
-      name: Combustible.Name,
+      type: Combustible.type,
       numFires: this.numFires,
       spreadRadius: this.spreadRadius,
     };

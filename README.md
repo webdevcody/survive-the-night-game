@@ -75,7 +75,7 @@ export default class Combustible implements Extension {
   public serialize(): ExtensionSerialized {
     // this is invoked server side; if you have properties you want to sync between clients and server, you can serialize them here
     return {
-      name: Combustible.Name,
+      type: Combustible.type,
       numFires: this.numFires,
       spreadRadius: this.spreadRadius,
     };

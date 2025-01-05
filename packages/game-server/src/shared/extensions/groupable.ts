@@ -1,10 +1,10 @@
 import { GenericEntity } from "../entities";
-import { Extension, ExtensionNames, ExtensionSerialized } from "./types";
+import { Extension, ExtensionSerialized } from "./types";
 
 export type Group = "friendly" | "enemy";
 
 export default class Groupable implements Extension {
-  public static readonly Name = ExtensionNames.groupable;
+  public static readonly type = "groupable";
 
   private self: GenericEntity;
   private group: Group;
@@ -29,7 +29,7 @@ export default class Groupable implements Extension {
 
   public serialize(): ExtensionSerialized {
     return {
-      name: Groupable.Name,
+      type: Groupable.type,
       group: this.group,
     };
   }

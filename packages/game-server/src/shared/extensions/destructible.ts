@@ -1,4 +1,4 @@
-import { Extension, ExtensionNames, ExtensionSerialized } from "./types";
+import { Extension, ExtensionSerialized } from "./types";
 import { GenericEntity } from "../entities";
 import { Hitbox } from "../traits";
 import Positionable from "./positionable";
@@ -6,7 +6,7 @@ import Positionable from "./positionable";
 type DestructibleDeathHandler = () => void;
 
 export default class Destructible implements Extension {
-  public static readonly Name = ExtensionNames.destructible;
+  public static readonly type = "destructible";
 
   private self: GenericEntity;
   private health = 0;
@@ -81,7 +81,7 @@ export default class Destructible implements Extension {
 
   public serialize(): ExtensionSerialized {
     return {
-      name: Destructible.Name,
+      type: Destructible.type,
       health: this.health,
       maxHealth: this.maxHealth,
     };
