@@ -13,13 +13,13 @@ export class BandageRecipe implements Recipe {
   public components(): RecipeComponent[] {
     return [
       {
-        type: "Cloth",
+        type: "cloth",
       },
       {
-        type: "Cloth",
+        type: "cloth",
       },
       {
-        type: "Cloth",
+        type: "cloth",
       },
     ];
   }
@@ -30,7 +30,7 @@ export class BandageRecipe implements Recipe {
 
   public resultingComponent(): RecipeComponent {
     return {
-      type: "Bandage",
+      type: "bandage",
     };
   }
 }
