@@ -1,10 +1,8 @@
 import {
   Destructible,
   GenericEntity,
-  Player,
   Positionable,
   RawEntity,
-  distance,
 } from "@survive-the-night/game-server";
 import { AssetManager } from "../../managers/asset";
 import { GameState } from "../../state";

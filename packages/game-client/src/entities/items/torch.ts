@@ -1,10 +1,4 @@
-import {
-  GenericEntity,
-  Player,
-  Positionable,
-  RawEntity,
-  distance,
-} from "@survive-the-night/game-server";
+import { GenericEntity, Positionable, RawEntity } from "@survive-the-night/game-server";
 import { GameState } from "../../state";
 import { Renderable } from "../util";
 import { Z_INDEX } from "@survive-the-night/game-server/src/managers/map-manager";

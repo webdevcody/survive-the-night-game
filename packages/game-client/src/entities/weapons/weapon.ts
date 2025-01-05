@@ -1,11 +1,4 @@
-import {
-  GenericEntity,
-  Player,
-  Positionable,
-  RawEntity,
-  WeaponType,
-  distance,
-} from "@survive-the-night/game-server";
+import { GenericEntity, Positionable, RawEntity, WeaponType } from "@survive-the-night/game-server";
 import { AssetManager } from "../../managers/asset";
 import { GameState } from "../../state";
 import { Renderable } from "../util";
