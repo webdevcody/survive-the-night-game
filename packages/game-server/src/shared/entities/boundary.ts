@@ -1,8 +1,9 @@
 import { EntityManager } from "../../managers/entity-manager";
-import { Entity, Entities, RawEntity } from "../entities";
+import { Entities, RawEntity } from "../entities";
 import { ServerOnly } from "../traits";
 import { Vector2 } from "../physics";
 import { Collidable, Positionable } from "../extensions";
+import { Entity } from "../entity";
 
 export class Boundary extends Entity implements ServerOnly {
   constructor(entityManager: EntityManager) {

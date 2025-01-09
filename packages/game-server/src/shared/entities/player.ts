@@ -1,4 +1,4 @@
-import { Entities, Entity, RawEntity } from "../entities";
+import { Entities, RawEntity } from "../entities";
 import { EntityManager } from "../../managers/entity-manager";
 import { Bullet } from "./bullet";
 import { Hitbox } from "../traits";
@@ -27,6 +27,7 @@ import { ServerSocketManager } from "../../managers/server-socket-manager";
 import { DEBUG_WEAPONS } from "../../config";
 import { Bandage } from "./items/bandage";
 import Groupable from "../extensions/groupable";
+import { Entity } from "../entity";
 
 export class Player extends Entity {
   public static readonly MAX_HEALTH = 3;

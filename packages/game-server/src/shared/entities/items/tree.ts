@@ -1,7 +1,10 @@
-import { Entities, Entity } from "../../entities";
+import { Entities } from "../../entities";
 import { EntityManager } from "../../../managers/entity-manager";
 import { Interactive, Positionable, Carryable } from "../../extensions";
 import { Player } from "../player";
+import { Entity } from "../../entity";
+
+console.log(Entity)
 
 export class Tree extends Entity {
   public static readonly Size = 16;

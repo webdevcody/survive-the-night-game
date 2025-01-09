@@ -1,5 +1,5 @@
 import { EntityManager } from "../../../managers/entity-manager";
-import { Entity, Entities } from "../../entities";
+import { Entities } from "../../entities";
 import {
   Combustible,
   Interactive,
@@ -10,6 +10,7 @@ import {
 } from "../../extensions";
 import { Player } from "../player";
 import { Fire } from "../environment/fire";
+import { Entity } from "../../entity";
 
 export class Gasoline extends Entity {
   public static readonly Size = 16;
