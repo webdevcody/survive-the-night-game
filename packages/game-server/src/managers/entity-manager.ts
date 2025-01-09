@@ -5,7 +5,7 @@ import { Player } from "../shared/entities/player";
 import { SpatialGrid } from "./spatial-grid";
 import { Collidable, Destructible, Positionable, Updatable } from "../shared/extensions";
 import { InventoryItem, ItemType } from "../shared/inventory";
-import { ServerSocketManager } from "./server-socket-manager";
+import { Broadcaster } from "./server-socket-manager";
 import { EntityType } from "../shared/entity-types";
 import { Gasoline } from "../shared/entities/items/gasoline";
 import { Bandage } from "../shared/entities/items/bandage";
@@ -24,12 +24,12 @@ export class EntityManager {
   private entitiesToRemove: Array<{ id: string; expiration: number }> = [];
   private id: number = 0;
   private spatialGrid: SpatialGrid | null = null;
-  private socketManager: ServerSocketManager;
+  private broadcaster: Broadcaster;
   private itemConstructors = new Map<ItemType, EntityConstructor | EntityFactory>();
 
-  constructor(socketManager: ServerSocketManager) {
+  constructor(broadcaster: Broadcaster) {
     this.entities = [];
-    this.socketManager = socketManager;
+    this.broadcaster = broadcaster;
     this.registerDefaultItems();
   }
 
@@ -39,7 +39,7 @@ export class EntityManager {
     this.registerItem("bandage", Bandage);
     this.registerItem("torch", Torch);
     this.registerItem("cloth", Cloth);
-    this.registerItem("wood", (em: EntityManager) => new Tree(em, this.socketManager));
+    this.registerItem("wood", Tree);
     this.registerItem("wall", Wall);
     this.registerItem("spikes", Spikes);
 
@@ -84,6 +84,10 @@ export class EntityManager {
 
   getEntities(): Entity[] {
     return this.entities;
+  }
+
+  getEntitiesToRemove(): Array<{ id: string; expiration: number }> {
+    return this.entitiesToRemove;
   }
 
   getUpdatableEntities(): Updatable[] {
@@ -327,7 +331,7 @@ export class EntityManager {
     });
   }
 
-  public getSocketManager(): ServerSocketManager {
-    return this.socketManager;
+  public getBroadcaster(): Broadcaster {
+    return this.broadcaster;
   }
 }

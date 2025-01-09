@@ -15,7 +15,7 @@ import {
 import { Wall } from "./items/wall";
 import { ZombieDeathEvent } from "../events/server-sent/zombie-death-event";
 import { ZombieHurtEvent } from "../events/server-sent/zombie-hurt-event";
-import { ServerSocketManager } from "../../managers/server-socket-manager";
+import { Broadcaster, ServerSocketManager } from "../../managers/server-socket-manager";
 import { Cooldown } from "./util/cooldown";
 import Groupable from "../extensions/groupable";
 
@@ -28,26 +28,26 @@ export class Zombie extends Entity {
   private static readonly ATTACK_RADIUS = 24;
   private static readonly ATTACK_DAMAGE = 1;
   private static readonly ATTACK_COOLDOWN = 1;
+  public static readonly MAX_HEALTH = 3;
 
   private currentWaypoint: Vector2 | null = null;
   private mapManager: MapManager;
-  private socketManager: ServerSocketManager;
+  private broadcaster: Broadcaster;
   private attackCooldown: Cooldown;
 
-  constructor(
-    entityManager: EntityManager,
-    mapManager: MapManager,
-    socketManager: ServerSocketManager
-  ) {
+  constructor(entityManager: EntityManager, mapManager: MapManager, broadcaster: Broadcaster) {
     super(entityManager, Entities.ZOMBIE);
 
     this.attackCooldown = new Cooldown(Zombie.ATTACK_COOLDOWN);
     this.mapManager = mapManager;
-    this.socketManager = socketManager;
+    this.broadcaster = broadcaster;
 
     this.extensions = [
-      new Inventory(this, socketManager).addRandomItem(0.2),
-      new Destructible(this).setMaxHealth(3).setHealth(3).onDeath(this.onDeath.bind(this)),
+      new Inventory(this, broadcaster).addRandomItem(0.2),
+      new Destructible(this)
+        .setMaxHealth(Zombie.MAX_HEALTH)
+        .setHealth(Zombie.MAX_HEALTH)
+        .onDeath(this.onDeath.bind(this)),
       new Groupable(this, "enemy"),
       new Positionable(this).setSize(Zombie.ZOMBIE_WIDTH),
       new Collidable(this).setSize(8).setOffset(4),
@@ -71,7 +71,7 @@ export class Zombie extends Entity {
   }
 
   onDeath(): void {
-    this.socketManager.broadcastEvent(new ZombieHurtEvent(this.getId()));
+    this.broadcaster.broadcastEvent(new ZombieHurtEvent(this.getId()));
     this.extensions.push(
       new Interactive(this).onInteract(this.afterDeathInteract.bind(this)).setDisplayName("loot")
     );
@@ -85,7 +85,7 @@ export class Zombie extends Entity {
     }
 
     this.getEntityManager().markEntityForRemoval(this);
-    this.socketManager.broadcastEvent(new ZombieDeathEvent(this.getId()));
+    this.broadcaster.broadcastEvent(new ZombieDeathEvent(this.getId()));
     this.getEntityManager().markEntityForRemoval(this);
   }
 

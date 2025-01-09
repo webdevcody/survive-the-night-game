@@ -2,7 +2,7 @@ import { Entity } from "../entities";
 import { Extension, ExtensionSerialized } from "./types";
 import { InventoryItem, ITEM_TYPES, ItemType } from "../inventory";
 import { recipes, RecipeType } from "../recipes";
-import { ServerSocketManager } from "../../managers/server-socket-manager";
+import { Broadcaster, ServerSocketManager } from "../../managers/server-socket-manager";
 import { PlayerPickedUpItemEvent } from "../events/server-sent/pickup-item-event";
 import { Positionable } from "./index";
 
@@ -12,11 +12,11 @@ export default class Inventory implements Extension {
 
   private self: Entity;
   private items: InventoryItem[] = [];
-  private socketManager: ServerSocketManager;
+  private broadcaster: Broadcaster;
 
-  public constructor(self: Entity, socketManager: ServerSocketManager) {
+  public constructor(self: Entity, broadcaster: Broadcaster) {
     this.self = self;
-    this.socketManager = socketManager;
+    this.broadcaster = broadcaster;
   }
 
   public getItems(): InventoryItem[] {
@@ -35,7 +35,7 @@ export default class Inventory implements Extension {
     if (this.isFull()) return;
 
     this.items.push(item);
-    this.socketManager.broadcastEvent(
+    this.broadcaster.broadcastEvent(
       new PlayerPickedUpItemEvent({
         playerId: this.self.getId(),
         itemKey: item.key,

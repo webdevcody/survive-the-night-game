@@ -15,7 +15,7 @@ import { GameServer } from "@/server";
  * Any and all functionality related to sending server side events
  * or listening for client side events should live here.
  */
-export class ServerSocketManager {
+export class ServerSocketManager implements Broadcaster {
   private io: Server;
   private players: Map<string, Player> = new Map();
   private port: number;
@@ -141,4 +141,8 @@ export class ServerSocketManager {
     }
     this.io.emit(event.getType(), event.serialize());
   }
+}
+
+export interface Broadcaster {
+  broadcastEvent(event: GameEvent<any>): void;
 }

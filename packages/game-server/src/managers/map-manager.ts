@@ -166,7 +166,7 @@ export class MapManager {
         if (this.map[y][x] === 0 || this.map[y][x] === 1) {
           if (Math.random() < 0.05) {
             // 30% chance for a tree
-            const tree = new Tree(this.entityManager, this.socketManager!);
+            const tree = new Tree(this.entityManager);
             tree.getExt(Positionable).setPosition({ x: x * TILE_SIZE, y: y * TILE_SIZE });
             this.entityManager.addEntity(tree);
           } else if (Math.random() < WEAPON_SPAWN_CHANCE.PISTOL) {

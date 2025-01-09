@@ -1,12 +1,6 @@
 import { EntityManager } from "../managers/entity-manager";
 import { EntityType } from "./entity-types";
-import {
-  Extension,
-  ExtensionCtor,
-  ExtensionSerialized,
-  extensionsMap,
-  TriggerCooldownAttacker,
-} from "./extensions";
+import { Extension, ExtensionCtor, ExtensionSerialized, extensionsMap } from "./extensions";
 export { Entities } from "./entity-types";
 
 export type RawEntity = {
@@ -66,7 +60,8 @@ export class GenericEntity extends EventTarget {
     const found = this.extensions.find((it) => it instanceof ext);
 
     if (found === undefined) {
-      throw new Error(`Unable to find extension ${ext.type}`);
+      const type = (ext as any).type;
+      throw new Error(`Unable to find extension ${type}`);
     }
 
     return found as T;
@@ -77,22 +72,17 @@ export class GenericEntity extends EventTarget {
       const dataExtensions: ExtensionSerialized[] = data.extensions;
 
       this.extensions = dataExtensions.map((dataFromServer) => {
-        const ExtensionConstructor =
-          extensionsMap[dataFromServer.type as keyof typeof extensionsMap];
+        const ExtensionConstructor = extensionsMap[
+          dataFromServer.type as keyof typeof extensionsMap
+        ] as unknown as ExtensionCtor<Extension>;
 
         if (!ExtensionConstructor) {
           throw new Error(
             `Unable to find extension ${dataFromServer.type}, please update the extensionsMap`
           );
         }
-        // TODO: this feels hacky, we shouldn't need to remember to update this when an extension needs more server managers
-        if (dataFromServer.type === TriggerCooldownAttacker.type) {
-          return new TriggerCooldownAttacker(this, this.entityManager, dataFromServer).deserialize(
-            dataFromServer
-          );
-        } else {
-          return new ExtensionConstructor(this).deserialize(dataFromServer);
-        }
+
+        return new ExtensionConstructor(this).deserialize(dataFromServer);
       });
     }
   }
