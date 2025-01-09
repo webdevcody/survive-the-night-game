@@ -1,5 +1,6 @@
 import { EntityManager } from "../../../managers/entity-manager";
-import { Entity, Entities, RawEntity } from "../../entities";
+import { Entities, RawEntity } from "../../entities";
+import { Entity } from "../../entity";
 import { Collidable, Destructible, Interactive, Positionable, Carryable } from "../../extensions";
 import { Player } from "../player";
 

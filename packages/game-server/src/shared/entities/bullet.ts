@@ -1,7 +1,7 @@
 import { EntityManager } from "../../managers/entity-manager";
 import { Direction, normalizeDirection } from "../direction";
 import { Entities, RawEntity } from "../entities";
-import { Entity } from "../entities";
+import { Entity } from "../entity";
 import { Destructible, Positionable, Movable, Updatable, Collidable } from "../extensions";
 import Groupable from "../extensions/groupable";
 import { Vector2, distance, normalizeVector } from "../physics";

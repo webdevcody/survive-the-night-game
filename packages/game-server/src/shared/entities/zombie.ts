@@ -1,6 +1,6 @@
 import { EntityManager } from "../../managers/entity-manager";
 import { MapManager } from "../../managers/map-manager";
-import { Entity, Entities } from "../entities";
+import {  Entities } from "../entities";
 import { Vector2, pathTowards, velocityTowards } from "../physics";
 import { Hitbox } from "../traits";
 import {
@@ -18,6 +18,7 @@ import { ZombieHurtEvent } from "../events/server-sent/zombie-hurt-event";
 import { Broadcaster, ServerSocketManager } from "../../managers/server-socket-manager";
 import { Cooldown } from "./util/cooldown";
 import Groupable from "../extensions/groupable";
+import { Entity } from "../entity";
 
 // TODO: refactor to use extensions
 export class Zombie extends Entity {

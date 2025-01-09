@@ -1,5 +1,5 @@
 import { distance, isColliding, Vector2 } from "../shared/physics";
-import { Entities, Entity, GenericEntity } from "../shared/entities";
+import { Entities } from "../shared/entities";
 import { Hitbox } from "../shared/traits";
 import { Player } from "../shared/entities/player";
 import { SpatialGrid } from "./spatial-grid";
@@ -15,6 +15,8 @@ import { Tree } from "../shared/entities/items/tree";
 import { Wall } from "../shared/entities/items/wall";
 import { Spikes } from "../shared/entities/items/spikes";
 import { Weapon } from "../shared/entities/weapon";
+import { Entity } from "../shared/entity";
+import { GenericEntity } from "../shared/generic-entity";
 
 type EntityConstructor = new (entityManager: EntityManager, ...args: any[]) => Entity;
 type EntityFactory = (entityManager: EntityManager) => Entity;

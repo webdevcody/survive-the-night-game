@@ -1,5 +1,6 @@
 import { EntityManager } from "../../../managers/entity-manager";
-import { Entities, Entity } from "../../entities";
+import { Entities } from "../../entities";
+import { Entity } from "../../entity";
 import { Expirable, Ignitable, Illuminated, Positionable, Triggerable } from "../../extensions";
 
 export class Fire extends Entity {
