@@ -1,6 +1,12 @@
 import { RawEntity } from "./entities";
 import { EntityType } from "./entity-types";
-import { Extension, ExtensionCtor, ExtensionSerialized, extensionsMap } from "./extensions";
+import {
+  Extension,
+  ExtensionCtor,
+  ExtensionSerialized,
+  extensionsMap,
+  TriggerCooldownAttacker,
+} from "./extensions";
 
 export class GenericEntity extends EventTarget {
   private id: string;
@@ -75,7 +81,14 @@ export class GenericEntity extends EventTarget {
           );
         }
 
-        return new ExtensionConstructor(this).deserialize(dataFromServer);
+        // TODO: this is a hack, I need to decouple the client and backend extensions / entities
+        if (dataFromServer.type === TriggerCooldownAttacker.type) {
+          return new TriggerCooldownAttacker(this, this.entityManager, dataFromServer).deserialize(
+            dataFromServer
+          );
+        } else {
+          return new ExtensionConstructor(this).deserialize(dataFromServer);
+        }
       });
     }
   }

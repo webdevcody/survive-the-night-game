@@ -5,7 +5,7 @@ import { Boundary } from "../shared/entities/boundary";
 import { Zombie } from "../shared/entities/zombie";
 import { Positionable } from "../shared/extensions";
 import { Broadcaster } from "./server-socket-manager";
-import { DEBUG_START_ZOMBIE } from "../config";
+import { DEBUG_START_ZOMBIE } from "../config/debug";
 
 export const Z_INDEX = {
   GROUND: 0,

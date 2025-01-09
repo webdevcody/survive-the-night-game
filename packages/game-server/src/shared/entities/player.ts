@@ -24,7 +24,7 @@ import { PlayerHurtEvent } from "../events/server-sent/player-hurt-event";
 import { PlayerAttackedEvent } from "../events/server-sent/player-attacked-event";
 import { PlayerDroppedItemEvent } from "../events/server-sent/player-dropped-item-event";
 import { ServerSocketManager } from "../../managers/server-socket-manager";
-import { DEBUG_WEAPONS } from "../../config";
+import { DEBUG_WEAPONS } from "../../config/debug";
 import { Bandage } from "./items/bandage";
 import Groupable from "../extensions/groupable";
 import { Entity } from "../entity";

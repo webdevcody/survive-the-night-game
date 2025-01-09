@@ -4,7 +4,7 @@ import { distance, Vector2 } from "@survive-the-night/game-server";
 import {
   DEBUG_DISABLE_SOUNDS,
   DEBUG_VOLUME_REDUCTION,
-} from "@survive-the-night/game-server/src/config";
+} from "@survive-the-night/game-server/src/config/debug";
 
 // these values must match the sound files in the client
 export const SOUND_TYPES = {

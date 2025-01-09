@@ -1,11 +1,11 @@
 import { GameClient } from "@/client";
-import { DEBUG_SHOW_HITBOXES } from "@survive-the-night/game-server/src/config";
 import { TILE_IDS } from "@survive-the-night/game-server/src/managers/map-manager";
 import { Vector2 } from "@survive-the-night/game-server/src/shared/physics";
-import { Entity } from "@survive-the-night/game-server/src/shared/entities";
+import { Entity } from "@survive-the-night/game-server/src/shared/entity";
 import { distance } from "@survive-the-night/game-server/src/shared/physics";
 import Positionable from "@survive-the-night/game-server/src/shared/extensions/positionable";
 import { Illuminated } from "@survive-the-night/game-server/src/shared/extensions";
+import { DEBUG_SHOW_HITBOXES } from "@survive-the-night/game-server/src/config/debug";
 
 const tileLocations: Record<string, [number, number]> = {
   [TILE_IDS.GRASS1]: [4 * 16, 0],

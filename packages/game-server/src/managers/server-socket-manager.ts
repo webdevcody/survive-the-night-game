@@ -5,11 +5,11 @@ import { EntityManager } from "./entity-manager";
 import { MapManager } from "./map-manager";
 import { Input } from "../shared/input";
 import { Player } from "../shared/entities/player";
-import { RecipeType } from "@/shared/recipes";
-import { GameEvent } from "@/shared/events/types";
-import { DEBUG_EVENTS } from "@/config";
-import Positionable from "@/shared/extensions/positionable";
-import { GameServer } from "@/server";
+import { RecipeType } from "../shared/recipes";
+import { GameEvent } from "../shared/events/types";
+import { DEBUG_EVENTS } from "../config/debug";
+import Positionable from "../shared/extensions/positionable";
+import { GameServer } from "../server";
 
 /**
  * Any and all functionality related to sending server side events

@@ -6,4 +6,11 @@ import Packet, {
   PacketType,
 } from "./packet";
 
-export { Packet, PacketData, PacketDataValue, PacketRule, PacketSchema, PacketType };
+export {
+  Packet,
+  type PacketData,
+  type PacketDataValue,
+  type PacketRule,
+  type PacketSchema,
+  type PacketType,
+};
