@@ -92,12 +92,6 @@ export class EntityManager {
     return this.entitiesToRemove;
   }
 
-  getUpdatableEntities(): Updatable[] {
-    return this.entities.filter((entity) => {
-      return "update" in entity;
-    }) as unknown as Updatable[];
-  }
-
   markEntityForRemoval(entity: GenericEntity, expiration = 0) {
     this.entitiesToRemove.push({
       id: entity.getId(),
@@ -295,17 +289,11 @@ export class EntityManager {
   }
 
   update(deltaTime: number) {
-    // TODO: this might go away after refactoring old entities to new ECS system
-    for (const entity of this.getUpdatableEntities()) {
-      entity.update(deltaTime);
-    }
+    this.refreshSpatialGrid();
 
-    // all entities are made up of extensions, so we need to update them here
     for (const entity of this.getEntities()) {
       this.updateExtensions(entity, deltaTime);
     }
-
-    this.refreshSpatialGrid();
   }
 
   // as of right now, just allow any extension to have an optional update method
