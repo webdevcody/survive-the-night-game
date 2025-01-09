@@ -1,5 +1,7 @@
 export * from "./shared/physics";
 export * from "./shared/entities";
+export * from "./shared/entity";
+export * from "./shared/generic-entity";
 export * from "./shared/entities/player";
 export * from "./shared/entities/weapon";
 export * from "./shared/inventory";
@@ -10,4 +12,3 @@ export * from "./shared/input";
 export * from "./shared/events/events";
 export * from "./shared/events/server-sent";
 export * from "./shared/extensions";
-

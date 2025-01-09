@@ -1,4 +1,4 @@
-import { GenericEntity } from "../entities";
+import { GenericEntity } from "../generic-entity";
 import { Extension, ExtensionSerialized } from "./types";
 import { Player } from "../entities/player";
 

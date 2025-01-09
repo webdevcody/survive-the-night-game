@@ -1,4 +1,4 @@
-import { GenericEntity } from "../entities";
+import { GenericEntity } from "../generic-entity";
 import { Extension, ExtensionSerialized } from "./types";
 
 export default class Illuminated implements Extension {

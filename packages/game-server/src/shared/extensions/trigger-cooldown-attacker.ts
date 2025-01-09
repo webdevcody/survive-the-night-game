@@ -1,5 +1,5 @@
 import { distance } from "../physics";
-import { GenericEntity } from "../entities";
+import { GenericEntity } from "../generic-entity";
 import { Extension, ExtensionSerialized } from "./types";
 import { Zombie } from "../entities/zombie";
 import { Rectangle } from "../geom/rectangle";

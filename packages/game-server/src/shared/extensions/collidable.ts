@@ -1,7 +1,7 @@
 import { Extension, ExtensionSerialized } from "./types";
-import { GenericEntity } from "../entities";
 import { Hitbox } from "../traits";
 import Positionable from "./positionable";
+import { GenericEntity } from "../generic-entity";
 
 export default class Collidable implements Extension {
   public static readonly type = "collidable";

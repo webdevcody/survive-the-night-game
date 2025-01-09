@@ -1,5 +1,5 @@
 import { Extension, ExtensionSerialized } from "./types";
-import { GenericEntity } from "../entities";
+import { GenericEntity } from "../generic-entity";
 import { Hitbox } from "../traits";
 import Positionable from "./positionable";
 

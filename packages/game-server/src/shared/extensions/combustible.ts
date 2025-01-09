@@ -1,7 +1,7 @@
 import { Extension, ExtensionSerialized } from "./types";
 import { Positionable } from "./index";
 import { Vector2 } from "../physics";
-import { Entity } from "../entities";
+import { Entity } from "../entity";
 import { EntityType, Entities } from "../entity-types";
 
 type EntityFactory = (type: EntityType) => Entity;

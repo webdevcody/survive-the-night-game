@@ -1,4 +1,4 @@
-import { Entity } from "../entities";
+import { Entity } from "../entity";
 import { Extension, ExtensionSerialized } from "./types";
 import { distance, Vector2 } from "../physics";
 import { Rectangle } from "../geom/rectangle";

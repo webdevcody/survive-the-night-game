@@ -1,5 +1,5 @@
 import { Positionable } from "..";
-import { Entity } from "../shared/entities";
+import { Entity } from "../shared/entity";
 import { EntityType } from "../shared/entity-types";
 import { Vector2 } from "../shared/physics";
 
