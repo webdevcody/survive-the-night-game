@@ -4,7 +4,7 @@ import { Weapon, WEAPON_TYPES } from "../shared/entities/weapon";
 import { Boundary } from "../shared/entities/boundary";
 import { Zombie } from "../shared/entities/zombie";
 import { Positionable } from "../shared/extensions";
-import { ServerSocketManager } from "./server-socket-manager";
+import { Broadcaster } from "./server-socket-manager";
 import { DEBUG_START_ZOMBIE } from "../config";
 
 export const Z_INDEX = {
@@ -96,22 +96,22 @@ export const TILE_SIZE = 16;
 export class MapManager {
   private map: number[][] = [];
   private entityManager: EntityManager;
-  private socketManager?: ServerSocketManager;
+  private broadcaster?: Broadcaster;
 
   constructor(entityManager: EntityManager) {
     this.entityManager = entityManager;
   }
 
-  public setSocketManager(socketManager: ServerSocketManager) {
-    this.socketManager = socketManager;
+  public setSocketManager(socketManager: Broadcaster) {
+    this.broadcaster = socketManager;
   }
 
-  public getSocketManager(): ServerSocketManager {
-    if (!this.socketManager) {
+  public getBroadcaster(): Broadcaster {
+    if (!this.broadcaster) {
       throw new Error("MapManager: Socket manager was not set");
     }
 
-    return this.socketManager;
+    return this.broadcaster;
   }
 
   public getMap(): number[][] {
@@ -122,7 +122,7 @@ export class MapManager {
     for (let y = 0; y < this.map.length; y++) {
       for (let x = 0; x < this.map[y].length; x++) {
         if (this.map[y][x] === 0 && Math.random() < ZOMBIE_SPAWN_CHANCE * dayNumber) {
-          const zombie = new Zombie(this.entityManager, this, this.getSocketManager());
+          const zombie = new Zombie(this.entityManager, this, this.getBroadcaster());
           zombie.setPosition({ x: x * TILE_SIZE, y: y * TILE_SIZE });
           this.entityManager.addEntity(zombie);
         }
@@ -166,7 +166,7 @@ export class MapManager {
         if (this.map[y][x] === 0 || this.map[y][x] === 1) {
           if (Math.random() < 0.05) {
             // 30% chance for a tree
-            const tree = new Tree(this.entityManager, this.socketManager!);
+            const tree = new Tree(this.entityManager);
             tree.getExt(Positionable).setPosition({ x: x * TILE_SIZE, y: y * TILE_SIZE });
             this.entityManager.addEntity(tree);
           } else if (Math.random() < WEAPON_SPAWN_CHANCE.PISTOL) {
@@ -193,7 +193,7 @@ export class MapManager {
       const middleX = Math.floor(totalSize / 2) * TILE_SIZE;
       const middleY = Math.floor(totalSize / 2) * TILE_SIZE;
 
-      const zombie = new Zombie(this.entityManager, this, this.getSocketManager());
+      const zombie = new Zombie(this.entityManager, this, this.getBroadcaster());
       zombie.setPosition({ x: middleX + 16 * 4, y: middleY });
       this.entityManager.addEntity(zombie);
     }

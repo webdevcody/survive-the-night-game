@@ -25,7 +25,7 @@ export default class Carryable implements Extension {
 
     this.self
       .getEntityManager()
-      .getSocketManager()
+      .getBroadcaster()
       .broadcastEvent(
         new PlayerPickedUpItemEvent({
           playerId: player.getId(),

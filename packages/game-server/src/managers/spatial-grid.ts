@@ -1,5 +1,6 @@
 import { Positionable } from "..";
-import { Entity, EntityType } from "../shared/entities";
+import { Entity } from "../shared/entities";
+import { EntityType } from "../shared/entity-types";
 import { Vector2 } from "../shared/physics";
 
 export class SpatialGrid {
@@ -27,8 +28,7 @@ export class SpatialGrid {
   }
 
   addEntity(entity: Entity) {
-    const pos =
-      "getPosition" in entity ? entity.getPosition() : entity.getExt(Positionable).getPosition();
+    const pos = entity.getExt(Positionable).getPosition();
     const [cellX, cellY] = this.getCellCoords(pos);
 
     if (this.isValidCell(cellX, cellY)) {

@@ -1,11 +1,11 @@
 import { distance, isColliding, Vector2 } from "../shared/physics";
-import { Entities, Entity, GenericEntity } from "../shared/entities";
+import { Entities } from "../shared/entities";
 import { Hitbox } from "../shared/traits";
 import { Player } from "../shared/entities/player";
 import { SpatialGrid } from "./spatial-grid";
 import { Collidable, Destructible, Positionable, Updatable } from "../shared/extensions";
 import { InventoryItem, ItemType } from "../shared/inventory";
-import { ServerSocketManager } from "./server-socket-manager";
+import { Broadcaster } from "./server-socket-manager";
 import { EntityType } from "../shared/entity-types";
 import { Gasoline } from "../shared/entities/items/gasoline";
 import { Bandage } from "../shared/entities/items/bandage";
@@ -15,6 +15,8 @@ import { Tree } from "../shared/entities/items/tree";
 import { Wall } from "../shared/entities/items/wall";
 import { Spikes } from "../shared/entities/items/spikes";
 import { Weapon } from "../shared/entities/weapon";
+import { Entity } from "../shared/entity";
+import { GenericEntity } from "../shared/generic-entity";
 
 type EntityConstructor = new (entityManager: EntityManager, ...args: any[]) => Entity;
 type EntityFactory = (entityManager: EntityManager) => Entity;
@@ -24,12 +26,12 @@ export class EntityManager {
   private entitiesToRemove: Array<{ id: string; expiration: number }> = [];
   private id: number = 0;
   private spatialGrid: SpatialGrid | null = null;
-  private socketManager: ServerSocketManager;
+  private broadcaster: Broadcaster;
   private itemConstructors = new Map<ItemType, EntityConstructor | EntityFactory>();
 
-  constructor(socketManager: ServerSocketManager) {
+  constructor(broadcaster: Broadcaster) {
     this.entities = [];
-    this.socketManager = socketManager;
+    this.broadcaster = broadcaster;
     this.registerDefaultItems();
   }
 
@@ -39,7 +41,7 @@ export class EntityManager {
     this.registerItem("bandage", Bandage);
     this.registerItem("torch", Torch);
     this.registerItem("cloth", Cloth);
-    this.registerItem("wood", (em: EntityManager) => new Tree(em, this.socketManager));
+    this.registerItem("wood", Tree);
     this.registerItem("wall", Wall);
     this.registerItem("spikes", Spikes);
 
@@ -86,10 +88,8 @@ export class EntityManager {
     return this.entities;
   }
 
-  getUpdatableEntities(): Updatable[] {
-    return this.entities.filter((entity) => {
-      return "update" in entity;
-    }) as unknown as Updatable[];
+  getEntitiesToRemove(): Array<{ id: string; expiration: number }> {
+    return this.entitiesToRemove;
   }
 
   markEntityForRemoval(entity: GenericEntity, expiration = 0) {
@@ -289,17 +289,11 @@ export class EntityManager {
   }
 
   update(deltaTime: number) {
-    // TODO: this might go away after refactoring old entities to new ECS system
-    for (const entity of this.getUpdatableEntities()) {
-      entity.update(deltaTime);
-    }
+    this.refreshSpatialGrid();
 
-    // all entities are made up of extensions, so we need to update them here
     for (const entity of this.getEntities()) {
       this.updateExtensions(entity, deltaTime);
     }
-
-    this.refreshSpatialGrid();
   }
 
   // as of right now, just allow any extension to have an optional update method
@@ -327,7 +321,7 @@ export class EntityManager {
     });
   }
 
-  public getSocketManager(): ServerSocketManager {
-    return this.socketManager;
+  public getBroadcaster(): Broadcaster {
+    return this.broadcaster;
   }
 }

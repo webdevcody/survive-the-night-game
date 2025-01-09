@@ -1,16 +1,14 @@
-import { ServerSocketManager } from "@/managers/server-socket-manager";
+import { Entities } from "../../entities";
 import { EntityManager } from "../../../managers/entity-manager";
-import { Entities, Entity } from "../../entities";
 import { Interactive, Positionable, Carryable } from "../../extensions";
 import { Player } from "../player";
+import { Entity } from "../../entity";
 
 export class Tree extends Entity {
   public static readonly Size = 16;
-  private socketManager: ServerSocketManager;
 
-  constructor(entityManager: EntityManager, socketManager: ServerSocketManager) {
+  constructor(entityManager: EntityManager) {
     super(entityManager, Entities.TREE);
-    this.socketManager = socketManager;
 
     this.extensions = [
       new Positionable(this).setSize(Tree.Size),
