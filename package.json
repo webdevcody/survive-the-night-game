@@ -5,7 +5,8 @@
   "scripts": {
     "dev": "npm-run-all --parallel dev:*",
     "dev:dashboard": "npm run dev --workspace=packages/dashboard",
-    "dev:server": "npm run dev --workspace=packages/game-server"
+    "dev:server": "npm run dev --workspace=packages/game-server",
+    "test": "npm run test --workspace=packages/game-server"
   },
   "workspaces": [
     "packages/*"
