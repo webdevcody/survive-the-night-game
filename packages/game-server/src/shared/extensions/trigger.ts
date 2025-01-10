@@ -5,9 +5,10 @@ import { Rectangle } from "../geom/rectangle";
 import Positionable from "./positionable";
 import Collidable from "./collidable";
 import { EntityType } from "@survive-the-night/game-shared";
+import { ExtensionTypes } from "../extension-types";
 
 export default class Triggerable implements Extension {
-  public static readonly type = "trigger";
+  public static readonly type = ExtensionTypes.TRIGGERABLE;
   private static readonly TriggerRadius = 10;
 
   private self: Entity;

@@ -1,7 +1,6 @@
 import { Entities } from "../constants";
 
 export interface Extension {
-  type: string;
   serialize: () => ExtensionSerialized;
 }
 

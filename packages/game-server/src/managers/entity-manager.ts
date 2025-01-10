@@ -14,8 +14,7 @@ import { Wall } from "../shared/entities/items/wall";
 import { Spikes } from "../shared/entities/items/spikes";
 import { Weapon } from "../shared/entities/weapon";
 import { Entity } from "../shared/entity";
-import { GenericEntity } from "../shared/generic-entity";
-import { Entities, EntityType } from "@survive-the-night/game-shared";
+import { RawEntity, EntityType, Entities } from "@survive-the-night/game-shared";
 
 type EntityConstructor = new (entityManager: EntityManager, ...args: any[]) => Entity;
 type EntityFactory = (entityManager: EntityManager) => Entity;
@@ -91,7 +90,7 @@ export class EntityManager {
     return this.entitiesToRemove;
   }
 
-  markEntityForRemoval(entity: GenericEntity, expiration = 0) {
+  markEntityForRemoval(entity: Entity, expiration = 0) {
     this.entitiesToRemove.push({
       id: entity.getId(),
       expiration: Date.now() + expiration,

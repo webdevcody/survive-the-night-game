@@ -34,7 +34,7 @@ export class Weapon extends Entity {
 
   public serialize(): RawEntity {
     return {
-      ...this.baseSerialize(),
+      ...super.serialize(),
       weaponType: this.weaponType,
     };
   }

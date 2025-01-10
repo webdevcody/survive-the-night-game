@@ -1,5 +1,5 @@
 import { Extension, ExtensionSerialized } from "./types";
-import { GenericEntity } from "../generic-entity";
+import { Entity } from "../entity";
 import { Hitbox } from "../traits";
 import Positionable from "./positionable";
 
@@ -8,12 +8,12 @@ type DestructibleDeathHandler = () => void;
 export default class Destructible implements Extension {
   public static readonly type = "destructible";
 
-  private self: GenericEntity;
+  private self: Entity;
   private health = 0;
   private maxHealth = 0;
   private deathHandler: DestructibleDeathHandler | null = null;
 
-  public constructor(self: GenericEntity) {
+  public constructor(self: Entity) {
     this.self = self;
   }
 

@@ -1,4 +1,4 @@
-import { GenericEntity } from "../generic-entity";
+import { Entity } from "../entity";
 import { Extension, ExtensionSerialized } from "./types";
 
 type UpdateFunction = (deltaTime: number) => void;
@@ -6,13 +6,13 @@ type UpdateFunction = (deltaTime: number) => void;
 export default class Updatable implements Extension {
   public static readonly type = "updatable";
 
-  private self: GenericEntity;
+  private self: Entity;
   private updateFunction: UpdateFunction;
 
   /**
    * will create a trigger box around an entity which should be used for various purposes.
    */
-  public constructor(self: GenericEntity, updateFunction: UpdateFunction) {
+  public constructor(self: Entity, updateFunction: UpdateFunction) {
     this.self = self;
     this.updateFunction = updateFunction;
   }

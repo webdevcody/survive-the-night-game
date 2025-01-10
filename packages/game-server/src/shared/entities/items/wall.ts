@@ -39,7 +39,7 @@ export class Wall extends Entity {
 
   public serialize(): RawEntity {
     return {
-      ...this.baseSerialize(),
+      ...super.serialize(),
       health: this.getExt(Destructible).getHealth(),
     };
   }
