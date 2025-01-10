@@ -1,19 +1,20 @@
-import { GenericEntity } from "../generic-entity";
-import { Extension, ExtensionSerialized } from "./types";
+import { ExtensionSerialized } from "./types";
 import { Cooldown } from "../entities/util/cooldown";
 import Destructible from "./destructible";
+import { Entity } from "../entity";
+import { Extension } from "@survive-the-night/game-shared";
 
 export default class Ignitable implements Extension {
   public static readonly type = "ignitable";
 
-  private self: GenericEntity;
+  private self: Entity;
   private cooldown: Cooldown;
   private maxDamage: number;
   private totalDamage: number;
   private damage: number;
 
   // TODO: this should be configurable for damage / cooldown
-  public constructor(self: GenericEntity, maxDamage = 2) {
+  public constructor(self: Entity, maxDamage = 2) {
     this.self = self;
     this.cooldown = new Cooldown(1);
     this.maxDamage = maxDamage;

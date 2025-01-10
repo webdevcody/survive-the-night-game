@@ -1,14 +1,14 @@
-import { GenericEntity } from "../generic-entity";
+import { Entity } from "../entity";
 import { Extension, ExtensionSerialized } from "./types";
 import { Vector2 } from "../physics";
 
 export default class Movable implements Extension {
   public static readonly type = "movable";
 
-  private self: GenericEntity;
+  private self: Entity;
   private velocity: Vector2;
 
-  public constructor(self: GenericEntity) {
+  public constructor(self: Entity) {
     this.self = self;
     this.velocity = {
       x: 0,

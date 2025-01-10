@@ -1,34 +1,24 @@
-import { GenericEntity, Positionable, RawEntity } from "@survive-the-night/game-server";
-import { AssetManager } from "@/managers/asset";
+import { Positionable } from "@survive-the-night/game-server";
+import { RawEntity } from "@survive-the-night/game-shared";
+import { AssetManager } from "../../managers/asset";
 import { GameState } from "../../state";
 import { Renderable } from "../util";
 import { Z_INDEX } from "@survive-the-night/game-server/src/managers/map-manager";
-import { getPlayer } from "../../util/get-player";
-import { renderInteractionText } from "../../util/interaction-text";
+import { ClientEntityBase } from "../../extensions/client-entity";
 
-export class TreeClient extends GenericEntity implements Renderable {
-  private assetManager: AssetManager;
-
+export class TreeClient extends ClientEntityBase implements Renderable {
   constructor(data: RawEntity, assetManager: AssetManager) {
-    super(data);
-    this.assetManager = assetManager;
-  }
-
-  public render(ctx: CanvasRenderingContext2D, gameState: GameState): void {
-    const image = this.assetManager.get("tree");
-    const myPlayer = getPlayer(gameState);
-    const positionable = this.getExt(Positionable);
-    const centerPosition = positionable.getCenterPosition();
-    const position = positionable.getPosition();
-
-    if (myPlayer) {
-      renderInteractionText(ctx, "twigs (e)", centerPosition, position, myPlayer.getPosition());
-    }
-
-    ctx.drawImage(image, position.x, position.y);
+    super(data, assetManager);
   }
 
   public getZIndex(): number {
     return Z_INDEX.ITEMS;
+  }
+
+  render(ctx: CanvasRenderingContext2D, gameState: GameState): void {
+    const positionable = this.getExt(Positionable);
+    const position = positionable.getPosition();
+    const image = this.assetManager.get("tree");
+    ctx.drawImage(image, position.x, position.y);
   }
 }

@@ -1,34 +1,24 @@
-import { GenericEntity, Positionable, RawEntity } from "@survive-the-night/game-server";
+import { Positionable } from "@survive-the-night/game-server";
+import { RawEntity } from "@survive-the-night/game-shared";
 import { AssetManager } from "../../managers/asset";
 import { GameState } from "../../state";
 import { Renderable } from "../util";
 import { Z_INDEX } from "@survive-the-night/game-server/src/managers/map-manager";
-import { getPlayer } from "../../util/get-player";
-import { renderInteractionText } from "../../util/interaction-text";
+import { ClientEntityBase } from "../../extensions/client-entity";
 
-export class GasolineClient extends GenericEntity implements Renderable {
-  private assetManager: AssetManager;
-
+export class GasolineClient extends ClientEntityBase implements Renderable {
   constructor(data: RawEntity, assetManager: AssetManager) {
-    super(data);
-    this.assetManager = assetManager;
+    super(data, assetManager);
   }
 
   public getZIndex(): number {
     return Z_INDEX.ITEMS;
   }
 
-  public render(ctx: CanvasRenderingContext2D, gameState: GameState): void {
-    const image = this.assetManager.get("gasoline");
-    const myPlayer = getPlayer(gameState);
+  render(ctx: CanvasRenderingContext2D, gameState: GameState): void {
     const positionable = this.getExt(Positionable);
-    const centerPosition = positionable.getCenterPosition();
     const position = positionable.getPosition();
-
-    if (myPlayer) {
-      renderInteractionText(ctx, "collect (e)", centerPosition, position, myPlayer.getPosition());
-    }
-
+    const image = this.assetManager.get("gasoline");
     ctx.drawImage(image, position.x, position.y);
   }
 }

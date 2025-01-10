@@ -1,4 +1,4 @@
-import { GenericEntity } from "../generic-entity";
+import { Entity } from "../entity";
 import { Player } from "../entities/player";
 import { Extension, ExtensionSerialized } from "./types";
 
@@ -7,11 +7,11 @@ type InteractiveHandler = (player: Player) => void;
 export default class Interactive implements Extension {
   public static readonly type = "interactive";
 
-  private self: GenericEntity;
+  private self: Entity;
   private handler: InteractiveHandler | null = null;
   private displayName: string = "";
 
-  public constructor(self: GenericEntity) {
+  public constructor(self: Entity) {
     this.self = self;
   }
 

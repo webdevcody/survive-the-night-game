@@ -1,12 +1,12 @@
-import { GenericEntity } from "../generic-entity";
+import { Entity } from "../entity";
 import { Extension, ExtensionSerialized } from "./types";
 
 export default class Example implements Extension {
   public static readonly type = "example";
 
-  private self: GenericEntity;
+  private self: Entity;
 
-  public constructor(self: GenericEntity) {
+  public constructor(self: Entity) {
     this.self = self;
   }
 

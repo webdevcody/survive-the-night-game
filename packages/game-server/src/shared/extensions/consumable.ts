@@ -1,4 +1,4 @@
-import { GenericEntity } from "../generic-entity";
+import { Entity } from "../entity";
 import { Extension, ExtensionSerialized } from "./types";
 import { Player } from "../entities/player";
 
@@ -7,10 +7,10 @@ type ConsumableHandler = (player: Player, idx: number) => void;
 export default class Consumable implements Extension {
   public static readonly type = "consumable";
 
-  private self: GenericEntity;
+  private self: Entity;
   private handler: ConsumableHandler | null = null;
 
-  public constructor(self: GenericEntity) {
+  public constructor(self: Entity) {
     this.self = self;
   }
 

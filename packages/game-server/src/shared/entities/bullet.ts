@@ -1,11 +1,11 @@
 import { EntityManager } from "../../managers/entity-manager";
 import { Direction, normalizeDirection } from "../direction";
-import { Entities, RawEntity } from "../entities";
 import { Entity } from "../entity";
 import { Destructible, Positionable, Movable, Updatable, Collidable } from "../extensions";
 import Groupable from "../extensions/groupable";
 import { Vector2, distance, normalizeVector } from "../physics";
 import { Hitbox } from "../traits";
+import { Entities, RawEntity } from "@survive-the-night/game-shared";
 
 const MAX_TRAVEL_DISTANCE = 400;
 export const BULLET_SPEED = 100;
