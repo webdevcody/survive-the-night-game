@@ -1,34 +1,18 @@
-import { Entities } from "@survive-the-night/game-server";
+import { RawEntity, Entities } from "@survive-the-night/game-server";
+import { AssetManager } from "../managers/asset";
+import { IClientEntity } from "./util";
+import { BulletClient } from "./bullet";
+import { ZombieClient } from "./zombie";
+import { WallClient } from "./items/wall";
+import { ClothClient } from "./items/cloth";
+import { WeaponClient } from "./weapons/weapon";
 import { PlayerClient } from "./player";
 import { TreeClient } from "./items/tree";
-import { BulletClient } from "./bullet";
-import { WallClient } from "./items/wall";
-import { WeaponClient } from "./weapons/weapon";
 import { BandageClient } from "./items/bandage";
-import { ClothClient } from "./items/cloth";
-import { ZombieClient } from "./zombie";
 import { SpikesClient } from "./items/spikes";
-import { EntityDto } from "../managers/client-socket-manager";
-import { AssetManager } from "@/managers/asset";
 import { FireClient } from "./environment/fire";
-import { EntityType } from "@survive-the-night/game-server/src/shared/entity-types";
 import { TorchClient } from "./items/torch";
 import { GasolineClient } from "./items/gasoline";
-
-const ENTITY_MAP = {
-  [Entities.PLAYER]: PlayerClient,
-  [Entities.TREE]: TreeClient,
-  [Entities.BULLET]: BulletClient,
-  [Entities.WALL]: WallClient,
-  [Entities.WEAPON]: WeaponClient,
-  [Entities.FIRE]: FireClient,
-  [Entities.BANDAGE]: BandageClient,
-  [Entities.CLOTH]: ClothClient,
-  [Entities.GASOLINE]: GasolineClient,
-  [Entities.TORCH]: TorchClient,
-  [Entities.ZOMBIE]: ZombieClient,
-  [Entities.SPIKES]: SpikesClient,
-};
 
 export class EntityFactory {
   private assetManager: AssetManager;
@@ -37,9 +21,42 @@ export class EntityFactory {
     this.assetManager = assetManager;
   }
 
-  public createEntity(entityType: EntityType, entityData: EntityDto) {
-    const entity = new ENTITY_MAP[entityType](entityData, this.assetManager);
-    entity.deserialize(entityData);
-    return entity;
+  public createEntity(data: RawEntity): IClientEntity {
+    if (!data || !data.type) {
+      throw new Error(`Invalid entity data: ${JSON.stringify(data)}`);
+    }
+
+    switch (data.type) {
+      case Entities.PLAYER:
+        return new PlayerClient(data, this.assetManager);
+      case Entities.TREE:
+        return new TreeClient(data, this.assetManager);
+      case Entities.BULLET:
+        return new BulletClient(data, this.assetManager);
+      case Entities.WALL:
+        return new WallClient(data, this.assetManager);
+      case Entities.WEAPON:
+        return new WeaponClient(data, this.assetManager);
+      case Entities.BANDAGE:
+        return new BandageClient(data, this.assetManager);
+      case Entities.CLOTH:
+        return new ClothClient(data, this.assetManager);
+      case Entities.SPIKES:
+        return new SpikesClient(data, this.assetManager);
+      case Entities.FIRE:
+        return new FireClient(data, this.assetManager);
+      case Entities.TORCH:
+        return new TorchClient(data, this.assetManager);
+      case Entities.GASOLINE:
+        return new GasolineClient(data, this.assetManager);
+      case Entities.ZOMBIE:
+        return new ZombieClient(data, this.assetManager);
+      case Entities.BOUNDARY:
+      case Entities.SOUND:
+        // These entities don't need client-side representation
+        throw new Error(`Entity type ${data.type} does not need client-side representation`);
+      default:
+        throw new Error(`Unknown entity type: ${data.type}`);
+    }
   }
 }

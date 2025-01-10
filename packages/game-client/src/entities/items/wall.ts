@@ -1,22 +1,13 @@
-import {
-  Destructible,
-  GenericEntity,
-  Positionable,
-  RawEntity,
-} from "@survive-the-night/game-server";
+import { RawEntity, Positionable } from "@survive-the-night/game-server";
 import { AssetManager } from "../../managers/asset";
 import { GameState } from "../../state";
-import { Renderable, drawHealthBar } from "../util";
+import { Renderable } from "../util";
 import { Z_INDEX } from "@survive-the-night/game-server/src/managers/map-manager";
-import { getPlayer } from "../../util/get-player";
-import { renderInteractionText } from "../../util/interaction-text";
+import { ClientEntityBase } from "../../extensions/client-entity";
 
-export class WallClient extends GenericEntity implements Renderable {
-  private assetManager: AssetManager;
-
+export class WallClient extends ClientEntityBase implements Renderable {
   constructor(data: RawEntity, assetManager: AssetManager) {
-    super(data);
-    this.assetManager = assetManager;
+    super(data, assetManager);
   }
 
   public getZIndex(): number {
@@ -24,18 +15,9 @@ export class WallClient extends GenericEntity implements Renderable {
   }
 
   render(ctx: CanvasRenderingContext2D, gameState: GameState): void {
-    const image = this.assetManager.get("wall");
-    const myPlayer = getPlayer(gameState);
-    const destructible = this.getExt(Destructible);
     const positionable = this.getExt(Positionable);
-    const centerPosition = positionable.getCenterPosition();
     const position = positionable.getPosition();
-
-    if (myPlayer) {
-      renderInteractionText(ctx, "pick up (e)", centerPosition, position, myPlayer.getPosition());
-    }
-
+    const image = this.assetManager.get("wall");
     ctx.drawImage(image, position.x, position.y);
-    drawHealthBar(ctx, position, destructible.getHealth(), destructible.getMaxHealth());
   }
 }

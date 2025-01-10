@@ -7,9 +7,7 @@ import {
   normalizeDirection,
   Direction,
   Input,
-  GenericEntity,
   RawEntity,
-  Positionable,
   Destructible,
   Ignitable,
   Movable,
@@ -22,12 +20,16 @@ import { debugDrawHitbox, drawCenterPositionWithLabel } from "../util/debug";
 import { animate } from "../animations";
 import { Z_INDEX } from "@survive-the-night/game-server/src/managers/map-manager";
 import { createFlashEffect } from "../util/render";
+import { ClientEntityBase } from "../extensions/client-entity";
+import { ClientPositionable } from "../extensions/positionable";
+import { ClientMovable } from "../extensions/movable";
+import { ClientDestructible } from "../extensions/destructible";
+import { ClientIgnitable } from "../extensions/ignitable";
 
-export class PlayerClient extends GenericEntity implements IClientEntity, Renderable {
+export class PlayerClient extends ClientEntityBase implements IClientEntity, Renderable {
   private readonly LERP_FACTOR = 0.1;
   private readonly ARROW_LENGTH = 20;
 
-  private assetManager: AssetManager;
   private lastRenderPosition = { x: 0, y: 0 };
   private inventory: InventoryItem[] = [];
   private isCrafting = false;
@@ -51,12 +53,11 @@ export class PlayerClient extends GenericEntity implements IClientEntity, Render
   }
 
   constructor(data: RawEntity, assetManager: AssetManager) {
-    super(data);
+    super(data, assetManager);
     this.inventory = data.inventory;
     this.isCrafting = data.isCrafting;
     this.activeItem = data.activeItem;
     this.input = data.input;
-    this.assetManager = assetManager;
   }
 
   getInventory(): InventoryItem[] {
@@ -72,36 +73,36 @@ export class PlayerClient extends GenericEntity implements IClientEntity, Render
   }
 
   isDead(): boolean {
-    return this.getExt(Destructible).isDead();
+    return this.getExt(ClientDestructible).isDead();
   }
 
   getPosition(): Vector2 {
-    const positionable = this.getExt(Positionable);
+    const positionable = this.getExt(ClientPositionable);
     return positionable.getPosition();
   }
 
   setPosition(position: Vector2): void {
-    const positionable = this.getExt(Positionable);
+    const positionable = this.getExt(ClientPositionable);
     positionable.setPosition(position);
   }
 
   getCenterPosition(): Vector2 {
-    const positionable = this.getExt(Positionable);
+    const positionable = this.getExt(ClientPositionable);
     return positionable.getCenterPosition();
   }
 
   getVelocity(): Vector2 {
-    const movable = this.getExt(Movable);
+    const movable = this.getExt(ClientMovable);
     return movable.getVelocity();
   }
 
   getDamageBox(): Hitbox {
-    const positionable = this.getExt(Positionable);
+    const positionable = this.getExt(ClientPositionable);
     return getHitboxWithPadding(positionable.getPosition(), 0);
   }
 
   getHealth(): number {
-    return this.getExt(Destructible).getHealth();
+    return this.getExt(ClientDestructible).getHealth();
   }
 
   render(ctx: CanvasRenderingContext2D, gameState: GameState): void {
@@ -155,7 +156,7 @@ export class PlayerClient extends GenericEntity implements IClientEntity, Render
     } else {
       ctx.drawImage(image, renderPosition.x, renderPosition.y);
 
-      if (this.hasExt(Ignitable)) {
+      if (this.hasExt(ClientIgnitable)) {
         const frameIndex = getFrameIndex(gameState.startedAt, {
           duration: 500,
           frames: 5,

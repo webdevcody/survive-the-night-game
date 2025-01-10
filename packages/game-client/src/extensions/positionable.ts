@@ -1,19 +1,13 @@
-import { GenericEntity } from "../generic-entity";
-import { Extension, ExtensionSerialized } from "./types";
-import { Vector2 } from "../physics";
-import { ExtensionTypes } from "../extension-types";
+import { Vector2 } from "@survive-the-night/game-server";
+import { ExtensionTypes } from "@survive-the-night/game-server/src/shared/extension-types";
+import { ClientExtension, ClientExtensionSerialized } from "./types";
 
-export default class Positionable implements Extension {
+export class ClientPositionable implements ClientExtension {
   public static readonly type = ExtensionTypes.POSITIONABLE;
 
-  private self: GenericEntity;
   private x = 0;
   private y = 0;
   private size = 0;
-
-  public constructor(self: GenericEntity) {
-    this.self = self;
-  }
 
   public getSize(): number {
     return this.size;
@@ -40,19 +34,10 @@ export default class Positionable implements Extension {
     this.y = position.y;
   }
 
-  public deserialize(data: ExtensionSerialized): this {
+  public deserialize(data: ClientExtensionSerialized): this {
     this.x = data.x;
     this.y = data.y;
     this.size = data.size;
     return this;
-  }
-
-  public serialize(): ExtensionSerialized {
-    return {
-      type: Positionable.type,
-      x: this.x,
-      y: this.y,
-      size: this.size,
-    };
   }
 }

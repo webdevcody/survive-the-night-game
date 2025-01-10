@@ -89,14 +89,11 @@ export class InventoryBarUI implements Renderable {
 
       const inventoryItem = items[i];
 
-      ctx.fillText(`${i + 1}`, slotLeft + 4, slotsTop + 20);
-
-      if (inventoryItem === undefined) {
-        continue;
+      const image = inventoryItem && this.assetManager.get(getItemAssetKey(inventoryItem));
+      if (image) {
+        ctx.drawImage(image, slotLeft, slotsTop, slotSize, slotSize);
       }
-
-      const image = this.assetManager.get(getItemAssetKey(inventoryItem));
-      ctx.drawImage(image, slotLeft, slotsTop, slotSize, slotSize);
+      ctx.fillText(`${i + 1}`, slotLeft + 4, slotsTop + 30);
     }
 
     ctx.restore();

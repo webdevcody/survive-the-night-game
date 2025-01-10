@@ -66,33 +66,6 @@ export class GenericEntity extends EventTarget {
     return found as T;
   }
 
-  public deserialize(data: RawEntity): void {
-    if (Array.isArray(data.extensions)) {
-      const dataExtensions: ExtensionSerialized[] = data.extensions;
-
-      this.extensions = dataExtensions.map((dataFromServer) => {
-        const ExtensionConstructor = extensionsMap[
-          dataFromServer.type as keyof typeof extensionsMap
-        ] as unknown as ExtensionCtor<Extension>;
-
-        if (!ExtensionConstructor) {
-          throw new Error(
-            `Unable to find extension ${dataFromServer.type}, please update the extensionsMap`
-          );
-        }
-
-        // TODO: this is a hack, I need to decouple the client and backend extensions / entities
-        if (dataFromServer.type === TriggerCooldownAttacker.type) {
-          return new TriggerCooldownAttacker(this, this.entityManager, dataFromServer).deserialize(
-            dataFromServer
-          );
-        } else {
-          return new ExtensionConstructor(this).deserialize(dataFromServer);
-        }
-      });
-    }
-  }
-
   public serialize(): RawEntity {
     return this.baseSerialize();
   }
