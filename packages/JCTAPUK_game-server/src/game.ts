@@ -30,6 +30,7 @@ function defineGameConfig<T extends GameConfig>(config: T) {
 type GameEvent = {
   update: [deltaTime: number];
   stop: [];
+  start: [];
 };
 
 class Game<T extends GameConfig> extends EventEmitter<GameEvent> {
@@ -66,6 +67,10 @@ class Game<T extends GameConfig> extends EventEmitter<GameEvent> {
       ([packetType, entityType]) => packetType
     ) as [PacketType<any>];
 
+    const ComponentType = Array.from(this.#registerComponents).map(
+      ([packetType, componentType]) => packetType
+    ) as [PacketType<any>];
+
     const CreateEntity = Packet.create({
       id: "uint32",
       type: EnemyType,
@@ -80,8 +85,30 @@ class Game<T extends GameConfig> extends EventEmitter<GameEvent> {
       id: "uint32",
     });
 
+    const CreateComponent = Packet.create({
+      entityId: "uint32",
+      type: ComponentType,
+    });
+
+    const UpdateComponent = Packet.create({
+      entityId: "uint32",
+      type: ComponentType,
+    });
+
+    const RemoveComponent = Packet.create({
+      entityId: "uint32",
+      type: ComponentType,
+    });
+
     const GameEvent = Packet.create({
-      type: [CreateEntity, UpdateEntity, RemoveEntity],
+      type: [
+        CreateEntity,
+        UpdateEntity,
+        RemoveEntity,
+        CreateComponent,
+        UpdateComponent,
+        RemoveComponent,
+      ],
     });
 
     const GameUpdate = Packet.create({
@@ -125,6 +152,7 @@ class Game<T extends GameConfig> extends EventEmitter<GameEvent> {
     this.#lastTickTime = performance.now();
     this.#isPaused = false;
     this.tick();
+    this.emit("start");
   }
 
   stop() {

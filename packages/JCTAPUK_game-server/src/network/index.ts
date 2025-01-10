@@ -1,5 +1,3 @@
-export * from "./sync";
-
 import Packet, {
   PacketData,
   PacketGet,
