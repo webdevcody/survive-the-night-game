@@ -1,5 +1,5 @@
 import WebSocket, { WebSocketServer } from "ws";
-import { World } from "@/game";
+import { World } from "@/manager";
 import Client from "./client";
 import Packet from "./packet";
 import EventEmitter from "node:events";
@@ -56,6 +56,8 @@ class Server extends EventEmitter<ServerEvent> {
     this.#world = world;
     this.#server = new WebSocketServer(options);
 
+    this.#world.game.on("update", this.update.bind(this));
+
     this.#server.on("connection", (socket) => {
       const client = new Client(this.world, socket);
 
@@ -104,18 +106,7 @@ class Server extends EventEmitter<ServerEvent> {
     this.#server.close();
   }
 
-  tick() {
-    this.world.tick();
-
-    const startUpdateTime = performance.now();
-    const deltaTime = startUpdateTime - this.#lastUpdateTime;
-    this.update(deltaTime);
-    this.#lastUpdateTime = startUpdateTime;
-
-    this.broadcast();
-  }
-
-  update(deltaTime: number) {
+  private update(deltaTime: number) {
     if (!this.#isFrozzen) {
       for (const [socket, client] of this.#createClients) {
         this.#updateClients.set(socket, client);
@@ -134,7 +125,7 @@ class Server extends EventEmitter<ServerEvent> {
     }
   }
 
-  fixedUpdate(deltaTime: number) {
+  private fixedUpdate(deltaTime: number) {
     this.broadcast();
   }
 

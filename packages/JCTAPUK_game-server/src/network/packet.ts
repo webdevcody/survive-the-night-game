@@ -72,7 +72,7 @@ const PRIMITIVE_NUMBER: PrimitiveNumber[] = ["int32", "int16", "int8", "uint32",
 
 const PRIMITIVE_RULE: PacketRule[] = [PRIMITIVE_STRING, PRIMITIVE_BOOLEAN, ...PRIMITIVE_NUMBER];
 
-class PacketType<T extends PacketSchema = {}> {
+class PacketType<T extends PacketSchema> {
   #type: new (type: PacketType<T>, data: PacketData<T>) => Packet<T>;
   #schema: T;
 
@@ -314,9 +314,9 @@ abstract class Packet<T extends PacketSchema> {
   }
 
   // Creates a new PacketType with the given schema
-  static create<T extends PacketSchema>(schema?: T) {
+  static create<T extends PacketSchema>(schema: T) {
     const type = class extends Packet<T> {};
-    return new PacketType(type, Object.assign({}, schema));
+    return new PacketType(type, schema);
   }
 
   // Sets a value for a specific key in the packet data

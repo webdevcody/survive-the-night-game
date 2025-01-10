@@ -1,9 +1,11 @@
+import Game, { GameConfig } from "@/game";
 import Entity from "./entity";
 
 const FPS = 30;
 const TICK_RATE_MS = 1000 / FPS;
 
 class World {
+  #game: Game<GameConfig>;
   // fixed update
   #lastUpdateTime: number = 0;
   #accumulatedTime: number = 0;
@@ -12,9 +14,13 @@ class World {
   #isFrozzen: boolean = true;
 
   // store entites
-  #createEntities: Map<number, Entity>;
-  #updateEntities: Map<number, Entity>;
+  #createEntities: Map<number, Entity<any>>;
+  #updateEntities: Map<number, Entity<any>>;
   #removeEntities: Set<number>;
+
+  get game() {
+    return this.#game;
+  }
 
   get createEntities() {
     return this.#createEntities.values();
@@ -28,13 +34,16 @@ class World {
     return this.#removeEntities.values();
   }
 
-  constructor() {
+  constructor(game: Game<GameConfig>) {
+    this.#game = game;
     this.#createEntities = new Map();
     this.#updateEntities = new Map();
     this.#removeEntities = new Set();
+
+    this.#game.on("update", this.update.bind(this));
   }
 
-  createEntity(entity: Entity) {
+  createEntity(entity: Entity<any>) {
     if (this.#createEntities.has(entity.id) || this.#updateEntities.has(entity.id)) {
       throw new Error();
     }
@@ -50,7 +59,7 @@ class World {
     }
   }
 
-  removeEntity(entity: Entity) {
+  removeEntity(entity: Entity<any>) {
     if (this.#removeEntities.has(entity.id) || !this.#updateEntities.has(entity.id)) {
       throw new Error();
     }
@@ -66,14 +75,7 @@ class World {
     }
   }
 
-  tick(): void {
-    const startUpdateTime = performance.now();
-    const deltaTime = startUpdateTime - this.#lastUpdateTime;
-    this.update(deltaTime);
-    this.#lastUpdateTime = startUpdateTime;
-  }
-
-  update(deltaTime: number) {
+  private update(deltaTime: number) {
     if (!this.#isFrozzen) {
       for (const [id, entity] of this.#createEntities) {
         this.#updateEntities.set(id, entity);

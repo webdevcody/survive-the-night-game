@@ -1,3 +1,2 @@
-export * from "./game";
+export * from "./manager";
 export * from "./network";
-export * from "./shared";

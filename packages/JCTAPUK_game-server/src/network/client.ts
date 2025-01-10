@@ -1,6 +1,6 @@
 import WebSocket from "ws";
 
-import { World } from "@/game";
+import { World } from "@/manager";
 import Packet from "./packet";
 import EventEmitter from "node:events";
 
