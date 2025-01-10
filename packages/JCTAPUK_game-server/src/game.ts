@@ -1,5 +1,5 @@
 import EventEmitter from "node:events";
-import { PacketType } from "./network";
+import { Packet, PacketRule, PacketType } from "./network";
 import { Component, Entity } from "./manager";
 
 type RegisterEntity = <T extends PacketType<any>>(
@@ -47,6 +47,7 @@ class Game<T extends GameConfig> extends EventEmitter<GameEvent> {
     this.#registerEntities = new Map();
     this.#registerComponents = new Map();
     this.setup();
+    this.build();
   }
 
   private setup() {
@@ -54,6 +55,38 @@ class Game<T extends GameConfig> extends EventEmitter<GameEvent> {
       registerEntity: this.registerEntity.bind(this),
       registerComponent: this.registerComponent.bind(this),
     };
+
+    this.#config.setup(setup);
+  }
+
+  private build() {
+    // TODO compile packet root
+
+    const EnemyType = Array.from(this.#registerEntities).map(
+      ([packetType, entityType]) => packetType
+    ) as [PacketType<any>];
+
+    const CreateEntity = Packet.create({
+      id: "uint32",
+      type: EnemyType,
+    });
+
+    const UpdateEntity = Packet.create({
+      id: "uint32",
+      type: EnemyType,
+    });
+
+    const RemoveEntity = Packet.create({
+      id: "uint32",
+    });
+
+    const GameEvent = Packet.create({
+      type: [CreateEntity, UpdateEntity, RemoveEntity],
+    });
+
+    const GameUpdate = Packet.create({
+      events: [GameEvent],
+    });
   }
 
   private registerEntity<T extends PacketType<any>>(packetType: T, entityType: typeof Entity<T>) {
