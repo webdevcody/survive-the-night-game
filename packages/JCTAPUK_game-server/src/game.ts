@@ -38,9 +38,33 @@ class Game<T extends GameConfig> extends EventEmitter<GameEvent> {
   #lastTickTime: number = 0;
   #isPaused = false;
 
+  #registerEntities: Map<PacketType<any>, typeof Entity<PacketType<any>>>;
+  #registerComponents: Map<PacketType<any>, typeof Component<PacketType<any>>>;
+
   constructor(config: T) {
     super();
     this.#config = config;
+    this.#registerEntities = new Map();
+    this.#registerComponents = new Map();
+    this.setup();
+  }
+
+  private setup() {
+    const setup: GameSetup = {
+      registerEntity: this.registerEntity.bind(this),
+      registerComponent: this.registerComponent.bind(this),
+    };
+  }
+
+  private registerEntity<T extends PacketType<any>>(packetType: T, entityType: typeof Entity<T>) {
+    this.#registerEntities.set(packetType, entityType);
+  }
+
+  private registerComponent<T extends PacketType<any>>(
+    packetType: T,
+    componentType: typeof Component<T>
+  ) {
+    this.#registerComponents.set(packetType, componentType);
   }
 
   private tick() {
