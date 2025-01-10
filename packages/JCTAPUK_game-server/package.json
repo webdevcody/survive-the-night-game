@@ -1,5 +1,5 @@
 {
-  "name": "@survive-the-night/game-server",
+  "name": "@survive-the-night/jctapuk_game-server",
   "version": "1.0.0",
   "main": "src/index.ts",
   "scripts": {
