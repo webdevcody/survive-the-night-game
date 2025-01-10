@@ -14,5 +14,3 @@ export const Entities = {
   TORCH: "torch",
   GASOLINE: "gasoline",
 } as const;
-
-export type EntityType = (typeof Entities)[keyof typeof Entities];

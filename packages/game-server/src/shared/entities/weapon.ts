@@ -1,5 +1,6 @@
+import { Entities } from "@survive-the-night/game-shared";
+import { RawEntity } from "@survive-the-night/game-shared";
 import { EntityManager } from "../../managers/entity-manager";
-import { Entities, RawEntity } from "../entities";
 import { Entity } from "../entity";
 import { Interactive, Positionable, Carryable } from "../extensions";
 import { Player } from "./player";
@@ -33,7 +34,7 @@ export class Weapon extends Entity {
 
   public serialize(): RawEntity {
     return {
-      ...this.baseSerialize(),
+      ...super.serialize(),
       weaponType: this.weaponType,
     };
   }

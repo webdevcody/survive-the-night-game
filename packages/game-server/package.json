@@ -5,7 +5,6 @@
   "scripts": {
     "dev": "tsx watch src/server.ts",
     "build": "tsup src/server.ts",
-    "depcruise": "depcruise ./src --include-only \"^src\" --output-type dot | dot -T svg > dependency-graph.svg",
     "test": "vitest"
   },
   "keywords": [],
@@ -15,12 +14,12 @@
   "description": "",
   "devDependencies": {
     "@types/node": "^22.9.3",
-    "dependency-cruiser": "^16.9.0",
     "tsup": "^8.3.5",
     "tsx": "^4.19.2",
     "vitest": "^2.1.8"
   },
   "dependencies": {
-    "socket.io": "^4.8.1"
+    "socket.io": "^4.8.1",
+    "@survive-the-night/game-shared": "*"
   }
 }

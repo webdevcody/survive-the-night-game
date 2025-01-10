@@ -1,4 +1,4 @@
-import { RawEntity } from "../entities";
+import { RawEntity } from "@survive-the-night/game-shared";
 
 export type GameState = {
   entities: RawEntity[];

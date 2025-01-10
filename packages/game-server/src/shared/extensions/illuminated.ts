@@ -1,13 +1,13 @@
-import { GenericEntity } from "../generic-entity";
+import { Entity } from "../entity";
 import { Extension, ExtensionSerialized } from "./types";
 
 export default class Illuminated implements Extension {
   public static readonly type = "illuminated";
 
-  private self: GenericEntity;
+  private self: Entity;
   private radius: number;
 
-  public constructor(self: GenericEntity, radius: number = 150) {
+  public constructor(self: Entity, radius: number = 150) {
     this.self = self;
     this.radius = radius;
   }

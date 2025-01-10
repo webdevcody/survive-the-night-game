@@ -1,52 +1,34 @@
-import { Vector2, GenericEntity, RawEntity } from "@survive-the-night/game-server";
-import { AssetManager } from "@/managers/asset";
-import { GameState } from "../state";
+import { Vector2 } from "@survive-the-night/game-server";
+import { RawEntity } from "@survive-the-night/game-shared";
+import { AssetManager } from "../managers/asset";
 import { IClientEntity, Renderable } from "./util";
-import { HITBOX_RADIUS } from "@survive-the-night/game-server/src/shared/entities/bullet";
+import { GameState } from "../state";
 import { Z_INDEX } from "@survive-the-night/game-server/src/managers/map-manager";
-import { Positionable } from "@survive-the-night/game-server/src/shared/extensions";
+import { ClientEntityBase } from "../extensions/client-entity";
+import { ClientPositionable } from "../extensions/positionable";
 
-export class BulletClient extends GenericEntity implements IClientEntity, Renderable {
-  private assetManager: AssetManager;
+export class BulletClient extends ClientEntityBase implements IClientEntity, Renderable {
+  private readonly BULLET_SIZE = 4;
 
   constructor(data: RawEntity, assetManager: AssetManager) {
-    super(data);
-    this.assetManager = assetManager;
-    this.extensions = [new Positionable(this)];
+    super(data, assetManager);
   }
 
   getPosition(): Vector2 {
-    return this.getExt(Positionable).getPosition();
+    return this.getExt(ClientPositionable).getPosition();
   }
 
   setPosition(position: Vector2): void {
-    this.getExt(Positionable).setPosition(position);
-  }
-
-  getCenterPosition(): Vector2 {
-    return this.getPosition();
-  }
-
-  render(ctx: CanvasRenderingContext2D, gameState: GameState): void {
-    const position = this.getPosition();
-    ctx.fillStyle = "orange";
-    ctx.beginPath();
-    ctx.arc(position.x, position.y, HITBOX_RADIUS, 0, Math.PI * 2);
-    ctx.fill();
-
-    ctx.strokeStyle = "red";
-    ctx.lineWidth = 1;
-    ctx.stroke();
+    this.getExt(ClientPositionable).setPosition(position);
   }
 
   public getZIndex(): number {
     return Z_INDEX.PROJECTILES;
   }
 
-  deserialize(data: RawEntity): void {
-    super.deserialize(data);
-    if (data.position) {
-      this.setPosition(data.position);
-    }
+  public render(ctx: CanvasRenderingContext2D, gameState: GameState): void {
+    const position = this.getPosition();
+    ctx.fillStyle = "yellow";
+    ctx.fillRect(position.x, position.y, this.BULLET_SIZE, this.BULLET_SIZE);
   }
 }

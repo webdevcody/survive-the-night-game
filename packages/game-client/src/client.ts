@@ -303,7 +303,7 @@ export class GameClient {
 
       // NEW ENTITY HERE
       const factory = new EntityFactory(this.assetManager);
-      const entity = factory.createEntity(entityData.type, entityData);
+      const entity = factory.createEntity(entityData);
       this.getEntities().push(entity);
     }
   }

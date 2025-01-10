@@ -10,6 +10,7 @@
   "description": "",
   "dependencies": {
     "socket.io-client": "^4.8.1",
-    "@survive-the-night/game-server": "*"
+    "@survive-the-night/game-server": "*",
+    "@survive-the-night/game-shared": "*"
   }
 }
