@@ -1,0 +1,35 @@
+{
+  "name": "@survive-the-night/game-server",
+  "version": "1.0.0",
+  "main": "src/index.ts",
+  "scripts": {
+<<<<<<< HEAD:packages/game-server/package.json
+    "dev": "tsx watch src/server.ts",
+    "build": "tsup src/server.ts",
+    "depcruise": "depcruise ./src --include-only \"^src\" --output-type dot | dot -T svg > dependency-graph.svg",
+=======
+    "dev": "tsx watch playground/index.ts",
+    "build": "tsup playground/index.ts",
+>>>>>>> 82f91e3 (upd):packages/JCTAPUK_server/package.json
+    "test": "vitest"
+  },
+  "keywords": [],
+  "type": "module",
+  "author": "",
+  "license": "MIT",
+  "description": "",
+  "devDependencies": {
+    "@types/node": "^22.9.3",
+<<<<<<< HEAD:packages/game-server/package.json
+    "dependency-cruiser": "^16.9.0",
+=======
+    "@types/ws": "^8.5.13",
+>>>>>>> 82f91e3 (upd):packages/JCTAPUK_server/package.json
+    "tsup": "^8.3.5",
+    "tsx": "^4.19.2",
+    "vitest": "^2.1.8"
+  },
+  "dependencies": {
+    "ws": "^8.18.0"
+  }
+}
