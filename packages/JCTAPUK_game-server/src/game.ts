@@ -73,12 +73,12 @@ class Game<T extends GameConfig> extends EventEmitter<GameEvent> {
 
     const CreateEntity = Packet.create({
       id: "uint32",
-      type: EnemyType,
+      data: EnemyType,
     });
 
     const UpdateEntity = Packet.create({
       id: "uint32",
-      type: EnemyType,
+      data: EnemyType,
     });
 
     const RemoveEntity = Packet.create({
@@ -87,17 +87,19 @@ class Game<T extends GameConfig> extends EventEmitter<GameEvent> {
 
     const CreateComponent = Packet.create({
       entityId: "uint32",
-      type: ComponentType,
+      type: "uint8",
+      data: ComponentType,
     });
 
     const UpdateComponent = Packet.create({
       entityId: "uint32",
-      type: ComponentType,
+      type: "uint8",
+      data: ComponentType,
     });
 
     const RemoveComponent = Packet.create({
       entityId: "uint32",
-      type: ComponentType,
+      type: "uint8",
     });
 
     const GameEvent = Packet.create({
