@@ -1,4 +1,3 @@
-import { Entities, RawEntity } from "../entities";
 import { EntityManager } from "../../managers/entity-manager";
 import { Bullet } from "./bullet";
 import { Hitbox } from "../traits";
@@ -28,6 +27,7 @@ import { DEBUG_WEAPONS } from "../../config/debug";
 import { Bandage } from "./items/bandage";
 import Groupable from "../extensions/groupable";
 import { Entity } from "../entity";
+import { Entities, RawEntity } from "@survive-the-night/game-shared";
 
 export class Player extends Entity {
   public static readonly MAX_HEALTH = 3;

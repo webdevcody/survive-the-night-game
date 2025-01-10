@@ -1,5 +1,5 @@
+import { EntityType } from "@survive-the-night/game-shared";
 import { EntityManager } from "../managers/entity-manager";
-import { EntityType } from "./entity-types";
 import { GenericEntity } from "./generic-entity";
 
 export abstract class Entity extends GenericEntity {

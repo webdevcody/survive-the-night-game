@@ -1,10 +1,5 @@
-import {
-  roundVector2,
-  Vector2,
-  RawEntity,
-  determineDirection,
-  Hitbox,
-} from "@survive-the-night/game-server";
+import { roundVector2, Vector2, determineDirection, Hitbox } from "@survive-the-night/game-server";
+import { RawEntity } from "@survive-the-night/game-shared";
 import { AssetManager } from "../managers/asset";
 import { drawHealthBar, getFrameIndex, IClientEntity, Renderable } from "./util";
 import { GameState } from "../state";

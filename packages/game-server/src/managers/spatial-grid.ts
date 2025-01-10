@@ -1,7 +1,7 @@
-import { Positionable } from "..";
+import { Positionable } from "@/shared/extensions";
 import { Entity } from "../shared/entity";
-import { EntityType } from "../shared/entity-types";
 import { Vector2 } from "../shared/physics";
+import { EntityType } from "@survive-the-night/game-shared";
 
 export class SpatialGrid {
   private cells: Map<string, Entity>[][] = [];

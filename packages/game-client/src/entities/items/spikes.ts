@@ -1,4 +1,5 @@
-import { RawEntity, Positionable } from "@survive-the-night/game-server";
+import { Positionable } from "@survive-the-night/game-server";
+import { RawEntity } from "@survive-the-night/game-shared";
 import { AssetManager } from "../../managers/asset";
 import { GameState } from "../../state";
 import { Renderable } from "../util";

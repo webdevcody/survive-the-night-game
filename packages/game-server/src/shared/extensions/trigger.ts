@@ -3,8 +3,8 @@ import { Extension, ExtensionSerialized } from "./types";
 import { distance, Vector2 } from "../physics";
 import { Rectangle } from "../geom/rectangle";
 import Positionable from "./positionable";
-import { EntityType } from "../entity-types";
 import Collidable from "./collidable";
+import { EntityType } from "@survive-the-night/game-shared";
 
 export default class Triggerable implements Extension {
   public static readonly type = "trigger";

@@ -7,11 +7,8 @@ import {
   normalizeDirection,
   Direction,
   Input,
-  RawEntity,
-  Destructible,
-  Ignitable,
-  Movable,
 } from "@survive-the-night/game-server";
+import { RawEntity } from "@survive-the-night/game-shared";
 import { AssetManager, getItemAssetKey } from "../managers/asset";
 import { drawHealthBar, getFrameIndex, IClientEntity, Renderable } from "./util";
 import { GameState } from "@/state";

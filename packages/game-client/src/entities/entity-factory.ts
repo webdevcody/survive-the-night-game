@@ -1,4 +1,4 @@
-import { RawEntity, Entities } from "@survive-the-night/game-server";
+import { RawEntity, Entities } from "@survive-the-night/game-shared";
 import { AssetManager } from "../managers/asset";
 import { IClientEntity } from "./util";
 import { BulletClient } from "./bullet";

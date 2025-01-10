@@ -1,10 +1,19 @@
-const flashCanvas = document.createElement("canvas");
-const flashCtx = flashCanvas.getContext("2d")!;
+let flashCanvas: HTMLCanvasElement;
+let flashCtx: CanvasRenderingContext2D;
+
+if (typeof window !== "undefined") {
+  flashCanvas = document.createElement("canvas");
+  flashCtx = flashCanvas.getContext("2d")!;
+}
 
 export function createFlashEffect(
   image: HTMLImageElement,
   color: string = "rgba(255, 0, 0, 0.5)"
 ): HTMLCanvasElement {
+  if (!flashCanvas || !flashCtx) {
+    throw new Error("Flash effect can only be used in browser environment");
+  }
+
   if (flashCanvas.width !== image.width || flashCanvas.height !== image.height) {
     flashCanvas.width = image.width;
     flashCanvas.height = image.height;

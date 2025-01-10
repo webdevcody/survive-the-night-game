@@ -1,8 +1,7 @@
 import { AssetManager } from "@/managers/asset";
 import { ClientExtension, ClientExtensionCtor } from "./types";
-import { RawEntity } from "@survive-the-night/game-server";
 import { clientExtensionsMap } from "./index";
-import { ExtensionTypes } from "@survive-the-night/game-server/src/shared/extension-types";
+import { RawEntity } from "@survive-the-night/game-shared";
 
 export abstract class ClientEntityBase {
   private id: string;

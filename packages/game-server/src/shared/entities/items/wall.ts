@@ -1,5 +1,5 @@
+import { Entities, RawEntity } from "@survive-the-night/game-shared";
 import { EntityManager } from "../../../managers/entity-manager";
-import { Entities, RawEntity } from "../../entities";
 import { Entity } from "../../entity";
 import { Collidable, Destructible, Interactive, Positionable, Carryable } from "../../extensions";
 import { Player } from "../player";

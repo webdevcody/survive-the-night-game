@@ -1,5 +1,4 @@
 import { EntityManager } from "../../../managers/entity-manager";
-import { Entities } from "../../entities";
 import {
   Combustible,
   Interactive,
@@ -11,6 +10,7 @@ import {
 import { Player } from "../player";
 import { Fire } from "../environment/fire";
 import { Entity } from "../../entity";
+import { Entities } from "@survive-the-night/game-shared";
 
 export class Gasoline extends Entity {
   public static readonly Size = 16;

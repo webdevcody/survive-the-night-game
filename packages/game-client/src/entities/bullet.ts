@@ -1,5 +1,5 @@
 import { Vector2 } from "@survive-the-night/game-server";
-import { RawEntity } from "@survive-the-night/game-server";
+import { RawEntity } from "@survive-the-night/game-shared";
 import { AssetManager } from "../managers/asset";
 import { IClientEntity, Renderable } from "./util";
 import { GameState } from "../state";

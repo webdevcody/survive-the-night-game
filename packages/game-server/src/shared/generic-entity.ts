@@ -1,12 +1,4 @@
-import { RawEntity } from "./entities";
-import { EntityType } from "./entity-types";
-import {
-  Extension,
-  ExtensionCtor,
-  ExtensionSerialized,
-  extensionsMap,
-  TriggerCooldownAttacker,
-} from "./extensions";
+import { RawEntity, EntityType, Extension, ExtensionCtor } from "@survive-the-night/game-shared";
 
 export class GenericEntity extends EventTarget {
   private id: string;
@@ -52,18 +44,15 @@ export class GenericEntity extends EventTarget {
   }
 
   public hasExt<T>(ext: ExtensionCtor<T>): boolean {
-    return this.extensions.some((it) => it instanceof ext);
+    return this.extensions.some((e) => e instanceof ext);
   }
 
   public getExt<T>(ext: ExtensionCtor<T>): T {
-    const found = this.extensions.find((it) => it instanceof ext);
-
-    if (found === undefined) {
-      const type = (ext as any).type;
-      throw new Error(`Unable to find extension ${type}`);
+    const extension = this.extensions.find((e) => e instanceof ext);
+    if (!extension) {
+      throw new Error(`Extension ${(ext as any).type} not found`);
     }
-
-    return found as T;
+    return extension as T;
   }
 
   public serialize(): RawEntity {
@@ -74,7 +63,9 @@ export class GenericEntity extends EventTarget {
     return {
       id: this.id,
       type: this.type,
-      extensions: this.extensions.map((it) => it.serialize()),
+      extensions: this.extensions.map((ext) => {
+        return ext.serialize();
+      }),
     };
   }
 }

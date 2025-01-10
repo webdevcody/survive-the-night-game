@@ -1,5 +1,4 @@
 export * from "./shared/physics";
-export * from "./shared/entities";
 export * from "./shared/entity";
 export * from "./shared/generic-entity";
 export * from "./shared/entities/player";

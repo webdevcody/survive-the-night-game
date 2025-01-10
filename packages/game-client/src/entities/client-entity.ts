@@ -1,4 +1,5 @@
-import { Interactive, Positionable, RawEntity } from "@survive-the-night/game-server";
+import { Interactive, Positionable } from "@survive-the-night/game-server";
+import { RawEntity } from "@survive-the-night/game-shared";
 import { GameState } from "../state";
 import { Renderable } from "./util";
 import { getPlayer } from "../util/get-player";
