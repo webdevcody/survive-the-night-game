@@ -1,25 +1,24 @@
 import { EntityManager } from "./managers/entity-manager";
 import { MapManager } from "./managers/map-manager";
 import { ServerSocketManager } from "./managers/server-socket-manager";
-import { GameStateEvent } from "./shared/events/server-sent";
 import { GameOverEvent } from "./shared/events/server-sent/game-over-event";
 
 export const FPS = 30;
 
-export const DAY_DURATION = 1;
-export const NIGHT_DURATION = 100;
+export const DAY_DURATION = 5 * 60 * 1000; // 5 min
+export const NIGHT_DURATION = 15 * 60 * 1000; // 15 min
 
-const PERFORMANCE_LOG_INTERVAL = 5000; // Log every 5 seconds
+const PERFORMANCE_LOG_INTERVAL = 5 * 1000; // Log every 5 seconds
 const TICK_RATE_MS = 1000 / FPS; // ~33.33ms for 30 FPS
 
 export class GameServer {
-  private lastUpdateTime: number = Date.now();
+  private lastUpdateTime: number = 0;
   private entityManager: EntityManager;
   private mapManager: MapManager;
   private socketManager: ServerSocketManager;
   private timer: ReturnType<typeof setInterval> | null = null;
   private updateTimes: number[] = [];
-  private lastPerformanceLog: number = Date.now();
+  private lastPerformanceLog: number = 0;
   private isGameOver: boolean = false;
 
   // game state
@@ -58,7 +57,7 @@ export class GameServer {
   private startGameLoop(): void {
     this.timer = setInterval(() => {
       this.update();
-    }, 1000 / FPS);
+    }, TICK_RATE_MS);
   }
 
   private onDayStart(): void {
@@ -77,8 +76,9 @@ export class GameServer {
   private update(): void {
     // setup
     const updateStartTime = performance.now();
-    const currentTime = Date.now();
-    const deltaTime = (currentTime - this.lastUpdateTime) / 1000;
+    const deltaTime = updateStartTime - this.lastUpdateTime;
+
+    this.lastUpdateTime = updateStartTime;
 
     // logic
     if (this.isGameOver) {
@@ -86,15 +86,15 @@ export class GameServer {
     }
 
     this.updateEntities(deltaTime);
-
     this.handleDayNightCycle(deltaTime);
     this.handleIfGameOver();
 
+    // broadcast clients
+    this.socketManager.broadcastGameState(deltaTime);
+
     // cleanup
     this.entityManager.pruneEntities();
-    this.socketManager.broadcastGameState();
-    this.trackPerformance(updateStartTime, currentTime);
-    this.lastUpdateTime = currentTime;
+    this.trackPerformance(updateStartTime);
   }
 
   private handleDayNightCycle(deltaTime: number) {
@@ -125,7 +125,7 @@ export class GameServer {
     this.socketManager.broadcastEvent(new GameOverEvent());
   }
 
-  private trackPerformance(updateStartTime: number, currentTime: number) {
+  private trackPerformance(updateStartTime: number) {
     const updateDuration = performance.now() - updateStartTime;
     this.updateTimes.push(updateDuration);
 
@@ -139,7 +139,7 @@ export class GameServer {
     }
 
     // Log performance stats every PERFORMANCE_LOG_INTERVAL ms
-    if (currentTime - this.lastPerformanceLog > PERFORMANCE_LOG_INTERVAL) {
+    if (updateStartTime - this.lastPerformanceLog > PERFORMANCE_LOG_INTERVAL) {
       const avgUpdateTime = this.updateTimes.reduce((a, b) => a + b, 0) / this.updateTimes.length;
       const maxUpdateTime = Math.max(...this.updateTimes);
       const slowUpdates = this.updateTimes.filter((time) => time > TICK_RATE_MS).length;
@@ -155,7 +155,7 @@ export class GameServer {
 
       // Reset tracking
       this.updateTimes = [];
-      this.lastPerformanceLog = currentTime;
+      this.lastPerformanceLog = updateStartTime;
     }
   }
 

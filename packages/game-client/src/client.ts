@@ -45,7 +45,7 @@ export class GameClient {
 
   // State
   private gameState: GameState;
-  private updatedEntitiesBuffer: EntityDto[] = [];
+  private updatedEntitiesBuffer: EntityDto[][] = [];
   private animationFrameId: number | null = null;
   private isStarted = false;
   private isMounted = true;
@@ -214,8 +214,8 @@ export class GameClient {
       : null;
   }
 
-  public setUpdatedEntitiesBuffer(entities: EntityDto[]) {
-    this.updatedEntitiesBuffer = entities;
+  public addUpdatedEntitiesBuffer(entities: EntityDto[]) {
+    this.updatedEntitiesBuffer.push(entities);
   }
 
   public getMapManager(): MapManager {
@@ -283,29 +283,24 @@ export class GameClient {
 
   // TODO: clean this up with delta compression and a different approach for new / old entities
   private updateEntities(): void {
-    // remove dead entities
-    for (let i = 0; i < this.getEntities().length; i++) {
-      const entity = this.getEntities()[i];
-      if (!this.updatedEntitiesBuffer.find((e) => e.id === entity.getId())) {
-        this.getEntities().splice(i, 1);
-        i--;
+    for (const update of this.updatedEntitiesBuffer) {
+      // EXISTING ENTITIES
+      for (const entityData of update) {
+        const existingEntity = this.gameState.entities.find((e) => e.getId() === entityData.id);
+
+        if (existingEntity) {
+          (existingEntity as any).deserialize(entityData);
+          continue;
+        }
+
+        // NEW ENTITY HERE
+        const factory = new EntityFactory(this.assetManager);
+        const entity = factory.createEntity(entityData);
+        this.gameState.entities.push(entity);
       }
     }
 
-    // EXISTING ENTITIES
-    for (const entityData of this.updatedEntitiesBuffer) {
-      const existingEntity = this.getEntities().find((e) => e.getId() === entityData.id);
-
-      if (existingEntity) {
-        (existingEntity as any).deserialize(entityData);
-        continue;
-      }
-
-      // NEW ENTITY HERE
-      const factory = new EntityFactory(this.assetManager);
-      const entity = factory.createEntity(entityData);
-      this.getEntities().push(entity);
-    }
+    this.updatedEntitiesBuffer = [];
   }
 
   private update(): void {

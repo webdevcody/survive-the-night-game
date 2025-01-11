@@ -32,7 +32,6 @@ export default class Collidable implements Extension {
   public setSize(newSize: number) {
     this.size = newSize;
     this.serialized = undefined;
-
     return this;
   }
 

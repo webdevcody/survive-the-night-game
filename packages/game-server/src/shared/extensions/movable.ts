@@ -5,6 +5,7 @@ import { Vector2 } from "../physics";
 export default class Movable implements Extension {
   public static readonly type = "movable";
 
+  private serialized?: ExtensionSerialized;
   private self: Entity;
   private velocity: Vector2;
 
@@ -30,9 +31,12 @@ export default class Movable implements Extension {
   }
 
   public serialize(): ExtensionSerialized {
-    return {
-      type: Movable.type,
-      velocity: this.velocity,
-    };
+    if (!this.serialized) {
+      this.serialized = {
+        type: Movable.type,
+        velocity: this.velocity,
+      };
+    }
+    return this.serialized;
   }
 }

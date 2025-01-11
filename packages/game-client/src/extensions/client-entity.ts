@@ -63,7 +63,7 @@ export abstract class ClientEntityBase {
     }
 
     // Create and deserialize extensions
-    const newExtensions: ClientExtension[] = this.extensions;
+    const newExtensions: ClientExtension[] = [];
     for (const extData of data.extensions) {
       if (!extData.type) {
         console.warn(`Extension data missing type: ${JSON.stringify(extData)}`);
@@ -85,12 +85,10 @@ export abstract class ClientEntityBase {
         }
         ext.deserialize(extData);
 
-        const i = newExtensions.indexOf(ext);
+        const i = this.extensions.indexOf(ext);
 
         if (i == -1) {
           newExtensions.push(ext);
-        } else {
-          newExtensions[i] = ext;
         }
       } catch (error) {
         console.error(`Error creating/updating extension ${extData.type}:`, error);
@@ -98,7 +96,6 @@ export abstract class ClientEntityBase {
     }
 
     // Update extensions list
-    this.extensions = newExtensions;
-    console.log((this.extensions = newExtensions));
+    this.extensions = [...this.extensions, ...newExtensions];
   }
 }

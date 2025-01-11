@@ -7,6 +7,7 @@ type InteractiveHandler = (player: Player) => void;
 export default class Interactive implements Extension {
   public static readonly type = "interactive";
 
+  private serialized?: ExtensionSerialized;
   private self: Entity;
   private handler: InteractiveHandler | null = null;
   private displayName: string = "";
@@ -41,9 +42,13 @@ export default class Interactive implements Extension {
   }
 
   public serialize(): ExtensionSerialized {
-    return {
-      type: Interactive.type,
-      displayName: this.displayName,
-    };
+    if (!this.serialized) {
+      this.serialized = {
+        type: Interactive.type,
+        displayName: this.displayName,
+      };
+    }
+
+    return this.serialized;
   }
 }

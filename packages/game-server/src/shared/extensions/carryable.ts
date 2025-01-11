@@ -8,6 +8,7 @@ export default class Carryable implements Extension {
   public static readonly type = "carryable" as const;
 
   private serialized?: ExtensionSerialized;
+  private version = 0;
   private self: Entity;
   private itemKey: ItemType;
 

@@ -8,6 +8,7 @@ type DestructibleDeathHandler = () => void;
 export default class Destructible implements Extension {
   public static readonly type = "destructible";
 
+  private serialized?: ExtensionSerialized;
   private self: Entity;
   private health = 0;
   private maxHealth = 0;
@@ -24,11 +25,14 @@ export default class Destructible implements Extension {
 
   public setHealth(health: number): this {
     this.health = health;
+    this.serialized = undefined;
     return this;
   }
 
   public setMaxHealth(maxHealth: number): this {
     this.maxHealth = maxHealth;
+    this.serialized = undefined;
+
     return this;
   }
 
@@ -42,6 +46,8 @@ export default class Destructible implements Extension {
     if (this.isDead()) {
       this.deathHandler?.();
     }
+
+    this.serialized = undefined;
   }
 
   public getDamageBox(): Hitbox {
@@ -59,6 +65,7 @@ export default class Destructible implements Extension {
       return;
     }
     this.health = Math.min(this.health + amount, this.maxHealth);
+    this.serialized = undefined;
   }
 
   public isDead(): boolean {
@@ -80,10 +87,14 @@ export default class Destructible implements Extension {
   }
 
   public serialize(): ExtensionSerialized {
-    return {
-      type: Destructible.type,
-      health: this.health,
-      maxHealth: this.maxHealth,
-    };
+    if (!this.serialized) {
+      this.serialized = {
+        type: Destructible.type,
+        health: this.health,
+        maxHealth: this.maxHealth,
+      };
+    }
+
+    return this.serialized;
   }
 }

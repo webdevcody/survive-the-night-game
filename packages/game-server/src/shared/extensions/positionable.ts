@@ -6,7 +6,7 @@ import { ExtensionTypes } from "../extension-types";
 export default class Positionable implements Extension {
   public static readonly type = ExtensionTypes.POSITIONABLE;
 
-  private serialized?: ExtensionSerialized = undefined;
+  private serialized?: ExtensionSerialized;
   private self: Entity;
   private x = 0;
   private y = 0;
@@ -47,10 +47,11 @@ export default class Positionable implements Extension {
     this.x = data.x;
     this.y = data.y;
     this.size = data.size;
+
     return this;
   }
 
-  public serialize(): ExtensionSerialized {
+  public serialize() {
     if (!this.serialized) {
       this.serialized = {
         type: Positionable.type,

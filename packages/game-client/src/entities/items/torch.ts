@@ -1,4 +1,4 @@
-import { Positionable } from "@survive-the-night/game-server";
+import { ClientPositionable } from "../../extensions";
 import { AssetManager } from "../../managers/asset";
 import { GameState } from "../../state";
 import { Renderable } from "../util";
@@ -16,7 +16,7 @@ export class TorchClient extends ClientEntityBase implements Renderable {
   }
 
   render(ctx: CanvasRenderingContext2D, gameState: GameState): void {
-    const positionable = this.getExt(Positionable);
+    const positionable = this.getExt(ClientPositionable);
     const position = positionable.getPosition();
     const image = this.assetManager.get("torch");
     ctx.drawImage(image, position.x, position.y);
