@@ -2,3 +2,5 @@ node_modules/
 dist/
 .DS_Store
 scratch.txt
+tmp/
+dependency-graph.svg
