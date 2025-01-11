@@ -3,7 +3,6 @@
   "version": "1.0.0",
   "main": "src/index.ts",
   "scripts": {
-    "dev": "tsx watch playground/index.ts",
     "build": "tsup playground/index.ts",
     "test": "vitest"
   },

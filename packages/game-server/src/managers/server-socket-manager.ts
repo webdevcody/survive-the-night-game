@@ -10,6 +10,8 @@ import { GameEvent } from "../shared/events/types";
 import { DEBUG_EVENTS } from "../config/debug";
 import Positionable from "../shared/extensions/positionable";
 import { GameServer } from "../server";
+import { Extension, ExtensionSerialized, RawEntity } from "@survive-the-night/game-shared";
+import { GameStateEvent } from "@/shared/events/server-sent";
 
 /**
  * Any and all functionality related to sending server side events
@@ -17,6 +19,7 @@ import { GameServer } from "../server";
  */
 export class ServerSocketManager implements Broadcaster {
   private io: Server;
+  private clients: Map<Socket, Map<Extension, ExtensionSerialized>> = new Map();
   private players: Map<string, Player> = new Map();
   private port: number;
   private httpServer: any;
@@ -66,6 +69,7 @@ export class ServerSocketManager implements Broadcaster {
   }
 
   private onDisconnect(socket: Socket): void {
+    this.clients.delete(socket);
     const player = this.players.get(socket.id);
     this.players.delete(socket.id);
     if (player) {
@@ -113,6 +117,7 @@ export class ServerSocketManager implements Broadcaster {
     const centerY = (map[0].length * 16) / 2;
     player.getExt(Positionable).setPosition({ x: centerX, y: centerY });
 
+    this.clients.set(socket, new Map());
     this.players.set(socket.id, player);
     this.getEntityManager().addEntity(player);
 
@@ -140,6 +145,58 @@ export class ServerSocketManager implements Broadcaster {
       console.log(`Broadcasting event: ${event.getType()}`);
     }
     this.io.emit(event.getType(), event.serialize());
+  }
+
+  public broadcastGameState() {
+    for (const [socket, cache] of this.clients) {
+      const player = this.players.get(socket.id);
+
+      if (player) {
+        const entites = this.getEntityManager().getNearbyEntities(player.getPosition());
+        const rawEntities: RawEntity[] = [];
+
+        for (const entity of entites) {
+          if ("isServerOnly" in entity) continue;
+
+          const rawEntity: RawEntity = {
+            type: entity.getType(),
+            id: entity.getId(),
+          };
+
+          const rawExtensions: ExtensionSerialized[] = [];
+
+          for (const extension of entity.getExtensions()) {
+            const cacheData = cache.get(extension);
+            const data = extension.serialize();
+
+            if (!cacheData) {
+              rawExtensions.push(data);
+            } else if (cacheData != data) {
+              rawExtensions.push(data);
+            }
+
+            cache.set(extension, data);
+          }
+
+          if (rawExtensions.length > 0) {
+            rawEntity.extensions = rawExtensions;
+          }
+
+          rawEntities.push(rawEntity);
+        }
+
+        if (rawEntities.length > 0) {
+          const gameStateEvent = new GameStateEvent({
+            entities: rawEntities,
+            dayNumber: this.gameServer.dayNumber,
+            untilNextCycle: this.gameServer.untilNextCycle,
+            isDay: this.gameServer.isDay,
+          });
+
+          socket.emit(gameStateEvent.getType(), gameStateEvent.serialize());
+        }
+      }
+    }
   }
 }
 

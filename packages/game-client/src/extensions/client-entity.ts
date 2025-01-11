@@ -58,13 +58,14 @@ export abstract class ClientEntityBase {
     const existingExtensions = new Map<string, ClientExtension>();
     for (const ext of this.extensions) {
       const type = (ext.constructor as any).type;
+      console.log(type);
       if (type) {
         existingExtensions.set(type, ext);
       }
     }
 
     // Create and deserialize extensions
-    const newExtensions: ClientExtension[] = [];
+    const newExtensions: ClientExtension[] = this.extensions;
     for (const extData of data.extensions) {
       if (!extData.type) {
         console.warn(`Extension data missing type: ${JSON.stringify(extData)}`);
@@ -85,7 +86,14 @@ export abstract class ClientEntityBase {
           ext = new ClientExtCtor();
         }
         ext.deserialize(extData);
-        newExtensions.push(ext);
+
+        const i = newExtensions.indexOf(ext);
+
+        if (i == -1) {
+          newExtensions.push(ext);
+        } else {
+          newExtensions[i] = ext;
+        }
       } catch (error) {
         console.error(`Error creating/updating extension ${extData.type}:`, error);
       }

@@ -18,12 +18,14 @@ export class GameServer {
   private mapManager: MapManager;
   private socketManager: ServerSocketManager;
   private timer: ReturnType<typeof setInterval> | null = null;
-  private dayNumber: number = 1;
-  private untilNextCycle: number = 0;
-  private isDay: boolean = true;
   private updateTimes: number[] = [];
   private lastPerformanceLog: number = Date.now();
   private isGameOver: boolean = false;
+
+  // game state
+  public dayNumber: number = 1;
+  public untilNextCycle: number = 0;
+  public isDay: boolean = true;
 
   constructor(port: number = 3001) {
     this.socketManager = new ServerSocketManager(port, this);
@@ -90,7 +92,7 @@ export class GameServer {
 
     // cleanup
     this.entityManager.pruneEntities();
-    this.broadcastGameState();
+    this.socketManager.broadcastGameState();
     this.trackPerformance(updateStartTime, currentTime);
     this.lastUpdateTime = currentTime;
   }
@@ -159,21 +161,6 @@ export class GameServer {
 
   private updateEntities(deltaTime: number): void {
     this.entityManager.update(deltaTime);
-  }
-
-  // TODO: This is a bit of a hack to get the game state to the client.
-  // We should probably have a more elegant way to do this.
-  private broadcastGameState(): void {
-    const rawEntities = [...this.entityManager.getEntities()]
-      .filter((entity) => !("isServerOnly" in entity))
-      .map((entity) => entity.serialize());
-    const gameStateEvent = new GameStateEvent({
-      entities: rawEntities,
-      dayNumber: this.dayNumber,
-      untilNextCycle: this.untilNextCycle,
-      isDay: this.isDay,
-    });
-    this.socketManager.broadcastEvent(gameStateEvent);
   }
 }
 
