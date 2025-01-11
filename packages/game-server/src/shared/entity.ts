@@ -67,9 +67,6 @@ export class Entity extends EventTarget {
     return {
       id: this.id,
       type: this.type,
-      extensions: this.extensions.map((ext) => {
-        return ext.serialize();
-      }),
     };
   }
 }

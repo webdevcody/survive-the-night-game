@@ -50,7 +50,6 @@ export abstract class ClientEntityBase {
 
   public deserialize(data: RawEntity): void {
     if (!data.extensions) {
-      console.warn(`No extensions found for entity ${this.id}`);
       return;
     }
 
@@ -58,7 +57,6 @@ export abstract class ClientEntityBase {
     const existingExtensions = new Map<string, ClientExtension>();
     for (const ext of this.extensions) {
       const type = (ext.constructor as any).type;
-      console.log(type);
       if (type) {
         existingExtensions.set(type, ext);
       }
@@ -101,5 +99,6 @@ export abstract class ClientEntityBase {
 
     // Update extensions list
     this.extensions = newExtensions;
+    console.log((this.extensions = newExtensions));
   }
 }

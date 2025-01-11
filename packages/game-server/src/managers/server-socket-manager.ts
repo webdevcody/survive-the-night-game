@@ -19,7 +19,7 @@ import { GameStateEvent } from "@/shared/events/server-sent";
  */
 export class ServerSocketManager implements Broadcaster {
   private io: Server;
-  private clients: Map<Socket, Map<Extension, ExtensionSerialized>> = new Map();
+  private clients: Map<Socket, WeakSet<ExtensionSerialized>> = new Map();
   private players: Map<string, Player> = new Map();
   private port: number;
   private httpServer: any;
@@ -117,7 +117,7 @@ export class ServerSocketManager implements Broadcaster {
     const centerY = (map[0].length * 16) / 2;
     player.getExt(Positionable).setPosition({ x: centerX, y: centerY });
 
-    this.clients.set(socket, new Map());
+    this.clients.set(socket, new WeakSet());
     this.players.set(socket.id, player);
     this.getEntityManager().addEntity(player);
 
@@ -148,7 +148,7 @@ export class ServerSocketManager implements Broadcaster {
   }
 
   public broadcastGameState() {
-    for (const [socket, cache] of this.clients) {
+    for (const [socket, cache] of this.clients.entries()) {
       const player = this.players.get(socket.id);
 
       if (player) {
@@ -158,24 +158,15 @@ export class ServerSocketManager implements Broadcaster {
         for (const entity of entites) {
           if ("isServerOnly" in entity) continue;
 
-          const rawEntity: RawEntity = {
-            type: entity.getType(),
-            id: entity.getId(),
-          };
-
+          const rawEntity: RawEntity = entity.serialize();
           const rawExtensions: ExtensionSerialized[] = [];
 
           for (const extension of entity.getExtensions()) {
-            const cacheData = cache.get(extension);
             const data = extension.serialize();
-
-            if (!cacheData) {
-              rawExtensions.push(data);
-            } else if (cacheData != data) {
+            // BAD cahce lol
+            if (!cache.has(data)) {
               rawExtensions.push(data);
             }
-
-            cache.set(extension, data);
           }
 
           if (rawExtensions.length > 0) {
