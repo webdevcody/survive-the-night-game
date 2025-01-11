@@ -87,7 +87,6 @@ export class Zombie extends Entity {
 
     this.getEntityManager().markEntityForRemoval(this);
     this.broadcaster.broadcastEvent(new ZombieDeathEvent(this.getId()));
-    this.getEntityManager().markEntityForRemoval(this);
   }
 
   getPosition(): Vector2 {

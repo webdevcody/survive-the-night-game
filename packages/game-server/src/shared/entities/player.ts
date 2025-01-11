@@ -34,17 +34,16 @@ export class Player extends Entity {
   public static readonly MAX_INTERACT_RADIUS = 20;
 
   private static readonly PLAYER_WIDTH = 16;
-  private static readonly PLAYER_HEIGHT = 16;
   private static readonly PLAYER_SPEED = 60;
   private static readonly DROP_COOLDOWN = 0.25;
   private static readonly INTERACT_COOLDOWN = 0.25;
   private static readonly FIRE_COOLDOWN = 0.4;
   private static readonly CONSUME_COOLDOWN = 0.5;
 
-  private fireCooldown = new Cooldown(Player.FIRE_COOLDOWN);
-  private dropCooldown = new Cooldown(Player.DROP_COOLDOWN);
-  private interactCooldown = new Cooldown(Player.INTERACT_COOLDOWN);
-  private consumeCooldown = new Cooldown(Player.CONSUME_COOLDOWN);
+  private fireCooldown = new Cooldown(Player.FIRE_COOLDOWN, true);
+  private dropCooldown = new Cooldown(Player.DROP_COOLDOWN, true);
+  private interactCooldown = new Cooldown(Player.INTERACT_COOLDOWN, true);
+  private consumeCooldown = new Cooldown(Player.CONSUME_COOLDOWN, true);
   private input: Input = {
     facing: Direction.Right,
     inventoryItem: 1,
@@ -362,6 +361,8 @@ export class Player extends Entity {
       if (item) {
         let entity: Entity;
 
+        console.log(item.key);
+        // this feels hacky, I shouldn't need a switch statement here
         switch (item.key) {
           case "bandage":
             entity = new Bandage(this.getEntityManager());
@@ -393,6 +394,14 @@ export class Player extends Entity {
 
   setInput(input: Input) {
     this.input = input;
+  }
+
+  selectInventoryItem(index: number) {
+    this.input.inventoryItem = index;
+  }
+
+  setUseItem(use: boolean) {
+    this.input.consume = use;
   }
 
   heal(amount: number): void {
