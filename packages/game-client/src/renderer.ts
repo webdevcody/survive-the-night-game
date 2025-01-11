@@ -5,6 +5,8 @@ import { CraftingTable } from "./ui/crafting-table";
 import { InventoryBarUI } from "./ui/inventory-bar";
 import { Hud } from "./ui/hud";
 import { GameOverDialogUI } from "./ui/game-over-dialog";
+import { PlayerClient } from "./entities/player";
+import { ClientPositionable } from "./extensions";
 
 export class Renderer {
   private ctx: CanvasRenderingContext2D;

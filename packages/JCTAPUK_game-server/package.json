@@ -1,0 +1,24 @@
+{
+  "name": "@survive-the-night/jctapuk_game-server",
+  "version": "1.0.0",
+  "main": "src/index.ts",
+  "scripts": {
+    "build": "tsup playground/index.ts",
+    "test": "vitest"
+  },
+  "keywords": [],
+  "type": "module",
+  "author": "",
+  "license": "MIT",
+  "description": "",
+  "devDependencies": {
+    "@types/node": "^22.9.3",
+    "@types/ws": "^8.5.13",
+    "tsup": "^8.3.5",
+    "tsx": "^4.19.2",
+    "vitest": "^2.1.8"
+  },
+  "dependencies": {
+    "ws": "^8.18.0"
+  }
+}

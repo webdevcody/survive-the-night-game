@@ -258,7 +258,7 @@ export class Player extends Entity {
     const movable = this.getExt(Movable);
     const velocity = movable.getVelocity();
 
-    position.x += velocity.x * deltaTime;
+    position.x += velocity.x * (deltaTime / 1000);
     this.setPosition(position);
 
     if (this.getEntityManager().isColliding(this, [Entities.PLAYER])) {
@@ -266,7 +266,7 @@ export class Player extends Entity {
       this.setPosition(position);
     }
 
-    position.y += velocity.y * deltaTime;
+    position.y += velocity.y * (deltaTime / 1000);
     this.setPosition(position);
 
     if (this.getEntityManager().isColliding(this, [Entities.PLAYER])) {

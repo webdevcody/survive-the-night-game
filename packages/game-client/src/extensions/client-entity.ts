@@ -50,7 +50,6 @@ export abstract class ClientEntityBase {
 
   public deserialize(data: RawEntity): void {
     if (!data.extensions) {
-      console.warn(`No extensions found for entity ${this.id}`);
       return;
     }
 
@@ -85,13 +84,18 @@ export abstract class ClientEntityBase {
           ext = new ClientExtCtor();
         }
         ext.deserialize(extData);
-        newExtensions.push(ext);
+
+        const i = this.extensions.indexOf(ext);
+
+        if (i == -1) {
+          newExtensions.push(ext);
+        }
       } catch (error) {
         console.error(`Error creating/updating extension ${extData.type}:`, error);
       }
     }
 
     // Update extensions list
-    this.extensions = newExtensions;
+    this.extensions = [...this.extensions, ...newExtensions];
   }
 }

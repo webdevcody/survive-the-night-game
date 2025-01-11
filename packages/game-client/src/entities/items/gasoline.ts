@@ -1,4 +1,4 @@
-import { Positionable } from "@survive-the-night/game-server";
+import { ClientPositionable } from "../../extensions";
 import { RawEntity } from "@survive-the-night/game-shared";
 import { AssetManager } from "../../managers/asset";
 import { GameState } from "../../state";
@@ -16,7 +16,7 @@ export class GasolineClient extends ClientEntityBase implements Renderable {
   }
 
   render(ctx: CanvasRenderingContext2D, gameState: GameState): void {
-    const positionable = this.getExt(Positionable);
+    const positionable = this.getExt(ClientPositionable);
     const position = positionable.getPosition();
     const image = this.assetManager.get("gasoline");
     ctx.drawImage(image, position.x, position.y);

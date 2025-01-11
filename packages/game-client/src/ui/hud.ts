@@ -42,7 +42,7 @@ export class Hud {
 
     const dayText = `Day ${gameState.dayNumber}`;
     const cycleText = `${gameState.isDay ? "Day" : "Night"} | ${Math.floor(
-      gameState.untilNextCycle
+      gameState.untilNextCycle / 1000
     )}s Left`;
 
     const dayTextWidth = ctx.measureText(dayText).width;

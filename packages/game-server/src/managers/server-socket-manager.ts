@@ -10,6 +10,11 @@ import { GameEvent } from "../shared/events/types";
 import { DEBUG_EVENTS } from "../config/debug";
 import Positionable from "../shared/extensions/positionable";
 import { GameServer } from "../server";
+import { Extension, ExtensionSerialized, RawEntity } from "@survive-the-night/game-shared";
+import { GameStateEvent } from "@/shared/events/server-sent";
+
+const FPS = 20;
+const TICK_RATE_MS = 1000 / FPS; // ~33.33ms for 30 FPS
 
 /**
  * Any and all functionality related to sending server side events
@@ -17,12 +22,15 @@ import { GameServer } from "../server";
  */
 export class ServerSocketManager implements Broadcaster {
   private io: Server;
+  private clients: Map<Socket, WeakSet<ExtensionSerialized>> = new Map();
   private players: Map<string, Player> = new Map();
   private port: number;
   private httpServer: any;
   private entityManager?: EntityManager;
   private mapManager?: MapManager;
   private gameServer: GameServer;
+
+  private accumulatedTime = 0;
 
   constructor(port: number, gameServer: GameServer) {
     this.port = port;
@@ -66,6 +74,7 @@ export class ServerSocketManager implements Broadcaster {
   }
 
   private onDisconnect(socket: Socket): void {
+    this.clients.delete(socket);
     const player = this.players.get(socket.id);
     this.players.delete(socket.id);
     if (player) {
@@ -113,6 +122,7 @@ export class ServerSocketManager implements Broadcaster {
     const centerY = (map[0].length * 16) / 2;
     player.getExt(Positionable).setPosition({ x: centerX, y: centerY });
 
+    this.clients.set(socket, new WeakSet());
     this.players.set(socket.id, player);
     this.getEntityManager().addEntity(player);
 
@@ -140,6 +150,56 @@ export class ServerSocketManager implements Broadcaster {
       console.log(`Broadcasting event: ${event.getType()}`);
     }
     this.io.emit(event.getType(), event.serialize());
+  }
+
+  public broadcastGameState(deltaTime: number) {
+    this.accumulatedTime += deltaTime;
+
+    while (this.accumulatedTime >= TICK_RATE_MS) {
+      this.accumulatedTime = this.accumulatedTime % TICK_RATE_MS;
+
+      for (const [socket, cache] of this.clients.entries()) {
+        const player = this.players.get(socket.id);
+
+        if (player) {
+          const entites = this.getEntityManager().getNearbyEntities(player.getPosition(), 100);
+          const rawEntities: RawEntity[] = [];
+
+          for (const entity of entites) {
+            if ("isServerOnly" in entity) continue;
+            const rawEntity: RawEntity = entity.serialize();
+            const rawExtensions: ExtensionSerialized[] = [];
+
+            for (const extension of entity.getExtensions()) {
+              const data = extension.serialize();
+
+              if (!cache.has(data)) {
+                rawExtensions.push(data);
+              }
+
+              cache.add(data);
+            }
+
+            if (rawExtensions.length > 0) {
+              rawEntity.extensions = rawExtensions;
+            }
+
+            rawEntities.push(rawEntity);
+          }
+
+          if (rawEntities.length > 0) {
+            const gameStateEvent = new GameStateEvent({
+              entities: rawEntities,
+              dayNumber: this.gameServer.dayNumber,
+              untilNextCycle: this.gameServer.untilNextCycle,
+              isDay: this.gameServer.isDay,
+            });
+
+            socket.emit(gameStateEvent.getType(), gameStateEvent.serialize());
+          }
+        }
+      }
+    }
   }
 }
 

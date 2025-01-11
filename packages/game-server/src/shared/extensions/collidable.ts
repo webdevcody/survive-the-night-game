@@ -6,6 +6,7 @@ import { Entity } from "../entity";
 export default class Collidable implements Extension {
   public static readonly type = "collidable";
 
+  private serialized?: ExtensionSerialized;
   private self: Entity;
   private size: number;
   private offset: number;
@@ -20,6 +21,7 @@ export default class Collidable implements Extension {
 
   public setEnabled(enabled: boolean) {
     this.enabled = enabled;
+    this.serialized = undefined;
     return this;
   }
 
@@ -29,6 +31,7 @@ export default class Collidable implements Extension {
 
   public setSize(newSize: number) {
     this.size = newSize;
+    this.serialized = undefined;
     return this;
   }
 
@@ -38,6 +41,7 @@ export default class Collidable implements Extension {
 
   public setOffset(newOffset: number) {
     this.offset = newOffset;
+    this.serialized = undefined;
     return this;
   }
 
@@ -63,10 +67,14 @@ export default class Collidable implements Extension {
   }
 
   public serialize(): ExtensionSerialized {
-    return {
-      type: Collidable.type,
-      offset: this.offset,
-      size: this.size,
-    };
+    if (!this.serialized) {
+      this.serialized = {
+        type: Collidable.type,
+        offset: this.offset,
+        size: this.size,
+      };
+    }
+
+    return this.serialized;
   }
 }

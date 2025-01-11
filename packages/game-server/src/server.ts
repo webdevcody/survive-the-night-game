@@ -1,29 +1,30 @@
 import { EntityManager } from "./managers/entity-manager";
 import { MapManager } from "./managers/map-manager";
 import { ServerSocketManager } from "./managers/server-socket-manager";
-import { GameStateEvent } from "./shared/events/server-sent";
 import { GameOverEvent } from "./shared/events/server-sent/game-over-event";
 
 export const FPS = 30;
 
-export const DAY_DURATION = 1;
-export const NIGHT_DURATION = 100;
+export const DAY_DURATION = 5 * 60 * 1000; // 5 min
+export const NIGHT_DURATION = 15 * 60 * 1000; // 15 min
 
-const PERFORMANCE_LOG_INTERVAL = 5000; // Log every 5 seconds
+const PERFORMANCE_LOG_INTERVAL = 5 * 1000; // Log every 5 seconds
 const TICK_RATE_MS = 1000 / FPS; // ~33.33ms for 30 FPS
 
 export class GameServer {
-  private lastUpdateTime: number = Date.now();
+  private lastUpdateTime: number = 0;
   private entityManager: EntityManager;
   private mapManager: MapManager;
   private socketManager: ServerSocketManager;
   private timer: ReturnType<typeof setInterval> | null = null;
-  private dayNumber: number = 1;
-  private untilNextCycle: number = 0;
-  private isDay: boolean = true;
   private updateTimes: number[] = [];
-  private lastPerformanceLog: number = Date.now();
+  private lastPerformanceLog: number = 0;
   private isGameOver: boolean = false;
+
+  // game state
+  public dayNumber: number = 1;
+  public untilNextCycle: number = 0;
+  public isDay: boolean = true;
 
   constructor(port: number = 3001) {
     this.socketManager = new ServerSocketManager(port, this);
@@ -56,7 +57,7 @@ export class GameServer {
   private startGameLoop(): void {
     this.timer = setInterval(() => {
       this.update();
-    }, 1000 / FPS);
+    }, TICK_RATE_MS);
   }
 
   private onDayStart(): void {
@@ -75,8 +76,9 @@ export class GameServer {
   private update(): void {
     // setup
     const updateStartTime = performance.now();
-    const currentTime = Date.now();
-    const deltaTime = (currentTime - this.lastUpdateTime) / 1000;
+    const deltaTime = updateStartTime - this.lastUpdateTime;
+
+    this.lastUpdateTime = updateStartTime;
 
     // logic
     if (this.isGameOver) {
@@ -84,15 +86,15 @@ export class GameServer {
     }
 
     this.updateEntities(deltaTime);
-
     this.handleDayNightCycle(deltaTime);
     this.handleIfGameOver();
 
+    // broadcast clients
+    this.socketManager.broadcastGameState(deltaTime);
+
     // cleanup
     this.entityManager.pruneEntities();
-    this.broadcastGameState();
-    this.trackPerformance(updateStartTime, currentTime);
-    this.lastUpdateTime = currentTime;
+    this.trackPerformance(updateStartTime);
   }
 
   private handleDayNightCycle(deltaTime: number) {
@@ -123,7 +125,7 @@ export class GameServer {
     this.socketManager.broadcastEvent(new GameOverEvent());
   }
 
-  private trackPerformance(updateStartTime: number, currentTime: number) {
+  private trackPerformance(updateStartTime: number) {
     const updateDuration = performance.now() - updateStartTime;
     this.updateTimes.push(updateDuration);
 
@@ -137,7 +139,7 @@ export class GameServer {
     }
 
     // Log performance stats every PERFORMANCE_LOG_INTERVAL ms
-    if (currentTime - this.lastPerformanceLog > PERFORMANCE_LOG_INTERVAL) {
+    if (updateStartTime - this.lastPerformanceLog > PERFORMANCE_LOG_INTERVAL) {
       const avgUpdateTime = this.updateTimes.reduce((a, b) => a + b, 0) / this.updateTimes.length;
       const maxUpdateTime = Math.max(...this.updateTimes);
       const slowUpdates = this.updateTimes.filter((time) => time > TICK_RATE_MS).length;
@@ -153,27 +155,12 @@ export class GameServer {
 
       // Reset tracking
       this.updateTimes = [];
-      this.lastPerformanceLog = currentTime;
+      this.lastPerformanceLog = updateStartTime;
     }
   }
 
   private updateEntities(deltaTime: number): void {
     this.entityManager.update(deltaTime);
-  }
-
-  // TODO: This is a bit of a hack to get the game state to the client.
-  // We should probably have a more elegant way to do this.
-  private broadcastGameState(): void {
-    const rawEntities = [...this.entityManager.getEntities()]
-      .filter((entity) => !("isServerOnly" in entity))
-      .map((entity) => entity.serialize());
-    const gameStateEvent = new GameStateEvent({
-      entities: rawEntities,
-      dayNumber: this.dayNumber,
-      untilNextCycle: this.untilNextCycle,
-      isDay: this.isDay,
-    });
-    this.socketManager.broadcastEvent(gameStateEvent);
   }
 }
 

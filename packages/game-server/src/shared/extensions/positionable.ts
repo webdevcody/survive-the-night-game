@@ -6,6 +6,7 @@ import { ExtensionTypes } from "../extension-types";
 export default class Positionable implements Extension {
   public static readonly type = ExtensionTypes.POSITIONABLE;
 
+  private serialized?: ExtensionSerialized;
   private self: Entity;
   private x = 0;
   private y = 0;
@@ -21,6 +22,7 @@ export default class Positionable implements Extension {
 
   public setSize(size: number): this {
     this.size = size;
+    this.serialized = undefined;
     return this;
   }
 
@@ -38,21 +40,27 @@ export default class Positionable implements Extension {
   public setPosition(position: Vector2): void {
     this.x = position.x;
     this.y = position.y;
+    this.serialized = undefined;
   }
 
   public deserialize(data: ExtensionSerialized): this {
     this.x = data.x;
     this.y = data.y;
     this.size = data.size;
+
     return this;
   }
 
-  public serialize(): ExtensionSerialized {
-    return {
-      type: Positionable.type,
-      x: this.x,
-      y: this.y,
-      size: this.size,
-    };
+  public serialize() {
+    if (!this.serialized) {
+      this.serialized = {
+        type: Positionable.type,
+        x: this.x,
+        y: this.y,
+        size: this.size,
+      };
+    }
+
+    return this.serialized;
   }
 }

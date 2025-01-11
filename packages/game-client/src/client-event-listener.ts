@@ -52,7 +52,7 @@ export class ClientEventListener {
   }
 
   onGameStateUpdate(gameStateEvent: GameStateEvent) {
-    this.gameClient.setUpdatedEntitiesBuffer(gameStateEvent.getGameState().entities);
+    this.gameClient.addUpdatedEntitiesBuffer(gameStateEvent.getGameState().entities);
     this.gameState.dayNumber = gameStateEvent.getGameState().dayNumber;
     this.gameState.untilNextCycle = gameStateEvent.getGameState().untilNextCycle;
     this.gameState.isDay = gameStateEvent.getGameState().isDay;

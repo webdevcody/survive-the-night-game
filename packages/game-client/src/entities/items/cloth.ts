@@ -1,4 +1,4 @@
-import { Positionable } from "@survive-the-night/game-server";
+import { ClientPositionable } from "../../extensions";
 import { RawEntity } from "@survive-the-night/game-shared";
 import { AssetManager } from "@/managers/asset";
 import { GameState } from "../../state";
@@ -20,7 +20,7 @@ export class ClothClient extends ClientEntityBase implements Renderable {
     // super.render(ctx, gameState);
 
     const image = this.assetManager.get("cloth");
-    const position = this.getExt(Positionable).getPosition();
+    const position = this.getExt(ClientPositionable).getPosition();
     ctx.drawImage(image, position.x, position.y);
   }
 }

@@ -6,6 +6,7 @@ type UpdateFunction = (deltaTime: number) => void;
 export default class Updatable implements Extension {
   public static readonly type = "updatable";
 
+  private serialized?: ExtensionSerialized;
   private self: Entity;
   private updateFunction: UpdateFunction;
 
@@ -31,8 +32,11 @@ export default class Updatable implements Extension {
   }
 
   public serialize(): ExtensionSerialized {
-    return {
-      type: Updatable.type,
-    };
+    if (!this.serialized) {
+      this.serialized = {
+        type: Updatable.type,
+      };
+    }
+    return this.serialized;
   }
 }
