@@ -11,7 +11,6 @@ export function renderInteractionText(
     ctx.fillStyle = "white";
     ctx.font = "6px Arial";
     const textWidth = ctx.measureText(text).width;
-    console.log("CALLED");
     ctx.fillText(text, centerPosition.x - textWidth / 2, position.y - 3);
   }
 }
