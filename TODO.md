@@ -8,6 +8,7 @@ Feel free to pick any item listed out here to work on.
 
 ### Refactoring
 
+- [ ] add client sent package side validation
 - [ ] setup a vitest.config.ts file in the test directory so that absolute imports don't break everything
 - [ ] refactor the use the new style sheets I created using aseprite
 - [ ] for renderInteractionText, can we bake this into the extension or ClientEntity so that it'll automatically display the render text if the player is close enough?

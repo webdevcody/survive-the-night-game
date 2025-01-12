@@ -46,7 +46,7 @@ export class Player extends Entity {
   private consumeCooldown = new Cooldown(Player.CONSUME_COOLDOWN, true);
   private input: Input = {
     facing: Direction.Right,
-    inventoryItem: 1,
+    inventoryItem: 0,
     dx: 0,
     dy: 0,
     interact: false,
@@ -398,6 +398,10 @@ export class Player extends Entity {
 
   selectInventoryItem(index: number) {
     this.input.inventoryItem = index;
+  }
+
+  setAsFiring(firing: boolean) {
+    this.input.fire = firing;
   }
 
   setUseItem(use: boolean) {

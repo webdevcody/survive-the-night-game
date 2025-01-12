@@ -49,6 +49,7 @@ export default class Inventory implements Extension {
 
   public getActiveItem(index: number | null): InventoryItem | null {
     if (index === null) return null;
+    // TODO: refactor this to be 0 based, why are we subtracting 1?
     return this.items[index - 1] ?? null;
   }
 
