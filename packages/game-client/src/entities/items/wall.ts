@@ -20,7 +20,7 @@ export class WallClient extends ClientEntity implements Renderable {
 
     const positionable = this.getExt(Positionable);
     const position = positionable.getPosition();
-    const image = this.assetManager.get("wall");
+    const image = this.imageLoader.get("wall");
     ctx.drawImage(image, position.x, position.y);
   }
 }

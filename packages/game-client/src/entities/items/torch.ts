@@ -20,7 +20,7 @@ export class TorchClient extends ClientEntity implements Renderable {
 
     const positionable = this.getExt(Positionable);
     const position = positionable.getPosition();
-    const image = this.assetManager.get("torch");
+    const image = this.imageLoader.get("torch");
     ctx.drawImage(image, position.x, position.y);
   }
 }

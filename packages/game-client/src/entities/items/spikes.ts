@@ -24,7 +24,7 @@ export class SpikesClient extends ClientEntity implements Renderable {
     super.render(ctx, gameState);
     const positionable = this.getExt(Positionable);
     const position = positionable.getPosition();
-    const image = this.assetManager.get("spikes");
+    const image = this.imageLoader.get("spikes");
     ctx.drawImage(image, position.x, position.y);
   }
 }

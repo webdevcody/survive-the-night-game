@@ -361,7 +361,6 @@ export class Player extends Entity {
       if (item) {
         let entity: Entity;
 
-        console.log(item.key);
         // this feels hacky, I shouldn't need a switch statement here
         switch (item.key) {
           case "bandage":

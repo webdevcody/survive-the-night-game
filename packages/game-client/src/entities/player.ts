@@ -9,7 +9,7 @@ import {
   Input,
 } from "@survive-the-night/game-server";
 import { RawEntity } from "@survive-the-night/game-shared";
-import { AssetManager, getItemAssetKey } from "../managers/asset";
+import { getItemAssetKey, ImageLoader } from "../managers/asset";
 import { drawHealthBar, getFrameIndex, IClientEntity, Renderable } from "./util";
 import { GameState } from "@/state";
 import { getHitboxWithPadding } from "@survive-the-night/game-server/src/shared/entities/util";
@@ -49,8 +49,8 @@ export class PlayerClient extends ClientEntityBase implements IClientEntity, Ren
     return Z_INDEX.PLAYERS;
   }
 
-  constructor(data: RawEntity, assetManager: AssetManager) {
-    super(data, assetManager);
+  constructor(data: RawEntity, imageLoader: ImageLoader) {
+    super(data, imageLoader);
     this.inventory = data.inventory;
     this.isCrafting = data.isCrafting;
     this.activeItem = data.activeItem;
@@ -112,21 +112,20 @@ export class PlayerClient extends ClientEntityBase implements IClientEntity, Ren
 
     const targetPosition = this.getPosition();
     const { facing } = this.input;
-    // const image = this.assetManager.getWithDirection("Player", this.isDead() ? "down" : facing);
     const isMoving = this.getVelocity().x !== 0 || this.getVelocity().y !== 0;
 
     let image: HTMLImageElement;
 
     if (this.isDead()) {
-      image = this.assetManager.getWithDirection("player", Direction.Down);
+      image = this.imageLoader.getWithDirection("player", Direction.Down);
     } else if (!isMoving) {
-      image = this.assetManager.getWithDirection("player", facing);
+      image = this.imageLoader.getWithDirection("player", facing);
     } else {
       const frameIndex = getFrameIndex(gameState.startedAt, {
         duration: 500,
         frames: 3,
       });
-      image = this.assetManager.getFrameWithDirection("player", facing, frameIndex);
+      image = this.imageLoader.getFrameWithDirection("player", facing, frameIndex);
     }
     const dx = targetPosition.x - this.lastRenderPosition.x;
     const dy = targetPosition.y - this.lastRenderPosition.y;
@@ -158,7 +157,7 @@ export class PlayerClient extends ClientEntityBase implements IClientEntity, Ren
           duration: 500,
           frames: 5,
         });
-        const fireImg = this.assetManager.getFrameIndex("flame", frameIndex);
+        const fireImg = this.imageLoader.getFrameIndex("flame", frameIndex);
         ctx.drawImage(fireImg, renderPosition.x, renderPosition.y);
       }
 
@@ -243,7 +242,7 @@ export class PlayerClient extends ClientEntityBase implements IClientEntity, Ren
       return;
     }
     const { facing } = this.input;
-    const image = this.assetManager.getWithDirection(getItemAssetKey(this.activeItem), facing);
+    const image = this.imageLoader.getWithDirection(getItemAssetKey(this.activeItem), facing);
     ctx.drawImage(image, renderPosition.x + 2, renderPosition.y);
   }
 

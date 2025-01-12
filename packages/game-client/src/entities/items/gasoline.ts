@@ -19,7 +19,7 @@ export class GasolineClient extends ClientEntity implements Renderable {
     super.render(ctx, gameState);
     const positionable = this.getExt(Positionable);
     const position = positionable.getPosition();
-    const image = this.assetManager.get("gasoline");
+    const image = this.imageLoader.get("gasoline");
     ctx.drawImage(image, position.x, position.y);
   }
 }

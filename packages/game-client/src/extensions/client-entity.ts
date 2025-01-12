@@ -1,16 +1,16 @@
-import { AssetManager } from "@/managers/asset";
+import { ImageLoader } from "@/managers/asset";
 import { ClientExtension, ClientExtensionCtor } from "./types";
 import { clientExtensionsMap } from "./index";
 import { RawEntity } from "@survive-the-night/game-shared";
 
 export abstract class ClientEntityBase {
   private id: string;
-  protected assetManager: AssetManager;
+  protected imageLoader: ImageLoader;
   private extensions: ClientExtension[] = [];
 
-  public constructor(data: RawEntity, assetManager: AssetManager) {
+  public constructor(data: RawEntity, imageLoader: ImageLoader) {
     this.id = data.id;
-    this.assetManager = assetManager;
+    this.imageLoader = imageLoader;
     this.deserialize(data);
   }
 
@@ -18,8 +18,8 @@ export abstract class ClientEntityBase {
     return this.id;
   }
 
-  public getAssetManager(): AssetManager {
-    return this.assetManager;
+  public getImageLoader(): ImageLoader {
+    return this.imageLoader;
   }
 
   public hasExt<T extends ClientExtension>(ctor: ClientExtensionCtor<T>): boolean {
@@ -81,6 +81,7 @@ export abstract class ClientEntityBase {
       try {
         // Reuse existing extension if available
         let ext = existingExtensions.get(extData.type);
+
         if (!ext) {
           ext = new ClientExtCtor();
         }

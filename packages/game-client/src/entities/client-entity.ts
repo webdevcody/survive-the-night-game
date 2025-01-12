@@ -5,11 +5,11 @@ import { Renderable } from "./util";
 import { getPlayer } from "../util/get-player";
 import { renderInteractionText } from "../util/interaction-text";
 import { ClientEntityBase } from "../extensions/client-entity";
-import { AssetManager } from "../managers/asset";
+import { ImageLoader } from "../managers/asset";
 
 export abstract class ClientEntity extends ClientEntityBase implements Renderable {
-  constructor(data: RawEntity, assetManager: AssetManager) {
-    super(data, assetManager);
+  constructor(data: RawEntity, imageLoader: ImageLoader) {
+    super(data, imageLoader);
   }
 
   abstract getZIndex(): number;

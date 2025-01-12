@@ -19,7 +19,7 @@ export class BandageClient extends ClientEntity implements Renderable {
     super.render(ctx, gameState);
     const positionable = this.getExt(Positionable);
     const position = positionable.getPosition();
-    const image = this.assetManager.get("bandage");
+    const image = this.imageLoader.get("bandage");
     ctx.drawImage(image, position.x, position.y);
   }
 }

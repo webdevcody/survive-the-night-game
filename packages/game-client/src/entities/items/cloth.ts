@@ -18,7 +18,7 @@ export class ClothClient extends ClientEntity implements Renderable {
   public render(ctx: CanvasRenderingContext2D, gameState: GameState): void {
     super.render(ctx, gameState);
 
-    const image = this.assetManager.get("cloth");
+    const image = this.imageLoader.get("cloth");
     const position = this.getExt(Positionable).getPosition();
     ctx.drawImage(image, position.x, position.y);
   }
