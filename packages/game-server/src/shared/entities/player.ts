@@ -11,7 +11,7 @@ import { Input } from "../input";
 import { PlayerHurtEvent } from "../events/server-sent/player-hurt-event";
 import { PlayerAttackedEvent } from "../events/server-sent/player-attacked-event";
 import { PlayerDroppedItemEvent } from "../events/server-sent/player-dropped-item-event";
-import { ServerSocketManager } from "../../managers/server-socket-manager";
+import { Broadcaster, ServerSocketManager } from "../../managers/server-socket-manager";
 import { DEBUG_WEAPONS } from "../../config/debug";
 import { Bandage } from "./items/bandage";
 import Groupable from "../extensions/groupable";
@@ -53,14 +53,14 @@ export class Player extends Entity {
     consume: false,
   };
   private isCrafting = false;
-  private socketManager: ServerSocketManager;
+  private broadcaster: Broadcaster;
 
-  constructor(entityManager: EntityManager, socketManager: ServerSocketManager) {
+  constructor(entityManager: EntityManager, broadcaster: Broadcaster) {
     super(entityManager, Entities.PLAYER);
-    this.socketManager = socketManager;
+    this.broadcaster = broadcaster;
 
     this.extensions = [
-      new Inventory(this as any, socketManager),
+      new Inventory(this, broadcaster),
       new Collidable(this).setSize(Player.PLAYER_WIDTH),
       new Positionable(this).setSize(Player.PLAYER_WIDTH),
       new Destructible(this)
@@ -121,13 +121,13 @@ export class Player extends Entity {
     }
 
     this.getExt(Destructible).damage(damage);
-    this.socketManager.broadcastEvent(new PlayerHurtEvent(this.getId()));
+    this.broadcaster.broadcastEvent(new PlayerHurtEvent(this.getId()));
   }
 
   onDeath(): void {
     this.setIsCrafting(false);
     this.getExt(Inventory).scatterItems(this.getPosition());
-    this.socketManager.broadcastEvent(new PlayerDeathEvent(this.getId()));
+    this.broadcaster.broadcastEvent(new PlayerDeathEvent(this.getId()));
   }
 
   isInventoryFull(): boolean {
@@ -218,7 +218,7 @@ export class Player extends Entity {
         bullet.setDirection(this.input.facing);
         this.getEntityManager().addEntity(bullet);
 
-        this.socketManager.broadcastEvent(
+        this.broadcaster.broadcastEvent(
           new PlayerAttackedEvent({
             playerId: this.getId(),
             weaponKey: activeWeapon.key,
@@ -236,7 +236,7 @@ export class Player extends Entity {
           bullet.setDirectionWithOffset(this.input.facing, i * spreadAngle);
           this.getEntityManager().addEntity(bullet);
 
-          this.socketManager.broadcastEvent(
+          this.broadcaster.broadcastEvent(
             new PlayerAttackedEvent({
               playerId: this.getId(),
               weaponKey: activeWeapon.key,
@@ -336,7 +336,7 @@ export class Player extends Entity {
 
         this.getEntityManager().addEntity(entity);
 
-        this.socketManager.broadcastEvent(
+        this.broadcaster.broadcastEvent(
           new PlayerDroppedItemEvent({
             playerId: this.getId(),
             itemKey: item.key,

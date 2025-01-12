@@ -1,16 +1,16 @@
-import { Entity } from "@survive-the-night/game-server";
+import { ClientEntityBase } from "./extensions/client-entity";
 
 export type GameState = {
   startedAt: number;
   playerId: string;
-  entities: Entity[];
+  entities: ClientEntityBase[];
   dayNumber: number;
   untilNextCycle: number;
   isDay: boolean;
   crafting: boolean;
 };
 
-export function getEntityById(gameState: GameState, id: string): Entity | undefined {
+export function getEntityById(gameState: GameState, id: string): ClientEntityBase | undefined {
   return gameState.entities.find((entity) => {
     return entity.getId() === id;
   });

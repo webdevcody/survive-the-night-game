@@ -2,8 +2,6 @@ import { describe, it, expect, beforeEach } from "vitest";
 import { EntityManager } from "../../src/managers/entity-manager";
 import { MapManager } from "../../src/managers/map-manager";
 import { MockSocketManager } from "../mocks/mock-socket-manager";
-import { Zombie } from "../../src/shared/entities/zombie";
-import { Destructible, Ignitable } from "../../src/shared/extensions";
 import { ServerSocketManager } from "../../src/managers/server-socket-manager";
 import { Player } from "../../src/shared/entities/player";
 import { Entities } from "@survive-the-night/game-shared";
