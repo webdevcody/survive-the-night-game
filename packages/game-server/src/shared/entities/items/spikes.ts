@@ -1,9 +1,12 @@
 import { Entities } from "@survive-the-night/game-shared";
 import { EntityManager } from "../../../managers/entity-manager";
 import { Entity } from "../../entity";
-import { Interactive, Positionable, TriggerCooldownAttacker, Carryable } from "../../extensions";
 import Triggerable from "../../extensions/trigger";
 import { Player } from "../player";
+import Carryable from "../../extensions/carryable";
+import Interactive from "../../extensions/interactive";
+import Positionable from "../../extensions/positionable";
+import TriggerCooldownAttacker from "../../extensions/trigger-cooldown-attacker";
 
 /**
  * A spike trap which only hurts zombies who step on it. Can be picked up and placed again.

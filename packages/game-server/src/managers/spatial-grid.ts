@@ -1,4 +1,4 @@
-import { Positionable } from "@/shared/extensions";
+import Positionable from "../shared/extensions/positionable";
 import { Entity } from "../shared/entity";
 import { Vector2 } from "../shared/physics";
 import { EntityType } from "@survive-the-night/game-shared";

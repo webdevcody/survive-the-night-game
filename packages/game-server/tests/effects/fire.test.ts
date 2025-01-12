@@ -3,8 +3,9 @@ import { EntityManager } from "../../src/managers/entity-manager";
 import { MapManager } from "../../src/managers/map-manager";
 import { MockSocketManager } from "../mocks/mock-socket-manager";
 import { Zombie } from "../../src/shared/entities/zombie";
-import { Destructible, Ignitable } from "../../src/shared/extensions";
 import { ServerSocketManager } from "../../src/managers/server-socket-manager";
+import Destructible from "../../src/shared/extensions/destructible";
+import Ignitable from "../../src/shared/extensions/ignitable";
 
 describe("Fire Effects", () => {
   let entityManager: EntityManager;

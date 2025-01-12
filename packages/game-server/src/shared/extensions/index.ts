@@ -35,23 +35,4 @@ export const extensionsMap = {
   [Groupable.type]: Groupable,
 } as const;
 
-export {
-  Collidable,
-  Consumable,
-  Destructible,
-  Interactive,
-  Positionable,
-  Triggerable,
-  Updatable,
-  TriggerCooldownAttacker,
-  Expirable,
-  Inventory,
-  Ignitable,
-  Combustible,
-  Movable,
-  Illuminated,
-  Carryable,
-  Groupable,
-};
-
 export * from "./types";

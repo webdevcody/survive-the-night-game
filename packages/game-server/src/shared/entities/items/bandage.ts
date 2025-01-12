@@ -1,8 +1,11 @@
 import { Entities } from "@survive-the-night/game-shared";
 import { EntityManager } from "../../../managers/entity-manager";
 import { Entity } from "../../entity";
-import { Consumable, Interactive, Positionable, Carryable } from "../../extensions";
 import { Player } from "../player";
+import Interactive from "../../extensions/interactive";
+import Positionable from "../../extensions/positionable";
+import Carryable from "../../extensions/carryable";
+import Consumable from "../../extensions/consumable";
 
 export class Bandage extends Entity {
   public static readonly Size = 16;

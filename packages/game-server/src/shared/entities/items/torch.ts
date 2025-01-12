@@ -1,8 +1,11 @@
 import { Entities } from "@survive-the-night/game-shared";
 import { EntityManager } from "../../../managers/entity-manager";
 import { Entity } from "../../entity";
-import { Illuminated, Interactive, Positionable, Carryable } from "../../extensions";
 import { Player } from "../player";
+import Carryable from "../../extensions/carryable";
+import Illuminated from "../../extensions/illuminated";
+import Interactive from "../../extensions/interactive";
+import Positionable from "../../extensions/positionable";
 
 export class Torch extends Entity {
   public static readonly Size = 16;

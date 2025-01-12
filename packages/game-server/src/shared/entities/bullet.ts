@@ -1,8 +1,12 @@
 import { EntityManager } from "../../managers/entity-manager";
 import { Direction, normalizeDirection } from "../direction";
 import { Entity } from "../entity";
-import { Destructible, Positionable, Movable, Updatable, Collidable } from "../extensions";
+import Collidable from "../extensions/collidable";
+import Destructible from "../extensions/destructible";
 import Groupable from "../extensions/groupable";
+import Movable from "../extensions/movable";
+import Positionable from "../extensions/positionable";
+import Updatable from "../extensions/updatable";
 import { Vector2, distance, normalizeVector } from "../physics";
 import { Hitbox } from "../traits";
 import { Entities, RawEntity } from "@survive-the-night/game-shared";

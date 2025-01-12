@@ -3,9 +3,9 @@ import { EntityManager } from "./entity-manager";
 import { Weapon, WEAPON_TYPES } from "../shared/entities/weapon";
 import { Boundary } from "../shared/entities/boundary";
 import { Zombie } from "../shared/entities/zombie";
-import { Positionable } from "../shared/extensions";
 import { Broadcaster } from "./server-socket-manager";
 import { DEBUG_START_ZOMBIE } from "../config/debug";
+import Positionable from "../shared/extensions/positionable";
 
 export const Z_INDEX = {
   GROUND: 0,

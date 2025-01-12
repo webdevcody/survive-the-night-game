@@ -3,9 +3,10 @@ import { MockSocketManager } from "../mocks/mock-socket-manager";
 import { MapManager } from "../../src/managers/map-manager";
 import { EntityManager } from "../../src/managers/entity-manager";
 import { Player } from "../../src/shared/entities/player";
-import { Destructible, Updatable } from "../../src/shared/extensions";
 import { ServerSocketManager } from "../../src/managers/server-socket-manager";
 import { TILE_SIZE } from "../../src/config/constants";
+import Destructible from "../../src/shared/extensions/destructible";
+import Updatable from "../../src/shared/extensions/updatable";
 
 describe("Bandage", () => {
   let socketManager: ServerSocketManager;

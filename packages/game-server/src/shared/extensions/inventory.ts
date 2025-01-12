@@ -4,7 +4,7 @@ import { InventoryItem, ITEM_TYPES, ItemType } from "../inventory";
 import { recipes, RecipeType } from "../recipes";
 import { Broadcaster } from "../../managers/server-socket-manager";
 import { PlayerPickedUpItemEvent } from "../events/server-sent/pickup-item-event";
-import { Positionable } from "./index";
+import Positionable from "./positionable";
 
 export default class Inventory implements Extension {
   public static readonly type = "inventory";

@@ -1,9 +1,9 @@
 import { Extension, ExtensionSerialized } from "./types";
-import { Positionable } from "./index";
 import { Vector2 } from "../physics";
 import { Entity } from "../entity";
 import { EntityType } from "@survive-the-night/game-shared";
 import { Entities } from "@survive-the-night/game-shared";
+import Positionable from "./positionable";
 
 type EntityFactory = (type: EntityType) => Entity;
 

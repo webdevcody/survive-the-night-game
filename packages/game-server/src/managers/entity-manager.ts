@@ -2,7 +2,6 @@ import { distance, isColliding, Vector2 } from "../shared/physics";
 import { Hitbox } from "../shared/traits";
 import { Player } from "../shared/entities/player";
 import { SpatialGrid } from "./spatial-grid";
-import { Collidable, Destructible, Positionable } from "../shared/extensions";
 import { InventoryItem, ItemType } from "../shared/inventory";
 import { Broadcaster } from "./server-socket-manager";
 import { Gasoline } from "../shared/entities/items/gasoline";
@@ -15,6 +14,9 @@ import { Spikes } from "../shared/entities/items/spikes";
 import { Weapon } from "../shared/entities/weapon";
 import { Entity } from "../shared/entity";
 import { EntityType, Entities } from "@survive-the-night/game-shared";
+import Collidable from "../shared/extensions/collidable";
+import Destructible from "../shared/extensions/destructible";
+import Positionable from "../shared/extensions/positionable";
 
 type EntityConstructor = new (entityManager: EntityManager, ...args: any[]) => Entity;
 type EntityFactory = (entityManager: EntityManager) => Entity;

@@ -8,17 +8,6 @@ import { RecipeType } from "../recipes";
 import { PlayerDeathEvent } from "../../index";
 import { Cooldown } from "./util/cooldown";
 import { Input } from "../input";
-import {
-  Consumable,
-  Positionable,
-  Inventory,
-  Collidable,
-  Destructible,
-  Interactive,
-  Updatable,
-  Movable,
-  Illuminated,
-} from "../extensions";
 import { PlayerHurtEvent } from "../events/server-sent/player-hurt-event";
 import { PlayerAttackedEvent } from "../events/server-sent/player-attacked-event";
 import { PlayerDroppedItemEvent } from "../events/server-sent/player-dropped-item-event";
@@ -28,6 +17,15 @@ import { Bandage } from "./items/bandage";
 import Groupable from "../extensions/groupable";
 import { Entity } from "../entity";
 import { Entities, RawEntity } from "@survive-the-night/game-shared";
+import Collidable from "../extensions/collidable";
+import Consumable from "../extensions/consumable";
+import Destructible from "../extensions/destructible";
+import Illuminated from "../extensions/illuminated";
+import Interactive from "../extensions/interactive";
+import Inventory from "../extensions/inventory";
+import Movable from "../extensions/movable";
+import Positionable from "../extensions/positionable";
+import Updatable from "../extensions/updatable";
 
 export class Player extends Entity {
   public static readonly MAX_HEALTH = 3;

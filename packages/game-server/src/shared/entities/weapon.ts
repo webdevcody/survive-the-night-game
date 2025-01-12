@@ -2,8 +2,10 @@ import { Entities } from "@survive-the-night/game-shared";
 import { RawEntity } from "@survive-the-night/game-shared";
 import { EntityManager } from "../../managers/entity-manager";
 import { Entity } from "../entity";
-import { Interactive, Positionable, Carryable } from "../extensions";
 import { Player } from "./player";
+import Carryable from "../extensions/carryable";
+import Interactive from "../extensions/interactive";
+import Positionable from "../extensions/positionable";
 
 export const WEAPON_TYPES = {
   KNIFE: "knife",

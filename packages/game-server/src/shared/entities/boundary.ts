@@ -1,10 +1,11 @@
 import { EntityManager } from "../../managers/entity-manager";
 import { ServerOnly } from "../traits";
 import { Vector2 } from "../physics";
-import { Collidable, Positionable } from "../extensions";
 import { Entity } from "../entity";
 import { Entities } from "@survive-the-night/game-shared";
 import { RawEntity } from "@survive-the-night/game-shared";
+import Positionable from "../extensions/positionable";
+import Collidable from "../extensions/collidable";
 
 export class Boundary extends Entity implements ServerOnly {
   constructor(entityManager: EntityManager) {
