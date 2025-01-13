@@ -62,7 +62,7 @@ export class Player extends Entity {
 
     this.extensions = [
       new Inventory(this, broadcaster),
-      new Collidable(this).setSize(Player.PLAYER_WIDTH),
+      new Collidable(this).setSize(Player.PLAYER_WIDTH - 4).setOffset(2),
       new Positionable(this).setSize(Player.PLAYER_WIDTH),
       new Destructible(this)
         .setHealth(Player.MAX_HEALTH)

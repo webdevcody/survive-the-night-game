@@ -153,7 +153,7 @@ export class Zombie extends Entity {
     if (this.isAtWaypoint()) {
       this.currentWaypoint = pathTowards(
         this.getCenterPosition(),
-        player.getExt(Positionable).getPosition(),
+        player.getExt(Positionable).getCenterPosition(),
         this.mapManager.getMap()
       );
     }
