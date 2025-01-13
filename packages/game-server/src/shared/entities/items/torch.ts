@@ -1,7 +1,6 @@
-import { Entities } from "@survive-the-night/game-shared";
-import { EntityManager } from "../../../managers/entity-manager";
+import { Entities } from "@survive-the-night/game-shared/src/constants";
+import { IEntityManager } from "../../../managers/types";
 import { Entity } from "../../entity";
-import { Player } from "../player";
 import Carryable from "../../extensions/carryable";
 import Illuminated from "../../extensions/illuminated";
 import Interactive from "../../extensions/interactive";
@@ -10,7 +9,7 @@ import Positionable from "../../extensions/positionable";
 export class Torch extends Entity {
   public static readonly Size = 16;
 
-  constructor(entityManager: EntityManager) {
+  constructor(entityManager: IEntityManager) {
     super(entityManager, Entities.TORCH);
 
     this.extensions = [
@@ -21,7 +20,7 @@ export class Torch extends Entity {
     ];
   }
 
-  private interact(player: Player): void {
-    this.getExt(Carryable).pickup(player);
+  private interact(entityId: string): void {
+    this.getExt(Carryable).pickup(entityId);
   }
 }

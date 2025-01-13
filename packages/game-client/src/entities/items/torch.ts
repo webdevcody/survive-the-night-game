@@ -3,7 +3,7 @@ import { GameState } from "../../state";
 import { Renderable } from "../util";
 import { Z_INDEX } from "@survive-the-night/game-server/src/managers/map-manager";
 import { ClientEntity } from "../../entities/client-entity";
-import { RawEntity } from "@survive-the-night/game-shared";
+import { RawEntity } from "@survive-the-night/game-shared/src/types/entity";
 import { ClientPositionable } from "../../extensions";
 
 export class TorchClient extends ClientEntity implements Renderable {

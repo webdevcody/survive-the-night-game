@@ -1,8 +1,7 @@
 import { Entity } from "../entity";
-import { Player } from "../entities/player";
 import { Extension, ExtensionSerialized } from "./types";
 
-type InteractiveHandler = (player: Player) => void;
+type InteractiveHandler = (entityId: string) => void;
 
 export default class Interactive implements Extension {
   public static readonly type = "interactive";
@@ -29,8 +28,8 @@ export default class Interactive implements Extension {
     return this.displayName;
   }
 
-  public interact(player: Player): void {
-    this.handler?.(player);
+  public interact(entityId: string): void {
+    this.handler?.(entityId);
   }
 
   public deserialize(data: ExtensionSerialized): this {

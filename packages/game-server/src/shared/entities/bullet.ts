@@ -1,4 +1,5 @@
-import { EntityManager } from "../../managers/entity-manager";
+import { Entities } from "@survive-the-night/game-shared/src/constants";
+import { IEntityManager } from "../../managers/types";
 import { Direction, normalizeDirection } from "../direction";
 import { Entity } from "../entity";
 import Collidable from "../extensions/collidable";
@@ -9,7 +10,8 @@ import Positionable from "../extensions/positionable";
 import Updatable from "../extensions/updatable";
 import { Vector2, distance, normalizeVector } from "../physics";
 import { Hitbox } from "../traits";
-import { Entities, RawEntity } from "@survive-the-night/game-shared";
+import { RawEntity } from "@survive-the-night/game-shared/src/types/entity";
+import { IEntity } from "../types";
 
 const MAX_TRAVEL_DISTANCE = 400;
 export const BULLET_SPEED = 100;
@@ -19,7 +21,7 @@ export class Bullet extends Entity {
   private traveledDistance: number = 0;
   private static readonly BULLET_SPEED = 500;
 
-  constructor(entityManager: EntityManager) {
+  constructor(entityManager: IEntityManager) {
     super(entityManager, Entities.BULLET);
 
     this.extensions = [
@@ -99,7 +101,7 @@ export class Bullet extends Entity {
 
   private handleIntersections() {
     // TODO: find a helper function for this
-    const isEnemy = (entity: Entity) =>
+    const isEnemy = (entity: IEntity) =>
       entity.hasExt(Groupable) && entity.getExt(Groupable).getGroup() === "enemy";
 
     const enemies = this.getEntityManager()

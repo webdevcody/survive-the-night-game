@@ -1,7 +1,6 @@
-import { Entities } from "@survive-the-night/game-shared";
-import { EntityManager } from "../../../managers/entity-manager";
+import { Entities } from "@survive-the-night/game-shared/src/constants";
+import { IEntityManager } from "../../../managers/types";
 import { Entity } from "../../entity";
-import { Player } from "../player";
 import Positionable from "../../extensions/positionable";
 import Interactive from "../../extensions/interactive";
 import Carryable from "../../extensions/carryable";
@@ -9,7 +8,7 @@ import Carryable from "../../extensions/carryable";
 export class Cloth extends Entity {
   public static readonly Size = 16;
 
-  constructor(entityManager: EntityManager) {
+  constructor(entityManager: IEntityManager) {
     super(entityManager, Entities.CLOTH);
 
     this.extensions = [
@@ -21,7 +20,7 @@ export class Cloth extends Entity {
     entityManager.registerItem("cloth", Cloth);
   }
 
-  private interact(player: Player): void {
-    this.getExt(Carryable).pickup(player);
+  private interact(entityId: string): void {
+    this.getExt(Carryable).pickup(entityId);
   }
 }

@@ -1,15 +1,13 @@
-import { EntityManager } from "../../managers/entity-manager";
-import { MapManager } from "../../managers/map-manager";
+import { IEntityManager, IMapManager } from "../../managers/types";
 import { Vector2, pathTowards, velocityTowards } from "../physics";
 import { Hitbox } from "../traits";
 import { Wall } from "./items/wall";
 import { ZombieDeathEvent } from "../events/server-sent/zombie-death-event";
 import { ZombieHurtEvent } from "../events/server-sent/zombie-hurt-event";
-import { Broadcaster } from "../../managers/server-socket-manager";
+import { Broadcaster } from "@/managers/types";
 import { Cooldown } from "./util/cooldown";
 import Groupable from "../extensions/groupable";
 import { Entity } from "../entity";
-import { Entities } from "@survive-the-night/game-shared";
 import Collidable from "../extensions/collidable";
 import Inventory from "../extensions/inventory";
 import Destructible from "../extensions/destructible";
@@ -17,6 +15,8 @@ import Positionable from "../extensions/positionable";
 import Movable from "../extensions/movable";
 import Updatable from "../extensions/updatable";
 import Interactive from "../extensions/interactive";
+import { Entities } from "@survive-the-night/game-shared/src/constants";
+import { IEntity } from "../types";
 
 // TODO: refactor to use extensions
 export class Zombie extends Entity {
@@ -30,11 +30,11 @@ export class Zombie extends Entity {
   public static readonly MAX_HEALTH = 3;
 
   private currentWaypoint: Vector2 | null = null;
-  private mapManager: MapManager;
+  private mapManager: IMapManager;
   private broadcaster: Broadcaster;
   private attackCooldown: Cooldown;
 
-  constructor(entityManager: EntityManager, mapManager: MapManager, broadcaster: Broadcaster) {
+  constructor(entityManager: IEntityManager, mapManager: IMapManager, broadcaster: Broadcaster) {
     super(entityManager, Entities.ZOMBIE);
 
     this.attackCooldown = new Cooldown(Zombie.ATTACK_COOLDOWN);
@@ -153,7 +153,7 @@ export class Zombie extends Entity {
     if (this.isAtWaypoint()) {
       this.currentWaypoint = pathTowards(
         this.getCenterPosition(),
-        player.getCenterPosition(),
+        player.getExt(Positionable).getPosition(),
         this.mapManager.getMap()
       );
     }
@@ -194,7 +194,7 @@ export class Zombie extends Entity {
     }
   }
 
-  private withinAttackRange(entity: Entity): boolean {
+  private withinAttackRange(entity: IEntity): boolean {
     const centerPosition = entity.hasExt(Positionable)
       ? entity.getExt(Positionable).getCenterPosition()
       : (entity as any).getCenterPosition();
@@ -207,7 +207,7 @@ export class Zombie extends Entity {
     return distance <= Zombie.ATTACK_RADIUS;
   }
 
-  private attemptAttackEntity(entity: Entity) {
+  private attemptAttackEntity(entity: IEntity) {
     if (!this.attackCooldown.isReady()) return;
 
     const withinRange = this.withinAttackRange(entity);

@@ -1,14 +1,12 @@
 import { distance } from "../physics";
 import { Entity } from "../entity";
 import { Extension, ExtensionSerialized } from "./types";
-import { Zombie } from "../entities/zombie";
 import { Rectangle } from "../geom/rectangle";
 import { Cooldown } from "../entities/util/cooldown";
-import { EntityManager } from "@/managers/entity-manager";
 import Positionable from "./positionable";
 import Triggerable from "./trigger";
 import Destructible from "./destructible";
-import { EntityType } from "@survive-the-night/game-shared";
+import { EntityType } from "@survive-the-night/game-shared/src/types/entity";
 
 /**
  * This extension will cause the entity to fire an attack when the cooldown is ready.
@@ -19,7 +17,6 @@ export default class TriggerCooldownAttacker implements Extension {
   private static readonly RADIUS = 16;
 
   private self: Entity;
-  private entityManager: EntityManager;
   private attackCooldown: Cooldown;
   private options: {
     damage: number;
@@ -32,7 +29,6 @@ export default class TriggerCooldownAttacker implements Extension {
 
   public constructor(
     self: Entity,
-    entityManager: EntityManager,
     options: {
       damage: number;
       victimType: EntityType;
@@ -40,7 +36,6 @@ export default class TriggerCooldownAttacker implements Extension {
     }
   ) {
     this.self = self;
-    this.entityManager = entityManager;
     this.attackCooldown = new Cooldown(options.cooldown, true);
     this.isReady = true;
     this.options = options;
@@ -51,11 +46,11 @@ export default class TriggerCooldownAttacker implements Extension {
 
     this.isReady = this.attackCooldown.isReady();
 
-    const entities = this.entityManager.getNearbyEntities(
-      this.self.getExt(Positionable).getPosition(),
-      100,
-      [this.options.victimType]
-    ) as Zombie[];
+    const entities = this.self
+      .getEntityManager()
+      .getNearbyEntities(this.self.getExt(Positionable).getPosition(), 100, [
+        this.options.victimType,
+      ]);
 
     const triggerBox = this.self.getExt(Triggerable).getTriggerBox();
     const triggerCenter = triggerBox.getCenter();
@@ -66,7 +61,12 @@ export default class TriggerCooldownAttacker implements Extension {
       }
 
       const destructible = entity.getExt(Destructible);
-      const entityHitbox = new Rectangle(entity.getHitbox().x, entity.getHitbox().y, 16, 16);
+      const entityHitbox = new Rectangle(
+        entity.getExt(Positionable).getPosition().x,
+        entity.getExt(Positionable).getPosition().y,
+        16,
+        16
+      );
       const entityCenter = entityHitbox.getCenter();
 
       const centerDistance = distance(triggerCenter, entityCenter);

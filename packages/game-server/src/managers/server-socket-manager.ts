@@ -10,6 +10,7 @@ import { GameEvent } from "../shared/events/types";
 import { DEBUG_EVENTS } from "../config/debug";
 import Positionable from "../shared/extensions/positionable";
 import { GameServer } from "../server";
+import { Broadcaster, IEntityManager } from "./types";
 
 /**
  * Any and all functionality related to sending server side events
@@ -20,7 +21,7 @@ export class ServerSocketManager implements Broadcaster {
   private players: Map<string, Player> = new Map();
   private port: number;
   private httpServer: any;
-  private entityManager?: EntityManager;
+  private entityManager?: IEntityManager;
   private mapManager?: MapManager;
   private gameServer: GameServer;
 
@@ -39,7 +40,7 @@ export class ServerSocketManager implements Broadcaster {
     this.io.on("connection", (socket: Socket) => this.onConnection(socket));
   }
 
-  public getEntityManager(): EntityManager {
+  public getEntityManager(): IEntityManager {
     if (!this.entityManager) {
       throw new Error("Entity manager not set");
     }
@@ -53,7 +54,7 @@ export class ServerSocketManager implements Broadcaster {
     return this.mapManager;
   }
 
-  public setEntityManager(entityManager: EntityManager): void {
+  public setEntityManager(entityManager: IEntityManager): void {
     this.entityManager = entityManager;
   }
 
@@ -141,8 +142,4 @@ export class ServerSocketManager implements Broadcaster {
     }
     this.io.emit(event.getType(), event.serialize());
   }
-}
-
-export interface Broadcaster {
-  broadcastEvent(event: GameEvent<any>): void;
 }

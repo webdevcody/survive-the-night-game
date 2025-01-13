@@ -1,13 +1,18 @@
-import { RawEntity, EntityType, Extension, ExtensionCtor } from "@survive-the-night/game-shared";
-import { EntityManager } from "../managers/entity-manager";
+import {
+  RawEntity,
+  EntityType,
+  Extension,
+  ExtensionCtor,
+} from "@survive-the-night/game-shared/src/types/entity";
+import { IEntityManager } from "../managers/types";
 
 export class Entity extends EventTarget {
   private id: string;
   private type: EntityType;
   protected extensions: Extension[] = [];
-  private entityManager: EntityManager;
+  private entityManager: IEntityManager;
 
-  public constructor(entityManager: EntityManager, type: EntityType) {
+  public constructor(entityManager: IEntityManager, type: EntityType) {
     super();
 
     this.id = entityManager.generateEntityId();
@@ -24,7 +29,7 @@ export class Entity extends EventTarget {
     return this.id;
   }
 
-  public getEntityManager(): EntityManager {
+  public getEntityManager(): IEntityManager {
     return this.entityManager;
   }
 

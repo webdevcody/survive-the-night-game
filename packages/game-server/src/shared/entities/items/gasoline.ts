@@ -1,9 +1,8 @@
-import { EntityManager } from "../../../managers/entity-manager";
+import { IEntityManager } from "../../../managers/types";
 
-import { Player } from "../player";
 import { Fire } from "../environment/fire";
 import { Entity } from "../../entity";
-import { Entities } from "@survive-the-night/game-shared";
+import { Entities } from "@survive-the-night/game-shared/src/constants";
 import Carryable from "../../extensions/carryable";
 import Combustible from "../../extensions/combustible";
 import Destructible from "../../extensions/destructible";
@@ -14,7 +13,7 @@ import Positionable from "../../extensions/positionable";
 export class Gasoline extends Entity {
   public static readonly Size = 16;
 
-  constructor(entityManager: EntityManager) {
+  constructor(entityManager: IEntityManager) {
     super(entityManager, Entities.GASOLINE);
 
     this.extensions = [
@@ -27,8 +26,8 @@ export class Gasoline extends Entity {
     ];
   }
 
-  private interact(player: Player): void {
-    this.getExt(Carryable).pickup(player);
+  private interact(entityId: string): void {
+    this.getExt(Carryable).pickup(entityId);
   }
 
   private onDeath(): void {

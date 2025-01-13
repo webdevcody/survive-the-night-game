@@ -1,4 +1,4 @@
-import { EntityManager } from "../../managers/entity-manager";
+import { IEntityManager } from "../../managers/types";
 import { Bullet } from "./bullet";
 import { Hitbox } from "../traits";
 import { distance, normalizeVector, Vector2 } from "../physics";
@@ -11,12 +11,12 @@ import { Input } from "../input";
 import { PlayerHurtEvent } from "../events/server-sent/player-hurt-event";
 import { PlayerAttackedEvent } from "../events/server-sent/player-attacked-event";
 import { PlayerDroppedItemEvent } from "../events/server-sent/player-dropped-item-event";
-import { Broadcaster, ServerSocketManager } from "../../managers/server-socket-manager";
+import { Broadcaster } from "@/managers/types";
 import { DEBUG_WEAPONS } from "../../config/debug";
 import { Bandage } from "./items/bandage";
 import Groupable from "../extensions/groupable";
 import { Entity } from "../entity";
-import { Entities, RawEntity } from "@survive-the-night/game-shared";
+import { RawEntity } from "@survive-the-night/game-shared/src/types/entity";
 import Collidable from "../extensions/collidable";
 import Consumable from "../extensions/consumable";
 import Destructible from "../extensions/destructible";
@@ -26,6 +26,7 @@ import Inventory from "../extensions/inventory";
 import Movable from "../extensions/movable";
 import Positionable from "../extensions/positionable";
 import Updatable from "../extensions/updatable";
+import { Entities } from "@survive-the-night/game-shared/src/constants";
 
 export class Player extends Entity {
   public static readonly MAX_HEALTH = 3;
@@ -55,7 +56,7 @@ export class Player extends Entity {
   private isCrafting = false;
   private broadcaster: Broadcaster;
 
-  constructor(entityManager: EntityManager, broadcaster: Broadcaster) {
+  constructor(entityManager: IEntityManager, broadcaster: Broadcaster) {
     super(entityManager, Entities.PLAYER);
     this.broadcaster = broadcaster;
 
@@ -293,7 +294,7 @@ export class Player extends Entity {
 
       if (byProximity.length > 0) {
         const entity = byProximity[0];
-        (entity as Entity).getExt(Interactive).interact(this);
+        (entity as Entity).getExt(Interactive).interact(this.getId());
       }
     }
   }
@@ -368,7 +369,7 @@ export class Player extends Entity {
             return; // Not a consumable item
         }
 
-        entity.getExt(Consumable).consume(this, itemIndex);
+        entity.getExt(Consumable).consume(this.getId(), itemIndex);
       }
     }
   }

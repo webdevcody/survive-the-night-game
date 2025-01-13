@@ -3,7 +3,7 @@ import { Hitbox } from "../shared/traits";
 import { Player } from "../shared/entities/player";
 import { SpatialGrid } from "./spatial-grid";
 import { InventoryItem, ItemType } from "../shared/inventory";
-import { Broadcaster } from "./server-socket-manager";
+import { Broadcaster } from "./types";
 import { Gasoline } from "../shared/entities/items/gasoline";
 import { Bandage } from "../shared/entities/items/bandage";
 import { Torch } from "../shared/entities/items/torch";
@@ -13,15 +13,17 @@ import { Wall } from "../shared/entities/items/wall";
 import { Spikes } from "../shared/entities/items/spikes";
 import { Weapon } from "../shared/entities/weapon";
 import { Entity } from "../shared/entity";
-import { EntityType, Entities } from "@survive-the-night/game-shared";
+import { EntityType } from "@survive-the-night/game-shared/src/types/entity";
+import { Entities } from "@survive-the-night/game-shared/src/constants";
 import Collidable from "../shared/extensions/collidable";
 import Destructible from "../shared/extensions/destructible";
 import Positionable from "../shared/extensions/positionable";
+import { IEntityManager } from "./types";
 
-type EntityConstructor = new (entityManager: EntityManager, ...args: any[]) => Entity;
-type EntityFactory = (entityManager: EntityManager) => Entity;
+type EntityConstructor = new (entityManager: IEntityManager, ...args: any[]) => Entity;
+type EntityFactory = (entityManager: IEntityManager) => Entity;
 
-export class EntityManager {
+export class EntityManager implements IEntityManager {
   private entities: Entity[];
   private entitiesToRemove: Array<{ id: string; expiration: number }> = [];
   private id: number = 0;
@@ -46,15 +48,19 @@ export class EntityManager {
     this.registerItem("spikes", Spikes);
 
     // Register weapons
-    this.registerItem("knife", (em: EntityManager) => new Weapon(em, "knife"));
-    this.registerItem("shotgun", (em: EntityManager) => new Weapon(em, "shotgun"));
-    this.registerItem("pistol", (em: EntityManager) => new Weapon(em, "pistol"));
+    this.registerItem("knife", (em: IEntityManager) => new Weapon(em, "knife"));
+    this.registerItem("shotgun", (em: IEntityManager) => new Weapon(em, "shotgun"));
+    this.registerItem("pistol", (em: IEntityManager) => new Weapon(em, "pistol"));
   }
 
-  public registerItem(type: ItemType, constructor: EntityConstructor | EntityFactory): void {
+  public registerItem(type: ItemType, constructor: any): void {
     if (!this.itemConstructors.has(type)) {
       this.itemConstructors.set(type, constructor);
     }
+  }
+
+  public getEntityById(id: string): Entity | null {
+    return this.entities.find((entity) => entity.getId() === id) ?? null;
   }
 
   public hasRegisteredItem(type: ItemType): boolean {

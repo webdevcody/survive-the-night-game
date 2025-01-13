@@ -2,7 +2,7 @@ import { Entity } from "../entity";
 import { Extension, ExtensionSerialized } from "./types";
 import { InventoryItem, ITEM_TYPES, ItemType } from "../inventory";
 import { recipes, RecipeType } from "../recipes";
-import { Broadcaster } from "../../managers/server-socket-manager";
+import { Broadcaster } from "@/managers/types";
 import { PlayerPickedUpItemEvent } from "../events/server-sent/pickup-item-event";
 import Positionable from "./positionable";
 

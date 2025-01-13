@@ -4,7 +4,7 @@ import { MapManager } from "../../src/managers/map-manager";
 import { MockSocketManager } from "../mocks/mock-socket-manager";
 import { ServerSocketManager } from "../../src/managers/server-socket-manager";
 import { Player } from "../../src/shared/entities/player";
-import { Entities } from "@survive-the-night/game-shared";
+import { Entities } from "@survive-the-night/game-shared/src/constants";
 
 describe("Player related tests", () => {
   let entityManager: EntityManager;

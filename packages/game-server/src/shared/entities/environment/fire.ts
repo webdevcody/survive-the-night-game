@@ -1,5 +1,5 @@
-import { Entities } from "@survive-the-night/game-shared";
-import { EntityManager } from "../../../managers/entity-manager";
+import { Entities } from "@survive-the-night/game-shared/src/constants";
+import { IEntityManager } from "../../../managers/types";
 import { Entity } from "../../entity";
 import Positionable from "../../extensions/positionable";
 import Expirable from "../../extensions/expirable";
@@ -10,7 +10,7 @@ import Triggerable from "../../extensions/trigger";
 export class Fire extends Entity {
   public static readonly Size = 16;
 
-  constructor(entityManager: EntityManager) {
+  constructor(entityManager: IEntityManager) {
     super(entityManager, Entities.FIRE);
 
     this.extensions = [

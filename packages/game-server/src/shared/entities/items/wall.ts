@@ -1,18 +1,19 @@
-import { Entities, RawEntity } from "@survive-the-night/game-shared";
-import { EntityManager } from "../../../managers/entity-manager";
+import { Entities } from "@survive-the-night/game-shared/src/constants";
+import { RawEntity } from "@survive-the-night/game-shared/src/types/entity";
+import { IEntityManager } from "../../../managers/types";
 import { Entity } from "../../entity";
-import { Player } from "../player";
 import Carryable from "../../extensions/carryable";
 import Collidable from "../../extensions/collidable";
 import Destructible from "../../extensions/destructible";
 import Interactive from "../../extensions/interactive";
 import Positionable from "../../extensions/positionable";
+import Inventory from "@/shared/extensions/inventory";
 
 export class Wall extends Entity {
   public static readonly Size = 16;
   public static readonly MAX_HEALTH = 3;
 
-  constructor(entityManager: EntityManager, health?: number) {
+  constructor(entityManager: IEntityManager, health?: number) {
     super(entityManager, Entities.WALL);
 
     this.extensions = [
@@ -27,10 +28,20 @@ export class Wall extends Entity {
     ];
   }
 
-  private interact(player: Player): void {
+  private interact(entityId: string): void {
     const carryable = this.getExt(Carryable);
-    if (carryable.pickup(player)) {
-      const inventoryItem = player.getInventory()[player.getInventory().length - 1];
+    if (carryable.pickup(entityId)) {
+      const entity = this.getEntityManager().getEntityById(entityId);
+      if (!entity) {
+        return;
+      }
+
+      const inventory = entity.getExt(Inventory);
+      if (!inventory) {
+        return;
+      }
+
+      const inventoryItem = inventory.getItems()[inventory.getItems().length - 1];
       inventoryItem.state = {
         health: this.getExt(Destructible).getHealth(),
       };

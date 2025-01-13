@@ -1,7 +1,7 @@
 import { ImageLoader } from "@/managers/asset";
 import { ClientExtension, ClientExtensionCtor } from "./types";
 import { clientExtensionsMap } from "./index";
-import { RawEntity } from "@survive-the-night/game-shared";
+import { RawEntity } from "@survive-the-night/game-shared/src/types/entity";
 
 export abstract class ClientEntityBase {
   private id: string;

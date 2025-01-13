@@ -1,7 +1,6 @@
 import { Vector2 } from "@survive-the-night/game-server";
 import { ExtensionTypes } from "@survive-the-night/game-server/src/shared/extension-types";
 import { ClientExtension, ClientExtensionSerialized } from "./types";
-import { RawEntity } from "@survive-the-night/game-shared";
 
 export class ClientPositionable implements ClientExtension {
   public static readonly type = ExtensionTypes.POSITIONABLE;

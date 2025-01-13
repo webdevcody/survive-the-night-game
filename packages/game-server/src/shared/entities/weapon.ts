@@ -1,11 +1,11 @@
-import { Entities } from "@survive-the-night/game-shared";
-import { RawEntity } from "@survive-the-night/game-shared";
-import { EntityManager } from "../../managers/entity-manager";
+import { IEntityManager } from "../../managers/types";
 import { Entity } from "../entity";
 import { Player } from "./player";
 import Carryable from "../extensions/carryable";
 import Interactive from "../extensions/interactive";
 import Positionable from "../extensions/positionable";
+import { Entities } from "@survive-the-night/game-shared/src/constants";
+import { RawEntity } from "@survive-the-night/game-shared/src/types/entity";
 
 export const WEAPON_TYPES = {
   KNIFE: "knife",
@@ -19,7 +19,7 @@ export class Weapon extends Entity {
   public static readonly Size = 16;
   private weaponType: WeaponType;
 
-  public constructor(entityManager: EntityManager, weaponType: WeaponType) {
+  public constructor(entityManager: IEntityManager, weaponType: WeaponType) {
     super(entityManager, Entities.WEAPON);
     this.weaponType = weaponType;
 
@@ -30,8 +30,8 @@ export class Weapon extends Entity {
     ];
   }
 
-  private interact(player: Player): void {
-    this.getExt(Carryable).pickup(player);
+  private interact(entityId: string): void {
+    this.getExt(Carryable).pickup(entityId);
   }
 
   public serialize(): RawEntity {

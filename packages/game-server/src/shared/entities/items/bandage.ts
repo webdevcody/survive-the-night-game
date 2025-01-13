@@ -1,17 +1,18 @@
-import { Entities } from "@survive-the-night/game-shared";
-import { EntityManager } from "../../../managers/entity-manager";
+import { Entities } from "@survive-the-night/game-shared/src/constants";
+import { IEntityManager } from "../../../managers/types";
 import { Entity } from "../../entity";
-import { Player } from "../player";
 import Interactive from "../../extensions/interactive";
 import Positionable from "../../extensions/positionable";
 import Carryable from "../../extensions/carryable";
 import Consumable from "../../extensions/consumable";
+import Destructible from "../../extensions/destructible";
+import Inventory from "../../extensions/inventory";
 
 export class Bandage extends Entity {
   public static readonly Size = 16;
   public static readonly healingAmount = 5;
 
-  constructor(entityManager: EntityManager) {
+  constructor(entityManager: IEntityManager) {
     super(entityManager, Entities.BANDAGE);
 
     this.extensions = [
@@ -22,18 +23,42 @@ export class Bandage extends Entity {
     ];
   }
 
-  private consume(player: Player, idx: number): void {
-    const healAmount = Math.min(Bandage.healingAmount, player.getMaxHealth() - player.getHealth());
+  private consume(entityId: string, idx: number): void {
+    const entity = this.getEntityManager().getEntityById(entityId);
+    if (!entity) {
+      return;
+    }
+
+    const destructible = entity.getExt(Destructible);
+    if (!destructible) {
+      return;
+    }
+
+    const healAmount = Math.min(
+      Bandage.healingAmount,
+      destructible.getMaxHealth() - destructible.getHealth()
+    );
 
     if (healAmount === 0) {
       return;
     }
 
-    player.heal(healAmount);
-    player.getInventory().splice(idx, 1);
+    destructible.heal(healAmount);
+
+    const inventory = entity.getExt(Inventory);
+    if (!inventory) {
+      return;
+    }
+
+    inventory.removeItem(idx);
   }
 
-  private interact(player: Player): void {
-    this.getExt(Carryable).pickup(player);
+  private interact(entityId: string): void {
+    const entity = this.getEntityManager().getEntityById(entityId);
+    if (!entity) {
+      return;
+    }
+
+    this.getExt(Carryable).pickup(entityId);
   }
 }

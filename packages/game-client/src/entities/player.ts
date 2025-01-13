@@ -8,7 +8,7 @@ import {
   Direction,
   Input,
 } from "@survive-the-night/game-server";
-import { RawEntity } from "@survive-the-night/game-shared";
+import { RawEntity } from "@survive-the-night/game-shared/src/types/entity";
 import { getItemAssetKey, ImageLoader } from "../managers/asset";
 import { drawHealthBar, getFrameIndex, IClientEntity, Renderable } from "./util";
 import { GameState } from "@/state";

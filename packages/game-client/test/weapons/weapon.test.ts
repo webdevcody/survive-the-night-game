@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, Mock } from "vitest";
 import { WeaponClient } from "../../src/entities/weapons/weapon";
 import { PlayerClient } from "../../src/entities/player";
-import { RawEntity } from "@survive-the-night/game-shared";
+import { RawEntity } from "@survive-the-night/game-shared/src/types/entity";
 import { GameState } from "@/state";
 import { createMockCtx } from "../mocks/ctx";
 import { createMockImageLoader } from "../mocks/image-loader";

@@ -1,8 +1,8 @@
 import { Entity } from "../entity";
 import { Extension, ExtensionSerialized } from "./types";
-import { Player } from "../entities/player";
 import { ItemType } from "../inventory";
 import { PlayerPickedUpItemEvent } from "../events/server-sent/pickup-item-event";
+import Inventory from "./inventory";
 
 export default class Carryable implements Extension {
   public static readonly type = "carryable" as const;
@@ -15,12 +15,19 @@ export default class Carryable implements Extension {
     this.itemKey = itemKey;
   }
 
-  public pickup(player: Player): boolean {
-    if (player.isInventoryFull()) {
+  public pickup(entityId: string): boolean {
+    const entity = this.self.getEntityManager().getEntityById(entityId);
+    if (!entity) {
       return false;
     }
 
-    player.getInventory().push({ key: this.itemKey });
+    const inventory = entity.getExt(Inventory);
+
+    if (inventory.isFull()) {
+      return false;
+    }
+
+    inventory.addItem({ key: this.itemKey });
     this.self.getEntityManager().markEntityForRemoval(this.self);
 
     this.self
@@ -28,7 +35,7 @@ export default class Carryable implements Extension {
       .getBroadcaster()
       .broadcastEvent(
         new PlayerPickedUpItemEvent({
-          playerId: player.getId(),
+          playerId: entityId,
           itemKey: this.itemKey,
         })
       );

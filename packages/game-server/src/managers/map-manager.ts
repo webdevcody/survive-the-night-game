@@ -3,7 +3,7 @@ import { EntityManager } from "./entity-manager";
 import { Weapon, WEAPON_TYPES } from "../shared/entities/weapon";
 import { Boundary } from "../shared/entities/boundary";
 import { Zombie } from "../shared/entities/zombie";
-import { Broadcaster } from "./server-socket-manager";
+import { Broadcaster, IEntityManager, IMapManager } from "./types";
 import { DEBUG_START_ZOMBIE } from "../config/debug";
 import Positionable from "../shared/extensions/positionable";
 
@@ -93,12 +93,12 @@ const BIOME_SIZE = 16;
 const MAP_SIZE = 5;
 export const TILE_SIZE = 16;
 
-export class MapManager {
+export class MapManager implements IMapManager {
   private map: number[][] = [];
-  private entityManager: EntityManager;
+  private entityManager: IEntityManager;
   private broadcaster?: Broadcaster;
 
-  constructor(entityManager: EntityManager) {
+  constructor(entityManager: IEntityManager) {
     this.entityManager = entityManager;
   }
 

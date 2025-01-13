@@ -1,7 +1,6 @@
-import { EntityManager } from "../../../managers/entity-manager";
-import { Player } from "../player";
+import { IEntityManager } from "../../../managers/types";
 import { Entity } from "../../entity";
-import { Entities } from "@survive-the-night/game-shared";
+import { Entities } from "@survive-the-night/game-shared/src/constants";
 import Carryable from "../../extensions/carryable";
 import Interactive from "../../extensions/interactive";
 import Positionable from "../../extensions/positionable";
@@ -9,7 +8,7 @@ import Positionable from "../../extensions/positionable";
 export class Tree extends Entity {
   public static readonly Size = 16;
 
-  constructor(entityManager: EntityManager) {
+  constructor(entityManager: IEntityManager) {
     super(entityManager, Entities.TREE);
 
     this.extensions = [
@@ -19,7 +18,7 @@ export class Tree extends Entity {
     ];
   }
 
-  private interact(player: Player): void {
-    this.getExt(Carryable).pickup(player);
+  private interact(entityId: string): void {
+    this.getExt(Carryable).pickup(entityId);
   }
 }

@@ -1,7 +1,6 @@
 import { GameClient } from "@/client";
 import { TILE_IDS } from "@survive-the-night/game-server/src/managers/map-manager";
 import { Vector2 } from "@survive-the-night/game-server/src/shared/physics";
-import { Entity } from "@survive-the-night/game-server/src/shared/entity";
 import { distance } from "@survive-the-night/game-server/src/shared/physics";
 import { DEBUG_SHOW_HITBOXES } from "@survive-the-night/game-server/src/config/debug";
 import { ClientIlluminated, ClientPositionable } from "../extensions";
@@ -52,7 +51,7 @@ export class MapManager {
     const radiusMultiplier = 1 + pulseOffset * PULSE_INTENSITY;
 
     entities.forEach((entity) => {
-      const gameEntity = entity as Entity;
+      const gameEntity = entity;
       if (gameEntity.hasExt(ClientIlluminated)) {
         const baseRadius = gameEntity.getExt(ClientIlluminated).getRadius();
         const position = gameEntity.getExt(ClientPositionable).getCenterPosition();

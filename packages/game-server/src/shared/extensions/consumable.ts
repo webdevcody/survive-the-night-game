@@ -1,8 +1,7 @@
 import { Entity } from "../entity";
 import { Extension, ExtensionSerialized } from "./types";
-import { Player } from "../entities/player";
 
-type ConsumableHandler = (player: Player, idx: number) => void;
+type ConsumableHandler = (entityId: string, idx: number) => void;
 
 export default class Consumable implements Extension {
   public static readonly type = "consumable";
@@ -19,8 +18,8 @@ export default class Consumable implements Extension {
     return this;
   }
 
-  public consume(player: Player, idx: number): void {
-    this.handler?.(player, idx);
+  public consume(entityId: string, idx: number): void {
+    this.handler?.(entityId, idx);
   }
 
   public deserialize(data: ExtensionSerialized): this {

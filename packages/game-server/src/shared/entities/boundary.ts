@@ -1,14 +1,14 @@
-import { EntityManager } from "../../managers/entity-manager";
+import { IEntityManager } from "../../managers/types";
 import { ServerOnly } from "../traits";
 import { Vector2 } from "../physics";
 import { Entity } from "../entity";
-import { Entities } from "@survive-the-night/game-shared";
-import { RawEntity } from "@survive-the-night/game-shared";
+import { Entities } from "@survive-the-night/game-shared/src/constants";
+import { RawEntity } from "@survive-the-night/game-shared/src/types/entity";
 import Positionable from "../extensions/positionable";
 import Collidable from "../extensions/collidable";
 
 export class Boundary extends Entity implements ServerOnly {
-  constructor(entityManager: EntityManager) {
+  constructor(entityManager: IEntityManager) {
     super(entityManager, Entities.BOUNDARY);
 
     this.extensions = [new Positionable(this).setSize(16), new Collidable(this).setSize(16)];

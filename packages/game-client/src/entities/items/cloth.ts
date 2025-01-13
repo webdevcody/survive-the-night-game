@@ -1,4 +1,4 @@
-import { RawEntity } from "@survive-the-night/game-shared";
+import { RawEntity } from "@survive-the-night/game-shared/src/types/entity";
 import { AssetManager } from "@/managers/asset";
 import { GameState } from "../../state";
 import { Z_INDEX } from "@survive-the-night/game-server/src/managers/map-manager";
