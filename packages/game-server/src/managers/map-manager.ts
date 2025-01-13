@@ -1,11 +1,12 @@
 import { Tree } from "../shared/entities/items/tree";
-import { EntityManager } from "./entity-manager";
-import { Weapon, WEAPON_TYPES } from "../shared/entities/weapon";
 import { Boundary } from "../shared/entities/boundary";
 import { Zombie } from "../shared/entities/zombie";
 import { Broadcaster, IEntityManager, IMapManager } from "./types";
 import { DEBUG_START_ZOMBIE } from "../config/debug";
 import Positionable from "../shared/extensions/positionable";
+import { Shotgun } from "../shared/entities/weapons/shotgun";
+import { Knife } from "../shared/entities/weapons/knife";
+import { Pistol } from "../shared/entities/weapons/pistol";
 
 export const Z_INDEX = {
   GROUND: 0,
@@ -179,17 +180,17 @@ export class MapManager implements IMapManager {
             this.entityManager.addEntity(tree);
           } else if (Math.random() < WEAPON_SPAWN_CHANCE.PISTOL) {
             // 0.1% chance for a pistol
-            const weapon = new Weapon(this.entityManager, WEAPON_TYPES.PISTOL);
+            const weapon = new Pistol(this.entityManager);
             weapon.getExt(Positionable).setPosition({ x: x * TILE_SIZE, y: y * TILE_SIZE });
             this.entityManager.addEntity(weapon);
           } else if (Math.random() < WEAPON_SPAWN_CHANCE.SHOTGUN) {
             // 0.1% chance for a shotgun
-            const weapon = new Weapon(this.entityManager, WEAPON_TYPES.SHOTGUN);
+            const weapon = new Shotgun(this.entityManager);
             weapon.getExt(Positionable).setPosition({ x: x * TILE_SIZE, y: y * TILE_SIZE });
             this.entityManager.addEntity(weapon);
           } else if (Math.random() < WEAPON_SPAWN_CHANCE.KNIFE) {
             // 0.1% chance for a knife
-            const weapon = new Weapon(this.entityManager, WEAPON_TYPES.KNIFE);
+            const weapon = new Knife(this.entityManager);
             weapon.getExt(Positionable).setPosition({ x: x * TILE_SIZE, y: y * TILE_SIZE });
             this.entityManager.addEntity(weapon);
           }

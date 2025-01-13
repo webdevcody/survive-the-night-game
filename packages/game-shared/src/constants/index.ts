@@ -1,5 +1,4 @@
 export const Entities = {
-  WEAPON: "weapon",
   ZOMBIE: "zombie",
   PLAYER: "player",
   TREE: "tree",
@@ -8,9 +7,11 @@ export const Entities = {
   BOUNDARY: "boundary",
   BANDAGE: "bandage",
   CLOTH: "cloth",
-  SOUND: "sound",
   SPIKES: "spikes",
   FIRE: "fire",
   TORCH: "torch",
   GASOLINE: "gasoline",
+  PISTOL: "pistol",
+  SHOTGUN: "shotgun",
+  KNIFE: "knife",
 } as const;

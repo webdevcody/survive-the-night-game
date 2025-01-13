@@ -1,9 +1,4 @@
-import {
-  MapEvent,
-  PlayerDeathEvent,
-  WEAPON_TYPES,
-  YourIdEvent,
-} from "@survive-the-night/game-server";
+import { MapEvent, PlayerDeathEvent, YourIdEvent } from "@survive-the-night/game-server";
 
 import { GameStateEvent } from "@survive-the-night/game-server";
 
@@ -21,6 +16,7 @@ import { PlayerDroppedItemEvent } from "@survive-the-night/game-server/src/share
 import { PlayerPickedUpItemEvent } from "@survive-the-night/game-server/src/shared/events/server-sent/pickup-item-event";
 import { GameOverEvent } from "@survive-the-night/game-server/src/shared/events/server-sent/game-over-event";
 import { SOUND_TYPES } from "./managers/sound-manager";
+import { WEAPON_TYPES } from "@survive-the-night/game-server/src/shared/entities/weapons/weapon";
 
 export class ClientEventListener {
   private socketManager: ClientSocketManager;

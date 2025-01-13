@@ -11,7 +11,6 @@ import { Cloth } from "../shared/entities/items/cloth";
 import { Tree } from "../shared/entities/items/tree";
 import { Wall } from "../shared/entities/items/wall";
 import { Spikes } from "../shared/entities/items/spikes";
-import { Weapon } from "../shared/entities/weapon";
 import { Entity } from "../shared/entity";
 import { EntityType } from "@survive-the-night/game-shared/src/types/entity";
 import { Entities } from "@survive-the-night/game-shared/src/constants";
@@ -19,6 +18,9 @@ import Collidable from "../shared/extensions/collidable";
 import Destructible from "../shared/extensions/destructible";
 import Positionable from "../shared/extensions/positionable";
 import { IEntityManager } from "./types";
+import { Knife } from "../shared/entities/weapons/knife";
+import { Shotgun } from "../shared/entities/weapons/shotgun";
+import { Pistol } from "../shared/entities/weapons/pistol";
 
 type EntityConstructor = new (entityManager: IEntityManager, ...args: any[]) => Entity;
 type EntityFactory = (entityManager: IEntityManager) => Entity;
@@ -48,9 +50,9 @@ export class EntityManager implements IEntityManager {
     this.registerItem("spikes", Spikes);
 
     // Register weapons
-    this.registerItem("knife", (em: IEntityManager) => new Weapon(em, "knife"));
-    this.registerItem("shotgun", (em: IEntityManager) => new Weapon(em, "shotgun"));
-    this.registerItem("pistol", (em: IEntityManager) => new Weapon(em, "pistol"));
+    this.registerItem("knife", Knife);
+    this.registerItem("shotgun", Shotgun);
+    this.registerItem("pistol", Pistol);
   }
 
   public registerItem(type: ItemType, constructor: any): void {

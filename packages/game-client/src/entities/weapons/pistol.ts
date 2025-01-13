@@ -3,16 +3,12 @@ import { GameState } from "../../state";
 import { Renderable } from "../util";
 import { Z_INDEX } from "@survive-the-night/game-server/src/managers/map-manager";
 import { ClientEntity } from "../client-entity";
-import { ImageLoader } from "@/managers/asset";
-import { WeaponType } from "@survive-the-night/game-server";
+import { ImageLoader } from "../../managers/asset";
 import { ClientPositionable } from "../../extensions";
 
-export class WeaponClient extends ClientEntity implements Renderable {
-  private weaponType: WeaponType;
-
-  constructor(data: RawEntity, assetManager: ImageLoader) {
-    super(data, assetManager);
-    this.weaponType = data.weaponType;
+export class PistolClient extends ClientEntity implements Renderable {
+  constructor(data: RawEntity, imageLoader: ImageLoader) {
+    super(data, imageLoader);
   }
 
   public getZIndex(): number {
@@ -21,7 +17,7 @@ export class WeaponClient extends ClientEntity implements Renderable {
 
   render(ctx: CanvasRenderingContext2D, gameState: GameState): void {
     super.render(ctx, gameState);
-    const image = this.imageLoader.get(this.weaponType);
+    const image = this.imageLoader.get("pistol");
     const positionable = this.getExt(ClientPositionable);
     const position = positionable.getPosition();
     ctx.drawImage(image, position.x, position.y);

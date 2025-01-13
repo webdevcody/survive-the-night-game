@@ -7,7 +7,7 @@ import Collidable from "../../extensions/collidable";
 import Destructible from "../../extensions/destructible";
 import Interactive from "../../extensions/interactive";
 import Positionable from "../../extensions/positionable";
-import Inventory from "@/shared/extensions/inventory";
+import Inventory from "../../extensions/inventory";
 
 export class Wall extends Entity {
   public static readonly Size = 16;

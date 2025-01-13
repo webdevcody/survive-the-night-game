@@ -6,7 +6,6 @@ import { BulletClient } from "./bullet";
 import { ZombieClient } from "./zombie";
 import { WallClient } from "./items/wall";
 import { ClothClient } from "./items/cloth";
-import { WeaponClient } from "./weapons/weapon";
 import { PlayerClient } from "./player";
 import { TreeClient } from "./items/tree";
 import { BandageClient } from "./items/bandage";
@@ -14,7 +13,26 @@ import { SpikesClient } from "./items/spikes";
 import { FireClient } from "./environment/fire";
 import { TorchClient } from "./items/torch";
 import { GasolineClient } from "./items/gasoline";
+import { PistolClient } from "./weapons/pistol";
+import { ShotgunClient } from "./weapons/shotgun";
+import { KnifeClient } from "./weapons/knife";
 
+const entityMap = {
+  [Entities.PLAYER]: PlayerClient,
+  [Entities.TREE]: TreeClient,
+  [Entities.BULLET]: BulletClient,
+  [Entities.WALL]: WallClient,
+  [Entities.PISTOL]: PistolClient,
+  [Entities.SHOTGUN]: ShotgunClient,
+  [Entities.KNIFE]: KnifeClient,
+  [Entities.BANDAGE]: BandageClient,
+  [Entities.CLOTH]: ClothClient,
+  [Entities.SPIKES]: SpikesClient,
+  [Entities.FIRE]: FireClient,
+  [Entities.TORCH]: TorchClient,
+  [Entities.GASOLINE]: GasolineClient,
+  [Entities.ZOMBIE]: ZombieClient,
+};
 export class EntityFactory {
   private assetManager: AssetManager;
 
@@ -27,37 +45,11 @@ export class EntityFactory {
       throw new Error(`Invalid entity data: ${JSON.stringify(data)}`);
     }
 
-    switch (data.type) {
-      case Entities.PLAYER:
-        return new PlayerClient(data, this.assetManager);
-      case Entities.TREE:
-        return new TreeClient(data, this.assetManager);
-      case Entities.BULLET:
-        return new BulletClient(data, this.assetManager);
-      case Entities.WALL:
-        return new WallClient(data, this.assetManager);
-      case Entities.WEAPON:
-        return new WeaponClient(data, this.assetManager);
-      case Entities.BANDAGE:
-        return new BandageClient(data, this.assetManager);
-      case Entities.CLOTH:
-        return new ClothClient(data, this.assetManager);
-      case Entities.SPIKES:
-        return new SpikesClient(data, this.assetManager);
-      case Entities.FIRE:
-        return new FireClient(data, this.assetManager);
-      case Entities.TORCH:
-        return new TorchClient(data, this.assetManager);
-      case Entities.GASOLINE:
-        return new GasolineClient(data, this.assetManager);
-      case Entities.ZOMBIE:
-        return new ZombieClient(data, this.assetManager);
-      case Entities.BOUNDARY:
-      case Entities.SOUND:
-        // These entities don't need client-side representation
-        throw new Error(`Entity type ${data.type} does not need client-side representation`);
-      default:
-        throw new Error(`Unknown entity type: ${data.type}`);
+    const EntityClass = entityMap[data.type];
+    if (!EntityClass) {
+      throw new Error(`Unknown entity type: ${data.type}`);
     }
+
+    return new EntityClass(data, this.assetManager);
   }
 }
