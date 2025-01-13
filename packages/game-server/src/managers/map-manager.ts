@@ -130,6 +130,14 @@ export class MapManager {
     }
   }
 
+  generateEmptyMap(width: number, height: number) {
+    this.entityManager.clear();
+    this.entityManager.setMapSize(width * TILE_SIZE, height * TILE_SIZE);
+    this.map = Array(height)
+      .fill(0)
+      .map(() => Array(width).fill(0));
+  }
+
   generateMap() {
     this.entityManager.clear();
     this.entityManager.setMapSize(

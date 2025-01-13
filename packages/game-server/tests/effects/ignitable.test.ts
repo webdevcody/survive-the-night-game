@@ -7,7 +7,7 @@ import { ServerSocketManager } from "../../src/managers/server-socket-manager";
 import Destructible from "../../src/shared/extensions/destructible";
 import Ignitable from "../../src/shared/extensions/ignitable";
 
-describe("Fire Effects", () => {
+describe("Ignitable Effects", () => {
   let entityManager: EntityManager;
   let mapManager: MapManager;
   let socketManager: ServerSocketManager;
