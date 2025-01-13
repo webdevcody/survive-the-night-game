@@ -18,6 +18,7 @@ import { ResizeController } from "./resize-controller";
 import { ClientEventListener } from "./client-event-listener";
 import { SoundManager } from "./managers/sound-manager";
 import { GameOverDialogUI } from "./ui/game-over-dialog";
+import { ClientEntityBase } from "./extensions/client-entity";
 
 export class GameClient {
   private ctx: CanvasRenderingContext2D;
@@ -61,10 +62,7 @@ export class GameClient {
 
     const getInventory = () => {
       if (this.gameState.playerId) {
-        const player = getEntityById(
-          this.gameState,
-          this.gameState.playerId
-        ) as unknown as PlayerClient;
+        const player = getEntityById(this.gameState, this.gameState.playerId) as PlayerClient;
         if (player) {
           return player.getInventory();
         }
@@ -248,7 +246,7 @@ export class GameClient {
     this.isMounted = false;
   }
 
-  public getEntityById(id: string): Entity | undefined {
+  public getEntityById(id: string) {
     return getEntityById(this.gameState, id);
   }
 

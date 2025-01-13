@@ -3,9 +3,8 @@ import { TILE_IDS } from "@survive-the-night/game-server/src/managers/map-manage
 import { Vector2 } from "@survive-the-night/game-server/src/shared/physics";
 import { Entity } from "@survive-the-night/game-server/src/shared/entity";
 import { distance } from "@survive-the-night/game-server/src/shared/physics";
-import Positionable from "@survive-the-night/game-server/src/shared/extensions/positionable";
-import { Illuminated } from "@survive-the-night/game-server/src/shared/extensions";
 import { DEBUG_SHOW_HITBOXES } from "@survive-the-night/game-server/src/config/debug";
+import { ClientIlluminated, ClientPositionable } from "../extensions";
 
 const tileLocations: Record<string, [number, number]> = {
   [TILE_IDS.GRASS1]: [4 * 16, 0],
@@ -54,9 +53,9 @@ export class MapManager {
 
     entities.forEach((entity) => {
       const gameEntity = entity as Entity;
-      if (gameEntity.hasExt(Illuminated)) {
-        const baseRadius = gameEntity.getExt(Illuminated).getRadius();
-        const position = gameEntity.getExt(Positionable).getCenterPosition();
+      if (gameEntity.hasExt(ClientIlluminated)) {
+        const baseRadius = gameEntity.getExt(ClientIlluminated).getRadius();
+        const position = gameEntity.getExt(ClientPositionable).getCenterPosition();
         sources.push({
           position,
           radius: baseRadius * radiusMultiplier,

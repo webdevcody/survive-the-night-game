@@ -1,8 +1,10 @@
 import { Entities } from "@survive-the-night/game-shared";
 import { EntityManager } from "../../../managers/entity-manager";
 import { Entity } from "../../entity";
-import { Interactive, Positionable, Carryable } from "../../extensions";
 import { Player } from "../player";
+import Positionable from "../../extensions/positionable";
+import Interactive from "../../extensions/interactive";
+import Carryable from "../../extensions/carryable";
 
 export class Cloth extends Entity {
   public static readonly Size = 16;

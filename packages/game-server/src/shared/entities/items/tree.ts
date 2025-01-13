@@ -1,8 +1,10 @@
 import { EntityManager } from "../../../managers/entity-manager";
-import { Interactive, Positionable, Carryable } from "../../extensions";
 import { Player } from "../player";
 import { Entity } from "../../entity";
 import { Entities } from "@survive-the-night/game-shared";
+import Carryable from "../../extensions/carryable";
+import Interactive from "../../extensions/interactive";
+import Positionable from "../../extensions/positionable";
 
 export class Tree extends Entity {
   public static readonly Size = 16;

@@ -143,7 +143,18 @@ export type Asset = keyof typeof assetsMap;
 
 export const assetsCache = {} as Record<Asset, HTMLImageElement>;
 
-export class AssetManager {
+export interface ImageLoader {
+  get(assetKey: Asset): HTMLImageElement;
+  getWithDirection(assetKey: Asset, direction: Direction | null): HTMLImageElement;
+  getFrameIndex(assetKey: Asset, frameIndex: number): HTMLImageElement;
+  getFrameWithDirection(
+    assetKey: Asset,
+    direction: Direction | null,
+    frameIndex: number
+  ): HTMLImageElement;
+}
+
+export class AssetManager implements ImageLoader {
   private imageManager = new ImageManager();
   private sheet: HTMLImageElement | null = null;
   private loaded = false;

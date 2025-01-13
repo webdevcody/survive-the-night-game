@@ -6,5 +6,5 @@ export function getPlayer(gameState: GameState): PlayerClient | null {
     return null;
   }
 
-  return getEntityById(gameState, gameState.playerId) as unknown as PlayerClient;
+  return getEntityById(gameState, gameState.playerId) as PlayerClient;
 }

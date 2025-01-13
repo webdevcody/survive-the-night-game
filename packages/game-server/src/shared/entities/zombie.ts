@@ -2,15 +2,6 @@ import { EntityManager } from "../../managers/entity-manager";
 import { MapManager } from "../../managers/map-manager";
 import { Vector2, pathTowards, velocityTowards } from "../physics";
 import { Hitbox } from "../traits";
-import {
-  Collidable,
-  Destructible,
-  Interactive,
-  Inventory,
-  Positionable,
-  Updatable,
-  Movable,
-} from "../extensions";
 import { Wall } from "./items/wall";
 import { ZombieDeathEvent } from "../events/server-sent/zombie-death-event";
 import { ZombieHurtEvent } from "../events/server-sent/zombie-hurt-event";
@@ -19,6 +10,13 @@ import { Cooldown } from "./util/cooldown";
 import Groupable from "../extensions/groupable";
 import { Entity } from "../entity";
 import { Entities } from "@survive-the-night/game-shared";
+import Collidable from "../extensions/collidable";
+import Inventory from "../extensions/inventory";
+import Destructible from "../extensions/destructible";
+import Positionable from "../extensions/positionable";
+import Movable from "../extensions/movable";
+import Updatable from "../extensions/updatable";
+import Interactive from "../extensions/interactive";
 
 // TODO: refactor to use extensions
 export class Zombie extends Entity {

@@ -6,8 +6,9 @@
     "dev": "npm-run-all --parallel dev:*",
     "dev:dashboard": "npm run dev --workspace=packages/dashboard",
     "dev:server": "npm run dev --workspace=packages/game-server",
-    "test": "npm run test --workspace=packages/game-server",
-    "depcruise": "depcruise ./packages --include-only \"game-shared|game-server|game-client\" --output-type dot | dot -T svg > dependency-graph.svg"
+    "test:game-client": "npm run test --workspace=packages/game-client",
+    "test:game-server": "npm run test --workspace=packages/game-server",
+    "depcruise": "depcruise ./packages/game-server --include-only \"cloth|extensions|entity-manager\" --output-type dot | dot -T svg > dependency-graph.svg"
   },
   "workspaces": [
     "packages/*"

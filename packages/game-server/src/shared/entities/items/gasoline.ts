@@ -1,16 +1,15 @@
 import { EntityManager } from "../../../managers/entity-manager";
-import {
-  Combustible,
-  Interactive,
-  Positionable,
-  Destructible,
-  Carryable,
-  Groupable,
-} from "../../extensions";
+
 import { Player } from "../player";
 import { Fire } from "../environment/fire";
 import { Entity } from "../../entity";
 import { Entities } from "@survive-the-night/game-shared";
+import Carryable from "../../extensions/carryable";
+import Combustible from "../../extensions/combustible";
+import Destructible from "../../extensions/destructible";
+import Groupable from "../../extensions/groupable";
+import Interactive from "../../extensions/interactive";
+import Positionable from "../../extensions/positionable";
 
 export class Gasoline extends Entity {
   public static readonly Size = 16;

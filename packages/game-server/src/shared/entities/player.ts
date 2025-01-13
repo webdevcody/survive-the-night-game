@@ -8,26 +8,24 @@ import { RecipeType } from "../recipes";
 import { PlayerDeathEvent } from "../../index";
 import { Cooldown } from "./util/cooldown";
 import { Input } from "../input";
-import {
-  Consumable,
-  Positionable,
-  Inventory,
-  Collidable,
-  Destructible,
-  Interactive,
-  Updatable,
-  Movable,
-  Illuminated,
-} from "../extensions";
 import { PlayerHurtEvent } from "../events/server-sent/player-hurt-event";
 import { PlayerAttackedEvent } from "../events/server-sent/player-attacked-event";
 import { PlayerDroppedItemEvent } from "../events/server-sent/player-dropped-item-event";
-import { ServerSocketManager } from "../../managers/server-socket-manager";
+import { Broadcaster, ServerSocketManager } from "../../managers/server-socket-manager";
 import { DEBUG_WEAPONS } from "../../config/debug";
 import { Bandage } from "./items/bandage";
 import Groupable from "../extensions/groupable";
 import { Entity } from "../entity";
 import { Entities, RawEntity } from "@survive-the-night/game-shared";
+import Collidable from "../extensions/collidable";
+import Consumable from "../extensions/consumable";
+import Destructible from "../extensions/destructible";
+import Illuminated from "../extensions/illuminated";
+import Interactive from "../extensions/interactive";
+import Inventory from "../extensions/inventory";
+import Movable from "../extensions/movable";
+import Positionable from "../extensions/positionable";
+import Updatable from "../extensions/updatable";
 
 export class Player extends Entity {
   public static readonly MAX_HEALTH = 3;
@@ -46,7 +44,7 @@ export class Player extends Entity {
   private consumeCooldown = new Cooldown(Player.CONSUME_COOLDOWN, true);
   private input: Input = {
     facing: Direction.Right,
-    inventoryItem: 1,
+    inventoryItem: 0,
     dx: 0,
     dy: 0,
     interact: false,
@@ -55,14 +53,14 @@ export class Player extends Entity {
     consume: false,
   };
   private isCrafting = false;
-  private socketManager: ServerSocketManager;
+  private broadcaster: Broadcaster;
 
-  constructor(entityManager: EntityManager, socketManager: ServerSocketManager) {
+  constructor(entityManager: EntityManager, broadcaster: Broadcaster) {
     super(entityManager, Entities.PLAYER);
-    this.socketManager = socketManager;
+    this.broadcaster = broadcaster;
 
     this.extensions = [
-      new Inventory(this as any, socketManager),
+      new Inventory(this, broadcaster),
       new Collidable(this).setSize(Player.PLAYER_WIDTH),
       new Positionable(this).setSize(Player.PLAYER_WIDTH),
       new Destructible(this)
@@ -123,13 +121,13 @@ export class Player extends Entity {
     }
 
     this.getExt(Destructible).damage(damage);
-    this.socketManager.broadcastEvent(new PlayerHurtEvent(this.getId()));
+    this.broadcaster.broadcastEvent(new PlayerHurtEvent(this.getId()));
   }
 
   onDeath(): void {
     this.setIsCrafting(false);
     this.getExt(Inventory).scatterItems(this.getPosition());
-    this.socketManager.broadcastEvent(new PlayerDeathEvent(this.getId()));
+    this.broadcaster.broadcastEvent(new PlayerDeathEvent(this.getId()));
   }
 
   isInventoryFull(): boolean {
@@ -220,7 +218,7 @@ export class Player extends Entity {
         bullet.setDirection(this.input.facing);
         this.getEntityManager().addEntity(bullet);
 
-        this.socketManager.broadcastEvent(
+        this.broadcaster.broadcastEvent(
           new PlayerAttackedEvent({
             playerId: this.getId(),
             weaponKey: activeWeapon.key,
@@ -238,7 +236,7 @@ export class Player extends Entity {
           bullet.setDirectionWithOffset(this.input.facing, i * spreadAngle);
           this.getEntityManager().addEntity(bullet);
 
-          this.socketManager.broadcastEvent(
+          this.broadcaster.broadcastEvent(
             new PlayerAttackedEvent({
               playerId: this.getId(),
               weaponKey: activeWeapon.key,
@@ -338,7 +336,7 @@ export class Player extends Entity {
 
         this.getEntityManager().addEntity(entity);
 
-        this.socketManager.broadcastEvent(
+        this.broadcaster.broadcastEvent(
           new PlayerDroppedItemEvent({
             playerId: this.getId(),
             itemKey: item.key,
@@ -361,7 +359,6 @@ export class Player extends Entity {
       if (item) {
         let entity: Entity;
 
-        console.log(item.key);
         // this feels hacky, I shouldn't need a switch statement here
         switch (item.key) {
           case "bandage":
@@ -398,6 +395,10 @@ export class Player extends Entity {
 
   selectInventoryItem(index: number) {
     this.input.inventoryItem = index;
+  }
+
+  setAsFiring(firing: boolean) {
+    this.input.fire = firing;
   }
 
   setUseItem(use: boolean) {

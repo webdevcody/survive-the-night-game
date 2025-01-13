@@ -1,7 +1,11 @@
 import { Entities } from "@survive-the-night/game-shared";
 import { EntityManager } from "../../../managers/entity-manager";
 import { Entity } from "../../entity";
-import { Expirable, Ignitable, Illuminated, Positionable, Triggerable } from "../../extensions";
+import Positionable from "../../extensions/positionable";
+import Expirable from "../../extensions/expirable";
+import Ignitable from "../../extensions/ignitable";
+import Illuminated from "../../extensions/illuminated";
+import Triggerable from "../../extensions/trigger";
 
 export class Fire extends Entity {
   public static readonly Size = 16;

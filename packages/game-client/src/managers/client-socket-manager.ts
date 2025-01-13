@@ -36,11 +36,8 @@ const SERVER_EVENT_MAP = {
 export class ClientSocketManager {
   private socket: Socket;
 
-  public on<K extends keyof typeof SERVER_EVENT_MAP>(
-    eventType: K,
-    handler: (event: SERVER_EVENT_MAP[K]) => void
-  ) {
-    this.socket.on(eventType, (serializedEvent: any) => {
+  public on<K extends keyof typeof SERVER_EVENT_MAP>(eventType: K, handler: (event: any) => void) {
+    this.socket.on(eventType, (serializedEvent) => {
       const event = new SERVER_EVENT_MAP[eventType](serializedEvent);
       handler(event);
     });

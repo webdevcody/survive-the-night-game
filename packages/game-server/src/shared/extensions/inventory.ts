@@ -4,7 +4,7 @@ import { InventoryItem, ITEM_TYPES, ItemType } from "../inventory";
 import { recipes, RecipeType } from "../recipes";
 import { Broadcaster } from "../../managers/server-socket-manager";
 import { PlayerPickedUpItemEvent } from "../events/server-sent/pickup-item-event";
-import { Positionable } from "./index";
+import Positionable from "./positionable";
 
 export default class Inventory implements Extension {
   public static readonly type = "inventory";
@@ -49,6 +49,7 @@ export default class Inventory implements Extension {
 
   public getActiveItem(index: number | null): InventoryItem | null {
     if (index === null) return null;
+    // TODO: refactor this to be 0 based, why are we subtracting 1?
     return this.items[index - 1] ?? null;
   }
 

@@ -50,7 +50,7 @@ export default class Triggerable implements Extension {
 
       const centerDistance = distance(triggerCenter, entityCenter);
 
-      if (centerDistance < Triggerable.TriggerRadius) {
+      if (centerDistance <= Triggerable.TriggerRadius) {
         this.onEntityEntered?.(entity);
       }
     }

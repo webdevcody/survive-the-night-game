@@ -3,9 +3,9 @@ import { EntityManager } from "./entity-manager";
 import { Weapon, WEAPON_TYPES } from "../shared/entities/weapon";
 import { Boundary } from "../shared/entities/boundary";
 import { Zombie } from "../shared/entities/zombie";
-import { Positionable } from "../shared/extensions";
 import { Broadcaster } from "./server-socket-manager";
 import { DEBUG_START_ZOMBIE } from "../config/debug";
+import Positionable from "../shared/extensions/positionable";
 
 export const Z_INDEX = {
   GROUND: 0,
@@ -128,6 +128,14 @@ export class MapManager {
         }
       }
     }
+  }
+
+  generateEmptyMap(width: number, height: number) {
+    this.entityManager.clear();
+    this.entityManager.setMapSize(width * TILE_SIZE, height * TILE_SIZE);
+    this.map = Array(height)
+      .fill(0)
+      .map(() => Array(width).fill(0));
   }
 
   generateMap() {

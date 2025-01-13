@@ -96,7 +96,7 @@ export class ZombieClient extends ClientEntityBase implements IClientEntity, Ren
       duration: 500,
       frames: 5,
     });
-    const fireImg = this.assetManager.getFrameIndex("flame", frameIndex);
+    const fireImg = this.imageLoader.getFrameIndex("flame", frameIndex);
     ctx.drawImage(fireImg, renderPosition.x, renderPosition.y);
   }
 
@@ -110,7 +110,7 @@ export class ZombieClient extends ClientEntityBase implements IClientEntity, Ren
       duration: 500,
       frames: 3,
     });
-    const image = this.assetManager.getFrameWithDirection("zombie", facing, frameIndex);
+    const image = this.imageLoader.getFrameWithDirection("zombie", facing, frameIndex);
     ctx.drawImage(image, renderPosition.x, renderPosition.y);
     drawHealthBar(ctx, renderPosition, this.getHealth(), this.getMaxHealth());
 
@@ -144,7 +144,7 @@ export class ZombieClient extends ClientEntityBase implements IClientEntity, Ren
     renderPosition: Vector2
   ) {
     const myPlayer = getPlayer(gameState);
-    const image = this.assetManager.get("zombie_dead");
+    const image = this.imageLoader.get("zombie_dead");
     ctx.drawImage(image, renderPosition.x, renderPosition.y);
 
     if (myPlayer) {

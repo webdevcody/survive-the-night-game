@@ -1,8 +1,12 @@
 import { Entities, RawEntity } from "@survive-the-night/game-shared";
 import { EntityManager } from "../../../managers/entity-manager";
 import { Entity } from "../../entity";
-import { Collidable, Destructible, Interactive, Positionable, Carryable } from "../../extensions";
 import { Player } from "../player";
+import Carryable from "../../extensions/carryable";
+import Collidable from "../../extensions/collidable";
+import Destructible from "../../extensions/destructible";
+import Interactive from "../../extensions/interactive";
+import Positionable from "../../extensions/positionable";
 
 export class Wall extends Entity {
   public static readonly Size = 16;
