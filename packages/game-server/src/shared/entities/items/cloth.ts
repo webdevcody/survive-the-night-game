@@ -16,8 +16,6 @@ export class Cloth extends Entity {
       new Interactive(this).onInteract(this.interact.bind(this)).setDisplayName("cloth"),
       new Carryable(this, "cloth"),
     ];
-
-    entityManager.registerItem("cloth", Cloth);
   }
 
   private interact(entityId: string): void {

@@ -74,16 +74,17 @@ export class InventoryBarUI implements Renderable {
 
     const slotsLeft = canvasWidth / 2 - hotbarWidth / 2 + padding.left;
     const slotsTop = canvasHeight - hotbarHeight - screenMarginBottom + padding.top;
+    const slotsBottom = slotsTop + slotSize;
     const items = this.getInventory();
     const activeItemIdx = this.inputManager.getInputs().inventoryItem - 1;
 
     for (let i = 0; i < slotsNumber; i++) {
       const slotLeft = slotsLeft + i * (slotSize + slotsGap);
+      const slotRight = slotLeft + slotSize;
 
       ctx.fillStyle = activeItemIdx === i ? active.background : background;
       ctx.fillRect(slotLeft, slotsTop, slotSize, slotSize);
 
-      ctx.fillStyle = "white";
       ctx.font = "32px Arial";
       ctx.textAlign = "left";
 
@@ -93,7 +94,15 @@ export class InventoryBarUI implements Renderable {
       if (image) {
         ctx.drawImage(image, slotLeft, slotsTop, slotSize, slotSize);
       }
+      ctx.fillStyle = "white";
       ctx.fillText(`${i + 1}`, slotLeft + 4, slotsTop + 30);
+
+      const ammoKeys = ["pistol_ammo", "shotgun_ammo"];
+      if (ammoKeys.includes(inventoryItem?.key)) {
+        const ammo = inventoryItem.state?.count;
+        ctx.fillStyle = "white";
+        ctx.fillText(`${ammo}`, slotRight - 96, slotsBottom - 4);
+      }
     }
 
     ctx.restore();

@@ -9,7 +9,6 @@ import { PlayerDeathEvent } from "../../index";
 import { Cooldown } from "./util/cooldown";
 import { Input } from "../input";
 import { PlayerHurtEvent } from "../events/server-sent/player-hurt-event";
-import { PlayerAttackedEvent } from "../events/server-sent/player-attacked-event";
 import { PlayerDroppedItemEvent } from "../events/server-sent/player-dropped-item-event";
 import { Broadcaster } from "@/managers/types";
 import { DEBUG_WEAPONS } from "../../config/debug";
@@ -27,6 +26,7 @@ import Movable from "../extensions/movable";
 import Positionable from "../extensions/positionable";
 import Updatable from "../extensions/updatable";
 import { Entities } from "@survive-the-night/game-shared/src/constants";
+import { Weapon } from "./weapons/weapon";
 
 export class Player extends Entity {
   public static readonly MAX_HEALTH = 3;
@@ -77,10 +77,20 @@ export class Player extends Entity {
     if (DEBUG_WEAPONS) {
       const inventory = this.getExt(Inventory);
       [
-        { key: "knife" as const },
+        {
+          key: "pistol_ammo" as const,
+          state: {
+            count: 10,
+          },
+        },
         { key: "pistol" as const },
-        { key: "shotgun" as const },
-        { key: "wood" as const },
+        {
+          key: "shotgun" as const,
+          state: {
+            count: 10,
+          },
+        },
+        { key: "shotgun_ammo" as const, state: { count: 10 } },
         { key: "torch" as const },
         { key: "gasoline" as const },
         { key: "spikes" as const },
@@ -210,40 +220,10 @@ export class Player extends Entity {
     if (this.fireCooldown.isReady()) {
       this.fireCooldown.reset();
 
-      if (activeWeapon.key === "pistol") {
-        const bullet = new Bullet(this.getEntityManager());
-        bullet.setPosition({
-          x: this.getCenterPosition().x,
-          y: this.getCenterPosition().y,
-        });
-        bullet.setDirection(this.input.facing);
-        this.getEntityManager().addEntity(bullet);
-
-        this.broadcaster.broadcastEvent(
-          new PlayerAttackedEvent({
-            playerId: this.getId(),
-            weaponKey: activeWeapon.key,
-          })
-        );
-      } else if (activeWeapon.key === "shotgun") {
-        // Create 3 bullets with spread
-        const spreadAngle = 8; // degrees
-        for (let i = -1; i <= 1; i++) {
-          const bullet = new Bullet(this.getEntityManager());
-          bullet.setPosition({
-            x: this.getCenterPosition().x,
-            y: this.getCenterPosition().y,
-          });
-          bullet.setDirectionWithOffset(this.input.facing, i * spreadAngle);
-          this.getEntityManager().addEntity(bullet);
-
-          this.broadcaster.broadcastEvent(
-            new PlayerAttackedEvent({
-              playerId: this.getId(),
-              weaponKey: activeWeapon.key,
-            })
-          );
-        }
+      // Create weapon entity and use its attack method
+      const weaponEntity = this.getEntityManager().createEntityFromItem(activeWeapon);
+      if (weaponEntity && weaponEntity instanceof Weapon) {
+        weaponEntity.attack(this.getId(), this.getCenterPosition(), this.input.facing);
       }
     }
   }

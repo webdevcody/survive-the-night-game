@@ -21,6 +21,8 @@ import { IEntityManager } from "./types";
 import { Knife } from "../shared/entities/weapons/knife";
 import { Shotgun } from "../shared/entities/weapons/shotgun";
 import { Pistol } from "../shared/entities/weapons/pistol";
+import { ShotgunAmmo } from "../shared/entities/items/shotgun-ammo";
+import { PistolAmmo } from "../shared/entities/items/pistol-ammo";
 
 type EntityConstructor = new (entityManager: IEntityManager, ...args: any[]) => Entity;
 type EntityFactory = (entityManager: IEntityManager) => Entity;
@@ -53,6 +55,10 @@ export class EntityManager implements IEntityManager {
     this.registerItem("knife", Knife);
     this.registerItem("shotgun", Shotgun);
     this.registerItem("pistol", Pistol);
+
+    // Register ammo
+    this.registerItem("pistol_ammo", PistolAmmo);
+    this.registerItem("shotgun_ammo", ShotgunAmmo);
   }
 
   public registerItem(type: ItemType, constructor: any): void {

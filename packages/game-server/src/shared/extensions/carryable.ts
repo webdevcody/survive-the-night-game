@@ -4,6 +4,11 @@ import { ItemType } from "../inventory";
 import { PlayerPickedUpItemEvent } from "../events/server-sent/pickup-item-event";
 import Inventory from "./inventory";
 
+interface PickupOptions {
+  state?: any;
+  mergeStrategy?: (existingState: any, pickupState: any) => any;
+}
+
 export default class Carryable implements Extension {
   public static readonly type = "carryable" as const;
 
@@ -15,7 +20,7 @@ export default class Carryable implements Extension {
     this.itemKey = itemKey;
   }
 
-  public pickup(entityId: string): boolean {
+  public pickup(entityId: string, options?: PickupOptions): boolean {
     const entity = this.self.getEntityManager().getEntityById(entityId);
     if (!entity) {
       return false;
@@ -23,11 +28,32 @@ export default class Carryable implements Extension {
 
     const inventory = entity.getExt(Inventory);
 
+    if (inventory.isFull() && !options?.mergeStrategy) {
+      return false;
+    }
+
+    // If we have a merge strategy and existing item, merge instead of adding new
+    if (options?.mergeStrategy) {
+      const existingItemIndex = inventory.getItems().findIndex((item) => item.key === this.itemKey);
+      if (existingItemIndex >= 0) {
+        const existingItem = inventory.getItems()[existingItemIndex];
+        const newState = options.mergeStrategy(existingItem.state, options.state);
+        inventory.updateItemState(existingItemIndex, newState);
+        this.self.getEntityManager().markEntityForRemoval(this.self);
+        return true;
+      }
+    }
+
+    // Otherwise add as new item
     if (inventory.isFull()) {
       return false;
     }
 
-    inventory.addItem({ key: this.itemKey });
+    inventory.addItem({
+      key: this.itemKey,
+      state: options?.state,
+    });
+
     this.self.getEntityManager().markEntityForRemoval(this.self);
 
     this.self

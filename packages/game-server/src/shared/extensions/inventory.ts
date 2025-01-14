@@ -47,6 +47,12 @@ export default class Inventory implements Extension {
     return this.items.splice(index, 1)[0];
   }
 
+  public updateItemState(index: number, state: any): void {
+    if (index >= 0 && index < this.items.length) {
+      this.items[index].state = state;
+    }
+  }
+
   public getActiveItem(index: number | null): InventoryItem | null {
     if (index === null) return null;
     // TODO: refactor this to be 0 based, why are we subtracting 1?

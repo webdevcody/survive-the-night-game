@@ -16,6 +16,8 @@ import { GasolineClient } from "./items/gasoline";
 import { PistolClient } from "./weapons/pistol";
 import { ShotgunClient } from "./weapons/shotgun";
 import { KnifeClient } from "./weapons/knife";
+import { PistolAmmoClient } from "./weapons/pistol-ammo";
+import { ShotgunAmmoClient } from "./weapons/shotgun-ammo";
 
 const entityMap = {
   [Entities.PLAYER]: PlayerClient,
@@ -23,7 +25,9 @@ const entityMap = {
   [Entities.BULLET]: BulletClient,
   [Entities.WALL]: WallClient,
   [Entities.PISTOL]: PistolClient,
+  [Entities.PISTOL_AMMO]: PistolAmmoClient,
   [Entities.SHOTGUN]: ShotgunClient,
+  [Entities.SHOTGUN_AMMO]: ShotgunAmmoClient,
   [Entities.KNIFE]: KnifeClient,
   [Entities.BANDAGE]: BandageClient,
   [Entities.CLOTH]: ClothClient,

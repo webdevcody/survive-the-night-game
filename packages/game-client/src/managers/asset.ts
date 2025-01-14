@@ -16,8 +16,11 @@ function assetMap({
   y,
   width = tileSize,
   height = tileSize,
-}: Partial<CropOptions> & Pick<CropOptions, "x" | "y">): CropOptions {
-  return { flipX, x, y, width, height };
+  sheet = "default",
+}: Partial<CropOptions> & Pick<CropOptions, "x" | "y"> & { sheet?: string }): CropOptions & {
+  sheet: string;
+} {
+  return { flipX, x, y, width, height, sheet };
 }
 
 function getFrameOrigin({
@@ -77,11 +80,13 @@ export const assetsMap = {
   knife_facing_right: assetMap({ x: 17, y: 171 }),
   knife_facing_up: assetMap({ x: 34, y: 171 }),
   pistol: assetMap({ x: 17, y: 149 }),
+  pistol_ammo: assetMap({ x: 64, y: 16, sheet: "items" }),
   pistol_facing_down: assetMap({ x: 51, y: 149 }),
   pistol_facing_left: assetMap({ x: 17, y: 149, flipX: true }),
   pistol_facing_right: assetMap({ x: 17, y: 149 }),
   pistol_facing_up: assetMap({ x: 34, y: 149 }),
   shotgun: assetMap({ x: 17, y: 133 }),
+  shotgun_ammo: assetMap({ x: 80, y: 16, sheet: "items" }),
   shotgun_facing_down: assetMap({ x: 51, y: 133 }),
   shotgun_facing_left: assetMap({ x: 17, y: 133, flipX: true }),
   shotgun_facing_right: assetMap({ x: 17, y: 133 }),
@@ -156,7 +161,7 @@ export interface ImageLoader {
 
 export class AssetManager implements ImageLoader {
   private imageManager = new ImageManager();
-  private sheet: HTMLImageElement | null = null;
+  private sheets: Record<string, HTMLImageElement> = {};
   private loaded = false;
 
   public async load(): Promise<void> {
@@ -164,9 +169,11 @@ export class AssetManager implements ImageLoader {
       return;
     }
 
-    if (this.sheet === null) {
-      this.sheet = await this.imageManager.load("/tile-sheet.png");
-    }
+    // Load all sprite sheets
+    this.sheets = {
+      default: await this.imageManager.load("/tile-sheet.png"),
+      items: await this.imageManager.load("/sheets/items-sheet.png"),
+    };
 
     await this.populateCache();
     this.loaded = true;
@@ -235,23 +242,18 @@ export class AssetManager implements ImageLoader {
     return asset;
   }
 
-  public getSheet(): HTMLImageElement {
-    if (this.sheet === null) {
-      throw new Error(
-        "Tried getting a sheet without having it initialized, make sure to call `.load()` first"
-      );
-    }
-
-    return this.sheet;
-  }
-
   private async populateCache(): Promise<void> {
-    const sheet = this.getSheet();
-
     await Promise.all(
       Object.keys(assetsMap).map(async (assetKey) => {
         const asset = assetKey as Asset;
         const cropOptions = assetsMap[asset];
+        const sheet = this.sheets[cropOptions.sheet || "default"];
+        if (!sheet) {
+          throw new Error(`Sheet not found: ${cropOptions.sheet}`);
+        }
+        if (asset === "pistol_ammo") {
+          console.log("pistol_ammo", cropOptions);
+        }
         assetsCache[asset] = await this.imageManager.crop(sheet, cropOptions);
       })
     );
