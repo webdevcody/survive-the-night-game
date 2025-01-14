@@ -1,7 +1,6 @@
 import { Server, Socket } from "socket.io";
 import { createServer } from "http";
 import { ClientSentEvents, ServerSentEvents } from "../shared/events/events";
-import { EntityManager } from "./entity-manager";
 import { MapManager } from "./map-manager";
 import { Input } from "../shared/input";
 import { Player } from "../shared/entities/player";
@@ -11,6 +10,7 @@ import { DEBUG_EVENTS } from "../config/debug";
 import Positionable from "../shared/extensions/positionable";
 import { GameServer } from "../server";
 import { Broadcaster, IEntityManager } from "./types";
+import { ADMIN_COMMANDS, AdminCommand, CreateItemCommand } from "@shared/commands/commands";
 
 /**
  * Any and all functionality related to sending server side events
@@ -130,10 +130,25 @@ export class ServerSocketManager implements Broadcaster {
     socket.on(ClientSentEvents.STOP_CRAFTING, (recipe: RecipeType) =>
       this.setPlayerCrafting(socket, false)
     );
+    socket.on(ClientSentEvents.ADMIN_COMMAND, (command: AdminCommand) =>
+      this.onAdminCommand(socket, command)
+    );
 
     socket.on("disconnect", () => {
       this.onDisconnect(socket);
     });
+  }
+
+  private onAdminCommand(socket: Socket, command: CreateItemCommand): void {
+    console.log(`Admin command received:`, command);
+    if (command.command === ADMIN_COMMANDS.CREATE_ITEM) {
+      const { itemType, position } = command.payload;
+      const item = this.getEntityManager().createEntityFromItem({
+        key: itemType,
+      });
+      item.getExt(Positionable).setPosition(position);
+      this.getEntityManager().addEntity(item);
+    }
   }
 
   public broadcastEvent(event: GameEvent<any>): void {

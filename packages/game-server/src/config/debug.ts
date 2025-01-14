@@ -5,3 +5,4 @@ export const DEBUG_SHOW_HITBOXES = false;
 export const DEBUG_SHOW_POSITIONS = false;
 export const DEBUG_START_ZOMBIE = false;
 export const DEBUG_VOLUME_REDUCTION = 0.1;
+export const DEBUG_ADMIN_COMMANDS = true;

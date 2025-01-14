@@ -70,4 +70,8 @@ export class ClientSocketManager {
   public sendInput(input: Input) {
     this.socket.emit(ClientSentEvents.PLAYER_INPUT, input);
   }
+
+  public sendAdminCommand(command: AdminCommand) {
+    this.socket.emit(ClientSentEvents.ADMIN_COMMAND, command);
+  }
 }

@@ -251,9 +251,6 @@ export class AssetManager implements ImageLoader {
         if (!sheet) {
           throw new Error(`Sheet not found: ${cropOptions.sheet}`);
         }
-        if (asset === "pistol_ammo") {
-          console.log("pistol_ammo", cropOptions);
-        }
         assetsCache[asset] = await this.imageManager.crop(sheet, cropOptions);
       })
     );

@@ -17,6 +17,7 @@ export const ClientSentEvents = {
   PLAYER_INPUT: "playerInput",
   START_CRAFTING: "startCrafting",
   STOP_CRAFTING: "stopCrafting",
+  ADMIN_COMMAND: "adminCommand",
 } as const;
 
 export type ServerSentEventType = (typeof ServerSentEvents)[keyof typeof ServerSentEvents];

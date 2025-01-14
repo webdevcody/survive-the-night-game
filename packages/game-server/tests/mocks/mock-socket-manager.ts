@@ -1,5 +1,5 @@
-import { Broadcaster } from "@/managers/types";
-import { GameEvent } from "@/shared/events/types";
+import { Broadcaster } from "../../src/managers/types";
+import { GameEvent } from "../../src/shared/events/types";
 
 export class MockSocketManager implements Broadcaster {
   constructor() {}

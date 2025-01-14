@@ -1,7 +1,7 @@
 import { AssetManager } from "./managers/asset";
 import { InputManager } from "./managers/input";
 import { EntityDto, ClientSocketManager } from "./managers/client-socket-manager";
-import { Direction, Entity, Input } from "@survive-the-night/game-server";
+import { Direction, Input } from "@survive-the-night/game-server";
 import { PlayerClient } from "./entities/player";
 import { CameraManager } from "./managers/camera";
 import { MapManager } from "./managers/map";
@@ -18,7 +18,8 @@ import { ResizeController } from "./resize-controller";
 import { ClientEventListener } from "./client-event-listener";
 import { SoundManager } from "./managers/sound-manager";
 import { GameOverDialogUI } from "./ui/game-over-dialog";
-import { ClientEntityBase } from "./extensions/client-entity";
+import { CommandManager } from "./managers/command-manager";
+import { DEBUG_ADMIN_COMMANDS } from "@survive-the-night/game-server/src/config/debug";
 
 export class GameClient {
   private ctx: CanvasRenderingContext2D;
@@ -30,8 +31,9 @@ export class GameClient {
   private cameraManager: CameraManager;
   private mapManager: MapManager;
   private storageManager: StorageManager;
-  private clientEventListener: ClientEventListener;
   private soundManager: SoundManager;
+  private commandManager: CommandManager;
+  private clientEventListener: ClientEventListener;
 
   // Controllers
   private resizeController: ResizeController;
@@ -188,6 +190,11 @@ export class GameClient {
 
     this.socketManager = new ClientSocketManager(serverUrl);
     this.clientEventListener = new ClientEventListener(this, this.socketManager);
+    this.commandManager = new CommandManager(this.socketManager, this.gameState);
+
+    if (DEBUG_ADMIN_COMMANDS) {
+      (window as any).commandManager = this.commandManager;
+    }
   }
 
   public getGameOverDialog(): GameOverDialogUI {

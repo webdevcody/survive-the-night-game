@@ -6,7 +6,7 @@ import { EntityManager } from "../../src/managers/entity-manager";
 import { Bullet } from "../../src/shared/entities/bullet";
 import { ServerSocketManager } from "../../src/managers/server-socket-manager";
 import { TILE_SIZE } from "../../src/config/constants";
-import Destructible from "@/shared/extensions/destructible";
+import Destructible from "../../src/shared/extensions/destructible";
 
 describe("Zombie Death", () => {
   let socketManager: ServerSocketManager;
