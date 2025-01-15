@@ -1,8 +1,9 @@
 {
   "compilerOptions": {
     "composite": true,
-    "target": "ES2020",
-    "module": "CommonJS",
+    "target": "ES2017",
+    "module": "esnext",
+    "moduleResolution": "bundler",
     "declaration": true,
     "outDir": "./dist",
     "strict": true,

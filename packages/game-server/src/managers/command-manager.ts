@@ -13,7 +13,7 @@ import { EntityType } from "@shared/types/entity";
 export class CommandManager {
   private entityManager: IEntityManager;
 
-  private commandMap: Record<AdminCommandType, (command: AdminCommand) => void>;
+  private commandMap: Record<AdminCommandType, (payload: AdminCommand["payload"]) => void>;
 
   constructor(entityManager: IEntityManager) {
     this.entityManager = entityManager;
