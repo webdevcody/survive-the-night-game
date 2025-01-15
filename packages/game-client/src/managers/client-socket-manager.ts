@@ -16,6 +16,8 @@ import { ZombieHurtEvent } from "@survive-the-night/game-server/src/shared/event
 import { PlayerDroppedItemEvent } from "@survive-the-night/game-server/src/shared/events/server-sent/player-dropped-item-event";
 import { PlayerPickedUpItemEvent } from "@survive-the-night/game-server/src/shared/events/server-sent/pickup-item-event";
 import { GameOverEvent } from "@survive-the-night/game-server/src/shared/events/server-sent/game-over-event";
+import { ZombieAttackedEvent } from "@survive-the-night/game-server/src/shared/events/server-sent/zombie-attacked-event";
+import { LootEvent } from "@survive-the-night/game-server/src/shared/events/server-sent/loot-event";
 
 export type EntityDto = { id: string } & any;
 
@@ -31,6 +33,8 @@ const SERVER_EVENT_MAP = {
   [ServerSentEvents.PLAYER_DROPPED_ITEM]: PlayerDroppedItemEvent,
   [ServerSentEvents.PLAYER_PICKED_UP_ITEM]: PlayerPickedUpItemEvent,
   [ServerSentEvents.GAME_OVER]: GameOverEvent,
+  [ServerSentEvents.ZOMBIE_ATTACKED]: ZombieAttackedEvent,
+  [ServerSentEvents.LOOT]: LootEvent,
 } as const;
 
 export class ClientSocketManager {

@@ -23,10 +23,10 @@ import { Shotgun } from "../shared/entities/weapons/shotgun";
 import { Pistol } from "../shared/entities/weapons/pistol";
 import { ShotgunAmmo } from "../shared/entities/items/shotgun-ammo";
 import { PistolAmmo } from "../shared/entities/items/pistol-ammo";
-import { Zombie } from "@/shared/entities/zombie";
-import { IEntity } from "@/shared/types";
-import { Bullet } from "@/shared/entities/bullet";
-import { Fire } from "@/shared/entities/environment/fire";
+import { Zombie } from "../shared/entities/zombie";
+import { IEntity } from "../shared/types";
+import { Bullet } from "../shared/entities/bullet";
+import { Fire } from "../shared/entities/environment/fire";
 
 const entityMap = {
   [Entities.PLAYER]: Player,
@@ -365,7 +365,7 @@ export class EntityManager implements IEntityManager {
     return this.getGameManagers().getBroadcaster();
   }
 
-  createEntity(entityType: EntityType): IEntity {
+  createEntity(entityType: EntityType): IEntity | null {
     const entityConstructor = entityMap[entityType];
     if (entityConstructor) {
       return new entityConstructor(this.getGameManagers());

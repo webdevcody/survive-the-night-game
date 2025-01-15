@@ -9,6 +9,8 @@ export const ServerSentEvents = {
   PLAYER_PICKED_UP_ITEM: "playerPickedUpItem",
   ZOMBIE_DEATH: "zombieDeath",
   ZOMBIE_HURT: "zombieHurt",
+  ZOMBIE_ATTACKED: "zombieAttacked",
+  LOOT: "loot",
   MAP: "map",
 } as const;
 

@@ -3,18 +3,19 @@ import { Cooldown } from "../entities/util/cooldown";
 import Destructible from "./destructible";
 import { Entity } from "../entity";
 import { Extension } from "@survive-the-night/game-shared/src/types/entity";
+import { IEntity } from "../types";
 
 export default class Ignitable implements Extension {
   public static readonly type = "ignitable";
 
-  private self: Entity;
+  private self: IEntity;
   private cooldown: Cooldown;
   private maxDamage: number;
   private totalDamage: number;
   private damage: number;
 
   // TODO: this should be configurable for damage / cooldown
-  public constructor(self: Entity, maxDamage = 2) {
+  public constructor(self: IEntity, maxDamage = 2) {
     this.self = self;
     this.cooldown = new Cooldown(1);
     this.maxDamage = maxDamage;

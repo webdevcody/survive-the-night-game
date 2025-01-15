@@ -12,6 +12,7 @@ import { Vector2, distance, normalizeVector } from "../physics";
 import { Hitbox } from "../traits";
 import { RawEntity } from "@survive-the-night/game-shared/src/types/entity";
 import { IEntity } from "../types";
+import { ZombieHurtEvent } from "../events/server-sent/zombie-hurt-event";
 
 const MAX_TRAVEL_DISTANCE = 400;
 export const BULLET_SPEED = 100;
@@ -113,6 +114,12 @@ export class Bullet extends Entity {
       this.getEntityManager().markEntityForRemoval(this);
       const destructible = firstEnemy.getExt(Destructible);
       destructible.damage(1);
+
+      if (firstEnemy.getType() === Entities.ZOMBIE) {
+        this.getGameManagers()
+          .getBroadcaster()
+          .broadcastEvent(new ZombieHurtEvent(firstEnemy.getId()));
+      }
     }
   }
 

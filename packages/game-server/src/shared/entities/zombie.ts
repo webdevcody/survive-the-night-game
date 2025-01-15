@@ -16,6 +16,8 @@ import Updatable from "../extensions/updatable";
 import Interactive from "../extensions/interactive";
 import { Entities } from "@survive-the-night/game-shared/src/constants";
 import { IEntity } from "../types";
+import { ZombieAttackedEvent } from "../events/server-sent/zombie-attacked-event";
+import { LootEvent } from "../events/server-sent/loot-event";
 
 export class Zombie extends Entity {
   private static readonly ZOMBIE_WIDTH = 16;
@@ -66,7 +68,7 @@ export class Zombie extends Entity {
   }
 
   onDeath(): void {
-    this.gameManagers.getBroadcaster().broadcastEvent(new ZombieHurtEvent(this.getId()));
+    this.gameManagers.getBroadcaster().broadcastEvent(new ZombieDeathEvent(this.getId()));
     this.extensions.push(
       new Interactive(this).onInteract(this.afterDeathInteract.bind(this)).setDisplayName("loot")
     );
@@ -80,7 +82,7 @@ export class Zombie extends Entity {
     }
 
     this.getEntityManager().markEntityForRemoval(this);
-    this.gameManagers.getBroadcaster().broadcastEvent(new ZombieDeathEvent(this.getId()));
+    this.gameManagers.getBroadcaster().broadcastEvent(new LootEvent(this.getId()));
   }
 
   getPosition(): Vector2 {
@@ -211,8 +213,9 @@ export class Zombie extends Entity {
 
     if (entity.hasExt(Destructible)) {
       entity.getExt(Destructible).damage(Zombie.ATTACK_DAMAGE);
-    } else if ("damage" in entity && typeof (entity as any).damage === "function") {
-      (entity as any).damage(Zombie.ATTACK_DAMAGE);
+      this.getGameManagers()
+        .getBroadcaster()
+        .broadcastEvent(new ZombieAttackedEvent(this.getId(), entity.getId()));
     }
 
     this.attackCooldown.reset();

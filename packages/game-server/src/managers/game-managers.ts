@@ -1,11 +1,11 @@
 import { Broadcaster, IEntityManager, IGameManagers, IMapManager } from "./types";
 
 export class GameManagers implements IGameManagers {
-  constructor(
-    private entityManager: IEntityManager,
-    private mapManager: IMapManager,
-    private broadcaster: Broadcaster
-  ) {
+  private entityManager: IEntityManager;
+  private mapManager: IMapManager;
+  private broadcaster: Broadcaster;
+
+  constructor(entityManager: IEntityManager, mapManager: IMapManager, broadcaster: Broadcaster) {
     this.entityManager = entityManager;
     this.mapManager = mapManager;
     this.broadcaster = broadcaster;

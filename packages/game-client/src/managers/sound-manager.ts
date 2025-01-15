@@ -16,6 +16,8 @@ export const SOUND_TYPES = {
   ZOMBIE_DEATH: "zombie_death",
   ZOMBIE_HURT: "zombie_hurt",
   SHOTGUN_FIRE: "shotgun_fire",
+  ZOMBIE_ATTACKED: "zombie_bite",
+  LOOT: "loot",
 } as const;
 
 export type SoundType = (typeof SOUND_TYPES)[keyof typeof SOUND_TYPES];

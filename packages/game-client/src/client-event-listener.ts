@@ -17,6 +17,9 @@ import { PlayerPickedUpItemEvent } from "@survive-the-night/game-server/src/shar
 import { GameOverEvent } from "@survive-the-night/game-server/src/shared/events/server-sent/game-over-event";
 import { SOUND_TYPES } from "./managers/sound-manager";
 import { WEAPON_TYPES } from "@survive-the-night/game-server/src/shared/entities/weapons/weapon";
+import { ZombieAttackedEvent } from "@survive-the-night/game-server/src/shared/events/server-sent/zombie-attacked-event";
+import { LootEvent } from "@survive-the-night/game-server/src/shared/events/server-sent/loot-event";
+import { ClientPositionable } from "./extensions";
 
 export class ClientEventListener {
   private socketManager: ClientSocketManager;
@@ -36,6 +39,8 @@ export class ClientEventListener {
     this.socketManager.on(ServerSentEvents.PLAYER_ATTACKED, this.onPlayerAttacked.bind(this));
     this.socketManager.on(ServerSentEvents.ZOMBIE_DEATH, this.onZombieDeath.bind(this));
     this.socketManager.on(ServerSentEvents.ZOMBIE_HURT, this.onZombieHurt.bind(this));
+    this.socketManager.on(ServerSentEvents.LOOT, this.onLoot.bind(this));
+    this.socketManager.on(ServerSentEvents.ZOMBIE_ATTACKED, this.onZombieAttacked.bind(this));
     this.socketManager.on(ServerSentEvents.GAME_OVER, this.onGameOver.bind(this));
     this.socketManager.on(
       ServerSentEvents.PLAYER_DROPPED_ITEM,
@@ -62,6 +67,17 @@ export class ClientEventListener {
     this.gameState.playerId = yourIdEvent.getPlayerId();
   }
 
+  onZombieAttacked(zombieAttackedEvent: ZombieAttackedEvent) {
+    const zombie = this.gameClient.getEntityById(zombieAttackedEvent.getZombieId());
+    if (!zombie) return;
+
+    const zombiePosition = (zombie as unknown as ZombieClient).getCenterPosition();
+    this.gameClient
+      .getSoundManager()
+      .playPositionalSound(SOUND_TYPES.ZOMBIE_ATTACKED, zombiePosition);
+    this.gameClient.getSoundManager().playPositionalSound(SOUND_TYPES.ZOMBIE_HURT, zombiePosition);
+  }
+
   onPlayerHurt(playerHurtEvent: PlayerHurtEvent) {
     const player = this.gameClient.getEntityById(playerHurtEvent.getPlayerId());
     if (!player) return;
@@ -72,6 +88,17 @@ export class ClientEventListener {
 
   onGameOver(gameOverEvent: GameOverEvent) {
     this.gameClient.getGameOverDialog().show();
+  }
+
+  onLoot(lootEvent: LootEvent) {
+    const loot = this.gameClient.getEntityById(lootEvent.getEntityId());
+    if (!loot) return;
+
+    const positionable = loot.getExt(ClientPositionable);
+    if (!positionable) return;
+
+    const lootPosition = positionable.getCenterPosition();
+    this.gameClient.getSoundManager().playPositionalSound(SOUND_TYPES.LOOT, lootPosition);
   }
 
   onPlayerDeath(playerDeathEvent: PlayerDeathEvent) {

@@ -338,18 +338,11 @@ export class Player extends Entity {
       const item = this.getExt(Inventory).getItems()[itemIndex];
 
       if (item) {
-        let entity: Entity;
+        const entity = this.getEntityManager().createEntityFromItem(item);
 
-        // this feels hacky, I shouldn't need a switch statement here
-        switch (item.key) {
-          case "bandage":
-            entity = new Bandage(this.getEntityManager());
-            break;
-          default:
-            return; // Not a consumable item
+        if (entity.hasExt(Consumable)) {
+          entity.getExt(Consumable).consume(this.getId(), itemIndex);
         }
-
-        entity.getExt(Consumable).consume(this.getId(), itemIndex);
       }
     }
   }

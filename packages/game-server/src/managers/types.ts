@@ -18,9 +18,12 @@ export interface IEntityManager {
   getNearbyIntersectingDestructableEntities(sourceEntity: IEntity, sourceHitbox: Hitbox): IEntity[];
   getBroadcaster(): Broadcaster;
   getPlayerEntities(): IEntity[];
+  getEntitiesToRemove(): Array<{ id: string; expiration: number }>;
   clear(): void;
+  update(deltaTime: number): void;
+  getEntities(): IEntity[];
   setMapSize(width: number, height: number): void;
-  createEntity(entityType: EntityType): IEntity;
+  createEntity(entityType: EntityType): IEntity | null;
 }
 
 export interface Broadcaster {

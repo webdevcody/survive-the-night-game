@@ -17,6 +17,7 @@ export class Pistol extends Weapon {
     const inventory = player.getExt(Inventory);
     const ammoItem = inventory.getItems().find((item) => item.key === "pistol_ammo");
 
+    console.log("ammoItem", ammoItem);
     if (!ammoItem || !ammoItem.state?.count || ammoItem.state.count <= 0) {
       return; // No ammo available
     }

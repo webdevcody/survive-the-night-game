@@ -7,68 +7,63 @@ import { Bullet } from "../../src/shared/entities/bullet";
 import { ServerSocketManager } from "../../src/managers/server-socket-manager";
 import { TILE_SIZE } from "../../src/config/constants";
 import Destructible from "../../src/shared/extensions/destructible";
+import { GameManagers } from "../../src/managers/game-managers";
+import { simpleTestSetup } from "../utils/setup";
 
-describe("Zombie Death", () => {
-  let socketManager: ServerSocketManager;
-  let entityManager: EntityManager;
-  let mapManager: MapManager;
-  let zombie: Zombie;
-  let bullet: Bullet;
+let socketManager: ServerSocketManager;
+let entityManager: EntityManager;
+let mapManager: MapManager;
+let zombie: Zombie;
+let bullet: Bullet;
+let gameManagers: GameManagers;
 
-  beforeEach(() => {
-    socketManager = new MockSocketManager() as unknown as ServerSocketManager;
-    vi.spyOn(socketManager, "broadcastEvent");
-    entityManager = new EntityManager(socketManager);
-    mapManager = new MapManager(entityManager);
-    mapManager.setSocketManager(socketManager);
+beforeEach(() => {
+  gameManagers = simpleTestSetup();
+  vi.spyOn(gameManagers.getBroadcaster(), "broadcastEvent");
 
-    // Set a minimal map size for testing (4x4 tiles)
-    entityManager.setMapSize(4 * TILE_SIZE, 4 * TILE_SIZE);
-
-    zombie = new Zombie(entityManager, mapManager, socketManager);
-    zombie.setPosition({
-      x: 0,
-      y: 0,
-    });
-    entityManager.addEntity(zombie);
-
-    bullet = new Bullet(entityManager);
-    bullet.setPosition({
-      x: 0,
-      y: 0,
-    });
-    entityManager.addEntity(bullet);
+  zombie = new Zombie(gameManagers);
+  zombie.setPosition({
+    x: 0,
+    y: 0,
   });
+  gameManagers.getEntityManager().addEntity(zombie);
 
-  test("a bullet should hurt a zombie during collisions, and removes itself", () => {
-    entityManager.update(0);
-
-    const destructible = zombie.getExt(Destructible);
-    expect(destructible.getHealth()).toBe(Zombie.MAX_HEALTH - 1);
-    expect(entityManager.getEntitiesToRemove()).toEqual([
-      expect.objectContaining({
-        id: bullet.getId(),
-      }),
-    ]);
+  bullet = new Bullet(gameManagers);
+  bullet.setPosition({
+    x: 0,
+    y: 0,
   });
+  gameManagers.getEntityManager().addEntity(bullet);
+});
 
-  test("a bullet should kill a zombie if the zombie only has 1 hp left", () => {
-    zombie.getExt(Destructible).setHealth(1);
+test("a bullet should hurt a zombie during collisions, and removes itself", () => {
+  gameManagers.getEntityManager().update(0);
 
-    entityManager.update(0);
+  const destructible = zombie.getExt(Destructible);
+  expect(destructible.getHealth()).toBe(Zombie.MAX_HEALTH - 1);
+  expect(gameManagers.getEntityManager().getEntitiesToRemove()).toEqual([
+    expect.objectContaining({
+      id: bullet.getId(),
+    }),
+  ]);
+});
 
-    const destructible = zombie.getExt(Destructible);
-    expect(destructible.isDead()).toBe(true);
-    expect(entityManager.getEntitiesToRemove()).toEqual([
-      expect.objectContaining({
-        id: bullet.getId(),
-      }),
-    ]);
-    expect(socketManager.broadcastEvent).toHaveBeenCalledWith(
-      expect.objectContaining({
-        type: "zombieHurt",
-        zombieId: zombie.getId(),
-      })
-    );
-  });
+test("a bullet should kill a zombie if the zombie only has 1 hp left", () => {
+  zombie.getExt(Destructible).setHealth(1);
+
+  gameManagers.getEntityManager().update(0);
+
+  const destructible = zombie.getExt(Destructible);
+  expect(destructible.isDead()).toBe(true);
+  expect(gameManagers.getEntityManager().getEntitiesToRemove()).toEqual([
+    expect.objectContaining({
+      id: bullet.getId(),
+    }),
+  ]);
+  expect(gameManagers.getBroadcaster().broadcastEvent).toHaveBeenCalledWith(
+    expect.objectContaining({
+      type: "zombieHurt",
+      zombieId: zombie.getId(),
+    })
+  );
 });
