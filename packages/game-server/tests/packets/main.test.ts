@@ -1,4 +1,4 @@
-import { Packet } from "../../src/network";
+import { Packet } from "@/network";
 import { expect, test } from "vitest";
 
 const Vector = Packet.create({

@@ -20,5 +20,6 @@
     { "path": "./packages/game-server" },
     { "path": "./packages/game-client" },
     { "path": "./packages/game-shared" }
-  ]
+  ],
+  
 }

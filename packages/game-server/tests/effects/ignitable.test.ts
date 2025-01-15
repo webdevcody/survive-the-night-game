@@ -1,9 +1,9 @@
 import { it, expect, beforeEach } from "vitest";
-import { Zombie } from "../../src/shared/entities/zombie";
-import Destructible from "../../src/shared/extensions/destructible";
-import Ignitable from "../../src/shared/extensions/ignitable";
-import { GameManagers } from "../../src/managers/game-managers";
-import { simpleTestSetup } from "../utils/setup";
+import { Zombie } from "@/shared/entities/zombie";
+import Destructible from "@/shared/extensions/destructible";
+import Ignitable from "@/shared/extensions/ignitable";
+import { GameManagers } from "@/managers/game-managers";
+import { simpleTestSetup } from "@/tests/utils/setup";
 
 let zombie: Zombie;
 let gameManagers: GameManagers;

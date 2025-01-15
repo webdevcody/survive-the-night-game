@@ -1,18 +1,10 @@
-import { Zombie } from "../../src/shared/entities/zombie";
-import { describe, expect, test, beforeEach, vi } from "vitest";
-import { MockSocketManager } from "../mocks/mock-socket-manager";
-import { MapManager } from "../../src/managers/map-manager";
-import { EntityManager } from "../../src/managers/entity-manager";
-import { Bullet } from "../../src/shared/entities/bullet";
-import { ServerSocketManager } from "../../src/managers/server-socket-manager";
-import { TILE_SIZE } from "../../src/config/constants";
-import Destructible from "../../src/shared/extensions/destructible";
-import { GameManagers } from "../../src/managers/game-managers";
-import { simpleTestSetup } from "../utils/setup";
+import { expect, test, beforeEach, vi } from "vitest";
+import { Zombie } from "@/shared/entities/zombie";
+import { Bullet } from "@/shared/entities/bullet";
+import Destructible from "@/shared/extensions/destructible";
+import { GameManagers } from "@/managers/game-managers";
+import { simpleTestSetup } from "@/tests/utils/setup";
 
-let socketManager: ServerSocketManager;
-let entityManager: EntityManager;
-let mapManager: MapManager;
 let zombie: Zombie;
 let bullet: Bullet;
 let gameManagers: GameManagers;

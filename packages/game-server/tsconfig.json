@@ -19,13 +19,16 @@
         "name": "next"
       }
     ],
+    "baseUrl": ".",
     "paths": {
       "@/*": ["./src/*"],
+      "@/tests/*": ["./tests/*"],
       "@shared/*": ["../game-shared/src/*"]
     }
   },
   "include": [
-    "src/**/*"
+    "src/**/*",
+    "tests/**/*"
   ],
   "references": [
     {

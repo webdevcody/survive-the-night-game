@@ -1,8 +1,8 @@
 import { it, expect, beforeEach } from "vitest";
-import { Player } from "../../src/shared/entities/player";
-import { GameManagers } from "../../src/managers/game-managers";
-import { simpleTestSetup } from "../utils/setup";
-import { Entities } from "../../../game-shared/src/constants";
+import { Player } from "@/shared/entities/player";
+import { GameManagers } from "@/managers/game-managers";
+import { simpleTestSetup } from "@/tests/utils/setup";
+import { Entities } from "@shared/constants";
 
 let gameManagers: GameManagers;
 let player: Player;

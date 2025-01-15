@@ -1,7 +1,7 @@
-import { EntityManager } from "../../src/managers/entity-manager";
-import { MapManager } from "../../src/managers/map-manager";
-import { createMockSocketManager } from "../mocks/mock-socket-manager";
-import { GameManagers } from "../../src/managers/game-managers";
+import { EntityManager } from "@/managers/entity-manager";
+import { MapManager } from "@/managers/map-manager";
+import { createMockSocketManager } from "@/tests/mocks/mock-socket-manager";
+import { GameManagers } from "@/managers/game-managers";
 
 export function simpleTestSetup() {
   const broadcaster = createMockSocketManager();
