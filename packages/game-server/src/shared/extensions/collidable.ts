@@ -1,17 +1,17 @@
 import { Extension, ExtensionSerialized } from "./types";
 import { Hitbox } from "../traits";
 import Positionable from "./positionable";
-import { Entity } from "../entity";
+import { IEntity } from "../types";
 
 export default class Collidable implements Extension {
   public static readonly type = "collidable";
 
-  private self: Entity;
+  private self: IEntity;
   private size: number;
   private offset: number;
   private enabled: boolean;
 
-  public constructor(self: Entity) {
+  public constructor(self: IEntity) {
     this.self = self;
     this.size = 16;
     this.offset = 0;

@@ -1,4 +1,4 @@
-import { RawEntity } from "@survive-the-night/game-shared/src/types/entity";
+import { RawEntity } from "@shared/types/entity";
 import { GameState } from "../state";
 import { Renderable } from "./util";
 import { getPlayer } from "../util/get-player";

@@ -10,9 +10,4 @@ export default defineConfig({
     globals: true,
     environment: "node",
   },
-  resolve: {
-    alias: {
-      "@": fileURLToPath(new URL("./src", import.meta.url)),
-    },
-  },
 });

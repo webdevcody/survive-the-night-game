@@ -1,4 +1,4 @@
-import { Broadcaster } from "@survive-the-night/game-server/src/managers/types";
+import { Broadcaster } from "@server/managers/types";
 import { vi } from "vitest";
 
 export function createMockBroadcaster() {

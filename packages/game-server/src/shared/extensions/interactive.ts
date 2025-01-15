@@ -1,4 +1,4 @@
-import { Entity } from "../entity";
+import { IEntity } from "../types";
 import { Extension, ExtensionSerialized } from "./types";
 
 type InteractiveHandler = (entityId: string) => void;
@@ -6,11 +6,11 @@ type InteractiveHandler = (entityId: string) => void;
 export default class Interactive implements Extension {
   public static readonly type = "interactive";
 
-  private self: Entity;
+  private self: IEntity;
   private handler: InteractiveHandler | null = null;
   private displayName: string = "";
 
-  public constructor(self: Entity) {
+  public constructor(self: IEntity) {
     this.self = self;
   }
 

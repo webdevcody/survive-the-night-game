@@ -9,15 +9,16 @@ import {
   YourIdEvent,
   ClientSentEvents,
 } from "@survive-the-night/game-server";
-import { PlayerHurtEvent } from "@survive-the-night/game-server/src/shared/events/server-sent/player-hurt-event";
-import { PlayerAttackedEvent } from "@survive-the-night/game-server/src/shared/events/server-sent/player-attacked-event";
-import { ZombieDeathEvent } from "@survive-the-night/game-server/src/shared/events/server-sent/zombie-death-event";
-import { ZombieHurtEvent } from "@survive-the-night/game-server/src/shared/events/server-sent/zombie-hurt-event";
-import { PlayerDroppedItemEvent } from "@survive-the-night/game-server/src/shared/events/server-sent/player-dropped-item-event";
-import { PlayerPickedUpItemEvent } from "@survive-the-night/game-server/src/shared/events/server-sent/pickup-item-event";
-import { GameOverEvent } from "@survive-the-night/game-server/src/shared/events/server-sent/game-over-event";
-import { ZombieAttackedEvent } from "@survive-the-night/game-server/src/shared/events/server-sent/zombie-attacked-event";
-import { LootEvent } from "@survive-the-night/game-server/src/shared/events/server-sent/loot-event";
+import { PlayerHurtEvent } from "@server/shared/events/server-sent/player-hurt-event";
+import { PlayerAttackedEvent } from "@server/shared/events/server-sent/player-attacked-event";
+import { ZombieDeathEvent } from "@server/shared/events/server-sent/zombie-death-event";
+import { ZombieHurtEvent } from "@server/shared/events/server-sent/zombie-hurt-event";
+import { PlayerDroppedItemEvent } from "@server/shared/events/server-sent/player-dropped-item-event";
+import { PlayerPickedUpItemEvent } from "@server/shared/events/server-sent/pickup-item-event";
+import { GameOverEvent } from "@server/shared/events/server-sent/game-over-event";
+import { ZombieAttackedEvent } from "@server/shared/events/server-sent/zombie-attacked-event";
+import { LootEvent } from "@server/shared/events/server-sent/loot-event";
+import { GunEmptyEvent } from "@server/shared/events/server-sent/gun-empty-event";
 
 export type EntityDto = { id: string } & any;
 
@@ -33,6 +34,7 @@ const SERVER_EVENT_MAP = {
   [ServerSentEvents.PLAYER_DROPPED_ITEM]: PlayerDroppedItemEvent,
   [ServerSentEvents.PLAYER_PICKED_UP_ITEM]: PlayerPickedUpItemEvent,
   [ServerSentEvents.GAME_OVER]: GameOverEvent,
+  [ServerSentEvents.GUN_EMPTY]: GunEmptyEvent,
   [ServerSentEvents.ZOMBIE_ATTACKED]: ZombieAttackedEvent,
   [ServerSentEvents.LOOT]: LootEvent,
 } as const;

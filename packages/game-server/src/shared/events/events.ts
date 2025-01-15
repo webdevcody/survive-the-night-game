@@ -10,6 +10,7 @@ export const ServerSentEvents = {
   ZOMBIE_DEATH: "zombieDeath",
   ZOMBIE_HURT: "zombieHurt",
   ZOMBIE_ATTACKED: "zombieAttacked",
+  GUN_EMPTY: "gunEmpty",
   LOOT: "loot",
   MAP: "map",
 } as const;

@@ -31,13 +31,11 @@ export class Zombie extends Entity {
 
   private currentWaypoint: Vector2 | null = null;
   private attackCooldown: Cooldown;
-  private gameManagers: IGameManagers;
 
   constructor(gameManagers: IGameManagers) {
     super(gameManagers, Entities.ZOMBIE);
 
     this.attackCooldown = new Cooldown(Zombie.ATTACK_COOLDOWN);
-    this.gameManagers = gameManagers;
 
     this.extensions = [
       new Inventory(this, gameManagers.getBroadcaster()).addRandomItem(0.2),
@@ -68,7 +66,7 @@ export class Zombie extends Entity {
   }
 
   onDeath(): void {
-    this.gameManagers.getBroadcaster().broadcastEvent(new ZombieDeathEvent(this.getId()));
+    this.getGameManagers().getBroadcaster().broadcastEvent(new ZombieDeathEvent(this.getId()));
     this.extensions.push(
       new Interactive(this).onInteract(this.afterDeathInteract.bind(this)).setDisplayName("loot")
     );
@@ -82,7 +80,7 @@ export class Zombie extends Entity {
     }
 
     this.getEntityManager().markEntityForRemoval(this);
-    this.gameManagers.getBroadcaster().broadcastEvent(new LootEvent(this.getId()));
+    this.getGameManagers().getBroadcaster().broadcastEvent(new LootEvent(this.getId()));
   }
 
   getPosition(): Vector2 {
@@ -152,7 +150,7 @@ export class Zombie extends Entity {
       this.currentWaypoint = pathTowards(
         this.getCenterPosition(),
         player.getExt(Positionable).getCenterPosition(),
-        this.gameManagers.getMapManager().getMap()
+        this.getGameManagers().getMapManager().getMap()
       );
     }
 
@@ -213,9 +211,7 @@ export class Zombie extends Entity {
 
     if (entity.hasExt(Destructible)) {
       entity.getExt(Destructible).damage(Zombie.ATTACK_DAMAGE);
-      this.getGameManagers()
-        .getBroadcaster()
-        .broadcastEvent(new ZombieAttackedEvent(this.getId(), entity.getId()));
+      this.getGameManagers().getBroadcaster().broadcastEvent(new ZombieAttackedEvent(this.getId()));
     }
 
     this.attackCooldown.reset();

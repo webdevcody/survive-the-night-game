@@ -3,8 +3,8 @@ import { Renderable } from "../entities/util";
 import { GameState } from "@/state";
 import { InputManager } from "@/managers/input";
 import { InventoryItem } from "@survive-the-night/game-server";
-import { Z_INDEX } from "@survive-the-night/game-server/src/managers/map-manager";
-import Inventory from "@survive-the-night/game-server/src/shared/extensions/inventory";
+import { Z_INDEX } from "@server/managers/map-manager";
+import Inventory from "@server/shared/extensions/inventory";
 
 const HOTBAR_SETTINGS = {
   Inventory: {

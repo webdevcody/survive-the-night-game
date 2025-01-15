@@ -1,5 +1,4 @@
 import { distance } from "../physics";
-import { Entity } from "../entity";
 import { Extension, ExtensionSerialized } from "./types";
 import { Rectangle } from "../geom/rectangle";
 import { Cooldown } from "../entities/util/cooldown";
@@ -7,6 +6,7 @@ import Positionable from "./positionable";
 import Triggerable from "./trigger";
 import Destructible from "./destructible";
 import { EntityType } from "@survive-the-night/game-shared/src/types/entity";
+import { IEntity } from "../types";
 
 /**
  * This extension will cause the entity to fire an attack when the cooldown is ready.
@@ -16,7 +16,7 @@ export default class TriggerCooldownAttacker implements Extension {
   public static readonly type = "trigger-cooldown-attacker";
   private static readonly RADIUS = 16;
 
-  private self: Entity;
+  private self: IEntity;
   private attackCooldown: Cooldown;
   private options: {
     damage: number;
@@ -28,7 +28,7 @@ export default class TriggerCooldownAttacker implements Extension {
   public isReady: boolean; // used to change spike view
 
   public constructor(
-    self: Entity,
+    self: IEntity,
     options: {
       damage: number;
       victimType: EntityType;

@@ -1,4 +1,4 @@
-import { ExtensionTypes } from "@survive-the-night/game-server/src/shared/extension-types";
+import { ExtensionTypes } from "@server/shared/extension-types";
 import { ClientPositionable } from "./positionable";
 import { ClientMovable } from "./movable";
 import { ClientDestructible } from "./destructible";

@@ -1,9 +1,9 @@
 import { AssetManager } from "../../managers/asset";
 import { GameState } from "../../state";
 import { getFrameIndex, Renderable } from "../util";
-import { Z_INDEX } from "@survive-the-night/game-server/src/managers/map-manager";
+import { Z_INDEX } from "@server/managers/map-manager";
 import { ClientEntityBase } from "../../extensions/client-entity";
-import { RawEntity } from "@survive-the-night/game-shared/src/types/entity";
+import { RawEntity } from "@shared/types/entity";
 import { ClientPositionable } from "../../extensions";
 
 export class FireClient extends ClientEntityBase implements Renderable {

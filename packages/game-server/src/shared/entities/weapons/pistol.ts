@@ -4,6 +4,7 @@ import { Bullet } from "../bullet";
 import { Direction } from "../../direction";
 import { PlayerAttackedEvent } from "../../events/server-sent/player-attacked-event";
 import Inventory from "../../extensions/inventory";
+import { GunEmptyEvent } from "../../events/server-sent/gun-empty-event";
 
 export class Pistol extends Weapon {
   constructor(gameManagers: IGameManagers) {
@@ -19,6 +20,7 @@ export class Pistol extends Weapon {
 
     console.log("ammoItem", ammoItem);
     if (!ammoItem || !ammoItem.state?.count || ammoItem.state.count <= 0) {
+      this.getEntityManager().getBroadcaster().broadcastEvent(new GunEmptyEvent(playerId));
       return; // No ammo available
     }
 

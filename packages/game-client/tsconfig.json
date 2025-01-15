@@ -21,7 +21,8 @@
     ],
     "paths": {
       "@/*": ["./src/*"],
-      "@shared/*": ["../game-shared/src/*"]
+      "@shared/*": ["../game-shared/src/*"],
+      "@server/*": ["../game-server/src/*"]
     }
   },
   "references": [

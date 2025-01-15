@@ -1,4 +1,4 @@
-import { EntityManager } from "@survive-the-night/game-server/src/managers/entity-manager";
+import { EntityManager } from "@server/managers/entity-manager";
 import { vi } from "vitest";
 
 export function createMockEntityManager() {

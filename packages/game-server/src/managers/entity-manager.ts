@@ -366,7 +366,7 @@ export class EntityManager implements IEntityManager {
   }
 
   createEntity(entityType: EntityType): IEntity | null {
-    const entityConstructor = entityMap[entityType];
+    const entityConstructor = (entityMap as any)[entityType];
     if (entityConstructor) {
       return new entityConstructor(this.getGameManagers());
     } else {

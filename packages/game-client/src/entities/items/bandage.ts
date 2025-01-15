@@ -1,8 +1,8 @@
-import { RawEntity } from "@survive-the-night/game-shared/src/types/entity";
+import { RawEntity } from "@shared/types/entity";
 import { AssetManager } from "../../managers/asset";
 import { GameState } from "../../state";
 import { Renderable } from "../util";
-import { Z_INDEX } from "@survive-the-night/game-server/src/managers/map-manager";
+import { Z_INDEX } from "@server/managers/map-manager";
 import { ClientEntity } from "../../entities/client-entity";
 import { ClientPositionable } from "../../extensions";
 

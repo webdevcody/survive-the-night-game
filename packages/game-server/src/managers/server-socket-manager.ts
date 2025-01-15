@@ -25,8 +25,8 @@ export class ServerSocketManager implements Broadcaster {
   private entityManager?: IEntityManager;
   private mapManager?: MapManager;
   private gameServer: GameServer;
-  private commandManager: CommandManager;
-  private gameManagers: IGameManagers;
+  private commandManager?: CommandManager;
+  private gameManagers?: IGameManagers;
 
   constructor(port: number, gameServer: GameServer) {
     this.port = port;

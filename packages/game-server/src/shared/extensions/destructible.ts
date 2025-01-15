@@ -1,19 +1,19 @@
 import { Extension, ExtensionSerialized } from "./types";
-import { Entity } from "../entity";
 import { Hitbox } from "../traits";
 import Positionable from "./positionable";
+import { IEntity } from "../types";
 
 type DestructibleDeathHandler = () => void;
 
 export default class Destructible implements Extension {
   public static readonly type = "destructible";
 
-  private self: Entity;
+  private self: IEntity;
   private health = 0;
   private maxHealth = 0;
   private deathHandler: DestructibleDeathHandler | null = null;
 
-  public constructor(self: Entity) {
+  public constructor(self: IEntity) {
     this.self = self;
   }
 

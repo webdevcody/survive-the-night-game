@@ -1,10 +1,7 @@
 import { GameClient } from "@/client";
 import { linearFalloff } from "../util/math";
 import { distance, Vector2 } from "@survive-the-night/game-server";
-import {
-  DEBUG_DISABLE_SOUNDS,
-  DEBUG_VOLUME_REDUCTION,
-} from "@survive-the-night/game-server/src/config/debug";
+import { DEBUG_DISABLE_SOUNDS, DEBUG_VOLUME_REDUCTION } from "@server/config/debug";
 
 // these values must match the sound files in the client
 export const SOUND_TYPES = {
@@ -17,6 +14,7 @@ export const SOUND_TYPES = {
   ZOMBIE_HURT: "zombie_hurt",
   SHOTGUN_FIRE: "shotgun_fire",
   ZOMBIE_ATTACKED: "zombie_bite",
+  GUN_EMPTY: "gun_empty",
   LOOT: "loot",
 } as const;
 

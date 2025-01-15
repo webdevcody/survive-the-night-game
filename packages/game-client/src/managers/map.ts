@@ -1,8 +1,8 @@
 import { GameClient } from "@/client";
-import { TILE_IDS } from "@survive-the-night/game-server/src/managers/map-manager";
-import { Vector2 } from "@survive-the-night/game-server/src/shared/physics";
-import { distance } from "@survive-the-night/game-server/src/shared/physics";
-import { DEBUG_SHOW_HITBOXES } from "@survive-the-night/game-server/src/config/debug";
+import { TILE_IDS } from "@server/managers/map-manager";
+import { Vector2 } from "@server/shared/physics";
+import { distance } from "@server/shared/physics";
+import { DEBUG_SHOW_HITBOXES } from "@server/config/debug";
 import { ClientIlluminated, ClientPositionable } from "../extensions";
 
 const tileLocations: Record<string, [number, number]> = {

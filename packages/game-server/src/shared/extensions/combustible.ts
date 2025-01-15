@@ -1,21 +1,21 @@
 import { Extension, ExtensionSerialized } from "./types";
 import { Vector2 } from "../physics";
-import { Entity } from "../entity";
 import { EntityType } from "@survive-the-night/game-shared/src/types/entity";
 import { Entities } from "@survive-the-night/game-shared/src/constants";
 import Positionable from "./positionable";
+import { IEntity } from "../types";
 
-type EntityFactory = (type: EntityType) => Entity;
+type EntityFactory = (type: EntityType) => IEntity;
 
 export default class Combustible implements Extension {
   public static readonly type = "combustible";
 
-  private self: Entity;
+  private self: IEntity;
   private entityFactory: EntityFactory;
   private numFires: number;
   private spreadRadius: number;
 
-  public constructor(self: Entity, entityFactory: EntityFactory, numFires = 3, spreadRadius = 32) {
+  public constructor(self: IEntity, entityFactory: EntityFactory, numFires = 3, spreadRadius = 32) {
     this.self = self;
     this.entityFactory = entityFactory;
     this.numFires = numFires;

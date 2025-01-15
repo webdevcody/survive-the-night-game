@@ -1,4 +1,4 @@
-import { ExtensionTypes } from "@survive-the-night/game-server/src/shared/extension-types";
+import { ExtensionTypes } from "@server/shared/extension-types";
 import { ClientExtension, ClientExtensionSerialized } from "./types";
 
 export class ClientTriggerCooldownAttacker implements ClientExtension {

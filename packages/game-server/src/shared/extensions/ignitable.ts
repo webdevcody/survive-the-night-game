@@ -1,7 +1,6 @@
 import { ExtensionSerialized } from "./types";
 import { Cooldown } from "../entities/util/cooldown";
 import Destructible from "./destructible";
-import { Entity } from "../entity";
 import { Extension } from "@survive-the-night/game-shared/src/types/entity";
 import { IEntity } from "../types";
 

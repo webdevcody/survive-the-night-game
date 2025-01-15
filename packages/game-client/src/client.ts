@@ -19,7 +19,7 @@ import { ClientEventListener } from "./client-event-listener";
 import { SoundManager } from "./managers/sound-manager";
 import { GameOverDialogUI } from "./ui/game-over-dialog";
 import { CommandManager } from "./managers/command-manager";
-import { DEBUG_ADMIN_COMMANDS } from "@survive-the-night/game-server/src/config/debug";
+import { DEBUG_ADMIN_COMMANDS } from "@server/config/debug";
 
 export class GameClient {
   private ctx: CanvasRenderingContext2D;

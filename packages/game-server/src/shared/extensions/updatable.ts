@@ -1,4 +1,4 @@
-import { Entity } from "../entity";
+import { IEntity } from "../types";
 import { Extension, ExtensionSerialized } from "./types";
 
 type UpdateFunction = (deltaTime: number) => void;
@@ -6,13 +6,13 @@ type UpdateFunction = (deltaTime: number) => void;
 export default class Updatable implements Extension {
   public static readonly type = "updatable";
 
-  private self: Entity;
+  private self: IEntity;
   private updateFunction: UpdateFunction;
 
   /**
    * will create a trigger box around an entity which should be used for various purposes.
    */
-  public constructor(self: Entity, updateFunction: UpdateFunction) {
+  public constructor(self: IEntity, updateFunction: UpdateFunction) {
     this.self = self;
     this.updateFunction = updateFunction;
   }

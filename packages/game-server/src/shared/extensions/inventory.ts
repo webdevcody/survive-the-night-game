@@ -1,20 +1,20 @@
-import { Entity } from "../entity";
 import { Extension, ExtensionSerialized } from "./types";
 import { InventoryItem, ITEM_TYPES, ItemType } from "../inventory";
 import { recipes, RecipeType } from "../recipes";
 import { Broadcaster } from "@/managers/types";
 import { PlayerPickedUpItemEvent } from "../events/server-sent/pickup-item-event";
 import Positionable from "./positionable";
+import { IEntity } from "../types";
 
 export default class Inventory implements Extension {
   public static readonly type = "inventory";
   public static readonly MAX_SLOTS = 8;
 
-  private self: Entity;
+  private self: IEntity;
   private items: InventoryItem[] = [];
   private broadcaster: Broadcaster;
 
-  public constructor(self: Entity, broadcaster: Broadcaster) {
+  public constructor(self: IEntity, broadcaster: Broadcaster) {
     this.self = self;
     this.broadcaster = broadcaster;
   }

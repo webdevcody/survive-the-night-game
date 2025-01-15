@@ -1,8 +1,8 @@
-import { Entity } from "../entity";
 import { Extension, ExtensionSerialized } from "./types";
 import { ItemType } from "../inventory";
 import { PlayerPickedUpItemEvent } from "../events/server-sent/pickup-item-event";
 import Inventory from "./inventory";
+import { IEntity } from "../types";
 
 interface PickupOptions {
   state?: any;
@@ -12,10 +12,10 @@ interface PickupOptions {
 export default class Carryable implements Extension {
   public static readonly type = "carryable" as const;
 
-  private self: Entity;
+  private self: IEntity;
   private itemKey: ItemType;
 
-  public constructor(self: Entity, itemKey: ItemType) {
+  public constructor(self: IEntity, itemKey: ItemType) {
     this.self = self;
     this.itemKey = itemKey;
   }

@@ -1,12 +1,12 @@
 import { roundVector2, Vector2, determineDirection, Hitbox } from "@survive-the-night/game-server";
-import { RawEntity } from "@survive-the-night/game-shared/src/types/entity";
+import { RawEntity } from "@shared/types/entity";
 import { AssetManager } from "../managers/asset";
 import { drawHealthBar, getFrameIndex, IClientEntity, Renderable } from "./util";
 import { GameState } from "../state";
 import { debugDrawHitbox, drawCenterPositionWithLabel } from "../util/debug";
 import { renderInteractionText } from "../util/interaction-text";
 import { getPlayer } from "../util/get-player";
-import { Z_INDEX } from "@survive-the-night/game-server/src/managers/map-manager";
+import { Z_INDEX } from "@server/managers/map-manager";
 import { createFlashEffect } from "../util/render";
 import { ClientEntityBase } from "../extensions/client-entity";
 import { ClientPositionable } from "../extensions/positionable";
@@ -14,7 +14,7 @@ import { ClientMovable } from "../extensions/movable";
 import { ClientDestructible } from "../extensions/destructible";
 import { ClientIgnitable } from "../extensions/ignitable";
 import { ClientCollidable } from "../extensions/collidable";
-import { getHitboxWithPadding } from "@survive-the-night/game-server/src/shared/entities/util";
+import { getHitboxWithPadding } from "@server/shared/entities/util";
 
 export class ZombieClient extends ClientEntityBase implements IClientEntity, Renderable {
   private lastRenderPosition = { x: 0, y: 0 };

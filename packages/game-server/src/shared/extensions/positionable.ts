@@ -2,16 +2,17 @@ import { Entity } from "../entity";
 import { Extension, ExtensionSerialized } from "./types";
 import { Vector2 } from "../physics";
 import { ExtensionTypes } from "../extension-types";
+import { IEntity } from "../types";
 
 export default class Positionable implements Extension {
   public static readonly type = ExtensionTypes.POSITIONABLE;
 
-  private self: Entity;
+  private self: IEntity;
   private x = 0;
   private y = 0;
   private size = 0;
 
-  public constructor(self: Entity) {
+  public constructor(self: IEntity) {
     this.self = self;
   }
 

@@ -1,5 +1,5 @@
-import { RawEntity } from "@survive-the-night/game-shared/src/types/entity";
-import { Entities } from "@survive-the-night/game-shared/src/constants";
+import { RawEntity } from "@shared/types/entity";
+import { Entities } from "@shared/constants";
 import { AssetManager } from "../managers/asset";
 import { IClientEntity } from "./util";
 import { BulletClient } from "./bullet";
@@ -49,7 +49,7 @@ export class EntityFactory {
       throw new Error(`Invalid entity data: ${JSON.stringify(data)}`);
     }
 
-    const EntityClass = entityMap[data.type];
+    const EntityClass = (entityMap as any)[data.type];
     if (!EntityClass) {
       throw new Error(`Unknown entity type: ${data.type}`);
     }

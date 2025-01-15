@@ -3,7 +3,7 @@ import { Renderable } from "../entities/util";
 import { GameState } from "@/state";
 import { AssetManager, getItemAssetKey } from "../managers/asset";
 import { PlayerClient } from "@/entities/player";
-import { Z_INDEX } from "@survive-the-night/game-server/src/managers/map-manager";
+import { Z_INDEX } from "@server/managers/map-manager";
 
 const CRAFTING_TABLE_SETTINGS = {
   Container: {

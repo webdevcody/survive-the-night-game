@@ -1,4 +1,4 @@
-import { Entity } from "../entity";
+import { IEntity } from "../types";
 import { Extension, ExtensionSerialized } from "./types";
 
 export type Group = "friendly" | "enemy";
@@ -6,10 +6,10 @@ export type Group = "friendly" | "enemy";
 export default class Groupable implements Extension {
   public static readonly type = "groupable";
 
-  private self: Entity;
+  private self: IEntity;
   private group: Group;
 
-  public constructor(self: Entity, group: Group) {
+  public constructor(self: IEntity, group: Group) {
     this.self = self;
     this.group = group;
   }

@@ -6,6 +6,7 @@ import Expirable from "../../extensions/expirable";
 import Ignitable from "../../extensions/ignitable";
 import Illuminated from "../../extensions/illuminated";
 import Triggerable from "../../extensions/trigger";
+import { IEntity } from "@/shared/types";
 
 export class Fire extends Entity {
   public static readonly Size = 16;
@@ -23,7 +24,7 @@ export class Fire extends Entity {
     ];
   }
 
-  catchFire(entity: Entity) {
+  catchFire(entity: IEntity) {
     if (!entity.hasExt(Ignitable)) {
       entity.addExtension(new Ignitable(entity));
     }
