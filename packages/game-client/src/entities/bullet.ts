@@ -28,7 +28,28 @@ export class BulletClient extends ClientEntityBase implements IClientEntity, Ren
 
   public render(ctx: CanvasRenderingContext2D, gameState: GameState): void {
     const position = this.getPosition();
+    // Draw yellow outer bullet
+    ctx.beginPath();
     ctx.fillStyle = "yellow";
-    ctx.fillRect(position.x, position.y, this.BULLET_SIZE, this.BULLET_SIZE);
+    ctx.arc(
+      position.x + this.BULLET_SIZE / 2,
+      position.y + this.BULLET_SIZE / 2,
+      this.BULLET_SIZE / 2,
+      0,
+      Math.PI * 2
+    );
+    ctx.fill();
+
+    // Draw red center
+    ctx.beginPath();
+    ctx.fillStyle = "red";
+    ctx.arc(
+      position.x + this.BULLET_SIZE / 2,
+      position.y + this.BULLET_SIZE / 2,
+      this.BULLET_SIZE / 4,
+      0,
+      Math.PI * 2
+    );
+    ctx.fill();
   }
 }
