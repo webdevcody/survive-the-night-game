@@ -2,27 +2,26 @@ import { GameClient } from "./client";
 import { ClientSocketManager } from "./managers/client-socket-manager";
 import { GameState } from "./state";
 import { PlayerClient } from "./entities/player";
-import { PlayerHurtEvent } from "@server/shared/events/server-sent/player-hurt-event";
-import { PlayerAttackedEvent } from "@server/shared/events/server-sent/player-attacked-event";
-import { ZombieDeathEvent } from "@server/shared/events/server-sent/zombie-death-event";
+import { PlayerHurtEvent } from "@survive-the-night/game-server/src/events/server-sent/player-hurt-event";
+import { PlayerAttackedEvent } from "@survive-the-night/game-server/src/events/server-sent/player-attacked-event";
+import { ZombieDeathEvent } from "@survive-the-night/game-server/src/events/server-sent/zombie-death-event";
 import { ZombieClient } from "./entities/zombie";
-import { ZombieHurtEvent } from "@server/shared/events/server-sent/zombie-hurt-event";
-import { PlayerDroppedItemEvent } from "@server/shared/events/server-sent/player-dropped-item-event";
-import { PlayerPickedUpItemEvent } from "@server/shared/events/server-sent/pickup-item-event";
-import { GameOverEvent } from "@server/shared/events/server-sent/game-over-event";
+import { ZombieHurtEvent } from "@survive-the-night/game-server/src/events/server-sent/zombie-hurt-event";
+import { PlayerDroppedItemEvent } from "@survive-the-night/game-server/src/events/server-sent/player-dropped-item-event";
+import { PlayerPickedUpItemEvent } from "@survive-the-night/game-server/src/events/server-sent/pickup-item-event";
+import { GameOverEvent } from "@survive-the-night/game-server/src/events/server-sent/game-over-event";
 import { SOUND_TYPES } from "./managers/sound-manager";
-import { WEAPON_TYPES } from "@server/shared/entities/weapons/weapon";
-import { ZombieAttackedEvent } from "@server/shared/events/server-sent/zombie-attacked-event";
-import { LootEvent } from "@server/shared/events/server-sent/loot-event";
+import { WEAPON_TYPES } from "@survive-the-night/game-server/src/entities/weapons/weapon";
+import { ZombieAttackedEvent } from "@survive-the-night/game-server/src/events/server-sent/zombie-attacked-event";
+import { LootEvent } from "@survive-the-night/game-server/src/events/server-sent/loot-event";
 import { ClientPositionable } from "./extensions";
-import { GunEmptyEvent } from "@server/shared/events/server-sent/gun-empty-event";
-import { ServerSentEvents } from "@server/shared/events/events";
-import {
-  GameStateEvent,
-  MapEvent,
-  YourIdEvent,
-  PlayerDeathEvent,
-} from "@server/shared/events/server-sent";
+import { GunEmptyEvent } from "@survive-the-night/game-server/src/events/server-sent/gun-empty-event";
+import { ServerSentEvents } from "@survive-the-night/game-server/src/events/events";
+import { GameStateEvent } from "@server/events/server-sent/game-state-event";
+import { MapEvent } from "@server/events/server-sent/map-event";
+import { PlayerDeathEvent } from "@server/events/server-sent/player-death-event";
+import { YourIdEvent } from "@server/events/server-sent/your-id-event";
+
 export class ClientEventListener {
   private socketManager: ClientSocketManager;
   private gameClient: GameClient;

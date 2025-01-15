@@ -10,8 +10,16 @@
     "esModuleInterop": true,
     "skipLibCheck": true,
     "forceConsistentCasingInFileNames": true,
-    "rootDir": "./src"
+    "baseUrl": ".",
+    "rootDir": "../../",
+    "paths": {
+      "@/*": ["*"],
+      "@server/*": ["../game-server/src/*"],
+    }
   },
+  "references": [
+    { "path": "../game-server" }
+  ],
   "include": [
     "src/**/*"
   ],

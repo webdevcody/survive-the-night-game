@@ -1,9 +1,9 @@
-import { expect, beforeEach, it } from "vitest";
-import { Player } from "@/shared/entities/player";
-import { TILE_SIZE } from "@/config/constants";
-import Destructible from "@/shared/extensions/destructible";
-import { simpleTestSetup } from "@/tests/utils/setup";
+import { Player } from "@/entities/player";
+import Destructible from "@/extensions/destructible";
 import { GameManagers } from "@/managers/game-managers";
+import { TILE_SIZE } from "@/managers/map-manager";
+import { beforeEach, it, expect } from "vitest";
+import { simpleTestSetup } from "../utils/setup";
 
 let player: Player;
 let gameManagers: GameManagers;

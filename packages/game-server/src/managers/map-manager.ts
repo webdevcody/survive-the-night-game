@@ -1,12 +1,11 @@
-import { Tree } from "../shared/entities/items/tree";
-import { Boundary } from "../shared/entities/boundary";
-import { Zombie } from "../shared/entities/zombie";
-import { Broadcaster, IEntityManager, IGameManagers, IMapManager } from "./types";
-import { DEBUG_START_ZOMBIE } from "../config/debug";
-import Positionable from "../shared/extensions/positionable";
-import { Shotgun } from "../shared/entities/weapons/shotgun";
-import { Knife } from "../shared/entities/weapons/knife";
-import { Pistol } from "../shared/entities/weapons/pistol";
+import { Tree } from "@/entities/items/tree";
+import { Boundary } from "@/entities/environment/boundary";
+import { Zombie } from "@/entities/enemies/zombie";
+import { DEBUG_START_ZOMBIE } from "@/config/debug";
+import { Shotgun } from "@/entities/weapons/shotgun";
+import { Knife } from "@/entities/weapons/knife";
+import { Pistol } from "@/entities/weapons/pistol";
+import { IGameManagers, IEntityManager, IMapManager } from "./types";
 
 export const Z_INDEX = {
   GROUND: 0,

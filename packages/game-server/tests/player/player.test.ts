@@ -1,5 +1,5 @@
 import { it, expect, beforeEach } from "vitest";
-import { Player } from "@/shared/entities/player";
+import { Player } from "@/entities/player";
 import { GameManagers } from "@/managers/game-managers";
 import { simpleTestSetup } from "@/tests/utils/setup";
 import { Entities } from "@shared/constants";

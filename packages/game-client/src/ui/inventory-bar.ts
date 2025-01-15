@@ -1,10 +1,10 @@
-import { AssetManager, getItemAssetKey } from "../managers/asset";
-import { Renderable } from "../entities/util";
 import { GameState } from "@/state";
 import { InputManager } from "@/managers/input";
 import { Z_INDEX } from "@server/managers/map-manager";
-import Inventory from "@server/shared/extensions/inventory";
-import { InventoryItem } from "@server/shared/inventory";
+import { Renderable } from "@/entities/util";
+import { AssetManager, getItemAssetKey } from "@/managers/asset";
+import Inventory from "@server/extensions/inventory";
+import { InventoryItem } from "@shared/geom/inventory";
 
 const HOTBAR_SETTINGS = {
   Inventory: {

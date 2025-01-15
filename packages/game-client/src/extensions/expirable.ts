@@ -1,4 +1,4 @@
-import { ExtensionTypes } from "@server/shared/extension-types";
+import { ExtensionTypes } from "@shared/geom/extension-types";
 import { ClientExtension, ClientExtensionSerialized } from "./types";
 
 export class ClientExpirable implements ClientExtension {

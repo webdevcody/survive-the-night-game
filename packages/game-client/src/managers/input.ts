@@ -1,5 +1,5 @@
-import { Direction, determineDirection } from "@server/shared/direction";
-import { Input } from "@server/shared/input";
+import { Direction, determineDirection } from "@shared/geom/direction";
+import { Input } from "@shared/geom/input";
 
 export interface InputManagerOptions {
   onCraft?: () => unknown;

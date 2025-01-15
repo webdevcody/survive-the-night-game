@@ -1,10 +1,10 @@
-import { RawEntity } from "@shared/types/entity";
-import { AssetManager } from "../../managers/asset";
-import { GameState } from "../../state";
-import { Renderable } from "../util";
+import { ClientPositionable } from "@/extensions";
+import { AssetManager } from "@/managers/asset";
+import { GameState } from "@/state";
 import { Z_INDEX } from "@server/managers/map-manager";
-import { ClientEntity } from "../../entities/client-entity";
-import { ClientPositionable } from "../../extensions";
+import { RawEntity } from "@shared/types/entity";
+import { ClientEntity } from "../client-entity";
+import { Renderable } from "../util";
 
 export class BandageClient extends ClientEntity implements Renderable {
   constructor(data: RawEntity, assetManager: AssetManager) {

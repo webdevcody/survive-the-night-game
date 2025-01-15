@@ -1,6 +1,6 @@
 import { DEBUG_SHOW_HITBOXES, DEBUG_SHOW_POSITIONS } from "@server/config/debug";
-import { Vector2 } from "@server/shared/physics";
-import { Hitbox } from "@server/shared/traits";
+import { Hitbox } from "@shared/geom/hitbox";
+import { Vector2 } from "@shared/geom/physics";
 
 export function debugDrawHitbox(
   ctx: CanvasRenderingContext2D,

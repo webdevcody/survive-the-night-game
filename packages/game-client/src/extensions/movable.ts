@@ -1,6 +1,6 @@
-import { ExtensionTypes } from "@server/shared/extension-types";
+import { ExtensionTypes } from "@shared/geom/extension-types";
+import { Vector2 } from "@shared/geom/physics";
 import { ClientExtension, ClientExtensionSerialized } from "./types";
-import { Vector2 } from "@server/shared/physics";
 
 export class ClientMovable implements ClientExtension {
   public static readonly type = ExtensionTypes.MOVABLE;

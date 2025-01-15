@@ -29,7 +29,7 @@
   "include": [
     "src/**/*",
     "tests/**/*"
-  ],
+, "../game-shared/src/constants.ts"  ],
   "references": [
     {
       "path": "../game-shared"

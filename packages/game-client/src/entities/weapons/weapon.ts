@@ -5,7 +5,7 @@ import { Z_INDEX } from "@server/managers/map-manager";
 import { ClientEntity } from "../client-entity";
 import { ClientPositionable } from "../../extensions";
 import { ImageLoader } from "@/managers/asset";
-import { WeaponType } from "@server/shared/entities/weapons/weapon";
+import { WeaponType } from "@survive-the-night/game-server/src/entities/weapons/weapon";
 
 export class WeaponClient extends ClientEntity implements Renderable {
   private weaponType: WeaponType;

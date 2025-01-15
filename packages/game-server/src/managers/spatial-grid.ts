@@ -1,6 +1,6 @@
-import Positionable from "../shared/extensions/positionable";
-import { Entity } from "../shared/entity";
-import { Vector2 } from "../shared/physics";
+import Positionable from "@/extensions/positionable";
+import { Entity } from "@shared/geom/entity";
+import { Vector2 } from "@shared/geom/physics";
 import { EntityType } from "@shared/types/entity";
 
 export class SpatialGrid {

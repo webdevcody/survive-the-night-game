@@ -1,10 +1,10 @@
-import { CommandManager } from "./managers/command-manager";
-import { EntityManager } from "./managers/entity-manager";
-import { GameManagers } from "./managers/game-managers";
-import { MapManager } from "./managers/map-manager";
-import { ServerSocketManager } from "./managers/server-socket-manager";
-import { GameStateEvent } from "./shared/events/server-sent";
-import { GameOverEvent } from "./shared/events/server-sent/game-over-event";
+import { GameOverEvent } from "@/events/server-sent/game-over-event";
+import { GameStateEvent } from "@/events/server-sent/game-state-event";
+import { CommandManager } from "@/managers/command-manager";
+import { EntityManager } from "@/managers/entity-manager";
+import { GameManagers } from "@/managers/game-managers";
+import { MapManager } from "@/managers/map-manager";
+import { ServerSocketManager } from "@/managers/server-socket-manager";
 
 export const FPS = 30;
 

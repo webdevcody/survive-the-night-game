@@ -1,12 +1,12 @@
-import { it, expect, beforeEach } from "vitest";
-import { Player } from "@/shared/entities/player";
-import { Fire } from "@/shared/entities/environment/fire";
-import Ignitable from "@/shared/extensions/ignitable";
-import Positionable from "@/shared/extensions/positionable";
-import { Zombie } from "@/shared/entities/zombie";
-import { simpleTestSetup } from "@/tests/utils/setup";
+import { Zombie } from "@/entities/enemies/zombie";
+import { Fire } from "@/entities/environment/fire";
+import { Player } from "@/entities/player";
+import Destructible from "@/extensions/destructible";
+import Ignitable from "@/extensions/ignitable";
+import Positionable from "@/extensions/positionable";
 import { GameManagers } from "@/managers/game-managers";
-import Destructible from "@/shared/extensions/destructible";
+import { beforeEach, it, expect } from "vitest";
+import { simpleTestSetup } from "../utils/setup";
 
 let player: Player;
 let fire: Fire;

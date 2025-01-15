@@ -1,6 +1,6 @@
-import { ExtensionTypes } from "@server/shared/extension-types";
+import { ExtensionTypes } from "@shared/geom/extension-types";
+import { InventoryItem } from "@shared/geom/inventory";
 import { ClientExtension, ClientExtensionSerialized } from "./types";
-import { InventoryItem } from "@server/shared/inventory";
 
 export class ClientInventory implements ClientExtension {
   public static readonly type = ExtensionTypes.INVENTORY;

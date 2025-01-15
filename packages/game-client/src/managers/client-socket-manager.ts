@@ -1,24 +1,22 @@
-import { io, Socket } from "socket.io-client";
-import { PlayerHurtEvent } from "@server/shared/events/server-sent/player-hurt-event";
-import { PlayerAttackedEvent } from "@server/shared/events/server-sent/player-attacked-event";
-import { ZombieDeathEvent } from "@server/shared/events/server-sent/zombie-death-event";
-import { ZombieHurtEvent } from "@server/shared/events/server-sent/zombie-hurt-event";
-import { PlayerDroppedItemEvent } from "@server/shared/events/server-sent/player-dropped-item-event";
-import { PlayerPickedUpItemEvent } from "@server/shared/events/server-sent/pickup-item-event";
-import { GameOverEvent } from "@server/shared/events/server-sent/game-over-event";
-import { ZombieAttackedEvent } from "@server/shared/events/server-sent/zombie-attacked-event";
-import { LootEvent } from "@server/shared/events/server-sent/loot-event";
-import { GunEmptyEvent } from "@server/shared/events/server-sent/gun-empty-event";
+import { ServerSentEvents, ClientSentEvents } from "@server/events/events";
+import { GameOverEvent } from "@server/events/server-sent/game-over-event";
+import { GameStateEvent } from "@server/events/server-sent/game-state-event";
+import { GunEmptyEvent } from "@server/events/server-sent/gun-empty-event";
+import { LootEvent } from "@server/events/server-sent/loot-event";
+import { MapEvent } from "@server/events/server-sent/map-event";
+import { PlayerPickedUpItemEvent } from "@server/events/server-sent/pickup-item-event";
+import { PlayerAttackedEvent } from "@server/events/server-sent/player-attacked-event";
+import { PlayerDeathEvent } from "@server/events/server-sent/player-death-event";
+import { PlayerDroppedItemEvent } from "@server/events/server-sent/player-dropped-item-event";
+import { PlayerHurtEvent } from "@server/events/server-sent/player-hurt-event";
+import { YourIdEvent } from "@server/events/server-sent/your-id-event";
+import { ZombieAttackedEvent } from "@server/events/server-sent/zombie-attacked-event";
+import { ZombieDeathEvent } from "@server/events/server-sent/zombie-death-event";
+import { ZombieHurtEvent } from "@server/events/server-sent/zombie-hurt-event";
 import { AdminCommand } from "@shared/commands/commands";
-import { ServerSentEvents, ClientSentEvents } from "@server/shared/events/events";
-import {
-  GameStateEvent,
-  PlayerDeathEvent,
-  MapEvent,
-  YourIdEvent,
-} from "@server/shared/events/server-sent";
-import { Input } from "@server/shared/input";
-import { RecipeType } from "@server/shared/recipes";
+import { Input } from "@shared/geom/input";
+import { RecipeType } from "@shared/geom/recipes";
+import { Socket, io } from "socket.io-client";
 
 export type EntityDto = { id: string } & any;
 

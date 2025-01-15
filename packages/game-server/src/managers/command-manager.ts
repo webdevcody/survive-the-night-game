@@ -6,9 +6,7 @@ import {
   CreateItemCommand,
 } from "@shared/commands/commands";
 import { IEntityManager } from "./types";
-import Positionable from "@/shared/extensions/positionable";
-import { Vector2 } from "@/shared/physics";
-import { EntityType } from "@shared/types/entity";
+import Positionable from "@/extensions/positionable";
 
 export class CommandManager {
   private entityManager: IEntityManager;

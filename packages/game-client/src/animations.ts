@@ -1,4 +1,4 @@
-import { Vector2 } from "@server/shared/physics";
+import { Vector2 } from "@shared/geom/physics";
 
 export interface Animation {
   duration: number;

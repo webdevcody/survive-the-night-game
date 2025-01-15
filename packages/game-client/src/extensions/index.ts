@@ -1,20 +1,20 @@
-import { ExtensionTypes } from "@server/shared/extension-types";
-import { ClientPositionable } from "./positionable";
-import { ClientMovable } from "./movable";
-import { ClientDestructible } from "./destructible";
-import { ClientIlluminated } from "./illuminated";
-import { ClientIgnitable } from "./ignitable";
-import { ClientInteractive } from "./interactive";
-import { ClientCollidable } from "./collidable";
-import { ClientConsumable } from "./consumable";
+import { ExtensionTypes } from "@shared/geom/extension-types";
 import { ClientCarryable } from "./carryable";
+import { ClientCollidable } from "./collidable";
 import { ClientCombustible } from "./combustible";
+import { ClientConsumable } from "./consumable";
+import { ClientDestructible } from "./destructible";
+import { ClientExpirable } from "./expirable";
 import { ClientGroupable } from "./groupable";
+import { ClientIgnitable } from "./ignitable";
+import { ClientIlluminated } from "./illuminated";
+import { ClientInteractive } from "./interactive";
 import { ClientInventory } from "./inventory";
+import { ClientMovable } from "./movable";
+import { ClientPositionable } from "./positionable";
+import { ClientTriggerCooldownAttacker } from "./trigger-cooldown-attacker";
 import { ClientTriggerable } from "./triggerable";
 import { ClientUpdatable } from "./updatable";
-import { ClientExpirable } from "./expirable";
-import { ClientTriggerCooldownAttacker } from "./trigger-cooldown-attacker";
 
 export const clientExtensionsMap = {
   [ExtensionTypes.POSITIONABLE]: ClientPositionable,

@@ -5,7 +5,7 @@ import { GameState } from "../state";
 import { Z_INDEX } from "@server/managers/map-manager";
 import { ClientEntityBase } from "../extensions/client-entity";
 import { ClientPositionable } from "../extensions/positionable";
-import { Vector2 } from "@server/shared/physics";
+import { Vector2 } from "@shared/geom/physics";
 
 export class BulletClient extends ClientEntityBase implements IClientEntity, Renderable {
   private readonly BULLET_SIZE = 4;

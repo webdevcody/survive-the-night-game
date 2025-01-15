@@ -4,8 +4,8 @@ import {
   isDirectionRight,
   isDirectionDown,
   isDirectionUp,
-} from "@server/shared/direction";
-import { InventoryItem } from "@server/shared/inventory";
+} from "@shared/geom/direction";
+import { InventoryItem } from "@shared/geom/inventory";
 import { CropOptions, ImageManager } from "./image";
 
 const tileSize = 16;

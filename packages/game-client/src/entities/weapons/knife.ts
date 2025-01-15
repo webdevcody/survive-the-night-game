@@ -5,7 +5,6 @@ import { Z_INDEX } from "@server/managers/map-manager";
 import { ClientEntity } from "../client-entity";
 import { ImageLoader } from "../../managers/asset";
 import { ClientPositionable } from "../../extensions";
-import { WeaponType } from "@server/shared/entities/weapons/weapon";
 
 export class KnifeClient extends ClientEntity implements Renderable {
   constructor(data: RawEntity, assetManager: ImageLoader) {

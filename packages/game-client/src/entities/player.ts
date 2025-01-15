@@ -1,23 +1,25 @@
-import { RawEntity } from "@shared/types/entity";
-import { getItemAssetKey, ImageLoader } from "../managers/asset";
-import { drawHealthBar, getFrameIndex, IClientEntity, Renderable } from "./util";
+import { animate } from "@/animations";
+import {
+  ClientDestructible,
+  ClientPositionable,
+  ClientMovable,
+  ClientIgnitable,
+} from "@/extensions";
+import { ClientEntityBase } from "@/extensions/client-entity";
+import { ImageLoader, getItemAssetKey } from "@/managers/asset";
 import { GameState } from "@/state";
-import { getHitboxWithPadding } from "@server/shared/entities/util";
-import { debugDrawHitbox, drawCenterPositionWithLabel } from "../util/debug";
-import { animate } from "../animations";
+import { debugDrawHitbox, drawCenterPositionWithLabel } from "@/util/debug";
+import { createFlashEffect } from "@/util/render";
+import { Player } from "@server/entities/player";
+import { getHitboxWithPadding } from "@server/entities/util";
 import { Z_INDEX } from "@server/managers/map-manager";
-import { createFlashEffect } from "../util/render";
-import { ClientEntityBase } from "../extensions/client-entity";
-import { ClientPositionable } from "../extensions/positionable";
-import { ClientMovable } from "../extensions/movable";
-import { ClientDestructible } from "../extensions/destructible";
-import { ClientIgnitable } from "../extensions/ignitable";
-import { InventoryItem } from "@server/shared/inventory";
-import { Direction, normalizeDirection } from "@server/shared/direction";
-import { Player } from "@server/shared/entities/player";
-import { Input } from "@server/shared/input";
-import { Vector2, roundVector2 } from "@server/shared/physics";
-import { Hitbox } from "@server/shared/traits";
+import { Direction, normalizeDirection } from "@shared/geom/direction";
+import { Hitbox } from "@shared/geom/hitbox";
+import { Input } from "@shared/geom/input";
+import { InventoryItem } from "@shared/geom/inventory";
+import { Vector2, roundVector2 } from "@shared/geom/physics";
+import { RawEntity } from "@shared/types/entity";
+import { IClientEntity, Renderable, getFrameIndex, drawHealthBar } from "./util";
 
 export class PlayerClient extends ClientEntityBase implements IClientEntity, Renderable {
   private readonly LERP_FACTOR = 0.1;

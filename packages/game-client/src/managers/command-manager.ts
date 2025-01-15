@@ -1,9 +1,9 @@
-import { ClientSocketManager } from "./client-socket-manager";
+import { ClientSocketManager } from "@/managers/client-socket-manager";
 import { ADMIN_COMMANDS } from "@shared/commands/commands";
 import { GameState, getEntityById } from "@/state";
 import { ClientPositionable } from "@/extensions";
 import { EntityType } from "@shared/types/entity";
-import { ItemType } from "@server/shared/inventory";
+import { ItemType } from "@shared/geom/inventory";
 
 export class CommandManager {
   private socketManager: ClientSocketManager;

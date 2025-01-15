@@ -19,8 +19,8 @@ import { SoundManager } from "./managers/sound-manager";
 import { GameOverDialogUI } from "./ui/game-over-dialog";
 import { CommandManager } from "./managers/command-manager";
 import { DEBUG_ADMIN_COMMANDS } from "@server/config/debug";
-import { Direction } from "@server/shared/direction";
-import { Input } from "@server/shared/input";
+import { Direction } from "@shared/geom/direction";
+import { Input } from "@shared/geom/input";
 
 export class GameClient {
   private ctx: CanvasRenderingContext2D;

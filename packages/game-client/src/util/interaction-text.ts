@@ -1,5 +1,5 @@
-import { Player } from "@server/shared/entities/player";
-import { Vector2, distance } from "@server/shared/physics";
+import { Vector2, distance } from "@shared/geom/physics";
+import { Player } from "@survive-the-night/game-server/src/entities/player";
 
 export function renderInteractionText(
   ctx: CanvasRenderingContext2D,
