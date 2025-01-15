@@ -1,16 +1,16 @@
 import { Entities } from "@survive-the-night/game-shared/src/constants";
-import { IEntityManager } from "../../../managers/types";
 import { Entity } from "../../entity";
 import Carryable from "../../extensions/carryable";
 import Interactive from "../../extensions/interactive";
 import Positionable from "../../extensions/positionable";
+import { IGameManagers } from "@/managers/types";
 
 export class PistolAmmo extends Entity {
   public static readonly Size = 16;
   public static readonly DEFAULT_AMMO_COUNT = 10;
 
-  constructor(entityManager: IEntityManager) {
-    super(entityManager, Entities.PISTOL_AMMO);
+  constructor(gameManagers: IGameManagers) {
+    super(gameManagers, Entities.PISTOL_AMMO);
 
     this.extensions = [
       new Positionable(this).setSize(PistolAmmo.Size),

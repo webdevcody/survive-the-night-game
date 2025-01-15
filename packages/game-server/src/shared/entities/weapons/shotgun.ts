@@ -1,4 +1,4 @@
-import { IEntityManager } from "../../../managers/types";
+import { IEntityManager, IGameManagers } from "../../../managers/types";
 import { Bullet } from "../bullet";
 import { Direction } from "../../direction";
 import { PlayerAttackedEvent } from "../../events/server-sent/player-attacked-event";
@@ -8,8 +8,8 @@ import Inventory from "../../extensions/inventory";
 export class Shotgun extends Weapon {
   private static readonly SPREAD_ANGLE = 8; // degrees
 
-  constructor(entityManager: IEntityManager) {
-    super(entityManager, WEAPON_TYPES.SHOTGUN);
+  constructor(gameManagers: IGameManagers) {
+    super(gameManagers, WEAPON_TYPES.SHOTGUN);
   }
 
   public attack(playerId: string, position: { x: number; y: number }, facing: Direction): void {
@@ -29,7 +29,7 @@ export class Shotgun extends Weapon {
 
     // Create 3 bullets with spread
     for (let i = -1; i <= 1; i++) {
-      const bullet = new Bullet(this.getEntityManager());
+      const bullet = new Bullet(this.getGameManagers());
       bullet.setPosition(position);
       bullet.setDirectionWithOffset(facing, i * Shotgun.SPREAD_ANGLE);
       this.getEntityManager().addEntity(bullet);

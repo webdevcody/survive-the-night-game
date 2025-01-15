@@ -1,5 +1,5 @@
 import { Entities } from "@survive-the-night/game-shared/src/constants";
-import { IEntityManager } from "../../../managers/types";
+import { IGameManagers } from "../../../managers/types";
 import { Entity } from "../../entity";
 import Carryable from "../../extensions/carryable";
 import Illuminated from "../../extensions/illuminated";
@@ -9,8 +9,8 @@ import Positionable from "../../extensions/positionable";
 export class Torch extends Entity {
   public static readonly Size = 16;
 
-  constructor(entityManager: IEntityManager) {
-    super(entityManager, Entities.TORCH);
+  constructor(gameManagers: IGameManagers) {
+    super(gameManagers, Entities.TORCH);
 
     this.extensions = [
       new Positionable(this).setSize(Torch.Size),

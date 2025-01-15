@@ -5,7 +5,7 @@ import Carryable from "../../extensions/carryable";
 import Interactive from "../../extensions/interactive";
 import Positionable from "../../extensions/positionable";
 import TriggerCooldownAttacker from "../../extensions/trigger-cooldown-attacker";
-import { IEntityManager } from "@/managers/types";
+import { IGameManagers } from "@/managers/types";
 
 /**
  * A spike trap which only hurts zombies who step on it. Can be picked up and placed again.
@@ -14,8 +14,8 @@ export class Spikes extends Entity {
   private static readonly DAMAGE = 1;
   private static readonly SIZE = 16;
 
-  constructor(entityManager: IEntityManager) {
-    super(entityManager, Entities.SPIKES);
+  constructor(gameManagers: IGameManagers) {
+    super(gameManagers, Entities.SPIKES);
 
     this.extensions = [
       new Positionable(this).setSize(Spikes.SIZE),

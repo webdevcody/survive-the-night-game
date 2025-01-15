@@ -1,5 +1,5 @@
 import { Entities } from "@survive-the-night/game-shared/src/constants";
-import { IEntityManager } from "../../../managers/types";
+import { IGameManagers } from "../../../managers/types";
 import { Entity } from "../../entity";
 import Interactive from "../../extensions/interactive";
 import Positionable from "../../extensions/positionable";
@@ -12,8 +12,8 @@ export class Bandage extends Entity {
   public static readonly Size = 16;
   public static readonly healingAmount = 5;
 
-  constructor(entityManager: IEntityManager) {
-    super(entityManager, Entities.BANDAGE);
+  constructor(gameManagers: IGameManagers) {
+    super(gameManagers, Entities.BANDAGE);
 
     this.extensions = [
       new Positionable(this).setSize(Bandage.Size),

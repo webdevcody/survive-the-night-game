@@ -167,7 +167,7 @@ export class MapManager implements IMapManager {
     for (let y = 0; y < totalSize; y++) {
       for (let x = 0; x < totalSize; x++) {
         if (this.map[y][x] === TILE_IDS.FOREST) {
-          const boundary = new Boundary(this.getEntityManager());
+          const boundary = new Boundary(this.getGameManagers());
           boundary.setPosition({ x: x * TILE_SIZE, y: y * TILE_SIZE });
           this.getEntityManager().addEntity(boundary);
         }
@@ -180,22 +180,22 @@ export class MapManager implements IMapManager {
         if (this.map[y][x] === 0 || this.map[y][x] === 1) {
           if (Math.random() < 0.05) {
             // 30% chance for a tree
-            const tree = new Tree(this.getEntityManager());
+            const tree = new Tree(this.getGameManagers());
             tree.getExt(Positionable).setPosition({ x: x * TILE_SIZE, y: y * TILE_SIZE });
             this.getEntityManager().addEntity(tree);
           } else if (Math.random() < WEAPON_SPAWN_CHANCE.PISTOL) {
             // 0.1% chance for a pistol
-            const weapon = new Pistol(this.getEntityManager());
+            const weapon = new Pistol(this.getGameManagers());
             weapon.getExt(Positionable).setPosition({ x: x * TILE_SIZE, y: y * TILE_SIZE });
             this.getEntityManager().addEntity(weapon);
           } else if (Math.random() < WEAPON_SPAWN_CHANCE.SHOTGUN) {
             // 0.1% chance for a shotgun
-            const weapon = new Shotgun(this.getEntityManager());
+            const weapon = new Shotgun(this.getGameManagers());
             weapon.getExt(Positionable).setPosition({ x: x * TILE_SIZE, y: y * TILE_SIZE });
             this.getEntityManager().addEntity(weapon);
           } else if (Math.random() < WEAPON_SPAWN_CHANCE.KNIFE) {
             // 0.1% chance for a knife
-            const weapon = new Knife(this.getEntityManager());
+            const weapon = new Knife(this.getGameManagers());
             weapon.getExt(Positionable).setPosition({ x: x * TILE_SIZE, y: y * TILE_SIZE });
             this.getEntityManager().addEntity(weapon);
           }

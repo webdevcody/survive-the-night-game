@@ -41,6 +41,7 @@ export class GameServer {
     this.socketManager.setCommandManager(this.commandManager);
     this.socketManager.setEntityManager(this.entityManager);
     this.socketManager.setMapManager(this.mapManager);
+    this.socketManager.setGameManagers(this.gameManagers);
     this.socketManager.listen();
 
     this.startGameLoop();

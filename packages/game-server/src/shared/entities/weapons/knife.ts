@@ -1,4 +1,4 @@
-import { IEntityManager } from "../../../managers/types";
+import { IGameManagers } from "../../../managers/types";
 import { Weapon, WEAPON_TYPES } from "./weapon";
 import { Direction } from "../../direction";
 import { PlayerAttackedEvent } from "../../events/server-sent/player-attacked-event";
@@ -9,8 +9,8 @@ export class Knife extends Weapon {
   private static readonly ATTACK_RANGE = 20;
   private static readonly DAMAGE = 1;
 
-  constructor(entityManager: IEntityManager) {
-    super(entityManager, WEAPON_TYPES.KNIFE);
+  constructor(gameManagers: IGameManagers) {
+    super(gameManagers, WEAPON_TYPES.KNIFE);
   }
 
   public attack(playerId: string, position: { x: number; y: number }, facing: Direction): void {

@@ -1,4 +1,4 @@
-import { IEntityManager } from "../../../managers/types";
+import { IGameManagers } from "../../../managers/types";
 import { Weapon, WEAPON_TYPES } from "./weapon";
 import { Bullet } from "../bullet";
 import { Direction } from "../../direction";
@@ -6,8 +6,8 @@ import { PlayerAttackedEvent } from "../../events/server-sent/player-attacked-ev
 import Inventory from "../../extensions/inventory";
 
 export class Pistol extends Weapon {
-  constructor(entityManager: IEntityManager) {
-    super(entityManager, WEAPON_TYPES.PISTOL);
+  constructor(gameManagers: IGameManagers) {
+    super(gameManagers, WEAPON_TYPES.PISTOL);
   }
 
   public attack(playerId: string, position: { x: number; y: number }, facing: Direction): void {
@@ -25,7 +25,7 @@ export class Pistol extends Weapon {
     const ammoIndex = inventory.getItems().findIndex((item) => item.key === "pistol_ammo");
     inventory.updateItemState(ammoIndex, { count: ammoItem.state.count - 1 });
 
-    const bullet = new Bullet(this.getEntityManager());
+    const bullet = new Bullet(this.getGameManagers());
     bullet.setPosition(position);
     bullet.setDirection(facing);
     this.getEntityManager().addEntity(bullet);

@@ -1,4 +1,4 @@
-import { IEntityManager } from "../../../managers/types";
+import { IEntityManager, IGameManagers } from "../../../managers/types";
 import { Entity } from "../../entity";
 import Carryable from "../../extensions/carryable";
 import Interactive from "../../extensions/interactive";
@@ -17,8 +17,8 @@ export type WeaponType = (typeof WEAPON_TYPES)[keyof typeof WEAPON_TYPES];
 export abstract class Weapon extends Entity {
   public static readonly Size = 16;
 
-  constructor(entityManager: IEntityManager, weaponKey: WeaponKey) {
-    super(entityManager, weaponKey);
+  constructor(gameManagers: IGameManagers, weaponKey: WeaponKey) {
+    super(gameManagers, weaponKey);
 
     this.extensions = [
       new Positionable(this).setSize(Weapon.Size),

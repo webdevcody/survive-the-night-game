@@ -32,7 +32,7 @@ export class Zombie extends Entity {
   private gameManagers: IGameManagers;
 
   constructor(gameManagers: IGameManagers) {
-    super(gameManagers.getEntityManager(), Entities.ZOMBIE);
+    super(gameManagers, Entities.ZOMBIE);
 
     this.attackCooldown = new Cooldown(Zombie.ATTACK_COOLDOWN);
     this.gameManagers = gameManagers;

@@ -1,4 +1,4 @@
-import { IEntityManager } from "../../managers/types";
+import { IEntityManager, IGameManagers } from "../../managers/types";
 import { Bullet } from "./bullet";
 import { Hitbox } from "../traits";
 import { distance, normalizeVector, Vector2 } from "../physics";
@@ -56,12 +56,12 @@ export class Player extends Entity {
   private isCrafting = false;
   private broadcaster: Broadcaster;
 
-  constructor(entityManager: IEntityManager, broadcaster: Broadcaster) {
-    super(entityManager, Entities.PLAYER);
-    this.broadcaster = broadcaster;
+  constructor(gameManagers: IGameManagers) {
+    super(gameManagers, Entities.PLAYER);
+    this.broadcaster = gameManagers.getBroadcaster();
 
     this.extensions = [
-      new Inventory(this, broadcaster),
+      new Inventory(this, gameManagers.getBroadcaster()),
       new Collidable(this).setSize(Player.PLAYER_WIDTH - 4).setOffset(2),
       new Positionable(this).setSize(Player.PLAYER_WIDTH),
       new Destructible(this)

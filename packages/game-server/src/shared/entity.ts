@@ -4,21 +4,25 @@ import {
   Extension,
   ExtensionCtor,
 } from "@survive-the-night/game-shared/src/types/entity";
-import { IEntityManager } from "../managers/types";
+import { IEntityManager, IGameManagers } from "../managers/types";
 
 export class Entity extends EventTarget {
   private id: string;
   private type: EntityType;
   protected extensions: Extension[] = [];
-  private entityManager: IEntityManager;
+  private gameManagers: IGameManagers;
 
-  public constructor(entityManager: IEntityManager, type: EntityType) {
+  public constructor(gameManagers: IGameManagers, type: EntityType) {
     super();
 
-    this.id = entityManager.generateEntityId();
-    this.entityManager = entityManager;
+    this.id = gameManagers.getEntityManager().generateEntityId();
+    this.gameManagers = gameManagers;
     this.type = type;
     this.extensions = [];
+  }
+
+  public getGameManagers(): IGameManagers {
+    return this.gameManagers;
   }
 
   public getType(): EntityType {
@@ -30,7 +34,7 @@ export class Entity extends EventTarget {
   }
 
   public getEntityManager(): IEntityManager {
-    return this.entityManager;
+    return this.gameManagers.getEntityManager();
   }
 
   public addExtension(extension: Extension) {

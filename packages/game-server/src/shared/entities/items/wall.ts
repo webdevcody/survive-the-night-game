@@ -1,6 +1,6 @@
 import { Entities } from "@survive-the-night/game-shared/src/constants";
 import { RawEntity } from "@survive-the-night/game-shared/src/types/entity";
-import { IEntityManager } from "../../../managers/types";
+import { IEntityManager, IGameManagers } from "../../../managers/types";
 import { Entity } from "../../entity";
 import Carryable from "../../extensions/carryable";
 import Collidable from "../../extensions/collidable";
@@ -13,8 +13,8 @@ export class Wall extends Entity {
   public static readonly Size = 16;
   public static readonly MAX_HEALTH = 3;
 
-  constructor(entityManager: IEntityManager, health?: number) {
-    super(entityManager, Entities.WALL);
+  constructor(gameManagers: IGameManagers, health?: number) {
+    super(gameManagers, Entities.WALL);
 
     this.extensions = [
       new Positionable(this).setSize(Wall.Size),

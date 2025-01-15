@@ -1,5 +1,4 @@
-import { IEntityManager } from "../../../managers/types";
-
+import { IGameManagers } from "../../../managers/types";
 import { Fire } from "../environment/fire";
 import { Entity } from "../../entity";
 import { Entities } from "@survive-the-night/game-shared/src/constants";
@@ -13,14 +12,14 @@ import Positionable from "../../extensions/positionable";
 export class Gasoline extends Entity {
   public static readonly Size = 16;
 
-  constructor(entityManager: IEntityManager) {
-    super(entityManager, Entities.GASOLINE);
+  constructor(gameManagers: IGameManagers) {
+    super(gameManagers, Entities.GASOLINE);
 
     this.extensions = [
       new Positionable(this).setSize(Gasoline.Size),
       new Interactive(this).onInteract(this.interact.bind(this)).setDisplayName("gasoline"),
       new Destructible(this).setMaxHealth(1).setHealth(1).onDeath(this.onDeath.bind(this)),
-      new Combustible(this, (type) => new Fire(this.getEntityManager()), 12, 64), // More fires and larger spread than default
+      new Combustible(this, (type) => new Fire(gameManagers), 12, 64), // More fires and larger spread than default
       new Carryable(this, "gasoline"),
       new Groupable(this, "enemy"),
     ];

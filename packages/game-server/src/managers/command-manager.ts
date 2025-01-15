@@ -40,6 +40,7 @@ export class CommandManager {
 
   private createEntity(payload: CreateEntityCommand["payload"]) {
     const entity = this.entityManager.createEntity(payload.entityType);
+    if (!entity) return;
     entity.getExt(Positionable).setPosition(payload.position);
     this.entityManager.addEntity(entity);
   }

@@ -1,5 +1,5 @@
 import { Entities } from "@survive-the-night/game-shared/src/constants";
-import { IEntityManager } from "../../managers/types";
+import { IEntityManager, IGameManagers } from "../../managers/types";
 import { Direction, normalizeDirection } from "../direction";
 import { Entity } from "../entity";
 import Collidable from "../extensions/collidable";
@@ -21,8 +21,8 @@ export class Bullet extends Entity {
   private traveledDistance: number = 0;
   private static readonly BULLET_SPEED = 500;
 
-  constructor(entityManager: IEntityManager) {
-    super(entityManager, Entities.BULLET);
+  constructor(gameManagers: IGameManagers) {
+    super(gameManagers, Entities.BULLET);
 
     this.extensions = [
       new Positionable(this),

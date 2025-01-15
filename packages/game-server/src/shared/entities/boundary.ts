@@ -1,4 +1,4 @@
-import { IEntityManager } from "../../managers/types";
+import { IGameManagers } from "../../managers/types";
 import { ServerOnly } from "../traits";
 import { Vector2 } from "../physics";
 import { Entity } from "../entity";
@@ -8,8 +8,8 @@ import Positionable from "../extensions/positionable";
 import Collidable from "../extensions/collidable";
 
 export class Boundary extends Entity implements ServerOnly {
-  constructor(entityManager: IEntityManager) {
-    super(entityManager, Entities.BOUNDARY);
+  constructor(gameManagers: IGameManagers) {
+    super(gameManagers, Entities.BOUNDARY);
 
     this.extensions = [new Positionable(this).setSize(16), new Collidable(this).setSize(16)];
   }

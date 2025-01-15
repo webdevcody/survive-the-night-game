@@ -25,9 +25,29 @@ import { ShotgunAmmo } from "../shared/entities/items/shotgun-ammo";
 import { PistolAmmo } from "../shared/entities/items/pistol-ammo";
 import { Zombie } from "@/shared/entities/zombie";
 import { IEntity } from "@/shared/types";
+import { Bullet } from "@/shared/entities/bullet";
+import { Fire } from "@/shared/entities/environment/fire";
 
-type EntityConstructor = new (entityManager: IEntityManager, ...args: any[]) => Entity;
-type EntityFactory = (entityManager: IEntityManager) => Entity;
+const entityMap = {
+  [Entities.PLAYER]: Player,
+  [Entities.TREE]: Tree,
+  [Entities.BULLET]: Bullet,
+  [Entities.WALL]: Wall,
+  [Entities.PISTOL]: Pistol,
+  [Entities.PISTOL_AMMO]: PistolAmmo,
+  [Entities.SHOTGUN]: Shotgun,
+  [Entities.SHOTGUN_AMMO]: ShotgunAmmo,
+  [Entities.KNIFE]: Knife,
+  [Entities.BANDAGE]: Bandage,
+  [Entities.CLOTH]: Cloth,
+  [Entities.SPIKES]: Spikes,
+  [Entities.FIRE]: Fire,
+  [Entities.TORCH]: Torch,
+  [Entities.GASOLINE]: Gasoline,
+  [Entities.ZOMBIE]: Zombie,
+};
+
+type EntityConstructor = new (entityManager: IGameManagers, ...args: any[]) => Entity;
 
 export class EntityManager implements IEntityManager {
   private entities: Entity[];
@@ -35,7 +55,7 @@ export class EntityManager implements IEntityManager {
   private id: number = 0;
   private spatialGrid: SpatialGrid | null = null;
   private gameManagers?: IGameManagers;
-  private itemConstructors = new Map<ItemType, EntityConstructor | EntityFactory>();
+  private itemConstructors = new Map<ItemType, EntityConstructor>();
 
   constructor() {
     this.entities = [];
@@ -93,13 +113,7 @@ export class EntityManager implements IEntityManager {
       throw new Error(`Unknown item type: '${item.key}'`);
     }
 
-    if (typeof constructor === "function" && !constructor.prototype) {
-      // It's a factory function
-      return (constructor as EntityFactory)(this);
-    } else {
-      // It's a constructor
-      return new (constructor as EntityConstructor)(this);
-    }
+    return new (constructor as EntityConstructor)(this.getGameManagers());
   }
 
   setMapSize(width: number, height: number) {
@@ -348,14 +362,16 @@ export class EntityManager implements IEntityManager {
   }
 
   public getBroadcaster(): Broadcaster {
-    return this.gameManagers.getBroadcaster();
+    return this.getGameManagers().getBroadcaster();
   }
 
   createEntity(entityType: EntityType): IEntity {
-    if (entityType === Entities.ZOMBIE) {
-      return new Zombie(this.gameManagers);
+    const entityConstructor = entityMap[entityType];
+    if (entityConstructor) {
+      return new entityConstructor(this.getGameManagers());
     } else {
       console.warn(`createEntity failed - Unknown entity type: ${entityType}`);
+      return null;
     }
   }
 }

@@ -9,7 +9,7 @@ import { GameEvent } from "../shared/events/types";
 import { DEBUG_EVENTS } from "../config/debug";
 import Positionable from "../shared/extensions/positionable";
 import { GameServer } from "../server";
-import { Broadcaster, IEntityManager } from "./types";
+import { Broadcaster, IEntityManager, IGameManagers } from "./types";
 import { ADMIN_COMMANDS, AdminCommand, CreateItemCommand } from "@shared/commands/commands";
 import { CommandManager } from "./command-manager";
 
@@ -26,6 +26,7 @@ export class ServerSocketManager implements Broadcaster {
   private mapManager?: MapManager;
   private gameServer: GameServer;
   private commandManager: CommandManager;
+  private gameManagers: IGameManagers;
 
   constructor(port: number, gameServer: GameServer) {
     this.port = port;
@@ -40,6 +41,17 @@ export class ServerSocketManager implements Broadcaster {
     this.gameServer = gameServer;
 
     this.io.on("connection", (socket: Socket) => this.onConnection(socket));
+  }
+
+  public setGameManagers(gameManagers: IGameManagers): void {
+    this.gameManagers = gameManagers;
+  }
+
+  public getGameManagers(): IGameManagers {
+    if (!this.gameManagers) {
+      throw new Error("Game managers not set");
+    }
+    return this.gameManagers;
   }
 
   public setCommandManager(commandManager: CommandManager): void {
@@ -120,7 +132,7 @@ export class ServerSocketManager implements Broadcaster {
       this.gameServer.startNewGame();
     }
 
-    const player = new Player(this.getEntityManager(), this);
+    const player = new Player(this.getGameManagers());
 
     const map = this.getMapManager().getMap();
     const centerX = (map.length * 16) / 2;

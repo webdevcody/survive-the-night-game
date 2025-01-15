@@ -1,5 +1,5 @@
 import { Entities } from "@survive-the-night/game-shared/src/constants";
-import { IEntityManager } from "../../../managers/types";
+import { IGameManagers } from "../../../managers/types";
 import { Entity } from "../../entity";
 import Carryable from "../../extensions/carryable";
 import Interactive from "../../extensions/interactive";
@@ -9,8 +9,8 @@ export class ShotgunAmmo extends Entity {
   public static readonly Size = 16;
   public static readonly DEFAULT_AMMO_COUNT = 5;
 
-  constructor(entityManager: IEntityManager) {
-    super(entityManager, Entities.SHOTGUN_AMMO);
+  constructor(gameManagers: IGameManagers) {
+    super(gameManagers, Entities.SHOTGUN_AMMO);
 
     this.extensions = [
       new Positionable(this).setSize(ShotgunAmmo.Size),
