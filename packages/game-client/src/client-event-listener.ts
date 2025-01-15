@@ -1,8 +1,3 @@
-import { MapEvent, PlayerDeathEvent, YourIdEvent } from "@survive-the-night/game-server";
-
-import { GameStateEvent } from "@survive-the-night/game-server";
-
-import { ServerSentEvents } from "@survive-the-night/game-server";
 import { GameClient } from "./client";
 import { ClientSocketManager } from "./managers/client-socket-manager";
 import { GameState } from "./state";
@@ -21,6 +16,13 @@ import { ZombieAttackedEvent } from "@server/shared/events/server-sent/zombie-at
 import { LootEvent } from "@server/shared/events/server-sent/loot-event";
 import { ClientPositionable } from "./extensions";
 import { GunEmptyEvent } from "@server/shared/events/server-sent/gun-empty-event";
+import { ServerSentEvents } from "@server/shared/events/events";
+import {
+  GameStateEvent,
+  MapEvent,
+  YourIdEvent,
+  PlayerDeathEvent,
+} from "@server/shared/events/server-sent";
 export class ClientEventListener {
   private socketManager: ClientSocketManager;
   private gameClient: GameClient;

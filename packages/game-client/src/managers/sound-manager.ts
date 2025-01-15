@@ -1,7 +1,7 @@
 import { GameClient } from "@/client";
 import { linearFalloff } from "../util/math";
-import { distance, Vector2 } from "@survive-the-night/game-server";
 import { DEBUG_DISABLE_SOUNDS, DEBUG_VOLUME_REDUCTION } from "@server/config/debug";
+import { distance, Vector2 } from "@server/shared/physics";
 
 // these values must match the sound files in the client
 export const SOUND_TYPES = {

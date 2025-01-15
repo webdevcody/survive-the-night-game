@@ -1,7 +1,7 @@
 import { ExtensionSerialized } from "./types";
 import { Cooldown } from "../entities/util/cooldown";
 import Destructible from "./destructible";
-import { Extension } from "@survive-the-night/game-shared/src/types/entity";
+import { Extension } from "@shared/types/entity";
 import { IEntity } from "../types";
 
 export default class Ignitable implements Extension {

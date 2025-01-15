@@ -1,4 +1,4 @@
-import { Entities } from "@survive-the-night/game-shared/src/constants";
+import { Entities } from "@shared/constants";
 import { Entity } from "../../entity";
 import Triggerable from "../../extensions/trigger";
 import Carryable from "../../extensions/carryable";

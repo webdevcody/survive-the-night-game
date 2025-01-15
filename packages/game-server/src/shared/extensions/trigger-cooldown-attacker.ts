@@ -5,7 +5,7 @@ import { Cooldown } from "../entities/util/cooldown";
 import Positionable from "./positionable";
 import Triggerable from "./trigger";
 import Destructible from "./destructible";
-import { EntityType } from "@survive-the-night/game-shared/src/types/entity";
+import { EntityType } from "@shared/types/entity";
 import { IEntity } from "../types";
 
 /**

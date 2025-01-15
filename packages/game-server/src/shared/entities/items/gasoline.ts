@@ -1,7 +1,7 @@
 import { IGameManagers } from "../../../managers/types";
 import { Fire } from "../environment/fire";
 import { Entity } from "../../entity";
-import { Entities } from "@survive-the-night/game-shared/src/constants";
+import { Entities } from "@shared/constants";
 import Carryable from "../../extensions/carryable";
 import Combustible from "../../extensions/combustible";
 import Destructible from "../../extensions/destructible";

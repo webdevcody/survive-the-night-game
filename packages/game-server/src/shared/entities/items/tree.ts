@@ -1,6 +1,6 @@
 import { IGameManagers } from "../../../managers/types";
 import { Entity } from "../../entity";
-import { Entities } from "@survive-the-night/game-shared/src/constants";
+import { Entities } from "@shared/constants";
 import Carryable from "../../extensions/carryable";
 import Interactive from "../../extensions/interactive";
 import Positionable from "../../extensions/positionable";

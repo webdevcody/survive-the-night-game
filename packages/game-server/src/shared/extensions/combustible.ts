@@ -1,7 +1,7 @@
 import { Extension, ExtensionSerialized } from "./types";
 import { Vector2 } from "../physics";
-import { EntityType } from "@survive-the-night/game-shared/src/types/entity";
-import { Entities } from "@survive-the-night/game-shared/src/constants";
+import { EntityType } from "@shared/types/entity";
+import { Entities } from "@shared/constants";
 import Positionable from "./positionable";
 import { IEntity } from "../types";
 

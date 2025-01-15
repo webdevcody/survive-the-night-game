@@ -1,6 +1,6 @@
 import { InventoryItem } from "../shared/inventory";
 import { Vector2 } from "../shared/physics";
-import { EntityType } from "@survive-the-night/game-shared/src/types/entity";
+import { EntityType } from "@shared/types/entity";
 import { Hitbox } from "../shared/traits";
 import { GameEvent } from "../shared/events/types";
 import { IEntity } from "../shared/types";

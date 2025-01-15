@@ -1,6 +1,6 @@
 import { ExtensionTypes } from "@server/shared/extension-types";
 import { ClientExtension, ClientExtensionSerialized } from "./types";
-import { Hitbox } from "@survive-the-night/game-server";
+import { Hitbox } from "@server/shared/traits";
 
 export class ClientCollidable implements ClientExtension {
   public static readonly type = ExtensionTypes.COLLIDABLE;

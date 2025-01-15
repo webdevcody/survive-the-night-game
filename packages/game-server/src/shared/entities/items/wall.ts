@@ -1,5 +1,5 @@
-import { Entities } from "@survive-the-night/game-shared/src/constants";
-import { RawEntity } from "@survive-the-night/game-shared/src/types/entity";
+import { Entities } from "@shared/constants";
+import { RawEntity } from "@shared/types/entity";
 import { IEntityManager, IGameManagers } from "../../../managers/types";
 import { Entity } from "../../entity";
 import Carryable from "../../extensions/carryable";

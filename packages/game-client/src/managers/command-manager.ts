@@ -1,9 +1,9 @@
-import { ItemType, Vector2 } from "@survive-the-night/game-server";
 import { ClientSocketManager } from "./client-socket-manager";
 import { ADMIN_COMMANDS } from "@shared/commands/commands";
 import { GameState, getEntityById } from "@/state";
 import { ClientPositionable } from "@/extensions";
 import { EntityType } from "@shared/types/entity";
+import { ItemType } from "@server/shared/inventory";
 
 export class CommandManager {
   private socketManager: ClientSocketManager;

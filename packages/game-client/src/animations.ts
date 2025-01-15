@@ -1,4 +1,4 @@
-import { Vector2 } from "@survive-the-night/game-server";
+import { Vector2 } from "@server/shared/physics";
 
 export interface Animation {
   duration: number;

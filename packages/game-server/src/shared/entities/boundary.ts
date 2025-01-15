@@ -2,8 +2,8 @@ import { IGameManagers } from "../../managers/types";
 import { ServerOnly } from "../traits";
 import { Vector2 } from "../physics";
 import { Entity } from "../entity";
-import { Entities } from "@survive-the-night/game-shared/src/constants";
-import { RawEntity } from "@survive-the-night/game-shared/src/types/entity";
+import { Entities } from "@shared/constants";
+import { RawEntity } from "@shared/types/entity";
 import Positionable from "../extensions/positionable";
 import Collidable from "../extensions/collidable";
 

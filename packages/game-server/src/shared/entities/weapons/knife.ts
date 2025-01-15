@@ -2,7 +2,7 @@ import { IGameManagers } from "../../../managers/types";
 import { Weapon, WEAPON_TYPES } from "./weapon";
 import { Direction } from "../../direction";
 import { PlayerAttackedEvent } from "../../events/server-sent/player-attacked-event";
-import { Entities } from "@survive-the-night/game-shared/src/constants";
+import { Entities } from "@shared/constants";
 import Destructible from "../../extensions/destructible";
 
 export class Knife extends Weapon {

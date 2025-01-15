@@ -1,14 +1,4 @@
 import { io, Socket } from "socket.io-client";
-import {
-  Input,
-  RecipeType,
-  ServerSentEvents,
-  GameStateEvent,
-  PlayerDeathEvent,
-  MapEvent,
-  YourIdEvent,
-  ClientSentEvents,
-} from "@survive-the-night/game-server";
 import { PlayerHurtEvent } from "@server/shared/events/server-sent/player-hurt-event";
 import { PlayerAttackedEvent } from "@server/shared/events/server-sent/player-attacked-event";
 import { ZombieDeathEvent } from "@server/shared/events/server-sent/zombie-death-event";
@@ -19,6 +9,16 @@ import { GameOverEvent } from "@server/shared/events/server-sent/game-over-event
 import { ZombieAttackedEvent } from "@server/shared/events/server-sent/zombie-attacked-event";
 import { LootEvent } from "@server/shared/events/server-sent/loot-event";
 import { GunEmptyEvent } from "@server/shared/events/server-sent/gun-empty-event";
+import { AdminCommand } from "@shared/commands/commands";
+import { ServerSentEvents, ClientSentEvents } from "@server/shared/events/events";
+import {
+  GameStateEvent,
+  PlayerDeathEvent,
+  MapEvent,
+  YourIdEvent,
+} from "@server/shared/events/server-sent";
+import { Input } from "@server/shared/input";
+import { RecipeType } from "@server/shared/recipes";
 
 export type EntityDto = { id: string } & any;
 

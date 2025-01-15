@@ -1,5 +1,6 @@
-import { Hitbox, Vector2 } from "@survive-the-night/game-server";
 import { DEBUG_SHOW_HITBOXES, DEBUG_SHOW_POSITIONS } from "@server/config/debug";
+import { Vector2 } from "@server/shared/physics";
+import { Hitbox } from "@server/shared/traits";
 
 export function debugDrawHitbox(
   ctx: CanvasRenderingContext2D,

@@ -1,4 +1,3 @@
-import { roundVector2, Vector2, determineDirection, Hitbox } from "@survive-the-night/game-server";
 import { RawEntity } from "@shared/types/entity";
 import { AssetManager } from "../managers/asset";
 import { drawHealthBar, getFrameIndex, IClientEntity, Renderable } from "./util";
@@ -15,6 +14,8 @@ import { ClientDestructible } from "../extensions/destructible";
 import { ClientIgnitable } from "../extensions/ignitable";
 import { ClientCollidable } from "../extensions/collidable";
 import { getHitboxWithPadding } from "@server/shared/entities/util";
+import { determineDirection } from "@server/shared/direction";
+import { Vector2, roundVector2 } from "@server/shared/physics";
 
 export class ZombieClient extends ClientEntityBase implements IClientEntity, Renderable {
   private lastRenderPosition = { x: 0, y: 0 };

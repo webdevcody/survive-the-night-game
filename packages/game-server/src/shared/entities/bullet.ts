@@ -1,4 +1,4 @@
-import { Entities } from "@survive-the-night/game-shared/src/constants";
+import { Entities } from "@shared/constants";
 import { IEntityManager, IGameManagers } from "../../managers/types";
 import { Direction, normalizeDirection } from "../direction";
 import { Entity } from "../entity";
@@ -10,7 +10,7 @@ import Positionable from "../extensions/positionable";
 import Updatable from "../extensions/updatable";
 import { Vector2, distance, normalizeVector } from "../physics";
 import { Hitbox } from "../traits";
-import { RawEntity } from "@survive-the-night/game-shared/src/types/entity";
+import { RawEntity } from "@shared/types/entity";
 import { IEntity } from "../types";
 import { ZombieHurtEvent } from "../events/server-sent/zombie-hurt-event";
 

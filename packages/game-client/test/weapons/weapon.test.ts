@@ -8,7 +8,7 @@ import { Pistol } from "@server/shared/entities/weapons/pistol";
 import { PistolClient } from "@/entities/weapons/pistol";
 import { simpleTestSetup } from "@survive-the-night/game-server/tests/utils/setup";
 import { GameManagers } from "@server/managers/game-managers";
-import { Player } from "@survive-the-night/game-server";
+import { Player } from "@server/shared/entities/player";
 
 let player: PlayerClient;
 let pistol: PistolClient;

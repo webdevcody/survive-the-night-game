@@ -1,6 +1,6 @@
 import { ExtensionTypes } from "@server/shared/extension-types";
 import { ClientExtension, ClientExtensionSerialized } from "./types";
-import { InventoryItem } from "@survive-the-night/game-server";
+import { InventoryItem } from "@server/shared/inventory";
 
 export class ClientInventory implements ClientExtension {
   public static readonly type = ExtensionTypes.INVENTORY;

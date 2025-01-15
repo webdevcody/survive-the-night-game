@@ -1,4 +1,5 @@
-import { determineDirection, Direction, Input } from "@survive-the-night/game-server";
+import { Direction, determineDirection } from "@server/shared/direction";
+import { Input } from "@server/shared/input";
 
 export interface InputManagerOptions {
   onCraft?: () => unknown;

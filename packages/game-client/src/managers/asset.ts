@@ -1,11 +1,11 @@
 import {
   Direction,
-  InventoryItem,
-  isDirectionDown,
   isDirectionLeft,
   isDirectionRight,
+  isDirectionDown,
   isDirectionUp,
-} from "@survive-the-night/game-server";
+} from "@server/shared/direction";
+import { InventoryItem } from "@server/shared/inventory";
 import { CropOptions, ImageManager } from "./image";
 
 const tileSize = 16;

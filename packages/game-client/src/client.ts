@@ -1,7 +1,6 @@
 import { AssetManager } from "./managers/asset";
 import { InputManager } from "./managers/input";
 import { EntityDto, ClientSocketManager } from "./managers/client-socket-manager";
-import { Direction, Input } from "@survive-the-night/game-server";
 import { PlayerClient } from "./entities/player";
 import { CameraManager } from "./managers/camera";
 import { MapManager } from "./managers/map";
@@ -20,6 +19,8 @@ import { SoundManager } from "./managers/sound-manager";
 import { GameOverDialogUI } from "./ui/game-over-dialog";
 import { CommandManager } from "./managers/command-manager";
 import { DEBUG_ADMIN_COMMANDS } from "@server/config/debug";
+import { Direction } from "@server/shared/direction";
+import { Input } from "@server/shared/input";
 
 export class GameClient {
   private ctx: CanvasRenderingContext2D;

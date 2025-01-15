@@ -1,21 +1,18 @@
-import { IEntityManager, IGameManagers } from "../../managers/types";
-import { Bullet } from "./bullet";
+import { IGameManagers } from "../../managers/types";
 import { Hitbox } from "../traits";
 import { distance, normalizeVector, Vector2 } from "../physics";
 import { Direction } from "../direction";
 import { InventoryItem, ItemType } from "../inventory";
 import { RecipeType } from "../recipes";
-import { PlayerDeathEvent } from "../../index";
 import { Cooldown } from "./util/cooldown";
 import { Input } from "../input";
 import { PlayerHurtEvent } from "../events/server-sent/player-hurt-event";
 import { PlayerDroppedItemEvent } from "../events/server-sent/player-dropped-item-event";
 import { Broadcaster } from "@/managers/types";
 import { DEBUG_WEAPONS } from "../../config/debug";
-import { Bandage } from "./items/bandage";
 import Groupable from "../extensions/groupable";
 import { Entity } from "../entity";
-import { RawEntity } from "@survive-the-night/game-shared/src/types/entity";
+import { RawEntity } from "@shared/types/entity";
 import Collidable from "../extensions/collidable";
 import Consumable from "../extensions/consumable";
 import Destructible from "../extensions/destructible";
@@ -25,8 +22,9 @@ import Inventory from "../extensions/inventory";
 import Movable from "../extensions/movable";
 import Positionable from "../extensions/positionable";
 import Updatable from "../extensions/updatable";
-import { Entities } from "@survive-the-night/game-shared/src/constants";
+import { Entities } from "@shared/constants";
 import { Weapon } from "./weapons/weapon";
+import { PlayerDeathEvent } from "../events/server-sent";
 
 export class Player extends Entity {
   public static readonly MAX_HEALTH = 3;

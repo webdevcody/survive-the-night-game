@@ -1,9 +1,4 @@
-import {
-  RawEntity,
-  EntityType,
-  Extension,
-  ExtensionCtor,
-} from "@survive-the-night/game-shared/src/types/entity";
+import { RawEntity, EntityType, Extension, ExtensionCtor } from "@shared/types/entity";
 import { IEntityManager, IGameManagers } from "../managers/types";
 
 export class Entity extends EventTarget {

@@ -1,13 +1,3 @@
-import {
-  roundVector2,
-  Vector2,
-  InventoryItem,
-  Hitbox,
-  Player,
-  normalizeDirection,
-  Direction,
-  Input,
-} from "@survive-the-night/game-server";
 import { RawEntity } from "@shared/types/entity";
 import { getItemAssetKey, ImageLoader } from "../managers/asset";
 import { drawHealthBar, getFrameIndex, IClientEntity, Renderable } from "./util";
@@ -22,6 +12,12 @@ import { ClientPositionable } from "../extensions/positionable";
 import { ClientMovable } from "../extensions/movable";
 import { ClientDestructible } from "../extensions/destructible";
 import { ClientIgnitable } from "../extensions/ignitable";
+import { InventoryItem } from "@server/shared/inventory";
+import { Direction, normalizeDirection } from "@server/shared/direction";
+import { Player } from "@server/shared/entities/player";
+import { Input } from "@server/shared/input";
+import { Vector2, roundVector2 } from "@server/shared/physics";
+import { Hitbox } from "@server/shared/traits";
 
 export class PlayerClient extends ClientEntityBase implements IClientEntity, Renderable {
   private readonly LERP_FACTOR = 0.1;

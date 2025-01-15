@@ -3,7 +3,7 @@ import { distance, Vector2 } from "../physics";
 import { Rectangle } from "../geom/rectangle";
 import Positionable from "./positionable";
 import Collidable from "./collidable";
-import { EntityType } from "@survive-the-night/game-shared/src/types/entity";
+import { EntityType } from "@shared/types/entity";
 import { ExtensionTypes } from "../extension-types";
 import { IEntity } from "../types";
 

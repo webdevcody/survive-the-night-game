@@ -16,10 +16,11 @@
     "@types/node": "^22.9.3",
     "tsup": "^8.3.5",
     "tsx": "^4.19.2",
+    "vite-tsconfig-paths": "^5.1.4",
     "vitest": "^2.1.8"
   },
   "dependencies": {
-    "socket.io": "^4.8.1",
-    "@survive-the-night/game-shared": "*"
+    "@survive-the-night/game-shared": "*",
+    "socket.io": "^4.8.1"
   }
 }
