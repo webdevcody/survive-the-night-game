@@ -11,6 +11,7 @@ import Positionable from "../shared/extensions/positionable";
 import { GameServer } from "../server";
 import { Broadcaster, IEntityManager } from "./types";
 import { ADMIN_COMMANDS, AdminCommand, CreateItemCommand } from "@shared/commands/commands";
+import { CommandManager } from "./command-manager";
 
 /**
  * Any and all functionality related to sending server side events
@@ -24,6 +25,7 @@ export class ServerSocketManager implements Broadcaster {
   private entityManager?: IEntityManager;
   private mapManager?: MapManager;
   private gameServer: GameServer;
+  private commandManager: CommandManager;
 
   constructor(port: number, gameServer: GameServer) {
     this.port = port;
@@ -38,6 +40,17 @@ export class ServerSocketManager implements Broadcaster {
     this.gameServer = gameServer;
 
     this.io.on("connection", (socket: Socket) => this.onConnection(socket));
+  }
+
+  public setCommandManager(commandManager: CommandManager): void {
+    this.commandManager = commandManager;
+  }
+
+  public getCommandManager(): CommandManager {
+    if (!this.commandManager) {
+      throw new Error("Command manager not set");
+    }
+    return this.commandManager;
   }
 
   public getEntityManager(): IEntityManager {
@@ -131,24 +144,12 @@ export class ServerSocketManager implements Broadcaster {
       this.setPlayerCrafting(socket, false)
     );
     socket.on(ClientSentEvents.ADMIN_COMMAND, (command: AdminCommand) =>
-      this.onAdminCommand(socket, command)
+      this.getCommandManager().handleCommand(command)
     );
 
     socket.on("disconnect", () => {
       this.onDisconnect(socket);
     });
-  }
-
-  private onAdminCommand(socket: Socket, command: CreateItemCommand): void {
-    console.log(`Admin command received:`, command);
-    if (command.command === ADMIN_COMMANDS.CREATE_ITEM) {
-      const { itemType, position } = command.payload;
-      const item = this.getEntityManager().createEntityFromItem({
-        key: itemType,
-      });
-      item.getExt(Positionable).setPosition(position);
-      this.getEntityManager().addEntity(item);
-    }
   }
 
   public broadcastEvent(event: GameEvent<any>): void {

@@ -1,4 +1,6 @@
+import { CommandManager } from "./managers/command-manager";
 import { EntityManager } from "./managers/entity-manager";
+import { GameManagers } from "./managers/game-managers";
 import { MapManager } from "./managers/map-manager";
 import { ServerSocketManager } from "./managers/server-socket-manager";
 import { GameStateEvent } from "./shared/events/server-sent";
@@ -24,14 +26,19 @@ export class GameServer {
   private updateTimes: number[] = [];
   private lastPerformanceLog: number = Date.now();
   private isGameOver: boolean = false;
+  private gameManagers: GameManagers;
+  private commandManager: CommandManager;
 
   constructor(port: number = 3001) {
     this.socketManager = new ServerSocketManager(port, this);
-    this.entityManager = new EntityManager(this.socketManager);
+    this.entityManager = new EntityManager();
+    this.mapManager = new MapManager();
+    this.commandManager = new CommandManager(this.entityManager);
+    this.gameManagers = new GameManagers(this.entityManager, this.mapManager, this.socketManager);
 
-    this.mapManager = new MapManager(this.entityManager);
-    this.mapManager.setSocketManager(this.socketManager);
-
+    this.entityManager.setGameManagers(this.gameManagers);
+    this.mapManager.setGameManagers(this.gameManagers);
+    this.socketManager.setCommandManager(this.commandManager);
     this.socketManager.setEntityManager(this.entityManager);
     this.socketManager.setMapManager(this.mapManager);
     this.socketManager.listen();

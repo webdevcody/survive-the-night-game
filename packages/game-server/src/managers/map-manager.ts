@@ -1,7 +1,7 @@
 import { Tree } from "../shared/entities/items/tree";
 import { Boundary } from "../shared/entities/boundary";
 import { Zombie } from "../shared/entities/zombie";
-import { Broadcaster, IEntityManager, IMapManager } from "./types";
+import { Broadcaster, IEntityManager, IGameManagers, IMapManager } from "./types";
 import { DEBUG_START_ZOMBIE } from "../config/debug";
 import Positionable from "../shared/extensions/positionable";
 import { Shotgun } from "../shared/entities/weapons/shotgun";
@@ -96,23 +96,28 @@ export const TILE_SIZE = 16;
 
 export class MapManager implements IMapManager {
   private map: number[][] = [];
-  private entityManager: IEntityManager;
-  private broadcaster?: Broadcaster;
+  private gameManagers?: IGameManagers;
+  private entityManager?: IEntityManager;
 
-  constructor(entityManager: IEntityManager) {
-    this.entityManager = entityManager;
+  constructor() {}
+
+  public setGameManagers(gameManagers: IGameManagers) {
+    this.gameManagers = gameManagers;
+    this.entityManager = gameManagers.getEntityManager();
   }
 
-  public setSocketManager(socketManager: Broadcaster) {
-    this.broadcaster = socketManager;
-  }
-
-  public getBroadcaster(): Broadcaster {
-    if (!this.broadcaster) {
-      throw new Error("MapManager: Socket manager was not set");
+  public getGameManagers(): IGameManagers {
+    if (!this.gameManagers) {
+      throw new Error("MapManager: GameManagers was not set");
     }
+    return this.gameManagers;
+  }
 
-    return this.broadcaster;
+  public getEntityManager(): IEntityManager {
+    if (!this.entityManager) {
+      throw new Error("MapManager: EntityManager was not set");
+    }
+    return this.entityManager;
   }
 
   public getMap(): number[][] {
@@ -123,25 +128,25 @@ export class MapManager implements IMapManager {
     for (let y = 0; y < this.map.length; y++) {
       for (let x = 0; x < this.map[y].length; x++) {
         if (this.map[y][x] === 0 && Math.random() < ZOMBIE_SPAWN_CHANCE * dayNumber) {
-          const zombie = new Zombie(this.entityManager, this, this.getBroadcaster());
+          const zombie = new Zombie(this.getGameManagers());
           zombie.setPosition({ x: x * TILE_SIZE, y: y * TILE_SIZE });
-          this.entityManager.addEntity(zombie);
+          this.getEntityManager().addEntity(zombie);
         }
       }
     }
   }
 
   generateEmptyMap(width: number, height: number) {
-    this.entityManager.clear();
-    this.entityManager.setMapSize(width * TILE_SIZE, height * TILE_SIZE);
+    this.getEntityManager().clear();
+    this.getEntityManager().setMapSize(width * TILE_SIZE, height * TILE_SIZE);
     this.map = Array(height)
       .fill(0)
       .map(() => Array(width).fill(0));
   }
 
   generateMap() {
-    this.entityManager.clear();
-    this.entityManager.setMapSize(
+    this.getEntityManager().clear();
+    this.getEntityManager().setMapSize(
       BIOME_SIZE * MAP_SIZE * TILE_SIZE,
       BIOME_SIZE * MAP_SIZE * TILE_SIZE
     );
@@ -162,9 +167,9 @@ export class MapManager implements IMapManager {
     for (let y = 0; y < totalSize; y++) {
       for (let x = 0; x < totalSize; x++) {
         if (this.map[y][x] === TILE_IDS.FOREST) {
-          const boundary = new Boundary(this.entityManager);
+          const boundary = new Boundary(this.getEntityManager());
           boundary.setPosition({ x: x * TILE_SIZE, y: y * TILE_SIZE });
-          this.entityManager.addEntity(boundary);
+          this.getEntityManager().addEntity(boundary);
         }
       }
     }
@@ -175,24 +180,24 @@ export class MapManager implements IMapManager {
         if (this.map[y][x] === 0 || this.map[y][x] === 1) {
           if (Math.random() < 0.05) {
             // 30% chance for a tree
-            const tree = new Tree(this.entityManager);
+            const tree = new Tree(this.getEntityManager());
             tree.getExt(Positionable).setPosition({ x: x * TILE_SIZE, y: y * TILE_SIZE });
-            this.entityManager.addEntity(tree);
+            this.getEntityManager().addEntity(tree);
           } else if (Math.random() < WEAPON_SPAWN_CHANCE.PISTOL) {
             // 0.1% chance for a pistol
-            const weapon = new Pistol(this.entityManager);
+            const weapon = new Pistol(this.getEntityManager());
             weapon.getExt(Positionable).setPosition({ x: x * TILE_SIZE, y: y * TILE_SIZE });
-            this.entityManager.addEntity(weapon);
+            this.getEntityManager().addEntity(weapon);
           } else if (Math.random() < WEAPON_SPAWN_CHANCE.SHOTGUN) {
             // 0.1% chance for a shotgun
-            const weapon = new Shotgun(this.entityManager);
+            const weapon = new Shotgun(this.getEntityManager());
             weapon.getExt(Positionable).setPosition({ x: x * TILE_SIZE, y: y * TILE_SIZE });
-            this.entityManager.addEntity(weapon);
+            this.getEntityManager().addEntity(weapon);
           } else if (Math.random() < WEAPON_SPAWN_CHANCE.KNIFE) {
             // 0.1% chance for a knife
-            const weapon = new Knife(this.entityManager);
+            const weapon = new Knife(this.getEntityManager());
             weapon.getExt(Positionable).setPosition({ x: x * TILE_SIZE, y: y * TILE_SIZE });
-            this.entityManager.addEntity(weapon);
+            this.getEntityManager().addEntity(weapon);
           }
         }
       }
@@ -202,9 +207,9 @@ export class MapManager implements IMapManager {
       const middleX = Math.floor(totalSize / 2) * TILE_SIZE;
       const middleY = Math.floor(totalSize / 2) * TILE_SIZE;
 
-      const zombie = new Zombie(this.entityManager, this, this.getBroadcaster());
+      const zombie = new Zombie(this.getGameManagers());
       zombie.setPosition({ x: middleX + 16 * 4, y: middleY });
-      this.entityManager.addEntity(zombie);
+      this.getEntityManager().addEntity(zombie);
     }
   }
 

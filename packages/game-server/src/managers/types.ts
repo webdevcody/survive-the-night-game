@@ -20,6 +20,7 @@ export interface IEntityManager {
   getPlayerEntities(): IEntity[];
   clear(): void;
   setMapSize(width: number, height: number): void;
+  createEntity(entityType: EntityType): IEntity;
 }
 
 export interface Broadcaster {
@@ -28,4 +29,10 @@ export interface Broadcaster {
 
 export interface IMapManager {
   getMap(): number[][];
+}
+
+export interface IGameManagers {
+  getEntityManager(): IEntityManager;
+  getMapManager(): IMapManager;
+  getBroadcaster(): Broadcaster;
 }

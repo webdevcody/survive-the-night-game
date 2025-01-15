@@ -3,6 +3,7 @@ import { ClientSocketManager } from "./client-socket-manager";
 import { ADMIN_COMMANDS } from "@shared/commands/commands";
 import { GameState, getEntityById } from "@/state";
 import { ClientPositionable } from "@/extensions";
+import { EntityType } from "@shared/types/entity";
 
 export class CommandManager {
   private socketManager: ClientSocketManager;
@@ -13,7 +14,7 @@ export class CommandManager {
     this.gameState = gameState;
   }
 
-  public createItem(itemType: ItemType, position: Vector2) {
+  public createItem(itemType: ItemType) {
     const player = getEntityById(this.gameState, this.gameState.playerId);
     if (!player) return;
 
@@ -22,6 +23,17 @@ export class CommandManager {
     this.socketManager.sendAdminCommand({
       command: ADMIN_COMMANDS.CREATE_ITEM,
       payload: { itemType, position: positionable.getCenterPosition() },
+    });
+  }
+
+  public createEntity(entityType: EntityType) {
+    const player = getEntityById(this.gameState, this.gameState.playerId);
+    if (!player) return;
+
+    const positionable = player.getExt(ClientPositionable);
+    this.socketManager.sendAdminCommand({
+      command: ADMIN_COMMANDS.CREATE_ENTITY,
+      payload: { entityType, position: positionable.getCenterPosition() },
     });
   }
 }

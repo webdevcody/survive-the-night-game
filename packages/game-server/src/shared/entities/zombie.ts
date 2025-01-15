@@ -1,10 +1,9 @@
-import { IEntityManager, IMapManager } from "../../managers/types";
+import { IGameManagers } from "../../managers/types";
 import { Vector2, pathTowards, velocityTowards } from "../physics";
 import { Hitbox } from "../traits";
 import { Wall } from "./items/wall";
 import { ZombieDeathEvent } from "../events/server-sent/zombie-death-event";
 import { ZombieHurtEvent } from "../events/server-sent/zombie-hurt-event";
-import { Broadcaster } from "@/managers/types";
 import { Cooldown } from "./util/cooldown";
 import Groupable from "../extensions/groupable";
 import { Entity } from "../entity";
@@ -18,7 +17,6 @@ import Interactive from "../extensions/interactive";
 import { Entities } from "@survive-the-night/game-shared/src/constants";
 import { IEntity } from "../types";
 
-// TODO: refactor to use extensions
 export class Zombie extends Entity {
   private static readonly ZOMBIE_WIDTH = 16;
   private static readonly ZOMBIE_HEIGHT = 16;
@@ -30,19 +28,17 @@ export class Zombie extends Entity {
   public static readonly MAX_HEALTH = 3;
 
   private currentWaypoint: Vector2 | null = null;
-  private mapManager: IMapManager;
-  private broadcaster: Broadcaster;
   private attackCooldown: Cooldown;
+  private gameManagers: IGameManagers;
 
-  constructor(entityManager: IEntityManager, mapManager: IMapManager, broadcaster: Broadcaster) {
-    super(entityManager, Entities.ZOMBIE);
+  constructor(gameManagers: IGameManagers) {
+    super(gameManagers.getEntityManager(), Entities.ZOMBIE);
 
     this.attackCooldown = new Cooldown(Zombie.ATTACK_COOLDOWN);
-    this.mapManager = mapManager;
-    this.broadcaster = broadcaster;
+    this.gameManagers = gameManagers;
 
     this.extensions = [
-      new Inventory(this, broadcaster).addRandomItem(0.2),
+      new Inventory(this, gameManagers.getBroadcaster()).addRandomItem(0.2),
       new Destructible(this)
         .setMaxHealth(Zombie.MAX_HEALTH)
         .setHealth(Zombie.MAX_HEALTH)
@@ -70,7 +66,7 @@ export class Zombie extends Entity {
   }
 
   onDeath(): void {
-    this.broadcaster.broadcastEvent(new ZombieHurtEvent(this.getId()));
+    this.gameManagers.getBroadcaster().broadcastEvent(new ZombieHurtEvent(this.getId()));
     this.extensions.push(
       new Interactive(this).onInteract(this.afterDeathInteract.bind(this)).setDisplayName("loot")
     );
@@ -84,7 +80,7 @@ export class Zombie extends Entity {
     }
 
     this.getEntityManager().markEntityForRemoval(this);
-    this.broadcaster.broadcastEvent(new ZombieDeathEvent(this.getId()));
+    this.gameManagers.getBroadcaster().broadcastEvent(new ZombieDeathEvent(this.getId()));
   }
 
   getPosition(): Vector2 {
@@ -154,7 +150,7 @@ export class Zombie extends Entity {
       this.currentWaypoint = pathTowards(
         this.getCenterPosition(),
         player.getExt(Positionable).getCenterPosition(),
-        this.mapManager.getMap()
+        this.gameManagers.getMapManager().getMap()
       );
     }
 

@@ -3,7 +3,7 @@ import { Hitbox } from "../shared/traits";
 import { Player } from "../shared/entities/player";
 import { SpatialGrid } from "./spatial-grid";
 import { InventoryItem, ItemType } from "../shared/inventory";
-import { Broadcaster } from "./types";
+import { Broadcaster, IGameManagers } from "./types";
 import { Gasoline } from "../shared/entities/items/gasoline";
 import { Bandage } from "../shared/entities/items/bandage";
 import { Torch } from "../shared/entities/items/torch";
@@ -23,6 +23,8 @@ import { Shotgun } from "../shared/entities/weapons/shotgun";
 import { Pistol } from "../shared/entities/weapons/pistol";
 import { ShotgunAmmo } from "../shared/entities/items/shotgun-ammo";
 import { PistolAmmo } from "../shared/entities/items/pistol-ammo";
+import { Zombie } from "@/shared/entities/zombie";
+import { IEntity } from "@/shared/types";
 
 type EntityConstructor = new (entityManager: IEntityManager, ...args: any[]) => Entity;
 type EntityFactory = (entityManager: IEntityManager) => Entity;
@@ -32,13 +34,23 @@ export class EntityManager implements IEntityManager {
   private entitiesToRemove: Array<{ id: string; expiration: number }> = [];
   private id: number = 0;
   private spatialGrid: SpatialGrid | null = null;
-  private broadcaster: Broadcaster;
+  private gameManagers?: IGameManagers;
   private itemConstructors = new Map<ItemType, EntityConstructor | EntityFactory>();
 
-  constructor(broadcaster: Broadcaster) {
+  constructor() {
     this.entities = [];
-    this.broadcaster = broadcaster;
     this.registerDefaultItems();
+  }
+
+  setGameManagers(gameManagers: IGameManagers) {
+    this.gameManagers = gameManagers;
+  }
+
+  getGameManagers(): IGameManagers {
+    if (!this.gameManagers) {
+      throw new Error("GameManagers not set");
+    }
+    return this.gameManagers;
   }
 
   private registerDefaultItems() {
@@ -336,6 +348,14 @@ export class EntityManager implements IEntityManager {
   }
 
   public getBroadcaster(): Broadcaster {
-    return this.broadcaster;
+    return this.gameManagers.getBroadcaster();
+  }
+
+  createEntity(entityType: EntityType): IEntity {
+    if (entityType === Entities.ZOMBIE) {
+      return new Zombie(this.gameManagers);
+    } else {
+      console.warn(`createEntity failed - Unknown entity type: ${entityType}`);
+    }
   }
 }
