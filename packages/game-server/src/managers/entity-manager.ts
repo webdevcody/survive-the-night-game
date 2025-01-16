@@ -26,6 +26,7 @@ import { IEntity } from "@/entities/types";
 import { EntityType } from "@shared/types/entity";
 import { SpatialGrid } from "@/managers/spatial-grid";
 import { IGameManagers, IEntityManager, Broadcaster } from "@/managers/types";
+import { Landmine } from "@/entities/items/landmine";
 
 const entityMap = {
   [Entities.PLAYER]: Player,
@@ -44,6 +45,7 @@ const entityMap = {
   [Entities.TORCH]: Torch,
   [Entities.GASOLINE]: Gasoline,
   [Entities.ZOMBIE]: Zombie,
+  [Entities.LANDMINE]: Landmine,
 };
 
 type EntityConstructor = new (entityManager: IGameManagers, ...args: any[]) => Entity;
@@ -90,6 +92,9 @@ export class EntityManager implements IEntityManager {
     // Register ammo
     this.registerItem("pistol_ammo", PistolAmmo);
     this.registerItem("shotgun_ammo", ShotgunAmmo);
+
+    // Register landmine
+    this.registerItem("landmine", Landmine);
   }
 
   public registerItem(type: ItemType, constructor: any): void {

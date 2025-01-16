@@ -1,12 +1,13 @@
 import { IEntityManager, IGameManagers } from "@/managers/types";
 import { Extension, ExtensionCtor } from "@/extensions/types";
 import { EntityType, RawEntity } from "@/types/entity";
+import { IEntity } from "./types";
 
-export class Entity extends EventTarget {
-  private id: string;
-  private type: EntityType;
-  protected extensions: Extension[] = [];
-  private gameManagers: IGameManagers;
+export class Entity extends EventTarget implements IEntity {
+  private readonly id: string;
+  private readonly type: EntityType;
+  protected readonly extensions: Extension[] = [];
+  private readonly gameManagers: IGameManagers;
 
   public constructor(gameManagers: IGameManagers, type: EntityType) {
     super();
@@ -42,14 +43,6 @@ export class Entity extends EventTarget {
     if (index > -1) {
       this.extensions.splice(index, 1);
     }
-  }
-
-  public setId(id: string) {
-    this.id = id;
-  }
-
-  public setType(type: EntityType) {
-    this.type = type;
   }
 
   public getExtensions(): Extension[] {

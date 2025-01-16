@@ -15,6 +15,8 @@ export const ExtensionTypes = {
   ILLUMINATED: "illuminated",
   CARRYABLE: "carryable",
   GROUPABLE: "groupable",
+  LANDMINE_UPDATE: "landmine-update",
+  ONE_TIME_TRIGGER: "one-time-trigger",
 } as const;
 
 export type ExtensionType = (typeof ExtensionTypes)[keyof typeof ExtensionTypes];

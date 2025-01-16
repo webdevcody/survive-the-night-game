@@ -11,6 +11,7 @@ export const ITEM_TYPES = [
   "spikes",
   "pistol_ammo",
   "shotgun_ammo",
+  "landmine",
 ] as const;
 export type ItemType = (typeof ITEM_TYPES)[number];
 

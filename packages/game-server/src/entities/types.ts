@@ -11,9 +11,6 @@ export interface IEntity extends EventTarget {
   removeExtension(extension: Extension): void;
   getExtensions(): Extension[];
 
-  setId(id: string): void;
-  setType(type: EntityType): void;
-
   hasExt<T>(ext: ExtensionCtor<T>): boolean;
   getExt<T>(ext: ExtensionCtor<T>): T;
 

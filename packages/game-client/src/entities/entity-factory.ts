@@ -18,8 +18,9 @@ import { ShotgunClient } from "@/entities/weapons/shotgun";
 import { KnifeClient } from "@/entities/weapons/knife";
 import { PistolAmmoClient } from "@/entities/weapons/pistol-ammo";
 import { ShotgunAmmoClient } from "@/entities/weapons/shotgun-ammo";
+import { LandmineClient } from "@/entities/items/landmine";
 
-const entityMap = {
+export const entityMap = {
   [Entities.PLAYER]: PlayerClient,
   [Entities.TREE]: TreeClient,
   [Entities.BULLET]: BulletClient,
@@ -36,7 +37,9 @@ const entityMap = {
   [Entities.TORCH]: TorchClient,
   [Entities.GASOLINE]: GasolineClient,
   [Entities.ZOMBIE]: ZombieClient,
-};
+  [Entities.LANDMINE]: LandmineClient,
+} as const;
+
 export class EntityFactory {
   private assetManager: AssetManager;
 
