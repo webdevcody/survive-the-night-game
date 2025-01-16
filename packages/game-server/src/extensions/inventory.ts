@@ -1,10 +1,10 @@
 import { Extension, ExtensionSerialized } from "@/extensions/types";
-import { InventoryItem, ITEM_TYPES, ItemType } from "@shared/geom/inventory";
-import { recipes, RecipeType } from "@shared/geom/recipes";
+import { InventoryItem, ITEM_TYPES, ItemType } from "../../../game-shared/src/util/inventory";
+import { recipes, RecipeType } from "../../../game-shared/src/util/recipes";
 import { Broadcaster } from "@/managers/types";
 import { PlayerPickedUpItemEvent } from "@shared/events/server-sent/pickup-item-event";
 import Positionable from "@/extensions/positionable";
-import { IEntity } from "@shared/geom/types";
+import { IEntity } from "@/entities/types";
 
 export default class Inventory implements Extension {
   public static readonly type = "inventory";
@@ -104,13 +104,6 @@ export default class Inventory implements Extension {
   private createEntityFromItem(item: InventoryItem) {
     // This will be injected by the entity factory
     return this.self.getEntityManager()!.createEntityFromItem(item);
-  }
-
-  public deserialize(data: ExtensionSerialized): this {
-    if (data.items) {
-      this.items = data.items;
-    }
-    return this;
   }
 
   public serialize(): ExtensionSerialized {

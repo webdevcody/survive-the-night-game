@@ -1,7 +1,7 @@
 import Positionable from "@/extensions/positionable";
-import { Entity } from "@shared/geom/entity";
-import { Vector2 } from "@shared/geom/physics";
-import { EntityType } from "@shared/types/entity";
+import { Entity } from "@/entities/entity";
+import { Vector2 } from "@/util/physics";
+import { EntityType } from "@/types/entity";
 
 export class SpatialGrid {
   private cells: Map<string, Entity>[][] = [];

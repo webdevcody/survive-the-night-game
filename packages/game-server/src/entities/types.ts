@@ -1,5 +1,6 @@
-import { IEntityManager } from "@server/managers/types";
-import { EntityType, Extension, ExtensionCtor, RawEntity } from "../types/entity";
+import { EntityType, RawEntity } from "@/types/entity";
+import { Extension, ExtensionCtor } from "@/extensions/types";
+import { IEntityManager } from "@/managers/types";
 
 export interface IEntity extends EventTarget {
   getType(): EntityType;

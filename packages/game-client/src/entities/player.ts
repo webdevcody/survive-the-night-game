@@ -11,13 +11,13 @@ import { GameState } from "@/state";
 import { debugDrawHitbox, drawCenterPositionWithLabel } from "@/util/debug";
 import { createFlashEffect } from "@/util/render";
 import { Z_INDEX } from "@shared/map";
-import { Direction, normalizeDirection } from "@shared/geom/direction";
-import { getHitboxWithPadding, Hitbox } from "@shared/geom/hitbox";
-import { Input } from "@shared/geom/input";
-import { InventoryItem } from "@shared/geom/inventory";
-import { Vector2, roundVector2 } from "@shared/geom/physics";
+import { Direction, normalizeDirection } from "../../../game-shared/src/util/direction";
+import { getHitboxWithPadding, Hitbox } from "../../../game-shared/src/util/hitbox";
+import { Input } from "../../../game-shared/src/util/input";
+import { InventoryItem } from "../../../game-shared/src/util/inventory";
+import { Vector2, roundVector2 } from "../../../game-shared/src/util/physics";
 import { RawEntity } from "@shared/types/entity";
-import { IClientEntity, Renderable, getFrameIndex, drawHealthBar } from "./util";
+import { IClientEntity, Renderable, getFrameIndex, drawHealthBar } from "@/entities/util";
 import { MAX_PLAYER_HEALTH } from "@shared/constants/constants";
 
 export class PlayerClient extends ClientEntityBase implements IClientEntity, Renderable {

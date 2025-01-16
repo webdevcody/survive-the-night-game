@@ -4,9 +4,9 @@ import Illuminated from "@/extensions/illuminated";
 import Positionable from "@/extensions/positionable";
 import Triggerable from "@/extensions/trigger";
 import { IGameManagers } from "@/managers/types";
-import { Entities } from "@shared/constants";
-import { Entity } from "@shared/geom/entity";
-import { IEntity } from "@shared/geom/types";
+import { Entities } from "@/constants";
+import { Entity } from "@/entities/entity";
+import { IEntity } from "@survive-the-night/game-shared/src/util/entity";
 
 export class Fire extends Entity {
   public static readonly Size = 16;

@@ -1,4 +1,4 @@
-import { IEntity } from "@shared/geom/types";
+import { IEntity } from "@/entities/types";
 import { Extension, ExtensionSerialized } from "@/extensions/types";
 
 export default class Illuminated implements Extension {
@@ -18,11 +18,6 @@ export default class Illuminated implements Extension {
 
   public setRadius(radius: number): this {
     this.radius = radius;
-    return this;
-  }
-
-  public deserialize(data: ExtensionSerialized): this {
-    this.radius = data.radius;
     return this;
   }
 

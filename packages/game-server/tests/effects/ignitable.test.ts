@@ -3,7 +3,7 @@ import Destructible from "@/extensions/destructible";
 import Ignitable from "@/extensions/ignitable";
 import { GameManagers } from "@/managers/game-managers";
 import { beforeEach, it, expect } from "vitest";
-import { simpleTestSetup } from "../utils/setup";
+import { simpleTestSetup } from "@/tests/utils/setup";
 
 let zombie: Zombie;
 let gameManagers: GameManagers;

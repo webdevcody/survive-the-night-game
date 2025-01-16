@@ -1,5 +1,5 @@
 import { MAX_INTERACT_RADIUS } from "@shared/constants/constants";
-import { Vector2, distance } from "@shared/geom/physics";
+import { Vector2, distance } from "../../../game-shared/src/util/physics";
 
 export function renderInteractionText(
   ctx: CanvasRenderingContext2D,

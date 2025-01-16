@@ -1,8 +1,8 @@
 import Destructible from "@/extensions/destructible";
 import { IGameManagers } from "@/managers/types";
 import { Entities } from "@shared/constants";
-import { Direction } from "@shared/geom/direction";
-import { Weapon } from "./weapon";
+import { Direction } from "../../../../game-shared/src/util/direction";
+import { Weapon } from "@/entities/weapons/weapon";
 import { WEAPON_TYPES } from "@shared/types/weapons";
 import { PlayerAttackedEvent } from "@/events/server-sent/player-attacked-event";
 export class Knife extends Weapon {

@@ -1,5 +1,6 @@
-import { Vector2 } from "@shared/math";
+import { Vector2 } from "../util/physics";
 import { EntityType } from "../types/entity";
+import { ItemType } from "../util/inventory";
 
 export const ADMIN_COMMANDS = {
   CREATE_ITEM: "createItem",

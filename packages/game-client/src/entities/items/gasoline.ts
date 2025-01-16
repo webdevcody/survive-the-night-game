@@ -1,9 +1,9 @@
 import { RawEntity } from "@shared/types/entity";
-import { AssetManager } from "../../managers/asset";
-import { GameState } from "../../state";
-import { Renderable } from "../util";
-import { ClientEntity } from "../../entities/client-entity";
-import { ClientPositionable } from "../../extensions";
+import { AssetManager } from "@/managers/asset";
+import { GameState } from "@/state";
+import { Renderable } from "@/entities/util";
+import { ClientEntity } from "@/entities/client-entity";
+import { ClientPositionable } from "@/extensions";
 import { Z_INDEX } from "@shared/map";
 export class GasolineClient extends ClientEntity implements Renderable {
   constructor(data: RawEntity, assetManager: AssetManager) {

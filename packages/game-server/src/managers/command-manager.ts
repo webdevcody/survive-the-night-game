@@ -5,7 +5,7 @@ import {
   CreateEntityCommand,
   CreateItemCommand,
 } from "@shared/commands/commands";
-import { IEntityManager } from "./types";
+import { IEntityManager } from "@/managers/types";
 import Positionable from "@/extensions/positionable";
 
 export class CommandManager {

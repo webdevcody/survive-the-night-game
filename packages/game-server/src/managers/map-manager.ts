@@ -5,7 +5,7 @@ import { DEBUG_START_ZOMBIE } from "@shared/debug";
 import { Shotgun } from "@/entities/weapons/shotgun";
 import { Knife } from "@/entities/weapons/knife";
 import { Pistol } from "@/entities/weapons/pistol";
-import { IGameManagers, IEntityManager, IMapManager } from "./types";
+import { IGameManagers, IEntityManager, IMapManager } from "@/managers/types";
 import Positionable from "@/extensions/positionable";
 import { TILE_IDS } from "@shared/map";
 const WEAPON_SPAWN_CHANCE = {

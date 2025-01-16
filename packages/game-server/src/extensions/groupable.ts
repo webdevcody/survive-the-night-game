@@ -1,4 +1,4 @@
-import { IEntity } from "@shared/geom/types";
+import { IEntity } from "@/entities/types";
 import { Extension, ExtensionSerialized } from "@/extensions/types";
 
 export type Group = "friendly" | "enemy";
@@ -20,11 +20,6 @@ export default class Groupable implements Extension {
 
   public setGroup(group: Group): void {
     this.group = group;
-  }
-
-  public deserialize(data: ExtensionSerialized): this {
-    this.group = data.group;
-    return this;
   }
 
   public serialize(): ExtensionSerialized {

@@ -1,7 +1,7 @@
 import { Cooldown } from "@/entities/util/cooldown";
 import { Extension, ExtensionSerialized } from "@/extensions/types";
 import Destructible from "@/extensions/destructible";
-import { IEntity } from "@shared/geom/types";
+import { IEntity } from "@/entities/types";
 
 export default class Ignitable implements Extension {
   public static readonly type = "ignitable";
@@ -32,10 +32,6 @@ export default class Ignitable implements Extension {
         this.self.removeExtension(this);
       }
     }
-  }
-
-  public deserialize(data: ExtensionSerialized): this {
-    return this;
   }
 
   public serialize(): ExtensionSerialized {

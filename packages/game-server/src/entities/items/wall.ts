@@ -5,9 +5,9 @@ import Interactive from "@/extensions/interactive";
 import Inventory from "@/extensions/inventory";
 import Positionable from "@/extensions/positionable";
 import { IGameManagers } from "@/managers/types";
-import { Entities } from "@shared/constants";
-import { Entity } from "@shared/geom/entity";
-import { RawEntity } from "@shared/types/entity";
+import { Entities } from "@/constants";
+import { Entity } from "@/entities/entity";
+import { RawEntity } from "@/types/entity";
 
 export class Wall extends Entity {
   public static readonly Size = 16;

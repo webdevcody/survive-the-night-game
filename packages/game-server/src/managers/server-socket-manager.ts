@@ -5,13 +5,13 @@ import { GameEvent } from "@shared/events/types";
 import Positionable from "@/extensions/positionable";
 import { GameServer } from "@/server";
 import { AdminCommand } from "@shared/commands/commands";
-import { Input } from "@shared/geom/input";
-import { RecipeType } from "@shared/geom/recipes";
+import { Input } from "../../../game-shared/src/util/input";
+import { RecipeType } from "../../../game-shared/src/util/recipes";
 import { createServer } from "http";
 import { Server, Socket } from "socket.io";
-import { CommandManager } from "./command-manager";
-import { MapManager } from "./map-manager";
-import { Broadcaster, IEntityManager, IGameManagers } from "./types";
+import { CommandManager } from "@/managers/command-manager";
+import { MapManager } from "@/managers/map-manager";
+import { Broadcaster, IEntityManager, IGameManagers } from "@/managers/types";
 
 /**
  * Any and all functionality related to sending server side events

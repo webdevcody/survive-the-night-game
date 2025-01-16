@@ -1,4 +1,4 @@
-import { IEntity } from "@shared/geom/types";
+import { IEntity } from "@/entities/types";
 import { Extension, ExtensionSerialized } from "@/extensions/types";
 
 type InteractiveHandler = (entityId: string) => void;
@@ -30,13 +30,6 @@ export default class Interactive implements Extension {
 
   public interact(entityId: string): void {
     this.handler?.(entityId);
-  }
-
-  public deserialize(data: ExtensionSerialized): this {
-    if (data.displayName) {
-      this.displayName = data.displayName;
-    }
-    return this;
   }
 
   public serialize(): ExtensionSerialized {

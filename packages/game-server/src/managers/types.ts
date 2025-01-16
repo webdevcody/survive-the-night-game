@@ -1,9 +1,9 @@
-import { GameEvent } from "@shared/events/types";
-import { Hitbox } from "@shared/geom/hitbox";
-import { InventoryItem } from "@shared/geom/inventory";
-import { Vector2 } from "@shared/geom/physics";
-import { IEntity } from "@shared/geom/types";
-import { EntityType } from "@shared/types/entity";
+import { GameEvent } from "@/events/types";
+import { Hitbox } from "@/util/hitbox";
+import { InventoryItem } from "@/util/inventory";
+import { Vector2 } from "@/util/physics";
+import { IEntity } from "@/entities/types";
+import { EntityType } from "@/types/entity";
 
 export interface IEntityManager {
   generateEntityId(): string;

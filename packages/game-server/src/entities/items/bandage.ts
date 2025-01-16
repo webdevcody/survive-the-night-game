@@ -6,7 +6,7 @@ import Destructible from "@/extensions/destructible";
 import Interactive from "@/extensions/interactive";
 import Inventory from "@/extensions/inventory";
 import Positionable from "@/extensions/positionable";
-import { Entity } from "@shared/geom/entity";
+import { Entity } from "@/entities/entity";
 
 export class Bandage extends Entity {
   public static readonly Size = 16;

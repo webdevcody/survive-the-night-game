@@ -1,5 +1,5 @@
-import { Vector2 } from "@shared/geom/physics";
-import { IEntity } from "@shared/geom/types";
+import { Vector2 } from "../../../game-shared/src/util/physics";
+import { IEntity } from "@/entities/types";
 import { Extension, ExtensionSerialized } from "@/extensions/types";
 
 export default class Movable implements Extension {
@@ -22,11 +22,6 @@ export default class Movable implements Extension {
 
   public setVelocity(velocity: Vector2): void {
     this.velocity = velocity;
-  }
-
-  public deserialize(data: ExtensionSerialized): this {
-    this.velocity = data.velocity;
-    return this;
   }
 
   public serialize(): ExtensionSerialized {

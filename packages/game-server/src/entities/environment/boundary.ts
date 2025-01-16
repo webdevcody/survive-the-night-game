@@ -3,9 +3,9 @@ import { Entities } from "@shared/constants";
 import { RawEntity } from "@shared/types/entity";
 import Positionable from "@/extensions/positionable";
 import Collidable from "@/extensions/collidable";
-import { Entity } from "@shared/geom/entity";
-import { ServerOnly } from "@shared/geom/hitbox";
-import { Vector2 } from "@shared/geom/physics";
+import { Entity } from "@/entities/entity";
+import { ServerOnly } from "../../../../game-shared/src/util/hitbox";
+import { Vector2 } from "../../../../game-shared/src/util/physics";
 
 export class Boundary extends Entity implements ServerOnly {
   constructor(gameManagers: IGameManagers) {

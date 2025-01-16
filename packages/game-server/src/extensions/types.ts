@@ -1,5 +1,4 @@
 export interface Extension {
-  deserialize: (data: ExtensionSerialized) => this;
   serialize: () => ExtensionSerialized;
   update?: (deltaTime: number) => void;
 }

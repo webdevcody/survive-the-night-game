@@ -1,20 +1,20 @@
-import { ExtensionTypes } from "@shared/geom/extension-types";
-import { ClientCarryable } from "./carryable";
-import { ClientCollidable } from "./collidable";
-import { ClientCombustible } from "./combustible";
-import { ClientConsumable } from "./consumable";
-import { ClientDestructible } from "./destructible";
-import { ClientExpirable } from "./expirable";
-import { ClientGroupable } from "./groupable";
-import { ClientIgnitable } from "./ignitable";
-import { ClientIlluminated } from "./illuminated";
-import { ClientInteractive } from "./interactive";
-import { ClientInventory } from "./inventory";
-import { ClientMovable } from "./movable";
-import { ClientPositionable } from "./positionable";
-import { ClientTriggerCooldownAttacker } from "./trigger-cooldown-attacker";
-import { ClientTriggerable } from "./triggerable";
-import { ClientUpdatable } from "./updatable";
+import { ExtensionTypes } from "../../../game-shared/src/util/extension-types";
+import { ClientCarryable } from "@/extensions/carryable";
+import { ClientCollidable } from "@/extensions/collidable";
+import { ClientCombustible } from "@/extensions/combustible";
+import { ClientConsumable } from "@/extensions/consumable";
+import { ClientDestructible } from "@/extensions/destructible";
+import { ClientExpirable } from "@/extensions/expirable";
+import { ClientGroupable } from "@/extensions/groupable";
+import { ClientIgnitable } from "@/extensions/ignitable";
+import { ClientIlluminated } from "@/extensions/illuminated";
+import { ClientInteractive } from "@/extensions/interactive";
+import { ClientInventory } from "@/extensions/inventory";
+import { ClientMovable } from "@/extensions/movable";
+import { ClientPositionable } from "@/extensions/positionable";
+import { ClientTriggerCooldownAttacker } from "@/extensions/trigger-cooldown-attacker";
+import { ClientTriggerable } from "@/extensions/triggerable";
+import { ClientUpdatable } from "@/extensions/updatable";
 
 export const clientExtensionsMap = {
   [ExtensionTypes.POSITIONABLE]: ClientPositionable,

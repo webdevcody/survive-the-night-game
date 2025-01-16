@@ -1,11 +1,11 @@
-import { InventoryItem } from "../geom/inventory";
+import { InventoryItem } from "../util/inventory";
 import {
   Recipe,
   RecipeType,
   recipeCanBeCrafted,
   RecipeComponent,
   craftRecipe,
-} from "../geom/recipes";
+} from "../util/recipes";
 
 export class BandageRecipe implements Recipe {
   public getType(): RecipeType {

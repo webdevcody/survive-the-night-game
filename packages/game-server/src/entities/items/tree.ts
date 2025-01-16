@@ -2,8 +2,8 @@ import Carryable from "@/extensions/carryable";
 import Interactive from "@/extensions/interactive";
 import Positionable from "@/extensions/positionable";
 import { IGameManagers } from "@/managers/types";
-import { Entities } from "@shared/constants";
-import { Entity } from "@shared/geom/entity";
+import { Entities } from "@/constants";
+import { Entity } from "@/entities/entity";
 
 export class Tree extends Entity {
   public static readonly Size = 16;

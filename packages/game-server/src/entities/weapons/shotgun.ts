@@ -2,9 +2,9 @@ import { PlayerAttackedEvent } from "@shared/events/server-sent/player-attacked-
 import Inventory from "@/extensions/inventory";
 import { IGameManagers } from "@/managers/types";
 import { Bullet } from "@/entities/projectiles/bullet";
-import { Weapon } from "./weapon";
-import { WEAPON_TYPES } from "@/types/weapons";
-import { Direction } from "@/geom/direction";
+import { Weapon } from "@/entities/weapons/weapon";
+import { WEAPON_TYPES } from "@shared/types/weapons";
+import { Direction } from "../../../../game-shared/src/util/direction";
 
 export class Shotgun extends Weapon {
   private static readonly SPREAD_ANGLE = 8; // degrees

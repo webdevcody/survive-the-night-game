@@ -17,15 +17,15 @@ import { Shotgun } from "@/entities/weapons/shotgun";
 import Collidable from "@/extensions/collidable";
 import Destructible from "@/extensions/destructible";
 import Positionable from "@/extensions/positionable";
-import { Entities } from "@shared/constants";
-import { Entity } from "@shared/geom/entity";
-import { Hitbox } from "@shared/geom/hitbox";
-import { ItemType, InventoryItem } from "@shared/geom/inventory";
-import { Vector2, distance, isColliding } from "@shared/geom/physics";
-import { IEntity } from "@shared/geom/types";
+import { Entities } from "@/constants";
+import { Entity } from "@/entities/entity";
+import { Hitbox } from "@/util/hitbox";
+import { ItemType, InventoryItem } from "@/util/inventory";
+import { Vector2, distance, isColliding } from "@/util/physics";
+import { IEntity } from "@/entities/types";
 import { EntityType } from "@shared/types/entity";
-import { SpatialGrid } from "./spatial-grid";
-import { IGameManagers, IEntityManager, Broadcaster } from "./types";
+import { SpatialGrid } from "@/managers/spatial-grid";
+import { IGameManagers, IEntityManager, Broadcaster } from "@/managers/types";
 
 const entityMap = {
   [Entities.PLAYER]: Player,

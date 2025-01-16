@@ -1,7 +1,7 @@
-import { GameState } from "../../state";
-import { Renderable } from "../util";
-import { ClientEntity } from "../../entities/client-entity";
-import { ClientPositionable } from "../../extensions";
+import { GameState } from "@/state";
+import { Renderable } from "@/entities/util";
+import { ClientEntity } from "@/entities/client-entity";
+import { ClientPositionable } from "@/extensions";
 import { Z_INDEX } from "@shared/map";
 export class TreeClient extends ClientEntity implements Renderable {
   public getZIndex(): number {

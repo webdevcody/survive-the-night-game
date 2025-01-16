@@ -1,6 +1,6 @@
-import { EntityType, ExtensionCtor, RawEntity } from "../types/entity";
-import { IEntityManager, IGameManagers } from "@server/managers/types";
-import { Extension } from "../types/entity";
+import { IEntityManager, IGameManagers } from "@/managers/types";
+import { Extension, ExtensionCtor } from "@/extensions/types";
+import { EntityType, RawEntity } from "@/types/entity";
 
 export class Entity extends EventTarget {
   private id: string;

@@ -1,12 +1,12 @@
-import { distance } from "@shared/geom/physics";
+import { distance } from "../../../game-shared/src/util/physics";
 import { Extension, ExtensionSerialized } from "@/extensions/types";
-import { Rectangle } from "@shared/geom/rectangle";
+import { Rectangle } from "../../../game-shared/src/util/rectangle";
 import { Cooldown } from "@/entities/util/cooldown";
 import Positionable from "@/extensions/positionable";
 import Triggerable from "@/extensions/trigger";
 import Destructible from "@/extensions/destructible";
-import { EntityType } from "@shared/types/entity";
-import { IEntity } from "@shared/geom/types";
+import { EntityType } from "@/types/entity";
+import { IEntity } from "@/entities/types";
 
 /**
  * This extension will cause the entity to fire an attack when the cooldown is ready.
@@ -79,11 +79,6 @@ export default class TriggerCooldownAttacker implements Extension {
         }
       }
     }
-  }
-
-  public deserialize(data: ExtensionSerialized): this {
-    this.isReady = data.isReady;
-    return this;
   }
 
   public serialize(): ExtensionSerialized {

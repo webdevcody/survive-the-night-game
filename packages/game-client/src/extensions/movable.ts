@@ -1,6 +1,6 @@
-import { ExtensionTypes } from "@shared/geom/extension-types";
-import { Vector2 } from "@shared/geom/physics";
-import { ClientExtension, ClientExtensionSerialized } from "./types";
+import { ExtensionTypes } from "../../../game-shared/src/util/extension-types";
+import { Vector2 } from "../../../game-shared/src/util/physics";
+import { ClientExtension, ClientExtensionSerialized } from "@/extensions/types";
 
 export class ClientMovable implements ClientExtension {
   public static readonly type = ExtensionTypes.MOVABLE;

@@ -3,7 +3,7 @@ import { InputManager } from "@/managers/input";
 import { Z_INDEX } from "@shared/map";
 import { Renderable } from "@/entities/util";
 import { AssetManager, getItemAssetKey } from "@/managers/asset";
-import { InventoryItem } from "@shared/geom/inventory";
+import { InventoryItem } from "../../../game-shared/src/util/inventory";
 import { MAX_INVENTORY_SLOTS } from "@shared/constants/constants";
 
 const HOTBAR_SETTINGS = {

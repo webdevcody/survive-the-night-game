@@ -1,4 +1,4 @@
-import { GameState } from "@/geom/game-state";
+import { GameState } from "../../util/game-state";
 import { EventType, ServerSentEvents } from "../events";
 import { GameEvent } from "@/events/types";
 

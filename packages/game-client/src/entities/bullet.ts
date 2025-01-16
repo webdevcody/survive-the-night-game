@@ -1,10 +1,10 @@
 import { RawEntity } from "@shared/types/entity";
-import { AssetManager } from "../managers/asset";
-import { IClientEntity, Renderable } from "./util";
-import { GameState } from "../state";
-import { ClientEntityBase } from "../extensions/client-entity";
-import { ClientPositionable } from "../extensions/positionable";
-import { Vector2 } from "@shared/geom/physics";
+import { AssetManager } from "@/managers/asset";
+import { IClientEntity, Renderable } from "@/entities/util";
+import { GameState } from "@/state";
+import { ClientEntityBase } from "@/extensions/client-entity";
+import { ClientPositionable } from "@/extensions/positionable";
+import { Vector2 } from "../../../game-shared/src/util/physics";
 import { Z_INDEX } from "@shared/map";
 
 export class BulletClient extends ClientEntityBase implements IClientEntity, Renderable {

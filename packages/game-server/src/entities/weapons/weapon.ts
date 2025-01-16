@@ -2,9 +2,9 @@ import Carryable from "@/extensions/carryable";
 import Interactive from "@/extensions/interactive";
 import Positionable from "@/extensions/positionable";
 import { IGameManagers } from "@/managers/types";
-import { Entity } from "@shared/geom/entity";
-import { WeaponKey } from "@shared/geom/inventory";
-import { Direction } from "@shared/geom/direction";
+import { Entity } from "@/entities/entity";
+import { WeaponKey } from "../../../../game-shared/src/util/inventory";
+import { Direction } from "../../../../game-shared/src/util/direction";
 
 export abstract class Weapon extends Entity {
   public static readonly Size = 16;

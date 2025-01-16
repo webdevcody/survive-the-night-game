@@ -3,7 +3,7 @@ import { Bullet } from "@/entities/projectiles/bullet";
 import Destructible from "@/extensions/destructible";
 import { GameManagers } from "@/managers/game-managers";
 import { beforeEach, vi, test, expect } from "vitest";
-import { simpleTestSetup } from "../utils/setup";
+import { simpleTestSetup } from "@/tests/utils/setup";
 
 let zombie: Zombie;
 let bullet: Bullet;

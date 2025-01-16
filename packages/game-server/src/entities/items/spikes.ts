@@ -4,8 +4,8 @@ import Positionable from "@/extensions/positionable";
 import Triggerable from "@/extensions/trigger";
 import TriggerCooldownAttacker from "@/extensions/trigger-cooldown-attacker";
 import { IGameManagers } from "@/managers/types";
-import { Entities } from "@shared/constants";
-import { Entity } from "@shared/geom/entity";
+import { Entities } from "@/constants";
+import { Entity } from "@/entities/entity";
 
 /**
  * A spike trap which only hurts zombies who step on it. Can be picked up and placed again.

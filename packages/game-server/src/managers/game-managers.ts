@@ -1,4 +1,4 @@
-import { IGameManagers, IEntityManager, IMapManager, Broadcaster } from "./types";
+import { IGameManagers, IEntityManager, IMapManager, Broadcaster } from "@/managers/types";
 
 export class GameManagers implements IGameManagers {
   private entityManager: IEntityManager;

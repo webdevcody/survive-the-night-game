@@ -1,9 +1,9 @@
 import { Entities } from "@shared/constants";
-import { Vector2 } from "@shared/geom/physics";
-import { IEntity } from "@shared/geom/types";
-import { EntityType } from "@shared/types/entity";
-import Positionable from "./positionable";
-import { Extension, ExtensionSerialized } from "./types";
+import { Vector2 } from "../../../game-shared/src/util/physics";
+import { IEntity } from "@/entities/types";
+import { EntityType } from "@/types/entity";
+import Positionable from "@/extensions/positionable";
+import { Extension, ExtensionSerialized } from "@/extensions/types";
 
 type EntityFactory = (type: EntityType) => IEntity;
 
@@ -40,10 +40,6 @@ export default class Combustible implements Extension {
       x: center.x + Math.cos(angle) * distance,
       y: center.y + Math.sin(angle) * distance,
     };
-  }
-
-  public deserialize(data: ExtensionSerialized): this {
-    return this;
   }
 
   public serialize(): ExtensionSerialized {

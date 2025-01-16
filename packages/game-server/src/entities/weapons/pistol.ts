@@ -1,8 +1,8 @@
 import Inventory from "@/extensions/inventory";
 import { IGameManagers } from "@/managers/types";
-import { Bullet } from "../projectiles/bullet";
-import { Weapon } from "./weapon";
-import { Direction } from "@/geom/direction";
+import { Bullet } from "@/entities/projectiles/bullet";
+import { Weapon } from "@/entities/weapons/weapon";
+import { Direction } from "../../../../game-shared/src/util/direction";
 import { WEAPON_TYPES } from "@shared/types/weapons";
 import { GunEmptyEvent } from "@shared/events/server-sent/gun-empty-event";
 import { PlayerAttackedEvent } from "@/events/server-sent/player-attacked-event";

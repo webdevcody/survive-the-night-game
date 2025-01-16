@@ -1,4 +1,4 @@
-import { ClientEntityBase } from "./extensions/client-entity";
+import { ClientEntityBase } from "@/extensions/client-entity";
 
 export type GameState = {
   startedAt: number;

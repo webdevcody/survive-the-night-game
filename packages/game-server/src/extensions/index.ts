@@ -1,19 +1,19 @@
-import Collidable from "./collidable";
-import Consumable from "./consumable";
-import Destructible from "./destructible";
-import Expirable from "./expirable";
-import Interactive from "./interactive";
-import Positionable from "./positionable";
-import Triggerable from "./trigger";
-import TriggerCooldownAttacker from "./trigger-cooldown-attacker";
-import Updatable from "./updatable";
-import Inventory from "./inventory";
-import Ignitable from "./ignitable";
-import Movable from "./movable";
-import Combustible from "./combustible";
-import Illuminated from "./illuminated";
-import Carryable from "./carryable";
-import Groupable from "./groupable";
+import Collidable from "@/extensions/collidable";
+import Consumable from "@/extensions/consumable";
+import Destructible from "@/extensions/destructible";
+import Expirable from "@/extensions/expirable";
+import Interactive from "@/extensions/interactive";
+import Positionable from "@/extensions/positionable";
+import Triggerable from "@/extensions/trigger";
+import TriggerCooldownAttacker from "@/extensions/trigger-cooldown-attacker";
+import Updatable from "@/extensions/updatable";
+import Inventory from "@/extensions/inventory";
+import Ignitable from "@/extensions/ignitable";
+import Movable from "@/extensions/movable";
+import Combustible from "@/extensions/combustible";
+import Illuminated from "@/extensions/illuminated";
+import Carryable from "@/extensions/carryable";
+import Groupable from "@/extensions/groupable";
 
 export const extensionsMap = {
   [Collidable.type]: Collidable,

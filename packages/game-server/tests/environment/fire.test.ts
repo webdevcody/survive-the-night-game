@@ -6,7 +6,7 @@ import Ignitable from "@/extensions/ignitable";
 import Positionable from "@/extensions/positionable";
 import { GameManagers } from "@/managers/game-managers";
 import { beforeEach, it, expect } from "vitest";
-import { simpleTestSetup } from "../utils/setup";
+import { simpleTestSetup } from "@/tests/utils/setup";
 
 let player: Player;
 let fire: Fire;

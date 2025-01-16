@@ -1,8 +1,8 @@
 import { Extension, ExtensionSerialized } from "@/extensions/types";
-import { PlayerPickedUpItemEvent } from "@shared/events/server-sent/pickup-item-event";
+import { PlayerPickedUpItemEvent } from "@/events/server-sent/pickup-item-event";
 import Inventory from "@/extensions/inventory";
-import { ItemType } from "@shared/geom/inventory";
-import { IEntity } from "@shared/geom/types";
+import { ItemType } from "@/util/inventory";
+import { IEntity } from "@/entities/types";
 
 interface PickupOptions {
   state?: any;
@@ -67,11 +67,6 @@ export default class Carryable implements Extension {
       );
 
     return true;
-  }
-
-  public deserialize(data: ExtensionSerialized): this {
-    this.itemKey = data.itemKey;
-    return this;
   }
 
   public serialize(): ExtensionSerialized {

@@ -1,10 +1,10 @@
-import { AssetManager } from "../../managers/asset";
-import { GameState } from "../../state";
-import { Renderable } from "../util";
+import { AssetManager } from "@/managers/asset";
+import { GameState } from "@/state";
+import { Renderable } from "@/entities/util";
 import { Z_INDEX } from "@shared/map";
-import { ClientEntity } from "../../entities/client-entity";
+import { ClientEntity } from "@/entities/client-entity";
 import { RawEntity } from "@shared/types/entity";
-import { ClientPositionable } from "../../extensions";
+import { ClientPositionable } from "@/extensions";
 
 export class PistolAmmoClient extends ClientEntity implements Renderable {
   constructor(data: RawEntity, assetManager: AssetManager) {

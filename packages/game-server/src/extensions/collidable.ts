@@ -1,7 +1,7 @@
-import { Hitbox } from "@shared/geom/hitbox";
-import { IEntity } from "@shared/geom/types";
-import Positionable from "./positionable";
-import { Extension, ExtensionSerialized } from "./types";
+import { Hitbox } from "../../../game-shared/src/util/hitbox";
+import { IEntity } from "@/entities/types";
+import Positionable from "@/extensions/positionable";
+import { Extension, ExtensionSerialized } from "@/extensions/types";
 
 export default class Collidable implements Extension {
   public static readonly type = "collidable";
@@ -54,12 +54,6 @@ export default class Collidable implements Extension {
       width: this.size,
       height: this.size,
     };
-  }
-
-  public deserialize(data: ExtensionSerialized): this {
-    this.offset = data.offset;
-    this.size = data.size;
-    return this;
   }
 
   public serialize(): ExtensionSerialized {

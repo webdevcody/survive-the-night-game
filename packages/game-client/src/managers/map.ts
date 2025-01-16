@@ -1,7 +1,7 @@
 import { GameClient } from "@/client";
 import { DEBUG_SHOW_HITBOXES } from "@shared/debug";
 import { ClientIlluminated, ClientPositionable } from "@/extensions";
-import { Vector2, distance } from "@shared/geom/physics";
+import { Vector2, distance } from "../../../game-shared/src/util/physics";
 import { TILE_IDS } from "@shared/map";
 
 const tileLocations: Record<string, [number, number]> = {

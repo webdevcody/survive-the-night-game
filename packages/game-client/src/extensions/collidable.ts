@@ -1,6 +1,6 @@
-import { ExtensionTypes } from "@shared/geom/extension-types";
-import { Hitbox } from "@shared/geom/hitbox";
-import { ClientExtension, ClientExtensionSerialized } from "./types";
+import { ExtensionTypes } from "../../../game-shared/src/util/extension-types";
+import { Hitbox } from "../../../game-shared/src/util/hitbox";
+import { ClientExtension, ClientExtensionSerialized } from "@/extensions/types";
 
 export class ClientCollidable implements ClientExtension {
   public static readonly type = ExtensionTypes.COLLIDABLE;

@@ -1,4 +1,4 @@
-import { Vector2 } from "@shared/geom/physics";
+import { Vector2 } from "../../../game-shared/src/util/physics";
 
 export class CameraManager {
   private ctx: CanvasRenderingContext2D;

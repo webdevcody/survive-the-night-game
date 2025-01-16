@@ -1,4 +1,4 @@
-import { IEntity } from "@shared/geom/types";
+import { IEntity } from "@/entities/types";
 import { Extension, ExtensionSerialized } from "@/extensions/types";
 
 type UpdateFunction = (deltaTime: number) => void;
@@ -24,10 +24,6 @@ export default class Updatable implements Extension {
 
   public update(deltaTime: number) {
     this.updateFunction(deltaTime);
-  }
-
-  public deserialize(data: ExtensionSerialized): this {
-    return this;
   }
 
   public serialize(): ExtensionSerialized {

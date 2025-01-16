@@ -14,13 +14,13 @@ import { YourIdEvent } from "@shared/events/server-sent/your-id-event";
 import { ZombieAttackedEvent } from "@shared/events/server-sent/zombie-attacked-event";
 import { ZombieDeathEvent } from "@shared/events/server-sent/zombie-death-event";
 import { ZombieHurtEvent } from "@shared/events/server-sent/zombie-hurt-event";
-import { GameClient } from "./client";
-import { PlayerClient } from "./entities/player";
-import { ZombieClient } from "./entities/zombie";
-import { ClientPositionable } from "./extensions";
-import { ClientSocketManager } from "./managers/client-socket-manager";
-import { SOUND_TYPES } from "./managers/sound-manager";
-import { GameState } from "./state";
+import { GameClient } from "@/client";
+import { PlayerClient } from "@/entities/player";
+import { ZombieClient } from "@/entities/zombie";
+import { ClientPositionable } from "@/extensions";
+import { ClientSocketManager } from "@/managers/client-socket-manager";
+import { SOUND_TYPES } from "@/managers/sound-manager";
+import { GameState } from "@/state";
 
 export class ClientEventListener {
   private socketManager: ClientSocketManager;

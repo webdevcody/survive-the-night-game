@@ -3,7 +3,7 @@ import { ADMIN_COMMANDS } from "@shared/commands/commands";
 import { GameState, getEntityById } from "@/state";
 import { ClientPositionable } from "@/extensions";
 import { EntityType } from "@shared/types/entity";
-import { ItemType } from "@shared/geom/inventory";
+import { ItemType } from "../../../game-shared/src/util/inventory";
 
 export class CommandManager {
   private socketManager: ClientSocketManager;

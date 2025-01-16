@@ -1,11 +1,11 @@
 import { Extension, ExtensionSerialized } from "@/extensions/types";
-import { distance, Vector2 } from "@shared/geom/physics";
-import { Rectangle } from "@shared/geom/rectangle";
+import { distance, Vector2 } from "../../../game-shared/src/util/physics";
+import { Rectangle } from "../../../game-shared/src/util/rectangle";
 import Positionable from "@/extensions/positionable";
 import Collidable from "@/extensions/collidable";
-import { EntityType } from "@shared/types/entity";
-import { ExtensionTypes } from "@shared/geom/extension-types";
-import { IEntity } from "@shared/geom/types";
+import { EntityType } from "@/types/entity";
+import { ExtensionTypes } from "../../../game-shared/src/util/extension-types";
+import { IEntity } from "@/entities/types";
 
 export default class Triggerable implements Extension {
   public static readonly type = ExtensionTypes.TRIGGERABLE;
@@ -64,11 +64,6 @@ export default class Triggerable implements Extension {
       this.size.x,
       this.size.y
     );
-  }
-
-  public deserialize(data: ExtensionSerialized): this {
-    this.size = { x: data.width, y: data.height };
-    return this;
   }
 
   public serialize(): ExtensionSerialized {

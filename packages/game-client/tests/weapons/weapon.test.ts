@@ -1,5 +1,5 @@
 import { it, expect, beforeEach, Mock } from "vitest";
-import { PlayerClient } from "../../src/entities/player";
+import { PlayerClient } from "@/entities/player";
 import { RawEntity } from "@shared/types/entity";
 import { GameState } from "@/state";
 import { createMockCtx } from "../mocks/ctx";

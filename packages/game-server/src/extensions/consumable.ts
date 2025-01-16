@@ -1,4 +1,4 @@
-import { IEntity } from "@shared/geom/types";
+import { IEntity } from "@/entities/types";
 import { Extension, ExtensionSerialized } from "@/extensions/types";
 
 type ConsumableHandler = (entityId: string, idx: number) => void;
@@ -20,10 +20,6 @@ export default class Consumable implements Extension {
 
   public consume(entityId: string, idx: number): void {
     this.handler?.(entityId, idx);
-  }
-
-  public deserialize(data: ExtensionSerialized): this {
-    return this;
   }
 
   public serialize(): ExtensionSerialized {

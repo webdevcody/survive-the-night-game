@@ -14,8 +14,8 @@ import { ZombieAttackedEvent } from "@shared/events/server-sent/zombie-attacked-
 import { ZombieDeathEvent } from "@shared/events/server-sent/zombie-death-event";
 import { ZombieHurtEvent } from "@shared/events/server-sent/zombie-hurt-event";
 import { AdminCommand } from "@shared/commands/commands";
-import { Input } from "@shared/geom/input";
-import { RecipeType } from "@shared/geom/recipes";
+import { Input } from "../../../game-shared/src/util/input";
+import { RecipeType } from "../../../game-shared/src/util/recipes";
 import { Socket, io } from "socket.io-client";
 
 export type EntityDto = { id: string } & any;

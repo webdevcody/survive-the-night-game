@@ -33,6 +33,6 @@
       "path": "../game-server"
     }
   ],
-  "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", ".next/types/**/*.ts", "tests/**/*"],
+  "include": ["**/*.ts", "**/*.tsx", "tests/**/*"],
   "exclude": ["node_modules"],
 }

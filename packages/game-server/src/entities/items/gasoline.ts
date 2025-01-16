@@ -5,9 +5,9 @@ import Groupable from "@/extensions/groupable";
 import Interactive from "@/extensions/interactive";
 import Positionable from "@/extensions/positionable";
 import { IGameManagers } from "@/managers/types";
-import { Entities } from "@shared/constants";
-import { Entity } from "@shared/geom/entity";
-import { Fire } from "../environment/fire";
+import { Entities } from "@/constants";
+import { Entity } from "@/entities/entity";
+import { Fire } from "@/entities/environment/fire";
 
 export class Gasoline extends Entity {
   public static readonly Size = 16;

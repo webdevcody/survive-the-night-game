@@ -1,5 +1,5 @@
-import { Hitbox } from "@shared/geom/hitbox";
-import { IEntity } from "@shared/geom/types";
+import { Hitbox } from "../../../game-shared/src/util/hitbox";
+import { IEntity } from "@/entities/types";
 import { Extension, ExtensionSerialized } from "@/extensions/types";
 import Positionable from "@/extensions/positionable";
 
@@ -71,12 +71,6 @@ export default class Destructible implements Extension {
 
   public getMaxHealth(): number {
     return this.maxHealth;
-  }
-
-  public deserialize(data: ExtensionSerialized): this {
-    this.health = data.health;
-    this.maxHealth = data.maxHealth;
-    return this;
   }
 
   public serialize(): ExtensionSerialized {
