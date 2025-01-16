@@ -4,6 +4,7 @@ import { GameManagers } from "@/managers/game-managers";
 import { TILE_SIZE } from "@/managers/map-manager";
 import { beforeEach, it, expect } from "vitest";
 import { simpleTestSetup } from "../utils/setup";
+import { MAX_PLAYER_HEALTH } from "@/constants/constants";
 
 let player: Player;
 let gameManagers: GameManagers;
@@ -42,7 +43,7 @@ it("a bandage should heal a player when consumed and removed from inventory", ()
   gameManagers.getEntityManager().update(1);
 
   // // Verify the player was healed
-  expect(destructible.getHealth()).toBe(Player.MAX_HEALTH);
+  expect(destructible.getHealth()).toBe(MAX_PLAYER_HEALTH);
   // Verify the bandage was removed from inventory
   expect(player.getInventory()).toEqual([]);
 });
@@ -51,7 +52,7 @@ it("a bandage should not be consumed if player is at full health", () => {
   expect(player.getInventory()).toEqual([{ key: "bandage" }]);
 
   const destructible = player.getExt(Destructible);
-  expect(destructible.getHealth()).toBe(Player.MAX_HEALTH);
+  expect(destructible.getHealth()).toBe(MAX_PLAYER_HEALTH);
 
   // Set the active inventory slot to 1 (where the bandage is)
   player.selectInventoryItem(1);
@@ -61,7 +62,7 @@ it("a bandage should not be consumed if player is at full health", () => {
   gameManagers.getEntityManager().update(1);
 
   // Verify the player's health didn't change
-  expect(destructible.getHealth()).toBe(Player.MAX_HEALTH);
+  expect(destructible.getHealth()).toBe(MAX_PLAYER_HEALTH);
 
   // Verify the bandage was not removed from inventory
   expect(player.getInventory()).toEqual([{ key: "bandage" }]);
