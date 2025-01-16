@@ -29,9 +29,6 @@
     {
       "path": "../game-shared"
     },
-    {
-      "path": "../game-server"
-    }
   ],
   "include": ["**/*.ts", "**/*.tsx", "tests/**/*"],
   "exclude": ["node_modules"],

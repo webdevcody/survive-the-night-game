@@ -8,6 +8,8 @@ Feel free to pick any item listed out here to work on.
 
 ### Refactoring
 
+- [ ] "@/_": ["./src/_", "../game-shared/src/\*"], figure out why in server tsconfig.json, I need this for tests to pass
+
 - [ ] add client sent package side validation
 - [ ] setup a vitest.config.ts file in the test directory so that absolute imports don't break everything
 - [ ] refactor the use the new style sheets I created using aseprite

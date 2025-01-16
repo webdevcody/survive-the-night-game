@@ -5,14 +5,8 @@ import { EntityManager } from "@/managers/entity-manager";
 import { GameManagers } from "@/managers/game-managers";
 import { MapManager } from "@/managers/map-manager";
 import { ServerSocketManager } from "@/managers/server-socket-manager";
-
-export const FPS = 30;
-
-export const DAY_DURATION = 1;
-export const NIGHT_DURATION = 100;
-
-const PERFORMANCE_LOG_INTERVAL = 5000; // Log every 5 seconds
-const TICK_RATE_MS = 1000 / FPS; // ~33.33ms for 30 FPS
+import { FPS, NIGHT_DURATION, PERFORMANCE_LOG_INTERVAL, TICK_RATE_MS } from "./config";
+import { DAY_DURATION } from "./config";
 
 export class GameServer {
   private lastUpdateTime: number = Date.now();

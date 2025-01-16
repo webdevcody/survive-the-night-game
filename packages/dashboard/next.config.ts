@@ -7,7 +7,6 @@ const nextConfig: NextConfig = {
       ...config.resolve.alias,
       "@": path.resolve(__dirname, "../game-client/src"),
       "@shared": path.resolve(__dirname, "../game-shared/src"),
-      "@server": path.resolve(__dirname, "../game-server/src"),
     };
     return config;
   },

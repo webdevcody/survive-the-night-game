@@ -8,6 +8,8 @@ import { Pistol } from "@/entities/weapons/pistol";
 import { IGameManagers, IEntityManager, IMapManager } from "@/managers/types";
 import Positionable from "@/extensions/positionable";
 import { TILE_IDS } from "@shared/map";
+import { PistolAmmo } from "@/entities/items/pistol-ammo";
+import { ShotgunAmmo } from "@/entities/items/shotgun-ammo";
 const WEAPON_SPAWN_CHANCE = {
   PISTOL: 0.002,
   SHOTGUN: 0.002,
@@ -171,12 +173,25 @@ export class MapManager implements IMapManager {
             const weapon = new Pistol(this.getGameManagers());
             weapon.getExt(Positionable).setPosition({ x: x * TILE_SIZE, y: y * TILE_SIZE });
             this.getEntityManager().addEntity(weapon);
+
+            const pistolAmmo = new PistolAmmo(this.getGameManagers());
+            pistolAmmo
+              .getExt(Positionable)
+              .setPosition({ x: x * TILE_SIZE + 5, y: y * TILE_SIZE + 4 });
+            this.getEntityManager().addEntity(pistolAmmo);
           } else if (Math.random() < WEAPON_SPAWN_CHANCE.SHOTGUN) {
             // 0.1% chance for a shotgun
             const weapon = new Shotgun(this.getGameManagers());
             weapon.getExt(Positionable).setPosition({ x: x * TILE_SIZE, y: y * TILE_SIZE });
             this.getEntityManager().addEntity(weapon);
+
+            const shotgunAmmo = new ShotgunAmmo(this.getGameManagers());
+            shotgunAmmo
+              .getExt(Positionable)
+              .setPosition({ x: x * TILE_SIZE + 5, y: y * TILE_SIZE + 4 });
+            this.getEntityManager().addEntity(shotgunAmmo);
           } else if (Math.random() < WEAPON_SPAWN_CHANCE.KNIFE) {
+            // 0.1% chance for a knife
             // 0.1% chance for a knife
             const weapon = new Knife(this.getGameManagers());
             weapon.getExt(Positionable).setPosition({ x: x * TILE_SIZE, y: y * TILE_SIZE });
