@@ -1,5 +1,5 @@
-import { EventType, ServerSentEvents } from "@/events/events";
-import { GameEvent } from "@/events/types";
+import { EventType, ServerSentEvents } from "../events";
+import { GameEvent } from "../types";
 
 export class GameOverEvent implements GameEvent<void> {
   private readonly type: EventType;

@@ -4,15 +4,7 @@ import Positionable from "@/extensions/positionable";
 import { IGameManagers } from "@/managers/types";
 import { Entity } from "@shared/geom/entity";
 import { WeaponKey } from "@shared/geom/inventory";
-import { Direction } from "readline";
-
-export const WEAPON_TYPES = {
-  KNIFE: "knife",
-  SHOTGUN: "shotgun",
-  PISTOL: "pistol",
-} as const;
-
-export type WeaponType = (typeof WEAPON_TYPES)[keyof typeof WEAPON_TYPES];
+import { Direction } from "@shared/geom/direction";
 
 export abstract class Weapon extends Entity {
   public static readonly Size = 16;

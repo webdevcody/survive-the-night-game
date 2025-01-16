@@ -2,7 +2,7 @@
   "compilerOptions": {
     "composite": true,
     "target": "ES2017",
-    "module": "esnext",
+    "module": "ESNext",
     "moduleResolution": "bundler",
     "declaration": true,
     "outDir": "./dist",
@@ -11,15 +11,11 @@
     "skipLibCheck": true,
     "forceConsistentCasingInFileNames": true,
     "baseUrl": ".",
-    "rootDir": "../../",
     "paths": {
-      "@/*": ["*"],
-      "@server/*": ["../game-server/src/*"],
+      "@/*": ["./src/*"],
+      "@events/*": ["./src/events/*"]
     }
   },
-  "references": [
-    { "path": "../game-server" }
-  ],
   "include": [
     "src/**/*"
   ],

@@ -1,10 +1,11 @@
-import { GunEmptyEvent } from "@/events/server-sent/gun-empty-event";
-import { PlayerAttackedEvent } from "@/events/server-sent/player-attacked-event";
 import Inventory from "@/extensions/inventory";
 import { IGameManagers } from "@/managers/types";
-import { Direction } from "readline";
 import { Bullet } from "../projectiles/bullet";
-import { Weapon, WEAPON_TYPES } from "./weapon";
+import { Weapon } from "./weapon";
+import { Direction } from "@/geom/direction";
+import { WEAPON_TYPES } from "@shared/types/weapons";
+import { GunEmptyEvent } from "@shared/events/server-sent/gun-empty-event";
+import { PlayerAttackedEvent } from "@/events/server-sent/player-attacked-event";
 
 export class Pistol extends Weapon {
   constructor(gameManagers: IGameManagers) {

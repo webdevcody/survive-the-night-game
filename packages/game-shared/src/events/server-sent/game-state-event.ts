@@ -1,6 +1,6 @@
-import { EventType, ServerSentEvents } from "@/events/events";
+import { GameState } from "@/geom/game-state";
+import { EventType, ServerSentEvents } from "../events";
 import { GameEvent } from "@/events/types";
-import { GameState } from "@shared/geom/game-state";
 
 export class GameStateEvent implements GameEvent<GameState> {
   private readonly type: EventType;

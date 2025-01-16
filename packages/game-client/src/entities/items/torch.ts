@@ -1,11 +1,10 @@
 import { AssetManager } from "../../managers/asset";
 import { GameState } from "../../state";
 import { Renderable } from "../util";
-import { Z_INDEX } from "@server/managers/map-manager";
 import { ClientEntity } from "../../entities/client-entity";
 import { RawEntity } from "@shared/types/entity";
 import { ClientPositionable } from "../../extensions";
-
+import { Z_INDEX } from "@shared/map";
 export class TorchClient extends ClientEntity implements Renderable {
   constructor(data: RawEntity, assetManager: AssetManager) {
     super(data, assetManager);

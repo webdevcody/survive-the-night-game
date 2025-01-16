@@ -2,7 +2,7 @@ import { Extension, ExtensionSerialized } from "@/extensions/types";
 import { InventoryItem, ITEM_TYPES, ItemType } from "@shared/geom/inventory";
 import { recipes, RecipeType } from "@shared/geom/recipes";
 import { Broadcaster } from "@/managers/types";
-import { PlayerPickedUpItemEvent } from "@/events/server-sent/pickup-item-event";
+import { PlayerPickedUpItemEvent } from "@shared/events/server-sent/pickup-item-event";
 import Positionable from "@/extensions/positionable";
 import { IEntity } from "@shared/geom/types";
 

@@ -1,9 +1,10 @@
-import { PlayerAttackedEvent } from "@/events/server-sent/player-attacked-event";
+import { PlayerAttackedEvent } from "@shared/events/server-sent/player-attacked-event";
 import Inventory from "@/extensions/inventory";
 import { IGameManagers } from "@/managers/types";
-import { Direction } from "readline";
 import { Bullet } from "@/entities/projectiles/bullet";
-import { Weapon, WEAPON_TYPES } from "./weapon";
+import { Weapon } from "./weapon";
+import { WEAPON_TYPES } from "@/types/weapons";
+import { Direction } from "@/geom/direction";
 
 export class Shotgun extends Weapon {
   private static readonly SPREAD_ANGLE = 8; // degrees

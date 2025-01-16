@@ -1,9 +1,8 @@
 import { IGameManagers } from "../../managers/types";
 import { Wall } from "../items/wall";
-import { ZombieDeathEvent } from "../../events/server-sent/zombie-death-event";
+import { ZombieDeathEvent } from "@shared/events/server-sent/zombie-death-event";
 import { Cooldown } from "../util/cooldown";
-import { ZombieAttackedEvent } from "../../events/server-sent/zombie-attacked-event";
-import { LootEvent } from "@/events/server-sent/loot-event";
+import { ZombieAttackedEvent } from "@shared/events/server-sent/zombie-attacked-event";
 import Collidable from "@/extensions/collidable";
 import Destructible from "@/extensions/destructible";
 import Groupable from "@/extensions/groupable";
@@ -17,6 +16,7 @@ import { Entity } from "@shared/geom/entity";
 import { Hitbox } from "@shared/geom/hitbox";
 import { Vector2, pathTowards, velocityTowards } from "@shared/geom/physics";
 import { IEntity } from "@shared/geom/types";
+import { LootEvent } from "@shared/events/server-sent/loot-event";
 
 export class Zombie extends Entity {
   private static readonly ZOMBIE_WIDTH = 16;

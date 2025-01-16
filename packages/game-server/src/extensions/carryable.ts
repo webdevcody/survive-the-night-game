@@ -1,5 +1,5 @@
 import { Extension, ExtensionSerialized } from "@/extensions/types";
-import { PlayerPickedUpItemEvent } from "@/events/server-sent/pickup-item-event";
+import { PlayerPickedUpItemEvent } from "@shared/events/server-sent/pickup-item-event";
 import Inventory from "@/extensions/inventory";
 import { ItemType } from "@shared/geom/inventory";
 import { IEntity } from "@shared/geom/types";

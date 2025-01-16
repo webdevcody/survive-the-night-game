@@ -12,12 +12,12 @@ import { debugDrawHitbox, drawCenterPositionWithLabel } from "@/util/debug";
 import { getPlayer } from "@/util/get-player";
 import { renderInteractionText } from "@/util/interaction-text";
 import { createFlashEffect } from "@/util/render";
-import { getHitboxWithPadding } from "@server/entities/util";
-import { Z_INDEX } from "@server/managers/map-manager";
 import { determineDirection } from "@shared/geom/direction";
 import { Vector2, roundVector2 } from "@shared/geom/physics";
 import { RawEntity } from "@shared/types/entity";
+import { Z_INDEX } from "@shared/map";
 import { IClientEntity, Renderable, getFrameIndex, drawHealthBar } from "./util";
+import { getHitboxWithPadding } from "@shared/geom/hitbox";
 
 export class ZombieClient extends ClientEntityBase implements IClientEntity, Renderable {
   private lastRenderPosition = { x: 0, y: 0 };

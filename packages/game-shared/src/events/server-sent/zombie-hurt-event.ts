@@ -1,4 +1,4 @@
-import { EventType, ServerSentEvents } from "@/events/events";
+import { EventType, ServerSentEvents } from "../events";
 import { GameEvent } from "@/events/types";
 
 export class ZombieHurtEvent implements GameEvent<string> {

@@ -1,6 +1,6 @@
-import { BandageRecipe } from "@server/recipes/bandage-recipe";
-import { WallRecipe } from "@server/recipes/wall-recipe";
-import { InventoryItem, ItemType } from "./inventory";
+import { BandageRecipe } from "../recipes/bandage-recipe";
+import { WallRecipe } from "../recipes/wall-recipe";
+import { ItemType, InventoryItem } from "./inventory";
 
 export enum RecipeType {
   Bandage = "bandage",

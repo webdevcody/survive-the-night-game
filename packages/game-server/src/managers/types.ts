@@ -1,4 +1,4 @@
-import { GameEvent } from "@/events/types";
+import { GameEvent } from "@shared/events/types";
 import { Hitbox } from "@shared/geom/hitbox";
 import { InventoryItem } from "@shared/geom/inventory";
 import { Vector2 } from "@shared/geom/physics";

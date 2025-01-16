@@ -1,12 +1,12 @@
-import { EventType, ServerSentEvents } from "@/events/events";
+import { EventType, ServerSentEvents } from "../events";
 import { GameEvent } from "@/events/types";
 
-export class YourIdEvent implements GameEvent<string> {
+export class PlayerHurtEvent implements GameEvent<string> {
   private readonly type: EventType;
   private readonly playerId: string;
 
   constructor(playerId: string) {
-    this.type = ServerSentEvents.YOUR_ID;
+    this.type = ServerSentEvents.PLAYER_HURT;
     this.playerId = playerId;
   }
 

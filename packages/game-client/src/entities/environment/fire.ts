@@ -2,8 +2,8 @@ import { ClientPositionable } from "@/extensions";
 import { ClientEntityBase } from "@/extensions/client-entity";
 import { AssetManager } from "@/managers/asset";
 import { GameState } from "@/state";
-import { Z_INDEX } from "@server/managers/map-manager";
 import { RawEntity } from "@shared/types/entity";
+import { Z_INDEX } from "@shared/map";
 import { Renderable, getFrameIndex } from "../util";
 
 export class FireClient extends ClientEntityBase implements Renderable {

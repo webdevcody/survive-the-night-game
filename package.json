@@ -8,7 +8,7 @@
     "dev:server": "npm run dev --workspace=packages/game-server",
     "test:game-client": "npm run test --workspace=packages/game-client",
     "test:game-server": "npm run test --workspace=packages/game-server",
-    "depcruiser": "depcruise ./packages/game-server --include-only \"game-server\" --output-type dot | dot -T svg > dependency-graph.svg"
+    "depcruiser": "depcruise ./packages --include-only \"packages\" --output-type dot | dot -T svg > dependency-graph.svg"
   },
   "workspaces": [
     "packages/*"

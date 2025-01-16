@@ -1,4 +1,4 @@
-import { ZombieHurtEvent } from "@/events/server-sent/zombie-hurt-event";
+import { ZombieHurtEvent } from "@shared/events/server-sent/zombie-hurt-event";
 import Collidable from "@/extensions/collidable";
 import Destructible from "@/extensions/destructible";
 import Groupable from "@/extensions/groupable";
@@ -7,13 +7,12 @@ import Positionable from "@/extensions/positionable";
 import Updatable from "@/extensions/updatable";
 import { IGameManagers } from "@/managers/types";
 import { Entities } from "@shared/constants";
-import { normalizeDirection } from "@shared/geom/direction";
+import { Direction, normalizeDirection } from "@shared/geom/direction";
 import { Entity } from "@shared/geom/entity";
 import { Hitbox } from "@shared/geom/hitbox";
 import { Vector2, normalizeVector, distance } from "@shared/geom/physics";
 import { IEntity } from "@shared/geom/types";
 import { RawEntity } from "@shared/types/entity";
-import { Direction } from "readline";
 
 const MAX_TRAVEL_DISTANCE = 400;
 export const BULLET_SPEED = 100;

@@ -1,10 +1,10 @@
 import { GameState } from "@/state";
 import { InputManager } from "@/managers/input";
-import { Z_INDEX } from "@server/managers/map-manager";
+import { Z_INDEX } from "@shared/map";
 import { Renderable } from "@/entities/util";
 import { AssetManager, getItemAssetKey } from "@/managers/asset";
-import Inventory from "@server/extensions/inventory";
 import { InventoryItem } from "@shared/geom/inventory";
+import { MAX_INVENTORY_SLOTS } from "@shared/constants/constants";
 
 const HOTBAR_SETTINGS = {
   Inventory: {
@@ -54,7 +54,7 @@ export class InventoryBarUI implements Renderable {
 
     const { slotSize, padding, slotsGap, screenMarginBottom, background, active } =
       HOTBAR_SETTINGS.Inventory;
-    const slotsNumber = Inventory.MAX_SLOTS;
+    const slotsNumber = MAX_INVENTORY_SLOTS;
 
     ctx.save();
     ctx.setTransform(1, 0, 0, 1, 0, 0);

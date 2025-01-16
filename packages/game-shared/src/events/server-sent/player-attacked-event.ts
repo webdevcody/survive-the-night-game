@@ -1,6 +1,6 @@
-import { WeaponKey } from "@shared/geom/inventory";
-import { EventType, ServerSentEvents } from "@/events/events";
+import { EventType, ServerSentEvents } from "../events";
 import { GameEvent } from "@/events/types";
+import { WeaponKey } from "@/geom/inventory";
 
 interface PlayerAttackedEventData {
   playerId: string;

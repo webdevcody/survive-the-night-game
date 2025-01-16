@@ -1,5 +1,5 @@
+import { MAX_INTERACT_RADIUS } from "@shared/constants/constants";
 import { Vector2, distance } from "@shared/geom/physics";
-import { Player } from "@survive-the-night/game-server/src/entities/player";
 
 export function renderInteractionText(
   ctx: CanvasRenderingContext2D,
@@ -8,7 +8,7 @@ export function renderInteractionText(
   position: Vector2,
   playerPosition: Vector2
 ): void {
-  if (distance(playerPosition, centerPosition) < Player.MAX_INTERACT_RADIUS) {
+  if (distance(playerPosition, centerPosition) < MAX_INTERACT_RADIUS) {
     ctx.fillStyle = "white";
     ctx.font = "6px Arial";
     const textWidth = ctx.measureText(text).width;

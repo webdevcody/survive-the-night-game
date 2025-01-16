@@ -1,7 +1,5 @@
-import { DEBUG_WEAPONS } from "@/config/debug";
-import { PlayerDeathEvent } from "@/events/server-sent";
-import { PlayerDroppedItemEvent } from "@/events/server-sent/player-dropped-item-event";
-import { PlayerHurtEvent } from "@/events/server-sent/player-hurt-event";
+import { PlayerDroppedItemEvent } from "@shared/events/server-sent/player-dropped-item-event";
+import { PlayerHurtEvent } from "@shared/events/server-sent/player-hurt-event";
 import Collidable from "@/extensions/collidable";
 import Consumable from "@/extensions/consumable";
 import Destructible from "@/extensions/destructible";
@@ -24,11 +22,11 @@ import { RecipeType } from "@shared/geom/recipes";
 import { RawEntity } from "@shared/types/entity";
 import { Cooldown } from "@/entities/util/cooldown";
 import { Weapon } from "@/entities/weapons/weapon";
+import { PlayerDeathEvent } from "@shared/events/server-sent/player-death-event";
+import { DEBUG_WEAPONS } from "@shared/debug";
+import { MAX_INTERACT_RADIUS, MAX_PLAYER_HEALTH } from "@shared/constants/constants";
 
 export class Player extends Entity {
-  public static readonly MAX_HEALTH = 3;
-  public static readonly MAX_INTERACT_RADIUS = 20;
-
   private static readonly PLAYER_WIDTH = 16;
   private static readonly PLAYER_SPEED = 60;
   private static readonly DROP_COOLDOWN = 0.25;
@@ -62,8 +60,8 @@ export class Player extends Entity {
       new Collidable(this).setSize(Player.PLAYER_WIDTH - 4).setOffset(2),
       new Positionable(this).setSize(Player.PLAYER_WIDTH),
       new Destructible(this)
-        .setHealth(Player.MAX_HEALTH)
-        .setMaxHealth(Player.MAX_HEALTH)
+        .setHealth(MAX_PLAYER_HEALTH)
+        .setMaxHealth(MAX_PLAYER_HEALTH)
         .onDeath(() => this.onDeath()),
       new Updatable(this, this.updatePlayer.bind(this)),
       new Movable(this),
@@ -258,17 +256,26 @@ export class Player extends Entity {
     if (this.interactCooldown.isReady()) {
       this.interactCooldown.reset();
       const entities = this.getEntityManager()
-        .getNearbyEntities(this.getPosition(), Player.MAX_INTERACT_RADIUS)
+        .getNearbyEntities(this.getPosition())
         .filter((entity) => {
           return entity.hasExt(Interactive);
         });
 
-      const byProximity = entities.sort((a, b) => {
-        const p1 = (a as Entity).getExt(Positionable).getPosition();
-        const p2 = (b as Entity).getExt(Positionable).getPosition();
-        return distance(this.getPosition(), p1) - distance(this.getPosition(), p2);
-      });
-
+      const byProximity = entities
+        .sort((a, b) => {
+          const p1 = (a as Entity).getExt(Positionable).getPosition();
+          const p2 = (b as Entity).getExt(Positionable).getPosition();
+          return distance(this.getPosition(), p1) - distance(this.getPosition(), p2);
+        })
+        .filter((entity: Entity) => {
+          if (
+            distance(this.getPosition(), entity.getExt(Positionable).getPosition()) >
+            MAX_INTERACT_RADIUS
+          ) {
+            return false;
+          }
+          return true;
+        });
       if (byProximity.length > 0) {
         const entity = byProximity[0];
         (entity as Entity).getExt(Interactive).interact(this.getId());

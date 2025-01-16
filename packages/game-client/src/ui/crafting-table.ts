@@ -2,7 +2,7 @@ import { Renderable } from "../entities/util";
 import { GameState } from "@/state";
 import { AssetManager, getItemAssetKey } from "../managers/asset";
 import { PlayerClient } from "@/entities/player";
-import { Z_INDEX } from "@server/managers/map-manager";
+import { Z_INDEX } from "@shared/map";
 import { Direction } from "@shared/geom/direction";
 import { InventoryItem } from "@shared/geom/inventory";
 import { RecipeType, recipes } from "@shared/geom/recipes";

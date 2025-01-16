@@ -4,11 +4,11 @@ import { RawEntity } from "@shared/types/entity";
 import { GameState } from "@/state";
 import { createMockCtx } from "../mocks/ctx";
 import { createMockImageLoader } from "../mocks/image-loader";
-import { Pistol } from "@survive-the-night/game-server/src/entities/weapons/pistol";
 import { PistolClient } from "@/entities/weapons/pistol";
 import { simpleTestSetup } from "@survive-the-night/game-server/tests/utils/setup";
 import { GameManagers } from "@server/managers/game-managers";
-import { Player } from "@survive-the-night/game-server/src/entities/player";
+import { Pistol } from "@server/entities/weapons/pistol";
+import { Player } from "@server/entities/player";
 
 let player: PlayerClient;
 let pistol: PistolClient;

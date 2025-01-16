@@ -1,15 +1,15 @@
-import { InventoryItem } from "@shared/geom/inventory";
+import { InventoryItem } from "../geom/inventory";
 import {
   Recipe,
   RecipeType,
   recipeCanBeCrafted,
   RecipeComponent,
   craftRecipe,
-} from "@shared/geom/recipes";
+} from "../geom/recipes";
 
-export class WallRecipe implements Recipe {
+export class BandageRecipe implements Recipe {
   public getType(): RecipeType {
-    return RecipeType.Wall;
+    return RecipeType.Bandage;
   }
 
   public canBeCrafted(inventory: InventoryItem[]): boolean {
@@ -19,13 +19,13 @@ export class WallRecipe implements Recipe {
   public components(): RecipeComponent[] {
     return [
       {
-        type: "wood",
+        type: "cloth",
       },
       {
-        type: "wood",
+        type: "cloth",
       },
       {
-        type: "wood",
+        type: "cloth",
       },
     ];
   }
@@ -36,7 +36,7 @@ export class WallRecipe implements Recipe {
 
   public resultingComponent(): RecipeComponent {
     return {
-      type: "wall",
+      type: "bandage",
     };
   }
 }

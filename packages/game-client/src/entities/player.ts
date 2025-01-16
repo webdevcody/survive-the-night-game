@@ -10,16 +10,15 @@ import { ImageLoader, getItemAssetKey } from "@/managers/asset";
 import { GameState } from "@/state";
 import { debugDrawHitbox, drawCenterPositionWithLabel } from "@/util/debug";
 import { createFlashEffect } from "@/util/render";
-import { Player } from "@server/entities/player";
-import { getHitboxWithPadding } from "@server/entities/util";
-import { Z_INDEX } from "@server/managers/map-manager";
+import { Z_INDEX } from "@shared/map";
 import { Direction, normalizeDirection } from "@shared/geom/direction";
-import { Hitbox } from "@shared/geom/hitbox";
+import { getHitboxWithPadding, Hitbox } from "@shared/geom/hitbox";
 import { Input } from "@shared/geom/input";
 import { InventoryItem } from "@shared/geom/inventory";
 import { Vector2, roundVector2 } from "@shared/geom/physics";
 import { RawEntity } from "@shared/types/entity";
 import { IClientEntity, Renderable, getFrameIndex, drawHealthBar } from "./util";
+import { MAX_PLAYER_HEALTH } from "@shared/constants/constants";
 
 export class PlayerClient extends ClientEntityBase implements IClientEntity, Renderable {
   private readonly LERP_FACTOR = 0.1;
@@ -64,7 +63,7 @@ export class PlayerClient extends ClientEntityBase implements IClientEntity, Ren
   }
 
   getMaxHealth(): number {
-    return Player.MAX_HEALTH;
+    return MAX_PLAYER_HEALTH;
   }
 
   isDead(): boolean {

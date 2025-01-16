@@ -1,10 +1,10 @@
-import { PlayerAttackedEvent } from "@/events/server-sent/player-attacked-event";
 import Destructible from "@/extensions/destructible";
 import { IGameManagers } from "@/managers/types";
 import { Entities } from "@shared/constants";
-import { Direction } from "readline";
-import { Weapon, WEAPON_TYPES } from "./weapon";
-
+import { Direction } from "@shared/geom/direction";
+import { Weapon } from "./weapon";
+import { WEAPON_TYPES } from "@shared/types/weapons";
+import { PlayerAttackedEvent } from "@/events/server-sent/player-attacked-event";
 export class Knife extends Weapon {
   private static readonly ATTACK_RANGE = 20;
   private static readonly DAMAGE = 1;

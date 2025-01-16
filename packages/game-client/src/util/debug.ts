@@ -1,4 +1,4 @@
-import { DEBUG_SHOW_HITBOXES, DEBUG_SHOW_POSITIONS } from "@server/config/debug";
+import { DEBUG_SHOW_HITBOXES, DEBUG_SHOW_POSITIONS } from "../../../game-shared/src/debug";
 import { Hitbox } from "@shared/geom/hitbox";
 import { Vector2 } from "@shared/geom/physics";
 

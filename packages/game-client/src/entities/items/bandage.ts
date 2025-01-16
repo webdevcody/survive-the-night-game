@@ -1,7 +1,7 @@
 import { ClientPositionable } from "@/extensions";
 import { AssetManager } from "@/managers/asset";
 import { GameState } from "@/state";
-import { Z_INDEX } from "@server/managers/map-manager";
+import { Z_INDEX } from "@shared/map";
 import { RawEntity } from "@shared/types/entity";
 import { ClientEntity } from "../client-entity";
 import { Renderable } from "../util";
