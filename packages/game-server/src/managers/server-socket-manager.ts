@@ -1,17 +1,17 @@
-import { Server, Socket } from "socket.io";
+import { DEBUG_EVENTS } from "@shared/debug";
+import { Player } from "@/entities/player";
+import { ServerSentEvents, ClientSentEvents } from "@shared/events/events";
+import { GameEvent } from "@shared/events/types";
+import Positionable from "@/extensions/positionable";
+import { GameServer } from "@/server";
+import { AdminCommand } from "@shared/commands/commands";
+import { Input } from "../../../game-shared/src/util/input";
+import { RecipeType } from "../../../game-shared/src/util/recipes";
 import { createServer } from "http";
-import { ClientSentEvents, ServerSentEvents } from "../shared/events/events";
-import { MapManager } from "./map-manager";
-import { Input } from "../shared/input";
-import { Player } from "../shared/entities/player";
-import { RecipeType } from "../shared/recipes";
-import { GameEvent } from "../shared/events/types";
-import { DEBUG_EVENTS } from "../config/debug";
-import Positionable from "../shared/extensions/positionable";
-import { GameServer } from "../server";
-import { Broadcaster, IEntityManager, IGameManagers } from "./types";
-import { ADMIN_COMMANDS, AdminCommand, CreateItemCommand } from "@shared/commands/commands";
-import { CommandManager } from "./command-manager";
+import { Server, Socket } from "socket.io";
+import { CommandManager } from "@/managers/command-manager";
+import { MapManager } from "@/managers/map-manager";
+import { Broadcaster, IEntityManager, IGameManagers } from "@/managers/types";
 
 /**
  * Any and all functionality related to sending server side events

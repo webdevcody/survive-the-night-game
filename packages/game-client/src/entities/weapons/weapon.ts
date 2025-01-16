@@ -1,11 +1,11 @@
 import { RawEntity } from "@shared/types/entity";
-import { GameState } from "../../state";
-import { Renderable } from "../util";
-import { Z_INDEX } from "@server/managers/map-manager";
-import { ClientEntity } from "../client-entity";
-import { ClientPositionable } from "../../extensions";
+import { GameState } from "@/state";
+import { Renderable } from "@/entities/util";
+import { ClientEntity } from "@/entities/client-entity";
+import { ClientPositionable } from "@/extensions";
 import { ImageLoader } from "@/managers/asset";
-import { WeaponType } from "@server/shared/entities/weapons/weapon";
+import { WeaponType } from "@shared/types/weapons";
+import { Z_INDEX } from "@shared/map";
 
 export class WeaponClient extends ClientEntity implements Renderable {
   private weaponType: WeaponType;

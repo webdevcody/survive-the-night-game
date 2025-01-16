@@ -1,28 +1,27 @@
-import { GameClient } from "./client";
-import { ClientSocketManager } from "./managers/client-socket-manager";
-import { GameState } from "./state";
-import { PlayerClient } from "./entities/player";
-import { PlayerHurtEvent } from "@server/shared/events/server-sent/player-hurt-event";
-import { PlayerAttackedEvent } from "@server/shared/events/server-sent/player-attacked-event";
-import { ZombieDeathEvent } from "@server/shared/events/server-sent/zombie-death-event";
-import { ZombieClient } from "./entities/zombie";
-import { ZombieHurtEvent } from "@server/shared/events/server-sent/zombie-hurt-event";
-import { PlayerDroppedItemEvent } from "@server/shared/events/server-sent/player-dropped-item-event";
-import { PlayerPickedUpItemEvent } from "@server/shared/events/server-sent/pickup-item-event";
-import { GameOverEvent } from "@server/shared/events/server-sent/game-over-event";
-import { SOUND_TYPES } from "./managers/sound-manager";
-import { WEAPON_TYPES } from "@server/shared/entities/weapons/weapon";
-import { ZombieAttackedEvent } from "@server/shared/events/server-sent/zombie-attacked-event";
-import { LootEvent } from "@server/shared/events/server-sent/loot-event";
-import { ClientPositionable } from "./extensions";
-import { GunEmptyEvent } from "@server/shared/events/server-sent/gun-empty-event";
-import { ServerSentEvents } from "@server/shared/events/events";
-import {
-  GameStateEvent,
-  MapEvent,
-  YourIdEvent,
-  PlayerDeathEvent,
-} from "@server/shared/events/server-sent";
+import { ServerSentEvents } from "@shared/events/events";
+import { GameOverEvent } from "@shared/events/server-sent/game-over-event";
+import { GameStateEvent } from "@shared/events/server-sent/game-state-event";
+import { GunEmptyEvent } from "@shared/events/server-sent/gun-empty-event";
+import { LootEvent } from "@shared/events/server-sent/loot-event";
+import { MapEvent } from "@shared/events/server-sent/map-event";
+import { WEAPON_TYPES } from "@shared/types/weapons";
+import { PlayerPickedUpItemEvent } from "@shared/events/server-sent/pickup-item-event";
+import { PlayerAttackedEvent } from "@shared/events/server-sent/player-attacked-event";
+import { PlayerDeathEvent } from "@shared/events/server-sent/player-death-event";
+import { PlayerDroppedItemEvent } from "@shared/events/server-sent/player-dropped-item-event";
+import { PlayerHurtEvent } from "@shared/events/server-sent/player-hurt-event";
+import { YourIdEvent } from "@shared/events/server-sent/your-id-event";
+import { ZombieAttackedEvent } from "@shared/events/server-sent/zombie-attacked-event";
+import { ZombieDeathEvent } from "@shared/events/server-sent/zombie-death-event";
+import { ZombieHurtEvent } from "@shared/events/server-sent/zombie-hurt-event";
+import { GameClient } from "@/client";
+import { PlayerClient } from "@/entities/player";
+import { ZombieClient } from "@/entities/zombie";
+import { ClientPositionable } from "@/extensions";
+import { ClientSocketManager } from "@/managers/client-socket-manager";
+import { SOUND_TYPES } from "@/managers/sound-manager";
+import { GameState } from "@/state";
+
 export class ClientEventListener {
   private socketManager: ClientSocketManager;
   private gameClient: GameClient;

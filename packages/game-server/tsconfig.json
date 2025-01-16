@@ -21,7 +21,7 @@
     ],
     "baseUrl": ".",
     "paths": {
-      "@/*": ["./src/*"],
+      "@/*": ["./src/*", "../game-shared/src/*"],
       "@/tests/*": ["./tests/*"],
       "@shared/*": ["../game-shared/src/*"]
     }

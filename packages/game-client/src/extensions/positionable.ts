@@ -1,6 +1,6 @@
-import { ExtensionTypes } from "@server/shared/extension-types";
-import { ClientExtension, ClientExtensionSerialized } from "./types";
-import { Vector2 } from "@server/shared/physics";
+import { ExtensionTypes } from "../../../game-shared/src/util/extension-types";
+import { Vector2 } from "../../../game-shared/src/util/physics";
+import { ClientExtension, ClientExtensionSerialized } from "@/extensions/types";
 
 export class ClientPositionable implements ClientExtension {
   public static readonly type = ExtensionTypes.POSITIONABLE;

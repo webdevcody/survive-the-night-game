@@ -1,15 +1,10 @@
 import { RawEntity } from "@shared/types/entity";
-import { AssetManager } from "../../managers/asset";
-import { GameState } from "../../state";
-import { Renderable } from "../util";
-import { Z_INDEX } from "@server/managers/map-manager";
-import { ClientEntity } from "../../entities/client-entity";
-import { ClientPositionable } from "../../extensions";
-
-// Note: This file already meets all requirements:
-// - Correct ClientEntity import
-// - Correct constructor parameter order
-// - Has super.render() call in render method
+import { AssetManager } from "@/managers/asset";
+import { GameState } from "@/state";
+import { Renderable } from "@/entities/util";
+import { ClientEntity } from "@/entities/client-entity";
+import { ClientPositionable } from "@/extensions";
+import { Z_INDEX } from "@shared/map";
 
 export class SpikesClient extends ClientEntity implements Renderable {
   constructor(data: RawEntity, assetManager: AssetManager) {

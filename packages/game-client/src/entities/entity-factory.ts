@@ -1,23 +1,23 @@
 import { RawEntity } from "@shared/types/entity";
 import { Entities } from "@shared/constants";
-import { AssetManager } from "../managers/asset";
-import { IClientEntity } from "./util";
-import { BulletClient } from "./bullet";
-import { ZombieClient } from "./zombie";
-import { WallClient } from "./items/wall";
-import { ClothClient } from "./items/cloth";
-import { PlayerClient } from "./player";
-import { TreeClient } from "./items/tree";
-import { BandageClient } from "./items/bandage";
-import { SpikesClient } from "./items/spikes";
-import { FireClient } from "./environment/fire";
-import { TorchClient } from "./items/torch";
-import { GasolineClient } from "./items/gasoline";
-import { PistolClient } from "./weapons/pistol";
-import { ShotgunClient } from "./weapons/shotgun";
-import { KnifeClient } from "./weapons/knife";
-import { PistolAmmoClient } from "./weapons/pistol-ammo";
-import { ShotgunAmmoClient } from "./weapons/shotgun-ammo";
+import { AssetManager } from "@/managers/asset";
+import { IClientEntity } from "@/entities/util";
+import { BulletClient } from "@/entities/bullet";
+import { ZombieClient } from "@/entities/zombie";
+import { WallClient } from "@/entities/items/wall";
+import { ClothClient } from "@/entities/items/cloth";
+import { PlayerClient } from "@/entities/player";
+import { TreeClient } from "@/entities/items/tree";
+import { BandageClient } from "@/entities/items/bandage";
+import { SpikesClient } from "@/entities/items/spikes";
+import { FireClient } from "@/entities/environment/fire";
+import { TorchClient } from "@/entities/items/torch";
+import { GasolineClient } from "@/entities/items/gasoline";
+import { PistolClient } from "@/entities/weapons/pistol";
+import { ShotgunClient } from "@/entities/weapons/shotgun";
+import { KnifeClient } from "@/entities/weapons/knife";
+import { PistolAmmoClient } from "@/entities/weapons/pistol-ammo";
+import { ShotgunAmmoClient } from "@/entities/weapons/shotgun-ammo";
 
 const entityMap = {
   [Entities.PLAYER]: PlayerClient,

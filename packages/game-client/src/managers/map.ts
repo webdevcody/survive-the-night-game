@@ -1,9 +1,8 @@
 import { GameClient } from "@/client";
-import { TILE_IDS } from "@server/managers/map-manager";
-import { Vector2 } from "@server/shared/physics";
-import { distance } from "@server/shared/physics";
-import { DEBUG_SHOW_HITBOXES } from "@server/config/debug";
-import { ClientIlluminated, ClientPositionable } from "../extensions";
+import { DEBUG_SHOW_HITBOXES } from "@shared/debug";
+import { ClientIlluminated, ClientPositionable } from "@/extensions";
+import { Vector2, distance } from "../../../game-shared/src/util/physics";
+import { TILE_IDS } from "@shared/map";
 
 const tileLocations: Record<string, [number, number]> = {
   [TILE_IDS.GRASS1]: [4 * 16, 0],

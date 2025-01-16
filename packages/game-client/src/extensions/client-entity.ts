@@ -1,6 +1,6 @@
 import { ImageLoader } from "@/managers/asset";
-import { ClientExtension, ClientExtensionCtor } from "./types";
-import { clientExtensionsMap } from "./index";
+import { ClientExtension, ClientExtensionCtor } from "@/extensions/types";
+import { clientExtensionsMap } from "@/extensions/index";
 import { RawEntity } from "@shared/types/entity";
 
 export abstract class ClientEntityBase {

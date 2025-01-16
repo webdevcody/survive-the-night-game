@@ -1,11 +1,11 @@
-import { Renderable } from "../entities/util";
+import { Renderable } from "@/entities/util";
 import { GameState } from "@/state";
-import { AssetManager, getItemAssetKey } from "../managers/asset";
+import { AssetManager, getItemAssetKey } from "@/managers/asset";
 import { PlayerClient } from "@/entities/player";
-import { Z_INDEX } from "@server/managers/map-manager";
-import { Direction } from "@server/shared/direction";
-import { InventoryItem } from "@server/shared/inventory";
-import { RecipeType, recipes } from "@server/shared/recipes";
+import { Z_INDEX } from "@shared/map";
+import { Direction } from "../../../game-shared/src/util/direction";
+import { InventoryItem } from "../../../game-shared/src/util/inventory";
+import { RecipeType, recipes } from "../../../game-shared/src/util/recipes";
 
 const CRAFTING_TABLE_SETTINGS = {
   Container: {

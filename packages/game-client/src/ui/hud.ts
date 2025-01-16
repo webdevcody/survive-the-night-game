@@ -1,5 +1,5 @@
-import { GameState } from "../state";
-import { getPlayer } from "../util/get-player";
+import { GameState } from "@/state";
+import { getPlayer } from "@/util/get-player";
 
 const HUD_SETTINGS = {
   ControlsList: {

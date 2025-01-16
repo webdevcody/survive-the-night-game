@@ -1,10 +1,10 @@
-import { Renderable } from "./entities/util";
-import { MapManager } from "./managers/map";
-import { GameState } from "./state";
-import { CraftingTable } from "./ui/crafting-table";
-import { InventoryBarUI } from "./ui/inventory-bar";
-import { Hud } from "./ui/hud";
-import { GameOverDialogUI } from "./ui/game-over-dialog";
+import { Renderable } from "@/entities/util";
+import { MapManager } from "@/managers/map";
+import { GameState } from "@/state";
+import { CraftingTable } from "@/ui/crafting-table";
+import { InventoryBarUI } from "@/ui/inventory-bar";
+import { Hud } from "@/ui/hud";
+import { GameOverDialogUI } from "@/ui/game-over-dialog";
 
 export class Renderer {
   private ctx: CanvasRenderingContext2D;

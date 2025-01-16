@@ -1,12 +1,10 @@
 import { RawEntity } from "@shared/types/entity";
-import { GameState } from "../../state";
-import { Renderable } from "../util";
-import { Z_INDEX } from "@server/managers/map-manager";
-import { ClientEntity } from "../client-entity";
-import { ImageLoader } from "../../managers/asset";
-import { ClientPositionable } from "../../extensions";
-import { WeaponType } from "@server/shared/entities/weapons/weapon";
-
+import { GameState } from "@/state";
+import { Renderable } from "@/entities/util";
+import { ClientEntity } from "@/entities/client-entity";
+import { ImageLoader } from "@/managers/asset";
+import { ClientPositionable } from "@/extensions";
+import { Z_INDEX } from "@shared/map";
 export class KnifeClient extends ClientEntity implements Renderable {
   constructor(data: RawEntity, assetManager: ImageLoader) {
     super(data, assetManager);

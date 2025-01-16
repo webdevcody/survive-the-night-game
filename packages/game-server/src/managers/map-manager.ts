@@ -1,30 +1,13 @@
-import { Tree } from "../shared/entities/items/tree";
-import { Boundary } from "../shared/entities/boundary";
-import { Zombie } from "../shared/entities/zombie";
-import { Broadcaster, IEntityManager, IGameManagers, IMapManager } from "./types";
-import { DEBUG_START_ZOMBIE } from "../config/debug";
-import Positionable from "../shared/extensions/positionable";
-import { Shotgun } from "../shared/entities/weapons/shotgun";
-import { Knife } from "../shared/entities/weapons/knife";
-import { Pistol } from "../shared/entities/weapons/pistol";
-
-export const Z_INDEX = {
-  GROUND: 0,
-  ITEMS: 1,
-  BUILDINGS: 2,
-  ENEMIES: 3,
-  PLAYERS: 4,
-  PROJECTILES: 5,
-  UI: 6,
-};
-
-export const TILE_IDS = {
-  GRASS1: 0,
-  GRASS2: 1,
-  FOREST: 2,
-  WATER: 3,
-};
-
+import { Tree } from "@/entities/items/tree";
+import { Boundary } from "@/entities/environment/boundary";
+import { Zombie } from "@/entities/enemies/zombie";
+import { DEBUG_START_ZOMBIE } from "@shared/debug";
+import { Shotgun } from "@/entities/weapons/shotgun";
+import { Knife } from "@/entities/weapons/knife";
+import { Pistol } from "@/entities/weapons/pistol";
+import { IGameManagers, IEntityManager, IMapManager } from "@/managers/types";
+import Positionable from "@/extensions/positionable";
+import { TILE_IDS } from "@shared/map";
 const WEAPON_SPAWN_CHANCE = {
   PISTOL: 0.002,
   SHOTGUN: 0.002,

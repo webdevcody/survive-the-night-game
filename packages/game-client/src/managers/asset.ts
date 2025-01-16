@@ -4,9 +4,9 @@ import {
   isDirectionRight,
   isDirectionDown,
   isDirectionUp,
-} from "@server/shared/direction";
-import { InventoryItem } from "@server/shared/inventory";
-import { CropOptions, ImageManager } from "./image";
+} from "../../../game-shared/src/util/direction";
+import { InventoryItem } from "../../../game-shared/src/util/inventory";
+import { CropOptions, ImageManager } from "@/managers/image";
 
 const tileSize = 16;
 

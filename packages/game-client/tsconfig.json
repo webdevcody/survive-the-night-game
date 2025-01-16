@@ -22,17 +22,17 @@
     "paths": {
       "@/*": ["./src/*"],
       "@shared/*": ["../game-shared/src/*"],
-      "@server/*": ["../game-server/src/*"]
+      "@server/*": ["../game-server/src/*"],
     }
   },
   "references": [
     {
-      "path": "../game-server"
+      "path": "../game-shared"
     },
     {
-      "path": "../game-shared"
+      "path": "../game-server"
     }
   ],
-  "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", ".next/types/**/*.ts", "tests/**/*"],
+  "include": ["**/*.ts", "**/*.tsx", "tests/**/*"],
   "exclude": ["node_modules"],
 }

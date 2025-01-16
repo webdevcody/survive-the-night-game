@@ -1,6 +1,6 @@
-import { ExtensionTypes } from "@server/shared/extension-types";
-import { ClientExtension, ClientExtensionSerialized } from "./types";
-import { Hitbox } from "@server/shared/traits";
+import { ExtensionTypes } from "../../../game-shared/src/util/extension-types";
+import { Hitbox } from "../../../game-shared/src/util/hitbox";
+import { ClientExtension, ClientExtensionSerialized } from "@/extensions/types";
 
 export class ClientCollidable implements ClientExtension {
   public static readonly type = ExtensionTypes.COLLIDABLE;

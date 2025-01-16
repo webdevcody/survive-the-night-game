@@ -1,5 +1,5 @@
-import { CameraManager } from "./managers/camera";
-import { StorageManager } from "./managers/storage";
+import { CameraManager } from "@/managers/camera";
+import { StorageManager } from "@/managers/storage";
 
 export class ZoomController {
   private MIN_ZOOM: number = 2;

@@ -1,23 +1,24 @@
-import { RawEntity } from "@shared/types/entity";
-import { getItemAssetKey, ImageLoader } from "../managers/asset";
-import { drawHealthBar, getFrameIndex, IClientEntity, Renderable } from "./util";
+import { animate } from "@/animations";
+import {
+  ClientDestructible,
+  ClientPositionable,
+  ClientMovable,
+  ClientIgnitable,
+} from "@/extensions";
+import { ClientEntityBase } from "@/extensions/client-entity";
+import { ImageLoader, getItemAssetKey } from "@/managers/asset";
 import { GameState } from "@/state";
-import { getHitboxWithPadding } from "@server/shared/entities/util";
-import { debugDrawHitbox, drawCenterPositionWithLabel } from "../util/debug";
-import { animate } from "../animations";
-import { Z_INDEX } from "@server/managers/map-manager";
-import { createFlashEffect } from "../util/render";
-import { ClientEntityBase } from "../extensions/client-entity";
-import { ClientPositionable } from "../extensions/positionable";
-import { ClientMovable } from "../extensions/movable";
-import { ClientDestructible } from "../extensions/destructible";
-import { ClientIgnitable } from "../extensions/ignitable";
-import { InventoryItem } from "@server/shared/inventory";
-import { Direction, normalizeDirection } from "@server/shared/direction";
-import { Player } from "@server/shared/entities/player";
-import { Input } from "@server/shared/input";
-import { Vector2, roundVector2 } from "@server/shared/physics";
-import { Hitbox } from "@server/shared/traits";
+import { debugDrawHitbox, drawCenterPositionWithLabel } from "@/util/debug";
+import { createFlashEffect } from "@/util/render";
+import { Z_INDEX } from "@shared/map";
+import { Direction, normalizeDirection } from "../../../game-shared/src/util/direction";
+import { getHitboxWithPadding, Hitbox } from "../../../game-shared/src/util/hitbox";
+import { Input } from "../../../game-shared/src/util/input";
+import { InventoryItem } from "../../../game-shared/src/util/inventory";
+import { Vector2, roundVector2 } from "../../../game-shared/src/util/physics";
+import { RawEntity } from "@shared/types/entity";
+import { IClientEntity, Renderable, getFrameIndex, drawHealthBar } from "@/entities/util";
+import { MAX_PLAYER_HEALTH } from "@shared/constants/constants";
 
 export class PlayerClient extends ClientEntityBase implements IClientEntity, Renderable {
   private readonly LERP_FACTOR = 0.1;
@@ -62,7 +63,7 @@ export class PlayerClient extends ClientEntityBase implements IClientEntity, Ren
   }
 
   getMaxHealth(): number {
-    return Player.MAX_HEALTH;
+    return MAX_PLAYER_HEALTH;
   }
 
   isDead(): boolean {

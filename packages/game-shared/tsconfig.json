@@ -2,7 +2,7 @@
   "compilerOptions": {
     "composite": true,
     "target": "ES2017",
-    "module": "esnext",
+    "module": "ESNext",
     "moduleResolution": "bundler",
     "declaration": true,
     "outDir": "./dist",
@@ -10,7 +10,11 @@
     "esModuleInterop": true,
     "skipLibCheck": true,
     "forceConsistentCasingInFileNames": true,
-    "rootDir": "./src"
+    "baseUrl": ".",
+    "paths": {
+      "@/*": ["./src/*"],
+      "@events/*": ["./src/events/*"]
+    }
   },
   "include": [
     "src/**/*"

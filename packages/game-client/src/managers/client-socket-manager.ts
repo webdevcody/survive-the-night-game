@@ -1,24 +1,22 @@
-import { io, Socket } from "socket.io-client";
-import { PlayerHurtEvent } from "@server/shared/events/server-sent/player-hurt-event";
-import { PlayerAttackedEvent } from "@server/shared/events/server-sent/player-attacked-event";
-import { ZombieDeathEvent } from "@server/shared/events/server-sent/zombie-death-event";
-import { ZombieHurtEvent } from "@server/shared/events/server-sent/zombie-hurt-event";
-import { PlayerDroppedItemEvent } from "@server/shared/events/server-sent/player-dropped-item-event";
-import { PlayerPickedUpItemEvent } from "@server/shared/events/server-sent/pickup-item-event";
-import { GameOverEvent } from "@server/shared/events/server-sent/game-over-event";
-import { ZombieAttackedEvent } from "@server/shared/events/server-sent/zombie-attacked-event";
-import { LootEvent } from "@server/shared/events/server-sent/loot-event";
-import { GunEmptyEvent } from "@server/shared/events/server-sent/gun-empty-event";
+import { ServerSentEvents, ClientSentEvents } from "@shared/events/events";
+import { GameOverEvent } from "@shared/events/server-sent/game-over-event";
+import { GameStateEvent } from "@shared/events/server-sent/game-state-event";
+import { GunEmptyEvent } from "@shared/events/server-sent/gun-empty-event";
+import { LootEvent } from "@shared/events/server-sent/loot-event";
+import { MapEvent } from "@shared/events/server-sent/map-event";
+import { PlayerPickedUpItemEvent } from "@shared/events/server-sent/pickup-item-event";
+import { PlayerAttackedEvent } from "@shared/events/server-sent/player-attacked-event";
+import { PlayerDeathEvent } from "@shared/events/server-sent/player-death-event";
+import { PlayerDroppedItemEvent } from "@shared/events/server-sent/player-dropped-item-event";
+import { PlayerHurtEvent } from "@shared/events/server-sent/player-hurt-event";
+import { YourIdEvent } from "@shared/events/server-sent/your-id-event";
+import { ZombieAttackedEvent } from "@shared/events/server-sent/zombie-attacked-event";
+import { ZombieDeathEvent } from "@shared/events/server-sent/zombie-death-event";
+import { ZombieHurtEvent } from "@shared/events/server-sent/zombie-hurt-event";
 import { AdminCommand } from "@shared/commands/commands";
-import { ServerSentEvents, ClientSentEvents } from "@server/shared/events/events";
-import {
-  GameStateEvent,
-  PlayerDeathEvent,
-  MapEvent,
-  YourIdEvent,
-} from "@server/shared/events/server-sent";
-import { Input } from "@server/shared/input";
-import { RecipeType } from "@server/shared/recipes";
+import { Input } from "../../../game-shared/src/util/input";
+import { RecipeType } from "../../../game-shared/src/util/recipes";
+import { Socket, io } from "socket.io-client";
 
 export type EntityDto = { id: string } & any;
 
@@ -50,9 +48,11 @@ export class ClientSocketManager {
   }
 
   constructor(serverUrl: string) {
+    console.log("Connecting to game server", serverUrl);
     this.socket = io(serverUrl);
 
     this.socket.on("connect", () => {
+      console.log("Connected to game server", this.socket.id);
       // handlers.onConnect(this.getId()!);
     });
 

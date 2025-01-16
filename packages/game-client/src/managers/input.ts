@@ -1,5 +1,5 @@
-import { Direction, determineDirection } from "@server/shared/direction";
-import { Input } from "@server/shared/input";
+import { Direction, determineDirection } from "../../../game-shared/src/util/direction";
+import { Input } from "../../../game-shared/src/util/input";
 
 export interface InputManagerOptions {
   onCraft?: () => unknown;
