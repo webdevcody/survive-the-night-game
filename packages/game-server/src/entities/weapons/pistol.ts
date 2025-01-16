@@ -19,15 +19,17 @@ export class Pistol extends Weapon {
     const inventory = player.getExt(Inventory);
     const ammoItem = inventory.getItems().find((item) => item.key === "pistol_ammo");
 
-    console.log("ammoItem", ammoItem);
     if (!ammoItem || !ammoItem.state?.count || ammoItem.state.count <= 0) {
       this.getEntityManager().getBroadcaster().broadcastEvent(new GunEmptyEvent(playerId));
-      return; // No ammo available
+      return;
     }
 
-    // Consume ammo
     const ammoIndex = inventory.getItems().findIndex((item) => item.key === "pistol_ammo");
     inventory.updateItemState(ammoIndex, { count: ammoItem.state.count - 1 });
+
+    if (ammoItem.state.count <= 0) {
+      inventory.removeItem(ammoIndex);
+    }
 
     const bullet = new Bullet(this.getGameManagers());
     bullet.setPosition(position);

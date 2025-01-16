@@ -37,3 +37,15 @@ it("a player should be able to fire a pistol if the pistol is selected in his in
 
   expect(gameHasSomeBulletsAfterUpdate).toBe(true);
 });
+
+it("the ammo should be removed from the player's inventory after firing the last bullet", () => {
+  player.getInventory().push({ key: "pistol" });
+  player.getInventory().push({ key: "pistol_ammo", state: { count: 2 } });
+  player.selectInventoryItem(1);
+
+  player.setAsFiring(true);
+  gameManagers.getEntityManager().update(1);
+  expect(player.getInventory().some((item) => item.key === "pistol_ammo")).toBe(true);
+  gameManagers.getEntityManager().update(1);
+  expect(player.getInventory().some((item) => item.key === "pistol_ammo")).toBe(false);
+});
