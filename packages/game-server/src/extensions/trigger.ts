@@ -1,15 +1,14 @@
 import { Extension, ExtensionSerialized } from "@/extensions/types";
-import { distance, Vector2 } from "../../../game-shared/src/util/physics";
-import { Rectangle } from "../../../game-shared/src/util/rectangle";
 import Positionable from "@/extensions/positionable";
 import Collidable from "@/extensions/collidable";
 import { EntityType } from "@/types/entity";
-import { ExtensionTypes } from "../../../game-shared/src/util/extension-types";
+import { ExtensionTypes } from "@/util/extension-types";
 import { IEntity } from "@/entities/types";
+import { Rectangle } from "@/util/shape";
+import Vector2 from "@/util/vector2";
 
 export default class Triggerable implements Extension {
   public static readonly type = ExtensionTypes.TRIGGERABLE;
-  private static readonly TriggerRadius = 10;
 
   private self: IEntity;
   private size: Vector2;
@@ -19,9 +18,9 @@ export default class Triggerable implements Extension {
   /**
    * will create a trigger box around an entity which should be used for various purposes.
    */
-  public constructor(self: IEntity, width: number, height: number, filter: EntityType[]) {
+  public constructor(self: IEntity, size: Vector2, filter: EntityType[]) {
     this.self = self;
-    this.size = { x: width, y: height };
+    this.size = size;
     this.filter = filter;
   }
 
@@ -31,39 +30,20 @@ export default class Triggerable implements Extension {
   }
 
   update(deltaTime: number) {
-    const entities = this.self
-      .getEntityManager()
-      .getNearbyEntities(
-        this.self.getExt(Positionable).getPosition(),
-        undefined,
-        this.filter
-      ) as IEntity[];
-
     const triggerBox = this.getTriggerBox();
-    const triggerCenter = triggerBox.getCenter();
+    const entities = this.self.getEntityManager().getNearbyEntitiesByRange(triggerBox, this.filter);
 
     for (const entity of entities) {
       if (!entity.hasExt(Collidable)) continue;
-      const hitbox = entity.getExt(Collidable).getHitBox();
-      const entityHitbox = new Rectangle(hitbox.x, hitbox.y, hitbox.width, hitbox.height);
-      const entityCenter = entityHitbox.getCenter();
-
-      const centerDistance = distance(triggerCenter, entityCenter);
-
-      if (centerDistance <= Triggerable.TriggerRadius) {
-        this.onEntityEntered?.(entity);
-      }
+      this.onEntityEntered?.(entity);
     }
   }
 
   public getTriggerBox(): Rectangle {
     const positionable = this.self.getExt(Positionable);
-    return new Rectangle(
-      positionable.getPosition().x,
-      positionable.getPosition().y,
-      this.size.x,
-      this.size.y
-    );
+    const position = positionable.getPosition();
+    // TODO select type shape trigger
+    return new Rectangle(position, this.size);
   }
 
   public serialize(): ExtensionSerialized {

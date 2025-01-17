@@ -1,9 +1,9 @@
-import { Entities } from "@shared/constants";
-import { Vector2 } from "../../../game-shared/src/util/physics";
+import { Entities } from "@/constants";
 import { IEntity } from "@/entities/types";
 import { EntityType } from "@/types/entity";
 import Positionable from "@/extensions/positionable";
 import { Extension, ExtensionSerialized } from "@/extensions/types";
+import Vector2 from "@/util/vector2";
 
 type EntityFactory = (type: EntityType) => IEntity;
 
@@ -36,10 +36,10 @@ export default class Combustible implements Extension {
   private getRandomPositionInRadius(center: Vector2, radius: number): Vector2 {
     const angle = Math.random() * Math.PI * 2;
     const distance = Math.random() * radius;
-    return {
-      x: center.x + Math.cos(angle) * distance,
-      y: center.y + Math.sin(angle) * distance,
-    };
+    return new Vector2(
+      center.x + Math.cos(angle) * distance,
+      center.y + Math.sin(angle) * distance
+    );
   }
 
   public serialize(): ExtensionSerialized {

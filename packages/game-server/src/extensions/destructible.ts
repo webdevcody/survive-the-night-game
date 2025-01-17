@@ -1,7 +1,8 @@
-import { Hitbox } from "../../../game-shared/src/util/hitbox";
 import { IEntity } from "@/entities/types";
 import { Extension, ExtensionSerialized } from "@/extensions/types";
 import Positionable from "@/extensions/positionable";
+import { Rectangle } from "@/util/shape";
+import Vector2 from "@/util/vector2";
 
 type DestructibleDeathHandler = () => void;
 
@@ -44,14 +45,12 @@ export default class Destructible implements Extension {
     }
   }
 
-  public getDamageBox(): Hitbox {
+  public getDamageBox(): Rectangle {
     const positionable = this.self.getExt(Positionable);
+    const position = positionable.getPosition();
+    const size = positionable.getSize();
 
-    return {
-      ...positionable.getPosition(),
-      width: positionable.getSize(),
-      height: positionable.getSize(),
-    };
+    return new Rectangle(new Vector2(position.x, position.y), size);
   }
 
   public heal(amount: number): void {

@@ -1,8 +1,8 @@
 import { Extension, ExtensionSerialized } from "@/extensions/types";
 import { IEntity } from "@/entities/types";
 import { EntityType } from "@/types/entity";
-import { distance } from "../../../game-shared/src/util/physics";
 import Positionable from "@/extensions/positionable";
+import { Circle } from "@/util/shape";
 
 interface OneTimeTriggerOptions {
   triggerRadius: number;
@@ -32,25 +32,26 @@ export default class OneTimeTrigger implements Extension {
   public update(deltaTime: number) {
     if (this.hasTriggered) return;
 
-    const position = this.self.getExt(Positionable).getCenterPosition();
+    const triggerBox = this.getTriggerBox();
     const nearbyEntities = this.self
       .getEntityManager()
-      .getNearbyEntities(position, undefined, this.targetTypes);
+      .getNearbyEntitiesByRange(triggerBox, this.targetTypes);
 
     // Check if any target entity is within trigger radius
     for (const entity of nearbyEntities) {
       if (!entity.hasExt(Positionable)) continue;
 
-      const entityPos = entity.getExt(Positionable).getCenterPosition();
-      const dist = distance(position, entityPos);
-
-      // If entity is close enough, trigger
-      if (dist < this.triggerRadius) {
-        this.hasTriggered = true;
-        this.triggerCallback?.();
-        break;
-      }
+      this.hasTriggered = true;
+      this.triggerCallback?.();
+      break;
     }
+  }
+
+  public getTriggerBox(): Circle {
+    const positionable = this.self.getExt(Positionable);
+    const position = positionable.getPosition();
+    // TODO select type shape trigger
+    return new Circle(position, this.triggerRadius);
   }
 
   public serialize(): ExtensionSerialized {

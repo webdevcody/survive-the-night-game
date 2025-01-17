@@ -14,10 +14,9 @@ import { Broadcaster, IGameManagers } from "@/managers/types";
 import { Entities } from "@/constants";
 import { Direction } from "../../../game-shared/src/util/direction";
 import { Entity } from "@/entities/entity";
-import { Hitbox } from "../../../game-shared/src/util/hitbox";
 import { Input } from "../../../game-shared/src/util/input";
 import { InventoryItem, ItemType } from "../../../game-shared/src/util/inventory";
-import { Vector2, normalizeVector, distance } from "../../../game-shared/src/util/physics";
+import { normalizeVector, distance } from "../../../game-shared/src/util/physics";
 import { RecipeType } from "../../../game-shared/src/util/recipes";
 import { RawEntity } from "@shared/types/entity";
 import { Cooldown } from "@/entities/util/cooldown";
@@ -25,6 +24,8 @@ import { Weapon } from "@/entities/weapons/weapon";
 import { PlayerDeathEvent } from "@shared/events/server-sent/player-death-event";
 import { DEBUG_WEAPONS } from "@shared/debug";
 import { MAX_INTERACT_RADIUS, MAX_PLAYER_HEALTH } from "@shared/constants/constants";
+import Vector2 from "@/util/vector2";
+import { Rectangle } from "@/util/shape";
 
 export class Player extends Entity {
   private static readonly PLAYER_WIDTH = 16;
@@ -57,8 +58,10 @@ export class Player extends Entity {
 
     this.extensions = [
       new Inventory(this, gameManagers.getBroadcaster()),
-      new Collidable(this).setSize(Player.PLAYER_WIDTH - 4).setOffset(2),
-      new Positionable(this).setSize(Player.PLAYER_WIDTH),
+      new Collidable(this)
+        .setSize(new Vector2(Player.PLAYER_WIDTH - 4, Player.PLAYER_WIDTH - 4))
+        .setOffset(new Vector2(2, 2)),
+      new Positionable(this).setSize(new Vector2(Player.PLAYER_WIDTH, Player.PLAYER_WIDTH)),
       new Destructible(this)
         .setHealth(MAX_PLAYER_HEALTH)
         .setMaxHealth(MAX_PLAYER_HEALTH)
@@ -118,7 +121,7 @@ export class Player extends Entity {
     return this.getExt(Destructible).getMaxHealth();
   }
 
-  getDamageBox(): Hitbox {
+  getDamageBox(): Rectangle {
     return this.getExt(Destructible).getDamageBox();
   }
 
@@ -160,7 +163,7 @@ export class Player extends Entity {
     };
   }
 
-  getHitbox(): Hitbox {
+  getHitbox(): Rectangle {
     const collidable = this.getExt(Collidable);
     const hitbox = collidable.getHitBox();
     return hitbox;
@@ -168,15 +171,14 @@ export class Player extends Entity {
 
   setVelocityFromInput(dx: number, dy: number): void {
     if (dx === 0 && dy === 0) {
-      this.getExt(Movable).setVelocity({ x: 0, y: 0 });
+      this.getExt(Movable).setVelocity(new Vector2(0, 0));
       return;
     }
 
-    const normalized = normalizeVector({ x: dx, y: dy });
-    this.getExt(Movable).setVelocity({
-      x: normalized.x * Player.PLAYER_SPEED,
-      y: normalized.y * Player.PLAYER_SPEED,
-    });
+    const normalized = normalizeVector(new Vector2(dx, dy));
+    this.getExt(Movable).setVelocity(
+      new Vector2(normalized.x * Player.PLAYER_SPEED, normalized.y * Player.PLAYER_SPEED)
+    );
   }
 
   getVelocity(): Vector2 {
@@ -268,7 +270,7 @@ export class Player extends Entity {
           const p2 = (b as Entity).getExt(Positionable).getPosition();
           return distance(this.getPosition(), p1) - distance(this.getPosition(), p2);
         })
-        .filter((entity: Entity) => {
+        .filter((entity) => {
           if (
             distance(this.getPosition(), entity.getExt(Positionable).getPosition()) >
             MAX_INTERACT_RADIUS
@@ -311,10 +313,7 @@ export class Player extends Entity {
           dx = offset;
         }
 
-        const pos: Vector2 = {
-          x: this.getPosition().x + dx,
-          y: this.getPosition().y + dy,
-        };
+        const pos = new Vector2(this.getPosition().x + dx, this.getPosition().y + dy);
 
         if (entity.hasExt(Positionable)) {
           entity.getExt(Positionable).setPosition(pos);

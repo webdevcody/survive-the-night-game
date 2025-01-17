@@ -4,9 +4,10 @@ import Positionable from "@/extensions/positionable";
 import { IGameManagers } from "@/managers/types";
 import { Entities } from "@/constants";
 import { Entity } from "@/entities/entity";
+import Vector2 from "@/util/vector2";
 
 export class PistolAmmo extends Entity {
-  public static readonly Size = 16;
+  public static readonly Size = new Vector2(16, 16);
   public static readonly DEFAULT_AMMO_COUNT = 10;
 
   constructor(gameManagers: IGameManagers) {

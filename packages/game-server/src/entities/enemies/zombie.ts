@@ -13,14 +13,15 @@ import Positionable from "@/extensions/positionable";
 import Updatable from "@/extensions/updatable";
 import { Entities } from "@/constants";
 import { Entity } from "@/entities/entity";
-import { Hitbox } from "@/util/hitbox";
-import { Vector2, pathTowards, velocityTowards } from "@/util/physics";
+import { pathTowards, velocityTowards } from "@/util/physics";
 import { IEntity } from "@/entities/types";
 import { LootEvent } from "@/events/server-sent/loot-event";
+import { Rectangle } from "@/util/shape";
+import Vector2 from "@/util/vector2";
 
 export class Zombie extends Entity {
-  private static readonly ZOMBIE_WIDTH = 16;
-  private static readonly ZOMBIE_HEIGHT = 16;
+  public static readonly Size = new Vector2(16, 16);
+
   private static readonly ZOMBIE_SPEED = 35;
   private static readonly POSITION_THRESHOLD = 1;
   private static readonly ATTACK_RADIUS = 24;
@@ -43,8 +44,8 @@ export class Zombie extends Entity {
         .setHealth(Zombie.MAX_HEALTH)
         .onDeath(this.onDeath.bind(this)),
       new Groupable(this, "enemy"),
-      new Positionable(this).setSize(Zombie.ZOMBIE_WIDTH),
-      new Collidable(this).setSize(8).setOffset(4),
+      new Positionable(this).setSize(Zombie.Size),
+      new Collidable(this).setSize(Zombie.Size.div(2)).setOffset(new Vector2(4, 4)),
       new Movable(this),
       new Updatable(this, this.updateZombie.bind(this)),
     ];
@@ -52,14 +53,12 @@ export class Zombie extends Entity {
 
   getCenterPosition(): Vector2 {
     const positionable = this.getExt(Positionable);
+    const size = positionable.getSize()
     const position = positionable.getPosition();
-    return {
-      x: position.x + Zombie.ZOMBIE_WIDTH / 2,
-      y: position.y + Zombie.ZOMBIE_HEIGHT / 2,
-    };
+    return new Rectangle(position, size).center;
   }
 
-  getHitbox(): Hitbox {
+  getHitbox(): Rectangle {
     const collidable = this.getExt(Collidable);
     return collidable.getHitBox();
   }

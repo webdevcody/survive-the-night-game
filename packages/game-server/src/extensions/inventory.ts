@@ -6,6 +6,7 @@ import { PlayerPickedUpItemEvent } from "@shared/events/server-sent/pickup-item-
 import Positionable from "@/extensions/positionable";
 import { IEntity } from "@/entities/types";
 import { MAX_INVENTORY_SLOTS } from "@/constants/constants";
+import Vector2 from "@/util/vector2";
 
 export default class Inventory implements Extension {
   public static readonly type = "inventory";
@@ -85,10 +86,7 @@ export default class Inventory implements Extension {
       const entity = this.createEntityFromItem(item);
       const theta = Math.random() * 2 * Math.PI;
       const radius = Math.random() * offset;
-      const pos = {
-        x: position.x + radius * Math.cos(theta),
-        y: position.y + radius * Math.sin(theta),
-      };
+      const pos = new Vector2(position.x + radius * Math.cos(theta), position.y + radius * Math.sin(theta));
 
       if ("setPosition" in entity) {
         (entity as any).setPosition(pos);

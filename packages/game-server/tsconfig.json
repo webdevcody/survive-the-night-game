@@ -21,15 +21,12 @@
     ],
     "baseUrl": ".",
     "paths": {
-      "@/*": ["./src/*", "../game-shared/src/*"], 
+      "@/*": ["./src/*", "../game-shared/src/*"],
       "@/tests/*": ["./tests/*"],
       "@shared/*": ["../game-shared/src/*"]
     }
   },
-  "include": [
-    "src/**/*",
-    "tests/**/*"
-  ],
+  "include": ["src/**/*", "tests/**/*"],
   "references": [
     {
       "path": "../game-shared"

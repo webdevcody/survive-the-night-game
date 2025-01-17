@@ -5,6 +5,7 @@ import { Bullet } from "@/entities/projectiles/bullet";
 import { Weapon } from "@/entities/weapons/weapon";
 import { WEAPON_TYPES } from "@shared/types/weapons";
 import { Direction } from "../../../../game-shared/src/util/direction";
+import Vector2 from "@/util/vector2";
 
 export class Shotgun extends Weapon {
   private static readonly SPREAD_ANGLE = 8; // degrees
@@ -13,7 +14,7 @@ export class Shotgun extends Weapon {
     super(gameManagers, WEAPON_TYPES.SHOTGUN);
   }
 
-  public attack(playerId: string, position: { x: number; y: number }, facing: Direction): void {
+  public attack(playerId: string, position: Vector2, facing: Direction): void {
     const player = this.getEntityManager().getEntityById(playerId);
     if (!player) return;
 

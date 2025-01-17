@@ -10,12 +10,13 @@ import { distance } from "../../../../game-shared/src/util/physics";
 import { IEntity } from "@/entities/types";
 import Destructible from "@/extensions/destructible";
 import OneTimeTrigger from "@/extensions/one-time-trigger";
+import Vector2 from "@/util/vector2";
 
 /**
  * A landmine that explodes when zombies step on it, damaging all nearby zombies
  */
 export class Landmine extends Entity implements IEntity {
-  private static readonly SIZE = 16;
+  private static readonly SIZE = new Vector2(16, 16);
   private static readonly DAMAGE = 3;
   private static readonly EXPLOSION_RADIUS = 32;
   private static readonly TRIGGER_RADIUS = 16;
@@ -24,7 +25,7 @@ export class Landmine extends Entity implements IEntity {
     super(gameManagers, Entities.LANDMINE);
 
     this.addExtension(new Positionable(this).setSize(Landmine.SIZE));
-    this.addExtension(new Triggerable(this, Landmine.SIZE, Landmine.SIZE, [Entities.ZOMBIE]));
+    this.addExtension(new Triggerable(this, Landmine.SIZE, [Entities.ZOMBIE]));
     this.addExtension(
       new Interactive(this)
         .onInteract((entityId: string) => this.interact(entityId))

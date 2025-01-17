@@ -18,7 +18,6 @@ export abstract class ClientEntity extends ClientEntityBase implements Renderabl
     const myPlayer = getPlayer(gameState);
     const positionable = this.getExt(ClientPositionable);
     const interactive = this.getExt(ClientInteractive);
-
     if (myPlayer && interactive.getDisplayName()) {
       renderInteractionText(
         ctx,

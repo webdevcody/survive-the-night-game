@@ -1,10 +1,10 @@
 import { GameEvent } from "@/events/types";
-import { Hitbox } from "@/util/hitbox";
 import { InventoryItem } from "@/util/inventory";
-import { Vector2 } from "@/util/physics";
+import Vector2 from "@shared/util/vector2";
 import { IEntity } from "@/entities/types";
 import { EntityType } from "@/types/entity";
 import { EntityStateTracker } from "./entity-state-tracker";
+import Shape, { Rectangle } from "@/util/shape";
 
 export interface IEntityManager {
   generateEntityId(): string;
@@ -15,8 +15,9 @@ export interface IEntityManager {
   getClosestAlivePlayer(entity: IEntity): IEntity | null;
   getEntityById(id: string): IEntity | null;
   getNearbyEntities(position: Vector2, radius?: number, entityTypes?: EntityType[]): IEntity[];
+  getNearbyEntitiesByRange(range: Shape, entityTypes?: EntityType[]): IEntity[];
   registerItem(key: string, entityClass: new (entityManager: IEntityManager) => IEntity): void;
-  getNearbyIntersectingDestructableEntities(sourceEntity: IEntity, sourceHitbox: Hitbox): IEntity[];
+  getNearbyIntersectingDestructableEntities(sourceEntity: IEntity, sourceHitbox: Rectangle): IEntity[];
   getBroadcaster(): Broadcaster;
   getPlayerEntities(): IEntity[];
   getEntitiesToRemove(): Array<{ id: string; expiration: number }>;

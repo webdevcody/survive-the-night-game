@@ -8,9 +8,10 @@ import { IGameManagers } from "@/managers/types";
 import { Entities } from "@/constants";
 import { Entity } from "@/entities/entity";
 import { Fire } from "@/entities/environment/fire";
+import Vector2 from "@/util/vector2";
 
 export class Gasoline extends Entity {
-  public static readonly Size = 16;
+  public static readonly Size = new Vector2(16, 16);
 
   constructor(gameManagers: IGameManagers) {
     super(gameManagers, Entities.GASOLINE);
