@@ -1,8 +1,8 @@
-class Vector2 {
+export default class Vector2 {
   static readonly ZERO = new Vector2(0, 0);
 
-   x: number;
-   y: number;
+  x: number;
+  y: number;
 
   constructor(x: number, y: number) {
     this.x = x;
@@ -89,9 +89,6 @@ class Vector2 {
   }
 
   clone() {
-    return new Vector2(this.x, this.y)
+    return new Vector2(this.x, this.y);
   }
 }
-
-
-export default Vector2

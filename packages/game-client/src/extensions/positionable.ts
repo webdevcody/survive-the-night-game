@@ -5,7 +5,7 @@ import { ClientExtension, ClientExtensionSerialized } from "@/extensions/types";
 export class ClientPositionable implements ClientExtension {
   public static readonly type = ExtensionTypes.POSITIONABLE;
 
-  private position: Vector2 = new Vector2(0, 0)
+  private position: Vector2 = new Vector2(0, 0);
   private size: Vector2 = new Vector2(0, 0);
 
   public getSize(): Vector2 {
@@ -26,12 +26,12 @@ export class ClientPositionable implements ClientExtension {
   }
 
   public setPosition(position: Vector2): void {
-    this.position = position
+    this.position = position;
   }
 
   public deserialize(data: ClientExtensionSerialized): this {
-    this.position = data.position
-    this.size = data.size;
+    this.position = new Vector2(data.position.x, data.position.y);
+    this.size = new Vector2(data.size.x, data.size.y);
     return this;
   }
 }
