@@ -70,6 +70,16 @@ export class GameServer {
     this.cycleStartTime = Date.now();
     this.cycleDuration = DAY_DURATION;
     this.isDay = true;
+
+    // Track initial game state
+    const initialGameState = {
+      dayNumber: this.dayNumber,
+      cycleStartTime: this.cycleStartTime,
+      cycleDuration: this.cycleDuration,
+      isDay: this.isDay,
+    };
+    this.entityManager.getEntityStateTracker().trackGameState(initialGameState);
+
     this.mapManager.generateMap();
   }
 
@@ -119,6 +129,13 @@ export class GameServer {
     this.broadcastGameState();
     this.trackPerformance(updateStartTime, currentTime);
     this.lastUpdateTime = currentTime;
+
+    // Track all entities for next update's change detection
+    const entities = this.entityManager.getEntities();
+    const filteredEntities = entities.filter((entity) => !("isServerOnly" in entity));
+    filteredEntities.forEach((entity) => {
+      this.entityManager.getEntityStateTracker().trackEntity(entity);
+    });
   }
 
   private handleDayNightCycle(deltaTime: number) {
@@ -130,6 +147,15 @@ export class GameServer {
       this.cycleStartTime = currentTime;
       this.cycleDuration = this.isDay ? DAY_DURATION : NIGHT_DURATION;
       this.dayNumber += this.isDay ? 1 : 0;
+
+      // Track the game state changes immediately
+      const currentGameState = {
+        dayNumber: this.dayNumber,
+        cycleStartTime: this.cycleStartTime,
+        cycleDuration: this.cycleDuration,
+        isDay: this.isDay,
+      };
+      this.entityManager.getEntityStateTracker().trackGameState(currentGameState);
 
       if (this.isDay) {
         console.log(`Day ${this.dayNumber} started`);

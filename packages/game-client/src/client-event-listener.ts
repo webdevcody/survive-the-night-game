@@ -97,8 +97,13 @@ export class ClientEventListener {
       entities.forEach((entityData) => {
         const existingEntity = this.gameState.entities.find((e) => e.getId() === entityData.id);
         if (existingEntity) {
-          // Update existing entity by deserializing the new data
-          existingEntity.deserialize(entityData);
+          // Only update properties that were included in the delta update
+          for (const [key, value] of Object.entries(entityData)) {
+            if (key !== "id") {
+              // Skip the ID since it's used for lookup
+              existingEntity.deserializeProperty(key, value);
+            }
+          }
         } else {
           // Add new entity
           this.gameState.entities.push(this.gameClient.getEntityFactory().createEntity(entityData));

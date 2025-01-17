@@ -8,7 +8,6 @@ export interface EntityState extends RawEntity {
 
 export interface GameStateData {
   entities: EntityState[];
-  timestamp: number;
   removedEntityIds?: string[];
   isFullState?: boolean;
   dayNumber?: number;

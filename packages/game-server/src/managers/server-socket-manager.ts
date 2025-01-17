@@ -132,11 +132,6 @@ export class ServerSocketManager implements Broadcaster {
     const entities = this.getEntityManager().getEntities();
     const filteredEntities = entities.filter((entity) => !("isServerOnly" in entity));
 
-    // Track all entities in their current state
-    filteredEntities.forEach((entity: IEntity) =>
-      this.getEntityManager().getEntityStateTracker().trackEntity(entity)
-    );
-
     socket.emit(ServerSentEvents.GAME_STATE_UPDATE, {
       entities: filteredEntities.map((entity) => entity.serialize()),
       timestamp: Date.now(),
@@ -201,16 +196,85 @@ export class ServerSocketManager implements Broadcaster {
         return; // No changes to broadcast
       }
 
-      const gameStateEvent = new GameStateEvent({
-        entities: changedEntities.map((entity) => entity.serialize()),
-        timestamp: Date.now(),
-        removedEntityIds,
-        isFullState: false,
+      // For each changed entity, only include properties that have actually changed
+      const changedEntityData = changedEntities.map((entity) => {
+        const currentState = entity.serialize();
+        const previousState = entityStateTracker.getPreviousEntityState(entity.getId());
+
+        if (!previousState) {
+          // If no previous state exists, this is a new entity - track it and send full state
+          entityStateTracker.trackEntity(entity);
+          return currentState;
+        }
+
+        // Create a delta object with only changed properties
+        const delta: any = {
+          id: entity.getId(),
+          type: entity.getType(), // Always include type for safety
+        };
+
+        // Compare and include changed properties
+        for (const [key, value] of Object.entries(currentState)) {
+          if (key === "id") continue; // Skip id as it's already included
+
+          if (key === "extensions" && Array.isArray(value)) {
+            const prevExtensions = previousState[key] || [];
+            // Only include extensions that actually changed
+            const changedExtensions = [];
+
+            for (const ext of value) {
+              const prevExt = prevExtensions.find((pe: any) => pe.type === ext.type);
+              if (!prevExt) {
+                // New extension, include it
+                changedExtensions.push(ext);
+                continue;
+              }
+
+              // Deep compare extension properties excluding type
+              const extCopy = { ...ext };
+              const prevExtCopy = { ...prevExt };
+              delete extCopy.type;
+              delete prevExtCopy.type;
+
+              if (JSON.stringify(extCopy) !== JSON.stringify(prevExtCopy)) {
+                changedExtensions.push(ext); // Only include this extension if it changed
+              }
+            }
+
+            if (changedExtensions.length > 0) {
+              delta.extensions = changedExtensions; // Only include changed extensions
+            }
+          } else if (JSON.stringify(previousState[key]) !== JSON.stringify(value)) {
+            delta[key] = value;
+          }
+        }
+
+        return delta;
+      });
+
+      // Get current game state
+      const currentGameState = {
         dayNumber: this.gameServer.getDayNumber(),
         cycleStartTime: this.gameServer.getCycleStartTime(),
         cycleDuration: this.gameServer.getCycleDuration(),
         isDay: this.gameServer.getIsDay(),
+      };
+
+      // Get only changed game state properties
+      const changedGameState = entityStateTracker.getChangedGameStateProperties(currentGameState);
+
+      const gameStateEvent = new GameStateEvent({
+        entities: changedEntityData,
+        removedEntityIds,
+        isFullState: false,
+        ...changedGameState,
       });
+
+      // Track the current state of all entities and game state after sending the update
+      changedEntities.forEach((entity) => {
+        entityStateTracker.trackEntity(entity);
+      });
+      entityStateTracker.trackGameState(currentGameState);
 
       this.io.emit(gameStateEvent.getType(), gameStateEvent.serialize());
     } else {

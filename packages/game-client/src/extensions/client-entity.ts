@@ -83,7 +83,7 @@ export abstract class ClientEntityBase {
         let ext = existingExtensions.get(extData.type);
 
         if (!ext) {
-          ext = new ClientExtCtor();
+          ext = new ClientExtCtor(this);
         }
         ext.deserialize(extData);
         newExtensions.push(ext);
@@ -94,5 +94,22 @@ export abstract class ClientEntityBase {
 
     // Update extensions list
     this.extensions = newExtensions;
+  }
+
+  public deserializeProperty(key: string, value: any): void {
+    if (key === "extensions" && Array.isArray(value)) {
+      // Handle extension updates
+      value.forEach((extData) => {
+        const extension = this.extensions.find(
+          (ext) => (ext.constructor as any).type === extData.type
+        );
+        if (extension && "deserialize" in extension) {
+          (extension as any).deserialize(extData);
+        }
+      });
+    } else {
+      // Handle direct property updates
+      (this as any)[key] = value;
+    }
   }
 }
