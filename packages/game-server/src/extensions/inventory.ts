@@ -5,10 +5,10 @@ import { Broadcaster } from "@/managers/types";
 import { PlayerPickedUpItemEvent } from "@shared/events/server-sent/pickup-item-event";
 import Positionable from "@/extensions/positionable";
 import { IEntity } from "@/entities/types";
+import { MAX_INVENTORY_SLOTS } from "@/constants/constants";
 
 export default class Inventory implements Extension {
   public static readonly type = "inventory";
-  public static readonly MAX_SLOTS = 8;
 
   private self: IEntity;
   private items: InventoryItem[] = [];
@@ -24,7 +24,7 @@ export default class Inventory implements Extension {
   }
 
   public isFull(): boolean {
-    return this.items.length >= Inventory.MAX_SLOTS;
+    return this.items.length >= MAX_INVENTORY_SLOTS;
   }
 
   public hasItem(key: ItemType): boolean {

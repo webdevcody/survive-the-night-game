@@ -89,52 +89,63 @@ export function pathTowards(a: Vector2, b: Vector2, map: number[][]): Vector2 | 
     closedSet.add(`${current.x},${current.y}`);
 
     const neighbors = [
-      { dx: 0, dy: -1 },
-      { dx: 1, dy: 0 },
-      { dx: 0, dy: 1 },
-      { dx: -1, dy: 0 },
+      { dx: 0, dy: -1 }, // up
+      { dx: 1, dy: 0 }, // right
+      { dx: 0, dy: 1 }, // down
+      { dx: -1, dy: 0 }, // left
+      { dx: 1, dy: -1 }, // up-right
+      { dx: 1, dy: 1 }, // down-right
+      { dx: -1, dy: 1 }, // down-left
+      { dx: -1, dy: -1 }, // up-left
     ];
 
     for (const { dx, dy } of neighbors) {
       const newX = current.x + dx;
       const newY = current.y + dy;
 
+      // Skip if out of bounds
       if (
         newX < 0 ||
         newX >= map[0].length ||
         newY < 0 ||
         newY >= map.length ||
-        map[newY][newX] >= 2 // Forest tile ID
+        closedSet.has(`${newX},${newY}`) ||
+        map[newY][newX] === 2 // Forest tile ID
       ) {
         continue;
       }
 
-      if (closedSet.has(`${newX},${newY}`)) {
-        continue;
+      // For diagonal movement, check if we're cutting corners between obstacles
+      if (Math.abs(dx) === 1 && Math.abs(dy) === 1) {
+        // Check the two adjacent tiles to ensure we're not cutting through obstacles
+        if (map[current.y][newX] === 2 || map[newY][current.x] === 2) {
+          continue;
+        }
       }
 
-      const g = current.g + 1;
+      const g = current.g + (Math.abs(dx) + Math.abs(dy) === 2 ? 1.4 : 1); // Slightly higher cost for diagonal movement
       const h = Math.abs(endX - newX) + Math.abs(endY - newY);
       const f = g + h;
 
       const existingNode = openSet.find((node) => node.x === newX && node.y === newY);
-      if (existingNode && g >= existingNode.g) {
-        continue;
-      }
 
-      if (!existingNode) {
-        openSet.push({
+      if (!existingNode || g < existingNode.g) {
+        const node: Node = {
           x: newX,
           y: newY,
           g,
           h,
           f,
           parent: current,
-        });
-      } else {
-        existingNode.g = g;
-        existingNode.f = f;
-        existingNode.parent = current;
+        };
+
+        if (!existingNode) {
+          openSet.push(node);
+        } else {
+          existingNode.g = g;
+          existingNode.f = f;
+          existingNode.parent = current;
+        }
       }
     }
   }
