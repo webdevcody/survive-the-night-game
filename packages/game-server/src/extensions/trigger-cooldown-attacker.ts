@@ -1,12 +1,13 @@
 import { distance } from "../../../game-shared/src/util/physics";
 import { Extension, ExtensionSerialized } from "@/extensions/types";
-import { Rectangle } from "../../../game-shared/src/util/rectangle";
 import { Cooldown } from "@/entities/util/cooldown";
 import Positionable from "@/extensions/positionable";
 import Triggerable from "@/extensions/trigger";
 import Destructible from "@/extensions/destructible";
 import { EntityType } from "@/types/entity";
 import { IEntity } from "@/entities/types";
+import { Rectangle } from "@/util/shape";
+import Vector2 from "@/util/vector2";
 
 /**
  * This extension will cause the entity to fire an attack when the cooldown is ready.
@@ -53,7 +54,7 @@ export default class TriggerCooldownAttacker implements Extension {
       ]);
 
     const triggerBox = this.self.getExt(Triggerable).getTriggerBox();
-    const triggerCenter = triggerBox.getCenter();
+    const triggerCenter = triggerBox.center;
 
     for (const entity of entities) {
       if (!entity.hasExt(Destructible)) {
@@ -62,12 +63,10 @@ export default class TriggerCooldownAttacker implements Extension {
 
       const destructible = entity.getExt(Destructible);
       const entityHitbox = new Rectangle(
-        entity.getExt(Positionable).getPosition().x,
-        entity.getExt(Positionable).getPosition().y,
-        16,
-        16
+        entity.getExt(Positionable).getPosition(),
+        new Vector2(16, 16)
       );
-      const entityCenter = entityHitbox.getCenter();
+      const entityCenter = entityHitbox.center;
 
       const centerDistance = distance(triggerCenter, entityCenter);
 

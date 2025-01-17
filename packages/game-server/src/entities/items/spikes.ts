@@ -6,20 +6,21 @@ import TriggerCooldownAttacker from "@/extensions/trigger-cooldown-attacker";
 import { IGameManagers } from "@/managers/types";
 import { Entities } from "@/constants";
 import { Entity } from "@/entities/entity";
+import Vector2 from "@/util/vector2";
 
 /**
  * A spike trap which only hurts zombies who step on it. Can be picked up and placed again.
  */
 export class Spikes extends Entity {
   private static readonly DAMAGE = 1;
-  private static readonly SIZE = 16;
+  private static readonly SIZE = new Vector2(16, 16);
 
   constructor(gameManagers: IGameManagers) {
     super(gameManagers, Entities.SPIKES);
 
     this.extensions = [
       new Positionable(this).setSize(Spikes.SIZE),
-      new Triggerable(this, Spikes.SIZE, Spikes.SIZE, [Entities.ZOMBIE]),
+      new Triggerable(this, Spikes.SIZE, [Entities.ZOMBIE]),
       new TriggerCooldownAttacker(this, {
         damage: Spikes.DAMAGE,
         victimType: Entities.ZOMBIE,

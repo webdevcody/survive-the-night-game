@@ -7,9 +7,10 @@ import Interactive from "@/extensions/interactive";
 import Inventory from "@/extensions/inventory";
 import Positionable from "@/extensions/positionable";
 import { Entity } from "@/entities/entity";
+import Vector2 from "@/util/vector2";
 
 export class Bandage extends Entity {
-  public static readonly Size = 16;
+  public static readonly Size = new Vector2(16, 16);
   public static readonly healingAmount = 5;
 
   constructor(gameManagers: IGameManagers) {

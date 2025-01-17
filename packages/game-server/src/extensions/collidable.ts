@@ -1,20 +1,20 @@
-import { Hitbox } from "../../../game-shared/src/util/hitbox";
 import { IEntity } from "@/entities/types";
 import Positionable from "@/extensions/positionable";
 import { Extension, ExtensionSerialized } from "@/extensions/types";
+import { Rectangle } from "@/util/shape";
+import Vector2 from "@/util/vector2";
+import Movable from "./movable";
 
 export default class Collidable implements Extension {
   public static readonly type = "collidable";
 
   private self: IEntity;
-  private size: number;
-  private offset: number;
+  private size: Vector2 = new Vector2(16, 16);
+  private offset: Vector2 = new Vector2(0, 0);
   private enabled: boolean;
 
   public constructor(self: IEntity) {
     this.self = self;
-    this.size = 16;
-    this.offset = 0;
     this.enabled = true;
   }
 
@@ -27,33 +27,26 @@ export default class Collidable implements Extension {
     return this.enabled;
   }
 
-  public setSize(newSize: number) {
-    this.size = newSize;
+  public setSize(size: Vector2) {
+    this.size = size;
     return this;
   }
 
-  public getSize(): number {
-    return this.size;
+  public getSize(): Vector2 {
+    return this.size.clone();
   }
 
-  public setOffset(newOffset: number) {
-    this.offset = newOffset;
+  public setOffset(offset: Vector2) {
+    this.offset = offset;
     return this;
   }
 
-  public getHitBox(): Hitbox {
+  public getHitBox(): Rectangle {
     const positionable = this.self.getExt(Positionable);
-
     const position = positionable.getPosition();
+    const size = positionable.getSize();
 
-    position.x += this.offset;
-    position.y += this.offset;
-
-    return {
-      ...position,
-      width: this.size,
-      height: this.size,
-    };
+    return new Rectangle(position.add(this.offset), size);
   }
 
   public serialize(): ExtensionSerialized {

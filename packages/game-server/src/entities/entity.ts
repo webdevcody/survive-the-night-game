@@ -6,7 +6,7 @@ import { IEntity } from "./types";
 export class Entity extends EventTarget implements IEntity {
   private readonly id: string;
   private readonly type: EntityType;
-  protected readonly extensions: Extension[] = [];
+  protected extensions: Extension[] = [];
   private readonly gameManagers: IGameManagers;
 
   public constructor(gameManagers: IGameManagers, type: EntityType) {

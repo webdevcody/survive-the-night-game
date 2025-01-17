@@ -1,10 +1,9 @@
 import { TILE_SIZE } from "../constants/constants";
 import { Hitbox } from "./hitbox";
-
-export type Vector2 = { x: number; y: number };
+import Vector2 from "./vector2";
 
 export function roundVector2(vector: Vector2): Vector2 {
-  return { x: Math.round(vector.x), y: Math.round(vector.y) };
+  return new Vector2(Math.round(vector.x), Math.round(vector.y));
 }
 
 export function distance(a: Vector2, b: Vector2): number {
@@ -15,13 +14,10 @@ export function velocityTowards(a: Vector2, b: Vector2): Vector2 {
   const d = distance(a, b);
 
   if (d === 0) {
-    return { x: 0, y: 0 };
+    return new Vector2(0, 0);
   }
 
-  return {
-    x: (b.x - a.x) / d,
-    y: (b.y - a.y) / d,
-  };
+  return new Vector2((b.x - a.x) / d, (b.y - a.y) / d);
 }
 
 interface Node {
@@ -79,10 +75,10 @@ export function pathTowards(a: Vector2, b: Vector2, map: number[][]): Vector2 | 
       }
 
       // Return the center position of the next tile to move to
-      return {
-        x: firstStep.x * TILE_SIZE + TILE_SIZE / 2,
-        y: firstStep.y * TILE_SIZE + TILE_SIZE / 2,
-      };
+      return new Vector2(
+        firstStep.x * TILE_SIZE + TILE_SIZE / 2,
+        firstStep.y * TILE_SIZE + TILE_SIZE / 2
+      );
     }
 
     openSet.splice(currentIndex, 1);
@@ -155,11 +151,8 @@ export function pathTowards(a: Vector2, b: Vector2, map: number[][]): Vector2 | 
 
 export function normalizeVector(vector: Vector2): Vector2 {
   const magnitude = Math.sqrt(vector.x * vector.x + vector.y * vector.y);
-  if (magnitude === 0) return { x: 0, y: 0 };
-  return {
-    x: vector.x / magnitude,
-    y: vector.y / magnitude,
-  };
+  if (magnitude === 0) return new Vector2(0, 0);
+  return new Vector2(vector.x / magnitude, vector.y / magnitude);
 }
 
 export function isColliding(a: Hitbox, b: Hitbox): boolean {

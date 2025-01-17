@@ -10,9 +10,11 @@ import { Entities } from "@/constants";
 import { Direction, normalizeDirection } from "@/util/direction";
 import { Entity } from "@/entities/entity";
 import { Hitbox } from "@/util/hitbox";
-import { Vector2, normalizeVector, distance } from "@/util/physics";
+import { normalizeVector, distance } from "@/util/physics";
 import { IEntity } from "@/entities/types";
 import { RawEntity } from "@/types/entity";
+import Vector2 from "@/util/vector2";
+import { Rectangle } from "@/util/shape";
 
 const MAX_TRAVEL_DISTANCE = 400;
 export const BULLET_SPEED = 100;
@@ -29,16 +31,15 @@ export class Bullet extends Entity {
       new Positionable(this),
       new Movable(this),
       new Updatable(this, this.updateBullet.bind(this)),
-      new Collidable(this).setSize(1),
+      new Collidable(this).setSize(new Vector2(1, 1)),
     ];
   }
 
   setDirection(direction: Direction) {
     const normalized = normalizeDirection(direction);
-    this.getExt(Movable).setVelocity({
-      x: normalized.x * Bullet.BULLET_SPEED,
-      y: normalized.y * Bullet.BULLET_SPEED,
-    });
+    this.getExt(Movable).setVelocity(
+      new Vector2(normalized.x * Bullet.BULLET_SPEED, normalized.y * Bullet.BULLET_SPEED)
+    );
   }
 
   setDirectionWithOffset(direction: Direction, offsetAngle: number) {
@@ -57,28 +58,29 @@ export class Bullet extends Entity {
     // Normalize the rotated vector
     const length = Math.sqrt(rotatedX * rotatedX + rotatedY * rotatedY);
 
-    this.getExt(Movable).setVelocity({
-      x: (rotatedX / length) * Bullet.BULLET_SPEED,
-      y: (rotatedY / length) * Bullet.BULLET_SPEED,
-    });
+    this.getExt(Movable).setVelocity(
+      new Vector2(
+        (rotatedX / length) * Bullet.BULLET_SPEED,
+        (rotatedY / length) * Bullet.BULLET_SPEED
+      )
+    );
   }
 
-  getHitbox(): Hitbox {
+  getHitbox(): Rectangle {
     return this.getExt(Collidable).getHitBox();
   }
 
   setDirectionFromVelocity(velocity: Vector2) {
     if (velocity.x === 0 && velocity.y === 0) {
       // Default direction (right) if no velocity
-      this.getExt(Movable).setVelocity({ x: Bullet.BULLET_SPEED, y: 0 });
+      this.getExt(Movable).setVelocity(new Vector2(Bullet.BULLET_SPEED, 0));
       return;
     }
 
     const normalized = normalizeVector(velocity);
-    this.getExt(Movable).setVelocity({
-      x: normalized.x * Bullet.BULLET_SPEED,
-      y: normalized.y * Bullet.BULLET_SPEED,
-    });
+    this.getExt(Movable).setVelocity(
+      new Vector2(normalized.x * Bullet.BULLET_SPEED, normalized.y * Bullet.BULLET_SPEED)
+    );
   }
 
   private updateBullet(deltaTime: number) {
@@ -88,15 +90,17 @@ export class Bullet extends Entity {
   }
 
   private updatePositions(deltaTime: number) {
-    const lastPosition = { ...this.getPosition() };
+    const lastPosition = this.getPosition();
     const movable = this.getExt(Movable);
     const velocity = movable.getVelocity();
     const positionable = this.getExt(Positionable);
 
-    positionable.setPosition({
-      x: positionable.getPosition().x + velocity.x * deltaTime,
-      y: positionable.getPosition().y + velocity.y * deltaTime,
-    });
+    positionable.setPosition(
+      new Vector2(
+        positionable.getPosition().x + velocity.x * deltaTime,
+        positionable.getPosition().y + velocity.y * deltaTime
+      )
+    );
     return lastPosition;
   }
 
@@ -123,7 +127,7 @@ export class Bullet extends Entity {
     }
   }
 
-  private handleMaxDistanceLogic(lastPosition: { x: number; y: number }) {
+  private handleMaxDistanceLogic(lastPosition: Vector2) {
     this.traveledDistance += distance(lastPosition, this.getPosition());
 
     if (this.traveledDistance > MAX_TRAVEL_DISTANCE) {
