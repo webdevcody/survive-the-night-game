@@ -1,7 +1,6 @@
 import { RawEntity } from "@shared/types/entity";
 import { Entities } from "@shared/constants";
 import { AssetManager } from "@/managers/asset";
-import { IClientEntity } from "@/entities/util";
 import { BulletClient } from "@/entities/bullet";
 import { ZombieClient } from "@/entities/zombie";
 import { WallClient } from "@/entities/items/wall";
@@ -19,6 +18,7 @@ import { KnifeClient } from "@/entities/weapons/knife";
 import { PistolAmmoClient } from "@/entities/weapons/pistol-ammo";
 import { ShotgunAmmoClient } from "@/entities/weapons/shotgun-ammo";
 import { LandmineClient } from "@/entities/items/landmine";
+import { ClientEntityBase } from "@/extensions/client-entity";
 
 export const entityMap = {
   [Entities.PLAYER]: PlayerClient,
@@ -47,7 +47,7 @@ export class EntityFactory {
     this.assetManager = assetManager;
   }
 
-  public createEntity(data: RawEntity): IClientEntity {
+  public createEntity(data: RawEntity): ClientEntityBase {
     if (!data || !data.type) {
       throw new Error(`Invalid entity data: ${JSON.stringify(data)}`);
     }

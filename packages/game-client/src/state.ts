@@ -5,7 +5,8 @@ export type GameState = {
   playerId: string;
   entities: ClientEntityBase[];
   dayNumber: number;
-  untilNextCycle: number;
+  cycleStartTime: number;
+  cycleDuration: number;
   isDay: boolean;
   crafting: boolean;
 };

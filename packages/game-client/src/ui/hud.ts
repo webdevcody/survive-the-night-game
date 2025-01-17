@@ -34,6 +34,14 @@ export class Hud {
     this.showInstructions = !this.showInstructions;
   }
 
+  private getCycleText(gameState: GameState): string {
+    const currentTime = Date.now();
+    const elapsedTime = (currentTime - gameState.cycleStartTime) / 1000;
+    const remainingTime = Math.max(0, Math.ceil(gameState.cycleDuration - elapsedTime));
+    const timeOfDay = gameState.isDay ? "Day" : "Night";
+    return `${timeOfDay} ${gameState.dayNumber} - ${remainingTime}s`;
+  }
+
   public render(ctx: CanvasRenderingContext2D, gameState: GameState): void {
     const { width } = ctx.canvas;
 
@@ -41,9 +49,8 @@ export class Hud {
     ctx.fillStyle = "white";
 
     const dayText = `Day ${gameState.dayNumber}`;
-    const cycleText = `${gameState.isDay ? "Day" : "Night"} | ${Math.floor(
-      gameState.untilNextCycle
-    )}s Left`;
+    const timeOfDay = gameState.isDay ? "Day" : "Night";
+    const cycleText = this.getCycleText(gameState);
 
     const dayTextWidth = ctx.measureText(dayText).width;
     const cycleTextWidth = ctx.measureText(cycleText).width;

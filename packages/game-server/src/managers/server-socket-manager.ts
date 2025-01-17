@@ -12,6 +12,9 @@ import { Server, Socket } from "socket.io";
 import { CommandManager } from "@/managers/command-manager";
 import { MapManager } from "@/managers/map-manager";
 import { Broadcaster, IEntityManager, IGameManagers } from "@/managers/types";
+import { EntityStateTracker } from "./entity-state-tracker";
+import { GameStateEvent } from "@shared/events/server-sent/game-state-event";
+import { IEntity } from "@/entities/types";
 
 /**
  * Any and all functionality related to sending server side events
@@ -100,6 +103,7 @@ export class ServerSocketManager implements Broadcaster {
 
     if (this.players.size === 0) {
       this.getMapManager().generateMap();
+      this.getEntityManager().getEntityStateTracker().clear();
     }
   }
 
@@ -122,6 +126,26 @@ export class ServerSocketManager implements Broadcaster {
     const player = this.players.get(socket.id);
     if (!player) return;
     player.setIsCrafting(isCrafting);
+  }
+
+  private sendFullState(socket: Socket): void {
+    const entities = this.getEntityManager().getEntities();
+    const filteredEntities = entities.filter((entity) => !("isServerOnly" in entity));
+
+    // Track all entities in their current state
+    filteredEntities.forEach((entity: IEntity) =>
+      this.getEntityManager().getEntityStateTracker().trackEntity(entity)
+    );
+
+    socket.emit(ServerSentEvents.GAME_STATE_UPDATE, {
+      entities: filteredEntities.map((entity) => entity.serialize()),
+      timestamp: Date.now(),
+      isFullState: true,
+      dayNumber: this.gameServer.getDayNumber(),
+      cycleStartTime: this.gameServer.getCycleStartTime(),
+      cycleDuration: this.gameServer.getCycleDuration(),
+      isDay: this.gameServer.getIsDay(),
+    });
   }
 
   private onConnection(socket: Socket): void {
@@ -158,6 +182,7 @@ export class ServerSocketManager implements Broadcaster {
     socket.on(ClientSentEvents.ADMIN_COMMAND, (command: AdminCommand) =>
       this.getCommandManager().handleCommand(command)
     );
+    socket.on(ClientSentEvents.REQUEST_FULL_STATE, () => this.sendFullState(socket));
 
     socket.on("disconnect", () => {
       this.onDisconnect(socket);
@@ -165,9 +190,31 @@ export class ServerSocketManager implements Broadcaster {
   }
 
   public broadcastEvent(event: GameEvent<any>): void {
-    if (DEBUG_EVENTS && event.getType() !== ServerSentEvents.GAME_STATE_UPDATE) {
-      console.log(`Broadcasting event: ${event.getType()}`);
+    if (event.getType() === ServerSentEvents.GAME_STATE_UPDATE) {
+      const entities = this.getEntityManager().getEntities();
+      const filteredEntities = entities.filter((entity) => !("isServerOnly" in entity));
+      const entityStateTracker = this.getEntityManager().getEntityStateTracker();
+      const changedEntities = entityStateTracker.getChangedEntities(filteredEntities);
+      const removedEntityIds = entityStateTracker.getRemovedEntityIds();
+
+      if (changedEntities.length === 0 && removedEntityIds.length === 0) {
+        return; // No changes to broadcast
+      }
+
+      const gameStateEvent = new GameStateEvent({
+        entities: changedEntities.map((entity) => entity.serialize()),
+        timestamp: Date.now(),
+        removedEntityIds,
+        isFullState: false,
+        dayNumber: this.gameServer.getDayNumber(),
+        cycleStartTime: this.gameServer.getCycleStartTime(),
+        cycleDuration: this.gameServer.getCycleDuration(),
+        isDay: this.gameServer.getIsDay(),
+      });
+
+      this.io.emit(gameStateEvent.getType(), gameStateEvent.serialize());
+    } else {
+      this.io.emit(event.getType(), event.serialize());
     }
-    this.io.emit(event.getType(), event.serialize());
   }
 }
