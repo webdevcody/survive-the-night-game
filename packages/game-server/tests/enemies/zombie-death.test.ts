@@ -4,6 +4,7 @@ import Destructible from "@/extensions/destructible";
 import { GameManagers } from "@/managers/game-managers";
 import { beforeEach, vi, test, expect } from "vitest";
 import { simpleTestSetup } from "@/tests/utils/setup";
+import Vector2 from "@/util/vector2";
 
 let zombie: Zombie;
 let bullet: Bullet;
@@ -14,17 +15,11 @@ beforeEach(() => {
   vi.spyOn(gameManagers.getBroadcaster(), "broadcastEvent");
 
   zombie = new Zombie(gameManagers);
-  zombie.setPosition({
-    x: 0,
-    y: 0,
-  });
+  zombie.setPosition(new Vector2(0, 0));
   gameManagers.getEntityManager().addEntity(zombie);
 
   bullet = new Bullet(gameManagers);
-  bullet.setPosition({
-    x: 0,
-    y: 0,
-  });
+  bullet.setPosition(new Vector2(0, 0));
   gameManagers.getEntityManager().addEntity(bullet);
 });
 

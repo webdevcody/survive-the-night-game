@@ -7,6 +7,7 @@ import Positionable from "@/extensions/positionable";
 import { GameManagers } from "@/managers/game-managers";
 import { beforeEach, it, expect } from "vitest";
 import { simpleTestSetup } from "@/tests/utils/setup";
+import Vector2 from "@/util/vector2";
 
 let player: Player;
 let fire: Fire;
@@ -20,9 +21,9 @@ beforeEach(() => {
   fire = new Fire(gameManagers);
   zombie = new Zombie(gameManagers);
 
-  player.setPosition({ x: 0, y: 0 });
-  fire.getExt(Positionable).setPosition({ x: 10, y: 0 });
-  zombie.setPosition({ x: 10, y: 0 });
+  player.setPosition(new Vector2(0, 0));
+  fire.getExt(Positionable).setPosition(new Vector2(10, 0));
+  zombie.setPosition(new Vector2(10, 0));
 
   gameManagers.getEntityManager().addEntity(zombie);
   gameManagers.getEntityManager().addEntity(player);

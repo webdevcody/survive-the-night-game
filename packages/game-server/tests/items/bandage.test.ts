@@ -5,6 +5,7 @@ import { TILE_SIZE } from "@/managers/map-manager";
 import { beforeEach, it, expect } from "vitest";
 import { simpleTestSetup } from "../utils/setup";
 import { MAX_PLAYER_HEALTH } from "@/constants/constants";
+import Vector2 from "@/util/vector2";
 
 let player: Player;
 let gameManagers: GameManagers;
@@ -16,10 +17,7 @@ beforeEach(() => {
 
   gameManagers.getEntityManager().setMapSize(4 * TILE_SIZE, 4 * TILE_SIZE);
 
-  player.setPosition({
-    x: 0,
-    y: 0,
-  });
+  player.setPosition(new Vector2(0, 0));
   gameManagers.getEntityManager().addEntity(player);
 
   // Add a bandage to player's inventory
