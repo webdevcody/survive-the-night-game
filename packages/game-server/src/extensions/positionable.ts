@@ -39,8 +39,7 @@ export default class Positionable implements Extension {
   public serialize(): ExtensionSerialized {
     return {
       type: Positionable.type,
-      x: this.position.x,
-      y: this.position.y,
+      position: this.position,
       size: this.size,
     };
   }

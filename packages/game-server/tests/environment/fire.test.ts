@@ -25,7 +25,6 @@ beforeEach(() => {
   fire.getExt(Positionable).setPosition(new Vector2(10, 0));
   zombie.setPosition(new Vector2(10, 0));
 
-
   gameManagers.getEntityManager().addEntity(fire);
   gameManagers.getEntityManager().addEntity(zombie);
   gameManagers.getEntityManager().addEntity(player);
