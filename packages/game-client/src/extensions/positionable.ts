@@ -30,7 +30,6 @@ export class ClientPositionable implements ClientExtension {
   }
 
   public deserialize(data: ClientExtensionSerialized): this {
-    console.log(data)
     this.position = data.position
     this.size = data.size;
     return this;

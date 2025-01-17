@@ -10,8 +10,6 @@ export function renderInteractionText(
   playerPosition: Vector2
 ): void {
   if (distance(playerPosition, centerPosition) < MAX_INTERACT_RADIUS) {
-    console.log('test')
-
     ctx.fillStyle = "white";
     ctx.font = "6px Arial";
     const textWidth = ctx.measureText(text).width;
