@@ -15,6 +15,7 @@ import { Broadcaster, IEntityManager, IGameManagers } from "@/managers/types";
 import { EntityStateTracker } from "./entity-state-tracker";
 import { GameStateEvent } from "@shared/events/server-sent/game-state-event";
 import { IEntity } from "@/entities/types";
+import Vector2 from "@/util/vector2";
 
 /**
  * Any and all functionality related to sending server side events
@@ -161,7 +162,7 @@ export class ServerSocketManager implements Broadcaster {
     const map = this.getMapManager().getMap();
     const centerX = (map.length * 16) / 2;
     const centerY = (map[0].length * 16) / 2;
-    player.getExt(Positionable).setPosition({ x: centerX, y: centerY });
+    player.getExt(Positionable).setPosition(new Vector2(centerX, centerY));
 
     this.players.set(socket.id, player);
     this.getEntityManager().addEntity(player);

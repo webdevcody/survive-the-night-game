@@ -19,15 +19,16 @@ import Destructible from "@/extensions/destructible";
 import Positionable from "@/extensions/positionable";
 import { Entities } from "@/constants";
 import { Entity } from "@/entities/entity";
-import { Hitbox } from "@/util/hitbox";
 import { ItemType, InventoryItem } from "@/util/inventory";
-import { Vector2, distance, isColliding } from "@/util/physics";
+import { distance, isColliding } from "@/util/physics";
 import { IEntity } from "@/entities/types";
 import { EntityType } from "@shared/types/entity";
 import { SpatialGrid } from "@/managers/spatial-grid";
 import { IGameManagers, IEntityManager, Broadcaster } from "@/managers/types";
 import { Landmine } from "@/entities/items/landmine";
 import { EntityStateTracker } from "./entity-state-tracker";
+import Shape, { Rectangle } from "@/util/shape";
+import Vector2 from "@/util/vector2";
 
 const entityMap = {
   [Entities.PLAYER]: Player,
@@ -195,6 +196,10 @@ export class EntityManager implements IEntityManager {
     return this.spatialGrid?.getNearbyEntities(position, radius, filter) ?? [];
   }
 
+  getNearbyEntitiesByRange(range: Shape, filter?: EntityType[]): Entity[] {
+    return this.spatialGrid?.getNearbyEntitiesByRange(range, filter) ?? [];
+  }
+
   getPlayerEntities(): Player[] {
     return this.entities.filter((entity) => {
       return entity.getType() === Entities.PLAYER;
@@ -258,14 +263,14 @@ export class EntityManager implements IEntityManager {
   }
 
   // TODO: we might benefit from abstracting this into a more generic function that takes in a type or something
-  getNearbyIntersectingDestructableEntities(sourceEntity: Entity, sourceHitbox: Hitbox) {
+  getNearbyIntersectingDestructableEntities(sourceEntity: Entity, sourceHitbox: Rectangle) {
     if (!this.spatialGrid) {
       return [];
     }
 
     const hitBox = sourceHitbox;
 
-    const nearbyEntities = this.spatialGrid.getNearbyEntities(hitBox);
+    const nearbyEntities = this.spatialGrid.getNearbyEntitiesByRange(hitBox);
 
     const interactingEntities: Entity[] = [];
 
@@ -282,7 +287,7 @@ export class EntityManager implements IEntityManager {
         continue;
       }
 
-      if (isColliding(hitBox, targetBox)) {
+      if (hitBox.intersects(targetBox)) {
         interactingEntities.push(otherEntity);
       }
     }
@@ -301,7 +306,7 @@ export class EntityManager implements IEntityManager {
 
     const hitBox = sourceEntity.getExt(Collidable).getHitBox();
 
-    const nearbyEntities = this.spatialGrid.getNearbyEntities(hitBox);
+    const nearbyEntities = this.spatialGrid.getNearbyEntitiesByRange(hitBox);
 
     // TODO: look into refactoring this
     for (const otherEntity of nearbyEntities) {
@@ -325,7 +330,7 @@ export class EntityManager implements IEntityManager {
         continue;
       }
 
-      if (isColliding(hitBox, targetBox)) {
+      if (hitBox.intersects(targetBox)) {
         return otherEntity;
       }
     }

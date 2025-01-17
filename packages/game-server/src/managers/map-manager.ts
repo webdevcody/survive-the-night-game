@@ -10,6 +10,7 @@ import Positionable from "@/extensions/positionable";
 import { TILE_IDS } from "@shared/map";
 import { PistolAmmo } from "@/entities/items/pistol-ammo";
 import { ShotgunAmmo } from "@/entities/items/shotgun-ammo";
+import Vector2 from "@/util/vector2";
 const WEAPON_SPAWN_CHANCE = {
   PISTOL: 0.002,
   SHOTGUN: 0.002,
@@ -114,7 +115,7 @@ export class MapManager implements IMapManager {
       for (let x = 0; x < this.map[y].length; x++) {
         if (this.map[y][x] === 0 && Math.random() < ZOMBIE_SPAWN_CHANCE * dayNumber) {
           const zombie = new Zombie(this.getGameManagers());
-          zombie.setPosition({ x: x * TILE_SIZE, y: y * TILE_SIZE });
+          zombie.setPosition(new Vector2(x * TILE_SIZE, y * TILE_SIZE));
           this.getEntityManager().addEntity(zombie);
         }
       }
@@ -153,7 +154,7 @@ export class MapManager implements IMapManager {
       for (let x = 0; x < totalSize; x++) {
         if (this.map[y][x] === TILE_IDS.FOREST) {
           const boundary = new Boundary(this.getGameManagers());
-          boundary.setPosition({ x: x * TILE_SIZE, y: y * TILE_SIZE });
+          boundary.setPosition(new Vector2(x * TILE_SIZE, y * TILE_SIZE));
           this.getEntityManager().addEntity(boundary);
         }
       }
@@ -166,35 +167,35 @@ export class MapManager implements IMapManager {
           if (Math.random() < 0.05) {
             // 30% chance for a tree
             const tree = new Tree(this.getGameManagers());
-            tree.getExt(Positionable).setPosition({ x: x * TILE_SIZE, y: y * TILE_SIZE });
+            tree.getExt(Positionable).setPosition(new Vector2(x * TILE_SIZE, y * TILE_SIZE));
             this.getEntityManager().addEntity(tree);
           } else if (Math.random() < WEAPON_SPAWN_CHANCE.PISTOL) {
             // 0.1% chance for a pistol
             const weapon = new Pistol(this.getGameManagers());
-            weapon.getExt(Positionable).setPosition({ x: x * TILE_SIZE, y: y * TILE_SIZE });
+            weapon.getExt(Positionable).setPosition(new Vector2(x * TILE_SIZE, y * TILE_SIZE));
             this.getEntityManager().addEntity(weapon);
 
             const pistolAmmo = new PistolAmmo(this.getGameManagers());
             pistolAmmo
               .getExt(Positionable)
-              .setPosition({ x: x * TILE_SIZE + 5, y: y * TILE_SIZE + 4 });
+              .setPosition(new Vector2(x * TILE_SIZE + 5, y * TILE_SIZE + 4));
             this.getEntityManager().addEntity(pistolAmmo);
           } else if (Math.random() < WEAPON_SPAWN_CHANCE.SHOTGUN) {
             // 0.1% chance for a shotgun
             const weapon = new Shotgun(this.getGameManagers());
-            weapon.getExt(Positionable).setPosition({ x: x * TILE_SIZE, y: y * TILE_SIZE });
+            weapon.getExt(Positionable).setPosition(new Vector2(x * TILE_SIZE, y * TILE_SIZE));
             this.getEntityManager().addEntity(weapon);
 
             const shotgunAmmo = new ShotgunAmmo(this.getGameManagers());
             shotgunAmmo
               .getExt(Positionable)
-              .setPosition({ x: x * TILE_SIZE + 5, y: y * TILE_SIZE + 4 });
+              .setPosition(new Vector2(x * TILE_SIZE + 5, y * TILE_SIZE + 4));
             this.getEntityManager().addEntity(shotgunAmmo);
           } else if (Math.random() < WEAPON_SPAWN_CHANCE.KNIFE) {
             // 0.1% chance for a knife
             // 0.1% chance for a knife
             const weapon = new Knife(this.getGameManagers());
-            weapon.getExt(Positionable).setPosition({ x: x * TILE_SIZE, y: y * TILE_SIZE });
+            weapon.getExt(Positionable).setPosition(new Vector2(x * TILE_SIZE, y * TILE_SIZE));
             this.getEntityManager().addEntity(weapon);
           }
         }
@@ -206,7 +207,7 @@ export class MapManager implements IMapManager {
       const middleY = Math.floor(totalSize / 2) * TILE_SIZE;
 
       const zombie = new Zombie(this.getGameManagers());
-      zombie.setPosition({ x: middleX + 16 * 4, y: middleY });
+      zombie.setPosition(new Vector2(middleX + 16 * 4, middleY));
       this.getEntityManager().addEntity(zombie);
     }
   }

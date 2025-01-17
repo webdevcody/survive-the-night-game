@@ -1,6 +1,6 @@
-import { Vector2 } from "../../../game-shared/src/util/physics";
 import { IEntity } from "@/entities/types";
 import { Extension, ExtensionSerialized } from "@/extensions/types";
+import Vector2 from "@/util/vector2";
 
 export default class Movable implements Extension {
   public static readonly type = "movable";
@@ -10,14 +10,11 @@ export default class Movable implements Extension {
 
   public constructor(self: IEntity) {
     this.self = self;
-    this.velocity = {
-      x: 0,
-      y: 0,
-    };
+    this.velocity = new Vector2(0, 0);
   }
 
   public getVelocity(): Vector2 {
-    return this.velocity;
+    return this.velocity.clone();
   }
 
   public setVelocity(velocity: Vector2): void {

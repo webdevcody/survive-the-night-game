@@ -6,17 +6,18 @@ import Triggerable from "@/extensions/trigger";
 import { IGameManagers } from "@/managers/types";
 import { Entities } from "@/constants";
 import { Entity } from "@/entities/entity";
-import { IEntity } from "@survive-the-night/game-shared/src/util/entity";
+import Vector2 from "@/util/vector2";
+import { IEntity } from "@/entities/types";
 
 export class Fire extends Entity {
-  public static readonly Size = 16;
+  public static readonly Size = new Vector2(16, 16);
 
   constructor(gameManagers: IGameManagers) {
     super(gameManagers, Entities.FIRE);
 
     this.extensions = [
-      new Positionable(this).setSize(16),
-      new Triggerable(this, 16, 16, [Entities.ZOMBIE, Entities.PLAYER]).setOnEntityEntered(
+      new Positionable(this).setSize(Fire.Size),
+      new Triggerable(this, Fire.Size, [Entities.ZOMBIE, Entities.PLAYER]).setOnEntityEntered(
         this.catchFire.bind(this)
       ),
       new Expirable(this, 8),

@@ -1,4 +1,4 @@
-import { Vector2 } from "../util/physics";
+import Vector2 from "@/util/vector2";
 import { EntityType } from "../types/entity";
 import { ItemType } from "../util/inventory";
 

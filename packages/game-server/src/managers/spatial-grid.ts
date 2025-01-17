@@ -1,74 +1,39 @@
 import Positionable from "@/extensions/positionable";
 import { Entity } from "@/entities/entity";
-import { Vector2 } from "@/util/physics";
 import { EntityType } from "@/types/entity";
+import QuadTree from "@/util/quad-tree";
+import Shape, { Circle, Rectangle } from "@/util/shape";
+import Vector2 from "@/util/vector2";
 
 export class SpatialGrid {
-  private cells: Map<string, Entity>[][] = [];
-  private cellSize: number = 16;
+  #quadTree: QuadTree;
 
-  constructor(mapWidth: number, mapHeight: number) {
-    const cols = Math.ceil(mapWidth / this.cellSize);
-    const rows = Math.ceil(mapHeight / this.cellSize);
-
-    for (let y = 0; y < rows; y++) {
-      this.cells[y] = [];
-      for (let x = 0; x < cols; x++) {
-        this.cells[y][x] = new Map();
-      }
-    }
+  constructor(mapWidth: number, mapHeight: number, capacity: number = 4) {
+    this.#quadTree = new QuadTree(new Rectangle(new Vector2(0, 0), new Vector2(mapWidth, mapHeight)), capacity);
   }
 
   clear() {
-    for (let y = 0; y < this.cells.length; y++) {
-      for (let x = 0; x < this.cells[y].length; x++) {
-        this.cells[y][x].clear();
-      }
-    }
+    this.#quadTree.clear()
   }
 
   addEntity(entity: Entity) {
-    const pos = entity.getExt(Positionable).getPosition();
-    const [cellX, cellY] = this.getCellCoords(pos);
+    const positionable = entity.getExt(Positionable)
+    const position = positionable.getPosition()
+    const size = positionable.getSize()
+    const rect = new Rectangle(position, size)
 
-    if (this.isValidCell(cellX, cellY)) {
-      this.cells[cellY][cellX].set(entity.getId(), entity);
-    }
+    this.#quadTree.add(rect, entity);
   }
 
-  private getCellCoords(position: Vector2): [number, number] {
-    return [Math.floor(position.x / this.cellSize), Math.floor(position.y / this.cellSize)];
+  getNearbyEntities(position: Vector2, radius: number = 16, filter?: EntityType[]): Entity[] {
+    return this.getNearbyEntitiesByRange(
+      new Circle(position, radius),
+      filter
+    );
   }
 
-  private isValidCell(x: number, y: number): boolean {
-    return y >= 0 && y < this.cells.length && x >= 0 && x < this.cells[0].length;
-  }
-
-  getNearbyEntities(
-    position: Vector2,
-    radius: number = this.cellSize,
-    filter?: EntityType[]
-  ): Entity[] {
-    const [cellX, cellY] = this.getCellCoords(position);
-    const cellRadius = Math.ceil(radius / this.cellSize);
-    const nearby: Entity[] = [];
-
-    for (let y = -cellRadius; y <= cellRadius; y++) {
-      for (let x = -cellRadius; x <= cellRadius; x++) {
-        const checkX = cellX + x;
-        const checkY = cellY + y;
-
-        if (this.isValidCell(checkX, checkY)) {
-          this.cells[checkY][checkX].forEach((entity) => {
-            if (filter && !filter.includes(entity.getType())) {
-              return;
-            }
-            nearby.push(entity);
-          });
-        }
-      }
-    }
-
-    return nearby;
+  getNearbyEntitiesByRange(range: Shape, filter?: EntityType[]): Entity[] {
+    const nearby = Array.from(this.#quadTree.query(range));
+    return filter ? nearby.filter((entity) => filter.includes(entity.getType())) : nearby;
   }
 }

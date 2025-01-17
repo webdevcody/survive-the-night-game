@@ -5,9 +5,10 @@ import { IGameManagers } from "@/managers/types";
 import { Entity } from "@/entities/entity";
 import { WeaponKey } from "../../../../game-shared/src/util/inventory";
 import { Direction } from "../../../../game-shared/src/util/direction";
+import Vector2 from "@/util/vector2";
 
 export abstract class Weapon extends Entity {
-  public static readonly Size = 16;
+  public static readonly Size = new Vector2(16, 16);
 
   constructor(gameManagers: IGameManagers, weaponKey: WeaponKey) {
     super(gameManagers, weaponKey);
