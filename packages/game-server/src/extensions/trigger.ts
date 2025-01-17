@@ -35,7 +35,6 @@ export default class Triggerable implements Extension {
 
     for (const entity of entities) {
       if (!entity.hasExt(Collidable)) continue;
-
       this.onEntityEntered?.(entity);
     }
   }

@@ -25,17 +25,14 @@ beforeEach(() => {
   fire.getExt(Positionable).setPosition(new Vector2(10, 0));
   zombie.setPosition(new Vector2(10, 0));
 
+
+  gameManagers.getEntityManager().addEntity(fire);
   gameManagers.getEntityManager().addEntity(zombie);
   gameManagers.getEntityManager().addEntity(player);
-  gameManagers.getEntityManager().addEntity(fire);
 });
 
 it("should damage zombie when ignited", () => {
   const initialHealth = zombie.getExt(Destructible).getHealth();
-
-  // Add ignitable extension to zombie
-  const ignitable = new Ignitable(zombie);
-  zombie.addExtension(ignitable);
 
   // Update to trigger fire damage cycle
   gameManagers.getEntityManager().update(1);
@@ -46,10 +43,6 @@ it("should damage zombie when ignited", () => {
 });
 
 it("should remove ignitable extension after max damage is dealt", () => {
-  // Add ignitable extension to zombie
-  const ignitable = new Ignitable(zombie);
-  zombie.addExtension(ignitable);
-
   // First update - deals 1 damage
   gameManagers.getEntityManager().update(1);
   expect(zombie.hasExt(Ignitable)).toBe(true);

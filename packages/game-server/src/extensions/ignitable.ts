@@ -29,6 +29,7 @@ export default class Ignitable implements Extension {
       this.totalDamage += this.damage;
 
       if (this.totalDamage >= this.maxDamage) {
+        console.log(this.self.getId())
         this.self.removeExtension(this);
       }
     }
