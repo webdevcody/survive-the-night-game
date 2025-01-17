@@ -26,10 +26,7 @@
       "@shared/*": ["../game-shared/src/*"]
     }
   },
-  "include": [
-    "src/**/*",
-    "tests/**/*"
-, "../game-shared/src/util/vector2.ts", "../game-shared/src/util/shape.ts"  ],
+  "include": ["src/**/*", "tests/**/*"],
   "references": [
     {
       "path": "../game-shared"
