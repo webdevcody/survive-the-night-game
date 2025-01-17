@@ -53,7 +53,7 @@ export class ClientSocketManager {
 
     this.socket.on("connect", () => {
       console.log("Connected to game server", this.socket.id);
-      // handlers.onConnect(this.getId()!);
+      this.socket.emit(ClientSentEvents.REQUEST_FULL_STATE);
     });
 
     this.socket.on("disconnect", () => {

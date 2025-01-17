@@ -27,6 +27,7 @@ import { EntityType } from "@shared/types/entity";
 import { SpatialGrid } from "@/managers/spatial-grid";
 import { IGameManagers, IEntityManager, Broadcaster } from "@/managers/types";
 import { Landmine } from "@/entities/items/landmine";
+import { EntityStateTracker } from "./entity-state-tracker";
 
 const entityMap = {
   [Entities.PLAYER]: Player,
@@ -57,9 +58,11 @@ export class EntityManager implements IEntityManager {
   private spatialGrid: SpatialGrid | null = null;
   private gameManagers?: IGameManagers;
   private itemConstructors = new Map<ItemType, EntityConstructor>();
+  private entityStateTracker: EntityStateTracker;
 
   constructor() {
     this.entities = [];
+    this.entityStateTracker = new EntityStateTracker();
     this.registerDefaultItems();
   }
 
@@ -171,6 +174,8 @@ export class EntityManager implements IEntityManager {
         continue;
       }
 
+      // Track entity removal before removing it
+      this.entityStateTracker.trackRemoval(entity.getId());
       this.entities.splice(i, 1);
       this.entitiesToRemove.splice(removeRecordIndex, 1);
     }
@@ -377,5 +382,9 @@ export class EntityManager implements IEntityManager {
       console.warn(`createEntity failed - Unknown entity type: ${entityType}`);
       return null;
     }
+  }
+
+  public getEntityStateTracker(): EntityStateTracker {
+    return this.entityStateTracker;
   }
 }

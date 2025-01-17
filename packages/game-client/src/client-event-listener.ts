@@ -63,10 +63,48 @@ export class ClientEventListener {
   }
 
   onGameStateUpdate(gameStateEvent: GameStateEvent) {
-    this.gameClient.setUpdatedEntitiesBuffer(gameStateEvent.getGameState().entities);
-    this.gameState.dayNumber = gameStateEvent.getGameState().dayNumber;
-    this.gameState.untilNextCycle = gameStateEvent.getGameState().untilNextCycle;
-    this.gameState.isDay = gameStateEvent.getGameState().isDay;
+    const entities = gameStateEvent.getEntities();
+
+    // Update game state properties only if they are included in the update
+    if (gameStateEvent.getDayNumber() !== undefined) {
+      this.gameState.dayNumber = gameStateEvent.getDayNumber()!;
+    }
+    if (gameStateEvent.getCycleStartTime() !== undefined) {
+      this.gameState.cycleStartTime = gameStateEvent.getCycleStartTime()!;
+    }
+    if (gameStateEvent.getCycleDuration() !== undefined) {
+      this.gameState.cycleDuration = gameStateEvent.getCycleDuration()!;
+    }
+    if (gameStateEvent.getIsDay() !== undefined) {
+      this.gameState.isDay = gameStateEvent.getIsDay()!;
+    }
+
+    if (gameStateEvent.isFullState()) {
+      // Full state update - replace all entities
+      this.gameState.entities = entities.map((entity) => {
+        return this.gameClient.getEntityFactory().createEntity(entity);
+      });
+    } else {
+      // Delta update - update only changed entities
+      const removedIds = gameStateEvent.getRemovedEntityIds();
+
+      // Remove entities that were deleted
+      this.gameState.entities = this.gameState.entities.filter(
+        (entity) => !removedIds.includes(entity.getId())
+      );
+
+      // Update or add changed entities
+      entities.forEach((entityData) => {
+        const existingEntity = this.gameState.entities.find((e) => e.getId() === entityData.id);
+        if (existingEntity) {
+          // Update existing entity by deserializing the new data
+          existingEntity.deserialize(entityData);
+        } else {
+          // Add new entity
+          this.gameState.entities.push(this.gameClient.getEntityFactory().createEntity(entityData));
+        }
+      });
+    }
   }
 
   onMap(mapEvent: MapEvent) {

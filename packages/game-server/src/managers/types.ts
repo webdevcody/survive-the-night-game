@@ -4,6 +4,7 @@ import { InventoryItem } from "@/util/inventory";
 import { Vector2 } from "@/util/physics";
 import { IEntity } from "@/entities/types";
 import { EntityType } from "@/types/entity";
+import { EntityStateTracker } from "./entity-state-tracker";
 
 export interface IEntityManager {
   generateEntityId(): string;
@@ -24,6 +25,7 @@ export interface IEntityManager {
   getEntities(): IEntity[];
   setMapSize(width: number, height: number): void;
   createEntity(entityType: EntityType): IEntity | null;
+  getEntityStateTracker(): EntityStateTracker;
 }
 
 export interface Broadcaster {

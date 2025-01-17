@@ -15,13 +15,36 @@ export class GameServer {
   private socketManager: ServerSocketManager;
   private timer: ReturnType<typeof setInterval> | null = null;
   private dayNumber: number = 1;
-  private untilNextCycle: number = 0;
+  private cycleStartTime: number = Date.now();
+  private cycleDuration: number = DAY_DURATION;
   private isDay: boolean = true;
   private updateTimes: number[] = [];
   private lastPerformanceLog: number = Date.now();
   private isGameOver: boolean = false;
   private gameManagers: GameManagers;
   private commandManager: CommandManager;
+  private lastBroadcastedState = {
+    dayNumber: -1,
+    cycleStartTime: -1,
+    cycleDuration: -1,
+    isDay: undefined as boolean | undefined,
+  };
+
+  public getDayNumber(): number {
+    return this.dayNumber;
+  }
+
+  public getCycleStartTime(): number {
+    return this.cycleStartTime;
+  }
+
+  public getCycleDuration(): number {
+    return this.cycleDuration;
+  }
+
+  public getIsDay(): boolean {
+    return this.isDay;
+  }
 
   constructor(port: number = 3001) {
     this.socketManager = new ServerSocketManager(port, this);
@@ -44,7 +67,8 @@ export class GameServer {
   public startNewGame(): void {
     this.isGameOver = false;
     this.dayNumber = 1;
-    this.untilNextCycle = DAY_DURATION;
+    this.cycleStartTime = Date.now();
+    this.cycleDuration = DAY_DURATION;
     this.isDay = true;
     this.mapManager.generateMap();
   }
@@ -98,15 +122,20 @@ export class GameServer {
   }
 
   private handleDayNightCycle(deltaTime: number) {
-    this.untilNextCycle -= deltaTime;
-    if (this.untilNextCycle <= 0) {
+    const currentTime = Date.now();
+    const elapsedTime = (currentTime - this.cycleStartTime) / 1000;
+
+    if (elapsedTime >= this.cycleDuration) {
       this.isDay = !this.isDay;
-      this.untilNextCycle = this.isDay ? DAY_DURATION : NIGHT_DURATION;
+      this.cycleStartTime = currentTime;
+      this.cycleDuration = this.isDay ? DAY_DURATION : NIGHT_DURATION;
       this.dayNumber += this.isDay ? 1 : 0;
 
       if (this.isDay) {
+        console.log(`Day ${this.dayNumber} started`);
         this.onDayStart();
       } else {
+        console.log(`Night ${this.dayNumber} started`);
         this.onNightStart();
       }
     }
@@ -169,12 +198,34 @@ export class GameServer {
     const rawEntities = [...this.entityManager.getEntities()]
       .filter((entity) => !("isServerOnly" in entity))
       .map((entity) => entity.serialize());
-    const gameStateEvent = new GameStateEvent({
+
+    // Only include state properties that have changed
+    const stateUpdate: any = {
       entities: rawEntities,
-      dayNumber: this.dayNumber,
-      untilNextCycle: this.untilNextCycle,
-      isDay: this.isDay,
-    });
+      timestamp: Date.now(),
+    };
+
+    if (this.dayNumber !== this.lastBroadcastedState.dayNumber) {
+      stateUpdate.dayNumber = this.dayNumber;
+      this.lastBroadcastedState.dayNumber = this.dayNumber;
+    }
+
+    if (this.cycleStartTime !== this.lastBroadcastedState.cycleStartTime) {
+      stateUpdate.cycleStartTime = this.cycleStartTime;
+      this.lastBroadcastedState.cycleStartTime = this.cycleStartTime;
+    }
+
+    if (this.cycleDuration !== this.lastBroadcastedState.cycleDuration) {
+      stateUpdate.cycleDuration = this.cycleDuration;
+      this.lastBroadcastedState.cycleDuration = this.cycleDuration;
+    }
+
+    if (this.isDay !== this.lastBroadcastedState.isDay) {
+      stateUpdate.isDay = this.isDay;
+      this.lastBroadcastedState.isDay = this.isDay;
+    }
+
+    const gameStateEvent = new GameStateEvent(stateUpdate);
     this.socketManager.broadcastEvent(gameStateEvent);
   }
 }

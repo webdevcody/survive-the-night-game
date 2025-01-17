@@ -1,11 +1,10 @@
 import { AssetManager } from "@/managers/asset";
 import { InputManager } from "@/managers/input";
-import { EntityDto, ClientSocketManager } from "@/managers/client-socket-manager";
+import { ClientSocketManager } from "@/managers/client-socket-manager";
 import { PlayerClient } from "@/entities/player";
 import { CameraManager } from "@/managers/camera";
 import { MapManager } from "@/managers/map";
 import { GameState, getEntityById } from "@/state";
-import { IClientEntity } from "@/entities/util";
 import { InventoryBarUI } from "@/ui/inventory-bar";
 import { CraftingTable } from "@/ui/crafting-table";
 import { StorageManager } from "@/managers/storage";
@@ -21,6 +20,7 @@ import { CommandManager } from "@/managers/command-manager";
 import { DEBUG_ADMIN_COMMANDS } from "@shared/debug";
 import { Direction } from "../../game-shared/src/util/direction";
 import { Input } from "../../game-shared/src/util/input";
+import { ClientEntityBase } from "@/extensions/client-entity";
 
 export class GameClient {
   private ctx: CanvasRenderingContext2D;
@@ -35,6 +35,7 @@ export class GameClient {
   private soundManager: SoundManager;
   private commandManager: CommandManager;
   private clientEventListener: ClientEventListener;
+  private entityFactory: EntityFactory;
 
   // Controllers
   private resizeController: ResizeController;
@@ -49,7 +50,6 @@ export class GameClient {
 
   // State
   private gameState: GameState;
-  private updatedEntitiesBuffer: EntityDto[] = [];
   private animationFrameId: number | null = null;
   private isStarted = false;
   private isMounted = true;
@@ -62,6 +62,7 @@ export class GameClient {
     this.cameraManager = new CameraManager(this.ctx);
     this.zoomController = new ZoomController(this.storageManager, this.cameraManager);
     this.soundManager = new SoundManager(this);
+    this.entityFactory = new EntityFactory(this.assetManager);
 
     const getInventory = () => {
       if (this.gameState.playerId) {
@@ -172,7 +173,8 @@ export class GameClient {
       playerId: "",
       entities: [],
       dayNumber: 0,
-      untilNextCycle: 0,
+      cycleStartTime: Date.now(),
+      cycleDuration: 60, // Default to 60 seconds until we get the real value from server
       isDay: true,
       crafting: false,
     };
@@ -218,10 +220,6 @@ export class GameClient {
     return this.gameState.playerId
       ? (getEntityById(this.gameState, this.gameState.playerId) as unknown as PlayerClient)
       : null;
-  }
-
-  public setUpdatedEntitiesBuffer(entities: EntityDto[]) {
-    this.updatedEntitiesBuffer = entities;
   }
 
   public getMapManager(): MapManager {
@@ -287,43 +285,13 @@ export class GameClient {
     this.isStarted = false;
   }
 
-  // TODO: clean this up with delta compression and a different approach for new / old entities
-  private updateEntities(): void {
-    // remove dead entities
-    for (let i = 0; i < this.getEntities().length; i++) {
-      const entity = this.getEntities()[i];
-      if (!this.updatedEntitiesBuffer.find((e) => e.id === entity.getId())) {
-        this.getEntities().splice(i, 1);
-        i--;
-      }
-    }
-
-    // EXISTING ENTITIES
-    for (const entityData of this.updatedEntitiesBuffer) {
-      const existingEntity = this.getEntities().find((e) => e.getId() === entityData.id);
-
-      if (existingEntity) {
-        (existingEntity as any).deserialize(entityData);
-        continue;
-      }
-
-      // NEW ENTITY HERE
-      const factory = new EntityFactory(this.assetManager);
-      const entity = factory.createEntity(entityData);
-      this.getEntities().push(entity);
-    }
-  }
-
   private update(): void {
     if (this.inputManager.getHasChanged()) {
       this.sendInput(this.inputManager.getInputs());
       this.inputManager.reset();
     }
 
-    this.updateEntities();
-
     this.positionCameraOnPlayer();
-
     this.hud.update(this.gameState);
   }
 
@@ -335,7 +303,11 @@ export class GameClient {
     }
   }
 
-  private getEntities(): IClientEntity[] {
+  private getEntities(): ClientEntityBase[] {
     return this.gameState.entities;
+  }
+
+  public getEntityFactory(): EntityFactory {
+    return this.entityFactory;
   }
 }
