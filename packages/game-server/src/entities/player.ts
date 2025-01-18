@@ -386,4 +386,10 @@ export class Player extends Entity {
   heal(amount: number): void {
     this.getExt(Destructible).heal(amount);
   }
+
+  update(deltaTime: number): void {
+    if (this.isDead()) {
+      return;
+    }
+  }
 }

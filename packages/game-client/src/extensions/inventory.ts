@@ -1,8 +1,9 @@
 import { ExtensionTypes } from "../../../game-shared/src/util/extension-types";
 import { InventoryItem } from "../../../game-shared/src/util/inventory";
-import { ClientExtension, ClientExtensionSerialized } from "@/extensions/types";
+import { ClientExtensionSerialized } from "@/extensions/types";
+import { BaseClientExtension } from "./base-extension";
 
-export class ClientInventory implements ClientExtension {
+export class ClientInventory extends BaseClientExtension {
   public static readonly type = ExtensionTypes.INVENTORY;
   public static readonly MAX_SLOTS = 8;
 

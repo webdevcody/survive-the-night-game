@@ -7,6 +7,7 @@ import {
 } from "@shared/commands/commands";
 import { IEntityManager } from "@/managers/types";
 import Positionable from "@/extensions/positionable";
+import Vector2 from "@/util/vector2";
 
 export class CommandManager {
   private entityManager: IEntityManager;
@@ -39,7 +40,9 @@ export class CommandManager {
   private createEntity(payload: CreateEntityCommand["payload"]) {
     const entity = this.entityManager.createEntity(payload.entityType);
     if (!entity) return;
-    entity.getExt(Positionable).setPosition(payload.position);
+    entity
+      .getExt(Positionable)
+      .setPosition(new Vector2(payload.position.x + 32, payload.position.y));
     this.entityManager.addEntity(entity);
   }
 }

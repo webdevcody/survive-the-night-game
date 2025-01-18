@@ -1,7 +1,8 @@
 import { ExtensionTypes } from "../../../game-shared/src/util/extension-types";
-import { ClientExtension, ClientExtensionSerialized } from "@/extensions/types";
+import { ClientExtensionSerialized } from "@/extensions/types";
+import { BaseClientExtension } from "./base-extension";
 
-export class ClientTriggerable implements ClientExtension {
+export class ClientTriggerable extends BaseClientExtension {
   public static readonly type = ExtensionTypes.TRIGGERABLE;
 
   public deserialize(data: ClientExtensionSerialized): this {

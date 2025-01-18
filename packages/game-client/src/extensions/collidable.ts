@@ -1,12 +1,16 @@
+import { Rectangle } from "@shared/util/shape";
 import { ExtensionTypes } from "../../../game-shared/src/util/extension-types";
 import { Hitbox } from "../../../game-shared/src/util/hitbox";
-import { ClientExtension, ClientExtensionSerialized } from "@/extensions/types";
+import { ClientExtensionSerialized } from "@/extensions/types";
+import { ClientPositionable } from "./positionable";
+import Vector2 from "@shared/util/vector2";
+import { BaseClientExtension } from "./base-extension";
 
-export class ClientCollidable implements ClientExtension {
+export class ClientCollidable extends BaseClientExtension {
   public static readonly type = ExtensionTypes.COLLIDABLE;
 
-  private size = 16;
-  private offset = 0;
+  private size = new Vector2(16, 16);
+  private offset = new Vector2(0, 0);
   private enabled = true;
 
   public setEnabled(enabled: boolean): this {
@@ -18,26 +22,18 @@ export class ClientCollidable implements ClientExtension {
     return this.enabled;
   }
 
-  public setSize(size: number): this {
-    this.size = size;
-    return this;
-  }
-
-  public getSize(): number {
+  public getSize(): Vector2 {
     return this.size;
   }
 
-  public setOffset(offset: number): this {
-    this.offset = offset;
-    return this;
-  }
-
   public getHitBox(): Hitbox {
+    const positionable = this.clientEntity.getExt(ClientPositionable);
+    const position = positionable.getPosition();
     return {
-      x: this.offset,
-      y: this.offset,
-      width: this.size,
-      height: this.size,
+      x: position.x + this.offset.x,
+      y: position.y + this.offset.y,
+      width: this.size.x,
+      height: this.size.y,
     };
   }
 

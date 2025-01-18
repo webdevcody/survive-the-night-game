@@ -4,7 +4,7 @@ import { DEBUG_DISABLE_SOUNDS, DEBUG_VOLUME_REDUCTION } from "@shared/debug";
 import { Vector2, distance } from "../../../game-shared/src/util/physics";
 
 // these values must match the sound files in the client
-export const SOUND_TYPES = {
+export const SOUND_TYPES_TO_MP3 = {
   PISTOL: "pistol",
   PLAYER_HURT: "player_hurt",
   PICK_UP_ITEM: "pick_up_item",
@@ -18,7 +18,7 @@ export const SOUND_TYPES = {
   LOOT: "loot",
 } as const;
 
-export type SoundType = (typeof SOUND_TYPES)[keyof typeof SOUND_TYPES];
+export type SoundType = (typeof SOUND_TYPES_TO_MP3)[keyof typeof SOUND_TYPES_TO_MP3];
 
 export class SoundManager {
   private gameClient: GameClient;
@@ -33,7 +33,7 @@ export class SoundManager {
 
   private preloadSounds() {
     // Create and cache an audio element for each sound type
-    Object.values(SOUND_TYPES).forEach((soundType) => {
+    Object.values(SOUND_TYPES_TO_MP3).forEach((soundType) => {
       const audio = new Audio(this.getSrc(soundType));
       audio.preload = "auto"; // Ensure the browser preloads the sound
       this.audioCache.set(soundType, audio);

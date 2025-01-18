@@ -19,7 +19,7 @@ import { PlayerClient } from "@/entities/player";
 import { ZombieClient } from "@/entities/zombie";
 import { ClientPositionable } from "@/extensions";
 import { ClientSocketManager } from "@/managers/client-socket-manager";
-import { SOUND_TYPES } from "@/managers/sound-manager";
+import { SOUND_TYPES_TO_MP3 } from "@/managers/sound-manager";
 import { GameState } from "@/state";
 
 export class ClientEventListener {
@@ -59,7 +59,9 @@ export class ClientEventListener {
     if (!player) return;
 
     const playerPosition = (player as unknown as PlayerClient).getCenterPosition();
-    this.gameClient.getSoundManager().playPositionalSound(SOUND_TYPES.GUN_EMPTY, playerPosition);
+    this.gameClient
+      .getSoundManager()
+      .playPositionalSound(SOUND_TYPES_TO_MP3.GUN_EMPTY, playerPosition);
   }
 
   onGameStateUpdate(gameStateEvent: GameStateEvent) {
@@ -127,8 +129,10 @@ export class ClientEventListener {
     const zombiePosition = (zombie as unknown as ZombieClient).getCenterPosition();
     this.gameClient
       .getSoundManager()
-      .playPositionalSound(SOUND_TYPES.ZOMBIE_ATTACKED, zombiePosition);
-    this.gameClient.getSoundManager().playPositionalSound(SOUND_TYPES.ZOMBIE_HURT, zombiePosition);
+      .playPositionalSound(SOUND_TYPES_TO_MP3.ZOMBIE_ATTACKED, zombiePosition);
+    this.gameClient
+      .getSoundManager()
+      .playPositionalSound(SOUND_TYPES_TO_MP3.ZOMBIE_HURT, zombiePosition);
   }
 
   onPlayerHurt(playerHurtEvent: PlayerHurtEvent) {
@@ -136,7 +140,9 @@ export class ClientEventListener {
     if (!player) return;
 
     const playerPosition = (player as unknown as PlayerClient).getCenterPosition();
-    this.gameClient.getSoundManager().playPositionalSound(SOUND_TYPES.PLAYER_HURT, playerPosition);
+    this.gameClient
+      .getSoundManager()
+      .playPositionalSound(SOUND_TYPES_TO_MP3.PLAYER_HURT, playerPosition);
   }
 
   onGameOver(gameOverEvent: GameOverEvent) {
@@ -151,7 +157,7 @@ export class ClientEventListener {
     if (!positionable) return;
 
     const lootPosition = positionable.getCenterPosition();
-    this.gameClient.getSoundManager().playPositionalSound(SOUND_TYPES.LOOT, lootPosition);
+    this.gameClient.getSoundManager().playPositionalSound(SOUND_TYPES_TO_MP3.LOOT, lootPosition);
   }
 
   onPlayerDeath(playerDeathEvent: PlayerDeathEvent) {
@@ -161,7 +167,9 @@ export class ClientEventListener {
     if (!player) return;
 
     const playerPosition = (player as unknown as PlayerClient).getCenterPosition();
-    this.gameClient.getSoundManager().playPositionalSound(SOUND_TYPES.PLAYER_DEATH, playerPosition);
+    this.gameClient
+      .getSoundManager()
+      .playPositionalSound(SOUND_TYPES_TO_MP3.PLAYER_DEATH, playerPosition);
   }
 
   onPlayerAttacked(playerAttackedEvent: PlayerAttackedEvent) {
@@ -171,11 +179,13 @@ export class ClientEventListener {
     const playerPosition = (player as unknown as PlayerClient).getCenterPosition();
 
     if (playerAttackedEvent.getWeaponKey() === WEAPON_TYPES.PISTOL) {
-      this.gameClient.getSoundManager().playPositionalSound(SOUND_TYPES.PISTOL, playerPosition);
+      this.gameClient
+        .getSoundManager()
+        .playPositionalSound(SOUND_TYPES_TO_MP3.PISTOL, playerPosition);
     } else if (playerAttackedEvent.getWeaponKey() === WEAPON_TYPES.SHOTGUN) {
       this.gameClient
         .getSoundManager()
-        .playPositionalSound(SOUND_TYPES.SHOTGUN_FIRE, playerPosition);
+        .playPositionalSound(SOUND_TYPES_TO_MP3.SHOTGUN_FIRE, playerPosition);
     }
   }
 
@@ -185,7 +195,9 @@ export class ClientEventListener {
 
     const zombiePosition = (zombie as unknown as ZombieClient).getCenterPosition();
 
-    this.gameClient.getSoundManager().playPositionalSound(SOUND_TYPES.ZOMBIE_DEATH, zombiePosition);
+    this.gameClient
+      .getSoundManager()
+      .playPositionalSound(SOUND_TYPES_TO_MP3.ZOMBIE_DEATH, zombiePosition);
   }
 
   onZombieHurt(zombieHurtEvent: ZombieHurtEvent) {
@@ -193,7 +205,9 @@ export class ClientEventListener {
     if (!zombie) return;
 
     const zombiePosition = (zombie as unknown as ZombieClient).getCenterPosition();
-    this.gameClient.getSoundManager().playPositionalSound(SOUND_TYPES.ZOMBIE_HURT, zombiePosition);
+    this.gameClient
+      .getSoundManager()
+      .playPositionalSound(SOUND_TYPES_TO_MP3.ZOMBIE_HURT, zombiePosition);
   }
 
   onPlayerDroppedItem(playerDroppedItemEvent: PlayerDroppedItemEvent) {
@@ -201,7 +215,9 @@ export class ClientEventListener {
     if (!player) return;
 
     const playerPosition = (player as unknown as PlayerClient).getCenterPosition();
-    this.gameClient.getSoundManager().playPositionalSound(SOUND_TYPES.DROP_ITEM, playerPosition);
+    this.gameClient
+      .getSoundManager()
+      .playPositionalSound(SOUND_TYPES_TO_MP3.DROP_ITEM, playerPosition);
   }
 
   onPlayerPickedUpItem(playerPickedUpItemEvent: PlayerPickedUpItemEvent) {
@@ -209,6 +225,8 @@ export class ClientEventListener {
     if (!player) return;
 
     const playerPosition = (player as unknown as PlayerClient).getCenterPosition();
-    this.gameClient.getSoundManager().playPositionalSound(SOUND_TYPES.PICK_UP_ITEM, playerPosition);
+    this.gameClient
+      .getSoundManager()
+      .playPositionalSound(SOUND_TYPES_TO_MP3.PICK_UP_ITEM, playerPosition);
   }
 }

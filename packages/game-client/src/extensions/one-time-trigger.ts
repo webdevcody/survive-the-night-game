@@ -1,7 +1,8 @@
-import { ClientExtension, ClientExtensionSerialized } from "@/extensions/types";
+import { ClientExtensionSerialized } from "@/extensions/types";
+import { BaseClientExtension } from "./base-extension";
 import { ExtensionTypes } from "../../../game-shared/src/util/extension-types";
 
-export class ClientOneTimeTrigger implements ClientExtension {
+export class ClientOneTimeTrigger extends BaseClientExtension {
   public static readonly type = ExtensionTypes.ONE_TIME_TRIGGER;
   private hasTriggered = false;
 

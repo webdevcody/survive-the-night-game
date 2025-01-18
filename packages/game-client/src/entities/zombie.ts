@@ -13,11 +13,12 @@ import { getPlayer } from "@/util/get-player";
 import { renderInteractionText } from "@/util/interaction-text";
 import { createFlashEffect } from "@/util/render";
 import { determineDirection } from "../../../game-shared/src/util/direction";
-import { Vector2, roundVector2 } from "../../../game-shared/src/util/physics";
+import { roundVector2 } from "../../../game-shared/src/util/physics";
 import { RawEntity } from "@shared/types/entity";
 import { Z_INDEX } from "@shared/map";
 import { IClientEntity, Renderable, getFrameIndex, drawHealthBar } from "@/entities/util";
 import { getHitboxWithPadding } from "../../../game-shared/src/util/hitbox";
+import Vector2 from "@shared/util/vector2";
 
 export class ZombieClient extends ClientEntityBase implements IClientEntity, Renderable {
   private lastRenderPosition = { x: 0, y: 0 };
@@ -77,7 +78,9 @@ export class ZombieClient extends ClientEntityBase implements IClientEntity, Ren
     this.lastRenderPosition.x += (targetPosition.x - this.lastRenderPosition.x) * this.LERP_FACTOR;
     this.lastRenderPosition.y += (targetPosition.y - this.lastRenderPosition.y) * this.LERP_FACTOR;
 
-    const renderPosition = roundVector2(this.lastRenderPosition);
+    const renderPosition = roundVector2(
+      new Vector2(this.lastRenderPosition.x, this.lastRenderPosition.y)
+    );
 
     const destructible = this.getExt(ClientDestructible);
     const isDead = destructible.isDead();
@@ -120,7 +123,7 @@ export class ZombieClient extends ClientEntityBase implements IClientEntity, Ren
     // Debug hitboxes
     const positionable = this.getExt(ClientPositionable);
     const collidable = this.getExt(ClientCollidable);
-    debugDrawHitbox(ctx, collidable.getHitBox());
+    debugDrawHitbox(ctx, collidable.getHitBox(), "yellow");
     debugDrawHitbox(ctx, getHitboxWithPadding(positionable.getPosition(), 0), "red");
     drawCenterPositionWithLabel(ctx, this.getCenterPosition());
 

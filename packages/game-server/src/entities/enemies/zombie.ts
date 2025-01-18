@@ -53,7 +53,7 @@ export class Zombie extends Entity {
 
   getCenterPosition(): Vector2 {
     const positionable = this.getExt(Positionable);
-    const size = positionable.getSize()
+    const size = positionable.getSize();
     const position = positionable.getPosition();
     return new Rectangle(position, size).center;
   }
@@ -104,6 +104,7 @@ export class Zombie extends Entity {
 
     position.x += velocity.x * deltaTime;
 
+    this.setPosition(position);
     if (this.getEntityManager().isColliding(this, [Entities.ZOMBIE])) {
       position.x = previousX;
     }
@@ -113,8 +114,6 @@ export class Zombie extends Entity {
     if (this.getEntityManager().isColliding(this, [Entities.ZOMBIE])) {
       position.y = previousY;
     }
-
-    this.setPosition(position);
   }
 
   private isAtWaypoint(): boolean {

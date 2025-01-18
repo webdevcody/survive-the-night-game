@@ -1,3 +1,5 @@
+import { ClientEntity } from "@/entities/client-entity";
+
 export interface ClientExtension {
   deserialize: (data: ClientExtensionSerialized) => this;
 }

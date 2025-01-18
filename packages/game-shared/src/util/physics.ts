@@ -35,13 +35,11 @@ export function pathTowards(a: Vector2, b: Vector2, map: number[][]): Vector2 | 
   const endX = Math.floor(b.x / TILE_SIZE);
   const endY = Math.floor(b.y / TILE_SIZE);
 
-  if (
-    endX < 0 ||
-    endX >= map[0].length ||
-    endY < 0 ||
-    endY >= map.length ||
-    map[endY][endX] === 2 // Forest tile ID
-  ) {
+  // Check if target position is out of bounds or blocked by forest
+  const isOutOfBounds = endX < 0 || endX >= map[0].length || endY < 0 || endY >= map.length;
+  const isForestTile = !isOutOfBounds && map[endY][endX] === 2;
+
+  if (isOutOfBounds || isForestTile) {
     return null;
   }
 

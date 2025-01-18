@@ -20,7 +20,7 @@ import Positionable from "@/extensions/positionable";
 import { Entities } from "@/constants";
 import { Entity } from "@/entities/entity";
 import { ItemType, InventoryItem } from "@/util/inventory";
-import { distance, isColliding } from "@/util/physics";
+import { distance } from "@/util/physics";
 import { IEntity } from "@/entities/types";
 import { EntityType } from "@shared/types/entity";
 import { SpatialGrid } from "@/managers/spatial-grid";
@@ -29,6 +29,8 @@ import { Landmine } from "@/entities/items/landmine";
 import { EntityStateTracker } from "./entity-state-tracker";
 import Shape, { Rectangle } from "@/util/shape";
 import Vector2 from "@/util/vector2";
+import { Grenade } from "@/entities/items/grenade";
+import { FireExtinguisher } from "@/entities/items/fire-extinguisher";
 
 const entityMap = {
   [Entities.PLAYER]: Player,
@@ -48,6 +50,8 @@ const entityMap = {
   [Entities.GASOLINE]: Gasoline,
   [Entities.ZOMBIE]: Zombie,
   [Entities.LANDMINE]: Landmine,
+  [Entities.GRENADE]: Grenade,
+  [Entities.FIRE_EXTINGUISHER]: FireExtinguisher,
 };
 
 type EntityConstructor = new (entityManager: IGameManagers, ...args: any[]) => Entity;
@@ -87,6 +91,8 @@ export class EntityManager implements IEntityManager {
     this.registerItem("wood", Tree);
     this.registerItem("wall", Wall);
     this.registerItem("spikes", Spikes);
+    this.registerItem("grenade", Grenade);
+    this.registerItem("fire_extinguisher", FireExtinguisher);
 
     // Register weapons
     this.registerItem("knife", Knife);
@@ -369,7 +375,7 @@ export class EntityManager implements IEntityManager {
 
     // Re-add all entities that have a position
     this.entities.forEach((entity) => {
-      if ("getPosition" in entity || entity.hasExt(Positionable)) {
+      if (entity.hasExt(Positionable)) {
         this.spatialGrid!.addEntity(entity);
       }
     });

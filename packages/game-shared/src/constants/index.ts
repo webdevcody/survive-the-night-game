@@ -17,4 +17,6 @@ export const Entities = {
   PISTOL_AMMO: "pistol_ammo",
   SHOTGUN_AMMO: "shotgun_ammo",
   LANDMINE: "landmine",
+  GRENADE: "grenade",
+  FIRE_EXTINGUISHER: "fire_extinguisher",
 } as const;

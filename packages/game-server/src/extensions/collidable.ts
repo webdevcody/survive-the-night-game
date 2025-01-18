@@ -44,9 +44,7 @@ export default class Collidable implements Extension {
   public getHitBox(): Rectangle {
     const positionable = this.self.getExt(Positionable);
     const position = positionable.getPosition();
-    const size = positionable.getSize();
-
-    return new Rectangle(position.add(this.offset), size);
+    return new Rectangle(position.add(this.offset), this.size);
   }
 
   public serialize(): ExtensionSerialized {

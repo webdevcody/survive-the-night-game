@@ -7,7 +7,7 @@ export default class Positionable implements Extension {
   public static readonly type = ExtensionTypes.POSITIONABLE;
 
   private self: IEntity;
-  private position: Vector2 = new Vector2(0, 0)
+  private position: Vector2 = new Vector2(0, 0);
   private size: Vector2 = new Vector2(0, 0);
 
   public constructor(self: IEntity) {
@@ -32,7 +32,7 @@ export default class Positionable implements Extension {
   }
 
   public setPosition(position: Vector2): this {
-    this.position = position
+    this.position = position;
     return this;
   }
 
