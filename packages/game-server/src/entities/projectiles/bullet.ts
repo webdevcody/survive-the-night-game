@@ -134,26 +134,11 @@ export class Bullet extends Entity {
     for (const enemy of enemies) {
       const hitbox = enemy.getExt(Collidable).getHitBox();
 
-      // Create circles at both ends of the bullet path to handle bullet size
-      const startCircle = new Circle(fromPosition, BULLET_SIZE / 2);
-      const endCircle = new Circle(toPosition, BULLET_SIZE / 2);
-
-      // Check if either end of the bullet overlaps the hitbox
-      if (startCircle.intersects(hitbox) || endCircle.intersects(hitbox)) {
+      if (bulletPath.intersects(hitbox)) {
         this.getEntityManager().markEntityForRemoval(this);
         const destructible = enemy.getExt(Destructible);
         destructible.damage(1);
         return;
-      }
-
-      // Check if the bullet path intersects with any of the hitbox edges
-      for (const edge of hitbox.edges) {
-        if (bulletPath.intersects(edge)) {
-          this.getEntityManager().markEntityForRemoval(this);
-          const destructible = enemy.getExt(Destructible);
-          destructible.damage(1);
-          return;
-        }
       }
     }
   }
