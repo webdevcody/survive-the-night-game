@@ -4,10 +4,16 @@ export interface Extension {
   serialize: () => ExtensionSerialized;
 }
 
+export interface ExtensionSerialized {
+  type: string;
+  [key: string]: any;
+}
+
 export interface RawEntity {
   id: string;
   type: EntityType;
   extensions?: ExtensionSerialized[];
+  removedExtensions?: string[]; // Array of extension types that were removed
   [key: string]: any;
 }
 

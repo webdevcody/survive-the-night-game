@@ -51,7 +51,7 @@ export class EntityStateTracker {
       const currentExtensions = currentState.extensions || [];
       const previousExtensions = previousState.serialized.extensions || [];
 
-      // compare extensions
+      // Check for added or modified extensions
       for (const ext of currentExtensions) {
         const prevExt = previousExtensions.find((pe: any) => pe.type === ext.type);
         if (!prevExt) {
@@ -60,14 +60,23 @@ export class EntityStateTracker {
         }
 
         // Compare extension properties excluding type
-        const extCopy = { ...ext };
-        const prevExtCopy = { ...prevExt };
-        delete extCopy.type;
-        delete prevExtCopy.type;
+        const { type: _t1, ...extProps } = ext;
+        const { type: _t2, ...prevExtProps } = prevExt;
 
-        if (JSON.stringify(extCopy) !== JSON.stringify(prevExtCopy)) {
+        if (JSON.stringify(extProps) !== JSON.stringify(prevExtProps)) {
           hasChanges = true;
           break;
+        }
+      }
+
+      // Check for removed extensions
+      if (!hasChanges) {
+        const removedExtensions = previousExtensions
+          .filter((pe: any) => !currentExtensions.find((e: any) => e.type === pe.type))
+          .map((pe: any) => pe.type);
+
+        if (removedExtensions.length > 0) {
+          hasChanges = true;
         }
       }
 

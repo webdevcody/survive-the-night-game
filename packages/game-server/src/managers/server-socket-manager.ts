@@ -242,8 +242,17 @@ export class ServerSocketManager implements Broadcaster {
               }
             }
 
+            // Check for removed extensions
+            const removedExtensions = prevExtensions
+              .filter((pe: any) => !value.find((e: any) => e.type === pe.type))
+              .map((pe: any) => pe.type);
+
             if (changedExtensions.length > 0) {
               delta.extensions = changedExtensions; // Only include changed extensions
+            }
+
+            if (removedExtensions.length > 0) {
+              delta.removedExtensions = removedExtensions;
             }
           } else if (JSON.stringify(previousState[key]) !== JSON.stringify(value)) {
             delta[key] = value;

@@ -8,6 +8,7 @@ export class Entity extends EventTarget implements IEntity {
   private readonly type: EntityType;
   protected extensions: Extension[] = [];
   private readonly gameManagers: IGameManagers;
+  private removedExtensions: string[] = []; // Track removed extensions
 
   public constructor(gameManagers: IGameManagers, type: EntityType) {
     super();
@@ -42,6 +43,11 @@ export class Entity extends EventTarget implements IEntity {
     const index = this.extensions.indexOf(extension);
     if (index > -1) {
       this.extensions.splice(index, 1);
+      // Track the removed extension type
+      const type = (extension.constructor as any).type;
+      if (type) {
+        this.removedExtensions.push(type);
+      }
     }
   }
 
@@ -62,12 +68,21 @@ export class Entity extends EventTarget implements IEntity {
   }
 
   public serialize(): RawEntity {
-    return {
+    const serialized: RawEntity = {
       id: this.id,
       type: this.type,
       extensions: this.extensions.map((ext) => {
         return ext.serialize();
       }),
     };
+
+    // Only include removedExtensions if there are any
+    if (this.removedExtensions.length > 0) {
+      serialized.removedExtensions = [...this.removedExtensions];
+      // Clear the removed extensions after serializing
+      this.removedExtensions = [];
+    }
+
+    return serialized;
   }
 }
