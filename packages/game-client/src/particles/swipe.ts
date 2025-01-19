@@ -38,7 +38,11 @@ export class SwipeParticle extends Particle implements Renderable {
       frames: this.frames,
     });
 
-    const image = this.getImageLoader().getFrameWithDirection("swing", this.direction, frameIndex);
+    const image = this.getImageLoader().getFrameWithDirection(
+      "zombie_swing",
+      this.direction,
+      frameIndex
+    );
     const offset = 8;
 
     if (this.direction === Direction.Down) {

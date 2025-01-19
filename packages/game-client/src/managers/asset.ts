@@ -17,10 +17,11 @@ function assetMap({
   width = tileSize,
   height = tileSize,
   sheet = "default",
+  rotation = 0,
 }: Partial<CropOptions> & Pick<CropOptions, "x" | "y"> & { sheet?: string }): CropOptions & {
   sheet: string;
 } {
-  return { flipX, x, y, width, height, sheet };
+  return { flipX, x, y, width, height, sheet, rotation };
 }
 
 function getFrameOrigin({
@@ -77,26 +78,43 @@ const swingDownFrameOrigins = getFrameOrigins({
   totalFrames: 4,
   sheet: "items",
 });
-const swingRightFrameOrigins = getFrameOrigins({
+
+const zombieSwingDownFrameOrigins = getFrameOrigins({
   startX: 0,
   startY: 112,
   totalFrames: 4,
   sheet: "items",
 });
-const swingUpFrameOrigins = getFrameOrigins({
-  startX: 0,
-  startY: 128,
-  totalFrames: 4,
-  sheet: "items",
-});
-const swingLeftFrameOrigins = getFrameOrigins({
-  startX: 0,
-  startY: 144,
-  totalFrames: 4,
-  sheet: "items",
-});
 
-// sheet gaps: 1px horizontally, 3px vertically
+const ROTATION_MAP: Record<Direction, number> = {
+  [Direction.Up]: 180,
+  [Direction.Down]: 0,
+  [Direction.Left]: 90,
+  [Direction.Right]: 270,
+  [Direction.UpLeft]: 135,
+  [Direction.UpRight]: 225,
+  [Direction.DownLeft]: 45,
+  [Direction.DownRight]: 315,
+};
+
+function createDirectionalFrames(baseFrames: FrameOrigin[], prefix: string) {
+  const frames: Record<string, CropOptions & { sheet: string }> = {};
+
+  // Add base frame
+  frames[prefix] = assetMap(baseFrames[0]);
+
+  // Add directional frames for main directions only
+  [Direction.Up, Direction.Down, Direction.Left, Direction.Right].forEach((direction) => {
+    const dirName = Direction[direction].toLowerCase();
+    baseFrames.forEach((frame, index) => {
+      const key = `${prefix}_facing_${dirName}_${index}`;
+      frames[key] = assetMap({ ...frame, rotation: ROTATION_MAP[direction] });
+    });
+  });
+
+  return frames;
+}
+
 export const assetsMap = {
   spikes: assetMap({ x: 357, y: 57 }),
   landmine: assetMap({ x: 357, y: 57 }),
@@ -171,23 +189,8 @@ export const assetsMap = {
   zombie_facing_up_0: assetMap(zombieUpFrameOrigins[0]),
   zombie_facing_up_1: assetMap(zombieUpFrameOrigins[1]),
   zombie_facing_up_2: assetMap(zombieUpFrameOrigins[2]),
-  swing: assetMap(swingUpFrameOrigins[0]),
-  swing_facing_up_0: assetMap(swingUpFrameOrigins[0]),
-  swing_facing_up_1: assetMap(swingUpFrameOrigins[1]),
-  swing_facing_up_2: assetMap(swingUpFrameOrigins[2]),
-  swing_facing_up_3: assetMap(swingUpFrameOrigins[3]),
-  swing_facing_down_0: assetMap(swingDownFrameOrigins[0]),
-  swing_facing_down_1: assetMap(swingDownFrameOrigins[1]),
-  swing_facing_down_2: assetMap(swingDownFrameOrigins[2]),
-  swing_facing_down_3: assetMap(swingDownFrameOrigins[3]),
-  swing_facing_left_0: assetMap(swingLeftFrameOrigins[0]),
-  swing_facing_left_1: assetMap(swingLeftFrameOrigins[1]),
-  swing_facing_left_2: assetMap(swingLeftFrameOrigins[2]),
-  swing_facing_left_3: assetMap(swingLeftFrameOrigins[3]),
-  swing_facing_right_0: assetMap(swingRightFrameOrigins[0]),
-  swing_facing_right_1: assetMap(swingRightFrameOrigins[1]),
-  swing_facing_right_2: assetMap(swingRightFrameOrigins[2]),
-  swing_facing_right_3: assetMap(swingRightFrameOrigins[3]),
+  ...createDirectionalFrames(swingDownFrameOrigins, "swing"),
+  ...createDirectionalFrames(zombieSwingDownFrameOrigins, "zombie_swing"),
   bandage: assetMap({ x: 34, y: 190 }),
 } as const;
 

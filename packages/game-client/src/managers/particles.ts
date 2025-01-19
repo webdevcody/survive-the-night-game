@@ -1,4 +1,4 @@
-import { Particle } from "@/partices/particle";
+import { Particle } from "../particles/particle";
 import { GameClient } from "@/client";
 
 export class ParticleManager {

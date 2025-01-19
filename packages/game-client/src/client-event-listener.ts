@@ -21,7 +21,8 @@ import { ClientPositionable } from "@/extensions";
 import { ClientSocketManager } from "@/managers/client-socket-manager";
 import { SOUND_TYPES_TO_MP3 } from "@/managers/sound-manager";
 import { GameState } from "@/state";
-import { SwipeParticle } from "./partices/swipe";
+import { SwipeParticle } from "./particles/swipe";
+import { Direction, determineDirection } from "@shared/util/direction";
 
 export class ClientEventListener {
   private socketManager: ClientSocketManager;
@@ -127,13 +128,23 @@ export class ClientEventListener {
     const zombie = this.gameClient.getEntityById(zombieAttackedEvent.getZombieId());
     if (!zombie) return;
 
-    const zombiePosition = (zombie as unknown as ZombieClient).getCenterPosition();
+    const zombieClient = zombie as unknown as ZombieClient;
+    const zombiePosition = zombieClient.getCenterPosition();
+
+    // Play attack sounds
     this.gameClient
       .getSoundManager()
       .playPositionalSound(SOUND_TYPES_TO_MP3.ZOMBIE_ATTACKED, zombiePosition);
     this.gameClient
       .getSoundManager()
       .playPositionalSound(SOUND_TYPES_TO_MP3.ZOMBIE_HURT, zombiePosition);
+
+    // Add swing animation
+    const velocity = zombieClient.getVelocity();
+    const facing = determineDirection(velocity) || Direction.Right;
+    const particle = new SwipeParticle(this.gameClient.getImageLoader(), facing);
+    particle.setPosition(zombiePosition);
+    this.gameClient.getParticleManager().addParticle(particle);
   }
 
   onPlayerHurt(playerHurtEvent: PlayerHurtEvent) {
