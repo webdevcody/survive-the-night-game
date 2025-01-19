@@ -142,7 +142,7 @@ export class ClientEventListener {
     // Add swing animation
     const velocity = zombieClient.getVelocity();
     const facing = determineDirection(velocity) || Direction.Right;
-    const particle = new SwipeParticle(this.gameClient.getImageLoader(), facing);
+    const particle = new SwipeParticle(this.gameClient.getImageLoader(), facing, "zombie");
     particle.setPosition(zombiePosition);
     this.gameClient.getParticleManager().addParticle(particle);
   }
@@ -204,7 +204,8 @@ export class ClientEventListener {
     if (playerAttackedEvent.getWeaponKey() === WEAPON_TYPES.KNIFE) {
       const particle = new SwipeParticle(
         this.gameClient.getImageLoader(),
-        player.getInput().facing
+        player.getInput().facing,
+        "player"
       );
       particle.setPosition(playerPosition);
       this.gameClient.getParticleManager().addParticle(particle);

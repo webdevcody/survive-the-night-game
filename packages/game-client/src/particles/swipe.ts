@@ -5,18 +5,22 @@ import { getFrameIndex, Renderable } from "@/entities/util";
 import { Direction } from "@shared/util/direction";
 import { Particle, ParticleTypes } from "./particle";
 
+type SwipeType = "zombie" | "player";
+
 export class SwipeParticle extends Particle implements Renderable {
   private direction: Direction;
   private duration: number;
   private frames: number;
   private createdAt: number;
+  private swipeType: SwipeType;
 
-  constructor(imageLoader: ImageLoader, direction: Direction) {
+  constructor(imageLoader: ImageLoader, direction: Direction, swipeType: SwipeType) {
     super(ParticleTypes.SWING, imageLoader);
     this.direction = direction;
     this.duration = 150;
     this.frames = 4;
     this.createdAt = Date.now();
+    this.swipeType = swipeType;
   }
 
   public getZIndex(): number {
@@ -39,7 +43,7 @@ export class SwipeParticle extends Particle implements Renderable {
     });
 
     const image = this.getImageLoader().getFrameWithDirection(
-      "zombie_swing",
+      this.swipeType === "zombie" ? "zombie_swing" : "swing",
       this.direction,
       frameIndex
     );
