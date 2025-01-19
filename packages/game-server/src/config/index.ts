@@ -1,4 +1,4 @@
-export const FPS = 30;
+export const FPS = 20;
 
 export const DAY_DURATION = 5;
 export const NIGHT_DURATION = 10;
