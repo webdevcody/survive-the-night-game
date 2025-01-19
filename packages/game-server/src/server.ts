@@ -5,7 +5,7 @@ import { EntityManager } from "@/managers/entity-manager";
 import { GameManagers } from "@/managers/game-managers";
 import { MapManager } from "@/managers/map-manager";
 import { ServerSocketManager } from "@/managers/server-socket-manager";
-import { FPS, NIGHT_DURATION, PERFORMANCE_LOG_INTERVAL, TICK_RATE_MS } from "./config";
+import { TICK_RATE, NIGHT_DURATION, PERFORMANCE_LOG_INTERVAL, TICK_RATE_MS } from "./config";
 import { DAY_DURATION } from "./config";
 
 export class GameServer {
@@ -82,7 +82,7 @@ export class GameServer {
   private startGameLoop(): void {
     this.timer = setInterval(() => {
       this.update();
-    }, 1000 / FPS);
+    }, 1000 / TICK_RATE);
   }
 
   private onDayStart(): void {

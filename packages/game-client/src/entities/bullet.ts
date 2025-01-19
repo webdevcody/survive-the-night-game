@@ -6,12 +6,16 @@ import { ClientEntityBase } from "@/extensions/client-entity";
 import { ClientPositionable } from "@/extensions/positionable";
 import { Z_INDEX } from "@shared/map";
 import Vector2 from "@shared/util/vector2";
+import { roundVector2 } from "@shared/util/physics";
 
 export class BulletClient extends ClientEntityBase implements IClientEntity, Renderable {
   private readonly BULLET_SIZE = 4;
+  private readonly LERP_FACTOR = 0.4; // Higher value = faster interpolation
+  private lastRenderPosition: Vector2;
 
   constructor(data: RawEntity, assetManager: AssetManager) {
     super(data, assetManager);
+    this.lastRenderPosition = this.getPosition();
   }
 
   getPosition(): Vector2 {
@@ -27,13 +31,21 @@ export class BulletClient extends ClientEntityBase implements IClientEntity, Ren
   }
 
   public render(ctx: CanvasRenderingContext2D, gameState: GameState): void {
-    const position = this.getPosition();
+    // Interpolate position
+    const targetPosition = this.getPosition();
+    this.lastRenderPosition = new Vector2(
+      this.lastRenderPosition.x + (targetPosition.x - this.lastRenderPosition.x) * this.LERP_FACTOR,
+      this.lastRenderPosition.y + (targetPosition.y - this.lastRenderPosition.y) * this.LERP_FACTOR
+    );
+
+    const renderPosition = roundVector2(this.lastRenderPosition);
+
     // Draw yellow outer bullet
     ctx.beginPath();
     ctx.fillStyle = "yellow";
     ctx.arc(
-      position.x + this.BULLET_SIZE / 2,
-      position.y + this.BULLET_SIZE / 2,
+      renderPosition.x + this.BULLET_SIZE / 2,
+      renderPosition.y + this.BULLET_SIZE / 2,
       this.BULLET_SIZE / 2,
       0,
       Math.PI * 2
@@ -44,8 +56,8 @@ export class BulletClient extends ClientEntityBase implements IClientEntity, Ren
     ctx.beginPath();
     ctx.fillStyle = "red";
     ctx.arc(
-      position.x + this.BULLET_SIZE / 2,
-      position.y + this.BULLET_SIZE / 2,
+      renderPosition.x + this.BULLET_SIZE / 2,
+      renderPosition.y + this.BULLET_SIZE / 2,
       this.BULLET_SIZE / 4,
       0,
       Math.PI * 2

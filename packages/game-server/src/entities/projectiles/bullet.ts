@@ -9,20 +9,20 @@ import { IGameManagers } from "@/managers/types";
 import { Entities } from "@/constants";
 import { Direction, normalizeDirection } from "@/util/direction";
 import { Entity } from "@/entities/entity";
-import { Hitbox } from "@/util/hitbox";
 import { normalizeVector, distance } from "@/util/physics";
 import { IEntity } from "@/entities/types";
 import { RawEntity } from "@/types/entity";
 import Vector2 from "@/util/vector2";
-import { Rectangle } from "@/util/shape";
+import { Line, Rectangle, Circle } from "@/util/shape";
 
 const MAX_TRAVEL_DISTANCE = 400;
 export const BULLET_SPEED = 100;
-export const HITBOX_RADIUS = 1;
+export const BULLET_SIZE = 4; // Match client bullet size
 
 export class Bullet extends Entity {
   private traveledDistance: number = 0;
   private static readonly BULLET_SPEED = 500;
+  private lastPosition: Vector2;
 
   constructor(gameManagers: IGameManagers) {
     super(gameManagers, Entities.BULLET);
@@ -31,8 +31,10 @@ export class Bullet extends Entity {
       new Positionable(this),
       new Movable(this),
       new Updatable(this, this.updateBullet.bind(this)),
-      new Collidable(this).setSize(new Vector2(1, 1)),
+      new Collidable(this).setSize(new Vector2(BULLET_SIZE, BULLET_SIZE)),
     ];
+
+    this.lastPosition = this.getPosition();
   }
 
   setDirection(direction: Direction) {
@@ -84,13 +86,17 @@ export class Bullet extends Entity {
   }
 
   private updateBullet(deltaTime: number) {
-    const lastPosition = this.updatePositions(deltaTime);
-    this.handleMaxDistanceLogic(lastPosition);
-    this.handleIntersections();
+    const currentPosition = this.getPosition();
+    this.updatePositions(deltaTime);
+    const newPosition = this.getPosition();
+
+    this.handleMaxDistanceLogic(currentPosition);
+    this.handleIntersections(currentPosition, newPosition);
+
+    this.lastPosition = newPosition;
   }
 
   private updatePositions(deltaTime: number) {
-    const lastPosition = this.getPosition();
     const movable = this.getExt(Movable);
     const velocity = movable.getVelocity();
     const positionable = this.getExt(Positionable);
@@ -101,23 +107,54 @@ export class Bullet extends Entity {
         positionable.getPosition().y + velocity.y * deltaTime
       )
     );
-    return lastPosition;
   }
 
-  private handleIntersections() {
+  private handleIntersections(fromPosition: Vector2, toPosition: Vector2) {
+    const bulletPath = new Line(fromPosition, toPosition);
+
+    // Calculate a bounding box that encompasses the bullet's path plus its size
+    const minX = Math.min(fromPosition.x, toPosition.x) - BULLET_SIZE / 2;
+    const minY = Math.min(fromPosition.y, toPosition.y) - BULLET_SIZE / 2;
+    const maxX = Math.max(fromPosition.x, toPosition.x) + BULLET_SIZE / 2;
+    const maxY = Math.max(fromPosition.y, toPosition.y) + BULLET_SIZE / 2;
+
+    const boundingBox = new Rectangle(
+      new Vector2(minX, minY),
+      new Vector2(maxX - minX, maxY - minY)
+    );
+
     // TODO: find a helper function for this
     const isEnemy = (entity: IEntity) =>
       entity.hasExt(Groupable) && entity.getExt(Groupable).getGroup() === "enemy";
 
     const enemies = this.getEntityManager()
-      .getNearbyIntersectingDestructableEntities(this, this.getHitbox())
+      .getNearbyIntersectingDestructableEntities(this, boundingBox)
       .filter(isEnemy);
 
-    if (enemies.length > 0) {
-      const firstEnemy = enemies[0];
-      this.getEntityManager().markEntityForRemoval(this);
-      const destructible = firstEnemy.getExt(Destructible);
-      destructible.damage(1);
+    for (const enemy of enemies) {
+      const hitbox = enemy.getExt(Collidable).getHitBox();
+
+      // Create circles at both ends of the bullet path to handle bullet size
+      const startCircle = new Circle(fromPosition, BULLET_SIZE / 2);
+      const endCircle = new Circle(toPosition, BULLET_SIZE / 2);
+
+      // Check if either end of the bullet overlaps the hitbox
+      if (startCircle.intersects(hitbox) || endCircle.intersects(hitbox)) {
+        this.getEntityManager().markEntityForRemoval(this);
+        const destructible = enemy.getExt(Destructible);
+        destructible.damage(1);
+        return;
+      }
+
+      // Check if the bullet path intersects with any of the hitbox edges
+      for (const edge of hitbox.edges) {
+        if (bulletPath.intersects(edge)) {
+          this.getEntityManager().markEntityForRemoval(this);
+          const destructible = enemy.getExt(Destructible);
+          destructible.damage(1);
+          return;
+        }
+      }
     }
   }
 
