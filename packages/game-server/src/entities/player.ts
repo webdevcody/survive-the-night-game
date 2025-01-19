@@ -73,8 +73,12 @@ export class Player extends Entity {
       new Groupable(this, "friendly"),
     ];
 
+    const inventory = this.getExt(Inventory);
+    inventory.addItem({
+      itemType: "knife" as const,
+    });
+
     if (DEBUG_WEAPONS) {
-      const inventory = this.getExt(Inventory);
       [
         {
           itemType: "pistol_ammo" as const,

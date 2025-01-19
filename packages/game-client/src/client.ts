@@ -1,4 +1,4 @@
-import { AssetManager } from "@/managers/asset";
+import { AssetManager, ImageLoader } from "@/managers/asset";
 import { InputManager } from "@/managers/input";
 import { ClientSocketManager } from "@/managers/client-socket-manager";
 import { PlayerClient } from "@/entities/player";
@@ -21,6 +21,7 @@ import { DEBUG_ADMIN_COMMANDS } from "@shared/debug";
 import { Direction } from "../../game-shared/src/util/direction";
 import { Input } from "../../game-shared/src/util/input";
 import { ClientEntityBase } from "@/extensions/client-entity";
+import { ParticleManager } from "./managers/particles";
 
 export class GameClient {
   private ctx: CanvasRenderingContext2D;
@@ -36,6 +37,7 @@ export class GameClient {
   private commandManager: CommandManager;
   private clientEventListener: ClientEventListener;
   private entityFactory: EntityFactory;
+  private particleManager: ParticleManager;
 
   // Controllers
   private resizeController: ResizeController;
@@ -63,6 +65,7 @@ export class GameClient {
     this.zoomController = new ZoomController(this.storageManager, this.cameraManager);
     this.soundManager = new SoundManager(this);
     this.entityFactory = new EntityFactory(this.assetManager);
+    this.particleManager = new ParticleManager(this);
 
     const getInventory = () => {
       if (this.gameState.playerId) {
@@ -186,7 +189,8 @@ export class GameClient {
       this.hotbar,
       this.hud,
       this.craftingTable,
-      this.gameOverDialog
+      this.gameOverDialog,
+      this.particleManager
     );
 
     this.resizeController = new ResizeController(this.renderer);
@@ -240,6 +244,14 @@ export class GameClient {
 
   public sendInput(input: Input): void {
     this.socketManager.sendInput(input);
+  }
+
+  public getImageLoader(): ImageLoader {
+    return this.assetManager;
+  }
+
+  public getParticleManager(): ParticleManager {
+    return this.particleManager;
   }
 
   public unmount() {

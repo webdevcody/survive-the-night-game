@@ -59,6 +59,10 @@ export class PlayerClient extends ClientEntityBase implements IClientEntity, Ren
     return this.inventory;
   }
 
+  getInput(): Input {
+    return this.input;
+  }
+
   getIsCrafting(): boolean {
     return this.isCrafting;
   }

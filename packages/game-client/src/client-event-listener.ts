@@ -21,6 +21,7 @@ import { ClientPositionable } from "@/extensions";
 import { ClientSocketManager } from "@/managers/client-socket-manager";
 import { SOUND_TYPES_TO_MP3 } from "@/managers/sound-manager";
 import { GameState } from "@/state";
+import { SwipeParticle } from "./partices/swipe";
 
 export class ClientEventListener {
   private socketManager: ClientSocketManager;
@@ -173,10 +174,12 @@ export class ClientEventListener {
   }
 
   onPlayerAttacked(playerAttackedEvent: PlayerAttackedEvent) {
-    const player = this.gameClient.getEntityById(playerAttackedEvent.getPlayerId());
-    if (!player) return;
+    const entity = this.gameClient.getEntityById(playerAttackedEvent.getPlayerId());
+    if (!entity) return;
 
-    const playerPosition = (player as unknown as PlayerClient).getCenterPosition();
+    const player = entity as unknown as PlayerClient;
+
+    const playerPosition = player.getCenterPosition();
 
     const soundMap = {
       [WEAPON_TYPES.PISTOL]: SOUND_TYPES_TO_MP3.PISTOL,
@@ -186,6 +189,10 @@ export class ClientEventListener {
     this.gameClient
       .getSoundManager()
       .playPositionalSound(soundMap[playerAttackedEvent.getWeaponKey()], playerPosition);
+
+    const particle = new SwipeParticle(this.gameClient.getImageLoader(), player.getInput().facing);
+    particle.setPosition(playerPosition);
+    this.gameClient.getParticleManager().addParticle(particle);
   }
 
   onZombieDeath(zombieDeathEvent: ZombieDeathEvent) {

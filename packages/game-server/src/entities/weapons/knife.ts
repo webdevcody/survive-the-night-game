@@ -10,7 +10,7 @@ import Positionable from "@/extensions/positionable";
 import { knockBack } from "./helpers";
 
 export class Knife extends Weapon {
-  private static readonly ATTACK_RANGE = 42;
+  private static readonly ATTACK_RANGE = 32;
   private static readonly DAMAGE = 1;
   private static readonly PUSH_DISTANCE = 12;
   private static readonly COOLDOWN = 10;

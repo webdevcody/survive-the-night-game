@@ -5,6 +5,7 @@ import { CraftingTable } from "@/ui/crafting-table";
 import { InventoryBarUI } from "@/ui/inventory-bar";
 import { Hud } from "@/ui/hud";
 import { GameOverDialogUI } from "@/ui/game-over-dialog";
+import { ParticleManager } from "./managers/particles";
 
 export class Renderer {
   private ctx: CanvasRenderingContext2D;
@@ -14,6 +15,7 @@ export class Renderer {
   private hud: Hud;
   private craftingTable: CraftingTable;
   private gameOverDialog: GameOverDialogUI;
+  private particleManager: ParticleManager;
 
   constructor(
     ctx: CanvasRenderingContext2D,
@@ -22,7 +24,8 @@ export class Renderer {
     hotbar: InventoryBarUI,
     hud: Hud,
     craftingTable: CraftingTable,
-    gameOverDialog: GameOverDialogUI
+    gameOverDialog: GameOverDialogUI,
+    particleManager: ParticleManager
   ) {
     this.ctx = ctx;
     this.gameState = gameState;
@@ -31,6 +34,7 @@ export class Renderer {
     this.hud = hud;
     this.craftingTable = craftingTable;
     this.gameOverDialog = gameOverDialog;
+    this.particleManager = particleManager;
     this.resizeCanvas();
   }
 
@@ -73,6 +77,7 @@ export class Renderer {
     this.clearCanvas();
     this.mapManager.render(this.ctx);
     this.renderEntities();
+    this.particleManager.render(this.ctx);
 
     if (!this.gameState.isDay) {
       this.mapManager.renderDarkness(this.ctx);
