@@ -24,7 +24,7 @@ export class Zombie extends Entity {
 
   private static readonly ZOMBIE_SPEED = 35;
   private static readonly POSITION_THRESHOLD = 1;
-  private static readonly ATTACK_RADIUS = 24;
+  private static readonly ATTACK_RADIUS = 16;
   private static readonly ATTACK_DAMAGE = 1;
   private static readonly ATTACK_COOLDOWN = 1;
   public static readonly MAX_HEALTH = 3;

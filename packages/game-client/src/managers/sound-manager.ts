@@ -16,6 +16,7 @@ export const SOUND_TYPES_TO_MP3 = {
   SHOTGUN_FIRE: "shotgun_fire",
   ZOMBIE_ATTACKED: "zombie_bite",
   GUN_EMPTY: "gun_empty",
+  KNIFE_ATTACK: "knife_swing",
   LOOT: "loot",
 } as const;
 

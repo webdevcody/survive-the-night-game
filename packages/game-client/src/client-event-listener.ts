@@ -178,15 +178,14 @@ export class ClientEventListener {
 
     const playerPosition = (player as unknown as PlayerClient).getCenterPosition();
 
-    if (playerAttackedEvent.getWeaponKey() === WEAPON_TYPES.PISTOL) {
-      this.gameClient
-        .getSoundManager()
-        .playPositionalSound(SOUND_TYPES_TO_MP3.PISTOL, playerPosition);
-    } else if (playerAttackedEvent.getWeaponKey() === WEAPON_TYPES.SHOTGUN) {
-      this.gameClient
-        .getSoundManager()
-        .playPositionalSound(SOUND_TYPES_TO_MP3.SHOTGUN_FIRE, playerPosition);
-    }
+    const soundMap = {
+      [WEAPON_TYPES.PISTOL]: SOUND_TYPES_TO_MP3.PISTOL,
+      [WEAPON_TYPES.SHOTGUN]: SOUND_TYPES_TO_MP3.SHOTGUN_FIRE,
+      [WEAPON_TYPES.KNIFE]: SOUND_TYPES_TO_MP3.KNIFE_ATTACK,
+    };
+    this.gameClient
+      .getSoundManager()
+      .playPositionalSound(soundMap[playerAttackedEvent.getWeaponKey()], playerPosition);
   }
 
   onZombieDeath(zombieDeathEvent: ZombieDeathEvent) {

@@ -3,7 +3,6 @@ import Positionable from "@/extensions/positionable";
 import { Extension, ExtensionSerialized } from "@/extensions/types";
 import { Rectangle } from "@/util/shape";
 import Vector2 from "@/util/vector2";
-import Movable from "./movable";
 
 export default class Collidable implements Extension {
   public static readonly type = "collidable";
