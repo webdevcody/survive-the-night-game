@@ -178,7 +178,6 @@ export class ClientEventListener {
     if (!entity) return;
 
     const player = entity as unknown as PlayerClient;
-
     const playerPosition = player.getCenterPosition();
 
     const soundMap = {
@@ -190,9 +189,15 @@ export class ClientEventListener {
       .getSoundManager()
       .playPositionalSound(soundMap[playerAttackedEvent.getWeaponKey()], playerPosition);
 
-    const particle = new SwipeParticle(this.gameClient.getImageLoader(), player.getInput().facing);
-    particle.setPosition(playerPosition);
-    this.gameClient.getParticleManager().addParticle(particle);
+    // Only show swipe animation for knife attacks
+    if (playerAttackedEvent.getWeaponKey() === WEAPON_TYPES.KNIFE) {
+      const particle = new SwipeParticle(
+        this.gameClient.getImageLoader(),
+        player.getInput().facing
+      );
+      particle.setPosition(playerPosition);
+      this.gameClient.getParticleManager().addParticle(particle);
+    }
   }
 
   onZombieDeath(zombieDeathEvent: ZombieDeathEvent) {
