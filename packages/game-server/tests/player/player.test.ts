@@ -15,8 +15,8 @@ beforeEach(() => {
 });
 
 it("a player should be able to fire a pistol if the pistol is selected in his inventory", () => {
-  player.getInventory().push({ key: "pistol" });
-  player.getInventory().push({ key: "pistol_ammo", state: { count: 1 } });
+  player.getInventory().push({ itemType: "pistol" });
+  player.getInventory().push({ itemType: "pistol_ammo", state: { count: 1 } });
   player.selectInventoryItem(1);
 
   player.setAsFiring(true);
@@ -39,13 +39,13 @@ it("a player should be able to fire a pistol if the pistol is selected in his in
 });
 
 it("the ammo should be removed from the player's inventory after firing the last bullet", () => {
-  player.getInventory().push({ key: "pistol" });
-  player.getInventory().push({ key: "pistol_ammo", state: { count: 2 } });
+  player.getInventory().push({ itemType: "pistol" });
+  player.getInventory().push({ itemType: "pistol_ammo", state: { count: 2 } });
   player.selectInventoryItem(1);
 
   player.setAsFiring(true);
   gameManagers.getEntityManager().update(1);
-  expect(player.getInventory().some((item) => item.key === "pistol_ammo")).toBe(true);
+  expect(player.getInventory().some((item) => item.itemType === "pistol_ammo")).toBe(true);
   gameManagers.getEntityManager().update(1);
-  expect(player.getInventory().some((item) => item.key === "pistol_ammo")).toBe(false);
+  expect(player.getInventory().some((item) => item.itemType === "pistol_ammo")).toBe(false);
 });

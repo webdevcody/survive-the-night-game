@@ -1,7 +1,8 @@
 import { GameClient } from "@/client";
 import { linearFalloff } from "@/util/math";
 import { DEBUG_DISABLE_SOUNDS, DEBUG_VOLUME_REDUCTION } from "@shared/debug";
-import { Vector2, distance } from "../../../game-shared/src/util/physics";
+import { distance } from "@shared/util/physics";
+import Vector2 from "@shared/util/vector2";
 
 // these values must match the sound files in the client
 export const SOUND_TYPES_TO_MP3 = {

@@ -94,14 +94,14 @@ export class InventoryBarUI implements Renderable {
       if (image) {
         ctx.drawImage(image, slotLeft, slotsTop, slotSize, slotSize);
       }
+
       ctx.fillStyle = "white";
       ctx.fillText(`${i + 1}`, slotLeft + 4, slotsTop + 30);
 
-      const ammoKeys = ["pistol_ammo", "shotgun_ammo"];
-      if (ammoKeys.includes(inventoryItem?.key)) {
-        const ammo = inventoryItem.state?.count;
+      if (inventoryItem?.state?.count) {
+        ctx.textAlign = "right";
         ctx.fillStyle = "white";
-        ctx.fillText(`${ammo}`, slotRight - 96, slotsBottom - 4);
+        ctx.fillText(`${inventoryItem.state.count}`, slotRight - 4, slotsBottom - 4);
       }
     }
 

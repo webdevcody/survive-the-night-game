@@ -122,9 +122,9 @@ export class EntityManager implements IEntityManager {
   }
 
   public createEntityFromItem(item: InventoryItem): Entity {
-    const constructor = this.itemConstructors.get(item.key);
+    const constructor = this.itemConstructors.get(item.itemType);
     if (!constructor) {
-      throw new Error(`Unknown item type: '${item.key}'`);
+      throw new Error(`Unknown item type: '${item.itemType}'`);
     }
 
     return new (constructor as EntityConstructor)(this.getGameManagers());

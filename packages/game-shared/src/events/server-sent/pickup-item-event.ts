@@ -3,18 +3,18 @@ import { GameEvent } from "@/events/types";
 
 interface PlayerPickedUpItemEventData {
   playerId: string;
-  itemKey: string;
+  itemType: string;
 }
 
 export class PlayerPickedUpItemEvent implements GameEvent<PlayerPickedUpItemEventData> {
   private readonly type: EventType;
   private readonly playerId: string;
-  private readonly itemKey: string;
+  private readonly itemType: string;
 
   constructor(data: PlayerPickedUpItemEventData) {
     this.type = ServerSentEvents.PLAYER_PICKED_UP_ITEM;
     this.playerId = data.playerId;
-    this.itemKey = data.itemKey;
+    this.itemType = data.itemType;
   }
 
   getType(): EventType {
@@ -28,7 +28,7 @@ export class PlayerPickedUpItemEvent implements GameEvent<PlayerPickedUpItemEven
   serialize(): PlayerPickedUpItemEventData {
     return {
       playerId: this.playerId,
-      itemKey: this.itemKey,
+      itemType: this.itemType,
     };
   }
 }

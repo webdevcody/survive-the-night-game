@@ -28,8 +28,8 @@ export default class Inventory implements Extension {
     return this.items.length >= MAX_INVENTORY_SLOTS;
   }
 
-  public hasItem(key: ItemType): boolean {
-    return this.items.some((it) => it.key === key);
+  public hasItem(itemType: ItemType): boolean {
+    return this.items.some((it) => it.itemType === itemType);
   }
 
   public addItem(item: InventoryItem): void {
@@ -39,7 +39,7 @@ export default class Inventory implements Extension {
     this.broadcaster.broadcastEvent(
       new PlayerPickedUpItemEvent({
         playerId: this.self.getId(),
-        itemKey: item.key,
+        itemType: item.itemType,
       })
     );
   }
@@ -61,8 +61,8 @@ export default class Inventory implements Extension {
   }
 
   public getActiveWeapon(activeItem: InventoryItem | null): InventoryItem | null {
-    const activeKey = activeItem?.key ?? "";
-    return ["knife", "shotgun", "pistol"].includes(activeKey) ? activeItem : null;
+    const activeItemType = activeItem?.itemType ?? "";
+    return ["knife", "shotgun", "pistol"].includes(activeItemType) ? activeItem : null;
   }
 
   public craftRecipe(recipe: RecipeType): void {
@@ -74,7 +74,7 @@ export default class Inventory implements Extension {
   public addRandomItem(chance = 1): this {
     const items = ITEM_TYPES;
     if (Math.random() < chance) {
-      const item = { key: items[Math.floor(Math.random() * items.length)] };
+      const item = { itemType: items[Math.floor(Math.random() * items.length)] };
       this.addItem(item);
     }
     return this;
@@ -86,7 +86,10 @@ export default class Inventory implements Extension {
       const entity = this.createEntityFromItem(item);
       const theta = Math.random() * 2 * Math.PI;
       const radius = Math.random() * offset;
-      const pos = new Vector2(position.x + radius * Math.cos(theta), position.y + radius * Math.sin(theta));
+      const pos = new Vector2(
+        position.x + radius * Math.cos(theta),
+        position.y + radius * Math.sin(theta)
+      );
 
       if ("setPosition" in entity) {
         (entity as any).setPosition(pos);

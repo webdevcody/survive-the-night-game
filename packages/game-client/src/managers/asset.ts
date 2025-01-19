@@ -261,5 +261,5 @@ export class AssetManager implements ImageLoader {
 }
 
 export function getItemAssetKey(item: InventoryItem): Asset {
-  return item.key as Asset;
+  return item.itemType as Asset;
 }

@@ -1,3 +1,5 @@
+import { ItemState } from "@/types/entity";
+
 export const ITEM_TYPES = [
   "knife",
   "shotgun",
@@ -18,8 +20,8 @@ export const ITEM_TYPES = [
 export type ItemType = (typeof ITEM_TYPES)[number];
 
 export interface InventoryItem {
-  key: ItemType;
-  state?: any;
+  itemType: ItemType;
+  state?: ItemState;
 }
 
 export type WeaponKey = "knife" | "shotgun" | "pistol";

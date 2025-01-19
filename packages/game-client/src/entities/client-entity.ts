@@ -5,7 +5,7 @@ import { getPlayer } from "@/util/get-player";
 import { renderInteractionText } from "@/util/interaction-text";
 import { ClientEntityBase } from "@/extensions/client-entity";
 import { ImageLoader } from "@/managers/asset";
-import { ClientInteractive, ClientPositionable } from "@/extensions";
+import { ClientCarryable, ClientInteractive, ClientPositionable } from "@/extensions";
 
 export abstract class ClientEntity extends ClientEntityBase implements Renderable {
   constructor(data: RawEntity, imageLoader: ImageLoader) {
@@ -18,10 +18,13 @@ export abstract class ClientEntity extends ClientEntityBase implements Renderabl
     const myPlayer = getPlayer(gameState);
     const positionable = this.getExt(ClientPositionable);
     const interactive = this.getExt(ClientInteractive);
+
     if (myPlayer && interactive.getDisplayName()) {
+      let text = `${interactive.getDisplayName()} (e)`;
+
       renderInteractionText(
         ctx,
-        `${interactive.getDisplayName()} (e)`,
+        text,
         positionable.getCenterPosition(),
         positionable.getPosition(),
         myPlayer.getCenterPosition()

@@ -3,21 +3,33 @@ import { PlayerPickedUpItemEvent } from "@/events/server-sent/pickup-item-event"
 import Inventory from "@/extensions/inventory";
 import { ItemType } from "@/util/inventory";
 import { IEntity } from "@/entities/types";
+import { ItemState } from "@/types/entity";
 
 interface PickupOptions {
-  state?: any;
-  mergeStrategy?: (existingState: any, pickupState: any) => any;
+  state?: ItemState;
+  mergeStrategy?: (existingState: ItemState, pickupState: ItemState) => ItemState;
 }
 
 export default class Carryable implements Extension {
   public static readonly type = "carryable" as const;
 
   private self: IEntity;
-  private itemKey: ItemType;
+  private itemType: ItemType;
+  private state: ItemState = {};
 
-  public constructor(self: IEntity, itemKey: ItemType) {
+  public constructor(self: IEntity, itemType: ItemType) {
     this.self = self;
-    this.itemKey = itemKey;
+    this.itemType = itemType;
+    this.state = {};
+  }
+
+  public setItemState(state: ItemState): this {
+    this.state = state;
+    return this;
+  }
+
+  public getItemState(): ItemState {
+    return this.state;
   }
 
   public pickup(entityId: string, options?: PickupOptions): boolean {
@@ -34,7 +46,9 @@ export default class Carryable implements Extension {
 
     // If we have a merge strategy and existing item, merge instead of adding new
     if (options?.mergeStrategy) {
-      const existingItemIndex = inventory.getItems().findIndex((item) => item.key === this.itemKey);
+      const existingItemIndex = inventory
+        .getItems()
+        .findIndex((item) => item.itemType === this.itemType);
       if (existingItemIndex >= 0) {
         const existingItem = inventory.getItems()[existingItemIndex];
         const newState = options.mergeStrategy(existingItem.state, options.state);
@@ -50,7 +64,7 @@ export default class Carryable implements Extension {
     }
 
     inventory.addItem({
-      key: this.itemKey,
+      itemType: this.itemType,
       state: options?.state,
     });
 
@@ -62,7 +76,7 @@ export default class Carryable implements Extension {
       .broadcastEvent(
         new PlayerPickedUpItemEvent({
           playerId: entityId,
-          itemKey: this.itemKey,
+          itemType: this.itemType,
         })
       );
 
@@ -72,7 +86,8 @@ export default class Carryable implements Extension {
   public serialize(): ExtensionSerialized {
     return {
       type: Carryable.type,
-      itemKey: this.itemKey,
+      itemType: this.itemType,
+      state: this.state,
     };
   }
 }

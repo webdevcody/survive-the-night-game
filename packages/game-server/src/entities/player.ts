@@ -26,6 +26,7 @@ import { DEBUG_WEAPONS } from "@shared/debug";
 import { MAX_INTERACT_RADIUS, MAX_PLAYER_HEALTH } from "@shared/constants/constants";
 import Vector2 from "@/util/vector2";
 import { Rectangle } from "@/util/shape";
+import Carryable from "@/extensions/carryable";
 
 export class Player extends Entity {
   private static readonly PLAYER_WIDTH = 16;
@@ -76,23 +77,23 @@ export class Player extends Entity {
       const inventory = this.getExt(Inventory);
       [
         {
-          key: "pistol_ammo" as const,
+          itemType: "pistol_ammo" as const,
           state: {
             count: 10,
           },
         },
-        { key: "pistol" as const },
+        { itemType: "pistol" as const },
         {
-          key: "shotgun" as const,
+          itemType: "shotgun" as const,
           state: {
             count: 10,
           },
         },
-        { key: "shotgun_ammo" as const, state: { count: 10 } },
-        { key: "torch" as const },
-        { key: "gasoline" as const },
-        { key: "spikes" as const },
-        { key: "landmine" as const },
+        { itemType: "shotgun_ammo" as const, state: { count: 10 } },
+        { itemType: "torch" as const },
+        { itemType: "gasoline" as const },
+        { itemType: "spikes" as const },
+        { itemType: "landmine" as const },
       ].forEach((item) => inventory.addItem(item));
     }
   }
@@ -299,6 +300,11 @@ export class Player extends Entity {
       if (item) {
         const entity = this.getEntityManager().createEntityFromItem(item);
 
+        const carryable = entity.getExt(Carryable);
+        carryable.setItemState({
+          count: item.state?.count || 0,
+        });
+
         const offset = 16;
         let dx = 0;
         let dy = 0;
@@ -324,7 +330,7 @@ export class Player extends Entity {
         this.broadcaster.broadcastEvent(
           new PlayerDroppedItemEvent({
             playerId: this.getId(),
-            itemKey: item.key,
+            itemType: item.itemType,
           })
         );
       }

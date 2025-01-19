@@ -6,10 +6,13 @@ import { Entities } from "@shared/constants";
 import { Entity } from "@/entities/entity";
 import Vector2 from "@/util/vector2";
 import Consumable from "@/extensions/consumable";
+import { GunEmptyEvent } from "@shared/events/server-sent/gun-empty-event";
+import Inventory from "@/extensions/inventory";
 
 export class FireExtinguisher extends Entity {
   private static readonly EXTINGUISH_RADIUS = 64;
   private static readonly SIZE = new Vector2(16, 16);
+  public static readonly DEFAULT_COUNT = 5;
 
   constructor(gameManagers: IGameManagers) {
     super(gameManagers, Entities.FIRE_EXTINGUISHER);
@@ -19,18 +22,34 @@ export class FireExtinguisher extends Entity {
       new Interactive(this)
         .onInteract(this.interact.bind(this))
         .setDisplayName("fire extinguisher"),
-      new Carryable(this, "fire_extinguisher"),
+      new Carryable(this, "fire_extinguisher").setItemState({
+        count: FireExtinguisher.DEFAULT_COUNT,
+      }),
       new Consumable(this).onConsume(this.consume.bind(this)),
     ];
   }
 
   private interact(entityId: string): void {
-    this.getExt(Carryable).pickup(entityId);
+    const carryable = this.getExt(Carryable);
+    carryable.pickup(entityId, {
+      state: { count: carryable.getItemState().count },
+      mergeStrategy: (existing, pickup) => ({
+        count: existing?.count || pickup?.count || FireExtinguisher.DEFAULT_COUNT,
+      }),
+    });
   }
 
   private consume(entityId: string, idx: number): void {
     const player = this.getEntityManager().getEntityById(entityId);
     if (!player) return;
+
+    const inventory = player.getExt(Inventory);
+    const extinguisher = inventory.getItems()[idx];
+
+    if (!extinguisher?.state?.count || extinguisher.state.count <= 0) {
+      this.getEntityManager().getBroadcaster().broadcastEvent(new GunEmptyEvent(entityId));
+      return;
+    }
 
     const position = player.getExt(Positionable).getCenterPosition();
     const nearbyFires = this.getEntityManager().getNearbyEntities(
@@ -42,5 +61,8 @@ export class FireExtinguisher extends Entity {
     for (const fire of nearbyFires) {
       this.getEntityManager().markEntityForRemoval(fire);
     }
+
+    const newCount = extinguisher.state.count - 1;
+    inventory.updateItemState(idx, { count: newCount });
   }
 }

@@ -18,14 +18,14 @@ export class Pistol extends Weapon {
     if (!player) return;
 
     const inventory = player.getExt(Inventory);
-    const ammoItem = inventory.getItems().find((item) => item.key === "pistol_ammo");
+    const ammoItem = inventory.getItems().find((item) => item.itemType === "pistol_ammo");
 
     if (!ammoItem || !ammoItem.state?.count || ammoItem.state.count <= 0) {
       this.getEntityManager().getBroadcaster().broadcastEvent(new GunEmptyEvent(playerId));
       return;
     }
 
-    const ammoIndex = inventory.getItems().findIndex((item) => item.key === "pistol_ammo");
+    const ammoIndex = inventory.getItems().findIndex((item) => item.itemType === "pistol_ammo");
     inventory.updateItemState(ammoIndex, { count: ammoItem.state.count - 1 });
 
     if (ammoItem.state.count <= 0) {

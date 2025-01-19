@@ -23,7 +23,7 @@ export class ClientInventory extends BaseClientExtension {
   }
 
   public getActiveWeapon(activeItem: InventoryItem | null): InventoryItem | null {
-    const activeKey = activeItem?.key ?? "";
+    const activeKey = activeItem?.itemType ?? "";
     return ["knife", "shotgun", "pistol"].includes(activeKey) ? activeItem : null;
   }
 

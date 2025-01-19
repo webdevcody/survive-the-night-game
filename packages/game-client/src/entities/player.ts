@@ -15,10 +15,11 @@ import { Direction, normalizeDirection } from "../../../game-shared/src/util/dir
 import { getHitboxWithPadding, Hitbox } from "../../../game-shared/src/util/hitbox";
 import { Input } from "../../../game-shared/src/util/input";
 import { InventoryItem } from "../../../game-shared/src/util/inventory";
-import { Vector2, roundVector2 } from "../../../game-shared/src/util/physics";
+import { roundVector2 } from "../../../game-shared/src/util/physics";
 import { RawEntity } from "@shared/types/entity";
 import { IClientEntity, Renderable, getFrameIndex, drawHealthBar } from "@/entities/util";
 import { MAX_PLAYER_HEALTH } from "@shared/constants/constants";
+import Vector2 from "@shared/util/vector2";
 
 export class PlayerClient extends ClientEntityBase implements IClientEntity, Renderable {
   private readonly LERP_FACTOR = 0.1;
@@ -136,7 +137,9 @@ export class PlayerClient extends ClientEntityBase implements IClientEntity, Ren
       this.lastRenderPosition.y += dy * this.LERP_FACTOR;
     }
 
-    const renderPosition = roundVector2(this.lastRenderPosition);
+    const renderPosition = roundVector2(
+      new Vector2(this.lastRenderPosition.x, this.lastRenderPosition.y)
+    );
 
     ctx.save();
 

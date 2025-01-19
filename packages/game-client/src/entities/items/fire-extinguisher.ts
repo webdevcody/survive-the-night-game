@@ -1,4 +1,4 @@
-import { ClientPositionable } from "@/extensions";
+import { ClientPositionable, ClientCarryable } from "@/extensions";
 import { AssetManager } from "@/managers/asset";
 import { GameState } from "@/state";
 import { Z_INDEX } from "@shared/map";

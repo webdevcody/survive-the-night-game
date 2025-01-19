@@ -19,14 +19,14 @@ export class Shotgun extends Weapon {
     if (!player) return;
 
     const inventory = player.getExt(Inventory);
-    const ammoItem = inventory.getItems().find((item) => item.key === "shotgun_ammo");
+    const ammoItem = inventory.getItems().find((item) => item.itemType === "shotgun_ammo");
 
     if (!ammoItem || !ammoItem.state?.count || ammoItem.state.count <= 0) {
       return; // No ammo available
     }
 
     // Consume ammo
-    const ammoIndex = inventory.getItems().findIndex((item) => item.key === "shotgun_ammo");
+    const ammoIndex = inventory.getItems().findIndex((item) => item.itemType === "shotgun_ammo");
     inventory.updateItemState(ammoIndex, { count: ammoItem.state.count - 1 });
 
     // Create 3 bullets with spread

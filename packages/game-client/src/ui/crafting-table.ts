@@ -180,7 +180,7 @@ export class CraftingTable implements Renderable {
         slotLeft += Slot.padding.left;
 
         const slotImage = this.assetManager.getWithDirection(
-          getItemAssetKey({ key: component.type }),
+          getItemAssetKey({ itemType: component.type }),
           Direction.Right
         );
 
@@ -198,7 +198,7 @@ export class CraftingTable implements Renderable {
       slotLeft += Line.width + Recipes.gapX + Slot.padding.left;
 
       const slotImage = this.assetManager.getWithDirection(
-        getItemAssetKey({ key: resulting.type }),
+        getItemAssetKey({ itemType: resulting.type }),
         Direction.Right
       );
 

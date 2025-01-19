@@ -21,12 +21,12 @@ beforeEach(() => {
   gameManagers.getEntityManager().addEntity(player);
 
   // Add a bandage to player's inventory
-  player.getInventory().push({ key: "bandage" });
+  player.getInventory().push({ itemType: "bandage" });
 });
 
 it("a bandage should heal a player when consumed and removed from inventory", () => {
   // should have a bandage in inventory
-  expect(player.getInventory()).toEqual([{ key: "bandage" }]);
+  expect(player.getInventory()).toEqual([{ itemType: "bandage" }]);
 
   // // Damage the player first
   const destructible = player.getExt(Destructible);
@@ -47,7 +47,7 @@ it("a bandage should heal a player when consumed and removed from inventory", ()
 });
 
 it("a bandage should not be consumed if player is at full health", () => {
-  expect(player.getInventory()).toEqual([{ key: "bandage" }]);
+  expect(player.getInventory()).toEqual([{ itemType: "bandage" }]);
 
   const destructible = player.getExt(Destructible);
   expect(destructible.getHealth()).toBe(MAX_PLAYER_HEALTH);
@@ -63,5 +63,5 @@ it("a bandage should not be consumed if player is at full health", () => {
   expect(destructible.getHealth()).toBe(MAX_PLAYER_HEALTH);
 
   // Verify the bandage was not removed from inventory
-  expect(player.getInventory()).toEqual([{ key: "bandage" }]);
+  expect(player.getInventory()).toEqual([{ itemType: "bandage" }]);
 });

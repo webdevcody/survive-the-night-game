@@ -1,10 +1,10 @@
-import { Vector2 } from "../../../game-shared/src/util/physics";
+import Vector2 from "@shared/util/vector2";
 
 export class CameraManager {
   private ctx: CanvasRenderingContext2D;
   private scale: number = 1;
-  private position: Vector2 = { x: 0, y: 0 };
-  private targetPosition: Vector2 = { x: 0, y: 0 };
+  private position: Vector2 = new Vector2(0, 0);
+  private targetPosition: Vector2 = new Vector2(0, 0);
   private readonly LERP_FACTOR = 0.05;
 
   constructor(ctx: CanvasRenderingContext2D) {
