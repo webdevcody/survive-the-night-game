@@ -18,6 +18,7 @@ import { IEntity } from "@/entities/types";
 import { LootEvent } from "@/events/server-sent/loot-event";
 import { Rectangle } from "@/util/shape";
 import Vector2 from "@/util/vector2";
+import { ZombieHurtEvent } from "@/events/server-sent/zombie-hurt-event";
 
 export class Zombie extends Entity {
   public static readonly Size = new Vector2(16, 16);
@@ -42,6 +43,7 @@ export class Zombie extends Entity {
       new Destructible(this)
         .setMaxHealth(Zombie.MAX_HEALTH)
         .setHealth(Zombie.MAX_HEALTH)
+        .onDamaged(this.onDamaged.bind(this))
         .onDeath(this.onDeath.bind(this)),
       new Groupable(this, "enemy"),
       new Positionable(this).setSize(Zombie.Size),
@@ -56,6 +58,10 @@ export class Zombie extends Entity {
     const size = positionable.getSize();
     const position = positionable.getPosition();
     return new Rectangle(position, size).center;
+  }
+
+  onDamaged(): void {
+    this.getGameManagers().getBroadcaster().broadcastEvent(new ZombieHurtEvent(this.getId()));
   }
 
   getHitbox(): Rectangle {

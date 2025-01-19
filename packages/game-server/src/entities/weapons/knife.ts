@@ -7,11 +7,13 @@ import { WEAPON_TYPES } from "@shared/types/weapons";
 import { PlayerAttackedEvent } from "@/events/server-sent/player-attacked-event";
 import Vector2 from "@/util/vector2";
 import Positionable from "@/extensions/positionable";
+import { knockBack } from "./helpers";
 
 export class Knife extends Weapon {
-  private static readonly ATTACK_RANGE = 48;
+  private static readonly ATTACK_RANGE = 42;
   private static readonly DAMAGE = 1;
-  private static readonly PUSH_DISTANCE = 10;
+  private static readonly PUSH_DISTANCE = 12;
+  private static readonly COOLDOWN = 10;
 
   constructor(gameManagers: IGameManagers) {
     super(gameManagers, WEAPON_TYPES.KNIFE);
@@ -44,22 +46,7 @@ export class Knife extends Weapon {
     if (targetZombie) {
       const destructible = targetZombie.getExt(Destructible);
       destructible.damage(Knife.DAMAGE);
-
-      const positionable = targetZombie.getExt(Positionable);
-      const position = positionable.getPosition();
-
-      // Push zombie back based on facing direction
-      if (facing === Direction.Right) {
-        position.x += Knife.PUSH_DISTANCE;
-      } else if (facing === Direction.Left) {
-        position.x -= Knife.PUSH_DISTANCE;
-      } else if (facing === Direction.Up) {
-        position.y -= Knife.PUSH_DISTANCE;
-      } else if (facing === Direction.Down) {
-        position.y += Knife.PUSH_DISTANCE;
-      }
-
-      positionable.setPosition(position);
+      knockBack(targetZombie, facing, Knife.PUSH_DISTANCE);
     }
 
     this.getEntityManager()

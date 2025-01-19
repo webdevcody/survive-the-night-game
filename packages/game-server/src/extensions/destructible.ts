@@ -5,6 +5,7 @@ import { Rectangle } from "@/util/shape";
 import Vector2 from "@/util/vector2";
 
 type DestructibleDeathHandler = () => void;
+type DestructibleDamagedHandler = () => void;
 
 export default class Destructible implements Extension {
   public static readonly type = "destructible";
@@ -13,6 +14,7 @@ export default class Destructible implements Extension {
   private health = 0;
   private maxHealth = 0;
   private deathHandler: DestructibleDeathHandler | null = null;
+  private onDamagedHandler: DestructibleDamagedHandler | null = null;
 
   public constructor(self: IEntity) {
     this.self = self;
@@ -20,6 +22,11 @@ export default class Destructible implements Extension {
 
   public onDeath(deathHandler: DestructibleDeathHandler): this {
     this.deathHandler = deathHandler;
+    return this;
+  }
+
+  public onDamaged(onDamagedHandler: DestructibleDamagedHandler): this {
+    this.onDamagedHandler = onDamagedHandler;
     return this;
   }
 
@@ -39,6 +46,7 @@ export default class Destructible implements Extension {
     }
 
     this.health -= damage;
+    this.onDamagedHandler?.();
 
     if (this.isDead()) {
       this.deathHandler?.();
