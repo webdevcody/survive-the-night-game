@@ -220,14 +220,24 @@ export class Player extends Entity {
   }
 
   handleMovement(deltaTime: number) {
-    // Set velocity based on current input
-    if (this.input.dx === 0 && this.input.dy === 0) {
-      this.getExt(Movable).setVelocity(new Vector2(0, 0));
-    } else {
-      const normalized = normalizeVector(new Vector2(this.input.dx, this.input.dy));
-      this.getExt(Movable).setVelocity(
-        new Vector2(normalized.x * Player.PLAYER_SPEED, normalized.y * Player.PLAYER_SPEED)
-      );
+    const movable = this.getExt(Movable);
+    const currentVelocity = movable.getVelocity();
+
+    // Only set velocity from input if we're not being knocked back
+    // (knockback velocity will be much higher than normal movement speed)
+    const currentSpeed = Math.sqrt(
+      currentVelocity.x * currentVelocity.x + currentVelocity.y * currentVelocity.y
+    );
+    if (currentSpeed < Player.PLAYER_SPEED * 2) {
+      // Set velocity based on current input
+      if (this.input.dx === 0 && this.input.dy === 0) {
+        movable.setVelocity(new Vector2(0, 0));
+      } else {
+        const normalized = normalizeVector(new Vector2(this.input.dx, this.input.dy));
+        movable.setVelocity(
+          new Vector2(normalized.x * Player.PLAYER_SPEED, normalized.y * Player.PLAYER_SPEED)
+        );
+      }
     }
 
     // Handle position updates and collisions
@@ -235,7 +245,6 @@ export class Player extends Entity {
     const previousX = position.x;
     const previousY = position.y;
 
-    const movable = this.getExt(Movable);
     const velocity = movable.getVelocity();
 
     position.x += velocity.x * deltaTime;
