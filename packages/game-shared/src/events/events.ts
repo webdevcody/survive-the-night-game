@@ -17,6 +17,7 @@ export const ServerSentEvents = {
   GUN_EMPTY: "gunEmpty",
   LOOT: "loot",
   MAP: "map",
+  ENEMY_WAYPOINT: "enemyWaypoint",
 } as const;
 
 export const ClientSentEvents = {

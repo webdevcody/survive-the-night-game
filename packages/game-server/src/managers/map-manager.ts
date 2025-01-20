@@ -11,13 +11,15 @@ import { TILE_IDS } from "@shared/map";
 import { PistolAmmo } from "@/entities/items/pistol-ammo";
 import { ShotgunAmmo } from "@/entities/items/shotgun-ammo";
 import Vector2 from "@/util/vector2";
+import { BigZombie } from "@/entities/enemies/big-zombie";
+import { FastZombie } from "@/entities/enemies/fast-zombie";
 const WEAPON_SPAWN_CHANCE = {
   PISTOL: 0.002,
   SHOTGUN: 0.002,
   KNIFE: 0.002,
 } as const;
 
-const ZOMBIE_SPAWN_CHANCE = 0.001;
+const ZOMBIE_SPAWN_CHANCE = 0.005;
 
 const Biomes = {
   CAMPSITE: [
@@ -114,7 +116,20 @@ export class MapManager implements IMapManager {
     for (let y = 0; y < this.map.length; y++) {
       for (let x = 0; x < this.map[y].length; x++) {
         if (this.map[y][x] === 0 && Math.random() < ZOMBIE_SPAWN_CHANCE * dayNumber) {
-          const zombie = new Zombie(this.getGameManagers());
+          let zombie;
+          const zombieRoll = Math.random();
+
+          if (zombieRoll < 0.1) {
+            // 10% chance for big zombie
+            zombie = new BigZombie(this.getGameManagers());
+          } else if (zombieRoll < 0.3) {
+            // 20% chance for fast zombie
+            zombie = new FastZombie(this.getGameManagers());
+          } else {
+            // 70% chance for regular zombie
+            zombie = new Zombie(this.getGameManagers());
+          }
+
           zombie.setPosition(new Vector2(x * TILE_SIZE, y * TILE_SIZE));
           this.getEntityManager().addEntity(zombie);
         }

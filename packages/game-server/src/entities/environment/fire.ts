@@ -20,7 +20,7 @@ export class Fire extends Entity {
       new Triggerable(this, Fire.Size, [Entities.ZOMBIE, Entities.PLAYER]).setOnEntityEntered(
         this.catchFire.bind(this)
       ),
-      new Expirable(this, 8),
+      new Expirable(this, 6),
       new Illuminated(this, 150),
     ];
   }

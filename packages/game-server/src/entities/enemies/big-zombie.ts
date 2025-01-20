@@ -13,7 +13,7 @@ import Movable from "@/extensions/movable";
 
 export class BigZombie extends BaseEnemy {
   public static readonly Size = new Vector2(24, 24);
-  private static readonly ZOMBIE_SPEED = 25;
+  private static readonly ZOMBIE_SPEED = 20;
   private static readonly ATTACK_RADIUS = 16;
   private static readonly ATTACK_DAMAGE = 2;
   private static readonly ATTACK_COOLDOWN = 1.5;

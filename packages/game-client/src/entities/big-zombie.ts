@@ -19,12 +19,14 @@ import { Z_INDEX } from "@shared/map";
 import { IClientEntity, Renderable, getFrameIndex, drawHealthBar } from "@/entities/util";
 import { getHitboxWithPadding } from "../../../game-shared/src/util/hitbox";
 import Vector2 from "@shared/util/vector2";
+import { DEBUG_SHOW_WAYPOINTS } from "@shared/debug";
 
 export class BigZombieClient extends ClientEntityBase implements IClientEntity, Renderable {
   private lastRenderPosition = { x: 0, y: 0 };
   private readonly LERP_FACTOR = 0.1;
   private previousHealth: number | undefined;
   private damageFlashUntil: number = 0;
+  protected debugWaypoint: Vector2 | null = null;
 
   constructor(data: RawEntity, assetManager: AssetManager) {
     super(data, assetManager);
@@ -65,6 +67,13 @@ export class BigZombieClient extends ClientEntityBase implements IClientEntity, 
     return destructible.getHealth();
   }
 
+  deserializeProperty(key: string, value: any): void {
+    super.deserializeProperty(key, value);
+    if (key === "debugWaypoint") {
+      this.debugWaypoint = value;
+    }
+  }
+
   render(ctx: CanvasRenderingContext2D, gameState: GameState): void {
     const currentHealth = this.getHealth();
 
@@ -88,6 +97,27 @@ export class BigZombieClient extends ClientEntityBase implements IClientEntity, 
     isDead
       ? this.renderZombieDead(gameState, ctx, renderPosition)
       : this.renderZombieAlive(gameState, ctx, renderPosition);
+
+    // Render debug waypoint if debug flag is enabled
+    if (DEBUG_SHOW_WAYPOINTS && this.debugWaypoint) {
+      const waypoint = this.debugWaypoint;
+      ctx.save();
+      ctx.strokeStyle = "purple"; // Different color for big zombie
+      ctx.lineWidth = 2;
+
+      // Draw line from zombie to waypoint
+      ctx.beginPath();
+      ctx.moveTo(this.lastRenderPosition.x + 8, this.lastRenderPosition.y + 8);
+      ctx.lineTo(waypoint.x, waypoint.y);
+      ctx.stroke();
+
+      // Draw waypoint marker
+      ctx.beginPath();
+      ctx.arc(waypoint.x, waypoint.y, 4, 0, Math.PI * 2);
+      ctx.stroke();
+
+      ctx.restore();
+    }
   }
 
   private renderFlames(

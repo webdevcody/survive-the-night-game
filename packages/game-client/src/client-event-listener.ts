@@ -23,6 +23,7 @@ import { SOUND_TYPES_TO_MP3 } from "@/managers/sound-manager";
 import { GameState } from "@/state";
 import { SwipeParticle } from "./particles/swipe";
 import { Direction, determineDirection } from "@shared/util/direction";
+import Vector2 from "@shared/util/vector2";
 
 export class ClientEventListener {
   private socketManager: ClientSocketManager;

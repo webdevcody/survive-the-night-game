@@ -1,8 +1,9 @@
 import { GameClient } from "@/client";
-import { DEBUG_SHOW_HITBOXES } from "@shared/debug";
+import { DEBUG_MAP_BOUNDS } from "@shared/debug";
 import { ClientIlluminated, ClientPositionable } from "@/extensions";
-import { Vector2, distance } from "../../../game-shared/src/util/physics";
 import { TILE_IDS } from "@shared/map";
+import Vector2 from "@shared/util/vector2";
+import { distance } from "@shared/util/physics";
 
 const tileLocations: Record<string, [number, number]> = {
   [TILE_IDS.GRASS1]: [4 * 16, 0],
@@ -13,7 +14,6 @@ const tileLocations: Record<string, [number, number]> = {
 
 // Higher values make darkness increase more quickly with distance (0.5 to 2.0 recommended)
 const DARKNESS_RATE = 0.4;
-const DEFAULT_LIGHT_RADIUS = 150;
 const PULSE_SPEED = 0.001; // Speed of the pulse (lower = slower)
 const PULSE_INTENSITY = 0.05; // How much the light radius varies (0.0 to 1.0)
 
@@ -115,7 +115,7 @@ export class MapManager {
           this.tileSize
         );
 
-        if (DEBUG_SHOW_HITBOXES) {
+        if (DEBUG_MAP_BOUNDS) {
           // Draw row,col text
           ctx.font = "3px Arial";
           ctx.fillStyle = "white";
