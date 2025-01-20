@@ -1,4 +1,4 @@
-import { ServerSentEvents } from "@shared/events/events";
+import { ServerSentEvents, ClientSentEvents } from "@shared/events/events";
 import { GameOverEvent } from "@shared/events/server-sent/game-over-event";
 import { GameStateEvent } from "@shared/events/server-sent/game-state-event";
 import { GunEmptyEvent } from "@shared/events/server-sent/gun-empty-event";
@@ -23,7 +23,7 @@ import { SOUND_TYPES_TO_MP3 } from "@/managers/sound-manager";
 import { GameState } from "@/state";
 import { SwipeParticle } from "./particles/swipe";
 import { Direction, determineDirection } from "@shared/util/direction";
-import Vector2 from "@shared/util/vector2";
+import { GameStartedEvent } from "@shared/events/server-sent/game-started-event";
 
 export class ClientEventListener {
   private socketManager: ClientSocketManager;
@@ -47,6 +47,7 @@ export class ClientEventListener {
     this.socketManager.on(ServerSentEvents.LOOT, this.onLoot.bind(this));
     this.socketManager.on(ServerSentEvents.ZOMBIE_ATTACKED, this.onZombieAttacked.bind(this));
     this.socketManager.on(ServerSentEvents.GAME_OVER, this.onGameOver.bind(this));
+    this.socketManager.on(ServerSentEvents.GAME_STARTED, this.onGameStarted.bind(this));
     this.socketManager.on(
       ServerSentEvents.PLAYER_DROPPED_ITEM,
       this.onPlayerDroppedItem.bind(this)
@@ -252,5 +253,17 @@ export class ClientEventListener {
     this.gameClient
       .getSoundManager()
       .playPositionalSound(SOUND_TYPES_TO_MP3.PICK_UP_ITEM, playerPosition);
+  }
+
+  onGameStarted(gameStartedEvent: GameStartedEvent) {
+    // Clear all client-side entities and particles
+    this.gameState.entities = [];
+    this.gameClient.getParticleManager().clear();
+
+    // Hide game over dialog if it was showing
+    this.gameClient.getGameOverDialog().hide();
+
+    // Request full state from server
+    this.socketManager.sendRequestFullState();
   }
 }

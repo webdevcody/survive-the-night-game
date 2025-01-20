@@ -1,6 +1,7 @@
 import { ServerSentEvents, ClientSentEvents } from "@shared/events/events";
 import { GameOverEvent } from "@shared/events/server-sent/game-over-event";
 import { GameStateEvent } from "@shared/events/server-sent/game-state-event";
+import { GameStartedEvent } from "@shared/events/server-sent/game-started-event";
 import { GunEmptyEvent } from "@shared/events/server-sent/gun-empty-event";
 import { LootEvent } from "@shared/events/server-sent/loot-event";
 import { MapEvent } from "@shared/events/server-sent/map-event";
@@ -35,6 +36,7 @@ const SERVER_EVENT_MAP = {
   [ServerSentEvents.GUN_EMPTY]: GunEmptyEvent,
   [ServerSentEvents.ZOMBIE_ATTACKED]: ZombieAttackedEvent,
   [ServerSentEvents.LOOT]: LootEvent,
+  [ServerSentEvents.GAME_STARTED]: GameStartedEvent,
 } as const;
 
 export class ClientSocketManager {
@@ -79,5 +81,9 @@ export class ClientSocketManager {
 
   public sendAdminCommand(command: AdminCommand) {
     this.socket.emit(ClientSentEvents.ADMIN_COMMAND, command);
+  }
+
+  public sendRequestFullState() {
+    this.socket.emit(ClientSentEvents.REQUEST_FULL_STATE);
   }
 }

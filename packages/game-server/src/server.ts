@@ -1,5 +1,6 @@
 import { GameOverEvent } from "@shared/events/server-sent/game-over-event";
 import { GameStateEvent } from "@shared/events/server-sent/game-state-event";
+import { GameStartedEvent } from "@shared/events/server-sent/game-started-event";
 import { CommandManager } from "@/managers/command-manager";
 import { EntityManager } from "@/managers/entity-manager";
 import { GameManagers } from "@/managers/game-managers";
@@ -70,7 +71,18 @@ export class GameServer {
     this.cycleStartTime = Date.now();
     this.cycleDuration = DAY_DURATION;
     this.isDay = true;
+
+    // Clear all entities first
+    this.entityManager.clear();
+
+    // Generate new map
     this.mapManager.generateMap();
+
+    // Recreate players for all connected sockets
+    this.socketManager.recreatePlayersForConnectedSockets();
+
+    // Broadcast game started event
+    this.socketManager.broadcastEvent(new GameStartedEvent());
   }
 
   public stop() {
@@ -159,6 +171,13 @@ export class GameServer {
     console.log("Game over");
     this.isGameOver = true;
     this.socketManager.broadcastEvent(new GameOverEvent());
+
+    // Restart the game after 5 seconds
+    setTimeout(() => {
+      console.log("Restarting game...");
+      this.entityManager.clear();
+      this.startNewGame();
+    }, 5000);
   }
 
   private trackPerformance(updateStartTime: number, currentTime: number) {

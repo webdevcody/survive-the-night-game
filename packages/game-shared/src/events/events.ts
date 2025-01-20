@@ -1,6 +1,7 @@
 export const ServerSentEvents = {
   GAME_STATE_UPDATE: "gameStateUpdate",
   GAME_OVER: "gameOver",
+  GAME_STARTED: "gameStarted",
   PLAYER_DEATH: "playerDeath",
   PLAYER_HURT: "playerHurt",
   YOUR_ID: "yourId",

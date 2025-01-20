@@ -92,6 +92,32 @@ export class ServerSocketManager implements Broadcaster {
     this.mapManager = mapManager;
   }
 
+  public recreatePlayersForConnectedSockets(): void {
+    // Clear existing player map
+    this.players.clear();
+
+    // Get all connected sockets
+    const sockets = Array.from(this.io.sockets.sockets.values());
+
+    // Create new players for each connected socket
+    sockets.forEach((socket) => {
+      const player = new Player(this.getGameManagers());
+
+      // Position player at map center
+      const map = this.getMapManager().getMap();
+      const centerX = (map.length * 16) / 2;
+      const centerY = (map[0].length * 16) / 2;
+      player.getExt(Positionable).setPosition(new Vector2(centerX, centerY));
+
+      // Add to player map and entity manager
+      this.players.set(socket.id, player);
+      this.getEntityManager().addEntity(player);
+
+      // Send new ID to client
+      socket.emit(ServerSentEvents.YOUR_ID, player.getId());
+    });
+  }
+
   public listen(): void {
     this.io.listen(this.port);
   }

@@ -14,6 +14,10 @@ export class ParticleManager {
     this.particles.push(particle);
   }
 
+  public clear() {
+    this.particles = [];
+  }
+
   public render(ctx: CanvasRenderingContext2D) {
     this.particles.forEach((particle) => {
       particle.render(ctx, this.gameClient.getGameState());
