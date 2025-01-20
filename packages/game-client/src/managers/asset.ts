@@ -188,7 +188,7 @@ function createDirectionalFrames(baseFrames: FrameOrigin[], prefix: string) {
 
 export const assetsMap = {
   spikes: assetMap({ x: 357, y: 57 }),
-  landmine: assetMap({ x: 357, y: 57 }),
+  landmine: assetMap({ x: 16, y: 48, sheet: "items" }),
   fire_extinguisher: assetMap({ x: 112, y: 0, sheet: "items" }),
   grenade: assetMap({ x: 64, y: 0, sheet: "items" }),
   cloth: assetMap({ x: 51, y: 228 }),

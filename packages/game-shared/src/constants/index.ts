@@ -22,3 +22,5 @@ export const Entities = {
   GRENADE: "grenade",
   FIRE_EXTINGUISHER: "fire_extinguisher",
 } as const;
+
+export const Zombies = [Entities.ZOMBIE, Entities.BIG_ZOMBIE, Entities.FAST_ZOMBIE];

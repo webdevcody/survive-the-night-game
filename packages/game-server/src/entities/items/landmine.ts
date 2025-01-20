@@ -1,31 +1,30 @@
 import { Entity } from "@/entities/entity";
 import { IGameManagers } from "@/managers/types";
-import { Entities } from "../../../../game-shared/src/constants";
+import { Entities, Zombies } from "../../../../game-shared/src/constants";
 import Positionable from "@/extensions/positionable";
 import Triggerable from "@/extensions/trigger";
 import Interactive from "@/extensions/interactive";
 import Carryable from "@/extensions/carryable";
-import { EntityType } from "@/types/entity";
 import { distance } from "../../../../game-shared/src/util/physics";
 import { IEntity } from "@/entities/types";
 import Destructible from "@/extensions/destructible";
 import OneTimeTrigger from "@/extensions/one-time-trigger";
 import Vector2 from "@/util/vector2";
+import { LANDMINE_EXPLOSION_RADIUS } from "@/constants/constants";
 
 /**
- * A landmine that explodes when zombies step on it, damaging all nearby zombies
+ * A landmine that explodes when enemies step on it, damaging all nearby enemies
  */
 export class Landmine extends Entity implements IEntity {
   private static readonly SIZE = new Vector2(16, 16);
-  private static readonly DAMAGE = 3;
-  private static readonly EXPLOSION_RADIUS = 32;
-  private static readonly TRIGGER_RADIUS = 16;
+  private static readonly DAMAGE = 7;
+  private static readonly TRIGGER_RADIUS = 8;
 
   constructor(gameManagers: IGameManagers) {
     super(gameManagers, Entities.LANDMINE);
 
     this.addExtension(new Positionable(this).setSize(Landmine.SIZE));
-    this.addExtension(new Triggerable(this, Landmine.SIZE, [Entities.ZOMBIE]));
+    this.addExtension(new Triggerable(this, Landmine.SIZE, Zombies));
     this.addExtension(
       new Interactive(this)
         .onInteract((entityId: string) => this.interact(entityId))
@@ -35,28 +34,27 @@ export class Landmine extends Entity implements IEntity {
     this.addExtension(
       new OneTimeTrigger(this, {
         triggerRadius: Landmine.TRIGGER_RADIUS,
-        targetTypes: [Entities.ZOMBIE],
+        targetTypes: Zombies,
       }).onTrigger(() => this.explode())
     );
   }
 
   private explode() {
     const position = this.getExt(Positionable).getPosition();
-    const nearbyZombies = this.getEntityManager().getNearbyEntities(
-      position,
-      Landmine.EXPLOSION_RADIUS,
-      [Entities.ZOMBIE]
+    const nearbyEntities = this.getEntityManager().getNearbyEntities(
+      this.getExt(Positionable).getPosition(),
+      LANDMINE_EXPLOSION_RADIUS
     );
 
-    // Damage all zombies in explosion radius
-    for (const zombie of nearbyZombies) {
-      if (!zombie.hasExt(Destructible)) continue;
+    // Damage all things in explosion radius
+    for (const entity of nearbyEntities) {
+      if (!entity.hasExt(Destructible)) continue;
 
-      const zombiePos = zombie.getExt(Positionable).getPosition();
-      const dist = distance(position, zombiePos);
+      const entityPos = entity.getExt(Positionable).getPosition();
+      const dist = distance(position, entityPos);
 
-      if (dist <= Landmine.EXPLOSION_RADIUS) {
-        zombie.getExt(Destructible).damage(Landmine.DAMAGE);
+      if (dist <= LANDMINE_EXPLOSION_RADIUS) {
+        entity.getExt(Destructible).damage(Landmine.DAMAGE);
       }
     }
 
@@ -68,14 +66,5 @@ export class Landmine extends Entity implements IEntity {
     const entity = this.getEntityManager().getEntityById(entityId);
     if (!entity || entity.getType() !== Entities.PLAYER) return;
     this.getExt(Carryable).pickup(entityId);
-  }
-
-  // IEntity interface implementation
-  public setId(id: string): void {
-    // Already handled by Entity base class
-  }
-
-  public setType(type: EntityType): void {
-    // Already handled by Entity base class
   }
 }

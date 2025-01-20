@@ -12,13 +12,13 @@ import Destructible from "@/extensions/destructible";
 import Movable from "@/extensions/movable";
 
 export class BigZombie extends BaseEnemy {
-  public static readonly Size = new Vector2(24, 24);
+  public static readonly Size = new Vector2(16, 16);
   private static readonly ZOMBIE_SPEED = 20;
   private static readonly ATTACK_RADIUS = 16;
   private static readonly ATTACK_DAMAGE = 2;
   private static readonly ATTACK_COOLDOWN = 1.5;
   private static readonly KNOCKBACK_FORCE = 600;
-  public static readonly MAX_HEALTH = 20;
+  public static readonly MAX_HEALTH = 11;
 
   constructor(gameManagers: IGameManagers) {
     super(

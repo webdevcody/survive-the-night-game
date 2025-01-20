@@ -9,7 +9,7 @@ import Inventory from "@/extensions/inventory";
 import Movable from "@/extensions/movable";
 import Positionable from "@/extensions/positionable";
 import Updatable from "@/extensions/updatable";
-import { Entities } from "@/constants";
+import { Entities, Zombies } from "@shared/constants";
 import { Entity } from "@/entities/entity";
 import { pathTowards, velocityTowards } from "@/util/physics";
 import { IEntity } from "@/entities/types";
@@ -111,7 +111,7 @@ export abstract class BaseEnemy extends Entity {
     positionable.setPosition(position);
   }
 
-  handleMovement(deltaTime: number, entityType: EntityType) {
+  handleMovement(deltaTime: number) {
     const position = this.getPosition();
     const previousX = position.x;
     const previousY = position.y;
@@ -122,13 +122,13 @@ export abstract class BaseEnemy extends Entity {
     position.x += velocity.x * deltaTime;
 
     this.setPosition(position);
-    if (this.getEntityManager().isColliding(this, [entityType])) {
+    if (this.getEntityManager().isColliding(this, Zombies)) {
       position.x = previousX;
     }
 
     position.y += velocity.y * deltaTime;
 
-    if (this.getEntityManager().isColliding(this, [entityType])) {
+    if (this.getEntityManager().isColliding(this, Zombies)) {
       position.y = previousY;
     }
   }
@@ -183,7 +183,7 @@ export abstract class BaseEnemy extends Entity {
 
     movable.setVelocity(velocity);
 
-    this.handleMovement(deltaTime, this.entityType);
+    this.handleMovement(deltaTime);
     this.handleAttack();
   }
 
