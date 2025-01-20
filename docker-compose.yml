@@ -1,0 +1,44 @@
+version: "3.8"
+
+services:
+  dashboard:
+    build:
+      context: .
+      dockerfile: packages/dashboard/Dockerfile
+    restart: unless-stopped
+    environment:
+      - NODE_ENV=production
+      - NEXT_PUBLIC_WEBSOCKET_URL=wss://wss.survivethenightgame.com
+    networks:
+      - app_network
+
+  game-server:
+    build:
+      context: .
+      dockerfile: packages/game-server/Dockerfile
+    restart: unless-stopped
+    environment:
+      - NODE_ENV=production
+    networks:
+      - app_network
+
+  caddy:
+    image: caddy:2
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile
+      - caddy_data:/data
+      - caddy_config:/config
+    networks:
+      - app_network
+
+networks:
+  app_network:
+    driver: bridge
+
+volumes:
+  caddy_data:
+  caddy_config:
