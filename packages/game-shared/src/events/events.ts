@@ -4,6 +4,7 @@ export const ServerSentEvents = {
   GAME_STARTED: "gameStarted",
   PLAYER_DEATH: "playerDeath",
   PLAYER_HURT: "playerHurt",
+  PLAYER_JOINED: "playerJoined",
   YOUR_ID: "yourId",
   PLAYER_ATTACKED: "playerAttacked",
   PLAYER_DROPPED_ITEM: "playerDroppedItem",

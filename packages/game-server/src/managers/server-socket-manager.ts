@@ -17,6 +17,8 @@ import { GameStateEvent } from "@shared/events/server-sent/game-state-event";
 import { IEntity } from "@/entities/types";
 import Vector2 from "@/util/vector2";
 import Movable from "@/extensions/movable";
+import { PlayerDroppedItemEvent } from "@shared/events/server-sent/player-dropped-item-event";
+import { PlayerJoinedEvent } from "@shared/events/server-sent/player-joined-event";
 
 /**
  * Any and all functionality related to sending server side events
@@ -190,6 +192,7 @@ export class ServerSocketManager implements Broadcaster {
 
     socket.emit(ServerSentEvents.MAP, map);
     socket.emit(ServerSentEvents.YOUR_ID, player.getId());
+    this.broadcastEvent(new PlayerJoinedEvent(player.getId()));
 
     socket.on(ClientSentEvents.PLAYER_INPUT, (input: Input) => this.onPlayerInput(socket, input));
     socket.on(ClientSentEvents.CRAFT_REQUEST, (recipe: RecipeType) =>

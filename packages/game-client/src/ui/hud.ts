@@ -20,13 +20,13 @@ const HUD_SETTINGS = {
 
 export class Hud {
   private showInstructions: boolean = true;
-  private playerDeathMessages: { message: string; timestamp: number }[] = [];
-  private playerDeathMessageTimeout: number = 5000;
+  private gameMessages: { message: string; timestamp: number }[] = [];
+  private messageTimeout: number = 5000;
   constructor() {}
 
   update(gameState: GameState): void {
-    this.playerDeathMessages = this.playerDeathMessages.filter(
-      (message) => Date.now() - message.timestamp < this.playerDeathMessageTimeout
+    this.gameMessages = this.gameMessages.filter(
+      (message) => Date.now() - message.timestamp < this.messageTimeout
     );
   }
 
@@ -70,22 +70,35 @@ export class Hud {
     }
 
     this.renderControlsList(ctx, gameState);
-    this.renderPlayerDeathMessages(ctx);
+    this.renderGameMessages(ctx);
   }
 
-  public showPlayerDeath(playerId: string): void {
-    this.playerDeathMessages.push({
-      message: `${playerId} has died`,
+  public addMessage(message: string): void {
+    this.gameMessages.push({
+      message,
       timestamp: Date.now(),
     });
   }
 
-  public renderPlayerDeathMessages(ctx: CanvasRenderingContext2D): void {
-    for (const message of this.playerDeathMessages) {
+  public showPlayerDeath(playerId: string): void {
+    this.addMessage(`${playerId} has died`);
+  }
+
+  public showPlayerJoined(playerId: string): void {
+    this.addMessage(`${playerId} has joined the game`);
+  }
+
+  private renderGameMessages(ctx: CanvasRenderingContext2D): void {
+    ctx.font = "32px Arial";
+    ctx.fillStyle = "white";
+    const margin = 50;
+    const gap = 40;
+
+    this.gameMessages.forEach((message, index) => {
       const metrics = ctx.measureText(message.message);
       const x = (ctx.canvas.width - metrics.width) / 2;
-      ctx.fillText(message.message, x, 50);
-    }
+      ctx.fillText(message.message, x, margin + index * gap);
+    });
   }
 
   public renderControlsList(ctx: CanvasRenderingContext2D, gameState: GameState): void {

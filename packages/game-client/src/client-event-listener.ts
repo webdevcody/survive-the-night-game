@@ -24,6 +24,7 @@ import { GameState } from "@/state";
 import { SwipeParticle } from "./particles/swipe";
 import { Direction, determineDirection } from "@shared/util/direction";
 import { GameStartedEvent } from "@shared/events/server-sent/game-started-event";
+import { PlayerJoinedEvent } from "@shared/events/server-sent/player-joined-event";
 
 export class ClientEventListener {
   private socketManager: ClientSocketManager;
@@ -40,6 +41,7 @@ export class ClientEventListener {
     this.socketManager.on(ServerSentEvents.YOUR_ID, this.onYourId.bind(this));
     this.socketManager.on(ServerSentEvents.PLAYER_HURT, this.onPlayerHurt.bind(this));
     this.socketManager.on(ServerSentEvents.PLAYER_DEATH, this.onPlayerDeath.bind(this));
+    this.socketManager.on(ServerSentEvents.PLAYER_JOINED, this.onPlayerJoined.bind(this));
     this.socketManager.on(ServerSentEvents.PLAYER_ATTACKED, this.onPlayerAttacked.bind(this));
     this.socketManager.on(ServerSentEvents.ZOMBIE_DEATH, this.onZombieDeath.bind(this));
     this.socketManager.on(ServerSentEvents.ZOMBIE_HURT, this.onZombieHurt.bind(this));
@@ -265,5 +267,9 @@ export class ClientEventListener {
 
     // Request full state from server
     this.socketManager.sendRequestFullState();
+  }
+
+  onPlayerJoined(playerJoinedEvent: PlayerJoinedEvent) {
+    this.gameClient.getHud().showPlayerJoined(playerJoinedEvent.getPlayerId());
   }
 }

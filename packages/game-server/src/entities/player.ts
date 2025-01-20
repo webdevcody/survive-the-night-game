@@ -140,6 +140,7 @@ export class Player extends Entity {
     this.setIsCrafting(false);
     this.getExt(Inventory).scatterItems(this.getPosition());
     this.broadcaster.broadcastEvent(new PlayerDeathEvent(this.getId()));
+    this.getExt(Collidable).setEnabled(false);
   }
 
   isInventoryFull(): boolean {

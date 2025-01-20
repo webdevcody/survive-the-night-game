@@ -10,6 +10,7 @@ import { PlayerAttackedEvent } from "@shared/events/server-sent/player-attacked-
 import { PlayerDeathEvent } from "@shared/events/server-sent/player-death-event";
 import { PlayerDroppedItemEvent } from "@shared/events/server-sent/player-dropped-item-event";
 import { PlayerHurtEvent } from "@shared/events/server-sent/player-hurt-event";
+import { PlayerJoinedEvent } from "@shared/events/server-sent/player-joined-event";
 import { YourIdEvent } from "@shared/events/server-sent/your-id-event";
 import { ZombieAttackedEvent } from "@shared/events/server-sent/zombie-attacked-event";
 import { ZombieDeathEvent } from "@shared/events/server-sent/zombie-death-event";
@@ -28,6 +29,7 @@ const SERVER_EVENT_MAP = {
   [ServerSentEvents.YOUR_ID]: YourIdEvent,
   [ServerSentEvents.PLAYER_HURT]: PlayerHurtEvent,
   [ServerSentEvents.PLAYER_ATTACKED]: PlayerAttackedEvent,
+  [ServerSentEvents.PLAYER_JOINED]: PlayerJoinedEvent,
   [ServerSentEvents.ZOMBIE_DEATH]: ZombieDeathEvent,
   [ServerSentEvents.ZOMBIE_HURT]: ZombieHurtEvent,
   [ServerSentEvents.PLAYER_DROPPED_ITEM]: PlayerDroppedItemEvent,
