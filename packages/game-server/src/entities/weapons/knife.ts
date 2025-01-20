@@ -24,11 +24,9 @@ export class Knife extends Weapon {
   }
 
   public attack(playerId: string, position: Vector2, facing: Direction): void {
-    const nearbyZombies = this.getEntityManager().getNearbyEntities(position, undefined, [
-      Entities.ZOMBIE,
-    ]);
+    const nearbyEnemies = this.getEntityManager().getNearbyEnemies(position);
 
-    const targetZombie = nearbyZombies.find((entity) => {
+    const targetZombie = nearbyEnemies.find((entity) => {
       const zombiePos = entity.getExt(Positionable).getPosition();
       const dx = zombiePos.x - position.x;
       const dy = zombiePos.y - position.y;

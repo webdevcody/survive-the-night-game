@@ -32,6 +32,7 @@ import Shape, { Rectangle } from "@/util/shape";
 import Vector2 from "@/util/vector2";
 import { Grenade } from "@/entities/items/grenade";
 import { FireExtinguisher } from "@/entities/items/fire-extinguisher";
+import Groupable from "@/extensions/groupable";
 
 const entityMap = {
   [Entities.PLAYER]: Player,
@@ -198,6 +199,17 @@ export class EntityManager implements IEntityManager {
 
   addEntities(entities: Entity[]) {
     this.entities.push(...entities);
+  }
+
+  getNearbyEnemies(position: Vector2): Entity[] {
+    if (!this.spatialGrid) {
+      return [];
+    }
+
+    const entities = this.spatialGrid.getNearbyEntities(position);
+    return entities.filter(
+      (entity) => entity.hasExt(Groupable) && entity.getExt(Groupable).getGroup() === "enemy"
+    );
   }
 
   getNearbyEntities(position: Vector2, radius: number = 64, filter?: EntityType[]): Entity[] {
