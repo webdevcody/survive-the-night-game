@@ -29,7 +29,7 @@ export class Bullet extends Entity {
 
     this.extensions = [
       new Positionable(this),
-      new Movable(this),
+      new Movable(this).setHasFriction(false),
       new Updatable(this, this.updateBullet.bind(this)),
       new Collidable(this).setSize(new Vector2(BULLET_SIZE, BULLET_SIZE)),
     ];
@@ -123,7 +123,6 @@ export class Bullet extends Entity {
       new Vector2(maxX - minX, maxY - minY)
     );
 
-    // TODO: find a helper function for this
     const isEnemy = (entity: IEntity) =>
       entity.hasExt(Groupable) && entity.getExt(Groupable).getGroup() === "enemy";
 
@@ -132,7 +131,7 @@ export class Bullet extends Entity {
       .filter(isEnemy);
 
     for (const enemy of enemies) {
-      const hitbox = enemy.getExt(Collidable).getHitBox();
+      const hitbox = enemy.getExt(Destructible).getDamageBox();
 
       if (bulletPath.intersects(hitbox)) {
         this.getEntityManager().markEntityForRemoval(this);

@@ -16,6 +16,7 @@ import { EntityStateTracker } from "./entity-state-tracker";
 import { GameStateEvent } from "@shared/events/server-sent/game-state-event";
 import { IEntity } from "@/entities/types";
 import Vector2 from "@/util/vector2";
+import Movable from "@/extensions/movable";
 
 /**
  * Any and all functionality related to sending server side events
@@ -119,7 +120,6 @@ export class ServerSocketManager implements Broadcaster {
   private onPlayerInput(socket: Socket, input: Input): void {
     const player = this.players.get(socket.id);
     if (!player) return;
-    player.setVelocityFromInput(input.dx, input.dy);
     player.setInput(input);
   }
 

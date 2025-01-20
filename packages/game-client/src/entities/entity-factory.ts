@@ -3,6 +3,7 @@ import { Entities } from "@shared/constants";
 import { AssetManager } from "@/managers/asset";
 import { BulletClient } from "@/entities/bullet";
 import { ZombieClient } from "@/entities/zombie";
+import { BigZombieClient } from "@/entities/big-zombie";
 import { WallClient } from "@/entities/items/wall";
 import { ClothClient } from "@/entities/items/cloth";
 import { PlayerClient } from "@/entities/player";
@@ -39,6 +40,7 @@ export const entityMap = {
   [Entities.TORCH]: TorchClient,
   [Entities.GASOLINE]: GasolineClient,
   [Entities.ZOMBIE]: ZombieClient,
+  [Entities.BIG_ZOMBIE]: BigZombieClient,
   [Entities.LANDMINE]: LandmineClient,
   [Entities.GRENADE]: GrenadeClient,
   [Entities.FIRE_EXTINGUISHER]: FireExtinguisherClient,

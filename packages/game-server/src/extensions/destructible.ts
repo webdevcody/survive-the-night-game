@@ -45,7 +45,7 @@ export default class Destructible implements Extension {
       return;
     }
 
-    this.health -= damage;
+    this.health = Math.max(0, this.health - damage);
     this.onDamagedHandler?.();
 
     if (this.isDead()) {

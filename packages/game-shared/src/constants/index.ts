@@ -1,5 +1,6 @@
 export const Entities = {
   ZOMBIE: "zombie",
+  BIG_ZOMBIE: "big_zombie",
   PLAYER: "player",
   TREE: "tree",
   BULLET: "bullet",

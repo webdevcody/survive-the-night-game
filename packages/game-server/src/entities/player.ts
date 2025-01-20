@@ -171,18 +171,6 @@ export class Player extends Entity {
     return hitbox;
   }
 
-  setVelocityFromInput(dx: number, dy: number): void {
-    if (dx === 0 && dy === 0) {
-      this.getExt(Movable).setVelocity(new Vector2(0, 0));
-      return;
-    }
-
-    const normalized = normalizeVector(new Vector2(dx, dy));
-    this.getExt(Movable).setVelocity(
-      new Vector2(normalized.x * Player.PLAYER_SPEED, normalized.y * Player.PLAYER_SPEED)
-    );
-  }
-
   getVelocity(): Vector2 {
     return this.getExt(Movable).getVelocity();
   }
@@ -232,6 +220,17 @@ export class Player extends Entity {
   }
 
   handleMovement(deltaTime: number) {
+    // Set velocity based on current input
+    if (this.input.dx === 0 && this.input.dy === 0) {
+      this.getExt(Movable).setVelocity(new Vector2(0, 0));
+    } else {
+      const normalized = normalizeVector(new Vector2(this.input.dx, this.input.dy));
+      this.getExt(Movable).setVelocity(
+        new Vector2(normalized.x * Player.PLAYER_SPEED, normalized.y * Player.PLAYER_SPEED)
+      );
+    }
+
+    // Handle position updates and collisions
     const position = this.getPosition();
     const previousX = position.x;
     const previousY = position.y;

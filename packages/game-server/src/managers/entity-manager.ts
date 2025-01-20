@@ -1,4 +1,5 @@
 import { Zombie } from "@/entities/enemies/zombie";
+import { BigZombie } from "@/entities/enemies/big-zombie";
 import { Fire } from "@/entities/environment/fire";
 import { Bandage } from "@/entities/items/bandage";
 import { Cloth } from "@/entities/items/cloth";
@@ -49,6 +50,7 @@ const entityMap = {
   [Entities.TORCH]: Torch,
   [Entities.GASOLINE]: Gasoline,
   [Entities.ZOMBIE]: Zombie,
+  [Entities.BIG_ZOMBIE]: BigZombie,
   [Entities.LANDMINE]: Landmine,
   [Entities.GRENADE]: Grenade,
   [Entities.FIRE_EXTINGUISHER]: FireExtinguisher,

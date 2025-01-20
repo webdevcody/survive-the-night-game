@@ -34,7 +34,7 @@ function getFrameOrigin({
   frameIndex: number;
 }) {
   return {
-    x: startX + (tileSize + 1) * frameIndex,
+    x: startX + tileSize * frameIndex,
     y: startY,
   };
 }
@@ -77,6 +77,13 @@ const swingDownFrameOrigins = getFrameOrigins({
   startY: 96,
   totalFrames: 4,
   sheet: "items",
+});
+
+const bigZombieDownFrameOrigins = getFrameOrigins({
+  startX: 0,
+  startY: 64,
+  totalFrames: 3,
+  sheet: "characters",
 });
 
 const zombieSwingDownFrameOrigins = getFrameOrigins({
@@ -189,6 +196,22 @@ export const assetsMap = {
   zombie_facing_up_0: assetMap(zombieUpFrameOrigins[0]),
   zombie_facing_up_1: assetMap(zombieUpFrameOrigins[1]),
   zombie_facing_up_2: assetMap(zombieUpFrameOrigins[2]),
+  big_zombie: assetMap(bigZombieDownFrameOrigins[0]),
+  big_zombie_0: assetMap(bigZombieDownFrameOrigins[0]),
+  big_zombie_1: assetMap(bigZombieDownFrameOrigins[1]),
+  big_zombie_2: assetMap(bigZombieDownFrameOrigins[2]),
+  big_zombie_facing_down_0: assetMap(bigZombieDownFrameOrigins[0]),
+  big_zombie_facing_down_1: assetMap(bigZombieDownFrameOrigins[1]),
+  big_zombie_facing_down_2: assetMap(bigZombieDownFrameOrigins[2]),
+  big_zombie_facing_left_0: assetMap(bigZombieDownFrameOrigins[0]),
+  big_zombie_facing_left_1: assetMap(bigZombieDownFrameOrigins[1]),
+  big_zombie_facing_left_2: assetMap(bigZombieDownFrameOrigins[2]),
+  big_zombie_facing_right_0: assetMap(bigZombieDownFrameOrigins[0]),
+  big_zombie_facing_right_1: assetMap(bigZombieDownFrameOrigins[1]),
+  big_zombie_facing_right_2: assetMap(bigZombieDownFrameOrigins[2]),
+  big_zombie_facing_up_0: assetMap(bigZombieDownFrameOrigins[0]),
+  big_zombie_facing_up_1: assetMap(bigZombieDownFrameOrigins[1]),
+  big_zombie_facing_up_2: assetMap(bigZombieDownFrameOrigins[2]),
   ...createDirectionalFrames(swingDownFrameOrigins, "swing"),
   ...createDirectionalFrames(zombieSwingDownFrameOrigins, "zombie_swing"),
   bandage: assetMap({ x: 34, y: 190 }),
@@ -223,6 +246,7 @@ export class AssetManager implements ImageLoader {
     this.sheets = {
       default: await this.imageManager.load("/tile-sheet.png"),
       items: await this.imageManager.load("/sheets/items-sheet.png"),
+      characters: await this.imageManager.load("/sheets/characters-sheet.png"),
     };
 
     await this.populateCache();
