@@ -29,4 +29,6 @@ export abstract class Weapon extends Entity {
     position: { x: number; y: number },
     facing: Direction
   ): void;
+
+  public abstract getCooldown(): number;
 }

@@ -9,9 +9,14 @@ import Vector2 from "@/util/vector2";
 
 export class Shotgun extends Weapon {
   private static readonly SPREAD_ANGLE = 8; // degrees
+  private static readonly COOLDOWN = 0.8; // Longer cooldown than pistol
 
   constructor(gameManagers: IGameManagers) {
     super(gameManagers, WEAPON_TYPES.SHOTGUN);
+  }
+
+  public getCooldown(): number {
+    return Shotgun.COOLDOWN;
   }
 
   public attack(playerId: string, position: Vector2, facing: Direction): void {

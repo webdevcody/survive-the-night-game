@@ -33,10 +33,9 @@ export class Player extends Entity {
   private static readonly PLAYER_SPEED = 60;
   private static readonly DROP_COOLDOWN = 0.25;
   private static readonly INTERACT_COOLDOWN = 0.25;
-  private static readonly FIRE_COOLDOWN = 0.4;
   private static readonly CONSUME_COOLDOWN = 0.5;
 
-  private fireCooldown = new Cooldown(Player.FIRE_COOLDOWN, true);
+  private fireCooldown = new Cooldown(0.4, true);
   private dropCooldown = new Cooldown(Player.DROP_COOLDOWN, true);
   private interactCooldown = new Cooldown(Player.INTERACT_COOLDOWN, true);
   private consumeCooldown = new Cooldown(Player.CONSUME_COOLDOWN, true);
@@ -52,6 +51,7 @@ export class Player extends Entity {
   };
   private isCrafting = false;
   private broadcaster: Broadcaster;
+  private lastWeaponType: ItemType | null = null;
 
   constructor(gameManagers: IGameManagers) {
     super(gameManagers, Entities.PLAYER);
@@ -89,9 +89,6 @@ export class Player extends Entity {
         { itemType: "pistol" as const },
         {
           itemType: "shotgun" as const,
-          state: {
-            count: 10,
-          },
         },
         { itemType: "shotgun_ammo" as const, state: { count: 10 } },
         { itemType: "torch" as const },
@@ -220,14 +217,17 @@ export class Player extends Entity {
     const activeWeapon = this.getActiveWeapon();
     if (activeWeapon === null) return;
 
+    const weaponEntity = this.getEntityManager().createEntityFromItem(activeWeapon);
+    if (!(weaponEntity && weaponEntity instanceof Weapon)) return;
+
+    if (this.fireCooldown === null || this.lastWeaponType !== activeWeapon.itemType) {
+      this.fireCooldown = new Cooldown(weaponEntity.getCooldown(), true);
+      this.lastWeaponType = activeWeapon.itemType;
+    }
+
     if (this.fireCooldown.isReady()) {
       this.fireCooldown.reset();
-
-      // Create weapon entity and use its attack method
-      const weaponEntity = this.getEntityManager().createEntityFromItem(activeWeapon);
-      if (weaponEntity && weaponEntity instanceof Weapon) {
-        weaponEntity.attack(this.getId(), this.getCenterPosition(), this.input.facing);
-      }
+      weaponEntity.attack(this.getId(), this.getCenterPosition(), this.input.facing);
     }
   }
 

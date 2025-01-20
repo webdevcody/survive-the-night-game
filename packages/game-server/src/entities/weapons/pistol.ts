@@ -9,8 +9,14 @@ import { PlayerAttackedEvent } from "@/events/server-sent/player-attacked-event"
 import Vector2 from "@/util/vector2";
 
 export class Pistol extends Weapon {
+  private static readonly COOLDOWN = 0.3;
+
   constructor(gameManagers: IGameManagers) {
     super(gameManagers, WEAPON_TYPES.PISTOL);
+  }
+
+  public getCooldown(): number {
+    return Pistol.COOLDOWN;
   }
 
   public attack(playerId: string, position: Vector2, facing: Direction): void {

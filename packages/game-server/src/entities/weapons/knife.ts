@@ -13,10 +13,14 @@ export class Knife extends Weapon {
   private static readonly ATTACK_RANGE = 32;
   private static readonly DAMAGE = 1;
   private static readonly PUSH_DISTANCE = 12;
-  private static readonly COOLDOWN = 10;
+  private static readonly COOLDOWN = 0.5;
 
   constructor(gameManagers: IGameManagers) {
     super(gameManagers, WEAPON_TYPES.KNIFE);
+  }
+
+  public getCooldown(): number {
+    return Knife.COOLDOWN;
   }
 
   public attack(playerId: string, position: Vector2, facing: Direction): void {
