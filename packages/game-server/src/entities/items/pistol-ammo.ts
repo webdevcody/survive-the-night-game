@@ -16,7 +16,9 @@ export class PistolAmmo extends Entity {
     this.extensions = [
       new Positionable(this).setSize(PistolAmmo.Size),
       new Interactive(this).onInteract(this.interact.bind(this)).setDisplayName("pistol ammo"),
-      new Carryable(this, "pistol_ammo"),
+      new Carryable(this, "pistol_ammo").setItemState({
+        count: PistolAmmo.DEFAULT_AMMO_COUNT,
+      }),
     ];
   }
 
@@ -27,7 +29,7 @@ export class PistolAmmo extends Entity {
     // When picking up ammo, merge it with existing ammo if present
     const carryable = this.getExt(Carryable);
     carryable.pickup(entityId, {
-      state: { count: PistolAmmo.DEFAULT_AMMO_COUNT },
+      state: { count: carryable.getItemState().count },
       mergeStrategy: (existing, pickup) => ({
         count: (existing?.count || 0) + (pickup?.count || PistolAmmo.DEFAULT_AMMO_COUNT),
       }),
