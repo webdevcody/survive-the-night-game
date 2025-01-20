@@ -46,6 +46,62 @@ function getFrameOrigins({ startX, startY, totalFrames, sheet }: FrameInfo): Fra
   }));
 }
 
+function createCharacterFrames({
+  startX,
+  downY,
+  leftY,
+  upY,
+  totalFrames,
+  sheet = "characters",
+}: {
+  startX: number;
+  downY: number;
+  leftY: number;
+  upY: number;
+  totalFrames: number;
+  sheet?: string;
+}) {
+  return {
+    down: getFrameOrigins({ startX, startY: downY, totalFrames, sheet }),
+    left: getFrameOrigins({ startX, startY: leftY, totalFrames, sheet }),
+    up: getFrameOrigins({ startX, startY: upY, totalFrames, sheet }),
+    right: getFrameOrigins({ startX, startY: leftY, totalFrames, sheet }), // Reuse left frames and flip
+  };
+}
+
+function createCharacterAssets(
+  name: string,
+  frames: ReturnType<typeof createCharacterFrames>,
+  deadX?: number,
+  deadY?: number
+) {
+  const assets: Record<string, CropOptions & { sheet: string }> = {
+    [`${name}`]: assetMap(frames.down[0]),
+    [`${name}_0`]: assetMap(frames.down[0]),
+    [`${name}_1`]: assetMap(frames.down[1]),
+    [`${name}_2`]: assetMap(frames.down[2]),
+  };
+
+  if (deadX !== undefined && deadY !== undefined) {
+    assets[`${name}_dead`] = assetMap({ x: deadX, y: deadY });
+  }
+
+  // Add directional frames
+  const directions = ["down", "left", "up"] as const;
+  directions.forEach((direction) => {
+    frames[direction].forEach((frame, index) => {
+      assets[`${name}_facing_${direction}_${index}`] = assetMap(frame);
+    });
+  });
+
+  // Add right frames (flipped)
+  frames.right.forEach((frame, index) => {
+    assets[`${name}_facing_right_${index}`] = loadFlipXAsset(frame);
+  });
+
+  return assets;
+}
+
 function loadFlipXAsset(frameOrigin: FrameOrigin) {
   return assetMap({ ...frameOrigin, flipX: true });
 }
@@ -91,6 +147,14 @@ const zombieSwingDownFrameOrigins = getFrameOrigins({
   startY: 112,
   totalFrames: 4,
   sheet: "items",
+});
+
+const zombieFastFrames = createCharacterFrames({
+  startX: 0,
+  downY: 208,
+  leftY: 224,
+  upY: 192,
+  totalFrames: 3,
 });
 
 const ROTATION_MAP: Record<Direction, number> = {
@@ -212,6 +276,7 @@ export const assetsMap = {
   big_zombie_facing_up_0: assetMap(bigZombieDownFrameOrigins[0]),
   big_zombie_facing_up_1: assetMap(bigZombieDownFrameOrigins[1]),
   big_zombie_facing_up_2: assetMap(bigZombieDownFrameOrigins[2]),
+  ...createCharacterAssets("fast_zombie", zombieFastFrames, 289, 19),
   ...createDirectionalFrames(swingDownFrameOrigins, "swing"),
   ...createDirectionalFrames(zombieSwingDownFrameOrigins, "zombie_swing"),
   bandage: assetMap({ x: 34, y: 190 }),
