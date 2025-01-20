@@ -80,6 +80,10 @@ export default class Inventory implements Extension {
     return this;
   }
 
+  public clear(): void {
+    this.items = [];
+  }
+
   public scatterItems(position: { x: number; y: number }): void {
     const offset = 32;
     this.items.forEach((item) => {

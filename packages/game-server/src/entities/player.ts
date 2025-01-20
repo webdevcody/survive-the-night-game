@@ -184,6 +184,10 @@ export class Player extends Entity {
     return this.getExt(Inventory).getItems();
   }
 
+  clearInventory(): void {
+    this.getExt(Inventory).clear();
+  }
+
   getActiveWeapon(): InventoryItem | null {
     return this.getExt(Inventory).getActiveWeapon(this.activeItem);
   }

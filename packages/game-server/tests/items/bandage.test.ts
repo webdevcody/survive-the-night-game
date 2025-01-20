@@ -6,6 +6,7 @@ import { beforeEach, it, expect } from "vitest";
 import { simpleTestSetup } from "../utils/setup";
 import { MAX_PLAYER_HEALTH } from "@/constants/constants";
 import Vector2 from "@/util/vector2";
+import { Bandage } from "@/entities/items/bandage";
 
 let player: Player;
 let gameManagers: GameManagers;
@@ -14,6 +15,7 @@ beforeEach(() => {
   gameManagers = simpleTestSetup();
 
   player = new Player(gameManagers);
+  player.clearInventory();
 
   gameManagers.getEntityManager().setMapSize(4 * TILE_SIZE, 4 * TILE_SIZE);
 
@@ -41,7 +43,7 @@ it("a bandage should heal a player when consumed and removed from inventory", ()
   gameManagers.getEntityManager().update(1);
 
   // // Verify the player was healed
-  expect(destructible.getHealth()).toBe(MAX_PLAYER_HEALTH);
+  expect(destructible.getHealth()).toBe(1 + Bandage.healingAmount);
   // Verify the bandage was removed from inventory
   expect(player.getInventory()).toEqual([]);
 });

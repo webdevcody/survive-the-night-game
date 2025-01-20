@@ -11,6 +11,7 @@ beforeEach(() => {
   gameManagers = simpleTestSetup();
 
   player = new Player(gameManagers);
+  player.clearInventory();
   gameManagers.getEntityManager().addEntity(player);
 });
 
