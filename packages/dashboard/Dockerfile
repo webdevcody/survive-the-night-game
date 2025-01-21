@@ -7,6 +7,7 @@ WORKDIR /app
 # Copy root workspace files
 COPY package.json package-lock.json* ./
 COPY packages/game-shared/package.json ./packages/game-shared/
+COPY packages/game-client/package.json ./packages/game-client/
 COPY packages/dashboard/package.json ./packages/dashboard/
 
 # Install dependencies
@@ -14,6 +15,7 @@ RUN npm ci
 
 # Copy source files
 COPY packages/game-shared ./packages/game-shared
+COPY packages/game-client ./packages/game-client
 COPY packages/dashboard ./packages/dashboard
 
 WORKDIR /app/packages/dashboard
