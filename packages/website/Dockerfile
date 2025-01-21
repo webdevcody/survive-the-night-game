@@ -2,6 +2,7 @@ FROM node:20-alpine
 WORKDIR /app
 COPY package*.json ./
 COPY packages/website/package*.json ./packages/website/
+COPY packages/game-client/package*.json ./packages/game-client/
 COPY packages/game-shared/package*.json ./packages/game-shared/
 RUN npm ci
 COPY . .
