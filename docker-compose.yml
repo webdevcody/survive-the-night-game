@@ -1,14 +1,16 @@
 version: "3.8"
 
 services:
-  dashboard:
+  website:
     build:
       context: .
-      dockerfile: packages/dashboard/Dockerfile
+      dockerfile: packages/website/Dockerfile
     restart: unless-stopped
+    ports:
+      - "3000:3000"
     environment:
       - NODE_ENV=production
-      - NEXT_PUBLIC_WEBSOCKET_URL=wss://wss.survivethenightgame.com
+      - VITE_WSS_URL=wss://wss.survivethenightgame.com
     networks:
       - app_network
 
@@ -17,6 +19,8 @@ services:
       context: .
       dockerfile: packages/game-server/Dockerfile
     restart: unless-stopped
+    ports:
+      - "3001:3001"
     environment:
       - NODE_ENV=production
     networks:
