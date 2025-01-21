@@ -1,5 +1,5 @@
 import { GameState } from "@/state";
-import { Vector2 } from "../../../game-shared/src/util/physics";
+import Vector2 from "@shared/util/vector2";
 
 export interface Renderable {
   render: (ctx: CanvasRenderingContext2D, gameState: GameState) => void;

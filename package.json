@@ -6,6 +6,8 @@
     "dev": "npm-run-all --parallel dev:*",
     "dev:dashboard": "npm run dev --workspace=packages/dashboard",
     "dev:server": "npm run dev --workspace=packages/game-server",
+    "build:dashboard": "npm run build --workspace=packages/dashboard",
+    "build:server": "npm run build --workspace=packages/game-server",
     "test:game-client": "npm run test --workspace=packages/game-client",
     "test:game-server": "npm run test --workspace=packages/game-server",
     "depcruiser": "depcruise ./packages --include-only \"packages\" --output-type dot | dot -T svg > dependency-graph.svg"

@@ -189,14 +189,8 @@ export class PlayerClient extends ClientEntityBase implements IClientEntity, Ren
       const animatedPosition = animate(gameState.startedAt, renderPosition, {
         duration: 2000,
         frames: {
-          0: {
-            x: 0,
-            y: 0,
-          },
-          50: {
-            x: 0,
-            y: 5,
-          },
+          0: new Vector2(0, 0),
+          50: new Vector2(0, 5),
         },
       });
       ctx.fillText("🔧", animatedPosition.x + 3, animatedPosition.y - 6);

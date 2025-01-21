@@ -1,4 +1,4 @@
-import { Vector2 } from "../../game-shared/src/util/physics";
+import Vector2 from "@shared/util/vector2";
 
 export interface Animation {
   duration: number;
@@ -33,28 +33,19 @@ export function animate(startedAt: number, position: Vector2, animation: Animati
 
   const frameProgress = (currentProgress - currentFrameStep) / frameLength;
 
-  return {
-    x: position.x + x0 + (x1 - x0) * frameProgress,
-    y: position.y + y0 + (y1 - y0) * frameProgress,
-  };
+  return new Vector2(
+    position.x + x0 + (x1 - x0) * frameProgress,
+    position.y + y0 + (y1 - y0) * frameProgress
+  );
 }
 
 export function bounce(size: number): Animation {
   return {
     duration: 700,
     frames: {
-      0: {
-        x: 0,
-        y: 0,
-      },
-      20: {
-        x: 0,
-        y: size * 0.1,
-      },
-      40: {
-        x: 0,
-        y: 0,
-      },
+      0: new Vector2(0, 0),
+      20: new Vector2(0, size * 0.1),
+      40: new Vector2(0, 0),
     },
   };
 }

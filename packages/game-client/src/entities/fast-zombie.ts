@@ -12,14 +12,14 @@ import { debugDrawHitbox, drawCenterPositionWithLabel } from "@/util/debug";
 import { getPlayer } from "@/util/get-player";
 import { renderInteractionText } from "@/util/interaction-text";
 import { createFlashEffect } from "@/util/render";
-import { determineDirection } from "../../../game-shared/src/util/direction";
-import { roundVector2 } from "../../../game-shared/src/util/physics";
 import { RawEntity } from "@shared/types/entity";
 import { Z_INDEX } from "@shared/map";
 import { IClientEntity, Renderable, getFrameIndex, drawHealthBar } from "@/entities/util";
-import { getHitboxWithPadding } from "../../../game-shared/src/util/hitbox";
 import Vector2 from "@shared/util/vector2";
 import { DEBUG_SHOW_WAYPOINTS } from "@shared/debug";
+import { determineDirection } from "@shared/util/direction";
+import { getHitboxWithPadding } from "@shared/util/hitbox";
+import { roundVector2 } from "@shared/util/physics";
 
 export class FastZombieClient extends ClientEntityBase implements IClientEntity, Renderable {
   private lastRenderPosition = { x: 0, y: 0 };
@@ -146,7 +146,7 @@ export class FastZombieClient extends ClientEntityBase implements IClientEntity,
       duration: 250, // Faster animation for fast zombie
       frames: 3,
     });
-    const image = this.imageLoader.getFrameWithDirection("fast_zombie", facing, frameIndex);
+    const image = this.imageLoader.getFrameWithDirection("fast_zombie" as any, facing, frameIndex);
     ctx.drawImage(image, renderPosition.x, renderPosition.y);
     drawHealthBar(ctx, renderPosition, this.getHealth(), this.getMaxHealth());
 
@@ -180,7 +180,7 @@ export class FastZombieClient extends ClientEntityBase implements IClientEntity,
     renderPosition: Vector2
   ) {
     const myPlayer = getPlayer(gameState);
-    const image = this.imageLoader.get("fast_zombie_dead");
+    const image = this.imageLoader.get("fast_zombie_dead" as any);
     ctx.drawImage(image, renderPosition.x, renderPosition.y);
 
     if (myPlayer) {

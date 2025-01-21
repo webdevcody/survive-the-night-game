@@ -15,7 +15,7 @@ export type AdminCommand = {
 };
 
 export type CreateItemCommand = {
-  command: AdminCommandType.CREATE_ITEM;
+  command: "createItem";
   payload: {
     itemType: ItemType;
     position: Vector2;
@@ -23,7 +23,7 @@ export type CreateItemCommand = {
 };
 
 export type CreateEntityCommand = {
-  command: AdminCommandType.CREATE_ENTITY;
+  command: "createEntity";
   payload: {
     entityType: EntityType;
     position: Vector2;

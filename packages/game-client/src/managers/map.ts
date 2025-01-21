@@ -74,10 +74,7 @@ export class MapManager {
       for (let x = 0; x < this.map[y].length; x++) {
         const tileX = x * this.tileSize;
         const tileY = y * this.tileSize;
-        const tileCenter = {
-          x: tileX + this.tileSize / 2,
-          y: tileY + this.tileSize / 2,
-        };
+        const tileCenter = new Vector2(tileX + this.tileSize / 2, tileY + this.tileSize / 2);
 
         let minOpacity = 1;
         for (const source of lightSources) {
