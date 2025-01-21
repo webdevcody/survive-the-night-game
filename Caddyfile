@@ -1,5 +1,5 @@
 survivethenightgame.com {
-    reverse_proxy dashboard:3000
+    reverse_proxy website:3000
 }
 
 wss.survivethenightgame.com {

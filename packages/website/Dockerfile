@@ -1,4 +1,8 @@
 FROM node:20-alpine
+
+ARG VITE_WSS_URL
+ENV VITE_WSS_URL=$VITE_WSS_URL
+
 WORKDIR /app
 COPY package*.json ./
 COPY packages/website/package*.json ./packages/website/

@@ -5,6 +5,8 @@ services:
     build:
       context: .
       dockerfile: packages/website/Dockerfile
+      args:
+        - VITE_WSS_URL=wss://wss.survivethenightgame.com
     restart: unless-stopped
     ports:
       - "3000:3000"
