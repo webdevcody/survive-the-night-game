@@ -9,6 +9,12 @@ COPY package.json package-lock.json* ./
 COPY packages/game-shared/package.json ./packages/game-shared/
 COPY packages/game-client/package.json ./packages/game-client/
 COPY packages/dashboard/package.json ./packages/dashboard/
+COPY tsconfig.json ./
+
+# Copy all tsconfig files first
+COPY packages/game-shared/tsconfig.json ./packages/game-shared/
+COPY packages/game-client/tsconfig.json ./packages/game-client/
+COPY packages/dashboard/tsconfig.json ./packages/dashboard/
 
 # Install dependencies
 RUN npm ci
