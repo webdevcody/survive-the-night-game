@@ -4,9 +4,19 @@ FROM base AS builder
 
 WORKDIR /app
 
+# Copy root workspace files
 COPY package.json package-lock.json* ./
+COPY packages/game-shared/package.json ./packages/game-shared/
+COPY packages/dashboard/package.json ./packages/dashboard/
+
+# Install dependencies
 RUN npm ci
-COPY . .
+
+# Copy source files
+COPY packages/game-shared ./packages/game-shared
+COPY packages/dashboard ./packages/dashboard
+
+WORKDIR /app/packages/dashboard
 
 ENV NEXT_TELEMETRY_DISABLED=1
 ENV NODE_ENV=production
@@ -22,24 +32,19 @@ ENV NODE_ENV=production
 RUN addgroup --system --gid 1001 nodejs
 RUN adduser --system --uid 1001 nextjs
 
-COPY --from=builder /app/public ./public
+COPY --from=builder /app/packages/dashboard/public ./public
 
 RUN mkdir .next
 RUN chown nextjs:nodejs .next
 
-COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
-COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
-COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
-COPY --from=builder --chown=nextjs:nodejs /app/run.sh ./run.sh
-
-WORKDIR /app
+COPY --from=builder --chown=nextjs:nodejs /app/packages/dashboard/.next/standalone ./
+COPY --from=builder --chown=nextjs:nodejs /app/packages/dashboard/.next/static ./.next/static
+COPY --from=builder --chown=nextjs:nodejs /app/packages/dashboard/run.sh ./run.sh
 
 USER nextjs
 
 EXPOSE 3000
 
 ENV PORT=3000
-
-ARG NEXT_PUBLIC_WEBSOCKET_URL
 
 CMD ./run.sh

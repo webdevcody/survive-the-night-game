@@ -2,19 +2,38 @@ FROM node:20-alpine as build
 
 WORKDIR /app
 
-COPY . .
+# Copy root workspace files
+COPY package.json package-lock.json* ./
+COPY packages/game-shared/package.json ./packages/game-shared/
+COPY packages/game-server/package.json ./packages/game-server/
 
-RUN npm install
+# Install dependencies
+RUN npm ci
+
+# Copy source files
+COPY packages/game-shared ./packages/game-shared
+COPY packages/game-server ./packages/game-server
+
+WORKDIR /app/packages/game-server
+
 RUN npm run build
 
 FROM node:20-alpine
 
 WORKDIR /app
 
-COPY --from=build /app/package*.json .
+# Copy root workspace files
+COPY package.json package-lock.json* ./
+COPY packages/game-shared/package.json ./packages/game-shared/
+COPY packages/game-server/package.json ./packages/game-server/
 
-RUN npm install --only=production
+# Install production dependencies
+RUN npm ci --only=production
 
-COPY --from=build /app/dist dist
+# Copy built files
+COPY --from=build /app/packages/game-shared ./packages/game-shared
+COPY --from=build /app/packages/game-server/dist ./packages/game-server/dist
+
+WORKDIR /app/packages/game-server
 
 CMD ["node", "dist/server.cjs"]
