@@ -10,7 +10,6 @@ import { roundVector2 } from "@shared/util/physics";
 
 export class BulletClient extends ClientEntityBase implements IClientEntity, Renderable {
   private readonly BULLET_SIZE = 4;
-  private readonly LERP_FACTOR = 0.4; // Higher value = faster interpolation
   private lastRenderPosition: Vector2;
 
   constructor(data: RawEntity, assetManager: AssetManager) {
@@ -33,9 +32,9 @@ export class BulletClient extends ClientEntityBase implements IClientEntity, Ren
   public render(ctx: CanvasRenderingContext2D, gameState: GameState): void {
     // Interpolate position
     const targetPosition = this.getPosition();
-    this.lastRenderPosition = new Vector2(
-      this.lastRenderPosition.x + (targetPosition.x - this.lastRenderPosition.x) * this.LERP_FACTOR,
-      this.lastRenderPosition.y + (targetPosition.y - this.lastRenderPosition.y) * this.LERP_FACTOR
+    this.lastRenderPosition = this.lerpPosition(
+      targetPosition,
+      new Vector2(this.lastRenderPosition.x, this.lastRenderPosition.y)
     );
 
     const renderPosition = roundVector2(this.lastRenderPosition);

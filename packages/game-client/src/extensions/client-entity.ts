@@ -2,16 +2,29 @@ import { ImageLoader } from "@/managers/asset";
 import { ClientExtension, ClientExtensionCtor } from "@/extensions/types";
 import { clientExtensionsMap } from "@/extensions/index";
 import { RawEntity } from "@shared/types/entity";
+import Vector2 from "@shared/util/vector2";
 
 export abstract class ClientEntityBase {
   private id: string;
   protected imageLoader: ImageLoader;
   private extensions: ClientExtension[] = [];
+  private static readonly LERP_FACTOR = 0.2;
 
   public constructor(data: RawEntity, imageLoader: ImageLoader) {
     this.id = data.id;
     this.imageLoader = imageLoader;
     this.deserialize(data);
+  }
+
+  public lerpPosition(target: Vector2, current: Vector2): Vector2 {
+    const distance = target.distance(current);
+    if (distance > 100) {
+      return target.clone();
+    }
+    return new Vector2(
+      current.x + (target.x - current.x) * ClientEntityBase.LERP_FACTOR,
+      current.y + (target.y - current.y) * ClientEntityBase.LERP_FACTOR
+    );
   }
 
   public getId(): string {

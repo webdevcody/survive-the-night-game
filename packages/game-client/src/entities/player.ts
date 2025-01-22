@@ -25,7 +25,6 @@ import { ClientEntity } from "./client-entity";
 import { SKIN_TYPES, SkinType } from "@shared/commands/commands";
 
 export class PlayerClient extends ClientEntity implements IClientEntity, Renderable {
-  private readonly LERP_FACTOR = 0.1;
   private readonly ARROW_LENGTH = 20;
 
   private lastRenderPosition = { x: 0, y: 0 };
@@ -149,8 +148,10 @@ export class PlayerClient extends ClientEntity implements IClientEntity, Rendera
       this.lastRenderPosition.x = targetPosition.x;
       this.lastRenderPosition.y = targetPosition.y;
     } else {
-      this.lastRenderPosition.x += dx * this.LERP_FACTOR;
-      this.lastRenderPosition.y += dy * this.LERP_FACTOR;
+      this.lastRenderPosition = this.lerpPosition(
+        targetPosition,
+        new Vector2(this.lastRenderPosition.x, this.lastRenderPosition.y)
+      );
     }
 
     const renderPosition = roundVector2(

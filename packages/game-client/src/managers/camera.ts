@@ -5,7 +5,7 @@ export class CameraManager {
   private scale: number = 1;
   private position: Vector2 = new Vector2(0, 0);
   private targetPosition: Vector2 = new Vector2(0, 0);
-  private readonly LERP_FACTOR = 0.05;
+  private readonly LERP_FACTOR = 0.025;
 
   constructor(ctx: CanvasRenderingContext2D) {
     this.ctx = ctx;

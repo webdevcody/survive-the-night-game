@@ -23,7 +23,6 @@ import { roundVector2 } from "@shared/util/physics";
 
 export class FastZombieClient extends ClientEntityBase implements IClientEntity, Renderable {
   private lastRenderPosition = { x: 0, y: 0 };
-  private readonly LERP_FACTOR = 0.2; // Higher LERP factor for smoother fast movement
   private previousHealth: number | undefined;
   private damageFlashUntil: number = 0;
   protected debugWaypoint: Vector2 | null = null;
@@ -84,8 +83,10 @@ export class FastZombieClient extends ClientEntityBase implements IClientEntity,
 
     const targetPosition = this.getPosition();
 
-    this.lastRenderPosition.x += (targetPosition.x - this.lastRenderPosition.x) * this.LERP_FACTOR;
-    this.lastRenderPosition.y += (targetPosition.y - this.lastRenderPosition.y) * this.LERP_FACTOR;
+    this.lastRenderPosition = this.lerpPosition(
+      targetPosition,
+      new Vector2(this.lastRenderPosition.x, this.lastRenderPosition.y)
+    );
 
     const renderPosition = roundVector2(
       new Vector2(this.lastRenderPosition.x, this.lastRenderPosition.y)
