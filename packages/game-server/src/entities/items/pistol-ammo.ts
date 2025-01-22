@@ -3,7 +3,7 @@ import { Entities } from "@/constants";
 import { StackableItem } from "@/entities/items/stackable-item";
 
 export class PistolAmmo extends StackableItem {
-  public static readonly DEFAULT_AMMO_COUNT = 10;
+  public static readonly DEFAULT_AMMO_COUNT = 16;
 
   constructor(gameManagers: IGameManagers) {
     super(

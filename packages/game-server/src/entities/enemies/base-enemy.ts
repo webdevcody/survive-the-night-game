@@ -85,12 +85,12 @@ export abstract class BaseEnemy extends Entity {
 
   onDeath(): void {
     this.extensions.push(
-      new Interactive(this).onInteract(this.afterDeathInteract.bind(this)).setDisplayName("loot")
+      new Interactive(this).onInteract(this.onLooted.bind(this)).setDisplayName("loot")
     );
     this.getExt(Collidable).setEnabled(false);
   }
 
-  afterDeathInteract(): void {
+  onLooted(): void {
     const inventory = this.getExt(Inventory);
     if (inventory) {
       inventory.scatterItems(this.getPosition());

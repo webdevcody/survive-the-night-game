@@ -9,42 +9,55 @@ import { RecipeType, recipes } from "../../../game-shared/src/util/recipes";
 
 const CRAFTING_TABLE_SETTINGS = {
   Container: {
-    background: "white",
+    background: "rgba(255, 255, 255, 0.85)",
     padding: {
       bottom: 20,
       left: 20,
       right: 20,
-      top: 20,
+      top: 50,
     },
     right: 20,
+  },
+  Instructions: {
+    color: "rgba(0, 0, 0, 0.7)",
+    fontSize: 24,
+    text: "Select [W / S]    Craft - [Space]    Close - [Q]",
+    offsetY: 25,
   },
   Recipes: {
     gapX: 10,
     gapY: 10,
   },
   Recipe: {
-    background: "gray",
-    borderColor: "gray",
+    background: "rgba(128, 128, 128, 0.3)",
+    borderColor: "rgba(128, 128, 128, 0.5)",
     borderWidth: 6,
 
     active: {
-      borderColor: "green",
+      craftable: {
+        borderColor: "#22c55e",
+        background: "rgba(34, 197, 94, 0.2)",
+      },
+      uncraftable: {
+        borderColor: "#dc2626",
+        background: "rgba(220, 38, 38, 0.1)",
+      },
     },
     disabled: {
-      background: "#F07878",
+      background: "rgba(128, 128, 128, 0.15)",
     },
   },
   Slot: {
     padding: {
-      bottom: 10,
-      left: 10,
-      right: 10,
-      top: 10,
+      bottom: 20,
+      left: 20,
+      right: 20,
+      top: 20,
     },
-    size: 50,
+    size: 120,
   },
   Line: {
-    color: "black",
+    color: "rgba(0, 0, 0, 0.6)",
     height: 8,
     width: 25,
   },
@@ -86,7 +99,12 @@ export class CraftingTable implements Renderable {
   }
 
   public onSelect() {
-    const recipe = recipes[this.activeRecipe];
+    const sortedRecipes = [...recipes].sort((a, b) => {
+      const aCanBeCrafted = a.canBeCrafted(this.getInventory());
+      const bCanBeCrafted = b.canBeCrafted(this.getInventory());
+      return bCanBeCrafted === aCanBeCrafted ? 0 : bCanBeCrafted ? 1 : -1;
+    });
+    const recipe = sortedRecipes[this.activeRecipe];
 
     if (recipe.canBeCrafted(this.getInventory())) {
       this.onCraft(recipe.getType());
@@ -113,7 +131,14 @@ export class CraftingTable implements Renderable {
     const { Container, Line, Recipe, Recipes, Slot } = CRAFTING_TABLE_SETTINGS;
     let maxRecipeWidth = 0;
 
-    for (const recipe of recipes) {
+    // Sort recipes by craftability
+    const sortedRecipes = [...recipes].sort((a, b) => {
+      const aCanBeCrafted = a.canBeCrafted(this.getInventory());
+      const bCanBeCrafted = b.canBeCrafted(this.getInventory());
+      return bCanBeCrafted === aCanBeCrafted ? 0 : bCanBeCrafted ? 1 : -1;
+    });
+
+    for (const recipe of sortedRecipes) {
       // plus one for the resulting component
       const componentsAmount = recipe.components().length + 1;
 
@@ -146,9 +171,17 @@ export class CraftingTable implements Renderable {
     ctx.fillStyle = Container.background;
     ctx.fillRect(offsetLeft, offsetTop, width, height);
 
-    for (let i = 0; i < recipes.length; i++) {
-      const recipe = recipes[i];
+    // Draw instructions
+    const { Instructions } = CRAFTING_TABLE_SETTINGS;
+    ctx.font = `${Instructions.fontSize}px Arial`;
+    ctx.fillStyle = Instructions.color;
+    ctx.textAlign = "center";
+    ctx.fillText(Instructions.text, offsetLeft + width / 2, offsetTop + Instructions.offsetY);
+
+    for (let i = 0; i < sortedRecipes.length; i++) {
+      const recipe = sortedRecipes[i];
       const disabled = !recipe.canBeCrafted(this.getInventory());
+      const isActive = i === this.activeRecipe;
       const components = recipe.components();
       const resulting = recipe.resultingComponent();
 
@@ -158,7 +191,13 @@ export class CraftingTable implements Renderable {
       let recipeOffsetLeft = offsetLeft + Container.padding.left;
 
       // draw recipe border
-      ctx.fillStyle = i === this.activeRecipe ? Recipe.active.borderColor : Recipe.borderColor;
+      if (isActive) {
+        ctx.fillStyle = disabled
+          ? Recipe.active.uncraftable.borderColor
+          : Recipe.active.craftable.borderColor;
+      } else {
+        ctx.fillStyle = Recipe.borderColor;
+      }
       ctx.fillRect(recipeOffsetLeft, recipeOffsetTop, recipeWidth, recipeHeight);
 
       recipeOffsetTop += Recipe.borderWidth;
@@ -168,7 +207,13 @@ export class CraftingTable implements Renderable {
       recipeWidth -= Recipe.borderWidth * 2;
 
       // draw recipe background
-      ctx.fillStyle = disabled ? Recipe.disabled.background : Recipe.background;
+      if (isActive) {
+        ctx.fillStyle = disabled
+          ? Recipe.active.uncraftable.background
+          : Recipe.active.craftable.background;
+      } else {
+        ctx.fillStyle = disabled ? Recipe.disabled.background : Recipe.background;
+      }
       ctx.fillRect(recipeOffsetLeft, recipeOffsetTop, recipeWidth, recipeHeight);
 
       const slotWidth = Slot.size - Slot.padding.left - Slot.padding.right;

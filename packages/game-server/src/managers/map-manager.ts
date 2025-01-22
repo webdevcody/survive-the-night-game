@@ -20,7 +20,7 @@ const WEAPON_SPAWN_CHANCE = {
 
 const ZOMBIE_SPAWN_CHANCE = 0.003;
 
-const DIFFICULTY_MULTIPLIER = 100.0; // Adjust this to change overall zombie counts
+const DIFFICULTY_MULTIPLIER = 200.0; // Adjust this to change overall zombie counts
 
 const BASE_ZOMBIES_PER_PLAYER = 5;
 const MIN_ZOMBIES_PER_PLAYER = 2;

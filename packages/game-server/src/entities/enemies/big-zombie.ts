@@ -19,6 +19,7 @@ export class BigZombie extends BaseEnemy {
   private static readonly ATTACK_COOLDOWN = 1.5;
   private static readonly KNOCKBACK_FORCE = 600;
   public static readonly MAX_HEALTH = 11;
+  private static readonly DROP_CHANCE = 1;
 
   constructor(gameManagers: IGameManagers) {
     super(
@@ -27,7 +28,8 @@ export class BigZombie extends BaseEnemy {
       BigZombie.Size,
       BigZombie.MAX_HEALTH,
       BigZombie.ATTACK_COOLDOWN,
-      BigZombie.ZOMBIE_SPEED
+      BigZombie.ZOMBIE_SPEED,
+      BigZombie.DROP_CHANCE
     );
   }
 
