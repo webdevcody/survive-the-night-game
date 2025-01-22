@@ -105,17 +105,16 @@ export class ServerSocketManager implements Broadcaster {
     sockets.forEach((socket) => {
       const player = new Player(this.getGameManagers());
 
-      // Position player at map center
-      const map = this.getMapManager().getMap();
-      const centerX = (map.length * 16) / 2;
-      const centerY = (map[0].length * 16) / 2;
-      player.getExt(Positionable).setPosition(new Vector2(centerX, centerY));
+      // Position player at random grass location
+      const spawnPosition = this.getMapManager().getRandomGrassPosition();
+      player.getExt(Positionable).setPosition(spawnPosition);
 
       // Add to player map and entity manager
       this.players.set(socket.id, player);
       this.getEntityManager().addEntity(player);
 
       // Send map and player ID to client
+      const map = this.getMapManager().getMap();
       socket.emit(ServerSentEvents.MAP, map);
       socket.emit(ServerSentEvents.YOUR_ID, player.getId());
       this.broadcastEvent(new PlayerJoinedEvent(player.getId()));
@@ -210,10 +209,9 @@ export class ServerSocketManager implements Broadcaster {
     if (totalPlayers !== 0) {
       const player = new Player(this.getGameManagers());
 
-      const map = this.getMapManager().getMap();
-      const centerX = (map.length * 16) / 2;
-      const centerY = (map[0].length * 16) / 2;
-      player.getExt(Positionable).setPosition(new Vector2(centerX, centerY));
+      // Position player at random grass location
+      const spawnPosition = this.getMapManager().getRandomGrassPosition();
+      player.getExt(Positionable).setPosition(spawnPosition);
 
       this.players.set(socket.id, player);
       this.getEntityManager().addEntity(player);

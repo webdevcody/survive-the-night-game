@@ -7,7 +7,7 @@ import {
   ClientInteractive,
 } from "@/extensions";
 import { ClientEntityBase } from "@/extensions/client-entity";
-import { ImageLoader, getItemAssetKey } from "@/managers/asset";
+import { ImageLoader, getItemAssetKey, Asset } from "@/managers/asset";
 import { GameState } from "@/state";
 import { debugDrawHitbox, drawCenterPositionWithLabel } from "@/util/debug";
 import { createFlashEffect } from "@/util/render";
@@ -22,6 +22,7 @@ import { IClientEntity, Renderable, getFrameIndex, drawHealthBar } from "@/entit
 import { MAX_PLAYER_HEALTH } from "@shared/constants/constants";
 import Vector2 from "@shared/util/vector2";
 import { ClientEntity } from "./client-entity";
+import { SKIN_TYPES, SkinType } from "@shared/commands/commands";
 
 export class PlayerClient extends ClientEntity implements IClientEntity, Renderable {
   private readonly LERP_FACTOR = 0.1;
@@ -33,6 +34,7 @@ export class PlayerClient extends ClientEntity implements IClientEntity, Rendera
   private activeItem: InventoryItem | null = null;
   private previousHealth: number | undefined;
   private damageFlashUntil: number = 0;
+  private skin: SkinType = SKIN_TYPES.DEFAULT;
 
   private input: Input = {
     facing: Direction.Right,
@@ -55,6 +57,11 @@ export class PlayerClient extends ClientEntity implements IClientEntity, Rendera
     this.isCrafting = data.isCrafting;
     this.activeItem = data.activeItem;
     this.input = data.input;
+    this.skin = data.skin || SKIN_TYPES.DEFAULT;
+  }
+
+  private getPlayerAssetKey(): string {
+    return this.skin === SKIN_TYPES.WDC ? "player_wdc" : "player";
   }
 
   getInventory(): InventoryItem[] {
@@ -121,17 +128,18 @@ export class PlayerClient extends ClientEntity implements IClientEntity, Rendera
     const isMoving = this.getVelocity().x !== 0 || this.getVelocity().y !== 0;
 
     let image: HTMLImageElement;
+    const assetKey = this.getPlayerAssetKey();
 
     if (this.isDead()) {
-      image = this.imageLoader.getWithDirection("player", Direction.Down);
+      image = this.imageLoader.getWithDirection(assetKey, Direction.Down);
     } else if (!isMoving) {
-      image = this.imageLoader.getWithDirection("player", facing);
+      image = this.imageLoader.getWithDirection(assetKey, facing);
     } else {
       const frameIndex = getFrameIndex(gameState.startedAt, {
         duration: 500,
         frames: 3,
       });
-      image = this.imageLoader.getFrameWithDirection("player", facing, frameIndex);
+      image = this.imageLoader.getFrameWithDirection(assetKey, facing, frameIndex);
     }
     const dx = targetPosition.x - this.lastRenderPosition.x;
     const dy = targetPosition.y - this.lastRenderPosition.y;
@@ -254,5 +262,6 @@ export class PlayerClient extends ClientEntity implements IClientEntity, Rendera
     this.isCrafting = data.isCrafting;
     this.activeItem = data.activeItem;
     this.input = data.input;
+    this.skin = data.skin || SKIN_TYPES.DEFAULT;
   }
 }

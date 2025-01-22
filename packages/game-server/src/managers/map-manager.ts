@@ -346,4 +346,28 @@ export class MapManager implements IMapManager {
       }
     }
   }
+
+  public getRandomGrassPosition(): Vector2 {
+    const totalSize = BIOME_SIZE * MAP_SIZE;
+    const validPositions: Vector2[] = [];
+
+    // Collect all valid grass tile positions
+    for (let y = 0; y < totalSize; y++) {
+      for (let x = 0; x < totalSize; x++) {
+        // 0 represents grass tiles
+        if (this.map[y][x] === 0) {
+          validPositions.push(new Vector2(x * TILE_SIZE, y * TILE_SIZE));
+        }
+      }
+    }
+
+    if (validPositions.length === 0) {
+      // Fallback to center if no grass tiles found
+      return new Vector2((totalSize * TILE_SIZE) / 2, (totalSize * TILE_SIZE) / 2);
+    }
+
+    // Return a random position from valid positions
+    const randomIndex = Math.floor(Math.random() * validPositions.length);
+    return validPositions[randomIndex];
+  }
 }

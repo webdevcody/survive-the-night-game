@@ -28,6 +28,7 @@ import { MAX_INTERACT_RADIUS, MAX_PLAYER_HEALTH } from "@shared/constants/consta
 import Vector2 from "@/util/vector2";
 import { Rectangle } from "@/util/shape";
 import Carryable from "@/extensions/carryable";
+import { SkinType, SKIN_TYPES } from "@shared/commands/commands";
 
 export class Player extends Entity {
   private static readonly PLAYER_WIDTH = 16;
@@ -53,6 +54,7 @@ export class Player extends Entity {
   private isCrafting = false;
   private broadcaster: Broadcaster;
   private lastWeaponType: ItemType | null = null;
+  private skin: SkinType = SKIN_TYPES.DEFAULT;
 
   constructor(gameManagers: IGameManagers) {
     super(gameManagers, Entities.PLAYER);
@@ -191,6 +193,7 @@ export class Player extends Entity {
       activeItem: this.activeItem,
       isCrafting: this.isCrafting,
       input: this.input,
+      skin: this.skin,
     };
   }
 
@@ -442,5 +445,13 @@ export class Player extends Entity {
     if (this.isDead()) {
       return;
     }
+  }
+
+  setSkin(skin: SkinType): void {
+    this.skin = skin;
+  }
+
+  getSkin(): SkinType {
+    return this.skin;
   }
 }

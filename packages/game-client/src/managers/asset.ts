@@ -87,7 +87,7 @@ function createCharacterAssets(
   }
 
   // Add directional frames
-  const directions = ["down", "left", "up"] as const;
+  const directions = ["down", "right", "up"] as const;
   directions.forEach((direction) => {
     frames[direction].forEach((frame, index) => {
       assets[`${name}_facing_${direction}_${index}`] = assetMap(frame);
@@ -96,7 +96,7 @@ function createCharacterAssets(
 
   // Add right frames (flipped)
   frames.right.forEach((frame, index) => {
-    assets[`${name}_facing_right_${index}`] = loadFlipXAsset(frame);
+    assets[`${name}_facing_left_${index}`] = loadFlipXAsset(frame);
   });
 
   return assets;
@@ -154,6 +154,22 @@ const zombieFastFrames = createCharacterFrames({
   downY: 208,
   leftY: 224,
   upY: 192,
+  totalFrames: 3,
+});
+
+const playerFrames = createCharacterFrames({
+  startX: 0,
+  downY: 112,
+  leftY: 128,
+  upY: 96,
+  totalFrames: 3,
+});
+
+const playerWdcFrames = createCharacterFrames({
+  startX: 64,
+  downY: 112,
+  leftY: 128,
+  upY: 96,
   totalFrames: 3,
 });
 
@@ -219,23 +235,6 @@ export const assetsMap = {
   torch: assetMap({ x: 68, y: 266 }),
   fire: assetMap({ x: 51, y: 265 }),
   gasoline: assetMap({ x: 255, y: 38 }),
-  player: assetMap({ x: 493, y: 209 }),
-  player_facing_down: assetMap(playerDownFrameOrigins[0]),
-  player_facing_down_0: assetMap(playerDownFrameOrigins[0]),
-  player_facing_down_1: assetMap(playerDownFrameOrigins[1]),
-  player_facing_down_2: assetMap(playerDownFrameOrigins[2]),
-  player_facing_left: loadFlipXAsset(playerLeftFrameOrigins[0]),
-  player_facing_left_0: loadFlipXAsset(playerLeftFrameOrigins[0]),
-  player_facing_left_1: loadFlipXAsset(playerLeftFrameOrigins[1]),
-  player_facing_left_2: loadFlipXAsset(playerLeftFrameOrigins[2]),
-  player_facing_right: assetMap(playerRightFrameOrigins[0]),
-  player_facing_right_0: assetMap(playerRightFrameOrigins[0]),
-  player_facing_right_1: assetMap(playerRightFrameOrigins[1]),
-  player_facing_right_2: assetMap(playerRightFrameOrigins[2]),
-  player_facing_up: assetMap(playerUpFrameOrigins[0]),
-  player_facing_up_0: assetMap(playerUpFrameOrigins[0]),
-  player_facing_up_1: assetMap(playerUpFrameOrigins[1]),
-  player_facing_up_2: assetMap(playerUpFrameOrigins[2]),
   tree: assetMap({ x: 221, y: 209 }),
   wood: assetMap({ x: 221, y: 209 }),
   wall: assetMap({ x: 357, y: 95 }),
@@ -276,7 +275,9 @@ export const assetsMap = {
   big_zombie_facing_up_0: assetMap(bigZombieDownFrameOrigins[0]),
   big_zombie_facing_up_1: assetMap(bigZombieDownFrameOrigins[1]),
   big_zombie_facing_up_2: assetMap(bigZombieDownFrameOrigins[2]),
+  ...createCharacterAssets("player", playerFrames),
   ...createCharacterAssets("fast_zombie", zombieFastFrames, 289, 19),
+  ...createCharacterAssets("player_wdc", playerWdcFrames, 493, 190),
   ...createDirectionalFrames(swingDownFrameOrigins, "swing"),
   ...createDirectionalFrames(zombieSwingDownFrameOrigins, "zombie_swing"),
   bandage: assetMap({ x: 34, y: 190 }),

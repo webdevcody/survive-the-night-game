@@ -69,7 +69,11 @@ export class Renderer {
     renderableEntities.sort((a, b) => a.getZIndex() - b.getZIndex());
 
     renderableEntities.forEach((entity) => {
-      entity.render(this.ctx, this.gameState);
+      try {
+        entity.render(this.ctx, this.gameState);
+      } catch (error) {
+        console.error(`Error rendering entity ${entity.constructor.name}:`, error);
+      }
     });
   }
 
