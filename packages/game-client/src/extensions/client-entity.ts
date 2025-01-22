@@ -23,19 +23,11 @@ export abstract class ClientEntityBase {
   }
 
   public hasExt<T extends ClientExtension>(ctor: ClientExtensionCtor<T>): boolean {
-    return this.extensions.some((ext): ext is T => {
-      const extType = (ext.constructor as any).type;
-      const ctorType = (ctor as any).type;
-      return extType === ctorType;
-    });
+    return this.extensions.some((ext) => ext instanceof ctor);
   }
 
   public getExt<T extends ClientExtension>(ctor: ClientExtensionCtor<T>): T {
-    const ext = this.extensions.find((ext): ext is T => {
-      const extType = (ext.constructor as any).type;
-      const ctorType = (ctor as any).type;
-      return extType === ctorType;
-    });
+    const ext = this.extensions.find((ext) => ext instanceof ctor);
     if (!ext) {
       console.error(
         `Extension ${ctor.name} not found for entity ${this.id}. Available extensions:`,
@@ -45,7 +37,7 @@ export abstract class ClientEntityBase {
       );
       throw new Error(`Extension ${ctor.name} not found`);
     }
-    return ext;
+    return ext as T;
   }
 
   public deserialize(data: RawEntity): void {
