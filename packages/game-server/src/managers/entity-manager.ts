@@ -133,7 +133,7 @@ export class EntityManager implements IEntityManager {
       throw new Error(`Unknown item type: '${item.itemType}'`);
     }
 
-    return new (constructor as EntityConstructor)(this.getGameManagers());
+    return new (constructor as EntityConstructor)(this.getGameManagers(), item.state);
   }
 
   setMapSize(width: number, height: number) {

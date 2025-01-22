@@ -7,14 +7,14 @@ import Positionable from "@/extensions/positionable";
 import { IGameManagers } from "@/managers/types";
 import { Entities } from "@/constants";
 import { Entity } from "@/entities/entity";
-import { RawEntity } from "@/types/entity";
+import { RawEntity, ItemState } from "@/types/entity";
 import Vector2 from "@/util/vector2";
 
 export class Wall extends Entity {
   public static readonly Size = new Vector2(16, 16);
-  public static readonly MAX_HEALTH = 3;
+  public static readonly MAX_HEALTH = 10;
 
-  constructor(gameManagers: IGameManagers, health?: number) {
+  constructor(gameManagers: IGameManagers, itemState?: ItemState) {
     super(gameManagers, Entities.WALL);
 
     this.extensions = [
@@ -23,7 +23,7 @@ export class Wall extends Entity {
       new Interactive(this).onInteract(this.interact.bind(this)).setDisplayName("wall"),
       new Destructible(this)
         .setMaxHealth(Wall.MAX_HEALTH)
-        .setHealth(health ?? Wall.MAX_HEALTH)
+        .setHealth(itemState?.health ?? Wall.MAX_HEALTH)
         .onDeath(() => this.onDeath()),
       new Carryable(this, "wall"),
     ];

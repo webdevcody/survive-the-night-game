@@ -34,10 +34,32 @@ const HUD_SETTINGS = {
     scale: 0.7,
     colors: {
       enemy: "red",
-      player: "blue",
+      player: "green",
       wall: "white",
       item: "yellow",
-      tree: "green",
+      tree: "gray",
+    },
+    indicators: {
+      enemy: {
+        shape: "circle",
+        size: 6,
+      },
+      player: {
+        shape: "rectangle",
+        size: 8,
+      },
+      wall: {
+        shape: "rectangle",
+        size: 8,
+      },
+      item: {
+        shape: "circle",
+        size: 6,
+      },
+      tree: {
+        shape: "rectangle",
+        size: 8,
+      },
     },
   },
 };
@@ -284,8 +306,18 @@ export class Hud {
             const minimapX = settings.left + settings.size / 2 + relativeX * settings.scale;
             const minimapY = top + settings.size / 2 + relativeY * settings.scale;
 
-            // Draw forest tile
-            ctx.fillRect(minimapX - 2, minimapY - 2, 4, 4);
+            const treeIndicator = settings.indicators.tree;
+            const size = treeIndicator.size;
+            const halfSize = size / 2;
+
+            // Draw tree indicator based on shape
+            if (treeIndicator.shape === "circle") {
+              ctx.beginPath();
+              ctx.arc(minimapX, minimapY, halfSize, 0, Math.PI * 2);
+              ctx.fill();
+            } else {
+              ctx.fillRect(minimapX - halfSize, minimapY - halfSize, size, size);
+            }
           }
         });
       });
@@ -305,32 +337,42 @@ export class Hud {
       // Convert to minimap coordinates (centered on player)
       const minimapX = settings.left + settings.size / 2 + relativeX * settings.scale;
       const minimapY = top + settings.size / 2 + relativeY * settings.scale;
-      const minimapSize = 4;
 
-      // Determine color based on entity type
+      // Determine indicator settings based on entity type
+      let indicator = null;
       let color = null;
+
       if (
         entity instanceof ZombieClient ||
         entity instanceof BigZombieClient ||
         entity instanceof FastZombieClient
       ) {
         color = settings.colors.enemy;
+        indicator = settings.indicators.enemy;
       } else if (entity instanceof PlayerClient) {
         color = settings.colors.player;
+        indicator = settings.indicators.player;
       } else if (entity instanceof WallClient) {
         color = settings.colors.wall;
+        indicator = settings.indicators.wall;
       } else if (entity.hasExt(ClientCarryable)) {
         color = settings.colors.item;
+        indicator = settings.indicators.item;
       }
 
-      if (color) {
+      if (color && indicator) {
         ctx.fillStyle = color;
-        ctx.fillRect(
-          minimapX - minimapSize / 2,
-          minimapY - minimapSize / 2,
-          minimapSize,
-          minimapSize
-        );
+        const size = indicator.size;
+        const halfSize = size / 2;
+
+        // Draw indicator based on shape
+        if (indicator.shape === "circle") {
+          ctx.beginPath();
+          ctx.arc(minimapX, minimapY, halfSize, 0, Math.PI * 2);
+          ctx.fill();
+        } else {
+          ctx.fillRect(minimapX - halfSize, minimapY - halfSize, size, size);
+        }
       }
     }
 
