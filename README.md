@@ -6,9 +6,34 @@ An online multiplay experience where you explore randomly generated worlds in se
 
 ## How to Run
 
-1. `npm install`
-2. `cp packages/dashboard/.env.example packages/dashboard/.env`
+1. `npm i`
+2. `cp packages/website/.env.example packages/website/.env`
 3. `npm run dev`
+
+## Deployment
+
+The game can be deployed to any VPS easily by following these steps:
+
+1. Get a VPS
+2. Install docker on your VPS
+3. Clone this repository to your VPS
+4. Configure your domain in the `Caddyfile` (if you plan to use a domain)
+5. Build and start the containers:
+   ```bash
+   docker-compose up -d --build
+   ```
+
+This will start:
+
+- The website on port 3000
+- The game-server on port 3001
+- Caddy reverse proxy handling HTTPS on ports 80/443
+
+To stop the deployment:
+
+```bash
+docker-compose down
+```
 
 ## Contributing
 

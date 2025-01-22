@@ -87,7 +87,7 @@ export class GameClient {
     };
 
     this.mapManager = new MapManager(this);
-    this.hud = new Hud();
+    this.hud = new Hud(this.mapManager);
     this.gameOverDialog = new GameOverDialogUI();
 
     // TODO: refactor to use event emitter

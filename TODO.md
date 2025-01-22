@@ -6,6 +6,14 @@ Feel free to pick any item listed out here to work on.
 
 ## High Priority (Core Mechanics):
 
+- [ ] mini map
+- [ ] indicators to know where team mates are
+- [ ] ability to chat
+- [ ] larger maps
+- [ ] higher chance of spawning ammo / weapons
+- [ ] fix craft
+- [ ] ability to "revive" dead team mates
+
 ### Refactoring
 
 - [ ] "@/_": ["./src/_", "../game-shared/src/\*"], figure out why in server tsconfig.json, I need this for tests to pass

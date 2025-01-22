@@ -4,10 +4,8 @@
   "main": "index.js",
   "scripts": {
     "dev": "npm-run-all --parallel dev:*",
-    "dev:dashboard": "npm run dev --workspace=packages/dashboard",
     "dev:website": "npm run dev --workspace=packages/website",
     "dev:server": "npm run dev --workspace=packages/game-server",
-    "build:dashboard": "npm run build --workspace=packages/dashboard",
     "build:server": "npm run build --workspace=packages/game-server",
     "build:website": "npm run build --workspace=packages/website",
     "test:game-client": "npm run test --workspace=packages/game-client",

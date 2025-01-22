@@ -42,6 +42,10 @@ export class MapManager {
     this.map = map;
   }
 
+  getMap(): number[][] | null {
+    return this.map;
+  }
+
   private getLightSources(): LightSource[] {
     const sources: LightSource[] = [];
     const entities = this.client.getGameState().entities;

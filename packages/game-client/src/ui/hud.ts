@@ -1,5 +1,15 @@
 import { GameState } from "@/state";
 import { getPlayer } from "@/util/get-player";
+import { ClientPositionable } from "@/extensions/positionable";
+import { ZombieClient } from "@/entities/zombie";
+import { BigZombieClient } from "@/entities/big-zombie";
+import { FastZombieClient } from "@/entities/fast-zombie";
+import { PlayerClient } from "@/entities/player";
+import { WallClient } from "@/entities/items/wall";
+import { TreeClient } from "@/entities/items/tree";
+import { ClientCarryable } from "@/extensions/carryable";
+import { MapManager } from "@/managers/map";
+import { TILE_IDS } from "@shared/map";
 
 const HUD_SETTINGS = {
   ControlsList: {
@@ -16,13 +26,31 @@ const HUD_SETTINGS = {
       top: 20,
     },
   },
+  Minimap: {
+    size: 400,
+    left: 40,
+    bottom: 40,
+    background: "rgba(0, 0, 0, 0.7)",
+    scale: 0.7,
+    colors: {
+      enemy: "red",
+      player: "blue",
+      wall: "white",
+      item: "yellow",
+      tree: "green",
+    },
+  },
 };
 
 export class Hud {
   private showInstructions: boolean = true;
   private gameMessages: { message: string; timestamp: number }[] = [];
   private messageTimeout: number = 5000;
-  constructor() {}
+  private mapManager: MapManager;
+
+  constructor(mapManager: MapManager) {
+    this.mapManager = mapManager;
+  }
 
   update(gameState: GameState): void {
     this.gameMessages = this.gameMessages.filter(
@@ -44,6 +72,9 @@ export class Hud {
 
   public render(ctx: CanvasRenderingContext2D, gameState: GameState): void {
     const { width } = ctx.canvas;
+
+    // Render minimap first
+    this.renderMinimap(ctx, gameState);
 
     ctx.font = "32px Arial";
     ctx.fillStyle = "white";
@@ -188,6 +219,130 @@ export class Hud {
         offsetTop + HUD_SETTINGS.ControlsList.top + HUD_SETTINGS.ControlsList.padding.top
       );
     }
+
+    ctx.restore();
+  }
+
+  private renderMinimap(ctx: CanvasRenderingContext2D, gameState: GameState): void {
+    const settings = HUD_SETTINGS.Minimap;
+    const myPlayer = getPlayer(gameState);
+    if (!myPlayer || !myPlayer.hasExt(ClientPositionable)) return;
+
+    const playerPos = myPlayer.getExt(ClientPositionable).getPosition();
+    const tileSize = 16; // This should match the tile size in MapManager
+
+    ctx.save();
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+
+    // Calculate position from bottom
+    const top = ctx.canvas.height - settings.bottom - settings.size;
+
+    // Create circular clip
+    ctx.beginPath();
+    ctx.arc(
+      settings.left + settings.size / 2,
+      top + settings.size / 2,
+      settings.size / 2,
+      0,
+      Math.PI * 2
+    );
+    ctx.clip();
+
+    // Draw minimap background
+    ctx.fillStyle = settings.background;
+    ctx.fillRect(settings.left, top, settings.size, settings.size);
+
+    // Draw forest tiles
+    const map = this.mapManager.getMap();
+    if (map) {
+      ctx.fillStyle = settings.colors.tree;
+      map.forEach((row, y) => {
+        row.forEach((cell, x) => {
+          if (cell === TILE_IDS.FOREST) {
+            const worldX = x * tileSize;
+            const worldY = y * tileSize;
+
+            // Calculate relative position to player
+            const relativeX = worldX - playerPos.x;
+            const relativeY = worldY - playerPos.y;
+
+            // Convert to minimap coordinates (centered on player)
+            const minimapX = settings.left + settings.size / 2 + relativeX * settings.scale;
+            const minimapY = top + settings.size / 2 + relativeY * settings.scale;
+
+            // Draw forest tile
+            ctx.fillRect(minimapX - 2, minimapY - 2, 4, 4);
+          }
+        });
+      });
+    }
+
+    // Loop through all entities and draw them on minimap
+    for (const entity of gameState.entities) {
+      if (!entity.hasExt(ClientPositionable)) continue;
+
+      const positionable = entity.getExt(ClientPositionable);
+      const position = positionable.getPosition();
+
+      // Calculate relative position to player
+      const relativeX = position.x - playerPos.x;
+      const relativeY = position.y - playerPos.y;
+
+      // Convert to minimap coordinates (centered on player)
+      const minimapX = settings.left + settings.size / 2 + relativeX * settings.scale;
+      const minimapY = top + settings.size / 2 + relativeY * settings.scale;
+      const minimapSize = 4;
+
+      // Determine color based on entity type
+      let color = null;
+      if (
+        entity instanceof ZombieClient ||
+        entity instanceof BigZombieClient ||
+        entity instanceof FastZombieClient
+      ) {
+        color = settings.colors.enemy;
+      } else if (entity instanceof PlayerClient) {
+        color = settings.colors.player;
+      } else if (entity instanceof WallClient) {
+        color = settings.colors.wall;
+      } else if (entity.hasExt(ClientCarryable)) {
+        color = settings.colors.item;
+      }
+
+      if (color) {
+        ctx.fillStyle = color;
+        ctx.fillRect(
+          minimapX - minimapSize / 2,
+          minimapY - minimapSize / 2,
+          minimapSize,
+          minimapSize
+        );
+      }
+    }
+
+    // Draw radar circle border
+    ctx.strokeStyle = "white";
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.arc(
+      settings.left + settings.size / 2,
+      top + settings.size / 2,
+      settings.size / 2,
+      0,
+      Math.PI * 2
+    );
+    ctx.stroke();
+
+    // Draw crosshair at center (player position)
+    const crosshairSize = 6;
+    ctx.strokeStyle = settings.colors.player;
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(settings.left + settings.size / 2 - crosshairSize, top + settings.size / 2);
+    ctx.lineTo(settings.left + settings.size / 2 + crosshairSize, top + settings.size / 2);
+    ctx.moveTo(settings.left + settings.size / 2, top + settings.size / 2 - crosshairSize);
+    ctx.lineTo(settings.left + settings.size / 2, top + settings.size / 2 + crosshairSize);
+    ctx.stroke();
 
     ctx.restore();
   }

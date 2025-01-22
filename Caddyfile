@@ -3,14 +3,6 @@ survivethenightgame.com {
 }
 
 wss.survivethenightgame.com {
-    reverse_proxy game-server:3000 {
-        header_up Host {host}
-        header_up X-Real-IP {remote}
-        header_up X-Forwarded-For {remote}
-        header_up X-Forwarded-Proto {scheme}
-        transport http {
-            versions h1 h2c
-        }
-    }
+    reverse_proxy game-server:3001
     encode gzip
 }

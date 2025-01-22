@@ -26,6 +26,7 @@ export class SoundManager {
   private gameClient: GameClient;
   private audioCache: Map<SoundType, HTMLAudioElement>;
   private static readonly MAX_DISTANCE = 800;
+  private isMuted: boolean = false;
 
   constructor(gameClient: GameClient) {
     this.gameClient = gameClient;
@@ -42,7 +43,17 @@ export class SoundManager {
     });
   }
 
+  public toggleMute(): void {
+    this.isMuted = !this.isMuted;
+  }
+
+  public getMuteState(): boolean {
+    return this.isMuted;
+  }
+
   public playPositionalSound(sound: SoundType, position: Vector2) {
+    if (this.isMuted || DEBUG_DISABLE_SOUNDS) return;
+
     const myPlayer = this.gameClient.getMyPlayer();
     if (!myPlayer) return;
 
@@ -52,10 +63,7 @@ export class SoundManager {
     const audio = this.audioCache.get(sound)?.cloneNode() as HTMLAudioElement;
     if (audio) {
       audio.volume = volume;
-
-      if (!DEBUG_DISABLE_SOUNDS) {
-        audio.play();
-      }
+      audio.play();
     }
   }
 
