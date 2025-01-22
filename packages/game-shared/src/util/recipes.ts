@@ -28,7 +28,7 @@ export function craftRecipe(recipe: Recipe, inventory: InventoryItem[]): Invento
 
   for (const item of inventory) {
     const componentIdx = components.findIndex(
-      (it, idx) => it.type === item.key && !found.includes(idx)
+      (it, idx) => it.type === item.itemType && !found.includes(idx)
     );
 
     if (componentIdx === -1) {
@@ -44,7 +44,7 @@ export function craftRecipe(recipe: Recipe, inventory: InventoryItem[]): Invento
   }
 
   const resulting = recipe.resultingComponent();
-  newInventory.push({ key: resulting.type });
+  newInventory.push({ itemType: resulting.type });
   return newInventory;
 }
 
@@ -54,7 +54,7 @@ export function recipeCanBeCrafted(recipe: Recipe, inventory: InventoryItem[]): 
 
   for (const item of inventory) {
     const componentIdx = components.findIndex(
-      (it, idx) => it.type === item.key && !found.includes(idx)
+      (it, idx) => it.type === item.itemType && !found.includes(idx)
     );
 
     if (componentIdx === -1) {

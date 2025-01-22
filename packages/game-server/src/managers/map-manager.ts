@@ -3,7 +3,6 @@ import { Boundary } from "@/entities/environment/boundary";
 import { Zombie } from "@/entities/enemies/zombie";
 import { DEBUG_START_ZOMBIE } from "@shared/debug";
 import { Shotgun } from "@/entities/weapons/shotgun";
-import { Knife } from "@/entities/weapons/knife";
 import { Pistol } from "@/entities/weapons/pistol";
 import { IGameManagers, IEntityManager, IMapManager } from "@/managers/types";
 import Positionable from "@/extensions/positionable";
@@ -13,13 +12,31 @@ import { ShotgunAmmo } from "@/entities/items/shotgun-ammo";
 import Vector2 from "@/util/vector2";
 import { BigZombie } from "@/entities/enemies/big-zombie";
 import { FastZombie } from "@/entities/enemies/fast-zombie";
+
 const WEAPON_SPAWN_CHANCE = {
-  PISTOL: 0.002,
-  SHOTGUN: 0.002,
-  KNIFE: 0.002,
+  PISTOL: 0.003,
+  SHOTGUN: 0.0015,
 } as const;
 
-const ZOMBIE_SPAWN_CHANCE = 0.005;
+const ZOMBIE_SPAWN_CHANCE = 0.003;
+
+const DIFFICULTY_MULTIPLIER = 100.0; // Adjust this to change overall zombie counts
+
+const BASE_ZOMBIES_PER_PLAYER = 5;
+const MIN_ZOMBIES_PER_PLAYER = 2;
+const ADDITIONAL_ZOMBIES_PER_NIGHT = 3;
+const MIN_ADDITIONAL_ZOMBIES_PER_NIGHT = 1;
+const MAP_AREA_ZOMBIE_FACTOR = 0.0001; // One zombie per 10000 square tiles as base
+const MIN_MAP_AREA_ZOMBIE_FACTOR = 0.00005; // Minimum of one zombie per 20000 square tiles
+
+const FAST_ZOMBIE_MIN_NIGHT = 3;
+const BIG_ZOMBIE_MIN_NIGHT = 5;
+
+const ZOMBIE_TYPE_CHANCE = {
+  BIG: 0.1, // 10% chance
+  FAST: 0.3, // 20% chance (0.3 - 0.1)
+  REGULAR: 1.0, // 70% chance (remaining)
+} as const;
 
 const Biomes = {
   CAMPSITE: [
@@ -74,12 +91,11 @@ const Biomes = {
     [4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4],
     [4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4],
     [4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4],
-    [4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4],
   ],
 };
 
 const BIOME_SIZE = 16;
-const MAP_SIZE = 5;
+const MAP_SIZE = 9;
 export const TILE_SIZE = 16;
 
 export class MapManager implements IMapManager {
@@ -113,28 +129,80 @@ export class MapManager implements IMapManager {
   }
 
   public spawnZombies(dayNumber: number) {
-    for (let y = 0; y < this.map.length; y++) {
-      for (let x = 0; x < this.map[y].length; x++) {
-        if (this.map[y][x] === 0 && Math.random() < ZOMBIE_SPAWN_CHANCE * dayNumber) {
-          let zombie;
-          const zombieRoll = Math.random();
+    const currentZombies = this.countCurrentZombies();
+    const maxZombies = this.calculateMaxZombies(dayNumber);
 
-          if (zombieRoll < 0.1) {
-            // 10% chance for big zombie
-            zombie = new BigZombie(this.getGameManagers());
-          } else if (zombieRoll < 0.3) {
-            // 20% chance for fast zombie
-            zombie = new FastZombie(this.getGameManagers());
-          } else {
-            // 70% chance for regular zombie
-            zombie = new Zombie(this.getGameManagers());
-          }
+    if (currentZombies >= maxZombies) {
+      return;
+    }
 
-          zombie.setPosition(new Vector2(x * TILE_SIZE, y * TILE_SIZE));
-          this.getEntityManager().addEntity(zombie);
-        }
+    const zombiesToSpawn = Math.min(
+      maxZombies - currentZombies,
+      Math.ceil(maxZombies * ZOMBIE_SPAWN_CHANCE * dayNumber)
+    );
+
+    console.log("Zombies to spawn:", zombiesToSpawn);
+
+    let spawnedCount = 0;
+    const totalSize = BIOME_SIZE * MAP_SIZE;
+
+    while (spawnedCount < zombiesToSpawn) {
+      const x = Math.floor(Math.random() * totalSize);
+      const y = Math.floor(Math.random() * totalSize);
+
+      if (this.map[y][x] === 0) {
+        this.spawnZombieAt(x, y, dayNumber);
+        spawnedCount++;
       }
     }
+  }
+
+  private calculateMaxZombies(dayNumber: number): number {
+    const playerCount = this.getEntityManager().getPlayerEntities().length;
+    const mapArea = (BIOME_SIZE * MAP_SIZE) ** 2;
+
+    console.log("Player count:", playerCount);
+
+    const baseZombies = Math.floor(mapArea * MAP_AREA_ZOMBIE_FACTOR * DIFFICULTY_MULTIPLIER);
+    const minBaseZombies = Math.floor(mapArea * MIN_MAP_AREA_ZOMBIE_FACTOR * DIFFICULTY_MULTIPLIER);
+
+    const playerZombies = playerCount * BASE_ZOMBIES_PER_PLAYER * DIFFICULTY_MULTIPLIER;
+    const minPlayerZombies = playerCount * MIN_ZOMBIES_PER_PLAYER * DIFFICULTY_MULTIPLIER;
+
+    const nightZombies = (dayNumber - 1) * ADDITIONAL_ZOMBIES_PER_NIGHT * DIFFICULTY_MULTIPLIER;
+    const minNightZombies =
+      (dayNumber - 1) * MIN_ADDITIONAL_ZOMBIES_PER_NIGHT * DIFFICULTY_MULTIPLIER;
+
+    const maxZombies = Math.floor(baseZombies + playerZombies + nightZombies);
+    const minZombies = Math.floor(minBaseZombies + minPlayerZombies + minNightZombies);
+
+    return Math.max(maxZombies, minZombies);
+  }
+
+  private countCurrentZombies(): number {
+    return this.getEntityManager()
+      .getEntities()
+      .filter(
+        (entity) =>
+          entity instanceof Zombie || entity instanceof BigZombie || entity instanceof FastZombie
+      ).length;
+  }
+
+  private spawnZombieAt(x: number, y: number, dayNumber: number) {
+    const zombieRoll = Math.random();
+    let zombie;
+
+    // Only allow special zombies after certain nights
+    if (dayNumber >= BIG_ZOMBIE_MIN_NIGHT && zombieRoll < ZOMBIE_TYPE_CHANCE.BIG) {
+      zombie = new BigZombie(this.getGameManagers());
+    } else if (dayNumber >= FAST_ZOMBIE_MIN_NIGHT && zombieRoll < ZOMBIE_TYPE_CHANCE.FAST) {
+      zombie = new FastZombie(this.getGameManagers());
+    } else {
+      zombie = new Zombie(this.getGameManagers());
+    }
+
+    zombie.setPosition(new Vector2(x * TILE_SIZE, y * TILE_SIZE));
+    this.getEntityManager().addEntity(zombie);
   }
 
   generateEmptyMap(width: number, height: number) {
@@ -147,24 +215,38 @@ export class MapManager implements IMapManager {
 
   generateMap() {
     this.getEntityManager().clear();
+    this.generateSpatialGrid();
+    this.initializeMap();
+    this.fillMapWithBiomes();
+    this.createForestBoundaries();
+    this.spawnItems();
+    this.spawnDebugZombieIfEnabled();
+  }
+
+  private generateSpatialGrid() {
     this.getEntityManager().setMapSize(
       BIOME_SIZE * MAP_SIZE * TILE_SIZE,
       BIOME_SIZE * MAP_SIZE * TILE_SIZE
     );
+  }
 
+  private initializeMap() {
     const totalSize = BIOME_SIZE * MAP_SIZE;
     this.map = Array(totalSize)
       .fill(0)
       .map(() => Array(totalSize).fill(0));
+  }
 
-    // Fill map with biomes
+  private fillMapWithBiomes() {
     for (let biomeY = 0; biomeY < MAP_SIZE; biomeY++) {
       for (let biomeX = 0; biomeX < MAP_SIZE; biomeX++) {
         this.placeBiome(biomeX, biomeY);
       }
     }
+  }
 
-    // Create boundaries for forest tiles (keeping this as individual tiles)
+  private createForestBoundaries() {
+    const totalSize = BIOME_SIZE * MAP_SIZE;
     for (let y = 0; y < totalSize; y++) {
       for (let x = 0; x < totalSize; x++) {
         if (this.map[y][x] === TILE_IDS.FOREST) {
@@ -174,50 +256,59 @@ export class MapManager implements IMapManager {
         }
       }
     }
+  }
 
-    // Spawn trees randomly in empty spaces
+  private spawnItems() {
+    const totalSize = BIOME_SIZE * MAP_SIZE;
     for (let y = 0; y < totalSize; y++) {
       for (let x = 0; x < totalSize; x++) {
         if (this.map[y][x] === 0 || this.map[y][x] === 1) {
-          if (Math.random() < 0.05) {
-            // 30% chance for a tree
-            const tree = new Tree(this.getGameManagers());
-            tree.getExt(Positionable).setPosition(new Vector2(x * TILE_SIZE, y * TILE_SIZE));
-            this.getEntityManager().addEntity(tree);
-          } else if (Math.random() < WEAPON_SPAWN_CHANCE.PISTOL) {
-            // 0.1% chance for a pistol
-            const weapon = new Pistol(this.getGameManagers());
-            weapon.getExt(Positionable).setPosition(new Vector2(x * TILE_SIZE, y * TILE_SIZE));
-            this.getEntityManager().addEntity(weapon);
-
-            const pistolAmmo = new PistolAmmo(this.getGameManagers());
-            pistolAmmo
-              .getExt(Positionable)
-              .setPosition(new Vector2(x * TILE_SIZE + 5, y * TILE_SIZE + 4));
-            this.getEntityManager().addEntity(pistolAmmo);
-          } else if (Math.random() < WEAPON_SPAWN_CHANCE.SHOTGUN) {
-            // 0.1% chance for a shotgun
-            const weapon = new Shotgun(this.getGameManagers());
-            weapon.getExt(Positionable).setPosition(new Vector2(x * TILE_SIZE, y * TILE_SIZE));
-            this.getEntityManager().addEntity(weapon);
-
-            const shotgunAmmo = new ShotgunAmmo(this.getGameManagers());
-            shotgunAmmo
-              .getExt(Positionable)
-              .setPosition(new Vector2(x * TILE_SIZE + 5, y * TILE_SIZE + 4));
-            this.getEntityManager().addEntity(shotgunAmmo);
-          } else if (Math.random() < WEAPON_SPAWN_CHANCE.KNIFE) {
-            // 0.1% chance for a knife
-            // 0.1% chance for a knife
-            const weapon = new Knife(this.getGameManagers());
-            weapon.getExt(Positionable).setPosition(new Vector2(x * TILE_SIZE, y * TILE_SIZE));
-            this.getEntityManager().addEntity(weapon);
-          }
+          this.trySpawnTreeAt(x, y);
+          this.trySpawnWeaponAt(x, y);
         }
       }
     }
+  }
 
+  private trySpawnTreeAt(x: number, y: number) {
+    if (Math.random() < 0.05) {
+      const tree = new Tree(this.getGameManagers());
+      tree.getExt(Positionable).setPosition(new Vector2(x * TILE_SIZE, y * TILE_SIZE));
+      this.getEntityManager().addEntity(tree);
+    }
+  }
+
+  private trySpawnWeaponAt(x: number, y: number) {
+    if (Math.random() < WEAPON_SPAWN_CHANCE.PISTOL) {
+      this.spawnPistolAt(x, y);
+    } else if (Math.random() < WEAPON_SPAWN_CHANCE.SHOTGUN) {
+      this.spawnShotgunAt(x, y);
+    }
+  }
+
+  private spawnPistolAt(x: number, y: number) {
+    const weapon = new Pistol(this.getGameManagers());
+    weapon.getExt(Positionable).setPosition(new Vector2(x * TILE_SIZE, y * TILE_SIZE));
+    this.getEntityManager().addEntity(weapon);
+
+    const pistolAmmo = new PistolAmmo(this.getGameManagers());
+    pistolAmmo.getExt(Positionable).setPosition(new Vector2(x * TILE_SIZE + 5, y * TILE_SIZE + 4));
+    this.getEntityManager().addEntity(pistolAmmo);
+  }
+
+  private spawnShotgunAt(x: number, y: number) {
+    const weapon = new Shotgun(this.getGameManagers());
+    weapon.getExt(Positionable).setPosition(new Vector2(x * TILE_SIZE, y * TILE_SIZE));
+    this.getEntityManager().addEntity(weapon);
+
+    const shotgunAmmo = new ShotgunAmmo(this.getGameManagers());
+    shotgunAmmo.getExt(Positionable).setPosition(new Vector2(x * TILE_SIZE + 5, y * TILE_SIZE + 4));
+    this.getEntityManager().addEntity(shotgunAmmo);
+  }
+
+  private spawnDebugZombieIfEnabled() {
     if (DEBUG_START_ZOMBIE) {
+      const totalSize = BIOME_SIZE * MAP_SIZE;
       const middleX = Math.floor(totalSize / 2) * TILE_SIZE;
       const middleY = Math.floor(totalSize / 2) * TILE_SIZE;
 
