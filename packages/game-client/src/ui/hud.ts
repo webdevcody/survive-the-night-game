@@ -69,6 +69,15 @@ export class Hud {
     return `${remainingTime}s until ${gameState.isDay ? "night" : "day"}`;
   }
 
+  private getAlivePlayers(gameState: GameState): number {
+    return gameState.entities.filter((entity) => entity instanceof PlayerClient && !entity.isDead())
+      .length;
+  }
+
+  private getTotalPlayers(gameState: GameState): number {
+    return gameState.entities.filter((entity) => entity instanceof PlayerClient).length;
+  }
+
   public render(ctx: CanvasRenderingContext2D, gameState: GameState): void {
     const { width } = ctx.canvas;
 
@@ -81,14 +90,20 @@ export class Hud {
     const dayText = `Day ${gameState.dayNumber}`;
     const timeOfDay = gameState.isDay ? "Day" : "Night";
     const cycleText = this.getCycleText(gameState);
+    const playersText = `Alive Players: ${this.getAlivePlayers(gameState)}`;
+    const totalPlayers = `Total Players: ${this.getTotalPlayers(gameState)}`;
 
     const dayTextWidth = ctx.measureText(dayText).width;
     const cycleTextWidth = ctx.measureText(cycleText).width;
+    const playersTextWidth = ctx.measureText(playersText).width;
+    const totalPlayersWidth = ctx.measureText(totalPlayers).width;
 
     const margin = 50;
     const gap = 50;
     ctx.fillText(dayText, width - dayTextWidth - margin, margin);
     ctx.fillText(cycleText, width - cycleTextWidth - margin, margin + gap);
+    ctx.fillText(playersText, width - playersTextWidth - margin, margin + gap * 3);
+    ctx.fillText(totalPlayers, width - totalPlayersWidth - margin, margin + gap * 4);
 
     const myPlayer = getPlayer(gameState);
 
