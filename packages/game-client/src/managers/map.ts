@@ -16,6 +16,7 @@ const DARKNESS_RATE = 1.8; // lower the darker
 const PULSE_SPEED = 0.001; // Speed of the pulse (lower = slower)
 const PULSE_INTENSITY = 0.07; // How much the light radius varies (0.0 to 1.0)
 const BASE_NIGHT_DARKNESS = 1.95; // Maximum darkness during night
+const DARKNESS_EXPONENTIAL = 2.5; // Higher values make darkness increase more rapidly near night
 
 interface LightSource {
   position: Vector2;
@@ -81,8 +82,9 @@ export class MapManager {
 
     let baseDarkness;
     if (gameState.isDay) {
-      // During day, darkness increases from 0 to BASE_NIGHT_DARKNESS as we approach night
-      baseDarkness = cycleProgress * BASE_NIGHT_DARKNESS;
+      // During day, darkness increases exponentially from 0 to BASE_NIGHT_DARKNESS as we approach night
+      const exponentialProgress = Math.pow(cycleProgress, DARKNESS_EXPONENTIAL);
+      baseDarkness = exponentialProgress * BASE_NIGHT_DARKNESS;
     } else {
       // During night, maintain constant BASE_NIGHT_DARKNESS
       baseDarkness = BASE_NIGHT_DARKNESS;
