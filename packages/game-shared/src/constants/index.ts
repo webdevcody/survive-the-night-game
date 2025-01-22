@@ -1,3 +1,5 @@
+import { EntityType } from "@/types/entity";
+
 export const Entities = {
   ZOMBIE: "zombie",
   BIG_ZOMBIE: "big_zombie",
@@ -23,4 +25,4 @@ export const Entities = {
   FIRE_EXTINGUISHER: "fire_extinguisher",
 } as const;
 
-export const Zombies = [Entities.ZOMBIE, Entities.BIG_ZOMBIE, Entities.FAST_ZOMBIE];
+export const Zombies: EntityType[] = [Entities.ZOMBIE, Entities.BIG_ZOMBIE, Entities.FAST_ZOMBIE];

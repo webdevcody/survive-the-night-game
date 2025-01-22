@@ -19,7 +19,7 @@ import { Shotgun } from "@/entities/weapons/shotgun";
 import Collidable from "@/extensions/collidable";
 import Destructible from "@/extensions/destructible";
 import Positionable from "@/extensions/positionable";
-import { Entities } from "@/constants";
+import { Entities, Zombies } from "@/constants";
 import { Entity } from "@/entities/entity";
 import { ItemType, InventoryItem } from "@/util/inventory";
 import { distance } from "@/util/physics";
@@ -34,6 +34,7 @@ import Vector2 from "@/util/vector2";
 import { Grenade } from "@/entities/items/grenade";
 import { FireExtinguisher } from "@/entities/items/fire-extinguisher";
 import Groupable from "@/extensions/groupable";
+import { BaseEnemy } from "@/entities/enemies/base-enemy";
 
 const entityMap = {
   [Entities.PLAYER]: Player,
@@ -415,7 +416,7 @@ export class EntityManager implements IEntityManager {
     return this.entityStateTracker;
   }
 
-  getZombieEntities(): Zombie[] {
-    return this.entities.filter((entity) => entity.getType() === Entities.ZOMBIE) as Zombie[];
+  getZombieEntities(): BaseEnemy[] {
+    return this.entities.filter((entity) => Zombies.includes(entity.getType())) as BaseEnemy[];
   }
 }
