@@ -21,6 +21,7 @@ export const ServerSentEvents = {
   MAP: "map",
   ENEMY_WAYPOINT: "enemyWaypoint",
   SERVER_UPDATING: "serverUpdating",
+  PLAYER_REVIVED: "PLAYER_REVIVED",
 } as const;
 
 export const ClientSentEvents = {

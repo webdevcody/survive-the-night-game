@@ -4,6 +4,7 @@ import {
   ClientPositionable,
   ClientMovable,
   ClientIgnitable,
+  ClientInteractive,
 } from "@/extensions";
 import { ClientEntityBase } from "@/extensions/client-entity";
 import { ImageLoader, getItemAssetKey } from "@/managers/asset";
@@ -20,8 +21,9 @@ import { RawEntity } from "@shared/types/entity";
 import { IClientEntity, Renderable, getFrameIndex, drawHealthBar } from "@/entities/util";
 import { MAX_PLAYER_HEALTH } from "@shared/constants/constants";
 import Vector2 from "@shared/util/vector2";
+import { ClientEntity } from "./client-entity";
 
-export class PlayerClient extends ClientEntityBase implements IClientEntity, Renderable {
+export class PlayerClient extends ClientEntity implements IClientEntity, Renderable {
   private readonly LERP_FACTOR = 0.1;
   private readonly ARROW_LENGTH = 20;
 
@@ -105,6 +107,8 @@ export class PlayerClient extends ClientEntityBase implements IClientEntity, Ren
   }
 
   render(ctx: CanvasRenderingContext2D, gameState: GameState): void {
+    super.render(ctx, gameState);
+
     const currentHealth = this.getHealth();
 
     if (this.previousHealth !== undefined && currentHealth < this.previousHealth) {

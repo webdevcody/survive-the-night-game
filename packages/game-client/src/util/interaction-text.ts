@@ -7,12 +7,13 @@ export function renderInteractionText(
   text: string,
   centerPosition: Vector2,
   position: Vector2,
-  playerPosition: Vector2
+  playerPosition: Vector2,
+  offset = new Vector2(0, 0)
 ): void {
   if (distance(playerPosition, centerPosition) < MAX_INTERACT_RADIUS) {
     ctx.fillStyle = "white";
     ctx.font = "6px Arial";
     const textWidth = ctx.measureText(text).width;
-    ctx.fillText(text, centerPosition.x - textWidth / 2, position.y - 3);
+    ctx.fillText(text, centerPosition.x - textWidth / 2 + offset.x, position.y - 3 + offset.y);
   }
 }

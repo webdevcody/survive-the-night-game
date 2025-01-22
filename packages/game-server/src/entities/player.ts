@@ -1,5 +1,6 @@
 import { PlayerDroppedItemEvent } from "@shared/events/server-sent/player-dropped-item-event";
 import { PlayerHurtEvent } from "@shared/events/server-sent/player-hurt-event";
+import { PlayerRevivedEvent } from "@shared/events/server-sent/player-revived-event";
 import Collidable from "@/extensions/collidable";
 import Consumable from "@/extensions/consumable";
 import Destructible from "@/extensions/destructible";
@@ -141,6 +142,33 @@ export class Player extends Entity {
     this.getExt(Inventory).scatterItems(this.getPosition());
     this.broadcaster.broadcastEvent(new PlayerDeathEvent(this.getId()));
     this.getExt(Collidable).setEnabled(false);
+
+    // Add Interactive extension for revival
+    this.addExtension(
+      new Interactive(this)
+        .onInteract((interactingPlayerId: string) => this.revive())
+        .setDisplayName("revive")
+        .setOffset(new Vector2(-2, -5))
+    );
+  }
+
+  revive(): void {
+    if (!this.isDead()) return;
+
+    // Find and remove the Interactive extension
+    const interactive = this.extensions.find((ext) => ext instanceof Interactive);
+    if (interactive) {
+      this.removeExtension(interactive);
+    }
+
+    // Re-enable collision
+    this.getExt(Collidable).setEnabled(true);
+
+    // Set health to 2
+    this.getExt(Destructible).setHealth(2);
+
+    // Broadcast revival event
+    this.broadcaster.broadcastEvent(new PlayerRevivedEvent(this.getId()));
   }
 
   isInventoryFull(): boolean {
