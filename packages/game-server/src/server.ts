@@ -8,6 +8,7 @@ import { MapManager } from "@/managers/map-manager";
 import { ServerSocketManager } from "@/managers/server-socket-manager";
 import { TICK_RATE, NIGHT_DURATION, PERFORMANCE_LOG_INTERVAL, TICK_RATE_MS } from "./config/config";
 import { DAY_DURATION } from "./config/config";
+import Destructible from "@/extensions/destructible";
 
 export class GameServer {
   private lastUpdateTime: number = Date.now();
@@ -99,6 +100,13 @@ export class GameServer {
 
   private onDayStart(): void {
     console.log("Day started");
+    const zombies = this.entityManager.getZombieEntities();
+    zombies.forEach((zombie) => {
+      const destructable = zombie.getExt(Destructible);
+      if (destructable) {
+        destructable.kill();
+      }
+    });
   }
 
   private onNightStart(): void {

@@ -79,9 +79,7 @@ export class Renderer {
     this.renderEntities();
     this.particleManager.render(this.ctx);
 
-    if (!this.gameState.isDay) {
-      this.mapManager.renderDarkness(this.ctx);
-    }
+    this.mapManager.renderDarkness(this.ctx);
 
     this.ctx.setTransform(1, 0, 0, 1, 0, 0);
     this.hotbar.render(this.ctx, this.gameState);

@@ -66,8 +66,7 @@ export class Hud {
     const currentTime = Date.now();
     const elapsedTime = (currentTime - gameState.cycleStartTime) / 1000;
     const remainingTime = Math.max(0, Math.ceil(gameState.cycleDuration - elapsedTime));
-    const timeOfDay = gameState.isDay ? "Day" : "Night";
-    return `${timeOfDay} ${gameState.dayNumber} - ${remainingTime}s`;
+    return `${remainingTime}s until ${gameState.isDay ? "night" : "day"}`;
   }
 
   public render(ctx: CanvasRenderingContext2D, gameState: GameState): void {

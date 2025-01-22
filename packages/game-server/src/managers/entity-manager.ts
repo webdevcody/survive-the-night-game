@@ -414,4 +414,8 @@ export class EntityManager implements IEntityManager {
   public getEntityStateTracker(): EntityStateTracker {
     return this.entityStateTracker;
   }
+
+  getZombieEntities(): Zombie[] {
+    return this.entities.filter((entity) => entity.getType() === Entities.ZOMBIE) as Zombie[];
+  }
 }

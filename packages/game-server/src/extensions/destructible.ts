@@ -53,6 +53,11 @@ export default class Destructible implements Extension {
     }
   }
 
+  public kill(): void {
+    this.health = 0;
+    this.deathHandler?.();
+  }
+
   public getDamageBox(): Rectangle {
     const positionable = this.self.getExt(Positionable);
     const position = positionable.getPosition();

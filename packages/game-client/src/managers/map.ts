@@ -12,10 +12,10 @@ const tileLocations: Record<string, [number, number]> = {
   [TILE_IDS.WATER]: [9 * 16, 2 * 16],
 };
 
-// Higher values make darkness increase more quickly with distance (0.5 to 2.0 recommended)
-const DARKNESS_RATE = 0.4;
+const DARKNESS_RATE = 1.8; // lower the darker
 const PULSE_SPEED = 0.001; // Speed of the pulse (lower = slower)
-const PULSE_INTENSITY = 0.05; // How much the light radius varies (0.0 to 1.0)
+const PULSE_INTENSITY = 0.07; // How much the light radius varies (0.0 to 1.0)
+const BASE_NIGHT_DARKNESS = 1.95; // Maximum darkness during night
 
 interface LightSource {
   position: Vector2;
@@ -26,11 +26,11 @@ export class MapManager {
   private tileSize = 16;
   private map: number[][] | null = null;
   private tilesheet = new Image();
-  private client: GameClient;
+  private gameClient: GameClient;
   private lastRenderTime: number;
 
-  constructor(client: GameClient) {
-    this.client = client;
+  constructor(gameClient: GameClient) {
+    this.gameClient = gameClient;
     this.tilesheet.src = "/tiles.png";
     this.tilesheet.onload = () => {
       // this.columns = Math.floor(this.tilesheet.width / this.tileSize);
@@ -48,7 +48,7 @@ export class MapManager {
 
   private getLightSources(): LightSource[] {
     const sources: LightSource[] = [];
-    const entities = this.client.getGameState().entities;
+    const entities = this.gameClient.getGameState().entities;
     const currentTime = Date.now();
     const pulseOffset = Math.sin(currentTime * PULSE_SPEED);
     const radiusMultiplier = 1 + pulseOffset * PULSE_INTENSITY;
@@ -72,7 +72,21 @@ export class MapManager {
     if (!this.map) return;
 
     const lightSources = this.getLightSources();
-    if (lightSources.length === 0) return;
+    const gameState = this.gameClient.getGameState();
+
+    // Calculate base darkness level based on day/night cycle
+    const currentTime = Date.now();
+    const elapsedTime = (currentTime - gameState.cycleStartTime) / 1000;
+    const cycleProgress = elapsedTime / gameState.cycleDuration;
+
+    let baseDarkness;
+    if (gameState.isDay) {
+      // During day, darkness increases from 0 to BASE_NIGHT_DARKNESS as we approach night
+      baseDarkness = cycleProgress * BASE_NIGHT_DARKNESS;
+    } else {
+      // During night, maintain constant BASE_NIGHT_DARKNESS
+      baseDarkness = BASE_NIGHT_DARKNESS;
+    }
 
     for (let y = 0; y < this.map.length; y++) {
       for (let x = 0; x < this.map[y].length; x++) {
@@ -81,6 +95,8 @@ export class MapManager {
         const tileCenter = new Vector2(tileX + this.tileSize / 2, tileY + this.tileSize / 2);
 
         let minOpacity = 1;
+
+        // Calculate light source effects
         for (const source of lightSources) {
           const dist = distance(source.position, tileCenter);
           if (dist > source.radius) continue;
@@ -89,9 +105,13 @@ export class MapManager {
           minOpacity = Math.min(minOpacity, opacity);
         }
 
-        if (minOpacity <= 0) continue;
+        // Combine base darkness with light source effects
+        // Light sources should reduce the darkness, so we multiply them
+        const finalOpacity = baseDarkness * minOpacity;
 
-        ctx.fillStyle = `rgba(0, 0, 0, ${minOpacity})`;
+        if (finalOpacity <= 0) continue;
+
+        ctx.fillStyle = `rgba(0, 0, 0, ${finalOpacity})`;
         ctx.fillRect(tileX, tileY, this.tileSize, this.tileSize);
       }
     }
