@@ -1,6 +1,8 @@
 import { GameOverEvent } from "@shared/events/server-sent/game-over-event";
 import { GameStateEvent } from "@shared/events/server-sent/game-state-event";
 import { GameStartedEvent } from "@shared/events/server-sent/game-started-event";
+import { ServerUpdatingEvent } from "@shared/events/server-sent/server-updating-event";
+import { GameEvent } from "@shared/events/types";
 import { CommandManager } from "@/managers/command-manager";
 import { EntityManager } from "@/managers/entity-manager";
 import { GameManagers } from "@/managers/game-managers";
@@ -262,8 +264,17 @@ export class GameServer {
     const gameStateEvent = new GameStateEvent(stateUpdate);
     this.socketManager.broadcastEvent(gameStateEvent);
   }
+
+  public broadcastEvent<T>(event: GameEvent<T>): void {
+    this.socketManager.broadcastEvent(event);
+  }
 }
 
 const gameServer = new GameServer();
 
 process.on("SIGINT", () => gameServer.stop());
+process.on("SIGTERM", () => {
+  console.log("Server updating...");
+  gameServer.broadcastEvent(new ServerUpdatingEvent());
+  gameServer.stop();
+});

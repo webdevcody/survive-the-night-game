@@ -19,6 +19,7 @@ import { AdminCommand } from "@shared/commands/commands";
 import { Input } from "../../../game-shared/src/util/input";
 import { RecipeType } from "../../../game-shared/src/util/recipes";
 import { Socket, io } from "socket.io-client";
+import { ServerUpdatingEvent } from "@shared/events/server-sent/server-updating-event";
 
 export type EntityDto = { id: string } & any;
 
@@ -39,6 +40,7 @@ const SERVER_EVENT_MAP = {
   [ServerSentEvents.ZOMBIE_ATTACKED]: ZombieAttackedEvent,
   [ServerSentEvents.LOOT]: LootEvent,
   [ServerSentEvents.GAME_STARTED]: GameStartedEvent,
+  [ServerSentEvents.SERVER_UPDATING]: ServerUpdatingEvent,
 } as const;
 
 export class ClientSocketManager {

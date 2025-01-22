@@ -25,6 +25,7 @@ import { SwipeParticle } from "./particles/swipe";
 import { Direction, determineDirection } from "@shared/util/direction";
 import { GameStartedEvent } from "@shared/events/server-sent/game-started-event";
 import { PlayerJoinedEvent } from "@shared/events/server-sent/player-joined-event";
+import { ServerUpdatingEvent } from "@shared/events/server-sent/server-updating-event";
 
 export class ClientEventListener {
   private socketManager: ClientSocketManager;
@@ -50,6 +51,7 @@ export class ClientEventListener {
     this.socketManager.on(ServerSentEvents.ZOMBIE_ATTACKED, this.onZombieAttacked.bind(this));
     this.socketManager.on(ServerSentEvents.GAME_OVER, this.onGameOver.bind(this));
     this.socketManager.on(ServerSentEvents.GAME_STARTED, this.onGameStarted.bind(this));
+    this.socketManager.on(ServerSentEvents.SERVER_UPDATING, this.onServerUpdating.bind(this));
     this.socketManager.on(
       ServerSentEvents.PLAYER_DROPPED_ITEM,
       this.onPlayerDroppedItem.bind(this)
@@ -58,6 +60,10 @@ export class ClientEventListener {
       ServerSentEvents.PLAYER_PICKED_UP_ITEM,
       this.onPlayerPickedUpItem.bind(this)
     );
+  }
+
+  onServerUpdating(serverUpdatingEvent: ServerUpdatingEvent) {
+    this.gameClient.getHud().addMessage("Server is updating, you will be reconnected shortly...");
   }
 
   onGunEmpty(gunEmptyEvent: GunEmptyEvent) {
