@@ -115,8 +115,10 @@ export class ServerSocketManager implements Broadcaster {
       this.players.set(socket.id, player);
       this.getEntityManager().addEntity(player);
 
-      // Send new ID to client
+      // Send map and player ID to client
+      socket.emit(ServerSentEvents.MAP, map);
       socket.emit(ServerSentEvents.YOUR_ID, player.getId());
+      this.broadcastEvent(new PlayerJoinedEvent(player.getId()));
     });
   }
 
@@ -172,28 +174,7 @@ export class ServerSocketManager implements Broadcaster {
     });
   }
 
-  private onConnection(socket: Socket): void {
-    console.log(`Player connected: ${socket.id}`);
-
-    const totalPlayers = this.getEntityManager().getPlayerEntities().length;
-    if (totalPlayers === 0) {
-      this.gameServer.startNewGame();
-    }
-
-    const player = new Player(this.getGameManagers());
-
-    const map = this.getMapManager().getMap();
-    const centerX = (map.length * 16) / 2;
-    const centerY = (map[0].length * 16) / 2;
-    player.getExt(Positionable).setPosition(new Vector2(centerX, centerY));
-
-    this.players.set(socket.id, player);
-    this.getEntityManager().addEntity(player);
-
-    socket.emit(ServerSentEvents.MAP, map);
-    socket.emit(ServerSentEvents.YOUR_ID, player.getId());
-    this.broadcastEvent(new PlayerJoinedEvent(player.getId()));
-
+  private setupSocketListeners(socket: Socket): void {
     socket.on(ClientSentEvents.PLAYER_INPUT, (input: Input) => this.onPlayerInput(socket, input));
     socket.on(ClientSentEvents.CRAFT_REQUEST, (recipe: RecipeType) =>
       this.onCraftRequest(socket, recipe)
@@ -208,10 +189,42 @@ export class ServerSocketManager implements Broadcaster {
       this.getCommandManager().handleCommand(command)
     );
     socket.on(ClientSentEvents.REQUEST_FULL_STATE, () => this.sendFullState(socket));
-
     socket.on("disconnect", () => {
       this.onDisconnect(socket);
     });
+  }
+
+  private onConnection(socket: Socket): void {
+    console.log(`Player connected: ${socket.id}`);
+
+    // Set up socket event listeners first
+    this.setupSocketListeners(socket);
+
+    const totalPlayers = this.getEntityManager().getPlayerEntities().length;
+    if (totalPlayers === 0) {
+      this.gameServer.startNewGame();
+      // Don't return early, let the map data be sent below
+    }
+
+    // If we didn't just create a new game, create a new player
+    if (totalPlayers !== 0) {
+      const player = new Player(this.getGameManagers());
+
+      const map = this.getMapManager().getMap();
+      const centerX = (map.length * 16) / 2;
+      const centerY = (map[0].length * 16) / 2;
+      player.getExt(Positionable).setPosition(new Vector2(centerX, centerY));
+
+      this.players.set(socket.id, player);
+      this.getEntityManager().addEntity(player);
+
+      socket.emit(ServerSentEvents.YOUR_ID, player.getId());
+      this.broadcastEvent(new PlayerJoinedEvent(player.getId()));
+    }
+
+    // Always send the map data
+    const map = this.getMapManager().getMap();
+    socket.emit(ServerSentEvents.MAP, map);
   }
 
   public broadcastEvent(event: GameEvent<any>): void {
