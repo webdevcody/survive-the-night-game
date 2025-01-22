@@ -26,6 +26,27 @@ const HUD_SETTINGS = {
       top: 20,
     },
   },
+  UpcomingFeatures: {
+    background: "rgba(0, 0, 0, 0.8)",
+    color: "rgb(255, 255, 255)",
+    font: "32px Arial",
+    lineHeight: 40,
+    right: 20,
+    top: 20,
+    padding: {
+      bottom: 20,
+      left: 20,
+      right: 20,
+      top: 20,
+    },
+    title: "TODO (dev log)",
+    features: [
+      "- Improve Performance",
+      "- More base building",
+      "- Spitter Zombies",
+      "- Zombie Bats",
+    ],
+  },
   Minimap: {
     size: 400,
     left: 40,
@@ -254,6 +275,59 @@ export class Hud {
         HUD_SETTINGS.ControlsList.left + HUD_SETTINGS.ControlsList.padding.left,
         offsetTop + HUD_SETTINGS.ControlsList.top + HUD_SETTINGS.ControlsList.padding.top
       );
+    }
+
+    // Render upcoming features
+    if (this.showInstructions) {
+      const features = HUD_SETTINGS.UpcomingFeatures;
+      ctx.font = features.font;
+
+      // Calculate dimensions
+      const featureLines = [features.title, ...features.features];
+      let featureMaxWidth = 0;
+
+      for (const line of featureLines) {
+        const metrics = ctx.measureText(line);
+        if (featureMaxWidth < metrics.width) {
+          featureMaxWidth = metrics.width;
+        }
+      }
+
+      const featureWidth = featureMaxWidth + features.padding.left + features.padding.right;
+
+      const featureHeight =
+        lineHeight * featureLines.length + features.padding.top + features.padding.bottom;
+
+      // Draw background - position directly to the right of instructions panel
+      ctx.fillStyle = features.background;
+      ctx.fillRect(
+        HUD_SETTINGS.ControlsList.left + width + 10, // 10px gap between panels
+        HUD_SETTINGS.ControlsList.top,
+        featureWidth,
+        featureHeight
+      );
+
+      // Draw text
+      ctx.fillStyle = features.color;
+      ctx.textBaseline = "top";
+
+      for (let i = 0; i < featureLines.length; i++) {
+        const line = featureLines[i];
+        const offsetTop = i * lineHeight;
+
+        // Make title bold
+        if (i === 0) {
+          ctx.font = "bold " + features.font;
+        } else {
+          ctx.font = features.font;
+        }
+
+        ctx.fillText(
+          line,
+          HUD_SETTINGS.ControlsList.left + width + 10 + features.padding.left,
+          offsetTop + features.top + features.padding.top
+        );
+      }
     }
 
     ctx.restore();
