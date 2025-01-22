@@ -95,7 +95,7 @@ const Biomes = {
 };
 
 const BIOME_SIZE = 16;
-const MAP_SIZE = 9;
+const MAP_SIZE = 7;
 export const TILE_SIZE = 16;
 
 export class MapManager implements IMapManager {
@@ -348,6 +348,13 @@ export class MapManager implements IMapManager {
   }
 
   public getRandomGrassPosition(): Vector2 {
+    // Try to get a campsite position first
+    const campsitePosition = this.getRandomCampsitePosition();
+    if (campsitePosition) {
+      return campsitePosition;
+    }
+
+    // Fall back to any grass position if campsite position not found
     const totalSize = BIOME_SIZE * MAP_SIZE;
     const validPositions: Vector2[] = [];
 
@@ -364,6 +371,32 @@ export class MapManager implements IMapManager {
     if (validPositions.length === 0) {
       // Fallback to center if no grass tiles found
       return new Vector2((totalSize * TILE_SIZE) / 2, (totalSize * TILE_SIZE) / 2);
+    }
+
+    // Return a random position from valid positions
+    const randomIndex = Math.floor(Math.random() * validPositions.length);
+    return validPositions[randomIndex];
+  }
+
+  private getRandomCampsitePosition(): Vector2 | null {
+    const centerBiomeX = Math.floor(MAP_SIZE / 2);
+    const centerBiomeY = Math.floor(MAP_SIZE / 2);
+    const validPositions: Vector2[] = [];
+
+    // Iterate through the campsite biome tiles
+    for (let y = 0; y < BIOME_SIZE; y++) {
+      for (let x = 0; x < BIOME_SIZE; x++) {
+        const mapY = centerBiomeY * BIOME_SIZE + y;
+        const mapX = centerBiomeX * BIOME_SIZE + x;
+        // Check if it's a grass tile (0 or 1)
+        if (this.map[mapY][mapX] === 0 || this.map[mapY][mapX] === 1) {
+          validPositions.push(new Vector2(mapX * TILE_SIZE, mapY * TILE_SIZE));
+        }
+      }
+    }
+
+    if (validPositions.length === 0) {
+      return null;
     }
 
     // Return a random position from valid positions
