@@ -96,7 +96,9 @@ export class GameServer {
 
   private startGameLoop(): void {
     this.timer = setInterval(() => {
+      // console.profile();
       this.update();
+      // console.profileEnd();
     }, 1000 / TICK_RATE);
   }
 

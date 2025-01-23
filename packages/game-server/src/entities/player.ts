@@ -313,8 +313,18 @@ export class Player extends Entity {
           return entity.hasExt(Interactive);
         });
 
-      const byProximity = entities
+      // First sort by type (dead players first) then by distance
+      const byPriorityAndProximity = entities
         .sort((a, b) => {
+          // Check if entities are players and are dead
+          const aIsDeadPlayer = a.getType() === Entities.PLAYER && (a as Player).isDead();
+          const bIsDeadPlayer = b.getType() === Entities.PLAYER && (b as Player).isDead();
+
+          // Dead players should come first
+          if (aIsDeadPlayer && !bIsDeadPlayer) return -1;
+          if (!aIsDeadPlayer && bIsDeadPlayer) return 1;
+
+          // If both are dead players or both are not, sort by distance
           const p1 = (a as Entity).getExt(Positionable).getPosition();
           const p2 = (b as Entity).getExt(Positionable).getPosition();
           return distance(this.getPosition(), p1) - distance(this.getPosition(), p2);
@@ -328,8 +338,8 @@ export class Player extends Entity {
           }
           return true;
         });
-      if (byProximity.length > 0) {
-        const entity = byProximity[0];
+      if (byPriorityAndProximity.length > 0) {
+        const entity = byPriorityAndProximity[0];
         (entity as Entity).getExt(Interactive).interact(this.getId());
       }
     }

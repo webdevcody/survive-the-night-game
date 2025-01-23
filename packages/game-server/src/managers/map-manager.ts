@@ -18,7 +18,7 @@ const WEAPON_SPAWN_CHANCE = {
   SHOTGUN: 0.0015,
 } as const;
 
-const ZOMBIE_SPAWN_CHANCE = 0.003;
+const ZOMBIE_SPAWN_CHANCE = 0.3;
 
 const DIFFICULTY_MULTIPLIER = 200.0; // Adjust this to change overall zombie counts
 

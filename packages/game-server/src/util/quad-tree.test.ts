@@ -143,4 +143,27 @@ describe("QuadTree", () => {
 
     expect(found.size).toBe(0);
   });
+
+  it("should efficiently add many boundary entities in a grid pattern", () => {
+    const mapSize = 100;
+    const boundary = new Rectangle(new Vector2(0, 0), new Vector2(100, 100));
+    const quadTree = new QuadTree(boundary);
+
+    const startTime = performance.now();
+
+    const tileSize = 16;
+
+    for (let y = 0; y < mapSize * tileSize; y += tileSize) {
+      for (let x = 0; x < mapSize * tileSize; x += tileSize) {
+        const entity = new TestEntity(mockGameManagers);
+        const boundaryShape = new Rectangle(new Vector2(x, y), new Vector2(tileSize, tileSize));
+        quadTree.add(boundaryShape, entity);
+      }
+    }
+
+    const endTime = performance.now();
+    const duration = endTime - startTime;
+
+    expect(duration).toBeLessThan(10);
+  });
 });

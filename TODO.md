@@ -109,6 +109,7 @@ Feel free to pick any item listed out here to work on.
 
 ## Medium Priority (Enhancements):
 
+- [ ] air drops (randomly drop crates around the map when day starts)
 - [ ] a user shall be able to see a mini map which helps them know where they are
 - [ ] a user can search cabinets for items (randomly drop items)
 - [ ] a user shall be able to view a mini map which helps them know where they are
