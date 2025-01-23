@@ -18,7 +18,7 @@ const WEAPON_SPAWN_CHANCE = {
   SHOTGUN: 0.0015,
 } as const;
 
-const ZOMBIE_SPAWN_CHANCE = 0.3;
+const ZOMBIE_SPAWN_CHANCE = 0.003;
 
 const DIFFICULTY_MULTIPLIER = 200.0; // Adjust this to change overall zombie counts
 
@@ -140,8 +140,6 @@ export class MapManager implements IMapManager {
       maxZombies - currentZombies,
       Math.ceil(maxZombies * ZOMBIE_SPAWN_CHANCE * dayNumber)
     );
-
-    console.log("Zombies to spawn:", zombiesToSpawn);
 
     let spawnedCount = 0;
     const totalSize = BIOME_SIZE * MAP_SIZE;
