@@ -25,7 +25,7 @@ import { ItemType, InventoryItem } from "@/util/inventory";
 import { distance } from "@/util/physics";
 import { IEntity } from "@/entities/types";
 import { EntityType } from "@shared/types/entity";
-import { SpatialGrid } from "@/managers/spatial-grid";
+import { EntityFinder } from "@/managers/entity-finder";
 import { IGameManagers, IEntityManager, Broadcaster } from "@/managers/types";
 import { Landmine } from "@/entities/items/landmine";
 import { EntityStateTracker } from "./entity-state-tracker";
@@ -64,15 +64,17 @@ type EntityConstructor = new (entityManager: IGameManagers, ...args: any[]) => E
 
 export class EntityManager implements IEntityManager {
   private entities: Entity[];
+  private players: Player[];
   private entitiesToRemove: Array<{ id: string; expiration: number }> = [];
   private id: number = 0;
-  private spatialGrid: SpatialGrid | null = null;
+  private entityFinder: EntityFinder | null = null;
   private gameManagers?: IGameManagers;
   private itemConstructors = new Map<ItemType, EntityConstructor>();
   private entityStateTracker: EntityStateTracker;
 
   constructor() {
     this.entities = [];
+    this.players = [];
     this.entityStateTracker = new EntityStateTracker();
     this.registerDefaultItems();
   }
@@ -137,11 +139,14 @@ export class EntityManager implements IEntityManager {
   }
 
   setMapSize(width: number, height: number) {
-    this.spatialGrid = new SpatialGrid(width, height);
+    this.entityFinder = new EntityFinder(width, height);
   }
 
   addEntity(entity: Entity) {
     this.entities.push(entity);
+    if (entity.getType() === Entities.PLAYER) {
+      this.players.push(entity as Player);
+    }
   }
 
   getEntities(): Entity[] {
@@ -191,6 +196,13 @@ export class EntityManager implements IEntityManager {
       this.entityStateTracker.trackRemoval(entity.getId());
       this.entities.splice(i, 1);
       this.entitiesToRemove.splice(removeRecordIndex, 1);
+
+      if (entity.getType() === Entities.PLAYER) {
+        const playerIndex = this.players.findIndex((player) => player.getId() === entity.getId());
+        if (playerIndex !== -1) {
+          this.players.splice(playerIndex, 1);
+        }
+      }
     }
 
     this.entitiesToRemove = this.entitiesToRemove.filter((it) => now < it.expiration);
@@ -198,29 +210,26 @@ export class EntityManager implements IEntityManager {
 
   clear() {
     this.entities = [];
-  }
-
-  addEntities(entities: Entity[]) {
-    this.entities.push(...entities);
+    this.players = [];
   }
 
   getNearbyEnemies(position: Vector2): Entity[] {
-    if (!this.spatialGrid) {
+    if (!this.entityFinder) {
       return [];
     }
 
-    const entities = this.spatialGrid.getNearbyEntities(position);
+    const entities = this.entityFinder.getNearbyEntities(position);
     return entities.filter(
       (entity) => entity.hasExt(Groupable) && entity.getExt(Groupable).getGroup() === "enemy"
     );
   }
 
   getNearbyEntities(position: Vector2, radius: number = 64, filter?: EntityType[]): Entity[] {
-    return this.spatialGrid?.getNearbyEntities(position, radius, filter) ?? [];
+    return this.entityFinder?.getNearbyEntities(position, radius, filter) ?? [];
   }
 
   getNearbyEntitiesByRange(range: Shape, filter?: EntityType[]): Entity[] {
-    return this.spatialGrid?.getNearbyEntitiesByRange(range, filter) ?? [];
+    return this.entityFinder?.getNearbyEntitiesByRange(range, filter) ?? [];
   }
 
   getPlayerEntities(): Player[] {
@@ -257,43 +266,45 @@ export class EntityManager implements IEntityManager {
     return players[closestPlayerIdx];
   }
 
-  getClosestAlivePlayer(entity: Entity): Player | null {
+  getClosestAlivePlayer(entity: Entity, attackRange?: number): Player | null {
     if (!entity.hasExt(Positionable)) {
       return null;
     }
 
-    const players = this.getPlayerEntities().filter((player) => !player.isDead());
-
-    if (players.length === 0) {
+    if (this.players.length === 0) {
       return null;
     }
 
     const entityPosition = entity.getExt(Positionable).getPosition();
-    let closestPlayerIdx = 0;
-    let closestPlayerDistance = distance(entityPosition, players[closestPlayerIdx].getPosition());
+    let closestPlayer: Player | null = null;
+    let closestPlayerDistance = Infinity;
 
-    for (let i = 0; i < players.length; i++) {
-      const player = players[i];
+    for (const player of this.players) {
+      if (player.isDead()) continue;
+
       const playerDistance = distance(entityPosition, player.getPosition());
 
-      if (playerDistance < closestPlayerDistance && !player.isDead()) {
-        closestPlayerIdx = i;
+      // Skip if player is outside attack range
+      if (attackRange && playerDistance > attackRange) continue;
+
+      if (playerDistance < closestPlayerDistance) {
+        closestPlayer = player;
         closestPlayerDistance = playerDistance;
       }
     }
 
-    return players[closestPlayerIdx];
+    return closestPlayer;
   }
 
   // TODO: we might benefit from abstracting this into a more generic function that takes in a type or something
   getNearbyIntersectingDestructableEntities(sourceEntity: Entity, sourceHitbox: Rectangle) {
-    if (!this.spatialGrid) {
+    if (!this.entityFinder) {
       return [];
     }
 
     const hitBox = sourceHitbox;
 
-    const nearbyEntities = this.spatialGrid.getNearbyEntitiesByRange(hitBox);
+    const nearbyEntities = this.entityFinder.getNearbyEntitiesByRange(hitBox);
 
     const interactingEntities: Entity[] = [];
 
@@ -323,13 +334,13 @@ export class EntityManager implements IEntityManager {
    * that the entity has a method with the name of the functionIdentifier.
    */
   getIntersectingCollidableEntity(sourceEntity: Entity, ignoreTypes?: EntityType[]): Entity | null {
-    if (!this.spatialGrid) {
+    if (!this.entityFinder) {
       return null;
     }
 
     const hitBox = sourceEntity.getExt(Collidable).getHitBox();
 
-    const nearbyEntities = this.spatialGrid.getNearbyEntitiesByRange(hitBox);
+    const nearbyEntities = this.entityFinder.getNearbyEntitiesByRange(hitBox);
 
     // TODO: look into refactoring this
     for (const otherEntity of nearbyEntities) {
@@ -383,17 +394,17 @@ export class EntityManager implements IEntityManager {
   }
 
   private refreshSpatialGrid() {
-    if (!this.spatialGrid) {
+    if (!this.entityFinder) {
       return;
     }
 
     // Clear the existing grid
-    this.spatialGrid.clear();
+    this.entityFinder.clear();
 
     // Re-add all entities that have a position
     this.entities.forEach((entity) => {
       if (entity.hasExt(Positionable)) {
-        this.spatialGrid!.addEntity(entity);
+        this.entityFinder!.addEntity(entity);
       }
     });
   }

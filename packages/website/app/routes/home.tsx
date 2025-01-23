@@ -5,8 +5,12 @@ import { GameClient } from "@survive-the-night/game-client";
 
 export function meta({}: Route.MetaArgs) {
   return [
-    { title: "New React Router App" },
-    { name: "description", content: "Welcome to React Router!" },
+    { title: "Survive the Night Game" },
+    {
+      name: "description",
+      content:
+        "An online multiplayer game where you must survive the night against hordes of zombies.  Build bases with your friends, collect weapons, and craft items to see how long you'll last.",
+    },
   ];
 }
 

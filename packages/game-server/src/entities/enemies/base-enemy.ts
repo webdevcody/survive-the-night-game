@@ -19,6 +19,7 @@ import Vector2 from "@/util/vector2";
 import { EntityType } from "@shared/types/entity";
 import { ServerSentEvents } from "@shared/events/events";
 import { GameEvent } from "@shared/events/types";
+import { Player } from "@/entities/player";
 
 // Create a simple event class for waypoint updates
 class EnemyWaypointEvent implements GameEvent<{ entityId: string; waypoint: Vector2 | null }> {
@@ -205,6 +206,11 @@ export abstract class BaseEnemy extends Entity {
   }
 
   protected withinAttackRange(entity: IEntity, attackRadius: number): boolean {
+    // Don't attack dead players
+    if (entity instanceof Player && entity.isDead()) {
+      return false;
+    }
+
     const centerPosition = entity.hasExt(Positionable)
       ? entity.getExt(Positionable).getCenterPosition()
       : (entity as any).getCenterPosition();

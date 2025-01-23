@@ -141,8 +141,6 @@ export class MapManager implements IMapManager {
       Math.ceil(maxZombies * ZOMBIE_SPAWN_CHANCE * dayNumber)
     );
 
-    console.log("Zombies to spawn:", zombiesToSpawn);
-
     let spawnedCount = 0;
     const totalSize = BIOME_SIZE * MAP_SIZE;
 
