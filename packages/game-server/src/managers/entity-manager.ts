@@ -266,7 +266,7 @@ export class EntityManager implements IEntityManager {
     return players[closestPlayerIdx];
   }
 
-  getClosestAlivePlayer(entity: Entity): Player | null {
+  getClosestAlivePlayer(entity: Entity, attackRange?: number): Player | null {
     if (!entity.hasExt(Positionable)) {
       return null;
     }
@@ -276,23 +276,24 @@ export class EntityManager implements IEntityManager {
     }
 
     const entityPosition = entity.getExt(Positionable).getPosition();
-    let closestPlayerIdx = 0;
-    let closestPlayerDistance = distance(
-      entityPosition,
-      this.players[closestPlayerIdx].getPosition()
-    );
+    let closestPlayer: Player | null = null;
+    let closestPlayerDistance = Infinity;
 
-    for (let i = 0; i < this.players.length; i++) {
-      const player = this.players[i];
+    for (const player of this.players) {
+      if (player.isDead()) continue;
+
       const playerDistance = distance(entityPosition, player.getPosition());
 
-      if (playerDistance < closestPlayerDistance && !player.isDead()) {
-        closestPlayerIdx = i;
+      // Skip if player is outside attack range
+      if (attackRange && playerDistance > attackRange) continue;
+
+      if (playerDistance < closestPlayerDistance) {
+        closestPlayer = player;
         closestPlayerDistance = playerDistance;
       }
     }
 
-    return this.players[closestPlayerIdx];
+    return closestPlayer;
   }
 
   // TODO: we might benefit from abstracting this into a more generic function that takes in a type or something
