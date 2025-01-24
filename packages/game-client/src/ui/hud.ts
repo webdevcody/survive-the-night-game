@@ -219,6 +219,7 @@ export class Hud {
       "Consume [F]\n" +
       "Harvest [E]\n" +
       "Craft [Q]\n" +
+      "Drop Item [G]\n" +
       "Toggle Instructions [I]";
 
     const craftingText = "Down [S]\nUp [W]\nCraft [SPACE]";
