@@ -41,6 +41,7 @@ export class Pistol extends Weapon {
     const bullet = new Bullet(this.getGameManagers());
     bullet.setPosition(position);
     bullet.setDirection(facing);
+    bullet.setShooterId(playerId);
     this.getEntityManager().addEntity(bullet);
 
     this.getEntityManager()

@@ -8,6 +8,7 @@ import { PlayerAttackedEvent } from "@/events/server-sent/player-attacked-event"
 import Vector2 from "@/util/vector2";
 import Positionable from "@/extensions/positionable";
 import { knockBack } from "./helpers";
+import { Player } from "@/entities/player";
 
 export class Knife extends Weapon {
   private static readonly ATTACK_RANGE = 32;
@@ -47,8 +48,16 @@ export class Knife extends Weapon {
 
     if (targetZombie) {
       const destructible = targetZombie.getExt(Destructible);
+      const wasAlive = !destructible.isDead();
       destructible.damage(Knife.DAMAGE);
       knockBack(targetZombie, facing, Knife.PUSH_DISTANCE);
+
+      if (wasAlive && destructible.isDead()) {
+        const player = this.getEntityManager().getEntityById(playerId);
+        if (player instanceof Player) {
+          player.incrementKills();
+        }
+      }
     }
 
     this.getEntityManager()

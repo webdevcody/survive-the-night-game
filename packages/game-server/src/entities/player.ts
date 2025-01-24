@@ -55,6 +55,8 @@ export class Player extends Entity {
   private broadcaster: Broadcaster;
   private lastWeaponType: ItemType | null = null;
   private skin: SkinType = SKIN_TYPES.DEFAULT;
+  private kills: number = 0;
+  private ping: number = 0;
 
   constructor(gameManagers: IGameManagers) {
     super(gameManagers, Entities.PLAYER);
@@ -194,6 +196,8 @@ export class Player extends Entity {
       isCrafting: this.isCrafting,
       input: this.input,
       skin: this.skin,
+      kills: this.kills,
+      ping: this.ping,
     };
   }
 
@@ -463,5 +467,21 @@ export class Player extends Entity {
 
   getSkin(): SkinType {
     return this.skin;
+  }
+
+  incrementKills() {
+    this.kills++;
+  }
+
+  getKills(): number {
+    return this.kills;
+  }
+
+  setPing(ping: number): void {
+    this.ping = ping;
+  }
+
+  getPing(): number {
+    return this.ping;
   }
 }

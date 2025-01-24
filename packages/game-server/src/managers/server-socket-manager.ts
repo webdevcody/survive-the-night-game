@@ -19,6 +19,7 @@ import Vector2 from "@/util/vector2";
 import Movable from "@/extensions/movable";
 import { PlayerDroppedItemEvent } from "@shared/events/server-sent/player-dropped-item-event";
 import { PlayerJoinedEvent } from "@shared/events/server-sent/player-joined-event";
+import { PongEvent } from "@shared/events/server-sent/pong-event";
 
 /**
  * Any and all functionality related to sending server side events
@@ -189,7 +190,7 @@ export class ServerSocketManager implements Broadcaster {
     );
     socket.on(ClientSentEvents.REQUEST_FULL_STATE, () => this.sendFullState(socket));
     socket.on(ClientSentEvents.PING, (timestamp: number) => {
-      socket.emit(ServerSentEvents.PONG, { timestamp });
+      this.handlePing(socket, timestamp);
     });
     socket.on("disconnect", () => {
       this.onDisconnect(socket);
@@ -332,6 +333,18 @@ export class ServerSocketManager implements Broadcaster {
       this.io.emit(gameStateEvent.getType(), gameStateEvent.serialize());
     } else {
       this.io.emit(event.getType(), event.serialize());
+    }
+  }
+
+  private handlePing(socket: Socket, timestamp: number): void {
+    // Send pong event back to client
+    socket.emit(ServerSentEvents.PONG, new PongEvent(timestamp).serialize());
+
+    // Update player's ping
+    const player = this.players.get(socket.id);
+    if (player) {
+      const latency = Date.now() - timestamp;
+      player.setPing(latency);
     }
   }
 }

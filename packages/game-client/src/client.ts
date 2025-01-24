@@ -121,6 +121,12 @@ export class GameClient {
       onToggleInstructions: () => {
         this.hud.toggleInstructions();
       },
+      onShowPlayerList: () => {
+        this.hud.setShowPlayerList(true);
+      },
+      onHidePlayerList: () => {
+        this.hud.setShowPlayerList(false);
+      },
       onDown: (inputs: Input) => {
         if (this.craftingTable.isVisible()) {
           this.craftingTable.onDown();

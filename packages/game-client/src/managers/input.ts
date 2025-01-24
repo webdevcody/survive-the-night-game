@@ -11,6 +11,8 @@ export interface InputManagerOptions {
   onInteract?: (inputs: Input) => void;
   onDrop?: (inputs: Input) => void;
   onToggleInstructions?: () => void;
+  onShowPlayerList?: () => void;
+  onHidePlayerList?: () => void;
 }
 
 export class InputManager {
@@ -69,6 +71,10 @@ export class InputManager {
         case "i":
           callbacks.onToggleInstructions?.();
           break;
+        case "tab":
+          e.preventDefault(); // Prevent tab from changing focus
+          callbacks.onShowPlayerList?.();
+          break;
       }
 
       this.updateDirection();
@@ -114,6 +120,10 @@ export class InputManager {
           break;
         case "f":
           this.inputs.consume = false;
+          break;
+        case "tab":
+          e.preventDefault(); // Prevent tab from changing focus
+          callbacks.onHidePlayerList?.();
           break;
       }
 

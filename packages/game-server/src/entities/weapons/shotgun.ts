@@ -39,6 +39,7 @@ export class Shotgun extends Weapon {
       const bullet = new Bullet(this.getGameManagers());
       bullet.setPosition(position);
       bullet.setDirectionWithOffset(facing, i * Shotgun.SPREAD_ANGLE);
+      bullet.setShooterId(playerId);
       this.getEntityManager().addEntity(bullet);
     }
 

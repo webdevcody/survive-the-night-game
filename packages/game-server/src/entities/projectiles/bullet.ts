@@ -14,6 +14,7 @@ import { IEntity } from "@/entities/types";
 import { RawEntity } from "@/types/entity";
 import Vector2 from "@/util/vector2";
 import { Line, Rectangle, Circle } from "@/util/shape";
+import { Player } from "@/entities/player";
 
 const MAX_TRAVEL_DISTANCE = 400;
 export const BULLET_SPEED = 100;
@@ -23,6 +24,7 @@ export class Bullet extends Entity {
   private traveledDistance: number = 0;
   private static readonly BULLET_SPEED = 500;
   private lastPosition: Vector2;
+  private shooterId: string = "";
 
   constructor(gameManagers: IGameManagers) {
     super(gameManagers, Entities.BULLET);
@@ -35,6 +37,14 @@ export class Bullet extends Entity {
     ];
 
     this.lastPosition = this.getPosition();
+  }
+
+  setShooterId(id: string) {
+    this.shooterId = id;
+  }
+
+  getShooterId(): string {
+    return this.shooterId;
   }
 
   setDirection(direction: Direction) {
@@ -136,7 +146,16 @@ export class Bullet extends Entity {
       if (bulletPath.intersects(hitbox)) {
         this.getEntityManager().markEntityForRemoval(this);
         const destructible = enemy.getExt(Destructible);
+        const wasAlive = !destructible.isDead();
         destructible.damage(1);
+
+        // If the enemy died from this hit, increment the shooter's kill count
+        if (wasAlive && destructible.isDead()) {
+          const shooter = this.getEntityManager().getEntityById(this.shooterId);
+          if (shooter instanceof Player) {
+            shooter.incrementKills();
+          }
+        }
         return;
       }
     }

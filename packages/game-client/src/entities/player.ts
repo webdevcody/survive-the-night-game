@@ -34,6 +34,8 @@ export class PlayerClient extends ClientEntity implements IClientEntity, Rendera
   private previousHealth: number | undefined;
   private damageFlashUntil: number = 0;
   private skin: SkinType = SKIN_TYPES.DEFAULT;
+  private kills: number = 0;
+  private ping: number = 0;
 
   private input: Input = {
     facing: Direction.Right,
@@ -57,6 +59,8 @@ export class PlayerClient extends ClientEntity implements IClientEntity, Rendera
     this.activeItem = data.activeItem;
     this.input = data.input;
     this.skin = data.skin || SKIN_TYPES.DEFAULT;
+    this.kills = data.kills || 0;
+    this.ping = data.ping || 0;
   }
 
   private getPlayerAssetKey(): string {
@@ -257,6 +261,14 @@ export class PlayerClient extends ClientEntity implements IClientEntity, Rendera
     ctx.drawImage(image, renderPosition.x + 2, renderPosition.y);
   }
 
+  public getKills(): number {
+    return this.kills;
+  }
+
+  public getPing(): number {
+    return this.ping;
+  }
+
   deserialize(data: RawEntity): void {
     super.deserialize(data);
     this.inventory = data.inventory;
@@ -264,5 +276,7 @@ export class PlayerClient extends ClientEntity implements IClientEntity, Rendera
     this.activeItem = data.activeItem;
     this.input = data.input;
     this.skin = data.skin || SKIN_TYPES.DEFAULT;
+    this.kills = data.kills || 0;
+    this.ping = data.ping || 0;
   }
 }
