@@ -13,27 +13,52 @@ import Vector2 from "@/util/vector2";
 import { BigZombie } from "@/entities/enemies/big-zombie";
 import { FastZombie } from "@/entities/enemies/fast-zombie";
 import { GameMaster } from "./game-master";
+import { Knife } from "@/entities/weapons/knife";
+import { Bandage } from "@/entities/items/bandage";
+import { Cloth } from "@/entities/items/cloth";
+import { Gasoline } from "@/entities/items/gasoline";
+import { Grenade } from "@/entities/items/grenade";
+import { Landmine } from "@/entities/items/landmine";
+import { Spikes } from "@/entities/items/spikes";
+import { Torch } from "@/entities/items/torch";
+import { Wall } from "@/entities/items/wall";
 
 const WEAPON_SPAWN_CHANCE = {
-  PISTOL: 0.003,
+  // Weapons
+  PISTOL: 0.001,
   SHOTGUN: 0.0015,
+  KNIFE: 0.005,
+  // ammo
+  PISTOL_AMMO: 0.01,
+  SHOTGUN_AMMO: 0.01,
+  // Items
+  BANDAGE: 0.005,
+  CLOTH: 0.008,
+  GASOLINE: 0.002,
+  GRENADE: 0.001,
+  LANDMINE: 0.001,
+  SPIKES: 0.002,
+  TORCH: 0.003,
+  WALL: 0.005,
+  TREE: 0.1,
 } as const;
 
-const DIFFICULTY_MULTIPLIER = 1.0;
-
-const BASE_ZOMBIES_PER_PLAYER = 3;
-const ADDITIONAL_ZOMBIES_PER_NIGHT = 1;
-const MIN_TOTAL_ZOMBIES = 5;
-const MAX_TOTAL_ZOMBIES = 50;
-
-const FAST_ZOMBIE_MIN_NIGHT = 3;
-const BIG_ZOMBIE_MIN_NIGHT = 5;
-
-const ZOMBIE_TYPE_CHANCE = {
-  BIG: 0.1, // 10% chance
-  FAST: 0.3, // 20% chance (0.3 - 0.1)
-  REGULAR: 1.0, // 70% chance (remaining)
-} as const;
+const spawnTable = [
+  { chance: WEAPON_SPAWN_CHANCE.PISTOL, ItemClass: Pistol },
+  { chance: WEAPON_SPAWN_CHANCE.SHOTGUN, ItemClass: Shotgun },
+  { chance: WEAPON_SPAWN_CHANCE.KNIFE, ItemClass: Knife },
+  { chance: WEAPON_SPAWN_CHANCE.BANDAGE, ItemClass: Bandage },
+  { chance: WEAPON_SPAWN_CHANCE.CLOTH, ItemClass: Cloth },
+  { chance: WEAPON_SPAWN_CHANCE.GASOLINE, ItemClass: Gasoline },
+  { chance: WEAPON_SPAWN_CHANCE.GRENADE, ItemClass: Grenade },
+  { chance: WEAPON_SPAWN_CHANCE.LANDMINE, ItemClass: Landmine },
+  { chance: WEAPON_SPAWN_CHANCE.SPIKES, ItemClass: Spikes },
+  { chance: WEAPON_SPAWN_CHANCE.WALL, ItemClass: Wall },
+  { chance: WEAPON_SPAWN_CHANCE.TORCH, ItemClass: Torch },
+  { chance: WEAPON_SPAWN_CHANCE.PISTOL_AMMO, ItemClass: PistolAmmo },
+  { chance: WEAPON_SPAWN_CHANCE.SHOTGUN_AMMO, ItemClass: ShotgunAmmo },
+  { chance: WEAPON_SPAWN_CHANCE.TREE, ItemClass: Tree },
+];
 
 const Biomes = {
   CAMPSITE: [
@@ -263,47 +288,25 @@ export class MapManager implements IMapManager {
     for (let y = 0; y < totalSize; y++) {
       for (let x = 0; x < totalSize; x++) {
         if (this.map[y][x] === 0 || this.map[y][x] === 1) {
-          this.trySpawnTreeAt(x, y);
-          this.trySpawnWeaponAt(x, y);
+          this.trySpawnItemAt(x, y);
         }
       }
     }
   }
 
-  private trySpawnTreeAt(x: number, y: number) {
-    if (Math.random() < 0.05) {
-      const tree = new Tree(this.getGameManagers());
-      tree.getExt(Positionable).setPosition(new Vector2(x * TILE_SIZE, y * TILE_SIZE));
-      this.getEntityManager().addEntity(tree);
+  private trySpawnItemAt(x: number, y: number) {
+    const random = Math.random();
+    let cumulativeChance = 0;
+
+    for (const { chance, ItemClass } of spawnTable) {
+      cumulativeChance += chance;
+      if (random < cumulativeChance) {
+        const item = new ItemClass(this.getGameManagers());
+        item.getExt(Positionable).setPosition(new Vector2(x * TILE_SIZE, y * TILE_SIZE));
+        this.getEntityManager().addEntity(item);
+        break;
+      }
     }
-  }
-
-  private trySpawnWeaponAt(x: number, y: number) {
-    if (Math.random() < WEAPON_SPAWN_CHANCE.PISTOL) {
-      this.spawnPistolAt(x, y);
-    } else if (Math.random() < WEAPON_SPAWN_CHANCE.SHOTGUN) {
-      this.spawnShotgunAt(x, y);
-    }
-  }
-
-  private spawnPistolAt(x: number, y: number) {
-    const weapon = new Pistol(this.getGameManagers());
-    weapon.getExt(Positionable).setPosition(new Vector2(x * TILE_SIZE, y * TILE_SIZE));
-    this.getEntityManager().addEntity(weapon);
-
-    const pistolAmmo = new PistolAmmo(this.getGameManagers());
-    pistolAmmo.getExt(Positionable).setPosition(new Vector2(x * TILE_SIZE + 5, y * TILE_SIZE + 4));
-    this.getEntityManager().addEntity(pistolAmmo);
-  }
-
-  private spawnShotgunAt(x: number, y: number) {
-    const weapon = new Shotgun(this.getGameManagers());
-    weapon.getExt(Positionable).setPosition(new Vector2(x * TILE_SIZE, y * TILE_SIZE));
-    this.getEntityManager().addEntity(weapon);
-
-    const shotgunAmmo = new ShotgunAmmo(this.getGameManagers());
-    shotgunAmmo.getExt(Positionable).setPosition(new Vector2(x * TILE_SIZE + 5, y * TILE_SIZE + 4));
-    this.getEntityManager().addEntity(shotgunAmmo);
   }
 
   private spawnDebugZombieIfEnabled() {
