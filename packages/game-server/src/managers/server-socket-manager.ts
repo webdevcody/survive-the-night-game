@@ -20,6 +20,7 @@ import Movable from "@/extensions/movable";
 import { PlayerDroppedItemEvent } from "@shared/events/server-sent/player-dropped-item-event";
 import { PlayerJoinedEvent } from "@shared/events/server-sent/player-joined-event";
 import { PongEvent } from "@shared/events/server-sent/pong-event";
+import msgPackParser from "socket.io-msgpack-parser";
 
 /**
  * Any and all functionality related to sending server side events
@@ -40,6 +41,7 @@ export class ServerSocketManager implements Broadcaster {
     this.port = port;
     this.httpServer = createServer();
     this.io = new Server(this.httpServer, {
+      parser: msgPackParser,
       cors: {
         origin: "*",
         methods: ["GET", "POST"],

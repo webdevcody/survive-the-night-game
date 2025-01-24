@@ -20,8 +20,10 @@
     "vitest": "^2.1.8"
   },
   "dependencies": {
+    "@msgpack/msgpack": "^3.0.0-beta2",
     "@survive-the-night/game-shared": "*",
     "dotenv": "^16.4.7",
-    "socket.io": "^4.8.1"
+    "socket.io": "^4.8.1",
+    "socket.io-msgpack-parser": "^3.0.2"
   }
 }

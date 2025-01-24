@@ -21,6 +21,7 @@ import { Input } from "../../../game-shared/src/util/input";
 import { RecipeType } from "../../../game-shared/src/util/recipes";
 import { Socket, io } from "socket.io-client";
 import { ServerUpdatingEvent } from "@shared/events/server-sent/server-updating-event";
+import msgPackParser from "socket.io-msgpack-parser";
 
 export type EntityDto = { id: string } & any;
 
@@ -59,7 +60,9 @@ export class ClientSocketManager {
 
   constructor(serverUrl: string) {
     console.log("Connecting to game server", serverUrl);
-    this.socket = io(serverUrl);
+    this.socket = io(serverUrl, {
+      parser: msgPackParser,
+    });
 
     this.socket.on("connect", () => {
       console.log("Connected to game server", this.socket.id);
