@@ -32,7 +32,7 @@ export class SpatialGrid {
   }
 
   addEntity(entity: Entity) {
-    const pos = entity.getExt(Positionable).getPosition();
+    const pos = entity.getExt(Positionable).getCenterPosition();
     const cellX = (pos.x / this.cellSize) | 0; // Bitwise OR with 0 is faster than Math.floor
     const cellY = (pos.y / this.cellSize) | 0;
 
