@@ -31,11 +31,21 @@ export class ClientEventListener {
   private socketManager: ClientSocketManager;
   private gameClient: GameClient;
   private gameState: GameState;
+  private hasReceivedMap = false;
+  private hasReceivedPlayerId = false;
+  private hasReceivedInitialState = false;
+
+  private isInitialized(): boolean {
+    return this.hasReceivedMap && this.hasReceivedPlayerId && this.hasReceivedInitialState;
+  }
 
   constructor(client: GameClient, socketManager: ClientSocketManager) {
     this.gameClient = client;
     this.socketManager = socketManager;
     this.gameState = this.gameClient.getGameState();
+
+    // Prevent game from starting until we're initialized
+    this.gameClient.stop();
 
     this.socketManager.on(ServerSentEvents.GAME_STATE_UPDATE, this.onGameStateUpdate.bind(this));
     this.socketManager.on(ServerSentEvents.MAP, this.onMap.bind(this));
@@ -77,6 +87,11 @@ export class ClientEventListener {
   }
 
   onGameStateUpdate(gameStateEvent: GameStateEvent) {
+    // Only process state updates once we have map and player ID
+    if (!this.hasReceivedMap || !this.hasReceivedPlayerId) {
+      return;
+    }
+
     const entities = gameStateEvent.getEntities();
 
     // Update game state properties only if they are included in the update
@@ -98,7 +113,17 @@ export class ClientEventListener {
       this.gameState.entities = entities.map((entity) => {
         return this.gameClient.getEntityFactory().createEntity(entity);
       });
+
+      if (!this.hasReceivedInitialState) {
+        this.hasReceivedInitialState = true;
+        this.checkInitialization();
+      }
     } else {
+      // Only process delta updates after we have initial state
+      if (!this.hasReceivedInitialState) {
+        return;
+      }
+
       // Delta update - update only changed entities
       const removedIds = gameStateEvent.getRemovedEntityIds();
 
@@ -128,10 +153,14 @@ export class ClientEventListener {
 
   onMap(mapEvent: MapEvent) {
     this.gameClient.getMapManager().setMap(mapEvent.getMap());
+    this.hasReceivedMap = true;
+    this.checkInitialization();
   }
 
   onYourId(yourIdEvent: YourIdEvent) {
     this.gameState.playerId = yourIdEvent.getPlayerId();
+    this.hasReceivedPlayerId = true;
+    this.checkInitialization();
   }
 
   onZombieAttacked(zombieAttackedEvent: ZombieAttackedEvent) {
@@ -277,5 +306,12 @@ export class ClientEventListener {
 
   onPlayerJoined(playerJoinedEvent: PlayerJoinedEvent) {
     this.gameClient.getHud().showPlayerJoined(playerJoinedEvent.getPlayerId());
+  }
+
+  private checkInitialization() {
+    if (this.isInitialized()) {
+      // All required data received, start the game
+      this.gameClient.start();
+    }
   }
 }
