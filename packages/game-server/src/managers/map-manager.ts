@@ -12,22 +12,19 @@ import { ShotgunAmmo } from "@/entities/items/shotgun-ammo";
 import Vector2 from "@/util/vector2";
 import { BigZombie } from "@/entities/enemies/big-zombie";
 import { FastZombie } from "@/entities/enemies/fast-zombie";
+import { GameMaster } from "./game-master";
 
 const WEAPON_SPAWN_CHANCE = {
   PISTOL: 0.003,
   SHOTGUN: 0.0015,
 } as const;
 
-const ZOMBIE_SPAWN_CHANCE = 0.003;
+const DIFFICULTY_MULTIPLIER = 1.0;
 
-const DIFFICULTY_MULTIPLIER = 200.0; // Adjust this to change overall zombie counts
-
-const BASE_ZOMBIES_PER_PLAYER = 5;
-const MIN_ZOMBIES_PER_PLAYER = 2;
-const ADDITIONAL_ZOMBIES_PER_NIGHT = 3;
-const MIN_ADDITIONAL_ZOMBIES_PER_NIGHT = 1;
-const MAP_AREA_ZOMBIE_FACTOR = 0.0001; // One zombie per 10000 square tiles as base
-const MIN_MAP_AREA_ZOMBIE_FACTOR = 0.00005; // Minimum of one zombie per 20000 square tiles
+const BASE_ZOMBIES_PER_PLAYER = 3;
+const ADDITIONAL_ZOMBIES_PER_NIGHT = 1;
+const MIN_TOTAL_ZOMBIES = 5;
+const MAX_TOTAL_ZOMBIES = 50;
 
 const FAST_ZOMBIE_MIN_NIGHT = 3;
 const BIG_ZOMBIE_MIN_NIGHT = 5;
@@ -102,12 +99,14 @@ export class MapManager implements IMapManager {
   private map: number[][] = [];
   private gameManagers?: IGameManagers;
   private entityManager?: IEntityManager;
+  private gameMaster?: GameMaster;
 
   constructor() {}
 
   public setGameManagers(gameManagers: IGameManagers) {
     this.gameManagers = gameManagers;
     this.entityManager = gameManagers.getEntityManager();
+    this.gameMaster = new GameMaster(gameManagers);
   }
 
   public getGameManagers(): IGameManagers {
@@ -129,52 +128,72 @@ export class MapManager implements IMapManager {
   }
 
   public spawnZombies(dayNumber: number) {
-    const currentZombies = this.countCurrentZombies();
-    const maxZombies = this.calculateMaxZombies(dayNumber);
+    if (!this.gameMaster) {
+      throw new Error("MapManager: GameMaster was not set");
+    }
 
-    if (currentZombies >= maxZombies) {
+    const currentZombies = this.countCurrentZombies();
+    const zombieDistribution = this.gameMaster.getNumberOfZombies(dayNumber);
+
+    if (currentZombies >= zombieDistribution.total) {
       return;
     }
 
-    const zombiesToSpawn = Math.min(
-      maxZombies - currentZombies,
-      Math.ceil(maxZombies * ZOMBIE_SPAWN_CHANCE * dayNumber)
-    );
+    const zombiesToSpawn = zombieDistribution.total - currentZombies;
+    let spawnedCount = {
+      regular: 0,
+      fast: 0,
+      big: 0,
+    };
 
-    let spawnedCount = 0;
     const totalSize = BIOME_SIZE * MAP_SIZE;
+    const centerBiomeX = Math.floor(MAP_SIZE / 2);
+    const centerBiomeY = Math.floor(MAP_SIZE / 2);
 
-    while (spawnedCount < zombiesToSpawn) {
+    // Keep trying until we spawn all zombies
+    let attempts = 0;
+    const maxAttempts = zombiesToSpawn * 10; // Prevent infinite loops
+
+    while (
+      spawnedCount.regular < zombieDistribution.regular ||
+      spawnedCount.fast < zombieDistribution.fast ||
+      spawnedCount.big < zombieDistribution.big
+    ) {
+      if (attempts++ > maxAttempts) break;
+
       const x = Math.floor(Math.random() * totalSize);
       const y = Math.floor(Math.random() * totalSize);
 
-      if (this.map[y][x] === 0) {
-        this.spawnZombieAt(x, y, dayNumber);
-        spawnedCount++;
+      // Skip if position is in center campsite biome
+      const biomeX = Math.floor(x / BIOME_SIZE);
+      const biomeY = Math.floor(y / BIOME_SIZE);
+      if (biomeX === centerBiomeX && biomeY === centerBiomeY) {
+        continue;
+      }
+
+      // Skip if not on grass
+      if (this.map[y][x] !== 0) {
+        continue;
+      }
+
+      // Determine which type of zombie to spawn based on remaining counts
+      if (spawnedCount.big < zombieDistribution.big) {
+        const zombie = new BigZombie(this.getGameManagers());
+        zombie.setPosition(new Vector2(x * TILE_SIZE, y * TILE_SIZE));
+        this.getEntityManager().addEntity(zombie);
+        spawnedCount.big++;
+      } else if (spawnedCount.fast < zombieDistribution.fast) {
+        const zombie = new FastZombie(this.getGameManagers());
+        zombie.setPosition(new Vector2(x * TILE_SIZE, y * TILE_SIZE));
+        this.getEntityManager().addEntity(zombie);
+        spawnedCount.fast++;
+      } else if (spawnedCount.regular < zombieDistribution.regular) {
+        const zombie = new Zombie(this.getGameManagers());
+        zombie.setPosition(new Vector2(x * TILE_SIZE, y * TILE_SIZE));
+        this.getEntityManager().addEntity(zombie);
+        spawnedCount.regular++;
       }
     }
-  }
-
-  private calculateMaxZombies(dayNumber: number): number {
-    const playerCount = this.getEntityManager().getPlayerEntities().length;
-    const mapArea = (BIOME_SIZE * MAP_SIZE) ** 2;
-
-    console.log("Player count:", playerCount);
-
-    const baseZombies = Math.floor(mapArea * MAP_AREA_ZOMBIE_FACTOR * DIFFICULTY_MULTIPLIER);
-    const minBaseZombies = Math.floor(mapArea * MIN_MAP_AREA_ZOMBIE_FACTOR * DIFFICULTY_MULTIPLIER);
-
-    const playerZombies = playerCount * BASE_ZOMBIES_PER_PLAYER * DIFFICULTY_MULTIPLIER;
-    const minPlayerZombies = playerCount * MIN_ZOMBIES_PER_PLAYER * DIFFICULTY_MULTIPLIER;
-
-    const nightZombies = (dayNumber - 1) * ADDITIONAL_ZOMBIES_PER_NIGHT * DIFFICULTY_MULTIPLIER;
-    const minNightZombies =
-      (dayNumber - 1) * MIN_ADDITIONAL_ZOMBIES_PER_NIGHT * DIFFICULTY_MULTIPLIER;
-
-    const maxZombies = Math.floor(baseZombies + playerZombies + nightZombies);
-    const minZombies = Math.floor(minBaseZombies + minPlayerZombies + minNightZombies);
-
-    return Math.max(maxZombies, minZombies);
   }
 
   private countCurrentZombies(): number {
@@ -184,23 +203,6 @@ export class MapManager implements IMapManager {
         (entity) =>
           entity instanceof Zombie || entity instanceof BigZombie || entity instanceof FastZombie
       ).length;
-  }
-
-  private spawnZombieAt(x: number, y: number, dayNumber: number) {
-    const zombieRoll = Math.random();
-    let zombie;
-
-    // Only allow special zombies after certain nights
-    if (dayNumber >= BIG_ZOMBIE_MIN_NIGHT && zombieRoll < ZOMBIE_TYPE_CHANCE.BIG) {
-      zombie = new BigZombie(this.getGameManagers());
-    } else if (dayNumber >= FAST_ZOMBIE_MIN_NIGHT && zombieRoll < ZOMBIE_TYPE_CHANCE.FAST) {
-      zombie = new FastZombie(this.getGameManagers());
-    } else {
-      zombie = new Zombie(this.getGameManagers());
-    }
-
-    zombie.setPosition(new Vector2(x * TILE_SIZE, y * TILE_SIZE));
-    this.getEntityManager().addEntity(zombie);
   }
 
   generateEmptyMap(width: number, height: number) {

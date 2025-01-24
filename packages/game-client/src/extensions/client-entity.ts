@@ -1,19 +1,25 @@
 import { ImageLoader } from "@/managers/asset";
 import { ClientExtension, ClientExtensionCtor } from "@/extensions/types";
 import { clientExtensionsMap } from "@/extensions/index";
-import { RawEntity } from "@shared/types/entity";
+import { EntityType, RawEntity } from "@shared/types/entity";
 import Vector2 from "@shared/util/vector2";
 
 export abstract class ClientEntityBase {
   private id: string;
+  private type: EntityType;
   protected imageLoader: ImageLoader;
   private extensions: ClientExtension[] = [];
   private static readonly LERP_FACTOR = 0.2;
 
   public constructor(data: RawEntity, imageLoader: ImageLoader) {
     this.id = data.id;
+    this.type = data.type;
     this.imageLoader = imageLoader;
     this.deserialize(data);
+  }
+
+  public getType(): EntityType {
+    return this.type;
   }
 
   public lerpPosition(target: Vector2, current: Vector2): Vector2 {
