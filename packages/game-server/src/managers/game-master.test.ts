@@ -24,26 +24,34 @@ describe("getNumberOfZombies", () => {
 
     it("should return correct zombie counts for night 1", () => {
       const result = gameMaster.getNumberOfZombies(1);
-      expect(result.total).toBe(10); // MIN_TOTAL_ZOMBIES
+      expect(result.total).toBe(10);
       expect(result.regular).toBe(10);
-      expect(result.fast).toBe(0);
-      expect(result.big).toBe(0);
-    });
-
-    it("should return correct zombie counts for night 2", () => {
-      const result = gameMaster.getNumberOfZombies(2);
-      expect(result.total).toBe(14); // MIN_TOTAL_ZOMBIES
-      expect(result.regular).toBe(14);
       expect(result.fast).toBe(0);
       expect(result.big).toBe(0);
     });
 
     it("should introduce fast zombies on night 3", () => {
       const result = gameMaster.getNumberOfZombies(3);
-      expect(result.total).toBe(22); // MIN_TOTAL_ZOMBIES
-      expect(result.fast).toBe(2); // 20% of total
-      expect(result.regular).toBe(20);
+      expect(result.total).toBe(11);
+      expect(result.fast).toBe(3);
+      expect(result.regular).toBe(7);
       expect(result.big).toBe(0);
+    });
+
+    it("should introduce fast zombies on night 5", () => {
+      const result = gameMaster.getNumberOfZombies(5);
+      expect(result.total).toBe(19);
+      expect(result.fast).toBe(4);
+      expect(result.regular).toBe(11);
+      expect(result.big).toBe(2);
+    });
+
+    it("should introduce fast zombies on night 10", () => {
+      const result = gameMaster.getNumberOfZombies(10);
+      expect(result.total).toBe(39);
+      expect(result.fast).toBe(9);
+      expect(result.regular).toBe(23);
+      expect(result.big).toBe(5);
     });
   });
 });

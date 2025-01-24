@@ -7,6 +7,24 @@ interface ZombieDistribution {
   big: number;
 }
 
+interface ZombieType {
+  type: string;
+  ratio: number;
+  minNight: number;
+}
+
+// Constants
+const ADDITIONAL_ZOMBIES_PER_NIGHT = 4;
+const MIN_TOTAL_ZOMBIES = 10;
+const MAX_TOTAL_ZOMBIES = 200;
+
+// Configuration for zombie types and their spawn parameters
+const ZOMBIE_TYPES: ZombieType[] = [
+  { type: "regular", ratio: 0.6, minNight: 1 },
+  { type: "fast", ratio: 0.25, minNight: 3 },
+  { type: "big", ratio: 0.15, minNight: 5 },
+];
+
 export class GameMaster {
   private gameManagers: IGameManagers;
 
@@ -15,50 +33,37 @@ export class GameMaster {
   }
 
   public getNumberOfZombies(dayNumber: number): ZombieDistribution {
+    // Calculate total zombies based on players and day number
     const playerCount = this.gameManagers.getEntityManager().getPlayerEntities().length;
-    const baseZombies = playerCount * BASE_ZOMBIES_PER_PLAYER;
+    const baseZombies = 3;
     const additionalZombies = (dayNumber - 1) * ADDITIONAL_ZOMBIES_PER_NIGHT * playerCount;
     const totalZombies = Math.floor(
-      Math.min(
-        Math.max((baseZombies + additionalZombies) * DIFFICULTY_MULTIPLIER, MIN_TOTAL_ZOMBIES),
-        MAX_TOTAL_ZOMBIES
-      )
+      Math.min(Math.max(baseZombies + additionalZombies, MIN_TOTAL_ZOMBIES), MAX_TOTAL_ZOMBIES)
     );
 
-    // Calculate zombie type distribution based on day number
-    let bigZombies = 0;
-    let fastZombies = 0;
-    let regularZombies = totalZombies;
+    // Filter available zombie types based on current day
+    const availableTypes = ZOMBIE_TYPES.filter((type) => dayNumber >= type.minNight);
 
-    if (dayNumber >= BIG_ZOMBIE_MIN_NIGHT) {
-      bigZombies = Math.floor(totalZombies * ZOMBIE_TYPE_CHANCE.BIG);
-      regularZombies -= bigZombies;
-    }
+    // Recalculate ratios based on available types
+    const totalRatio = availableTypes.reduce((sum, type) => sum + type.ratio, 0);
+    const normalizedTypes = availableTypes.map((type) => ({
+      ...type,
+      ratio: type.ratio / totalRatio,
+    }));
 
-    if (dayNumber >= FAST_ZOMBIE_MIN_NIGHT) {
-      fastZombies = Math.floor(totalZombies * (ZOMBIE_TYPE_CHANCE.FAST - ZOMBIE_TYPE_CHANCE.BIG));
-      regularZombies -= fastZombies;
-    }
-
-    return {
+    // Calculate zombie counts for each type
+    const distribution: ZombieDistribution = {
       total: totalZombies,
-      regular: regularZombies,
-      fast: fastZombies,
-      big: bigZombies,
+      regular: 0,
+      fast: 0,
+      big: 0,
     };
+
+    normalizedTypes.forEach((type) => {
+      const count = Math.floor(totalZombies * type.ratio);
+      distribution[type.type as keyof Omit<ZombieDistribution, "total">] = count;
+    });
+
+    return distribution;
   }
 }
-
-// Constants
-const DIFFICULTY_MULTIPLIER = 2.0;
-const BASE_ZOMBIES_PER_PLAYER = 3;
-const ADDITIONAL_ZOMBIES_PER_NIGHT = 4;
-const MIN_TOTAL_ZOMBIES = 10;
-const MAX_TOTAL_ZOMBIES = 200;
-const FAST_ZOMBIE_MIN_NIGHT = 3;
-const BIG_ZOMBIE_MIN_NIGHT = 5;
-const ZOMBIE_TYPE_CHANCE = {
-  BIG: 0.1,
-  FAST: 0.2,
-  REGULAR: 0.7,
-} as const;
