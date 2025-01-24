@@ -188,6 +188,9 @@ export class ServerSocketManager implements Broadcaster {
       this.getCommandManager().handleCommand(command)
     );
     socket.on(ClientSentEvents.REQUEST_FULL_STATE, () => this.sendFullState(socket));
+    socket.on(ClientSentEvents.PING, (timestamp: number) => {
+      socket.emit(ServerSentEvents.PONG, { timestamp });
+    });
     socket.on("disconnect", () => {
       this.onDisconnect(socket);
     });

@@ -199,6 +199,11 @@ export class GameClient {
     this.clientEventListener = new ClientEventListener(this, this.socketManager);
     this.commandManager = new CommandManager(this.socketManager, this.gameState);
 
+    // Set up ping display
+    this.socketManager.onPing((ping) => {
+      this.hud.updatePing(ping);
+    });
+
     if (DEBUG_ADMIN_COMMANDS) {
       (window as any).commandManager = this.commandManager;
     }

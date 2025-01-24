@@ -22,6 +22,7 @@ export const ServerSentEvents = {
   ENEMY_WAYPOINT: "enemyWaypoint",
   SERVER_UPDATING: "serverUpdating",
   PLAYER_REVIVED: "PLAYER_REVIVED",
+  PONG: "pong",
 } as const;
 
 export const ClientSentEvents = {
@@ -31,6 +32,7 @@ export const ClientSentEvents = {
   STOP_CRAFTING: "stopCrafting",
   ADMIN_COMMAND: "adminCommand",
   REQUEST_FULL_STATE: "requestFullState",
+  PING: "ping",
 } as const;
 
 export type ServerSentEventType = (typeof ServerSentEvents)[keyof typeof ServerSentEvents];

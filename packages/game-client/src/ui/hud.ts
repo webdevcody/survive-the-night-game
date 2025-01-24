@@ -83,6 +83,17 @@ const HUD_SETTINGS = {
       },
     },
   },
+  Ping: {
+    right: 140,
+    bottom: 50,
+    font: "24px Arial",
+    colors: {
+      excellent: "rgb(0, 255, 0)", // Green: < 50ms
+      good: "rgb(255, 255, 0)", // Yellow: 50-100ms
+      fair: "rgb(255, 165, 0)", // Orange: 100-150ms
+      poor: "rgb(255, 0, 0)", // Red: > 150ms
+    },
+  },
 };
 
 export class Hud {
@@ -90,12 +101,15 @@ export class Hud {
   private gameMessages: { message: string; timestamp: number }[] = [];
   private messageTimeout: number = 5000;
   private mapManager: MapManager;
+  private currentPing: number = 0;
+  private lastPingUpdate: number = 0;
+  private pingUpdateInterval: number = 5000; // Update ping every 5 seconds
 
   constructor(mapManager: MapManager) {
     this.mapManager = mapManager;
   }
 
-  update(gameState: GameState): void {
+  public update(gameState: GameState): void {
     this.gameMessages = this.gameMessages.filter(
       (message) => Date.now() - message.timestamp < this.messageTimeout
     );
@@ -119,6 +133,18 @@ export class Hud {
 
   private getTotalPlayers(gameState: GameState): number {
     return gameState.entities.filter((entity) => entity instanceof PlayerClient).length;
+  }
+
+  public updatePing(ping: number): void {
+    this.currentPing = ping;
+    this.lastPingUpdate = Date.now();
+  }
+
+  private getPingColor(ping: number): string {
+    if (ping < 50) return HUD_SETTINGS.Ping.colors.excellent;
+    if (ping < 100) return HUD_SETTINGS.Ping.colors.good;
+    if (ping < 150) return HUD_SETTINGS.Ping.colors.fair;
+    return HUD_SETTINGS.Ping.colors.poor;
   }
 
   public render(ctx: CanvasRenderingContext2D, gameState: GameState): void {
@@ -156,6 +182,17 @@ export class Hud {
       const healthTextWidth = ctx.measureText(healthText).width;
       ctx.fillText(healthText, width - healthTextWidth - margin, margin + gap * 2);
     }
+
+    // Render ping
+    ctx.font = HUD_SETTINGS.Ping.font;
+    const pingText = `${Math.round(this.currentPing)}ms`;
+    const pingMetrics = ctx.measureText(pingText);
+    ctx.fillStyle = this.getPingColor(this.currentPing);
+    ctx.fillText(
+      pingText,
+      ctx.canvas.width - pingMetrics.width - HUD_SETTINGS.Ping.right,
+      ctx.canvas.height - HUD_SETTINGS.Ping.bottom
+    );
 
     this.renderControlsList(ctx, gameState);
     this.renderGameMessages(ctx);
