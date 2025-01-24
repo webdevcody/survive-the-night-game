@@ -20,6 +20,7 @@ import Movable from "@/extensions/movable";
 import { PlayerDroppedItemEvent } from "@shared/events/server-sent/player-dropped-item-event";
 import { PlayerJoinedEvent } from "@shared/events/server-sent/player-joined-event";
 import { PongEvent } from "@shared/events/server-sent/pong-event";
+import { ChatMessageEvent } from "@shared/events/server-sent/chat-message-event";
 
 /**
  * Any and all functionality related to sending server side events
@@ -192,6 +193,9 @@ export class ServerSocketManager implements Broadcaster {
     socket.on(ClientSentEvents.PING, (timestamp: number) => {
       this.handlePing(socket, timestamp);
     });
+    socket.on(ClientSentEvents.SEND_CHAT, (data: { message: string }) => {
+      this.handleChat(socket, data.message);
+    });
     socket.on("disconnect", () => {
       this.onDisconnect(socket);
     });
@@ -346,5 +350,17 @@ export class ServerSocketManager implements Broadcaster {
       const latency = Date.now() - timestamp;
       player.setPing(latency);
     }
+  }
+
+  private handleChat(socket: Socket, message: string): void {
+    const player = this.players.get(socket.id);
+    if (!player) return;
+
+    const chatEvent = new ChatMessageEvent({
+      playerId: player.getId(),
+      message: message,
+    });
+
+    this.io.emit(ServerSentEvents.CHAT_MESSAGE, chatEvent.getData());
   }
 }

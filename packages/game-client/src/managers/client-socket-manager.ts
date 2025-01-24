@@ -21,6 +21,7 @@ import { Input } from "../../../game-shared/src/util/input";
 import { RecipeType } from "../../../game-shared/src/util/recipes";
 import { Socket, io } from "socket.io-client";
 import { ServerUpdatingEvent } from "@shared/events/server-sent/server-updating-event";
+import { ChatMessageEvent } from "@shared/events/server-sent/chat-message-event";
 
 export type EntityDto = { id: string } & any;
 
@@ -43,6 +44,7 @@ const SERVER_EVENT_MAP = {
   [ServerSentEvents.GAME_STARTED]: GameStartedEvent,
   [ServerSentEvents.SERVER_UPDATING]: ServerUpdatingEvent,
   [ServerSentEvents.PONG]: PongEvent,
+  [ServerSentEvents.CHAT_MESSAGE]: ChatMessageEvent,
 } as const;
 
 export class ClientSocketManager {
@@ -131,5 +133,9 @@ export class ClientSocketManager {
 
   public sendRequestFullState() {
     this.socket.emit(ClientSentEvents.REQUEST_FULL_STATE);
+  }
+
+  public sendChatMessage(message: string) {
+    this.socket.emit(ClientSentEvents.SEND_CHAT, { message });
   }
 }

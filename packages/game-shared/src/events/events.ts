@@ -23,6 +23,7 @@ export const ServerSentEvents = {
   SERVER_UPDATING: "serverUpdating",
   PLAYER_REVIVED: "PLAYER_REVIVED",
   PONG: "pong",
+  CHAT_MESSAGE: "chatMessage",
 } as const;
 
 export const ClientSentEvents = {
@@ -33,6 +34,7 @@ export const ClientSentEvents = {
   ADMIN_COMMAND: "adminCommand",
   REQUEST_FULL_STATE: "requestFullState",
   PING: "ping",
+  SEND_CHAT: "sendChat",
 } as const;
 
 export type ServerSentEventType = (typeof ServerSentEvents)[keyof typeof ServerSentEvents];

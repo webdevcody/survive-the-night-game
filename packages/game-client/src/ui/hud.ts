@@ -10,6 +10,7 @@ import { TreeClient } from "@/entities/items/tree";
 import { ClientCarryable } from "@/extensions/carryable";
 import { MapManager } from "@/managers/map";
 import { TILE_IDS } from "@shared/map";
+import { ChatWidget } from "./chat-widget";
 
 const HUD_SETTINGS = {
   ControlsList: {
@@ -136,16 +137,19 @@ export class Hud {
   private mapManager: MapManager;
   private currentPing: number = 0;
   private lastPingUpdate: number = 0;
-  private pingUpdateInterval: number = 5000; // Update ping every 5 seconds
+  private pingUpdateInterval: number = 5000;
+  private chatWidget: ChatWidget;
 
   constructor(mapManager: MapManager) {
     this.mapManager = mapManager;
+    this.chatWidget = new ChatWidget();
   }
 
   public update(gameState: GameState): void {
     this.gameMessages = this.gameMessages.filter(
       (message) => Date.now() - message.timestamp < this.messageTimeout
     );
+    this.chatWidget.update();
   }
 
   public toggleInstructions(): void {
@@ -236,6 +240,7 @@ export class Hud {
     this.renderControlsList(ctx, gameState);
     this.renderGameMessages(ctx);
     this.renderPlayerList(ctx, gameState);
+    this.chatWidget.render(ctx);
   }
 
   public addMessage(message: string): void {
@@ -692,5 +697,26 @@ export class Hud {
     }
     ctx.closePath();
     ctx.fill();
+  }
+
+  // Delegate chat methods to ChatWidget
+  public toggleChatInput(): void {
+    this.chatWidget.toggleChatInput();
+  }
+
+  public updateChatInput(key: string): void {
+    this.chatWidget.updateChatInput(key);
+  }
+
+  public getChatInput(): string {
+    return this.chatWidget.getChatInput();
+  }
+
+  public clearChatInput(): void {
+    this.chatWidget.clearChatInput();
+  }
+
+  public addChatMessage(playerId: string, message: string): void {
+    this.chatWidget.addChatMessage(playerId, message);
   }
 }

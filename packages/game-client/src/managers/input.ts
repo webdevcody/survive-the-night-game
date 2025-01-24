@@ -13,6 +13,9 @@ export interface InputManagerOptions {
   onToggleInstructions?: () => void;
   onShowPlayerList?: () => void;
   onHidePlayerList?: () => void;
+  onToggleChat?: () => void;
+  onChatInput?: (key: string) => void;
+  onSendChat?: () => void;
 }
 
 export class InputManager {
@@ -30,6 +33,7 @@ export class InputManager {
   private lastInputs = {
     ...this.inputs,
   };
+  private isChatting = false;
 
   private checkIfChanged() {
     this.hasChanged = JSON.stringify(this.inputs) !== JSON.stringify(this.lastInputs);
@@ -40,6 +44,32 @@ export class InputManager {
     window.addEventListener("keydown", (e) => {
       const eventKey = e.key.toLowerCase();
 
+      // Handle chat mode
+      if (eventKey === "y" && !this.isChatting) {
+        this.isChatting = true;
+        callbacks.onToggleChat?.();
+        return;
+      }
+
+      if (this.isChatting) {
+        if (eventKey === "escape") {
+          this.isChatting = false;
+          callbacks.onToggleChat?.();
+          return;
+        }
+
+        if (eventKey === "enter") {
+          this.isChatting = false;
+          callbacks.onSendChat?.();
+          callbacks.onToggleChat?.();
+          return;
+        }
+
+        callbacks.onChatInput?.(e.key);
+        return;
+      }
+
+      // Normal game input handling
       switch (eventKey) {
         case "q":
           callbacks.onCraft?.();
