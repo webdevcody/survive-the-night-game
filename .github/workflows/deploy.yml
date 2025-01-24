@@ -18,4 +18,4 @@ jobs:
           script: |
             cd survive-the-night-game
             git pull
-            docker compose up -d --build
+            ADMIN_PASSWORD=${{ secrets.ADMIN_PASSWORD }} docker compose up -d --build

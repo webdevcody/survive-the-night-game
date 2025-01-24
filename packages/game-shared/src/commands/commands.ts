@@ -20,6 +20,7 @@ export type AdminCommandType = (typeof ADMIN_COMMANDS)[keyof typeof ADMIN_COMMAN
 export type AdminCommand = {
   command: AdminCommandType;
   payload: any;
+  password: string;
 };
 
 export type CreateItemCommand = {
@@ -28,6 +29,7 @@ export type CreateItemCommand = {
     itemType: ItemType;
     position: Vector2;
   };
+  password: string;
 };
 
 export type CreateEntityCommand = {
@@ -36,6 +38,7 @@ export type CreateEntityCommand = {
     entityType: EntityType;
     position: Vector2;
   };
+  password: string;
 };
 
 export type ChangeSkinCommand = {
@@ -44,4 +47,5 @@ export type ChangeSkinCommand = {
     skinType: SkinType;
     playerId: string;
   };
+  password: string;
 };

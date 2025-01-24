@@ -21,6 +21,7 @@
   },
   "dependencies": {
     "@survive-the-night/game-shared": "*",
+    "dotenv": "^16.4.7",
     "socket.io": "^4.8.1"
   }
 }

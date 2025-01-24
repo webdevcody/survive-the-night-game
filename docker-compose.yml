@@ -25,6 +25,7 @@ services:
       - "3001:3001"
     environment:
       - NODE_ENV=production
+      - ADMIN_PASSWORD=${ADMIN_PASSWORD:-admin}
     networks:
       - app_network
 
