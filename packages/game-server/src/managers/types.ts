@@ -14,6 +14,7 @@ export interface IEntityManager {
   isColliding(entity: IEntity, IEntityTypes?: EntityType[]): IEntity | null;
   getClosestAlivePlayer(entity: IEntity): IEntity | null;
   getEntityById(id: string): IEntity | null;
+  getDynamicEntities(): IEntity[];
   getNearbyEntities(position: Vector2, radius?: number, entityTypes?: EntityType[]): IEntity[];
   getNearbyEnemies(position: Vector2, radius?: number, entityTypes?: EntityType[]): IEntity[];
   getNearbyEntitiesByRange(range: Shape, entityTypes?: EntityType[]): IEntity[];

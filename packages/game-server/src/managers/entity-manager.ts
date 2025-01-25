@@ -35,6 +35,7 @@ import { Grenade } from "@/entities/items/grenade";
 import { FireExtinguisher } from "@/entities/items/fire-extinguisher";
 import Groupable from "@/extensions/groupable";
 import { BaseEnemy } from "@/entities/enemies/base-enemy";
+import { Boundary } from "@/entities/environment/boundary";
 
 const entityMap = {
   [Entities.PLAYER]: Player,
@@ -71,10 +72,12 @@ export class EntityManager implements IEntityManager {
   private gameManagers?: IGameManagers;
   private itemConstructors = new Map<ItemType, EntityConstructor>();
   private entityStateTracker: EntityStateTracker;
+  private dynamicEntities: Entity[];
 
   constructor() {
     this.entities = [];
     this.players = [];
+    this.dynamicEntities = [];
     this.entityStateTracker = new EntityStateTracker();
     this.registerDefaultItems();
   }
@@ -147,6 +150,11 @@ export class EntityManager implements IEntityManager {
     if (entity.getType() === Entities.PLAYER) {
       this.players.push(entity as Player);
     }
+
+    this.entityFinder?.addEntity(entity);
+    if (!(entity instanceof Boundary)) {
+      this.dynamicEntities.push(entity);
+    }
   }
 
   getEntities(): Entity[] {
@@ -175,42 +183,47 @@ export class EntityManager implements IEntityManager {
       return;
     }
 
-    for (let i = this.entities.length - 1; i >= 0; i--) {
-      const entity = this.entities[i];
+    // Filter out records that haven't expired yet
+    const expiredRecords = this.entitiesToRemove.filter((record) => now >= record.expiration);
 
-      const removeRecordIndex = this.entitiesToRemove.findLastIndex(
-        (it) => it.id === entity.getId()
-      );
+    for (const record of expiredRecords) {
+      // Find the entity index once
+      const entityIndex = this.entities.findIndex((entity) => entity.getId() === record.id);
+      if (entityIndex === -1) continue;
 
-      if (removeRecordIndex === -1) {
-        continue;
-      }
-
-      const removeRecord = this.entitiesToRemove[removeRecordIndex];
-
-      if (now < removeRecord.expiration) {
-        continue;
-      }
+      const entity = this.entities[entityIndex];
 
       // Track entity removal before removing it
-      this.entityStateTracker.trackRemoval(entity.getId());
-      this.entities.splice(i, 1);
-      this.entitiesToRemove.splice(removeRecordIndex, 1);
+      this.entityStateTracker.trackRemoval(record.id);
 
+      // Remove from entities array
+      this.entities.splice(entityIndex, 1);
+
+      // Remove from players array if needed
       if (entity.getType() === Entities.PLAYER) {
-        const playerIndex = this.players.findIndex((player) => player.getId() === entity.getId());
+        const playerIndex = this.players.findIndex((player) => player.getId() === record.id);
         if (playerIndex !== -1) {
           this.players.splice(playerIndex, 1);
         }
       }
+
+      // Remove from dynamic entities
+      if (!(entity instanceof Boundary)) {
+        const dynamicIndex = this.dynamicEntities.findIndex((e) => e.getId() === record.id);
+        if (dynamicIndex !== -1) {
+          this.dynamicEntities.splice(dynamicIndex, 1);
+        }
+      }
     }
 
+    // Update entitiesToRemove to only keep unexpired records
     this.entitiesToRemove = this.entitiesToRemove.filter((it) => now < it.expiration);
   }
 
   clear() {
     this.entities = [];
     this.players = [];
+    this.dynamicEntities = [];
   }
 
   getNearbyEnemies(position: Vector2): Entity[] {
@@ -232,10 +245,12 @@ export class EntityManager implements IEntityManager {
     return this.entityFinder?.getNearbyEntitiesByRange(range, filter) ?? [];
   }
 
+  getDynamicEntities(): Entity[] {
+    return this.dynamicEntities;
+  }
+
   getPlayerEntities(): Player[] {
-    return this.entities.filter((entity) => {
-      return entity.getType() === Entities.PLAYER;
-    }) as unknown as Player[];
+    return this.players;
   }
 
   getClosestPlayer(entity: Entity): Player | null {
@@ -339,10 +354,8 @@ export class EntityManager implements IEntityManager {
     }
 
     const hitBox = sourceEntity.getExt(Collidable).getHitBox();
-
     const nearbyEntities = this.entityFinder.getNearbyEntitiesByRange(hitBox);
 
-    // TODO: look into refactoring this
     for (const otherEntity of nearbyEntities) {
       if (ignoreTypes && ignoreTypes.includes(otherEntity.getType())) {
         continue;
@@ -379,16 +392,12 @@ export class EntityManager implements IEntityManager {
   update(deltaTime: number) {
     this.refreshSpatialGrid();
 
-    for (const entity of this.getEntities()) {
-      this.updateExtensions(entity, deltaTime);
-    }
-  }
-
-  // as of right now, just allow any extension to have an optional update method
-  updateExtensions(entity: Entity, deltaTime: number) {
-    for (const extension of entity.getExtensions()) {
-      if ("update" in extension) {
-        (extension as any).update(deltaTime);
+    const entities = this.getEntities();
+    for (let i = 0; i < entities.length; i++) {
+      const extensions = entities[i].getExtensions();
+      const len = extensions.length;
+      for (let j = 0; j < len; j++) {
+        extensions[j]?.update?.(deltaTime);
       }
     }
   }
@@ -402,11 +411,12 @@ export class EntityManager implements IEntityManager {
     this.entityFinder.clear();
 
     // Re-add all entities that have a position
-    this.entities.forEach((entity) => {
-      if (entity.hasExt(Positionable)) {
-        this.entityFinder!.addEntity(entity);
-      }
-    });
+    const entities = this.getDynamicEntities();
+    const len = entities.length;
+    for (let i = 0; i < len; i++) {
+      const entity = entities[i];
+      this.entityFinder!.addEntity(entity);
+    }
   }
 
   public getBroadcaster(): Broadcaster {

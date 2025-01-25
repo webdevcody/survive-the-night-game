@@ -31,7 +31,10 @@ export default class Movable implements Extension {
   public serialize(): ExtensionSerialized {
     return {
       type: Movable.type,
-      velocity: this.velocity,
+      velocity: {
+        x: this.velocity.x,
+        y: this.velocity.y,
+      },
     };
   }
 

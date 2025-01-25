@@ -144,7 +144,6 @@ export class GameServer {
     }
 
     this.updateEntities(deltaTime);
-
     this.handleDayNightCycle(deltaTime);
     this.handleIfGameOver();
 
@@ -155,11 +154,11 @@ export class GameServer {
     this.lastUpdateTime = currentTime;
 
     // Track all entities for next update's change detection
-    const entities = this.entityManager.getEntities();
-    const filteredEntities = entities.filter((entity) => !("isServerOnly" in entity));
-    filteredEntities.forEach((entity) => {
-      this.entityManager.getEntityStateTracker().trackEntity(entity);
-    });
+    const entities = this.entityManager.getDynamicEntities();
+    const now = Date.now();
+    for (let entity of entities) {
+      this.entityManager.getEntityStateTracker().trackEntity(entity, now);
+    }
   }
 
   private handleDayNightCycle(deltaTime: number) {
@@ -243,9 +242,7 @@ export class GameServer {
   // TODO: This is a bit of a hack to get the game state to the client.
   // We should probably have a more elegant way to do this.
   private broadcastGameState(): void {
-    const rawEntities = [...this.entityManager.getEntities()]
-      .filter((entity) => !("isServerOnly" in entity))
-      .map((entity) => entity.serialize());
+    const rawEntities = this.entityManager.getDynamicEntities().map((entity) => entity.serialize());
 
     // Only include state properties that have changed
     const stateUpdate: any = {

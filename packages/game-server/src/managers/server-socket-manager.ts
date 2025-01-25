@@ -161,11 +161,10 @@ export class ServerSocketManager implements Broadcaster {
   }
 
   private sendFullState(socket: Socket): void {
-    const entities = this.getEntityManager().getEntities();
-    const filteredEntities = entities.filter((entity) => !("isServerOnly" in entity));
+    const entities = this.getEntityManager().getDynamicEntities();
 
     socket.emit(ServerSentEvents.GAME_STATE_UPDATE, {
-      entities: filteredEntities.map((entity) => entity.serialize()),
+      entities: entities.map((entity) => entity.serialize()),
       timestamp: Date.now(),
       isFullState: true,
       dayNumber: this.gameServer.getDayNumber(),
@@ -235,15 +234,16 @@ export class ServerSocketManager implements Broadcaster {
 
   public broadcastEvent(event: GameEvent<any>): void {
     if (event.getType() === ServerSentEvents.GAME_STATE_UPDATE) {
-      const entities = this.getEntityManager().getEntities();
-      const filteredEntities = entities.filter((entity) => !("isServerOnly" in entity));
+      const entities = this.getEntityManager().getDynamicEntities();
       const entityStateTracker = this.getEntityManager().getEntityStateTracker();
-      const changedEntities = entityStateTracker.getChangedEntities(filteredEntities);
+      const changedEntities = entityStateTracker.getChangedEntities(entities);
       const removedEntityIds = entityStateTracker.getRemovedEntityIds();
 
       if (changedEntities.length === 0 && removedEntityIds.length === 0) {
         return; // No changes to broadcast
       }
+
+      const now = Date.now();
 
       // For each changed entity, only include properties that have actually changed
       const changedEntityData = changedEntities.map((entity) => {
@@ -252,7 +252,7 @@ export class ServerSocketManager implements Broadcaster {
 
         if (!previousState) {
           // If no previous state exists, this is a new entity - track it and send full state
-          entityStateTracker.trackEntity(entity);
+          entityStateTracker.trackEntity(entity, now);
           return currentState;
         }
 
@@ -329,9 +329,9 @@ export class ServerSocketManager implements Broadcaster {
       });
 
       // Track the current state of all entities and game state after sending the update
-      changedEntities.forEach((entity) => {
-        entityStateTracker.trackEntity(entity);
-      });
+      for (let entity of changedEntities) {
+        entityStateTracker.trackEntity(entity, now);
+      }
       entityStateTracker.trackGameState(currentGameState);
 
       this.io.emit(gameStateEvent.getType(), gameStateEvent.serialize());

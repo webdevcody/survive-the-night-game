@@ -47,7 +47,10 @@ export default class Interactive implements Extension {
     return {
       type: Interactive.type,
       displayName: this.displayName,
-      offset: this.offset,
+      offset: {
+        x: this.offset.x,
+        y: this.offset.y,
+      },
     };
   }
 }

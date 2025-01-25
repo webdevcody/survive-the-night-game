@@ -41,7 +41,6 @@ export class InventoryBarUI implements Renderable {
   }
 
   public render(ctx: CanvasRenderingContext2D, gameState: GameState): void {
-    // TODO: add health bar
     this.renderInventory(ctx, gameState);
   }
 
@@ -76,35 +75,64 @@ export class InventoryBarUI implements Renderable {
     const slotsTop = canvasHeight - hotbarHeight - screenMarginBottom + padding.top;
     const slotsBottom = slotsTop + slotSize;
     const items = this.getInventory();
+    console.log("items", items);
     const activeItemIdx = this.inputManager.getInputs().inventoryItem - 1;
 
     for (let i = 0; i < slotsNumber; i++) {
-      const slotLeft = slotsLeft + i * (slotSize + slotsGap);
-      const slotRight = slotLeft + slotSize;
-
-      ctx.fillStyle = activeItemIdx === i ? active.background : background;
-      ctx.fillRect(slotLeft, slotsTop, slotSize, slotSize);
-
-      ctx.font = "32px Arial";
-      ctx.textAlign = "left";
-
-      const inventoryItem = items[i];
-
-      const image = inventoryItem && this.assetManager.get(getItemAssetKey(inventoryItem));
-      if (image) {
-        ctx.drawImage(image, slotLeft, slotsTop, slotSize, slotSize);
-      }
-
-      ctx.fillStyle = "white";
-      ctx.fillText(`${i + 1}`, slotLeft + 4, slotsTop + 30);
-
-      if (inventoryItem?.state?.count) {
-        ctx.textAlign = "right";
-        ctx.fillStyle = "white";
-        ctx.fillText(`${inventoryItem.state.count}`, slotRight - 4, slotsBottom - 4);
-      }
+      this.renderSlot(
+        slotsLeft,
+        i,
+        slotSize,
+        slotsGap,
+        ctx,
+        activeItemIdx,
+        active,
+        background,
+        slotsTop,
+        items,
+        slotsBottom
+      );
     }
 
     ctx.restore();
+  }
+
+  private renderSlot(
+    slotsLeft: number,
+    i: number,
+    slotSize: number,
+    slotsGap: number,
+    ctx: CanvasRenderingContext2D,
+    activeItemIdx: number,
+    active: { background: string },
+    background: string,
+    slotsTop: number,
+    items: InventoryItem[],
+    slotsBottom: number
+  ) {
+    const slotLeft = slotsLeft + i * (slotSize + slotsGap);
+    const slotRight = slotLeft + slotSize;
+
+    ctx.fillStyle = activeItemIdx === i ? active.background : background;
+    ctx.fillRect(slotLeft, slotsTop, slotSize, slotSize);
+
+    ctx.font = "32px Arial";
+    ctx.textAlign = "left";
+
+    const inventoryItem = items[i];
+
+    const image = inventoryItem && this.assetManager.get(getItemAssetKey(inventoryItem));
+    if (image) {
+      ctx.drawImage(image, slotLeft, slotsTop, slotSize, slotSize);
+    }
+
+    ctx.fillStyle = "white";
+    ctx.fillText(`${i + 1}`, slotLeft + 4, slotsTop + 30);
+
+    if (inventoryItem?.state?.count) {
+      ctx.textAlign = "right";
+      ctx.fillStyle = "white";
+      ctx.fillText(`${inventoryItem.state.count}`, slotRight - 4, slotsBottom - 4);
+    }
   }
 }

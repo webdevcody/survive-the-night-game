@@ -3,6 +3,7 @@ import { IEntity } from "@/entities/types";
 import { EntityType } from "@/types/entity";
 import Positionable from "@/extensions/positionable";
 import { Circle } from "@/util/shape";
+import Destructible from "./destructible";
 
 interface OneTimeTriggerOptions {
   triggerRadius: number;
@@ -35,9 +36,9 @@ export default class OneTimeTrigger implements Extension {
     const triggerBox = this.getTriggerBox();
     const nearbyEntities = this.self
       .getEntityManager()
-      .getNearbyEntitiesByRange(triggerBox, this.targetTypes);
+      .getNearbyEntitiesByRange(triggerBox, this.targetTypes)
+      .filter((entity) => entity.hasExt(Destructible) && !entity.getExt(Destructible).isDead());
 
-    // Check if any target entity is within trigger radius
     for (const entity of nearbyEntities) {
       if (!entity.hasExt(Positionable)) continue;
 
@@ -49,8 +50,7 @@ export default class OneTimeTrigger implements Extension {
 
   public getTriggerBox(): Circle {
     const positionable = this.self.getExt(Positionable);
-    const position = positionable.getPosition();
-    // TODO select type shape trigger
+    const position = positionable.getCenterPosition();
     return new Circle(position, this.triggerRadius);
   }
 

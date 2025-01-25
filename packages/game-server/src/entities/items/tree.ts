@@ -1,6 +1,7 @@
 import Carryable from "@/extensions/carryable";
 import Interactive from "@/extensions/interactive";
 import Positionable from "@/extensions/positionable";
+import Collidable from "@/extensions/collidable";
 import { IGameManagers } from "@/managers/types";
 import { Entities } from "@/constants";
 import { Entity } from "@/entities/entity";

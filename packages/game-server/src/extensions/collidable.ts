@@ -49,8 +49,14 @@ export default class Collidable implements Extension {
   public serialize(): ExtensionSerialized {
     return {
       type: Collidable.type,
-      offset: this.offset,
-      size: this.size,
+      offset: {
+        x: this.offset.x,
+        y: this.offset.y,
+      },
+      size: {
+        x: this.size.x,
+        y: this.size.y,
+      },
     };
   }
 }
