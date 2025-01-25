@@ -79,9 +79,6 @@ export class Player extends Entity {
     ];
 
     const inventory = this.getExt(Inventory);
-    inventory.addItem({
-      itemType: "knife" as const,
-    });
 
     if (DEBUG_WEAPONS) {
       [

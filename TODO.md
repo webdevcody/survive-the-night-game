@@ -4,6 +4,7 @@
 - [ ] zombies shouldn't stack because it causes one giant stacked to clear our your team.
 - [ ] sometimes the pings become negative on the leaderboard
 - [ ] display FPS in game
+- [ ] figure out a better approach for difficulting scaling, because when 20 people are in the game, it spawns like 100 zombies, and it's too hard
 
 # For once in my life, finish one single game!
 
