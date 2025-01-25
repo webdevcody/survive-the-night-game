@@ -17,21 +17,7 @@ import { LootEvent } from "@/events/server-sent/loot-event";
 import { Rectangle } from "@/util/shape";
 import Vector2 from "@/util/vector2";
 import { EntityType } from "@shared/types/entity";
-import { ServerSentEvents } from "@shared/events/events";
-import { GameEvent } from "@shared/events/types";
 import { Player } from "@/entities/player";
-
-// Create a simple event class for waypoint updates
-class EnemyWaypointEvent implements GameEvent<{ entityId: string; waypoint: Vector2 | null }> {
-  private readonly type = ServerSentEvents.ENEMY_WAYPOINT;
-  constructor(private entityId: string, private waypoint: Vector2 | null) {}
-  getType() {
-    return this.type;
-  }
-  serialize() {
-    return { entityId: this.entityId, waypoint: this.waypoint };
-  }
-}
 
 export abstract class BaseEnemy extends Entity {
   protected currentWaypoint: Vector2 | null = null;
@@ -47,7 +33,7 @@ export abstract class BaseEnemy extends Entity {
     maxHealth: number,
     attackCooldownTime: number,
     speed: number,
-    dropChance: number = 0.2
+    dropChance: number = 0
   ) {
     super(gameManagers, entityType);
 

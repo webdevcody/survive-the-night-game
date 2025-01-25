@@ -104,11 +104,21 @@ export class GameServer {
 
   private onDayStart(): void {
     console.log("Day started");
+
+    // Kill all zombies
     const zombies = this.entityManager.getZombieEntities();
     zombies.forEach((zombie) => {
       const destructable = zombie.getExt(Destructible);
       if (destructable) {
         destructable.kill();
+      }
+    });
+
+    // Revive all dead players
+    const players = this.entityManager.getPlayerEntities();
+    players.forEach((player) => {
+      if (player.isDead()) {
+        player.revive();
       }
     });
   }

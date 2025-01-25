@@ -6,10 +6,12 @@ import { BigZombieClient } from "@/entities/big-zombie";
 import { FastZombieClient } from "@/entities/fast-zombie";
 import { PlayerClient } from "@/entities/player";
 import { WallClient } from "@/entities/items/wall";
-import { TreeClient } from "@/entities/items/tree";
 import { ClientCarryable } from "@/extensions/carryable";
 import { MapManager } from "@/managers/map";
 import { TILE_IDS } from "@shared/map";
+import { ChatWidget } from "./chat-widget";
+import { ClientDestructible } from "@/extensions/destructible";
+import { Zombies } from "@shared/constants";
 
 const HUD_SETTINGS = {
   ControlsList: {
@@ -136,16 +138,19 @@ export class Hud {
   private mapManager: MapManager;
   private currentPing: number = 0;
   private lastPingUpdate: number = 0;
-  private pingUpdateInterval: number = 5000; // Update ping every 5 seconds
+  private pingUpdateInterval: number = 5000;
+  private chatWidget: ChatWidget;
 
   constructor(mapManager: MapManager) {
     this.mapManager = mapManager;
+    this.chatWidget = new ChatWidget();
   }
 
   public update(gameState: GameState): void {
     this.gameMessages = this.gameMessages.filter(
       (message) => Date.now() - message.timestamp < this.messageTimeout
     );
+    this.chatWidget.update();
   }
 
   public toggleInstructions(): void {
@@ -166,6 +171,12 @@ export class Hud {
 
   private getTotalPlayers(gameState: GameState): number {
     return gameState.entities.filter((entity) => entity instanceof PlayerClient).length;
+  }
+
+  private getAliveZombies(gameState: GameState): number {
+    return gameState.entities.filter(
+      (entity) => Zombies.includes(entity.getType()) && !entity.getExt(ClientDestructible).isDead()
+    ).length;
   }
 
   public updatePing(ping: number): void {
@@ -194,11 +205,13 @@ export class Hud {
     const cycleText = this.getCycleText(gameState);
     const playersText = `Alive Players: ${this.getAlivePlayers(gameState)}`;
     const totalPlayers = `Total Players: ${this.getTotalPlayers(gameState)}`;
+    const zombiesText = `Zombies Remaining: ${this.getAliveZombies(gameState)}`;
 
     const dayTextWidth = ctx.measureText(dayText).width;
     const cycleTextWidth = ctx.measureText(cycleText).width;
     const playersTextWidth = ctx.measureText(playersText).width;
     const totalPlayersWidth = ctx.measureText(totalPlayers).width;
+    const zombiesTextWidth = ctx.measureText(zombiesText).width;
 
     const margin = 50;
     const gap = 50;
@@ -206,6 +219,7 @@ export class Hud {
     ctx.fillText(cycleText, width - cycleTextWidth - margin, margin + gap);
     ctx.fillText(playersText, width - playersTextWidth - margin, margin + gap * 3);
     ctx.fillText(totalPlayers, width - totalPlayersWidth - margin, margin + gap * 4);
+    ctx.fillText(zombiesText, width - zombiesTextWidth - margin, margin + gap * 5);
 
     const myPlayer = getPlayer(gameState);
 
@@ -219,7 +233,7 @@ export class Hud {
       const killsTextWidth = ctx.measureText(killsText).width;
 
       ctx.fillText(healthText, width - healthTextWidth - margin, margin + gap * 2);
-      ctx.fillText(killsText, width - killsTextWidth - margin, margin + gap * 5);
+      ctx.fillText(killsText, width - killsTextWidth - margin, margin + gap * 6);
     }
 
     // Render ping
@@ -236,6 +250,7 @@ export class Hud {
     this.renderControlsList(ctx, gameState);
     this.renderGameMessages(ctx);
     this.renderPlayerList(ctx, gameState);
+    this.chatWidget.render(ctx);
   }
 
   public addMessage(message: string): void {
@@ -297,6 +312,7 @@ export class Hud {
       "Harvest [E]\n" +
       "Craft [Q]\n" +
       "Drop Item [G]\n" +
+      "Chat [Y]\n" +
       "Toggle Instructions [I]";
 
     const craftingText = "Down [S]\nUp [W]\nCraft [SPACE]";
@@ -692,5 +708,26 @@ export class Hud {
     }
     ctx.closePath();
     ctx.fill();
+  }
+
+  // Delegate chat methods to ChatWidget
+  public toggleChatInput(): void {
+    this.chatWidget.toggleChatInput();
+  }
+
+  public updateChatInput(key: string): void {
+    this.chatWidget.updateChatInput(key);
+  }
+
+  public getChatInput(): string {
+    return this.chatWidget.getChatInput();
+  }
+
+  public clearChatInput(): void {
+    this.chatWidget.clearChatInput();
+  }
+
+  public addChatMessage(playerId: string, message: string): void {
+    this.chatWidget.addChatMessage(playerId, message);
   }
 }

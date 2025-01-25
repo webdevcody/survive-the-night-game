@@ -15,7 +15,7 @@ export class Zombie extends BaseEnemy {
   private static readonly ATTACK_DAMAGE = 1;
   private static readonly ATTACK_COOLDOWN = 1;
   public static readonly MAX_HEALTH = 3;
-  private static readonly DROP_CHANCE = 0.4;
+  private static readonly DROP_CHANCE = 0.7;
 
   constructor(gameManagers: IGameManagers) {
     super(

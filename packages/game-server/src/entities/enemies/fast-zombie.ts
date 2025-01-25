@@ -16,7 +16,7 @@ export class FastZombie extends BaseEnemy {
   private static readonly ATTACK_DAMAGE = 1;
   private static readonly ATTACK_COOLDOWN = 0.5; // Attacks more frequently
   public static readonly MAX_HEALTH = 1; // Less health than regular zombie
-  private static readonly DROP_CHANCE = 0.5; // Lower drop chance than regular zombie
+  private static readonly DROP_CHANCE = 0.3; // Lower drop chance than regular zombie
   private readonly positionThreshold = 4; // Larger threshold for faster speed
 
   constructor(gameManagers: IGameManagers) {

@@ -26,6 +26,7 @@ import { Direction, determineDirection } from "@shared/util/direction";
 import { GameStartedEvent } from "@shared/events/server-sent/game-started-event";
 import { PlayerJoinedEvent } from "@shared/events/server-sent/player-joined-event";
 import { ServerUpdatingEvent } from "@shared/events/server-sent/server-updating-event";
+import { ChatMessageEvent } from "@shared/events/server-sent/chat-message-event";
 
 export class ClientEventListener {
   private socketManager: ClientSocketManager;
@@ -62,6 +63,7 @@ export class ClientEventListener {
     this.socketManager.on(ServerSentEvents.GAME_OVER, this.onGameOver.bind(this));
     this.socketManager.on(ServerSentEvents.GAME_STARTED, this.onGameStarted.bind(this));
     this.socketManager.on(ServerSentEvents.SERVER_UPDATING, this.onServerUpdating.bind(this));
+    this.socketManager.on(ServerSentEvents.CHAT_MESSAGE, this.onChatMessage.bind(this));
     this.socketManager.on(
       ServerSentEvents.PLAYER_DROPPED_ITEM,
       this.onPlayerDroppedItem.bind(this)
@@ -306,6 +308,12 @@ export class ClientEventListener {
 
   onPlayerJoined(playerJoinedEvent: PlayerJoinedEvent) {
     this.gameClient.getHud().showPlayerJoined(playerJoinedEvent.getPlayerId());
+  }
+
+  onChatMessage(chatMessageEvent: ChatMessageEvent) {
+    this.gameClient
+      .getHud()
+      .addChatMessage(chatMessageEvent.getPlayerId(), chatMessageEvent.getMessage());
   }
 
   private checkInitialization() {

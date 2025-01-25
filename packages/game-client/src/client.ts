@@ -22,6 +22,7 @@ import { Direction } from "../../game-shared/src/util/direction";
 import { Input } from "../../game-shared/src/util/input";
 import { ClientEntityBase } from "@/extensions/client-entity";
 import { ParticleManager } from "./managers/particles";
+import { ClientSentEvents } from "@shared/events/events";
 
 export class GameClient {
   private ctx: CanvasRenderingContext2D;
@@ -126,6 +127,19 @@ export class GameClient {
       },
       onHidePlayerList: () => {
         this.hud.setShowPlayerList(false);
+      },
+      onToggleChat: () => {
+        this.hud.toggleChatInput();
+      },
+      onChatInput: (key: string) => {
+        this.hud.updateChatInput(key);
+      },
+      onSendChat: () => {
+        const message = this.hud.getChatInput();
+        if (message.trim()) {
+          this.socketManager.sendChatMessage(message.trim());
+          this.hud.clearChatInput();
+        }
       },
       onDown: (inputs: Input) => {
         if (this.craftingTable.isVisible()) {
