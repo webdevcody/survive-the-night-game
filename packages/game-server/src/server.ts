@@ -13,20 +13,24 @@ import { DAY_DURATION } from "./config/config";
 import Destructible from "@/extensions/destructible";
 
 export class GameServer {
+  // STATE
   private lastUpdateTime: number = Date.now();
-  private entityManager: EntityManager;
-  private mapManager: MapManager;
-  private socketManager: ServerSocketManager;
   private timer: ReturnType<typeof setInterval> | null = null;
   private dayNumber: number = 1;
   private cycleStartTime: number = Date.now();
   private cycleDuration: number = DAY_DURATION;
   private isDay: boolean = true;
+  private isGameReady: boolean = false;
+  private isGameOver: boolean = false;
   private updateTimes: number[] = [];
   private lastPerformanceLog: number = Date.now();
-  private isGameOver: boolean = false;
+
+  // MANAGERS
   private gameManagers: GameManagers;
   private commandManager: CommandManager;
+  private entityManager: EntityManager;
+  private mapManager: MapManager;
+  private socketManager: ServerSocketManager;
   private lastBroadcastedState = {
     dayNumber: -1,
     cycleStartTime: -1,
@@ -69,6 +73,7 @@ export class GameServer {
   }
 
   public startNewGame(): void {
+    this.isGameReady = true;
     this.isGameOver = false;
     this.dayNumber = 1;
     this.cycleStartTime = Date.now();
@@ -132,7 +137,15 @@ export class GameServer {
     this.isGameOver = isGameOver;
   }
 
+  public setIsGameReady(isReady: boolean): void {
+    this.isGameReady = isReady;
+  }
+
   private update(): void {
+    if (!this.isGameReady) {
+      return;
+    }
+
     // setup
     const updateStartTime = performance.now();
     const currentTime = Date.now();
@@ -143,23 +156,27 @@ export class GameServer {
       return;
     }
 
+    // an update is averaging 4.1 ms, we can improve this
     this.updateEntities(deltaTime);
 
     this.handleDayNightCycle(deltaTime);
     this.handleIfGameOver();
 
-    // cleanup
+    // cleanup TODO: 6.282ms, make this faster
     this.entityManager.pruneEntities();
     this.broadcastGameState();
     this.trackPerformance(updateStartTime, currentTime);
     this.lastUpdateTime = currentTime;
 
     // Track all entities for next update's change detection
+    // // TODO: 3.073ms, make this faster
+    // console.time("cleanup");
     const entities = this.entityManager.getEntities();
     const filteredEntities = entities.filter((entity) => !("isServerOnly" in entity));
     filteredEntities.forEach((entity) => {
       this.entityManager.getEntityStateTracker().trackEntity(entity);
     });
+    // console.timeEnd("cleanup");
   }
 
   private handleDayNightCycle(deltaTime: number) {

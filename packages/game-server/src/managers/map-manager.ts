@@ -197,7 +197,7 @@ export class MapManager implements IMapManager {
       }
 
       // Skip if not on grass
-      if (this.map[y][x] !== 0) {
+      if (this.map[y]?.[x] !== 0) {
         continue;
       }
 

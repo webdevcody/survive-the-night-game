@@ -134,9 +134,9 @@ export class ServerSocketManager implements Broadcaster {
       this.getEntityManager().markEntityForRemoval(player);
     }
 
-    if (this.players.size === 0) {
-      this.getMapManager().generateMap();
-      this.getEntityManager().getEntityStateTracker().clear();
+    const isLastPlayer = this.players.size === 0;
+    if (isLastPlayer) {
+      this.gameServer.setIsGameReady(false);
     }
   }
 
