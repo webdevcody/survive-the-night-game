@@ -60,6 +60,8 @@ const entityMap = {
   [Entities.FIRE_EXTINGUISHER]: FireExtinguisher,
 };
 
+const STATIC_ENTITIES: EntityType[] = [Entities.BOUNDARY];
+
 type EntityConstructor = new (entityManager: IGameManagers, ...args: any[]) => Entity;
 
 export class EntityManager implements IEntityManager {
@@ -71,6 +73,7 @@ export class EntityManager implements IEntityManager {
   private gameManagers?: IGameManagers;
   private itemConstructors = new Map<ItemType, EntityConstructor>();
   private entityStateTracker: EntityStateTracker;
+  private dynamicEntities: Entity[] = [];
 
   constructor() {
     this.entities = [];
@@ -129,6 +132,10 @@ export class EntityManager implements IEntityManager {
     return this.itemConstructors.has(type);
   }
 
+  public getDynamicEntities(): Entity[] {
+    return this.dynamicEntities;
+  }
+
   public createEntityFromItem(item: InventoryItem): Entity {
     const constructor = this.itemConstructors.get(item.itemType);
     if (!constructor) {
@@ -146,6 +153,11 @@ export class EntityManager implements IEntityManager {
     this.entities.push(entity);
     if (entity.getType() === Entities.PLAYER) {
       this.players.push(entity as Player);
+    }
+
+    const isDynamicEntity = !STATIC_ENTITIES.includes(entity.getType());
+    if (isDynamicEntity) {
+      this.dynamicEntities.push(entity);
     }
   }
 
@@ -203,6 +215,11 @@ export class EntityManager implements IEntityManager {
           this.players.splice(playerIndex, 1);
         }
       }
+
+      const isDynamicEntity = !STATIC_ENTITIES.includes(entity.getType());
+      if (isDynamicEntity) {
+        this.dynamicEntities.splice(i, 1);
+      }
     }
 
     this.entitiesToRemove = this.entitiesToRemove.filter((it) => now < it.expiration);
@@ -211,6 +228,7 @@ export class EntityManager implements IEntityManager {
   clear() {
     this.entities = [];
     this.players = [];
+    this.dynamicEntities = [];
   }
 
   getNearbyEnemies(position: Vector2): Entity[] {

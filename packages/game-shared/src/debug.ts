@@ -5,6 +5,6 @@ export const DEBUG_SHOW_HITBOXES = false;
 export const DEBUG_MAP_BOUNDS = false;
 export const DEBUG_SHOW_POSITIONS = false;
 export const DEBUG_START_ZOMBIE = false;
-export const DEBUG_VOLUME_REDUCTION = 0.05;
+export const DEBUG_VOLUME_REDUCTION = 0.003;
 export const DEBUG_ADMIN_COMMANDS = true;
 export const DEBUG_SHOW_WAYPOINTS = false;

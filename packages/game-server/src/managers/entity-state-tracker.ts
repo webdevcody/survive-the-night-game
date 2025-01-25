@@ -15,12 +15,12 @@ export class EntityStateTracker {
     isDay?: boolean;
   } = {};
 
-  public trackEntity(entity: IEntity): void {
+  public trackEntity(entity: IEntity, currentTime: number): void {
     const id = entity.getId();
     const serialized = entity.serialize();
     this.previousEntityStates.set(id, {
-      serialized: JSON.parse(JSON.stringify(serialized)),
-      lastUpdateTime: Date.now(),
+      serialized: serialized,
+      lastUpdateTime: currentTime,
     });
   }
 

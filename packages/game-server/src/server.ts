@@ -11,6 +11,7 @@ import { ServerSocketManager } from "@/managers/server-socket-manager";
 import { TICK_RATE, NIGHT_DURATION, PERFORMANCE_LOG_INTERVAL, TICK_RATE_MS } from "./config/config";
 import { DAY_DURATION } from "./config/config";
 import Destructible from "@/extensions/destructible";
+import { PerformanceTracker } from "./util/performance";
 
 export class GameServer {
   // STATE
@@ -24,6 +25,9 @@ export class GameServer {
   private isGameOver: boolean = false;
   private updateTimes: number[] = [];
   private lastPerformanceLog: number = Date.now();
+
+  // UTILS
+  private performanceTracker: PerformanceTracker;
 
   // MANAGERS
   private gameManagers: GameManagers;
@@ -55,6 +59,8 @@ export class GameServer {
   }
 
   constructor(port: number = 3001) {
+    this.performanceTracker = new PerformanceTracker();
+
     this.socketManager = new ServerSocketManager(port, this);
     this.entityManager = new EntityManager();
     this.mapManager = new MapManager();
@@ -165,18 +171,16 @@ export class GameServer {
     // cleanup TODO: 6.282ms, make this faster
     this.entityManager.pruneEntities();
     this.broadcastGameState();
+
+    for (const entity of this.entityManager.getDynamicEntities()) {
+      this.entityManager.getEntityStateTracker().trackEntity(entity, currentTime);
+    }
+
+    // print the final performance metrics over time
     this.trackPerformance(updateStartTime, currentTime);
     this.lastUpdateTime = currentTime;
 
-    // Track all entities for next update's change detection
-    // // TODO: 3.073ms, make this faster
-    // console.time("cleanup");
-    const entities = this.entityManager.getEntities();
-    const filteredEntities = entities.filter((entity) => !("isServerOnly" in entity));
-    filteredEntities.forEach((entity) => {
-      this.entityManager.getEntityStateTracker().trackEntity(entity);
-    });
-    // console.timeEnd("cleanup");
+    this.performanceTracker.printAllStats();
   }
 
   private handleDayNightCycle(deltaTime: number) {

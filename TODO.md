@@ -1,3 +1,10 @@
+# BUGS
+
+- [ ] you can't pick up walls when next to them
+- [ ] zombies shouldn't stack because it causes one giant stacked to clear our your team.
+- [ ] sometimes the pings become negative on the leaderboard
+- [ ] display FPS in game
+
 # For once in my life, finish one single game!
 
 Feel free to pick any item listed out here to work on.
