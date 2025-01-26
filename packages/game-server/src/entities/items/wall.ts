@@ -9,10 +9,10 @@ import { Entities } from "@/constants";
 import { Entity } from "@/entities/entity";
 import { RawEntity, ItemState } from "@/types/entity";
 import Vector2 from "@/util/vector2";
+import { WALL_MAX_HEALTH } from "@/constants/constants";
 
 export class Wall extends Entity {
   public static readonly Size = new Vector2(16, 16);
-  public static readonly MAX_HEALTH = 10;
 
   constructor(gameManagers: IGameManagers, itemState?: ItemState) {
     super(gameManagers, Entities.WALL);
@@ -22,8 +22,8 @@ export class Wall extends Entity {
       new Collidable(this).setSize(Wall.Size),
       new Interactive(this).onInteract(this.interact.bind(this)).setDisplayName("wall"),
       new Destructible(this)
-        .setMaxHealth(Wall.MAX_HEALTH)
-        .setHealth(itemState?.health ?? Wall.MAX_HEALTH)
+        .setMaxHealth(WALL_MAX_HEALTH)
+        .setHealth(itemState?.health ?? WALL_MAX_HEALTH)
         .onDeath(() => this.onDeath()),
       new Carryable(this, "wall"),
     ];

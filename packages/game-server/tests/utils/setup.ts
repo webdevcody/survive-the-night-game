@@ -12,7 +12,7 @@ export function simpleTestSetup() {
 
   entityManager.setGameManagers(gameManagers);
   mapManager.setGameManagers(gameManagers);
-  mapManager.generateEmptyMap(4, 4);
+  mapManager.generateEmptyMap(16, 16);
 
   return gameManagers;
 }

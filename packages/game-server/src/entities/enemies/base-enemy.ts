@@ -144,10 +144,9 @@ export abstract class BaseEnemy extends Entity {
     }
 
     const player = this.getEntityManager().getClosestAlivePlayer(this);
-    if (!player) return;
 
     // Get new waypoint when we reach the current one or don't have one
-    if (this.isAtWaypoint()) {
+    if (this.isAtWaypoint() && player) {
       this.currentWaypoint = pathTowards(
         this.getCenterPosition(),
         player.getExt(Positionable).getCenterPosition(),
@@ -181,9 +180,11 @@ export abstract class BaseEnemy extends Entity {
   }
 
   protected attackNearbyWalls() {
-    const nearbyWalls = this.getEntityManager().getNearbyEntities(this.getPosition(), undefined, [
-      Entities.WALL,
-    ]) as Wall[];
+    const nearbyWalls = this.getEntityManager().getNearbyEntities(
+      this.getCenterPosition(),
+      undefined,
+      [Entities.WALL]
+    ) as Wall[];
 
     if (nearbyWalls.length > 0) {
       const nearbyWall = nearbyWalls[0];
