@@ -17,6 +17,7 @@ interface ZombieType {
 const ADDITIONAL_ZOMBIES_PER_NIGHT = 4;
 const MIN_TOTAL_ZOMBIES = 10;
 const MAX_TOTAL_ZOMBIES = 200;
+const BASE_ZOMBIES = 5;
 
 // Configuration for zombie types and their spawn parameters
 const ZOMBIE_TYPES: ZombieType[] = [
@@ -34,7 +35,7 @@ export class GameMaster {
 
   public getNumberOfZombies(dayNumber: number): ZombieDistribution {
     // Calculate total zombies based on players and day number
-    const baseZombies = 3;
+    const baseZombies = BASE_ZOMBIES;
     const additionalZombies = (dayNumber - 1) * ADDITIONAL_ZOMBIES_PER_NIGHT;
     const totalZombies = Math.floor(
       Math.min(Math.max(baseZombies + additionalZombies, MIN_TOTAL_ZOMBIES), MAX_TOTAL_ZOMBIES)
