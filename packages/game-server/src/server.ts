@@ -152,15 +152,14 @@ export class GameServer {
       return;
     }
 
+    if (this.isGameOver) {
+      return;
+    }
+
     // setup
     const updateStartTime = performance.now();
     const currentTime = Date.now();
     const deltaTime = (currentTime - this.lastUpdateTime) / 1000;
-
-    // logic
-    if (this.isGameOver) {
-      return;
-    }
 
     // an update is averaging 4.1 ms, we can improve this
     this.updateEntities(deltaTime);
@@ -169,8 +168,13 @@ export class GameServer {
     this.handleIfGameOver();
 
     // cleanup TODO: 6.282ms, make this faster
+    // this.performanceTracker.trackStart("pruneEntities");
     this.entityManager.pruneEntities();
+    // this.performadnceTracker.trackEnd("pruneEntities");
+
+    // this.performanceTracker.trackStart("broadcastGameState");
     this.broadcastGameState();
+    // this.performanceTracker.trackEnd("broadcastGameState");
 
     for (const entity of this.entityManager.getDynamicEntities()) {
       this.entityManager.getEntityStateTracker().trackEntity(entity, currentTime);

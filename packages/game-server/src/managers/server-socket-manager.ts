@@ -128,10 +128,11 @@ export class ServerSocketManager implements Broadcaster {
   }
 
   private onDisconnect(socket: Socket): void {
+    console.log("Player disconnected", socket.id);
     const player = this.players.get(socket.id);
     this.players.delete(socket.id);
     if (player) {
-      this.getEntityManager().markEntityForRemoval(player);
+      this.getEntityManager().removeEntity(player.getId());
     }
 
     const isLastPlayer = this.players.size === 0;
@@ -207,8 +208,12 @@ export class ServerSocketManager implements Broadcaster {
     // Set up socket event listeners first
     this.setupSocketListeners(socket);
 
-    const totalPlayers = this.getEntityManager().getPlayerEntities().length;
+    const totalPlayers = this.getEntityManager()
+      .getPlayerEntities()
+      .filter((entity) => !(entity as Player).isMarkedForRemoval()).length;
+
     if (totalPlayers === 0) {
+      console.log("Starting new game");
       this.gameServer.startNewGame();
       // Don't return early, let the map data be sent below
     }
@@ -252,7 +257,7 @@ export class ServerSocketManager implements Broadcaster {
 
         if (!previousState) {
           // If no previous state exists, this is a new entity - track it and send full state
-          entityStateTracker.trackEntity(entity);
+          entityStateTracker.trackEntity(entity, Date.now());
           return currentState;
         }
 
@@ -330,7 +335,7 @@ export class ServerSocketManager implements Broadcaster {
 
       // Track the current state of all entities and game state after sending the update
       changedEntities.forEach((entity) => {
-        entityStateTracker.trackEntity(entity);
+        entityStateTracker.trackEntity(entity, Date.now());
       });
       entityStateTracker.trackGameState(currentGameState);
 

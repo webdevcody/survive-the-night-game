@@ -40,6 +40,12 @@ export class GameClient {
   private entityFactory: EntityFactory;
   private particleManager: ParticleManager;
 
+  // FPS tracking
+  private frameCount: number = 0;
+  private lastFpsUpdate: number = 0;
+  private currentFps: number = 0;
+  private readonly FPS_UPDATE_INTERVAL = 1000; // Update FPS every second
+
   // Controllers
   private resizeController: ResizeController;
   private zoomController: ZoomController;
@@ -323,6 +329,16 @@ export class GameClient {
   }
 
   private update(): void {
+    // Update FPS
+    this.frameCount++;
+    const now = Date.now();
+    if (now - this.lastFpsUpdate >= this.FPS_UPDATE_INTERVAL) {
+      this.currentFps = Math.round((this.frameCount * 1000) / (now - this.lastFpsUpdate));
+      this.frameCount = 0;
+      this.lastFpsUpdate = now;
+      this.hud.updateFps(this.currentFps);
+    }
+
     if (this.inputManager.getHasChanged()) {
       this.sendInput(this.inputManager.getInputs());
       this.inputManager.reset();

@@ -8,6 +8,7 @@ export class Entity extends EventTarget implements IEntity {
   private readonly type: EntityType;
   protected extensions: Extension[] = [];
   private readonly gameManagers: IGameManagers;
+  private markedForRemoval = false;
   private removedExtensions: string[] = []; // Track removed extensions
 
   public constructor(gameManagers: IGameManagers, type: EntityType) {
@@ -17,6 +18,14 @@ export class Entity extends EventTarget implements IEntity {
     this.gameManagers = gameManagers;
     this.type = type;
     this.extensions = [];
+  }
+
+  public setMarkedForRemoval(isMarkedForRemoval: boolean) {
+    this.markedForRemoval = isMarkedForRemoval;
+  }
+
+  public isMarkedForRemoval(): boolean {
+    return this.markedForRemoval;
   }
 
   public getGameManagers(): IGameManagers {

@@ -176,8 +176,17 @@ export class EntityManager implements IEntityManager {
     });
   }
 
+  removeEntity(entityId: string) {
+    this.players = this.players.filter((it) => it.getId() !== entityId);
+    this.entities = this.entities.filter((it) => it.getId() !== entityId);
+  }
+
   generateEntityId(): string {
     return `${this.id++}`;
+  }
+
+  isEntityMarkedForRemoval(entityId: string): boolean {
+    return this.entitiesToRemove.some((it) => it.id === entityId);
   }
 
   pruneEntities() {

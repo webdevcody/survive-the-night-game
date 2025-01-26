@@ -140,6 +140,7 @@ export class Hud {
   private lastPingUpdate: number = 0;
   private pingUpdateInterval: number = 5000;
   private chatWidget: ChatWidget;
+  private currentFps: number = 0;
 
   constructor(mapManager: MapManager) {
     this.mapManager = mapManager;
@@ -191,6 +192,10 @@ export class Hud {
     return HUD_SETTINGS.Ping.colors.poor;
   }
 
+  public updateFps(fps: number): void {
+    this.currentFps = fps;
+  }
+
   public render(ctx: CanvasRenderingContext2D, gameState: GameState): void {
     const { width } = ctx.canvas;
 
@@ -236,8 +241,20 @@ export class Hud {
       ctx.fillText(killsText, width - killsTextWidth - margin, margin + gap * 6);
     }
 
-    // Render ping
+    // Render FPS and ping
     ctx.font = HUD_SETTINGS.Ping.font;
+
+    // Render FPS first
+    const fpsText = `${this.currentFps} FPS`;
+    const fpsMetrics = ctx.measureText(fpsText);
+    ctx.fillStyle = "white";
+    ctx.fillText(
+      fpsText,
+      ctx.canvas.width - fpsMetrics.width - HUD_SETTINGS.Ping.right - 100,
+      ctx.canvas.height - HUD_SETTINGS.Ping.bottom
+    );
+
+    // Then render ping
     const pingText = `${Math.round(this.currentPing)}ms`;
     const pingMetrics = ctx.measureText(pingText);
     ctx.fillStyle = this.getPingColor(this.currentPing);
