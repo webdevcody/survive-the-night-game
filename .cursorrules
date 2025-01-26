@@ -1,0 +1,13 @@
+### How to get a position of an entity
+
+```ts
+const position = entity.getExt(ClientPositionable).getPosition();
+```
+
+### How to check if an entity has a position
+
+```ts
+if (entity.hasExt(ClientPositionable)) {
+  const position = entity.getExt(ClientPositionable).getPosition();
+}
+```
