@@ -162,7 +162,9 @@ export class GameServer {
     const deltaTime = (currentTime - this.lastUpdateTime) / 1000;
 
     // an update is averaging 4.1 ms, we can improve this
+    // this.performanceTracker.trackStart("updateEntities");
     this.updateEntities(deltaTime);
+    // this.performanceTracker.trackEnd("updateEntities");
 
     this.handleDayNightCycle(deltaTime);
     this.handleIfGameOver();
@@ -178,15 +180,15 @@ export class GameServer {
     //   median: 5.651458500000217,
     //   stdDev: 1.2973845897338345
     // }
-    this.performanceTracker.trackStart("broadcastGameState");
+    // this.performanceTracker.trackStart("broadcastGameState");
     this.broadcastGameState();
-    this.performanceTracker.trackEnd("broadcastGameState");
+    // this.performanceTracker.trackEnd("broadcastGameState");
 
-    this.performanceTracker.trackStart("trackEntity");
+    // this.performanceTracker.trackStart("trackEntity");
     for (const entity of this.entityManager.getDynamicEntities()) {
       this.entityManager.getEntityStateTracker().trackEntity(entity, currentTime);
     }
-    this.performanceTracker.trackEnd("trackEntity");
+    // this.performanceTracker.trackEnd("trackEntity");
 
     // print the final performance metrics over time
     this.trackPerformance(updateStartTime, currentTime);

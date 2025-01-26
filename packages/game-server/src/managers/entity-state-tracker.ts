@@ -1,11 +1,5 @@
-import { Entities } from "@/constants";
 import { IEntity } from "@/entities/types";
 import copy from "fast-copy";
-
-interface EntityStateSnapshot {
-  serialized: any;
-  lastUpdateTime: number;
-}
 
 export class EntityStateTracker {
   private previousEntityStates: Map<string, any> = new Map();

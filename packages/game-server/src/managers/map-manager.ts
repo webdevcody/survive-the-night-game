@@ -25,19 +25,19 @@ import { Wall } from "@/entities/items/wall";
 
 const WEAPON_SPAWN_CHANCE = {
   // Weapons
-  PISTOL: 0.001,
+  PISTOL: 0.0015,
   SHOTGUN: 0.0015,
-  KNIFE: 0.005,
+  KNIFE: 0.002,
   // ammo
-  PISTOL_AMMO: 0.01,
-  SHOTGUN_AMMO: 0.01,
+  PISTOL_AMMO: 0.005,
+  SHOTGUN_AMMO: 0.005,
   // Items
   BANDAGE: 0.005,
   CLOTH: 0.008,
   GASOLINE: 0.002,
-  GRENADE: 0.001,
+  GRENADE: 0,
   LANDMINE: 0.001,
-  SPIKES: 0.002,
+  SPIKES: 0.003,
   TORCH: 0.003,
   WALL: 0.005,
   TREE: 0.1,
