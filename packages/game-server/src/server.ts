@@ -193,8 +193,6 @@ export class GameServer {
     // print the final performance metrics over time
     this.trackPerformance(updateStartTime, currentTime);
     this.lastUpdateTime = currentTime;
-
-    this.performanceTracker.printAllStats();
   }
 
   private handleDayNightCycle(deltaTime: number) {
@@ -268,6 +266,8 @@ export class GameServer {
       // Reset tracking
       this.updateTimes = [];
       this.lastPerformanceLog = currentTime;
+
+      this.performanceTracker.printAllStats();
     }
   }
 

@@ -7,7 +7,7 @@ import { Hud } from "@/ui/hud";
 import { GameOverDialogUI } from "@/ui/game-over-dialog";
 import { ParticleManager } from "./managers/particles";
 import { ClientPositionable } from "@/extensions/positionable";
-import { ClientEntity } from "@/entities/client-entity";
+import { ClientEntityBase } from "@/extensions/client-entity";
 import { RENDER_CONFIG } from "./constants/constants";
 
 export class Renderer {
@@ -69,7 +69,9 @@ export class Renderer {
   private renderEntities(): void {
     const renderableEntities = this.getRenderableEntities();
     const player = this.gameState.playerId
-      ? (this.gameState.entities.find((e) => e.getId() === this.gameState.playerId) as ClientEntity)
+      ? (this.gameState.entities.find(
+          (e) => e.getId() === this.gameState.playerId
+        ) as ClientEntityBase)
       : null;
 
     if (!player || !player.hasExt(ClientPositionable)) {
@@ -85,18 +87,21 @@ export class Renderer {
       return;
     }
 
-    const playerPos = player.getExt(ClientPositionable).getPosition();
+    const playerPos = player.getExt(ClientPositionable).getCenterPosition();
     const RENDER_RADIUS_SQUARED =
       RENDER_CONFIG.ENTITY_RENDER_RADIUS * RENDER_CONFIG.ENTITY_RENDER_RADIUS;
 
     // Filter and sort entities within radius
     const entitiesToRender = renderableEntities.filter((entity) => {
-      if (!(entity instanceof ClientEntity) || !entity.hasExt(ClientPositionable)) return false;
-      const entityPos = entity.getExt(ClientPositionable).getPosition();
+      if (!(entity instanceof ClientEntityBase) || !entity.hasExt(ClientPositionable)) {
+        return false;
+      }
+      const entityPos = entity.getExt(ClientPositionable).getCenterPosition();
       const dx = entityPos.x - playerPos.x;
       const dy = entityPos.y - playerPos.y;
-      // Using distance squared for performance (avoids square root)
-      return dx * dx + dy * dy <= RENDER_RADIUS_SQUARED;
+      const distanceSquared = dx * dx + dy * dy;
+      const isInRange = distanceSquared <= RENDER_RADIUS_SQUARED;
+      return isInRange;
     });
 
     entitiesToRender.sort((a, b) => a.getZIndex() - b.getZIndex());
