@@ -1,5 +1,4 @@
 import { IEntity } from "@/entities/types";
-import copy from "fast-copy";
 
 export class EntityStateTracker {
   private previousEntityStates: Map<string, any> = new Map();
@@ -15,7 +14,7 @@ export class EntityStateTracker {
     const id = entity.getId();
     const serialized = entity.serialize();
     this.previousEntityStates.set(id, {
-      serialized: copy(serialized),
+      serialized: JSON.parse(JSON.stringify(serialized)),
       lastUpdateTime: currentTime,
     });
   }
