@@ -34,9 +34,8 @@ export class GameMaster {
 
   public getNumberOfZombies(dayNumber: number): ZombieDistribution {
     // Calculate total zombies based on players and day number
-    const playerCount = this.gameManagers.getEntityManager().getPlayerEntities().length;
     const baseZombies = 3;
-    const additionalZombies = (dayNumber - 1) * ADDITIONAL_ZOMBIES_PER_NIGHT * playerCount;
+    const additionalZombies = (dayNumber - 1) * ADDITIONAL_ZOMBIES_PER_NIGHT;
     const totalZombies = Math.floor(
       Math.min(Math.max(baseZombies + additionalZombies, MIN_TOTAL_ZOMBIES), MAX_TOTAL_ZOMBIES)
     );
