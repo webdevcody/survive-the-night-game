@@ -157,14 +157,12 @@ export class MapManager implements IMapManager {
       throw new Error("MapManager: GameMaster was not set");
     }
 
-    const currentZombies = this.countCurrentZombies();
     const zombieDistribution = this.gameMaster.getNumberOfZombies(dayNumber);
 
-    if (currentZombies >= zombieDistribution.total) {
-      return;
-    }
+    const zombiesToSpawn = zombieDistribution.total;
 
-    const zombiesToSpawn = zombieDistribution.total - currentZombies;
+    console.log("Spawning zombies", zombiesToSpawn);
+
     let spawnedCount = {
       regular: 0,
       fast: 0,
