@@ -172,13 +172,21 @@ export class GameServer {
     this.entityManager.pruneEntities();
     // this.performadnceTracker.trackEnd("pruneEntities");
 
-    // this.performanceTracker.trackStart("broadcastGameState");
+    // BEFORE REFACTORING
+    // {
+    //   mean: 5.425483800000007,
+    //   median: 5.651458500000217,
+    //   stdDev: 1.2973845897338345
+    // }
+    this.performanceTracker.trackStart("broadcastGameState");
     this.broadcastGameState();
-    // this.performanceTracker.trackEnd("broadcastGameState");
+    this.performanceTracker.trackEnd("broadcastGameState");
 
+    this.performanceTracker.trackStart("trackEntity");
     for (const entity of this.entityManager.getDynamicEntities()) {
       this.entityManager.getEntityStateTracker().trackEntity(entity, currentTime);
     }
+    this.performanceTracker.trackEnd("trackEntity");
 
     // print the final performance metrics over time
     this.trackPerformance(updateStartTime, currentTime);
@@ -268,9 +276,9 @@ export class GameServer {
   // TODO: This is a bit of a hack to get the game state to the client.
   // We should probably have a more elegant way to do this.
   private broadcastGameState(): void {
-    const rawEntities = [...this.entityManager.getEntities()]
-      .filter((entity) => !("isServerOnly" in entity))
-      .map((entity) => entity.serialize());
+    const rawEntities = [...this.entityManager.getDynamicEntities()].map((entity) =>
+      entity.serialize()
+    );
 
     // Only include state properties that have changed
     const stateUpdate: any = {

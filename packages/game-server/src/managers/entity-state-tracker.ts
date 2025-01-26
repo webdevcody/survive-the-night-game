@@ -1,4 +1,6 @@
+import { Entities } from "@/constants";
 import { IEntity } from "@/entities/types";
+import copy from "fast-copy";
 
 interface EntityStateSnapshot {
   serialized: any;
@@ -19,7 +21,7 @@ export class EntityStateTracker {
     const id = entity.getId();
     const serialized = entity.serialize();
     this.previousEntityStates.set(id, {
-      serialized: serialized,
+      serialized: copy(serialized),
       lastUpdateTime: currentTime,
     });
   }
