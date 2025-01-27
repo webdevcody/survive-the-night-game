@@ -92,6 +92,7 @@ export class ClientEventListener {
 
   onPlayerLeft(playerLeftEvent: PlayerLeftEvent) {
     this.gameClient.getHud().addMessage(`${playerLeftEvent.getPlayerId()} left the game`);
+    this.gameClient.removeEntity(playerLeftEvent.getPlayerId());
   }
 
   onGameStateUpdate(gameStateEvent: GameStateEvent) {

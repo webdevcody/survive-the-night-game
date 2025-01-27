@@ -22,7 +22,6 @@ import { Direction } from "../../game-shared/src/util/direction";
 import { Input } from "../../game-shared/src/util/input";
 import { ClientEntityBase } from "@/extensions/client-entity";
 import { ParticleManager } from "./managers/particles";
-import { ClientSentEvents } from "@shared/events/events";
 
 export class GameClient {
   private ctx: CanvasRenderingContext2D;
@@ -245,6 +244,13 @@ export class GameClient {
 
   public getGameState(): GameState {
     return this.gameState;
+  }
+
+  public removeEntity(id: string) {
+    const index = this.gameState.entities.findIndex((entity) => entity.getId() === id);
+    if (index !== -1) {
+      this.gameState.entities.splice(index, 1);
+    }
   }
 
   public getSocketManager(): ClientSocketManager {

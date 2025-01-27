@@ -127,8 +127,9 @@ export class ServerSocketManager implements Broadcaster {
     const player = this.players.get(socket.id);
     this.players.delete(socket.id);
     if (player) {
-      // this.getEntityManager().removeEntity(player.getId());
-      this.getEntityManager().markEntityForRemoval(player);
+      // TODO: this is a hacker; I'd rather use this, but when I do there is a strange race condition where the round never restarts, so instead the
+      this.getEntityManager().removeEntity(player.getId());
+      // this.getEntityManager().markEntityForRemoval(player);
       this.broadcastEvent(new PlayerLeftEvent({ playerId: player.getId() }));
     }
 
