@@ -22,7 +22,9 @@ import { Player } from "@/entities/player";
 export abstract class BaseEnemy extends Entity {
   protected currentWaypoint: Vector2 | null = null;
   protected attackCooldown: Cooldown;
+  protected pathRecalculationTimer: number = 0;
   protected static readonly POSITION_THRESHOLD = 1;
+  protected static readonly PATH_RECALCULATION_INTERVAL = 1; // 1 second
   protected speed: number;
   protected entityType: EntityType;
 
@@ -109,13 +111,13 @@ export abstract class BaseEnemy extends Entity {
     position.x += velocity.x * deltaTime;
 
     this.setPosition(position);
-    if (this.getEntityManager().isColliding(this, Zombies)) {
+    if (this.getEntityManager().isColliding(this)) {
       position.x = previousX;
     }
 
     position.y += velocity.y * deltaTime;
 
-    if (this.getEntityManager().isColliding(this, Zombies)) {
+    if (this.getEntityManager().isColliding(this)) {
       position.y = previousY;
     }
   }
@@ -137,6 +139,7 @@ export abstract class BaseEnemy extends Entity {
 
   protected updateEnemy(deltaTime: number): void {
     this.attackCooldown.update(deltaTime);
+    this.pathRecalculationTimer += deltaTime;
 
     const destructible = this.getExt(Destructible);
     if (destructible.isDead()) {
@@ -145,13 +148,18 @@ export abstract class BaseEnemy extends Entity {
 
     const player = this.getEntityManager().getClosestAlivePlayer(this);
 
-    // Get new waypoint when we reach the current one or don't have one
-    if (this.isAtWaypoint() && player) {
+    // Get new waypoint when we reach the current one, don't have one, or we're stuck
+    if (
+      (this.isAtWaypoint() ||
+        this.pathRecalculationTimer >= BaseEnemy.PATH_RECALCULATION_INTERVAL) &&
+      player
+    ) {
       this.currentWaypoint = pathTowards(
         this.getCenterPosition(),
         player.getExt(Positionable).getCenterPosition(),
         this.getGameManagers().getMapManager().getMap()
       );
+      this.pathRecalculationTimer = 0;
     }
 
     const movable = this.getExt(Movable);

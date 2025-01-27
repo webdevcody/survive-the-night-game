@@ -15,7 +15,7 @@ interface ZombieType {
 
 // Constants
 const ADDITIONAL_ZOMBIES_PER_NIGHT = 4;
-const MIN_TOTAL_ZOMBIES = 10;
+const MIN_TOTAL_ZOMBIES = 100;
 const MAX_TOTAL_ZOMBIES = 200;
 const BASE_ZOMBIES = 5;
 
