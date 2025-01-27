@@ -11,7 +11,7 @@ import { MapManager } from "@/managers/map";
 import { TILE_IDS } from "@shared/map";
 import { ChatWidget } from "./chat-widget";
 import { ClientDestructible } from "@/extensions/destructible";
-import { Zombies } from "@shared/constants";
+import { Zombies, VERSION } from "@shared/constants";
 
 const HUD_SETTINGS = {
   ControlsList: {
@@ -197,10 +197,19 @@ export class Hud {
   }
 
   public render(ctx: CanvasRenderingContext2D, gameState: GameState): void {
-    const { width } = ctx.canvas;
+    const { width, height } = ctx.canvas;
 
     // Render minimap first
     this.renderMinimap(ctx, gameState);
+
+    // Add version number in bottom right
+    ctx.save();
+    ctx.font = "32px Arial";
+    ctx.fillStyle = "rgba(255, 255, 0, 0.5)";
+    const versionText = VERSION;
+    const versionMetrics = ctx.measureText(versionText);
+    ctx.fillText(versionText, width - versionMetrics.width - 16, height - 50);
+    ctx.restore();
 
     ctx.font = "32px Arial";
     ctx.fillStyle = "white";
