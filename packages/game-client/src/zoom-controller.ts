@@ -1,5 +1,4 @@
 import { CameraManager } from "@/managers/camera";
-import { StorageManager } from "@/managers/storage";
 
 export class ZoomController {
   private MIN_ZOOM: number = 2;
@@ -7,11 +6,9 @@ export class ZoomController {
   private ZOOM_STEP: number = 0.5;
 
   private zoom: number = 5;
-  private storageManager: StorageManager;
   private cameraManager: CameraManager;
 
-  constructor(storageManager: StorageManager, cameraManager: CameraManager) {
-    this.storageManager = storageManager;
+  constructor(cameraManager: CameraManager) {
     this.cameraManager = cameraManager;
     this.cameraManager.setScale(this.zoom);
   }
@@ -27,7 +24,6 @@ export class ZoomController {
   public zoomIn(): void {
     if (this.zoom < this.MAX_ZOOM) {
       this.zoom += this.ZOOM_STEP;
-      this.storageManager.setScale(this.zoom);
       this.cameraManager.setScale(this.zoom);
     }
   }
@@ -35,7 +31,6 @@ export class ZoomController {
   public zoomOut(): void {
     if (this.zoom > this.MIN_ZOOM) {
       this.zoom -= this.ZOOM_STEP;
-      this.storageManager.setScale(this.zoom);
       this.cameraManager.setScale(this.zoom);
     }
   }

@@ -69,7 +69,7 @@ export class GameClient {
     this.assetManager = new AssetManager();
     this.storageManager = new StorageManager();
     this.cameraManager = new CameraManager(this.ctx);
-    this.zoomController = new ZoomController(this.storageManager, this.cameraManager);
+    this.zoomController = new ZoomController(this.cameraManager);
     this.soundManager = new SoundManager(this);
     this.entityFactory = new EntityFactory(this.assetManager);
     this.particleManager = new ParticleManager(this);
