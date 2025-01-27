@@ -11,6 +11,7 @@ import Destructible from "@/extensions/destructible";
 import OneTimeTrigger from "@/extensions/one-time-trigger";
 import Vector2 from "@/util/vector2";
 import { LANDMINE_EXPLOSION_RADIUS } from "@/constants/constants";
+import { RawEntity } from "@/types/entity";
 
 /**
  * A landmine that explodes when enemies step on it, damaging all nearby enemies
@@ -19,6 +20,8 @@ export class Landmine extends Entity implements IEntity {
   private static readonly SIZE = new Vector2(16, 16);
   private static readonly DAMAGE = 7;
   private static readonly TRIGGER_RADIUS = 8;
+  private isActive = false;
+  private activateDelay = 2000;
 
   constructor(gameManagers: IGameManagers) {
     super(gameManagers, Entities.LANDMINE);
@@ -31,6 +34,12 @@ export class Landmine extends Entity implements IEntity {
         .setDisplayName("landmine")
     );
     this.addExtension(new Carryable(this, "landmine"));
+
+    setTimeout(() => this.activate(), this.activateDelay);
+  }
+
+  public activate(): void {
+    this.isActive = true;
     this.addExtension(
       new OneTimeTrigger(this, {
         triggerRadius: Landmine.TRIGGER_RADIUS,
@@ -66,5 +75,12 @@ export class Landmine extends Entity implements IEntity {
     const entity = this.getEntityManager().getEntityById(entityId);
     if (!entity || entity.getType() !== Entities.PLAYER) return;
     this.getExt(Carryable).pickup(entityId);
+  }
+
+  public serialize(): RawEntity {
+    return {
+      ...super.serialize(),
+      isActive: this.isActive,
+    };
   }
 }
