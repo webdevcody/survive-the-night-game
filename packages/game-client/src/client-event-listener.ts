@@ -27,6 +27,7 @@ import { GameStartedEvent } from "@shared/events/server-sent/game-started-event"
 import { PlayerJoinedEvent } from "@shared/events/server-sent/player-joined-event";
 import { ServerUpdatingEvent } from "@shared/events/server-sent/server-updating-event";
 import { ChatMessageEvent } from "@shared/events/server-sent/chat-message-event";
+import { PlayerLeftEvent } from "@shared/events/server-sent/player-left-event";
 
 export class ClientEventListener {
   private socketManager: ClientSocketManager;
@@ -62,6 +63,7 @@ export class ClientEventListener {
     this.socketManager.on(ServerSentEvents.ZOMBIE_ATTACKED, this.onZombieAttacked.bind(this));
     this.socketManager.on(ServerSentEvents.GAME_OVER, this.onGameOver.bind(this));
     this.socketManager.on(ServerSentEvents.GAME_STARTED, this.onGameStarted.bind(this));
+    this.socketManager.on(ServerSentEvents.PLAYER_LEFT, this.onPlayerLeft.bind(this));
     this.socketManager.on(ServerSentEvents.SERVER_UPDATING, this.onServerUpdating.bind(this));
     this.socketManager.on(ServerSentEvents.CHAT_MESSAGE, this.onChatMessage.bind(this));
     this.socketManager.on(
@@ -86,6 +88,10 @@ export class ClientEventListener {
     this.gameClient
       .getSoundManager()
       .playPositionalSound(SOUND_TYPES_TO_MP3.GUN_EMPTY, playerPosition);
+  }
+
+  onPlayerLeft(playerLeftEvent: PlayerLeftEvent) {
+    this.gameClient.getHud().addMessage(`${playerLeftEvent.getPlayerId()} left the game`);
   }
 
   onGameStateUpdate(gameStateEvent: GameStateEvent) {

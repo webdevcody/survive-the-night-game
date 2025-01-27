@@ -1,4 +1,3 @@
-import { DEBUG_EVENTS } from "@shared/debug";
 import { Player } from "@/entities/player";
 import { ServerSentEvents, ClientSentEvents } from "@shared/events/events";
 import { GameEvent } from "@shared/events/types";
@@ -12,15 +11,11 @@ import { Server, Socket } from "socket.io";
 import { CommandManager } from "@/managers/command-manager";
 import { MapManager } from "@/managers/map-manager";
 import { Broadcaster, IEntityManager, IGameManagers } from "@/managers/types";
-import { EntityStateTracker } from "./entity-state-tracker";
 import { GameStateEvent } from "@shared/events/server-sent/game-state-event";
-import { IEntity } from "@/entities/types";
-import Vector2 from "@/util/vector2";
-import Movable from "@/extensions/movable";
-import { PlayerDroppedItemEvent } from "@shared/events/server-sent/player-dropped-item-event";
 import { PlayerJoinedEvent } from "@shared/events/server-sent/player-joined-event";
 import { PongEvent } from "@shared/events/server-sent/pong-event";
 import { ChatMessageEvent } from "@shared/events/server-sent/chat-message-event";
+import { PlayerLeftEvent } from "@/events/server-sent/player-left-event";
 
 /**
  * Any and all functionality related to sending server side events
@@ -132,7 +127,9 @@ export class ServerSocketManager implements Broadcaster {
     const player = this.players.get(socket.id);
     this.players.delete(socket.id);
     if (player) {
-      this.getEntityManager().removeEntity(player.getId());
+      // this.getEntityManager().removeEntity(player.getId());
+      this.getEntityManager().markEntityForRemoval(player);
+      this.broadcastEvent(new PlayerLeftEvent({ playerId: player.getId() }));
     }
 
     const isLastPlayer = this.players.size === 0;

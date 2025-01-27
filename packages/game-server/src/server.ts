@@ -184,11 +184,11 @@ export class GameServer {
     this.broadcastGameState();
     // this.performanceTracker.trackEnd("broadcastGameState");
 
-    this.performanceTracker.trackStart("trackEntity");
+    // this.performanceTracker.trackStart("trackEntity");
     for (const entity of this.entityManager.getDynamicEntities()) {
       this.entityManager.getEntityStateTracker().trackEntity(entity, currentTime);
     }
-    this.performanceTracker.trackEnd("trackEntity");
+    // this.performanceTracker.trackEnd("trackEntity");
 
     // print the final performance metrics over time
     this.trackPerformance(updateStartTime, currentTime);
