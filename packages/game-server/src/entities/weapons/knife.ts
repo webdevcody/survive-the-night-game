@@ -1,6 +1,5 @@
 import Destructible from "@/extensions/destructible";
 import { IGameManagers } from "@/managers/types";
-import { Entities } from "@shared/constants";
 import { Direction } from "../../../../game-shared/src/util/direction";
 import { Weapon } from "@/entities/weapons/weapon";
 import { WEAPON_TYPES } from "@shared/types/weapons";
@@ -11,7 +10,7 @@ import { knockBack } from "./helpers";
 import { Player } from "@/entities/player";
 
 export class Knife extends Weapon {
-  private static readonly ATTACK_RANGE = 32;
+  private static readonly ATTACK_RANGE = 24;
   private static readonly DAMAGE = 1;
   private static readonly PUSH_DISTANCE = 12;
   private static readonly COOLDOWN = 0.5;
@@ -25,10 +24,13 @@ export class Knife extends Weapon {
   }
 
   public attack(playerId: string, position: Vector2, facing: Direction): void {
-    const nearbyEnemies = this.getEntityManager().getNearbyEnemies(position);
+    const nearbyEnemies = this.getEntityManager().getNearbyEnemies(
+      position,
+      Knife.ATTACK_RANGE + 24
+    );
 
     const targetZombie = nearbyEnemies.find((entity) => {
-      const zombiePos = entity.getExt(Positionable).getPosition();
+      const zombiePos = entity.getExt(Positionable).getCenterPosition();
       const dx = zombiePos.x - position.x;
       const dy = zombiePos.y - position.y;
       const distance = Math.sqrt(dx * dx + dy * dy);
@@ -50,7 +52,7 @@ export class Knife extends Weapon {
       const destructible = targetZombie.getExt(Destructible);
       const wasAlive = !destructible.isDead();
       destructible.damage(Knife.DAMAGE);
-      knockBack(targetZombie, facing, Knife.PUSH_DISTANCE);
+      knockBack(this.getEntityManager(), targetZombie, facing, Knife.PUSH_DISTANCE);
 
       if (wasAlive && destructible.isDead()) {
         const player = this.getEntityManager().getEntityById(playerId);

@@ -35,7 +35,7 @@ export default class OneTimeTrigger implements Extension {
     const triggerBox = this.getTriggerBox();
     const nearbyEntities = this.self
       .getEntityManager()
-      .getNearbyEntitiesByRange(triggerBox, this.targetTypes);
+      .getNearbyEntities(triggerBox.position, triggerBox.getRadius(), this.targetTypes);
 
     // Check if any target entity is within trigger radius
     for (const entity of nearbyEntities) {

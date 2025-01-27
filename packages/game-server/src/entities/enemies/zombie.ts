@@ -11,7 +11,7 @@ import Destructible from "@/extensions/destructible";
 export class Zombie extends BaseEnemy {
   public static readonly Size = new Vector2(16, 16);
   private static readonly ZOMBIE_SPEED = 35;
-  private static readonly ATTACK_RADIUS = 18;
+  private static readonly ATTACK_RADIUS = 16;
   private static readonly ATTACK_DAMAGE = 1;
   private static readonly ATTACK_COOLDOWN = 1;
   public static readonly MAX_HEALTH = 3;

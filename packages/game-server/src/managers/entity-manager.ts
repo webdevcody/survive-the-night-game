@@ -29,7 +29,6 @@ import { EntityFinder } from "@/managers/entity-finder";
 import { IGameManagers, IEntityManager, Broadcaster } from "@/managers/types";
 import { Landmine } from "@/entities/items/landmine";
 import { EntityStateTracker } from "./entity-state-tracker";
-import Shape, { Rectangle } from "@/util/shape";
 import Vector2 from "@/util/vector2";
 import { Grenade } from "@/entities/items/grenade";
 import { FireExtinguisher } from "@/entities/items/fire-extinguisher";
@@ -242,12 +241,12 @@ export class EntityManager implements IEntityManager {
     this.dynamicEntities = [];
   }
 
-  getNearbyEnemies(position: Vector2): Entity[] {
+  getNearbyEnemies(position: Vector2, radius: number = 64): Entity[] {
     if (!this.entityFinder) {
       return [];
     }
 
-    const entities = this.entityFinder.getNearbyEntities(position);
+    const entities = this.entityFinder.getNearbyEntities(position, radius);
     return entities.filter(
       (entity) => entity.hasExt(Groupable) && entity.getExt(Groupable).getGroup() === "enemy"
     );
@@ -255,10 +254,6 @@ export class EntityManager implements IEntityManager {
 
   getNearbyEntities(position: Vector2, radius: number = 64, filter?: EntityType[]): Entity[] {
     return this.entityFinder?.getNearbyEntities(position, radius, filter) ?? [];
-  }
-
-  getNearbyEntitiesByRange(range: Shape, filter?: EntityType[]): Entity[] {
-    return this.entityFinder?.getNearbyEntitiesByRange(range, filter) ?? [];
   }
 
   getPlayerEntities(): Player[] {
@@ -326,14 +321,16 @@ export class EntityManager implements IEntityManager {
   }
 
   // TODO: we might benefit from abstracting this into a more generic function that takes in a type or something
-  getNearbyIntersectingDestructableEntities(sourceEntity: Entity, sourceHitbox: Rectangle) {
+  getNearbyIntersectingDestructableEntities(sourceEntity: Entity) {
     if (!this.entityFinder) {
       return [];
     }
 
-    const hitBox = sourceHitbox;
+    const hitBox = sourceEntity.getExt(Collidable).getHitBox();
+    const positionable = sourceEntity.getExt(Positionable);
+    const position = positionable.getCenterPosition();
 
-    const nearbyEntities = this.entityFinder.getNearbyEntitiesByRange(hitBox);
+    const nearbyEntities = this.entityFinder.getNearbyEntities(position);
 
     const interactingEntities: Entity[] = [];
 
@@ -368,8 +365,10 @@ export class EntityManager implements IEntityManager {
     }
 
     const hitBox = sourceEntity.getExt(Collidable).getHitBox();
+    const positionable = sourceEntity.getExt(Positionable);
+    const position = positionable.getCenterPosition();
 
-    const nearbyEntities = this.entityFinder.getNearbyEntitiesByRange(hitBox);
+    const nearbyEntities = this.entityFinder.getNearbyEntities(position);
 
     // TODO: look into refactoring this
     for (const otherEntity of nearbyEntities) {

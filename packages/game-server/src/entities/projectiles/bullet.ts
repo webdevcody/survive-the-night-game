@@ -137,7 +137,7 @@ export class Bullet extends Entity {
       entity.hasExt(Groupable) && entity.getExt(Groupable).getGroup() === "enemy";
 
     const enemies = this.getEntityManager()
-      .getNearbyIntersectingDestructableEntities(this, boundingBox)
+      .getNearbyIntersectingDestructableEntities(this)
       .filter(isEnemy);
 
     for (const enemy of enemies) {

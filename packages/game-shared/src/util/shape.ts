@@ -64,29 +64,33 @@ class Line extends Shape {
 }
 
 class Circle extends Shape {
-  readonly r: number;
+  private readonly radius: number;
 
   constructor(position: Vector2, r: number) {
     super(position);
-    this.r = r;
+    this.radius = r;
+  }
+
+  getRadius() {
+    return this.radius;
   }
 
   intersects(other: Shape): boolean {
     if (other instanceof Circle) {
-      const radius = this.r + other.r;
+      const radius = this.radius + other.radius;
       return this.position.distanceSquared(other.position) <= radius * radius;
     } else if (other instanceof Point) {
-      return this.position.distanceSquared(other.position) <= this.r * this.r;
+      return this.position.distanceSquared(other.position) <= this.radius * this.radius;
     } else if (other instanceof Rectangle) {
       const closest = this.position.closest(other.position, other.size);
-      return this.position.distanceSquared(closest) <= this.r * this.r;
+      return this.position.distanceSquared(closest) <= this.radius * this.radius;
     } else if (other instanceof Line) {
       const lineVector = other.end.sub(other.start);
       const pointVector = this.position.sub(other.start);
       const lineLengthSquared = lineVector.distanceSquared(new Vector2(0, 0));
       const t = Math.max(0, Math.min(1, pointVector.dot(lineVector) / lineLengthSquared));
       const closestPoint = other.start.add(lineVector.mul(t));
-      return this.position.distanceSquared(closestPoint) <= this.r * this.r;
+      return this.position.distanceSquared(closestPoint) <= this.radius * this.radius;
     }
 
     return false;
@@ -113,7 +117,7 @@ class Rectangle extends Shape {
   }
 
   get center() {
-    return this.size.div(2).add(this.position)
+    return this.size.div(2).add(this.position);
   }
 
   get edges() {

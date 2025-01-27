@@ -17,12 +17,8 @@ export interface IEntityManager {
   getEntityById(id: string): IEntity | null;
   getNearbyEntities(position: Vector2, radius?: number, entityTypes?: EntityType[]): IEntity[];
   getNearbyEnemies(position: Vector2, radius?: number, entityTypes?: EntityType[]): IEntity[];
-  getNearbyEntitiesByRange(range: Shape, entityTypes?: EntityType[]): IEntity[];
   registerItem(key: string, entityClass: new (entityManager: IEntityManager) => IEntity): void;
-  getNearbyIntersectingDestructableEntities(
-    sourceEntity: IEntity,
-    sourceHitbox: Rectangle
-  ): IEntity[];
+  getNearbyIntersectingDestructableEntities(sourceEntity: IEntity): IEntity[];
   getBroadcaster(): Broadcaster;
   getPlayerEntities(): IEntity[];
   getEntitiesToRemove(): Array<{ id: string; expiration: number }>;

@@ -199,6 +199,7 @@ export class PlayerClient extends ClientEntity implements IClientEntity, Rendera
     drawHealthBar(ctx, renderPosition, this.getHealth(), this.getMaxHealth());
 
     debugDrawHitbox(ctx, this.getDamageBox(), "red");
+
     drawCenterPositionWithLabel(ctx, this.getCenterPosition());
 
     if (this.isCrafting) {

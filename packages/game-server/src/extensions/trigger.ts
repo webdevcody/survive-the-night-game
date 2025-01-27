@@ -4,7 +4,7 @@ import Collidable from "@/extensions/collidable";
 import { EntityType } from "@/types/entity";
 import { ExtensionTypes } from "@/util/extension-types";
 import { IEntity } from "@/entities/types";
-import { Rectangle } from "@/util/shape";
+import { Circle } from "@/util/shape";
 import Vector2 from "@/util/vector2";
 
 export default class Triggerable implements Extension {
@@ -31,7 +31,9 @@ export default class Triggerable implements Extension {
 
   update(deltaTime: number) {
     const triggerBox = this.getTriggerBox();
-    const entities = this.self.getEntityManager().getNearbyEntitiesByRange(triggerBox, this.filter);
+    const entities = this.self
+      .getEntityManager()
+      .getNearbyEntities(triggerBox.position, triggerBox.getRadius(), this.filter);
 
     for (const entity of entities) {
       if (!entity.hasExt(Collidable)) continue;
@@ -39,11 +41,10 @@ export default class Triggerable implements Extension {
     }
   }
 
-  public getTriggerBox(): Rectangle {
+  public getTriggerBox(): Circle {
     const positionable = this.self.getExt(Positionable);
     const position = positionable.getPosition();
-    // TODO select type shape trigger
-    return new Rectangle(position, this.size);
+    return new Circle(position, this.size.x / 2);
   }
 
   public serialize(): ExtensionSerialized {
