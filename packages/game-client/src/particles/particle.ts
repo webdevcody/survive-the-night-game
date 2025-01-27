@@ -5,6 +5,7 @@ import Vector2 from "@shared/util/vector2";
 export const ParticleTypes = {
   SWING: "swipe",
   ZOMBIE_SWING: "zombie_swing",
+  EXPLOSION: "explosion",
 } as const;
 
 export type ParticleType = (typeof ParticleTypes)[keyof typeof ParticleTypes];

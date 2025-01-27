@@ -28,6 +28,8 @@ import { PlayerJoinedEvent } from "@shared/events/server-sent/player-joined-even
 import { ServerUpdatingEvent } from "@shared/events/server-sent/server-updating-event";
 import { ChatMessageEvent } from "@shared/events/server-sent/chat-message-event";
 import { PlayerLeftEvent } from "@shared/events/server-sent/player-left-event";
+import { ExplosionParticle } from "./particles/explosion";
+import { GrenadeExplodedEvent } from "@shared/events/server-sent/grenade-exploded-event";
 
 export class ClientEventListener {
   private socketManager: ClientSocketManager;
@@ -74,6 +76,7 @@ export class ClientEventListener {
       ServerSentEvents.PLAYER_PICKED_UP_ITEM,
       this.onPlayerPickedUpItem.bind(this)
     );
+    this.socketManager.on(ServerSentEvents.GRENADE_EXPLODED, this.onGrenadeExploded.bind(this));
   }
 
   onServerUpdating(serverUpdatingEvent: ServerUpdatingEvent) {
@@ -321,6 +324,12 @@ export class ClientEventListener {
     this.gameClient
       .getHud()
       .addChatMessage(chatMessageEvent.getPlayerId(), chatMessageEvent.getMessage());
+  }
+
+  onGrenadeExploded(event: GrenadeExplodedEvent) {
+    const particle = new ExplosionParticle(this.gameClient.getImageLoader());
+    particle.setPosition(event.serialize().position);
+    this.gameClient.getParticleManager().addParticle(particle);
   }
 
   private checkInitialization() {

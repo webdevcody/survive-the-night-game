@@ -69,6 +69,23 @@ function createCharacterFrames({
   };
 }
 
+function createSpriteFrames(options: {
+  key: string;
+  x: number;
+  y: number;
+  totalFrames: number;
+  sheet?: string;
+}) {
+  return Array.from({ length: options.totalFrames }, (_, index) => ({
+    [options.key]: assetMap({ x: options.x + index * 16, y: options.y, sheet: options.sheet }),
+    [`${options.key}_${index}`]: assetMap({
+      x: options.x + index * 16,
+      y: options.y,
+      sheet: options.sheet,
+    }),
+  })).reduce((acc, curr) => ({ ...acc, ...curr }), {});
+}
+
 function createCharacterAssets(
   name: string,
   frames: ReturnType<typeof createCharacterFrames>,
@@ -288,6 +305,7 @@ export const assetsMap = {
   ...createCharacterAssets("player_wdc", playerWdcFrames, 493, 190),
   ...createDirectionalFrames(swingDownFrameOrigins, "swing"),
   ...createDirectionalFrames(zombieSwingDownFrameOrigins, "zombie_swing"),
+  ...createSpriteFrames({ key: "explosion", x: 0, y: 128, totalFrames: 5, sheet: "items" }),
   bandage: assetMap({ x: 34, y: 190 }),
 } as const;
 
