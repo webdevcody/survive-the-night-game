@@ -12,6 +12,7 @@ import { ShotgunAmmo } from "@/entities/items/shotgun-ammo";
 import Vector2 from "@/util/vector2";
 import { BigZombie } from "@/entities/enemies/big-zombie";
 import { FastZombie } from "@/entities/enemies/fast-zombie";
+import { BatZombie } from "@/entities/enemies/bat-zombie";
 import { GameMaster } from "./game-master";
 import { Knife } from "@/entities/weapons/knife";
 import { Bandage } from "@/entities/items/bandage";
@@ -167,6 +168,7 @@ export class MapManager implements IMapManager {
       regular: 0,
       fast: 0,
       big: 0,
+      bat: 0,
     };
 
     const totalSize = BIOME_SIZE * MAP_SIZE;
@@ -180,7 +182,8 @@ export class MapManager implements IMapManager {
     while (
       spawnedCount.regular < zombieDistribution.regular ||
       spawnedCount.fast < zombieDistribution.fast ||
-      spawnedCount.big < zombieDistribution.big
+      spawnedCount.big < zombieDistribution.big ||
+      spawnedCount.bat < zombieDistribution.bat
     ) {
       if (attempts++ > maxAttempts) break;
 
@@ -200,7 +203,12 @@ export class MapManager implements IMapManager {
       }
 
       // Determine which type of zombie to spawn based on remaining counts
-      if (spawnedCount.big < zombieDistribution.big) {
+      if (spawnedCount.bat < zombieDistribution.bat) {
+        const zombie = new BatZombie(this.getGameManagers());
+        zombie.setPosition(new Vector2(x * TILE_SIZE, y * TILE_SIZE));
+        this.getEntityManager().addEntity(zombie);
+        spawnedCount.bat++;
+      } else if (spawnedCount.big < zombieDistribution.big) {
         const zombie = new BigZombie(this.getGameManagers());
         zombie.setPosition(new Vector2(x * TILE_SIZE, y * TILE_SIZE));
         this.getEntityManager().addEntity(zombie);
@@ -224,7 +232,10 @@ export class MapManager implements IMapManager {
       .getEntities()
       .filter(
         (entity) =>
-          entity instanceof Zombie || entity instanceof BigZombie || entity instanceof FastZombie
+          entity instanceof Zombie ||
+          entity instanceof BigZombie ||
+          entity instanceof FastZombie ||
+          entity instanceof BatZombie
       ).length;
   }
 

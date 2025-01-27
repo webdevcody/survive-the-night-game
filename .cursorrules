@@ -11,3 +11,11 @@ if (entity.hasExt(ClientPositionable)) {
   const position = entity.getExt(ClientPositionable).getPosition();
 }
 ```
+
+### When adding a new zombie entity
+
+- remember to add it to the entity manager's entityMap
+- add an entity on the server
+- add an entity on the client
+- update entity factory on client
+- update the map manager's to spawn the new zombie type

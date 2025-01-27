@@ -77,13 +77,17 @@ function createCharacterAssets(
 ) {
   const assets: Record<string, CropOptions & { sheet: string }> = {
     [`${name}`]: assetMap(frames.down[0]),
-    [`${name}_0`]: assetMap(frames.down[0]),
-    [`${name}_1`]: assetMap(frames.down[1]),
-    [`${name}_2`]: assetMap(frames.down[2]),
+    ...frames.down.reduce(
+      (acc, frame, index) => ({
+        ...acc,
+        [`${name}_${index}`]: assetMap(frame),
+      }),
+      {}
+    ),
   };
 
   if (deadX !== undefined && deadY !== undefined) {
-    assets[`${name}_dead`] = assetMap({ x: deadX, y: deadY });
+    assets[`${name}_dead`] = assetMap({ x: deadX, y: deadY, sheet: "characters" });
   }
 
   // Add directional frames
@@ -117,11 +121,6 @@ type FrameOrigin = {
   x: number;
   y: number;
 };
-
-const playerDownFrameOrigins = getFrameOrigins({ startX: 493, startY: 190, totalFrames: 3 });
-const playerLeftFrameOrigins = getFrameOrigins({ startX: 493, startY: 209, totalFrames: 3 });
-const playerUpFrameOrigins = getFrameOrigins({ startX: 493, startY: 171, totalFrames: 3 });
-const playerRightFrameOrigins = getFrameOrigins({ startX: 493, startY: 209, totalFrames: 3 });
 
 const zombieUpFrameOrigins = getFrameOrigins({ startX: 496, startY: 57, totalFrames: 3 });
 const zombieDownFrameOrigins = getFrameOrigins({ startX: 496, startY: 76, totalFrames: 3 });
@@ -170,6 +169,14 @@ const playerWdcFrames = createCharacterFrames({
   downY: 112,
   leftY: 128,
   upY: 96,
+  totalFrames: 3,
+});
+
+const batFrames = createCharacterFrames({
+  startX: 0,
+  downY: 240,
+  leftY: 240,
+  upY: 240,
   totalFrames: 3,
 });
 
@@ -275,6 +282,7 @@ export const assetsMap = {
   big_zombie_facing_up_0: assetMap(bigZombieDownFrameOrigins[0]),
   big_zombie_facing_up_1: assetMap(bigZombieDownFrameOrigins[1]),
   big_zombie_facing_up_2: assetMap(bigZombieDownFrameOrigins[2]),
+  ...createCharacterAssets("bat_zombie", batFrames, 48, 240),
   ...createCharacterAssets("player", playerFrames),
   ...createCharacterAssets("fast_zombie", zombieFastFrames, 289, 19),
   ...createCharacterAssets("player_wdc", playerWdcFrames, 493, 190),
@@ -337,7 +345,11 @@ export class AssetManager implements ImageLoader {
   public getFrameWithDirection(key: Asset, direction: Direction | null, frameIndex: number) {
     const keyWithDirection = this.addDirectionSuffix(key, direction);
     const keyWithFrame = `${keyWithDirection}_${frameIndex}`;
-    return this.get(keyWithFrame as Asset);
+    const image = this.get(keyWithFrame as Asset);
+    if (!image) {
+      throw new Error(`Image not found: ${keyWithFrame}`);
+    }
+    return image;
   }
 
   /**

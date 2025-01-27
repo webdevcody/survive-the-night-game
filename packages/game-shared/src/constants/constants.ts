@@ -1,4 +1,4 @@
-export const VERSION = "v0.0.1";
+export const VERSION = "v0.1.0";
 
 export const TILE_SIZE = 16;
 export const MAX_PLAYER_HEALTH = 10;

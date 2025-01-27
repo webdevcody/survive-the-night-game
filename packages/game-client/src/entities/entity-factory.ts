@@ -5,6 +5,7 @@ import { BulletClient } from "@/entities/bullet";
 import { ZombieClient } from "@/entities/zombie";
 import { BigZombieClient } from "@/entities/big-zombie";
 import { FastZombieClient } from "@/entities/fast-zombie";
+import { BatZombieClient } from "@/entities/bat-zombie";
 import { WallClient } from "@/entities/items/wall";
 import { ClothClient } from "@/entities/items/cloth";
 import { PlayerClient } from "@/entities/player";
@@ -43,6 +44,7 @@ export const entityMap = {
   [Entities.ZOMBIE]: ZombieClient,
   [Entities.BIG_ZOMBIE]: BigZombieClient,
   [Entities.FAST_ZOMBIE]: FastZombieClient,
+  [Entities.BAT_ZOMBIE]: BatZombieClient,
   [Entities.LANDMINE]: LandmineClient,
   [Entities.GRENADE]: GrenadeClient,
   [Entities.FIRE_EXTINGUISHER]: FireExtinguisherClient,

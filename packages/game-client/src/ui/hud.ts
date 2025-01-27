@@ -42,12 +42,7 @@ const HUD_SETTINGS = {
       top: 20,
     },
     title: "TODO (dev log)",
-    features: [
-      "- Improve Performance",
-      "- More base building",
-      "- Spitter Zombies",
-      "- Zombie Bats",
-    ],
+    features: ["- snare", "- Spitter Zombies", "- baseball bat", "- grenade"],
   },
   Minimap: {
     size: 400,
@@ -137,8 +132,6 @@ export class Hud {
   private messageTimeout: number = 5000;
   private mapManager: MapManager;
   private currentPing: number = 0;
-  private lastPingUpdate: number = 0;
-  private pingUpdateInterval: number = 5000;
   private chatWidget: ChatWidget;
   private currentFps: number = 0;
 

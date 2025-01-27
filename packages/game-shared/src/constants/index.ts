@@ -5,6 +5,7 @@ export const Entities = {
   ZOMBIE: "zombie",
   BIG_ZOMBIE: "big_zombie",
   FAST_ZOMBIE: "fast_zombie",
+  BAT_ZOMBIE: "bat_zombie",
   PLAYER: "player",
   TREE: "tree",
   BULLET: "bullet",
@@ -26,4 +27,9 @@ export const Entities = {
   FIRE_EXTINGUISHER: "fire_extinguisher",
 } as const;
 
-export const Zombies: EntityType[] = [Entities.ZOMBIE, Entities.BIG_ZOMBIE, Entities.FAST_ZOMBIE];
+export const Zombies: EntityType[] = [
+  Entities.ZOMBIE,
+  Entities.BIG_ZOMBIE,
+  Entities.FAST_ZOMBIE,
+  Entities.BAT_ZOMBIE,
+];

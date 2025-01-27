@@ -35,6 +35,7 @@ import { Grenade } from "@/entities/items/grenade";
 import { FireExtinguisher } from "@/entities/items/fire-extinguisher";
 import Groupable from "@/extensions/groupable";
 import { BaseEnemy } from "@/entities/enemies/base-enemy";
+import { BatZombie } from "@/entities/enemies/bat-zombie";
 
 const entityMap = {
   [Entities.PLAYER]: Player,
@@ -55,6 +56,7 @@ const entityMap = {
   [Entities.ZOMBIE]: Zombie,
   [Entities.BIG_ZOMBIE]: BigZombie,
   [Entities.FAST_ZOMBIE]: FastZombie,
+  [Entities.BAT_ZOMBIE]: BatZombie,
   [Entities.LANDMINE]: Landmine,
   [Entities.GRENADE]: Grenade,
   [Entities.FIRE_EXTINGUISHER]: FireExtinguisher,
