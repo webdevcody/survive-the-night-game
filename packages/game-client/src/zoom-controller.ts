@@ -6,14 +6,13 @@ export class ZoomController {
   private MAX_ZOOM: number = 6;
   private ZOOM_STEP: number = 0.5;
 
-  private zoom: number = 4;
+  private zoom: number = 5;
   private storageManager: StorageManager;
   private cameraManager: CameraManager;
 
   constructor(storageManager: StorageManager, cameraManager: CameraManager) {
     this.storageManager = storageManager;
     this.cameraManager = cameraManager;
-    this.zoom = this.storageManager.getScale(4);
     this.cameraManager.setScale(this.zoom);
   }
 
