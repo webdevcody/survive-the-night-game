@@ -30,21 +30,15 @@ export default class Triggerable implements Extension {
   }
 
   update(deltaTime: number) {
-    const triggerBox = this.getTriggerBox();
+    const positionable = this.self.getExt(Positionable);
     const entities = this.self
       .getEntityManager()
-      .getNearbyEntities(triggerBox.position, triggerBox.getRadius(), this.filter);
+      .getNearbyEntities(positionable.getCenterPosition(), undefined, this.filter);
 
     for (const entity of entities) {
       if (!entity.hasExt(Collidable)) continue;
       this.onEntityEntered?.(entity);
     }
-  }
-
-  public getTriggerBox(): Circle {
-    const positionable = this.self.getExt(Positionable);
-    const position = positionable.getPosition();
-    return new Circle(position, this.size.x / 2);
   }
 
   public serialize(): ExtensionSerialized {

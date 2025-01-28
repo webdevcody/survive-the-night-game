@@ -407,7 +407,7 @@ export class EntityManager implements IEntityManager {
   update(deltaTime: number) {
     this.refreshSpatialGrid();
 
-    for (const entity of this.getEntities()) {
+    for (const entity of this.getDynamicEntities()) {
       this.updateExtensions(entity, deltaTime);
     }
   }

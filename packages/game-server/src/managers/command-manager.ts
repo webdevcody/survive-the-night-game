@@ -43,7 +43,7 @@ export class CommandManager {
     const item = this.entityManager.createEntityFromItem({
       itemType: payload.itemType,
     });
-    item.getExt(Positionable).setPosition(payload.position);
+    item.getExt(Positionable).setPosition(new Vector2(payload.position.x + 32, payload.position.y));
     this.entityManager.addEntity(item);
   }
 

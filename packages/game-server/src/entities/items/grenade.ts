@@ -12,7 +12,7 @@ import { Cooldown } from "@/entities/util/cooldown";
 import Inventory from "@/extensions/inventory";
 import { normalizeDirection } from "@shared/util/direction";
 import Updatable from "@/extensions/updatable";
-import { GrenadeExplodedEvent } from "@shared/events/server-sent/grenade-exploded-event";
+import { ExplosionEvent } from "@/events/server-sent/explosion-event";
 
 export class Grenade extends Entity {
   public static readonly Size = new Vector2(16, 16);
@@ -24,6 +24,7 @@ export class Grenade extends Entity {
   private velocity: Vector2 = new Vector2(0, 0);
   private isArmed: boolean = false;
   private explosionTimer: Cooldown;
+  private isExploded: boolean = false;
 
   constructor(gameManagers: IGameManagers) {
     super(gameManagers, Entities.GRENADE);
@@ -88,6 +89,9 @@ export class Grenade extends Entity {
   }
 
   private explode(): void {
+    if (this.isExploded) return;
+    this.isExploded = true;
+
     const position = this.getExt(Positionable).getCenterPosition();
     const nearbyEntities = this.getEntityManager().getNearbyEntities(
       position,
@@ -110,13 +114,11 @@ export class Grenade extends Entity {
     }
 
     // Broadcast explosion event for client to show particle effect
-    this.getEntityManager()
-      .getBroadcaster()
-      .broadcastEvent(
-        new GrenadeExplodedEvent({
-          position: position,
-        })
-      );
+    this.getEntityManager().getBroadcaster().broadcastEvent(
+      new ExplosionEvent({
+        position,
+      })
+    );
 
     // Remove the grenade
     this.getEntityManager().markEntityForRemoval(this);

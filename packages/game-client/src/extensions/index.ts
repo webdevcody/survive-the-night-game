@@ -15,7 +15,6 @@ import { ClientPositionable } from "@/extensions/positionable";
 import { ClientTriggerCooldownAttacker } from "@/extensions/trigger-cooldown-attacker";
 import { ClientTriggerable } from "@/extensions/triggerable";
 import { ClientUpdatable } from "@/extensions/updatable";
-import { ClientLandmineUpdate } from "./landmine-update";
 import { ClientOneTimeTrigger } from "./one-time-trigger";
 
 export const clientExtensionsMap = {
@@ -35,7 +34,6 @@ export const clientExtensionsMap = {
   [ExtensionTypes.UPDATABLE]: ClientUpdatable,
   [ExtensionTypes.EXPIRABLE]: ClientExpirable,
   [ExtensionTypes.TRIGGER_COOLDOWN_ATTACKER]: ClientTriggerCooldownAttacker,
-  [ExtensionTypes.LANDMINE_UPDATE]: ClientLandmineUpdate,
   [ExtensionTypes.ONE_TIME_TRIGGER]: ClientOneTimeTrigger,
 } as const;
 
@@ -56,6 +54,5 @@ export {
   ClientUpdatable,
   ClientExpirable,
   ClientTriggerCooldownAttacker,
-  ClientLandmineUpdate,
   ClientOneTimeTrigger,
 };
