@@ -29,12 +29,12 @@ import { EntityFinder } from "@/managers/entity-finder";
 import { IGameManagers, IEntityManager, Broadcaster } from "@/managers/types";
 import { Landmine } from "@/entities/items/landmine";
 import { EntityStateTracker } from "./entity-state-tracker";
-import Shape, { Rectangle } from "@/util/shape";
 import Vector2 from "@/util/vector2";
 import { Grenade } from "@/entities/items/grenade";
 import { FireExtinguisher } from "@/entities/items/fire-extinguisher";
 import Groupable from "@/extensions/groupable";
 import { BaseEnemy } from "@/entities/enemies/base-enemy";
+import { BatZombie } from "@/entities/enemies/bat-zombie";
 
 const entityMap = {
   [Entities.PLAYER]: Player,
@@ -55,10 +55,13 @@ const entityMap = {
   [Entities.ZOMBIE]: Zombie,
   [Entities.BIG_ZOMBIE]: BigZombie,
   [Entities.FAST_ZOMBIE]: FastZombie,
+  [Entities.BAT_ZOMBIE]: BatZombie,
   [Entities.LANDMINE]: Landmine,
   [Entities.GRENADE]: Grenade,
   [Entities.FIRE_EXTINGUISHER]: FireExtinguisher,
 };
+
+const STATIC_ENTITIES: EntityType[] = [Entities.BOUNDARY];
 
 type EntityConstructor = new (entityManager: IGameManagers, ...args: any[]) => Entity;
 
@@ -71,6 +74,7 @@ export class EntityManager implements IEntityManager {
   private gameManagers?: IGameManagers;
   private itemConstructors = new Map<ItemType, EntityConstructor>();
   private entityStateTracker: EntityStateTracker;
+  private dynamicEntities: Entity[] = [];
 
   constructor() {
     this.entities = [];
@@ -129,10 +133,14 @@ export class EntityManager implements IEntityManager {
     return this.itemConstructors.has(type);
   }
 
-  public createEntityFromItem(item: InventoryItem): Entity {
+  public getDynamicEntities(): Entity[] {
+    return this.dynamicEntities;
+  }
+
+  public createEntityFromItem(item: InventoryItem): Entity | null {
     const constructor = this.itemConstructors.get(item.itemType);
     if (!constructor) {
-      throw new Error(`Unknown item type: '${item.itemType}'`);
+      return null;
     }
 
     return new (constructor as EntityConstructor)(this.getGameManagers(), item.state);
@@ -147,6 +155,11 @@ export class EntityManager implements IEntityManager {
     if (entity.getType() === Entities.PLAYER) {
       this.players.push(entity as Player);
     }
+
+    const isDynamicEntity = !STATIC_ENTITIES.includes(entity.getType());
+    if (isDynamicEntity) {
+      this.dynamicEntities.push(entity);
+    }
   }
 
   getEntities(): Entity[] {
@@ -158,14 +171,24 @@ export class EntityManager implements IEntityManager {
   }
 
   markEntityForRemoval(entity: Entity, expiration = 0) {
+    entity.setMarkedForRemoval(true);
     this.entitiesToRemove.push({
       id: entity.getId(),
       expiration: Date.now() + expiration,
     });
   }
 
+  removeEntity(entityId: string) {
+    this.players = this.players.filter((it) => it.getId() !== entityId);
+    this.entities = this.entities.filter((it) => it.getId() !== entityId);
+  }
+
   generateEntityId(): string {
     return `${this.id++}`;
+  }
+
+  isEntityMarkedForRemoval(entityId: string): boolean {
+    return this.entitiesToRemove.some((it) => it.id === entityId);
   }
 
   pruneEntities() {
@@ -175,33 +198,29 @@ export class EntityManager implements IEntityManager {
       return;
     }
 
-    for (let i = this.entities.length - 1; i >= 0; i--) {
-      const entity = this.entities[i];
+    for (let i = 0; i < this.entitiesToRemove.length; i++) {
+      const entityToPrune = this.entitiesToRemove[i];
+      const entity = this.getEntityById(entityToPrune.id);
+      if (!entity) continue;
 
-      const removeRecordIndex = this.entitiesToRemove.findLastIndex(
-        (it) => it.id === entity.getId()
-      );
-
-      if (removeRecordIndex === -1) {
+      if (now < entityToPrune.expiration) {
         continue;
       }
 
-      const removeRecord = this.entitiesToRemove[removeRecordIndex];
-
-      if (now < removeRecord.expiration) {
-        continue;
-      }
-
-      // Track entity removal before removing it
       this.entityStateTracker.trackRemoval(entity.getId());
-      this.entities.splice(i, 1);
-      this.entitiesToRemove.splice(removeRecordIndex, 1);
+      const entityIndex = this.dynamicEntities.findIndex((it) => it.getId() === entity.getId());
+      this.dynamicEntities.splice(entityIndex, 1);
 
       if (entity.getType() === Entities.PLAYER) {
         const playerIndex = this.players.findIndex((player) => player.getId() === entity.getId());
         if (playerIndex !== -1) {
           this.players.splice(playerIndex, 1);
         }
+      }
+
+      const isDynamicEntity = !STATIC_ENTITIES.includes(entity.getType());
+      if (isDynamicEntity) {
+        this.dynamicEntities.splice(i, 1);
       }
     }
 
@@ -211,25 +230,27 @@ export class EntityManager implements IEntityManager {
   clear() {
     this.entities = [];
     this.players = [];
+    this.dynamicEntities = [];
   }
 
-  getNearbyEnemies(position: Vector2): Entity[] {
+  getNearbyEnemies(position: Vector2, radius: number = 64): Entity[] {
     if (!this.entityFinder) {
       return [];
     }
 
-    const entities = this.entityFinder.getNearbyEntities(position);
+    const entities = this.entityFinder.getNearbyEntities(position, radius);
     return entities.filter(
       (entity) => entity.hasExt(Groupable) && entity.getExt(Groupable).getGroup() === "enemy"
     );
   }
 
   getNearbyEntities(position: Vector2, radius: number = 64, filter?: EntityType[]): Entity[] {
-    return this.entityFinder?.getNearbyEntities(position, radius, filter) ?? [];
-  }
-
-  getNearbyEntitiesByRange(range: Shape, filter?: EntityType[]): Entity[] {
-    return this.entityFinder?.getNearbyEntitiesByRange(range, filter) ?? [];
+    const entities = this.entityFinder?.getNearbyEntities(position, radius, filter) ?? [];
+    return entities.filter((entity) => {
+      if (!entity.hasExt(Positionable)) return false;
+      const entityPosition = entity.getExt(Positionable).getPosition();
+      return position.distance(entityPosition) <= radius;
+    });
   }
 
   getPlayerEntities(): Player[] {
@@ -297,14 +318,16 @@ export class EntityManager implements IEntityManager {
   }
 
   // TODO: we might benefit from abstracting this into a more generic function that takes in a type or something
-  getNearbyIntersectingDestructableEntities(sourceEntity: Entity, sourceHitbox: Rectangle) {
+  getNearbyIntersectingDestructableEntities(sourceEntity: Entity) {
     if (!this.entityFinder) {
       return [];
     }
 
-    const hitBox = sourceHitbox;
+    const hitBox = sourceEntity.getExt(Collidable).getHitBox();
+    const positionable = sourceEntity.getExt(Positionable);
+    const position = positionable.getCenterPosition();
 
-    const nearbyEntities = this.entityFinder.getNearbyEntitiesByRange(hitBox);
+    const nearbyEntities = this.entityFinder.getNearbyEntities(position);
 
     const interactingEntities: Entity[] = [];
 
@@ -338,9 +361,15 @@ export class EntityManager implements IEntityManager {
       return null;
     }
 
-    const hitBox = sourceEntity.getExt(Collidable).getHitBox();
+    if (!sourceEntity.hasExt(Collidable)) {
+      return null;
+    }
 
-    const nearbyEntities = this.entityFinder.getNearbyEntitiesByRange(hitBox);
+    const hitBox = sourceEntity.getExt(Collidable).getHitBox();
+    const positionable = sourceEntity.getExt(Positionable);
+    const position = positionable.getCenterPosition();
+
+    const nearbyEntities = this.entityFinder.getNearbyEntities(position);
 
     // TODO: look into refactoring this
     for (const otherEntity of nearbyEntities) {
@@ -379,7 +408,7 @@ export class EntityManager implements IEntityManager {
   update(deltaTime: number) {
     this.refreshSpatialGrid();
 
-    for (const entity of this.getEntities()) {
+    for (const entity of this.getDynamicEntities()) {
       this.updateExtensions(entity, deltaTime);
     }
   }

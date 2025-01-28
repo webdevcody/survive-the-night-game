@@ -4,6 +4,7 @@ import { ClientIlluminated, ClientPositionable } from "@/extensions";
 import { TILE_IDS } from "@shared/map";
 import Vector2 from "@shared/util/vector2";
 import { distance } from "@shared/util/physics";
+import { RENDER_CONFIG } from "@/constants/constants";
 
 const tileLocations: Record<string, [number, number]> = {
   [TILE_IDS.GRASS1]: [4 * 16, 0],
@@ -124,8 +125,37 @@ export class MapManager {
       return;
     }
 
-    this.map.forEach((row, y) => {
-      row.forEach((cell, x) => {
+    const player = this.gameClient.getMyPlayer();
+    if (!player || !player.hasExt(ClientPositionable)) {
+      return;
+    }
+
+    const playerPos = player.getExt(ClientPositionable).getCenterPosition();
+
+    // Calculate the visible area in tile coordinates using ENTITY_RENDER_RADIUS
+    const startTileX = Math.max(
+      0,
+      Math.floor((playerPos.x - RENDER_CONFIG.ENTITY_RENDER_RADIUS) / this.tileSize)
+    );
+    const startTileY = Math.max(
+      0,
+      Math.floor((playerPos.y - RENDER_CONFIG.ENTITY_RENDER_RADIUS) / this.tileSize)
+    );
+    const endTileX = Math.min(
+      this.map[0].length - 1,
+      Math.ceil((playerPos.x + RENDER_CONFIG.ENTITY_RENDER_RADIUS) / this.tileSize)
+    );
+    const endTileY = Math.min(
+      this.map.length - 1,
+      Math.ceil((playerPos.y + RENDER_CONFIG.ENTITY_RENDER_RADIUS) / this.tileSize)
+    );
+
+    // Only render tiles within the visible range
+    for (let y = startTileY; y <= endTileY; y++) {
+      for (let x = startTileX; x <= endTileX; x++) {
+        if (y < 0 || y >= this.map.length || x < 0 || x >= this.map[y].length) continue;
+
+        const cell = this.map[y][x];
         ctx.drawImage(
           this.tilesheet,
           tileLocations[cell][0],
@@ -160,7 +190,7 @@ export class MapManager {
           ctx.lineWidth = 0.5;
           ctx.strokeRect(x * this.tileSize, y * this.tileSize, this.tileSize, this.tileSize);
         }
-      });
-    });
+      }
+    }
   }
 }

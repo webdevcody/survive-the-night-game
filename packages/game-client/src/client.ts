@@ -22,7 +22,6 @@ import { Direction } from "../../game-shared/src/util/direction";
 import { Input } from "../../game-shared/src/util/input";
 import { ClientEntityBase } from "@/extensions/client-entity";
 import { ParticleManager } from "./managers/particles";
-import { ClientSentEvents } from "@shared/events/events";
 
 export class GameClient {
   private ctx: CanvasRenderingContext2D;
@@ -39,6 +38,12 @@ export class GameClient {
   private clientEventListener: ClientEventListener;
   private entityFactory: EntityFactory;
   private particleManager: ParticleManager;
+
+  // FPS tracking
+  private frameCount: number = 0;
+  private lastFpsUpdate: number = 0;
+  private currentFps: number = 0;
+  private readonly FPS_UPDATE_INTERVAL = 1000; // Update FPS every second
 
   // Controllers
   private resizeController: ResizeController;
@@ -63,7 +68,7 @@ export class GameClient {
     this.assetManager = new AssetManager();
     this.storageManager = new StorageManager();
     this.cameraManager = new CameraManager(this.ctx);
-    this.zoomController = new ZoomController(this.storageManager, this.cameraManager);
+    this.zoomController = new ZoomController(this.cameraManager);
     this.soundManager = new SoundManager(this);
     this.entityFactory = new EntityFactory(this.assetManager);
     this.particleManager = new ParticleManager(this);
@@ -241,6 +246,13 @@ export class GameClient {
     return this.gameState;
   }
 
+  public removeEntity(id: string) {
+    const index = this.gameState.entities.findIndex((entity) => entity.getId() === id);
+    if (index !== -1) {
+      this.gameState.entities.splice(index, 1);
+    }
+  }
+
   public getSocketManager(): ClientSocketManager {
     return this.socketManager;
   }
@@ -323,6 +335,16 @@ export class GameClient {
   }
 
   private update(): void {
+    // Update FPS
+    this.frameCount++;
+    const now = Date.now();
+    if (now - this.lastFpsUpdate >= this.FPS_UPDATE_INTERVAL) {
+      this.currentFps = Math.round((this.frameCount * 1000) / (now - this.lastFpsUpdate));
+      this.frameCount = 0;
+      this.lastFpsUpdate = now;
+      this.hud.updateFps(this.currentFps);
+    }
+
     if (this.inputManager.getHasChanged()) {
       this.sendInput(this.inputManager.getInputs());
       this.inputManager.reset();

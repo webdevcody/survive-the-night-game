@@ -32,26 +32,25 @@ export default class OneTimeTrigger implements Extension {
   public update(deltaTime: number) {
     if (this.hasTriggered) return;
 
-    const triggerBox = this.getTriggerBox();
+    const positionable = this.self.getExt(Positionable);
     const nearbyEntities = this.self
       .getEntityManager()
-      .getNearbyEntitiesByRange(triggerBox, this.targetTypes);
+      .getNearbyEntities(positionable.getCenterPosition(), this.triggerRadius, this.targetTypes);
 
     // Check if any target entity is within trigger radius
     for (const entity of nearbyEntities) {
       if (!entity.hasExt(Positionable)) continue;
 
-      this.hasTriggered = true;
-      this.triggerCallback?.();
-      break;
-    }
-  }
+      const entityPos = entity.getExt(Positionable).getPosition();
+      const selfPos = this.self.getExt(Positionable).getPosition();
+      const distance = entityPos.sub(selfPos).length();
 
-  public getTriggerBox(): Circle {
-    const positionable = this.self.getExt(Positionable);
-    const position = positionable.getPosition();
-    // TODO select type shape trigger
-    return new Circle(position, this.triggerRadius);
+      if (distance <= this.triggerRadius) {
+        this.hasTriggered = true;
+        this.triggerCallback?.();
+        break;
+      }
+    }
   }
 
   public serialize(): ExtensionSerialized {

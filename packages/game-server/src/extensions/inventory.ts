@@ -88,6 +88,7 @@ export default class Inventory implements Extension {
     const offset = 32;
     this.items.forEach((item) => {
       const entity = this.createEntityFromItem(item);
+      if (!entity) return;
       const theta = Math.random() * 2 * Math.PI;
       const radius = Math.random() * offset;
       const pos = new Vector2(
@@ -107,7 +108,6 @@ export default class Inventory implements Extension {
   }
 
   private createEntityFromItem(item: InventoryItem) {
-    // This will be injected by the entity factory
     return this.self.getEntityManager()!.createEntityFromItem(item);
   }
 

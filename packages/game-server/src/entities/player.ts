@@ -43,7 +43,7 @@ export class Player extends Entity {
   private consumeCooldown = new Cooldown(Player.CONSUME_COOLDOWN, true);
   private input: Input = {
     facing: Direction.Right,
-    inventoryItem: 0,
+    inventoryItem: 1,
     dx: 0,
     dy: 0,
     interact: false,
@@ -79,9 +79,6 @@ export class Player extends Entity {
     ];
 
     const inventory = this.getExt(Inventory);
-    inventory.addItem({
-      itemType: "knife" as const,
-    });
 
     if (DEBUG_WEAPONS) {
       [
@@ -312,7 +309,7 @@ export class Player extends Entity {
     if (this.interactCooldown.isReady()) {
       this.interactCooldown.reset();
       const entities = this.getEntityManager()
-        .getNearbyEntities(this.getPosition())
+        .getNearbyEntities(this.getCenterPosition())
         .filter((entity) => {
           return entity.hasExt(Interactive);
         });
@@ -329,13 +326,13 @@ export class Player extends Entity {
           if (!aIsDeadPlayer && bIsDeadPlayer) return 1;
 
           // If both are dead players or both are not, sort by distance
-          const p1 = (a as Entity).getExt(Positionable).getPosition();
-          const p2 = (b as Entity).getExt(Positionable).getPosition();
-          return distance(this.getPosition(), p1) - distance(this.getPosition(), p2);
+          const p1 = (a as Entity).getExt(Positionable).getCenterPosition();
+          const p2 = (b as Entity).getExt(Positionable).getCenterPosition();
+          return distance(this.getCenterPosition(), p1) - distance(this.getCenterPosition(), p2);
         })
         .filter((entity) => {
           if (
-            distance(this.getPosition(), entity.getExt(Positionable).getPosition()) >
+            distance(this.getCenterPosition(), entity.getExt(Positionable).getCenterPosition()) >
             MAX_INTERACT_RADIUS
           ) {
             return false;
@@ -361,6 +358,8 @@ export class Player extends Entity {
 
       if (item) {
         const entity = this.getEntityManager().createEntityFromItem(item);
+
+        if (!entity) return;
 
         const carryable = entity.getExt(Carryable);
         carryable.setItemState({
@@ -411,6 +410,7 @@ export class Player extends Entity {
 
       if (item) {
         const entity = this.getEntityManager().createEntityFromItem(item);
+        if (!entity) return;
 
         if (entity.hasExt(Consumable)) {
           entity.getExt(Consumable).consume(this.getId(), itemIndex);
@@ -445,6 +445,14 @@ export class Player extends Entity {
 
   setAsFiring(firing: boolean) {
     this.input.fire = firing;
+  }
+
+  setAsInteracting(interacting: boolean) {
+    this.input.interact = interacting;
+  }
+
+  setAsDropping(dropping: boolean) {
+    this.input.drop = dropping;
   }
 
   setUseItem(use: boolean) {

@@ -5,6 +5,7 @@ interface ZombieDistribution {
   regular: number;
   fast: number;
   big: number;
+  bat: number;
 }
 
 interface ZombieType {
@@ -17,12 +18,13 @@ interface ZombieType {
 const ADDITIONAL_ZOMBIES_PER_NIGHT = 4;
 const MIN_TOTAL_ZOMBIES = 10;
 const MAX_TOTAL_ZOMBIES = 200;
+const BASE_ZOMBIES = 5;
 
-// Configuration for zombie types and their spawn parameters
 const ZOMBIE_TYPES: ZombieType[] = [
-  { type: "regular", ratio: 0.6, minNight: 1 },
-  { type: "fast", ratio: 0.25, minNight: 3 },
-  { type: "big", ratio: 0.15, minNight: 5 },
+  { type: "regular", ratio: 0.55, minNight: 1 },
+  { type: "fast", ratio: 0.2, minNight: 3 },
+  { type: "big", ratio: 0.1, minNight: 5 },
+  { type: "bat", ratio: 0.15, minNight: 7 },
 ];
 
 export class GameMaster {
@@ -34,9 +36,8 @@ export class GameMaster {
 
   public getNumberOfZombies(dayNumber: number): ZombieDistribution {
     // Calculate total zombies based on players and day number
-    const playerCount = this.gameManagers.getEntityManager().getPlayerEntities().length;
-    const baseZombies = 3;
-    const additionalZombies = (dayNumber - 1) * ADDITIONAL_ZOMBIES_PER_NIGHT * playerCount;
+    const baseZombies = BASE_ZOMBIES;
+    const additionalZombies = (dayNumber - 1) * ADDITIONAL_ZOMBIES_PER_NIGHT;
     const totalZombies = Math.floor(
       Math.min(Math.max(baseZombies + additionalZombies, MIN_TOTAL_ZOMBIES), MAX_TOTAL_ZOMBIES)
     );
@@ -57,6 +58,7 @@ export class GameMaster {
       regular: 0,
       fast: 0,
       big: 0,
+      bat: 0,
     };
 
     normalizedTypes.forEach((type) => {

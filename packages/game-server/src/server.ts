@@ -11,22 +11,30 @@ import { ServerSocketManager } from "@/managers/server-socket-manager";
 import { TICK_RATE, NIGHT_DURATION, PERFORMANCE_LOG_INTERVAL, TICK_RATE_MS } from "./config/config";
 import { DAY_DURATION } from "./config/config";
 import Destructible from "@/extensions/destructible";
+import { PerformanceTracker } from "./util/performance";
 
 export class GameServer {
+  // STATE
   private lastUpdateTime: number = Date.now();
-  private entityManager: EntityManager;
-  private mapManager: MapManager;
-  private socketManager: ServerSocketManager;
   private timer: ReturnType<typeof setInterval> | null = null;
   private dayNumber: number = 1;
   private cycleStartTime: number = Date.now();
   private cycleDuration: number = DAY_DURATION;
   private isDay: boolean = true;
+  private isGameReady: boolean = false;
+  private isGameOver: boolean = false;
   private updateTimes: number[] = [];
   private lastPerformanceLog: number = Date.now();
-  private isGameOver: boolean = false;
+
+  // UTILS
+  private performanceTracker: PerformanceTracker;
+
+  // MANAGERS
   private gameManagers: GameManagers;
   private commandManager: CommandManager;
+  private entityManager: EntityManager;
+  private mapManager: MapManager;
+  private socketManager: ServerSocketManager;
   private lastBroadcastedState = {
     dayNumber: -1,
     cycleStartTime: -1,
@@ -51,6 +59,8 @@ export class GameServer {
   }
 
   constructor(port: number = 3001) {
+    this.performanceTracker = new PerformanceTracker();
+
     this.socketManager = new ServerSocketManager(port, this);
     this.entityManager = new EntityManager();
     this.mapManager = new MapManager();
@@ -69,6 +79,7 @@ export class GameServer {
   }
 
   public startNewGame(): void {
+    this.isGameReady = true;
     this.isGameOver = false;
     this.dayNumber = 1;
     this.cycleStartTime = Date.now();
@@ -132,34 +143,53 @@ export class GameServer {
     this.isGameOver = isGameOver;
   }
 
+  public setIsGameReady(isReady: boolean): void {
+    this.isGameReady = isReady;
+  }
+
   private update(): void {
+    if (!this.isGameReady) {
+      return;
+    }
+
+    if (this.isGameOver) {
+      return;
+    }
+
     // setup
     const updateStartTime = performance.now();
     const currentTime = Date.now();
     const deltaTime = (currentTime - this.lastUpdateTime) / 1000;
 
-    // logic
-    if (this.isGameOver) {
-      return;
-    }
-
+    // an update is averaging 4.1 ms, we can improve this
+    // this.performanceTracker.trackStart("updateEntities");
     this.updateEntities(deltaTime);
+    // this.performanceTracker.trackEnd("updateEntities");
 
     this.handleDayNightCycle(deltaTime);
     this.handleIfGameOver();
 
-    // cleanup
     this.entityManager.pruneEntities();
+
+    // BEFORE REFACTORING
+    // {
+    //   mean: 5.425483800000007,
+    //   median: 5.651458500000217,
+    //   stdDev: 1.2973845897338345
+    // }
+    // this.performanceTracker.trackStart("broadcastGameState");
     this.broadcastGameState();
+    // this.performanceTracker.trackEnd("broadcastGameState");
+
+    // this.performanceTracker.trackStart("trackEntity");
+    for (const entity of this.entityManager.getDynamicEntities()) {
+      this.entityManager.getEntityStateTracker().trackEntity(entity, currentTime);
+    }
+    // this.performanceTracker.trackEnd("trackEntity");
+
+    // print the final performance metrics over time
     this.trackPerformance(updateStartTime, currentTime);
     this.lastUpdateTime = currentTime;
-
-    // Track all entities for next update's change detection
-    const entities = this.entityManager.getEntities();
-    const filteredEntities = entities.filter((entity) => !("isServerOnly" in entity));
-    filteredEntities.forEach((entity) => {
-      this.entityManager.getEntityStateTracker().trackEntity(entity);
-    });
   }
 
   private handleDayNightCycle(deltaTime: number) {
@@ -233,6 +263,8 @@ export class GameServer {
       // Reset tracking
       this.updateTimes = [];
       this.lastPerformanceLog = currentTime;
+
+      this.performanceTracker.printAllStats();
     }
   }
 
@@ -243,9 +275,9 @@ export class GameServer {
   // TODO: This is a bit of a hack to get the game state to the client.
   // We should probably have a more elegant way to do this.
   private broadcastGameState(): void {
-    const rawEntities = [...this.entityManager.getEntities()]
-      .filter((entity) => !("isServerOnly" in entity))
-      .map((entity) => entity.serialize());
+    const rawEntities = [...this.entityManager.getDynamicEntities()].map((entity) =>
+      entity.serialize()
+    );
 
     // Only include state properties that have changed
     const stateUpdate: any = {

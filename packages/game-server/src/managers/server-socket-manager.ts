@@ -1,4 +1,3 @@
-import { DEBUG_EVENTS } from "@shared/debug";
 import { Player } from "@/entities/player";
 import { ServerSentEvents, ClientSentEvents } from "@shared/events/events";
 import { GameEvent } from "@shared/events/types";
@@ -12,16 +11,12 @@ import { Server, Socket } from "socket.io";
 import { CommandManager } from "@/managers/command-manager";
 import { MapManager } from "@/managers/map-manager";
 import { Broadcaster, IEntityManager, IGameManagers } from "@/managers/types";
-import { EntityStateTracker } from "./entity-state-tracker";
 import { GameStateEvent } from "@shared/events/server-sent/game-state-event";
-import { IEntity } from "@/entities/types";
-import Vector2 from "@/util/vector2";
-import Movable from "@/extensions/movable";
-import { PlayerDroppedItemEvent } from "@shared/events/server-sent/player-dropped-item-event";
 import { PlayerJoinedEvent } from "@shared/events/server-sent/player-joined-event";
 import { PongEvent } from "@shared/events/server-sent/pong-event";
 import msgPackParser from "socket.io-msgpack-parser";
 import { ChatMessageEvent } from "@shared/events/server-sent/chat-message-event";
+import { PlayerLeftEvent } from "@/events/server-sent/player-left-event";
 
 /**
  * Any and all functionality related to sending server side events
@@ -130,15 +125,19 @@ export class ServerSocketManager implements Broadcaster {
   }
 
   private onDisconnect(socket: Socket): void {
+    console.log("Player disconnected", socket.id);
     const player = this.players.get(socket.id);
     this.players.delete(socket.id);
     if (player) {
-      this.getEntityManager().markEntityForRemoval(player);
+      // TODO: this is a hacker; I'd rather use this, but when I do there is a strange race condition where the round never restarts, so instead the
+      this.getEntityManager().removeEntity(player.getId());
+      // this.getEntityManager().markEntityForRemoval(player);
+      this.broadcastEvent(new PlayerLeftEvent({ playerId: player.getId() }));
     }
 
-    if (this.players.size === 0) {
-      this.getMapManager().generateMap();
-      this.getEntityManager().getEntityStateTracker().clear();
+    const isLastPlayer = this.players.size === 0;
+    if (isLastPlayer) {
+      this.gameServer.setIsGameReady(false);
     }
   }
 
@@ -209,8 +208,12 @@ export class ServerSocketManager implements Broadcaster {
     // Set up socket event listeners first
     this.setupSocketListeners(socket);
 
-    const totalPlayers = this.getEntityManager().getPlayerEntities().length;
+    const totalPlayers = this.getEntityManager()
+      .getPlayerEntities()
+      .filter((entity) => !(entity as Player).isMarkedForRemoval()).length;
+
     if (totalPlayers === 0) {
+      console.log("Starting new game");
       this.gameServer.startNewGame();
       // Don't return early, let the map data be sent below
     }
@@ -254,7 +257,7 @@ export class ServerSocketManager implements Broadcaster {
 
         if (!previousState) {
           // If no previous state exists, this is a new entity - track it and send full state
-          entityStateTracker.trackEntity(entity);
+          entityStateTracker.trackEntity(entity, Date.now());
           return currentState;
         }
 
@@ -332,7 +335,7 @@ export class ServerSocketManager implements Broadcaster {
 
       // Track the current state of all entities and game state after sending the update
       changedEntities.forEach((entity) => {
-        entityStateTracker.trackEntity(entity);
+        entityStateTracker.trackEntity(entity, Date.now());
       });
       entityStateTracker.trackGameState(currentGameState);
 

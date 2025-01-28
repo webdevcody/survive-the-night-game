@@ -9,7 +9,6 @@ import { Entities } from "@/constants";
 import { Entity } from "@/entities/entity";
 import { Fire } from "@/entities/environment/fire";
 import Vector2 from "@/util/vector2";
-import Collidable from "@/extensions/collidable";
 
 export class Gasoline extends Entity {
   public static readonly Size = new Vector2(16, 16);

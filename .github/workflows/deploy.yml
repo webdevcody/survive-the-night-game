@@ -17,5 +17,6 @@ jobs:
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           script: |
             cd survive-the-night-game
-            git pull
+            git fetch
+            git reset --hard origin/main
             ADMIN_PASSWORD=${{ secrets.ADMIN_PASSWORD }} docker compose up -d --build

@@ -12,6 +12,7 @@ import { ShotgunAmmo } from "@/entities/items/shotgun-ammo";
 import Vector2 from "@/util/vector2";
 import { BigZombie } from "@/entities/enemies/big-zombie";
 import { FastZombie } from "@/entities/enemies/fast-zombie";
+import { BatZombie } from "@/entities/enemies/bat-zombie";
 import { GameMaster } from "./game-master";
 import { Knife } from "@/entities/weapons/knife";
 import { Bandage } from "@/entities/items/bandage";
@@ -25,19 +26,19 @@ import { Wall } from "@/entities/items/wall";
 
 const WEAPON_SPAWN_CHANCE = {
   // Weapons
-  PISTOL: 0.001,
+  PISTOL: 0.0015,
   SHOTGUN: 0.0015,
-  KNIFE: 0.005,
+  KNIFE: 0.002,
   // ammo
-  PISTOL_AMMO: 0.01,
-  SHOTGUN_AMMO: 0.01,
+  PISTOL_AMMO: 0.005,
+  SHOTGUN_AMMO: 0.005,
   // Items
   BANDAGE: 0.005,
   CLOTH: 0.008,
   GASOLINE: 0.002,
-  GRENADE: 0.001,
+  GRENADE: 0,
   LANDMINE: 0.001,
-  SPIKES: 0.002,
+  SPIKES: 0.003,
   TORCH: 0.003,
   WALL: 0.005,
   TREE: 0.1,
@@ -157,18 +158,17 @@ export class MapManager implements IMapManager {
       throw new Error("MapManager: GameMaster was not set");
     }
 
-    const currentZombies = this.countCurrentZombies();
     const zombieDistribution = this.gameMaster.getNumberOfZombies(dayNumber);
 
-    if (currentZombies >= zombieDistribution.total) {
-      return;
-    }
+    const zombiesToSpawn = zombieDistribution.total;
 
-    const zombiesToSpawn = zombieDistribution.total - currentZombies;
+    console.log("Spawning zombies", zombiesToSpawn);
+
     let spawnedCount = {
       regular: 0,
       fast: 0,
       big: 0,
+      bat: 0,
     };
 
     const totalSize = BIOME_SIZE * MAP_SIZE;
@@ -182,7 +182,8 @@ export class MapManager implements IMapManager {
     while (
       spawnedCount.regular < zombieDistribution.regular ||
       spawnedCount.fast < zombieDistribution.fast ||
-      spawnedCount.big < zombieDistribution.big
+      spawnedCount.big < zombieDistribution.big ||
+      spawnedCount.bat < zombieDistribution.bat
     ) {
       if (attempts++ > maxAttempts) break;
 
@@ -197,12 +198,17 @@ export class MapManager implements IMapManager {
       }
 
       // Skip if not on grass
-      if (this.map[y][x] !== 0) {
+      if (this.map[y]?.[x] !== 0) {
         continue;
       }
 
       // Determine which type of zombie to spawn based on remaining counts
-      if (spawnedCount.big < zombieDistribution.big) {
+      if (spawnedCount.bat < zombieDistribution.bat) {
+        const zombie = new BatZombie(this.getGameManagers());
+        zombie.setPosition(new Vector2(x * TILE_SIZE, y * TILE_SIZE));
+        this.getEntityManager().addEntity(zombie);
+        spawnedCount.bat++;
+      } else if (spawnedCount.big < zombieDistribution.big) {
         const zombie = new BigZombie(this.getGameManagers());
         zombie.setPosition(new Vector2(x * TILE_SIZE, y * TILE_SIZE));
         this.getEntityManager().addEntity(zombie);
@@ -226,7 +232,10 @@ export class MapManager implements IMapManager {
       .getEntities()
       .filter(
         (entity) =>
-          entity instanceof Zombie || entity instanceof BigZombie || entity instanceof FastZombie
+          entity instanceof Zombie ||
+          entity instanceof BigZombie ||
+          entity instanceof FastZombie ||
+          entity instanceof BatZombie
       ).length;
   }
 

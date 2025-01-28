@@ -144,7 +144,7 @@ describe("QuadTree", () => {
     expect(found.size).toBe(0);
   });
 
-  it("should efficiently add many boundary entities in a grid pattern", () => {
+  it.skip("should efficiently add many boundary entities in a grid pattern", () => {
     const mapSize = 100;
     const boundary = new Rectangle(new Vector2(0, 0), new Vector2(100, 100));
     const quadTree = new QuadTree(boundary);

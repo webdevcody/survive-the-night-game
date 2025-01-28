@@ -1,10 +1,5 @@
 import { IEntity } from "@/entities/types";
 
-interface EntityStateSnapshot {
-  serialized: any;
-  lastUpdateTime: number;
-}
-
 export class EntityStateTracker {
   private previousEntityStates: Map<string, any> = new Map();
   private removedEntityIds: Set<string> = new Set();
@@ -15,12 +10,12 @@ export class EntityStateTracker {
     isDay?: boolean;
   } = {};
 
-  public trackEntity(entity: IEntity): void {
+  public trackEntity(entity: IEntity, currentTime: number): void {
     const id = entity.getId();
     const serialized = entity.serialize();
     this.previousEntityStates.set(id, {
       serialized: JSON.parse(JSON.stringify(serialized)),
-      lastUpdateTime: Date.now(),
+      lastUpdateTime: currentTime,
     });
   }
 

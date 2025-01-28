@@ -12,17 +12,16 @@ import { debugDrawHitbox, drawCenterPositionWithLabel } from "@/util/debug";
 import { getPlayer } from "@/util/get-player";
 import { renderInteractionText } from "@/util/interaction-text";
 import { createFlashEffect } from "@/util/render";
-import { determineDirection } from "../../../game-shared/src/util/direction";
-import { roundVector2 } from "../../../game-shared/src/util/physics";
 import { RawEntity } from "@shared/types/entity";
 import { Z_INDEX } from "@shared/map";
 import { IClientEntity, Renderable, getFrameIndex, drawHealthBar } from "@/entities/util";
-import { getHitboxWithPadding } from "../../../game-shared/src/util/hitbox";
 import Vector2 from "@shared/util/vector2";
-import { DEBUG_SHOW_ATTACK_RANGE, DEBUG_SHOW_WAYPOINTS } from "@shared/debug";
-import { ZOMBIE_ATTACK_RADIUS } from "@shared/constants";
+import { DEBUG_SHOW_WAYPOINTS } from "@shared/debug";
+import { determineDirection } from "@shared/util/direction";
+import { getHitboxWithPadding } from "@shared/util/hitbox";
+import { roundVector2 } from "@shared/util/physics";
 
-export class ZombieClient extends ClientEntityBase implements IClientEntity, Renderable {
+export class BatZombieClient extends ClientEntityBase implements IClientEntity, Renderable {
   private lastRenderPosition = { x: 0, y: 0 };
   private previousHealth: number | undefined;
   private damageFlashUntil: number = 0;
@@ -100,30 +99,17 @@ export class ZombieClient extends ClientEntityBase implements IClientEntity, Ren
       ? this.renderZombieDead(gameState, ctx, renderPosition)
       : this.renderZombieAlive(gameState, ctx, renderPosition);
 
-    if (DEBUG_SHOW_ATTACK_RANGE) {
-      ctx.save();
-      ctx.strokeStyle = "rgba(255, 0, 0, 0.3)";
-      ctx.beginPath();
-      const center = this.getCenterPosition();
-      ctx.arc(center.x, center.y, ZOMBIE_ATTACK_RADIUS, 0, Math.PI * 2);
-      ctx.stroke();
-      ctx.restore();
-    }
-
-    // Render debug waypoint if debug flag is enabled
     if (DEBUG_SHOW_WAYPOINTS && this.debugWaypoint) {
       const waypoint = this.debugWaypoint;
       ctx.save();
-      ctx.strokeStyle = "yellow";
+      ctx.strokeStyle = "purple"; // Different color for bat zombie
       ctx.lineWidth = 2;
 
-      // Draw line from zombie to waypoint
       ctx.beginPath();
       ctx.moveTo(this.lastRenderPosition.x + 8, this.lastRenderPosition.y + 8);
       ctx.lineTo(waypoint.x, waypoint.y);
       ctx.stroke();
 
-      // Draw waypoint marker
       ctx.beginPath();
       ctx.arc(waypoint.x, waypoint.y, 4, 0, Math.PI * 2);
       ctx.stroke();
@@ -155,10 +141,10 @@ export class ZombieClient extends ClientEntityBase implements IClientEntity, Ren
   ) {
     const facing = determineDirection(this.getVelocity());
     const frameIndex = getFrameIndex(gameState.startedAt, {
-      duration: 500,
+      duration: 200, // Even faster animation for bat zombie
       frames: 3,
     });
-    const image = this.imageLoader.getFrameWithDirection("zombie", facing, frameIndex);
+    const image = this.imageLoader.getFrameWithDirection("bat_zombie" as any, facing, frameIndex);
     ctx.drawImage(image, renderPosition.x, renderPosition.y);
     drawHealthBar(ctx, renderPosition, this.getHealth(), this.getMaxHealth());
 
@@ -192,7 +178,7 @@ export class ZombieClient extends ClientEntityBase implements IClientEntity, Ren
     renderPosition: Vector2
   ) {
     const myPlayer = getPlayer(gameState);
-    const image = this.imageLoader.get("zombie_dead");
+    const image = this.imageLoader.get("bat_zombie_dead" as any);
     ctx.drawImage(image, renderPosition.x, renderPosition.y);
 
     if (myPlayer) {

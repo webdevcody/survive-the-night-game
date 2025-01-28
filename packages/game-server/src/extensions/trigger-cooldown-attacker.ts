@@ -53,8 +53,8 @@ export default class TriggerCooldownAttacker implements Extension {
         this.options.victimType,
       ]);
 
-    const triggerBox = this.self.getExt(Triggerable).getTriggerBox();
-    const triggerCenter = triggerBox.center;
+    const positionable = this.self.getExt(Positionable);
+    const position = positionable.getCenterPosition();
 
     for (const entity of entities) {
       if (!entity.hasExt(Destructible)) {
@@ -68,7 +68,7 @@ export default class TriggerCooldownAttacker implements Extension {
       );
       const entityCenter = entityHitbox.center;
 
-      const centerDistance = distance(triggerCenter, entityCenter);
+      const centerDistance = distance(position, entityCenter);
 
       if (centerDistance < TriggerCooldownAttacker.RADIUS) {
         if (this.attackCooldown.isReady()) {

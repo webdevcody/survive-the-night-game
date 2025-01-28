@@ -16,7 +16,7 @@ export class GameOverDialogUI {
     ctx.save();
     ctx.setTransform(1, 0, 0, 1, 0, 0);
 
-    const text = "Game Over";
+    const text = "You All Died! Match will restart soon";
     const metrics = ctx.measureText(text);
     const padding = 20;
 

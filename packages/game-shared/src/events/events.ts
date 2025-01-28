@@ -4,6 +4,7 @@ export const ServerSentEvents = {
   GAME_STARTED: "gameStarted",
   PLAYER_DEATH: "playerDeath",
   PLAYER_HURT: "playerHurt",
+  PLAYER_LEFT: "playerLeft",
   PLAYER_JOINED: "playerJoined",
   YOUR_ID: "yourId",
   PLAYER_ATTACKED: "playerAttacked",
@@ -24,6 +25,7 @@ export const ServerSentEvents = {
   PLAYER_REVIVED: "PLAYER_REVIVED",
   PONG: "pong",
   CHAT_MESSAGE: "chatMessage",
+  EXPLOSION: "explosion",
 } as const;
 
 export const ClientSentEvents = {

@@ -1,21 +1,32 @@
 import Positionable from "@/extensions/positionable";
 import { Direction } from "@/util/direction";
 import { IEntity } from "../types";
+import { IEntityManager } from "@/managers/types";
+import Vector2 from "@/util/vector2";
 
-export function knockBack(entity: IEntity, facing: Direction, distance: number) {
+export function knockBack(
+  entityManager: IEntityManager,
+  entity: IEntity,
+  facing: Direction,
+  distance: number
+) {
   const positionable = entity.getExt(Positionable);
-  const position = positionable.getPosition();
+  const originalPosition = { ...positionable.getPosition() };
+  const newPosition = { ...originalPosition };
 
-  // Push zombie back based on facing direction
   if (facing === Direction.Right) {
-    position.x += distance;
+    newPosition.x += distance;
   } else if (facing === Direction.Left) {
-    position.x -= distance;
+    newPosition.x -= distance;
   } else if (facing === Direction.Up) {
-    position.y -= distance;
+    newPosition.y -= distance;
   } else if (facing === Direction.Down) {
-    position.y += distance;
+    newPosition.y += distance;
   }
 
-  positionable.setPosition(position);
+  positionable.setPosition(new Vector2(newPosition.x, newPosition.y));
+
+  if (entityManager.isColliding(entity)) {
+    positionable.setPosition(new Vector2(originalPosition.x, originalPosition.y));
+  }
 }

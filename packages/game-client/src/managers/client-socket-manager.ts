@@ -23,6 +23,8 @@ import { Socket, io } from "socket.io-client";
 import { ServerUpdatingEvent } from "@shared/events/server-sent/server-updating-event";
 import msgPackParser from "socket.io-msgpack-parser";
 import { ChatMessageEvent } from "@shared/events/server-sent/chat-message-event";
+import { PlayerLeftEvent } from "@shared/events/server-sent/player-left-event";
+import { ExplosionEvent } from "@shared/events/server-sent/explosion-event";
 
 export type EntityDto = { id: string } & any;
 
@@ -43,9 +45,11 @@ const SERVER_EVENT_MAP = {
   [ServerSentEvents.ZOMBIE_ATTACKED]: ZombieAttackedEvent,
   [ServerSentEvents.LOOT]: LootEvent,
   [ServerSentEvents.GAME_STARTED]: GameStartedEvent,
+  [ServerSentEvents.PLAYER_LEFT]: PlayerLeftEvent,
   [ServerSentEvents.SERVER_UPDATING]: ServerUpdatingEvent,
   [ServerSentEvents.PONG]: PongEvent,
   [ServerSentEvents.CHAT_MESSAGE]: ChatMessageEvent,
+  [ServerSentEvents.EXPLOSION]: ExplosionEvent,
 } as const;
 
 export class ClientSocketManager {

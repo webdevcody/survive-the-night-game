@@ -7,6 +7,8 @@ import { ClientPositionable } from "@/extensions";
 import { LANDMINE_EXPLOSION_RADIUS } from "@shared/constants/constants";
 
 export class LandmineClient extends ClientEntity implements Renderable {
+  private isActive = false;
+
   constructor(data: RawEntity, imageLoader: ImageLoader) {
     super(data, imageLoader);
   }
@@ -21,14 +23,28 @@ export class LandmineClient extends ClientEntity implements Renderable {
     const position = this.getExt(ClientPositionable).getCenterPosition();
     const image = this.imageLoader.get("landmine");
 
+    if (!this.isActive) {
+      ctx.save();
+      ctx.filter = "brightness(50%)";
+    }
     ctx.drawImage(image, position.x - image.width / 2, position.y - image.height / 2);
+    if (!this.isActive) {
+      ctx.restore();
+    }
 
-    ctx.save();
-    ctx.strokeStyle = "rgba(255, 0, 0, 0.5)";
-    ctx.lineWidth = 1;
-    ctx.beginPath();
-    ctx.arc(position.x, position.y, LANDMINE_EXPLOSION_RADIUS, 0, Math.PI * 2);
-    ctx.stroke();
-    ctx.restore();
+    if (this.isActive) {
+      ctx.save();
+      ctx.strokeStyle = "rgba(255, 0, 0, 0.5)";
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.arc(position.x, position.y, LANDMINE_EXPLOSION_RADIUS, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.restore();
+    }
+  }
+
+  public deserialize(data: RawEntity): void {
+    super.deserialize(data);
+    this.isActive = data.isActive;
   }
 }

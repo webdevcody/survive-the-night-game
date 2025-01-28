@@ -27,6 +27,9 @@ import { GameStartedEvent } from "@shared/events/server-sent/game-started-event"
 import { PlayerJoinedEvent } from "@shared/events/server-sent/player-joined-event";
 import { ServerUpdatingEvent } from "@shared/events/server-sent/server-updating-event";
 import { ChatMessageEvent } from "@shared/events/server-sent/chat-message-event";
+import { PlayerLeftEvent } from "@shared/events/server-sent/player-left-event";
+import { ExplosionParticle } from "./particles/explosion";
+import { ExplosionEvent } from "@shared/events/server-sent/explosion-event";
 
 export class ClientEventListener {
   private socketManager: ClientSocketManager;
@@ -62,6 +65,7 @@ export class ClientEventListener {
     this.socketManager.on(ServerSentEvents.ZOMBIE_ATTACKED, this.onZombieAttacked.bind(this));
     this.socketManager.on(ServerSentEvents.GAME_OVER, this.onGameOver.bind(this));
     this.socketManager.on(ServerSentEvents.GAME_STARTED, this.onGameStarted.bind(this));
+    this.socketManager.on(ServerSentEvents.PLAYER_LEFT, this.onPlayerLeft.bind(this));
     this.socketManager.on(ServerSentEvents.SERVER_UPDATING, this.onServerUpdating.bind(this));
     this.socketManager.on(ServerSentEvents.CHAT_MESSAGE, this.onChatMessage.bind(this));
     this.socketManager.on(
@@ -72,6 +76,7 @@ export class ClientEventListener {
       ServerSentEvents.PLAYER_PICKED_UP_ITEM,
       this.onPlayerPickedUpItem.bind(this)
     );
+    this.socketManager.on(ServerSentEvents.EXPLOSION, this.onExplosion.bind(this));
   }
 
   onServerUpdating(serverUpdatingEvent: ServerUpdatingEvent) {
@@ -86,6 +91,11 @@ export class ClientEventListener {
     this.gameClient
       .getSoundManager()
       .playPositionalSound(SOUND_TYPES_TO_MP3.GUN_EMPTY, playerPosition);
+  }
+
+  onPlayerLeft(playerLeftEvent: PlayerLeftEvent) {
+    this.gameClient.getHud().addMessage(`${playerLeftEvent.getPlayerId()} left the game`);
+    this.gameClient.removeEntity(playerLeftEvent.getPlayerId());
   }
 
   onGameStateUpdate(gameStateEvent: GameStateEvent) {
@@ -314,6 +324,12 @@ export class ClientEventListener {
     this.gameClient
       .getHud()
       .addChatMessage(chatMessageEvent.getPlayerId(), chatMessageEvent.getMessage());
+  }
+
+  onExplosion(event: ExplosionEvent) {
+    const particle = new ExplosionParticle(this.gameClient.getImageLoader());
+    particle.setPosition(event.serialize().position);
+    this.gameClient.getParticleManager().addParticle(particle);
   }
 
   private checkInitialization() {
