@@ -42,7 +42,7 @@ const HUD_SETTINGS = {
       top: 20,
     },
     title: "TODO (dev log)",
-    features: ["- snare", "- Spitter Zombies", "- baseball bat", "- grenade"],
+    features: ["- snare", "- Spitter Zombies"],
   },
   Minimap: {
     size: 400,

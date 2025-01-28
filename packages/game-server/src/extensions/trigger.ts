@@ -33,7 +33,7 @@ export default class Triggerable implements Extension {
     const positionable = this.self.getExt(Positionable);
     const entities = this.self
       .getEntityManager()
-      .getNearbyEntities(positionable.getCenterPosition(), undefined, this.filter);
+      .getNearbyEntities(positionable.getCenterPosition(), this.size.x / 2, this.filter);
 
     for (const entity of entities) {
       if (!entity.hasExt(Collidable)) continue;

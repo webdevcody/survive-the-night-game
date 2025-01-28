@@ -253,7 +253,12 @@ export class EntityManager implements IEntityManager {
   }
 
   getNearbyEntities(position: Vector2, radius: number = 64, filter?: EntityType[]): Entity[] {
-    return this.entityFinder?.getNearbyEntities(position, radius, filter) ?? [];
+    const entities = this.entityFinder?.getNearbyEntities(position, radius, filter) ?? [];
+    return entities.filter((entity) => {
+      if (!entity.hasExt(Positionable)) return false;
+      const entityPosition = entity.getExt(Positionable).getPosition();
+      return position.distance(entityPosition) <= radius;
+    });
   }
 
   getPlayerEntities(): Player[] {
