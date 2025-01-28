@@ -169,10 +169,7 @@ export class GameServer {
     this.handleDayNightCycle(deltaTime);
     this.handleIfGameOver();
 
-    // cleanup TODO: 6.282ms, make this faster
-    // this.performanceTracker.trackStart("pruneEntities");
     this.entityManager.pruneEntities();
-    // this.performadnceTracker.trackEnd("pruneEntities");
 
     // BEFORE REFACTORING
     // {

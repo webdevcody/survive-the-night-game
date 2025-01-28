@@ -137,10 +137,10 @@ export class EntityManager implements IEntityManager {
     return this.dynamicEntities;
   }
 
-  public createEntityFromItem(item: InventoryItem): Entity {
+  public createEntityFromItem(item: InventoryItem): Entity | null {
     const constructor = this.itemConstructors.get(item.itemType);
     if (!constructor) {
-      throw new Error(`Unknown item type: '${item.itemType}'`);
+      return null;
     }
 
     return new (constructor as EntityConstructor)(this.getGameManagers(), item.state);
@@ -171,6 +171,7 @@ export class EntityManager implements IEntityManager {
   }
 
   markEntityForRemoval(entity: Entity, expiration = 0) {
+    entity.setMarkedForRemoval(true);
     this.entitiesToRemove.push({
       id: entity.getId(),
       expiration: Date.now() + expiration,
@@ -197,27 +198,18 @@ export class EntityManager implements IEntityManager {
       return;
     }
 
-    for (let i = this.entities.length - 1; i >= 0; i--) {
-      const entity = this.entities[i];
+    for (let i = 0; i < this.entitiesToRemove.length; i++) {
+      const entityToPrune = this.entitiesToRemove[i];
+      const entity = this.getEntityById(entityToPrune.id);
+      if (!entity) continue;
 
-      const removeRecordIndex = this.entitiesToRemove.findLastIndex(
-        (it) => it.id === entity.getId()
-      );
-
-      if (removeRecordIndex === -1) {
+      if (now < entityToPrune.expiration) {
         continue;
       }
 
-      const removeRecord = this.entitiesToRemove[removeRecordIndex];
-
-      if (now < removeRecord.expiration) {
-        continue;
-      }
-
-      // Track entity removal before removing it
       this.entityStateTracker.trackRemoval(entity.getId());
-      this.entities.splice(i, 1);
-      this.entitiesToRemove.splice(removeRecordIndex, 1);
+      const entityIndex = this.dynamicEntities.findIndex((it) => it.getId() === entity.getId());
+      this.dynamicEntities.splice(entityIndex, 1);
 
       if (entity.getType() === Entities.PLAYER) {
         const playerIndex = this.players.findIndex((player) => player.getId() === entity.getId());
@@ -366,6 +358,10 @@ export class EntityManager implements IEntityManager {
    */
   getIntersectingCollidableEntity(sourceEntity: Entity, ignoreTypes?: EntityType[]): Entity | null {
     if (!this.entityFinder) {
+      return null;
+    }
+
+    if (!sourceEntity.hasExt(Collidable)) {
       return null;
     }
 

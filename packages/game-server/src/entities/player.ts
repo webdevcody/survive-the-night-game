@@ -359,6 +359,8 @@ export class Player extends Entity {
       if (item) {
         const entity = this.getEntityManager().createEntityFromItem(item);
 
+        if (!entity) return;
+
         const carryable = entity.getExt(Carryable);
         carryable.setItemState({
           count: item.state?.count || 0,
@@ -408,6 +410,7 @@ export class Player extends Entity {
 
       if (item) {
         const entity = this.getEntityManager().createEntityFromItem(item);
+        if (!entity) return;
 
         if (entity.hasExt(Consumable)) {
           entity.getExt(Consumable).consume(this.getId(), itemIndex);

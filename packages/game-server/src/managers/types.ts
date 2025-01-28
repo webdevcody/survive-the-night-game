@@ -11,7 +11,7 @@ export interface IEntityManager {
   addEntity(entity: IEntity): void;
   markEntityForRemoval(entity: IEntity): void;
   removeEntity(entityId: string): void;
-  createEntityFromItem(item: InventoryItem): IEntity;
+  createEntityFromItem(item: InventoryItem): IEntity | null;
   isColliding(entity: IEntity, IEntityTypes?: EntityType[]): IEntity | null;
   getClosestAlivePlayer(entity: IEntity): IEntity | null;
   getEntityById(id: string): IEntity | null;

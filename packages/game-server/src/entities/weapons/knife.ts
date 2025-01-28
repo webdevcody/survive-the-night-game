@@ -8,6 +8,7 @@ import Vector2 from "@/util/vector2";
 import Positionable from "@/extensions/positionable";
 import { knockBack } from "./helpers";
 import { Player } from "@/entities/player";
+import { Entities, Zombies } from "@/constants";
 
 export class Knife extends Weapon {
   private static readonly ATTACK_RANGE = 24;
@@ -26,7 +27,8 @@ export class Knife extends Weapon {
   public attack(playerId: string, position: Vector2, facing: Direction): void {
     const nearbyEnemies = this.getEntityManager().getNearbyEnemies(
       position,
-      Knife.ATTACK_RANGE + 24
+      Knife.ATTACK_RANGE + 24,
+      [...Zombies, Entities.FIRE]
     );
 
     const targetZombie = nearbyEnemies.find((entity) => {
