@@ -194,23 +194,39 @@ export class EntityManager implements IEntityManager {
   pruneEntities() {
     const now = Date.now();
 
-    if (this.entities.length === 0 || this.entitiesToRemove.length === 0) {
+    if (this.dynamicEntities.length === 0 || this.entitiesToRemove.length === 0) {
       return;
     }
 
-    for (let i = 0; i < this.entitiesToRemove.length; i++) {
-      const entityToPrune = this.entitiesToRemove[i];
-      const entity = this.getEntityById(entityToPrune.id);
-      if (!entity) continue;
+    // First loop through dynamic entities since they're more likely to be removed
+    for (let i = this.dynamicEntities.length - 1; i >= 0; i--) {
+      const entity = this.dynamicEntities[i];
+      const removeRecordIndex = this.entitiesToRemove.findLastIndex(
+        (it) => it.id === entity.getId()
+      );
 
-      if (now < entityToPrune.expiration) {
+      if (removeRecordIndex === -1) {
         continue;
       }
 
-      this.entityStateTracker.trackRemoval(entity.getId());
-      const entityIndex = this.dynamicEntities.findIndex((it) => it.getId() === entity.getId());
-      this.dynamicEntities.splice(entityIndex, 1);
+      const removeRecord = this.entitiesToRemove[removeRecordIndex];
+      if (now < removeRecord.expiration) {
+        continue;
+      }
 
+      // Track entity removal before removing it
+      this.entityStateTracker.trackRemoval(entity.getId());
+
+      // Remove from dynamicEntities
+      this.dynamicEntities.splice(i, 1);
+
+      // Remove from main entities array
+      const entityIndex = this.entities.findIndex((e) => e.getId() === entity.getId());
+      if (entityIndex !== -1) {
+        this.entities.splice(entityIndex, 1);
+      }
+
+      // Remove from players array if it's a player
       if (entity.getType() === Entities.PLAYER) {
         const playerIndex = this.players.findIndex((player) => player.getId() === entity.getId());
         if (playerIndex !== -1) {
@@ -218,12 +234,11 @@ export class EntityManager implements IEntityManager {
         }
       }
 
-      const isDynamicEntity = !STATIC_ENTITIES.includes(entity.getType());
-      if (isDynamicEntity) {
-        this.dynamicEntities.splice(i, 1);
-      }
+      // Remove from entitiesToRemove
+      this.entitiesToRemove.splice(removeRecordIndex, 1);
     }
 
+    // Clean up expired entries from entitiesToRemove
     this.entitiesToRemove = this.entitiesToRemove.filter((it) => now < it.expiration);
   }
 
