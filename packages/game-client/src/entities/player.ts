@@ -4,10 +4,8 @@ import {
   ClientPositionable,
   ClientMovable,
   ClientIgnitable,
-  ClientInteractive,
 } from "@/extensions";
-import { ClientEntityBase } from "@/extensions/client-entity";
-import { ImageLoader, getItemAssetKey, Asset } from "@/managers/asset";
+import { ImageLoader, getItemAssetKey } from "@/managers/asset";
 import { GameState } from "@/state";
 import { debugDrawHitbox, drawCenterPositionWithLabel } from "@/util/debug";
 import { createFlashEffect } from "@/util/render";
@@ -19,10 +17,11 @@ import { InventoryItem } from "../../../game-shared/src/util/inventory";
 import { roundVector2 } from "../../../game-shared/src/util/physics";
 import { RawEntity } from "@shared/types/entity";
 import { IClientEntity, Renderable, getFrameIndex, drawHealthBar } from "@/entities/util";
-import { MAX_PLAYER_HEALTH } from "@shared/constants/constants";
+import { KNIFE_ATTACK_RANGE, MAX_PLAYER_HEALTH } from "@shared/constants/constants";
 import Vector2 from "@shared/util/vector2";
 import { ClientEntity } from "./client-entity";
 import { SKIN_TYPES, SkinType } from "@shared/commands/commands";
+import { DEBUG_SHOW_ATTACK_RANGE } from "@shared/debug";
 
 export class PlayerClient extends ClientEntity implements IClientEntity, Renderable {
   private readonly ARROW_LENGTH = 20;
@@ -260,6 +259,10 @@ export class PlayerClient extends ClientEntity implements IClientEntity, Rendera
     const { facing } = this.input;
     const image = this.imageLoader.getWithDirection(getItemAssetKey(this.activeItem), facing);
     ctx.drawImage(image, renderPosition.x + 2, renderPosition.y);
+
+    if (this.activeItem.itemType === "knife") {
+      this.debugRenderAttackRange(ctx, this.getCenterPosition(), KNIFE_ATTACK_RANGE);
+    }
   }
 
   public getKills(): number {

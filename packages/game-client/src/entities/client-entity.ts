@@ -6,6 +6,8 @@ import { renderInteractionText } from "@/util/interaction-text";
 import { ClientEntityBase } from "@/extensions/client-entity";
 import { ImageLoader } from "@/managers/asset";
 import { ClientInteractive, ClientPositionable } from "@/extensions";
+import Vector2 from "@shared/util/vector2";
+import { DEBUG_SHOW_ATTACK_RANGE } from "@shared/debug";
 
 export abstract class ClientEntity extends ClientEntityBase implements Renderable {
   constructor(data: RawEntity, imageLoader: ImageLoader) {
@@ -37,5 +39,21 @@ export abstract class ClientEntity extends ClientEntityBase implements Renderabl
     if (this.hasExt(ClientInteractive)) {
       this.renderInteractionText(ctx, gameState);
     }
+  }
+
+  public debugRenderAttackRange(
+    ctx: CanvasRenderingContext2D,
+    center: Vector2,
+    attackRange: number
+  ): void {
+    if (!DEBUG_SHOW_ATTACK_RANGE) {
+      return;
+    }
+    ctx.save();
+    ctx.strokeStyle = "rgba(255, 0, 0, 0.3)";
+    ctx.beginPath();
+    ctx.arc(center.x, center.y, attackRange, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.restore();
   }
 }

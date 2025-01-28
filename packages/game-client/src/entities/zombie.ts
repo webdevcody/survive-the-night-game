@@ -19,7 +19,8 @@ import { Z_INDEX } from "@shared/map";
 import { IClientEntity, Renderable, getFrameIndex, drawHealthBar } from "@/entities/util";
 import { getHitboxWithPadding } from "../../../game-shared/src/util/hitbox";
 import Vector2 from "@shared/util/vector2";
-import { DEBUG_SHOW_WAYPOINTS } from "@shared/debug";
+import { DEBUG_SHOW_ATTACK_RANGE, DEBUG_SHOW_WAYPOINTS } from "@shared/debug";
+import { ZOMBIE_ATTACK_RADIUS } from "@shared/constants";
 
 export class ZombieClient extends ClientEntityBase implements IClientEntity, Renderable {
   private lastRenderPosition = { x: 0, y: 0 };
@@ -98,6 +99,16 @@ export class ZombieClient extends ClientEntityBase implements IClientEntity, Ren
     isDead
       ? this.renderZombieDead(gameState, ctx, renderPosition)
       : this.renderZombieAlive(gameState, ctx, renderPosition);
+
+    if (DEBUG_SHOW_ATTACK_RANGE) {
+      ctx.save();
+      ctx.strokeStyle = "rgba(255, 0, 0, 0.3)";
+      ctx.beginPath();
+      const center = this.getCenterPosition();
+      ctx.arc(center.x, center.y, ZOMBIE_ATTACK_RADIUS, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.restore();
+    }
 
     // Render debug waypoint if debug flag is enabled
     if (DEBUG_SHOW_WAYPOINTS && this.debugWaypoint) {
