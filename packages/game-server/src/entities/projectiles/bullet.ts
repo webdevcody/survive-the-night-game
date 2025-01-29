@@ -6,7 +6,7 @@ import Movable from "@/extensions/movable";
 import Positionable from "@/extensions/positionable";
 import Updatable from "@/extensions/updatable";
 import { IGameManagers } from "@/managers/types";
-import { Entities } from "@/constants";
+import { BULLET_SIZE, Entities } from "@/constants";
 import { Direction, normalizeDirection } from "@/util/direction";
 import { Entity } from "@/entities/entity";
 import { normalizeVector, distance } from "@/util/physics";
@@ -17,12 +17,9 @@ import { Line, Rectangle, Circle } from "@/util/shape";
 import { Player } from "@/entities/player";
 
 const MAX_TRAVEL_DISTANCE = 400;
-export const BULLET_SPEED = 100;
-export const BULLET_SIZE = 8; // Increased from 4 to 8 for more forgiving hit detection
-
 export class Bullet extends Entity {
   private traveledDistance: number = 0;
-  private static readonly BULLET_SPEED = 500;
+  private static readonly BULLET_SPEED = 400;
   private lastPosition: Vector2;
   private shooterId: string = "";
 
@@ -97,13 +94,28 @@ export class Bullet extends Entity {
 
   private updateBullet(deltaTime: number) {
     const currentPosition = this.getPosition();
-    this.updatePositions(deltaTime);
-    const newPosition = this.getPosition();
+
+    // Break down the movement into smaller steps to prevent tunneling
+    const numSteps = Math.ceil((Bullet.BULLET_SPEED * deltaTime) / 10); // One step per 10 units of movement
+    const stepDelta = deltaTime / numSteps;
+
+    let lastStepPosition = currentPosition;
+    let hitSomething = false;
+
+    for (let i = 0; i < numSteps && !hitSomething; i++) {
+      // Update position for this step
+      this.updatePositions(stepDelta);
+      const newStepPosition = this.getPosition();
+
+      // Check for collisions in this step
+      hitSomething = this.handleIntersections(lastStepPosition, newStepPosition);
+
+      // Update for next step
+      lastStepPosition = newStepPosition;
+    }
 
     this.handleMaxDistanceLogic(currentPosition);
-    this.handleIntersections(currentPosition, newPosition);
-
-    this.lastPosition = newPosition;
+    this.lastPosition = this.getPosition();
   }
 
   private updatePositions(deltaTime: number) {
@@ -119,14 +131,20 @@ export class Bullet extends Entity {
     );
   }
 
-  private handleIntersections(fromPosition: Vector2, toPosition: Vector2) {
-    const bulletPath = new Line(fromPosition, toPosition);
+  private handleIntersections(fromPosition: Vector2, toPosition: Vector2): boolean {
+    // Convert corner positions to center positions for more accurate collision
+    const bulletCenterOffset = new Vector2(BULLET_SIZE / 2, BULLET_SIZE / 2);
+    const fromCenter = fromPosition.add(bulletCenterOffset);
+    const toCenter = toPosition.add(bulletCenterOffset);
+
+    const bulletPath = new Line(fromCenter, toCenter);
+    const bulletRadius = BULLET_SIZE / 2;
 
     // Calculate a bounding box that encompasses the bullet's path plus its size
-    const minX = Math.min(fromPosition.x, toPosition.x) - BULLET_SIZE / 2;
-    const minY = Math.min(fromPosition.y, toPosition.y) - BULLET_SIZE / 2;
-    const maxX = Math.max(fromPosition.x, toPosition.x) + BULLET_SIZE / 2;
-    const maxY = Math.max(fromPosition.y, toPosition.y) + BULLET_SIZE / 2;
+    const minX = Math.min(fromCenter.x, toCenter.x) - bulletRadius;
+    const minY = Math.min(fromCenter.y, toCenter.y) - bulletRadius;
+    const maxX = Math.max(fromCenter.x, toCenter.x) + bulletRadius;
+    const maxY = Math.max(fromCenter.y, toCenter.y) + bulletRadius;
 
     const boundingBox = new Rectangle(
       new Vector2(minX, minY),
@@ -140,10 +158,46 @@ export class Bullet extends Entity {
       .getNearbyIntersectingDestructableEntities(this)
       .filter(isEnemy);
 
+    // Sort enemies by distance to bullet start position to ensure we hit the closest enemy first
+    enemies.sort((a, b) => {
+      const distA = distance(fromCenter, a.getExt(Positionable).getPosition());
+      const distB = distance(fromCenter, b.getExt(Positionable).getPosition());
+      return distA - distB;
+    });
+
     for (const enemy of enemies) {
       const hitbox = enemy.getExt(Destructible).getDamageBox();
+      let collision = false;
 
-      if (bulletPath.intersects(hitbox)) {
+      // Expand the rectangle by the bullet's radius to account for the bullet's size
+      const expandedRect = new Rectangle(
+        new Vector2(hitbox.position.x - bulletRadius, hitbox.position.y - bulletRadius),
+        new Vector2(hitbox.size.x + bulletRadius * 2, hitbox.size.y + bulletRadius * 2)
+      );
+
+      // Check if either the bullet path intersects the expanded rectangle
+      collision = bulletPath.intersects(expandedRect);
+
+      // Additional check for edge case: if either endpoint is inside or very close to the rectangle
+      if (!collision) {
+        const isPointNearRect = (point: Vector2) => {
+          const dx = Math.max(
+            hitbox.position.x - point.x,
+            0,
+            point.x - (hitbox.position.x + hitbox.size.x)
+          );
+          const dy = Math.max(
+            hitbox.position.y - point.y,
+            0,
+            point.y - (hitbox.position.y + hitbox.size.y)
+          );
+          return Math.sqrt(dx * dx + dy * dy) <= bulletRadius;
+        };
+
+        collision = isPointNearRect(fromCenter) || isPointNearRect(toCenter);
+      }
+
+      if (collision) {
         this.getEntityManager().markEntityForRemoval(this);
         const destructible = enemy.getExt(Destructible);
         const wasAlive = !destructible.isDead();
@@ -156,9 +210,11 @@ export class Bullet extends Entity {
             shooter.incrementKills();
           }
         }
-        return;
+        return true;
       }
     }
+
+    return false;
   }
 
   private handleMaxDistanceLogic(lastPosition: Vector2) {

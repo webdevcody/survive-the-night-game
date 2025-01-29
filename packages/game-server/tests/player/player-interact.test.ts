@@ -17,6 +17,8 @@ beforeEach(() => {
   player.getExt(Positionable).setPosition(new Vector2(100, 100));
   gameManagers.getEntityManager().addEntity(player);
 
+  player.clearInventory();
+
   wall = new Wall(gameManagers);
   gameManagers.getEntityManager().addEntity(wall);
 });

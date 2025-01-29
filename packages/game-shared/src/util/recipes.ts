@@ -1,3 +1,4 @@
+import { SpikeRecipe } from "@/recipes/spike-recipe";
 import { BandageRecipe } from "../recipes/bandage-recipe";
 import { WallRecipe } from "../recipes/wall-recipe";
 import { ItemType, InventoryItem } from "./inventory";
@@ -5,9 +6,10 @@ import { ItemType, InventoryItem } from "./inventory";
 export enum RecipeType {
   Bandage = "bandage",
   Wall = "wall",
+  Spike = "spike",
 }
 
-export const recipes: Recipe[] = [new BandageRecipe(), new WallRecipe()];
+export const recipes: Recipe[] = [new BandageRecipe(), new WallRecipe(), new SpikeRecipe()];
 
 export interface RecipeComponent {
   type: ItemType;

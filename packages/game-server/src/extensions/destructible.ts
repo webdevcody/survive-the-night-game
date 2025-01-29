@@ -13,6 +13,7 @@ export default class Destructible implements Extension {
   private self: IEntity;
   private health = 0;
   private maxHealth = 0;
+  private offset = new Vector2(0, 0);
   private deathHandler: DestructibleDeathHandler | null = null;
   private onDamagedHandler: DestructibleDamagedHandler | null = null;
 
@@ -22,6 +23,11 @@ export default class Destructible implements Extension {
 
   public onDeath(deathHandler: DestructibleDeathHandler): this {
     this.deathHandler = deathHandler;
+    return this;
+  }
+
+  public setOffset(offset: Vector2): this {
+    this.offset = offset;
     return this;
   }
 
@@ -63,7 +69,7 @@ export default class Destructible implements Extension {
     const position = positionable.getPosition();
     const size = positionable.getSize();
 
-    return new Rectangle(new Vector2(position.x, position.y), size);
+    return new Rectangle(new Vector2(position.x + this.offset.x, position.y + this.offset.y), size);
   }
 
   public heal(amount: number): void {

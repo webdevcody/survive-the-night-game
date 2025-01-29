@@ -24,7 +24,7 @@ beforeEach(() => {
 });
 
 test("a bullet should hurt a zombie during collisions, and removes itself", () => {
-  gameManagers.getEntityManager().update(0);
+  gameManagers.getEntityManager().update(0.03);
 
   const destructible = zombie.getExt(Destructible);
   expect(destructible.getHealth()).toBe(Zombie.MAX_HEALTH - 1);
@@ -38,7 +38,7 @@ test("a bullet should hurt a zombie during collisions, and removes itself", () =
 test("a bullet should kill a zombie if the zombie only has 1 hp left", () => {
   zombie.getExt(Destructible).setHealth(1);
 
-  gameManagers.getEntityManager().update(0);
+  gameManagers.getEntityManager().update(0.03);
 
   const destructible = zombie.getExt(Destructible);
   expect(destructible.isDead()).toBe(true);

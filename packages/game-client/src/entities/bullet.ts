@@ -7,9 +7,11 @@ import { ClientPositionable } from "@/extensions/positionable";
 import { Z_INDEX } from "@shared/map";
 import Vector2 from "@shared/util/vector2";
 import { roundVector2 } from "@shared/util/physics";
+import { debugDrawHitbox } from "@/util/debug";
+import { ClientCollidable } from "@/extensions";
+import { BULLET_SIZE } from "@shared/constants";
 
 export class BulletClient extends ClientEntityBase implements IClientEntity, Renderable {
-  private readonly BULLET_SIZE = 4;
   private lastRenderPosition: Vector2;
 
   constructor(data: RawEntity, assetManager: AssetManager) {
@@ -43,9 +45,9 @@ export class BulletClient extends ClientEntityBase implements IClientEntity, Ren
     ctx.beginPath();
     ctx.fillStyle = "yellow";
     ctx.arc(
-      renderPosition.x + this.BULLET_SIZE / 2,
-      renderPosition.y + this.BULLET_SIZE / 2,
-      this.BULLET_SIZE / 2,
+      renderPosition.x + BULLET_SIZE / 2,
+      renderPosition.y + BULLET_SIZE / 2,
+      BULLET_SIZE / 2,
       0,
       Math.PI * 2
     );
@@ -55,12 +57,14 @@ export class BulletClient extends ClientEntityBase implements IClientEntity, Ren
     ctx.beginPath();
     ctx.fillStyle = "red";
     ctx.arc(
-      renderPosition.x + this.BULLET_SIZE / 2,
-      renderPosition.y + this.BULLET_SIZE / 2,
-      this.BULLET_SIZE / 4,
+      renderPosition.x + BULLET_SIZE / 2,
+      renderPosition.y + BULLET_SIZE / 2,
+      BULLET_SIZE / 4,
       0,
       Math.PI * 2
     );
     ctx.fill();
+
+    debugDrawHitbox(ctx, this.getExt(ClientCollidable).getHitBox(), "red");
   }
 }

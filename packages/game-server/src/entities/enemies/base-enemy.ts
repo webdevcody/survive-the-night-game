@@ -67,6 +67,7 @@ export abstract class BaseEnemy extends Entity {
         .setMaxHealth(maxHealth)
         .setHealth(maxHealth)
         .onDamaged(this.onDamaged.bind(this))
+        .setOffset(new Vector2(4, 4))
         .onDeath(this.onDeath.bind(this)),
       new Groupable(this, "enemy"),
       new Positionable(this).setSize(size),

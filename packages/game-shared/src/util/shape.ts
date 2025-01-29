@@ -31,6 +31,14 @@ class Line extends Shape {
     this.end = end;
   }
 
+  getClosestPoint(point: Vector2): Vector2 {
+    const lineVector = this.end.sub(this.start);
+    const pointVector = point.sub(this.start);
+    const lineLengthSquared = lineVector.distanceSquared(new Vector2(0, 0));
+    const t = Math.max(0, Math.min(1, pointVector.dot(lineVector) / lineLengthSquared));
+    return this.start.add(lineVector.mul(t));
+  }
+
   intersects(other: Shape): boolean {
     if (other instanceof Line) {
       const d1 = this.end.sub(this.start);
@@ -64,7 +72,7 @@ class Line extends Shape {
 }
 
 class Circle extends Shape {
-  private readonly radius: number;
+  readonly radius: number;
 
   constructor(position: Vector2, r: number) {
     super(position);

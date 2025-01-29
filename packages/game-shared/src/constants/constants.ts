@@ -11,3 +11,5 @@ export const WALL_MAX_HEALTH = 10;
 export const KNIFE_ATTACK_RANGE = 26;
 
 export const ZOMBIE_ATTACK_RADIUS = 18;
+
+export const BULLET_SIZE = 4;

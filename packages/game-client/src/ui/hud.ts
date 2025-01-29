@@ -45,7 +45,7 @@ const HUD_SETTINGS = {
       top: 20,
     },
     title: "TODO (dev log)",
-    features: ["- snare", "- Spitter Zombies"],
+    features: ["- bear trap", "- more biomes", "- crafting spikes"],
   },
   Minimap: {
     size: 400,
