@@ -23,6 +23,7 @@ import { Landmine } from "@/entities/items/landmine";
 import { Spikes } from "@/entities/items/spikes";
 import { Torch } from "@/entities/items/torch";
 import { Wall } from "@/entities/items/wall";
+import { SpitterZombie } from "@/entities/enemies/spitter-zombie";
 
 const WEAPON_SPAWN_CHANCE = {
   // Weapons
@@ -169,6 +170,7 @@ export class MapManager implements IMapManager {
       fast: 0,
       big: 0,
       bat: 0,
+      spitter: 0,
     };
 
     const totalSize = BIOME_SIZE * MAP_SIZE;
@@ -183,7 +185,8 @@ export class MapManager implements IMapManager {
       spawnedCount.regular < zombieDistribution.regular ||
       spawnedCount.fast < zombieDistribution.fast ||
       spawnedCount.big < zombieDistribution.big ||
-      spawnedCount.bat < zombieDistribution.bat
+      spawnedCount.bat < zombieDistribution.bat ||
+      spawnedCount.spitter < zombieDistribution.spitter
     ) {
       if (attempts++ > maxAttempts) break;
 
@@ -223,6 +226,11 @@ export class MapManager implements IMapManager {
         zombie.setPosition(new Vector2(x * TILE_SIZE, y * TILE_SIZE));
         this.getEntityManager().addEntity(zombie);
         spawnedCount.regular++;
+      } else if (spawnedCount.spitter < zombieDistribution.spitter) {
+        const zombie = new SpitterZombie(this.getGameManagers());
+        zombie.setPosition(new Vector2(x * TILE_SIZE, y * TILE_SIZE));
+        this.getEntityManager().addEntity(zombie);
+        spawnedCount.spitter++;
       }
     }
   }

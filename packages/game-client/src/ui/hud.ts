@@ -12,6 +12,9 @@ import { TILE_IDS } from "@shared/map";
 import { ChatWidget } from "./chat-widget";
 import { ClientDestructible } from "@/extensions/destructible";
 import { Zombies, VERSION } from "@shared/constants";
+import { AcidProjectileClient } from "@/entities/acid-projectile";
+import { SpitterZombieClient } from "@/entities/spitter-zombie";
+import { BatZombieClient } from "@/entities/bat-zombie";
 
 const HUD_SETTINGS = {
   ControlsList: {
@@ -56,8 +59,15 @@ const HUD_SETTINGS = {
       wall: "white",
       item: "yellow",
       tree: "gray",
+      acid: "green",
+      bat: "blue",
+      spitter: "purple",
     },
     indicators: {
+      acid: {
+        shape: "circle",
+        size: 6,
+      },
       enemy: {
         shape: "circle",
         size: 6,
@@ -532,7 +542,9 @@ export class Hud {
       if (
         entity instanceof ZombieClient ||
         entity instanceof BigZombieClient ||
-        entity instanceof FastZombieClient
+        entity instanceof FastZombieClient ||
+        entity instanceof BatZombieClient ||
+        entity instanceof SpitterZombieClient
       ) {
         color = settings.colors.enemy;
         indicator = settings.indicators.enemy;
@@ -545,6 +557,9 @@ export class Hud {
       } else if (entity.hasExt(ClientCarryable)) {
         color = settings.colors.item;
         indicator = settings.indicators.item;
+      } else if (entity instanceof AcidProjectileClient) {
+        color = settings.colors.acid;
+        indicator = settings.indicators.acid;
       }
 
       if (color && indicator) {

@@ -6,6 +6,7 @@ interface ZombieDistribution {
   fast: number;
   big: number;
   bat: number;
+  spitter: number;
 }
 
 interface ZombieType {
@@ -21,10 +22,11 @@ const MAX_TOTAL_ZOMBIES = 200;
 const BASE_ZOMBIES = 5;
 
 const ZOMBIE_TYPES: ZombieType[] = [
-  { type: "regular", ratio: 0.55, minNight: 1 },
-  { type: "fast", ratio: 0.2, minNight: 3 },
-  { type: "big", ratio: 0.1, minNight: 5 },
-  { type: "bat", ratio: 0.15, minNight: 7 },
+  { type: "regular", ratio: 0.4, minNight: 1 },
+  { type: "fast", ratio: 0.2, minNight: 2 },
+  { type: "big", ratio: 0.15, minNight: 3 },
+  { type: "bat", ratio: 0.15, minNight: 4 },
+  { type: "spitter", ratio: 0.1, minNight: 3 },
 ];
 
 export class GameMaster {
@@ -59,6 +61,7 @@ export class GameMaster {
       fast: 0,
       big: 0,
       bat: 0,
+      spitter: 0,
     };
 
     normalizedTypes.forEach((type) => {

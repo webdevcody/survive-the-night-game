@@ -151,6 +151,14 @@ const swingDownFrameOrigins = getFrameOrigins({
   sheet: "items",
 });
 
+const spitterZombieFrames = createCharacterFrames({
+  startX: 0,
+  downY: 160,
+  leftY: 176,
+  upY: 144,
+  totalFrames: 4,
+});
+
 const bigZombieDownFrameOrigins = getFrameOrigins({
   startX: 0,
   startY: 64,
@@ -233,6 +241,7 @@ export const assetsMap = {
   grenade: assetMap({ x: 64, y: 0, sheet: "items" }),
   cloth: assetMap({ x: 51, y: 228 }),
   bullet: assetMap({ x: 68, y: 171 }),
+  acid_projectile: assetMap({ x: 96, y: 171 }),
   knife: assetMap({ x: 17, y: 171 }),
   knife_facing_down: assetMap({ x: 51, y: 171 }),
   knife_facing_left: assetMap({ x: 17, y: 171, flipX: true }),
@@ -299,6 +308,7 @@ export const assetsMap = {
   big_zombie_facing_up_0: assetMap(bigZombieDownFrameOrigins[0]),
   big_zombie_facing_up_1: assetMap(bigZombieDownFrameOrigins[1]),
   big_zombie_facing_up_2: assetMap(bigZombieDownFrameOrigins[2]),
+  ...createCharacterAssets("spitter_zombie", spitterZombieFrames, 48, 240),
   ...createCharacterAssets("bat_zombie", batFrames, 48, 240),
   ...createCharacterAssets("player", playerFrames),
   ...createCharacterAssets("fast_zombie", zombieFastFrames, 289, 19),
