@@ -1,16 +1,110 @@
 import { IGameManagers } from "@/managers/types";
 import { ZombieDeathEvent } from "@shared/events/server-sent/zombie-death-event";
-import { ZombieAttackedEvent } from "@shared/events/server-sent/zombie-attacked-event";
 import { Entities, ZOMBIE_ATTACK_RADIUS } from "@/constants";
-import { IEntity } from "@/entities/types";
 import Vector2 from "@/util/vector2";
 import { ZombieHurtEvent } from "@/events/server-sent/zombie-hurt-event";
-import { BaseEnemy } from "./base-enemy";
+import { AttackStrategy, BaseEnemy, MovementStrategy } from "./base-enemy";
+import { pathTowards, velocityTowards } from "@/util/physics";
+import Positionable from "@/extensions/positionable";
+import Movable from "@/extensions/movable";
 import Destructible from "@/extensions/destructible";
+import { ZombieAttackedEvent } from "@shared/events/server-sent/zombie-attacked-event";
+import { Cooldown } from "@/entities/util/cooldown";
+import { IEntity } from "@/entities/types";
+
+export class MeleeMovementStrategy implements MovementStrategy {
+  private pathRecalculationTimer: number = 0;
+  private static readonly PATH_RECALCULATION_INTERVAL = 1;
+  private currentWaypoint: Vector2 | null = null;
+
+  update(zombie: BaseEnemy, deltaTime: number): boolean {
+    this.pathRecalculationTimer += deltaTime;
+    const player = zombie.getEntityManager().getClosestAlivePlayer(zombie);
+    if (!player) return false;
+
+    const playerPos = player.getExt(Positionable).getCenterPosition();
+    const zombiePos = zombie.getCenterPosition();
+
+    // If we don't have a waypoint or we've reached the current one, get a new one
+    const needNewWaypoint = !this.currentWaypoint || zombiePos.distance(this.currentWaypoint) <= 1;
+
+    // Update path periodically or when we need a new waypoint
+    if (
+      needNewWaypoint ||
+      this.pathRecalculationTimer >= MeleeMovementStrategy.PATH_RECALCULATION_INTERVAL
+    ) {
+      this.currentWaypoint = pathTowards(
+        zombiePos,
+        playerPos,
+        zombie.getGameManagers().getMapManager().getMap()
+      );
+      this.pathRecalculationTimer = 0;
+    }
+
+    // If we have a waypoint, move towards it
+    if (this.currentWaypoint) {
+      const velocity = velocityTowards(zombiePos, this.currentWaypoint);
+      zombie.getExt(Movable).setVelocity(velocity.mul(zombie.getSpeed()));
+    } else {
+      // If no waypoint found, stop moving
+      zombie.getExt(Movable).setVelocity(new Vector2(0, 0));
+    }
+
+    return false; // Let base enemy handle collision movement
+  }
+}
+
+export class MeleeAttackStrategy implements AttackStrategy {
+  onEntityDamaged?: (entity: IEntity) => void;
+
+  update(zombie: BaseEnemy, deltaTime: number): void {
+    if (!zombie.getAttackCooldown().isReady()) return;
+
+    // Get all nearby entities that can be attacked
+    const nearbyEntities = zombie
+      .getEntityManager()
+      .getNearbyEntities(zombie.getCenterPosition(), ZOMBIE_ATTACK_RADIUS, [
+        Entities.WALL,
+        Entities.PLAYER,
+      ]);
+
+    // Find the closest entity to attack
+    let closestEntity = null;
+    let closestDistance = Infinity;
+
+    for (const entity of nearbyEntities) {
+      if (!entity.hasExt(Destructible) || !entity.hasExt(Positionable)) continue;
+
+      const distance = zombie
+        .getCenterPosition()
+        .distance(entity.getExt(Positionable).getCenterPosition());
+      if (distance < closestDistance) {
+        closestDistance = distance;
+        closestEntity = entity;
+      }
+    }
+
+    // Attack the closest entity
+    if (closestEntity && closestEntity.hasExt(Destructible)) {
+      closestEntity.getExt(Destructible).damage(zombie.getAttackDamage());
+
+      // Call the damage hook if provided
+      if (this.onEntityDamaged) {
+        this.onEntityDamaged(closestEntity);
+      }
+
+      zombie
+        .getGameManagers()
+        .getBroadcaster()
+        .broadcastEvent(new ZombieAttackedEvent(zombie.getId()));
+      zombie.getAttackCooldown().reset();
+    }
+  }
+}
 
 export class Zombie extends BaseEnemy {
   public static readonly Size = new Vector2(16, 16);
-  private static readonly ZOMBIE_SPEED = 35;
+  public static readonly ZOMBIE_SPEED = 35;
   private static readonly ATTACK_DAMAGE = 1;
   private static readonly ATTACK_COOLDOWN = 1;
   public static readonly MAX_HEALTH = 3;
@@ -24,31 +118,20 @@ export class Zombie extends BaseEnemy {
       Zombie.MAX_HEALTH,
       Zombie.ATTACK_COOLDOWN,
       Zombie.ZOMBIE_SPEED,
-      Zombie.DROP_CHANCE
+      Zombie.DROP_CHANCE,
+      ZOMBIE_ATTACK_RADIUS,
+      Zombie.ATTACK_DAMAGE
     );
+
+    this.setMovementStrategy(new MeleeMovementStrategy());
+    this.setAttackStrategy(new MeleeAttackStrategy());
   }
 
-  onDamaged(): void {
-    this.getGameManagers().getBroadcaster().broadcastEvent(new ZombieHurtEvent(this.getId()));
+  getAttackCooldown(): Cooldown {
+    return this.attackCooldown;
   }
 
-  onDeath(): void {
-    super.onDeath();
-    this.getGameManagers().getBroadcaster().broadcastEvent(new ZombieDeathEvent(this.getId()));
-  }
-
-  protected attemptAttackEntity(entity: IEntity): boolean {
-    if (!this.attackCooldown.isReady()) return false;
-
-    const withinRange = this.withinAttackRange(entity, ZOMBIE_ATTACK_RADIUS);
-    if (!withinRange) return false;
-
-    if (entity.hasExt(Destructible)) {
-      entity.getExt(Destructible).damage(Zombie.ATTACK_DAMAGE);
-      this.getGameManagers().getBroadcaster().broadcastEvent(new ZombieAttackedEvent(this.getId()));
-    }
-
-    this.attackCooldown.reset();
-    return true;
+  getAttackDamage(): number {
+    return this.attackDamage;
   }
 }

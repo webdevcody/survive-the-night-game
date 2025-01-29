@@ -27,10 +27,10 @@ beforeEach(() => {
 
 describe("zombie wall interactions", () => {
   test.each([
-    ["north", new Vector2(100, 84), new Vector2(0, -1)],
-    ["south", new Vector2(100, 116), new Vector2(0, 1)],
-    ["east", new Vector2(116, 100), new Vector2(1, 0)],
-    ["west", new Vector2(84, 100), new Vector2(-1, 0)],
+    ["north", new Vector2(100, 82), new Vector2(0, -1)],
+    ["south", new Vector2(100, 118), new Vector2(0, 1)],
+    ["east", new Vector2(118, 100), new Vector2(1, 0)],
+    ["west", new Vector2(82, 100), new Vector2(-1, 0)],
     // ["north-west", new Vector2(84, 84), new Vector2(-1, -1)],
     // ["north-east", new Vector2(116, 84), new Vector2(1, -1)],
     // ["south-west", new Vector2(84, 116), new Vector2(-1, 1)],

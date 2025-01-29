@@ -17,7 +17,18 @@ import { LootEvent } from "@/events/server-sent/loot-event";
 import { Rectangle } from "@/util/shape";
 import Vector2 from "@/util/vector2";
 import { EntityType } from "@shared/types/entity";
-import { Player } from "@/entities/player";
+import { ZombieAttackedEvent } from "@/events/server-sent/zombie-attacked-event";
+import { ZombieDeathEvent } from "@/events/server-sent/zombie-death-event";
+import { ZombieHurtEvent } from "@/events/server-sent/zombie-hurt-event";
+
+export interface MovementStrategy {
+  // Return true if the strategy handled movement completely, false if it needs default movement handling
+  update(zombie: BaseEnemy, deltaTime: number): boolean;
+}
+
+export interface AttackStrategy {
+  update(zombie: BaseEnemy, deltaTime: number): void;
+}
 
 export abstract class BaseEnemy extends Entity {
   protected currentWaypoint: Vector2 | null = null;
@@ -27,6 +38,10 @@ export abstract class BaseEnemy extends Entity {
   protected static readonly PATH_RECALCULATION_INTERVAL = 1; // 1 second
   protected speed: number;
   protected entityType: EntityType;
+  protected attackRadius: number;
+  protected attackDamage: number;
+  private movementStrategy?: MovementStrategy;
+  private attackStrategy?: AttackStrategy;
 
   constructor(
     gameManagers: IGameManagers,
@@ -35,14 +50,17 @@ export abstract class BaseEnemy extends Entity {
     maxHealth: number,
     attackCooldownTime: number,
     speed: number,
-    dropChance: number = 0
+    dropChance: number = 0,
+    attackRadius: number = 0,
+    attackDamage: number = 0
   ) {
     super(gameManagers, entityType);
 
     this.speed = speed;
     this.entityType = entityType;
     this.attackCooldown = new Cooldown(attackCooldownTime);
-
+    this.attackRadius = attackRadius;
+    this.attackDamage = attackDamage;
     this.extensions = [
       new Inventory(this, gameManagers.getBroadcaster()).addRandomItem(dropChance),
       new Destructible(this)
@@ -58,7 +76,17 @@ export abstract class BaseEnemy extends Entity {
     ];
   }
 
-  abstract onDamaged(): void;
+  setMovementStrategy(strategy: MovementStrategy) {
+    this.movementStrategy = strategy;
+  }
+
+  setAttackStrategy(strategy: AttackStrategy) {
+    this.attackStrategy = strategy;
+  }
+
+  onDamaged(): void {
+    this.getGameManagers().getBroadcaster().broadcastEvent(new ZombieHurtEvent(this.getId()));
+  }
 
   getCenterPosition(): Vector2 {
     const positionable = this.getExt(Positionable);
@@ -77,6 +105,7 @@ export abstract class BaseEnemy extends Entity {
       new Interactive(this).onInteract(this.onLooted.bind(this)).setDisplayName("loot")
     );
     this.getExt(Collidable).setEnabled(false);
+    this.getGameManagers().getBroadcaster().broadcastEvent(new ZombieDeathEvent(this.getId()));
   }
 
   onLooted(): void {
@@ -131,12 +160,6 @@ export abstract class BaseEnemy extends Entity {
     return dx <= BaseEnemy.POSITION_THRESHOLD && dy <= BaseEnemy.POSITION_THRESHOLD;
   }
 
-  protected attackNearbyPlayers() {
-    const player = this.getEntityManager().getClosestAlivePlayer(this);
-    if (!player) return;
-    return this.attemptAttackEntity(player);
-  }
-
   protected updateEnemy(deltaTime: number): void {
     this.attackCooldown.update(deltaTime);
     this.pathRecalculationTimer += deltaTime;
@@ -146,79 +169,34 @@ export abstract class BaseEnemy extends Entity {
       return;
     }
 
-    const player = this.getEntityManager().getClosestAlivePlayer(this);
+    // Update movement strategy first
+    if (this.movementStrategy) {
+      // Let the strategy decide if it wants to handle movement completely
+      const handledMovement = this.movementStrategy.update(this, deltaTime);
 
-    // Get new waypoint when we reach the current one, don't have one, or we're stuck
-    if (
-      (this.isAtWaypoint() ||
-        this.pathRecalculationTimer >= BaseEnemy.PATH_RECALCULATION_INTERVAL) &&
-      player
-    ) {
-      this.currentWaypoint = pathTowards(
-        this.getCenterPosition(),
-        player.getExt(Positionable).getCenterPosition(),
-        this.getGameManagers().getMapManager().getMap()
-      );
-      this.pathRecalculationTimer = 0;
+      // If the strategy didn't handle movement completely, use default movement handling
+      if (!handledMovement) {
+        this.handleMovement(deltaTime);
+      }
     }
 
-    const movable = this.getExt(Movable);
-    const velocity = movable.getVelocity();
-
-    // Update velocity to move towards waypoint if we have one
-    if (this.currentWaypoint) {
-      const velocityVector = velocityTowards(this.getCenterPosition(), this.currentWaypoint);
-      velocity.x = velocityVector.x * this.speed;
-      velocity.y = velocityVector.y * this.speed;
-    } else {
-      velocity.x = 0;
-      velocity.y = 0;
-    }
-
-    movable.setVelocity(velocity);
-
-    this.handleMovement(deltaTime);
-    this.handleAttack();
-  }
-
-  protected handleAttack() {
-    if (!this.attackNearbyPlayers()) {
-      this.attackNearbyWalls();
+    // Finally handle attacks
+    if (this.attackStrategy) {
+      this.attackStrategy.update(this, deltaTime);
     }
   }
 
-  protected attackNearbyWalls() {
-    const nearbyWalls = this.getEntityManager().getNearbyEntities(
-      this.getCenterPosition(),
-      undefined,
-      [Entities.WALL]
-    ) as Wall[];
-
-    if (nearbyWalls.length > 0) {
-      const nearbyWall = nearbyWalls[0];
-      this.attemptAttackEntity(nearbyWall);
-    }
+  getAttackCooldown(): Cooldown {
+    return this.attackCooldown;
   }
 
-  protected withinAttackRange(entity: IEntity, attackRadius: number): boolean {
-    // Don't attack dead players
-    if (entity instanceof Player && entity.isDead()) {
-      return false;
-    }
-
-    const centerPosition = entity.hasExt(Positionable)
-      ? entity.getExt(Positionable).getCenterPosition()
-      : (entity as any).getCenterPosition();
-
-    const distance = Math.hypot(
-      centerPosition.x - this.getCenterPosition().x,
-      centerPosition.y - this.getCenterPosition().y
-    );
-
-    return distance <= attackRadius;
+  getAttackDamage(): number {
+    return this.attackDamage;
   }
 
-  protected abstract attemptAttackEntity(entity: IEntity): boolean;
+  getSpeed(): number {
+    return this.speed;
+  }
 
   serialize(): any {
     const data = super.serialize();

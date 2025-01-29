@@ -18,7 +18,7 @@ import { Player } from "@/entities/player";
 
 const MAX_TRAVEL_DISTANCE = 400;
 export const BULLET_SPEED = 100;
-export const BULLET_SIZE = 4; // Match client bullet size
+export const BULLET_SIZE = 8; // Increased from 4 to 8 for more forgiving hit detection
 
 export class Bullet extends Entity {
   private traveledDistance: number = 0;

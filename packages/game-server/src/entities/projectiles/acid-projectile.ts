@@ -66,22 +66,12 @@ export class AcidProjectile extends Entity {
     const destructibleEntities =
       this.getEntityManager().getNearbyIntersectingDestructableEntities(this);
     for (const entity of destructibleEntities) {
-      // Only collide with friendly entities, ignore other enemies
+      // Only collide with friendly entities (players), ignore everything else
       if (entity.hasExt(Groupable) && entity.getExt(Groupable).getGroup() === "friendly") {
         entity.getExt(Destructible).damage(AcidProjectile.PROJECTILE_DAMAGE);
         this.getEntityManager().markEntityForRemoval(this);
         return this.extensions;
       }
-    }
-
-    // Check for collisions with walls and other solid objects
-    const collidingEntity = this.getEntityManager().isColliding(this);
-    if (
-      collidingEntity &&
-      (!collidingEntity.hasExt(Groupable) ||
-        collidingEntity.getExt(Groupable).getGroup() !== "enemy")
-    ) {
-      this.getEntityManager().markEntityForRemoval(this);
     }
 
     return this.extensions;
