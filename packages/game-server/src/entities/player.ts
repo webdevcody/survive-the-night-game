@@ -19,7 +19,7 @@ import { Input } from "../../../game-shared/src/util/input";
 import { InventoryItem, ItemType } from "../../../game-shared/src/util/inventory";
 import { normalizeVector, distance } from "../../../game-shared/src/util/physics";
 import { RecipeType } from "../../../game-shared/src/util/recipes";
-import { RawEntity } from "@shared/types/entity";
+import { EntityType, RawEntity } from "@shared/types/entity";
 import { Cooldown } from "@/entities/util/cooldown";
 import { Weapon } from "@/entities/weapons/weapon";
 import { PlayerDeathEvent } from "@shared/events/server-sent/player-death-event";
@@ -29,6 +29,7 @@ import Vector2 from "@/util/vector2";
 import { Rectangle } from "@/util/shape";
 import Carryable from "@/extensions/carryable";
 import { SkinType, SKIN_TYPES } from "@shared/commands/commands";
+import Collider from "@/util/collider";
 
 export class Player extends Entity {
   private static readonly PLAYER_WIDTH = 16;
@@ -256,6 +257,55 @@ export class Player extends Entity {
     }
   }
 
+  moveAndCollide(velocity: Vector2, ignoreTypes?: EntityType[]) {
+    const position = this.getPosition();
+    const newPosition = position.add(velocity);
+    const entities = this.getEntityManager().getNearbyEntities(this.getCenterPosition(), 100);
+    const collidable = this.getExt(Collidable);
+    const hitBox = new Rectangle(newPosition, collidable.getSize());
+
+    for (const entity of entities) {
+      if (ignoreTypes && ignoreTypes.includes(entity.getType())) {
+        continue;
+      }
+
+      const isCollidable = entity.hasExt(Collidable);
+
+      if (!isCollidable) {
+        continue;
+      }
+
+      if (!entity.getExt(Collidable).isEnabled()) {
+        continue;
+      }
+
+      const targetBox = entity.getExt(Collidable).getHitBox();
+
+      if (entity === this) {
+        continue;
+      }
+
+      if (hitBox.intersects(targetBox)) {
+        return new Collider(hitBox, targetBox);
+      }
+    }
+
+    return null;
+  }
+
+  moveAndSlide(velocity: Vector2, delta: number) {
+    const position = this.getPosition();
+    const collision = this.moveAndCollide(velocity.mul(delta));
+
+    if (collision) {
+      const normal = collision.getNormal();
+      const slide = velocity.slide(normal);
+      return position.add(slide.mul(delta));
+    }
+
+    return position.add(velocity.mul(delta));
+  }
+
   handleMovement(deltaTime: number) {
     const movable = this.getExt(Movable);
     const currentVelocity = movable.getVelocity();
@@ -277,28 +327,11 @@ export class Player extends Entity {
       }
     }
 
-    // Handle position updates and collisions
-    const position = this.getPosition();
-    const previousX = position.x;
-    const previousY = position.y;
-
+    // ADD CODE JCTAPUK
     const velocity = movable.getVelocity();
+    const position = this.moveAndSlide(velocity, deltaTime);
 
-    position.x += velocity.x * deltaTime;
     this.setPosition(position);
-
-    if (this.getEntityManager().isColliding(this, [Entities.PLAYER])) {
-      position.x = previousX;
-      this.setPosition(position);
-    }
-
-    position.y += velocity.y * deltaTime;
-    this.setPosition(position);
-
-    if (this.getEntityManager().isColliding(this, [Entities.PLAYER])) {
-      position.y = previousY;
-      this.setPosition(position);
-    }
   }
 
   handleInteract(deltaTime: number) {

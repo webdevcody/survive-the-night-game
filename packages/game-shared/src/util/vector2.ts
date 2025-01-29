@@ -29,16 +29,25 @@ export default class Vector2 {
 
   mul(scalar: number): Vector2 {
     if (scalar === 0) {
-      throw new Error("Cannot multiply by zero.");
+      return new Vector2(0, 0);
     }
     return new Vector2(this.x * scalar, this.y * scalar);
   }
 
   div(scalar: number): Vector2 {
     if (scalar === 0) {
-      throw new Error("Cannot divide by zero.");
+      return new Vector2(0, 0);
     }
     return new Vector2(this.x / scalar, this.y / scalar);
+  }
+
+  slide(normal: Vector2): Vector2 {
+    if (this.length() === 0) {
+      return this;
+    }
+
+    const projection = normal.mul(this.dot(normal));
+    return new Vector2(this.x - 2 * projection.x, this.y - 2 * projection.y);
   }
 
   dot(other: Vector2): number {
@@ -74,11 +83,9 @@ export default class Vector2 {
     return Math.acos(dotProduct / lengths);
   }
 
-  unit(): Vector2 {
+  normalized(): Vector2 {
     const len = this.length();
-    if (len === 0) {
-      throw new Error("Cannot create a unit vector from a zero-length vector.");
-    }
+    if (len === 0) return new Vector2(0, 0);
     return this.div(len);
   }
 
