@@ -1,16 +1,11 @@
 import { IGameManagers } from "@/managers/types";
 import { Entities, ZOMBIE_ATTACK_RADIUS } from "@/constants";
 import Vector2 from "@/util/vector2";
-import { AttackStrategy, BaseEnemy, MovementStrategy } from "./base-enemy";
+import { BaseEnemy } from "./base-enemy";
 import { IEntity } from "@/entities/types";
-import { ZombieAttackedEvent } from "@shared/events/server-sent/zombie-attacked-event";
-import { ZombieHurtEvent } from "@shared/events/server-sent/zombie-hurt-event";
-import { ZombieDeathEvent } from "@shared/events/server-sent/zombie-death-event";
 import { Player } from "@/entities/player";
 import { normalizeVector } from "@/util/physics";
-import Destructible from "@/extensions/destructible";
 import Movable from "@/extensions/movable";
-import Positionable from "@/extensions/positionable";
 import { Cooldown } from "@/entities/util/cooldown";
 import { MeleeMovementStrategy, MeleeAttackStrategy } from "./zombie";
 
@@ -66,14 +61,5 @@ export class BigZombie extends BaseEnemy {
 
   getAttackDamage(): number {
     return this.attackDamage;
-  }
-
-  onDamaged(): void {
-    this.getGameManagers().getBroadcaster().broadcastEvent(new ZombieHurtEvent(this.getId()));
-  }
-
-  onDeath(): void {
-    super.onDeath();
-    this.getGameManagers().getBroadcaster().broadcastEvent(new ZombieDeathEvent(this.getId()));
   }
 }

@@ -4,7 +4,7 @@ import Illuminated from "@/extensions/illuminated";
 import Positionable from "@/extensions/positionable";
 import Triggerable from "@/extensions/trigger";
 import { IGameManagers } from "@/managers/types";
-import { Entities } from "@/constants";
+import { Entities, Zombies } from "@/constants";
 import { Entity } from "@/entities/entity";
 import Vector2 from "@/util/vector2";
 import { IEntity } from "@/entities/types";
@@ -17,9 +17,10 @@ export class Fire extends Entity {
 
     this.extensions = [
       new Positionable(this).setSize(Fire.Size),
-      new Triggerable(this, Fire.Size, [Entities.ZOMBIE, Entities.PLAYER]).setOnEntityEntered(
-        this.catchFire.bind(this)
-      ),
+      new Triggerable(this, Fire.Size, [
+        ...Zombies.filter((z) => z !== Entities.BAT_ZOMBIE),
+        Entities.PLAYER,
+      ]).setOnEntityEntered(this.catchFire.bind(this)),
       new Expirable(this, 6),
       new Illuminated(this, 150),
     ];

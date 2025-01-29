@@ -1,16 +1,11 @@
 import { IGameManagers } from "@/managers/types";
-import { ZombieDeathEvent } from "@shared/events/server-sent/zombie-death-event";
 import { ZombieAttackedEvent } from "@shared/events/server-sent/zombie-attacked-event";
 import { Entities } from "@/constants";
-import { IEntity } from "@/entities/types";
 import Vector2 from "@/util/vector2";
-import { ZombieHurtEvent } from "@/events/server-sent/zombie-hurt-event";
 import { AttackStrategy, BaseEnemy, MovementStrategy } from "./base-enemy";
-import Groupable from "@/extensions/groupable";
 import { AcidProjectile } from "../projectiles/acid-projectile";
 import Positionable from "@/extensions/positionable";
 import Movable from "@/extensions/movable";
-import Destructible from "@/extensions/destructible";
 import { pathTowards, velocityTowards } from "@/util/physics";
 import { Cooldown } from "@/entities/util/cooldown";
 
@@ -121,14 +116,5 @@ export class SpitterZombie extends BaseEnemy {
 
   getAttackCooldown(): Cooldown {
     return this.attackCooldown;
-  }
-
-  onDamaged(): void {
-    this.getGameManagers().getBroadcaster().broadcastEvent(new ZombieHurtEvent(this.getId()));
-  }
-
-  onDeath(): void {
-    super.onDeath();
-    this.getGameManagers().getBroadcaster().broadcastEvent(new ZombieDeathEvent(this.getId()));
   }
 }

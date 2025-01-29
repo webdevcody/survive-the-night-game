@@ -2,9 +2,6 @@ import { IGameManagers } from "@/managers/types";
 import { Entities, ZOMBIE_ATTACK_RADIUS } from "@shared/constants";
 import Vector2 from "@shared/util/vector2";
 import { BaseEnemy, MovementStrategy } from "./base-enemy";
-import { IEntity } from "@/entities/types";
-import { ZombieHurtEvent } from "@shared/events/server-sent/zombie-hurt-event";
-import { ZombieDeathEvent } from "@shared/events/server-sent/zombie-death-event";
 import Collidable from "@/extensions/collidable";
 import Movable from "@/extensions/movable";
 import Positionable from "@/extensions/positionable";
@@ -36,12 +33,12 @@ class FlyTowardsPlayerStrategy implements MovementStrategy {
 }
 
 export class BatZombie extends BaseEnemy {
-  public static readonly Size = new Vector2(8, 8); // Small size like fast zombie
-  public static readonly ZOMBIE_SPEED = 20; // Fastest of all zombies
+  public static readonly Size = new Vector2(8, 8);
+  public static readonly ZOMBIE_SPEED = 30;
   private static readonly ATTACK_DAMAGE = 1;
-  private static readonly ATTACK_COOLDOWN = 0.5; // Very fast attacks
-  public static readonly MAX_HEALTH = 1; // Low health
-  private static readonly DROP_CHANCE = 0.2; // Lowest drop chance
+  private static readonly ATTACK_COOLDOWN = 0.5;
+  public static readonly MAX_HEALTH = 1;
+  private static readonly DROP_CHANCE = 0.2;
 
   constructor(gameManagers: IGameManagers) {
     super(
@@ -70,14 +67,5 @@ export class BatZombie extends BaseEnemy {
 
   getAttackDamage(): number {
     return this.attackDamage;
-  }
-
-  onDamaged(): void {
-    this.getGameManagers().getBroadcaster().broadcastEvent(new ZombieHurtEvent(this.getId()));
-  }
-
-  onDeath(): void {
-    super.onDeath();
-    this.getGameManagers().getBroadcaster().broadcastEvent(new ZombieDeathEvent(this.getId()));
   }
 }

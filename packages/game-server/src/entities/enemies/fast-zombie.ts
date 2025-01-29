@@ -2,8 +2,6 @@ import { IGameManagers } from "@/managers/types";
 import { Entities, ZOMBIE_ATTACK_RADIUS } from "@shared/constants";
 import Vector2 from "@shared/util/vector2";
 import { BaseEnemy } from "./base-enemy";
-import { ZombieHurtEvent } from "@shared/events/server-sent/zombie-hurt-event";
-import { ZombieDeathEvent } from "@shared/events/server-sent/zombie-death-event";
 import Collidable from "@/extensions/collidable";
 import { Cooldown } from "@/entities/util/cooldown";
 import { MeleeMovementStrategy, MeleeAttackStrategy } from "./zombie";
@@ -46,14 +44,5 @@ export class FastZombie extends BaseEnemy {
 
   getAttackDamage(): number {
     return this.attackDamage;
-  }
-
-  onDamaged(): void {
-    this.getGameManagers().getBroadcaster().broadcastEvent(new ZombieHurtEvent(this.getId()));
-  }
-
-  onDeath(): void {
-    super.onDeath();
-    this.getGameManagers().getBroadcaster().broadcastEvent(new ZombieDeathEvent(this.getId()));
   }
 }
