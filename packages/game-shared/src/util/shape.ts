@@ -100,22 +100,6 @@ class Circle extends Shape {
 class Rectangle extends Shape {
   readonly size: Vector2;
 
-  get left(): number {
-    return this.position.x;
-  }
-
-  get right(): number {
-    return this.position.x + this.size.x;
-  }
-
-  get top(): number {
-    return this.position.y;
-  }
-
-  get bottom(): number {
-    return this.position.y + this.size.y;
-  }
-
   get topLeft() {
     return this.position;
   }
