@@ -21,7 +21,7 @@ it("should explode and kill all zombies within explosion radius", () => {
 
   // Create 3 zombies within 32 pixel radius
   const zombie1 = new Zombie(gameManagers);
-  zombie1.getExt(Positionable).setPosition(new Vector2(42, 42)); // ~14 pixels away
+  zombie1.getExt(Positionable).setPosition(new Vector2(32, 32)); // ~14 pixels away
   gameManagers.getEntityManager().addEntity(zombie1);
 
   const zombie2 = new Zombie(gameManagers);
@@ -33,7 +33,7 @@ it("should explode and kill all zombies within explosion radius", () => {
   gameManagers.getEntityManager().addEntity(zombie3);
 
   // Update to trigger explosion
-  gameManagers.getEntityManager().update(1);
+  gameManagers.getEntityManager().update(3); // 3 seconds due to arming timeout
 
   // Verify all zombies are dead
   expect(zombie1.getExt(Destructible).getHealth()).toBe(0);

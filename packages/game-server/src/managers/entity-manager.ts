@@ -263,7 +263,7 @@ export class EntityManager implements IEntityManager {
     const entities = this.entityFinder?.getNearbyEntities(position, radius, filter) ?? [];
     return entities.filter((entity) => {
       if (!entity.hasExt(Positionable)) return false;
-      const entityPosition = entity.getExt(Positionable).getPosition();
+      const entityPosition = entity.getExt(Positionable).getCenterPosition();
       return position.distance(entityPosition) <= radius;
     });
   }

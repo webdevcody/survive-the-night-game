@@ -13,6 +13,8 @@ import Vector2 from "@/util/vector2";
 import { LANDMINE_EXPLOSION_RADIUS } from "@/constants/constants";
 import { RawEntity } from "@/types/entity";
 import { ExplosionEvent } from "@shared/events/server-sent/explosion-event";
+import { Cooldown } from "../util/cooldown";
+import Updatable from "@/extensions/updatable";
 
 /**
  * A landmine that explodes when enemies step on it, damaging all nearby enemies
@@ -21,11 +23,13 @@ export class Landmine extends Entity implements IEntity {
   private static readonly SIZE = new Vector2(16, 16);
   private static readonly DAMAGE = 7;
   private static readonly TRIGGER_RADIUS = 16;
+  private untilActive: Cooldown;
   private isActive = false;
-  private activateDelay = 2000;
 
   constructor(gameManagers: IGameManagers) {
     super(gameManagers, Entities.LANDMINE);
+
+    this.untilActive = new Cooldown(2);
 
     this.addExtension(new Positionable(this).setSize(Landmine.SIZE));
     // this.addExtension(new Triggerable(this, Landmine.SIZE, Zombies));
@@ -35,8 +39,7 @@ export class Landmine extends Entity implements IEntity {
         .setDisplayName("landmine")
     );
     this.addExtension(new Carryable(this, "landmine"));
-
-    setTimeout(() => this.activate(), this.activateDelay);
+    this.addExtension(new Updatable(this, this.updateLandmine.bind(this)));
   }
 
   public activate(): void {
@@ -47,6 +50,13 @@ export class Landmine extends Entity implements IEntity {
         targetTypes: Zombies,
       }).onTrigger(() => this.explode())
     );
+  }
+
+  public updateLandmine(deltaTime: number) {
+    this.untilActive.update(deltaTime);
+    if (this.untilActive.isReady() && !this.isActive) {
+      this.activate();
+    }
   }
 
   private explode() {

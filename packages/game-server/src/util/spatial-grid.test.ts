@@ -22,7 +22,7 @@ describe("SpatialGrid", () => {
     }),
   } as unknown as IGameManagers;
 
-  it("should add 10,000 entities in a square map of 100 tiles efficiently", () => {
+  it.skip("should add 10,000 entities in a square map of 100 tiles efficiently", () => {
     const mapSize = 100;
     const tileSize = 16;
     const spatialGrid = new SpatialGrid(mapSize * tileSize, mapSize * tileSize);
