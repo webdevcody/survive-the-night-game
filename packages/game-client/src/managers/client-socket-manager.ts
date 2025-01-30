@@ -21,6 +21,7 @@ import { Input } from "../../../game-shared/src/util/input";
 import { RecipeType } from "../../../game-shared/src/util/recipes";
 import { Socket, io } from "socket.io-client";
 import { ServerUpdatingEvent } from "@shared/events/server-sent/server-updating-event";
+import msgPackParser from "socket.io-msgpack-parser";
 import { ChatMessageEvent } from "@shared/events/server-sent/chat-message-event";
 import { PlayerLeftEvent } from "@shared/events/server-sent/player-left-event";
 import { ExplosionEvent } from "@shared/events/server-sent/explosion-event";
@@ -65,7 +66,9 @@ export class ClientSocketManager {
 
   constructor(serverUrl: string) {
     console.log("Connecting to game server", serverUrl);
-    this.socket = io(serverUrl);
+    this.socket = io(serverUrl, {
+      parser: msgPackParser,
+    });
 
     this.socket.on("connect", () => {
       console.log("Connected to game server", this.socket.id);

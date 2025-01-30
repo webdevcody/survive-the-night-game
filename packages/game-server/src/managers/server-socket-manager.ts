@@ -14,6 +14,7 @@ import { Broadcaster, IEntityManager, IGameManagers } from "@/managers/types";
 import { GameStateEvent } from "@shared/events/server-sent/game-state-event";
 import { PlayerJoinedEvent } from "@shared/events/server-sent/player-joined-event";
 import { PongEvent } from "@shared/events/server-sent/pong-event";
+import msgPackParser from "socket.io-msgpack-parser";
 import { ChatMessageEvent } from "@shared/events/server-sent/chat-message-event";
 import { PlayerLeftEvent } from "@/events/server-sent/player-left-event";
 
@@ -36,6 +37,7 @@ export class ServerSocketManager implements Broadcaster {
     this.port = port;
     this.httpServer = createServer();
     this.io = new Server(this.httpServer, {
+      parser: msgPackParser,
       cors: {
         origin: "*",
         methods: ["GET", "POST"],
