@@ -188,6 +188,9 @@ export class ServerSocketManager implements Broadcaster {
     socket.on(ClientSentEvents.ADMIN_COMMAND, (command: AdminCommand) =>
       this.getCommandManager().handleCommand(command)
     );
+    socket.on(ClientSentEvents.SET_DISPLAY_NAME, (displayName: string) =>
+      this.setPlayerDisplayName(socket, displayName)
+    );
     socket.on(ClientSentEvents.REQUEST_FULL_STATE, () => this.sendFullState(socket));
     socket.on(ClientSentEvents.PING, (timestamp: number) => {
       this.handlePing(socket, timestamp);
@@ -198,6 +201,15 @@ export class ServerSocketManager implements Broadcaster {
     socket.on("disconnect", () => {
       this.onDisconnect(socket);
     });
+  }
+
+  private setPlayerDisplayName(socket: Socket, displayName: string): void {
+    const player = this.players.get(socket.id);
+    if (!player) return;
+    if (displayName.length > 12) {
+      displayName = displayName.substring(0, 12);
+    }
+    player.setDisplayName(displayName);
   }
 
   private onConnection(socket: Socket): void {

@@ -35,6 +35,7 @@ export class PlayerClient extends ClientEntity implements IClientEntity, Rendera
   private skin: SkinType = SKIN_TYPES.DEFAULT;
   private kills: number = 0;
   private ping: number = 0;
+  private displayName: string = "";
 
   private input: Input = {
     facing: Direction.Right,
@@ -201,6 +202,17 @@ export class PlayerClient extends ClientEntity implements IClientEntity, Rendera
 
     drawCenterPositionWithLabel(ctx, this.getCenterPosition());
 
+    if (this.displayName && this.getId() !== gameState.playerId) {
+      ctx.save();
+      ctx.font = "4px Arial";
+      ctx.fillStyle = "white";
+      ctx.textAlign = "center";
+      const nameX = renderPosition.x + image.width / 2;
+      const nameY = renderPosition.y - 10;
+      ctx.fillText(this.displayName, nameX, nameY);
+      ctx.restore();
+    }
+
     if (this.isCrafting) {
       ctx.font = "8px Arial";
       const animatedPosition = animate(gameState.startedAt, renderPosition, {
@@ -282,5 +294,6 @@ export class PlayerClient extends ClientEntity implements IClientEntity, Rendera
     this.skin = data.skin || SKIN_TYPES.DEFAULT;
     this.kills = data.kills || 0;
     this.ping = data.ping || 0;
+    this.displayName = data.displayName || "";
   }
 }

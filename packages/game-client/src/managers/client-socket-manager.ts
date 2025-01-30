@@ -70,6 +70,7 @@ export class ClientSocketManager {
     this.socket.on("connect", () => {
       console.log("Connected to game server", this.socket.id);
       this.socket.emit(ClientSentEvents.REQUEST_FULL_STATE);
+      this.socket.emit(ClientSentEvents.SET_DISPLAY_NAME, localStorage.getItem("displayName"));
       this.startPingMeasurement();
     });
 

@@ -32,6 +32,7 @@ export const ClientSentEvents = {
   CRAFT_REQUEST: "craftRequest",
   PLAYER_INPUT: "playerInput",
   START_CRAFTING: "startCrafting",
+  SET_DISPLAY_NAME: "setDisplayName",
   STOP_CRAFTING: "stopCrafting",
   ADMIN_COMMAND: "adminCommand",
   REQUEST_FULL_STATE: "requestFullState",

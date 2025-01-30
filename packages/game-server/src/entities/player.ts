@@ -57,7 +57,7 @@ export class Player extends Entity {
   private skin: SkinType = SKIN_TYPES.DEFAULT;
   private kills: number = 0;
   private ping: number = 0;
-
+  private displayName: string = "";
   constructor(gameManagers: IGameManagers) {
     super(gameManagers, Entities.PLAYER);
     this.broadcaster = gameManagers.getBroadcaster();
@@ -195,6 +195,7 @@ export class Player extends Entity {
       skin: this.skin,
       kills: this.kills,
       ping: this.ping,
+      displayName: this.displayName,
     };
   }
 
@@ -299,6 +300,14 @@ export class Player extends Entity {
       position.y = previousY;
       this.setPosition(position);
     }
+  }
+
+  setDisplayName(displayName: string): void {
+    this.displayName = displayName;
+  }
+
+  getDisplayName(): string {
+    return this.displayName;
   }
 
   handleInteract(deltaTime: number) {

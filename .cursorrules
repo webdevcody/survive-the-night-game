@@ -19,3 +19,7 @@ if (entity.hasExt(ClientPositionable)) {
 - add an entity on the client
 - update entity factory on client
 - update the map manager's to spawn the new zombie type
+
+### React Route 7
+
+- anything in the website package, remember I'm using react router 7. please refer to the docs for how to do things.
