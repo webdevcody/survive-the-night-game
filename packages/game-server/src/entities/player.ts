@@ -1,6 +1,5 @@
 import { PlayerDroppedItemEvent } from "@shared/events/server-sent/player-dropped-item-event";
 import { PlayerHurtEvent } from "@shared/events/server-sent/player-hurt-event";
-import { PlayerRevivedEvent } from "@shared/events/server-sent/player-revived-event";
 import Collidable from "@/extensions/collidable";
 import Consumable from "@/extensions/consumable";
 import Destructible from "@/extensions/destructible";
@@ -58,6 +57,7 @@ export class Player extends Entity {
   private kills: number = 0;
   private ping: number = 0;
   private displayName: string = "";
+
   constructor(gameManagers: IGameManagers) {
     super(gameManagers, Entities.PLAYER);
     this.broadcaster = gameManagers.getBroadcaster();
@@ -141,7 +141,12 @@ export class Player extends Entity {
   onDeath(): void {
     this.setIsCrafting(false);
     this.getExt(Inventory).scatterItems(this.getPosition());
-    this.broadcaster.broadcastEvent(new PlayerDeathEvent(this.getId()));
+    this.broadcaster.broadcastEvent(
+      new PlayerDeathEvent({
+        playerId: this.getId(),
+        displayName: this.getDisplayName(),
+      })
+    );
     this.getExt(Collidable).setEnabled(false);
 
     // Add Interactive extension for revival
@@ -167,9 +172,6 @@ export class Player extends Entity {
 
     // Set health to 2
     this.getExt(Destructible).setHealth(2);
-
-    // Broadcast revival event
-    this.broadcaster.broadcastEvent(new PlayerRevivedEvent(this.getId()));
   }
 
   isInventoryFull(): boolean {

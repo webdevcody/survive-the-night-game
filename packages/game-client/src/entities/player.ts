@@ -61,6 +61,7 @@ export class PlayerClient extends ClientEntity implements IClientEntity, Rendera
     this.skin = data.skin || SKIN_TYPES.DEFAULT;
     this.kills = data.kills || 0;
     this.ping = data.ping || 0;
+    this.displayName = data.displayName || "Unknown";
   }
 
   private getPlayerAssetKey(): string {
@@ -202,13 +203,13 @@ export class PlayerClient extends ClientEntity implements IClientEntity, Rendera
 
     drawCenterPositionWithLabel(ctx, this.getCenterPosition());
 
-    if (this.displayName && this.getId() !== gameState.playerId) {
+    if (this.displayName) {
       ctx.save();
       ctx.font = "4px Arial";
       ctx.fillStyle = "white";
       ctx.textAlign = "center";
       const nameX = renderPosition.x + image.width / 2;
-      const nameY = renderPosition.y - 10;
+      const nameY = renderPosition.y - 6;
       ctx.fillText(this.displayName, nameX, nameY);
       ctx.restore();
     }
@@ -224,6 +225,10 @@ export class PlayerClient extends ClientEntity implements IClientEntity, Rendera
       });
       ctx.fillText("🔧", animatedPosition.x + 3, animatedPosition.y - 6);
     }
+  }
+
+  public getDisplayName(): string {
+    return this.displayName;
   }
 
   renderArrow(ctx: CanvasRenderingContext2D, image: HTMLImageElement, renderPosition: Vector2) {
@@ -294,6 +299,6 @@ export class PlayerClient extends ClientEntity implements IClientEntity, Rendera
     this.skin = data.skin || SKIN_TYPES.DEFAULT;
     this.kills = data.kills || 0;
     this.ping = data.ping || 0;
-    this.displayName = data.displayName || "";
+    this.displayName = data.displayName || "Unknown";
   }
 }

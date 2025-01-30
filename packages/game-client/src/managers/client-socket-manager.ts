@@ -64,13 +64,18 @@ export class ClientSocketManager {
   }
 
   constructor(serverUrl: string) {
+    const displayName = localStorage.getItem("displayName");
+
+    if (!displayName) {
+      throw new Error("No display name found");
+    }
+
     console.log("Connecting to game server", serverUrl);
-    this.socket = io(serverUrl);
+    this.socket = io(`${serverUrl}?displayName=${displayName}`);
 
     this.socket.on("connect", () => {
       console.log("Connected to game server", this.socket.id);
       this.socket.emit(ClientSentEvents.REQUEST_FULL_STATE);
-      this.socket.emit(ClientSentEvents.SET_DISPLAY_NAME, localStorage.getItem("displayName"));
       this.startPingMeasurement();
     });
 

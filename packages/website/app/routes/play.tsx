@@ -2,6 +2,7 @@ import type { Route } from "./+types/home";
 import { useEffect } from "react";
 import { useRef } from "react";
 import { GameClient } from "@survive-the-night/game-client";
+import { useNavigate } from "react-router";
 
 export function meta({}: Route.MetaArgs) {
   return [
@@ -17,6 +18,16 @@ export function meta({}: Route.MetaArgs) {
 export default function Home() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const clientRef = useRef<GameClient | null>(null);
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    const displayName = localStorage.getItem("displayName");
+
+    if (!displayName) {
+      navigate("/");
+      return;
+    }
+  }, []);
 
   useEffect(() => {
     async function initClient(): Promise<void> {

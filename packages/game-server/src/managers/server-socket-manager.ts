@@ -24,6 +24,7 @@ import { PlayerLeftEvent } from "@/events/server-sent/player-left-event";
 export class ServerSocketManager implements Broadcaster {
   private io: Server;
   private players: Map<string, Player> = new Map();
+  private playerDisplayNames: Map<string, string> = new Map();
   private port: number;
   private httpServer: any;
   private entityManager?: IEntityManager;
@@ -44,7 +45,11 @@ export class ServerSocketManager implements Broadcaster {
 
     this.gameServer = gameServer;
 
-    this.io.on("connection", (socket: Socket) => this.onConnection(socket));
+    this.io.on("connection", (socket: Socket) => {
+      const { displayName } = socket.handshake.query;
+      this.playerDisplayNames.set(socket.id, displayName as string);
+      this.onConnection(socket);
+    });
   }
 
   public setGameManagers(gameManagers: IGameManagers): void {
@@ -101,6 +106,7 @@ export class ServerSocketManager implements Broadcaster {
     // Create new players for each connected socket
     sockets.forEach((socket) => {
       const player = new Player(this.getGameManagers());
+      player.setDisplayName(this.playerDisplayNames.get(socket.id) ?? "Unknown");
 
       // Position player at random grass location
       const spawnPosition = this.getMapManager().getRandomGrassPosition();
@@ -114,7 +120,9 @@ export class ServerSocketManager implements Broadcaster {
       const map = this.getMapManager().getMap();
       socket.emit(ServerSentEvents.MAP, map);
       socket.emit(ServerSentEvents.YOUR_ID, player.getId());
-      this.broadcastEvent(new PlayerJoinedEvent(player.getId()));
+      this.broadcastEvent(
+        new PlayerJoinedEvent({ playerId: player.getId(), displayName: player.getDisplayName() })
+      );
     });
   }
 
@@ -130,7 +138,12 @@ export class ServerSocketManager implements Broadcaster {
       // TODO: this is a hacker; I'd rather use this, but when I do there is a strange race condition where the round never restarts, so instead the
       this.getEntityManager().removeEntity(player.getId());
       // this.getEntityManager().markEntityForRemoval(player);
-      this.broadcastEvent(new PlayerLeftEvent({ playerId: player.getId() }));
+      this.broadcastEvent(
+        new PlayerLeftEvent({
+          playerId: player.getId(),
+          displayName: this.playerDisplayNames.get(socket.id) ?? "Unknown",
+        })
+      );
     }
 
     const isLastPlayer = this.players.size === 0;
@@ -161,6 +174,10 @@ export class ServerSocketManager implements Broadcaster {
 
   private sendFullState(socket: Socket): void {
     const entities = this.getEntityManager().getEntities();
+    console.log(
+      "plaeyr",
+      entities.filter((entity) => entity.getType() === "player").map((entity) => entity.serialize())
+    );
     const filteredEntities = entities.filter((entity) => !("isServerOnly" in entity));
 
     socket.emit(ServerSentEvents.GAME_STATE_UPDATE, {
@@ -213,7 +230,7 @@ export class ServerSocketManager implements Broadcaster {
   }
 
   private onConnection(socket: Socket): void {
-    console.log(`Player connected: ${socket.id}`);
+    console.log(`Player connected: ${socket.id} - ${this.playerDisplayNames.get(socket.id)}`);
 
     // Set up socket event listeners first
     this.setupSocketListeners(socket);
@@ -231,6 +248,7 @@ export class ServerSocketManager implements Broadcaster {
     // If we didn't just create a new game, create a new player
     if (totalPlayers !== 0) {
       const player = new Player(this.getGameManagers());
+      player.setDisplayName(this.playerDisplayNames.get(socket.id) ?? "Unknown");
 
       // Position player at random grass location
       const spawnPosition = this.getMapManager().getRandomGrassPosition();
@@ -240,7 +258,9 @@ export class ServerSocketManager implements Broadcaster {
       this.getEntityManager().addEntity(player);
 
       socket.emit(ServerSentEvents.YOUR_ID, player.getId());
-      this.broadcastEvent(new PlayerJoinedEvent(player.getId()));
+      this.broadcastEvent(
+        new PlayerJoinedEvent({ playerId: player.getId(), displayName: player.getDisplayName() })
+      );
     }
 
     // Always send the map data

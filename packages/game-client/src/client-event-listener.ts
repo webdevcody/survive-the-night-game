@@ -94,7 +94,10 @@ export class ClientEventListener {
   }
 
   onPlayerLeft(playerLeftEvent: PlayerLeftEvent) {
-    this.gameClient.getHud().addMessage(`${playerLeftEvent.getPlayerId()} left the game`);
+    const playerId = playerLeftEvent.getPlayerId();
+    const player = this.gameClient.getEntityById(playerId);
+    if (!player) return;
+    this.gameClient.getHud().addMessage(`${playerLeftEvent.getDisplayName()} left the game`);
     this.gameClient.removeEntity(playerLeftEvent.getPlayerId());
   }
 
@@ -104,7 +107,7 @@ export class ClientEventListener {
       return;
     }
 
-    const entities = gameStateEvent.getEntities();
+    const entitiesFromServer = gameStateEvent.getEntities();
 
     // Update game state properties only if they are included in the update
     if (gameStateEvent.getDayNumber() !== undefined) {
@@ -122,7 +125,7 @@ export class ClientEventListener {
 
     if (gameStateEvent.isFullState()) {
       // Full state update - replace all entities
-      this.gameState.entities = entities.map((entity) => {
+      this.gameState.entities = entitiesFromServer.map((entity) => {
         return this.gameClient.getEntityFactory().createEntity(entity);
       });
 
@@ -145,11 +148,13 @@ export class ClientEventListener {
       );
 
       // Update or add changed entities
-      entities.forEach((entityData) => {
-        const existingEntity = this.gameState.entities.find((e) => e.getId() === entityData.id);
+      entitiesFromServer.forEach((serverEntityData) => {
+        const existingEntity = this.gameState.entities.find(
+          (e) => e.getId() === serverEntityData.id
+        );
         if (existingEntity) {
           // Only update properties that were included in the delta update
-          for (const [key, value] of Object.entries(entityData)) {
+          for (const [key, value] of Object.entries(serverEntityData)) {
             if (key !== "id") {
               // Skip the ID since it's used for lookup
               existingEntity.deserializeProperty(key, value);
@@ -157,7 +162,9 @@ export class ClientEventListener {
           }
         } else {
           // Add new entity
-          this.gameState.entities.push(this.gameClient.getEntityFactory().createEntity(entityData));
+          this.gameState.entities.push(
+            this.gameClient.getEntityFactory().createEntity(serverEntityData)
+          );
         }
       });
     }
@@ -224,7 +231,7 @@ export class ClientEventListener {
   }
 
   onPlayerDeath(playerDeathEvent: PlayerDeathEvent) {
-    this.gameClient.getHud().showPlayerDeath(playerDeathEvent.getPlayerId());
+    this.gameClient.getHud().showPlayerDeath(playerDeathEvent.getDisplayName());
 
     const player = this.gameClient.getEntityById(playerDeathEvent.getPlayerId());
     if (!player) return;
@@ -317,7 +324,7 @@ export class ClientEventListener {
   }
 
   onPlayerJoined(playerJoinedEvent: PlayerJoinedEvent) {
-    this.gameClient.getHud().showPlayerJoined(playerJoinedEvent.getPlayerId());
+    this.gameClient.getHud().showPlayerJoined(playerJoinedEvent.getDisplayName());
   }
 
   onChatMessage(chatMessageEvent: ChatMessageEvent) {

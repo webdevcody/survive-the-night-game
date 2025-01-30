@@ -22,7 +22,6 @@ export const ServerSentEvents = {
   MAP: "map",
   ENEMY_WAYPOINT: "enemyWaypoint",
   SERVER_UPDATING: "serverUpdating",
-  PLAYER_REVIVED: "PLAYER_REVIVED",
   PONG: "pong",
   CHAT_MESSAGE: "chatMessage",
   EXPLOSION: "explosion",
