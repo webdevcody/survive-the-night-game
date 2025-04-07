@@ -9,7 +9,7 @@ services:
         - VITE_WSS_URL=wss://wss.survivethenightgame.com
     restart: unless-stopped
     ports:
-      - "3000:3000"
+      - "3005:3000"
     environment:
       - NODE_ENV=production
       - VITE_WSS_URL=wss://wss.survivethenightgame.com
@@ -22,25 +22,26 @@ services:
       dockerfile: packages/game-server/Dockerfile
     restart: unless-stopped
     ports:
-      - "3001:3001"
+      - "3006:3001"
     environment:
       - NODE_ENV=production
       - ADMIN_PASSWORD=${ADMIN_PASSWORD:-admin}
     networks:
       - app_network
 
-  caddy:
-    image: caddy:2
-    restart: unless-stopped
-    ports:
-      - "80:80"
-      - "443:443"
-    volumes:
-      - ./Caddyfile:/etc/caddy/Caddyfile
-      - caddy_data:/data
-      - caddy_config:/config
-    networks:
-      - app_network
+  # I'm piggy backing on another caddy service for the course platform
+  # caddy:
+  #   image: caddy:2
+  #   restart: unless-stopped
+  #   ports:
+  #     - "80:80"
+  #     - "443:443"
+  #   volumes:
+  #     - ./Caddyfile:/etc/caddy/Caddyfile
+  #     - caddy_data:/data
+  #     - caddy_config:/config
+  #   networks:
+  #     - app_network
 
 networks:
   app_network:
