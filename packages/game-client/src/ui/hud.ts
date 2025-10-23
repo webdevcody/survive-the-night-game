@@ -200,7 +200,7 @@ export class Hud {
     this.renderControlsList(ctx, gameState);
     this.renderGameMessages(ctx);
     this.leaderboard.render(ctx, gameState);
-    this.chatWidget.render(ctx);
+    this.chatWidget.render(ctx, gameState);
   }
 
   public addMessage(message: string): void {

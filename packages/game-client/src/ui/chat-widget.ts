@@ -1,3 +1,6 @@
+import { GameState } from "@/state";
+import { getPlayer } from "@/util/get-player";
+
 const CHAT_FONT_SIZE = 24;
 const CHAT_FONT_FAMILY = "Arial";
 const CHAT_TEXT_COLOR = "white";
@@ -62,8 +65,8 @@ export class ChatWidget {
     });
   }
 
-  public render(ctx: CanvasRenderingContext2D): void {
-    this.renderChatMessages(ctx);
+  public render(ctx: CanvasRenderingContext2D, gameState: GameState): void {
+    this.renderChatMessages(ctx, gameState);
     this.renderChatInput(ctx);
   }
 
@@ -98,16 +101,17 @@ export class ChatWidget {
     return lines;
   }
 
-  private renderChatMessages(ctx: CanvasRenderingContext2D): void {
+  private renderChatMessages(ctx: CanvasRenderingContext2D, gameState: GameState): void {
     const messages = [...this.chatMessages];
-    const lineHeight = 24;
+    const lineHeight = 32;
     const maxMessages = 8;
     const padding = 20;
     const width = this.CHAT_WIDTH;
 
     // Process messages and calculate total height
     const processedMessages = messages.slice(-maxMessages).map((chat) => {
-      const text = `${chat.playerId}: ${chat.message}`;
+      const userName = getPlayer(gameState)?.getDisplayName() ?? chat.playerId;
+      const text = `${userName}: ${chat.message}`;
       const lines = this.wrapText(text);
       return { ...chat, lines, lineCount: lines.length };
     });
