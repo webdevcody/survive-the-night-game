@@ -1,9 +1,12 @@
+# REAL HIGH PRIORITY
+
+- [ ] find a better way to abstract the code around a weapon decrementing ammo and removing the ammo from the player's inventory when they run out.
+- [ ] look into where we have to update the code just to add a new zombie type, simplify it if possible
+- [ ] look into where we have to update the code just to add a new entity type, simplify it if possible
+
 # BUGS
 
-- [ ] you can't pick up walls when next to them
-- [ ] zombies shouldn't stack because it causes one giant stacked to clear our your team.
 - [ ] sometimes the pings become negative on the leaderboard
-- [ ] display FPS in game
 - [ ] figure out a better approach for difficulting scaling, because when 20 people are in the game, it spawns like 100 zombies, and it's too hard
 - [ ] make the day time longer
 
@@ -15,13 +18,8 @@ Feel free to pick any item listed out here to work on.
 
 ## High Priority (Core Mechanics):
 
-- [ ] mini map
-- [ ] indicators to know where team mates are
-- [ ] ability to chat
 - [ ] larger maps
-- [ ] higher chance of spawning ammo / weapons
 - [ ] fix craft
-- [ ] ability to "revive" dead team mates
 
 ### Refactoring
 
@@ -39,8 +37,7 @@ Feel free to pick any item listed out here to work on.
 - [ ]
 - [ ] the velocity / position updating should be in an extension to make it reusable (see the bullet entity for an example)
 - [ ] I shouldn't need to manually call combustible.onDeath() when the zombie dies - lean into event emitters more if possible
-- [ ] revisit the player entity, the bullets come from his feet, not the center of his body
-- [ ] there is a lot of duplicate code related to showing the "pickup (e)" text over items
+      d- [ ] there is a lot of duplicate code related to showing the "pickup (e)" text over items
 - [ ] there is a lot of places I have to manually update when I add new entities (refactor this)
 - [ ] why does positionable have a size? remove if not necessary
 - [ ] find a way to reduce the amount of duplicate code
@@ -51,21 +48,15 @@ Feel free to pick any item listed out here to work on.
 
 ### Bugs
 
-- [ ] trap fires constaly on dead zombies
 - [ ] when DEBUG = true, all the HUD overlays seem to shift, including the "pickup (e)" text over items
 
 ### Gameplay
 
 - [ ] add throwable items (grenades to start with)
 - [ ] decoy items (a fire cracker to distract zombies)
-- [ ] add a spitter zombie
 - [ ] potion items (health, speed, invincibility, etc.)
-- [ ] add an exploding zombie
-- [ ] add a fast zombie
-- [ ] add a tank zombie (with knock back)
-- [ ] zombie that can only be damanged while on fire (maybe?)
-- [ ] during daytime, zombies should just wander around randomly, but will attack players if they get close
-- [ ] if ALL players die, the game ends
+
+- [ ] zombie that can only be damanged while on fire zombie in a firefighter outfit
 - [ ] show a message that the players lost, and show a leaderboard with how many kills each player got
 - [ ] add in melee weapon logic
 - [ ] the guns should need ammo to fire
@@ -76,9 +67,7 @@ Feel free to pick any item listed out here to work on.
 
 ### Stuff
 
-- [ ] melee attack
 - [ ] all players spawn with a random melee weapon
-- [ ] lighting system (night cycle is pitch black, small fov near players)
 - [ ] craft torch (wood, cloth, flint)
 - [ ] place torch (acts as lighting)
 - [ ] more base structures (spike floor trap, hurts zombies if they walk over it)
@@ -144,6 +133,8 @@ Feel free to pick any item listed out here to work on.
 - [ ] apply delta compression to the server game state updates
 
 ## Change Log:
+
+- [x] 10/22/2025: add an exploding zombie
 
 - [x] 1/4/2025: a player shouldn't be colliding with a dead zombie
 - [x] 1/4/2025: fix bullet from coming out of players head

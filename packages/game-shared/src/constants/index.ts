@@ -5,6 +5,7 @@ export const Entities = {
   ZOMBIE: "zombie",
   BIG_ZOMBIE: "big_zombie",
   FAST_ZOMBIE: "fast_zombie",
+  EXPLODING_ZOMBIE: "exploding_zombie",
   BAT_ZOMBIE: "bat_zombie",
   SPITTER_ZOMBIE: "spitter_zombie",
   ACID_PROJECTILE: "acid_projectile",

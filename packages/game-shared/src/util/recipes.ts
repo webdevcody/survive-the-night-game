@@ -2,14 +2,21 @@ import { SpikeRecipe } from "@/recipes/spike-recipe";
 import { BandageRecipe } from "../recipes/bandage-recipe";
 import { WallRecipe } from "../recipes/wall-recipe";
 import { ItemType, InventoryItem } from "./inventory";
+import { TorchRecipe } from "@/recipes/torch-recipe";
 
 export enum RecipeType {
   Bandage = "bandage",
   Wall = "wall",
   Spike = "spike",
+  Torch = "torch",
 }
 
-export const recipes: Recipe[] = [new BandageRecipe(), new WallRecipe(), new SpikeRecipe()];
+export const recipes: Recipe[] = [
+  new BandageRecipe(),
+  new WallRecipe(),
+  new SpikeRecipe(),
+  new TorchRecipe(),
+];
 
 export interface RecipeComponent {
   type: ItemType;

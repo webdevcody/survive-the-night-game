@@ -213,6 +213,14 @@ const bigZombieFrames = createCharacterFrames({
   totalFrames: 3,
 });
 
+const explodingZombieFrames = createCharacterFrames({
+  startX: 0,
+  downY: 64,
+  leftY: 80,
+  upY: 48,
+  totalFrames: 3,
+});
+
 const ROTATION_MAP: Record<Direction, number> = {
   [Direction.Up]: 180,
   [Direction.Down]: 0,
@@ -301,6 +309,7 @@ export const assetsMap = {
   zombie_facing_up_1: assetMap(zombieUpFrameOrigins[1]),
   zombie_facing_up_2: assetMap(zombieUpFrameOrigins[2]),
   ...createCharacterAssets("big_zombie", bigZombieFrames, 144, 0),
+  ...createCharacterAssets("exploding_zombie", explodingZombieFrames, 144, 0),
   ...createCharacterAssets("spitter_zombie", spitterZombieFrames, 144, 0),
   ...createCharacterAssets("bat_zombie", batFrames, 48, 240),
   ...createCharacterAssets("player", playerFrames),

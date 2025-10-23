@@ -131,3 +131,8 @@ Key points when creating extensions:
 
 - Implement `serialize` and `deserialize` methods for network synchronization
 - Extensions can interact with other extensions through the parent entity
+
+## Admin Commands
+
+1. set the password in the browser console `commandManager.setAdminPassword('default-admin-password');`
+2. send a command `commandManager.createItem('pistol')`

@@ -9,6 +9,7 @@ import { Entities } from "@/constants";
 import { Entity } from "@/entities/entity";
 import { Fire } from "@/entities/environment/fire";
 import Vector2 from "@/util/vector2";
+import { ExplosionEvent } from "@/events/server-sent/explosion-event";
 
 export class Gasoline extends Entity {
   public static readonly Size = new Vector2(16, 16);
@@ -32,6 +33,13 @@ export class Gasoline extends Entity {
 
   private onDeath(): void {
     this.getExt(Combustible).onDeath();
+    this.getEntityManager()
+      .getBroadcaster()
+      .broadcastEvent(
+        new ExplosionEvent({
+          position: this.getExt(Positionable).getCenterPosition(),
+        })
+      );
     this.getEntityManager().markEntityForRemoval(this);
   }
 }

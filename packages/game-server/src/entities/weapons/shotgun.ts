@@ -34,6 +34,10 @@ export class Shotgun extends Weapon {
     const ammoIndex = inventory.getItems().findIndex((item) => item.itemType === "shotgun_ammo");
     inventory.updateItemState(ammoIndex, { count: ammoItem.state.count - 1 });
 
+    if (ammoItem.state.count <= 0) {
+      inventory.removeItem(ammoIndex);
+    }
+
     // Create 3 bullets with spread
     for (let i = -1; i <= 1; i++) {
       const bullet = new Bullet(this.getGameManagers());

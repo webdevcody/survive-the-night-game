@@ -13,6 +13,7 @@ import { AcidProjectileClient } from "@/entities/acid-projectile";
 import { SpitterZombieClient } from "@/entities/spitter-zombie";
 import { BatZombieClient } from "@/entities/bat-zombie";
 import { ClientDestructible } from "@/extensions/destructible";
+import { ExplodingZombieClient } from "@/entities/exploding-zombie";
 
 export const MINIMAP_SETTINGS = {
   size: 400,
@@ -154,7 +155,8 @@ export class Minimap {
         entity instanceof BigZombieClient ||
         entity instanceof FastZombieClient ||
         entity instanceof BatZombieClient ||
-        entity instanceof SpitterZombieClient
+        entity instanceof SpitterZombieClient ||
+        entity instanceof ExplodingZombieClient
       ) {
         indicator = settings.indicators.enemy;
         // Check if zombie is dead

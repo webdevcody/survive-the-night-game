@@ -36,6 +36,7 @@ import Groupable from "@/extensions/groupable";
 import { BaseEnemy } from "@/entities/enemies/base-enemy";
 import { BatZombie } from "@/entities/enemies/bat-zombie";
 import { SpitterZombie } from "@/entities/enemies/spitter-zombie";
+import { ExplodingZombie } from "@/entities/enemies/exploding-zombie";
 
 const entityMap = {
   [Entities.PLAYER]: Player,
@@ -61,6 +62,7 @@ const entityMap = {
   [Entities.GRENADE]: Grenade,
   [Entities.FIRE_EXTINGUISHER]: FireExtinguisher,
   [Entities.SPITTER_ZOMBIE]: SpitterZombie,
+  [Entities.EXPLODING_ZOMBIE]: ExplodingZombie,
 };
 
 const STATIC_ENTITIES: EntityType[] = [Entities.BOUNDARY];
