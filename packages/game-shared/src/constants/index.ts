@@ -11,6 +11,7 @@ export const Entities = {
   ACID_PROJECTILE: "acid_projectile",
   PLAYER: "player",
   TREE: "tree",
+  LEAPING_ZOMBIE: "leaping_zombie",
   BULLET: "bullet",
   WALL: "wall",
   BOUNDARY: "boundary",

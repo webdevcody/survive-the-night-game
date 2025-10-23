@@ -37,6 +37,7 @@ import { BaseEnemy } from "@/entities/enemies/base-enemy";
 import { BatZombie } from "@/entities/enemies/bat-zombie";
 import { SpitterZombie } from "@/entities/enemies/spitter-zombie";
 import { ExplodingZombie } from "@/entities/enemies/exploding-zombie";
+import { LeapingZombie } from "@/entities/enemies/leaping-zombie";
 
 const entityMap = {
   [Entities.PLAYER]: Player,
@@ -63,6 +64,7 @@ const entityMap = {
   [Entities.FIRE_EXTINGUISHER]: FireExtinguisher,
   [Entities.SPITTER_ZOMBIE]: SpitterZombie,
   [Entities.EXPLODING_ZOMBIE]: ExplodingZombie,
+  [Entities.LEAPING_ZOMBIE]: LeapingZombie,
 };
 
 const STATIC_ENTITIES: EntityType[] = [Entities.BOUNDARY];

@@ -4,7 +4,6 @@ import Vector2 from "@shared/util/vector2";
 import { IEntity } from "@/entities/types";
 import { EntityType } from "@/types/entity";
 import { EntityStateTracker } from "./entity-state-tracker";
-import Shape, { Rectangle } from "@/util/shape";
 
 export interface IEntityManager {
   generateEntityId(): string;

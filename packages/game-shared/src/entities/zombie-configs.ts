@@ -207,4 +207,44 @@ export const ZOMBIE_CONFIGS: Record<string, ZombieConfig> = {
     movementStrategy: "ranged",
     attackStrategy: "ranged",
   },
+  [Entities.LEAPING_ZOMBIE]: {
+    id: Entities.LEAPING_ZOMBIE,
+    category: EntityCategories.ZOMBIE,
+    stats: {
+      speed: 40,
+      health: 7,
+      damage: 2,
+      attackCooldown: 1, // Cooldown for swipe attack
+      attackRadius: 28,
+      dropChance: 0.5,
+      size: new Vector2(16, 16),
+    },
+    assets: {
+      assetPrefix: "leaping_zombie",
+      animationDuration: 750,
+      debugWaypointColor: "green",
+      minimapColor: "purple",
+      frameLayout: {
+        startX: 0,
+        downY: 160,
+        leftY: 176,
+        upY: 144,
+        totalFrames: 4,
+        sheet: "characters",
+      },
+      deadFrame: {
+        x: 144,
+        y: 0,
+        sheet: "characters",
+      },
+    },
+    movementStrategy: "melee",
+    attackStrategy: "leaping",
+    leapConfig: {
+      leapRange: 80, // Maximum distance to trigger leap (must be > attackRadius)
+      leapSpeed: 800, // Speed multiplier during leap (overrides normal movement speed)
+      leapCooldown: 3, // Cooldown between leaps
+      leapDuration: 0.7, // How long the leap velocity boost lasts
+    },
+  },
 };

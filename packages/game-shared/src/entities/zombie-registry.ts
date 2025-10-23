@@ -43,13 +43,21 @@ export interface ZombieAssetConfig {
   };
 }
 
+export interface LeapConfig {
+  leapRange: number; // Maximum distance to trigger leap (player must be > attackRadius and <= leapRange)
+  leapSpeed: number; // Speed during leap (overrides normal movement)
+  leapCooldown: number; // Cooldown between leaps
+  leapDuration: number; // How long the leap velocity boost lasts
+}
+
 export interface ZombieConfig {
   id: EntityType;
   category: EntityCategory;
   stats: ZombieStats;
   assets: ZombieAssetConfig;
   movementStrategy: "melee" | "flying" | "ranged";
-  attackStrategy: "melee" | "exploding" | "ranged";
+  attackStrategy: "melee" | "exploding" | "ranged" | "leaping";
+  leapConfig?: LeapConfig;
 }
 
 class ZombieRegistry {

@@ -27,6 +27,7 @@ import { FireExtinguisherClient } from "@/entities/items/fire-extinguisher";
 import { SpitterZombieClient } from "./spitter-zombie";
 import { AcidProjectileClient } from "./acid-projectile";
 import { ExplodingZombieClient } from "./exploding-zombie";
+import { LeapingZombieClient } from "./enemies/leaping-zombie";
 
 export const entityMap = {
   [Entities.PLAYER]: PlayerClient,
@@ -54,6 +55,7 @@ export const entityMap = {
   [Entities.FIRE_EXTINGUISHER]: FireExtinguisherClient,
   [Entities.SPITTER_ZOMBIE]: SpitterZombieClient,
   [Entities.ACID_PROJECTILE]: AcidProjectileClient,
+  [Entities.LEAPING_ZOMBIE]: LeapingZombieClient,
 } as const;
 
 export class EntityFactory {
