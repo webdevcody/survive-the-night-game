@@ -9,18 +9,17 @@ import Positionable from "@/extensions/positionable";
 import { knockBack } from "./helpers";
 import { Player } from "@/entities/player";
 import { Entities, KNIFE_ATTACK_RANGE, Zombies } from "@/constants";
+import { weaponRegistry } from "@shared/entities";
 
 export class Knife extends Weapon {
-  private static readonly DAMAGE = 1;
-  private static readonly PUSH_DISTANCE = 12;
-  private static readonly COOLDOWN = 0.5;
+  private config = weaponRegistry.get(WEAPON_TYPES.KNIFE)!;
 
   constructor(gameManagers: IGameManagers) {
     super(gameManagers, WEAPON_TYPES.KNIFE);
   }
 
   public getCooldown(): number {
-    return Knife.COOLDOWN;
+    return this.config.stats.cooldown;
   }
 
   public attack(playerId: string, position: Vector2, facing: Direction): void {
@@ -52,8 +51,8 @@ export class Knife extends Weapon {
     if (targetZombie) {
       const destructible = targetZombie.getExt(Destructible);
       const wasAlive = !destructible.isDead();
-      destructible.damage(Knife.DAMAGE);
-      knockBack(this.getEntityManager(), targetZombie, facing, Knife.PUSH_DISTANCE);
+      destructible.damage(this.config.stats.damage!);
+      knockBack(this.getEntityManager(), targetZombie, facing, this.config.stats.pushDistance!);
 
       if (wasAlive && destructible.isDead()) {
         const player = this.getEntityManager().getEntityById(playerId);

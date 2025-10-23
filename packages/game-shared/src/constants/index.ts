@@ -30,10 +30,6 @@ export const Entities = {
   FIRE_EXTINGUISHER: "fire_extinguisher",
 } as const;
 
-export const Zombies: EntityType[] = [
-  Entities.ZOMBIE,
-  Entities.BIG_ZOMBIE,
-  Entities.FAST_ZOMBIE,
-  Entities.BAT_ZOMBIE,
-  Entities.SPITTER_ZOMBIE,
-];
+// Zombies array will be populated by zombie registry after initialization
+// Import zombieRegistry where you need to access all zombie types
+export let Zombies: EntityType[] = [];

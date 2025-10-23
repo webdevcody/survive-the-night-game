@@ -49,11 +49,11 @@ class RangedMovementStrategy implements MovementStrategy {
     // If we have a waypoint, move towards it
     if (this.currentWaypoint) {
       const velocity = velocityTowards(zombiePos, this.currentWaypoint);
-      zombie.getExt(Movable).setVelocity(velocity.mul(SpitterZombie.ZOMBIE_SPEED));
+      zombie.getExt(Movable).setVelocity(velocity.mul(zombie.getSpeed()));
     } else {
       // If no waypoint found, try moving directly towards player
       const velocity = velocityTowards(zombiePos, playerPos);
-      zombie.getExt(Movable).setVelocity(velocity.mul(SpitterZombie.ZOMBIE_SPEED * 0.5)); // Move slower when no path found
+      zombie.getExt(Movable).setVelocity(velocity.mul(zombie.getSpeed() * 0.5)); // Move slower when no path found
     }
 
     return false; // Let base enemy handle collision movement
@@ -89,26 +89,8 @@ class RangedAttackStrategy implements AttackStrategy {
 }
 
 export class SpitterZombie extends BaseEnemy {
-  public static readonly Size = new Vector2(16, 16);
-  public static readonly ZOMBIE_SPEED = 25; // Slower than regular zombie
-  private static readonly ATTACK_DAMAGE = 2;
-  private static readonly ATTACK_COOLDOWN = 2; // Longer cooldown for ranged attack
-  private static readonly ATTACK_RADIUS = 100; // Much larger attack radius
-  public static readonly MAX_HEALTH = 2; // Less health than regular zombie
-  private static readonly DROP_CHANCE = 0.5;
-
   constructor(gameManagers: IGameManagers) {
-    super(
-      gameManagers,
-      Entities.SPITTER_ZOMBIE,
-      SpitterZombie.Size,
-      SpitterZombie.MAX_HEALTH,
-      SpitterZombie.ATTACK_COOLDOWN,
-      SpitterZombie.ZOMBIE_SPEED,
-      SpitterZombie.DROP_CHANCE,
-      SpitterZombie.ATTACK_RADIUS,
-      SpitterZombie.ATTACK_DAMAGE
-    );
+    super(gameManagers, Entities.SPITTER_ZOMBIE);
 
     this.setMovementStrategy(new RangedMovementStrategy());
     this.setAttackStrategy(new RangedAttackStrategy());

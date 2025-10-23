@@ -2,6 +2,7 @@ import { IEntityManager, IGameManagers } from "@/managers/types";
 import { Extension, ExtensionCtor } from "@/extensions/types";
 import { EntityType, RawEntity } from "@/types/entity";
 import { IEntity } from "./types";
+import { EntityCategory, EntityCategories } from "@shared/entities";
 
 export class Entity extends EventTarget implements IEntity {
   private readonly id: string;
@@ -38,6 +39,11 @@ export class Entity extends EventTarget implements IEntity {
 
   public getId(): string {
     return this.id;
+  }
+
+  public getCategory(): EntityCategory {
+    // Default implementation - subclasses should override
+    return EntityCategories.ITEM;
   }
 
   public getEntityManager(): IEntityManager {

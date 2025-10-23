@@ -10,26 +10,10 @@ import { Cooldown } from "@/entities/util/cooldown";
 import { MeleeMovementStrategy, MeleeAttackStrategy } from "./zombie";
 
 export class BigZombie extends BaseEnemy {
-  public static readonly Size = new Vector2(16, 16);
-  public static readonly ZOMBIE_SPEED = 20;
-  private static readonly ATTACK_DAMAGE = 3;
-  private static readonly ATTACK_COOLDOWN = 1.5;
   public static readonly KNOCKBACK_FORCE = 600;
-  public static readonly MAX_HEALTH = 11;
-  private static readonly DROP_CHANCE = 1;
 
   constructor(gameManagers: IGameManagers) {
-    super(
-      gameManagers,
-      Entities.BIG_ZOMBIE,
-      BigZombie.Size,
-      BigZombie.MAX_HEALTH,
-      BigZombie.ATTACK_COOLDOWN,
-      BigZombie.ZOMBIE_SPEED,
-      BigZombie.DROP_CHANCE,
-      ZOMBIE_ATTACK_RADIUS,
-      BigZombie.ATTACK_DAMAGE
-    );
+    super(gameManagers, Entities.BIG_ZOMBIE);
 
     const attackStrategy = new MeleeAttackStrategy();
     attackStrategy.onEntityDamaged = (entity: IEntity) => {

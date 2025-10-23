@@ -3,6 +3,7 @@ import { ClientExtension, ClientExtensionCtor } from "@/extensions/types";
 import { clientExtensionsMap } from "@/extensions/index";
 import { EntityType, RawEntity } from "@shared/types/entity";
 import Vector2 from "@shared/util/vector2";
+import { EntityCategory, EntityCategories } from "@shared/entities";
 
 export abstract class ClientEntityBase {
   private id: string;
@@ -20,6 +21,11 @@ export abstract class ClientEntityBase {
 
   public getType(): EntityType {
     return this.type;
+  }
+
+  public getCategory(): EntityCategory {
+    // Default implementation - subclasses should override
+    return EntityCategories.ITEM;
   }
 
   public lerpPosition(target: Vector2, current: Vector2): Vector2 {

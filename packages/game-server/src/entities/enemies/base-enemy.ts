@@ -20,6 +20,7 @@ import { EntityType } from "@shared/types/entity";
 import { ZombieAttackedEvent } from "@/events/server-sent/zombie-attacked-event";
 import { ZombieDeathEvent } from "@/events/server-sent/zombie-death-event";
 import { ZombieHurtEvent } from "@/events/server-sent/zombie-hurt-event";
+import { EntityCategory, EntityCategories, ZombieConfig, zombieRegistry } from "@shared/entities";
 
 export interface MovementStrategy {
   // Return true if the strategy handled movement completely, false if it needs default movement handling
@@ -42,36 +43,33 @@ export abstract class BaseEnemy extends Entity {
   protected attackDamage: number;
   private movementStrategy?: MovementStrategy;
   private attackStrategy?: AttackStrategy;
+  protected config: ZombieConfig;
 
-  constructor(
-    gameManagers: IGameManagers,
-    entityType: EntityType,
-    size: Vector2,
-    maxHealth: number,
-    attackCooldownTime: number,
-    speed: number,
-    dropChance: number = 0,
-    attackRadius: number = 0,
-    attackDamage: number = 0
-  ) {
+  constructor(gameManagers: IGameManagers, entityType: EntityType, config?: ZombieConfig) {
     super(gameManagers, entityType);
 
-    this.speed = speed;
+    // Get config from registry if not provided
+    this.config = config || zombieRegistry.get(entityType)!;
+    if (!this.config) {
+      throw new Error(`Zombie config not found for ${entityType}`);
+    }
+
+    this.speed = this.config.stats.speed;
     this.entityType = entityType;
-    this.attackCooldown = new Cooldown(attackCooldownTime);
-    this.attackRadius = attackRadius;
-    this.attackDamage = attackDamage;
+    this.attackCooldown = new Cooldown(this.config.stats.attackCooldown);
+    this.attackRadius = this.config.stats.attackRadius;
+    this.attackDamage = this.config.stats.damage;
     this.extensions = [
-      new Inventory(this, gameManagers.getBroadcaster()).addRandomItem(dropChance),
+      new Inventory(this, gameManagers.getBroadcaster()).addRandomItem(this.config.stats.dropChance),
       new Destructible(this)
-        .setMaxHealth(maxHealth)
-        .setHealth(maxHealth)
+        .setMaxHealth(this.config.stats.health)
+        .setHealth(this.config.stats.health)
         .onDamaged(this.onDamaged.bind(this))
         .setOffset(new Vector2(4, 4))
         .onDeath(this.onDeath.bind(this)),
       new Groupable(this, "enemy"),
-      new Positionable(this).setSize(size),
-      new Collidable(this).setSize(size.div(2)).setOffset(new Vector2(4, 4)),
+      new Positionable(this).setSize(this.config.stats.size),
+      new Collidable(this).setSize(this.config.stats.size.div(2)).setOffset(new Vector2(4, 4)),
       new Movable(this),
       new Updatable(this, this.updateEnemy.bind(this)),
     ];
@@ -197,6 +195,10 @@ export abstract class BaseEnemy extends Entity {
 
   getSpeed(): number {
     return this.speed;
+  }
+
+  getCategory(): EntityCategory {
+    return EntityCategories.ZOMBIE;
   }
 
   serialize(): any {

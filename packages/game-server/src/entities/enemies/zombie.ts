@@ -103,25 +103,8 @@ export class MeleeAttackStrategy implements AttackStrategy {
 }
 
 export class Zombie extends BaseEnemy {
-  public static readonly Size = new Vector2(16, 16);
-  public static readonly ZOMBIE_SPEED = 35;
-  private static readonly ATTACK_DAMAGE = 1;
-  private static readonly ATTACK_COOLDOWN = 1;
-  public static readonly MAX_HEALTH = 3;
-  private static readonly DROP_CHANCE = 0.7;
-
   constructor(gameManagers: IGameManagers) {
-    super(
-      gameManagers,
-      Entities.ZOMBIE,
-      Zombie.Size,
-      Zombie.MAX_HEALTH,
-      Zombie.ATTACK_COOLDOWN,
-      Zombie.ZOMBIE_SPEED,
-      Zombie.DROP_CHANCE,
-      ZOMBIE_ATTACK_RADIUS,
-      Zombie.ATTACK_DAMAGE
-    );
+    super(gameManagers, Entities.ZOMBIE);
 
     this.setMovementStrategy(new MeleeMovementStrategy());
     this.setAttackStrategy(new MeleeAttackStrategy());

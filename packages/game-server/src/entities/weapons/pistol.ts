@@ -7,16 +7,17 @@ import { WEAPON_TYPES } from "@shared/types/weapons";
 import { GunEmptyEvent } from "@shared/events/server-sent/gun-empty-event";
 import { PlayerAttackedEvent } from "@/events/server-sent/player-attacked-event";
 import Vector2 from "@/util/vector2";
+import { weaponRegistry } from "@shared/entities";
 
 export class Pistol extends Weapon {
-  private static readonly COOLDOWN = 0.3;
+  private config = weaponRegistry.get(WEAPON_TYPES.PISTOL)!;
 
   constructor(gameManagers: IGameManagers) {
     super(gameManagers, WEAPON_TYPES.PISTOL);
   }
 
   public getCooldown(): number {
-    return Pistol.COOLDOWN;
+    return this.config.stats.cooldown;
   }
 
   public attack(playerId: string, position: Vector2, facing: Direction): void {

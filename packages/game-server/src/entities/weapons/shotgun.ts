@@ -6,17 +6,17 @@ import { Weapon } from "@/entities/weapons/weapon";
 import { WEAPON_TYPES } from "@shared/types/weapons";
 import { Direction } from "../../../../game-shared/src/util/direction";
 import Vector2 from "@/util/vector2";
+import { weaponRegistry } from "@shared/entities";
 
 export class Shotgun extends Weapon {
-  private static readonly SPREAD_ANGLE = 8; // degrees
-  private static readonly COOLDOWN = 0.8; // Longer cooldown than pistol
+  private config = weaponRegistry.get(WEAPON_TYPES.SHOTGUN)!;
 
   constructor(gameManagers: IGameManagers) {
     super(gameManagers, WEAPON_TYPES.SHOTGUN);
   }
 
   public getCooldown(): number {
-    return Shotgun.COOLDOWN;
+    return this.config.stats.cooldown;
   }
 
   public attack(playerId: string, position: Vector2, facing: Direction): void {
@@ -42,7 +42,7 @@ export class Shotgun extends Weapon {
     for (let i = -1; i <= 1; i++) {
       const bullet = new Bullet(this.getGameManagers());
       bullet.setPosition(position);
-      bullet.setDirectionWithOffset(facing, i * Shotgun.SPREAD_ANGLE);
+      bullet.setDirectionWithOffset(facing, i * this.config.stats.spreadAngle!);
       bullet.setShooterId(playerId);
       this.getEntityManager().addEntity(bullet);
     }

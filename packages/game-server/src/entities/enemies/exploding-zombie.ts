@@ -12,33 +12,17 @@ import { Grenade } from "../items/grenade";
 import { ExplosionEvent } from "@/events/server-sent/explosion-event";
 
 export class ExplodingZombie extends BaseEnemy {
-  public static readonly Size = new Vector2(8, 8);
-  public static readonly ZOMBIE_SPEED = 45; // Much faster than regular zombie
-  private static readonly ATTACK_DAMAGE = 0;
-  private static readonly ATTACK_COOLDOWN = 0.5; // Attacks more frequently
-  public static readonly MAX_HEALTH = 1; // Less health than regular zombie
-  private static readonly DROP_CHANCE = 0.3; // Lower drop chance than regular zombie
   private static readonly EXPLOSION_RADIUS = 32;
   private static readonly EXPLOSION_DAMAGE = 5;
   private readonly positionThreshold = 4; // Larger threshold for faster speed
 
   constructor(gameManagers: IGameManagers) {
-    super(
-      gameManagers,
-      Entities.EXPLODING_ZOMBIE,
-      ExplodingZombie.Size,
-      ExplodingZombie.MAX_HEALTH,
-      ExplodingZombie.ATTACK_COOLDOWN,
-      ExplodingZombie.ZOMBIE_SPEED,
-      ExplodingZombie.DROP_CHANCE,
-      ZOMBIE_ATTACK_RADIUS,
-      ExplodingZombie.ATTACK_DAMAGE
-    );
+    super(gameManagers, Entities.EXPLODING_ZOMBIE);
 
     // Override collision box size and offset for smaller zombie
     const collidable = this.getExt(Collidable);
     collidable
-      .setSize(ExplodingZombie.Size)
+      .setSize(this.config.stats.size)
       .setOffset(new Vector2(this.positionThreshold, this.positionThreshold));
 
     this.setMovementStrategy(new MeleeMovementStrategy());

@@ -1,19 +1,14 @@
 import { GameState } from "@/state";
 import { getPlayer } from "@/util/get-player";
 import { ClientPositionable } from "@/extensions/positionable";
-import { ZombieClient } from "@/entities/zombie";
-import { BigZombieClient } from "@/entities/big-zombie";
-import { FastZombieClient } from "@/entities/fast-zombie";
 import { PlayerClient } from "@/entities/player";
 import { WallClient } from "@/entities/items/wall";
 import { ClientCarryable } from "@/extensions/carryable";
 import { MapManager } from "@/managers/map";
 import { TILE_IDS } from "@shared/map";
 import { AcidProjectileClient } from "@/entities/acid-projectile";
-import { SpitterZombieClient } from "@/entities/spitter-zombie";
-import { BatZombieClient } from "@/entities/bat-zombie";
 import { ClientDestructible } from "@/extensions/destructible";
-import { ExplodingZombieClient } from "@/entities/exploding-zombie";
+import { EntityCategories } from "@shared/entities";
 
 export const MINIMAP_SETTINGS = {
   size: 400,
@@ -146,18 +141,13 @@ export class Minimap {
       const minimapX = settings.left + settings.size / 2 + relativeX * settings.scale;
       const minimapY = top + settings.size / 2 + relativeY * settings.scale;
 
-      // Determine indicator settings based on entity type
+      // Determine indicator settings based on entity category
       let indicator = null;
       let color = null;
 
-      if (
-        entity instanceof ZombieClient ||
-        entity instanceof BigZombieClient ||
-        entity instanceof FastZombieClient ||
-        entity instanceof BatZombieClient ||
-        entity instanceof SpitterZombieClient ||
-        entity instanceof ExplodingZombieClient
-      ) {
+      const category = entity.getCategory();
+
+      if (category === EntityCategories.ZOMBIE) {
         indicator = settings.indicators.enemy;
         // Check if zombie is dead
         if (entity.hasExt(ClientDestructible) && entity.getExt(ClientDestructible).isDead()) {

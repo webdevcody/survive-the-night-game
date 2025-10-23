@@ -7,6 +7,15 @@ import {
 } from "../../../game-shared/src/util/direction";
 import { InventoryItem } from "../../../game-shared/src/util/inventory";
 import { CropOptions, ImageManager } from "@/managers/image";
+import {
+  zombieRegistry,
+  weaponRegistry,
+  itemRegistry,
+  decalRegistry,
+  projectileRegistry,
+  environmentRegistry,
+  characterRegistry,
+} from "@shared/entities";
 
 const tileSize = 16;
 
@@ -69,28 +78,13 @@ function createCharacterFrames({
   };
 }
 
-function createSpriteFrames(options: {
-  key: string;
-  x: number;
-  y: number;
-  totalFrames: number;
-  sheet?: string;
-}) {
-  return Array.from({ length: options.totalFrames }, (_, index) => ({
-    [options.key]: assetMap({ x: options.x + index * 16, y: options.y, sheet: options.sheet }),
-    [`${options.key}_${index}`]: assetMap({
-      x: options.x + index * 16,
-      y: options.y,
-      sheet: options.sheet,
-    }),
-  })).reduce((acc, curr) => ({ ...acc, ...curr }), {});
-}
 
 function createCharacterAssets(
   name: string,
   frames: ReturnType<typeof createCharacterFrames>,
   deadX?: number,
-  deadY?: number
+  deadY?: number,
+  deadSheet?: string
 ) {
   const assets: Record<string, CropOptions & { sheet: string }> = {
     [`${name}`]: assetMap(frames.down[0]),
@@ -104,7 +98,7 @@ function createCharacterAssets(
   };
 
   if (deadX !== undefined && deadY !== undefined) {
-    assets[`${name}_dead`] = assetMap({ x: deadX, y: deadY, sheet: "characters" });
+    assets[`${name}_dead`] = assetMap({ x: deadX, y: deadY, sheet: deadSheet || "characters" });
   }
 
   // Add directional frames
@@ -139,87 +133,42 @@ type FrameOrigin = {
   y: number;
 };
 
-const zombieUpFrameOrigins = getFrameOrigins({ startX: 496, startY: 57, totalFrames: 3 });
-const zombieDownFrameOrigins = getFrameOrigins({ startX: 496, startY: 76, totalFrames: 3 });
-const zombieLeftFrameOrigins = getFrameOrigins({ startX: 496, startY: 95, totalFrames: 3 });
-const zombieRightFrameOrigins = getFrameOrigins({ startX: 496, startY: 95, totalFrames: 3 });
+// Helper function to generate character-like assets from a config with frameLayout
+function generateCharacterAssetsFromConfig(config: {
+  assets: {
+    assetPrefix: string;
+    frameLayout: {
+      startX: number;
+      downY: number;
+      leftY: number;
+      upY: number;
+      totalFrames: number;
+      sheet?: string;
+    };
+    deadFrame?: {
+      x: number;
+      y: number;
+      sheet?: string;
+    };
+  };
+}) {
+  const frames = createCharacterFrames({
+    startX: config.assets.frameLayout.startX,
+    downY: config.assets.frameLayout.downY,
+    leftY: config.assets.frameLayout.leftY,
+    upY: config.assets.frameLayout.upY,
+    totalFrames: config.assets.frameLayout.totalFrames,
+    sheet: config.assets.frameLayout.sheet || "default",
+  });
 
-const swingDownFrameOrigins = getFrameOrigins({
-  startX: 0,
-  startY: 96,
-  totalFrames: 4,
-  sheet: "items",
-});
-
-const spitterZombieFrames = createCharacterFrames({
-  startX: 0,
-  downY: 160,
-  leftY: 176,
-  upY: 144,
-  totalFrames: 4,
-});
-
-const bigZombieDownFrameOrigins = getFrameOrigins({
-  startX: 0,
-  startY: 64,
-  totalFrames: 3,
-  sheet: "characters",
-});
-
-const zombieSwingDownFrameOrigins = getFrameOrigins({
-  startX: 0,
-  startY: 112,
-  totalFrames: 4,
-  sheet: "items",
-});
-
-const zombieFastFrames = createCharacterFrames({
-  startX: 0,
-  downY: 208,
-  leftY: 224,
-  upY: 192,
-  totalFrames: 3,
-});
-
-const playerFrames = createCharacterFrames({
-  startX: 0,
-  downY: 112,
-  leftY: 128,
-  upY: 96,
-  totalFrames: 3,
-});
-
-const playerWdcFrames = createCharacterFrames({
-  startX: 64,
-  downY: 112,
-  leftY: 128,
-  upY: 96,
-  totalFrames: 3,
-});
-
-const batFrames = createCharacterFrames({
-  startX: 0,
-  downY: 240,
-  leftY: 240,
-  upY: 240,
-  totalFrames: 3,
-});
-
-const bigZombieFrames = createCharacterFrames({
-  startX: 0,
-  downY: 64,
-  leftY: 80,
-  upY: 48,
-  totalFrames: 3,
-});
-
-const explodingZombieFrames = createCharacterFrames({
-  startX: 0,
-  downY: 64,
-  leftY: 80,
-  upY: 48,
-  totalFrames: 3,
-});
+  return createCharacterAssets(
+    config.assets.assetPrefix,
+    frames,
+    config.assets.deadFrame?.x,
+    config.assets.deadFrame?.y,
+    config.assets.deadFrame?.sheet
+  );
+}
 
 const ROTATION_MAP: Record<Direction, number> = {
   [Direction.Up]: 180,
@@ -250,80 +199,136 @@ function createDirectionalFrames(baseFrames: FrameOrigin[], prefix: string) {
   return frames;
 }
 
+function createWeaponAssets(
+  assetPrefix: string,
+  spritePositions: {
+    right: { x: number; y: number };
+    down: { x: number; y: number };
+    up: { x: number; y: number };
+  },
+  sheet: string = "default"
+) {
+  return {
+    [assetPrefix]: assetMap({ x: spritePositions.right.x, y: spritePositions.right.y, sheet }),
+    [`${assetPrefix}_facing_down`]: assetMap({ x: spritePositions.down.x, y: spritePositions.down.y, sheet }),
+    [`${assetPrefix}_facing_left`]: assetMap({ x: spritePositions.right.x, y: spritePositions.right.y, flipX: true, sheet }),
+    [`${assetPrefix}_facing_right`]: assetMap({ x: spritePositions.right.x, y: spritePositions.right.y, sheet }),
+    [`${assetPrefix}_facing_up`]: assetMap({ x: spritePositions.up.x, y: spritePositions.up.y, sheet }),
+  };
+}
+
+function createSimpleAsset(assetKey: string, x: number, y: number, width?: number, height?: number, sheet: string = "default") {
+  return {
+    [assetKey]: assetMap({ x, y, width, height, sheet }),
+  };
+}
+
+function createAnimatedAsset(assetKey: string, frameCount: number, startX: number, startY: number, sheet: string = "default") {
+  const assets: Record<string, CropOptions & { sheet: string }> = {};
+
+  // Base asset
+  assets[assetKey] = assetMap({ x: startX, y: startY, sheet });
+
+  // Individual frames
+  for (let i = 0; i < frameCount; i++) {
+    assets[`${assetKey}_${i}`] = assetMap({ x: startX + i * tileSize, y: startY, sheet });
+  }
+
+  return assets;
+}
+
+// Generic helper to merge assets from multiple configs
+function mergeAssetsFromConfigs<T>(
+  configs: T[],
+  assetGenerator: (config: T) => Record<string, CropOptions & { sheet: string }>
+): Record<string, CropOptions & { sheet: string }> {
+  return configs.reduce((acc, config) => ({
+    ...acc,
+    ...assetGenerator(config),
+  }), {});
+}
+
 export const assetsMap = {
-  spikes: assetMap({ x: 357, y: 57 }),
-  landmine: assetMap({ x: 16, y: 48, sheet: "items" }),
-  fire_extinguisher: assetMap({ x: 112, y: 0, sheet: "items" }),
-  grenade: assetMap({ x: 64, y: 0, sheet: "items" }),
-  cloth: assetMap({ x: 51, y: 228 }),
-  bullet: assetMap({ x: 68, y: 171 }),
-  acid_projectile: assetMap({ x: 96, y: 171 }),
-  knife: assetMap({ x: 17, y: 171 }),
-  knife_facing_down: assetMap({ x: 51, y: 171 }),
-  knife_facing_left: assetMap({ x: 17, y: 171, flipX: true }),
-  knife_facing_right: assetMap({ x: 17, y: 171 }),
-  knife_facing_up: assetMap({ x: 34, y: 171 }),
-  pistol: assetMap({ x: 17, y: 149 }),
-  pistol_ammo: assetMap({ x: 64, y: 16, sheet: "items" }),
-  pistol_facing_down: assetMap({ x: 51, y: 149 }),
-  pistol_facing_left: assetMap({ x: 17, y: 149, flipX: true }),
-  pistol_facing_right: assetMap({ x: 17, y: 149 }),
-  pistol_facing_up: assetMap({ x: 34, y: 149 }),
-  shotgun: assetMap({ x: 17, y: 133 }),
-  shotgun_ammo: assetMap({ x: 80, y: 16, sheet: "items" }),
-  shotgun_facing_down: assetMap({ x: 51, y: 133 }),
-  shotgun_facing_left: assetMap({ x: 17, y: 133, flipX: true }),
-  shotgun_facing_right: assetMap({ x: 17, y: 133 }),
-  shotgun_facing_up: assetMap({ x: 34, y: 133 }),
-  flame: assetMap({ x: 85, y: 266 }),
-  flame_0: assetMap({ x: 85, y: 266 }),
-  flame_1: assetMap({ x: 102, y: 266 }),
-  flame_2: assetMap({ x: 119, y: 266 }),
-  flame_3: assetMap({ x: 136, y: 266 }),
-  flame_4: assetMap({ x: 153, y: 266 }),
-  torch: assetMap({ x: 68, y: 266 }),
-  fire: assetMap({ x: 51, y: 265 }),
-  gasoline: assetMap({ x: 255, y: 38 }),
-  tree: assetMap({ x: 221, y: 209 }),
-  wood: assetMap({ x: 221, y: 209 }),
-  wall: assetMap({ x: 357, y: 95 }),
-  zombie: assetMap({ x: 493, y: 76 }),
-  zombie_0: assetMap(zombieDownFrameOrigins[0]),
-  zombie_1: assetMap(zombieDownFrameOrigins[1]),
-  zombie_2: assetMap(zombieDownFrameOrigins[2]),
-  zombie_dead: assetMap({ x: 289, y: 19 }),
-  zombie_facing_down: assetMap(zombieDownFrameOrigins[0]),
-  zombie_facing_down_0: assetMap(zombieDownFrameOrigins[0]),
-  zombie_facing_down_1: assetMap(zombieDownFrameOrigins[1]),
-  zombie_facing_down_2: assetMap(zombieDownFrameOrigins[2]),
-  zombie_facing_left: assetMap(zombieLeftFrameOrigins[0]),
-  zombie_facing_left_0: assetMap(zombieLeftFrameOrigins[0]),
-  zombie_facing_left_1: assetMap(zombieLeftFrameOrigins[1]),
-  zombie_facing_left_2: assetMap(zombieLeftFrameOrigins[2]),
-  zombie_facing_right: loadFlipXAsset(zombieRightFrameOrigins[0]),
-  zombie_facing_right_0: loadFlipXAsset(zombieRightFrameOrigins[0]),
-  zombie_facing_right_1: loadFlipXAsset(zombieRightFrameOrigins[1]),
-  zombie_facing_right_2: loadFlipXAsset(zombieRightFrameOrigins[2]),
-  zombie_facing_up: assetMap(zombieUpFrameOrigins[0]),
-  zombie_facing_up_0: assetMap(zombieUpFrameOrigins[0]),
-  zombie_facing_up_1: assetMap(zombieUpFrameOrigins[1]),
-  zombie_facing_up_2: assetMap(zombieUpFrameOrigins[2]),
-  ...createCharacterAssets("big_zombie", bigZombieFrames, 144, 0),
-  ...createCharacterAssets("exploding_zombie", explodingZombieFrames, 144, 0),
-  ...createCharacterAssets("spitter_zombie", spitterZombieFrames, 144, 0),
-  ...createCharacterAssets("bat_zombie", batFrames, 48, 240),
-  ...createCharacterAssets("player", playerFrames),
-  ...createCharacterAssets("fast_zombie", zombieFastFrames, 144, 0),
-  ...createCharacterAssets("player_wdc", playerWdcFrames, 493, 190),
-  ...createDirectionalFrames(swingDownFrameOrigins, "swing"),
-  ...createDirectionalFrames(zombieSwingDownFrameOrigins, "zombie_swing"),
-  ...createSpriteFrames({ key: "explosion", x: 0, y: 128, totalFrames: 5, sheet: "items" }),
-  bandage: assetMap({ x: 34, y: 190 }),
+  // Auto-generate all weapon assets from registry
+  ...mergeAssetsFromConfigs(weaponRegistry.getAll(), (config) =>
+    createWeaponAssets(
+      config.assets.assetPrefix,
+      config.assets.spritePositions,
+      config.assets.sheet
+    )
+  ),
+  // Auto-generate all item assets from registry
+  ...mergeAssetsFromConfigs(itemRegistry.getAll(), (config) =>
+    createSimpleAsset(
+      config.assets.assetKey,
+      config.assets.x,
+      config.assets.y,
+      config.assets.width,
+      config.assets.height,
+      config.assets.sheet || "default"
+    )
+  ),
+  // Auto-generate all projectile assets from registry
+  ...mergeAssetsFromConfigs(projectileRegistry.getAll(), (config) =>
+    createSimpleAsset(
+      config.assets.assetKey,
+      config.assets.x,
+      config.assets.y,
+      config.assets.width,
+      config.assets.height,
+      config.assets.sheet || "default"
+    )
+  ),
+  // Auto-generate all environment assets from registry
+  ...mergeAssetsFromConfigs(environmentRegistry.getAll(), (config) =>
+    createSimpleAsset(
+      config.assets.assetKey,
+      config.assets.x,
+      config.assets.y,
+      config.assets.width,
+      config.assets.height,
+      config.assets.sheet || "default"
+    )
+  ),
+  // Auto-generate all decal assets from registry
+  ...mergeAssetsFromConfigs(decalRegistry.getAll(), (config) => {
+    if (config.assets.type === "single" && config.assets.position) {
+      return createSimpleAsset(
+        config.assets.assetKey,
+        config.assets.position.x,
+        config.assets.position.y,
+        undefined,
+        undefined,
+        config.assets.position.sheet || "default"
+      );
+    } else if (config.assets.type === "animated" && config.assets.frameLayout) {
+      return createAnimatedAsset(
+        config.assets.assetKey,
+        config.assets.frameCount!,
+        config.assets.frameLayout.startX,
+        config.assets.frameLayout.startY,
+        config.assets.frameLayout.sheet || "default"
+      );
+    } else if (config.assets.type === "directional" && config.assets.directionalFrames) {
+      const frameOrigins = getFrameOrigins({
+        startX: config.assets.directionalFrames.startX,
+        startY: config.assets.directionalFrames.startY,
+        totalFrames: config.assets.directionalFrames.totalFrames,
+        sheet: config.assets.directionalFrames.sheet || "items",
+      });
+      return createDirectionalFrames(frameOrigins, config.assets.assetKey);
+    }
+    return {};
+  }),
+  // Auto-generate all zombie assets from registry
+  ...mergeAssetsFromConfigs(zombieRegistry.getAll(), generateCharacterAssetsFromConfig),
+  // Auto-generate all character assets from registry
+  ...mergeAssetsFromConfigs(characterRegistry.getAll(), generateCharacterAssetsFromConfig),
 } as const;
 
 export type Asset = keyof typeof assetsMap;
 
-export const assetsCache = {} as Record<Asset, HTMLImageElement>;
+export const assetsCache = {} as { [K in Asset]: HTMLImageElement };
 
 export interface ImageLoader {
   get(assetKey: Asset): HTMLImageElement;
@@ -428,7 +433,7 @@ export class AssetManager implements ImageLoader {
     await Promise.all(
       Object.keys(assetsMap).map(async (assetKey) => {
         const asset = assetKey as Asset;
-        const cropOptions = assetsMap[asset];
+        const cropOptions = assetsMap[asset] as CropOptions & { sheet: string };
         const sheet = this.sheets[cropOptions.sheet || "default"];
         if (!sheet) {
           throw new Error(`Sheet not found: ${cropOptions.sheet}`);

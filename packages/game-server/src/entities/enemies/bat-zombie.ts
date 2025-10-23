@@ -33,25 +33,8 @@ class FlyTowardsPlayerStrategy implements MovementStrategy {
 }
 
 export class BatZombie extends BaseEnemy {
-  public static readonly Size = new Vector2(8, 8);
-  public static readonly ZOMBIE_SPEED = 30;
-  private static readonly ATTACK_DAMAGE = 1;
-  private static readonly ATTACK_COOLDOWN = 0.5;
-  public static readonly MAX_HEALTH = 1;
-  private static readonly DROP_CHANCE = 0.2;
-
   constructor(gameManagers: IGameManagers) {
-    super(
-      gameManagers,
-      Entities.BAT_ZOMBIE,
-      BatZombie.Size,
-      BatZombie.MAX_HEALTH,
-      BatZombie.ATTACK_COOLDOWN,
-      BatZombie.ZOMBIE_SPEED,
-      BatZombie.DROP_CHANCE,
-      ZOMBIE_ATTACK_RADIUS,
-      BatZombie.ATTACK_DAMAGE
-    );
+    super(gameManagers, Entities.BAT_ZOMBIE);
 
     // Disable collisions entirely for flying bats
     const collidable = this.getExt(Collidable);

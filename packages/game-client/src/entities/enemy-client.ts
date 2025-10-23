@@ -20,19 +20,31 @@ import { DEBUG_SHOW_WAYPOINTS } from "@shared/debug";
 import { determineDirection } from "@shared/util/direction";
 import { getHitboxWithPadding } from "@shared/util/hitbox";
 import { roundVector2 } from "@shared/util/physics";
+import { EntityCategory, EntityCategories, zombieRegistry, ZombieConfig } from "@shared/entities";
 
 export abstract class EnemyClient extends ClientEntityBase implements IClientEntity, Renderable {
   private lastRenderPosition = { x: 0, y: 0 };
   private previousHealth: number | undefined;
   private damageFlashUntil: number = 0;
   protected debugWaypoint: Vector2 | null = null;
+  protected config: ZombieConfig;
 
   constructor(data: RawEntity, assetManager: AssetManager) {
     super(data, assetManager);
+
+    // Get config from registry
+    this.config = zombieRegistry.get(data.type)!;
+    if (!this.config) {
+      throw new Error(`Zombie config not found for ${data.type}`);
+    }
   }
 
   public getZIndex(): number {
     return Z_INDEX.ENEMIES;
+  }
+
+  public getCategory(): EntityCategory {
+    return EntityCategories.ZOMBIE;
   }
 
   protected getPosition(): Vector2 {
@@ -106,7 +118,7 @@ export abstract class EnemyClient extends ClientEntityBase implements IClientEnt
     if (DEBUG_SHOW_WAYPOINTS && this.debugWaypoint) {
       const waypoint = this.debugWaypoint;
       ctx.save();
-      ctx.strokeStyle = this.getDebugWaypointColor();
+      ctx.strokeStyle = this.config.assets.debugWaypointColor;
       ctx.lineWidth = 2;
 
       ctx.beginPath();
@@ -122,9 +134,17 @@ export abstract class EnemyClient extends ClientEntityBase implements IClientEnt
     }
   }
 
-  protected abstract getDebugWaypointColor(): string;
-  protected abstract getEnemyAssetPrefix(): string;
-  protected abstract getAnimationDuration(): number;
+  protected getDebugWaypointColor(): string {
+    return this.config.assets.debugWaypointColor;
+  }
+
+  protected getEnemyAssetPrefix(): string {
+    return this.config.assets.assetPrefix;
+  }
+
+  protected getAnimationDuration(): number {
+    return this.config.assets.animationDuration;
+  }
 
   protected renderFlames(
     gameState: GameState,
@@ -153,7 +173,7 @@ export abstract class EnemyClient extends ClientEntityBase implements IClientEnt
       frames: 3,
     });
     const image = this.imageLoader.getFrameWithDirection(
-      this.getEnemyAssetPrefix(),
+      this.getEnemyAssetPrefix() as any,
       facing,
       frameIndex
     );
@@ -190,7 +210,7 @@ export abstract class EnemyClient extends ClientEntityBase implements IClientEnt
     renderPosition: Vector2
   ) {
     const myPlayer = getPlayer(gameState);
-    const image = this.imageLoader.get(`${this.getEnemyAssetPrefix()}_dead`);
+    const image = this.imageLoader.get(`${this.getEnemyAssetPrefix()}_dead` as any);
     ctx.drawImage(image, renderPosition.x, renderPosition.y);
 
     if (myPlayer) {
