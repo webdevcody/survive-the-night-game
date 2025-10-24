@@ -1,81 +1,12 @@
-# REAL HIGH PRIORITY
-
-- [ ] find a better way to abstract the code around a weapon decrementing ammo and removing the ammo from the player's inventory when they run out.
-- [ ] look into where we have to update the code just to add a new zombie type, simplify it if possible
-- [ ] look into where we have to update the code just to add a new entity type, simplify it if possible
-
-# BUGS
-
-- [ ] sometimes the pings become negative on the leaderboard
-- [ ] figure out a better approach for difficulting scaling, because when 20 people are in the game, it spawns like 100 zombies, and it's too hard
-- [ ] make the day time longer
-
 # For once in my life, finish one single game!
 
 Feel free to pick any item listed out here to work on.
 
-### Stream TODO
-
-## High Priority (Core Mechanics):
-
-- [ ] larger maps
-- [ ] fix craft
-
-### Refactoring
-
-- [ ] "@/_": ["./src/_", "../game-shared/src/\*"], figure out why in server tsconfig.json, I need this for tests to pass
-
-- [ ] add client sent package side validation
-- [ ] setup a vitest.config.ts file in the test directory so that absolute imports don't break everything
-- [ ] refactor the use the new style sheets I created using aseprite
-- [ ] for renderInteractionText, can we bake this into the extension or ClientEntity so that it'll automatically display the render text if the player is close enough?
-- [ ] refactor the player update method, it's complex, and also abstract the way we handle the fired weapon
-- [ ] refactor the z ordering by sorting the entities by y position (on top of the z index rendering, go to Renderer)
-- [ ] THERE ARE TOO MANY PLACES TO UPDATE WHEN I ADD NEW EXTENSIONS
-- [ ] THERE ARE TOO MANY PLACES TO UPDATE WHEN I ADD NEW ENTITY
-- [ ] I'm noticing that we use GenericEntity and Entity on some of the extensions? which one should extensions know about? I'm ok using Entity, but I wasn't sure if there was a reason for the GenericEntity.
-- [ ]
-- [ ] the velocity / position updating should be in an extension to make it reusable (see the bullet entity for an example)
-- [ ] I shouldn't need to manually call combustible.onDeath() when the zombie dies - lean into event emitters more if possible
-      d- [ ] there is a lot of duplicate code related to showing the "pickup (e)" text over items
-- [ ] there is a lot of places I have to manually update when I add new entities (refactor this)
-- [ ] why does positionable have a size? remove if not necessary
-- [ ] find a way to reduce the amount of duplicate code
-- [ ] the client entities feels very duplicates to the server entities, find a way reuse code maybe?
-- [ ] sometimes when doing @ imports, the entire app breaks forcing us to use relative... figure out why
-- [ ] serialize should be more automated, I often forget to update it when I add new properties
-- [ ] rename hotbar to item belt
-
-### Bugs
-
-- [ ] when DEBUG = true, all the HUD overlays seem to shift, including the "pickup (e)" text over items
+## TODO
 
 ### Gameplay
 
-- [ ] add throwable items (grenades to start with)
-- [ ] decoy items (a fire cracker to distract zombies)
-- [ ] potion items (health, speed, invincibility, etc.)
-
 - [ ] zombie that can only be damanged while on fire zombie in a firefighter outfit
-- [ ] show a message that the players lost, and show a leaderboard with how many kills each player got
-- [ ] add in melee weapon logic
-- [ ] the guns should need ammo to fire
-- [ ] a player should be able to pick up multiple guns (could later sell at the merchant or give other friends)
-- [ ] items should have a weight associated with them
-- [ ] your inventory weight should slow you down
-- [ ] a player should be able to leave the game
-
-### Stuff
-
-- [ ] all players spawn with a random melee weapon
-- [ ] craft torch (wood, cloth, flint)
-- [ ] place torch (acts as lighting)
-- [ ] more base structures (spike floor trap, hurts zombies if they walk over it)
-- [ ] zombies who vomit (range attack)
-- [ ] ammo system
-
-### HUD
-
 - [ ] make the player health look nicer (could use hearts like zelda, or progress bar like in the game "dying light")
 - [ ] add a nice indicator for the day / night cycle (could use a sun and moon icon; checkout don't starve together)
 

@@ -1,8 +1,9 @@
-import { GameState } from "@/state";
-import { getPlayer } from "@/util/get-player";
+import { GameState, getEntityById } from "@/state";
+import { PlayerClient } from "@/entities/player";
 
 const CHAT_FONT_SIZE = 24;
 const CHAT_FONT_FAMILY = "Arial";
+const CHAT_MONOSPACE_FONT_FAMILY = "Courier New, monospace";
 const CHAT_TEXT_COLOR = "white";
 const CHAT_INPUT_HEIGHT = 50;
 const CHAT_BOTTOM_MARGIN = 180; // Distance from bottom of screen to chat input
@@ -58,9 +59,12 @@ export class ChatWidget {
   }
 
   public addChatMessage(playerId: string, message: string): void {
+    // Only truncate user messages, not system messages
+    const truncatedMessage = playerId === "system" ? message : message.slice(0, this.MAX_MESSAGE_LENGTH);
+
     this.chatMessages.push({
       playerId,
-      message: message.slice(0, this.MAX_MESSAGE_LENGTH),
+      message: truncatedMessage,
       timestamp: Date.now(),
     });
   }
@@ -71,6 +75,21 @@ export class ChatWidget {
   }
 
   private wrapText(text: string): string[] {
+    const allLines: string[] = [];
+
+    // First, split by explicit newline characters
+    const textLines = text.split("\n");
+
+    // Then apply word wrapping to each line
+    for (const textLine of textLines) {
+      const wrappedLines = this.wrapSingleLine(textLine);
+      allLines.push(...wrappedLines);
+    }
+
+    return allLines;
+  }
+
+  private wrapSingleLine(text: string): string[] {
     const lines: string[] = [];
     let currentLine = "";
     let currentLineChars = 0;
@@ -98,6 +117,11 @@ export class ChatWidget {
       lines.push(currentLine.trim());
     }
 
+    // If no lines were created (empty string), add an empty line
+    if (lines.length === 0) {
+      lines.push("");
+    }
+
     return lines;
   }
 
@@ -110,10 +134,19 @@ export class ChatWidget {
 
     // Process messages and calculate total height
     const processedMessages = messages.slice(-maxMessages).map((chat) => {
-      const userName = getPlayer(gameState)?.getDisplayName() ?? chat.playerId;
-      const text = `${userName}: ${chat.message}`;
+      // For system messages, don't prepend username
+      let text: string;
+      const isSystem = chat.playerId === "system";
+      if (isSystem) {
+        text = chat.message;
+      } else {
+        // Get the player entity by ID to get their display name
+        const player = getEntityById(gameState, chat.playerId) as PlayerClient;
+        const userName = player?.getDisplayName() ?? "Unknown";
+        text = `${userName}: ${chat.message}`;
+      }
       const lines = this.wrapText(text);
-      return { ...chat, lines, lineCount: lines.length };
+      return { ...chat, lines, lineCount: lines.length, isSystem };
     });
 
     // Calculate total height based on actual content
@@ -131,7 +164,6 @@ export class ChatWidget {
     }
 
     // Draw messages starting from the bottom
-    ctx.font = `${CHAT_FONT_SIZE}px ${CHAT_FONT_FAMILY}`;
     ctx.fillStyle = CHAT_TEXT_COLOR;
 
     // Start at the bottom of the widget (minus padding)
@@ -140,6 +172,12 @@ export class ChatWidget {
     // Render messages in reverse order, moving upwards
     for (let i = processedMessages.length - 1; i >= 0; i--) {
       const chat = processedMessages[i];
+
+      // Use monospace font for system messages, regular font for user messages
+      ctx.font = chat.isSystem
+        ? `${CHAT_FONT_SIZE}px ${CHAT_MONOSPACE_FONT_FAMILY}`
+        : `${CHAT_FONT_SIZE}px ${CHAT_FONT_FAMILY}`;
+
       // Move up by the height of all lines in this message
       currentY -= chat.lineCount * lineHeight;
 

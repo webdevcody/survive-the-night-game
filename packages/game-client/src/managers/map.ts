@@ -1,17 +1,9 @@
 import { GameClient } from "@/client";
 import { DEBUG_MAP_BOUNDS } from "@shared/debug";
 import { ClientIlluminated, ClientPositionable } from "@/extensions";
-import { TILE_IDS } from "@shared/map";
 import Vector2 from "@shared/util/vector2";
 import { distance } from "@shared/util/physics";
 import { RENDER_CONFIG } from "@/constants/constants";
-
-const tileLocations: Record<string, [number, number]> = {
-  [TILE_IDS.GRASS1]: [4 * 16, 0],
-  [TILE_IDS.GRASS2]: [3 * 16, 2 * 16],
-  [TILE_IDS.FOREST]: [8 * 16, 2 * 16],
-  [TILE_IDS.WATER]: [9 * 16, 2 * 16],
-};
 
 const DARKNESS_RATE = 1.8; // lower the darker
 const PULSE_SPEED = 0.001; // Speed of the pulse (lower = slower)
@@ -26,26 +18,35 @@ interface LightSource {
 
 export class MapManager {
   private tileSize = 16;
-  private map: number[][] | null = null;
-  private tilesheet = new Image();
+  private groundLayer: number[][] | null = null;
+  private collidablesLayer: number[][] | null = null;
+  private groundTilesheet = new Image();
+  private collidablesTilesheet = new Image();
   private gameClient: GameClient;
   private lastRenderTime: number;
 
   constructor(gameClient: GameClient) {
     this.gameClient = gameClient;
-    this.tilesheet.src = "/tiles.png";
-    this.tilesheet.onload = () => {
-      // this.columns = Math.floor(this.tilesheet.width / this.tileSize);
-    };
+    this.groundTilesheet.src = "/sheets/ground.png";
+    this.collidablesTilesheet.src = "/sheets/collidables.png";
     this.lastRenderTime = Date.now();
   }
 
-  setMap(map: number[][]) {
-    this.map = map;
+  setMap(mapData: { ground: number[][]; collidables: number[][] }) {
+    this.groundLayer = mapData.ground;
+    this.collidablesLayer = mapData.collidables;
   }
 
   getMap(): number[][] | null {
-    return this.map;
+    // Legacy method - returns ground layer for backward compatibility
+    return this.groundLayer;
+  }
+
+  getMapData(): { ground: number[][] | null; collidables: number[][] | null } {
+    return {
+      ground: this.groundLayer,
+      collidables: this.collidablesLayer,
+    };
   }
 
   private getLightSources(): LightSource[] {
@@ -71,7 +72,7 @@ export class MapManager {
   }
 
   renderDarkness(ctx: CanvasRenderingContext2D) {
-    if (!this.map) return;
+    if (!this.groundLayer) return;
 
     const lightSources = this.getLightSources();
     const gameState = this.gameClient.getGameState();
@@ -91,8 +92,8 @@ export class MapManager {
       baseDarkness = BASE_NIGHT_DARKNESS;
     }
 
-    for (let y = 0; y < this.map.length; y++) {
-      for (let x = 0; x < this.map[y].length; x++) {
+    for (let y = 0; y < this.groundLayer.length; y++) {
+      for (let x = 0; x < this.groundLayer[y].length; x++) {
         const tileX = x * this.tileSize;
         const tileY = y * this.tileSize;
         const tileCenter = new Vector2(tileX + this.tileSize / 2, tileY + this.tileSize / 2);
@@ -121,7 +122,7 @@ export class MapManager {
   }
 
   render(ctx: CanvasRenderingContext2D) {
-    if (!this.map) {
+    if (!this.groundLayer || !this.collidablesLayer) {
       return;
     }
 
@@ -142,24 +143,28 @@ export class MapManager {
       Math.floor((playerPos.y - RENDER_CONFIG.ENTITY_RENDER_RADIUS) / this.tileSize)
     );
     const endTileX = Math.min(
-      this.map[0].length - 1,
+      this.groundLayer[0].length - 1,
       Math.ceil((playerPos.x + RENDER_CONFIG.ENTITY_RENDER_RADIUS) / this.tileSize)
     );
     const endTileY = Math.min(
-      this.map.length - 1,
+      this.groundLayer.length - 1,
       Math.ceil((playerPos.y + RENDER_CONFIG.ENTITY_RENDER_RADIUS) / this.tileSize)
     );
 
     // Only render tiles within the visible range
     for (let y = startTileY; y <= endTileY; y++) {
       for (let x = startTileX; x <= endTileX; x++) {
-        if (y < 0 || y >= this.map.length || x < 0 || x >= this.map[y].length) continue;
+        if (y < 0 || y >= this.groundLayer.length || x < 0 || x >= this.groundLayer[y].length)
+          continue;
 
-        const cell = this.map[y][x];
+        // Render ground layer
+        const groundTileId = this.groundLayer[y][x];
+        const col = groundTileId % 10; // Assuming 10 tiles per row in tilesheet
+        const row = Math.floor(groundTileId / 10);
         ctx.drawImage(
-          this.tilesheet,
-          tileLocations[cell][0],
-          tileLocations[cell][1],
+          this.groundTilesheet,
+          col * this.tileSize,
+          row * this.tileSize,
           this.tileSize,
           this.tileSize,
           x * this.tileSize,
@@ -167,6 +172,24 @@ export class MapManager {
           this.tileSize,
           this.tileSize
         );
+
+        // Render collidables layer if not empty (-1)
+        const collidableTileId = this.collidablesLayer[y][x];
+        if (collidableTileId !== -1) {
+          const colCol = collidableTileId % 10; // Assuming 10 tiles per row in tilesheet
+          const colRow = Math.floor(collidableTileId / 10);
+          ctx.drawImage(
+            this.collidablesTilesheet,
+            colCol * this.tileSize,
+            colRow * this.tileSize,
+            this.tileSize,
+            this.tileSize,
+            x * this.tileSize,
+            y * this.tileSize,
+            this.tileSize,
+            this.tileSize
+          );
+        }
 
         if (DEBUG_MAP_BOUNDS) {
           // Draw row,col text

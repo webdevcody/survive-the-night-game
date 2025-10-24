@@ -5,7 +5,6 @@ import { PlayerClient } from "@/entities/player";
 import { WallClient } from "@/entities/items/wall";
 import { ClientCarryable } from "@/extensions/carryable";
 import { MapManager } from "@/managers/map";
-import { TILE_IDS } from "@shared/map";
 import { AcidProjectileClient } from "@/entities/acid-projectile";
 import { ClientDestructible } from "@/extensions/destructible";
 import { EntityCategories } from "@shared/entities";
@@ -91,13 +90,14 @@ export class Minimap {
     ctx.fillStyle = settings.background;
     ctx.fillRect(settings.left, top, settings.size, settings.size);
 
-    // Draw forest tiles
-    const map = this.mapManager.getMap();
-    if (map) {
+    // Draw collidable tiles (obstacles like trees, walls, water)
+    const mapData = this.mapManager.getMapData();
+    if (mapData && mapData.collidables) {
       ctx.fillStyle = settings.colors.tree;
-      map.forEach((row, y) => {
+      mapData.collidables.forEach((row, y) => {
         row.forEach((cell, x) => {
-          if (cell === TILE_IDS.FOREST) {
+          // If there's a collidable (anything other than -1), draw it
+          if (cell !== -1) {
             const worldX = x * tileSize;
             const worldY = y * tileSize;
 
@@ -113,7 +113,7 @@ export class Minimap {
             const size = treeIndicator.size;
             const halfSize = size / 2;
 
-            // Draw tree indicator based on shape
+            // Draw obstacle indicator based on shape
             if (treeIndicator.shape === "circle") {
               ctx.beginPath();
               ctx.arc(minimapX, minimapY, halfSize, 0, Math.PI * 2);

@@ -9,4 +9,8 @@ export default [
     path: "/play",
     file: "routes/play.tsx",
   },
+  {
+    path: "/editor",
+    file: "routes/editor.tsx",
+  },
 ] satisfies RouteConfig;

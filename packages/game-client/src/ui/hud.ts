@@ -37,7 +37,7 @@ const HUD_SETTINGS = {
       top: 20,
     },
     title: "TODO (dev log)",
-    features: ["- bear trap", "- more biomes", "- crafting spikes"],
+    features: ["- bear trap", "- more biomes"],
   },
   Ping: {
     right: 140,
@@ -166,11 +166,16 @@ export class Hud {
       const healthText = `Health: ${health}`;
       const kills = myPlayer.getKills();
       const killsText = `Kills: ${kills}`;
+      const stamina = myPlayer.getStamina();
+      const maxStamina = myPlayer.getMaxStamina();
+      const staminaText = `Stamina: ${Math.round(stamina)}/${maxStamina}`;
 
       const healthTextWidth = ctx.measureText(healthText).width;
       const killsTextWidth = ctx.measureText(killsText).width;
+      const staminaTextWidth = ctx.measureText(staminaText).width;
 
       ctx.fillText(healthText, width - healthTextWidth - margin, margin + gap * 2);
+      ctx.fillText(staminaText, width - staminaTextWidth - margin, margin + gap * 2.5);
       ctx.fillText(killsText, width - killsTextWidth - margin, margin + gap * 6);
     }
 

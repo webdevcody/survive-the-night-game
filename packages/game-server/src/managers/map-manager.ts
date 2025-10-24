@@ -24,6 +24,8 @@ import { Spikes } from "@/entities/items/spikes";
 import { Torch } from "@/entities/items/torch";
 import { Wall } from "@/entities/items/wall";
 import { SpitterZombie } from "@/entities/enemies/spitter-zombie";
+import { CAMPSITE, FOREST, WATER, type BiomeData } from "@/biomes";
+import type { MapData } from "@shared/events/server-sent/map-event";
 
 const WEAPON_SPAWN_CHANCE = {
   // Weapons
@@ -62,68 +64,13 @@ const spawnTable = [
   { chance: WEAPON_SPAWN_CHANCE.TREE, ItemClass: Tree },
 ];
 
-const Biomes = {
-  CAMPSITE: [
-    [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-    [0, 1, 1, 1, 1, 0, 0, 0, 0, 0, 1, 1, 1, 1, 0, 0],
-    [0, 1, 0, 0, 1, 0, 0, 0, 0, 0, 1, 0, 0, 1, 0, 0],
-    [0, 1, 0, 0, 1, 0, 0, 0, 0, 0, 1, 0, 0, 1, 0, 0],
-    [0, 1, 1, 1, 1, 0, 0, 0, 0, 0, 1, 1, 1, 1, 0, 0],
-    [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-    [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-    [0, 0, 0, 0, 0, 0, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0],
-    [0, 0, 0, 0, 0, 0, 1, 0, 1, 0, 0, 0, 0, 0, 0, 0],
-    [0, 0, 0, 0, 0, 0, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0],
-    [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-    [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-    [0, 1, 1, 1, 1, 0, 0, 0, 0, 0, 1, 1, 1, 1, 0, 0],
-    [0, 1, 0, 0, 1, 0, 0, 0, 0, 0, 1, 0, 0, 1, 0, 0],
-    [0, 1, 0, 0, 1, 0, 0, 0, 0, 0, 1, 0, 0, 1, 0, 0],
-    [0, 1, 1, 1, 1, 0, 0, 0, 0, 0, 1, 1, 1, 1, 0, 0],
-  ],
-  FOREST: [
-    [0, 2, 0, 2, 0, 2, 0, 0, 0, 0, 0, 2, 2, 0, 0, 0],
-    [0, 2, 2, 2, 0, 0, 0, 0, 0, 2, 2, 2, 2, 2, 0, 0],
-    [2, 2, 2, 0, 0, 0, 0, 0, 0, 2, 0, 2, 2, 2, 2, 2],
-    [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2, 0, 2, 2],
-    [0, 0, 0, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 0, 2],
-    [0, 0, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 2, 0, 0],
-    [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2, 0, 0, 0, 0, 0],
-    [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-    [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-    [0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-    [0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2, 0],
-    [0, 2, 0, 0, 0, 0, 0, 0, 0, 2, 0, 0, 0, 2, 2, 0],
-    [0, 2, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2, 0, 0],
-    [0, 2, 2, 0, 0, 0, 0, 0, 0, 0, 0, 2, 2, 2, 2, 0],
-    [2, 2, 2, 2, 0, 0, 2, 0, 0, 0, 2, 2, 2, 2, 2, 0],
-    [2, 2, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2, 2, 0, 2],
-  ],
-  WATER: [
-    [4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4],
-    [4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4],
-    [4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4],
-    [4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4],
-    [4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4],
-    [4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4],
-    [4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4],
-    [4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4],
-    [4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4],
-    [4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4],
-    [4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4],
-    [4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4],
-    [4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4],
-    [4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4],
-    [4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4],
-  ],
-};
-
 const BIOME_SIZE = 16;
 const MAP_SIZE = 7;
 export const TILE_SIZE = 16;
 
 export class MapManager implements IMapManager {
-  private map: number[][] = [];
+  private groundLayer: number[][] = [];
+  private collidablesLayer: number[][] = [];
   private gameManagers?: IGameManagers;
   private entityManager?: IEntityManager;
   private gameMaster?: GameMaster;
@@ -151,7 +98,23 @@ export class MapManager implements IMapManager {
   }
 
   public getMap(): number[][] {
-    return this.map;
+    // Legacy method - returns ground layer for backward compatibility
+    return this.groundLayer;
+  }
+
+  public getMapData(): MapData {
+    return {
+      ground: this.groundLayer,
+      collidables: this.collidablesLayer,
+    };
+  }
+
+  public getGroundLayer(): number[][] {
+    return this.groundLayer;
+  }
+
+  public getCollidablesLayer(): number[][] {
+    return this.collidablesLayer;
   }
 
   public spawnZombies(dayNumber: number) {
@@ -200,8 +163,13 @@ export class MapManager implements IMapManager {
         continue;
       }
 
-      // Skip if not on grass
-      if (this.map[y]?.[x] !== 0) {
+      // Skip if not on valid ground tile (8, 4, 14, 24 are grass/ground tiles)
+      // and ensure no collidable is blocking
+      const groundTile = this.groundLayer[y]?.[x];
+      const isValidGround = groundTile === 8 || groundTile === 4 || groundTile === 14 || groundTile === 24;
+      const hasCollidable = this.collidablesLayer[y]?.[x] !== -1;
+
+      if (!isValidGround || hasCollidable) {
         continue;
       }
 
@@ -235,24 +203,15 @@ export class MapManager implements IMapManager {
     }
   }
 
-  private countCurrentZombies(): number {
-    return this.getEntityManager()
-      .getEntities()
-      .filter(
-        (entity) =>
-          entity instanceof Zombie ||
-          entity instanceof BigZombie ||
-          entity instanceof FastZombie ||
-          entity instanceof BatZombie
-      ).length;
-  }
-
   generateEmptyMap(width: number, height: number) {
     this.getEntityManager().clear();
     this.getEntityManager().setMapSize(width * TILE_SIZE, height * TILE_SIZE);
-    this.map = Array(height)
+    this.groundLayer = Array(height)
       .fill(0)
       .map(() => Array(width).fill(0));
+    this.collidablesLayer = Array(height)
+      .fill(0)
+      .map(() => Array(width).fill(-1));
   }
 
   generateMap() {
@@ -274,9 +233,12 @@ export class MapManager implements IMapManager {
 
   private initializeMap() {
     const totalSize = BIOME_SIZE * MAP_SIZE;
-    this.map = Array(totalSize)
+    this.groundLayer = Array(totalSize)
       .fill(0)
       .map(() => Array(totalSize).fill(0));
+    this.collidablesLayer = Array(totalSize)
+      .fill(0)
+      .map(() => Array(totalSize).fill(-1));
   }
 
   private fillMapWithBiomes() {
@@ -291,7 +253,9 @@ export class MapManager implements IMapManager {
     const totalSize = BIOME_SIZE * MAP_SIZE;
     for (let y = 0; y < totalSize; y++) {
       for (let x = 0; x < totalSize; x++) {
-        if (this.map[y][x] === TILE_IDS.FOREST) {
+        // Check collidables layer for any non-empty tile
+        const collidableTileId = this.collidablesLayer[y][x];
+        if (collidableTileId !== -1) {
           const boundary = new Boundary(this.getGameManagers());
           boundary.setPosition(new Vector2(x * TILE_SIZE, y * TILE_SIZE));
           this.getEntityManager().addEntity(boundary);
@@ -304,7 +268,11 @@ export class MapManager implements IMapManager {
     const totalSize = BIOME_SIZE * MAP_SIZE;
     for (let y = 0; y < totalSize; y++) {
       for (let x = 0; x < totalSize; x++) {
-        if (this.map[y][x] === 0 || this.map[y][x] === 1) {
+        // Check ground layer for valid ground tiles (8, 4, 14, 24) and ensure no collidable is blocking
+        const groundTile = this.groundLayer[y][x];
+        const isValidGround = groundTile === 8 || groundTile === 4 || groundTile === 14 || groundTile === 24;
+
+        if (isValidGround && this.collidablesLayer[y][x] === -1) {
           this.trySpawnItemAt(x, y);
         }
       }
@@ -339,30 +307,31 @@ export class MapManager implements IMapManager {
   }
 
   private placeBiome(biomeX: number, biomeY: number) {
-    // Place forest biomes around the edges
+    // Place water biomes around the outer edges
     if (biomeX === 0 || biomeX === MAP_SIZE - 1 || biomeY === 0 || biomeY === MAP_SIZE - 1) {
-      // Place forest biome
       for (let y = 0; y < BIOME_SIZE; y++) {
         for (let x = 0; x < BIOME_SIZE; x++) {
           const mapY = biomeY * BIOME_SIZE + y;
           const mapX = biomeX * BIOME_SIZE + x;
-          this.map[mapY][mapX] = TILE_IDS.FOREST;
+          this.groundLayer[mapY][mapX] = WATER.ground[y][x];
+          this.collidablesLayer[mapY][mapX] = WATER.collidables[y][x];
         }
       }
       return;
     }
 
-    // Adjust the center position for the campsite (now at 3,3 due to water border)
+    // Place campsite at center (3,3), forest everywhere else
     const biome =
       biomeX === Math.floor(MAP_SIZE / 2) && biomeY === Math.floor(MAP_SIZE / 2)
-        ? Biomes.CAMPSITE
-        : Biomes.FOREST;
+        ? CAMPSITE
+        : FOREST;
 
     for (let y = 0; y < BIOME_SIZE; y++) {
       for (let x = 0; x < BIOME_SIZE; x++) {
         const mapY = biomeY * BIOME_SIZE + y;
         const mapX = biomeX * BIOME_SIZE + x;
-        this.map[mapY][mapX] = biome[y][x];
+        this.groundLayer[mapY][mapX] = biome.ground[y][x];
+        this.collidablesLayer[mapY][mapX] = biome.collidables[y][x];
       }
     }
   }
@@ -378,11 +347,13 @@ export class MapManager implements IMapManager {
     const totalSize = BIOME_SIZE * MAP_SIZE;
     const validPositions: Vector2[] = [];
 
-    // Collect all valid grass tile positions
+    // Collect all valid ground tile positions (8, 4, 14, 24 are grass/ground tiles)
     for (let y = 0; y < totalSize; y++) {
       for (let x = 0; x < totalSize; x++) {
-        // 0 represents grass tiles
-        if (this.map[y][x] === 0) {
+        const groundTile = this.groundLayer[y][x];
+        const isValidGround = groundTile === 8 || groundTile === 4 || groundTile === 14 || groundTile === 24;
+
+        if (isValidGround && this.collidablesLayer[y][x] === -1) {
           validPositions.push(new Vector2(x * TILE_SIZE, y * TILE_SIZE));
         }
       }
@@ -408,8 +379,11 @@ export class MapManager implements IMapManager {
       for (let x = 0; x < BIOME_SIZE; x++) {
         const mapY = centerBiomeY * BIOME_SIZE + y;
         const mapX = centerBiomeX * BIOME_SIZE + x;
-        // Check if it's a grass tile (0 or 1)
-        if (this.map[mapY][mapX] === 0 || this.map[mapY][mapX] === 1) {
+        // Check if it's a valid ground tile (8, 4, 14, 24) and no collidable blocking
+        const groundTile = this.groundLayer[mapY][mapX];
+        const isValidGround = groundTile === 8 || groundTile === 4 || groundTile === 14 || groundTile === 24;
+
+        if (isValidGround && this.collidablesLayer[mapY][mapX] === -1) {
           validPositions.push(new Vector2(mapX * TILE_SIZE, mapY * TILE_SIZE));
         }
       }

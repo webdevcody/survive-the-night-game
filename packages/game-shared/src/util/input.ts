@@ -9,4 +9,5 @@ export type Input = {
   inventoryItem: number;
   drop: boolean;
   consume: boolean;
+  sprint: boolean;
 };

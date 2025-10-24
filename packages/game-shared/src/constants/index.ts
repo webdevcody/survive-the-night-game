@@ -31,6 +31,17 @@ export const Entities = {
   FIRE_EXTINGUISHER: "fire_extinguisher",
 } as const;
 
+export const NON_SPAWNABLE = new Set([
+  Entities.PLAYER,
+  Entities.BULLET,
+  Entities.BOUNDARY,
+  Entities.ACID_PROJECTILE,
+]);
+
+export const SPAWNABLE_ENTITY_TYPES: EntityType[] = Object.values(Entities)
+  .filter((entity) => !NON_SPAWNABLE.has(entity as any))
+  .sort();
+
 // Zombies array will be populated by zombie registry after initialization
 // Import zombieRegistry where you need to access all zombie types
 export let Zombies: EntityType[] = [];

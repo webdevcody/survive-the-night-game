@@ -7,6 +7,8 @@ import { WEAPON_TYPES } from "@shared/types/weapons";
 import { Direction } from "../../../../game-shared/src/util/direction";
 import Vector2 from "@/util/vector2";
 import { weaponRegistry } from "@shared/entities";
+import { consumeAmmo } from "./helpers";
+import { GunEmptyEvent } from "@/events/server-sent/gun-empty-event";
 
 export class Shotgun extends Weapon {
   private config = weaponRegistry.get(WEAPON_TYPES.SHOTGUN)!;
@@ -24,18 +26,10 @@ export class Shotgun extends Weapon {
     if (!player) return;
 
     const inventory = player.getExt(Inventory);
-    const ammoItem = inventory.getItems().find((item) => item.itemType === "shotgun_ammo");
 
-    if (!ammoItem || !ammoItem.state?.count || ammoItem.state.count <= 0) {
+    if (!consumeAmmo(inventory, "shotgun_ammo")) {
+      this.getEntityManager().getBroadcaster().broadcastEvent(new GunEmptyEvent(playerId));
       return; // No ammo available
-    }
-
-    // Consume ammo
-    const ammoIndex = inventory.getItems().findIndex((item) => item.itemType === "shotgun_ammo");
-    inventory.updateItemState(ammoIndex, { count: ammoItem.state.count - 1 });
-
-    if (ammoItem.state.count <= 0) {
-      inventory.removeItem(ammoIndex);
     }
 
     // Create 3 bullets with spread

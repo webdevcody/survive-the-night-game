@@ -29,6 +29,7 @@ export class InputManager {
     inventoryItem: 1,
     drop: false,
     consume: false,
+    sprint: false,
   };
   private lastInputs = {
     ...this.inputs,
@@ -98,6 +99,9 @@ export class InputManager {
         case "f":
           this.inputs.consume = true;
           break;
+        case "shift":
+          this.inputs.sprint = true;
+          break;
         case "i":
           callbacks.onToggleInstructions?.();
           break;
@@ -150,6 +154,9 @@ export class InputManager {
           break;
         case "f":
           this.inputs.consume = false;
+          break;
+        case "shift":
+          this.inputs.sprint = false;
           break;
         case "tab":
           e.preventDefault(); // Prevent tab from changing focus

@@ -171,7 +171,7 @@ export class ClientEventListener {
   }
 
   onMap(mapEvent: MapEvent) {
-    this.gameClient.getMapManager().setMap(mapEvent.getMap());
+    this.gameClient.getMapManager().setMap(mapEvent.getMapData());
     this.hasReceivedMap = true;
     this.checkInitialization();
   }

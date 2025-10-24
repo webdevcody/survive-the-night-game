@@ -1,24 +1,29 @@
 import { EventType, ServerSentEvents } from "../events";
 import { GameEvent } from "@/events/types";
 
-export class MapEvent implements GameEvent<number[][]> {
-  private readonly type: EventType;
-  private readonly map: number[][];
+export interface MapData {
+  ground: number[][];
+  collidables: number[][];
+}
 
-  constructor(map: number[][]) {
+export class MapEvent implements GameEvent<MapData> {
+  private readonly type: EventType;
+  private readonly mapData: MapData;
+
+  constructor(mapData: MapData) {
     this.type = ServerSentEvents.MAP;
-    this.map = map;
+    this.mapData = mapData;
   }
 
   getType(): EventType {
     return this.type;
   }
 
-  getMap(): number[][] {
-    return this.map;
+  getMapData(): MapData {
+    return this.mapData;
   }
 
-  serialize(): number[][] {
-    return this.map;
+  serialize(): MapData {
+    return this.mapData;
   }
 }

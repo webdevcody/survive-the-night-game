@@ -16,6 +16,9 @@ import { PlayerJoinedEvent } from "@shared/events/server-sent/player-joined-even
 import { PongEvent } from "@shared/events/server-sent/pong-event";
 import { ChatMessageEvent } from "@shared/events/server-sent/chat-message-event";
 import { PlayerLeftEvent } from "@/events/server-sent/player-left-event";
+import { ADMIN_PASSWORD, DEFAULT_ADMIN_PASSWORD } from "@/config/env";
+import Vector2 from "@/util/vector2";
+import { Entities, NON_SPAWNABLE, SPAWNABLE_ENTITY_TYPES } from "@shared/constants";
 
 /**
  * Any and all functionality related to sending server side events
@@ -117,8 +120,8 @@ export class ServerSocketManager implements Broadcaster {
       this.getEntityManager().addEntity(player);
 
       // Send map and player ID to client
-      const map = this.getMapManager().getMap();
-      socket.emit(ServerSentEvents.MAP, map);
+      const mapData = this.getMapManager().getMapData();
+      socket.emit(ServerSentEvents.MAP, mapData);
       socket.emit(ServerSentEvents.YOUR_ID, player.getId());
       this.broadcastEvent(
         new PlayerJoinedEvent({ playerId: player.getId(), displayName: player.getDisplayName() })
@@ -264,8 +267,8 @@ export class ServerSocketManager implements Broadcaster {
     }
 
     // Always send the map data
-    const map = this.getMapManager().getMap();
-    socket.emit(ServerSentEvents.MAP, map);
+    const mapData = this.getMapManager().getMapData();
+    socket.emit(ServerSentEvents.MAP, mapData);
   }
 
   public broadcastEvent(event: GameEvent<any>): void {
@@ -390,6 +393,66 @@ export class ServerSocketManager implements Broadcaster {
   private handleChat(socket: Socket, message: string): void {
     const player = this.players.get(socket.id);
     if (!player) return;
+
+    const trimmedMessage = message.trim().toLowerCase();
+
+    if (trimmedMessage === "/list entities") {
+      if (ADMIN_PASSWORD === DEFAULT_ADMIN_PASSWORD) {
+        const availableEntities = SPAWNABLE_ENTITY_TYPES;
+
+        // Format entities into 3 columns
+        const COLUMNS = 3;
+        const COLUMN_WIDTH = 20; // Fixed width for each column
+        const rows: string[] = [];
+
+        // Calculate number of rows needed
+        const numRows = Math.ceil(availableEntities.length / COLUMNS);
+
+        // Build each row
+        for (let row = 0; row < numRows; row++) {
+          const rowItems: string[] = [];
+          for (let col = 0; col < COLUMNS; col++) {
+            const index = row * COLUMNS + col;
+            if (index < availableEntities.length) {
+              const entity = availableEntities[index];
+              // Pad the entity name to the column width
+              const paddedEntity = entity.padEnd(COLUMN_WIDTH, " ");
+              rowItems.push(paddedEntity);
+            }
+          }
+          rows.push(rowItems.join(""));
+        }
+
+        const listMessage = `Available entities:\n${rows.join("\n")}`;
+
+        const chatEvent = new ChatMessageEvent({
+          playerId: "system",
+          message: listMessage,
+        });
+        socket.emit(ServerSentEvents.CHAT_MESSAGE, chatEvent.getData());
+      }
+      return;
+    }
+
+    if (trimmedMessage.startsWith("/spawn ")) {
+      if (ADMIN_PASSWORD === DEFAULT_ADMIN_PASSWORD) {
+        const entityName = trimmedMessage.substring(7).trim();
+
+        if (SPAWNABLE_ENTITY_TYPES.includes(entityName as any)) {
+          const playerPosition = player.getExt(Positionable).getPosition();
+
+          let spawnedEntity = this.getEntityManager().createEntity(entityName as any);
+
+          if (spawnedEntity) {
+            spawnedEntity
+              .getExt(Positionable)
+              .setPosition(new Vector2(playerPosition.x + 32, playerPosition.y));
+            this.getEntityManager().addEntity(spawnedEntity);
+          }
+        }
+      }
+      return;
+    }
 
     const chatEvent = new ChatMessageEvent({
       playerId: player.getId(),

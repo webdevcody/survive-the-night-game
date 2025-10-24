@@ -32,6 +32,11 @@ import { SkinType, SKIN_TYPES } from "@shared/commands/commands";
 export class Player extends Entity {
   private static readonly PLAYER_WIDTH = 16;
   private static readonly PLAYER_SPEED = 60;
+  private static readonly SPRINT_MULTIPLIER = 1.5;
+  private static readonly MAX_STAMINA = 100;
+  private static readonly STAMINA_DRAIN_RATE = 25; // stamina per second while sprinting
+  private static readonly STAMINA_REGEN_RATE = 10; // stamina per second while not sprinting
+  private static readonly EXHAUSTION_DURATION = 3.0; // seconds before stamina can regenerate after depletion
   private static readonly DROP_COOLDOWN = 0.25;
   private static readonly INTERACT_COOLDOWN = 0.25;
   private static readonly CONSUME_COOLDOWN = 0.5;
@@ -49,6 +54,7 @@ export class Player extends Entity {
     fire: false,
     drop: false,
     consume: false,
+    sprint: false,
   };
   private isCrafting = false;
   private broadcaster: Broadcaster;
@@ -57,6 +63,8 @@ export class Player extends Entity {
   private kills: number = 0;
   private ping: number = 0;
   private displayName: string = "";
+  private stamina: number = Player.MAX_STAMINA;
+  private exhaustionTimer: number = 0; // Time remaining before stamina can regenerate
 
   constructor(gameManagers: IGameManagers) {
     super(gameManagers, Entities.PLAYER);
@@ -198,6 +206,8 @@ export class Player extends Entity {
       kills: this.kills,
       ping: this.ping,
       displayName: this.displayName,
+      stamina: this.stamina,
+      maxStamina: Player.MAX_STAMINA,
     };
   }
 
@@ -274,8 +284,27 @@ export class Player extends Entity {
         movable.setVelocity(new Vector2(0, 0));
       } else {
         const normalized = normalizeVector(new Vector2(this.input.dx, this.input.dy));
+
+        // Can only sprint if: has stamina AND not exhausted
+        const canSprint = this.input.sprint && this.stamina > 0 && this.exhaustionTimer <= 0;
+        const speedMultiplier = canSprint ? Player.SPRINT_MULTIPLIER : 1;
+
+        // Drain stamina while sprinting
+        if (canSprint) {
+          const newStamina = this.stamina - Player.STAMINA_DRAIN_RATE * deltaTime;
+          this.stamina = Math.max(0, newStamina);
+
+          // If stamina just hit zero, start exhaustion timer
+          if (this.stamina === 0) {
+            this.exhaustionTimer = Player.EXHAUSTION_DURATION;
+          }
+        }
+
         movable.setVelocity(
-          new Vector2(normalized.x * Player.PLAYER_SPEED, normalized.y * Player.PLAYER_SPEED)
+          new Vector2(
+            normalized.x * Player.PLAYER_SPEED * speedMultiplier,
+            normalized.y * Player.PLAYER_SPEED * speedMultiplier
+          )
         );
       }
     }
@@ -430,6 +459,24 @@ export class Player extends Entity {
     }
   }
 
+  handleStamina(deltaTime: number) {
+    // Update exhaustion timer
+    if (this.exhaustionTimer > 0) {
+      this.exhaustionTimer = Math.max(0, this.exhaustionTimer - deltaTime);
+    }
+
+    // Only regenerate stamina when not exhausted
+    if (this.exhaustionTimer <= 0 && this.stamina < Player.MAX_STAMINA) {
+      const isMoving = this.input.dx !== 0 || this.input.dy !== 0;
+      const isSprinting = this.input.sprint && isMoving && this.stamina > 0;
+
+      // Regenerate stamina when not sprinting
+      if (!isSprinting) {
+        this.stamina = Math.min(Player.MAX_STAMINA, this.stamina + Player.STAMINA_REGEN_RATE * deltaTime);
+      }
+    }
+  }
+
   private updatePlayer(deltaTime: number) {
     if (this.isCrafting) {
       return;
@@ -444,6 +491,7 @@ export class Player extends Entity {
     this.handleInteract(deltaTime);
     this.handleDrop(deltaTime);
     this.handleConsume(deltaTime);
+    this.handleStamina(deltaTime);
   }
 
   setInput(input: Input) {

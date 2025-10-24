@@ -8,6 +8,7 @@ import { GunEmptyEvent } from "@shared/events/server-sent/gun-empty-event";
 import { PlayerAttackedEvent } from "@/events/server-sent/player-attacked-event";
 import Vector2 from "@/util/vector2";
 import { weaponRegistry } from "@shared/entities";
+import { consumeAmmo } from "./helpers";
 
 export class Pistol extends Weapon {
   private config = weaponRegistry.get(WEAPON_TYPES.PISTOL)!;
@@ -25,18 +26,10 @@ export class Pistol extends Weapon {
     if (!player) return;
 
     const inventory = player.getExt(Inventory);
-    const ammoItem = inventory.getItems().find((item) => item.itemType === "pistol_ammo");
 
-    if (!ammoItem || !ammoItem.state?.count || ammoItem.state.count <= 0) {
+    if (!consumeAmmo(inventory, "pistol_ammo")) {
       this.getEntityManager().getBroadcaster().broadcastEvent(new GunEmptyEvent(playerId));
       return;
-    }
-
-    const ammoIndex = inventory.getItems().findIndex((item) => item.itemType === "pistol_ammo");
-    inventory.updateItemState(ammoIndex, { count: ammoItem.state.count - 1 });
-
-    if (ammoItem.state.count <= 0) {
-      inventory.removeItem(ammoIndex);
     }
 
     const bullet = new Bullet(this.getGameManagers());

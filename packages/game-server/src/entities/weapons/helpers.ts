@@ -3,6 +3,7 @@ import { Direction } from "@/util/direction";
 import { IEntity } from "../types";
 import { IEntityManager } from "@/managers/types";
 import Vector2 from "@/util/vector2";
+import Inventory from "@/extensions/inventory";
 
 export function knockBack(
   entityManager: IEntityManager,
@@ -29,4 +30,25 @@ export function knockBack(
   if (entityManager.isColliding(entity)) {
     positionable.setPosition(new Vector2(originalPosition.x, originalPosition.y));
   }
+}
+
+/**
+ * Attempts to consume one unit of ammo from the player's inventory.
+ * Returns true if ammo was successfully consumed, false otherwise.
+ */
+export function consumeAmmo(inventory: Inventory, ammoType: string): boolean {
+  const ammoItem = inventory.getItems().find((item) => item.itemType === ammoType);
+
+  if (!ammoItem || !ammoItem.state?.count || ammoItem.state.count <= 0) {
+    return false;
+  }
+
+  const ammoIndex = inventory.getItems().findIndex((item) => item.itemType === ammoType);
+  inventory.updateItemState(ammoIndex, { count: ammoItem.state.count - 1 });
+
+  if (ammoItem.state.count <= 0) {
+    inventory.removeItem(ammoIndex);
+  }
+
+  return true;
 }

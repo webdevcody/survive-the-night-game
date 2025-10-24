@@ -36,6 +36,8 @@ export class PlayerClient extends ClientEntity implements IClientEntity, Rendera
   private kills: number = 0;
   private ping: number = 0;
   private displayName: string = "";
+  private stamina: number = 100;
+  private maxStamina: number = 100;
 
   private input: Input = {
     facing: Direction.Right,
@@ -46,6 +48,7 @@ export class PlayerClient extends ClientEntity implements IClientEntity, Rendera
     fire: false,
     drop: false,
     consume: false,
+    sprint: false,
   };
 
   public getZIndex(): number {
@@ -62,6 +65,8 @@ export class PlayerClient extends ClientEntity implements IClientEntity, Rendera
     this.kills = data.kills || 0;
     this.ping = data.ping || 0;
     this.displayName = data.displayName || "Unknown";
+    this.stamina = data.stamina ?? 100;
+    this.maxStamina = data.maxStamina ?? 100;
   }
 
   private getPlayerAssetKey(): string {
@@ -290,6 +295,14 @@ export class PlayerClient extends ClientEntity implements IClientEntity, Rendera
     return this.ping;
   }
 
+  public getStamina(): number {
+    return this.stamina;
+  }
+
+  public getMaxStamina(): number {
+    return this.maxStamina;
+  }
+
   deserialize(data: RawEntity): void {
     super.deserialize(data);
     this.inventory = data.inventory;
@@ -300,5 +313,7 @@ export class PlayerClient extends ClientEntity implements IClientEntity, Rendera
     this.kills = data.kills || 0;
     this.ping = data.ping || 0;
     this.displayName = data.displayName || "Unknown";
+    this.stamina = data.stamina ?? 100;
+    this.maxStamina = data.maxStamina ?? 100;
   }
 }
