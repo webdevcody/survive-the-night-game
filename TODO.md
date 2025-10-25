@@ -4,6 +4,9 @@ Feel free to pick any item listed out here to work on.
 
 ## TODO
 
+- play walking / running sounds when players move around
+- play explosion sounds when grenade or landmine or gasoline explode
+
 ### Gameplay
 
 - [ ] zombie that can only be damanged while on fire zombie in a firefighter outfit

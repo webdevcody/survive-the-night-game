@@ -16,6 +16,7 @@ export interface InputManagerOptions {
   onToggleChat?: () => void;
   onChatInput?: (key: string) => void;
   onSendChat?: () => void;
+  onToggleMute?: () => void;
 }
 
 export class InputManager {
@@ -104,6 +105,9 @@ export class InputManager {
           break;
         case "i":
           callbacks.onToggleInstructions?.();
+          break;
+        case "m":
+          callbacks.onToggleMute?.();
           break;
         case "tab":
           e.preventDefault(); // Prevent tab from changing focus

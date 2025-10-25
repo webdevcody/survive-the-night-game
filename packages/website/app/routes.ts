@@ -11,6 +11,6 @@ export default [
   },
   {
     path: "/editor",
-    file: "routes/editor.tsx",
+    file: "routes/editor/index.tsx",
   },
 ] satisfies RouteConfig;

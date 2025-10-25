@@ -73,6 +73,23 @@ export class GameClient {
     this.entityFactory = new EntityFactory(this.assetManager);
     this.particleManager = new ParticleManager(this);
 
+    // Add click event listener for UI interactions
+    canvas.addEventListener("click", (e) => {
+      const rect = canvas.getBoundingClientRect();
+
+      // Convert CSS coordinates to canvas coordinates
+      // This accounts for any CSS scaling of the canvas
+      const scaleX = canvas.width / rect.width;
+      const scaleY = canvas.height / rect.height;
+      const x = (e.clientX - rect.left) * scaleX;
+      const y = (e.clientY - rect.top) * scaleY;
+
+      // Handle HUD clicks (like mute button)
+      if (this.hud) {
+        this.hud.handleClick(x, y, canvas.height);
+      }
+    });
+
     const getInventory = () => {
       if (this.gameState.playerId) {
         const player = getEntityById(this.gameState, this.gameState.playerId) as PlayerClient;
@@ -93,7 +110,7 @@ export class GameClient {
     };
 
     this.mapManager = new MapManager(this);
-    this.hud = new Hud(this.mapManager);
+    this.hud = new Hud(this.mapManager, this.soundManager);
     this.gameOverDialog = new GameOverDialogUI();
 
     // TODO: refactor to use event emitter
@@ -145,6 +162,9 @@ export class GameClient {
           this.socketManager.sendChatMessage(message.trim());
           this.hud.clearChatInput();
         }
+      },
+      onToggleMute: () => {
+        this.soundManager.toggleMute();
       },
       onDown: (inputs: Input) => {
         if (this.craftingTable.isVisible()) {

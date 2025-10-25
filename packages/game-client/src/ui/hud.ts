@@ -7,6 +7,7 @@ import { ClientDestructible } from "@/extensions/destructible";
 import { Zombies, VERSION } from "@shared/constants";
 import { Minimap } from "./minimap";
 import { Leaderboard } from "./leaderboard";
+import { SoundManager } from "@/managers/sound-manager";
 
 const HUD_SETTINGS = {
   ControlsList: {
@@ -50,6 +51,15 @@ const HUD_SETTINGS = {
       poor: "rgb(255, 0, 0)", // Red: > 150ms
     },
   },
+  MuteButton: {
+    left: 460, // Position to the right of minimap (40 + 400 + 20)
+    bottom: 40, // Same bottom position as minimap
+    width: 60,
+    height: 60,
+    background: "rgba(0, 0, 0, 0.7)",
+    hoverBackground: "rgba(0, 0, 0, 0.9)",
+    font: "36px Arial",
+  },
 };
 
 export class Hud {
@@ -63,9 +73,11 @@ export class Hud {
   private currentFps: number = 0;
   private minimap: Minimap;
   private leaderboard: Leaderboard;
+  private soundManager: SoundManager;
 
-  constructor(mapManager: MapManager) {
+  constructor(mapManager: MapManager, soundManager: SoundManager) {
     this.mapManager = mapManager;
+    this.soundManager = soundManager;
     this.chatWidget = new ChatWidget();
     this.minimap = new Minimap(mapManager);
     this.leaderboard = new Leaderboard();
@@ -204,6 +216,7 @@ export class Hud {
 
     this.renderControlsList(ctx, gameState);
     this.renderGameMessages(ctx);
+    this.renderMuteButton(ctx);
     this.leaderboard.render(ctx, gameState);
     this.chatWidget.render(ctx, gameState);
   }
@@ -234,6 +247,40 @@ export class Hud {
       const x = (ctx.canvas.width - metrics.width) / 2;
       ctx.fillText(message.message, x, margin + index * gap);
     });
+  }
+
+  private renderMuteButton(ctx: CanvasRenderingContext2D): void {
+    const { height } = ctx.canvas;
+    const settings = HUD_SETTINGS.MuteButton;
+    const isMuted = this.soundManager.getMuteState();
+
+    ctx.save();
+    ctx.setTransform(1, 0, 0, 1, 0, 0); // Reset transform to work in canvas pixel coordinates
+
+    // Calculate button position (to the right of minimap)
+    const x = settings.left;
+    const y = height - settings.bottom - settings.height;
+
+    // Draw button background
+    ctx.fillStyle = settings.background;
+    ctx.fillRect(x, y, settings.width, settings.height);
+
+    // Draw border
+    ctx.strokeStyle = "rgba(255, 255, 255, 0.5)";
+    ctx.lineWidth = 2;
+    ctx.strokeRect(x, y, settings.width, settings.height);
+
+    // Draw icon (speaker symbol)
+    ctx.fillStyle = "white";
+    ctx.font = settings.font;
+    const icon = isMuted ? "🔇" : "🔊";
+    const iconMetrics = ctx.measureText(icon);
+    const iconX = x + (settings.width - iconMetrics.width) / 2;
+    const iconY = y + settings.height / 2 + 14; // Adjust for vertical centering
+
+    ctx.fillText(icon, iconX, iconY);
+
+    ctx.restore();
   }
 
   public renderControlsList(ctx: CanvasRenderingContext2D, gameState: GameState): void {
@@ -268,7 +315,8 @@ export class Hud {
       "Craft [Q]\n" +
       "Drop Item [G]\n" +
       "Chat [Y]\n" +
-      "Toggle Instructions [I]";
+      "Toggle Instructions [I]\n" +
+      "Toggle Mute [M]";
 
     const craftingText = "Down [S]\nUp [W]\nCraft [SPACE]";
     const innerText = gameState.crafting ? craftingText : regularText;
@@ -405,5 +453,24 @@ export class Hud {
 
   public addChatMessage(playerId: string, message: string): void {
     this.chatWidget.addChatMessage(playerId, message);
+  }
+
+  public handleClick(x: number, y: number, canvasHeight: number): boolean {
+    // Check if click is on mute button
+    const settings = HUD_SETTINGS.MuteButton;
+    const buttonX = settings.left;
+    const buttonY = canvasHeight - settings.bottom - settings.height;
+
+    if (
+      x >= buttonX &&
+      x <= buttonX + settings.width &&
+      y >= buttonY &&
+      y <= buttonY + settings.height
+    ) {
+      this.soundManager.toggleMute();
+      return true; // Click was handled
+    }
+
+    return false; // Click was not on the button
   }
 }
