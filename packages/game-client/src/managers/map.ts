@@ -159,8 +159,9 @@ export class MapManager {
 
         // Render ground layer
         const groundTileId = this.groundLayer[y][x];
-        const col = groundTileId % 10; // Assuming 10 tiles per row in tilesheet
-        const row = Math.floor(groundTileId / 10);
+        const groundCols = this.groundTilesheet.width / this.tileSize;
+        const col = groundTileId % groundCols;
+        const row = Math.floor(groundTileId / groundCols);
         ctx.drawImage(
           this.groundTilesheet,
           col * this.tileSize,
@@ -176,8 +177,9 @@ export class MapManager {
         // Render collidables layer if not empty (-1)
         const collidableTileId = this.collidablesLayer[y][x];
         if (collidableTileId !== -1) {
-          const colCol = collidableTileId % 10; // Assuming 10 tiles per row in tilesheet
-          const colRow = Math.floor(collidableTileId / 10);
+          const collidablesCols = this.collidablesTilesheet.width / this.tileSize;
+          const colCol = collidableTileId % collidablesCols;
+          const colRow = Math.floor(collidableTileId / collidablesCols);
           ctx.drawImage(
             this.collidablesTilesheet,
             colCol * this.tileSize,

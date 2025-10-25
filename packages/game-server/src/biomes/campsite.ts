@@ -1,6 +1,9 @@
+import { EntityType } from "@shared/types/entity";
+
 export interface BiomeData {
   ground: number[][];
   collidables: number[][];
+  items?: EntityType[];
 }
 
 export const CAMPSITE: BiomeData = {

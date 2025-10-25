@@ -24,7 +24,7 @@ import { Spikes } from "@/entities/items/spikes";
 import { Torch } from "@/entities/items/torch";
 import { Wall } from "@/entities/items/wall";
 import { SpitterZombie } from "@/entities/enemies/spitter-zombie";
-import { CAMPSITE, FOREST, WATER, type BiomeData } from "@/biomes";
+import { CAMPSITE, FOREST, WATER, FARM, GAS_STATION, type BiomeData } from "@/biomes";
 import type { MapData } from "@shared/events/server-sent/map-event";
 
 const WEAPON_SPAWN_CHANCE = {
@@ -74,6 +74,8 @@ export class MapManager implements IMapManager {
   private gameManagers?: IGameManagers;
   private entityManager?: IEntityManager;
   private gameMaster?: GameMaster;
+  private farmBiomePosition?: { x: number; y: number };
+  private gasStationBiomePosition?: { x: number; y: number };
 
   constructor() {}
 
@@ -166,7 +168,8 @@ export class MapManager implements IMapManager {
       // Skip if not on valid ground tile (8, 4, 14, 24 are grass/ground tiles)
       // and ensure no collidable is blocking
       const groundTile = this.groundLayer[y]?.[x];
-      const isValidGround = groundTile === 8 || groundTile === 4 || groundTile === 14 || groundTile === 24;
+      const isValidGround =
+        groundTile === 8 || groundTile === 4 || groundTile === 14 || groundTile === 24;
       const hasCollidable = this.collidablesLayer[y]?.[x] !== -1;
 
       if (!isValidGround || hasCollidable) {
@@ -218,6 +221,8 @@ export class MapManager implements IMapManager {
     this.getEntityManager().clear();
     this.generateSpatialGrid();
     this.initializeMap();
+    this.selectRandomFarmBiomePosition();
+    this.selectRandomGasStationBiomePosition();
     this.fillMapWithBiomes();
     this.createForestBoundaries();
     this.spawnItems();
@@ -239,6 +244,60 @@ export class MapManager implements IMapManager {
     this.collidablesLayer = Array(totalSize)
       .fill(0)
       .map(() => Array(totalSize).fill(-1));
+  }
+
+  private selectRandomFarmBiomePosition() {
+    const centerBiomeX = Math.floor(MAP_SIZE / 2);
+    const centerBiomeY = Math.floor(MAP_SIZE / 2);
+    const validPositions: { x: number; y: number }[] = [];
+
+    // Collect all valid biome positions (not edges, not center)
+    for (let biomeY = 1; biomeY < MAP_SIZE - 1; biomeY++) {
+      for (let biomeX = 1; biomeX < MAP_SIZE - 1; biomeX++) {
+        // Skip the center campsite biome
+        if (biomeX === centerBiomeX && biomeY === centerBiomeY) {
+          continue;
+        }
+        validPositions.push({ x: biomeX, y: biomeY });
+      }
+    }
+
+    // Select a random position from valid positions
+    if (validPositions.length > 0) {
+      const randomIndex = Math.floor(Math.random() * validPositions.length);
+      this.farmBiomePosition = validPositions[randomIndex];
+    }
+  }
+
+  private selectRandomGasStationBiomePosition() {
+    const centerBiomeX = Math.floor(MAP_SIZE / 2);
+    const centerBiomeY = Math.floor(MAP_SIZE / 2);
+    const validPositions: { x: number; y: number }[] = [];
+
+    // Collect all valid biome positions (not edges, not center, not farm)
+    for (let biomeY = 1; biomeY < MAP_SIZE - 1; biomeY++) {
+      for (let biomeX = 1; biomeX < MAP_SIZE - 1; biomeX++) {
+        // Skip the center campsite biome
+        if (biomeX === centerBiomeX && biomeY === centerBiomeY) {
+          continue;
+        }
+        // Skip the farm biome position
+        if (
+          this.farmBiomePosition &&
+          biomeX === this.farmBiomePosition.x &&
+          biomeY === this.farmBiomePosition.y
+        ) {
+          continue;
+        }
+        validPositions.push({ x: biomeX, y: biomeY });
+      }
+    }
+
+    // Select a random position from valid positions
+    if (validPositions.length > 0) {
+      const randomIndex = Math.floor(Math.random() * validPositions.length);
+      this.gasStationBiomePosition = validPositions[randomIndex];
+    }
   }
 
   private fillMapWithBiomes() {
@@ -270,7 +329,8 @@ export class MapManager implements IMapManager {
       for (let x = 0; x < totalSize; x++) {
         // Check ground layer for valid ground tiles (8, 4, 14, 24) and ensure no collidable is blocking
         const groundTile = this.groundLayer[y][x];
-        const isValidGround = groundTile === 8 || groundTile === 4 || groundTile === 14 || groundTile === 24;
+        const isValidGround =
+          groundTile === 8 || groundTile === 4 || groundTile === 14 || groundTile === 24;
 
         if (isValidGround && this.collidablesLayer[y][x] === -1) {
           this.trySpawnItemAt(x, y);
@@ -306,6 +366,51 @@ export class MapManager implements IMapManager {
     }
   }
 
+  private spawnBiomeItems(biome: BiomeData, biomeX: number, biomeY: number) {
+    if (!biome.items || biome.items.length === 0) {
+      return;
+    }
+
+    // Collect all valid spawn positions within this biome
+    const validPositions: { x: number; y: number }[] = [];
+    for (let y = 0; y < BIOME_SIZE; y++) {
+      for (let x = 0; x < BIOME_SIZE; x++) {
+        const mapY = biomeY * BIOME_SIZE + y;
+        const mapX = biomeX * BIOME_SIZE + x;
+        const groundTile = this.groundLayer[mapY][mapX];
+        const isValidGround =
+          groundTile === 8 || groundTile === 4 || groundTile === 14 || groundTile === 24;
+
+        if (isValidGround && this.collidablesLayer[mapY][mapX] === -1) {
+          validPositions.push({ x: mapX, y: mapY });
+        }
+      }
+    }
+
+    // Spawn each item at a random position within the biome
+    for (const entityType of biome.items) {
+      const entity = this.getEntityManager().createEntity(entityType);
+      if (!entity) {
+        console.warn(`Failed to create entity type in biome: ${entityType}`);
+        continue;
+      }
+
+      if (validPositions.length === 0) {
+        console.warn(`No valid positions to spawn ${entityType} in biome`);
+        continue;
+      }
+
+      // Pick a random position from valid positions
+      const randomIndex = Math.floor(Math.random() * validPositions.length);
+      const position = validPositions[randomIndex];
+
+      entity
+        .getExt(Positionable)
+        .setPosition(new Vector2(position.x * TILE_SIZE, position.y * TILE_SIZE));
+      this.getEntityManager().addEntity(entity);
+    }
+  }
+
   private placeBiome(biomeX: number, biomeY: number) {
     // Place water biomes around the outer edges
     if (biomeX === 0 || biomeX === MAP_SIZE - 1 || biomeY === 0 || biomeY === MAP_SIZE - 1) {
@@ -317,14 +422,33 @@ export class MapManager implements IMapManager {
           this.collidablesLayer[mapY][mapX] = WATER.collidables[y][x];
         }
       }
+      this.spawnBiomeItems(WATER, biomeX, biomeY);
       return;
     }
 
-    // Place campsite at center (3,3), forest everywhere else
-    const biome =
-      biomeX === Math.floor(MAP_SIZE / 2) && biomeY === Math.floor(MAP_SIZE / 2)
-        ? CAMPSITE
-        : FOREST;
+    // Determine which biome to place
+    let biome: BiomeData;
+    if (biomeX === Math.floor(MAP_SIZE / 2) && biomeY === Math.floor(MAP_SIZE / 2)) {
+      // Place campsite at center (3,3)
+      biome = CAMPSITE;
+    } else if (
+      this.farmBiomePosition &&
+      biomeX === this.farmBiomePosition.x &&
+      biomeY === this.farmBiomePosition.y
+    ) {
+      // Place farm at the randomly selected position
+      biome = FARM;
+    } else if (
+      this.gasStationBiomePosition &&
+      biomeX === this.gasStationBiomePosition.x &&
+      biomeY === this.gasStationBiomePosition.y
+    ) {
+      // Place gas station at the randomly selected position
+      biome = GAS_STATION;
+    } else {
+      // Place forest everywhere else
+      biome = FOREST;
+    }
 
     for (let y = 0; y < BIOME_SIZE; y++) {
       for (let x = 0; x < BIOME_SIZE; x++) {
@@ -334,6 +458,8 @@ export class MapManager implements IMapManager {
         this.collidablesLayer[mapY][mapX] = biome.collidables[y][x];
       }
     }
+
+    this.spawnBiomeItems(biome, biomeX, biomeY);
   }
 
   public getRandomGrassPosition(): Vector2 {
@@ -351,7 +477,8 @@ export class MapManager implements IMapManager {
     for (let y = 0; y < totalSize; y++) {
       for (let x = 0; x < totalSize; x++) {
         const groundTile = this.groundLayer[y][x];
-        const isValidGround = groundTile === 8 || groundTile === 4 || groundTile === 14 || groundTile === 24;
+        const isValidGround =
+          groundTile === 8 || groundTile === 4 || groundTile === 14 || groundTile === 24;
 
         if (isValidGround && this.collidablesLayer[y][x] === -1) {
           validPositions.push(new Vector2(x * TILE_SIZE, y * TILE_SIZE));
@@ -381,7 +508,8 @@ export class MapManager implements IMapManager {
         const mapX = centerBiomeX * BIOME_SIZE + x;
         // Check if it's a valid ground tile (8, 4, 14, 24) and no collidable blocking
         const groundTile = this.groundLayer[mapY][mapX];
-        const isValidGround = groundTile === 8 || groundTile === 4 || groundTile === 14 || groundTile === 24;
+        const isValidGround =
+          groundTile === 8 || groundTile === 4 || groundTile === 14 || groundTile === 24;
 
         if (isValidGround && this.collidablesLayer[mapY][mapX] === -1) {
           validPositions.push(new Vector2(mapX * TILE_SIZE, mapY * TILE_SIZE));

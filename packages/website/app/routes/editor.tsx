@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Button } from "~/components/ui/button";
 import { Label } from "~/components/ui/label";
 
@@ -33,6 +33,18 @@ const createEmptyCollidablesLayer = (): number[][] => {
     .map(() => Array(BIOME_SIZE).fill(-1));
 };
 
+interface ClipboardData {
+  tiles: number[][];  // Tile IDs in the selected rectangle
+  width: number;
+  height: number;
+  layer: Layer;  // Which layer the clipboard is from
+}
+
+interface Position {
+  row: number;
+  col: number;
+}
+
 export default function BiomeEditor() {
   const [groundGrid, setGroundGrid] = useState<number[][]>(createEmptyGroundLayer());
   const [collidablesGrid, setCollidablesGrid] = useState<number[][]>(createEmptyCollidablesLayer());
@@ -41,6 +53,22 @@ export default function BiomeEditor() {
   const [importText, setImportText] = useState<string>("");
   const [exportText, setExportText] = useState<string>("");
   const [isDragging, setIsDragging] = useState<boolean>(false);
+  const [hasModifiedDuringDrag, setHasModifiedDuringDrag] = useState<boolean>(false);
+
+  // Palette selection state for collidables
+  const [isPaletteSelectionMode, setIsPaletteSelectionMode] = useState<boolean>(false);
+  const [paletteSelectionStart, setPaletteSelectionStart] = useState<Position | null>(null);
+  const [paletteSelectionCurrent, setPaletteSelectionCurrent] = useState<Position | null>(null);
+
+  // Palette selection state for ground
+  const [isGroundPaletteSelectionMode, setIsGroundPaletteSelectionMode] = useState<boolean>(false);
+  const [groundPaletteSelectionStart, setGroundPaletteSelectionStart] = useState<Position | null>(null);
+  const [groundPaletteSelectionCurrent, setGroundPaletteSelectionCurrent] = useState<Position | null>(null);
+
+  const [clipboard, setClipboard] = useState<ClipboardData | null>(null);
+
+  // History stack for undo functionality
+  const [history, setHistory] = useState<BiomeData[]>([]);
 
   // Dynamically detected tilesheet dimensions
   const [groundDimensions, setGroundDimensions] = useState<SheetDimensions>({
@@ -94,6 +122,45 @@ export default function BiomeEditor() {
     return layer === "ground" ? "/sheets/ground.png" : "/sheets/collidables.png";
   };
 
+  // Save current state to history before making changes
+  const saveToHistory = useCallback(() => {
+    setHistory((prev) => [
+      ...prev,
+      {
+        ground: groundGrid.map((row) => [...row]),
+        collidables: collidablesGrid.map((row) => [...row]),
+      },
+    ]);
+  }, [groundGrid, collidablesGrid]);
+
+  // Undo the last change
+  const undo = useCallback(() => {
+    setHistory((prev) => {
+      if (prev.length === 0) return prev;
+
+      const previousState = prev[prev.length - 1];
+      setGroundGrid(previousState.ground);
+      setCollidablesGrid(previousState.collidables);
+      return prev.slice(0, -1);
+    });
+  }, []);
+
+  // Keyboard shortcuts
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Check for Ctrl+Z (Windows/Linux) or Cmd+Z (Mac)
+      if ((e.ctrlKey || e.metaKey) && e.key === "z") {
+        e.preventDefault();
+        undo();
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [undo]);
+
   // Handle tile selection from palette
   const handleTileSelect = (row: number, col: number, layer: Layer) => {
     const dimensions = layer === "ground" ? groundDimensions : collidablesDimensions;
@@ -103,7 +170,19 @@ export default function BiomeEditor() {
   };
 
   // Handle placing tile in biome grid
-  const handleGridCellClick = (row: number, col: number) => {
+  const handleGridCellClick = (row: number, col: number, saveHistory = true) => {
+    // Save state before making changes (only for non-drag operations)
+    if (saveHistory) {
+      saveToHistory();
+    }
+
+    // If clipboard exists, paste it
+    if (clipboard) {
+      pasteClipboard(row, col);
+      return;
+    }
+
+    // Normal paint mode
     if (activeLayer === "ground") {
       const newGrid = groundGrid.map((r, rowIdx) =>
         r.map((cell, colIdx) => (rowIdx === row && colIdx === col ? selectedTileId : cell))
@@ -122,10 +201,24 @@ export default function BiomeEditor() {
     }
   };
 
+  // Handle starting a drag operation
+  const handleDragStart = () => {
+    saveToHistory();
+    setIsDragging(true);
+    setHasModifiedDuringDrag(false);
+  };
+
+  // Handle ending a drag operation
+  const handleDragEnd = () => {
+    setIsDragging(false);
+    setHasModifiedDuringDrag(false);
+  };
+
   // Handle drag painting
   const handleGridCellEnter = (row: number, col: number) => {
     if (isDragging) {
-      handleGridCellClick(row, col);
+      handleGridCellClick(row, col, false); // Don't save history during drag
+      setHasModifiedDuringDrag(true);
     }
   };
 
@@ -190,6 +283,9 @@ export default function BiomeEditor() {
         }
       }
 
+      // Save state before importing
+      saveToHistory();
+
       setGroundGrid(parsed.ground);
       setCollidablesGrid(parsed.collidables);
       setImportText("");
@@ -220,6 +316,7 @@ export default function BiomeEditor() {
 
   // Clear active layer
   const handleClear = () => {
+    saveToHistory();
     if (activeLayer === "ground") {
       setGroundGrid(createEmptyGroundLayer());
     } else {
@@ -229,6 +326,7 @@ export default function BiomeEditor() {
 
   // Fill active layer with selected tile
   const handleFill = () => {
+    saveToHistory();
     const newGrid = Array(BIOME_SIZE)
       .fill(0)
       .map(() => Array(BIOME_SIZE).fill(selectedTileId));
@@ -237,6 +335,192 @@ export default function BiomeEditor() {
     } else {
       setCollidablesGrid(newGrid);
     }
+  };
+
+  // Get normalized palette selection bounds (top-left to bottom-right)
+  const getPaletteSelectionBounds = () => {
+    if (!paletteSelectionStart || !paletteSelectionCurrent) return null;
+
+    const minRow = Math.min(paletteSelectionStart.row, paletteSelectionCurrent.row);
+    const maxRow = Math.max(paletteSelectionStart.row, paletteSelectionCurrent.row);
+    const minCol = Math.min(paletteSelectionStart.col, paletteSelectionCurrent.col);
+    const maxCol = Math.max(paletteSelectionStart.col, paletteSelectionCurrent.col);
+
+    return { minRow, maxRow, minCol, maxCol };
+  };
+
+  // Capture selected tiles from collidables palette to clipboard
+  const capturePaletteSelection = () => {
+    const bounds = getPaletteSelectionBounds();
+    if (!bounds) return;
+
+    const { minRow, maxRow, minCol, maxCol } = bounds;
+    const height = maxRow - minRow + 1;
+    const width = maxCol - minCol + 1;
+
+    const tiles: number[][] = [];
+
+    for (let row = minRow; row <= maxRow; row++) {
+      const tileRow: number[] = [];
+      for (let col = minCol; col <= maxCol; col++) {
+        const tileId = row * collidablesDimensions.cols + col;
+        tileRow.push(tileId);
+      }
+      tiles.push(tileRow);
+    }
+
+    setClipboard({
+      tiles,
+      width,
+      height,
+      layer: "collidables",
+    });
+  };
+
+  // Paste clipboard tiles to the appropriate layer at the specified position (top-left corner)
+  const pasteClipboard = (startRow: number, startCol: number) => {
+    if (!clipboard) return;
+
+    if (clipboard.layer === "ground") {
+      const newGroundGrid = groundGrid.map((row) => [...row]);
+
+      for (let row = 0; row < clipboard.height; row++) {
+        for (let col = 0; col < clipboard.width; col++) {
+          const targetRow = startRow + row;
+          const targetCol = startCol + col;
+
+          // Skip if out of bounds
+          if (
+            targetRow < 0 ||
+            targetRow >= BIOME_SIZE ||
+            targetCol < 0 ||
+            targetCol >= BIOME_SIZE
+          ) {
+            continue;
+          }
+
+          newGroundGrid[targetRow][targetCol] = clipboard.tiles[row][col];
+        }
+      }
+
+      setGroundGrid(newGroundGrid);
+    } else {
+      const newCollidablesGrid = collidablesGrid.map((row) => [...row]);
+
+      for (let row = 0; row < clipboard.height; row++) {
+        for (let col = 0; col < clipboard.width; col++) {
+          const targetRow = startRow + row;
+          const targetCol = startCol + col;
+
+          // Skip if out of bounds
+          if (
+            targetRow < 0 ||
+            targetRow >= BIOME_SIZE ||
+            targetCol < 0 ||
+            targetCol >= BIOME_SIZE
+          ) {
+            continue;
+          }
+
+          newCollidablesGrid[targetRow][targetCol] = clipboard.tiles[row][col];
+        }
+      }
+
+      setCollidablesGrid(newCollidablesGrid);
+    }
+  };
+
+  // Handle palette selection mouse down
+  const handlePaletteSelectionMouseDown = (row: number, col: number) => {
+    setPaletteSelectionStart({ row, col });
+    setPaletteSelectionCurrent({ row, col });
+  };
+
+  // Handle palette selection mouse move
+  const handlePaletteSelectionMouseMove = (row: number, col: number) => {
+    if (paletteSelectionStart) {
+      setPaletteSelectionCurrent({ row, col });
+    }
+  };
+
+  // Handle palette selection mouse up
+  const handlePaletteSelectionMouseUp = () => {
+    if (paletteSelectionStart && paletteSelectionCurrent) {
+      capturePaletteSelection();
+    }
+    setPaletteSelectionStart(null);
+    setPaletteSelectionCurrent(null);
+  };
+
+  // Toggle palette selection mode and clear selection state
+  const togglePaletteSelectionMode = () => {
+    setIsPaletteSelectionMode(!isPaletteSelectionMode);
+    setPaletteSelectionStart(null);
+    setPaletteSelectionCurrent(null);
+  };
+
+  // Ground palette selection handlers
+  const getGroundPaletteSelectionBounds = () => {
+    if (!groundPaletteSelectionStart || !groundPaletteSelectionCurrent) return null;
+
+    const minRow = Math.min(groundPaletteSelectionStart.row, groundPaletteSelectionCurrent.row);
+    const maxRow = Math.max(groundPaletteSelectionStart.row, groundPaletteSelectionCurrent.row);
+    const minCol = Math.min(groundPaletteSelectionStart.col, groundPaletteSelectionCurrent.col);
+    const maxCol = Math.max(groundPaletteSelectionStart.col, groundPaletteSelectionCurrent.col);
+
+    return { minRow, maxRow, minCol, maxCol };
+  };
+
+  const captureGroundPaletteSelection = () => {
+    const bounds = getGroundPaletteSelectionBounds();
+    if (!bounds) return;
+
+    const { minRow, maxRow, minCol, maxCol } = bounds;
+    const height = maxRow - minRow + 1;
+    const width = maxCol - minCol + 1;
+
+    const tiles: number[][] = [];
+
+    for (let row = minRow; row <= maxRow; row++) {
+      const tileRow: number[] = [];
+      for (let col = minCol; col <= maxCol; col++) {
+        const tileId = row * groundDimensions.cols + col;
+        tileRow.push(tileId);
+      }
+      tiles.push(tileRow);
+    }
+
+    setClipboard({
+      tiles,
+      width,
+      height,
+      layer: "ground",
+    });
+  };
+
+  const handleGroundPaletteSelectionMouseDown = (row: number, col: number) => {
+    setGroundPaletteSelectionStart({ row, col });
+    setGroundPaletteSelectionCurrent({ row, col });
+  };
+
+  const handleGroundPaletteSelectionMouseMove = (row: number, col: number) => {
+    if (groundPaletteSelectionStart) {
+      setGroundPaletteSelectionCurrent({ row, col });
+    }
+  };
+
+  const handleGroundPaletteSelectionMouseUp = () => {
+    if (groundPaletteSelectionStart && groundPaletteSelectionCurrent) {
+      captureGroundPaletteSelection();
+    }
+    setGroundPaletteSelectionStart(null);
+    setGroundPaletteSelectionCurrent(null);
+  };
+
+  const toggleGroundPaletteSelectionMode = () => {
+    setIsGroundPaletteSelectionMode(!isGroundPaletteSelectionMode);
+    setGroundPaletteSelectionStart(null);
+    setGroundPaletteSelectionCurrent(null);
   };
 
   // Show loading state while detecting tilesheet dimensions
@@ -298,6 +582,19 @@ export default function BiomeEditor() {
                 </div>
                 <div className="flex gap-2">
                   <Button
+                    onClick={undo}
+                    size="sm"
+                    disabled={history.length === 0}
+                    className={`${
+                      history.length > 0
+                        ? "bg-yellow-600 hover:bg-yellow-700"
+                        : "bg-gray-600 cursor-not-allowed"
+                    } text-white border border-gray-600`}
+                    title={`Undo (Ctrl+Z) - ${history.length} action${history.length !== 1 ? "s" : ""} available`}
+                  >
+                    Undo ({history.length})
+                  </Button>
+                  <Button
                     onClick={handleFill}
                     size="sm"
                     className="bg-gray-700 hover:bg-gray-600 text-white border border-gray-600"
@@ -316,9 +613,9 @@ export default function BiomeEditor() {
 
               <div
                 className="inline-block border-2 border-gray-600 bg-gray-900"
-                onMouseDown={() => setIsDragging(true)}
-                onMouseUp={() => setIsDragging(false)}
-                onMouseLeave={() => setIsDragging(false)}
+                onMouseDown={handleDragStart}
+                onMouseUp={handleDragEnd}
+                onMouseLeave={handleDragEnd}
               >
                 {groundGrid.map((row, rowIdx) => (
                   <div key={rowIdx} className="flex">
@@ -382,6 +679,14 @@ export default function BiomeEditor() {
               <div className="mt-4 text-sm text-gray-400">
                 Click to place tile • Drag to paint
                 {activeLayer === "collidables" && " • Click same tile to remove"}
+                {clipboard && (
+                  <>
+                    <br />
+                    <span className="text-purple-400 font-semibold">
+                      Clipboard active ({clipboard.width}×{clipboard.height} {clipboard.layer}) - Click grid to paste
+                    </span>
+                  </>
+                )}
                 <br />
                 Editing:{" "}
                 <span className={activeLayer === "ground" ? "text-green-400" : "text-red-400"}>
@@ -403,19 +708,70 @@ export default function BiomeEditor() {
                 activeLayer === "ground" ? "border-green-500" : "border-gray-700"
               }`}
             >
-              <Label className="text-lg mb-4 block text-green-400">Ground Tiles</Label>
+              <div className="flex justify-between items-center mb-4">
+                <Label className="text-lg text-green-400">Ground Tiles</Label>
+                <div className="flex gap-2">
+                  <Button
+                    onClick={toggleGroundPaletteSelectionMode}
+                    size="sm"
+                    className={`${
+                      isGroundPaletteSelectionMode
+                        ? "bg-blue-600 hover:bg-blue-700"
+                        : "bg-gray-700 hover:bg-gray-600"
+                    } text-white border border-gray-600`}
+                  >
+                    {isGroundPaletteSelectionMode ? "Exit Multi-Select" : "Multi-Select"}
+                  </Button>
+                  {clipboard && clipboard.layer === "ground" && (
+                    <Button
+                      onClick={() => setClipboard(null)}
+                      size="sm"
+                      className="bg-purple-600 hover:bg-purple-700 text-white border border-purple-500"
+                      title="Clear clipboard"
+                    >
+                      Clear ({clipboard.width}×{clipboard.height})
+                    </Button>
+                  )}
+                </div>
+              </div>
 
-              <div className="inline-block border-2 border-gray-600 bg-gray-900">
+              <div
+                className="inline-block border-2 border-gray-600 bg-gray-900"
+                onMouseDown={(e) => {
+                  if (isGroundPaletteSelectionMode) {
+                    e.preventDefault();
+                  }
+                }}
+                onMouseUp={() => {
+                  if (isGroundPaletteSelectionMode) {
+                    handleGroundPaletteSelectionMouseUp();
+                  }
+                }}
+                onMouseLeave={() => {
+                  if (isGroundPaletteSelectionMode) {
+                    handleGroundPaletteSelectionMouseUp();
+                  }
+                }}
+              >
                 {Array.from({ length: groundDimensions.rows }, (_, rowIdx) => (
                   <div key={rowIdx} className="flex">
                     {Array.from({ length: groundDimensions.cols }, (_, colIdx) => {
                       const tileId = rowIdx * groundDimensions.cols + colIdx;
                       const isSelected = tileId === selectedTileId && activeLayer === "ground";
 
+                      // Check if this tile is in the palette selection
+                      const bounds = getGroundPaletteSelectionBounds();
+                      const isInSelection =
+                        bounds &&
+                        rowIdx >= bounds.minRow &&
+                        rowIdx <= bounds.maxRow &&
+                        colIdx >= bounds.minCol &&
+                        colIdx <= bounds.maxCol;
+
                       return (
                         <div
                           key={`${rowIdx}-${colIdx}`}
-                          className={`border cursor-pointer transition-all ${
+                          className={`relative border cursor-pointer transition-all ${
                             isSelected
                               ? "border-green-400 border-2"
                               : "border-gray-700 hover:border-green-500"
@@ -432,18 +788,48 @@ export default function BiomeEditor() {
                             }px`,
                             imageRendering: "pixelated",
                           }}
-                          onClick={() => handleTileSelect(rowIdx, colIdx, "ground")}
+                          onClick={() => {
+                            if (!isGroundPaletteSelectionMode) {
+                              handleTileSelect(rowIdx, colIdx, "ground");
+                            }
+                          }}
+                          onMouseDown={() => {
+                            if (isGroundPaletteSelectionMode) {
+                              handleGroundPaletteSelectionMouseDown(rowIdx, colIdx);
+                            }
+                          }}
+                          onMouseEnter={() => {
+                            if (isGroundPaletteSelectionMode) {
+                              handleGroundPaletteSelectionMouseMove(rowIdx, colIdx);
+                            }
+                          }}
                           title={`Ground Tile ID: ${tileId}`}
-                        />
+                        >
+                          {/* Selection overlay */}
+                          {isInSelection && (
+                            <div
+                              className="absolute inset-0 border-2 border-blue-400 bg-blue-400 bg-opacity-30 pointer-events-none"
+                              style={{ zIndex: 10 }}
+                            />
+                          )}
+                        </div>
                       );
                     })}
                   </div>
                 ))}
               </div>
 
-              {activeLayer === "ground" && (
-                <div className="mt-4 text-sm text-green-400">Selected: Tile #{selectedTileId}</div>
-              )}
+              <div className="mt-4 text-sm text-green-400">
+                {isGroundPaletteSelectionMode ? (
+                  <span className="text-blue-400 font-semibold">
+                    MULTI-SELECT MODE: Drag to select rectangle
+                  </span>
+                ) : activeLayer === "ground" ? (
+                  <>Selected: Tile #{selectedTileId}</>
+                ) : (
+                  <span className="text-gray-500">Click a tile to select</span>
+                )}
+              </div>
             </div>
 
             {/* Collidables Palette */}
@@ -454,33 +840,83 @@ export default function BiomeEditor() {
             >
               <div className="flex justify-between items-center mb-4">
                 <Label className="text-lg text-red-400">Collidable Objects</Label>
-                <Button
-                  onClick={() => {
-                    setSelectedTileId(-1);
-                    setActiveLayer("collidables");
-                  }}
-                  size="sm"
-                  className={`${
-                    selectedTileId === -1 && activeLayer === "collidables"
-                      ? "bg-red-600 hover:bg-red-700"
-                      : "bg-gray-700 hover:bg-gray-600"
-                  } text-white border border-gray-600`}
-                >
-                  Eraser
-                </Button>
+                <div className="flex gap-2">
+                  <Button
+                    onClick={togglePaletteSelectionMode}
+                    size="sm"
+                    className={`${
+                      isPaletteSelectionMode
+                        ? "bg-blue-600 hover:bg-blue-700"
+                        : "bg-gray-700 hover:bg-gray-600"
+                    } text-white border border-gray-600`}
+                  >
+                    {isPaletteSelectionMode ? "Exit Multi-Select" : "Multi-Select"}
+                  </Button>
+                  {clipboard && clipboard.layer === "collidables" && (
+                    <Button
+                      onClick={() => setClipboard(null)}
+                      size="sm"
+                      className="bg-purple-600 hover:bg-purple-700 text-white border border-purple-500"
+                      title="Clear clipboard"
+                    >
+                      Clear ({clipboard.width}×{clipboard.height})
+                    </Button>
+                  )}
+                  <Button
+                    onClick={() => {
+                      setSelectedTileId(-1);
+                      setActiveLayer("collidables");
+                      setIsPaletteSelectionMode(false);
+                    }}
+                    size="sm"
+                    className={`${
+                      selectedTileId === -1 && activeLayer === "collidables"
+                        ? "bg-red-600 hover:bg-red-700"
+                        : "bg-gray-700 hover:bg-gray-600"
+                    } text-white border border-gray-600`}
+                  >
+                    Eraser
+                  </Button>
+                </div>
               </div>
 
-              <div className="inline-block border-2 border-gray-600 bg-gray-900">
+              <div
+                className="inline-block border-2 border-gray-600 bg-gray-900"
+                onMouseDown={(e) => {
+                  if (isPaletteSelectionMode) {
+                    e.preventDefault();
+                  }
+                }}
+                onMouseUp={() => {
+                  if (isPaletteSelectionMode) {
+                    handlePaletteSelectionMouseUp();
+                  }
+                }}
+                onMouseLeave={() => {
+                  if (isPaletteSelectionMode) {
+                    handlePaletteSelectionMouseUp();
+                  }
+                }}
+              >
                 {Array.from({ length: collidablesDimensions.rows }, (_, rowIdx) => (
                   <div key={rowIdx} className="flex">
                     {Array.from({ length: collidablesDimensions.cols }, (_, colIdx) => {
                       const tileId = rowIdx * collidablesDimensions.cols + colIdx;
                       const isSelected = tileId === selectedTileId && activeLayer === "collidables";
 
+                      // Check if this tile is in the palette selection
+                      const bounds = getPaletteSelectionBounds();
+                      const isInSelection =
+                        bounds &&
+                        rowIdx >= bounds.minRow &&
+                        rowIdx <= bounds.maxRow &&
+                        colIdx >= bounds.minCol &&
+                        colIdx <= bounds.maxCol;
+
                       return (
                         <div
                           key={`${rowIdx}-${colIdx}`}
-                          className={`border cursor-pointer transition-all ${
+                          className={`relative border cursor-pointer transition-all ${
                             isSelected
                               ? "border-red-400 border-2"
                               : "border-gray-700 hover:border-red-500"
@@ -497,21 +933,51 @@ export default function BiomeEditor() {
                             }px`,
                             imageRendering: "pixelated",
                           }}
-                          onClick={() => handleTileSelect(rowIdx, colIdx, "collidables")}
+                          onClick={() => {
+                            if (!isPaletteSelectionMode) {
+                              handleTileSelect(rowIdx, colIdx, "collidables");
+                            }
+                          }}
+                          onMouseDown={() => {
+                            if (isPaletteSelectionMode) {
+                              handlePaletteSelectionMouseDown(rowIdx, colIdx);
+                            }
+                          }}
+                          onMouseEnter={() => {
+                            if (isPaletteSelectionMode) {
+                              handlePaletteSelectionMouseMove(rowIdx, colIdx);
+                            }
+                          }}
                           title={`Collidable Tile ID: ${tileId}`}
-                        />
+                        >
+                          {/* Selection overlay */}
+                          {isInSelection && (
+                            <div
+                              className="absolute inset-0 border-2 border-blue-400 bg-blue-400 bg-opacity-30 pointer-events-none"
+                              style={{ zIndex: 10 }}
+                            />
+                          )}
+                        </div>
                       );
                     })}
                   </div>
                 ))}
               </div>
 
-              {activeLayer === "collidables" && (
-                <div className="mt-4 text-sm text-red-400">
-                  Selected:{" "}
-                  {selectedTileId === -1 ? "Eraser (remove object)" : `Tile #${selectedTileId}`}
-                </div>
-              )}
+              <div className="mt-4 text-sm text-red-400">
+                {isPaletteSelectionMode ? (
+                  <span className="text-blue-400 font-semibold">
+                    MULTI-SELECT MODE: Drag to select rectangle
+                  </span>
+                ) : activeLayer === "collidables" ? (
+                  <>
+                    Selected:{" "}
+                    {selectedTileId === -1 ? "Eraser (remove object)" : `Tile #${selectedTileId}`}
+                  </>
+                ) : (
+                  <span className="text-gray-500">Click a tile to select</span>
+                )}
+              </div>
             </div>
           </div>
         </div>
