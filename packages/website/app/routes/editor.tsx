@@ -50,10 +50,24 @@ export default function BiomeEditor() {
   const [collidablesGrid, setCollidablesGrid] = useState<number[][]>(createEmptyCollidablesLayer());
   const [activeLayer, setActiveLayer] = useState<Layer>("ground");
   const [selectedTileId, setSelectedTileId] = useState<number>(0);
-  const [importText, setImportText] = useState<string>("");
   const [exportText, setExportText] = useState<string>("");
   const [isDragging, setIsDragging] = useState<boolean>(false);
   const [hasModifiedDuringDrag, setHasModifiedDuringDrag] = useState<boolean>(false);
+
+  // Create new biome dialog state
+  const [isCreateDialogOpen, setIsCreateDialogOpen] = useState<boolean>(false);
+  const [newBiomeName, setNewBiomeName] = useState<string>("");
+  const [isCreating, setIsCreating] = useState<boolean>(false);
+
+  // Biome management state
+  const [biomes, setBiomes] = useState<Array<{ name: string; fileName: string; constantName: string }>>([]);
+  const [currentBiome, setCurrentBiome] = useState<string | null>(null);
+  const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "saved" | "error">("idle");
+  const [isBiomesLoaded, setIsBiomesLoaded] = useState<boolean>(false);
+
+  // Items management state
+  const [spawnableEntities, setSpawnableEntities] = useState<string[]>([]);
+  const [currentItems, setCurrentItems] = useState<string[]>([]);
 
   // Palette selection state for collidables
   const [isPaletteSelectionMode, setIsPaletteSelectionMode] = useState<boolean>(false);
@@ -161,6 +175,99 @@ export default function BiomeEditor() {
     };
   }, [undo]);
 
+  // Fetch spawnable entities on mount
+  useEffect(() => {
+    const fetchSpawnableEntities = async () => {
+      try {
+        const response = await fetch("http://localhost:3001/api/entities/spawnable");
+        const data = await response.json();
+        setSpawnableEntities(data.entities);
+      } catch (error) {
+        console.error("Failed to fetch spawnable entities:", error);
+      }
+    };
+
+    fetchSpawnableEntities();
+  }, []);
+
+  // Fetch biomes list on mount
+  useEffect(() => {
+    const fetchBiomes = async () => {
+      try {
+        const response = await fetch("http://localhost:3001/api/biomes");
+        const data = await response.json();
+        setBiomes(data.biomes);
+        setIsBiomesLoaded(true);
+
+        // Auto-select first biome
+        if (data.biomes.length > 0) {
+          loadBiome(data.biomes[0].name);
+        }
+      } catch (error) {
+        console.error("Failed to fetch biomes:", error);
+      }
+    };
+
+    fetchBiomes();
+  }, []);
+
+  // Load biome data from API
+  const loadBiome = async (biomeName: string) => {
+    try {
+      const response = await fetch(`http://localhost:3001/api/biomes/${biomeName}`);
+      const data = await response.json();
+
+      saveToHistory(); // Save current state before loading new biome
+      setGroundGrid(data.ground);
+      setCollidablesGrid(data.collidables);
+      setCurrentItems(data.items || []);
+      setCurrentBiome(biomeName);
+      setSaveStatus("idle");
+    } catch (error) {
+      console.error(`Failed to load biome ${biomeName}:`, error);
+    }
+  };
+
+  // Save current biome to API
+  const saveBiome = async () => {
+    if (!currentBiome) return;
+
+    setSaveStatus("saving");
+    try {
+      const response = await fetch(`http://localhost:3001/api/biomes/${currentBiome}`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          ground: groundGrid,
+          collidables: collidablesGrid,
+          items: currentItems,
+        }),
+      });
+
+      if (response.ok) {
+        setSaveStatus("saved");
+        setTimeout(() => setSaveStatus("idle"), 2000);
+      } else {
+        setSaveStatus("error");
+      }
+    } catch (error) {
+      console.error(`Failed to save biome ${currentBiome}:`, error);
+      setSaveStatus("error");
+    }
+  };
+
+  // Add an item to the current biome
+  const addItem = (entityType: string) => {
+    setCurrentItems([...currentItems, `Entities.${entityType.toUpperCase()}`]);
+  };
+
+  // Remove an item from the current biome
+  const removeItem = (index: number) => {
+    setCurrentItems(currentItems.filter((_, i) => i !== index));
+  };
+
   // Handle tile selection from palette
   const handleTileSelect = (row: number, col: number, layer: Layer) => {
     const dimensions = layer === "ground" ? groundDimensions : collidablesDimensions;
@@ -222,76 +329,53 @@ export default function BiomeEditor() {
     }
   };
 
-  // Import biome from JSON or JavaScript object literal
-  const handleImport = () => {
+  // Convert name to kebab-case
+  const toKebabCase = (str: string): string => {
+    return str
+      .toLowerCase()
+      .trim()
+      .replace(/\s+/g, "-")
+      .replace(/[^a-z0-9-]/g, "");
+  };
+
+  // Create new biome
+  const handleCreateBiome = async () => {
+    if (!newBiomeName.trim()) return;
+
+    const kebabName = toKebabCase(newBiomeName);
+    if (!kebabName) return;
+
+    setIsCreating(true);
     try {
-      let cleanedInput = importText.trim();
-      let parsed: BiomeData;
+      const response = await fetch("http://localhost:3001/api/biomes", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ name: kebabName }),
+      });
 
-      // Try to parse as JSON first
-      try {
-        // Remove trailing commas before closing brackets (common in TS/JS code)
-        cleanedInput = cleanedInput.replace(/,(\s*[\]}])/g, "$1");
-        parsed = JSON.parse(cleanedInput) as BiomeData;
-      } catch {
-        // If JSON parsing fails, try to evaluate as JavaScript object literal
-        // This allows unquoted keys and is more lenient
-        // Safe for local dev tool since user controls the input
-        parsed = new Function("return " + cleanedInput)() as BiomeData;
+      if (response.ok) {
+        // Refresh biomes list
+        const biomesResponse = await fetch("http://localhost:3001/api/biomes");
+        const data = await biomesResponse.json();
+        setBiomes(data.biomes);
+
+        // Load the newly created biome
+        await loadBiome(kebabName);
+
+        // Close dialog and reset
+        setIsCreateDialogOpen(false);
+        setNewBiomeName("");
+      } else {
+        const error = await response.json();
+        alert(`Failed to create biome: ${error.error || "Unknown error"}`);
       }
-
-      // Validate structure
-      if (!parsed.ground || !parsed.collidables) {
-        return;
-      }
-
-      // Validate ground layer
-      if (!Array.isArray(parsed.ground) || parsed.ground.length !== BIOME_SIZE) {
-        return;
-      }
-
-      for (let i = 0; i < parsed.ground.length; i++) {
-        const row = parsed.ground[i];
-        if (!Array.isArray(row) || row.length !== BIOME_SIZE) {
-          return;
-        }
-        // Validate that all ground tiles are valid
-        for (let j = 0; j < row.length; j++) {
-          const tileId = row[j];
-          if (tileId < 0 || tileId >= groundDimensions.totalTiles) {
-            return;
-          }
-        }
-      }
-
-      // Validate collidables layer
-      if (!Array.isArray(parsed.collidables) || parsed.collidables.length !== BIOME_SIZE) {
-        return;
-      }
-
-      for (let i = 0; i < parsed.collidables.length; i++) {
-        const row = parsed.collidables[i];
-        if (!Array.isArray(row) || row.length !== BIOME_SIZE) {
-          return;
-        }
-        // Validate that all values are either -1 (empty) or valid tile IDs
-        for (let j = 0; j < row.length; j++) {
-          const tileId = row[j];
-          if (tileId !== -1 && (tileId < 0 || tileId >= collidablesDimensions.totalTiles)) {
-            return;
-          }
-        }
-      }
-
-      // Save state before importing
-      saveToHistory();
-
-      setGroundGrid(parsed.ground);
-      setCollidablesGrid(parsed.collidables);
-      setImportText("");
     } catch (error) {
-      // Silently fail on invalid JSON
-      return;
+      console.error("Failed to create biome:", error);
+      alert("Failed to create biome");
+    } finally {
+      setIsCreating(false);
     }
   };
 
@@ -459,6 +543,23 @@ export default function BiomeEditor() {
     setPaletteSelectionCurrent(null);
   };
 
+  // Switch active layer and reset all selection states
+  const switchLayer = (layer: Layer) => {
+    setActiveLayer(layer);
+    // Reset selected tile to default for each layer
+    setSelectedTileId(layer === "ground" ? 0 : -1);
+    // Clear all multi-select modes
+    setIsPaletteSelectionMode(false);
+    setIsGroundPaletteSelectionMode(false);
+    // Clear all selection bounds
+    setPaletteSelectionStart(null);
+    setPaletteSelectionCurrent(null);
+    setGroundPaletteSelectionStart(null);
+    setGroundPaletteSelectionCurrent(null);
+    // Clear clipboard
+    setClipboard(null);
+  };
+
   // Ground palette selection handlers
   const getGroundPaletteSelectionBounds = () => {
     if (!groundPaletteSelectionStart || !groundPaletteSelectionCurrent) return null;
@@ -523,11 +624,13 @@ export default function BiomeEditor() {
     setGroundPaletteSelectionCurrent(null);
   };
 
-  // Show loading state while detecting tilesheet dimensions
-  if (!sheetsLoaded) {
+  // Show loading state while detecting tilesheet dimensions or biomes
+  if (!sheetsLoaded || !isBiomesLoaded) {
     return (
       <div className="min-h-screen bg-gray-900 text-white p-8 flex items-center justify-center">
-        <div className="text-xl">Loading tilesheets...</div>
+        <div className="text-xl">
+          {!sheetsLoaded ? "Loading tilesheets..." : "Loading biomes..."}
+        </div>
       </div>
     );
   }
@@ -535,35 +638,62 @@ export default function BiomeEditor() {
   return (
     <div className="min-h-screen bg-gray-900 text-white p-8">
       <div className="max-w-[1600px] mx-auto">
-        <h1 className="text-3xl font-bold mb-6">
-          Biome Editor (Two-Layer)
-          <span className="text-sm text-gray-400 ml-4">
-            Ground: {groundDimensions.cols}×{groundDimensions.rows} ({groundDimensions.totalTiles}{" "}
-            tiles) | Collidables: {collidablesDimensions.cols}×{collidablesDimensions.rows} (
-            {collidablesDimensions.totalTiles} tiles)
-          </span>
-        </h1>
+        <div className="flex justify-between items-center mb-6">
+          <h1 className="text-3xl font-bold">
+            Biome Editor
+            <span className="text-sm text-gray-400 ml-4">
+              Ground: {groundDimensions.cols}×{groundDimensions.rows} ({groundDimensions.totalTiles}{" "}
+              tiles) | Collidables: {collidablesDimensions.cols}×{collidablesDimensions.rows} (
+              {collidablesDimensions.totalTiles} tiles)
+            </span>
+          </h1>
 
-        {/* Import Section */}
-        <div className="mb-6 bg-gray-800 p-4 rounded-lg">
-          <Label htmlFor="import-textarea" className="block mb-2">
-            Import Biome (Paste JSON or JS Object)
-          </Label>
-          <div className="text-xs text-gray-400 mb-2">
-            Format: ground tiles 0-{groundDimensions.totalTiles - 1}, collidables -1 (empty) or 0-
-            {collidablesDimensions.totalTiles - 1}. Supports JSON or JavaScript object literals.
+          <div className="flex gap-3">
+            <Button
+              onClick={() => setIsCreateDialogOpen(true)}
+              className="bg-purple-600 hover:bg-purple-700 text-white px-6 py-2 text-lg"
+            >
+              Create New Biome
+            </Button>
+            <Button
+              onClick={saveBiome}
+              disabled={!currentBiome || saveStatus === "saving"}
+              className={`${
+                saveStatus === "saved"
+                  ? "bg-green-600 hover:bg-green-700"
+                  : saveStatus === "error"
+                    ? "bg-red-600 hover:bg-red-700"
+                    : "bg-blue-600 hover:bg-blue-700"
+              } text-white px-6 py-2 text-lg`}
+            >
+              {saveStatus === "saving"
+                ? "Saving..."
+                : saveStatus === "saved"
+                  ? "Saved!"
+                  : saveStatus === "error"
+                    ? "Error!"
+                    : "Save Biome"}
+            </Button>
           </div>
-          <textarea
-            id="import-textarea"
-            className="w-full h-32 bg-gray-700 text-white p-2 rounded font-mono text-sm"
-            placeholder="Paste biome data here (JSON or JS object literal)"
-            value={importText}
-            onChange={(e) => setImportText(e.target.value)}
-          />
-          <Button onClick={handleImport} className="mt-2 bg-blue-600 hover:bg-blue-700 text-white">
-            Import
-          </Button>
         </div>
+
+        {/* Biome Tabs */}
+        <div className="mb-6 flex gap-2 overflow-x-auto">
+          {biomes.map((biome) => (
+            <Button
+              key={biome.name}
+              onClick={() => loadBiome(biome.name)}
+              className={`${
+                currentBiome === biome.name
+                  ? "bg-blue-600 hover:bg-blue-700"
+                  : "bg-gray-700 hover:bg-gray-600"
+              } text-white px-4 py-2 whitespace-nowrap`}
+            >
+              {biome.constantName.replace(/_/g, " ")}
+            </Button>
+          ))}
+        </div>
+
 
         {/* Main Editor */}
         <div className="flex gap-6 mb-6">
@@ -572,7 +702,14 @@ export default function BiomeEditor() {
             <div className="bg-gray-800 p-4 rounded-lg">
               <div className="flex justify-between items-center mb-4">
                 <div>
-                  <Label className="text-lg">Biome Grid (16×16)</Label>
+                  <div className="text-lg font-medium">
+                    Biome Grid (16×16)
+                    {currentBiome && (
+                      <span className="text-blue-400 ml-2">
+                        - {currentBiome.toUpperCase().replace(/-/g, " ")}
+                      </span>
+                    )}
+                  </div>
                   <div className="text-sm text-gray-400 mt-1">
                     Active Layer:{" "}
                     <span className={activeLayer === "ground" ? "text-green-400" : "text-red-400"}>
@@ -701,13 +838,34 @@ export default function BiomeEditor() {
           </div>
 
           {/* Tile Palettes */}
-          <div className="w-[400px] space-y-4">
+          <div className="w-[400px]">
+            {/* Layer Tabs */}
+            <div className="flex gap-2 mb-4">
+              <Button
+                onClick={() => switchLayer("ground")}
+                className={`flex-1 ${
+                  activeLayer === "ground"
+                    ? "bg-green-600 hover:bg-green-700"
+                    : "bg-gray-700 hover:bg-gray-600"
+                } text-white px-4 py-2`}
+              >
+                Ground Tiles
+              </Button>
+              <Button
+                onClick={() => switchLayer("collidables")}
+                className={`flex-1 ${
+                  activeLayer === "collidables"
+                    ? "bg-red-600 hover:bg-red-700"
+                    : "bg-gray-700 hover:bg-gray-600"
+                } text-white px-4 py-2`}
+              >
+                Collidables
+              </Button>
+            </div>
+
             {/* Ground Palette */}
-            <div
-              className={`bg-gray-800 p-4 rounded-lg border-2 ${
-                activeLayer === "ground" ? "border-green-500" : "border-gray-700"
-              }`}
-            >
+            {activeLayer === "ground" && (
+              <div className="bg-gray-800 p-4 rounded-lg border-2 border-green-500">
               <div className="flex justify-between items-center mb-4">
                 <Label className="text-lg text-green-400">Ground Tiles</Label>
                 <div className="flex gap-2">
@@ -824,20 +982,16 @@ export default function BiomeEditor() {
                   <span className="text-blue-400 font-semibold">
                     MULTI-SELECT MODE: Drag to select rectangle
                   </span>
-                ) : activeLayer === "ground" ? (
-                  <>Selected: Tile #{selectedTileId}</>
                 ) : (
-                  <span className="text-gray-500">Click a tile to select</span>
+                  <>Selected: Tile #{selectedTileId}</>
                 )}
               </div>
-            </div>
+              </div>
+            )}
 
             {/* Collidables Palette */}
-            <div
-              className={`bg-gray-800 p-4 rounded-lg border-2 ${
-                activeLayer === "collidables" ? "border-red-500" : "border-gray-700"
-              }`}
-            >
+            {activeLayer === "collidables" && (
+              <div className="bg-gray-800 p-4 rounded-lg border-2 border-red-500">
               <div className="flex justify-between items-center mb-4">
                 <Label className="text-lg text-red-400">Collidable Objects</Label>
                 <div className="flex gap-2">
@@ -969,16 +1123,15 @@ export default function BiomeEditor() {
                   <span className="text-blue-400 font-semibold">
                     MULTI-SELECT MODE: Drag to select rectangle
                   </span>
-                ) : activeLayer === "collidables" ? (
+                ) : (
                   <>
                     Selected:{" "}
                     {selectedTileId === -1 ? "Eraser (remove object)" : `Tile #${selectedTileId}`}
                   </>
-                ) : (
-                  <span className="text-gray-500">Click a tile to select</span>
                 )}
               </div>
-            </div>
+              </div>
+            )}
           </div>
         </div>
 
@@ -1010,6 +1163,118 @@ export default function BiomeEditor() {
             />
           )}
         </div>
+
+        {/* Items Management Section */}
+        <div className="bg-gray-800 p-4 rounded-lg mt-6">
+          <div className="text-lg font-medium mb-4">
+            Item Spawns for {currentBiome && currentBiome.toUpperCase().replace(/-/g, " ")}
+          </div>
+
+          {/* Current Items */}
+          <div className="mb-4">
+            <div className="text-sm text-gray-400 mb-2">
+              Current Items ({currentItems.length}):
+            </div>
+            <div className="flex flex-wrap gap-2 min-h-[60px] bg-gray-900 p-3 rounded">
+              {currentItems.length === 0 ? (
+                <div className="text-gray-500 text-sm">No items added yet. Click on entities below to add them.</div>
+              ) : (
+                currentItems.map((item, index) => {
+                  const displayName = item.replace("Entities.", "").toLowerCase().replace(/_/g, " ");
+                  return (
+                    <button
+                      key={`${item}-${index}`}
+                      onClick={() => removeItem(index)}
+                      className="px-3 py-1 bg-red-600 hover:bg-red-700 text-white rounded text-sm transition-colors cursor-pointer"
+                      title="Click to remove"
+                    >
+                      {displayName} ✕
+                    </button>
+                  );
+                })
+              )}
+            </div>
+          </div>
+
+          {/* Available Entities */}
+          <div>
+            <div className="text-sm text-gray-400 mb-2">
+              Available Entities (Click to add):
+            </div>
+            <div className="flex flex-wrap gap-2 bg-gray-900 p-3 rounded max-h-[300px] overflow-y-auto">
+              {spawnableEntities.map((entity) => {
+                const displayName = entity.replace(/_/g, " ");
+                return (
+                  <button
+                    key={entity}
+                    onClick={() => addItem(entity)}
+                    className="px-3 py-1 bg-blue-600 hover:bg-blue-700 text-white rounded text-sm transition-colors cursor-pointer"
+                    title={`Add ${displayName}`}
+                  >
+                    {displayName}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+
+        {/* Create New Biome Dialog */}
+        {isCreateDialogOpen && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div className="bg-gray-800 rounded-lg p-6 max-w-md w-full mx-4">
+              <h2 className="text-2xl font-bold mb-4">Create New Biome</h2>
+
+              <div className="mb-4">
+                <label className="block text-sm text-gray-400 mb-2">
+                  Biome Name
+                </label>
+                <input
+                  type="text"
+                  value={newBiomeName}
+                  onChange={(e) => setNewBiomeName(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" && newBiomeName.trim()) {
+                      handleCreateBiome();
+                    }
+                  }}
+                  placeholder="e.g., Desert Ruins, Ice Cave, etc."
+                  className="w-full bg-gray-700 text-white px-4 py-2 rounded focus:outline-none focus:ring-2 focus:ring-purple-500"
+                  autoFocus
+                />
+              </div>
+
+              {newBiomeName.trim() && (
+                <div className="mb-4 text-sm">
+                  <span className="text-gray-400">File name: </span>
+                  <span className="text-purple-400 font-mono">
+                    {toKebabCase(newBiomeName)}.ts
+                  </span>
+                </div>
+              )}
+
+              <div className="flex gap-3 justify-end">
+                <Button
+                  onClick={() => {
+                    setIsCreateDialogOpen(false);
+                    setNewBiomeName("");
+                  }}
+                  className="bg-gray-700 hover:bg-gray-600 text-white px-4 py-2"
+                  disabled={isCreating}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  onClick={handleCreateBiome}
+                  disabled={!newBiomeName.trim() || isCreating}
+                  className="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 disabled:bg-gray-600 disabled:cursor-not-allowed"
+                >
+                  {isCreating ? "Creating..." : "Create"}
+                </Button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

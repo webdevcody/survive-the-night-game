@@ -6,7 +6,6 @@ import { Shotgun } from "@/entities/weapons/shotgun";
 import { Pistol } from "@/entities/weapons/pistol";
 import { IGameManagers, IEntityManager, IMapManager } from "@/managers/types";
 import Positionable from "@/extensions/positionable";
-import { TILE_IDS } from "@shared/map";
 import { PistolAmmo } from "@/entities/items/pistol-ammo";
 import { ShotgunAmmo } from "@/entities/items/shotgun-ammo";
 import Vector2 from "@/util/vector2";
@@ -24,7 +23,17 @@ import { Spikes } from "@/entities/items/spikes";
 import { Torch } from "@/entities/items/torch";
 import { Wall } from "@/entities/items/wall";
 import { SpitterZombie } from "@/entities/enemies/spitter-zombie";
-import { CAMPSITE, FOREST, WATER, FARM, GAS_STATION, type BiomeData } from "@/biomes";
+import {
+  CAMPSITE,
+  FOREST1,
+  FOREST2,
+  FOREST3,
+  WATER,
+  FARM,
+  GAS_STATION,
+  CITY,
+  type BiomeData,
+} from "@/biomes";
 import type { MapData } from "@shared/events/server-sent/map-event";
 
 const WEAPON_SPAWN_CHANCE = {
@@ -76,6 +85,7 @@ export class MapManager implements IMapManager {
   private gameMaster?: GameMaster;
   private farmBiomePosition?: { x: number; y: number };
   private gasStationBiomePosition?: { x: number; y: number };
+  private cityBiomePosition?: { x: number; y: number };
 
   constructor() {}
 
@@ -223,6 +233,7 @@ export class MapManager implements IMapManager {
     this.initializeMap();
     this.selectRandomFarmBiomePosition();
     this.selectRandomGasStationBiomePosition();
+    this.selectRandomCityBiomePosition();
     this.fillMapWithBiomes();
     this.createForestBoundaries();
     this.spawnItems();
@@ -297,6 +308,45 @@ export class MapManager implements IMapManager {
     if (validPositions.length > 0) {
       const randomIndex = Math.floor(Math.random() * validPositions.length);
       this.gasStationBiomePosition = validPositions[randomIndex];
+    }
+  }
+
+  private selectRandomCityBiomePosition() {
+    const centerBiomeX = Math.floor(MAP_SIZE / 2);
+    const centerBiomeY = Math.floor(MAP_SIZE / 2);
+    const validPositions: { x: number; y: number }[] = [];
+
+    // Collect all valid biome positions (not edges, not center, not farm, not gas station)
+    for (let biomeY = 1; biomeY < MAP_SIZE - 1; biomeY++) {
+      for (let biomeX = 1; biomeX < MAP_SIZE - 1; biomeX++) {
+        // Skip the center campsite biome
+        if (biomeX === centerBiomeX && biomeY === centerBiomeY) {
+          continue;
+        }
+        // Skip the farm biome position
+        if (
+          this.farmBiomePosition &&
+          biomeX === this.farmBiomePosition.x &&
+          biomeY === this.farmBiomePosition.y
+        ) {
+          continue;
+        }
+        // Skip the gas station biome position
+        if (
+          this.gasStationBiomePosition &&
+          biomeX === this.gasStationBiomePosition.x &&
+          biomeY === this.gasStationBiomePosition.y
+        ) {
+          continue;
+        }
+        validPositions.push({ x: biomeX, y: biomeY });
+      }
+    }
+
+    // Select a random position from valid positions
+    if (validPositions.length > 0) {
+      const randomIndex = Math.floor(Math.random() * validPositions.length);
+      this.cityBiomePosition = validPositions[randomIndex];
     }
   }
 
@@ -445,9 +495,17 @@ export class MapManager implements IMapManager {
     ) {
       // Place gas station at the randomly selected position
       biome = GAS_STATION;
+    } else if (
+      this.cityBiomePosition &&
+      biomeX === this.cityBiomePosition.x &&
+      biomeY === this.cityBiomePosition.y
+    ) {
+      // Place city at the randomly selected position
+      biome = CITY;
     } else {
       // Place forest everywhere else
-      biome = FOREST;
+      const forestBiomes = [FOREST1, FOREST2, FOREST3];
+      biome = forestBiomes[Math.floor(Math.random() * forestBiomes.length)];
     }
 
     for (let y = 0; y < BIOME_SIZE; y++) {

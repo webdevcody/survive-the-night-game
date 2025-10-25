@@ -8,6 +8,8 @@ import { Input } from "../../../game-shared/src/util/input";
 import { RecipeType } from "../../../game-shared/src/util/recipes";
 import { createServer } from "http";
 import { Server, Socket } from "socket.io";
+import express from "express";
+import biomeRoutes from "../api/biome-routes.js";
 import { CommandManager } from "@/managers/command-manager";
 import { MapManager } from "@/managers/map-manager";
 import { Broadcaster, IEntityManager, IGameManagers } from "@/managers/types";
@@ -38,7 +40,36 @@ export class ServerSocketManager implements Broadcaster {
 
   constructor(port: number, gameServer: GameServer) {
     this.port = port;
-    this.httpServer = createServer();
+
+    // Set up Express app
+    const app = express();
+
+    // Add middleware
+    app.use(express.json());
+    app.use((req, res, next) => {
+      res.header("Access-Control-Allow-Origin", "*");
+      res.header("Access-Control-Allow-Headers", "Content-Type");
+      res.header("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
+      if (req.method === "OPTIONS") {
+        res.sendStatus(200);
+      } else {
+        next();
+      }
+    });
+
+    // Register API routes
+    console.log("Registering biome routes at /api");
+    app.use("/api", biomeRoutes);
+
+    // Add a test route to verify Express is working
+    app.get("/test", (req, res) => {
+      res.json({ message: "Express is working!" });
+    });
+
+    // Create HTTP server with Express app
+    this.httpServer = createServer(app);
+
+    // Wrap HTTP server with Socket.io
     this.io = new Server(this.httpServer, {
       cors: {
         origin: "*",
@@ -130,7 +161,10 @@ export class ServerSocketManager implements Broadcaster {
   }
 
   public listen(): void {
-    this.io.listen(this.port);
+    // Listen using the HTTP server directly (which has Express attached)
+    this.httpServer.listen(this.port, () => {
+      console.log(`Server listening on port ${this.port}`);
+    });
   }
 
   private onDisconnect(socket: Socket): void {

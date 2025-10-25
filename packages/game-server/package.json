@@ -13,6 +13,7 @@
   "license": "MIT",
   "description": "",
   "devDependencies": {
+    "@types/express": "^5.0.4",
     "@types/node": "^22.9.3",
     "tsup": "^8.3.5",
     "tsx": "^4.19.2",
@@ -22,6 +23,7 @@
   "dependencies": {
     "@survive-the-night/game-shared": "*",
     "dotenv": "^16.4.7",
+    "express": "^5.1.0",
     "socket.io": "^4.8.1"
   }
 }
