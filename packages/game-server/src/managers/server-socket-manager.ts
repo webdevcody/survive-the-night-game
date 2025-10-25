@@ -57,9 +57,13 @@ export class ServerSocketManager implements Broadcaster {
       }
     });
 
-    // Register API routes
-    console.log("Registering biome routes at /api");
-    app.use("/api", biomeRoutes);
+    // Register API routes (biome editor only available in development)
+    if (process.env.NODE_ENV !== "production") {
+      console.log("Registering biome routes at /api (development mode)");
+      app.use("/api", biomeRoutes);
+    } else {
+      console.log("Biome editor disabled in production mode");
+    }
 
     // Add a test route to verify Express is working
     app.get("/test", (req, res) => {

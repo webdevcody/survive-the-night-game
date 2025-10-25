@@ -2,10 +2,34 @@ import fs from "fs/promises";
 import path from "path";
 import { fileURLToPath } from "url";
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+// This module is only intended for development/local use
+const IS_PRODUCTION = process.env.NODE_ENV === "production";
 
-const BIOMES_DIR = path.join(__dirname, "..", "biomes");
+// Handle both ESM (dev mode) and detect production
+const getBiomesDir = () => {
+  // In production, we don't support the biome editor
+  if (IS_PRODUCTION) {
+    return null;
+  }
+
+  // Check if import.meta.url is available (ESM/dev mode)
+  if (typeof import.meta.url !== 'undefined') {
+    const currentDir = path.dirname(fileURLToPath(import.meta.url));
+    return path.join(currentDir, "..", "biomes");
+  }
+
+  // If import.meta.url is not available, we're likely bundled (production)
+  return null;
+};
+
+const BIOMES_DIR = getBiomesDir();
+
+// Helper to check if biome editor is available
+function ensureBiomeEditorAvailable() {
+  if (!BIOMES_DIR) {
+    throw new Error("Biome editor is only available in development mode");
+  }
+}
 
 export interface BiomeData {
   ground: number[][];
@@ -23,7 +47,8 @@ export interface BiomeInfo {
  * Get all available biome files in the biomes directory
  */
 export async function listBiomes(): Promise<BiomeInfo[]> {
-  const files = await fs.readdir(BIOMES_DIR);
+  ensureBiomeEditorAvailable();
+  const files = await fs.readdir(BIOMES_DIR!);
 
   const biomeFiles = files.filter(
     (file) => file.endsWith(".ts") && file !== "index.ts"
@@ -48,7 +73,8 @@ export async function listBiomes(): Promise<BiomeInfo[]> {
  * Read a biome file and extract its data
  */
 export async function readBiomeData(biomeName: string): Promise<BiomeData> {
-  const filePath = path.join(BIOMES_DIR, `${biomeName}.ts`);
+  ensureBiomeEditorAvailable();
+  const filePath = path.join(BIOMES_DIR!, `${biomeName}.ts`);
   const content = await fs.readFile(filePath, "utf-8");
 
   // Extract the biome data object using regex
@@ -78,7 +104,8 @@ export async function writeBiomeData(
   biomeName: string,
   biomeData: BiomeData
 ): Promise<void> {
-  const filePath = path.join(BIOMES_DIR, `${biomeName}.ts`);
+  ensureBiomeEditorAvailable();
+  const filePath = path.join(BIOMES_DIR!, `${biomeName}.ts`);
   const content = await fs.readFile(filePath, "utf-8");
 
   // Extract the constant name from the file
@@ -122,7 +149,8 @@ export async function writeBiomeData(
  * Create a new biome file with empty ground and collidables
  */
 export async function createBiome(biomeName: string): Promise<void> {
-  const filePath = path.join(BIOMES_DIR, `${biomeName}.ts`);
+  ensureBiomeEditorAvailable();
+  const filePath = path.join(BIOMES_DIR!, `${biomeName}.ts`);
 
   // Check if file already exists
   try {
@@ -173,8 +201,9 @@ ${emptyCollidables.map(row => `    [${row.join(", ")}]`).join(",\n")}
  * Update the biomes/index.ts file to include all biomes
  */
 async function updateBiomesIndex(): Promise<void> {
-  const indexPath = path.join(BIOMES_DIR, "index.ts");
-  const files = await fs.readdir(BIOMES_DIR);
+  ensureBiomeEditorAvailable();
+  const indexPath = path.join(BIOMES_DIR!, "index.ts");
+  const files = await fs.readdir(BIOMES_DIR!);
 
   const biomeFiles = files
     .filter((file) => file.endsWith(".ts") && file !== "index.ts")
