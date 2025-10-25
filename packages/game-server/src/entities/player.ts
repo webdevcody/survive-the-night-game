@@ -65,6 +65,7 @@ export class Player extends Entity {
   private displayName: string = "";
   private stamina: number = Player.MAX_STAMINA;
   private exhaustionTimer: number = 0; // Time remaining before stamina can regenerate
+  private coins: number = 0;
 
   constructor(gameManagers: IGameManagers) {
     super(gameManagers, Entities.PLAYER);
@@ -208,6 +209,7 @@ export class Player extends Entity {
       displayName: this.displayName,
       stamina: this.stamina,
       maxStamina: Player.MAX_STAMINA,
+      coins: this.coins,
     };
   }
 
@@ -472,7 +474,10 @@ export class Player extends Entity {
 
       // Regenerate stamina when not sprinting
       if (!isSprinting) {
-        this.stamina = Math.min(Player.MAX_STAMINA, this.stamina + Player.STAMINA_REGEN_RATE * deltaTime);
+        this.stamina = Math.min(
+          Player.MAX_STAMINA,
+          this.stamina + Player.STAMINA_REGEN_RATE * deltaTime
+        );
       }
     }
   }
@@ -550,5 +555,13 @@ export class Player extends Entity {
 
   getPing(): number {
     return this.ping;
+  }
+
+  addCoins(amount: number): void {
+    this.coins += amount;
+  }
+
+  getCoins(): number {
+    return this.coins;
   }
 }

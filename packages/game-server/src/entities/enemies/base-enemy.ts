@@ -105,6 +105,17 @@ export abstract class BaseEnemy extends Entity {
     );
     this.getExt(Collidable).setEnabled(false);
     this.getGameManagers().getBroadcaster().broadcastEvent(new ZombieDeathEvent(this.getId()));
+
+    // Spawn a coin when zombie dies
+    this.spawnCoin();
+  }
+
+  spawnCoin(): void {
+    const coin = this.getEntityManager().createEntity(Entities.COIN);
+    if (coin && coin.hasExt(Positionable)) {
+      coin.getExt(Positionable).setPosition(this.getPosition());
+    }
+    this.getEntityManager().addEntity(coin);
   }
 
   onLooted(): void {

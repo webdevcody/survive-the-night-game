@@ -78,7 +78,6 @@ function createCharacterFrames({
   };
 }
 
-
 function createCharacterAssets(
   name: string,
   frames: ReturnType<typeof createCharacterFrames>,
@@ -102,16 +101,16 @@ function createCharacterAssets(
   }
 
   // Add directional frames
-  const directions = ["down", "right", "up"] as const;
+  const directions = ["down", "left", "up"] as const;
   directions.forEach((direction) => {
     frames[direction].forEach((frame, index) => {
       assets[`${name}_facing_${direction}_${index}`] = assetMap(frame);
     });
   });
 
-  // Add right frames (flipped)
+  // Add right frames (flipped from left sprites)
   frames.right.forEach((frame, index) => {
-    assets[`${name}_facing_left_${index}`] = loadFlipXAsset(frame);
+    assets[`${name}_facing_right_${index}`] = loadFlipXAsset(frame);
   });
 
   return assets;
@@ -210,20 +209,50 @@ function createWeaponAssets(
 ) {
   return {
     [assetPrefix]: assetMap({ x: spritePositions.right.x, y: spritePositions.right.y, sheet }),
-    [`${assetPrefix}_facing_down`]: assetMap({ x: spritePositions.down.x, y: spritePositions.down.y, sheet }),
-    [`${assetPrefix}_facing_left`]: assetMap({ x: spritePositions.right.x, y: spritePositions.right.y, flipX: true, sheet }),
-    [`${assetPrefix}_facing_right`]: assetMap({ x: spritePositions.right.x, y: spritePositions.right.y, sheet }),
-    [`${assetPrefix}_facing_up`]: assetMap({ x: spritePositions.up.x, y: spritePositions.up.y, sheet }),
+    [`${assetPrefix}_facing_down`]: assetMap({
+      x: spritePositions.down.x,
+      y: spritePositions.down.y,
+      sheet,
+    }),
+    [`${assetPrefix}_facing_left`]: assetMap({
+      x: spritePositions.right.x,
+      y: spritePositions.right.y,
+      flipX: true,
+      sheet,
+    }),
+    [`${assetPrefix}_facing_right`]: assetMap({
+      x: spritePositions.right.x,
+      y: spritePositions.right.y,
+      sheet,
+    }),
+    [`${assetPrefix}_facing_up`]: assetMap({
+      x: spritePositions.up.x,
+      y: spritePositions.up.y,
+      sheet,
+    }),
   };
 }
 
-function createSimpleAsset(assetKey: string, x: number, y: number, width?: number, height?: number, sheet: string = "default") {
+function createSimpleAsset(
+  assetKey: string,
+  x: number,
+  y: number,
+  width?: number,
+  height?: number,
+  sheet: string = "default"
+) {
   return {
     [assetKey]: assetMap({ x, y, width, height, sheet }),
   };
 }
 
-function createAnimatedAsset(assetKey: string, frameCount: number, startX: number, startY: number, sheet: string = "default") {
+function createAnimatedAsset(
+  assetKey: string,
+  frameCount: number,
+  startX: number,
+  startY: number,
+  sheet: string = "default"
+) {
   const assets: Record<string, CropOptions & { sheet: string }> = {};
 
   // Base asset
@@ -242,10 +271,13 @@ function mergeAssetsFromConfigs<T>(
   configs: T[],
   assetGenerator: (config: T) => Record<string, CropOptions & { sheet: string }>
 ): Record<string, CropOptions & { sheet: string }> {
-  return configs.reduce((acc, config) => ({
-    ...acc,
-    ...assetGenerator(config),
-  }), {});
+  return configs.reduce(
+    (acc, config) => ({
+      ...acc,
+      ...assetGenerator(config),
+    }),
+    {}
+  );
 }
 
 export const assetsMap = {

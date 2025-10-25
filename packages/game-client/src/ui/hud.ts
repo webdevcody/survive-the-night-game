@@ -8,6 +8,7 @@ import { Zombies, VERSION } from "@shared/constants";
 import { Minimap } from "./minimap";
 import { Leaderboard } from "./leaderboard";
 import { SoundManager } from "@/managers/sound-manager";
+import { AssetManager } from "@/managers/asset";
 
 const HUD_SETTINGS = {
   ControlsList: {
@@ -60,6 +61,15 @@ const HUD_SETTINGS = {
     hoverBackground: "rgba(0, 0, 0, 0.9)",
     font: "36px Arial",
   },
+  CoinCounter: {
+    left: 460, // Position to the right of minimap, aligned with mute button
+    bottom: 120, // Above the mute button (40 + 60 + 20)
+    paddingVertical: 4,
+    paddingHorizontal: 16,
+    background: "rgba(0, 0, 0, 0.7)",
+    font: "36px Arial",
+    spriteSize: 64, // Size of the coin sprite
+  },
 };
 
 export class Hud {
@@ -74,10 +84,12 @@ export class Hud {
   private minimap: Minimap;
   private leaderboard: Leaderboard;
   private soundManager: SoundManager;
+  private assetManager: AssetManager;
 
-  constructor(mapManager: MapManager, soundManager: SoundManager) {
+  constructor(mapManager: MapManager, soundManager: SoundManager, assetManager: AssetManager) {
     this.mapManager = mapManager;
     this.soundManager = soundManager;
+    this.assetManager = assetManager;
     this.chatWidget = new ChatWidget();
     this.minimap = new Minimap(mapManager);
     this.leaderboard = new Leaderboard();
@@ -217,6 +229,7 @@ export class Hud {
     this.renderControlsList(ctx, gameState);
     this.renderGameMessages(ctx);
     this.renderMuteButton(ctx);
+    this.renderCoinCounter(ctx, gameState);
     this.leaderboard.render(ctx, gameState);
     this.chatWidget.render(ctx, gameState);
   }
@@ -279,6 +292,61 @@ export class Hud {
     const iconY = y + settings.height / 2 + 14; // Adjust for vertical centering
 
     ctx.fillText(icon, iconX, iconY);
+
+    ctx.restore();
+  }
+
+  private renderCoinCounter(ctx: CanvasRenderingContext2D, gameState: GameState): void {
+    const myPlayer = getPlayer(gameState);
+    if (!myPlayer) return;
+
+    const coins = myPlayer.getCoins();
+    const { height } = ctx.canvas;
+    const settings = HUD_SETTINGS.CoinCounter;
+
+    ctx.save();
+    ctx.setTransform(1, 0, 0, 1, 0, 0); // Reset transform to work in canvas pixel coordinates
+
+    // Get coin sprite
+    const coinSprite = this.assetManager.get("coin");
+
+    // Calculate text metrics
+    ctx.font = settings.font;
+    const coinsText = `${coins}`;
+    const textMetrics = ctx.measureText(coinsText);
+
+    // Calculate total width needed (sprite + spacing + text)
+    const spacing = 8;
+    const totalWidth = settings.spriteSize + spacing + textMetrics.width;
+
+    // Calculate container dimensions
+    const containerWidth = totalWidth + settings.paddingHorizontal * 2;
+    const containerHeight = settings.spriteSize + settings.paddingVertical * 2;
+
+    // Calculate position
+    const x = settings.left;
+    const y = height - settings.bottom - containerHeight;
+
+    // Draw background
+    ctx.fillStyle = settings.background;
+    ctx.fillRect(x, y, containerWidth, containerHeight);
+
+    // Draw border
+    ctx.strokeStyle = "rgba(255, 255, 255, 0.5)";
+    ctx.lineWidth = 2;
+    ctx.strokeRect(x, y, containerWidth, containerHeight);
+
+    // Draw coin sprite - vertically centered
+    const spriteX = x + settings.paddingHorizontal;
+    const spriteY = y + settings.paddingVertical;
+    ctx.drawImage(coinSprite, spriteX, spriteY - 2, settings.spriteSize, settings.spriteSize);
+
+    // Draw coin count text - vertically aligned with sprite center
+    ctx.fillStyle = "white";
+    ctx.textBaseline = "middle";
+    const textX = spriteX + settings.spriteSize + spacing;
+    const textY = y + containerHeight / 2;
+    ctx.fillText(coinsText, textX, textY);
 
     ctx.restore();
   }

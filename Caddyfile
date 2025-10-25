@@ -1,8 +1,0 @@
-survivethenightgame.com {
-    reverse_proxy website:3005
-}
-
-wss.survivethenightgame.com {
-    reverse_proxy game-server:3006
-    encode gzip
-}

@@ -38,6 +38,7 @@ export class PlayerClient extends ClientEntity implements IClientEntity, Rendera
   private displayName: string = "";
   private stamina: number = 100;
   private maxStamina: number = 100;
+  private coins: number = 0;
 
   private input: Input = {
     facing: Direction.Right,
@@ -67,6 +68,7 @@ export class PlayerClient extends ClientEntity implements IClientEntity, Rendera
     this.displayName = data.displayName || "Unknown";
     this.stamina = data.stamina ?? 100;
     this.maxStamina = data.maxStamina ?? 100;
+    this.coins = data.coins ?? 0;
   }
 
   private getPlayerAssetKey(): string {
@@ -303,6 +305,10 @@ export class PlayerClient extends ClientEntity implements IClientEntity, Rendera
     return this.maxStamina;
   }
 
+  public getCoins(): number {
+    return this.coins;
+  }
+
   deserialize(data: RawEntity): void {
     super.deserialize(data);
     this.inventory = data.inventory;
@@ -315,5 +321,6 @@ export class PlayerClient extends ClientEntity implements IClientEntity, Rendera
     this.displayName = data.displayName || "Unknown";
     this.stamina = data.stamina ?? 100;
     this.maxStamina = data.maxStamina ?? 100;
+    this.coins = data.coins ?? 0;
   }
 }

@@ -4,8 +4,23 @@ Feel free to pick any item listed out here to work on.
 
 ## TODO
 
+- get this deployed again on the vps
 - play walking / running sounds when players move around
 - play explosion sounds when grenade or landmine or gasoline explode
+- play a coin noise when it drops
+- make sure it plays a coin pick up noise on pick up
+- the coin in the hud is tiny, make it larger
+- maybe remove the coin after X amount of seconds to make it a more time sentisitve reward for players to risk getting killed because they want the coin.
+- should also make it randomly choose to drop a coin or not. So your risk is raised even more because you may not get a coin.
+- add indicators so I can easily find my team mates
+- add the ability for users to find a merchant which will sell items using the coins players have collected
+- game mode: battle royal mode (1 player zombie, everyone else human)
+- add in initial map zombies that stay near their spawned biome area and will only chase humans so far, also they will not auto be killed when the night ends.
+- walking vs running can attract these idle zombies differently, the more noise you make causes zombies to chase you if within a certain radius. (only applies to idle zombies)
+- for the barn biome, a player can interact with the door of the barn which will spawn a bunch of zombies at the door, but also drop a lot of good loot
+- potentially have loot boxes that zombies might drop keys for (exploration to find the boxes, and the keys)
+- random supply drops with mini map indicator about drop
+- proximity voice chat
 
 ### Gameplay
 

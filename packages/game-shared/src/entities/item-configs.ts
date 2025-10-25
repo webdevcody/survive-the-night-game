@@ -87,4 +87,14 @@ export const ITEM_CONFIGS: Record<string, ItemConfig> = {
       y: 38,
     },
   },
+  coin: {
+    id: "coin",
+    category: "consumable",
+    assets: {
+      assetKey: "coin",
+      x: 32,
+      y: 48,
+      sheet: "items",
+    },
+  },
 };

@@ -4,6 +4,7 @@ import { FastZombie } from "@/entities/enemies/fast-zombie";
 import { Fire } from "@/entities/environment/fire";
 import { Bandage } from "@/entities/items/bandage";
 import { Cloth } from "@/entities/items/cloth";
+import { Coin } from "@/entities/items/coin";
 import { Gasoline } from "@/entities/items/gasoline";
 import { PistolAmmo } from "@/entities/items/pistol-ammo";
 import { ShotgunAmmo } from "@/entities/items/shotgun-ammo";
@@ -51,6 +52,7 @@ const entityMap = {
   [Entities.KNIFE]: Knife,
   [Entities.BANDAGE]: Bandage,
   [Entities.CLOTH]: Cloth,
+  [Entities.COIN]: Coin,
   [Entities.SPIKES]: Spikes,
   [Entities.FIRE]: Fire,
   [Entities.TORCH]: Torch,
@@ -106,6 +108,7 @@ export class EntityManager implements IEntityManager {
     this.registerItem("bandage", Bandage);
     this.registerItem("torch", Torch);
     this.registerItem("cloth", Cloth);
+    this.registerItem("coin", Coin);
     this.registerItem("wood", Tree);
     this.registerItem("wall", Wall);
     this.registerItem("spikes", Spikes);
