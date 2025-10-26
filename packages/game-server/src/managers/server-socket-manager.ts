@@ -85,9 +85,34 @@ export class ServerSocketManager implements Broadcaster {
 
     this.io.on("connection", (socket: Socket) => {
       const { displayName } = socket.handshake.query;
+
+      // Check if this displayName is already connected
+      // If so, disconnect the old socket to prevent duplicates
+      const existingSocketId = this.findSocketIdByDisplayName(displayName as string);
+      if (existingSocketId && existingSocketId !== socket.id) {
+        console.log(`Duplicate displayName detected: ${displayName}. Disconnecting old connection ${existingSocketId}`);
+        const existingSocket = this.io.sockets.sockets.get(existingSocketId);
+        if (existingSocket) {
+          existingSocket.disconnect(true);
+        }
+      }
+
       this.playerDisplayNames.set(socket.id, displayName as string);
       this.onConnection(socket);
     });
+  }
+
+  /**
+   * Find a socket ID by displayName
+   * @returns socket ID if found, undefined otherwise
+   */
+  private findSocketIdByDisplayName(displayName: string): string | undefined {
+    for (const [socketId, name] of this.playerDisplayNames.entries()) {
+      if (name === displayName) {
+        return socketId;
+      }
+    }
+    return undefined;
   }
 
   public setGameManagers(gameManagers: IGameManagers): void {
@@ -174,7 +199,12 @@ export class ServerSocketManager implements Broadcaster {
   private onDisconnect(socket: Socket): void {
     console.log("Player disconnected", socket.id);
     const player = this.players.get(socket.id);
+    const displayName = this.playerDisplayNames.get(socket.id);
+
+    // Clean up player and displayName
     this.players.delete(socket.id);
+    this.playerDisplayNames.delete(socket.id);
+
     if (player) {
       // TODO: this is a hacker; I'd rather use this, but when I do there is a strange race condition where the round never restarts, so instead the
       this.getEntityManager().removeEntity(player.getId());
@@ -182,7 +212,7 @@ export class ServerSocketManager implements Broadcaster {
       this.broadcastEvent(
         new PlayerLeftEvent({
           playerId: player.getId(),
-          displayName: this.playerDisplayNames.get(socket.id) ?? "Unknown",
+          displayName: displayName ?? "Unknown",
         })
       );
     }

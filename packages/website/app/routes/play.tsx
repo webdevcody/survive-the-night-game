@@ -1,8 +1,7 @@
 import type { Route } from "./+types/home";
 import { useEffect } from "react";
 import { useRef } from "react";
-import { GameClient } from "@survive-the-night/game-client";
-import { useNavigate } from "react-router";
+import { SceneManager, LoadingScene } from "@survive-the-night/game-client/scenes";
 
 export function meta({}: Route.MetaArgs) {
   return [
@@ -17,34 +16,29 @@ export function meta({}: Route.MetaArgs) {
 
 export default function Home() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const clientRef = useRef<GameClient | null>(null);
-  const navigate = useNavigate();
+  const sceneManagerRef = useRef<SceneManager | null>(null);
 
   useEffect(() => {
-    const displayName = localStorage.getItem("displayName");
-
-    if (!displayName) {
-      navigate("/");
-      return;
-    }
-  }, []);
-
-  useEffect(() => {
-    async function initClient(): Promise<void> {
+    async function initScenes(): Promise<void> {
       if (!canvasRef.current) {
         return;
       }
 
-      clientRef.current = new GameClient(import.meta.env.VITE_WSS_URL, canvasRef.current);
+      // Create scene manager
+      sceneManagerRef.current = new SceneManager(canvasRef.current);
 
-      await clientRef.current.loadAssets();
-      clientRef.current.start();
+      // Store reference globally for scene transitions
+      (window as any).__sceneManager = sceneManagerRef.current;
+
+      // Start with loading scene (it will handle name entry if needed)
+      await sceneManagerRef.current.switchScene(LoadingScene);
     }
 
-    void initClient();
+    void initScenes();
 
     return () => {
-      clientRef.current?.unmount();
+      sceneManagerRef.current?.destroy();
+      delete (window as any).__sceneManager;
     };
   }, []);
 

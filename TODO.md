@@ -21,6 +21,8 @@ Feel free to pick any item listed out here to work on.
 - potentially have loot boxes that zombies might drop keys for (exploration to find the boxes, and the keys)
 - random supply drops with mini map indicator about drop
 - proximity voice chat
+- play a dong noise and up beat music for the wave
+- during the day time, play a low tempo ambient music
 
 ### Gameplay
 

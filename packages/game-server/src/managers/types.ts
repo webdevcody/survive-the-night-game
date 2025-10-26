@@ -35,6 +35,8 @@ export interface Broadcaster {
 
 export interface IMapManager {
   getMap(): number[][];
+  getGroundLayer(): number[][];
+  getCollidablesLayer(): number[][];
 }
 
 export interface IGameManagers {

@@ -55,6 +55,7 @@ export class ClientSocketManager {
   private socket: Socket;
   private pingInterval: ReturnType<typeof setInterval> | null = null;
   private onPingUpdate?: (ping: number) => void;
+  private isDisconnected: boolean = false;
 
   public on<K extends keyof typeof SERVER_EVENT_MAP>(eventType: K, handler: (event: any) => void) {
     this.socket.on(eventType, (serializedEvent) => {
@@ -71,16 +72,21 @@ export class ClientSocketManager {
     }
 
     console.log("Connecting to game server", serverUrl);
-    this.socket = io(`${serverUrl}?displayName=${displayName}`);
+    this.socket = io(`${serverUrl}?displayName=${displayName}`, {
+      // Ensure we create a new connection each time
+      forceNew: true,
+    });
 
     this.socket.on("connect", () => {
       console.log("Connected to game server", this.socket.id);
+      this.isDisconnected = false;
       this.socket.emit(ClientSentEvents.REQUEST_FULL_STATE);
       this.startPingMeasurement();
     });
 
     this.socket.on("disconnect", () => {
       console.log("Disconnected from game server");
+      this.isDisconnected = true;
       this.stopPingMeasurement();
     });
 
@@ -147,5 +153,22 @@ export class ClientSocketManager {
 
   public sendChatMessage(message: string) {
     this.socket.emit(ClientSentEvents.SEND_CHAT, { message });
+  }
+
+  /**
+   * Disconnect from the game server and clean up resources
+   */
+  public disconnect(): void {
+    if (this.isDisconnected) {
+      return; // Already disconnected
+    }
+
+    this.stopPingMeasurement();
+
+    if (this.socket) {
+      console.log("Disconnecting from game server");
+      this.socket.disconnect();
+      this.isDisconnected = true;
+    }
   }
 }

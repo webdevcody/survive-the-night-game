@@ -22,25 +22,59 @@ export const SOUND_TYPES_TO_MP3 = {
 
 export type SoundType = (typeof SOUND_TYPES_TO_MP3)[keyof typeof SOUND_TYPES_TO_MP3];
 
+export type SoundLoadProgressCallback = (progress: number, total: number, soundName: string) => void;
+
 export class SoundManager {
-  private gameClient: GameClient;
+  private gameClient: GameClient | null;
   private audioCache: Map<SoundType, HTMLAudioElement>;
   private static readonly MAX_DISTANCE = 800;
   private isMuted: boolean = false;
+  private loaded: boolean = false;
 
-  constructor(gameClient: GameClient) {
-    this.gameClient = gameClient;
+  constructor(gameClient?: GameClient) {
+    this.gameClient = gameClient || null;
     this.audioCache = new Map();
-    this.preloadSounds();
   }
 
-  private preloadSounds() {
-    // Create and cache an audio element for each sound type
-    Object.values(SOUND_TYPES_TO_MP3).forEach((soundType) => {
-      const audio = new Audio(this.getSrc(soundType));
-      audio.preload = "auto"; // Ensure the browser preloads the sound
-      this.audioCache.set(soundType, audio);
+  /**
+   * Preload all sounds with optional progress tracking
+   */
+  public async preloadSounds(onProgress?: SoundLoadProgressCallback): Promise<void> {
+    if (this.loaded) return;
+
+    const soundTypes = Object.values(SOUND_TYPES_TO_MP3);
+    const loadPromises: Promise<void>[] = [];
+
+    soundTypes.forEach((soundType, index) => {
+      const loadPromise = new Promise<void>((resolve, reject) => {
+        const audio = new Audio(this.getSrc(soundType));
+        audio.preload = "auto";
+
+        audio.addEventListener("canplaythrough", () => {
+          onProgress?.(index + 1, soundTypes.length, soundType);
+          resolve();
+        }, { once: true });
+
+        audio.addEventListener("error", () => {
+          console.warn(`Failed to load sound: ${soundType}`);
+          resolve(); // Don't reject, just continue
+        }, { once: true });
+
+        this.audioCache.set(soundType, audio);
+      });
+
+      loadPromises.push(loadPromise);
     });
+
+    await Promise.all(loadPromises);
+    this.loaded = true;
+  }
+
+  /**
+   * Set the game client reference (for positional audio)
+   */
+  public setGameClient(gameClient: GameClient): void {
+    this.gameClient = gameClient;
   }
 
   public toggleMute(): void {
@@ -52,7 +86,7 @@ export class SoundManager {
   }
 
   public playPositionalSound(sound: SoundType, position: Vector2) {
-    if (this.isMuted || DEBUG_DISABLE_SOUNDS) return;
+    if (this.isMuted || DEBUG_DISABLE_SOUNDS || !this.gameClient) return;
 
     const myPlayer = this.gameClient.getMyPlayer();
     if (!myPlayer) return;

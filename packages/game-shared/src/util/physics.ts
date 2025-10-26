@@ -29,17 +29,24 @@ interface Node {
   parent: Node | null;
 }
 
-export function pathTowards(a: Vector2, b: Vector2, map: number[][]): Vector2 | null {
+export function pathTowards(
+  a: Vector2,
+  b: Vector2,
+  groundLayer: number[][],
+  collidablesLayer?: number[][]
+): Vector2 | null {
   const startX = Math.floor(a.x / TILE_SIZE);
   const startY = Math.floor(a.y / TILE_SIZE);
   const endX = Math.floor(b.x / TILE_SIZE);
   const endY = Math.floor(b.y / TILE_SIZE);
 
-  // Check if target position is out of bounds or blocked by forest
-  const isOutOfBounds = endX < 0 || endX >= map[0].length || endY < 0 || endY >= map.length;
-  const isForestTile = !isOutOfBounds && map[endY][endX] === 2;
+  // Check if target position is out of bounds or blocked by collidable
+  const isOutOfBounds =
+    endX < 0 || endX >= groundLayer[0].length || endY < 0 || endY >= groundLayer.length;
+  const hasCollidable =
+    !isOutOfBounds && collidablesLayer && collidablesLayer[endY][endX] !== -1;
 
-  if (isOutOfBounds || isForestTile) {
+  if (isOutOfBounds || hasCollidable) {
     return null;
   }
 
@@ -100,19 +107,29 @@ export function pathTowards(a: Vector2, b: Vector2, map: number[][]): Vector2 | 
       // Skip if out of bounds
       if (
         newX < 0 ||
-        newX >= map[0].length ||
+        newX >= groundLayer[0].length ||
         newY < 0 ||
-        newY >= map.length ||
-        closedSet.has(`${newX},${newY}`) ||
-        map[newY][newX] === 2 // Forest tile ID
+        newY >= groundLayer.length ||
+        closedSet.has(`${newX},${newY}`)
       ) {
+        continue;
+      }
+
+      // Skip if has collidable
+      const hasCollidableObstacle = collidablesLayer && collidablesLayer[newY][newX] !== -1;
+      if (hasCollidableObstacle) {
         continue;
       }
 
       // For diagonal movement, check if we're cutting corners between obstacles
       if (Math.abs(dx) === 1 && Math.abs(dy) === 1) {
         // Check the two adjacent tiles to ensure we're not cutting through obstacles
-        if (map[current.y][newX] === 2 || map[newY][current.x] === 2) {
+        const adjacentX_hasCollidable =
+          collidablesLayer && collidablesLayer[current.y][newX] !== -1;
+        const adjacentY_hasCollidable =
+          collidablesLayer && collidablesLayer[newY][current.x] !== -1;
+
+        if (adjacentX_hasCollidable || adjacentY_hasCollidable) {
           continue;
         }
       }

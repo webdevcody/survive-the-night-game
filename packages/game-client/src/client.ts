@@ -28,14 +28,14 @@ export class GameClient {
 
   // Managers
   private assetManager: AssetManager;
-  private socketManager: ClientSocketManager;
+  private socketManager!: ClientSocketManager;
   private inputManager: InputManager;
   private cameraManager: CameraManager;
   private mapManager: MapManager;
   private storageManager: StorageManager;
   private soundManager: SoundManager;
-  private commandManager: CommandManager;
-  private clientEventListener: ClientEventListener;
+  private commandManager!: CommandManager;
+  private clientEventListener!: ClientEventListener;
   private entityFactory: EntityFactory;
   private particleManager: ParticleManager;
 
@@ -62,14 +62,14 @@ export class GameClient {
   private isStarted = false;
   private isMounted = true;
 
-  constructor(serverUrl: string, canvas: HTMLCanvasElement) {
+  constructor(canvas: HTMLCanvasElement, assetManager?: AssetManager, soundManager?: SoundManager) {
     this.ctx = canvas.getContext("2d")!;
 
-    this.assetManager = new AssetManager();
+    this.assetManager = assetManager || new AssetManager();
     this.storageManager = new StorageManager();
     this.cameraManager = new CameraManager(this.ctx);
     this.zoomController = new ZoomController(this.cameraManager);
-    this.soundManager = new SoundManager(this);
+    this.soundManager = soundManager || new SoundManager();
     this.entityFactory = new EntityFactory(this.assetManager);
     this.particleManager = new ParticleManager(this);
 
@@ -239,7 +239,12 @@ export class GameClient {
     );
 
     this.resizeController = new ResizeController(this.renderer);
+  }
 
+  /**
+   * Connect to the game server
+   */
+  public connectToServer(serverUrl: string): void {
     this.socketManager = new ClientSocketManager(serverUrl);
     this.clientEventListener = new ClientEventListener(this, this.socketManager);
     this.commandManager = new CommandManager(this.socketManager, this.gameState);
@@ -248,6 +253,9 @@ export class GameClient {
     this.socketManager.onPing((ping) => {
       this.hud.updatePing(ping);
     });
+
+    // Set game client reference for sound manager
+    this.soundManager.setGameClient(this);
 
     if (DEBUG_ADMIN_COMMANDS) {
       (window as any).commandManager = this.commandManager;
@@ -318,6 +326,12 @@ export class GameClient {
 
     this.stop();
     this.resizeController.cleanUp();
+
+    // Disconnect from server to prevent duplicate connections
+    if (this.socketManager) {
+      this.socketManager.disconnect();
+    }
+
     this.isMounted = false;
   }
 

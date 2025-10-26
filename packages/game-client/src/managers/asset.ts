@@ -373,24 +373,39 @@ export interface ImageLoader {
   ): HTMLImageElement;
 }
 
+export type LoadProgressCallback = (progress: number, total: number, stage: string) => void;
+
 export class AssetManager implements ImageLoader {
   private imageManager = new ImageManager();
   private sheets: Record<string, HTMLImageElement> = {};
   private loaded = false;
 
-  public async load(): Promise<void> {
+  public async load(onProgress?: LoadProgressCallback): Promise<void> {
     if (this.loaded) {
       return;
     }
 
-    // Load all sprite sheets
-    this.sheets = {
-      default: await this.imageManager.load("/tile-sheet.png"),
-      items: await this.imageManager.load("/sheets/items-sheet.png"),
-      characters: await this.imageManager.load("/sheets/characters-sheet.png"),
-    };
+    // Load all sprite sheets (3 total)
+    const sheetPaths = [
+      { key: "default", path: "/tile-sheet.png" },
+      { key: "items", path: "/sheets/items-sheet.png" },
+      { key: "characters", path: "/sheets/characters-sheet.png" },
+    ];
 
+    const loadedSheets: Record<string, HTMLImageElement> = {};
+
+    for (let i = 0; i < sheetPaths.length; i++) {
+      const { key, path } = sheetPaths[i];
+      onProgress?.(i, sheetPaths.length, `Loading sprite sheet: ${key}`);
+      loadedSheets[key] = await this.imageManager.load(path);
+    }
+
+    this.sheets = loadedSheets;
+
+    // Report progress for cache population
+    onProgress?.(sheetPaths.length, sheetPaths.length, "Processing sprites...");
     await this.populateCache();
+
     this.loaded = true;
   }
 

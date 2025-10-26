@@ -33,10 +33,12 @@ export class MeleeMovementStrategy implements MovementStrategy {
       needNewWaypoint ||
       this.pathRecalculationTimer >= MeleeMovementStrategy.PATH_RECALCULATION_INTERVAL
     ) {
+      const mapManager = zombie.getGameManagers().getMapManager();
       this.currentWaypoint = pathTowards(
         zombiePos,
         playerPos,
-        zombie.getGameManagers().getMapManager().getMap()
+        mapManager.getGroundLayer(),
+        mapManager.getCollidablesLayer()
       );
       this.pathRecalculationTimer = 0;
     }
