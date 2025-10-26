@@ -44,9 +44,10 @@ export class InputManager {
 
   constructor(callbacks: InputManagerOptions = {}) {
     window.addEventListener("keydown", (e) => {
+      const eventCode = e.code;
       const eventKey = e.key.toLowerCase();
 
-      // Handle chat mode
+      // Handle chat mode - use key for 'y' to support all layouts
       if (eventKey === "y" && !this.isChatting) {
         this.isChatting = true;
         callbacks.onToggleChat?.();
@@ -71,45 +72,46 @@ export class InputManager {
         return;
       }
 
-      // Normal game input handling
-      switch (eventKey) {
-        case "q":
+      // Normal game input handling - use physical key codes for WASD
+      switch (eventCode) {
+        case "KeyQ":
           callbacks.onCraft?.();
           break;
-        case "w":
+        case "KeyW":
           callbacks.onUp?.(this.inputs);
           break;
-        case "s":
+        case "KeyS":
           callbacks.onDown?.(this.inputs);
           break;
-        case "a":
+        case "KeyA":
           callbacks.onLeft?.(this.inputs);
           break;
-        case "d":
+        case "KeyD":
           callbacks.onRight?.(this.inputs);
           break;
-        case "e":
+        case "KeyE":
           callbacks.onInteract?.(this.inputs);
           break;
-        case " ":
+        case "Space":
           callbacks.onFire?.(this.inputs);
           break;
-        case "g":
+        case "KeyG":
           callbacks.onDrop?.(this.inputs);
           break;
-        case "f":
+        case "KeyF":
           this.inputs.consume = true;
           break;
-        case "shift":
+        case "ShiftLeft":
+        case "ShiftRight":
           this.inputs.sprint = true;
           break;
-        case "i":
+        case "KeyI":
           callbacks.onToggleInstructions?.();
           break;
-        case "m":
+        case "KeyM":
           callbacks.onToggleMute?.();
           break;
-        case "tab":
+        case "Tab":
           e.preventDefault(); // Prevent tab from changing focus
           callbacks.onShowPlayerList?.();
           break;
@@ -120,8 +122,10 @@ export class InputManager {
     });
 
     window.addEventListener("keyup", (e) => {
+      const eventCode = e.code;
       const eventKey = e.key.toLowerCase();
 
+      // Use key for number keys (characters work the same across layouts)
       switch (eventKey) {
         case "1":
         case "2":
@@ -135,34 +139,39 @@ export class InputManager {
         case "0":
           this.inputs.inventoryItem = Number.parseInt(eventKey, 10);
           break;
-        case "w":
+      }
+
+      // Use physical key codes for WASD and other action keys
+      switch (eventCode) {
+        case "KeyW":
           this.inputs.dy = this.inputs.dy === -1 ? 0 : this.inputs.dy;
           break;
-        case "s":
+        case "KeyS":
           this.inputs.dy = this.inputs.dy === 1 ? 0 : this.inputs.dy;
           break;
-        case "a":
+        case "KeyA":
           this.inputs.dx = this.inputs.dx === -1 ? 0 : this.inputs.dx;
           break;
-        case "d":
+        case "KeyD":
           this.inputs.dx = this.inputs.dx === 1 ? 0 : this.inputs.dx;
           break;
-        case "e":
+        case "KeyE":
           this.inputs.interact = false;
           break;
-        case " ":
+        case "Space":
           this.inputs.fire = false;
           break;
-        case "g":
+        case "KeyG":
           this.inputs.drop = false;
           break;
-        case "f":
+        case "KeyF":
           this.inputs.consume = false;
           break;
-        case "shift":
+        case "ShiftLeft":
+        case "ShiftRight":
           this.inputs.sprint = false;
           break;
-        case "tab":
+        case "Tab":
           e.preventDefault(); // Prevent tab from changing focus
           callbacks.onHidePlayerList?.();
           break;
