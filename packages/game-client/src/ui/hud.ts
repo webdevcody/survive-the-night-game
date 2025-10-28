@@ -14,32 +14,17 @@ const HUD_SETTINGS = {
   ControlsList: {
     background: "rgba(0, 0, 0, 0.8)",
     color: "rgb(255, 255, 255)",
-    font: "32px Arial",
-    lineHeight: 40,
+    font: "28px Arial",
+    lineHeight: 36,
     left: 20,
     top: 20,
     padding: {
-      bottom: 20,
+      bottom: 16,
       left: 20,
       right: 20,
-      top: 20,
+      top: 16,
     },
-  },
-  UpcomingFeatures: {
-    background: "rgba(0, 0, 0, 0.8)",
-    color: "rgb(255, 255, 255)",
-    font: "32px Arial",
-    lineHeight: 40,
-    right: 20,
-    top: 20,
-    padding: {
-      bottom: 20,
-      left: 20,
-      right: 20,
-      top: 20,
-    },
-    title: "TODO (dev log)",
-    features: ["- bear trap", "- more biomes"],
+    borderRadius: 8,
   },
   Ping: {
     right: 140,
@@ -70,10 +55,21 @@ const HUD_SETTINGS = {
     font: "36px Arial",
     spriteSize: 64, // Size of the coin sprite
   },
+  StatCard: {
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    background: "rgba(0, 0, 0, 0.8)",
+    font: "32px Arial",
+    iconSize: 32,
+    spacing: 12, // Space between icon and text
+    gap: 12, // Gap between cards
+    right: 40, // Distance from right edge
+    top: 40, // Distance from top edge
+  },
 };
 
 export class Hud {
-  private showInstructions: boolean = true;
+  private showInstructions: boolean = false;
   private gameMessages: { message: string; timestamp: number }[] = [];
   private messageTimeout: number = 5000;
   private mapManager: MapManager;
@@ -140,6 +136,52 @@ export class Hud {
     return HUD_SETTINGS.Ping.colors.poor;
   }
 
+  private renderStatCard(
+    ctx: CanvasRenderingContext2D,
+    icon: string,
+    text: string,
+    x: number,
+    y: number
+  ): number {
+    const settings = HUD_SETTINGS.StatCard;
+
+    ctx.save();
+    ctx.font = settings.font;
+
+    // Measure text
+    const textMetrics = ctx.measureText(text);
+    const iconMetrics = ctx.measureText(icon);
+
+    // Calculate dimensions
+    const contentWidth = iconMetrics.width + settings.spacing + textMetrics.width;
+    const containerWidth = contentWidth + settings.paddingHorizontal * 2;
+    const containerHeight = settings.iconSize + settings.paddingVertical * 2;
+
+    // Draw background
+    ctx.fillStyle = settings.background;
+    ctx.fillRect(x, y, containerWidth, containerHeight);
+
+    // Draw border
+    ctx.strokeStyle = "rgba(255, 255, 255, 0.5)";
+    ctx.lineWidth = 2;
+    ctx.strokeRect(x, y, containerWidth, containerHeight);
+
+    // Draw icon
+    ctx.fillStyle = "white";
+    ctx.textBaseline = "middle";
+    const iconX = x + settings.paddingHorizontal;
+    const iconY = y + containerHeight / 2;
+    ctx.fillText(icon, iconX, iconY);
+
+    // Draw text
+    const textX = iconX + iconMetrics.width + settings.spacing;
+    ctx.fillText(text, textX, iconY);
+
+    ctx.restore();
+
+    return containerHeight;
+  }
+
   public updateFps(fps: number): void {
     this.currentFps = fps;
   }
@@ -159,49 +201,57 @@ export class Hud {
     ctx.fillText(versionText, width - versionMetrics.width - 16, height - 50);
     ctx.restore();
 
-    ctx.font = "32px Arial";
-    ctx.fillStyle = "white";
+    // Render stat cards in top right
+    ctx.save();
+    ctx.setTransform(1, 0, 0, 1, 0, 0); // Reset transform
 
-    const dayText = `Day ${gameState.dayNumber}`;
-    const timeOfDay = gameState.isDay ? "Day" : "Night";
-    const cycleText = this.getCycleText(gameState);
-    const playersText = `Alive Players: ${this.getAlivePlayers(gameState)}`;
-    const totalPlayers = `Total Players: ${this.getTotalPlayers(gameState)}`;
-    const zombiesText = `Zombies Remaining: ${this.getAliveZombies(gameState)}`;
+    const settings = HUD_SETTINGS.StatCard;
+    let currentY = settings.top;
 
-    const dayTextWidth = ctx.measureText(dayText).width;
-    const cycleTextWidth = ctx.measureText(cycleText).width;
-    const playersTextWidth = ctx.measureText(playersText).width;
-    const totalPlayersWidth = ctx.measureText(totalPlayers).width;
-    const zombiesTextWidth = ctx.measureText(zombiesText).width;
+    // Helper to render a card and update position
+    const renderCard = (icon: string, text: string) => {
+      // Calculate card width to right-align
+      ctx.font = settings.font;
+      const textMetrics = ctx.measureText(text);
+      const iconMetrics = ctx.measureText(icon);
+      const contentWidth = iconMetrics.width + settings.spacing + textMetrics.width;
+      const cardWidth = contentWidth + settings.paddingHorizontal * 2;
+      const x = width - cardWidth - settings.right;
 
-    const margin = 50;
-    const gap = 50;
-    ctx.fillText(dayText, width - dayTextWidth - margin, margin);
-    ctx.fillText(cycleText, width - cycleTextWidth - margin, margin + gap);
-    ctx.fillText(playersText, width - playersTextWidth - margin, margin + gap * 3);
-    ctx.fillText(totalPlayers, width - totalPlayersWidth - margin, margin + gap * 4);
-    ctx.fillText(zombiesText, width - zombiesTextWidth - margin, margin + gap * 5);
+      const height = this.renderStatCard(ctx, icon, text, x, currentY);
+      currentY += height + settings.gap;
+    };
 
+    // Day and time info
+    const dayIcon = gameState.isDay ? "☀️" : "🌙";
+    renderCard(dayIcon, `Day ${gameState.dayNumber}`);
+    renderCard("⏱️", this.getCycleText(gameState));
+
+    // Player stats
     const myPlayer = getPlayer(gameState);
-
     if (myPlayer) {
       const health = myPlayer.getHealth();
-      const healthText = `Health: ${health}`;
-      const kills = myPlayer.getKills();
-      const killsText = `Kills: ${kills}`;
+      renderCard("❤️", `${health}`);
+
       const stamina = myPlayer.getStamina();
       const maxStamina = myPlayer.getMaxStamina();
-      const staminaText = `Stamina: ${Math.round(stamina)}/${maxStamina}`;
-
-      const healthTextWidth = ctx.measureText(healthText).width;
-      const killsTextWidth = ctx.measureText(killsText).width;
-      const staminaTextWidth = ctx.measureText(staminaText).width;
-
-      ctx.fillText(healthText, width - healthTextWidth - margin, margin + gap * 2);
-      ctx.fillText(staminaText, width - staminaTextWidth - margin, margin + gap * 2.5);
-      ctx.fillText(killsText, width - killsTextWidth - margin, margin + gap * 6);
+      renderCard("⚡", `${Math.round(stamina)}/${maxStamina}`);
     }
+
+    // Player counts
+    renderCard("👥", `Alive: ${this.getAlivePlayers(gameState)}`);
+    renderCard("👤", `Total: ${this.getTotalPlayers(gameState)}`);
+
+    // Enemy info
+    renderCard("🧟", `Zombies: ${this.getAliveZombies(gameState)}`);
+
+    // Kills
+    if (myPlayer) {
+      const kills = myPlayer.getKills();
+      renderCard("💀", `Kills: ${kills}`);
+    }
+
+    ctx.restore();
 
     // Render FPS and ping
     ctx.font = HUD_SETTINGS.Ping.font;
@@ -352,45 +402,53 @@ export class Hud {
   }
 
   public renderControlsList(ctx: CanvasRenderingContext2D, gameState: GameState): void {
-    if (!this.showInstructions) {
-      ctx.save();
-      ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.save();
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
 
-      const text = 'Press "i" for instructions';
-      ctx.font = "32px Arial";
+    if (!this.showInstructions) {
+      const text = 'Press "I" for controls';
+      ctx.font = "24px Arial";
       const metrics = ctx.measureText(text);
 
+      const padding = 12;
+      const width = metrics.width + padding * 2;
+      const height = 36;
+
       // Draw background panel
-      ctx.fillStyle = "rgba(0, 0, 0, 0.5)";
-      ctx.fillRect(10, 10, metrics.width + 20, 40);
+      ctx.fillStyle = "rgba(0, 0, 0, 0.8)";
+      ctx.fillRect(HUD_SETTINGS.ControlsList.left, HUD_SETTINGS.ControlsList.top, width, height);
+
+      // Draw border
+      ctx.strokeStyle = "rgba(255, 255, 255, 0.5)";
+      ctx.lineWidth = 2;
+      ctx.strokeRect(HUD_SETTINGS.ControlsList.left, HUD_SETTINGS.ControlsList.top, width, height);
 
       // Draw text
       ctx.fillStyle = "white";
-      ctx.fillText(text, 20, 40);
+      ctx.textBaseline = "middle";
+      ctx.fillText(
+        text,
+        HUD_SETTINGS.ControlsList.left + padding,
+        HUD_SETTINGS.ControlsList.top + height / 2
+      );
 
       ctx.restore();
       return;
     }
 
     const regularText =
-      "Left [A]\n" +
-      "Right [D]\n" +
-      "Down [S]\n" +
-      "Up [W]\n" +
-      "Fire [SPACE]\n" +
-      "Consume [F]\n" +
-      "Harvest [E]\n" +
-      "Craft [Q]\n" +
-      "Drop Item [G]\n" +
-      "Chat [Y]\n" +
-      "Toggle Instructions [I]\n" +
-      "Toggle Mute [M]";
+      "Movement: W A S D\n" +
+      "Fire: SPACE\n" +
+      "Consume: F\n" +
+      "Harvest: E\n" +
+      "Craft: Q\n" +
+      "Drop Item: G\n" +
+      "Chat: Y\n" +
+      "Controls: I\n" +
+      "Mute: M";
 
-    const craftingText = "Down [S]\nUp [W]\nCraft [SPACE]";
+    const craftingText = "Navigate: W S\nCraft: SPACE";
     const innerText = gameState.crafting ? craftingText : regularText;
-
-    ctx.save();
-    ctx.setTransform(1, 0, 0, 1, 0, 0);
 
     ctx.font = HUD_SETTINGS.ControlsList.font;
 
@@ -425,9 +483,16 @@ export class Hud {
       HUD_SETTINGS.ControlsList.padding.left +
       HUD_SETTINGS.ControlsList.padding.right;
 
+    // Draw background
     ctx.fillStyle = HUD_SETTINGS.ControlsList.background;
     ctx.fillRect(HUD_SETTINGS.ControlsList.left, HUD_SETTINGS.ControlsList.top, width, height);
 
+    // Draw border
+    ctx.strokeStyle = "rgba(255, 255, 255, 0.5)";
+    ctx.lineWidth = 2;
+    ctx.strokeRect(HUD_SETTINGS.ControlsList.left, HUD_SETTINGS.ControlsList.top, width, height);
+
+    // Draw text
     ctx.textBaseline = "top";
     ctx.fillStyle = HUD_SETTINGS.ControlsList.color;
 
@@ -440,59 +505,6 @@ export class Hud {
         HUD_SETTINGS.ControlsList.left + HUD_SETTINGS.ControlsList.padding.left,
         offsetTop + HUD_SETTINGS.ControlsList.top + HUD_SETTINGS.ControlsList.padding.top
       );
-    }
-
-    // Render upcoming features
-    if (this.showInstructions) {
-      const features = HUD_SETTINGS.UpcomingFeatures;
-      ctx.font = features.font;
-
-      // Calculate dimensions
-      const featureLines = [features.title, ...features.features];
-      let featureMaxWidth = 0;
-
-      for (const line of featureLines) {
-        const metrics = ctx.measureText(line);
-        if (featureMaxWidth < metrics.width) {
-          featureMaxWidth = metrics.width;
-        }
-      }
-
-      const featureWidth = featureMaxWidth + features.padding.left + features.padding.right;
-
-      const featureHeight =
-        lineHeight * featureLines.length + features.padding.top + features.padding.bottom;
-
-      // Draw background - position directly to the right of instructions panel
-      ctx.fillStyle = features.background;
-      ctx.fillRect(
-        HUD_SETTINGS.ControlsList.left + width + 10, // 10px gap between panels
-        HUD_SETTINGS.ControlsList.top,
-        featureWidth,
-        featureHeight
-      );
-
-      // Draw text
-      ctx.fillStyle = features.color;
-      ctx.textBaseline = "top";
-
-      for (let i = 0; i < featureLines.length; i++) {
-        const line = featureLines[i];
-        const offsetTop = i * lineHeight;
-
-        // Make title bold
-        if (i === 0) {
-          ctx.font = "bold " + features.font;
-        } else {
-          ctx.font = features.font;
-        }
-
-        ctx.fillText(
-          line,
-          HUD_SETTINGS.ControlsList.left + width + 10 + features.padding.left,
-          offsetTop + features.top + features.padding.top
-        );
-      }
     }
 
     ctx.restore();

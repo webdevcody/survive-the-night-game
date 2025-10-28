@@ -10,18 +10,19 @@ const HOTBAR_SETTINGS = {
   Inventory: {
     screenMarginBottom: 16,
     padding: {
-      bottom: 8,
-      left: 8,
-      right: 8,
-      top: 8,
+      bottom: 12,
+      left: 12,
+      right: 12,
+      top: 12,
     },
     slotsGap: 8,
     slotSize: 96,
-    background: "gray",
-
-    active: {
-      background: "green",
-    },
+    containerBackground: "rgba(0, 0, 0, 0.8)",
+    slotBackground: "rgba(40, 40, 40, 0.9)",
+    borderColor: "rgba(255, 255, 255, 0.5)",
+    activeBorderColor: "rgba(255, 255, 255, 0.9)",
+    borderWidth: 2,
+    activeBorderWidth: 3,
   },
 };
 
@@ -52,56 +53,84 @@ export class InventoryBarUI implements Renderable {
   private renderInventory(ctx: CanvasRenderingContext2D, gameState: GameState): void {
     const { width: canvasWidth, height: canvasHeight } = ctx.canvas;
 
-    const { slotSize, padding, slotsGap, screenMarginBottom, background, active } =
-      HOTBAR_SETTINGS.Inventory;
+    const settings = HOTBAR_SETTINGS.Inventory;
     const slotsNumber = MAX_INVENTORY_SLOTS;
 
     ctx.save();
     ctx.setTransform(1, 0, 0, 1, 0, 0);
 
     const hotbarWidth =
-      slotsNumber * slotSize + (slotsNumber - 1) * slotsGap + padding.left + padding.right;
-    const hotbarHeight = slotSize + padding.top + padding.bottom;
+      slotsNumber * settings.slotSize +
+      (slotsNumber - 1) * settings.slotsGap +
+      settings.padding.left +
+      settings.padding.right;
+    const hotbarHeight = settings.slotSize + settings.padding.top + settings.padding.bottom;
 
-    ctx.fillStyle = "white";
+    const hotbarX = canvasWidth / 2 - hotbarWidth / 2;
+    const hotbarY = canvasHeight - hotbarHeight - settings.screenMarginBottom;
 
-    ctx.fillRect(
-      canvasWidth / 2 - hotbarWidth / 2,
-      canvasHeight - hotbarHeight - screenMarginBottom,
-      hotbarWidth,
-      hotbarHeight
-    );
+    // Draw container background
+    ctx.fillStyle = settings.containerBackground;
+    ctx.fillRect(hotbarX, hotbarY, hotbarWidth, hotbarHeight);
 
-    const slotsLeft = canvasWidth / 2 - hotbarWidth / 2 + padding.left;
-    const slotsTop = canvasHeight - hotbarHeight - screenMarginBottom + padding.top;
-    const slotsBottom = slotsTop + slotSize;
+    // Draw container border
+    ctx.strokeStyle = settings.borderColor;
+    ctx.lineWidth = settings.borderWidth;
+    ctx.strokeRect(hotbarX, hotbarY, hotbarWidth, hotbarHeight);
+
+    const slotsLeft = hotbarX + settings.padding.left;
+    const slotsTop = hotbarY + settings.padding.top;
+    const slotsBottom = slotsTop + settings.slotSize;
     const items = this.getInventory();
     const activeItemIdx = this.inputManager.getInputs().inventoryItem - 1;
 
     for (let i = 0; i < slotsNumber; i++) {
-      const slotLeft = slotsLeft + i * (slotSize + slotsGap);
-      const slotRight = slotLeft + slotSize;
+      const slotLeft = slotsLeft + i * (settings.slotSize + settings.slotsGap);
+      const slotRight = slotLeft + settings.slotSize;
+      const isActive = activeItemIdx === i;
 
-      ctx.fillStyle = activeItemIdx === i ? active.background : background;
-      ctx.fillRect(slotLeft, slotsTop, slotSize, slotSize);
+      // Draw slot background
+      ctx.fillStyle = settings.slotBackground;
+      ctx.fillRect(slotLeft, slotsTop, settings.slotSize, settings.slotSize);
 
-      ctx.font = "32px Arial";
-      ctx.textAlign = "left";
+      // Draw slot border
+      ctx.strokeStyle = isActive ? settings.activeBorderColor : settings.borderColor;
+      ctx.lineWidth = isActive ? settings.activeBorderWidth : settings.borderWidth;
+      ctx.strokeRect(slotLeft, slotsTop, settings.slotSize, settings.slotSize);
 
       const inventoryItem = items[i];
 
+      // Draw item image
       const image = inventoryItem && this.assetManager.get(getItemAssetKey(inventoryItem));
       if (image) {
-        ctx.drawImage(image, slotLeft, slotsTop, slotSize, slotSize);
+        const imagePadding = 8;
+        ctx.drawImage(
+          image,
+          slotLeft + imagePadding,
+          slotsTop + imagePadding,
+          settings.slotSize - imagePadding * 2,
+          settings.slotSize - imagePadding * 2
+        );
       }
 
+      // Draw slot number
+      ctx.font = "bold 24px Arial";
+      ctx.textAlign = "left";
       ctx.fillStyle = "white";
-      ctx.fillText(`${i + 1}`, slotLeft + 4, slotsTop + 30);
+      ctx.strokeStyle = "rgba(0, 0, 0, 0.8)";
+      ctx.lineWidth = 3;
+      ctx.strokeText(`${i + 1}`, slotLeft + 6, slotsTop + 26);
+      ctx.fillText(`${i + 1}`, slotLeft + 6, slotsTop + 26);
 
+      // Draw item count
       if (inventoryItem?.state?.count) {
+        ctx.font = "bold 24px Arial";
         ctx.textAlign = "right";
         ctx.fillStyle = "white";
-        ctx.fillText(`${inventoryItem.state.count}`, slotRight - 4, slotsBottom - 4);
+        ctx.strokeStyle = "rgba(0, 0, 0, 0.8)";
+        ctx.lineWidth = 3;
+        ctx.strokeText(`${inventoryItem.state.count}`, slotRight - 6, slotsBottom - 6);
+        ctx.fillText(`${inventoryItem.state.count}`, slotRight - 6, slotsBottom - 6);
       }
     }
 
