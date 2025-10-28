@@ -156,4 +156,4 @@ export const MIN_ERROR_THRESHOLD = 20;
  * - false (production)
  * - true (current: for debugging rubber banding)
  */
-export const SHOW_DEBUG_VISUALS = true;
+export const SHOW_DEBUG_VISUALS = false;
