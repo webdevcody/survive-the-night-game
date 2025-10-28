@@ -21,6 +21,7 @@ import { DEBUG_ADMIN_COMMANDS } from "@shared/debug";
 import { Direction } from "../../game-shared/src/util/direction";
 import { Input } from "../../game-shared/src/util/input";
 import { ClientEntityBase } from "@/extensions/client-entity";
+import { ClientDestructible } from "@/extensions/destructible";
 import { ParticleManager } from "./managers/particles";
 import { PredictionManager } from "./managers/prediction";
 
@@ -393,18 +394,28 @@ export class GameClient {
     if (player) {
       const input = this.inputManager.getInputs();
       const mapData = this.mapManager.getMapData();
-      this.predictionManager.predictLocalPlayerMovement(
-        player,
-        input,
-        deltaSeconds,
-        mapData.collidables
-      );
-    }
 
-    // Only send input to server when it actually changed
-    if (this.inputManager.getHasChanged()) {
-      this.sendInput(this.inputManager.getInputs());
-      this.inputManager.reset();
+      // Only predict movement and send input if player is alive
+      const isAlive = !player.hasExt(ClientDestructible) || !player.getExt(ClientDestructible).isDead();
+
+      if (isAlive) {
+        this.predictionManager.predictLocalPlayerMovement(
+          player,
+          input,
+          deltaSeconds,
+          mapData.collidables,
+          this.gameState.entities
+        );
+
+        // After prediction, smoothly lerp towards server's authoritative position
+        this.predictionManager.reconcileWithServerPosition(player);
+
+        // Only send input to server when it actually changed
+        if (this.inputManager.getHasChanged()) {
+          this.sendInput(this.inputManager.getInputs());
+          this.inputManager.reset();
+        }
+      }
     }
 
     this.positionCameraOnPlayer();

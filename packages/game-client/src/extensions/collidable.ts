@@ -40,6 +40,9 @@ export class ClientCollidable extends BaseClientExtension {
   public deserialize(data: ClientExtensionSerialized): this {
     this.offset = data.offset;
     this.size = data.size;
+    if (data.enabled !== undefined) {
+      this.enabled = data.enabled;
+    }
     return this;
   }
 }

@@ -5,6 +5,9 @@ import { Renderable } from "@/entities/util";
 import { AssetManager, getItemAssetKey } from "@/managers/asset";
 import { InventoryItem } from "../../../game-shared/src/util/inventory";
 import { MAX_INVENTORY_SLOTS } from "@shared/constants/constants";
+import { HeartsPanel } from "./panels/hearts-panel";
+import { StaminaPanel } from "./panels/stamina-panel";
+import { CoinsPanel } from "./panels/coins-panel";
 
 const HOTBAR_SETTINGS = {
   Inventory: {
@@ -24,12 +27,43 @@ const HOTBAR_SETTINGS = {
     borderWidth: 2,
     activeBorderWidth: 3,
   },
+  Hearts: {
+    marginBottom: 16,
+    heartSize: 32,
+    heartGap: 4,
+    font: "32px Arial",
+  },
+  StaminaBar: {
+    marginBottom: 8,
+    width: 200,
+    height: 24,
+    padding: 8,
+    iconSize: 32,
+    iconGap: 8,
+    font: "32px Arial",
+    backgroundColor: "rgba(0, 0, 0, 0.7)",
+    borderColor: "rgba(255, 255, 255, 0.5)",
+    barBackgroundColor: "rgba(40, 40, 40, 0.9)",
+    barColor: "rgba(255, 255, 100, 0.9)",
+    borderWidth: 2,
+  },
+  CoinCounter: {
+    marginBottom: 8,
+    padding: 8,
+    background: "rgba(0, 0, 0, 0.7)",
+    font: "32px Arial",
+    spriteSize: 32,
+    iconGap: 8,
+  },
 };
 
 export class InventoryBarUI implements Renderable {
   private assetManager: AssetManager;
   private inputManager: InputManager;
   private getInventory: () => InventoryItem[];
+  private heartsPanel: HeartsPanel;
+  private staminaPanel: StaminaPanel;
+  private coinsPanel: CoinsPanel;
 
   public constructor(
     assetManager: AssetManager,
@@ -39,11 +73,57 @@ export class InventoryBarUI implements Renderable {
     this.assetManager = assetManager;
     this.inputManager = inputManager;
     this.getInventory = getInventory;
+
+    // Initialize panels with settings
+    this.heartsPanel = new HeartsPanel({
+      padding: 8,
+      background: "rgba(0, 0, 0, 0.7)",
+      borderColor: "rgba(255, 255, 255, 0.5)",
+      borderWidth: 2,
+      marginBottom: HOTBAR_SETTINGS.Hearts.marginBottom,
+      heartSize: HOTBAR_SETTINGS.Hearts.heartSize,
+      heartGap: HOTBAR_SETTINGS.Hearts.heartGap,
+      font: HOTBAR_SETTINGS.Hearts.font,
+      inventorySettings: HOTBAR_SETTINGS.Inventory,
+    });
+
+    this.staminaPanel = new StaminaPanel({
+      padding: 8,
+      background: HOTBAR_SETTINGS.StaminaBar.backgroundColor,
+      borderColor: HOTBAR_SETTINGS.StaminaBar.borderColor,
+      borderWidth: HOTBAR_SETTINGS.StaminaBar.borderWidth,
+      marginBottom: HOTBAR_SETTINGS.StaminaBar.marginBottom,
+      width: HOTBAR_SETTINGS.StaminaBar.width,
+      height: HOTBAR_SETTINGS.StaminaBar.height,
+      iconSize: HOTBAR_SETTINGS.StaminaBar.iconSize,
+      iconGap: HOTBAR_SETTINGS.StaminaBar.iconGap,
+      font: HOTBAR_SETTINGS.StaminaBar.font,
+      barBackgroundColor: HOTBAR_SETTINGS.StaminaBar.barBackgroundColor,
+      barColor: HOTBAR_SETTINGS.StaminaBar.barColor,
+      inventorySettings: HOTBAR_SETTINGS.Inventory,
+    });
+
+    this.coinsPanel = new CoinsPanel(
+      {
+        padding: HOTBAR_SETTINGS.CoinCounter.padding,
+        background: HOTBAR_SETTINGS.CoinCounter.background,
+        borderColor: "rgba(255, 255, 255, 0.5)",
+        borderWidth: 2,
+        marginBottom: HOTBAR_SETTINGS.CoinCounter.marginBottom,
+        font: HOTBAR_SETTINGS.CoinCounter.font,
+        spriteSize: HOTBAR_SETTINGS.CoinCounter.spriteSize,
+        iconGap: HOTBAR_SETTINGS.CoinCounter.iconGap,
+        inventorySettings: HOTBAR_SETTINGS.Inventory,
+      },
+      assetManager
+    );
   }
 
   public render(ctx: CanvasRenderingContext2D, gameState: GameState): void {
-    // TODO: add health bar
     this.renderInventory(ctx, gameState);
+    this.heartsPanel.render(ctx, gameState);
+    this.staminaPanel.render(ctx, gameState);
+    this.coinsPanel.render(ctx, gameState);
   }
 
   public getZIndex(): number {

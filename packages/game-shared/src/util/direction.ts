@@ -41,23 +41,24 @@ export function isDirectionUp(direction: Direction): boolean {
 }
 
 export function normalizeDirection(direction: Direction): Vector2 {
-  const result = { x: 0, y: 0 };
+  let x = 0;
+  let y = 0;
 
   if (isDirectionLeft(direction)) {
-    result.x -= 1;
+    x -= 1;
   }
 
   if (isDirectionUp(direction)) {
-    result.y -= 1;
+    y -= 1;
   }
 
   if (isDirectionRight(direction)) {
-    result.x += 1;
+    x += 1;
   }
 
   if (isDirectionDown(direction)) {
-    result.y += 1;
+    y += 1;
   }
 
-  return result;
+  return new Vector2(x, y);
 }

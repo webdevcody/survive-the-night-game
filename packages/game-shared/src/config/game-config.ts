@@ -17,6 +17,20 @@
 export const VERSION = "v0.2.0";
 
 // ========================================================================
+// DAY/NIGHT CYCLE
+// ========================================================================
+
+/**
+ * Day duration in seconds
+ */
+export const DAY_DURATION = 60;
+
+/**
+ * Night duration in seconds
+ */
+export const NIGHT_DURATION = 90;
+
+// ========================================================================
 // WORLD & TILE CONSTANTS
 // ========================================================================
 
@@ -141,6 +155,21 @@ export const CORRECTION_SMOOTHING_FACTOR = 0.25;
  * Below this, trust client prediction completely
  */
 export const MIN_ERROR_THRESHOLD = 20;
+
+/**
+ * Reconciliation lerp speed (0.0 - 1.0)
+ *
+ * After client prediction, smoothly moves player towards server position
+ * every frame. Higher values = faster convergence.
+ *
+ * VALUES:
+ * - 0.0: No reconciliation (client prediction only)
+ * - 0.1: Slow, very smooth (10% per frame)
+ * - 0.15: Balanced (current setting)
+ * - 0.3: Fast convergence
+ * - 1.0: Instant snap (no smoothing)
+ */
+export const RECONCILIATION_LERP_SPEED = 0.15;
 
 // ========================================================================
 // DEBUG VISUALIZATION

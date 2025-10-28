@@ -1,12 +1,14 @@
 import { Input } from "@shared/util/input";
 import Vector2 from "@shared/util/vector2";
 import { PlayerClient } from "@/entities/player";
-import { normalizeVector } from "@shared/util/physics";
+import { normalizeVector, isColliding } from "@shared/util/physics";
 import { ClientMovable } from "@/extensions/movable";
 import { ClientPositionable } from "@/extensions/positionable";
 import { ClientCollidable } from "@/extensions/collidable";
-import { TILE_SIZE } from "@shared/constants/constants";
+import { TILE_SIZE, RECONCILIATION_LERP_SPEED } from "@shared/constants/constants";
 import { PREDICTION_CONFIG } from "@/config/client-prediction";
+import { ClientEntityBase } from "@/extensions/client-entity";
+import { Hitbox } from "@shared/util/hitbox";
 
 type PredictionConfig = {
   playerSpeed: number; // pixels per second
@@ -24,7 +26,8 @@ export class PredictionManager {
     player: PlayerClient,
     input: Input,
     deltaSeconds: number,
-    collidables: number[][] | null = null
+    collidables: number[][] | null = null,
+    entities: ClientEntityBase[] = []
   ): void {
     if (deltaSeconds <= 0) return;
 
@@ -47,7 +50,7 @@ export class PredictionManager {
     let nextY = currentPosition.y;
 
     if (collidables && player.hasExt(ClientCollidable) && player.hasExt(ClientPositionable)) {
-      const { blocked, adjusted } = this.blockIfCollides(player, nextX, nextY, collidables);
+      const { blocked, adjusted } = this.blockIfCollides(player, nextX, nextY, collidables, entities);
       if (blocked) {
         nextX = adjusted.x;
         moveX = nextX - currentPosition.x;
@@ -56,7 +59,7 @@ export class PredictionManager {
 
     nextY = currentPosition.y + moveY;
     if (collidables && player.hasExt(ClientCollidable) && player.hasExt(ClientPositionable)) {
-      const { blocked, adjusted } = this.blockIfCollides(player, nextX, nextY, collidables);
+      const { blocked, adjusted } = this.blockIfCollides(player, nextX, nextY, collidables, entities);
       if (blocked) {
         nextY = adjusted.y;
         moveY = nextY - currentPosition.y;
@@ -78,7 +81,8 @@ export class PredictionManager {
     player: PlayerClient,
     proposedX: number,
     proposedY: number,
-    collidables: number[][]
+    collidables: number[][],
+    entities: ClientEntityBase[]
   ): { blocked: boolean; adjusted: { x: number; y: number } } {
     const positionable = player.getExt(ClientPositionable);
     const collidable = player.getExt(ClientCollidable);
@@ -96,10 +100,39 @@ export class PredictionManager {
       height: size.y,
     };
 
+    // Check collision with map tiles
     if (this.overlapsAnyCollidable(hitbox, collidables)) {
       return { blocked: true, adjusted: { x: currentPos.x, y: currentPos.y } };
     }
+
+    // Check collision with entities
+    if (this.overlapsAnyEntity(hitbox, entities, player.getId())) {
+      return { blocked: true, adjusted: { x: currentPos.x, y: currentPos.y } };
+    }
+
     return { blocked: false, adjusted: { x: proposedX, y: proposedY } };
+  }
+
+  /**
+   * Reconciles the local player's position towards the server's authoritative position
+   * using a smooth lerp. This runs after client prediction to gradually correct
+   * any divergence between client and server positions.
+   */
+  reconcileWithServerPosition(player: PlayerClient): void {
+    // Get the server's authoritative position (if available)
+    const serverPos = (player as any).serverGhostPos as Vector2 | null;
+
+    if (!serverPos || !player.hasExt(ClientPositionable)) {
+      return;
+    }
+
+    const currentPos = player.getExt(ClientPositionable).getPosition();
+
+    // Lerp towards server position
+    const lerpedX = currentPos.x + (serverPos.x - currentPos.x) * RECONCILIATION_LERP_SPEED;
+    const lerpedY = currentPos.y + (serverPos.y - currentPos.y) * RECONCILIATION_LERP_SPEED;
+
+    player.setPosition(new Vector2(lerpedX, lerpedY));
   }
 
   private overlapsAnyCollidable(
@@ -125,6 +158,39 @@ export class PredictionManager {
         if (tile !== -1) return true;
       }
     }
+    return false;
+  }
+
+  private overlapsAnyEntity(
+    playerHitbox: Hitbox,
+    entities: ClientEntityBase[],
+    playerEntityId: string
+  ): boolean {
+    for (const entity of entities) {
+      // Skip the player entity itself
+      if (entity.getId() === playerEntityId) {
+        continue;
+      }
+
+      // Only check collision with entities that have collidable extension
+      if (!entity.hasExt(ClientCollidable)) {
+        continue;
+      }
+
+      const collidable = entity.getExt(ClientCollidable);
+
+      // Skip if collision is disabled for this entity
+      if (!collidable.isEnabled()) {
+        continue;
+      }
+
+      const entityHitbox = collidable.getHitBox();
+
+      if (isColliding(playerHitbox, entityHitbox)) {
+        return true;
+      }
+    }
+
     return false;
   }
 }

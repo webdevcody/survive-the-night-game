@@ -115,9 +115,18 @@ export class MapManager implements IMapManager {
   }
 
   public getMapData(): MapData {
+    const centerBiomeX = Math.floor(MAP_SIZE / 2);
+    const centerBiomeY = Math.floor(MAP_SIZE / 2);
+
     return {
       ground: this.groundLayer,
       collidables: this.collidablesLayer,
+      biomePositions: {
+        campsite: { x: centerBiomeX, y: centerBiomeY },
+        farm: this.farmBiomePosition,
+        gasStation: this.gasStationBiomePosition,
+        city: this.cityBiomePosition,
+      },
     };
   }
 

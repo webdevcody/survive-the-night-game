@@ -20,6 +20,12 @@ export class MapManager {
   private tileSize = 16;
   private groundLayer: number[][] | null = null;
   private collidablesLayer: number[][] | null = null;
+  private biomePositions?: {
+    campsite: { x: number; y: number };
+    farm?: { x: number; y: number };
+    gasStation?: { x: number; y: number };
+    city?: { x: number; y: number };
+  };
   private groundTilesheet = new Image();
   private collidablesTilesheet = new Image();
   private gameClient: GameClient;
@@ -32,9 +38,10 @@ export class MapManager {
     this.lastRenderTime = Date.now();
   }
 
-  setMap(mapData: { ground: number[][]; collidables: number[][] }) {
+  setMap(mapData: { ground: number[][]; collidables: number[][]; biomePositions?: any }) {
     this.groundLayer = mapData.ground;
     this.collidablesLayer = mapData.collidables;
+    this.biomePositions = mapData.biomePositions;
   }
 
   getMap(): number[][] | null {
@@ -42,11 +49,20 @@ export class MapManager {
     return this.groundLayer;
   }
 
-  getMapData(): { ground: number[][] | null; collidables: number[][] | null } {
+  getMapData(): {
+    ground: number[][] | null;
+    collidables: number[][] | null;
+    biomePositions?: any;
+  } {
     return {
       ground: this.groundLayer,
       collidables: this.collidablesLayer,
+      biomePositions: this.biomePositions,
     };
+  }
+
+  getBiomePositions() {
+    return this.biomePositions;
   }
 
   private getLightSources(): LightSource[] {

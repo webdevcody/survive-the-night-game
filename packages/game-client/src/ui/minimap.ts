@@ -52,6 +52,28 @@ export const MINIMAP_SETTINGS = {
       size: 8,
     },
   },
+  biomeIndicators: {
+    farm: {
+      label: "F",
+      color: "#8B4513",
+      iconColor: "#FFFFFF",
+    },
+    city: {
+      label: "C",
+      color: "#4169E1",
+      iconColor: "#FFFFFF",
+    },
+    gasStation: {
+      label: "G",
+      color: "#FFD700",
+      iconColor: "#000000",
+    },
+    campsite: {
+      label: "H",
+      color: "#228B22",
+      iconColor: "#FFFFFF",
+    },
+  },
 };
 
 export class Minimap {
@@ -209,6 +231,172 @@ export class Minimap {
     ctx.lineTo(settings.left + settings.size / 2, top + settings.size / 2 + crosshairSize);
     ctx.stroke();
 
+    // Draw biome directional indicators
+    this.renderBiomeIndicators(ctx, playerPos, settings, top);
+
+    // Draw player directional indicators
+    this.renderPlayerIndicators(ctx, gameState, playerPos, settings, top);
+
     ctx.restore();
+  }
+
+  private renderBiomeIndicators(
+    ctx: CanvasRenderingContext2D,
+    playerPos: { x: number; y: number },
+    settings: typeof MINIMAP_SETTINGS,
+    top: number
+  ): void {
+    const biomePositions = this.mapManager.getBiomePositions();
+    if (!biomePositions) return;
+
+    const BIOME_SIZE = 16; // tiles
+    const TILE_SIZE = 16; // pixels
+    const centerX = settings.left + settings.size / 2;
+    const centerY = top + settings.size / 2;
+    const radius = settings.size / 2;
+
+    const biomes = [
+      { name: "farm", position: biomePositions.farm, config: settings.biomeIndicators.farm },
+      { name: "city", position: biomePositions.city, config: settings.biomeIndicators.city },
+      {
+        name: "gasStation",
+        position: biomePositions.gasStation,
+        config: settings.biomeIndicators.gasStation,
+      },
+      {
+        name: "campsite",
+        position: biomePositions.campsite,
+        config: settings.biomeIndicators.campsite,
+      },
+    ];
+
+    biomes.forEach(({ position, config }) => {
+      if (!position) return;
+
+      // Convert biome position to world coordinates (center of biome)
+      const biomeWorldX = (position.x * BIOME_SIZE + BIOME_SIZE / 2) * TILE_SIZE;
+      const biomeWorldY = (position.y * BIOME_SIZE + BIOME_SIZE / 2) * TILE_SIZE;
+
+      // Calculate relative position to player
+      const relativeX = biomeWorldX - playerPos.x;
+      const relativeY = biomeWorldY - playerPos.y;
+
+      // Calculate angle from player to biome
+      const angle = Math.atan2(relativeY, relativeX);
+
+      // Calculate distance from center of minimap
+      const distance = Math.sqrt(relativeX * relativeX + relativeY * relativeY) * settings.scale;
+
+      // If the biome is within the minimap view, skip directional indicator
+      if (distance < radius - 30) return;
+
+      // Calculate position on the edge of the minimap circle
+      const edgeX = centerX + Math.cos(angle) * (radius - 20);
+      const edgeY = centerY + Math.sin(angle) * (radius - 20);
+
+      // Draw the indicator circle
+      const indicatorSize = 16;
+      ctx.fillStyle = config.color;
+      ctx.beginPath();
+      ctx.arc(edgeX, edgeY, indicatorSize / 2, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Draw white border
+      ctx.strokeStyle = "white";
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.arc(edgeX, edgeY, indicatorSize / 2, 0, Math.PI * 2);
+      ctx.stroke();
+
+      // Draw the label text
+      ctx.fillStyle = config.iconColor;
+      ctx.font = "bold 11px Arial";
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.fillText(config.label, edgeX, edgeY);
+    });
+  }
+
+  private renderPlayerIndicators(
+    ctx: CanvasRenderingContext2D,
+    gameState: GameState,
+    playerPos: { x: number; y: number },
+    settings: typeof MINIMAP_SETTINGS,
+    top: number
+  ): void {
+    const centerX = settings.left + settings.size / 2;
+    const centerY = top + settings.size / 2;
+    const radius = settings.size / 2;
+
+    // Loop through all entities to find other players
+    for (const entity of gameState.entities) {
+      if (!(entity instanceof PlayerClient)) continue;
+      if (!entity.hasExt(ClientPositionable)) continue;
+
+      const positionable = entity.getExt(ClientPositionable);
+      const position = positionable.getPosition();
+
+      // Calculate relative position to my player
+      const relativeX = position.x - playerPos.x;
+      const relativeY = position.y - playerPos.y;
+
+      // Skip if this is the current player (distance ~0)
+      const distance = Math.sqrt(relativeX * relativeX + relativeY * relativeY);
+      if (distance < 10) continue; // Skip if very close (likely the same player)
+
+      // Calculate scaled distance on minimap
+      const scaledDistance = distance * settings.scale;
+
+      // If the player is within the minimap view, skip directional indicator
+      // (they're already shown as a regular indicator on the minimap)
+      if (scaledDistance < radius - 30) continue;
+
+      // Calculate angle from my player to other player
+      const angle = Math.atan2(relativeY, relativeX);
+
+      // Calculate position on the edge of the minimap circle
+      const edgeX = centerX + Math.cos(angle) * (radius - 20);
+      const edgeY = centerY + Math.sin(angle) * (radius - 20);
+
+      // Draw the indicator - use a triangle pointing in the direction
+      const indicatorSize = 12;
+
+      // Draw filled triangle
+      ctx.fillStyle = settings.colors.player;
+      ctx.beginPath();
+      ctx.moveTo(
+        edgeX + Math.cos(angle) * indicatorSize,
+        edgeY + Math.sin(angle) * indicatorSize
+      );
+      ctx.lineTo(
+        edgeX + Math.cos(angle + (2 * Math.PI) / 3) * indicatorSize,
+        edgeY + Math.sin(angle + (2 * Math.PI) / 3) * indicatorSize
+      );
+      ctx.lineTo(
+        edgeX + Math.cos(angle - (2 * Math.PI) / 3) * indicatorSize,
+        edgeY + Math.sin(angle - (2 * Math.PI) / 3) * indicatorSize
+      );
+      ctx.closePath();
+      ctx.fill();
+
+      // Draw white border
+      ctx.strokeStyle = "white";
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(
+        edgeX + Math.cos(angle) * indicatorSize,
+        edgeY + Math.sin(angle) * indicatorSize
+      );
+      ctx.lineTo(
+        edgeX + Math.cos(angle + (2 * Math.PI) / 3) * indicatorSize,
+        edgeY + Math.sin(angle + (2 * Math.PI) / 3) * indicatorSize
+      );
+      ctx.lineTo(
+        edgeX + Math.cos(angle - (2 * Math.PI) / 3) * indicatorSize,
+        edgeY + Math.sin(angle - (2 * Math.PI) / 3) * indicatorSize
+      );
+      ctx.closePath();
+      ctx.stroke();
+    }
   }
 }

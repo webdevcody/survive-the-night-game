@@ -8,8 +8,8 @@ import { EntityManager } from "@/managers/entity-manager";
 import { GameManagers } from "@/managers/game-managers";
 import { MapManager } from "@/managers/map-manager";
 import { ServerSocketManager } from "@/managers/server-socket-manager";
-import { TICK_RATE, NIGHT_DURATION, PERFORMANCE_LOG_INTERVAL, TICK_RATE_MS } from "./config/config";
-import { DAY_DURATION } from "./config/config";
+import { TICK_RATE, PERFORMANCE_LOG_INTERVAL, TICK_RATE_MS } from "./config/config";
+import { DAY_DURATION, NIGHT_DURATION } from "@shared/constants";
 import Destructible from "@/extensions/destructible";
 import { PerformanceTracker } from "./util/performance";
 

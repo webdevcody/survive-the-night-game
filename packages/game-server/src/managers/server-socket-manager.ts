@@ -92,35 +92,11 @@ export class ServerSocketManager implements Broadcaster {
     this.io.on("connection", (socket: Socket) => {
       const { displayName } = socket.handshake.query;
 
-      // Check if this displayName is already connected
-      // If so, disconnect the old socket to prevent duplicates
-      const existingSocketId = this.findSocketIdByDisplayName(displayName as string);
-      if (existingSocketId && existingSocketId !== socket.id) {
-        console.log(
-          `Duplicate displayName detected: ${displayName}. Disconnecting old connection ${existingSocketId}`
-        );
-        const existingSocket = this.io.sockets.sockets.get(existingSocketId);
-        if (existingSocket) {
-          existingSocket.disconnect(true);
-        }
-      }
-
+      // Allow multiple connections with the same display name
+      // Each connection gets its own player entity
       this.playerDisplayNames.set(socket.id, displayName as string);
       this.onConnection(socket);
     });
-  }
-
-  /**
-   * Find a socket ID by displayName
-   * @returns socket ID if found, undefined otherwise
-   */
-  private findSocketIdByDisplayName(displayName: string): string | undefined {
-    for (const [socketId, name] of this.playerDisplayNames.entries()) {
-      if (name === displayName) {
-        return socketId;
-      }
-    }
-    return undefined;
   }
 
   /**

@@ -2,6 +2,8 @@ import { TILE_SIZE } from "../constants/constants";
 import { Hitbox } from "./hitbox";
 import Vector2 from "./vector2";
 
+export { Vector2 };
+
 export function roundVector2(vector: Vector2): Vector2 {
   return new Vector2(Math.round(vector.x), Math.round(vector.y));
 }

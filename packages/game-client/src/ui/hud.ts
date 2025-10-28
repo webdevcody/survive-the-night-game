@@ -9,6 +9,7 @@ import { Minimap } from "./minimap";
 import { Leaderboard } from "./leaderboard";
 import { SoundManager } from "@/managers/sound-manager";
 import { AssetManager } from "@/managers/asset";
+import { ClockPanel, StatPanel, TextPanel } from "./panels";
 
 const HUD_SETTINGS = {
   ControlsList: {
@@ -26,11 +27,18 @@ const HUD_SETTINGS = {
     },
     borderRadius: 8,
   },
-  Ping: {
-    right: 140,
-    bottom: 50,
-    font: "24px Arial",
-    colors: {
+  BottomRightPanels: {
+    right: 20,
+    bottom: 20,
+    gap: 8,
+    padding: 8,
+    background: "rgba(0, 0, 0, 0.8)",
+    borderColor: "rgba(255, 255, 255, 0.5)",
+    borderWidth: 2,
+    font: "20px Arial",
+    versionColor: "rgba(255, 255, 0, 0.8)",
+    fpsColor: "white",
+    pingColors: {
       excellent: "rgb(0, 255, 0)", // Green: < 50ms
       good: "rgb(255, 255, 0)", // Yellow: 50-100ms
       fair: "rgb(255, 165, 0)", // Orange: 100-150ms
@@ -46,25 +54,32 @@ const HUD_SETTINGS = {
     hoverBackground: "rgba(0, 0, 0, 0.9)",
     font: "36px Arial",
   },
-  CoinCounter: {
-    left: 460, // Position to the right of minimap, aligned with mute button
-    bottom: 120, // Above the mute button (40 + 60 + 20)
-    paddingVertical: 4,
-    paddingHorizontal: 16,
-    background: "rgba(0, 0, 0, 0.7)",
-    font: "36px Arial",
-    spriteSize: 64, // Size of the coin sprite
+  Clock: {
+    radius: 93,
+    padding: 0,
+    background: "rgba(0, 0, 0, 0.9)",
+    borderColor: "rgba(100, 100, 100, 0.8)",
+    borderWidth: 3,
+    font: "21px Arial",
+    dayNumberFont: "bold 27px Arial",
+    iconFont: "37px Arial",
+    dayColor: "rgba(255, 215, 100, 0.9)",
+    nightColor: "rgba(40, 40, 80, 0.9)",
+    progressColor: "rgba(255, 255, 255, 0.9)",
+    right: 40,
+    top: 40,
   },
-  StatCard: {
-    paddingVertical: 8,
-    paddingHorizontal: 16,
+  MinimapStats: {
+    left: 460, // Position to the right of minimap (40 + 400 + 20)
+    bottom: 260, // Start above the mute button
+    gap: 12, // Gap between stat panels
+    padding: 8,
     background: "rgba(0, 0, 0, 0.8)",
-    font: "32px Arial",
-    iconSize: 32,
-    spacing: 12, // Space between icon and text
-    gap: 12, // Gap between cards
-    right: 40, // Distance from right edge
-    top: 40, // Distance from top edge
+    borderColor: "rgba(255, 255, 255, 0.5)",
+    borderWidth: 2,
+    font: "24px Arial",
+    iconSize: 24,
+    spacing: 8,
   },
 };
 
@@ -81,6 +96,14 @@ export class Hud {
   private leaderboard: Leaderboard;
   private soundManager: SoundManager;
   private assetManager: AssetManager;
+  private clockPanel: ClockPanel;
+  private alivePlayersPanel: StatPanel;
+  private totalPlayersPanel: StatPanel;
+  private zombiesPanel: StatPanel;
+  private killsPanel: StatPanel;
+  private versionPanel: TextPanel;
+  private fpsPanel: TextPanel;
+  private pingPanel: TextPanel;
 
   constructor(mapManager: MapManager, soundManager: SoundManager, assetManager: AssetManager) {
     this.mapManager = mapManager;
@@ -89,6 +112,128 @@ export class Hud {
     this.chatWidget = new ChatWidget();
     this.minimap = new Minimap(mapManager);
     this.leaderboard = new Leaderboard();
+
+    // Initialize clock panel (top right)
+    this.clockPanel = new ClockPanel({
+      padding: HUD_SETTINGS.Clock.padding,
+      background: HUD_SETTINGS.Clock.background,
+      borderColor: HUD_SETTINGS.Clock.borderColor,
+      borderWidth: HUD_SETTINGS.Clock.borderWidth,
+      radius: HUD_SETTINGS.Clock.radius,
+      font: HUD_SETTINGS.Clock.font,
+      dayNumberFont: HUD_SETTINGS.Clock.dayNumberFont,
+      iconFont: HUD_SETTINGS.Clock.iconFont,
+      x: 0, // Will be calculated in render
+      y: 0, // Will be calculated in render
+      dayColor: HUD_SETTINGS.Clock.dayColor,
+      nightColor: HUD_SETTINGS.Clock.nightColor,
+      progressColor: HUD_SETTINGS.Clock.progressColor,
+    });
+
+    // Initialize stat panels (right of minimap)
+    this.alivePlayersPanel = new StatPanel(
+      {
+        padding: HUD_SETTINGS.MinimapStats.padding,
+        background: HUD_SETTINGS.MinimapStats.background,
+        borderColor: HUD_SETTINGS.MinimapStats.borderColor,
+        borderWidth: HUD_SETTINGS.MinimapStats.borderWidth,
+        x: 0,
+        y: 0,
+        icon: "👥",
+        font: HUD_SETTINGS.MinimapStats.font,
+        iconSize: HUD_SETTINGS.MinimapStats.iconSize,
+        spacing: HUD_SETTINGS.MinimapStats.spacing,
+      },
+      (gameState) => `${this.getAlivePlayers(gameState)}`
+    );
+
+    this.totalPlayersPanel = new StatPanel(
+      {
+        padding: HUD_SETTINGS.MinimapStats.padding,
+        background: HUD_SETTINGS.MinimapStats.background,
+        borderColor: HUD_SETTINGS.MinimapStats.borderColor,
+        borderWidth: HUD_SETTINGS.MinimapStats.borderWidth,
+        x: 0,
+        y: 0,
+        icon: "👤",
+        font: HUD_SETTINGS.MinimapStats.font,
+        iconSize: HUD_SETTINGS.MinimapStats.iconSize,
+        spacing: HUD_SETTINGS.MinimapStats.spacing,
+      },
+      (gameState) => `${this.getTotalPlayers(gameState)}`
+    );
+
+    this.zombiesPanel = new StatPanel(
+      {
+        padding: HUD_SETTINGS.MinimapStats.padding,
+        background: HUD_SETTINGS.MinimapStats.background,
+        borderColor: HUD_SETTINGS.MinimapStats.borderColor,
+        borderWidth: HUD_SETTINGS.MinimapStats.borderWidth,
+        x: 0,
+        y: 0,
+        icon: "🧟",
+        font: HUD_SETTINGS.MinimapStats.font,
+        iconSize: HUD_SETTINGS.MinimapStats.iconSize,
+        spacing: HUD_SETTINGS.MinimapStats.spacing,
+      },
+      (gameState) => `${this.getAliveZombies(gameState)}`
+    );
+
+    this.killsPanel = new StatPanel(
+      {
+        padding: HUD_SETTINGS.MinimapStats.padding,
+        background: HUD_SETTINGS.MinimapStats.background,
+        borderColor: HUD_SETTINGS.MinimapStats.borderColor,
+        borderWidth: HUD_SETTINGS.MinimapStats.borderWidth,
+        x: 0,
+        y: 0,
+        icon: "💀",
+        font: HUD_SETTINGS.MinimapStats.font,
+        iconSize: HUD_SETTINGS.MinimapStats.iconSize,
+        spacing: HUD_SETTINGS.MinimapStats.spacing,
+      },
+      (gameState) => {
+        const player = getPlayer(gameState);
+        return player ? `${player.getKills()}` : "0";
+      }
+    );
+
+    // Initialize bottom right panels
+    this.versionPanel = new TextPanel({
+      padding: HUD_SETTINGS.BottomRightPanels.padding,
+      background: HUD_SETTINGS.BottomRightPanels.background,
+      borderColor: HUD_SETTINGS.BottomRightPanels.borderColor,
+      borderWidth: HUD_SETTINGS.BottomRightPanels.borderWidth,
+      x: 0,
+      y: 0,
+      text: VERSION,
+      font: HUD_SETTINGS.BottomRightPanels.font,
+      textColor: HUD_SETTINGS.BottomRightPanels.versionColor,
+    });
+
+    this.fpsPanel = new TextPanel({
+      padding: HUD_SETTINGS.BottomRightPanels.padding,
+      background: HUD_SETTINGS.BottomRightPanels.background,
+      borderColor: HUD_SETTINGS.BottomRightPanels.borderColor,
+      borderWidth: HUD_SETTINGS.BottomRightPanels.borderWidth,
+      x: 0,
+      y: 0,
+      text: "0 FPS",
+      font: HUD_SETTINGS.BottomRightPanels.font,
+      textColor: HUD_SETTINGS.BottomRightPanels.fpsColor,
+    });
+
+    this.pingPanel = new TextPanel({
+      padding: HUD_SETTINGS.BottomRightPanels.padding,
+      background: HUD_SETTINGS.BottomRightPanels.background,
+      borderColor: HUD_SETTINGS.BottomRightPanels.borderColor,
+      borderWidth: HUD_SETTINGS.BottomRightPanels.borderWidth,
+      x: 0,
+      y: 0,
+      text: "0ms",
+      font: HUD_SETTINGS.BottomRightPanels.font,
+      textColor: HUD_SETTINGS.BottomRightPanels.pingColors.excellent,
+    });
   }
 
   public update(gameState: GameState): void {
@@ -100,13 +245,6 @@ export class Hud {
 
   public toggleInstructions(): void {
     this.showInstructions = !this.showInstructions;
-  }
-
-  private getCycleText(gameState: GameState): string {
-    const currentTime = Date.now();
-    const elapsedTime = (currentTime - gameState.cycleStartTime) / 1000;
-    const remainingTime = Math.max(0, Math.ceil(gameState.cycleDuration - elapsedTime));
-    return `${remainingTime}s until ${gameState.isDay ? "night" : "day"}`;
   }
 
   private getAlivePlayers(gameState: GameState): number {
@@ -127,63 +265,22 @@ export class Hud {
   public updatePing(ping: number): void {
     this.currentPing = ping;
     this.lastPingUpdate = Date.now();
+    // Update ping panel
+    this.pingPanel.setText(`${Math.round(ping)}ms`);
+    (this.pingPanel as any).textSettings.textColor = this.getPingColor(ping);
   }
 
   private getPingColor(ping: number): string {
-    if (ping < 50) return HUD_SETTINGS.Ping.colors.excellent;
-    if (ping < 100) return HUD_SETTINGS.Ping.colors.good;
-    if (ping < 150) return HUD_SETTINGS.Ping.colors.fair;
-    return HUD_SETTINGS.Ping.colors.poor;
-  }
-
-  private renderStatCard(
-    ctx: CanvasRenderingContext2D,
-    icon: string,
-    text: string,
-    x: number,
-    y: number
-  ): number {
-    const settings = HUD_SETTINGS.StatCard;
-
-    ctx.save();
-    ctx.font = settings.font;
-
-    // Measure text
-    const textMetrics = ctx.measureText(text);
-    const iconMetrics = ctx.measureText(icon);
-
-    // Calculate dimensions
-    const contentWidth = iconMetrics.width + settings.spacing + textMetrics.width;
-    const containerWidth = contentWidth + settings.paddingHorizontal * 2;
-    const containerHeight = settings.iconSize + settings.paddingVertical * 2;
-
-    // Draw background
-    ctx.fillStyle = settings.background;
-    ctx.fillRect(x, y, containerWidth, containerHeight);
-
-    // Draw border
-    ctx.strokeStyle = "rgba(255, 255, 255, 0.5)";
-    ctx.lineWidth = 2;
-    ctx.strokeRect(x, y, containerWidth, containerHeight);
-
-    // Draw icon
-    ctx.fillStyle = "white";
-    ctx.textBaseline = "middle";
-    const iconX = x + settings.paddingHorizontal;
-    const iconY = y + containerHeight / 2;
-    ctx.fillText(icon, iconX, iconY);
-
-    // Draw text
-    const textX = iconX + iconMetrics.width + settings.spacing;
-    ctx.fillText(text, textX, iconY);
-
-    ctx.restore();
-
-    return containerHeight;
+    if (ping < 50) return HUD_SETTINGS.BottomRightPanels.pingColors.excellent;
+    if (ping < 100) return HUD_SETTINGS.BottomRightPanels.pingColors.good;
+    if (ping < 150) return HUD_SETTINGS.BottomRightPanels.pingColors.fair;
+    return HUD_SETTINGS.BottomRightPanels.pingColors.poor;
   }
 
   public updateFps(fps: number): void {
     this.currentFps = fps;
+    // Update FPS panel
+    this.fpsPanel.setText(`${fps} FPS`);
   }
 
   public render(ctx: CanvasRenderingContext2D, gameState: GameState): void {
@@ -192,94 +289,78 @@ export class Hud {
     // Render minimap first
     this.minimap.render(ctx, gameState);
 
-    // Add version number in bottom right
+    // Render clock panel in top right
     ctx.save();
-    ctx.font = "32px Arial";
-    ctx.fillStyle = "rgba(255, 255, 0, 0.5)";
-    const versionText = VERSION;
-    const versionMetrics = ctx.measureText(versionText);
-    ctx.fillText(versionText, width - versionMetrics.width - 16, height - 50);
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    const clockX = width - HUD_SETTINGS.Clock.right - HUD_SETTINGS.Clock.radius;
+    const clockY = HUD_SETTINGS.Clock.top + HUD_SETTINGS.Clock.radius;
+    // Update clock position
+    (this.clockPanel as any).clockSettings.x = clockX;
+    (this.clockPanel as any).clockSettings.y = clockY;
+    this.clockPanel.render(ctx, gameState);
     ctx.restore();
 
-    // Render stat cards in top right
+    // Render stat panels to the right of minimap
     ctx.save();
-    ctx.setTransform(1, 0, 0, 1, 0, 0); // Reset transform
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    const statsSettings = HUD_SETTINGS.MinimapStats;
+    const statsX = statsSettings.left;
+    let statsY = height - statsSettings.bottom;
 
-    const settings = HUD_SETTINGS.StatCard;
-    let currentY = settings.top;
+    // Update positions and render each stat panel
+    (this.alivePlayersPanel as any).statSettings.x = statsX;
+    (this.alivePlayersPanel as any).statSettings.y = statsY;
+    this.alivePlayersPanel.render(ctx, gameState);
+    statsY -= this.alivePlayersPanel.getHeight(ctx) + statsSettings.gap;
 
-    // Helper to render a card and update position
-    const renderCard = (icon: string, text: string) => {
-      // Calculate card width to right-align
-      ctx.font = settings.font;
-      const textMetrics = ctx.measureText(text);
-      const iconMetrics = ctx.measureText(icon);
-      const contentWidth = iconMetrics.width + settings.spacing + textMetrics.width;
-      const cardWidth = contentWidth + settings.paddingHorizontal * 2;
-      const x = width - cardWidth - settings.right;
+    (this.totalPlayersPanel as any).statSettings.x = statsX;
+    (this.totalPlayersPanel as any).statSettings.y = statsY;
+    this.totalPlayersPanel.render(ctx, gameState);
+    statsY -= this.totalPlayersPanel.getHeight(ctx) + statsSettings.gap;
 
-      const height = this.renderStatCard(ctx, icon, text, x, currentY);
-      currentY += height + settings.gap;
-    };
+    (this.zombiesPanel as any).statSettings.x = statsX;
+    (this.zombiesPanel as any).statSettings.y = statsY;
+    this.zombiesPanel.render(ctx, gameState);
+    statsY -= this.zombiesPanel.getHeight(ctx) + statsSettings.gap;
 
-    // Day and time info
-    const dayIcon = gameState.isDay ? "☀️" : "🌙";
-    renderCard(dayIcon, `Day ${gameState.dayNumber}`);
-    renderCard("⏱️", this.getCycleText(gameState));
-
-    // Player stats
-    const myPlayer = getPlayer(gameState);
-    if (myPlayer) {
-      const health = myPlayer.getHealth();
-      renderCard("❤️", `${health}`);
-
-      const stamina = myPlayer.getStamina();
-      const maxStamina = myPlayer.getMaxStamina();
-      renderCard("⚡", `${Math.round(stamina)}/${maxStamina}`);
-    }
-
-    // Player counts
-    renderCard("👥", `Alive: ${this.getAlivePlayers(gameState)}`);
-    renderCard("👤", `Total: ${this.getTotalPlayers(gameState)}`);
-
-    // Enemy info
-    renderCard("🧟", `Zombies: ${this.getAliveZombies(gameState)}`);
-
-    // Kills
-    if (myPlayer) {
-      const kills = myPlayer.getKills();
-      renderCard("💀", `Kills: ${kills}`);
-    }
+    (this.killsPanel as any).statSettings.x = statsX;
+    (this.killsPanel as any).statSettings.y = statsY;
+    this.killsPanel.render(ctx, gameState);
 
     ctx.restore();
 
-    // Render FPS and ping
-    ctx.font = HUD_SETTINGS.Ping.font;
+    // Render bottom right panels (version, FPS, ping)
+    ctx.save();
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    const bottomRightSettings = HUD_SETTINGS.BottomRightPanels;
+    let currentX = width - bottomRightSettings.right;
+    const panelY = height - bottomRightSettings.bottom;
 
-    // Render FPS first
-    const fpsText = `${this.currentFps} FPS`;
-    const fpsMetrics = ctx.measureText(fpsText);
-    ctx.fillStyle = "white";
-    ctx.fillText(
-      fpsText,
-      ctx.canvas.width - fpsMetrics.width - HUD_SETTINGS.Ping.right - 100,
-      ctx.canvas.height - HUD_SETTINGS.Ping.bottom
-    );
+    // Render version panel (rightmost)
+    const versionWidth = this.versionPanel.getWidth(ctx);
+    (this.versionPanel as any).textSettings.x = currentX - versionWidth;
+    (this.versionPanel as any).textSettings.y = panelY - this.versionPanel.getHeight();
+    this.versionPanel.render(ctx, gameState);
+    currentX -= versionWidth + bottomRightSettings.gap;
 
-    // Then render ping
-    const pingText = `${Math.round(this.currentPing)}ms`;
-    const pingMetrics = ctx.measureText(pingText);
-    ctx.fillStyle = this.getPingColor(this.currentPing);
-    ctx.fillText(
-      pingText,
-      ctx.canvas.width - pingMetrics.width - HUD_SETTINGS.Ping.right,
-      ctx.canvas.height - HUD_SETTINGS.Ping.bottom
-    );
+    // Render ping panel
+    const pingWidth = this.pingPanel.getWidth(ctx);
+    (this.pingPanel as any).textSettings.x = currentX - pingWidth;
+    (this.pingPanel as any).textSettings.y = panelY - this.pingPanel.getHeight();
+    this.pingPanel.render(ctx, gameState);
+    currentX -= pingWidth + bottomRightSettings.gap;
+
+    // Render FPS panel
+    const fpsWidth = this.fpsPanel.getWidth(ctx);
+    (this.fpsPanel as any).textSettings.x = currentX - fpsWidth;
+    (this.fpsPanel as any).textSettings.y = panelY - this.fpsPanel.getHeight();
+    this.fpsPanel.render(ctx, gameState);
+
+    ctx.restore();
 
     this.renderControlsList(ctx, gameState);
     this.renderGameMessages(ctx);
     this.renderMuteButton(ctx);
-    this.renderCoinCounter(ctx, gameState);
     this.leaderboard.render(ctx, gameState);
     this.chatWidget.render(ctx, gameState);
   }
@@ -342,61 +423,6 @@ export class Hud {
     const iconY = y + settings.height / 2 + 14; // Adjust for vertical centering
 
     ctx.fillText(icon, iconX, iconY);
-
-    ctx.restore();
-  }
-
-  private renderCoinCounter(ctx: CanvasRenderingContext2D, gameState: GameState): void {
-    const myPlayer = getPlayer(gameState);
-    if (!myPlayer) return;
-
-    const coins = myPlayer.getCoins();
-    const { height } = ctx.canvas;
-    const settings = HUD_SETTINGS.CoinCounter;
-
-    ctx.save();
-    ctx.setTransform(1, 0, 0, 1, 0, 0); // Reset transform to work in canvas pixel coordinates
-
-    // Get coin sprite
-    const coinSprite = this.assetManager.get("coin");
-
-    // Calculate text metrics
-    ctx.font = settings.font;
-    const coinsText = `${coins}`;
-    const textMetrics = ctx.measureText(coinsText);
-
-    // Calculate total width needed (sprite + spacing + text)
-    const spacing = 8;
-    const totalWidth = settings.spriteSize + spacing + textMetrics.width;
-
-    // Calculate container dimensions
-    const containerWidth = totalWidth + settings.paddingHorizontal * 2;
-    const containerHeight = settings.spriteSize + settings.paddingVertical * 2;
-
-    // Calculate position
-    const x = settings.left;
-    const y = height - settings.bottom - containerHeight;
-
-    // Draw background
-    ctx.fillStyle = settings.background;
-    ctx.fillRect(x, y, containerWidth, containerHeight);
-
-    // Draw border
-    ctx.strokeStyle = "rgba(255, 255, 255, 0.5)";
-    ctx.lineWidth = 2;
-    ctx.strokeRect(x, y, containerWidth, containerHeight);
-
-    // Draw coin sprite - vertically centered
-    const spriteX = x + settings.paddingHorizontal;
-    const spriteY = y + settings.paddingVertical;
-    ctx.drawImage(coinSprite, spriteX, spriteY - 2, settings.spriteSize, settings.spriteSize);
-
-    // Draw coin count text - vertically aligned with sprite center
-    ctx.fillStyle = "white";
-    ctx.textBaseline = "middle";
-    const textX = spriteX + settings.spriteSize + spacing;
-    const textY = y + containerHeight / 2;
-    ctx.fillText(coinsText, textX, textY);
 
     ctx.restore();
   }

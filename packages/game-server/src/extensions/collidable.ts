@@ -51,6 +51,7 @@ export default class Collidable implements Extension {
       type: Collidable.type,
       offset: this.offset,
       size: this.size,
+      enabled: this.enabled,
     };
   }
 }
