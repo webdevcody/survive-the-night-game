@@ -19,8 +19,10 @@ import { PongEvent } from "@shared/events/server-sent/pong-event";
 import { ChatMessageEvent } from "@shared/events/server-sent/chat-message-event";
 import { PlayerLeftEvent } from "@/events/server-sent/player-left-event";
 import { ADMIN_PASSWORD, DEFAULT_ADMIN_PASSWORD } from "@/config/env";
+import { SIMULATED_SERVER_LATENCY_MS } from "@/config/simulation";
 import Vector2 from "@/util/vector2";
 import { Entities, NON_SPAWNABLE, SPAWNABLE_ENTITY_TYPES } from "@shared/constants";
+import { DelayedServer, DelayedServerSocket } from "@/util/delayed-socket";
 
 /**
  * Any and all functionality related to sending server side events
@@ -28,6 +30,7 @@ import { Entities, NON_SPAWNABLE, SPAWNABLE_ENTITY_TYPES } from "@shared/constan
  */
 export class ServerSocketManager implements Broadcaster {
   private io: Server;
+  private delayedIo: DelayedServer;
   private players: Map<string, Player> = new Map();
   private playerDisplayNames: Map<string, string> = new Map();
   private port: number;
@@ -81,6 +84,9 @@ export class ServerSocketManager implements Broadcaster {
       },
     });
 
+    // Wrap the io server with DelayedServer to handle latency simulation
+    this.delayedIo = new DelayedServer(this.io, SIMULATED_SERVER_LATENCY_MS);
+
     this.gameServer = gameServer;
 
     this.io.on("connection", (socket: Socket) => {
@@ -90,7 +96,9 @@ export class ServerSocketManager implements Broadcaster {
       // If so, disconnect the old socket to prevent duplicates
       const existingSocketId = this.findSocketIdByDisplayName(displayName as string);
       if (existingSocketId && existingSocketId !== socket.id) {
-        console.log(`Duplicate displayName detected: ${displayName}. Disconnecting old connection ${existingSocketId}`);
+        console.log(
+          `Duplicate displayName detected: ${displayName}. Disconnecting old connection ${existingSocketId}`
+        );
         const existingSocket = this.io.sockets.sockets.get(existingSocketId);
         if (existingSocket) {
           existingSocket.disconnect(true);
@@ -113,6 +121,13 @@ export class ServerSocketManager implements Broadcaster {
       }
     }
     return undefined;
+  }
+
+  /**
+   * Wrap a socket with DelayedServerSocket for latency simulation
+   */
+  private wrapSocket(socket: Socket): DelayedServerSocket {
+    return new DelayedServerSocket(socket, SIMULATED_SERVER_LATENCY_MS);
   }
 
   public setGameManagers(gameManagers: IGameManagers): void {
@@ -181,8 +196,9 @@ export class ServerSocketManager implements Broadcaster {
 
       // Send map and player ID to client
       const mapData = this.getMapManager().getMapData();
-      socket.emit(ServerSentEvents.MAP, mapData);
-      socket.emit(ServerSentEvents.YOUR_ID, player.getId());
+      const delayedSocket = this.wrapSocket(socket);
+      delayedSocket.emit(ServerSentEvents.MAP, mapData);
+      delayedSocket.emit(ServerSentEvents.YOUR_ID, player.getId());
       this.broadcastEvent(
         new PlayerJoinedEvent({ playerId: player.getId(), displayName: player.getDisplayName() })
       );
@@ -245,13 +261,10 @@ export class ServerSocketManager implements Broadcaster {
 
   private sendFullState(socket: Socket): void {
     const entities = this.getEntityManager().getEntities();
-    console.log(
-      "plaeyr",
-      entities.filter((entity) => entity.getType() === "player").map((entity) => entity.serialize())
-    );
     const filteredEntities = entities.filter((entity) => !("isServerOnly" in entity));
 
-    socket.emit(ServerSentEvents.GAME_STATE_UPDATE, {
+    const delayedSocket = this.wrapSocket(socket);
+    delayedSocket.emit(ServerSentEvents.GAME_STATE_UPDATE, {
       entities: filteredEntities.map((entity) => entity.serialize()),
       timestamp: Date.now(),
       isFullState: true,
@@ -328,7 +341,8 @@ export class ServerSocketManager implements Broadcaster {
       this.players.set(socket.id, player);
       this.getEntityManager().addEntity(player);
 
-      socket.emit(ServerSentEvents.YOUR_ID, player.getId());
+      const delayedSocket = this.wrapSocket(socket);
+      delayedSocket.emit(ServerSentEvents.YOUR_ID, player.getId());
       this.broadcastEvent(
         new PlayerJoinedEvent({ playerId: player.getId(), displayName: player.getDisplayName() })
       );
@@ -336,7 +350,8 @@ export class ServerSocketManager implements Broadcaster {
 
     // Always send the map data
     const mapData = this.getMapManager().getMapData();
-    socket.emit(ServerSentEvents.MAP, mapData);
+    const delayedSocket = this.wrapSocket(socket);
+    delayedSocket.emit(ServerSentEvents.MAP, mapData);
   }
 
   public broadcastEvent(event: GameEvent<any>): void {
@@ -431,6 +446,7 @@ export class ServerSocketManager implements Broadcaster {
         entities: changedEntityData,
         removedEntityIds,
         isFullState: false,
+        timestamp: Date.now(),
         ...changedGameState,
       });
 
@@ -440,15 +456,16 @@ export class ServerSocketManager implements Broadcaster {
       });
       entityStateTracker.trackGameState(currentGameState);
 
-      this.io.emit(gameStateEvent.getType(), gameStateEvent.serialize());
+      this.delayedIo.emit(gameStateEvent.getType(), gameStateEvent.serialize());
     } else {
-      this.io.emit(event.getType(), event.serialize());
+      this.delayedIo.emit(event.getType(), event.serialize());
     }
   }
 
   private handlePing(socket: Socket, timestamp: number): void {
     // Send pong event back to client
-    socket.emit(ServerSentEvents.PONG, new PongEvent(timestamp).serialize());
+    const delayedSocket = this.wrapSocket(socket);
+    delayedSocket.emit(ServerSentEvents.PONG, new PongEvent(timestamp).serialize());
 
     // Update player's ping
     const player = this.players.get(socket.id);
@@ -497,7 +514,8 @@ export class ServerSocketManager implements Broadcaster {
           playerId: "system",
           message: listMessage,
         });
-        socket.emit(ServerSentEvents.CHAT_MESSAGE, chatEvent.getData());
+        const delayedSocket = this.wrapSocket(socket);
+        delayedSocket.emit(ServerSentEvents.CHAT_MESSAGE, chatEvent.getData());
       }
       return;
     }
@@ -527,6 +545,6 @@ export class ServerSocketManager implements Broadcaster {
       message: message,
     });
 
-    this.io.emit(ServerSentEvents.CHAT_MESSAGE, chatEvent.getData());
+    this.delayedIo.emit(ServerSentEvents.CHAT_MESSAGE, chatEvent.getData());
   }
 }

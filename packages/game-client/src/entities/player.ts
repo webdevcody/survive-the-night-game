@@ -22,6 +22,7 @@ import Vector2 from "@shared/util/vector2";
 import { ClientEntity } from "./client-entity";
 import { SKIN_TYPES, SkinType } from "@shared/commands/commands";
 import { DEBUG_SHOW_ATTACK_RANGE } from "@shared/debug";
+import { DEBUG_CONFIG } from "@/config/client-prediction";
 
 export class PlayerClient extends ClientEntity implements IClientEntity, Renderable {
   private readonly ARROW_LENGTH = 20;
@@ -39,6 +40,7 @@ export class PlayerClient extends ClientEntity implements IClientEntity, Rendera
   private stamina: number = 100;
   private maxStamina: number = 100;
   private coins: number = 0;
+  private serverGhostPos: Vector2 | null = null;
 
   private input: Input = {
     facing: Direction.Right,
@@ -113,6 +115,10 @@ export class PlayerClient extends ClientEntity implements IClientEntity, Rendera
   getVelocity(): Vector2 {
     const movable = this.getExt(ClientMovable);
     return movable.getVelocity();
+  }
+
+  setServerGhostPosition(pos: Vector2 | null): void {
+    this.serverGhostPos = pos ? new Vector2(pos.x, pos.y) : null;
   }
 
   getDamageBox(): Hitbox {
@@ -196,6 +202,16 @@ export class PlayerClient extends ClientEntity implements IClientEntity, Rendera
     if (Date.now() < this.damageFlashUntil) {
       const flashEffect = createFlashEffect(image);
       ctx.drawImage(flashEffect, renderPosition.x, renderPosition.y);
+    }
+
+    // Draw ghost position if available (server authoritative position)
+    // Only render if debug mode is enabled via VITE_SHOW_SERVER_GHOST=true
+    if (DEBUG_CONFIG.showServerGhost && this.serverGhostPos) {
+      const ghost = this.serverGhostPos;
+      ctx.save();
+      ctx.globalAlpha = 0.35;
+      ctx.drawImage(image, Math.round(ghost.x), Math.round(ghost.y));
+      ctx.restore();
     }
 
     ctx.restore();

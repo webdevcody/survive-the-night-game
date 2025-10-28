@@ -24,6 +24,8 @@ import { ServerUpdatingEvent } from "@shared/events/server-sent/server-updating-
 import { ChatMessageEvent } from "@shared/events/server-sent/chat-message-event";
 import { PlayerLeftEvent } from "@shared/events/server-sent/player-left-event";
 import { ExplosionEvent } from "@shared/events/server-sent/explosion-event";
+import { DelayedSocket } from "../util/delayed-socket";
+import { SIMULATION_CONFIG } from "@/config/client-prediction";
 
 export type EntityDto = { id: string } & any;
 
@@ -52,15 +54,24 @@ const SERVER_EVENT_MAP = {
 } as const;
 
 export class ClientSocketManager {
-  private socket: Socket;
+  private socket: DelayedSocket;
+  private rawSocket: Socket;
   private pingInterval: ReturnType<typeof setInterval> | null = null;
   private onPingUpdate?: (ping: number) => void;
   private isDisconnected: boolean = false;
 
   public on<K extends keyof typeof SERVER_EVENT_MAP>(eventType: K, handler: (event: any) => void) {
-    this.socket.on(eventType, (serializedEvent) => {
-      const event = new SERVER_EVENT_MAP[eventType](serializedEvent);
-      handler(event);
+    this.rawSocket.on(eventType as any, (serializedEvent: any) => {
+      const run = () => {
+        const Ctor = (SERVER_EVENT_MAP as any)[eventType];
+        const event = new Ctor(serializedEvent);
+        handler(event);
+      };
+      if (SIMULATION_CONFIG.simulatedLatencyMs > 0) {
+        setTimeout(run, SIMULATION_CONFIG.simulatedLatencyMs);
+      } else {
+        run();
+      }
     });
   }
 
@@ -72,26 +83,29 @@ export class ClientSocketManager {
     }
 
     console.log("Connecting to game server", serverUrl);
-    this.socket = io(`${serverUrl}?displayName=${displayName}`, {
+    this.rawSocket = io(`${serverUrl}?displayName=${displayName}`, {
       // Ensure we create a new connection each time
       forceNew: true,
     });
 
-    this.socket.on("connect", () => {
-      console.log("Connected to game server", this.socket.id);
+    // Wrap the socket with DelayedSocket to handle latency simulation
+    this.socket = new DelayedSocket(this.rawSocket, SIMULATION_CONFIG.simulatedLatencyMs);
+
+    this.rawSocket.on("connect", () => {
+      console.log("Connected to game server", this.rawSocket.id);
       this.isDisconnected = false;
       this.socket.emit(ClientSentEvents.REQUEST_FULL_STATE);
       this.startPingMeasurement();
     });
 
-    this.socket.on("disconnect", () => {
+    this.rawSocket.on("disconnect", () => {
       console.log("Disconnected from game server");
       this.isDisconnected = true;
       this.stopPingMeasurement();
     });
 
     // Set up pong handler
-    this.socket.on(ServerSentEvents.PONG, (serializedEvent) => {
+    this.rawSocket.on(ServerSentEvents.PONG, (serializedEvent) => {
       const event = new PongEvent(serializedEvent.timestamp);
       const latency = Date.now() - event.getData().timestamp;
       if (this.onPingUpdate) {
@@ -165,9 +179,9 @@ export class ClientSocketManager {
 
     this.stopPingMeasurement();
 
-    if (this.socket) {
+    if (this.rawSocket) {
       console.log("Disconnecting from game server");
-      this.socket.disconnect();
+      this.rawSocket.disconnect();
       this.isDisconnected = true;
     }
   }

@@ -4,3 +4,4 @@ dist/
 scratch.txt
 tmp/
 dependency-graph.svg
+.env

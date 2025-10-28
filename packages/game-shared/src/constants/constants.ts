@@ -1,15 +1,24 @@
-export const VERSION = "v0.2.0";
-
-export const TILE_SIZE = 16;
-export const MAX_PLAYER_HEALTH = 10;
-export const MAX_INVENTORY_SLOTS = 8;
-export const MAX_INTERACT_RADIUS = 20;
-export const LANDMINE_EXPLOSION_RADIUS = 32;
-
-export const WALL_MAX_HEALTH = 10;
-
-export const KNIFE_ATTACK_RANGE = 26;
-
-export const ZOMBIE_ATTACK_RADIUS = 18;
-
-export const BULLET_SIZE = 4;
+/**
+ * Re-exports from game-config.ts for backwards compatibility
+ *
+ * IMPORTANT: To change these values, edit:
+ * packages/game-shared/src/config/game-config.ts
+ */
+export {
+  VERSION,
+  TILE_SIZE,
+  MAX_PLAYER_HEALTH,
+  MAX_INVENTORY_SLOTS,
+  MAX_INTERACT_RADIUS,
+  LANDMINE_EXPLOSION_RADIUS,
+  PLAYER_SPEED,
+  SPRINT_MULTIPLIER,
+  MAX_STAMINA,
+  STAMINA_DRAIN_RATE,
+  STAMINA_REGEN_RATE,
+  EXHAUSTION_DURATION,
+  WALL_MAX_HEALTH,
+  KNIFE_ATTACK_RANGE,
+  ZOMBIE_ATTACK_RADIUS,
+  BULLET_SIZE,
+} from "../config/game-config";

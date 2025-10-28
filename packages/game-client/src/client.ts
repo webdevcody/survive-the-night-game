@@ -22,6 +22,7 @@ import { Direction } from "../../game-shared/src/util/direction";
 import { Input } from "../../game-shared/src/util/input";
 import { ClientEntityBase } from "@/extensions/client-entity";
 import { ParticleManager } from "./managers/particles";
+import { PredictionManager } from "./managers/prediction";
 
 export class GameClient {
   private ctx: CanvasRenderingContext2D;
@@ -38,12 +39,14 @@ export class GameClient {
   private clientEventListener!: ClientEventListener;
   private entityFactory: EntityFactory;
   private particleManager: ParticleManager;
+  private predictionManager: PredictionManager;
 
   // FPS tracking
   private frameCount: number = 0;
   private lastFpsUpdate: number = 0;
   private currentFps: number = 0;
   private readonly FPS_UPDATE_INTERVAL = 1000; // Update FPS every second
+  private lastUpdateTimeMs: number = Date.now();
 
   // Controllers
   private resizeController: ResizeController;
@@ -72,6 +75,7 @@ export class GameClient {
     this.soundManager = soundManager || new SoundManager();
     this.entityFactory = new EntityFactory(this.assetManager);
     this.particleManager = new ParticleManager(this);
+    this.predictionManager = new PredictionManager();
 
     // Add click event listener for UI interactions
     canvas.addEventListener("click", (e) => {
@@ -345,6 +349,7 @@ export class GameClient {
     }
 
     this.isStarted = true;
+    this.lastUpdateTimeMs = Date.now();
 
     const tick = () => {
       this.update();
@@ -372,6 +377,10 @@ export class GameClient {
     // Update FPS
     this.frameCount++;
     const now = Date.now();
+    const deltaSecondsRaw = (now - this.lastUpdateTimeMs) / 1000;
+    this.lastUpdateTimeMs = now;
+    // Clamp to avoid large jumps on tab switches; cap to ~20 FPS minimum
+    const deltaSeconds = Math.max(0, Math.min(deltaSecondsRaw, 0.05));
     if (now - this.lastFpsUpdate >= this.FPS_UPDATE_INTERVAL) {
       this.currentFps = Math.round((this.frameCount * 1000) / (now - this.lastFpsUpdate));
       this.frameCount = 0;
@@ -379,6 +388,20 @@ export class GameClient {
       this.hud.updateFps(this.currentFps);
     }
 
+    // Predict local player movement every frame for responsiveness
+    const player = this.getMyPlayer();
+    if (player) {
+      const input = this.inputManager.getInputs();
+      const mapData = this.mapManager.getMapData();
+      this.predictionManager.predictLocalPlayerMovement(
+        player,
+        input,
+        deltaSeconds,
+        mapData.collidables
+      );
+    }
+
+    // Only send input to server when it actually changed
     if (this.inputManager.getHasChanged()) {
       this.sendInput(this.inputManager.getInputs());
       this.inputManager.reset();

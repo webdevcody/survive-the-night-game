@@ -30,6 +30,14 @@ import { ChatMessageEvent } from "@shared/events/server-sent/chat-message-event"
 import { PlayerLeftEvent } from "@shared/events/server-sent/player-left-event";
 import { ExplosionParticle } from "./particles/explosion";
 import { ExplosionEvent } from "@shared/events/server-sent/explosion-event";
+import { InterpolationManager } from "@/managers/interpolation";
+import { ExtensionTypes } from "@shared/util/extension-types";
+import { RECONCILIATION_CONFIG } from "@/config/client-prediction";
+import Vector2 from "@shared/util/vector2";
+import {
+  CORRECTION_SMOOTHING_FACTOR,
+  MIN_ERROR_THRESHOLD,
+} from "@shared/config/game-config";
 
 export class ClientEventListener {
   private socketManager: ClientSocketManager;
@@ -38,6 +46,7 @@ export class ClientEventListener {
   private hasReceivedMap = false;
   private hasReceivedPlayerId = false;
   private hasReceivedInitialState = false;
+  private interpolation: InterpolationManager = new InterpolationManager();
 
   private isInitialized(): boolean {
     return this.hasReceivedMap && this.hasReceivedPlayerId && this.hasReceivedInitialState;
@@ -108,6 +117,7 @@ export class ClientEventListener {
     }
 
     const entitiesFromServer = gameStateEvent.getEntities();
+    const timestamp = gameStateEvent.getTimestamp() ?? Date.now();
 
     // Update game state properties only if they are included in the update
     if (gameStateEvent.getDayNumber() !== undefined) {
@@ -126,7 +136,13 @@ export class ClientEventListener {
     if (gameStateEvent.isFullState()) {
       // Full state update - replace all entities
       this.gameState.entities = entitiesFromServer.map((entity) => {
-        return this.gameClient.getEntityFactory().createEntity(entity);
+        const created = this.gameClient.getEntityFactory().createEntity(entity);
+        // Seed interpolation snapshots for non-local players
+        if (created.getId() !== this.gameState.playerId && created.hasExt(ClientPositionable)) {
+          const pos = created.getExt(ClientPositionable).getPosition();
+          this.interpolation.addSnapshot(created.getId(), pos, timestamp);
+        }
+        return created;
       });
 
       if (!this.hasReceivedInitialState) {
@@ -157,14 +173,91 @@ export class ClientEventListener {
           for (const [key, value] of Object.entries(serverEntityData)) {
             if (key !== "id") {
               // Skip the ID since it's used for lookup
-              existingEntity.deserializeProperty(key, value);
+              // For local player, avoid overriding client-predicted position unless necessary
+              if (
+                existingEntity.getId() === this.gameState.playerId &&
+                key === "extensions" &&
+                Array.isArray(value)
+              ) {
+                const posExt = value.find((v: any) => v.type === ExtensionTypes.POSITIONABLE);
+                if (posExt && existingEntity.hasExt(ClientPositionable)) {
+                  const clientPos = existingEntity.getExt(ClientPositionable).getPosition();
+                  const serverPos = posExt.position;
+                  const dx = clientPos.x - serverPos.x;
+                  const dy = clientPos.y - serverPos.y;
+                  const error = Math.hypot(dx, dy);
+
+                  // Store server ghost position for visualization
+                  (existingEntity as unknown as PlayerClient).setServerGhostPosition(
+                    new (existingEntity.getExt(ClientPositionable).getPosition()
+                      .constructor as any)(serverPos.x, serverPos.y)
+                  );
+
+                  // ALWAYS apply server position to prevent unbounded drift
+                  // The server is authoritative - client prediction is just for smoothness
+                  if (error > RECONCILIATION_CONFIG.snapThreshold) {
+                    // Large error: snap immediately to server position
+                    existingEntity.deserializeProperty(key, value);
+                  } else if (error > MIN_ERROR_THRESHOLD) {
+                    // Small error: lerp towards server position to prevent drift accumulation
+                    const correctedPos = {
+                      x: clientPos.x + (serverPos.x - clientPos.x) * CORRECTION_SMOOTHING_FACTOR,
+                      y: clientPos.y + (serverPos.y - clientPos.y) * CORRECTION_SMOOTHING_FACTOR,
+                    };
+                    existingEntity
+                      .getExt(ClientPositionable)
+                      .setPosition(new Vector2(correctedPos.x, correctedPos.y));
+
+                    // Apply other extension updates without positionable
+                    const filteredExts = value.filter(
+                      (v: any) => v.type !== ExtensionTypes.POSITIONABLE
+                    );
+                    if (filteredExts.length > 0) {
+                      existingEntity.deserializeProperty("extensions", filteredExts);
+                    }
+                  } else {
+                    // Tiny error: trust client prediction
+                    const filteredExts = value.filter(
+                      (v: any) => v.type !== ExtensionTypes.POSITIONABLE
+                    );
+                    if (filteredExts.length > 0) {
+                      existingEntity.deserializeProperty("extensions", filteredExts);
+                    }
+                  }
+                } else {
+                  existingEntity.deserializeProperty(key, value);
+                }
+              } else {
+                existingEntity.deserializeProperty(key, value);
+              }
+            }
+          }
+
+          // For other players, smooth movement with interpolation
+          if (
+            existingEntity.getId() !== this.gameState.playerId &&
+            existingEntity.hasExt(ClientPositionable)
+          ) {
+            const rawPos = existingEntity.getExt(ClientPositionable).getPosition();
+            this.interpolation.addSnapshot(existingEntity.getId(), rawPos, timestamp);
+            const smooth = this.interpolation.getInterpolatedPosition(existingEntity.getId());
+            if (smooth) {
+              existingEntity.getExt(ClientPositionable).setPosition(smooth);
             }
           }
         } else {
           // Add new entity
-          this.gameState.entities.push(
-            this.gameClient.getEntityFactory().createEntity(serverEntityData)
-          );
+          const created = this.gameClient.getEntityFactory().createEntity(serverEntityData);
+          if (created.getId() !== this.gameState.playerId && created.hasExt(ClientPositionable)) {
+            const pos = created.getExt(ClientPositionable).getPosition();
+            this.interpolation.addSnapshot(created.getId(), pos, timestamp);
+          }
+          // If new entity is my local player, seed the ghost position too
+          if (created.getId() === this.gameState.playerId && created.hasExt(ClientPositionable)) {
+            const pos = created.getExt(ClientPositionable).getPosition();
+            (created as unknown as PlayerClient).setServerGhostPosition(pos);
+          }
+          this.gameState.entities.push(created);
         }
       });
     }

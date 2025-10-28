@@ -14,6 +14,7 @@ export interface GameStateData {
   cycleStartTime?: number;
   cycleDuration?: number;
   isDay?: boolean;
+  timestamp?: number;
 }
 
 export class GameStateEvent implements GameEvent<GameStateData> {
