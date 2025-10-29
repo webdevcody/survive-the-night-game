@@ -2,6 +2,7 @@ import { Renderable } from "@/entities/util";
 import { MapManager } from "@/managers/map";
 import { GameState } from "@/state";
 import { CraftingTable } from "@/ui/crafting-table";
+import { MerchantBuyPanel } from "@/ui/merchant-buy-panel";
 import { InventoryBarUI } from "@/ui/inventory-bar";
 import { Hud } from "@/ui/hud";
 import { GameOverDialogUI } from "@/ui/game-over-dialog";
@@ -17,6 +18,7 @@ export class Renderer {
   private hotbar: InventoryBarUI;
   private hud: Hud;
   private craftingTable: CraftingTable;
+  private merchantBuyPanel: MerchantBuyPanel;
   private gameOverDialog: GameOverDialogUI;
   private particleManager: ParticleManager;
 
@@ -27,6 +29,7 @@ export class Renderer {
     hotbar: InventoryBarUI,
     hud: Hud,
     craftingTable: CraftingTable,
+    merchantBuyPanel: MerchantBuyPanel,
     gameOverDialog: GameOverDialogUI,
     particleManager: ParticleManager
   ) {
@@ -36,6 +39,7 @@ export class Renderer {
     this.hotbar = hotbar;
     this.hud = hud;
     this.craftingTable = craftingTable;
+    this.merchantBuyPanel = merchantBuyPanel;
     this.gameOverDialog = gameOverDialog;
     this.particleManager = particleManager;
     this.resizeCanvas();
@@ -127,6 +131,7 @@ export class Renderer {
     this.hotbar.render(this.ctx, this.gameState);
     this.hud.render(this.ctx, this.gameState);
     this.craftingTable.render(this.ctx, this.gameState);
+    this.merchantBuyPanel.render(this.ctx, this.gameState);
     this.gameOverDialog.render(this.ctx, this.gameState);
   }
 }

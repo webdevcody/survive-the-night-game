@@ -30,6 +30,7 @@ export const Entities = {
   GRENADE: "grenade",
   FIRE_EXTINGUISHER: "fire_extinguisher",
   COIN: "coin",
+  MERCHANT: "merchant",
 } as const;
 
 export const NON_SPAWNABLE = new Set([
@@ -37,6 +38,7 @@ export const NON_SPAWNABLE = new Set([
   Entities.BULLET,
   Entities.BOUNDARY,
   Entities.ACID_PROJECTILE,
+  Entities.MERCHANT,
 ]);
 
 export const SPAWNABLE_ENTITY_TYPES: EntityType[] = Object.values(Entities)

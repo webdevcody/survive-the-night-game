@@ -2,10 +2,13 @@ import { Player } from "@/entities/player";
 import { ServerSentEvents, ClientSentEvents } from "@shared/events/events";
 import { GameEvent } from "@shared/events/types";
 import Positionable from "@/extensions/positionable";
+import Inventory from "@/extensions/inventory";
 import { GameServer } from "@/server";
 import { AdminCommand } from "@shared/commands/commands";
 import { Input } from "../../../game-shared/src/util/input";
 import { RecipeType } from "../../../game-shared/src/util/recipes";
+import { ItemType } from "@shared/util/inventory";
+import Vector2 from "@/util/vector2";
 import { createServer } from "http";
 import { Server, Socket } from "socket.io";
 import express from "express";
@@ -226,6 +229,55 @@ export class ServerSocketManager implements Broadcaster {
     }
   }
 
+  private onMerchantBuy(
+    socket: Socket,
+    data: { merchantId: string; itemIndex: number }
+  ): void {
+    const player = this.players.get(socket.id);
+    if (!player) return;
+
+    // Find the merchant entity
+    const merchant = this.getEntityManager().getEntityById(data.merchantId);
+    if (!merchant || merchant.getType() !== "merchant") return;
+
+    // Get the shop items from the merchant
+    const shopItems = merchant.getShopItems?.();
+    if (!shopItems || data.itemIndex < 0 || data.itemIndex >= shopItems.length) return;
+
+    const selectedItem = shopItems[data.itemIndex];
+    const playerCoins = player.getCoins();
+
+    // Check if player has enough coins
+    if (playerCoins < selectedItem.price) {
+      console.log(
+        `Player ${player.getId()} tried to buy ${selectedItem.itemType} but doesn't have enough coins`
+      );
+      return;
+    }
+
+    // Deduct coins
+    player.addCoins(-selectedItem.price);
+
+    // Create the item
+    const item = { itemType: selectedItem.itemType as ItemType };
+    const inventory = player.getExt(Inventory);
+
+    // Add to inventory or drop on ground
+    if (inventory.isFull()) {
+      // Drop item 32 pixels down from player
+      const playerPos = player.getExt(Positionable).getPosition();
+      const dropPosition = new Vector2(playerPos.x, playerPos.y + 32);
+      const droppedEntity = this.getEntityManager().createEntityFromItem(item);
+      droppedEntity.getExt(Positionable).setPosition(dropPosition);
+      console.log(`Dropped ${selectedItem.itemType} on ground for player ${player.getId()}`);
+    } else {
+      inventory.addItem(item);
+      console.log(
+        `Player ${player.getId()} bought ${selectedItem.itemType} for ${selectedItem.price} coins`
+      );
+    }
+  }
+
   private onPlayerInput(socket: Socket, input: Input): void {
     const player = this.players.get(socket.id);
     if (!player) return;
@@ -270,6 +322,9 @@ export class ServerSocketManager implements Broadcaster {
     );
     socket.on(ClientSentEvents.SET_DISPLAY_NAME, (displayName: string) =>
       this.setPlayerDisplayName(socket, displayName)
+    );
+    socket.on(ClientSentEvents.MERCHANT_BUY, (data: { merchantId: string; itemIndex: number }) =>
+      this.onMerchantBuy(socket, data)
     );
     socket.on(ClientSentEvents.REQUEST_FULL_STATE, () => this.sendFullState(socket));
     socket.on(ClientSentEvents.PING, (timestamp: number) => {

@@ -73,6 +73,11 @@ export const MINIMAP_SETTINGS = {
       color: "#228B22",
       iconColor: "#FFFFFF",
     },
+    merchant: {
+      label: "M",
+      color: "#FF8C00",
+      iconColor: "#FFFFFF",
+    },
   },
 };
 
@@ -269,6 +274,17 @@ export class Minimap {
         config: settings.biomeIndicators.campsite,
       },
     ];
+
+    // Add merchant positions (there can be multiple)
+    if (biomePositions.merchants) {
+      biomePositions.merchants.forEach((merchantPos) => {
+        biomes.push({
+          name: "merchant",
+          position: merchantPos,
+          config: settings.biomeIndicators.merchant,
+        });
+      });
+    }
 
     biomes.forEach(({ position, config }) => {
       if (!position) return;

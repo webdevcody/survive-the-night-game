@@ -186,3 +186,34 @@ export const RECONCILIATION_LERP_SPEED = 0.15;
  * - true (current: for debugging rubber banding)
  */
 export const SHOW_DEBUG_VISUALS = false;
+
+// ========================================================================
+// MERCHANT SHOP
+// ========================================================================
+
+/**
+ * Items available in the merchant shop with their prices in coins
+ */
+export interface MerchantShopItem {
+  itemType: string;
+  price: number;
+}
+
+export const MERCHANT_SHOP_ITEMS: MerchantShopItem[] = [
+  // Consumables & Healing
+  { itemType: "bandage", price: 10 },
+  { itemType: "cloth", price: 5 },
+
+  // Ammunition
+  { itemType: "pistol_ammo", price: 15 },
+  { itemType: "shotgun_ammo", price: 20 },
+
+  // Explosives & Throwables
+  { itemType: "landmine", price: 50 },
+  { itemType: "grenade", price: 30 },
+  { itemType: "fire_extinguisher", price: 25 },
+
+  // Light & Fuel
+  { itemType: "torch", price: 8 },
+  { itemType: "gasoline", price: 12 },
+];

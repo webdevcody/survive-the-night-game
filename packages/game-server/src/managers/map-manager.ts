@@ -23,15 +23,18 @@ import { Spikes } from "@/entities/items/spikes";
 import { Torch } from "@/entities/items/torch";
 import { Wall } from "@/entities/items/wall";
 import { SpitterZombie } from "@/entities/enemies/spitter-zombie";
+import { Merchant } from "@/entities/environment/merchant";
 import {
   CAMPSITE,
   FOREST1,
   FOREST2,
   FOREST3,
+  FOREST_4,
   WATER,
   FARM,
   GAS_STATION,
   CITY,
+  MERCHANT,
   type BiomeData,
 } from "@/biomes";
 import type { MapData } from "@shared/events/server-sent/map-event";
@@ -86,6 +89,7 @@ export class MapManager implements IMapManager {
   private farmBiomePosition?: { x: number; y: number };
   private gasStationBiomePosition?: { x: number; y: number };
   private cityBiomePosition?: { x: number; y: number };
+  private merchantBiomePositions: Array<{ x: number; y: number }> = [];
 
   constructor() {}
 
@@ -126,6 +130,7 @@ export class MapManager implements IMapManager {
         farm: this.farmBiomePosition,
         gasStation: this.gasStationBiomePosition,
         city: this.cityBiomePosition,
+        merchants: this.merchantBiomePositions,
       },
     };
   }
@@ -243,8 +248,10 @@ export class MapManager implements IMapManager {
     this.selectRandomFarmBiomePosition();
     this.selectRandomGasStationBiomePosition();
     this.selectRandomCityBiomePosition();
+    this.selectRandomMerchantBiomePositions();
     this.fillMapWithBiomes();
     this.createForestBoundaries();
+    this.spawnMerchants();
     this.spawnItems();
     this.spawnDebugZombieIfEnabled();
   }
@@ -359,6 +366,64 @@ export class MapManager implements IMapManager {
     }
   }
 
+  private selectRandomMerchantBiomePositions() {
+    // Clear any previous merchant positions
+    this.merchantBiomePositions = [];
+
+    const centerBiomeX = Math.floor(MAP_SIZE / 2);
+    const centerBiomeY = Math.floor(MAP_SIZE / 2);
+
+    // Spawn 2 merchant biomes
+    for (let i = 0; i < 10; i++) {
+      const validPositions: { x: number; y: number }[] = [];
+
+      // Collect all valid biome positions (not edges, not center, not already used)
+      for (let biomeY = 1; biomeY < MAP_SIZE - 1; biomeY++) {
+        for (let biomeX = 1; biomeX < MAP_SIZE - 1; biomeX++) {
+          // Skip the center campsite biome
+          if (biomeX === centerBiomeX && biomeY === centerBiomeY) {
+            continue;
+          }
+          // Skip the farm biome position
+          if (
+            this.farmBiomePosition &&
+            biomeX === this.farmBiomePosition.x &&
+            biomeY === this.farmBiomePosition.y
+          ) {
+            continue;
+          }
+          // Skip the gas station biome position
+          if (
+            this.gasStationBiomePosition &&
+            biomeX === this.gasStationBiomePosition.x &&
+            biomeY === this.gasStationBiomePosition.y
+          ) {
+            continue;
+          }
+          // Skip the city biome position
+          if (
+            this.cityBiomePosition &&
+            biomeX === this.cityBiomePosition.x &&
+            biomeY === this.cityBiomePosition.y
+          ) {
+            continue;
+          }
+          // Skip already selected merchant biome positions
+          if (this.merchantBiomePositions.some((pos) => pos.x === biomeX && pos.y === biomeY)) {
+            continue;
+          }
+          validPositions.push({ x: biomeX, y: biomeY });
+        }
+      }
+
+      // Select a random position from valid positions
+      if (validPositions.length > 0) {
+        const randomIndex = Math.floor(Math.random() * validPositions.length);
+        this.merchantBiomePositions.push(validPositions[randomIndex]);
+      }
+    }
+  }
+
   private fillMapWithBiomes() {
     for (let biomeY = 0; biomeY < MAP_SIZE; biomeY++) {
       for (let biomeX = 0; biomeX < MAP_SIZE; biomeX++) {
@@ -377,6 +442,21 @@ export class MapManager implements IMapManager {
           const boundary = new Boundary(this.getGameManagers());
           boundary.setPosition(new Vector2(x * TILE_SIZE, y * TILE_SIZE));
           this.getEntityManager().addEntity(boundary);
+        }
+      }
+    }
+  }
+
+  private spawnMerchants() {
+    const totalSize = BIOME_SIZE * MAP_SIZE;
+    for (let y = 0; y < totalSize; y++) {
+      for (let x = 0; x < totalSize; x++) {
+        // Check collidables layer for merchant tile (255)
+        const collidableTileId = this.collidablesLayer[y][x];
+        if (collidableTileId === 255) {
+          const merchant = new Merchant(this.getGameManagers());
+          merchant.setPosition(new Vector2(x * TILE_SIZE, y * TILE_SIZE));
+          this.getEntityManager().addEntity(merchant);
         }
       }
     }
@@ -511,9 +591,12 @@ export class MapManager implements IMapManager {
     ) {
       // Place city at the randomly selected position
       biome = CITY;
+    } else if (this.merchantBiomePositions.some((pos) => biomeX === pos.x && biomeY === pos.y)) {
+      // Place merchant at the randomly selected positions
+      biome = MERCHANT;
     } else {
       // Place forest everywhere else
-      const forestBiomes = [FOREST1, FOREST2, FOREST3];
+      const forestBiomes = [FOREST1, FOREST2, FOREST3, FOREST_4];
       biome = forestBiomes[Math.floor(Math.random() * forestBiomes.length)];
     }
 

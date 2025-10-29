@@ -132,6 +132,14 @@ export class GameServer {
         player.revive();
       }
     });
+
+    // Reset merchant shop items
+    const merchants = this.entityManager.getMerchantEntities();
+    merchants.forEach((merchant) => {
+      if (merchant.randomizeShopItems) {
+        merchant.randomizeShopItems();
+      }
+    });
   }
 
   private onNightStart(): void {

@@ -39,6 +39,7 @@ import { BatZombie } from "@/entities/enemies/bat-zombie";
 import { SpitterZombie } from "@/entities/enemies/spitter-zombie";
 import { ExplodingZombie } from "@/entities/enemies/exploding-zombie";
 import { LeapingZombie } from "@/entities/enemies/leaping-zombie";
+import { Merchant } from "@/entities/environment/merchant";
 
 const entityMap = {
   [Entities.PLAYER]: Player,
@@ -67,6 +68,7 @@ const entityMap = {
   [Entities.SPITTER_ZOMBIE]: SpitterZombie,
   [Entities.EXPLODING_ZOMBIE]: ExplodingZombie,
   [Entities.LEAPING_ZOMBIE]: LeapingZombie,
+  [Entities.MERCHANT]: Merchant,
 };
 
 const STATIC_ENTITIES: EntityType[] = [Entities.BOUNDARY];
@@ -482,5 +484,9 @@ export class EntityManager implements IEntityManager {
 
   getZombieEntities(): BaseEnemy[] {
     return this.entities.filter((entity) => Zombies.includes(entity.getType())) as BaseEnemy[];
+  }
+
+  getMerchantEntities(): Entity[] {
+    return this.entities.filter((entity) => entity.getType() === Entities.MERCHANT);
   }
 }

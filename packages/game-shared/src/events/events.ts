@@ -37,6 +37,7 @@ export const ClientSentEvents = {
   REQUEST_FULL_STATE: "requestFullState",
   PING: "ping",
   SEND_CHAT: "sendChat",
+  MERCHANT_BUY: "merchantBuy",
 } as const;
 
 export type ServerSentEventType = (typeof ServerSentEvents)[keyof typeof ServerSentEvents];

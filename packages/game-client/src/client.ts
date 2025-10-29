@@ -7,6 +7,7 @@ import { MapManager } from "@/managers/map";
 import { GameState, getEntityById } from "@/state";
 import { InventoryBarUI } from "@/ui/inventory-bar";
 import { CraftingTable } from "@/ui/crafting-table";
+import { MerchantBuyPanel } from "@/ui/merchant-buy-panel";
 import { StorageManager } from "@/managers/storage";
 import { Hud } from "@/ui/hud";
 import { EntityFactory } from "@/entities/entity-factory";
@@ -22,6 +23,7 @@ import { Direction } from "../../game-shared/src/util/direction";
 import { Input } from "../../game-shared/src/util/input";
 import { ClientEntityBase } from "@/extensions/client-entity";
 import { ClientDestructible } from "@/extensions/destructible";
+import { ClientPositionable } from "@/extensions";
 import { ParticleManager } from "./managers/particles";
 import { PredictionManager } from "./managers/prediction";
 
@@ -57,6 +59,7 @@ export class GameClient {
   private renderer: Renderer;
   private hud: Hud;
   private craftingTable: CraftingTable;
+  private merchantBuyPanel: MerchantBuyPanel;
   private hotbar: InventoryBarUI;
   private gameOverDialog: GameOverDialogUI;
 
@@ -129,6 +132,14 @@ export class GameClient {
     });
 
     // TODO: refactor to use event emitter
+    this.merchantBuyPanel = new MerchantBuyPanel(this.assetManager, {
+      getPlayer,
+      onBuy: (merchantId, itemIndex) => {
+        this.socketManager.sendMerchantBuy(merchantId, itemIndex);
+      },
+    });
+
+    // TODO: refactor to use event emitter
     this.inputManager = new InputManager({
       onCraft: () => {
         const player = getPlayer();
@@ -193,7 +204,41 @@ export class GameClient {
         }
       },
       onInteract: (inputs: Input) => {
+        // If merchant panel is open, close it (toggle functionality)
+        if (this.merchantBuyPanel.isVisible()) {
+          this.merchantBuyPanel.close();
+          return;
+        }
+
         if (!this.craftingTable.isVisible()) {
+          // Check if there's a merchant nearby
+          const player = getPlayer();
+          if (player) {
+            const playerPos = player.getPosition();
+            const merchants = this.gameState.entities.filter((e) => e.getType() === "merchant");
+
+            for (const merchantEntity of merchants) {
+              if (merchantEntity.hasExt(ClientPositionable)) {
+                const merchantPos = merchantEntity.getExt(ClientPositionable).getPosition();
+                const dx = merchantPos.x - playerPos.x;
+                const dy = merchantPos.y - playerPos.y;
+                const distance = Math.sqrt(dx * dx + dy * dy);
+
+                // MAX_INTERACT_RADIUS from game config is 20
+                if (distance <= 20) {
+                  // Cast to MerchantClient to access shop items
+                  const merchant = merchantEntity as any;
+                  const shopItems = merchant.getShopItems?.();
+                  if (shopItems && shopItems.length > 0) {
+                    // Open merchant panel
+                    this.merchantBuyPanel.open(merchantEntity.getId(), shopItems);
+                    return;
+                  }
+                }
+              }
+            }
+          }
+
           inputs.interact = true;
         }
       },
@@ -218,6 +263,20 @@ export class GameClient {
           inputs.facing = Direction.Up;
         }
       },
+      onMerchantKey1: () => {
+        this.merchantBuyPanel.buySelected(0);
+      },
+      onMerchantKey2: () => {
+        this.merchantBuyPanel.buySelected(1);
+      },
+      onMerchantKey3: () => {
+        this.merchantBuyPanel.buySelected(2);
+      },
+      onEscape: () => {
+        if (this.merchantBuyPanel.isVisible()) {
+          this.merchantBuyPanel.close();
+        }
+      },
     });
 
     this.hotbar = new InventoryBarUI(this.assetManager, this.inputManager, getInventory);
@@ -240,6 +299,7 @@ export class GameClient {
       this.hotbar,
       this.hud,
       this.craftingTable,
+      this.merchantBuyPanel,
       this.gameOverDialog,
       this.particleManager
     );
@@ -397,7 +457,8 @@ export class GameClient {
       const mapData = this.mapManager.getMapData();
 
       // Only predict movement and send input if player is alive
-      const isAlive = !player.hasExt(ClientDestructible) || !player.getExt(ClientDestructible).isDead();
+      const isAlive =
+        !player.hasExt(ClientDestructible) || !player.getExt(ClientDestructible).isDead();
 
       if (isAlive) {
         this.predictionManager.predictLocalPlayerMovement(

@@ -17,6 +17,10 @@ export interface InputManagerOptions {
   onChatInput?: (key: string) => void;
   onSendChat?: () => void;
   onToggleMute?: () => void;
+  onMerchantKey1?: () => void;
+  onMerchantKey2?: () => void;
+  onMerchantKey3?: () => void;
+  onEscape?: () => void;
 }
 
 export class InputManager {
@@ -119,6 +123,18 @@ export class InputManager {
         case "Tab":
           e.preventDefault(); // Prevent tab from changing focus
           callbacks.onShowPlayerList?.();
+          break;
+        case "Escape":
+          callbacks.onEscape?.();
+          break;
+        case "Digit1":
+          callbacks.onMerchantKey1?.();
+          break;
+        case "Digit2":
+          callbacks.onMerchantKey2?.();
+          break;
+        case "Digit3":
+          callbacks.onMerchantKey3?.();
           break;
       }
 

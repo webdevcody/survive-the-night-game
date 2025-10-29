@@ -4,5 +4,7 @@ export { FARM } from "./farm";
 export { FOREST1 } from "./forest1";
 export { FOREST2 } from "./forest2";
 export { FOREST3 } from "./forest3";
+export { FOREST_4 } from "./forest4";
 export { GAS_STATION } from "./gas-station";
+export { MERCHANT } from "./merchant";
 export { WATER } from "./water";

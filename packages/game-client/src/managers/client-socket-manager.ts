@@ -165,6 +165,10 @@ export class ClientSocketManager {
     this.socket.emit(ClientSentEvents.REQUEST_FULL_STATE);
   }
 
+  public sendMerchantBuy(merchantId: string, itemIndex: number) {
+    this.socket.emit(ClientSentEvents.MERCHANT_BUY, { merchantId, itemIndex });
+  }
+
   public sendChatMessage(message: string) {
     this.socket.emit(ClientSentEvents.SEND_CHAT, { message });
   }
