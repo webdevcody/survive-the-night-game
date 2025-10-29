@@ -6,7 +6,7 @@ const CHAT_FONT_FAMILY = "Arial";
 const CHAT_MONOSPACE_FONT_FAMILY = "Courier New, monospace";
 const CHAT_TEXT_COLOR = "white";
 const CHAT_INPUT_HEIGHT = 50;
-const CHAT_BOTTOM_MARGIN = 180; // Distance from bottom of screen to chat input
+const CHAT_BOTTOM_MARGIN = 190; // Distance from bottom of screen to chat input
 
 interface ChatMessage {
   playerId: string;
@@ -18,9 +18,12 @@ export class ChatWidget {
   private showChatInput: boolean = false;
   private chatInput: string = "";
   private chatMessages: ChatMessage[] = [];
+  private messageHistory: string[] = [];
+  private historyIndex: number = -1;
   private readonly CHAT_MESSAGE_TIMEOUT = 10000;
   private readonly MAX_MESSAGE_LENGTH = 60;
-  private readonly CHAT_WIDTH = 800;
+  private readonly MAX_HISTORY_LENGTH = 50;
+  private readonly CHAT_WIDTH = 840;
   private readonly CHARS_PER_LINE = 100;
 
   constructor() {}
@@ -37,6 +40,9 @@ export class ChatWidget {
     this.showChatInput = !this.showChatInput;
     if (!this.showChatInput) {
       this.chatInput = ""; // Clear input when closing
+    } else {
+      // Reset history navigation when opening chat
+      this.historyIndex = -1;
     }
   }
 
@@ -45,8 +51,33 @@ export class ChatWidget {
 
     if (key === "Backspace") {
       this.chatInput = this.chatInput.slice(0, -1);
+    } else if (key === "ArrowUp") {
+      this.navigateHistory(1);
+    } else if (key === "ArrowDown") {
+      this.navigateHistory(-1);
     } else if (key.length === 1 && this.chatInput.length < this.MAX_MESSAGE_LENGTH) {
       this.chatInput += key;
+      // Reset history navigation when user types
+      this.historyIndex = -1;
+    }
+  }
+
+  private navigateHistory(direction: number): void {
+    if (this.messageHistory.length === 0) return;
+
+    const newIndex = this.historyIndex + direction;
+
+    // Clamp the index between -1 (current input) and history length - 1 (oldest message)
+    if (newIndex >= -1 && newIndex < this.messageHistory.length) {
+      this.historyIndex = newIndex;
+
+      if (this.historyIndex === -1) {
+        // Reset to empty input
+        this.chatInput = "";
+      } else {
+        // Load message from history (most recent first)
+        this.chatInput = this.messageHistory[this.historyIndex];
+      }
     }
   }
 
@@ -58,9 +89,25 @@ export class ChatWidget {
     this.chatInput = "";
   }
 
+  public saveChatMessage(message: string): void {
+    if (message.trim() === "") return;
+
+    // Add to history (most recent first)
+    this.messageHistory.unshift(message);
+
+    // Limit history size
+    if (this.messageHistory.length > this.MAX_HISTORY_LENGTH) {
+      this.messageHistory = this.messageHistory.slice(0, this.MAX_HISTORY_LENGTH);
+    }
+
+    // Reset history index
+    this.historyIndex = -1;
+  }
+
   public addChatMessage(playerId: string, message: string): void {
     // Only truncate user messages, not system messages
-    const truncatedMessage = playerId === "system" ? message : message.slice(0, this.MAX_MESSAGE_LENGTH);
+    const truncatedMessage =
+      playerId === "system" ? message : message.slice(0, this.MAX_MESSAGE_LENGTH);
 
     this.chatMessages.push({
       playerId,

@@ -93,19 +93,21 @@ export abstract class EnemyClient extends ClientEntityBase implements IClientEnt
     }
     this.previousHealth = currentHealth;
 
-    const targetPosition = this.getPosition();
+    const destructible = this.getExt(ClientDestructible);
+    const isDead = destructible.isDead();
 
-    this.lastRenderPosition = this.lerpPosition(
-      targetPosition,
-      new Vector2(this.lastRenderPosition.x, this.lastRenderPosition.y)
-    );
+    // Only update position if alive to prevent jittering when dead
+    if (!isDead) {
+      const targetPosition = this.getPosition();
+      this.lastRenderPosition = this.lerpPosition(
+        targetPosition,
+        new Vector2(this.lastRenderPosition.x, this.lastRenderPosition.y)
+      );
+    }
 
     const renderPosition = roundVector2(
       new Vector2(this.lastRenderPosition.x, this.lastRenderPosition.y)
     );
-
-    const destructible = this.getExt(ClientDestructible);
-    const isDead = destructible.isDead();
 
     isDead
       ? this.renderEnemyDead(gameState, ctx, renderPosition)
@@ -214,11 +216,19 @@ export abstract class EnemyClient extends ClientEntityBase implements IClientEnt
     ctx.drawImage(image, renderPosition.x, renderPosition.y);
 
     if (myPlayer) {
+      // Use frozen render position to prevent jittering of loot text
+      const positionable = this.getExt(ClientPositionable);
+      const size = positionable.getSize();
+      const centerPosition = new Vector2(
+        renderPosition.x + size.x / 2,
+        renderPosition.y + size.y / 2
+      );
+
       renderInteractionText(
         ctx,
         "loot (e)",
-        this.getCenterPosition(),
-        this.getPosition(),
+        centerPosition,
+        renderPosition,
         myPlayer.getPosition()
       );
     }

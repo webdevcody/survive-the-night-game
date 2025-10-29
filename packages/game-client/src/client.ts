@@ -164,6 +164,7 @@ export class GameClient {
       onSendChat: () => {
         const message = this.hud.getChatInput();
         if (message.trim()) {
+          this.hud.saveChatMessage(message.trim());
           this.socketManager.sendChatMessage(message.trim());
           this.hud.clearChatInput();
         }

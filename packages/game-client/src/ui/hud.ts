@@ -561,6 +561,10 @@ export class Hud {
     this.chatWidget.addChatMessage(playerId, message);
   }
 
+  public saveChatMessage(message: string): void {
+    this.chatWidget.saveChatMessage(message);
+  }
+
   public handleClick(x: number, y: number, canvasHeight: number): boolean {
     // Check if click is on mute button
     const settings = HUD_SETTINGS.MuteButton;

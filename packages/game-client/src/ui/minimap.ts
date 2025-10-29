@@ -295,7 +295,7 @@ export class Minimap {
       const edgeY = centerY + Math.sin(angle) * (radius - 20);
 
       // Draw the indicator circle
-      const indicatorSize = 16;
+      const indicatorSize = 24;
       ctx.fillStyle = config.color;
       ctx.beginPath();
       ctx.arc(edgeX, edgeY, indicatorSize / 2, 0, Math.PI * 2);
@@ -310,7 +310,7 @@ export class Minimap {
 
       // Draw the label text
       ctx.fillStyle = config.iconColor;
-      ctx.font = "bold 11px Arial";
+      ctx.font = "bold 16px Arial";
       ctx.textAlign = "center";
       ctx.textBaseline = "middle";
       ctx.fillText(config.label, edgeX, edgeY);
@@ -364,10 +364,7 @@ export class Minimap {
       // Draw filled triangle
       ctx.fillStyle = settings.colors.player;
       ctx.beginPath();
-      ctx.moveTo(
-        edgeX + Math.cos(angle) * indicatorSize,
-        edgeY + Math.sin(angle) * indicatorSize
-      );
+      ctx.moveTo(edgeX + Math.cos(angle) * indicatorSize, edgeY + Math.sin(angle) * indicatorSize);
       ctx.lineTo(
         edgeX + Math.cos(angle + (2 * Math.PI) / 3) * indicatorSize,
         edgeY + Math.sin(angle + (2 * Math.PI) / 3) * indicatorSize
@@ -383,10 +380,7 @@ export class Minimap {
       ctx.strokeStyle = "white";
       ctx.lineWidth = 2;
       ctx.beginPath();
-      ctx.moveTo(
-        edgeX + Math.cos(angle) * indicatorSize,
-        edgeY + Math.sin(angle) * indicatorSize
-      );
+      ctx.moveTo(edgeX + Math.cos(angle) * indicatorSize, edgeY + Math.sin(angle) * indicatorSize);
       ctx.lineTo(
         edgeX + Math.cos(angle + (2 * Math.PI) / 3) * indicatorSize,
         edgeY + Math.sin(angle + (2 * Math.PI) / 3) * indicatorSize

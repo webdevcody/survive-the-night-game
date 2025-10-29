@@ -68,6 +68,11 @@ export class InputManager {
           return;
         }
 
+        // Prevent default behavior for arrow keys to avoid page scrolling
+        if (e.key === "ArrowUp" || e.key === "ArrowDown") {
+          e.preventDefault();
+        }
+
         callbacks.onChatInput?.(e.key);
         return;
       }
