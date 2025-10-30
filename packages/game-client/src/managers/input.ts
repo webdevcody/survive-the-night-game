@@ -198,6 +198,18 @@ export class InputManager {
         case "KeyD":
           callbacks.onRight?.(this.inputs);
           break;
+        case "ArrowUp":
+          callbacks.onUp?.(this.inputs);
+          break;
+        case "ArrowDown":
+          callbacks.onDown?.(this.inputs);
+          break;
+        case "ArrowLeft":
+          callbacks.onLeft?.(this.inputs);
+          break;
+        case "ArrowRight":
+          callbacks.onRight?.(this.inputs);
+          break;
         case "KeyF":
           callbacks.onInteract?.(this.inputs);
           break;
@@ -286,6 +298,18 @@ export class InputManager {
           this.inputs.dx = this.inputs.dx === -1 ? 0 : this.inputs.dx;
           break;
         case "KeyD":
+          this.inputs.dx = this.inputs.dx === 1 ? 0 : this.inputs.dx;
+          break;
+        case "ArrowUp":
+          this.inputs.dy = this.inputs.dy === -1 ? 0 : this.inputs.dy;
+          break;
+        case "ArrowDown":
+          this.inputs.dy = this.inputs.dy === 1 ? 0 : this.inputs.dy;
+          break;
+        case "ArrowLeft":
+          this.inputs.dx = this.inputs.dx === -1 ? 0 : this.inputs.dx;
+          break;
+        case "ArrowRight":
           this.inputs.dx = this.inputs.dx === 1 ? 0 : this.inputs.dx;
           break;
         case "KeyF":
