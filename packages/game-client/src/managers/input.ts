@@ -55,35 +55,47 @@ export class InputManager {
     const inventory = this.callbacks.getInventory?.() || [];
     if (inventory.length === 0) return;
 
-    const weaponIndices: number[] = [];
+    // Get currently selected weapon type (if any)
+    const currentSlot = this.inputs.inventoryItem;
+    const currentItem = inventory[currentSlot - 1]; // Convert from 1-indexed
+    const currentWeaponType = WEAPON_TYPE_VALUES.includes(currentItem?.itemType)
+      ? currentItem.itemType
+      : null;
 
-    // Find all weapon positions in inventory
+    // Build list of weapon indices with their types
+    const weaponSlots: { index: number; type: string }[] = [];
     inventory.forEach((item: any, index: number) => {
       if (WEAPON_TYPE_VALUES.includes(item?.itemType)) {
-        weaponIndices.push(index + 1); // Convert to 1-indexed
+        weaponSlots.push({ index: index + 1, type: item.itemType }); // 1-indexed
       }
     });
 
-    if (weaponIndices.length === 0) return;
+    if (weaponSlots.length === 0) return;
 
-    // Find current weapon index in the weapon list
-    const currentIdx = weaponIndices.indexOf(this.inputs.inventoryItem);
+    // Filter to only weapons that are DIFFERENT from current weapon type
+    const differentWeapons = weaponSlots.filter((slot) => slot.type !== currentWeaponType);
+
+    // If no different weapons available, don't cycle
+    if (differentWeapons.length === 0) return;
+
+    // Find current weapon index in the different weapons list
+    const currentIdx = differentWeapons.findIndex((slot) => slot.index === currentSlot);
 
     let nextIdx: number;
     if (currentIdx === -1) {
-      // No weapon currently selected, select first weapon
-      nextIdx = direction === 1 ? 0 : weaponIndices.length - 1;
+      // Current slot not in different weapons list, select first different weapon
+      nextIdx = direction === 1 ? 0 : differentWeapons.length - 1;
     } else {
-      // Cycle to next/previous weapon with wrapping
+      // Cycle to next/previous different weapon with wrapping
       nextIdx = currentIdx + direction;
-      if (nextIdx >= weaponIndices.length) {
+      if (nextIdx >= differentWeapons.length) {
         nextIdx = 0; // Wrap to first
       } else if (nextIdx < 0) {
-        nextIdx = weaponIndices.length - 1; // Wrap to last
+        nextIdx = differentWeapons.length - 1; // Wrap to last
       }
     }
 
-    this.inputs.inventoryItem = weaponIndices[nextIdx];
+    this.inputs.inventoryItem = differentWeapons[nextIdx].index;
   }
 
   private quickHeal() {
@@ -124,7 +136,7 @@ export class InputManager {
             this.merchantPanelConsumedKeys.add(eventKey);
             callbacks.onMerchantKey3?.();
             break;
-          case "KeyE":
+          case "KeyF":
           case "Escape":
             callbacks.onEscape?.();
             break;
