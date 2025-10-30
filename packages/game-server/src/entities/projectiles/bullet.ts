@@ -22,9 +22,11 @@ export class Bullet extends Entity {
   private static readonly BULLET_SPEED = 400;
   private lastPosition: Vector2;
   private shooterId: string = "";
+  private damage: number;
 
-  constructor(gameManagers: IGameManagers) {
+  constructor(gameManagers: IGameManagers, damage: number = 1) {
     super(gameManagers, Entities.BULLET);
+    this.damage = damage;
 
     this.extensions = [
       new Positionable(this),
@@ -201,7 +203,7 @@ export class Bullet extends Entity {
         this.getEntityManager().markEntityForRemoval(this);
         const destructible = enemy.getExt(Destructible);
         const wasAlive = !destructible.isDead();
-        destructible.damage(1);
+        destructible.damage(this.damage);
 
         // If the enemy died from this hit, increment the shooter's kill count
         if (wasAlive && destructible.isDead()) {

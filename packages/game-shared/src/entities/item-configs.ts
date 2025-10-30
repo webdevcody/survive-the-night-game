@@ -39,6 +39,26 @@ export const ITEM_CONFIGS: Record<string, ItemConfig> = {
       sheet: "items",
     },
   },
+  bolt_action_ammo: {
+    id: "bolt_action_ammo",
+    category: "ammo",
+    assets: {
+      assetKey: "bolt_action_ammo",
+      x: 16,
+      y: 64,
+      sheet: "items",
+    },
+  },
+  ak47_ammo: {
+    id: "ak47_ammo",
+    category: "ammo",
+    assets: {
+      assetKey: "ak47_ammo",
+      x: 48,
+      y: 64,
+      sheet: "items",
+    },
+  },
   landmine: {
     id: "landmine",
     category: "placeable",

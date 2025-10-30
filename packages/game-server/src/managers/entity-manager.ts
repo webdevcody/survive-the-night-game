@@ -8,6 +8,8 @@ import { Coin } from "@/entities/items/coin";
 import { Gasoline } from "@/entities/items/gasoline";
 import { PistolAmmo } from "@/entities/items/pistol-ammo";
 import { ShotgunAmmo } from "@/entities/items/shotgun-ammo";
+import { BoltActionAmmo } from "@/entities/items/bolt-action-ammo";
+import { AK47Ammo } from "@/entities/items/ak47-ammo";
 import { Spikes } from "@/entities/items/spikes";
 import { Torch } from "@/entities/items/torch";
 import { Tree } from "@/entities/items/tree";
@@ -17,6 +19,8 @@ import { Bullet } from "@/entities/projectiles/bullet";
 import { Knife } from "@/entities/weapons/knife";
 import { Pistol } from "@/entities/weapons/pistol";
 import { Shotgun } from "@/entities/weapons/shotgun";
+import { BoltActionRifle } from "@/entities/weapons/bolt-action-rifle";
+import { AK47 } from "@/entities/weapons/ak47";
 import Collidable from "@/extensions/collidable";
 import Destructible from "@/extensions/destructible";
 import Positionable from "@/extensions/positionable";
@@ -50,6 +54,10 @@ const entityMap = {
   [Entities.PISTOL_AMMO]: PistolAmmo,
   [Entities.SHOTGUN]: Shotgun,
   [Entities.SHOTGUN_AMMO]: ShotgunAmmo,
+  [Entities.BOLT_ACTION_RIFLE]: BoltActionRifle,
+  [Entities.BOLT_ACTION_AMMO]: BoltActionAmmo,
+  [Entities.AK47]: AK47,
+  [Entities.AK47_AMMO]: AK47Ammo,
   [Entities.KNIFE]: Knife,
   [Entities.BANDAGE]: Bandage,
   [Entities.CLOTH]: Cloth,
@@ -121,10 +129,14 @@ export class EntityManager implements IEntityManager {
     this.registerItem("knife", Knife);
     this.registerItem("shotgun", Shotgun);
     this.registerItem("pistol", Pistol);
+    this.registerItem("bolt_action_rifle", BoltActionRifle);
+    this.registerItem("ak47", AK47);
 
     // Register ammo
     this.registerItem("pistol_ammo", PistolAmmo);
     this.registerItem("shotgun_ammo", ShotgunAmmo);
+    this.registerItem("bolt_action_ammo", BoltActionAmmo);
+    this.registerItem("ak47_ammo", AK47Ammo);
 
     // Register landmine
     this.registerItem("landmine", Landmine);

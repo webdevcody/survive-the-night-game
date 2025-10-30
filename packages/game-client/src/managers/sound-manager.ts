@@ -18,11 +18,17 @@ export const SOUND_TYPES_TO_MP3 = {
   GUN_EMPTY: "gun_empty",
   KNIFE_ATTACK: "knife_swing",
   LOOT: "loot",
+  BOLT_ACTION_RIFLE: "bolt_action_rifle",
+  AK47: "ak47",
 } as const;
 
 export type SoundType = (typeof SOUND_TYPES_TO_MP3)[keyof typeof SOUND_TYPES_TO_MP3];
 
-export type SoundLoadProgressCallback = (progress: number, total: number, soundName: string) => void;
+export type SoundLoadProgressCallback = (
+  progress: number,
+  total: number,
+  soundName: string
+) => void;
 
 export class SoundManager {
   private gameClient: GameClient | null;
@@ -50,15 +56,23 @@ export class SoundManager {
         const audio = new Audio(this.getSrc(soundType));
         audio.preload = "auto";
 
-        audio.addEventListener("canplaythrough", () => {
-          onProgress?.(index + 1, soundTypes.length, soundType);
-          resolve();
-        }, { once: true });
+        audio.addEventListener(
+          "canplaythrough",
+          () => {
+            onProgress?.(index + 1, soundTypes.length, soundType);
+            resolve();
+          },
+          { once: true }
+        );
 
-        audio.addEventListener("error", () => {
-          console.warn(`Failed to load sound: ${soundType}`);
-          resolve(); // Don't reject, just continue
-        }, { once: true });
+        audio.addEventListener(
+          "error",
+          () => {
+            console.warn(`Failed to load sound: ${soundType}`);
+            resolve(); // Don't reject, just continue
+          },
+          { once: true }
+        );
 
         this.audioCache.set(soundType, audio);
       });

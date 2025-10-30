@@ -22,6 +22,7 @@ export interface WeaponConfig {
   id: WeaponType;
   stats: WeaponStats;
   assets: WeaponAssetConfig;
+  sound?: string; // Sound file name (without .mp3 extension) to play when weapon is fired
 }
 
 class WeaponRegistry {

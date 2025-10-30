@@ -5,6 +5,7 @@ import { GunEmptyEvent } from "@shared/events/server-sent/gun-empty-event";
 import { LootEvent } from "@shared/events/server-sent/loot-event";
 import { MapEvent } from "@shared/events/server-sent/map-event";
 import { WEAPON_TYPES } from "@shared/types/weapons";
+import { weaponRegistry } from "@shared/entities";
 import { PlayerPickedUpItemEvent } from "@shared/events/server-sent/pickup-item-event";
 import { PlayerAttackedEvent } from "@shared/events/server-sent/player-attacked-event";
 import { PlayerDeathEvent } from "@shared/events/server-sent/player-death-event";
@@ -342,17 +343,19 @@ export class ClientEventListener {
     const player = entity as unknown as PlayerClient;
     const playerPosition = player.getCenterPosition();
 
-    const soundMap = {
-      [WEAPON_TYPES.PISTOL]: SOUND_TYPES_TO_MP3.PISTOL,
-      [WEAPON_TYPES.SHOTGUN]: SOUND_TYPES_TO_MP3.SHOTGUN_FIRE,
-      [WEAPON_TYPES.KNIFE]: SOUND_TYPES_TO_MP3.KNIFE_ATTACK,
-    };
-    this.gameClient
-      .getSoundManager()
-      .playPositionalSound(soundMap[playerAttackedEvent.getWeaponKey()], playerPosition);
+    // Get weapon config to determine sound
+    const weaponKey = playerAttackedEvent.getWeaponKey();
+    const weaponConfig = weaponRegistry.get(weaponKey);
+
+    // Play weapon sound if configured
+    if (weaponConfig?.sound) {
+      this.gameClient
+        .getSoundManager()
+        .playPositionalSound(weaponConfig.sound as any, playerPosition);
+    }
 
     // Only show swipe animation for knife attacks
-    if (playerAttackedEvent.getWeaponKey() === WEAPON_TYPES.KNIFE) {
+    if (weaponKey === WEAPON_TYPES.KNIFE) {
       const particle = new SwipeParticle(
         this.gameClient.getImageLoader(),
         player.getInput().facing,

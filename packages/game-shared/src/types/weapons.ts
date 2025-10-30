@@ -3,6 +3,8 @@ export const WEAPON_TYPES = {
   SHOTGUN: "shotgun",
   PISTOL: "pistol",
   GRENADE: "grenade",
+  BOLT_ACTION_RIFLE: "bolt_action_rifle",
+  AK47: "ak47",
 } as const;
 
 export type WeaponType = (typeof WEAPON_TYPES)[keyof typeof WEAPON_TYPES];

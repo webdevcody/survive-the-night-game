@@ -37,7 +37,8 @@ export function knockBack(
  * Returns true if ammo was successfully consumed, false otherwise.
  */
 export function consumeAmmo(inventory: Inventory, ammoType: string): boolean {
-  const ammoItem = inventory.getItems().find((item) => item.itemType === ammoType);
+  // TODO: item? the item should never be undefined
+  const ammoItem = inventory.getItems().find((item) => item?.itemType === ammoType);
 
   if (!ammoItem || !ammoItem.state?.count || ammoItem.state.count <= 0) {
     return false;

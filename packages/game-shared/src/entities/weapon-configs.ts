@@ -18,6 +18,7 @@ export const WEAPON_CONFIGS: Record<string, WeaponConfig> = {
       },
       sheet: "default",
     },
+    sound: "knife_swing",
   },
   [WEAPON_TYPES.PISTOL]: {
     id: WEAPON_TYPES.PISTOL,
@@ -33,6 +34,7 @@ export const WEAPON_CONFIGS: Record<string, WeaponConfig> = {
       },
       sheet: "default",
     },
+    sound: "pistol",
   },
   [WEAPON_TYPES.SHOTGUN]: {
     id: WEAPON_TYPES.SHOTGUN,
@@ -49,5 +51,38 @@ export const WEAPON_CONFIGS: Record<string, WeaponConfig> = {
       },
       sheet: "default",
     },
+    sound: "shotgun_fire",
+  },
+  [WEAPON_TYPES.BOLT_ACTION_RIFLE]: {
+    id: WEAPON_TYPES.BOLT_ACTION_RIFLE,
+    stats: {
+      cooldown: 2.0,
+    },
+    assets: {
+      assetPrefix: "bolt_action_rifle",
+      spritePositions: {
+        right: { x: 0, y: 64 },
+        down: { x: 17, y: 64 },
+        up: { x: 34, y: 64 },
+      },
+      sheet: "items",
+    },
+    sound: "pistol",
+  },
+  [WEAPON_TYPES.AK47]: {
+    id: WEAPON_TYPES.AK47,
+    stats: {
+      cooldown: 0.15,
+    },
+    assets: {
+      assetPrefix: "ak47",
+      spritePositions: {
+        right: { x: 32, y: 64 },
+        down: { x: 49, y: 64 },
+        up: { x: 66, y: 64 },
+      },
+      sheet: "items",
+    },
+    sound: "pistol",
   },
 };

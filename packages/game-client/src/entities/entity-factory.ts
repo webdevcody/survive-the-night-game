@@ -19,8 +19,12 @@ import { GasolineClient } from "@/entities/items/gasoline";
 import { PistolClient } from "@/entities/weapons/pistol";
 import { ShotgunClient } from "@/entities/weapons/shotgun";
 import { KnifeClient } from "@/entities/weapons/knife";
+import { BoltActionRifleClient } from "@/entities/weapons/bolt-action-rifle";
+import { AK47Client } from "@/entities/weapons/ak47";
 import { PistolAmmoClient } from "@/entities/weapons/pistol-ammo";
 import { ShotgunAmmoClient } from "@/entities/weapons/shotgun-ammo";
+import { BoltActionAmmoClient } from "@/entities/weapons/bolt-action-ammo";
+import { AK47AmmoClient } from "@/entities/weapons/ak47-ammo";
 import { LandmineClient } from "@/entities/items/landmine";
 import { ClientEntityBase } from "@/extensions/client-entity";
 import { GrenadeClient } from "./items/grenade";
@@ -40,6 +44,10 @@ export const entityMap = {
   [Entities.PISTOL_AMMO]: PistolAmmoClient,
   [Entities.SHOTGUN]: ShotgunClient,
   [Entities.SHOTGUN_AMMO]: ShotgunAmmoClient,
+  [Entities.BOLT_ACTION_RIFLE]: BoltActionRifleClient,
+  [Entities.BOLT_ACTION_AMMO]: BoltActionAmmoClient,
+  [Entities.AK47]: AK47Client,
+  [Entities.AK47_AMMO]: AK47AmmoClient,
   [Entities.KNIFE]: KnifeClient,
   [Entities.BANDAGE]: BandageClient,
   [Entities.CLOTH]: ClothClient,
