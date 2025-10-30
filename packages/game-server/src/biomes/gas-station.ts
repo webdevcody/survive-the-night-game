@@ -18,7 +18,7 @@ export const GAS_STATION: BiomeData = {
     [18, 50, 51, 51, 51, 51, 51, 51, 51, 69, 8, 8, 8, 4, 8, 18],
     [18, 28, 122, 122, 122, 122, 122, 122, 122, 28, 8, 8, 8, 8, 8, 18],
     [18, 18, 18, 18, 18, 18, 8, 14, 8, 4, 8, 18, 18, 18, 18, 18],
-    [18, 18, 18, 4, 8, 14, 8, 8, 20, 8, 18, 18, 18, 18, 18, 18]
+    [18, 18, 18, 4, 8, 14, 8, 8, 20, 8, 18, 18, 18, 18, 18, 18],
   ],
   collidables: [
     [3, 3, 3, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, 3, 3, 3],
@@ -36,7 +36,7 @@ export const GAS_STATION: BiomeData = {
     [-1, -1, -1, -1, -1, 90, 91, -1, -1, -1, 3, -1, -1, -1, -1, -1],
     [3, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, 3],
     [3, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, 3],
-    [3, 3, 3, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, 3, 3, 3]
+    [3, 3, 3, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, 3, 3, 3],
   ],
   items: [
     Entities.PISTOL,
@@ -48,6 +48,10 @@ export const GAS_STATION: BiomeData = {
     Entities.GASOLINE,
     Entities.GASOLINE,
     Entities.GASOLINE,
-    Entities.FIRE_EXTINGUISHER
+    Entities.FIRE_EXTINGUISHER,
+    Entities.AK47,
+    Entities.AK47_AMMO,
+    Entities.AK47_AMMO,
+    Entities.AK47_AMMO,
   ],
 };

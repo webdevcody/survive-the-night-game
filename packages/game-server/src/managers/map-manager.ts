@@ -38,15 +38,23 @@ import {
   type BiomeData,
 } from "@/biomes";
 import type { MapData } from "@shared/events/server-sent/map-event";
+import { AK47 } from "@/entities/weapons/ak47";
+import { AK47Ammo } from "@/entities/items/ak47-ammo";
+import { BoltActionAmmo } from "@/entities/items/bolt-action-ammo";
+import { BoltActionRifle } from "@/entities/weapons/bolt-action-rifle";
 
 const WEAPON_SPAWN_CHANCE = {
   // Weapons
   PISTOL: 0.0015,
   SHOTGUN: 0.0015,
   KNIFE: 0.002,
+  BOLT_ACTION_RIFLE: 0.0015,
+  AK47: 0.0015,
   // ammo
   PISTOL_AMMO: 0.005,
   SHOTGUN_AMMO: 0.005,
+  BOLT_ACTION_AMMO: 0.005,
+  AK47_AMMO: 0.005,
   // Items
   BANDAGE: 0.005,
   CLOTH: 0.008,
@@ -71,8 +79,13 @@ const spawnTable = [
   { chance: WEAPON_SPAWN_CHANCE.SPIKES, ItemClass: Spikes },
   { chance: WEAPON_SPAWN_CHANCE.WALL, ItemClass: Wall },
   { chance: WEAPON_SPAWN_CHANCE.TORCH, ItemClass: Torch },
+  { chance: WEAPON_SPAWN_CHANCE.PISTOL, ItemClass: Pistol },
+  { chance: WEAPON_SPAWN_CHANCE.BOLT_ACTION_RIFLE, ItemClass: BoltActionRifle },
+  { chance: WEAPON_SPAWN_CHANCE.AK47, ItemClass: AK47 },
   { chance: WEAPON_SPAWN_CHANCE.PISTOL_AMMO, ItemClass: PistolAmmo },
   { chance: WEAPON_SPAWN_CHANCE.SHOTGUN_AMMO, ItemClass: ShotgunAmmo },
+  { chance: WEAPON_SPAWN_CHANCE.BOLT_ACTION_AMMO, ItemClass: BoltActionAmmo },
+  { chance: WEAPON_SPAWN_CHANCE.AK47_AMMO, ItemClass: AK47Ammo },
   { chance: WEAPON_SPAWN_CHANCE.TREE, ItemClass: Tree },
 ];
 

@@ -24,7 +24,7 @@ export const CITY: BiomeData = {
     [8, 4, 8, 8, 24, 8, 8, 8, 8, 8, 8, 20, 8, 14, 8, 8],
     [8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 20, 8, 8, 8, 8],
     [8, 8, 14, 8, 14, 8, 8, 8, 22, 10, 10, 11, 24, 4, 8, 8],
-    [8, 8, 8, 24, 8, 14, 8, 8, 20, 8, 8, 9, 14, 8, 8, 8]
+    [8, 8, 8, 24, 8, 14, 8, 8, 20, 8, 8, 9, 14, 8, 8, 8],
   ],
   collidables: [
     [3, 3, 3, -1, -1, -1, -1, -1, -1, -1, -1, -1, 3, 3, 3, 3],
@@ -42,7 +42,7 @@ export const CITY: BiomeData = {
     [-1, -1, -1, -1, -1, -1, -1, 205, 206, 207, 208, -1, -1, -1, -1, -1],
     [3, -1, 90, 91, -1, -1, 3, 217, 218, 219, 220, -1, -1, -1, -1, 3],
     [3, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, 3, 3],
-    [3, 3, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, 3, 3, 3]
+    [3, 3, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, 3, 3, 3],
   ],
   items: [
     Entities.GRENADE,
@@ -50,6 +50,10 @@ export const CITY: BiomeData = {
     Entities.GRENADE,
     Entities.LANDMINE,
     Entities.LANDMINE,
-    Entities.GRENADE
+    Entities.GRENADE,
+    Entities.BOLT_ACTION_RIFLE,
+    Entities.BOLT_ACTION_AMMO,
+    Entities.BOLT_ACTION_AMMO,
+    Entities.BOLT_ACTION_AMMO,
   ],
 };
