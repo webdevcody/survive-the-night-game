@@ -21,6 +21,7 @@ export interface InputManagerOptions {
   onMerchantKey2?: () => void;
   onMerchantKey3?: () => void;
   onEscape?: () => void;
+  isMerchantPanelOpen?: () => boolean;
 }
 
 export class InputManager {
@@ -40,6 +41,7 @@ export class InputManager {
     ...this.inputs,
   };
   private isChatting = false;
+  private merchantPanelConsumedKeys = new Set<string>();
 
   private checkIfChanged() {
     this.hasChanged = JSON.stringify(this.inputs) !== JSON.stringify(this.lastInputs);
@@ -50,6 +52,33 @@ export class InputManager {
     window.addEventListener("keydown", (e) => {
       const eventCode = e.code;
       const eventKey = e.key.toLowerCase();
+
+      // Check if merchant panel is open
+      const isMerchantPanelOpen = callbacks.isMerchantPanelOpen?.() ?? false;
+
+      // Handle merchant panel inputs first
+      if (isMerchantPanelOpen) {
+        switch (eventCode) {
+          case "Digit1":
+            this.merchantPanelConsumedKeys.add(eventKey);
+            callbacks.onMerchantKey1?.();
+            break;
+          case "Digit2":
+            this.merchantPanelConsumedKeys.add(eventKey);
+            callbacks.onMerchantKey2?.();
+            break;
+          case "Digit3":
+            this.merchantPanelConsumedKeys.add(eventKey);
+            callbacks.onMerchantKey3?.();
+            break;
+          case "KeyE":
+          case "Escape":
+            callbacks.onEscape?.();
+            break;
+        }
+        // Block all other inputs when merchant panel is open
+        return;
+      }
 
       // Handle chat mode - use key for 'y' to support all layouts
       if (eventKey === "y" && !this.isChatting) {
@@ -146,20 +175,32 @@ export class InputManager {
       const eventCode = e.code;
       const eventKey = e.key.toLowerCase();
 
+      // Check if this key was consumed by merchant panel during keydown
+      if (this.merchantPanelConsumedKeys.has(eventKey)) {
+        this.merchantPanelConsumedKeys.delete(eventKey);
+        return; // Block this keyup event since it was consumed by merchant panel
+      }
+
+      // Check if merchant panel is open - block inventory switching if so
+      const isMerchantPanelOpen = callbacks.isMerchantPanelOpen?.() ?? false;
+
       // Use key for number keys (characters work the same across layouts)
-      switch (eventKey) {
-        case "1":
-        case "2":
-        case "3":
-        case "4":
-        case "5":
-        case "6":
-        case "7":
-        case "8":
-        case "9":
-        case "0":
-          this.inputs.inventoryItem = Number.parseInt(eventKey, 10);
-          break;
+      // Only allow inventory switching when merchant panel is closed
+      if (!isMerchantPanelOpen) {
+        switch (eventKey) {
+          case "1":
+          case "2":
+          case "3":
+          case "4":
+          case "5":
+          case "6":
+          case "7":
+          case "8":
+          case "9":
+          case "0":
+            this.inputs.inventoryItem = Number.parseInt(eventKey, 10);
+            break;
+        }
       }
 
       // Use physical key codes for WASD and other action keys

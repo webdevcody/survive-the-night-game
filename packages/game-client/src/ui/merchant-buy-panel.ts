@@ -69,10 +69,7 @@ export class MerchantBuyPanel implements Renderable {
   private shopItems: MerchantShopItem[] = [];
   private selectedIndex: number = 0;
 
-  public constructor(
-    assetManager: AssetManager,
-    { getPlayer, onBuy }: MerchantBuyPanelOptions
-  ) {
+  public constructor(assetManager: AssetManager, { getPlayer, onBuy }: MerchantBuyPanelOptions) {
     this.assetManager = assetManager;
     this.getPlayer = getPlayer;
     this.onBuy = onBuy;
@@ -130,7 +127,12 @@ export class MerchantBuyPanel implements Renderable {
       (this.shopItems.length - 1) * Item.gap +
       Container.padding * 2;
     const totalHeight =
-      Item.height + Container.padding * 2 + Title.marginBottom + Title.fontSize + Instructions.marginTop + Instructions.fontSize;
+      Item.height +
+      Container.padding * 2 +
+      Title.marginBottom +
+      Title.fontSize +
+      Instructions.marginTop +
+      Instructions.fontSize;
 
     // Center the panel on screen
     const canvasWidth = ctx.canvas.width;
@@ -150,11 +152,7 @@ export class MerchantBuyPanel implements Renderable {
     ctx.font = `bold ${Title.fontSize}px "Courier New"`;
     ctx.textAlign = "center";
     ctx.textBaseline = "top";
-    ctx.fillText(
-      Title.text,
-      offsetX + totalWidth / 2,
-      offsetY + Container.padding
-    );
+    ctx.fillText(Title.text, offsetX + totalWidth / 2, offsetY + Container.padding);
 
     // Draw items
     const itemsStartY = offsetY + Container.padding + Title.fontSize + Title.marginBottom;
@@ -213,11 +211,7 @@ export class MerchantBuyPanel implements Renderable {
       ctx.textAlign = "center";
       ctx.textBaseline = "bottom";
       const itemName = shopItem.itemType.replace(/_/g, " ");
-      ctx.fillText(
-        itemName,
-        itemX + Item.width / 2,
-        itemY + Item.height - Item.padding - 30
-      );
+      ctx.fillText(itemName, itemX + Item.width / 2, itemY + Item.height - Item.padding - 30);
 
       // Draw price with coin icon
       const priceText = `${shopItem.price}`;
@@ -250,11 +244,7 @@ export class MerchantBuyPanel implements Renderable {
       ctx.fillStyle = canAfford ? ItemText.priceColor : Item.cantAfford.borderColor;
       ctx.textAlign = "left";
       ctx.textBaseline = "bottom";
-      ctx.fillText(
-        priceText,
-        priceStartX + CoinIcon.size + 8,
-        itemY + Item.height - Item.padding
-      );
+      ctx.fillText(priceText, priceStartX + CoinIcon.size + 8, itemY + Item.height - Item.padding);
     }
 
     // Draw instructions
@@ -299,11 +289,7 @@ export class MerchantBuyPanel implements Renderable {
     ctx.fillStyle = "rgba(255, 215, 0, 1)";
     ctx.textAlign = "left";
     ctx.textBaseline = "middle";
-    ctx.fillText(
-      playerCoinsText,
-      playerCoinsStartX + CoinIcon.size + 8,
-      playerCoinsY
-    );
+    ctx.fillText(playerCoinsText, playerCoinsStartX + CoinIcon.size + 8, playerCoinsY);
 
     ctx.restore();
   }

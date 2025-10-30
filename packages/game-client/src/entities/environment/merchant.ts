@@ -38,26 +38,5 @@ export class MerchantClient extends ClientEntity implements Renderable {
 
   public render(ctx: CanvasRenderingContext2D, gameState: GameState): void {
     super.render(ctx, gameState);
-
-    // Render a simple colored square as a placeholder
-    // TODO: Replace with actual merchant sprite once available
-    const position = this.getExt(ClientPositionable).getPosition();
-
-    // Draw merchant body (brown)
-    ctx.fillStyle = "#8B4513"; // Brown color for merchant
-    ctx.fillRect(position.x, position.y, 16, 16);
-
-    // Draw face (beige)
-    ctx.fillStyle = "#FFE4C4"; // Beige for face
-    ctx.fillRect(position.x + 4, position.y + 4, 8, 8);
-
-    // Draw eyes
-    ctx.fillStyle = "#000000";
-    ctx.fillRect(position.x + 5, position.y + 6, 2, 2);
-    ctx.fillRect(position.x + 9, position.y + 6, 2, 2);
-
-    // Draw mouth (smile)
-    ctx.fillStyle = "#000000";
-    ctx.fillRect(position.x + 6, position.y + 9, 4, 1);
   }
 }

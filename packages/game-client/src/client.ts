@@ -141,6 +141,7 @@ export class GameClient {
 
     // TODO: refactor to use event emitter
     this.inputManager = new InputManager({
+      isMerchantPanelOpen: () => this.merchantBuyPanel.isVisible(),
       onCraft: () => {
         const player = getPlayer();
 
