@@ -36,6 +36,11 @@ export class PredictionManager {
       return;
     }
 
+    // Ensure player has required extensions
+    if (!player.hasExt(ClientPositionable)) {
+      return;
+    }
+
     const currentPosition = player.getPosition();
     const direction = normalizeVector(new Vector2(input.dx, input.dy));
 

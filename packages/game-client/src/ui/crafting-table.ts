@@ -120,7 +120,9 @@ export class CraftingTable implements Renderable {
   }
 
   public isVisible() {
-    return this.getPlayer()?.getIsCrafting() ?? false;
+    const player = this.getPlayer();
+    if (!player) return false;
+    return player.getIsCrafting();
   }
 
   public render(ctx: CanvasRenderingContext2D, gameState: GameState): void {

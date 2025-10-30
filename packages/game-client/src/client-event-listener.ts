@@ -189,10 +189,12 @@ export class ClientEventListener {
                   const error = Math.hypot(dx, dy);
 
                   // Store server ghost position for visualization
-                  (existingEntity as unknown as PlayerClient).setServerGhostPosition(
-                    new (existingEntity.getExt(ClientPositionable).getPosition()
-                      .constructor as any)(serverPos.x, serverPos.y)
-                  );
+                  if (existingEntity instanceof PlayerClient) {
+                    (existingEntity as unknown as PlayerClient).setServerGhostPosition(
+                      new (existingEntity.getExt(ClientPositionable).getPosition()
+                        .constructor as any)(serverPos.x, serverPos.y)
+                    );
+                  }
 
                   // ALWAYS apply server position to prevent unbounded drift
                   // The server is authoritative - client prediction is just for smoothness
@@ -254,7 +256,7 @@ export class ClientEventListener {
             this.interpolation.addSnapshot(created.getId(), pos, timestamp);
           }
           // If new entity is my local player, seed the ghost position too
-          if (created.getId() === this.gameState.playerId && created.hasExt(ClientPositionable)) {
+          if (created.getId() === this.gameState.playerId && created.hasExt(ClientPositionable) && created instanceof PlayerClient) {
             const pos = created.getExt(ClientPositionable).getPosition();
             (created as unknown as PlayerClient).setServerGhostPosition(pos);
           }
