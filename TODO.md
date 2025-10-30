@@ -4,6 +4,11 @@ Feel free to pick any item listed out here to work on.
 
 ## TODO
 
+- ​​I bug I found is say an obstacle is infront of you and you keep holding W for example, then the animation keeps going, but minor bug i assume
+- changing items with scroll bar would be useful
+- bolt action ammo doesn't have sprite
+- issue with ak47 sprite when facing left
+- issue with bolt action sprite when facing left
 - get this deployed again on the vps
 - play walking / running sounds when players move around
 - play explosion sounds when grenade or landmine or gasoline explode

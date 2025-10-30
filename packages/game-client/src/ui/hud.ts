@@ -249,8 +249,9 @@ export class Hud {
   }
 
   private getAlivePlayers(gameState: GameState): number {
-    return gameState.entities.filter((entity) => entity instanceof PlayerClient && !entity.isDead())
-      .length;
+    return gameState.entities.filter(
+      (entity) => entity instanceof PlayerClient && entity.hasExt(ClientDestructible) && !entity.isDead()
+    ).length;
   }
 
   private getTotalPlayers(gameState: GameState): number {
@@ -259,7 +260,7 @@ export class Hud {
 
   private getAliveZombies(gameState: GameState): number {
     return gameState.entities.filter(
-      (entity) => Zombies.includes(entity.getType()) && !entity.getExt(ClientDestructible).isDead()
+      (entity) => Zombies.includes(entity.getType()) && entity.hasExt(ClientDestructible) && !entity.getExt(ClientDestructible).isDead()
     ).length;
   }
 

@@ -94,6 +94,9 @@ export class PlayerClient extends ClientEntity implements IClientEntity, Rendera
   }
 
   isDead(): boolean {
+    if (!this.hasExt(ClientDestructible)) {
+      return false;
+    }
     return this.getExt(ClientDestructible).isDead();
   }
 

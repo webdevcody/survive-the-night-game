@@ -113,9 +113,9 @@ export class NameEntryScene extends Scene {
     // Draw player name
     this.ctx.fillStyle = "#ffffff";
     this.ctx.font = "24px Arial";
-    this.ctx.textAlign = "left";
+    this.ctx.textAlign = "center";
     this.ctx.textBaseline = "middle";
-    const textX = boxX + 15;
+    const textX = width / 2;
     const textY = boxY + boxHeight / 2;
     this.ctx.fillText(this.playerName, textX, textY);
 
@@ -123,7 +123,7 @@ export class NameEntryScene extends Scene {
     if (this.cursorVisible && this.inputActive) {
       const textWidth = this.ctx.measureText(this.playerName).width;
       this.ctx.fillStyle = "#ffffff";
-      this.ctx.fillRect(textX + textWidth + 2, boxY + 10, 2, boxHeight - 20);
+      this.ctx.fillRect(textX + textWidth / 2 + 2, boxY + 10, 2, boxHeight - 20);
     }
 
     // Draw hint text
