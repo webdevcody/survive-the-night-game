@@ -374,7 +374,7 @@ export class MapManager implements IMapManager {
     const centerBiomeY = Math.floor(MAP_SIZE / 2);
 
     // Spawn 2 merchant biomes
-    for (let i = 0; i < 10; i++) {
+    for (let i = 0; i < 2; i++) {
       const validPositions: { x: number; y: number }[] = [];
 
       // Collect all valid biome positions (not edges, not center, not already used)
