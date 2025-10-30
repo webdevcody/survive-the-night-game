@@ -1,5 +1,6 @@
 import { Direction, determineDirection } from "../../../game-shared/src/util/direction";
 import { Input } from "../../../game-shared/src/util/input";
+import { WEAPON_TYPE_VALUES } from "@shared/types/weapons";
 
 export interface InputManagerOptions {
   onCraft?: () => unknown;
@@ -22,6 +23,7 @@ export interface InputManagerOptions {
   onMerchantKey3?: () => void;
   onEscape?: () => void;
   isMerchantPanelOpen?: () => boolean;
+  getInventory?: () => any[];
 }
 
 export class InputManager {
@@ -42,13 +44,64 @@ export class InputManager {
   };
   private isChatting = false;
   private merchantPanelConsumedKeys = new Set<string>();
+  private callbacks: InputManagerOptions = {};
 
   private checkIfChanged() {
     this.hasChanged = JSON.stringify(this.inputs) !== JSON.stringify(this.lastInputs);
     this.lastInputs = { ...this.inputs };
   }
 
+  private cycleWeapon(direction: 1 | -1) {
+    const inventory = this.callbacks.getInventory?.() || [];
+    if (inventory.length === 0) return;
+
+    const weaponIndices: number[] = [];
+
+    // Find all weapon positions in inventory
+    inventory.forEach((item: any, index: number) => {
+      if (WEAPON_TYPE_VALUES.includes(item?.itemType)) {
+        weaponIndices.push(index + 1); // Convert to 1-indexed
+      }
+    });
+
+    if (weaponIndices.length === 0) return;
+
+    // Find current weapon index in the weapon list
+    const currentIdx = weaponIndices.indexOf(this.inputs.inventoryItem);
+
+    let nextIdx: number;
+    if (currentIdx === -1) {
+      // No weapon currently selected, select first weapon
+      nextIdx = direction === 1 ? 0 : weaponIndices.length - 1;
+    } else {
+      // Cycle to next/previous weapon with wrapping
+      nextIdx = currentIdx + direction;
+      if (nextIdx >= weaponIndices.length) {
+        nextIdx = 0; // Wrap to first
+      } else if (nextIdx < 0) {
+        nextIdx = weaponIndices.length - 1; // Wrap to last
+      }
+    }
+
+    this.inputs.inventoryItem = weaponIndices[nextIdx];
+  }
+
+  private quickHeal() {
+    const inventory = this.callbacks.getInventory?.() || [];
+    if (inventory.length === 0) return;
+
+    // Find first bandage in inventory
+    const bandageIdx = inventory.findIndex((item: any) => item?.itemType === "bandage");
+
+    if (bandageIdx !== -1) {
+      // Select the bandage and trigger consume
+      this.inputs.inventoryItem = bandageIdx + 1; // Convert to 1-indexed
+      this.inputs.consume = true;
+    }
+  }
+
   constructor(callbacks: InputManagerOptions = {}) {
+    this.callbacks = callbacks;
     window.addEventListener("keydown", (e) => {
       const eventCode = e.code;
       const eventKey = e.key.toLowerCase();
@@ -113,7 +166,13 @@ export class InputManager {
       // Normal game input handling - use physical key codes for WASD
       switch (eventCode) {
         case "KeyQ":
-          callbacks.onCraft?.();
+          this.cycleWeapon(-1); // Cycle to previous weapon
+          break;
+        case "KeyE":
+          this.cycleWeapon(1); // Cycle to next weapon
+          break;
+        case "KeyZ":
+          this.quickHeal();
           break;
         case "KeyW":
           callbacks.onUp?.(this.inputs);
@@ -127,7 +186,7 @@ export class InputManager {
         case "KeyD":
           callbacks.onRight?.(this.inputs);
           break;
-        case "KeyE":
+        case "KeyF":
           callbacks.onInteract?.(this.inputs);
           break;
         case "Space":
@@ -135,9 +194,6 @@ export class InputManager {
           break;
         case "KeyG":
           callbacks.onDrop?.(this.inputs);
-          break;
-        case "KeyF":
-          this.inputs.consume = true;
           break;
         case "ShiftLeft":
         case "ShiftRight":
@@ -205,6 +261,9 @@ export class InputManager {
 
       // Use physical key codes for WASD and other action keys
       switch (eventCode) {
+        case "KeyZ":
+          this.inputs.consume = false;
+          break;
         case "KeyW":
           this.inputs.dy = this.inputs.dy === -1 ? 0 : this.inputs.dy;
           break;
@@ -217,7 +276,7 @@ export class InputManager {
         case "KeyD":
           this.inputs.dx = this.inputs.dx === 1 ? 0 : this.inputs.dx;
           break;
-        case "KeyE":
+        case "KeyF":
           this.inputs.interact = false;
           break;
         case "Space":
@@ -225,9 +284,6 @@ export class InputManager {
           break;
         case "KeyG":
           this.inputs.drop = false;
-          break;
-        case "KeyF":
-          this.inputs.consume = false;
           break;
         case "ShiftLeft":
         case "ShiftRight":

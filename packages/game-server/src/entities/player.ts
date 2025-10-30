@@ -21,6 +21,7 @@ import { RecipeType } from "../../../game-shared/src/util/recipes";
 import { RawEntity } from "@shared/types/entity";
 import { Cooldown } from "@/entities/util/cooldown";
 import { Weapon } from "@/entities/weapons/weapon";
+import { Grenade } from "@/entities/items/grenade";
 import { PlayerDeathEvent } from "@shared/events/server-sent/player-death-event";
 import { DEBUG_WEAPONS } from "@shared/debug";
 import {
@@ -261,7 +262,28 @@ export class Player extends Entity {
     if (activeWeapon === null) return;
 
     const weaponEntity = this.getEntityManager().createEntityFromItem(activeWeapon);
-    if (!(weaponEntity && weaponEntity instanceof Weapon)) return;
+    if (!weaponEntity) return;
+
+    // Handle grenades separately - throw them instead of attacking
+    if (weaponEntity instanceof Grenade) {
+      if (this.fireCooldown === null || this.lastWeaponType !== activeWeapon.itemType) {
+        this.fireCooldown = new Cooldown(0.5, true); // Grenade throw cooldown
+        this.lastWeaponType = activeWeapon.itemType;
+      }
+
+      if (this.fireCooldown.isReady()) {
+        this.fireCooldown.reset();
+        // Get the inventory index (input.inventoryItem is 1-indexed)
+        const inventoryIndex = this.input.inventoryItem - 1;
+        if (weaponEntity.hasExt(Consumable)) {
+          weaponEntity.getExt(Consumable).consume(this.getId(), inventoryIndex);
+        }
+      }
+      return;
+    }
+
+    // Handle regular weapons
+    if (!(weaponEntity instanceof Weapon)) return;
 
     if (this.fireCooldown === null || this.lastWeaponType !== activeWeapon.itemType) {
       this.fireCooldown = new Cooldown(weaponEntity.getCooldown(), true);

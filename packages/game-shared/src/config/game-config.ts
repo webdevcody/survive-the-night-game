@@ -188,6 +188,28 @@ export const RECONCILIATION_LERP_SPEED = 0.15;
 export const SHOW_DEBUG_VISUALS = false;
 
 // ========================================================================
+// KEYBINDINGS (Display Names)
+// ========================================================================
+
+/**
+ * Display names for keys shown in UI
+ * These are what the user sees in tooltips and interaction prompts
+ */
+export const KEYBINDINGS = {
+  INTERACT: "f",
+  FIRE: "space",
+  DROP: "g",
+  QUICK_HEAL: "z",
+  CYCLE_WEAPON_PREV: "q",
+  CYCLE_WEAPON_NEXT: "e",
+  SPRINT: "shift",
+  CHAT: "y",
+  TOGGLE_MUTE: "m",
+  TOGGLE_INSTRUCTIONS: "i",
+  PLAYER_LIST: "tab",
+} as const;
+
+// ========================================================================
 // MERCHANT SHOP
 // ========================================================================
 

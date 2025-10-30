@@ -10,6 +10,7 @@ import { Leaderboard } from "./leaderboard";
 import { SoundManager } from "@/managers/sound-manager";
 import { AssetManager } from "@/managers/asset";
 import { ClockPanel, StatPanel, TextPanel } from "./panels";
+import { KEYBINDINGS } from "@shared/config/game-config";
 
 const HUD_SETTINGS = {
   ControlsList: {
@@ -464,14 +465,16 @@ export class Hud {
 
     const regularText =
       "Movement: W A S D\n" +
-      "Fire: SPACE\n" +
-      "Consume: F\n" +
-      "Harvest: E\n" +
-      "Craft: Q\n" +
-      "Drop Item: G\n" +
-      "Chat: Y\n" +
-      "Controls: I\n" +
-      "Mute: M";
+      `Fire: ${KEYBINDINGS.FIRE.toUpperCase()}\n` +
+      `Interact: ${KEYBINDINGS.INTERACT.toUpperCase()}\n` +
+      `Cycle Weapon: ${KEYBINDINGS.CYCLE_WEAPON_PREV.toUpperCase()}/${KEYBINDINGS.CYCLE_WEAPON_NEXT.toUpperCase()}\n` +
+      `Quick Heal: ${KEYBINDINGS.QUICK_HEAL.toUpperCase()}\n` +
+      `Drop Item: ${KEYBINDINGS.DROP.toUpperCase()}\n` +
+      `Sprint: ${KEYBINDINGS.SPRINT.toUpperCase()}\n` +
+      `Chat: ${KEYBINDINGS.CHAT.toUpperCase()}\n` +
+      `Player List: ${KEYBINDINGS.PLAYER_LIST.toUpperCase()}\n` +
+      `Mute: ${KEYBINDINGS.TOGGLE_MUTE.toUpperCase()}\n` +
+      `Controls: ${KEYBINDINGS.TOGGLE_INSTRUCTIONS.toUpperCase()}`;
 
     const craftingText = "Navigate: W S\nCraft: SPACE";
     const innerText = gameState.crafting ? craftingText : regularText;

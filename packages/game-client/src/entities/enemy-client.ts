@@ -21,6 +21,7 @@ import { determineDirection } from "@shared/util/direction";
 import { getHitboxWithPadding } from "@shared/util/hitbox";
 import { roundVector2 } from "@shared/util/physics";
 import { EntityCategory, EntityCategories, zombieRegistry, ZombieConfig } from "@shared/entities";
+import { KEYBINDINGS } from "@shared/config/game-config";
 
 export abstract class EnemyClient extends ClientEntityBase implements IClientEntity, Renderable {
   private lastRenderPosition = { x: 0, y: 0 };
@@ -226,7 +227,7 @@ export abstract class EnemyClient extends ClientEntityBase implements IClientEnt
 
       renderInteractionText(
         ctx,
-        "loot (e)",
+        `loot (${KEYBINDINGS.INTERACT})`,
         centerPosition,
         renderPosition,
         myPlayer.getPosition()

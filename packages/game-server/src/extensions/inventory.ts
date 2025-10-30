@@ -7,6 +7,7 @@ import Positionable from "@/extensions/positionable";
 import { IEntity } from "@/entities/types";
 import { MAX_INVENTORY_SLOTS } from "@/constants/constants";
 import Vector2 from "@/util/vector2";
+import { WEAPON_TYPE_VALUES } from "@shared/types/weapons";
 
 export default class Inventory implements Extension {
   public static readonly type = "inventory";
@@ -25,17 +26,27 @@ export default class Inventory implements Extension {
   }
 
   public isFull(): boolean {
-    return this.items.length >= MAX_INVENTORY_SLOTS;
+    // Count non-null items instead of array length to support sparse arrays
+    const itemCount = this.items.filter((item) => item != null).length;
+    return itemCount >= MAX_INVENTORY_SLOTS;
   }
 
   public hasItem(itemType: ItemType): boolean {
-    return this.items.some((it) => it.itemType === itemType);
+    return this.items.some((it) => it?.itemType === itemType);
   }
 
   public addItem(item: InventoryItem): void {
     if (this.isFull()) return;
 
-    this.items.push(item);
+    // Find first empty slot (null/undefined) to fill
+    const emptySlotIndex = this.items.findIndex((it) => it == null);
+    if (emptySlotIndex !== -1) {
+      this.items[emptySlotIndex] = item;
+    } else {
+      // No empty slots, push to end
+      this.items.push(item);
+    }
+
     this.broadcaster.broadcastEvent(
       new PlayerPickedUpItemEvent({
         playerId: this.self.getId(),
@@ -45,11 +56,16 @@ export default class Inventory implements Extension {
   }
 
   public removeItem(index: number): InventoryItem | undefined {
-    return this.items.splice(index, 1)[0];
+    // Don't use splice - just set to null to preserve inventory positions
+    const item = this.items[index];
+    if (item != null) {
+      this.items[index] = null as any;
+    }
+    return item;
   }
 
   public updateItemState(index: number, state: any): void {
-    if (index >= 0 && index < this.items.length) {
+    if (index >= 0 && index < this.items.length && this.items[index] != null) {
       this.items[index].state = state;
     }
   }
@@ -62,7 +78,7 @@ export default class Inventory implements Extension {
 
   public getActiveWeapon(activeItem: InventoryItem | null): InventoryItem | null {
     const activeItemType = activeItem?.itemType ?? "";
-    return ["knife", "shotgun", "pistol"].includes(activeItemType) ? activeItem : null;
+    return WEAPON_TYPE_VALUES.includes(activeItemType as any) ? activeItem : null;
   }
 
   public craftRecipe(recipe: RecipeType): void {
@@ -87,6 +103,7 @@ export default class Inventory implements Extension {
   public scatterItems(position: { x: number; y: number }): void {
     const offset = 32;
     this.items.forEach((item) => {
+      if (item == null) return; // Skip null/undefined items
       const entity = this.createEntityFromItem(item);
       if (!entity) return;
       const theta = Math.random() * 2 * Math.PI;
