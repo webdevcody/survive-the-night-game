@@ -1,6 +1,7 @@
 import { Direction, determineDirection } from "../../../game-shared/src/util/direction";
 import { Input } from "../../../game-shared/src/util/input";
 import { WEAPON_TYPE_VALUES } from "@shared/types/weapons";
+import Vector2 from "../../../game-shared/src/util/vector2";
 
 export interface InputManagerOptions {
   onCraft?: () => unknown;
@@ -37,6 +38,7 @@ export class InputManager {
     inventoryItem: 1,
     drop: false,
     consume: false,
+    consumeItemType: null,
     sprint: false,
   };
   private lastInputs = {
@@ -106,8 +108,8 @@ export class InputManager {
     const bandageIdx = inventory.findIndex((item: any) => item?.itemType === "bandage");
 
     if (bandageIdx !== -1) {
-      // Select the bandage and trigger consume
-      this.inputs.inventoryItem = bandageIdx + 1; // Convert to 1-indexed
+      // Set the consumeItemType to bandage and trigger consume
+      this.inputs.consumeItemType = "bandage";
       this.inputs.consume = true;
     }
   }
@@ -185,6 +187,9 @@ export class InputManager {
           break;
         case "KeyZ":
           this.quickHeal();
+          break;
+        case "KeyC":
+          callbacks.onCraft?.();
           break;
         case "KeyW":
           callbacks.onUp?.(this.inputs);
@@ -287,6 +292,7 @@ export class InputManager {
       switch (eventCode) {
         case "KeyZ":
           this.inputs.consume = false;
+          this.inputs.consumeItemType = null;
           break;
         case "KeyW":
           this.inputs.dy = this.inputs.dy === -1 ? 0 : this.inputs.dy;
@@ -337,7 +343,7 @@ export class InputManager {
   }
 
   private updateDirection() {
-    const vec = { x: this.inputs.dx, y: this.inputs.dy };
+    const vec = new Vector2(this.inputs.dx, this.inputs.dy);
     this.inputs.facing = determineDirection(vec) ?? this.inputs.facing;
   }
 

@@ -4,7 +4,8 @@ Feel free to pick any item listed out here to work on.
 
 ## TODO
 
-- using the z quick medpack switches the selected inventory item
+- FIND A NEW BUTTON FOR CRAFTING
+- using the z quick medspack switches the selected inventory item
 - ​​I bug I found is say an obstacle is infront of you and you keep holding W for example, then the animation keeps going, but minor bug i assume
 - changing items with scroll bar would be useful
 - bolt action ammo doesn't have sprite

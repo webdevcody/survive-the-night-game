@@ -58,6 +58,7 @@ export class Player extends Entity {
     fire: false,
     drop: false,
     consume: false,
+    consumeItemType: null,
     sprint: false,
   };
   private isCrafting = false;
@@ -470,10 +471,26 @@ export class Player extends Entity {
 
     if (!this.input.consume) return;
 
-    if (this.consumeCooldown.isReady() && this.input.inventoryItem !== null) {
+    if (this.consumeCooldown.isReady()) {
       this.consumeCooldown.reset();
-      const itemIndex = this.input.inventoryItem - 1;
-      const item = this.getExt(Inventory).getItems()[itemIndex];
+
+      let itemIndex: number;
+      let item: InventoryItem | null = null;
+
+      // If consumeItemType is specified, find the first item of that type
+      if (this.input.consumeItemType !== null) {
+        const inventory = this.getExt(Inventory).getItems();
+        const foundIndex = inventory.findIndex((invItem) => invItem?.itemType === this.input.consumeItemType);
+
+        if (foundIndex !== -1) {
+          itemIndex = foundIndex;
+          item = inventory[itemIndex];
+        }
+      } else if (this.input.inventoryItem !== null) {
+        // Otherwise, use the currently selected inventory slot
+        itemIndex = this.input.inventoryItem - 1;
+        item = this.getExt(Inventory).getItems()[itemIndex];
+      }
 
       if (item) {
         const entity = this.getEntityManager().createEntityFromItem(item);

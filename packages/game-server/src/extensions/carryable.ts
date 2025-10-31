@@ -33,6 +33,12 @@ export default class Carryable implements Extension {
   }
 
   public pickup(entityId: string, options?: PickupOptions): boolean {
+    // Prevent crash if itemType is null (entity may be in invalid state)
+    if (!this.itemType) {
+      console.warn('Attempted to pickup item with null itemType');
+      return false;
+    }
+
     const entity = this.self.getEntityManager().getEntityById(entityId);
     if (!entity) {
       return false;
@@ -48,7 +54,7 @@ export default class Carryable implements Extension {
     if (options?.mergeStrategy) {
       const existingItemIndex = inventory
         .getItems()
-        .findIndex((item) => item.itemType === this.itemType);
+        .findIndex((item) => item != null && item.itemType === this.itemType);
       if (existingItemIndex >= 0) {
         const existingItem = inventory.getItems()[existingItemIndex];
         const newState = options.mergeStrategy(existingItem.state, options.state);

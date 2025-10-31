@@ -250,7 +250,8 @@ export class Hud {
 
   private getAlivePlayers(gameState: GameState): number {
     return gameState.entities.filter(
-      (entity) => entity instanceof PlayerClient && entity.hasExt(ClientDestructible) && !entity.isDead()
+      (entity) =>
+        entity instanceof PlayerClient && entity.hasExt(ClientDestructible) && !entity.isDead()
     ).length;
   }
 
@@ -260,7 +261,10 @@ export class Hud {
 
   private getAliveZombies(gameState: GameState): number {
     return gameState.entities.filter(
-      (entity) => Zombies.includes(entity.getType()) && entity.hasExt(ClientDestructible) && !entity.getExt(ClientDestructible).isDead()
+      (entity) =>
+        Zombies.includes(entity.getType()) &&
+        entity.hasExt(ClientDestructible) &&
+        !entity.getExt(ClientDestructible).isDead()
     ).length;
   }
 
@@ -468,6 +472,7 @@ export class Hud {
       "Movement: W A S D\n" +
       `Fire: ${KEYBINDINGS.FIRE.toUpperCase()}\n` +
       `Interact: ${KEYBINDINGS.INTERACT.toUpperCase()}\n` +
+      `Craft: ${KEYBINDINGS.CRAFT.toUpperCase()}\n` +
       `Cycle Weapon: ${KEYBINDINGS.CYCLE_WEAPON_PREV.toUpperCase()}/${KEYBINDINGS.CYCLE_WEAPON_NEXT.toUpperCase()}\n` +
       `Quick Heal: ${KEYBINDINGS.QUICK_HEAL.toUpperCase()}\n` +
       `Drop Item: ${KEYBINDINGS.DROP.toUpperCase()}\n` +

@@ -21,7 +21,7 @@ const CRAFTING_TABLE_SETTINGS = {
   Instructions: {
     color: "rgba(0, 0, 0, 0.7)",
     fontSize: 24,
-    text: "Select [W / S]    Craft - [Space]    Close - [Q]",
+    text: "Select [W / S]    Craft - [Space]    Close - [C]",
     offsetY: 25,
   },
   Recipes: {

@@ -200,6 +200,7 @@ export const KEYBINDINGS = {
   FIRE: "space",
   DROP: "g",
   QUICK_HEAL: "z",
+  CRAFT: "c",
   CYCLE_WEAPON_PREV: "q",
   CYCLE_WEAPON_NEXT: "e",
   SPRINT: "shift",

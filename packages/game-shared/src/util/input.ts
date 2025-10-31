@@ -1,4 +1,5 @@
 import { Direction } from "./direction";
+import { ItemType } from "./inventory";
 
 export type Input = {
   facing: Direction;
@@ -9,5 +10,6 @@ export type Input = {
   inventoryItem: number;
   drop: boolean;
   consume: boolean;
+  consumeItemType: ItemType | null;
   sprint: boolean;
 };
