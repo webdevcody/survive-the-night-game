@@ -1,10 +1,12 @@
+import { Entities } from "@/constants";
+
 export const WEAPON_TYPES = {
-  KNIFE: "knife",
-  SHOTGUN: "shotgun",
-  PISTOL: "pistol",
-  GRENADE: "grenade",
-  BOLT_ACTION_RIFLE: "bolt_action_rifle",
-  AK47: "ak47",
+  KNIFE: Entities.KNIFE,
+  SHOTGUN: Entities.SHOTGUN,
+  PISTOL: Entities.PISTOL,
+  GRENADE: Entities.GRENADE,
+  BOLT_ACTION_RIFLE: Entities.BOLT_ACTION_RIFLE,
+  AK47: Entities.AK47,
 } as const;
 
 export type WeaponType = (typeof WEAPON_TYPES)[keyof typeof WEAPON_TYPES];

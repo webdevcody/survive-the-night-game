@@ -57,10 +57,12 @@ export default class Carryable implements Extension {
         .findIndex((item) => item != null && item.itemType === this.itemType);
       if (existingItemIndex >= 0) {
         const existingItem = inventory.getItems()[existingItemIndex];
-        const newState = options.mergeStrategy(existingItem.state, options.state);
-        inventory.updateItemState(existingItemIndex, newState);
-        this.self.getEntityManager().markEntityForRemoval(this.self);
-        return true;
+        if (existingItem) {
+          const newState = options.mergeStrategy(existingItem.state ?? {}, options.state ?? {});
+          inventory.updateItemState(existingItemIndex, newState);
+          this.self.getEntityManager().markEntityForRemoval(this.self);
+          return true;
+        }
       }
     }
 

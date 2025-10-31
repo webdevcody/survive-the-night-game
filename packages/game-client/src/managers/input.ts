@@ -57,47 +57,46 @@ export class InputManager {
     const inventory = this.callbacks.getInventory?.() || [];
     if (inventory.length === 0) return;
 
-    // Get currently selected weapon type (if any)
-    const currentSlot = this.inputs.inventoryItem;
-    const currentItem = inventory[currentSlot - 1]; // Convert from 1-indexed
+    const currentSlot = this.inputs.inventoryItem; // 1-indexed (1-10)
+    const currentItem = inventory[currentSlot - 1];
     const currentWeaponType = WEAPON_TYPE_VALUES.includes(currentItem?.itemType)
       ? currentItem.itemType
       : null;
 
-    // Build list of weapon indices with their types
-    const weaponSlots: { index: number; type: string }[] = [];
+    // Build array of unique weapon types with their first occurrence index
+    const uniqueWeapons: { index: number; type: string }[] = [];
+    const seenTypes = new Set<string>();
+
     inventory.forEach((item: any, index: number) => {
-      if (WEAPON_TYPE_VALUES.includes(item?.itemType)) {
-        weaponSlots.push({ index: index + 1, type: item.itemType }); // 1-indexed
+      if (item && WEAPON_TYPE_VALUES.includes(item.itemType)) {
+        // Only add the first occurrence of each weapon type
+        if (!seenTypes.has(item.itemType)) {
+          seenTypes.add(item.itemType);
+          uniqueWeapons.push({ index: index + 1, type: item.itemType }); // 1-indexed
+        }
       }
     });
 
-    if (weaponSlots.length === 0) return;
+    // If no weapons or only one unique weapon type, don't cycle
+    if (uniqueWeapons.length === 0 || uniqueWeapons.length === 1) return;
 
-    // Filter to only weapons that are DIFFERENT from current weapon type
-    const differentWeapons = weaponSlots.filter((slot) => slot.type !== currentWeaponType);
+    // Find current weapon in the unique weapons list
+    let currentIdx = uniqueWeapons.findIndex((w) => w.type === currentWeaponType);
 
-    // If no different weapons available, don't cycle
-    if (differentWeapons.length === 0) return;
-
-    // Find current weapon index in the different weapons list
-    const currentIdx = differentWeapons.findIndex((slot) => slot.index === currentSlot);
-
-    let nextIdx: number;
-    if (currentIdx === -1) {
-      // Current slot not in different weapons list, select first different weapon
-      nextIdx = direction === 1 ? 0 : differentWeapons.length - 1;
-    } else {
-      // Cycle to next/previous different weapon with wrapping
-      nextIdx = currentIdx + direction;
-      if (nextIdx >= differentWeapons.length) {
-        nextIdx = 0; // Wrap to first
-      } else if (nextIdx < 0) {
-        nextIdx = differentWeapons.length - 1; // Wrap to last
-      }
+    // If current slot doesn't have a weapon, start from -1
+    if (currentWeaponType === null) {
+      currentIdx = -1;
     }
 
-    this.inputs.inventoryItem = differentWeapons[nextIdx].index;
+    // Move to next/previous unique weapon with wrapping
+    let nextIdx = currentIdx + direction;
+    if (nextIdx >= uniqueWeapons.length) {
+      nextIdx = 0; // Wrap to first
+    } else if (nextIdx < 0) {
+      nextIdx = uniqueWeapons.length - 1; // Wrap to last
+    }
+
+    this.inputs.inventoryItem = uniqueWeapons[nextIdx].index;
   }
 
   private quickHeal() {
