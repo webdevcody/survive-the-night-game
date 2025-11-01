@@ -3,21 +3,29 @@ import { GameState } from "@/state";
 import { Z_INDEX } from "@shared/map";
 import { getFrameIndex, Renderable } from "@/entities/util";
 import { Particle, ParticleTypes } from "./particle";
+import { SOUND_TYPES_TO_MP3, SoundManager } from "@/managers/sound-manager";
 
 export class ExplosionParticle extends Particle implements Renderable {
   private duration: number;
   private frames: number;
   private createdAt: number;
+  private soundManager: SoundManager;
 
-  constructor(imageLoader: ImageLoader) {
+  constructor(imageLoader: ImageLoader, soundManager: SoundManager) {
     super(ParticleTypes.EXPLOSION, imageLoader);
     this.duration = 400; // 400ms for explosion animation
     this.frames = 4;
     this.createdAt = Date.now();
+
+    this.soundManager = soundManager;
   }
 
   public getZIndex(): number {
     return Z_INDEX.PROJECTILES;
+  }
+
+  onInitialized() {
+    this.soundManager.playPositionalSound(SOUND_TYPES_TO_MP3.EXPLOSION, this.getPosition());
   }
 
   render(ctx: CanvasRenderingContext2D, gameState: GameState): void {

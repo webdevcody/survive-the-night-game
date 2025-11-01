@@ -24,6 +24,10 @@ Feel free to pick any item listed out here to work on.
 - play a dong noise and up beat music for the wave
 - during the day time, play a low tempo ambient music
 
+### Refactoring
+
+- consider a better way to play the explosion sound when the particle is initialized, see explosion.ts line 20.
+
 ### Gameplay
 
 - [ ] zombie that can only be damanged while on fire zombie in a firefighter outfit

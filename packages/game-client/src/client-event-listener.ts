@@ -35,10 +35,7 @@ import { InterpolationManager } from "@/managers/interpolation";
 import { ExtensionTypes } from "@shared/util/extension-types";
 import { RECONCILIATION_CONFIG } from "@/config/client-prediction";
 import Vector2 from "@shared/util/vector2";
-import {
-  CORRECTION_SMOOTHING_FACTOR,
-  MIN_ERROR_THRESHOLD,
-} from "@shared/config/game-config";
+import { CORRECTION_SMOOTHING_FACTOR, MIN_ERROR_THRESHOLD } from "@shared/config/game-config";
 
 export class ClientEventListener {
   private socketManager: ClientSocketManager;
@@ -256,7 +253,11 @@ export class ClientEventListener {
             this.interpolation.addSnapshot(created.getId(), pos, timestamp);
           }
           // If new entity is my local player, seed the ghost position too
-          if (created.getId() === this.gameState.playerId && created.hasExt(ClientPositionable) && created instanceof PlayerClient) {
+          if (
+            created.getId() === this.gameState.playerId &&
+            created.hasExt(ClientPositionable) &&
+            created instanceof PlayerClient
+          ) {
             const pos = created.getExt(ClientPositionable).getPosition();
             (created as unknown as PlayerClient).setServerGhostPosition(pos);
           }
@@ -432,8 +433,12 @@ export class ClientEventListener {
   }
 
   onExplosion(event: ExplosionEvent) {
-    const particle = new ExplosionParticle(this.gameClient.getImageLoader());
+    const particle = new ExplosionParticle(
+      this.gameClient.getImageLoader(),
+      this.gameClient.getSoundManager()
+    );
     particle.setPosition(event.serialize().position);
+    particle.onInitialized();
     this.gameClient.getParticleManager().addParticle(particle);
   }
 

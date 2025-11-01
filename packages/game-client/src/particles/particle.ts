@@ -42,4 +42,5 @@ export abstract class Particle {
   }
 
   public abstract render(ctx: CanvasRenderingContext2D, gameState: GameState): void;
+  public abstract onInitialized(): void;
 }

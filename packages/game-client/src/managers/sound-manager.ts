@@ -17,6 +17,7 @@ export const SOUND_TYPES_TO_MP3 = {
   ZOMBIE_ATTACKED: "zombie_bite",
   GUN_EMPTY: "gun_empty",
   KNIFE_ATTACK: "knife_swing",
+  EXPLOSION: "explosion",
   LOOT: "loot",
   BOLT_ACTION_RIFLE: "bolt_action_rifle",
   AK47: "ak47",
