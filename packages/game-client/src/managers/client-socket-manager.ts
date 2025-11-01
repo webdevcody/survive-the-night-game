@@ -109,10 +109,15 @@ export class ClientSocketManager {
     // Set up pong handler
     this.rawSocket.on(ServerSentEvents.PONG, (serializedEvent) => {
       const event = new PongEvent(serializedEvent.timestamp);
+      // Both Date.now() and timestamp are Unix timestamps (milliseconds since epoch, UTC)
+      // This calculation is timezone-independent
       const latency = Date.now() - event.getData().timestamp;
       if (this.onPingUpdate) {
         this.onPingUpdate(latency);
       }
+      // Send calculated latency to server so it can update the player's ping
+      // This ensures accurate ping calculation without clock skew issues
+      this.socket.emit(ClientSentEvents.PING_UPDATE, latency);
     });
   }
 
@@ -136,6 +141,7 @@ export class ClientSocketManager {
   }
 
   private sendPing(): void {
+    // Date.now() returns Unix timestamp in milliseconds (UTC, timezone-independent)
     this.socket.emit(ClientSentEvents.PING, Date.now());
   }
 

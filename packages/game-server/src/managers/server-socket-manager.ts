@@ -348,6 +348,9 @@ export class ServerSocketManager implements Broadcaster {
     socket.on(ClientSentEvents.PING, (timestamp: number) => {
       this.handlePing(socket, timestamp);
     });
+    socket.on(ClientSentEvents.PING_UPDATE, (latency: number) => {
+      this.handlePingUpdate(socket, latency);
+    });
     socket.on(ClientSentEvents.SEND_CHAT, (data: { message: string }) => {
       this.handleChat(socket, data.message);
     });
@@ -518,14 +521,20 @@ export class ServerSocketManager implements Broadcaster {
 
   private handlePing(socket: Socket, timestamp: number): void {
     // Send pong event back to client
+    // timestamp is a Unix timestamp in milliseconds (UTC, timezone-independent)
     const delayedSocket = this.wrapSocket(socket);
     delayedSocket.emit(ServerSentEvents.PONG, new PongEvent(timestamp).serialize());
+    // Note: We no longer calculate latency here because it can be negative due to clock skew.
+    // Instead, the client calculates round-trip latency and sends it via PING_UPDATE event.
+  }
 
-    // Update player's ping
+  private handlePingUpdate(socket: Socket, latency: number): void {
+    // Update player's ping with the latency calculated by the client
+    // This ensures accurate ping calculation without clock skew issues
     const player = this.players.get(socket.id);
     if (player) {
-      const latency = Date.now() - timestamp;
-      player.setPing(latency);
+      // Ensure latency is non-negative (sanity check)
+      player.setPing(Math.max(0, latency));
     }
   }
 

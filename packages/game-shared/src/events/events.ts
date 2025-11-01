@@ -37,6 +37,7 @@ export const ClientSentEvents = {
   ADMIN_COMMAND: "adminCommand",
   REQUEST_FULL_STATE: "requestFullState",
   PING: "ping",
+  PING_UPDATE: "pingUpdate",
   SEND_CHAT: "sendChat",
   MERCHANT_BUY: "merchantBuy",
 } as const;
