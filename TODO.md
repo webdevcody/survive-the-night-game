@@ -4,8 +4,14 @@ Feel free to pick any item listed out here to work on.
 
 ## TODO
 
+- add a way to ban / kick, add some type of logic to prevent bad words on usernames
+- cycling weapons (q/a) doesn't seem to work when you just have a single weapon in inventory
+- when pressing f, it doesn't seem to always let the server know you are trying to interact. double check the
+  logic around pressing keys / unpressing them, I think maybe it doesn't send the correct input map if you
+  release the key you pressed and unpress it too fast.
 - changing items with scroll bar would be useful
 - play walking / running sounds when players move around
+- when the server updates, it doesn't auto refresh the users... just force reload their browser
 - coins
   - play a coin noise when it drops
   - make coin animation slide to inventory on pickup

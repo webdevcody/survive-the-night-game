@@ -21,10 +21,10 @@ import { PlayerJoinedEvent } from "@shared/events/server-sent/player-joined-even
 import { PongEvent } from "@shared/events/server-sent/pong-event";
 import { ChatMessageEvent } from "@shared/events/server-sent/chat-message-event";
 import { PlayerLeftEvent } from "@/events/server-sent/player-left-event";
-import { ADMIN_PASSWORD, DEFAULT_ADMIN_PASSWORD } from "@/config/env";
 import { SIMULATED_SERVER_LATENCY_MS } from "@/config/simulation";
 import { DelayedServer, DelayedServerSocket } from "@/util/delayed-socket";
 import { createCommandRegistry, CommandRegistry } from "@/commands";
+import { Filter } from "bad-words";
 
 /**
  * Any and all functionality related to sending server side events
@@ -43,6 +43,7 @@ export class ServerSocketManager implements Broadcaster {
   private commandManager?: CommandManager;
   private gameManagers?: IGameManagers;
   private chatCommandRegistry: CommandRegistry;
+  private badWordsFilter: Filter;
 
   constructor(port: number, gameServer: GameServer) {
     this.port = port;
@@ -95,12 +96,20 @@ export class ServerSocketManager implements Broadcaster {
     // Initialize chat command registry
     this.chatCommandRegistry = createCommandRegistry();
 
+    // Initialize bad words filter
+    this.badWordsFilter = new Filter();
+
     this.io.on("connection", (socket: Socket) => {
       const { displayName } = socket.handshake.query;
 
+      // Filter bad words and replace with asterisks
+      const filteredDisplayName = displayName
+        ? this.badWordsFilter.clean(displayName as string)
+        : undefined;
+
       // Allow multiple connections with the same display name
       // Each connection gets its own player entity
-      this.playerDisplayNames.set(socket.id, displayName as string);
+      this.playerDisplayNames.set(socket.id, filteredDisplayName || "Unknown");
       this.onConnection(socket);
     });
   }
@@ -229,10 +238,7 @@ export class ServerSocketManager implements Broadcaster {
     }
   }
 
-  private onMerchantBuy(
-    socket: Socket,
-    data: { merchantId: string; itemIndex: number }
-  ): void {
+  private onMerchantBuy(socket: Socket, data: { merchantId: string; itemIndex: number }): void {
     const player = this.players.get(socket.id);
     if (!player) return;
 
@@ -250,7 +256,9 @@ export class ServerSocketManager implements Broadcaster {
     // Check if player has enough coins
     if (playerCoins < selectedItem.price) {
       console.log(
-        `Player ${player.getId()} tried to buy ${selectedItem.itemType} but doesn't have enough coins`
+        `Player ${player.getId()} tried to buy ${
+          selectedItem.itemType
+        } but doesn't have enough coins`
       );
       return;
     }
@@ -344,7 +352,9 @@ export class ServerSocketManager implements Broadcaster {
     if (displayName.length > 12) {
       displayName = displayName.substring(0, 12);
     }
-    player.setDisplayName(displayName);
+    // Filter bad words and replace with asterisks
+    const filteredDisplayName = this.badWordsFilter.clean(displayName);
+    player.setDisplayName(filteredDisplayName);
   }
 
   private onConnection(socket: Socket): void {
@@ -533,10 +543,11 @@ export class ServerSocketManager implements Broadcaster {
       return;
     }
 
-    // Regular chat message
+    // Regular chat message - filter bad words and replace with asterisks
+    const filteredMessage = this.badWordsFilter.clean(message);
     const chatEvent = new ChatMessageEvent({
       playerId: player.getId(),
-      message: message,
+      message: filteredMessage,
     });
 
     this.delayedIo.emit(ServerSentEvents.CHAT_MESSAGE, chatEvent.getData());
