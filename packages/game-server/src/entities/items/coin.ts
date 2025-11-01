@@ -4,7 +4,7 @@ import { IGameManagers } from "@/managers/types";
 import { Entities } from "@/constants";
 import { Entity } from "@/entities/entity";
 import Vector2 from "@/util/vector2";
-
+import { CoinPickupEvent } from "@shared/events/server-sent/coin-pickup-event";
 export class Coin extends Entity {
   public static readonly Size = new Vector2(16, 16);
   private static readonly TRIGGER_RADIUS = 16;
@@ -34,6 +34,7 @@ export class Coin extends Entity {
       // Increment player's coins
       if (player.addCoins) {
         player.addCoins(1);
+        this.getEntityManager().getBroadcaster().broadcastEvent(new CoinPickupEvent(this.getId()));
       }
     }
 

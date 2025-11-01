@@ -6,11 +6,11 @@ Feel free to pick any item listed out here to work on.
 
 - changing items with scroll bar would be useful
 - play walking / running sounds when players move around
-- play explosion sounds when grenade or landmine or gasoline explode
-- play a coin noise when it drops
-- make coin animation slide to inventory on pickup
+- coins
+  - play a coin noise when it drops
+  - make coin animation slide to inventory on pickup
+  - make sure it plays a coin pick up noise on pick up
 - figure out a better way to positions of the weapons so they look attached to the hands
-- make sure it plays a coin pick up noise on pick up
 - should also make it randomly choose to drop a coin or not. So your risk is raised even more because you may not get a coin.
 - add indicators so I can easily find my team mates
 - add the ability for users to find a merchant which will sell items using the coins players have collected

@@ -26,6 +26,7 @@ import { PlayerLeftEvent } from "@shared/events/server-sent/player-left-event";
 import { ExplosionEvent } from "@shared/events/server-sent/explosion-event";
 import { DelayedSocket } from "../util/delayed-socket";
 import { SIMULATION_CONFIG } from "@/config/client-prediction";
+import { CoinPickupEvent } from "@shared/events/server-sent/coin-pickup-event";
 
 export type EntityDto = { id: string } & any;
 
@@ -46,6 +47,7 @@ const SERVER_EVENT_MAP = {
   [ServerSentEvents.ZOMBIE_ATTACKED]: ZombieAttackedEvent,
   [ServerSentEvents.LOOT]: LootEvent,
   [ServerSentEvents.GAME_STARTED]: GameStartedEvent,
+  [ServerSentEvents.COIN_PICKUP]: CoinPickupEvent,
   [ServerSentEvents.PLAYER_LEFT]: PlayerLeftEvent,
   [ServerSentEvents.SERVER_UPDATING]: ServerUpdatingEvent,
   [ServerSentEvents.PONG]: PongEvent,

@@ -13,6 +13,7 @@ import { PlayerDroppedItemEvent } from "@shared/events/server-sent/player-droppe
 import { PlayerHurtEvent } from "@shared/events/server-sent/player-hurt-event";
 import { YourIdEvent } from "@shared/events/server-sent/your-id-event";
 import { ZombieAttackedEvent } from "@shared/events/server-sent/zombie-attacked-event";
+import { CoinPickupEvent } from "@shared/events/server-sent/coin-pickup-event";
 import { ZombieDeathEvent } from "@shared/events/server-sent/zombie-death-event";
 import { ZombieHurtEvent } from "@shared/events/server-sent/zombie-hurt-event";
 import { GameClient } from "@/client";
@@ -36,6 +37,7 @@ import { ExtensionTypes } from "@shared/util/extension-types";
 import { RECONCILIATION_CONFIG } from "@/config/client-prediction";
 import Vector2 from "@shared/util/vector2";
 import { CORRECTION_SMOOTHING_FACTOR, MIN_ERROR_THRESHOLD } from "@shared/config/game-config";
+import { CoinClient } from "./entities/items/coin";
 
 export class ClientEventListener {
   private socketManager: ClientSocketManager;
@@ -75,6 +77,7 @@ export class ClientEventListener {
     this.socketManager.on(ServerSentEvents.PLAYER_LEFT, this.onPlayerLeft.bind(this));
     this.socketManager.on(ServerSentEvents.SERVER_UPDATING, this.onServerUpdating.bind(this));
     this.socketManager.on(ServerSentEvents.CHAT_MESSAGE, this.onChatMessage.bind(this));
+    this.socketManager.on(ServerSentEvents.COIN_PICKUP, this.onCoinPickup.bind(this));
     this.socketManager.on(
       ServerSentEvents.PLAYER_DROPPED_ITEM,
       this.onPlayerDroppedItem.bind(this)
@@ -98,6 +101,16 @@ export class ClientEventListener {
     this.gameClient
       .getSoundManager()
       .playPositionalSound(SOUND_TYPES_TO_MP3.GUN_EMPTY, playerPosition);
+  }
+
+  onCoinPickup(coinPickupEvent: CoinPickupEvent) {
+    const coin = this.gameClient.getEntityById(coinPickupEvent.getEntityId());
+    if (!coin) return;
+
+    const coinPosition = coin.getExt(ClientPositionable).getCenterPosition();
+    this.gameClient
+      .getSoundManager()
+      .playPositionalSound(SOUND_TYPES_TO_MP3.COIN_PICKUP, coinPosition);
   }
 
   onPlayerLeft(playerLeftEvent: PlayerLeftEvent) {

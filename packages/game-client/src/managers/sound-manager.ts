@@ -18,6 +18,7 @@ export const SOUND_TYPES_TO_MP3 = {
   GUN_EMPTY: "gun_empty",
   KNIFE_ATTACK: "knife_swing",
   EXPLOSION: "explosion",
+  COIN_PICKUP: "coin_pickup",
   LOOT: "loot",
   BOLT_ACTION_RIFLE: "bolt_action_rifle",
   AK47: "ak47",

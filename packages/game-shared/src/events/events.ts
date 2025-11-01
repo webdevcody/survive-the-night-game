@@ -13,6 +13,7 @@ export const ServerSentEvents = {
   ZOMBIE_DEATH: "zombieDeath",
   ZOMBIE_HURT: "zombieHurt",
   ZOMBIE_ATTACKED: "zombieAttacked",
+  COIN_PICKUP: "coinPickup",
   BIG_ZOMBIE_DEATH: "bigZombieDeath",
   BIG_ZOMBIE_HURT: "bigZombieHurt",
   BIG_ZOMBIE_ATTACKED: "bigZombieAttacked",
