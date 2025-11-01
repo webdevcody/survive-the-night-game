@@ -44,8 +44,8 @@ export const ITEM_CONFIGS: Record<string, ItemConfig> = {
     category: "ammo",
     assets: {
       assetKey: "bolt_action_ammo",
-      x: 16,
-      y: 64,
+      x: 96,
+      y: 16,
       sheet: "items",
     },
   },
@@ -54,8 +54,8 @@ export const ITEM_CONFIGS: Record<string, ItemConfig> = {
     category: "ammo",
     assets: {
       assetKey: "ak47_ammo",
-      x: 48,
-      y: 64,
+      x: 112,
+      y: 16,
       sheet: "items",
     },
   },

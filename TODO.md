@@ -4,20 +4,13 @@ Feel free to pick any item listed out here to work on.
 
 ## TODO
 
-- FIND A NEW BUTTON FOR CRAFTING
-- using the z quick medspack switches the selected inventory item
-- ​​I bug I found is say an obstacle is infront of you and you keep holding W for example, then the animation keeps going, but minor bug i assume
 - changing items with scroll bar would be useful
-- bolt action ammo doesn't have sprite
-- issue with ak47 sprite when facing left
-- issue with bolt action sprite when facing left
-- get this deployed again on the vps
 - play walking / running sounds when players move around
 - play explosion sounds when grenade or landmine or gasoline explode
 - play a coin noise when it drops
+- make coin animation slide to inventory on pickup
+- figure out a better way to positions of the weapons so they look attached to the hands
 - make sure it plays a coin pick up noise on pick up
-- the coin in the hud is tiny, make it larger
-- maybe remove the coin after X amount of seconds to make it a more time sentisitve reward for players to risk getting killed because they want the coin.
 - should also make it randomly choose to drop a coin or not. So your risk is raised even more because you may not get a coin.
 - add indicators so I can easily find my team mates
 - add the ability for users to find a merchant which will sell items using the coins players have collected

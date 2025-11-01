@@ -62,8 +62,8 @@ export const WEAPON_CONFIGS: Record<string, WeaponConfig> = {
       assetPrefix: "bolt_action_rifle",
       spritePositions: {
         right: { x: 0, y: 64 },
-        down: { x: 17, y: 64 },
-        up: { x: 34, y: 64 },
+        up: { x: 16, y: 64 },
+        down: { x: 32, y: 64 },
       },
       sheet: "items",
     },
@@ -77,9 +77,9 @@ export const WEAPON_CONFIGS: Record<string, WeaponConfig> = {
     assets: {
       assetPrefix: "ak47",
       spritePositions: {
-        right: { x: 32, y: 64 },
-        down: { x: 49, y: 64 },
-        up: { x: 66, y: 64 },
+        right: { x: 48, y: 64 },
+        up: { x: 64, y: 64 },
+        down: { x: 80, y: 64 },
       },
       sheet: "items",
     },
