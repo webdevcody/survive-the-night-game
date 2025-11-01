@@ -24,7 +24,12 @@ import { PlayerLeftEvent } from "@/events/server-sent/player-left-event";
 import { SIMULATED_SERVER_LATENCY_MS } from "@/config/simulation";
 import { DelayedServer, DelayedServerSocket } from "@/util/delayed-socket";
 import { createCommandRegistry, CommandRegistry } from "@/commands";
-import { Filter } from "bad-words";
+import {
+  RegExpMatcher,
+  TextCensor,
+  englishDataset,
+  englishRecommendedTransformers,
+} from "obscenity";
 
 /**
  * Any and all functionality related to sending server side events
@@ -43,7 +48,8 @@ export class ServerSocketManager implements Broadcaster {
   private commandManager?: CommandManager;
   private gameManagers?: IGameManagers;
   private chatCommandRegistry: CommandRegistry;
-  private badWordsFilter: Filter;
+  private profanityMatcher: RegExpMatcher;
+  private profanityCensor: TextCensor;
 
   constructor(port: number, gameServer: GameServer) {
     this.port = port;
@@ -96,15 +102,19 @@ export class ServerSocketManager implements Broadcaster {
     // Initialize chat command registry
     this.chatCommandRegistry = createCommandRegistry();
 
-    // Initialize bad words filter
-    this.badWordsFilter = new Filter();
+    // Initialize profanity filter
+    this.profanityMatcher = new RegExpMatcher({
+      ...englishDataset.build(),
+      ...englishRecommendedTransformers,
+    });
+    this.profanityCensor = new TextCensor();
 
     this.io.on("connection", (socket: Socket) => {
       const { displayName } = socket.handshake.query;
 
       // Filter bad words and replace with asterisks
       const filteredDisplayName = displayName
-        ? this.badWordsFilter.clean(displayName as string)
+        ? this.sanitizeText(displayName as string)
         : undefined;
 
       // Allow multiple connections with the same display name
@@ -353,7 +363,7 @@ export class ServerSocketManager implements Broadcaster {
       displayName = displayName.substring(0, 12);
     }
     // Filter bad words and replace with asterisks
-    const filteredDisplayName = this.badWordsFilter.clean(displayName);
+    const filteredDisplayName = this.sanitizeText(displayName);
     player.setDisplayName(filteredDisplayName);
   }
 
@@ -544,12 +554,20 @@ export class ServerSocketManager implements Broadcaster {
     }
 
     // Regular chat message - filter bad words and replace with asterisks
-    const filteredMessage = this.badWordsFilter.clean(message);
+    const filteredMessage = this.sanitizeText(message);
     const chatEvent = new ChatMessageEvent({
       playerId: player.getId(),
       message: filteredMessage,
     });
 
     this.delayedIo.emit(ServerSentEvents.CHAT_MESSAGE, chatEvent.getData());
+  }
+
+  /**
+   * Sanitize text by replacing profane words with asterisks
+   */
+  private sanitizeText(text: string): string {
+    const matches = this.profanityMatcher.getAllMatches(text);
+    return this.profanityCensor.applyTo(text, matches);
   }
 }

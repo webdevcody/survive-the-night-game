@@ -22,9 +22,9 @@
   },
   "dependencies": {
     "@survive-the-night/game-shared": "*",
-    "bad-words": "^4.0.0",
     "dotenv": "^16.4.7",
     "express": "^5.1.0",
+    "obscenity": "^0.4.5",
     "socket.io": "^4.8.1"
   }
 }
