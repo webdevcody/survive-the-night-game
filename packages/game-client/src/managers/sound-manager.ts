@@ -35,7 +35,7 @@ export type SoundLoadProgressCallback = (
 export class SoundManager {
   private gameClient: GameClient | null;
   private audioCache: Map<SoundType, HTMLAudioElement>;
-  private static readonly MAX_DISTANCE = 800;
+  private static readonly MAX_DISTANCE = 400;
   private isMuted: boolean = false;
   private loaded: boolean = false;
 
