@@ -44,7 +44,12 @@ export function consumeAmmo(inventory: Inventory, ammoType: string): boolean {
     return false;
   }
 
-  const ammoIndex = inventory.getItems().findIndex((item) => item.itemType === ammoType);
+  const ammoIndex = inventory.getItems().findIndex((item) => item?.itemType === ammoType);
+  if (ammoIndex === -1) {
+    // This shouldn't happen since we found ammoItem, but handle it gracefully
+    return false;
+  }
+
   inventory.updateItemState(ammoIndex, { count: ammoItem.state.count - 1 });
 
   if (ammoItem.state.count <= 0) {
