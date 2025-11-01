@@ -85,4 +85,20 @@ export const WEAPON_CONFIGS: Record<string, WeaponConfig> = {
     },
     sound: "pistol",
   },
+  [WEAPON_TYPES.GRENADE_LAUNCHER]: {
+    id: WEAPON_TYPES.GRENADE_LAUNCHER,
+    stats: {
+      cooldown: 1.0,
+    },
+    assets: {
+      assetPrefix: "grenade_launcher",
+      spritePositions: {
+        right: { x: 48, y: 64 },
+        up: { x: 64, y: 64 },
+        down: { x: 80, y: 64 },
+      },
+      sheet: "items",
+    },
+    sound: "pistol",
+  },
 };

@@ -182,6 +182,7 @@ export class InventoryBarUI implements Renderable {
 
       // Draw item image
       const image = inventoryItem && this.assetManager.get(getItemAssetKey(inventoryItem));
+
       if (image) {
         const imagePadding = 8;
         ctx.drawImage(

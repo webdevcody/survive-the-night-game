@@ -10,17 +10,20 @@ import { PistolAmmo } from "@/entities/items/pistol-ammo";
 import { ShotgunAmmo } from "@/entities/items/shotgun-ammo";
 import { BoltActionAmmo } from "@/entities/items/bolt-action-ammo";
 import { AK47Ammo } from "@/entities/items/ak47-ammo";
+import { GrenadeLauncherAmmo } from "@/entities/items/grenade-launcher-ammo";
 import { Spikes } from "@/entities/items/spikes";
 import { Torch } from "@/entities/items/torch";
 import { Tree } from "@/entities/items/tree";
 import { Wall } from "@/entities/items/wall";
 import { Player } from "@/entities/player";
 import { Bullet } from "@/entities/projectiles/bullet";
+import { GrenadeProjectile } from "@/entities/projectiles/grenade-projectile";
 import { Knife } from "@/entities/weapons/knife";
 import { Pistol } from "@/entities/weapons/pistol";
 import { Shotgun } from "@/entities/weapons/shotgun";
 import { BoltActionRifle } from "@/entities/weapons/bolt-action-rifle";
 import { AK47 } from "@/entities/weapons/ak47";
+import { GrenadeLauncher } from "@/entities/weapons/grenade-launcher";
 import Collidable from "@/extensions/collidable";
 import Destructible from "@/extensions/destructible";
 import Positionable from "@/extensions/positionable";
@@ -49,6 +52,7 @@ const entityMap = {
   [Entities.PLAYER]: Player,
   [Entities.TREE]: Tree,
   [Entities.BULLET]: Bullet,
+  [Entities.GRENADE_PROJECTILE]: GrenadeProjectile,
   [Entities.WALL]: Wall,
   [Entities.PISTOL]: Pistol,
   [Entities.PISTOL_AMMO]: PistolAmmo,
@@ -58,6 +62,8 @@ const entityMap = {
   [Entities.BOLT_ACTION_AMMO]: BoltActionAmmo,
   [Entities.AK47]: AK47,
   [Entities.AK47_AMMO]: AK47Ammo,
+  [Entities.GRENADE_LAUNCHER]: GrenadeLauncher,
+  [Entities.GRENADE_LAUNCHER_AMMO]: GrenadeLauncherAmmo,
   [Entities.KNIFE]: Knife,
   [Entities.BANDAGE]: Bandage,
   [Entities.CLOTH]: Cloth,
@@ -131,12 +137,14 @@ export class EntityManager implements IEntityManager {
     this.registerItem("pistol", Pistol);
     this.registerItem("bolt_action_rifle", BoltActionRifle);
     this.registerItem("ak47", AK47);
+    this.registerItem("grenade_launcher", GrenadeLauncher);
 
     // Register ammo
     this.registerItem("pistol_ammo", PistolAmmo);
     this.registerItem("shotgun_ammo", ShotgunAmmo);
     this.registerItem("bolt_action_ammo", BoltActionAmmo);
     this.registerItem("ak47_ammo", AK47Ammo);
+    this.registerItem("grenade_launcher_ammo", GrenadeLauncherAmmo);
 
     // Register landmine
     this.registerItem("landmine", Landmine);

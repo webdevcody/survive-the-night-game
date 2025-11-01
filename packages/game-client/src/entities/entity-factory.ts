@@ -21,10 +21,12 @@ import { ShotgunClient } from "@/entities/weapons/shotgun";
 import { KnifeClient } from "@/entities/weapons/knife";
 import { BoltActionRifleClient } from "@/entities/weapons/bolt-action-rifle";
 import { AK47Client } from "@/entities/weapons/ak47";
+import { GrenadeLauncherClient } from "@/entities/weapons/grenade-launcher";
 import { PistolAmmoClient } from "@/entities/weapons/pistol-ammo";
 import { ShotgunAmmoClient } from "@/entities/weapons/shotgun-ammo";
 import { BoltActionAmmoClient } from "@/entities/weapons/bolt-action-ammo";
 import { AK47AmmoClient } from "@/entities/weapons/ak47-ammo";
+import { GrenadeLauncherAmmoClient } from "@/entities/weapons/grenade-launcher-ammo";
 import { LandmineClient } from "@/entities/items/landmine";
 import { ClientEntityBase } from "@/extensions/client-entity";
 import { GrenadeClient } from "./items/grenade";
@@ -34,11 +36,13 @@ import { AcidProjectileClient } from "./acid-projectile";
 import { ExplodingZombieClient } from "./exploding-zombie";
 import { LeapingZombieClient } from "./enemies/leaping-zombie";
 import { MerchantClient } from "./environment/merchant";
+import { GrenadeProjectileClient } from "./grenade-projectile";
 
 export const entityMap = {
   [Entities.PLAYER]: PlayerClient,
   [Entities.TREE]: TreeClient,
   [Entities.BULLET]: BulletClient,
+  [Entities.GRENADE_PROJECTILE]: GrenadeProjectileClient,
   [Entities.WALL]: WallClient,
   [Entities.PISTOL]: PistolClient,
   [Entities.PISTOL_AMMO]: PistolAmmoClient,
@@ -48,6 +52,8 @@ export const entityMap = {
   [Entities.BOLT_ACTION_AMMO]: BoltActionAmmoClient,
   [Entities.AK47]: AK47Client,
   [Entities.AK47_AMMO]: AK47AmmoClient,
+  [Entities.GRENADE_LAUNCHER]: GrenadeLauncherClient,
+  [Entities.GRENADE_LAUNCHER_AMMO]: GrenadeLauncherAmmoClient,
   [Entities.KNIFE]: KnifeClient,
   [Entities.BANDAGE]: BandageClient,
   [Entities.CLOTH]: ClothClient,
