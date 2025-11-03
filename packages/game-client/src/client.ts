@@ -15,7 +15,7 @@ import { Renderer } from "@/renderer";
 import { ZoomController } from "@/zoom-controller";
 import { ResizeController } from "@/resize-controller";
 import { ClientEventListener } from "@/client-event-listener";
-import { SoundManager } from "@/managers/sound-manager";
+import { SoundManager, SOUND_TYPES_TO_MP3 } from "@/managers/sound-manager";
 import { GameOverDialogUI } from "@/ui/game-over-dialog";
 import { CommandManager } from "@/managers/command-manager";
 import { DEBUG_ADMIN_COMMANDS } from "@shared/debug";
@@ -484,6 +484,47 @@ export class GameClient {
 
     this.positionCameraOnPlayer();
     this.hud.update(this.gameState);
+    this.updatePlayerMovementSounds();
+  }
+
+  /**
+   * Update walk/run sounds for all players based on their input state
+   */
+  private updatePlayerMovementSounds(): void {
+    const players = this.gameState.entities.filter(
+      (entity) => entity instanceof PlayerClient
+    ) as PlayerClient[];
+
+    const existingPlayerIds = new Set<string>();
+
+    players.forEach((player) => {
+      if (!player.hasExt(ClientPositionable)) return;
+
+      const playerId = player.getId();
+      existingPlayerIds.add(playerId);
+
+      // Get player input to determine if they're intentionally moving
+      const input = player.getInput();
+      const hasMovementInput = input.dx !== 0 || input.dy !== 0;
+
+      // Only play sounds if player has movement input (not just velocity from knockback)
+      if (hasMovementInput) {
+        const position = player.getPosition();
+        const soundType = input.sprint
+          ? SOUND_TYPES_TO_MP3.RUN
+          : SOUND_TYPES_TO_MP3.WALK;
+        this.soundManager.updateLoopingSound(playerId, soundType, position);
+      } else {
+        // Player is not moving intentionally, stop the sound
+        this.soundManager.updateLoopingSound(playerId, null, player.getPosition());
+      }
+    });
+
+    // Clean up sounds for players that no longer exist
+    this.soundManager.cleanupLoopingSounds(existingPlayerIds);
+
+    // Update volumes for all active looping sounds based on current positions
+    this.soundManager.updateLoopingSoundsVolumes();
   }
 
   private positionCameraOnPlayer(): void {
