@@ -10,7 +10,7 @@ import { roundVector2 } from "@shared/util/physics";
 import { getFrameIndex } from "@/entities/util";
 
 export class FlameProjectileClient extends ClientEntityBase implements IClientEntity, Renderable {
-  private readonly FLAME_SIZE = 8;
+  private readonly FLAME_SIZE = 16;
   private lastRenderPosition = { x: 0, y: 0 };
   private createdAt: number;
 
@@ -43,12 +43,14 @@ export class FlameProjectileClient extends ClientEntityBase implements IClientEn
         frames: 5,
       });
       const flameImage = this.imageLoader.getFrameIndex("flame", frameIndex);
-      ctx.drawImage(flameImage, renderPosition.x, renderPosition.y);
+      const scaledSize = this.FLAME_SIZE / 2;
+      ctx.drawImage(flameImage, renderPosition.x, renderPosition.y, scaledSize, scaledSize);
     } catch {
       // Fallback: draw animated fire effect
       const elapsed = Date.now() - this.createdAt;
       const cycle = (elapsed % 200) / 200; // 200ms cycle
-      const size = this.FLAME_SIZE * (0.8 + 0.2 * Math.sin(cycle * Math.PI * 2));
+      const baseSize = this.FLAME_SIZE / 2;
+      const size = baseSize * (0.8 + 0.2 * Math.sin(cycle * Math.PI * 2));
 
       // Outer glow (orange-red)
       ctx.beginPath();

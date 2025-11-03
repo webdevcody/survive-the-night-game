@@ -23,6 +23,8 @@ export const ITEM_TYPES = [
   "bolt_action_ammo",
   "ak47_ammo",
   "grenade_launcher_ammo",
+  "flamethrower",
+  "flamethrower_ammo",
 ] as const;
 export type ItemType = (typeof ITEM_TYPES)[number];
 
@@ -31,4 +33,12 @@ export interface InventoryItem {
   state?: ItemState;
 }
 
-export type WeaponKey = "knife" | "shotgun" | "pistol" | "bolt_action_rifle" | "ak47" | "grenade" | "grenade_launcher";
+export type WeaponKey =
+  | "knife"
+  | "shotgun"
+  | "pistol"
+  | "bolt_action_rifle"
+  | "ak47"
+  | "grenade"
+  | "grenade_launcher"
+  | "flamethrower";

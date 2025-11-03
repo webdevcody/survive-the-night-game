@@ -16,7 +16,12 @@ import Vector2 from "@/util/vector2";
 import { Line, Rectangle } from "@/util/shape";
 import { Player } from "@/entities/player";
 
-const MAX_TRAVEL_DISTANCE = 200; // Shorter range than bullets
+// Random distance range for flame projectiles
+const MIN_TRAVEL_DISTANCE = 100;
+const MAX_TRAVEL_DISTANCE = 200;
+
+const FLAME_SPREAD_ANGLE = 15;
+
 export class FlameProjectile extends Entity {
   private traveledDistance: number = 0;
   private static readonly FLAME_SPEED = 200; // Slower than bullets
@@ -24,10 +29,14 @@ export class FlameProjectile extends Entity {
   private lastPosition: Vector2;
   private shooterId: string = "";
   private damage: number;
+  private maxDistance: number; // Random max distance for this projectile
 
   constructor(gameManagers: IGameManagers, damage: number = 1) {
     super(gameManagers, Entities.FLAME_PROJECTILE);
     this.damage = damage;
+    // Set random max distance for this projectile
+    this.maxDistance =
+      MIN_TRAVEL_DISTANCE + Math.random() * (MAX_TRAVEL_DISTANCE - MIN_TRAVEL_DISTANCE);
 
     this.extensions = [
       new Positionable(this).setSize(FlameProjectile.FLAME_SIZE),
@@ -49,11 +58,18 @@ export class FlameProjectile extends Entity {
 
   setDirection(direction: Direction) {
     const normalized = normalizeDirection(direction);
+
+    // Add 5-degree spread (±2.5 degrees from center)
+    const spreadAngle = (Math.random() - 0.5) * FLAME_SPREAD_ANGLE * (Math.PI / 180); // Convert to radians
+    const cos = Math.cos(spreadAngle);
+    const sin = Math.sin(spreadAngle);
+
+    // Rotate the direction vector
+    const rotatedX = normalized.x * cos - normalized.y * sin;
+    const rotatedY = normalized.x * sin + normalized.y * cos;
+
     this.getExt(Movable).setVelocity(
-      new Vector2(
-        normalized.x * FlameProjectile.FLAME_SPEED,
-        normalized.y * FlameProjectile.FLAME_SPEED
-      )
+      new Vector2(rotatedX * FlameProjectile.FLAME_SPEED, rotatedY * FlameProjectile.FLAME_SPEED)
     );
   }
 
@@ -76,14 +92,29 @@ export class FlameProjectile extends Entity {
       this.updatePositions(stepDelta);
       const newStepPosition = this.getPosition();
 
-      // Check for collisions in this step
+      // Check for collisions with collidables (walls, trees, etc.)
+      const collidingEntity = this.getEntityManager().isColliding(this, [
+        Entities.PLAYER,
+        Entities.FLAME_PROJECTILE,
+      ]);
+      if (collidingEntity && collidingEntity.getId() !== this.shooterId) {
+        // Hit a collidable, spawn fire and destroy projectile
+        this.spawnFireOnGround(newStepPosition);
+        this.getEntityManager().markEntityForRemoval(this);
+        hitSomething = true;
+        break;
+      }
+
+      // Check for collisions with enemies
       hitSomething = this.handleIntersections(lastStepPosition, newStepPosition);
 
       // Update for next step
       lastStepPosition = newStepPosition;
     }
 
-    this.handleMaxDistanceLogic(currentPosition);
+    if (!hitSomething) {
+      this.handleMaxDistanceLogic(currentPosition);
+    }
     this.lastPosition = this.getPosition();
   }
 
@@ -143,14 +174,8 @@ export class FlameProjectile extends Entity {
 
       // Expand the rectangle by the flame's radius to account for the flame's size
       const expandedRect = new Rectangle(
-        new Vector2(
-          hitbox.position.x - flameRadius,
-          hitbox.position.y - flameRadius
-        ),
-        new Vector2(
-          hitbox.size.x + flameRadius * 2,
-          hitbox.size.y + flameRadius * 2
-        )
+        new Vector2(hitbox.position.x - flameRadius, hitbox.position.y - flameRadius),
+        new Vector2(hitbox.size.x + flameRadius * 2, hitbox.size.y + flameRadius * 2)
       );
 
       // Check if either the flame path intersects the expanded rectangle
@@ -176,6 +201,8 @@ export class FlameProjectile extends Entity {
       }
 
       if (collision) {
+        // Spawn fire on ground where enemy was hit
+        this.spawnFireOnGround(toCenter);
         this.getEntityManager().markEntityForRemoval(this);
         const destructible = enemy.getExt(Destructible);
         const wasAlive = !destructible.isDead();
@@ -203,8 +230,18 @@ export class FlameProjectile extends Entity {
   private handleMaxDistanceLogic(lastPosition: Vector2) {
     this.traveledDistance += distance(lastPosition, this.getPosition());
 
-    if (this.traveledDistance > MAX_TRAVEL_DISTANCE) {
+    if (this.traveledDistance > this.maxDistance) {
+      // Reached max distance, spawn fire and destroy projectile
+      this.spawnFireOnGround(this.getPosition());
       this.getEntityManager().markEntityForRemoval(this);
+    }
+  }
+
+  private spawnFireOnGround(position: Vector2): void {
+    const fire = this.getEntityManager().createEntity(Entities.FIRE);
+    if (fire) {
+      fire.getExt(Positionable).setPosition(position);
+      this.getEntityManager().addEntity(fire);
     }
   }
 
