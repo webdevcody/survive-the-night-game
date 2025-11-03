@@ -69,6 +69,16 @@ export const ITEM_CONFIGS: Record<string, ItemConfig> = {
       sheet: "items",
     },
   },
+  flamethrower_ammo: {
+    id: "flamethrower_ammo",
+    category: "ammo",
+    assets: {
+      assetKey: "flamethrower_ammo",
+      x: 112,
+      y: 16,
+      sheet: "items",
+    },
+  },
   landmine: {
     id: "landmine",
     category: "placeable",

@@ -101,4 +101,20 @@ export const WEAPON_CONFIGS: Record<string, WeaponConfig> = {
     },
     sound: "pistol",
   },
+  [WEAPON_TYPES.FLAMETHROWER]: {
+    id: WEAPON_TYPES.FLAMETHROWER,
+    stats: {
+      cooldown: 0.1, // Very fast cooldown for continuous fire
+    },
+    assets: {
+      assetPrefix: "flamethrower",
+      spritePositions: {
+        right: { x: 48, y: 64 },
+        up: { x: 64, y: 64 },
+        down: { x: 80, y: 64 },
+      },
+      sheet: "items",
+    },
+    sound: "pistol", // Will use pistol sound until we have a flamethrower sound
+  },
 };

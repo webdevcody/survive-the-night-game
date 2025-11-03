@@ -22,11 +22,13 @@ import { KnifeClient } from "@/entities/weapons/knife";
 import { BoltActionRifleClient } from "@/entities/weapons/bolt-action-rifle";
 import { AK47Client } from "@/entities/weapons/ak47";
 import { GrenadeLauncherClient } from "@/entities/weapons/grenade-launcher";
+import { FlamethrowerClient } from "@/entities/weapons/flamethrower";
 import { PistolAmmoClient } from "@/entities/weapons/pistol-ammo";
 import { ShotgunAmmoClient } from "@/entities/weapons/shotgun-ammo";
 import { BoltActionAmmoClient } from "@/entities/weapons/bolt-action-ammo";
 import { AK47AmmoClient } from "@/entities/weapons/ak47-ammo";
 import { GrenadeLauncherAmmoClient } from "@/entities/weapons/grenade-launcher-ammo";
+import { FlamethrowerAmmoClient } from "@/entities/weapons/flamethrower-ammo";
 import { LandmineClient } from "@/entities/items/landmine";
 import { ClientEntityBase } from "@/extensions/client-entity";
 import { GrenadeClient } from "./items/grenade";
@@ -37,12 +39,14 @@ import { ExplodingZombieClient } from "./exploding-zombie";
 import { LeapingZombieClient } from "./enemies/leaping-zombie";
 import { MerchantClient } from "./environment/merchant";
 import { GrenadeProjectileClient } from "./grenade-projectile";
+import { FlameProjectileClient } from "./flame-projectile";
 
 export const entityMap = {
   [Entities.PLAYER]: PlayerClient,
   [Entities.TREE]: TreeClient,
   [Entities.BULLET]: BulletClient,
   [Entities.GRENADE_PROJECTILE]: GrenadeProjectileClient,
+  [Entities.FLAME_PROJECTILE]: FlameProjectileClient,
   [Entities.WALL]: WallClient,
   [Entities.PISTOL]: PistolClient,
   [Entities.PISTOL_AMMO]: PistolAmmoClient,
@@ -54,6 +58,8 @@ export const entityMap = {
   [Entities.AK47_AMMO]: AK47AmmoClient,
   [Entities.GRENADE_LAUNCHER]: GrenadeLauncherClient,
   [Entities.GRENADE_LAUNCHER_AMMO]: GrenadeLauncherAmmoClient,
+  [Entities.FLAMETHROWER]: FlamethrowerClient,
+  [Entities.FLAMETHROWER_AMMO]: FlamethrowerAmmoClient,
   [Entities.KNIFE]: KnifeClient,
   [Entities.BANDAGE]: BandageClient,
   [Entities.CLOTH]: ClothClient,

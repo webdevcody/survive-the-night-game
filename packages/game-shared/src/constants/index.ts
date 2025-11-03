@@ -27,11 +27,14 @@ export const Entities = {
   BOLT_ACTION_RIFLE: "bolt_action_rifle",
   AK47: "ak47",
   GRENADE_LAUNCHER: "grenade_launcher",
+  FLAMETHROWER: "flamethrower",
   PISTOL_AMMO: "pistol_ammo",
   SHOTGUN_AMMO: "shotgun_ammo",
   BOLT_ACTION_AMMO: "bolt_action_ammo",
   AK47_AMMO: "ak47_ammo",
   GRENADE_LAUNCHER_AMMO: "grenade_launcher_ammo",
+  FLAMETHROWER_AMMO: "flamethrower_ammo",
+  FLAME_PROJECTILE: "flame_projectile",
   GRENADE_PROJECTILE: "grenade_projectile",
   LANDMINE: "landmine",
   GRENADE: "grenade",
@@ -46,6 +49,7 @@ export const NON_SPAWNABLE = new Set([
   Entities.BOUNDARY,
   Entities.ACID_PROJECTILE,
   Entities.GRENADE_PROJECTILE,
+  Entities.FLAME_PROJECTILE,
   Entities.MERCHANT,
 ]);
 

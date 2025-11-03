@@ -11,6 +11,7 @@ import { ShotgunAmmo } from "@/entities/items/shotgun-ammo";
 import { BoltActionAmmo } from "@/entities/items/bolt-action-ammo";
 import { AK47Ammo } from "@/entities/items/ak47-ammo";
 import { GrenadeLauncherAmmo } from "@/entities/items/grenade-launcher-ammo";
+import { FlamethrowerAmmo } from "@/entities/items/flamethrower-ammo";
 import { Spikes } from "@/entities/items/spikes";
 import { Torch } from "@/entities/items/torch";
 import { Tree } from "@/entities/items/tree";
@@ -18,12 +19,14 @@ import { Wall } from "@/entities/items/wall";
 import { Player } from "@/entities/player";
 import { Bullet } from "@/entities/projectiles/bullet";
 import { GrenadeProjectile } from "@/entities/projectiles/grenade-projectile";
+import { FlameProjectile } from "@/entities/projectiles/flame-projectile";
 import { Knife } from "@/entities/weapons/knife";
 import { Pistol } from "@/entities/weapons/pistol";
 import { Shotgun } from "@/entities/weapons/shotgun";
 import { BoltActionRifle } from "@/entities/weapons/bolt-action-rifle";
 import { AK47 } from "@/entities/weapons/ak47";
 import { GrenadeLauncher } from "@/entities/weapons/grenade-launcher";
+import { Flamethrower } from "@/entities/weapons/flamethrower";
 import Collidable from "@/extensions/collidable";
 import Destructible from "@/extensions/destructible";
 import Positionable from "@/extensions/positionable";
@@ -53,6 +56,7 @@ const entityMap = {
   [Entities.TREE]: Tree,
   [Entities.BULLET]: Bullet,
   [Entities.GRENADE_PROJECTILE]: GrenadeProjectile,
+  [Entities.FLAME_PROJECTILE]: FlameProjectile,
   [Entities.WALL]: Wall,
   [Entities.PISTOL]: Pistol,
   [Entities.PISTOL_AMMO]: PistolAmmo,
@@ -64,6 +68,8 @@ const entityMap = {
   [Entities.AK47_AMMO]: AK47Ammo,
   [Entities.GRENADE_LAUNCHER]: GrenadeLauncher,
   [Entities.GRENADE_LAUNCHER_AMMO]: GrenadeLauncherAmmo,
+  [Entities.FLAMETHROWER]: Flamethrower,
+  [Entities.FLAMETHROWER_AMMO]: FlamethrowerAmmo,
   [Entities.KNIFE]: Knife,
   [Entities.BANDAGE]: Bandage,
   [Entities.CLOTH]: Cloth,
@@ -138,6 +144,7 @@ export class EntityManager implements IEntityManager {
     this.registerItem("bolt_action_rifle", BoltActionRifle);
     this.registerItem("ak47", AK47);
     this.registerItem("grenade_launcher", GrenadeLauncher);
+    this.registerItem("flamethrower", Flamethrower);
 
     // Register ammo
     this.registerItem("pistol_ammo", PistolAmmo);
@@ -145,6 +152,7 @@ export class EntityManager implements IEntityManager {
     this.registerItem("bolt_action_ammo", BoltActionAmmo);
     this.registerItem("ak47_ammo", AK47Ammo);
     this.registerItem("grenade_launcher_ammo", GrenadeLauncherAmmo);
+    this.registerItem("flamethrower_ammo", FlamethrowerAmmo);
 
     // Register landmine
     this.registerItem("landmine", Landmine);
