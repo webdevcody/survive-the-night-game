@@ -21,11 +21,12 @@ import { KNIFE_ATTACK_RANGE, MAX_PLAYER_HEALTH } from "@shared/constants/constan
 import Vector2 from "@shared/util/vector2";
 import { ClientEntity } from "./client-entity";
 import { SKIN_TYPES, SkinType } from "@shared/commands/commands";
-import { DEBUG_SHOW_ATTACK_RANGE } from "@shared/debug";
 import { DEBUG_CONFIG } from "@/config/client-prediction";
 
 export class PlayerClient extends ClientEntity implements IClientEntity, Renderable {
   private readonly ARROW_LENGTH = 20;
+  private readonly SPRINT_ANIMATION_DURATION = 400;
+  private readonly WALK_ANIMATION_DURATION = 450;
 
   private lastRenderPosition = { x: 0, y: 0 };
   private inventory: InventoryItem[] = [];
@@ -155,8 +156,12 @@ export class PlayerClient extends ClientEntity implements IClientEntity, Rendera
     } else if (!isMoving) {
       image = this.imageLoader.getWithDirection(assetKey, facing);
     } else {
+      // Faster animation when sprinting
+      const animationDuration = this.input.sprint
+        ? this.SPRINT_ANIMATION_DURATION
+        : this.WALK_ANIMATION_DURATION;
       const frameIndex = getFrameIndex(gameState.startedAt, {
-        duration: 500,
+        duration: animationDuration,
         frames: 3,
       });
       image = this.imageLoader.getFrameWithDirection(assetKey, facing, frameIndex);

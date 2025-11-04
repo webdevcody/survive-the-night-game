@@ -77,8 +77,8 @@ export class InputManager {
       }
     });
 
-    // If no weapons or only one unique weapon type, don't cycle
-    if (uniqueWeapons.length === 0 || uniqueWeapons.length === 1) return;
+    // If no weapons, don't cycle
+    if (uniqueWeapons.length === 0) return;
 
     // Find current weapon in the unique weapons list
     let currentIdx = uniqueWeapons.findIndex((w) => w.type === currentWeaponType);
@@ -87,6 +87,9 @@ export class InputManager {
     if (currentWeaponType === null) {
       currentIdx = -1;
     }
+
+    // If there's only one weapon and it's already selected, don't cycle
+    if (uniqueWeapons.length === 1 && currentIdx !== -1) return;
 
     // Move to next/previous unique weapon with wrapping
     let nextIdx = currentIdx + direction;

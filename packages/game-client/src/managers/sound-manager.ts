@@ -29,6 +29,25 @@ export const SOUND_TYPES_TO_MP3 = {
 
 export type SoundType = (typeof SOUND_TYPES_TO_MP3)[keyof typeof SOUND_TYPES_TO_MP3];
 
+/**
+ * Base volume map for each sound type (0-1 scale).
+ * This allows adjusting sound volumes without editing the audio files.
+ * Values default to 1.0 if not specified.
+ */
+export const SOUND_VOLUME_MAP: Partial<Record<SoundType, number>> = {
+  // Add volume adjustments here (0-1 scale)
+  // Example: pistol: 0.8, explosion: 0.9, walk: 0.7, etc.
+  // If a sound is not in this map, it defaults to 1.0
+  walk: 0.3,
+  run: 0.3,
+  gun_empty: 0.5,
+  drop_item: 0.5,
+  loot: 0.5,
+  pick_up_item: 0.5,
+  zombie_hurt: 0.5,
+  zombie_death: 0.5,
+} as const;
+
 export type SoundLoadProgressCallback = (
   progress: number,
   total: number,
@@ -112,6 +131,13 @@ export class SoundManager {
     return this.isMuted;
   }
 
+  /**
+   * Get the base volume for a sound type (defaults to 1.0 if not configured)
+   */
+  private getBaseVolume(sound: SoundType): number {
+    return SOUND_VOLUME_MAP[sound] ?? 1.0;
+  }
+
   public playPositionalSound(sound: SoundType, position: Vector2) {
     if (this.isMuted || DEBUG_DISABLE_SOUNDS || !this.gameClient) return;
 
@@ -119,7 +145,9 @@ export class SoundManager {
     if (!myPlayer) return;
 
     const dist = distance(myPlayer.getPosition(), position);
-    const volume = linearFalloff(dist, SoundManager.MAX_DISTANCE) * DEBUG_VOLUME_REDUCTION;
+    const baseVolume = this.getBaseVolume(sound);
+    const volume =
+      baseVolume * linearFalloff(dist, SoundManager.MAX_DISTANCE) * DEBUG_VOLUME_REDUCTION;
 
     const audio = this.audioCache.get(sound)?.cloneNode() as HTMLAudioElement;
     if (audio) {
@@ -163,7 +191,9 @@ export class SoundManager {
     // If the same sound is already playing, just update volume
     if (existingSound && existingSound.soundType === soundType) {
       const dist = distance(myPlayer.getPosition(), position);
-      const volume = linearFalloff(dist, SoundManager.MAX_DISTANCE) * DEBUG_VOLUME_REDUCTION;
+      const baseVolume = this.getBaseVolume(soundType);
+      const volume =
+        baseVolume * linearFalloff(dist, SoundManager.MAX_DISTANCE) * DEBUG_VOLUME_REDUCTION;
       existingSound.audio.volume = volume;
 
       // Ensure it's playing
@@ -183,7 +213,9 @@ export class SoundManager {
     if (!audio) return;
 
     const dist = distance(myPlayer.getPosition(), position);
-    const volume = linearFalloff(dist, SoundManager.MAX_DISTANCE) * DEBUG_VOLUME_REDUCTION;
+    const baseVolume = this.getBaseVolume(soundType);
+    const volume =
+      baseVolume * linearFalloff(dist, SoundManager.MAX_DISTANCE) * DEBUG_VOLUME_REDUCTION;
 
     audio.volume = volume;
     audio.loop = true;
@@ -244,7 +276,9 @@ export class SoundManager {
 
       const playerPosition = playerEntity.getExt(ClientPositionable).getPosition();
       const dist = distance(myPosition, playerPosition);
-      const volume = linearFalloff(dist, SoundManager.MAX_DISTANCE) * DEBUG_VOLUME_REDUCTION;
+      const baseVolume = this.getBaseVolume(loopingSound.soundType);
+      const volume =
+        baseVolume * linearFalloff(dist, SoundManager.MAX_DISTANCE) * DEBUG_VOLUME_REDUCTION;
       loopingSound.audio.volume = volume;
     });
   }

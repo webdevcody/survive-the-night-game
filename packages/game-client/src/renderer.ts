@@ -121,12 +121,21 @@ export class Renderer {
 
   public render(): void {
     this.clearCanvas();
-    this.mapManager.render(this.ctx);
+
+    // Render ground tiles first
+    this.mapManager.renderGround(this.ctx);
+
+    // Render collidables (without darkness yet)
+    this.mapManager.renderCollidables(this.ctx);
+
+    // Render entities
     this.renderEntities();
     this.particleManager.render(this.ctx);
 
+    // Apply darkness overlay on top of everything (ground, collidables, entities)
     this.mapManager.renderDarkness(this.ctx);
 
+    // Render UI without transforms
     this.ctx.setTransform(1, 0, 0, 1, 0, 0);
     this.hotbar.render(this.ctx, this.gameState);
     this.hud.render(this.ctx, this.gameState);
