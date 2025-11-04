@@ -9,6 +9,8 @@ export interface MapData {
     farm?: { x: number; y: number };
     gasStation?: { x: number; y: number };
     city?: { x: number; y: number };
+    dock?: { x: number; y: number };
+    shed?: { x: number; y: number };
     merchants?: Array<{ x: number; y: number }>;
   };
 }

@@ -78,6 +78,16 @@ export const MINIMAP_SETTINGS = {
       color: "#FF8C00",
       iconColor: "#FFFFFF",
     },
+    dock: {
+      label: "D",
+      color: "#4682B4",
+      iconColor: "#FFFFFF",
+    },
+    shed: {
+      label: "S",
+      color: "#8B7355",
+      iconColor: "#FFFFFF",
+    },
   },
 };
 
@@ -272,6 +282,16 @@ export class Minimap {
         name: "campsite",
         position: biomePositions.campsite,
         config: settings.biomeIndicators.campsite,
+      },
+      {
+        name: "dock",
+        position: biomePositions.dock,
+        config: settings.biomeIndicators.dock,
+      },
+      {
+        name: "shed",
+        position: biomePositions.shed,
+        config: settings.biomeIndicators.shed,
       },
     ];
 

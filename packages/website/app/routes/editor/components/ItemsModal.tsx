@@ -1,7 +1,23 @@
 import { Button } from "~/components/ui/button";
 import { useEditorStore } from "../store";
-import { SPAWNABLE_ENTITY_TYPES } from "@shared/constants";
+import { SPAWNABLE_ENTITY_TYPES, Entities } from "@shared/constants";
 import type { EntityType } from "@shared/types/entity";
+
+// Zombie entity types to filter out from items panel
+const ZOMBIE_ENTITIES = new Set([
+  Entities.ZOMBIE,
+  Entities.BIG_ZOMBIE,
+  Entities.FAST_ZOMBIE,
+  Entities.EXPLODING_ZOMBIE,
+  Entities.BAT_ZOMBIE,
+  Entities.SPITTER_ZOMBIE,
+  Entities.LEAPING_ZOMBIE,
+]);
+
+// Filter out zombies from spawnable entities to show only items
+const ITEM_ENTITY_TYPES = SPAWNABLE_ENTITY_TYPES.filter(
+  (entity) => !ZOMBIE_ENTITIES.has(entity as EntityType)
+);
 
 export function ItemsModal() {
   const isItemsModalOpen = useEditorStore((state) => state.isItemsModalOpen);
@@ -38,10 +54,7 @@ export function ItemsModal() {
               </div>
             ) : (
               currentItems.map((item, index) => {
-                const displayName = item
-                  .replace("Entities.", "")
-                  .toLowerCase()
-                  .replace(/_/g, " ");
+                const displayName = item.replace("Entities.", "").toLowerCase().replace(/_/g, " ");
                 return (
                   <button
                     key={`${item}-${index}`}
@@ -61,7 +74,7 @@ export function ItemsModal() {
         <div>
           <div className="text-sm text-gray-400 mb-2">Available Entities (Click to add):</div>
           <div className="flex flex-wrap gap-2 bg-gray-900 p-3 rounded max-h-[400px] overflow-y-auto">
-            {SPAWNABLE_ENTITY_TYPES.map((entity: EntityType) => {
+            {ITEM_ENTITY_TYPES.map((entity: EntityType) => {
               const displayName = entity.replace(/_/g, " ");
               return (
                 <button

@@ -54,6 +54,9 @@ export const CITY: BiomeData = {
     Entities.BOLT_ACTION_RIFLE,
     Entities.BOLT_ACTION_AMMO,
     Entities.BOLT_ACTION_AMMO,
-    Entities.BOLT_ACTION_AMMO
+    Entities.BOLT_ACTION_AMMO,
+    Entities.TORCH,
+    Entities.TORCH,
+    Entities.TORCH
   ],
 };

@@ -29,13 +29,15 @@ import {
   FOREST1,
   FOREST2,
   FOREST3,
-  FOREST_4,
   WATER,
   FARM,
   GAS_STATION,
   CITY,
   MERCHANT,
   type BiomeData,
+  FOREST4,
+  DOCK,
+  SHED,
 } from "@/biomes";
 import type { MapData } from "@shared/events/server-sent/map-event";
 import { AK47 } from "@/entities/weapons/ak47";
@@ -90,7 +92,7 @@ const spawnTable = [
 ];
 
 const BIOME_SIZE = 16;
-const MAP_SIZE = 7;
+const MAP_SIZE = 16;
 export const TILE_SIZE = 16;
 
 export class MapManager implements IMapManager {
@@ -102,6 +104,8 @@ export class MapManager implements IMapManager {
   private farmBiomePosition?: { x: number; y: number };
   private gasStationBiomePosition?: { x: number; y: number };
   private cityBiomePosition?: { x: number; y: number };
+  private dockBiomePosition?: { x: number; y: number };
+  private shedBiomePosition?: { x: number; y: number };
   private merchantBiomePositions: Array<{ x: number; y: number }> = [];
 
   constructor() {}
@@ -143,6 +147,8 @@ export class MapManager implements IMapManager {
         farm: this.farmBiomePosition,
         gasStation: this.gasStationBiomePosition,
         city: this.cityBiomePosition,
+        dock: this.dockBiomePosition,
+        shed: this.shedBiomePosition,
         merchants: this.merchantBiomePositions,
       },
     };
@@ -261,6 +267,8 @@ export class MapManager implements IMapManager {
     this.selectRandomFarmBiomePosition();
     this.selectRandomGasStationBiomePosition();
     this.selectRandomCityBiomePosition();
+    this.selectRandomDockBiomePosition();
+    this.selectRandomShedBiomePosition();
     this.selectRandomMerchantBiomePositions();
     this.fillMapWithBiomes();
     this.createForestBoundaries();
@@ -286,18 +294,85 @@ export class MapManager implements IMapManager {
       .map(() => Array(totalSize).fill(-1));
   }
 
-  private selectRandomFarmBiomePosition() {
+  /**
+   * Checks if a biome position is adjacent to (within 1 tile of) the campsite
+   * This is used to enforce a forest-only zone around the campsite
+   */
+  private isNearCampsite(biomeX: number, biomeY: number): boolean {
+    const centerBiomeX = Math.floor(MAP_SIZE / 2);
+    const centerBiomeY = Math.floor(MAP_SIZE / 2);
+    const distance = Math.abs(biomeX - centerBiomeX) + Math.abs(biomeY - centerBiomeY);
+    return distance <= 1;
+  }
+
+  /**
+   * Checks if a biome position is adjacent to any special biome
+   * This ensures there's always at least 1 forest biome between special biomes
+   */
+  private isAdjacentToSpecialBiome(
+    biomeX: number,
+    biomeY: number,
+    specialBiomes: Array<{ x: number; y: number } | undefined>
+  ): boolean {
+    // Check all 8 adjacent positions (cardinal + diagonal)
+    const adjacentOffsets = [
+      { dx: -1, dy: 0 },  // left
+      { dx: 1, dy: 0 },   // right
+      { dx: 0, dy: -1 },  // up
+      { dx: 0, dy: 1 },   // down
+      { dx: -1, dy: -1 }, // top-left
+      { dx: 1, dy: -1 },  // top-right
+      { dx: -1, dy: 1 },  // bottom-left
+      { dx: 1, dy: 1 },   // bottom-right
+    ];
+
+    return adjacentOffsets.some(({ dx, dy }) => {
+      const checkX = biomeX + dx;
+      const checkY = biomeY + dy;
+      return specialBiomes.some((pos) => pos && pos.x === checkX && pos.y === checkY);
+    });
+  }
+
+  /**
+   * Generic utility method to select a random biome position
+   * Excludes edges, center campsite, campsite neighbors, and any provided excluded positions
+   * Also ensures special biomes are never adjacent to each other
+   * @param excludedPositions - Array of positions that should be excluded from selection
+   * @returns A random valid position, or undefined if no valid positions exist
+   */
+  private selectRandomBiomePosition(
+    excludedPositions: Array<{ x: number; y: number } | undefined>
+  ): { x: number; y: number } | undefined {
     const centerBiomeX = Math.floor(MAP_SIZE / 2);
     const centerBiomeY = Math.floor(MAP_SIZE / 2);
     const validPositions: { x: number; y: number }[] = [];
 
-    // Collect all valid biome positions (not edges, not center)
+    // Collect all valid biome positions (not edges, not center, not near campsite, not excluded, not adjacent to special biomes)
     for (let biomeY = 1; biomeY < MAP_SIZE - 1; biomeY++) {
       for (let biomeX = 1; biomeX < MAP_SIZE - 1; biomeX++) {
         // Skip the center campsite biome
         if (biomeX === centerBiomeX && biomeY === centerBiomeY) {
           continue;
         }
+
+        // Skip positions near the campsite (enforce forest-only zone)
+        if (this.isNearCampsite(biomeX, biomeY)) {
+          continue;
+        }
+
+        // Skip any excluded positions
+        const isExcluded = excludedPositions.some(
+          (pos) => pos && pos.x === biomeX && pos.y === biomeY
+        );
+        if (isExcluded) {
+          continue;
+        }
+
+        // Skip positions adjacent to any already-placed special biomes
+        if (this.isAdjacentToSpecialBiome(biomeX, biomeY, excludedPositions)) {
+          continue;
+        }
+
         validPositions.push({ x: biomeX, y: biomeY });
       }
     }
@@ -305,134 +380,61 @@ export class MapManager implements IMapManager {
     // Select a random position from valid positions
     if (validPositions.length > 0) {
       const randomIndex = Math.floor(Math.random() * validPositions.length);
-      this.farmBiomePosition = validPositions[randomIndex];
+      return validPositions[randomIndex];
     }
+
+    return undefined;
+  }
+
+  private selectRandomFarmBiomePosition() {
+    this.farmBiomePosition = this.selectRandomBiomePosition([]);
   }
 
   private selectRandomGasStationBiomePosition() {
-    const centerBiomeX = Math.floor(MAP_SIZE / 2);
-    const centerBiomeY = Math.floor(MAP_SIZE / 2);
-    const validPositions: { x: number; y: number }[] = [];
-
-    // Collect all valid biome positions (not edges, not center, not farm)
-    for (let biomeY = 1; biomeY < MAP_SIZE - 1; biomeY++) {
-      for (let biomeX = 1; biomeX < MAP_SIZE - 1; biomeX++) {
-        // Skip the center campsite biome
-        if (biomeX === centerBiomeX && biomeY === centerBiomeY) {
-          continue;
-        }
-        // Skip the farm biome position
-        if (
-          this.farmBiomePosition &&
-          biomeX === this.farmBiomePosition.x &&
-          biomeY === this.farmBiomePosition.y
-        ) {
-          continue;
-        }
-        validPositions.push({ x: biomeX, y: biomeY });
-      }
-    }
-
-    // Select a random position from valid positions
-    if (validPositions.length > 0) {
-      const randomIndex = Math.floor(Math.random() * validPositions.length);
-      this.gasStationBiomePosition = validPositions[randomIndex];
-    }
+    this.gasStationBiomePosition = this.selectRandomBiomePosition([this.farmBiomePosition]);
   }
 
   private selectRandomCityBiomePosition() {
-    const centerBiomeX = Math.floor(MAP_SIZE / 2);
-    const centerBiomeY = Math.floor(MAP_SIZE / 2);
-    const validPositions: { x: number; y: number }[] = [];
+    this.cityBiomePosition = this.selectRandomBiomePosition([
+      this.farmBiomePosition,
+      this.gasStationBiomePosition,
+    ]);
+  }
 
-    // Collect all valid biome positions (not edges, not center, not farm, not gas station)
-    for (let biomeY = 1; biomeY < MAP_SIZE - 1; biomeY++) {
-      for (let biomeX = 1; biomeX < MAP_SIZE - 1; biomeX++) {
-        // Skip the center campsite biome
-        if (biomeX === centerBiomeX && biomeY === centerBiomeY) {
-          continue;
-        }
-        // Skip the farm biome position
-        if (
-          this.farmBiomePosition &&
-          biomeX === this.farmBiomePosition.x &&
-          biomeY === this.farmBiomePosition.y
-        ) {
-          continue;
-        }
-        // Skip the gas station biome position
-        if (
-          this.gasStationBiomePosition &&
-          biomeX === this.gasStationBiomePosition.x &&
-          biomeY === this.gasStationBiomePosition.y
-        ) {
-          continue;
-        }
-        validPositions.push({ x: biomeX, y: biomeY });
-      }
-    }
+  private selectRandomDockBiomePosition() {
+    this.dockBiomePosition = this.selectRandomBiomePosition([
+      this.farmBiomePosition,
+      this.gasStationBiomePosition,
+      this.cityBiomePosition,
+    ]);
+  }
 
-    // Select a random position from valid positions
-    if (validPositions.length > 0) {
-      const randomIndex = Math.floor(Math.random() * validPositions.length);
-      this.cityBiomePosition = validPositions[randomIndex];
-    }
+  private selectRandomShedBiomePosition() {
+    this.shedBiomePosition = this.selectRandomBiomePosition([
+      this.farmBiomePosition,
+      this.gasStationBiomePosition,
+      this.cityBiomePosition,
+      this.dockBiomePosition,
+    ]);
   }
 
   private selectRandomMerchantBiomePositions() {
     // Clear any previous merchant positions
     this.merchantBiomePositions = [];
 
-    const centerBiomeX = Math.floor(MAP_SIZE / 2);
-    const centerBiomeY = Math.floor(MAP_SIZE / 2);
-
     // Spawn 2 merchant biomes
     for (let i = 0; i < 2; i++) {
-      const validPositions: { x: number; y: number }[] = [];
+      const position = this.selectRandomBiomePosition([
+        this.farmBiomePosition,
+        this.gasStationBiomePosition,
+        this.cityBiomePosition,
+        this.dockBiomePosition,
+        this.shedBiomePosition,
+        ...this.merchantBiomePositions,
+      ]);
 
-      // Collect all valid biome positions (not edges, not center, not already used)
-      for (let biomeY = 1; biomeY < MAP_SIZE - 1; biomeY++) {
-        for (let biomeX = 1; biomeX < MAP_SIZE - 1; biomeX++) {
-          // Skip the center campsite biome
-          if (biomeX === centerBiomeX && biomeY === centerBiomeY) {
-            continue;
-          }
-          // Skip the farm biome position
-          if (
-            this.farmBiomePosition &&
-            biomeX === this.farmBiomePosition.x &&
-            biomeY === this.farmBiomePosition.y
-          ) {
-            continue;
-          }
-          // Skip the gas station biome position
-          if (
-            this.gasStationBiomePosition &&
-            biomeX === this.gasStationBiomePosition.x &&
-            biomeY === this.gasStationBiomePosition.y
-          ) {
-            continue;
-          }
-          // Skip the city biome position
-          if (
-            this.cityBiomePosition &&
-            biomeX === this.cityBiomePosition.x &&
-            biomeY === this.cityBiomePosition.y
-          ) {
-            continue;
-          }
-          // Skip already selected merchant biome positions
-          if (this.merchantBiomePositions.some((pos) => pos.x === biomeX && pos.y === biomeY)) {
-            continue;
-          }
-          validPositions.push({ x: biomeX, y: biomeY });
-        }
-      }
-
-      // Select a random position from valid positions
-      if (validPositions.length > 0) {
-        const randomIndex = Math.floor(Math.random() * validPositions.length);
-        this.merchantBiomePositions.push(validPositions[randomIndex]);
+      if (position) {
+        this.merchantBiomePositions.push(position);
       }
     }
   }
@@ -604,12 +606,26 @@ export class MapManager implements IMapManager {
     ) {
       // Place city at the randomly selected position
       biome = CITY;
+    } else if (
+      this.dockBiomePosition &&
+      biomeX === this.dockBiomePosition.x &&
+      biomeY === this.dockBiomePosition.y
+    ) {
+      // Place dock at the randomly selected position
+      biome = DOCK;
+    } else if (
+      this.shedBiomePosition &&
+      biomeX === this.shedBiomePosition.x &&
+      biomeY === this.shedBiomePosition.y
+    ) {
+      // Place shed at the randomly selected position
+      biome = SHED;
     } else if (this.merchantBiomePositions.some((pos) => biomeX === pos.x && biomeY === pos.y)) {
       // Place merchant at the randomly selected positions
       biome = MERCHANT;
     } else {
       // Place forest everywhere else
-      const forestBiomes = [FOREST1, FOREST2, FOREST3, FOREST_4];
+      const forestBiomes = [FOREST1, FOREST2, FOREST3, FOREST4];
       biome = forestBiomes[Math.floor(Math.random() * forestBiomes.length)];
     }
 
