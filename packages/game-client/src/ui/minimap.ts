@@ -8,6 +8,30 @@ import { MapManager } from "@/managers/map";
 import { AcidProjectileClient } from "@/entities/acid-projectile";
 import { ClientDestructible } from "@/extensions/destructible";
 import { EntityCategories } from "@shared/entities";
+import { perfTimer } from "@shared/util/performance";
+
+// Performance optimization constants - adjust these to balance quality vs performance
+// To view performance stats in console, run:
+//   perfTimer.logStats("minimap:total")
+//   perfTimer.logStats("minimap:collidables")
+//   perfTimer.logStats("minimap:entities")
+//   perfTimer.logStats("minimap:biomes")
+//   perfTimer.logStats("minimap:playerIndicators")
+export const MINIMAP_RENDER_DISTANCE = {
+  // Maximum world distance (in pixels) to check for entities on minimap
+  // Calculated as: (minimap size / 2) / scale + buffer
+  // Default: (400 / 2) / 0.7 + 100 = ~385 pixels
+  // Lower values = better performance, but entities may pop in/out
+  ENTITIES: 400,
+
+  // Maximum world distance (in pixels) to check for collidable tiles
+  // Same calculation as entities
+  // Lower values = better performance, but tiles may pop in/out
+  COLLIDABLES: 400,
+
+  // Maximum world distance (in pixels) to check for ground tiles (if needed)
+  GROUND: 400,
+};
 
 export const MINIMAP_SETTINGS = {
   size: 400,
@@ -99,9 +123,13 @@ export class Minimap {
   }
 
   public render(ctx: CanvasRenderingContext2D, gameState: GameState): void {
+    perfTimer.start("minimap:total");
     const settings = MINIMAP_SETTINGS;
     const myPlayer = getPlayer(gameState);
-    if (!myPlayer || !myPlayer.hasExt(ClientPositionable)) return;
+    if (!myPlayer || !myPlayer.hasExt(ClientPositionable)) {
+      perfTimer.end("minimap:total");
+      return;
+    }
 
     const playerPos = myPlayer.getExt(ClientPositionable).getPosition();
     const tileSize = 16; // This should match the tile size in MapManager
@@ -128,11 +156,32 @@ export class Minimap {
     ctx.fillRect(settings.left, top, settings.size, settings.size);
 
     // Draw collidable tiles (obstacles like trees, walls, water)
+    perfTimer.start("minimap:collidables");
     const mapData = this.mapManager.getMapData();
     if (mapData && mapData.collidables) {
       ctx.fillStyle = settings.colors.tree;
-      mapData.collidables.forEach((row, y) => {
-        row.forEach((cell, x) => {
+
+      // Pre-calculate squared distance for performance
+      const maxDistanceSquared =
+        MINIMAP_RENDER_DISTANCE.COLLIDABLES * MINIMAP_RENDER_DISTANCE.COLLIDABLES;
+
+      // Calculate tile range to check based on player position and max distance
+      const playerTileX = Math.floor(playerPos.x / tileSize);
+      const playerTileY = Math.floor(playerPos.y / tileSize);
+      const tileRange = Math.ceil(MINIMAP_RENDER_DISTANCE.COLLIDABLES / tileSize);
+
+      const minX = Math.max(0, playerTileX - tileRange);
+      const maxX = Math.min(mapData.collidables[0]?.length ?? 0, playerTileX + tileRange);
+      const minY = Math.max(0, playerTileY - tileRange);
+      const maxY = Math.min(mapData.collidables.length, playerTileY + tileRange);
+
+      // Only iterate through tiles within range
+      for (let y = minY; y < maxY; y++) {
+        const row = mapData.collidables[y];
+        if (!row) continue;
+
+        for (let x = minX; x < maxX; x++) {
+          const cell = row[x];
           // If there's a collidable (anything other than -1), draw it
           if (cell !== -1) {
             const worldX = x * tileSize;
@@ -141,6 +190,10 @@ export class Minimap {
             // Calculate relative position to player
             const relativeX = worldX - playerPos.x;
             const relativeY = worldY - playerPos.y;
+
+            // Early distance check using squared distance (faster than sqrt)
+            const distanceSquared = relativeX * relativeX + relativeY * relativeY;
+            if (distanceSquared > maxDistanceSquared) continue;
 
             // Convert to minimap coordinates (centered on player)
             const minimapX = settings.left + settings.size / 2 + relativeX * settings.scale;
@@ -159,11 +212,16 @@ export class Minimap {
               ctx.fillRect(minimapX - halfSize, minimapY - halfSize, size, size);
             }
           }
-        });
-      });
+        }
+      }
     }
+    perfTimer.end("minimap:collidables");
 
     // Loop through all entities and draw them on minimap
+    perfTimer.start("minimap:entities");
+    const maxEntityDistanceSquared =
+      MINIMAP_RENDER_DISTANCE.ENTITIES * MINIMAP_RENDER_DISTANCE.ENTITIES;
+
     for (const entity of gameState.entities) {
       if (!entity.hasExt(ClientPositionable)) continue;
 
@@ -173,6 +231,10 @@ export class Minimap {
       // Calculate relative position to player
       const relativeX = position.x - playerPos.x;
       const relativeY = position.y - playerPos.y;
+
+      // Early distance check using squared distance (faster than sqrt)
+      const distanceSquared = relativeX * relativeX + relativeY * relativeY;
+      if (distanceSquared > maxEntityDistanceSquared) continue;
 
       // Convert to minimap coordinates (centered on player)
       const minimapX = settings.left + settings.size / 2 + relativeX * settings.scale;
@@ -221,6 +283,7 @@ export class Minimap {
         }
       }
     }
+    perfTimer.end("minimap:entities");
 
     // Draw radar circle border
     ctx.strokeStyle = "white";
@@ -247,12 +310,17 @@ export class Minimap {
     ctx.stroke();
 
     // Draw biome directional indicators
+    perfTimer.start("minimap:biomes");
     this.renderBiomeIndicators(ctx, playerPos, settings, top);
+    perfTimer.end("minimap:biomes");
 
     // Draw player directional indicators
+    perfTimer.start("minimap:playerIndicators");
     this.renderPlayerIndicators(ctx, gameState, playerPos, settings, top);
+    perfTimer.end("minimap:playerIndicators");
 
     ctx.restore();
+    perfTimer.end("minimap:total");
   }
 
   private renderBiomeIndicators(

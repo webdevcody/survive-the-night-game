@@ -316,14 +316,14 @@ export class MapManager implements IMapManager {
   ): boolean {
     // Check all 8 adjacent positions (cardinal + diagonal)
     const adjacentOffsets = [
-      { dx: -1, dy: 0 },  // left
-      { dx: 1, dy: 0 },   // right
-      { dx: 0, dy: -1 },  // up
-      { dx: 0, dy: 1 },   // down
+      { dx: -1, dy: 0 }, // left
+      { dx: 1, dy: 0 }, // right
+      { dx: 0, dy: -1 }, // up
+      { dx: 0, dy: 1 }, // down
       { dx: -1, dy: -1 }, // top-left
-      { dx: 1, dy: -1 },  // top-right
-      { dx: -1, dy: 1 },  // bottom-left
-      { dx: 1, dy: 1 },   // bottom-right
+      { dx: 1, dy: -1 }, // top-right
+      { dx: -1, dy: 1 }, // bottom-left
+      { dx: 1, dy: 1 }, // bottom-right
     ];
 
     return adjacentOffsets.some(({ dx, dy }) => {
