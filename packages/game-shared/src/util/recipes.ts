@@ -83,6 +83,8 @@ export function craftRecipe(
       continue;
     }
 
+    // Preserve inventory positions using empty slots
+    newInventory.push(null as any);
     found.push(componentIdx);
   }
 
