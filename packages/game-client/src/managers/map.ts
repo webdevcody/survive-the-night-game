@@ -12,17 +12,29 @@ const DARKNESS_EXPONENTIAL = 2.5; // Higher values make darkness increase more r
 const PATH_ATTENUATION = 0.96; // Light retention on walkable tiles (per tile step)
 const COLLIDABLE_ATTENUATION = 0.9; // Light retention through collidables (per tile step)
 const MIN_LIGHT_INTENSITY = 0.01; // Threshold to stop BFS propagation
+const DARKNESS_RENDER_DISTANCE = 400; // Maximum distance (in pixels) from player to render darkness tiles
 
 interface LightSource {
   position: Vector2;
   radius: number;
 }
 
+interface LightSourceWithId extends LightSource {
+  entityId: number;
+}
+
 export class MapManager {
   private tileSize = 16;
   private groundLayer: number[][] | null = null;
   private collidablesLayer: number[][] | null = null;
-  private lightMap: number[][] = []; // Stores light intensity per tile (0.0 to 1.0)
+
+  // Light caching system
+  private lightMapCache: Map<number, number[][]> = new Map(); // Cache per entity ID
+  private lightSourcePositions: Map<number, { x: number; y: number }> = new Map(); // Grid positions per entity
+  private combinedLightMap: number[][] = []; // Final combined light map
+  private lastLightRecalculationTime: number = 0;
+  private readonly LIGHT_RECALCULATION_INTERVAL = 300;
+
   private biomePositions?: {
     campsite: { x: number; y: number };
     farm?: { x: number; y: number };
@@ -105,92 +117,126 @@ export class MapManager {
     );
   }
 
-  // Calculate light propagation using BFS
-  private calculateLightPropagation(sources: LightSource[]): void {
-    if (!this.groundLayer || !this.collidablesLayer) return;
+  // Helper: Convert world position to grid tile coordinates
+  private getGridPosition(position: Vector2): { x: number; y: number } {
+    return {
+      x: Math.floor(position.x / this.tileSize),
+      y: Math.floor(position.y / this.tileSize),
+    };
+  }
 
+  // Helper: Create empty light map with proper dimensions
+  private createEmptyLightMap(): number[][] {
+    if (!this.groundLayer) return [];
     const rows = this.groundLayer.length;
     const cols = this.groundLayer[0].length;
+    return Array(rows)
+      .fill(0)
+      .map(() => Array(cols).fill(0));
+  }
 
-    // Initialize lightMap with zeros
-    this.lightMap = Array(rows)
+  // Helper: Check if light source has moved to a different grid position
+  private hasLightSourceMoved(entityId: number, currentPos: Vector2): boolean {
+    const cachedPos = this.lightSourcePositions.get(entityId);
+    if (!cachedPos) return true; // New light source
+
+    const currentGrid = this.getGridPosition(currentPos);
+    return cachedPos.x !== currentGrid.x || cachedPos.y !== currentGrid.y;
+  }
+
+  // Calculate light propagation for a single light source using BFS
+  private calculateSingleLightPropagation(
+    source: LightSource,
+    rows: number,
+    cols: number
+  ): number[][] {
+    if (!this.groundLayer || !this.collidablesLayer) {
+      return Array(rows)
+        .fill(0)
+        .map(() => Array(cols).fill(0));
+    }
+
+    // Initialize light map with zeros for this source
+    const lightMap = Array(rows)
       .fill(0)
       .map(() => Array(cols).fill(0));
 
-    // Process each light source
-    for (const source of sources) {
-      const startTile = this.worldToTile(source.position.x, source.position.y);
-      if (!this.isValidTile(startTile.row, startTile.col)) continue;
+    const startTile = this.worldToTile(source.position.x, source.position.y);
+    if (!this.isValidTile(startTile.row, startTile.col)) {
+      return lightMap;
+    }
 
-      // BFS queue: {row, col, intensity}
-      const queue: { row: number; col: number; intensity: number }[] = [];
-      const visited = new Set<string>();
+    // BFS queue: {row, col, intensity}
+    const queue: { row: number; col: number; intensity: number }[] = [];
+    const visited = new Set<string>();
 
-      queue.push({ row: startTile.row, col: startTile.col, intensity: 1.0 });
-      visited.add(`${startTile.row},${startTile.col}`);
+    queue.push({ row: startTile.row, col: startTile.col, intensity: 1.0 });
+    visited.add(`${startTile.row},${startTile.col}`);
 
-      while (queue.length > 0) {
-        const current = queue.shift()!;
-        const { row, col, intensity } = current;
+    while (queue.length > 0) {
+      const current = queue.shift()!;
+      const { row, col, intensity } = current;
 
-        // Calculate distance-based falloff for smooth gradient
-        const currentWorldPos = this.tileToWorld(row, col);
-        const distFromSource = distance(
-          source.position,
-          new Vector2(currentWorldPos.x, currentWorldPos.y)
-        );
+      // Calculate distance-based falloff for smooth gradient
+      const currentWorldPos = this.tileToWorld(row, col);
+      const distFromSource = distance(
+        source.position,
+        new Vector2(currentWorldPos.x, currentWorldPos.y)
+      );
 
-        // Apply smooth distance-based falloff (quadratic falloff for natural lighting)
-        const distanceFactor = Math.max(0, 1 - Math.pow(distFromSource / source.radius, 2));
-        const finalIntensity = intensity * distanceFactor;
+      // Apply smooth distance-based falloff (quadratic falloff for natural lighting)
+      const distanceFactor = Math.max(0, 1 - Math.pow(distFromSource / source.radius, 2));
+      const finalIntensity = intensity * distanceFactor;
 
-        // Update light map with maximum intensity from any source
-        this.lightMap[row][col] = Math.max(this.lightMap[row][col], finalIntensity);
+      // Update light map for this source
+      lightMap[row][col] = Math.max(lightMap[row][col], finalIntensity);
 
-        // Stop propagation if intensity is too low or beyond radius
-        if (finalIntensity < MIN_LIGHT_INTENSITY || distFromSource > source.radius) continue;
+      // Stop propagation if intensity is too low or beyond radius
+      if (finalIntensity < MIN_LIGHT_INTENSITY || distFromSource > source.radius) continue;
 
-        // Explore 4 cardinal neighbors
-        const neighbors = [
-          { row: row - 1, col }, // North
-          { row: row + 1, col }, // South
-          { row, col: col - 1 }, // West
-          { row, col: col + 1 }, // East
-        ];
+      // Explore 4 cardinal neighbors
+      const neighbors = [
+        { row: row - 1, col }, // North
+        { row: row + 1, col }, // South
+        { row, col: col - 1 }, // West
+        { row, col: col + 1 }, // East
+      ];
 
-        for (const neighbor of neighbors) {
-          if (!this.isValidTile(neighbor.row, neighbor.col)) continue;
+      for (const neighbor of neighbors) {
+        if (!this.isValidTile(neighbor.row, neighbor.col)) continue;
 
-          const key = `${neighbor.row},${neighbor.col}`;
-          if (visited.has(key)) continue;
+        const key = `${neighbor.row},${neighbor.col}`;
+        if (visited.has(key)) continue;
 
-          // Calculate next intensity based on tile type
-          const isCollidable = this.collidablesLayer[neighbor.row][neighbor.col] !== -1;
-          const attenuation = isCollidable ? COLLIDABLE_ATTENUATION : PATH_ATTENUATION;
-          const nextIntensity = intensity * attenuation;
+        // Calculate next intensity based on tile type
+        const isCollidable = this.collidablesLayer[neighbor.row][neighbor.col] !== -1;
+        const attenuation = isCollidable ? COLLIDABLE_ATTENUATION : PATH_ATTENUATION;
+        const nextIntensity = intensity * attenuation;
 
-          if (nextIntensity >= MIN_LIGHT_INTENSITY) {
-            queue.push({ row: neighbor.row, col: neighbor.col, intensity: nextIntensity });
-            visited.add(key);
-          }
+        if (nextIntensity >= MIN_LIGHT_INTENSITY) {
+          queue.push({ row: neighbor.row, col: neighbor.col, intensity: nextIntensity });
+          visited.add(key);
         }
       }
     }
+
+    return lightMap;
   }
 
-  private getLightSources(): LightSource[] {
-    const sources: LightSource[] = [];
+  private getLightSources(): LightSourceWithId[] {
+    const sources: LightSourceWithId[] = [];
     const entities = this.gameClient.getGameState().entities;
     const currentTime = Date.now();
     const pulseOffset = Math.sin(currentTime * PULSE_SPEED);
     const radiusMultiplier = 1 + pulseOffset * PULSE_INTENSITY;
 
-    entities.forEach((entity) => {
+    entities.forEach((entity, entityId) => {
       const gameEntity = entity;
       if (gameEntity.hasExt(ClientIlluminated)) {
         const baseRadius = gameEntity.getExt(ClientIlluminated).getRadius();
         const position = gameEntity.getExt(ClientPositionable).getCenterPosition();
         sources.push({
+          entityId,
           position,
           radius: baseRadius * radiusMultiplier,
         });
@@ -200,17 +246,81 @@ export class MapManager {
     return sources;
   }
 
+  // Update light cache with change detection and combine all light maps
+  private updateLightCache(currentSources: LightSourceWithId[]): void {
+    if (!this.groundLayer || !this.collidablesLayer) return;
+
+    const rows = this.groundLayer.length;
+    const cols = this.groundLayer[0].length;
+
+    // Track current entity IDs
+    const currentEntityIds = new Set(currentSources.map((s) => s.entityId));
+    const previousEntityIds = new Set(this.lightSourcePositions.keys());
+
+    // Step 1: Remove caches for deleted light sources
+    for (const entityId of previousEntityIds) {
+      if (!currentEntityIds.has(entityId)) {
+        this.lightMapCache.delete(entityId);
+        this.lightSourcePositions.delete(entityId);
+      }
+    }
+
+    // Step 2: Update cache for new or moved light sources
+    for (const source of currentSources) {
+      const gridPos = this.getGridPosition(source.position);
+
+      // Check if this light source needs recalculation
+      if (this.hasLightSourceMoved(source.entityId, source.position)) {
+        // Recalculate light map for this source
+        const lightMap = this.calculateSingleLightPropagation(source, rows, cols);
+        this.lightMapCache.set(source.entityId, lightMap);
+        this.lightSourcePositions.set(source.entityId, gridPos);
+      }
+      // If not moved, the cached light map is still valid
+    }
+
+    // Step 3: Combine all cached light maps into combinedLightMap
+    // Initialize combined map with zeros
+    this.combinedLightMap = this.createEmptyLightMap();
+
+    // Only combine light maps within visible range for performance
+    const bounds = this.getVisibleTileBounds(DARKNESS_RENDER_DISTANCE);
+    if (!bounds) {
+      return;
+    }
+
+    const { startTileX, startTileY, endTileX, endTileY } = bounds;
+
+    // Iterate through all cached light maps and combine them (only visible tiles)
+    for (const [, lightMap] of this.lightMapCache) {
+      for (let row = startTileY; row <= endTileY; row++) {
+        for (let col = startTileX; col <= endTileX; col++) {
+          // Take maximum intensity from all light sources
+          this.combinedLightMap[row][col] = Math.max(
+            this.combinedLightMap[row][col],
+            lightMap[row][col]
+          );
+        }
+      }
+    }
+  }
+
   renderDarkness(ctx: CanvasRenderingContext2D) {
     if (!this.groundLayer) return;
 
-    const lightSources = this.getLightSources();
+    const currentTime = Date.now();
+    const timeSinceLastRecalc = currentTime - this.lastLightRecalculationTime;
+
+    // Only recalculate light cache every LIGHT_RECALCULATION_INTERVAL ms (10Hz)
+    if (timeSinceLastRecalc >= this.LIGHT_RECALCULATION_INTERVAL) {
+      const lightSources = this.getLightSources();
+      this.updateLightCache(lightSources);
+      this.lastLightRecalculationTime = currentTime;
+    }
+
     const gameState = this.gameClient.getGameState();
 
-    // Calculate light propagation once per frame using BFS
-    this.calculateLightPropagation(lightSources);
-
     // Calculate base darkness level based on day/night cycle
-    const currentTime = Date.now();
     const elapsedTime = (currentTime - gameState.cycleStartTime) / 1000;
     const cycleProgress = elapsedTime / gameState.cycleDuration;
 
@@ -224,10 +334,14 @@ export class MapManager {
       baseDarkness = BASE_NIGHT_DARKNESS;
     }
 
-    // Render darkness overlay based on pre-calculated lightMap
-    for (let y = 0; y < this.groundLayer.length; y++) {
-      for (let x = 0; x < this.groundLayer[y].length; x++) {
-        const lightIntensity = this.lightMap[y]?.[x] || 0;
+    const bounds = this.getVisibleTileBounds(DARKNESS_RENDER_DISTANCE);
+    if (!bounds) return;
+
+    const { startTileX, startTileY, endTileX, endTileY } = bounds;
+
+    for (let y = startTileY; y <= endTileY; y++) {
+      for (let x = startTileX; x <= endTileX; x++) {
+        const lightIntensity = this.combinedLightMap[y]?.[x] || 0;
         const darkness = 1 - lightIntensity; // Convert light to darkness
         const finalOpacity = baseDarkness * darkness;
 
@@ -242,7 +356,7 @@ export class MapManager {
   }
 
   // Helper to get visible tile bounds
-  private getVisibleTileBounds(): {
+  private getVisibleTileBounds(renderDistance?: number): {
     startTileX: number;
     startTileY: number;
     endTileX: number;
@@ -256,23 +370,18 @@ export class MapManager {
     }
 
     const playerPos = player.getExt(ClientPositionable).getCenterPosition();
+    const distance = renderDistance ?? RENDER_CONFIG.ENTITY_RENDER_RADIUS;
 
     return {
-      startTileX: Math.max(
-        0,
-        Math.floor((playerPos.x - RENDER_CONFIG.ENTITY_RENDER_RADIUS) / this.tileSize)
-      ),
-      startTileY: Math.max(
-        0,
-        Math.floor((playerPos.y - RENDER_CONFIG.ENTITY_RENDER_RADIUS) / this.tileSize)
-      ),
+      startTileX: Math.max(0, Math.floor((playerPos.x - distance) / this.tileSize)),
+      startTileY: Math.max(0, Math.floor((playerPos.y - distance) / this.tileSize)),
       endTileX: Math.min(
         this.groundLayer[0].length - 1,
-        Math.ceil((playerPos.x + RENDER_CONFIG.ENTITY_RENDER_RADIUS) / this.tileSize)
+        Math.ceil((playerPos.x + distance) / this.tileSize)
       ),
       endTileY: Math.min(
         this.groundLayer.length - 1,
-        Math.ceil((playerPos.y + RENDER_CONFIG.ENTITY_RENDER_RADIUS) / this.tileSize)
+        Math.ceil((playerPos.y + distance) / this.tileSize)
       ),
     };
   }
