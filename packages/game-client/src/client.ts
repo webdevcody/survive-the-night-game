@@ -4,7 +4,7 @@ import { ClientSocketManager } from "@/managers/client-socket-manager";
 import { PlayerClient } from "@/entities/player";
 import { CameraManager } from "@/managers/camera";
 import { MapManager } from "@/managers/map";
-import { GameState, getEntityById } from "@/state";
+import { GameState, getEntityById, removeEntity as removeEntityFromState } from "@/state";
 import { InventoryBarUI } from "@/ui/inventory-bar";
 import { CraftingTable } from "@/ui/crafting-table";
 import { MerchantBuyPanel } from "@/ui/merchant-buy-panel";
@@ -287,6 +287,7 @@ export class GameClient {
       startedAt: Date.now(),
       playerId: "",
       entities: [],
+      entityMap: new Map(),
       dayNumber: 0,
       cycleStartTime: Date.now(),
       cycleDuration: 60, // Default to 60 seconds until we get the real value from server
@@ -343,10 +344,7 @@ export class GameClient {
   }
 
   public removeEntity(id: string) {
-    const index = this.gameState.entities.findIndex((entity) => entity.getId() === id);
-    if (index !== -1) {
-      this.gameState.entities.splice(index, 1);
-    }
+    removeEntityFromState(this.gameState, id);
   }
 
   public getSocketManager(): ClientSocketManager {
@@ -510,9 +508,7 @@ export class GameClient {
       // Only play sounds if player has movement input (not just velocity from knockback)
       if (hasMovementInput) {
         const position = player.getPosition();
-        const soundType = input.sprint
-          ? SOUND_TYPES_TO_MP3.RUN
-          : SOUND_TYPES_TO_MP3.WALK;
+        const soundType = input.sprint ? SOUND_TYPES_TO_MP3.RUN : SOUND_TYPES_TO_MP3.WALK;
         this.soundManager.updateLoopingSound(playerId, soundType, position);
       } else {
         // Player is not moving intentionally, stop the sound

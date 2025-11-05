@@ -28,6 +28,10 @@ export class MapManager {
   private groundLayer: number[][] | null = null;
   private collidablesLayer: number[][] | null = null;
 
+  // Pre-rendered canvases for efficient rendering
+  private groundCanvas: HTMLCanvasElement | null = null;
+  private collidablesCanvas: HTMLCanvasElement | null = null;
+
   // Light caching system
   private lightMapCache: Map<number, number[][]> = new Map(); // Cache per entity ID
   private lightSourcePositions: Map<number, { x: number; y: number }> = new Map(); // Grid positions per entity
@@ -54,12 +58,28 @@ export class MapManager {
     this.groundTilesheet.src = "/sheets/ground.png";
     this.collidablesTilesheet.src = "/sheets/collidables.png";
     this.lastRenderTime = Date.now();
+
+    // Set up tilesheet load handlers to pre-render layers when ready
+    this.groundTilesheet.onload = () => {
+      if (this.groundLayer) {
+        this.prerenderGround();
+      }
+    };
+    this.collidablesTilesheet.onload = () => {
+      if (this.collidablesLayer) {
+        this.prerenderCollidables();
+      }
+    };
   }
 
   setMap(mapData: { ground: number[][]; collidables: number[][]; biomePositions?: any }) {
     this.groundLayer = mapData.ground;
     this.collidablesLayer = mapData.collidables;
     this.biomePositions = mapData.biomePositions;
+
+    // Pre-render both layers once
+    this.prerenderGround();
+    this.prerenderCollidables();
   }
 
   getMap(): number[][] | null {
@@ -386,26 +406,103 @@ export class MapManager {
     };
   }
 
-  renderGround(ctx: CanvasRenderingContext2D) {
+  // Generic function to pre-render a tile layer into a canvas
+  private prerenderTileLayer(
+    layer: number[][],
+    tilesheet: HTMLImageElement,
+    skipTile?: (tileId: number) => boolean
+  ): HTMLCanvasElement | null {
+    if (!layer) return null;
+
+    // Wait for tilesheet to load if it hasn't already
+    if (!tilesheet.complete || tilesheet.width === 0) {
+      return null; // Will be called again when tilesheet loads via onload handler
+    }
+
+    const rows = layer.length;
+    const cols = layer[0].length;
+
+    // Create a canvas for the entire layer
+    const canvas = document.createElement("canvas");
+    canvas.width = cols * this.tileSize;
+    canvas.height = rows * this.tileSize;
+    const ctx = canvas.getContext("2d");
+
+    if (!ctx) return null;
+
+    // Render all tiles to the canvas once
+    const tilesheetCols = tilesheet.width / this.tileSize;
+
+    for (let y = 0; y < rows; y++) {
+      for (let x = 0; x < cols; x++) {
+        const tileId = layer[y][x];
+
+        // Skip tiles based on the skip function (e.g., -1 for empty collidables)
+        if (skipTile && skipTile(tileId)) {
+          continue;
+        }
+
+        const col = tileId % tilesheetCols;
+        const row = Math.floor(tileId / tilesheetCols);
+
+        ctx.drawImage(
+          tilesheet,
+          col * this.tileSize,
+          row * this.tileSize,
+          this.tileSize,
+          this.tileSize,
+          x * this.tileSize,
+          y * this.tileSize,
+          this.tileSize,
+          this.tileSize
+        );
+      }
+    }
+
+    return canvas;
+  }
+
+  // Pre-render the entire ground layer into a single canvas for efficient rendering
+  private prerenderGround() {
     if (!this.groundLayer) return;
+    this.groundCanvas = this.prerenderTileLayer(this.groundLayer, this.groundTilesheet);
+  }
 
-    const bounds = this.getVisibleTileBounds();
-    if (!bounds) return;
+  // Pre-render the entire collidables layer into a single canvas for efficient rendering
+  private prerenderCollidables() {
+    if (!this.collidablesLayer) return;
+    // Skip tiles with value -1 (empty collidables)
+    this.collidablesCanvas = this.prerenderTileLayer(
+      this.collidablesLayer,
+      this.collidablesTilesheet,
+      (tileId) => tileId === -1
+    );
+  }
 
+  // Generic function to render tiles fallback (used when pre-rendered canvas isn't ready)
+  private renderTilesFallback(
+    ctx: CanvasRenderingContext2D,
+    layer: number[][],
+    tilesheet: HTMLImageElement,
+    bounds: { startTileX: number; startTileY: number; endTileX: number; endTileY: number },
+    skipTile?: (tileId: number) => boolean
+  ) {
     const { startTileX, startTileY, endTileX, endTileY } = bounds;
+    const tilesheetCols = tilesheet.width / this.tileSize;
 
-    // Render ground tiles within visible range
     for (let y = startTileY; y <= endTileY; y++) {
       for (let x = startTileX; x <= endTileX; x++) {
-        if (y < 0 || y >= this.groundLayer.length || x < 0 || x >= this.groundLayer[y].length)
-          continue;
+        if (y < 0 || y >= layer.length || x < 0 || x >= layer[y].length) continue;
 
-        const groundTileId = this.groundLayer[y][x];
-        const groundCols = this.groundTilesheet.width / this.tileSize;
-        const col = groundTileId % groundCols;
-        const row = Math.floor(groundTileId / groundCols);
+        const tileId = layer[y][x];
+
+        // Skip tiles based on the skip function
+        if (skipTile && skipTile(tileId)) continue;
+
+        const col = tileId % tilesheetCols;
+        const row = Math.floor(tileId / tilesheetCols);
         ctx.drawImage(
-          this.groundTilesheet,
+          tilesheet,
           col * this.tileSize,
           row * this.tileSize,
           this.tileSize,
@@ -419,47 +516,93 @@ export class MapManager {
     }
   }
 
+  // Generic function to render a pre-rendered layer with fallback
+  private renderPrerenderedLayer(
+    ctx: CanvasRenderingContext2D,
+    getCanvas: () => HTMLCanvasElement | null,
+    layer: number[][] | null,
+    tilesheet: HTMLImageElement,
+    bounds: { startTileX: number; startTileY: number; endTileX: number; endTileY: number },
+    prerenderFn: () => void,
+    skipTile?: (tileId: number) => boolean
+  ) {
+    if (!layer) return;
+
+    // Get current canvas value
+    let canvas = getCanvas();
+
+    // If canvas hasn't been created yet, try to create it now
+    if (!canvas) {
+      prerenderFn();
+      canvas = getCanvas(); // Get updated canvas value
+
+      // If still not available, use fallback rendering
+      if (!canvas) {
+        this.renderTilesFallback(ctx, layer, tilesheet, bounds, skipTile);
+        return;
+      }
+    }
+
+    // Calculate source coordinates in the pre-rendered canvas
+    const sourceX = bounds.startTileX * this.tileSize;
+    const sourceY = bounds.startTileY * this.tileSize;
+    const sourceWidth = (bounds.endTileX - bounds.startTileX + 1) * this.tileSize;
+    const sourceHeight = (bounds.endTileY - bounds.startTileY + 1) * this.tileSize;
+
+    // Calculate destination coordinates (same as source since we're rendering at tile positions)
+    const destX = bounds.startTileX * this.tileSize;
+    const destY = bounds.startTileY * this.tileSize;
+
+    // Draw the subsection of the pre-rendered canvas in a single drawImage call
+    ctx.drawImage(
+      canvas,
+      sourceX,
+      sourceY,
+      sourceWidth,
+      sourceHeight,
+      destX,
+      destY,
+      sourceWidth,
+      sourceHeight
+    );
+  }
+
+  renderGround(ctx: CanvasRenderingContext2D) {
+    if (!this.groundLayer) return;
+
+    const bounds = this.getVisibleTileBounds();
+    if (!bounds) return;
+
+    this.renderPrerenderedLayer(
+      ctx,
+      () => this.groundCanvas,
+      this.groundLayer,
+      this.groundTilesheet,
+      bounds,
+      () => this.prerenderGround()
+    );
+  }
+
   renderCollidables(ctx: CanvasRenderingContext2D) {
     if (!this.collidablesLayer) return;
 
     const bounds = this.getVisibleTileBounds();
     if (!bounds) return;
 
-    const { startTileX, startTileY, endTileX, endTileY } = bounds;
-
     // Render collidable tiles (darkness will be applied later as an overlay)
-    for (let y = startTileY; y <= endTileY; y++) {
-      for (let x = startTileX; x <= endTileX; x++) {
-        if (
-          y < 0 ||
-          y >= this.collidablesLayer.length ||
-          x < 0 ||
-          x >= this.collidablesLayer[y].length
-        )
-          continue;
-
-        const collidableTileId = this.collidablesLayer[y][x];
-        if (collidableTileId === -1) continue;
-
-        const collidablesCols = this.collidablesTilesheet.width / this.tileSize;
-        const colCol = collidableTileId % collidablesCols;
-        const colRow = Math.floor(collidableTileId / collidablesCols);
-        ctx.drawImage(
-          this.collidablesTilesheet,
-          colCol * this.tileSize,
-          colRow * this.tileSize,
-          this.tileSize,
-          this.tileSize,
-          x * this.tileSize,
-          y * this.tileSize,
-          this.tileSize,
-          this.tileSize
-        );
-      }
-    }
+    this.renderPrerenderedLayer(
+      ctx,
+      () => this.collidablesCanvas,
+      this.collidablesLayer,
+      this.collidablesTilesheet,
+      bounds,
+      () => this.prerenderCollidables(),
+      (tileId) => tileId === -1 // Skip empty collidables
+    );
 
     // Render debug overlays if enabled
     if (DEBUG_MAP_BOUNDS) {
+      const { startTileX, startTileY, endTileX, endTileY } = bounds;
       for (let y = startTileY; y <= endTileY; y++) {
         for (let x = startTileX; x <= endTileX; x++) {
           if (

@@ -127,6 +127,8 @@ export class Renderer {
   }
 
   public render(): void {
+    perfTimer.start("render");
+
     this.clearCanvas();
 
     // Render ground tiles first
@@ -164,6 +166,8 @@ export class Renderer {
     this.gameOverDialog.render(this.ctx, this.gameState);
     perfTimer.end("renderUI");
 
+    perfTimer.end("render");
+
     // Only print stats every second
     if (
       DEBUG_PERFORMANCE &&
@@ -175,6 +179,7 @@ export class Renderer {
       perfTimer.logStats("renderParticles");
       perfTimer.logStats("renderDarkness");
       perfTimer.logStats("renderUI");
+      perfTimer.logStats("render");
       console.log("--------------------------------");
       this.lastPerfLogTime = performance.now();
     }

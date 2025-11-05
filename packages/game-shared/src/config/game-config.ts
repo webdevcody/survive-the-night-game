@@ -102,7 +102,7 @@ export const LANDMINE_EXPLOSION_RADIUS = 32;
  * - 100: High latency
  * - 200+: Very poor connection
  */
-export const SIMULATED_LATENCY_MS = 0;
+export const SIMULATED_LATENCY_MS = 70;
 
 // ========================================================================
 // CLIENT-SIDE PREDICTION & INTERPOLATION
@@ -185,7 +185,7 @@ export const RECONCILIATION_LERP_SPEED = 0.15;
  * - false (production)
  * - true (current: for debugging rubber banding)
  */
-export const SHOW_DEBUG_VISUALS = false;
+export const SHOW_DEBUG_VISUALS = true;
 
 // ========================================================================
 // KEYBINDINGS (Display Names)

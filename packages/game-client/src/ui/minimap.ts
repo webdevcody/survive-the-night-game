@@ -117,9 +117,18 @@ export const MINIMAP_SETTINGS = {
 
 export class Minimap {
   private mapManager: MapManager;
+  // Pre-rendered canvas for collidables indicators (at world coordinates, 1:1 scale)
+  private collidablesCanvas: HTMLCanvasElement | null = null;
+  private readonly tileSize = 16; // Match MapManager tile size
 
   constructor(mapManager: MapManager) {
     this.mapManager = mapManager;
+
+    // Pre-render collidables when map data is available
+    this.prerenderCollidables();
+
+    // Listen for map updates to re-render
+    // Note: This assumes setMap is called on MapManager - we'll check on first render
   }
 
   public render(ctx: CanvasRenderingContext2D, gameState: GameState): void {
@@ -132,7 +141,6 @@ export class Minimap {
     }
 
     const playerPos = myPlayer.getExt(ClientPositionable).getPosition();
-    const tileSize = 16; // This should match the tile size in MapManager
 
     ctx.save();
     ctx.setTransform(1, 0, 0, 1, 0, 0);
@@ -157,64 +165,7 @@ export class Minimap {
 
     // Draw collidable tiles (obstacles like trees, walls, water)
     perfTimer.start("minimap:collidables");
-    const mapData = this.mapManager.getMapData();
-    if (mapData && mapData.collidables) {
-      ctx.fillStyle = settings.colors.tree;
-
-      // Pre-calculate squared distance for performance
-      const maxDistanceSquared =
-        MINIMAP_RENDER_DISTANCE.COLLIDABLES * MINIMAP_RENDER_DISTANCE.COLLIDABLES;
-
-      // Calculate tile range to check based on player position and max distance
-      const playerTileX = Math.floor(playerPos.x / tileSize);
-      const playerTileY = Math.floor(playerPos.y / tileSize);
-      const tileRange = Math.ceil(MINIMAP_RENDER_DISTANCE.COLLIDABLES / tileSize);
-
-      const minX = Math.max(0, playerTileX - tileRange);
-      const maxX = Math.min(mapData.collidables[0]?.length ?? 0, playerTileX + tileRange);
-      const minY = Math.max(0, playerTileY - tileRange);
-      const maxY = Math.min(mapData.collidables.length, playerTileY + tileRange);
-
-      // Only iterate through tiles within range
-      for (let y = minY; y < maxY; y++) {
-        const row = mapData.collidables[y];
-        if (!row) continue;
-
-        for (let x = minX; x < maxX; x++) {
-          const cell = row[x];
-          // If there's a collidable (anything other than -1), draw it
-          if (cell !== -1) {
-            const worldX = x * tileSize;
-            const worldY = y * tileSize;
-
-            // Calculate relative position to player
-            const relativeX = worldX - playerPos.x;
-            const relativeY = worldY - playerPos.y;
-
-            // Early distance check using squared distance (faster than sqrt)
-            const distanceSquared = relativeX * relativeX + relativeY * relativeY;
-            if (distanceSquared > maxDistanceSquared) continue;
-
-            // Convert to minimap coordinates (centered on player)
-            const minimapX = settings.left + settings.size / 2 + relativeX * settings.scale;
-            const minimapY = top + settings.size / 2 + relativeY * settings.scale;
-
-            const treeIndicator = settings.indicators.tree;
-            const size = treeIndicator.size;
-            const halfSize = size / 2;
-
-            // Draw obstacle indicator based on shape
-            if (treeIndicator.shape === "circle") {
-              ctx.beginPath();
-              ctx.arc(minimapX, minimapY, halfSize, 0, Math.PI * 2);
-              ctx.fill();
-            } else {
-              ctx.fillRect(minimapX - halfSize, minimapY - halfSize, size, size);
-            }
-          }
-        }
-      }
-    }
+    this.renderCollidables(ctx, playerPos, settings, top);
     perfTimer.end("minimap:collidables");
 
     // Loop through all entities and draw them on minimap
@@ -495,6 +446,213 @@ export class Minimap {
       );
       ctx.closePath();
       ctx.stroke();
+    }
+  }
+
+  // Pre-render all collidables as simplified indicator shapes into a canvas
+  private prerenderCollidables(): void {
+    const mapData = this.mapManager.getMapData();
+    if (!mapData || !mapData.collidables) return;
+
+    const collidables = mapData.collidables;
+    const rows = collidables.length;
+    const cols = collidables[0]?.length ?? 0;
+
+    if (rows === 0 || cols === 0) return;
+
+    // Create a canvas at world coordinates (1:1 scale)
+    const canvas = document.createElement("canvas");
+    canvas.width = cols * this.tileSize;
+    canvas.height = rows * this.tileSize;
+    const ctx = canvas.getContext("2d");
+
+    if (!ctx) return;
+
+    // Use a semi-transparent fill so overlapping tiles don't completely obscure each other
+    ctx.fillStyle = MINIMAP_SETTINGS.colors.tree;
+    const treeIndicator = MINIMAP_SETTINGS.indicators.tree;
+    const size = treeIndicator.size;
+    const halfSize = size / 2;
+
+    // Render all collidables as simplified shapes
+    for (let y = 0; y < rows; y++) {
+      const row = collidables[y];
+      if (!row) continue;
+
+      for (let x = 0; x < cols; x++) {
+        const cell = row[x];
+        // If there's a collidable (anything other than -1), draw it
+        if (cell !== -1) {
+          const worldX = x * this.tileSize;
+          const worldY = y * this.tileSize;
+
+          // Draw obstacle indicator based on shape at world coordinates
+          if (treeIndicator.shape === "circle") {
+            ctx.beginPath();
+            ctx.arc(worldX, worldY, halfSize, 0, Math.PI * 2);
+            ctx.fill();
+          } else {
+            ctx.fillRect(worldX - halfSize, worldY - halfSize, size, size);
+          }
+        }
+      }
+    }
+
+    this.collidablesCanvas = canvas;
+  }
+
+  // Render collidables using pre-rendered canvas or fallback
+  private renderCollidables(
+    ctx: CanvasRenderingContext2D,
+    playerPos: { x: number; y: number },
+    settings: typeof MINIMAP_SETTINGS,
+    top: number
+  ): void {
+    const mapData = this.mapManager.getMapData();
+    if (!mapData || !mapData.collidables) return;
+
+    // Check if canvas needs to be created or recreated (if map dimensions changed)
+    const expectedWidth = (mapData.collidables[0]?.length ?? 0) * this.tileSize;
+    const expectedHeight = mapData.collidables.length * this.tileSize;
+
+    if (
+      !this.collidablesCanvas ||
+      this.collidablesCanvas.width !== expectedWidth ||
+      this.collidablesCanvas.height !== expectedHeight
+    ) {
+      this.prerenderCollidables();
+    }
+
+    // If still not available, use fallback rendering
+    if (!this.collidablesCanvas) {
+      this.renderCollidablesFallback(ctx, playerPos, settings, top, mapData.collidables);
+      return;
+    }
+
+    // Pre-calculate squared distance for performance
+    const maxDistanceSquared =
+      MINIMAP_RENDER_DISTANCE.COLLIDABLES * MINIMAP_RENDER_DISTANCE.COLLIDABLES;
+
+    // Calculate tile range to check based on player position and max distance
+    const playerTileX = Math.floor(playerPos.x / this.tileSize);
+    const playerTileY = Math.floor(playerPos.y / this.tileSize);
+    const tileRange = Math.ceil(MINIMAP_RENDER_DISTANCE.COLLIDABLES / this.tileSize);
+
+    const minX = Math.max(0, playerTileX - tileRange);
+    const maxX = Math.min(mapData.collidables[0]?.length ?? 0, playerTileX + tileRange);
+    const minY = Math.max(0, playerTileY - tileRange);
+    const maxY = Math.min(mapData.collidables.length, playerTileY + tileRange);
+
+    // Calculate world coordinates bounds
+    const worldMinX = minX * this.tileSize;
+    const worldMinY = minY * this.tileSize;
+    const worldMaxX = maxX * this.tileSize;
+    const worldMaxY = maxY * this.tileSize;
+
+    // Calculate source region in pre-rendered canvas
+    const sourceX = worldMinX;
+    const sourceY = worldMinY;
+    const sourceWidth = worldMaxX - worldMinX;
+    const sourceHeight = worldMaxY - worldMinY;
+
+    // Calculate center point for minimap (where player is)
+    const centerX = settings.left + settings.size / 2;
+    const centerY = top + settings.size / 2;
+
+    // Calculate player position in world coordinates relative to source region
+    const playerOffsetX = playerPos.x - worldMinX;
+    const playerOffsetY = playerPos.y - worldMinY;
+
+    // Calculate destination: centered on player, scaled down
+    const destX = centerX - playerOffsetX * settings.scale;
+    const destY = centerY - playerOffsetY * settings.scale;
+    const destWidth = sourceWidth * settings.scale;
+    const destHeight = sourceHeight * settings.scale;
+
+    // Save context state
+    ctx.save();
+
+    // Set fill style for indicators
+    ctx.fillStyle = settings.colors.tree;
+
+    // Draw the subsection of the pre-rendered canvas, scaled and positioned
+    ctx.drawImage(
+      this.collidablesCanvas,
+      sourceX,
+      sourceY,
+      sourceWidth,
+      sourceHeight,
+      destX,
+      destY,
+      destWidth,
+      destHeight
+    );
+
+    ctx.restore();
+  }
+
+  // Fallback rendering when pre-rendered canvas isn't available
+  private renderCollidablesFallback(
+    ctx: CanvasRenderingContext2D,
+    playerPos: { x: number; y: number },
+    settings: typeof MINIMAP_SETTINGS,
+    top: number,
+    collidables: number[][]
+  ): void {
+    ctx.fillStyle = settings.colors.tree;
+
+    // Pre-calculate squared distance for performance
+    const maxDistanceSquared =
+      MINIMAP_RENDER_DISTANCE.COLLIDABLES * MINIMAP_RENDER_DISTANCE.COLLIDABLES;
+
+    // Calculate tile range to check based on player position and max distance
+    const playerTileX = Math.floor(playerPos.x / this.tileSize);
+    const playerTileY = Math.floor(playerPos.y / this.tileSize);
+    const tileRange = Math.ceil(MINIMAP_RENDER_DISTANCE.COLLIDABLES / this.tileSize);
+
+    const minX = Math.max(0, playerTileX - tileRange);
+    const maxX = Math.min(collidables[0]?.length ?? 0, playerTileX + tileRange);
+    const minY = Math.max(0, playerTileY - tileRange);
+    const maxY = Math.min(collidables.length, playerTileY + tileRange);
+
+    // Only iterate through tiles within range
+    for (let y = minY; y < maxY; y++) {
+      const row = collidables[y];
+      if (!row) continue;
+
+      for (let x = minX; x < maxX; x++) {
+        const cell = row[x];
+        // If there's a collidable (anything other than -1), draw it
+        if (cell !== -1) {
+          const worldX = x * this.tileSize;
+          const worldY = y * this.tileSize;
+
+          // Calculate relative position to player
+          const relativeX = worldX - playerPos.x;
+          const relativeY = worldY - playerPos.y;
+
+          // Early distance check using squared distance (faster than sqrt)
+          const distanceSquared = relativeX * relativeX + relativeY * relativeY;
+          if (distanceSquared > maxDistanceSquared) continue;
+
+          // Convert to minimap coordinates (centered on player)
+          const minimapX = settings.left + settings.size / 2 + relativeX * settings.scale;
+          const minimapY = top + settings.size / 2 + relativeY * settings.scale;
+
+          const treeIndicator = settings.indicators.tree;
+          const size = treeIndicator.size;
+          const halfSize = size / 2;
+
+          // Draw obstacle indicator based on shape
+          if (treeIndicator.shape === "circle") {
+            ctx.beginPath();
+            ctx.arc(minimapX, minimapY, halfSize, 0, Math.PI * 2);
+            ctx.fill();
+          } else {
+            ctx.fillRect(minimapX - halfSize, minimapY - halfSize, size, size);
+          }
+        }
+      }
     }
   }
 }

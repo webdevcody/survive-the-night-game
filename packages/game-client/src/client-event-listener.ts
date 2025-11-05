@@ -22,7 +22,13 @@ import { ZombieClient } from "@/entities/zombie";
 import { ClientPositionable } from "@/extensions";
 import { ClientSocketManager } from "@/managers/client-socket-manager";
 import { SOUND_TYPES_TO_MP3 } from "@/managers/sound-manager";
-import { GameState } from "@/state";
+import {
+  GameState,
+  addEntity,
+  removeEntity as removeEntityFromState,
+  clearEntities,
+  replaceAllEntities,
+} from "@/state";
 import { SwipeParticle } from "./particles/swipe";
 import { Direction, determineDirection } from "@shared/util/direction";
 import { GameStartedEvent } from "@shared/events/server-sent/game-started-event";
@@ -146,7 +152,7 @@ export class ClientEventListener {
 
     if (gameStateEvent.isFullState()) {
       // Full state update - replace all entities
-      this.gameState.entities = entitiesFromServer.map((entity) => {
+      const createdEntities = entitiesFromServer.map((entity) => {
         const created = this.gameClient.getEntityFactory().createEntity(entity);
         // Seed interpolation snapshots for non-local players
         if (created.getId() !== this.gameState.playerId && created.hasExt(ClientPositionable)) {
@@ -155,6 +161,7 @@ export class ClientEventListener {
         }
         return created;
       });
+      replaceAllEntities(this.gameState, createdEntities);
 
       if (!this.hasReceivedInitialState) {
         this.hasReceivedInitialState = true;
@@ -170,15 +177,13 @@ export class ClientEventListener {
       const removedIds = gameStateEvent.getRemovedEntityIds();
 
       // Remove entities that were deleted
-      this.gameState.entities = this.gameState.entities.filter(
-        (entity) => !removedIds.includes(entity.getId())
-      );
+      removedIds.forEach((id) => {
+        removeEntityFromState(this.gameState, id);
+      });
 
       // Update or add changed entities
       entitiesFromServer.forEach((serverEntityData) => {
-        const existingEntity = this.gameState.entities.find(
-          (e) => e.getId() === serverEntityData.id
-        );
+        const existingEntity = this.gameState.entityMap.get(serverEntityData.id);
         if (existingEntity) {
           // Only update properties that were included in the delta update
           for (const [key, value] of Object.entries(serverEntityData)) {
@@ -274,7 +279,7 @@ export class ClientEventListener {
             const pos = created.getExt(ClientPositionable).getPosition();
             (created as unknown as PlayerClient).setServerGhostPosition(pos);
           }
-          this.gameState.entities.push(created);
+          addEntity(this.gameState, created);
         }
       });
     }
@@ -425,7 +430,7 @@ export class ClientEventListener {
 
   onGameStarted(gameStartedEvent: GameStartedEvent) {
     // Clear all client-side entities and particles
-    this.gameState.entities = [];
+    clearEntities(this.gameState);
     this.gameClient.getParticleManager().clear();
 
     // Hide game over dialog if it was showing
