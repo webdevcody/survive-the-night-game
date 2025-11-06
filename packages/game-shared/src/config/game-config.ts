@@ -102,7 +102,30 @@ export const LANDMINE_EXPLOSION_RADIUS = 32;
  * - 100: High latency
  * - 200+: Very poor connection
  */
-export const SIMULATED_LATENCY_MS = 70;
+export const SIMULATED_LATENCY_MS = 50;
+
+// ========================================================================
+// SIMULATION & TICK RATE
+// ========================================================================
+
+/**
+ * Server tick rate (simulation rate)
+ * Both client and server must use this for physics calculations
+ */
+export const SIMULATION_TICK_RATE = 20; // ticks per second
+
+/**
+ * Fixed timestep in seconds
+ * Calculated from tick rate
+ */
+export const FIXED_TIMESTEP = 1 / SIMULATION_TICK_RATE; // 0.05 seconds
+
+/**
+ * Movement per tick (should be consistent)
+ * pixels/second * seconds/tick = pixels/tick
+ * 60 * 0.05 = 3 pixels per tick
+ */
+export const PLAYER_MOVEMENT_PER_TICK = PLAYER_SPEED * FIXED_TIMESTEP; // 3 pixels
 
 // ========================================================================
 // CLIENT-SIDE PREDICTION & INTERPOLATION
@@ -185,7 +208,7 @@ export const RECONCILIATION_LERP_SPEED = 0.15;
  * - false (production)
  * - true (current: for debugging rubber banding)
  */
-export const SHOW_DEBUG_VISUALS = true;
+export const SHOW_DEBUG_VISUALS = false;
 
 // ========================================================================
 // KEYBINDINGS (Display Names)

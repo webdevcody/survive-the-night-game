@@ -354,7 +354,8 @@ export class InputManager {
   }
 
   getInputs() {
-    return this.inputs;
+    // Return a copy to prevent external modifications from affecting internal state
+    return { ...this.inputs };
   }
 
   reset() {

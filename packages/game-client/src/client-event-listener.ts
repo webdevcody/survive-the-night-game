@@ -203,44 +203,32 @@ export class ClientEventListener {
                   const dy = clientPos.y - serverPos.y;
                   const error = Math.hypot(dx, dy);
 
-                  // Store server ghost position for visualization
+                  // Store server ghost position for reconciliation
+                  // The PredictionManager will handle smooth reconciliation
                   if (existingEntity instanceof PlayerClient) {
                     (existingEntity as unknown as PlayerClient).setServerGhostPosition(
                       new (existingEntity.getExt(ClientPositionable).getPosition()
                         .constructor as any)(serverPos.x, serverPos.y)
                     );
-                  }
-
-                  // ALWAYS apply server position to prevent unbounded drift
-                  // The server is authoritative - client prediction is just for smoothness
-                  if (error > RECONCILIATION_CONFIG.snapThreshold) {
-                    // Large error: snap immediately to server position
-                    existingEntity.deserializeProperty(key, value);
-                  } else if (error > MIN_ERROR_THRESHOLD) {
-                    // Small error: lerp towards server position to prevent drift accumulation
-                    const correctedPos = {
-                      x: clientPos.x + (serverPos.x - clientPos.x) * CORRECTION_SMOOTHING_FACTOR,
-                      y: clientPos.y + (serverPos.y - clientPos.y) * CORRECTION_SMOOTHING_FACTOR,
-                    };
-                    existingEntity
-                      .getExt(ClientPositionable)
-                      .setPosition(new Vector2(correctedPos.x, correctedPos.y));
-
-                    // Apply other extension updates without positionable
-                    const filteredExts = value.filter(
-                      (v: any) => v.type !== ExtensionTypes.POSITIONABLE
-                    );
-                    if (filteredExts.length > 0) {
-                      existingEntity.deserializeProperty("extensions", filteredExts);
+                    
+                    // For very large errors, snap immediately to prevent unbounded drift
+                    // The PredictionManager's reconciliation will handle smaller errors smoothly
+                    if (error > RECONCILIATION_CONFIG.snapThreshold) {
+                      // Large error: snap immediately to server position
+                      existingEntity.deserializeProperty(key, value);
+                    } else {
+                      // Let PredictionManager handle reconciliation for smaller errors
+                      // Apply other extension updates without positionable
+                      const filteredExts = value.filter(
+                        (v: any) => v.type !== ExtensionTypes.POSITIONABLE
+                      );
+                      if (filteredExts.length > 0) {
+                        existingEntity.deserializeProperty("extensions", filteredExts);
+                      }
                     }
                   } else {
-                    // Tiny error: trust client prediction
-                    const filteredExts = value.filter(
-                      (v: any) => v.type !== ExtensionTypes.POSITIONABLE
-                    );
-                    if (filteredExts.length > 0) {
-                      existingEntity.deserializeProperty("extensions", filteredExts);
-                    }
+                    // For non-player entities, apply position directly
+                    existingEntity.deserializeProperty(key, value);
                   }
                 } else {
                   existingEntity.deserializeProperty(key, value);

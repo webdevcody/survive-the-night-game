@@ -5,10 +5,12 @@ import { normalizeVector, isColliding } from "@shared/util/physics";
 import { ClientMovable } from "@/extensions/movable";
 import { ClientPositionable } from "@/extensions/positionable";
 import { ClientCollidable } from "@/extensions/collidable";
-import { TILE_SIZE, RECONCILIATION_LERP_SPEED } from "@shared/constants/constants";
+import { TILE_SIZE } from "@shared/constants/constants";
 import { PREDICTION_CONFIG } from "@/config/client-prediction";
 import { ClientEntityBase } from "@/extensions/client-entity";
 import { Hitbox } from "@shared/util/hitbox";
+import { ReconciliationManager } from "./reconciliation-manager";
+import { FIXED_TIMESTEP } from "@shared/config/game-config";
 
 type PredictionConfig = {
   playerSpeed: number; // pixels per second
@@ -17,9 +19,18 @@ type PredictionConfig = {
 
 export class PredictionManager {
   private readonly config: PredictionConfig;
+  private reconciliationManager: ReconciliationManager;
 
   constructor(config: Partial<PredictionConfig> = {}) {
     this.config = { ...PREDICTION_CONFIG, ...config };
+    this.reconciliationManager = new ReconciliationManager();
+  }
+
+  /**
+   * Get the reconciliation manager
+   */
+  getReconciliationManager(): ReconciliationManager {
+    return this.reconciliationManager;
   }
 
   predictLocalPlayerMovement(
@@ -30,6 +41,17 @@ export class PredictionManager {
     entities: ClientEntityBase[] = []
   ): void {
     if (deltaSeconds <= 0) return;
+
+    // Verify deltaTime matches server (should be FIXED_TIMESTEP for physics)
+    const expectedDelta = FIXED_TIMESTEP;
+    const tolerance = 0.001;
+    if (Math.abs(deltaSeconds - expectedDelta) > tolerance) {
+      // Warn if deltaTime doesn't match expected fixed timestep
+      // This helps catch bugs where variable timestep is used instead of fixed
+      console.warn(
+        `DeltaTime mismatch: ${deltaSeconds} vs ${expectedDelta}. Using provided deltaTime.`
+      );
+    }
 
     // If no movement input, don't adjust position
     if (input.dx === 0 && input.dy === 0) {
@@ -120,10 +142,15 @@ export class PredictionManager {
 
   /**
    * Reconciles the local player's position towards the server's authoritative position
-   * using a smooth lerp. This runs after client prediction to gradually correct
-   * any divergence between client and server positions.
+   * using enhanced reconciliation with adaptive lerp and rollback support.
+   * This runs after client prediction to gradually correct any divergence.
+   * 
+   * @deprecated Use ReconciliationManager.reconcile directly instead
    */
-  reconcileWithServerPosition(player: PlayerClient): void {
+  reconcileWithServerPosition(
+    player: PlayerClient,
+    serverSequence?: number
+  ): void {
     // Get the server's authoritative position (if available)
     const serverPos = (player as any).serverGhostPos as Vector2 | null;
 
@@ -131,13 +158,23 @@ export class PredictionManager {
       return;
     }
 
-    const currentPos = player.getExt(ClientPositionable).getPosition();
-
-    // Lerp towards server position
-    const lerpedX = currentPos.x + (serverPos.x - currentPos.x) * RECONCILIATION_LERP_SPEED;
-    const lerpedY = currentPos.y + (serverPos.y - currentPos.y) * RECONCILIATION_LERP_SPEED;
-
-    player.setPosition(new Vector2(lerpedX, lerpedY));
+    // Use enhanced reconciliation manager
+    this.reconciliationManager.reconcile(
+      player,
+      serverPos,
+      serverSequence,
+      (p, input, deltaTime) => {
+        // Replay function for rollback
+        // Note: This is a fallback - should be called with proper collidables/entities
+        this.predictLocalPlayerMovement(
+          p,
+          input,
+          deltaTime,
+          null, // collidables - should be provided by caller
+          [] // entities - should be provided by caller
+        );
+      }
+    );
   }
 
   private overlapsAnyCollidable(

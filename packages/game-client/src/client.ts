@@ -26,6 +26,9 @@ import { ClientDestructible } from "@/extensions/destructible";
 import { ClientPositionable } from "@/extensions";
 import { ParticleManager } from "./managers/particles";
 import { PredictionManager } from "./managers/prediction";
+import { FixedTimestepSimulator } from "./managers/fixed-timestep-simulator";
+import { SequenceManager } from "./managers/sequence-manager";
+import { FIXED_TIMESTEP } from "@shared/config/game-config";
 
 export class GameClient {
   private ctx: CanvasRenderingContext2D;
@@ -43,6 +46,8 @@ export class GameClient {
   private entityFactory: EntityFactory;
   private particleManager: ParticleManager;
   private predictionManager: PredictionManager;
+  private fixedTimestepSimulator: FixedTimestepSimulator;
+  private sequenceManager: SequenceManager;
 
   // FPS tracking
   private frameCount: number = 0;
@@ -80,6 +85,8 @@ export class GameClient {
     this.entityFactory = new EntityFactory(this.assetManager);
     this.particleManager = new ParticleManager(this);
     this.predictionManager = new PredictionManager();
+    this.fixedTimestepSimulator = new FixedTimestepSimulator(FIXED_TIMESTEP);
+    this.sequenceManager = new SequenceManager();
 
     // Add click event listener for UI interactions
     canvas.addEventListener("click", (e) => {
@@ -450,7 +457,8 @@ export class GameClient {
       this.hud.updateFps(this.currentFps);
     }
 
-    // Predict local player movement every frame for responsiveness
+    // Predict local player movement using fixed timestep simulation
+    // This ensures consistent movement speed regardless of frame rate
     const player = this.getMyPlayer();
     if (player) {
       const input = this.inputManager.getInputs();
@@ -461,22 +469,54 @@ export class GameClient {
         !player.hasExt(ClientDestructible) || !player.getExt(ClientDestructible).isDead();
 
       if (isAlive) {
-        this.predictionManager.predictLocalPlayerMovement(
-          player,
-          input,
-          deltaSeconds,
-          mapData.collidables,
-          this.gameState.entities
-        );
-
-        // After prediction, smoothly lerp towards server's authoritative position
-        this.predictionManager.reconcileWithServerPosition(player);
+        // Use fixed timestep simulator for consistent physics
+        // This ensures client and server use the same timestep
+        this.fixedTimestepSimulator.update((fixedDeltaTime) => {
+          // deltaTime is always FIXED_TIMESTEP (0.05 seconds) for physics
+          this.predictionManager.predictLocalPlayerMovement(
+            player,
+            input,
+            fixedDeltaTime, // Always 0.05, matching server
+            mapData.collidables,
+            this.gameState.entities
+          );
+        });
 
         // Only send input to server when it actually changed
         if (this.inputManager.getHasChanged()) {
-          this.sendInput(this.inputManager.getInputs());
+          // Get sequence number for this input
+          if (!input.sequenceNumber) {
+            input.sequenceNumber = this.sequenceManager.getNextSequence();
+          }
+          
+          // Store input snapshot in history for rollback support
+          const reconciliationManager = this.predictionManager.getReconciliationManager();
+          const inputHistory = reconciliationManager.getInputHistory();
+          inputHistory.addInput(input.sequenceNumber, input, player);
+          
+          // Send input to server
+          this.sendInput(input);
           this.inputManager.reset();
         }
+
+        // After prediction, smoothly reconcile towards server's authoritative position
+        // Note: Server sequence will be passed when available from server updates
+        const reconciliationManager = this.predictionManager.getReconciliationManager();
+        reconciliationManager.reconcile(
+          player,
+          (player as any).serverGhostPos || player.getPosition(),
+          undefined, // Server sequence not yet available from server updates
+          (p, input, deltaTime) => {
+            // Replay function for rollback - has access to current map data
+            this.predictionManager.predictLocalPlayerMovement(
+              p,
+              input,
+              deltaTime,
+              mapData.collidables,
+              this.gameState.entities
+            );
+          }
+        );
       }
     }
 
