@@ -144,15 +144,12 @@ export class PredictionManager {
 
   /**
    * Reconciles the local player's position towards the server's authoritative position
-   * using enhanced reconciliation with adaptive lerp and rollback support.
+   * using enhanced reconciliation with adaptive lerp.
    * This runs after client prediction to gradually correct any divergence.
-   * 
+   *
    * @deprecated Use ReconciliationManager.reconcile directly instead
    */
-  reconcileWithServerPosition(
-    player: PlayerClient,
-    serverSequence?: number
-  ): void {
+  reconcileWithServerPosition(player: PlayerClient): void {
     // Get the server's authoritative position (if available)
     const serverPos = (player as any).serverGhostPos as Vector2 | null;
 
@@ -161,22 +158,7 @@ export class PredictionManager {
     }
 
     // Use enhanced reconciliation manager
-    this.reconciliationManager.reconcile(
-      player,
-      serverPos,
-      serverSequence,
-      (p, input, deltaTime) => {
-        // Replay function for rollback
-        // Note: This is a fallback - should be called with proper collidables/entities
-        this.predictLocalPlayerMovement(
-          p,
-          input,
-          deltaTime,
-          null, // collidables - should be provided by caller
-          [] // entities - should be provided by caller
-        );
-      }
-    );
+    this.reconciliationManager.reconcile(player, serverPos);
   }
 
   private overlapsAnyCollidable(

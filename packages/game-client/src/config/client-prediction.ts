@@ -16,15 +16,10 @@ declare global {
     config?: {
       predictions?: {
         showDebugVisuals: boolean;
-        interpolationDelayMs: number;
-        interpolationMaxSnapshots: number;
         smallErrorThreshold: number;
         largeErrorThreshold: number;
         minLerpSpeed: number;
         maxLerpSpeed: number;
-        maxCorrectionVelocity: number;
-        enableRollback: boolean;
-        maxInputHistory: number;
       };
     };
   }
@@ -45,11 +40,3 @@ export const PREDICTION_CONFIG = {
   playerSpeed: PLAYER_SPEED,
   sprintMultiplier: SPRINT_MULTIPLIER,
 } as const;
-
-// Helper function to get current interpolation config
-export function getInterpolationConfig() {
-  return {
-    delayMs: window.config?.predictions?.interpolationDelayMs ?? 0,
-    maxSnapshots: window.config?.predictions?.interpolationMaxSnapshots ?? 3,
-  };
-}

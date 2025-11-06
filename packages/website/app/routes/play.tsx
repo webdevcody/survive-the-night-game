@@ -55,7 +55,7 @@ function GameClientLoader() {
   return (
     <div className="relative flex justify-center items-center h-screen bg-gray-900">
       <canvas ref={canvasRef} />
-      <PredictionConfigPanel />
+      {import.meta.env.VITE_LOCAL === "true" && <PredictionConfigPanel />}
     </div>
   );
 }

@@ -494,31 +494,15 @@ export class GameClient {
             input.sequenceNumber = this.sequenceManager.getNextSequence();
           }
 
-          // Store input snapshot in history for rollback support
-          const inputHistory = reconciliationManager.getInputHistory();
-          inputHistory.addInput(input.sequenceNumber, input, player);
-
           // Send input to server
           this.sendInput(input);
           this.inputManager.reset();
         }
 
         // After prediction, smoothly reconcile towards server's authoritative position
-        // Note: Server sequence will be passed when available from server updates
         reconciliationManager.reconcile(
           player,
-          (player as any).serverGhostPos || player.getPosition(),
-          undefined, // Server sequence not yet available from server updates
-          (p, input, deltaTime) => {
-            // Replay function for rollback - has access to current map data
-            this.predictionManager.predictLocalPlayerMovement(
-              p,
-              input,
-              deltaTime,
-              mapData.collidables,
-              this.gameState.entities
-            );
-          }
+          (player as any).serverGhostPos || player.getPosition()
         );
       }
     }

@@ -3,15 +3,10 @@ import "@shared/config/prediction"; // Import to get global type declarations
 
 interface PredictionConfig {
   showDebugVisuals: boolean;
-  interpolationDelayMs: number;
-  interpolationMaxSnapshots: number;
   smallErrorThreshold: number;
   largeErrorThreshold: number;
   minLerpSpeed: number;
   maxLerpSpeed: number;
-  maxCorrectionVelocity: number;
-  enableRollback: boolean;
-  maxInputHistory: number;
 }
 
 /**
@@ -20,15 +15,10 @@ interface PredictionConfig {
 export function PredictionConfigPanel() {
   const [config, setConfig] = useState<PredictionConfig>({
     showDebugVisuals: true,
-    interpolationDelayMs: 0,
-    interpolationMaxSnapshots: 3,
     smallErrorThreshold: 20,
     largeErrorThreshold: 75,
     minLerpSpeed: 0.15,
     maxLerpSpeed: 0.35,
-    maxCorrectionVelocity: 120,
-    enableRollback: true,
-    maxInputHistory: 60,
   });
 
   const [isOpen, setIsOpen] = useState(false);
@@ -76,38 +66,6 @@ export function PredictionConfigPanel() {
                 checked={config.showDebugVisuals}
                 onChange={(e) => updateValue("showDebugVisuals", e.target.checked)}
                 className="w-4 h-4"
-              />
-            </div>
-
-            {/* Interpolation Delay MS */}
-            <div>
-              <label className="block text-xs text-gray-300 mb-1">
-                Interpolation Delay: {config.interpolationDelayMs}ms
-              </label>
-              <input
-                type="range"
-                min="0"
-                max="200"
-                step="10"
-                value={config.interpolationDelayMs}
-                onChange={(e) => updateValue("interpolationDelayMs", parseInt(e.target.value))}
-                className="w-full"
-              />
-            </div>
-
-            {/* Interpolation Max Snapshots */}
-            <div>
-              <label className="block text-xs text-gray-300 mb-1">
-                Max Snapshots: {config.interpolationMaxSnapshots}
-              </label>
-              <input
-                type="range"
-                min="1"
-                max="10"
-                step="1"
-                value={config.interpolationMaxSnapshots}
-                onChange={(e) => updateValue("interpolationMaxSnapshots", parseInt(e.target.value))}
-                className="w-full"
               />
             </div>
 
@@ -171,49 +129,6 @@ export function PredictionConfigPanel() {
                 step="0.01"
                 value={config.maxLerpSpeed}
                 onChange={(e) => updateValue("maxLerpSpeed", parseFloat(e.target.value))}
-                className="w-full"
-              />
-            </div>
-
-            {/* Max Correction Velocity */}
-            <div>
-              <label className="block text-xs text-gray-300 mb-1">
-                Max Correction Velocity: {config.maxCorrectionVelocity}px/s
-              </label>
-              <input
-                type="range"
-                min="0"
-                max="300"
-                step="10"
-                value={config.maxCorrectionVelocity}
-                onChange={(e) => updateValue("maxCorrectionVelocity", parseInt(e.target.value))}
-                className="w-full"
-              />
-            </div>
-
-            {/* Enable Rollback */}
-            <div>
-              <label className="block text-xs text-gray-300 mb-1">Enable Rollback</label>
-              <input
-                type="checkbox"
-                checked={config.enableRollback}
-                onChange={(e) => updateValue("enableRollback", e.target.checked)}
-                className="w-4 h-4"
-              />
-            </div>
-
-            {/* Max Input History */}
-            <div>
-              <label className="block text-xs text-gray-300 mb-1">
-                Max Input History: {config.maxInputHistory}
-              </label>
-              <input
-                type="range"
-                min="30"
-                max="120"
-                step="5"
-                value={config.maxInputHistory}
-                onChange={(e) => updateValue("maxInputHistory", parseInt(e.target.value))}
                 className="w-full"
               />
             </div>

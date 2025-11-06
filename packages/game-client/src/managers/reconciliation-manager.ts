@@ -1,9 +1,7 @@
 import Vector2 from "@shared/util/vector2";
 import { PlayerClient } from "@/entities/player";
 import { ClientPositionable } from "@/extensions";
-import { InputHistory } from "./input-history";
 import { FIXED_TIMESTEP } from "@shared/config/game-config";
-import { Input } from "@shared/util/input";
 import "@/config/client-prediction"; // Import to get window.config type declarations
 
 /**
@@ -12,19 +10,11 @@ import "@/config/client-prediction"; // Import to get window.config type declara
 export interface ReconciliationConfig {
   // Thresholds (in pixels)
   smallErrorThreshold: number; // Below this, trust client
-  largeErrorThreshold: number; // Above this, rollback
+  largeErrorThreshold: number; // Above this, snap to server
 
   // Smooth correction parameters
   minLerpSpeed: number; // Lerp speed for small errors
   maxLerpSpeed: number; // Lerp speed for large errors
-
-  // Rollback parameters
-  maxHistorySize: number; // Frames to keep (~1 second)
-  enableRollback: boolean; // Enable rollback system
-
-  // Visual smoothing
-  maxCorrectionVelocity: number; // pixels/second - cap correction speed
-  correctionDamping: number; // Damping factor for corrections
 }
 
 /**
@@ -35,36 +25,23 @@ export const DEFAULT_RECONCILIATION_CONFIG: ReconciliationConfig = {
   largeErrorThreshold: window.config?.predictions?.largeErrorThreshold ?? 75,
   minLerpSpeed: window.config?.predictions?.minLerpSpeed ?? 0.15,
   maxLerpSpeed: window.config?.predictions?.maxLerpSpeed ?? 0.35,
-  maxHistorySize: window.config?.predictions?.maxInputHistory ?? 60,
-  enableRollback: window.config?.predictions?.enableRollback ?? true,
-  maxCorrectionVelocity: window.config?.predictions?.maxCorrectionVelocity ?? 120,
-  correctionDamping: 0.85, // Damping factor for smooth corrections
 };
 
 /**
- * Enhanced reconciliation manager with adaptive lerp and rollback support
+ * Enhanced reconciliation manager with adaptive lerp
  *
  * Handles different types of corrections intelligently:
  * - Small errors: Trust client prediction
  * - Medium errors: Smooth lerp towards server position
- * - Large errors: Rollback and replay (if enabled and history available)
+ * - Large errors: Snap to server position
  */
 export class ReconciliationManager {
   private config: ReconciliationConfig;
-  private inputHistory: InputHistory;
   private isMoving: boolean = false;
   private wasMoving: boolean = false;
 
   constructor(config: Partial<ReconciliationConfig> = {}) {
     this.config = { ...DEFAULT_RECONCILIATION_CONFIG, ...config };
-    this.inputHistory = new InputHistory(this.config.maxHistorySize);
-  }
-
-  /**
-   * Get the input history (for adding inputs)
-   */
-  getInputHistory(): InputHistory {
-    return this.inputHistory;
   }
 
   /**
@@ -85,12 +62,7 @@ export class ReconciliationManager {
   /**
    * Process server update and reconcile client state
    */
-  reconcile(
-    player: PlayerClient,
-    serverPosition: Vector2,
-    serverSequence?: number,
-    applyInput?: (player: PlayerClient, input: Input, deltaTime: number) => void
-  ): void {
+  reconcile(player: PlayerClient, serverPosition: Vector2): void {
     if (!player.hasExt(ClientPositionable)) {
       return;
     }
@@ -105,7 +77,7 @@ export class ReconciliationManager {
     // Only reconcile when:
     // 1. Player just stopped moving (smooth interpolation to server position)
     // 2. Player is not moving and there's any error (continue interpolating)
-    // 3. Error is very large during movement (emergency snap/rollback)
+    // 3. Error is very large during movement (emergency snap)
 
     // Define a very small threshold below which we consider positions "synced"
     const minSyncThreshold = 0.5; // Half a pixel - effectively synced
@@ -118,13 +90,8 @@ export class ReconciliationManager {
       // This ensures we eventually reach the exact server position
       this.smoothCorrection(player, serverPosition, error);
     } else if (error > config.largeErrorThreshold) {
-      // Large error during movement: Rollback and replay (if enabled and history available)
-      if (config.enableRollback && serverSequence !== undefined && applyInput) {
-        this.rollbackAndReplay(player, serverSequence, serverPosition, applyInput);
-      } else {
-        // Fallback: Snap to server position
-        this.snapToServer(player, serverPosition);
-      }
+      // Large error during movement: Snap to server position
+      this.snapToServer(player, serverPosition);
     }
     // Otherwise: Trust client prediction (no correction during movement)
   }
@@ -139,10 +106,6 @@ export class ReconciliationManager {
         largeErrorThreshold: window.config.predictions.largeErrorThreshold,
         minLerpSpeed: window.config.predictions.minLerpSpeed,
         maxLerpSpeed: window.config.predictions.maxLerpSpeed,
-        maxHistorySize: window.config.predictions.maxInputHistory,
-        enableRollback: window.config.predictions.enableRollback,
-        maxCorrectionVelocity: window.config.predictions.maxCorrectionVelocity,
-        correctionDamping: this.config.correctionDamping,
       };
     }
     return this.config;
@@ -155,34 +118,6 @@ export class ReconciliationManager {
     const dx = clientPos.x - serverPos.x;
     const dy = clientPos.y - serverPos.y;
     return Math.hypot(dx, dy);
-  }
-
-  /**
-   * Rollback to server's acknowledged state and replay inputs
-   */
-  private rollbackAndReplay(
-    player: PlayerClient,
-    serverSequence: number,
-    serverPosition: Vector2,
-    applyInput: (player: PlayerClient, input: Input, deltaTime: number) => void
-  ): void {
-    // Find client state at server's acknowledged sequence
-    const clientStateAtSeq = this.inputHistory.getStateAtSequence(serverSequence);
-
-    if (clientStateAtSeq) {
-      // Apply correction: set position to server's position
-      if (player.hasExt(ClientPositionable)) {
-        player
-          .getExt(ClientPositionable)
-          .setPosition(new Vector2(serverPosition.x, serverPosition.y));
-      }
-
-      // Replay all inputs after this sequence
-      this.inputHistory.replayFromSequence(serverSequence, player, applyInput);
-    } else {
-      // No history available: fallback to snap
-      this.snapToServer(player, serverPosition);
-    }
   }
 
   /**
@@ -206,20 +141,7 @@ export class ReconciliationManager {
     const correctedX = currentPos.x + (serverPosition.x - currentPos.x) * lerpSpeed;
     const correctedY = currentPos.y + (serverPosition.y - currentPos.y) * lerpSpeed;
 
-    // Apply velocity limiting to prevent sudden corrections
-    const dx = correctedX - currentPos.x;
-    const dy = correctedY - currentPos.y;
-    const correctionVelocity = Math.hypot(dx, dy) / FIXED_TIMESTEP; // pixels per second
-
-    if (correctionVelocity > config.maxCorrectionVelocity) {
-      // Cap correction velocity
-      const scale = config.maxCorrectionVelocity / correctionVelocity;
-      const limitedX = currentPos.x + dx * scale;
-      const limitedY = currentPos.y + dy * scale;
-      player.getExt(ClientPositionable).setPosition(new Vector2(limitedX, limitedY));
-    } else {
-      player.getExt(ClientPositionable).setPosition(new Vector2(correctedX, correctedY));
-    }
+    player.getExt(ClientPositionable).setPosition(new Vector2(correctedX, correctedY));
   }
 
   /**
@@ -238,6 +160,5 @@ export class ReconciliationManager {
    */
   updateConfig(config: Partial<ReconciliationConfig>): void {
     this.config = { ...this.config, ...config };
-    this.inputHistory = new InputHistory(this.config.maxHistorySize);
   }
 }
