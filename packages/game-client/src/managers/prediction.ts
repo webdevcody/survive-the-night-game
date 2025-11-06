@@ -66,7 +66,9 @@ export class PredictionManager {
     const currentPosition = player.getPosition();
     const direction = normalizeVector(new Vector2(input.dx, input.dy));
 
-    const canSprint = input.sprint; // Client-side approximation (server is authoritative)
+    // Check if player can sprint based on stamina (must match server logic)
+    const hasStamina = player.getStamina() > 0;
+    const canSprint = input.sprint && hasStamina;
     const speedMultiplier = canSprint ? this.config.sprintMultiplier : 1;
 
     const speed = this.config.playerSpeed * speedMultiplier;

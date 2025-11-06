@@ -21,7 +21,7 @@ import { KNIFE_ATTACK_RANGE, MAX_PLAYER_HEALTH } from "@shared/constants/constan
 import Vector2 from "@shared/util/vector2";
 import { ClientEntity } from "./client-entity";
 import { SKIN_TYPES, SkinType } from "@shared/commands/commands";
-import { DEBUG_CONFIG } from "@/config/client-prediction";
+import { getDebugConfig } from "@/config/client-prediction";
 
 export class PlayerClient extends ClientEntity implements IClientEntity, Renderable {
   private readonly ARROW_LENGTH = 20;
@@ -213,8 +213,8 @@ export class PlayerClient extends ClientEntity implements IClientEntity, Rendera
     }
 
     // Draw ghost position if available (server authoritative position)
-    // Only render if debug mode is enabled via VITE_SHOW_SERVER_GHOST=true
-    if (DEBUG_CONFIG.showServerGhost && this.serverGhostPos) {
+    // Only render if debug mode is enabled
+    if (getDebugConfig().showServerGhost && this.serverGhostPos) {
       const ghost = this.serverGhostPos;
       ctx.save();
       ctx.globalAlpha = 0.35;

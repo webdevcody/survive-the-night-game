@@ -87,24 +87,6 @@ export const BULLET_SIZE = 4;
 export const LANDMINE_EXPLOSION_RADIUS = 32;
 
 // ========================================================================
-// NETWORK SIMULATION (for testing lag/prediction)
-// ========================================================================
-
-/**
- * Simulated network latency in milliseconds
- *
- * Adds artificial delay to network messages for testing.
- * Both client and server should use the same value.
- *
- * VALUES:
- * - 0: No delay (production/normal gameplay)
- * - 50: Moderate latency (current setting for testing)
- * - 100: High latency
- * - 200+: Very poor connection
- */
-export const SIMULATED_LATENCY_MS = 0;
-
-// ========================================================================
 // SIMULATION & TICK RATE
 // ========================================================================
 
@@ -120,95 +102,7 @@ export const SIMULATION_TICK_RATE = 20; // ticks per second
  */
 export const FIXED_TIMESTEP = 1 / SIMULATION_TICK_RATE; // 0.05 seconds
 
-/**
- * Movement per tick (should be consistent)
- * pixels/second * seconds/tick = pixels/tick
- * 60 * 0.05 = 3 pixels per tick
- */
-export const PLAYER_MOVEMENT_PER_TICK = PLAYER_SPEED * FIXED_TIMESTEP; // 3 pixels
-
-// ========================================================================
-// CLIENT-SIDE PREDICTION & INTERPOLATION
-// ========================================================================
-
-/**
- * Enable client-side prediction
- *
- * true: Client predicts movement (responsive but may rubber band)
- * false: Client waits for server (laggy but accurate)
- *
- * Recommended: true (always enabled in production)
- */
-export const CLIENT_PREDICTION_ENABLED = true;
-
-/**
- * Interpolation delay in milliseconds
- * Higher = smoother but more delayed movement for remote players
- */
-export const INTERPOLATION_DELAY_MS = 100;
-
-/**
- * Maximum position snapshots kept per entity for interpolation
- */
-export const INTERPOLATION_MAX_SNAPSHOTS = 3;
-
-/**
- * Server reconciliation snap threshold in pixels
- *
- * When client position differs from server by more than this,
- * snap immediately to server position.
- *
- * VALUES:
- * - 25: Very strict (more rubber banding)
- * - 50: Balanced
- * - 75-100: Loose (less rubber banding but more drift)
- * - 275: Current setting (very loose, for testing)
- */
-export const SNAP_THRESHOLD = 75;
-
-/**
- * Small error correction smoothing factor
- * When error is small (5-50px), lerp towards server position
- * 0.5 = 50% correction per update
- */
-export const CORRECTION_SMOOTHING_FACTOR = 0.25;
-
-/**
- * Minimum error threshold in pixels
- * Below this, trust client prediction completely
- */
-export const MIN_ERROR_THRESHOLD = 20;
-
-/**
- * Reconciliation lerp speed (0.0 - 1.0)
- *
- * After client prediction, smoothly moves player towards server position
- * every frame. Higher values = faster convergence.
- *
- * VALUES:
- * - 0.0: No reconciliation (client prediction only)
- * - 0.1: Slow, very smooth (10% per frame)
- * - 0.15: Balanced (current setting)
- * - 0.3: Fast convergence
- * - 1.0: Instant snap (no smoothing)
- */
-export const RECONCILIATION_LERP_SPEED = 0.15;
-
-// ========================================================================
-// DEBUG VISUALIZATION
-// ========================================================================
-
-/**
- * Show debug visualizations
- *
- * true: Shows server ghost position, hitboxes, debug info
- * false: Normal game rendering
- *
- * Recommended:
- * - false (production)
- * - true (current: for debugging rubber banding)
- */
-export const SHOW_DEBUG_VISUALS = false;
+export const PLAYER_MOVEMENT_PER_TICK = PLAYER_SPEED * FIXED_TIMESTEP; // Movement per physics tick (3 pixels)
 
 // ========================================================================
 // KEYBINDINGS (Display Names)

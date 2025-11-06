@@ -469,6 +469,11 @@ export class GameClient {
         !player.hasExt(ClientDestructible) || !player.getExt(ClientDestructible).isDead();
 
       if (isAlive) {
+        // Track whether player has movement input
+        const hasMovementInput = input.dx !== 0 || input.dy !== 0;
+        const reconciliationManager = this.predictionManager.getReconciliationManager();
+        reconciliationManager.setIsMoving(hasMovementInput);
+
         // Use fixed timestep simulator for consistent physics
         // This ensures client and server use the same timestep
         this.fixedTimestepSimulator.update((fixedDeltaTime) => {
@@ -488,12 +493,11 @@ export class GameClient {
           if (!input.sequenceNumber) {
             input.sequenceNumber = this.sequenceManager.getNextSequence();
           }
-          
+
           // Store input snapshot in history for rollback support
-          const reconciliationManager = this.predictionManager.getReconciliationManager();
           const inputHistory = reconciliationManager.getInputHistory();
           inputHistory.addInput(input.sequenceNumber, input, player);
-          
+
           // Send input to server
           this.sendInput(input);
           this.inputManager.reset();
@@ -501,7 +505,6 @@ export class GameClient {
 
         // After prediction, smoothly reconcile towards server's authoritative position
         // Note: Server sequence will be passed when available from server updates
-        const reconciliationManager = this.predictionManager.getReconciliationManager();
         reconciliationManager.reconcile(
           player,
           (player as any).serverGhostPos || player.getPosition(),

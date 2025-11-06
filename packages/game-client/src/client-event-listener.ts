@@ -40,9 +40,8 @@ import { ExplosionParticle } from "./particles/explosion";
 import { ExplosionEvent } from "@shared/events/server-sent/explosion-event";
 import { InterpolationManager } from "@/managers/interpolation";
 import { ExtensionTypes } from "@shared/util/extension-types";
-import { RECONCILIATION_CONFIG } from "@/config/client-prediction";
 import Vector2 from "@shared/util/vector2";
-import { CORRECTION_SMOOTHING_FACTOR, MIN_ERROR_THRESHOLD } from "@shared/config/game-config";
+import "@shared/config/prediction"; // Initialize window.config.predictions
 import { CoinClient } from "./entities/items/coin";
 
 export class ClientEventListener {
@@ -210,10 +209,10 @@ export class ClientEventListener {
                       new (existingEntity.getExt(ClientPositionable).getPosition()
                         .constructor as any)(serverPos.x, serverPos.y)
                     );
-                    
+
                     // For very large errors, snap immediately to prevent unbounded drift
                     // The PredictionManager's reconciliation will handle smaller errors smoothly
-                    if (error > RECONCILIATION_CONFIG.snapThreshold) {
+                    if (error > (window.config?.predictions?.largeErrorThreshold ?? 75)) {
                       // Large error: snap immediately to server position
                       existingEntity.deserializeProperty(key, value);
                     } else {

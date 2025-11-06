@@ -23,5 +23,4 @@ export {
   KNIFE_ATTACK_RANGE,
   ZOMBIE_ATTACK_RADIUS,
   BULLET_SIZE,
-  RECONCILIATION_LERP_SPEED,
 } from "../config/game-config";

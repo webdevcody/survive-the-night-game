@@ -1,5 +1,5 @@
 import Vector2 from "@shared/util/vector2";
-import { INTERPOLATION_CONFIG } from "@/config/client-prediction";
+import { getInterpolationConfig } from "@/config/client-prediction";
 
 type Snapshot = { position: Vector2; timestamp: number };
 
@@ -9,26 +9,34 @@ type InterpolationConfig = {
 };
 
 export class InterpolationManager {
-  private readonly config: InterpolationConfig;
   private snapshots: Map<string, Snapshot[]> = new Map();
 
   constructor(config: Partial<InterpolationConfig> = {}) {
-    this.config = { ...INTERPOLATION_CONFIG, ...config };
+    // Constructor kept for API compatibility, but config is now dynamic
+  }
+
+  /**
+   * Get current config, reading from window.config.predictions if available
+   */
+  private getCurrentConfig(): InterpolationConfig {
+    return getInterpolationConfig();
   }
 
   addSnapshot(entityId: string, position: Vector2, timestamp: number): void {
+    const config = this.getCurrentConfig();
     const list = this.snapshots.get(entityId) || [];
     list.push({ position, timestamp });
     // Keep only most recent snapshots
-    while (list.length > this.config.maxSnapshots) list.shift();
+    while (list.length > config.maxSnapshots) list.shift();
     this.snapshots.set(entityId, list);
   }
 
   getInterpolatedPosition(entityId: string, now: number = Date.now()): Vector2 | null {
+    const config = this.getCurrentConfig();
     const list = this.snapshots.get(entityId);
     if (!list || list.length === 0) return null;
 
-    const renderTime = now - this.config.delayMs;
+    const renderTime = now - config.delayMs;
 
     // Find two snapshots around renderTime
     let prev = list[0];

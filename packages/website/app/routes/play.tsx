@@ -1,9 +1,7 @@
-import type { Route } from "./+types/home";
-import { useEffect } from "react";
-import { useRef } from "react";
-import { SceneManager, LoadingScene } from "@survive-the-night/game-client/scenes";
+import { useEffect, useRef, useState } from "react";
+import { PredictionConfigPanel } from "./play/components/PredictionConfigPanel";
 
-export function meta({}: Route.MetaArgs) {
+export function meta() {
   return [
     { title: "Survive the Night Game" },
     {
@@ -14,12 +12,24 @@ export function meta({}: Route.MetaArgs) {
   ];
 }
 
-export default function Home() {
+// Client-only component that dynamically imports game client code
+function GameClientLoader() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const sceneManagerRef = useRef<SceneManager | null>(null);
+  const sceneManagerRef = useRef<any>(null);
+  const [isClient, setIsClient] = useState(false);
 
   useEffect(() => {
-    async function initScenes(): Promise<void> {
+    // Mark as client-side after mount
+    setIsClient(true);
+  }, []);
+
+  useEffect(() => {
+    if (!isClient || !canvasRef.current) {
+      return;
+    }
+
+    // Dynamically import game client code only on client-side
+    import("@survive-the-night/game-client/scenes").then(({ SceneManager, LoadingScene }) => {
       if (!canvasRef.current) {
         return;
       }
@@ -31,20 +41,25 @@ export default function Home() {
       (window as any).__sceneManager = sceneManagerRef.current;
 
       // Start with loading scene (it will handle name entry if needed)
-      await sceneManagerRef.current.switchScene(LoadingScene);
-    }
-
-    void initScenes();
+      sceneManagerRef.current.switchScene(LoadingScene);
+    });
 
     return () => {
-      sceneManagerRef.current?.destroy();
-      delete (window as any).__sceneManager;
+      if (sceneManagerRef.current) {
+        sceneManagerRef.current.destroy();
+        delete (window as any).__sceneManager;
+      }
     };
-  }, []);
+  }, [isClient]);
 
   return (
-    <div className="flex justify-center items-center h-screen bg-gray-900">
+    <div className="relative flex justify-center items-center h-screen bg-gray-900">
       <canvas ref={canvasRef} />
+      <PredictionConfigPanel />
     </div>
   );
+}
+
+export default function Play() {
+  return <GameClientLoader />;
 }

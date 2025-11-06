@@ -4,6 +4,7 @@ import { ClientPositionable } from "@/extensions";
 import { InputHistory } from "./input-history";
 import { FIXED_TIMESTEP } from "@shared/config/game-config";
 import { Input } from "@shared/util/input";
+import "@/config/client-prediction"; // Import to get window.config type declarations
 
 /**
  * Configuration for reconciliation behavior
@@ -30,22 +31,19 @@ export interface ReconciliationConfig {
  * Default reconciliation configuration
  */
 export const DEFAULT_RECONCILIATION_CONFIG: ReconciliationConfig = {
-  smallErrorThreshold: 20, // ~1 tile
-  largeErrorThreshold: 75, // ~5 tiles
-
-  minLerpSpeed: 0.15, // Smooth for small errors
-  maxLerpSpeed: 0.35, // Faster for larger errors
-
-  maxHistorySize: 60, // 1 second at 60fps
-  enableRollback: true,
-
-  maxCorrectionVelocity: 120, // pixels/second max correction
-  correctionDamping: 0.85, // Slight damping
+  smallErrorThreshold: window.config?.predictions?.smallErrorThreshold ?? 20,
+  largeErrorThreshold: window.config?.predictions?.largeErrorThreshold ?? 75,
+  minLerpSpeed: window.config?.predictions?.minLerpSpeed ?? 0.15,
+  maxLerpSpeed: window.config?.predictions?.maxLerpSpeed ?? 0.35,
+  maxHistorySize: window.config?.predictions?.maxInputHistory ?? 60,
+  enableRollback: window.config?.predictions?.enableRollback ?? true,
+  maxCorrectionVelocity: window.config?.predictions?.maxCorrectionVelocity ?? 120,
+  correctionDamping: 0.85, // Damping factor for smooth corrections
 };
 
 /**
  * Enhanced reconciliation manager with adaptive lerp and rollback support
- * 
+ *
  * Handles different types of corrections intelligently:
  * - Small errors: Trust client prediction
  * - Medium errors: Smooth lerp towards server position
@@ -54,6 +52,8 @@ export const DEFAULT_RECONCILIATION_CONFIG: ReconciliationConfig = {
 export class ReconciliationManager {
   private config: ReconciliationConfig;
   private inputHistory: InputHistory;
+  private isMoving: boolean = false;
+  private wasMoving: boolean = false;
 
   constructor(config: Partial<ReconciliationConfig> = {}) {
     this.config = { ...DEFAULT_RECONCILIATION_CONFIG, ...config };
@@ -65,6 +65,21 @@ export class ReconciliationManager {
    */
   getInputHistory(): InputHistory {
     return this.inputHistory;
+  }
+
+  /**
+   * Set whether the player is currently moving (has movement input)
+   */
+  setIsMoving(moving: boolean): void {
+    this.wasMoving = this.isMoving;
+    this.isMoving = moving;
+  }
+
+  /**
+   * Check if player just stopped moving (was moving, now not moving)
+   */
+  private justStoppedMoving(): boolean {
+    return this.wasMoving && !this.isMoving;
   }
 
   /**
@@ -80,25 +95,57 @@ export class ReconciliationManager {
       return;
     }
 
+    const config = this.getCurrentConfig();
     const clientPos = player.getExt(ClientPositionable).getPosition();
     const error = this.calculateError(clientPos, serverPosition);
 
     // Store server ghost position for visualization
     (player as any).setServerGhostPosition?.(new Vector2(serverPosition.x, serverPosition.y));
 
-    if (error > this.config.largeErrorThreshold) {
-      // Large error: Rollback and replay (if enabled and history available)
-      if (this.config.enableRollback && serverSequence !== undefined && applyInput) {
+    // Only reconcile when:
+    // 1. Player just stopped moving (smooth interpolation to server position)
+    // 2. Player is not moving and there's any error (continue interpolating)
+    // 3. Error is very large during movement (emergency snap/rollback)
+
+    // Define a very small threshold below which we consider positions "synced"
+    const minSyncThreshold = 0.5; // Half a pixel - effectively synced
+
+    if (this.justStoppedMoving()) {
+      // Player just stopped moving - interpolate to server position regardless of error size
+      this.smoothCorrection(player, serverPosition, error);
+    } else if (!this.isMoving && error > minSyncThreshold) {
+      // Player is not moving - continue interpolating until fully synced
+      // This ensures we eventually reach the exact server position
+      this.smoothCorrection(player, serverPosition, error);
+    } else if (error > config.largeErrorThreshold) {
+      // Large error during movement: Rollback and replay (if enabled and history available)
+      if (config.enableRollback && serverSequence !== undefined && applyInput) {
         this.rollbackAndReplay(player, serverSequence, serverPosition, applyInput);
       } else {
         // Fallback: Snap to server position
         this.snapToServer(player, serverPosition);
       }
-    } else if (error > this.config.smallErrorThreshold) {
-      // Medium error: Smooth correction
-      this.smoothCorrection(player, serverPosition, error);
     }
-    // Small error: Trust client prediction (no correction)
+    // Otherwise: Trust client prediction (no correction during movement)
+  }
+
+  /**
+   * Get current config, reading from window.config.predictions if available
+   */
+  private getCurrentConfig(): ReconciliationConfig {
+    if (typeof window !== "undefined" && window.config?.predictions) {
+      return {
+        smallErrorThreshold: window.config.predictions.smallErrorThreshold,
+        largeErrorThreshold: window.config.predictions.largeErrorThreshold,
+        minLerpSpeed: window.config.predictions.minLerpSpeed,
+        maxLerpSpeed: window.config.predictions.maxLerpSpeed,
+        maxHistorySize: window.config.predictions.maxInputHistory,
+        enableRollback: window.config.predictions.enableRollback,
+        maxCorrectionVelocity: window.config.predictions.maxCorrectionVelocity,
+        correctionDamping: this.config.correctionDamping,
+      };
+    }
+    return this.config;
   }
 
   /**
@@ -123,25 +170,15 @@ export class ReconciliationManager {
     const clientStateAtSeq = this.inputHistory.getStateAtSequence(serverSequence);
 
     if (clientStateAtSeq) {
-      // Calculate correction offset (difference between server and client at that sequence)
-      const correctionOffset = {
-        x: serverPosition.x - clientStateAtSeq.position.x,
-        y: serverPosition.y - clientStateAtSeq.position.y,
-      };
-
       // Apply correction: set position to server's position
       if (player.hasExt(ClientPositionable)) {
-        player.getExt(ClientPositionable).setPosition(
-          new Vector2(serverPosition.x, serverPosition.y)
-        );
+        player
+          .getExt(ClientPositionable)
+          .setPosition(new Vector2(serverPosition.x, serverPosition.y));
       }
 
       // Replay all inputs after this sequence
       this.inputHistory.replayFromSequence(serverSequence, player, applyInput);
-
-      // Apply correction offset to all replayed states (optional - can help with accuracy)
-      // Note: This is a simplified approach. A more sophisticated system would
-      // apply the offset during replay, but for now we just snap to server position.
     } else {
       // No history available: fallback to snap
       this.snapToServer(player, serverPosition);
@@ -151,37 +188,32 @@ export class ReconciliationManager {
   /**
    * Smoothly correct position towards server position
    */
-  private smoothCorrection(
-    player: PlayerClient,
-    serverPosition: Vector2,
-    error: number
-  ): void {
+  private smoothCorrection(player: PlayerClient, serverPosition: Vector2, error: number): void {
     if (!player.hasExt(ClientPositionable)) {
       return;
     }
 
+    const config = this.getCurrentConfig();
+
     // Adaptive lerp speed based on error magnitude
     const errorRatio =
-      (error - this.config.smallErrorThreshold) /
-      (this.config.largeErrorThreshold - this.config.smallErrorThreshold);
+      (error - config.smallErrorThreshold) /
+      (config.largeErrorThreshold - config.smallErrorThreshold);
     const lerpSpeed =
-      this.config.minLerpSpeed +
-      (this.config.maxLerpSpeed - this.config.minLerpSpeed) * errorRatio;
+      config.minLerpSpeed + (config.maxLerpSpeed - config.minLerpSpeed) * errorRatio;
 
     const currentPos = player.getExt(ClientPositionable).getPosition();
-    const correctedX =
-      currentPos.x + (serverPosition.x - currentPos.x) * lerpSpeed;
-    const correctedY =
-      currentPos.y + (serverPosition.y - currentPos.y) * lerpSpeed;
+    const correctedX = currentPos.x + (serverPosition.x - currentPos.x) * lerpSpeed;
+    const correctedY = currentPos.y + (serverPosition.y - currentPos.y) * lerpSpeed;
 
     // Apply velocity limiting to prevent sudden corrections
     const dx = correctedX - currentPos.x;
     const dy = correctedY - currentPos.y;
     const correctionVelocity = Math.hypot(dx, dy) / FIXED_TIMESTEP; // pixels per second
 
-    if (correctionVelocity > this.config.maxCorrectionVelocity) {
+    if (correctionVelocity > config.maxCorrectionVelocity) {
       // Cap correction velocity
-      const scale = this.config.maxCorrectionVelocity / correctionVelocity;
+      const scale = config.maxCorrectionVelocity / correctionVelocity;
       const limitedX = currentPos.x + dx * scale;
       const limitedY = currentPos.y + dy * scale;
       player.getExt(ClientPositionable).setPosition(new Vector2(limitedX, limitedY));
@@ -195,9 +227,9 @@ export class ReconciliationManager {
    */
   private snapToServer(player: PlayerClient, serverPosition: Vector2): void {
     if (player.hasExt(ClientPositionable)) {
-      player.getExt(ClientPositionable).setPosition(
-        new Vector2(serverPosition.x, serverPosition.y)
-      );
+      player
+        .getExt(ClientPositionable)
+        .setPosition(new Vector2(serverPosition.x, serverPosition.y));
     }
   }
 
@@ -209,4 +241,3 @@ export class ReconciliationManager {
     this.inputHistory = new InputHistory(this.config.maxHistorySize);
   }
 }
-
