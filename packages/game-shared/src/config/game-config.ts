@@ -102,7 +102,7 @@ export const LANDMINE_EXPLOSION_RADIUS = 32;
  * - 100: High latency
  * - 200+: Very poor connection
  */
-export const SIMULATED_LATENCY_MS = 50;
+export const SIMULATED_LATENCY_MS = 0;
 
 // ========================================================================
 // SIMULATION & TICK RATE
