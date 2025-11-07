@@ -1,138 +1,185 @@
 import { useEffect, useState } from "react";
-import { getConfig } from "@shared/config";
+import { getConfig, type GameConfig } from "@shared/config";
 
-interface PredictionConfig {
-  showDebugVisuals: boolean;
-  smallErrorThreshold: number;
-  largeErrorThreshold: number;
-  minLerpSpeed: number;
-  maxLerpSpeed: number;
-}
+type ConfigValue = string | number | boolean | object;
 
 /**
- * Panel with sliders to dynamically configure prediction settings
+ * Panel with tree view to dynamically configure all game settings
  */
 export function PredictionConfigPanel() {
-  const [config, setConfig] = useState<PredictionConfig>({
-    showDebugVisuals: true,
-    smallErrorThreshold: 20,
-    largeErrorThreshold: 75,
-    minLerpSpeed: 0.15,
-    maxLerpSpeed: 0.35,
-  });
-
+  const [config, setConfig] = useState<GameConfig | null>(null);
   const [isOpen, setIsOpen] = useState(false);
+  const [expandedSections, setExpandedSections] = useState<Set<string>>(new Set());
 
-  // Initialize config from getConfig().prediction if available
+  // Initialize config from getConfig()
   useEffect(() => {
     if (typeof window !== "undefined") {
       const gameConfig = getConfig();
-      if (gameConfig.prediction) {
-        setConfig(gameConfig.prediction as any);
-      }
+      setConfig(JSON.parse(JSON.stringify(gameConfig))); // Deep clone
     }
   }, []);
 
-  // Update window.config.prediction when config changes
+  // Update window.config when config changes
   useEffect(() => {
-    if (typeof window !== "undefined") {
-      const gameConfig = getConfig(); // This ensures window.config is properly initialized
-      gameConfig.prediction = config as any;
+    if (typeof window !== "undefined" && config) {
+      const gameConfig = getConfig();
+      Object.assign(gameConfig, config);
     }
   }, [config]);
 
-  const updateValue = <K extends keyof PredictionConfig>(key: K, value: PredictionConfig[K]) => {
-    setConfig((prev) => ({ ...prev, [key]: value }));
+  const toggleSection = (path: string) => {
+    setExpandedSections((prev) => {
+      const next = new Set(prev);
+      if (next.has(path)) {
+        next.delete(path);
+      } else {
+        next.add(path);
+      }
+      return next;
+    });
   };
 
+  const updateConfigValue = (path: string[], value: ConfigValue) => {
+    if (!config) return;
+
+    setConfig((prev) => {
+      if (!prev) return prev;
+      const newConfig = JSON.parse(JSON.stringify(prev));
+      let current: any = newConfig;
+
+      // Navigate to the parent object
+      for (let i = 0; i < path.length - 1; i++) {
+        current = current[path[i]];
+      }
+
+      // Set the value
+      current[path[path.length - 1]] = value;
+      return newConfig;
+    });
+  };
+
+  const getValueAtPath = (obj: any, path: string[]): any => {
+    let current = obj;
+    for (const key of path) {
+      current = current[key];
+    }
+    return current;
+  };
+
+  const renderConfigValue = (key: string, value: ConfigValue, path: string[]) => {
+    const fullPath = path.join(".");
+    const currentValue = config ? getValueAtPath(config, path) : value;
+
+    if (typeof value === "boolean") {
+      return (
+        <div key={fullPath} className="flex items-center justify-between py-1">
+          <label className="text-xs text-gray-300">{key}</label>
+          <input
+            type="checkbox"
+            checked={currentValue}
+            onChange={(e) => updateConfigValue(path, e.target.checked)}
+            className="w-4 h-4"
+          />
+        </div>
+      );
+    }
+
+    if (typeof value === "number") {
+      return (
+        <div key={fullPath} className="flex items-center justify-between py-1 gap-2">
+          <label className="text-xs text-gray-300 flex-shrink-0">{key}</label>
+          <input
+            type="number"
+            value={currentValue}
+            onChange={(e) => {
+              const num = parseFloat(e.target.value);
+              if (!isNaN(num)) {
+                updateConfigValue(path, num);
+              }
+            }}
+            className="bg-gray-800 text-white text-xs px-2 py-1 rounded w-24 text-right"
+            step="any"
+          />
+        </div>
+      );
+    }
+
+    if (typeof value === "string") {
+      return (
+        <div key={fullPath} className="flex items-center justify-between py-1 gap-2">
+          <label className="text-xs text-gray-300 flex-shrink-0">{key}</label>
+          <input
+            type="text"
+            value={currentValue}
+            onChange={(e) => updateConfigValue(path, e.target.value)}
+            className="bg-gray-800 text-white text-xs px-2 py-1 rounded flex-1 min-w-0"
+          />
+        </div>
+      );
+    }
+
+    if (typeof value === "object" && value !== null && !Array.isArray(value)) {
+      const isExpanded = expandedSections.has(fullPath);
+      return (
+        <div key={fullPath} className="py-1">
+          <button
+            onClick={() => toggleSection(fullPath)}
+            className="flex items-center gap-1 text-xs text-blue-400 hover:text-blue-300 w-full text-left"
+          >
+            <span className="text-gray-400">{isExpanded ? "▼" : "►"}</span>
+            <span className="font-medium">{key}</span>
+          </button>
+          {isExpanded && (
+            <div className="ml-4 border-l border-gray-700 pl-2 mt-1">
+              {Object.entries(value).map(([childKey, childValue]) =>
+                renderConfigValue(childKey, childValue as ConfigValue, [...path, childKey])
+              )}
+            </div>
+          )}
+        </div>
+      );
+    }
+
+    // For arrays or other types, show as JSON
+    return (
+      <div key={fullPath} className="flex items-center justify-between py-1 gap-2">
+        <label className="text-xs text-gray-300 flex-shrink-0">{key}</label>
+        <input
+          type="text"
+          value={JSON.stringify(currentValue)}
+          onChange={(e) => {
+            try {
+              const parsed = JSON.parse(e.target.value);
+              updateConfigValue(path, parsed);
+            } catch {
+              // Invalid JSON, ignore
+            }
+          }}
+          className="bg-gray-800 text-white text-xs px-2 py-1 rounded flex-1 min-w-0 font-mono"
+        />
+      </div>
+    );
+  };
+
+  if (!config) return null;
+
   return (
-    <div className="fixed left-4 top-1/2 -translate-y-1/2 z-50">
+    <div className="relative">
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="mb-2 px-3 py-2 bg-gray-800 text-white rounded-md hover:bg-gray-700 text-sm font-medium"
+        className="px-3 py-2 bg-gray-800 text-white rounded-md hover:bg-gray-700 text-sm font-medium"
       >
         {isOpen ? "Hide Config" : "Config"}
       </button>
 
       {isOpen && (
-        <div className="bg-gray-900 border border-gray-700 rounded-lg p-4 shadow-xl max-h-[80vh] overflow-y-auto min-w-[280px]">
-          <h3 className="text-white font-bold mb-4 text-sm">Prediction Config</h3>
+        <div className="absolute left-0 top-full mt-2 bg-gray-900 border border-gray-700 rounded-lg p-4 shadow-xl max-h-[80vh] overflow-y-auto min-w-[320px] max-w-[400px]">
+          <h3 className="text-white font-bold mb-4 text-sm">Game Configuration</h3>
 
-          <div className="space-y-4">
-            {/* Show Debug Visuals */}
-            <div>
-              <label className="block text-xs text-gray-300 mb-1">Show Debug Visuals</label>
-              <input
-                type="checkbox"
-                checked={config.showDebugVisuals}
-                onChange={(e) => updateValue("showDebugVisuals", e.target.checked)}
-                className="w-4 h-4"
-              />
-            </div>
-
-            {/* Small Error Threshold */}
-            <div>
-              <label className="block text-xs text-gray-300 mb-1">
-                Small Error Threshold: {config.smallErrorThreshold}px
-              </label>
-              <input
-                type="range"
-                min="0"
-                max="100"
-                step="5"
-                value={config.smallErrorThreshold}
-                onChange={(e) => updateValue("smallErrorThreshold", parseInt(e.target.value))}
-                className="w-full"
-              />
-            </div>
-
-            {/* Large Error Threshold */}
-            <div>
-              <label className="block text-xs text-gray-300 mb-1">
-                Large Error Threshold: {config.largeErrorThreshold}px
-              </label>
-              <input
-                type="range"
-                min="0"
-                max="200"
-                step="5"
-                value={config.largeErrorThreshold}
-                onChange={(e) => updateValue("largeErrorThreshold", parseInt(e.target.value))}
-                className="w-full"
-              />
-            </div>
-
-            {/* Min Lerp Speed */}
-            <div>
-              <label className="block text-xs text-gray-300 mb-1">
-                Min Lerp Speed: {config.minLerpSpeed.toFixed(2)}
-              </label>
-              <input
-                type="range"
-                min="0"
-                max="1"
-                step="0.01"
-                value={config.minLerpSpeed}
-                onChange={(e) => updateValue("minLerpSpeed", parseFloat(e.target.value))}
-                className="w-full"
-              />
-            </div>
-
-            {/* Max Lerp Speed */}
-            <div>
-              <label className="block text-xs text-gray-300 mb-1">
-                Max Lerp Speed: {config.maxLerpSpeed.toFixed(2)}
-              </label>
-              <input
-                type="range"
-                min="0"
-                max="1"
-                step="0.01"
-                value={config.maxLerpSpeed}
-                onChange={(e) => updateValue("maxLerpSpeed", parseFloat(e.target.value))}
-                className="w-full"
-              />
-            </div>
+          <div className="space-y-1">
+            {Object.entries(config).map(([key, value]) =>
+              renderConfigValue(key, value as ConfigValue, [key])
+            )}
           </div>
         </div>
       )}

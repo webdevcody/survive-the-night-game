@@ -62,6 +62,8 @@ export class Player extends Entity {
   private stamina: number = getConfig().player.MAX_STAMINA;
   private exhaustionTimer: number = 0; // Time remaining before stamina can regenerate
   private coins: number = 0;
+  private wood: number = 0;
+  private cloth: number = 0;
 
   constructor(gameManagers: IGameManagers) {
     super(gameManagers, Entities.PLAYER);
@@ -206,6 +208,8 @@ export class Player extends Entity {
       stamina: this.stamina,
       maxStamina: getConfig().player.MAX_STAMINA,
       coins: this.coins,
+      wood: this.wood,
+      cloth: this.cloth,
     };
   }
 
@@ -241,7 +245,13 @@ export class Player extends Entity {
   }
 
   craftRecipe(recipe: RecipeType): void {
-    this.getExt(Inventory).craftRecipe(recipe);
+    const resources = { wood: this.wood, cloth: this.cloth };
+    const result = this.getExt(Inventory).craftRecipe(recipe, resources);
+
+    // Update player's resource counts
+    this.wood = result.resources.wood;
+    this.cloth = result.resources.cloth;
+
     this.setIsCrafting(false);
   }
 
@@ -596,5 +606,29 @@ export class Player extends Entity {
 
   getCoins(): number {
     return this.coins;
+  }
+
+  addWood(amount: number): void {
+    this.wood += amount;
+  }
+
+  getWood(): number {
+    return this.wood;
+  }
+
+  removeWood(amount: number): void {
+    this.wood = Math.max(0, this.wood - amount);
+  }
+
+  addCloth(amount: number): void {
+    this.cloth += amount;
+  }
+
+  getCloth(): number {
+    return this.cloth;
+  }
+
+  removeCloth(amount: number): void {
+    this.cloth = Math.max(0, this.cloth - amount);
   }
 }

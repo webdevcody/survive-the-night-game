@@ -1,5 +1,6 @@
 import { GameState } from "@/state";
 import Vector2 from "@shared/util/vector2";
+import { getConfig } from "@shared/config";
 
 export interface Renderable {
   render: (ctx: CanvasRenderingContext2D, gameState: GameState) => void;
@@ -29,6 +30,11 @@ export function drawHealthBar(
   health: number,
   maxHealth: number
 ) {
+  // Check if health bars are enabled in config
+  if (!getConfig().render.showHealthBars) {
+    return;
+  }
+
   const healthBarWidth = 16;
   const healthBarHeight = 2;
   const healthBarY = position.y - healthBarHeight - 2;

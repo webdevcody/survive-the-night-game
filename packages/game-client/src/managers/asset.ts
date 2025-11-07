@@ -494,3 +494,28 @@ export class AssetManager implements ImageLoader {
 export function getItemAssetKey(item: InventoryItem): Asset {
   return item.itemType as Asset;
 }
+
+/**
+ * Get sprite info for an asset key (exported for React components)
+ */
+export function getAssetSpriteInfo(assetKey: string): {
+  sheet: string;
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+} | null {
+  const spriteInfo = assetsMap[assetKey as Asset];
+
+  if (!spriteInfo) {
+    return null;
+  }
+
+  return {
+    sheet: spriteInfo.sheet || "default",
+    x: spriteInfo.x,
+    y: spriteInfo.y,
+    width: spriteInfo.width || 16,
+    height: spriteInfo.height || 16,
+  };
+}

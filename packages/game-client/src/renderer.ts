@@ -161,7 +161,8 @@ export class Renderer {
     this.ctx.setTransform(1, 0, 0, 1, 0, 0);
     this.hotbar.render(this.ctx, this.gameState);
     this.hud.render(this.ctx, this.gameState);
-    this.craftingTable.render(this.ctx, this.gameState);
+    // Crafting table now rendered in React component
+    // this.craftingTable.render(this.ctx, this.gameState);
     this.merchantBuyPanel.render(this.ctx, this.gameState);
     this.gameOverDialog.render(this.ctx, this.gameState);
     perfTimer.end("renderUI");

@@ -41,6 +41,8 @@ export class PlayerClient extends ClientEntity implements IClientEntity, Rendera
   private stamina: number = 100;
   private maxStamina: number = 100;
   private coins: number = 0;
+  private wood: number = 0;
+  private cloth: number = 0;
   private serverGhostPos: Vector2 | null = null;
 
   private input: Input = {
@@ -72,6 +74,8 @@ export class PlayerClient extends ClientEntity implements IClientEntity, Rendera
     this.stamina = data.stamina ?? 100;
     this.maxStamina = data.maxStamina ?? 100;
     this.coins = data.coins ?? 0;
+    this.wood = data.wood ?? 0;
+    this.cloth = data.cloth ?? 0;
   }
 
   private getPlayerAssetKey(): string {
@@ -333,6 +337,14 @@ export class PlayerClient extends ClientEntity implements IClientEntity, Rendera
     return this.coins;
   }
 
+  public getWood(): number {
+    return this.wood;
+  }
+
+  public getCloth(): number {
+    return this.cloth;
+  }
+
   deserialize(data: RawEntity): void {
     super.deserialize(data);
     this.inventory = data.inventory;
@@ -346,5 +358,7 @@ export class PlayerClient extends ClientEntity implements IClientEntity, Rendera
     this.stamina = data.stamina ?? 100;
     this.maxStamina = data.maxStamina ?? 100;
     this.coins = data.coins ?? 0;
+    this.wood = data.wood ?? 0;
+    this.cloth = data.cloth ?? 0;
   }
 }

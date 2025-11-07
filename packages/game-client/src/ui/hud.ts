@@ -9,7 +9,7 @@ import { Minimap } from "./minimap";
 import { Leaderboard } from "./leaderboard";
 import { SoundManager } from "@/managers/sound-manager";
 import { AssetManager } from "@/managers/asset";
-import { ClockPanel, StatPanel, TextPanel } from "./panels";
+import { ClockPanel, StatPanel, TextPanel, ResourcesPanel } from "./panels";
 import { getConfig } from "@shared/config";
 
 const HUD_SETTINGS = {
@@ -70,6 +70,18 @@ const HUD_SETTINGS = {
     right: 40,
     top: 40,
   },
+  Resources: {
+    padding: 12,
+    background: "rgba(0, 0, 0, 0.8)",
+    borderColor: "rgba(255, 255, 255, 0.5)",
+    borderWidth: 2,
+    font: "28px Arial",
+    spriteSize: 32,
+    iconGap: 12,
+    resourceGap: 8,
+    right: 40,
+    marginTop: 12, // Gap below clock
+  },
   MinimapStats: {
     left: 460, // Position to the right of minimap (40 + 400 + 20)
     bottom: 260, // Start above the mute button
@@ -105,6 +117,7 @@ export class Hud {
   private versionPanel: TextPanel;
   private fpsPanel: TextPanel;
   private pingPanel: TextPanel;
+  private resourcesPanel: ResourcesPanel;
 
   constructor(mapManager: MapManager, soundManager: SoundManager, assetManager: AssetManager) {
     this.mapManager = mapManager;
@@ -235,6 +248,23 @@ export class Hud {
       font: HUD_SETTINGS.BottomRightPanels.font,
       textColor: HUD_SETTINGS.BottomRightPanels.pingColors.excellent,
     });
+
+    // Initialize resources panel (below clock)
+    this.resourcesPanel = new ResourcesPanel(
+      {
+        padding: HUD_SETTINGS.Resources.padding,
+        background: HUD_SETTINGS.Resources.background,
+        borderColor: HUD_SETTINGS.Resources.borderColor,
+        borderWidth: HUD_SETTINGS.Resources.borderWidth,
+        x: 0,
+        y: 0,
+        font: HUD_SETTINGS.Resources.font,
+        spriteSize: HUD_SETTINGS.Resources.spriteSize,
+        iconGap: HUD_SETTINGS.Resources.iconGap,
+        resourceGap: HUD_SETTINGS.Resources.resourceGap,
+      },
+      assetManager
+    );
   }
 
   public update(gameState: GameState): void {
@@ -306,6 +336,19 @@ export class Hud {
     this.clockPanel.render(ctx, gameState);
     ctx.restore();
 
+    // Render resources panel below clock (right-aligned)
+    ctx.save();
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    const resourcesY =
+      HUD_SETTINGS.Clock.top + HUD_SETTINGS.Clock.radius * 2 + HUD_SETTINGS.Resources.marginTop;
+    // Position will be dynamically calculated based on panel width, so we need to measure first
+    // For now, we'll align to the right edge similar to the clock
+    const resourcesX = width - HUD_SETTINGS.Resources.right - 120; // Approximate width, will be adjusted by panel
+    (this.resourcesPanel as any).resourcesSettings.x = resourcesX;
+    (this.resourcesPanel as any).resourcesSettings.y = resourcesY;
+    this.resourcesPanel.render(ctx, gameState);
+    ctx.restore();
+
     // Render stat panels to the right of minimap
     ctx.save();
     ctx.setTransform(1, 0, 0, 1, 0, 0);
@@ -364,7 +407,6 @@ export class Hud {
 
     ctx.restore();
 
-    this.renderControlsList(ctx, gameState);
     this.renderGameMessages(ctx);
     this.renderMuteButton(ctx);
     this.leaderboard.render(ctx, gameState);
@@ -429,119 +471,6 @@ export class Hud {
     const iconY = y + settings.height / 2 + 14; // Adjust for vertical centering
 
     ctx.fillText(icon, iconX, iconY);
-
-    ctx.restore();
-  }
-
-  public renderControlsList(ctx: CanvasRenderingContext2D, gameState: GameState): void {
-    ctx.save();
-    ctx.setTransform(1, 0, 0, 1, 0, 0);
-
-    if (!this.showInstructions) {
-      const text = 'Press "I" for controls';
-      ctx.font = "24px Arial";
-      const metrics = ctx.measureText(text);
-
-      const padding = 12;
-      const width = metrics.width + padding * 2;
-      const height = 36;
-
-      // Draw background panel
-      ctx.fillStyle = "rgba(0, 0, 0, 0.8)";
-      ctx.fillRect(HUD_SETTINGS.ControlsList.left, HUD_SETTINGS.ControlsList.top, width, height);
-
-      // Draw border
-      ctx.strokeStyle = "rgba(255, 255, 255, 0.5)";
-      ctx.lineWidth = 2;
-      ctx.strokeRect(HUD_SETTINGS.ControlsList.left, HUD_SETTINGS.ControlsList.top, width, height);
-
-      // Draw text
-      ctx.fillStyle = "white";
-      ctx.textBaseline = "middle";
-      ctx.fillText(
-        text,
-        HUD_SETTINGS.ControlsList.left + padding,
-        HUD_SETTINGS.ControlsList.top + height / 2
-      );
-
-      ctx.restore();
-      return;
-    }
-
-    const keys = getConfig().keybindings;
-    const regularText =
-      "Movement: W A S D\n" +
-      `Fire: ${keys.FIRE.toUpperCase()}\n` +
-      `Interact: ${keys.INTERACT.toUpperCase()}\n` +
-      `Craft: ${keys.CRAFT.toUpperCase()}\n` +
-      `Cycle Weapon: ${keys.CYCLE_WEAPON_PREV.toUpperCase()}/${keys.CYCLE_WEAPON_NEXT.toUpperCase()}\n` +
-      `Quick Heal: ${keys.QUICK_HEAL.toUpperCase()}\n` +
-      `Drop Item: ${keys.DROP.toUpperCase()}\n` +
-      `Sprint: ${keys.SPRINT.toUpperCase()}\n` +
-      `Chat: ${keys.CHAT.toUpperCase()}\n` +
-      `Player List: ${keys.PLAYER_LIST.toUpperCase()}\n` +
-      `Mute: ${keys.TOGGLE_MUTE.toUpperCase()}\n` +
-      `Controls: ${keys.TOGGLE_INSTRUCTIONS.toUpperCase()}`;
-
-    const craftingText = "Navigate: W S\nCraft: SPACE";
-    const innerText = gameState.crafting ? craftingText : regularText;
-
-    ctx.font = HUD_SETTINGS.ControlsList.font;
-
-    const lines = innerText.trim().split("\n");
-    let maxLineWidth = 0;
-    let maxLineHeight = 0;
-
-    for (const line of lines) {
-      const metrics = ctx.measureText(line);
-
-      if (maxLineWidth < metrics.width) {
-        maxLineWidth = metrics.width;
-      }
-
-      if (maxLineHeight < metrics.fontBoundingBoxAscent + metrics.fontBoundingBoxDescent) {
-        maxLineHeight = metrics.fontBoundingBoxAscent + metrics.fontBoundingBoxDescent;
-      }
-    }
-
-    const lineHeight =
-      HUD_SETTINGS.ControlsList.lineHeight > maxLineHeight
-        ? HUD_SETTINGS.ControlsList.lineHeight
-        : maxLineHeight;
-
-    const height =
-      lineHeight * lines.length +
-      HUD_SETTINGS.ControlsList.padding.top +
-      HUD_SETTINGS.ControlsList.padding.bottom;
-
-    const width =
-      maxLineWidth +
-      HUD_SETTINGS.ControlsList.padding.left +
-      HUD_SETTINGS.ControlsList.padding.right;
-
-    // Draw background
-    ctx.fillStyle = HUD_SETTINGS.ControlsList.background;
-    ctx.fillRect(HUD_SETTINGS.ControlsList.left, HUD_SETTINGS.ControlsList.top, width, height);
-
-    // Draw border
-    ctx.strokeStyle = "rgba(255, 255, 255, 0.5)";
-    ctx.lineWidth = 2;
-    ctx.strokeRect(HUD_SETTINGS.ControlsList.left, HUD_SETTINGS.ControlsList.top, width, height);
-
-    // Draw text
-    ctx.textBaseline = "top";
-    ctx.fillStyle = HUD_SETTINGS.ControlsList.color;
-
-    for (let i = 0; i < lines.length; i++) {
-      const line = lines[i];
-      const offsetTop = i * lineHeight + (HUD_SETTINGS.ControlsList.lineHeight - maxLineHeight) / 2;
-
-      ctx.fillText(
-        line,
-        HUD_SETTINGS.ControlsList.left + HUD_SETTINGS.ControlsList.padding.left,
-        offsetTop + HUD_SETTINGS.ControlsList.top + HUD_SETTINGS.ControlsList.padding.top
-      );
-    }
 
     ctx.restore();
   }

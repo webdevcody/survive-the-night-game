@@ -6,3 +6,4 @@ export { CoinsPanel } from "./coins-panel";
 export { ClockPanel } from "./clock-panel";
 export { StatPanel } from "./stat-panel";
 export { TextPanel } from "./text-panel";
+export { ResourcesPanel } from "./resources-panel";

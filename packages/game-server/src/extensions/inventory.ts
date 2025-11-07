@@ -81,10 +81,18 @@ export default class Inventory implements Extension {
     return WEAPON_TYPE_VALUES.includes(activeItemType as any) ? activeItem : null;
   }
 
-  public craftRecipe(recipe: RecipeType): void {
+  public craftRecipe(recipe: RecipeType, resources: { wood: number; cloth: number }): {
+    inventory: InventoryItem[];
+    resources: { wood: number; cloth: number };
+  } {
     const foundRecipe = recipes.find((it) => it.getType() === recipe);
-    if (foundRecipe === undefined) return;
-    this.items = foundRecipe.craft(this.items);
+    if (foundRecipe === undefined) {
+      return { inventory: this.items, resources };
+    }
+
+    const result = foundRecipe.craft(this.items, resources);
+    this.items = result.inventory;
+    return result;
   }
 
   public addRandomItem(chance = 1): this {

@@ -1,0 +1,120 @@
+import { useEffect } from "react";
+import { Button } from "~/components/ui/button";
+
+interface InstructionPanelProps {
+  isOpen: boolean;
+  onClose: () => void;
+}
+
+/**
+ * Panel displaying game controls and instructions
+ */
+export function InstructionPanel({ isOpen, onClose }: InstructionPanelProps) {
+  // Handle ESC key to close
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape" && isOpen) {
+        onClose();
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [isOpen, onClose]);
+
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+      <div className="bg-gray-900 border border-gray-700 rounded-lg p-6 shadow-xl max-w-2xl w-full mx-4">
+        <div className="flex items-center justify-between mb-6">
+          <h2 className="text-white font-bold text-2xl">Game Controls</h2>
+          <Button variant="ghost" size="sm" onClick={onClose}>
+            ✕
+          </Button>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 text-white">
+          <div className="space-y-3">
+            <h3 className="font-semibold text-lg text-blue-400 mb-2">Movement</h3>
+            <div className="space-y-2 text-sm">
+              <div className="flex justify-between">
+                <span className="text-gray-300">Move:</span>
+                <span className="font-mono">W A S D</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-gray-300">Sprint:</span>
+                <span className="font-mono">SHIFT</span>
+              </div>
+            </div>
+          </div>
+
+          <div className="space-y-3">
+            <h3 className="font-semibold text-lg text-blue-400 mb-2">Combat</h3>
+            <div className="space-y-2 text-sm">
+              <div className="flex justify-between">
+                <span className="text-gray-300">Fire Weapon:</span>
+                <span className="font-mono">SPACE</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-gray-300">Cycle Weapon:</span>
+                <span className="font-mono">Q / E</span>
+              </div>
+            </div>
+          </div>
+
+          <div className="space-y-3">
+            <h3 className="font-semibold text-lg text-blue-400 mb-2">Actions</h3>
+            <div className="space-y-2 text-sm">
+              <div className="flex justify-between">
+                <span className="text-gray-300">Interact:</span>
+                <span className="font-mono">F</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-gray-300">Craft:</span>
+                <span className="font-mono">C</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-gray-300">Quick Heal:</span>
+                <span className="font-mono">H</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-gray-300">Drop Item:</span>
+                <span className="font-mono">G</span>
+              </div>
+            </div>
+          </div>
+
+          <div className="space-y-3">
+            <h3 className="font-semibold text-lg text-blue-400 mb-2">Interface</h3>
+            <div className="space-y-2 text-sm">
+              <div className="flex justify-between">
+                <span className="text-gray-300">Chat:</span>
+                <span className="font-mono">ENTER</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-gray-300">Player List:</span>
+                <span className="font-mono">TAB</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-gray-300">Mute Sound:</span>
+                <span className="font-mono">M</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-gray-300">Controls:</span>
+                <span className="font-mono">I / ESC</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div className="mt-6 pt-4 border-t border-gray-700">
+          <p className="text-sm text-gray-400 text-center">
+            Press <span className="font-mono text-white">ESC</span> or click the close button to
+            return to the game
+          </p>
+        </div>
+      </div>
+    </div>
+  );
+}

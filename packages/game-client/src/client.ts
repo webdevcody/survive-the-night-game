@@ -29,6 +29,7 @@ import { PredictionManager } from "./managers/prediction";
 import { FixedTimestepSimulator } from "./managers/fixed-timestep-simulator";
 import { SequenceManager } from "./managers/sequence-manager";
 import { getConfig } from "@shared/config";
+import { getAssetSpriteInfo } from "@/managers/asset";
 
 export class GameClient {
   private ctx: CanvasRenderingContext2D;
@@ -151,20 +152,8 @@ export class GameClient {
       getInventory,
       isMerchantPanelOpen: () => this.merchantBuyPanel.isVisible(),
       onCraft: () => {
-        const player = getPlayer();
-
-        if (player?.isDead()) {
-          return;
-        }
-
-        this.craftingTable.reset();
-        this.gameState.crafting = !this.craftingTable.isVisible();
-
-        if (this.gameState.crafting) {
-          this.socketManager.sendStartCrafting();
-        } else {
-          this.socketManager.sendStopCrafting();
-        }
+        // Crafting is now handled by React component
+        // C key disabled for now
       },
       onToggleInstructions: () => {
         this.hud.toggleInstructions();
@@ -193,24 +182,16 @@ export class GameClient {
         this.soundManager.toggleMute();
       },
       onDown: (inputs: Input) => {
-        if (this.craftingTable.isVisible()) {
-          this.craftingTable.onDown();
-        } else {
-          inputs.dy = 1;
-          inputs.facing = Direction.Down;
-        }
+        inputs.dy = 1;
+        inputs.facing = Direction.Down;
       },
       onRight: (inputs: Input) => {
-        if (!this.craftingTable.isVisible()) {
-          inputs.dx = 1;
-          inputs.facing = Direction.Right;
-        }
+        inputs.dx = 1;
+        inputs.facing = Direction.Right;
       },
       onLeft: (inputs: Input) => {
-        if (!this.craftingTable.isVisible()) {
-          inputs.dx = -1;
-          inputs.facing = Direction.Left;
-        }
+        inputs.dx = -1;
+        inputs.facing = Direction.Left;
       },
       onInteract: (inputs: Input) => {
         // If merchant panel is open, close it (toggle functionality)
@@ -219,58 +200,45 @@ export class GameClient {
           return;
         }
 
-        if (!this.craftingTable.isVisible()) {
-          // Check if there's a merchant nearby
-          const player = getPlayer();
-          if (player) {
-            const playerPos = player.getPosition();
-            const merchants = this.gameState.entities.filter((e) => e.getType() === "merchant");
+        // Check if there's a merchant nearby
+        const player = getPlayer();
+        if (player) {
+          const playerPos = player.getPosition();
+          const merchants = this.gameState.entities.filter((e) => e.getType() === "merchant");
 
-            for (const merchantEntity of merchants) {
-              if (merchantEntity.hasExt(ClientPositionable)) {
-                const merchantPos = merchantEntity.getExt(ClientPositionable).getPosition();
-                const dx = merchantPos.x - playerPos.x;
-                const dy = merchantPos.y - playerPos.y;
-                const distance = Math.sqrt(dx * dx + dy * dy);
+          for (const merchantEntity of merchants) {
+            if (merchantEntity.hasExt(ClientPositionable)) {
+              const merchantPos = merchantEntity.getExt(ClientPositionable).getPosition();
+              const dx = merchantPos.x - playerPos.x;
+              const dy = merchantPos.y - playerPos.y;
+              const distance = Math.sqrt(dx * dx + dy * dy);
 
-                // MAX_INTERACT_RADIUS from game config is 20
-                if (distance <= 20) {
-                  // Cast to MerchantClient to access shop items
-                  const merchant = merchantEntity as any;
-                  const shopItems = merchant.getShopItems?.();
-                  if (shopItems && shopItems.length > 0) {
-                    // Open merchant panel
-                    this.merchantBuyPanel.open(merchantEntity.getId(), shopItems);
-                    return;
-                  }
+              // MAX_INTERACT_RADIUS from game config is 20
+              if (distance <= 20) {
+                // Cast to MerchantClient to access shop items
+                const merchant = merchantEntity as any;
+                const shopItems = merchant.getShopItems?.();
+                if (shopItems && shopItems.length > 0) {
+                  // Open merchant panel
+                  this.merchantBuyPanel.open(merchantEntity.getId(), shopItems);
+                  return;
                 }
               }
             }
           }
-
-          inputs.interact = true;
         }
+
+        inputs.interact = true;
       },
       onDrop: (inputs: Input) => {
-        if (!this.craftingTable.isVisible()) {
-          inputs.drop = true;
-        }
+        inputs.drop = true;
       },
       onFire: (inputs: Input) => {
-        if (this.craftingTable.isVisible()) {
-          this.craftingTable.onSelect();
-        }
-        if (!this.craftingTable.isVisible()) {
-          inputs.fire = true;
-        }
+        inputs.fire = true;
       },
       onUp: (inputs: Input) => {
-        if (this.craftingTable.isVisible()) {
-          this.craftingTable.onUp();
-        } else {
-          inputs.dy = -1;
-          inputs.facing = Direction.Up;
-        }
+        inputs.dy = -1;
+        inputs.facing = Direction.Up;
       },
       onMerchantKey1: () => {
         this.merchantBuyPanel.buySelected(0);
@@ -564,5 +532,66 @@ export class GameClient {
 
   public getEntityFactory(): EntityFactory {
     return this.entityFactory;
+  }
+
+  /**
+   * Get crafting state for React components
+   */
+  public getCraftingState() {
+    const player = this.getMyPlayer();
+    if (!player) {
+      return {
+        resources: { wood: 0, cloth: 0 },
+        inventory: [],
+        playerId: null,
+      };
+    }
+
+    return {
+      resources: {
+        wood: player.getWood(),
+        cloth: player.getCloth(),
+      },
+      inventory: player.getInventory(),
+      playerId: this.gameState.playerId,
+    };
+  }
+
+  /**
+   * Send craft request to server (for React components)
+   */
+  public craftRecipe(recipe: import("@shared/util/recipes").RecipeType): void {
+    if (this.socketManager) {
+      this.socketManager.sendCraftRequest(recipe);
+    }
+  }
+
+  /**
+   * Get sprite sheet info for an item (for React components to use CSS sprites)
+   */
+  public getItemSpriteInfo(itemType: string): {
+    sheet: string;
+    x: number;
+    y: number;
+    width: number;
+    height: number;
+  } | null {
+    try {
+      return getAssetSpriteInfo(itemType);
+    } catch (error) {
+      console.error(`Failed to get sprite info for ${itemType}:`, error);
+      return null;
+    }
+  }
+
+  /**
+   * Get all sprite sheets URLs (for React to preload)
+   */
+  public getSpriteSheets(): Record<string, string> {
+    return {
+      default: "/tile-sheet.png",
+      items: "/sheets/items-sheet.png",
+      characters: "/sheets/characters-sheet.png",
+    };
   }
 }

@@ -6,9 +6,9 @@ export const ENVIRONMENT_CONFIGS: Record<string, EnvironmentConfig> = {
     category: "resource",
     assets: {
       assetKey: "tree",
-      x: 221,
-      y: 209,
-      sheet: "default",
+      x: 144,
+      y: 0,
+      sheet: "items",
     },
   },
   wood: {
@@ -16,9 +16,9 @@ export const ENVIRONMENT_CONFIGS: Record<string, EnvironmentConfig> = {
     category: "resource",
     assets: {
       assetKey: "wood",
-      x: 221,
-      y: 209,
-      sheet: "default",
+      x: 64,
+      y: 32,
+      sheet: "items",
     },
   },
   wall: {
@@ -26,9 +26,9 @@ export const ENVIRONMENT_CONFIGS: Record<string, EnvironmentConfig> = {
     category: "structure",
     assets: {
       assetKey: "wall",
-      x: 357,
-      y: 95,
-      sheet: "default",
+      x: 64,
+      y: 48,
+      sheet: "items",
     },
   },
 };

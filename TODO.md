@@ -4,6 +4,17 @@ Feel free to pick any item listed out here to work on.
 
 ## TODO
 
+- pace too slow
+- I don't like the random spawns of zombies, it would be cool if they had a heard or group walk behavior
+- crafting is hard, move resources to stack player resources
+- improve crafting menu
+- reduce time for night / day
+- have a weapon menu separate from inventory
+- combine weapon / ammo in hud so it's easier to read how much you got left
+- allow crafting
+- remove health bars over entities
+-
+
 - add a way to ban / kick, add some type of logic to prevent bad words on usernames
 - cycling weapons (q/a) doesn't seem to work when you just have a single weapon in inventory
 - when pressing f, it doesn't seem to always let the server know you are trying to interact. double check the

@@ -11,6 +11,12 @@ export const renderConfig = {
    * Entities beyond this radius are culled from rendering for performance
    */
   ENTITY_RENDER_RADIUS: 400,
+
+  /**
+   * Whether to show health bars above entities
+   * Set to false to hide health bars on players, zombies, and buildings
+   */
+  showHealthBars: true,
 } as const;
 
 export type RenderConfig = typeof renderConfig;

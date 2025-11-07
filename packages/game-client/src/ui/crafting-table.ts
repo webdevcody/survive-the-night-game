@@ -99,14 +99,18 @@ export class CraftingTable implements Renderable {
   }
 
   public onSelect() {
+    const player = this.getPlayer();
+    if (!player) return;
+
+    const resources = { wood: player.getWood(), cloth: player.getCloth() };
     const sortedRecipes = [...recipes].sort((a, b) => {
-      const aCanBeCrafted = a.canBeCrafted(this.getInventory());
-      const bCanBeCrafted = b.canBeCrafted(this.getInventory());
+      const aCanBeCrafted = a.canBeCrafted(this.getInventory(), resources);
+      const bCanBeCrafted = b.canBeCrafted(this.getInventory(), resources);
       return bCanBeCrafted === aCanBeCrafted ? 0 : bCanBeCrafted ? 1 : -1;
     });
     const recipe = sortedRecipes[this.activeRecipe];
 
-    if (recipe.canBeCrafted(this.getInventory())) {
+    if (recipe.canBeCrafted(this.getInventory(), resources)) {
       this.onCraft(recipe.getType());
     }
   }
@@ -130,13 +134,17 @@ export class CraftingTable implements Renderable {
       return;
     }
 
+    const player = this.getPlayer();
+    if (!player) return;
+
+    const resources = { wood: player.getWood(), cloth: player.getCloth() };
     const { Container, Line, Recipe, Recipes, Slot } = CRAFTING_TABLE_SETTINGS;
     let maxRecipeWidth = 0;
 
     // Sort recipes by craftability
     const sortedRecipes = [...recipes].sort((a, b) => {
-      const aCanBeCrafted = a.canBeCrafted(this.getInventory());
-      const bCanBeCrafted = b.canBeCrafted(this.getInventory());
+      const aCanBeCrafted = a.canBeCrafted(this.getInventory(), resources);
+      const bCanBeCrafted = b.canBeCrafted(this.getInventory(), resources);
       return bCanBeCrafted === aCanBeCrafted ? 0 : bCanBeCrafted ? 1 : -1;
     });
 
@@ -182,7 +190,7 @@ export class CraftingTable implements Renderable {
 
     for (let i = 0; i < sortedRecipes.length; i++) {
       const recipe = sortedRecipes[i];
-      const disabled = !recipe.canBeCrafted(this.getInventory());
+      const disabled = !recipe.canBeCrafted(this.getInventory(), resources);
       const isActive = i === this.activeRecipe;
       const components = recipe.components();
       const resulting = recipe.resultingComponent();

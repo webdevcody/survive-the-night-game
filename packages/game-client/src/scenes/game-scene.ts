@@ -46,4 +46,11 @@ export class GameScene extends Scene {
     // Cleanup game client
     this.gameClient.unmount();
   }
+
+  /**
+   * Get the game client instance (for React integration)
+   */
+  public getGameClient(): GameClient {
+    return this.gameClient;
+  }
 }

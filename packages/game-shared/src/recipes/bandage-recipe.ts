@@ -5,6 +5,8 @@ import {
   recipeCanBeCrafted,
   RecipeComponent,
   craftRecipe,
+  PlayerResources,
+  CraftingResult,
 } from "../util/recipes";
 
 export class BandageRecipe implements Recipe {
@@ -12,8 +14,8 @@ export class BandageRecipe implements Recipe {
     return RecipeType.Bandage;
   }
 
-  public canBeCrafted(inventory: InventoryItem[]): boolean {
-    return recipeCanBeCrafted(this, inventory);
+  public canBeCrafted(inventory: InventoryItem[], resources: PlayerResources): boolean {
+    return recipeCanBeCrafted(this, inventory, resources);
   }
 
   public components(): RecipeComponent[] {
@@ -30,8 +32,8 @@ export class BandageRecipe implements Recipe {
     ];
   }
 
-  public craft(inventory: InventoryItem[]): InventoryItem[] {
-    return craftRecipe(this, inventory);
+  public craft(inventory: InventoryItem[], resources: PlayerResources): CraftingResult {
+    return craftRecipe(this, inventory, resources);
   }
 
   public resultingComponent(): RecipeComponent {

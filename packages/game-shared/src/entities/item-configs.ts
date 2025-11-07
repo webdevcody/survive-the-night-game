@@ -6,8 +6,9 @@ export const ITEM_CONFIGS: Record<string, ItemConfig> = {
     category: "consumable",
     assets: {
       assetKey: "bandage",
-      x: 34,
-      y: 190,
+      x: 48,
+      y: 48,
+      sheet: "items",
     },
   },
   cloth: {
@@ -15,8 +16,9 @@ export const ITEM_CONFIGS: Record<string, ItemConfig> = {
     category: "consumable",
     assets: {
       assetKey: "cloth",
-      x: 51,
-      y: 228,
+      x: 128,
+      y: 0,
+      sheet: "items",
     },
   },
   pistol_ammo: {

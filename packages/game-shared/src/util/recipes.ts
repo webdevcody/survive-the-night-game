@@ -22,22 +22,54 @@ export interface RecipeComponent {
   type: ItemType;
 }
 
+export interface PlayerResources {
+  wood: number;
+  cloth: number;
+}
+
+export interface CraftingResult {
+  inventory: InventoryItem[];
+  resources: PlayerResources;
+}
+
 export interface Recipe {
   getType(): RecipeType;
-  canBeCrafted: (inventory: InventoryItem[]) => boolean;
+  canBeCrafted: (inventory: InventoryItem[], resources: PlayerResources) => boolean;
   components: () => RecipeComponent[];
-  craft: (inventory: InventoryItem[]) => InventoryItem[];
+  craft: (inventory: InventoryItem[], resources: PlayerResources) => CraftingResult;
   resultingComponent: () => RecipeComponent;
 }
 
-export function craftRecipe(recipe: Recipe, inventory: InventoryItem[]): InventoryItem[] {
+export function craftRecipe(
+  recipe: Recipe,
+  inventory: InventoryItem[],
+  resources: PlayerResources
+): CraftingResult {
   const newInventory: InventoryItem[] = [];
+  const newResources = { ...resources };
   const components = recipe.components();
   const found: number[] = [];
 
+  // Count how many of each resource we need
+  const resourceNeeds = { wood: 0, cloth: 0 };
+  for (const component of components) {
+    if (component.type === "wood") {
+      resourceNeeds.wood++;
+    } else if (component.type === "cloth") {
+      resourceNeeds.cloth++;
+    }
+  }
+
+  // Check if we have enough resources
+  if (resourceNeeds.wood > resources.wood || resourceNeeds.cloth > resources.cloth) {
+    return { inventory, resources };
+  }
+
+  // Check inventory for non-resource items
   for (const item of inventory) {
     const componentIdx = components.findIndex(
-      (it, idx) => it.type === item.itemType && !found.includes(idx)
+      (it, idx) =>
+        it.type === item.itemType && it.type !== "wood" && it.type !== "cloth" && !found.includes(idx)
     );
 
     if (componentIdx === -1) {
@@ -48,22 +80,51 @@ export function craftRecipe(recipe: Recipe, inventory: InventoryItem[]): Invento
     found.push(componentIdx);
   }
 
-  if (found.length !== components.length) {
-    return inventory;
+  // Check if all non-resource components were found in inventory
+  const nonResourceComponents = components.filter((c) => c.type !== "wood" && c.type !== "cloth");
+  if (found.length !== nonResourceComponents.length) {
+    return { inventory, resources };
   }
 
+  // Deduct resources
+  newResources.wood -= resourceNeeds.wood;
+  newResources.cloth -= resourceNeeds.cloth;
+
+  // Add the resulting item
   const resulting = recipe.resultingComponent();
   newInventory.push({ itemType: resulting.type });
-  return newInventory;
+
+  return { inventory: newInventory, resources: newResources };
 }
 
-export function recipeCanBeCrafted(recipe: Recipe, inventory: InventoryItem[]): boolean {
+export function recipeCanBeCrafted(
+  recipe: Recipe,
+  inventory: InventoryItem[],
+  resources: PlayerResources
+): boolean {
   const components = recipe.components();
   const found: number[] = [];
 
+  // Count how many of each resource we need
+  const resourceNeeds = { wood: 0, cloth: 0 };
+  for (const component of components) {
+    if (component.type === "wood") {
+      resourceNeeds.wood++;
+    } else if (component.type === "cloth") {
+      resourceNeeds.cloth++;
+    }
+  }
+
+  // Check if we have enough resources
+  if (resourceNeeds.wood > resources.wood || resourceNeeds.cloth > resources.cloth) {
+    return false;
+  }
+
+  // Check inventory for non-resource items
   for (const item of inventory) {
     const componentIdx = components.findIndex(
-      (it, idx) => it.type === item.itemType && !found.includes(idx)
+      (it, idx) =>
+        it.type === item.itemType && it.type !== "wood" && it.type !== "cloth" && !found.includes(idx)
     );
 
     if (componentIdx === -1) {
@@ -73,5 +134,7 @@ export function recipeCanBeCrafted(recipe: Recipe, inventory: InventoryItem[]): 
     found.push(componentIdx);
   }
 
-  return found.length === components.length;
+  // Check if all non-resource components were found
+  const nonResourceComponents = components.filter((c) => c.type !== "wood" && c.type !== "cloth");
+  return found.length === nonResourceComponents.length;
 }
