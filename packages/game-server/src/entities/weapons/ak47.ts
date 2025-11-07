@@ -32,7 +32,7 @@ export class AK47 extends Weapon {
       return;
     }
 
-    const bullet = new Bullet(this.getGameManagers(), 2);
+    const bullet = new Bullet(this.getGameManagers(), 1);
     bullet.setPosition(position);
     bullet.setDirection(facing);
     bullet.setShooterId(playerId);

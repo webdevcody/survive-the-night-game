@@ -72,7 +72,7 @@ export const WEAPON_CONFIGS: Record<string, WeaponConfig> = {
   [WEAPON_TYPES.AK47]: {
     id: WEAPON_TYPES.AK47,
     stats: {
-      cooldown: 0.15,
+      cooldown: 0.08,
     },
     assets: {
       assetPrefix: "ak47",

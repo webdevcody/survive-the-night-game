@@ -14,7 +14,7 @@ export const playerConfig = {
   /**
    * Maximum inventory slots
    */
-  MAX_INVENTORY_SLOTS: 8,
+  MAX_INVENTORY_SLOTS: 10,
 
   /**
    * Maximum distance for interaction with objects (in pixels)

@@ -284,8 +284,10 @@ export class InputManager {
           case "7":
           case "8":
           case "9":
-          case "0":
             this.inputs.inventoryItem = Number.parseInt(eventKey, 10);
+            break;
+          case "0":
+            this.inputs.inventoryItem = 10; // Map "0" key to slot 10
             break;
         }
       }

@@ -16,17 +16,17 @@ interface ZombieType {
 }
 
 // Constants
-const ADDITIONAL_ZOMBIES_PER_NIGHT = 7;
-const MIN_TOTAL_ZOMBIES = 10;
+const ADDITIONAL_ZOMBIES_PER_NIGHT = 10;
+const MIN_TOTAL_ZOMBIES = 20;
 const MAX_TOTAL_ZOMBIES = 200;
-const BASE_ZOMBIES = 10;
+const BASE_ZOMBIES = 20;
 
 const ZOMBIE_TYPES: ZombieType[] = [
   { type: "regular", ratio: 0.4, minNight: 1 },
   { type: "fast", ratio: 0.2, minNight: 2 },
   { type: "big", ratio: 0.15, minNight: 3 },
   { type: "bat", ratio: 0.15, minNight: 4 },
-  { type: "spitter", ratio: 0.1, minNight: 3 },
+  { type: "spitter", ratio: 0.1, minNight: 5 },
 ];
 
 export class GameMaster {

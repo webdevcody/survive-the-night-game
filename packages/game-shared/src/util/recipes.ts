@@ -95,9 +95,7 @@ export function craftRecipe(
 
   // Add the resulting item - check if it can stack with existing items
   const resulting = recipe.resultingComponent();
-  const existingItemIndex = newInventory.findIndex(
-    (item) => item.itemType === resulting.type
-  );
+  const existingItemIndex = newInventory.findIndex((item) => item?.itemType === resulting.type);
 
   if (existingItemIndex !== -1) {
     // Stack with existing item

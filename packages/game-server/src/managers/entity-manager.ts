@@ -50,6 +50,7 @@ import { SpitterZombie } from "@/entities/enemies/spitter-zombie";
 import { ExplodingZombie } from "@/entities/enemies/exploding-zombie";
 import { LeapingZombie } from "@/entities/enemies/leaping-zombie";
 import { Merchant } from "@/entities/environment/merchant";
+import { getConfig } from "@/config";
 
 const entityMap = {
   [Entities.PLAYER]: Player,
@@ -255,6 +256,30 @@ export class EntityManager implements IEntityManager {
 
       // Track entity removal before removing it
       this.entityStateTracker.trackRemoval(entity.getId());
+
+      // Clear collidable tile if this entity has Collidable extension
+      // This ensures the minimap accurately reflects removed collidables
+      if (entity.hasExt(Collidable) && entity.hasExt(Positionable)) {
+        const position = entity.getExt(Positionable).getPosition();
+        const positionable = entity.getExt(Positionable);
+        const size = positionable.getSize();
+        const mapManager = this.getGameManagers().getMapManager();
+        const collidablesLayer = mapManager.getCollidablesLayer();
+
+        // Clear all tiles occupied by this entity (in case it's larger than one tile)
+        const startTileX = Math.floor(position.x / getConfig().world.TILE_SIZE);
+        const startTileY = Math.floor(position.y / getConfig().world.TILE_SIZE);
+        const endTileX = Math.floor((position.x + size.x) / getConfig().world.TILE_SIZE);
+        const endTileY = Math.floor((position.y + size.y) / getConfig().world.TILE_SIZE);
+
+        for (let tileY = startTileY; tileY <= endTileY; tileY++) {
+          for (let tileX = startTileX; tileX <= endTileX; tileX++) {
+            if (collidablesLayer[tileY] && collidablesLayer[tileY][tileX] !== undefined) {
+              collidablesLayer[tileY][tileX] = -1;
+            }
+          }
+        }
+      }
 
       // Remove from dynamicEntities
       this.dynamicEntities.splice(i, 1);

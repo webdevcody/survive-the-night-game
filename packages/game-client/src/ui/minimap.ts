@@ -476,6 +476,7 @@ export class Minimap {
     const halfSize = size / 2;
 
     // Render all collidables as simplified shapes
+    // Note: Draw at tile corner positions (the canvas represents world coordinates)
     for (let y = 0; y < rows; y++) {
       const row = collidables[y];
       if (!row) continue;
@@ -484,8 +485,9 @@ export class Minimap {
         const cell = row[x];
         // If there's a collidable (anything other than -1), draw it
         if (cell !== -1) {
-          const worldX = x * this.tileSize;
-          const worldY = y * this.tileSize;
+          // Draw at tile corner (not center) - the canvas represents world coordinates 1:1
+          const worldX = x * this.tileSize + this.tileSize / 2;
+          const worldY = y * this.tileSize + this.tileSize / 2;
 
           // Draw obstacle indicator based on shape at world coordinates
           if (treeIndicator.shape === "circle") {
@@ -625,8 +627,9 @@ export class Minimap {
         const cell = row[x];
         // If there's a collidable (anything other than -1), draw it
         if (cell !== -1) {
-          const worldX = x * this.tileSize;
-          const worldY = y * this.tileSize;
+          // Use the center of the tile for accurate positioning
+          const worldX = x * this.tileSize + this.tileSize / 2;
+          const worldY = y * this.tileSize + this.tileSize / 2;
 
           // Calculate relative position to player
           const relativeX = worldX - playerPos.x;

@@ -194,14 +194,15 @@ export class InventoryBarUI implements Renderable {
         );
       }
 
-      // Draw slot number
+      // Draw slot number (show "0" for slot 10)
+      const slotLabel = i === 9 ? "0" : `${i + 1}`;
       ctx.font = "bold 24px Arial";
       ctx.textAlign = "left";
       ctx.fillStyle = "white";
       ctx.strokeStyle = "rgba(0, 0, 0, 0.8)";
       ctx.lineWidth = 3;
-      ctx.strokeText(`${i + 1}`, slotLeft + 6, slotsTop + 26);
-      ctx.fillText(`${i + 1}`, slotLeft + 6, slotsTop + 26);
+      ctx.strokeText(slotLabel, slotLeft + 6, slotsTop + 26);
+      ctx.fillText(slotLabel, slotLeft + 6, slotsTop + 26);
 
       // Draw item count
       if (inventoryItem?.state?.count) {

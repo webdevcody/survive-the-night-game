@@ -9,12 +9,12 @@ export const dayNightConfig = {
   /**
    * Day duration in seconds
    */
-  DAY_DURATION: 60,
+  DAY_DURATION: 40,
 
   /**
    * Night duration in seconds
    */
-  NIGHT_DURATION: 90,
+  NIGHT_DURATION: 60,
 } as const;
 
 export type DayNightConfig = typeof dayNightConfig;
