@@ -69,7 +69,10 @@ export function craftRecipe(
   for (const item of inventory) {
     const componentIdx = components.findIndex(
       (it, idx) =>
-        it.type === item.itemType && it.type !== "wood" && it.type !== "cloth" && !found.includes(idx)
+        it.type === item?.itemType &&
+        it.type !== "wood" &&
+        it.type !== "cloth" &&
+        !found.includes(idx)
     );
 
     if (componentIdx === -1) {
@@ -90,9 +93,29 @@ export function craftRecipe(
   newResources.wood -= resourceNeeds.wood;
   newResources.cloth -= resourceNeeds.cloth;
 
-  // Add the resulting item
+  // Add the resulting item - check if it can stack with existing items
   const resulting = recipe.resultingComponent();
-  newInventory.push({ itemType: resulting.type });
+  const existingItemIndex = newInventory.findIndex(
+    (item) => item.itemType === resulting.type
+  );
+
+  if (existingItemIndex !== -1) {
+    // Stack with existing item
+    const existingItem = newInventory[existingItemIndex];
+    newInventory[existingItemIndex] = {
+      ...existingItem,
+      state: {
+        ...existingItem.state,
+        count: (existingItem.state?.count || 1) + 1,
+      },
+    };
+  } else {
+    // Add as new item with count
+    newInventory.push({
+      itemType: resulting.type,
+      state: { count: 1 },
+    });
+  }
 
   return { inventory: newInventory, resources: newResources };
 }
@@ -122,9 +145,14 @@ export function recipeCanBeCrafted(
 
   // Check inventory for non-resource items
   for (const item of inventory) {
+    if (!item) continue; // Skip null/empty inventory slots
+
     const componentIdx = components.findIndex(
       (it, idx) =>
-        it.type === item.itemType && it.type !== "wood" && it.type !== "cloth" && !found.includes(idx)
+        it.type === item.itemType &&
+        it.type !== "wood" &&
+        it.type !== "cloth" &&
+        !found.includes(idx)
     );
 
     if (componentIdx === -1) {

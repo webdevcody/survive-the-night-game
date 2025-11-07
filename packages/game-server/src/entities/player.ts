@@ -423,16 +423,38 @@ export class Player extends Entity {
     if (this.dropCooldown.isReady() && this.input.inventoryItem !== null) {
       this.dropCooldown.reset();
       const itemIndex = this.input.inventoryItem - 1;
-      const item = this.getExt(Inventory).removeItem(itemIndex);
+      const inventory = this.getExt(Inventory);
+      const currentItem = inventory.getItems()[itemIndex];
 
-      if (item) {
-        const entity = this.getEntityManager().createEntityFromItem(item);
+      if (!currentItem) return;
+
+      // For walls, drop one at a time
+      if (currentItem.itemType === "wall") {
+        const currentCount = currentItem.state?.count || 1;
+
+        if (currentCount > 1) {
+          // Decrement the count in inventory
+          currentItem.state = {
+            ...currentItem.state,
+            count: currentCount - 1,
+          };
+        } else {
+          // Remove the item if it's the last one
+          inventory.removeItem(itemIndex);
+        }
+
+        // Create a wall entity with count of 1
+        const entity = this.getEntityManager().createEntityFromItem({
+          itemType: "wall",
+          state: { count: 1, health: currentItem.state?.health },
+        });
 
         if (!entity) return;
 
         const carryable = entity.getExt(Carryable);
         carryable.setItemState({
-          count: item.state?.count || 0,
+          count: 1,
+          health: currentItem.state?.health,
         });
 
         const offset = 16;
@@ -460,9 +482,52 @@ export class Player extends Entity {
         this.broadcaster.broadcastEvent(
           new PlayerDroppedItemEvent({
             playerId: this.getId(),
-            itemType: item.itemType,
+            itemType: "wall",
           })
         );
+      } else {
+        // For other items, drop the entire stack
+        const item = inventory.removeItem(itemIndex);
+
+        if (item) {
+          const entity = this.getEntityManager().createEntityFromItem(item);
+
+          if (!entity) return;
+
+          const carryable = entity.getExt(Carryable);
+          carryable.setItemState({
+            count: item.state?.count || 0,
+          });
+
+          const offset = 16;
+          let dx = 0;
+          let dy = 0;
+
+          if (this.input.facing === Direction.Up) {
+            dy = -offset;
+          } else if (this.input.facing === Direction.Down) {
+            dy = offset;
+          } else if (this.input.facing === Direction.Left) {
+            dx = -offset;
+          } else if (this.input.facing === Direction.Right) {
+            dx = offset;
+          }
+
+          const pos = new Vector2(this.getPosition().x + dx, this.getPosition().y + dy);
+
+          if (entity.hasExt(Positionable)) {
+            entity.getExt(Positionable).setPosition(pos);
+          }
+
+          this.getEntityManager().addEntity(entity);
+
+          this.broadcaster.broadcastEvent(
+            new PlayerDroppedItemEvent({
+              playerId: this.getId(),
+              itemType: item.itemType,
+            })
+          );
+        }
       }
     }
   }

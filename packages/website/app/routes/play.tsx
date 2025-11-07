@@ -3,6 +3,7 @@ import { PredictionConfigPanel } from "./play/components/PredictionConfigPanel";
 import { InstructionPanel } from "./play/components/InstructionPanel";
 import { CraftingPanel } from "./play/components/CraftingPanel";
 import { SpawnPanel } from "./play/components/SpawnPanel";
+import { ResourcePanel } from "./play/components/ResourcePanel";
 import { Button } from "~/components/ui/button";
 
 export function meta() {
@@ -130,6 +131,9 @@ function GameClientLoader() {
         isOpen={showInstructions}
         onClose={() => setShowInstructions(false)}
       />
+
+      {/* Resource Panel */}
+      {gameClient && <ResourcePanel gameClient={gameClient} />}
 
       {/* Crafting Panel */}
       {gameClient && <CraftingPanel gameClient={gameClient} />}

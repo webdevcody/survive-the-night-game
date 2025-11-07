@@ -88,7 +88,7 @@ const ITEM_CATEGORIES = {
 };
 
 export function SpawnPanel({ gameClient, isOpen, onToggle }: SpawnPanelProps) {
-  const [selectedCategory, setSelectedCategory] = useState<string>("All");
+  const [filterText, setFilterText] = useState<string>("");
 
   // Handle ESC key to close
   useEffect(() => {
@@ -119,10 +119,14 @@ export function SpawnPanel({ gameClient, isOpen, onToggle }: SpawnPanelProps) {
   };
 
   const getFilteredItems = () => {
-    if (selectedCategory === "All") {
+    if (!filterText.trim()) {
       return SPAWNABLE_ITEMS;
     }
-    return ITEM_CATEGORIES[selectedCategory as keyof typeof ITEM_CATEGORIES] || [];
+    const lowerFilter = filterText.toLowerCase();
+    return SPAWNABLE_ITEMS.filter((item) =>
+      item.toLowerCase().includes(lowerFilter) ||
+      formatEntityName(item).toLowerCase().includes(lowerFilter)
+    );
   };
 
   const formatEntityName = (name: string) => {
@@ -148,35 +152,16 @@ export function SpawnPanel({ gameClient, isOpen, onToggle }: SpawnPanelProps) {
             </Button>
           </div>
 
-          {/* Category Filter */}
+          {/* Filter Input */}
           <div className="mb-4">
-            <div className="flex flex-wrap gap-2">
-              <button
-                onClick={() => setSelectedCategory("All")}
-                className={cn(
-                  "px-3 py-1 rounded-md text-sm font-medium transition-all",
-                  selectedCategory === "All"
-                    ? "bg-purple-600 text-white"
-                    : "bg-gray-700 text-gray-300 hover:bg-gray-600"
-                )}
-              >
-                All
-              </button>
-              {Object.keys(ITEM_CATEGORIES).map((category) => (
-                <button
-                  key={category}
-                  onClick={() => setSelectedCategory(category)}
-                  className={cn(
-                    "px-3 py-1 rounded-md text-sm font-medium transition-all",
-                    selectedCategory === category
-                      ? "bg-purple-600 text-white"
-                      : "bg-gray-700 text-gray-300 hover:bg-gray-600"
-                  )}
-                >
-                  {category}
-                </button>
-              ))}
-            </div>
+            <input
+              type="text"
+              placeholder="Filter items..."
+              value={filterText}
+              onChange={(e) => setFilterText(e.target.value)}
+              className="w-full px-3 py-2 bg-gray-800 border-2 border-purple-500/50 rounded-md text-white placeholder-gray-400 focus:outline-none focus:border-purple-400 transition-colors"
+              autoFocus
+            />
           </div>
 
           {/* Items Grid */}

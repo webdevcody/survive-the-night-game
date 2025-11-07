@@ -336,19 +336,6 @@ export class Hud {
     this.clockPanel.render(ctx, gameState);
     ctx.restore();
 
-    // Render resources panel below clock (right-aligned)
-    ctx.save();
-    ctx.setTransform(1, 0, 0, 1, 0, 0);
-    const resourcesY =
-      HUD_SETTINGS.Clock.top + HUD_SETTINGS.Clock.radius * 2 + HUD_SETTINGS.Resources.marginTop;
-    // Position will be dynamically calculated based on panel width, so we need to measure first
-    // For now, we'll align to the right edge similar to the clock
-    const resourcesX = width - HUD_SETTINGS.Resources.right - 120; // Approximate width, will be adjusted by panel
-    (this.resourcesPanel as any).resourcesSettings.x = resourcesX;
-    (this.resourcesPanel as any).resourcesSettings.y = resourcesY;
-    this.resourcesPanel.render(ctx, gameState);
-    ctx.restore();
-
     // Render stat panels to the right of minimap
     ctx.save();
     ctx.setTransform(1, 0, 0, 1, 0, 0);

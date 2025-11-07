@@ -226,19 +226,6 @@ export function CraftingPanel({ gameClient }: CraftingPanelProps) {
         })}
       </div>
 
-      {/* Resource counter at bottom */}
-      <div className="mt-2 bg-black/90 border-2 border-amber-600/50 rounded px-2 py-1 w-14">
-        <div className="text-white text-[10px] space-y-0.5">
-          <div className="flex items-center justify-between">
-            <span>🪵</span>
-            <span className="font-bold">{craftingState.resources.wood}</span>
-          </div>
-          <div className="flex items-center justify-between">
-            <span>🧵</span>
-            <span className="font-bold">{craftingState.resources.cloth}</span>
-          </div>
-        </div>
-      </div>
     </div>
   );
 }
