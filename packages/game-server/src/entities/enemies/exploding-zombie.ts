@@ -1,5 +1,5 @@
 import { IGameManagers } from "@/managers/types";
-import { Entities, ZOMBIE_ATTACK_RADIUS } from "@shared/constants";
+import { Entities } from "@shared/constants";
 import Vector2 from "@shared/util/vector2";
 import { BaseEnemy } from "./base-enemy";
 import Collidable from "@/extensions/collidable";
@@ -8,7 +8,6 @@ import { MeleeMovementStrategy, MeleeAttackStrategy } from "./zombie";
 import { IEntity } from "../types";
 import Positionable from "@/extensions/positionable";
 import Destructible from "@/extensions/destructible";
-import { Grenade } from "../items/grenade";
 import { ExplosionEvent } from "@/events/server-sent/explosion-event";
 
 export class ExplodingZombie extends BaseEnemy {

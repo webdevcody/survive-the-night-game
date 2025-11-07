@@ -1,6 +1,6 @@
 import { Button } from "~/components/ui/button";
 import { useEditorStore } from "../store";
-import { TILE_SIZE } from "../utils";
+import { getConfig } from "@shared/config";
 
 export function TileMapEditor() {
   const groundGrid = useEditorStore((state) => state.groundGrid);
@@ -111,8 +111,8 @@ export function TileMapEditor() {
                     key={`${rowIdx}-${colIdx}`}
                     className="relative border border-gray-700 cursor-pointer hover:border-yellow-500 transition-colors"
                     style={{
-                      width: `${TILE_SIZE * 2}px`,
-                      height: `${TILE_SIZE * 2}px`,
+                      width: `${getConfig().world.TILE_SIZE * 2}px`,
+                      height: `${getConfig().world.TILE_SIZE * 2}px`,
                     }}
                     onClick={() => handleGridCellClick(rowIdx, colIdx, false)}
                     onMouseEnter={() => handleGridCellEnter(rowIdx, colIdx)}
@@ -122,13 +122,15 @@ export function TileMapEditor() {
                       className="absolute inset-0"
                       style={{
                         backgroundImage: "url(/sheets/ground.png)",
-                        backgroundSize: `${groundDimensions.cols * TILE_SIZE * 2}px ${
-                          groundDimensions.rows * TILE_SIZE * 2
-                        }px`,
+                        backgroundSize: `${
+                          groundDimensions.cols * getConfig().world.TILE_SIZE * 2
+                        }px ${groundDimensions.rows * getConfig().world.TILE_SIZE * 2}px`,
                         backgroundPosition: `-${
-                          (groundTileId % groundDimensions.cols) * TILE_SIZE * 2
+                          (groundTileId % groundDimensions.cols) * getConfig().world.TILE_SIZE * 2
                         }px -${
-                          Math.floor(groundTileId / groundDimensions.cols) * TILE_SIZE * 2
+                          Math.floor(groundTileId / groundDimensions.cols) *
+                          getConfig().world.TILE_SIZE *
+                          2
                         }px`,
                         imageRendering: "pixelated",
                       }}
@@ -139,14 +141,16 @@ export function TileMapEditor() {
                         className="absolute inset-0"
                         style={{
                           backgroundImage: "url(/sheets/collidables.png)",
-                          backgroundSize: `${collidablesDimensions.cols * TILE_SIZE * 2}px ${
-                            collidablesDimensions.rows * TILE_SIZE * 2
-                          }px`,
+                          backgroundSize: `${
+                            collidablesDimensions.cols * getConfig().world.TILE_SIZE * 2
+                          }px ${collidablesDimensions.rows * getConfig().world.TILE_SIZE * 2}px`,
                           backgroundPosition: `-${
-                            (collidableTileId % collidablesDimensions.cols) * TILE_SIZE * 2
+                            (collidableTileId % collidablesDimensions.cols) *
+                            getConfig().world.TILE_SIZE *
+                            2
                           }px -${
                             Math.floor(collidableTileId / collidablesDimensions.cols) *
-                            TILE_SIZE *
+                            getConfig().world.TILE_SIZE *
                             2
                           }px`,
                           imageRendering: "pixelated",

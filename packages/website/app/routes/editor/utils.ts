@@ -1,5 +1,4 @@
 // Constants
-export const TILE_SIZE = 16;
 export const BIOME_SIZE = 16;
 
 // Initialize empty ground layer (16x16 grid of zeros)

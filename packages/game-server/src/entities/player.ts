@@ -24,16 +24,7 @@ import { Weapon } from "@/entities/weapons/weapon";
 import { Grenade } from "@/entities/items/grenade";
 import { PlayerDeathEvent } from "@shared/events/server-sent/player-death-event";
 import { DEBUG_WEAPONS } from "@shared/debug";
-import {
-  MAX_INTERACT_RADIUS,
-  MAX_PLAYER_HEALTH,
-  PLAYER_SPEED,
-  SPRINT_MULTIPLIER,
-  MAX_STAMINA,
-  STAMINA_DRAIN_RATE,
-  STAMINA_REGEN_RATE,
-  EXHAUSTION_DURATION,
-} from "@shared/constants/constants";
+import { getConfig } from "@shared/config";
 import Vector2 from "@/util/vector2";
 import { Rectangle } from "@/util/shape";
 import Carryable from "@/extensions/carryable";
@@ -68,7 +59,7 @@ export class Player extends Entity {
   private kills: number = 0;
   private ping: number = 0;
   private displayName: string = "";
-  private stamina: number = MAX_STAMINA;
+  private stamina: number = getConfig().player.MAX_STAMINA;
   private exhaustionTimer: number = 0; // Time remaining before stamina can regenerate
   private coins: number = 0;
 
@@ -83,8 +74,8 @@ export class Player extends Entity {
         .setOffset(new Vector2(2, 2)),
       new Positionable(this).setSize(new Vector2(Player.PLAYER_WIDTH, Player.PLAYER_WIDTH)),
       new Destructible(this)
-        .setHealth(MAX_PLAYER_HEALTH)
-        .setMaxHealth(MAX_PLAYER_HEALTH)
+        .setHealth(getConfig().player.MAX_PLAYER_HEALTH)
+        .setMaxHealth(getConfig().player.MAX_PLAYER_HEALTH)
         .onDeath(() => this.onDeath()),
       new Updatable(this, this.updatePlayer.bind(this)),
       new Movable(this),
@@ -213,7 +204,7 @@ export class Player extends Entity {
       ping: this.ping,
       displayName: this.displayName,
       stamina: this.stamina,
-      maxStamina: MAX_STAMINA,
+      maxStamina: getConfig().player.MAX_STAMINA,
       coins: this.coins,
     };
   }
@@ -306,7 +297,7 @@ export class Player extends Entity {
     const currentSpeed = Math.sqrt(
       currentVelocity.x * currentVelocity.x + currentVelocity.y * currentVelocity.y
     );
-    if (currentSpeed < PLAYER_SPEED * 2) {
+    if (currentSpeed < getConfig().player.PLAYER_SPEED * 2) {
       // Set velocity based on current input
       if (this.input.dx === 0 && this.input.dy === 0) {
         movable.setVelocity(new Vector2(0, 0));
@@ -315,23 +306,23 @@ export class Player extends Entity {
 
         // Can only sprint if: has stamina AND not exhausted
         const canSprint = this.input.sprint && this.stamina > 0 && this.exhaustionTimer <= 0;
-        const speedMultiplier = canSprint ? SPRINT_MULTIPLIER : 1;
+        const speedMultiplier = canSprint ? getConfig().player.SPRINT_MULTIPLIER : 1;
 
         // Drain stamina while sprinting
         if (canSprint) {
-          const newStamina = this.stamina - STAMINA_DRAIN_RATE * deltaTime;
+          const newStamina = this.stamina - getConfig().player.STAMINA_DRAIN_RATE * deltaTime;
           this.stamina = Math.max(0, newStamina);
 
           // If stamina just hit zero, start exhaustion timer
           if (this.stamina === 0) {
-            this.exhaustionTimer = EXHAUSTION_DURATION;
+            this.exhaustionTimer = getConfig().player.EXHAUSTION_DURATION;
           }
         }
 
         movable.setVelocity(
           new Vector2(
-            normalized.x * PLAYER_SPEED * speedMultiplier,
-            normalized.y * PLAYER_SPEED * speedMultiplier
+            normalized.x * getConfig().player.PLAYER_SPEED * speedMultiplier,
+            normalized.y * getConfig().player.PLAYER_SPEED * speedMultiplier
           )
         );
       }
@@ -401,7 +392,7 @@ export class Player extends Entity {
         .filter((entity) => {
           if (
             distance(this.getCenterPosition(), entity.getExt(Positionable).getCenterPosition()) >
-            MAX_INTERACT_RADIUS
+            getConfig().player.MAX_INTERACT_RADIUS
           ) {
             return false;
           }
@@ -510,15 +501,15 @@ export class Player extends Entity {
     }
 
     // Only regenerate stamina when not exhausted
-    if (this.exhaustionTimer <= 0 && this.stamina < MAX_STAMINA) {
+    if (this.exhaustionTimer <= 0 && this.stamina < getConfig().player.MAX_STAMINA) {
       const isMoving = this.input.dx !== 0 || this.input.dy !== 0;
       const isSprinting = this.input.sprint && isMoving && this.stamina > 0;
 
       // Regenerate stamina when not sprinting
       if (!isSprinting) {
         this.stamina = Math.min(
-          MAX_STAMINA,
-          this.stamina + STAMINA_REGEN_RATE * deltaTime
+          getConfig().player.MAX_STAMINA,
+          this.stamina + getConfig().player.STAMINA_REGEN_RATE * deltaTime
         );
       }
     }

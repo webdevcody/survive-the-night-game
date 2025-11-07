@@ -1,42 +1,28 @@
 /**
- * Re-exports from prediction.ts, network.ts and game-config.ts
+ * Client prediction configuration helpers
  *
- * IMPORTANT: To change these values, edit:
- * - packages/game-shared/src/config/prediction.ts (prediction/reconciliation)
- * - packages/game-shared/src/config/network.ts (network simulation)
- * - packages/game-shared/src/config/game-config.ts (game mechanics)
+ * IMPORTANT: To change these values at runtime, use browser console:
+ * - window.config.prediction.showDebugVisuals = true
+ * - window.config.player.PLAYER_SPEED = 120
  */
-import "@shared/config/prediction"; // Initialize window.config.predictions
 import * as NetworkConfig from "@shared/config/network";
-import { PLAYER_SPEED, SPRINT_MULTIPLIER } from "@shared/config/game-config";
-
-// Re-export the global type for window.config
-declare global {
-  interface Window {
-    config?: {
-      predictions?: {
-        showDebugVisuals: boolean;
-        smallErrorThreshold: number;
-        largeErrorThreshold: number;
-        minLerpSpeed: number;
-        maxLerpSpeed: number;
-      };
-    };
-  }
-}
+import { getConfig } from "@shared/config";
 
 export const SIMULATION_CONFIG = {
-  simulatedLatencyMs: NetworkConfig.SIMULATED_LATENCY_MS,
+  simulatedLatencyMs: NetworkConfig.networkConfig.SIMULATED_LATENCY_MS,
 } as const;
 
 // Helper function to get current debug config
 export function getDebugConfig() {
   return {
-    showServerGhost: window.config?.predictions?.showDebugVisuals ?? true,
+    showServerGhost: getConfig().prediction.showDebugVisuals,
   };
 }
 
-export const PREDICTION_CONFIG = {
-  playerSpeed: PLAYER_SPEED,
-  sprintMultiplier: SPRINT_MULTIPLIER,
-} as const;
+// Helper function to get current prediction config with runtime-modifiable values
+export function getPredictionConfig() {
+  return {
+    playerSpeed: getConfig().player.PLAYER_SPEED,
+    sprintMultiplier: getConfig().player.SPRINT_MULTIPLIER,
+  };
+}

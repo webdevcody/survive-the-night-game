@@ -9,12 +9,9 @@ import { GameOverDialogUI } from "@/ui/game-over-dialog";
 import { ParticleManager } from "./managers/particles";
 import { ClientPositionable } from "@/extensions/positionable";
 import { ClientEntityBase } from "@/extensions/client-entity";
-import { RENDER_CONFIG } from "./constants/constants";
+import { getConfig } from "@shared/config";
 import { perfTimer } from "@shared/util/performance";
 import { DEBUG_PERFORMANCE } from "@shared/debug";
-
-const RENDER_RADIUS_SQUARED =
-  RENDER_CONFIG.ENTITY_RENDER_RADIUS * RENDER_CONFIG.ENTITY_RENDER_RADIUS;
 
 export class Renderer {
   private ctx: CanvasRenderingContext2D;
@@ -101,6 +98,9 @@ export class Renderer {
     const playerPos = player.getExt(ClientPositionable).getCenterPosition();
 
     // Filter and sort entities within radius
+    const renderRadius = getConfig().render.ENTITY_RENDER_RADIUS;
+    const renderRadiusSquared = renderRadius * renderRadius;
+
     var entitiesToRender = [];
     for (var i = 0, len = renderableEntities.length; i < len; ++i) {
       var entity = renderableEntities[i];
@@ -110,7 +110,7 @@ export class Renderer {
       var dx = entityPos.x - playerPos.x;
       var dy = entityPos.y - playerPos.y;
       var distanceSquared = dx * dx + dy * dy;
-      if (distanceSquared <= RENDER_RADIUS_SQUARED) {
+      if (distanceSquared <= renderRadiusSquared) {
         entitiesToRender.push(entity);
       }
     }

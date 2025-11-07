@@ -13,4 +13,11 @@ const FAST_NETWORK_LATENCY_MS = 50;
 const SLOW_NETWORK_LATENCY_MS = 100;
 const SLOWEST_NETWORK_LATENCY_MS = 150;
 
-export const SIMULATED_LATENCY_MS = NONE_NETWORK_LATENCY_MS;
+export const networkConfig = {
+  /**
+   * Simulated network latency in milliseconds
+   */
+  SIMULATED_LATENCY_MS: NONE_NETWORK_LATENCY_MS,
+} as const;
+
+export type NetworkConfig = typeof networkConfig;

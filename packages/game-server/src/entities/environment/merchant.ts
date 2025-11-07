@@ -5,7 +5,7 @@ import Positionable from "@/extensions/positionable";
 import Interactive from "@/extensions/interactive";
 import { Entity } from "@/entities/entity";
 import Vector2 from "@/util/vector2";
-import { MERCHANT_SHOP_ITEMS, MerchantShopItem } from "@shared/config/game-config";
+import { getConfig, type MerchantShopItem } from "@shared/config";
 
 export class Merchant extends Entity {
   public static readonly Size = new Vector2(16, 16);
@@ -34,7 +34,7 @@ export class Merchant extends Entity {
    * Randomizes the 3 shop items from the available merchant items
    */
   public randomizeShopItems(): void {
-    const availableItems = [...MERCHANT_SHOP_ITEMS];
+    const availableItems = [...getConfig().merchant.SHOP_ITEMS];
     this.shopItems = [];
 
     // Pick 3 random items

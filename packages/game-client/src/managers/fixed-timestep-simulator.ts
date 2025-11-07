@@ -1,8 +1,6 @@
-import { FIXED_TIMESTEP } from "@shared/config/game-config";
-
 /**
  * Fixed timestep simulator for consistent physics simulation
- * 
+ *
  * Ensures client and server use the same timestep for physics calculations,
  * regardless of rendering frame rate. This prevents speed inconsistencies
  * and drift accumulation.
@@ -12,7 +10,7 @@ export class FixedTimestepSimulator {
   private accumulator: number = 0;
   private lastTime: number = Date.now();
 
-  constructor(fixedTimestep: number = FIXED_TIMESTEP) {
+  constructor(fixedTimestep: number) {
     this.FIXED_TIMESTEP = fixedTimestep;
   }
 

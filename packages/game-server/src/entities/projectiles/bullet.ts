@@ -1,4 +1,3 @@
-import { ZombieHurtEvent } from "@/events/server-sent/zombie-hurt-event";
 import Collidable from "@/extensions/collidable";
 import Destructible from "@/extensions/destructible";
 import Groupable from "@/extensions/groupable";
@@ -6,14 +5,15 @@ import Movable from "@/extensions/movable";
 import Positionable from "@/extensions/positionable";
 import Updatable from "@/extensions/updatable";
 import { IGameManagers } from "@/managers/types";
-import { BULLET_SIZE, Entities } from "@/constants";
+import { Entities } from "@/constants";
+import { getConfig } from "@shared/config";
 import { Direction, normalizeDirection } from "@/util/direction";
 import { Entity } from "@/entities/entity";
 import { normalizeVector, distance } from "@/util/physics";
 import { IEntity } from "@/entities/types";
 import { RawEntity } from "@/types/entity";
 import Vector2 from "@/util/vector2";
-import { Line, Rectangle, Circle } from "@/util/shape";
+import { Line, Rectangle } from "@/util/shape";
 import { Player } from "@/entities/player";
 
 const MAX_TRAVEL_DISTANCE = 400;
@@ -32,7 +32,9 @@ export class Bullet extends Entity {
       new Positionable(this),
       new Movable(this).setHasFriction(false),
       new Updatable(this, this.updateBullet.bind(this)),
-      new Collidable(this).setSize(new Vector2(BULLET_SIZE, BULLET_SIZE)),
+      new Collidable(this).setSize(
+        new Vector2(getConfig().combat.BULLET_SIZE, getConfig().combat.BULLET_SIZE)
+      ),
     ];
 
     this.lastPosition = this.getPosition();
@@ -135,12 +137,15 @@ export class Bullet extends Entity {
 
   private handleIntersections(fromPosition: Vector2, toPosition: Vector2): boolean {
     // Convert corner positions to center positions for more accurate collision
-    const bulletCenterOffset = new Vector2(BULLET_SIZE / 2, BULLET_SIZE / 2);
+    const bulletCenterOffset = new Vector2(
+      getConfig().combat.BULLET_SIZE / 2,
+      getConfig().combat.BULLET_SIZE / 2
+    );
     const fromCenter = fromPosition.add(bulletCenterOffset);
     const toCenter = toPosition.add(bulletCenterOffset);
 
     const bulletPath = new Line(fromCenter, toCenter);
-    const bulletRadius = BULLET_SIZE / 2;
+    const bulletRadius = getConfig().combat.BULLET_SIZE / 2;
 
     // Calculate a bounding box that encompasses the bullet's path plus its size
     const minX = Math.min(fromCenter.x, toCenter.x) - bulletRadius;

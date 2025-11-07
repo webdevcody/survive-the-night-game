@@ -1,4 +1,5 @@
-import { Entities, ZOMBIE_ATTACK_RADIUS } from "../constants";
+import { Entities } from "../constants";
+import { combatConfig } from "../config/combat-config";
 import Vector2 from "../util/vector2";
 import { ZombieConfig, EntityCategories } from "./zombie-registry";
 
@@ -11,7 +12,7 @@ export const ZOMBIE_CONFIGS: Record<string, ZombieConfig> = {
       health: 3,
       damage: 1,
       attackCooldown: 1,
-      attackRadius: ZOMBIE_ATTACK_RADIUS,
+      attackRadius: combatConfig.ZOMBIE_ATTACK_RADIUS,
       dropChance: 0.7,
       size: new Vector2(16, 16),
     },
@@ -45,7 +46,7 @@ export const ZOMBIE_CONFIGS: Record<string, ZombieConfig> = {
       health: 11,
       damage: 3,
       attackCooldown: 1.5,
-      attackRadius: ZOMBIE_ATTACK_RADIUS,
+      attackRadius: combatConfig.ZOMBIE_ATTACK_RADIUS,
       dropChance: 1,
       size: new Vector2(16, 16),
     },
@@ -79,7 +80,7 @@ export const ZOMBIE_CONFIGS: Record<string, ZombieConfig> = {
       health: 1,
       damage: 1,
       attackCooldown: 0.5,
-      attackRadius: ZOMBIE_ATTACK_RADIUS,
+      attackRadius: combatConfig.ZOMBIE_ATTACK_RADIUS,
       dropChance: 0.3,
       size: new Vector2(8, 8),
     },
@@ -113,7 +114,7 @@ export const ZOMBIE_CONFIGS: Record<string, ZombieConfig> = {
       health: 1,
       damage: 0, // Damage comes from explosion, not attack
       attackCooldown: 0.5,
-      attackRadius: ZOMBIE_ATTACK_RADIUS,
+      attackRadius: combatConfig.ZOMBIE_ATTACK_RADIUS,
       dropChance: 0.3,
       size: new Vector2(8, 8),
     },
@@ -147,7 +148,7 @@ export const ZOMBIE_CONFIGS: Record<string, ZombieConfig> = {
       health: 1,
       damage: 1,
       attackCooldown: 0.5,
-      attackRadius: ZOMBIE_ATTACK_RADIUS,
+      attackRadius: combatConfig.ZOMBIE_ATTACK_RADIUS,
       dropChance: 0.2,
       size: new Vector2(8, 8),
     },

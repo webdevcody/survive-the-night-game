@@ -4,7 +4,8 @@ import Movable from "@/extensions/movable";
 import Positionable from "@/extensions/positionable";
 import Updatable from "@/extensions/updatable";
 import { IGameManagers } from "@/managers/types";
-import { Entities, BULLET_SIZE } from "@/constants";
+import { Entities } from "@/constants";
+import { getConfig } from "@shared/config";
 import { Direction, normalizeDirection } from "@/util/direction";
 import { Entity } from "@/entities/entity";
 import { distance } from "@/util/physics";
@@ -29,7 +30,9 @@ export class GrenadeProjectile extends Entity {
       new Positionable(this),
       new Movable(this).setHasFriction(false),
       new Updatable(this, this.updateGrenadeProjectile.bind(this)),
-      new Collidable(this).setSize(new Vector2(BULLET_SIZE, BULLET_SIZE)),
+      new Collidable(this).setSize(
+        new Vector2(getConfig().combat.BULLET_SIZE, getConfig().combat.BULLET_SIZE)
+      ),
     ];
 
     this.startPosition = this.getPosition();
@@ -93,16 +96,13 @@ export class GrenadeProjectile extends Entity {
 
   private explode(): void {
     const position = this.getExt(Positionable).getCenterPosition();
-    const nearbyEntities = this.getEntityManager().getNearbyEntities(
-      position,
-      EXPLOSION_RADIUS
-    );
+    const nearbyEntities = this.getEntityManager().getNearbyEntities(position, EXPLOSION_RADIUS);
 
     // Damage all destructible entities in explosion radius
     for (const entity of nearbyEntities) {
       // Don't damage the shooter
       if (entity.getId() === this.shooterId) continue;
-      
+
       if (!entity.hasExt(Destructible)) continue;
 
       const entityPos = entity.getExt(Positionable).getCenterPosition();
@@ -143,4 +143,3 @@ export class GrenadeProjectile extends Entity {
     return this.getExt(Movable).getVelocity();
   }
 }
-

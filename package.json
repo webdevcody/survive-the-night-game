@@ -10,7 +10,7 @@
     "build:website": "npm run build --workspace=packages/website",
     "test:game-client": "npm run test --workspace=packages/game-client",
     "test:game-server": "npm run test --workspace=packages/game-server",
-    "depcruiser": "depcruise ./packages --include-only \"packages\" --output-type dot | dot -T svg > dependency-graph.svg"
+    "depcruiser": "depcruise ./packages --exclude \"^packages/build\" --include-only \"packages\" --output-type dot | dot -T svg > dependency-graph.svg"
   },
   "workspaces": [
     "packages/*"

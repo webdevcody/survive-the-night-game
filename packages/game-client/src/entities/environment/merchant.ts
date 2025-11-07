@@ -5,7 +5,7 @@ import { ClientEntity } from "@/entities/client-entity";
 import { Renderable } from "@/entities/util";
 import { ClientPositionable } from "@/extensions";
 import { Z_INDEX } from "@shared/map";
-import { MerchantShopItem } from "@shared/config/game-config";
+import { type MerchantShopItem } from "@shared/config";
 
 export class MerchantClient extends ClientEntity implements Renderable {
   private shopItems: MerchantShopItem[] = [];

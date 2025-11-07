@@ -1,5 +1,5 @@
 import { GameState } from "@/state";
-import { DAY_DURATION, NIGHT_DURATION } from "@shared/constants";
+import { getConfig } from "@shared/config";
 import { Panel, PanelSettings } from "./panel";
 
 interface ClockPanelSettings extends PanelSettings {
@@ -26,11 +26,11 @@ export class ClockPanel extends Panel {
     this.resetTransform(ctx);
 
     const { x, y, radius } = this.clockSettings;
-    const totalCycleDuration = DAY_DURATION + NIGHT_DURATION;
+    const totalCycleDuration = getConfig().dayNight.DAY_DURATION + getConfig().dayNight.NIGHT_DURATION;
 
     // Calculate day and night as portions of the full cycle
-    const dayPortion = DAY_DURATION / totalCycleDuration;
-    const nightPortion = NIGHT_DURATION / totalCycleDuration;
+    const dayPortion = getConfig().dayNight.DAY_DURATION / totalCycleDuration;
+    const nightPortion = getConfig().dayNight.NIGHT_DURATION / totalCycleDuration;
 
     // Calculate current progress within the cycle
     const currentTime = Date.now();

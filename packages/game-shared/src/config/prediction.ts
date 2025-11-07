@@ -5,42 +5,33 @@
  *
  * Controls client-side prediction and server reconciliation behavior.
  * Tuning these values affects responsiveness vs. accuracy tradeoff.
- * ========================================================================
  */
 
-// Global type declaration for window.config
-declare global {
-  interface Window {
-    config?: {
-      predictions?: {
-        showDebugVisuals: boolean;
-        smallErrorThreshold: number;
-        largeErrorThreshold: number;
-        minLerpSpeed: number;
-        maxLerpSpeed: number;
-      };
-    };
-  }
-}
+export const predictionConfig = {
+  /**
+   * Show server ghost position and debug overlays
+   */
+  showDebugVisuals: false,
 
-// Initialize window.config.predictions if it doesn't exist
-if (typeof window !== "undefined") {
-  if (!window.config) {
-    window.config = {};
-  }
-  if (!window.config.predictions) {
-    window.config.predictions = {
-      showDebugVisuals: false, // Show server ghost position and debug overlays
-      smallErrorThreshold: 10, // Below this, trust client prediction (pixels)
-      largeErrorThreshold: 40, // Above this, snap to server (pixels)
-      minLerpSpeed: 0.07, // Smooth correction speed for small errors (0-1)
-      maxLerpSpeed: 0.2, // Faster correction speed for larger errors (0-1)
-    };
-  }
-}
+  /**
+   * Below this threshold, trust client prediction (in pixels)
+   */
+  smallErrorThreshold: 15,
 
-// Access values via window.config.predictions.*
-// This module initializes the config structure when imported
+  /**
+   * Above this threshold, snap to server position (in pixels)
+   */
+  largeErrorThreshold: 25,
 
-// Export empty object to ensure this file is treated as a module
-export {};
+  /**
+   * Smooth correction speed for small errors (0-1)
+   */
+  minLerpSpeed: 0.15,
+
+  /**
+   * Faster correction speed for larger errors (0-1)
+   */
+  maxLerpSpeed: 0.2,
+};
+
+export type PredictionConfig = typeof predictionConfig;

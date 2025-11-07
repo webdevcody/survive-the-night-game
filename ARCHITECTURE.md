@@ -11,6 +11,7 @@
 ## 1. Overall Architecture
 
 ### Game Type
+
 - **Multiplayer Online Game** with survival and crafting mechanics
 - **Client-Server Model** with server-authoritative gameplay
 - **Day/Night Cycle System**: Players survive zombie waves at night, rebuild and explore during day
@@ -19,6 +20,7 @@
 ### Client-Server Architecture
 
 #### Server (game-server)
+
 - **Technology**: Node.js with Express.js + Socket.io
 - **Responsibilities**:
   - Authoritative game state management and updates
@@ -32,6 +34,7 @@
   - Map generation and biome management
 
 #### Client (game-client)
+
 - **Technology**: Canvas-based 2D rendering, Socket.io-client
 - **Responsibilities**:
   - Rendering game world and entities
@@ -43,6 +46,7 @@
   - Server synchronization via event listeners
 
 #### Website (website)
+
 - **Technology**: React Router 7, TypeScript, Tailwind CSS
 - **Responsibilities**:
   - Game lobby and matchmaking UI
@@ -51,6 +55,7 @@
   - Server connectivity management
 
 #### Shared Code (game-shared)
+
 - **Technology**: TypeScript
 - **Responsibilities**:
   - Type definitions and interfaces
@@ -66,6 +71,7 @@
 ## 2. Monorepo Package Structure
 
 ### Workspace Configuration
+
 ```
 survive-the-night/
 ├── packages/
@@ -79,15 +85,18 @@ survive-the-night/
 ### Package Dependencies
 
 **game-server** depends on:
+
 - `@survive-the-night/game-shared` (types, constants)
 - express, socket.io, dotenv, obscenity (bad word filtering)
 
 **game-client** depends on:
+
 - `@survive-the-night/game-server` (for types in development)
 - `@survive-the-night/game-shared` (types, constants)
 - socket.io-client
 
 **website** depends on:
+
 - `@survive-the-night/game-shared` (types, constants)
 - react, react-router 7, @tanstack/react-query, zustand (state), tailwindcss
 
@@ -102,6 +111,7 @@ survive-the-night/
 The game uses an **ECS (Entity-Component System)** pattern implemented via:
 
 #### Base Entity Class
+
 ```typescript
 // All entities inherit from Entity base class
 Entity {
@@ -113,9 +123,11 @@ Entity {
 ```
 
 #### Extension System (Components)
+
 Instead of traditional "components", this system uses **Extensions** - objects that add behavior to entities:
 
 Key Extension Types:
+
 - **Positionable**: Position (x, y) and size information
 - **Movable**: Velocity and movement vectors
 - **Collidable**: Collision hitbox and detection
@@ -134,6 +146,7 @@ Key Extension Types:
 - **Ignitable**: Can be set on fire
 
 #### Entity Categories
+
 - Player
 - Enemies (Zombie, BigZombie, FastZombie, BatZombie, SpitterZombie, ExplodingZombie, LeapingZombie)
 - Items (Bandage, Cloth, Coin, Torch, Spikes, Landmine, Grenade, etc.)
@@ -143,7 +156,9 @@ Key Extension Types:
 - Boundaries
 
 #### Entity Serialization
+
 Entities can serialize/deserialize for network transmission:
+
 ```typescript
 entity.serialize() -> RawEntity {
   id: string
@@ -155,14 +170,17 @@ entity.serialize() -> RawEntity {
 ### 3.2 Networking & Multiplayer Implementation
 
 #### Real-time Communication: Socket.io
+
 - **Transport**: WebSockets with HTTP fallback
 - **Latency Simulation**: Optional configurable latency for testing
 - **Delayed Socket Wrapper**: Both client and server can simulate network delay
 
 #### Event System
+
 Two types of events:
 
 **Server-Sent Events** (30+ event types):
+
 - GameStateEvent: Full entity state, day/night info
 - PlayerHurtEvent, PlayerDeathEvent
 - ZombieAttackedEvent, ZombieDeathEvent
@@ -173,6 +191,7 @@ Two types of events:
 - And many more...
 
 **Client-Sent Events**:
+
 - PlayerInputEvent: Keyboard/mouse input
 - CraftRequestEvent: Crafting requests
 - ChatMessageEvent: Chat input
@@ -181,6 +200,7 @@ Two types of events:
 - MerchantBuyEvent: Shop purchases
 
 #### Event Flow Architecture
+
 ```
 Client Input -> InputManager
   -> sends PlayerInput event
@@ -195,6 +215,7 @@ Client Input -> InputManager
 ```
 
 #### Player Joining Flow
+
 1. Client connects with display name
 2. Server creates Player entity
 3. Server broadcasts PlayerJoinedEvent
@@ -203,6 +224,7 @@ Client Input -> InputManager
 6. Server broadcasts current GameState
 
 #### Data Synchronization Strategy
+
 - **Server Authority**: Server is authoritative for all game state
 - **Optimistic Updates**: Client predicts position locally
 - **Reconciliation**: Client compares predicted vs server position, smoothly corrects
@@ -212,6 +234,7 @@ Client Input -> InputManager
 ### 3.3 Game Loop & State Management
 
 #### Server-Side Game Loop
+
 ```
 Fixed Tick Rate: 30 ticks per second (1000/30 = ~33ms per tick)
 
@@ -240,6 +263,7 @@ Main Loop:
 ```
 
 #### Server State
+
 ```typescript
 GameServer {
   dayNumber: number          // Current day
@@ -252,6 +276,7 @@ GameServer {
 ```
 
 #### Client-Side Game State
+
 ```typescript
 GameState {
   startedAt: number          // When game started on client
@@ -266,6 +291,7 @@ GameState {
 ```
 
 #### Client Update Loop
+
 ```
 60 FPS Animation Loop:
 1. Input:
@@ -287,15 +313,17 @@ GameState {
 ### 3.4 Physics & Collision Systems
 
 #### Collision Types
+
 - **Tile-based Collision**: Map has collidable layers (indexed by tile)
 - **Entity-Entity Collision**: Hitbox-based AABB (axis-aligned bounding box)
 - **Pixel-Perfect**: Most interactions use pixel-level hitboxes
 
 #### Physics Utilities
+
 ```typescript
 // Path finding
-pathTowards(from: Vector2, to: Vector2, 
-           groundLayer: number[][], 
+pathTowards(from: Vector2, to: Vector2,
+           groundLayer: number[][],
            collidablesLayer?: number[][]): Vector2
 
 // Velocity calculation
@@ -312,6 +340,7 @@ normalizeVector(v: Vector2): Vector2
 ```
 
 #### Movement Pipeline
+
 1. Entity has Movable extension (velocity, acceleration)
 2. Movable.update() applies velocity to Positionable position
 3. Collidable.update() checks collisions
@@ -319,19 +348,23 @@ normalizeVector(v: Vector2): Vector2
 5. Position synchronized via network
 
 #### Map Collision Layers
+
 Each map has:
+
 - **groundLayer**: Walkable terrain (tile IDs)
 - **collidablesLayer**: Blocking terrain (-1 = blocked, else passable)
-- Used for pathfinding (A* algorithm) and collision checking
+- Used for pathfinding (A\* algorithm) and collision checking
 
 ### 3.5 Map/Level System
 
 #### Map Generation
+
 - **Random Generation**: Different biome per game instance
 - **Biome System**: 10+ different biome types with unique spawns
 - **Tile-based**: 64x64 tile maps (each tile is 16x16 pixels = 1024x1024 world)
 
 #### Biome Types
+
 ```
 campsite    - Player starting area
 forest1, forest2, forest3, forest4 - Tree-heavy areas
@@ -343,7 +376,9 @@ merchant    - NPC trader location
 ```
 
 #### Biome Data Structure
+
 Each biome defines:
+
 - Ground layer tiles
 - Collidable layer
 - Spawn points for items/enemies
@@ -351,6 +386,7 @@ Each biome defines:
 - Merchant location and inventory
 
 #### Map Manager Responsibilities
+
 - Map generation on game start
 - Biome assembly and rendering data
 - Zombie spawning (scaled by day number)
@@ -360,7 +396,9 @@ Each biome defines:
 ### 3.6 Player & Combat Systems
 
 #### Player Entity
+
 Extensions:
+
 - Positionable, Movable, Collidable
 - Inventory (10 slots)
 - Destructible (health system)
@@ -369,6 +407,7 @@ Extensions:
 - Carryable (can carry items)
 
 Player-Specific:
+
 - Health: 0-100 HP
 - Stamina: Sprint mechanic with cooldown
 - Weapon/Item slots: 10 inventory slots + hotbar
@@ -376,7 +415,9 @@ Player-Specific:
 - Interaction: Pick up items, talk to merchants, use consumables
 
 #### Zombie Entities
+
 Types:
+
 - **Zombie**: Basic melee zombie, chases player
 - **BigZombie**: Larger, more health, stronger attack
 - **FastZombie**: Faster movement
@@ -386,6 +427,7 @@ Types:
 - **LeapingZombie**: Jumping attack pattern
 
 Zombie AI:
+
 ```
 Movement Strategies:
 - MeleeMovementStrategy: Pathfind to player using A*
@@ -400,11 +442,13 @@ Attack Patterns:
 ```
 
 Zombie Spawning:
+
 - Night spawn at biome-specific locations
 - Quantity scales with day number
 - Day start: all zombies killed, players revived
 
 #### Combat System
+
 - **Range Combat**: Guns (Pistol, Shotgun, Rifles) with ammunition
 - **Melee Combat**: Knife with attack range
 - **Cooldown System**: Attack cooldowns prevent spam
@@ -412,6 +456,7 @@ Zombie Spawning:
 - **Health/Death**: Destructible extension tracks health
 
 Weapon Types:
+
 - Pistol: Fast, low damage
 - Shotgun: Medium range, medium damage
 - Bolt Action Rifle: High damage, slow
@@ -422,19 +467,23 @@ Weapon Types:
 ### 3.7 Crafting & Inventory System
 
 #### Recipe System
+
 Recipes defined in game-shared/recipes:
+
 - **Wall Recipe**: Wood + Cloth = Wall (building/fortification)
 - **Spike Recipe**: Wood + Metal = Spikes (trap)
 - **Torch Recipe**: Wood + Gasoline = Torch (light)
 - **Bandage Recipe**: Cloth + Bandage = Healing item
 
 Recipe Validation:
+
 - Check player has required items
 - Execute on server only
 - Remove ingredients, add product
 - Broadcast inventory change
 
 #### Inventory System
+
 - 10 slots for items
 - Items can stack (Groupable extension)
 - Equipment slots (current weapon)
@@ -443,6 +492,7 @@ Recipe Validation:
 - Consume items (bandage = heal)
 
 #### NPC Merchant System
+
 - Static merchant in map
 - Shop with rotating inventory
 - Buy items with coins
@@ -453,15 +503,17 @@ Recipe Validation:
 ## 4. Key Technologies
 
 ### Game Server (packages/game-server)
+
 - **Node.js + Express.js**: HTTP server + REST API
 - **Socket.io**: Real-time WebSocket communication
 - **TypeScript**: Type-safe development
 - **TSup**: Build tooling
 - **Vitest**: Unit testing
 - **Obscenity**: Bad word filtering for chat
-- **Custom Extensions**: A*, pathfinding, physics
+- **Custom Extensions**: A\*, pathfinding, physics
 
 ### Game Client (packages/game-client)
+
 - **Canvas 2D API**: Rendering engine (no game framework like Phaser)
 - **Socket.io-client**: Server communication
 - **TypeScript**: Type safety
@@ -469,6 +521,7 @@ Recipe Validation:
 - **Custom Managers**: Input, Camera, Rendering, Particles, Prediction
 
 ### Website (packages/website)
+
 - **React 19**: UI framework
 - **React Router 7**: Routing and server rendering
 - **Tailwind CSS**: Styling
@@ -479,11 +532,13 @@ Recipe Validation:
 - **Lucide React**: Icon library
 
 ### Shared Libraries
+
 - **Vector2 utility class**: Math operations
 - **Hitbox system**: Collision detection
 - **TypeScript**: All type definitions
 
 ### Deployment & DevOps
+
 - **Docker**: Containerization
 - **Docker Compose**: Multi-container orchestration
 - **Caddy**: Reverse proxy + HTTPS
@@ -494,6 +549,7 @@ Recipe Validation:
 ## 5. Code Organization Patterns
 
 ### Game Server Structure
+
 ```
 packages/game-server/src/
 ├── entities/           # Entity definitions
@@ -537,6 +593,7 @@ packages/game-server/src/
 ```
 
 ### Game Client Structure
+
 ```
 packages/game-client/src/
 ├── entities/           # Client-side entity definitions
@@ -576,6 +633,7 @@ packages/game-client/src/
 ```
 
 ### Game Shared Structure
+
 ```
 packages/game-shared/src/
 ├── entities/           # Entity definitions & configs
@@ -593,7 +651,8 @@ packages/game-shared/src/
 │   ├── weapons.ts      # Weapon types
 │   └── ...
 ├── config/
-│   └── game-config.ts  # Game constants (ballancing)
+│   └── prediction.ts   # Config related to Prediction logic
+│   └── ...
 ├── constants/          # Game constants
 │   ├── constants.ts    # Re-export from game-config
 │   └── ...
@@ -615,39 +674,46 @@ packages/game-shared/src/
 ### Design Patterns Used
 
 #### 1. Entity-Component System (ECS)
+
 - Entities are containers for behavior
 - Extensions add specific functionalities
 - Avoids deep inheritance hierarchies
 - Example: Player = Entity + Positionable + Movable + Inventory + Destructible
 
 #### 2. Manager Pattern
+
 - GameManagers holds references to all subsystems
 - Entities receive gameManagers in constructor
 - Allows cross-system communication
 - Example: Entity can broadcast event via `gameManagers.getBroadcaster()`
 
 #### 3. Factory Pattern
+
 - EntityFactory creates entities with correct setup
 - ClientEntityFactory creates client-specific entities
 - Centralizes entity creation logic
 
 #### 4. Event-Driven Architecture
+
 - Socket.io events for network communication
 - Event listeners handle incoming messages
 - Broadcasting for server-to-client updates
 - Decouples systems (entity changes don't need direct knowledge of renderer)
 
 #### 5. State Tracking
+
 - EntityStateTracker monitors which entities changed
 - Only serialize changed entities to network
 - Reduces bandwidth and latency
 
 #### 6. Observer Pattern
+
 - ClientEventListener registers for all events
 - Updates local GameState when events received
 - Renderer observes GameState changes
 
 #### 7. Extension/Plugin Pattern
+
 - Extensions added to entities dynamically
 - Allows composition over inheritance
 - Easy to add new behavior without modifying base Entity class
@@ -659,7 +725,9 @@ packages/game-shared/src/
 ### From .cursorrules File
 
 #### Entity Creation Convention
+
 When adding a new zombie entity:
+
 1. Create entity class in game-server/entities
 2. Add to EntityManager's entityMap
 3. Create server entity
@@ -668,6 +736,7 @@ When adding a new zombie entity:
 6. Update MapManager to spawn new type
 
 #### Extension Usage
+
 ```typescript
 // Getting extension position
 const position = entity.getExt(ClientPositionable).getPosition();
@@ -679,38 +748,42 @@ if (entity.hasExt(ClientPositionable)) {
 ```
 
 #### Server-Client Synchronization
+
 - Server updates are authoritative
 - Client predicts locally for responsiveness
 - Extensions serialize/deserialize for network transmission
 - Reconciliation smoothly corrects prediction errors
 
 ### Naming Conventions
+
 - **Server entities**: Standard name (Player, Zombie)
 - **Client entities**: Prefixed with "Client" (PlayerClient, ZombieClient)
 - **Extensions**: Each has `static readonly type` identifier
 - **Events**: Suffixed with "Event" (PlayerDeathEvent, GameStartedEvent)
 
 ### Extension Pattern
+
 Every extension implements:
+
 ```typescript
 export default class MyExtension implements Extension {
   public static readonly type = ExtensionTypes.MY_EXTENSION;
-  
+
   private self: IEntity;
-  
+
   public constructor(self: IEntity) {
     this.self = self;
   }
-  
+
   public update(deltaTime?: number) {
     // Called each server tick
   }
-  
+
   public serialize(): ExtensionSerialized {
     // Send to clients
     return { type: MyExtension.type, ...data };
   }
-  
+
   public deserialize?(data: ExtensionSerialized): this {
     // Receive from server
     return this;
@@ -719,10 +792,11 @@ export default class MyExtension implements Extension {
 ```
 
 ### Entity Extension Access Pattern
+
 ```typescript
 // Server side (Entity has extensions)
 entity.addExtension(new Positionable(entity));
-entity.hasExt(Positionable);  // true
+entity.hasExt(Positionable); // true
 entity.getExt(Positionable).setPosition(new Vector2(10, 10));
 
 // Client side (ClientEntityBase has extensions too)
@@ -730,6 +804,7 @@ clientEntity.getExt(ClientPositionable).getPosition();
 ```
 
 ### Event Broadcasting
+
 ```typescript
 // Server broadcasts to all clients
 this.socketManager.broadcastEvent(new GameStateEvent(stateUpdate));
@@ -739,6 +814,7 @@ this.socketManager.emit(ClientSentEvents.PLAYER_INPUT, input);
 ```
 
 ### Performance Optimization Notes
+
 - Performance tracking and logging built-in
 - Updates averaged 4-5ms (within tick budget of ~33ms)
 - Entity state tracker only sends changed entities
@@ -747,7 +823,9 @@ this.socketManager.emit(ClientSentEvents.PLAYER_INPUT, input);
 - Bad word filtering integrated for chat
 
 ### Admin Commands
+
 Available when DEBUG_ADMIN_COMMANDS enabled:
+
 - Set password: `commandManager.setAdminPassword('password')`
 - Create item: `commandManager.createItem('pistol')`
 - Other game-altering commands
@@ -757,6 +835,7 @@ Available when DEBUG_ADMIN_COMMANDS enabled:
 ## 7. Data Flow Diagrams
 
 ### Player Input to Server Processing
+
 ```
 Client KeyDown Event
   ↓
@@ -793,6 +872,7 @@ Renderer renders updated entities
 ```
 
 ### Server Tick Cycle
+
 ```
 Server Tick (every 33ms):
 ┌─────────────────────────────────────┐
@@ -832,6 +912,7 @@ Server Tick (every 33ms):
 ```
 
 ### Client Frame Cycle
+
 ```
 Client Frame (60 FPS, ~16ms):
 ┌──────────────────────────────────┐
@@ -880,26 +961,31 @@ Client Frame (60 FPS, ~16ms):
 ## 8. Key Design Decisions & Trade-offs
 
 ### Client Prediction vs Server Authority
+
 - **Decision**: Optimistic client prediction with server reconciliation
 - **Trade-off**: More responsive gameplay locally but need to handle position corrections
 - **Implementation**: PredictionManager predicts, then smoothly lerps to server truth
 
 ### Canvas 2D vs Game Framework
+
 - **Decision**: Custom Canvas 2D renderer instead of Phaser/Babylon
 - **Trade-off**: More control and smaller bundle, but more custom code to maintain
 - **Implementation**: Custom Renderer class with Transform/rendering pipeline
 
 ### Fixed Tick Rate Server
+
 - **Decision**: 30 ticks/second server tick rate
 - **Trade-off**: Predictable server updates but less real-time than variable
 - **Implementation**: setInterval(update, 1000/30)
 
 ### Entity Serialization Strategy
+
 - **Decision**: Serialize entire entity state each tick, not delta
 - **Trade-off**: Simpler implementation, but EntityStateTracker mitigates bandwidth
 - **Implementation**: GameStateEvent contains all dynamic entities
 
 ### Monorepo Structure
+
 - **Decision**: Shared package for types, separate client/server/website
 - **Trade-off**: Code duplication vs decoupling
 - **Implementation**: npm workspaces with cross-package imports
@@ -919,6 +1005,7 @@ Client Frame (60 FPS, ~16ms):
 ## 10. Deployment Architecture
 
 ### Docker Containerization
+
 ```
 survive-the-night/
 ├── Dockerfile (website)    - Node/React build
@@ -932,6 +1019,7 @@ Services:
 ```
 
 ### Environment Configuration
+
 - ADMIN_PASSWORD: Server-side admin protection
 - VITE_WSS_URL: WebSocket server URL
 - NODE_ENV: production/development modes
@@ -941,6 +1029,7 @@ Services:
 ## Summary
 
 Survive the Night is a well-architected multiplayer game with:
+
 - Clean separation of concerns (client, server, shared)
 - ECS pattern for flexible entity behavior
 - Event-driven networking

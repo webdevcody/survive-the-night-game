@@ -1,8 +1,7 @@
 import Vector2 from "@shared/util/vector2";
 import { PlayerClient } from "@/entities/player";
 import { ClientPositionable } from "@/extensions";
-import { FIXED_TIMESTEP } from "@shared/config/game-config";
-import "@/config/client-prediction"; // Import to get window.config type declarations
+import { getConfig } from "@shared/config";
 
 /**
  * Configuration for reconciliation behavior
@@ -18,16 +17,6 @@ export interface ReconciliationConfig {
 }
 
 /**
- * Default reconciliation configuration
- */
-export const DEFAULT_RECONCILIATION_CONFIG: ReconciliationConfig = {
-  smallErrorThreshold: window.config?.predictions?.smallErrorThreshold ?? 20,
-  largeErrorThreshold: window.config?.predictions?.largeErrorThreshold ?? 75,
-  minLerpSpeed: window.config?.predictions?.minLerpSpeed ?? 0.15,
-  maxLerpSpeed: window.config?.predictions?.maxLerpSpeed ?? 0.35,
-};
-
-/**
  * Enhanced reconciliation manager with adaptive lerp
  *
  * Handles different types of corrections intelligently:
@@ -36,12 +25,11 @@ export const DEFAULT_RECONCILIATION_CONFIG: ReconciliationConfig = {
  * - Large errors: Snap to server position
  */
 export class ReconciliationManager {
-  private config: ReconciliationConfig;
   private isMoving: boolean = false;
   private wasMoving: boolean = false;
 
-  constructor(config: Partial<ReconciliationConfig> = {}) {
-    this.config = { ...DEFAULT_RECONCILIATION_CONFIG, ...config };
+  constructor() {
+    // Configuration is now accessed dynamically via getConfig()
   }
 
   /**
@@ -97,18 +85,16 @@ export class ReconciliationManager {
   }
 
   /**
-   * Get current config, reading from window.config.predictions if available
+   * Get current config from getConfig()
    */
   private getCurrentConfig(): ReconciliationConfig {
-    if (typeof window !== "undefined" && window.config?.predictions) {
-      return {
-        smallErrorThreshold: window.config.predictions.smallErrorThreshold,
-        largeErrorThreshold: window.config.predictions.largeErrorThreshold,
-        minLerpSpeed: window.config.predictions.minLerpSpeed,
-        maxLerpSpeed: window.config.predictions.maxLerpSpeed,
-      };
-    }
-    return this.config;
+    const config = getConfig().prediction;
+    return {
+      smallErrorThreshold: config.smallErrorThreshold,
+      largeErrorThreshold: config.largeErrorThreshold,
+      minLerpSpeed: config.minLerpSpeed,
+      maxLerpSpeed: config.maxLerpSpeed,
+    };
   }
 
   /**
@@ -155,10 +141,4 @@ export class ReconciliationManager {
     }
   }
 
-  /**
-   * Update configuration
-   */
-  updateConfig(config: Partial<ReconciliationConfig>): void {
-    this.config = { ...this.config, ...config };
-  }
 }

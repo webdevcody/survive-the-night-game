@@ -1,10 +1,4 @@
-import { EntityType } from "@shared/types/entity";
-
-export interface BiomeData {
-  ground: number[][];
-  collidables: number[][];
-  items?: EntityType[];
-}
+import { BiomeData } from "./types";
 
 export const MERCHANT: BiomeData = {
   ground: [
@@ -23,7 +17,7 @@ export const MERCHANT: BiomeData = {
     [5, 5, 5, 24, 5, 14, 5, 5, 5, 15, 15, 15, 15, 15, 5, 5],
     [5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 15, 15, 15, 5, 5],
     [5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5],
-    [5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5]
+    [5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5],
   ],
   collidables: [
     [3, 3, 3, 3, -1, -1, -1, -1, -1, -1, -1, -1, 3, 3, 3, 3],
@@ -41,6 +35,6 @@ export const MERCHANT: BiomeData = {
     [-1, -1, -1, -1, -1, -1, 3, 3, 3, -1, -1, -1, -1, -1, 3, 3],
     [3, 3, -1, -1, -1, -1, 3, 3, 3, 3, 3, -1, -1, -1, 3, 3],
     [3, 3, 3, 3, -1, -1, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3],
-    [3, 3, 3, 3, 3, -1, -1, 3, 3, 3, 3, 3, 3, 3, 3, 3]
+    [3, 3, 3, 3, 3, -1, -1, 3, 3, 3, 3, 3, 3, 3, 3, 3],
   ],
 };

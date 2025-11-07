@@ -1,5 +1,5 @@
 import { Entities } from "@/constants";
-import { BiomeData } from "./campsite";
+import { BiomeData } from "./types";
 
 export const FARM: BiomeData = {
   ground: [
@@ -18,7 +18,7 @@ export const FARM: BiomeData = {
     [5, 5, 4, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5],
     [5, 5, 5, 5, 5, 5, 5, 5, 24, 5, 5, 5, 5, 24, 5, 5],
     [5, 5, 5, 5, 24, 14, 5, 4, 20, 5, 5, 5, 5, 5, 5, 5],
-    [5, 5, 5, 5, 5, 5, 5, 5, 20, 5, 24, 5, 5, 5, 5, 5]
+    [5, 5, 5, 5, 5, 5, 5, 5, 20, 5, 24, 5, 5, 5, 5, 5],
   ],
   collidables: [
     [3, 3, 3, 3, -1, -1, -1, -1, -1, -1, -1, 3, 3, 3, 3, 3],
@@ -36,7 +36,7 @@ export const FARM: BiomeData = {
     [3, -1, -1, 24, 25, 25, 25, 25, 25, 25, 25, 26, -1, -1, -1, 3],
     [3, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, 3],
     [3, 3, 3, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, 3, 3, 3],
-    [3, 3, 3, 3, 3, -1, -1, -1, -1, -1, -1, 3, 3, 3, 3, 3]
+    [3, 3, 3, 3, 3, -1, -1, -1, -1, -1, -1, 3, 3, 3, 3, 3],
   ],
   items: [
     Entities.SHOTGUN,
@@ -47,6 +47,6 @@ export const FARM: BiomeData = {
     Entities.GASOLINE,
     Entities.GASOLINE,
     Entities.TORCH,
-    Entities.TORCH
+    Entities.TORCH,
   ],
 };

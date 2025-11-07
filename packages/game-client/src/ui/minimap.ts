@@ -9,6 +9,7 @@ import { AcidProjectileClient } from "@/entities/acid-projectile";
 import { ClientDestructible } from "@/extensions/destructible";
 import { EntityCategories } from "@shared/entities";
 import { perfTimer } from "@shared/util/performance";
+import { getConfig } from "@shared/config";
 
 // Performance optimization constants - adjust these to balance quality vs performance
 // To view performance stats in console, run:
@@ -329,8 +330,8 @@ export class Minimap {
       if (!position) return;
 
       // Convert biome position to world coordinates (center of biome)
-      const biomeWorldX = (position.x * BIOME_SIZE + BIOME_SIZE / 2) * TILE_SIZE;
-      const biomeWorldY = (position.y * BIOME_SIZE + BIOME_SIZE / 2) * TILE_SIZE;
+      const biomeWorldX = (position.x * BIOME_SIZE + BIOME_SIZE / 2) * getConfig().world.TILE_SIZE;
+      const biomeWorldY = (position.y * BIOME_SIZE + BIOME_SIZE / 2) * getConfig().world.TILE_SIZE;
 
       // Calculate relative position to player
       const relativeX = biomeWorldX - playerPos.x;

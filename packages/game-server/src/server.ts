@@ -9,7 +9,7 @@ import { GameManagers } from "@/managers/game-managers";
 import { MapManager } from "@/managers/map-manager";
 import { ServerSocketManager } from "@/managers/server-socket-manager";
 import { TICK_RATE, PERFORMANCE_LOG_INTERVAL, TICK_RATE_MS } from "./config/config";
-import { DAY_DURATION, NIGHT_DURATION } from "@shared/constants";
+import { getConfig } from "@shared/config";
 import Destructible from "@/extensions/destructible";
 import { PerformanceTracker } from "./util/performance";
 
@@ -19,7 +19,7 @@ export class GameServer {
   private timer: ReturnType<typeof setInterval> | null = null;
   private dayNumber: number = 1;
   private cycleStartTime: number = Date.now();
-  private cycleDuration: number = DAY_DURATION;
+  private cycleDuration: number = getConfig().dayNight.DAY_DURATION;
   private isDay: boolean = true;
   private isGameReady: boolean = false;
   private isGameOver: boolean = false;
@@ -83,7 +83,7 @@ export class GameServer {
     this.isGameOver = false;
     this.dayNumber = 1;
     this.cycleStartTime = Date.now();
-    this.cycleDuration = DAY_DURATION;
+    this.cycleDuration = getConfig().dayNight.DAY_DURATION;
     this.isDay = true;
 
     // Clear all entities first
@@ -207,7 +207,9 @@ export class GameServer {
     if (elapsedTime >= this.cycleDuration) {
       this.isDay = !this.isDay;
       this.cycleStartTime = currentTime;
-      this.cycleDuration = this.isDay ? DAY_DURATION : NIGHT_DURATION;
+      this.cycleDuration = this.isDay
+        ? getConfig().dayNight.DAY_DURATION
+        : getConfig().dayNight.NIGHT_DURATION;
       this.dayNumber += this.isDay ? 1 : 0;
 
       if (this.isDay) {

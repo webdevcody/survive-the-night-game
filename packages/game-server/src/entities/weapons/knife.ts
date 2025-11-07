@@ -8,8 +8,9 @@ import Vector2 from "@/util/vector2";
 import Positionable from "@/extensions/positionable";
 import { knockBack } from "./helpers";
 import { Player } from "@/entities/player";
-import { Entities, KNIFE_ATTACK_RANGE, Zombies } from "@/constants";
+import { Entities, Zombies } from "@/constants";
 import { weaponRegistry } from "@shared/entities";
+import { getConfig } from "@shared/config";
 
 export class Knife extends Weapon {
   private config = weaponRegistry.get(WEAPON_TYPES.KNIFE)!;
@@ -25,7 +26,7 @@ export class Knife extends Weapon {
   public attack(playerId: string, position: Vector2, facing: Direction): void {
     const nearbyEnemies = this.getEntityManager().getNearbyEnemies(
       position,
-      KNIFE_ATTACK_RANGE + 24,
+      getConfig().combat.KNIFE_ATTACK_RANGE + 24,
       [...Zombies, Entities.FIRE]
     );
 
@@ -38,7 +39,7 @@ export class Knife extends Weapon {
       const destructible = entity.getExt(Destructible);
       if (destructible.isDead()) return false;
 
-      if (distance > KNIFE_ATTACK_RANGE) return false;
+      if (distance > getConfig().combat.KNIFE_ATTACK_RANGE) return false;
 
       if (facing === Direction.Right && dx < 0) return false;
       if (facing === Direction.Left && dx > 0) return false;

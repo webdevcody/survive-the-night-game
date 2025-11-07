@@ -1,5 +1,5 @@
 import { Entities } from "@/constants";
-import { BiomeData } from "./campsite";
+import { BiomeData } from "./types";
 
 export const GAS_STATION: BiomeData = {
   ground: [
@@ -18,7 +18,7 @@ export const GAS_STATION: BiomeData = {
     [5, 50, 51, 51, 51, 51, 51, 51, 51, 69, 5, 5, 5, 4, 5, 5],
     [5, 5, 122, 122, 122, 122, 122, 122, 122, 5, 5, 5, 5, 5, 5, 5],
     [5, 5, 5, 5, 5, 5, 5, 14, 5, 4, 5, 5, 5, 5, 5, 5],
-    [5, 5, 5, 4, 5, 14, 5, 5, 20, 5, 5, 5, 5, 5, 5, 5]
+    [5, 5, 5, 4, 5, 14, 5, 5, 20, 5, 5, 5, 5, 5, 5, 5],
   ],
   collidables: [
     [3, 3, 3, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, 3, 3, 3],
@@ -36,7 +36,7 @@ export const GAS_STATION: BiomeData = {
     [-1, -1, -1, -1, -1, 90, 91, -1, -1, -1, 3, -1, -1, -1, -1, -1],
     [3, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, 3],
     [3, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, 3],
-    [3, 3, 3, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, 3, 3, 3]
+    [3, 3, 3, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, 3, 3, 3],
   ],
   items: [
     Entities.PISTOL,
@@ -52,6 +52,6 @@ export const GAS_STATION: BiomeData = {
     Entities.AK47,
     Entities.AK47_AMMO,
     Entities.AK47_AMMO,
-    Entities.AK47_AMMO
+    Entities.AK47_AMMO,
   ],
 };

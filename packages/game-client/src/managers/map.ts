@@ -3,7 +3,7 @@ import { DEBUG_MAP_BOUNDS } from "@shared/debug";
 import { ClientIlluminated, ClientPositionable } from "@/extensions";
 import Vector2 from "@shared/util/vector2";
 import { distance } from "@shared/util/physics";
-import { RENDER_CONFIG } from "@/constants/constants";
+import { getConfig } from "@shared/config";
 
 const PULSE_SPEED = 0.001; // Speed of the pulse (lower = slower)
 const PULSE_INTENSITY = 0.07; // How much the light radius varies (0.0 to 1.0)
@@ -390,7 +390,7 @@ export class MapManager {
     }
 
     const playerPos = player.getExt(ClientPositionable).getCenterPosition();
-    const distance = renderDistance ?? RENDER_CONFIG.ENTITY_RENDER_RADIUS;
+    const distance = renderDistance ?? getConfig().render.ENTITY_RENDER_RADIUS;
 
     return {
       startTileX: Math.max(0, Math.floor((playerPos.x - distance) / this.tileSize)),

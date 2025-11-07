@@ -44,6 +44,7 @@ import { AK47 } from "@/entities/weapons/ak47";
 import { AK47Ammo } from "@/entities/items/ak47-ammo";
 import { BoltActionAmmo } from "@/entities/items/bolt-action-ammo";
 import { BoltActionRifle } from "@/entities/weapons/bolt-action-rifle";
+import { getConfig } from "@/config";
 
 const WEAPON_SPAWN_CHANCE = {
   // Weapons
@@ -93,7 +94,6 @@ const spawnTable = [
 
 const BIOME_SIZE = 16;
 const MAP_SIZE = 16;
-export const TILE_SIZE = 16;
 
 export class MapManager implements IMapManager {
   private groundLayer: number[][] = [];
@@ -222,27 +222,37 @@ export class MapManager implements IMapManager {
       // Determine which type of zombie to spawn based on remaining counts
       if (spawnedCount.bat < zombieDistribution.bat) {
         const zombie = new BatZombie(this.getGameManagers());
-        zombie.setPosition(new Vector2(x * TILE_SIZE, y * TILE_SIZE));
+        zombie.setPosition(
+          new Vector2(x * getConfig().world.TILE_SIZE, y * getConfig().world.TILE_SIZE)
+        );
         this.getEntityManager().addEntity(zombie);
         spawnedCount.bat++;
       } else if (spawnedCount.big < zombieDistribution.big) {
         const zombie = new BigZombie(this.getGameManagers());
-        zombie.setPosition(new Vector2(x * TILE_SIZE, y * TILE_SIZE));
+        zombie.setPosition(
+          new Vector2(x * getConfig().world.TILE_SIZE, y * getConfig().world.TILE_SIZE)
+        );
         this.getEntityManager().addEntity(zombie);
         spawnedCount.big++;
       } else if (spawnedCount.fast < zombieDistribution.fast) {
         const zombie = new FastZombie(this.getGameManagers());
-        zombie.setPosition(new Vector2(x * TILE_SIZE, y * TILE_SIZE));
+        zombie.setPosition(
+          new Vector2(x * getConfig().world.TILE_SIZE, y * getConfig().world.TILE_SIZE)
+        );
         this.getEntityManager().addEntity(zombie);
         spawnedCount.fast++;
       } else if (spawnedCount.regular < zombieDistribution.regular) {
         const zombie = new Zombie(this.getGameManagers());
-        zombie.setPosition(new Vector2(x * TILE_SIZE, y * TILE_SIZE));
+        zombie.setPosition(
+          new Vector2(x * getConfig().world.TILE_SIZE, y * getConfig().world.TILE_SIZE)
+        );
         this.getEntityManager().addEntity(zombie);
         spawnedCount.regular++;
       } else if (spawnedCount.spitter < zombieDistribution.spitter) {
         const zombie = new SpitterZombie(this.getGameManagers());
-        zombie.setPosition(new Vector2(x * TILE_SIZE, y * TILE_SIZE));
+        zombie.setPosition(
+          new Vector2(x * getConfig().world.TILE_SIZE, y * getConfig().world.TILE_SIZE)
+        );
         this.getEntityManager().addEntity(zombie);
         spawnedCount.spitter++;
       }
@@ -251,7 +261,10 @@ export class MapManager implements IMapManager {
 
   generateEmptyMap(width: number, height: number) {
     this.getEntityManager().clear();
-    this.getEntityManager().setMapSize(width * TILE_SIZE, height * TILE_SIZE);
+    this.getEntityManager().setMapSize(
+      width * getConfig().world.TILE_SIZE,
+      height * getConfig().world.TILE_SIZE
+    );
     this.groundLayer = Array(height)
       .fill(0)
       .map(() => Array(width).fill(0));
@@ -279,8 +292,8 @@ export class MapManager implements IMapManager {
 
   private generateSpatialGrid() {
     this.getEntityManager().setMapSize(
-      BIOME_SIZE * MAP_SIZE * TILE_SIZE,
-      BIOME_SIZE * MAP_SIZE * TILE_SIZE
+      BIOME_SIZE * MAP_SIZE * getConfig().world.TILE_SIZE,
+      BIOME_SIZE * MAP_SIZE * getConfig().world.TILE_SIZE
     );
   }
 
@@ -455,7 +468,9 @@ export class MapManager implements IMapManager {
         const collidableTileId = this.collidablesLayer[y][x];
         if (collidableTileId !== -1) {
           const boundary = new Boundary(this.getGameManagers());
-          boundary.setPosition(new Vector2(x * TILE_SIZE, y * TILE_SIZE));
+          boundary.setPosition(
+            new Vector2(x * getConfig().world.TILE_SIZE, y * getConfig().world.TILE_SIZE)
+          );
           this.getEntityManager().addEntity(boundary);
         }
       }
@@ -470,7 +485,9 @@ export class MapManager implements IMapManager {
         const collidableTileId = this.collidablesLayer[y][x];
         if (collidableTileId === 255) {
           const merchant = new Merchant(this.getGameManagers());
-          merchant.setPosition(new Vector2(x * TILE_SIZE, y * TILE_SIZE));
+          merchant.setPosition(
+            new Vector2(x * getConfig().world.TILE_SIZE, y * getConfig().world.TILE_SIZE)
+          );
           this.getEntityManager().addEntity(merchant);
         }
       }
@@ -501,7 +518,11 @@ export class MapManager implements IMapManager {
       cumulativeChance += chance;
       if (random < cumulativeChance) {
         const item = new ItemClass(this.getGameManagers());
-        item.getExt(Positionable).setPosition(new Vector2(x * TILE_SIZE, y * TILE_SIZE));
+        item
+          .getExt(Positionable)
+          .setPosition(
+            new Vector2(x * getConfig().world.TILE_SIZE, y * getConfig().world.TILE_SIZE)
+          );
         this.getEntityManager().addEntity(item);
         break;
       }
@@ -511,11 +532,11 @@ export class MapManager implements IMapManager {
   private spawnDebugZombieIfEnabled() {
     if (DEBUG_START_ZOMBIE) {
       const totalSize = BIOME_SIZE * MAP_SIZE;
-      const middleX = Math.floor(totalSize / 2) * TILE_SIZE;
-      const middleY = Math.floor(totalSize / 2) * TILE_SIZE;
+      const middleX = Math.floor(totalSize / 2) * getConfig().world.TILE_SIZE;
+      const middleY = Math.floor(totalSize / 2) * getConfig().world.TILE_SIZE;
 
       const zombie = new Zombie(this.getGameManagers());
-      zombie.setPosition(new Vector2(middleX + 16 * 4, middleY));
+      zombie.setPosition(new Vector2(middleX + 16 * 4 * getConfig().world.TILE_SIZE, middleY));
       this.getEntityManager().addEntity(zombie);
     }
   }
@@ -560,7 +581,12 @@ export class MapManager implements IMapManager {
 
       entity
         .getExt(Positionable)
-        .setPosition(new Vector2(position.x * TILE_SIZE, position.y * TILE_SIZE));
+        .setPosition(
+          new Vector2(
+            position.x * getConfig().world.TILE_SIZE,
+            position.y * getConfig().world.TILE_SIZE
+          )
+        );
       this.getEntityManager().addEntity(entity);
     }
   }
@@ -660,14 +686,19 @@ export class MapManager implements IMapManager {
           groundTile === 8 || groundTile === 4 || groundTile === 14 || groundTile === 24;
 
         if (isValidGround && this.collidablesLayer[y][x] === -1) {
-          validPositions.push(new Vector2(x * TILE_SIZE, y * TILE_SIZE));
+          validPositions.push(
+            new Vector2(x * getConfig().world.TILE_SIZE, y * getConfig().world.TILE_SIZE)
+          );
         }
       }
     }
 
     if (validPositions.length === 0) {
       // Fallback to center if no grass tiles found
-      return new Vector2((totalSize * TILE_SIZE) / 2, (totalSize * TILE_SIZE) / 2);
+      return new Vector2(
+        (totalSize * getConfig().world.TILE_SIZE) / 2,
+        (totalSize * getConfig().world.TILE_SIZE) / 2
+      );
     }
 
     // Return a random position from valid positions
@@ -691,7 +722,9 @@ export class MapManager implements IMapManager {
           groundTile === 8 || groundTile === 4 || groundTile === 14 || groundTile === 24;
 
         if (isValidGround && this.collidablesLayer[mapY][mapX] === -1) {
-          validPositions.push(new Vector2(mapX * TILE_SIZE, mapY * TILE_SIZE));
+          validPositions.push(
+            new Vector2(mapX * getConfig().world.TILE_SIZE, mapY * getConfig().world.TILE_SIZE)
+          );
         }
       }
     }

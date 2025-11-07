@@ -1,8 +1,7 @@
 import { IGameManagers } from "@/managers/types";
-import { ZombieDeathEvent } from "@shared/events/server-sent/zombie-death-event";
-import { Entities, ZOMBIE_ATTACK_RADIUS } from "@/constants";
+import { Entities } from "@/constants";
+import { getConfig } from "@shared/config";
 import Vector2 from "@/util/vector2";
-import { ZombieHurtEvent } from "@/events/server-sent/zombie-hurt-event";
 import { AttackStrategy, BaseEnemy, MovementStrategy } from "./base-enemy";
 import { pathTowards, velocityTowards } from "@/util/physics";
 import Positionable from "@/extensions/positionable";
@@ -65,7 +64,7 @@ export class MeleeAttackStrategy implements AttackStrategy {
     // Get all nearby entities that can be attacked
     const nearbyEntities = zombie
       .getEntityManager()
-      .getNearbyEntities(zombie.getCenterPosition(), ZOMBIE_ATTACK_RADIUS, [
+      .getNearbyEntities(zombie.getCenterPosition(), getConfig().combat.ZOMBIE_ATTACK_RADIUS, [
         Entities.WALL,
         Entities.PLAYER,
       ]);

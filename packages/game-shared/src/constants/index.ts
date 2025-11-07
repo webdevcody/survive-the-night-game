@@ -1,5 +1,4 @@
 import { EntityType } from "@/types/entity";
-export * from "./constants";
 
 export const Entities = {
   ZOMBIE: "zombie",

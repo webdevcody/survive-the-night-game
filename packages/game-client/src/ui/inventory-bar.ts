@@ -4,7 +4,7 @@ import { Z_INDEX } from "@shared/map";
 import { Renderable } from "@/entities/util";
 import { AssetManager, getItemAssetKey } from "@/managers/asset";
 import { InventoryItem } from "../../../game-shared/src/util/inventory";
-import { MAX_INVENTORY_SLOTS } from "@shared/constants/constants";
+import { getConfig } from "@shared/config";
 import { HeartsPanel } from "./panels/hearts-panel";
 import { StaminaPanel } from "./panels/stamina-panel";
 import { CoinsPanel } from "./panels/coins-panel";
@@ -134,7 +134,7 @@ export class InventoryBarUI implements Renderable {
     const { width: canvasWidth, height: canvasHeight } = ctx.canvas;
 
     const settings = HOTBAR_SETTINGS.Inventory;
-    const slotsNumber = MAX_INVENTORY_SLOTS;
+    const slotsNumber = getConfig().player.MAX_INVENTORY_SLOTS;
 
     ctx.save();
     ctx.setTransform(1, 0, 0, 1, 0, 0);

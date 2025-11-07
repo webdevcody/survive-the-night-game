@@ -41,7 +41,6 @@ import { ExplosionEvent } from "@shared/events/server-sent/explosion-event";
 import { InterpolationManager } from "@/managers/interpolation";
 import { ExtensionTypes } from "@shared/util/extension-types";
 import Vector2 from "@shared/util/vector2";
-import "@shared/config/prediction"; // Initialize window.config.predictions
 import { CoinClient } from "./entities/items/coin";
 
 export class ClientEventListener {
@@ -212,7 +211,7 @@ export class ClientEventListener {
 
                     // For very large errors, snap immediately to prevent unbounded drift
                     // The PredictionManager's reconciliation will handle smaller errors smoothly
-                    if (error > (window.config?.predictions?.largeErrorThreshold ?? 75)) {
+                    if (error > (window.config?.prediction?.largeErrorThreshold ?? 75)) {
                       // Large error: snap immediately to server position
                       existingEntity.deserializeProperty(key, value);
                     } else {

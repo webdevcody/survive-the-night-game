@@ -6,10 +6,10 @@ import Inventory from "@/extensions/inventory";
 import Positionable from "@/extensions/positionable";
 import { IGameManagers } from "@/managers/types";
 import { Entities } from "@/constants";
+import { getConfig } from "@shared/config";
 import { Entity } from "@/entities/entity";
 import { RawEntity, ItemState } from "@/types/entity";
 import Vector2 from "@/util/vector2";
-import { WALL_MAX_HEALTH } from "@/constants/constants";
 
 export class Wall extends Entity {
   public static readonly Size = new Vector2(16, 16);
@@ -22,8 +22,8 @@ export class Wall extends Entity {
       new Collidable(this).setSize(Wall.Size),
       new Interactive(this).onInteract(this.interact.bind(this)).setDisplayName("wall"),
       new Destructible(this)
-        .setMaxHealth(WALL_MAX_HEALTH)
-        .setHealth(itemState?.health ?? WALL_MAX_HEALTH)
+        .setMaxHealth(getConfig().world.WALL_MAX_HEALTH)
+        .setHealth(itemState?.health ?? getConfig().world.WALL_MAX_HEALTH)
         .onDeath(() => this.onDeath()),
       new Carryable(this, "wall"),
     ];

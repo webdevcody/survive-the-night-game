@@ -1,6 +1,6 @@
 import { useEffect } from "react";
 import { useEditorStore } from "./store";
-import { TILE_SIZE, toKebabCase } from "./utils";
+import { toKebabCase } from "./utils";
 import type { Layer, SheetDimensions } from "./types";
 import { useBiomes, useBiome, useSaveBiome, useCreateBiome } from "./hooks/useEditorApi";
 
@@ -11,6 +11,7 @@ import { TileMapEditor } from "./components/TileMapEditor";
 import { TilePalette } from "./components/TilePalette";
 import { ItemsModal } from "./components/ItemsModal";
 import { CreateBiomeDialog } from "./components/CreateBiomeDialog";
+import { getConfig } from "@shared/config";
 
 export default function BiomeEditor() {
   // Store state
@@ -87,8 +88,8 @@ export default function BiomeEditor() {
 
       const groundPromise = new Promise<SheetDimensions>((resolve) => {
         groundImg.onload = () => {
-          const cols = Math.floor(groundImg.width / TILE_SIZE);
-          const rows = Math.floor(groundImg.height / TILE_SIZE);
+          const cols = Math.floor(groundImg.width / getConfig().world.TILE_SIZE);
+          const rows = Math.floor(groundImg.height / getConfig().world.TILE_SIZE);
           resolve({ cols, rows, totalTiles: cols * rows });
         };
         groundImg.src = "/sheets/ground.png";
@@ -96,8 +97,8 @@ export default function BiomeEditor() {
 
       const collidablesPromise = new Promise<SheetDimensions>((resolve) => {
         collidablesImg.onload = () => {
-          const cols = Math.floor(collidablesImg.width / TILE_SIZE);
-          const rows = Math.floor(collidablesImg.height / TILE_SIZE);
+          const cols = Math.floor(collidablesImg.width / getConfig().world.TILE_SIZE);
+          const rows = Math.floor(collidablesImg.height / getConfig().world.TILE_SIZE);
           resolve({ cols, rows, totalTiles: cols * rows });
         };
         collidablesImg.src = "/sheets/collidables.png";

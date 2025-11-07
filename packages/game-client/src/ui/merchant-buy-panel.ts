@@ -3,7 +3,7 @@ import { GameState } from "@/state";
 import { AssetManager } from "@/managers/asset";
 import { PlayerClient } from "@/entities/player";
 import { Z_INDEX } from "@shared/map";
-import { MerchantShopItem } from "@shared/config/game-config";
+import { getConfig, type MerchantShopItem } from "@shared/config";
 import { ITEM_CONFIGS } from "@shared/entities/item-configs";
 
 const MERCHANT_BUY_PANEL_SETTINGS = {

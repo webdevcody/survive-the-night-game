@@ -17,7 +17,7 @@ import { InventoryItem } from "../../../game-shared/src/util/inventory";
 import { roundVector2 } from "../../../game-shared/src/util/physics";
 import { RawEntity } from "@shared/types/entity";
 import { IClientEntity, Renderable, getFrameIndex, drawHealthBar } from "@/entities/util";
-import { KNIFE_ATTACK_RANGE, MAX_PLAYER_HEALTH } from "@shared/constants/constants";
+import { getConfig } from "@shared/config";
 import Vector2 from "@shared/util/vector2";
 import { ClientEntity } from "./client-entity";
 import { SKIN_TYPES, SkinType } from "@shared/commands/commands";
@@ -91,7 +91,7 @@ export class PlayerClient extends ClientEntity implements IClientEntity, Rendera
   }
 
   getMaxHealth(): number {
-    return MAX_PLAYER_HEALTH;
+    return getConfig().player.MAX_PLAYER_HEALTH;
   }
 
   isDead(): boolean {
@@ -309,7 +309,7 @@ export class PlayerClient extends ClientEntity implements IClientEntity, Rendera
     ctx.drawImage(image, renderPosition.x + 2, renderPosition.y);
 
     if (this.activeItem.itemType === "knife") {
-      this.debugRenderAttackRange(ctx, this.getCenterPosition(), KNIFE_ATTACK_RANGE);
+      this.debugRenderAttackRange(ctx, this.getCenterPosition(), getConfig().combat.KNIFE_ATTACK_RANGE);
     }
   }
 

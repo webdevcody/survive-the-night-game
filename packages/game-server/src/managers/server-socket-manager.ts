@@ -21,7 +21,7 @@ import { PlayerJoinedEvent } from "@shared/events/server-sent/player-joined-even
 import { PongEvent } from "@shared/events/server-sent/pong-event";
 import { ChatMessageEvent } from "@shared/events/server-sent/chat-message-event";
 import { PlayerLeftEvent } from "@/events/server-sent/player-left-event";
-import { SIMULATED_SERVER_LATENCY_MS } from "@/config/simulation";
+import { getConfig } from "@shared/config";
 import { DelayedServer, DelayedServerSocket } from "@/util/delayed-socket";
 import { createCommandRegistry, CommandRegistry } from "@/commands";
 import {
@@ -95,7 +95,7 @@ export class ServerSocketManager implements Broadcaster {
     });
 
     // Wrap the io server with DelayedServer to handle latency simulation
-    this.delayedIo = new DelayedServer(this.io, SIMULATED_SERVER_LATENCY_MS);
+    this.delayedIo = new DelayedServer(this.io, getConfig().network.SIMULATED_LATENCY_MS);
 
     this.gameServer = gameServer;
 
@@ -128,7 +128,7 @@ export class ServerSocketManager implements Broadcaster {
    * Wrap a socket with DelayedServerSocket for latency simulation
    */
   private wrapSocket(socket: Socket): DelayedServerSocket {
-    return new DelayedServerSocket(socket, SIMULATED_SERVER_LATENCY_MS);
+    return new DelayedServerSocket(socket, getConfig().network.SIMULATED_LATENCY_MS);
   }
 
   public setGameManagers(gameManagers: IGameManagers): void {

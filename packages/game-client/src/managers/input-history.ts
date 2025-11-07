@@ -2,7 +2,7 @@ import { Input } from "@shared/util/input";
 import Vector2 from "@shared/util/vector2";
 import { PlayerClient } from "@/entities/player";
 import { ClientPositionable } from "@/extensions";
-import { FIXED_TIMESTEP } from "@shared/config/game-config";
+import { getConfig } from "@shared/config";
 
 /**
  * Snapshot of input with associated state
@@ -106,7 +106,7 @@ export class InputHistory {
     for (let i = startIndex + 1; i < this.buffer.length; i++) {
       const snapshot = this.buffer[i];
       // Use fixed timestep for replay to match server
-      applyInput(player, snapshot.input, FIXED_TIMESTEP);
+      applyInput(player, snapshot.input, getConfig().simulation.FIXED_TIMESTEP);
     }
   }
 

@@ -1,10 +1,9 @@
 import { Player } from "@/entities/player";
 import Destructible from "@/extensions/destructible";
 import { GameManagers } from "@/managers/game-managers";
-import { TILE_SIZE } from "@/managers/map-manager";
 import { beforeEach, it, expect } from "vitest";
 import { simpleTestSetup } from "../utils/setup";
-import { MAX_PLAYER_HEALTH } from "@/constants/constants";
+import { getConfig } from "@/constants/constants";
 import Vector2 from "@/util/vector2";
 import { Bandage } from "@/entities/items/bandage";
 
@@ -17,7 +16,9 @@ beforeEach(() => {
   player = new Player(gameManagers);
   player.clearInventory();
 
-  gameManagers.getEntityManager().setMapSize(4 * TILE_SIZE, 4 * TILE_SIZE);
+  gameManagers
+    .getEntityManager()
+    .setMapSize(4 * getConfig().world.TILE_SIZE, 4 * getConfig().world.TILE_SIZE);
 
   player.setPosition(new Vector2(0, 0));
   gameManagers.getEntityManager().addEntity(player);

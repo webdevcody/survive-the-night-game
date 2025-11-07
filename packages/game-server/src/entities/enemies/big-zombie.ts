@@ -1,5 +1,6 @@
 import { IGameManagers } from "@/managers/types";
-import { Entities, ZOMBIE_ATTACK_RADIUS } from "@/constants";
+import { Entities } from "@/constants";
+import { getConfig } from "@shared/config";
 import Vector2 from "@/util/vector2";
 import { BaseEnemy } from "./base-enemy";
 import { IEntity } from "@/entities/types";

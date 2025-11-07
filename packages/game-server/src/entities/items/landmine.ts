@@ -1,8 +1,8 @@
 import { Entity } from "@/entities/entity";
 import { IGameManagers } from "@/managers/types";
 import { Entities, Zombies } from "../../../../game-shared/src/constants";
+import { getConfig } from "@shared/config";
 import Positionable from "@/extensions/positionable";
-import Triggerable from "@/extensions/trigger";
 import Interactive from "@/extensions/interactive";
 import Carryable from "@/extensions/carryable";
 import { distance } from "../../../../game-shared/src/util/physics";
@@ -10,7 +10,6 @@ import { IEntity } from "@/entities/types";
 import Destructible from "@/extensions/destructible";
 import OneTimeTrigger from "@/extensions/one-time-trigger";
 import Vector2 from "@/util/vector2";
-import { LANDMINE_EXPLOSION_RADIUS } from "@/constants/constants";
 import { RawEntity } from "@/types/entity";
 import { ExplosionEvent } from "@shared/events/server-sent/explosion-event";
 import { Cooldown } from "../util/cooldown";
@@ -63,7 +62,7 @@ export class Landmine extends Entity implements IEntity {
     const position = this.getExt(Positionable).getCenterPosition();
     const nearbyEntities = this.getEntityManager().getNearbyEntities(
       this.getExt(Positionable).getPosition(),
-      LANDMINE_EXPLOSION_RADIUS
+      getConfig().combat.LANDMINE_EXPLOSION_RADIUS
     );
 
     // Damage all things in explosion radius
@@ -73,7 +72,7 @@ export class Landmine extends Entity implements IEntity {
       const entityPos = entity.getExt(Positionable).getPosition();
       const dist = distance(position, entityPos);
 
-      if (dist <= LANDMINE_EXPLOSION_RADIUS) {
+      if (dist <= getConfig().combat.LANDMINE_EXPLOSION_RADIUS) {
         entity.getExt(Destructible).damage(Landmine.DAMAGE);
       }
     }

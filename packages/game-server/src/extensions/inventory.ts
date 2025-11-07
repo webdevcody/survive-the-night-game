@@ -5,9 +5,9 @@ import { Broadcaster } from "@/managers/types";
 import { PlayerPickedUpItemEvent } from "@shared/events/server-sent/pickup-item-event";
 import Positionable from "@/extensions/positionable";
 import { IEntity } from "@/entities/types";
-import { MAX_INVENTORY_SLOTS } from "@/constants/constants";
 import Vector2 from "@/util/vector2";
 import { WEAPON_TYPE_VALUES } from "@shared/types/weapons";
+import { getConfig } from "@/config";
 
 export default class Inventory implements Extension {
   public static readonly type = "inventory";
@@ -28,7 +28,7 @@ export default class Inventory implements Extension {
   public isFull(): boolean {
     // Count non-null items instead of array length to support sparse arrays
     const itemCount = this.items.filter((item) => item != null).length;
-    return itemCount >= MAX_INVENTORY_SLOTS;
+    return itemCount >= getConfig().player.MAX_INVENTORY_SLOTS;
   }
 
   public hasItem(itemType: ItemType): boolean {

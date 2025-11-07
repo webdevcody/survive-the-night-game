@@ -1,6 +1,6 @@
 import { GameState } from "@/state";
 import { getPlayer } from "@/util/get-player";
-import { MAX_PLAYER_HEALTH, MAX_INVENTORY_SLOTS } from "@shared/constants/constants";
+import { getConfig } from "@shared/config";
 import { Panel, PanelSettings } from "./panel";
 
 interface HeartsPanelSettings extends PanelSettings {
@@ -30,7 +30,7 @@ export class HeartsPanel extends Panel {
 
     const { width: canvasWidth, height: canvasHeight } = ctx.canvas;
     const settings = this.heartSettings.inventorySettings;
-    const slotsNumber = MAX_INVENTORY_SLOTS;
+    const slotsNumber = getConfig().player.MAX_INVENTORY_SLOTS;
 
     this.resetTransform(ctx);
 
@@ -49,7 +49,7 @@ export class HeartsPanel extends Panel {
     const heartsY = hotbarY - this.heartSettings.heartSize - this.heartSettings.marginBottom;
 
     const currentHealth = player.getHealth();
-    const maxHealth = MAX_PLAYER_HEALTH;
+    const maxHealth = getConfig().player.MAX_PLAYER_HEALTH;
 
     // Calculate background dimensions
     const heartsContainerWidth =

@@ -1,5 +1,5 @@
 import { IGameManagers } from "@/managers/types";
-import { Entities, ZOMBIE_ATTACK_RADIUS } from "@shared/constants";
+import { Entities } from "@shared/constants";
 import Vector2 from "@shared/util/vector2";
 import { BaseEnemy } from "./base-enemy";
 import Collidable from "@/extensions/collidable";

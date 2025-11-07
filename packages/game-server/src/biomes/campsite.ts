@@ -1,11 +1,5 @@
 import { Entities } from "@/constants";
-import { EntityType } from "@shared/types/entity";
-
-export interface BiomeData {
-  ground: number[][];
-  collidables: number[][];
-  items?: EntityType[];
-}
+import { BiomeData } from "./types";
 
 export const CAMPSITE: BiomeData = {
   ground: [
@@ -24,7 +18,7 @@ export const CAMPSITE: BiomeData = {
     [5, 4, 5, 4, 4, 5, 5, 5, 5, 5, 4, 5, 4, 5, 5, 5],
     [5, 4, 5, 5, 4, 5, 5, 5, 5, 5, 4, 5, 5, 14, 5, 5],
     [5, 4, 5, 14, 4, 5, 5, 24, 5, 24, 5, 5, 5, 4, 5, 5],
-    [5, 4, 4, 5, 4, 5, 5, 5, 5, 5, 5, 4, 4, 4, 5, 5]
+    [5, 4, 4, 5, 4, 5, 5, 5, 5, 5, 5, 4, 4, 4, 5, 5],
   ],
   collidables: [
     [3, 3, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, 3, 3, 3],
@@ -42,7 +36,7 @@ export const CAMPSITE: BiomeData = {
     [-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1],
     [-1, -1, -1, -1, -1, -1, 39, -1, -1, -1, -1, -1, -1, -1, -1, -1],
     [3, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, 3],
-    [3, 3, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, 3, 3]
+    [3, 3, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, 3, 3],
   ],
   items: [
     Entities.PISTOL,
@@ -55,6 +49,6 @@ export const CAMPSITE: BiomeData = {
     Entities.PISTOL_AMMO,
     Entities.PISTOL_AMMO,
     Entities.PISTOL_AMMO,
-    Entities.KNIFE
+    Entities.KNIFE,
   ],
 };

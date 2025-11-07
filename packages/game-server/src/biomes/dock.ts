@@ -1,11 +1,5 @@
-import { EntityType } from "@shared/types/entity";
 import { Entities } from "@/constants";
-
-export interface BiomeData {
-  ground: number[][];
-  collidables: number[][];
-  items?: EntityType[];
-}
+import { BiomeData } from "./types";
 
 export const DOCK: BiomeData = {
   ground: [

@@ -1,11 +1,5 @@
-import { EntityType } from "@shared/types/entity";
 import { Entities } from "@/constants";
-
-export interface BiomeData {
-  ground: number[][];
-  collidables: number[][];
-  items?: EntityType[];
-}
+import { BiomeData } from "./types";
 
 export const CITY: BiomeData = {
   ground: [
@@ -24,7 +18,7 @@ export const CITY: BiomeData = {
     [5, 4, 5, 5, 24, 5, 5, 5, 5, 5, 5, 20, 5, 14, 5, 5],
     [5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 20, 5, 5, 5, 5],
     [5, 5, 14, 5, 14, 5, 5, 5, 22, 10, 10, 11, 24, 4, 5, 5],
-    [5, 5, 5, 24, 5, 14, 5, 5, 20, 5, 5, 5, 14, 5, 5, 5]
+    [5, 5, 5, 24, 5, 14, 5, 5, 20, 5, 5, 5, 14, 5, 5, 5],
   ],
   collidables: [
     [3, 3, 3, -1, -1, -1, -1, -1, -1, -1, -1, -1, 3, 3, 3, 3],
@@ -42,7 +36,7 @@ export const CITY: BiomeData = {
     [-1, -1, -1, -1, -1, -1, -1, 205, 206, 207, 208, -1, -1, -1, -1, -1],
     [3, -1, 90, 91, -1, -1, 3, 217, 218, 219, 220, -1, -1, -1, -1, 3],
     [3, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, 3, 3],
-    [3, 3, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, 3, 3, 3]
+    [3, 3, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, 3, 3, 3],
   ],
   items: [
     Entities.GRENADE,
@@ -57,6 +51,6 @@ export const CITY: BiomeData = {
     Entities.BOLT_ACTION_AMMO,
     Entities.TORCH,
     Entities.TORCH,
-    Entities.TORCH
+    Entities.TORCH,
   ],
 };

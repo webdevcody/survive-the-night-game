@@ -5,12 +5,11 @@ import { normalizeVector, isColliding } from "@shared/util/physics";
 import { ClientMovable } from "@/extensions/movable";
 import { ClientPositionable } from "@/extensions/positionable";
 import { ClientCollidable } from "@/extensions/collidable";
-import { TILE_SIZE } from "@shared/constants/constants";
-import { PREDICTION_CONFIG } from "@/config/client-prediction";
+import { getConfig } from "@shared/config";
+import { getPredictionConfig } from "@/config/client-prediction";
 import { ClientEntityBase } from "@/extensions/client-entity";
 import { Hitbox } from "@shared/util/hitbox";
 import { ReconciliationManager } from "./reconciliation-manager";
-import { FIXED_TIMESTEP } from "@shared/config/game-config";
 
 type PredictionConfig = {
   playerSpeed: number; // pixels per second
@@ -18,12 +17,17 @@ type PredictionConfig = {
 };
 
 export class PredictionManager {
-  private readonly config: PredictionConfig;
   private reconciliationManager: ReconciliationManager;
 
-  constructor(config: Partial<PredictionConfig> = {}) {
-    this.config = { ...PREDICTION_CONFIG, ...config };
+  constructor() {
     this.reconciliationManager = new ReconciliationManager();
+  }
+
+  /**
+   * Get current prediction config (runtime-modifiable via window.config)
+   */
+  private getConfig(): PredictionConfig {
+    return getPredictionConfig();
   }
 
   /**
@@ -43,7 +47,7 @@ export class PredictionManager {
     if (deltaSeconds <= 0) return;
 
     // Verify deltaTime matches server (should be FIXED_TIMESTEP for physics)
-    const expectedDelta = FIXED_TIMESTEP;
+    const expectedDelta = getConfig().simulation.FIXED_TIMESTEP;
     const tolerance = 0.001;
     if (Math.abs(deltaSeconds - expectedDelta) > tolerance) {
       // Warn if deltaTime doesn't match expected fixed timestep
@@ -69,9 +73,10 @@ export class PredictionManager {
     // Check if player can sprint based on stamina (must match server logic)
     const hasStamina = player.getStamina() > 0;
     const canSprint = input.sprint && hasStamina;
-    const speedMultiplier = canSprint ? this.config.sprintMultiplier : 1;
+    const config = this.getConfig();
+    const speedMultiplier = canSprint ? config.sprintMultiplier : 1;
 
-    const speed = this.config.playerSpeed * speedMultiplier;
+    const speed = config.playerSpeed * speedMultiplier;
     let moveX = direction.x * speed * deltaSeconds;
     let moveY = direction.y * speed * deltaSeconds;
 
@@ -165,15 +170,16 @@ export class PredictionManager {
     hit: { x: number; y: number; width: number; height: number },
     grid: number[][]
   ): boolean {
-    const minCol = Math.max(0, Math.floor(hit.x / TILE_SIZE));
-    const minRow = Math.max(0, Math.floor(hit.y / TILE_SIZE));
+    const tileSize = getConfig().world.TILE_SIZE;
+    const minCol = Math.max(0, Math.floor(hit.x / tileSize));
+    const minRow = Math.max(0, Math.floor(hit.y / tileSize));
     const maxCol = Math.min(
       grid[0]?.length ? grid[0].length - 1 : 0,
-      Math.floor((hit.x + hit.width - 1) / TILE_SIZE)
+      Math.floor((hit.x + hit.width - 1) / tileSize)
     );
     const maxRow = Math.min(
       grid.length ? grid.length - 1 : 0,
-      Math.floor((hit.y + hit.height - 1) / TILE_SIZE)
+      Math.floor((hit.y + hit.height - 1) / tileSize)
     );
 
     for (let r = minRow; r <= maxRow; r++) {

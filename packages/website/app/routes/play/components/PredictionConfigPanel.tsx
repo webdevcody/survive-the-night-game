@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import "@shared/config/prediction"; // Import to get global type declarations
+import { getConfig } from "@shared/config";
 
 interface PredictionConfig {
   showDebugVisuals: boolean;
@@ -23,20 +23,21 @@ export function PredictionConfigPanel() {
 
   const [isOpen, setIsOpen] = useState(false);
 
-  // Initialize config from window.config.predictions if available
+  // Initialize config from getConfig().prediction if available
   useEffect(() => {
-    if (typeof window !== "undefined" && window.config?.predictions) {
-      setConfig(window.config.predictions);
+    if (typeof window !== "undefined") {
+      const gameConfig = getConfig();
+      if (gameConfig.prediction) {
+        setConfig(gameConfig.prediction as any);
+      }
     }
   }, []);
 
-  // Update window.config.predictions when config changes
+  // Update window.config.prediction when config changes
   useEffect(() => {
     if (typeof window !== "undefined") {
-      if (!window.config) {
-        window.config = {};
-      }
-      window.config.predictions = config;
+      const gameConfig = getConfig(); // This ensures window.config is properly initialized
+      gameConfig.prediction = config as any;
     }
   }, [config]);
 

@@ -1,5 +1,5 @@
 import { IGameManagers } from "@/managers/types";
-import { Entities, ZOMBIE_ATTACK_RADIUS } from "@shared/constants";
+import { Entities } from "@shared/constants";
 import Vector2 from "@shared/util/vector2";
 import { BaseEnemy, AttackStrategy, MovementStrategy } from "./base-enemy";
 import Collidable from "@/extensions/collidable";
@@ -11,6 +11,7 @@ import { pathTowards, velocityTowards } from "@/util/physics";
 import { ZombieAttackedEvent } from "@shared/events/server-sent/zombie-attacked-event";
 import { IEntity } from "@/entities/types";
 import { LeapConfig } from "@shared/entities";
+import { getConfig } from "@shared/config";
 
 // Shared state between movement and attack strategies
 class LeapingState {
@@ -108,7 +109,7 @@ export class LeapingAttackStrategy implements AttackStrategy {
     if (
       !this.leapingState.isLeaping &&
       this.leapCooldown.isReady() &&
-      distanceToPlayer > ZOMBIE_ATTACK_RADIUS && // Not too close
+      distanceToPlayer > getConfig().combat.ZOMBIE_ATTACK_RADIUS && // Not too close
       distanceToPlayer <= this.leapConfig.leapRange // Not too far
     ) {
       // Initiate leap - apply velocity boost
@@ -123,7 +124,10 @@ export class LeapingAttackStrategy implements AttackStrategy {
     if (zombie.getAttackCooldown().isReady()) {
       const nearbyEntities = zombie
         .getEntityManager()
-        .getNearbyEntities(zombiePos, ZOMBIE_ATTACK_RADIUS, [Entities.WALL, Entities.PLAYER]);
+        .getNearbyEntities(zombiePos, getConfig().combat.ZOMBIE_ATTACK_RADIUS, [
+          Entities.WALL,
+          Entities.PLAYER,
+        ]);
 
       // Find the closest entity to attack
       let closestEntity = null;

@@ -28,7 +28,7 @@ import { ParticleManager } from "./managers/particles";
 import { PredictionManager } from "./managers/prediction";
 import { FixedTimestepSimulator } from "./managers/fixed-timestep-simulator";
 import { SequenceManager } from "./managers/sequence-manager";
-import { FIXED_TIMESTEP } from "@shared/config/game-config";
+import { getConfig } from "@shared/config";
 
 export class GameClient {
   private ctx: CanvasRenderingContext2D;
@@ -85,7 +85,7 @@ export class GameClient {
     this.entityFactory = new EntityFactory(this.assetManager);
     this.particleManager = new ParticleManager(this);
     this.predictionManager = new PredictionManager();
-    this.fixedTimestepSimulator = new FixedTimestepSimulator(FIXED_TIMESTEP);
+    this.fixedTimestepSimulator = new FixedTimestepSimulator(getConfig().simulation.FIXED_TIMESTEP);
     this.sequenceManager = new SequenceManager();
 
     // Add click event listener for UI interactions

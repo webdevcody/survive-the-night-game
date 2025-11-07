@@ -1,7 +1,7 @@
 import { Button } from "~/components/ui/button";
 import { useEditorStore } from "../store";
-import { TILE_SIZE } from "../utils";
-import type { Layer, Position } from "../types";
+import type { Layer } from "../types";
+import { getConfig } from "@shared/config";
 
 interface TilePaletteProps {
   onTileSelect: (row: number, col: number, layer: Layer) => void;
@@ -294,14 +294,14 @@ export function TilePalette({ onTileSelect }: TilePaletteProps) {
                           : "border-gray-700 hover:border-green-500"
                       }`}
                       style={{
-                        width: `${TILE_SIZE * 2}px`,
-                        height: `${TILE_SIZE * 2}px`,
+                        width: `${getConfig().world.TILE_SIZE * 2}px`,
+                        height: `${getConfig().world.TILE_SIZE * 2}px`,
                         backgroundImage: "url(/sheets/ground.png)",
-                        backgroundSize: `${groundDimensions.cols * TILE_SIZE * 2}px ${
-                          groundDimensions.rows * TILE_SIZE * 2
-                        }px`,
-                        backgroundPosition: `-${colIdx * TILE_SIZE * 2}px -${
-                          rowIdx * TILE_SIZE * 2
+                        backgroundSize: `${
+                          groundDimensions.cols * getConfig().world.TILE_SIZE * 2
+                        }px ${groundDimensions.rows * getConfig().world.TILE_SIZE * 2}px`,
+                        backgroundPosition: `-${colIdx * getConfig().world.TILE_SIZE * 2}px -${
+                          rowIdx * getConfig().world.TILE_SIZE * 2
                         }px`,
                         imageRendering: "pixelated",
                       }}
@@ -437,14 +437,14 @@ export function TilePalette({ onTileSelect }: TilePaletteProps) {
                           : "border-gray-700 hover:border-red-500"
                       }`}
                       style={{
-                        width: `${TILE_SIZE * 2}px`,
-                        height: `${TILE_SIZE * 2}px`,
+                        width: `${getConfig().world.TILE_SIZE * 2}px`,
+                        height: `${getConfig().world.TILE_SIZE * 2}px`,
                         backgroundImage: "url(/sheets/collidables.png)",
-                        backgroundSize: `${collidablesDimensions.cols * TILE_SIZE * 2}px ${
-                          collidablesDimensions.rows * TILE_SIZE * 2
-                        }px`,
-                        backgroundPosition: `-${colIdx * TILE_SIZE * 2}px -${
-                          rowIdx * TILE_SIZE * 2
+                        backgroundSize: `${
+                          collidablesDimensions.cols * getConfig().world.TILE_SIZE * 2
+                        }px ${collidablesDimensions.rows * getConfig().world.TILE_SIZE * 2}px`,
+                        backgroundPosition: `-${colIdx * getConfig().world.TILE_SIZE * 2}px -${
+                          rowIdx * getConfig().world.TILE_SIZE * 2
                         }px`,
                         imageRendering: "pixelated",
                       }}

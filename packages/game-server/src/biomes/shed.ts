@@ -1,11 +1,5 @@
-import { EntityType } from "@shared/types/entity";
 import { Entities } from "@/constants";
-
-export interface BiomeData {
-  ground: number[][];
-  collidables: number[][];
-  items?: EntityType[];
-}
+import { BiomeData } from "./types";
 
 export const SHED: BiomeData = {
   ground: [
@@ -24,7 +18,7 @@ export const SHED: BiomeData = {
     [5, 5, 5, 5, 4, 5, 5, 5, 5, 5, 5, 14, 5, 5, 5, 5],
     [5, 5, 5, 5, 5, 5, 5, 4, 5, 5, 24, 5, 5, 5, 5, 5],
     [5, 5, 5, 4, 5, 5, 5, 4, 5, 5, 5, 5, 4, 5, 5, 5],
-    [5, 5, 5, 5, 14, 5, 5, 5, 5, 5, 5, 14, 5, 5, 5, 5]
+    [5, 5, 5, 5, 14, 5, 5, 5, 5, 5, 5, 14, 5, 5, 5, 5],
   ],
   collidables: [
     [3, 3, 3, 3, -1, -1, -1, -1, -1, -1, -1, -1, -1, 3, 3, 3],
@@ -42,7 +36,7 @@ export const SHED: BiomeData = {
     [-1, -1, 271, 248, 248, 248, 272, 272, 272, 273, -1, -1, -1, -1, -1, 3],
     [3, -1, -1, -1, -1, 4, 5, -1, -1, -1, -1, -1, -1, -1, -1, 3],
     [3, 3, 3, -1, -1, 16, 17, -1, -1, -1, -1, -1, -1, 3, 3, 3],
-    [3, 3, 3, -1, -1, -1, -1, -1, -1, -1, -1, -1, 3, 3, 3, 3]
+    [3, 3, 3, -1, -1, -1, -1, -1, -1, -1, -1, -1, 3, 3, 3, 3],
   ],
   items: [
     Entities.FLAMETHROWER_AMMO,
@@ -50,6 +44,6 @@ export const SHED: BiomeData = {
     Entities.FLAMETHROWER,
     Entities.TORCH,
     Entities.TORCH,
-    Entities.TORCH
+    Entities.TORCH,
   ],
 };

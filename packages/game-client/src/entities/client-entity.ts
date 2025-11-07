@@ -8,7 +8,7 @@ import { ImageLoader } from "@/managers/asset";
 import { ClientInteractive, ClientPositionable } from "@/extensions";
 import Vector2 from "@shared/util/vector2";
 import { DEBUG_SHOW_ATTACK_RANGE } from "@shared/debug";
-import { KEYBINDINGS } from "@shared/config/game-config";
+import { getConfig } from "@shared/config";
 
 export abstract class ClientEntity extends ClientEntityBase implements Renderable {
   constructor(data: RawEntity, imageLoader: ImageLoader) {
@@ -23,7 +23,7 @@ export abstract class ClientEntity extends ClientEntityBase implements Renderabl
     const interactive = this.getExt(ClientInteractive);
 
     if (myPlayer && interactive.getDisplayName()) {
-      let text = `${interactive.getDisplayName()} (${KEYBINDINGS.INTERACT})`;
+      let text = `${interactive.getDisplayName()} (${getConfig().keybindings.INTERACT})`;
 
       renderInteractionText(
         ctx,

@@ -4,7 +4,7 @@ import { ImageLoader } from "@/managers/asset";
 import { RawEntity } from "../../../../game-shared/src/types/entity";
 import { GameState } from "@/state";
 import { ClientPositionable } from "@/extensions";
-import { LANDMINE_EXPLOSION_RADIUS } from "@shared/constants/constants";
+import { getConfig } from "@shared/config";
 
 export class LandmineClient extends ClientEntity implements Renderable {
   private isActive = false;
@@ -37,7 +37,7 @@ export class LandmineClient extends ClientEntity implements Renderable {
       ctx.strokeStyle = "rgba(255, 0, 0, 0.5)";
       ctx.lineWidth = 1;
       ctx.beginPath();
-      ctx.arc(position.x, position.y, LANDMINE_EXPLOSION_RADIUS, 0, Math.PI * 2);
+      ctx.arc(position.x, position.y, getConfig().combat.LANDMINE_EXPLOSION_RADIUS, 0, Math.PI * 2);
       ctx.stroke();
       ctx.restore();
     }

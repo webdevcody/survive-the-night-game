@@ -4,13 +4,13 @@ import { PlayerClient } from "@/entities/player";
 import { MapManager } from "@/managers/map";
 import { ChatWidget } from "./chat-widget";
 import { ClientDestructible } from "@/extensions/destructible";
-import { Zombies, VERSION } from "@shared/constants";
+import { Zombies } from "@shared/constants";
 import { Minimap } from "./minimap";
 import { Leaderboard } from "./leaderboard";
 import { SoundManager } from "@/managers/sound-manager";
 import { AssetManager } from "@/managers/asset";
 import { ClockPanel, StatPanel, TextPanel } from "./panels";
-import { KEYBINDINGS } from "@shared/config/game-config";
+import { getConfig } from "@shared/config";
 
 const HUD_SETTINGS = {
   ControlsList: {
@@ -207,7 +207,7 @@ export class Hud {
       borderWidth: HUD_SETTINGS.BottomRightPanels.borderWidth,
       x: 0,
       y: 0,
-      text: VERSION,
+      text: getConfig().meta.VERSION,
       font: HUD_SETTINGS.BottomRightPanels.font,
       textColor: HUD_SETTINGS.BottomRightPanels.versionColor,
     });
@@ -468,19 +468,20 @@ export class Hud {
       return;
     }
 
+    const keys = getConfig().keybindings;
     const regularText =
       "Movement: W A S D\n" +
-      `Fire: ${KEYBINDINGS.FIRE.toUpperCase()}\n` +
-      `Interact: ${KEYBINDINGS.INTERACT.toUpperCase()}\n` +
-      `Craft: ${KEYBINDINGS.CRAFT.toUpperCase()}\n` +
-      `Cycle Weapon: ${KEYBINDINGS.CYCLE_WEAPON_PREV.toUpperCase()}/${KEYBINDINGS.CYCLE_WEAPON_NEXT.toUpperCase()}\n` +
-      `Quick Heal: ${KEYBINDINGS.QUICK_HEAL.toUpperCase()}\n` +
-      `Drop Item: ${KEYBINDINGS.DROP.toUpperCase()}\n` +
-      `Sprint: ${KEYBINDINGS.SPRINT.toUpperCase()}\n` +
-      `Chat: ${KEYBINDINGS.CHAT.toUpperCase()}\n` +
-      `Player List: ${KEYBINDINGS.PLAYER_LIST.toUpperCase()}\n` +
-      `Mute: ${KEYBINDINGS.TOGGLE_MUTE.toUpperCase()}\n` +
-      `Controls: ${KEYBINDINGS.TOGGLE_INSTRUCTIONS.toUpperCase()}`;
+      `Fire: ${keys.FIRE.toUpperCase()}\n` +
+      `Interact: ${keys.INTERACT.toUpperCase()}\n` +
+      `Craft: ${keys.CRAFT.toUpperCase()}\n` +
+      `Cycle Weapon: ${keys.CYCLE_WEAPON_PREV.toUpperCase()}/${keys.CYCLE_WEAPON_NEXT.toUpperCase()}\n` +
+      `Quick Heal: ${keys.QUICK_HEAL.toUpperCase()}\n` +
+      `Drop Item: ${keys.DROP.toUpperCase()}\n` +
+      `Sprint: ${keys.SPRINT.toUpperCase()}\n` +
+      `Chat: ${keys.CHAT.toUpperCase()}\n` +
+      `Player List: ${keys.PLAYER_LIST.toUpperCase()}\n` +
+      `Mute: ${keys.TOGGLE_MUTE.toUpperCase()}\n` +
+      `Controls: ${keys.TOGGLE_INSTRUCTIONS.toUpperCase()}`;
 
     const craftingText = "Navigate: W S\nCraft: SPACE";
     const innerText = gameState.crafting ? craftingText : regularText;
