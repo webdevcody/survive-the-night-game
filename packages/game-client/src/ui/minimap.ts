@@ -121,6 +121,7 @@ export class Minimap {
   // Pre-rendered canvas for collidables indicators (at world coordinates, 1:1 scale)
   private collidablesCanvas: HTMLCanvasElement | null = null;
   private readonly tileSize = 16; // Match MapManager tile size
+  private cachedCollidablesReference: number[][] | null = null; // Track which map data we've cached
 
   constructor(mapManager: MapManager) {
     this.mapManager = mapManager;
@@ -456,6 +457,9 @@ export class Minimap {
     if (!mapData || !mapData.collidables) return;
 
     const collidables = mapData.collidables;
+
+    // Cache the reference to the current collidables array so we can detect when it changes
+    this.cachedCollidablesReference = collidables;
     const rows = collidables.length;
     const cols = collidables[0]?.length ?? 0;
 
@@ -514,14 +518,17 @@ export class Minimap {
     const mapData = this.mapManager.getMapData();
     if (!mapData || !mapData.collidables) return;
 
-    // Check if canvas needs to be created or recreated (if map dimensions changed)
+    // Check if canvas needs to be created or recreated
+    // This handles: (1) no canvas exists, (2) map dimensions changed, (3) map data changed (new game)
     const expectedWidth = (mapData.collidables[0]?.length ?? 0) * this.tileSize;
     const expectedHeight = mapData.collidables.length * this.tileSize;
+    const mapDataChanged = this.cachedCollidablesReference !== mapData.collidables;
 
     if (
       !this.collidablesCanvas ||
       this.collidablesCanvas.width !== expectedWidth ||
-      this.collidablesCanvas.height !== expectedHeight
+      this.collidablesCanvas.height !== expectedHeight ||
+      mapDataChanged
     ) {
       this.prerenderCollidables();
     }
