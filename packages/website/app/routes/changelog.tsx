@@ -81,7 +81,9 @@ export default function Changelog() {
             � Back to Home
           </Link>
           <h1 className="text-4xl font-bold mb-2">Changelog</h1>
-          <p className="text-gray-400">Track the latest updates and improvements to Survive the Night</p>
+          <p className="text-gray-400">
+            Track the latest updates and improvements to Survive the Night
+          </p>
         </div>
 
         <div className="space-y-8">
