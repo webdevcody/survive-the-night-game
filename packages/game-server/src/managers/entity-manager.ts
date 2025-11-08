@@ -51,6 +51,7 @@ import { ExplodingZombie } from "@/entities/enemies/exploding-zombie";
 import { LeapingZombie } from "@/entities/enemies/leaping-zombie";
 import { Merchant } from "@/entities/environment/merchant";
 import { getConfig } from "@/config";
+import { SentryGun } from "@/entities/items/sentry-gun";
 
 const entityMap = {
   [Entities.PLAYER]: Player,
@@ -90,6 +91,7 @@ const entityMap = {
   [Entities.EXPLODING_ZOMBIE]: ExplodingZombie,
   [Entities.LEAPING_ZOMBIE]: LeapingZombie,
   [Entities.MERCHANT]: Merchant,
+  [Entities.SENTRY_GUN]: SentryGun,
 };
 
 const STATIC_ENTITIES: EntityType[] = [Entities.BOUNDARY];
@@ -157,6 +159,9 @@ export class EntityManager implements IEntityManager {
 
     // Register landmine
     this.registerItem("landmine", Landmine);
+
+    // Register sentry gun
+    this.registerItem("sentry_gun", SentryGun);
   }
 
   public registerItem(type: ItemType, constructor: any): void {

@@ -296,6 +296,110 @@ export class ServerSocketManager implements Broadcaster {
     }
   }
 
+  private onPlaceStructure(
+    socket: Socket,
+    data: { itemType: ItemType; position: { x: number; y: number } }
+  ): void {
+    const player = this.players.get(socket.id);
+    if (!player) return;
+
+    // Only allow wall and sentry gun placement
+    if (data.itemType !== "wall" && data.itemType !== "sentry_gun") return;
+
+    // Validate placement distance
+    const playerPos = player.getExt(Positionable).getCenterPosition();
+    const placePos = new Vector2(data.position.x, data.position.y);
+    const distance = playerPos.distance(placePos);
+    const { MAX_PLACEMENT_RANGE, TILE_SIZE } = getConfig().world;
+
+    if (distance > MAX_PLACEMENT_RANGE) {
+      console.log(
+        `Player ${player.getId()} tried to place ${data.itemType} too far away (${distance}px)`
+      );
+      return;
+    }
+
+    // Check if player has the item in inventory
+    const inventory = player.getExt(Inventory);
+    const inventoryItems = inventory.getItems();
+    const itemIndex = inventoryItems.findIndex((item) => item?.itemType === data.itemType);
+
+    if (itemIndex === -1) {
+      console.log(`Player ${player.getId()} tried to place ${data.itemType} without having one`);
+      return;
+    }
+
+    // Validate grid position is clear
+    const gridX = Math.floor(data.position.x / TILE_SIZE);
+    const gridY = Math.floor(data.position.y / TILE_SIZE);
+    const mapData = this.getMapManager().getMapData();
+
+    if (
+      gridY < 0 ||
+      gridY >= mapData.collidables.length ||
+      gridX < 0 ||
+      gridX >= mapData.collidables[0].length
+    ) {
+      console.log(`Player ${player.getId()} tried to place ${data.itemType} out of bounds`);
+      return;
+    }
+
+    if (mapData.collidables[gridY][gridX] !== -1) {
+      console.log(`Player ${player.getId()} tried to place ${data.itemType} on occupied tile`);
+      return;
+    }
+
+    // Check if any entities are at this position
+    const entities = this.getEntityManager().getEntities();
+    const structureSize = TILE_SIZE;
+
+    for (const entity of entities) {
+      if (!entity.hasExt(Positionable)) continue;
+
+      const entityPos = entity.getExt(Positionable).getCenterPosition();
+      const dx = Math.abs(entityPos.x - (placePos.x + structureSize / 2));
+      const dy = Math.abs(entityPos.y - (placePos.y + structureSize / 2));
+
+      if (dx < structureSize && dy < structureSize) {
+        console.log(
+          `Player ${player.getId()} tried to place ${data.itemType} on existing entity`
+        );
+        return;
+      }
+    }
+
+    // Remove item from inventory
+    const item = inventoryItems[itemIndex];
+    if (item?.state?.count && item.state.count > 1) {
+      // Decrease count if there are multiple
+      inventory.updateItemState(itemIndex, {
+        ...item.state,
+        count: item.state.count - 1,
+      });
+    } else {
+      // Remove the item completely
+      inventory.removeItem(itemIndex);
+    }
+
+    // Create entity at position
+    const maxHealth =
+      data.itemType === "wall"
+        ? getConfig().world.WALL_MAX_HEALTH
+        : getConfig().world.SENTRY_GUN_MAX_HEALTH;
+
+    const placedEntity = this.getEntityManager().createEntityFromItem({
+      itemType: data.itemType,
+      state: { health: maxHealth },
+    });
+
+    placedEntity.getExt(Positionable).setPosition(placePos);
+    this.getEntityManager().addEntity(placedEntity);
+
+    console.log(
+      `Player ${player.getId()} placed ${data.itemType} at (${placePos.x}, ${placePos.y})`
+    );
+  }
+
   private onPlayerInput(socket: Socket, input: Input): void {
     const player = this.players.get(socket.id);
     if (!player) return;
@@ -354,6 +458,11 @@ export class ServerSocketManager implements Broadcaster {
     socket.on(ClientSentEvents.SEND_CHAT, (data: { message: string }) => {
       this.handleChat(socket, data.message);
     });
+    socket.on(
+      ClientSentEvents.PLACE_STRUCTURE,
+      (data: { itemType: ItemType; position: { x: number; y: number } }) =>
+        this.onPlaceStructure(socket, data)
+    );
     socket.on("disconnect", () => {
       this.onDisconnect(socket);
     });

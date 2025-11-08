@@ -30,6 +30,7 @@ import { FixedTimestepSimulator } from "./managers/fixed-timestep-simulator";
 import { SequenceManager } from "./managers/sequence-manager";
 import { getConfig } from "@shared/config";
 import { getAssetSpriteInfo } from "@/managers/asset";
+import { PlacementManager } from "@/managers/placement";
 
 export class GameClient {
   private ctx: CanvasRenderingContext2D;
@@ -49,6 +50,7 @@ export class GameClient {
   private predictionManager: PredictionManager;
   private fixedTimestepSimulator: FixedTimestepSimulator;
   private sequenceManager: SequenceManager;
+  private placementManager!: PlacementManager;
 
   // FPS tracking
   private frameCount: number = 0;
@@ -279,7 +281,8 @@ export class GameClient {
       this.craftingTable,
       this.merchantBuyPanel,
       this.gameOverDialog,
-      this.particleManager
+      this.particleManager,
+      () => this.getPlacementManager()
     );
 
     this.resizeController = new ResizeController(this.renderer);
@@ -292,6 +295,16 @@ export class GameClient {
     this.socketManager = new ClientSocketManager(serverUrl);
     this.clientEventListener = new ClientEventListener(this, this.socketManager);
     this.commandManager = new CommandManager(this.socketManager, this.gameState);
+
+    // Initialize placement manager
+    this.placementManager = new PlacementManager(
+      this.ctx.canvas,
+      this.cameraManager,
+      this.mapManager,
+      () => this.getMyPlayer(),
+      () => this.gameState.entities,
+      this.socketManager.getSocket()
+    );
 
     // Set up ping display
     this.socketManager.onPing((ping) => {
@@ -330,6 +343,10 @@ export class GameClient {
     return this.gameState.playerId
       ? (getEntityById(this.gameState, this.gameState.playerId) as unknown as PlayerClient)
       : null;
+  }
+
+  public getPlacementManager(): PlacementManager | null {
+    return this.placementManager || null;
   }
 
   public getMapManager(): MapManager {

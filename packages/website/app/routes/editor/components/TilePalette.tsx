@@ -2,6 +2,7 @@ import { Button } from "~/components/ui/button";
 import { useEditorStore } from "../store";
 import type { Layer } from "../types";
 import { getConfig } from "@shared/config";
+import { DecalsPanel } from "./DecalsPanel";
 
 interface TilePaletteProps {
   onTileSelect: (row: number, col: number, layer: Layer) => void;
@@ -190,7 +191,7 @@ export function TilePalette({ onTileSelect }: TilePaletteProps) {
               : "bg-gray-700 hover:bg-gray-600"
           } text-white px-4 py-2`}
         >
-          Ground Tiles
+          Ground
         </Button>
         <Button
           onClick={() => switchLayer("collidables")}
@@ -201,6 +202,16 @@ export function TilePalette({ onTileSelect }: TilePaletteProps) {
           } text-white px-4 py-2`}
         >
           Collidables
+        </Button>
+        <Button
+          onClick={() => switchLayer("decals")}
+          className={`flex-1 ${
+            activeLayer === "decals"
+              ? "bg-purple-600 hover:bg-purple-700"
+              : "bg-gray-700 hover:bg-gray-600"
+          } text-white px-4 py-2`}
+        >
+          Decals
         </Button>
       </div>
 
@@ -490,6 +501,14 @@ export function TilePalette({ onTileSelect }: TilePaletteProps) {
               </>
             )}
           </div>
+        </div>
+      )}
+
+      {/* Decals Panel */}
+      {activeLayer === "decals" && (
+        <div className="bg-gray-800 p-4 rounded-lg border-2 border-purple-500">
+          <div className="text-lg font-medium text-purple-400 mb-4">Decals</div>
+          <DecalsPanel />
         </div>
       )}
     </div>

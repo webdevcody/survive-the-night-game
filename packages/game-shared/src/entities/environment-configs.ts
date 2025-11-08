@@ -31,4 +31,14 @@ export const ENVIRONMENT_CONFIGS: Record<string, EnvironmentConfig> = {
       sheet: "items",
     },
   },
+  sentry_gun: {
+    id: "sentry_gun",
+    category: "structure",
+    assets: {
+      assetKey: "sentry_gun",
+      x: 17,
+      y: 149,
+      sheet: "default",
+    },
+  },
 };

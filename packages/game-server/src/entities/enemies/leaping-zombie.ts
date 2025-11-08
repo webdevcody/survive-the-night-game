@@ -127,6 +127,7 @@ export class LeapingAttackStrategy implements AttackStrategy {
         .getNearbyEntities(zombiePos, getConfig().combat.ZOMBIE_ATTACK_RADIUS, [
           Entities.WALL,
           Entities.PLAYER,
+          Entities.SENTRY_GUN,
         ]);
 
       // Find the closest entity to attack

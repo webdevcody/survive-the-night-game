@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { cn } from "~/lib/utils";
 import { Button } from "~/components/ui/button";
+import { SPAWNABLE_ENTITY_TYPES, Entities } from "@shared/constants";
 
 interface SpawnPanelProps {
   gameClient: any; // GameClient type
@@ -8,84 +9,8 @@ interface SpawnPanelProps {
   onToggle: () => void;
 }
 
-// Import spawnable entity types from shared constants
-const SPAWNABLE_ITEMS = [
-  // Zombies
-  "zombie",
-  "big_zombie",
-  "fast_zombie",
-  "exploding_zombie",
-  "bat_zombie",
-  "spitter_zombie",
-  "leaping_zombie",
-
-  // Resources
-  "tree",
-  "cloth",
-  "gasoline",
-  "coin",
-
-  // Structures
-  "wall",
-  "spikes",
-  "fire",
-  "torch",
-  "landmine",
-
-  // Items
-  "bandage",
-  "knife",
-  "grenade",
-  "fire_extinguisher",
-
-  // Weapons
-  "pistol",
-  "shotgun",
-  "bolt_action_rifle",
-  "ak47",
-  "grenade_launcher",
-  "flamethrower",
-
-  // Ammo
-  "pistol_ammo",
-  "shotgun_ammo",
-  "bolt_action_ammo",
-  "ak47_ammo",
-  "grenade_launcher_ammo",
-  "flamethrower_ammo",
-].sort();
-
-// Categorize items
-const ITEM_CATEGORIES = {
-  Zombies: [
-    "zombie",
-    "big_zombie",
-    "fast_zombie",
-    "exploding_zombie",
-    "bat_zombie",
-    "spitter_zombie",
-    "leaping_zombie",
-  ],
-  Resources: ["tree", "cloth", "gasoline", "coin"],
-  Structures: ["wall", "spikes", "fire", "torch", "landmine"],
-  Items: ["bandage", "knife", "grenade", "fire_extinguisher"],
-  Weapons: [
-    "pistol",
-    "shotgun",
-    "bolt_action_rifle",
-    "ak47",
-    "grenade_launcher",
-    "flamethrower",
-  ],
-  Ammo: [
-    "pistol_ammo",
-    "shotgun_ammo",
-    "bolt_action_ammo",
-    "ak47_ammo",
-    "grenade_launcher_ammo",
-    "flamethrower_ammo",
-  ],
-};
+// Use the auto-generated spawnable entity types from shared constants
+const SPAWNABLE_ITEMS = SPAWNABLE_ENTITY_TYPES;
 
 export function SpawnPanel({ gameClient, isOpen, onToggle }: SpawnPanelProps) {
   const [filterText, setFilterText] = useState<string>("");

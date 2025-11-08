@@ -40,6 +40,7 @@ export const ClientSentEvents = {
   PING_UPDATE: "pingUpdate",
   SEND_CHAT: "sendChat",
   MERCHANT_BUY: "merchantBuy",
+  PLACE_STRUCTURE: "placeStructure",
 } as const;
 
 export type ServerSentEventType = (typeof ServerSentEvents)[keyof typeof ServerSentEvents];

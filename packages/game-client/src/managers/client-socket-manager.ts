@@ -181,6 +181,10 @@ export class ClientSocketManager {
     this.socket.emit(ClientSentEvents.SEND_CHAT, { message });
   }
 
+  public getSocket(): Socket {
+    return this.rawSocket;
+  }
+
   /**
    * Disconnect from the game server and clean up resources
    */

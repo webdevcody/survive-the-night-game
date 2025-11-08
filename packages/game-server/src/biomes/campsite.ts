@@ -1,5 +1,6 @@
 import { Entities } from "@/constants";
 import { BiomeData } from "./types";
+import { DECAL_REGISTRY } from "@shared/config/decals-config";
 
 export const CAMPSITE: BiomeData = {
   ground: [
@@ -37,6 +38,14 @@ export const CAMPSITE: BiomeData = {
     [-1, -1, -1, -1, -1, -1, 39, -1, -1, -1, -1, -1, -1, -1, -1, -1],
     [3, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, 3],
     [3, 3, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, 3, 3]
+  ],
+  decals: [
+    {
+      id: 'campfire',
+      position: { x: 7, y: 7 },
+      animation: DECAL_REGISTRY.campfire.animation,
+      light: DECAL_REGISTRY.campfire.light,
+    },
   ],
   items: [
     Entities.PISTOL,

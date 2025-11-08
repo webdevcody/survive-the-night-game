@@ -3,12 +3,14 @@ import { BandageRecipe } from "../recipes/bandage-recipe";
 import { WallRecipe } from "../recipes/wall-recipe";
 import { ItemType, InventoryItem } from "./inventory";
 import { TorchRecipe } from "@/recipes/torch-recipe";
+import { SentryGunRecipe } from "@/recipes/sentry-gun-recipe";
 
 export enum RecipeType {
   Bandage = "bandage",
   Wall = "wall",
   Spike = "spike",
   Torch = "torch",
+  SentryGun = "sentry_gun",
 }
 
 export const recipes: Recipe[] = [
@@ -16,6 +18,7 @@ export const recipes: Recipe[] = [
   new WallRecipe(),
   new SpikeRecipe(),
   new TorchRecipe(),
+  new SentryGunRecipe(),
 ];
 
 export interface RecipeComponent {

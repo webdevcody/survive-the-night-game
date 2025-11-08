@@ -86,6 +86,11 @@ export class PlayerClient extends ClientEntity implements IClientEntity, Rendera
     return this.inventory;
   }
 
+  getSelectedInventorySlot(): number {
+    // inventoryItem is 1-indexed (1-10), convert to 0-indexed (0-9)
+    return this.input.inventoryItem - 1;
+  }
+
   getInput(): Input {
     return this.input;
   }

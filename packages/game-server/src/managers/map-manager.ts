@@ -40,6 +40,7 @@ import {
   SHED,
 } from "@/biomes";
 import type { MapData } from "@shared/events/server-sent/map-event";
+import type { DecalData } from "@shared/config/decals-config";
 import { AK47 } from "@/entities/weapons/ak47";
 import { AK47Ammo } from "@/entities/items/ak47-ammo";
 import { BoltActionAmmo } from "@/entities/items/bolt-action-ammo";
@@ -98,6 +99,7 @@ const MAP_SIZE = 16;
 export class MapManager implements IMapManager {
   private groundLayer: number[][] = [];
   private collidablesLayer: number[][] = [];
+  private decals: DecalData[] = [];
   private gameManagers?: IGameManagers;
   private entityManager?: IEntityManager;
   private gameMaster?: GameMaster;
@@ -142,6 +144,7 @@ export class MapManager implements IMapManager {
     return {
       ground: this.groundLayer,
       collidables: this.collidablesLayer,
+      decals: this.decals.length > 0 ? this.decals : undefined,
       biomePositions: {
         campsite: { x: centerBiomeX, y: centerBiomeY },
         farm: this.farmBiomePosition,
@@ -382,6 +385,7 @@ export class MapManager implements IMapManager {
 
   generateMap() {
     this.getEntityManager().clear();
+    this.decals = []; // Clear decals for new map
     this.generateSpatialGrid();
     this.initializeMap();
     this.selectRandomFarmBiomePosition();
@@ -768,6 +772,20 @@ export class MapManager implements IMapManager {
         const mapX = biomeX * BIOME_SIZE + x;
         this.groundLayer[mapY][mapX] = biome.ground[y][x];
         this.collidablesLayer[mapY][mapX] = biome.collidables[y][x];
+      }
+    }
+
+    // Place biome decals with converted absolute positions
+    if (biome.decals && biome.decals.length > 0) {
+      for (const decal of biome.decals) {
+        // Convert local biome position (0-15) to absolute map position
+        const absoluteX = biomeX * BIOME_SIZE + decal.position.x;
+        const absoluteY = biomeY * BIOME_SIZE + decal.position.y;
+
+        this.decals.push({
+          ...decal,
+          position: { x: absoluteX, y: absoluteY },
+        });
       }
     }
 

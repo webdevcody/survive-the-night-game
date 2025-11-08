@@ -7,6 +7,7 @@ import { InventoryBarUI } from "@/ui/inventory-bar";
 import { Hud } from "@/ui/hud";
 import { GameOverDialogUI } from "@/ui/game-over-dialog";
 import { ParticleManager } from "./managers/particles";
+import { PlacementManager } from "./managers/placement";
 import { ClientPositionable } from "@/extensions/positionable";
 import { ClientEntityBase } from "@/extensions/client-entity";
 import { getConfig } from "@shared/config";
@@ -23,6 +24,7 @@ export class Renderer {
   private merchantBuyPanel: MerchantBuyPanel;
   private gameOverDialog: GameOverDialogUI;
   private particleManager: ParticleManager;
+  private getPlacementManager: () => PlacementManager | null;
   private lastPerfLogTime: number | null = null;
 
   constructor(
@@ -34,7 +36,8 @@ export class Renderer {
     craftingTable: CraftingTable,
     merchantBuyPanel: MerchantBuyPanel,
     gameOverDialog: GameOverDialogUI,
-    particleManager: ParticleManager
+    particleManager: ParticleManager,
+    getPlacementManager: () => PlacementManager | null
   ) {
     this.ctx = ctx;
     this.gameState = gameState;
@@ -45,6 +48,7 @@ export class Renderer {
     this.merchantBuyPanel = merchantBuyPanel;
     this.gameOverDialog = gameOverDialog;
     this.particleManager = particleManager;
+    this.getPlacementManager = getPlacementManager;
     this.resizeCanvas();
   }
 
@@ -141,6 +145,11 @@ export class Renderer {
     this.mapManager.renderCollidables(this.ctx);
     perfTimer.end("renderCollidables");
 
+    // Render decals (animated decorative sprites above ground/collidables but below entities)
+    perfTimer.start("renderDecals");
+    this.mapManager.renderDecals(this.ctx);
+    perfTimer.end("renderDecals");
+
     // Render entities
     perfTimer.start("renderEntities");
     this.renderEntities();
@@ -150,6 +159,14 @@ export class Renderer {
     perfTimer.start("renderParticles");
     this.particleManager.render(this.ctx);
     perfTimer.end("renderParticles");
+
+    // Render placement ghost (if active)
+    perfTimer.start("renderPlacement");
+    const placementManager = this.getPlacementManager();
+    if (placementManager) {
+      placementManager.render(this.ctx);
+    }
+    perfTimer.end("renderPlacement");
 
     // Apply darkness overlay on top of everything (ground, collidables, entities)
     perfTimer.start("renderDarkness");

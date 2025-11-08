@@ -19,6 +19,32 @@ interface ChangelogEntry {
 
 const changelog: ChangelogEntry[] = [
   {
+    version: "0.6.0",
+    date: "2025-11-07",
+    changes: [
+      "Added Sentry Gun craftable item that automatically targets and shoots zombies.",
+      "Sentry guns can be placed using the interactive placement system.",
+      "Sentry guns have 360-degree detection radius and automatically engage zombies within range.",
+      "Added campfire sprite and decal system for enhanced visual detail.",
+      "Decals can now be placed in the map editor for decorative elements.",
+      "New DecalsPanel in the map editor allows browsing and placing decal sprites.",
+      "Campfire decal added to campsite biomes for improved atmosphere.",
+    ],
+  },
+  {
+    version: "0.5.0",
+    date: "2025-11-07",
+    changes: [
+      "Added interactive wall placement system with mouse targeting.",
+      "Walls can now be placed by selecting them from inventory and clicking on the map.",
+      "Ghost template preview shows valid (green) and invalid (red) placement locations.",
+      "Walls snap to 16x16 pixel grid for clean alignment.",
+      "Placement range limited to 100 pixels from player with visual range indicator.",
+      "Server validates all placements to prevent cheating and ensure fair gameplay.",
+      "Placement blocked on occupied tiles, near entities, or outside map bounds.",
+    ],
+  },
+  {
     version: "0.4.2",
     date: "2025-11-07",
     changes: [

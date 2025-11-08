@@ -15,6 +15,10 @@ export class CameraManager {
     return this.position;
   }
 
+  getScale(): number {
+    return this.scale;
+  }
+
   setScale(scale: number): void {
     this.scale = scale;
   }

@@ -1,9 +1,11 @@
 import { EventType, ServerSentEvents } from "../events";
 import { GameEvent } from "@/events/types";
+import { DecalData } from "@/config/decals-config";
 
 export interface MapData {
   ground: number[][];
   collidables: number[][];
+  decals?: DecalData[];
   biomePositions?: {
     campsite: { x: number; y: number };
     farm?: { x: number; y: number };
