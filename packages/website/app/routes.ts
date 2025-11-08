@@ -3,7 +3,7 @@ import { type RouteConfig } from "@react-router/dev/routes";
 export default [
   {
     path: "/",
-    file: "routes/_index.tsx",
+    file: "routes/index.tsx",
   },
   {
     path: "/play",
@@ -16,10 +16,6 @@ export default [
   {
     path: "/editor",
     file: "routes/editor/index.tsx",
-  },
-  {
-    path: "/changelog",
-    file: "routes/changelog.tsx",
   },
   {
     path: "/privacy",
