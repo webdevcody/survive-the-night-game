@@ -4,6 +4,7 @@ import { WallRecipe } from "../recipes/wall-recipe";
 import { ItemType, InventoryItem } from "./inventory";
 import { TorchRecipe } from "@/recipes/torch-recipe";
 import { SentryGunRecipe } from "@/recipes/sentry-gun-recipe";
+import { getConfig } from "@/config";
 
 export enum RecipeType {
   Bandage = "bandage",
@@ -33,13 +34,18 @@ export interface PlayerResources {
 export interface CraftingResult {
   inventory: InventoryItem[];
   resources: PlayerResources;
+  itemToDrop?: InventoryItem; // Item to drop if inventory was full
 }
 
 export interface Recipe {
   getType(): RecipeType;
   canBeCrafted: (inventory: InventoryItem[], resources: PlayerResources) => boolean;
   components: () => RecipeComponent[];
-  craft: (inventory: InventoryItem[], resources: PlayerResources) => CraftingResult;
+  craft: (
+    inventory: InventoryItem[],
+    resources: PlayerResources,
+    maxInventorySlots?: number
+  ) => CraftingResult;
   resultingComponent: () => RecipeComponent;
 }
 
@@ -52,6 +58,8 @@ export function craftRecipe(
   const newResources = { ...resources };
   const components = recipe.components();
   const found: number[] = [];
+
+  const maxInventorySlots = getConfig().player.MAX_INVENTORY_SLOTS;
 
   // Count how many of each resource we need
   const resourceNeeds = { wood: 0, cloth: 0 };
@@ -70,9 +78,11 @@ export function craftRecipe(
 
   // Check inventory for non-resource items
   for (const item of inventory) {
+    if (!item) continue; // Skip null/empty inventory slots
+
     const componentIdx = components.findIndex(
       (it, idx) =>
-        it.type === item?.itemType &&
+        it.type === item.itemType &&
         it.type !== "wood" &&
         it.type !== "cloth" &&
         !found.includes(idx)
@@ -110,13 +120,28 @@ export function craftRecipe(
         count: (existingItem.state?.count || 1) + 1,
       },
     };
-  } else {
-    // Add as new item with count
-    newInventory.push({
-      itemType: resulting.type,
-      state: { count: 1 },
-    });
+    return { inventory: newInventory, resources: newResources };
   }
+
+  // Check if inventory is full
+  const currentItemCount = newInventory.filter((item) => item != null).length;
+  if (currentItemCount >= maxInventorySlots) {
+    // Inventory is full, return the item to be dropped
+    return {
+      inventory: newInventory,
+      resources: newResources,
+      itemToDrop: {
+        itemType: resulting.type,
+        state: { count: 1 },
+      },
+    };
+  }
+
+  // Add as new item with count
+  newInventory.push({
+    itemType: resulting.type,
+    state: { count: 1 },
+  });
 
   return { inventory: newInventory, resources: newResources };
 }

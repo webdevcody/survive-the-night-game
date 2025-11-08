@@ -1025,7 +1025,7 @@ export class MapManager implements IMapManager {
    * Crates are placed on ground tiles without collidables.
    * @param count Number of crates to spawn (default: 4)
    */
-  public spawnCrates(count: number = 4): void {
+  public spawnCrates(count: number): void {
     const totalSize = BIOME_SIZE * MAP_SIZE;
     const validPositions: { x: number; y: number }[] = [];
 

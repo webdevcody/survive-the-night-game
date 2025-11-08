@@ -244,6 +244,29 @@ export class Player extends Entity {
     this.wood = result.resources.wood;
     this.cloth = result.resources.cloth;
 
+    // If inventory was full, drop the crafted item on the ground
+    if (result.itemToDrop) {
+      const entity = this.getEntityManager()?.createEntityFromItem(result.itemToDrop);
+      if (entity) {
+        const position = this.getExt(Positionable).getPosition();
+        // Add small random offset so it doesn't spawn exactly on the player
+        const offset = 20;
+        const theta = Math.random() * 2 * Math.PI;
+        const pos = new Vector2(
+          position.x + offset * Math.cos(theta),
+          position.y + offset * Math.sin(theta)
+        );
+
+        if ("setPosition" in entity) {
+          (entity as any).setPosition(pos);
+        } else if (entity.hasExt(Positionable)) {
+          entity.getExt(Positionable).setPosition(pos);
+        }
+
+        this.getEntityManager()?.addEntity(entity);
+      }
+    }
+
     this.setIsCrafting(false);
   }
 

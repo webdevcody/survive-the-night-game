@@ -2,6 +2,24 @@
 
 Feel free to pick any item listed out here to work on.
 
+## Bug
+
+- I'm not able to craft on game server.. something is wrong with the inventory / crafting
+- add ability to drag map around with a click drag approach
+- add a click any button to respawn
+- remove the ability to revive players
+
+Uncaught Error: Image not found: zombie*swing_facing_left*-1
+at Ws.getFrameWithDirection (index-BwqH-Gfo.js:1:20231)
+at \_s.render (index-BwqH-Gfo.js:3:53681)
+at index-BwqH-Gfo.js:3:65073
+at Array.forEach (<anonymous>)
+at Po.render (index-BwqH-Gfo.js:3:65059)
+at mo.render (index-BwqH-Gfo.js:3:51459)
+at t (index-BwqH-Gfo.js:3:77097)
+
+- when someone is typing into the chat, disable all the other hotkeys
+
 ## TODO
 
 - hook the configuration panel so that values propigate to the server as well so I don't have to restart the server when tweaking values

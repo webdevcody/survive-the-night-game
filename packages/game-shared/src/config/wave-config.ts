@@ -26,6 +26,11 @@ export const waveConfig = {
    * Whether waves auto-start after preparation or require manual trigger
    */
   AUTO_START_WAVES: true,
+
+  /**
+   * Number of crates to spawn per wave
+   */
+  CRATES_SPAWNED_PER_WAVE: 2,
 } as const;
 
 export type WaveConfig = typeof waveConfig;

@@ -184,7 +184,7 @@ export class GameServer {
   private onWaveComplete(): void {
     console.log(`Wave ${this.waveNumber} completed`);
     // Spawn crates at wave end
-    this.mapManager.spawnCrates(4);
+    this.mapManager.spawnCrates(getConfig().wave.CRATES_SPAWNED_PER_WAVE);
     this.waveNumber++;
   }
 

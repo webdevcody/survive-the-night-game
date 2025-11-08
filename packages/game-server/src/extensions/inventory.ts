@@ -121,13 +121,15 @@ export default class Inventory implements Extension {
   public craftRecipe(recipe: RecipeType, resources: { wood: number; cloth: number }): {
     inventory: InventoryItem[];
     resources: { wood: number; cloth: number };
+    itemToDrop?: InventoryItem;
   } {
     const foundRecipe = recipes.find((it) => it.getType() === recipe);
     if (foundRecipe === undefined) {
       return { inventory: this.items, resources };
     }
 
-    const result = foundRecipe.craft(this.items, resources);
+    const maxSlots = getConfig().player.MAX_INVENTORY_SLOTS;
+    const result = foundRecipe.craft(this.items, resources, maxSlots);
     this.items = result.inventory;
     return result;
   }

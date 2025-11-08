@@ -349,9 +349,11 @@ export class Hud {
     // Settings for crate indicators
     const ARROW_SIZE = 30;
     const ARROW_DISTANCE = 60; // Distance from screen edge
-    const LABEL_FONT = "bold 24px Arial";
     const ARROW_COLOR = "rgba(255, 50, 50, 0.9)"; // Red
-    const LABEL_COLOR = "white";
+    const CRATE_SPRITE_SIZE = 32; // Size to draw the crate sprite
+
+    // Get the items sprite sheet
+    const crateSprite = this.assetManager.getFrameIndex("crate", 0);
 
     for (const crate of crates) {
       const cratePos = crate.getExt(ClientPositionable).getCenterPosition();
@@ -421,19 +423,22 @@ export class Hud {
 
       ctx.restore();
 
-      // Draw "C" label next to arrow
-      ctx.font = LABEL_FONT;
-      ctx.fillStyle = LABEL_COLOR;
-      ctx.strokeStyle = "rgba(0, 0, 0, 0.8)";
-      ctx.lineWidth = 3;
+      // Draw crate sprite next to arrow
+      const spriteOffsetX = Math.cos(angle) * (ARROW_SIZE + 16);
+      const spriteOffsetY = Math.sin(angle) * (ARROW_SIZE + 16);
+      const spriteX = indicatorX + spriteOffsetX - CRATE_SPRITE_SIZE / 2;
+      const spriteY = indicatorY + spriteOffsetY - CRATE_SPRITE_SIZE / 2;
 
-      const labelOffsetX = Math.cos(angle) * (ARROW_SIZE + 10);
-      const labelOffsetY = Math.sin(angle) * (ARROW_SIZE + 10);
-      const labelX = indicatorX + labelOffsetX;
-      const labelY = indicatorY + labelOffsetY;
-
-      ctx.strokeText("C", labelX - 8, labelY + 8);
-      ctx.fillText("C", labelX - 8, labelY + 8);
+      // Draw crate sprite (getFrameIndex returns a pre-cropped image)
+      if (crateSprite) {
+        ctx.drawImage(
+          crateSprite,
+          spriteX,
+          spriteY,
+          CRATE_SPRITE_SIZE,
+          CRATE_SPRITE_SIZE
+        );
+      }
     }
 
     ctx.restore();
