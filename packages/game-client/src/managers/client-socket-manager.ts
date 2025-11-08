@@ -181,6 +181,10 @@ export class ClientSocketManager {
     this.socket.emit(ClientSentEvents.SEND_CHAT, { message });
   }
 
+  public requestRespawn() {
+    this.socket.emit(ClientSentEvents.PLAYER_RESPAWN_REQUEST);
+  }
+
   public getSocket(): Socket {
     return this.rawSocket;
   }

@@ -2,6 +2,12 @@
 
 Feel free to pick any item listed out here to work on.
 
+## Suggestions
+
+- ​​add gate that works like wall but users can go through while zombies not
+- ​​add a fear / anxiety meter when outside of base at night, when it gets low you do "something" negative to players
+- add aim with cursor or at least 8 directions, it's annoying that I can only shoot 4 directions
+
 ## Bug
 
 - I'm not able to craft on game server.. something is wrong with the inventory / crafting

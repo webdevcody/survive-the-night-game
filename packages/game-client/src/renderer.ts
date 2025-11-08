@@ -26,6 +26,7 @@ export class Renderer {
   private particleManager: ParticleManager;
   private getPlacementManager: () => PlacementManager | null;
   private lastPerfLogTime: number | null = null;
+  private mousePosition: { x: number; y: number } | null = null;
 
   constructor(
     ctx: CanvasRenderingContext2D,
@@ -182,6 +183,10 @@ export class Renderer {
     // this.craftingTable.render(this.ctx, this.gameState);
     this.merchantBuyPanel.render(this.ctx, this.gameState);
     this.gameOverDialog.render(this.ctx, this.gameState);
+
+    // Render cursor (crosshair when weapon is equipped)
+    this.renderCursor();
+
     perfTimer.end("renderUI");
 
     perfTimer.end("render");
@@ -201,5 +206,94 @@ export class Renderer {
       console.log("--------------------------------");
       this.lastPerfLogTime = performance.now();
     }
+  }
+
+  /**
+   * Update mouse position for cursor rendering
+   */
+  public updateMousePosition(x: number, y: number): void {
+    this.mousePosition = { x, y };
+  }
+
+  /**
+   * Render crosshair cursor when a weapon is equipped
+   */
+  private renderCursor(): void {
+    if (!this.mousePosition) return;
+
+    // Check if player has a weapon equipped
+    const player = this.gameState.playerId
+      ? this.gameState.entities.find((e) => e.getId() === this.gameState.playerId)
+      : null;
+
+    if (!player) return;
+
+    // Get player's active inventory item
+    const inventory = (player as any).getInventory?.();
+    if (!inventory) return;
+
+    const activeSlot = (player as any).getInput?.()?.inventoryItem || 1;
+    const activeItem = inventory[activeSlot - 1];
+
+    // Check if active item is a weapon
+    const weapons = [
+      "knife",
+      "shotgun",
+      "pistol",
+      "bolt_action_rifle",
+      "ak47",
+      "grenade",
+      "grenade_launcher",
+      "flamethrower",
+    ];
+
+    const hasWeapon = activeItem && weapons.includes(activeItem.itemType);
+
+    if (!hasWeapon) return;
+
+    // Draw crosshair cursor
+    const ctx = this.ctx;
+    const { x, y } = this.mousePosition;
+    const size = 10;
+    const gap = 4;
+    const thickness = 2;
+
+    ctx.save();
+    ctx.strokeStyle = "rgba(255, 255, 255, 0.8)";
+    ctx.lineWidth = thickness;
+    ctx.lineCap = "round";
+
+    // Draw four lines forming a crosshair
+    // Top
+    ctx.beginPath();
+    ctx.moveTo(x, y - gap);
+    ctx.lineTo(x, y - size);
+    ctx.stroke();
+
+    // Bottom
+    ctx.beginPath();
+    ctx.moveTo(x, y + gap);
+    ctx.lineTo(x, y + size);
+    ctx.stroke();
+
+    // Left
+    ctx.beginPath();
+    ctx.moveTo(x - gap, y);
+    ctx.lineTo(x - size, y);
+    ctx.stroke();
+
+    // Right
+    ctx.beginPath();
+    ctx.moveTo(x + gap, y);
+    ctx.lineTo(x + size, y);
+    ctx.stroke();
+
+    // Optional: draw center dot
+    ctx.fillStyle = "rgba(255, 255, 255, 0.6)";
+    ctx.beginPath();
+    ctx.arc(x, y, 1.5, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.restore();
   }
 }

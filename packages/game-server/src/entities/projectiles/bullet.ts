@@ -96,6 +96,19 @@ export class Bullet extends Entity {
     );
   }
 
+  /**
+   * Set bullet direction from an angle in radians
+   * @param angle Angle in radians (0 = right, PI/2 = down, PI = left, 3PI/2 = up)
+   */
+  setDirectionFromAngle(angle: number) {
+    const dirX = Math.cos(angle);
+    const dirY = Math.sin(angle);
+
+    this.getExt(Movable).setVelocity(
+      new Vector2(dirX * Bullet.BULLET_SPEED, dirY * Bullet.BULLET_SPEED)
+    );
+  }
+
   private updateBullet(deltaTime: number) {
     const currentPosition = this.getPosition();
 

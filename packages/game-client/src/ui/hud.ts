@@ -527,6 +527,9 @@ export class Hud {
     this.leaderboard.render(ctx, gameState);
     this.chatWidget.render(ctx, gameState);
 
+    // Render death screen if player is dead
+    this.renderDeathScreen(ctx, gameState);
+
     // Render fullscreen map on top of everything else if open
     this.fullscreenMap.render(ctx, gameState);
   }
@@ -557,6 +560,41 @@ export class Hud {
       const x = (ctx.canvas.width - metrics.width) / 2;
       ctx.fillText(message.message, x, margin + index * gap);
     });
+  }
+
+  private renderDeathScreen(ctx: CanvasRenderingContext2D, gameState: GameState): void {
+    const player = getPlayer(gameState);
+    if (!player || !player.isDead()) {
+      return;
+    }
+
+    ctx.save();
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+
+    const text = "Press any key to respawn";
+    ctx.font = "48px Arial";
+    const metrics = ctx.measureText(text);
+    const padding = 30;
+
+    // Calculate centered position
+    const panelWidth = metrics.width + padding * 2;
+    const panelHeight = 100;
+    const x = (ctx.canvas.width - panelWidth) / 2;
+    const y = (ctx.canvas.height - panelHeight) / 2;
+
+    // Draw semi-transparent background overlay
+    ctx.fillStyle = "rgba(0, 0, 0, 0.7)";
+    ctx.fillRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+
+    // Draw white background panel
+    ctx.fillStyle = "white";
+    ctx.fillRect(x, y, panelWidth, panelHeight);
+
+    // Draw black text
+    ctx.fillStyle = "black";
+    ctx.fillText(text, x + padding, y + 65);
+
+    ctx.restore();
   }
 
   private renderMuteButton(ctx: CanvasRenderingContext2D): void {

@@ -147,30 +147,26 @@ export class Player extends Entity {
       })
     );
     this.getExt(Collidable).setEnabled(false);
-
-    // Add Interactive extension for revival
-    this.addExtension(
-      new Interactive(this)
-        .onInteract((interactingPlayerId: string) => this.revive())
-        .setDisplayName("revive")
-        .setOffset(new Vector2(-2, -5))
-    );
   }
 
-  revive(): void {
+  respawn(): void {
     if (!this.isDead()) return;
 
-    // Find and remove the Interactive extension
-    const interactive = this.extensions.find((ext) => ext instanceof Interactive);
-    if (interactive) {
-      this.removeExtension(interactive);
-    }
+    // Clear inventory
+    this.getExt(Inventory).clear();
 
     // Re-enable collision
     this.getExt(Collidable).setEnabled(true);
 
-    // Set health to 2
-    this.getExt(Destructible).setHealth(2);
+    // Set health to max
+    const maxHealth = this.getExt(Destructible).getMaxHealth();
+    this.getExt(Destructible).setHealth(maxHealth);
+
+    // Respawn at campsite
+    const campsitePosition = this.getGameManagers().getMapManager().getRandomCampsitePosition();
+    if (campsitePosition) {
+      this.setPosition(campsitePosition);
+    }
   }
 
   isInventoryFull(): boolean {
@@ -309,7 +305,13 @@ export class Player extends Entity {
 
     if (this.fireCooldown.isReady()) {
       this.fireCooldown.reset();
-      weaponEntity.attack(this.getId(), this.getCenterPosition(), this.input.facing);
+      // Use aimAngle if provided (mouse aiming), otherwise fall back to facing direction
+      weaponEntity.attack(
+        this.getId(),
+        this.getCenterPosition(),
+        this.input.facing,
+        this.input.aimAngle
+      );
     }
   }
 
@@ -622,6 +624,19 @@ export class Player extends Entity {
     this.handleDrop(deltaTime);
     this.handleConsume(deltaTime);
     this.handleStamina(deltaTime);
+    this.updateLighting();
+  }
+
+  private updateLighting() {
+    // Only provide light if the player has a torch equipped
+    const activeItem = this.activeItem;
+    const hasTorchEquipped = activeItem?.itemType === "torch";
+
+    if (this.hasExt(Illuminated)) {
+      const illuminated = this.getExt(Illuminated);
+      // Set radius to 200 if torch equipped, 0 otherwise
+      illuminated.setRadius(hasTorchEquipped ? 200 : 0);
+    }
   }
 
   setInput(input: Input) {

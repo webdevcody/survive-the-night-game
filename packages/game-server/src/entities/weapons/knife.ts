@@ -23,7 +23,7 @@ export class Knife extends Weapon {
     return this.config.stats.cooldown;
   }
 
-  public attack(playerId: string, position: Vector2, facing: Direction): void {
+  public attack(playerId: string, position: Vector2, facing: Direction, aimAngle?: number): void {
     const nearbyEnemies = this.getEntityManager().getNearbyEnemies(
       position,
       getConfig().combat.KNIFE_ATTACK_RANGE + 24,

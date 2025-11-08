@@ -53,6 +53,19 @@ export class GrenadeProjectile extends Entity {
     );
   }
 
+  /**
+   * Set grenade direction from an angle in radians
+   * @param angle Angle in radians (0 = right, PI/2 = down, PI = left, 3PI/2 = up)
+   */
+  setDirectionFromAngle(angle: number) {
+    const dirX = Math.cos(angle);
+    const dirY = Math.sin(angle);
+
+    this.getExt(Movable).setVelocity(
+      new Vector2(dirX * GRENADE_PROJECTILE_SPEED, dirY * GRENADE_PROJECTILE_SPEED)
+    );
+  }
+
   setPosition(position: Vector2) {
     this.getExt(Positionable).setPosition(position);
     this.startPosition = position;

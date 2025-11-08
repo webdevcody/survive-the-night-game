@@ -20,6 +20,31 @@ interface ChangelogEntry {
 
 const changelog: ChangelogEntry[] = [
   {
+    version: "0.8.0",
+    date: "2025-11-08",
+    changes: [
+      "Removed player revival system - players can no longer revive each other.",
+      "Added individual player respawn system with 'Press any key to respawn' prompt.",
+      "Players now respawn at the campsite with full health when they press any key after dying.",
+      "Inventory is cleared on death and items remain scattered on the ground.",
+      "Death screen displays with semi-transparent overlay when player dies.",
+      "Added mouse aiming for weapons - aim with cursor and click to shoot.",
+      "Players can now aim in any direction independent of movement direction.",
+      "Improved weapon firing mechanics with precise angle-based targeting.",
+    ],
+  },
+  {
+    version: "0.7.1",
+    date: "2025-11-08",
+    changes: [
+      "Players no longer emit light unless they have a torch equipped.",
+      "Torches must now be actively selected to provide illumination.",
+      "Improved lighting system performance by filtering out entities with no light radius.",
+      "Enhanced strategic gameplay - players must choose between weapons and visibility.",
+      "Minimap fog of war now respects player lighting (only reveals areas when torch is equipped).",
+    ],
+  },
+  {
     version: "0.7.0",
     date: "2025-11-08",
     changes: [

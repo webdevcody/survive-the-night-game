@@ -21,7 +21,7 @@ export class Flamethrower extends Weapon {
     return this.config.stats.cooldown;
   }
 
-  public attack(playerId: string, position: Vector2, facing: Direction): void {
+  public attack(playerId: string, position: Vector2, facing: Direction, aimAngle?: number): void {
     const player = this.getEntityManager().getEntityById(playerId);
     if (!player) return;
 
@@ -35,7 +35,14 @@ export class Flamethrower extends Weapon {
     // Create flame projectile with damage
     const flame = new FlameProjectile(this.getGameManagers(), 1);
     flame.setPosition(position);
-    flame.setDirection(facing);
+
+    // Use aimAngle if provided (mouse aiming), otherwise use facing direction
+    if (aimAngle !== undefined) {
+      flame.setDirectionFromAngle(aimAngle);
+    } else {
+      flame.setDirection(facing);
+    }
+
     flame.setShooterId(playerId);
     this.getEntityManager().addEntity(flame);
 

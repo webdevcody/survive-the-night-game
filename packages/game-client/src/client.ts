@@ -92,7 +92,7 @@ export class GameClient {
     this.fixedTimestepSimulator = new FixedTimestepSimulator(getConfig().simulation.FIXED_TIMESTEP);
     this.sequenceManager = new SequenceManager();
 
-    // Add mousemove event listener for UI hover interactions
+    // Add mousemove event listener for UI hover interactions and aiming
     canvas.addEventListener("mousemove", (e) => {
       const rect = canvas.getBoundingClientRect();
 
@@ -107,10 +107,21 @@ export class GameClient {
       if (this.hotbar) {
         this.hotbar.updateMousePosition(x, y, canvas.width, canvas.height);
       }
+
+      // Update input manager mouse position for aiming
+      this.inputManager.updateMousePosition(x, y);
+
+      // Update renderer mouse position for cursor rendering
+      if (this.renderer) {
+        this.renderer.updateMousePosition(x, y);
+      }
     });
 
-    // Add click event listener for UI interactions
-    canvas.addEventListener("click", (e) => {
+    // Add mousedown event listener for weapon firing
+    canvas.addEventListener("mousedown", (e) => {
+      // Only handle left click
+      if (e.button !== 0) return;
+
       const rect = canvas.getBoundingClientRect();
 
       // Convert CSS coordinates to canvas coordinates
@@ -127,9 +138,28 @@ export class GameClient {
       }
 
       // Handle HUD clicks (like mute button)
-      if (this.hud) {
-        this.hud.handleClick(x, y, canvas.height);
+      if (this.hud && this.hud.handleClick(x, y, canvas.height)) {
+        return; // Click was handled by HUD
       }
+
+      // If click wasn't handled by UI, trigger weapon fire
+      const player = getPlayer();
+      if (player && !player.isDead()) {
+        const inventory = getInventory();
+        const activeSlot = this.inputManager.getInputs().inventoryItem;
+        const activeItem = inventory[activeSlot - 1];
+
+        // Only fire if player has a weapon equipped
+        if (activeItem && this.isWeaponItem(activeItem.itemType)) {
+          this.inputManager.triggerFire();
+        }
+      }
+    });
+
+    // Add mouseup event listener to stop firing
+    canvas.addEventListener("mouseup", (e) => {
+      if (e.button !== 0) return; // Only handle left click
+      this.inputManager.releaseFire();
     });
 
     const getInventory = () => {
@@ -283,6 +313,13 @@ export class GameClient {
         if (this.merchantBuyPanel.isVisible()) {
           this.merchantBuyPanel.close();
         }
+      },
+      isPlayerDead: () => {
+        const player = getPlayer();
+        return player ? player.isDead() : false;
+      },
+      onRespawnRequest: () => {
+        this.socketManager.requestRespawn();
       },
     });
 
@@ -482,7 +519,6 @@ export class GameClient {
     // This ensures consistent movement speed regardless of frame rate
     const player = this.getMyPlayer();
     if (player) {
-      const input = this.inputManager.getInputs();
       const mapData = this.mapManager.getMapData();
 
       // Only predict movement and send input if player is alive
@@ -490,6 +526,18 @@ export class GameClient {
         !player.hasExt(ClientDestructible) || !player.getExt(ClientDestructible).isDead();
 
       if (isAlive) {
+        // Get inputs with aim angle calculated from mouse position
+        const playerPos = player.getPosition();
+        const cameraPos = this.cameraManager.getPosition();
+        const cameraScale = this.cameraManager.getScale();
+        const input = this.inputManager.getInputsWithAim(
+          playerPos,
+          cameraPos,
+          this.ctx.canvas.width,
+          this.ctx.canvas.height,
+          cameraScale
+        );
+
         // Track whether player has movement input
         const hasMovementInput = input.dx !== 0 || input.dy !== 0;
         const reconciliationManager = this.predictionManager.getReconciliationManager();
@@ -531,6 +579,32 @@ export class GameClient {
     this.positionCameraOnPlayer();
     this.hud.update(this.gameState);
     this.updatePlayerMovementSounds();
+    this.updateCursorVisibility();
+  }
+
+  /**
+   * Update cursor visibility based on whether player has a weapon equipped
+   */
+  private updateCursorVisibility(): void {
+    const player = this.getMyPlayer();
+    if (!player) {
+      this.ctx.canvas.style.cursor = "default";
+      return;
+    }
+
+    const inventory = player.getInventory();
+    if (!inventory) {
+      this.ctx.canvas.style.cursor = "default";
+      return;
+    }
+
+    const input = this.inputManager.getInputs();
+    const activeSlot = input.inventoryItem;
+    const activeItem = inventory[activeSlot - 1];
+
+    // Hide cursor when weapon is equipped
+    const hasWeapon = activeItem && this.isWeaponItem(activeItem.itemType);
+    this.ctx.canvas.style.cursor = hasWeapon ? "none" : "default";
   }
 
   /**
@@ -646,5 +720,22 @@ export class GameClient {
       items: "/sheets/items-sheet.png",
       characters: "/sheets/characters-sheet.png",
     };
+  }
+
+  /**
+   * Check if an item type is a weapon that can be fired
+   */
+  private isWeaponItem(itemType: string): boolean {
+    const weapons = [
+      "knife",
+      "shotgun",
+      "pistol",
+      "bolt_action_rifle",
+      "ak47",
+      "grenade",
+      "grenade_launcher",
+      "flamethrower",
+    ];
+    return weapons.includes(itemType);
   }
 }

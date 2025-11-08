@@ -988,7 +988,7 @@ export class MapManager implements IMapManager {
     return validPositions[randomIndex];
   }
 
-  private getRandomCampsitePosition(): Vector2 | null {
+  public getRandomCampsitePosition(): Vector2 | null {
     const centerBiomeX = Math.floor(MAP_SIZE / 2);
     const centerBiomeY = Math.floor(MAP_SIZE / 2);
     const validPositions: Vector2[] = [];

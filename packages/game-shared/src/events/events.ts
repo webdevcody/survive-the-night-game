@@ -41,6 +41,7 @@ export const ClientSentEvents = {
   SEND_CHAT: "sendChat",
   MERCHANT_BUY: "merchantBuy",
   PLACE_STRUCTURE: "placeStructure",
+  PLAYER_RESPAWN_REQUEST: "playerRespawnRequest",
 } as const;
 
 export type ServerSentEventType = (typeof ServerSentEvents)[keyof typeof ServerSentEvents];

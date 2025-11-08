@@ -153,6 +153,8 @@ export class Minimap {
     for (const entity of gameState.entities) {
       if (entity.hasExt(ClientIlluminated) && entity.hasExt(ClientPositionable)) {
         const radius = entity.getExt(ClientIlluminated).getRadius() / 2;
+        // Skip entities with no light (radius 0 or very small)
+        if (radius <= 0) continue;
         const position = entity.getExt(ClientPositionable).getCenterPosition();
         sources.push({ position, radius });
       }

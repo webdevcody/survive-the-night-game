@@ -270,6 +270,8 @@ export class MapManager {
       const gameEntity = entity;
       if (gameEntity.hasExt(ClientIlluminated)) {
         const baseRadius = gameEntity.getExt(ClientIlluminated).getRadius();
+        // Skip entities with no light (radius 0 or very small)
+        if (baseRadius <= 0) return;
         const position = gameEntity.getExt(ClientPositionable).getCenterPosition();
         sources.push({
           entityId,

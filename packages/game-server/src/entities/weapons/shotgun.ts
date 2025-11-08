@@ -21,7 +21,7 @@ export class Shotgun extends Weapon {
     return this.config.stats.cooldown;
   }
 
-  public attack(playerId: string, position: Vector2, facing: Direction): void {
+  public attack(playerId: string, position: Vector2, facing: Direction, aimAngle?: number): void {
     const player = this.getEntityManager().getEntityById(playerId);
     if (!player) return;
 
@@ -36,7 +36,16 @@ export class Shotgun extends Weapon {
     for (let i = -1; i <= 1; i++) {
       const bullet = new Bullet(this.getGameManagers());
       bullet.setPosition(position);
-      bullet.setDirectionWithOffset(facing, i * this.config.stats.spreadAngle!);
+
+      // Use aimAngle if provided (mouse aiming), otherwise use facing direction
+      if (aimAngle !== undefined) {
+        // Convert spread angle to radians and apply offset
+        const spreadRadians = (i * this.config.stats.spreadAngle! * Math.PI) / 180;
+        bullet.setDirectionFromAngle(aimAngle + spreadRadians);
+      } else {
+        bullet.setDirectionWithOffset(facing, i * this.config.stats.spreadAngle!);
+      }
+
       bullet.setShooterId(playerId);
       this.getEntityManager().addEntity(bullet);
     }

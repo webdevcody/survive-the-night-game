@@ -73,6 +73,23 @@ export class FlameProjectile extends Entity {
     );
   }
 
+  /**
+   * Set flame direction from an angle in radians with random spread
+   * @param angle Angle in radians (0 = right, PI/2 = down, PI = left, 3PI/2 = up)
+   */
+  setDirectionFromAngle(angle: number) {
+    // Add random spread (±7.5 degrees from center)
+    const spreadAngle = (Math.random() - 0.5) * FLAME_SPREAD_ANGLE * (Math.PI / 180);
+    const totalAngle = angle + spreadAngle;
+
+    const dirX = Math.cos(totalAngle);
+    const dirY = Math.sin(totalAngle);
+
+    this.getExt(Movable).setVelocity(
+      new Vector2(dirX * FlameProjectile.FLAME_SPEED, dirY * FlameProjectile.FLAME_SPEED)
+    );
+  }
+
   getHitbox(): Rectangle {
     return this.getExt(Collidable).getHitBox();
   }

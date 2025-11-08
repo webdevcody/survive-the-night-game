@@ -21,7 +21,7 @@ export class GrenadeLauncher extends Weapon {
     return this.config.stats.cooldown;
   }
 
-  public attack(playerId: string, position: Vector2, facing: Direction): void {
+  public attack(playerId: string, position: Vector2, facing: Direction, aimAngle?: number): void {
     const player = this.getEntityManager().getEntityById(playerId);
     if (!player) return;
 
@@ -34,7 +34,14 @@ export class GrenadeLauncher extends Weapon {
 
     const grenadeProjectile = new GrenadeProjectile(this.getGameManagers());
     grenadeProjectile.setPosition(position);
-    grenadeProjectile.setDirection(facing);
+
+    // Use aimAngle if provided (mouse aiming), otherwise use facing direction
+    if (aimAngle !== undefined) {
+      grenadeProjectile.setDirectionFromAngle(aimAngle);
+    } else {
+      grenadeProjectile.setDirection(facing);
+    }
+
     grenadeProjectile.setShooterId(playerId);
     this.getEntityManager().addEntity(grenadeProjectile);
 

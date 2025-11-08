@@ -24,8 +24,10 @@ export interface InputManagerOptions {
   onMerchantKey2?: () => void;
   onMerchantKey3?: () => void;
   onEscape?: () => void;
+  onRespawnRequest?: () => void;
   isMerchantPanelOpen?: () => boolean;
   isFullscreenMapOpen?: () => boolean;
+  isPlayerDead?: () => boolean;
   getInventory?: () => any[];
 }
 
@@ -49,6 +51,8 @@ export class InputManager {
   private isChatting = false;
   private merchantPanelConsumedKeys = new Set<string>();
   private callbacks: InputManagerOptions = {};
+  private mousePosition: Vector2 | null = null;
+  private canvas: HTMLCanvasElement | null = null;
 
   private checkIfChanged() {
     this.hasChanged = JSON.stringify(this.inputs) !== JSON.stringify(this.lastInputs);
@@ -124,6 +128,13 @@ export class InputManager {
 
       const eventCode = e.code;
       const eventKey = e.key.toLowerCase();
+
+      // Check if player is dead - if so, any key triggers respawn
+      const isPlayerDead = callbacks.isPlayerDead?.() ?? false;
+      if (isPlayerDead) {
+        callbacks.onRespawnRequest?.();
+        return;
+      }
 
       // Check if fullscreen map is open
       const isFullscreenMapOpen = callbacks.isFullscreenMapOpen?.() ?? false;
@@ -387,7 +398,37 @@ export class InputManager {
 
   getInputs() {
     // Return a copy to prevent external modifications from affecting internal state
+    // Note: aimAngle will be calculated and set externally after getting inputs
     return { ...this.inputs };
+  }
+
+  /**
+   * Get inputs with aim angle calculated from current mouse position
+   * @param playerWorldPos Player's center position in world coordinates
+   * @param cameraPos Camera position in world coordinates
+   * @param canvasWidth Canvas width
+   * @param canvasHeight Canvas height
+   * @param cameraScale Camera zoom scale
+   */
+  getInputsWithAim(
+    playerWorldPos: Vector2,
+    cameraPos: Vector2,
+    canvasWidth: number,
+    canvasHeight: number,
+    cameraScale: number = 1
+  ): Input {
+    const inputs: Input = { ...this.inputs };
+    const aimAngle = this.calculateAimAngle(
+      playerWorldPos,
+      cameraPos,
+      canvasWidth,
+      canvasHeight,
+      cameraScale
+    );
+    if (aimAngle !== null) {
+      inputs.aimAngle = aimAngle;
+    }
+    return inputs;
   }
 
   setInventorySlot(slot: number) {
@@ -399,5 +440,89 @@ export class InputManager {
 
   reset() {
     this.hasChanged = false;
+  }
+
+  /**
+   * Trigger weapon fire (for mouse click)
+   */
+  triggerFire() {
+    this.inputs.fire = true;
+    this.hasChanged = true;
+  }
+
+  /**
+   * Release weapon fire (for mouse release)
+   */
+  releaseFire() {
+    this.inputs.fire = false;
+    this.hasChanged = true;
+  }
+
+  /**
+   * Set the canvas element for mouse tracking
+   */
+  setCanvas(canvas: HTMLCanvasElement) {
+    this.canvas = canvas;
+  }
+
+  /**
+   * Update mouse position in canvas coordinates
+   */
+  updateMousePosition(canvasX: number, canvasY: number) {
+    this.mousePosition = new Vector2(canvasX, canvasY);
+  }
+
+  /**
+   * Get the current mouse position in canvas coordinates
+   */
+  getMousePosition(): Vector2 | null {
+    return this.mousePosition;
+  }
+
+  /**
+   * Calculate aim angle from player center to mouse position in world coordinates
+   * @param playerWorldPos Player's center position in world coordinates
+   * @param cameraPos Camera position in world coordinates (what the camera is centered on)
+   * @param canvasWidth Canvas width in canvas pixels (including devicePixelRatio)
+   * @param canvasHeight Canvas height in canvas pixels (including devicePixelRatio)
+   * @param cameraScale Camera zoom scale
+   * @returns Angle in radians, or null if mouse position not available
+   */
+  calculateAimAngle(
+    playerWorldPos: Vector2,
+    cameraPos: Vector2,
+    canvasWidth: number,
+    canvasHeight: number,
+    cameraScale: number = 1
+  ): number | null {
+    if (!this.mousePosition) return null;
+
+    // Mouse position is in canvas pixels (already scaled by devicePixelRatio)
+    // Canvas dimensions are also in canvas pixels
+
+    // The canvas context is scaled by devicePixelRatio, so we need to convert back to logical pixels
+    const dpr = window.devicePixelRatio || 1;
+
+    // Get the center of the canvas in logical pixels
+    const logicalCenterX = canvasWidth / dpr / 2;
+    const logicalCenterY = canvasHeight / dpr / 2;
+
+    // Convert mouse position to logical pixels
+    const logicalMouseX = this.mousePosition.x / dpr;
+    const logicalMouseY = this.mousePosition.y / dpr;
+
+    // Calculate offset from center in logical pixels
+    const offsetX = logicalMouseX - logicalCenterX;
+    const offsetY = logicalMouseY - logicalCenterY;
+
+    // Convert to world coordinates by dividing by camera scale and adding camera position
+    const worldMouseX = cameraPos.x + offsetX / cameraScale;
+    const worldMouseY = cameraPos.y + offsetY / cameraScale;
+
+    // Calculate angle from player to mouse
+    const dx = worldMouseX - playerWorldPos.x;
+    const dy = worldMouseY - playerWorldPos.y;
+
+    return Math.atan2(dy, dx);
   }
 }

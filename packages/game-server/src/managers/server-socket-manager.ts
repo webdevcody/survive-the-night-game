@@ -492,6 +492,9 @@ export class ServerSocketManager implements Broadcaster {
       (data: { itemType: ItemType; position: { x: number; y: number } }) =>
         this.onPlaceStructure(socket, data)
     );
+    socket.on(ClientSentEvents.PLAYER_RESPAWN_REQUEST, () => {
+      this.onPlayerRespawnRequest(socket);
+    });
     socket.on("disconnect", () => {
       this.onDisconnect(socket);
     });
@@ -506,6 +509,14 @@ export class ServerSocketManager implements Broadcaster {
     // Filter bad words and replace with asterisks
     const filteredDisplayName = this.sanitizeText(displayName);
     player.setDisplayName(filteredDisplayName);
+  }
+
+  private onPlayerRespawnRequest(socket: Socket): void {
+    const player = this.players.get(socket.id);
+    if (!player) return;
+    if (!player.isDead()) return;
+
+    player.respawn();
   }
 
   private onConnection(socket: Socket): void {

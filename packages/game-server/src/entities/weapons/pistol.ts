@@ -21,7 +21,7 @@ export class Pistol extends Weapon {
     return this.config.stats.cooldown;
   }
 
-  public attack(playerId: string, position: Vector2, facing: Direction): void {
+  public attack(playerId: string, position: Vector2, facing: Direction, aimAngle?: number): void {
     const player = this.getEntityManager().getEntityById(playerId);
     if (!player) return;
 
@@ -34,7 +34,14 @@ export class Pistol extends Weapon {
 
     const bullet = new Bullet(this.getGameManagers());
     bullet.setPosition(position);
-    bullet.setDirection(facing);
+
+    // Use aimAngle if provided (mouse aiming), otherwise use facing direction
+    if (aimAngle !== undefined) {
+      bullet.setDirectionFromAngle(aimAngle);
+    } else {
+      bullet.setDirection(facing);
+    }
+
     bullet.setShooterId(playerId);
     this.getEntityManager().addEntity(bullet);
 
