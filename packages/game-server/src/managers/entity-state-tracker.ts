@@ -1,4 +1,5 @@
 import { IEntity } from "@/entities/types";
+import { WaveState } from "@shared/types/wave";
 
 export class EntityStateTracker {
   private previousEntityStates: Map<string, any> = new Map();
@@ -8,6 +9,13 @@ export class EntityStateTracker {
     cycleStartTime?: number;
     cycleDuration?: number;
     isDay?: boolean;
+    // Wave system
+    waveNumber?: number;
+    waveState?: WaveState;
+    phaseStartTime?: number;
+    phaseDuration?: number;
+    zombiesRemaining?: number;
+    totalZombies?: number;
   } = {};
 
   public trackEntity(entity: IEntity, currentTime: number): void {
@@ -114,6 +122,13 @@ export class EntityStateTracker {
     cycleStartTime: number;
     cycleDuration: number;
     isDay: boolean;
+    // Wave system
+    waveNumber?: number;
+    waveState?: WaveState;
+    phaseStartTime?: number;
+    phaseDuration?: number;
+    zombiesRemaining?: number;
+    totalZombies?: number;
   }): void {
     this.previousGameState = { ...gameState };
   }
@@ -123,10 +138,17 @@ export class EntityStateTracker {
     cycleStartTime: number;
     cycleDuration: number;
     isDay: boolean;
+    // Wave system
+    waveNumber?: number;
+    waveState?: WaveState;
+    phaseStartTime?: number;
+    phaseDuration?: number;
+    zombiesRemaining?: number;
+    totalZombies?: number;
   }): Partial<typeof currentGameState> {
     const changedProps: Partial<typeof currentGameState> = {};
 
-    // Always include timestamp-related properties if they've changed at all
+    // Legacy day/night cycle properties
     if (currentGameState.cycleStartTime !== this.previousGameState.cycleStartTime) {
       changedProps.cycleStartTime = currentGameState.cycleStartTime;
     }
@@ -135,13 +157,37 @@ export class EntityStateTracker {
       changedProps.cycleDuration = currentGameState.cycleDuration;
     }
 
-    // For boolean and number properties, use direct comparison
     if (currentGameState.isDay !== this.previousGameState.isDay) {
       changedProps.isDay = currentGameState.isDay;
     }
 
     if (currentGameState.dayNumber !== this.previousGameState.dayNumber) {
       changedProps.dayNumber = currentGameState.dayNumber;
+    }
+
+    // Wave system properties
+    if (currentGameState.waveNumber !== this.previousGameState.waveNumber) {
+      changedProps.waveNumber = currentGameState.waveNumber;
+    }
+
+    if (currentGameState.waveState !== this.previousGameState.waveState) {
+      changedProps.waveState = currentGameState.waveState;
+    }
+
+    if (currentGameState.phaseStartTime !== this.previousGameState.phaseStartTime) {
+      changedProps.phaseStartTime = currentGameState.phaseStartTime;
+    }
+
+    if (currentGameState.phaseDuration !== this.previousGameState.phaseDuration) {
+      changedProps.phaseDuration = currentGameState.phaseDuration;
+    }
+
+    if (currentGameState.zombiesRemaining !== this.previousGameState.zombiesRemaining) {
+      changedProps.zombiesRemaining = currentGameState.zombiesRemaining;
+    }
+
+    if (currentGameState.totalZombies !== this.previousGameState.totalZombies) {
+      changedProps.totalZombies = currentGameState.totalZombies;
     }
 
     return changedProps;

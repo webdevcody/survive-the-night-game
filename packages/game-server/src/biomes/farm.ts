@@ -46,7 +46,5 @@ export const FARM: BiomeData = {
     Entities.GASOLINE,
     Entities.GASOLINE,
     Entities.GASOLINE,
-    Entities.TORCH,
-    Entities.TORCH,
   ],
 };

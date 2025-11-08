@@ -7,7 +7,7 @@ import { GameServer } from "@/server";
 import { AdminCommand } from "@shared/commands/commands";
 import { Input } from "../../../game-shared/src/util/input";
 import { RecipeType } from "../../../game-shared/src/util/recipes";
-import { ItemType } from "@shared/util/inventory";
+import { ItemType, isResourceItem } from "@shared/util/inventory";
 import Vector2 from "@/util/vector2";
 import { createServer } from "http";
 import { Server, Socket } from "socket.io";
@@ -276,23 +276,35 @@ export class ServerSocketManager implements Broadcaster {
     // Deduct coins
     player.addCoins(-selectedItem.price);
 
-    // Create the item
-    const item = { itemType: selectedItem.itemType as ItemType };
-    const inventory = player.getExt(Inventory);
+    const itemType = selectedItem.itemType as ItemType;
 
-    // Add to inventory or drop on ground
-    if (inventory.isFull()) {
-      // Drop item 32 pixels down from player
-      const playerPos = player.getExt(Positionable).getPosition();
-      const dropPosition = new Vector2(playerPos.x, playerPos.y + 32);
-      const droppedEntity = this.getEntityManager().createEntityFromItem(item);
-      droppedEntity.getExt(Positionable).setPosition(dropPosition);
-      console.log(`Dropped ${selectedItem.itemType} on ground for player ${player.getId()}`);
+    // Check if this is a resource item (wood, cloth)
+    if (isResourceItem(itemType)) {
+      // Add directly to player's resource count
+      if (itemType === "wood") {
+        player.addWood(1);
+        console.log(`Player ${player.getId()} bought wood for ${selectedItem.price} coins`);
+      } else if (itemType === "cloth") {
+        player.addCloth(1);
+        console.log(`Player ${player.getId()} bought cloth for ${selectedItem.price} coins`);
+      }
     } else {
-      inventory.addItem(item);
-      console.log(
-        `Player ${player.getId()} bought ${selectedItem.itemType} for ${selectedItem.price} coins`
-      );
+      // Handle regular inventory items
+      const item = { itemType };
+      const inventory = player.getExt(Inventory);
+
+      // Add to inventory or drop on ground
+      if (inventory.isFull()) {
+        // Drop item 32 pixels down from player
+        const playerPos = player.getExt(Positionable).getPosition();
+        const dropPosition = new Vector2(playerPos.x, playerPos.y + 32);
+        const droppedEntity = this.getEntityManager().createEntityFromItem(item);
+        droppedEntity.getExt(Positionable).setPosition(dropPosition);
+        console.log(`Dropped ${itemType} on ground for player ${player.getId()}`);
+      } else {
+        inventory.addItem(item);
+        console.log(`Player ${player.getId()} bought ${itemType} for ${selectedItem.price} coins`);
+      }
     }
   }
 
@@ -303,8 +315,16 @@ export class ServerSocketManager implements Broadcaster {
     const player = this.players.get(socket.id);
     if (!player) return;
 
-    // Only allow wall and sentry gun placement
-    if (data.itemType !== "wall" && data.itemType !== "sentry_gun") return;
+    // Only allow wall, sentry gun, torch, spikes, landmine, and gasoline placement
+    if (
+      data.itemType !== "wall" &&
+      data.itemType !== "sentry_gun" &&
+      data.itemType !== "torch" &&
+      data.itemType !== "spikes" &&
+      data.itemType !== "landmine" &&
+      data.itemType !== "gasoline"
+    )
+      return;
 
     // Validate placement distance
     const playerPos = player.getExt(Positionable).getCenterPosition();
@@ -382,14 +402,23 @@ export class ServerSocketManager implements Broadcaster {
     }
 
     // Create entity at position
-    const maxHealth =
-      data.itemType === "wall"
-        ? getConfig().world.WALL_MAX_HEALTH
-        : getConfig().world.SENTRY_GUN_MAX_HEALTH;
+    // Only set health for items that have Destructible extension (wall, sentry gun, gasoline)
+    let state = {};
+    if (data.itemType === "wall" || data.itemType === "sentry_gun" || data.itemType === "gasoline") {
+      let maxHealth = 1;
+      if (data.itemType === "wall") {
+        maxHealth = getConfig().world.WALL_MAX_HEALTH;
+      } else if (data.itemType === "sentry_gun") {
+        maxHealth = getConfig().world.SENTRY_GUN_MAX_HEALTH;
+      } else if (data.itemType === "gasoline") {
+        maxHealth = 1; // Gasoline has 1 health
+      }
+      state = { health: maxHealth };
+    }
 
     const placedEntity = this.getEntityManager().createEntityFromItem({
       itemType: data.itemType,
-      state: { health: maxHealth },
+      state,
     });
 
     placedEntity.getExt(Positionable).setPosition(placePos);
@@ -603,6 +632,13 @@ export class ServerSocketManager implements Broadcaster {
         cycleStartTime: this.gameServer.getCycleStartTime(),
         cycleDuration: this.gameServer.getCycleDuration(),
         isDay: this.gameServer.getIsDay(),
+        // Wave system
+        waveNumber: this.gameServer.getWaveNumber(),
+        waveState: this.gameServer.getWaveState(),
+        phaseStartTime: this.gameServer.getPhaseStartTime(),
+        phaseDuration: this.gameServer.getPhaseDuration(),
+        zombiesRemaining: this.gameServer.getZombiesRemaining(),
+        totalZombies: this.gameServer.getTotalZombies(),
       };
 
       // Get only changed game state properties

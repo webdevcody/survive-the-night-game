@@ -20,6 +20,21 @@ interface ChangelogEntry {
 
 const changelog: ChangelogEntry[] = [
   {
+    version: "0.7.0",
+    date: "2025-11-08",
+    changes: [
+      "Replaced day/night cycle with wave-based gameplay system.",
+      "Game now features timed waves with preparation periods between zombie attacks.",
+      "Added wave timer HUD display showing current wave number and time until next wave.",
+      "Implemented idle zombie behavior - zombies now wander around when not chasing players.",
+      "Zombies exhibit more dynamic movement patterns during waves.",
+      "Added map darkness overlay for enhanced atmosphere and visibility challenge.",
+      "Darkness effect creates more tension during zombie waves.",
+      "Refactored map rendering system for improved performance and maintainability.",
+      "Optimized chunk rendering and camera viewport calculations.",
+    ],
+  },
+  {
     version: "0.6.0",
     date: "2025-11-07",
     changes: [

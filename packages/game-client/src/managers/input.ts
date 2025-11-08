@@ -1,7 +1,7 @@
 import { Direction, determineDirection } from "../../../game-shared/src/util/direction";
 import { Input } from "../../../game-shared/src/util/input";
-import { WEAPON_TYPE_VALUES } from "@shared/types/weapons";
 import Vector2 from "../../../game-shared/src/util/vector2";
+import { getConfig } from "@shared/config";
 
 export interface InputManagerOptions {
   onCraft?: () => unknown;
@@ -19,11 +19,13 @@ export interface InputManagerOptions {
   onChatInput?: (key: string) => void;
   onSendChat?: () => void;
   onToggleMute?: () => void;
+  onToggleMap?: () => void;
   onMerchantKey1?: () => void;
   onMerchantKey2?: () => void;
   onMerchantKey3?: () => void;
   onEscape?: () => void;
   isMerchantPanelOpen?: () => boolean;
+  isFullscreenMapOpen?: () => boolean;
   getInventory?: () => any[];
 }
 
@@ -53,53 +55,44 @@ export class InputManager {
     this.lastInputs = { ...this.inputs };
   }
 
-  private cycleWeapon(direction: 1 | -1) {
+  private cycleItem(direction: 1 | -1) {
     const inventory = this.callbacks.getInventory?.() || [];
     if (inventory.length === 0) return;
 
     const currentSlot = this.inputs.inventoryItem; // 1-indexed (1-10)
-    const currentItem = inventory[currentSlot - 1];
-    const currentWeaponType = WEAPON_TYPE_VALUES.includes(currentItem?.itemType)
-      ? currentItem.itemType
-      : null;
+    const maxSlots = getConfig().player.MAX_INVENTORY_SLOTS;
 
-    // Build array of unique weapon types with their first occurrence index
-    const uniqueWeapons: { index: number; type: string }[] = [];
-    const seenTypes = new Set<string>();
-
+    // Find all slots that have items
+    const occupiedSlots: number[] = [];
     inventory.forEach((item: any, index: number) => {
-      if (item && WEAPON_TYPE_VALUES.includes(item.itemType)) {
-        // Only add the first occurrence of each weapon type
-        if (!seenTypes.has(item.itemType)) {
-          seenTypes.add(item.itemType);
-          uniqueWeapons.push({ index: index + 1, type: item.itemType }); // 1-indexed
-        }
+      if (item) {
+        occupiedSlots.push(index + 1); // 1-indexed
       }
     });
 
-    // If no weapons, don't cycle
-    if (uniqueWeapons.length === 0) return;
+    // If no items, don't cycle
+    if (occupiedSlots.length === 0) return;
 
-    // Find current weapon in the unique weapons list
-    let currentIdx = uniqueWeapons.findIndex((w) => w.type === currentWeaponType);
+    // If only one item and it's already selected, don't cycle
+    if (occupiedSlots.length === 1 && occupiedSlots[0] === currentSlot) return;
 
-    // If current slot doesn't have a weapon, start from -1
-    if (currentWeaponType === null) {
-      currentIdx = -1;
+    // Find current slot in occupied slots list
+    let currentIdx = occupiedSlots.indexOf(currentSlot);
+
+    // If current slot is empty, start from -1 to select first/last item
+    if (currentIdx === -1) {
+      currentIdx = direction === 1 ? -1 : occupiedSlots.length;
     }
 
-    // If there's only one weapon and it's already selected, don't cycle
-    if (uniqueWeapons.length === 1 && currentIdx !== -1) return;
-
-    // Move to next/previous unique weapon with wrapping
+    // Move to next/previous occupied slot with wrapping
     let nextIdx = currentIdx + direction;
-    if (nextIdx >= uniqueWeapons.length) {
+    if (nextIdx >= occupiedSlots.length) {
       nextIdx = 0; // Wrap to first
     } else if (nextIdx < 0) {
-      nextIdx = uniqueWeapons.length - 1; // Wrap to last
+      nextIdx = occupiedSlots.length - 1; // Wrap to last
     }
 
-    this.inputs.inventoryItem = uniqueWeapons[nextIdx].index;
+    this.inputs.inventoryItem = occupiedSlots[nextIdx];
   }
 
   private quickHeal() {
@@ -132,8 +125,25 @@ export class InputManager {
       const eventCode = e.code;
       const eventKey = e.key.toLowerCase();
 
+      // Check if fullscreen map is open
+      const isFullscreenMapOpen = callbacks.isFullscreenMapOpen?.() ?? false;
+
+      // Allow M key to toggle map even when map is open
+      if (eventCode === "KeyM") {
+        callbacks.onToggleMap?.();
+        return;
+      }
+
       // Check if merchant panel is open
       const isMerchantPanelOpen = callbacks.isMerchantPanelOpen?.() ?? false;
+
+      // Block all inputs if fullscreen map is open (except Escape)
+      if (isFullscreenMapOpen) {
+        if (eventCode === "Escape") {
+          callbacks.onToggleMap?.(); // Close map with Escape
+        }
+        return; // Block all other inputs when map is open
+      }
 
       // Handle merchant panel inputs first
       if (isMerchantPanelOpen) {
@@ -192,10 +202,10 @@ export class InputManager {
       // Normal game input handling - use physical key codes for WASD
       switch (eventCode) {
         case "KeyQ":
-          this.cycleWeapon(-1); // Cycle to previous weapon
+          this.cycleItem(-1); // Cycle to previous item
           break;
         case "KeyE":
-          this.cycleWeapon(1); // Cycle to next weapon
+          this.cycleItem(1); // Cycle to next item
           break;
         case "KeyZ":
           this.quickHeal();
@@ -243,7 +253,7 @@ export class InputManager {
         case "KeyI":
           callbacks.onToggleInstructions?.();
           break;
-        case "KeyM":
+        case "KeyN":
           callbacks.onToggleMute?.();
           break;
         case "Tab":
@@ -378,6 +388,13 @@ export class InputManager {
   getInputs() {
     // Return a copy to prevent external modifications from affecting internal state
     return { ...this.inputs };
+  }
+
+  setInventorySlot(slot: number) {
+    if (slot >= 1 && slot <= getConfig().player.MAX_INVENTORY_SLOTS) {
+      this.inputs.inventoryItem = slot;
+      this.hasChanged = true;
+    }
   }
 
   reset() {

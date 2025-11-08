@@ -13,6 +13,7 @@
 
 import { metaConfig, type MetaConfig } from "./meta-config";
 import { dayNightConfig, type DayNightConfig } from "./day-night-config";
+import { waveConfig, type WaveConfig } from "./wave-config";
 import { worldConfig, type WorldConfig } from "./world-config";
 import { playerConfig, type PlayerConfig } from "./player-config";
 import { combatConfig, type CombatConfig } from "./combat-config";
@@ -28,6 +29,7 @@ import { renderConfig, type RenderConfig } from "./render-config";
 export interface GameConfig {
   meta: MetaConfig;
   dayNight: DayNightConfig;
+  wave: WaveConfig;
   world: WorldConfig;
   player: PlayerConfig;
   combat: CombatConfig;
@@ -45,6 +47,7 @@ export interface GameConfig {
 const defaultConfig: GameConfig = {
   meta: metaConfig,
   dayNight: dayNightConfig,
+  wave: waveConfig,
   world: worldConfig,
   player: playerConfig,
   combat: combatConfig,
@@ -99,6 +102,7 @@ export function getConfig(): GameConfig {
 export {
   metaConfig,
   dayNightConfig,
+  waveConfig,
   worldConfig,
   playerConfig,
   combatConfig,
@@ -116,6 +120,7 @@ export {
 export type {
   MetaConfig,
   DayNightConfig,
+  WaveConfig,
   WorldConfig,
   PlayerConfig,
   CombatConfig,

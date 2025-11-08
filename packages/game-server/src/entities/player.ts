@@ -87,25 +87,17 @@ export class Player extends Entity {
 
     const inventory = this.getExt(Inventory);
 
-    if (DEBUG_WEAPONS) {
-      [
-        {
-          itemType: "pistol_ammo" as const,
-          state: {
-            count: 10,
-          },
+    [
+      { itemType: "knife" as const },
+      { itemType: "pistol" as const },
+      {
+        itemType: "pistol_ammo" as const,
+        state: {
+          count: 18,
         },
-        { itemType: "pistol" as const },
-        {
-          itemType: "shotgun" as const,
-        },
-        { itemType: "shotgun_ammo" as const, state: { count: 10 } },
-        { itemType: "torch" as const },
-        { itemType: "gasoline" as const },
-        { itemType: "spikes" as const },
-        { itemType: "landmine" as const },
-      ].forEach((item) => inventory.addItem(item));
-    }
+      },
+      { itemType: "torch" as const },
+    ].forEach((item) => inventory.addItem(item));
   }
 
   get activeItem(): InventoryItem | null {
@@ -546,7 +538,9 @@ export class Player extends Entity {
       // If consumeItemType is specified, find the first item of that type
       if (this.input.consumeItemType !== null) {
         const inventory = this.getExt(Inventory).getItems();
-        const foundIndex = inventory.findIndex((invItem) => invItem?.itemType === this.input.consumeItemType);
+        const foundIndex = inventory.findIndex(
+          (invItem) => invItem?.itemType === this.input.consumeItemType
+        );
 
         if (foundIndex !== -1) {
           itemIndex = foundIndex;

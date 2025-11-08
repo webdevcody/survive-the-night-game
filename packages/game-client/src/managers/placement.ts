@@ -168,8 +168,15 @@ export class PlacementManager {
     const item = inventory[selectedSlot];
     if (!item) return null;
 
-    // Wall and sentry gun items are placeable
-    if (item.itemType === "wall" || item.itemType === "sentry_gun") {
+    // Wall, sentry gun, torch, spikes, landmine, and gasoline items are placeable
+    if (
+      item.itemType === "wall" ||
+      item.itemType === "sentry_gun" ||
+      item.itemType === "torch" ||
+      item.itemType === "spikes" ||
+      item.itemType === "landmine" ||
+      item.itemType === "gasoline"
+    ) {
       return item.itemType;
     }
 

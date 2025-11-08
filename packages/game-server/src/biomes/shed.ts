@@ -38,12 +38,5 @@ export const SHED: BiomeData = {
     [3, 3, 3, -1, -1, 16, 17, -1, -1, -1, -1, -1, -1, 3, 3, 3],
     [3, 3, 3, -1, -1, -1, -1, -1, -1, -1, -1, -1, 3, 3, 3, 3],
   ],
-  items: [
-    Entities.FLAMETHROWER_AMMO,
-    Entities.FLAMETHROWER_AMMO,
-    Entities.FLAMETHROWER,
-    Entities.TORCH,
-    Entities.TORCH,
-    Entities.TORCH,
-  ],
+  items: [Entities.FLAMETHROWER_AMMO, Entities.FLAMETHROWER_AMMO, Entities.FLAMETHROWER],
 };

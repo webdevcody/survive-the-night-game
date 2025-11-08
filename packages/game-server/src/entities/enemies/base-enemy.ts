@@ -1,5 +1,4 @@
 import { IGameManagers } from "@/managers/types";
-import { Wall } from "@/entities/items/wall";
 import { Cooldown } from "@/entities/util/cooldown";
 import Collidable from "@/extensions/collidable";
 import Destructible from "@/extensions/destructible";
@@ -9,15 +8,12 @@ import Inventory from "@/extensions/inventory";
 import Movable from "@/extensions/movable";
 import Positionable from "@/extensions/positionable";
 import Updatable from "@/extensions/updatable";
-import { Entities, Zombies } from "@shared/constants";
+import { Entities } from "@shared/constants";
 import { Entity } from "@/entities/entity";
-import { pathTowards, velocityTowards } from "@/util/physics";
-import { IEntity } from "@/entities/types";
 import { LootEvent } from "@/events/server-sent/loot-event";
 import { Rectangle } from "@/util/shape";
 import Vector2 from "@/util/vector2";
 import { EntityType } from "@shared/types/entity";
-import { ZombieAttackedEvent } from "@/events/server-sent/zombie-attacked-event";
 import { ZombieDeathEvent } from "@/events/server-sent/zombie-death-event";
 import { ZombieHurtEvent } from "@/events/server-sent/zombie-hurt-event";
 import { EntityCategory, EntityCategories, ZombieConfig, zombieRegistry } from "@shared/entities";
@@ -60,7 +56,9 @@ export abstract class BaseEnemy extends Entity {
     this.attackRadius = this.config.stats.attackRadius;
     this.attackDamage = this.config.stats.damage;
     this.extensions = [
-      new Inventory(this, gameManagers.getBroadcaster()).addRandomItem(this.config.stats.dropChance),
+      new Inventory(this, gameManagers.getBroadcaster()).addRandomItem(
+        this.config.stats.dropChance
+      ),
       new Destructible(this)
         .setMaxHealth(this.config.stats.health)
         .setHealth(this.config.stats.health)

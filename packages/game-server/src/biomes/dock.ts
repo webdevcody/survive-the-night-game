@@ -42,8 +42,5 @@ export const DOCK: BiomeData = {
     Entities.GRENADE_LAUNCHER,
     Entities.GRENADE_LAUNCHER_AMMO,
     Entities.GRENADE_LAUNCHER_AMMO,
-    Entities.TORCH,
-    Entities.TORCH,
-    Entities.TORCH,
   ],
 };

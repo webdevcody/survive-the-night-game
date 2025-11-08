@@ -11,6 +11,8 @@ import { ClientDestructible } from "@/extensions/destructible";
 import { EntityCategories } from "@shared/entities";
 import { perfTimer } from "@shared/util/performance";
 import { getConfig } from "@shared/config";
+import { ClientIlluminated } from "@/extensions/illuminated";
+import Vector2 from "@shared/util/vector2";
 
 // Performance optimization constants - adjust these to balance quality vs performance
 // To view performance stats in console, run:
@@ -41,6 +43,10 @@ export const MINIMAP_SETTINGS = {
   bottom: 40,
   background: "rgba(0, 0, 0, 0.7)",
   scale: 0.7,
+  fogOfWar: {
+    enabled: true,
+    fogColor: "rgba(0, 0, 0, 0.95)", // Nearly opaque black for unexplored areas
+  },
   colors: {
     enemy: "red",
     deadEnemy: "gray",
@@ -117,6 +123,11 @@ export const MINIMAP_SETTINGS = {
   },
 };
 
+interface LightSource {
+  position: Vector2;
+  radius: number;
+}
+
 export class Minimap {
   private mapManager: MapManager;
   // Pre-rendered canvas for collidables indicators (at world coordinates, 1:1 scale)
@@ -132,6 +143,56 @@ export class Minimap {
 
     // Listen for map updates to re-render
     // Note: This assumes setMap is called on MapManager - we'll check on first render
+  }
+
+  // Get all light sources from entities and decals
+  private getLightSources(gameState: GameState): LightSource[] {
+    const sources: LightSource[] = [];
+
+    // Add entity light sources (torches, campfires, etc.)
+    for (const entity of gameState.entities) {
+      if (entity.hasExt(ClientIlluminated) && entity.hasExt(ClientPositionable)) {
+        const radius = entity.getExt(ClientIlluminated).getRadius() / 2;
+        const position = entity.getExt(ClientPositionable).getCenterPosition();
+        sources.push({ position, radius });
+      }
+    }
+
+    // Add decal light sources (campfires, etc.)
+    const mapData = this.mapManager.getMapData();
+    if (mapData?.decals) {
+      mapData.decals.forEach((decal) => {
+        if (decal.light) {
+          const intensity = decal.light.intensity ?? 1.0;
+          const radius = decal.light.radius * intensity;
+
+          // Convert grid position to world position (center of tile)
+          const position = new Vector2(
+            decal.position.x * this.tileSize + this.tileSize / 2,
+            decal.position.y * this.tileSize + this.tileSize / 2
+          );
+
+          sources.push({ position, radius });
+        }
+      });
+    }
+
+    return sources;
+  }
+
+  // Check if a world position is visible (within any light source radius)
+  private isPositionVisible(worldPos: Vector2, lightSources: LightSource[]): boolean {
+    for (const source of lightSources) {
+      const dx = worldPos.x - source.position.x;
+      const dy = worldPos.y - source.position.y;
+      const distanceSquared = dx * dx + dy * dy;
+      const radiusSquared = source.radius * source.radius;
+
+      if (distanceSquared <= radiusSquared) {
+        return true;
+      }
+    }
+    return false;
   }
 
   public render(ctx: CanvasRenderingContext2D, gameState: GameState): void {
@@ -241,6 +302,14 @@ export class Minimap {
       }
     }
     perfTimer.end("minimap:entities");
+
+    // Draw fog of war overlay (only during nighttime)
+    if (!gameState.isDay) {
+      perfTimer.start("minimap:fogOfWar");
+      const lightSources = this.getLightSources(gameState);
+      this.renderFogOfWar(ctx, playerPos, lightSources, settings, top);
+      perfTimer.end("minimap:fogOfWar");
+    }
 
     // Draw radar circle border
     ctx.strokeStyle = "white";
@@ -452,6 +521,54 @@ export class Minimap {
       );
       ctx.closePath();
       ctx.stroke();
+    }
+  }
+
+  // Render fog of war overlay - darken areas not in light
+  private renderFogOfWar(
+    ctx: CanvasRenderingContext2D,
+    playerPos: { x: number; y: number },
+    lightSources: LightSource[],
+    settings: typeof MINIMAP_SETTINGS,
+    top: number
+  ): void {
+    if (!settings.fogOfWar.enabled) return;
+
+    const centerX = settings.left + settings.size / 2;
+    const centerY = top + settings.size / 2;
+    const radius = settings.size / 2;
+
+    // We'll render fog by checking a grid of points on the minimap
+    // For better performance, we'll check at lower resolution and draw tiles
+    const gridSize = 8; // Size of fog tiles in minimap pixels
+    const tilesPerRow = Math.ceil(settings.size / gridSize);
+
+    for (let ty = 0; ty < tilesPerRow; ty++) {
+      for (let tx = 0; tx < tilesPerRow; tx++) {
+        // Calculate minimap coordinates for this fog tile
+        const minimapX = settings.left + tx * gridSize + gridSize / 2;
+        const minimapY = top + ty * gridSize + gridSize / 2;
+
+        // Check if this position is within the circular minimap bounds
+        const dx = minimapX - centerX;
+        const dy = minimapY - centerY;
+        if (dx * dx + dy * dy > radius * radius) continue;
+
+        // Convert minimap coordinates back to world coordinates
+        const relativeX = (minimapX - centerX) / settings.scale;
+        const relativeY = (minimapY - centerY) / settings.scale;
+        const worldX = playerPos.x + relativeX;
+        const worldY = playerPos.y + relativeY;
+
+        const worldPos = new Vector2(worldX, worldY);
+
+        // Check if this world position is visible
+        if (!this.isPositionVisible(worldPos, lightSources)) {
+          // Draw fog tile
+          ctx.fillStyle = settings.fogOfWar.fogColor;
+          ctx.fillRect(minimapX - gridSize / 2, minimapY - gridSize / 2, gridSize, gridSize);
+        }
+      }
     }
   }
 

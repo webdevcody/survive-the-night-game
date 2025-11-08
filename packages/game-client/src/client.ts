@@ -24,6 +24,7 @@ import { Input } from "../../game-shared/src/util/input";
 import { ClientEntityBase } from "@/extensions/client-entity";
 import { ClientDestructible } from "@/extensions/destructible";
 import { ClientPositionable } from "@/extensions";
+import { WaveState } from "@shared/types/wave";
 import { ParticleManager } from "./managers/particles";
 import { PredictionManager } from "./managers/prediction";
 import { FixedTimestepSimulator } from "./managers/fixed-timestep-simulator";
@@ -91,6 +92,23 @@ export class GameClient {
     this.fixedTimestepSimulator = new FixedTimestepSimulator(getConfig().simulation.FIXED_TIMESTEP);
     this.sequenceManager = new SequenceManager();
 
+    // Add mousemove event listener for UI hover interactions
+    canvas.addEventListener("mousemove", (e) => {
+      const rect = canvas.getBoundingClientRect();
+
+      // Convert CSS coordinates to canvas coordinates
+      // This accounts for any CSS scaling of the canvas
+      const scaleX = canvas.width / rect.width;
+      const scaleY = canvas.height / rect.height;
+      const x = (e.clientX - rect.left) * scaleX;
+      const y = (e.clientY - rect.top) * scaleY;
+
+      // Update inventory bar hover state
+      if (this.hotbar) {
+        this.hotbar.updateMousePosition(x, y, canvas.width, canvas.height);
+      }
+    });
+
     // Add click event listener for UI interactions
     canvas.addEventListener("click", (e) => {
       const rect = canvas.getBoundingClientRect();
@@ -101,6 +119,12 @@ export class GameClient {
       const scaleY = canvas.height / rect.height;
       const x = (e.clientX - rect.left) * scaleX;
       const y = (e.clientY - rect.top) * scaleY;
+
+      // Handle UI clicks (inventory bar, HUD mute button, etc.)
+      // Check inventory bar first
+      if (this.hotbar && this.hotbar.handleClick(x, y, canvas.width, canvas.height)) {
+        return; // Click was handled by inventory bar
+      }
 
       // Handle HUD clicks (like mute button)
       if (this.hud) {
@@ -153,6 +177,7 @@ export class GameClient {
     this.inputManager = new InputManager({
       getInventory,
       isMerchantPanelOpen: () => this.merchantBuyPanel.isVisible(),
+      isFullscreenMapOpen: () => this.hud.isFullscreenMapOpen(),
       onCraft: () => {
         // Crafting is now handled by React component
         // C key disabled for now
@@ -182,6 +207,9 @@ export class GameClient {
       },
       onToggleMute: () => {
         this.soundManager.toggleMute();
+      },
+      onToggleMap: () => {
+        this.hud.toggleFullscreenMap();
       },
       onDown: (inputs: Input) => {
         inputs.dy = 1;
@@ -265,10 +293,18 @@ export class GameClient {
       playerId: "",
       entities: [],
       entityMap: new Map(),
+      // Legacy day/night cycle
       dayNumber: 0,
       cycleStartTime: Date.now(),
-      cycleDuration: 60, // Default to 60 seconds until we get the real value from server
-      isDay: true,
+      cycleDuration: getConfig().dayNight.DAY_DURATION,
+      isDay: false, // Always night now
+      // Wave system
+      waveNumber: 1,
+      waveState: WaveState.PREPARATION, // Start in preparation phase
+      phaseStartTime: Date.now(),
+      phaseDuration: getConfig().wave.FIRST_WAVE_DELAY,
+      zombiesRemaining: 0,
+      totalZombies: 0,
       crafting: false,
     };
 

@@ -11,6 +11,70 @@ import { ZombieAttackedEvent } from "@shared/events/server-sent/zombie-attacked-
 import { Cooldown } from "@/entities/util/cooldown";
 import { IEntity } from "@/entities/types";
 
+export class IdleMovementStrategy implements MovementStrategy {
+  private pathRecalculationTimer: number = 0;
+  private static readonly PATH_RECALCULATION_INTERVAL = 1;
+  private static readonly ACTIVATION_RADIUS = 100; // Pixels
+  private currentWaypoint: Vector2 | null = null;
+  private isActivated: boolean = false;
+
+  update(zombie: BaseEnemy, deltaTime: number): boolean {
+    const player = zombie.getEntityManager().getClosestAlivePlayer(zombie);
+    if (!player) {
+      // No player nearby, stay idle
+      zombie.getExt(Movable).setVelocity(new Vector2(0, 0));
+      return false;
+    }
+
+    const playerPos = player.getExt(Positionable).getCenterPosition();
+    const zombiePos = zombie.getCenterPosition();
+    const distanceToPlayer = zombiePos.distance(playerPos);
+
+    // Check if player is within activation radius
+    if (distanceToPlayer <= IdleMovementStrategy.ACTIVATION_RADIUS) {
+      this.isActivated = true;
+    }
+
+    // If not activated yet, stay idle
+    if (!this.isActivated) {
+      zombie.getExt(Movable).setVelocity(new Vector2(0, 0));
+      return false;
+    }
+
+    // Once activated, behave like a normal zombie
+    this.pathRecalculationTimer += deltaTime;
+
+    // If we don't have a waypoint or we've reached the current one, get a new one
+    const needNewWaypoint = !this.currentWaypoint || zombiePos.distance(this.currentWaypoint) <= 1;
+
+    // Update path periodically or when we need a new waypoint
+    if (
+      needNewWaypoint ||
+      this.pathRecalculationTimer >= IdleMovementStrategy.PATH_RECALCULATION_INTERVAL
+    ) {
+      const mapManager = zombie.getGameManagers().getMapManager();
+      this.currentWaypoint = pathTowards(
+        zombiePos,
+        playerPos,
+        mapManager.getGroundLayer(),
+        mapManager.getCollidablesLayer()
+      );
+      this.pathRecalculationTimer = 0;
+    }
+
+    // If we have a waypoint, move towards it
+    if (this.currentWaypoint) {
+      const velocity = velocityTowards(zombiePos, this.currentWaypoint);
+      zombie.getExt(Movable).setVelocity(velocity.mul(zombie.getSpeed()));
+    } else {
+      // If no waypoint found, stop moving
+      zombie.getExt(Movable).setVelocity(new Vector2(0, 0));
+    }
+
+    return false; // Let base enemy handle collision movement
+  }
+}
+
 export class MeleeMovementStrategy implements MovementStrategy {
   private pathRecalculationTimer: number = 0;
   private static readonly PATH_RECALCULATION_INTERVAL = 1;
@@ -58,7 +122,7 @@ export class MeleeMovementStrategy implements MovementStrategy {
 export class MeleeAttackStrategy implements AttackStrategy {
   onEntityDamaged?: (entity: IEntity) => void;
 
-  update(zombie: BaseEnemy, deltaTime: number): void {
+  update(zombie: BaseEnemy, _deltaTime: number): void {
     if (!zombie.getAttackCooldown().isReady()) return;
 
     // Get all nearby entities that can be attacked
@@ -105,10 +169,16 @@ export class MeleeAttackStrategy implements AttackStrategy {
 }
 
 export class Zombie extends BaseEnemy {
-  constructor(gameManagers: IGameManagers) {
+  constructor(gameManagers: IGameManagers, isIdle: boolean = false) {
     super(gameManagers, Entities.ZOMBIE);
 
-    this.setMovementStrategy(new MeleeMovementStrategy());
+    // Use IdleMovementStrategy for idle zombies, otherwise use normal MeleeMovementStrategy
+    if (isIdle) {
+      this.setMovementStrategy(new IdleMovementStrategy());
+    } else {
+      this.setMovementStrategy(new MeleeMovementStrategy());
+    }
+
     this.setAttackStrategy(new MeleeAttackStrategy());
   }
 

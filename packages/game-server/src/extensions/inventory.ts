@@ -9,6 +9,43 @@ import Vector2 from "@/util/vector2";
 import { WEAPON_TYPE_VALUES } from "@shared/types/weapons";
 import { getConfig } from "@/config";
 
+/**
+ * Item drop table with weighted chances.
+ * Higher weight = higher chance of dropping.
+ */
+const ITEM_DROP_TABLE: Array<{ itemType: ItemType; weight: number }> = [
+  // Common items (high weight)
+  { itemType: "wood", weight: 25 },
+  { itemType: "cloth", weight: 25 },
+  { itemType: "bandage", weight: 15 },
+  { itemType: "pistol_ammo", weight: 12 },
+  { itemType: "shotgun_ammo", weight: 12 },
+
+  // Uncommon items (medium weight)
+  { itemType: "pistol", weight: 8 },
+  { itemType: "shotgun", weight: 6 },
+  { itemType: "knife", weight: 8 },
+  { itemType: "wall", weight: 8 },
+  { itemType: "torch", weight: 10 },
+  { itemType: "spikes", weight: 7 },
+  { itemType: "grenade", weight: 5 },
+  { itemType: "fire_extinguisher", weight: 5 },
+
+  // Rare items (low weight)
+  { itemType: "bolt_action_rifle", weight: 3 },
+  { itemType: "ak47", weight: 2 },
+  { itemType: "grenade_launcher", weight: 1.5 },
+  { itemType: "flamethrower", weight: 1.5 },
+  { itemType: "bolt_action_ammo", weight: 4 },
+  { itemType: "ak47_ammo", weight: 4 },
+  { itemType: "grenade_launcher_ammo", weight: 3 },
+  { itemType: "flamethrower_ammo", weight: 3 },
+  { itemType: "landmine", weight: 4 },
+  { itemType: "sentry_gun", weight: 2 },
+  { itemType: "gasoline", weight: 6 },
+  { itemType: "coin", weight: 10 },
+];
+
 export default class Inventory implements Extension {
   public static readonly type = "inventory";
 
@@ -96,12 +133,34 @@ export default class Inventory implements Extension {
   }
 
   public addRandomItem(chance = 1): this {
-    const items = ITEM_TYPES;
     if (Math.random() < chance) {
-      const item = { itemType: items[Math.floor(Math.random() * items.length)] };
-      this.addItem(item);
+      const itemType = this.getWeightedRandomItem();
+      this.addItem({ itemType });
     }
     return this;
+  }
+
+  /**
+   * Selects a random item from the drop table based on weighted probabilities.
+   * Items with higher weights have a higher chance of being selected.
+   */
+  private getWeightedRandomItem(): ItemType {
+    // Calculate total weight
+    const totalWeight = ITEM_DROP_TABLE.reduce((sum, entry) => sum + entry.weight, 0);
+
+    // Generate random number between 0 and total weight
+    let random = Math.random() * totalWeight;
+
+    // Find the item that corresponds to this random value
+    for (const entry of ITEM_DROP_TABLE) {
+      random -= entry.weight;
+      if (random <= 0) {
+        return entry.itemType;
+      }
+    }
+
+    // Fallback (should never reach here)
+    return ITEM_DROP_TABLE[0].itemType;
   }
 
   public clear(): void {

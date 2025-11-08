@@ -35,6 +35,12 @@ export interface BiomeData {
   ground: number[][];
   collidables: number[][];
   items?: string[];
+  decals?: Array<{
+    id: string;
+    position: { x: number; y: number };
+    animation?: any;
+    light?: any;
+  }>;
 }
 
 export interface BiomeInfo {
@@ -87,6 +93,9 @@ export async function readBiomeData(biomeName: string): Promise<BiomeData> {
     throw new Error(`Could not parse biome data from ${biomeName}.ts`);
   }
 
+  // Import DECAL_REGISTRY dynamically to make it available during eval
+  const { DECAL_REGISTRY } = await import("@shared/config/decals-config");
+
   // Use eval to parse the object literal (safe since we control the source)
   // Replace Entities references with strings for parsing
   let dataString = biomeDataMatch[1];
@@ -138,6 +147,30 @@ export async function writeBiomeData(
           firstImportMatch[0],
           firstImportMatch[0] + 'import { Entities } from "@/constants";\n'
         );
+      }
+    }
+  }
+
+  // Ensure DECAL_REGISTRY import is present if decals are being used
+  if (biomeData.decals && biomeData.decals.length > 0) {
+    const hasDecalRegistryImport = /import.*DECAL_REGISTRY.*from.*@shared\/config\/decals-config/.test(newContent);
+    if (!hasDecalRegistryImport) {
+      // Add import after BiomeData import or at the top
+      const biomeDataImportMatch = newContent.match(/^(import.*BiomeData.*\n)/m);
+      if (biomeDataImportMatch) {
+        newContent = newContent.replace(
+          biomeDataImportMatch[0],
+          biomeDataImportMatch[0] + 'import { DECAL_REGISTRY } from "@shared/config/decals-config";\n'
+        );
+      } else {
+        // If no BiomeData import, add after first import
+        const firstImportMatch = newContent.match(/^(import.*\n)/m);
+        if (firstImportMatch) {
+          newContent = newContent.replace(
+            firstImportMatch[0],
+            firstImportMatch[0] + 'import { DECAL_REGISTRY } from "@shared/config/decals-config";\n'
+          );
+        }
       }
     }
   }
@@ -253,6 +286,25 @@ function formatBiomeData(data: BiomeData): string {
     lines.push(`    [${row.join(", ")}]${isLast ? "" : ","}`);
   });
   lines.push("  ],");
+
+  // Format decals array if present
+  if (data.decals && data.decals.length > 0) {
+    lines.push("  decals: [");
+    data.decals.forEach((decal, index) => {
+      const isLast = index === data.decals!.length - 1;
+      lines.push("    {");
+      lines.push(`      id: '${decal.id}',`);
+      lines.push(`      position: { x: ${decal.position.x}, y: ${decal.position.y} },`);
+      if (decal.animation) {
+        lines.push(`      animation: DECAL_REGISTRY.${decal.id}.animation,`);
+      }
+      if (decal.light) {
+        lines.push(`      light: DECAL_REGISTRY.${decal.id}.light,`);
+      }
+      lines.push(`    }${isLast ? "" : ","}`);
+    });
+    lines.push("  ],");
+  }
 
   // Format items array if present
   if (data.items && data.items.length > 0) {

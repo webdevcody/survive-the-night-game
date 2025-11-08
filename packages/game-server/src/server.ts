@@ -12,11 +12,19 @@ import { TICK_RATE, PERFORMANCE_LOG_INTERVAL, TICK_RATE_MS } from "./config/conf
 import { getConfig } from "@shared/config";
 import Destructible from "@/extensions/destructible";
 import { PerformanceTracker } from "./util/performance";
+import { WaveState } from "@shared/types/wave";
 
 export class GameServer {
   // STATE
   private lastUpdateTime: number = Date.now();
   private timer: ReturnType<typeof setInterval> | null = null;
+  // Wave system state
+  private waveNumber: number = 1;
+  private waveState: WaveState = WaveState.PREPARATION;
+  private phaseStartTime: number = Date.now();
+  private phaseDuration: number = getConfig().wave.FIRST_WAVE_DELAY;
+  private totalZombies: number = 0;
+  // Legacy day/night cycle state (for backwards compatibility)
   private dayNumber: number = 1;
   private cycleStartTime: number = Date.now();
   private cycleDuration: number = getConfig().dayNight.DAY_DURATION;
@@ -40,6 +48,12 @@ export class GameServer {
     cycleStartTime: -1,
     cycleDuration: -1,
     isDay: undefined as boolean | undefined,
+    waveNumber: -1,
+    waveState: undefined as WaveState | undefined,
+    phaseStartTime: -1,
+    phaseDuration: -1,
+    zombiesRemaining: -1,
+    totalZombies: -1,
   };
 
   public getDayNumber(): number {
@@ -56,6 +70,33 @@ export class GameServer {
 
   public getIsDay(): boolean {
     return this.isDay;
+  }
+
+  public getWaveNumber(): number {
+    return this.waveNumber;
+  }
+
+  public getWaveState(): WaveState {
+    return this.waveState;
+  }
+
+  public getPhaseStartTime(): number {
+    return this.phaseStartTime;
+  }
+
+  public getPhaseDuration(): number {
+    return this.phaseDuration;
+  }
+
+  public getTotalZombies(): number {
+    return this.totalZombies;
+  }
+
+  public getZombiesRemaining(): number {
+    return this.entityManager
+      .getZombieEntities()
+      .filter((zombie) => zombie.hasExt(Destructible) && !zombie.getExt(Destructible).isDead())
+      .length;
   }
 
   constructor(port: number = 3001) {
@@ -81,10 +122,19 @@ export class GameServer {
   public startNewGame(): void {
     this.isGameReady = true;
     this.isGameOver = false;
+
+    // Initialize wave system
+    this.waveNumber = 1;
+    this.waveState = WaveState.PREPARATION;
+    this.phaseStartTime = Date.now();
+    this.phaseDuration = getConfig().wave.FIRST_WAVE_DELAY;
+    this.totalZombies = 0;
+
+    // Legacy day/night cycle (kept for compatibility)
     this.dayNumber = 1;
     this.cycleStartTime = Date.now();
     this.cycleDuration = getConfig().dayNight.DAY_DURATION;
-    this.isDay = true;
+    this.isDay = false; // Always night now
 
     // Clear all entities first
     this.entityManager.clear();
@@ -113,25 +163,8 @@ export class GameServer {
     }, 1000 / TICK_RATE);
   }
 
-  private onDayStart(): void {
-    console.log("Day started");
-
-    // Kill all zombies
-    const zombies = this.entityManager.getZombieEntities();
-    zombies.forEach((zombie) => {
-      const destructable = zombie.getExt(Destructible);
-      if (destructable) {
-        destructable.kill();
-      }
-    });
-
-    // Revive all dead players
-    const players = this.entityManager.getPlayerEntities();
-    players.forEach((player) => {
-      if (player.isDead()) {
-        player.revive();
-      }
-    });
+  private onPreparationStart(): void {
+    console.log(`Preparation for wave ${this.waveNumber} started`);
 
     // Reset merchant shop items
     const merchants = this.entityManager.getMerchantEntities();
@@ -142,9 +175,15 @@ export class GameServer {
     });
   }
 
-  private onNightStart(): void {
-    console.log("Night started");
-    this.mapManager.spawnZombies(this.dayNumber);
+  private onWaveStart(): void {
+    console.log(`Wave ${this.waveNumber} started`);
+    this.mapManager.spawnZombies(this.waveNumber);
+    this.totalZombies = this.getZombiesRemaining();
+  }
+
+  private onWaveComplete(): void {
+    console.log(`Wave ${this.waveNumber} completed`);
+    this.waveNumber++;
   }
 
   public setIsGameOver(isGameOver: boolean): void {
@@ -174,7 +213,7 @@ export class GameServer {
     this.updateEntities(deltaTime);
     // this.performanceTracker.trackEnd("updateEntities");
 
-    this.handleDayNightCycle(deltaTime);
+    this.handleWaveSystem(deltaTime);
     this.handleIfGameOver();
 
     this.entityManager.pruneEntities();
@@ -200,25 +239,54 @@ export class GameServer {
     this.lastUpdateTime = currentTime;
   }
 
-  private handleDayNightCycle(deltaTime: number) {
+  private handleWaveSystem(deltaTime: number) {
     const currentTime = Date.now();
-    const elapsedTime = (currentTime - this.cycleStartTime) / 1000;
+    const elapsedTime = (currentTime - this.phaseStartTime) / 1000;
 
-    if (elapsedTime >= this.cycleDuration) {
-      this.isDay = !this.isDay;
-      this.cycleStartTime = currentTime;
-      this.cycleDuration = this.isDay
-        ? getConfig().dayNight.DAY_DURATION
-        : getConfig().dayNight.NIGHT_DURATION;
-      this.dayNumber += this.isDay ? 1 : 0;
+    switch (this.waveState) {
+      case WaveState.PREPARATION:
+        // Check if preparation time is up
+        if (elapsedTime >= this.phaseDuration) {
+          if (getConfig().wave.AUTO_START_WAVES) {
+            // Automatically start wave
+            console.log(`[WAVE] Preparation complete. Starting Wave ${this.waveNumber}`);
+            this.waveState = WaveState.ACTIVE;
+            this.phaseStartTime = currentTime;
+            this.phaseDuration = getConfig().wave.WAVE_DURATION;
+            this.onWaveStart();
+          }
+        }
+        break;
 
-      if (this.isDay) {
-        console.log(`Day ${this.dayNumber} started`);
-        this.onDayStart();
-      } else {
-        console.log(`Night ${this.dayNumber} started`);
-        this.onNightStart();
-      }
+      case WaveState.ACTIVE:
+        // Check if wave duration is up
+        if (elapsedTime >= this.phaseDuration) {
+          // Wave time expired, transition directly to preparation
+          console.log(
+            `[WAVE] Wave ${this.waveNumber} complete. Starting preparation for Wave ${
+              this.waveNumber + 1
+            }`
+          );
+          this.onWaveComplete();
+          this.waveState = WaveState.PREPARATION;
+          this.phaseStartTime = currentTime;
+          this.phaseDuration = getConfig().wave.PREPARATION_DURATION;
+          this.onPreparationStart();
+        }
+        break;
+
+      case WaveState.COMPLETED:
+        // This state should not be reached, but handle it just in case
+        console.log(`[WAVE] WARNING: COMPLETED state reached, transitioning to PREPARATION`);
+        this.waveState = WaveState.PREPARATION;
+        this.phaseStartTime = currentTime;
+        this.phaseDuration = getConfig().wave.PREPARATION_DURATION;
+        this.onPreparationStart();
+        break;
+
+      default:
+        console.log(`[WAVE] WARNING: Unknown wave state: ${this.waveState}`);
+        break;
     }
   }
 
@@ -295,6 +363,39 @@ export class GameServer {
       timestamp: Date.now(),
     };
 
+    // Wave system state (new)
+    if (this.waveNumber !== this.lastBroadcastedState.waveNumber) {
+      stateUpdate.waveNumber = this.waveNumber;
+      this.lastBroadcastedState.waveNumber = this.waveNumber;
+    }
+
+    if (this.waveState !== this.lastBroadcastedState.waveState) {
+      stateUpdate.waveState = this.waveState;
+      this.lastBroadcastedState.waveState = this.waveState;
+    }
+
+    if (this.phaseStartTime !== this.lastBroadcastedState.phaseStartTime) {
+      stateUpdate.phaseStartTime = this.phaseStartTime;
+      this.lastBroadcastedState.phaseStartTime = this.phaseStartTime;
+    }
+
+    if (this.phaseDuration !== this.lastBroadcastedState.phaseDuration) {
+      stateUpdate.phaseDuration = this.phaseDuration;
+      this.lastBroadcastedState.phaseDuration = this.phaseDuration;
+    }
+
+    const currentZombiesRemaining = this.getZombiesRemaining();
+    if (currentZombiesRemaining !== this.lastBroadcastedState.zombiesRemaining) {
+      stateUpdate.zombiesRemaining = currentZombiesRemaining;
+      this.lastBroadcastedState.zombiesRemaining = currentZombiesRemaining;
+    }
+
+    if (this.totalZombies !== this.lastBroadcastedState.totalZombies) {
+      stateUpdate.totalZombies = this.totalZombies;
+      this.lastBroadcastedState.totalZombies = this.totalZombies;
+    }
+
+    // Legacy day/night cycle state (for backwards compatibility)
     if (this.dayNumber !== this.lastBroadcastedState.dayNumber) {
       stateUpdate.dayNumber = this.dayNumber;
       this.lastBroadcastedState.dayNumber = this.dayNumber;

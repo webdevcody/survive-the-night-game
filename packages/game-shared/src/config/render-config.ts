@@ -16,7 +16,7 @@ export const renderConfig = {
    * Whether to show health bars above entities
    * Set to false to hide health bars on players, zombies, and buildings
    */
-  showHealthBars: true,
+  showHealthBars: false,
 } as const;
 
 export type RenderConfig = typeof renderConfig;

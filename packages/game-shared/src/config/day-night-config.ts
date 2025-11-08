@@ -9,7 +9,7 @@ export const dayNightConfig = {
   /**
    * Day duration in seconds
    */
-  DAY_DURATION: 40,
+  DAY_DURATION: 5,
 
   /**
    * Night duration in seconds

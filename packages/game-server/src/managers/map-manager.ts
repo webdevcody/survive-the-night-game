@@ -1,6 +1,7 @@
 import { Tree } from "@/entities/items/tree";
 import { Boundary } from "@/entities/environment/boundary";
 import { Zombie } from "@/entities/enemies/zombie";
+import { Player } from "@/entities/player";
 import { DEBUG_START_ZOMBIE } from "@shared/debug";
 import { Shotgun } from "@/entities/weapons/shotgun";
 import { Pistol } from "@/entities/weapons/pistol";
@@ -34,11 +35,11 @@ import {
   GAS_STATION,
   CITY,
   MERCHANT,
-  type BiomeData,
   FOREST4,
   DOCK,
   SHED,
 } from "@/biomes";
+import type { BiomeData } from "@/biomes/types";
 import type { MapData } from "@shared/events/server-sent/map-event";
 import type { DecalData } from "@shared/config/decals-config";
 import { AK47 } from "@/entities/weapons/ak47";
@@ -49,9 +50,9 @@ import { getConfig } from "@/config";
 
 const WEAPON_SPAWN_CHANCE = {
   // Weapons
-  PISTOL: 0.0015,
+  PISTOL: 0.002,
   SHOTGUN: 0.0015,
-  KNIFE: 0.002,
+  KNIFE: 0.003,
   BOLT_ACTION_RIFLE: 0.0015,
   AK47: 0.0015,
   // ammo
@@ -61,14 +62,14 @@ const WEAPON_SPAWN_CHANCE = {
   AK47_AMMO: 0.005,
   // Items
   BANDAGE: 0.005,
-  CLOTH: 0.008,
+  CLOTH: 0.1,
   GASOLINE: 0.002,
   GRENADE: 0,
   LANDMINE: 0.001,
   SPIKES: 0.003,
-  TORCH: 0.003,
+  TORCH: 0, // do not spawn torches, players must craft them
   WALL: 0.005,
-  TREE: 0.1,
+  TREE: 0.2,
 } as const;
 
 const spawnTable = [
@@ -94,7 +95,7 @@ const spawnTable = [
 ];
 
 const BIOME_SIZE = 16;
-const MAP_SIZE = 16;
+const MAP_SIZE = 9;
 
 export class MapManager implements IMapManager {
   private groundLayer: number[][] = [];
@@ -176,28 +177,36 @@ export class MapManager implements IMapManager {
     console.log("Spawning zombies", zombiesToSpawn);
 
     const totalSize = BIOME_SIZE * MAP_SIZE;
-    const centerBiomeX = Math.floor(MAP_SIZE / 2);
-    const centerBiomeY = Math.floor(MAP_SIZE / 2);
 
-    // Pick 3 random spawn locations on the outskirts of the map
-    const spawnLocations = this.selectZombieSpawnLocations(3, centerBiomeX, centerBiomeY);
+    // Get all alive player positions
+    const players = this.getEntityManager().getPlayerEntities() as Player[];
+    const alivePlayers = players.filter((player) => !player.isDead());
 
-    // Divide zombies across the 3 spawn locations
+    if (alivePlayers.length === 0) {
+      console.warn("No alive players to spawn zombies around");
+      return;
+    }
+
+    // Calculate strategic spawn points based on player positions
+    const spawnLocations = this.selectStrategicZombieSpawnLocations(alivePlayers, 3);
+
+    // Divide zombies across the spawn locations
+    const numLocations = spawnLocations.length;
     const zombiesPerLocation = {
-      regular: Math.floor(zombieDistribution.regular / 3),
-      fast: Math.floor(zombieDistribution.fast / 3),
-      big: Math.floor(zombieDistribution.big / 3),
-      bat: Math.floor(zombieDistribution.bat / 3),
-      spitter: Math.floor(zombieDistribution.spitter / 3),
+      regular: Math.floor(zombieDistribution.regular / numLocations),
+      fast: Math.floor(zombieDistribution.fast / numLocations),
+      big: Math.floor(zombieDistribution.big / numLocations),
+      bat: Math.floor(zombieDistribution.bat / numLocations),
+      spitter: Math.floor(zombieDistribution.spitter / numLocations),
     };
 
     // Handle remainder zombies (distribute to first location)
     const remainderZombies = {
-      regular: zombieDistribution.regular % 3,
-      fast: zombieDistribution.fast % 3,
-      big: zombieDistribution.big % 3,
-      bat: zombieDistribution.bat % 3,
-      spitter: zombieDistribution.spitter % 3,
+      regular: zombieDistribution.regular % numLocations,
+      fast: zombieDistribution.fast % numLocations,
+      big: zombieDistribution.big % numLocations,
+      bat: zombieDistribution.bat % numLocations,
+      spitter: zombieDistribution.spitter % numLocations,
     };
 
     // Spawn zombies at each location
@@ -214,6 +223,109 @@ export class MapManager implements IMapManager {
 
       this.spawnZombieGroupAtLocation(location, locationDistribution, totalSize);
     });
+  }
+
+  /**
+   * Select strategic zombie spawn locations based on player positions.
+   * Zombies spawn 1000-1400px away from players to be challenging but not unfair.
+   * Uses clustering algorithm to find optimal spawn points that maximize distance from all players.
+   */
+  private selectStrategicZombieSpawnLocations(
+    players: Player[],
+    count: number
+  ): Array<{ x: number; y: number }> {
+    const MIN_SPAWN_DISTANCE = 400;
+    const MAX_SPAWN_DISTANCE = 500;
+    const totalSize = BIOME_SIZE * MAP_SIZE * getConfig().world.TILE_SIZE;
+
+    // Get all player positions
+    const playerPositions = players.map((player) => {
+      const pos = player.getExt(Positionable).getPosition();
+      return { x: pos.x, y: pos.y };
+    });
+
+    // Calculate the centroid of all players
+    const centroid = {
+      x: playerPositions.reduce((sum, p) => sum + p.x, 0) / playerPositions.length,
+      y: playerPositions.reduce((sum, p) => sum + p.y, 0) / playerPositions.length,
+    };
+
+    const spawnLocations: Array<{ x: number; y: number }> = [];
+    const maxAttempts = 100;
+
+    // Try to find 'count' spawn locations
+    for (let i = 0; i < count; i++) {
+      let bestLocation: { x: number; y: number } | null = null;
+      let bestScore = -Infinity;
+
+      // Try multiple random positions and pick the best one
+      for (let attempt = 0; attempt < maxAttempts; attempt++) {
+        // Generate random angle around the centroid
+        const angle = (Math.PI * 2 * (i + Math.random())) / count;
+        const distance =
+          MIN_SPAWN_DISTANCE + Math.random() * (MAX_SPAWN_DISTANCE - MIN_SPAWN_DISTANCE);
+
+        const candidateX = centroid.x + Math.cos(angle) * distance;
+        const candidateY = centroid.y + Math.sin(angle) * distance;
+
+        // Ensure within map bounds
+        if (
+          candidateX < 0 ||
+          candidateX >= totalSize ||
+          candidateY < 0 ||
+          candidateY >= totalSize
+        ) {
+          continue;
+        }
+
+        // Calculate score based on distance to all players
+        let minDistanceToPlayer = Infinity;
+        for (const playerPos of playerPositions) {
+          const dist = Math.sqrt(
+            Math.pow(candidateX - playerPos.x, 2) + Math.pow(candidateY - playerPos.y, 2)
+          );
+          minDistanceToPlayer = Math.min(minDistanceToPlayer, dist);
+        }
+
+        // Ensure it's within the desired range
+        if (minDistanceToPlayer < MIN_SPAWN_DISTANCE || minDistanceToPlayer > MAX_SPAWN_DISTANCE) {
+          continue;
+        }
+
+        // Calculate distance to already selected spawn locations (to spread them out)
+        let minDistanceToOtherSpawns = Infinity;
+        for (const spawnLoc of spawnLocations) {
+          const dist = Math.sqrt(
+            Math.pow(candidateX - spawnLoc.x, 2) + Math.pow(candidateY - spawnLoc.y, 2)
+          );
+          minDistanceToOtherSpawns = Math.min(minDistanceToOtherSpawns, dist);
+        }
+
+        // Score: prefer locations that are well-distributed and within range
+        // Higher score = better location
+        const score = minDistanceToPlayer + minDistanceToOtherSpawns;
+
+        if (score > bestScore) {
+          bestScore = score;
+          bestLocation = { x: candidateX, y: candidateY };
+        }
+      }
+
+      if (bestLocation) {
+        spawnLocations.push(bestLocation);
+      }
+    }
+
+    // If we couldn't find enough locations, fall back to simple angle distribution
+    while (spawnLocations.length < count) {
+      const angle = (Math.PI * 2 * spawnLocations.length) / count;
+      const distance = (MIN_SPAWN_DISTANCE + MAX_SPAWN_DISTANCE) / 2;
+      const x = Math.max(0, Math.min(totalSize - 1, centroid.x + Math.cos(angle) * distance));
+      const y = Math.max(0, Math.min(totalSize - 1, centroid.y + Math.sin(angle) * distance));
+      spawnLocations.push({ x, y });
+    }
+
+    return spawnLocations;
   }
 
   private selectZombieSpawnLocations(
@@ -247,7 +359,7 @@ export class MapManager implements IMapManager {
   }
 
   private spawnZombieGroupAtLocation(
-    location: { biomeX: number; biomeY: number },
+    location: { x?: number; y?: number; biomeX?: number; biomeY?: number },
     distribution: {
       regular: number;
       fast: number;
@@ -272,17 +384,28 @@ export class MapManager implements IMapManager {
       distribution.bat +
       distribution.spitter;
 
-    // Calculate spawn area boundaries (entire biome + adjacent tiles for spreading)
-    const biomeStartX = location.biomeX * BIOME_SIZE;
-    const biomeStartY = location.biomeY * BIOME_SIZE;
-    const biomeEndX = biomeStartX + BIOME_SIZE;
-    const biomeEndY = biomeStartY + BIOME_SIZE;
+    // Support both pixel coordinates (x, y) and biome coordinates (biomeX, biomeY)
+    let centerTileX: number;
+    let centerTileY: number;
 
-    // Expand spawn area slightly beyond biome boundaries
-    const spawnAreaStartX = Math.max(0, biomeStartX - 3);
-    const spawnAreaStartY = Math.max(0, biomeStartY - 3);
-    const spawnAreaEndX = Math.min(totalSize, biomeEndX + 3);
-    const spawnAreaEndY = Math.min(totalSize, biomeEndY + 3);
+    if (location.x !== undefined && location.y !== undefined) {
+      // Convert pixel coordinates to tile coordinates
+      centerTileX = Math.floor(location.x / getConfig().world.TILE_SIZE);
+      centerTileY = Math.floor(location.y / getConfig().world.TILE_SIZE);
+    } else if (location.biomeX !== undefined && location.biomeY !== undefined) {
+      // Use biome coordinates
+      centerTileX = location.biomeX * BIOME_SIZE + Math.floor(BIOME_SIZE / 2);
+      centerTileY = location.biomeY * BIOME_SIZE + Math.floor(BIOME_SIZE / 2);
+    } else {
+      throw new Error("Invalid location: must provide either (x, y) or (biomeX, biomeY)");
+    }
+
+    // Create a spawn area around the center point (8x8 tiles)
+    const SPAWN_RADIUS_TILES = 4;
+    const spawnAreaStartX = Math.max(0, centerTileX - SPAWN_RADIUS_TILES);
+    const spawnAreaStartY = Math.max(0, centerTileY - SPAWN_RADIUS_TILES);
+    const spawnAreaEndX = Math.min(totalSize, centerTileX + SPAWN_RADIUS_TILES);
+    const spawnAreaEndY = Math.min(totalSize, centerTileY + SPAWN_RADIUS_TILES);
 
     // Track occupied positions to prevent spawning on top of each other
     const occupiedPositions = new Set<string>();
@@ -298,17 +421,17 @@ export class MapManager implements IMapManager {
       spawnedCount.spitter < distribution.spitter
     ) {
       if (attempts++ > maxAttempts) {
-        console.warn(
-          `Could not spawn all zombies at location (${location.biomeX}, ${location.biomeY})`
-        );
+        const locStr =
+          location.x !== undefined
+            ? `(${location.x}, ${location.y})`
+            : `biome (${location.biomeX}, ${location.biomeY})`;
+        console.warn(`Could not spawn all zombies at location ${locStr}`);
         break;
       }
 
       // Random position within the spawn area
-      const x =
-        Math.floor(Math.random() * (spawnAreaEndX - spawnAreaStartX)) + spawnAreaStartX;
-      const y =
-        Math.floor(Math.random() * (spawnAreaEndY - spawnAreaStartY)) + spawnAreaStartY;
+      const x = Math.floor(Math.random() * (spawnAreaEndX - spawnAreaStartX)) + spawnAreaStartX;
+      const y = Math.floor(Math.random() * (spawnAreaEndY - spawnAreaStartY)) + spawnAreaStartY;
 
       // Check if position is already occupied
       const posKey = `${x},${y}`;
@@ -398,6 +521,7 @@ export class MapManager implements IMapManager {
     this.createForestBoundaries();
     this.spawnMerchants();
     this.spawnItems();
+    this.spawnIdleZombies();
     this.spawnDebugZombieIfEnabled();
   }
 
@@ -649,6 +773,38 @@ export class MapManager implements IMapManager {
       const zombie = new Zombie(this.getGameManagers());
       zombie.setPosition(new Vector2(middleX + 16 * 4 * getConfig().world.TILE_SIZE, middleY));
       this.getEntityManager().addEntity(zombie);
+    }
+  }
+
+  private spawnIdleZombies() {
+    const totalSize = BIOME_SIZE * MAP_SIZE;
+    const IDLE_ZOMBIE_SPAWN_CHANCE = 0.01; // 0.5% chance per valid tile
+
+    // Calculate campsite biome bounds (center biome)
+    const centerBiomeX = Math.floor(MAP_SIZE / 2);
+    const centerBiomeY = Math.floor(MAP_SIZE / 2);
+    const campsiteMinX = centerBiomeX * BIOME_SIZE;
+    const campsiteMaxX = (centerBiomeX + 1) * BIOME_SIZE;
+    const campsiteMinY = centerBiomeY * BIOME_SIZE;
+    const campsiteMaxY = (centerBiomeY + 1) * BIOME_SIZE;
+
+    for (let y = 0; y < totalSize; y++) {
+      for (let x = 0; x < totalSize; x++) {
+        // Skip campsite biome tiles
+        if (x >= campsiteMinX && x < campsiteMaxX && y >= campsiteMinY && y < campsiteMaxY) {
+          continue;
+        }
+
+        if (this.collidablesLayer[y][x] === -1) {
+          if (Math.random() < IDLE_ZOMBIE_SPAWN_CHANCE) {
+            const zombie = new Zombie(this.getGameManagers(), true); // true = idle mode
+            zombie.setPosition(
+              new Vector2(x * getConfig().world.TILE_SIZE, y * getConfig().world.TILE_SIZE)
+            );
+            this.getEntityManager().addEntity(zombie);
+          }
+        }
+      }
     }
   }
 

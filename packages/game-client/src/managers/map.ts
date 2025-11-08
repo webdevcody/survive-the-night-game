@@ -101,11 +101,13 @@ export class MapManager {
   getMapData(): {
     ground: number[][] | null;
     collidables: number[][] | null;
+    decals?: DecalData[];
     biomePositions?: any;
   } {
     return {
       ground: this.groundLayer,
       collidables: this.collidablesLayer,
+      decals: this.decals,
       biomePositions: this.biomePositions,
     };
   }

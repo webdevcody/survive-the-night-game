@@ -60,11 +60,18 @@ export function useSaveBiome() {
       ground,
       collidables,
       items,
+      decals,
     }: {
       biomeName: string;
       ground: number[][];
       collidables: number[][];
       items: string[];
+      decals?: Array<{
+        id: string;
+        position: { x: number; y: number };
+        animation?: any;
+        light?: any;
+      }>;
     }) => {
       const response = await fetch(API_ENDPOINTS.biome(biomeName), {
         method: "POST",
@@ -75,6 +82,7 @@ export function useSaveBiome() {
           ground,
           collidables,
           items,
+          decals,
         }),
       });
 

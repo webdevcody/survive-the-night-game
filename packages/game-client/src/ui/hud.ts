@@ -6,10 +6,11 @@ import { ChatWidget } from "./chat-widget";
 import { ClientDestructible } from "@/extensions/destructible";
 import { Zombies } from "@shared/constants";
 import { Minimap } from "./minimap";
+import { FullScreenMap } from "./fullscreen-map";
 import { Leaderboard } from "./leaderboard";
 import { SoundManager } from "@/managers/sound-manager";
 import { AssetManager } from "@/managers/asset";
-import { ClockPanel, StatPanel, TextPanel, ResourcesPanel } from "./panels";
+import { WavePanel, StatPanel, TextPanel, ResourcesPanel } from "./panels";
 import { getConfig } from "@shared/config";
 
 const HUD_SETTINGS = {
@@ -55,18 +56,17 @@ const HUD_SETTINGS = {
     hoverBackground: "rgba(0, 0, 0, 0.9)",
     font: "36px Arial",
   },
-  Clock: {
-    radius: 93,
-    padding: 0,
-    background: "rgba(0, 0, 0, 0.9)",
-    borderColor: "rgba(100, 100, 100, 0.8)",
+  Wave: {
+    width: 300,
+    height: 90,
+    padding: 12,
+    background: "rgba(0, 0, 0, 0.85)",
+    borderColor: "rgba(200, 50, 50, 0.8)", // Red border
     borderWidth: 3,
-    font: "21px Arial",
-    dayNumberFont: "bold 27px Arial",
-    iconFont: "37px Arial",
-    dayColor: "rgba(255, 215, 100, 0.9)",
-    nightColor: "rgba(40, 40, 80, 0.9)",
-    progressColor: "rgba(255, 255, 255, 0.9)",
+    font: "18px Arial",
+    timerFont: "bold 36px monospace", // Monospace for digital clock feel
+    textColor: "rgba(255, 255, 255, 0.9)",
+    timerColor: "rgba(255, 50, 50, 1)", // Bright red for timer
     right: 40,
     top: 40,
   },
@@ -106,10 +106,11 @@ export class Hud {
   private chatWidget: ChatWidget;
   private currentFps: number = 0;
   private minimap: Minimap;
+  private fullscreenMap: FullScreenMap;
   private leaderboard: Leaderboard;
   private soundManager: SoundManager;
   private assetManager: AssetManager;
-  private clockPanel: ClockPanel;
+  private wavePanel: WavePanel;
   private alivePlayersPanel: StatPanel;
   private totalPlayersPanel: StatPanel;
   private zombiesPanel: StatPanel;
@@ -125,23 +126,23 @@ export class Hud {
     this.assetManager = assetManager;
     this.chatWidget = new ChatWidget();
     this.minimap = new Minimap(mapManager);
+    this.fullscreenMap = new FullScreenMap(mapManager);
     this.leaderboard = new Leaderboard();
 
-    // Initialize clock panel (top right)
-    this.clockPanel = new ClockPanel({
-      padding: HUD_SETTINGS.Clock.padding,
-      background: HUD_SETTINGS.Clock.background,
-      borderColor: HUD_SETTINGS.Clock.borderColor,
-      borderWidth: HUD_SETTINGS.Clock.borderWidth,
-      radius: HUD_SETTINGS.Clock.radius,
-      font: HUD_SETTINGS.Clock.font,
-      dayNumberFont: HUD_SETTINGS.Clock.dayNumberFont,
-      iconFont: HUD_SETTINGS.Clock.iconFont,
+    // Initialize wave panel (top right)
+    this.wavePanel = new WavePanel({
+      padding: HUD_SETTINGS.Wave.padding,
+      background: HUD_SETTINGS.Wave.background,
+      borderColor: HUD_SETTINGS.Wave.borderColor,
+      borderWidth: HUD_SETTINGS.Wave.borderWidth,
+      width: HUD_SETTINGS.Wave.width,
+      height: HUD_SETTINGS.Wave.height,
+      font: HUD_SETTINGS.Wave.font,
+      timerFont: HUD_SETTINGS.Wave.timerFont,
       x: 0, // Will be calculated in render
       y: 0, // Will be calculated in render
-      dayColor: HUD_SETTINGS.Clock.dayColor,
-      nightColor: HUD_SETTINGS.Clock.nightColor,
-      progressColor: HUD_SETTINGS.Clock.progressColor,
+      textColor: HUD_SETTINGS.Wave.textColor,
+      timerColor: HUD_SETTINGS.Wave.timerColor,
     });
 
     // Initialize stat panels (right of minimap)
@@ -278,6 +279,14 @@ export class Hud {
     this.showInstructions = !this.showInstructions;
   }
 
+  public toggleFullscreenMap(): void {
+    this.fullscreenMap.toggle();
+  }
+
+  public isFullscreenMapOpen(): boolean {
+    return this.fullscreenMap.isOpen();
+  }
+
   private getAlivePlayers(gameState: GameState): number {
     return gameState.entities.filter(
       (entity) =>
@@ -325,15 +334,15 @@ export class Hud {
     // Render minimap first
     this.minimap.render(ctx, gameState);
 
-    // Render clock panel in top right
+    // Render wave panel in top right
     ctx.save();
     ctx.setTransform(1, 0, 0, 1, 0, 0);
-    const clockX = width - HUD_SETTINGS.Clock.right - HUD_SETTINGS.Clock.radius;
-    const clockY = HUD_SETTINGS.Clock.top + HUD_SETTINGS.Clock.radius;
-    // Update clock position
-    (this.clockPanel as any).clockSettings.x = clockX;
-    (this.clockPanel as any).clockSettings.y = clockY;
-    this.clockPanel.render(ctx, gameState);
+    const waveX = width - HUD_SETTINGS.Wave.right - HUD_SETTINGS.Wave.width;
+    const waveY = HUD_SETTINGS.Wave.top;
+    // Update wave panel position
+    (this.wavePanel as any).waveSettings.x = waveX;
+    (this.wavePanel as any).waveSettings.y = waveY;
+    this.wavePanel.render(ctx, gameState);
     ctx.restore();
 
     // Render stat panels to the right of minimap
@@ -398,6 +407,9 @@ export class Hud {
     this.renderMuteButton(ctx);
     this.leaderboard.render(ctx, gameState);
     this.chatWidget.render(ctx, gameState);
+
+    // Render fullscreen map on top of everything else if open
+    this.fullscreenMap.render(ctx, gameState);
   }
 
   public addMessage(message: string): void {
@@ -492,6 +504,11 @@ export class Hud {
   }
 
   public handleClick(x: number, y: number, canvasHeight: number): boolean {
+    // Check fullscreen map clicks first (if open)
+    if (this.fullscreenMap.handleClick(x, y)) {
+      return true;
+    }
+
     // Check if click is on mute button
     const settings = HUD_SETTINGS.MuteButton;
     const buttonX = settings.left;

@@ -1,14 +1,23 @@
 import { ClientEntityBase } from "@/extensions/client-entity";
+import { WaveState } from "@shared/types/wave";
 
 export type GameState = {
   startedAt: number;
   playerId: string;
   entities: ClientEntityBase[];
   entityMap: Map<string, ClientEntityBase>;
+  // Legacy day/night cycle (deprecated)
   dayNumber: number;
   cycleStartTime: number;
   cycleDuration: number;
   isDay: boolean;
+  // Wave system
+  waveNumber: number;
+  waveState: WaveState;
+  phaseStartTime: number;
+  phaseDuration: number;
+  zombiesRemaining?: number;
+  totalZombies?: number;
   crafting: boolean;
 };
 

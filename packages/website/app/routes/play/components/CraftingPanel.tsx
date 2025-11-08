@@ -120,7 +120,7 @@ export function CraftingPanel({ gameClient }: CraftingPanelProps) {
   }
 
   return (
-    <div className="fixed left-4 top-1/2 -translate-y-1/2 z-[9999]">
+    <div className="fixed left-4 top-[120px] z-[5000]">
       {/* Vertical column of recipe cells */}
       <div className="flex flex-col gap-1">
         {recipes.map((recipe) => {
@@ -225,7 +225,6 @@ export function CraftingPanel({ gameClient }: CraftingPanelProps) {
           );
         })}
       </div>
-
     </div>
   );
 }

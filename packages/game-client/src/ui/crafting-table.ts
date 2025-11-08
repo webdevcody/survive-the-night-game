@@ -16,7 +16,8 @@ const CRAFTING_TABLE_SETTINGS = {
       right: 20,
       top: 50,
     },
-    right: 20,
+    left: 460, // Position to align with stat panels (right of minimap)
+    top: 20, // Top margin
   },
   Instructions: {
     color: "rgba(0, 0, 0, 0.7)",
@@ -172,8 +173,8 @@ export class CraftingTable implements Renderable {
       Recipes.gapY * (recipes.length - 1) +
       Container.padding.bottom;
 
-    const offsetTop = screenHeight / 2 - height / 2;
-    const offsetLeft = screenWidth - width - Container.right;
+    const offsetTop = Container.top;
+    const offsetLeft = Container.left;
 
     ctx.save();
     ctx.setTransform(1, 0, 0, 1, 0, 0);

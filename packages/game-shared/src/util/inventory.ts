@@ -43,3 +43,16 @@ export type WeaponKey =
   | "grenade"
   | "grenade_launcher"
   | "flamethrower";
+
+/**
+ * Resource items that increment player resource counts (wood, cloth)
+ * rather than being added to inventory
+ */
+export const RESOURCE_ITEMS: ReadonlySet<ItemType> = new Set(["wood", "cloth"] as const);
+
+/**
+ * Check if an item type is a resource (wood, cloth)
+ */
+export function isResourceItem(itemType: ItemType): boolean {
+  return RESOURCE_ITEMS.has(itemType);
+}

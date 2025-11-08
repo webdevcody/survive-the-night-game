@@ -135,6 +135,7 @@ export class ClientEventListener {
     const timestamp = gameStateEvent.getTimestamp() ?? Date.now();
 
     // Update game state properties only if they are included in the update
+    // Legacy day/night cycle
     if (gameStateEvent.getDayNumber() !== undefined) {
       this.gameState.dayNumber = gameStateEvent.getDayNumber()!;
     }
@@ -146,6 +147,26 @@ export class ClientEventListener {
     }
     if (gameStateEvent.getIsDay() !== undefined) {
       this.gameState.isDay = gameStateEvent.getIsDay()!;
+    }
+
+    // Wave system
+    if (gameStateEvent.getWaveNumber() !== undefined) {
+      this.gameState.waveNumber = gameStateEvent.getWaveNumber()!;
+    }
+    if (gameStateEvent.getWaveState() !== undefined) {
+      this.gameState.waveState = gameStateEvent.getWaveState()!;
+    }
+    if (gameStateEvent.getPhaseStartTime() !== undefined) {
+      this.gameState.phaseStartTime = gameStateEvent.getPhaseStartTime()!;
+    }
+    if (gameStateEvent.getPhaseDuration() !== undefined) {
+      this.gameState.phaseDuration = gameStateEvent.getPhaseDuration()!;
+    }
+    if (gameStateEvent.getZombiesRemaining() !== undefined) {
+      this.gameState.zombiesRemaining = gameStateEvent.getZombiesRemaining()!;
+    }
+    if (gameStateEvent.getTotalZombies() !== undefined) {
+      this.gameState.totalZombies = gameStateEvent.getTotalZombies()!;
     }
 
     if (gameStateEvent.isFullState()) {
