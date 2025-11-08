@@ -14,24 +14,29 @@ export const predictionConfig = {
   showDebugVisuals: false,
 
   /**
-   * Below this threshold, trust client prediction (in pixels)
-   */
-  smallErrorThreshold: 15,
-
-  /**
    * Above this threshold, snap to server position (in pixels)
+   * Below this, use gentle or smooth correction
    */
-  largeErrorThreshold: 25,
+  errorThreshold: 50,
 
   /**
-   * Smooth correction speed for small errors (0-1)
+   * Smooth correction speed when stopped (0-1)
+   * Higher = faster correction, lower = smoother
    */
-  minLerpSpeed: 0.15,
+  lerpSpeed: 0.3,
 
   /**
-   * Faster correction speed for larger errors (0-1)
+   * Gentle correction speed during movement (0-1)
+   * Should be much lower than lerpSpeed to avoid "mud" feeling
+   * This continuously pulls player towards server position while moving
    */
-  maxLerpSpeed: 0.2,
+  movementCorrectionSpeed: 0.15,
+
+  /**
+   * Minimum error (in pixels) before applying movement correction
+   * Prevents jitter from tiny differences
+   */
+  movementCorrectionThreshold: 7,
 };
 
 export type PredictionConfig = typeof predictionConfig;

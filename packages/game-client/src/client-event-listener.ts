@@ -211,7 +211,7 @@ export class ClientEventListener {
 
                     // For very large errors, snap immediately to prevent unbounded drift
                     // The PredictionManager's reconciliation will handle smaller errors smoothly
-                    if (error > (window.config?.prediction?.largeErrorThreshold ?? 75)) {
+                    if (error > (window.config?.prediction?.errorThreshold ?? 50)) {
                       // Large error: snap immediately to server position
                       existingEntity.deserializeProperty(key, value);
                     } else {

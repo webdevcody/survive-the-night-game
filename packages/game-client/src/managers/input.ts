@@ -119,6 +119,16 @@ export class InputManager {
   constructor(callbacks: InputManagerOptions = {}) {
     this.callbacks = callbacks;
     window.addEventListener("keydown", (e) => {
+      // Ignore inputs when user is typing in a form element
+      const target = e.target as HTMLElement;
+      if (
+        target.tagName === "INPUT" ||
+        target.tagName === "TEXTAREA" ||
+        target.isContentEditable
+      ) {
+        return;
+      }
+
       const eventCode = e.code;
       const eventKey = e.key.toLowerCase();
 
@@ -259,6 +269,16 @@ export class InputManager {
     });
 
     window.addEventListener("keyup", (e) => {
+      // Ignore inputs when user is typing in a form element
+      const target = e.target as HTMLElement;
+      if (
+        target.tagName === "INPUT" ||
+        target.tagName === "TEXTAREA" ||
+        target.isContentEditable
+      ) {
+        return;
+      }
+
       const eventCode = e.code;
       const eventKey = e.key.toLowerCase();
 

@@ -1,10 +1,15 @@
 import { useEffect, useRef, useState } from "react";
+import { useNavigate } from "react-router";
 import { PredictionConfigPanel } from "./play/components/PredictionConfigPanel";
 import { InstructionPanel } from "./play/components/InstructionPanel";
 import { CraftingPanel } from "./play/components/CraftingPanel";
 import { SpawnPanel } from "./play/components/SpawnPanel";
 import { ResourcePanel } from "./play/components/ResourcePanel";
 import { Button } from "~/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuItem,
+} from "~/components/ui/dropdown-menu";
 
 export function meta() {
   return [
@@ -19,12 +24,22 @@ export function meta() {
 
 // Client-only component that dynamically imports game client code
 function GameClientLoader() {
+  const navigate = useNavigate();
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const sceneManagerRef = useRef<any>(null);
   const [isClient, setIsClient] = useState(false);
   const [showInstructions, setShowInstructions] = useState(false);
   const [showSpawnPanel, setShowSpawnPanel] = useState(false);
   const [gameClient, setGameClient] = useState<any>(null);
+
+  const handleLeaveGame = () => {
+    // Clean up game client before leaving
+    if (sceneManagerRef.current) {
+      sceneManagerRef.current.destroy();
+      delete (window as any).__sceneManager;
+    }
+    navigate("/");
+  };
 
   useEffect(() => {
     // Mark as client-side after mount
@@ -99,16 +114,78 @@ function GameClientLoader() {
     <div className="relative flex justify-center items-center h-screen bg-gray-900">
       <canvas ref={canvasRef} />
 
-      {/* Top left controls - Settings button and Config panel */}
+      {/* Top left controls - Game menu, Info button and Config panel */}
       <div className="fixed left-4 top-4 z-50 flex items-start gap-2">
+        <DropdownMenu
+          trigger={
+            <Button
+              variant="ghost"
+              size="icon"
+              className="bg-gray-800 text-white hover:bg-gray-700"
+              title="Game Options"
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                width="24"
+                height="24"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <circle cx="12" cy="12" r="3" />
+                <path d="M12 1v6m0 6v6m9-9h-6m-6 0H3" />
+                <path d="m19.8 4.2-4.2 4.2m0 7.2 4.2 4.2M4.2 19.8l4.2-4.2m0-7.2L4.2 4.2" />
+              </svg>
+            </Button>
+          }
+          align="left"
+        >
+          <DropdownMenuItem onClick={handleLeaveGame}>
+            <div className="flex items-center gap-2">
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                width="16"
+                height="16"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+                <polyline points="16 17 21 12 16 7" />
+                <line x1="21" y1="12" x2="9" y2="12" />
+              </svg>
+              <span>Leave Game</span>
+            </div>
+          </DropdownMenuItem>
+        </DropdownMenu>
         <Button
           variant="ghost"
           size="icon"
-          onClick={() => setShowInstructions(true)}
-          className="bg-gray-800 text-white hover:bg-gray-700 text-2xl"
-          title="Settings (ESC or I)"
+          onClick={() => setShowInstructions((prev) => !prev)}
+          className="bg-gray-800 text-white hover:bg-gray-700"
+          title="Game Controls (ESC or I)"
         >
-          ⚙️
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            width="24"
+            height="24"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
+            <circle cx="12" cy="12" r="10" />
+            <path d="M12 16v-4" />
+            <path d="M12 8h.01" />
+          </svg>
         </Button>
         {import.meta.env.VITE_LOCAL === "true" && (
           <>

@@ -4,33 +4,19 @@ import { ClientPositionable } from "@/extensions";
 import { getConfig } from "@shared/config";
 
 /**
- * Configuration for reconciliation behavior
- */
-export interface ReconciliationConfig {
-  // Thresholds (in pixels)
-  smallErrorThreshold: number; // Below this, trust client
-  largeErrorThreshold: number; // Above this, snap to server
-
-  // Smooth correction parameters
-  minLerpSpeed: number; // Lerp speed for small errors
-  maxLerpSpeed: number; // Lerp speed for large errors
-}
-
-/**
- * Enhanced reconciliation manager with adaptive lerp
+ * Reconciliation manager with continuous gentle correction
  *
- * Handles different types of corrections intelligently:
- * - Small errors: Trust client prediction
- * - Medium errors: Smooth lerp towards server position
- * - Large errors: Snap to server position
+ * Handles server reconciliation using a hybrid approach:
+ * - Large errors (>50px): Snap to server position immediately
+ * - Stopped moving: Smooth lerp to server position (fast)
+ * - While moving: Gentle continuous correction (slow, subtle)
+ *
+ * This prevents drift buildup during movement (especially direction changes)
+ * while maintaining responsive feel.
  */
 export class ReconciliationManager {
   private isMoving: boolean = false;
   private wasMoving: boolean = false;
-
-  constructor() {
-    // Configuration is now accessed dynamically via getConfig()
-  }
 
   /**
    * Set whether the player is currently moving (has movement input)
@@ -55,46 +41,32 @@ export class ReconciliationManager {
       return;
     }
 
-    const config = this.getCurrentConfig();
+    const config = getConfig().prediction;
     const clientPos = player.getExt(ClientPositionable).getPosition();
     const error = this.calculateError(clientPos, serverPosition);
 
     // Store server ghost position for visualization
     (player as any).setServerGhostPosition?.(new Vector2(serverPosition.x, serverPosition.y));
 
-    // Only reconcile when:
-    // 1. Player just stopped moving (smooth interpolation to server position)
-    // 2. Player is not moving and there's any error (continue interpolating)
-    // 3. Error is very large during movement (emergency snap)
+    // Reconciliation strategy:
+    // 1. Large error (> errorThreshold): Snap immediately (emergency correction)
+    // 2. Stopped or just stopped: Smooth fast lerp (converge quickly)
+    // 3. Moving with error: Gentle continuous correction (prevent drift accumulation)
 
-    // Define a very small threshold below which we consider positions "synced"
     const minSyncThreshold = 0.5; // Half a pixel - effectively synced
 
-    if (this.justStoppedMoving()) {
-      // Player just stopped moving - interpolate to server position regardless of error size
-      this.smoothCorrection(player, serverPosition, error);
-    } else if (!this.isMoving && error > minSyncThreshold) {
-      // Player is not moving - continue interpolating until fully synced
-      // This ensures we eventually reach the exact server position
-      this.smoothCorrection(player, serverPosition, error);
-    } else if (error > config.largeErrorThreshold) {
-      // Large error during movement: Snap to server position
+    if (error > config.errorThreshold) {
+      // Emergency correction: Large misprediction detected
       this.snapToServer(player, serverPosition);
+    } else if (this.justStoppedMoving() || (!this.isMoving && error > minSyncThreshold)) {
+      // Fast convergence when not moving
+      this.smoothCorrection(player, serverPosition, config.lerpSpeed);
+    } else if (this.isMoving && error > config.movementCorrectionThreshold) {
+      // Gentle correction during movement to prevent drift buildup
+      // This is key for handling direction changes smoothly
+      this.smoothCorrection(player, serverPosition, config.movementCorrectionSpeed);
     }
-    // Otherwise: Trust client prediction (no correction during movement)
-  }
-
-  /**
-   * Get current config from getConfig()
-   */
-  private getCurrentConfig(): ReconciliationConfig {
-    const config = getConfig().prediction;
-    return {
-      smallErrorThreshold: config.smallErrorThreshold,
-      largeErrorThreshold: config.largeErrorThreshold,
-      minLerpSpeed: config.minLerpSpeed,
-      maxLerpSpeed: config.maxLerpSpeed,
-    };
+    // Otherwise: error is negligible, no correction needed
   }
 
   /**
@@ -108,20 +80,12 @@ export class ReconciliationManager {
 
   /**
    * Smoothly correct position towards server position
+   * @param lerpSpeed - Speed of correction (0-1), higher = faster
    */
-  private smoothCorrection(player: PlayerClient, serverPosition: Vector2, error: number): void {
+  private smoothCorrection(player: PlayerClient, serverPosition: Vector2, lerpSpeed: number): void {
     if (!player.hasExt(ClientPositionable)) {
       return;
     }
-
-    const config = this.getCurrentConfig();
-
-    // Adaptive lerp speed based on error magnitude
-    const errorRatio =
-      (error - config.smallErrorThreshold) /
-      (config.largeErrorThreshold - config.smallErrorThreshold);
-    const lerpSpeed =
-      config.minLerpSpeed + (config.maxLerpSpeed - config.minLerpSpeed) * errorRatio;
 
     const currentPos = player.getExt(ClientPositionable).getPosition();
     const correctedX = currentPos.x + (serverPosition.x - currentPos.x) * lerpSpeed;
@@ -140,5 +104,4 @@ export class ReconciliationManager {
         .setPosition(new Vector2(serverPosition.x, serverPosition.y));
     }
   }
-
 }

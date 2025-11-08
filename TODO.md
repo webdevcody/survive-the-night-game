@@ -4,7 +4,9 @@ Feel free to pick any item listed out here to work on.
 
 ## TODO
 
-- pace too slow
+- hook the configuration panel so that values propigate to the server as well so I don't have to restart the server when tweaking values
+
+- when the night starts, have the wave of zombies spawn closer to the campsite, also don't spawn all at once, spawn in waves
 - I don't like the random spawns of zombies, it would be cool if they had a heard or group walk behavior
 - crafting is hard, move resources to stack player resources
 - improve crafting menu
@@ -105,6 +107,10 @@ Feel free to pick any item listed out here to work on.
 - [ ] apply delta compression to the server game state updates
 
 ## Change Log:
+
+### 0.5.0
+
+### 0.4.0
 
 - [x] 10/22/2025: add an exploding zombie
 

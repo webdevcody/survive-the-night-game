@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { Button } from "~/components/ui/button";
 
 interface InstructionPanelProps {
@@ -10,6 +10,8 @@ interface InstructionPanelProps {
  * Panel displaying game controls and instructions
  */
 export function InstructionPanel({ isOpen, onClose }: InstructionPanelProps) {
+  const panelRef = useRef<HTMLDivElement>(null);
+
   // Handle ESC key to close
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -22,11 +24,34 @@ export function InstructionPanel({ isOpen, onClose }: InstructionPanelProps) {
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [isOpen, onClose]);
 
+  // Handle click outside to close
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (panelRef.current && !panelRef.current.contains(e.target as Node)) {
+        onClose();
+      }
+    };
+
+    if (isOpen) {
+      // Add a small delay to prevent immediate closing when opening
+      setTimeout(() => {
+        document.addEventListener("mousedown", handleClickOutside);
+      }, 100);
+    }
+
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, [isOpen, onClose]);
+
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-      <div className="bg-gray-900 border border-gray-700 rounded-lg p-6 shadow-xl max-w-2xl w-full mx-4">
+    <div className="fixed left-4 top-20 z-[9999]">
+      <div
+        ref={panelRef}
+        className="bg-gray-900 opacity-100 border border-gray-700 rounded-lg p-6 shadow-xl max-w-2xl w-full"
+      >
         <div className="flex items-center justify-between mb-6">
           <h2 className="text-white font-bold text-2xl">Game Controls</h2>
           <Button variant="ghost" size="sm" onClick={onClose}>

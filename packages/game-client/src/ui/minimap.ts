@@ -3,6 +3,7 @@ import { getPlayer } from "@/util/get-player";
 import { ClientPositionable } from "@/extensions/positionable";
 import { PlayerClient } from "@/entities/player";
 import { WallClient } from "@/entities/items/wall";
+import { TreeClient } from "@/entities/items/tree";
 import { ClientCarryable } from "@/extensions/carryable";
 import { MapManager } from "@/managers/map";
 import { AcidProjectileClient } from "@/entities/acid-projectile";
@@ -213,6 +214,9 @@ export class Minimap {
       } else if (entity instanceof WallClient) {
         color = settings.colors.wall;
         indicator = settings.indicators.wall;
+      } else if (entity instanceof TreeClient) {
+        color = settings.colors.tree;
+        indicator = settings.indicators.tree;
       } else if (entity.hasExt(ClientCarryable)) {
         color = settings.colors.item;
         indicator = settings.indicators.item;

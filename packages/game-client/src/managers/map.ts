@@ -229,8 +229,10 @@ export class MapManager {
         if (visited.has(key)) continue;
 
         // Calculate next intensity based on tile type
-        const isCollidable = this.collidablesLayer[neighbor.row][neighbor.col] !== -1;
-        const attenuation = isCollidable ? COLLIDABLE_ATTENUATION : PATH_ATTENUATION;
+        // Only tile ID 3 blocks light spread
+        const tileId = this.collidablesLayer[neighbor.row][neighbor.col];
+        const blocksLight = tileId === 3;
+        const attenuation = blocksLight ? COLLIDABLE_ATTENUATION : PATH_ATTENUATION;
         const nextIntensity = intensity * attenuation;
 
         if (nextIntensity >= MIN_LIGHT_INTENSITY) {

@@ -10,4 +10,3 @@ export { GAS_STATION } from "./gas-station";
 export { MERCHANT } from "./merchant";
 export { SHED } from "./shed";
 export { WATER } from "./water";
-export { type BiomeData } from "./types";
