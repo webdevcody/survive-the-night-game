@@ -41,6 +41,7 @@ import { MerchantClient } from "./environment/merchant";
 import { GrenadeProjectileClient } from "./grenade-projectile";
 import { FlameProjectileClient } from "./flame-projectile";
 import { SentryGunClient } from "./items/sentry-gun";
+import { CrateClient } from "./items/crate";
 
 export const entityMap = {
   [Entities.PLAYER]: PlayerClient,
@@ -56,6 +57,7 @@ export const entityMap = {
   [Entities.BOLT_ACTION_RIFLE]: BoltActionRifleClient,
   [Entities.BOLT_ACTION_AMMO]: BoltActionAmmoClient,
   [Entities.AK47]: AK47Client,
+  [Entities.CRATE]: CrateClient,
   [Entities.AK47_AMMO]: AK47AmmoClient,
   [Entities.GRENADE_LAUNCHER]: GrenadeLauncherClient,
   [Entities.GRENADE_LAUNCHER_AMMO]: GrenadeLauncherAmmoClient,

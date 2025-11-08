@@ -139,4 +139,15 @@ export const ITEM_CONFIGS: Record<string, ItemConfig> = {
       sheet: "items",
     },
   },
+  crate: {
+    id: "crate",
+    category: "structure",
+    assets: {
+      assetKey: "crate",
+      x: 0,
+      y: 144,
+      sheet: "items",
+      totalFrames: 3,
+    },
+  },
 };

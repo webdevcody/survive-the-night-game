@@ -5,11 +5,12 @@ export interface ItemAssetConfig {
   width?: number;
   height?: number;
   sheet?: string;
+  totalFrames?: number;
 }
 
 export interface ItemConfig {
   id: string;
-  category: "consumable" | "ammo" | "placeable" | "throwable";
+  category: "consumable" | "ammo" | "placeable" | "throwable" | "structure";
   assets: ItemAssetConfig;
 }
 

@@ -16,6 +16,8 @@ export const worldConfig = {
    */
   WALL_MAX_HEALTH: 10,
 
+  CRATE_HEALTH: 3,
+
   /**
    * Maximum distance (in pixels) a player can place structures from their position
    */

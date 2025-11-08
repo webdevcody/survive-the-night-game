@@ -13,6 +13,7 @@ export const Entities = {
   LEAPING_ZOMBIE: "leaping_zombie",
   BULLET: "bullet",
   WALL: "wall",
+  CRATE: "crate",
   BOUNDARY: "boundary",
   BANDAGE: "bandage",
   CLOTH: "cloth",

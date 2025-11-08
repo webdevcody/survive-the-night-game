@@ -239,8 +239,17 @@ function createSimpleAsset(
   y: number,
   width?: number,
   height?: number,
-  sheet: string = "default"
+  sheet: string = "default",
+  totalFrames?: number
 ) {
+  if (totalFrames) {
+    const assets: Record<string, CropOptions & { sheet: string }> = {};
+    for (let i = 0; i < totalFrames; i++) {
+      assets[`${assetKey}_${i}`] = assetMap({ x: x + i * tileSize, y, width, height, sheet });
+    }
+    return assets;
+  }
+
   return {
     [assetKey]: assetMap({ x, y, width, height, sheet }),
   };
@@ -297,7 +306,8 @@ export const assetsMap = {
       config.assets.y,
       config.assets.width,
       config.assets.height,
-      config.assets.sheet || "default"
+      config.assets.sheet || "default",
+      config.assets.totalFrames
     )
   ),
   // Auto-generate all projectile assets from registry

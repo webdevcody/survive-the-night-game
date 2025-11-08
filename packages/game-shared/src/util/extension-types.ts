@@ -11,6 +11,7 @@ export const ExtensionTypes = {
   INVENTORY: "inventory",
   IGNITABLE: "ignitable",
   MOVABLE: "movable",
+  STATIC: "static",
   COMBUSTIBLE: "combustible",
   ILLUMINATED: "illuminated",
   CARRYABLE: "carryable",

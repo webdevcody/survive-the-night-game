@@ -23,6 +23,7 @@ import { Landmine } from "@/entities/items/landmine";
 import { Spikes } from "@/entities/items/spikes";
 import { Torch } from "@/entities/items/torch";
 import { Wall } from "@/entities/items/wall";
+import { Crate } from "@/entities/items/crate";
 import { SpitterZombie } from "@/entities/enemies/spitter-zombie";
 import { Merchant } from "@/entities/environment/merchant";
 import {
@@ -1017,5 +1018,53 @@ export class MapManager implements IMapManager {
     // Return a random position from valid positions
     const randomIndex = Math.floor(Math.random() * validPositions.length);
     return validPositions[randomIndex];
+  }
+
+  /**
+   * Spawns a specified number of crates at random valid positions on the map.
+   * Crates are placed on ground tiles without collidables.
+   * @param count Number of crates to spawn (default: 4)
+   */
+  public spawnCrates(count: number = 4): void {
+    const totalSize = BIOME_SIZE * MAP_SIZE;
+    const validPositions: { x: number; y: number }[] = [];
+
+    // Collect all valid spawn positions (ground tiles without collidables)
+    for (let y = 0; y < totalSize; y++) {
+      for (let x = 0; x < totalSize; x++) {
+        const groundTile = this.groundLayer[y][x];
+        const isValidGround =
+          groundTile === 8 || groundTile === 4 || groundTile === 14 || groundTile === 24;
+
+        if (isValidGround && this.collidablesLayer[y][x] === -1) {
+          validPositions.push({ x, y });
+        }
+      }
+    }
+
+    if (validPositions.length === 0) {
+      console.warn("No valid positions to spawn crates");
+      return;
+    }
+
+    // Spawn crates at random valid positions
+    const cratesSpawned = Math.min(count, validPositions.length);
+    for (let i = 0; i < cratesSpawned; i++) {
+      const randomIndex = Math.floor(Math.random() * validPositions.length);
+      const position = validPositions.splice(randomIndex, 1)[0]; // Remove to avoid duplicates
+
+      const crate = new Crate(this.getGameManagers());
+      crate
+        .getExt(Positionable)
+        .setPosition(
+          new Vector2(
+            position.x * getConfig().world.TILE_SIZE,
+            position.y * getConfig().world.TILE_SIZE
+          )
+        );
+      this.getEntityManager().addEntity(crate);
+    }
+
+    console.log(`Spawned ${cratesSpawned} crate(s) on the map`);
   }
 }

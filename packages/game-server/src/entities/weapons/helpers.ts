@@ -4,6 +4,7 @@ import { IEntity } from "../types";
 import { IEntityManager } from "@/managers/types";
 import Vector2 from "@/util/vector2";
 import Inventory from "@/extensions/inventory";
+import Static from "@/extensions/static";
 
 export function knockBack(
   entityManager: IEntityManager,
@@ -11,6 +12,12 @@ export function knockBack(
   facing: Direction,
   distance: number
 ) {
+  const isStatic = entity.hasExt(Static);
+
+  if (isStatic) {
+    return;
+  }
+
   const positionable = entity.getExt(Positionable);
   const originalPosition = { ...positionable.getPosition() };
   const newPosition = { ...originalPosition };

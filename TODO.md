@@ -42,6 +42,7 @@ Feel free to pick any item listed out here to work on.
 - proximity voice chat
 - play a dong noise and up beat music for the wave
 - during the day time, play a low tempo ambient music
+- from stevan: ​i still vote for an "npm run add:entity" script that like scaffolds it out for you.
 
 ### Refactoring
 
@@ -55,12 +56,8 @@ Feel free to pick any item listed out here to work on.
 
 ### Sounds
 
-- [ ] before playing a new sound, determine distance from player and reduce volume if the sound was far away
 - [ ] auto clean up sound entities after 5 seconds.
-- [ ] add sound for knife
-- [ ] add sound for player walking
 - [ ] add sound for zombie walking
-- [ ] add sound for zombie attack
 - [ ] add sound for item craft
 - [ ] ambient background music that can be turned off
 
@@ -72,17 +69,9 @@ Feel free to pick any item listed out here to work on.
 - [ ] a lobby leader shall be able to start the game
 - [ ] a lobby leader shall be able to leave the lobby (which will promote another user to the leader)
 
-### Map Generation
-
-- [ ] create a "farm" zone which has a small farm building, a tractor, and trees
-- [ ] create a "city" zone which has a building and roads
-- [ ] create a "road" zone which is used to connect cities and farms (road going up or down)
-- [ ] generate larger maps containing farms, cities, and roads that connect them.
-
 ## Medium Priority (Enhancements):
 
 - [ ] air drops (randomly drop crates around the map when day starts)
-- [ ] a user shall be able to see a mini map which helps them know where they are
 - [ ] a user can search cabinets for items (randomly drop items)
 - [ ] a user shall be able to view a mini map which helps them know where they are
 - [ ] implement a fog of war effect in the mini map for unexplored areas

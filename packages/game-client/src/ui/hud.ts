@@ -4,7 +4,7 @@ import { PlayerClient } from "@/entities/player";
 import { MapManager } from "@/managers/map";
 import { ChatWidget } from "./chat-widget";
 import { ClientDestructible } from "@/extensions/destructible";
-import { Zombies } from "@shared/constants";
+import { Zombies, Entities } from "@shared/constants";
 import { Minimap } from "./minimap";
 import { FullScreenMap } from "./fullscreen-map";
 import { Leaderboard } from "./leaderboard";
@@ -12,6 +12,7 @@ import { SoundManager } from "@/managers/sound-manager";
 import { AssetManager } from "@/managers/asset";
 import { WavePanel, StatPanel, TextPanel, ResourcesPanel } from "./panels";
 import { getConfig } from "@shared/config";
+import { ClientPositionable } from "@/extensions/positionable";
 
 const HUD_SETTINGS = {
   ControlsList: {
@@ -328,8 +329,121 @@ export class Hud {
     this.fpsPanel.setText(`${fps} FPS`);
   }
 
+  private renderCrateIndicators(ctx: CanvasRenderingContext2D, gameState: GameState): void {
+    const player = getPlayer(gameState);
+    if (!player || !player.hasExt(ClientPositionable)) {
+      return;
+    }
+
+    const playerPos = player.getExt(ClientPositionable).getCenterPosition();
+    const { width, height } = ctx.canvas;
+
+    // Find all crates in the game state
+    const crates = gameState.entities.filter(
+      (entity) => entity.getType() === Entities.CRATE && entity.hasExt(ClientPositionable)
+    );
+
+    ctx.save();
+    ctx.setTransform(1, 0, 0, 1, 0, 0); // Reset transform to screen coordinates
+
+    // Settings for crate indicators
+    const ARROW_SIZE = 30;
+    const ARROW_DISTANCE = 60; // Distance from screen edge
+    const LABEL_FONT = "bold 24px Arial";
+    const ARROW_COLOR = "rgba(255, 50, 50, 0.9)"; // Red
+    const LABEL_COLOR = "white";
+
+    for (const crate of crates) {
+      const cratePos = crate.getExt(ClientPositionable).getCenterPosition();
+
+      // Calculate vector from player to crate
+      const dx = cratePos.x - playerPos.x;
+      const dy = cratePos.y - playerPos.y;
+      const distance = Math.sqrt(dx * dx + dy * dy);
+
+      // Skip if crate is very close (player can see it)
+      if (distance < 100) continue;
+
+      // Normalize direction
+      const dirX = dx / distance;
+      const dirY = dy / distance;
+
+      // Calculate screen position for indicator
+      const centerX = width / 2;
+      const centerY = height / 2;
+
+      // Calculate angle
+      const angle = Math.atan2(dy, dx);
+
+      // Determine edge position
+      let indicatorX = centerX;
+      let indicatorY = centerY;
+
+      // Calculate intersection with screen bounds
+      const margin = ARROW_DISTANCE;
+      const maxX = width - margin;
+      const maxY = height - margin;
+
+      // Find intersection with screen edges
+      const t1 = (maxX - centerX) / dirX; // Right edge
+      const t2 = (margin - centerX) / dirX; // Left edge
+      const t3 = (maxY - centerY) / dirY; // Bottom edge
+      const t4 = (margin - centerY) / dirY; // Top edge
+
+      // Find the smallest positive t (closest edge intersection)
+      const validT = [t1, t2, t3, t4].filter((t) => t > 0);
+      const t = Math.min(...validT);
+
+      if (isFinite(t)) {
+        indicatorX = centerX + dirX * t;
+        indicatorY = centerY + dirY * t;
+      }
+
+      // Draw red arrow
+      ctx.save();
+      ctx.translate(indicatorX, indicatorY);
+      ctx.rotate(angle);
+
+      // Draw arrow shape
+      ctx.fillStyle = ARROW_COLOR;
+      ctx.beginPath();
+      ctx.moveTo(ARROW_SIZE / 2, 0); // Arrow tip
+      ctx.lineTo(-ARROW_SIZE / 2, -ARROW_SIZE / 3);
+      ctx.lineTo(-ARROW_SIZE / 3, 0);
+      ctx.lineTo(-ARROW_SIZE / 2, ARROW_SIZE / 3);
+      ctx.closePath();
+      ctx.fill();
+
+      // Draw arrow outline
+      ctx.strokeStyle = "rgba(0, 0, 0, 0.8)";
+      ctx.lineWidth = 2;
+      ctx.stroke();
+
+      ctx.restore();
+
+      // Draw "C" label next to arrow
+      ctx.font = LABEL_FONT;
+      ctx.fillStyle = LABEL_COLOR;
+      ctx.strokeStyle = "rgba(0, 0, 0, 0.8)";
+      ctx.lineWidth = 3;
+
+      const labelOffsetX = Math.cos(angle) * (ARROW_SIZE + 10);
+      const labelOffsetY = Math.sin(angle) * (ARROW_SIZE + 10);
+      const labelX = indicatorX + labelOffsetX;
+      const labelY = indicatorY + labelOffsetY;
+
+      ctx.strokeText("C", labelX - 8, labelY + 8);
+      ctx.fillText("C", labelX - 8, labelY + 8);
+    }
+
+    ctx.restore();
+  }
+
   public render(ctx: CanvasRenderingContext2D, gameState: GameState): void {
     const { width, height } = ctx.canvas;
+
+    // Render crate indicators first (so they appear behind other UI)
+    this.renderCrateIndicators(ctx, gameState);
 
     // Render minimap first
     this.minimap.render(ctx, gameState);

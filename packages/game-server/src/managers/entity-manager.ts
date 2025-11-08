@@ -52,6 +52,7 @@ import { LeapingZombie } from "@/entities/enemies/leaping-zombie";
 import { Merchant } from "@/entities/environment/merchant";
 import { getConfig } from "@/config";
 import { SentryGun } from "@/entities/items/sentry-gun";
+import { Crate } from "@/entities/items/crate";
 
 const entityMap = {
   [Entities.PLAYER]: Player,
@@ -84,6 +85,7 @@ const entityMap = {
   [Entities.BIG_ZOMBIE]: BigZombie,
   [Entities.FAST_ZOMBIE]: FastZombie,
   [Entities.BAT_ZOMBIE]: BatZombie,
+  [Entities.CRATE]: Crate,
   [Entities.LANDMINE]: Landmine,
   [Entities.GRENADE]: Grenade,
   [Entities.FIRE_EXTINGUISHER]: FireExtinguisher,
@@ -137,6 +139,7 @@ export class EntityManager implements IEntityManager {
     this.registerItem("wood", Tree);
     this.registerItem("wall", Wall);
     this.registerItem("spikes", Spikes);
+    this.registerItem("crate", Crate);
     this.registerItem("grenade", Grenade);
     this.registerItem("fire_extinguisher", FireExtinguisher);
 
