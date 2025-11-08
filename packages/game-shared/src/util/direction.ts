@@ -62,3 +62,35 @@ export function normalizeDirection(direction: Direction): Vector2 {
 
   return new Vector2(x, y);
 }
+
+/**
+ * Convert an angle in radians to the nearest cardinal direction (Up, Down, Left, Right)
+ * @param angle Angle in radians (0 = right, PI/2 = down, PI = left, 3PI/2 = up)
+ * @returns The nearest cardinal direction
+ */
+export function angleToDirection(angle: number): Direction {
+  // Normalize angle to 0-2PI range
+  let normalizedAngle = angle % (Math.PI * 2);
+  if (normalizedAngle < 0) {
+    normalizedAngle += Math.PI * 2;
+  }
+
+  // Convert to degrees for easier calculation
+  const degrees = (normalizedAngle * 180) / Math.PI;
+
+  // Determine direction based on angle ranges
+  // Right: -45 to 45 degrees (315 to 45)
+  // Down: 45 to 135 degrees
+  // Left: 135 to 225 degrees
+  // Up: 225 to 315 degrees
+
+  if (degrees >= 315 || degrees < 45) {
+    return Direction.Right;
+  } else if (degrees >= 45 && degrees < 135) {
+    return Direction.Down;
+  } else if (degrees >= 135 && degrees < 225) {
+    return Direction.Left;
+  } else {
+    return Direction.Up;
+  }
+}

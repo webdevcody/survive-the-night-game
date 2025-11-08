@@ -1,6 +1,6 @@
 import Destructible from "@/extensions/destructible";
 import { IGameManagers } from "@/managers/types";
-import { Direction } from "../../../../game-shared/src/util/direction";
+import { Direction, angleToDirection } from "../../../../game-shared/src/util/direction";
 import { Weapon } from "@/entities/weapons/weapon";
 import { WEAPON_TYPES } from "@shared/types/weapons";
 import { PlayerAttackedEvent } from "@/events/server-sent/player-attacked-event";
@@ -24,6 +24,9 @@ export class Knife extends Weapon {
   }
 
   public attack(playerId: string, position: Vector2, facing: Direction, aimAngle?: number): void {
+    // Use aimAngle to determine attack direction if provided, otherwise use facing
+    const attackDirection = aimAngle !== undefined ? angleToDirection(aimAngle) : facing;
+
     const nearbyEnemies = this.getEntityManager().getNearbyEnemies(
       position,
       getConfig().combat.KNIFE_ATTACK_RANGE + 24,
@@ -41,10 +44,11 @@ export class Knife extends Weapon {
 
       if (distance > getConfig().combat.KNIFE_ATTACK_RANGE) return false;
 
-      if (facing === Direction.Right && dx < 0) return false;
-      if (facing === Direction.Left && dx > 0) return false;
-      if (facing === Direction.Up && dy > 0) return false;
-      if (facing === Direction.Down && dy < 0) return false;
+      // Check if enemy is in the attack direction
+      if (attackDirection === Direction.Right && dx < 0) return false;
+      if (attackDirection === Direction.Left && dx > 0) return false;
+      if (attackDirection === Direction.Up && dy > 0) return false;
+      if (attackDirection === Direction.Down && dy < 0) return false;
 
       return true;
     });
@@ -53,7 +57,12 @@ export class Knife extends Weapon {
       const destructible = targetZombie.getExt(Destructible);
       const wasAlive = !destructible.isDead();
       destructible.damage(this.config.stats.damage!);
-      knockBack(this.getEntityManager(), targetZombie, facing, this.config.stats.pushDistance!);
+      knockBack(
+        this.getEntityManager(),
+        targetZombie,
+        attackDirection,
+        this.config.stats.pushDistance!
+      );
 
       if (wasAlive && destructible.isDead()) {
         const player = this.getEntityManager().getEntityById(playerId);
