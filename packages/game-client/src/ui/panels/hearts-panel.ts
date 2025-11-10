@@ -2,6 +2,7 @@ import { GameState } from "@/state";
 import { getPlayer } from "@/util/get-player";
 import { getConfig } from "@shared/config";
 import { Panel, PanelSettings } from "./panel";
+import { calculateHudScale } from "@/util/hud-scale";
 
 interface HeartsPanelSettings extends PanelSettings {
   marginBottom: number;
@@ -29,47 +30,67 @@ export class HeartsPanel extends Panel {
     if (!player) return;
 
     const { width: canvasWidth, height: canvasHeight } = ctx.canvas;
+    const hudScale = calculateHudScale(canvasWidth, canvasHeight);
     const settings = this.heartSettings.inventorySettings;
     const slotsNumber = getConfig().player.MAX_INVENTORY_SLOTS;
 
     this.resetTransform(ctx);
 
-    // Calculate inventory bar position to align hearts above it
+    // Calculate inventory bar position using scaled values (same as inventory-bar.ts)
+    const scaledSlotSize = settings.slotSize * hudScale;
+    const scaledSlotsGap = settings.slotsGap * hudScale;
+    const scaledPadding = {
+      left: settings.padding.left * hudScale,
+      right: settings.padding.right * hudScale,
+      top: settings.padding.top * hudScale,
+      bottom: settings.padding.bottom * hudScale,
+    };
+    const scaledScreenMarginBottom = settings.screenMarginBottom * hudScale;
+
     const hotbarWidth =
-      slotsNumber * settings.slotSize +
-      (slotsNumber - 1) * settings.slotsGap +
-      settings.padding.left +
-      settings.padding.right;
-    const hotbarHeight = settings.slotSize + settings.padding.top + settings.padding.bottom;
+      slotsNumber * scaledSlotSize +
+      (slotsNumber - 1) * scaledSlotsGap +
+      scaledPadding.left +
+      scaledPadding.right;
+    const hotbarHeight = scaledSlotSize + scaledPadding.top + scaledPadding.bottom;
     const hotbarX = canvasWidth / 2 - hotbarWidth / 2;
-    const hotbarY = canvasHeight - hotbarHeight - settings.screenMarginBottom;
+    const hotbarY = canvasHeight - hotbarHeight - scaledScreenMarginBottom;
+
+    // Scale heart panel dimensions
+    const scaledHeartSize = this.heartSettings.heartSize * hudScale;
+    const scaledHeartGap = this.heartSettings.heartGap * hudScale;
+    const scaledMarginBottom = this.heartSettings.marginBottom * hudScale;
+    const scaledPanelPadding = this.settings.padding * hudScale;
 
     // Position hearts above the inventory bar, aligned to the left
-    const heartsX = hotbarX + settings.padding.left;
-    const heartsY = hotbarY - this.heartSettings.heartSize - this.heartSettings.marginBottom;
+    const heartsX = hotbarX + scaledPadding.left;
+    const heartsY = hotbarY - scaledHeartSize - scaledMarginBottom;
 
     const currentHealth = player.getHealth();
     const maxHealth = getConfig().player.MAX_PLAYER_HEALTH;
 
-    // Calculate background dimensions
+    // Calculate background dimensions using scaled values
     const heartsContainerWidth =
-      maxHealth * this.heartSettings.heartSize + (maxHealth - 1) * this.heartSettings.heartGap;
+      maxHealth * scaledHeartSize + (maxHealth - 1) * scaledHeartGap;
 
-    // Draw background with border
+    // Draw background with border using scaled padding
     this.drawPanelBackground(
       ctx,
-      heartsX - this.settings.padding,
-      heartsY - this.settings.padding,
-      heartsContainerWidth + this.settings.padding * 2,
-      this.heartSettings.heartSize + this.settings.padding * 2
+      heartsX - scaledPanelPadding,
+      heartsY - scaledPanelPadding,
+      heartsContainerWidth + scaledPanelPadding * 2,
+      scaledHeartSize + scaledPanelPadding * 2
     );
 
-    ctx.font = this.heartSettings.font;
+    // Scale font size
+    const baseFontSize = parseInt(this.heartSettings.font);
+    const scaledFontSize = baseFontSize * hudScale;
+    ctx.font = `${scaledFontSize}px Arial`;
     ctx.textBaseline = "top";
 
     // Render hearts
     for (let i = 0; i < maxHealth; i++) {
-      const x = heartsX + i * (this.heartSettings.heartSize + this.heartSettings.heartGap);
+      const x = heartsX + i * (scaledHeartSize + scaledHeartGap);
       const isFilled = i < currentHealth;
 
       // Use filled heart for current health, empty heart for missing health

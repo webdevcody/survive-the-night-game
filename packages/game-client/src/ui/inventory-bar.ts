@@ -7,7 +7,7 @@ import { InventoryItem } from "../../../game-shared/src/util/inventory";
 import { getConfig } from "@shared/config";
 import { HeartsPanel } from "./panels/hearts-panel";
 import { StaminaPanel } from "./panels/stamina-panel";
-import { CoinsPanel } from "./panels/coins-panel";
+import { calculateHudScale } from "@/util/hud-scale";
 
 const HOTBAR_SETTINGS = {
   Inventory: {
@@ -19,7 +19,7 @@ const HOTBAR_SETTINGS = {
       top: 12,
     },
     slotsGap: 8,
-    slotSize: 96,
+    slotSize: 60, // Reduced from 70 (was 96 originally)
     containerBackground: "rgba(0, 0, 0, 0.8)",
     slotBackground: "rgba(40, 40, 40, 0.9)",
     borderColor: "rgba(255, 255, 255, 0.5)",
@@ -28,19 +28,19 @@ const HOTBAR_SETTINGS = {
     activeBorderWidth: 3,
   },
   Hearts: {
-    marginBottom: 16,
-    heartSize: 32,
-    heartGap: 4,
-    font: "32px Arial",
+    marginBottom: 12,
+    heartSize: 28, // Reduced from 32
+    heartGap: 3,
+    font: "28px Arial", // Reduced from 32px
   },
   StaminaBar: {
-    marginBottom: 8,
-    width: 200,
-    height: 24,
-    padding: 8,
-    iconSize: 32,
-    iconGap: 8,
-    font: "32px Arial",
+    marginBottom: 6,
+    width: 180, // Reduced from 200
+    height: 20, // Reduced from 24
+    padding: 6, // Reduced from 8
+    iconSize: 28, // Reduced from 32
+    iconGap: 6, // Reduced from 8
+    font: "28px Arial", // Reduced from 32px
     backgroundColor: "rgba(0, 0, 0, 0.7)",
     borderColor: "rgba(255, 255, 255, 0.5)",
     barBackgroundColor: "rgba(40, 40, 40, 0.9)",
@@ -48,12 +48,12 @@ const HOTBAR_SETTINGS = {
     borderWidth: 2,
   },
   CoinCounter: {
-    marginBottom: 8,
-    padding: 8,
+    marginBottom: 6,
+    padding: 6, // Reduced from 8
     background: "rgba(0, 0, 0, 0.7)",
-    font: "32px Arial",
-    spriteSize: 32,
-    iconGap: 8,
+    font: "20px Arial", // Reduced from 32px
+    spriteSize: 20, // Reduced from 32
+    iconGap: 6, // Reduced from 8
   },
 };
 
@@ -63,7 +63,6 @@ export class InventoryBarUI implements Renderable {
   private getInventory: () => InventoryItem[];
   private heartsPanel: HeartsPanel;
   private staminaPanel: StaminaPanel;
-  private coinsPanel: CoinsPanel;
   private hoveredSlot: number | null = null;
   private mouseX: number = 0;
   private mouseY: number = 0;
@@ -106,27 +105,14 @@ export class InventoryBarUI implements Renderable {
       inventorySettings: HOTBAR_SETTINGS.Inventory,
     });
 
-    this.coinsPanel = new CoinsPanel(
-      {
-        padding: HOTBAR_SETTINGS.CoinCounter.padding,
-        background: HOTBAR_SETTINGS.CoinCounter.background,
-        borderColor: "rgba(255, 255, 255, 0.5)",
-        borderWidth: 2,
-        marginBottom: HOTBAR_SETTINGS.CoinCounter.marginBottom,
-        font: HOTBAR_SETTINGS.CoinCounter.font,
-        spriteSize: HOTBAR_SETTINGS.CoinCounter.spriteSize,
-        iconGap: HOTBAR_SETTINGS.CoinCounter.iconGap,
-        inventorySettings: HOTBAR_SETTINGS.Inventory,
-      },
-      assetManager
-    );
+    // Coins panel removed - coins are now displayed in the resources panel at the top
   }
 
   public render(ctx: CanvasRenderingContext2D, gameState: GameState): void {
     this.renderInventory(ctx, gameState);
     this.heartsPanel.render(ctx, gameState);
     this.staminaPanel.render(ctx, gameState);
-    this.coinsPanel.render(ctx, gameState);
+    // Coins panel removed - coins are now displayed in the resources panel at the top
     this.renderTooltip(ctx, gameState);
   }
 
@@ -204,21 +190,36 @@ export class InventoryBarUI implements Renderable {
   private renderInventory(ctx: CanvasRenderingContext2D, gameState: GameState): void {
     const { width: canvasWidth, height: canvasHeight } = ctx.canvas;
 
+    // Scale inventory bar based on screen width for responsive design
+    const hudScale = calculateHudScale(canvasWidth, canvasHeight);
     const settings = HOTBAR_SETTINGS.Inventory;
     const slotsNumber = getConfig().player.MAX_INVENTORY_SLOTS;
 
     ctx.save();
     ctx.setTransform(1, 0, 0, 1, 0, 0);
 
+    // Scale all dimensions by HUD scale
+    const scaledSlotSize = settings.slotSize * hudScale;
+    const scaledSlotsGap = settings.slotsGap * hudScale;
+    const scaledPadding = {
+      left: settings.padding.left * hudScale,
+      right: settings.padding.right * hudScale,
+      top: settings.padding.top * hudScale,
+      bottom: settings.padding.bottom * hudScale,
+    };
+    const scaledScreenMarginBottom = settings.screenMarginBottom * hudScale;
+    const scaledBorderWidth = settings.borderWidth * hudScale;
+    const scaledActiveBorderWidth = settings.activeBorderWidth * hudScale;
+
     const hotbarWidth =
-      slotsNumber * settings.slotSize +
-      (slotsNumber - 1) * settings.slotsGap +
-      settings.padding.left +
-      settings.padding.right;
-    const hotbarHeight = settings.slotSize + settings.padding.top + settings.padding.bottom;
+      slotsNumber * scaledSlotSize +
+      (slotsNumber - 1) * scaledSlotsGap +
+      scaledPadding.left +
+      scaledPadding.right;
+    const hotbarHeight = scaledSlotSize + scaledPadding.top + scaledPadding.bottom;
 
     const hotbarX = canvasWidth / 2 - hotbarWidth / 2;
-    const hotbarY = canvasHeight - hotbarHeight - settings.screenMarginBottom;
+    const hotbarY = canvasHeight - hotbarHeight - scaledScreenMarginBottom;
 
     // Draw container background
     ctx.fillStyle = settings.containerBackground;
@@ -226,28 +227,28 @@ export class InventoryBarUI implements Renderable {
 
     // Draw container border
     ctx.strokeStyle = settings.borderColor;
-    ctx.lineWidth = settings.borderWidth;
+    ctx.lineWidth = scaledBorderWidth;
     ctx.strokeRect(hotbarX, hotbarY, hotbarWidth, hotbarHeight);
 
-    const slotsLeft = hotbarX + settings.padding.left;
-    const slotsTop = hotbarY + settings.padding.top;
-    const slotsBottom = slotsTop + settings.slotSize;
+    const slotsLeft = hotbarX + scaledPadding.left;
+    const slotsTop = hotbarY + scaledPadding.top;
+    const slotsBottom = slotsTop + scaledSlotSize;
     const items = this.getInventory();
     const activeItemIdx = this.inputManager.getInputs().inventoryItem - 1;
 
     for (let i = 0; i < slotsNumber; i++) {
-      const slotLeft = slotsLeft + i * (settings.slotSize + settings.slotsGap);
-      const slotRight = slotLeft + settings.slotSize;
+      const slotLeft = slotsLeft + i * (scaledSlotSize + scaledSlotsGap);
+      const slotRight = slotLeft + scaledSlotSize;
       const isActive = activeItemIdx === i;
 
       // Draw slot background
       ctx.fillStyle = settings.slotBackground;
-      ctx.fillRect(slotLeft, slotsTop, settings.slotSize, settings.slotSize);
+      ctx.fillRect(slotLeft, slotsTop, scaledSlotSize, scaledSlotSize);
 
       // Draw slot border
       ctx.strokeStyle = isActive ? settings.activeBorderColor : settings.borderColor;
-      ctx.lineWidth = isActive ? settings.activeBorderWidth : settings.borderWidth;
-      ctx.strokeRect(slotLeft, slotsTop, settings.slotSize, settings.slotSize);
+      ctx.lineWidth = isActive ? scaledActiveBorderWidth : scaledBorderWidth;
+      ctx.strokeRect(slotLeft, slotsTop, scaledSlotSize, scaledSlotSize);
 
       const inventoryItem = items[i];
 
@@ -255,35 +256,40 @@ export class InventoryBarUI implements Renderable {
       const image = inventoryItem && this.assetManager.get(getItemAssetKey(inventoryItem));
 
       if (image) {
-        const imagePadding = 8;
+        const imagePadding = 8 * hudScale;
         ctx.drawImage(
           image,
           slotLeft + imagePadding,
           slotsTop + imagePadding,
-          settings.slotSize - imagePadding * 2,
-          settings.slotSize - imagePadding * 2
+          scaledSlotSize - imagePadding * 2,
+          scaledSlotSize - imagePadding * 2
         );
       }
 
       // Draw slot number (show "0" for slot 10)
       const slotLabel = i === 9 ? "0" : `${i + 1}`;
-      ctx.font = "bold 24px Arial";
+      const slotFontSize = 24 * hudScale;
+      ctx.font = `bold ${slotFontSize}px Arial`;
       ctx.textAlign = "left";
       ctx.fillStyle = "white";
       ctx.strokeStyle = "rgba(0, 0, 0, 0.8)";
-      ctx.lineWidth = 3;
-      ctx.strokeText(slotLabel, slotLeft + 6, slotsTop + 26);
-      ctx.fillText(slotLabel, slotLeft + 6, slotsTop + 26);
+      ctx.lineWidth = 3 * hudScale;
+      const slotLabelX = slotLeft + 6 * hudScale;
+      const slotLabelY = slotsTop + 26 * hudScale;
+      ctx.strokeText(slotLabel, slotLabelX, slotLabelY);
+      ctx.fillText(slotLabel, slotLabelX, slotLabelY);
 
       // Draw item count
       if (inventoryItem?.state?.count) {
-        ctx.font = "bold 24px Arial";
+        ctx.font = `bold ${slotFontSize}px Arial`;
         ctx.textAlign = "right";
         ctx.fillStyle = "white";
         ctx.strokeStyle = "rgba(0, 0, 0, 0.8)";
-        ctx.lineWidth = 3;
-        ctx.strokeText(`${inventoryItem.state.count}`, slotRight - 6, slotsBottom - 6);
-        ctx.fillText(`${inventoryItem.state.count}`, slotRight - 6, slotsBottom - 6);
+        ctx.lineWidth = 3 * hudScale;
+        const countX = slotRight - 6 * hudScale;
+        const countY = slotsBottom - 6 * hudScale;
+        ctx.strokeText(`${inventoryItem.state.count}`, countX, countY);
+        ctx.fillText(`${inventoryItem.state.count}`, countX, countY);
       }
     }
 
@@ -302,43 +308,56 @@ export class InventoryBarUI implements Renderable {
     }
 
     const { width: canvasWidth, height: canvasHeight } = ctx.canvas;
+    const hudScale = calculateHudScale(canvasWidth, canvasHeight);
     const settings = HOTBAR_SETTINGS.Inventory;
     const slotsNumber = getConfig().player.MAX_INVENTORY_SLOTS;
 
     ctx.save();
     ctx.setTransform(1, 0, 0, 1, 0, 0);
 
+    // Use scaled values (same as in renderInventory)
+    const scaledSlotSize = settings.slotSize * hudScale;
+    const scaledSlotsGap = settings.slotsGap * hudScale;
+    const scaledPadding = {
+      left: settings.padding.left * hudScale,
+      right: settings.padding.right * hudScale,
+      top: settings.padding.top * hudScale,
+      bottom: settings.padding.bottom * hudScale,
+    };
+    const scaledScreenMarginBottom = settings.screenMarginBottom * hudScale;
+
     const hotbarWidth =
-      slotsNumber * settings.slotSize +
-      (slotsNumber - 1) * settings.slotsGap +
-      settings.padding.left +
-      settings.padding.right;
-    const hotbarHeight = settings.slotSize + settings.padding.top + settings.padding.bottom;
+      slotsNumber * scaledSlotSize +
+      (slotsNumber - 1) * scaledSlotsGap +
+      scaledPadding.left +
+      scaledPadding.right;
+    const hotbarHeight = scaledSlotSize + scaledPadding.top + scaledPadding.bottom;
 
     const hotbarX = canvasWidth / 2 - hotbarWidth / 2;
-    const hotbarY = canvasHeight - hotbarHeight - settings.screenMarginBottom;
+    const hotbarY = canvasHeight - hotbarHeight - scaledScreenMarginBottom;
 
-    const slotsLeft = hotbarX + settings.padding.left;
-    const slotsTop = hotbarY + settings.padding.top;
+    const slotsLeft = hotbarX + scaledPadding.left;
+    const slotsTop = hotbarY + scaledPadding.top;
 
-    const slotLeft = slotsLeft + this.hoveredSlot * (settings.slotSize + settings.slotsGap);
-    const slotCenterX = slotLeft + settings.slotSize / 2;
+    const slotLeft = slotsLeft + this.hoveredSlot * (scaledSlotSize + scaledSlotsGap);
+    const slotCenterX = slotLeft + scaledSlotSize / 2;
 
     // Get item name
     const itemName = hoveredItem.itemType;
 
     // Measure text for tooltip background
-    ctx.font = "bold 20px Arial";
+    const tooltipFontSize = 20 * hudScale;
+    ctx.font = `bold ${tooltipFontSize}px Arial`;
     ctx.textAlign = "center";
     const textMetrics = ctx.measureText(itemName);
     const textWidth = textMetrics.width;
-    const textHeight = 20;
+    const textHeight = tooltipFontSize;
 
-    const tooltipPadding = 8;
+    const tooltipPadding = 8 * hudScale;
     const tooltipWidth = textWidth + tooltipPadding * 2;
     const tooltipHeight = textHeight + tooltipPadding * 2;
     const tooltipX = slotCenterX - tooltipWidth / 2;
-    const tooltipY = slotsTop - tooltipHeight - 8; // 8px gap above slot
+    const tooltipY = slotsTop - tooltipHeight - 8 * hudScale; // 8px gap above slot
 
     // Draw tooltip background
     ctx.fillStyle = "rgba(0, 0, 0, 0.9)";
@@ -346,15 +365,16 @@ export class InventoryBarUI implements Renderable {
 
     // Draw tooltip border
     ctx.strokeStyle = "rgba(255, 255, 255, 0.5)";
-    ctx.lineWidth = 2;
+    ctx.lineWidth = 2 * hudScale;
     ctx.strokeRect(tooltipX, tooltipY, tooltipWidth, tooltipHeight);
 
     // Draw item name
     ctx.fillStyle = "white";
     ctx.strokeStyle = "rgba(0, 0, 0, 0.8)";
-    ctx.lineWidth = 3;
-    ctx.strokeText(itemName, slotCenterX, tooltipY + tooltipPadding + textHeight - 4);
-    ctx.fillText(itemName, slotCenterX, tooltipY + tooltipPadding + textHeight - 4);
+    ctx.lineWidth = 3 * hudScale;
+    const textY = tooltipY + tooltipPadding + textHeight - 4 * hudScale;
+    ctx.strokeText(itemName, slotCenterX, textY);
+    ctx.fillText(itemName, slotCenterX, textY);
 
     ctx.restore();
   }

@@ -2,6 +2,7 @@ import { GameState } from "@/state";
 import { getPlayer } from "@/util/get-player";
 import { getConfig } from "@shared/config";
 import { Panel, PanelSettings } from "./panel";
+import { calculateHudScale } from "@/util/hud-scale";
 
 interface StaminaPanelSettings extends PanelSettings {
   marginBottom: number;
@@ -33,59 +34,80 @@ export class StaminaPanel extends Panel {
     if (!player) return;
 
     const { width: canvasWidth, height: canvasHeight } = ctx.canvas;
+    const hudScale = calculateHudScale(canvasWidth, canvasHeight);
     const settings = this.staminaSettings.inventorySettings;
     const slotsNumber = getConfig().player.MAX_INVENTORY_SLOTS;
 
     this.resetTransform(ctx);
 
-    // Calculate inventory bar position to align stamina bar above it
+    // Calculate inventory bar position using scaled values (same as inventory-bar.ts)
+    const scaledSlotSize = settings.slotSize * hudScale;
+    const scaledSlotsGap = settings.slotsGap * hudScale;
+    const scaledPadding = {
+      left: settings.padding.left * hudScale,
+      right: settings.padding.right * hudScale,
+      top: settings.padding.top * hudScale,
+      bottom: settings.padding.bottom * hudScale,
+    };
+    const scaledScreenMarginBottom = settings.screenMarginBottom * hudScale;
+
     const hotbarWidth =
-      slotsNumber * settings.slotSize +
-      (slotsNumber - 1) * settings.slotsGap +
-      settings.padding.left +
-      settings.padding.right;
-    const hotbarHeight = settings.slotSize + settings.padding.top + settings.padding.bottom;
+      slotsNumber * scaledSlotSize +
+      (slotsNumber - 1) * scaledSlotsGap +
+      scaledPadding.left +
+      scaledPadding.right;
+    const hotbarHeight = scaledSlotSize + scaledPadding.top + scaledPadding.bottom;
     const hotbarX = canvasWidth / 2 - hotbarWidth / 2;
-    const hotbarY = canvasHeight - hotbarHeight - settings.screenMarginBottom;
+    const hotbarY = canvasHeight - hotbarHeight - scaledScreenMarginBottom;
+
+    // Scale stamina panel dimensions
+    const scaledBarWidth = this.staminaSettings.width * hudScale;
+    const scaledBarHeight = this.staminaSettings.height * hudScale;
+    const scaledIconSize = this.staminaSettings.iconSize * hudScale;
+    const scaledIconGap = this.staminaSettings.iconGap * hudScale;
+    const scaledMarginBottom = this.staminaSettings.marginBottom * hudScale;
+    const scaledPanelPadding = this.settings.padding * hudScale;
 
     // Calculate container width including icon
-    const barWidth = this.staminaSettings.width + this.settings.padding * 2;
-    const containerWidth = this.staminaSettings.iconSize + this.staminaSettings.iconGap + barWidth;
+    const barWidth = scaledBarWidth + scaledPanelPadding * 2;
+    const containerWidth = scaledIconSize + scaledIconGap + barWidth;
     const containerHeight = Math.max(
-      this.staminaSettings.height + this.settings.padding * 2,
-      this.staminaSettings.iconSize + this.settings.padding * 2
+      scaledBarHeight + scaledPanelPadding * 2,
+      scaledIconSize + scaledPanelPadding * 2
     );
 
     // Position stamina bar above the inventory bar, aligned to the right
     const staminaX = hotbarX + hotbarWidth - containerWidth;
-    const staminaY = hotbarY - containerHeight - this.staminaSettings.marginBottom;
+    const staminaY = hotbarY - containerHeight - scaledMarginBottom;
 
     // Draw background with border
     this.drawPanelBackground(ctx, staminaX, staminaY, containerWidth, containerHeight);
 
-    // Draw run icon
-    ctx.font = this.staminaSettings.font;
+    // Draw run icon with scaled font
+    const baseFontSize = parseInt(this.staminaSettings.font);
+    const scaledFontSize = baseFontSize * hudScale;
+    ctx.font = `${scaledFontSize}px Arial`;
     ctx.textBaseline = "middle";
     ctx.fillStyle = "white";
-    const iconX = staminaX + this.settings.padding;
+    const iconX = staminaX + scaledPanelPadding;
     const iconY = staminaY + containerHeight / 2;
     ctx.fillText("🏃", iconX, iconY);
 
     // Draw stamina bar background
-    const barContainerX = staminaX + this.staminaSettings.iconSize + this.staminaSettings.iconGap;
-    const barX = barContainerX + this.settings.padding;
-    const barY = staminaY + this.settings.padding;
+    const barContainerX = staminaX + scaledIconSize + scaledIconGap;
+    const barX = barContainerX + scaledPanelPadding;
+    const barY = staminaY + scaledPanelPadding;
     ctx.fillStyle = this.staminaSettings.barBackgroundColor;
-    ctx.fillRect(barX, barY, this.staminaSettings.width, this.staminaSettings.height);
+    ctx.fillRect(barX, barY, scaledBarWidth, scaledBarHeight);
 
     // Draw stamina bar fill
     const currentStamina = player.getStamina();
     const maxStamina = player.getMaxStamina();
     const staminaPercent = currentStamina / maxStamina;
-    const fillWidth = this.staminaSettings.width * staminaPercent;
+    const fillWidth = scaledBarWidth * staminaPercent;
 
     ctx.fillStyle = this.staminaSettings.barColor;
-    ctx.fillRect(barX, barY, fillWidth, this.staminaSettings.height);
+    ctx.fillRect(barX, barY, fillWidth, scaledBarHeight);
 
     this.restoreContext(ctx);
   }

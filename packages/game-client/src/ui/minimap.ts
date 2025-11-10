@@ -14,6 +14,7 @@ import { perfTimer } from "@shared/util/performance";
 import { getConfig } from "@shared/config";
 import { ClientIlluminated } from "@/extensions/illuminated";
 import Vector2 from "@shared/util/vector2";
+import { scaleHudValue } from "@/util/hud-scale";
 
 // Performance optimization constants - adjust these to balance quality vs performance
 // To view performance stats in console, run:
@@ -39,8 +40,8 @@ export const MINIMAP_RENDER_DISTANCE = {
 };
 
 export const MINIMAP_SETTINGS = {
-  size: 400,
-  left: 40,
+  size: 240, // Reduced from 280 (was 400 originally)
+  right: 40,
   bottom: 40,
   background: "rgba(0, 0, 0, 0.7)",
   scale: 0.7,
@@ -212,27 +213,35 @@ export class Minimap {
     ctx.save();
     ctx.setTransform(1, 0, 0, 1, 0, 0);
 
-    // Calculate position from bottom
-    const top = ctx.canvas.height - settings.bottom - settings.size;
+    // Calculate scaled values based on viewport size
+    const canvasWidth = ctx.canvas.width;
+    const canvasHeight = ctx.canvas.height;
+    const scaledSize = scaleHudValue(settings.size, canvasWidth, canvasHeight);
+    const scaledRight = scaleHudValue(settings.right, canvasWidth, canvasHeight);
+    const scaledBottom = scaleHudValue(settings.bottom, canvasWidth, canvasHeight);
 
-    // Create circular clip
+    // Calculate position from bottom-right using scaled values
+    const top = canvasHeight - scaledBottom - scaledSize;
+    const scaledLeft = canvasWidth - scaledRight - scaledSize;
+
+    // Create circular clip using scaled values
     ctx.beginPath();
     ctx.arc(
-      settings.left + settings.size / 2,
-      top + settings.size / 2,
-      settings.size / 2,
+      scaledLeft + scaledSize / 2,
+      top + scaledSize / 2,
+      scaledSize / 2,
       0,
       Math.PI * 2
     );
     ctx.clip();
 
-    // Draw minimap background
+    // Draw minimap background using scaled values
     ctx.fillStyle = settings.background;
-    ctx.fillRect(settings.left, top, settings.size, settings.size);
+    ctx.fillRect(scaledLeft, top, scaledSize, scaledSize);
 
     // Draw collidable tiles (obstacles like trees, walls, water)
     perfTimer.start("minimap:collidables");
-    this.renderCollidables(ctx, playerPos, settings, top);
+    this.renderCollidables(ctx, playerPos, settings, top, scaledLeft, scaledSize);
     perfTimer.end("minimap:collidables");
 
     // Loop through all entities and draw them on minimap
@@ -254,9 +263,9 @@ export class Minimap {
       const distanceSquared = relativeX * relativeX + relativeY * relativeY;
       if (distanceSquared > maxEntityDistanceSquared) continue;
 
-      // Convert to minimap coordinates (centered on player)
-      const minimapX = settings.left + settings.size / 2 + relativeX * settings.scale;
-      const minimapY = top + settings.size / 2 + relativeY * settings.scale;
+      // Convert to minimap coordinates (centered on player) using scaled values
+      const minimapX = scaledLeft + scaledSize / 2 + relativeX * settings.scale;
+      const minimapY = top + scaledSize / 2 + relativeY * settings.scale;
 
       // Determine indicator settings based on entity category
       let indicator = null;
@@ -322,38 +331,38 @@ export class Minimap {
     this.renderCrateIndicators(ctx, gameState, playerPos, settings, top);
     perfTimer.end("minimap:crates");
 
-    // Draw radar circle border
+    // Draw radar circle border using scaled values
     ctx.strokeStyle = "white";
     ctx.lineWidth = 2;
     ctx.beginPath();
     ctx.arc(
-      settings.left + settings.size / 2,
-      top + settings.size / 2,
-      settings.size / 2,
+      scaledLeft + scaledSize / 2,
+      top + scaledSize / 2,
+      scaledSize / 2,
       0,
       Math.PI * 2
     );
     ctx.stroke();
 
-    // Draw crosshair at center (player position)
-    const crosshairSize = 6;
+    // Draw crosshair at center (player position) using scaled values
+    const crosshairSize = scaleHudValue(6, canvasWidth, canvasHeight);
     ctx.strokeStyle = settings.colors.player;
     ctx.lineWidth = 2;
     ctx.beginPath();
-    ctx.moveTo(settings.left + settings.size / 2 - crosshairSize, top + settings.size / 2);
-    ctx.lineTo(settings.left + settings.size / 2 + crosshairSize, top + settings.size / 2);
-    ctx.moveTo(settings.left + settings.size / 2, top + settings.size / 2 - crosshairSize);
-    ctx.lineTo(settings.left + settings.size / 2, top + settings.size / 2 + crosshairSize);
+    ctx.moveTo(scaledLeft + scaledSize / 2 - crosshairSize, top + scaledSize / 2);
+    ctx.lineTo(scaledLeft + scaledSize / 2 + crosshairSize, top + scaledSize / 2);
+    ctx.moveTo(scaledLeft + scaledSize / 2, top + scaledSize / 2 - crosshairSize);
+    ctx.lineTo(scaledLeft + scaledSize / 2, top + scaledSize / 2 + crosshairSize);
     ctx.stroke();
 
     // Draw biome directional indicators
     perfTimer.start("minimap:biomes");
-    this.renderBiomeIndicators(ctx, playerPos, settings, top);
+    this.renderBiomeIndicators(ctx, playerPos, settings, top, scaledLeft, scaledSize);
     perfTimer.end("minimap:biomes");
 
     // Draw player directional indicators
     perfTimer.start("minimap:playerIndicators");
-    this.renderPlayerIndicators(ctx, gameState, playerPos, settings, top);
+    this.renderPlayerIndicators(ctx, gameState, playerPos, settings, top, scaledLeft, scaledSize);
     perfTimer.end("minimap:playerIndicators");
 
     ctx.restore();
@@ -364,16 +373,18 @@ export class Minimap {
     ctx: CanvasRenderingContext2D,
     playerPos: { x: number; y: number },
     settings: typeof MINIMAP_SETTINGS,
-    top: number
+    top: number,
+    scaledLeft: number,
+    scaledSize: number
   ): void {
     const biomePositions = this.mapManager.getBiomePositions();
     if (!biomePositions) return;
 
     const BIOME_SIZE = 16; // tiles
     const TILE_SIZE = 16; // pixels
-    const centerX = settings.left + settings.size / 2;
-    const centerY = top + settings.size / 2;
-    const radius = settings.size / 2;
+    const centerX = scaledLeft + scaledSize / 2;
+    const centerY = top + scaledSize / 2;
+    const radius = scaledSize / 2;
 
     const biomes = [
       { name: "farm", position: biomePositions.farm, config: settings.biomeIndicators.farm },
@@ -463,11 +474,13 @@ export class Minimap {
     gameState: GameState,
     playerPos: { x: number; y: number },
     settings: typeof MINIMAP_SETTINGS,
-    top: number
+    top: number,
+    scaledLeft: number,
+    scaledSize: number
   ): void {
-    const centerX = settings.left + settings.size / 2;
-    const centerY = top + settings.size / 2;
-    const radius = settings.size / 2;
+    const centerX = scaledLeft + scaledSize / 2;
+    const centerY = top + scaledSize / 2;
+    const radius = scaledSize / 2;
 
     // Loop through all entities to find other players
     for (const entity of gameState.entities) {
@@ -542,8 +555,17 @@ export class Minimap {
     settings: typeof MINIMAP_SETTINGS,
     top: number
   ): void {
-    const centerX = settings.left + settings.size / 2;
-    const centerY = top + settings.size / 2;
+    // Calculate scaled values for crate indicators
+    const canvasWidth = ctx.canvas.width;
+    const canvasHeight = ctx.canvas.height;
+    const scaledRight = scaleHudValue(settings.right, canvasWidth, canvasHeight);
+    const scaledSize = scaleHudValue(settings.size, canvasWidth, canvasHeight);
+    const scaledBottom = scaleHudValue(settings.bottom, canvasWidth, canvasHeight);
+    const topPos = canvasHeight - scaledBottom - scaledSize;
+    const scaledLeft = canvasWidth - scaledRight - scaledSize;
+    
+    const centerX = scaledLeft + scaledSize / 2;
+    const centerY = topPos + scaledSize / 2;
     const maxDistanceSquared =
       MINIMAP_RENDER_DISTANCE.ENTITIES * MINIMAP_RENDER_DISTANCE.ENTITIES;
 
@@ -563,7 +585,7 @@ export class Minimap {
       const distanceSquared = relativeX * relativeX + relativeY * relativeY;
       if (distanceSquared > maxDistanceSquared) continue;
 
-      // Convert to minimap coordinates (centered on player)
+      // Convert to minimap coordinates (centered on player) - using scaled center
       const minimapX = centerX + relativeX * settings.scale;
       const minimapY = centerY + relativeY * settings.scale;
 
@@ -622,19 +644,26 @@ export class Minimap {
   ): void {
     if (!settings.fogOfWar.enabled) return;
 
-    const centerX = settings.left + settings.size / 2;
-    const centerY = top + settings.size / 2;
-    const radius = settings.size / 2;
+    // Calculate scaled values for fog of war
+    const canvasWidth = ctx.canvas.width;
+    const canvasHeight = ctx.canvas.height;
+    const scaledRight = scaleHudValue(settings.right, canvasWidth, canvasHeight);
+    const scaledSize = scaleHudValue(settings.size, canvasWidth, canvasHeight);
+    const scaledLeft = canvasWidth - scaledRight - scaledSize;
+    
+    const centerX = scaledLeft + scaledSize / 2;
+    const centerY = top + scaledSize / 2;
+    const radius = scaledSize / 2;
 
     // We'll render fog by checking a grid of points on the minimap
     // For better performance, we'll check at lower resolution and draw tiles
-    const gridSize = 8; // Size of fog tiles in minimap pixels
-    const tilesPerRow = Math.ceil(settings.size / gridSize);
+    const gridSize = scaleHudValue(8, canvasWidth, canvasHeight); // Size of fog tiles in minimap pixels
+    const tilesPerRow = Math.ceil(scaledSize / gridSize);
 
     for (let ty = 0; ty < tilesPerRow; ty++) {
       for (let tx = 0; tx < tilesPerRow; tx++) {
-        // Calculate minimap coordinates for this fog tile
-        const minimapX = settings.left + tx * gridSize + gridSize / 2;
+        // Calculate minimap coordinates for this fog tile using scaled values
+        const minimapX = scaledLeft + tx * gridSize + gridSize / 2;
         const minimapY = top + ty * gridSize + gridSize / 2;
 
         // Check if this position is within the circular minimap bounds
@@ -722,7 +751,9 @@ export class Minimap {
     ctx: CanvasRenderingContext2D,
     playerPos: { x: number; y: number },
     settings: typeof MINIMAP_SETTINGS,
-    top: number
+    top: number,
+    scaledLeft: number,
+    scaledSize: number
   ): void {
     const mapData = this.mapManager.getMapData();
     if (!mapData || !mapData.collidables) return;
@@ -774,9 +805,9 @@ export class Minimap {
     const sourceWidth = worldMaxX - worldMinX;
     const sourceHeight = worldMaxY - worldMinY;
 
-    // Calculate center point for minimap (where player is)
-    const centerX = settings.left + settings.size / 2;
-    const centerY = top + settings.size / 2;
+    // Calculate center point for minimap (where player is) using scaled values
+    const centerX = scaledLeft + scaledSize / 2;
+    const centerY = top + scaledSize / 2;
 
     // Calculate player position in world coordinates relative to source region
     const playerOffsetX = playerPos.x - worldMinX;
@@ -856,8 +887,13 @@ export class Minimap {
           if (distanceSquared > maxDistanceSquared) continue;
 
           // Convert to minimap coordinates (centered on player)
-          const minimapX = settings.left + settings.size / 2 + relativeX * settings.scale;
-          const minimapY = top + settings.size / 2 + relativeY * settings.scale;
+          // Calculate scaledLeft for fallback rendering
+          const canvasWidth = ctx.canvas.width;
+          const scaledRight = scaleHudValue(settings.right, canvasWidth, canvasHeight);
+          const scaledSize = scaleHudValue(settings.size, canvasWidth, canvasHeight);
+          const scaledLeft = canvasWidth - scaledRight - scaledSize;
+          const minimapX = scaledLeft + scaledSize / 2 + relativeX * settings.scale;
+          const minimapY = top + scaledSize / 2 + relativeY * settings.scale;
 
           const treeIndicator = settings.indicators.tree;
           const size = treeIndicator.size;

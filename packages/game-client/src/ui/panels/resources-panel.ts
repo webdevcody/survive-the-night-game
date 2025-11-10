@@ -29,6 +29,7 @@ export class ResourcesPanel extends Panel {
 
     const wood = myPlayer.getWood();
     const cloth = myPlayer.getCloth();
+    const coins = myPlayer.getCoins();
 
     this.resetTransform(ctx);
 
@@ -41,26 +42,31 @@ export class ResourcesPanel extends Panel {
       getItemAssetKey({ itemType: "cloth" }),
       Direction.Right
     );
+    const coinSprite = this.assetManager.get("coin");
 
     // Calculate text metrics
     ctx.font = this.resourcesSettings.font;
     const woodText = `${wood}`;
     const clothText = `${cloth}`;
+    const coinsText = `${coins}`;
     const woodTextMetrics = ctx.measureText(woodText);
     const clothTextMetrics = ctx.measureText(clothText);
+    const coinsTextMetrics = ctx.measureText(coinsText);
 
     // Calculate max content width (for alignment)
     const woodContentWidth =
       this.resourcesSettings.spriteSize + this.resourcesSettings.iconGap + woodTextMetrics.width;
     const clothContentWidth =
       this.resourcesSettings.spriteSize + this.resourcesSettings.iconGap + clothTextMetrics.width;
-    const maxContentWidth = Math.max(woodContentWidth, clothContentWidth);
+    const coinsContentWidth =
+      this.resourcesSettings.spriteSize + this.resourcesSettings.iconGap + coinsTextMetrics.width;
+    const maxContentWidth = Math.max(woodContentWidth, clothContentWidth, coinsContentWidth);
 
-    // Calculate container dimensions
+    // Calculate container dimensions (now 3 rows: wood, cloth, coins)
     const containerWidth = maxContentWidth + this.settings.padding * 2;
     const rowHeight = this.resourcesSettings.spriteSize;
     const containerHeight =
-      rowHeight * 2 + this.resourcesSettings.resourceGap + this.settings.padding * 2;
+      rowHeight * 3 + this.resourcesSettings.resourceGap * 2 + this.settings.padding * 2;
 
     const { x, y } = this.resourcesSettings;
 
@@ -80,7 +86,8 @@ export class ResourcesPanel extends Panel {
 
     ctx.fillStyle = "white";
     ctx.textBaseline = "middle";
-    const woodTextX = woodSpriteX + this.resourcesSettings.spriteSize + this.resourcesSettings.iconGap;
+    const woodTextX =
+      woodSpriteX + this.resourcesSettings.spriteSize + this.resourcesSettings.iconGap;
     const woodTextY = woodSpriteY + this.resourcesSettings.spriteSize / 2;
     ctx.fillText(woodText, woodTextX, woodTextY);
 
@@ -100,6 +107,22 @@ export class ResourcesPanel extends Panel {
     const clothTextY = clothSpriteY + this.resourcesSettings.spriteSize / 2;
     ctx.fillText(clothText, clothTextX, clothTextY);
 
+    // Draw coins row
+    const coinsSpriteX = x + this.settings.padding;
+    const coinsSpriteY = clothSpriteY + rowHeight + this.resourcesSettings.resourceGap;
+    ctx.drawImage(
+      coinSprite,
+      coinsSpriteX,
+      coinsSpriteY,
+      this.resourcesSettings.spriteSize,
+      this.resourcesSettings.spriteSize
+    );
+
+    const coinsTextX =
+      coinsSpriteX + this.resourcesSettings.spriteSize + this.resourcesSettings.iconGap;
+    const coinsTextY = coinsSpriteY + this.resourcesSettings.spriteSize / 2;
+    ctx.fillText(coinsText, coinsTextX, coinsTextY);
+
     this.restoreContext(ctx);
   }
 
@@ -108,6 +131,6 @@ export class ResourcesPanel extends Panel {
    */
   public getHeight(): number {
     const rowHeight = this.resourcesSettings.spriteSize;
-    return rowHeight * 2 + this.resourcesSettings.resourceGap + this.settings.padding * 2;
+    return rowHeight * 3 + this.resourcesSettings.resourceGap * 2 + this.settings.padding * 2;
   }
 }

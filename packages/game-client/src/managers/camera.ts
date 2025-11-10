@@ -20,7 +20,9 @@ export class CameraManager {
   }
 
   setScale(scale: number): void {
-    this.scale = scale;
+    // Round scale to 0.1 precision to prevent sub-pixel rendering artifacts
+    // This ensures tiles align properly without gaps
+    this.scale = Math.round(scale * 10) / 10;
   }
 
   translateTo(position: Vector2): void {

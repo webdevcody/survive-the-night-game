@@ -3,8 +3,11 @@ import { AssetManager } from "@/managers/asset";
 import { GameState } from "@/state";
 import { Renderable, drawHealthBar } from "@/entities/util";
 import { ClientEntity } from "@/entities/client-entity";
-import { ClientPositionable, ClientDestructible } from "@/extensions";
+import { ClientPositionable, ClientDestructible, ClientInteractive } from "@/extensions";
 import { Z_INDEX } from "@shared/map";
+import { getPlayer } from "@/util/get-player";
+import { renderInteractionText } from "@/util/interaction-text";
+import { getConfig } from "@shared/config";
 
 export class CarClient extends ClientEntity implements Renderable {
   private static collidablesSheet: HTMLImageElement | null = null;
@@ -31,6 +34,30 @@ export class CarClient extends ClientEntity implements Renderable {
   private getMaxHealth(): number {
     const destructible = this.getExt(ClientDestructible);
     return destructible.getMaxHealth();
+  }
+
+  protected renderInteractionText(ctx: CanvasRenderingContext2D, gameState: GameState): void {
+    // Only show interaction text if the car is damaged and has the interactive extension
+    if (this.getHealth() >= this.getMaxHealth() || !this.hasExt(ClientInteractive)) {
+      return;
+    }
+
+    const myPlayer = getPlayer(gameState);
+    const positionable = this.getExt(ClientPositionable);
+    const interactive = this.getExt(ClientInteractive);
+
+    if (myPlayer && interactive.getDisplayName()) {
+      let text = `${interactive.getDisplayName()} (${getConfig().keybindings.INTERACT})`;
+
+      renderInteractionText(
+        ctx,
+        text,
+        positionable.getCenterPosition(),
+        positionable.getPosition(),
+        myPlayer.getCenterPosition(),
+        interactive.getOffset()
+      );
+    }
   }
 
   render(ctx: CanvasRenderingContext2D, gameState: GameState): void {

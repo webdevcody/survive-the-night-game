@@ -528,8 +528,8 @@ export class InputManager {
    * Calculate aim angle from player center to mouse position in world coordinates
    * @param playerWorldPos Player's center position in world coordinates
    * @param cameraPos Camera position in world coordinates (what the camera is centered on)
-   * @param canvasWidth Canvas width in canvas pixels (including devicePixelRatio)
-   * @param canvasHeight Canvas height in canvas pixels (including devicePixelRatio)
+   * @param canvasWidth Canvas width in pixels (1:1 mapping, devicePixelRatio disabled)
+   * @param canvasHeight Canvas height in pixels (1:1 mapping, devicePixelRatio disabled)
    * @param cameraScale Camera zoom scale
    * @returns Angle in radians, or null if mouse position not available
    */
@@ -542,19 +542,16 @@ export class InputManager {
   ): number | null {
     if (!this.mousePosition) return null;
 
-    // Mouse position is in canvas pixels (already scaled by devicePixelRatio)
-    // Canvas dimensions are also in canvas pixels
+    // Mouse position is in canvas pixels (1:1 mapping, devicePixelRatio is disabled)
+    // Canvas dimensions are also in canvas pixels (1:1 mapping)
 
-    // The canvas context is scaled by devicePixelRatio, so we need to convert back to logical pixels
-    const dpr = window.devicePixelRatio || 1;
+    // Get the center of the canvas
+    const logicalCenterX = canvasWidth / 2;
+    const logicalCenterY = canvasHeight / 2;
 
-    // Get the center of the canvas in logical pixels
-    const logicalCenterX = canvasWidth / dpr / 2;
-    const logicalCenterY = canvasHeight / dpr / 2;
-
-    // Convert mouse position to logical pixels
-    const logicalMouseX = this.mousePosition.x / dpr;
-    const logicalMouseY = this.mousePosition.y / dpr;
+    // Mouse position is already in logical pixels (1:1 mapping)
+    const logicalMouseX = this.mousePosition.x;
+    const logicalMouseY = this.mousePosition.y;
 
     // Calculate offset from center in logical pixels
     const offsetX = logicalMouseX - logicalCenterX;

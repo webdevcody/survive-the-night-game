@@ -24,6 +24,7 @@ export const recipes: Recipe[] = [
 
 export interface RecipeComponent {
   type: ItemType;
+  count?: number; // Optional count for stackable items (defaults to 1)
 }
 
 export interface PlayerResources {
@@ -76,30 +77,66 @@ export function craftRecipe(
     return { inventory, resources };
   }
 
-  // Check inventory for non-resource items
-  for (const item of inventory) {
+  // Group components by type and count required amounts
+  const componentNeeds: Map<ItemType, number> = new Map();
+  for (const component of components) {
+    if (component.type !== "wood" && component.type !== "cloth") {
+      const currentCount = componentNeeds.get(component.type) || 0;
+      componentNeeds.set(component.type, currentCount + (component.count || 1));
+    }
+  }
+
+  // Track total consumption per item type
+  const totalConsumed: Map<ItemType, number> = new Map();
+  for (const [itemType] of componentNeeds) {
+    totalConsumed.set(itemType, 0);
+  }
+
+  // Check inventory for non-resource items and consume required amounts
+  for (let i = 0; i < inventory.length; i++) {
+    const item = inventory[i];
     if (!item) continue; // Skip null/empty inventory slots
 
-    const componentIdx = components.findIndex(
-      (it, idx) =>
-        it.type === item.itemType &&
-        it.type !== "wood" &&
-        it.type !== "cloth" &&
-        !found.includes(idx)
-    );
-
-    if (componentIdx === -1) {
+    const needed = componentNeeds.get(item.itemType);
+    if (needed === undefined) {
+      // This item is not needed for crafting, keep it
       newInventory.push(item);
       continue;
     }
 
-    found.push(componentIdx);
+    const alreadyConsumedTotal = totalConsumed.get(item.itemType) || 0;
+    const remainingNeeded = needed - alreadyConsumedTotal;
+    
+    if (remainingNeeded <= 0) {
+      // Already consumed enough of this item type, keep it
+      newInventory.push(item);
+      continue;
+    }
+
+    const itemCount = item.state?.count || 1;
+    const toConsume = Math.min(itemCount, remainingNeeded);
+    const newTotalConsumed = alreadyConsumedTotal + toConsume;
+    totalConsumed.set(item.itemType, newTotalConsumed);
+
+    // If we consumed less than the full stack, add the remainder to new inventory
+    if (toConsume < itemCount) {
+      newInventory.push({
+        ...item,
+        state: {
+          ...item.state,
+          count: itemCount - toConsume,
+        },
+      });
+    }
+    // If we consumed the full stack, don't add it to new inventory (it's consumed)
   }
 
-  // Check if all non-resource components were found in inventory
-  const nonResourceComponents = components.filter((c) => c.type !== "wood" && c.type !== "cloth");
-  if (found.length !== nonResourceComponents.length) {
-    return { inventory, resources };
+  // Check if we consumed enough of each component type
+  for (const [itemType, needed] of componentNeeds.entries()) {
+    const consumed = totalConsumed.get(itemType) || 0;
+    if (consumed < needed) {
+      return { inventory, resources };
+    }
   }
 
   // Deduct resources
@@ -169,26 +206,34 @@ export function recipeCanBeCrafted(
     return false;
   }
 
-  // Check inventory for non-resource items
+  // Group components by type and count required amounts
+  const componentNeeds: Map<ItemType, number> = new Map();
+  for (const component of components) {
+    if (component.type !== "wood" && component.type !== "cloth") {
+      const currentCount = componentNeeds.get(component.type) || 0;
+      componentNeeds.set(component.type, currentCount + (component.count || 1));
+    }
+  }
+
+  // Check inventory for non-resource items and verify we have enough
+  const availableCounts: Map<ItemType, number> = new Map();
   for (const item of inventory) {
     if (!item) continue; // Skip null/empty inventory slots
 
-    const componentIdx = components.findIndex(
-      (it, idx) =>
-        it.type === item.itemType &&
-        it.type !== "wood" &&
-        it.type !== "cloth" &&
-        !found.includes(idx)
-    );
-
-    if (componentIdx === -1) {
-      continue;
+    if (componentNeeds.has(item.itemType)) {
+      const currentAvailable = availableCounts.get(item.itemType) || 0;
+      const itemCount = item.state?.count || 1;
+      availableCounts.set(item.itemType, currentAvailable + itemCount);
     }
-
-    found.push(componentIdx);
   }
 
-  // Check if all non-resource components were found
-  const nonResourceComponents = components.filter((c) => c.type !== "wood" && c.type !== "cloth");
-  return found.length === nonResourceComponents.length;
+  // Check if we have enough of each component type
+  for (const [itemType, needed] of componentNeeds.entries()) {
+    const available = availableCounts.get(itemType) || 0;
+    if (available < needed) {
+      return false;
+    }
+  }
+
+  return true;
 }

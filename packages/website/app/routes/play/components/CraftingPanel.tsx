@@ -105,10 +105,11 @@ export function CraftingPanel({ gameClient }: CraftingPanelProps) {
     const requirements: { [key: string]: number } = {};
 
     components.forEach((component) => {
+      const count = component.count || 1;
       if (requirements[component.type]) {
-        requirements[component.type]++;
+        requirements[component.type] += count;
       } else {
-        requirements[component.type] = 1;
+        requirements[component.type] = count;
       }
     });
 
@@ -195,7 +196,13 @@ export function CraftingPanel({ gameClient }: CraftingPanelProps) {
                           ? craftingState.resources.wood >= count
                           : itemType === "cloth"
                           ? craftingState.resources.cloth >= count
-                          : craftingState.inventory.some((item) => item?.itemType === itemType);
+                          : (() => {
+                              // For stackable items, check if we have enough count
+                              const totalAvailable = craftingState.inventory
+                                .filter((item) => item?.itemType === itemType)
+                                .reduce((sum, item) => sum + (item?.state?.count || 1), 0);
+                              return totalAvailable >= count;
+                            })();
 
                       return (
                         <div

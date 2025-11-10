@@ -1,10 +1,7 @@
 import { GameState } from "@/state";
 import { getPlayer } from "@/util/get-player";
-import { PlayerClient } from "@/entities/player";
 import { MapManager } from "@/managers/map";
 import { ChatWidget } from "./chat-widget";
-import { ClientDestructible } from "@/extensions/destructible";
-import { Zombies } from "@shared/constants";
 import { Minimap } from "./minimap";
 import { FullScreenMap } from "./fullscreen-map";
 import { Leaderboard } from "./leaderboard";
@@ -12,7 +9,6 @@ import { SoundManager } from "@/managers/sound-manager";
 import { AssetManager } from "@/managers/asset";
 import {
   WavePanel,
-  StatPanel,
   TextPanel,
   ResourcesPanel,
   CarHealthPanel,
@@ -22,6 +18,7 @@ import {
   CrateIndicatorsPanel,
 } from "./panels";
 import { getConfig } from "@shared/config";
+import { scaleHudValue, calculateHudScale } from "@/util/hud-scale";
 
 const HUD_SETTINGS = {
   GameMessages: {
@@ -65,7 +62,7 @@ const HUD_SETTINGS = {
     background: "rgba(0, 0, 0, 0.8)",
     borderColor: "rgba(255, 255, 255, 0.5)",
     borderWidth: 2,
-    font: "20px Arial",
+    font: "14px Arial",
     versionColor: "rgba(255, 255, 0, 0.8)",
     fpsColor: "white",
     pingColors: {
@@ -76,15 +73,16 @@ const HUD_SETTINGS = {
     },
   },
   MuteButton: {
-    left: 460, // Position to the right of minimap (40 + 400 + 20)
-    bottom: 40, // Same bottom position as minimap
-    width: 60,
-    height: 60,
+    // Base values - will be scaled dynamically
+    baseLeft: 300, // Position to the right of minimap (40 + 240 + 20)
+    baseBottom: 40, // Same bottom position as minimap
+    baseWidth: 40, // Reduced from 60
+    baseHeight: 40, // Reduced from 60
     background: "rgba(0, 0, 0, 0.7)",
     borderColor: "rgba(255, 255, 255, 0.5)",
     borderWidth: 2,
     hoverBackground: "rgba(0, 0, 0, 0.9)",
-    font: "36px Arial",
+    baseFont: 24, // Reduced from 36
   },
   Wave: {
     width: 300,
@@ -105,24 +103,12 @@ const HUD_SETTINGS = {
     background: "rgba(0, 0, 0, 0.8)",
     borderColor: "rgba(255, 255, 255, 0.5)",
     borderWidth: 2,
-    font: "28px Arial",
+    font: "20px Arial",
     spriteSize: 32,
     iconGap: 12,
     resourceGap: 8,
     right: 40,
-    marginTop: 12, // Gap below clock
-  },
-  MinimapStats: {
-    left: 460, // Position to the right of minimap (40 + 400 + 20)
-    bottom: 260, // Start above the mute button
-    gap: 12, // Gap between stat panels
-    padding: 8,
-    background: "rgba(0, 0, 0, 0.8)",
-    borderColor: "rgba(255, 255, 255, 0.5)",
-    borderWidth: 2,
-    font: "24px Arial",
-    iconSize: 24,
-    spacing: 8,
+    marginTop: 2, // Gap below clock
   },
 };
 
@@ -139,10 +125,6 @@ export class Hud {
   private soundManager: SoundManager;
   private assetManager: AssetManager;
   private wavePanel: WavePanel;
-  private alivePlayersPanel: StatPanel;
-  private totalPlayersPanel: StatPanel;
-  private zombiesPanel: StatPanel;
-  private killsPanel: StatPanel;
   private versionPanel: TextPanel;
   private fpsPanel: TextPanel;
   private pingPanel: TextPanel;
@@ -177,74 +159,6 @@ export class Hud {
       textColor: HUD_SETTINGS.Wave.textColor,
       timerColor: HUD_SETTINGS.Wave.timerColor,
     });
-
-    // Initialize stat panels (right of minimap)
-    this.alivePlayersPanel = new StatPanel(
-      {
-        padding: HUD_SETTINGS.MinimapStats.padding,
-        background: HUD_SETTINGS.MinimapStats.background,
-        borderColor: HUD_SETTINGS.MinimapStats.borderColor,
-        borderWidth: HUD_SETTINGS.MinimapStats.borderWidth,
-        x: 0,
-        y: 0,
-        icon: "👥",
-        font: HUD_SETTINGS.MinimapStats.font,
-        iconSize: HUD_SETTINGS.MinimapStats.iconSize,
-        spacing: HUD_SETTINGS.MinimapStats.spacing,
-      },
-      (gameState) => `${this.getAlivePlayers(gameState)}`
-    );
-
-    this.totalPlayersPanel = new StatPanel(
-      {
-        padding: HUD_SETTINGS.MinimapStats.padding,
-        background: HUD_SETTINGS.MinimapStats.background,
-        borderColor: HUD_SETTINGS.MinimapStats.borderColor,
-        borderWidth: HUD_SETTINGS.MinimapStats.borderWidth,
-        x: 0,
-        y: 0,
-        icon: "👤",
-        font: HUD_SETTINGS.MinimapStats.font,
-        iconSize: HUD_SETTINGS.MinimapStats.iconSize,
-        spacing: HUD_SETTINGS.MinimapStats.spacing,
-      },
-      (gameState) => `${this.getTotalPlayers(gameState)}`
-    );
-
-    this.zombiesPanel = new StatPanel(
-      {
-        padding: HUD_SETTINGS.MinimapStats.padding,
-        background: HUD_SETTINGS.MinimapStats.background,
-        borderColor: HUD_SETTINGS.MinimapStats.borderColor,
-        borderWidth: HUD_SETTINGS.MinimapStats.borderWidth,
-        x: 0,
-        y: 0,
-        icon: "🧟",
-        font: HUD_SETTINGS.MinimapStats.font,
-        iconSize: HUD_SETTINGS.MinimapStats.iconSize,
-        spacing: HUD_SETTINGS.MinimapStats.spacing,
-      },
-      (gameState) => `${this.getAliveZombies(gameState)}`
-    );
-
-    this.killsPanel = new StatPanel(
-      {
-        padding: HUD_SETTINGS.MinimapStats.padding,
-        background: HUD_SETTINGS.MinimapStats.background,
-        borderColor: HUD_SETTINGS.MinimapStats.borderColor,
-        borderWidth: HUD_SETTINGS.MinimapStats.borderWidth,
-        x: 0,
-        y: 0,
-        icon: "💀",
-        font: HUD_SETTINGS.MinimapStats.font,
-        iconSize: HUD_SETTINGS.MinimapStats.iconSize,
-        spacing: HUD_SETTINGS.MinimapStats.spacing,
-      },
-      (gameState) => {
-        const player = getPlayer(gameState);
-        return player ? `${player.getKills()}` : "0";
-      }
-    );
 
     // Initialize bottom right panels
     this.versionPanel = new TextPanel({
@@ -301,6 +215,7 @@ export class Hud {
     );
 
     // Initialize car health panel (center top of screen)
+    // y position is now calculated dynamically in render() to center vertically more
     this.carHealthPanel = new CarHealthPanel({
       padding: 8,
       background: "rgba(0, 0, 0, 0.85)",
@@ -313,7 +228,7 @@ export class Hud {
       font: "24px Arial",
       barBackgroundColor: "rgba(100, 0, 0, 0.5)",
       barColor: "rgba(255, 50, 50, 1)",
-      y: 20,
+      y: 0, // Not used anymore, calculated dynamically
     });
 
     // Initialize death screen panel
@@ -326,21 +241,30 @@ export class Hud {
       ...HUD_SETTINGS.GameMessages,
     });
 
-    // Initialize mute button panel
+    // Initialize mute button panel (will be positioned dynamically in render)
     this.muteButtonPanel = new MuteButtonPanel(
       {
         padding: HUD_SETTINGS.BottomRightPanels.padding,
         background: HUD_SETTINGS.MuteButton.background,
         borderColor: HUD_SETTINGS.MuteButton.borderColor,
         borderWidth: HUD_SETTINGS.MuteButton.borderWidth,
-        left: HUD_SETTINGS.MuteButton.left,
-        bottom: HUD_SETTINGS.MuteButton.bottom,
-        width: HUD_SETTINGS.MuteButton.width,
-        height: HUD_SETTINGS.MuteButton.height,
-        font: HUD_SETTINGS.MuteButton.font,
+        left: 0, // Will be set dynamically
+        bottom: 0, // Will be set dynamically
+        width: 0, // Will be set dynamically
+        height: 0, // Will be set dynamically
+        font: `${HUD_SETTINGS.MuteButton.baseFont}px Arial`, // Will be scaled dynamically
         hoverBackground: HUD_SETTINGS.MuteButton.hoverBackground,
       },
-      soundManager
+      soundManager,
+      {
+        baseWidth: HUD_SETTINGS.MuteButton.baseWidth,
+        baseHeight: HUD_SETTINGS.MuteButton.baseHeight,
+        baseFont: HUD_SETTINGS.MuteButton.baseFont,
+        background: HUD_SETTINGS.MuteButton.background,
+        borderColor: HUD_SETTINGS.MuteButton.borderColor,
+        borderWidth: HUD_SETTINGS.MuteButton.borderWidth,
+        hoverBackground: HUD_SETTINGS.MuteButton.hoverBackground,
+      }
     );
 
     // Initialize crate indicators panel
@@ -369,26 +293,6 @@ export class Hud {
     return this.fullscreenMap.isOpen();
   }
 
-  private getAlivePlayers(gameState: GameState): number {
-    return gameState.entities.filter(
-      (entity) =>
-        entity instanceof PlayerClient && entity.hasExt(ClientDestructible) && !entity.isDead()
-    ).length;
-  }
-
-  private getTotalPlayers(gameState: GameState): number {
-    return gameState.entities.filter((entity) => entity instanceof PlayerClient).length;
-  }
-
-  private getAliveZombies(gameState: GameState): number {
-    return gameState.entities.filter(
-      (entity) =>
-        Zombies.includes(entity.getType()) &&
-        entity.hasExt(ClientDestructible) &&
-        !entity.getExt(ClientDestructible).isDead()
-    ).length;
-  }
-
   public updatePing(ping: number): void {
     this.currentPing = ping;
     this.lastPingUpdate = Date.now();
@@ -413,6 +317,12 @@ export class Hud {
   public render(ctx: CanvasRenderingContext2D, gameState: GameState): void {
     const { width, height } = ctx.canvas;
 
+    // Calculate scaled minimap values once for reuse
+    const minimapSize = scaleHudValue(240, width, height); // MINIMAP_SETTINGS.size (reduced from 280, was 400 originally)
+    const minimapRight = scaleHudValue(40, width, height); // MINIMAP_SETTINGS.right
+    const minimapBottom = scaleHudValue(40, width, height); // MINIMAP_SETTINGS.bottom
+    const minimapLeft = width - minimapRight - minimapSize; // Calculate from right side
+
     // Render crate indicators first (so they appear behind other UI)
     this.crateIndicatorsPanel.render(ctx, gameState);
 
@@ -422,72 +332,102 @@ export class Hud {
     // Render car health panel at top center (it positions itself)
     this.carHealthPanel.render(ctx, gameState);
 
-    // Render wave panel in top right
+    // Calculate wave panel position once for reuse
+    const waveScale = calculateHudScale(width, height);
+    const scaledWaveWidth = HUD_SETTINGS.Wave.width * waveScale;
+    const scaledWaveHeight = HUD_SETTINGS.Wave.height * waveScale;
+    const scaledWaveRight = scaleHudValue(HUD_SETTINGS.Wave.right, width, height);
+    const carHealthTopMargin = scaleHudValue(20, width, height);
+    const waveX = width - scaledWaveRight - scaledWaveWidth;
+    const waveY = carHealthTopMargin; // Same Y position as car health panel
+
+    // Render resources panel (right side, vertically centered) with scaled dimensions
     ctx.save();
     ctx.setTransform(1, 0, 0, 1, 0, 0);
-    const waveX = width - HUD_SETTINGS.Wave.right - HUD_SETTINGS.Wave.width;
-    const waveY = HUD_SETTINGS.Wave.top;
-    // Update wave panel position
+    const resourcesSettings = HUD_SETTINGS.Resources;
+    const resourcesScale = calculateHudScale(width, height);
+    // Calculate panel dimensions for positioning
+    const scaledSpriteSize = resourcesSettings.spriteSize * resourcesScale;
+    const scaledResourceGap = resourcesSettings.resourceGap * resourcesScale;
+    const scaledPadding = resourcesSettings.padding * resourcesScale;
+    const scaledIconGap = resourcesSettings.iconGap * resourcesScale;
+    // Estimate panel width (sprite + gap + text width estimate)
+    const estimatedTextWidth = scaleHudValue(40, width, height); // Approximate text width
+    const maxContentWidth = scaledSpriteSize + scaledIconGap + estimatedTextWidth;
+    const resourcesPanelWidth = maxContentWidth + scaledPadding * 2;
+    const resourcesPanelHeight = scaledSpriteSize * 3 + scaledResourceGap * 2 + scaledPadding * 2;
+    // Position resources panel on the right side of screen
+    const scaledResourcesRight = scaleHudValue(0, width, height); // 20px from right edge
+    const scaledResourcesX = width - scaledResourcesRight - resourcesPanelWidth;
+    // Center vertically
+    const scaledResourcesY = (height - resourcesPanelHeight) / 3;
+    (this.resourcesPanel as any).resourcesSettings.x = scaledResourcesX;
+    (this.resourcesPanel as any).resourcesSettings.y = scaledResourcesY;
+    // Scale font and sprite size
+    const resourcesBaseFontSize = parseInt(resourcesSettings.font);
+    (this.resourcesPanel as any).resourcesSettings.font = `${
+      resourcesBaseFontSize * resourcesScale
+    }px Arial`;
+    (this.resourcesPanel as any).resourcesSettings.spriteSize =
+      resourcesSettings.spriteSize * resourcesScale;
+    (this.resourcesPanel as any).resourcesSettings.iconGap =
+      resourcesSettings.iconGap * resourcesScale;
+    (this.resourcesPanel as any).resourcesSettings.resourceGap =
+      resourcesSettings.resourceGap * resourcesScale;
+    (this.resourcesPanel as any).settings.padding = resourcesSettings.padding * resourcesScale;
+    (this.resourcesPanel as any).settings.borderWidth =
+      resourcesSettings.borderWidth * resourcesScale;
+    this.resourcesPanel.render(ctx, gameState);
+    ctx.restore();
+
+    // Render wave panel in top right with scaled dimensions, aligned with car health panel
+    ctx.save();
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    // Update wave panel position and size
     (this.wavePanel as any).waveSettings.x = waveX;
     (this.wavePanel as any).waveSettings.y = waveY;
+    (this.wavePanel as any).waveSettings.width = scaledWaveWidth;
+    (this.wavePanel as any).waveSettings.height = scaledWaveHeight;
+    // Scale fonts
+    const baseFontSize = parseInt(HUD_SETTINGS.Wave.font);
+    const baseTimerFontSize = parseInt(HUD_SETTINGS.Wave.timerFont.match(/\d+/)?.[0] || "36");
+    (this.wavePanel as any).waveSettings.font = `${baseFontSize * waveScale}px Arial`;
+    (this.wavePanel as any).waveSettings.timerFont = `bold ${
+      baseTimerFontSize * waveScale
+    }px monospace`;
+    // Scale border width
+    (this.wavePanel as any).settings.borderWidth = HUD_SETTINGS.Wave.borderWidth * waveScale;
     this.wavePanel.render(ctx, gameState);
     ctx.restore();
 
-    // Render stat panels to the right of minimap
+    // Render top panels (FPS, ping, version) at top-left, to the right of config button
     ctx.save();
     ctx.setTransform(1, 0, 0, 1, 0, 0);
-    const statsSettings = HUD_SETTINGS.MinimapStats;
-    const statsX = statsSettings.left;
-    let statsY = height - statsSettings.bottom;
+    const topPanelsSettings = HUD_SETTINGS.BottomRightPanels;
+    // Menu buttons are at left-4 top-4 (16px), each button is ~40px wide with 8px gap
+    // Config button is the rightmost button, so account for all menu buttons + config button
+    const menuButtonsWidth = scaleHudValue(250, width, height); // Approximate width for all menu buttons including config
+    const startX =
+      scaleHudValue(16, width, height) + menuButtonsWidth + scaleHudValue(16, width, height); // 16px left + buttons + larger gap
+    const topY = scaleHudValue(16, width, height); // Align with top-4 (16px)
+    let currentX = startX;
 
-    // Update positions and render each stat panel
-    (this.alivePlayersPanel as any).statSettings.x = statsX;
-    (this.alivePlayersPanel as any).statSettings.y = statsY;
-    this.alivePlayersPanel.render(ctx, gameState);
-    statsY -= this.alivePlayersPanel.getHeight(ctx) + statsSettings.gap;
+    // Render FPS panel (leftmost)
+    (this.fpsPanel as any).textSettings.x = currentX;
+    (this.fpsPanel as any).textSettings.y = topY;
+    this.fpsPanel.render(ctx, gameState);
+    currentX += this.fpsPanel.getWidth(ctx) + topPanelsSettings.gap;
 
-    (this.totalPlayersPanel as any).statSettings.x = statsX;
-    (this.totalPlayersPanel as any).statSettings.y = statsY;
-    this.totalPlayersPanel.render(ctx, gameState);
-    statsY -= this.totalPlayersPanel.getHeight(ctx) + statsSettings.gap;
-
-    (this.zombiesPanel as any).statSettings.x = statsX;
-    (this.zombiesPanel as any).statSettings.y = statsY;
-    this.zombiesPanel.render(ctx, gameState);
-    statsY -= this.zombiesPanel.getHeight(ctx) + statsSettings.gap;
-
-    (this.killsPanel as any).statSettings.x = statsX;
-    (this.killsPanel as any).statSettings.y = statsY;
-    this.killsPanel.render(ctx, gameState);
-
-    ctx.restore();
-
-    // Render bottom right panels (version, FPS, ping)
-    ctx.save();
-    ctx.setTransform(1, 0, 0, 1, 0, 0);
-    const bottomRightSettings = HUD_SETTINGS.BottomRightPanels;
-    let currentX = width - bottomRightSettings.right;
-    const panelY = height - bottomRightSettings.bottom;
+    // Render ping panel (middle)
+    (this.pingPanel as any).textSettings.x = currentX;
+    (this.pingPanel as any).textSettings.y = topY;
+    this.pingPanel.render(ctx, gameState);
+    currentX += this.pingPanel.getWidth(ctx) + topPanelsSettings.gap;
 
     // Render version panel (rightmost)
-    const versionWidth = this.versionPanel.getWidth(ctx);
-    (this.versionPanel as any).textSettings.x = currentX - versionWidth;
-    (this.versionPanel as any).textSettings.y = panelY - this.versionPanel.getHeight();
+    (this.versionPanel as any).textSettings.x = currentX;
+    (this.versionPanel as any).textSettings.y = topY;
     this.versionPanel.render(ctx, gameState);
-    currentX -= versionWidth + bottomRightSettings.gap;
-
-    // Render ping panel
-    const pingWidth = this.pingPanel.getWidth(ctx);
-    (this.pingPanel as any).textSettings.x = currentX - pingWidth;
-    (this.pingPanel as any).textSettings.y = panelY - this.pingPanel.getHeight();
-    this.pingPanel.render(ctx, gameState);
-    currentX -= pingWidth + bottomRightSettings.gap;
-
-    // Render FPS panel
-    const fpsWidth = this.fpsPanel.getWidth(ctx);
-    (this.fpsPanel as any).textSettings.x = currentX - fpsWidth;
-    (this.fpsPanel as any).textSettings.y = panelY - this.fpsPanel.getHeight();
-    this.fpsPanel.render(ctx, gameState);
 
     ctx.restore();
 
@@ -495,7 +435,11 @@ export class Hud {
     this.gameMessagesPanel.render(ctx, gameState);
 
     // Render mute button
+    ctx.save();
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    this.muteButtonPanel.updatePosition(width, height);
     this.muteButtonPanel.render(ctx, gameState);
+    ctx.restore();
 
     this.leaderboard.render(ctx, gameState);
     this.chatWidget.render(ctx, gameState);

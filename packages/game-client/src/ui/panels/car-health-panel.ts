@@ -2,6 +2,7 @@ import { GameState } from "@/state";
 import { Entities } from "@shared/constants";
 import { ClientDestructible } from "@/extensions";
 import { Panel, PanelSettings } from "./panel";
+import { calculateHudScale, scaleHudValue } from "@/util/hud-scale";
 
 interface CarHealthPanelSettings extends PanelSettings {
   width: number;
@@ -27,49 +28,67 @@ export class CarHealthPanel extends Panel {
     const car = gameState.entities.find((entity) => entity.getType() === Entities.CAR);
     if (!car || !car.hasExt(ClientDestructible)) return;
 
-    const { width: canvasWidth } = ctx.canvas;
+    const { width: canvasWidth, height: canvasHeight } = ctx.canvas;
+    const hudScale = calculateHudScale(canvasWidth, canvasHeight);
 
     this.resetTransform(ctx);
 
+    // Scale all dimensions by HUD scale
+    const scaledWidth = this.carHealthSettings.width * hudScale;
+    const scaledHeight = this.carHealthSettings.height * hudScale;
+    const scaledIconSize = this.carHealthSettings.iconSize * hudScale;
+    const scaledIconGap = this.carHealthSettings.iconGap * hudScale;
+    const scaledPadding = this.settings.padding * hudScale;
+    const scaledBorderWidth = this.settings.borderWidth * hudScale;
+
     // Calculate container width including icon
-    const barWidth = this.carHealthSettings.width + this.settings.padding * 2;
-    const containerWidth = this.carHealthSettings.iconSize + this.carHealthSettings.iconGap + barWidth;
+    const barWidth = scaledWidth + scaledPadding * 2;
+    const containerWidth = scaledIconSize + scaledIconGap + barWidth;
     const containerHeight = Math.max(
-      this.carHealthSettings.height + this.settings.padding * 2,
-      this.carHealthSettings.iconSize + this.settings.padding * 2
+      scaledHeight + scaledPadding * 2,
+      scaledIconSize + scaledPadding * 2
     );
 
     // Position car health bar at top center
     const carHealthX = canvasWidth / 2 - containerWidth / 2;
-    const carHealthY = this.carHealthSettings.y;
+    // Align to top with small margin (scaled)
+    const topMargin = scaleHudValue(20, canvasWidth, canvasHeight);
+    const carHealthY = topMargin;
 
-    // Draw background with border
-    this.drawPanelBackground(ctx, carHealthX, carHealthY, containerWidth, containerHeight);
+    // Draw background with border (using scaled border width)
+    ctx.fillStyle = this.settings.background;
+    ctx.fillRect(carHealthX, carHealthY, containerWidth, containerHeight);
+    ctx.strokeStyle = this.settings.borderColor;
+    ctx.lineWidth = scaledBorderWidth;
+    ctx.strokeRect(carHealthX, carHealthY, containerWidth, containerHeight);
 
-    // Draw car icon
-    ctx.font = this.carHealthSettings.font;
+    // Draw car icon with scaled font
+    const baseFontSize = parseInt(this.carHealthSettings.font);
+    const scaledFontSize = baseFontSize * hudScale;
+    ctx.font = `${scaledFontSize}px Arial`;
     ctx.textBaseline = "middle";
     ctx.fillStyle = "white";
-    const iconX = carHealthX + this.settings.padding;
+    const iconX = carHealthX + scaledPadding;
     const iconY = carHealthY + containerHeight / 2;
     ctx.fillText("🚗", iconX, iconY);
 
     // Draw health bar background
-    const barContainerX = carHealthX + this.carHealthSettings.iconSize + this.carHealthSettings.iconGap;
-    const barX = barContainerX + this.settings.padding;
-    const barY = carHealthY + this.settings.padding;
+    const barContainerX = carHealthX + scaledIconSize + scaledIconGap;
+    const barX = barContainerX + scaledPadding;
+    // Vertically center the health bar within the container
+    const barY = carHealthY + (containerHeight - scaledHeight) / 2;
     ctx.fillStyle = this.carHealthSettings.barBackgroundColor;
-    ctx.fillRect(barX, barY, this.carHealthSettings.width, this.carHealthSettings.height);
+    ctx.fillRect(barX, barY, scaledWidth, scaledHeight);
 
     // Draw health bar fill
     const destructible = car.getExt(ClientDestructible);
     const currentHealth = destructible.getHealth();
     const maxHealth = destructible.getMaxHealth();
     const healthPercent = currentHealth / maxHealth;
-    const fillWidth = this.carHealthSettings.width * healthPercent;
+    const fillWidth = scaledWidth * healthPercent;
 
     ctx.fillStyle = this.carHealthSettings.barColor;
-    ctx.fillRect(barX, barY, fillWidth, this.carHealthSettings.height);
+    ctx.fillRect(barX, barY, fillWidth, scaledHeight);
 
     this.restoreContext(ctx);
   }

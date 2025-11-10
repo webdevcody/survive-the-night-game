@@ -60,13 +60,15 @@ export class Renderer {
   }
 
   public resizeCanvas(): void {
-    this.ctx.canvas.width = window.innerWidth * window.devicePixelRatio;
-    this.ctx.canvas.height = window.innerHeight * window.devicePixelRatio;
+    // Force devicePixelRatio to 1 for consistent pixel-perfect rendering
+    // This simplifies coordinate calculations and ensures 1:1 pixel mapping
+    this.ctx.canvas.width = window.innerWidth;
+    this.ctx.canvas.height = window.innerHeight;
     this.ctx.canvas.style.width = `${window.innerWidth}px`;
     this.ctx.canvas.style.height = `${window.innerHeight}px`;
 
     this.ctx.imageSmoothingEnabled = false;
-    this.ctx.scale(window.devicePixelRatio, window.devicePixelRatio);
+    // No scaling needed since we're using 1:1 pixel mapping
   }
 
   private clearCanvas(): void {

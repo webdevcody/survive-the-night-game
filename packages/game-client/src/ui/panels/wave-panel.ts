@@ -53,7 +53,7 @@ export class WavePanel extends Panel {
     ctx.fillStyle = this.settings.background;
     ctx.fillRect(x, y, width, height);
 
-    // Draw border
+    // Draw border (borderWidth is set dynamically by HUD)
     ctx.strokeStyle = this.settings.borderColor;
     ctx.lineWidth = this.settings.borderWidth;
     ctx.strokeRect(x, y, width, height);

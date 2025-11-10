@@ -25,6 +25,7 @@ export class SentryGunRecipe implements Recipe {
       },
       {
         type: "pistol_ammo",
+        count: 5,
       },
       {
         type: "wood",

@@ -108,6 +108,7 @@ export class GameClient {
         this.hotbar.updateMousePosition(x, y, canvas.width, canvas.height);
       }
 
+
       // Update input manager mouse position for aiming
       this.inputManager.updateMousePosition(x, y);
 
