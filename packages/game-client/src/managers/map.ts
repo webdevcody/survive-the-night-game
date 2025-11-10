@@ -397,20 +397,75 @@ export class MapManager {
 
     const { startTileX, startTileY, endTileX, endTileY } = bounds;
 
+    const transform = ctx.getTransform();
+    const scaleX = transform.a;
+    const scaleY = transform.d;
+
+    if (scaleX === 0 || scaleY === 0) {
+      return;
+    }
+
+    const translateX = transform.e;
+    const translateY = transform.f;
+    const canvasWidth = ctx.canvas.width;
+    const canvasHeight = ctx.canvas.height;
+
+    ctx.save();
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.fillStyle = "#000000";
+
     for (let y = startTileY; y <= endTileY; y++) {
       for (let x = startTileX; x <= endTileX; x++) {
         const lightIntensity = this.combinedLightMap[y]?.[x] || 0;
-        const darkness = 1 - lightIntensity; // Convert light to darkness
-        const finalOpacity = baseDarkness * darkness;
+        const darkness = 1 - lightIntensity;
+        const finalOpacity = Math.min(1, baseDarkness * darkness);
 
         if (finalOpacity <= 0) continue;
 
-        const tileX = x * this.tileSize;
-        const tileY = y * this.tileSize;
-        ctx.fillStyle = `rgba(0, 0, 0, ${finalOpacity})`;
-        ctx.fillRect(tileX, tileY, this.tileSize, this.tileSize);
+        const worldTileX = x * this.tileSize;
+        const worldTileY = y * this.tileSize;
+
+        const screenX1 = Math.round(worldTileX * scaleX + translateX);
+        const screenY1 = Math.round(worldTileY * scaleY + translateY);
+        const screenX2 = Math.round((worldTileX + this.tileSize) * scaleX + translateX);
+        const screenY2 = Math.round((worldTileY + this.tileSize) * scaleY + translateY);
+
+        let drawX = screenX1;
+        let drawY = screenY1;
+        let drawWidth = screenX2 - screenX1;
+        let drawHeight = screenY2 - screenY1;
+
+        if (drawWidth <= 0 || drawHeight <= 0) continue;
+
+        if (drawX < 0) {
+          drawWidth -= -drawX;
+          drawX = 0;
+        }
+
+        if (drawY < 0) {
+          drawHeight -= -drawY;
+          drawY = 0;
+        }
+
+        if (drawX >= canvasWidth || drawY >= canvasHeight) continue;
+
+        if (drawX + drawWidth > canvasWidth) {
+          drawWidth = canvasWidth - drawX;
+        }
+
+        if (drawY + drawHeight > canvasHeight) {
+          drawHeight = canvasHeight - drawY;
+        }
+
+        if (drawWidth <= 0 || drawHeight <= 0) continue;
+
+        ctx.globalAlpha = finalOpacity;
+        ctx.fillRect(drawX, drawY, drawWidth, drawHeight);
       }
     }
+
+    ctx.globalAlpha = 1;
+    ctx.restore();
   }
 
   // Helper to get visible tile bounds

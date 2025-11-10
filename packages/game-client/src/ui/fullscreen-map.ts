@@ -1,19 +1,13 @@
 import { GameState } from "@/state";
 import { getPlayer } from "@/util/get-player";
 import { ClientPositionable } from "@/extensions/positionable";
-import { PlayerClient } from "@/entities/player";
-import { WallClient } from "@/entities/items/wall";
-import { TreeClient } from "@/entities/items/tree";
-import { ClientCarryable } from "@/extensions/carryable";
-import { MapManager } from "@/managers/map";
-import { AcidProjectileClient } from "@/entities/acid-projectile";
-import { ClientDestructible } from "@/extensions/destructible";
-import { EntityCategories } from "@shared/entities";
 import { CrateClient } from "@/entities/items/crate";
+import { MapManager } from "@/managers/map";
 import { getConfig } from "@shared/config";
 import { ClientIlluminated } from "@/extensions/illuminated";
 import Vector2 from "@shared/util/vector2";
 import { MINIMAP_SETTINGS } from "./minimap";
+import { getEntityMapColor } from "@/util/entity-map-colors";
 
 const FULLSCREEN_MAP_SETTINGS = {
   padding: 180, // Padding from screen edges
@@ -30,7 +24,7 @@ const FULLSCREEN_MAP_SETTINGS = {
   buttonPadding: 12,
   buttonGap: 10,
   zoomLevels: [0.3, 0.5, 0.7, 1.0, 1.5, 2.0], // Available zoom levels
-  defaultZoomIndex: 2, // Start at 0.7 (index 2)
+  defaultZoomIndex: 0, // Start at 0.7 (index 2)
   colors: MINIMAP_SETTINGS.colors,
   indicators: MINIMAP_SETTINGS.indicators,
   biomeIndicators: MINIMAP_SETTINGS.biomeIndicators,
@@ -146,7 +140,7 @@ export class FullScreenMap {
     const myPlayer = getPlayer(gameState);
     if (!myPlayer || !myPlayer.hasExt(ClientPositionable)) return;
 
-    const playerPos = myPlayer.getExt(ClientPositionable).getPosition();
+    const playerPos = myPlayer.getExt(ClientPositionable).getCenterPosition();
     const zoom = this.getCurrentZoom();
 
     ctx.save();
@@ -219,7 +213,16 @@ export class FullScreenMap {
     }
 
     // Draw crate indicators (after fog of war so they're always visible)
-    this.renderCrateIndicators(ctx, gameState, playerPos, zoom, centerX, centerY, mapWidth, mapHeight);
+    this.renderCrateIndicators(
+      ctx,
+      gameState,
+      playerPos,
+      zoom,
+      centerX,
+      centerY,
+      mapWidth,
+      mapHeight
+    );
 
     // Draw biome indicators
     this.renderBiomeIndicators(ctx, playerPos, zoom, centerX, centerY, mapWidth, mapHeight);
@@ -440,7 +443,7 @@ export class FullScreenMap {
       if (!entity.hasExt(ClientPositionable)) continue;
 
       const positionable = entity.getExt(ClientPositionable);
-      const position = positionable.getPosition();
+      const position = positionable.getCenterPosition();
 
       const relativeX = position.x - playerPos.x;
       const relativeY = position.y - playerPos.y;
@@ -451,37 +454,14 @@ export class FullScreenMap {
       const mapX = centerX + relativeX * zoom;
       const mapY = centerY + relativeY * zoom;
 
-      let indicator = null;
-      let color = null;
-
-      const category = entity.getCategory();
-
-      if (category === EntityCategories.ZOMBIE) {
-        indicator = settings.indicators.enemy;
-        if (entity.hasExt(ClientDestructible) && entity.getExt(ClientDestructible).isDead()) {
-          color = settings.colors.deadEnemy;
-        } else {
-          color = settings.colors.enemy;
-        }
-      } else if (entity instanceof PlayerClient) {
-        color = settings.colors.player;
-        indicator = settings.indicators.player;
-      } else if (entity instanceof WallClient) {
-        color = settings.colors.wall;
-        indicator = settings.indicators.wall;
-      } else if (entity instanceof TreeClient) {
-        color = settings.colors.tree;
-        indicator = settings.indicators.tree;
-      } else if (entity instanceof CrateClient) {
-        // Skip crates - they will be rendered after fog of war
+      // Get entity color and indicator using shared utility
+      const mapIndicator = getEntityMapColor(entity, settings);
+      if (!mapIndicator) {
+        // Skip entities that return null (e.g., crates)
         continue;
-      } else if (entity.hasExt(ClientCarryable)) {
-        color = settings.colors.item;
-        indicator = settings.indicators.item;
-      } else if (entity instanceof AcidProjectileClient) {
-        color = settings.colors.acid;
-        indicator = settings.indicators.acid;
       }
+
+      const { color, indicator } = mapIndicator;
 
       if (color && indicator) {
         ctx.fillStyle = color;
@@ -557,7 +537,7 @@ export class FullScreenMap {
       if (!entity.hasExt(ClientPositionable)) continue;
 
       const positionable = entity.getExt(ClientPositionable);
-      const position = positionable.getPosition();
+      const position = positionable.getCenterPosition();
 
       const relativeX = position.x - playerPos.x;
       const relativeY = position.y - playerPos.y;

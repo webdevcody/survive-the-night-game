@@ -2,19 +2,14 @@ import { GameState } from "@/state";
 import { getPlayer } from "@/util/get-player";
 import { ClientPositionable } from "@/extensions/positionable";
 import { PlayerClient } from "@/entities/player";
-import { WallClient } from "@/entities/items/wall";
-import { TreeClient } from "@/entities/items/tree";
-import { ClientCarryable } from "@/extensions/carryable";
-import { MapManager } from "@/managers/map";
-import { AcidProjectileClient } from "@/entities/acid-projectile";
-import { ClientDestructible } from "@/extensions/destructible";
-import { EntityCategories } from "@shared/entities";
 import { CrateClient } from "@/entities/items/crate";
+import { MapManager } from "@/managers/map";
 import { perfTimer } from "@shared/util/performance";
 import { getConfig } from "@shared/config";
 import { ClientIlluminated } from "@/extensions/illuminated";
 import Vector2 from "@shared/util/vector2";
 import { scaleHudValue } from "@/util/hud-scale";
+import { getEntityMapColor } from "@/util/entity-map-colors";
 
 // Performance optimization constants - adjust these to balance quality vs performance
 // To view performance stats in console, run:
@@ -44,10 +39,10 @@ export const MINIMAP_SETTINGS = {
   right: 40,
   bottom: 40,
   background: "rgba(0, 0, 0, 0.7)",
-  scale: 0.7,
+  scale: 0.35,
   fogOfWar: {
     enabled: true,
-    fogColor: "rgba(0, 0, 0, 0.95)", // Nearly opaque black for unexplored areas
+    fogColor: "rgba(0, 0, 0, 1.0)", // Fully opaque black for unexplored areas
   },
   colors: {
     enemy: "red",
@@ -83,7 +78,7 @@ export const MINIMAP_SETTINGS = {
     },
     tree: {
       shape: "rectangle",
-      size: 8,
+      size: 16,
     },
   },
   biomeIndicators: {
@@ -154,7 +149,7 @@ export class Minimap {
     // Add entity light sources (torches, campfires, etc.)
     for (const entity of gameState.entities) {
       if (entity.hasExt(ClientIlluminated) && entity.hasExt(ClientPositionable)) {
-        const radius = entity.getExt(ClientIlluminated).getRadius() / 2;
+        const radius = entity.getExt(ClientIlluminated).getRadius();
         // Skip entities with no light (radius 0 or very small)
         if (radius <= 0) continue;
         const position = entity.getExt(ClientPositionable).getCenterPosition();
@@ -208,7 +203,7 @@ export class Minimap {
       return;
     }
 
-    const playerPos = myPlayer.getExt(ClientPositionable).getPosition();
+    const playerPos = myPlayer.getExt(ClientPositionable).getCenterPosition();
 
     ctx.save();
     ctx.setTransform(1, 0, 0, 1, 0, 0);
@@ -226,13 +221,7 @@ export class Minimap {
 
     // Create circular clip using scaled values
     ctx.beginPath();
-    ctx.arc(
-      scaledLeft + scaledSize / 2,
-      top + scaledSize / 2,
-      scaledSize / 2,
-      0,
-      Math.PI * 2
-    );
+    ctx.arc(scaledLeft + scaledSize / 2, top + scaledSize / 2, scaledSize / 2, 0, Math.PI * 2);
     ctx.clip();
 
     // Draw minimap background using scaled values
@@ -253,7 +242,7 @@ export class Minimap {
       if (!entity.hasExt(ClientPositionable)) continue;
 
       const positionable = entity.getExt(ClientPositionable);
-      const position = positionable.getPosition();
+      const position = positionable.getCenterPosition();
 
       // Calculate relative position to player
       const relativeX = position.x - playerPos.x;
@@ -267,39 +256,14 @@ export class Minimap {
       const minimapX = scaledLeft + scaledSize / 2 + relativeX * settings.scale;
       const minimapY = top + scaledSize / 2 + relativeY * settings.scale;
 
-      // Determine indicator settings based on entity category
-      let indicator = null;
-      let color = null;
-
-      const category = entity.getCategory();
-
-      if (category === EntityCategories.ZOMBIE) {
-        indicator = settings.indicators.enemy;
-        // Check if zombie is dead
-        if (entity.hasExt(ClientDestructible) && entity.getExt(ClientDestructible).isDead()) {
-          color = settings.colors.deadEnemy;
-        } else {
-          color = settings.colors.enemy;
-        }
-      } else if (entity instanceof PlayerClient) {
-        color = settings.colors.player;
-        indicator = settings.indicators.player;
-      } else if (entity instanceof WallClient) {
-        color = settings.colors.wall;
-        indicator = settings.indicators.wall;
-      } else if (entity instanceof TreeClient) {
-        color = settings.colors.tree;
-        indicator = settings.indicators.tree;
-      } else if (entity instanceof CrateClient) {
-        // Skip crates - they will be rendered after fog of war
+      // Get entity color and indicator using shared utility
+      const mapIndicator = getEntityMapColor(entity, settings);
+      if (!mapIndicator) {
+        // Skip entities that return null (e.g., crates)
         continue;
-      } else if (entity.hasExt(ClientCarryable)) {
-        color = settings.colors.item;
-        indicator = settings.indicators.item;
-      } else if (entity instanceof AcidProjectileClient) {
-        color = settings.colors.acid;
-        indicator = settings.indicators.acid;
       }
+
+      const { color, indicator } = mapIndicator;
 
       if (color && indicator) {
         ctx.fillStyle = color;
@@ -335,13 +299,7 @@ export class Minimap {
     ctx.strokeStyle = "white";
     ctx.lineWidth = 2;
     ctx.beginPath();
-    ctx.arc(
-      scaledLeft + scaledSize / 2,
-      top + scaledSize / 2,
-      scaledSize / 2,
-      0,
-      Math.PI * 2
-    );
+    ctx.arc(scaledLeft + scaledSize / 2, top + scaledSize / 2, scaledSize / 2, 0, Math.PI * 2);
     ctx.stroke();
 
     // Draw crosshair at center (player position) using scaled values
@@ -447,7 +405,7 @@ export class Minimap {
       const edgeY = centerY + Math.sin(angle) * (radius - 20);
 
       // Draw the indicator circle
-      const indicatorSize = 24;
+      const indicatorSize = 18;
       ctx.fillStyle = config.color;
       ctx.beginPath();
       ctx.arc(edgeX, edgeY, indicatorSize / 2, 0, Math.PI * 2);
@@ -462,7 +420,7 @@ export class Minimap {
 
       // Draw the label text
       ctx.fillStyle = config.iconColor;
-      ctx.font = "bold 16px Arial";
+      ctx.font = "bold 12px Arial";
       ctx.textAlign = "center";
       ctx.textBaseline = "middle";
       ctx.fillText(config.label, edgeX, edgeY);
@@ -488,7 +446,7 @@ export class Minimap {
       if (!entity.hasExt(ClientPositionable)) continue;
 
       const positionable = entity.getExt(ClientPositionable);
-      const position = positionable.getPosition();
+      const position = positionable.getCenterPosition();
 
       // Calculate relative position to my player
       const relativeX = position.x - playerPos.x;
@@ -563,11 +521,10 @@ export class Minimap {
     const scaledBottom = scaleHudValue(settings.bottom, canvasWidth, canvasHeight);
     const topPos = canvasHeight - scaledBottom - scaledSize;
     const scaledLeft = canvasWidth - scaledRight - scaledSize;
-    
+
     const centerX = scaledLeft + scaledSize / 2;
     const centerY = topPos + scaledSize / 2;
-    const maxDistanceSquared =
-      MINIMAP_RENDER_DISTANCE.ENTITIES * MINIMAP_RENDER_DISTANCE.ENTITIES;
+    const maxDistanceSquared = MINIMAP_RENDER_DISTANCE.ENTITIES * MINIMAP_RENDER_DISTANCE.ENTITIES;
 
     // Loop through all entities to find crates
     for (const entity of gameState.entities) {
@@ -575,7 +532,7 @@ export class Minimap {
       if (!entity.hasExt(ClientPositionable)) continue;
 
       const positionable = entity.getExt(ClientPositionable);
-      const position = positionable.getPosition();
+      const position = positionable.getCenterPosition();
 
       // Calculate relative position to player
       const relativeX = position.x - playerPos.x;
@@ -650,7 +607,7 @@ export class Minimap {
     const scaledRight = scaleHudValue(settings.right, canvasWidth, canvasHeight);
     const scaledSize = scaleHudValue(settings.size, canvasWidth, canvasHeight);
     const scaledLeft = canvasWidth - scaledRight - scaledSize;
-    
+
     const centerX = scaledLeft + scaledSize / 2;
     const centerY = top + scaledSize / 2;
     const radius = scaledSize / 2;
@@ -889,6 +846,7 @@ export class Minimap {
           // Convert to minimap coordinates (centered on player)
           // Calculate scaledLeft for fallback rendering
           const canvasWidth = ctx.canvas.width;
+          const canvasHeight = ctx.canvas.height;
           const scaledRight = scaleHudValue(settings.right, canvasWidth, canvasHeight);
           const scaledSize = scaleHudValue(settings.size, canvasWidth, canvasHeight);
           const scaledLeft = canvasWidth - scaledRight - scaledSize;
