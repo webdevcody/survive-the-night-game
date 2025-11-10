@@ -12,7 +12,7 @@ import Vector2 from "@/util/vector2";
  * A spike trap which only hurts zombies who step on it. Can be picked up and placed again.
  */
 export class Spikes extends Entity {
-  private static readonly DAMAGE = 1;
+  private static readonly DAMAGE = 2;
   private static readonly SIZE = new Vector2(16, 16);
 
   constructor(gameManagers: IGameManagers) {

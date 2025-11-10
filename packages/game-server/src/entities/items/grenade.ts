@@ -55,9 +55,15 @@ export class Grenade extends Entity {
     // Set grenade position to player position
     this.getExt(Positionable).setPosition(playerPos);
 
-    // Set velocity based on facing direction
-    const directionVector = normalizeDirection(facing);
-    this.velocity = new Vector2(directionVector.x, directionVector.y).mul(Grenade.THROW_SPEED);
+    // Set velocity based on aim angle if provided (mouse aiming), otherwise use facing direction
+    if (input?.aimAngle !== undefined) {
+      const dirX = Math.cos(input.aimAngle);
+      const dirY = Math.sin(input.aimAngle);
+      this.velocity = new Vector2(dirX * Grenade.THROW_SPEED, dirY * Grenade.THROW_SPEED);
+    } else {
+      const directionVector = normalizeDirection(facing);
+      this.velocity = new Vector2(directionVector.x, directionVector.y).mul(Grenade.THROW_SPEED);
+    }
 
     // Arm the grenade
     this.isArmed = true;

@@ -1,5 +1,14 @@
 [
   {
+    "version": "0.8.2",
+    "date": "2025-11-09",
+    "changes": [
+      "Added mouse aiming support for grenades - grenades now use aim angle from mouse input when available.",
+      "Increased spike trap damage from 1 to 2 for better effectiveness.",
+      "Increased first wave delay from 10 seconds to 90 seconds to give players more preparation time."
+    ]
+  },
+  {
     "version": "0.8.1",
     "date": "2025-11-08",
     "changes": [

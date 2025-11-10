@@ -20,7 +20,7 @@ export const waveConfig = {
   /**
    * Delay before automatically starting first wave (in seconds)
    */
-  FIRST_WAVE_DELAY: 10,
+  FIRST_WAVE_DELAY: 90,
 
   /**
    * Whether waves auto-start after preparation or require manual trigger
