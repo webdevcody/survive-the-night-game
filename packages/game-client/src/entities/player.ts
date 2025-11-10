@@ -363,7 +363,17 @@ export class PlayerClient extends ClientEntity implements IClientEntity, Rendera
     this.inventory = data.inventory;
     this.isCrafting = data.isCrafting;
     this.activeItem = data.activeItem;
-    this.input = data.input;
+
+    // Preserve locally-calculated facing direction for cursor-based aiming
+    // Only update facing from server for other input properties
+    if (this.input) {
+      const previousFacing = this.input.facing;
+      this.input = data.input;
+      this.input.facing = previousFacing;
+    } else {
+      this.input = data.input;
+    }
+
     this.skin = data.skin || SKIN_TYPES.DEFAULT;
     this.kills = data.kills || 0;
     this.ping = data.ping || 0;

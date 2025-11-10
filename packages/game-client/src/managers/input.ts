@@ -1,4 +1,8 @@
-import { Direction, determineDirection, angleToDirection } from "../../../game-shared/src/util/direction";
+import {
+  Direction,
+  determineDirection,
+  angleToDirection,
+} from "../../../game-shared/src/util/direction";
 import { Input } from "../../../game-shared/src/util/input";
 import Vector2 from "../../../game-shared/src/util/vector2";
 import { getConfig } from "@shared/config";
@@ -118,11 +122,7 @@ export class InputManager {
     window.addEventListener("keydown", (e) => {
       // Ignore inputs when user is typing in a form element
       const target = e.target as HTMLElement;
-      if (
-        target.tagName === "INPUT" ||
-        target.tagName === "TEXTAREA" ||
-        target.isContentEditable
-      ) {
+      if (target.tagName === "INPUT" || target.tagName === "TEXTAREA" || target.isContentEditable) {
         return;
       }
 
@@ -286,18 +286,13 @@ export class InputManager {
           break;
       }
 
-      this.updateDirection();
       this.checkIfChanged();
     });
 
     window.addEventListener("keyup", (e) => {
       // Ignore inputs when user is typing in a form element
       const target = e.target as HTMLElement;
-      if (
-        target.tagName === "INPUT" ||
-        target.tagName === "TEXTAREA" ||
-        target.isContentEditable
-      ) {
+      if (target.tagName === "INPUT" || target.tagName === "TEXTAREA" || target.isContentEditable) {
         return;
       }
 
@@ -380,7 +375,6 @@ export class InputManager {
           break;
       }
 
-      this.updateDirection();
       this.checkIfChanged();
     });
   }

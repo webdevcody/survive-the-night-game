@@ -108,6 +108,10 @@ function createCharacterAssets(
     });
   });
 
+  directions.forEach((direction) => {
+    assets[`${name}_facing_${direction}`] = assetMap(frames[direction][0]);
+  });
+
   // Add right frames (flipped from left sprites)
   frames.right.forEach((frame, index) => {
     assets[`${name}_facing_right_${index}`] = loadFlipXAsset(frame);
