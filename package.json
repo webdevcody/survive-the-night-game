@@ -1,6 +1,6 @@
 {
   "name": "survive-the-night",
-  "version": "0.9.0",
+  "version": "0.9.1",
   "main": "index.js",
   "scripts": {
     "dev": "npm-run-all --parallel dev:*",
@@ -10,11 +10,7 @@
     "build:website": "npm run build --workspace=packages/website",
     "test:game-client": "npm run test --workspace=packages/game-client",
     "test:game-server": "npm run test --workspace=packages/game-server",
-    "depcruiser": "depcruise ./packages --exclude \"^packages/build\" --include-only \"packages\" --output-type dot | dot -T svg > dependency-graph.svg",
-    "release": "node scripts/release.js",
-    "major": "node scripts/release.js major",
-    "minor": "node scripts/release.js minor",
-    "patch": "node scripts/release.js patch"
+    "depcruiser": "depcruise ./packages --exclude \"^packages/build\" --include-only \"packages\" --output-type dot | dot -T svg > dependency-graph.svg"
   },
   "workspaces": [
     "packages/*"
