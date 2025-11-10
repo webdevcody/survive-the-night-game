@@ -43,6 +43,7 @@ export const Entities = {
   MERCHANT: "merchant",
   SENTRY_GUN: "sentry_gun",
   CAR: "car",
+  MINERS_HAT: "miners_hat",
 } as const;
 
 export const NON_SPAWNABLE = new Set([

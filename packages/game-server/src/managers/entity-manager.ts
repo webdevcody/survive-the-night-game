@@ -14,6 +14,7 @@ import { GrenadeLauncherAmmo } from "@/entities/items/grenade-launcher-ammo";
 import { FlamethrowerAmmo } from "@/entities/items/flamethrower-ammo";
 import { Spikes } from "@/entities/items/spikes";
 import { Torch } from "@/entities/items/torch";
+import { MinersHat } from "@/entities/items/miners-hat";
 import { Tree } from "@/entities/items/tree";
 import { Wall } from "@/entities/items/wall";
 import { Player } from "@/entities/player";
@@ -81,6 +82,7 @@ const entityMap = {
   [Entities.SPIKES]: Spikes,
   [Entities.FIRE]: Fire,
   [Entities.TORCH]: Torch,
+  [Entities.MINERS_HAT]: MinersHat,
   [Entities.GASOLINE]: Gasoline,
   [Entities.ZOMBIE]: Zombie,
   [Entities.BIG_ZOMBIE]: BigZombie,
@@ -136,6 +138,7 @@ export class EntityManager implements IEntityManager {
     this.registerItem("gasoline", Gasoline);
     this.registerItem("bandage", Bandage);
     this.registerItem("torch", Torch);
+    this.registerItem("miners_hat", MinersHat);
     this.registerItem("cloth", Cloth);
     this.registerItem("coin", Coin);
     this.registerItem("wood", Tree);

@@ -15,6 +15,7 @@ import { BandageClient } from "@/entities/items/bandage";
 import { SpikesClient } from "@/entities/items/spikes";
 import { FireClient } from "@/entities/environment/fire";
 import { TorchClient } from "@/entities/items/torch";
+import { MinersHatClient } from "@/entities/items/miners-hat";
 import { GasolineClient } from "@/entities/items/gasoline";
 import { PistolClient } from "@/entities/weapons/pistol";
 import { ShotgunClient } from "@/entities/weapons/shotgun";
@@ -71,6 +72,8 @@ export const entityMap = {
   [Entities.SPIKES]: SpikesClient,
   [Entities.FIRE]: FireClient,
   [Entities.TORCH]: TorchClient,
+  [Entities.MINERS_HAT]: MinersHatClient,
+  "miners_hat": MinersHatClient, // Direct string key for runtime lookup
   [Entities.GASOLINE]: GasolineClient,
   [Entities.ZOMBIE]: ZombieClient,
   [Entities.BIG_ZOMBIE]: BigZombieClient,

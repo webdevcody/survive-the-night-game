@@ -27,6 +27,7 @@ const ITEM_DROP_TABLE: Array<{ itemType: ItemType; weight: number }> = [
   { itemType: "knife", weight: 8 },
   { itemType: "wall", weight: 8 },
   { itemType: "torch", weight: 10 },
+  { itemType: "miners_hat", weight: 8 },
   { itemType: "spikes", weight: 7 },
   { itemType: "grenade", weight: 5 },
   { itemType: "fire_extinguisher", weight: 5 },

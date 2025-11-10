@@ -12,6 +12,7 @@ export interface ItemConfig {
   id: string;
   category: "consumable" | "ammo" | "placeable" | "throwable" | "structure";
   assets: ItemAssetConfig;
+  hideWhenSelected?: boolean; // If true, don't render overlay when item is selected/equipped
 }
 
 class ItemRegistry {

@@ -49,6 +49,7 @@ import { AK47Ammo } from "@/entities/items/ak47-ammo";
 import { BoltActionAmmo } from "@/entities/items/bolt-action-ammo";
 import { BoltActionRifle } from "@/entities/weapons/bolt-action-rifle";
 import { getConfig } from "@/config";
+import { MinersHat } from "@/entities/items/miners-hat";
 
 const WEAPON_SPAWN_CHANCE = {
   // Weapons
@@ -72,6 +73,7 @@ const WEAPON_SPAWN_CHANCE = {
   TORCH: 0, // do not spawn torches, players must craft them
   WALL: 0.005,
   TREE: 0.2,
+  MINERS_HAT: 0.0001,
 } as const;
 
 const spawnTable = [
@@ -94,6 +96,7 @@ const spawnTable = [
   { chance: WEAPON_SPAWN_CHANCE.BOLT_ACTION_AMMO, ItemClass: BoltActionAmmo },
   { chance: WEAPON_SPAWN_CHANCE.AK47_AMMO, ItemClass: AK47Ammo },
   { chance: WEAPON_SPAWN_CHANCE.TREE, ItemClass: Tree },
+  { chance: WEAPON_SPAWN_CHANCE.MINERS_HAT, ItemClass: MinersHat },
 ];
 
 const BIOME_SIZE = 16;
@@ -986,7 +989,9 @@ export class MapManager implements IMapManager {
     const validPositions: Vector2[] = [];
 
     // Get all car entities to check against
-    const carEntities = this.getEntityManager().getEntities().filter((e) => e.getType() === "car");
+    const carEntities = this.getEntityManager()
+      .getEntities()
+      .filter((e) => e.getType() === "car");
 
     // Collect all valid ground tile positions (8, 4, 14, 24 are grass/ground tiles)
     for (let y = 0; y < totalSize; y++) {
@@ -996,7 +1001,10 @@ export class MapManager implements IMapManager {
           groundTile === 8 || groundTile === 4 || groundTile === 14 || groundTile === 24;
 
         if (isValidGround && this.collidablesLayer[y][x] === -1) {
-          const position = new Vector2(x * getConfig().world.TILE_SIZE, y * getConfig().world.TILE_SIZE);
+          const position = new Vector2(
+            x * getConfig().world.TILE_SIZE,
+            y * getConfig().world.TILE_SIZE
+          );
 
           // Check if this position overlaps with any car entity
           const overlapsWithCar = carEntities.some((car) => {
@@ -1037,7 +1045,9 @@ export class MapManager implements IMapManager {
     const validPositions: Vector2[] = [];
 
     // Get all car entities to check against
-    const carEntities = this.getEntityManager().getEntities().filter((e) => e.getType() === "car");
+    const carEntities = this.getEntityManager()
+      .getEntities()
+      .filter((e) => e.getType() === "car");
 
     // Iterate through the campsite biome tiles
     for (let y = 0; y < BIOME_SIZE; y++) {
@@ -1050,7 +1060,10 @@ export class MapManager implements IMapManager {
           groundTile === 8 || groundTile === 4 || groundTile === 14 || groundTile === 24;
 
         if (isValidGround && this.collidablesLayer[mapY][mapX] === -1) {
-          const position = new Vector2(mapX * getConfig().world.TILE_SIZE, mapY * getConfig().world.TILE_SIZE);
+          const position = new Vector2(
+            mapX * getConfig().world.TILE_SIZE,
+            mapY * getConfig().world.TILE_SIZE
+          );
 
           // Check if this position overlaps with any car entity
           const overlapsWithCar = carEntities.some((car) => {

@@ -150,4 +150,15 @@ export const ITEM_CONFIGS: Record<string, ItemConfig> = {
       totalFrames: 3,
     },
   },
+  miners_hat: {
+    id: "miners_hat",
+    category: "consumable",
+    assets: {
+      assetKey: "miners_hat",
+      x: 48,
+      y: 144,
+      sheet: "items",
+    },
+    hideWhenSelected: true, // Don't show overlay when selected since player is wearing it
+  },
 };

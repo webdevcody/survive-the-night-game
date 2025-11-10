@@ -14,6 +14,7 @@ import { Direction, normalizeDirection } from "../../../game-shared/src/util/dir
 import { getHitboxWithPadding, Hitbox } from "../../../game-shared/src/util/hitbox";
 import { Input } from "../../../game-shared/src/util/input";
 import { InventoryItem } from "../../../game-shared/src/util/inventory";
+import { itemRegistry } from "@shared/entities";
 import { roundVector2 } from "../../../game-shared/src/util/physics";
 import { RawEntity } from "@shared/types/entity";
 import { IClientEntity, Renderable, getFrameIndex, drawHealthBar } from "@/entities/util";
@@ -54,6 +55,7 @@ export class PlayerClient extends ClientEntity implements IClientEntity, Rendera
     fire: false,
     drop: false,
     consume: false,
+    consumeItemType: null,
     sprint: false,
   };
 
@@ -208,6 +210,9 @@ export class PlayerClient extends ClientEntity implements IClientEntity, Rendera
     } else {
       ctx.drawImage(image, renderPosition.x, renderPosition.y);
 
+      // Render miners-hat overlay if in inventory
+      this.renderMinersHat(ctx, renderPosition);
+
       if (this.hasExt(ClientIgnitable)) {
         const frameIndex = getFrameIndex(gameState.startedAt, {
           duration: 500,
@@ -313,10 +318,29 @@ export class PlayerClient extends ClientEntity implements IClientEntity, Rendera
     ctx.fill();
   }
 
+  renderMinersHat(ctx: CanvasRenderingContext2D, renderPosition: Vector2) {
+    // Check if miners-hat is in inventory - always show overlay when in inventory
+    const hasMinersHat = this.inventory.some(
+      (item) => item !== null && item.itemType === "miners_hat"
+    );
+
+    if (hasMinersHat) {
+      const minersHatImage = this.imageLoader.get("miners_hat");
+      ctx.drawImage(minersHatImage, renderPosition.x, renderPosition.y);
+    }
+  }
+
   renderInventoryItem(ctx: CanvasRenderingContext2D, renderPosition: Vector2) {
     if (this.activeItem === null) {
       return;
     }
+
+    // Skip rendering held item if it's a wearable item (should show as overlay instead)
+    const itemConfig = itemRegistry.get(this.activeItem.itemType);
+    if (itemConfig?.hideWhenSelected) {
+      return; // Don't render as held item - it's worn and shown as overlay
+    }
+
     const { facing } = this.input;
     const image = this.imageLoader.getWithDirection(getItemAssetKey(this.activeItem), facing);
     ctx.drawImage(image, renderPosition.x + 2, renderPosition.y);

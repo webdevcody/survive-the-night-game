@@ -27,6 +27,7 @@ export const ITEM_TYPES = [
   "flamethrower_ammo",
   "sentry_gun",
   "crate",
+  "miners_hat",
 ] as const;
 export type ItemType = (typeof ITEM_TYPES)[number];
 

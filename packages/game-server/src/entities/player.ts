@@ -628,14 +628,15 @@ export class Player extends Entity {
   }
 
   private updateLighting() {
-    // Only provide light if the player has a torch equipped
+    // Provide light if the player has a torch equipped or a miners-hat in inventory
     const activeItem = this.activeItem;
     const hasTorchEquipped = activeItem?.itemType === "torch";
+    const hasMinersHat = this.hasInInventory("miners_hat");
 
     if (this.hasExt(Illuminated)) {
       const illuminated = this.getExt(Illuminated);
-      // Set radius to 200 if torch equipped, 0 otherwise
-      illuminated.setRadius(hasTorchEquipped ? 200 : 0);
+      // Set radius to 200 if torch equipped or miners-hat in inventory, 0 otherwise
+      illuminated.setRadius(hasTorchEquipped || hasMinersHat ? 200 : 0);
     }
   }
 
