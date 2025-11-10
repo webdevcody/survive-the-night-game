@@ -51,7 +51,7 @@ export class LoadingScene extends Scene {
       this.sceneManager.setSoundManager(this.soundManager);
 
       // Wait a brief moment to show completion
-      await new Promise(resolve => setTimeout(resolve, 300));
+      await new Promise((resolve) => setTimeout(resolve, 300));
 
       // Check if user already has a display name from the HTML form
       const displayName = localStorage.getItem("displayName");
@@ -77,7 +77,7 @@ export class LoadingScene extends Scene {
     const { width, height } = this.canvas;
 
     // Clear screen
-    this.ctx.fillStyle = "#1a1a2e";
+    this.ctx.fillStyle = "#000000";
     this.ctx.fillRect(0, 0, width, height);
 
     // Draw title

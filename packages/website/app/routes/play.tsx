@@ -5,10 +5,7 @@ import { InstructionPanel } from "./play/components/InstructionPanel";
 import { CraftingPanel } from "./play/components/CraftingPanel";
 import { SpawnPanel } from "./play/components/SpawnPanel";
 import { Button } from "~/components/ui/button";
-import {
-  DropdownMenu,
-  DropdownMenuItem,
-} from "~/components/ui/dropdown-menu";
+import { DropdownMenu, DropdownMenuItem } from "~/components/ui/dropdown-menu";
 
 export function meta() {
   return [
@@ -115,7 +112,7 @@ function GameClientLoader() {
   }, [isClient]);
 
   return (
-    <div className="relative flex justify-center items-center h-screen bg-gray-900">
+    <div className="relative flex justify-center items-center h-screen bg-black">
       <canvas ref={canvasRef} />
 
       {/* Top left controls - Game menu, Info button and Config panel */}
@@ -208,10 +205,7 @@ function GameClientLoader() {
       </div>
 
       {/* Instruction Panel Modal */}
-      <InstructionPanel
-        isOpen={showInstructions}
-        onClose={() => setShowInstructions(false)}
-      />
+      <InstructionPanel isOpen={showInstructions} onClose={() => setShowInstructions(false)} />
 
       {/* Crafting Panel */}
       {gameClient && <CraftingPanel gameClient={gameClient} />}

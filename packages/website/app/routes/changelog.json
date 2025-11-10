@@ -1,5 +1,15 @@
 [
   {
+    "version": "0.8.3",
+    "date": "2025-11-10",
+    "changes": [
+      "Redesigned homepage with full-screen splash image background for improved visual appeal.",
+      "Changed loading scene background color to black for better contrast.",
+      "Changed play route background to black for consistent dark theme.",
+      "Added splash images (splash.jpg and splash.png) for homepage display."
+    ]
+  },
+  {
     "version": "0.8.2",
     "date": "2025-11-09",
     "changes": [

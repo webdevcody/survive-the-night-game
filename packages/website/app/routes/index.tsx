@@ -23,18 +23,25 @@ const changelog: ChangelogEntry[] = changelogData;
 
 export default function Index() {
   return (
-    <div className="min-h-screen bg-gradient-to-b from-slate-950 via-slate-900 to-black text-white">
-      <div className="container mx-auto px-4 py-8 max-w-7xl">
+    <div className="relative min-h-screen text-white" style={{ backgroundColor: "#00080e" }}>
+      {/* Full screen background image */}
+      <div
+        className="fixed inset-0 w-full h-full"
+        style={{
+          backgroundImage: "url(/splash.png)",
+          backgroundSize: "contain",
+          backgroundPosition: "top center",
+          backgroundRepeat: "no-repeat",
+        }}
+      />
+
+      {/* Content overlay */}
+      <div
+        className="relative z-10 container mx-auto px-4 py-8 max-w-7xl"
+        style={{ paddingTop: "250px" }}
+      >
         {/* Hero Section */}
         <div className="flex flex-col items-center text-center pt-12 pb-16">
-          {/* Game Title */}
-          <div className="mb-8">
-            <h1 className="text-5xl md:text-7xl lg:text-8xl font-black text-red-600 drop-shadow-[0_0_30px_rgba(220,38,38,0.6)] tracking-tight mb-4">
-              SURVIVE THE NIGHT
-            </h1>
-            <p className="text-lg md:text-xl text-gray-400">Can you make it until dawn?</p>
-          </div>
-
           {/* Navigation Buttons */}
           <div className="flex flex-wrap gap-4 justify-center mb-10">
             <Link to="/play">
