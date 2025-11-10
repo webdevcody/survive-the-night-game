@@ -1,0 +1,174 @@
+[
+  {
+    "version": "0.8.0",
+    "date": "2025-11-08",
+    "changes": [
+      "Removed player revival system - players can no longer revive each other.",
+      "Added individual player respawn system with 'Press any key to respawn' prompt.",
+      "Players now respawn at the campsite with full health when they press any key after dying.",
+      "Inventory is cleared on death and items remain scattered on the ground.",
+      "Death screen displays with semi-transparent overlay when player dies.",
+      "Added mouse aiming for weapons - aim with cursor and click to shoot.",
+      "Players can now aim in any direction independent of movement direction.",
+      "Improved weapon firing mechanics with precise angle-based targeting."
+    ]
+  },
+  {
+    "version": "0.7.1",
+    "date": "2025-11-08",
+    "changes": [
+      "Players no longer emit light unless they have a torch equipped.",
+      "Torches must now be actively selected to provide illumination.",
+      "Improved lighting system performance by filtering out entities with no light radius.",
+      "Enhanced strategic gameplay - players must choose between weapons and visibility.",
+      "Minimap fog of war now respects player lighting (only reveals areas when torch is equipped)."
+    ]
+  },
+  {
+    "version": "0.7.0",
+    "date": "2025-11-08",
+    "changes": [
+      "Replaced day/night cycle with wave-based gameplay system.",
+      "Game now features timed waves with preparation periods between zombie attacks.",
+      "Added wave timer HUD display showing current wave number and time until next wave.",
+      "Implemented idle zombie behavior - zombies now wander around when not chasing players.",
+      "Zombies exhibit more dynamic movement patterns during waves.",
+      "Added map darkness overlay for enhanced atmosphere and visibility challenge.",
+      "Darkness effect creates more tension during zombie waves.",
+      "Refactored map rendering system for improved performance and maintainability.",
+      "Optimized chunk rendering and camera viewport calculations."
+    ]
+  },
+  {
+    "version": "0.6.0",
+    "date": "2025-11-07",
+    "changes": [
+      "Add car defense mechanic - players must protect the car to survive",
+      "Implement mouse cursor aiming for weapons (replaces 4-directional shooting)",
+      "Add angle-based knife attack direction using mouse position",
+      "Create car health panel UI at top of screen",
+      "Add crate indicators with arrows pointing to nearby supply crates",
+      "Implement death screen panel with respawn prompt",
+      "Add game messages system for important announcements (yellow/red colored)",
+      "Create mute button panel for audio control",
+      "Refactor UI into modular panel components (CarHealthPanel, DeathScreenPanel, GameMessagesPanel, MuteButtonPanel, CrateIndicatorsPanel)",
+      "Fix chat input blocking - prevent movement/actions while typing",
+      "Update knife swipe animation to face mouse attack direction",
+      "Store attack direction in player attack events",
+      "Update camera to follow player center position for accurate aiming",
+      "Add welcome message on game start about defending the car",
+      "Update player facing direction based on mouse position",
+      "Add new car sprite to collidables sheet",
+      "Fix input handling when entering chat mode",
+      "Added Sentry Gun craftable item that automatically targets and shoots zombies.",
+      "Sentry guns can be placed using the interactive placement system.",
+      "Sentry guns have 360-degree detection radius and automatically engage zombies within range.",
+      "Added campfire sprite and decal system for enhanced visual detail.",
+      "Decals can now be placed in the map editor for decorative elements.",
+      "New DecalsPanel in the map editor allows browsing and placing decal sprites.",
+      "Campfire decal added to campsite biomes for improved atmosphere."
+    ]
+  },
+  {
+    "version": "0.5.0",
+    "date": "2025-11-07",
+    "changes": [
+      "Added interactive wall placement system with mouse targeting.",
+      "Walls can now be placed by selecting them from inventory and clicking on the map.",
+      "Ghost template preview shows valid (green) and invalid (red) placement locations.",
+      "Walls snap to 16x16 pixel grid for clean alignment.",
+      "Placement range limited to 100 pixels from player with visual range indicator.",
+      "Server validates all placements to prevent cheating and ensure fair gameplay.",
+      "Placement blocked on occupied tiles, near entities, or outside map bounds."
+    ]
+  },
+  {
+    "version": "0.4.2",
+    "date": "2025-11-07",
+    "changes": [
+      "Improved client-side prediction to reduce player drift during movement.",
+      "Added continuous gentle correction that pulls player towards server position while moving.",
+      "Simplified reconciliation system by removing adaptive lerp in favor of fixed correction speeds.",
+      "Direction changes now feel more accurate with less visible drift accumulation."
+    ]
+  },
+  {
+    "version": "0.4.1",
+    "date": "2025-11-07",
+    "changes": [
+      "Refactored instructions menu to remove dark background overlay.",
+      "Instructions menu now toggles when clicking the settings button.",
+      "Added click-outside-to-close functionality for instructions menu."
+    ]
+  },
+  {
+    "version": "0.4.0",
+    "date": "2025-11-07",
+    "changes": [
+      "Fixed game inputs triggering while typing in UI input fields (spawn panel, config panel, etc.).",
+      "Add an exploding zombie",
+      "A player shouldn't be colliding with a dead zombie",
+      "Fix bullet from coming out of players head",
+      "A bullet was not blowing up the gas can (because I forgot to add the groupable extension to the gas can)",
+      "A user can search a dead zombie body for items (randomly drop items)",
+      "A zombie should be lootable, but the label isn't showing",
+      "Refactor the zombie constructor"
+    ]
+  },
+  {
+    "version": "0.3.0",
+    "date": "2024-12-19",
+    "changes": [
+      "Add sound for shotgun",
+      "Add sound for player hurt",
+      "Add sound for zombie hurt",
+      "Add sound for item pickup",
+      "Add sound for item drop",
+      "Add sound for player death",
+      "Add a way to toggle the instructions on and off",
+      "When a player is killed, notify all players in the game a player has died"
+    ]
+  },
+  {
+    "version": "0.2.0",
+    "date": "2024-12-01",
+    "changes": [
+      "A user can drop items from their inventory",
+      "A user shall be able to harvest trees",
+      "Create an entry point function for the client code which creates a canvas, connects to a server, and starts the game loop",
+      "A user shall be able to move their player around with w,s,a,d",
+      "A user shall be able to move in a diagonal direction",
+      "A user shall be able to attack using space",
+      "A user shall be able to see a health bar which shows how much health they have",
+      "Create an next.js application which will use the client code to render the game",
+      "A user can move up, down, left, and right",
+      "Create initial server logic for the game",
+      "A user should be able to pick up previously placed walls",
+      "A zombie can attack a player",
+      "Add in collidable entities (barrels, boxes, etc.)",
+      "A user can hold one weapon at a time",
+      "Add a day cycle which let's players explore, build, gather",
+      "Add a basic night cycle which spawns zombies",
+      "A user can pick up wood and place into inventory",
+      "A user can build a barricade using wood",
+      "A user can fire in the direction they are facing",
+      "A zombie can attack walls (walls have hp)",
+      "Picking up a damaged walled shouldn't restore it's health back to full when replacing",
+      "When picking up items, it should pick up the CLOSEST item first",
+      "The health bars need to be attached to the player group so that when they interpolate they don't lag behind",
+      "A player shouldn't be able to move when crafting",
+      "Fix the size of the wrench icon",
+      "Figure out why the wrench icon becomes small when near a tree",
+      "Close the crafting menu after making an item",
+      "A player shouldn't be able to open the craft menu when dead; also close it if they die while crafting",
+      "A player should drop all items when they die and scatter them around their body",
+      "The player should have a running animation (keep it simple), 2 frames with legs going up and down",
+      "Every player faces the same direction as YOUR player which is a bug (FIXED)",
+      "The crafting recipe should be red or grayed out if you don't have enough items to craft it",
+      "Pressing space while crafting an item you don't have enough resources to craft should not auto close the crafting menu",
+      "Zombie should use walk animation as well",
+      "When a player is killed by a zombie, it seems like the zombie gets stuck either on the player, or thinks it still needs to attack the player",
+      "A player is able to shoot themself, this is bad (FIXED)"
+    ]
+  }
+]

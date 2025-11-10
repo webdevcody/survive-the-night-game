@@ -78,6 +78,7 @@ export class Knife extends Weapon {
         new PlayerAttackedEvent({
           playerId,
           weaponKey: WEAPON_TYPES.KNIFE,
+          attackDirection,
         })
       );
   }

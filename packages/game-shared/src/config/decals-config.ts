@@ -71,7 +71,7 @@ export const DECAL_REGISTRY: Record<string, DecalPreset> = {
       frameHeight: 16,
     },
     light: {
-      radius: 140, // Light radius in pixels
+      radius: 240, // Light radius in pixels
       intensity: 1.0,
     },
   },

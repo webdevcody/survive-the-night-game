@@ -42,6 +42,7 @@ import { GrenadeProjectileClient } from "./grenade-projectile";
 import { FlameProjectileClient } from "./flame-projectile";
 import { SentryGunClient } from "./items/sentry-gun";
 import { CrateClient } from "./items/crate";
+import { CarClient } from "./environment/car";
 
 export const entityMap = {
   [Entities.PLAYER]: PlayerClient,
@@ -84,6 +85,7 @@ export const entityMap = {
   [Entities.LEAPING_ZOMBIE]: LeapingZombieClient,
   [Entities.MERCHANT]: MerchantClient,
   [Entities.SENTRY_GUN]: SentryGunClient,
+  [Entities.CAR]: CarClient,
 } as const;
 
 export class EntityFactory {

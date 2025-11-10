@@ -8,3 +8,8 @@ export { WavePanel } from "./wave-panel";
 export { StatPanel } from "./stat-panel";
 export { TextPanel } from "./text-panel";
 export { ResourcesPanel } from "./resources-panel";
+export { CarHealthPanel } from "./car-health-panel";
+export { DeathScreenPanel } from "./death-screen-panel";
+export { GameMessagesPanel } from "./game-messages-panel";
+export { MuteButtonPanel } from "./mute-button-panel";
+export { CrateIndicatorsPanel } from "./crate-indicators-panel";

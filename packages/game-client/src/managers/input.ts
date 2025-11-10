@@ -1,4 +1,4 @@
-import { Direction, determineDirection } from "../../../game-shared/src/util/direction";
+import { Direction, determineDirection, angleToDirection } from "../../../game-shared/src/util/direction";
 import { Input } from "../../../game-shared/src/util/input";
 import Vector2 from "../../../game-shared/src/util/vector2";
 import { getConfig } from "@shared/config";
@@ -136,6 +136,40 @@ export class InputManager {
         return;
       }
 
+      // Handle chat mode FIRST - block ALL game inputs when chatting
+      // This must come before any other input handling to prevent hotkeys from triggering
+      if (eventKey === "y" && !this.isChatting) {
+        this.isChatting = true;
+        // Clear all inputs when entering chat mode
+        this.clearInputs();
+        callbacks.onToggleChat?.();
+        return;
+      }
+
+      // If chatting, block ALL inputs except chat-specific keys
+      if (this.isChatting) {
+        if (eventKey === "escape") {
+          this.isChatting = false;
+          callbacks.onToggleChat?.();
+          return;
+        }
+
+        if (eventKey === "enter") {
+          this.isChatting = false;
+          callbacks.onSendChat?.();
+          callbacks.onToggleChat?.();
+          return;
+        }
+
+        // Prevent default behavior for arrow keys to avoid page scrolling
+        if (e.key === "ArrowUp" || e.key === "ArrowDown") {
+          e.preventDefault();
+        }
+
+        callbacks.onChatInput?.(e.key);
+        return; // Block all other inputs when chatting
+      }
+
       // Check if fullscreen map is open
       const isFullscreenMapOpen = callbacks.isFullscreenMapOpen?.() ?? false;
 
@@ -180,36 +214,6 @@ export class InputManager {
         return;
       }
 
-      // Handle chat mode - use key for 'y' to support all layouts
-      if (eventKey === "y" && !this.isChatting) {
-        this.isChatting = true;
-        callbacks.onToggleChat?.();
-        return;
-      }
-
-      if (this.isChatting) {
-        if (eventKey === "escape") {
-          this.isChatting = false;
-          callbacks.onToggleChat?.();
-          return;
-        }
-
-        if (eventKey === "enter") {
-          this.isChatting = false;
-          callbacks.onSendChat?.();
-          callbacks.onToggleChat?.();
-          return;
-        }
-
-        // Prevent default behavior for arrow keys to avoid page scrolling
-        if (e.key === "ArrowUp" || e.key === "ArrowDown") {
-          e.preventDefault();
-        }
-
-        callbacks.onChatInput?.(e.key);
-        return;
-      }
-
       // Normal game input handling - use physical key codes for WASD
       switch (eventCode) {
         case "KeyQ":
@@ -250,9 +254,6 @@ export class InputManager {
           break;
         case "KeyF":
           callbacks.onInteract?.(this.inputs);
-          break;
-        case "Space":
-          callbacks.onFire?.(this.inputs);
           break;
         case "KeyG":
           callbacks.onDrop?.(this.inputs);
@@ -366,9 +367,6 @@ export class InputManager {
         case "KeyF":
           this.inputs.interact = false;
           break;
-        case "Space":
-          this.inputs.fire = false;
-          break;
         case "KeyG":
           this.inputs.drop = false;
           break;
@@ -392,11 +390,43 @@ export class InputManager {
     this.inputs.facing = determineDirection(vec) ?? this.inputs.facing;
   }
 
+  private clearInputs() {
+    // Reset all action inputs to their default state
+    this.inputs.dx = 0;
+    this.inputs.dy = 0;
+    this.inputs.interact = false;
+    this.inputs.fire = false;
+    this.inputs.drop = false;
+    this.inputs.consume = false;
+    this.inputs.consumeItemType = null;
+    this.inputs.sprint = false;
+    this.checkIfChanged();
+  }
+
   getHasChanged() {
     return this.hasChanged;
   }
 
+  isChatInputActive() {
+    return this.isChatting;
+  }
+
   getInputs() {
+    // If chatting, force all inputs to false/zero to prevent movement
+    if (this.isChatting) {
+      return {
+        facing: this.inputs.facing,
+        dx: 0,
+        dy: 0,
+        interact: false,
+        fire: false,
+        inventoryItem: this.inputs.inventoryItem,
+        drop: false,
+        consume: false,
+        consumeItemType: null,
+        sprint: false,
+      };
+    }
     // Return a copy to prevent external modifications from affecting internal state
     // Note: aimAngle will be calculated and set externally after getting inputs
     return { ...this.inputs };
@@ -417,6 +447,21 @@ export class InputManager {
     canvasHeight: number,
     cameraScale: number = 1
   ): Input {
+    // If chatting, return cleared inputs (same as getInputs)
+    if (this.isChatting) {
+      return {
+        facing: this.inputs.facing,
+        dx: 0,
+        dy: 0,
+        interact: false,
+        fire: false,
+        inventoryItem: this.inputs.inventoryItem,
+        drop: false,
+        consume: false,
+        consumeItemType: null,
+        sprint: false,
+      };
+    }
     const inputs: Input = { ...this.inputs };
     const aimAngle = this.calculateAimAngle(
       playerWorldPos,
@@ -427,6 +472,8 @@ export class InputManager {
     );
     if (aimAngle !== null) {
       inputs.aimAngle = aimAngle;
+      // Update facing direction based on mouse cursor position
+      inputs.facing = angleToDirection(aimAngle);
     }
     return inputs;
   }
@@ -446,6 +493,8 @@ export class InputManager {
    * Trigger weapon fire (for mouse click)
    */
   triggerFire() {
+    // Don't allow firing while chatting
+    if (this.isChatting) return;
     this.inputs.fire = true;
     this.hasChanged = true;
   }
@@ -454,6 +503,8 @@ export class InputManager {
    * Release weapon fire (for mouse release)
    */
   releaseFire() {
+    // Don't allow firing while chatting
+    if (this.isChatting) return;
     this.inputs.fire = false;
     this.hasChanged = true;
   }

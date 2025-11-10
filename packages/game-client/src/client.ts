@@ -434,6 +434,10 @@ export class GameClient {
     return this.zoomController;
   }
 
+  public isChatting(): boolean {
+    return this.inputManager.isChatInputActive();
+  }
+
   public async loadAssets() {
     await this.assetManager.load();
   }
@@ -527,7 +531,7 @@ export class GameClient {
 
       if (isAlive) {
         // Get inputs with aim angle calculated from mouse position
-        const playerPos = player.getPosition();
+        const playerPos = player.getCenterPosition();
         const cameraPos = this.cameraManager.getPosition();
         const cameraScale = this.cameraManager.getScale();
         const input = this.inputManager.getInputsWithAim(
@@ -537,6 +541,13 @@ export class GameClient {
           this.ctx.canvas.height,
           cameraScale
         );
+
+        // Check if facing direction changed (for mouse aiming)
+        const previousInput = player.getInput();
+        const facingChanged = previousInput.facing !== input.facing;
+
+        // Update local player's input immediately for responsive facing direction
+        player.setInput(input);
 
         // Track whether player has movement input
         const hasMovementInput = input.dx !== 0 || input.dy !== 0;
@@ -556,8 +567,8 @@ export class GameClient {
           );
         });
 
-        // Only send input to server when it actually changed
-        if (this.inputManager.getHasChanged()) {
+        // Send input to server when it changed or when facing direction changed
+        if (this.inputManager.getHasChanged() || facingChanged) {
           // Get sequence number for this input
           if (!input.sequenceNumber) {
             input.sequenceNumber = this.sequenceManager.getNextSequence();
@@ -649,7 +660,8 @@ export class GameClient {
     const playerToFollow = this.getMyPlayer() as PlayerClient | undefined;
 
     if (playerToFollow) {
-      this.cameraManager.translateTo(playerToFollow.getPosition());
+      // Position camera at player's center to match aim angle calculation
+      this.cameraManager.translateTo(playerToFollow.getCenterPosition());
     }
   }
 

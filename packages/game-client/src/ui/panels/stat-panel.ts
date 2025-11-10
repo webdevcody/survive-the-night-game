@@ -63,4 +63,22 @@ export class StatPanel extends Panel {
   public getHeight(ctx: CanvasRenderingContext2D): number {
     return this.statSettings.iconSize + this.settings.padding * 2;
   }
+
+  /**
+   * Returns the width of the panel for layout purposes
+   */
+  public getWidth(ctx: CanvasRenderingContext2D, gameState: GameState): number {
+    ctx.save();
+    ctx.font = this.statSettings.font;
+
+    const text = this.getValue(gameState);
+    const textMetrics = ctx.measureText(text);
+    const iconMetrics = ctx.measureText(this.statSettings.icon);
+
+    const contentWidth = iconMetrics.width + this.statSettings.spacing + textMetrics.width;
+    const containerWidth = contentWidth + this.settings.padding * 2;
+
+    ctx.restore();
+    return containerWidth;
+  }
 }

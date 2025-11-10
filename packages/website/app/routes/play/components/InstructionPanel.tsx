@@ -79,7 +79,7 @@ export function InstructionPanel({ isOpen, onClose }: InstructionPanelProps) {
             <div className="space-y-2 text-sm">
               <div className="flex justify-between">
                 <span className="text-gray-300">Fire Weapon:</span>
-                <span className="font-mono">SPACE</span>
+                <span className="font-mono">LEFT CLICK</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-gray-300">Cycle Weapon:</span>

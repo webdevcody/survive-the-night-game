@@ -72,6 +72,11 @@ function GameClientLoader() {
   // Handle ESC and I keys for toggling instructions
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
+      // Don't toggle instructions if user is chatting
+      if (gameClient && gameClient.isChatting && gameClient.isChatting()) {
+        return;
+      }
+
       if (e.key === "Escape" || e.key === "i" || e.key === "I") {
         setShowInstructions((prev) => !prev);
       }
@@ -79,7 +84,7 @@ function GameClientLoader() {
 
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, []);
+  }, [gameClient]);
 
   useEffect(() => {
     if (!isClient || !canvasRef.current) {

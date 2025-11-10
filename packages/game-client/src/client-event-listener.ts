@@ -35,6 +35,7 @@ import { GameStartedEvent } from "@shared/events/server-sent/game-started-event"
 import { PlayerJoinedEvent } from "@shared/events/server-sent/player-joined-event";
 import { ServerUpdatingEvent } from "@shared/events/server-sent/server-updating-event";
 import { ChatMessageEvent } from "@shared/events/server-sent/chat-message-event";
+import { GameMessageEvent } from "@shared/events/server-sent/game-message-event";
 import { PlayerLeftEvent } from "@shared/events/server-sent/player-left-event";
 import { ExplosionParticle } from "./particles/explosion";
 import { ExplosionEvent } from "@shared/events/server-sent/explosion-event";
@@ -81,6 +82,7 @@ export class ClientEventListener {
     this.socketManager.on(ServerSentEvents.PLAYER_LEFT, this.onPlayerLeft.bind(this));
     this.socketManager.on(ServerSentEvents.SERVER_UPDATING, this.onServerUpdating.bind(this));
     this.socketManager.on(ServerSentEvents.CHAT_MESSAGE, this.onChatMessage.bind(this));
+    this.socketManager.on(ServerSentEvents.GAME_MESSAGE, this.onGameMessage.bind(this));
     this.socketManager.on(ServerSentEvents.COIN_PICKUP, this.onCoinPickup.bind(this));
     this.socketManager.on(
       ServerSentEvents.PLAYER_DROPPED_ITEM,
@@ -384,9 +386,11 @@ export class ClientEventListener {
 
     // Only show swipe animation for knife attacks
     if (weaponKey === WEAPON_TYPES.KNIFE) {
+      // Use attack direction from event if available, otherwise fall back to player facing
+      const attackDirection = playerAttackedEvent.getAttackDirection() ?? player.getInput().facing;
       const particle = new SwipeParticle(
         this.gameClient.getImageLoader(),
-        player.getInput().facing,
+        attackDirection,
         "player"
       );
       particle.setPosition(playerPosition);
@@ -443,6 +447,11 @@ export class ClientEventListener {
     // Hide game over dialog if it was showing
     this.gameClient.getGameOverDialog().hide();
 
+    // Show welcome message
+    this.gameClient
+      .getHud()
+      .addMessage("The car is our only way out... don't let them destroy it!", "yellow");
+
     // Request full state from server
     this.socketManager.sendRequestFullState();
   }
@@ -455,6 +464,12 @@ export class ClientEventListener {
     this.gameClient
       .getHud()
       .addChatMessage(chatMessageEvent.getPlayerId(), chatMessageEvent.getMessage());
+  }
+
+  onGameMessage(gameMessageEvent: GameMessageEvent) {
+    this.gameClient
+      .getHud()
+      .addMessage(gameMessageEvent.getMessage(), gameMessageEvent.getColor());
   }
 
   onExplosion(event: ExplosionEvent) {

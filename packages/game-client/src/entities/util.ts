@@ -28,14 +28,15 @@ export function drawHealthBar(
   ctx: CanvasRenderingContext2D,
   position: Vector2,
   health: number,
-  maxHealth: number
+  maxHealth: number,
+  customWidth?: number
 ) {
   // Check if health bars are enabled in config
   if (!getConfig().render.showHealthBars) {
     return;
   }
 
-  const healthBarWidth = 16;
+  const healthBarWidth = customWidth ?? 16;
   const healthBarHeight = 2;
   const healthBarY = position.y - healthBarHeight - 2;
 

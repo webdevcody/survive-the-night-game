@@ -39,8 +39,13 @@ export interface IMapManager {
   getCollidablesLayer(): number[][];
 }
 
+export interface IGameServer {
+  endGame(): void;
+}
+
 export interface IGameManagers {
   getEntityManager(): IEntityManager;
   getMapManager(): IMapManager;
   getBroadcaster(): Broadcaster;
+  getGameServer(): IGameServer;
 }

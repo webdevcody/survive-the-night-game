@@ -9,6 +9,7 @@ import { MapManager } from "@/managers/map";
 import { AcidProjectileClient } from "@/entities/acid-projectile";
 import { ClientDestructible } from "@/extensions/destructible";
 import { EntityCategories } from "@shared/entities";
+import { CrateClient } from "@/entities/items/crate";
 import { getConfig } from "@shared/config";
 import { ClientIlluminated } from "@/extensions/illuminated";
 import Vector2 from "@shared/util/vector2";
@@ -216,6 +217,9 @@ export class FullScreenMap {
         mapY
       );
     }
+
+    // Draw crate indicators (after fog of war so they're always visible)
+    this.renderCrateIndicators(ctx, gameState, playerPos, zoom, centerX, centerY, mapWidth, mapHeight);
 
     // Draw biome indicators
     this.renderBiomeIndicators(ctx, playerPos, zoom, centerX, centerY, mapWidth, mapHeight);
@@ -468,6 +472,9 @@ export class FullScreenMap {
       } else if (entity instanceof TreeClient) {
         color = settings.colors.tree;
         indicator = settings.indicators.tree;
+      } else if (entity instanceof CrateClient) {
+        // Skip crates - they will be rendered after fog of war
+        continue;
       } else if (entity.hasExt(ClientCarryable)) {
         color = settings.colors.item;
         indicator = settings.indicators.item;
@@ -529,6 +536,80 @@ export class FullScreenMap {
           ctx.fillRect(screenX - gridSize / 2, screenY - gridSize / 2, gridSize, gridSize);
         }
       }
+    }
+  }
+
+  private renderCrateIndicators(
+    ctx: CanvasRenderingContext2D,
+    gameState: GameState,
+    playerPos: { x: number; y: number },
+    zoom: number,
+    centerX: number,
+    centerY: number,
+    mapWidth: number,
+    mapHeight: number
+  ): void {
+    const maxDistanceSquared = ((mapWidth / zoom) ** 2 + (mapHeight / zoom) ** 2) / 4;
+
+    // Loop through all entities to find crates
+    for (const entity of gameState.entities) {
+      if (!(entity instanceof CrateClient)) continue;
+      if (!entity.hasExt(ClientPositionable)) continue;
+
+      const positionable = entity.getExt(ClientPositionable);
+      const position = positionable.getPosition();
+
+      const relativeX = position.x - playerPos.x;
+      const relativeY = position.y - playerPos.y;
+
+      const distanceSquared = relativeX * relativeX + relativeY * relativeY;
+      if (distanceSquared > maxDistanceSquared) continue;
+
+      const mapX = centerX + relativeX * zoom;
+      const mapY = centerY + relativeY * zoom;
+
+      // Draw crate indicator with red circle
+      const iconSize = 24 * Math.max(0.5, zoom);
+      const halfIcon = iconSize / 2;
+
+      // Draw red circle around crate first
+      const circleRadius = 40 * Math.max(0.5, zoom);
+      ctx.strokeStyle = "rgba(255, 0, 0, 0.8)";
+      ctx.lineWidth = 2 * Math.max(0.5, zoom);
+      ctx.beginPath();
+      ctx.arc(mapX, mapY, circleRadius, 0, Math.PI * 2);
+      ctx.stroke();
+
+      // Draw inner filled circle for visibility
+      ctx.fillStyle = "rgba(255, 0, 0, 0.15)";
+      ctx.beginPath();
+      ctx.arc(mapX, mapY, circleRadius, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Draw crate background (brown/tan color)
+      ctx.fillStyle = "#8B4513";
+      ctx.fillRect(mapX - halfIcon, mapY - halfIcon, iconSize, iconSize);
+
+      // Draw crate border/outline
+      ctx.strokeStyle = "#654321";
+      ctx.lineWidth = 1.5 * Math.max(0.5, zoom);
+      ctx.strokeRect(mapX - halfIcon, mapY - halfIcon, iconSize, iconSize);
+
+      // Draw crate details (horizontal planks)
+      ctx.strokeStyle = "#654321";
+      ctx.lineWidth = 1 * Math.max(0.5, zoom);
+      const plankOffset = iconSize / 3;
+      ctx.beginPath();
+      ctx.moveTo(mapX - halfIcon, mapY - halfIcon + plankOffset);
+      ctx.lineTo(mapX + halfIcon, mapY - halfIcon + plankOffset);
+      ctx.moveTo(mapX - halfIcon, mapY - halfIcon + plankOffset * 2);
+      ctx.lineTo(mapX + halfIcon, mapY - halfIcon + plankOffset * 2);
+      ctx.stroke();
+
+      // Draw white border around icon for visibility
+      ctx.strokeStyle = "white";
+      ctx.lineWidth = 2 * Math.max(0.5, zoom);
+      ctx.strokeRect(mapX - halfIcon, mapY - halfIcon, iconSize, iconSize);
     }
   }
 

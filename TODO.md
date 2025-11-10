@@ -4,6 +4,21 @@ Feel free to pick any item listed out here to work on.
 
 ## Suggestions
 
+- when the car is destroyed, change it to a broken car sprite display
+- refactor how the car is defined in the editor. the car should not be part of the map but something in the entities list so it can be easily modified on death.
+- still can't type M in chat
+- the swipe animation should also face the direction of the player attack when mouse clicked, the melee attack should check for collisions in an arc towards the mouse
+- remove the ability to attack using space
+- ​​Also are there zombie types? I’m thinking explosive one holding a gas can you have to hit from range, maybe a ghost that has to be shot in dark or only stabbed, zombie who immobilizes you if hit
+- checkout the game called Darkwood
+- ​​no ammo in this game
+- ​the game never ends because everyone respawns immediately
+- ​walls are bad because they block movement and spikes are too weak
+- when game ended, it never reset the wave timer
+- torches don't seem to stack but they are stackable
+- grenade needs to fire at crosshair like weapons
+- display crates on mini map and map
+- play a sound when the wave starts
 - ​​add gate that works like wall but users can go through while zombies not
 - ​​add a fear / anxiety meter when outside of base at night, when it gets low you do "something" negative to players
 - add aim with cursor or at least 8 directions, it's annoying that I can only shoot 4 directions
@@ -118,64 +133,3 @@ at t (index-BwqH-Gfo.js:3:77097)
 - [ ] needing to place the images inside the next project when they belong to the client feels strange; I'm not sure if static asset bundling is a better approach
 - [ ] sometimes auto import will not work depending on if you are editing a file in the client or server. It's like the types don't get picked up correctly between the sub projects.
 - [ ] apply delta compression to the server game state updates
-
-## Change Log:
-
-### 0.5.0
-
-### 0.4.0
-
-- [x] 10/22/2025: add an exploding zombie
-
-- [x] 1/4/2025: a player shouldn't be colliding with a dead zombie
-- [x] 1/4/2025: fix bullet from coming out of players head
-- [x] 1/4/2025: a bullet was not blowing up the gas can (because I forgot to add the groupable extension to the gas can)
-- [x] 1/4/2025: a user can search a dead zombie body for items (randomly drop items)
-- [x] 1/4/2025: a zombie should be lootable, but the label isn't showing
-- [x] 1/4/2025: refactor the zombie constructor
-
-- [x] 12/19/2024: add sound for shotgun
-- [x] 12/19/2024: add sound for player hurt
-- [x] 12/19/2024: add sound for zombie hurt
-- [x] 12/19/2024: add sound for item pickup
-- [x] 12/19/2024: add sound for item drop
-- [x] 12/19/2024: add sound for player death
-- [x] 12/15/2024: add a way to toggle the instructions on and off
-- [x] 12/18/2024: when a player is killed, notify all players in the game a player has died
-
-- [x] a user can drop items from their inventory
-- [x] a user shall be able to harvest trees
-- [x] create an entry point function for the client code which creates a canvas, connects to a server, and starts the game loop
-- [x] a user shall be able to move their player around with w,s,a,d
-- [x] a user shall be able to move in a diagonal direction
-- [x] a user shall be able to attack using space
-- [x] a user shall be able to see a health bar which shows how much health they have
-- [x] create an next.js application which will use the client code to render the game
-- [x] a user can move up, down, left, and right
-- [x] create initial server logic for the game
-- [x] a user should be able to pick up previously placed walls
-- [x] a zombie can attack a player
-- [x] add in collidable entities (barrels, boxes, etc.)
-- [x] a user can hold one weapon at a time
-- [x] add a day cycle which let's players explore, build, gather
-- [x] add a basic night cycle which spawns zombies
-- [x] a user can pick up wood and place into inventory
-- [x] a user can build a barricade using wood
-- [x] a user can fire in the direction they are facing
-- [x] a zombie can attack walls (walls have hp)
-- [x] picking up a damaged walled shouldn't restore it's health back to full when replacing
-- [x] when picking up items, it should pick up the CLOSEST item first
-- [x] the health bars need to be attached to the player group so that when they interpolate they don't lag behindw
-- [x] a player shouldn't be able to move when crafting
-- [x] fix the size of the wrench icon
-- [x] figure out why the wrench icon becomes small when near a tree
-- [x] close the crafting menu after making an item
-- [x] a player shouldn't be able to open the craft menu when dead; also close it if they die while crafting
-- [x] a player should drop all items when they die and scatter them around their body
-- [x] the player should have a running animation (keep it simple), 2 frames with legs going up and down
-- [x] every player faces the same direction as YOUR player which is a bug
-- [x] the crafting recipe should be red or grayed out if you don't have enough items to craft it
-- [x] pressing space while crafting an item you don't have enough resources to craft should not auto close the crafting menu
-- [x] zombie should use walk animation as well
-- [x] when a player is killed by a zombie, it seems like the zombie gets stuck either on the player, or thinks it still needs to attack the player
-- [x] a player is able to shoot themself, this is bad

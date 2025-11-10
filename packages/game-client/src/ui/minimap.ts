@@ -9,6 +9,7 @@ import { MapManager } from "@/managers/map";
 import { AcidProjectileClient } from "@/entities/acid-projectile";
 import { ClientDestructible } from "@/extensions/destructible";
 import { EntityCategories } from "@shared/entities";
+import { CrateClient } from "@/entities/items/crate";
 import { perfTimer } from "@shared/util/performance";
 import { getConfig } from "@shared/config";
 import { ClientIlluminated } from "@/extensions/illuminated";
@@ -280,6 +281,9 @@ export class Minimap {
       } else if (entity instanceof TreeClient) {
         color = settings.colors.tree;
         indicator = settings.indicators.tree;
+      } else if (entity instanceof CrateClient) {
+        // Skip crates - they will be rendered after fog of war
+        continue;
       } else if (entity.hasExt(ClientCarryable)) {
         color = settings.colors.item;
         indicator = settings.indicators.item;
@@ -312,6 +316,11 @@ export class Minimap {
       this.renderFogOfWar(ctx, playerPos, lightSources, settings, top);
       perfTimer.end("minimap:fogOfWar");
     }
+
+    // Draw crate indicators (after fog of war so they're always visible)
+    perfTimer.start("minimap:crates");
+    this.renderCrateIndicators(ctx, gameState, playerPos, settings, top);
+    perfTimer.end("minimap:crates");
 
     // Draw radar circle border
     ctx.strokeStyle = "white";
@@ -523,6 +532,83 @@ export class Minimap {
       );
       ctx.closePath();
       ctx.stroke();
+    }
+  }
+
+  private renderCrateIndicators(
+    ctx: CanvasRenderingContext2D,
+    gameState: GameState,
+    playerPos: { x: number; y: number },
+    settings: typeof MINIMAP_SETTINGS,
+    top: number
+  ): void {
+    const centerX = settings.left + settings.size / 2;
+    const centerY = top + settings.size / 2;
+    const maxDistanceSquared =
+      MINIMAP_RENDER_DISTANCE.ENTITIES * MINIMAP_RENDER_DISTANCE.ENTITIES;
+
+    // Loop through all entities to find crates
+    for (const entity of gameState.entities) {
+      if (!(entity instanceof CrateClient)) continue;
+      if (!entity.hasExt(ClientPositionable)) continue;
+
+      const positionable = entity.getExt(ClientPositionable);
+      const position = positionable.getPosition();
+
+      // Calculate relative position to player
+      const relativeX = position.x - playerPos.x;
+      const relativeY = position.y - playerPos.y;
+
+      // Early distance check using squared distance (faster than sqrt)
+      const distanceSquared = relativeX * relativeX + relativeY * relativeY;
+      if (distanceSquared > maxDistanceSquared) continue;
+
+      // Convert to minimap coordinates (centered on player)
+      const minimapX = centerX + relativeX * settings.scale;
+      const minimapY = centerY + relativeY * settings.scale;
+
+      // Draw crate indicator with red circle
+      const iconSize = 16;
+      const halfIcon = iconSize / 2;
+
+      // Draw red circle around crate first
+      const circleRadius = 24;
+      ctx.strokeStyle = "rgba(255, 0, 0, 0.9)";
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.arc(minimapX, minimapY, circleRadius, 0, Math.PI * 2);
+      ctx.stroke();
+
+      // Draw inner filled circle for visibility
+      ctx.fillStyle = "rgba(255, 0, 0, 0.15)";
+      ctx.beginPath();
+      ctx.arc(minimapX, minimapY, circleRadius, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Draw crate background (brown/tan color)
+      ctx.fillStyle = "#8B4513";
+      ctx.fillRect(minimapX - halfIcon, minimapY - halfIcon, iconSize, iconSize);
+
+      // Draw crate border/outline
+      ctx.strokeStyle = "#654321";
+      ctx.lineWidth = 1.5;
+      ctx.strokeRect(minimapX - halfIcon, minimapY - halfIcon, iconSize, iconSize);
+
+      // Draw crate details (horizontal planks)
+      ctx.strokeStyle = "#654321";
+      ctx.lineWidth = 1;
+      const plankOffset = iconSize / 3;
+      ctx.beginPath();
+      ctx.moveTo(minimapX - halfIcon, minimapY - halfIcon + plankOffset);
+      ctx.lineTo(minimapX + halfIcon, minimapY - halfIcon + plankOffset);
+      ctx.moveTo(minimapX - halfIcon, minimapY - halfIcon + plankOffset * 2);
+      ctx.lineTo(minimapX + halfIcon, minimapY - halfIcon + plankOffset * 2);
+      ctx.stroke();
+
+      // Draw white border around icon for visibility
+      ctx.strokeStyle = "white";
+      ctx.lineWidth = 2;
+      ctx.strokeRect(minimapX - halfIcon, minimapY - halfIcon, iconSize, iconSize);
     }
   }
 

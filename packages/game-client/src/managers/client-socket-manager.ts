@@ -22,6 +22,7 @@ import { RecipeType } from "../../../game-shared/src/util/recipes";
 import { Socket, io } from "socket.io-client";
 import { ServerUpdatingEvent } from "@shared/events/server-sent/server-updating-event";
 import { ChatMessageEvent } from "@shared/events/server-sent/chat-message-event";
+import { GameMessageEvent } from "@shared/events/server-sent/game-message-event";
 import { PlayerLeftEvent } from "@shared/events/server-sent/player-left-event";
 import { ExplosionEvent } from "@shared/events/server-sent/explosion-event";
 import { DelayedSocket } from "../util/delayed-socket";
@@ -52,6 +53,7 @@ const SERVER_EVENT_MAP = {
   [ServerSentEvents.SERVER_UPDATING]: ServerUpdatingEvent,
   [ServerSentEvents.PONG]: PongEvent,
   [ServerSentEvents.CHAT_MESSAGE]: ChatMessageEvent,
+  [ServerSentEvents.GAME_MESSAGE]: GameMessageEvent,
   [ServerSentEvents.EXPLOSION]: ExplosionEvent,
 } as const;
 

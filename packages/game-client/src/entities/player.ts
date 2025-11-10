@@ -95,6 +95,10 @@ export class PlayerClient extends ClientEntity implements IClientEntity, Rendera
     return this.input;
   }
 
+  setInput(input: Input): void {
+    this.input = input;
+  }
+
   getIsCrafting(): boolean {
     return this.isCrafting;
   }
@@ -233,9 +237,9 @@ export class PlayerClient extends ClientEntity implements IClientEntity, Rendera
 
     ctx.restore();
 
-    if (!this.isDead()) {
-      this.renderArrow(ctx, image, renderPosition);
-    }
+    // if (!this.isDead()) {
+    //   this.renderArrow(ctx, image, renderPosition);
+    // }
 
     drawHealthBar(ctx, renderPosition, this.getHealth(), this.getMaxHealth());
 
@@ -318,7 +322,11 @@ export class PlayerClient extends ClientEntity implements IClientEntity, Rendera
     ctx.drawImage(image, renderPosition.x + 2, renderPosition.y);
 
     if (this.activeItem.itemType === "knife") {
-      this.debugRenderAttackRange(ctx, this.getCenterPosition(), getConfig().combat.KNIFE_ATTACK_RANGE);
+      this.debugRenderAttackRange(
+        ctx,
+        this.getCenterPosition(),
+        getConfig().combat.KNIFE_ATTACK_RANGE
+      );
     }
   }
 

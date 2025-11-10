@@ -88,6 +88,7 @@ export class Player extends Entity {
     const inventory = this.getExt(Inventory);
 
     [
+      { itemType: "torch" as const },
       { itemType: "knife" as const },
       { itemType: "pistol" as const },
       {
@@ -96,7 +97,6 @@ export class Player extends Entity {
           count: 18,
         },
       },
-      { itemType: "torch" as const },
     ].forEach((item) => inventory.addItem(item));
   }
 

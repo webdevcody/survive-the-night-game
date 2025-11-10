@@ -4,31 +4,58 @@ import { PlayerClient } from "@/entities/player";
 import { MapManager } from "@/managers/map";
 import { ChatWidget } from "./chat-widget";
 import { ClientDestructible } from "@/extensions/destructible";
-import { Zombies, Entities } from "@shared/constants";
+import { Zombies } from "@shared/constants";
 import { Minimap } from "./minimap";
 import { FullScreenMap } from "./fullscreen-map";
 import { Leaderboard } from "./leaderboard";
 import { SoundManager } from "@/managers/sound-manager";
 import { AssetManager } from "@/managers/asset";
-import { WavePanel, StatPanel, TextPanel, ResourcesPanel } from "./panels";
+import {
+  WavePanel,
+  StatPanel,
+  TextPanel,
+  ResourcesPanel,
+  CarHealthPanel,
+  DeathScreenPanel,
+  GameMessagesPanel,
+  MuteButtonPanel,
+  CrateIndicatorsPanel,
+} from "./panels";
 import { getConfig } from "@shared/config";
-import { ClientPositionable } from "@/extensions/positionable";
 
 const HUD_SETTINGS = {
-  ControlsList: {
-    background: "rgba(0, 0, 0, 0.8)",
-    color: "rgb(255, 255, 255)",
-    font: "28px Arial",
-    lineHeight: 36,
-    left: 20,
-    top: 20,
-    padding: {
-      bottom: 16,
-      left: 20,
-      right: 20,
-      top: 16,
-    },
-    borderRadius: 8,
+  GameMessages: {
+    padding: 0,
+    background: "transparent",
+    borderColor: "transparent",
+    borderWidth: 0,
+    font: "32px Arial",
+    textColor: "white",
+    top: 120,
+    gap: 40,
+    messageTimeout: 5000,
+  },
+  DeathScreen: {
+    padding: 0,
+    background: "transparent",
+    borderColor: "transparent",
+    borderWidth: 0,
+    font: "48px Arial",
+    textColor: "black",
+    overlayBackground: "rgba(0, 0, 0, 0.7)",
+    panelBackground: "white",
+    text: "Press any key to respawn",
+  },
+  CrateIndicators: {
+    padding: 0,
+    background: "transparent",
+    borderColor: "transparent",
+    borderWidth: 0,
+    arrowSize: 30,
+    arrowDistance: 60,
+    arrowColor: "rgba(255, 50, 50, 0.9)",
+    crateSpriteSize: 32,
+    minDistance: 100,
   },
   BottomRightPanels: {
     right: 20,
@@ -54,6 +81,8 @@ const HUD_SETTINGS = {
     width: 60,
     height: 60,
     background: "rgba(0, 0, 0, 0.7)",
+    borderColor: "rgba(255, 255, 255, 0.5)",
+    borderWidth: 2,
     hoverBackground: "rgba(0, 0, 0, 0.9)",
     font: "36px Arial",
   },
@@ -99,8 +128,6 @@ const HUD_SETTINGS = {
 
 export class Hud {
   private showInstructions: boolean = false;
-  private gameMessages: { message: string; timestamp: number }[] = [];
-  private messageTimeout: number = 5000;
   private mapManager: MapManager;
   private currentPing: number = 0;
   private lastPingUpdate: number = 0;
@@ -120,6 +147,11 @@ export class Hud {
   private fpsPanel: TextPanel;
   private pingPanel: TextPanel;
   private resourcesPanel: ResourcesPanel;
+  private carHealthPanel: CarHealthPanel;
+  private deathScreenPanel: DeathScreenPanel;
+  private gameMessagesPanel: GameMessagesPanel;
+  private muteButtonPanel: MuteButtonPanel;
+  private crateIndicatorsPanel: CrateIndicatorsPanel;
 
   constructor(mapManager: MapManager, soundManager: SoundManager, assetManager: AssetManager) {
     this.mapManager = mapManager;
@@ -267,12 +299,61 @@ export class Hud {
       },
       assetManager
     );
+
+    // Initialize car health panel (center top of screen)
+    this.carHealthPanel = new CarHealthPanel({
+      padding: 8,
+      background: "rgba(0, 0, 0, 0.85)",
+      borderColor: "rgba(255, 50, 50, 0.8)",
+      borderWidth: 3,
+      width: 200,
+      height: 16,
+      iconSize: 28,
+      iconGap: 8,
+      font: "24px Arial",
+      barBackgroundColor: "rgba(100, 0, 0, 0.5)",
+      barColor: "rgba(255, 50, 50, 1)",
+      y: 20,
+    });
+
+    // Initialize death screen panel
+    this.deathScreenPanel = new DeathScreenPanel({
+      ...HUD_SETTINGS.DeathScreen,
+    });
+
+    // Initialize game messages panel
+    this.gameMessagesPanel = new GameMessagesPanel({
+      ...HUD_SETTINGS.GameMessages,
+    });
+
+    // Initialize mute button panel
+    this.muteButtonPanel = new MuteButtonPanel(
+      {
+        padding: HUD_SETTINGS.BottomRightPanels.padding,
+        background: HUD_SETTINGS.MuteButton.background,
+        borderColor: HUD_SETTINGS.MuteButton.borderColor,
+        borderWidth: HUD_SETTINGS.MuteButton.borderWidth,
+        left: HUD_SETTINGS.MuteButton.left,
+        bottom: HUD_SETTINGS.MuteButton.bottom,
+        width: HUD_SETTINGS.MuteButton.width,
+        height: HUD_SETTINGS.MuteButton.height,
+        font: HUD_SETTINGS.MuteButton.font,
+        hoverBackground: HUD_SETTINGS.MuteButton.hoverBackground,
+      },
+      soundManager
+    );
+
+    // Initialize crate indicators panel
+    this.crateIndicatorsPanel = new CrateIndicatorsPanel(
+      {
+        ...HUD_SETTINGS.CrateIndicators,
+      },
+      assetManager
+    );
   }
 
   public update(gameState: GameState): void {
-    this.gameMessages = this.gameMessages.filter(
-      (message) => Date.now() - message.timestamp < this.messageTimeout
-    );
+    this.gameMessagesPanel.update();
     this.chatWidget.update();
   }
 
@@ -329,129 +410,17 @@ export class Hud {
     this.fpsPanel.setText(`${fps} FPS`);
   }
 
-  private renderCrateIndicators(ctx: CanvasRenderingContext2D, gameState: GameState): void {
-    const player = getPlayer(gameState);
-    if (!player || !player.hasExt(ClientPositionable)) {
-      return;
-    }
-
-    const playerPos = player.getExt(ClientPositionable).getCenterPosition();
-    const { width, height } = ctx.canvas;
-
-    // Find all crates in the game state
-    const crates = gameState.entities.filter(
-      (entity) => entity.getType() === Entities.CRATE && entity.hasExt(ClientPositionable)
-    );
-
-    ctx.save();
-    ctx.setTransform(1, 0, 0, 1, 0, 0); // Reset transform to screen coordinates
-
-    // Settings for crate indicators
-    const ARROW_SIZE = 30;
-    const ARROW_DISTANCE = 60; // Distance from screen edge
-    const ARROW_COLOR = "rgba(255, 50, 50, 0.9)"; // Red
-    const CRATE_SPRITE_SIZE = 32; // Size to draw the crate sprite
-
-    // Get the items sprite sheet
-    const crateSprite = this.assetManager.getFrameIndex("crate", 0);
-
-    for (const crate of crates) {
-      const cratePos = crate.getExt(ClientPositionable).getCenterPosition();
-
-      // Calculate vector from player to crate
-      const dx = cratePos.x - playerPos.x;
-      const dy = cratePos.y - playerPos.y;
-      const distance = Math.sqrt(dx * dx + dy * dy);
-
-      // Skip if crate is very close (player can see it)
-      if (distance < 100) continue;
-
-      // Normalize direction
-      const dirX = dx / distance;
-      const dirY = dy / distance;
-
-      // Calculate screen position for indicator
-      const centerX = width / 2;
-      const centerY = height / 2;
-
-      // Calculate angle
-      const angle = Math.atan2(dy, dx);
-
-      // Determine edge position
-      let indicatorX = centerX;
-      let indicatorY = centerY;
-
-      // Calculate intersection with screen bounds
-      const margin = ARROW_DISTANCE;
-      const maxX = width - margin;
-      const maxY = height - margin;
-
-      // Find intersection with screen edges
-      const t1 = (maxX - centerX) / dirX; // Right edge
-      const t2 = (margin - centerX) / dirX; // Left edge
-      const t3 = (maxY - centerY) / dirY; // Bottom edge
-      const t4 = (margin - centerY) / dirY; // Top edge
-
-      // Find the smallest positive t (closest edge intersection)
-      const validT = [t1, t2, t3, t4].filter((t) => t > 0);
-      const t = Math.min(...validT);
-
-      if (isFinite(t)) {
-        indicatorX = centerX + dirX * t;
-        indicatorY = centerY + dirY * t;
-      }
-
-      // Draw red arrow
-      ctx.save();
-      ctx.translate(indicatorX, indicatorY);
-      ctx.rotate(angle);
-
-      // Draw arrow shape
-      ctx.fillStyle = ARROW_COLOR;
-      ctx.beginPath();
-      ctx.moveTo(ARROW_SIZE / 2, 0); // Arrow tip
-      ctx.lineTo(-ARROW_SIZE / 2, -ARROW_SIZE / 3);
-      ctx.lineTo(-ARROW_SIZE / 3, 0);
-      ctx.lineTo(-ARROW_SIZE / 2, ARROW_SIZE / 3);
-      ctx.closePath();
-      ctx.fill();
-
-      // Draw arrow outline
-      ctx.strokeStyle = "rgba(0, 0, 0, 0.8)";
-      ctx.lineWidth = 2;
-      ctx.stroke();
-
-      ctx.restore();
-
-      // Draw crate sprite next to arrow
-      const spriteOffsetX = Math.cos(angle) * (ARROW_SIZE + 16);
-      const spriteOffsetY = Math.sin(angle) * (ARROW_SIZE + 16);
-      const spriteX = indicatorX + spriteOffsetX - CRATE_SPRITE_SIZE / 2;
-      const spriteY = indicatorY + spriteOffsetY - CRATE_SPRITE_SIZE / 2;
-
-      // Draw crate sprite (getFrameIndex returns a pre-cropped image)
-      if (crateSprite) {
-        ctx.drawImage(
-          crateSprite,
-          spriteX,
-          spriteY,
-          CRATE_SPRITE_SIZE,
-          CRATE_SPRITE_SIZE
-        );
-      }
-    }
-
-    ctx.restore();
-  }
-
   public render(ctx: CanvasRenderingContext2D, gameState: GameState): void {
     const { width, height } = ctx.canvas;
 
     // Render crate indicators first (so they appear behind other UI)
-    this.renderCrateIndicators(ctx, gameState);
+    this.crateIndicatorsPanel.render(ctx, gameState);
 
     // Render minimap first
     this.minimap.render(ctx, gameState);
+
+    // Render car health panel at top center (it positions itself)
+    this.carHealthPanel.render(ctx, gameState);
 
     // Render wave panel in top right
     ctx.save();
@@ -522,113 +491,32 @@ export class Hud {
 
     ctx.restore();
 
-    this.renderGameMessages(ctx);
-    this.renderMuteButton(ctx);
+    // Render game messages (player joined/died)
+    this.gameMessagesPanel.render(ctx, gameState);
+
+    // Render mute button
+    this.muteButtonPanel.render(ctx, gameState);
+
     this.leaderboard.render(ctx, gameState);
     this.chatWidget.render(ctx, gameState);
 
     // Render death screen if player is dead
-    this.renderDeathScreen(ctx, gameState);
+    this.deathScreenPanel.render(ctx, gameState);
 
     // Render fullscreen map on top of everything else if open
     this.fullscreenMap.render(ctx, gameState);
   }
 
-  public addMessage(message: string): void {
-    this.gameMessages.push({
-      message,
-      timestamp: Date.now(),
-    });
+  public addMessage(message: string, color?: string): void {
+    this.gameMessagesPanel.addMessage(message, color);
   }
 
   public showPlayerDeath(playerId: string): void {
-    this.addMessage(`${playerId} has died`);
+    this.addMessage(`${playerId} has died`, "red");
   }
 
   public showPlayerJoined(displayName: string): void {
-    this.addMessage(`${displayName} has joined the game`);
-  }
-
-  private renderGameMessages(ctx: CanvasRenderingContext2D): void {
-    ctx.font = "32px Arial";
-    ctx.fillStyle = "white";
-    const margin = 50;
-    const gap = 40;
-
-    this.gameMessages.forEach((message, index) => {
-      const metrics = ctx.measureText(message.message);
-      const x = (ctx.canvas.width - metrics.width) / 2;
-      ctx.fillText(message.message, x, margin + index * gap);
-    });
-  }
-
-  private renderDeathScreen(ctx: CanvasRenderingContext2D, gameState: GameState): void {
-    const player = getPlayer(gameState);
-    if (!player || !player.isDead()) {
-      return;
-    }
-
-    ctx.save();
-    ctx.setTransform(1, 0, 0, 1, 0, 0);
-
-    const text = "Press any key to respawn";
-    ctx.font = "48px Arial";
-    const metrics = ctx.measureText(text);
-    const padding = 30;
-
-    // Calculate centered position
-    const panelWidth = metrics.width + padding * 2;
-    const panelHeight = 100;
-    const x = (ctx.canvas.width - panelWidth) / 2;
-    const y = (ctx.canvas.height - panelHeight) / 2;
-
-    // Draw semi-transparent background overlay
-    ctx.fillStyle = "rgba(0, 0, 0, 0.7)";
-    ctx.fillRect(0, 0, ctx.canvas.width, ctx.canvas.height);
-
-    // Draw white background panel
-    ctx.fillStyle = "white";
-    ctx.fillRect(x, y, panelWidth, panelHeight);
-
-    // Draw black text
-    ctx.fillStyle = "black";
-    ctx.fillText(text, x + padding, y + 65);
-
-    ctx.restore();
-  }
-
-  private renderMuteButton(ctx: CanvasRenderingContext2D): void {
-    const { height } = ctx.canvas;
-    const settings = HUD_SETTINGS.MuteButton;
-    const isMuted = this.soundManager.getMuteState();
-
-    ctx.save();
-    ctx.setTransform(1, 0, 0, 1, 0, 0); // Reset transform to work in canvas pixel coordinates
-
-    // Calculate button position (to the right of minimap)
-    const x = settings.left;
-    const y = height - settings.bottom - settings.height;
-
-    // Draw button background
-    ctx.fillStyle = settings.background;
-    ctx.fillRect(x, y, settings.width, settings.height);
-
-    // Draw border
-    ctx.strokeStyle = "rgba(255, 255, 255, 0.5)";
-    ctx.lineWidth = 2;
-    ctx.strokeRect(x, y, settings.width, settings.height);
-
-    // Draw icon (speaker symbol)
-    ctx.fillStyle = "white";
-    ctx.font = settings.font;
-    const icon = isMuted ? "🔇" : "🔊";
-    const iconMetrics = ctx.measureText(icon);
-    const iconX = x + (settings.width - iconMetrics.width) / 2;
-    const iconY = y + settings.height / 2 + 14; // Adjust for vertical centering
-
-    ctx.fillText(icon, iconX, iconY);
-
-    ctx.restore();
+    this.addMessage(`${displayName} has joined the game`, "white");
   }
 
   public setShowPlayerList(show: boolean): void {
@@ -667,20 +555,10 @@ export class Hud {
     }
 
     // Check if click is on mute button
-    const settings = HUD_SETTINGS.MuteButton;
-    const buttonX = settings.left;
-    const buttonY = canvasHeight - settings.bottom - settings.height;
-
-    if (
-      x >= buttonX &&
-      x <= buttonX + settings.width &&
-      y >= buttonY &&
-      y <= buttonY + settings.height
-    ) {
-      this.soundManager.toggleMute();
-      return true; // Click was handled
+    if (this.muteButtonPanel.handleClick(x, y, canvasHeight)) {
+      return true;
     }
 
-    return false; // Click was not on the button
+    return false; // Click was not handled
   }
 }

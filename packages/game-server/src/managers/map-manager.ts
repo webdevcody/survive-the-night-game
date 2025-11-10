@@ -1,5 +1,6 @@
 import { Tree } from "@/entities/items/tree";
 import { Boundary } from "@/entities/environment/boundary";
+import { Car } from "@/entities/environment/car";
 import { Zombie } from "@/entities/enemies/zombie";
 import { Player } from "@/entities/player";
 import { DEBUG_START_ZOMBIE } from "@shared/debug";
@@ -698,16 +699,40 @@ export class MapManager implements IMapManager {
 
   private createForestBoundaries() {
     const totalSize = BIOME_SIZE * MAP_SIZE;
+    const carTiles = new Set([265, 266]);
+    let carSpawned = false;
+
     for (let y = 0; y < totalSize; y++) {
       for (let x = 0; x < totalSize; x++) {
         // Check collidables layer for any non-empty tile
         const collidableTileId = this.collidablesLayer[y][x];
         if (collidableTileId !== -1) {
-          const boundary = new Boundary(this.getGameManagers());
-          boundary.setPosition(
-            new Vector2(x * getConfig().world.TILE_SIZE, y * getConfig().world.TILE_SIZE)
-          );
-          this.getEntityManager().addEntity(boundary);
+          // Check if this is a car tile (265 or 266)
+          if (carTiles.has(collidableTileId) && !carSpawned) {
+            // Spawn the car entity at tile 265 (left side of car)
+            const car = new Car(this.getGameManagers());
+            car
+              .getExt(Positionable)
+              .setPosition(
+                new Vector2(x * getConfig().world.TILE_SIZE, y * getConfig().world.TILE_SIZE)
+              );
+            this.getEntityManager().addEntity(car);
+            carSpawned = true;
+
+            // Clear the car tiles from collidables layer so pathfinding works
+            // Car is 2 tiles wide (265, 266), so clear both tiles
+            this.collidablesLayer[y][x] = -1;
+            if (x + 1 < totalSize) {
+              this.collidablesLayer[y][x + 1] = -1;
+            }
+          } else if (!carTiles.has(collidableTileId)) {
+            // Spawn regular boundary for non-car tiles
+            const boundary = new Boundary(this.getGameManagers());
+            boundary.setPosition(
+              new Vector2(x * getConfig().world.TILE_SIZE, y * getConfig().world.TILE_SIZE)
+            );
+            this.getEntityManager().addEntity(boundary);
+          }
         }
       }
     }
@@ -960,6 +985,9 @@ export class MapManager implements IMapManager {
     const totalSize = BIOME_SIZE * MAP_SIZE;
     const validPositions: Vector2[] = [];
 
+    // Get all car entities to check against
+    const carEntities = this.getEntityManager().getEntities().filter((e) => e.getType() === "car");
+
     // Collect all valid ground tile positions (8, 4, 14, 24 are grass/ground tiles)
     for (let y = 0; y < totalSize; y++) {
       for (let x = 0; x < totalSize; x++) {
@@ -968,9 +996,24 @@ export class MapManager implements IMapManager {
           groundTile === 8 || groundTile === 4 || groundTile === 14 || groundTile === 24;
 
         if (isValidGround && this.collidablesLayer[y][x] === -1) {
-          validPositions.push(
-            new Vector2(x * getConfig().world.TILE_SIZE, y * getConfig().world.TILE_SIZE)
-          );
+          const position = new Vector2(x * getConfig().world.TILE_SIZE, y * getConfig().world.TILE_SIZE);
+
+          // Check if this position overlaps with any car entity
+          const overlapsWithCar = carEntities.some((car) => {
+            if (!car.hasExt(Positionable)) return false;
+            const carPos = car.getExt(Positionable).getPosition();
+            // Car is 2 tiles wide (32px), check if position is within car bounds
+            return (
+              position.x >= carPos.x &&
+              position.x < carPos.x + getConfig().world.TILE_SIZE * 2 &&
+              position.y >= carPos.y &&
+              position.y < carPos.y + getConfig().world.TILE_SIZE
+            );
+          });
+
+          if (!overlapsWithCar) {
+            validPositions.push(position);
+          }
         }
       }
     }
@@ -993,6 +1036,9 @@ export class MapManager implements IMapManager {
     const centerBiomeY = Math.floor(MAP_SIZE / 2);
     const validPositions: Vector2[] = [];
 
+    // Get all car entities to check against
+    const carEntities = this.getEntityManager().getEntities().filter((e) => e.getType() === "car");
+
     // Iterate through the campsite biome tiles
     for (let y = 0; y < BIOME_SIZE; y++) {
       for (let x = 0; x < BIOME_SIZE; x++) {
@@ -1004,9 +1050,24 @@ export class MapManager implements IMapManager {
           groundTile === 8 || groundTile === 4 || groundTile === 14 || groundTile === 24;
 
         if (isValidGround && this.collidablesLayer[mapY][mapX] === -1) {
-          validPositions.push(
-            new Vector2(mapX * getConfig().world.TILE_SIZE, mapY * getConfig().world.TILE_SIZE)
-          );
+          const position = new Vector2(mapX * getConfig().world.TILE_SIZE, mapY * getConfig().world.TILE_SIZE);
+
+          // Check if this position overlaps with any car entity
+          const overlapsWithCar = carEntities.some((car) => {
+            if (!car.hasExt(Positionable)) return false;
+            const carPos = car.getExt(Positionable).getPosition();
+            // Car is 2 tiles wide (32px), check if position is within car bounds
+            return (
+              position.x >= carPos.x &&
+              position.x < carPos.x + getConfig().world.TILE_SIZE * 2 &&
+              position.y >= carPos.y &&
+              position.y < carPos.y + getConfig().world.TILE_SIZE
+            );
+          });
+
+          if (!overlapsWithCar) {
+            validPositions.push(position);
+          }
         }
       }
     }

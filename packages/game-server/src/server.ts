@@ -1,6 +1,7 @@
 import { GameOverEvent } from "@shared/events/server-sent/game-over-event";
 import { GameStateEvent } from "@shared/events/server-sent/game-state-event";
 import { GameStartedEvent } from "@shared/events/server-sent/game-started-event";
+import { GameMessageEvent } from "@shared/events/server-sent/game-message-event";
 import { ServerUpdatingEvent } from "@shared/events/server-sent/server-updating-event";
 import { GameEvent } from "@shared/events/types";
 import { CommandManager } from "@/managers/command-manager";
@@ -106,7 +107,7 @@ export class GameServer {
     this.entityManager = new EntityManager();
     this.mapManager = new MapManager();
     this.commandManager = new CommandManager(this.entityManager);
-    this.gameManagers = new GameManagers(this.entityManager, this.mapManager, this.socketManager);
+    this.gameManagers = new GameManagers(this.entityManager, this.mapManager, this.socketManager, this);
 
     this.entityManager.setGameManagers(this.gameManagers);
     this.mapManager.setGameManagers(this.gameManagers);
@@ -179,12 +180,39 @@ export class GameServer {
     console.log(`Wave ${this.waveNumber} started`);
     this.mapManager.spawnZombies(this.waveNumber);
     this.totalZombies = this.getZombiesRemaining();
+
+    // Broadcast wave start message
+    this.socketManager.broadcastEvent(
+      new GameMessageEvent({
+        message: `Wave ${this.waveNumber} incoming! Get back to base!`,
+        color: "red",
+      })
+    );
   }
 
   private onWaveComplete(): void {
     console.log(`Wave ${this.waveNumber} completed`);
+
+    // Broadcast wave complete message
+    this.socketManager.broadcastEvent(
+      new GameMessageEvent({
+        message: `You survived wave ${this.waveNumber}! Start building defenses!`,
+        color: "green",
+      })
+    );
+
     // Spawn crates at wave end
     this.mapManager.spawnCrates(getConfig().wave.CRATES_SPAWNED_PER_WAVE);
+
+    // Broadcast crate spawn message
+    const crateCount = getConfig().wave.CRATES_SPAWNED_PER_WAVE;
+    this.socketManager.broadcastEvent(
+      new GameMessageEvent({
+        message: `${crateCount} supply crate${crateCount > 1 ? "s" : ""} dropped nearby!`,
+        color: "green",
+      })
+    );
+
     this.waveNumber++;
   }
 
@@ -299,7 +327,7 @@ export class GameServer {
     }
   }
 
-  private endGame(): void {
+  public endGame(): void {
     console.log("Game over");
     this.isGameOver = true;
     this.socketManager.broadcastEvent(new GameOverEvent());

@@ -8,7 +8,7 @@
 
 export const keybindingsConfig = {
   INTERACT: "f",
-  FIRE: "space",
+  FIRE: "left click",
   DROP: "g",
   QUICK_HEAL: "z",
   CRAFT: "c",

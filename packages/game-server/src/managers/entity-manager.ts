@@ -53,6 +53,7 @@ import { Merchant } from "@/entities/environment/merchant";
 import { getConfig } from "@/config";
 import { SentryGun } from "@/entities/items/sentry-gun";
 import { Crate } from "@/entities/items/crate";
+import { Car } from "@/entities/environment/car";
 
 const entityMap = {
   [Entities.PLAYER]: Player,
@@ -94,9 +95,10 @@ const entityMap = {
   [Entities.LEAPING_ZOMBIE]: LeapingZombie,
   [Entities.MERCHANT]: Merchant,
   [Entities.SENTRY_GUN]: SentryGun,
+  [Entities.CAR]: Car,
 };
 
-const STATIC_ENTITIES: EntityType[] = [Entities.BOUNDARY];
+const STATIC_ENTITIES: EntityType[] = [Entities.BOUNDARY, Entities.CAR];
 
 type EntityConstructor = new (entityManager: IGameManagers, ...args: any[]) => Entity;
 
