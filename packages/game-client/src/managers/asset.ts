@@ -112,6 +112,9 @@ function createCharacterAssets(
     assets[`${name}_facing_${direction}`] = assetMap(frames[direction][0]);
   });
 
+  // add right frames for non index
+  assets[`${name}_facing_right`] = assetMap({ ...frames.left[0], flipX: true });
+
   // Add right frames (flipped from left sprites)
   frames.right.forEach((frame, index) => {
     assets[`${name}_facing_right_${index}`] = loadFlipXAsset(frame);
