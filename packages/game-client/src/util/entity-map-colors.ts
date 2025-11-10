@@ -53,7 +53,10 @@ export function getEntityMapColor(
   const category = entity.getCategory();
 
   // Helper to convert indicator shape
-  const convertIndicator = (indicator: { shape: string; size: number }): EntityMapIndicator["indicator"] => ({
+  const convertIndicator = (indicator: {
+    shape: string;
+    size: number;
+  }): EntityMapIndicator["indicator"] => ({
     shape: indicator.shape as "circle" | "rectangle",
     size: indicator.size,
   });
@@ -133,4 +136,3 @@ export function getEntityMapColor(
   // Unknown entity type - skip
   return null;
 }
-
