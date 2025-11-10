@@ -1,5 +1,16 @@
 [
   {
+    "version": "0.8.1",
+    "date": "2025-11-08",
+    "changes": [
+      "Added Miners Hat - a wearable item that provides passive lighting when in inventory.",
+      "Miners Hat automatically emits light without needing to be equipped or selected.",
+      "Miners Hat renders as an overlay on the player sprite when in inventory.",
+      "Miners Hat never shows as a 'held item' when selected since it's worn, not held.",
+      "Fixed right-facing direction rendering issues for player sprites and animations."
+    ]
+  },
+  {
     "version": "0.8.0",
     "date": "2025-11-08",
     "changes": [
