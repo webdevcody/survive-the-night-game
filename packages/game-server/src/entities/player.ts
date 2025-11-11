@@ -1,5 +1,7 @@
 import { PlayerDroppedItemEvent } from "@shared/events/server-sent/player-dropped-item-event";
 import { PlayerHurtEvent } from "@shared/events/server-sent/player-hurt-event";
+import { PlayerPickedUpResourceEvent } from "@shared/events/server-sent/pickup-resource-event";
+import { ResourceType, RESOURCE_ITEMS } from "@shared/util/inventory";
 import Collidable from "@/extensions/collidable";
 import Consumable from "@/extensions/consumable";
 import Destructible from "@/extensions/destructible";
@@ -21,7 +23,7 @@ import { RecipeType } from "../../../game-shared/src/util/recipes";
 import { RawEntity } from "@shared/types/entity";
 import { Cooldown } from "@/entities/util/cooldown";
 import { Weapon } from "@/entities/weapons/weapon";
-import { Grenade } from "@/entities/items/grenade";
+import { weaponHandlerRegistry } from "@/entities/weapons/weapon-handler-registry";
 import { PlayerDeathEvent } from "@shared/events/server-sent/player-death-event";
 import { DEBUG_WEAPONS } from "@shared/debug";
 import { getConfig } from "@shared/config";
@@ -62,12 +64,16 @@ export class Player extends Entity {
   private stamina: number = getConfig().player.MAX_STAMINA;
   private exhaustionTimer: number = 0; // Time remaining before stamina can regenerate
   private coins: number = 0;
-  private wood: number = 0;
-  private cloth: number = 0;
+  private resources: Map<ResourceType, number> = new Map();
 
   constructor(gameManagers: IGameManagers) {
     super(gameManagers, Entities.PLAYER);
     this.broadcaster = gameManagers.getBroadcaster();
+
+    // Initialize all resources to 0
+    RESOURCE_ITEMS.forEach((resource) => {
+      this.resources.set(resource as ResourceType, 0);
+    });
 
     this.extensions = [
       new Inventory(this, gameManagers.getBroadcaster()),
@@ -196,8 +202,8 @@ export class Player extends Entity {
       stamina: this.stamina,
       maxStamina: getConfig().player.MAX_STAMINA,
       coins: this.coins,
-      wood: this.wood,
-      cloth: this.cloth,
+      wood: this.getWood(),
+      cloth: this.getCloth(),
     };
   }
 
@@ -233,12 +239,12 @@ export class Player extends Entity {
   }
 
   craftRecipe(recipe: RecipeType): void {
-    const resources = { wood: this.wood, cloth: this.cloth };
+    const resources = { wood: this.getWood(), cloth: this.getCloth() };
     const result = this.getExt(Inventory).craftRecipe(recipe, resources);
 
-    // Update player's resource counts
-    this.wood = result.resources.wood;
-    this.cloth = result.resources.cloth;
+    // Update player's resource counts using generic setResource
+    this.setResource("wood", result.resources.wood);
+    this.setResource("cloth", result.resources.cloth);
 
     // If inventory was full, drop the crafted item on the ground
     if (result.itemToDrop) {
@@ -278,31 +284,39 @@ export class Player extends Entity {
     const weaponEntity = this.getEntityManager().createEntityFromItem(activeWeapon);
     if (!weaponEntity) return;
 
-    // Handle grenades separately - throw them instead of attacking
-    // TODO: this feels like a code smell, move it out
-    if (weaponEntity instanceof Grenade) {
-      if (this.fireCooldown === null || this.lastWeaponType !== activeWeapon.itemType) {
-        this.fireCooldown = new Cooldown(0.5, true); // Grenade throw cooldown
-        this.lastWeaponType = activeWeapon.itemType;
+    const weaponType = activeWeapon.itemType;
+
+    // Check if there's a custom handler registered for this weapon type
+    // (for weapons that can't extend Weapon class)
+    const customHandler = weaponHandlerRegistry.get(weaponType);
+    if (customHandler) {
+      // Use custom handler for special cases
+      if (this.fireCooldown === null || this.lastWeaponType !== weaponType) {
+        this.fireCooldown = new Cooldown(customHandler.cooldown, true);
+        this.lastWeaponType = weaponType;
       }
 
       if (this.fireCooldown.isReady()) {
         this.fireCooldown.reset();
-        // Get the inventory index (input.inventoryItem is 1-indexed)
         const inventoryIndex = this.input.inventoryItem - 1;
-        if (weaponEntity.hasExt(Consumable)) {
-          weaponEntity.getExt(Consumable).consume(this.getId(), inventoryIndex);
-        }
+        customHandler.handler(
+          weaponEntity,
+          this.getId(),
+          this.getCenterPosition(),
+          this.input.facing,
+          this.input.aimAngle,
+          inventoryIndex
+        );
       }
       return;
     }
 
-    // Handle regular weapons
+    // Handle weapons that extend Weapon class (including grenades now)
     if (!(weaponEntity instanceof Weapon)) return;
 
-    if (this.fireCooldown === null || this.lastWeaponType !== activeWeapon.itemType) {
+    if (this.fireCooldown === null || this.lastWeaponType !== weaponType) {
       this.fireCooldown = new Cooldown(weaponEntity.getCooldown(), true);
-      this.lastWeaponType = activeWeapon.itemType;
+      this.lastWeaponType = weaponType;
     }
 
     if (this.fireCooldown.isReady()) {
@@ -708,27 +722,70 @@ export class Player extends Entity {
     return this.coins;
   }
 
-  addWood(amount: number): void {
-    this.wood += amount;
+  /**
+   * Add a resource and broadcast pickup event if amount > 0
+   * Works with any resource type defined in RESOURCE_ITEMS
+   */
+  addResource(resourceType: ResourceType, amount: number): void {
+    if (amount <= 0) return;
+
+    const currentAmount = this.resources.get(resourceType) || 0;
+    this.resources.set(resourceType, currentAmount + amount);
+
+    // Broadcast resource pickup event
+    this.broadcaster.broadcastEvent(
+      new PlayerPickedUpResourceEvent({
+        playerId: this.getId(),
+        resourceType,
+      })
+    );
   }
 
+  /**
+   * Get the amount of a specific resource
+   */
+  getResource(resourceType: ResourceType): number {
+    return this.resources.get(resourceType) || 0;
+  }
+
+  /**
+   * Set the amount of a specific resource
+   */
+  setResource(resourceType: ResourceType, amount: number): void {
+    this.resources.set(resourceType, Math.max(0, amount));
+  }
+
+  /**
+   * Remove a specific amount of a resource
+   */
+  removeResource(resourceType: ResourceType, amount: number): void {
+    const currentAmount = this.resources.get(resourceType) || 0;
+    this.resources.set(resourceType, Math.max(0, currentAmount - amount));
+  }
+
+  // Backward compatibility getters/setters for wood
   getWood(): number {
-    return this.wood;
+    return this.getResource("wood");
+  }
+
+  setWood(amount: number): void {
+    this.setResource("wood", amount);
   }
 
   removeWood(amount: number): void {
-    this.wood = Math.max(0, this.wood - amount);
+    this.removeResource("wood", amount);
   }
 
-  addCloth(amount: number): void {
-    this.cloth += amount;
-  }
-
+  // Backward compatibility getters/setters for cloth
   getCloth(): number {
-    return this.cloth;
+    return this.getResource("cloth");
+  }
+
+  setCloth(amount: number): void {
+    this.setResource("cloth", amount);
   }
 
   removeCloth(amount: number): void {
-    this.cloth = Math.max(0, this.cloth - amount);
+    this.removeResource("cloth", amount);
   }
 }

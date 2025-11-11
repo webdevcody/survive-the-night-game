@@ -1,4 +1,4 @@
-import { ItemType, InventoryItem } from "./inventory";
+import { ItemType, InventoryItem, RESOURCE_ITEMS, isResourceItem } from "./inventory";
 import { getConfig } from "@/config";
 import { itemRegistry } from "@/entities";
 import { weaponRegistry } from "@/entities";
@@ -165,10 +165,14 @@ export function craftRecipe(
   const resourceNeeds = { wood: 0, cloth: 0 };
   for (const component of components) {
     const count = component.count || 1;
-    if (component.type === "wood") {
-      resourceNeeds.wood += count;
-    } else if (component.type === "cloth") {
-      resourceNeeds.cloth += count;
+    if (isResourceItem(component.type)) {
+      // Dynamically handle all resource types
+      if (component.type === "wood") {
+        resourceNeeds.wood += count;
+      } else if (component.type === "cloth") {
+        resourceNeeds.cloth += count;
+      }
+      // Add new resource types here - they're automatically excluded from inventory checks below
     }
   }
 
@@ -178,9 +182,10 @@ export function craftRecipe(
   }
 
   // Group components by type and count required amounts
+  // Exclude resource items (they're handled separately via resourceNeeds)
   const componentNeeds: Map<ItemType, number> = new Map();
   for (const component of components) {
-    if (component.type !== "wood" && component.type !== "cloth") {
+    if (!isResourceItem(component.type)) {
       const currentCount = componentNeeds.get(component.type) || 0;
       componentNeeds.set(component.type, currentCount + (component.count || 1));
     }
@@ -295,10 +300,14 @@ export function recipeCanBeCrafted(
   const resourceNeeds = { wood: 0, cloth: 0 };
   for (const component of components) {
     const count = component.count || 1;
-    if (component.type === "wood") {
-      resourceNeeds.wood += count;
-    } else if (component.type === "cloth") {
-      resourceNeeds.cloth += count;
+    if (isResourceItem(component.type)) {
+      // Dynamically handle all resource types
+      if (component.type === "wood") {
+        resourceNeeds.wood += count;
+      } else if (component.type === "cloth") {
+        resourceNeeds.cloth += count;
+      }
+      // Add new resource types here - they're automatically excluded from inventory checks below
     }
   }
 
@@ -308,9 +317,10 @@ export function recipeCanBeCrafted(
   }
 
   // Group components by type and count required amounts
+  // Exclude resource items (they're handled separately via resourceNeeds)
   const componentNeeds: Map<ItemType, number> = new Map();
   for (const component of components) {
-    if (component.type !== "wood" && component.type !== "cloth") {
+    if (!isResourceItem(component.type)) {
       const currentCount = componentNeeds.get(component.type) || 0;
       componentNeeds.set(component.type, currentCount + (component.count || 1));
     }

@@ -6,6 +6,7 @@ import { GunEmptyEvent } from "@shared/events/server-sent/gun-empty-event";
 import { LootEvent } from "@shared/events/server-sent/loot-event";
 import { MapEvent } from "@shared/events/server-sent/map-event";
 import { PlayerPickedUpItemEvent } from "@shared/events/server-sent/pickup-item-event";
+import { PlayerPickedUpResourceEvent } from "@shared/events/server-sent/pickup-resource-event";
 import { PlayerAttackedEvent } from "@shared/events/server-sent/player-attacked-event";
 import { PlayerDeathEvent } from "@shared/events/server-sent/player-death-event";
 import { PlayerDroppedItemEvent } from "@shared/events/server-sent/player-dropped-item-event";
@@ -43,6 +44,7 @@ const SERVER_EVENT_MAP = {
   [ServerSentEvents.ZOMBIE_HURT]: ZombieHurtEvent,
   [ServerSentEvents.PLAYER_DROPPED_ITEM]: PlayerDroppedItemEvent,
   [ServerSentEvents.PLAYER_PICKED_UP_ITEM]: PlayerPickedUpItemEvent,
+  [ServerSentEvents.PLAYER_PICKED_UP_RESOURCE]: PlayerPickedUpResourceEvent,
   [ServerSentEvents.GAME_OVER]: GameOverEvent,
   [ServerSentEvents.GUN_EMPTY]: GunEmptyEvent,
   [ServerSentEvents.ZOMBIE_ATTACKED]: ZombieAttackedEvent,

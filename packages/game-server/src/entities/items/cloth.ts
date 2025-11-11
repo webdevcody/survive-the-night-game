@@ -22,8 +22,8 @@ export class Cloth extends Entity {
     const player = this.getEntityManager().getEntityById(entityId) as Player;
     if (!player) return;
 
-    // Increment player's cloth counter
-    player.addCloth(1);
+    // Increment player's cloth counter (this will broadcast the pickup event)
+    player.addResource("cloth", 1);
 
     // Remove this cloth from the world
     this.getEntityManager().markEntityForRemoval(this);

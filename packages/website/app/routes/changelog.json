@@ -1,5 +1,17 @@
 [
   {
+    "version": "0.9.4",
+    "date": "2025-11-11",
+    "changes": [
+      "Added resource pickup event system - broadcasts when players collect wood, cloth, or other resources",
+      "Refactored player resource management to use generic Map-based system for extensibility",
+      "Made grenades stackable - grenades now stack in inventory with count tracking",
+      "Converted grenades to Weapon class for consistent weapon behavior",
+      "Added weapon handler registry for extensible weapon behavior without hardcoded checks",
+      "Fixed SPAWNABLE_ENTITY_TYPES proxy for improved React compatibility"
+    ]
+  },
+  {
     "version": "0.9.3",
     "date": "2025-11-11",
     "changes": [

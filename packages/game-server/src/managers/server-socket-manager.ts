@@ -7,7 +7,7 @@ import { GameServer } from "@/server";
 import { AdminCommand } from "@shared/commands/commands";
 import { Input } from "../../../game-shared/src/util/input";
 import { RecipeType } from "../../../game-shared/src/util/recipes";
-import { ItemType, isResourceItem } from "@shared/util/inventory";
+import { ItemType, isResourceItem, ResourceType } from "@shared/util/inventory";
 import Vector2 from "@/util/vector2";
 import { createServer } from "http";
 import { Server, Socket } from "socket.io";
@@ -280,14 +280,9 @@ export class ServerSocketManager implements Broadcaster {
 
     // Check if this is a resource item (wood, cloth)
     if (isResourceItem(itemType)) {
-      // Add directly to player's resource count
-      if (itemType === "wood") {
-        player.addWood(1);
-        console.log(`Player ${player.getId()} bought wood for ${selectedItem.price} coins`);
-      } else if (itemType === "cloth") {
-        player.addCloth(1);
-        console.log(`Player ${player.getId()} bought cloth for ${selectedItem.price} coins`);
-      }
+      // Add directly to player's resource count (this will broadcast the pickup event)
+      player.addResource(itemType as ResourceType, 1);
+      console.log(`Player ${player.getId()} bought ${itemType} for ${selectedItem.price} coins`);
     } else {
       // Handle regular inventory items
       const item = { itemType };
@@ -381,9 +376,7 @@ export class ServerSocketManager implements Broadcaster {
       const dy = Math.abs(entityPos.y - (placePos.y + structureSize / 2));
 
       if (dx < structureSize && dy < structureSize) {
-        console.log(
-          `Player ${player.getId()} tried to place ${data.itemType} on existing entity`
-        );
+        console.log(`Player ${player.getId()} tried to place ${data.itemType} on existing entity`);
         return;
       }
     }
@@ -404,7 +397,11 @@ export class ServerSocketManager implements Broadcaster {
     // Create entity at position
     // Only set health for items that have Destructible extension (wall, sentry gun, gasoline)
     let state = {};
-    if (data.itemType === "wall" || data.itemType === "sentry_gun" || data.itemType === "gasoline") {
+    if (
+      data.itemType === "wall" ||
+      data.itemType === "sentry_gun" ||
+      data.itemType === "gasoline"
+    ) {
       let maxHealth = 1;
       if (data.itemType === "wall") {
         maxHealth = getConfig().world.WALL_MAX_HEALTH;

@@ -32,18 +32,40 @@ export function getSpawableEntityTypes(): EntityType[] {
 
 // For backwards compatibility - computed on first access
 let _spawableEntityTypes: EntityType[] | null = null;
+
+function getSpawableEntityTypesArray(): EntityType[] {
+  if (!_spawableEntityTypes) {
+    _spawableEntityTypes = getSpawableEntityTypes();
+  }
+  return _spawableEntityTypes;
+}
+
+// Proxy that properly handles all array operations for React
+// This ensures the array is computed lazily but works correctly with React's iteration
 export const SPAWNABLE_ENTITY_TYPES: EntityType[] = new Proxy([] as EntityType[], {
   get(target, prop) {
-    if (!_spawableEntityTypes) {
-      _spawableEntityTypes = getSpawableEntityTypes();
+    const array = getSpawableEntityTypesArray();
+    const value = (array as any)[prop];
+    // If it's a function (like map, filter, etc.), bind it to the array
+    if (typeof value === 'function') {
+      return value.bind(array);
     }
-    return (_spawableEntityTypes as any)[prop];
+    return value;
   },
   ownKeys() {
-    if (!_spawableEntityTypes) {
-      _spawableEntityTypes = getSpawableEntityTypes();
-    }
-    return Object.keys(_spawableEntityTypes);
+    const array = getSpawableEntityTypesArray();
+    return Reflect.ownKeys(array);
+  },
+  getOwnPropertyDescriptor(target, prop) {
+    const array = getSpawableEntityTypesArray();
+    return Reflect.getOwnPropertyDescriptor(array, prop);
+  },
+  has(target, prop) {
+    const array = getSpawableEntityTypesArray();
+    return Reflect.has(array, prop);
+  },
+  getPrototypeOf() {
+    return Array.prototype;
   },
 }) as EntityType[];
 

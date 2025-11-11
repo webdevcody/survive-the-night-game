@@ -9,9 +9,6 @@ interface SpawnPanelProps {
   onToggle: () => void;
 }
 
-// Use the auto-generated spawnable entity types from shared constants
-const SPAWNABLE_ITEMS = SPAWNABLE_ENTITY_TYPES;
-
 export function SpawnPanel({ gameClient, isOpen, onToggle }: SpawnPanelProps) {
   const [filterText, setFilterText] = useState<string>("");
 
@@ -43,12 +40,19 @@ export function SpawnPanel({ gameClient, isOpen, onToggle }: SpawnPanelProps) {
     }
   };
 
+  // Get spawnable items - ensure we get a fresh array reference
+  const getSpawnableItems = (): string[] => {
+    // Access the array to trigger Proxy computation if needed
+    return [...SPAWNABLE_ENTITY_TYPES];
+  };
+
   const getFilteredItems = () => {
+    const spawnableItems = getSpawnableItems();
     if (!filterText.trim()) {
-      return SPAWNABLE_ITEMS;
+      return spawnableItems;
     }
     const lowerFilter = filterText.toLowerCase();
-    return SPAWNABLE_ITEMS.filter((item) =>
+    return spawnableItems.filter((item) =>
       item.toLowerCase().includes(lowerFilter) ||
       formatEntityName(item).toLowerCase().includes(lowerFilter)
     );

@@ -22,8 +22,8 @@ export class Tree extends Entity {
     const player = this.getEntityManager().getEntityById(entityId) as Player;
     if (!player) return;
 
-    // Increment player's wood counter
-    player.addWood(1);
+    // Increment player's wood counter (this will broadcast the pickup event)
+    player.addResource("wood", 1);
 
     // Remove this tree from the world
     this.getEntityManager().markEntityForRemoval(this);

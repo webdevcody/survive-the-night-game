@@ -49,8 +49,20 @@ export type WeaponKey =
 /**
  * Resource items that increment player resource counts (wood, cloth)
  * rather than being added to inventory
+ * To add a new resource: add it to this array and update ResourceType below
  */
-export const RESOURCE_ITEMS: ReadonlySet<ItemType> = new Set(["wood", "cloth"] as const);
+const RESOURCE_ITEMS_ARRAY = ["wood", "cloth"] as const;
+
+/**
+ * Type representing valid resource types
+ * Derived from RESOURCE_ITEMS_ARRAY - add new resources here
+ */
+export type ResourceType = (typeof RESOURCE_ITEMS_ARRAY)[number];
+
+/**
+ * Set of resource items for runtime checks
+ */
+export const RESOURCE_ITEMS: ReadonlySet<ItemType> = new Set(RESOURCE_ITEMS_ARRAY);
 
 /**
  * Check if an item type is a resource (wood, cloth)

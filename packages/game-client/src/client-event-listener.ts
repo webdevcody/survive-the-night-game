@@ -7,6 +7,7 @@ import { MapEvent } from "@shared/events/server-sent/map-event";
 import { WEAPON_TYPES } from "@shared/types/weapons";
 import { weaponRegistry } from "@shared/entities";
 import { PlayerPickedUpItemEvent } from "@shared/events/server-sent/pickup-item-event";
+import { PlayerPickedUpResourceEvent } from "@shared/events/server-sent/pickup-resource-event";
 import { PlayerAttackedEvent } from "@shared/events/server-sent/player-attacked-event";
 import { PlayerDeathEvent } from "@shared/events/server-sent/player-death-event";
 import { PlayerDroppedItemEvent } from "@shared/events/server-sent/player-dropped-item-event";
@@ -91,6 +92,10 @@ export class ClientEventListener {
     this.socketManager.on(
       ServerSentEvents.PLAYER_PICKED_UP_ITEM,
       this.onPlayerPickedUpItem.bind(this)
+    );
+    this.socketManager.on(
+      ServerSentEvents.PLAYER_PICKED_UP_RESOURCE,
+      this.onPlayerPickedUpResource.bind(this)
     );
     this.socketManager.on(ServerSentEvents.EXPLOSION, this.onExplosion.bind(this));
   }
@@ -431,6 +436,16 @@ export class ClientEventListener {
 
   onPlayerPickedUpItem(playerPickedUpItemEvent: PlayerPickedUpItemEvent) {
     const player = this.gameClient.getEntityById(playerPickedUpItemEvent.getPlayerId());
+    if (!player) return;
+
+    const playerPosition = (player as unknown as PlayerClient).getCenterPosition();
+    this.gameClient
+      .getSoundManager()
+      .playPositionalSound(SOUND_TYPES_TO_MP3.PICK_UP_ITEM, playerPosition);
+  }
+
+  onPlayerPickedUpResource(playerPickedUpResourceEvent: PlayerPickedUpResourceEvent) {
+    const player = this.gameClient.getEntityById(playerPickedUpResourceEvent.getPlayerId());
     if (!player) return;
 
     const playerPosition = (player as unknown as PlayerClient).getCenterPosition();
