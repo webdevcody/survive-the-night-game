@@ -310,14 +310,17 @@ export class ServerSocketManager implements Broadcaster {
     const player = this.players.get(socket.id);
     if (!player) return;
 
-    // Only allow wall, sentry gun, torch, spikes, landmine, and gasoline placement
+    // Only allow wall, sentry gun, torch, spikes, landmine, gasoline, and bear_trap placement
+    // TODO: we shouldn't have to manually update this every single time we add a new
+    // placeable item. instead this should be configured in the item-config.
     if (
       data.itemType !== "wall" &&
       data.itemType !== "sentry_gun" &&
       data.itemType !== "torch" &&
       data.itemType !== "spikes" &&
       data.itemType !== "landmine" &&
-      data.itemType !== "gasoline"
+      data.itemType !== "gasoline" &&
+      data.itemType !== "bear_trap"
     )
       return;
 

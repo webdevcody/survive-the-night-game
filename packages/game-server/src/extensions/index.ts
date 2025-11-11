@@ -14,6 +14,7 @@ import Combustible from "@/extensions/combustible";
 import Illuminated from "@/extensions/illuminated";
 import Carryable from "@/extensions/carryable";
 import Groupable from "@/extensions/groupable";
+import Snared from "@/extensions/snared";
 
 export const extensionsMap = {
   [Collidable.type]: Collidable,
@@ -32,4 +33,5 @@ export const extensionsMap = {
   [Illuminated.type]: Illuminated,
   [Carryable.type]: Carryable,
   [Groupable.type]: Groupable,
+  [Snared.type]: Snared,
 } as const;

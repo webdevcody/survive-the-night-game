@@ -6,6 +6,7 @@ import { AttackStrategy, BaseEnemy, MovementStrategy } from "./base-enemy";
 import { AcidProjectile } from "../projectiles/acid-projectile";
 import Positionable from "@/extensions/positionable";
 import Movable from "@/extensions/movable";
+import Snared from "@/extensions/snared";
 import { pathTowards, velocityTowards } from "@/util/physics";
 import { Cooldown } from "@/entities/util/cooldown";
 
@@ -16,6 +17,14 @@ class RangedMovementStrategy implements MovementStrategy {
   private currentWaypoint: Vector2 | null = null;
 
   update(zombie: BaseEnemy, deltaTime: number): boolean {
+    // If zombie is snared, don't move
+    // TODO: this logic seems copied and pasted in all the movement strategies... find a way to
+    // abstract this so we don't have to repeat it in every movement strategy.
+    if (zombie.hasExt(Snared)) {
+      zombie.getExt(Movable).setVelocity(new Vector2(0, 0));
+      return false;
+    }
+
     this.pathRecalculationTimer += deltaTime;
     const player = zombie.getEntityManager().getClosestAlivePlayer(zombie);
     if (!player) return false;

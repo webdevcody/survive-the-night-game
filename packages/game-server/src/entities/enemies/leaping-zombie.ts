@@ -7,6 +7,7 @@ import { Cooldown } from "@/entities/util/cooldown";
 import Positionable from "@/extensions/positionable";
 import Movable from "@/extensions/movable";
 import Destructible from "@/extensions/destructible";
+import Snared from "@/extensions/snared";
 import { pathTowards, velocityTowards } from "@/util/physics";
 import { ZombieAttackedEvent } from "@shared/events/server-sent/zombie-attacked-event";
 import { IEntity } from "@/entities/types";
@@ -29,6 +30,12 @@ export class LeapingMovementStrategy implements MovementStrategy {
   }
 
   update(zombie: BaseEnemy, deltaTime: number): boolean {
+    // If zombie is snared, don't move
+    if (zombie.hasExt(Snared)) {
+      zombie.getExt(Movable).setVelocity(new Vector2(0, 0));
+      return false;
+    }
+
     // Don't update movement if currently leaping - let the attack strategy control it
     if (this.leapingState.isLeaping) {
       return false; // Let base enemy handle movement with the leap velocity

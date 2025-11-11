@@ -20,6 +20,7 @@ import { Spikes } from "@/entities/items/spikes";
 import { Torch } from "@/entities/items/torch";
 import { MinersHat } from "@/entities/items/miners-hat";
 import { Landmine } from "@/entities/items/landmine";
+import { BearTrap } from "@/entities/items/bear-trap";
 import { Grenade } from "@/entities/items/grenade";
 import { FireExtinguisher } from "@/entities/items/fire-extinguisher";
 import { Crate } from "@/entities/items/crate";
@@ -78,6 +79,7 @@ export function registerCustomEntities(): void {
   entityOverrideRegistry.register("torch", Torch);
   entityOverrideRegistry.register("miners_hat", MinersHat);
   entityOverrideRegistry.register("landmine", Landmine);
+  entityOverrideRegistry.register("bear_trap", BearTrap);
   entityOverrideRegistry.register("grenade", Grenade);
   entityOverrideRegistry.register("fire_extinguisher", FireExtinguisher);
   entityOverrideRegistry.register("crate", Crate);

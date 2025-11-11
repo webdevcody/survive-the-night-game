@@ -267,6 +267,24 @@ export const ITEM_CONFIGS: Record<string, ItemConfig> = {
       components: [{ type: "knife" }, { type: "wood", count: 2 }],
     },
   },
+  bear_trap: {
+    id: "bear_trap",
+    category: "structure",
+    assets: {
+      assetKey: "bear_trap",
+      x: 0,
+      y: 48,
+      sheet: "items",
+    },
+    spawn: {
+      enabled: true,
+      chance: 0.002,
+    },
+    recipe: {
+      enabled: true,
+      components: [{ type: "knife" }, { type: "wood", count: 3 }, { type: "cloth", count: 1 }],
+    },
+  },
   wall: {
     id: "wall",
     category: "structure",

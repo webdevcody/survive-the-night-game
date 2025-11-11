@@ -7,6 +7,7 @@ import { pathTowards, velocityTowards } from "@/util/physics";
 import Positionable from "@/extensions/positionable";
 import Movable from "@/extensions/movable";
 import Destructible from "@/extensions/destructible";
+import Snared from "@/extensions/snared";
 import { ZombieAttackedEvent } from "@shared/events/server-sent/zombie-attacked-event";
 import { Cooldown } from "@/entities/util/cooldown";
 import { IEntity } from "@/entities/types";
@@ -19,6 +20,12 @@ export class IdleMovementStrategy implements MovementStrategy {
   private isActivated: boolean = false;
 
   update(zombie: BaseEnemy, deltaTime: number): boolean {
+    // If zombie is snared, don't move
+    if (zombie.hasExt(Snared)) {
+      zombie.getExt(Movable).setVelocity(new Vector2(0, 0));
+      return false;
+    }
+
     const zombiePos = zombie.getCenterPosition();
     let targetPos: Vector2 | null = null;
     let distanceToTarget = Infinity;
@@ -111,6 +118,12 @@ export class MeleeMovementStrategy implements MovementStrategy {
   private currentWaypoint: Vector2 | null = null;
 
   update(zombie: BaseEnemy, deltaTime: number): boolean {
+    // If zombie is snared, don't move
+    if (zombie.hasExt(Snared)) {
+      zombie.getExt(Movable).setVelocity(new Vector2(0, 0));
+      return false;
+    }
+
     this.pathRecalculationTimer += deltaTime;
     const zombiePos = zombie.getCenterPosition();
     let targetPos: Vector2 | null = null;

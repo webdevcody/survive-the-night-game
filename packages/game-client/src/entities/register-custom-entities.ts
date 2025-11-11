@@ -20,6 +20,7 @@ import { SpikesClient } from "@/entities/items/spikes";
 import { TorchClient } from "@/entities/items/torch";
 import { MinersHatClient } from "@/entities/items/miners-hat";
 import { LandmineClient } from "@/entities/items/landmine";
+import { BearTrapClient } from "@/entities/items/bear-trap";
 import { GrenadeClient } from "./items/grenade";
 import { FireExtinguisherClient } from "@/entities/items/fire-extinguisher";
 import { CrateClient } from "./items/crate";
@@ -80,6 +81,7 @@ export function registerCustomClientEntities(): void {
   clientEntityOverrideRegistry.register("torch", TorchClient);
   clientEntityOverrideRegistry.register("miners_hat", MinersHatClient);
   clientEntityOverrideRegistry.register("landmine", LandmineClient);
+  clientEntityOverrideRegistry.register("bear_trap", BearTrapClient);
   clientEntityOverrideRegistry.register("grenade", GrenadeClient);
   clientEntityOverrideRegistry.register("fire_extinguisher", FireExtinguisherClient);
   clientEntityOverrideRegistry.register("crate", CrateClient);
