@@ -274,10 +274,12 @@ export class Player extends Entity {
     const activeWeapon = this.getActiveWeapon();
     if (activeWeapon === null) return;
 
+    // TODO: clean this up, this feels bad and unperformant
     const weaponEntity = this.getEntityManager().createEntityFromItem(activeWeapon);
     if (!weaponEntity) return;
 
     // Handle grenades separately - throw them instead of attacking
+    // TODO: this feels like a code smell, move it out
     if (weaponEntity instanceof Grenade) {
       if (this.fireCooldown === null || this.lastWeaponType !== activeWeapon.itemType) {
         this.fireCooldown = new Cooldown(0.5, true); // Grenade throw cooldown

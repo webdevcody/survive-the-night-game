@@ -6,7 +6,6 @@ import { CameraManager } from "@/managers/camera";
 import { MapManager } from "@/managers/map";
 import { GameState, getEntityById, removeEntity as removeEntityFromState } from "@/state";
 import { InventoryBarUI } from "@/ui/inventory-bar";
-import { CraftingTable } from "@/ui/crafting-table";
 import { MerchantBuyPanel } from "@/ui/merchant-buy-panel";
 import { StorageManager } from "@/managers/storage";
 import { Hud } from "@/ui/hud";
@@ -67,7 +66,6 @@ export class GameClient {
   // UI
   private renderer: Renderer;
   private hud: Hud;
-  private craftingTable: CraftingTable;
   private merchantBuyPanel: MerchantBuyPanel;
   private hotbar: InventoryBarUI;
   private gameOverDialog: GameOverDialogUI;
@@ -185,16 +183,6 @@ export class GameClient {
     this.mapManager = new MapManager(this);
     this.hud = new Hud(this.mapManager, this.soundManager, this.assetManager);
     this.gameOverDialog = new GameOverDialogUI();
-
-    // TODO: refactor to use event emitter
-    this.craftingTable = new CraftingTable(this.assetManager, {
-      getInventory,
-      getPlayer,
-      onCraft: (recipe) => {
-        this.socketManager.sendCraftRequest(recipe);
-        this.gameState.crafting = false;
-      },
-    });
 
     // TODO: refactor to use event emitter
     this.merchantBuyPanel = new MerchantBuyPanel(this.assetManager, {
@@ -352,7 +340,6 @@ export class GameClient {
       this.mapManager,
       this.hotbar,
       this.hud,
-      this.craftingTable,
       this.merchantBuyPanel,
       this.gameOverDialog,
       this.particleManager,

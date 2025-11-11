@@ -1,3 +1,5 @@
+import { BehaviorConfigs } from "./behavior-configs";
+
 export interface ItemAssetConfig {
   assetKey: string;
   x: number;
@@ -8,7 +10,7 @@ export interface ItemAssetConfig {
   totalFrames?: number;
 }
 
-export interface ItemConfig {
+export interface ItemConfig extends BehaviorConfigs {
   id: string;
   category: "consumable" | "ammo" | "placeable" | "throwable" | "structure";
   assets: ItemAssetConfig;

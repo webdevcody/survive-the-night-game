@@ -1,10 +1,7 @@
-import { SpikeRecipe } from "@/recipes/spike-recipe";
-import { BandageRecipe } from "../recipes/bandage-recipe";
-import { WallRecipe } from "../recipes/wall-recipe";
 import { ItemType, InventoryItem } from "./inventory";
-import { TorchRecipe } from "@/recipes/torch-recipe";
-import { SentryGunRecipe } from "@/recipes/sentry-gun-recipe";
 import { getConfig } from "@/config";
+import { itemRegistry } from "@/entities";
+import { weaponRegistry } from "@/entities";
 
 export enum RecipeType {
   Bandage = "bandage",
@@ -14,13 +11,115 @@ export enum RecipeType {
   SentryGun = "sentry_gun",
 }
 
-export const recipes: Recipe[] = [
-  new BandageRecipe(),
-  new WallRecipe(),
-  new SpikeRecipe(),
-  new TorchRecipe(),
-  new SentryGunRecipe(),
-];
+/**
+ * Recipe implementation that uses config-defined components
+ * This allows recipes to be defined inline in item/weapon configs
+ */
+class ConfigRecipe implements Recipe {
+  private itemId: string;
+  private recipeComponents: RecipeComponent[];
+
+  constructor(itemId: string, components: RecipeComponent[]) {
+    this.itemId = itemId;
+    this.recipeComponents = components;
+  }
+
+  public getType(): RecipeType {
+    // Use the item ID as the recipe type
+    // For items that match existing RecipeType enum values, use those
+    // For new items, cast to RecipeType (the enum will be extended as needed)
+    return this.itemId as RecipeType;
+  }
+
+  public canBeCrafted(inventory: InventoryItem[], resources: PlayerResources): boolean {
+    return recipeCanBeCrafted(this, inventory, resources);
+  }
+
+  public components(): RecipeComponent[] {
+    return this.recipeComponents;
+  }
+
+  public craft(
+    inventory: InventoryItem[],
+    resources: PlayerResources,
+    maxInventorySlots?: number
+  ): CraftingResult {
+    return craftRecipe(this, inventory, resources);
+  }
+
+  public resultingComponent(): RecipeComponent {
+    return {
+      type: this.itemId as ItemType,
+    };
+  }
+}
+
+/**
+ * Build recipes array from config-based recipes only
+ * All recipes are now defined inline in item/weapon configs
+ */
+function buildRecipes(): Recipe[] {
+  const recipeList: Recipe[] = [];
+
+  // Add config-based recipes from items
+  itemRegistry.getAll().forEach((itemConfig) => {
+    if (itemConfig.recipe?.enabled && itemConfig.recipe.components) {
+      recipeList.push(new ConfigRecipe(itemConfig.id, itemConfig.recipe.components));
+    }
+  });
+
+  // Add config-based recipes from weapons
+  weaponRegistry.getAll().forEach((weaponConfig) => {
+    if (weaponConfig.recipe?.enabled && weaponConfig.recipe.components) {
+      recipeList.push(new ConfigRecipe(weaponConfig.id, weaponConfig.recipe.components));
+    }
+  });
+
+  return recipeList;
+}
+
+export const recipes: Recipe[] = buildRecipes();
+
+/**
+ * Get all item/weapon IDs that have recipes enabled
+ * Useful for discovering craftable items from configs
+ */
+export function getCraftableItemIds(): string[] {
+  const craftableIds: string[] = [];
+
+  // Check items with recipe config
+  itemRegistry.getAll().forEach((itemConfig) => {
+    if (itemConfig.recipe?.enabled) {
+      craftableIds.push(itemConfig.id);
+    }
+  });
+
+  // Check weapons with recipe config
+  weaponRegistry.getAll().forEach((weaponConfig) => {
+    if (weaponConfig.recipe?.enabled) {
+      craftableIds.push(weaponConfig.id);
+    }
+  });
+
+  return craftableIds;
+}
+
+/**
+ * Get recipe type for an item/weapon ID if it has a recipe configured
+ */
+export function getRecipeTypeForItem(itemId: string): RecipeType | null {
+  const itemConfig = itemRegistry.get(itemId);
+  if (itemConfig?.recipe?.enabled && itemConfig.recipe.recipeType) {
+    return itemConfig.recipe.recipeType as RecipeType;
+  }
+
+  const weaponConfig = weaponRegistry.get(itemId as any);
+  if (weaponConfig?.recipe?.enabled && weaponConfig.recipe.recipeType) {
+    return weaponConfig.recipe.recipeType as RecipeType;
+  }
+
+  return null;
+}
 
 export interface RecipeComponent {
   type: ItemType;
@@ -62,13 +161,14 @@ export function craftRecipe(
 
   const maxInventorySlots = getConfig().player.MAX_INVENTORY_SLOTS;
 
-  // Count how many of each resource we need
+  // Count how many of each resource we need (respecting count property)
   const resourceNeeds = { wood: 0, cloth: 0 };
   for (const component of components) {
+    const count = component.count || 1;
     if (component.type === "wood") {
-      resourceNeeds.wood++;
+      resourceNeeds.wood += count;
     } else if (component.type === "cloth") {
-      resourceNeeds.cloth++;
+      resourceNeeds.cloth += count;
     }
   }
 
@@ -106,7 +206,7 @@ export function craftRecipe(
 
     const alreadyConsumedTotal = totalConsumed.get(item.itemType) || 0;
     const remainingNeeded = needed - alreadyConsumedTotal;
-    
+
     if (remainingNeeded <= 0) {
       // Already consumed enough of this item type, keep it
       newInventory.push(item);
@@ -191,13 +291,14 @@ export function recipeCanBeCrafted(
   const components = recipe.components();
   const found: number[] = [];
 
-  // Count how many of each resource we need
+  // Count how many of each resource we need (respecting count property)
   const resourceNeeds = { wood: 0, cloth: 0 };
   for (const component of components) {
+    const count = component.count || 1;
     if (component.type === "wood") {
-      resourceNeeds.wood++;
+      resourceNeeds.wood += count;
     } else if (component.type === "cloth") {
-      resourceNeeds.cloth++;
+      resourceNeeds.cloth += count;
     }
   }
 

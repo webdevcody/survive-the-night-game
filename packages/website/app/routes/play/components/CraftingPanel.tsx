@@ -1,4 +1,5 @@
 import { useEffect, useState, useCallback } from "react";
+// Recipes are automatically loaded from item/weapon configs (recipe.enabled === true)
 import { recipes, type Recipe, RecipeType } from "@shared/util/recipes";
 import { cn } from "~/lib/utils";
 import { type InventoryItem } from "@shared/util/inventory";

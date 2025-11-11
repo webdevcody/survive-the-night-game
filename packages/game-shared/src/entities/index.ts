@@ -14,6 +14,9 @@ import { characterRegistry } from "./character-registry";
 import { CHARACTER_CONFIGS } from "./character-configs";
 import { Zombies } from "../constants";
 
+// Export behavior configs for use by systems
+export * from "./behavior-configs";
+
 // Register all zombie configurations
 Object.values(ZOMBIE_CONFIGS).forEach((config) => {
   zombieRegistry.register(config);

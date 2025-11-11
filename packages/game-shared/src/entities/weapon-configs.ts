@@ -19,6 +19,10 @@ export const WEAPON_CONFIGS: Record<string, WeaponConfig> = {
       sheet: "default",
     },
     sound: "knife_swing",
+    spawn: {
+      enabled: true,
+      chance: 0.003,
+    },
   },
   [WEAPON_TYPES.PISTOL]: {
     id: WEAPON_TYPES.PISTOL,
@@ -35,6 +39,10 @@ export const WEAPON_CONFIGS: Record<string, WeaponConfig> = {
       sheet: "default",
     },
     sound: "pistol",
+    spawn: {
+      enabled: true,
+      chance: 0.002,
+    },
   },
   [WEAPON_TYPES.SHOTGUN]: {
     id: WEAPON_TYPES.SHOTGUN,
@@ -52,6 +60,10 @@ export const WEAPON_CONFIGS: Record<string, WeaponConfig> = {
       sheet: "default",
     },
     sound: "shotgun_fire",
+    spawn: {
+      enabled: true,
+      chance: 0.0015,
+    },
   },
   [WEAPON_TYPES.BOLT_ACTION_RIFLE]: {
     id: WEAPON_TYPES.BOLT_ACTION_RIFLE,
@@ -68,6 +80,10 @@ export const WEAPON_CONFIGS: Record<string, WeaponConfig> = {
       sheet: "items",
     },
     sound: "pistol",
+    spawn: {
+      enabled: true,
+      chance: 0.0015,
+    },
   },
   [WEAPON_TYPES.AK47]: {
     id: WEAPON_TYPES.AK47,
@@ -84,6 +100,10 @@ export const WEAPON_CONFIGS: Record<string, WeaponConfig> = {
       sheet: "items",
     },
     sound: "pistol",
+    spawn: {
+      enabled: true,
+      chance: 0.0015,
+    },
   },
   [WEAPON_TYPES.GRENADE_LAUNCHER]: {
     id: WEAPON_TYPES.GRENADE_LAUNCHER,

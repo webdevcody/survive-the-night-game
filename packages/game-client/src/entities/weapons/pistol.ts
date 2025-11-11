@@ -5,6 +5,7 @@ import { ClientEntity } from "@/entities/client-entity";
 import { ImageLoader } from "@/managers/asset";
 import { ClientPositionable } from "@/extensions";
 import { Z_INDEX } from "@shared/map";
+
 export class PistolClient extends ClientEntity implements Renderable {
   constructor(data: RawEntity, imageLoader: ImageLoader) {
     super(data, imageLoader);

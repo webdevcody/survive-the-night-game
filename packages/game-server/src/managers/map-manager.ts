@@ -4,27 +4,13 @@ import { Car } from "@/entities/environment/car";
 import { Zombie } from "@/entities/enemies/zombie";
 import { Player } from "@/entities/player";
 import { DEBUG_START_ZOMBIE } from "@shared/debug";
-import { Shotgun } from "@/entities/weapons/shotgun";
-import { Pistol } from "@/entities/weapons/pistol";
 import { IGameManagers, IEntityManager, IMapManager } from "@/managers/types";
 import Positionable from "@/extensions/positionable";
-import { PistolAmmo } from "@/entities/items/pistol-ammo";
-import { ShotgunAmmo } from "@/entities/items/shotgun-ammo";
 import Vector2 from "@/util/vector2";
 import { BigZombie } from "@/entities/enemies/big-zombie";
 import { FastZombie } from "@/entities/enemies/fast-zombie";
 import { BatZombie } from "@/entities/enemies/bat-zombie";
 import { GameMaster } from "./game-master";
-import { Knife } from "@/entities/weapons/knife";
-import { Bandage } from "@/entities/items/bandage";
-import { Cloth } from "@/entities/items/cloth";
-import { Gasoline } from "@/entities/items/gasoline";
-import { Grenade } from "@/entities/items/grenade";
-import { Landmine } from "@/entities/items/landmine";
-import { Spikes } from "@/entities/items/spikes";
-import { Torch } from "@/entities/items/torch";
-import { Wall } from "@/entities/items/wall";
-import { Crate } from "@/entities/items/crate";
 import { SpitterZombie } from "@/entities/enemies/spitter-zombie";
 import { Merchant } from "@/entities/environment/merchant";
 import {
@@ -44,63 +30,46 @@ import {
 import type { BiomeData } from "@/biomes/types";
 import type { MapData } from "@shared/events/server-sent/map-event";
 import type { DecalData } from "@shared/config/decals-config";
-import { AK47 } from "@/entities/weapons/ak47";
-import { AK47Ammo } from "@/entities/items/ak47-ammo";
-import { BoltActionAmmo } from "@/entities/items/bolt-action-ammo";
-import { BoltActionRifle } from "@/entities/weapons/bolt-action-rifle";
 import { getConfig } from "@/config";
-import { MinersHat } from "@/entities/items/miners-hat";
-
-const WEAPON_SPAWN_CHANCE = {
-  // Weapons
-  PISTOL: 0.002,
-  SHOTGUN: 0.0015,
-  KNIFE: 0.003,
-  BOLT_ACTION_RIFLE: 0.0015,
-  AK47: 0.0015,
-  // ammo
-  PISTOL_AMMO: 0.005,
-  SHOTGUN_AMMO: 0.005,
-  BOLT_ACTION_AMMO: 0.005,
-  AK47_AMMO: 0.005,
-  // Items
-  BANDAGE: 0.005,
-  CLOTH: 0.1,
-  GASOLINE: 0.002,
-  GRENADE: 0,
-  LANDMINE: 0.001,
-  SPIKES: 0.003,
-  TORCH: 0, // do not spawn torches, players must craft them
-  WALL: 0.005,
-  TREE: 0.2,
-  MINERS_HAT: 0.0001,
-} as const;
-
-const spawnTable = [
-  { chance: WEAPON_SPAWN_CHANCE.PISTOL, ItemClass: Pistol },
-  { chance: WEAPON_SPAWN_CHANCE.SHOTGUN, ItemClass: Shotgun },
-  { chance: WEAPON_SPAWN_CHANCE.KNIFE, ItemClass: Knife },
-  { chance: WEAPON_SPAWN_CHANCE.BANDAGE, ItemClass: Bandage },
-  { chance: WEAPON_SPAWN_CHANCE.CLOTH, ItemClass: Cloth },
-  { chance: WEAPON_SPAWN_CHANCE.GASOLINE, ItemClass: Gasoline },
-  { chance: WEAPON_SPAWN_CHANCE.GRENADE, ItemClass: Grenade },
-  { chance: WEAPON_SPAWN_CHANCE.LANDMINE, ItemClass: Landmine },
-  { chance: WEAPON_SPAWN_CHANCE.SPIKES, ItemClass: Spikes },
-  { chance: WEAPON_SPAWN_CHANCE.WALL, ItemClass: Wall },
-  { chance: WEAPON_SPAWN_CHANCE.TORCH, ItemClass: Torch },
-  { chance: WEAPON_SPAWN_CHANCE.PISTOL, ItemClass: Pistol },
-  { chance: WEAPON_SPAWN_CHANCE.BOLT_ACTION_RIFLE, ItemClass: BoltActionRifle },
-  { chance: WEAPON_SPAWN_CHANCE.AK47, ItemClass: AK47 },
-  { chance: WEAPON_SPAWN_CHANCE.PISTOL_AMMO, ItemClass: PistolAmmo },
-  { chance: WEAPON_SPAWN_CHANCE.SHOTGUN_AMMO, ItemClass: ShotgunAmmo },
-  { chance: WEAPON_SPAWN_CHANCE.BOLT_ACTION_AMMO, ItemClass: BoltActionAmmo },
-  { chance: WEAPON_SPAWN_CHANCE.AK47_AMMO, ItemClass: AK47Ammo },
-  { chance: WEAPON_SPAWN_CHANCE.TREE, ItemClass: Tree },
-  { chance: WEAPON_SPAWN_CHANCE.MINERS_HAT, ItemClass: MinersHat },
-];
+import { itemRegistry } from "@shared/entities";
+import { weaponRegistry } from "@shared/entities";
+import { Entities } from "@shared/constants";
 
 const BIOME_SIZE = 16;
 const MAP_SIZE = 9;
+
+/**
+ * Build spawn table dynamically from item and weapon registries
+ * Items/weapons with spawn.enabled === true will be included
+ */
+function buildSpawnTable(): Array<{ chance: number; entityType: string }> {
+  const spawnTable: Array<{ chance: number; entityType: string }> = [];
+
+  // Add items with spawn enabled
+  itemRegistry.getAll().forEach((itemConfig) => {
+    if (itemConfig.spawn?.enabled) {
+      // Map item ID to EntityType (most match directly)
+      const entityType = itemConfig.id;
+
+      spawnTable.push({
+        chance: itemConfig.spawn.chance,
+        entityType,
+      });
+    }
+  });
+
+  // Add weapons with spawn enabled
+  weaponRegistry.getAll().forEach((weaponConfig) => {
+    if (weaponConfig.spawn?.enabled) {
+      spawnTable.push({
+        chance: weaponConfig.spawn.chance,
+        entityType: weaponConfig.id,
+      });
+    }
+  });
+
+  return spawnTable;
+}
 
 export class MapManager implements IMapManager {
   private groundLayer: number[][] = [];
@@ -775,19 +744,22 @@ export class MapManager implements IMapManager {
   }
 
   private trySpawnItemAt(x: number, y: number) {
+    const spawnTable = buildSpawnTable();
     const random = Math.random();
     let cumulativeChance = 0;
 
-    for (const { chance, ItemClass } of spawnTable) {
+    for (const { chance, entityType } of spawnTable) {
       cumulativeChance += chance;
       if (random < cumulativeChance) {
-        const item = new ItemClass(this.getGameManagers());
-        item
-          .getExt(Positionable)
-          .setPosition(
-            new Vector2(x * getConfig().world.TILE_SIZE, y * getConfig().world.TILE_SIZE)
-          );
-        this.getEntityManager().addEntity(item);
+        const entity = this.getEntityManager().createEntity(entityType as any);
+        if (entity) {
+          entity
+            .getExt(Positionable)
+            .setPosition(
+              new Vector2(x * getConfig().world.TILE_SIZE, y * getConfig().world.TILE_SIZE)
+            );
+          this.getEntityManager().addEntity(entity);
+        }
         break;
       }
     }

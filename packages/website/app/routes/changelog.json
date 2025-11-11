@@ -1,5 +1,16 @@
 [
   {
+    "version": "0.9.2",
+    "date": "2025-11-10",
+    "changes": [
+      "Refactored spawn system to use dynamic spawn tables built from item and weapon registries",
+      "Refactored merchant shop to auto-generate items from registry configurations",
+      "Added behavior configuration system (spawn, merchant, recipe) for items and weapons",
+      "Removed legacy Canvas-based crafting table UI in favor of React component",
+      "Centralized item and weapon configuration with spawn chances and merchant pricing"
+    ]
+  },
+  {
     "version": "0.9.1",
     "date": "2025-11-10",
     "changes": [

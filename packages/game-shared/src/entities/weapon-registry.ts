@@ -1,4 +1,5 @@
 import { WeaponType } from "../types/weapons";
+import { BehaviorConfigs } from "./behavior-configs";
 
 export interface WeaponStats {
   cooldown: number;
@@ -18,7 +19,7 @@ export interface WeaponAssetConfig {
   sheet?: string;
 }
 
-export interface WeaponConfig {
+export interface WeaponConfig extends BehaviorConfigs {
   id: WeaponType;
   stats: WeaponStats;
   assets: WeaponAssetConfig;

@@ -10,6 +10,18 @@ export const ITEM_CONFIGS: Record<string, ItemConfig> = {
       y: 48,
       sheet: "items",
     },
+    spawn: {
+      enabled: true,
+      chance: 0.005,
+    },
+    merchant: {
+      enabled: true,
+      price: 10,
+    },
+    recipe: {
+      enabled: true,
+      components: [{ type: "cloth", count: 3 }],
+    },
   },
   cloth: {
     id: "cloth",
@@ -19,6 +31,14 @@ export const ITEM_CONFIGS: Record<string, ItemConfig> = {
       x: 128,
       y: 0,
       sheet: "items",
+    },
+    spawn: {
+      enabled: true,
+      chance: 0.1,
+    },
+    merchant: {
+      enabled: true,
+      price: 4,
     },
   },
   pistol_ammo: {
@@ -30,6 +50,14 @@ export const ITEM_CONFIGS: Record<string, ItemConfig> = {
       y: 16,
       sheet: "items",
     },
+    spawn: {
+      enabled: true,
+      chance: 0.005,
+    },
+    merchant: {
+      enabled: true,
+      price: 8,
+    },
   },
   shotgun_ammo: {
     id: "shotgun_ammo",
@@ -39,6 +67,14 @@ export const ITEM_CONFIGS: Record<string, ItemConfig> = {
       x: 80,
       y: 16,
       sheet: "items",
+    },
+    spawn: {
+      enabled: true,
+      chance: 0.005,
+    },
+    merchant: {
+      enabled: true,
+      price: 12,
     },
   },
   bolt_action_ammo: {
@@ -50,6 +86,10 @@ export const ITEM_CONFIGS: Record<string, ItemConfig> = {
       y: 16,
       sheet: "items",
     },
+    spawn: {
+      enabled: true,
+      chance: 0.005,
+    },
   },
   ak47_ammo: {
     id: "ak47_ammo",
@@ -59,6 +99,10 @@ export const ITEM_CONFIGS: Record<string, ItemConfig> = {
       x: 112,
       y: 16,
       sheet: "items",
+    },
+    spawn: {
+      enabled: true,
+      chance: 0.005,
     },
   },
   grenade_launcher_ammo: {
@@ -90,6 +134,14 @@ export const ITEM_CONFIGS: Record<string, ItemConfig> = {
       y: 48,
       sheet: "items",
     },
+    spawn: {
+      enabled: true,
+      chance: 0.001,
+    },
+    merchant: {
+      enabled: true,
+      price: 20,
+    },
   },
   grenade: {
     id: "grenade",
@@ -99,6 +151,14 @@ export const ITEM_CONFIGS: Record<string, ItemConfig> = {
       x: 64,
       y: 0,
       sheet: "items",
+    },
+    spawn: {
+      enabled: false,
+      chance: 0,
+    },
+    merchant: {
+      enabled: true,
+      price: 20,
     },
   },
   fire_extinguisher: {
@@ -110,6 +170,10 @@ export const ITEM_CONFIGS: Record<string, ItemConfig> = {
       y: 0,
       sheet: "items",
     },
+    merchant: {
+      enabled: true,
+      price: 5,
+    },
   },
   torch: {
     id: "torch",
@@ -119,6 +183,18 @@ export const ITEM_CONFIGS: Record<string, ItemConfig> = {
       x: 68,
       y: 266,
     },
+    spawn: {
+      enabled: false,
+      chance: 0, // do not spawn torches, players must craft them
+    },
+    merchant: {
+      enabled: true,
+      price: 5,
+    },
+    recipe: {
+      enabled: true,
+      components: [{ type: "wood" }, { type: "cloth" }],
+    },
   },
   gasoline: {
     id: "gasoline",
@@ -127,6 +203,14 @@ export const ITEM_CONFIGS: Record<string, ItemConfig> = {
       assetKey: "gasoline",
       x: 255,
       y: 38,
+    },
+    spawn: {
+      enabled: true,
+      chance: 0.002,
+    },
+    merchant: {
+      enabled: true,
+      price: 10,
     },
   },
   coin: {
@@ -160,5 +244,80 @@ export const ITEM_CONFIGS: Record<string, ItemConfig> = {
       sheet: "items",
     },
     hideWhenSelected: true, // Don't show overlay when selected since player is wearing it
+    spawn: {
+      enabled: true,
+      chance: 0.0001,
+    },
+  },
+  spikes: {
+    id: "spikes",
+    category: "placeable",
+    assets: {
+      assetKey: "spikes",
+      x: 357,
+      y: 57,
+      sheet: "default",
+    },
+    spawn: {
+      enabled: true,
+      chance: 0.003,
+    },
+    recipe: {
+      enabled: true,
+      components: [{ type: "knife" }, { type: "wood", count: 2 }],
+    },
+  },
+  wall: {
+    id: "wall",
+    category: "structure",
+    assets: {
+      assetKey: "wall",
+      x: 64,
+      y: 48,
+      sheet: "items",
+    },
+    spawn: {
+      enabled: true,
+      chance: 0.005,
+    },
+    recipe: {
+      enabled: true,
+      components: [{ type: "wood", count: 2 }],
+    },
+  },
+  // Tree is special - it's in environment-configs but spawns like an item
+  // Entity type is "tree" but we reference it here for spawn config
+  tree: {
+    id: "tree",
+    category: "structure",
+    assets: {
+      assetKey: "tree",
+      x: 144,
+      y: 0,
+      sheet: "items",
+    },
+    spawn: {
+      enabled: true,
+      chance: 0.2,
+    },
+  },
+  sentry_gun: {
+    id: "sentry_gun",
+    category: "structure",
+    assets: {
+      assetKey: "sentry_gun",
+      x: 17,
+      y: 149,
+      sheet: "default",
+    },
+    recipe: {
+      enabled: true,
+      components: [
+        { type: "pistol" },
+        { type: "pistol_ammo", count: 5 },
+        { type: "wood", count: 3 },
+        { type: "cloth", count: 2 },
+      ],
+    },
   },
 };
