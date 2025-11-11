@@ -296,17 +296,41 @@ function mergeAssetsFromConfigs<T>(
   );
 }
 
+// Ensure registries are populated before generating assets
+// Importing from @shared/entities triggers registration code
+// Force evaluation of entities/index.ts to ensure registration happens
+import "@shared/entities";
+
+const weaponConfigs = weaponRegistry.getAll();
+const itemConfigs = itemRegistry.getAll();
+
+// Debug: Log if weapons aren't being found
+if (weaponConfigs.length === 0) {
+  console.warn("No weapon configs found when generating assets. Weapons may not render correctly.");
+} else {
+  console.log(`Found ${weaponConfigs.length} weapon configs when generating assets`);
+  console.log(
+    "Weapon IDs found:",
+    weaponConfigs.map((c) => c.id)
+  );
+}
+
 export const assetsMap = {
   // Auto-generate all weapon assets from registry
-  ...mergeAssetsFromConfigs(weaponRegistry.getAll(), (config) =>
-    createWeaponAssets(
+  ...mergeAssetsFromConfigs(weaponConfigs, (config) => {
+    const assets = createWeaponAssets(
       config.assets.assetPrefix,
       config.assets.spritePositions,
-      config.assets.sheet
-    )
-  ),
+      config.assets.sheet || "default"
+    );
+    // Debug: Log created assets for weapons
+    if (config.id === "knife" || config.id === "pistol") {
+      console.log(`${config.id} assets created:`, Object.keys(assets));
+    }
+    return assets;
+  }),
   // Auto-generate all item assets from registry
-  ...mergeAssetsFromConfigs(itemRegistry.getAll(), (config) =>
+  ...mergeAssetsFromConfigs(itemConfigs, (config) =>
     createSimpleAsset(
       config.assets.assetKey,
       config.assets.x,
@@ -329,15 +353,22 @@ export const assetsMap = {
     )
   ),
   // Auto-generate all environment assets from registry
-  ...mergeAssetsFromConfigs(environmentRegistry.getAll(), (config) =>
-    createSimpleAsset(
-      config.assets.assetKey,
-      config.assets.x,
-      config.assets.y,
-      config.assets.width,
-      config.assets.height,
-      config.assets.sheet || "default"
-    )
+  // Filter out entities that use special sheets (like "collidables") that aren't in the standard asset system
+  ...mergeAssetsFromConfigs(
+    environmentRegistry.getAll().filter((config) => {
+      const sheet = config.assets.sheet || "default";
+      // Only include assets that use standard sheets
+      return sheet === "default" || sheet === "items" || sheet === "characters";
+    }),
+    (config) =>
+      createSimpleAsset(
+        config.assets.assetKey,
+        config.assets.x,
+        config.assets.y,
+        config.assets.width,
+        config.assets.height,
+        config.assets.sheet || "default"
+      )
   ),
   // Auto-generate all decal assets from registry
   ...mergeAssetsFromConfigs(decalRegistry.getAll(), (config) => {
@@ -485,6 +516,15 @@ export class AssetManager implements ImageLoader {
     }
 
     if (asset === undefined) {
+      // Debug: Log available assets that match the prefix
+      const availableAssets = Object.keys(assetsMap).filter((k) =>
+        String(k).startsWith(String(key))
+      );
+      console.error(
+        `Tried getting an asset with direction that is not registered '${keyWithDirection}'. ` +
+          `Base key: '${key}', Available assets with prefix:`,
+        availableAssets
+      );
       throw new Error(
         `Tried getting an asset with direction that is not registered '${keyWithDirection}'`
       );
@@ -509,6 +549,12 @@ export class AssetManager implements ImageLoader {
 }
 
 export function getItemAssetKey(item: InventoryItem): Asset {
+  // Check if it's a weapon first - weapons use assetPrefix
+  const weaponConfig = weaponRegistry.get(item.itemType as any);
+  if (weaponConfig) {
+    return weaponConfig.assets.assetPrefix as Asset;
+  }
+  // Otherwise, use itemType directly (for regular items)
   return item.itemType as Asset;
 }
 

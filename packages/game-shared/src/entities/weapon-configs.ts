@@ -1,9 +1,9 @@
-import { WEAPON_TYPES } from "../types/weapons";
 import { WeaponConfig } from "./weapon-registry";
 
+// Use string literals instead of WEAPON_TYPES to avoid circular dependency with Entities
 export const WEAPON_CONFIGS: Record<string, WeaponConfig> = {
-  [WEAPON_TYPES.KNIFE]: {
-    id: WEAPON_TYPES.KNIFE,
+  knife: {
+    id: "knife",
     stats: {
       damage: 1,
       pushDistance: 12,
@@ -24,8 +24,8 @@ export const WEAPON_CONFIGS: Record<string, WeaponConfig> = {
       chance: 0.003,
     },
   },
-  [WEAPON_TYPES.PISTOL]: {
-    id: WEAPON_TYPES.PISTOL,
+  pistol: {
+    id: "pistol",
     stats: {
       cooldown: 0.3,
     },
@@ -44,8 +44,8 @@ export const WEAPON_CONFIGS: Record<string, WeaponConfig> = {
       chance: 0.002,
     },
   },
-  [WEAPON_TYPES.SHOTGUN]: {
-    id: WEAPON_TYPES.SHOTGUN,
+  shotgun: {
+    id: "shotgun",
     stats: {
       spreadAngle: 8,
       cooldown: 0.8,
@@ -65,8 +65,8 @@ export const WEAPON_CONFIGS: Record<string, WeaponConfig> = {
       chance: 0.0015,
     },
   },
-  [WEAPON_TYPES.BOLT_ACTION_RIFLE]: {
-    id: WEAPON_TYPES.BOLT_ACTION_RIFLE,
+  bolt_action_rifle: {
+    id: "bolt_action_rifle",
     stats: {
       cooldown: 2.0,
     },
@@ -85,8 +85,8 @@ export const WEAPON_CONFIGS: Record<string, WeaponConfig> = {
       chance: 0.0015,
     },
   },
-  [WEAPON_TYPES.AK47]: {
-    id: WEAPON_TYPES.AK47,
+  ak47: {
+    id: "ak47",
     stats: {
       cooldown: 0.08,
     },
@@ -105,8 +105,8 @@ export const WEAPON_CONFIGS: Record<string, WeaponConfig> = {
       chance: 0.0015,
     },
   },
-  [WEAPON_TYPES.GRENADE_LAUNCHER]: {
-    id: WEAPON_TYPES.GRENADE_LAUNCHER,
+  grenade_launcher: {
+    id: "grenade_launcher",
     stats: {
       cooldown: 1.0,
     },
@@ -121,8 +121,8 @@ export const WEAPON_CONFIGS: Record<string, WeaponConfig> = {
     },
     sound: "pistol",
   },
-  [WEAPON_TYPES.FLAMETHROWER]: {
-    id: WEAPON_TYPES.FLAMETHROWER,
+  flamethrower: {
+    id: "flamethrower",
     stats: {
       cooldown: 0.1, // Very fast cooldown for continuous fire
     },

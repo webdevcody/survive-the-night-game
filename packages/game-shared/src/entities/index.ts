@@ -12,7 +12,8 @@ import { environmentRegistry } from "./environment-registry";
 import { ENVIRONMENT_CONFIGS } from "./environment-configs";
 import { characterRegistry } from "./character-registry";
 import { CHARACTER_CONFIGS } from "./character-configs";
-import { Zombies } from "../constants";
+import { initializeEntities, Zombies } from "../constants";
+import { generateEntities } from "../constants/entity-generator";
 
 // Export behavior configs for use by systems
 export * from "./behavior-configs";
@@ -55,6 +56,11 @@ Object.values(CHARACTER_CONFIGS).forEach((config) => {
 // Populate the Zombies array after registration
 Zombies.length = 0; // Clear the array
 Zombies.push(...zombieRegistry.getAllZombieTypes());
+
+// Auto-generate Entities constant from all registries after they're all populated
+// This ensures adding a new item/weapon/etc. to configs automatically adds it to Entities
+const generatedEntities = generateEntities();
+initializeEntities(generatedEntities);
 
 export * from "./zombie-registry";
 export * from "./zombie-configs";

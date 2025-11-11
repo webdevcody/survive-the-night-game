@@ -1,11 +1,10 @@
-import { Entities } from "../constants";
 import { combatConfig } from "../config/combat-config";
 import Vector2 from "../util/vector2";
 import { ZombieConfig, EntityCategories } from "./zombie-registry";
 
 export const ZOMBIE_CONFIGS: Record<string, ZombieConfig> = {
-  [Entities.ZOMBIE]: {
-    id: Entities.ZOMBIE,
+  zombie: {
+    id: "zombie",
     category: EntityCategories.ZOMBIE,
     stats: {
       speed: 35,
@@ -38,8 +37,8 @@ export const ZOMBIE_CONFIGS: Record<string, ZombieConfig> = {
     movementStrategy: "melee",
     attackStrategy: "melee",
   },
-  [Entities.BIG_ZOMBIE]: {
-    id: Entities.BIG_ZOMBIE,
+  big_zombie: {
+    id: "big_zombie",
     category: EntityCategories.ZOMBIE,
     stats: {
       speed: 20,
@@ -72,8 +71,8 @@ export const ZOMBIE_CONFIGS: Record<string, ZombieConfig> = {
     movementStrategy: "melee",
     attackStrategy: "melee",
   },
-  [Entities.FAST_ZOMBIE]: {
-    id: Entities.FAST_ZOMBIE,
+  fast_zombie: {
+    id: "fast_zombie",
     category: EntityCategories.ZOMBIE,
     stats: {
       speed: 45,
@@ -106,8 +105,8 @@ export const ZOMBIE_CONFIGS: Record<string, ZombieConfig> = {
     movementStrategy: "melee",
     attackStrategy: "melee",
   },
-  [Entities.EXPLODING_ZOMBIE]: {
-    id: Entities.EXPLODING_ZOMBIE,
+  exploding_zombie: {
+    id: "exploding_zombie",
     category: EntityCategories.ZOMBIE,
     stats: {
       speed: 45,
@@ -140,8 +139,8 @@ export const ZOMBIE_CONFIGS: Record<string, ZombieConfig> = {
     movementStrategy: "melee",
     attackStrategy: "exploding",
   },
-  [Entities.BAT_ZOMBIE]: {
-    id: Entities.BAT_ZOMBIE,
+  bat_zombie: {
+    id: "bat_zombie",
     category: EntityCategories.ZOMBIE,
     stats: {
       speed: 30,
@@ -174,8 +173,8 @@ export const ZOMBIE_CONFIGS: Record<string, ZombieConfig> = {
     movementStrategy: "flying",
     attackStrategy: "melee",
   },
-  [Entities.SPITTER_ZOMBIE]: {
-    id: Entities.SPITTER_ZOMBIE,
+  spitter_zombie: {
+    id: "spitter_zombie",
     category: EntityCategories.ZOMBIE,
     stats: {
       speed: 25,
@@ -208,8 +207,8 @@ export const ZOMBIE_CONFIGS: Record<string, ZombieConfig> = {
     movementStrategy: "ranged",
     attackStrategy: "ranged",
   },
-  [Entities.LEAPING_ZOMBIE]: {
-    id: Entities.LEAPING_ZOMBIE,
+  leaping_zombie: {
+    id: "leaping_zombie",
     category: EntityCategories.ZOMBIE,
     stats: {
       speed: 40,

@@ -1,5 +1,18 @@
 [
   {
+    "version": "0.9.3",
+    "date": "2025-11-11",
+    "changes": [
+      "Added entity override registry system for registering custom entity classes",
+      "Created generic entity classes that auto-generate from configuration (no manual class creation needed)",
+      "Added entity generator utility to auto-generate entity constants from configs",
+      "Simplified item and weapon creation process - simple items now only require config definition",
+      "Completely rewrote documentation for adding inventory light items with simplified approach",
+      "Completely rewrote documentation for adding weapons with simplified data-driven approach",
+      "Reduced code duplication by auto-generating server and client entities from shared configs"
+    ]
+  },
+  {
     "version": "0.9.2",
     "date": "2025-11-10",
     "changes": [

@@ -44,52 +44,13 @@ import { FlameProjectileClient } from "./flame-projectile";
 import { SentryGunClient } from "./items/sentry-gun";
 import { CrateClient } from "./items/crate";
 import { CarClient } from "./environment/car";
+import { clientEntityOverrideRegistry } from "./entity-override-registry";
+import { itemRegistry } from "@shared/entities";
+import { GenericClientEntity } from "./items/generic-client-entity";
+import { registerCustomClientEntities } from "./register-custom-entities";
 
-export const entityMap = {
-  [Entities.PLAYER]: PlayerClient,
-  [Entities.TREE]: TreeClient,
-  [Entities.BULLET]: BulletClient,
-  [Entities.GRENADE_PROJECTILE]: GrenadeProjectileClient,
-  [Entities.FLAME_PROJECTILE]: FlameProjectileClient,
-  [Entities.WALL]: WallClient,
-  [Entities.PISTOL]: PistolClient,
-  [Entities.PISTOL_AMMO]: PistolAmmoClient,
-  [Entities.SHOTGUN]: ShotgunClient,
-  [Entities.SHOTGUN_AMMO]: ShotgunAmmoClient,
-  [Entities.BOLT_ACTION_RIFLE]: BoltActionRifleClient,
-  [Entities.BOLT_ACTION_AMMO]: BoltActionAmmoClient,
-  [Entities.AK47]: AK47Client,
-  [Entities.CRATE]: CrateClient,
-  [Entities.AK47_AMMO]: AK47AmmoClient,
-  [Entities.GRENADE_LAUNCHER]: GrenadeLauncherClient,
-  [Entities.GRENADE_LAUNCHER_AMMO]: GrenadeLauncherAmmoClient,
-  [Entities.FLAMETHROWER]: FlamethrowerClient,
-  [Entities.FLAMETHROWER_AMMO]: FlamethrowerAmmoClient,
-  [Entities.KNIFE]: KnifeClient,
-  [Entities.BANDAGE]: BandageClient,
-  [Entities.CLOTH]: ClothClient,
-  [Entities.COIN]: CoinClient,
-  [Entities.SPIKES]: SpikesClient,
-  [Entities.FIRE]: FireClient,
-  [Entities.TORCH]: TorchClient,
-  [Entities.MINERS_HAT]: MinersHatClient,
-  "miners_hat": MinersHatClient, // Direct string key for runtime lookup
-  [Entities.GASOLINE]: GasolineClient,
-  [Entities.ZOMBIE]: ZombieClient,
-  [Entities.BIG_ZOMBIE]: BigZombieClient,
-  [Entities.FAST_ZOMBIE]: FastZombieClient,
-  [Entities.EXPLODING_ZOMBIE]: ExplodingZombieClient,
-  [Entities.BAT_ZOMBIE]: BatZombieClient,
-  [Entities.LANDMINE]: LandmineClient,
-  [Entities.GRENADE]: GrenadeClient,
-  [Entities.FIRE_EXTINGUISHER]: FireExtinguisherClient,
-  [Entities.SPITTER_ZOMBIE]: SpitterZombieClient,
-  [Entities.ACID_PROJECTILE]: AcidProjectileClient,
-  [Entities.LEAPING_ZOMBIE]: LeapingZombieClient,
-  [Entities.MERCHANT]: MerchantClient,
-  [Entities.SENTRY_GUN]: SentryGunClient,
-  [Entities.CAR]: CarClient,
-} as const;
+// Register all custom client entity classes at module load time
+registerCustomClientEntities();
 
 export class EntityFactory {
   private assetManager: AssetManager;
@@ -103,11 +64,31 @@ export class EntityFactory {
       throw new Error(`Invalid entity data: ${JSON.stringify(data)}`);
     }
 
-    const EntityClass = (entityMap as any)[data.type];
-    if (!EntityClass) {
-      throw new Error(`Unknown entity type: ${data.type}`);
+    // First check override registry for custom client entity classes
+    const overrideConstructor = clientEntityOverrideRegistry.get(data.type);
+    if (overrideConstructor) {
+      return new overrideConstructor(data, this.assetManager) as ClientEntityBase;
     }
 
-    return new EntityClass(data, this.assetManager);
+    // Fallback to generic entity generation from configs
+    const genericEntity = this.createGenericEntity(data);
+    if (genericEntity) {
+      return genericEntity;
+    }
+
+    throw new Error(`Unknown entity type: ${data.type}`);
+  }
+
+  private createGenericEntity(data: RawEntity): ClientEntityBase | null {
+    // Try to create from item registry
+    const itemConfig = itemRegistry.get(data.type);
+    if (itemConfig) {
+      return new GenericClientEntity(data, this.assetManager, itemConfig);
+    }
+
+    // Could add other registry checks here (weapons, environment, etc.)
+    // For now, we'll focus on items
+
+    return null;
   }
 }

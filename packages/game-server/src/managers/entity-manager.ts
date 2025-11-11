@@ -1,33 +1,3 @@
-import { Zombie } from "@/entities/enemies/zombie";
-import { BigZombie } from "@/entities/enemies/big-zombie";
-import { FastZombie } from "@/entities/enemies/fast-zombie";
-import { Fire } from "@/entities/environment/fire";
-import { Bandage } from "@/entities/items/bandage";
-import { Cloth } from "@/entities/items/cloth";
-import { Coin } from "@/entities/items/coin";
-import { Gasoline } from "@/entities/items/gasoline";
-import { PistolAmmo } from "@/entities/items/pistol-ammo";
-import { ShotgunAmmo } from "@/entities/items/shotgun-ammo";
-import { BoltActionAmmo } from "@/entities/items/bolt-action-ammo";
-import { AK47Ammo } from "@/entities/items/ak47-ammo";
-import { GrenadeLauncherAmmo } from "@/entities/items/grenade-launcher-ammo";
-import { FlamethrowerAmmo } from "@/entities/items/flamethrower-ammo";
-import { Spikes } from "@/entities/items/spikes";
-import { Torch } from "@/entities/items/torch";
-import { MinersHat } from "@/entities/items/miners-hat";
-import { Tree } from "@/entities/items/tree";
-import { Wall } from "@/entities/items/wall";
-import { Player } from "@/entities/player";
-import { Bullet } from "@/entities/projectiles/bullet";
-import { GrenadeProjectile } from "@/entities/projectiles/grenade-projectile";
-import { FlameProjectile } from "@/entities/projectiles/flame-projectile";
-import { Knife } from "@/entities/weapons/knife";
-import { Pistol } from "@/entities/weapons/pistol";
-import { Shotgun } from "@/entities/weapons/shotgun";
-import { BoltActionRifle } from "@/entities/weapons/bolt-action-rifle";
-import { AK47 } from "@/entities/weapons/ak47";
-import { GrenadeLauncher } from "@/entities/weapons/grenade-launcher";
-import { Flamethrower } from "@/entities/weapons/flamethrower";
 import Collidable from "@/extensions/collidable";
 import Destructible from "@/extensions/destructible";
 import Positionable from "@/extensions/positionable";
@@ -36,73 +6,24 @@ import { Entity } from "@/entities/entity";
 import { ItemType, InventoryItem } from "@/util/inventory";
 import { distance } from "@/util/physics";
 import { IEntity } from "@/entities/types";
-import { EntityType } from "@shared/types/entity";
+import { EntityType, ItemState } from "@shared/types/entity";
 import { EntityFinder } from "@/managers/entity-finder";
 import { IGameManagers, IEntityManager, Broadcaster } from "@/managers/types";
-import { Landmine } from "@/entities/items/landmine";
 import { EntityStateTracker } from "./entity-state-tracker";
 import Vector2 from "@/util/vector2";
-import { Grenade } from "@/entities/items/grenade";
-import { FireExtinguisher } from "@/entities/items/fire-extinguisher";
 import Groupable from "@/extensions/groupable";
 import { BaseEnemy } from "@/entities/enemies/base-enemy";
-import { BatZombie } from "@/entities/enemies/bat-zombie";
-import { SpitterZombie } from "@/entities/enemies/spitter-zombie";
-import { ExplodingZombie } from "@/entities/enemies/exploding-zombie";
-import { LeapingZombie } from "@/entities/enemies/leaping-zombie";
-import { Merchant } from "@/entities/environment/merchant";
 import { getConfig } from "@/config";
-import { SentryGun } from "@/entities/items/sentry-gun";
-import { Crate } from "@/entities/items/crate";
-import { Car } from "@/entities/environment/car";
+import { entityOverrideRegistry } from "@/entities/entity-override-registry";
+import { itemRegistry } from "@shared/entities";
+import { GenericItemEntity } from "@/entities/items/generic-item-entity";
+import { registerCustomEntities } from "@/entities/register-custom-entities";
+import { Player } from "@/entities/player";
 
-const entityMap = {
-  [Entities.PLAYER]: Player,
-  [Entities.TREE]: Tree,
-  [Entities.BULLET]: Bullet,
-  [Entities.GRENADE_PROJECTILE]: GrenadeProjectile,
-  [Entities.FLAME_PROJECTILE]: FlameProjectile,
-  [Entities.WALL]: Wall,
-  [Entities.PISTOL]: Pistol,
-  [Entities.PISTOL_AMMO]: PistolAmmo,
-  [Entities.SHOTGUN]: Shotgun,
-  [Entities.SHOTGUN_AMMO]: ShotgunAmmo,
-  [Entities.BOLT_ACTION_RIFLE]: BoltActionRifle,
-  [Entities.BOLT_ACTION_AMMO]: BoltActionAmmo,
-  [Entities.AK47]: AK47,
-  [Entities.AK47_AMMO]: AK47Ammo,
-  [Entities.GRENADE_LAUNCHER]: GrenadeLauncher,
-  [Entities.GRENADE_LAUNCHER_AMMO]: GrenadeLauncherAmmo,
-  [Entities.FLAMETHROWER]: Flamethrower,
-  [Entities.FLAMETHROWER_AMMO]: FlamethrowerAmmo,
-  [Entities.KNIFE]: Knife,
-  [Entities.BANDAGE]: Bandage,
-  [Entities.CLOTH]: Cloth,
-  [Entities.COIN]: Coin,
-  [Entities.SPIKES]: Spikes,
-  [Entities.FIRE]: Fire,
-  [Entities.TORCH]: Torch,
-  [Entities.MINERS_HAT]: MinersHat,
-  [Entities.GASOLINE]: Gasoline,
-  [Entities.ZOMBIE]: Zombie,
-  [Entities.BIG_ZOMBIE]: BigZombie,
-  [Entities.FAST_ZOMBIE]: FastZombie,
-  [Entities.BAT_ZOMBIE]: BatZombie,
-  [Entities.CRATE]: Crate,
-  [Entities.LANDMINE]: Landmine,
-  [Entities.GRENADE]: Grenade,
-  [Entities.FIRE_EXTINGUISHER]: FireExtinguisher,
-  [Entities.SPITTER_ZOMBIE]: SpitterZombie,
-  [Entities.EXPLODING_ZOMBIE]: ExplodingZombie,
-  [Entities.LEAPING_ZOMBIE]: LeapingZombie,
-  [Entities.MERCHANT]: Merchant,
-  [Entities.SENTRY_GUN]: SentryGun,
-  [Entities.CAR]: Car,
-};
+// Register all custom entity classes at module load time
+registerCustomEntities();
 
 const STATIC_ENTITIES: EntityType[] = [Entities.BOUNDARY, Entities.CAR];
-
-type EntityConstructor = new (entityManager: IGameManagers, ...args: any[]) => Entity;
 
 export class EntityManager implements IEntityManager {
   private entities: Entity[];
@@ -111,7 +32,6 @@ export class EntityManager implements IEntityManager {
   private id: number = 0;
   private entityFinder: EntityFinder | null = null;
   private gameManagers?: IGameManagers;
-  private itemConstructors = new Map<ItemType, EntityConstructor>();
   private entityStateTracker: EntityStateTracker;
   private dynamicEntities: Entity[] = [];
 
@@ -119,7 +39,6 @@ export class EntityManager implements IEntityManager {
     this.entities = [];
     this.players = [];
     this.entityStateTracker = new EntityStateTracker();
-    this.registerDefaultItems();
   }
 
   setGameManagers(gameManagers: IGameManagers) {
@@ -133,57 +52,13 @@ export class EntityManager implements IEntityManager {
     return this.gameManagers;
   }
 
-  private registerDefaultItems() {
-    // Register all available item types upfront
-    this.registerItem("gasoline", Gasoline);
-    this.registerItem("bandage", Bandage);
-    this.registerItem("torch", Torch);
-    this.registerItem("miners_hat", MinersHat);
-    this.registerItem("cloth", Cloth);
-    this.registerItem("coin", Coin);
-    this.registerItem("wood", Tree);
-    this.registerItem("wall", Wall);
-    this.registerItem("spikes", Spikes);
-    this.registerItem("crate", Crate);
-    this.registerItem("grenade", Grenade);
-    this.registerItem("fire_extinguisher", FireExtinguisher);
-
-    // Register weapons
-    this.registerItem("knife", Knife);
-    this.registerItem("shotgun", Shotgun);
-    this.registerItem("pistol", Pistol);
-    this.registerItem("bolt_action_rifle", BoltActionRifle);
-    this.registerItem("ak47", AK47);
-    this.registerItem("grenade_launcher", GrenadeLauncher);
-    this.registerItem("flamethrower", Flamethrower);
-
-    // Register ammo
-    this.registerItem("pistol_ammo", PistolAmmo);
-    this.registerItem("shotgun_ammo", ShotgunAmmo);
-    this.registerItem("bolt_action_ammo", BoltActionAmmo);
-    this.registerItem("ak47_ammo", AK47Ammo);
-    this.registerItem("grenade_launcher_ammo", GrenadeLauncherAmmo);
-    this.registerItem("flamethrower_ammo", FlamethrowerAmmo);
-
-    // Register landmine
-    this.registerItem("landmine", Landmine);
-
-    // Register sentry gun
-    this.registerItem("sentry_gun", SentryGun);
-  }
-
-  public registerItem(type: ItemType, constructor: any): void {
-    if (!this.itemConstructors.has(type)) {
-      this.itemConstructors.set(type, constructor);
-    }
-  }
-
   public getEntityById(id: string): Entity | null {
     return this.entities.find((entity) => entity.getId() === id) ?? null;
   }
 
   public hasRegisteredItem(type: ItemType): boolean {
-    return this.itemConstructors.has(type);
+    // Check if entity can be created (either via override registry or generic)
+    return entityOverrideRegistry.has(type) || itemRegistry.has(type);
   }
 
   public getDynamicEntities(): Entity[] {
@@ -191,12 +66,44 @@ export class EntityManager implements IEntityManager {
   }
 
   public createEntityFromItem(item: InventoryItem): Entity | null {
-    const constructor = this.itemConstructors.get(item.itemType);
-    if (!constructor) {
-      return null;
+    const entityType = item.itemType as EntityType;
+
+    // First check override registry for custom entity classes
+    const overrideConstructor = entityOverrideRegistry.get(entityType);
+    if (overrideConstructor) {
+      // Custom entities may accept itemState as second parameter
+      // Try with state first, fallback to without if constructor doesn't accept it
+      try {
+        return new overrideConstructor(this.getGameManagers(), item.state);
+      } catch (e) {
+        // If constructor doesn't accept state, try without
+        return new overrideConstructor(this.getGameManagers());
+      }
     }
 
-    return new (constructor as EntityConstructor)(this.getGameManagers(), item.state);
+    // Fallback to generic entity generation from configs
+    const genericEntity = this.createGenericEntityFromItem(entityType, item.state);
+    if (genericEntity) {
+      return genericEntity;
+    }
+
+    console.warn(`createEntityFromItem failed - Unknown item type: ${item.itemType}`);
+    return null;
+  }
+
+  private createGenericEntityFromItem(entityType: EntityType, state?: ItemState): Entity | null {
+    // Try to create from item registry
+    const itemConfig = itemRegistry.get(entityType);
+    if (itemConfig) {
+      const entity = new GenericItemEntity(this.getGameManagers(), entityType, itemConfig);
+      // Apply state if provided (e.g., health for destructible items)
+      if (state?.health !== undefined && entity.hasExt(Destructible)) {
+        entity.getExt(Destructible).setHealth(state.health);
+      }
+      return entity;
+    }
+
+    return null;
   }
 
   setMapSize(width: number, height: number) {
@@ -535,13 +442,33 @@ export class EntityManager implements IEntityManager {
   }
 
   createEntity(entityType: EntityType): IEntity | null {
-    const entityConstructor = (entityMap as any)[entityType];
-    if (entityConstructor) {
-      return new entityConstructor(this.getGameManagers());
-    } else {
-      console.warn(`createEntity failed - Unknown entity type: ${entityType}`);
-      return null;
+    // First check override registry for custom entity classes
+    const overrideConstructor = entityOverrideRegistry.get(entityType);
+    if (overrideConstructor) {
+      return new overrideConstructor(this.getGameManagers());
     }
+
+    // Fallback to generic entity generation from configs
+    const genericEntity = this.createGenericEntity(entityType);
+    if (genericEntity) {
+      return genericEntity;
+    }
+
+    console.warn(`createEntity failed - Unknown entity type: ${entityType}`);
+    return null;
+  }
+
+  private createGenericEntity(entityType: EntityType): IEntity | null {
+    // Try to create from item registry
+    const itemConfig = itemRegistry.get(entityType);
+    if (itemConfig) {
+      return new GenericItemEntity(this.getGameManagers(), entityType, itemConfig);
+    }
+
+    // Could add other registry checks here (weapons, environment, etc.)
+    // For now, we'll focus on items
+
+    return null;
   }
 
   public getEntityStateTracker(): EntityStateTracker {

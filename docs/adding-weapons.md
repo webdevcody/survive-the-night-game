@@ -1,153 +1,177 @@
 # Adding Weapons to Survive the Night
 
-This guide documents the complete process for adding a new weapon to the game. This process was documented while adding the Bolt Action Rifle.
+This guide documents the complete process for adding a new weapon to the game using the simplified, data-driven approach.
 
 ## Overview
 
-Adding a weapon requires changes across multiple files in both the shared, server, and client packages. The process involves:
+Adding a weapon is now much simpler! The system automatically handles most of the registration. You only need to:
 
-1. Defining weapon types and configurations
-2. Creating server-side entity classes
-3. Creating client-side rendering classes
-4. Registering entities in both server and client
-5. Creating associated ammunition (if applicable)
+1. Add weapon configuration (required)
+2. Create server/client classes (only if custom behavior needed)
+3. Register custom classes (only if custom behavior needed)
+4. Add sound configuration
 
-## File Changes Required
+**For simple weapons:** Just add the config and you're done! The system auto-generates everything else.
 
-### 1. Shared Configuration Files (game-shared package)
+## Quick Start: Simple Weapon (No Custom Behavior)
 
-#### A. Add Weapon Type
+If your weapon just shoots bullets with standard behavior, you only need:
 
-**File:** `packages/game-shared/src/types/weapons.ts`
-
-Add your weapon to the `WEAPON_TYPES` constant:
-
-```typescript
-export const WEAPON_TYPES = {
-  KNIFE: "knife",
-  SHOTGUN: "shotgun",
-  PISTOL: "pistol",
-  GRENADE: "grenade",
-  BOLT_ACTION_RIFLE: "bolt_action_rifle", // Add your weapon here
-} as const;
-```
-
-**Important:** The weapon type ID you use here will also be used for the sound file name by default.
-
-#### B. Add Weapon Configuration
+### 1. Add Weapon Configuration
 
 **File:** `packages/game-shared/src/entities/weapon-configs.ts`
 
-Add weapon stats, sprite configuration, and sound:
-
 ```typescript
-[WEAPON_TYPES.BOLT_ACTION_RIFLE]: {
-  id: WEAPON_TYPES.BOLT_ACTION_RIFLE,
-  stats: {
-    cooldown: 2.0,        // Time between shots in seconds
-    damage: 3,            // Optional: damage per hit (for melee)
-    spreadAngle: 8,       // Optional: for shotgun-style spread
-    pushDistance: 12,     // Optional: for knockback
-  },
-  assets: {
-    assetPrefix: "bolt_action_rifle",
-    spritePositions: {
-      right: { x: 0, y: 64 },   // Sprite position for right-facing
-      down: { x: 17, y: 64 },    // Sprite position for down-facing
-      up: { x: 34, y: 64 },      // Sprite position for up-facing
-      // Left is automatically right flipped
+export const WEAPON_CONFIGS: Record<string, WeaponConfig> = {
+  // ... existing weapons ...
+  my_weapon: {
+    id: "my_weapon",
+    stats: {
+      cooldown: 0.5,
+      // Optional: damage, spreadAngle, pushDistance
     },
-    sheet: "items",               // Which sprite sheet to use
+    assets: {
+      assetPrefix: "my_weapon",
+      spritePositions: {
+        right: { x: 0, y: 64 },
+        down: { x: 17, y: 64 },
+        up: { x: 34, y: 64 },
+      },
+      sheet: "items", // or "default"
+    },
+    sound: "my_weapon",
+    spawn: {
+      enabled: true,
+      chance: 0.002, // Optional: spawn chance on map
+    },
   },
-  sound: "bolt_action_rifle",     // Sound file name (without .mp3) to play when fired
-},
+};
 ```
 
-#### C. Add Entity Constants
-
-**File:** `packages/game-shared/src/constants/index.ts`
-
-Add your weapon and ammo to the `Entities` object:
-
-```typescript
-export const Entities = {
-  // ... existing entities ...
-  PISTOL: "pistol",
-  SHOTGUN: "shotgun",
-  KNIFE: "knife",
-  BOLT_ACTION_RIFLE: "bolt_action_rifle", // Add weapon
-  PISTOL_AMMO: "pistol_ammo",
-  SHOTGUN_AMMO: "shotgun_ammo",
-  BOLT_ACTION_AMMO: "bolt_action_ammo", // Add ammo
-  // ... rest of entities ...
-} as const;
-```
-
-#### D. Add Ammo Configuration (if applicable)
-
-**File:** `packages/game-shared/src/entities/item-configs.ts`
-
-Add ammo item configuration:
-
-```typescript
-bolt_action_ammo: {
-  id: "bolt_action_ammo",
-  category: "ammo",
-  assets: {
-    assetKey: "bolt_action_ammo",
-    x: 16,                    // Sprite X position
-    y: 64,                    // Sprite Y position
-    sheet: "items",           // Which sprite sheet
-  },
-},
-```
-
-#### E. Add Sound File and Configuration
+### 2. Add Sound Configuration
 
 **File:** `packages/game-client/src/managers/sound-manager.ts`
-
-Add your weapon sound to the `SOUND_TYPES_TO_MP3` constant:
 
 ```typescript
 export const SOUND_TYPES_TO_MP3 = {
   // ... existing sounds ...
-  BOLT_ACTION_RIFLE: "bolt_action_rifle", // Add your weapon sound
-  AK47: "ak47",
+  MY_WEAPON: "my_weapon",
 } as const;
 ```
 
-**Sound File Location:** Place your sound file at `packages/website/public/sounds/[weapon-name].mp3`
+**Sound File:** Place `my_weapon.mp3` in `packages/website/public/sounds/`
 
-For example: `packages/website/public/sounds/bolt_action_rifle.mp3`
+**That's it!** The weapon will:
+- ✅ Auto-appear in Entities constant
+- ✅ Auto-generate server entity (if no custom class)
+- ✅ Auto-generate client entity (if no custom class)
+- ✅ Work in spawn system (if spawn.enabled = true)
+- ✅ Work in merchant system (if merchant.enabled = true)
+- ✅ Work in recipe system (if recipe.enabled = true)
 
-**Note:** The sound configuration in `weapon-configs.ts` (step B) determines which sound file plays when the weapon is fired. The sound system will automatically play the configured sound - no manual event handling needed!
+## Complete Guide: Custom Weapon Behavior
+
+If your weapon needs custom logic (custom damage, spread fire, special effects), follow these steps:
+
+### 1. Shared Configuration Files (game-shared package)
+
+#### A. Add Weapon Configuration
+
+**File:** `packages/game-shared/src/entities/weapon-configs.ts`
+
+```typescript
+// Use string literals directly (not WEAPON_TYPES) to avoid circular dependencies
+export const WEAPON_CONFIGS: Record<string, WeaponConfig> = {
+  // ... existing weapons ...
+  my_weapon: {
+    id: "my_weapon",
+    stats: {
+      cooldown: 2.0,        // Time between shots in seconds
+      damage: 3,            // Optional: damage per hit (for melee)
+      spreadAngle: 8,       // Optional: for shotgun-style spread
+      pushDistance: 12,     // Optional: for knockback
+    },
+    assets: {
+      assetPrefix: "my_weapon",
+      spritePositions: {
+        right: { x: 0, y: 64 },   // Sprite position for right-facing
+        down: { x: 32, y: 64 },   // Sprite position for down-facing
+        up: { x: 16, y: 64 },     // Sprite position for up-facing
+        // Left is automatically right flipped
+      },
+      sheet: "items",             // Which sprite sheet to use
+    },
+    sound: "my_weapon",           // Sound file name (without .mp3)
+    spawn: {
+      enabled: true,               // Optional: enable random spawning
+      chance: 0.002,               // Spawn chance per tile (0.0 to 1.0)
+    },
+    merchant: {
+      enabled: true,               // Optional: enable merchant sales
+      price: 100,                  // Price in coins
+    },
+  },
+};
+```
+
+**Important Notes:**
+- Use string literals (`"my_weapon"`) as keys, NOT `WEAPON_TYPES.MY_WEAPON` (avoids circular dependency)
+- The `assetPrefix` should match the weapon ID
+- Assets are auto-generated from this config (no manual asset registration needed)
+
+#### B. Add Ammo Configuration (if applicable)
+
+**File:** `packages/game-shared/src/entities/item-configs.ts`
+
+```typescript
+export const ITEM_CONFIGS: Record<string, ItemConfig> = {
+  // ... existing items ...
+  my_weapon_ammo: {
+    id: "my_weapon_ammo",
+    category: "ammo",
+    assets: {
+      assetKey: "my_weapon_ammo",
+      x: 16,                    // Sprite X position
+      y: 64,                    // Sprite Y position
+      sheet: "items",          // Which sprite sheet
+    },
+    spawn: {
+      enabled: true,
+      chance: 0.005,
+    },
+    merchant: {
+      enabled: true,
+      price: 10,
+    },
+  },
+};
+```
+
+**Note:** Ammo is automatically registered - no manual entity registration needed unless you need custom behavior.
 
 ### 2. Server-Side Implementation (game-server package)
 
-#### A. Create Weapon Class
+#### A. Create Weapon Class (only if custom behavior needed)
 
-**File:** `packages/game-server/src/entities/weapons/bolt-action-rifle.ts`
-
-Create the weapon entity class:
+**File:** `packages/game-server/src/entities/weapons/my-weapon.ts`
 
 ```typescript
 import Inventory from "@/extensions/inventory";
 import { IGameManagers } from "@/managers/types";
 import { Bullet } from "@/entities/projectiles/bullet";
 import { Weapon } from "@/entities/weapons/weapon";
-import { Direction } from "../../../../game-shared/src/util/direction";
-import { WEAPON_TYPES } from "@shared/types/weapons";
+import { Direction } from "@shared/util/direction";
 import { GunEmptyEvent } from "@shared/events/server-sent/gun-empty-event";
 import { PlayerAttackedEvent } from "@/events/server-sent/player-attacked-event";
 import Vector2 from "@/util/vector2";
 import { weaponRegistry } from "@shared/entities";
 import { consumeAmmo } from "./helpers";
 
-export class BoltActionRifle extends Weapon {
-  private config = weaponRegistry.get(WEAPON_TYPES.BOLT_ACTION_RIFLE)!;
+export class MyWeapon extends Weapon {
+  private config = weaponRegistry.get("my_weapon")!;
 
   constructor(gameManagers: IGameManagers) {
-    super(gameManagers, WEAPON_TYPES.BOLT_ACTION_RIFLE);
+    super(gameManagers, "my_weapon");
   }
 
   public getCooldown(): number {
@@ -161,15 +185,15 @@ export class BoltActionRifle extends Weapon {
     const inventory = player.getExt(Inventory);
 
     // Check if player has ammo (for guns)
-    if (!consumeAmmo(inventory, "bolt_action_ammo")) {
+    if (!consumeAmmo(inventory, "my_weapon_ammo")) {
       this.getEntityManager()
         .getBroadcaster()
         .broadcastEvent(new GunEmptyEvent(playerId));
       return;
     }
 
-    // Create bullet with custom damage (default is 1)
-    const bullet = new Bullet(this.getGameManagers(), 3);
+    // Create bullet with custom damage
+    const bullet = new Bullet(this.getGameManagers(), this.config.stats.damage || 1);
     bullet.setPosition(position);
     bullet.setDirection(facing);
     bullet.setShooterId(playerId);
@@ -181,127 +205,81 @@ export class BoltActionRifle extends Weapon {
       .broadcastEvent(
         new PlayerAttackedEvent({
           playerId,
-          weaponKey: WEAPON_TYPES.BOLT_ACTION_RIFLE,
+          weaponKey: "my_weapon",
         })
       );
   }
 }
 ```
 
-**Note:** For shotgun-style weapons, use `bullet.setDirectionWithOffset()` with the spread angle from config.
+**Note:** For shotgun-style weapons with spread, create multiple bullets with offset angles using `bullet.setDirectionWithOffset()`.
 
-#### B. Create Ammo Class (if applicable)
+#### B. Create Ammo Class (only if custom behavior needed)
 
-**File:** `packages/game-server/src/entities/items/bolt-action-ammo.ts`
+**File:** `packages/game-server/src/entities/items/my-weapon-ammo.ts`
 
 ```typescript
 import { IGameManagers } from "@/managers/types";
-import { Entities } from "@/constants";
 import { StackableItem } from "@/entities/items/stackable-item";
 
-export class BoltActionAmmo extends StackableItem {
+export class MyWeaponAmmo extends StackableItem {
   public static readonly DEFAULT_AMMO_COUNT = 10;
 
   constructor(gameManagers: IGameManagers) {
     super(
       gameManagers,
-      Entities.BOLT_ACTION_AMMO,
-      "bolt_action_ammo", // Item type for inventory
-      BoltActionAmmo.DEFAULT_AMMO_COUNT,
-      "bolt action ammo" // Display name
+      "my_weapon_ammo", // Entity type
+      "my_weapon_ammo", // Item type for inventory
+      MyWeaponAmmo.DEFAULT_AMMO_COUNT,
+      "my weapon ammo" // Display name
     );
   }
 
   protected getDefaultCount(): number {
-    return BoltActionAmmo.DEFAULT_AMMO_COUNT;
+    return MyWeaponAmmo.DEFAULT_AMMO_COUNT;
   }
 }
 ```
 
-#### C. Register in Entity Manager
+**Note:** If you don't need custom behavior, skip this step - the generic item entity will handle it automatically.
 
-**File:** `packages/game-server/src/managers/entity-manager.ts`
+#### C. Register Custom Classes
 
-1. Add imports at the top:
-
-```typescript
-import { BoltActionRifle } from "@/entities/weapons/bolt-action-rifle";
-import { BoltActionAmmo } from "@/entities/items/bolt-action-ammo";
-```
-
-2. Add to `entityMap`:
+**File:** `packages/game-server/src/entities/register-custom-entities.ts`
 
 ```typescript
-const entityMap = {
-  // ... existing entities ...
-  [Entities.BOLT_ACTION_RIFLE]: BoltActionRifle,
-  [Entities.BOLT_ACTION_AMMO]: BoltActionAmmo,
-  // ... rest of entities ...
-};
-```
+import { MyWeapon } from "@/entities/weapons/my-weapon";
+import { MyWeaponAmmo } from "@/entities/items/my-weapon-ammo";
 
-3. Register in `registerDefaultItems()` method:
-
-```typescript
-private registerDefaultItems() {
+export function registerCustomEntities(): void {
   // ... existing registrations ...
-
-  // Register weapons
-  this.registerItem("bolt_action_rifle", BoltActionRifle);
-
-  // Register ammo
-  this.registerItem("bolt_action_ammo", BoltActionAmmo);
+  
+  // Weapons
+  entityOverrideRegistry.register("my_weapon", MyWeapon);
+  
+  // Ammo (only if custom class exists)
+  entityOverrideRegistry.register("my_weapon_ammo", MyWeaponAmmo);
 }
 ```
+
+**Important:** Use string literals (`"my_weapon"`), NOT `Entities.MY_WEAPON` to avoid circular dependencies.
 
 ### 3. Client-Side Implementation (game-client package)
 
-#### A. Create Weapon Renderer
+#### A. Create Weapon Renderer (only if custom rendering needed)
 
-**File:** `packages/game-client/src/entities/weapons/bolt-action-rifle.ts`
+**File:** `packages/game-client/src/entities/weapons/my-weapon.ts`
 
 ```typescript
 import { RawEntity } from "@shared/types/entity";
 import { GameState } from "@/state";
 import { Renderable } from "@/entities/util";
 import { ClientEntity } from "@/entities/client-entity";
-import { ImageLoader } from "@/managers/asset";
-import { ClientPositionable } from "@/extensions";
-import { Z_INDEX } from "@shared/map";
-
-export class BoltActionRifleClient extends ClientEntity implements Renderable {
-  constructor(data: RawEntity, imageLoader: ImageLoader) {
-    super(data, imageLoader);
-  }
-
-  public getZIndex(): number {
-    return Z_INDEX.ITEMS;
-  }
-
-  render(ctx: CanvasRenderingContext2D, gameState: GameState): void {
-    super.render(ctx, gameState);
-    const image = this.imageLoader.get("bolt_action_rifle");
-    const positionable = this.getExt(ClientPositionable);
-    const position = positionable.getPosition();
-    ctx.drawImage(image, position.x, position.y);
-  }
-}
-```
-
-#### B. Create Ammo Renderer
-
-**File:** `packages/game-client/src/entities/weapons/bolt-action-ammo.ts`
-
-```typescript
 import { AssetManager } from "@/managers/asset";
-import { GameState } from "@/state";
-import { Renderable } from "@/entities/util";
-import { Z_INDEX } from "@shared/map";
-import { ClientEntity } from "@/entities/client-entity";
-import { RawEntity } from "@shared/types/entity";
 import { ClientPositionable } from "@/extensions";
+import { Z_INDEX } from "@shared/map";
 
-export class BoltActionAmmoClient extends ClientEntity implements Renderable {
+export class MyWeaponClient extends ClientEntity implements Renderable {
   constructor(data: RawEntity, assetManager: AssetManager) {
     super(data, assetManager);
   }
@@ -312,82 +290,142 @@ export class BoltActionAmmoClient extends ClientEntity implements Renderable {
 
   render(ctx: CanvasRenderingContext2D, gameState: GameState): void {
     super.render(ctx, gameState);
-
+    const image = this.imageLoader.get("my_weapon");
     const positionable = this.getExt(ClientPositionable);
     const position = positionable.getPosition();
-    const image = this.imageLoader.get("bolt_action_ammo");
     ctx.drawImage(image, position.x, position.y);
   }
 }
 ```
 
-#### C. Register in Entity Factory
+**Note:** If you don't need custom rendering, skip this step - the generic client entity will handle it automatically.
 
-**File:** `packages/game-client/src/entities/entity-factory.ts`
+#### B. Create Ammo Renderer (only if custom rendering needed)
 
-1. Add imports:
+**File:** `packages/game-client/src/entities/weapons/my-weapon-ammo.ts`
 
 ```typescript
-import { BoltActionRifleClient } from "@/entities/weapons/bolt-action-rifle";
-import { BoltActionAmmoClient } from "@/entities/weapons/bolt-action-ammo";
+import { RawEntity } from "@shared/types/entity";
+import { GameState } from "@/state";
+import { Renderable } from "@/entities/util";
+import { ClientEntity } from "@/entities/client-entity";
+import { AssetManager } from "@/managers/asset";
+import { ClientPositionable } from "@/extensions";
+import { Z_INDEX } from "@shared/map";
+
+export class MyWeaponAmmoClient extends ClientEntity implements Renderable {
+  constructor(data: RawEntity, assetManager: AssetManager) {
+    super(data, assetManager);
+  }
+
+  public getZIndex(): number {
+    return Z_INDEX.ITEMS;
+  }
+
+  render(ctx: CanvasRenderingContext2D, gameState: GameState): void {
+    super.render(ctx, gameState);
+    const positionable = this.getExt(ClientPositionable);
+    const position = positionable.getPosition();
+    const image = this.imageLoader.get("my_weapon_ammo");
+    ctx.drawImage(image, position.x, position.y);
+  }
+}
 ```
 
-2. Add to `entityMap`:
+**Note:** If you don't need custom rendering, skip this step - the generic client entity will handle it automatically.
+
+#### C. Register Custom Classes
+
+**File:** `packages/game-client/src/entities/register-custom-entities.ts`
 
 ```typescript
-export const entityMap = {
-  // ... existing entities ...
-  [Entities.BOLT_ACTION_RIFLE]: BoltActionRifleClient,
-  [Entities.BOLT_ACTION_AMMO]: BoltActionAmmoClient,
-  // ... rest of entities ...
+import { MyWeaponClient } from "@/entities/weapons/my-weapon";
+import { MyWeaponAmmoClient } from "@/entities/weapons/my-weapon-ammo";
+
+export function registerCustomClientEntities(): void {
+  // ... existing registrations ...
+  
+  // Weapons
+  clientEntityOverrideRegistry.register("my_weapon", MyWeaponClient);
+  
+  // Ammo (only if custom class exists)
+  clientEntityOverrideRegistry.register("my_weapon_ammo", MyWeaponAmmoClient);
+}
+```
+
+**Important:** Use string literals (`"my_weapon"`), NOT `Entities.MY_WEAPON` to avoid circular dependencies.
+
+#### D. Add Sound Configuration
+
+**File:** `packages/game-client/src/managers/sound-manager.ts`
+
+```typescript
+export const SOUND_TYPES_TO_MP3 = {
+  // ... existing sounds ...
+  MY_WEAPON: "my_weapon",
 } as const;
 ```
 
+**Sound File:** Place `my_weapon.mp3` in `packages/website/public/sounds/`
+
 ## Complete File Checklist
 
-When adding a new weapon, you need to modify these files:
+### Simple Weapon (No Custom Behavior)
 
-### Shared Package
+- [x] `packages/game-shared/src/entities/weapon-configs.ts` - Add weapon config
+- [x] `packages/game-client/src/managers/sound-manager.ts` - Add sound type
+- [x] `packages/website/public/sounds/[weapon-name].mp3` - Add sound file
+- [x] `packages/game-shared/src/entities/item-configs.ts` - Add ammo config (if applicable)
 
-- [ ] `packages/game-shared/src/types/weapons.ts` - Add weapon type
-- [ ] `packages/game-shared/src/entities/weapon-configs.ts` - Add weapon config (including sound)
-- [ ] `packages/game-shared/src/constants/index.ts` - Add entity constants
-- [ ] `packages/game-shared/src/entities/item-configs.ts` - Add ammo config (if applicable)
+**That's it!** Everything else is auto-generated.
 
-### Server Package
+### Custom Weapon (With Custom Behavior)
 
-- [ ] `packages/game-server/src/entities/weapons/[weapon-name].ts` - Create weapon class
-- [ ] `packages/game-server/src/entities/items/[ammo-name].ts` - Create ammo class (if applicable)
-- [ ] `packages/game-server/src/managers/entity-manager.ts` - Register entities
-- [ ] `packages/game-server/src/entities/projectiles/bullet.ts` - Modify if custom damage needed
+#### Shared Package
+- [x] `packages/game-shared/src/entities/weapon-configs.ts` - Add weapon config
+- [x] `packages/game-shared/src/entities/item-configs.ts` - Add ammo config (if applicable)
 
-### Client Package
+#### Server Package
+- [x] `packages/game-server/src/entities/weapons/[weapon-name].ts` - Create weapon class
+- [x] `packages/game-server/src/entities/items/[ammo-name].ts` - Create ammo class (if custom behavior needed)
+- [x] `packages/game-server/src/entities/register-custom-entities.ts` - Register custom classes
 
-- [ ] `packages/game-client/src/entities/weapons/[weapon-name].ts` - Create weapon renderer
-- [ ] `packages/game-client/src/entities/weapons/[ammo-name].ts` - Create ammo renderer (if applicable)
-- [ ] `packages/game-client/src/entities/entity-factory.ts` - Register entities
-- [ ] `packages/game-client/src/managers/sound-manager.ts` - Add sound type to SOUND_TYPES_TO_MP3
-- [ ] `packages/website/public/sounds/[weapon-name].mp3` - Add sound file
+#### Client Package
+- [x] `packages/game-client/src/entities/weapons/[weapon-name].ts` - Create weapon renderer (if custom rendering needed)
+- [x] `packages/game-client/src/entities/weapons/[ammo-name].ts` - Create ammo renderer (if custom rendering needed)
+- [x] `packages/game-client/src/entities/register-custom-entities.ts` - Register custom classes
+- [x] `packages/game-client/src/managers/sound-manager.ts` - Add sound type
+- [x] `packages/website/public/sounds/[weapon-name].mp3` - Add sound file
+
+## What's Automatic
+
+The following are **automatically handled** - you don't need to manually update them:
+
+- ✅ **Entities constant** - Auto-generated from configs
+- ✅ **Server entity creation** - Auto-generated from configs (unless custom class registered)
+- ✅ **Client entity creation** - Auto-generated from configs (unless custom class registered)
+- ✅ **Asset loading** - Auto-generated from configs
+- ✅ **Spawn system** - Reads from `spawn.enabled` in config
+- ✅ **Merchant system** - Reads from `merchant.enabled` in config
+- ✅ **Recipe system** - Reads from `recipe.enabled` in config
 
 ## Testing
 
 After adding all files:
 
 1. Build the server to check for TypeScript errors:
-
    ```bash
    npm run build:server
    ```
 
 2. Start the development server:
-
    ```bash
    npm run dev
    ```
 
 3. Spawn the weapon and ammo in-game using the entity IDs:
-   - Weapon: `bolt_action_rifle`
-   - Ammo: `bolt_action_ammo`
+   - Weapon: `my_weapon`
+   - Ammo: `my_weapon_ammo`
 
 4. Test weapon functionality:
    - Pick up the weapon and ammo
@@ -396,6 +434,8 @@ After adding all files:
      - Projectiles/damage work as expected
      - Cooldown is appropriate
      - Visual effects appear (if applicable)
+   - Check inventory rendering
+   - Check held weapon rendering
 
 ## Weapon Types Reference
 
@@ -418,53 +458,70 @@ After adding all files:
 
 **Custom Damage:**
 The `Bullet` class accepts an optional damage parameter:
-
 ```typescript
 const bullet = new Bullet(this.getGameManagers(), 3); // 3 damage
 ```
-
 Default damage is 1 if not specified.
 
 **Spread Fire (Shotgun-style):**
 For weapons with `spreadAngle` stat, create multiple bullets with offset angles:
-
 ```typescript
 bullet.setDirectionWithOffset(facing, offsetAngle);
 ```
 
 **Sprite Sheets:**
-
 - Weapons typically use the `"default"` or `"items"` sprite sheet
 - Ammo typically uses the `"items"` sprite sheet
 - Specify in the asset configuration
 
 **Weapon Sounds:**
-
-The sound system is now fully automated through the weapon config:
-
-1. Add a `sound` property to your weapon config (step 1B above)
+The sound system is fully automated through the weapon config:
+1. Add a `sound` property to your weapon config
 2. Add the sound type to `SOUND_TYPES_TO_MP3` in sound-manager.ts
 3. Place the `.mp3` file in `packages/website/public/sounds/`
 4. The sound will automatically play when the weapon is fired
 
-Example:
-```typescript
-// In weapon-configs.ts
-sound: "bolt_action_rifle"  // References bolt_action_rifle.mp3
+## Example: Simple Weapon Summary
 
-// In sound-manager.ts
-BOLT_ACTION_RIFLE: "bolt_action_rifle"
-```
+For a weapon with standard behavior, you only need to modify **3 files**:
+1. `weapon-configs.ts` - Add weapon config
+2. `sound-manager.ts` - Add sound type
+3. Add sound file to `public/sounds/`
 
-No need to manually handle sound events - the client event listener automatically looks up and plays the configured sound!
+Everything else (entities, assets, registration) is automatic!
 
-## Example: Bolt Action Rifle Summary
+## Example: Custom Weapon Summary
 
-The Bolt Action Rifle implementation demonstrates:
+For a weapon with custom behavior, you need to modify **8-10 files**:
+1. `weapon-configs.ts` - Add weapon config
+2. `item-configs.ts` - Add ammo config (if applicable)
+3. Server weapon class - Create custom weapon logic
+4. Server ammo class - Create custom ammo logic (if needed)
+5. Client weapon class - Create custom rendering (if needed)
+6. Client ammo class - Create custom rendering (if needed)
+7. `register-custom-entities.ts` (server) - Register custom classes
+8. `register-custom-entities.ts` (client) - Register custom classes
+9. `sound-manager.ts` - Add sound type
+10. Add sound file to `public/sounds/`
 
-- **Fire Rate:** 2 second cooldown (0.5 shots per second)
-- **Damage:** 3 damage per bullet (3x pistol damage)
-- **Ammo:** Uses bolt_action_ammo (10 rounds per pickup)
-- **Sprite Location:** (0, 64) on items sheet for weapon, (16, 64) for ammo
+## Troubleshooting
 
-Total files modified: **11 files** (3 shared, 4 server, 4 client)
+### Weapon doesn't appear in game
+- Check that weapon config uses string literals as keys (not WEAPON_TYPES)
+- Verify `id` matches the key in WEAPON_CONFIGS
+- Check browser console for asset loading errors
+
+### Weapon assets not loading
+- Verify `assetPrefix` matches weapon ID
+- Check that sprite positions are correct
+- Ensure sprite sheet exists and is loaded
+
+### Sound doesn't play
+- Verify sound property in weapon config matches sound file name
+- Check that sound type is added to SOUND_TYPES_TO_MP3
+- Ensure sound file exists in `public/sounds/`
+
+### Custom class not being used
+- Verify registration in `register-custom-entities.ts`
+- Check that entity type string matches exactly
+- Ensure custom class extends correct base class
