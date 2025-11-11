@@ -1,6 +1,7 @@
 import Vector2 from "@shared/util/vector2";
 import { getConfig } from "@shared/config";
 import { ItemType } from "@shared/util/inventory";
+import { itemRegistry } from "@shared/entities/item-registry";
 import { CameraManager } from "./camera";
 import { MapManager } from "./map";
 import { Socket } from "socket.io-client";
@@ -168,18 +169,8 @@ export class PlacementManager {
     const item = inventory[selectedSlot];
     if (!item) return null;
 
-    // Wall, sentry gun, torch, spikes, landmine, gasoline, and bear_trap items are placeable
-    // TODO: we shouldn't have to manually update this every single time we add a new
-    // placeable item. instead this should be configured in the item-config.
-    if (
-      item.itemType === "wall" ||
-      item.itemType === "sentry_gun" ||
-      item.itemType === "torch" ||
-      item.itemType === "spikes" ||
-      item.itemType === "landmine" ||
-      item.itemType === "gasoline" ||
-      item.itemType === "bear_trap"
-    ) {
+    const itemConfig = itemRegistry.get(item.itemType);
+    if (itemConfig?.placeable) {
       return item.itemType;
     }
 

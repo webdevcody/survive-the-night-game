@@ -8,6 +8,7 @@ import { AdminCommand } from "@shared/commands/commands";
 import { Input } from "../../../game-shared/src/util/input";
 import { RecipeType } from "../../../game-shared/src/util/recipes";
 import { ItemType, isResourceItem, ResourceType } from "@shared/util/inventory";
+import { itemRegistry } from "@shared/entities/item-registry";
 import Vector2 from "@/util/vector2";
 import { createServer } from "http";
 import { Server, Socket } from "socket.io";
@@ -310,19 +311,10 @@ export class ServerSocketManager implements Broadcaster {
     const player = this.players.get(socket.id);
     if (!player) return;
 
-    // Only allow wall, sentry gun, torch, spikes, landmine, gasoline, and bear_trap placement
-    // TODO: we shouldn't have to manually update this every single time we add a new
-    // placeable item. instead this should be configured in the item-config.
-    if (
-      data.itemType !== "wall" &&
-      data.itemType !== "sentry_gun" &&
-      data.itemType !== "torch" &&
-      data.itemType !== "spikes" &&
-      data.itemType !== "landmine" &&
-      data.itemType !== "gasoline" &&
-      data.itemType !== "bear_trap"
-    )
+    const itemConfig = itemRegistry.get(data.itemType);
+    if (!itemConfig?.placeable) {
       return;
+    }
 
     // Validate placement distance
     const playerPos = player.getExt(Positionable).getCenterPosition();

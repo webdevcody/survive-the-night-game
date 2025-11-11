@@ -20,4 +20,3 @@ export default class Snared implements Extension {
     };
   }
 }
-

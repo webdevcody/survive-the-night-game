@@ -52,9 +52,10 @@ export class IdleMovementStrategy implements MovementStrategy {
     }
 
     // Once activated, check for car
-    const carEntities = zombie.getEntityManager().getEntities().filter(
-      (entity) => entity.getType() === Entities.CAR
-    );
+    const carEntities = zombie
+      .getEntityManager()
+      .getEntities()
+      .filter((entity) => entity.getType() === Entities.CAR);
     let carPos: Vector2 | null = null;
     let distanceToCar = Infinity;
 
@@ -129,9 +130,10 @@ export class MeleeMovementStrategy implements MovementStrategy {
     let targetPos: Vector2 | null = null;
 
     // Check for car first
-    const carEntities = zombie.getEntityManager().getEntities().filter(
-      (entity) => entity.getType() === Entities.CAR
-    );
+    const carEntities = zombie
+      .getEntityManager()
+      .getEntities()
+      .filter((entity) => entity.getType() === Entities.CAR);
     let carPos: Vector2 | null = null;
     let distanceToCar = Infinity;
 

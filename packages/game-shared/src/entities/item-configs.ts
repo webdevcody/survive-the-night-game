@@ -128,6 +128,7 @@ export const ITEM_CONFIGS: Record<string, ItemConfig> = {
   landmine: {
     id: "landmine",
     category: "placeable",
+    placeable: true,
     assets: {
       assetKey: "landmine",
       x: 16,
@@ -178,6 +179,7 @@ export const ITEM_CONFIGS: Record<string, ItemConfig> = {
   torch: {
     id: "torch",
     category: "placeable",
+    placeable: true,
     assets: {
       assetKey: "torch",
       x: 68,
@@ -199,6 +201,7 @@ export const ITEM_CONFIGS: Record<string, ItemConfig> = {
   gasoline: {
     id: "gasoline",
     category: "placeable",
+    placeable: true,
     assets: {
       assetKey: "gasoline",
       x: 255,
@@ -252,6 +255,7 @@ export const ITEM_CONFIGS: Record<string, ItemConfig> = {
   spikes: {
     id: "spikes",
     category: "placeable",
+    placeable: true,
     assets: {
       assetKey: "spikes",
       x: 357,
@@ -270,6 +274,7 @@ export const ITEM_CONFIGS: Record<string, ItemConfig> = {
   bear_trap: {
     id: "bear_trap",
     category: "structure",
+    placeable: true,
     assets: {
       assetKey: "bear_trap",
       x: 0,
@@ -288,6 +293,7 @@ export const ITEM_CONFIGS: Record<string, ItemConfig> = {
   wall: {
     id: "wall",
     category: "structure",
+    placeable: true,
     assets: {
       assetKey: "wall",
       x: 64,
@@ -322,6 +328,7 @@ export const ITEM_CONFIGS: Record<string, ItemConfig> = {
   sentry_gun: {
     id: "sentry_gun",
     category: "structure",
+    placeable: true,
     assets: {
       assetKey: "sentry_gun",
       x: 17,
