@@ -277,8 +277,8 @@ export const ITEM_CONFIGS: Record<string, ItemConfig> = {
     placeable: true,
     assets: {
       assetKey: "bear_trap",
-      x: 0,
-      y: 48,
+      x: 64,
+      y: 144,
       sheet: "items",
     },
     spawn: {
