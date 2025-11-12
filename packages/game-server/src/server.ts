@@ -1,5 +1,9 @@
 import { GameOverEvent } from "@shared/events/server-sent/game-over-event";
-import { GameStateEvent } from "@shared/events/server-sent/game-state-event";
+import {
+  GameStateEvent,
+  GameStateData,
+  EntityState,
+} from "@shared/events/server-sent/game-state-event";
 import { GameStartedEvent } from "@shared/events/server-sent/game-started-event";
 import { GameMessageEvent } from "@shared/events/server-sent/game-message-event";
 import { ServerUpdatingEvent } from "@shared/events/server-sent/server-updating-event";
@@ -375,67 +379,43 @@ export class GameServer {
     this.entityManager.update(deltaTime);
   }
 
-  // TODO: This is a bit of a hack to get the game state to the client.
-  // We should probably have a more elegant way to do this.
+  private getCurrentGameState(): Record<string, any> {
+    return {
+      timestamp: Date.now(),
+      waveNumber: this.waveNumber,
+      waveState: this.waveState,
+      phaseStartTime: this.phaseStartTime,
+      phaseDuration: this.phaseDuration,
+      zombiesRemaining: this.getZombiesRemaining(),
+      totalZombies: this.totalZombies,
+      // Legacy day/night cycle state (for backwards compatibility)
+      dayNumber: this.dayNumber,
+      cycleStartTime: this.cycleStartTime,
+      cycleDuration: this.cycleDuration,
+      isDay: this.isDay,
+    };
+  }
+
   private broadcastGameState(): void {
     // Don't serialize entities here - let broadcastEvent() handle it with dirty flags
     // Only include state properties that have changed
-    const stateUpdate: any = {
-      timestamp: Date.now(),
+    const currentState = this.getCurrentGameState();
+    const stateUpdate: Partial<GameStateData> & { entities: EntityState[]; timestamp: number } = {
+      entities: [], // Entities are handled separately via dirty flags
+      timestamp: currentState.timestamp,
     };
 
-    // Wave system state (new)
-    if (this.waveNumber !== this.lastBroadcastedState.waveNumber) {
-      stateUpdate.waveNumber = this.waveNumber;
-      this.lastBroadcastedState.waveNumber = this.waveNumber;
-    }
-
-    if (this.waveState !== this.lastBroadcastedState.waveState) {
-      stateUpdate.waveState = this.waveState;
-      this.lastBroadcastedState.waveState = this.waveState;
-    }
-
-    if (this.phaseStartTime !== this.lastBroadcastedState.phaseStartTime) {
-      stateUpdate.phaseStartTime = this.phaseStartTime;
-      this.lastBroadcastedState.phaseStartTime = this.phaseStartTime;
-    }
-
-    if (this.phaseDuration !== this.lastBroadcastedState.phaseDuration) {
-      stateUpdate.phaseDuration = this.phaseDuration;
-      this.lastBroadcastedState.phaseDuration = this.phaseDuration;
-    }
-
-    const currentZombiesRemaining = this.getZombiesRemaining();
-    if (currentZombiesRemaining !== this.lastBroadcastedState.zombiesRemaining) {
-      stateUpdate.zombiesRemaining = currentZombiesRemaining;
-      this.lastBroadcastedState.zombiesRemaining = currentZombiesRemaining;
-    }
-
-    if (this.totalZombies !== this.lastBroadcastedState.totalZombies) {
-      stateUpdate.totalZombies = this.totalZombies;
-      this.lastBroadcastedState.totalZombies = this.totalZombies;
-    }
-
-    // Legacy day/night cycle state (for backwards compatibility)
-    if (this.dayNumber !== this.lastBroadcastedState.dayNumber) {
-      stateUpdate.dayNumber = this.dayNumber;
-      this.lastBroadcastedState.dayNumber = this.dayNumber;
-    }
-
-    if (this.cycleStartTime !== this.lastBroadcastedState.cycleStartTime) {
-      stateUpdate.cycleStartTime = this.cycleStartTime;
-      this.lastBroadcastedState.cycleStartTime = this.cycleStartTime;
-    }
-
-    if (this.cycleDuration !== this.lastBroadcastedState.cycleDuration) {
-      stateUpdate.cycleDuration = this.cycleDuration;
-      this.lastBroadcastedState.cycleDuration = this.cycleDuration;
-    }
-
-    if (this.isDay !== this.lastBroadcastedState.isDay) {
-      stateUpdate.isDay = this.isDay;
-      this.lastBroadcastedState.isDay = this.isDay;
-    }
+    // Compare current state with last broadcasted state using Object.keys
+    Object.keys(currentState).forEach((key) => {
+      if (
+        key !== "timestamp" &&
+        currentState[key] !==
+          this.lastBroadcastedState[key as keyof typeof this.lastBroadcastedState]
+      ) {
+        (stateUpdate as any)[key] = currentState[key];
+        (this.lastBroadcastedState as any)[key] = currentState[key];
+      }
+    });
 
     const gameStateEvent = new GameStateEvent(stateUpdate);
     this.socketManager.broadcastEvent(gameStateEvent);
