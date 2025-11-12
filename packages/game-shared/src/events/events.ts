@@ -44,6 +44,7 @@ export const ClientSentEvents = {
   MERCHANT_BUY: "merchantBuy",
   PLACE_STRUCTURE: "placeStructure",
   PLAYER_RESPAWN_REQUEST: "playerRespawnRequest",
+  TELEPORT_TO_BASE: "teleportToBase",
 } as const;
 
 export type ServerSentEventType = (typeof ServerSentEvents)[keyof typeof ServerSentEvents];

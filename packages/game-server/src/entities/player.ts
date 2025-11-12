@@ -84,6 +84,10 @@ export class Player extends Entity {
       new Destructible(this)
         .setHealth(getConfig().player.MAX_PLAYER_HEALTH)
         .setMaxHealth(getConfig().player.MAX_PLAYER_HEALTH)
+        .onDamaged(() => {
+          // Broadcast PlayerHurtEvent when player takes damage (e.g., from zombie attacks)
+          this.broadcaster.broadcastEvent(new PlayerHurtEvent(this.getId()));
+        })
         .onDeath(() => this.onDeath()),
       new Updatable(this, this.updatePlayer.bind(this)),
       new Movable(this),

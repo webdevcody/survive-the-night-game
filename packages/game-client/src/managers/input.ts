@@ -29,6 +29,8 @@ export interface InputManagerOptions {
   onMerchantKey3?: () => void;
   onEscape?: () => void;
   onRespawnRequest?: () => void;
+  onTeleportStart?: () => void;
+  onTeleportCancel?: () => void;
   isMerchantPanelOpen?: () => boolean;
   isFullscreenMapOpen?: () => boolean;
   isPlayerDead?: () => boolean;
@@ -222,12 +224,22 @@ export class InputManager {
         case "KeyE":
           this.cycleItem(1); // Cycle to next item
           break;
-        case "KeyZ":
+        case "KeyH":
           this.quickHeal();
           break;
-        case "KeyC":
-          callbacks.onCraft?.();
+        case "KeyC": {
+          // Only start teleport if player is alive and no panels are open
+          if (this.isChatting) break;
+
+          const isPlayerDead = this.callbacks.isPlayerDead?.() ?? false;
+          const isMerchantPanelOpen = this.callbacks.isMerchantPanelOpen?.() ?? false;
+          const isFullscreenMapOpen = this.callbacks.isFullscreenMapOpen?.() ?? false;
+
+          if (!isPlayerDead && !isMerchantPanelOpen && !isFullscreenMapOpen) {
+            this.callbacks.onTeleportStart?.();
+          }
           break;
+        }
         case "KeyW":
           callbacks.onUp?.(this.inputs);
           break;
@@ -331,9 +343,12 @@ export class InputManager {
 
       // Use physical key codes for WASD and other action keys
       switch (eventCode) {
-        case "KeyZ":
+        case "KeyH":
           this.inputs.consume = false;
           this.inputs.consumeItemType = null;
+          break;
+        case "KeyC":
+          this.callbacks.onTeleportCancel?.();
           break;
         case "KeyW":
           this.inputs.dy = this.inputs.dy === -1 ? 0 : this.inputs.dy;

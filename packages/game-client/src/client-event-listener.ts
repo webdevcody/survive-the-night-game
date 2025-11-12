@@ -342,6 +342,15 @@ export class ClientEventListener {
     this.gameClient
       .getSoundManager()
       .playPositionalSound(SOUND_TYPES_TO_MP3.PLAYER_HURT, playerPosition);
+
+    // Interrupt teleport if local player takes damage
+    const hurtPlayerId = playerHurtEvent.getPlayerId();
+    const localPlayerId = this.gameClient.getGameState().playerId;
+
+    // Compare IDs directly - if the hurt player is the local player, interrupt teleport
+    if (localPlayerId && hurtPlayerId === localPlayerId) {
+      this.gameClient.interruptTeleport();
+    }
   }
 
   onGameOver(gameOverEvent: GameOverEvent) {
@@ -482,9 +491,7 @@ export class ClientEventListener {
   }
 
   onGameMessage(gameMessageEvent: GameMessageEvent) {
-    this.gameClient
-      .getHud()
-      .addMessage(gameMessageEvent.getMessage(), gameMessageEvent.getColor());
+    this.gameClient.getHud().addMessage(gameMessageEvent.getMessage(), gameMessageEvent.getColor());
   }
 
   onExplosion(event: ExplosionEvent) {

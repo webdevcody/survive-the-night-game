@@ -23,6 +23,7 @@ export class Renderer {
   private gameOverDialog: GameOverDialogUI;
   private particleManager: ParticleManager;
   private getPlacementManager: () => PlacementManager | null;
+  private getTeleportState: () => { isTeleporting: boolean; progress: number } | null;
   private lastPerfLogTime: number | null = null;
   private mousePosition: { x: number; y: number } | null = null;
 
@@ -35,7 +36,8 @@ export class Renderer {
     merchantBuyPanel: MerchantBuyPanel,
     gameOverDialog: GameOverDialogUI,
     particleManager: ParticleManager,
-    getPlacementManager: () => PlacementManager | null
+    getPlacementManager: () => PlacementManager | null,
+    getTeleportState: () => { isTeleporting: boolean; progress: number } | null
   ) {
     this.ctx = ctx;
     this.gameState = gameState;
@@ -46,6 +48,7 @@ export class Renderer {
     this.gameOverDialog = gameOverDialog;
     this.particleManager = particleManager;
     this.getPlacementManager = getPlacementManager;
+    this.getTeleportState = getTeleportState;
     this.resizeCanvas();
   }
 
@@ -166,6 +169,20 @@ export class Renderer {
       placementManager.render(this.ctx);
     }
     perfTimer.end("renderPlacement");
+
+    // Render teleport progress indicator above player's head
+    perfTimer.start("renderTeleportProgress");
+    const teleportState = this.getTeleportState();
+    if (teleportState?.isTeleporting && this.gameState.playerId) {
+      const player = this.gameState.entities.find(
+        (e) => e.getId() === this.gameState.playerId
+      ) as ClientEntityBase;
+      if (player && player.hasExt(ClientPositionable)) {
+        const playerPos = player.getExt(ClientPositionable).getPosition();
+        this.hud.renderTeleportProgress(this.ctx, playerPos, teleportState.progress);
+      }
+    }
+    perfTimer.end("renderTeleportProgress");
 
     // Apply darkness overlay on top of everything (ground, collidables, entities)
     perfTimer.start("renderDarkness");

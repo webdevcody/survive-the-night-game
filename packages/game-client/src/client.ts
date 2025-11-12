@@ -29,6 +29,8 @@ import { PredictionManager } from "./managers/prediction";
 import { FixedTimestepSimulator } from "./managers/fixed-timestep-simulator";
 import { SequenceManager } from "./managers/sequence-manager";
 import { getConfig } from "@shared/config";
+import { distance } from "@shared/util/physics";
+import Vector2 from "@shared/util/vector2";
 import { getAssetSpriteInfo } from "@/managers/asset";
 import { PlacementManager } from "@/managers/placement";
 
@@ -76,6 +78,13 @@ export class GameClient {
   private isStarted = false;
   private isMounted = true;
 
+  // Teleport state
+  private isTeleporting: boolean = false;
+  private teleportProgress: number = 0;
+  private teleportStartTime: number = 0;
+  private teleportCancelledByDamage: boolean = false;
+  private readonly TELEPORT_DURATION = 3000; // 3 seconds
+
   constructor(canvas: HTMLCanvasElement, assetManager?: AssetManager, soundManager?: SoundManager) {
     this.ctx = canvas.getContext("2d")!;
 
@@ -105,7 +114,6 @@ export class GameClient {
       if (this.hotbar) {
         this.hotbar.updateMousePosition(x, y, canvas.width, canvas.height);
       }
-
 
       // Update input manager mouse position for aiming
       this.inputManager.updateMousePosition(x, y);
@@ -197,10 +205,6 @@ export class GameClient {
       getInventory,
       isMerchantPanelOpen: () => this.merchantBuyPanel.isVisible(),
       isFullscreenMapOpen: () => this.hud.isFullscreenMapOpen(),
-      onCraft: () => {
-        // Crafting is now handled by React component
-        // C key disabled for now
-      },
       onToggleInstructions: () => {
         this.hud.toggleInstructions();
       },
@@ -310,6 +314,12 @@ export class GameClient {
       onRespawnRequest: () => {
         this.socketManager.requestRespawn();
       },
+      onTeleportStart: () => {
+        this.startTeleport();
+      },
+      onTeleportCancel: () => {
+        this.cancelTeleport();
+      },
     });
 
     this.hotbar = new InventoryBarUI(this.assetManager, this.inputManager, getInventory);
@@ -343,7 +353,8 @@ export class GameClient {
       this.merchantBuyPanel,
       this.gameOverDialog,
       this.particleManager,
-      () => this.getPlacementManager()
+      () => this.getPlacementManager(),
+      () => this.getTeleportState()
     );
 
     this.resizeController = new ResizeController(this.renderer);
@@ -576,9 +587,131 @@ export class GameClient {
     }
 
     this.positionCameraOnPlayer();
+    this.updateTeleportProgress();
     this.hud.update(this.gameState);
     this.updatePlayerMovementSounds();
     this.updateCursorVisibility();
+  }
+
+  /**
+   * Update teleport progress and send event when complete
+   */
+  private updateTeleportProgress(): void {
+    if (!this.isTeleporting) {
+      return;
+    }
+
+    const now = Date.now();
+    const elapsed = now - this.teleportStartTime;
+    this.teleportProgress = Math.min(1, elapsed / this.TELEPORT_DURATION);
+
+    // If progress reaches 1.0, teleport is complete
+    if (this.teleportProgress >= 1.0) {
+      this.completeTeleport();
+    }
+  }
+
+  /**
+   * Start teleport progress
+   */
+  private startTeleport(): void {
+    // Don't restart if already teleporting
+    if (this.isTeleporting) {
+      return;
+    }
+
+    // Don't start if we just cancelled due to damage (prevents immediate restart if H is still held)
+    if (this.teleportCancelledByDamage) {
+      return;
+    }
+
+    const player = this.getMyPlayer();
+    if (!player || player.isDead()) {
+      return;
+    }
+
+    // Check if player is already near the campsite
+    const biomePositions = this.mapManager.getBiomePositions();
+    if (biomePositions?.campsite) {
+      const playerPos = player.getCenterPosition();
+      // Convert biome coordinates to world coordinates (center of campsite biome)
+      // Each biome is 16 tiles, and campsite is at center of map (biome 4,4)
+      const BIOME_SIZE = 16;
+      const campsiteBiomeX = biomePositions.campsite.x;
+      const campsiteBiomeY = biomePositions.campsite.y;
+      // Calculate center of campsite biome in world coordinates
+      const campsiteCenterX =
+        (campsiteBiomeX * BIOME_SIZE + BIOME_SIZE / 2) * getConfig().world.TILE_SIZE;
+      const campsiteCenterY =
+        (campsiteBiomeY * BIOME_SIZE + BIOME_SIZE / 2) * getConfig().world.TILE_SIZE;
+      const campsitePos = new Vector2(campsiteCenterX, campsiteCenterY);
+
+      const distanceToCampsite = distance(playerPos, campsitePos);
+      const TELEPORT_MIN_DISTANCE = 200; // Don't allow teleport if within 200 pixels of campsite center
+
+      if (distanceToCampsite < TELEPORT_MIN_DISTANCE) {
+        return; // Player is too close to campsite, don't allow teleport
+      }
+    }
+
+    this.isTeleporting = true;
+    this.teleportStartTime = Date.now();
+    this.teleportProgress = 0;
+    this.teleportCancelledByDamage = false; // Reset flag when starting new teleport
+  }
+
+  /**
+   * Cancel teleport and reset progress
+   */
+  private cancelTeleport(): void {
+    this.isTeleporting = false;
+    this.teleportProgress = 0;
+    this.teleportStartTime = 0;
+    this.teleportCancelledByDamage = false; // Reset flag
+  }
+
+  /**
+   * Complete teleport and send event to server
+   */
+  private completeTeleport(): void {
+    this.isTeleporting = false;
+    this.teleportProgress = 0;
+    this.teleportStartTime = 0;
+
+    // Send teleport request to server
+    if (this.socketManager) {
+      this.socketManager.sendTeleportToBase();
+    }
+
+    // Play explosion sound immediately (client-side feedback)
+    const player = this.getMyPlayer();
+    if (player) {
+      const playerPosition = player.getCenterPosition();
+      this.soundManager.playPositionalSound(SOUND_TYPES_TO_MP3.EXPLOSION, playerPosition);
+    }
+  }
+
+  /**
+   * Interrupt teleport (called when player takes damage)
+   */
+  public interruptTeleport(): void {
+    // Cancel teleport and set flag to prevent immediate restart if H is still held
+    if (this.isTeleporting) {
+      this.isTeleporting = false;
+      this.teleportProgress = 0;
+      this.teleportStartTime = 0;
+      this.teleportCancelledByDamage = true;
+    }
+  }
+
+  /**
+   * Get teleport state for HUD rendering
+   */
+  public getTeleportState(): { isTeleporting: boolean; progress: number } {
+    return {
+      isTeleporting: this.isTeleporting,
+      progress: this.teleportProgress,
+    };
   }
 
   /**

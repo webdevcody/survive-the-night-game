@@ -96,8 +96,8 @@ export function InstructionPanel({ isOpen, onClose }: InstructionPanelProps) {
                 <span className="font-mono">F</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-gray-300">Craft:</span>
-                <span className="font-mono">C</span>
+                <span className="text-gray-300">Teleport to Base:</span>
+                <span className="font-mono">C (Hold)</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-gray-300">Quick Heal:</span>

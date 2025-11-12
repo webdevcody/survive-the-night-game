@@ -1,5 +1,19 @@
 [
   {
+    "version": "0.10.0",
+    "date": "2025-11-11",
+    "changes": [
+      "Added teleport-to-base feature - players can hold C to channel a 3-second teleport back to campsite",
+      "Teleport is interrupted if player takes damage during the channel time",
+      "Added circular progress indicator above player's head showing teleport channel progress",
+      "Changed quick heal keybinding from Z to H for better ergonomics",
+      "Removed crafting keybinding (C key now used for teleport)",
+      "Players cannot teleport if already near the campsite (minimum 200 pixel distance required)",
+      "Updated instruction panel to reflect new keybindings",
+      "Added teleport cancel event when releasing C key before completion"
+    ]
+  },
+  {
     "version": "0.9.4",
     "date": "2025-11-11",
     "changes": [

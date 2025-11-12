@@ -487,6 +487,9 @@ export class ServerSocketManager implements Broadcaster {
     socket.on(ClientSentEvents.PLAYER_RESPAWN_REQUEST, () => {
       this.onPlayerRespawnRequest(socket);
     });
+    socket.on(ClientSentEvents.TELEPORT_TO_BASE, () => {
+      this.onTeleportToBase(socket);
+    });
     socket.on("disconnect", () => {
       this.onDisconnect(socket);
     });
@@ -509,6 +512,18 @@ export class ServerSocketManager implements Broadcaster {
     if (!player.isDead()) return;
 
     player.respawn();
+  }
+
+  private onTeleportToBase(socket: Socket): void {
+    const player = this.players.get(socket.id);
+    if (!player) return;
+    if (player.isDead()) return;
+
+    // Get campsite position from map manager
+    const campsitePosition = this.getMapManager().getRandomCampsitePosition();
+    if (campsitePosition) {
+      player.setPosition(campsitePosition);
+    }
   }
 
   private onConnection(socket: Socket): void {

@@ -189,6 +189,10 @@ export class ClientSocketManager {
     this.socket.emit(ClientSentEvents.PLAYER_RESPAWN_REQUEST);
   }
 
+  public sendTeleportToBase() {
+    this.socket.emit(ClientSentEvents.TELEPORT_TO_BASE);
+  }
+
   public getSocket(): Socket {
     return this.rawSocket;
   }
