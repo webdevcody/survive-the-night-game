@@ -40,7 +40,7 @@ export default class Carryable implements Extension {
   public pickup(entityId: string, options?: PickupOptions): boolean {
     // Prevent crash if itemType is null (entity may be in invalid state)
     if (!this.itemType) {
-      console.warn('Attempted to pickup item with null itemType');
+      console.warn("Attempted to pickup item with null itemType");
       return false;
     }
 

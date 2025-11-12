@@ -30,6 +30,8 @@ const STATIC_ENTITIES: EntityType[] = [Entities.BOUNDARY, Entities.CAR];
 export class EntityManager implements IEntityManager {
   private entities: Entity[];
   private players: Player[];
+  private zombies: BaseEnemy[] = [];
+  private merchants: Entity[] = [];
   private entitiesToRemove: Array<{ id: string; expiration: number }> = [];
   private id: number = 0;
   private entityFinder: EntityFinder | null = null;
@@ -132,6 +134,14 @@ export class EntityManager implements IEntityManager {
       this.players.push(entity as Player);
     }
 
+    if (Zombies.includes(entity.getType())) {
+      this.zombies.push(entity as BaseEnemy);
+    }
+
+    if (entity.getType() === Entities.MERCHANT) {
+      this.merchants.push(entity);
+    }
+
     const isDynamicEntity = !STATIC_ENTITIES.includes(entity.getType());
     if (isDynamicEntity) {
       this.dynamicEntities.push(entity);
@@ -195,6 +205,8 @@ export class EntityManager implements IEntityManager {
     }
 
     this.players = this.players.filter((it) => it.getId() !== entityId);
+    this.zombies = this.zombies.filter((it) => it.getId() !== entityId);
+    this.merchants = this.merchants.filter((it) => it.getId() !== entityId);
     this.entities = this.entities.filter((it) => it.getId() !== entityId);
   }
 
@@ -286,6 +298,24 @@ export class EntityManager implements IEntityManager {
         }
       }
 
+      // Remove from zombies array if it's a zombie
+      if (Zombies.includes(entity.getType())) {
+        const zombieIndex = this.zombies.findIndex((zombie) => zombie.getId() === entity.getId());
+        if (zombieIndex !== -1) {
+          this.zombies.splice(zombieIndex, 1);
+        }
+      }
+
+      // Remove from merchants array if it's a merchant
+      if (entity.getType() === Entities.MERCHANT) {
+        const merchantIndex = this.merchants.findIndex(
+          (merchant) => merchant.getId() === entity.getId()
+        );
+        if (merchantIndex !== -1) {
+          this.merchants.splice(merchantIndex, 1);
+        }
+      }
+
       // Remove from entitiesToRemove
       this.entitiesToRemove.splice(removeRecordIndex, 1);
     }
@@ -297,6 +327,8 @@ export class EntityManager implements IEntityManager {
   clear() {
     this.entities = [];
     this.players = [];
+    this.zombies = [];
+    this.merchants = [];
     this.dynamicEntities = [];
     this.updatableEntities = [];
     this.dirtyEntities.clear();
@@ -577,10 +609,10 @@ export class EntityManager implements IEntityManager {
   }
 
   getZombieEntities(): BaseEnemy[] {
-    return this.entities.filter((entity) => Zombies.includes(entity.getType())) as BaseEnemy[];
+    return this.zombies;
   }
 
   getMerchantEntities(): Entity[] {
-    return this.entities.filter((entity) => entity.getType() === Entities.MERCHANT);
+    return this.merchants;
   }
 }

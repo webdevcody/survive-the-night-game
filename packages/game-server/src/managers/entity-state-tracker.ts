@@ -56,6 +56,10 @@ export class EntityStateTracker {
     return Array.from(this.removedEntityIds);
   }
 
+  public clearRemovedEntityIds(): void {
+    this.removedEntityIds.clear();
+  }
+
   public getPreviousEntityState(entityId: string): any {
     // No longer tracking previous state - dirty flags handle change detection
     return null;
@@ -107,46 +111,17 @@ export class EntityStateTracker {
   }): Partial<typeof currentGameState> {
     const changedProps: Partial<typeof currentGameState> = {};
 
-    // Legacy day/night cycle properties
-    if (currentGameState.cycleStartTime !== this.previousGameState.cycleStartTime) {
-      changedProps.cycleStartTime = currentGameState.cycleStartTime;
-    }
+    // Automatically track all properties from the current game state
+    const gameStateProperties = Object.keys(currentGameState) as Array<
+      keyof typeof currentGameState
+    >;
 
-    if (currentGameState.cycleDuration !== this.previousGameState.cycleDuration) {
-      changedProps.cycleDuration = currentGameState.cycleDuration;
-    }
-
-    if (currentGameState.isDay !== this.previousGameState.isDay) {
-      changedProps.isDay = currentGameState.isDay;
-    }
-
-    if (currentGameState.dayNumber !== this.previousGameState.dayNumber) {
-      changedProps.dayNumber = currentGameState.dayNumber;
-    }
-
-    // Wave system properties
-    if (currentGameState.waveNumber !== this.previousGameState.waveNumber) {
-      changedProps.waveNumber = currentGameState.waveNumber;
-    }
-
-    if (currentGameState.waveState !== this.previousGameState.waveState) {
-      changedProps.waveState = currentGameState.waveState;
-    }
-
-    if (currentGameState.phaseStartTime !== this.previousGameState.phaseStartTime) {
-      changedProps.phaseStartTime = currentGameState.phaseStartTime;
-    }
-
-    if (currentGameState.phaseDuration !== this.previousGameState.phaseDuration) {
-      changedProps.phaseDuration = currentGameState.phaseDuration;
-    }
-
-    if (currentGameState.zombiesRemaining !== this.previousGameState.zombiesRemaining) {
-      changedProps.zombiesRemaining = currentGameState.zombiesRemaining;
-    }
-
-    if (currentGameState.totalZombies !== this.previousGameState.totalZombies) {
-      changedProps.totalZombies = currentGameState.totalZombies;
+    for (const prop of gameStateProperties) {
+      const currentValue = currentGameState[prop];
+      const previousValue = this.previousGameState[prop];
+      if (currentValue !== previousValue) {
+        (changedProps as Record<string, unknown>)[prop] = currentValue;
+      }
     }
 
     return changedProps;

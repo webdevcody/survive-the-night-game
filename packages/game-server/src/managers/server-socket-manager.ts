@@ -51,6 +51,10 @@ export class ServerSocketManager implements Broadcaster {
   private chatCommandRegistry: CommandRegistry;
   private profanityMatcher: RegExpMatcher;
   private profanityCensor: TextCensor;
+  private totalBytesSent: number = 0;
+  private bytesSentThisSecond: number = 0;
+  private lastSecondTimestamp: number = Date.now();
+  private statsInterval: NodeJS.Timeout | null = null;
 
   constructor(port: number, gameServer: GameServer) {
     this.port = port;
@@ -123,6 +127,11 @@ export class ServerSocketManager implements Broadcaster {
       this.playerDisplayNames.set(socket.id, filteredDisplayName || "Unknown");
       this.onConnection(socket);
     });
+
+    // Start stats reporting interval (every 5 seconds)
+    this.statsInterval = setInterval(() => {
+      this.printStats();
+    }, 5000);
   }
 
   /**
@@ -676,10 +685,16 @@ export class ServerSocketManager implements Broadcaster {
         }
       });
       entityStateTracker.trackGameState(currentGameState);
+      // Clear removed entity IDs after they've been sent
+      entityStateTracker.clearRemovedEntityIds();
 
-      this.delayedIo.emit(gameStateEvent.getType(), gameStateEvent.serialize());
+      const serializedEvent = gameStateEvent.serialize();
+      this.trackBytesSent(serializedEvent);
+      this.delayedIo.emit(gameStateEvent.getType(), serializedEvent);
     } else {
-      this.delayedIo.emit(event.getType(), event.serialize());
+      const serializedEvent = event.serialize();
+      this.trackBytesSent(serializedEvent);
+      this.delayedIo.emit(event.getType(), serializedEvent);
     }
   }
 
@@ -733,7 +748,9 @@ export class ServerSocketManager implements Broadcaster {
       message: filteredMessage,
     });
 
-    this.delayedIo.emit(ServerSentEvents.CHAT_MESSAGE, chatEvent.getData());
+    const chatEventData = chatEvent.getData();
+    this.trackBytesSent(chatEventData);
+    this.delayedIo.emit(ServerSentEvents.CHAT_MESSAGE, chatEventData);
   }
 
   /**
@@ -742,5 +759,66 @@ export class ServerSocketManager implements Broadcaster {
   private sanitizeText(text: string): string {
     const matches = this.profanityMatcher.getAllMatches(text);
     return this.profanityCensor.applyTo(text, matches);
+  }
+
+  /**
+   * Calculate the byte size of serialized event data
+   */
+  private calculateEventBytes(eventData: any): number {
+    if (eventData === undefined || eventData === null) {
+      return 0;
+    }
+    try {
+      const serialized = JSON.stringify(eventData);
+      if (serialized === undefined || serialized === null) {
+        return 0;
+      }
+      // Use Buffer.byteLength to get accurate UTF-8 byte count
+      return Buffer.byteLength(String(serialized), "utf8");
+    } catch (error) {
+      // Handle circular references or other serialization errors
+      console.warn("Failed to calculate event bytes:", error);
+      return 0;
+    }
+  }
+
+  /**
+   * Track bytes sent for a broadcast event
+   */
+  private trackBytesSent(eventData: any): void {
+    const bytesPerEvent = this.calculateEventBytes(eventData);
+    const playerCount = this.io.sockets.sockets.size;
+    const totalBytesForBroadcast = bytesPerEvent * playerCount;
+
+    this.totalBytesSent += totalBytesForBroadcast;
+
+    const now = Date.now();
+    const elapsedMs = now - this.lastSecondTimestamp;
+
+    // If more than 1 second has passed since last reset, reset the counter
+    if (elapsedMs >= 1000) {
+      this.bytesSentThisSecond = totalBytesForBroadcast;
+      this.lastSecondTimestamp = now;
+    } else {
+      // Accumulate bytes for the current second
+      this.bytesSentThisSecond += totalBytesForBroadcast;
+    }
+  }
+
+  /**
+   * Print bandwidth statistics every 5 seconds
+   */
+  private printStats(): void {
+    const now = Date.now();
+    const elapsedSeconds = (now - this.lastSecondTimestamp) / 1000;
+
+    // Calculate MB/s based on bytes sent in the current second
+    // Use elapsed time to get accurate per-second rate
+    const mbPerSecond =
+      elapsedSeconds > 0 ? this.bytesSentThisSecond / (1024 * 1024) / elapsedSeconds : 0;
+
+    console.log(
+      `[Bandwidth] ${mbPerSecond.toFixed(5)} MB/s (${this.io.sockets.sockets.size} players)`
+    );
   }
 }

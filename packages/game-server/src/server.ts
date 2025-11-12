@@ -253,21 +253,12 @@ export class GameServer {
 
     this.entityManager.pruneEntities();
 
-    perfTimer.start("broadcastGameState");
-    // 3.4ms per tick
     this.broadcastGameState();
-    perfTimer.end("broadcastGameState");
-
-    perfTimer.start("trackEntityStates");
-    // 2ms per tick
-    // Track entities we've seen (dirty flags are cleared in broadcastEvent after broadcasting)
+    // 3.4ms per tick
+    //
     for (const entity of this.entityManager.getDynamicEntities()) {
       this.entityManager.getEntityStateTracker().trackEntity(entity, currentTime);
     }
-    perfTimer.end("trackEntityStates");
-
-    // perfTimer.logStats("trackEntityStates");
-    // perfTimer.logStats("broadcastGameState");
 
     this.trackPerformance(updateStartTime, currentTime);
     this.lastUpdateTime = currentTime;
