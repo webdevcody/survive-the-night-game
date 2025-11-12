@@ -433,6 +433,11 @@ export class PlayerClient extends ClientEntity implements IClientEntity, Rendera
       return;
     }
 
+    if (key === "stamina" || key === "maxStamina") {
+      (this as any)[key] = value;
+      return;
+    }
+
     super.deserializeProperty(key, value);
   }
 

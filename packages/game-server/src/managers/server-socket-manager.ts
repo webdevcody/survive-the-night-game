@@ -31,6 +31,7 @@ import {
   englishDataset,
   englishRecommendedTransformers,
 } from "obscenity";
+import { encodePayload } from "@shared/util/compression";
 
 /**
  * Any and all functionality related to sending server side events
@@ -447,7 +448,7 @@ export class ServerSocketManager implements Broadcaster {
     const filteredEntities = entities.filter((entity) => !("isServerOnly" in entity));
 
     const delayedSocket = this.wrapSocket(socket);
-    delayedSocket.emit(ServerSentEvents.GAME_STATE_UPDATE, {
+    const fullState = {
       entities: filteredEntities.map((entity) => entity.serialize()),
       timestamp: Date.now(),
       isFullState: true,
@@ -455,7 +456,9 @@ export class ServerSocketManager implements Broadcaster {
       cycleStartTime: this.gameServer.getCycleStartTime(),
       cycleDuration: this.gameServer.getCycleDuration(),
       isDay: this.gameServer.getIsDay(),
-    });
+    };
+    const encodedState = encodePayload(fullState);
+    delayedSocket.emit(ServerSentEvents.GAME_STATE_UPDATE, encodedState);
   }
 
   private setupSocketListeners(socket: Socket): void {
@@ -572,8 +575,9 @@ export class ServerSocketManager implements Broadcaster {
 
     // Always send the map data
     const mapData = this.getMapManager().getMapData();
+    const encodedMapData = encodePayload(mapData);
     const delayedSocket = this.wrapSocket(socket);
-    delayedSocket.emit(ServerSentEvents.MAP, mapData);
+    delayedSocket.emit(ServerSentEvents.MAP, encodedMapData);
   }
 
   public broadcastEvent(event: GameEvent<any>): void {
@@ -639,6 +643,14 @@ export class ServerSocketManager implements Broadcaster {
           delta.input = dirtyState.input;
         }
 
+        if (dirtyState.stamina !== undefined) {
+          delta.stamina = dirtyState.stamina;
+        }
+
+        if (dirtyState.maxStamina !== undefined) {
+          delta.maxStamina = dirtyState.maxStamina;
+        }
+
         return delta;
       });
 
@@ -689,12 +701,14 @@ export class ServerSocketManager implements Broadcaster {
       entityStateTracker.clearRemovedEntityIds();
 
       const serializedEvent = gameStateEvent.serialize();
-      this.trackBytesSent(serializedEvent);
-      this.delayedIo.emit(gameStateEvent.getType(), serializedEvent);
+      const encodedEvent = encodePayload(serializedEvent);
+      this.trackBytesSent(encodedEvent);
+      this.delayedIo.emit(gameStateEvent.getType(), encodedEvent);
     } else {
       const serializedEvent = event.serialize();
-      this.trackBytesSent(serializedEvent);
-      this.delayedIo.emit(event.getType(), serializedEvent);
+      const encodedEvent = encodePayload(serializedEvent);
+      this.trackBytesSent(encodedEvent);
+      this.delayedIo.emit(event.getType(), encodedEvent);
     }
   }
 
@@ -702,7 +716,9 @@ export class ServerSocketManager implements Broadcaster {
     // Send pong event back to client
     // timestamp is a Unix timestamp in milliseconds (UTC, timezone-independent)
     const delayedSocket = this.wrapSocket(socket);
-    delayedSocket.emit(ServerSentEvents.PONG, new PongEvent(timestamp).serialize());
+    const serializedPong = new PongEvent(timestamp).serialize();
+    const encodedPong = encodePayload(serializedPong);
+    delayedSocket.emit(ServerSentEvents.PONG, encodedPong);
     // Note: We no longer calculate latency here because it can be negative due to clock skew.
     // Instead, the client calculates round-trip latency and sends it via PING_UPDATE event.
   }

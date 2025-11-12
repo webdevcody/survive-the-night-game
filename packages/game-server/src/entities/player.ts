@@ -64,7 +64,9 @@ export class Player extends Entity {
   private displayName: string = "";
   private stamina: number = getConfig().player.MAX_STAMINA;
   private exhaustionTimer: number = 0; // Time remaining before stamina can regenerate
+  // TODO: this feels gross I have to manually define these dirty flags
   private inventorySelectionDirty: boolean = false;
+  private staminaDirty: boolean = false;
 
   constructor(gameManagers: IGameManagers) {
     super(gameManagers, Entities.PLAYER);
@@ -206,14 +208,17 @@ export class Player extends Entity {
       result.input = this.input;
     }
 
+    if (!onlyDirty || this.staminaDirty) {
+      result.stamina = this.stamina;
+      result.maxStamina = getConfig().player.MAX_STAMINA;
+    }
+
     if (!onlyDirty) {
       result.isCrafting = this.isCrafting;
       result.skin = this.skin;
       result.kills = this.kills;
       result.ping = this.ping;
       result.displayName = this.displayName;
-      result.stamina = this.stamina;
-      result.maxStamina = getConfig().player.MAX_STAMINA;
     }
 
     return result;
@@ -368,6 +373,8 @@ export class Player extends Entity {
         if (canSprint) {
           const newStamina = this.stamina - getConfig().player.STAMINA_DRAIN_RATE * deltaTime;
           this.stamina = Math.max(0, newStamina);
+          // Always mark dirty when draining stamina (even small changes should be synced)
+          this.staminaDirty = true;
 
           // If stamina just hit zero, start exhaustion timer
           if (this.stamina === 0) {
@@ -630,10 +637,16 @@ export class Player extends Entity {
 
       // Regenerate stamina when not sprinting
       if (!isSprinting) {
+        const oldStamina = this.stamina;
         this.stamina = Math.min(
           getConfig().player.MAX_STAMINA,
           this.stamina + getConfig().player.STAMINA_REGEN_RATE * deltaTime
         );
+
+        // Mark dirty if stamina actually changed (to avoid unnecessary updates when at max)
+        if (Math.abs(oldStamina - this.stamina) > 0.01) {
+          this.staminaDirty = true;
+        }
       }
     }
   }
@@ -796,11 +809,12 @@ export class Player extends Entity {
   }
 
   public isDirty(): boolean {
-    return super.isDirty() || this.inventorySelectionDirty;
+    return super.isDirty() || this.inventorySelectionDirty || this.staminaDirty;
   }
 
   public clearDirtyFlags(): void {
     super.clearDirtyFlags();
     this.inventorySelectionDirty = false;
+    this.staminaDirty = false;
   }
 }
