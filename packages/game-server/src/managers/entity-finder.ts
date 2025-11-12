@@ -18,6 +18,14 @@ export class EntityFinder {
     this.grid.addEntity(entity);
   }
 
+  removeEntity(entity: Entity) {
+    this.grid.removeEntity(entity);
+  }
+
+  updateEntity(entity: Entity) {
+    this.grid.updateEntity(entity);
+  }
+
   getNearbyEntities(position: Vector2, radius: number = 16, filter?: EntityType[]): Entity[] {
     const nearby = Array.from(this.grid.getNearbyEntities(position, radius));
     return filter ? nearby.filter((entity) => filter.includes(entity.getType())) : nearby;

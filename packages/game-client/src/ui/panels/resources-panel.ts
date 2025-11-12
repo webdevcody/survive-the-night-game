@@ -3,6 +3,7 @@ import { getPlayer } from "@/util/get-player";
 import { AssetManager, getItemAssetKey } from "@/managers/asset";
 import { Panel, PanelSettings } from "./panel";
 import { Direction } from "@shared/util/direction";
+import { ClientResourcesBag } from "@/extensions";
 
 interface ResourcesPanelSettings extends PanelSettings {
   x: number;
@@ -27,9 +28,17 @@ export class ResourcesPanel extends Panel {
     const myPlayer = getPlayer(gameState);
     if (!myPlayer) return;
 
-    const wood = myPlayer.getWood();
-    const cloth = myPlayer.getCloth();
-    const coins = myPlayer.getCoins();
+    // Get resources from extension
+    let wood = 0;
+    let cloth = 0;
+    let coins = 0;
+    
+    if (myPlayer.hasExt(ClientResourcesBag)) {
+      const resourcesBag = myPlayer.getExt(ClientResourcesBag);
+      wood = resourcesBag.getWood();
+      cloth = resourcesBag.getCloth();
+      coins = resourcesBag.getCoins();
+    }
 
     this.resetTransform(ctx);
 

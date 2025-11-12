@@ -1,5 +1,21 @@
 [
   {
+    "version": "0.10.1",
+    "date": "2025-11-11",
+    "changes": [
+      "Added ResourcesBag extension - moved resource tracking (coins, wood, cloth) into dedicated extension system",
+      "Added Inventory extension - refactored inventory management into extension-based architecture",
+      "Optimized entity performance with dirty tracking - only serialize changed extensions to reduce network traffic",
+      "Added fast extension lookups using Set for O(1) hasExt() checks instead of O(n) array iteration",
+      "Added separate tracking for updatable extensions to avoid checking every extension on each tick",
+      "Fixed UI click blocking - clicking HUD elements no longer triggers placement system",
+      "Added inventory slot change callback system for better reactivity to player input",
+      "Fixed enemy collision detection - enemies now properly update position during collision checks",
+      "Improved serialization efficiency with dirty-only mode - significant reduction in bandwidth usage",
+      "Added local inventory slot tracking on client for smoother UI responsiveness"
+    ]
+  },
+  {
     "version": "0.10.0",
     "date": "2025-11-11",
     "changes": [

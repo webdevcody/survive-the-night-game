@@ -575,70 +575,59 @@ export class ServerSocketManager implements Broadcaster {
       const changedEntities = entityStateTracker.getChangedEntities(filteredEntities);
       const removedEntityIds = entityStateTracker.getRemovedEntityIds();
 
-      if (changedEntities.length === 0 && removedEntityIds.length === 0) {
+      // Extract game state properties from the passed event
+      const eventData = (event as any).serialize ? (event as any).serialize() : {};
+
+      // Only skip if no entity changes AND no game state changes AND no removed entities
+      const hasGameStateChanges = Object.keys(eventData).some(
+        (key) => key !== "entities" && key !== "timestamp" && eventData[key] !== undefined
+      );
+
+      if (changedEntities.length === 0 && removedEntityIds.length === 0 && !hasGameStateChanges) {
         return; // No changes to broadcast
       }
 
-      // For each changed entity, only include properties that have actually changed
+      // For each changed entity, serialize only dirty extensions
       const changedEntityData = changedEntities.map((entity) => {
-        const currentState = entity.serialize();
-        const previousState = entityStateTracker.getPreviousEntityState(entity.getId());
+        const entityId = entity.getId();
+        const isNewEntity = !entityStateTracker.hasSeenEntity(entityId);
 
-        if (!previousState) {
-          // If no previous state exists, this is a new entity - track it and send full state
+        if (isNewEntity) {
+          // New entity - send full state
+          const fullState = entity.serialize();
           entityStateTracker.trackEntity(entity, Date.now());
-          return currentState;
+          return fullState;
         }
 
-        // Create a delta object with only changed properties
+        // Changed entity - use dirty-only serialization to get only changed extensions
+        const dirtyState = entity.serialize(true);
+
+        // Always include id and type
         const delta: any = {
-          id: entity.getId(),
-          type: entity.getType(), // Always include type for safety
+          id: entityId,
+          type: entity.getType(),
         };
 
-        // Compare and include changed properties
-        for (const [key, value] of Object.entries(currentState)) {
-          if (key === "id") continue; // Skip id as it's already included
+        // Include dirty extensions if any
+        if (dirtyState.extensions && dirtyState.extensions.length > 0) {
+          delta.extensions = dirtyState.extensions;
+        }
 
-          if (key === "extensions" && Array.isArray(value)) {
-            const prevExtensions = previousState[key] || [];
-            // Only include extensions that actually changed
-            const changedExtensions = [];
+        // Include removed extensions if any (entity tracks this in removedExtensions array)
+        if (dirtyState.removedExtensions && dirtyState.removedExtensions.length > 0) {
+          delta.removedExtensions = dirtyState.removedExtensions;
+        }
 
-            for (const ext of value) {
-              const prevExt = prevExtensions.find((pe: any) => pe.type === ext.type);
-              if (!prevExt) {
-                // New extension, include it
-                changedExtensions.push(ext);
-                continue;
-              }
+        if (dirtyState.inventory !== undefined) {
+          delta.inventory = dirtyState.inventory;
+        }
 
-              // Deep compare extension properties excluding type
-              const extCopy = { ...ext };
-              const prevExtCopy = { ...prevExt };
-              delete extCopy.type;
-              delete prevExtCopy.type;
+        if (dirtyState.activeItem !== undefined) {
+          delta.activeItem = dirtyState.activeItem;
+        }
 
-              if (JSON.stringify(extCopy) !== JSON.stringify(prevExtCopy)) {
-                changedExtensions.push(ext); // Only include this extension if it changed
-              }
-            }
-
-            // Check for removed extensions
-            const removedExtensions = prevExtensions
-              .filter((pe: any) => !value.find((e: any) => e.type === pe.type))
-              .map((pe: any) => pe.type);
-
-            if (changedExtensions.length > 0) {
-              delta.extensions = changedExtensions; // Only include changed extensions
-            }
-
-            if (removedExtensions.length > 0) {
-              delta.removedExtensions = removedExtensions;
-            }
-          } else if (JSON.stringify(previousState[key]) !== JSON.stringify(value)) {
-            delta[key] = value;
-          }
+        if (dirtyState.input !== undefined) {
+          delta.input = dirtyState.input;
         }
 
         return delta;
@@ -662,17 +651,29 @@ export class ServerSocketManager implements Broadcaster {
       // Get only changed game state properties
       const changedGameState = entityStateTracker.getChangedGameStateProperties(currentGameState);
 
+      // Merge game state properties from passed event with changed game state
+      const mergedGameState = {
+        ...changedGameState,
+        ...Object.fromEntries(
+          Object.entries(eventData).filter(([key]) => key !== "entities" && key !== "timestamp")
+        ),
+      };
+
       const gameStateEvent = new GameStateEvent({
         entities: changedEntityData,
         removedEntityIds,
         isFullState: false,
         timestamp: Date.now(),
-        ...changedGameState,
+        ...mergedGameState,
       });
 
       // Track the current state of all entities and game state after sending the update
       changedEntities.forEach((entity) => {
         entityStateTracker.trackEntity(entity, Date.now());
+        // Clear dirty flags after broadcasting
+        if (entity.clearDirtyFlags) {
+          entity.clearDirtyFlags();
+        }
       });
       entityStateTracker.trackGameState(currentGameState);
 

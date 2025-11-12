@@ -5,6 +5,7 @@ import { PlayerClient } from "@/entities/player";
 import { Z_INDEX } from "@shared/map";
 import { getConfig, type MerchantShopItem } from "@shared/config";
 import { ITEM_CONFIGS } from "@shared/entities/item-configs";
+import { ClientResourcesBag } from "@/extensions";
 
 const MERCHANT_BUY_PANEL_SETTINGS = {
   Container: {
@@ -99,9 +100,12 @@ export class MerchantBuyPanel implements Renderable {
     if (this.activeMerchantId && itemIndex >= 0 && itemIndex < this.shopItems.length) {
       const player = this.getPlayer();
       const item = this.shopItems[itemIndex];
-      if (player && player.getCoins() >= item.price) {
-        this.onBuy(this.activeMerchantId, itemIndex);
-        this.close();
+      if (player && player.hasExt(ClientResourcesBag)) {
+        const coins = player.getExt(ClientResourcesBag).getCoins();
+        if (coins >= item.price) {
+          this.onBuy(this.activeMerchantId, itemIndex);
+          this.close();
+        }
       }
     }
   }
@@ -114,7 +118,11 @@ export class MerchantBuyPanel implements Renderable {
     const player = this.getPlayer();
     if (!player) return;
 
-    const playerCoins = player.getCoins();
+    // Get coins from extension
+    let playerCoins = 0;
+    if (player.hasExt(ClientResourcesBag)) {
+      playerCoins = player.getExt(ClientResourcesBag).getCoins();
+    }
     const { Container, Title, Instructions, Item, ItemIcon, ItemText, CoinIcon } =
       MERCHANT_BUY_PANEL_SETTINGS;
 

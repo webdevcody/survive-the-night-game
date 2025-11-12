@@ -19,6 +19,8 @@ import { itemRegistry } from "@shared/entities";
 import { GenericItemEntity } from "@/entities/items/generic-item-entity";
 import { registerCustomEntities } from "@/entities/register-custom-entities";
 import { Player } from "@/entities/player";
+import { perfTimer } from "@shared/util/performance";
+import { profiler } from "@/util/profiler";
 
 // Register all custom entity classes at module load time
 registerCustomEntities();
@@ -34,6 +36,10 @@ export class EntityManager implements IEntityManager {
   private gameManagers?: IGameManagers;
   private entityStateTracker: EntityStateTracker;
   private dynamicEntities: Entity[] = [];
+  private updatableEntities: Entity[] = []; // Entities that have extensions with update methods
+  private dirtyEntities: Set<Entity> = new Set();
+  private entitiesInGrid: Set<Entity> = new Set();
+  private entitiesToAddToGrid: Set<Entity> = new Set();
 
   constructor() {
     this.entities = [];
@@ -108,6 +114,16 @@ export class EntityManager implements IEntityManager {
 
   setMapSize(width: number, height: number) {
     this.entityFinder = new EntityFinder(width, height);
+    // Clear tracking when map size changes
+    this.dirtyEntities.clear();
+    this.entitiesInGrid.clear();
+    this.entitiesToAddToGrid.clear();
+    // Mark all existing entities with Positionable to be added to the new grid
+    for (const entity of this.entities) {
+      if (entity.hasExt(Positionable)) {
+        this.entitiesToAddToGrid.add(entity);
+      }
+    }
   }
 
   addEntity(entity: Entity) {
@@ -119,6 +135,27 @@ export class EntityManager implements IEntityManager {
     const isDynamicEntity = !STATIC_ENTITIES.includes(entity.getType());
     if (isDynamicEntity) {
       this.dynamicEntities.push(entity);
+    }
+
+    // Sync extension tracking in case extensions were set directly on this.extensions
+    // (e.g., in entity constructors) instead of using addExtension()
+    entity.syncExtensionTracking();
+
+    // Track entities with updatable extensions
+    if (entity.hasUpdatableExtensions()) {
+      this.updatableEntities.push(entity);
+    }
+
+    // Register position change callback for entities with Positionable extension
+    if (entity.hasExt(Positionable)) {
+      const positionable = entity.getExt(Positionable);
+      positionable.setOnPositionChange((changedEntity) => {
+        this.dirtyEntities.add(changedEntity as Entity);
+      });
+      // Mark entity to be added to grid (if grid exists and entity isn't already in it)
+      if (this.entityFinder && !this.entitiesInGrid.has(entity)) {
+        this.entitiesToAddToGrid.add(entity);
+      }
     }
   }
 
@@ -139,6 +176,24 @@ export class EntityManager implements IEntityManager {
   }
 
   removeEntity(entityId: string) {
+    const entity = this.entities.find((it) => it.getId() === entityId);
+    if (entity) {
+      // Clean up tracking data
+      this.dirtyEntities.delete(entity);
+      this.entitiesInGrid.delete(entity);
+      this.entitiesToAddToGrid.delete(entity);
+      // Remove from updatable entities
+      const updatableIndex = this.updatableEntities.indexOf(entity);
+      if (updatableIndex > -1) {
+        this.updatableEntities.splice(updatableIndex, 1);
+      }
+
+      // Remove from spatial grid if it's in there
+      if (this.entityFinder && entity.hasExt(Positionable)) {
+        this.entityFinder.removeEntity(entity);
+      }
+    }
+
     this.players = this.players.filter((it) => it.getId() !== entityId);
     this.entities = this.entities.filter((it) => it.getId() !== entityId);
   }
@@ -176,6 +231,19 @@ export class EntityManager implements IEntityManager {
 
       // Track entity removal before removing it
       this.entityStateTracker.trackRemoval(entity.getId());
+
+      // Clean up spatial grid tracking data
+      this.dirtyEntities.delete(entity);
+      this.entitiesInGrid.delete(entity);
+      this.entitiesToAddToGrid.delete(entity);
+      // Remove from updatable entities
+      const updatableIndex = this.updatableEntities.indexOf(entity);
+      if (updatableIndex > -1) {
+        this.updatableEntities.splice(updatableIndex, 1);
+      }
+      if (this.entityFinder && entity.hasExt(Positionable)) {
+        this.entityFinder.removeEntity(entity);
+      }
 
       // Clear collidable tile if this entity has Collidable extension
       // This ensures the minimap accurately reflects removed collidables
@@ -230,6 +298,10 @@ export class EntityManager implements IEntityManager {
     this.entities = [];
     this.players = [];
     this.dynamicEntities = [];
+    this.updatableEntities = [];
+    this.dirtyEntities.clear();
+    this.entitiesInGrid.clear();
+    this.entitiesToAddToGrid.clear();
   }
 
   getNearbyEnemies(position: Vector2, radius: number = 64): Entity[] {
@@ -253,9 +325,7 @@ export class EntityManager implements IEntityManager {
   }
 
   getPlayerEntities(): Player[] {
-    return this.entities.filter((entity) => {
-      return entity.getType() === Entities.PLAYER;
-    }) as unknown as Player[];
+    return this.players;
   }
 
   getClosestPlayer(entity: Entity): Player | null {
@@ -263,18 +333,19 @@ export class EntityManager implements IEntityManager {
       return null;
     }
 
-    const players = this.getPlayerEntities();
-
-    if (players.length === 0) {
+    if (this.players.length === 0) {
       return null;
     }
 
     const entityPosition = entity.getExt(Positionable).getPosition();
     let closestPlayerIdx = 0;
-    let closestPlayerDistance = distance(entityPosition, players[closestPlayerIdx].getPosition());
+    let closestPlayerDistance = distance(
+      entityPosition,
+      this.players[closestPlayerIdx].getPosition()
+    );
 
-    for (let i = 1; i < players.length; i++) {
-      const player = players[i];
+    for (let i = 1; i < this.players.length; i++) {
+      const player = this.players[i];
       const playerDistance = distance(entityPosition, player.getPosition());
 
       if (playerDistance < closestPlayerDistance) {
@@ -283,7 +354,7 @@ export class EntityManager implements IEntityManager {
       }
     }
 
-    return players[closestPlayerIdx];
+    return this.players[closestPlayerIdx];
   }
 
   getClosestAlivePlayer(entity: Entity, attackRange?: number): Player | null {
@@ -407,17 +478,15 @@ export class EntityManager implements IEntityManager {
   update(deltaTime: number) {
     this.refreshSpatialGrid();
 
-    for (const entity of this.getDynamicEntities()) {
+    for (const entity of this.updatableEntities) {
       this.updateExtensions(entity, deltaTime);
     }
   }
 
-  // as of right now, just allow any extension to have an optional update method
+  // Use the pre-filtered updatable extensions for better performance
   updateExtensions(entity: Entity, deltaTime: number) {
-    for (const extension of entity.getExtensions()) {
-      if ("update" in extension) {
-        (extension as any).update(deltaTime);
-      }
+    for (const extension of entity.getUpdatableExtensions()) {
+      (extension as any).update(deltaTime);
     }
   }
 
@@ -426,15 +495,47 @@ export class EntityManager implements IEntityManager {
       return;
     }
 
-    // Clear the existing grid
-    this.entityFinder.clear();
+    // Handle initial grid population: if grid is empty, populate all entities
+    if (this.entitiesInGrid.size === 0) {
+      this.entities.forEach((entity) => {
+        if (entity.hasExt(Positionable)) {
+          this.entityFinder!.addEntity(entity);
+          this.entitiesInGrid.add(entity);
+        }
+      });
+      return;
+    }
 
-    // Re-add all entities that have a position
-    this.entities.forEach((entity) => {
-      if (entity.hasExt(Positionable)) {
-        this.entityFinder!.addEntity(entity);
+    for (const entity of this.dirtyEntities) {
+      if (!entity.hasExt(Positionable)) {
+        continue;
       }
-    });
+
+      // If entity is not in grid yet, add it
+      if (!this.entitiesInGrid.has(entity)) {
+        this.entityFinder!.addEntity(entity);
+        this.entitiesInGrid.add(entity);
+      } else {
+        // Entity is already in grid, update its position
+        this.entityFinder!.updateEntity(entity);
+      }
+    }
+
+    // Clear dirty set after processing
+    this.dirtyEntities.clear();
+
+    // Handle newly added entities that aren't in the grid yet
+    // Use the tracked set instead of looping through all entities
+    let newEntityCount = 0;
+    for (const entity of this.entitiesToAddToGrid) {
+      if (entity.hasExt(Positionable) && !this.entitiesInGrid.has(entity)) {
+        this.entityFinder!.addEntity(entity);
+        this.entitiesInGrid.add(entity);
+        newEntityCount++;
+      }
+    }
+    // Clear the set after processing
+    this.entitiesToAddToGrid.clear();
   }
 
   public getBroadcaster(): Broadcaster {

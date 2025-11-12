@@ -15,6 +15,7 @@ import Illuminated from "@/extensions/illuminated";
 import Carryable from "@/extensions/carryable";
 import Groupable from "@/extensions/groupable";
 import Snared from "@/extensions/snared";
+import ResourcesBag from "@/extensions/resources-bag";
 
 export const extensionsMap = {
   [Collidable.type]: Collidable,
@@ -34,4 +35,5 @@ export const extensionsMap = {
   [Carryable.type]: Carryable,
   [Groupable.type]: Groupable,
   [Snared.type]: Snared,
+  [ResourcesBag.type]: ResourcesBag,
 } as const;

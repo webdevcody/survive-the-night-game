@@ -12,6 +12,7 @@ import Inventory from "@/extensions/inventory";
 import Movable from "@/extensions/movable";
 import Positionable from "@/extensions/positionable";
 import Updatable from "@/extensions/updatable";
+import ResourcesBag from "@/extensions/resources-bag";
 import { Broadcaster, IGameManagers } from "@/managers/types";
 import { Entities } from "@/constants";
 import { Direction } from "../../../game-shared/src/util/direction";
@@ -63,20 +64,15 @@ export class Player extends Entity {
   private displayName: string = "";
   private stamina: number = getConfig().player.MAX_STAMINA;
   private exhaustionTimer: number = 0; // Time remaining before stamina can regenerate
-  private coins: number = 0;
-  private resources: Map<ResourceType, number> = new Map();
+  private inventorySelectionDirty: boolean = false;
 
   constructor(gameManagers: IGameManagers) {
     super(gameManagers, Entities.PLAYER);
     this.broadcaster = gameManagers.getBroadcaster();
 
-    // Initialize all resources to 0
-    RESOURCE_ITEMS.forEach((resource) => {
-      this.resources.set(resource as ResourceType, 0);
-    });
-
     this.extensions = [
       new Inventory(this, gameManagers.getBroadcaster()),
+      new ResourcesBag(this, gameManagers.getBroadcaster()),
       new Collidable(this)
         .setSize(new Vector2(Player.PLAYER_WIDTH - 4, Player.PLAYER_WIDTH - 4))
         .setOffset(new Vector2(2, 2)),
@@ -192,23 +188,35 @@ export class Player extends Entity {
     return positionable.getCenterPosition();
   }
 
-  serialize(): RawEntity {
-    return {
-      ...super.serialize(),
-      inventory: this.getExt(Inventory).getItems(),
-      activeItem: this.activeItem,
-      isCrafting: this.isCrafting,
-      input: this.input,
-      skin: this.skin,
-      kills: this.kills,
-      ping: this.ping,
-      displayName: this.displayName,
-      stamina: this.stamina,
-      maxStamina: getConfig().player.MAX_STAMINA,
-      coins: this.coins,
-      wood: this.getWood(),
-      cloth: this.getCloth(),
-    };
+  serialize(onlyDirty: boolean = false): RawEntity {
+    const base = super.serialize(onlyDirty);
+    const result: RawEntity = { ...base };
+    const inventoryExt = this.getExt(Inventory);
+    const inventoryDirty = inventoryExt.isDirty();
+
+    if (!onlyDirty || inventoryDirty) {
+      result.inventory = inventoryExt.getItems();
+    }
+
+    if (!onlyDirty || inventoryDirty || this.inventorySelectionDirty) {
+      result.activeItem = this.activeItem;
+    }
+
+    if (!onlyDirty || this.inventorySelectionDirty) {
+      result.input = this.input;
+    }
+
+    if (!onlyDirty) {
+      result.isCrafting = this.isCrafting;
+      result.skin = this.skin;
+      result.kills = this.kills;
+      result.ping = this.ping;
+      result.displayName = this.displayName;
+      result.stamina = this.stamina;
+      result.maxStamina = getConfig().player.MAX_STAMINA;
+    }
+
+    return result;
   }
 
   getHitbox(): Rectangle {
@@ -243,12 +251,13 @@ export class Player extends Entity {
   }
 
   craftRecipe(recipe: RecipeType): void {
-    const resources = { wood: this.getWood(), cloth: this.getCloth() };
+    const resourcesBag = this.getExt(ResourcesBag);
+    const resources = resourcesBag.getAllResources();
     const result = this.getExt(Inventory).craftRecipe(recipe, resources);
 
     // Update player's resource counts using generic setResource
-    this.setResource("wood", result.resources.wood);
-    this.setResource("cloth", result.resources.cloth);
+    resourcesBag.setResource("wood", result.resources.wood);
+    resourcesBag.setResource("cloth", result.resources.cloth);
 
     // If inventory was full, drop the crafted item on the ground
     if (result.itemToDrop) {
@@ -661,11 +670,16 @@ export class Player extends Entity {
   }
 
   setInput(input: Input) {
+    const previousSlot = this.input.inventoryItem;
     this.input = input;
+    if (input.inventoryItem !== previousSlot) {
+      this.inventorySelectionDirty = true;
+    }
   }
 
   selectInventoryItem(index: number) {
     this.input.inventoryItem = index;
+    this.inventorySelectionDirty = true;
   }
 
   setAsFiring(firing: boolean) {
@@ -719,11 +733,11 @@ export class Player extends Entity {
   }
 
   addCoins(amount: number): void {
-    this.coins += amount;
+    this.getExt(ResourcesBag).addCoins(amount);
   }
 
   getCoins(): number {
-    return this.coins;
+    return this.getExt(ResourcesBag).getCoins();
   }
 
   /**
@@ -731,65 +745,62 @@ export class Player extends Entity {
    * Works with any resource type defined in RESOURCE_ITEMS
    */
   addResource(resourceType: ResourceType, amount: number): void {
-    if (amount <= 0) return;
-
-    const currentAmount = this.resources.get(resourceType) || 0;
-    this.resources.set(resourceType, currentAmount + amount);
-
-    // Broadcast resource pickup event
-    this.broadcaster.broadcastEvent(
-      new PlayerPickedUpResourceEvent({
-        playerId: this.getId(),
-        resourceType,
-      })
-    );
+    this.getExt(ResourcesBag).addResource(resourceType, amount);
   }
 
   /**
    * Get the amount of a specific resource
    */
   getResource(resourceType: ResourceType): number {
-    return this.resources.get(resourceType) || 0;
+    return this.getExt(ResourcesBag).getResource(resourceType);
   }
 
   /**
    * Set the amount of a specific resource
    */
   setResource(resourceType: ResourceType, amount: number): void {
-    this.resources.set(resourceType, Math.max(0, amount));
+    this.getExt(ResourcesBag).setResource(resourceType, amount);
   }
 
   /**
    * Remove a specific amount of a resource
    */
   removeResource(resourceType: ResourceType, amount: number): void {
-    const currentAmount = this.resources.get(resourceType) || 0;
-    this.resources.set(resourceType, Math.max(0, currentAmount - amount));
+    this.getExt(ResourcesBag).removeResource(resourceType, amount);
   }
 
   // Backward compatibility getters/setters for wood
   getWood(): number {
-    return this.getResource("wood");
+    return this.getExt(ResourcesBag).getWood();
   }
 
   setWood(amount: number): void {
-    this.setResource("wood", amount);
+    this.getExt(ResourcesBag).setWood(amount);
   }
 
   removeWood(amount: number): void {
-    this.removeResource("wood", amount);
+    this.getExt(ResourcesBag).removeWood(amount);
   }
 
   // Backward compatibility getters/setters for cloth
   getCloth(): number {
-    return this.getResource("cloth");
+    return this.getExt(ResourcesBag).getCloth();
   }
 
   setCloth(amount: number): void {
-    this.setResource("cloth", amount);
+    this.getExt(ResourcesBag).setCloth(amount);
   }
 
   removeCloth(amount: number): void {
-    this.removeResource("cloth", amount);
+    this.getExt(ResourcesBag).removeCloth(amount);
+  }
+
+  public isDirty(): boolean {
+    return super.isDirty() || this.inventorySelectionDirty;
+  }
+
+  public clearDirtyFlags(): void {
+    super.clearDirtyFlags();
+    this.inventorySelectionDirty = false;
   }
 }

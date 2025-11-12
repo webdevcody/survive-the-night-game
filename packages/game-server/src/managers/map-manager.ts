@@ -34,6 +34,7 @@ import { getConfig } from "@/config";
 import { itemRegistry } from "@shared/entities";
 import { weaponRegistry } from "@shared/entities";
 import { Entities } from "@shared/constants";
+import { Crate } from "@/entities/items/crate";
 
 const BIOME_SIZE = 16;
 const MAP_SIZE = 9;

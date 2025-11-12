@@ -9,9 +9,16 @@ export default class Positionable implements Extension {
   private self: IEntity;
   private position: Vector2 = new Vector2(0, 0);
   private size: Vector2 = new Vector2(0, 0);
+  private onPositionChange?: (entity: IEntity) => void;
+  private dirty: boolean = false;
 
   public constructor(self: IEntity) {
     this.self = self;
+  }
+
+  public setOnPositionChange(callback: (entity: IEntity) => void): this {
+    this.onPositionChange = callback;
+    return this;
   }
 
   public getSize(): Vector2 {
@@ -19,7 +26,11 @@ export default class Positionable implements Extension {
   }
 
   public setSize(size: Vector2): this {
+    const sizeChanged = this.size.x !== size.x || this.size.y !== size.y;
     this.size = size;
+    if (sizeChanged) {
+      this.markDirty();
+    }
     return this;
   }
 
@@ -32,8 +43,42 @@ export default class Positionable implements Extension {
   }
 
   public setPosition(position: Vector2): this {
-    this.position = position;
+    // Only trigger callback if position actually changed
+    const positionChanged = this.position.x !== position.x || this.position.y !== position.y;
+    // Clone the position to prevent external mutations from affecting our state
+    this.position = position.clone();
+
+    if (positionChanged) {
+      if (this.onPositionChange) {
+        this.onPositionChange(this.self);
+      }
+      this.markDirty();
+    }
+
     return this;
+  }
+
+  public isDirty(): boolean {
+    return this.dirty;
+  }
+
+  public markDirty(): void {
+    this.dirty = true;
+    // Notify entity that this extension is dirty
+    if (this.self.markExtensionDirty) {
+      this.self.markExtensionDirty(this);
+    }
+  }
+
+  public clearDirty(): void {
+    this.dirty = false;
+  }
+
+  public serializeDirty(): ExtensionSerialized | null {
+    if (!this.dirty) {
+      return null;
+    }
+    return this.serialize();
   }
 
   public serialize(): ExtensionSerialized {

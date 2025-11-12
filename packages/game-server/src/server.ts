@@ -14,6 +14,7 @@ import { getConfig } from "@shared/config";
 import Destructible from "@/extensions/destructible";
 import { PerformanceTracker } from "./util/performance";
 import { WaveState } from "@shared/types/wave";
+import { perfTimer } from "@shared/util/performance";
 
 export class GameServer {
   // STATE
@@ -107,7 +108,12 @@ export class GameServer {
     this.entityManager = new EntityManager();
     this.mapManager = new MapManager();
     this.commandManager = new CommandManager(this.entityManager);
-    this.gameManagers = new GameManagers(this.entityManager, this.mapManager, this.socketManager, this);
+    this.gameManagers = new GameManagers(
+      this.entityManager,
+      this.mapManager,
+      this.socketManager,
+      this
+    );
 
     this.entityManager.setGameManagers(this.gameManagers);
     this.mapManager.setGameManagers(this.gameManagers);
@@ -238,33 +244,31 @@ export class GameServer {
     const currentTime = Date.now();
     const deltaTime = (currentTime - this.lastUpdateTime) / 1000;
 
-    // an update is averaging 4.1 ms, we can improve this
-    // this.performanceTracker.trackStart("updateEntities");
     this.updateEntities(deltaTime);
-    // this.performanceTracker.trackEnd("updateEntities");
 
     this.handleWaveSystem(deltaTime);
+
+    // 1ms per tick
     this.handleIfGameOver();
 
     this.entityManager.pruneEntities();
 
-    // BEFORE REFACTORING
-    // {
-    //   mean: 5.425483800000007,
-    //   median: 5.651458500000217,
-    //   stdDev: 1.2973845897338345
-    // }
-    // this.performanceTracker.trackStart("broadcastGameState");
+    perfTimer.start("broadcastGameState");
+    // 3.4ms per tick
     this.broadcastGameState();
-    // this.performanceTracker.trackEnd("broadcastGameState");
+    perfTimer.end("broadcastGameState");
 
-    // this.performanceTracker.trackStart("trackEntity");
+    perfTimer.start("trackEntityStates");
+    // 2ms per tick
+    // Track entities we've seen (dirty flags are cleared in broadcastEvent after broadcasting)
     for (const entity of this.entityManager.getDynamicEntities()) {
       this.entityManager.getEntityStateTracker().trackEntity(entity, currentTime);
     }
-    // this.performanceTracker.trackEnd("trackEntity");
+    perfTimer.end("trackEntityStates");
 
-    // print the final performance metrics over time
+    // perfTimer.logStats("trackEntityStates");
+    // perfTimer.logStats("broadcastGameState");
+
     this.trackPerformance(updateStartTime, currentTime);
     this.lastUpdateTime = currentTime;
   }
@@ -383,13 +387,9 @@ export class GameServer {
   // TODO: This is a bit of a hack to get the game state to the client.
   // We should probably have a more elegant way to do this.
   private broadcastGameState(): void {
-    const rawEntities = [...this.entityManager.getDynamicEntities()].map((entity) =>
-      entity.serialize()
-    );
-
+    // Don't serialize entities here - let broadcastEvent() handle it with dirty flags
     // Only include state properties that have changed
     const stateUpdate: any = {
-      entities: rawEntities,
       timestamp: Date.now(),
     };
 

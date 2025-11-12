@@ -17,6 +17,7 @@ import { ClientTriggerable } from "@/extensions/triggerable";
 import { ClientUpdatable } from "@/extensions/updatable";
 import { ClientOneTimeTrigger } from "./one-time-trigger";
 import { ClientStatic } from "./static";
+import { ClientResourcesBag } from "./resources-bag";
 
 export const clientExtensionsMap = {
   [ExtensionTypes.POSITIONABLE]: ClientPositionable,
@@ -37,6 +38,7 @@ export const clientExtensionsMap = {
   [ExtensionTypes.TRIGGER_COOLDOWN_ATTACKER]: ClientTriggerCooldownAttacker,
   [ExtensionTypes.ONE_TIME_TRIGGER]: ClientOneTimeTrigger,
   [ExtensionTypes.STATIC]: ClientStatic,
+  [ExtensionTypes.RESOURCES_BAG]: ClientResourcesBag,
 } as const;
 
 export {
@@ -58,4 +60,5 @@ export {
   ClientTriggerCooldownAttacker,
   ClientOneTimeTrigger,
   ClientStatic,
+  ClientResourcesBag,
 };

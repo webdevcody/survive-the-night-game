@@ -35,6 +35,7 @@ export interface InputManagerOptions {
   isFullscreenMapOpen?: () => boolean;
   isPlayerDead?: () => boolean;
   getInventory?: () => any[];
+  onInventorySlotChanged?: (slot: number) => void;
 }
 
 export class InputManager {
@@ -102,7 +103,7 @@ export class InputManager {
       nextIdx = occupiedSlots.length - 1; // Wrap to last
     }
 
-    this.inputs.inventoryItem = occupiedSlots[nextIdx];
+    this.setInventorySlot(occupiedSlots[nextIdx]);
   }
 
   private quickHeal() {
@@ -333,10 +334,10 @@ export class InputManager {
           case "7":
           case "8":
           case "9":
-            this.inputs.inventoryItem = Number.parseInt(eventKey, 10);
+            this.setInventorySlot(Number.parseInt(eventKey, 10));
             break;
           case "0":
-            this.inputs.inventoryItem = 10; // Map "0" key to slot 10
+            this.setInventorySlot(10); // Map "0" key to slot 10
             break;
         }
       }
@@ -488,10 +489,18 @@ export class InputManager {
   }
 
   setInventorySlot(slot: number) {
-    if (slot >= 1 && slot <= getConfig().player.MAX_INVENTORY_SLOTS) {
-      this.inputs.inventoryItem = slot;
-      this.hasChanged = true;
+    const maxSlots = getConfig().player.MAX_INVENTORY_SLOTS;
+    if (slot < 1 || slot > maxSlots) {
+      return;
     }
+
+    if (this.inputs.inventoryItem === slot) {
+      return;
+    }
+
+    this.inputs.inventoryItem = slot;
+    this.hasChanged = true;
+    this.callbacks.onInventorySlotChanged?.(slot);
   }
 
   reset() {

@@ -53,6 +53,7 @@ export default class Inventory implements Extension {
   private self: IEntity;
   private items: InventoryItem[] = [];
   private broadcaster: Broadcaster;
+  private dirty: boolean = false;
 
   public constructor(self: IEntity, broadcaster: Broadcaster) {
     this.self = self;
@@ -85,6 +86,8 @@ export default class Inventory implements Extension {
       this.items.push(item);
     }
 
+    this.markDirty();
+
     this.broadcaster.broadcastEvent(
       new PlayerPickedUpItemEvent({
         playerId: this.self.getId(),
@@ -98,6 +101,7 @@ export default class Inventory implements Extension {
     const item = this.items[index];
     if (item != null) {
       this.items[index] = null as any;
+      this.markDirty();
     }
     return item;
   }
@@ -105,6 +109,7 @@ export default class Inventory implements Extension {
   public updateItemState(index: number, state: any): void {
     if (index >= 0 && index < this.items.length && this.items[index] != null) {
       this.items[index].state = state;
+      this.markDirty();
     }
   }
 
@@ -131,7 +136,11 @@ export default class Inventory implements Extension {
 
     const maxSlots = getConfig().player.MAX_INVENTORY_SLOTS;
     const result = foundRecipe.craft(this.items, resources, maxSlots);
+    const itemsChanged = JSON.stringify(this.items) !== JSON.stringify(result.inventory);
     this.items = result.inventory;
+    if (itemsChanged) {
+      this.markDirty();
+    }
     return result;
   }
 
@@ -167,7 +176,10 @@ export default class Inventory implements Extension {
   }
 
   public clear(): void {
-    this.items = [];
+    if (this.items.length > 0) {
+      this.items = [];
+      this.markDirty();
+    }
   }
 
   public scatterItems(position: { x: number; y: number }): void {
@@ -196,6 +208,28 @@ export default class Inventory implements Extension {
 
   private createEntityFromItem(item: InventoryItem) {
     return this.self.getEntityManager()!.createEntityFromItem(item);
+  }
+
+  public isDirty(): boolean {
+    return this.dirty;
+  }
+
+  public markDirty(): void {
+    this.dirty = true;
+    if (this.self.markExtensionDirty) {
+      this.self.markExtensionDirty(this);
+    }
+  }
+
+  public clearDirty(): void {
+    this.dirty = false;
+  }
+
+  public serializeDirty(): ExtensionSerialized | null {
+    if (!this.dirty) {
+      return null;
+    }
+    return this.serialize();
   }
 
   public serialize(): ExtensionSerialized {

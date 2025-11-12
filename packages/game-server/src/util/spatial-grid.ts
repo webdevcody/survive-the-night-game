@@ -8,6 +8,7 @@ export class SpatialGrid {
   private cellSize: number = 16;
   private rowLength: number;
   private colLength: number;
+  private entityCellMap: WeakMap<Entity, [number, number]> = new WeakMap();
 
   constructor(mapWidth: number, mapHeight: number) {
     const cols = Math.ceil(mapWidth / this.cellSize);
@@ -29,6 +30,8 @@ export class SpatialGrid {
         this.cells[y][x].clear();
       }
     }
+    // WeakMap will be garbage collected automatically, but we can't clear it explicitly
+    // The entityCellMap will naturally clear as entities are removed
   }
 
   addEntity(entity: Entity) {
@@ -38,6 +41,42 @@ export class SpatialGrid {
 
     if (this.isValidCell(cellX, cellY)) {
       this.cells[cellY][cellX].set(entity.getId(), entity);
+      this.entityCellMap.set(entity, [cellX, cellY]);
+    }
+  }
+
+  removeEntity(entity: Entity) {
+    const cellCoords = this.entityCellMap.get(entity);
+    if (cellCoords) {
+      const [cellX, cellY] = cellCoords;
+      if (this.isValidCell(cellX, cellY)) {
+        this.cells[cellY][cellX].delete(entity.getId());
+      }
+      this.entityCellMap.delete(entity);
+    }
+  }
+
+  updateEntity(entity: Entity) {
+    // Remove from old cell
+    const oldCellCoords = this.entityCellMap.get(entity);
+    if (oldCellCoords) {
+      const [oldCellX, oldCellY] = oldCellCoords;
+      if (this.isValidCell(oldCellX, oldCellY)) {
+        this.cells[oldCellY][oldCellX].delete(entity.getId());
+      }
+    }
+
+    // Add to new cell
+    const pos = entity.getExt(Positionable).getCenterPosition();
+    const newCellX = (pos.x / this.cellSize) | 0;
+    const newCellY = (pos.y / this.cellSize) | 0;
+
+    if (this.isValidCell(newCellX, newCellY)) {
+      this.cells[newCellY][newCellX].set(entity.getId(), entity);
+      this.entityCellMap.set(entity, [newCellX, newCellY]);
+    } else {
+      // If new cell is invalid, remove from tracking
+      this.entityCellMap.delete(entity);
     }
   }
 

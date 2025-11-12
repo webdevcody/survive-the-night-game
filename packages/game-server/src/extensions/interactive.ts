@@ -11,6 +11,7 @@ export default class Interactive implements Extension {
   private handler: InteractiveHandler | null = null;
   private displayName: string = "";
   private offset: Vector2 = new Vector2(0, 0);
+  private dirty: boolean = false;
 
   public constructor(self: IEntity) {
     this.self = self;
@@ -22,7 +23,11 @@ export default class Interactive implements Extension {
   }
 
   public setOffset(offset: Vector2): this {
+    const offsetChanged = this.offset.x !== offset.x || this.offset.y !== offset.y;
     this.offset = offset;
+    if (offsetChanged) {
+      this.markDirty();
+    }
     return this;
   }
 
@@ -31,7 +36,11 @@ export default class Interactive implements Extension {
   }
 
   public setDisplayName(name: string): this {
+    const nameChanged = this.displayName !== name;
     this.displayName = name;
+    if (nameChanged) {
+      this.markDirty();
+    }
     return this;
   }
 
@@ -41,6 +50,28 @@ export default class Interactive implements Extension {
 
   public interact(entityId: string): void {
     this.handler?.(entityId);
+  }
+
+  public isDirty(): boolean {
+    return this.dirty;
+  }
+
+  public markDirty(): void {
+    this.dirty = true;
+    if (this.self.markExtensionDirty) {
+      this.self.markExtensionDirty(this);
+    }
+  }
+
+  public clearDirty(): void {
+    this.dirty = false;
+  }
+
+  public serializeDirty(): ExtensionSerialized | null {
+    if (!this.dirty) {
+      return null;
+    }
+    return this.serialize();
   }
 
   public serialize(): ExtensionSerialized {

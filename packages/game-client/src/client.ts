@@ -22,7 +22,7 @@ import { Direction } from "../../game-shared/src/util/direction";
 import { Input } from "../../game-shared/src/util/input";
 import { ClientEntityBase } from "@/extensions/client-entity";
 import { ClientDestructible } from "@/extensions/destructible";
-import { ClientPositionable } from "@/extensions";
+import { ClientPositionable, ClientResourcesBag } from "@/extensions";
 import { WaveState } from "@shared/types/wave";
 import { ParticleManager } from "./managers/particles";
 import { PredictionManager } from "./managers/prediction";
@@ -141,11 +141,13 @@ export class GameClient {
       // Handle UI clicks (inventory bar, HUD mute button, etc.)
       // Check inventory bar first
       if (this.hotbar && this.hotbar.handleClick(x, y, canvas.width, canvas.height)) {
+        this.placementManager?.skipNextClick();
         return; // Click was handled by inventory bar
       }
 
       // Handle HUD clicks (like mute button)
       if (this.hud && this.hud.handleClick(x, y, canvas.height)) {
+        this.placementManager?.skipNextClick();
         return; // Click was handled by HUD
       }
 
@@ -319,6 +321,9 @@ export class GameClient {
       },
       onTeleportCancel: () => {
         this.cancelTeleport();
+      },
+      onInventorySlotChanged: (slot) => {
+        this.handleLocalInventorySlotChanged(slot);
       },
     });
 
@@ -704,6 +709,13 @@ export class GameClient {
     }
   }
 
+  private handleLocalInventorySlotChanged(slot: number): void {
+    const player = this.getMyPlayer();
+    if (player) {
+      player.setLocalInventorySlot(slot);
+    }
+  }
+
   /**
    * Get teleport state for HUD rendering
    */
@@ -807,10 +819,19 @@ export class GameClient {
       };
     }
 
+    // Get resources from extension
+    let wood = 0;
+    let cloth = 0;
+    if (player.hasExt(ClientResourcesBag)) {
+      const resourcesBag = player.getExt(ClientResourcesBag);
+      wood = resourcesBag.getWood();
+      cloth = resourcesBag.getCloth();
+    }
+
     return {
       resources: {
-        wood: player.getWood(),
-        cloth: player.getCloth(),
+        wood,
+        cloth,
       },
       inventory: player.getInventory(),
       playerId: this.gameState.playerId,

@@ -3,6 +3,7 @@ import { getPlayer } from "@/util/get-player";
 import { AssetManager } from "@/managers/asset";
 import { Panel, PanelSettings } from "./panel";
 import { calculateHudScale } from "@/util/hud-scale";
+import { ClientResourcesBag } from "@/extensions";
 
 interface CoinsPanelSettings extends PanelSettings {
   marginBottom: number;
@@ -31,7 +32,11 @@ export class CoinsPanel extends Panel {
     const myPlayer = getPlayer(gameState);
     if (!myPlayer) return;
 
-    const coins = myPlayer.getCoins();
+    // Get coins from extension
+    let coins = 0;
+    if (myPlayer.hasExt(ClientResourcesBag)) {
+      coins = myPlayer.getExt(ClientResourcesBag).getCoins();
+    }
     const { width: canvasWidth, height: canvasHeight } = ctx.canvas;
     const hudScale = calculateHudScale(canvasWidth, canvasHeight);
 

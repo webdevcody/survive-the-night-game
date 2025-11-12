@@ -16,6 +16,7 @@ export default class Carryable implements Extension {
   private self: IEntity;
   private itemType: ItemType;
   private state: ItemState = {};
+  private dirty: boolean = false;
 
   public constructor(self: IEntity, itemType: ItemType) {
     this.self = self;
@@ -24,7 +25,11 @@ export default class Carryable implements Extension {
   }
 
   public setItemState(state: ItemState): this {
+    const stateChanged = JSON.stringify(this.state) !== JSON.stringify(state);
     this.state = state;
+    if (stateChanged) {
+      this.markDirty();
+    }
     return this;
   }
 
@@ -89,6 +94,28 @@ export default class Carryable implements Extension {
       );
 
     return true;
+  }
+
+  public isDirty(): boolean {
+    return this.dirty;
+  }
+
+  public markDirty(): void {
+    this.dirty = true;
+    if (this.self.markExtensionDirty) {
+      this.self.markExtensionDirty(this);
+    }
+  }
+
+  public clearDirty(): void {
+    this.dirty = false;
+  }
+
+  public serializeDirty(): ExtensionSerialized | null {
+    if (!this.dirty) {
+      return null;
+    }
+    return this.serialize();
   }
 
   public serialize(): ExtensionSerialized {

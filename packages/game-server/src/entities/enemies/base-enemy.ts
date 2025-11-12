@@ -150,12 +150,15 @@ export abstract class BaseEnemy extends Entity {
     this.setPosition(position);
     if (this.getEntityManager().isColliding(this)) {
       position.x = previousX;
+      this.setPosition(position);
     }
 
     position.y += velocity.y * deltaTime;
+    this.setPosition(position);
 
     if (this.getEntityManager().isColliding(this)) {
       position.y = previousY;
+      this.setPosition(position);
     }
   }
 

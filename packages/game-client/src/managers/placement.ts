@@ -19,6 +19,7 @@ export class PlacementManager {
   private mouseWorldPos: Vector2 | null = null;
   private isValidPlacement = false;
   private ghostPosition: Vector2 | null = null;
+  private skipClickUntil = 0;
 
   constructor(
     private canvas: HTMLCanvasElement,
@@ -42,6 +43,14 @@ export class PlacementManager {
 
     // Handle clicks for placement
     this.canvas.addEventListener("click", (e) => {
+      const now = performance.now();
+      if (this.skipClickUntil > 0) {
+        if (now <= this.skipClickUntil) {
+          this.skipClickUntil = 0;
+          return;
+        }
+        this.skipClickUntil = 0;
+      }
       this.handleClick(e);
     });
   }
@@ -194,6 +203,10 @@ export class PlacementManager {
         y: this.ghostPosition.y,
       },
     });
+  }
+
+  public skipNextClick(): void {
+    this.skipClickUntil = performance.now() + 200;
   }
 
   /**

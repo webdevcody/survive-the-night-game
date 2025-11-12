@@ -16,5 +16,8 @@ export interface IEntity extends EventTarget {
   hasExt<T>(ext: ExtensionCtor<T>): boolean;
   getExt<T>(ext: ExtensionCtor<T>): T;
 
-  serialize(): RawEntity;
+  serialize(onlyDirty?: boolean): RawEntity;
+  isDirty?(): boolean;
+  markExtensionDirty?(extension: Extension): void;
+  clearDirtyFlags?(): void;
 }

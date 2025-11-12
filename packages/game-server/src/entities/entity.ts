@@ -8,6 +8,9 @@ export class Entity extends EventTarget implements IEntity {
   private readonly id: string;
   private readonly type: EntityType;
   protected extensions: Extension[] = [];
+  private extensionTypes: Set<ExtensionCtor> = new Set(); // Fast O(1) lookup for hasExt
+  private updatableExtensions: Extension[] = []; // Extensions that have an update method
+  private dirtyExtensions: Set<Extension> = new Set(); // Track which extensions are dirty
   private readonly gameManagers: IGameManagers;
   private markedForRemoval = false;
   private removedExtensions: string[] = []; // Track removed extensions
@@ -52,12 +55,51 @@ export class Entity extends EventTarget implements IEntity {
 
   public addExtension(extension: Extension) {
     this.extensions.push(extension);
+    // Add the extension's constructor to the Set for fast lookup
+    this.extensionTypes.add(extension.constructor as ExtensionCtor);
+    // Track extensions with update methods
+    if ("update" in extension && typeof (extension as any).update === "function") {
+      this.updatableExtensions.push(extension);
+    }
+    // Mark new extensions as dirty (they need to be sent to clients)
+    if (extension.markDirty) {
+      extension.markDirty();
+      this.dirtyExtensions.add(extension);
+    }
+  }
+
+  /**
+   * Syncs the extension tracking structures (extensionTypes and updatableExtensions)
+   * from the existing extensions array. This is needed when extensions are set
+   * directly on this.extensions instead of using addExtension().
+   */
+  public syncExtensionTracking() {
+    // Clear existing tracking
+    this.extensionTypes.clear();
+    this.updatableExtensions = [];
+
+    // Rebuild tracking from existing extensions
+    for (const extension of this.extensions) {
+      this.extensionTypes.add(extension.constructor as ExtensionCtor);
+      if ("update" in extension && typeof (extension as any).update === "function") {
+        this.updatableExtensions.push(extension);
+      }
+    }
   }
 
   public removeExtension(extension: Extension) {
     const index = this.extensions.indexOf(extension);
     if (index > -1) {
       this.extensions.splice(index, 1);
+      // Remove from the Set
+      this.extensionTypes.delete(extension.constructor as ExtensionCtor);
+      // Remove from updatable extensions if present
+      const updatableIndex = this.updatableExtensions.indexOf(extension);
+      if (updatableIndex > -1) {
+        this.updatableExtensions.splice(updatableIndex, 1);
+      }
+      // Remove from dirty extensions tracking
+      this.dirtyExtensions.delete(extension);
       // Track the removed extension type
       const type = (extension.constructor as any).type;
       if (type) {
@@ -70,11 +112,62 @@ export class Entity extends EventTarget implements IEntity {
     return this.extensions;
   }
 
+  public getUpdatableExtensions(): Extension[] {
+    return this.updatableExtensions;
+  }
+
+  public hasUpdatableExtensions(): boolean {
+    return this.updatableExtensions.length > 0;
+  }
+
+  public isDirty(): boolean {
+    // Check if any extension is dirty
+    for (const extension of this.extensions) {
+      if (extension.isDirty && extension.isDirty()) {
+        return true;
+      }
+    }
+    // Also check if there are removed extensions (entity structure changed)
+    return this.removedExtensions.length > 0;
+  }
+
+  public getDirtyExtensions(): Extension[] {
+    return Array.from(this.dirtyExtensions);
+  }
+
+  public clearDirtyFlags(): void {
+    for (const extension of this.dirtyExtensions) {
+      if (extension.clearDirty) {
+        extension.clearDirty();
+      }
+    }
+    this.dirtyExtensions.clear();
+  }
+
+  public markExtensionDirty(extension: Extension): void {
+    // Just add to dirty set - extension already marked itself dirty before calling this
+    this.dirtyExtensions.add(extension);
+  }
+
   public hasExt<T>(ext: ExtensionCtor<T>): boolean {
+    // Fast O(1) check using Set
+    if (this.extensionTypes.has(ext)) {
+      return true;
+    }
+    // Fallback to instanceof check for inheritance cases
+    // (though this should be rare if extensions are added correctly)
     return this.extensions.some((e) => e instanceof ext);
   }
 
   public getExt<T>(ext: ExtensionCtor<T>): T {
+    // Fast path: if we know the extension exists, find it directly
+    if (this.extensionTypes.has(ext)) {
+      const extension = this.extensions.find((e) => e instanceof ext);
+      if (extension) {
+        return extension as T;
+      }
+    }
+    // Fallback for inheritance cases
     const extension = this.extensions.find((e) => e instanceof ext);
     if (!extension) {
       throw new Error(`Extension ${(ext as any).type} not found`);
@@ -82,13 +175,29 @@ export class Entity extends EventTarget implements IEntity {
     return extension as T;
   }
 
-  public serialize(): RawEntity {
+  public serialize(onlyDirty: boolean = false): RawEntity {
     const serialized: RawEntity = {
       id: this.id,
       type: this.type,
-      extensions: this.extensions.map((ext) => {
-        return ext.serialize();
-      }),
+      extensions: this.extensions
+        .map((ext) => {
+          if (onlyDirty) {
+            // Only serialize dirty extensions
+            if (ext.isDirty && ext.isDirty()) {
+              // Use serializeDirty if available, otherwise fall back to serialize
+              if (ext.serializeDirty) {
+                const dirtyData = ext.serializeDirty();
+                return dirtyData !== null ? dirtyData : ext.serialize();
+              }
+              return ext.serialize();
+            }
+            return null;
+          } else {
+            // Serialize all extensions
+            return ext.serialize();
+          }
+        })
+        .filter((ext) => ext !== null) as any[],
     };
 
     // Only include removedExtensions if there are any

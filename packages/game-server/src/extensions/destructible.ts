@@ -16,6 +16,7 @@ export default class Destructible implements Extension {
   private offset = new Vector2(0, 0);
   private deathHandler: DestructibleDeathHandler | null = null;
   private onDamagedHandler: DestructibleDamagedHandler | null = null;
+  private dirty: boolean = false;
 
   public constructor(self: IEntity) {
     this.self = self;
@@ -37,12 +38,20 @@ export default class Destructible implements Extension {
   }
 
   public setHealth(health: number): this {
+    const healthChanged = this.health !== health;
     this.health = health;
+    if (healthChanged) {
+      this.markDirty();
+    }
     return this;
   }
 
   public setMaxHealth(maxHealth: number): this {
+    const maxHealthChanged = this.maxHealth !== maxHealth;
     this.maxHealth = maxHealth;
+    if (maxHealthChanged) {
+      this.markDirty();
+    }
     return this;
   }
 
@@ -51,7 +60,11 @@ export default class Destructible implements Extension {
       return;
     }
 
+    const oldHealth = this.health;
     this.health = Math.max(0, this.health - damage);
+    if (oldHealth !== this.health) {
+      this.markDirty();
+    }
     this.onDamagedHandler?.();
 
     if (this.isDead()) {
@@ -60,7 +73,11 @@ export default class Destructible implements Extension {
   }
 
   public kill(): void {
+    const wasDead = this.isDead();
     this.health = 0;
+    if (!wasDead) {
+      this.markDirty();
+    }
     this.deathHandler?.();
   }
 
@@ -76,7 +93,11 @@ export default class Destructible implements Extension {
     if (this.isDead()) {
       return;
     }
+    const oldHealth = this.health;
     this.health = Math.min(this.health + amount, this.maxHealth);
+    if (oldHealth !== this.health) {
+      this.markDirty();
+    }
   }
 
   public isDead(): boolean {
@@ -89,6 +110,28 @@ export default class Destructible implements Extension {
 
   public getMaxHealth(): number {
     return this.maxHealth;
+  }
+
+  public isDirty(): boolean {
+    return this.dirty;
+  }
+
+  public markDirty(): void {
+    this.dirty = true;
+    if (this.self.markExtensionDirty) {
+      this.self.markExtensionDirty(this);
+    }
+  }
+
+  public clearDirty(): void {
+    this.dirty = false;
+  }
+
+  public serializeDirty(): ExtensionSerialized | null {
+    if (!this.dirty) {
+      return null;
+    }
+    return this.serialize();
   }
 
   public serialize(): ExtensionSerialized {

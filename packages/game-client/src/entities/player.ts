@@ -4,6 +4,8 @@ import {
   ClientPositionable,
   ClientMovable,
   ClientIgnitable,
+  ClientInventory,
+  ClientResourcesBag,
 } from "@/extensions";
 import { ImageLoader, getItemAssetKey } from "@/managers/asset";
 import { GameState } from "@/state";
@@ -30,7 +32,6 @@ export class PlayerClient extends ClientEntity implements IClientEntity, Rendera
   private readonly WALK_ANIMATION_DURATION = 450;
 
   private lastRenderPosition = { x: 0, y: 0 };
-  private inventory: InventoryItem[] = [];
   private isCrafting = false;
   private activeItem: InventoryItem | null = null;
   private previousHealth: number | undefined;
@@ -41,9 +42,6 @@ export class PlayerClient extends ClientEntity implements IClientEntity, Rendera
   private displayName: string = "";
   private stamina: number = 100;
   private maxStamina: number = 100;
-  private coins: number = 0;
-  private wood: number = 0;
-  private cloth: number = 0;
   private serverGhostPos: Vector2 | null = null;
 
   private input: Input = {
@@ -65,7 +63,6 @@ export class PlayerClient extends ClientEntity implements IClientEntity, Rendera
 
   constructor(data: RawEntity, imageLoader: ImageLoader) {
     super(data, imageLoader);
-    this.inventory = data.inventory;
     this.isCrafting = data.isCrafting;
     this.activeItem = data.activeItem;
     this.input = data.input;
@@ -75,9 +72,6 @@ export class PlayerClient extends ClientEntity implements IClientEntity, Rendera
     this.displayName = data.displayName || "Unknown";
     this.stamina = data.stamina ?? 100;
     this.maxStamina = data.maxStamina ?? 100;
-    this.coins = data.coins ?? 0;
-    this.wood = data.wood ?? 0;
-    this.cloth = data.cloth ?? 0;
   }
 
   private getPlayerAssetKey(): string {
@@ -85,7 +79,10 @@ export class PlayerClient extends ClientEntity implements IClientEntity, Rendera
   }
 
   getInventory(): InventoryItem[] {
-    return this.inventory;
+    if (this.hasExt(ClientInventory)) {
+      return this.getExt(ClientInventory).getItems();
+    }
+    return [];
   }
 
   getSelectedInventorySlot(): number {
@@ -320,7 +317,7 @@ export class PlayerClient extends ClientEntity implements IClientEntity, Rendera
 
   renderMinersHat(ctx: CanvasRenderingContext2D, renderPosition: Vector2) {
     // Check if miners-hat is in inventory - always show overlay when in inventory
-    const hasMinersHat = this.inventory.some(
+    const hasMinersHat = this.getInventory().some(
       (item) => item !== null && item.itemType === "miners_hat"
     );
 
@@ -328,6 +325,27 @@ export class PlayerClient extends ClientEntity implements IClientEntity, Rendera
       const minersHatImage = this.imageLoader.get("miners_hat");
       ctx.drawImage(minersHatImage, renderPosition.x, renderPosition.y);
     }
+  }
+
+  private updateActiveItemFromInventory(slotOverride?: number): void {
+    const maxSlots = getConfig().player.MAX_INVENTORY_SLOTS;
+    const slot = slotOverride ?? this.input?.inventoryItem ?? 1;
+    const clampedSlot = Math.min(Math.max(slot, 1), maxSlots);
+
+    if (this.hasExt(ClientInventory)) {
+      this.activeItem = this.getExt(ClientInventory).getActiveItem(clampedSlot);
+      return;
+    }
+
+    const inventory = this.getInventory();
+    this.activeItem = inventory[clampedSlot - 1] ?? null;
+  }
+
+  public setLocalInventorySlot(slot: number): void {
+    const maxSlots = getConfig().player.MAX_INVENTORY_SLOTS;
+    const clampedSlot = Math.min(Math.max(slot, 1), maxSlots);
+    this.input.inventoryItem = clampedSlot;
+    this.updateActiveItemFromInventory(clampedSlot);
   }
 
   renderInventoryItem(ctx: CanvasRenderingContext2D, renderPosition: Vector2) {
@@ -371,22 +389,61 @@ export class PlayerClient extends ClientEntity implements IClientEntity, Rendera
   }
 
   public getCoins(): number {
-    return this.coins;
+    if (this.hasExt(ClientResourcesBag)) {
+      return this.getExt(ClientResourcesBag).getCoins();
+    }
+    return 0;
   }
 
   public getWood(): number {
-    return this.wood;
+    if (this.hasExt(ClientResourcesBag)) {
+      return this.getExt(ClientResourcesBag).getWood();
+    }
+    return 0;
   }
 
   public getCloth(): number {
-    return this.cloth;
+    if (this.hasExt(ClientResourcesBag)) {
+      return this.getExt(ClientResourcesBag).getCloth();
+    }
+    return 0;
+  }
+
+  public deserializeProperty(key: string, value: any): void {
+    if (key === "extensions" && Array.isArray(value)) {
+      super.deserializeProperty(key, value);
+      if (value.some((ext: any) => ext.type === ClientInventory.type)) {
+        this.updateActiveItemFromInventory();
+      }
+      return;
+    }
+
+    if (key === "input" && value) {
+      const previousFacing = this.input?.facing;
+      super.deserializeProperty(key, value);
+      if (this.input && previousFacing !== undefined) {
+        this.input.facing = previousFacing;
+      }
+      this.updateActiveItemFromInventory();
+      return;
+    }
+
+    if (key === "activeItem") {
+      this.activeItem = value;
+      return;
+    }
+
+    super.deserializeProperty(key, value);
   }
 
   deserialize(data: RawEntity): void {
     super.deserialize(data);
-    this.inventory = data.inventory;
     this.isCrafting = data.isCrafting;
-    this.activeItem = data.activeItem;
+    if (data.activeItem !== undefined) {
+      this.activeItem = data.activeItem;
+    } else {
+      this.updateActiveItemFromInventory();
+    }
 
     // Preserve locally-calculated facing direction for cursor-based aiming
     // Only update facing from server for other input properties
@@ -404,8 +461,5 @@ export class PlayerClient extends ClientEntity implements IClientEntity, Rendera
     this.displayName = data.displayName || "Unknown";
     this.stamina = data.stamina ?? 100;
     this.maxStamina = data.maxStamina ?? 100;
-    this.coins = data.coins ?? 0;
-    this.wood = data.wood ?? 0;
-    this.cloth = data.cloth ?? 0;
   }
 }

@@ -8,6 +8,7 @@ export default class Groupable implements Extension {
 
   private self: IEntity;
   private group: Group;
+  private dirty: boolean = false;
 
   public constructor(self: IEntity, group: Group) {
     this.self = self;
@@ -19,7 +20,33 @@ export default class Groupable implements Extension {
   }
 
   public setGroup(group: Group): void {
+    const groupChanged = this.group !== group;
     this.group = group;
+    if (groupChanged) {
+      this.markDirty();
+    }
+  }
+
+  public isDirty(): boolean {
+    return this.dirty;
+  }
+
+  public markDirty(): void {
+    this.dirty = true;
+    if (this.self.markExtensionDirty) {
+      this.self.markExtensionDirty(this);
+    }
+  }
+
+  public clearDirty(): void {
+    this.dirty = false;
+  }
+
+  public serializeDirty(): ExtensionSerialized | null {
+    if (!this.dirty) {
+      return null;
+    }
+    return this.serialize();
   }
 
   public serialize(): ExtensionSerialized {
