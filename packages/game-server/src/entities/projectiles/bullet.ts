@@ -160,17 +160,6 @@ export class Bullet extends Entity {
     const bulletPath = new Line(fromCenter, toCenter);
     const bulletRadius = getConfig().combat.BULLET_SIZE / 2;
 
-    // Calculate a bounding box that encompasses the bullet's path plus its size
-    const minX = Math.min(fromCenter.x, toCenter.x) - bulletRadius;
-    const minY = Math.min(fromCenter.y, toCenter.y) - bulletRadius;
-    const maxX = Math.max(fromCenter.x, toCenter.x) + bulletRadius;
-    const maxY = Math.max(fromCenter.y, toCenter.y) + bulletRadius;
-
-    const boundingBox = new Rectangle(
-      new Vector2(minX, minY),
-      new Vector2(maxX - minX, maxY - minY)
-    );
-
     const isEnemy = (entity: IEntity) =>
       entity.hasExt(Groupable) && entity.getExt(Groupable).getGroup() === "enemy";
 
@@ -243,14 +232,6 @@ export class Bullet extends Entity {
     if (this.traveledDistance > MAX_TRAVEL_DISTANCE) {
       this.getEntityManager().markEntityForRemoval(this);
     }
-  }
-
-  serialize(): RawEntity {
-    return {
-      ...super.serialize(),
-      position: this.getPosition(),
-      velocity: this.getVelocity(),
-    };
   }
 
   getPosition(): Vector2 {

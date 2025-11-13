@@ -140,14 +140,6 @@ export class GrenadeProjectile extends Entity {
     this.getEntityManager().markEntityForRemoval(this);
   }
 
-  serialize(): RawEntity {
-    return {
-      ...super.serialize(),
-      position: this.getPosition(),
-      velocity: this.getVelocity(),
-    };
-  }
-
   getPosition(): Vector2 {
     return this.getExt(Positionable).getPosition();
   }

@@ -1,14 +1,20 @@
 import { IGameManagers } from "@/managers/types";
 import { Entities } from "@shared/constants";
-import { RawEntity } from "@shared/types/entity";
 import Positionable from "@/extensions/positionable";
 import Interactive from "@/extensions/interactive";
 import { Entity } from "@/entities/entity";
 import Vector2 from "@/util/vector2";
 import { getConfig, type MerchantShopItem } from "@shared/config";
 
-export class Merchant extends Entity {
+// Define serializable fields for type safety
+const MERCHANT_SERIALIZABLE_FIELDS = ["shopItems"] as const;
+
+export class Merchant extends Entity<typeof MERCHANT_SERIALIZABLE_FIELDS> {
+  protected serializableFields = MERCHANT_SERIALIZABLE_FIELDS;
+
   public static readonly Size = new Vector2(16, 16);
+
+  // Serializable field
   private shopItems: MerchantShopItem[] = [];
 
   constructor(gameManagers: IGameManagers) {
@@ -43,6 +49,9 @@ export class Merchant extends Entity {
       this.shopItems.push(availableItems[randomIndex]);
       availableItems.splice(randomIndex, 1);
     }
+
+    // Mark field as dirty since we changed it
+    this.markFieldDirty("shopItems");
   }
 
   public getShopItems(): MerchantShopItem[] {
@@ -51,14 +60,5 @@ export class Merchant extends Entity {
 
   setPosition(position: Vector2): void {
     this.getExt(Positionable).setPosition(position);
-  }
-
-  serialize(): RawEntity {
-    const serialized = {
-      ...super.serialize(),
-      position: this.getExt(Positionable).getPosition(),
-      shopItems: this.shopItems,
-    };
-    return serialized;
   }
 }

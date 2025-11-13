@@ -4,7 +4,6 @@ import Positionable from "@/extensions/positionable";
 import { IGameManagers } from "@/managers/types";
 import { Entities } from "@/constants";
 import { Entity } from "@/entities/entity";
-import { RawEntity } from "@/types/entity";
 import Vector2 from "@/util/vector2";
 import Groupable from "@/extensions/groupable";
 import Static from "@/extensions/static";
@@ -70,20 +69,13 @@ export class Car extends Entity {
     // Only repair if enough time has passed since the last repair
     if (timeSinceLastRepair >= Car.REPAIR_COOLDOWN) {
       this.lastRepairTime = now;
-      
+
       const destructible = this.getExt(Destructible);
-      
+
       // Only repair if the car is damaged
       if (destructible.getHealth() < destructible.getMaxHealth()) {
         destructible.heal(1);
       }
     }
-  }
-
-  public serialize(): RawEntity {
-    return {
-      ...super.serialize(),
-      health: this.getExt(Destructible).getHealth(),
-    };
   }
 }

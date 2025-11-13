@@ -1,7 +1,6 @@
 import { PlayerDroppedItemEvent } from "@shared/events/server-sent/player-dropped-item-event";
 import { PlayerHurtEvent } from "@shared/events/server-sent/player-hurt-event";
-import { PlayerPickedUpResourceEvent } from "@shared/events/server-sent/pickup-resource-event";
-import { ResourceType, RESOURCE_ITEMS } from "@shared/util/inventory";
+import { ResourceType } from "@shared/util/inventory";
 import Collidable from "@/extensions/collidable";
 import Consumable from "@/extensions/consumable";
 import Destructible from "@/extensions/destructible";
@@ -26,23 +25,44 @@ import { Cooldown } from "@/entities/util/cooldown";
 import { Weapon } from "@/entities/weapons/weapon";
 import { weaponHandlerRegistry } from "@/entities/weapons/weapon-handler-registry";
 import { PlayerDeathEvent } from "@shared/events/server-sent/player-death-event";
-import { DEBUG_WEAPONS } from "@shared/debug";
 import { getConfig } from "@shared/config";
 import Vector2 from "@/util/vector2";
 import { Rectangle } from "@/util/shape";
 import Carryable from "@/extensions/carryable";
 import { SkinType, SKIN_TYPES } from "@shared/commands/commands";
 
-export class Player extends Entity {
+// Define serializable fields for type safety
+const PLAYER_SERIALIZABLE_FIELDS = [
+  "isCrafting",
+  "skin",
+  "kills",
+  "ping",
+  "displayName",
+  "stamina",
+  "maxStamina",
+  "input",
+  "activeItem",
+  "inventory",
+] as const;
+
+export class Player extends Entity<typeof PLAYER_SERIALIZABLE_FIELDS> {
+  protected serializableFields = PLAYER_SERIALIZABLE_FIELDS;
+
   private static readonly PLAYER_WIDTH = 16;
   private static readonly DROP_COOLDOWN = 0.25;
   private static readonly INTERACT_COOLDOWN = 0.25;
   private static readonly CONSUME_COOLDOWN = 0.5;
 
+  // Internal state
   private fireCooldown = new Cooldown(0.4, true);
   private dropCooldown = new Cooldown(Player.DROP_COOLDOWN, true);
   private interactCooldown = new Cooldown(Player.INTERACT_COOLDOWN, true);
   private consumeCooldown = new Cooldown(Player.CONSUME_COOLDOWN, true);
+  private broadcaster: Broadcaster;
+  private lastWeaponType: ItemType | null = null;
+  private exhaustionTimer: number = 0; // Time remaining before stamina can regenerate
+
+  // Serializable fields (base class will access these directly)
   private input: Input = {
     facing: Direction.Right,
     inventoryItem: 1,
@@ -56,17 +76,12 @@ export class Player extends Entity {
     sprint: false,
   };
   private isCrafting = false;
-  private broadcaster: Broadcaster;
-  private lastWeaponType: ItemType | null = null;
   private skin: SkinType = SKIN_TYPES.DEFAULT;
   private kills: number = 0;
   private ping: number = 0;
   private displayName: string = "";
   private stamina: number = getConfig().player.MAX_STAMINA;
-  private exhaustionTimer: number = 0; // Time remaining before stamina can regenerate
-  // TODO: this feels gross I have to manually define these dirty flags
-  private inventorySelectionDirty: boolean = false;
-  private staminaDirty: boolean = false;
+  private maxStamina: number = getConfig().player.MAX_STAMINA;
 
   constructor(gameManagers: IGameManagers) {
     super(gameManagers, Entities.PLAYER);
@@ -191,37 +206,7 @@ export class Player extends Entity {
   }
 
   serialize(onlyDirty: boolean = false): RawEntity {
-    const base = super.serialize(onlyDirty);
-    const result: RawEntity = { ...base };
-    const inventoryExt = this.getExt(Inventory);
-    const inventoryDirty = inventoryExt.isDirty();
-
-    if (!onlyDirty || inventoryDirty) {
-      result.inventory = inventoryExt.getItems();
-    }
-
-    if (!onlyDirty || inventoryDirty || this.inventorySelectionDirty) {
-      result.activeItem = this.activeItem;
-    }
-
-    if (!onlyDirty || this.inventorySelectionDirty) {
-      result.input = this.input;
-    }
-
-    if (!onlyDirty || this.staminaDirty) {
-      result.stamina = this.stamina;
-      result.maxStamina = getConfig().player.MAX_STAMINA;
-    }
-
-    if (!onlyDirty) {
-      result.isCrafting = this.isCrafting;
-      result.skin = this.skin;
-      result.kills = this.kills;
-      result.ping = this.ping;
-      result.displayName = this.displayName;
-    }
-
-    return result;
+    return super.serialize(onlyDirty);
   }
 
   getHitbox(): Rectangle {
@@ -374,7 +359,8 @@ export class Player extends Entity {
           const newStamina = this.stamina - getConfig().player.STAMINA_DRAIN_RATE * deltaTime;
           this.stamina = Math.max(0, newStamina);
           // Always mark dirty when draining stamina (even small changes should be synced)
-          this.staminaDirty = true;
+          this.markFieldDirty("stamina");
+          this.markFieldDirty("maxStamina");
 
           // If stamina just hit zero, start exhaustion timer
           if (this.stamina === 0) {
@@ -648,7 +634,8 @@ export class Player extends Entity {
 
         // Mark dirty if stamina actually changed (to avoid unnecessary updates when at max)
         if (Math.abs(oldStamina - this.stamina) > 0.01) {
-          this.staminaDirty = true;
+          this.markFieldDirty("stamina");
+          this.markFieldDirty("maxStamina");
         }
       }
     }
@@ -689,13 +676,13 @@ export class Player extends Entity {
     const previousSlot = this.input.inventoryItem;
     this.input = input;
     if (input.inventoryItem !== previousSlot) {
-      this.inventorySelectionDirty = true;
+      this.markFieldDirty("input");
     }
   }
 
   selectInventoryItem(index: number) {
     this.input.inventoryItem = index;
-    this.inventorySelectionDirty = true;
+    this.markFieldDirty("input");
   }
 
   setAsFiring(firing: boolean) {
@@ -811,13 +798,5 @@ export class Player extends Entity {
     this.getExt(ResourcesBag).removeCloth(amount);
   }
 
-  public isDirty(): boolean {
-    return super.isDirty() || this.inventorySelectionDirty || this.staminaDirty;
-  }
-
-  public clearDirtyFlags(): void {
-    super.clearDirtyFlags();
-    this.inventorySelectionDirty = false;
-    this.staminaDirty = false;
-  }
+  // Base class already handles isDirty and clearDirtyFlags with the dirty fields set
 }

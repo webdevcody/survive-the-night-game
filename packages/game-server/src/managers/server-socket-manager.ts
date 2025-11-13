@@ -436,18 +436,17 @@ export class ServerSocketManager implements Broadcaster {
 
   private sendFullState(socket: Socket): void {
     const entities = this.getEntityManager().getEntities();
-    const filteredEntities = entities.filter((entity) => !("isServerOnly" in entity));
     const entityStateTracker = this.getEntityManager().getEntityStateTracker();
     const currentTime = Date.now();
 
     // Track all entities so they're not treated as "new" in subsequent updates
-    filteredEntities.forEach((entity) => {
+    entities.forEach((entity) => {
       entityStateTracker.trackEntity(entity, currentTime);
     });
 
     const delayedSocket = this.wrapSocket(socket);
     const fullState = {
-      entities: filteredEntities.map((entity) => entity.serialize()),
+      entities: entities.map((entity) => entity.serialize()),
       timestamp: currentTime,
       isFullState: true,
       dayNumber: this.gameServer.getDayNumber(),
@@ -581,9 +580,8 @@ export class ServerSocketManager implements Broadcaster {
   public broadcastEvent(event: GameEvent<any>): void {
     if (event.getType() === ServerSentEvents.GAME_STATE_UPDATE) {
       const entities = this.getEntityManager().getEntities();
-      const filteredEntities = entities.filter((entity) => !("isServerOnly" in entity));
       const entityStateTracker = this.getEntityManager().getEntityStateTracker();
-      const changedEntities = entityStateTracker.getChangedEntities(filteredEntities);
+      const changedEntities = entityStateTracker.getChangedEntities(entities);
       const removedEntityIds = entityStateTracker.getRemovedEntityIds();
 
       // Extract game state properties from the passed event
@@ -610,46 +608,13 @@ export class ServerSocketManager implements Broadcaster {
           return fullState;
         }
 
-        // Changed entity - use dirty-only serialization to get only changed extensions
+        // Changed entity - use dirty-only serialization
+        // The entity's serialize(true) method returns all dirty fields
         const dirtyState = entity.serialize(true);
 
-        // Always include id and type
-        const delta: any = {
-          id: entityId,
-          type: entity.getType(),
-        };
-
-        // Include dirty extensions if any
-        if (dirtyState.extensions && dirtyState.extensions.length > 0) {
-          delta.extensions = dirtyState.extensions;
-        }
-
-        // Include removed extensions if any (entity tracks this in removedExtensions array)
-        if (dirtyState.removedExtensions && dirtyState.removedExtensions.length > 0) {
-          delta.removedExtensions = dirtyState.removedExtensions;
-        }
-
-        if (dirtyState.inventory !== undefined) {
-          delta.inventory = dirtyState.inventory;
-        }
-
-        if (dirtyState.activeItem !== undefined) {
-          delta.activeItem = dirtyState.activeItem;
-        }
-
-        if (dirtyState.input !== undefined) {
-          delta.input = dirtyState.input;
-        }
-
-        if (dirtyState.stamina !== undefined) {
-          delta.stamina = dirtyState.stamina;
-        }
-
-        if (dirtyState.maxStamina !== undefined) {
-          delta.maxStamina = dirtyState.maxStamina;
-        }
-
-        return delta;
+        // Entity serialization already includes id and type, plus any dirty fields
+        // No need to manually check individual fields - the entity knows what's dirty
+        return dirtyState;
       });
 
       // Get current game state
@@ -663,7 +628,6 @@ export class ServerSocketManager implements Broadcaster {
         waveState: this.gameServer.getWaveState(),
         phaseStartTime: this.gameServer.getPhaseStartTime(),
         phaseDuration: this.gameServer.getPhaseDuration(),
-        zombiesRemaining: this.gameServer.getZombiesRemaining(),
         totalZombies: this.gameServer.getTotalZombies(),
       };
 

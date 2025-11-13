@@ -65,7 +65,7 @@ function GameClientLoader() {
     return () => clearInterval(pollGameClient);
   }, [isClient]);
 
-  // Handle ESC and I keys for toggling instructions
+  // Handle I key for toggling instructions
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       // Don't toggle instructions if user is chatting
@@ -73,7 +73,7 @@ function GameClientLoader() {
         return;
       }
 
-      if (e.key === "Escape" || e.key === "i" || e.key === "I") {
+      if (e.key === "i" || e.key === "I") {
         setShowInstructions((prev) => !prev);
       }
     };
@@ -81,6 +81,30 @@ function GameClientLoader() {
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [gameClient]);
+
+  // Handle ESC key to close any open panels (but not toggle)
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Don't close panels if user is chatting (chat handles ESC itself)
+      if (gameClient && gameClient.isChatting && gameClient.isChatting()) {
+        return;
+      }
+
+      if (e.key === "Escape") {
+        // Close instructions panel if open
+        if (showInstructions) {
+          setShowInstructions(false);
+        }
+        // Close spawn panel if open
+        if (showSpawnPanel) {
+          setShowSpawnPanel(false);
+        }
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [gameClient, showInstructions, showSpawnPanel]);
 
   useEffect(() => {
     if (!isClient || !canvasRef.current) {
@@ -170,7 +194,7 @@ function GameClientLoader() {
           size="icon"
           onClick={() => setShowInstructions((prev) => !prev)}
           className="bg-gray-800 text-white hover:bg-gray-700"
-          title="Game Controls (ESC or I)"
+          title="Game Controls (I)"
         >
           <svg
             xmlns="http://www.w3.org/2000/svg"

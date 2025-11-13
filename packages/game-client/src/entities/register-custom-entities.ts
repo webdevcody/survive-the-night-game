@@ -43,6 +43,7 @@ import { MerchantClient } from "./environment/merchant";
 import { CarClient } from "./environment/car";
 import { SurvivorClient } from "./environment/survivor";
 import { AcidProjectileClient } from "./acid-projectile";
+import { BoundaryClient } from "./items/boundary";
 
 /**
  * Registers all custom client entity classes in the override registry
@@ -110,4 +111,5 @@ export function registerCustomClientEntities(): void {
   clientEntityOverrideRegistry.register("merchant", MerchantClient);
   clientEntityOverrideRegistry.register("car", CarClient);
   clientEntityOverrideRegistry.register("survivor", SurvivorClient);
+  clientEntityOverrideRegistry.register("boundary", BoundaryClient);
 }

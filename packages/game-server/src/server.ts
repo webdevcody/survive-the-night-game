@@ -58,7 +58,6 @@ export class GameServer {
     waveState: undefined as WaveState | undefined,
     phaseStartTime: -1,
     phaseDuration: -1,
-    zombiesRemaining: -1,
     totalZombies: -1,
   };
 
@@ -96,13 +95,6 @@ export class GameServer {
 
   public getTotalZombies(): number {
     return this.totalZombies;
-  }
-
-  public getZombiesRemaining(): number {
-    return this.entityManager
-      .getZombieEntities()
-      .filter((zombie) => zombie.hasExt(Destructible) && !zombie.getExt(Destructible).isDead())
-      .length;
   }
 
   constructor(port: number = 3001) {
@@ -189,7 +181,6 @@ export class GameServer {
   private onWaveStart(): void {
     console.log(`Wave ${this.waveNumber} started`);
     this.mapManager.spawnZombies(this.waveNumber);
-    this.totalZombies = this.getZombiesRemaining();
 
     // Broadcast wave start message
     this.socketManager.broadcastEvent(
@@ -248,18 +239,21 @@ export class GameServer {
     const currentTime = Date.now();
     const deltaTime = (currentTime - this.lastUpdateTime) / 1000;
 
+    // slow
     this.updateEntities(deltaTime);
 
     this.handleWaveSystem(deltaTime);
 
-    // 1ms per tick
     this.handleIfGameOver();
 
     this.entityManager.pruneEntities();
 
+    // slow
+    perfTimer.start("broadcastGameState");
     this.broadcastGameState();
-    // 3.4ms per tick
-    //
+    perfTimer.end("broadcastGameState");
+    perfTimer.logStats("broadcastGameState");
+
     for (const entity of this.entityManager.getDynamicEntities()) {
       this.entityManager.getEntityStateTracker().trackEntity(entity, currentTime);
     }
@@ -355,7 +349,12 @@ export class GameServer {
     if (currentTime - this.lastPerformanceLog > PERFORMANCE_LOG_INTERVAL) {
       const avgUpdateTime = this.updateTimes.reduce((a, b) => a + b, 0) / this.updateTimes.length;
       const maxUpdateTime = Math.max(...this.updateTimes);
-      const slowUpdates = this.updateTimes.filter((time) => time > TICK_RATE_MS).length;
+      let slowUpdates = 0;
+      for (const time of this.updateTimes) {
+        if (time > TICK_RATE_MS) {
+          slowUpdates++;
+        }
+      }
       console.log(`Performance stats:
         Avg update time: ${avgUpdateTime.toFixed(2)}ms
         Max update time: ${maxUpdateTime.toFixed(2)}ms
@@ -385,7 +384,6 @@ export class GameServer {
       waveState: this.waveState,
       phaseStartTime: this.phaseStartTime,
       phaseDuration: this.phaseDuration,
-      zombiesRemaining: this.getZombiesRemaining(),
       totalZombies: this.totalZombies,
       // Legacy day/night cycle state (for backwards compatibility)
       dayNumber: this.dayNumber,

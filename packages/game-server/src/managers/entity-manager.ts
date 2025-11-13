@@ -11,7 +11,6 @@ import { EntityFinder } from "@/managers/entity-finder";
 import { IGameManagers, IEntityManager, Broadcaster } from "@/managers/types";
 import { EntityStateTracker } from "./entity-state-tracker";
 import Vector2 from "@/util/vector2";
-import Groupable from "@/extensions/groupable";
 import { BaseEnemy } from "@/entities/enemies/base-enemy";
 import { getConfig } from "@/config";
 import { entityOverrideRegistry } from "@/entities/entity-override-registry";
@@ -204,10 +203,18 @@ export class EntityManager implements IEntityManager {
       }
     }
 
-    this.players = this.players.filter((it) => it.getId() !== entityId);
-    this.zombies = this.zombies.filter((it) => it.getId() !== entityId);
-    this.merchants = this.merchants.filter((it) => it.getId() !== entityId);
-    this.entities = this.entities.filter((it) => it.getId() !== entityId);
+    this.spliceWhere(this.players, (it) => it.getId() === entityId);
+    this.spliceWhere(this.zombies, (it) => it.getId() === entityId);
+    this.spliceWhere(this.merchants, (it) => it.getId() === entityId);
+    this.spliceWhere(this.entities, (it) => it.getId() === entityId);
+  }
+
+  private spliceWhere(array: any[], predicate: (item: any) => boolean): void {
+    for (let i = array.length - 1; i >= 0; i--) {
+      if (predicate(array[i])) {
+        array.splice(i, 1);
+      }
+    }
   }
 
   generateEntityId(): string {
@@ -225,19 +232,21 @@ export class EntityManager implements IEntityManager {
       return;
     }
 
+    const entitiesToRemoveMap = new Map<string, { id: string; expiration: number }>([]);
+    for (const entity of this.entitiesToRemove) {
+      entitiesToRemoveMap.set(entity.id, entity);
+    }
+
     // First loop through dynamic entities since they're more likely to be removed
     for (let i = this.dynamicEntities.length - 1; i >= 0; i--) {
       const entity = this.dynamicEntities[i];
-      const removeRecordIndex = this.entitiesToRemove.findLastIndex(
-        (it) => it.id === entity.getId()
-      );
+      const entityToRemove = entitiesToRemoveMap.get(entity.getId());
 
-      if (removeRecordIndex === -1) {
+      if (!entityToRemove) {
         continue;
       }
 
-      const removeRecord = this.entitiesToRemove[removeRecordIndex];
-      if (now < removeRecord.expiration) {
+      if (now < entityToRemove.expiration) {
         continue;
       }
 
@@ -248,38 +257,40 @@ export class EntityManager implements IEntityManager {
       this.dirtyEntities.delete(entity);
       this.entitiesInGrid.delete(entity);
       this.entitiesToAddToGrid.delete(entity);
+
       // Remove from updatable entities
       const updatableIndex = this.updatableEntities.indexOf(entity);
       if (updatableIndex > -1) {
         this.updatableEntities.splice(updatableIndex, 1);
       }
+
       if (this.entityFinder && entity.hasExt(Positionable)) {
         this.entityFinder.removeEntity(entity);
       }
 
       // Clear collidable tile if this entity has Collidable extension
       // This ensures the minimap accurately reflects removed collidables
-      if (entity.hasExt(Collidable) && entity.hasExt(Positionable)) {
-        const position = entity.getExt(Positionable).getPosition();
-        const positionable = entity.getExt(Positionable);
-        const size = positionable.getSize();
-        const mapManager = this.getGameManagers().getMapManager();
-        const collidablesLayer = mapManager.getCollidablesLayer();
+      // if (entity.hasExt(Collidable) && entity.hasExt(Positionable)) {
+      //   const position = entity.getExt(Positionable).getPosition();
+      //   const positionable = entity.getExt(Positionable);
+      //   const size = positionable.getSize();
+      //   const mapManager = this.getGameManagers().getMapManager();
+      //   const collidablesLayer = mapManager.getCollidablesLayer();
 
-        // Clear all tiles occupied by this entity (in case it's larger than one tile)
-        const startTileX = Math.floor(position.x / getConfig().world.TILE_SIZE);
-        const startTileY = Math.floor(position.y / getConfig().world.TILE_SIZE);
-        const endTileX = Math.floor((position.x + size.x) / getConfig().world.TILE_SIZE);
-        const endTileY = Math.floor((position.y + size.y) / getConfig().world.TILE_SIZE);
+      //   // Clear all tiles occupied by this entity (in case it's larger than one tile)
+      //   const startTileX = Math.floor(position.x / getConfig().world.TILE_SIZE);
+      //   const startTileY = Math.floor(position.y / getConfig().world.TILE_SIZE);
+      //   const endTileX = Math.floor((position.x + size.x) / getConfig().world.TILE_SIZE);
+      //   const endTileY = Math.floor((position.y + size.y) / getConfig().world.TILE_SIZE);
 
-        for (let tileY = startTileY; tileY <= endTileY; tileY++) {
-          for (let tileX = startTileX; tileX <= endTileX; tileX++) {
-            if (collidablesLayer[tileY] && collidablesLayer[tileY][tileX] !== undefined) {
-              collidablesLayer[tileY][tileX] = -1;
-            }
-          }
-        }
-      }
+      //   for (let tileY = startTileY; tileY <= endTileY; tileY++) {
+      //     for (let tileX = startTileX; tileX <= endTileX; tileX++) {
+      //       if (collidablesLayer[tileY] && collidablesLayer[tileY][tileX] !== undefined) {
+      //         collidablesLayer[tileY][tileX] = -1;
+      //       }
+      //     }
+      //   }
+      // }
 
       // Remove from dynamicEntities
       this.dynamicEntities.splice(i, 1);
@@ -315,13 +326,10 @@ export class EntityManager implements IEntityManager {
           this.merchants.splice(merchantIndex, 1);
         }
       }
-
-      // Remove from entitiesToRemove
-      this.entitiesToRemove.splice(removeRecordIndex, 1);
     }
 
     // Clean up expired entries from entitiesToRemove
-    this.entitiesToRemove = this.entitiesToRemove.filter((it) => now < it.expiration);
+    this.spliceWhere(this.entitiesToRemove, (it) => now < it.expiration);
   }
 
   clear() {
@@ -334,17 +342,6 @@ export class EntityManager implements IEntityManager {
     this.dirtyEntities.clear();
     this.entitiesInGrid.clear();
     this.entitiesToAddToGrid.clear();
-  }
-
-  getNearbyEnemies(position: Vector2, radius: number = 64): Entity[] {
-    if (!this.entityFinder) {
-      return [];
-    }
-
-    const entities = this.entityFinder.getNearbyEntities(position, radius);
-    return entities.filter(
-      (entity) => entity.hasExt(Groupable) && entity.getExt(Groupable).getGroup() === "enemy"
-    );
   }
 
   getNearbyEntities(position: Vector2, radius: number = 64, filter?: EntityType[]): Entity[] {

@@ -15,7 +15,6 @@ export interface IEntityManager {
   getClosestAlivePlayer(entity: IEntity): IEntity | null;
   getEntityById(id: string): IEntity | null;
   getNearbyEntities(position: Vector2, radius?: number, entityTypes?: EntityType[]): IEntity[];
-  getNearbyEnemies(position: Vector2, radius?: number, entityTypes?: EntityType[]): IEntity[];
   getNearbyIntersectingDestructableEntities(sourceEntity: IEntity): IEntity[];
   getBroadcaster(): Broadcaster;
   getPlayerEntities(): IEntity[];

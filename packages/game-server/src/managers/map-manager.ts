@@ -652,6 +652,7 @@ export class MapManager implements IMapManager {
         if (collidableTileId !== -1) {
           // Check if this is a car tile (265 or 266)
           if (carTiles.has(collidableTileId) && !carSpawned) {
+            // TODO: this is hacky for sure
             // Spawn the car entity at tile 265 (left side of car)
             const car = new Car(this.getGameManagers());
             car

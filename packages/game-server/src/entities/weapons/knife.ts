@@ -6,6 +6,7 @@ import { WEAPON_TYPES } from "@shared/types/weapons";
 import { PlayerAttackedEvent } from "@/events/server-sent/player-attacked-event";
 import Vector2 from "@/util/vector2";
 import Positionable from "@/extensions/positionable";
+import Groupable from "@/extensions/groupable";
 import { knockBack } from "./helpers";
 import { Player } from "@/entities/player";
 import { Entities, Zombies } from "@/constants";
@@ -27,10 +28,13 @@ export class Knife extends Weapon {
     // Use aimAngle to determine attack direction if provided, otherwise use facing
     const attackDirection = aimAngle !== undefined ? angleToDirection(aimAngle) : facing;
 
-    const nearbyEnemies = this.getEntityManager().getNearbyEnemies(
+    const nearbyEntities = this.getEntityManager().getNearbyEntities(
       position,
       getConfig().combat.KNIFE_ATTACK_RANGE + 24,
       [...Zombies, Entities.FIRE]
+    );
+    const nearbyEnemies = nearbyEntities.filter(
+      (entity) => entity.hasExt(Groupable) && entity.getExt(Groupable).getGroup() === "enemy"
     );
 
     const targetZombie = nearbyEnemies.find((entity) => {

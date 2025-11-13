@@ -17,7 +17,14 @@ export class ClientMovable extends BaseClientExtension {
   }
 
   public deserialize(data: ClientExtensionSerialized): this {
-    this.velocity = data.velocity;
+    if (data.velocity) {
+      // Ensure velocity is a Vector2 instance
+      if (data.velocity instanceof Vector2) {
+        this.velocity = data.velocity;
+      } else {
+        this.velocity = new Vector2(data.velocity.x || 0, data.velocity.y || 0);
+      }
+    }
     return this;
   }
 }

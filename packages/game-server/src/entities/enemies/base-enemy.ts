@@ -27,7 +27,13 @@ export interface AttackStrategy {
   update(zombie: BaseEnemy, deltaTime: number): void;
 }
 
-export abstract class BaseEnemy extends Entity {
+// Define serializable fields for type safety
+const BASE_ENEMY_SERIALIZABLE_FIELDS = ["debugWaypoint"] as const;
+
+export abstract class BaseEnemy extends Entity<typeof BASE_ENEMY_SERIALIZABLE_FIELDS> {
+  protected serializableFields = BASE_ENEMY_SERIALIZABLE_FIELDS;
+
+  // Internal state (not serialized)
   protected currentWaypoint: Vector2 | null = null;
   protected attackCooldown: Cooldown;
   protected pathRecalculationTimer: number = 0;
@@ -40,6 +46,10 @@ export abstract class BaseEnemy extends Entity {
   private movementStrategy?: MovementStrategy;
   private attackStrategy?: AttackStrategy;
   protected config: ZombieConfig;
+
+  // Serializable field for debugging (synced from currentWaypoint via setCurrentWaypoint)
+  // @ts-expect-error - Field is used for serialization via base Entity class
+  private debugWaypoint: Vector2 | null = null;
 
   constructor(gameManagers: IGameManagers, entityType: EntityType, config?: ZombieConfig) {
     super(gameManagers, entityType);
@@ -81,6 +91,14 @@ export abstract class BaseEnemy extends Entity {
     this.attackStrategy = strategy;
   }
 
+  protected setCurrentWaypoint(waypoint: Vector2 | null) {
+    this.currentWaypoint = waypoint;
+    this.debugWaypoint = waypoint;
+    if (waypoint !== null) {
+      this.markFieldDirty("debugWaypoint");
+    }
+  }
+
   onDamaged(): void {
     this.getGameManagers().getBroadcaster().broadcastEvent(new ZombieHurtEvent(this.getId()));
   }
@@ -112,8 +130,8 @@ export abstract class BaseEnemy extends Entity {
     const coin = this.getEntityManager().createEntity(Entities.COIN);
     if (coin && coin.hasExt(Positionable)) {
       coin.getExt(Positionable).setPosition(this.getPosition());
+      this.getEntityManager().addEntity(coin);
     }
-    this.getEntityManager().addEntity(coin);
   }
 
   onLooted(): void {
@@ -211,13 +229,5 @@ export abstract class BaseEnemy extends Entity {
 
   getCategory(): EntityCategory {
     return EntityCategories.ZOMBIE;
-  }
-
-  serialize(): any {
-    const data = super.serialize();
-    return {
-      ...data,
-      debugWaypoint: this.currentWaypoint,
-    };
   }
 }

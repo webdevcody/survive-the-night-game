@@ -152,7 +152,6 @@ const PROPERTY_KEYS = [
   "waveState",
   "phaseStartTime",
   "phaseDuration",
-  "zombiesRemaining",
   "totalZombies",
 
   // Decal properties
@@ -167,6 +166,7 @@ const PROPERTY_KEYS = [
   "frameWidth",
   "frameHeight",
   "intensity",
+  "crate",
 
   // Map properties
   "ground",
@@ -189,6 +189,7 @@ const PROPERTY_KEYS = [
 const STRING_VALUE_KEYS = [
   // Extension types
   "inventory",
+  "boundary",
   "destructible",
   "groupable",
   "positionable",

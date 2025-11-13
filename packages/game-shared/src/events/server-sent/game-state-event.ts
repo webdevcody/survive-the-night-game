@@ -21,7 +21,6 @@ export interface GameStateData {
   waveState?: WaveState;
   phaseStartTime?: number;
   phaseDuration?: number;
-  zombiesRemaining?: number;
   totalZombies?: number;
   timestamp?: number;
 }
@@ -88,10 +87,6 @@ export class GameStateEvent implements GameEvent<GameStateData> {
 
   public getPhaseDuration(): number | undefined {
     return this.data.phaseDuration;
-  }
-
-  public getZombiesRemaining(): number | undefined {
-    return this.data.zombiesRemaining;
   }
 
   public getTotalZombies(): number | undefined {

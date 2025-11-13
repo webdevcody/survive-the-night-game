@@ -20,6 +20,7 @@ export const ServerSentEvents = {
   BIG_ZOMBIE_ATTACKED: "bigZombieAttacked",
   PICKUP_ITEM: "pickupItem",
   GUN_EMPTY: "gunEmpty",
+  GUN_FIRED: "gunFired",
   LOOT: "loot",
   MAP: "map",
   ENEMY_WAYPOINT: "enemyWaypoint",

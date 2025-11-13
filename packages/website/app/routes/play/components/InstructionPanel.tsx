@@ -127,7 +127,7 @@ export function InstructionPanel({ isOpen, onClose }: InstructionPanelProps) {
               </div>
               <div className="flex justify-between">
                 <span className="text-gray-300">Controls:</span>
-                <span className="font-mono">I / ESC</span>
+                <span className="font-mono">I</span>
               </div>
             </div>
           </div>

@@ -5,6 +5,7 @@ import { Weapon } from "@/entities/weapons/weapon";
 import { Direction } from "../../../../game-shared/src/util/direction";
 import { WEAPON_TYPES } from "@shared/types/weapons";
 import { GunEmptyEvent } from "@shared/events/server-sent/gun-empty-event";
+import { GunFiredEvent } from "@shared/events/server-sent/gun-fired-event";
 import { PlayerAttackedEvent } from "@/events/server-sent/player-attacked-event";
 import Vector2 from "@/util/vector2";
 import { weaponRegistry } from "@shared/entities";
@@ -53,5 +54,7 @@ export class Pistol extends Weapon {
           weaponKey: WEAPON_TYPES.PISTOL,
         })
       );
+
+    this.getEntityManager().getBroadcaster().broadcastEvent(new GunFiredEvent(playerId));
   }
 }

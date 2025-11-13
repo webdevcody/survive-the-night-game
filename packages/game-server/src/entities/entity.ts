@@ -4,7 +4,10 @@ import { EntityType, RawEntity } from "@/types/entity";
 import { IEntity } from "./types";
 import { EntityCategory, EntityCategories } from "@shared/entities";
 
-export class Entity extends EventTarget implements IEntity {
+export class Entity<TSerializableFields extends readonly string[] = readonly string[]>
+  extends EventTarget
+  implements IEntity
+{
   private readonly id: string;
   private readonly type: EntityType;
   protected extensions: Extension[] = [];
@@ -14,6 +17,12 @@ export class Entity extends EventTarget implements IEntity {
   private readonly gameManagers: IGameManagers;
   private markedForRemoval = false;
   private removedExtensions: string[] = []; // Track removed extensions
+
+  // Dirty field tracking for custom entity fields
+  private dirtyFields: Set<TSerializableFields[number]> = new Set();
+
+  // Subclasses should override this to define which fields should be serialized
+  protected serializableFields: TSerializableFields = [] as unknown as TSerializableFields;
 
   public constructor(gameManagers: IGameManagers, type: EntityType) {
     super();
@@ -142,6 +151,23 @@ export class Entity extends EventTarget implements IEntity {
       }
     }
     this.dirtyExtensions.clear();
+    this.dirtyFields.clear();
+  }
+
+  /**
+   * Mark a field as dirty so it will be included in the next dirty-only serialization.
+   * @param fieldName - The name of the field to mark as dirty
+   */
+  protected markFieldDirty(fieldName: TSerializableFields[number]): void {
+    this.dirtyFields.add(fieldName);
+  }
+
+  /**
+   * Check if a field is marked as dirty.
+   * @param fieldName - The name of the field to check
+   */
+  protected isFieldDirty(fieldName: TSerializableFields[number]): boolean {
+    return this.dirtyFields.has(fieldName);
   }
 
   public markExtensionDirty(extension: Extension): void {
@@ -205,6 +231,16 @@ export class Entity extends EventTarget implements IEntity {
       serialized.removedExtensions = [...this.removedExtensions];
       // Clear the removed extensions after serializing
       this.removedExtensions = [];
+    }
+
+    // Serialize custom entity fields based on serializableFields definition
+    if (this.serializableFields.length > 0) {
+      for (const fieldName of this.serializableFields) {
+        if (!onlyDirty || this.dirtyFields.has(fieldName)) {
+          // Access the field value from the entity instance
+          serialized[fieldName] = (this as any)[fieldName];
+        }
+      }
     }
 
     return serialized;

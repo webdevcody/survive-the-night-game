@@ -35,9 +35,6 @@ export interface WaveInfo {
   /** Duration of current phase in seconds */
   phaseDuration: number;
 
-  /** Number of zombies remaining in current wave (0 during preparation) */
-  zombiesRemaining?: number;
-
   /** Total number of zombies in current wave */
   totalZombies?: number;
 }

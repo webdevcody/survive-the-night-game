@@ -1,35 +1,10 @@
 import { IGameManagers } from "@/managers/types";
 import { Entities } from "@shared/constants";
-import { BaseEnemy, MovementStrategy } from "./base-enemy";
+import { BaseEnemy } from "./base-enemy";
 import Collidable from "@/extensions/collidable";
-import Movable from "@/extensions/movable";
-import Positionable from "@/extensions/positionable";
-import { velocityTowards } from "@/util/physics";
-import { MeleeAttackStrategy } from "./zombie";
 import { Cooldown } from "@/entities/util/cooldown";
-
-class FlyTowardsPlayerStrategy implements MovementStrategy {
-  update(zombie: BaseEnemy, deltaTime: number): boolean {
-    const player = zombie.getEntityManager().getClosestAlivePlayer(zombie);
-    if (!player) return true;
-
-    const playerPos = player.getExt(Positionable).getCenterPosition();
-    const zombiePos = zombie.getCenterPosition();
-
-    // Calculate velocity directly towards player (no pathfinding since it's flying)
-    const velocity = velocityTowards(zombiePos, playerPos);
-    const movable = zombie.getExt(Movable);
-    movable.setVelocity(velocity.mul(zombie.getSpeed()));
-
-    // Update position directly without collision checks
-    const position = zombie.getPosition();
-    position.x += movable.getVelocity().x * deltaTime;
-    position.y += movable.getVelocity().y * deltaTime;
-    zombie.setPosition(position);
-
-    return true; // We handled movement completely
-  }
-}
+import { FlyTowardsPlayerStrategy } from "./strategies/movement";
+import { MeleeAttackStrategy } from "./strategies/attack";
 
 export class BatZombie extends BaseEnemy {
   constructor(gameManagers: IGameManagers) {

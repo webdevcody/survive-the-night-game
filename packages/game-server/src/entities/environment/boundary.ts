@@ -4,12 +4,10 @@ import { RawEntity } from "@shared/types/entity";
 import Positionable from "@/extensions/positionable";
 import Collidable from "@/extensions/collidable";
 import { Entity } from "@/entities/entity";
-import { ServerOnly } from "../../../../game-shared/src/util/hitbox";
 import Vector2 from "@/util/vector2";
 
-export class Boundary extends Entity implements ServerOnly {
+export class Boundary extends Entity {
   public static readonly Size = new Vector2(16, 16);
-
 
   constructor(gameManagers: IGameManagers) {
     super(gameManagers, Entities.BOUNDARY);
@@ -20,10 +18,6 @@ export class Boundary extends Entity implements ServerOnly {
     ];
   }
 
-  isServerOnly(): boolean {
-    return true;
-  }
-
   setPosition(position: Vector2): void {
     this.getExt(Positionable).setPosition(position);
   }
@@ -31,12 +25,5 @@ export class Boundary extends Entity implements ServerOnly {
   setSize(size: Vector2): void {
     this.getExt(Positionable).setSize(size);
     this.getExt(Collidable).setSize(size);
-  }
-
-  serialize(): RawEntity {
-    return {
-      ...super.serialize(),
-      position: this.getExt(Positionable).getPosition(),
-    };
   }
 }

@@ -4,7 +4,8 @@ import Vector2 from "@shared/util/vector2";
 import { BaseEnemy } from "./base-enemy";
 import Collidable from "@/extensions/collidable";
 import { Cooldown } from "@/entities/util/cooldown";
-import { MeleeMovementStrategy, MeleeAttackStrategy } from "./zombie";
+import { MeleeMovementStrategy } from "./strategies/movement";
+import { MeleeAttackStrategy } from "./strategies/attack";
 
 export class FastZombie extends BaseEnemy {
   private readonly positionThreshold = 4; // Larger threshold for faster speed

@@ -1,5 +1,22 @@
 [
   {
+    "version": "0.11.2",
+    "date": "2025-11-13",
+    "changes": [
+      "Refactored enemy AI with strategy pattern - separated movement, attack, and targeting behaviors into composable strategies",
+      "Added specialized movement strategies - melee, ranged, flying, leaping, and idle movement patterns for different zombie types",
+      "Added specialized attack strategies - melee, ranged, and leaping attack behaviors with configurable damage and cooldowns",
+      "Improved survivor NPC rendering - survivors now display pistol weapon when rescued and patrol campsite",
+      "Fixed survivor animation - survivors no longer animate during pause periods between wandering movements",
+      "Added GunFired event - plays positional pistol sound when survivors and players fire weapons",
+      "Added comprehensive serialization documentation explaining entity state sync patterns and dirty tracking system",
+      "Improved type safety in client event handlers - better instanceof checks for PlayerClient entities",
+      "Removed zombiesRemaining from game state - simplified wave tracking to use totalZombies only",
+      "Fixed unused variable warnings in bullet.ts for cleaner codebase",
+      "Added Boundary entity to client - syncs map boundaries between server and client for collision detection"
+    ]
+  },
+  {
     "version": "0.11.1",
     "date": "2025-11-13",
     "changes": [

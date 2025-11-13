@@ -344,7 +344,6 @@ export class GameClient {
       waveState: WaveState.PREPARATION, // Start in preparation phase
       phaseStartTime: Date.now(),
       phaseDuration: getConfig().wave.FIRST_WAVE_DELAY,
-      zombiesRemaining: 0,
       totalZombies: 0,
       crafting: false,
     };

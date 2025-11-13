@@ -2,6 +2,7 @@ import { ServerSentEvents, ClientSentEvents } from "@shared/events/events";
 import { GameOverEvent } from "@shared/events/server-sent/game-over-event";
 import { GameStateEvent } from "@shared/events/server-sent/game-state-event";
 import { GunEmptyEvent } from "@shared/events/server-sent/gun-empty-event";
+import { GunFiredEvent } from "@shared/events/server-sent/gun-fired-event";
 import { LootEvent } from "@shared/events/server-sent/loot-event";
 import { MapEvent } from "@shared/events/server-sent/map-event";
 import { WEAPON_TYPES } from "@shared/types/weapons";
@@ -76,6 +77,7 @@ export class ClientEventListener {
     this.socketManager.on(ServerSentEvents.ZOMBIE_DEATH, this.onZombieDeath.bind(this));
     this.socketManager.on(ServerSentEvents.ZOMBIE_HURT, this.onZombieHurt.bind(this));
     this.socketManager.on(ServerSentEvents.GUN_EMPTY, this.onGunEmpty.bind(this));
+    this.socketManager.on(ServerSentEvents.GUN_FIRED, this.onGunFired.bind(this));
     this.socketManager.on(ServerSentEvents.LOOT, this.onLoot.bind(this));
     this.socketManager.on(ServerSentEvents.ZOMBIE_ATTACKED, this.onZombieAttacked.bind(this));
     this.socketManager.on(ServerSentEvents.GAME_OVER, this.onGameOver.bind(this));
@@ -106,12 +108,22 @@ export class ClientEventListener {
 
   onGunEmpty(gunEmptyEvent: GunEmptyEvent) {
     const player = this.gameClient.getEntityById(gunEmptyEvent.getEntityId());
-    if (!player) return;
+    if (!player || !(player instanceof PlayerClient)) return;
 
-    const playerPosition = (player as unknown as PlayerClient).getCenterPosition();
+    const playerPosition = player.getCenterPosition();
     this.gameClient
       .getSoundManager()
       .playPositionalSound(SOUND_TYPES_TO_MP3.GUN_EMPTY, playerPosition);
+  }
+
+  onGunFired(gunFiredEvent: GunFiredEvent) {
+    const player = this.gameClient.getEntityById(gunFiredEvent.getEntityId());
+    if (!player || !(player instanceof PlayerClient)) return;
+
+    const playerPosition = player.getCenterPosition();
+    this.gameClient
+      .getSoundManager()
+      .playPositionalSound(SOUND_TYPES_TO_MP3.PISTOL, playerPosition);
   }
 
   onCoinPickup(coinPickupEvent: CoinPickupEvent) {
@@ -168,9 +180,6 @@ export class ClientEventListener {
     }
     if (gameStateEvent.getPhaseDuration() !== undefined) {
       this.gameState.phaseDuration = gameStateEvent.getPhaseDuration()!;
-    }
-    if (gameStateEvent.getZombiesRemaining() !== undefined) {
-      this.gameState.zombiesRemaining = gameStateEvent.getZombiesRemaining()!;
     }
     if (gameStateEvent.getTotalZombies() !== undefined) {
       this.gameState.totalZombies = gameStateEvent.getTotalZombies()!;
@@ -336,9 +345,9 @@ export class ClientEventListener {
 
   onPlayerHurt(playerHurtEvent: PlayerHurtEvent) {
     const player = this.gameClient.getEntityById(playerHurtEvent.getPlayerId());
-    if (!player) return;
+    if (!player || !(player instanceof PlayerClient)) return;
 
-    const playerPosition = (player as unknown as PlayerClient).getCenterPosition();
+    const playerPosition = player.getCenterPosition();
     this.gameClient
       .getSoundManager()
       .playPositionalSound(SOUND_TYPES_TO_MP3.PLAYER_HURT, playerPosition);
@@ -372,9 +381,9 @@ export class ClientEventListener {
     this.gameClient.getHud().showPlayerDeath(playerDeathEvent.getDisplayName());
 
     const player = this.gameClient.getEntityById(playerDeathEvent.getPlayerId());
-    if (!player) return;
+    if (!player || !(player instanceof PlayerClient)) return;
 
-    const playerPosition = (player as unknown as PlayerClient).getCenterPosition();
+    const playerPosition = player.getCenterPosition();
     this.gameClient
       .getSoundManager()
       .playPositionalSound(SOUND_TYPES_TO_MP3.PLAYER_DEATH, playerPosition);
@@ -435,9 +444,9 @@ export class ClientEventListener {
 
   onPlayerDroppedItem(playerDroppedItemEvent: PlayerDroppedItemEvent) {
     const player = this.gameClient.getEntityById(playerDroppedItemEvent.getPlayerId());
-    if (!player) return;
+    if (!player || !(player instanceof PlayerClient)) return;
 
-    const playerPosition = (player as unknown as PlayerClient).getCenterPosition();
+    const playerPosition = player.getCenterPosition();
     this.gameClient
       .getSoundManager()
       .playPositionalSound(SOUND_TYPES_TO_MP3.DROP_ITEM, playerPosition);
@@ -445,9 +454,9 @@ export class ClientEventListener {
 
   onPlayerPickedUpItem(playerPickedUpItemEvent: PlayerPickedUpItemEvent) {
     const player = this.gameClient.getEntityById(playerPickedUpItemEvent.getPlayerId());
-    if (!player) return;
+    if (!player || !(player instanceof PlayerClient)) return;
 
-    const playerPosition = (player as unknown as PlayerClient).getCenterPosition();
+    const playerPosition = player.getCenterPosition();
     this.gameClient
       .getSoundManager()
       .playPositionalSound(SOUND_TYPES_TO_MP3.PICK_UP_ITEM, playerPosition);
@@ -455,9 +464,9 @@ export class ClientEventListener {
 
   onPlayerPickedUpResource(playerPickedUpResourceEvent: PlayerPickedUpResourceEvent) {
     const player = this.gameClient.getEntityById(playerPickedUpResourceEvent.getPlayerId());
-    if (!player) return;
+    if (!player || !(player instanceof PlayerClient)) return;
 
-    const playerPosition = (player as unknown as PlayerClient).getCenterPosition();
+    const playerPosition = player.getCenterPosition();
     this.gameClient
       .getSoundManager()
       .playPositionalSound(SOUND_TYPES_TO_MP3.PICK_UP_ITEM, playerPosition);

@@ -27,7 +27,6 @@ export class EntityFinder {
   }
 
   getNearbyEntities(position: Vector2, radius: number = 16, filter?: EntityType[]): Entity[] {
-    const nearby = Array.from(this.grid.getNearbyEntities(position, radius));
-    return filter ? nearby.filter((entity) => filter.includes(entity.getType())) : nearby;
+    return this.grid.getNearbyEntities(position, radius, filter);
   }
 }

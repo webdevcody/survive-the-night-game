@@ -3,6 +3,7 @@ import { GameOverEvent } from "@shared/events/server-sent/game-over-event";
 import { GameStateEvent } from "@shared/events/server-sent/game-state-event";
 import { GameStartedEvent } from "@shared/events/server-sent/game-started-event";
 import { GunEmptyEvent } from "@shared/events/server-sent/gun-empty-event";
+import { GunFiredEvent } from "@shared/events/server-sent/gun-fired-event";
 import { LootEvent } from "@shared/events/server-sent/loot-event";
 import { MapEvent } from "@shared/events/server-sent/map-event";
 import { PlayerPickedUpItemEvent } from "@shared/events/server-sent/pickup-item-event";
@@ -47,6 +48,7 @@ const SERVER_EVENT_MAP = {
   [ServerSentEvents.PLAYER_PICKED_UP_RESOURCE]: PlayerPickedUpResourceEvent,
   [ServerSentEvents.GAME_OVER]: GameOverEvent,
   [ServerSentEvents.GUN_EMPTY]: GunEmptyEvent,
+  [ServerSentEvents.GUN_FIRED]: GunFiredEvent,
   [ServerSentEvents.ZOMBIE_ATTACKED]: ZombieAttackedEvent,
   [ServerSentEvents.LOOT]: LootEvent,
   [ServerSentEvents.GAME_STARTED]: GameStartedEvent,
@@ -135,7 +137,7 @@ export class ClientSocketManager {
     // Set up interval for regular pings
     this.pingInterval = setInterval(() => {
       this.sendPing();
-    }, 5000);
+    }, 1000);
   }
 
   private stopPingMeasurement(): void {

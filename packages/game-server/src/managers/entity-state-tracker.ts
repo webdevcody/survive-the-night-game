@@ -14,7 +14,6 @@ export class EntityStateTracker {
     waveState?: WaveState;
     phaseStartTime?: number;
     phaseDuration?: number;
-    zombiesRemaining?: number;
     totalZombies?: number;
   } = {};
 
@@ -90,7 +89,6 @@ export class EntityStateTracker {
     waveState?: WaveState;
     phaseStartTime?: number;
     phaseDuration?: number;
-    zombiesRemaining?: number;
     totalZombies?: number;
   }): void {
     this.previousGameState = { ...gameState };
@@ -106,7 +104,6 @@ export class EntityStateTracker {
     waveState?: WaveState;
     phaseStartTime?: number;
     phaseDuration?: number;
-    zombiesRemaining?: number;
     totalZombies?: number;
   }): Partial<typeof currentGameState> {
     const changedProps: Partial<typeof currentGameState> = {};

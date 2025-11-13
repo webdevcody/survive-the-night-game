@@ -9,7 +9,6 @@ import Updatable from "@/extensions/updatable";
 import { IGameManagers } from "@/managers/types";
 import { Entities, Zombies } from "@shared/constants";
 import { Entity } from "@/entities/entity";
-import { RawEntity } from "@/types/entity";
 import Vector2 from "@/util/vector2";
 import { distance, normalizeVector } from "@/util/physics";
 import { Cooldown } from "../util/cooldown";
@@ -17,24 +16,36 @@ import { Bullet } from "@/entities/projectiles/bullet";
 import { LootEvent } from "@/events/server-sent/loot-event";
 import { getConfig } from "@/config";
 import { BIOME_SIZE, MAP_SIZE } from "@/managers/map-manager";
+import { WEAPON_TYPES } from "@/types/weapons";
+import { GunFiredEvent } from "@/events/server-sent/gun-fired-event";
+import { WeaponKey } from "@/util/inventory";
 
 const SURVIVOR_MAX_HEALTH = 10;
 const SURVIVOR_SIZE = new Vector2(16, 16);
 const SURVIVOR_SHOOT_COOLDOWN = 1.0; // 1 second
 const SURVIVOR_SHOOT_DAMAGE = 1;
-const SURVIVOR_SHOOT_RANGE = 200; // Similar to sentry gun range
-const SURVIVOR_WANDER_RADIUS = 200; // Max distance from campsite center
+const SURVIVOR_SHOOT_RANGE = 100; // Similar to sentry gun range
+const SURVIVOR_WANDER_RADIUS = 100; // Max distance from campsite center
 const SURVIVOR_WANDER_SPEED = 30; // Movement speed when wandering
 const WANDER_MOVE_DURATION = 2.0; // Move for 2 seconds
 const WANDER_PAUSE_DURATION = 2.0; // Pause for 2 seconds
 
-export class Survivor extends Entity {
-  private isRescued: boolean = false;
+const SERIALIZABLE_FIELDS = ["isRescued"] as const;
+
+export class Survivor extends Entity<typeof SERIALIZABLE_FIELDS> {
+  // Define serializable fields at the top
+  protected serializableFields = SERIALIZABLE_FIELDS;
+
+  // Internal state fields
   private fireCooldown: Cooldown;
   private wanderTimer: number = 0;
   private wanderDirection: Vector2 | null = null;
   private isWandering: boolean = false; // true = moving, false = paused
   private campsiteCenter: Vector2 | null = null;
+  private initialSpawnPosition: Vector2 | null = null;
+
+  // Serializable fields
+  private isRescued: boolean = false;
 
   constructor(gameManagers: IGameManagers) {
     super(gameManagers, Entities.SURVIVOR);
@@ -66,25 +77,29 @@ export class Survivor extends Entity {
       return;
     }
 
+    // Initialize initial spawn position on first update
+    if (this.initialSpawnPosition === null) {
+      this.initialSpawnPosition = this.getExt(Positionable).getCenterPosition().clone();
+    }
+
     // Update shooting cooldown
     this.fireCooldown.update(deltaTime);
 
-    // Handle movement based on state
+    // Always wander - use different center based on rescue status
     if (this.isRescued) {
-      this.updateWandering(deltaTime);
-      this.handleMovement(deltaTime);
+      this.updateWanderingAtCampsite(deltaTime);
     } else {
-      // Idle state: stay completely still
-      this.getExt(Movable).setVelocity(new Vector2(0, 0));
+      this.updateWanderingAtSpawn(deltaTime);
     }
+    this.handleMovement(deltaTime);
 
-    // Try to shoot at zombies
-    if (this.fireCooldown.isReady()) {
+    // Try to shoot at zombies (only when rescued)
+    if (this.isRescued && this.fireCooldown.isReady()) {
       this.tryShootAtZombie();
     }
   }
 
-  private updateWandering(deltaTime: number): void {
+  private updateWanderingAtCampsite(deltaTime: number): void {
     // Initialize campsite center if not set
     if (!this.campsiteCenter) {
       const campsitePos = this.getGameManagers().getMapManager().getRandomCampsitePosition();
@@ -103,15 +118,29 @@ export class Survivor extends Entity {
       }
     }
 
+    this.updateWandering(deltaTime, this.campsiteCenter);
+  }
+
+  private updateWanderingAtSpawn(deltaTime: number): void {
+    // Use initial spawn position as wander center
+    if (this.initialSpawnPosition === null) {
+      // Fallback: use current position if spawn position not set
+      this.initialSpawnPosition = this.getExt(Positionable).getCenterPosition().clone();
+    }
+
+    this.updateWandering(deltaTime, this.initialSpawnPosition);
+  }
+
+  private updateWandering(deltaTime: number, wanderCenter: Vector2): void {
     const movable = this.getExt(Movable);
     const currentPos = this.getExt(Positionable).getCenterPosition();
-    const distanceFromCenter = this.campsiteCenter ? distance(currentPos, this.campsiteCenter) : 0;
+    const distanceFromCenter = distance(currentPos, wanderCenter);
 
     // Check if we're outside the wander radius
     if (distanceFromCenter > SURVIVOR_WANDER_RADIUS) {
       // Move back towards center
       const direction = normalizeVector(
-        new Vector2(this.campsiteCenter.x - currentPos.x, this.campsiteCenter.y - currentPos.y)
+        new Vector2(wanderCenter.x - currentPos.x, wanderCenter.y - currentPos.y)
       );
       movable.setVelocity(
         new Vector2(direction.x * SURVIVOR_WANDER_SPEED, direction.y * SURVIVOR_WANDER_SPEED)
@@ -156,12 +185,12 @@ export class Survivor extends Entity {
           currentPos.x + this.wanderDirection.x * SURVIVOR_WANDER_SPEED * WANDER_MOVE_DURATION,
           currentPos.y + this.wanderDirection.y * SURVIVOR_WANDER_SPEED * WANDER_MOVE_DURATION
         );
-        const testDistance = distance(testPos, this.campsiteCenter);
+        const testDistance = distance(testPos, wanderCenter);
 
         // If new position would be outside bounds, reverse direction
         if (testDistance > SURVIVOR_WANDER_RADIUS) {
           this.wanderDirection = normalizeVector(
-            new Vector2(this.campsiteCenter.x - currentPos.x, this.campsiteCenter.y - currentPos.y)
+            new Vector2(wanderCenter.x - currentPos.x, wanderCenter.y - currentPos.y)
           );
         }
 
@@ -269,6 +298,10 @@ export class Survivor extends Entity {
     bullet.setDirectionFromVelocity(direction);
     bullet.setShooterId(this.getId());
     this.getEntityManager().addEntity(bullet);
+
+    this.getGameManagers()
+      .getBroadcaster()
+      .broadcastEvent(new GunFiredEvent(this.getId(), WEAPON_TYPES.PISTOL as WeaponKey));
   }
 
   private onRescue(entityId: string): void {
@@ -283,6 +316,7 @@ export class Survivor extends Entity {
     if (campsitePos) {
       this.getExt(Positionable).setPosition(campsitePos);
       this.isRescued = true;
+      this.markFieldDirty("isRescued");
 
       // Remove interactive extension (no longer interactable)
       if (this.hasExt(Interactive)) {
@@ -321,13 +355,5 @@ export class Survivor extends Entity {
 
   public getIsRescued(): boolean {
     return this.isRescued;
-  }
-
-  public serialize(): RawEntity {
-    return {
-      ...super.serialize(),
-      health: this.getExt(Destructible).getHealth(),
-      isRescued: this.isRescued,
-    };
   }
 }

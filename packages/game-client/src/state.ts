@@ -16,7 +16,6 @@ export type GameState = {
   waveState: WaveState;
   phaseStartTime: number;
   phaseDuration: number;
-  zombiesRemaining?: number;
   totalZombies?: number;
   crafting: boolean;
 };

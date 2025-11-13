@@ -1,6 +1,5 @@
 import { IGameManagers } from "@/managers/types";
 import { Entities } from "@/constants";
-import { getConfig } from "@shared/config";
 import Vector2 from "@/util/vector2";
 import { BaseEnemy } from "./base-enemy";
 import { IEntity } from "@/entities/types";
@@ -8,7 +7,8 @@ import { Player } from "@/entities/player";
 import { normalizeVector } from "@/util/physics";
 import Movable from "@/extensions/movable";
 import { Cooldown } from "@/entities/util/cooldown";
-import { MeleeMovementStrategy, MeleeAttackStrategy } from "./zombie";
+import { MeleeMovementStrategy } from "./strategies/movement";
+import { MeleeAttackStrategy } from "./strategies/attack";
 
 export class BigZombie extends BaseEnemy {
   public static readonly KNOCKBACK_FORCE = 600;
