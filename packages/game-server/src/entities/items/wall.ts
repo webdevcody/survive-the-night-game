@@ -18,6 +18,8 @@ export class Wall extends Entity {
   constructor(gameManagers: IGameManagers, itemState?: ItemState) {
     super(gameManagers, Entities.WALL);
 
+    const count = itemState?.count ?? Wall.DEFAULT_COUNT;
+
     this.extensions = [
       new Positionable(this).setSize(Wall.Size),
       new Collidable(this).setSize(Wall.Size),
@@ -27,7 +29,7 @@ export class Wall extends Entity {
         .setHealth(itemState?.health ?? getConfig().world.WALL_MAX_HEALTH)
         .onDeath(() => this.onDeath()),
       new Carryable(this, "wall").setItemState({
-        count: Wall.DEFAULT_COUNT,
+        count,
       }),
     ];
   }
@@ -37,16 +39,25 @@ export class Wall extends Entity {
     if (!entity) return;
 
     const carryable = this.getExt(Carryable);
-    carryable.pickup(entityId, {
-      state: {
-        count: carryable.getItemState().count || Wall.DEFAULT_COUNT,
-        health: this.getExt(Destructible).getHealth(),
-      },
-      mergeStrategy: (existing, pickup) => ({
-        count: (existing?.count || 0) + (pickup?.count || Wall.DEFAULT_COUNT),
+    const stackableOptions = Carryable.createStackablePickupOptions(carryable, Wall.DEFAULT_COUNT);
+
+    // Extend merge strategy to also preserve health
+    const originalMergeStrategy = stackableOptions.mergeStrategy!;
+    stackableOptions.mergeStrategy = (existing, pickup) => {
+      const merged = originalMergeStrategy(existing, pickup);
+      return {
+        ...merged,
         health: pickup?.health ?? getConfig().world.WALL_MAX_HEALTH,
-      }),
-    });
+      };
+    };
+
+    // Include health in pickup state
+    stackableOptions.state = {
+      ...stackableOptions.state,
+      health: this.getExt(Destructible).getHealth(),
+    };
+
+    carryable.pickup(entityId, stackableOptions);
   }
 
   private onDeath(): void {

@@ -4,7 +4,7 @@ import Positionable from "@/extensions/positionable";
 import { IGameManagers } from "@/managers/types";
 import { Entity } from "@/entities/entity";
 import Vector2 from "@/util/vector2";
-import { EntityType } from "@/types/entity";
+import { EntityType, ItemState } from "@/types/entity";
 import { ItemType } from "@shared/util/inventory";
 
 export abstract class StackableItem extends Entity {
@@ -15,15 +15,19 @@ export abstract class StackableItem extends Entity {
     entityType: EntityType,
     itemType: ItemType,
     defaultCount: number,
-    displayName: string
+    displayName: string,
+    itemState?: ItemState
   ) {
     super(gameManagers, entityType);
+
+    // Use count from itemState if provided, otherwise use defaultCount
+    const count = itemState?.count ?? defaultCount;
 
     this.extensions = [
       new Positionable(this).setSize(StackableItem.Size),
       new Interactive(this).onInteract(this.interact.bind(this)).setDisplayName(displayName),
       new Carryable(this, itemType).setItemState({
-        count: defaultCount,
+        count,
       }),
     ];
   }
@@ -33,12 +37,11 @@ export abstract class StackableItem extends Entity {
     if (!entity) return;
 
     const carryable = this.getExt(Carryable);
-    carryable.pickup(entityId, {
-      state: { count: carryable.getItemState().count },
-      mergeStrategy: (existing, pickup) => ({
-        count: (existing?.count || 0) + (pickup?.count || this.getDefaultCount()),
-      }),
-    });
+    // Use helper method to preserve count when picking up dropped items
+    carryable.pickup(
+      entityId,
+      Carryable.createStackablePickupOptions(carryable, this.getDefaultCount())
+    );
   }
 
   protected abstract getDefaultCount(): number;

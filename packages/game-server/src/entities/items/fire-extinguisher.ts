@@ -8,14 +8,17 @@ import Vector2 from "@/util/vector2";
 import Consumable from "@/extensions/consumable";
 import { GunEmptyEvent } from "@shared/events/server-sent/gun-empty-event";
 import Inventory from "@/extensions/inventory";
+import { ItemState } from "@/types/entity";
 
 export class FireExtinguisher extends Entity {
   private static readonly EXTINGUISH_RADIUS = 64;
   private static readonly SIZE = new Vector2(16, 16);
   public static readonly DEFAULT_COUNT = 5;
 
-  constructor(gameManagers: IGameManagers) {
+  constructor(gameManagers: IGameManagers, itemState?: ItemState) {
     super(gameManagers, Entities.FIRE_EXTINGUISHER);
+
+    const count = itemState?.count ?? FireExtinguisher.DEFAULT_COUNT;
 
     this.extensions = [
       new Positionable(this).setSize(FireExtinguisher.SIZE),
@@ -23,7 +26,7 @@ export class FireExtinguisher extends Entity {
         .onInteract(this.interact.bind(this))
         .setDisplayName("fire extinguisher"),
       new Carryable(this, "fire_extinguisher").setItemState({
-        count: FireExtinguisher.DEFAULT_COUNT,
+        count,
       }),
       new Consumable(this).onConsume(this.consume.bind(this)),
     ];
@@ -31,12 +34,11 @@ export class FireExtinguisher extends Entity {
 
   private interact(entityId: string): void {
     const carryable = this.getExt(Carryable);
-    carryable.pickup(entityId, {
-      state: { count: carryable.getItemState().count },
-      mergeStrategy: (existing, pickup) => ({
-        count: existing?.count || pickup?.count || FireExtinguisher.DEFAULT_COUNT,
-      }),
-    });
+    // Use helper method to preserve count when picking up dropped items
+    carryable.pickup(
+      entityId,
+      Carryable.createStackablePickupOptions(carryable, FireExtinguisher.DEFAULT_COUNT)
+    );
   }
 
   private consume(entityId: string, idx: number): void {

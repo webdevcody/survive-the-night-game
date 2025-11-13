@@ -11,6 +11,7 @@ import { ExplosionEvent } from "@/events/server-sent/explosion-event";
 import { Weapon } from "@/entities/weapons/weapon";
 import Carryable from "@/extensions/carryable";
 import Interactive from "@/extensions/interactive";
+import { ItemState } from "@/types/entity";
 
 export class Grenade extends Weapon {
   private static readonly EXPLOSION_RADIUS = 64;
@@ -25,7 +26,7 @@ export class Grenade extends Weapon {
   private explosionTimer: Cooldown;
   private isExploded: boolean = false;
 
-  constructor(gameManagers: IGameManagers) {
+  constructor(gameManagers: IGameManagers, itemState?: ItemState) {
     super(gameManagers, "grenade");
 
     this.explosionTimer = new Cooldown(Grenade.EXPLOSION_DELAY);
@@ -33,10 +34,11 @@ export class Grenade extends Weapon {
     // Add Updatable extension for grenade physics after it's thrown
     this.extensions.push(new Updatable(this, this.updateGrenade.bind(this)));
 
-    // Make grenades stackable by setting default count
+    // Make grenades stackable by setting count from itemState or default
     const carryable = this.extensions.find((ext) => ext instanceof Carryable) as Carryable;
     if (carryable) {
-      carryable.setItemState({ count: Grenade.DEFAULT_COUNT });
+      const count = itemState?.count ?? Grenade.DEFAULT_COUNT;
+      carryable.setItemState({ count });
     }
 
     // Override Interactive callback to use merge strategy for stacking
@@ -44,13 +46,11 @@ export class Grenade extends Weapon {
     if (interactive) {
       interactive.onInteract((entityId: string) => {
         const carryable = this.getExt(Carryable);
-        // Use merge strategy to stack grenades
-        carryable.pickup(entityId, {
-          state: { count: Grenade.DEFAULT_COUNT },
-          mergeStrategy: (existing, pickup) => ({
-            count: (existing?.count || 0) + (pickup?.count || Grenade.DEFAULT_COUNT),
-          }),
-        });
+        // Use helper method to preserve count when picking up dropped grenades
+        carryable.pickup(
+          entityId,
+          Carryable.createStackablePickupOptions(carryable, Grenade.DEFAULT_COUNT)
+        );
       });
     }
   }

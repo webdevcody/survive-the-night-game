@@ -191,8 +191,8 @@ export class GameClient {
     };
 
     this.mapManager = new MapManager(this);
-    this.hud = new Hud(this.mapManager, this.soundManager, this.assetManager);
     this.gameOverDialog = new GameOverDialogUI();
+    this.hud = new Hud(this.mapManager, this.soundManager, this.assetManager, this.gameOverDialog);
 
     // TODO: refactor to use event emitter
     this.merchantBuyPanel = new MerchantBuyPanel(this.assetManager, {

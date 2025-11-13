@@ -2,7 +2,6 @@ import { Tree } from "@/entities/items/tree";
 import { Boundary } from "@/entities/environment/boundary";
 import { Car } from "@/entities/environment/car";
 import { Zombie } from "@/entities/enemies/zombie";
-import { Player } from "@/entities/player";
 import { DEBUG_START_ZOMBIE } from "@shared/debug";
 import { IGameManagers, IEntityManager, IMapManager } from "@/managers/types";
 import Positionable from "@/extensions/positionable";
@@ -36,8 +35,8 @@ import { weaponRegistry } from "@shared/entities";
 import { Entities } from "@shared/constants";
 import { Crate } from "@/entities/items/crate";
 
-const BIOME_SIZE = 16;
-const MAP_SIZE = 9;
+export const BIOME_SIZE = 16;
+export const MAP_SIZE = 9;
 
 /**
  * Build spawn table dynamically from item and weapon registries
@@ -117,10 +116,19 @@ export class MapManager implements IMapManager {
     const centerBiomeX = Math.floor(MAP_SIZE / 2);
     const centerBiomeY = Math.floor(MAP_SIZE / 2);
 
+    // Ensure decals array is always present and contains expected decals
+    // If decals are missing, it might indicate the map wasn't fully generated
+    if (this.decals.length === 0) {
+      console.warn(
+        "MapManager.getMapData(): decals array is empty - map may not be fully generated"
+      );
+    }
+
     return {
       ground: this.groundLayer,
       collidables: this.collidablesLayer,
-      decals: this.decals.length > 0 ? this.decals : undefined,
+      // Always include decals array (even if empty) to ensure consistency
+      decals: this.decals.length > 0 ? this.decals : [],
       biomePositions: {
         campsite: { x: centerBiomeX, y: centerBiomeY },
         farm: this.farmBiomePosition,
@@ -153,17 +161,20 @@ export class MapManager implements IMapManager {
 
     const totalSize = BIOME_SIZE * MAP_SIZE;
 
-    // Get all alive player positions
-    const players = this.getEntityManager().getPlayerEntities() as Player[];
-    const alivePlayers = players.filter((player) => !player.isDead());
+    // Get campsite biome position (center biome)
+    const centerBiomeX = Math.floor(MAP_SIZE / 2);
+    const centerBiomeY = Math.floor(MAP_SIZE / 2);
 
-    if (alivePlayers.length === 0) {
-      console.warn("No alive players to spawn zombies around");
+    // Get spawn locations in the 8 forest biomes surrounding the campsite
+    const spawnLocations = this.selectCampsiteSurroundingBiomeSpawnLocations(
+      centerBiomeX,
+      centerBiomeY
+    );
+
+    if (spawnLocations.length === 0) {
+      console.warn("No valid spawn locations found around campsite");
       return;
     }
-
-    // Calculate strategic spawn points based on player positions
-    const spawnLocations = this.selectStrategicZombieSpawnLocations(alivePlayers, 3);
 
     // Divide zombies across the spawn locations
     const numLocations = spawnLocations.length;
@@ -201,103 +212,62 @@ export class MapManager implements IMapManager {
   }
 
   /**
-   * Select strategic zombie spawn locations based on player positions.
-   * Zombies spawn 1000-1400px away from players to be challenging but not unfair.
-   * Uses clustering algorithm to find optimal spawn points that maximize distance from all players.
+   * Select zombie spawn locations in the 8 forest biomes surrounding the campsite.
+   * For each biome, picks a random valid ground tile as a spawn location.
    */
-  private selectStrategicZombieSpawnLocations(
-    players: Player[],
-    count: number
+  private selectCampsiteSurroundingBiomeSpawnLocations(
+    campsiteBiomeX: number,
+    campsiteBiomeY: number
   ): Array<{ x: number; y: number }> {
-    const MIN_SPAWN_DISTANCE = 400;
-    const MAX_SPAWN_DISTANCE = 500;
-    const totalSize = BIOME_SIZE * MAP_SIZE * getConfig().world.TILE_SIZE;
-
-    // Get all player positions
-    const playerPositions = players.map((player) => {
-      const pos = player.getExt(Positionable).getPosition();
-      return { x: pos.x, y: pos.y };
-    });
-
-    // Calculate the centroid of all players
-    const centroid = {
-      x: playerPositions.reduce((sum, p) => sum + p.x, 0) / playerPositions.length,
-      y: playerPositions.reduce((sum, p) => sum + p.y, 0) / playerPositions.length,
-    };
-
     const spawnLocations: Array<{ x: number; y: number }> = [];
-    const maxAttempts = 100;
 
-    // Try to find 'count' spawn locations
-    for (let i = 0; i < count; i++) {
-      let bestLocation: { x: number; y: number } | null = null;
-      let bestScore = -Infinity;
-
-      // Try multiple random positions and pick the best one
-      for (let attempt = 0; attempt < maxAttempts; attempt++) {
-        // Generate random angle around the centroid
-        const angle = (Math.PI * 2 * (i + Math.random())) / count;
-        const distance =
-          MIN_SPAWN_DISTANCE + Math.random() * (MAX_SPAWN_DISTANCE - MIN_SPAWN_DISTANCE);
-
-        const candidateX = centroid.x + Math.cos(angle) * distance;
-        const candidateY = centroid.y + Math.sin(angle) * distance;
-
-        // Ensure within map bounds
-        if (
-          candidateX < 0 ||
-          candidateX >= totalSize ||
-          candidateY < 0 ||
-          candidateY >= totalSize
-        ) {
+    // Get the 8 surrounding biomes (3x3 grid minus the center campsite)
+    const surroundingBiomes: Array<{ biomeX: number; biomeY: number }> = [];
+    for (let dy = -1; dy <= 1; dy++) {
+      for (let dx = -1; dx <= 1; dx++) {
+        // Skip the center campsite biome itself
+        if (dx === 0 && dy === 0) {
           continue;
         }
 
-        // Calculate score based on distance to all players
-        let minDistanceToPlayer = Infinity;
-        for (const playerPos of playerPositions) {
-          const dist = Math.sqrt(
-            Math.pow(candidateX - playerPos.x, 2) + Math.pow(candidateY - playerPos.y, 2)
-          );
-          minDistanceToPlayer = Math.min(minDistanceToPlayer, dist);
+        const biomeX = campsiteBiomeX + dx;
+        const biomeY = campsiteBiomeY + dy;
+
+        // Ensure biome is within map bounds
+        if (biomeX >= 0 && biomeX < MAP_SIZE && biomeY >= 0 && biomeY < MAP_SIZE) {
+          surroundingBiomes.push({ biomeX, biomeY });
         }
-
-        // Ensure it's within the desired range
-        if (minDistanceToPlayer < MIN_SPAWN_DISTANCE || minDistanceToPlayer > MAX_SPAWN_DISTANCE) {
-          continue;
-        }
-
-        // Calculate distance to already selected spawn locations (to spread them out)
-        let minDistanceToOtherSpawns = Infinity;
-        for (const spawnLoc of spawnLocations) {
-          const dist = Math.sqrt(
-            Math.pow(candidateX - spawnLoc.x, 2) + Math.pow(candidateY - spawnLoc.y, 2)
-          );
-          minDistanceToOtherSpawns = Math.min(minDistanceToOtherSpawns, dist);
-        }
-
-        // Score: prefer locations that are well-distributed and within range
-        // Higher score = better location
-        const score = minDistanceToPlayer + minDistanceToOtherSpawns;
-
-        if (score > bestScore) {
-          bestScore = score;
-          bestLocation = { x: candidateX, y: candidateY };
-        }
-      }
-
-      if (bestLocation) {
-        spawnLocations.push(bestLocation);
       }
     }
 
-    // If we couldn't find enough locations, fall back to simple angle distribution
-    while (spawnLocations.length < count) {
-      const angle = (Math.PI * 2 * spawnLocations.length) / count;
-      const distance = (MIN_SPAWN_DISTANCE + MAX_SPAWN_DISTANCE) / 2;
-      const x = Math.max(0, Math.min(totalSize - 1, centroid.x + Math.cos(angle) * distance));
-      const y = Math.max(0, Math.min(totalSize - 1, centroid.y + Math.sin(angle) * distance));
-      spawnLocations.push({ x, y });
+    // For each surrounding biome, find valid ground tiles and pick one randomly
+    for (const { biomeX, biomeY } of surroundingBiomes) {
+      const validPositions: Array<{ x: number; y: number }> = [];
+
+      // Collect all valid spawn positions within this biome
+      for (let y = 0; y < BIOME_SIZE; y++) {
+        for (let x = 0; x < BIOME_SIZE; x++) {
+          const mapY = biomeY * BIOME_SIZE + y;
+          const mapX = biomeX * BIOME_SIZE + x;
+          const groundTile = this.groundLayer[mapY]?.[mapX];
+          const isValidGround =
+            groundTile === 8 || groundTile === 4 || groundTile === 14 || groundTile === 24;
+
+          if (isValidGround && this.collidablesLayer[mapY]?.[mapX] === -1) {
+            // Convert tile coordinates to pixel coordinates
+            validPositions.push({
+              x: mapX * getConfig().world.TILE_SIZE,
+              y: mapY * getConfig().world.TILE_SIZE,
+            });
+          }
+        }
+      }
+
+      // Pick a random valid position from this biome
+      if (validPositions.length > 0) {
+        const randomIndex = Math.floor(Math.random() * validPositions.length);
+        spawnLocations.push(validPositions[randomIndex]);
+      }
     }
 
     return spawnLocations;
@@ -810,6 +780,57 @@ export class MapManager implements IMapManager {
     }
   }
 
+  private spawnSurvivorsInBiome(biomeX: number, biomeY: number): void {
+    // Spawn 1-2 survivors randomly
+    const survivorCount = Math.random() < 0.5 ? 1 : 2;
+
+    // Collect all valid spawn positions within this biome
+    const validPositions: { x: number; y: number }[] = [];
+    for (let y = 0; y < BIOME_SIZE; y++) {
+      for (let x = 0; x < BIOME_SIZE; x++) {
+        const mapY = biomeY * BIOME_SIZE + y;
+        const mapX = biomeX * BIOME_SIZE + x;
+        const groundTile = this.groundLayer[mapY][mapX];
+        const isValidGround =
+          groundTile === 8 || groundTile === 4 || groundTile === 14 || groundTile === 24;
+
+        if (isValidGround && this.collidablesLayer[mapY][mapX] === -1) {
+          validPositions.push({ x: mapX, y: mapY });
+        }
+      }
+    }
+
+    // Spawn survivors
+    for (let i = 0; i < survivorCount; i++) {
+      if (validPositions.length === 0) {
+        console.warn(`No valid positions to spawn survivor in biome at (${biomeX}, ${biomeY})`);
+        break;
+      }
+
+      const entity = this.getEntityManager().createEntity(Entities.SURVIVOR);
+      if (!entity) {
+        console.warn(`Failed to create survivor entity`);
+        continue;
+      }
+
+      // Pick a random position from valid positions
+      const randomIndex = Math.floor(Math.random() * validPositions.length);
+      const position = validPositions[randomIndex];
+      // Remove used position to avoid overlapping survivors
+      validPositions.splice(randomIndex, 1);
+
+      entity
+        .getExt(Positionable)
+        .setPosition(
+          new Vector2(
+            position.x * getConfig().world.TILE_SIZE,
+            position.y * getConfig().world.TILE_SIZE
+          )
+        );
+      this.getEntityManager().addEntity(entity);
+    }
+  }
+
   private spawnBiomeItems(biome: BiomeData, biomeX: number, biomeY: number) {
     if (!biome.items || biome.items.length === 0) {
       return;
@@ -948,6 +969,17 @@ export class MapManager implements IMapManager {
     }
 
     this.spawnBiomeItems(biome, biomeX, biomeY);
+
+    // Spawn survivors in special biomes
+    if (
+      biome === FARM ||
+      biome === GAS_STATION ||
+      biome === CITY ||
+      biome === DOCK ||
+      biome === SHED
+    ) {
+      this.spawnSurvivorsInBiome(biomeX, biomeY);
+    }
   }
 
   public getRandomGrassPosition(): Vector2 {
@@ -1010,6 +1042,56 @@ export class MapManager implements IMapManager {
     // Return a random position from valid positions
     const randomIndex = Math.floor(Math.random() * validPositions.length);
     return validPositions[randomIndex];
+  }
+
+  /**
+   * Check if a position is within a special biome (FARM, GAS_STATION, CITY, DOCK, SHED)
+   * Survivors in these biomes are invincible to zombie attacks
+   */
+  public isPositionInSpecialBiome(position: Vector2): boolean {
+    const TILE_SIZE = getConfig().world.TILE_SIZE;
+    const tileX = Math.floor(position.x / TILE_SIZE);
+    const tileY = Math.floor(position.y / TILE_SIZE);
+    const biomeX = Math.floor(tileX / BIOME_SIZE);
+    const biomeY = Math.floor(tileY / BIOME_SIZE);
+
+    // Check if position is in any special biome
+    if (
+      this.farmBiomePosition &&
+      biomeX === this.farmBiomePosition.x &&
+      biomeY === this.farmBiomePosition.y
+    ) {
+      return true;
+    }
+    if (
+      this.gasStationBiomePosition &&
+      biomeX === this.gasStationBiomePosition.x &&
+      biomeY === this.gasStationBiomePosition.y
+    ) {
+      return true;
+    }
+    if (
+      this.cityBiomePosition &&
+      biomeX === this.cityBiomePosition.x &&
+      biomeY === this.cityBiomePosition.y
+    ) {
+      return true;
+    }
+    if (
+      this.dockBiomePosition &&
+      biomeX === this.dockBiomePosition.x &&
+      biomeY === this.dockBiomePosition.y
+    ) {
+      return true;
+    }
+    if (
+      this.shedBiomePosition &&
+      biomeX === this.shedBiomePosition.x &&
+      biomeY === this.shedBiomePosition.y
+    ) {
+      return true;
+    }
+    return false;
   }
 
   public getRandomCampsitePosition(): Vector2 | null {

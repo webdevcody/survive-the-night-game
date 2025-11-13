@@ -463,7 +463,10 @@ export class Player extends Entity {
         });
       if (byPriorityAndProximity.length > 0) {
         const entity = byPriorityAndProximity[0];
-        (entity as Entity).getExt(Interactive).interact(this.getId());
+        // Double-check that entity still has Interactive extension (in case it was removed)
+        if (entity.hasExt(Interactive)) {
+          (entity as Entity).getExt(Interactive).interact(this.getId());
+        }
       }
     }
   }

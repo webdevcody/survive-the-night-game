@@ -235,6 +235,16 @@ export class MeleeAttackStrategy implements AttackStrategy {
     for (const entity of nearbyEntities) {
       if (!entity.hasExt(Destructible) || !entity.hasExt(Positionable)) continue;
 
+      // Skip survivors in special biomes (they are invincible there)
+      if (entity.getType() === Entities.SURVIVOR) {
+        const positionable = entity.getExt(Positionable);
+        const entityCenterPos = positionable.getCenterPosition();
+        const mapManager = zombie.getGameManagers().getMapManager();
+        if (mapManager.isPositionInSpecialBiome(entityCenterPos)) {
+          continue; // Skip this survivor - they're in a special biome and invincible
+        }
+      }
+
       const positionable = entity.getExt(Positionable);
       const entityPos = positionable.getPosition();
       const entitySize = positionable.getSize();

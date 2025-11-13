@@ -41,6 +41,7 @@ import { FlamethrowerClient } from "@/entities/weapons/flamethrower";
 import { FireClient } from "@/entities/environment/fire";
 import { MerchantClient } from "./environment/merchant";
 import { CarClient } from "./environment/car";
+import { SurvivorClient } from "./environment/survivor";
 import { AcidProjectileClient } from "./acid-projectile";
 
 /**
@@ -108,4 +109,5 @@ export function registerCustomClientEntities(): void {
   clientEntityOverrideRegistry.register("fire", FireClient);
   clientEntityOverrideRegistry.register("merchant", MerchantClient);
   clientEntityOverrideRegistry.register("car", CarClient);
+  clientEntityOverrideRegistry.register("survivor", SurvivorClient);
 }

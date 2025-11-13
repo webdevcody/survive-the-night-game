@@ -1,5 +1,22 @@
 [
   {
+    "version": "0.11.0",
+    "date": "2025-11-12",
+    "changes": [
+      "Added Survivor NPCs - rescue survivors scattered across the map to recruit defenders for your campsite",
+      "Survivors automatically shoot at zombies within range after being rescued and teleported to campsite",
+      "Survivors wander around campsite area with periodic movement and pause behavior",
+      "Survivors are invincible in special biomes but vulnerable elsewhere - zombies skip them in safe zones",
+      "Added stackable item system - bandages, fire extinguishers, gasoline, grenades, landmines, spikes, and walls now stack",
+      "Items display count badge in inventory when stacked for better space management",
+      "Improved UI scaling - reduced font sizes from 32px/48px to 24px for cleaner HUD appearance",
+      "Repositioned chat widget from 320px to 140px above bottom for better visibility",
+      "Fixed death screen overlap - death screen no longer displays during game over dialog",
+      "Added Asset Manager documentation explaining sprite loading and asset management system",
+      "Survivors can be looted when killed, dropping their inventory items"
+    ]
+  },
+  {
     "version": "0.10.1",
     "date": "2025-11-11",
     "changes": [

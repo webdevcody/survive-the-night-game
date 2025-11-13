@@ -7,6 +7,7 @@ import { IGameManagers } from "@/managers/types";
 import { Entities } from "@/constants";
 import { Entity } from "@/entities/entity";
 import Vector2 from "@/util/vector2";
+import { ItemState } from "@/types/entity";
 
 /**
  * A spike trap which only hurts zombies who step on it. Can be picked up and placed again.
@@ -14,9 +15,12 @@ import Vector2 from "@/util/vector2";
 export class Spikes extends Entity {
   private static readonly DAMAGE = 2;
   private static readonly SIZE = new Vector2(16, 16);
+  public static readonly DEFAULT_COUNT = 1;
 
-  constructor(gameManagers: IGameManagers) {
+  constructor(gameManagers: IGameManagers, itemState?: ItemState) {
     super(gameManagers, Entities.SPIKES);
+
+    const count = itemState?.count ?? Spikes.DEFAULT_COUNT;
 
     this.extensions = [
       new Positionable(this).setSize(Spikes.SIZE),
@@ -27,11 +31,13 @@ export class Spikes extends Entity {
         cooldown: 1,
       }),
       new Interactive(this).onInteract(this.interact.bind(this)).setDisplayName("spikes"),
-      new Carryable(this, "spikes"),
+      new Carryable(this, "spikes").setItemState({ count }),
     ];
   }
 
   private interact(entityId: string): void {
-    this.getExt(Carryable).pickup(entityId);
+    const carryable = this.getExt(Carryable);
+    // Use helper method to preserve count when picking up dropped spikes
+    carryable.pickup(entityId, Carryable.createStackablePickupOptions(carryable, Spikes.DEFAULT_COUNT));
   }
 }

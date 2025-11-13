@@ -8,19 +8,23 @@ import Inventory from "@/extensions/inventory";
 import Positionable from "@/extensions/positionable";
 import { Entity } from "@/entities/entity";
 import Vector2 from "@/util/vector2";
+import { ItemState } from "@/types/entity";
 
 export class Bandage extends Entity {
   public static readonly Size = new Vector2(16, 16);
   public static readonly healingAmount = 5;
+  public static readonly DEFAULT_COUNT = 1;
 
-  constructor(gameManagers: IGameManagers) {
+  constructor(gameManagers: IGameManagers, itemState?: ItemState) {
     super(gameManagers, Entities.BANDAGE);
+
+    const count = itemState?.count ?? Bandage.DEFAULT_COUNT;
 
     this.extensions = [
       new Positionable(this).setSize(Bandage.Size),
       new Interactive(this).onInteract(this.interact.bind(this)).setDisplayName("bandage"),
       new Consumable(this).onConsume(this.consume.bind(this)),
-      new Carryable(this, "bandage"),
+      new Carryable(this, "bandage").setItemState({ count }),
     ];
   }
 
@@ -51,7 +55,15 @@ export class Bandage extends Entity {
       return;
     }
 
-    inventory.removeItem(idx);
+    // Handle stackable bandages - decrement count instead of removing
+    const bandageItem = inventory.getItems()[idx];
+    if (bandageItem?.state?.count && bandageItem.state.count > 1) {
+      // Decrement count
+      inventory.updateItemState(idx, { count: bandageItem.state.count - 1 });
+    } else {
+      // Remove item if count is 1 or undefined
+      inventory.removeItem(idx);
+    }
   }
 
   private interact(entityId: string): void {
@@ -60,6 +72,8 @@ export class Bandage extends Entity {
       return;
     }
 
-    this.getExt(Carryable).pickup(entityId);
+    const carryable = this.getExt(Carryable);
+    // Use helper method to preserve count when picking up dropped bandages
+    carryable.pickup(entityId, Carryable.createStackablePickupOptions(carryable, Bandage.DEFAULT_COUNT));
   }
 }

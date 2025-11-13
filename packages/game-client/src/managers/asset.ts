@@ -1,3 +1,14 @@
+/**
+ * Asset Manager
+ *
+ * This module handles sprite asset loading and management for the game client.
+ * It automatically generates asset maps from entity registries (weapons, items, projectiles,
+ * zombies, characters, etc.) and provides utilities to load and access sprite assets from
+ * sprite sheets. The AssetManager class loads sprite sheets, crops individual sprites,
+ * and caches them for efficient rendering. It also provides helper functions to retrieve
+ * assets with directional variants and animation frames.
+ */
+
 import {
   Direction,
   isDirectionLeft,

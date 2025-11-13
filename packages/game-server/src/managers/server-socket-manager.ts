@@ -446,11 +446,18 @@ export class ServerSocketManager implements Broadcaster {
   private sendFullState(socket: Socket): void {
     const entities = this.getEntityManager().getEntities();
     const filteredEntities = entities.filter((entity) => !("isServerOnly" in entity));
+    const entityStateTracker = this.getEntityManager().getEntityStateTracker();
+    const currentTime = Date.now();
+
+    // Track all entities so they're not treated as "new" in subsequent updates
+    filteredEntities.forEach((entity) => {
+      entityStateTracker.trackEntity(entity, currentTime);
+    });
 
     const delayedSocket = this.wrapSocket(socket);
     const fullState = {
       entities: filteredEntities.map((entity) => entity.serialize()),
-      timestamp: Date.now(),
+      timestamp: currentTime,
       isFullState: true,
       dayNumber: this.gameServer.getDayNumber(),
       cycleStartTime: this.gameServer.getCycleStartTime(),

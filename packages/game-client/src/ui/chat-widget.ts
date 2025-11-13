@@ -1,12 +1,12 @@
 import { GameState, getEntityById } from "@/state";
 import { PlayerClient } from "@/entities/player";
 
-const CHAT_FONT_SIZE = 24;
+const CHAT_FONT_SIZE = 18;
 const CHAT_FONT_FAMILY = "Arial";
 const CHAT_MONOSPACE_FONT_FAMILY = "Courier New, monospace";
 const CHAT_TEXT_COLOR = "white";
 const CHAT_INPUT_HEIGHT = 50;
-const CHAT_BOTTOM_MARGIN = 320; // Distance from bottom of screen to chat input (above inventory bar)
+const CHAT_BOTTOM_MARGIN = 140; // Distance from bottom of screen to chat input (above inventory bar)
 
 interface ChatMessage {
   playerId: string;

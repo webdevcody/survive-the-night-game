@@ -30,6 +30,8 @@ export class SentryGun extends Entity {
 
     this.fireCooldown = new Cooldown(getConfig().world.SENTRY_GUN_FIRE_COOLDOWN / 1000);
 
+    const count = itemState?.count ?? SentryGun.DEFAULT_COUNT;
+
     this.extensions = [
       new Positionable(this).setSize(SentryGun.Size),
       new Collidable(this).setSize(SentryGun.Size),
@@ -39,7 +41,7 @@ export class SentryGun extends Entity {
         .setHealth(itemState?.health ?? getConfig().world.SENTRY_GUN_MAX_HEALTH)
         .onDeath(() => this.onDeath()),
       new Carryable(this, "sentry_gun").setItemState({
-        count: SentryGun.DEFAULT_COUNT,
+        count,
       }),
       new Updatable(this, this.updateSentryGun.bind(this)),
       new Groupable(this, "friendly"), // Allied with player
@@ -115,16 +117,28 @@ export class SentryGun extends Entity {
     if (!entity) return;
 
     const carryable = this.getExt(Carryable);
-    carryable.pickup(entityId, {
-      state: {
-        count: carryable.getItemState().count || SentryGun.DEFAULT_COUNT,
-        health: this.getExt(Destructible).getHealth(),
-      },
-      mergeStrategy: (existing, pickup) => ({
-        count: (existing?.count || 0) + (pickup?.count || SentryGun.DEFAULT_COUNT),
+    const stackableOptions = Carryable.createStackablePickupOptions(
+      carryable,
+      SentryGun.DEFAULT_COUNT
+    );
+
+    // Extend merge strategy to also preserve health
+    const originalMergeStrategy = stackableOptions.mergeStrategy!;
+    stackableOptions.mergeStrategy = (existing, pickup) => {
+      const merged = originalMergeStrategy(existing, pickup);
+      return {
+        ...merged,
         health: pickup?.health ?? getConfig().world.SENTRY_GUN_MAX_HEALTH,
-      }),
-    });
+      };
+    };
+
+    // Include health in pickup state
+    stackableOptions.state = {
+      ...stackableOptions.state,
+      health: this.getExt(Destructible).getHealth(),
+    };
+
+    carryable.pickup(entityId, stackableOptions);
   }
 
   private onDeath(): void {

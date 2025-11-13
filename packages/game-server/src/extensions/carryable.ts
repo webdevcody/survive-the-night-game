@@ -37,6 +37,23 @@ export default class Carryable implements Extension {
     return this.state;
   }
 
+  /**
+   * Creates pickup options for stackable items that preserve count when dropped and picked up.
+   * This ensures that when a stacked item is dropped and picked back up, it maintains its count.
+   */
+  public static createStackablePickupOptions(
+    carryable: Carryable,
+    defaultCount: number
+  ): PickupOptions {
+    const currentCount = carryable.getItemState().count ?? defaultCount;
+    return {
+      state: { count: currentCount },
+      mergeStrategy: (existing, pickup) => ({
+        count: (existing?.count || 0) + (pickup?.count || defaultCount),
+      }),
+    };
+  }
+
   public pickup(entityId: string, options?: PickupOptions): boolean {
     // Prevent crash if itemType is null (entity may be in invalid state)
     if (!this.itemType) {

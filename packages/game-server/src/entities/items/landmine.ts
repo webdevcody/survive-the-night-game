@@ -10,7 +10,7 @@ import { IEntity } from "@/entities/types";
 import Destructible from "@/extensions/destructible";
 import OneTimeTrigger from "@/extensions/one-time-trigger";
 import Vector2 from "@/util/vector2";
-import { RawEntity } from "@/types/entity";
+import { RawEntity, ItemState } from "@/types/entity";
 import { ExplosionEvent } from "@shared/events/server-sent/explosion-event";
 import { Cooldown } from "../util/cooldown";
 import Updatable from "@/extensions/updatable";
@@ -22,13 +22,16 @@ export class Landmine extends Entity implements IEntity {
   private static readonly SIZE = new Vector2(16, 16);
   private static readonly DAMAGE = 7;
   private static readonly TRIGGER_RADIUS = 16;
+  public static readonly DEFAULT_COUNT = 1;
   private untilActive: Cooldown;
   private isActive = false;
 
-  constructor(gameManagers: IGameManagers) {
+  constructor(gameManagers: IGameManagers, itemState?: ItemState) {
     super(gameManagers, Entities.LANDMINE);
 
     this.untilActive = new Cooldown(2);
+
+    const count = itemState?.count ?? Landmine.DEFAULT_COUNT;
 
     this.addExtension(new Positionable(this).setSize(Landmine.SIZE));
     // this.addExtension(new Triggerable(this, Landmine.SIZE, Zombies));
@@ -37,7 +40,7 @@ export class Landmine extends Entity implements IEntity {
         .onInteract((entityId: string) => this.interact(entityId))
         .setDisplayName("landmine")
     );
-    this.addExtension(new Carryable(this, "landmine"));
+    this.addExtension(new Carryable(this, "landmine").setItemState({ count }));
     this.addExtension(new Updatable(this, this.updateLandmine.bind(this)));
   }
 
@@ -90,7 +93,10 @@ export class Landmine extends Entity implements IEntity {
   private interact(entityId: string) {
     const entity = this.getEntityManager().getEntityById(entityId);
     if (!entity || entity.getType() !== Entities.PLAYER) return;
-    this.getExt(Carryable).pickup(entityId);
+    
+    const carryable = this.getExt(Carryable);
+    // Use helper method to preserve count when picking up dropped landmines
+    carryable.pickup(entityId, Carryable.createStackablePickupOptions(carryable, Landmine.DEFAULT_COUNT));
   }
 
   public serialize(): RawEntity {

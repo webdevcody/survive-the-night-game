@@ -9,7 +9,7 @@ export class GameOverDialogUI {
       return;
     }
 
-    ctx.font = "32px Arial";
+    ctx.font = "24px Arial";
     ctx.fillStyle = "white";
 
     // Save current transform
@@ -44,5 +44,9 @@ export class GameOverDialogUI {
 
   public hide(): void {
     this.gameOver = false;
+  }
+
+  public isGameOver(): boolean {
+    return this.gameOver;
   }
 }

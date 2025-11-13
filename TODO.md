@@ -4,6 +4,9 @@ Feel free to pick any item listed out here to work on.
 
 ## Suggestions
 
+- on wave start, spawn zombies around the campsite, do not do the logic for finding the player centeroid logic.
+- if you pick up a wall that is damaged and put it back down, it seems to go back to full hp again.
+
 - when the car is destroyed, change it to a broken car sprite display
 - refactor how the car is defined in the editor. the car should not be part of the map but something in the entities list so it can be easily modified on death.
 - still can't type M in chat
@@ -124,7 +127,6 @@ at t (index-BwqH-Gfo.js:3:77097)
 
 ## Low Priority (Polish):
 
-- [ ] use scroll wheel instead of +/- buttons
 - [ ] display user friendly message whenever there's a connection problem
 
 ## Refactoring (Tech Debt Plz Fix):

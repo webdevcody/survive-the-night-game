@@ -19,6 +19,7 @@ import {
 } from "./panels";
 import { getConfig } from "@shared/config";
 import { scaleHudValue, calculateHudScale } from "@/util/hud-scale";
+import { GameOverDialogUI } from "./game-over-dialog";
 
 const HUD_SETTINGS = {
   GameMessages: {
@@ -26,7 +27,7 @@ const HUD_SETTINGS = {
     background: "transparent",
     borderColor: "transparent",
     borderWidth: 0,
-    font: "32px Arial",
+    font: "24px Arial",
     textColor: "white",
     top: 120,
     gap: 40,
@@ -37,7 +38,7 @@ const HUD_SETTINGS = {
     background: "transparent",
     borderColor: "transparent",
     borderWidth: 0,
-    font: "48px Arial",
+    font: "24px Arial",
     textColor: "black",
     overlayBackground: "rgba(0, 0, 0, 0.7)",
     panelBackground: "white",
@@ -134,11 +135,18 @@ export class Hud {
   private gameMessagesPanel: GameMessagesPanel;
   private muteButtonPanel: MuteButtonPanel;
   private crateIndicatorsPanel: CrateIndicatorsPanel;
+  private gameOverDialog: GameOverDialogUI;
 
-  constructor(mapManager: MapManager, soundManager: SoundManager, assetManager: AssetManager) {
+  constructor(
+    mapManager: MapManager,
+    soundManager: SoundManager,
+    assetManager: AssetManager,
+    gameOverDialog: GameOverDialogUI
+  ) {
     this.mapManager = mapManager;
     this.soundManager = soundManager;
     this.assetManager = assetManager;
+    this.gameOverDialog = gameOverDialog;
     this.chatWidget = new ChatWidget();
     this.minimap = new Minimap(mapManager);
     this.fullscreenMap = new FullScreenMap(mapManager);
@@ -444,8 +452,10 @@ export class Hud {
     this.leaderboard.render(ctx, gameState);
     this.chatWidget.render(ctx, gameState);
 
-    // Render death screen if player is dead
-    this.deathScreenPanel.render(ctx, gameState);
+    // Render death screen if player is dead and game is not over
+    if (!this.gameOverDialog.isGameOver()) {
+      this.deathScreenPanel.render(ctx, gameState);
+    }
 
     // Render fullscreen map on top of everything else if open
     this.fullscreenMap.render(ctx, gameState);
