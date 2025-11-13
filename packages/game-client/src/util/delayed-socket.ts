@@ -1,7 +1,9 @@
 import { Socket } from "socket.io-client";
+import { decodePayload } from "@shared/util/compression";
 
 /**
  * Wraps a socket.io client Socket to add simulated latency to all emit calls
+ * and automatically decode payloads received from the server
  */
 export class DelayedSocket {
   private socket: Socket;
@@ -28,10 +30,14 @@ export class DelayedSocket {
   }
 
   /**
-   * Register an event listener (pass through to underlying socket)
+   * Register an event listener with automatic payload decoding
    */
   public on(event: string, listener: (...args: any[]) => void): this {
-    this.socket.on(event, listener);
+    this.socket.on(event, (...args: any[]) => {
+      // Decode all arguments automatically
+      const decodedArgs = args.map((arg) => decodePayload(arg));
+      listener(...decodedArgs);
+    });
     return this;
   }
 
@@ -47,7 +53,7 @@ export class DelayedSocket {
    * Get the socket ID
    */
   public get id(): string {
-    return this.socket.id;
+    return this.socket.id ?? "";
   }
 
   /**

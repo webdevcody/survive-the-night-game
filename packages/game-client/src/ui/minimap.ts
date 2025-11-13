@@ -185,7 +185,7 @@ export class Minimap {
       const dx = worldPos.x - source.position.x;
       const dy = worldPos.y - source.position.y;
       const distanceSquared = dx * dx + dy * dy;
-      const radiusSquared = source.radius * source.radius;
+      const radiusSquared = (source.radius * source.radius) / 2;
 
       if (distanceSquared <= radiusSquared) {
         return true;

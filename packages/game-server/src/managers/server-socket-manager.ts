@@ -31,7 +31,6 @@ import {
   englishDataset,
   englishRecommendedTransformers,
 } from "obscenity";
-import { encodePayload } from "@shared/util/compression";
 
 /**
  * Any and all functionality related to sending server side events
@@ -52,10 +51,6 @@ export class ServerSocketManager implements Broadcaster {
   private chatCommandRegistry: CommandRegistry;
   private profanityMatcher: RegExpMatcher;
   private profanityCensor: TextCensor;
-  private totalBytesSent: number = 0;
-  private bytesSentThisSecond: number = 0;
-  private lastSecondTimestamp: number = Date.now();
-  private statsInterval: NodeJS.Timeout | null = null;
 
   constructor(port: number, gameServer: GameServer) {
     this.port = port;
@@ -100,7 +95,7 @@ export class ServerSocketManager implements Broadcaster {
       },
     });
 
-    // Wrap the io server with DelayedServer to handle latency simulation
+    // Wrap the io server with DelayedServer to handle latency simulation and byte tracking
     this.delayedIo = new DelayedServer(this.io, getConfig().network.SIMULATED_LATENCY_MS);
 
     this.gameServer = gameServer;
@@ -128,11 +123,6 @@ export class ServerSocketManager implements Broadcaster {
       this.playerDisplayNames.set(socket.id, filteredDisplayName || "Unknown");
       this.onConnection(socket);
     });
-
-    // Start stats reporting interval (every 5 seconds)
-    this.statsInterval = setInterval(() => {
-      this.printStats();
-    }, 5000);
   }
 
   /**
@@ -207,6 +197,7 @@ export class ServerSocketManager implements Broadcaster {
       this.getEntityManager().addEntity(player);
 
       // Send map and player ID to client
+      // DelayedSocket will automatically encode the payload and track bytes
       const mapData = this.getMapManager().getMapData();
       const delayedSocket = this.wrapSocket(socket);
       delayedSocket.emit(ServerSentEvents.MAP, mapData);
@@ -464,8 +455,8 @@ export class ServerSocketManager implements Broadcaster {
       cycleDuration: this.gameServer.getCycleDuration(),
       isDay: this.gameServer.getIsDay(),
     };
-    const encodedState = encodePayload(fullState);
-    delayedSocket.emit(ServerSentEvents.GAME_STATE_UPDATE, encodedState);
+    // DelayedSocket will automatically encode the payload and track bytes
+    delayedSocket.emit(ServerSentEvents.GAME_STATE_UPDATE, fullState);
   }
 
   private setupSocketListeners(socket: Socket): void {
@@ -581,10 +572,10 @@ export class ServerSocketManager implements Broadcaster {
     }
 
     // Always send the map data
+    // DelayedSocket will automatically encode the payload and track bytes
     const mapData = this.getMapManager().getMapData();
-    const encodedMapData = encodePayload(mapData);
     const delayedSocket = this.wrapSocket(socket);
-    delayedSocket.emit(ServerSentEvents.MAP, encodedMapData);
+    delayedSocket.emit(ServerSentEvents.MAP, mapData);
   }
 
   public broadcastEvent(event: GameEvent<any>): void {
@@ -708,14 +699,12 @@ export class ServerSocketManager implements Broadcaster {
       entityStateTracker.clearRemovedEntityIds();
 
       const serializedEvent = gameStateEvent.serialize();
-      const encodedEvent = encodePayload(serializedEvent);
-      this.trackBytesSent(encodedEvent);
-      this.delayedIo.emit(gameStateEvent.getType(), encodedEvent);
+      // DelayedServer will automatically encode the payload and track bytes
+      this.delayedIo.emit(gameStateEvent.getType(), serializedEvent);
     } else {
       const serializedEvent = event.serialize();
-      const encodedEvent = encodePayload(serializedEvent);
-      this.trackBytesSent(encodedEvent);
-      this.delayedIo.emit(event.getType(), encodedEvent);
+      // DelayedServer will automatically encode the payload and track bytes
+      this.delayedIo.emit(event.getType(), serializedEvent);
     }
   }
 
@@ -724,8 +713,8 @@ export class ServerSocketManager implements Broadcaster {
     // timestamp is a Unix timestamp in milliseconds (UTC, timezone-independent)
     const delayedSocket = this.wrapSocket(socket);
     const serializedPong = new PongEvent(timestamp).serialize();
-    const encodedPong = encodePayload(serializedPong);
-    delayedSocket.emit(ServerSentEvents.PONG, encodedPong);
+    // DelayedSocket will automatically encode the payload and track bytes
+    delayedSocket.emit(ServerSentEvents.PONG, serializedPong);
     // Note: We no longer calculate latency here because it can be negative due to clock skew.
     // Instead, the client calculates round-trip latency and sends it via PING_UPDATE event.
   }
@@ -772,7 +761,7 @@ export class ServerSocketManager implements Broadcaster {
     });
 
     const chatEventData = chatEvent.getData();
-    this.trackBytesSent(chatEventData);
+    // DelayedServer will automatically encode the payload and track bytes
     this.delayedIo.emit(ServerSentEvents.CHAT_MESSAGE, chatEventData);
   }
 
@@ -782,66 +771,5 @@ export class ServerSocketManager implements Broadcaster {
   private sanitizeText(text: string): string {
     const matches = this.profanityMatcher.getAllMatches(text);
     return this.profanityCensor.applyTo(text, matches);
-  }
-
-  /**
-   * Calculate the byte size of serialized event data
-   */
-  private calculateEventBytes(eventData: any): number {
-    if (eventData === undefined || eventData === null) {
-      return 0;
-    }
-    try {
-      const serialized = JSON.stringify(eventData);
-      if (serialized === undefined || serialized === null) {
-        return 0;
-      }
-      // Use Buffer.byteLength to get accurate UTF-8 byte count
-      return Buffer.byteLength(String(serialized), "utf8");
-    } catch (error) {
-      // Handle circular references or other serialization errors
-      console.warn("Failed to calculate event bytes:", error);
-      return 0;
-    }
-  }
-
-  /**
-   * Track bytes sent for a broadcast event
-   */
-  private trackBytesSent(eventData: any): void {
-    const bytesPerEvent = this.calculateEventBytes(eventData);
-    const playerCount = this.io.sockets.sockets.size;
-    const totalBytesForBroadcast = bytesPerEvent * playerCount;
-
-    this.totalBytesSent += totalBytesForBroadcast;
-
-    const now = Date.now();
-    const elapsedMs = now - this.lastSecondTimestamp;
-
-    // If more than 1 second has passed since last reset, reset the counter
-    if (elapsedMs >= 1000) {
-      this.bytesSentThisSecond = totalBytesForBroadcast;
-      this.lastSecondTimestamp = now;
-    } else {
-      // Accumulate bytes for the current second
-      this.bytesSentThisSecond += totalBytesForBroadcast;
-    }
-  }
-
-  /**
-   * Print bandwidth statistics every 5 seconds
-   */
-  private printStats(): void {
-    const now = Date.now();
-    const elapsedSeconds = (now - this.lastSecondTimestamp) / 1000;
-
-    // Calculate MB/s based on bytes sent in the current second
-    // Use elapsed time to get accurate per-second rate
-    const mbPerSecond =
-      elapsedSeconds > 0 ? this.bytesSentThisSecond / (1024 * 1024) / elapsedSeconds : 0;
-
-    console.log(
-      `[Bandwidth] ${mbPerSecond.toFixed(5)} MB/s (${this.io.sockets.sockets.size} players)`
-    );
   }
 }

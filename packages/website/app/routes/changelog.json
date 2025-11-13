@@ -1,5 +1,17 @@
 [
   {
+    "version": "0.11.1",
+    "date": "2025-11-13",
+    "changes": [
+      "Refactored network compression layer - moved encoding/decoding into DelayedSocket and DelayedServer classes",
+      "Improved bandwidth tracking - centralized byte tracking in DelayedServer for better monitoring",
+      "Simplified socket event handling - removed manual compression calls throughout codebase",
+      "Fixed minimap fog of war radius calculation for more accurate reveal area",
+      "Added 'resourceType' to compression dictionary for improved network efficiency",
+      "Fixed server restart bug by removing unnecessary entityManager.clear() call"
+    ]
+  },
+  {
     "version": "0.11.0",
     "date": "2025-11-12",
     "changes": [

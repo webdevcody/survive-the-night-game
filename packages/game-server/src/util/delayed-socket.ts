@@ -1,7 +1,9 @@
 import { Socket, Server } from "socket.io";
+import { encodePayload } from "@shared/util/compression";
 
 /**
  * Wraps a socket.io Server Socket to add simulated latency to all emit calls
+ * and automatically encode payloads for network transmission
  */
 export class DelayedServerSocket {
   private socket: Socket;
@@ -13,10 +15,13 @@ export class DelayedServerSocket {
   }
 
   /**
-   * Emit an event with simulated latency
+   * Emit an event with simulated latency and automatic payload encoding
    */
   public emit(event: string, ...args: any[]): boolean {
-    const send = () => this.socket.emit(event, ...args);
+    // Encode all arguments (except the first which is the event name)
+    const encodedArgs = args.map((arg) => encodePayload(arg));
+
+    const send = () => this.socket.emit(event, ...encodedArgs);
 
     if (this.latencyMs > 0) {
       setTimeout(send, this.latencyMs);
@@ -67,21 +72,100 @@ export class DelayedServerSocket {
 
 /**
  * Wraps a socket.io Server to add simulated latency to all broadcast emit calls
+ * and automatically encode payloads for network transmission with byte tracking
  */
 export class DelayedServer {
   private io: Server;
   private latencyMs: number;
+  private totalBytesSent: number = 0;
+  private bytesSentThisSecond: number = 0;
+  private lastSecondTimestamp: number = Date.now();
+  private statsInterval: NodeJS.Timeout | null = null;
 
   constructor(io: Server, latencyMs: number = 0) {
     this.io = io;
     this.latencyMs = latencyMs;
+
+    // Start stats reporting interval (every 5 seconds)
+    this.statsInterval = setInterval(() => {
+      this.printStats();
+    }, 5000);
   }
 
   /**
-   * Emit an event to all connected clients with simulated latency
+   * Calculate the byte size of serialized event data
+   */
+  private calculateEventBytes(eventData: any): number {
+    if (eventData === undefined || eventData === null) {
+      return 0;
+    }
+    try {
+      const serialized = JSON.stringify(eventData);
+      if (serialized === undefined || serialized === null) {
+        return 0;
+      }
+      // Use Buffer.byteLength to get accurate UTF-8 byte count
+      return Buffer.byteLength(String(serialized), "utf8");
+    } catch (error) {
+      // Handle circular references or other serialization errors
+      console.warn("Failed to calculate event bytes:", error);
+      return 0;
+    }
+  }
+
+  /**
+   * Track bytes sent for a broadcast event
+   */
+  private trackBytesSent(eventData: any): void {
+    const bytesPerEvent = this.calculateEventBytes(eventData);
+    const playerCount = this.io.sockets.sockets.size;
+    const totalBytesForBroadcast = bytesPerEvent * playerCount;
+
+    this.totalBytesSent += totalBytesForBroadcast;
+
+    const now = Date.now();
+    const elapsedMs = now - this.lastSecondTimestamp;
+
+    // If more than 1 second has passed since last reset, reset the counter
+    if (elapsedMs >= 1000) {
+      this.bytesSentThisSecond = totalBytesForBroadcast;
+      this.lastSecondTimestamp = now;
+    } else {
+      // Accumulate bytes for the current second
+      this.bytesSentThisSecond += totalBytesForBroadcast;
+    }
+  }
+
+  /**
+   * Print bandwidth statistics every 5 seconds
+   */
+  private printStats(): void {
+    const now = Date.now();
+    const elapsedSeconds = (now - this.lastSecondTimestamp) / 1000;
+
+    // Calculate MB/s based on bytes sent in the current second
+    // Use elapsed time to get accurate per-second rate
+    const mbPerSecond =
+      elapsedSeconds > 0 ? this.bytesSentThisSecond / (1024 * 1024) / elapsedSeconds : 0;
+
+    console.log(
+      `[Bandwidth] ${mbPerSecond.toFixed(5)} MB/s (${this.io.sockets.sockets.size} players)`
+    );
+  }
+
+  /**
+   * Emit an event to all connected clients with simulated latency and automatic payload encoding
    */
   public emit(event: string, ...args: any[]): boolean {
-    const send = () => this.io.emit(event, ...args);
+    // Encode all arguments (except the first which is the event name)
+    const encodedArgs = args.map((arg) => encodePayload(arg));
+
+    // Track bytes sent (for first arg, which is typically the payload)
+    if (encodedArgs.length > 0) {
+      this.trackBytesSent(encodedArgs[0]);
+    }
+
+    const send = () => this.io.emit(event, ...encodedArgs);
 
     if (this.latencyMs > 0) {
       setTimeout(send, this.latencyMs);
@@ -90,6 +174,16 @@ export class DelayedServer {
     }
 
     return true;
+  }
+
+  /**
+   * Clean up resources (stop stats interval)
+   */
+  public cleanup(): void {
+    if (this.statsInterval) {
+      clearInterval(this.statsInterval);
+      this.statsInterval = null;
+    }
   }
 
   /**

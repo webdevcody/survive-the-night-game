@@ -29,7 +29,6 @@ import { ExplosionEvent } from "@shared/events/server-sent/explosion-event";
 import { DelayedSocket } from "../util/delayed-socket";
 import { SIMULATION_CONFIG } from "@/config/client-prediction";
 import { CoinPickupEvent } from "@shared/events/server-sent/coin-pickup-event";
-import { decodePayload } from "@shared/util/compression";
 
 export type EntityDto = { id: string } & any;
 
@@ -68,10 +67,9 @@ export class ClientSocketManager {
   private isDisconnected: boolean = false;
 
   public on<K extends keyof typeof SERVER_EVENT_MAP>(eventType: K, handler: (event: any) => void) {
-    this.rawSocket.on(eventType as any, (serializedEvent: any) => {
+    // Use DelayedSocket.on() which automatically decodes payloads
+    this.socket.on(eventType as any, (decodedEvent: any) => {
       const run = () => {
-        // Decode the compressed payload
-        const decodedEvent = decodePayload(serializedEvent);
         const Ctor = (SERVER_EVENT_MAP as any)[eventType];
         const event = new Ctor(decodedEvent);
         handler(event);
@@ -113,10 +111,8 @@ export class ClientSocketManager {
       this.stopPingMeasurement();
     });
 
-    // Set up pong handler
-    this.rawSocket.on(ServerSentEvents.PONG, (serializedEvent) => {
-      // Decode the compressed payload
-      const decodedEvent = decodePayload(serializedEvent);
+    // Set up pong handler (using DelayedSocket.on() which automatically decodes)
+    this.socket.on(ServerSentEvents.PONG, (decodedEvent: any) => {
       const event = new PongEvent(decodedEvent.timestamp);
       // Both Date.now() and timestamp are Unix timestamps (milliseconds since epoch, UTC)
       // This calculation is timezone-independent

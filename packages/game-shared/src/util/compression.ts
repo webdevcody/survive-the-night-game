@@ -41,6 +41,7 @@ const PROPERTY_KEYS = [
   "id",
   "type",
   "extensions",
+  "resourceType",
   "removedExtensions",
 
   // Extension types (as property names)

@@ -334,7 +334,6 @@ export class GameServer {
     // Restart the game after 5 seconds
     setTimeout(() => {
       console.log("Restarting game...");
-      this.entityManager.clear();
       this.startNewGame();
     }, 5000);
   }
