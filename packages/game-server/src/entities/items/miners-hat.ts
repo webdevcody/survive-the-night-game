@@ -12,11 +12,9 @@ export class MinersHat extends Entity {
   constructor(gameManagers: IGameManagers) {
     super(gameManagers, Entities.MINERS_HAT);
 
-    this.extensions = [
-      new Positionable(this).setSize(MinersHat.Size),
-      new Interactive(this).onInteract(this.interact.bind(this)).setDisplayName("miners hat"),
-      new Carryable(this, "miners_hat"),
-    ];
+    this.addExtension(new Positionable(this).setSize(MinersHat.Size));
+    this.addExtension(new Interactive(this).onInteract(this.interact.bind(this)).setDisplayName("miners hat"));
+    this.addExtension(new Carryable(this, "miners_hat"));
   }
 
   private interact(entityId: string): void {

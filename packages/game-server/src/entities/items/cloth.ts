@@ -12,10 +12,8 @@ export class Cloth extends Entity {
   constructor(gameManagers: IGameManagers) {
     super(gameManagers, Entities.CLOTH);
 
-    this.extensions = [
-      new Positionable(this).setSize(Cloth.Size),
-      new Interactive(this).onInteract(this.interact.bind(this)).setDisplayName("cloth"),
-    ];
+    this.addExtension(new Positionable(this).setSize(Cloth.Size));
+    this.addExtension(new Interactive(this).onInteract(this.interact.bind(this)).setDisplayName("cloth"));
   }
 
   private interact(entityId: string): void {

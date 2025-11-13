@@ -17,6 +17,7 @@ export default class OneTimeTrigger implements Extension {
   private targetTypes: EntityType[];
   private hasTriggered = false;
   private triggerCallback?: () => void;
+  private dirty: boolean = false;
 
   constructor(self: IEntity, options: OneTimeTriggerOptions) {
     this.self = self;
@@ -47,10 +48,26 @@ export default class OneTimeTrigger implements Extension {
 
       if (distance <= this.triggerRadius) {
         this.hasTriggered = true;
+        this.markDirty(); // Mark dirty when triggered
         this.triggerCallback?.();
         break;
       }
     }
+  }
+
+  public isDirty(): boolean {
+    return this.dirty;
+  }
+
+  public markDirty(): void {
+    this.dirty = true;
+    if (this.self.markExtensionDirty) {
+      this.self.markExtensionDirty(this);
+    }
+  }
+
+  public clearDirty(): void {
+    this.dirty = false;
   }
 
   public serialize(): ExtensionSerialized {

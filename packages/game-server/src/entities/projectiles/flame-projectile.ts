@@ -38,12 +38,10 @@ export class FlameProjectile extends Entity {
     this.maxDistance =
       MIN_TRAVEL_DISTANCE + Math.random() * (MAX_TRAVEL_DISTANCE - MIN_TRAVEL_DISTANCE);
 
-    this.extensions = [
-      new Positionable(this).setSize(FlameProjectile.FLAME_SIZE),
-      new Movable(this).setHasFriction(false),
-      new Updatable(this, this.updateFlame.bind(this)),
-      new Collidable(this).setSize(FlameProjectile.FLAME_SIZE),
-    ];
+    this.addExtension(new Positionable(this).setSize(FlameProjectile.FLAME_SIZE));
+    this.addExtension(new Movable(this).setHasFriction(false));
+    this.addExtension(new Updatable(this, this.updateFlame.bind(this)));
+    this.addExtension(new Collidable(this).setSize(FlameProjectile.FLAME_SIZE));
 
     this.lastPosition = this.getPosition();
   }

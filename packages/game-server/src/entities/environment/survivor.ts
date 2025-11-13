@@ -52,21 +52,25 @@ export class Survivor extends Entity<typeof SERIALIZABLE_FIELDS> {
 
     this.fireCooldown = new Cooldown(SURVIVOR_SHOOT_COOLDOWN);
 
-    this.extensions = [
-      new Positionable(this).setSize(SURVIVOR_SIZE),
-      new Collidable(this).setSize(SURVIVOR_SIZE.div(2)).setOffset(new Vector2(4, 4)),
+    this.addExtension(new Positionable(this).setSize(SURVIVOR_SIZE));
+    this.addExtension(
+      new Collidable(this).setSize(SURVIVOR_SIZE.div(2)).setOffset(new Vector2(4, 4))
+    );
+    this.addExtension(
       new Destructible(this)
         .setMaxHealth(SURVIVOR_MAX_HEALTH)
         .setHealth(SURVIVOR_MAX_HEALTH)
-        .onDeath(() => this.onDeath()),
-      new Movable(this).setHasFriction(false),
+        .onDeath(() => this.onDeath())
+    );
+    this.addExtension(new Movable(this).setHasFriction(false));
+    this.addExtension(
       new Interactive(this)
         .onInteract((entityId) => this.onRescue(entityId))
-        .setDisplayName("rescue"),
-      new Inventory(this, gameManagers.getBroadcaster()).addRandomItem(0.5), // 50% chance to drop item
-      new Updatable(this, this.updateSurvivor.bind(this)),
-      new Groupable(this, "friendly"),
-    ];
+        .setDisplayName("rescue")
+    );
+    this.addExtension(new Inventory(this, gameManagers.getBroadcaster()).addRandomItem(0.5)); // 50% chance to drop item
+    this.addExtension(new Updatable(this, this.updateSurvivor.bind(this)));
+    this.addExtension(new Groupable(this, "friendly"));
   }
 
   private updateSurvivor(deltaTime: number): void {
@@ -335,7 +339,7 @@ export class Survivor extends Entity<typeof SERIALIZABLE_FIELDS> {
     this.getExt(Movable).setVelocity(new Vector2(0, 0));
 
     // Add interactive extension for looting
-    this.extensions.push(
+    this.addExtension(
       new Interactive(this).onInteract(() => this.onLooted()).setDisplayName("loot")
     );
 

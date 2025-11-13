@@ -20,18 +20,22 @@ export class Wall extends Entity {
 
     const count = itemState?.count ?? Wall.DEFAULT_COUNT;
 
-    this.extensions = [
-      new Positionable(this).setSize(Wall.Size),
-      new Collidable(this).setSize(Wall.Size),
-      new Interactive(this).onInteract(this.interact.bind(this)).setDisplayName("wall"),
+    this.addExtension(new Positionable(this).setSize(Wall.Size));
+    this.addExtension(new Collidable(this).setSize(Wall.Size));
+    this.addExtension(
+      new Interactive(this).onInteract(this.interact.bind(this)).setDisplayName("wall")
+    );
+    this.addExtension(
       new Destructible(this)
         .setMaxHealth(getConfig().world.WALL_MAX_HEALTH)
         .setHealth(itemState?.health ?? getConfig().world.WALL_MAX_HEALTH)
-        .onDeath(() => this.onDeath()),
+        .onDeath(() => this.onDeath())
+    );
+    this.addExtension(
       new Carryable(this, "wall").setItemState({
         count,
-      }),
-    ];
+      })
+    );
   }
 
   private interact(entityId: string): void {

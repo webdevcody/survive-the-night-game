@@ -254,9 +254,8 @@ export class GameServer {
     perfTimer.end("broadcastGameState");
     perfTimer.logStats("broadcastGameState");
 
-    for (const entity of this.entityManager.getDynamicEntities()) {
-      this.entityManager.getEntityStateTracker().trackEntity(entity, currentTime);
-    }
+    // No longer need to track entities - dirty flags handle change detection
+    // Dirty flags are cleared in broadcastEvent() after broadcasting
 
     this.trackPerformance(updateStartTime, currentTime);
     this.lastUpdateTime = currentTime;

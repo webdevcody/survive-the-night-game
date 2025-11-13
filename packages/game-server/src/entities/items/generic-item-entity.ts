@@ -20,20 +20,20 @@ export class GenericItemEntity extends Entity {
   constructor(gameManagers: IGameManagers, entityType: EntityType, config: ItemConfig) {
     super(gameManagers, entityType);
 
-    const extensions: Extension[] = [new Positionable(this).setSize(GenericItemEntity.Size)];
+    this.addExtension(new Positionable(this).setSize(GenericItemEntity.Size));
 
     // Most items are interactive and carryable
     if (config.category !== "structure") {
       const displayName = config.id.replace(/_/g, " "); // Convert "pistol_ammo" to "pistol ammo"
-      extensions.push(
+      this.addExtension(
         new Interactive(this).onInteract(this.interact.bind(this)).setDisplayName(displayName)
       );
-      extensions.push(new Carryable(this, config.id as any));
+      this.addExtension(new Carryable(this, config.id as any));
     }
 
     // Consumables get the Consumable extension
     if (config.category === "consumable") {
-      extensions.push(
+      this.addExtension(
         new Consumable(this).onConsume((entityId: string, idx: number) => {
           // Default consume behavior: just remove from inventory
           const entity = this.getEntityManager().getEntityById(entityId);
@@ -43,8 +43,6 @@ export class GenericItemEntity extends Entity {
         })
       );
     }
-
-    this.extensions = extensions;
   }
 
   private interact(entityId: string): void {

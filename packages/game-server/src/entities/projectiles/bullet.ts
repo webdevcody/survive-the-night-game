@@ -28,14 +28,14 @@ export class Bullet extends Entity {
     super(gameManagers, Entities.BULLET);
     this.damage = damage;
 
-    this.extensions = [
-      new Positionable(this),
-      new Movable(this).setHasFriction(false),
-      new Updatable(this, this.updateBullet.bind(this)),
+    this.addExtension(new Positionable(this));
+    this.addExtension(new Movable(this).setHasFriction(false));
+    this.addExtension(new Updatable(this, this.updateBullet.bind(this)));
+    this.addExtension(
       new Collidable(this).setSize(
         new Vector2(getConfig().combat.BULLET_SIZE, getConfig().combat.BULLET_SIZE)
-      ),
-    ];
+      )
+    );
 
     this.lastPosition = this.getPosition();
   }

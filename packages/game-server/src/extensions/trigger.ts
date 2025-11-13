@@ -14,6 +14,7 @@ export default class Triggerable implements Extension {
   private size: Vector2;
   private onEntityEntered?: (entity: IEntity) => void;
   private filter: EntityType[];
+  private dirty: boolean = false;
 
   /**
    * will create a trigger box around an entity which should be used for various purposes.
@@ -39,6 +40,21 @@ export default class Triggerable implements Extension {
       if (!entity.hasExt(Collidable)) continue;
       this.onEntityEntered?.(entity);
     }
+  }
+
+  public isDirty(): boolean {
+    return this.dirty;
+  }
+
+  public markDirty(): void {
+    this.dirty = true;
+    if (this.self.markExtensionDirty) {
+      this.self.markExtensionDirty(this);
+    }
+  }
+
+  public clearDirty(): void {
+    this.dirty = false;
   }
 
   public serialize(): ExtensionSerialized {

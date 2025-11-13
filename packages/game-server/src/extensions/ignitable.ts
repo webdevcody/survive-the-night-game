@@ -11,6 +11,7 @@ export default class Ignitable implements Extension {
   private maxDamage: number;
   private totalDamage: number;
   private damage: number;
+  private dirty: boolean = false;
 
   // TODO: this should be configurable for damage / cooldown
   public constructor(self: IEntity, maxDamage = 2) {
@@ -32,6 +33,21 @@ export default class Ignitable implements Extension {
         this.self.removeExtension(this);
       }
     }
+  }
+
+  public isDirty(): boolean {
+    return this.dirty;
+  }
+
+  public markDirty(): void {
+    this.dirty = true;
+    if (this.self.markExtensionDirty) {
+      this.self.markExtensionDirty(this);
+    }
+  }
+
+  public clearDirty(): void {
+    this.dirty = false;
   }
 
   public serialize(): ExtensionSerialized {

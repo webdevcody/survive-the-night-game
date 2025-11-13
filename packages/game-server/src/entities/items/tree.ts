@@ -12,10 +12,8 @@ export class Tree extends Entity {
   constructor(gameManagers: IGameManagers) {
     super(gameManagers, Entities.TREE);
 
-    this.extensions = [
-      new Positionable(this).setSize(Tree.Size),
-      new Interactive(this).onInteract(this.interact.bind(this)).setDisplayName("wood"),
-    ];
+    this.addExtension(new Positionable(this).setSize(Tree.Size));
+    this.addExtension(new Interactive(this).onInteract(this.interact.bind(this)).setDisplayName("wood"));
   }
 
   private interact(entityId: string): void {

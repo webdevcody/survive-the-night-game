@@ -2,7 +2,6 @@ import { IEntity } from "@/entities/types";
 import { WaveState } from "@shared/types/wave";
 
 export class EntityStateTracker {
-  private seenEntityIds: Set<string> = new Set(); // Track which entities we've seen before
   private removedEntityIds: Set<string> = new Set();
   private previousGameState: {
     dayNumber?: number;
@@ -17,33 +16,18 @@ export class EntityStateTracker {
     totalZombies?: number;
   } = {};
 
-  public trackEntity(entity: IEntity, currentTime: number): void {
-    const id = entity.getId();
-    // Just mark that we've seen this entity - dirty flags handle change detection
-    this.seenEntityIds.add(id);
-  }
-
   public trackRemoval(entityId: string): void {
     this.removedEntityIds.add(entityId);
-    this.seenEntityIds.delete(entityId);
   }
 
   public getChangedEntities(entities: IEntity[]): IEntity[] {
     const changedEntities: IEntity[] = [];
 
     for (const entity of entities) {
-      const id = entity.getId();
-      const isNewEntity = !this.seenEntityIds.has(id);
-
-      if (isNewEntity) {
-        // New entity - always include it
-        changedEntities.push(entity);
-        continue;
-      }
-
       // Use dirty flag to detect changes (includes removed extensions check)
+      // New entities will have all extensions dirty, changed entities will have dirty extensions
       // This is much faster than serialization comparison
-      if (entity.isDirty && entity.isDirty()) {
+      if (entity.isDirty()) {
         changedEntities.push(entity);
       }
     }
@@ -69,12 +53,7 @@ export class EntityStateTracker {
     return [];
   }
 
-  public hasSeenEntity(entityId: string): boolean {
-    return this.seenEntityIds.has(entityId);
-  }
-
   public clear(): void {
-    this.seenEntityIds.clear();
     this.removedEntityIds.clear();
     this.previousGameState = {};
   }

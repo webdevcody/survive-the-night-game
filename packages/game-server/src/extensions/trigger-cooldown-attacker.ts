@@ -27,6 +27,7 @@ export default class TriggerCooldownAttacker implements Extension {
 
   // SERIALIZED PROPERTIES
   public isReady: boolean; // used to change spike view
+  private dirty: boolean = false;
 
   public constructor(
     self: IEntity,
@@ -45,7 +46,11 @@ export default class TriggerCooldownAttacker implements Extension {
   public update(deltaTime: number) {
     this.attackCooldown.update(deltaTime);
 
+    const wasReady = this.isReady;
     this.isReady = this.attackCooldown.isReady();
+    if (wasReady !== this.isReady) {
+      this.markDirty(); // Mark dirty when ready state changes
+    }
 
     const entities = this.self
       .getEntityManager()
@@ -78,6 +83,21 @@ export default class TriggerCooldownAttacker implements Extension {
         }
       }
     }
+  }
+
+  public isDirty(): boolean {
+    return this.dirty;
+  }
+
+  public markDirty(): void {
+    this.dirty = true;
+    if (this.self.markExtensionDirty) {
+      this.self.markExtensionDirty(this);
+    }
+  }
+
+  public clearDirty(): void {
+    this.dirty = false;
   }
 
   public serialize(): ExtensionSerialized {

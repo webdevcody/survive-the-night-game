@@ -15,15 +15,15 @@ export class Fire extends Entity {
   constructor(gameManagers: IGameManagers) {
     super(gameManagers, Entities.FIRE);
 
-    this.extensions = [
-      new Positionable(this).setSize(Fire.Size),
+    this.addExtension(new Positionable(this).setSize(Fire.Size));
+    this.addExtension(
       new Triggerable(this, Fire.Size, [
         ...Zombies.filter((z) => z !== Entities.BAT_ZOMBIE),
         Entities.PLAYER,
-      ]).setOnEntityEntered(this.catchFire.bind(this)),
-      new Expirable(this, 6),
-      new Illuminated(this, 150),
-    ];
+      ]).setOnEntityEntered(this.catchFire.bind(this))
+    );
+    this.addExtension(new Expirable(this, 6));
+    this.addExtension(new Illuminated(this, 150));
   }
 
   catchFire(entity: IEntity) {

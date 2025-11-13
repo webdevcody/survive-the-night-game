@@ -65,22 +65,24 @@ export abstract class BaseEnemy extends Entity<typeof BASE_ENEMY_SERIALIZABLE_FI
     this.attackCooldown = new Cooldown(this.config.stats.attackCooldown);
     this.attackRadius = this.config.stats.attackRadius;
     this.attackDamage = this.config.stats.damage;
-    this.extensions = [
+    this.addExtension(
       new Inventory(this, gameManagers.getBroadcaster()).addRandomItem(
         this.config.stats.dropChance
-      ),
+      )
+    );
+    this.addExtension(
       new Destructible(this)
         .setMaxHealth(this.config.stats.health)
         .setHealth(this.config.stats.health)
         .onDamaged(this.onDamaged.bind(this))
         .setOffset(new Vector2(4, 4))
-        .onDeath(this.onDeath.bind(this)),
-      new Groupable(this, "enemy"),
-      new Positionable(this).setSize(this.config.stats.size),
-      new Collidable(this).setSize(this.config.stats.size.div(2)).setOffset(new Vector2(4, 4)),
-      new Movable(this),
-      new Updatable(this, this.updateEnemy.bind(this)),
-    ];
+        .onDeath(this.onDeath.bind(this))
+    );
+    this.addExtension(new Groupable(this, "enemy"));
+    this.addExtension(new Positionable(this).setSize(this.config.stats.size));
+    this.addExtension(new Collidable(this).setSize(this.config.stats.size.div(2)).setOffset(new Vector2(4, 4)));
+    this.addExtension(new Movable(this));
+    this.addExtension(new Updatable(this, this.updateEnemy.bind(this)));
   }
 
   setMovementStrategy(strategy: MovementStrategy) {

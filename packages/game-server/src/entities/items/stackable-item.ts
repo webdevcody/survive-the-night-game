@@ -23,13 +23,15 @@ export abstract class StackableItem extends Entity {
     // Use count from itemState if provided, otherwise use defaultCount
     const count = itemState?.count ?? defaultCount;
 
-    this.extensions = [
-      new Positionable(this).setSize(StackableItem.Size),
-      new Interactive(this).onInteract(this.interact.bind(this)).setDisplayName(displayName),
+    this.addExtension(new Positionable(this).setSize(StackableItem.Size));
+    this.addExtension(
+      new Interactive(this).onInteract(this.interact.bind(this)).setDisplayName(displayName)
+    );
+    this.addExtension(
       new Carryable(this, itemType).setItemState({
         count,
-      }),
-    ];
+      })
+    );
   }
 
   protected interact(entityId: string): void {

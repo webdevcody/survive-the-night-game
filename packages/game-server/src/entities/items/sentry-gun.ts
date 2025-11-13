@@ -32,20 +32,24 @@ export class SentryGun extends Entity {
 
     const count = itemState?.count ?? SentryGun.DEFAULT_COUNT;
 
-    this.extensions = [
-      new Positionable(this).setSize(SentryGun.Size),
-      new Collidable(this).setSize(SentryGun.Size),
-      new Interactive(this).onInteract(this.interact.bind(this)).setDisplayName("sentry gun"),
+    this.addExtension(new Positionable(this).setSize(SentryGun.Size));
+    this.addExtension(new Collidable(this).setSize(SentryGun.Size));
+    this.addExtension(
+      new Interactive(this).onInteract(this.interact.bind(this)).setDisplayName("sentry gun")
+    );
+    this.addExtension(
       new Destructible(this)
         .setMaxHealth(getConfig().world.SENTRY_GUN_MAX_HEALTH)
         .setHealth(itemState?.health ?? getConfig().world.SENTRY_GUN_MAX_HEALTH)
-        .onDeath(() => this.onDeath()),
+        .onDeath(() => this.onDeath())
+    );
+    this.addExtension(
       new Carryable(this, "sentry_gun").setItemState({
         count,
-      }),
-      new Updatable(this, this.updateSentryGun.bind(this)),
-      new Groupable(this, "friendly"), // Allied with player
-    ];
+      })
+    );
+    this.addExtension(new Updatable(this, this.updateSentryGun.bind(this)));
+    this.addExtension(new Groupable(this, "friendly")); // Allied with player
   }
 
   private updateSentryGun(deltaTime: number): void {

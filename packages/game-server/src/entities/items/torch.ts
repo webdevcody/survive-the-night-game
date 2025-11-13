@@ -13,12 +13,10 @@ export class Torch extends Entity {
   constructor(gameManagers: IGameManagers) {
     super(gameManagers, Entities.TORCH);
 
-    this.extensions = [
-      new Positionable(this).setSize(Torch.Size),
-      new Interactive(this).onInteract(this.interact.bind(this)).setDisplayName("torch"),
-      new Carryable(this, "torch"),
-      new Illuminated(this, 200),
-    ];
+    this.addExtension(new Positionable(this).setSize(Torch.Size));
+    this.addExtension(new Interactive(this).onInteract(this.interact.bind(this)).setDisplayName("torch"));
+    this.addExtension(new Carryable(this, "torch"));
+    this.addExtension(new Illuminated(this, 200));
   }
 
   private interact(entityId: string): void {

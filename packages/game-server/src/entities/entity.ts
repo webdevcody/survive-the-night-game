@@ -71,29 +71,8 @@ export class Entity<TSerializableFields extends readonly string[] = readonly str
       this.updatableExtensions.push(extension);
     }
     // Mark new extensions as dirty (they need to be sent to clients)
-    if (extension.markDirty) {
-      extension.markDirty();
-      this.dirtyExtensions.add(extension);
-    }
-  }
-
-  /**
-   * Syncs the extension tracking structures (extensionTypes and updatableExtensions)
-   * from the existing extensions array. This is needed when extensions are set
-   * directly on this.extensions instead of using addExtension().
-   */
-  public syncExtensionTracking() {
-    // Clear existing tracking
-    this.extensionTypes.clear();
-    this.updatableExtensions = [];
-
-    // Rebuild tracking from existing extensions
-    for (const extension of this.extensions) {
-      this.extensionTypes.add(extension.constructor as ExtensionCtor);
-      if ("update" in extension && typeof (extension as any).update === "function") {
-        this.updatableExtensions.push(extension);
-      }
-    }
+    extension.markDirty();
+    this.dirtyExtensions.add(extension);
   }
 
   public removeExtension(extension: Extension) {
@@ -132,7 +111,7 @@ export class Entity<TSerializableFields extends readonly string[] = readonly str
   public isDirty(): boolean {
     // Check if any extension is dirty
     for (const extension of this.extensions) {
-      if (extension.isDirty && extension.isDirty()) {
+      if (extension.isDirty()) {
         return true;
       }
     }
@@ -209,7 +188,7 @@ export class Entity<TSerializableFields extends readonly string[] = readonly str
         .map((ext) => {
           if (onlyDirty) {
             // Only serialize dirty extensions
-            if (ext.isDirty && ext.isDirty()) {
+            if (ext.isDirty()) {
               // Use serializeDirty if available, otherwise fall back to serialize
               if (ext.serializeDirty) {
                 const dirtyData = ext.serializeDirty();

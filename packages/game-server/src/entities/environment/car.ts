@@ -22,20 +22,22 @@ export class Car extends Entity {
   constructor(gameManagers: IGameManagers) {
     super(gameManagers, Entities.CAR);
 
-    this.extensions = [
-      new Positionable(this).setSize(Car.Size),
-      new Collidable(this).setSize(Car.Size),
+    this.addExtension(new Positionable(this).setSize(Car.Size));
+    this.addExtension(new Collidable(this).setSize(Car.Size));
+    this.addExtension(
       new Destructible(this)
         .setMaxHealth(Car.INITIAL_HEALTH)
         .setHealth(Car.INITIAL_HEALTH)
         .onDamaged(() => this.onDamaged())
-        .onDeath(() => this.onDeath()),
-      new Groupable(this, "car"),
-      new Static(this),
+        .onDeath(() => this.onDeath())
+    );
+    this.addExtension(new Groupable(this, "car"));
+    this.addExtension(new Static(this));
+    this.addExtension(
       new Interactive(this)
         .onInteract((entityId) => this.onRepair(entityId))
-        .setDisplayName("repair"),
-    ];
+        .setDisplayName("repair")
+    );
   }
 
   private onDamaged(): void {

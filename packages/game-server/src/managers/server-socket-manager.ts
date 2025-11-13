@@ -436,12 +436,12 @@ export class ServerSocketManager implements Broadcaster {
 
   private sendFullState(socket: Socket): void {
     const entities = this.getEntityManager().getEntities();
-    const entityStateTracker = this.getEntityManager().getEntityStateTracker();
     const currentTime = Date.now();
 
-    // Track all entities so they're not treated as "new" in subsequent updates
+    // Clear dirty flags for all entities after sending full state
+    // so they're not treated as "new" in subsequent updates
     entities.forEach((entity) => {
-      entityStateTracker.trackEntity(entity, currentTime);
+      entity.clearDirtyFlags();
     });
 
     const delayedSocket = this.wrapSocket(socket);
@@ -596,25 +596,24 @@ export class ServerSocketManager implements Broadcaster {
         return; // No changes to broadcast
       }
 
-      // For each changed entity, serialize only dirty extensions
+      // For each changed entity, serialize based on dirty state
+      // New entities will have all extensions dirty, so serialize(false) will include everything
+      // Changed entities will have only dirty extensions, so serialize(true) will include only changes
       const changedEntityData = changedEntities.map((entity) => {
-        const entityId = entity.getId();
-        const isNewEntity = !entityStateTracker.hasSeenEntity(entityId);
+        // Check if entity has all extensions dirty (likely a new entity)
+        // If all extensions are dirty, send full state; otherwise send dirty-only
+        // const allExtensionsDirty = entity
+        //   .getExtensions()
+        //   .every((ext) => ext.isDirty && ext.isDirty());
 
-        if (isNewEntity) {
-          // New entity - send full state
-          const fullState = entity.serialize();
-          entityStateTracker.trackEntity(entity, Date.now());
-          return fullState;
-        }
+        // if (allExtensionsDirty) {
+        // New entity - send full state
+        //   return entity.serialize();
+        // }
 
         // Changed entity - use dirty-only serialization
         // The entity's serialize(true) method returns all dirty fields
-        const dirtyState = entity.serialize(true);
-
-        // Entity serialization already includes id and type, plus any dirty fields
-        // No need to manually check individual fields - the entity knows what's dirty
-        return dirtyState;
+        return entity.serialize(true);
       });
 
       // Get current game state
@@ -650,25 +649,20 @@ export class ServerSocketManager implements Broadcaster {
         ...mergedGameState,
       });
 
-      // Track the current state of all entities and game state after sending the update
-      changedEntities.forEach((entity) => {
-        entityStateTracker.trackEntity(entity, Date.now());
-        // Clear dirty flags after broadcasting
-        if (entity.clearDirtyFlags) {
-          entity.clearDirtyFlags();
-        }
-      });
+      // Clear dirty flags after broadcasting
+      let i: number;
+      for (i = 0; i < changedEntities.length; i++) {
+        changedEntities[i].clearDirtyFlags();
+      }
       entityStateTracker.trackGameState(currentGameState);
       // Clear removed entity IDs after they've been sent
       entityStateTracker.clearRemovedEntityIds();
 
-      const serializedEvent = gameStateEvent.serialize();
       // DelayedServer will automatically encode the payload and track bytes
-      this.delayedIo.emit(gameStateEvent.getType(), serializedEvent);
+      this.delayedIo.emit(gameStateEvent.getType(), gameStateEvent.serialize());
     } else {
-      const serializedEvent = event.serialize();
       // DelayedServer will automatically encode the payload and track bytes
-      this.delayedIo.emit(event.getType(), serializedEvent);
+      this.delayedIo.emit(event.getType(), event.serialize());
     }
   }
 

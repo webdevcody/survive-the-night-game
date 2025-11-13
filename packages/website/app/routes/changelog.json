@@ -1,5 +1,16 @@
 [
   {
+    "version": "0.11.3",
+    "date": "2025-11-13",
+    "changes": [
+      "Refactored entity extension initialization - replaced array assignment with addExtension() method calls",
+      "Removed syncExtensionTracking() method - no longer needed with proper addExtension() usage",
+      "Simplified extension dirty tracking - all extensions now consistently marked dirty on creation",
+      "Improved type safety - removed optional chaining for isDirty() and serializeDirty() checks",
+      "Enhanced code maintainability with consistent extension registration pattern across 40+ entity classes"
+    ]
+  },
+  {
     "version": "0.11.2",
     "date": "2025-11-13",
     "changes": [

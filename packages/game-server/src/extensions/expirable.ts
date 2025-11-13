@@ -8,6 +8,7 @@ export default class Expirable implements Extension {
 
   private self: IEntity;
   private expireCooldown: Cooldown;
+  private dirty: boolean = false;
 
   public constructor(self: IEntity, expiresIn: number) {
     this.self = self;
@@ -20,6 +21,21 @@ export default class Expirable implements Extension {
     if (this.expireCooldown.isReady()) {
       this.self.getEntityManager().markEntityForRemoval(this.self);
     }
+  }
+
+  public isDirty(): boolean {
+    return this.dirty;
+  }
+
+  public markDirty(): void {
+    this.dirty = true;
+    if (this.self.markExtensionDirty) {
+      this.self.markExtensionDirty(this);
+    }
+  }
+
+  public clearDirty(): void {
+    this.dirty = false;
   }
 
   public serialize(): ExtensionSerialized {

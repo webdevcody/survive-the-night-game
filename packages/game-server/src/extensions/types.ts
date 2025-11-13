@@ -1,10 +1,10 @@
 export interface Extension {
   serialize: () => ExtensionSerialized;
   update?: (deltaTime: number) => void;
-  // Optional dirty tracking methods for performance optimization
-  isDirty?: () => boolean;
-  markDirty?: () => void;
-  clearDirty?: () => void;
+  // Required dirty tracking methods - all extensions must support dirty tracking
+  isDirty: () => boolean;
+  markDirty: () => void;
+  clearDirty: () => void;
   serializeDirty?: () => ExtensionSerialized | null;
 }
 

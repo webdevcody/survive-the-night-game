@@ -17,20 +17,22 @@ export class Crate extends Entity {
   constructor(gameManagers: IGameManagers, itemState?: ItemState) {
     super(gameManagers, Entities.CRATE);
 
-    this.extensions = [
-      new Positionable(this).setSize(Crate.Size),
-      new Collidable(this).setSize(Crate.Size),
+    this.addExtension(new Positionable(this).setSize(Crate.Size));
+    this.addExtension(new Collidable(this).setSize(Crate.Size));
+    this.addExtension(
       new Destructible(this)
         .setMaxHealth(getConfig().world.CRATE_HEALTH)
         .setHealth(itemState?.health ?? getConfig().world.CRATE_HEALTH)
-        .onDeath(() => this.onDeath()),
-      new Groupable(this, "enemy"),
+        .onDeath(() => this.onDeath())
+    );
+    this.addExtension(new Groupable(this, "enemy"));
+    this.addExtension(
       new Inventory(this, gameManagers.getBroadcaster())
         .addRandomItem()
         .addRandomItem()
-        .addRandomItem(),
-      new Static(this),
-    ];
+        .addRandomItem()
+    );
+    this.addExtension(new Static(this));
   }
 
   private onDeath(): void {

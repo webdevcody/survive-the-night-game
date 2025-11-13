@@ -13,11 +13,9 @@ export abstract class Weapon extends Entity {
   constructor(gameManagers: IGameManagers, weaponKey: WeaponKey) {
     super(gameManagers, weaponKey);
 
-    this.extensions = [
-      new Positionable(this).setSize(Weapon.Size),
-      new Interactive(this).onInteract(this.interact.bind(this)).setDisplayName(weaponKey),
-      new Carryable(this, weaponKey),
-    ];
+    this.addExtension(new Positionable(this).setSize(Weapon.Size));
+    this.addExtension(new Interactive(this).onInteract(this.interact.bind(this)).setDisplayName(weaponKey));
+    this.addExtension(new Carryable(this, weaponKey));
   }
 
   private interact(entityId: string): void {

@@ -37,13 +37,11 @@ export class AcidProjectile extends Entity {
     const collidable = new Collidable(this);
     collidable.setSize(AcidProjectile.PROJECTILE_SIZE);
 
-    this.extensions = [
-      positionable,
-      movable,
-      collidable,
-      new Updatable(this, this.update.bind(this)),
-      new Groupable(this, "enemy"),
-    ];
+    this.addExtension(positionable);
+    this.addExtension(movable);
+    this.addExtension(collidable);
+    this.addExtension(new Updatable(this, this.update.bind(this)));
+    this.addExtension(new Groupable(this, "enemy"));
   }
 
   private update(deltaTime: number): Extension[] {

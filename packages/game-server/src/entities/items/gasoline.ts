@@ -21,14 +21,12 @@ export class Gasoline extends Entity {
 
     const count = itemState?.count ?? Gasoline.DEFAULT_COUNT;
 
-    this.extensions = [
-      new Positionable(this).setSize(Gasoline.Size),
-      new Interactive(this).onInteract(this.interact.bind(this)).setDisplayName("gasoline"),
-      new Destructible(this).setMaxHealth(1).setHealth(itemState?.health ?? 1).onDeath(this.onDeath.bind(this)),
-      new Combustible(this, (type) => new Fire(gameManagers), 12, 64), // More fires and larger spread than default
-      new Carryable(this, "gasoline").setItemState({ count }),
-      new Groupable(this, "enemy"),
-    ];
+    this.addExtension(new Positionable(this).setSize(Gasoline.Size));
+    this.addExtension(new Interactive(this).onInteract(this.interact.bind(this)).setDisplayName("gasoline"));
+    this.addExtension(new Destructible(this).setMaxHealth(1).setHealth(itemState?.health ?? 1).onDeath(this.onDeath.bind(this)));
+    this.addExtension(new Combustible(this, (type) => new Fire(gameManagers), 12, 64)); // More fires and larger spread than default
+    this.addExtension(new Carryable(this, "gasoline").setItemState({ count }));
+    this.addExtension(new Groupable(this, "enemy"));
   }
 
   private interact(entityId: string): void {

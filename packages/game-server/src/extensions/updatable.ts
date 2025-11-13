@@ -8,6 +8,7 @@ export default class Updatable implements Extension {
 
   private self: IEntity;
   private updateFunction: UpdateFunction;
+  private dirty: boolean = false;
 
   /**
    * will create a trigger box around an entity which should be used for various purposes.
@@ -24,6 +25,21 @@ export default class Updatable implements Extension {
 
   public update(deltaTime: number) {
     this.updateFunction(deltaTime);
+  }
+
+  public isDirty(): boolean {
+    return this.dirty;
+  }
+
+  public markDirty(): void {
+    this.dirty = true;
+    if (this.self.markExtensionDirty) {
+      this.self.markExtensionDirty(this);
+    }
+  }
+
+  public clearDirty(): void {
+    this.dirty = false;
   }
 
   public serialize(): ExtensionSerialized {

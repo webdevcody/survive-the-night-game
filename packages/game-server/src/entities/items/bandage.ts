@@ -20,12 +20,12 @@ export class Bandage extends Entity {
 
     const count = itemState?.count ?? Bandage.DEFAULT_COUNT;
 
-    this.extensions = [
-      new Positionable(this).setSize(Bandage.Size),
-      new Interactive(this).onInteract(this.interact.bind(this)).setDisplayName("bandage"),
-      new Consumable(this).onConsume(this.consume.bind(this)),
-      new Carryable(this, "bandage").setItemState({ count }),
-    ];
+    this.addExtension(new Positionable(this).setSize(Bandage.Size));
+    this.addExtension(
+      new Interactive(this).onInteract(this.interact.bind(this)).setDisplayName("bandage")
+    );
+    this.addExtension(new Consumable(this).onConsume(this.consume.bind(this)));
+    this.addExtension(new Carryable(this, "bandage").setItemState({ count }));
   }
 
   private consume(entityId: string, idx: number): void {
@@ -74,6 +74,9 @@ export class Bandage extends Entity {
 
     const carryable = this.getExt(Carryable);
     // Use helper method to preserve count when picking up dropped bandages
-    carryable.pickup(entityId, Carryable.createStackablePickupOptions(carryable, Bandage.DEFAULT_COUNT));
+    carryable.pickup(
+      entityId,
+      Carryable.createStackablePickupOptions(carryable, Bandage.DEFAULT_COUNT)
+    );
   }
 }

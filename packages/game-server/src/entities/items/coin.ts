@@ -12,13 +12,13 @@ export class Coin extends Entity {
   constructor(gameManagers: IGameManagers) {
     super(gameManagers, Entities.COIN);
 
-    this.extensions = [
-      new Positionable(this).setSize(Coin.Size),
+    this.addExtension(new Positionable(this).setSize(Coin.Size));
+    this.addExtension(
       new OneTimeTrigger(this, {
         triggerRadius: Coin.TRIGGER_RADIUS,
         targetTypes: [Entities.PLAYER],
-      }).onTrigger(() => this.collect()),
-    ];
+      }).onTrigger(() => this.collect())
+    );
   }
 
   private collect(): void {

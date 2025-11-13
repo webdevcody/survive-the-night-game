@@ -14,6 +14,7 @@ export default class Combustible implements Extension {
   private entityFactory: EntityFactory;
   private numFires: number;
   private spreadRadius: number;
+  private dirty: boolean = false;
 
   public constructor(self: IEntity, entityFactory: EntityFactory, numFires = 3, spreadRadius = 32) {
     this.self = self;
@@ -40,6 +41,21 @@ export default class Combustible implements Extension {
       center.x + Math.cos(angle) * distance,
       center.y + Math.sin(angle) * distance
     );
+  }
+
+  public isDirty(): boolean {
+    return this.dirty;
+  }
+
+  public markDirty(): void {
+    this.dirty = true;
+    if (this.self.markExtensionDirty) {
+      this.self.markExtensionDirty(this);
+    }
+  }
+
+  public clearDirty(): void {
+    this.dirty = false;
   }
 
   public serialize(): ExtensionSerialized {

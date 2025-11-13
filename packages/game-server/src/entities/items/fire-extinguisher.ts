@@ -20,16 +20,16 @@ export class FireExtinguisher extends Entity {
 
     const count = itemState?.count ?? FireExtinguisher.DEFAULT_COUNT;
 
-    this.extensions = [
-      new Positionable(this).setSize(FireExtinguisher.SIZE),
-      new Interactive(this)
-        .onInteract(this.interact.bind(this))
-        .setDisplayName("fire extinguisher"),
+    this.addExtension(new Positionable(this).setSize(FireExtinguisher.SIZE));
+    this.addExtension(
+      new Interactive(this).onInteract(this.interact.bind(this)).setDisplayName("fire extinguisher")
+    );
+    this.addExtension(
       new Carryable(this, "fire_extinguisher").setItemState({
         count,
-      }),
-      new Consumable(this).onConsume(this.consume.bind(this)),
-    ];
+      })
+    );
+    this.addExtension(new Consumable(this).onConsume(this.consume.bind(this)));
   }
 
   private interact(entityId: string): void {

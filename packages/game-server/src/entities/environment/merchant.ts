@@ -20,12 +20,12 @@ export class Merchant extends Entity<typeof MERCHANT_SERIALIZABLE_FIELDS> {
   constructor(gameManagers: IGameManagers) {
     super(gameManagers, Entities.MERCHANT);
 
-    this.extensions = [
-      new Positionable(this).setSize(Merchant.Size),
+    this.addExtension(new Positionable(this).setSize(Merchant.Size));
+    this.addExtension(
       new Interactive(this)
         .onInteract(this.interact.bind(this))
-        .setDisplayName("buy"),
-    ];
+        .setDisplayName("buy")
+    );
 
     // Initialize with 3 random items
     this.randomizeShopItems();

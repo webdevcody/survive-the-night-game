@@ -87,13 +87,17 @@ export class Player extends Entity<typeof PLAYER_SERIALIZABLE_FIELDS> {
     super(gameManagers, Entities.PLAYER);
     this.broadcaster = gameManagers.getBroadcaster();
 
-    this.extensions = [
-      new Inventory(this, gameManagers.getBroadcaster()),
-      new ResourcesBag(this, gameManagers.getBroadcaster()),
+    this.addExtension(new Inventory(this, gameManagers.getBroadcaster()));
+    this.addExtension(new ResourcesBag(this, gameManagers.getBroadcaster()));
+    this.addExtension(
       new Collidable(this)
         .setSize(new Vector2(Player.PLAYER_WIDTH - 4, Player.PLAYER_WIDTH - 4))
-        .setOffset(new Vector2(2, 2)),
-      new Positionable(this).setSize(new Vector2(Player.PLAYER_WIDTH, Player.PLAYER_WIDTH)),
+        .setOffset(new Vector2(2, 2))
+    );
+    this.addExtension(
+      new Positionable(this).setSize(new Vector2(Player.PLAYER_WIDTH, Player.PLAYER_WIDTH))
+    );
+    this.addExtension(
       new Destructible(this)
         .setHealth(getConfig().player.MAX_PLAYER_HEALTH)
         .setMaxHealth(getConfig().player.MAX_PLAYER_HEALTH)
@@ -101,12 +105,12 @@ export class Player extends Entity<typeof PLAYER_SERIALIZABLE_FIELDS> {
           // Broadcast PlayerHurtEvent when player takes damage (e.g., from zombie attacks)
           this.broadcaster.broadcastEvent(new PlayerHurtEvent(this.getId()));
         })
-        .onDeath(() => this.onDeath()),
-      new Updatable(this, this.updatePlayer.bind(this)),
-      new Movable(this),
-      new Illuminated(this, 200),
-      new Groupable(this, "friendly"),
-    ];
+        .onDeath(() => this.onDeath())
+    );
+    this.addExtension(new Updatable(this, this.updatePlayer.bind(this)));
+    this.addExtension(new Movable(this));
+    this.addExtension(new Illuminated(this, 200));
+    this.addExtension(new Groupable(this, "friendly"));
 
     const inventory = this.getExt(Inventory);
 

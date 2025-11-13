@@ -22,17 +22,17 @@ export class Spikes extends Entity {
 
     const count = itemState?.count ?? Spikes.DEFAULT_COUNT;
 
-    this.extensions = [
-      new Positionable(this).setSize(Spikes.SIZE),
-      new Triggerable(this, Spikes.SIZE, [Entities.ZOMBIE]),
+    this.addExtension(new Positionable(this).setSize(Spikes.SIZE));
+    this.addExtension(new Triggerable(this, Spikes.SIZE, [Entities.ZOMBIE]));
+    this.addExtension(
       new TriggerCooldownAttacker(this, {
         damage: Spikes.DAMAGE,
         victimType: Entities.ZOMBIE,
         cooldown: 1,
-      }),
-      new Interactive(this).onInteract(this.interact.bind(this)).setDisplayName("spikes"),
-      new Carryable(this, "spikes").setItemState({ count }),
-    ];
+      })
+    );
+    this.addExtension(new Interactive(this).onInteract(this.interact.bind(this)).setDisplayName("spikes"));
+    this.addExtension(new Carryable(this, "spikes").setItemState({ count }));
   }
 
   private interact(entityId: string): void {

@@ -146,10 +146,6 @@ export class EntityManager implements IEntityManager {
       this.dynamicEntities.push(entity);
     }
 
-    // Sync extension tracking in case extensions were set directly on this.extensions
-    // (e.g., in entity constructors) instead of using addExtension()
-    entity.syncExtensionTracking();
-
     // Track entities with updatable extensions
     if (entity.hasUpdatableExtensions()) {
       this.updatableEntities.push(entity);

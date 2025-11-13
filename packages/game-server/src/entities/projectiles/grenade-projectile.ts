@@ -26,14 +26,14 @@ export class GrenadeProjectile extends Entity {
   constructor(gameManagers: IGameManagers) {
     super(gameManagers, Entities.GRENADE_PROJECTILE);
 
-    this.extensions = [
-      new Positionable(this),
-      new Movable(this).setHasFriction(false),
-      new Updatable(this, this.updateGrenadeProjectile.bind(this)),
+    this.addExtension(new Positionable(this));
+    this.addExtension(new Movable(this).setHasFriction(false));
+    this.addExtension(new Updatable(this, this.updateGrenadeProjectile.bind(this)));
+    this.addExtension(
       new Collidable(this).setSize(
         new Vector2(getConfig().combat.BULLET_SIZE, getConfig().combat.BULLET_SIZE)
-      ),
-    ];
+      )
+    );
 
     this.startPosition = this.getPosition();
   }

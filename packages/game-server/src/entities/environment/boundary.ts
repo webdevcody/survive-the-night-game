@@ -12,10 +12,8 @@ export class Boundary extends Entity {
   constructor(gameManagers: IGameManagers) {
     super(gameManagers, Entities.BOUNDARY);
 
-    this.extensions = [
-      new Positionable(this).setSize(Boundary.Size),
-      new Collidable(this).setSize(Boundary.Size),
-    ];
+    this.addExtension(new Positionable(this).setSize(Boundary.Size));
+    this.addExtension(new Collidable(this).setSize(Boundary.Size));
   }
 
   setPosition(position: Vector2): void {
