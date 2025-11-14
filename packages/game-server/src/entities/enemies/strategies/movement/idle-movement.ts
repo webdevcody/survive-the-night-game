@@ -16,7 +16,6 @@ export class IdleMovementStrategy implements MovementStrategy {
   private playerCheckTimer: number = Math.random() * IdleMovementStrategy.PLAYER_CHECK_INTERVAL; // Offset to spread checks
 
   update(zombie: BaseEnemy, deltaTime: number): boolean {
-    return;
     // If zombie is snared, don't move
     if (zombie.hasExt(Snared)) {
       zombie.getExt(Movable).setVelocity(new Vector2(0, 0));

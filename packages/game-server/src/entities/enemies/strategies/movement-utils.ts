@@ -10,7 +10,8 @@ export const FRIENDLY_SEARCH_RADIUS = 500; // Search radius for friendly entitie
 
 /**
  * Gets the best target position for a zombie to move towards.
- * Prioritizes closer friendly entities over the car, but defaults to car if no friendly entities found.
+ * Finds the closest friendly entity (car, player, or survivor) within search radius.
+ * If no friendly entity is found within the radius, falls back to car location if available.
  * @param zombie The zombie entity
  * @param carLocation The car's location (from map manager)
  * @returns The best target position, or null if no target available
@@ -19,26 +20,24 @@ export function getBestTargetPosition(
   zombie: BaseEnemy,
   carLocation: Vector2 | null
 ): Vector2 | null {
-  const zombiePos = zombie.getCenterPosition();
-
-  // Find the closest friendly entity (car, player, or survivor)
+  // Find the closest friendly entity (car, player, or survivor) within search radius
+  // Note: FRIENDLY_TYPES includes "car", so the car will be found if within radius
   const closestFriendly = TargetingSystem.findClosestFriendlyEntity(zombie, FRIENDLY_SEARCH_RADIUS);
 
-  if (closestFriendly && carLocation) {
-    // Compare distances and choose the closer target
-    const friendlyDistance = closestFriendly.distance;
-    const carDistance = zombiePos.distance(carLocation);
-    return friendlyDistance < carDistance ? closestFriendly.position : carLocation;
-  } else if (closestFriendly) {
-    // No car, use friendly entity
+  if (closestFriendly) {
+    // Found a friendly entity within search radius, use it
     return closestFriendly.position;
-  } else if (carLocation) {
-    // No friendly entity, use car
-    return carLocation;
-  } else {
-    // No target available
-    return null;
   }
+
+  // No friendly entity found within search radius
+  // Fall back to car location if available (even if it's far away)
+  // This ensures zombies always have a target to move towards
+  if (carLocation) {
+    return carLocation;
+  }
+
+  // No target available at all
+  return null;
 }
 
 /**
@@ -57,12 +56,14 @@ export class TargetChecker {
    * @param carLocation The car's location (from map manager)
    * @returns The current target position, or null if no target available
    */
-  updateTarget(
-    zombie: BaseEnemy,
-    deltaTime: number,
-    carLocation: Vector2 | null
-  ): Vector2 | null {
+  updateTarget(zombie: BaseEnemy, deltaTime: number, carLocation: Vector2 | null): Vector2 | null {
     this.targetCheckTimer += deltaTime;
+
+    // Initialize target immediately if we don't have one yet
+    // This ensures zombies start moving right away instead of waiting for the timer
+    if (this.currentTarget === null) {
+      this.currentTarget = getBestTargetPosition(zombie, carLocation);
+    }
 
     // Every second, check for closest friendly entities and compare with car
     if (this.targetCheckTimer >= TARGET_CHECK_INTERVAL) {
@@ -89,4 +90,3 @@ export class TargetChecker {
     this.currentTarget = null;
   }
 }
-
