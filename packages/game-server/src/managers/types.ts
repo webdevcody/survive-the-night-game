@@ -14,7 +14,11 @@ export interface IEntityManager {
   isColliding(entity: IEntity, IEntityTypes?: EntityType[]): IEntity | null;
   getClosestAlivePlayer(entity: IEntity): IEntity | null;
   getEntityById(id: string): IEntity | null;
-  getNearbyEntities(position: Vector2, radius?: number, entityTypes?: EntityType[]): IEntity[];
+  getNearbyEntities(
+    position: Vector2,
+    radius?: number,
+    filterSet?: Set<EntityType>
+  ): IEntity[];
   getNearbyIntersectingDestructableEntities(sourceEntity: IEntity): IEntity[];
   getBroadcaster(): Broadcaster;
   getPlayerEntities(): IEntity[];

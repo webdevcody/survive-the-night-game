@@ -2,7 +2,6 @@ import { BaseEnemy, MovementStrategy } from "../../base-enemy";
 import Vector2 from "@/util/vector2";
 import Movable from "@/extensions/movable";
 import Snared from "@/extensions/snared";
-import Positionable from "@/extensions/positionable";
 import { pathTowards, velocityTowards } from "@/util/physics";
 import { TargetingSystem } from "../targeting";
 
@@ -24,7 +23,10 @@ export class IdleMovementStrategy implements MovementStrategy {
     let targetPos: Vector2 | null = null;
 
     // First check for players to determine if zombie should activate
-    const playerTarget = TargetingSystem.findClosestPlayer(zombie, IdleMovementStrategy.ACTIVATION_RADIUS);
+    const playerTarget = TargetingSystem.findClosestPlayer(
+      zombie,
+      IdleMovementStrategy.ACTIVATION_RADIUS
+    );
 
     if (playerTarget) {
       // Check if player is within activation radius
@@ -40,7 +42,10 @@ export class IdleMovementStrategy implements MovementStrategy {
     }
 
     // Once activated, find the closest friendly entity (car, player, or survivor)
-    const closestFriendly = TargetingSystem.findClosestFriendlyEntity(zombie, 500);
+    const closestFriendly = TargetingSystem.findClosestFriendlyEntity(
+      zombie,
+      IdleMovementStrategy.ACTIVATION_RADIUS * 2
+    );
 
     if (closestFriendly) {
       targetPos = closestFriendly.position;
@@ -86,4 +91,3 @@ export class IdleMovementStrategy implements MovementStrategy {
     return false; // Let base enemy handle collision movement
   }
 }
-

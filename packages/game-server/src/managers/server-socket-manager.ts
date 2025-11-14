@@ -17,6 +17,7 @@ import biomeRoutes from "../api/biome-routes.js";
 import { CommandManager } from "@/managers/command-manager";
 import { MapManager } from "@/managers/map-manager";
 import { Broadcaster, IEntityManager, IGameManagers } from "@/managers/types";
+import { IEntity } from "@/entities/types";
 import { GameStateEvent } from "@shared/events/server-sent/game-state-event";
 import { PlayerJoinedEvent } from "@shared/events/server-sent/player-joined-event";
 import { PongEvent } from "@shared/events/server-sent/pong-event";
@@ -579,80 +580,106 @@ export class ServerSocketManager implements Broadcaster {
 
   public broadcastEvent(event: GameEvent<any>): void {
     if (event.getType() === ServerSentEvents.GAME_STATE_UPDATE) {
-      const entities = this.getEntityManager().getEntities();
       const entityStateTracker = this.getEntityManager().getEntityStateTracker();
-      const changedEntities = entityStateTracker.getChangedEntities(entities);
+
+      // Early return optimization: check cheapest checks first
       const removedEntityIds = entityStateTracker.getRemovedEntityIds();
+      const removedCount = removedEntityIds.length;
 
-      // Extract game state properties from the passed event
-      const eventData = (event as any).serialize ? (event as any).serialize() : {};
+      // Extract game state properties from the passed event (optimized)
+      const eventSerialize = (event as any).serialize;
+      const eventData = eventSerialize ? eventSerialize.call(event) : {};
 
-      // Only skip if no entity changes AND no game state changes AND no removed entities
-      const hasGameStateChanges = Object.keys(eventData).some(
-        (key) => key !== "entities" && key !== "timestamp" && eventData[key] !== undefined
-      );
+      // Optimize hasGameStateChanges check: iterate directly instead of Object.keys().some()
+      let hasGameStateChanges = false;
+      for (const key in eventData) {
+        if (key !== "entities" && key !== "timestamp" && eventData[key] !== undefined) {
+          hasGameStateChanges = true;
+          break;
+        }
+      }
 
-      if (changedEntities.length === 0 && removedEntityIds.length === 0 && !hasGameStateChanges) {
+      // Early return optimization: only get entities if we might have changes
+      // If we have removed entities or game state changes, we definitely need to process
+      // Otherwise, check changed entities to see if we can early return
+      let entities: IEntity[];
+      let changedEntities: IEntity[];
+      let changedCount: number;
+
+      if (removedCount === 0 && !hasGameStateChanges) {
+        // No removed entities and no game state changes - check if any entities changed
+        entities = this.getEntityManager().getEntities();
+        changedEntities = entityStateTracker.getChangedEntities(entities);
+        changedCount = changedEntities.length;
+        if (changedCount === 0) {
+          return; // No changes to broadcast
+        }
+      } else {
+        // We have removed entities or game state changes - need to process
+        entities = this.getEntityManager().getEntities();
+        changedEntities = entityStateTracker.getChangedEntities(entities);
+        changedCount = changedEntities.length;
+      }
+
+      // Final early return check
+      if (changedCount === 0 && removedCount === 0 && !hasGameStateChanges) {
         return; // No changes to broadcast
       }
 
+      // Cache all gameServer getter results before creating currentGameState object
+      const dayNumber = this.gameServer.getDayNumber();
+      const cycleStartTime = this.gameServer.getCycleStartTime();
+      const cycleDuration = this.gameServer.getCycleDuration();
+      const isDay = this.gameServer.getIsDay();
+      const waveNumber = this.gameServer.getWaveNumber();
+      const waveState = this.gameServer.getWaveState();
+      const phaseStartTime = this.gameServer.getPhaseStartTime();
+      const phaseDuration = this.gameServer.getPhaseDuration();
+      const totalZombies = this.gameServer.getTotalZombies();
+
       // For each changed entity, serialize based on dirty state
-      // New entities will have all extensions dirty, so serialize(false) will include everything
       // Changed entities will have only dirty extensions, so serialize(true) will include only changes
-      const changedEntityData = changedEntities.map((entity) => {
-        // Check if entity has all extensions dirty (likely a new entity)
-        // If all extensions are dirty, send full state; otherwise send dirty-only
-        // const allExtensionsDirty = entity
-        //   .getExtensions()
-        //   .every((ext) => ext.isDirty && ext.isDirty());
+      const changedEntityData = changedEntities.map((entity) => entity.serialize(true));
 
-        // if (allExtensionsDirty) {
-        // New entity - send full state
-        //   return entity.serialize();
-        // }
-
-        // Changed entity - use dirty-only serialization
-        // The entity's serialize(true) method returns all dirty fields
-        return entity.serialize(true);
-      });
-
-      // Get current game state
+      // Get current game state (using cached values)
       const currentGameState = {
-        dayNumber: this.gameServer.getDayNumber(),
-        cycleStartTime: this.gameServer.getCycleStartTime(),
-        cycleDuration: this.gameServer.getCycleDuration(),
-        isDay: this.gameServer.getIsDay(),
+        dayNumber,
+        cycleStartTime,
+        cycleDuration,
+        isDay,
         // Wave system
-        waveNumber: this.gameServer.getWaveNumber(),
-        waveState: this.gameServer.getWaveState(),
-        phaseStartTime: this.gameServer.getPhaseStartTime(),
-        phaseDuration: this.gameServer.getPhaseDuration(),
-        totalZombies: this.gameServer.getTotalZombies(),
+        waveNumber,
+        waveState,
+        phaseStartTime,
+        phaseDuration,
+        totalZombies,
       };
 
       // Get only changed game state properties
       const changedGameState = entityStateTracker.getChangedGameStateProperties(currentGameState);
 
-      // Merge game state properties from passed event with changed game state
-      const mergedGameState = {
-        ...changedGameState,
-        ...Object.fromEntries(
-          Object.entries(eventData).filter(([key]) => key !== "entities" && key !== "timestamp")
-        ),
-      };
+      // Optimize mergedGameState construction: build object directly instead of Object.fromEntries/Object.entries
+      const mergedGameState: Record<string, any> = { ...changedGameState };
+      for (const key in eventData) {
+        if (key !== "entities" && key !== "timestamp") {
+          mergedGameState[key] = eventData[key];
+        }
+      }
+
+      // Reuse timestamp from eventData if available, otherwise use Date.now()
+      const timestamp = eventData.timestamp !== undefined ? eventData.timestamp : Date.now();
 
       const gameStateEvent = new GameStateEvent({
         entities: changedEntityData,
         removedEntityIds,
         isFullState: false,
-        timestamp: Date.now(),
+        timestamp,
         ...mergedGameState,
       });
 
-      // Clear dirty flags after broadcasting
-      let i: number;
-      for (i = 0; i < changedEntities.length; i++) {
-        changedEntities[i].clearDirtyFlags();
+      // Clear dirty flags after broadcasting (optimized loop)
+      for (const entity of changedEntities) {
+        entity.clearDirtyFlags();
       }
       entityStateTracker.trackGameState(currentGameState);
       // Clear removed entity IDs after they've been sent

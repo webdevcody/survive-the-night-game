@@ -1,13 +1,9 @@
-import { distance } from "../../../game-shared/src/util/physics";
 import { Extension, ExtensionSerialized } from "@/extensions/types";
 import { Cooldown } from "@/entities/util/cooldown";
 import Positionable from "@/extensions/positionable";
-import Triggerable from "@/extensions/trigger";
 import Destructible from "@/extensions/destructible";
 import { EntityType } from "@/types/entity";
 import { IEntity } from "@/entities/types";
-import { Rectangle } from "@/util/shape";
-import Vector2 from "@/util/vector2";
 
 /**
  * This extension will cause the entity to fire an attack when the cooldown is ready.
@@ -16,6 +12,8 @@ import Vector2 from "@/util/vector2";
 export default class TriggerCooldownAttacker implements Extension {
   public static readonly type = "trigger-cooldown-attacker";
   private static readonly RADIUS = 16;
+  private static readonly RADIUS_SQUARED =
+    TriggerCooldownAttacker.RADIUS * TriggerCooldownAttacker.RADIUS;
 
   private self: IEntity;
   private attackCooldown: Cooldown;
@@ -52,14 +50,21 @@ export default class TriggerCooldownAttacker implements Extension {
       this.markDirty(); // Mark dirty when ready state changes
     }
 
-    const entities = this.self
-      .getEntityManager()
-      .getNearbyEntities(this.self.getExt(Positionable).getPosition(), 100, [
-        this.options.victimType,
-      ]);
+    // Early exit: skip expensive spatial query if cooldown isn't ready
+    if (!this.attackCooldown.isReady()) {
+      return;
+    }
 
     const positionable = this.self.getExt(Positionable);
     const position = positionable.getCenterPosition();
+
+    // Use RADIUS instead of hardcoded 100 to avoid querying unnecessary entities
+    // Add small buffer (2) to account for entity size when querying spatial grid
+    const queryRadius = TriggerCooldownAttacker.RADIUS + 2;
+    const victimTypeSet = new Set<EntityType>([this.options.victimType]);
+    const entities = this.self
+      .getEntityManager()
+      .getNearbyEntities(positionable.getPosition(), queryRadius, victimTypeSet);
 
     for (const entity of entities) {
       if (!entity.hasExt(Destructible)) {
@@ -67,20 +72,17 @@ export default class TriggerCooldownAttacker implements Extension {
       }
 
       const destructible = entity.getExt(Destructible);
-      const entityHitbox = new Rectangle(
-        entity.getExt(Positionable).getPosition(),
-        new Vector2(16, 16)
-      );
-      const entityCenter = entityHitbox.center;
+      const entityCenter = entity.getExt(Positionable).getCenterPosition();
 
-      const centerDistance = distance(position, entityCenter);
+      // Use squared distance comparison to avoid expensive sqrt calculation
+      const dx = position.x - entityCenter.x;
+      const dy = position.y - entityCenter.y;
+      const centerDistanceSquared = dx * dx + dy * dy;
 
-      if (centerDistance < TriggerCooldownAttacker.RADIUS) {
-        if (this.attackCooldown.isReady()) {
-          destructible.damage(this.options.damage);
-          this.attackCooldown.reset();
-          break;
-        }
+      if (centerDistanceSquared < TriggerCooldownAttacker.RADIUS_SQUARED) {
+        destructible.damage(this.options.damage);
+        this.attackCooldown.reset();
+        break;
       }
     }
   }

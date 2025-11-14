@@ -1,7 +1,6 @@
 import Carryable from "@/extensions/carryable";
 import Interactive from "@/extensions/interactive";
 import Positionable from "@/extensions/positionable";
-import Triggerable from "@/extensions/trigger";
 import TriggerCooldownAttacker from "@/extensions/trigger-cooldown-attacker";
 import { IGameManagers } from "@/managers/types";
 import { Entities } from "@/constants";
@@ -23,7 +22,8 @@ export class Spikes extends Entity {
     const count = itemState?.count ?? Spikes.DEFAULT_COUNT;
 
     this.addExtension(new Positionable(this).setSize(Spikes.SIZE));
-    this.addExtension(new Triggerable(this, Spikes.SIZE, [Entities.ZOMBIE]));
+    // TriggerCooldownAttacker handles finding and attacking nearby zombies
+    // No need for Triggerable since it had no callback and was redundant
     this.addExtension(
       new TriggerCooldownAttacker(this, {
         damage: Spikes.DAMAGE,
@@ -31,13 +31,18 @@ export class Spikes extends Entity {
         cooldown: 1,
       })
     );
-    this.addExtension(new Interactive(this).onInteract(this.interact.bind(this)).setDisplayName("spikes"));
+    this.addExtension(
+      new Interactive(this).onInteract(this.interact.bind(this)).setDisplayName("spikes")
+    );
     this.addExtension(new Carryable(this, "spikes").setItemState({ count }));
   }
 
   private interact(entityId: string): void {
     const carryable = this.getExt(Carryable);
     // Use helper method to preserve count when picking up dropped spikes
-    carryable.pickup(entityId, Carryable.createStackablePickupOptions(carryable, Spikes.DEFAULT_COUNT));
+    carryable.pickup(
+      entityId,
+      Carryable.createStackablePickupOptions(carryable, Spikes.DEFAULT_COUNT)
+    );
   }
 }

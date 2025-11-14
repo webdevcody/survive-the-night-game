@@ -41,6 +41,13 @@ export class EntityManager implements IEntityManager {
   private dirtyEntities: Set<Entity> = new Set();
   private entitiesInGrid: Set<Entity> = new Set();
   private entitiesToAddToGrid: Set<Entity> = new Set();
+  // Track average updateExtensions time per entity type
+  // count = number of update calls tracked (for running average)
+  // entityCount = number of entities of this type currently in game
+  private updateExtensionsTiming: Map<
+    EntityType,
+    { average: number; count: number; entityCount: number }
+  > = new Map();
 
   constructor() {
     this.entities = [];
@@ -149,6 +156,18 @@ export class EntityManager implements IEntityManager {
     // Track entities with updatable extensions
     if (entity.hasUpdatableExtensions()) {
       this.updatableEntities.push(entity);
+      // Initialize entity count tracking for this type if needed
+      const entityType = entity.getType();
+      const timing = this.updateExtensionsTiming.get(entityType);
+      if (timing) {
+        timing.entityCount++;
+      } else {
+        this.updateExtensionsTiming.set(entityType, {
+          average: 0,
+          count: 0,
+          entityCount: 1,
+        });
+      }
     }
 
     // Register position change callback for entities with Positionable extension
@@ -187,10 +206,16 @@ export class EntityManager implements IEntityManager {
       this.dirtyEntities.delete(entity);
       this.entitiesInGrid.delete(entity);
       this.entitiesToAddToGrid.delete(entity);
-      // Remove from updatable entities
+      // Remove from updatable entities and update entity count
       const updatableIndex = this.updatableEntities.indexOf(entity);
       if (updatableIndex > -1) {
         this.updatableEntities.splice(updatableIndex, 1);
+        // Decrement entity count for this type
+        const entityType = entity.getType();
+        const timing = this.updateExtensionsTiming.get(entityType);
+        if (timing && timing.entityCount > 0) {
+          timing.entityCount--;
+        }
       }
 
       // Remove from spatial grid if it's in there
@@ -254,10 +279,16 @@ export class EntityManager implements IEntityManager {
       this.entitiesInGrid.delete(entity);
       this.entitiesToAddToGrid.delete(entity);
 
-      // Remove from updatable entities
+      // Remove from updatable entities and update entity count
       const updatableIndex = this.updatableEntities.indexOf(entity);
       if (updatableIndex > -1) {
         this.updatableEntities.splice(updatableIndex, 1);
+        // Decrement entity count for this type
+        const entityType = entity.getType();
+        const timing = this.updateExtensionsTiming.get(entityType);
+        if (timing && timing.entityCount > 0) {
+          timing.entityCount--;
+        }
       }
 
       if (this.entityFinder && entity.hasExt(Positionable)) {
@@ -338,15 +369,26 @@ export class EntityManager implements IEntityManager {
     this.dirtyEntities.clear();
     this.entitiesInGrid.clear();
     this.entitiesToAddToGrid.clear();
+    // Reset entity counts in timing data
+    for (const timing of this.updateExtensionsTiming.values()) {
+      timing.entityCount = 0;
+    }
   }
 
-  getNearbyEntities(position: Vector2, radius: number = 64, filter?: EntityType[]): Entity[] {
-    const entities = this.entityFinder?.getNearbyEntities(position, radius, filter) ?? [];
-    return entities.filter((entity) => {
-      if (!entity.hasExt(Positionable)) return false;
+  getNearbyEntities(position: Vector2, radius: number = 64, filterSet?: Set<EntityType>): Entity[] {
+    const entities = this.entityFinder?.getNearbyEntities(position, radius, filterSet) ?? [];
+
+    const filteredEntities: Entity[] = [];
+    for (let i = entities.length - 1; i >= 0; i--) {
+      const entity = entities[i];
+      if (!entity.hasExt(Positionable)) continue;
       const entityPosition = entity.getExt(Positionable).getCenterPosition();
-      return position.distance(entityPosition) <= radius;
-    });
+      if (position.distance(entityPosition) <= radius) {
+        filteredEntities.push(entity);
+      }
+    }
+
+    return filteredEntities;
   }
 
   getPlayerEntities(): Player[] {
@@ -504,7 +546,29 @@ export class EntityManager implements IEntityManager {
     this.refreshSpatialGrid();
 
     for (const entity of this.updatableEntities) {
+      const startTime = performance.now();
       this.updateExtensions(entity, deltaTime);
+      const endTime = performance.now();
+      const duration = endTime - startTime;
+
+      // Track timing per entity type
+      const entityType = entity.getType();
+      const existing = this.updateExtensionsTiming.get(entityType);
+      if (existing) {
+        // Update running average: newAvg = (oldAvg * count + newValue) / (count + 1)
+        existing.count++;
+        existing.average = (existing.average * (existing.count - 1) + duration) / existing.count;
+        // Ensure entityCount is initialized (in case entity was added before tracking started)
+        if (existing.entityCount === undefined) {
+          existing.entityCount = 0;
+        }
+      } else {
+        this.updateExtensionsTiming.set(entityType, {
+          average: duration,
+          count: 1,
+          entityCount: 0, // Will be set when entity is added
+        });
+      }
     }
   }
 
@@ -607,5 +671,62 @@ export class EntityManager implements IEntityManager {
 
   getMerchantEntities(): Entity[] {
     return this.merchants;
+  }
+
+  /**
+   * Get the average updateExtensions time for a specific entity type
+   * @param entityType The entity type to get timing for
+   * @returns Average time in milliseconds, or null if no data exists
+   */
+  getUpdateExtensionsAverage(entityType: EntityType): number | null {
+    const timing = this.updateExtensionsTiming.get(entityType);
+    return timing ? timing.average : null;
+  }
+
+  /**
+   * Get all updateExtensions timing statistics grouped by entity type
+   * @returns Map of entity type to timing statistics
+   */
+  getAllUpdateExtensionsTiming(): Map<
+    EntityType,
+    { average: number; count: number; entityCount: number }
+  > {
+    return new Map(this.updateExtensionsTiming);
+  }
+
+  /**
+   * Print updateExtensions timing statistics grouped by entity type
+   * Shows average time per entity, entity count, and total impact (avg * count)
+   * Sorted by total impact to help prioritize refactoring efforts
+   */
+  printUpdateExtensionsTiming(): void {
+    if (this.updateExtensionsTiming.size === 0) {
+      console.log("[EntityManager] No updateExtensions timing data available");
+      return;
+    }
+
+    // Recalculate entity counts from current entities to ensure accuracy
+    const entityCounts = new Map<EntityType, number>();
+    for (const entity of this.updatableEntities) {
+      const entityType = entity.getType();
+      entityCounts.set(entityType, (entityCounts.get(entityType) || 0) + 1);
+    }
+
+    console.log("\n[EntityManager] updateExtensions timing by entity type:");
+    const entries = Array.from(this.updateExtensionsTiming.entries())
+      .map(([entityType, stats]) => {
+        const entityCount = entityCounts.get(entityType) || 0;
+        const totalImpact = stats.average * entityCount;
+        return { entityType, stats, entityCount, totalImpact };
+      })
+      .sort((a, b) => b.totalImpact - a.totalImpact);
+
+    for (const { entityType, stats, entityCount, totalImpact } of entries) {
+      console.log(
+        `  ${entityType}: avg ${stats.average.toFixed(
+          3
+        )}ms | entities ${entityCount} | total ${totalImpact.toFixed(3)}ms | samples ${stats.count}`
+      );
+    }
   }
 }

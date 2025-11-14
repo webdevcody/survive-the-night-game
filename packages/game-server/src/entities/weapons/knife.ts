@@ -9,7 +9,7 @@ import Positionable from "@/extensions/positionable";
 import Groupable from "@/extensions/groupable";
 import { knockBack } from "./helpers";
 import { Player } from "@/entities/player";
-import { Entities, Zombies } from "@/constants";
+import { getZombieTypesSet } from "@/constants";
 import { weaponRegistry } from "@shared/entities";
 import { getConfig } from "@shared/config";
 
@@ -31,7 +31,7 @@ export class Knife extends Weapon {
     const nearbyEntities = this.getEntityManager().getNearbyEntities(
       position,
       getConfig().combat.KNIFE_ATTACK_RANGE + 24,
-      [...Zombies, Entities.FIRE]
+      getZombieTypesSet()
     );
     const nearbyEnemies = nearbyEntities.filter(
       (entity) => entity.hasExt(Groupable) && entity.getExt(Groupable).getGroup() === "enemy"

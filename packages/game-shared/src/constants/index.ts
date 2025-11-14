@@ -47,7 +47,7 @@ export const SPAWNABLE_ENTITY_TYPES: EntityType[] = new Proxy([] as EntityType[]
     const array = getSpawableEntityTypesArray();
     const value = (array as any)[prop];
     // If it's a function (like map, filter, etc.), bind it to the array
-    if (typeof value === 'function') {
+    if (typeof value === "function") {
       return value.bind(array);
     }
     return value;
@@ -72,3 +72,30 @@ export const SPAWNABLE_ENTITY_TYPES: EntityType[] = new Proxy([] as EntityType[]
 // Zombies array will be populated by zombie registry after initialization
 // Import zombieRegistry where you need to access all zombie types
 export let Zombies: EntityType[] = [];
+
+// Entity type filter Sets for use with getNearbyEntities
+// These Sets provide better performance than arrays for filtering
+// Using string literals to avoid dependency on Entities being initialized
+
+// Friendly entities that zombies target
+export const FRIENDLY_TYPES = new Set<EntityType>(["car", "player", "survivor"]);
+
+// Player entity type
+export const PLAYER_TYPES = new Set<EntityType>(["player"]);
+
+// Fire entity type
+export const FIRE_TYPES = new Set<EntityType>(["fire"]);
+
+// Attackable entities (walls, players, sentry guns, cars, survivors)
+export const ATTACKABLE_TYPES = new Set<EntityType>([
+  "wall",
+  "player",
+  "sentry_gun",
+  "car",
+  "survivor",
+]);
+
+// Get zombie types as a Set (computed from Zombies array)
+export function getZombieTypesSet(): Set<EntityType> {
+  return new Set<EntityType>(Zombies);
+}

@@ -118,7 +118,7 @@ export abstract class BaseEnemy extends Entity<typeof BASE_ENEMY_SERIALIZABLE_FI
   }
 
   onDeath(): void {
-    this.extensions.push(
+    this.addExtension(
       new Interactive(this).onInteract(this.onLooted.bind(this)).setDisplayName("loot")
     );
     this.getExt(Collidable).setEnabled(false);

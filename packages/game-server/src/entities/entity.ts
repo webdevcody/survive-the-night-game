@@ -155,13 +155,7 @@ export class Entity<TSerializableFields extends readonly string[] = readonly str
   }
 
   public hasExt<T>(ext: ExtensionCtor<T>): boolean {
-    // Fast O(1) check using Set
-    if (this.extensionTypes.has(ext)) {
-      return true;
-    }
-    // Fallback to instanceof check for inheritance cases
-    // (though this should be rare if extensions are added correctly)
-    return this.extensions.some((e) => e instanceof ext);
+    return this.extensionTypes.has(ext);
   }
 
   public getExt<T>(ext: ExtensionCtor<T>): T {

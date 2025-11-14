@@ -1,6 +1,6 @@
 import { Entity } from "@/entities/entity";
 import { IGameManagers } from "@/managers/types";
-import { Entities, Zombies } from "../../../../game-shared/src/constants";
+import { Entities, Zombies, getZombieTypesSet } from "../../../../game-shared/src/constants";
 import Positionable from "@/extensions/positionable";
 import Interactive from "@/extensions/interactive";
 import Carryable from "@/extensions/carryable";
@@ -85,7 +85,7 @@ export class BearTrap extends Entity implements IEntity {
     const nearbyEntities = this.getEntityManager().getNearbyEntities(
       position,
       BearTrap.TRIGGER_RADIUS,
-      Zombies
+      getZombieTypesSet()
     );
 
     // Find the zombie that triggered the trap (OneTimeTrigger already verified one exists)

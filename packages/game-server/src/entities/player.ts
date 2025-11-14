@@ -421,7 +421,7 @@ export class Player extends Entity<typeof PLAYER_SERIALIZABLE_FIELDS> {
     if (this.interactCooldown.isReady()) {
       this.interactCooldown.reset();
       const entities = this.getEntityManager()
-        .getNearbyEntities(this.getCenterPosition())
+        .getNearbyEntities(this.getCenterPosition(), getConfig().player.MAX_INTERACT_RADIUS)
         .filter((entity) => {
           return entity.hasExt(Interactive);
         });

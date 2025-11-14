@@ -240,7 +240,10 @@ export class GameServer {
     const deltaTime = (currentTime - this.lastUpdateTime) / 1000;
 
     // slow
+    // perfTimer.start("updateEntities");
     this.updateEntities(deltaTime);
+    // perfTimer.end("updateEntities");
+    // perfTimer.logStats("updateEntities");
 
     this.handleWaveSystem(deltaTime);
 
@@ -249,10 +252,10 @@ export class GameServer {
     this.entityManager.pruneEntities();
 
     // slow
-    perfTimer.start("broadcastGameState");
+    // perfTimer.start("broadcastGameState");
     this.broadcastGameState();
-    perfTimer.end("broadcastGameState");
-    perfTimer.logStats("broadcastGameState");
+    // perfTimer.end("broadcastGameState");
+    // perfTimer.logStats("broadcastGameState");
 
     // No longer need to track entities - dirty flags handle change detection
     // Dirty flags are cleared in broadcastEvent() after broadcasting
@@ -369,6 +372,7 @@ export class GameServer {
       this.lastPerformanceLog = currentTime;
 
       this.performanceTracker.printAllStats();
+      this.entityManager.printUpdateExtensionsTiming();
     }
   }
 

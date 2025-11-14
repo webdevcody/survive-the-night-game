@@ -32,7 +32,7 @@ export class Grenade extends Weapon {
     this.explosionTimer = new Cooldown(Grenade.EXPLOSION_DELAY);
 
     // Add Updatable extension for grenade physics after it's thrown
-    this.extensions.push(new Updatable(this, this.updateGrenade.bind(this)));
+    this.addExtension(new Updatable(this, this.updateGrenade.bind(this)));
 
     // Make grenades stackable by setting count from itemState or default
     const carryable = this.extensions.find((ext) => ext instanceof Carryable) as Carryable;

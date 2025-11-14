@@ -91,7 +91,7 @@ export class SpatialGrid {
   getNearbyEntities(
     position: Vector2,
     radius: number = this.cellSize,
-    filter?: EntityType[]
+    filterSet?: Set<EntityType>
   ): Entity[] {
     const [cellX, cellY] = this.getCellCoords(position);
     const cellRadius = Math.ceil(radius / this.cellSize);
@@ -103,12 +103,13 @@ export class SpatialGrid {
         const checkY = cellY + y;
 
         if (this.isValidCell(checkX, checkY)) {
-          this.cells[checkY][checkX].forEach((entity) => {
-            if (filter && !filter.includes(entity.getType())) {
-              return;
+          const cell = this.cells[checkY][checkX];
+          for (const entity of cell.values()) {
+            if (filterSet && !filterSet.has(entity.getType())) {
+              continue;
             }
             nearby.push(entity);
-          });
+          }
         }
       }
     }

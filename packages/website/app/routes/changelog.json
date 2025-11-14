@@ -1,5 +1,25 @@
 [
   {
+    "version": "0.11.4",
+    "date": "2025-11-13",
+    "changes": [
+      "Optimized spatial queries - converted entity type filters from arrays to Sets for O(1) lookups instead of O(n)",
+      "Reduced bullet travel distance from 400 to 200 pixels for better game balance",
+      "Fixed mouse aiming - continuous firing now works correctly when moving mouse while holding click",
+      "Improved AI targeting performance - moved entity type filtering to constants for reuse across systems",
+      "Optimized TriggerCooldownAttacker - added early exit when cooldown not ready to skip expensive spatial queries",
+      "Reduced query radius in TriggerCooldownAttacker from 100 to 16 pixels to avoid unnecessary entity lookups",
+      "Optimized distance calculations - replaced sqrt with squared distance comparison in TriggerCooldownAttacker",
+      "Enhanced getNearbyEntities performance - reverse iteration and early continue for better cache locality",
+      "Removed redundant Triggerable extension from Spikes - TriggerCooldownAttacker already handles triggering",
+      "Fixed entity count tracking - properly increment/decrement counts when adding/removing updatable entities",
+      "Added per-entity-type timing tracking in EntityManager for performance profiling and debugging",
+      "Improved EntityFinder signature - accepts Set<EntityType> instead of array for consistency",
+      "Fixed Interactive range - now uses MAX_INTERACT_RADIUS constant instead of hardcoded 64 pixels",
+      "Added ATTACKABLE_TYPES and FRIENDLY_TYPES constants to reduce allocations in hot paths"
+    ]
+  },
+  {
     "version": "0.11.3",
     "date": "2025-11-13",
     "changes": [

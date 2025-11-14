@@ -16,7 +16,7 @@ import Vector2 from "@/util/vector2";
 import { Line, Rectangle } from "@/util/shape";
 import { Player } from "@/entities/player";
 
-const MAX_TRAVEL_DISTANCE = 400;
+const MAX_TRAVEL_DISTANCE = 200;
 export class Bullet extends Entity {
   private traveledDistance: number = 0;
   private static readonly BULLET_SPEED = 400;

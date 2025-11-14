@@ -1,7 +1,7 @@
 import Positionable from "@/extensions/positionable";
 import OneTimeTrigger from "@/extensions/one-time-trigger";
 import { IGameManagers } from "@/managers/types";
-import { Entities } from "@/constants";
+import { Entities, PLAYER_TYPES } from "@/constants";
 import { Entity } from "@/entities/entity";
 import Vector2 from "@/util/vector2";
 import { CoinPickupEvent } from "@shared/events/server-sent/coin-pickup-event";
@@ -26,7 +26,7 @@ export class Coin extends Entity {
     const nearbyPlayers = this.getEntityManager().getNearbyEntities(
       this.getExt(Positionable).getCenterPosition(),
       Coin.TRIGGER_RADIUS,
-      [Entities.PLAYER]
+      PLAYER_TYPES
     );
 
     if (nearbyPlayers.length > 0) {

@@ -1,12 +1,11 @@
 import { BaseEnemy } from "../base-enemy";
 import { IEntity } from "@/entities/types";
 import { EntityType } from "@/types/entity";
-import { Entities } from "@/constants";
+import { Entities, ATTACKABLE_TYPES, FRIENDLY_TYPES } from "@/constants";
 import Vector2 from "@/util/vector2";
 import Positionable from "@/extensions/positionable";
 import Destructible from "@/extensions/destructible";
 import { MapManager } from "@/managers/map-manager";
-import { getConfig } from "@shared/config";
 
 export interface TargetResult {
   entity: IEntity;
@@ -29,12 +28,12 @@ export class TargetingSystem {
     filterTypes?: EntityType[]
   ): TargetResult | null {
     const zombiePos = zombie.getCenterPosition();
-    const friendlyTypes = filterTypes || [Entities.CAR, Entities.PLAYER, Entities.SURVIVOR];
+    const friendlyTypesSet = filterTypes ? new Set<EntityType>(filterTypes) : FRIENDLY_TYPES;
 
     // Use spatial grid to efficiently find nearby friendly entities
     const nearbyEntities = zombie
       .getEntityManager()
-      .getNearbyEntities(zombiePos, searchRadius, friendlyTypes);
+      .getNearbyEntities(zombiePos, searchRadius, friendlyTypesSet);
 
     let closestEntity: IEntity | null = null;
     let closestPosition: Vector2 | null = null;
@@ -80,18 +79,18 @@ export class TargetingSystem {
     filterTypes?: EntityType[]
   ): TargetResult[] {
     const zombiePos = zombie.getCenterPosition();
-    const attackableTypes = filterTypes || [
-      Entities.WALL,
-      Entities.PLAYER,
-      Entities.SENTRY_GUN,
-      Entities.CAR,
-      Entities.SURVIVOR,
-    ];
+    // const attackableTypes = filterTypes || [
+    //   Entities.WALL,
+    //   Entities.PLAYER,
+    //   Entities.SENTRY_GUN,
+    //   Entities.CAR,
+    //   Entities.SURVIVOR,
+    // ];
 
     // Use spatial grid to efficiently find nearby entities
     const nearbyEntities = zombie
       .getEntityManager()
-      .getNearbyEntities(zombiePos, searchRadius, attackableTypes);
+      .getNearbyEntities(zombiePos, searchRadius, ATTACKABLE_TYPES);
 
     const results: TargetResult[] = [];
 

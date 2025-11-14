@@ -2,7 +2,7 @@ import Carryable from "@/extensions/carryable";
 import Interactive from "@/extensions/interactive";
 import Positionable from "@/extensions/positionable";
 import { IGameManagers } from "@/managers/types";
-import { Entities } from "@shared/constants";
+import { Entities, FIRE_TYPES } from "@shared/constants";
 import { Entity } from "@/entities/entity";
 import Vector2 from "@/util/vector2";
 import Consumable from "@/extensions/consumable";
@@ -57,7 +57,7 @@ export class FireExtinguisher extends Entity {
     const nearbyFires = this.getEntityManager().getNearbyEntities(
       position,
       FireExtinguisher.EXTINGUISH_RADIUS,
-      [Entities.FIRE]
+      FIRE_TYPES
     );
 
     for (const fire of nearbyFires) {

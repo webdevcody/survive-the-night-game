@@ -28,19 +28,13 @@ export class MeleeAttackStrategy implements AttackStrategy {
 
   update(zombie: BaseEnemy, _deltaTime: number): void {
     if (!zombie.getAttackCooldown().isReady()) return;
-
     const zombieCenter = zombie.getCenterPosition();
     const attackRadius = getConfig().combat.ZOMBIE_ATTACK_RADIUS;
 
     // Get all nearby entities that can be attacked
     // Use a larger search radius to account for rectangular hitboxes
     const searchRadius = attackRadius + 20; // Add buffer for rectangular entities
-    const attackableEntities = TargetingSystem.findNearbyAttackableEntities(zombie, searchRadius, [
-      Entities.WALL,
-      Entities.PLAYER,
-      Entities.SENTRY_GUN,
-      Entities.CAR,
-    ]);
+    const attackableEntities = TargetingSystem.findNearbyAttackableEntities(zombie, searchRadius);
 
     // Find the closest entity to attack using rectangle-to-point distance
     let closestTarget = null;
@@ -59,7 +53,6 @@ export class MeleeAttackStrategy implements AttackStrategy {
         closestTarget = target;
       }
     }
-
     // Attack the closest entity if within range
     if (
       closestTarget &&

@@ -34,7 +34,6 @@ export class Landmine extends Entity implements IEntity {
     const count = itemState?.count ?? Landmine.DEFAULT_COUNT;
 
     this.addExtension(new Positionable(this).setSize(Landmine.SIZE));
-    // this.addExtension(new Triggerable(this, Landmine.SIZE, Zombies));
     this.addExtension(
       new Interactive(this)
         .onInteract((entityId: string) => this.interact(entityId))
@@ -93,10 +92,13 @@ export class Landmine extends Entity implements IEntity {
   private interact(entityId: string) {
     const entity = this.getEntityManager().getEntityById(entityId);
     if (!entity || entity.getType() !== Entities.PLAYER) return;
-    
+
     const carryable = this.getExt(Carryable);
     // Use helper method to preserve count when picking up dropped landmines
-    carryable.pickup(entityId, Carryable.createStackablePickupOptions(carryable, Landmine.DEFAULT_COUNT));
+    carryable.pickup(
+      entityId,
+      Carryable.createStackablePickupOptions(carryable, Landmine.DEFAULT_COUNT)
+    );
   }
 
   public serialize(): RawEntity {
