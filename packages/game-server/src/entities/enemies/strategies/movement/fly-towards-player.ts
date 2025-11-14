@@ -1,19 +1,29 @@
 import { BaseEnemy, MovementStrategy } from "../../base-enemy";
 import Movable from "@/extensions/movable";
-import Positionable from "@/extensions/positionable";
+import Vector2 from "@/util/vector2";
 import { velocityTowards } from "@/util/physics";
-import { TargetingSystem } from "../targeting";
+import { TargetChecker } from "../movement-utils";
 
 export class FlyTowardsPlayerStrategy implements MovementStrategy {
-  update(zombie: BaseEnemy, deltaTime: number): boolean {
-    const playerTarget = TargetingSystem.findClosestPlayer(zombie);
-    if (!playerTarget) return true;
+  private targetChecker = new TargetChecker();
 
-    const playerPos = playerTarget.position;
+  update(zombie: BaseEnemy, deltaTime: number): boolean {
     const zombiePos = zombie.getCenterPosition();
 
-    // Calculate velocity directly towards player (no pathfinding since it's flying)
-    const velocity = velocityTowards(zombiePos, playerPos);
+    // Update target using shared utility
+    const mapManager = zombie.getGameManagers().getMapManager();
+    const carLocation = mapManager.getCarLocation();
+    const currentTarget = this.targetChecker.updateTarget(zombie, deltaTime, carLocation);
+
+    // If no target, stop moving
+    if (!currentTarget) {
+      const movable = zombie.getExt(Movable);
+      movable.setVelocity(new Vector2(0, 0));
+      return true;
+    }
+
+    // Calculate velocity directly towards target (no pathfinding since it's flying)
+    const velocity = velocityTowards(zombiePos, currentTarget);
     const movable = zombie.getExt(Movable);
     movable.setVelocity(velocity.mul(zombie.getSpeed()));
 

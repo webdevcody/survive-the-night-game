@@ -6,7 +6,6 @@ import Positionable from "@/extensions/positionable";
 import { getConfig } from "@shared/config";
 import { ZombieAttackedEvent } from "@/events/server-sent/zombie-attacked-event";
 import { TargetingSystem } from "../targeting";
-import { Entities } from "@/constants";
 
 export class MeleeAttackStrategy implements AttackStrategy {
   onEntityDamaged?: (entity: IEntity) => void;

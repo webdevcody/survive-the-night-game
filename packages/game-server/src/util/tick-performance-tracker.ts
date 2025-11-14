@@ -71,7 +71,7 @@ export class TickPerformanceTracker {
   private tickTimeHistory: number[] = []; // For graph display
   private bandwidthHistory: number[] = []; // For bandwidth graph display
   private lastReportTime: number = performance.now();
-  private readonly REPORT_INTERVAL = 5000; // 5 seconds
+  private readonly REPORT_INTERVAL = 30000; // 5 seconds
   private readonly MAX_HISTORY_SIZE = 50; // Max data points for graph
   private callStack: string[] = []; // Track nested method calls
   private spikes: SpikeInfo[] = []; // Track performance spikes

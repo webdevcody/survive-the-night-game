@@ -1095,6 +1095,22 @@ export class MapManager implements IMapManager {
     return false;
   }
 
+  public getCarLocation(): Vector2 | null {
+    // Get all car entities
+    const carEntities = this.getEntityManager()
+      .getEntities()
+      .filter((e) => e.getType() === "car");
+
+    // Find the first car entity with a position
+    for (const car of carEntities) {
+      if (car.hasExt(Positionable)) {
+        return car.getExt(Positionable).getCenterPosition();
+      }
+    }
+
+    return null;
+  }
+
   public getRandomCampsitePosition(): Vector2 | null {
     const centerBiomeX = Math.floor(MAP_SIZE / 2);
     const centerBiomeY = Math.floor(MAP_SIZE / 2);

@@ -14,9 +14,11 @@ export default class TriggerCooldownAttacker implements Extension {
   private static readonly RADIUS = 16;
   private static readonly RADIUS_SQUARED =
     TriggerCooldownAttacker.RADIUS * TriggerCooldownAttacker.RADIUS;
+  private static readonly CHECK_INTERVAL = 0.5; // Check for enemies every half second
 
   private self: IEntity;
   private attackCooldown: Cooldown;
+  private checkCooldown: Cooldown;
   private options: {
     damage: number;
     victimType: EntityType;
@@ -37,12 +39,16 @@ export default class TriggerCooldownAttacker implements Extension {
   ) {
     this.self = self;
     this.attackCooldown = new Cooldown(options.cooldown, true);
+    this.checkCooldown = new Cooldown(TriggerCooldownAttacker.CHECK_INTERVAL);
+    // Set random offset to spread checks across time
+    this.checkCooldown.setTimeRemaining(Math.random() * TriggerCooldownAttacker.CHECK_INTERVAL);
     this.isReady = true;
     this.options = options;
   }
 
   public update(deltaTime: number) {
     this.attackCooldown.update(deltaTime);
+    this.checkCooldown.update(deltaTime);
 
     const wasReady = this.isReady;
     this.isReady = this.attackCooldown.isReady();
@@ -50,10 +56,18 @@ export default class TriggerCooldownAttacker implements Extension {
       this.markDirty(); // Mark dirty when ready state changes
     }
 
-    // Early exit: skip expensive spatial query if cooldown isn't ready
+    // Early exit: skip expensive spatial query if attack cooldown isn't ready
     if (!this.attackCooldown.isReady()) {
       return;
     }
+
+    // Only check for enemies every half second
+    if (!this.checkCooldown.isReady()) {
+      return;
+    }
+
+    // Reset check cooldown
+    this.checkCooldown.reset();
 
     const positionable = this.self.getExt(Positionable);
     const position = positionable.getCenterPosition();

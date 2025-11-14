@@ -3,12 +3,14 @@ import Vector2 from "@/util/vector2";
 import Movable from "@/extensions/movable";
 import Snared from "@/extensions/snared";
 import { pathTowards, velocityTowards } from "@/util/physics";
-import { TargetingSystem } from "../targeting";
+import { TargetChecker } from "../movement-utils";
 
 export class RangedMovementStrategy implements MovementStrategy {
   private static readonly ATTACK_RANGE = 100;
   private static readonly PATH_RECALCULATION_INTERVAL = 1;
-  private pathRecalculationTimer: number = Math.random() * RangedMovementStrategy.PATH_RECALCULATION_INTERVAL;
+  private pathRecalculationTimer: number =
+    Math.random() * RangedMovementStrategy.PATH_RECALCULATION_INTERVAL;
+  private targetChecker = new TargetChecker();
   private currentWaypoint: Vector2 | null = null;
 
   update(zombie: BaseEnemy, deltaTime: number): boolean {
@@ -19,15 +21,23 @@ export class RangedMovementStrategy implements MovementStrategy {
     }
 
     this.pathRecalculationTimer += deltaTime;
-    const playerTarget = TargetingSystem.findClosestPlayer(zombie);
-    if (!playerTarget) return false;
-
-    const playerPos = playerTarget.position;
     const zombiePos = zombie.getCenterPosition();
-    const distanceToPlayer = playerTarget.distance;
+
+    // Update target using shared utility
+    const mapManager = zombie.getGameManagers().getMapManager();
+    const carLocation = mapManager.getCarLocation();
+    const currentTarget = this.targetChecker.updateTarget(zombie, deltaTime, carLocation);
+
+    // If no target, stop moving
+    if (!currentTarget) {
+      zombie.getExt(Movable).setVelocity(new Vector2(0, 0));
+      return false;
+    }
+
+    const distanceToTarget = zombiePos.distance(currentTarget);
 
     // If within attack range, stop moving
-    if (distanceToPlayer <= RangedMovementStrategy.ATTACK_RANGE) {
+    if (distanceToTarget <= RangedMovementStrategy.ATTACK_RANGE) {
       zombie.getExt(Movable).setVelocity(new Vector2(0, 0));
       return false;
     }
@@ -40,10 +50,9 @@ export class RangedMovementStrategy implements MovementStrategy {
       needNewWaypoint ||
       this.pathRecalculationTimer >= RangedMovementStrategy.PATH_RECALCULATION_INTERVAL
     ) {
-      const mapManager = zombie.getGameManagers().getMapManager();
       const waypoint = pathTowards(
         zombiePos,
-        playerPos,
+        currentTarget,
         mapManager.getGroundLayer(),
         mapManager.getCollidablesLayer()
       );
@@ -56,12 +65,11 @@ export class RangedMovementStrategy implements MovementStrategy {
       const velocity = velocityTowards(zombiePos, this.currentWaypoint);
       zombie.getExt(Movable).setVelocity(velocity.mul(zombie.getSpeed()));
     } else {
-      // If no waypoint found, try moving directly towards player
-      const velocity = velocityTowards(zombiePos, playerPos);
+      // If no waypoint found, try moving directly towards target
+      const velocity = velocityTowards(zombiePos, currentTarget);
       zombie.getExt(Movable).setVelocity(velocity.mul(zombie.getSpeed() * 0.5)); // Move slower when no path found
     }
 
     return false; // Let base enemy handle collision movement
   }
 }
-

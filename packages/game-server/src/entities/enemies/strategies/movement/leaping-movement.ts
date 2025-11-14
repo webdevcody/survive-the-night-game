@@ -3,7 +3,7 @@ import Vector2 from "@/util/vector2";
 import Movable from "@/extensions/movable";
 import Snared from "@/extensions/snared";
 import { pathTowards, velocityTowards } from "@/util/physics";
-import { TargetingSystem } from "../targeting";
+import { TargetChecker } from "../movement-utils";
 
 // Shared state between movement and attack strategies
 export class LeapingState {
@@ -13,6 +13,7 @@ export class LeapingState {
 export class LeapingMovementStrategy implements MovementStrategy {
   private static readonly PATH_RECALCULATION_INTERVAL = 1;
   private pathRecalculationTimer: number = Math.random() * LeapingMovementStrategy.PATH_RECALCULATION_INTERVAL;
+  private targetChecker = new TargetChecker();
   private currentWaypoint: Vector2 | null = null;
   private leapingState: LeapingState;
 
@@ -33,11 +34,18 @@ export class LeapingMovementStrategy implements MovementStrategy {
     }
 
     this.pathRecalculationTimer += deltaTime;
-    const playerTarget = TargetingSystem.findClosestPlayer(zombie);
-    if (!playerTarget) return false;
-
-    const playerPos = playerTarget.position;
     const zombiePos = zombie.getCenterPosition();
+
+    // Update target using shared utility
+    const mapManager = zombie.getGameManagers().getMapManager();
+    const carLocation = mapManager.getCarLocation();
+    const currentTarget = this.targetChecker.updateTarget(zombie, deltaTime, carLocation);
+
+    // If no target, stop moving
+    if (!currentTarget) {
+      zombie.getExt(Movable).setVelocity(new Vector2(0, 0));
+      return false;
+    }
 
     // If we don't have a waypoint or we've reached the current one, get a new one
     const needNewWaypoint = !this.currentWaypoint || zombiePos.distance(this.currentWaypoint) <= 1;
@@ -47,10 +55,9 @@ export class LeapingMovementStrategy implements MovementStrategy {
       needNewWaypoint ||
       this.pathRecalculationTimer >= LeapingMovementStrategy.PATH_RECALCULATION_INTERVAL
     ) {
-      const mapManager = zombie.getGameManagers().getMapManager();
       const waypoint = pathTowards(
         zombiePos,
-        playerPos,
+        currentTarget,
         mapManager.getGroundLayer(),
         mapManager.getCollidablesLayer()
       );

@@ -1,5 +1,21 @@
 [
   {
+    "version": "0.11.7",
+    "date": "2025-11-14",
+    "changes": [
+      "Optimized AI targeting - zombies now prioritize closest friendly entities (players/survivors) over car, reducing unnecessary long-distance pathfinding",
+      "Refactored movement strategies - centralized targeting logic into shared movement-utils module for consistency across all zombie AI types",
+      "Added tiered entity update system - entities far from players now update less frequently to reduce CPU usage (configurable via UPDATE_TIERS config)",
+      "Optimized trigger extensions - OneTimeTrigger and TriggerCooldownAttacker now check for entities every 0.5 seconds instead of every tick",
+      "Added random cooldown offsets to trigger checks - prevents multiple triggers from checking simultaneously and spreads queries over time",
+      "Added UpdateScheduler class - manages entity update frequency based on distance tiers (0-500px, 500-1000px, 1000+px ranges)",
+      "Integrated UpdateScheduler into EntityManager - entities automatically register/unregister and update based on proximity to players",
+      "Added getCarLocation() method to MapManager - provides centralized access to car position for AI targeting",
+      "Improved zombie AI efficiency - all movement strategies now use TargetChecker class to cache target positions and reduce redundant calculations",
+      "Added UPDATE_TIERS configuration - allows enabling/disabling tiered updates and customizing update intervals per tier"
+    ]
+  },
+  {
     "version": "0.11.6",
     "date": "2025-11-14",
     "changes": [

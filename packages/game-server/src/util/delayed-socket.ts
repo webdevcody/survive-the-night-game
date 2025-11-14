@@ -142,14 +142,16 @@ export class DelayedServer {
   public getCurrentBandwidth(): number {
     const now = Date.now();
     const elapsedSeconds = (now - this.lastSecondTimestamp) / 1000;
-    
+
     if (elapsedSeconds > 1) {
       // More than 1 second has passed, return 0
       return 0;
     }
-    
+
     // Return bytes per second
-    return elapsedSeconds > 0 ? this.bytesSentThisSecond / elapsedSeconds : this.bytesSentThisSecond;
+    return elapsedSeconds > 0
+      ? this.bytesSentThisSecond / elapsedSeconds
+      : this.bytesSentThisSecond;
   }
 
   /**

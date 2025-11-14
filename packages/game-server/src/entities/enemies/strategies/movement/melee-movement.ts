@@ -3,11 +3,13 @@ import Vector2 from "@/util/vector2";
 import Movable from "@/extensions/movable";
 import Snared from "@/extensions/snared";
 import { pathTowards, velocityTowards } from "@/util/physics";
-import { TargetingSystem } from "../targeting";
+import { TargetChecker } from "../movement-utils";
 
 export class MeleeMovementStrategy implements MovementStrategy {
   private static readonly PATH_RECALCULATION_INTERVAL = 1;
-  private pathRecalculationTimer: number = Math.random() * MeleeMovementStrategy.PATH_RECALCULATION_INTERVAL;
+  private pathRecalculationTimer: number =
+    Math.random() * MeleeMovementStrategy.PATH_RECALCULATION_INTERVAL;
+  private targetChecker = new TargetChecker();
   private currentWaypoint: Vector2 | null = null;
 
   update(zombie: BaseEnemy, deltaTime: number): boolean {
@@ -20,11 +22,16 @@ export class MeleeMovementStrategy implements MovementStrategy {
     this.pathRecalculationTimer += deltaTime;
     const zombiePos = zombie.getCenterPosition();
 
-    // Find the closest friendly entity (car, player, or survivor)
-    const closestFriendly = TargetingSystem.findClosestFriendlyEntity(zombie, 500);
-    const targetPos = closestFriendly?.position || null;
+    // Update target using shared utility
+    const mapManager = zombie.getGameManagers().getMapManager();
+    const carLocation = mapManager.getCarLocation();
+    const currentTarget = this.targetChecker.updateTarget(zombie, deltaTime, carLocation);
 
-    if (!targetPos) return false;
+    // If no target, stop moving
+    if (!currentTarget) {
+      zombie.getExt(Movable).setVelocity(new Vector2(0, 0));
+      return false;
+    }
 
     // If we don't have a waypoint or we've reached the current one, get a new one
     const needNewWaypoint = !this.currentWaypoint || zombiePos.distance(this.currentWaypoint) <= 1;
@@ -34,10 +41,9 @@ export class MeleeMovementStrategy implements MovementStrategy {
       needNewWaypoint ||
       this.pathRecalculationTimer >= MeleeMovementStrategy.PATH_RECALCULATION_INTERVAL
     ) {
-      const mapManager = zombie.getGameManagers().getMapManager();
       const waypoint = pathTowards(
         zombiePos,
-        targetPos,
+        currentTarget,
         mapManager.getGroundLayer(),
         mapManager.getCollidablesLayer()
       );
@@ -57,4 +63,3 @@ export class MeleeMovementStrategy implements MovementStrategy {
     return false; // Let base enemy handle collision movement
   }
 }
-

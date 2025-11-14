@@ -21,6 +21,7 @@ import { Player } from "@/entities/player";
 import { perfTimer } from "@shared/util/performance";
 import { profiler } from "@/util/profiler";
 import { TickPerformanceTracker } from "@/util/tick-performance-tracker";
+import { UpdateScheduler } from "./update-scheduler";
 
 // Register all custom entity classes at module load time
 registerCustomEntities();
@@ -44,11 +45,13 @@ export class EntityManager implements IEntityManager {
   private entitiesInGrid: Set<Entity> = new Set();
   private entitiesToAddToGrid: Set<Entity> = new Set();
   private tickPerformanceTracker: TickPerformanceTracker | null = null;
+  private updateScheduler: UpdateScheduler;
 
   constructor() {
     this.entities = [];
     this.players = [];
     this.entityStateTracker = new EntityStateTracker();
+    this.updateScheduler = new UpdateScheduler();
   }
 
   setGameManagers(gameManagers: IGameManagers) {
@@ -157,6 +160,8 @@ export class EntityManager implements IEntityManager {
     // Track entities with updatable extensions
     if (entity.hasUpdatableExtensions()) {
       this.updatableEntities.push(entity);
+      // Register with update scheduler
+      this.updateScheduler.registerEntity(entity);
     }
 
     // Register position change callback for entities with Positionable extension
@@ -206,6 +211,8 @@ export class EntityManager implements IEntityManager {
       const updatableIndex = this.updatableEntities.indexOf(entity);
       if (updatableIndex > -1) {
         this.updatableEntities.splice(updatableIndex, 1);
+        // Unregister from update scheduler
+        this.updateScheduler.unregisterEntity(entity.getId());
         // Decrement entity count for this type
       }
 
@@ -277,6 +284,8 @@ export class EntityManager implements IEntityManager {
       const updatableIndex = this.updatableEntities.indexOf(entity);
       if (updatableIndex > -1) {
         this.updatableEntities.splice(updatableIndex, 1);
+        // Unregister from update scheduler
+        this.updateScheduler.unregisterEntity(entity.getId());
         // Decrement entity count for this type
       }
 
@@ -336,6 +345,7 @@ export class EntityManager implements IEntityManager {
     this.dirtyEntities.clear();
     this.entitiesInGrid.clear();
     this.entitiesToAddToGrid.clear();
+    this.updateScheduler.clear();
   }
 
   getNearbyEntities(position: Vector2, radius: number = 64, filterSet?: Set<EntityType>): Entity[] {
@@ -519,12 +529,18 @@ export class EntityManager implements IEntityManager {
     this.refreshSpatialGrid();
     endRefreshSpatialGrid();
 
+    // Advance frame counter for update scheduler
+    this.updateScheduler.advanceFrame();
+
     // Track updateExtensions loop
     const endUpdateExtensionsLoop =
       this.tickPerformanceTracker?.startMethod("updateExtensionsLoop", "updateEntities") ||
       (() => {});
     for (const entity of this.updatableEntities) {
-      this.updateExtensions(entity, deltaTime);
+      // Check if entity should update based on tier system
+      if (this.updateScheduler.shouldUpdate(entity, this.players)) {
+        this.updateExtensions(entity, deltaTime);
+      }
     }
     endUpdateExtensionsLoop();
   }
