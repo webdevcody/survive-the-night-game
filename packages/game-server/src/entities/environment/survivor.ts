@@ -50,7 +50,10 @@ export class Survivor extends Entity<typeof SERIALIZABLE_FIELDS> {
   constructor(gameManagers: IGameManagers) {
     super(gameManagers, Entities.SURVIVOR);
 
+    // Offset cooldown randomly to prevent all survivors from shooting simultaneously
+    const randomOffset = Math.random() * SURVIVOR_SHOOT_COOLDOWN;
     this.fireCooldown = new Cooldown(SURVIVOR_SHOOT_COOLDOWN);
+    this.fireCooldown.setTimeRemaining(randomOffset);
 
     this.addExtension(new Positionable(this).setSize(SURVIVOR_SIZE));
     this.addExtension(
@@ -253,28 +256,31 @@ export class Survivor extends Entity<typeof SERIALIZABLE_FIELDS> {
     const position = this.getExt(Positionable).getCenterPosition();
 
     // Find closest zombie within range
-    let closestZombie: Entity | null = null;
-    let closestDistance = Infinity;
-
+    // Use filterSet to only query zombies from spatial grid (more efficient)
+    const zombieFilterSet = new Set(Zombies);
     const nearbyEntities = this.getEntityManager().getNearbyEntities(
       this.getExt(Positionable).getPosition(),
-      SURVIVOR_SHOOT_RANGE
+      SURVIVOR_SHOOT_RANGE,
+      zombieFilterSet
     );
 
-    for (const entity of nearbyEntities) {
-      // Check if entity is a zombie
-      const isZombie = Zombies.includes(entity.getType());
-      if (!isZombie) continue;
+    // getNearbyEntities already filtered by distance, so we just need to find closest alive zombie
+    let closestZombie: Entity | null = null;
+    let closestDistanceSquared = Infinity;
 
+    for (const entity of nearbyEntities) {
       // Check if zombie has destructible (is alive)
       if (!entity.hasExt(Destructible)) continue;
       if (entity.getExt(Destructible).isDead()) continue;
 
+      // Calculate squared distance (faster than distance calculation)
       const zombiePos = entity.getExt(Positionable).getCenterPosition();
-      const dist = distance(position, zombiePos);
+      const dx = position.x - zombiePos.x;
+      const dy = position.y - zombiePos.y;
+      const distSquared = dx * dx + dy * dy;
 
-      if (dist <= SURVIVOR_SHOOT_RANGE && dist < closestDistance) {
-        closestDistance = dist;
+      if (distSquared < closestDistanceSquared) {
+        closestDistanceSquared = distSquared;
         closestZombie = entity;
       }
     }

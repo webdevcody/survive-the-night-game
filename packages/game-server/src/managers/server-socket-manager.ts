@@ -32,6 +32,7 @@ import {
   englishDataset,
   englishRecommendedTransformers,
 } from "obscenity";
+import { TickPerformanceTracker } from "@/util/tick-performance-tracker";
 
 /**
  * Any and all functionality related to sending server side events
@@ -52,6 +53,7 @@ export class ServerSocketManager implements Broadcaster {
   private chatCommandRegistry: CommandRegistry;
   private profanityMatcher: RegExpMatcher;
   private profanityCensor: TextCensor;
+  private tickPerformanceTracker: TickPerformanceTracker | null = null;
 
   constructor(port: number, gameServer: GameServer) {
     this.port = port;
@@ -135,6 +137,14 @@ export class ServerSocketManager implements Broadcaster {
 
   public setGameManagers(gameManagers: IGameManagers): void {
     this.gameManagers = gameManagers;
+  }
+
+  setTickPerformanceTracker(tracker: TickPerformanceTracker) {
+    this.tickPerformanceTracker = tracker;
+  }
+
+  getCurrentBandwidth(): number {
+    return this.delayedIo.getCurrentBandwidth();
   }
 
   public getGameManagers(): IGameManagers {
@@ -579,7 +589,17 @@ export class ServerSocketManager implements Broadcaster {
   }
 
   public broadcastEvent(event: GameEvent<any>): void {
+    // Early return optimization: if no clients connected, skip broadcasting
+    const connectedClients = this.io.sockets.sockets.size;
+    if (connectedClients === 0) {
+      return;
+    }
+
     if (event.getType() === ServerSentEvents.GAME_STATE_UPDATE) {
+      // Track entity state tracking operations
+      const endEntityStateTracking =
+        this.tickPerformanceTracker?.startMethod("entityStateTracking", "broadcastGameState") ||
+        (() => {});
       const entityStateTracker = this.getEntityManager().getEntityStateTracker();
 
       // Early return optimization: check cheapest checks first
@@ -611,6 +631,7 @@ export class ServerSocketManager implements Broadcaster {
         changedEntities = entityStateTracker.getChangedEntities();
         changedCount = changedEntities.length;
         if (changedCount === 0) {
+          endEntityStateTracking();
           return; // No changes to broadcast
         }
         entities = this.getEntityManager().getEntities();
@@ -623,9 +644,15 @@ export class ServerSocketManager implements Broadcaster {
 
       // Final early return check
       if (changedCount === 0 && removedCount === 0 && !hasGameStateChanges) {
+        endEntityStateTracking();
         return; // No changes to broadcast
       }
+      endEntityStateTracking();
 
+      // Track game state preparation
+      const endGameStatePrep =
+        this.tickPerformanceTracker?.startMethod("gameStatePreparation", "broadcastGameState") ||
+        (() => {});
       // Cache all gameServer getter results before creating currentGameState object
       const dayNumber = this.gameServer.getDayNumber();
       const cycleStartTime = this.gameServer.getCycleStartTime();
@@ -636,11 +663,21 @@ export class ServerSocketManager implements Broadcaster {
       const phaseStartTime = this.gameServer.getPhaseStartTime();
       const phaseDuration = this.gameServer.getPhaseDuration();
       const totalZombies = this.gameServer.getTotalZombies();
+      endGameStatePrep();
 
+      // Track entity serialization
+      const endEntitySerialization =
+        this.tickPerformanceTracker?.startMethod("entitySerialization", "broadcastGameState") ||
+        (() => {});
       // For each changed entity, serialize based on dirty state
       // Changed entities will have only dirty extensions, so serialize(true) will include only changes
       const changedEntityData = changedEntities.map((entity) => entity.serialize(true));
+      endEntitySerialization();
 
+      // Track game state merging
+      const endGameStateMerging =
+        this.tickPerformanceTracker?.startMethod("gameStateMerging", "broadcastGameState") ||
+        (() => {});
       // Get current game state (using cached values)
       const currentGameState = {
         dayNumber,
@@ -676,7 +713,29 @@ export class ServerSocketManager implements Broadcaster {
         timestamp,
         ...mergedGameState,
       });
+      endGameStateMerging();
 
+      // Track cleanup operations
+      const endCleanup =
+        this.tickPerformanceTracker?.startMethod("broadcastCleanup", "broadcastGameState") ||
+        (() => {});
+      
+      // Log dirty entity information for diagnostics (if performance monitoring enabled)
+      if (this.tickPerformanceTracker && changedCount > 0) {
+        const dirtyEntityInfo = entityStateTracker.getDirtyEntityInfo();
+        if (dirtyEntityInfo.length > 0) {
+          this.tickPerformanceTracker.recordDirtyEntities(
+            dirtyEntityInfo.map((info) => ({
+              id: info.id,
+              type: info.type,
+              reason: info.reason,
+            })),
+            changedCount,
+            entities.length
+          );
+        }
+      }
+      
       // Clear dirty flags after broadcasting (optimized loop)
       for (const entity of changedEntities) {
         entity.clearDirtyFlags();
@@ -684,9 +743,17 @@ export class ServerSocketManager implements Broadcaster {
       entityStateTracker.trackGameState(currentGameState);
       // Clear removed entity IDs after they've been sent
       entityStateTracker.clearRemovedEntityIds();
+      // Clear dirty entity info after logging
+      entityStateTracker.clearDirtyEntityInfo();
+      endCleanup();
 
+      // Track websocket emit
+      const endWebSocketEmit =
+        this.tickPerformanceTracker?.startMethod("webSocketEmit", "broadcastGameState") ||
+        (() => {});
       // DelayedServer will automatically encode the payload and track bytes
       this.delayedIo.emit(gameStateEvent.getType(), gameStateEvent.serialize());
+      endWebSocketEmit();
     } else {
       // DelayedServer will automatically encode the payload and track bytes
       this.delayedIo.emit(event.getType(), event.serialize());

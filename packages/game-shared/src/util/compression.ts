@@ -190,6 +190,7 @@ const STRING_VALUE_KEYS = [
   // Extension types
   "inventory",
   "boundary",
+  "fast_zombie",
   "destructible",
   "groupable",
   "positionable",
@@ -265,9 +266,7 @@ const STRING_VALUE_KEYS = [
   "grenade_launcher",
   "grenade-launcher-ammo",
   "grenade_launcher_ammo",
-  "fire-extinguisher",
   "flamethrower",
-  "fire_extinguisher",
   "flamethrower_ammo",
   "merchant",
   "car",
@@ -484,8 +483,8 @@ function decompressPropertyNames(obj: any, parentKey?: string): any {
  */
 export function encodePayload(data: any): any {
   // First round coordinates, then compress property names
-  const rounded = roundCoordinates(data);
-  return compressPropertyNames(rounded);
+  // const rounded = roundCoordinates(data);
+  return compressPropertyNames(data);
 }
 
 /**

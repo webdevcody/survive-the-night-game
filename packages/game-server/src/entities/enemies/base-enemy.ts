@@ -17,6 +17,8 @@ import { EntityType } from "@shared/types/entity";
 import { ZombieDeathEvent } from "@/events/server-sent/zombie-death-event";
 import { ZombieHurtEvent } from "@/events/server-sent/zombie-hurt-event";
 import { EntityCategory, EntityCategories, ZombieConfig, zombieRegistry } from "@shared/entities";
+import { IdleMovementStrategy } from "./strategies/movement/idle-movement";
+import { getConfig } from "@shared/config";
 
 export interface MovementStrategy {
   // Return true if the strategy handled movement completely, false if it needs default movement handling
@@ -48,7 +50,7 @@ export abstract class BaseEnemy extends Entity<typeof BASE_ENEMY_SERIALIZABLE_FI
   protected config: ZombieConfig;
 
   // Serializable field for debugging (synced from currentWaypoint via setCurrentWaypoint)
-  // @ts-expect-error - Field is used for serialization via base Entity class
+  // Field is used for serialization via base Entity class
   private debugWaypoint: Vector2 | null = null;
 
   constructor(gameManagers: IGameManagers, entityType: EntityType, config?: ZombieConfig) {
@@ -63,12 +65,14 @@ export abstract class BaseEnemy extends Entity<typeof BASE_ENEMY_SERIALIZABLE_FI
     this.speed = this.config.stats.speed;
     this.entityType = entityType;
     this.attackCooldown = new Cooldown(this.config.stats.attackCooldown);
+    // Offset attack cooldown randomly to prevent all zombies from attacking simultaneously
+    // This spreads out expensive entity queries across time
+    const randomOffset = Math.random() * this.config.stats.attackCooldown;
+    this.attackCooldown.setTimeRemaining(randomOffset);
     this.attackRadius = this.config.stats.attackRadius;
     this.attackDamage = this.config.stats.damage;
     this.addExtension(
-      new Inventory(this, gameManagers.getBroadcaster()).addRandomItem(
-        this.config.stats.dropChance
-      )
+      new Inventory(this, gameManagers.getBroadcaster()).addRandomItem(this.config.stats.dropChance)
     );
     this.addExtension(
       new Destructible(this)
@@ -80,7 +84,9 @@ export abstract class BaseEnemy extends Entity<typeof BASE_ENEMY_SERIALIZABLE_FI
     );
     this.addExtension(new Groupable(this, "enemy"));
     this.addExtension(new Positionable(this).setSize(this.config.stats.size));
-    this.addExtension(new Collidable(this).setSize(this.config.stats.size.div(2)).setOffset(new Vector2(4, 4)));
+    this.addExtension(
+      new Collidable(this).setSize(this.config.stats.size.div(2)).setOffset(new Vector2(4, 4))
+    );
     this.addExtension(new Movable(this));
     this.addExtension(new Updatable(this, this.updateEnemy.bind(this)));
   }
@@ -192,29 +198,73 @@ export abstract class BaseEnemy extends Entity<typeof BASE_ENEMY_SERIALIZABLE_FI
   }
 
   protected updateEnemy(deltaTime: number): void {
+    // Get performance tracker for detailed analytics
+    const entityManager = this.getEntityManager() as any;
+    const tickPerformanceTracker = entityManager.tickPerformanceTracker;
+
+    // Track cooldown updates
+    const endCooldownUpdates =
+      tickPerformanceTracker?.startMethod("cooldownUpdates", "updateEnemy") || (() => {});
     this.attackCooldown.update(deltaTime);
     this.pathRecalculationTimer += deltaTime;
+    endCooldownUpdates();
 
     const destructible = this.getExt(Destructible);
     if (destructible.isDead()) {
       return;
     }
 
-    // Update movement strategy first
+    // Track movement strategy update
+    const endMovementStrategy =
+      tickPerformanceTracker?.startMethod("movementStrategy", "updateEnemy") || (() => {});
+    let handledMovement = false;
     if (this.movementStrategy) {
       // Let the strategy decide if it wants to handle movement completely
-      const handledMovement = this.movementStrategy.update(this, deltaTime);
+      handledMovement = this.movementStrategy.update(this, deltaTime);
+    }
+    endMovementStrategy();
 
-      // If the strategy didn't handle movement completely, use default movement handling
-      if (!handledMovement) {
-        this.handleMovement(deltaTime);
+    // Track default movement handling (if needed)
+    const endHandleMovement =
+      tickPerformanceTracker?.startMethod("handleMovement", "updateEnemy") || (() => {});
+    if (!handledMovement) {
+      this.handleMovement(deltaTime);
+    }
+    endHandleMovement();
+
+    // Track attack strategy update
+    // For idle zombies, only run attack strategy if there's a nearby player (quick check first)
+    // This avoids expensive entity queries when zombies are idle and far from players
+    const endAttackStrategy =
+      tickPerformanceTracker?.startMethod("attackStrategy", "updateEnemy") || (() => {});
+    if (this.attackStrategy) {
+      // Quick check: if this is an idle zombie, only attack if player is nearby
+      // This prevents expensive queries when zombies are idle and far away
+      const isIdleZombie = this.movementStrategy instanceof IdleMovementStrategy;
+      if (isIdleZombie) {
+        // Quick player check before expensive attack queries
+        const quickPlayerCheck =
+          tickPerformanceTracker?.startMethod("quickPlayerCheck", "attackStrategy") || (() => {});
+        const player = this.getEntityManager().getClosestAlivePlayer(this);
+        quickPlayerCheck();
+
+        // Only run attack strategy if player is nearby (within reasonable attack range)
+        if (player && player.hasExt(Positionable)) {
+          const playerPos = player.getExt(Positionable).getCenterPosition();
+          const zombiePos = this.getCenterPosition();
+          const distanceToPlayer = zombiePos.distance(playerPos);
+          const maxAttackRange = getConfig().combat.ZOMBIE_ATTACK_RADIUS + 100; // Add buffer
+
+          if (distanceToPlayer <= maxAttackRange) {
+            this.attackStrategy.update(this, deltaTime);
+          }
+        }
+      } else {
+        // Non-idle zombies always run attack strategy
+        this.attackStrategy.update(this, deltaTime);
       }
     }
-
-    // Finally handle attacks
-    if (this.attackStrategy) {
-      this.attackStrategy.update(this, deltaTime);
-    }
+    endAttackStrategy();
   }
 
   getAttackCooldown(): Cooldown {

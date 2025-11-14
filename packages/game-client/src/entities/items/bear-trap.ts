@@ -42,3 +42,4 @@ export class BearTrapClient extends ClientEntity implements Renderable {
     this.snaredZombieId = data.snaredZombieId ?? null;
   }
 }
+

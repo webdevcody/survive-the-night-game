@@ -11,8 +11,8 @@ export class LeapingState {
 }
 
 export class LeapingMovementStrategy implements MovementStrategy {
-  private pathRecalculationTimer: number = 0;
   private static readonly PATH_RECALCULATION_INTERVAL = 1;
+  private pathRecalculationTimer: number = Math.random() * LeapingMovementStrategy.PATH_RECALCULATION_INTERVAL;
   private currentWaypoint: Vector2 | null = null;
   private leapingState: LeapingState;
 

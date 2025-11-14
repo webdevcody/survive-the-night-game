@@ -48,7 +48,6 @@ export const GAS_STATION: BiomeData = {
     Entities.GASOLINE,
     Entities.GASOLINE,
     Entities.GASOLINE,
-    Entities.FIRE_EXTINGUISHER,
     Entities.AK47,
     Entities.AK47_AMMO,
     Entities.AK47_AMMO,

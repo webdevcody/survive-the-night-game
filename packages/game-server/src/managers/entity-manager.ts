@@ -20,6 +20,7 @@ import { registerCustomEntities } from "@/entities/register-custom-entities";
 import { Player } from "@/entities/player";
 import { perfTimer } from "@shared/util/performance";
 import { profiler } from "@/util/profiler";
+import { TickPerformanceTracker } from "@/util/tick-performance-tracker";
 
 // Register all custom entity classes at module load time
 registerCustomEntities();
@@ -42,7 +43,7 @@ export class EntityManager implements IEntityManager {
   private dirtyEntities: Set<Entity> = new Set();
   private entitiesInGrid: Set<Entity> = new Set();
   private entitiesToAddToGrid: Set<Entity> = new Set();
-  // T
+  private tickPerformanceTracker: TickPerformanceTracker | null = null;
 
   constructor() {
     this.entities = [];
@@ -52,6 +53,10 @@ export class EntityManager implements IEntityManager {
 
   setGameManagers(gameManagers: IGameManagers) {
     this.gameManagers = gameManagers;
+  }
+
+  setTickPerformanceTracker(tracker: TickPerformanceTracker) {
+    this.tickPerformanceTracker = tracker;
   }
 
   getGameManagers(): IGameManagers {
@@ -464,30 +469,36 @@ export class EntityManager implements IEntityManager {
     const positionable = sourceEntity.getExt(Positionable);
     const position = positionable.getCenterPosition();
 
-    const nearbyEntities = this.entityFinder.getNearbyEntities(position);
+    // Use a small radius for collision detection (just enough to check nearby collidables)
+    // Default cellSize (16) is appropriate for collision checks
+    const collisionRadius = 32; // Slightly larger than cellSize to catch nearby entities
+    const nearbyEntities = this.entityFinder.getNearbyEntities(position, collisionRadius);
 
+    // Early exit optimizations
     // TODO: look into refactoring this
     for (const otherEntity of nearbyEntities) {
+      // Skip ignored types early
       if (ignoreTypes && ignoreTypes.includes(otherEntity.getType())) {
         continue;
       }
 
-      const isCollidable = otherEntity.hasExt(Collidable);
-
-      if (!isCollidable) {
-        continue;
-      }
-
-      if (!otherEntity.getExt(Collidable).isEnabled()) {
-        continue;
-      }
-
-      const targetBox = otherEntity.getExt(Collidable).getHitBox();
-
+      // Skip self early
       if (otherEntity === sourceEntity) {
         continue;
       }
 
+      // Check if collidable before expensive operations
+      if (!otherEntity.hasExt(Collidable)) {
+        continue;
+      }
+
+      const collidable = otherEntity.getExt(Collidable);
+      if (!collidable.isEnabled()) {
+        continue;
+      }
+
+      // Only do expensive intersection check if we got this far
+      const targetBox = collidable.getHitBox();
       if (hitBox.intersects(targetBox)) {
         return otherEntity;
       }
@@ -501,18 +512,40 @@ export class EntityManager implements IEntityManager {
   }
 
   update(deltaTime: number) {
+    // Track refreshSpatialGrid as sub-method
+    const endRefreshSpatialGrid =
+      this.tickPerformanceTracker?.startMethod("refreshSpatialGrid", "updateEntities") ||
+      (() => {});
     this.refreshSpatialGrid();
+    endRefreshSpatialGrid();
 
+    // Track updateExtensions loop
+    const endUpdateExtensionsLoop =
+      this.tickPerformanceTracker?.startMethod("updateExtensionsLoop", "updateEntities") ||
+      (() => {});
     for (const entity of this.updatableEntities) {
       this.updateExtensions(entity, deltaTime);
     }
+    endUpdateExtensionsLoop();
   }
 
   // Use the pre-filtered updatable extensions for better performance
   updateExtensions(entity: Entity, deltaTime: number) {
+    // Track entity update time if performance monitoring is enabled
+    const endEntityUpdate =
+      this.tickPerformanceTracker?.startEntityUpdate(entity.getId(), entity.getType()) ||
+      (() => {});
+
+    // Track extension updates
+    const endExtensionUpdates =
+      this.tickPerformanceTracker?.startMethod("extensionUpdates", "updateExtensionsLoop") ||
+      (() => {});
     for (const extension of entity.getUpdatableExtensions()) {
       (extension as any).update(deltaTime);
     }
+    endExtensionUpdates();
+
+    endEntityUpdate();
   }
 
   private refreshSpatialGrid() {
@@ -522,15 +555,28 @@ export class EntityManager implements IEntityManager {
 
     // Handle initial grid population: if grid is empty, populate all entities
     if (this.entitiesInGrid.size === 0) {
+      const endInitialPopulation =
+        this.tickPerformanceTracker?.startMethod("initialGridPopulation", "refreshSpatialGrid") ||
+        (() => {});
       this.entities.forEach((entity) => {
         if (entity.hasExt(Positionable)) {
           this.entityFinder!.addEntity(entity);
           this.entitiesInGrid.add(entity);
         }
       });
+      endInitialPopulation();
       return;
     }
 
+    // Early return optimization: if no dirty entities and no new entities to add, skip refresh
+    if (this.dirtyEntities.size === 0 && this.entitiesToAddToGrid.size === 0) {
+      return;
+    }
+
+    // Track dirty entity updates
+    const endDirtyEntityUpdates =
+      this.tickPerformanceTracker?.startMethod("dirtyEntityUpdates", "refreshSpatialGrid") ||
+      (() => {});
     for (const entity of this.dirtyEntities) {
       if (!entity.hasExt(Positionable)) {
         continue;
@@ -545,10 +591,15 @@ export class EntityManager implements IEntityManager {
         this.entityFinder!.updateEntity(entity);
       }
     }
+    endDirtyEntityUpdates();
 
     // Clear dirty set after processing
     this.dirtyEntities.clear();
 
+    // Track new entity additions
+    const endNewEntityAdditions =
+      this.tickPerformanceTracker?.startMethod("newEntityAdditions", "refreshSpatialGrid") ||
+      (() => {});
     // Handle newly added entities that aren't in the grid yet
     // Use the tracked set instead of looping through all entities
     let newEntityCount = 0;
@@ -561,6 +612,7 @@ export class EntityManager implements IEntityManager {
     }
     // Clear the set after processing
     this.entitiesToAddToGrid.clear();
+    endNewEntityAdditions();
   }
 
   public getBroadcaster(): Broadcaster {

@@ -23,6 +23,13 @@ export class Cooldown {
     this.timeRemaining = this.duration;
   }
 
+  /**
+   * Sets the time remaining to a specific value (useful for offsetting cooldowns)
+   */
+  setTimeRemaining(timeRemaining: number): void {
+    this.timeRemaining = Math.max(0, Math.min(timeRemaining, this.duration));
+  }
+
   isReady(): boolean {
     return this.timeRemaining <= 0;
   }

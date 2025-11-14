@@ -64,7 +64,7 @@ export class PlayerClient extends ClientEntity implements IClientEntity, Rendera
   constructor(data: RawEntity, imageLoader: ImageLoader) {
     super(data, imageLoader);
     this.isCrafting = data.isCrafting;
-    this.activeItem = data.activeItem;
+    this.activeItem = data.activeItem ?? null;
     // Ensure input is always defined, fallback to default if missing
     this.input = data.input || {
       facing: Direction.Right,
@@ -361,7 +361,7 @@ export class PlayerClient extends ClientEntity implements IClientEntity, Rendera
   }
 
   renderInventoryItem(ctx: CanvasRenderingContext2D, renderPosition: Vector2) {
-    if (this.activeItem === null) {
+    if (this.activeItem === null || this.activeItem === undefined) {
       return;
     }
 
@@ -441,7 +441,7 @@ export class PlayerClient extends ClientEntity implements IClientEntity, Rendera
     }
 
     if (key === "activeItem") {
-      this.activeItem = value;
+      this.activeItem = value ?? null;
       return;
     }
 
@@ -452,7 +452,7 @@ export class PlayerClient extends ClientEntity implements IClientEntity, Rendera
     super.deserialize(data);
     this.isCrafting = data.isCrafting;
     if (data.activeItem !== undefined) {
-      this.activeItem = data.activeItem;
+      this.activeItem = data.activeItem ?? null;
     } else {
       this.updateActiveItemFromInventory();
     }

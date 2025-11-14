@@ -7,8 +7,8 @@ import { TargetingSystem } from "../targeting";
 
 export class RangedMovementStrategy implements MovementStrategy {
   private static readonly ATTACK_RANGE = 100;
-  private pathRecalculationTimer: number = 0;
   private static readonly PATH_RECALCULATION_INTERVAL = 1;
+  private pathRecalculationTimer: number = Math.random() * RangedMovementStrategy.PATH_RECALCULATION_INTERVAL;
   private currentWaypoint: Vector2 | null = null;
 
   update(zombie: BaseEnemy, deltaTime: number): boolean {

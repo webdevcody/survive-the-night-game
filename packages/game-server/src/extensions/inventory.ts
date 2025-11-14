@@ -30,7 +30,6 @@ const ITEM_DROP_TABLE: Array<{ itemType: ItemType; weight: number }> = [
   { itemType: "miners_hat", weight: 8 },
   { itemType: "spikes", weight: 7 },
   { itemType: "grenade", weight: 5 },
-  { itemType: "fire_extinguisher", weight: 5 },
 
   // Rare items (low weight)
   { itemType: "bolt_action_rifle", weight: 3 },

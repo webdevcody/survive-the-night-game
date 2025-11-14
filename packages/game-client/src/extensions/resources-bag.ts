@@ -50,3 +50,4 @@ export class ClientResourcesBag extends BaseClientExtension {
   }
 }
 
+

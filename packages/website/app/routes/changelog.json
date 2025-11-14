@@ -1,5 +1,20 @@
 [
   {
+    "version": "0.11.6",
+    "date": "2025-11-14",
+    "changes": [
+      "Optimized zombie AI performance - offset attack cooldowns randomly to prevent simultaneous attacks and spread expensive queries over time",
+      "Optimized idle zombie behavior - reduced player check frequency from every tick to every 0.5 seconds for significant CPU savings",
+      "Optimized survivor targeting - converted to filterSet-based entity queries and squared distance calculations for faster nearest zombie detection",
+      "Improved attack strategy efficiency - idle zombies now skip attack queries when no players are nearby (avoids expensive operations when zombies are far away)",
+      "Added granular performance tracking instrumentation throughout zombie AI update loops for detailed profiling",
+      "Added ENABLE_PERFORMANCE_MONITORING config flag - performance monitoring disabled by default for production safety",
+      "Removed fire extinguisher item from the game (cleaned up both client and server implementations)",
+      "Fixed player activeItem handling - added proper null/undefined checks to prevent rendering crashes",
+      "Removed debug console.log statements from asset manager for cleaner production logs"
+    ]
+  },
+  {
     "version": "0.11.5",
     "date": "2025-11-13",
     "changes": [
@@ -87,7 +102,7 @@
       "Survivors automatically shoot at zombies within range after being rescued and teleported to campsite",
       "Survivors wander around campsite area with periodic movement and pause behavior",
       "Survivors are invincible in special biomes but vulnerable elsewhere - zombies skip them in safe zones",
-      "Added stackable item system - bandages, fire extinguishers, gasoline, grenades, landmines, spikes, and walls now stack",
+      "Added stackable item system - bandages, gasoline, grenades, landmines, spikes, and walls now stack",
       "Items display count badge in inventory when stacked for better space management",
       "Improved UI scaling - reduced font sizes from 32px/48px to 24px for cleaner HUD appearance",
       "Repositioned chat widget from 320px to 140px above bottom for better visibility",

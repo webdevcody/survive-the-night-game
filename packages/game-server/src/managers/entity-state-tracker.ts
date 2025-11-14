@@ -1,9 +1,19 @@
 import { IEntity } from "@/entities/types";
 import { WaveState } from "@shared/types/wave";
+import { ENABLE_PERFORMANCE_MONITORING } from "@/config/config";
+
+export interface DirtyEntityInfo {
+  id: string;
+  type: string;
+  dirtyExtensions: string[];
+  dirtyFields: string[];
+  reason: string;
+}
 
 export class EntityStateTracker {
   private removedEntityIds: Set<string> = new Set();
   private dirtyEntities: Set<IEntity> = new Set();
+  private dirtyEntityInfo: Map<string, DirtyEntityInfo> = new Map();
   private previousGameState: {
     dayNumber?: number;
     cycleStartTime?: number;
@@ -23,15 +33,52 @@ export class EntityStateTracker {
 
   public trackDirtyEntity(entity: IEntity): void {
     this.dirtyEntities.add(entity);
+    
+    // Track detailed information about why entity is dirty (only if performance monitoring enabled)
+    if (ENABLE_PERFORMANCE_MONITORING) {
+      const dirtyExtensions = entity.getDirtyExtensions().map((ext) => {
+        const type = (ext.constructor as any).type || "unknown";
+        return type;
+      });
+      
+      // Get dirty fields if entity has them (check if entity has dirtyFields method/property)
+      const dirtyFields: string[] = [];
+      if ("dirtyFields" in entity && entity.dirtyFields instanceof Set) {
+        dirtyFields.push(...Array.from(entity.dirtyFields as Set<string>));
+      }
+      
+      const reason = dirtyExtensions.length > 0 
+        ? `extensions: ${dirtyExtensions.join(", ")}`
+        : dirtyFields.length > 0
+        ? `fields: ${dirtyFields.join(", ")}`
+        : "unknown";
+      
+      this.dirtyEntityInfo.set(entity.getId(), {
+        id: entity.getId(),
+        type: entity.getType(),
+        dirtyExtensions,
+        dirtyFields,
+        reason,
+      });
+    }
   }
 
   public untrackDirtyEntity(entity: IEntity): void {
     this.dirtyEntities.delete(entity);
+    this.dirtyEntityInfo.delete(entity.getId());
   }
 
   public getChangedEntities(): IEntity[] {
     // Return entities from the tracked Set instead of looping through all entities
     return Array.from(this.dirtyEntities);
+  }
+
+  public getDirtyEntityInfo(): DirtyEntityInfo[] {
+    return Array.from(this.dirtyEntityInfo.values());
+  }
+
+  public clearDirtyEntityInfo(): void {
+    this.dirtyEntityInfo.clear();
   }
 
   public getRemovedEntityIds(): string[] {
@@ -55,6 +102,7 @@ export class EntityStateTracker {
   public clear(): void {
     this.removedEntityIds.clear();
     this.dirtyEntities.clear();
+    this.dirtyEntityInfo.clear();
     this.previousGameState = {};
   }
 

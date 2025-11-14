@@ -137,6 +137,32 @@ export class DelayedServer {
   }
 
   /**
+   * Get current bandwidth stats (bytes sent in the last second)
+   */
+  public getCurrentBandwidth(): number {
+    const now = Date.now();
+    const elapsedSeconds = (now - this.lastSecondTimestamp) / 1000;
+    
+    if (elapsedSeconds > 1) {
+      // More than 1 second has passed, return 0
+      return 0;
+    }
+    
+    // Return bytes per second
+    return elapsedSeconds > 0 ? this.bytesSentThisSecond / elapsedSeconds : this.bytesSentThisSecond;
+  }
+
+  /**
+   * Reset bandwidth counter for new measurement period
+   */
+  public resetBandwidthCounter(): number {
+    const bytes = this.bytesSentThisSecond;
+    this.bytesSentThisSecond = 0;
+    this.lastSecondTimestamp = Date.now();
+    return bytes;
+  }
+
+  /**
    * Print bandwidth statistics every 5 seconds
    */
   private printStats(): void {

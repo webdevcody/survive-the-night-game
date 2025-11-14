@@ -6,8 +6,8 @@ import { pathTowards, velocityTowards } from "@/util/physics";
 import { TargetingSystem } from "../targeting";
 
 export class MeleeMovementStrategy implements MovementStrategy {
-  private pathRecalculationTimer: number = 0;
   private static readonly PATH_RECALCULATION_INTERVAL = 1;
+  private pathRecalculationTimer: number = Math.random() * MeleeMovementStrategy.PATH_RECALCULATION_INTERVAL;
   private currentWaypoint: Vector2 | null = null;
 
   update(zombie: BaseEnemy, deltaTime: number): boolean {

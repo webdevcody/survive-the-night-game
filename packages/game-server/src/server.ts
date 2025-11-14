@@ -17,12 +17,13 @@ import { TICK_RATE, PERFORMANCE_LOG_INTERVAL, TICK_RATE_MS } from "./config/conf
 import { getConfig } from "@shared/config";
 import Destructible from "@/extensions/destructible";
 import { PerformanceTracker } from "./util/performance";
+import { TickPerformanceTracker } from "./util/tick-performance-tracker";
 import { WaveState } from "@shared/types/wave";
 import { perfTimer } from "@shared/util/performance";
 
 export class GameServer {
   // STATE
-  private lastUpdateTime: number = Date.now();
+  private lastUpdateTime: number = performance.now();
   private timer: ReturnType<typeof setInterval> | null = null;
   // Wave system state
   private waveNumber: number = 1;
@@ -37,11 +38,10 @@ export class GameServer {
   private isDay: boolean = true;
   private isGameReady: boolean = false;
   private isGameOver: boolean = false;
-  private updateTimes: number[] = [];
-  private lastPerformanceLog: number = Date.now();
 
   // UTILS
   private performanceTracker: PerformanceTracker;
+  private tickPerformanceTracker: TickPerformanceTracker;
 
   // MANAGERS
   private gameManagers: GameManagers;
@@ -99,6 +99,7 @@ export class GameServer {
 
   constructor(port: number = 3001) {
     this.performanceTracker = new PerformanceTracker();
+    this.tickPerformanceTracker = new TickPerformanceTracker();
 
     this.socketManager = new ServerSocketManager(port, this);
     this.entityManager = new EntityManager();
@@ -112,11 +113,13 @@ export class GameServer {
     );
 
     this.entityManager.setGameManagers(this.gameManagers);
+    this.entityManager.setTickPerformanceTracker(this.tickPerformanceTracker);
     this.mapManager.setGameManagers(this.gameManagers);
     this.socketManager.setCommandManager(this.commandManager);
     this.socketManager.setEntityManager(this.entityManager);
     this.socketManager.setMapManager(this.mapManager);
     this.socketManager.setGameManagers(this.gameManagers);
+    this.socketManager.setTickPerformanceTracker(this.tickPerformanceTracker);
     this.socketManager.listen();
 
     this.startGameLoop();
@@ -236,31 +239,46 @@ export class GameServer {
 
     // setup
     const updateStartTime = performance.now();
-    const currentTime = Date.now();
+    const currentTime = performance.now();
     const deltaTime = (currentTime - this.lastUpdateTime) / 1000;
 
-    // slow
-    // perfTimer.start("updateEntities");
+    // Track updateEntities
+    const endUpdateEntities = this.tickPerformanceTracker.startMethod("updateEntities");
     this.updateEntities(deltaTime);
-    // perfTimer.end("updateEntities");
-    // perfTimer.logStats("updateEntities");
+    endUpdateEntities();
 
+    // Track handleWaveSystem
+    const endHandleWaveSystem = this.tickPerformanceTracker.startMethod("handleWaveSystem");
     this.handleWaveSystem(deltaTime);
+    endHandleWaveSystem();
 
+    // Track handleIfGameOver
+    const endHandleIfGameOver = this.tickPerformanceTracker.startMethod("handleIfGameOver");
     this.handleIfGameOver();
+    endHandleIfGameOver();
 
+    // Track pruneEntities
+    const endPruneEntities = this.tickPerformanceTracker.startMethod("pruneEntities");
     this.entityManager.pruneEntities();
+    endPruneEntities();
 
-    // slow
-    // perfTimer.start("broadcastGameState");
+    // Track broadcastGameState
+    const endBroadcastGameState = this.tickPerformanceTracker.startMethod("broadcastGameState");
     this.broadcastGameState();
-    // perfTimer.end("broadcastGameState");
-    // perfTimer.logStats("broadcastGameState");
+    endBroadcastGameState();
 
     // No longer need to track entities - dirty flags handle change detection
     // Dirty flags are cleared in broadcastEvent() after broadcasting
 
-    this.trackPerformance(updateStartTime, currentTime);
+    // Record total tick time and track performance
+    const totalTickTime = performance.now() - updateStartTime;
+    this.tickPerformanceTracker.recordTick(totalTickTime);
+
+    // Record bandwidth (bytes per second)
+    const bandwidth = this.socketManager.getCurrentBandwidth();
+    this.tickPerformanceTracker.recordBandwidth(bandwidth);
+
+    this.trackPerformance(updateStartTime, Date.now());
     this.lastUpdateTime = currentTime;
   }
 
@@ -336,7 +354,6 @@ export class GameServer {
 
   private trackPerformance(updateStartTime: number, currentTime: number) {
     const updateDuration = performance.now() - updateStartTime;
-    this.updateTimes.push(updateDuration);
 
     // Warn if update took longer than tick rate
     if (updateDuration > TICK_RATE_MS) {
@@ -345,31 +362,6 @@ export class GameServer {
           2
         )}ms (>${TICK_RATE_MS.toFixed(2)}ms threshold)`
       );
-    }
-
-    // Log performance stats every PERFORMANCE_LOG_INTERVAL ms
-    if (currentTime - this.lastPerformanceLog > PERFORMANCE_LOG_INTERVAL) {
-      const avgUpdateTime = this.updateTimes.reduce((a, b) => a + b, 0) / this.updateTimes.length;
-      const maxUpdateTime = Math.max(...this.updateTimes);
-      let slowUpdates = 0;
-      for (const time of this.updateTimes) {
-        if (time > TICK_RATE_MS) {
-          slowUpdates++;
-        }
-      }
-      console.log(`Performance stats:
-        Avg update time: ${avgUpdateTime.toFixed(2)}ms
-        Max update time: ${maxUpdateTime.toFixed(2)}ms
-        Total Entities: ${this.entityManager.getEntities().length}
-        Updates tracked: ${this.updateTimes.length}
-        Slow updates: ${slowUpdates} (${((slowUpdates / this.updateTimes.length) * 100).toFixed(
-        1
-      )}%)
-      `);
-
-      // Reset tracking
-      this.updateTimes = [];
-      this.lastPerformanceLog = currentTime;
     }
   }
 

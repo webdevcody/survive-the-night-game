@@ -16,7 +16,6 @@ export const ITEM_TYPES = [
   "landmine",
   "grenade",
   "coin",
-  "fire_extinguisher",
   "bolt_action_rifle",
   "ak47",
   "grenade_launcher",

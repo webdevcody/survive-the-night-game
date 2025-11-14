@@ -323,10 +323,6 @@ export const assetsMap = {
       config.assets.spritePositions,
       config.assets.sheet || "default"
     );
-    // Debug: Log created assets for weapons
-    if (config.id === "knife" || config.id === "pistol") {
-      console.log(`${config.id} assets created:`, Object.keys(assets));
-    }
     return assets;
   }),
   // Auto-generate all item assets from registry

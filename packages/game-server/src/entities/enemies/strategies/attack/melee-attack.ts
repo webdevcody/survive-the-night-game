@@ -27,7 +27,22 @@ export class MeleeAttackStrategy implements AttackStrategy {
   }
 
   update(zombie: BaseEnemy, _deltaTime: number): void {
-    if (!zombie.getAttackCooldown().isReady()) return;
+    // Get performance tracker for detailed analytics
+    const entityManager = zombie.getEntityManager() as any;
+    const tickPerformanceTracker = entityManager.tickPerformanceTracker;
+
+    // Track cooldown check
+    const endCooldownCheck =
+      tickPerformanceTracker?.startMethod("attackCooldownCheck", "attackStrategy") || (() => {});
+    if (!zombie.getAttackCooldown().isReady()) {
+      endCooldownCheck();
+      return;
+    }
+    endCooldownCheck();
+
+    // Track entity query
+    const endEntityQuery =
+      tickPerformanceTracker?.startMethod("attackEntityQuery", "attackStrategy") || (() => {});
     const zombieCenter = zombie.getCenterPosition();
     const attackRadius = getConfig().combat.ZOMBIE_ATTACK_RADIUS;
 
@@ -35,7 +50,11 @@ export class MeleeAttackStrategy implements AttackStrategy {
     // Use a larger search radius to account for rectangular hitboxes
     const searchRadius = attackRadius + 20; // Add buffer for rectangular entities
     const attackableEntities = TargetingSystem.findNearbyAttackableEntities(zombie, searchRadius);
+    endEntityQuery();
 
+    // Track distance calculations
+    const endDistanceCalc =
+      tickPerformanceTracker?.startMethod("attackDistanceCalc", "attackStrategy") || (() => {});
     // Find the closest entity to attack using rectangle-to-point distance
     let closestTarget = null;
     let closestDistance = Infinity;
@@ -53,6 +72,11 @@ export class MeleeAttackStrategy implements AttackStrategy {
         closestTarget = target;
       }
     }
+    endDistanceCalc();
+
+    // Track attack execution
+    const endAttackExecution =
+      tickPerformanceTracker?.startMethod("attackExecution", "attackStrategy") || (() => {});
     // Attack the closest entity if within range
     if (
       closestTarget &&
@@ -72,5 +96,6 @@ export class MeleeAttackStrategy implements AttackStrategy {
         .broadcastEvent(new ZombieAttackedEvent(zombie.getId()));
       zombie.getAttackCooldown().reset();
     }
+    endAttackExecution();
   }
 }

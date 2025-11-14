@@ -162,20 +162,6 @@ export const ITEM_CONFIGS: Record<string, ItemConfig> = {
       price: 20,
     },
   },
-  fire_extinguisher: {
-    id: "fire_extinguisher",
-    category: "throwable",
-    assets: {
-      assetKey: "fire_extinguisher",
-      x: 112,
-      y: 0,
-      sheet: "items",
-    },
-    merchant: {
-      enabled: true,
-      price: 5,
-    },
-  },
   torch: {
     id: "torch",
     category: "placeable",
