@@ -10,10 +10,10 @@ export class Entity<TSerializableFields extends readonly string[] = readonly str
 {
   private readonly id: string;
   private readonly type: EntityType;
-  protected extensions: Extension[] = [];
-  private extensionTypes: Set<ExtensionCtor> = new Set(); // Fast O(1) lookup for hasExt
+  protected extensions: Map<ExtensionCtor, Extension> = new Map();
   private updatableExtensions: Extension[] = []; // Extensions that have an update method
   private dirtyExtensions: Set<Extension> = new Set(); // Track which extensions are dirty
+  private dirty: boolean = false; // Entity-level dirty flag for O(1) lookup
   private readonly gameManagers: IGameManagers;
   private markedForRemoval = false;
   private removedExtensions: string[] = []; // Track removed extensions
@@ -30,7 +30,7 @@ export class Entity<TSerializableFields extends readonly string[] = readonly str
     this.id = gameManagers.getEntityManager().generateEntityId();
     this.gameManagers = gameManagers;
     this.type = type;
-    this.extensions = [];
+    this.extensions = new Map();
   }
 
   public setMarkedForRemoval(isMarkedForRemoval: boolean) {
@@ -62,10 +62,36 @@ export class Entity<TSerializableFields extends readonly string[] = readonly str
     return this.gameManagers.getEntityManager();
   }
 
+  /**
+   * Notify the entity state tracker that this entity is dirty.
+   * This is called automatically when the entity becomes dirty.
+   */
+  private notifyTrackerDirty(): void {
+    try {
+      const tracker = this.gameManagers.getEntityManager().getEntityStateTracker();
+      tracker.trackDirtyEntity(this);
+    } catch (error) {
+      // Entity manager or tracker may not be initialized yet (e.g., during construction)
+      // This is fine - the entity will be tracked when it's added to the entity manager
+    }
+  }
+
+  /**
+   * Notify the entity state tracker that this entity is no longer dirty.
+   * This is called automatically when dirty flags are cleared.
+   */
+  private notifyTrackerClean(): void {
+    try {
+      const tracker = this.gameManagers.getEntityManager().getEntityStateTracker();
+      tracker.untrackDirtyEntity(this);
+    } catch (error) {
+      // Entity manager or tracker may not be initialized yet
+      // This is fine - nothing to clean up if not tracked
+    }
+  }
+
   public addExtension(extension: Extension) {
-    this.extensions.push(extension);
-    // Add the extension's constructor to the Set for fast lookup
-    this.extensionTypes.add(extension.constructor as ExtensionCtor);
+    this.extensions.set(extension.constructor as ExtensionCtor, extension);
     // Track extensions with update methods
     if ("update" in extension && typeof (extension as any).update === "function") {
       this.updatableExtensions.push(extension);
@@ -73,14 +99,17 @@ export class Entity<TSerializableFields extends readonly string[] = readonly str
     // Mark new extensions as dirty (they need to be sent to clients)
     extension.markDirty();
     this.dirtyExtensions.add(extension);
+    // Mark entity as dirty when new extensions are added (entity structure changed)
+    if (!this.dirty) {
+      this.dirty = true;
+      this.notifyTrackerDirty();
+    }
   }
 
   public removeExtension(extension: Extension) {
-    const index = this.extensions.indexOf(extension);
-    if (index > -1) {
-      this.extensions.splice(index, 1);
-      // Remove from the Set
-      this.extensionTypes.delete(extension.constructor as ExtensionCtor);
+    const constructor = extension.constructor as ExtensionCtor;
+    if (this.extensions.has(constructor)) {
+      this.extensions.delete(constructor);
       // Remove from updatable extensions if present
       const updatableIndex = this.updatableExtensions.indexOf(extension);
       if (updatableIndex > -1) {
@@ -93,11 +122,16 @@ export class Entity<TSerializableFields extends readonly string[] = readonly str
       if (type) {
         this.removedExtensions.push(type);
       }
+      // Mark entity as dirty when extensions are removed (entity structure changed)
+      if (!this.dirty) {
+        this.dirty = true;
+        this.notifyTrackerDirty();
+      }
     }
   }
 
   public getExtensions(): Extension[] {
-    return this.extensions;
+    return Array.from(this.extensions.values());
   }
 
   public getUpdatableExtensions(): Extension[] {
@@ -109,14 +143,9 @@ export class Entity<TSerializableFields extends readonly string[] = readonly str
   }
 
   public isDirty(): boolean {
-    // Check if any extension is dirty
-    for (const extension of this.extensions) {
-      if (extension.isDirty()) {
-        return true;
-      }
-    }
-    // Also check if there are removed extensions (entity structure changed)
-    return this.removedExtensions.length > 0;
+    // Constant-time O(1) check using entity-level dirty flag
+    // Extensions bubble up their dirty state via markExtensionDirty()
+    return this.dirty;
   }
 
   public getDirtyExtensions(): Extension[] {
@@ -131,6 +160,10 @@ export class Entity<TSerializableFields extends readonly string[] = readonly str
     }
     this.dirtyExtensions.clear();
     this.dirtyFields.clear();
+    if (this.dirty) {
+      this.dirty = false;
+      this.notifyTrackerClean();
+    }
   }
 
   /**
@@ -139,6 +172,11 @@ export class Entity<TSerializableFields extends readonly string[] = readonly str
    */
   protected markFieldDirty(fieldName: TSerializableFields[number]): void {
     this.dirtyFields.add(fieldName);
+    // Mark entity as dirty when a field is marked dirty
+    if (!this.dirty) {
+      this.dirty = true;
+      this.notifyTrackerDirty();
+    }
   }
 
   /**
@@ -150,24 +188,21 @@ export class Entity<TSerializableFields extends readonly string[] = readonly str
   }
 
   public markExtensionDirty(extension: Extension): void {
-    // Just add to dirty set - extension already marked itself dirty before calling this
+    // Extension already marked itself dirty before calling this
+    // Bubble up dirty state to entity level for O(1) lookup
     this.dirtyExtensions.add(extension);
+    if (!this.dirty) {
+      this.dirty = true;
+      this.notifyTrackerDirty();
+    }
   }
 
   public hasExt<T>(ext: ExtensionCtor<T>): boolean {
-    return this.extensionTypes.has(ext);
+    return this.extensions.has(ext);
   }
 
   public getExt<T>(ext: ExtensionCtor<T>): T {
-    // Fast path: if we know the extension exists, find it directly
-    if (this.extensionTypes.has(ext)) {
-      const extension = this.extensions.find((e) => e instanceof ext);
-      if (extension) {
-        return extension as T;
-      }
-    }
-    // Fallback for inheritance cases
-    const extension = this.extensions.find((e) => e instanceof ext);
+    const extension = this.extensions.get(ext);
     if (!extension) {
       throw new Error(`Extension ${(ext as any).type} not found`);
     }
@@ -178,7 +213,7 @@ export class Entity<TSerializableFields extends readonly string[] = readonly str
     const serialized: RawEntity = {
       id: this.id,
       type: this.type,
-      extensions: this.extensions
+      extensions: Array.from(this.extensions.values())
         .map((ext) => {
           if (onlyDirty) {
             // Only serialize dirty extensions

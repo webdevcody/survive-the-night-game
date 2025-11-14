@@ -370,9 +370,6 @@ export class GameServer {
       // Reset tracking
       this.updateTimes = [];
       this.lastPerformanceLog = currentTime;
-
-      this.performanceTracker.printAllStats();
-      this.entityManager.printUpdateExtensionsTiming();
     }
   }
 

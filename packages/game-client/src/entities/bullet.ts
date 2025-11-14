@@ -65,6 +65,9 @@ export class BulletClient extends ClientEntityBase implements IClientEntity, Ren
     );
     ctx.fill();
 
-    debugDrawHitbox(ctx, this.getExt(ClientCollidable).getHitBox(), "red");
+    // Only draw hitbox if collidable extension exists
+    if (this.hasExt(ClientCollidable)) {
+      debugDrawHitbox(ctx, this.getExt(ClientCollidable).getHitBox(), "red");
+    }
   }
 }

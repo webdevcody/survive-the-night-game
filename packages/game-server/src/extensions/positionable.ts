@@ -35,7 +35,9 @@ export default class Positionable implements Extension {
   }
 
   public getCenterPosition(): Vector2 {
-    return this.size.div(2).add(this.position);
+    // Avoid allocation of a new Vector2 for (size/2) by reusing arithmetic
+    // x_center = position.x + size.x/2, y_center = position.y + size.y/2
+    return new Vector2(this.position.x + this.size.x / 2, this.position.y + this.size.y / 2);
   }
 
   public getPosition(): Vector2 {

@@ -1,5 +1,25 @@
 [
   {
+    "version": "0.11.5",
+    "date": "2025-11-13",
+    "changes": [
+      "Optimized entity dirty tracking - implemented O(1) lookup with entity-level dirty flag instead of checking all extensions",
+      "Optimized extension storage - changed from array to Map for O(1) hasExt() and getExt() lookups",
+      "Optimized entity lookup - added Map for O(1) getEntityById() instead of O(n) array search",
+      "Fixed input crash bug - added null/undefined checks for previousInput in facing and aim angle comparisons",
+      "Fixed client rendering crash - added extension existence check before accessing ClientCollidable in BulletClient",
+      "Fixed player initialization - ensured input is always defined with fallback to default values",
+      "Simplified zombie targeting - removed unused filterTypes parameters from findNearbyAttackableEntities and findClosestAttackableEntity",
+      "Refactored grenade initialization - replaced array find() with hasExt/getExt pattern for consistency",
+      "Optimized player interaction - cached position/radius, pre-calculated distances, and removed redundant filters",
+      "Fixed OneTimeTrigger distance calculation - changed from getPosition() to getCenterPosition() for accurate trigger detection",
+      "Optimized Positionable.getCenterPosition() - reduced Vector2 allocations by computing center directly",
+      "Integrated EntityStateTracker - added notifyTrackerDirty() and notifyTrackerClean() for automatic dirty entity tracking",
+      "Fixed entity removal cleanup - corrected expire logic in entitiesToRemove splice condition",
+      "Removed performance timing tracking - cleaned up updateExtensionsTiming Map and related code"
+    ]
+  },
+  {
     "version": "0.11.4",
     "date": "2025-11-13",
     "changes": [

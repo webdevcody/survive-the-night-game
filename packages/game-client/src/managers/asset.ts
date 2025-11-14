@@ -315,17 +315,6 @@ import "@shared/entities";
 const weaponConfigs = weaponRegistry.getAll();
 const itemConfigs = itemRegistry.getAll();
 
-// Debug: Log if weapons aren't being found
-if (weaponConfigs.length === 0) {
-  console.warn("No weapon configs found when generating assets. Weapons may not render correctly.");
-} else {
-  console.log(`Found ${weaponConfigs.length} weapon configs when generating assets`);
-  console.log(
-    "Weapon IDs found:",
-    weaponConfigs.map((c) => c.id)
-  );
-}
-
 export const assetsMap = {
   // Auto-generate all weapon assets from registry
   ...mergeAssetsFromConfigs(weaponConfigs, (config) => {

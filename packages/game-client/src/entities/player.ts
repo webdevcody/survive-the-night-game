@@ -65,7 +65,19 @@ export class PlayerClient extends ClientEntity implements IClientEntity, Rendera
     super(data, imageLoader);
     this.isCrafting = data.isCrafting;
     this.activeItem = data.activeItem;
-    this.input = data.input;
+    // Ensure input is always defined, fallback to default if missing
+    this.input = data.input || {
+      facing: Direction.Right,
+      inventoryItem: 1,
+      dx: 0,
+      dy: 0,
+      interact: false,
+      fire: false,
+      drop: false,
+      consume: false,
+      consumeItemType: null,
+      sprint: false,
+    };
     this.skin = data.skin || SKIN_TYPES.DEFAULT;
     this.kills = data.kills || 0;
     this.ping = data.ping || 0;

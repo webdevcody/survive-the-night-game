@@ -73,21 +73,9 @@ export class TargetingSystem {
    * Finds nearby entities that can be attacked (have Destructible extension).
    * Filters out survivors in special biomes and entities without Destructible.
    */
-  static findNearbyAttackableEntities(
-    zombie: BaseEnemy,
-    searchRadius: number,
-    filterTypes?: EntityType[]
-  ): TargetResult[] {
+  static findNearbyAttackableEntities(zombie: BaseEnemy, searchRadius: number): TargetResult[] {
     const zombiePos = zombie.getCenterPosition();
-    // const attackableTypes = filterTypes || [
-    //   Entities.WALL,
-    //   Entities.PLAYER,
-    //   Entities.SENTRY_GUN,
-    //   Entities.CAR,
-    //   Entities.SURVIVOR,
-    // ];
 
-    // Use spatial grid to efficiently find nearby entities
     const nearbyEntities = zombie
       .getEntityManager()
       .getNearbyEntities(zombiePos, searchRadius, ATTACKABLE_TYPES);
@@ -110,12 +98,8 @@ export class TargetingSystem {
    * Finds the closest attackable entity within search radius.
    * Returns the closest entity, its position, and distance.
    */
-  static findClosestAttackableEntity(
-    zombie: BaseEnemy,
-    searchRadius: number,
-    filterTypes?: EntityType[]
-  ): TargetResult | null {
-    const attackableEntities = this.findNearbyAttackableEntities(zombie, searchRadius, filterTypes);
+  static findClosestAttackableEntity(zombie: BaseEnemy, searchRadius: number): TargetResult | null {
+    const attackableEntities = this.findNearbyAttackableEntities(zombie, searchRadius);
 
     if (attackableEntities.length === 0) {
       return null;

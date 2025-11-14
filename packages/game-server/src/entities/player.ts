@@ -420,44 +420,40 @@ export class Player extends Entity<typeof PLAYER_SERIALIZABLE_FIELDS> {
 
     if (this.interactCooldown.isReady()) {
       this.interactCooldown.reset();
+
+      // Cache position and radius once
+      const playerPos = this.getCenterPosition();
+      const maxRadius = getConfig().player.MAX_INTERACT_RADIUS;
+
+      // Get nearby entities (already filtered by distance in getNearbyEntities)
       const entities = this.getEntityManager()
-        .getNearbyEntities(this.getCenterPosition(), getConfig().player.MAX_INTERACT_RADIUS)
-        .filter((entity) => {
-          return entity.hasExt(Interactive);
-        });
+        .getNearbyEntities(playerPos, maxRadius)
+        .filter((entity) => entity.hasExt(Interactive));
 
-      // First sort by type (dead players first) then by distance
-      const byPriorityAndProximity = entities
-        .sort((a, b) => {
-          // Check if entities are players and are dead
-          const aIsDeadPlayer = a.getType() === Entities.PLAYER && (a as Player).isDead();
-          const bIsDeadPlayer = b.getType() === Entities.PLAYER && (b as Player).isDead();
+      if (entities.length === 0) return;
 
-          // Dead players should come first
-          if (aIsDeadPlayer && !bIsDeadPlayer) return -1;
-          if (!aIsDeadPlayer && bIsDeadPlayer) return 1;
+      // Pre-calculate distances and dead player flags to avoid repeated calculations
+      const entityData = entities.map((entity) => {
+        const entityPos = entity.getExt(Positionable).getCenterPosition();
+        return {
+          entity,
+          distance: distance(playerPos, entityPos),
+          isDeadPlayer: entity.getType() === Entities.PLAYER && (entity as Player).isDead(),
+        };
+      });
 
-          // If both are dead players or both are not, sort by distance
-          const p1 = (a as Entity).getExt(Positionable).getCenterPosition();
-          const p2 = (b as Entity).getExt(Positionable).getCenterPosition();
-          return distance(this.getCenterPosition(), p1) - distance(this.getCenterPosition(), p2);
-        })
-        .filter((entity) => {
-          if (
-            distance(this.getCenterPosition(), entity.getExt(Positionable).getCenterPosition()) >
-            getConfig().player.MAX_INTERACT_RADIUS
-          ) {
-            return false;
-          }
-          return true;
-        });
-      if (byPriorityAndProximity.length > 0) {
-        const entity = byPriorityAndProximity[0];
-        // Double-check that entity still has Interactive extension (in case it was removed)
-        if (entity.hasExt(Interactive)) {
-          (entity as Entity).getExt(Interactive).interact(this.getId());
-        }
-      }
+      // Sort by priority (dead players first) then by distance
+      entityData.sort((a, b) => {
+        // Dead players should come first
+        if (a.isDeadPlayer && !b.isDeadPlayer) return -1;
+        if (!a.isDeadPlayer && b.isDeadPlayer) return 1;
+        // If both are dead players or both are not, sort by distance
+        return a.distance - b.distance;
+      });
+
+      // Get the closest entity (already filtered and sorted)
+      const closestEntity = entityData[0].entity;
+      closestEntity.getExt(Interactive).interact(this.getId());
     }
   }
 

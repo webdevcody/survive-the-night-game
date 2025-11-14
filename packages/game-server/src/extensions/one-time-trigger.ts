@@ -43,8 +43,8 @@ export default class OneTimeTrigger implements Extension {
     for (const entity of nearbyEntities) {
       if (!entity.hasExt(Positionable)) continue;
 
-      const entityPos = entity.getExt(Positionable).getPosition();
-      const selfPos = this.self.getExt(Positionable).getPosition();
+      const entityPos = entity.getExt(Positionable).getCenterPosition();
+      const selfPos = this.self.getExt(Positionable).getCenterPosition();
       const distance = entityPos.sub(selfPos).length();
 
       if (distance <= this.triggerRadius) {

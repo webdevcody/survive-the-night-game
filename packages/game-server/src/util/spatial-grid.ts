@@ -81,7 +81,7 @@ export class SpatialGrid {
   }
 
   private getCellCoords(position: Vector2): [number, number] {
-    return [Math.floor(position.x / this.cellSize), Math.floor(position.y / this.cellSize)];
+    return [(position.x / this.cellSize) | 0, (position.y / this.cellSize) | 0];
   }
 
   private isValidCell(x: number, y: number): boolean {
@@ -104,11 +104,24 @@ export class SpatialGrid {
 
         if (this.isValidCell(checkX, checkY)) {
           const cell = this.cells[checkY][checkX];
-          for (const entity of cell.values()) {
-            if (filterSet && !filterSet.has(entity.getType())) {
-              continue;
+          // Early exit for empty cells
+          if (cell.size === 0) {
+            continue;
+          }
+
+          // Optimize filter check: if no filter, add all entities directly
+          if (!filterSet) {
+            // No filter - add all entities from this cell
+            for (const entity of cell.values()) {
+              nearby.push(entity);
             }
-            nearby.push(entity);
+          } else {
+            // Filter exists - check each entity before adding
+            for (const entity of cell.values()) {
+              if (filterSet.has(entity.getType())) {
+                nearby.push(entity);
+              }
+            }
           }
         }
       }

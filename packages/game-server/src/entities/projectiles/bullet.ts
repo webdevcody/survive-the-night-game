@@ -124,7 +124,6 @@ export class Bullet extends Entity {
       this.updatePositions(stepDelta);
       const newStepPosition = this.getPosition();
 
-      // Check for collisions in this step
       hitSomething = this.handleIntersections(lastStepPosition, newStepPosition);
 
       // Update for next step

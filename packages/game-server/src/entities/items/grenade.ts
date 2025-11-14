@@ -35,15 +35,15 @@ export class Grenade extends Weapon {
     this.addExtension(new Updatable(this, this.updateGrenade.bind(this)));
 
     // Make grenades stackable by setting count from itemState or default
-    const carryable = this.extensions.find((ext) => ext instanceof Carryable) as Carryable;
-    if (carryable) {
+    if (this.hasExt(Carryable)) {
+      const carryable = this.getExt(Carryable);
       const count = itemState?.count ?? Grenade.DEFAULT_COUNT;
       carryable.setItemState({ count });
     }
 
     // Override Interactive callback to use merge strategy for stacking
-    const interactive = this.extensions.find((ext) => ext instanceof Interactive) as Interactive;
-    if (interactive) {
+    if (this.hasExt(Interactive)) {
+      const interactive = this.getExt(Interactive);
       interactive.onInteract((entityId: string) => {
         const carryable = this.getExt(Carryable);
         // Use helper method to preserve count when picking up dropped grenades

@@ -608,16 +608,16 @@ export class ServerSocketManager implements Broadcaster {
 
       if (removedCount === 0 && !hasGameStateChanges) {
         // No removed entities and no game state changes - check if any entities changed
-        entities = this.getEntityManager().getEntities();
-        changedEntities = entityStateTracker.getChangedEntities(entities);
+        changedEntities = entityStateTracker.getChangedEntities();
         changedCount = changedEntities.length;
         if (changedCount === 0) {
           return; // No changes to broadcast
         }
+        entities = this.getEntityManager().getEntities();
       } else {
         // We have removed entities or game state changes - need to process
         entities = this.getEntityManager().getEntities();
-        changedEntities = entityStateTracker.getChangedEntities(entities);
+        changedEntities = entityStateTracker.getChangedEntities();
         changedCount = changedEntities.length;
       }
 

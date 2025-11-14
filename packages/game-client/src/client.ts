@@ -547,11 +547,11 @@ export class GameClient {
 
         // Check if facing direction changed (for mouse aiming)
         const previousInput = player.getInput();
-        const facingChanged = previousInput.facing !== input.facing;
+        const facingChanged = previousInput?.facing !== input.facing;
         // Check if aimAngle changed (important for continuous firing while moving mouse)
         const aimAngleChanged =
-          (previousInput.aimAngle !== undefined || input.aimAngle !== undefined) &&
-          previousInput.aimAngle !== input.aimAngle;
+          (previousInput?.aimAngle !== undefined || input.aimAngle !== undefined) &&
+          previousInput?.aimAngle !== input.aimAngle;
 
         // Update local player's input immediately for responsive facing direction
         player.setInput(input);

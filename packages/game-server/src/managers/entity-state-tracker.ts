@@ -3,6 +3,7 @@ import { WaveState } from "@shared/types/wave";
 
 export class EntityStateTracker {
   private removedEntityIds: Set<string> = new Set();
+  private dirtyEntities: Set<IEntity> = new Set();
   private previousGameState: {
     dayNumber?: number;
     cycleStartTime?: number;
@@ -20,19 +21,17 @@ export class EntityStateTracker {
     this.removedEntityIds.add(entityId);
   }
 
-  public getChangedEntities(entities: IEntity[]): IEntity[] {
-    const changedEntities: IEntity[] = [];
+  public trackDirtyEntity(entity: IEntity): void {
+    this.dirtyEntities.add(entity);
+  }
 
-    for (const entity of entities) {
-      // Use dirty flag to detect changes (includes removed extensions check)
-      // New entities will have all extensions dirty, changed entities will have dirty extensions
-      // This is much faster than serialization comparison
-      if (entity.isDirty()) {
-        changedEntities.push(entity);
-      }
-    }
+  public untrackDirtyEntity(entity: IEntity): void {
+    this.dirtyEntities.delete(entity);
+  }
 
-    return changedEntities;
+  public getChangedEntities(): IEntity[] {
+    // Return entities from the tracked Set instead of looping through all entities
+    return Array.from(this.dirtyEntities);
   }
 
   public getRemovedEntityIds(): string[] {
@@ -55,6 +54,7 @@ export class EntityStateTracker {
 
   public clear(): void {
     this.removedEntityIds.clear();
+    this.dirtyEntities.clear();
     this.previousGameState = {};
   }
 

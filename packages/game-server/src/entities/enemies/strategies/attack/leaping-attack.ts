@@ -62,12 +62,7 @@ export class LeapingAttackStrategy implements AttackStrategy {
     // Normal melee attack - always attack if close enough and cooldown ready
     if (zombie.getAttackCooldown().isReady()) {
       const attackRadius = getConfig().combat.ZOMBIE_ATTACK_RADIUS;
-      const closestTarget = TargetingSystem.findClosestAttackableEntity(zombie, attackRadius, [
-        Entities.WALL,
-        Entities.PLAYER,
-        Entities.SENTRY_GUN,
-      ]);
-
+      const closestTarget = TargetingSystem.findClosestAttackableEntity(zombie, attackRadius);
       // Attack the closest entity
       if (closestTarget && closestTarget.entity.hasExt(Destructible)) {
         closestTarget.entity.getExt(Destructible).damage(zombie.getAttackDamage());
@@ -85,4 +80,3 @@ export class LeapingAttackStrategy implements AttackStrategy {
     }
   }
 }
-

@@ -28,6 +28,7 @@ const STATIC_ENTITIES: EntityType[] = [Entities.BOUNDARY, Entities.CAR];
 
 export class EntityManager implements IEntityManager {
   private entities: Entity[];
+  private entityMap: Map<string, Entity> = new Map(); // Fast lookup by ID
   private players: Player[];
   private zombies: BaseEnemy[] = [];
   private merchants: Entity[] = [];
@@ -41,13 +42,7 @@ export class EntityManager implements IEntityManager {
   private dirtyEntities: Set<Entity> = new Set();
   private entitiesInGrid: Set<Entity> = new Set();
   private entitiesToAddToGrid: Set<Entity> = new Set();
-  // Track average updateExtensions time per entity type
-  // count = number of update calls tracked (for running average)
-  // entityCount = number of entities of this type currently in game
-  private updateExtensionsTiming: Map<
-    EntityType,
-    { average: number; count: number; entityCount: number }
-  > = new Map();
+  // T
 
   constructor() {
     this.entities = [];
@@ -67,7 +62,7 @@ export class EntityManager implements IEntityManager {
   }
 
   public getEntityById(id: string): Entity | null {
-    return this.entities.find((entity) => entity.getId() === id) ?? null;
+    return this.entityMap.get(id) ?? null;
   }
 
   public hasRegisteredItem(type: ItemType): boolean {
@@ -136,6 +131,7 @@ export class EntityManager implements IEntityManager {
 
   addEntity(entity: Entity) {
     this.entities.push(entity);
+    this.entityMap.set(entity.getId(), entity);
     if (entity.getType() === Entities.PLAYER) {
       this.players.push(entity as Player);
     }
@@ -156,18 +152,6 @@ export class EntityManager implements IEntityManager {
     // Track entities with updatable extensions
     if (entity.hasUpdatableExtensions()) {
       this.updatableEntities.push(entity);
-      // Initialize entity count tracking for this type if needed
-      const entityType = entity.getType();
-      const timing = this.updateExtensionsTiming.get(entityType);
-      if (timing) {
-        timing.entityCount++;
-      } else {
-        this.updateExtensionsTiming.set(entityType, {
-          average: 0,
-          count: 0,
-          entityCount: 1,
-        });
-      }
     }
 
     // Register position change callback for entities with Positionable extension
@@ -180,6 +164,11 @@ export class EntityManager implements IEntityManager {
       if (this.entityFinder && !this.entitiesInGrid.has(entity)) {
         this.entitiesToAddToGrid.add(entity);
       }
+    }
+
+    // Track new entities if they're already dirty (new entities need to be sent to clients)
+    if (entity.isDirty()) {
+      this.entityStateTracker.trackDirtyEntity(entity);
     }
   }
 
@@ -200,22 +189,19 @@ export class EntityManager implements IEntityManager {
   }
 
   removeEntity(entityId: string) {
-    const entity = this.entities.find((it) => it.getId() === entityId);
+    const entity = this.entityMap.get(entityId);
     if (entity) {
       // Clean up tracking data
       this.dirtyEntities.delete(entity);
       this.entitiesInGrid.delete(entity);
       this.entitiesToAddToGrid.delete(entity);
+      // Untrack from entity state tracker
+      this.entityStateTracker.untrackDirtyEntity(entity);
       // Remove from updatable entities and update entity count
       const updatableIndex = this.updatableEntities.indexOf(entity);
       if (updatableIndex > -1) {
         this.updatableEntities.splice(updatableIndex, 1);
         // Decrement entity count for this type
-        const entityType = entity.getType();
-        const timing = this.updateExtensionsTiming.get(entityType);
-        if (timing && timing.entityCount > 0) {
-          timing.entityCount--;
-        }
       }
 
       // Remove from spatial grid if it's in there
@@ -224,6 +210,7 @@ export class EntityManager implements IEntityManager {
       }
     }
 
+    this.entityMap.delete(entityId);
     this.spliceWhere(this.players, (it) => it.getId() === entityId);
     this.spliceWhere(this.zombies, (it) => it.getId() === entityId);
     this.spliceWhere(this.merchants, (it) => it.getId() === entityId);
@@ -273,6 +260,8 @@ export class EntityManager implements IEntityManager {
 
       // Track entity removal before removing it
       this.entityStateTracker.trackRemoval(entity.getId());
+      // Ensure removed entities are not treated as dirty changes
+      this.entityStateTracker.untrackDirtyEntity(entity);
 
       // Clean up spatial grid tracking data
       this.dirtyEntities.delete(entity);
@@ -284,45 +273,17 @@ export class EntityManager implements IEntityManager {
       if (updatableIndex > -1) {
         this.updatableEntities.splice(updatableIndex, 1);
         // Decrement entity count for this type
-        const entityType = entity.getType();
-        const timing = this.updateExtensionsTiming.get(entityType);
-        if (timing && timing.entityCount > 0) {
-          timing.entityCount--;
-        }
       }
 
       if (this.entityFinder && entity.hasExt(Positionable)) {
         this.entityFinder.removeEntity(entity);
       }
 
-      // Clear collidable tile if this entity has Collidable extension
-      // This ensures the minimap accurately reflects removed collidables
-      // if (entity.hasExt(Collidable) && entity.hasExt(Positionable)) {
-      //   const position = entity.getExt(Positionable).getPosition();
-      //   const positionable = entity.getExt(Positionable);
-      //   const size = positionable.getSize();
-      //   const mapManager = this.getGameManagers().getMapManager();
-      //   const collidablesLayer = mapManager.getCollidablesLayer();
-
-      //   // Clear all tiles occupied by this entity (in case it's larger than one tile)
-      //   const startTileX = Math.floor(position.x / getConfig().world.TILE_SIZE);
-      //   const startTileY = Math.floor(position.y / getConfig().world.TILE_SIZE);
-      //   const endTileX = Math.floor((position.x + size.x) / getConfig().world.TILE_SIZE);
-      //   const endTileY = Math.floor((position.y + size.y) / getConfig().world.TILE_SIZE);
-
-      //   for (let tileY = startTileY; tileY <= endTileY; tileY++) {
-      //     for (let tileX = startTileX; tileX <= endTileX; tileX++) {
-      //       if (collidablesLayer[tileY] && collidablesLayer[tileY][tileX] !== undefined) {
-      //         collidablesLayer[tileY][tileX] = -1;
-      //       }
-      //     }
-      //   }
-      // }
-
       // Remove from dynamicEntities
       this.dynamicEntities.splice(i, 1);
 
-      // Remove from main entities array
+      // Remove from map and main entities array
+      this.entityMap.delete(entity.getId());
       const entityIndex = this.entities.findIndex((e) => e.getId() === entity.getId());
       if (entityIndex !== -1) {
         this.entities.splice(entityIndex, 1);
@@ -356,11 +317,12 @@ export class EntityManager implements IEntityManager {
     }
 
     // Clean up expired entries from entitiesToRemove
-    this.spliceWhere(this.entitiesToRemove, (it) => now < it.expiration);
+    this.spliceWhere(this.entitiesToRemove, (it) => now >= it.expiration);
   }
 
   clear() {
     this.entities = [];
+    this.entityMap.clear();
     this.players = [];
     this.zombies = [];
     this.merchants = [];
@@ -369,10 +331,6 @@ export class EntityManager implements IEntityManager {
     this.dirtyEntities.clear();
     this.entitiesInGrid.clear();
     this.entitiesToAddToGrid.clear();
-    // Reset entity counts in timing data
-    for (const timing of this.updateExtensionsTiming.values()) {
-      timing.entityCount = 0;
-    }
   }
 
   getNearbyEntities(position: Vector2, radius: number = 64, filterSet?: Set<EntityType>): Entity[] {
@@ -546,29 +504,7 @@ export class EntityManager implements IEntityManager {
     this.refreshSpatialGrid();
 
     for (const entity of this.updatableEntities) {
-      const startTime = performance.now();
       this.updateExtensions(entity, deltaTime);
-      const endTime = performance.now();
-      const duration = endTime - startTime;
-
-      // Track timing per entity type
-      const entityType = entity.getType();
-      const existing = this.updateExtensionsTiming.get(entityType);
-      if (existing) {
-        // Update running average: newAvg = (oldAvg * count + newValue) / (count + 1)
-        existing.count++;
-        existing.average = (existing.average * (existing.count - 1) + duration) / existing.count;
-        // Ensure entityCount is initialized (in case entity was added before tracking started)
-        if (existing.entityCount === undefined) {
-          existing.entityCount = 0;
-        }
-      } else {
-        this.updateExtensionsTiming.set(entityType, {
-          average: duration,
-          count: 1,
-          entityCount: 0, // Will be set when entity is added
-        });
-      }
     }
   }
 
@@ -671,62 +607,5 @@ export class EntityManager implements IEntityManager {
 
   getMerchantEntities(): Entity[] {
     return this.merchants;
-  }
-
-  /**
-   * Get the average updateExtensions time for a specific entity type
-   * @param entityType The entity type to get timing for
-   * @returns Average time in milliseconds, or null if no data exists
-   */
-  getUpdateExtensionsAverage(entityType: EntityType): number | null {
-    const timing = this.updateExtensionsTiming.get(entityType);
-    return timing ? timing.average : null;
-  }
-
-  /**
-   * Get all updateExtensions timing statistics grouped by entity type
-   * @returns Map of entity type to timing statistics
-   */
-  getAllUpdateExtensionsTiming(): Map<
-    EntityType,
-    { average: number; count: number; entityCount: number }
-  > {
-    return new Map(this.updateExtensionsTiming);
-  }
-
-  /**
-   * Print updateExtensions timing statistics grouped by entity type
-   * Shows average time per entity, entity count, and total impact (avg * count)
-   * Sorted by total impact to help prioritize refactoring efforts
-   */
-  printUpdateExtensionsTiming(): void {
-    if (this.updateExtensionsTiming.size === 0) {
-      console.log("[EntityManager] No updateExtensions timing data available");
-      return;
-    }
-
-    // Recalculate entity counts from current entities to ensure accuracy
-    const entityCounts = new Map<EntityType, number>();
-    for (const entity of this.updatableEntities) {
-      const entityType = entity.getType();
-      entityCounts.set(entityType, (entityCounts.get(entityType) || 0) + 1);
-    }
-
-    console.log("\n[EntityManager] updateExtensions timing by entity type:");
-    const entries = Array.from(this.updateExtensionsTiming.entries())
-      .map(([entityType, stats]) => {
-        const entityCount = entityCounts.get(entityType) || 0;
-        const totalImpact = stats.average * entityCount;
-        return { entityType, stats, entityCount, totalImpact };
-      })
-      .sort((a, b) => b.totalImpact - a.totalImpact);
-
-    for (const { entityType, stats, entityCount, totalImpact } of entries) {
-      console.log(
-        `  ${entityType}: avg ${stats.average.toFixed(
-          3
-        )}ms | entities ${entityCount} | total ${totalImpact.toFixed(3)}ms | samples ${stats.count}`
-      );
-    }
   }
 }
