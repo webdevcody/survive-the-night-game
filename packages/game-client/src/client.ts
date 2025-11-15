@@ -5,7 +5,6 @@ import { PlayerClient } from "@/entities/player";
 import { CameraManager } from "@/managers/camera";
 import { MapManager } from "@/managers/map";
 import { GameState, getEntityById, removeEntity as removeEntityFromState } from "@/state";
-import { InventoryBarUI } from "@/ui/inventory-bar";
 import { MerchantBuyPanel } from "@/ui/merchant-buy-panel";
 import { StorageManager } from "@/managers/storage";
 import { Hud } from "@/ui/hud";
@@ -34,6 +33,7 @@ import { distance } from "@shared/util/physics";
 import Vector2 from "@shared/util/vector2";
 import { getAssetSpriteInfo } from "@/managers/asset";
 import { PlacementManager } from "@/managers/placement";
+import { isWeapon, ItemType } from "@shared/util/inventory";
 
 export class GameClient {
   private ctx: CanvasRenderingContext2D;
@@ -70,7 +70,6 @@ export class GameClient {
   private renderer: Renderer;
   private hud: Hud;
   private merchantBuyPanel: MerchantBuyPanel;
-  private hotbar: InventoryBarUI;
   private gameOverDialog: GameOverDialogUI;
 
   // State
@@ -115,8 +114,8 @@ export class GameClient {
       const y = (e.clientY - rect.top) * scaleY;
 
       // Update inventory bar hover state
-      if (this.hotbar) {
-        this.hotbar.updateMousePosition(x, y, canvas.width, canvas.height);
+      if (this.hud) {
+        this.hud.updateMousePosition(x, y, canvas.width, canvas.height);
       }
 
       // Update input manager mouse position for aiming
@@ -143,14 +142,8 @@ export class GameClient {
       const y = (e.clientY - rect.top) * scaleY;
 
       // Handle UI clicks (inventory bar, HUD mute button, etc.)
-      // Check inventory bar first
-      if (this.hotbar && this.hotbar.handleClick(x, y, canvas.width, canvas.height)) {
-        this.placementManager?.skipNextClick();
-        return; // Click was handled by inventory bar
-      }
-
-      // Handle HUD clicks (like mute button)
-      if (this.hud && this.hud.handleClick(x, y, canvas.height)) {
+      // HUD handles both hotbar and other UI clicks
+      if (this.hud && this.hud.handleClick(x, y, canvas.width, canvas.height)) {
         this.placementManager?.skipNextClick();
         return; // Click was handled by HUD
       }
@@ -196,7 +189,6 @@ export class GameClient {
 
     this.mapManager = new MapManager(this);
     this.gameOverDialog = new GameOverDialogUI();
-    this.hud = new Hud(this.mapManager, this.soundManager, this.assetManager, this.gameOverDialog);
 
     // TODO: refactor to use event emitter
     this.merchantBuyPanel = new MerchantBuyPanel(this.assetManager, {
@@ -331,7 +323,14 @@ export class GameClient {
       },
     });
 
-    this.hotbar = new InventoryBarUI(this.assetManager, this.inputManager, getInventory);
+    // Create HUD after inputManager is initialized
+    this.hud = new Hud(
+      this.mapManager,
+      this.soundManager,
+      this.assetManager,
+      this.gameOverDialog,
+      this.inputManager
+    );
 
     this.gameState = {
       startedAt: Date.now(),
@@ -350,13 +349,14 @@ export class GameClient {
       phaseDuration: getConfig().wave.FIRST_WAVE_DELAY,
       totalZombies: 0,
       crafting: false,
+      // Server time synchronization
+      serverTimeOffset: 0, // Will be calculated when receiving game state updates
     };
 
     this.renderer = new Renderer(
       this.ctx,
       this.gameState,
       this.mapManager,
-      this.hotbar,
       this.hud,
       this.merchantBuyPanel,
       this.gameOverDialog,
@@ -916,16 +916,6 @@ export class GameClient {
    * Check if an item type is a weapon that can be fired
    */
   private isWeaponItem(itemType: string): boolean {
-    const weapons = [
-      "knife",
-      "shotgun",
-      "pistol",
-      "bolt_action_rifle",
-      "ak47",
-      "grenade",
-      "grenade_launcher",
-      "flamethrower",
-    ];
-    return weapons.includes(itemType);
+    return isWeapon(itemType as ItemType);
   }
 }

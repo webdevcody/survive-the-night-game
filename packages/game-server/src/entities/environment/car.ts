@@ -32,7 +32,7 @@ export class Car extends Entity {
         .onDamaged(() => this.onDamaged())
         .onDeath(() => this.onDeath())
     );
-    this.addExtension(new Groupable(this, "car"));
+    this.addExtension(new Groupable(this, "friendly"));
     this.addExtension(new Static(this));
     this.addExtension(
       new Interactive(this)
@@ -79,9 +79,7 @@ export class Car extends Entity {
       if (destructible.getHealth() < destructible.getMaxHealth()) {
         destructible.heal(1);
         // Broadcast repair event so clients can play sound
-        this.getGameManagers()
-          .getBroadcaster()
-          .broadcastEvent(new CarRepairEvent(this.getId()));
+        this.getGameManagers().getBroadcaster().broadcastEvent(new CarRepairEvent(this.getId()));
       }
     }
   }

@@ -91,10 +91,12 @@ export class EntityManager implements IEntityManager {
       // Custom entities may accept itemState as second parameter
       // Try with state first, fallback to without if constructor doesn't accept it
       try {
-        return new overrideConstructor(this.getGameManagers(), item.state);
+        const entity = new overrideConstructor(this.getGameManagers(), item.state);
+        return entity;
       } catch (e) {
         // If constructor doesn't accept state, try without
-        return new overrideConstructor(this.getGameManagers());
+        const entity = new overrideConstructor(this.getGameManagers());
+        return entity;
       }
     }
 

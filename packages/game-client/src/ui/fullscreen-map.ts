@@ -2,6 +2,7 @@ import { GameState } from "@/state";
 import { getPlayer } from "@/util/get-player";
 import { ClientPositionable } from "@/extensions/positionable";
 import { CrateClient } from "@/entities/items/crate";
+import { SurvivorClient } from "@/entities/environment/survivor";
 import { MapManager } from "@/managers/map";
 import { getConfig } from "@shared/config";
 import { ClientIlluminated } from "@/extensions/illuminated";
@@ -214,6 +215,18 @@ export class FullScreenMap {
 
     // Draw crate indicators (after fog of war so they're always visible)
     this.renderCrateIndicators(
+      ctx,
+      gameState,
+      playerPos,
+      zoom,
+      centerX,
+      centerY,
+      mapWidth,
+      mapHeight
+    );
+
+    // Draw survivor indicators (after fog of war so they're always visible)
+    this.renderSurvivorIndicators(
       ctx,
       gameState,
       playerPos,
@@ -590,6 +603,72 @@ export class FullScreenMap {
       ctx.strokeStyle = "white";
       ctx.lineWidth = 2 * Math.max(0.5, zoom);
       ctx.strokeRect(mapX - halfIcon, mapY - halfIcon, iconSize, iconSize);
+    }
+  }
+
+  private renderSurvivorIndicators(
+    ctx: CanvasRenderingContext2D,
+    gameState: GameState,
+    playerPos: { x: number; y: number },
+    zoom: number,
+    centerX: number,
+    centerY: number,
+    mapWidth: number,
+    mapHeight: number
+  ): void {
+    const maxDistanceSquared = ((mapWidth / zoom) ** 2 + (mapHeight / zoom) ** 2) / 4;
+
+    // Loop through all entities to find survivors
+    for (const entity of gameState.entities) {
+      if (!(entity instanceof SurvivorClient)) continue;
+      if (!entity.hasExt(ClientPositionable)) continue;
+
+      const positionable = entity.getExt(ClientPositionable);
+      const position = positionable.getCenterPosition();
+
+      const relativeX = position.x - playerPos.x;
+      const relativeY = position.y - playerPos.y;
+
+      const distanceSquared = relativeX * relativeX + relativeY * relativeY;
+      if (distanceSquared > maxDistanceSquared) continue;
+
+      const mapX = centerX + relativeX * zoom;
+      const mapY = centerY + relativeY * zoom;
+
+      // Draw survivor indicator with green circle
+      const iconSize = 24 * Math.max(0.5, zoom);
+      const halfIcon = iconSize / 2;
+
+      // Draw green circle around survivor first
+      const circleRadius = 40 * Math.max(0.5, zoom);
+      ctx.strokeStyle = "rgba(50, 255, 50, 0.8)";
+      ctx.lineWidth = 2 * Math.max(0.5, zoom);
+      ctx.beginPath();
+      ctx.arc(mapX, mapY, circleRadius, 0, Math.PI * 2);
+      ctx.stroke();
+
+      // Draw inner filled circle for visibility
+      ctx.fillStyle = "rgba(50, 255, 50, 0.15)";
+      ctx.beginPath();
+      ctx.arc(mapX, mapY, circleRadius, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Draw survivor icon (simple person shape)
+      ctx.fillStyle = "#4CAF50";
+      ctx.beginPath();
+      // Head (circle)
+      ctx.arc(mapX, mapY - halfIcon / 2, iconSize / 4, 0, Math.PI * 2);
+      ctx.fill();
+      // Body (rectangle)
+      ctx.fillRect(mapX - iconSize / 6, mapY - iconSize / 6, iconSize / 3, iconSize / 2);
+
+      // Draw white border around icon for visibility
+      ctx.strokeStyle = "white";
+      ctx.lineWidth = 2 * Math.max(0.5, zoom);
+      ctx.beginPath();
+      ctx.arc(mapX, mapY - halfIcon / 2, iconSize / 4, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.strokeRect(mapX - iconSize / 6, mapY - iconSize / 6, iconSize / 3, iconSize / 2);
     }
   }
 

@@ -1,11 +1,11 @@
 import { BaseEnemy } from "../base-enemy";
 import { IEntity } from "@/entities/types";
 import { EntityType } from "@/types/entity";
-import { Entities, ATTACKABLE_TYPES, FRIENDLY_TYPES } from "@/constants";
+import { ATTACKABLE_TYPES, FRIENDLY_TYPES } from "@/constants";
 import Vector2 from "@/util/vector2";
 import Positionable from "@/extensions/positionable";
 import Destructible from "@/extensions/destructible";
-import { MapManager } from "@/managers/map-manager";
+import Groupable from "@/extensions/groupable";
 
 export interface TargetResult {
   entity: IEntity;
@@ -19,8 +19,9 @@ export interface TargetResult {
  */
 export class TargetingSystem {
   /**
-   * Finds the closest friendly entity (car, player, or survivor) within search radius.
-   * Automatically filters out survivors in special biomes.
+   * Finds the closest friendly entity within search radius.
+   * Filters entities by Groupable extension with "friendly" group.
+   * This ensures only rescued survivors and other friendly entities are targeted.
    */
   static findClosestFriendlyEntity(
     zombie: BaseEnemy,
@@ -28,12 +29,13 @@ export class TargetingSystem {
     filterTypes?: EntityType[]
   ): TargetResult | null {
     const zombiePos = zombie.getCenterPosition();
-    const friendlyTypesSet = filterTypes ? new Set<EntityType>(filterTypes) : FRIENDLY_TYPES;
+    // Use a broad filter for performance, then filter by group
+    const typesSet = filterTypes ? new Set<EntityType>(filterTypes) : FRIENDLY_TYPES;
 
-    // Use spatial grid to efficiently find nearby friendly entities
+    // Use spatial grid to efficiently find nearby entities
     const nearbyEntities = zombie
       .getEntityManager()
-      .getNearbyEntities(zombiePos, searchRadius, friendlyTypesSet);
+      .getNearbyEntities(zombiePos, searchRadius, typesSet);
 
     let closestEntity: IEntity | null = null;
     let closestPosition: Vector2 | null = null;
@@ -42,14 +44,9 @@ export class TargetingSystem {
     for (const entity of nearbyEntities) {
       if (!entity.hasExt(Positionable)) continue;
 
-      // Skip survivors in special biomes (they are invincible there)
-      if (entity.getType() === Entities.SURVIVOR) {
-        const positionable = entity.getExt(Positionable);
-        const entityCenterPos = positionable.getCenterPosition();
-        const mapManager = zombie.getGameManagers().getMapManager() as MapManager;
-        if (mapManager.isPositionInSpecialBiome(entityCenterPos)) {
-          continue; // Skip this survivor - they're in a special biome and invincible
-        }
+      // Filter by Groupable extension - only target entities in "friendly" group
+      if (!entity.hasExt(Groupable) || entity.getExt(Groupable).getGroup() !== "friendly") {
+        continue;
       }
 
       const position = entity.getExt(Positionable).getCenterPosition();

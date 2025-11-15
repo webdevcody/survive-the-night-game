@@ -12,6 +12,11 @@ export const combatConfig = {
   KNIFE_ATTACK_RANGE: 26,
 
   /**
+   * Baseball bat melee attack range in pixels
+   */
+  BASEBALL_BAT_ATTACK_RANGE: 40,
+
+  /**
    * Zombie attack radius in pixels
    */
   ZOMBIE_ATTACK_RADIUS: 18,

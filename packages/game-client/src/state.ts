@@ -18,6 +18,8 @@ export type GameState = {
   phaseDuration: number;
   totalZombies?: number;
   crafting: boolean;
+  // Server time synchronization
+  serverTimeOffset: number; // Offset in milliseconds: clientTime - serverTime
 };
 
 export function getEntityById(gameState: GameState, id: string): ClientEntityBase | undefined {

@@ -4,6 +4,7 @@ import { WeaponConfig } from "./weapon-registry";
 export const WEAPON_CONFIGS: Record<string, WeaponConfig> = {
   knife: {
     id: "knife",
+    type: "melee",
     stats: {
       damage: 1,
       pushDistance: 12,
@@ -24,8 +25,32 @@ export const WEAPON_CONFIGS: Record<string, WeaponConfig> = {
       chance: 0.003,
     },
   },
+  baseball_bat: {
+    id: "baseball_bat",
+    type: "melee",
+    stats: {
+      damage: 2,
+      pushDistance: 12,
+      cooldown: 0.8,
+    },
+    assets: {
+      assetPrefix: "baseball_bat",
+      spritePositions: {
+        right: { x: 80, y: 32 },
+        down: { x: 112, y: 32 },
+        up: { x: 96, y: 32 },
+      },
+      sheet: "items",
+    },
+    sound: "knife_swing",
+    spawn: {
+      enabled: true,
+      chance: 0.003,
+    },
+  },
   pistol: {
     id: "pistol",
+    type: "ranged",
     stats: {
       cooldown: 0.3,
     },
@@ -46,6 +71,7 @@ export const WEAPON_CONFIGS: Record<string, WeaponConfig> = {
   },
   shotgun: {
     id: "shotgun",
+    type: "ranged",
     stats: {
       spreadAngle: 8,
       cooldown: 0.8,
@@ -67,6 +93,7 @@ export const WEAPON_CONFIGS: Record<string, WeaponConfig> = {
   },
   bolt_action_rifle: {
     id: "bolt_action_rifle",
+    type: "ranged",
     stats: {
       cooldown: 2.0,
     },
@@ -87,6 +114,7 @@ export const WEAPON_CONFIGS: Record<string, WeaponConfig> = {
   },
   ak47: {
     id: "ak47",
+    type: "ranged",
     stats: {
       cooldown: 0.08,
     },
@@ -107,6 +135,7 @@ export const WEAPON_CONFIGS: Record<string, WeaponConfig> = {
   },
   grenade_launcher: {
     id: "grenade_launcher",
+    type: "ranged",
     stats: {
       cooldown: 1.0,
     },
@@ -123,6 +152,7 @@ export const WEAPON_CONFIGS: Record<string, WeaponConfig> = {
   },
   flamethrower: {
     id: "flamethrower",
+    type: "ranged",
     stats: {
       cooldown: 0.1, // Very fast cooldown for continuous fire
     },

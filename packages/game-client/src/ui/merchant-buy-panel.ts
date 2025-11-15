@@ -6,6 +6,7 @@ import { Z_INDEX } from "@shared/map";
 import { getConfig, type MerchantShopItem } from "@shared/config";
 import { ITEM_CONFIGS } from "@shared/entities/item-configs";
 import { ClientResourcesBag } from "@/extensions";
+import { formatDisplayName } from "@/util/format";
 
 const MERCHANT_BUY_PANEL_SETTINGS = {
   Container: {
@@ -218,7 +219,7 @@ export class MerchantBuyPanel implements Renderable {
       ctx.font = `${ItemText.nameSize}px "Courier New"`;
       ctx.textAlign = "center";
       ctx.textBaseline = "bottom";
-      const itemName = shopItem.itemType.replace(/_/g, " ");
+      const itemName = formatDisplayName(shopItem.itemType);
       ctx.fillText(itemName, itemX + Item.width / 2, itemY + Item.height - Item.padding - 30);
 
       // Draw price with coin icon

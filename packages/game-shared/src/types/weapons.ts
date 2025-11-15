@@ -2,6 +2,7 @@ import { Entities } from "@/constants";
 
 export const WEAPON_TYPES = {
   KNIFE: Entities.KNIFE,
+  BASEBALL_BAT: Entities.BASEBALL_BAT,
   SHOTGUN: Entities.SHOTGUN,
   PISTOL: Entities.PISTOL,
   GRENADE: Entities.GRENADE,

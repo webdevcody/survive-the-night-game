@@ -5,7 +5,6 @@ import { GunEmptyEvent } from "@shared/events/server-sent/gun-empty-event";
 import { GunFiredEvent } from "@shared/events/server-sent/gun-fired-event";
 import { LootEvent } from "@shared/events/server-sent/loot-event";
 import { MapEvent } from "@shared/events/server-sent/map-event";
-import { WEAPON_TYPES } from "@shared/types/weapons";
 import { weaponRegistry } from "@shared/entities";
 import { PlayerPickedUpItemEvent } from "@shared/events/server-sent/pickup-item-event";
 import { PlayerPickedUpResourceEvent } from "@shared/events/server-sent/pickup-resource-event";
@@ -163,6 +162,14 @@ export class ClientEventListener {
     const entitiesFromServer = gameStateEvent.getEntities();
     const timestamp = gameStateEvent.getTimestamp() ?? Date.now();
 
+    // Calculate server time offset: clientTime - serverTime
+    // This accounts for clock skew between client and server
+    if (gameStateEvent.getTimestamp() !== undefined) {
+      const clientTime = Date.now();
+      const serverTime = timestamp;
+      this.gameState.serverTimeOffset = clientTime - serverTime;
+    }
+
     // Update game state properties only if they are included in the update
     // Legacy day/night cycle
     if (gameStateEvent.getDayNumber() !== undefined) {
@@ -185,12 +192,12 @@ export class ClientEventListener {
     if (gameStateEvent.getWaveState() !== undefined) {
       const newWaveState = gameStateEvent.getWaveState()!;
       const oldWaveState = this.previousWaveState;
-      
+
       // Stop battle music when wave transitions from ACTIVE to PREPARATION
       if (oldWaveState === WaveState.ACTIVE && newWaveState === WaveState.PREPARATION) {
         this.gameClient.getSoundManager().stopBattleMusic();
       }
-      
+
       this.gameState.waveState = newWaveState;
       this.previousWaveState = newWaveState;
     }
@@ -426,8 +433,8 @@ export class ClientEventListener {
         .playPositionalSound(weaponConfig.sound as any, playerPosition);
     }
 
-    // Only show swipe animation for knife attacks
-    if (weaponKey === WEAPON_TYPES.KNIFE) {
+    // Show swipe animation for melee weapons
+    if (weaponConfig?.type === "melee") {
       // Use attack direction from event if available, otherwise fall back to player facing
       const attackDirection = playerAttackedEvent.getAttackDirection() ?? player.getInput().facing;
       const particle = new SwipeParticle(
@@ -537,9 +544,7 @@ export class ClientEventListener {
     if (!car || !car.hasExt(ClientPositionable)) return;
 
     const carPosition = car.getExt(ClientPositionable).getCenterPosition();
-    this.gameClient
-      .getSoundManager()
-      .playPositionalSound(SOUND_TYPES_TO_MP3.REPAIR, carPosition);
+    this.gameClient.getSoundManager().playPositionalSound(SOUND_TYPES_TO_MP3.REPAIR, carPosition);
   }
 
   onWaveStart(waveStartEvent: WaveStartEvent) {
@@ -567,21 +572,17 @@ export class ClientEventListener {
     if (!player || !player.hasExt(ClientPositionable)) return;
 
     const playerPosition = player.getExt(ClientPositionable).getCenterPosition();
-    this.gameClient
-      .getSoundManager()
-      .playPositionalSound(SOUND_TYPES_TO_MP3.CRAFT, playerPosition);
+    this.gameClient.getSoundManager().playPositionalSound(SOUND_TYPES_TO_MP3.CRAFT, playerPosition);
   }
 
   onBuild(buildEvent: BuildEvent) {
     const buildPosition = buildEvent.getPosition();
     const position = new Vector2(buildPosition.x, buildPosition.y);
     const soundType = buildEvent.getSoundType() as SoundType;
-    
+
     // Only play sound if it's a valid sound type
     if (soundType && Object.values(SOUND_TYPES_TO_MP3).includes(soundType as any)) {
-      this.gameClient
-        .getSoundManager()
-        .playPositionalSound(soundType, position);
+      this.gameClient.getSoundManager().playPositionalSound(soundType, position);
     }
   }
 

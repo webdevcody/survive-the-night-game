@@ -3,21 +3,21 @@ import { Panel, PanelSettings } from "./panel";
 import { getPlayer } from "@/util/get-player";
 import { ClientPositionable } from "@/extensions/positionable";
 import { AssetManager } from "@/managers/asset";
-import { CrateClient } from "@/entities/items/crate";
+import { SurvivorClient } from "@/entities/environment/survivor";
 
-export interface CrateIndicatorsPanelSettings extends PanelSettings {
+export interface SurvivorIndicatorsPanelSettings extends PanelSettings {
   arrowSize: number;
   arrowDistance: number;
   arrowColor: string;
-  crateSpriteSize: number;
+  survivorSpriteSize: number;
   minDistance: number; // Minimum distance before showing indicator
 }
 
-export class CrateIndicatorsPanel extends Panel {
-  private indicatorSettings: CrateIndicatorsPanelSettings;
+export class SurvivorIndicatorsPanel extends Panel {
+  private indicatorSettings: SurvivorIndicatorsPanelSettings;
   private assetManager: AssetManager;
 
-  constructor(settings: CrateIndicatorsPanelSettings, assetManager: AssetManager) {
+  constructor(settings: SurvivorIndicatorsPanelSettings, assetManager: AssetManager) {
     super(settings);
     this.indicatorSettings = settings;
     this.assetManager = assetManager;
@@ -32,25 +32,25 @@ export class CrateIndicatorsPanel extends Panel {
     const playerPos = player.getExt(ClientPositionable).getCenterPosition();
     const { width, height } = ctx.canvas;
 
-    // Find all crates in the game state
-    const crates = gameState.entities.filter(
-      (entity) => entity instanceof CrateClient && entity.hasExt(ClientPositionable)
+    // Find all survivors in the game state
+    const survivors = gameState.entities.filter(
+      (entity) => entity instanceof SurvivorClient && entity.hasExt(ClientPositionable)
     );
 
     this.resetTransform(ctx);
 
-    // Get the crate sprite
-    const crateSprite = this.assetManager.getFrameIndex("crate", 0);
+    // Get the survivor sprite
+    const survivorSprite = this.assetManager.getWithDirection("survivor", "down");
 
-    for (const crate of crates) {
-      const cratePos = crate.getExt(ClientPositionable).getCenterPosition();
+    for (const survivor of survivors) {
+      const survivorPos = survivor.getExt(ClientPositionable).getCenterPosition();
 
-      // Calculate vector from player to crate
-      const dx = cratePos.x - playerPos.x;
-      const dy = cratePos.y - playerPos.y;
+      // Calculate vector from player to survivor
+      const dx = survivorPos.x - playerPos.x;
+      const dy = survivorPos.y - playerPos.y;
       const distance = Math.sqrt(dx * dx + dy * dy);
 
-      // Skip if crate is very close (player can see it)
+      // Skip if survivor is very close (player can see it)
       if (distance < this.indicatorSettings.minDistance) continue;
 
       // Normalize direction
@@ -88,7 +88,7 @@ export class CrateIndicatorsPanel extends Panel {
         indicatorY = centerY + dirY * t;
       }
 
-      // Draw red arrow
+      // Draw arrow
       ctx.save();
       ctx.translate(indicatorX, indicatorY);
       ctx.rotate(angle);
@@ -116,20 +116,20 @@ export class CrateIndicatorsPanel extends Panel {
 
       ctx.restore();
 
-      // Draw crate sprite next to arrow
+      // Draw survivor sprite next to arrow
       const spriteOffsetX = Math.cos(angle) * (this.indicatorSettings.arrowSize + 16);
       const spriteOffsetY = Math.sin(angle) * (this.indicatorSettings.arrowSize + 16);
-      const spriteX = indicatorX + spriteOffsetX - this.indicatorSettings.crateSpriteSize / 2;
-      const spriteY = indicatorY + spriteOffsetY - this.indicatorSettings.crateSpriteSize / 2;
+      const spriteX = indicatorX + spriteOffsetX - this.indicatorSettings.survivorSpriteSize / 2;
+      const spriteY = indicatorY + spriteOffsetY - this.indicatorSettings.survivorSpriteSize / 2;
 
-      // Draw crate sprite (getFrameIndex returns a pre-cropped image)
-      if (crateSprite) {
+      // Draw survivor sprite
+      if (survivorSprite) {
         ctx.drawImage(
-          crateSprite,
+          survivorSprite,
           spriteX,
           spriteY,
-          this.indicatorSettings.crateSpriteSize,
-          this.indicatorSettings.crateSpriteSize
+          this.indicatorSettings.survivorSpriteSize,
+          this.indicatorSettings.survivorSpriteSize
         );
       }
     }
@@ -137,3 +137,4 @@ export class CrateIndicatorsPanel extends Panel {
     this.restoreContext(ctx);
   }
 }
+

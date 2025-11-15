@@ -1,7 +1,10 @@
 import { ItemState } from "@/types/entity";
+import { weaponRegistry } from "@/entities";
+import { WeaponType } from "@/types/weapons";
 
 export const ITEM_TYPES = [
   "knife",
+  "baseball_bat",
   "shotgun",
   "pistol",
   "wood",
@@ -38,6 +41,7 @@ export interface InventoryItem {
 
 export type WeaponKey =
   | "knife"
+  | "baseball_bat"
   | "shotgun"
   | "pistol"
   | "bolt_action_rifle"
@@ -69,4 +73,13 @@ export const RESOURCE_ITEMS: ReadonlySet<ItemType> = new Set(RESOURCE_ITEMS_ARRA
  */
 export function isResourceItem(itemType: ItemType): boolean {
   return RESOURCE_ITEMS.has(itemType);
+}
+
+/**
+ * Check if an item type is a weapon by looking it up in the weapon registry.
+ * This is data-driven from WEAPON_CONFIGS - any weapon added to configs
+ * will automatically be recognized here.
+ */
+export function isWeapon(itemType: ItemType): boolean {
+  return weaponRegistry.has(itemType as WeaponType);
 }

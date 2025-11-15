@@ -59,12 +59,7 @@ export class Survivor extends Entity<typeof SERIALIZABLE_FIELDS> {
     this.addExtension(
       new Collidable(this).setSize(SURVIVOR_SIZE.div(2)).setOffset(new Vector2(4, 4))
     );
-    this.addExtension(
-      new Destructible(this)
-        .setMaxHealth(SURVIVOR_MAX_HEALTH)
-        .setHealth(SURVIVOR_MAX_HEALTH)
-        .onDeath(() => this.onDeath())
-    );
+    // Don't add Destructible extension until rescued - makes survivor invincible until then
     this.addExtension(new Movable(this).setHasFriction(false));
     this.addExtension(
       new Interactive(this)
@@ -73,14 +68,12 @@ export class Survivor extends Entity<typeof SERIALIZABLE_FIELDS> {
     );
     this.addExtension(new Inventory(this, gameManagers.getBroadcaster()).addRandomItem(0.5)); // 50% chance to drop item
     this.addExtension(new Updatable(this, this.updateSurvivor.bind(this)));
-    this.addExtension(new Groupable(this, "friendly"));
+    // Don't add Groupable extension until rescued - prevents zombies from targeting unrescued survivors
   }
 
   private updateSurvivor(deltaTime: number): void {
-    const destructible = this.getExt(Destructible);
-
-    // Don't update if dead
-    if (destructible.isDead()) {
+    // Don't update if dead (only check if Destructible extension exists, i.e., if rescued)
+    if (this.hasExt(Destructible) && this.getExt(Destructible).isDead()) {
       return;
     }
 
@@ -327,6 +320,17 @@ export class Survivor extends Entity<typeof SERIALIZABLE_FIELDS> {
       this.getExt(Positionable).setPosition(campsitePos);
       this.isRescued = true;
       this.markFieldDirty("isRescued");
+
+      // Add Destructible extension now that survivor is rescued (can take damage)
+      this.addExtension(
+        new Destructible(this)
+          .setMaxHealth(SURVIVOR_MAX_HEALTH)
+          .setHealth(SURVIVOR_MAX_HEALTH)
+          .onDeath(() => this.onDeath())
+      );
+
+      // Add Groupable extension with "friendly" group so zombies can target rescued survivors
+      this.addExtension(new Groupable(this, "friendly"));
 
       // Remove interactive extension (no longer interactable)
       if (this.hasExt(Interactive)) {

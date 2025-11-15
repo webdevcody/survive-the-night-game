@@ -21,6 +21,7 @@ export interface WeaponAssetConfig {
 
 export interface WeaponConfig extends BehaviorConfigs {
   id: WeaponType;
+  type?: "melee" | "ranged"; // Weapon type: melee for close-range weapons, ranged for projectile weapons
   stats: WeaponStats;
   assets: WeaponAssetConfig;
   sound?: string; // Sound file name (without .mp3 extension) to play when weapon is fired

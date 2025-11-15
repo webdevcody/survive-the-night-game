@@ -1,12 +1,11 @@
 import { Extension, ExtensionSerialized } from "@/extensions/types";
-import { InventoryItem, ITEM_TYPES, ItemType } from "../../../game-shared/src/util/inventory";
+import { InventoryItem, ItemType, isWeapon } from "../../../game-shared/src/util/inventory";
 import { recipes, RecipeType } from "../../../game-shared/src/util/recipes";
 import { Broadcaster } from "@/managers/types";
 import { PlayerPickedUpItemEvent } from "@shared/events/server-sent/pickup-item-event";
 import Positionable from "@/extensions/positionable";
 import { IEntity } from "@/entities/types";
 import Vector2 from "@/util/vector2";
-import { WEAPON_TYPE_VALUES } from "@shared/types/weapons";
 import { getConfig } from "@/config";
 
 /**
@@ -119,11 +118,14 @@ export default class Inventory implements Extension {
   }
 
   public getActiveWeapon(activeItem: InventoryItem | null): InventoryItem | null {
-    const activeItemType = activeItem?.itemType ?? "";
-    return WEAPON_TYPE_VALUES.includes(activeItemType as any) ? activeItem : null;
+    if (!activeItem) return null;
+    return isWeapon(activeItem.itemType) ? activeItem : null;
   }
 
-  public craftRecipe(recipe: RecipeType, resources: { wood: number; cloth: number }): {
+  public craftRecipe(
+    recipe: RecipeType,
+    resources: { wood: number; cloth: number }
+  ): {
     inventory: InventoryItem[];
     resources: { wood: number; cloth: number };
     itemToDrop?: InventoryItem;

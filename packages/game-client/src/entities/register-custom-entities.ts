@@ -31,6 +31,7 @@ import { AK47AmmoClient } from "@/entities/weapons/ak47-ammo";
 import { GrenadeLauncherAmmoClient } from "@/entities/weapons/grenade-launcher-ammo";
 import { FlamethrowerAmmoClient } from "@/entities/weapons/flamethrower-ammo";
 import { KnifeClient } from "@/entities/weapons/knife";
+import { BaseballBatClient } from "@/entities/weapons/baseball-bat";
 import { PistolClient } from "@/entities/weapons/pistol";
 import { ShotgunClient } from "@/entities/weapons/shotgun";
 import { BoltActionRifleClient } from "@/entities/weapons/bolt-action-rifle";
@@ -98,6 +99,7 @@ export function registerCustomClientEntities(): void {
 
   // Weapons
   clientEntityOverrideRegistry.register("knife", KnifeClient);
+  clientEntityOverrideRegistry.register("baseball_bat", BaseballBatClient);
   clientEntityOverrideRegistry.register("pistol", PistolClient);
   clientEntityOverrideRegistry.register("shotgun", ShotgunClient);
   clientEntityOverrideRegistry.register("bolt_action_rifle", BoltActionRifleClient);

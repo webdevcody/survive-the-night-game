@@ -13,11 +13,11 @@ import { getZombieTypesSet } from "@/constants";
 import { weaponRegistry } from "@shared/entities";
 import { getConfig } from "@shared/config";
 
-export class Knife extends Weapon {
-  private config = weaponRegistry.get(WEAPON_TYPES.KNIFE)!;
+export class BaseballBat extends Weapon {
+  private config = weaponRegistry.get(WEAPON_TYPES.BASEBALL_BAT)!;
 
   constructor(gameManagers: IGameManagers) {
-    super(gameManagers, WEAPON_TYPES.KNIFE);
+    super(gameManagers, WEAPON_TYPES.BASEBALL_BAT);
   }
 
   public getCooldown(): number {
@@ -30,7 +30,7 @@ export class Knife extends Weapon {
 
     const nearbyEntities = this.getEntityManager().getNearbyEntities(
       position,
-      getConfig().combat.KNIFE_ATTACK_RANGE + 24
+      getConfig().combat.BASEBALL_BAT_ATTACK_RANGE + 24
     );
     const nearbyEnemies = nearbyEntities.filter(
       (entity) => entity.hasExt(Groupable) && entity.getExt(Groupable).getGroup() === "enemy"
@@ -45,7 +45,7 @@ export class Knife extends Weapon {
       const destructible = entity.getExt(Destructible);
       if (destructible.isDead()) return false;
 
-      if (distance > getConfig().combat.KNIFE_ATTACK_RANGE) return false;
+      if (distance > getConfig().combat.BASEBALL_BAT_ATTACK_RANGE) return false;
 
       // Check if enemy is in the attack direction
       if (attackDirection === Direction.Right && dx < 0) return false;
@@ -80,9 +80,10 @@ export class Knife extends Weapon {
       .broadcastEvent(
         new PlayerAttackedEvent({
           playerId,
-          weaponKey: WEAPON_TYPES.KNIFE,
+          weaponKey: WEAPON_TYPES.BASEBALL_BAT,
           attackDirection,
         })
       );
   }
 }
+

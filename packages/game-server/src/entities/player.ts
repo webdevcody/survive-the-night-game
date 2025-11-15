@@ -301,9 +301,18 @@ export class Player extends Entity<typeof PLAYER_SERIALIZABLE_FIELDS> {
 
     // TODO: clean this up, this feels bad and unperformant
     const weaponEntity = this.getEntityManager().createEntityFromItem(activeWeapon);
-    if (!weaponEntity) return;
+    if (!weaponEntity) {
+      console.log("createEntityFromItem returned null for", activeWeapon.itemType);
+      return;
+    }
 
     const weaponType = activeWeapon.itemType;
+    console.log(
+      "weaponType:",
+      weaponType,
+      "weaponEntity instanceof Weapon:",
+      weaponEntity instanceof Weapon
+    );
 
     // Check if there's a custom handler registered for this weapon type
     // (for weapons that can't extend Weapon class)
@@ -331,7 +340,10 @@ export class Player extends Entity<typeof PLAYER_SERIALIZABLE_FIELDS> {
     }
 
     // Handle weapons that extend Weapon class (including grenades now)
-    if (!(weaponEntity instanceof Weapon)) return;
+    if (!(weaponEntity instanceof Weapon)) {
+      console.log("weaponEntity is not instanceof Weapon, type:", weaponEntity.constructor.name);
+      return;
+    }
 
     if (this.fireCooldown === null || this.lastWeaponType !== weaponType) {
       this.fireCooldown = new Cooldown(weaponEntity.getCooldown(), true);
@@ -340,6 +352,7 @@ export class Player extends Entity<typeof PLAYER_SERIALIZABLE_FIELDS> {
 
     if (this.fireCooldown.isReady()) {
       this.fireCooldown.reset();
+      console.log("attacking with", weaponType);
       // Use aimAngle if provided (mouse aiming), otherwise fall back to facing direction
       weaponEntity.attack(
         this.getId(),

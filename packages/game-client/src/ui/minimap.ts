@@ -3,6 +3,7 @@ import { getPlayer } from "@/util/get-player";
 import { ClientPositionable } from "@/extensions/positionable";
 import { PlayerClient } from "@/entities/player";
 import { CrateClient } from "@/entities/items/crate";
+import { SurvivorClient } from "@/entities/environment/survivor";
 import { MapManager } from "@/managers/map";
 import { perfTimer } from "@shared/util/performance";
 import { getConfig } from "@shared/config";
@@ -294,6 +295,11 @@ export class Minimap {
     perfTimer.start("minimap:crates");
     this.renderCrateIndicators(ctx, gameState, playerPos, settings, top);
     perfTimer.end("minimap:crates");
+
+    // Draw survivor indicators (after fog of war so they're always visible)
+    perfTimer.start("minimap:survivors");
+    this.renderSurvivorIndicators(ctx, gameState, playerPos, settings, top);
+    perfTimer.end("minimap:survivors");
 
     // Draw radar circle border using scaled values
     ctx.strokeStyle = "white";
@@ -588,6 +594,83 @@ export class Minimap {
       ctx.strokeStyle = "white";
       ctx.lineWidth = 2;
       ctx.strokeRect(minimapX - halfIcon, minimapY - halfIcon, iconSize, iconSize);
+    }
+  }
+
+  private renderSurvivorIndicators(
+    ctx: CanvasRenderingContext2D,
+    gameState: GameState,
+    playerPos: { x: number; y: number },
+    settings: typeof MINIMAP_SETTINGS,
+    top: number
+  ): void {
+    // Calculate scaled values for survivor indicators
+    const canvasWidth = ctx.canvas.width;
+    const canvasHeight = ctx.canvas.height;
+    const scaledRight = scaleHudValue(settings.right, canvasWidth, canvasHeight);
+    const scaledSize = scaleHudValue(settings.size, canvasWidth, canvasHeight);
+    const scaledBottom = scaleHudValue(settings.bottom, canvasWidth, canvasHeight);
+    const topPos = canvasHeight - scaledBottom - scaledSize;
+    const scaledLeft = canvasWidth - scaledRight - scaledSize;
+
+    const centerX = scaledLeft + scaledSize / 2;
+    const centerY = topPos + scaledSize / 2;
+    const maxDistanceSquared = MINIMAP_RENDER_DISTANCE.ENTITIES * MINIMAP_RENDER_DISTANCE.ENTITIES;
+
+    // Loop through all entities to find survivors
+    for (const entity of gameState.entities) {
+      if (!(entity instanceof SurvivorClient)) continue;
+      if (!entity.hasExt(ClientPositionable)) continue;
+
+      const positionable = entity.getExt(ClientPositionable);
+      const position = positionable.getCenterPosition();
+
+      // Calculate relative position to player
+      const relativeX = position.x - playerPos.x;
+      const relativeY = position.y - playerPos.y;
+
+      // Early distance check using squared distance (faster than sqrt)
+      const distanceSquared = relativeX * relativeX + relativeY * relativeY;
+      if (distanceSquared > maxDistanceSquared) continue;
+
+      // Convert to minimap coordinates (centered on player) - using scaled center
+      const minimapX = centerX + relativeX * settings.scale;
+      const minimapY = centerY + relativeY * settings.scale;
+
+      // Draw survivor indicator with green circle
+      const iconSize = 16;
+      const halfIcon = iconSize / 2;
+
+      // Draw green circle around survivor first
+      const circleRadius = 24;
+      ctx.strokeStyle = "rgba(50, 255, 50, 0.9)";
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.arc(minimapX, minimapY, circleRadius, 0, Math.PI * 2);
+      ctx.stroke();
+
+      // Draw inner filled circle for visibility
+      ctx.fillStyle = "rgba(50, 255, 50, 0.15)";
+      ctx.beginPath();
+      ctx.arc(minimapX, minimapY, circleRadius, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Draw survivor icon (simple person shape)
+      ctx.fillStyle = "#4CAF50";
+      ctx.beginPath();
+      // Head (circle)
+      ctx.arc(minimapX, minimapY - halfIcon / 2, iconSize / 4, 0, Math.PI * 2);
+      ctx.fill();
+      // Body (rectangle)
+      ctx.fillRect(minimapX - iconSize / 6, minimapY - iconSize / 6, iconSize / 3, iconSize / 2);
+
+      // Draw white border around icon for visibility
+      ctx.strokeStyle = "white";
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.arc(minimapX, minimapY - halfIcon / 2, iconSize / 4, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.strokeRect(minimapX - iconSize / 6, minimapY - iconSize / 6, iconSize / 3, iconSize / 2);
     }
   }
 

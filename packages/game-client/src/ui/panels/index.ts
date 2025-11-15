@@ -13,4 +13,5 @@ export { DeathScreenPanel } from "./death-screen-panel";
 export { GameMessagesPanel } from "./game-messages-panel";
 export { MuteButtonPanel } from "./mute-button-panel";
 export { CrateIndicatorsPanel } from "./crate-indicators-panel";
+export { SurvivorIndicatorsPanel } from "./survivor-indicators-panel";
 export { ZoomControlsPanel } from "./zoom-controls-panel";

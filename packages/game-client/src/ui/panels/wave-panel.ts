@@ -26,8 +26,10 @@ export class WavePanel extends Panel {
     this.resetTransform(ctx);
 
     const { x, y, width, height } = this.waveSettings;
-    const currentTime = Date.now();
-    const elapsedTime = (currentTime - gameState.phaseStartTime) / 1000;
+    // Calculate server time to account for clock skew
+    // serverTimeOffset = clientTime - serverTime, so serverTime = clientTime - serverTimeOffset
+    const serverTime = Date.now() - gameState.serverTimeOffset;
+    const elapsedTime = (serverTime - gameState.phaseStartTime) / 1000;
     const remainingTime = Math.max(0, gameState.phaseDuration - elapsedTime);
 
     // Determine text based on wave state

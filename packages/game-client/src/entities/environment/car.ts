@@ -8,6 +8,7 @@ import { Z_INDEX } from "@shared/map";
 import { getPlayer } from "@/util/get-player";
 import { renderInteractionText } from "@/util/interaction-text";
 import { getConfig } from "@shared/config";
+import { formatDisplayName } from "@/util/format";
 
 export class CarClient extends ClientEntity implements Renderable {
   private static collidablesSheet: HTMLImageElement | null = null;
@@ -47,7 +48,8 @@ export class CarClient extends ClientEntity implements Renderable {
     const interactive = this.getExt(ClientInteractive);
 
     if (myPlayer && interactive.getDisplayName()) {
-      let text = `${interactive.getDisplayName()} (${getConfig().keybindings.INTERACT})`;
+      const displayName = formatDisplayName(interactive.getDisplayName());
+      let text = `${displayName} (${getConfig().keybindings.INTERACT})`;
 
       renderInteractionText(
         ctx,

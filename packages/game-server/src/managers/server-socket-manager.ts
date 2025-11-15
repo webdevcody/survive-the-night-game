@@ -476,6 +476,12 @@ export class ServerSocketManager implements Broadcaster {
       cycleStartTime: this.gameServer.getCycleStartTime(),
       cycleDuration: this.gameServer.getCycleDuration(),
       isDay: this.gameServer.getIsDay(),
+      // Wave system
+      waveNumber: this.gameServer.getWaveNumber(),
+      waveState: this.gameServer.getWaveState(),
+      phaseStartTime: this.gameServer.getPhaseStartTime(),
+      phaseDuration: this.gameServer.getPhaseDuration(),
+      totalZombies: this.gameServer.getTotalZombies(),
     };
     // DelayedSocket will automatically encode the payload and track bytes
     delayedSocket.emit(ServerSentEvents.GAME_STATE_UPDATE, fullState);
@@ -731,7 +737,7 @@ export class ServerSocketManager implements Broadcaster {
       const endCleanup =
         this.tickPerformanceTracker?.startMethod("broadcastCleanup", "broadcastGameState") ||
         (() => {});
-      
+
       // Log dirty entity information for diagnostics (if performance monitoring enabled)
       if (this.tickPerformanceTracker && changedCount > 0) {
         const dirtyEntityInfo = entityStateTracker.getDirtyEntityInfo();
@@ -747,7 +753,7 @@ export class ServerSocketManager implements Broadcaster {
           );
         }
       }
-      
+
       // Clear dirty flags after broadcasting (optimized loop)
       for (const entity of changedEntities) {
         entity.clearDirtyFlags();

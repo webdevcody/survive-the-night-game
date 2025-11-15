@@ -1,5 +1,5 @@
 import { ExtensionTypes } from "../../../game-shared/src/util/extension-types";
-import { InventoryItem } from "../../../game-shared/src/util/inventory";
+import { InventoryItem, isWeapon, ItemType } from "../../../game-shared/src/util/inventory";
 import { ClientExtensionSerialized } from "@/extensions/types";
 import { BaseClientExtension } from "./base-extension";
 
@@ -23,8 +23,8 @@ export class ClientInventory extends BaseClientExtension {
   }
 
   public getActiveWeapon(activeItem: InventoryItem | null): InventoryItem | null {
-    const activeKey = activeItem?.itemType ?? "";
-    return ["knife", "shotgun", "pistol"].includes(activeKey) ? activeItem : null;
+    if (!activeItem) return null;
+    return isWeapon(activeItem.itemType) ? activeItem : null;
   }
 
   public deserialize(data: ClientExtensionSerialized): this {

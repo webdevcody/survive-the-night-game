@@ -2,7 +2,6 @@ import { Renderable } from "@/entities/util";
 import { MapManager } from "@/managers/map";
 import { GameState } from "@/state";
 import { MerchantBuyPanel } from "@/ui/merchant-buy-panel";
-import { InventoryBarUI } from "@/ui/inventory-bar";
 import { Hud } from "@/ui/hud";
 import { GameOverDialogUI } from "@/ui/game-over-dialog";
 import { ParticleManager } from "./managers/particles";
@@ -12,12 +11,12 @@ import { ClientEntityBase } from "@/extensions/client-entity";
 import { getConfig } from "@shared/config";
 import { perfTimer } from "@shared/util/performance";
 import { DEBUG_PERFORMANCE } from "@shared/debug";
+import { isWeapon } from "@shared/util/inventory";
 
 export class Renderer {
   private ctx: CanvasRenderingContext2D;
   private gameState: GameState;
   private mapManager: MapManager;
-  private hotbar: InventoryBarUI;
   private hud: Hud;
   private merchantBuyPanel: MerchantBuyPanel;
   private gameOverDialog: GameOverDialogUI;
@@ -31,7 +30,6 @@ export class Renderer {
     ctx: CanvasRenderingContext2D,
     gameState: GameState,
     mapManager: MapManager,
-    hotbar: InventoryBarUI,
     hud: Hud,
     merchantBuyPanel: MerchantBuyPanel,
     gameOverDialog: GameOverDialogUI,
@@ -42,7 +40,6 @@ export class Renderer {
     this.ctx = ctx;
     this.gameState = gameState;
     this.mapManager = mapManager;
-    this.hotbar = hotbar;
     this.hud = hud;
     this.merchantBuyPanel = merchantBuyPanel;
     this.gameOverDialog = gameOverDialog;
@@ -192,7 +189,6 @@ export class Renderer {
     // Render UI without transforms
     perfTimer.start("renderUI");
     this.ctx.setTransform(1, 0, 0, 1, 0, 0);
-    this.hotbar.render(this.ctx, this.gameState);
     this.hud.render(this.ctx, this.gameState);
     // Crafting table is now rendered in React component (CraftingPanel.tsx)
     this.merchantBuyPanel.render(this.ctx, this.gameState);
@@ -250,18 +246,7 @@ export class Renderer {
     const activeItem = inventory[activeSlot - 1];
 
     // Check if active item is a weapon
-    const weapons = [
-      "knife",
-      "shotgun",
-      "pistol",
-      "bolt_action_rifle",
-      "ak47",
-      "grenade",
-      "grenade_launcher",
-      "flamethrower",
-    ];
-
-    const hasWeapon = activeItem && weapons.includes(activeItem.itemType);
+    const hasWeapon = activeItem && isWeapon(activeItem.itemType);
 
     if (!hasWeapon) return;
 

@@ -31,6 +31,7 @@ import { AK47Ammo } from "@/entities/items/ak47-ammo";
 import { GrenadeLauncherAmmo } from "@/entities/items/grenade-launcher-ammo";
 import { FlamethrowerAmmo } from "@/entities/items/flamethrower-ammo";
 import { Knife } from "@/entities/weapons/knife";
+import { BaseballBat } from "@/entities/weapons/baseball-bat";
 import { Pistol } from "@/entities/weapons/pistol";
 import { Shotgun } from "@/entities/weapons/shotgun";
 import { BoltActionRifle } from "@/entities/weapons/bolt-action-rifle";
@@ -95,6 +96,7 @@ export function registerCustomEntities(): void {
 
   // Weapons
   entityOverrideRegistry.register("knife", Knife);
+  entityOverrideRegistry.register("baseball_bat", BaseballBat);
   entityOverrideRegistry.register("pistol", Pistol);
   entityOverrideRegistry.register("shotgun", Shotgun);
   entityOverrideRegistry.register("bolt_action_rifle", BoltActionRifle);

@@ -189,8 +189,10 @@ const PROPERTY_KEYS = [
 const STRING_VALUE_KEYS = [
   // Extension types
   "inventory",
+  "baseball_bat",
   "boundary",
   "fast_zombie",
+  "campsite_fire",
   "destructible",
   "groupable",
   "positionable",

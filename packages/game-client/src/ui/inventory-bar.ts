@@ -8,10 +8,11 @@ import { getConfig } from "@shared/config";
 import { HeartsPanel } from "./panels/hearts-panel";
 import { StaminaPanel } from "./panels/stamina-panel";
 import { calculateHudScale } from "@/util/hud-scale";
+import { formatDisplayName } from "@/util/format";
 
 const HOTBAR_SETTINGS = {
   Inventory: {
-    screenMarginBottom: 16,
+    screenMarginBottom: 32,
     padding: {
       bottom: 12,
       left: 12,
@@ -120,7 +121,12 @@ export class InventoryBarUI implements Renderable {
     return Z_INDEX.UI;
   }
 
-  public updateMousePosition(x: number, y: number, canvasWidth: number, canvasHeight: number): void {
+  public updateMousePosition(
+    x: number,
+    y: number,
+    canvasWidth: number,
+    canvasHeight: number
+  ): void {
     this.mouseX = x;
     this.mouseY = y;
 
@@ -342,8 +348,8 @@ export class InventoryBarUI implements Renderable {
     const slotLeft = slotsLeft + this.hoveredSlot * (scaledSlotSize + scaledSlotsGap);
     const slotCenterX = slotLeft + scaledSlotSize / 2;
 
-    // Get item name
-    const itemName = hoveredItem.itemType;
+    // Get item name and format it
+    const itemName = formatDisplayName(hoveredItem.itemType);
 
     // Measure text for tooltip background
     const tooltipFontSize = 20 * hudScale;

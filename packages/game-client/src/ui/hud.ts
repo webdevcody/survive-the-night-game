@@ -1,4 +1,4 @@
-import { GameState } from "@/state";
+import { GameState, getEntityById } from "@/state";
 import { getPlayer } from "@/util/get-player";
 import { MapManager } from "@/managers/map";
 import { ChatWidget } from "./chat-widget";
@@ -16,10 +16,15 @@ import {
   GameMessagesPanel,
   MuteButtonPanel,
   CrateIndicatorsPanel,
+  SurvivorIndicatorsPanel,
 } from "./panels";
 import { getConfig } from "@shared/config";
 import { scaleHudValue, calculateHudScale } from "@/util/hud-scale";
 import { GameOverDialogUI } from "./game-over-dialog";
+import { InventoryBarUI } from "./inventory-bar";
+import { InputManager } from "@/managers/input";
+import { PlayerClient } from "@/entities/player";
+import { InventoryItem } from "../../../game-shared/src/util/inventory";
 
 const HUD_SETTINGS = {
   GameMessages: {
@@ -53,6 +58,17 @@ const HUD_SETTINGS = {
     arrowDistance: 60,
     arrowColor: "rgba(255, 50, 50, 0.9)",
     crateSpriteSize: 32,
+    minDistance: 100,
+  },
+  SurvivorIndicators: {
+    padding: 0,
+    background: "transparent",
+    borderColor: "transparent",
+    borderWidth: 0,
+    arrowSize: 30,
+    arrowDistance: 60,
+    arrowColor: "rgba(50, 255, 50, 0.9)", // Green color for survivors
+    survivorSpriteSize: 32,
     minDistance: 100,
   },
   BottomRightPanels: {
@@ -135,19 +151,43 @@ export class Hud {
   private gameMessagesPanel: GameMessagesPanel;
   private muteButtonPanel: MuteButtonPanel;
   private crateIndicatorsPanel: CrateIndicatorsPanel;
+  private survivorIndicatorsPanel: SurvivorIndicatorsPanel;
   private gameOverDialog: GameOverDialogUI;
+  private hotbar: InventoryBarUI;
+  private inputManager: InputManager;
+  private currentGameState: GameState | null = null;
 
   constructor(
     mapManager: MapManager,
     soundManager: SoundManager,
     assetManager: AssetManager,
-    gameOverDialog: GameOverDialogUI
+    gameOverDialog: GameOverDialogUI,
+    inputManager: InputManager
   ) {
     this.mapManager = mapManager;
     this.soundManager = soundManager;
     this.assetManager = assetManager;
     this.gameOverDialog = gameOverDialog;
+    this.inputManager = inputManager;
     this.chatWidget = new ChatWidget();
+
+    // Create getInventory function for hotbar that uses currentGameState
+    const getInventory = (): InventoryItem[] => {
+      if (!this.currentGameState || !this.currentGameState.playerId) {
+        return [];
+      }
+      const player = getEntityById(
+        this.currentGameState,
+        this.currentGameState.playerId
+      ) as PlayerClient;
+      if (player) {
+        return player.getInventory();
+      }
+      return [];
+    };
+
+    // Initialize hotbar
+    this.hotbar = new InventoryBarUI(this.assetManager, this.inputManager, getInventory);
     this.minimap = new Minimap(mapManager);
     this.fullscreenMap = new FullScreenMap(mapManager);
     this.leaderboard = new Leaderboard();
@@ -282,9 +322,18 @@ export class Hud {
       },
       assetManager
     );
+
+    // Initialize survivor indicators panel
+    this.survivorIndicatorsPanel = new SurvivorIndicatorsPanel(
+      {
+        ...HUD_SETTINGS.SurvivorIndicators,
+      },
+      assetManager
+    );
   }
 
   public update(gameState: GameState): void {
+    this.currentGameState = gameState;
     this.gameMessagesPanel.update();
     this.chatWidget.update();
   }
@@ -323,7 +372,12 @@ export class Hud {
   }
 
   public render(ctx: CanvasRenderingContext2D, gameState: GameState): void {
+    this.currentGameState = gameState;
     const { width, height } = ctx.canvas;
+
+    // Render indicators FIRST so they appear behind the panels that render after
+    this.crateIndicatorsPanel.render(ctx, gameState);
+    this.survivorIndicatorsPanel.render(ctx, gameState);
 
     // Calculate scaled minimap values once for reuse
     const minimapSize = scaleHudValue(240, width, height); // MINIMAP_SETTINGS.size (reduced from 280, was 400 originally)
@@ -331,13 +385,10 @@ export class Hud {
     const minimapBottom = scaleHudValue(40, width, height); // MINIMAP_SETTINGS.bottom
     const minimapLeft = width - minimapRight - minimapSize; // Calculate from right side
 
-    // Render crate indicators first (so they appear behind other UI)
-    this.crateIndicatorsPanel.render(ctx, gameState);
-
-    // Render minimap first
+    // Render minimap (will cover indicators where it overlaps)
     this.minimap.render(ctx, gameState);
 
-    // Render car health panel at top center (it positions itself)
+    // Render car health panel at top center (will cover indicators where it overlaps)
     this.carHealthPanel.render(ctx, gameState);
 
     // Calculate wave panel position once for reuse
@@ -452,6 +503,9 @@ export class Hud {
     this.leaderboard.render(ctx, gameState);
     this.chatWidget.render(ctx, gameState);
 
+    // Render hotbar
+    this.hotbar.render(ctx, gameState);
+
     // Render death screen if player is dead and game is not over
     if (!this.gameOverDialog.isGameOver()) {
       this.deathScreenPanel.render(ctx, gameState);
@@ -544,7 +598,7 @@ export class Hud {
     this.chatWidget.saveChatMessage(message);
   }
 
-  public handleClick(x: number, y: number, canvasHeight: number): boolean {
+  public handleClick(x: number, y: number, canvasWidth: number, canvasHeight: number): boolean {
     // Check fullscreen map clicks first (if open)
     if (this.fullscreenMap.handleClick(x, y)) {
       return true;
@@ -555,6 +609,22 @@ export class Hud {
       return true;
     }
 
+    // Check if click is on hotbar
+    if (this.hotbar && this.hotbar.handleClick(x, y, canvasWidth, canvasHeight)) {
+      return true;
+    }
+
     return false; // Click was not handled
+  }
+
+  public updateMousePosition(
+    x: number,
+    y: number,
+    canvasWidth: number,
+    canvasHeight: number
+  ): void {
+    if (this.hotbar) {
+      this.hotbar.updateMousePosition(x, y, canvasWidth, canvasHeight);
+    }
   }
 }

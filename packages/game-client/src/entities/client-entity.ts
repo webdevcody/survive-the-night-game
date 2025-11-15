@@ -9,6 +9,7 @@ import { ClientInteractive, ClientPositionable } from "@/extensions";
 import Vector2 from "@shared/util/vector2";
 import { DEBUG_SHOW_ATTACK_RANGE } from "@shared/debug";
 import { getConfig } from "@shared/config";
+import { formatDisplayName } from "@/util/format";
 
 export abstract class ClientEntity extends ClientEntityBase implements Renderable {
   constructor(data: RawEntity, imageLoader: ImageLoader) {
@@ -23,7 +24,8 @@ export abstract class ClientEntity extends ClientEntityBase implements Renderabl
     const interactive = this.getExt(ClientInteractive);
 
     if (myPlayer && interactive.getDisplayName()) {
-      let text = `${interactive.getDisplayName()} (${getConfig().keybindings.INTERACT})`;
+      const displayName = formatDisplayName(interactive.getDisplayName());
+      let text = `${displayName} (${getConfig().keybindings.INTERACT})`;
 
       renderInteractionText(
         ctx,

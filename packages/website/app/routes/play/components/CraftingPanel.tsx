@@ -4,6 +4,16 @@ import { recipes, type Recipe, RecipeType } from "@shared/util/recipes";
 import { cn } from "~/lib/utils";
 import { type InventoryItem } from "@shared/util/inventory";
 
+/**
+ * Formats a name by replacing underscores with spaces and converting to title case
+ */
+const formatDisplayName = (name: string): string => {
+  return name
+    .split("_")
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+    .join(" ");
+};
+
 interface CraftingState {
   resources: {
     wood: number;
@@ -187,8 +197,8 @@ export function CraftingPanel({ gameClient }: CraftingPanelProps) {
                   className="absolute left-full ml-2 top-0 bg-black/95 border-2 border-amber-600 rounded p-2 w-44 pointer-events-none whitespace-nowrap"
                   style={{ zIndex: 99999 }}
                 >
-                  <div className="text-amber-200 font-bold text-sm mb-1 capitalize border-b border-amber-600/50 pb-1">
-                    {resultComponent.type}
+                  <div className="text-amber-200 font-bold text-sm mb-1 border-b border-amber-600/50 pb-1">
+                    {formatDisplayName(resultComponent.type)}
                   </div>
                   <div className="text-xs text-gray-300 space-y-0.5">
                     {Object.entries(requirements).map(([itemType, count]) => {
@@ -213,8 +223,8 @@ export function CraftingPanel({ gameClient }: CraftingPanelProps) {
                             hasEnough ? "text-green-400" : "text-red-400"
                           )}
                         >
-                          <span className="capitalize">
-                            {count}x {itemType}
+                          <span>
+                            {count}x {formatDisplayName(itemType)}
                           </span>
                           <span className="text-xs">
                             {itemType === "wood" && `(${craftingState.resources.wood})`}

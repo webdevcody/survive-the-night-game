@@ -21,6 +21,7 @@ import { InventoryItem } from "@shared/util/inventory";
 
 const SURVIVOR_WALK_ANIMATION_DURATION = 450;
 const SURVIVOR_MOVEMENT_EPSILON = 0.5; // Increased to prevent animation during pause periods
+const SURVIVOR_MAX_HEALTH = 10; // Must match server-side constant
 
 function isMoving(vector: Vector2): boolean {
   return (
@@ -118,16 +119,25 @@ export class SurvivorClient extends ClientEntity implements Renderable {
   }
 
   private getHealth(): number {
+    if (!this.hasExt(ClientDestructible)) {
+      return SURVIVOR_MAX_HEALTH; // Return max health if not rescued yet (invincible)
+    }
     const destructible = this.getExt(ClientDestructible);
     return destructible.getHealth();
   }
 
   private getMaxHealth(): number {
+    if (!this.hasExt(ClientDestructible)) {
+      return SURVIVOR_MAX_HEALTH; // Return max health if not rescued yet
+    }
     const destructible = this.getExt(ClientDestructible);
     return destructible.getMaxHealth();
   }
 
   private isDead(): boolean {
+    if (!this.hasExt(ClientDestructible)) {
+      return false; // Not dead if not rescued yet (invincible)
+    }
     const destructible = this.getExt(ClientDestructible);
     return destructible.isDead();
   }

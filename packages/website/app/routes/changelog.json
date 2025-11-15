@@ -1,5 +1,21 @@
 [
   {
+    "version": "0.13.0",
+    "date": "2025-11-14",
+    "changes": [
+      "Added baseball bat weapon - new melee weapon for close-range combat",
+      "Implemented survivor indicators panel - displays status and count of rescued survivors",
+      "Added comprehensive hardcoded lists documentation - maps all content registrations and maintenance points",
+      "Improved melee weapon detection - refactored to use weapon config type checking instead of hardcoded lists",
+      "Consolidated hotbar into main HUD system - simplified UI architecture and click handling",
+      "Added server time synchronization - client now calculates server time offset for accurate timing",
+      "Enhanced display name formatting utility - consistent text formatting for interactive entities",
+      "Refactored swipe animation logic - melee attacks now use config-based detection for better extensibility",
+      "Improved code organization - removed redundant weapon type checks throughout codebase",
+      "Enhanced input manager integration - hotbar now properly integrated with HUD event handling"
+    ]
+  },
+  {
     "version": "0.12.0",
     "date": "2025-11-14",
     "changes": [
