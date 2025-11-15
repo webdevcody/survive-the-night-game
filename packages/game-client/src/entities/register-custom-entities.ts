@@ -8,6 +8,7 @@ import { SpitterZombieClient } from "./spitter-zombie";
 import { ExplodingZombieClient } from "./exploding-zombie";
 import { LeapingZombieClient } from "./enemies/leaping-zombie";
 import { BulletClient } from "@/entities/bullet";
+import { ArrowClient } from "@/entities/arrow";
 import { GrenadeProjectileClient } from "./grenade-projectile";
 import { FlameProjectileClient } from "./flame-projectile";
 import { TreeClient } from "@/entities/items/tree";
@@ -31,6 +32,7 @@ import { BoltActionAmmoClient } from "@/entities/weapons/bolt-action-ammo";
 import { AK47AmmoClient } from "@/entities/weapons/ak47-ammo";
 import { GrenadeLauncherAmmoClient } from "@/entities/weapons/grenade-launcher-ammo";
 import { FlamethrowerAmmoClient } from "@/entities/weapons/flamethrower-ammo";
+import { ArrowAmmoClient } from "@/entities/weapons/arrow-ammo";
 import { KnifeClient } from "@/entities/weapons/knife";
 import { BaseballBatClient } from "@/entities/weapons/baseball-bat";
 import { PistolClient } from "@/entities/weapons/pistol";
@@ -39,6 +41,7 @@ import { BoltActionRifleClient } from "@/entities/weapons/bolt-action-rifle";
 import { AK47Client } from "@/entities/weapons/ak47";
 import { GrenadeLauncherClient } from "@/entities/weapons/grenade-launcher";
 import { FlamethrowerClient } from "@/entities/weapons/flamethrower";
+import { BowClient } from "@/entities/weapons/bow";
 import { FireClient } from "@/entities/environment/fire";
 import { CampsiteFireClient } from "@/entities/environment/campsite-fire";
 import { MerchantClient } from "./environment/merchant";
@@ -70,6 +73,7 @@ export function registerCustomClientEntities(): void {
 
   // Projectiles
   clientEntityOverrideRegistry.register("bullet", BulletClient);
+  clientEntityOverrideRegistry.register("arrow", ArrowClient);
   clientEntityOverrideRegistry.register("grenade_projectile", GrenadeProjectileClient);
   clientEntityOverrideRegistry.register("flame_projectile", FlameProjectileClient);
   clientEntityOverrideRegistry.register("acid_projectile", AcidProjectileClient);
@@ -98,6 +102,7 @@ export function registerCustomClientEntities(): void {
   clientEntityOverrideRegistry.register("ak47_ammo", AK47AmmoClient);
   clientEntityOverrideRegistry.register("grenade_launcher_ammo", GrenadeLauncherAmmoClient);
   clientEntityOverrideRegistry.register("flamethrower_ammo", FlamethrowerAmmoClient);
+  clientEntityOverrideRegistry.register("arrow_ammo", ArrowAmmoClient);
 
   // Weapons
   clientEntityOverrideRegistry.register("knife", KnifeClient);
@@ -108,6 +113,7 @@ export function registerCustomClientEntities(): void {
   clientEntityOverrideRegistry.register("ak47", AK47Client);
   clientEntityOverrideRegistry.register("grenade_launcher", GrenadeLauncherClient);
   clientEntityOverrideRegistry.register("flamethrower", FlamethrowerClient);
+  clientEntityOverrideRegistry.register("bow", BowClient);
 
   // Environment
   clientEntityOverrideRegistry.register("fire", FireClient);

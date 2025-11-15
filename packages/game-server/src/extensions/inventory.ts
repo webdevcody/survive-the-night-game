@@ -19,6 +19,7 @@ const ITEM_DROP_TABLE: Array<{ itemType: ItemType; weight: number }> = [
   { itemType: "bandage", weight: 15 },
   { itemType: "pistol_ammo", weight: 12 },
   { itemType: "shotgun_ammo", weight: 12 },
+  { itemType: "arrow_ammo", weight: 12 },
 
   // Uncommon items (medium weight)
   { itemType: "pistol", weight: 8 },

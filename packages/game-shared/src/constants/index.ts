@@ -15,6 +15,7 @@ export function initializeEntities(entities: Record<string, string>): void {
 export const NON_SPAWNABLE = new Set<EntityType>([
   "player",
   "bullet",
+  "arrow",
   "boundary",
   "acid_projectile",
   "grenade_projectile",

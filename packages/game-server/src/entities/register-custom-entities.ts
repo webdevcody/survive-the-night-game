@@ -8,6 +8,7 @@ import { SpitterZombie } from "@/entities/enemies/spitter-zombie";
 import { ExplodingZombie } from "@/entities/enemies/exploding-zombie";
 import { LeapingZombie } from "@/entities/enemies/leaping-zombie";
 import { Bullet } from "@/entities/projectiles/bullet";
+import { Arrow } from "@/entities/projectiles/arrow";
 import { GrenadeProjectile } from "@/entities/projectiles/grenade-projectile";
 import { FlameProjectile } from "@/entities/projectiles/flame-projectile";
 import { Tree } from "@/entities/items/tree";
@@ -31,6 +32,7 @@ import { BoltActionAmmo } from "@/entities/items/bolt-action-ammo";
 import { AK47Ammo } from "@/entities/items/ak47-ammo";
 import { GrenadeLauncherAmmo } from "@/entities/items/grenade-launcher-ammo";
 import { FlamethrowerAmmo } from "@/entities/items/flamethrower-ammo";
+import { ArrowAmmo } from "@/entities/items/arrow-ammo";
 import { Knife } from "@/entities/weapons/knife";
 import { BaseballBat } from "@/entities/weapons/baseball-bat";
 import { Pistol } from "@/entities/weapons/pistol";
@@ -39,6 +41,7 @@ import { BoltActionRifle } from "@/entities/weapons/bolt-action-rifle";
 import { AK47 } from "@/entities/weapons/ak47";
 import { GrenadeLauncher } from "@/entities/weapons/grenade-launcher";
 import { Flamethrower } from "@/entities/weapons/flamethrower";
+import { Bow } from "@/entities/weapons/bow";
 import { Fire } from "@/entities/environment/fire";
 import { CampsiteFire } from "@/entities/environment/campsite-fire";
 import { Merchant } from "@/entities/environment/merchant";
@@ -68,6 +71,7 @@ export function registerCustomEntities(): void {
 
   // Projectiles
   entityOverrideRegistry.register("bullet", Bullet);
+  entityOverrideRegistry.register("arrow", Arrow);
   entityOverrideRegistry.register("grenade_projectile", GrenadeProjectile);
   entityOverrideRegistry.register("flame_projectile", FlameProjectile);
 
@@ -95,6 +99,7 @@ export function registerCustomEntities(): void {
   entityOverrideRegistry.register("ak47_ammo", AK47Ammo);
   entityOverrideRegistry.register("grenade_launcher_ammo", GrenadeLauncherAmmo);
   entityOverrideRegistry.register("flamethrower_ammo", FlamethrowerAmmo);
+  entityOverrideRegistry.register("arrow_ammo", ArrowAmmo);
 
   // Weapons
   entityOverrideRegistry.register("knife", Knife);
@@ -105,6 +110,7 @@ export function registerCustomEntities(): void {
   entityOverrideRegistry.register("ak47", AK47);
   entityOverrideRegistry.register("grenade_launcher", GrenadeLauncher);
   entityOverrideRegistry.register("flamethrower", Flamethrower);
+  entityOverrideRegistry.register("bow", Bow);
 
   // Environment
   entityOverrideRegistry.register("fire", Fire);

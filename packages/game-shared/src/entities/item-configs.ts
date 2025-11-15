@@ -108,6 +108,24 @@ export const ITEM_CONFIGS: Record<string, ItemConfig> = {
       sheet: "items",
     },
   },
+  arrow_ammo: {
+    id: "arrow_ammo",
+    category: "ammo",
+    assets: {
+      assetKey: "arrow_ammo",
+      x: 128,
+      y: 16,
+      sheet: "items",
+    },
+    spawn: {
+      enabled: true,
+      chance: 0.005,
+    },
+    merchant: {
+      enabled: true,
+      price: 8,
+    },
+  },
   landmine: {
     id: "landmine",
     category: "placeable",

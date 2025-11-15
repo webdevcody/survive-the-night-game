@@ -167,4 +167,25 @@ export const WEAPON_CONFIGS: Record<string, WeaponConfig> = {
     },
     sound: "pistol", // Will use pistol sound until we have a flamethrower sound
   },
+  bow: {
+    id: "bow",
+    type: "ranged",
+    stats: {
+      cooldown: 0.6,
+    },
+    assets: {
+      assetPrefix: "bow",
+      spritePositions: {
+        right: { x: 0, y: 112 },
+        up: { x: 16, y: 112 },
+        down: { x: 32, y: 112 },
+      },
+      sheet: "items",
+    },
+    sound: "pistol",
+    spawn: {
+      enabled: true,
+      chance: 0.002,
+    },
+  },
 };
