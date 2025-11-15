@@ -3,22 +3,18 @@ import Inventory from "@/extensions/inventory";
 import { IGameManagers } from "@/managers/types";
 import { Bullet } from "@/entities/projectiles/bullet";
 import { Weapon } from "@/entities/weapons/weapon";
-import { WEAPON_TYPES } from "@shared/types/weapons";
 import { Direction } from "../../../../game-shared/src/util/direction";
 import Vector2 from "@/util/vector2";
-import { weaponRegistry } from "@shared/entities";
 import { consumeAmmo } from "./helpers";
 import { GunEmptyEvent } from "@/events/server-sent/gun-empty-event";
 
 export class Shotgun extends Weapon {
-  private config = weaponRegistry.get(WEAPON_TYPES.SHOTGUN)!;
-
   constructor(gameManagers: IGameManagers) {
-    super(gameManagers, WEAPON_TYPES.SHOTGUN);
+    super(gameManagers, "shotgun");
   }
 
   public getCooldown(): number {
-    return this.config.stats.cooldown;
+    return this.getConfig().stats.cooldown;
   }
 
   public attack(playerId: string, position: Vector2, facing: Direction, aimAngle?: number): void {
@@ -40,10 +36,10 @@ export class Shotgun extends Weapon {
       // Use aimAngle if provided (mouse aiming), otherwise use facing direction
       if (aimAngle !== undefined) {
         // Convert spread angle to radians and apply offset
-        const spreadRadians = (i * this.config.stats.spreadAngle! * Math.PI) / 180;
+        const spreadRadians = (i * this.getConfig().stats.spreadAngle! * Math.PI) / 180;
         bullet.setDirectionFromAngle(aimAngle + spreadRadians);
       } else {
-        bullet.setDirectionWithOffset(facing, i * this.config.stats.spreadAngle!);
+        bullet.setDirectionWithOffset(facing, i * this.getConfig().stats.spreadAngle!);
       }
 
       bullet.setShooterId(playerId);
@@ -55,7 +51,7 @@ export class Shotgun extends Weapon {
       .broadcastEvent(
         new PlayerAttackedEvent({
           playerId,
-          weaponKey: WEAPON_TYPES.SHOTGUN,
+          weaponKey: this.getType(),
         })
       );
   }

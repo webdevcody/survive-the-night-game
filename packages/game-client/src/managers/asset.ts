@@ -22,6 +22,7 @@ import {
   zombieRegistry,
   weaponRegistry,
   itemRegistry,
+  resourceRegistry,
   decalRegistry,
   projectileRegistry,
   environmentRegistry,
@@ -314,6 +315,7 @@ import "@shared/entities";
 
 const weaponConfigs = weaponRegistry.getAll();
 const itemConfigs = itemRegistry.getAll();
+const resourceConfigs = resourceRegistry.getAll();
 
 export const assetsMap = {
   // Auto-generate all weapon assets from registry
@@ -327,6 +329,18 @@ export const assetsMap = {
   }),
   // Auto-generate all item assets from registry
   ...mergeAssetsFromConfigs(itemConfigs, (config) =>
+    createSimpleAsset(
+      config.assets.assetKey,
+      config.assets.x,
+      config.assets.y,
+      config.assets.width,
+      config.assets.height,
+      config.assets.sheet || "default",
+      config.assets.totalFrames
+    )
+  ),
+  // Auto-generate all resource assets from registry
+  ...mergeAssetsFromConfigs(resourceConfigs, (config) =>
     createSimpleAsset(
       config.assets.assetKey,
       config.assets.x,
@@ -551,6 +565,11 @@ export function getItemAssetKey(item: InventoryItem): Asset {
   const weaponConfig = weaponRegistry.get(item.itemType as any);
   if (weaponConfig) {
     return weaponConfig.assets.assetPrefix as Asset;
+  }
+  // Check if it's a resource - resources use assetKey
+  const resourceConfig = resourceRegistry.get(item.itemType);
+  if (resourceConfig) {
+    return resourceConfig.assets.assetKey as Asset;
   }
   // Otherwise, use itemType directly (for regular items)
   return item.itemType as Asset;

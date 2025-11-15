@@ -16,9 +16,7 @@ import { Bullet } from "@/entities/projectiles/bullet";
 import { LootEvent } from "@/events/server-sent/loot-event";
 import { getConfig } from "@/config";
 import { BIOME_SIZE, MAP_SIZE } from "@/managers/map-manager";
-import { WEAPON_TYPES } from "@/types/weapons";
 import { GunFiredEvent } from "@/events/server-sent/gun-fired-event";
-import { WeaponKey } from "@/util/inventory";
 
 const SURVIVOR_MAX_HEALTH = 10;
 const SURVIVOR_SIZE = new Vector2(16, 16);
@@ -302,9 +300,10 @@ export class Survivor extends Entity<typeof SERIALIZABLE_FIELDS> {
     bullet.setShooterId(this.getId());
     this.getEntityManager().addEntity(bullet);
 
+    // TODO: we shouldn't hard code to pistol, but we do so we get some sound playing
     this.getGameManagers()
       .getBroadcaster()
-      .broadcastEvent(new GunFiredEvent(this.getId(), WEAPON_TYPES.PISTOL as WeaponKey));
+      .broadcastEvent(new GunFiredEvent(this.getId(), "pistol"));
   }
 
   private onRescue(entityId: string): void {

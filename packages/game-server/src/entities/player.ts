@@ -31,6 +31,7 @@ import Vector2 from "@/util/vector2";
 import { Rectangle } from "@/util/shape";
 import Carryable from "@/extensions/carryable";
 import { SkinType, SKIN_TYPES } from "@shared/commands/commands";
+import { itemRegistry } from "@shared/entities";
 
 // Define serializable fields for type safety
 const PLAYER_SERIALIZABLE_FIELDS = [
@@ -495,33 +496,17 @@ export class Player extends Entity<typeof PLAYER_SERIALIZABLE_FIELDS> {
 
       if (!currentItem) return;
 
-      // For walls, drop one at a time
-      if (currentItem.itemType === "wall") {
-        const currentCount = currentItem.state?.count || 1;
+      // For other items, drop the entire stack
+      const item = inventory.removeItem(itemIndex);
 
-        if (currentCount > 1) {
-          // Decrement the count in inventory
-          currentItem.state = {
-            ...currentItem.state,
-            count: currentCount - 1,
-          };
-        } else {
-          // Remove the item if it's the last one
-          inventory.removeItem(itemIndex);
-        }
-
-        // Create a wall entity with count of 1
-        const entity = this.getEntityManager().createEntityFromItem({
-          itemType: "wall",
-          state: { count: 1, health: currentItem.state?.health },
-        });
+      if (item) {
+        const entity = this.getEntityManager().createEntityFromItem(item);
 
         if (!entity) return;
 
         const carryable = entity.getExt(Carryable);
         carryable.setItemState({
-          count: 1,
-          health: currentItem.state?.health,
+          count: item.state?.count || 0,
         });
 
         const offset = 16;
@@ -549,52 +534,9 @@ export class Player extends Entity<typeof PLAYER_SERIALIZABLE_FIELDS> {
         this.broadcaster.broadcastEvent(
           new PlayerDroppedItemEvent({
             playerId: this.getId(),
-            itemType: "wall",
+            itemType: item.itemType,
           })
         );
-      } else {
-        // For other items, drop the entire stack
-        const item = inventory.removeItem(itemIndex);
-
-        if (item) {
-          const entity = this.getEntityManager().createEntityFromItem(item);
-
-          if (!entity) return;
-
-          const carryable = entity.getExt(Carryable);
-          carryable.setItemState({
-            count: item.state?.count || 0,
-          });
-
-          const offset = 16;
-          let dx = 0;
-          let dy = 0;
-
-          if (this.input.facing === Direction.Up) {
-            dy = -offset;
-          } else if (this.input.facing === Direction.Down) {
-            dy = offset;
-          } else if (this.input.facing === Direction.Left) {
-            dx = -offset;
-          } else if (this.input.facing === Direction.Right) {
-            dx = offset;
-          }
-
-          const pos = new Vector2(this.getPosition().x + dx, this.getPosition().y + dy);
-
-          if (entity.hasExt(Positionable)) {
-            entity.getExt(Positionable).setPosition(pos);
-          }
-
-          this.getEntityManager().addEntity(entity);
-
-          this.broadcaster.broadcastEvent(
-            new PlayerDroppedItemEvent({
-              playerId: this.getId(),
-              itemType: item.itemType,
-            })
-          );
-        }
       }
     }
   }
@@ -685,16 +627,27 @@ export class Player extends Entity<typeof PLAYER_SERIALIZABLE_FIELDS> {
   }
 
   private updateLighting() {
-    // Provide light if the player has a torch equipped or a miners-hat in inventory
-    const activeItem = this.activeItem;
-    const hasTorchEquipped = activeItem?.itemType === "torch";
-    const hasMinersHat = this.hasInInventory("miners_hat");
-
-    if (this.hasExt(Illuminated)) {
-      const illuminated = this.getExt(Illuminated);
-      // Set radius to 200 if torch equipped or miners-hat in inventory, 0 otherwise
-      illuminated.setRadius(hasTorchEquipped || hasMinersHat ? 200 : 0);
+    if (!this.hasExt(Illuminated)) {
+      return;
     }
+
+    const illuminated = this.getExt(Illuminated);
+    let totalLightIntensity = 0;
+
+    // Check all inventory items for light intensity
+    // Note: activeItem is also in the inventory array, so we only need to check inventory
+    const inventory = this.getExt(Inventory);
+    const inventoryItems = inventory.getItems();
+    for (const item of inventoryItems) {
+      if (item) {
+        const itemConfig = itemRegistry.get(item.itemType);
+        if (itemConfig?.lightIntensity) {
+          totalLightIntensity += itemConfig.lightIntensity;
+        }
+      }
+    }
+
+    illuminated.setRadius(totalLightIntensity);
   }
 
   setInput(input: Input) {
@@ -770,7 +723,7 @@ export class Player extends Entity<typeof PLAYER_SERIALIZABLE_FIELDS> {
 
   /**
    * Add a resource and broadcast pickup event if amount > 0
-   * Works with any resource type defined in RESOURCE_ITEMS
+   * Works with any resource type defined in RESOURCE_CONFIGS
    */
   addResource(resourceType: ResourceType, amount: number): void {
     this.getExt(ResourcesBag).addResource(resourceType, amount);

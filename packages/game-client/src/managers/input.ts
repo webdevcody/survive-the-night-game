@@ -6,6 +6,7 @@ import {
 import { Input } from "../../../game-shared/src/util/input";
 import Vector2 from "../../../game-shared/src/util/vector2";
 import { getConfig } from "@shared/config";
+import { itemRegistry } from "../../../game-shared/src/entities/item-registry";
 
 export interface InputManagerOptions {
   onCraft?: () => unknown;
@@ -110,12 +111,16 @@ export class InputManager {
     const inventory = this.callbacks.getInventory?.() || [];
     if (inventory.length === 0) return;
 
-    // Find first bandage in inventory
-    const bandageIdx = inventory.findIndex((item: any) => item?.itemType === "bandage");
+    // Find first consumable and healable item in inventory
+    const healableItem = inventory.find((item: any) => {
+      if (!item?.itemType) return false;
+      const itemConfig = itemRegistry.get(item.itemType);
+      return itemConfig?.category === "consumable" && itemConfig?.healable === true;
+    });
 
-    if (bandageIdx !== -1) {
-      // Set the consumeItemType to bandage and trigger consume
-      this.inputs.consumeItemType = "bandage";
+    if (healableItem) {
+      // Set the consumeItemType to the healable item and trigger consume
+      this.inputs.consumeItemType = healableItem.itemType;
       this.inputs.consume = true;
     }
   }

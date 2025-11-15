@@ -3,22 +3,18 @@ import { IGameManagers } from "@/managers/types";
 import { Bullet } from "@/entities/projectiles/bullet";
 import { Weapon } from "@/entities/weapons/weapon";
 import { Direction } from "../../../../game-shared/src/util/direction";
-import { WEAPON_TYPES } from "@shared/types/weapons";
 import { GunEmptyEvent } from "@shared/events/server-sent/gun-empty-event";
 import { PlayerAttackedEvent } from "@/events/server-sent/player-attacked-event";
 import Vector2 from "@/util/vector2";
-import { weaponRegistry } from "@shared/entities";
 import { consumeAmmo } from "./helpers";
 
 export class BoltActionRifle extends Weapon {
-  private config = weaponRegistry.get(WEAPON_TYPES.BOLT_ACTION_RIFLE)!;
-
   constructor(gameManagers: IGameManagers) {
-    super(gameManagers, WEAPON_TYPES.BOLT_ACTION_RIFLE);
+    super(gameManagers, "bolt_action_rifle");
   }
 
   public getCooldown(): number {
-    return this.config.stats.cooldown;
+    return this.getConfig().stats.cooldown;
   }
 
   public attack(playerId: string, position: Vector2, facing: Direction, aimAngle?: number): void {
@@ -50,7 +46,7 @@ export class BoltActionRifle extends Weapon {
       .broadcastEvent(
         new PlayerAttackedEvent({
           playerId,
-          weaponKey: WEAPON_TYPES.BOLT_ACTION_RIFLE,
+          weaponKey: this.getType(),
         })
       );
   }

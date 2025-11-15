@@ -2,7 +2,7 @@ import { RawEntity } from "@shared/types/entity";
 import { AssetManager } from "@/managers/asset";
 import { ClientEntityBase } from "@/extensions/client-entity";
 import { clientEntityOverrideRegistry } from "./entity-override-registry";
-import { itemRegistry } from "@shared/entities";
+import { itemRegistry, resourceRegistry } from "@shared/entities";
 import { GenericClientEntity } from "./items/generic-client-entity";
 import { registerCustomClientEntities } from "./register-custom-entities";
 
@@ -43,8 +43,23 @@ export class EntityFactory {
       return new GenericClientEntity(data, this.assetManager, itemConfig);
     }
 
+    // Try to create from resource registry
+    const resourceConfig = resourceRegistry.get(data.type);
+    if (resourceConfig) {
+      // Resources use the same GenericClientEntity but with ResourceConfig
+      // We need to adapt ResourceConfig to work with GenericClientEntity
+      // GenericClientEntity expects ItemConfig, but ResourceConfig has similar structure
+      // For now, we'll create a compatible object
+      const adaptedConfig = {
+        id: resourceConfig.id,
+        category: "consumable" as const, // Resources render like consumables
+        assets: resourceConfig.assets,
+      };
+      return new GenericClientEntity(data, this.assetManager, adaptedConfig as any);
+    }
+
     // Could add other registry checks here (weapons, environment, etc.)
-    // For now, we'll focus on items
+    // For now, we'll focus on items and resources
 
     return null;
   }

@@ -2,7 +2,6 @@ import { GameState } from "@/state";
 import { getPlayer } from "@/util/get-player";
 import { AssetManager, getItemAssetKey } from "@/managers/asset";
 import { Panel, PanelSettings } from "./panel";
-import { Direction } from "@shared/util/direction";
 import { ClientResourcesBag } from "@/extensions";
 
 interface ResourcesPanelSettings extends PanelSettings {
@@ -43,14 +42,9 @@ export class ResourcesPanel extends Panel {
     this.resetTransform(ctx);
 
     // Get sprites
-    const woodSprite = this.assetManager.getWithDirection(
-      getItemAssetKey({ itemType: "wood" }),
-      Direction.Right
-    );
-    const clothSprite = this.assetManager.getWithDirection(
-      getItemAssetKey({ itemType: "cloth" }),
-      Direction.Right
-    );
+    // Resources are simple assets (not directional), so use get() instead of getWithDirection()
+    const woodSprite = this.assetManager.get(getItemAssetKey({ itemType: "wood" }));
+    const clothSprite = this.assetManager.get(getItemAssetKey({ itemType: "cloth" }));
     const coinSprite = this.assetManager.get("coin");
 
     // Calculate text metrics

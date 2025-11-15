@@ -2,11 +2,12 @@
  * ========================================================================
  * MERCHANT CONFIGURATION
  * ========================================================================
- * Shop items and pricing - now auto-generated from item/weapon configs
+ * Shop items and pricing - now auto-generated from item/weapon/resource configs
  */
 
 import { itemRegistry } from "../entities/item-registry";
 import { weaponRegistry } from "../entities/weapon-registry";
+import { resourceRegistry } from "../entities/resource-registry";
 
 export interface MerchantShopItem {
   itemType: string;
@@ -14,8 +15,8 @@ export interface MerchantShopItem {
 }
 
 /**
- * Generate shop items dynamically from item and weapon registries
- * Items/weapons with merchant.enabled === true will be included
+ * Generate shop items dynamically from item, weapon, and resource registries
+ * Items/weapons/resources with merchant.enabled === true will be included
  */
 function generateShopItems(): MerchantShopItem[] {
   const shopItems: MerchantShopItem[] = [];
@@ -36,6 +37,16 @@ function generateShopItems(): MerchantShopItem[] {
       shopItems.push({
         itemType: weaponConfig.id,
         price: weaponConfig.merchant.price,
+      });
+    }
+  });
+
+  // Add resources with merchant enabled
+  resourceRegistry.getAll().forEach((resourceConfig) => {
+    if (resourceConfig.merchant?.enabled) {
+      shopItems.push({
+        itemType: resourceConfig.id,
+        price: resourceConfig.merchant.price,
       });
     }
   });

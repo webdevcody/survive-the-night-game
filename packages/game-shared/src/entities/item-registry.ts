@@ -17,6 +17,9 @@ export interface ItemConfig extends BehaviorConfigs {
   hideWhenSelected?: boolean; // If true, don't render overlay when item is selected/equipped
   placeable?: boolean; // If true, item can be placed as a structure
   placeSound?: string; // Sound type to play when item is placed (e.g., "build"). If not set, no sound plays.
+  healable?: boolean; // If true, item can be used for quick heal (must also be consumable)
+  lightIntensity?: number; // Light radius provided when item is equipped or in inventory (0 = no light)
+  wearable?: boolean; // If true, item is wearable and should be rendered as an overlay when in inventory
 }
 
 class ItemRegistry {

@@ -2,26 +2,21 @@ import Destructible from "@/extensions/destructible";
 import { IGameManagers } from "@/managers/types";
 import { Direction, angleToDirection } from "../../../../game-shared/src/util/direction";
 import { Weapon } from "@/entities/weapons/weapon";
-import { WEAPON_TYPES } from "@shared/types/weapons";
 import { PlayerAttackedEvent } from "@/events/server-sent/player-attacked-event";
 import Vector2 from "@/util/vector2";
 import Positionable from "@/extensions/positionable";
 import Groupable from "@/extensions/groupable";
 import { knockBack } from "./helpers";
 import { Player } from "@/entities/player";
-import { getZombieTypesSet } from "@/constants";
-import { weaponRegistry } from "@shared/entities";
 import { getConfig } from "@shared/config";
 
 export class Knife extends Weapon {
-  private config = weaponRegistry.get(WEAPON_TYPES.KNIFE)!;
-
   constructor(gameManagers: IGameManagers) {
-    super(gameManagers, WEAPON_TYPES.KNIFE);
+    super(gameManagers, "knife");
   }
 
   public getCooldown(): number {
-    return this.config.stats.cooldown;
+    return this.getConfig().stats.cooldown;
   }
 
   public attack(playerId: string, position: Vector2, facing: Direction, aimAngle?: number): void {
@@ -59,12 +54,12 @@ export class Knife extends Weapon {
     if (targetZombie) {
       const destructible = targetZombie.getExt(Destructible);
       const wasAlive = !destructible.isDead();
-      destructible.damage(this.config.stats.damage!);
+      destructible.damage(this.getConfig().stats.damage!);
       knockBack(
         this.getEntityManager(),
         targetZombie,
         attackDirection,
-        this.config.stats.pushDistance!
+        this.getConfig().stats.pushDistance!
       );
 
       if (wasAlive && destructible.isDead()) {
@@ -80,7 +75,7 @@ export class Knife extends Weapon {
       .broadcastEvent(
         new PlayerAttackedEvent({
           playerId,
-          weaponKey: WEAPON_TYPES.KNIFE,
+          weaponKey: this.getType(),
           attackDirection,
         })
       );

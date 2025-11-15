@@ -30,8 +30,7 @@ import type { BiomeData } from "@/biomes/types";
 import type { MapData } from "@shared/events/server-sent/map-event";
 import type { DecalData } from "@shared/config/decals-config";
 import { getConfig } from "@/config";
-import { itemRegistry } from "@shared/entities";
-import { weaponRegistry } from "@shared/entities";
+import { itemRegistry, weaponRegistry, resourceRegistry } from "@shared/entities";
 import { Entities } from "@shared/constants";
 import { Crate } from "@/entities/items/crate";
 import { CampsiteFire } from "@/entities/environment/campsite-fire";
@@ -40,8 +39,8 @@ export const BIOME_SIZE = 16;
 export const MAP_SIZE = 9;
 
 /**
- * Build spawn table dynamically from item and weapon registries
- * Items/weapons with spawn.enabled === true will be included
+ * Build spawn table dynamically from item, weapon, and resource registries
+ * Items/weapons/resources with spawn.enabled === true will be included
  */
 function buildSpawnTable(): Array<{ chance: number; entityType: string }> {
   const spawnTable: Array<{ chance: number; entityType: string }> = [];
@@ -65,6 +64,16 @@ function buildSpawnTable(): Array<{ chance: number; entityType: string }> {
       spawnTable.push({
         chance: weaponConfig.spawn.chance,
         entityType: weaponConfig.id,
+      });
+    }
+  });
+
+  // Add resources with spawn enabled
+  resourceRegistry.getAll().forEach((resourceConfig) => {
+    if (resourceConfig.spawn?.enabled) {
+      spawnTable.push({
+        chance: resourceConfig.spawn.chance,
+        entityType: resourceConfig.id,
       });
     }
   });

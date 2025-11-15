@@ -14,6 +14,7 @@ import { Tree } from "@/entities/items/tree";
 import { Wall } from "@/entities/items/wall";
 import { Bandage } from "@/entities/items/bandage";
 import { Cloth } from "@/entities/items/cloth";
+import { Wood } from "@/entities/items/wood";
 import { Coin } from "@/entities/items/coin";
 import { Gasoline } from "@/entities/items/gasoline";
 import { Spikes } from "@/entities/items/spikes";
@@ -75,6 +76,7 @@ export function registerCustomEntities(): void {
   entityOverrideRegistry.register("wall", Wall);
   entityOverrideRegistry.register("bandage", Bandage);
   entityOverrideRegistry.register("cloth", Cloth);
+  entityOverrideRegistry.register("wood", Wood);
   entityOverrideRegistry.register("coin", Coin);
   entityOverrideRegistry.register("gasoline", Gasoline);
   entityOverrideRegistry.register("spikes", Spikes);

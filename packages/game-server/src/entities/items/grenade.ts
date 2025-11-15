@@ -73,7 +73,9 @@ export class Grenade extends Weapon {
 
     // Find the grenade in inventory
     const inventoryItems = inventory.getItems();
-    const grenadeIndex = inventoryItems.findIndex((item) => item && item.itemType === "grenade");
+    const grenadeIndex = inventoryItems.findIndex(
+      (item) => item && item.itemType === this.getType()
+    );
     if (grenadeIndex === -1) return;
 
     const grenadeItem = inventoryItems[grenadeIndex];

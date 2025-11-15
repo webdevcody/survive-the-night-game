@@ -6,6 +6,7 @@ import { Entity } from "@/entities/entity";
 import { WeaponKey } from "../../../../game-shared/src/util/inventory";
 import { Direction } from "../../../../game-shared/src/util/direction";
 import Vector2 from "@/util/vector2";
+import { WeaponConfig, weaponRegistry } from "@shared/entities";
 
 export abstract class Weapon extends Entity {
   public static readonly Size = new Vector2(16, 16);
@@ -14,12 +15,18 @@ export abstract class Weapon extends Entity {
     super(gameManagers, weaponKey);
 
     this.addExtension(new Positionable(this).setSize(Weapon.Size));
-    this.addExtension(new Interactive(this).onInteract(this.interact.bind(this)).setDisplayName(weaponKey));
+    this.addExtension(
+      new Interactive(this).onInteract(this.interact.bind(this)).setDisplayName(weaponKey)
+    );
     this.addExtension(new Carryable(this, weaponKey));
   }
 
   private interact(entityId: string): void {
     this.getExt(Carryable).pickup(entityId);
+  }
+
+  public getConfig(): WeaponConfig {
+    return weaponRegistry.get(this.getType())!;
   }
 
   public abstract attack(

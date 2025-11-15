@@ -329,14 +329,16 @@ export class PlayerClient extends ClientEntity implements IClientEntity, Rendera
   }
 
   renderMinersHat(ctx: CanvasRenderingContext2D, renderPosition: Vector2) {
-    // Check if miners-hat is in inventory - always show overlay when in inventory
-    const hasMinersHat = this.getInventory().some(
-      (item) => item !== null && item.itemType === "miners_hat"
-    );
+    // Check for any wearable items in inventory - render the first one found
+    const wearableItem = this.getInventory().find((item) => {
+      if (item === null) return false;
+      const itemConfig = itemRegistry.get(item.itemType);
+      return itemConfig?.wearable === true;
+    });
 
-    if (hasMinersHat) {
-      const minersHatImage = this.imageLoader.get("miners_hat");
-      ctx.drawImage(minersHatImage, renderPosition.x, renderPosition.y);
+    if (wearableItem) {
+      const wearableImage = this.imageLoader.get(wearableItem.itemType);
+      ctx.drawImage(wearableImage, renderPosition.x, renderPosition.y);
     }
   }
 
@@ -375,14 +377,6 @@ export class PlayerClient extends ClientEntity implements IClientEntity, Rendera
     const { facing } = this.input;
     const image = this.imageLoader.getWithDirection(getItemAssetKey(this.activeItem), facing);
     ctx.drawImage(image, renderPosition.x + 2, renderPosition.y);
-
-    if (this.activeItem.itemType === "knife") {
-      this.debugRenderAttackRange(
-        ctx,
-        this.getCenterPosition(),
-        getConfig().combat.KNIFE_ATTACK_RANGE
-      );
-    }
   }
 
   public getKills(): number {

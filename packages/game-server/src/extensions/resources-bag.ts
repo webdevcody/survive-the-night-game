@@ -1,6 +1,7 @@
 import { IEntity } from "@/entities/types";
 import { Extension, ExtensionSerialized } from "@/extensions/types";
-import { ResourceType, RESOURCE_ITEMS } from "@shared/util/inventory";
+import { ResourceType } from "@shared/util/inventory";
+import { resourceRegistry } from "@shared/entities";
 import { Broadcaster } from "@/managers/types";
 import { PlayerPickedUpResourceEvent } from "@shared/events/server-sent/pickup-resource-event";
 
@@ -18,7 +19,7 @@ export default class ResourcesBag implements Extension {
     this.broadcaster = broadcaster;
 
     // Initialize all resources to 0
-    RESOURCE_ITEMS.forEach((resource) => {
+    resourceRegistry.getAllResourceTypes().forEach((resource) => {
       this.resources.set(resource as ResourceType, 0);
     });
   }
@@ -136,7 +137,7 @@ export default class ResourcesBag implements Extension {
 
   public serialize(): ExtensionSerialized {
     const resources: Record<string, number> = {};
-    RESOURCE_ITEMS.forEach((resource) => {
+    resourceRegistry.getAllResourceTypes().forEach((resource) => {
       resources[resource] = this.resources.get(resource as ResourceType) || 0;
     });
 

@@ -1,5 +1,17 @@
 [
   {
+    "version": "0.13.1",
+    "date": "2025-11-14",
+    "changes": [
+      "Added wood resource entity - wood can now be collected and managed as a resource item",
+      "Refactored wearable items system - miners hat and other wearables now use config-based detection",
+      "Enhanced entity factory to support resource registry - resources spawn correctly client-side",
+      "Updated hardcoded lists documentation with critical maintenance checklist",
+      "Improved code organization by reducing hardcoded item type checks",
+      "Added resource configuration system for data-driven resource management"
+    ]
+  },
+  {
     "version": "0.13.0",
     "date": "2025-11-14",
     "changes": [

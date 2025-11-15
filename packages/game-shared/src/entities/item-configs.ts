@@ -10,6 +10,7 @@ export const ITEM_CONFIGS: Record<string, ItemConfig> = {
       y: 48,
       sheet: "items",
     },
+    healable: true,
     spawn: {
       enabled: true,
       chance: 0.005,
@@ -21,24 +22,6 @@ export const ITEM_CONFIGS: Record<string, ItemConfig> = {
     recipe: {
       enabled: true,
       components: [{ type: "cloth", count: 3 }],
-    },
-  },
-  cloth: {
-    id: "cloth",
-    category: "consumable",
-    assets: {
-      assetKey: "cloth",
-      x: 128,
-      y: 0,
-      sheet: "items",
-    },
-    spawn: {
-      enabled: true,
-      chance: 0.1,
-    },
-    merchant: {
-      enabled: true,
-      price: 4,
     },
   },
   pistol_ammo: {
@@ -183,6 +166,7 @@ export const ITEM_CONFIGS: Record<string, ItemConfig> = {
       enabled: true,
       components: [{ type: "wood" }, { type: "cloth" }],
     },
+    lightIntensity: 300,
   },
   gasoline: {
     id: "gasoline",
@@ -233,10 +217,12 @@ export const ITEM_CONFIGS: Record<string, ItemConfig> = {
       sheet: "items",
     },
     hideWhenSelected: true, // Don't show overlay when selected since player is wearing it
+    wearable: true, // Item is wearable and should be rendered as an overlay when in inventory
     spawn: {
       enabled: true,
       chance: 0.0001,
     },
+    lightIntensity: 200,
   },
   spikes: {
     id: "spikes",

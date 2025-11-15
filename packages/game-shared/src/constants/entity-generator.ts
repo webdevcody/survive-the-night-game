@@ -1,6 +1,7 @@
 // Import registries directly to avoid circular dependency with Entities constant
 import { itemRegistry } from "../entities/item-registry";
 import { weaponRegistry } from "../entities/weapon-registry";
+import { resourceRegistry } from "../entities/resource-registry";
 import { zombieRegistry } from "../entities/zombie-registry";
 import { projectileRegistry } from "../entities/projectile-registry";
 import { environmentRegistry } from "../entities/environment-registry";
@@ -28,6 +29,16 @@ export function generateEntities() {
   weaponRegistry.getAll().forEach((config) => {
     if (!config || !config.id) {
       console.warn("Weapon config missing or invalid:", config);
+      return;
+    }
+    const key = config.id.toUpperCase().replace(/-/g, "_");
+    entities[key] = config.id;
+  });
+
+  // Add all resources
+  resourceRegistry.getAll().forEach((config) => {
+    if (!config || !config.id) {
+      console.warn("Resource config missing or invalid:", config);
       return;
     }
     const key = config.id.toUpperCase().replace(/-/g, "_");

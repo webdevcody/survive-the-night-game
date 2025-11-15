@@ -15,10 +15,7 @@ const formatDisplayName = (name: string): string => {
 };
 
 interface CraftingState {
-  resources: {
-    wood: number;
-    cloth: number;
-  };
+  resources: Record<string, number>;
   inventory: InventoryItem[];
   playerId: string | null;
 }
@@ -37,7 +34,7 @@ interface CraftingPanelProps {
 
 export function CraftingPanel({ gameClient }: CraftingPanelProps) {
   const [craftingState, setCraftingState] = useState<CraftingState>({
-    resources: { wood: 0, cloth: 0 },
+    resources: {},
     inventory: [],
     playerId: null,
   });
@@ -103,7 +100,12 @@ export function CraftingPanel({ gameClient }: CraftingPanelProps) {
   const canCraftRecipe = useCallback(
     (recipe: Recipe): boolean => {
       try {
-        return recipe.canBeCrafted(craftingState.inventory, craftingState.resources);
+        // Convert dynamic resources object to PlayerResources format expected by recipe system
+        const playerResources = {
+          wood: craftingState.resources.wood ?? 0,
+          cloth: craftingState.resources.cloth ?? 0,
+        };
+        return recipe.canBeCrafted(craftingState.inventory, playerResources);
       } catch {
         return false;
       }
@@ -202,18 +204,21 @@ export function CraftingPanel({ gameClient }: CraftingPanelProps) {
                   </div>
                   <div className="text-xs text-gray-300 space-y-0.5">
                     {Object.entries(requirements).map(([itemType, count]) => {
-                      const hasEnough =
-                        itemType === "wood"
-                          ? craftingState.resources.wood >= count
-                          : itemType === "cloth"
-                          ? craftingState.resources.cloth >= count
-                          : (() => {
-                              // For stackable items, check if we have enough count
-                              const totalAvailable = craftingState.inventory
-                                .filter((item) => item?.itemType === itemType)
-                                .reduce((sum, item) => sum + (item?.state?.count || 1), 0);
-                              return totalAvailable >= count;
-                            })();
+                      // Check if this item type exists in resources
+                      const isResource = itemType in craftingState.resources;
+                      const resourceAmount = isResource
+                        ? craftingState.resources[itemType] ?? 0
+                        : 0;
+
+                      const hasEnough = isResource
+                        ? resourceAmount >= count
+                        : (() => {
+                            // For stackable items, check if we have enough count
+                            const totalAvailable = craftingState.inventory
+                              .filter((item) => item?.itemType === itemType)
+                              .reduce((sum, item) => sum + (item?.state?.count || 1), 0);
+                            return totalAvailable >= count;
+                          })();
 
                       return (
                         <div
@@ -227,11 +232,7 @@ export function CraftingPanel({ gameClient }: CraftingPanelProps) {
                             {count}x {formatDisplayName(itemType)}
                           </span>
                           <span className="text-xs">
-                            {itemType === "wood" && `(${craftingState.resources.wood})`}
-                            {itemType === "cloth" && `(${craftingState.resources.cloth})`}
-                            {itemType !== "wood" && itemType !== "cloth" && (
-                              <>{hasEnough ? "✓" : "✗"}</>
-                            )}
+                            {isResource ? `(${resourceAmount})` : <>{hasEnough ? "✓" : "✗"}</>}
                           </span>
                         </div>
                       );

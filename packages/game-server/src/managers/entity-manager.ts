@@ -14,8 +14,9 @@ import Vector2 from "@/util/vector2";
 import { BaseEnemy } from "@/entities/enemies/base-enemy";
 import { getConfig } from "@/config";
 import { entityOverrideRegistry } from "@/entities/entity-override-registry";
-import { itemRegistry } from "@shared/entities";
+import { itemRegistry, resourceRegistry } from "@shared/entities";
 import { GenericItemEntity } from "@/entities/items/generic-item-entity";
+import { GenericResourceEntity } from "@/entities/items/generic-resource-entity";
 import { registerCustomEntities } from "@/entities/register-custom-entities";
 import { Player } from "@/entities/player";
 import { perfTimer } from "@shared/util/performance";
@@ -661,8 +662,14 @@ export class EntityManager implements IEntityManager {
       return new GenericItemEntity(this.getGameManagers(), entityType, itemConfig);
     }
 
+    // Try to create from resource registry
+    const resourceConfig = resourceRegistry.get(entityType);
+    if (resourceConfig) {
+      return new GenericResourceEntity(this.getGameManagers(), entityType, resourceConfig);
+    }
+
     // Could add other registry checks here (weapons, environment, etc.)
-    // For now, we'll focus on items
+    // For now, we'll focus on items and resources
 
     return null;
   }

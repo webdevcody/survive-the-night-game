@@ -1,6 +1,6 @@
 import { WeaponConfig } from "./weapon-registry";
 
-// Use string literals instead of WEAPON_TYPES to avoid circular dependency with Entities
+// Use string literals instead of types to avoid circular dependency with Entities
 export const WEAPON_CONFIGS: Record<string, WeaponConfig> = {
   knife: {
     id: "knife",
@@ -121,9 +121,9 @@ export const WEAPON_CONFIGS: Record<string, WeaponConfig> = {
     assets: {
       assetPrefix: "ak47",
       spritePositions: {
-        right: { x: 48, y: 64 },
-        up: { x: 64, y: 64 },
-        down: { x: 80, y: 64 },
+        right: { x: 80, y: 96 },
+        up: { x: 96, y: 96 },
+        down: { x: 112, y: 96 },
       },
       sheet: "items",
     },
@@ -142,9 +142,9 @@ export const WEAPON_CONFIGS: Record<string, WeaponConfig> = {
     assets: {
       assetPrefix: "grenade_launcher",
       spritePositions: {
-        right: { x: 48, y: 64 },
-        up: { x: 64, y: 64 },
-        down: { x: 80, y: 64 },
+        right: { x: 96, y: 64 },
+        up: { x: 112, y: 64 },
+        down: { x: 128, y: 64 },
       },
       sheet: "items",
     },
@@ -159,9 +159,9 @@ export const WEAPON_CONFIGS: Record<string, WeaponConfig> = {
     assets: {
       assetPrefix: "flamethrower",
       spritePositions: {
-        right: { x: 48, y: 64 },
-        up: { x: 64, y: 64 },
-        down: { x: 80, y: 64 },
+        right: { x: 96, y: 80 },
+        up: { x: 112, y: 80 },
+        down: { x: 128, y: 80 },
       },
       sheet: "items",
     },

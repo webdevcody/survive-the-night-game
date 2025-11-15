@@ -191,6 +191,7 @@ const STRING_VALUE_KEYS = [
   "inventory",
   "baseball_bat",
   "boundary",
+  "wood",
   "fast_zombie",
   "campsite_fire",
   "destructible",

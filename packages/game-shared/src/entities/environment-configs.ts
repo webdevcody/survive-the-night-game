@@ -11,16 +11,6 @@ export const ENVIRONMENT_CONFIGS: Record<string, EnvironmentConfig> = {
       sheet: "items",
     },
   },
-  wood: {
-    id: "wood",
-    category: "resource",
-    assets: {
-      assetKey: "wood",
-      x: 64,
-      y: 32,
-      sheet: "items",
-    },
-  },
   wall: {
     id: "wall",
     category: "structure",

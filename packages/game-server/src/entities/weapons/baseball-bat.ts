@@ -2,7 +2,6 @@ import Destructible from "@/extensions/destructible";
 import { IGameManagers } from "@/managers/types";
 import { Direction, angleToDirection } from "../../../../game-shared/src/util/direction";
 import { Weapon } from "@/entities/weapons/weapon";
-import { WEAPON_TYPES } from "@shared/types/weapons";
 import { PlayerAttackedEvent } from "@/events/server-sent/player-attacked-event";
 import Vector2 from "@/util/vector2";
 import Positionable from "@/extensions/positionable";
@@ -14,10 +13,10 @@ import { weaponRegistry } from "@shared/entities";
 import { getConfig } from "@shared/config";
 
 export class BaseballBat extends Weapon {
-  private config = weaponRegistry.get(WEAPON_TYPES.BASEBALL_BAT)!;
+  private config = weaponRegistry.get("baseball_bat")!;
 
   constructor(gameManagers: IGameManagers) {
-    super(gameManagers, WEAPON_TYPES.BASEBALL_BAT);
+    super(gameManagers, "baseball_bat");
   }
 
   public getCooldown(): number {
@@ -80,10 +79,9 @@ export class BaseballBat extends Weapon {
       .broadcastEvent(
         new PlayerAttackedEvent({
           playerId,
-          weaponKey: WEAPON_TYPES.BASEBALL_BAT,
+          weaponKey: "baseball_bat",
           attackDirection,
         })
       );
   }
 }
-

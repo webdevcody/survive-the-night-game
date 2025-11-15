@@ -402,28 +402,9 @@ export class ServerSocketManager implements Broadcaster {
       inventory.removeItem(itemIndex);
     }
 
-    // Create entity at position
-    // Only set health for items that have Destructible extension (wall, sentry gun, gasoline)
-    let state = {};
-    if (
-      data.itemType === "wall" ||
-      data.itemType === "sentry_gun" ||
-      data.itemType === "gasoline"
-    ) {
-      let maxHealth = 1;
-      if (data.itemType === "wall") {
-        maxHealth = getConfig().world.WALL_MAX_HEALTH;
-      } else if (data.itemType === "sentry_gun") {
-        maxHealth = getConfig().world.SENTRY_GUN_MAX_HEALTH;
-      } else if (data.itemType === "gasoline") {
-        maxHealth = 1; // Gasoline has 1 health
-      }
-      state = { health: maxHealth };
-    }
-
     const placedEntity = this.getEntityManager().createEntityFromItem({
       itemType: data.itemType,
-      state,
+      state: {},
     });
 
     placedEntity.getExt(Positionable).setPosition(placePos);

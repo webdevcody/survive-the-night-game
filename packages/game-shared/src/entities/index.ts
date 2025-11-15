@@ -4,6 +4,8 @@ import { weaponRegistry } from "./weapon-registry";
 import { WEAPON_CONFIGS } from "./weapon-configs";
 import { itemRegistry } from "./item-registry";
 import { ITEM_CONFIGS } from "./item-configs";
+import { resourceRegistry } from "./resource-registry";
+import { RESOURCE_CONFIGS } from "./resource-configs";
 import { decalRegistry } from "./decal-registry";
 import { DECAL_CONFIGS } from "./decal-configs";
 import { projectileRegistry } from "./projectile-registry";
@@ -31,6 +33,11 @@ Object.values(WEAPON_CONFIGS).forEach((config) => {
 // Register all item configurations
 Object.values(ITEM_CONFIGS).forEach((config) => {
   itemRegistry.register(config);
+});
+
+// Register all resource configurations
+Object.values(RESOURCE_CONFIGS).forEach((config) => {
+  resourceRegistry.register(config);
 });
 
 // Register all decal configurations
@@ -68,6 +75,8 @@ export * from "./weapon-registry";
 export * from "./weapon-configs";
 export * from "./item-registry";
 export * from "./item-configs";
+export * from "./resource-registry";
+export * from "./resource-configs";
 export * from "./decal-registry";
 export * from "./decal-configs";
 export * from "./projectile-registry";

@@ -3,22 +3,18 @@ import { IGameManagers } from "@/managers/types";
 import { FlameProjectile } from "@/entities/projectiles/flame-projectile";
 import { Weapon } from "@/entities/weapons/weapon";
 import { Direction } from "../../../../game-shared/src/util/direction";
-import { WEAPON_TYPES } from "@shared/types/weapons";
 import { GunEmptyEvent } from "@shared/events/server-sent/gun-empty-event";
 import { PlayerAttackedEvent } from "@/events/server-sent/player-attacked-event";
 import Vector2 from "@/util/vector2";
-import { weaponRegistry } from "@shared/entities";
 import { consumeAmmo } from "./helpers";
 
 export class Flamethrower extends Weapon {
-  private config = weaponRegistry.get(WEAPON_TYPES.FLAMETHROWER)!;
-
   constructor(gameManagers: IGameManagers) {
-    super(gameManagers, WEAPON_TYPES.FLAMETHROWER);
+    super(gameManagers, "flamethrower");
   }
 
   public getCooldown(): number {
-    return this.config.stats.cooldown;
+    return this.getConfig().stats.cooldown;
   }
 
   public attack(playerId: string, position: Vector2, facing: Direction, aimAngle?: number): void {
@@ -52,7 +48,7 @@ export class Flamethrower extends Weapon {
       .broadcastEvent(
         new PlayerAttackedEvent({
           playerId,
-          weaponKey: WEAPON_TYPES.FLAMETHROWER,
+          weaponKey: this.getType(),
         })
       );
   }

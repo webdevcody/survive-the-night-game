@@ -1,4 +1,4 @@
-import { ItemType, InventoryItem, RESOURCE_ITEMS, isResourceItem } from "./inventory";
+import { ItemType, InventoryItem, isResourceItem } from "./inventory";
 import { getConfig } from "@/config";
 import { itemRegistry } from "@/entities";
 import { weaponRegistry } from "@/entities";

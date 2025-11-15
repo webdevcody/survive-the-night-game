@@ -1,4 +1,3 @@
-import { WeaponType } from "../types/weapons";
 import { BehaviorConfigs } from "./behavior-configs";
 
 export interface WeaponStats {
@@ -20,7 +19,7 @@ export interface WeaponAssetConfig {
 }
 
 export interface WeaponConfig extends BehaviorConfigs {
-  id: WeaponType;
+  id: string;
   type?: "melee" | "ranged"; // Weapon type: melee for close-range weapons, ranged for projectile weapons
   stats: WeaponStats;
   assets: WeaponAssetConfig;
@@ -28,13 +27,13 @@ export interface WeaponConfig extends BehaviorConfigs {
 }
 
 class WeaponRegistry {
-  private weapons = new Map<WeaponType, WeaponConfig>();
+  private weapons = new Map<string, WeaponConfig>();
 
   register(config: WeaponConfig): void {
     this.weapons.set(config.id, config);
   }
 
-  get(id: WeaponType): WeaponConfig | undefined {
+  get(id: string): WeaponConfig | undefined {
     return this.weapons.get(id);
   }
 
@@ -42,11 +41,11 @@ class WeaponRegistry {
     return Array.from(this.weapons.values());
   }
 
-  getAllWeaponTypes(): WeaponType[] {
+  getAllWeaponTypes(): string[] {
     return Array.from(this.weapons.keys());
   }
 
-  has(id: WeaponType): boolean {
+  has(id: string): boolean {
     return this.weapons.has(id);
   }
 }
