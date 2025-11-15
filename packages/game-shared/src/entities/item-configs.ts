@@ -225,6 +225,20 @@ export const ITEM_CONFIGS: Record<string, ItemConfig> = {
       totalFrames: 3,
     },
   },
+  gallon_drum: {
+    id: "gallon_drum",
+    category: "structure",
+    assets: {
+      assetKey: "gallon_drum",
+      x: 96,
+      y: 144,
+      sheet: "items",
+    },
+    spawn: {
+      enabled: true,
+      chance: 0.03,
+    },
+  },
   miners_hat: {
     id: "miners_hat",
     category: "consumable",

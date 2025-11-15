@@ -276,6 +276,11 @@ export class InputManager {
         case "KeyG":
           callbacks.onDrop?.(this.inputs);
           break;
+        case "Space":
+          // Trigger attack with spacebar
+          e.preventDefault(); // Prevent page scrolling
+          this.triggerFire();
+          break;
         case "ShiftLeft":
         case "ShiftRight":
           this.inputs.sprint = true;
@@ -385,6 +390,10 @@ export class InputManager {
           break;
         case "KeyG":
           this.inputs.drop = false;
+          break;
+        case "Space":
+          // Release attack with spacebar
+          this.releaseFire();
           break;
         case "ShiftLeft":
         case "ShiftRight":

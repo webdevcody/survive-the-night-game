@@ -1,5 +1,18 @@
 [
   {
+    "version": "0.15.0",
+    "date": "2025-11-15",
+    "changes": [
+      "Added gallon drum containers - new lootable environmental objects that spawn randomly on the map",
+      "Gallon drums can be searched for random items - contains 2 random items from the spawn pool",
+      "Added spacebar attack support - players can now attack using spacebar in addition to mouse clicks",
+      "Improved combat controls - spacebar provides quick melee/ranged attack alternative to clicking",
+      "Enhanced compression system with gallon_drum entity support for network efficiency",
+      "Updated items sprite sheet with new gallon drum graphics",
+      "Gallon drums are destroyed after being looted and disappear from the map"
+    ]
+  },
+  {
     "version": "0.14.0",
     "date": "2025-11-15",
     "changes": [

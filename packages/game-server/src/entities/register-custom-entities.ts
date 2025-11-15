@@ -25,6 +25,7 @@ import { Landmine } from "@/entities/items/landmine";
 import { BearTrap } from "@/entities/items/bear-trap";
 import { Grenade } from "@/entities/items/grenade";
 import { Crate } from "@/entities/items/crate";
+import { GallonDrum } from "@/entities/items/gallon-drum";
 import { SentryGun } from "@/entities/items/sentry-gun";
 import { PistolAmmo } from "@/entities/items/pistol-ammo";
 import { ShotgunAmmo } from "@/entities/items/shotgun-ammo";
@@ -91,6 +92,7 @@ export function registerCustomEntities(): void {
   entityOverrideRegistry.register("bear_trap", BearTrap);
   entityOverrideRegistry.register("grenade", Grenade);
   entityOverrideRegistry.register("crate", Crate);
+  entityOverrideRegistry.register("gallon_drum", GallonDrum);
   entityOverrideRegistry.register("sentry_gun", SentryGun);
 
   // Ammo (uses StackableItem base class)

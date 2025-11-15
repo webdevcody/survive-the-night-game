@@ -20,22 +20,17 @@ Feel free to pick any item listed out here to work on.
 - new zombie types
   - a new zombie type who immobilizes you if hit
   - a new zombie type who can poison you
-- add more gore for when zombies are shot or killed
-- add more gore when player is killed
 - remove decal idea from map
 - Could not spawn all zombies at location (1136, 848)
 - ​​add gate that works like wall but users can go through while zombies not
-- add back the ability to attack with space bar
-- have a weapon menu separate from inventory
-- changing items with scroll bar would be useful
 - combine weapon / ammo in hud so it's easier to read how much you got left
 - figure out a better way to positions of the weapons so they look attached to the hands
 - game mode: battle royal mode (1 player zombie, everyone else human)
-- play a siren noise and up battle music for the wave
-- play a low tempo ambient music during non wave
-- a user can search gallon drums for items
 - do not play walking animation for surviver when they are non rescued
 - on death, a player will now turn into a zombie. plan and implement this implementation. player zombies will spawn on the outskirts of the map.
+- have a weapon menu separate from inventory
+- changing items with scroll bar would be useful
+- I agree, having a semi-translucened circurar weapon inventory would look cool, it would enable to quickly changing weapons.
 
 ## Bug
 

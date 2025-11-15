@@ -192,6 +192,7 @@ const STRING_VALUE_KEYS = [
   "arrow",
   "arrow_ammo",
   "baseball_bat",
+  "gallon_drum",
   "blood",
   "boundary",
   "wood",
