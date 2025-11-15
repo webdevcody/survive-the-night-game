@@ -4,6 +4,7 @@ import { Entities, Zombies, getZombieTypesSet } from "../../../../game-shared/sr
 import Positionable from "@/extensions/positionable";
 import Interactive from "@/extensions/interactive";
 import Carryable from "@/extensions/carryable";
+import Placeable from "@/extensions/placeable";
 import { IEntity } from "@/entities/types";
 import Destructible from "@/extensions/destructible";
 import OneTimeTrigger from "@/extensions/one-time-trigger";
@@ -36,6 +37,7 @@ export class BearTrap extends Entity implements IEntity {
       .setDisplayName("bear trap");
     this.addExtension(this.interactiveExtension);
     this.addExtension(new Carryable(this, "bear_trap" as any));
+    this.addExtension(new Placeable(this));
     this.addExtension(new Updatable(this, this.updateBearTrap.bind(this)));
 
     // Activate the trap when created

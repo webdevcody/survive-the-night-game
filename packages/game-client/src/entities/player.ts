@@ -43,6 +43,7 @@ export class PlayerClient extends ClientEntity implements IClientEntity, Rendera
   private displayName: string = "";
   private stamina: number = 100;
   private maxStamina: number = 100;
+  private pickupProgress: number = 0;
   private serverGhostPos: Vector2 | null = null;
 
   private input: Input = {
@@ -85,6 +86,7 @@ export class PlayerClient extends ClientEntity implements IClientEntity, Rendera
     this.displayName = data.displayName || "Unknown";
     this.stamina = data.stamina ?? 100;
     this.maxStamina = data.maxStamina ?? 100;
+    this.pickupProgress = data.pickupProgress ?? 0;
   }
 
   private getPlayerAssetKey(): string {
@@ -468,5 +470,10 @@ export class PlayerClient extends ClientEntity implements IClientEntity, Rendera
     this.displayName = data.displayName || "Unknown";
     this.stamina = data.stamina ?? 100;
     this.maxStamina = data.maxStamina ?? 100;
+    this.pickupProgress = data.pickupProgress ?? 0;
+  }
+
+  getPickupProgress(): number {
+    return this.pickupProgress;
   }
 }

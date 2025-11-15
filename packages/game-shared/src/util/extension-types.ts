@@ -15,6 +15,7 @@ export const ExtensionTypes = {
   COMBUSTIBLE: "combustible",
   ILLUMINATED: "illuminated",
   CARRYABLE: "carryable",
+  PLACEABLE: "placeable",
   GROUPABLE: "groupable",
   LANDMINE_UPDATE: "landmine-update",
   ONE_TIME_TRIGGER: "one-time-trigger",

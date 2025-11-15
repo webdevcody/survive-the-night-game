@@ -4,6 +4,7 @@ import Destructible from "@/extensions/destructible";
 import Interactive from "@/extensions/interactive";
 import Inventory from "@/extensions/inventory";
 import Positionable from "@/extensions/positionable";
+import Placeable from "@/extensions/placeable";
 import { IGameManagers } from "@/managers/types";
 import { Entities } from "@/constants";
 import { getConfig } from "@shared/config";
@@ -36,6 +37,7 @@ export class Wall extends Entity {
         count,
       })
     );
+    this.addExtension(new Placeable(this));
   }
 
   private interact(entityId: string): void {
