@@ -114,7 +114,7 @@ export const ITEM_CONFIGS: Record<string, ItemConfig> = {
     assets: {
       assetKey: "arrow_ammo",
       x: 128,
-      y: 16,
+      y: 32,
       sheet: "items",
     },
     spawn: {

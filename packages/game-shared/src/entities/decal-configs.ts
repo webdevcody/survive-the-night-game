@@ -28,6 +28,19 @@ export const DECAL_CONFIGS: Record<string, DecalConfig> = {
       },
     },
   },
+  blood: {
+    id: "blood",
+    category: "effect",
+    assets: {
+      assetKey: "blood",
+      type: "single",
+      position: {
+        x: 0,
+        y: 256,
+        sheet: "ground",
+      },
+    },
+  },
   explosion: {
     id: "explosion",
     category: "effect",

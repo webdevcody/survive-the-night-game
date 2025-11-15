@@ -47,6 +47,7 @@ import { CampsiteFire } from "@/entities/environment/campsite-fire";
 import { Merchant } from "@/entities/environment/merchant";
 import { Car } from "@/entities/environment/car";
 import { Survivor } from "@/entities/environment/survivor";
+import { Blood } from "@/entities/blood";
 
 /**
  * Registers all custom entity classes in the override registry
@@ -118,6 +119,7 @@ export function registerCustomEntities(): void {
   entityOverrideRegistry.register("merchant", Merchant);
   entityOverrideRegistry.register("car", Car);
   entityOverrideRegistry.register("survivor", Survivor);
+  entityOverrideRegistry.register("blood", Blood);
 
   // Note: Boundary is server-only and created manually, no need to register
 }

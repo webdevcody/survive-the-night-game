@@ -1,5 +1,20 @@
 [
   {
+    "version": "0.14.0",
+    "date": "2025-11-15",
+    "changes": [
+      "Added blood decals - blood splatter appears when players and zombies take damage, fading over 10 seconds",
+      "Added arrow recovery system - arrows that reach max travel distance drop as collectible arrow items",
+      "Improved bow and arrow gameplay - reduced arrow travel distance from 200 to 100 pixels for better balance",
+      "Enhanced visual feedback with new blood sprite on ground texture sheet",
+      "Added Expirable extension for temporary entities - blood decals automatically expire after duration",
+      "Fixed arrow and bow sprite positioning in items sheet for correct visual alignment",
+      "Added DECALS z-index layer between ground and items for proper rendering order",
+      "Enhanced compression system with blood entity support for network efficiency",
+      "Updated ground and items sprite sheets with new blood and arrow graphics"
+    ]
+  },
+  {
     "version": "0.13.2",
     "date": "2025-11-14",
     "changes": [

@@ -368,7 +368,9 @@ export const assetsMap = {
     environmentRegistry.getAll().filter((config) => {
       const sheet = config.assets.sheet || "default";
       // Only include assets that use standard sheets
-      return sheet === "default" || sheet === "items" || sheet === "characters" || sheet === "ground";
+      return (
+        sheet === "default" || sheet === "items" || sheet === "characters" || sheet === "ground"
+      );
     }),
     (config) =>
       createSimpleAsset(
@@ -415,6 +417,7 @@ export const assetsMap = {
   ...mergeAssetsFromConfigs(zombieRegistry.getAll(), generateCharacterAssetsFromConfig),
   // Auto-generate all character assets from registry
   ...mergeAssetsFromConfigs(characterRegistry.getAll(), generateCharacterAssetsFromConfig),
+  // Note: blood asset is auto-generated from decal registry above
 } as const;
 
 export type Asset = keyof typeof assetsMap;

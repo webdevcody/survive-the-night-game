@@ -6,6 +6,7 @@ import { zombieRegistry } from "../entities/zombie-registry";
 import { projectileRegistry } from "../entities/projectile-registry";
 import { environmentRegistry } from "../entities/environment-registry";
 import { characterRegistry } from "../entities/character-registry";
+import { decalRegistry } from "../entities/decal-registry";
 
 /**
  * Auto-generates the Entities constant from all registries
@@ -86,8 +87,16 @@ export function generateEntities() {
   });
 
   // Add special entities that aren't in registries
+  // TODO: refactor this
   entities["PLAYER"] = "player";
   entities["BOUNDARY"] = "boundary";
+
+  // Add blood entity from decal registry
+  const bloodDecal = decalRegistry.get("blood");
+  if (bloodDecal) {
+    const key = bloodDecal.id.toUpperCase().replace(/-/g, "_");
+    entities[key] = bloodDecal.id;
+  }
 
   return entities;
 }

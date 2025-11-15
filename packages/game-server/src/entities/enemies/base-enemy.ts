@@ -19,6 +19,7 @@ import { ZombieHurtEvent } from "@/events/server-sent/zombie-hurt-event";
 import { EntityCategory, EntityCategories, ZombieConfig, zombieRegistry } from "@shared/entities";
 import { IdleMovementStrategy } from "./strategies/movement/idle-movement";
 import { getConfig } from "@shared/config";
+import { Blood } from "@/entities/blood";
 
 export interface MovementStrategy {
   // Return true if the strategy handled movement completely, false if it needs default movement handling
@@ -109,6 +110,12 @@ export abstract class BaseEnemy extends Entity<typeof BASE_ENEMY_SERIALIZABLE_FI
 
   onDamaged(): void {
     this.getGameManagers().getBroadcaster().broadcastEvent(new ZombieHurtEvent(this.getId()));
+
+    // Create blood entity at zombie position
+    const position = this.getExt(Positionable).getPosition();
+    const blood = new Blood(this.getGameManagers());
+    blood.getExt(Positionable).setPosition(position);
+    this.getEntityManager().addEntity(blood);
   }
 
   getCenterPosition(): Vector2 {

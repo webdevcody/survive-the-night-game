@@ -14,8 +14,9 @@ import { IEntity } from "@/entities/types";
 import Vector2 from "@/util/vector2";
 import { Line, Rectangle } from "@/util/shape";
 import { Player } from "@/entities/player";
+import { ArrowAmmo } from "../items/arrow-ammo";
 
-const MAX_TRAVEL_DISTANCE = 200;
+const MAX_TRAVEL_DISTANCE = 100;
 export class Arrow extends Entity {
   private traveledDistance: number = 0;
   private static readonly ARROW_SPEED = 200; // Slower than bullets
@@ -69,10 +70,7 @@ export class Arrow extends Entity {
     const length = Math.sqrt(rotatedX * rotatedX + rotatedY * rotatedY);
 
     this.getExt(Movable).setVelocity(
-      new Vector2(
-        (rotatedX / length) * Arrow.ARROW_SPEED,
-        (rotatedY / length) * Arrow.ARROW_SPEED
-      )
+      new Vector2((rotatedX / length) * Arrow.ARROW_SPEED, (rotatedY / length) * Arrow.ARROW_SPEED)
     );
   }
 
@@ -206,7 +204,7 @@ export class Arrow extends Entity {
         this.getEntityManager().markEntityForRemoval(this);
         const destructible = enemy.getExt(Destructible);
         const wasAlive = !destructible.isDead();
-        
+
         // Deal 1 damage
         destructible.damage(1);
 
@@ -251,7 +249,13 @@ export class Arrow extends Entity {
     this.traveledDistance += distance(lastPosition, this.getPosition());
 
     if (this.traveledDistance > MAX_TRAVEL_DISTANCE) {
+      console.log("arrow reached max distance, creating new arrow");
       this.getEntityManager().markEntityForRemoval(this);
+      const arrowAmmo = new ArrowAmmo(this.getGameManagers(), {
+        count: 1,
+      });
+      arrowAmmo.getExt(Positionable).setPosition(this.getPosition());
+      this.getEntityManager().addEntity(arrowAmmo);
     }
   }
 
@@ -275,4 +279,3 @@ export class Arrow extends Entity {
     this.getExt(Movable).setVelocity(velocity);
   }
 }
-

@@ -1,11 +1,12 @@
 export const Z_INDEX = {
   GROUND: 0,
-  ITEMS: 1,
-  BUILDINGS: 2,
-  ENEMIES: 3,
-  PLAYERS: 4,
-  PROJECTILES: 5,
-  UI: 6,
+  DECALS: 1,
+  ITEMS: 2,
+  BUILDINGS: 3,
+  ENEMIES: 4,
+  PLAYERS: 5,
+  PROJECTILES: 6,
+  UI: 7,
 };
 
 export const TILE_IDS = {

@@ -176,9 +176,9 @@ export const WEAPON_CONFIGS: Record<string, WeaponConfig> = {
     assets: {
       assetPrefix: "bow",
       spritePositions: {
-        right: { x: 0, y: 112 },
-        up: { x: 16, y: 112 },
-        down: { x: 32, y: 112 },
+        right: { x: 80, y: 112 },
+        up: { x: 96, y: 112 },
+        down: { x: 112, y: 112 },
       },
       sheet: "items",
     },

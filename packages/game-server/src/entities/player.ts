@@ -32,6 +32,7 @@ import { Rectangle } from "@/util/shape";
 import Carryable from "@/extensions/carryable";
 import { SkinType, SKIN_TYPES } from "@shared/commands/commands";
 import { itemRegistry } from "@shared/entities";
+import { Blood } from "@/entities/blood";
 
 // Define serializable fields for type safety
 const PLAYER_SERIALIZABLE_FIELDS = [
@@ -164,6 +165,12 @@ export class Player extends Entity<typeof PLAYER_SERIALIZABLE_FIELDS> {
 
     this.getExt(Destructible).damage(damage);
     this.broadcaster.broadcastEvent(new PlayerHurtEvent(this.getId()));
+
+    // Create blood entity at player position
+    const position = this.getExt(Positionable).getPosition();
+    const blood = new Blood(this.getGameManagers());
+    blood.getExt(Positionable).setPosition(position);
+    this.getEntityManager().addEntity(blood);
   }
 
   onDeath(): void {

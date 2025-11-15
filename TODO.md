@@ -6,6 +6,10 @@ Feel free to pick any item listed out here to work on.
 
 - if you pick up a wall that is damaged and put it back down, it seems to go back to full hp again.
 
+## DevEx
+
+- the approach for compression is very hacky, find a more elegant solution
+
 ## UX
 
 - when the car is destroyed, change it to a broken car sprite display
@@ -13,18 +17,14 @@ Feel free to pick any item listed out here to work on.
 
 ## Game Design
 
-- the knife doesn't hurt crates
-- the knife doesn't explode gas cans
-- a new melee weapon called baseball bat (longer range than knife, easier to kite enemies)
+- new zombie types
+  - a new zombie type who immobilizes you if hit
+  - a new zombie type who can poison you
 - add more gore for when zombies are shot or killed
 - add more gore when player is killed
+- remove decal idea from map
 - Could not spawn all zombies at location (1136, 848)
-- the drop crates HUD is over the inventory, they should be under, change the render ordering to make the hud indicators be under all other UI elements
-- hide the repair interaction text until the car's repair cooldown is ready
-- a new zombie type who immobilizes you if hit
-- a new zombie type who can poison you
 - ​​add gate that works like wall but users can go through while zombies not
-- complaints of a lack of ammo
 - add back the ability to attack with space bar
 - have a weapon menu separate from inventory
 - changing items with scroll bar would be useful
