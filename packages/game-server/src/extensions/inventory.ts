@@ -1,5 +1,5 @@
 import { Extension, ExtensionSerialized } from "@/extensions/types";
-import { InventoryItem, ItemType, isWeapon } from "../../../game-shared/src/util/inventory";
+import { InventoryItem, ItemType, isWeapon, isAmmo } from "@shared/util/inventory";
 import { recipes, RecipeType } from "../../../game-shared/src/util/recipes";
 import { Broadcaster } from "@/managers/types";
 import { PlayerPickedUpItemEvent } from "@shared/events/server-sent/pickup-item-event";
@@ -51,6 +51,8 @@ export default class Inventory implements Extension {
 
   private self: IEntity;
   private items: InventoryItem[] = [];
+  // Separate ammo storage: { ammoType: count }
+  private ammo: Record<string, number> = {};
   private broadcaster: Broadcaster;
   private dirty: boolean = false;
 
@@ -70,10 +72,31 @@ export default class Inventory implements Extension {
   }
 
   public hasItem(itemType: ItemType): boolean {
-    return this.items.some((it) => it?.itemType === itemType);
+    // Check regular inventory
+    if (this.items.some((it) => it?.itemType === itemType)) {
+      return true;
+    }
+    // Check ammo storage
+    if (isAmmo(itemType)) {
+      return this.hasAmmo(itemType);
+    }
+    return false;
   }
 
   public addItem(item: InventoryItem): void {
+    // Check if item is ammo - if so, add to separate ammo storage
+    if (isAmmo(item.itemType)) {
+      this.addAmmo(item.itemType, item.state?.count || 1);
+
+      this.broadcaster.broadcastEvent(
+        new PlayerPickedUpItemEvent({
+          playerId: this.self.getId(),
+          itemType: item.itemType,
+        })
+      );
+      return;
+    }
+
     if (this.isFull()) return;
 
     // Find first empty slot (null/undefined) to fill
@@ -180,12 +203,49 @@ export default class Inventory implements Extension {
   public clear(): void {
     if (this.items.length > 0) {
       this.items = [];
+      this.ammo = {};
       this.markDirty();
     }
   }
 
+  // Ammo management methods
+  public addAmmo(ammoType: string, count: number): void {
+    if (!this.ammo[ammoType]) {
+      this.ammo[ammoType] = 0;
+    }
+    this.ammo[ammoType] += count;
+    this.markDirty();
+  }
+
+  public getAmmo(ammoType: string): number {
+    return this.ammo[ammoType] || 0;
+  }
+
+  public hasAmmo(ammoType: string): boolean {
+    return this.getAmmo(ammoType) > 0;
+  }
+
+  public consumeAmmo(ammoType: string, count: number = 1): boolean {
+    const currentCount = this.getAmmo(ammoType);
+    if (currentCount < count) {
+      return false;
+    }
+    this.ammo[ammoType] = currentCount - count;
+    if (this.ammo[ammoType] <= 0) {
+      delete this.ammo[ammoType];
+    }
+    this.markDirty();
+    return true;
+  }
+
+  public getAllAmmo(): Record<string, number> {
+    return { ...this.ammo };
+  }
+
   public scatterItems(position: { x: number; y: number }): void {
     const offset = 32;
+
+    // Scatter regular inventory items
     this.items.forEach((item) => {
       if (item == null) return; // Skip null/undefined items
       const entity = this.createEntityFromItem(item);
@@ -206,6 +266,31 @@ export default class Inventory implements Extension {
       this.self.getEntityManager()?.addEntity(entity);
     });
     this.items = [];
+
+    // Scatter ammo items
+    Object.entries(this.ammo).forEach(([ammoType, count]) => {
+      if (count <= 0) return;
+      const entity = this.createEntityFromItem({
+        itemType: ammoType as ItemType,
+        state: { count },
+      });
+      if (!entity) return;
+      const theta = Math.random() * 2 * Math.PI;
+      const radius = Math.random() * offset;
+      const pos = new Vector2(
+        position.x + radius * Math.cos(theta),
+        position.y + radius * Math.sin(theta)
+      );
+
+      if ("setPosition" in entity) {
+        (entity as any).setPosition(pos);
+      } else if (entity.hasExt(Positionable)) {
+        entity.getExt(Positionable).setPosition(pos);
+      }
+
+      this.self.getEntityManager()?.addEntity(entity);
+    });
+    this.ammo = {};
   }
 
   private createEntityFromItem(item: InventoryItem) {
@@ -238,6 +323,7 @@ export default class Inventory implements Extension {
     return {
       type: Inventory.type,
       items: this.items,
+      ammo: this.ammo,
     };
   }
 }

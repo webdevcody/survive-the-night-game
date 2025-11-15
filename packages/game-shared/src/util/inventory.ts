@@ -34,3 +34,31 @@ export function isResourceItem(itemType: ItemType): boolean {
 export function isWeapon(itemType: ItemType): boolean {
   return weaponRegistry.has(itemType);
 }
+
+/**
+ * Check if an item type is ammo by checking if it ends with "_ammo"
+ */
+export function isAmmo(itemType: ItemType): boolean {
+  return itemType.endsWith("_ammo");
+}
+
+/**
+ * Get the weapon type for a given ammo type.
+ * For example: "pistol_ammo" -> "pistol"
+ */
+export function getWeaponForAmmo(ammoType: ItemType): ItemType | null {
+  if (!isAmmo(ammoType)) return null;
+  return ammoType.replace("_ammo", "");
+}
+
+/**
+ * Get the ammo type for a given weapon type.
+ * For example: "pistol" -> "pistol_ammo"
+ */
+export function getAmmoForWeapon(weaponType: ItemType): ItemType | null {
+  if (!isWeapon(weaponType)) return null;
+  // Melee weapons don't use ammo
+  const config = weaponRegistry.get(weaponType);
+  if (config?.type === "melee") return null;
+  return `${weaponType}_ammo`;
+}

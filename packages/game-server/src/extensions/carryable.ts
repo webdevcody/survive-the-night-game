@@ -1,7 +1,7 @@
 import { Extension, ExtensionSerialized } from "@/extensions/types";
 import { PlayerPickedUpItemEvent } from "@/events/server-sent/pickup-item-event";
 import Inventory from "@/extensions/inventory";
-import { ItemType } from "@/util/inventory";
+import { ItemType, isAmmo } from "@/util/inventory";
 import { IEntity } from "@/entities/types";
 import { ItemState } from "@/types/entity";
 
@@ -68,7 +68,10 @@ export default class Carryable implements Extension {
 
     const inventory = entity.getExt(Inventory);
 
-    if (inventory.isFull() && !options?.mergeStrategy) {
+    // Ammo items don't take up inventory slots, so they can always be picked up
+    const isAmmoItem = isAmmo(this.itemType);
+
+    if (!isAmmoItem && inventory.isFull() && !options?.mergeStrategy) {
       return false;
     }
 
@@ -89,7 +92,8 @@ export default class Carryable implements Extension {
     }
 
     // Otherwise add as new item
-    if (inventory.isFull()) {
+    // Ammo can always be added (doesn't take inventory slots)
+    if (!isAmmoItem && inventory.isFull()) {
       return false;
     }
 

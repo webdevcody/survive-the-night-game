@@ -7,7 +7,7 @@ import { GameServer } from "@/server";
 import { AdminCommand } from "@shared/commands/commands";
 import { Input } from "../../../game-shared/src/util/input";
 import { RecipeType } from "../../../game-shared/src/util/recipes";
-import { ItemType, isResourceItem, ResourceType } from "@shared/util/inventory";
+import { ItemType, isResourceItem, ResourceType, isAmmo } from "@shared/util/inventory";
 import { itemRegistry } from "@shared/entities/item-registry";
 import Vector2 from "@/util/vector2";
 import { createServer } from "http";
@@ -302,8 +302,9 @@ export class ServerSocketManager implements Broadcaster {
       const item = { itemType };
       const inventory = player.getExt(Inventory);
 
-      // Add to inventory or drop on ground
-      if (inventory.isFull()) {
+      // Ammo doesn't take up inventory slots, so it can always be added
+      // Regular items need to check if inventory is full
+      if (!isAmmo(itemType) && inventory.isFull()) {
         // Drop item 32 pixels down from player
         const playerPos = player.getExt(Positionable).getPosition();
         const dropPosition = new Vector2(playerPos.x, playerPos.y + 32);

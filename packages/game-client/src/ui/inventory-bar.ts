@@ -1,14 +1,16 @@
-import { GameState } from "@/state";
+import { GameState, getEntityById } from "@/state";
 import { InputManager } from "@/managers/input";
 import { Z_INDEX } from "@shared/map";
 import { Renderable } from "@/entities/util";
 import { AssetManager, getItemAssetKey } from "@/managers/asset";
-import { InventoryItem } from "../../../game-shared/src/util/inventory";
+import { getAmmoForWeapon, InventoryItem } from "@shared/util/inventory";
 import { getConfig } from "@shared/config";
 import { HeartsPanel } from "./panels/hearts-panel";
 import { StaminaPanel } from "./panels/stamina-panel";
 import { calculateHudScale } from "@/util/hud-scale";
 import { formatDisplayName } from "@/util/format";
+import { PlayerClient } from "@/entities/player";
+import { ClientInventory } from "@/extensions/inventory";
 
 const HOTBAR_SETTINGS = {
   Inventory: {
@@ -296,6 +298,31 @@ export class InventoryBarUI implements Renderable {
         const countY = slotsBottom - 6 * hudScale;
         ctx.strokeText(`${inventoryItem.state.count}`, countX, countY);
         ctx.fillText(`${inventoryItem.state.count}`, countX, countY);
+      }
+
+      // Draw ammo count for weapons
+      if (inventoryItem && !inventoryItem.state?.count) {
+        const ammoType = getAmmoForWeapon(inventoryItem.itemType);
+        if (ammoType) {
+          // Get the player to access ammo inventory
+          const player = getEntityById(gameState, gameState.playerId) as PlayerClient;
+          if (player && player.hasExt(ClientInventory)) {
+            const inventory = player.getExt(ClientInventory);
+            const ammoCount = inventory.getAmmo(ammoType);
+
+            // Display ammo count in bottom-right corner
+            const ammoFontSize = 18 * hudScale;
+            ctx.font = `bold ${ammoFontSize}px Arial`;
+            ctx.textAlign = "right";
+            ctx.fillStyle = ammoCount > 0 ? "yellow" : "red";
+            ctx.strokeStyle = "rgba(0, 0, 0, 0.8)";
+            ctx.lineWidth = 3 * hudScale;
+            const ammoX = slotRight - 4 * hudScale;
+            const ammoY = slotsBottom - 4 * hudScale;
+            ctx.strokeText(`${ammoCount}`, ammoX, ammoY);
+            ctx.fillText(`${ammoCount}`, ammoX, ammoY);
+          }
+        }
       }
     }
 
