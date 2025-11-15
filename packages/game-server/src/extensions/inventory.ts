@@ -155,17 +155,85 @@ export default class Inventory implements Extension {
     itemToDrop?: InventoryItem;
   } {
     const foundRecipe = recipes.find((it) => it.getType() === recipe);
-    if (foundRecipe === undefined) {
+    if (!foundRecipe) {
       return { inventory: this.items, resources };
     }
 
+    // --- Create combined inventory (items + ammo) ---
+    // Pre-allocate final size to minimize resizing
+    const combinedInventory = this.items.slice(); // cheap shallow copy
+
+    for (const ammoType in this.ammo) {
+      const count = this.ammo[ammoType];
+      if (count > 0) {
+        combinedInventory.push({
+          itemType: ammoType as ItemType,
+          state: { count },
+        });
+      }
+    }
+
     const maxSlots = getConfig().player.MAX_INVENTORY_SLOTS;
-    const result = foundRecipe.craft(this.items, resources, maxSlots);
-    const itemsChanged = JSON.stringify(this.items) !== JSON.stringify(result.inventory);
-    this.items = result.inventory;
-    if (itemsChanged) {
+    const result = foundRecipe.craft(combinedInventory, resources, maxSlots);
+
+    // --- Split output back into items + ammo ---
+    const newItems: InventoryItem[] = [];
+    const newAmmo: Record<string, number> = {};
+
+    for (let i = 0; i < result.inventory.length; i++) {
+      const item = result.inventory[i];
+      if (!item) continue;
+
+      if (isAmmo(item.itemType)) {
+        newAmmo[item.itemType] = item.state?.count || 0;
+      } else {
+        newItems.push(item);
+      }
+    }
+
+    // --- Detect changes in O(n) WITHOUT JSON.stringify ---
+    let changed = false;
+
+    // Items changed?
+    if (newItems.length !== this.items.length) {
+      changed = true;
+    } else {
+      for (let i = 0; i < newItems.length; i++) {
+        const a = newItems[i];
+        const b = this.items[i];
+        if (a.itemType !== b.itemType) {
+          changed = true;
+          break;
+        }
+        if ((a.state?.count ?? 0) !== (b.state?.count ?? 0)) {
+          changed = true;
+          break;
+        }
+      }
+    }
+
+    // Ammo changed?
+    if (!changed) {
+      for (const key in newAmmo) {
+        if (newAmmo[key] !== this.ammo[key]) {
+          changed = true;
+          break;
+        }
+      }
+      for (const key in this.ammo) {
+        if (this.ammo[key] !== newAmmo[key]) {
+          changed = true;
+          break;
+        }
+      }
+    }
+
+    if (changed) {
+      this.items = newItems;
+      this.ammo = newAmmo;
       this.markDirty();
     }
+
     return result;
   }
 

@@ -203,22 +203,27 @@ export function CraftingPanel({ gameClient }: CraftingPanelProps) {
                     {formatDisplayName(resultComponent.type)}
                   </div>
                   <div className="text-xs text-gray-300 space-y-0.5">
-                    {Object.entries(requirements).map(([itemType, count]) => {
-                      // Check if this item type exists in resources
+                    {Object.entries(requirements).map(([itemType, required]) => {
                       const isResource = itemType in craftingState.resources;
-                      const resourceAmount = isResource
-                        ? craftingState.resources[itemType] ?? 0
-                        : 0;
+                      const isAmmo = !isResource && itemType.endsWith("_ammo");
 
-                      const hasEnough = isResource
-                        ? resourceAmount >= count
-                        : (() => {
-                            // For stackable items, check if we have enough count
-                            const totalAvailable = craftingState.inventory
-                              .filter((item) => item?.itemType === itemType)
-                              .reduce((sum, item) => sum + (item?.state?.count || 1), 0);
-                            return totalAvailable >= count;
-                          })();
+                      // --- 1) Compute available amount (unified) ---
+                      let available = 0;
+
+                      if (isResource) {
+                        available = craftingState.resources[itemType] ?? 0;
+                      } else {
+                        // Ammo / stackable items in inventory
+                        available = craftingState.inventory
+                          .filter((it) => it?.itemType === itemType)
+                          .reduce((sum, it) => sum + (it?.state?.count || 1), 0);
+                      }
+
+                      // --- 2) Unified check ---
+                      const hasEnough = available >= required;
+
+                      // --- 3) Determine whether to show amount next to it ---
+                      const shouldShowAmount = isResource || isAmmo;
 
                       return (
                         <div
@@ -229,10 +234,12 @@ export function CraftingPanel({ gameClient }: CraftingPanelProps) {
                           )}
                         >
                           <span>
-                            {count}x {formatDisplayName(itemType)}
+                            {required}x {formatDisplayName(itemType)}
                           </span>
+
                           <span className="text-xs">
-                            {isResource ? `(${resourceAmount})` : <>{hasEnough ? "✓" : "✗"}</>}
+                            {shouldShowAmount && <>( {available} ) </>}
+                            {hasEnough ? "✓" : "✗"}
                           </span>
                         </div>
                       );
