@@ -1,6 +1,7 @@
 import Carryable from "@/extensions/carryable";
 import Interactive from "@/extensions/interactive";
 import Positionable from "@/extensions/positionable";
+import Placeable from "@/extensions/placeable";
 import TriggerCooldownAttacker from "@/extensions/trigger-cooldown-attacker";
 import { IGameManagers } from "@/managers/types";
 import { Entities } from "@/constants";
@@ -35,6 +36,7 @@ export class Spikes extends Entity {
       new Interactive(this).onInteract(this.interact.bind(this)).setDisplayName("spikes")
     );
     this.addExtension(new Carryable(this, "spikes").setItemState({ count }));
+    this.addExtension(new Placeable(this));
   }
 
   private interact(entityId: string): void {

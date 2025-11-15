@@ -3,6 +3,7 @@ import Collidable from "@/extensions/collidable";
 import Destructible from "@/extensions/destructible";
 import Interactive from "@/extensions/interactive";
 import Positionable from "@/extensions/positionable";
+import Placeable from "@/extensions/placeable";
 import Updatable from "@/extensions/updatable";
 import { IGameManagers } from "@/managers/types";
 import { Entities, Zombies } from "@shared/constants";
@@ -48,6 +49,7 @@ export class SentryGun extends Entity {
         count,
       })
     );
+    this.addExtension(new Placeable(this));
     this.addExtension(new Updatable(this, this.updateSentryGun.bind(this)));
     this.addExtension(new Groupable(this, "friendly")); // Allied with player
   }

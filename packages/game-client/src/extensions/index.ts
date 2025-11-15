@@ -12,6 +12,7 @@ import { ClientInteractive } from "@/extensions/interactive";
 import { ClientInventory } from "@/extensions/inventory";
 import { ClientMovable } from "@/extensions/movable";
 import { ClientPositionable } from "@/extensions/positionable";
+import { ClientPlaceable } from "@/extensions/placeable";
 import { ClientTriggerCooldownAttacker } from "@/extensions/trigger-cooldown-attacker";
 import { ClientTriggerable } from "@/extensions/triggerable";
 import { ClientUpdatable } from "@/extensions/updatable";
@@ -29,6 +30,7 @@ export const clientExtensionsMap = {
   [ExtensionTypes.COLLIDABLE]: ClientCollidable,
   [ExtensionTypes.CONSUMABLE]: ClientConsumable,
   [ExtensionTypes.CARRYABLE]: ClientCarryable,
+  [ExtensionTypes.PLACEABLE]: ClientPlaceable,
   [ExtensionTypes.COMBUSTIBLE]: ClientCombustible,
   [ExtensionTypes.GROUPABLE]: ClientGroupable,
   [ExtensionTypes.INVENTORY]: ClientInventory,
@@ -51,6 +53,7 @@ export {
   ClientCollidable,
   ClientConsumable,
   ClientCarryable,
+  ClientPlaceable,
   ClientCombustible,
   ClientGroupable,
   ClientInventory,

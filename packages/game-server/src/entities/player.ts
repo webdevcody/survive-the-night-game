@@ -12,6 +12,7 @@ import Movable from "@/extensions/movable";
 import Positionable from "@/extensions/positionable";
 import Updatable from "@/extensions/updatable";
 import ResourcesBag from "@/extensions/resources-bag";
+import Placeable from "@/extensions/placeable";
 import { Broadcaster, IGameManagers } from "@/managers/types";
 import { Entities } from "@/constants";
 import { Direction } from "../../../game-shared/src/util/direction";
@@ -46,6 +47,7 @@ const PLAYER_SERIALIZABLE_FIELDS = [
   "input",
   "activeItem",
   "inventory",
+  "pickupProgress",
 ] as const;
 
 export class Player extends Entity<typeof PLAYER_SERIALIZABLE_FIELDS> {
@@ -55,6 +57,7 @@ export class Player extends Entity<typeof PLAYER_SERIALIZABLE_FIELDS> {
   private static readonly DROP_COOLDOWN = 0.25;
   private static readonly INTERACT_COOLDOWN = 0.25;
   private static readonly CONSUME_COOLDOWN = 0.5;
+  private static readonly PICKUP_HOLD_DURATION = 1.0; // 1 second in seconds
 
   // Internal state
   private fireCooldown = new Cooldown(0.4, true);
@@ -64,6 +67,9 @@ export class Player extends Entity<typeof PLAYER_SERIALIZABLE_FIELDS> {
   private broadcaster: Broadcaster;
   private lastWeaponType: ItemType | null = null;
   private exhaustionTimer: number = 0; // Time remaining before stamina can regenerate
+  // Item pickup hold tracking
+  private pickupHoldTimer: number = 0; // Time F has been held for pickup
+  private targetPickupEntity: string | null = null; // Entity ID being targeted for pickup
 
   // Serializable fields (base class will access these directly)
   private input: Input = {
@@ -85,6 +91,7 @@ export class Player extends Entity<typeof PLAYER_SERIALIZABLE_FIELDS> {
   private displayName: string = "";
   private stamina: number = getConfig().player.MAX_STAMINA;
   private maxStamina: number = getConfig().player.MAX_STAMINA;
+  private pickupProgress: number = 0; // 0-1 value representing pickup progress
 
   constructor(gameManagers: IGameManagers) {
     super(gameManagers, Entities.PLAYER);
@@ -449,7 +456,11 @@ export class Player extends Entity<typeof PLAYER_SERIALIZABLE_FIELDS> {
   handleInteract(deltaTime: number) {
     this.interactCooldown.update(deltaTime);
 
-    if (!this.input.interact) return;
+    if (!this.input.interact) {
+      this.pickupHoldTimer = 0;
+      this.targetPickupEntity = null;
+      return;
+    }
 
     if (this.interactCooldown.isReady()) {
       this.interactCooldown.reset();
@@ -472,6 +483,7 @@ export class Player extends Entity<typeof PLAYER_SERIALIZABLE_FIELDS> {
           entity,
           distance: distance(playerPos, entityPos),
           isDeadPlayer: entity.getType() === Entities.PLAYER && (entity as Player).isDead(),
+          isPlaceable: entity.hasExt(Placeable),
         };
       });
 
@@ -485,8 +497,26 @@ export class Player extends Entity<typeof PLAYER_SERIALIZABLE_FIELDS> {
       });
 
       // Get the closest entity (already filtered and sorted)
-      const closestEntity = entityData[0].entity;
-      closestEntity.getExt(Interactive).interact(this.getId());
+      const closestEntity = entityData[0];
+
+      const now = new Date().getTime();
+      if (this.pickupHoldTimer == 0) {
+        this.pickupHoldTimer = now;
+      }
+      let timeSincePickup = now - this.pickupHoldTimer;
+      this.targetPickupEntity = closestEntity.entity.getId();
+
+      if (closestEntity.isPlaceable) {
+        if (timeSincePickup >= Player.PICKUP_HOLD_DURATION) {
+          closestEntity.entity.getExt(Interactive).interact(this.getId());
+          this.pickupHoldTimer = 0;
+          this.targetPickupEntity = null;
+        }
+      } else {
+        closestEntity.entity.getExt(Interactive).interact(this.getId());
+        this.pickupHoldTimer = 0;
+        this.targetPickupEntity = null;
+      }
     }
   }
 
