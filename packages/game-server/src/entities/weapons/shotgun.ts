@@ -46,6 +46,8 @@ export class Shotgun extends Weapon {
       this.getEntityManager().addEntity(bullet);
     }
 
+    this.applyRecoil(player, facing, aimAngle);
+
     this.getEntityManager()
       .getBroadcaster()
       .broadcastEvent(

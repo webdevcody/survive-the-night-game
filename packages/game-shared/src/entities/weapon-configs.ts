@@ -9,6 +9,7 @@ export const WEAPON_CONFIGS: Record<string, WeaponConfig> = {
       damage: 1,
       pushDistance: 12,
       cooldown: 0.5,
+      cameraShakeIntensity: 0.35,
     },
     assets: {
       assetPrefix: "knife",
@@ -32,6 +33,7 @@ export const WEAPON_CONFIGS: Record<string, WeaponConfig> = {
       damage: 2,
       pushDistance: 12,
       cooldown: 0.8,
+      cameraShakeIntensity: 0.45,
     },
     assets: {
       assetPrefix: "baseball_bat",
@@ -53,6 +55,8 @@ export const WEAPON_CONFIGS: Record<string, WeaponConfig> = {
     type: "ranged",
     stats: {
       cooldown: 0.3,
+      recoilKnockback: 80,
+      cameraShakeIntensity: 1.1,
     },
     assets: {
       assetPrefix: "pistol",
@@ -75,6 +79,8 @@ export const WEAPON_CONFIGS: Record<string, WeaponConfig> = {
     stats: {
       spreadAngle: 8,
       cooldown: 0.8,
+      recoilKnockback: 220,
+      cameraShakeIntensity: 2.6,
     },
     assets: {
       assetPrefix: "shotgun",
@@ -96,6 +102,7 @@ export const WEAPON_CONFIGS: Record<string, WeaponConfig> = {
     type: "ranged",
     stats: {
       cooldown: 2.0,
+      cameraShakeIntensity: 1.4,
     },
     assets: {
       assetPrefix: "bolt_action_rifle",
@@ -117,6 +124,7 @@ export const WEAPON_CONFIGS: Record<string, WeaponConfig> = {
     type: "ranged",
     stats: {
       cooldown: 0.08,
+      cameraShakeIntensity: 1.0,
     },
     assets: {
       assetPrefix: "ak47",
@@ -138,6 +146,7 @@ export const WEAPON_CONFIGS: Record<string, WeaponConfig> = {
     type: "ranged",
     stats: {
       cooldown: 1.0,
+      cameraShakeIntensity: 2.8,
     },
     assets: {
       assetPrefix: "grenade_launcher",
@@ -155,6 +164,7 @@ export const WEAPON_CONFIGS: Record<string, WeaponConfig> = {
     type: "ranged",
     stats: {
       cooldown: 0.1, // Very fast cooldown for continuous fire
+      cameraShakeIntensity: 0.9,
     },
     assets: {
       assetPrefix: "flamethrower",
@@ -172,6 +182,7 @@ export const WEAPON_CONFIGS: Record<string, WeaponConfig> = {
     type: "ranged",
     stats: {
       cooldown: 0.6,
+      cameraShakeIntensity: 0.8,
     },
     assets: {
       assetPrefix: "bow",

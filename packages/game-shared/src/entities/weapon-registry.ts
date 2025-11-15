@@ -5,6 +5,15 @@ export interface WeaponStats {
   damage?: number;
   pushDistance?: number;
   spreadAngle?: number;
+  /**
+   * The recoil knockback strength of the weapon.
+   * @default 0
+   */
+  recoilKnockback?: number;
+  /**
+   * Camera shake intensity to apply on the client when this weapon is used.
+   */
+  cameraShakeIntensity?: number;
 }
 
 export interface WeaponAssetConfig {

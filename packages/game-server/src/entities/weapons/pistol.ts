@@ -51,6 +51,7 @@ export class Pistol extends Weapon {
         })
       );
 
+    this.applyRecoil(player, facing, aimAngle, 0.35);
     this.getEntityManager().getBroadcaster().broadcastEvent(new GunFiredEvent(playerId));
   }
 }

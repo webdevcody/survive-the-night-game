@@ -5,7 +5,7 @@ import { GunEmptyEvent } from "@shared/events/server-sent/gun-empty-event";
 import { GunFiredEvent } from "@shared/events/server-sent/gun-fired-event";
 import { LootEvent } from "@shared/events/server-sent/loot-event";
 import { MapEvent } from "@shared/events/server-sent/map-event";
-import { weaponRegistry } from "@shared/entities";
+import { weaponRegistry, WeaponConfig } from "@shared/entities";
 import { PlayerPickedUpItemEvent } from "@shared/events/server-sent/pickup-item-event";
 import { PlayerPickedUpResourceEvent } from "@shared/events/server-sent/pickup-resource-event";
 import { PlayerAttackedEvent } from "@shared/events/server-sent/player-attacked-event";
@@ -47,8 +47,14 @@ import { BuildEvent } from "@shared/events/server-sent/build-event";
 import { InterpolationManager } from "@/managers/interpolation";
 import { ExtensionTypes } from "@shared/util/extension-types";
 import Vector2 from "@shared/util/vector2";
+import { distance } from "@shared/util/physics";
 import { CoinClient } from "./entities/items/coin";
 import { WaveState } from "@shared/types/wave";
+
+const ZOMBIE_SHAKE_MAX_DISTANCE = 480;
+const ZOMBIE_SHAKE_DURATION_MS = 160;
+const ZOMBIE_SHAKE_MAX_INTENSITY = 4;
+const WEAPON_SHAKE_DURATION_MS = 140;
 
 export class ClientEventListener {
   private socketManager: ClientSocketManager;
@@ -426,6 +432,8 @@ export class ClientEventListener {
     const weaponKey = playerAttackedEvent.getWeaponKey();
     const weaponConfig = weaponRegistry.get(weaponKey);
 
+    this.applyWeaponCameraShake(playerAttackedEvent.getPlayerId(), weaponConfig);
+
     // Play weapon sound if configured
     if (weaponConfig?.sound) {
       this.gameClient
@@ -447,6 +455,20 @@ export class ClientEventListener {
     }
   }
 
+  private applyWeaponCameraShake(attackingPlayerId: string, weaponConfig?: WeaponConfig) {
+    const intensity = weaponConfig?.stats.cameraShakeIntensity;
+    if (!intensity || intensity <= 0) {
+      return;
+    }
+
+    const localPlayerId = this.gameClient.getGameState().playerId;
+    if (!localPlayerId || localPlayerId !== attackingPlayerId) {
+      return;
+    }
+
+    this.gameClient.shakeCamera(intensity, WEAPON_SHAKE_DURATION_MS);
+  }
+
   onZombieDeath(zombieDeathEvent: ZombieDeathEvent) {
     const zombie = this.gameClient.getEntityById(zombieDeathEvent.getZombieId());
     if (!zombie) return;
@@ -456,6 +478,19 @@ export class ClientEventListener {
     this.gameClient
       .getSoundManager()
       .playPositionalSound(SOUND_TYPES_TO_MP3.ZOMBIE_DEATH, zombiePosition);
+
+    const localPlayer = this.gameClient.getMyPlayer();
+    if (localPlayer) {
+      const playerPosition = localPlayer.getCenterPosition();
+      const distToPlayer = distance(playerPosition, zombiePosition);
+      if (distToPlayer <= ZOMBIE_SHAKE_MAX_DISTANCE) {
+        const proximity = 1 - distToPlayer / ZOMBIE_SHAKE_MAX_DISTANCE;
+        const intensity = ZOMBIE_SHAKE_MAX_INTENSITY * proximity;
+        if (intensity > 0) {
+          this.gameClient.shakeCamera(intensity, ZOMBIE_SHAKE_DURATION_MS);
+        }
+      }
+    }
   }
 
   onZombieHurt(zombieHurtEvent: ZombieHurtEvent) {
