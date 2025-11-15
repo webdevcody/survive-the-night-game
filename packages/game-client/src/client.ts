@@ -113,17 +113,28 @@ export class GameClient {
       const x = (e.clientX - rect.left) * scaleX;
       const y = (e.clientY - rect.top) * scaleY;
 
+      // Check if fullscreen map is open
+      const isFullscreenMapOpen = this.hud?.isFullscreenMapOpen() ?? false;
+
       // Update inventory bar hover state
       if (this.hud) {
         this.hud.updateMousePosition(x, y, canvas.width, canvas.height);
       }
 
-      // Update input manager mouse position for aiming
-      this.inputManager.updateMousePosition(x, y);
+      // Forward mouse move to fullscreen map for drag handling
+      if (isFullscreenMapOpen && this.hud) {
+        this.hud.handleMouseMove(x, y);
+      }
 
-      // Update renderer mouse position for cursor rendering
-      if (this.renderer) {
-        this.renderer.updateMousePosition(x, y);
+      // Block aiming when fullscreen map is open
+      if (!isFullscreenMapOpen) {
+        // Update input manager mouse position for aiming
+        this.inputManager.updateMousePosition(x, y);
+
+        // Update renderer mouse position for cursor rendering
+        if (this.renderer) {
+          this.renderer.updateMousePosition(x, y);
+        }
       }
     });
 
@@ -141,11 +152,19 @@ export class GameClient {
       const x = (e.clientX - rect.left) * scaleX;
       const y = (e.clientY - rect.top) * scaleY;
 
+      // Check if fullscreen map is open
+      const isFullscreenMapOpen = this.hud?.isFullscreenMapOpen() ?? false;
+
       // Handle UI clicks (inventory bar, HUD mute button, etc.)
       // HUD handles both hotbar and other UI clicks
       if (this.hud && this.hud.handleClick(x, y, canvas.width, canvas.height)) {
         this.placementManager?.skipNextClick();
         return; // Click was handled by HUD
+      }
+
+      // Block weapon firing when fullscreen map is open
+      if (isFullscreenMapOpen) {
+        return;
       }
 
       // If click wasn't handled by UI, trigger weapon fire
@@ -165,7 +184,19 @@ export class GameClient {
     // Add mouseup event listener to stop firing
     canvas.addEventListener("mouseup", (e) => {
       if (e.button !== 0) return; // Only handle left click
-      this.inputManager.releaseFire();
+
+      // Check if fullscreen map is open
+      const isFullscreenMapOpen = this.hud?.isFullscreenMapOpen() ?? false;
+
+      // Forward mouse up to fullscreen map for drag handling
+      if (isFullscreenMapOpen && this.hud) {
+        this.hud.handleMouseUp();
+      }
+
+      // Block weapon release when fullscreen map is open
+      if (!isFullscreenMapOpen) {
+        this.inputManager.releaseFire();
+      }
     });
 
     const getInventory = () => {

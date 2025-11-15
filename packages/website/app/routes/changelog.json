@@ -1,5 +1,16 @@
 [
   {
+    "version": "0.13.2",
+    "date": "2025-11-14",
+    "changes": [
+      "Added fullscreen map drag functionality - players can now pan around the map with mouse dragging",
+      "Implemented map offset tracking - view position persists while map is open",
+      "Fixed input blocking when fullscreen map is open - weapon firing and aiming disabled during map view",
+      "Improved player indicator on map - shows actual player position relative to dragged view instead of always center",
+      "Added proper drag state management - drag is canceled when closing the map"
+    ]
+  },
+  {
     "version": "0.13.1",
     "date": "2025-11-14",
     "changes": [

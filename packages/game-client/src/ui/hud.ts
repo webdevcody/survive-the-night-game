@@ -617,6 +617,20 @@ export class Hud {
     return false; // Click was not handled
   }
 
+  public handleMouseMove(x: number, y: number): void {
+    // Forward mouse move to fullscreen map for drag handling
+    if (this.fullscreenMap.isOpen()) {
+      this.fullscreenMap.handleMouseMove(x, y);
+    }
+  }
+
+  public handleMouseUp(): void {
+    // Forward mouse up to fullscreen map for drag handling
+    if (this.fullscreenMap.isOpen()) {
+      this.fullscreenMap.handleMouseUp();
+    }
+  }
+
   public updateMousePosition(
     x: number,
     y: number,

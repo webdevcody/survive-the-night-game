@@ -47,6 +47,10 @@ export class FullScreenMap {
   private zoomInButtonBounds: { x: number; y: number; width: number; height: number } | null = null;
   private zoomOutButtonBounds: { x: number; y: number; width: number; height: number } | null =
     null;
+  private mapOffset: Vector2 = new Vector2(0, 0);
+  private isDragging: boolean = false;
+  private dragStartPos: { x: number; y: number } | null = null;
+  private dragStartOffset: Vector2 | null = null;
 
   constructor(mapManager: MapManager) {
     this.mapManager = mapManager;
@@ -54,7 +58,16 @@ export class FullScreenMap {
   }
 
   public toggle(): void {
+    const wasVisible = this.isVisible;
     this.isVisible = !this.isVisible;
+
+    // Reset offset when closing map
+    if (wasVisible && !this.isVisible) {
+      this.mapOffset = new Vector2(0, 0);
+      this.isDragging = false;
+      this.dragStartPos = null;
+      this.dragStartOffset = null;
+    }
   }
 
   public show(): void {
@@ -63,6 +76,11 @@ export class FullScreenMap {
 
   public hide(): void {
     this.isVisible = false;
+    // Reset offset when closing map
+    this.mapOffset = new Vector2(0, 0);
+    this.isDragging = false;
+    this.dragStartPos = null;
+    this.dragStartOffset = null;
   }
 
   public isOpen(): boolean {
@@ -144,6 +162,12 @@ export class FullScreenMap {
     const playerPos = myPlayer.getExt(ClientPositionable).getCenterPosition();
     const zoom = this.getCurrentZoom();
 
+    // Calculate effective center position with offset
+    const effectiveCenterPos = {
+      x: playerPos.x + this.mapOffset.x,
+      y: playerPos.y + this.mapOffset.y,
+    };
+
     ctx.save();
     ctx.setTransform(1, 0, 0, 1, 0, 0);
 
@@ -191,17 +215,26 @@ export class FullScreenMap {
     const centerY = mapY + mapHeight / 2;
 
     // Draw collidable tiles
-    this.renderCollidables(ctx, playerPos, zoom, centerX, centerY, mapWidth, mapHeight);
+    this.renderCollidables(ctx, effectiveCenterPos, zoom, centerX, centerY, mapWidth, mapHeight);
 
     // Draw entities
-    this.renderEntities(ctx, gameState, playerPos, zoom, centerX, centerY, mapWidth, mapHeight);
+    this.renderEntities(
+      ctx,
+      gameState,
+      effectiveCenterPos,
+      zoom,
+      centerX,
+      centerY,
+      mapWidth,
+      mapHeight
+    );
 
     // Draw fog of war (only during nighttime)
     if (!gameState.isDay) {
       const lightSources = this.getLightSources(gameState);
       this.renderFogOfWar(
         ctx,
-        playerPos,
+        effectiveCenterPos,
         lightSources,
         zoom,
         centerX,
@@ -217,7 +250,7 @@ export class FullScreenMap {
     this.renderCrateIndicators(
       ctx,
       gameState,
-      playerPos,
+      effectiveCenterPos,
       zoom,
       centerX,
       centerY,
@@ -229,7 +262,7 @@ export class FullScreenMap {
     this.renderSurvivorIndicators(
       ctx,
       gameState,
-      playerPos,
+      effectiveCenterPos,
       zoom,
       centerX,
       centerY,
@@ -238,7 +271,15 @@ export class FullScreenMap {
     );
 
     // Draw biome indicators
-    this.renderBiomeIndicators(ctx, playerPos, zoom, centerX, centerY, mapWidth, mapHeight);
+    this.renderBiomeIndicators(
+      ctx,
+      effectiveCenterPos,
+      zoom,
+      centerX,
+      centerY,
+      mapWidth,
+      mapHeight
+    );
 
     ctx.restore(); // Restore from clip
 
@@ -247,15 +288,19 @@ export class FullScreenMap {
     ctx.lineWidth = settings.borderWidth;
     ctx.strokeRect(mapX, mapY, mapWidth, mapHeight);
 
-    // Draw player indicator at center (crosshair)
+    // Draw player indicator at actual player position (crosshair)
+    const relativeX = playerPos.x - effectiveCenterPos.x;
+    const relativeY = playerPos.y - effectiveCenterPos.y;
+    const playerScreenX = centerX + relativeX * zoom;
+    const playerScreenY = centerY + relativeY * zoom;
     const crosshairSize = 8;
     ctx.strokeStyle = settings.colors.player;
     ctx.lineWidth = 3;
     ctx.beginPath();
-    ctx.moveTo(centerX - crosshairSize, centerY);
-    ctx.lineTo(centerX + crosshairSize, centerY);
-    ctx.moveTo(centerX, centerY - crosshairSize);
-    ctx.lineTo(centerX, centerY + crosshairSize);
+    ctx.moveTo(playerScreenX - crosshairSize, playerScreenY);
+    ctx.lineTo(playerScreenX + crosshairSize, playerScreenY);
+    ctx.moveTo(playerScreenX, playerScreenY - crosshairSize);
+    ctx.lineTo(playerScreenX, playerScreenY + crosshairSize);
     ctx.stroke();
 
     ctx.restore();
@@ -759,6 +804,67 @@ export class FullScreenMap {
       }
     }
 
-    return false;
+    // Try to start drag if click is in map area
+    return this.handleMouseDown(x, y);
+  }
+
+  public handleMouseDown(x: number, y: number): boolean {
+    if (!this.isVisible) return false;
+
+    const settings = FULLSCREEN_MAP_SETTINGS;
+    const mapX = settings.padding;
+    const mapY = settings.padding + settings.headerHeight;
+
+    // Check if click is within map bounds (excluding header)
+    // We need canvas dimensions, but we can estimate or store them
+    // For now, we'll check if it's below the header
+    if (y < mapY) return false; // Above map area (header)
+
+    // Check if click is on zoom buttons (already handled in handleClick)
+    if (this.zoomInButtonBounds) {
+      const { x: btnX, y: btnY, width, height } = this.zoomInButtonBounds;
+      if (x >= btnX && x <= btnX + width && y >= btnY && y <= btnY + height) {
+        return false; // Clicked on zoom button
+      }
+    }
+
+    if (this.zoomOutButtonBounds) {
+      const { x: btnX, y: btnY, width, height } = this.zoomOutButtonBounds;
+      if (x >= btnX && x <= btnX + width && y >= btnY && y <= btnY + height) {
+        return false; // Clicked on zoom button
+      }
+    }
+
+    // Start drag
+    this.isDragging = true;
+    this.dragStartPos = { x, y };
+    this.dragStartOffset = new Vector2(this.mapOffset.x, this.mapOffset.y);
+    return true;
+  }
+
+  public handleMouseMove(x: number, y: number): void {
+    if (!this.isVisible || !this.isDragging || !this.dragStartPos || !this.dragStartOffset) {
+      return;
+    }
+
+    // Calculate screen movement
+    const dx = x - this.dragStartPos.x;
+    const dy = y - this.dragStartPos.y;
+
+    // Convert screen movement to world movement based on zoom
+    const zoom = this.getCurrentZoom();
+    const worldDx = -dx / zoom; // Negative because dragging right should move map left
+    const worldDy = -dy / zoom;
+
+    // Update offset
+    this.mapOffset.x = this.dragStartOffset.x + worldDx;
+    this.mapOffset.y = this.dragStartOffset.y + worldDy;
+  }
+
+  public handleMouseUp(): void {
+    if (!this.isVisible) return;
+    this.isDragging = false;
+    this.dragStartPos = null;
+    this.dragStartOffset = null;
   }
 }
