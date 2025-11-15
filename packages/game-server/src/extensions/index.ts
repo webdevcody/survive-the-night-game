@@ -13,6 +13,7 @@ import Movable from "@/extensions/movable";
 import Combustible from "@/extensions/combustible";
 import Illuminated from "@/extensions/illuminated";
 import Carryable from "@/extensions/carryable";
+import Placeable from "@/extensions/placeable";
 import Groupable from "@/extensions/groupable";
 import Snared from "@/extensions/snared";
 import ResourcesBag from "@/extensions/resources-bag";
@@ -33,6 +34,7 @@ export const extensionsMap = {
   [Combustible.type]: Combustible,
   [Illuminated.type]: Illuminated,
   [Carryable.type]: Carryable,
+  [Placeable.type]: Placeable,
   [Groupable.type]: Groupable,
   [Snared.type]: Snared,
   [ResourcesBag.type]: ResourcesBag,
