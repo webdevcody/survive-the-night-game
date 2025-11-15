@@ -5,6 +5,7 @@ import { getConfig } from "@shared/config";
 import Positionable from "@/extensions/positionable";
 import Interactive from "@/extensions/interactive";
 import Carryable from "@/extensions/carryable";
+import Placeable from "@/extensions/placeable";
 import { distance } from "../../../../game-shared/src/util/physics";
 import { IEntity } from "@/entities/types";
 import Destructible from "@/extensions/destructible";
@@ -40,6 +41,7 @@ export class Landmine extends Entity implements IEntity {
         .setDisplayName("landmine")
     );
     this.addExtension(new Carryable(this, "landmine").setItemState({ count }));
+    this.addExtension(new Placeable(this));
     this.addExtension(new Updatable(this, this.updateLandmine.bind(this)));
   }
 

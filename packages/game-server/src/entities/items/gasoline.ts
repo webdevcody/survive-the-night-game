@@ -4,6 +4,7 @@ import Destructible from "@/extensions/destructible";
 import Groupable from "@/extensions/groupable";
 import Interactive from "@/extensions/interactive";
 import Positionable from "@/extensions/positionable";
+import Placeable from "@/extensions/placeable";
 import { IGameManagers } from "@/managers/types";
 import { Entities } from "@/constants";
 import { Entity } from "@/entities/entity";
@@ -26,6 +27,7 @@ export class Gasoline extends Entity {
     this.addExtension(new Destructible(this).setMaxHealth(1).setHealth(itemState?.health ?? 1).onDeath(this.onDeath.bind(this)));
     this.addExtension(new Combustible(this, (type) => new Fire(gameManagers), 12, 64)); // More fires and larger spread than default
     this.addExtension(new Carryable(this, "gasoline").setItemState({ count }));
+    this.addExtension(new Placeable(this));
     this.addExtension(new Groupable(this, "enemy"));
   }
 

@@ -2,6 +2,7 @@ import Carryable from "@/extensions/carryable";
 import Illuminated from "@/extensions/illuminated";
 import Interactive from "@/extensions/interactive";
 import Positionable from "@/extensions/positionable";
+import Placeable from "@/extensions/placeable";
 import { IGameManagers } from "@/managers/types";
 import { Entities } from "@/constants";
 import { Entity } from "@/entities/entity";
@@ -16,6 +17,7 @@ export class Torch extends Entity {
     this.addExtension(new Positionable(this).setSize(Torch.Size));
     this.addExtension(new Interactive(this).onInteract(this.interact.bind(this)).setDisplayName("torch"));
     this.addExtension(new Carryable(this, "torch"));
+    this.addExtension(new Placeable(this));
     this.addExtension(new Illuminated(this, 200));
   }
 
