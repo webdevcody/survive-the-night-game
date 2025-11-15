@@ -5,6 +5,11 @@ export interface WeaponStats {
   damage?: number;
   pushDistance?: number;
   spreadAngle?: number;
+  /**
+   * The recoil knockback strength of the weapon.
+   * @default 0
+   */
+  recoilKnockback?: number;
 }
 
 export interface WeaponAssetConfig {

@@ -47,8 +47,13 @@ import { BuildEvent } from "@shared/events/server-sent/build-event";
 import { InterpolationManager } from "@/managers/interpolation";
 import { ExtensionTypes } from "@shared/util/extension-types";
 import Vector2 from "@shared/util/vector2";
+import { distance } from "@shared/util/physics";
 import { CoinClient } from "./entities/items/coin";
 import { WaveState } from "@shared/types/wave";
+
+const ZOMBIE_SHAKE_MAX_DISTANCE = 480;
+const ZOMBIE_SHAKE_DURATION_MS = 160;
+const ZOMBIE_SHAKE_MAX_INTENSITY = 4;
 
 export class ClientEventListener {
   private socketManager: ClientSocketManager;
@@ -456,6 +461,19 @@ export class ClientEventListener {
     this.gameClient
       .getSoundManager()
       .playPositionalSound(SOUND_TYPES_TO_MP3.ZOMBIE_DEATH, zombiePosition);
+
+    const localPlayer = this.gameClient.getMyPlayer();
+    if (localPlayer) {
+      const playerPosition = localPlayer.getCenterPosition();
+      const distToPlayer = distance(playerPosition, zombiePosition);
+      if (distToPlayer <= ZOMBIE_SHAKE_MAX_DISTANCE) {
+        const proximity = 1 - distToPlayer / ZOMBIE_SHAKE_MAX_DISTANCE;
+        const intensity = ZOMBIE_SHAKE_MAX_INTENSITY * proximity;
+        if (intensity > 0) {
+          this.gameClient.shakeCamera(intensity, ZOMBIE_SHAKE_DURATION_MS);
+        }
+      }
+    }
   }
 
   onZombieHurt(zombieHurtEvent: ZombieHurtEvent) {

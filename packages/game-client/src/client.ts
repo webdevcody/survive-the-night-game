@@ -460,6 +460,10 @@ export class GameClient {
     return this.placementManager || null;
   }
 
+  public shakeCamera(intensity: number, durationMs: number = 200): void {
+    this.cameraManager.shake(intensity, durationMs);
+  }
+
   public getMapManager(): MapManager {
     return this.mapManager;
   }

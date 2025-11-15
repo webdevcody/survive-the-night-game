@@ -53,6 +53,7 @@ export const WEAPON_CONFIGS: Record<string, WeaponConfig> = {
     type: "ranged",
     stats: {
       cooldown: 0.3,
+      recoilKnockback: 80,
     },
     assets: {
       assetPrefix: "pistol",
@@ -75,6 +76,7 @@ export const WEAPON_CONFIGS: Record<string, WeaponConfig> = {
     stats: {
       spreadAngle: 8,
       cooldown: 0.8,
+      recoilKnockback: 220,
     },
     assets: {
       assetPrefix: "shotgun",

@@ -1,13 +1,16 @@
 import Inventory from "@/extensions/inventory";
+import Movable from "@/extensions/movable";
 import { IGameManagers } from "@/managers/types";
 import { Bullet } from "@/entities/projectiles/bullet";
 import { Weapon } from "@/entities/weapons/weapon";
-import { Direction } from "../../../../game-shared/src/util/direction";
+import { Direction, normalizeDirection } from "../../../../game-shared/src/util/direction";
 import { GunEmptyEvent } from "@shared/events/server-sent/gun-empty-event";
 import { GunFiredEvent } from "@shared/events/server-sent/gun-fired-event";
 import { PlayerAttackedEvent } from "@/events/server-sent/player-attacked-event";
 import Vector2 from "@/util/vector2";
 import { consumeAmmo } from "./helpers";
+import { normalizeVector } from "@shared/util/physics";
+import type { IEntity } from "@/entities/types";
 
 export class Pistol extends Weapon {
   constructor(gameManagers: IGameManagers) {
@@ -51,6 +54,33 @@ export class Pistol extends Weapon {
         })
       );
 
+    this.applyRecoil(player, facing, aimAngle);
     this.getEntityManager().getBroadcaster().broadcastEvent(new GunFiredEvent(playerId));
+  }
+
+  private applyRecoil(player: IEntity, facing: Direction, aimAngle?: number) {
+    const recoilStrength = this.getConfig().stats.recoilKnockback ?? 0;
+    if (recoilStrength <= 0 || !player.hasExt(Movable)) {
+      return;
+    }
+
+    let directionVector: Vector2;
+    if (aimAngle !== undefined) {
+      directionVector = new Vector2(Math.cos(aimAngle), Math.sin(aimAngle));
+    } else {
+      directionVector = normalizeDirection(facing);
+    }
+
+    const normalized = normalizeVector(directionVector);
+    if (normalized.x === 0 && normalized.y === 0) {
+      return;
+    }
+
+    const recoilVelocity = new Vector2(
+      -normalized.x * (recoilStrength * 0.35),
+      -normalized.y * (recoilStrength * 0.35)
+    );
+
+    player.getExt(Movable).setVelocity(recoilVelocity);
   }
 }
