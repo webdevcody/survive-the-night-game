@@ -8,6 +8,8 @@ export class ClientInventory extends BaseClientExtension {
   public static readonly MAX_SLOTS = 8;
 
   private items: InventoryItem[] = [];
+  // Separate ammo storage: { ammoType: count }
+  private ammo: Record<string, number> = {};
 
   public getItems(): InventoryItem[] {
     return this.items;
@@ -27,9 +29,25 @@ export class ClientInventory extends BaseClientExtension {
     return isWeapon(activeItem.itemType) ? activeItem : null;
   }
 
+  // Ammo management methods
+  public getAmmo(ammoType: string): number {
+    return this.ammo[ammoType] || 0;
+  }
+
+  public hasAmmo(ammoType: string): boolean {
+    return this.getAmmo(ammoType) > 0;
+  }
+
+  public getAllAmmo(): Record<string, number> {
+    return { ...this.ammo };
+  }
+
   public deserialize(data: ClientExtensionSerialized): this {
     if (data.items) {
       this.items = data.items;
+    }
+    if (data.ammo) {
+      this.ammo = data.ammo;
     }
     return this;
   }

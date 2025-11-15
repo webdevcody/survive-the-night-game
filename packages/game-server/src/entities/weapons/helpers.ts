@@ -44,24 +44,6 @@ export function knockBack(
  * Returns true if ammo was successfully consumed, false otherwise.
  */
 export function consumeAmmo(inventory: Inventory, ammoType: string): boolean {
-  // TODO: item? the item should never be undefined
-  const ammoItem = inventory.getItems().find((item) => item?.itemType === ammoType);
-
-  if (!ammoItem || !ammoItem.state?.count || ammoItem.state.count <= 0) {
-    return false;
-  }
-
-  const ammoIndex = inventory.getItems().findIndex((item) => item?.itemType === ammoType);
-  if (ammoIndex === -1) {
-    // This shouldn't happen since we found ammoItem, but handle it gracefully
-    return false;
-  }
-
-  inventory.updateItemState(ammoIndex, { count: ammoItem.state.count - 1 });
-
-  if (ammoItem.state.count <= 0) {
-    inventory.removeItem(ammoIndex);
-  }
-
-  return true;
+  // Use the inventory's consumeAmmo method which works with the separate ammo storage
+  return inventory.consumeAmmo(ammoType, 1);
 }

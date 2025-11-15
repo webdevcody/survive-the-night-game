@@ -21,7 +21,7 @@ import { Direction } from "../../game-shared/src/util/direction";
 import { Input } from "../../game-shared/src/util/input";
 import { ClientEntityBase } from "@/extensions/client-entity";
 import { ClientDestructible } from "@/extensions/destructible";
-import { ClientPositionable, ClientResourcesBag } from "@/extensions";
+import { ClientPositionable, ClientResourcesBag, ClientInventory } from "@/extensions";
 import { CampsiteFireClient } from "@/entities/environment/campsite-fire";
 import { WaveState } from "@shared/types/wave";
 import { ParticleManager } from "./managers/particles";
@@ -899,12 +899,25 @@ export class GameClient {
       cloth = resourcesBag.getCloth();
     }
 
+    // Get ammo from inventory extension and add to inventory for crafting checks
+    // IMPORTANT: Create a copy so we don't modify the actual inventory
+    const inventoryItems = [...player.getInventory()];
+    if (player.hasExt(ClientInventory)) {
+      const ammo = player.getExt(ClientInventory).getAllAmmo();
+      // Add ammo as inventory items so recipes can check them
+      for (const [ammoType, count] of Object.entries(ammo)) {
+        if (typeof count === "number" && count > 0) {
+          inventoryItems.push({ itemType: ammoType, state: { count: count } });
+        }
+      }
+    }
+
     return {
       resources: {
         wood,
         cloth,
       },
-      inventory: player.getInventory(),
+      inventory: inventoryItems,
       playerId: this.gameState.playerId,
     };
   }
