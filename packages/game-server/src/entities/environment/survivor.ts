@@ -354,6 +354,9 @@ export class Survivor extends Entity<typeof SERIALIZABLE_FIELDS> {
 
     // Disable collision
     this.getExt(Collidable).setEnabled(false);
+
+    // Mark entity for removal if not looted
+    this.getEntityManager().markEntityForRemoval(this, getConfig().entity.ENTITY_DESPAWN_TIME_MS);
   }
 
   private onLooted(): void {

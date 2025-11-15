@@ -23,6 +23,7 @@ import { merchantConfig, type MerchantConfig } from "./merchant-config";
 import { predictionConfig, type PredictionConfig } from "./prediction";
 import { networkConfig, type NetworkConfig } from "./network";
 import { renderConfig, type RenderConfig } from "./render-config";
+import { entityConfig, EntityConfig } from "@/config/entity-config";
 /**
  * Combined game configuration object
  */
@@ -39,6 +40,7 @@ export interface GameConfig {
   prediction: PredictionConfig;
   network: NetworkConfig;
   render: RenderConfig;
+  entity: EntityConfig;
 }
 
 /**
@@ -57,6 +59,7 @@ const defaultConfig: GameConfig = {
   prediction: predictionConfig,
   network: networkConfig,
   render: renderConfig,
+  entity: entityConfig,
 };
 
 /**

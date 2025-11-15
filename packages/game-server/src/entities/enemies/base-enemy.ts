@@ -139,6 +139,9 @@ export abstract class BaseEnemy extends Entity<typeof BASE_ENEMY_SERIALIZABLE_FI
 
     // Spawn a coin when zombie dies
     this.spawnCoin();
+
+    // Mark entity for removal if not looted
+    this.getEntityManager().markEntityForRemoval(this, getConfig().entity.ENTITY_DESPAWN_TIME_MS);
   }
 
   spawnCoin(): void {
