@@ -10,6 +10,10 @@ export interface WeaponStats {
    * @default 0
    */
   recoilKnockback?: number;
+  /**
+   * Camera shake intensity to apply on the client when this weapon is used.
+   */
+  cameraShakeIntensity?: number;
 }
 
 export interface WeaponAssetConfig {

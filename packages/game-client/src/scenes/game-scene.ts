@@ -10,7 +10,12 @@ export class GameScene extends Scene {
     super(canvas);
 
     // Get server URL from environment
-    this.serverUrl = import.meta.env.VITE_WSS_URL;
+    // Default to the local dev server if no explicit URL is provided
+    const isBrowser = typeof window !== "undefined";
+    const host = isBrowser ? window.location.hostname || "localhost" : "localhost";
+    const protocol = isBrowser && window.location.protocol === "https:" ? "wss" : "ws";
+    const defaultServerUrl = `${protocol}://${host}:3001`;
+    this.serverUrl = import.meta.env.VITE_WSS_URL?.trim() || defaultServerUrl;
 
     // Get loaded asset and sound managers from scene manager
     const assetManager = sceneManager?.getAssetManager();

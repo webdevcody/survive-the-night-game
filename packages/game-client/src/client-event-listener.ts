@@ -5,7 +5,7 @@ import { GunEmptyEvent } from "@shared/events/server-sent/gun-empty-event";
 import { GunFiredEvent } from "@shared/events/server-sent/gun-fired-event";
 import { LootEvent } from "@shared/events/server-sent/loot-event";
 import { MapEvent } from "@shared/events/server-sent/map-event";
-import { weaponRegistry } from "@shared/entities";
+import { weaponRegistry, WeaponConfig } from "@shared/entities";
 import { PlayerPickedUpItemEvent } from "@shared/events/server-sent/pickup-item-event";
 import { PlayerPickedUpResourceEvent } from "@shared/events/server-sent/pickup-resource-event";
 import { PlayerAttackedEvent } from "@shared/events/server-sent/player-attacked-event";
@@ -54,6 +54,7 @@ import { WaveState } from "@shared/types/wave";
 const ZOMBIE_SHAKE_MAX_DISTANCE = 480;
 const ZOMBIE_SHAKE_DURATION_MS = 160;
 const ZOMBIE_SHAKE_MAX_INTENSITY = 4;
+const WEAPON_SHAKE_DURATION_MS = 140;
 
 export class ClientEventListener {
   private socketManager: ClientSocketManager;
@@ -431,6 +432,8 @@ export class ClientEventListener {
     const weaponKey = playerAttackedEvent.getWeaponKey();
     const weaponConfig = weaponRegistry.get(weaponKey);
 
+    this.applyWeaponCameraShake(playerAttackedEvent.getPlayerId(), weaponConfig);
+
     // Play weapon sound if configured
     if (weaponConfig?.sound) {
       this.gameClient
@@ -450,6 +453,20 @@ export class ClientEventListener {
       particle.setPosition(playerPosition);
       this.gameClient.getParticleManager().addParticle(particle);
     }
+  }
+
+  private applyWeaponCameraShake(attackingPlayerId: string, weaponConfig?: WeaponConfig) {
+    const intensity = weaponConfig?.stats.cameraShakeIntensity;
+    if (!intensity || intensity <= 0) {
+      return;
+    }
+
+    const localPlayerId = this.gameClient.getGameState().playerId;
+    if (!localPlayerId || localPlayerId !== attackingPlayerId) {
+      return;
+    }
+
+    this.gameClient.shakeCamera(intensity, WEAPON_SHAKE_DURATION_MS);
   }
 
   onZombieDeath(zombieDeathEvent: ZombieDeathEvent) {
