@@ -25,6 +25,13 @@ export const SOUND_TYPES_TO_MP3 = {
   AK47: "ak47",
   WALK: "walk",
   RUN: "run",
+  REPAIR: "repair",
+  HORN: "horn",
+  CRAFT: "craft",
+  BUILD: "build",
+  MUSIC: "music",
+  BATTLE: "battle",
+  CAMPFIRE: "campfire",
 } as const;
 
 export type SoundType = (typeof SOUND_TYPES_TO_MP3)[keyof typeof SOUND_TYPES_TO_MP3];
@@ -41,11 +48,18 @@ export const SOUND_VOLUME_MAP: Partial<Record<SoundType, number>> = {
   walk: 0.3,
   run: 0.3,
   gun_empty: 0.5,
+  pistol: 0.5,
   drop_item: 0.5,
   loot: 0.5,
   pick_up_item: 0.5,
   zombie_hurt: 0.5,
+  player_hurt: 0.6,
   zombie_death: 0.5,
+  horn: 0.2,
+  build: 0.5,
+  music: 0.3, // Background music volume (lower than sound effects)
+  battle: 0.4, // Battle music volume (slightly louder than background music)
+  campfire: 0.2, // Campfire ambient sound volume
 } as const;
 
 export type SoundLoadProgressCallback = (
@@ -68,6 +82,12 @@ export class SoundManager {
   private loaded: boolean = false;
   // Track active looping sounds by player ID
   private loopingSounds: Map<string, LoopingSound> = new Map();
+  // Background music audio element
+  private backgroundMusic: HTMLAudioElement | null = null;
+  // Battle music audio element (plays during waves)
+  private battleMusic: HTMLAudioElement | null = null;
+  // Campfire ambient sound (always playing, volume adjusted by distance)
+  private campfireSound: HTMLAudioElement | null = null;
 
   constructor(gameClient?: GameClient) {
     this.gameClient = gameClient || null;
@@ -125,6 +145,18 @@ export class SoundManager {
 
   public toggleMute(): void {
     this.isMuted = !this.isMuted;
+    // Update background music mute state
+    if (this.backgroundMusic) {
+      this.backgroundMusic.muted = this.isMuted;
+    }
+    // Update battle music mute state
+    if (this.battleMusic) {
+      this.battleMusic.muted = this.isMuted;
+    }
+    // Update campfire sound mute state
+    if (this.campfireSound) {
+      this.campfireSound.muted = this.isMuted;
+    }
   }
 
   public getMuteState(): boolean {
@@ -149,11 +181,15 @@ export class SoundManager {
     const volume =
       baseVolume * linearFalloff(dist, SoundManager.MAX_DISTANCE) * DEBUG_VOLUME_REDUCTION;
 
-    const audio = this.audioCache.get(sound)?.cloneNode() as HTMLAudioElement;
-    if (audio) {
-      audio.volume = volume;
-      audio.play();
-    }
+    // Create a new Audio element from the cached source to avoid issues with cloneNode
+    const cachedAudio = this.audioCache.get(sound);
+    if (!cachedAudio) return;
+
+    const audio = new Audio(cachedAudio.src);
+    audio.volume = volume;
+    audio.play().catch(() => {
+      // Ignore autoplay errors
+    });
   }
 
   public getSrc(sound: SoundType): string {
@@ -196,8 +232,8 @@ export class SoundManager {
         baseVolume * linearFalloff(dist, SoundManager.MAX_DISTANCE) * DEBUG_VOLUME_REDUCTION;
       existingSound.audio.volume = volume;
 
-      // Ensure it's playing
-      if (existingSound.audio.paused) {
+      // Ensure it's playing (but don't call play() if it's already playing to avoid re-requests)
+      if (existingSound.audio.paused && existingSound.audio.readyState >= 2) {
         existingSound.audio.play().catch(() => {
           // Ignore autoplay errors
         });
@@ -208,9 +244,14 @@ export class SoundManager {
     // Need to change the sound (e.g., from walk to run or vice versa)
     this.stopLoopingSound(playerId);
 
-    // Start new looping sound
-    const audio = this.audioCache.get(soundType)?.cloneNode() as HTMLAudioElement;
-    if (!audio) return;
+    // Start new looping sound - create new Audio element from cached source
+    const cachedAudio = this.audioCache.get(soundType);
+    if (!cachedAudio) {
+      console.warn(`Sound not cached yet: ${soundType}`);
+      return;
+    }
+    // Clone the audio element instead of creating new one to avoid re-fetching
+    const audio = cachedAudio.cloneNode() as HTMLAudioElement;
 
     const dist = distance(myPlayer.getPosition(), position);
     const baseVolume = this.getBaseVolume(soundType);
@@ -255,6 +296,8 @@ export class SoundManager {
 
   /**
    * Update volumes for all active looping sounds based on current player position
+   * Skips sounds that don't have corresponding entities (e.g., campfire decals)
+   * as those are handled separately
    */
   public updateLoopingSoundsVolumes(): void {
     if (!this.gameClient || this.isMuted || DEBUG_DISABLE_SOUNDS) return;
@@ -265,17 +308,22 @@ export class SoundManager {
     const myPosition = myPlayer.getPosition();
 
     // Update volumes for all looping sounds
-    this.loopingSounds.forEach((loopingSound, playerId) => {
-      // Get the player's current position from game state
-      const playerEntity = this.gameClient?.getEntityById(playerId);
-      if (!playerEntity || !playerEntity.hasExt(ClientPositionable)) {
-        // Player no longer exists, stop the sound
-        this.stopLoopingSound(playerId);
+    this.loopingSounds.forEach((loopingSound, entityId) => {
+      // Skip campfire sounds - they're handled separately in updateCampfireSounds
+      if (loopingSound.soundType === SOUND_TYPES_TO_MP3.CAMPFIRE) {
         return;
       }
 
-      const playerPosition = playerEntity.getExt(ClientPositionable).getPosition();
-      const dist = distance(myPosition, playerPosition);
+      // Get the entity's current position from game state
+      const entity = this.gameClient?.getEntityById(entityId);
+      if (!entity || !entity.hasExt(ClientPositionable)) {
+        // Entity no longer exists, stop the sound
+        this.stopLoopingSound(entityId);
+        return;
+      }
+
+      const entityPosition = entity.getExt(ClientPositionable).getPosition();
+      const dist = distance(myPosition, entityPosition);
       const baseVolume = this.getBaseVolume(loopingSound.soundType);
       const volume =
         baseVolume * linearFalloff(dist, SoundManager.MAX_DISTANCE) * DEBUG_VOLUME_REDUCTION;
@@ -297,5 +345,214 @@ export class SoundManager {
     playerIdsToRemove.forEach((playerId) => {
       this.stopLoopingSound(playerId);
     });
+  }
+
+  /**
+   * Clean up looping sounds for entities that no longer exist, filtered by sound type
+   */
+  public cleanupLoopingSoundsByType(existingEntityIds: Set<string>, soundType: SoundType): void {
+    const entityIdsToRemove: string[] = [];
+    this.loopingSounds.forEach((loopingSound, entityId) => {
+      if (loopingSound.soundType === soundType && !existingEntityIds.has(entityId)) {
+        entityIdsToRemove.push(entityId);
+      }
+    });
+
+    entityIdsToRemove.forEach((entityId) => {
+      this.stopLoopingSound(entityId);
+    });
+  }
+
+  /**
+   * Start playing background music (non-positional, looping)
+   */
+  public playBackgroundMusic(): void {
+    if (this.backgroundMusic) {
+      // Already playing, just ensure it's not paused
+      if (this.backgroundMusic.paused) {
+        this.backgroundMusic.play().catch(() => {
+          // Ignore autoplay errors
+        });
+      }
+      return;
+    }
+
+    if (DEBUG_DISABLE_SOUNDS) return;
+
+    const cachedAudio = this.audioCache.get(SOUND_TYPES_TO_MP3.MUSIC);
+    if (!cachedAudio) {
+      console.warn("Background music not loaded");
+      return;
+    }
+    const audio = new Audio(cachedAudio.src);
+
+    const baseVolume = this.getBaseVolume(SOUND_TYPES_TO_MP3.MUSIC);
+    audio.volume = baseVolume * DEBUG_VOLUME_REDUCTION;
+    audio.loop = true;
+    audio.muted = this.isMuted;
+
+    // Handle looping by listening for 'ended' event (some browsers need this)
+    audio.addEventListener("ended", () => {
+      if (!audio.paused) {
+        audio.currentTime = 0;
+        audio.play().catch(() => {
+          // Ignore autoplay errors
+        });
+      }
+    });
+
+    this.backgroundMusic = audio;
+    audio.play().catch(() => {
+      // Ignore autoplay errors (browser may block autoplay)
+      console.log("Background music autoplay blocked by browser");
+    });
+  }
+
+  /**
+   * Stop background music
+   */
+  public stopBackgroundMusic(): void {
+    if (this.backgroundMusic) {
+      this.backgroundMusic.pause();
+      this.backgroundMusic.currentTime = 0;
+      this.backgroundMusic = null;
+    }
+  }
+
+  /**
+   * Start playing battle music (non-positional, looping)
+   * Plays on top of background music during waves
+   */
+  public playBattleMusic(): void {
+    if (this.battleMusic) {
+      // Already playing, just ensure it's not paused
+      if (this.battleMusic.paused) {
+        this.battleMusic.play().catch(() => {
+          // Ignore autoplay errors
+        });
+      }
+      return;
+    }
+
+    if (DEBUG_DISABLE_SOUNDS) return;
+
+    const cachedAudio = this.audioCache.get(SOUND_TYPES_TO_MP3.BATTLE);
+    if (!cachedAudio) {
+      console.warn("Battle music not loaded");
+      return;
+    }
+    const audio = new Audio(cachedAudio.src);
+
+    const baseVolume = this.getBaseVolume(SOUND_TYPES_TO_MP3.BATTLE);
+    audio.volume = baseVolume * DEBUG_VOLUME_REDUCTION;
+    audio.loop = true;
+    audio.muted = this.isMuted;
+
+    // Handle looping by listening for 'ended' event (some browsers need this)
+    audio.addEventListener("ended", () => {
+      if (!audio.paused) {
+        audio.currentTime = 0;
+        audio.play().catch(() => {
+          // Ignore autoplay errors
+        });
+      }
+    });
+
+    this.battleMusic = audio;
+    audio.play().catch(() => {
+      // Ignore autoplay errors (browser may block autoplay)
+      console.log("Battle music autoplay blocked by browser");
+    });
+  }
+
+  /**
+   * Stop battle music
+   */
+  public stopBattleMusic(): void {
+    if (this.battleMusic) {
+      this.battleMusic.pause();
+      this.battleMusic.currentTime = 0;
+      this.battleMusic = null;
+    }
+  }
+
+  /**
+   * Update campfire sound volume based on distance from player
+   * The sound is always playing on loop, we just adjust the volume
+   */
+  public updateCampfireSoundVolume(position: Vector2 | null): void {
+    if (this.isMuted || DEBUG_DISABLE_SOUNDS || !this.gameClient) {
+      // If muted, stop the sound
+      if (this.campfireSound) {
+        this.campfireSound.pause();
+        this.campfireSound.currentTime = 0;
+      }
+      return;
+    }
+
+    const myPlayer = this.gameClient.getMyPlayer();
+    if (!myPlayer || !position) {
+      // No player or no campsite fire position, stop the sound
+      if (this.campfireSound) {
+        this.campfireSound.pause();
+        this.campfireSound.currentTime = 0;
+      }
+      return;
+    }
+
+    // Initialize campfire sound if it doesn't exist
+    if (!this.campfireSound) {
+      const cachedAudio = this.audioCache.get(SOUND_TYPES_TO_MP3.CAMPFIRE);
+      if (!cachedAudio) {
+        // Sound not loaded yet, try again next frame
+        return;
+      }
+
+      const audio = cachedAudio.cloneNode() as HTMLAudioElement;
+      audio.loop = true;
+      audio.muted = this.isMuted;
+
+      // Handle looping by listening for 'ended' event (some browsers need this)
+      audio.addEventListener("ended", () => {
+        if (!audio.paused) {
+          audio.currentTime = 0;
+          audio.play().catch(() => {
+            // Ignore autoplay errors
+          });
+        }
+      });
+
+      this.campfireSound = audio;
+      // Start playing immediately
+      audio.play().catch(() => {
+        // Ignore autoplay errors (browser may block autoplay)
+        console.log("Campfire sound autoplay blocked by browser");
+      });
+    }
+
+    // Calculate volume based on distance
+    const dist = distance(myPlayer.getPosition(), position);
+    const baseVolume = this.getBaseVolume(SOUND_TYPES_TO_MP3.CAMPFIRE);
+    const volume = baseVolume * linearFalloff(dist, 200) * DEBUG_VOLUME_REDUCTION;
+
+    this.campfireSound.volume = volume;
+
+    // Ensure it's playing
+    if (this.campfireSound.paused) {
+      this.campfireSound.play().catch(() => {
+        // Ignore autoplay errors
+      });
+    }
+  }
+
+  /**
+   * Stop campfire sound
+   */
+  public stopCampfireSound(): void {
+    if (this.campfireSound) {
+      this.campfireSound.pause();
+      this.campfireSound.currentTime = 0;
+      this.campfireSound = null;
+    }
   }
 }

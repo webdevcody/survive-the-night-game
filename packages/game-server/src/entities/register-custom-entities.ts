@@ -38,6 +38,7 @@ import { AK47 } from "@/entities/weapons/ak47";
 import { GrenadeLauncher } from "@/entities/weapons/grenade-launcher";
 import { Flamethrower } from "@/entities/weapons/flamethrower";
 import { Fire } from "@/entities/environment/fire";
+import { CampsiteFire } from "@/entities/environment/campsite-fire";
 import { Merchant } from "@/entities/environment/merchant";
 import { Car } from "@/entities/environment/car";
 import { Survivor } from "@/entities/environment/survivor";
@@ -103,6 +104,7 @@ export function registerCustomEntities(): void {
 
   // Environment
   entityOverrideRegistry.register("fire", Fire);
+  entityOverrideRegistry.register("campsite_fire", CampsiteFire);
   entityOverrideRegistry.register("merchant", Merchant);
   entityOverrideRegistry.register("car", Car);
   entityOverrideRegistry.register("survivor", Survivor);

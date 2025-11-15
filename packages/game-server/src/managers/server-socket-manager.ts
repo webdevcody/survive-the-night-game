@@ -23,6 +23,7 @@ import { PlayerJoinedEvent } from "@shared/events/server-sent/player-joined-even
 import { PongEvent } from "@shared/events/server-sent/pong-event";
 import { ChatMessageEvent } from "@shared/events/server-sent/chat-message-event";
 import { PlayerLeftEvent } from "@/events/server-sent/player-left-event";
+import { BuildEvent } from "@shared/events/server-sent/build-event";
 import { getConfig } from "@shared/config";
 import { DelayedServer, DelayedServerSocket } from "@/util/delayed-socket";
 import { createCommandRegistry, CommandRegistry } from "@/commands";
@@ -431,6 +432,17 @@ export class ServerSocketManager implements Broadcaster {
     console.log(
       `Player ${player.getId()} placed ${data.itemType} at (${placePos.x}, ${placePos.y})`
     );
+
+    // Broadcast build event if item has a placeSound configured
+    if (itemConfig.placeSound) {
+      this.broadcastEvent(
+        new BuildEvent({
+          playerId: player.getId(),
+          position: { x: placePos.x, y: placePos.y },
+          soundType: itemConfig.placeSound,
+        })
+      );
+    }
   }
 
   private onPlayerInput(socket: Socket, input: Input): void {

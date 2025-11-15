@@ -6,6 +6,7 @@ import { distance } from "@shared/util/physics";
 import { getConfig } from "@shared/config";
 import { DecalData } from "@shared/config/decals-config";
 import { getFrameIndex } from "@/entities/util";
+import { WaveState } from "@shared/types/wave";
 
 const PULSE_SPEED = 0.001; // Speed of the pulse (lower = slower)
 const PULSE_INTENSITY = 0.07; // How much the light radius varies (0.0 to 1.0)
@@ -412,7 +413,9 @@ export class MapManager {
 
     ctx.save();
     ctx.setTransform(1, 0, 0, 1, 0, 0);
-    ctx.fillStyle = "#000000";
+
+    // Use reddish tint during active waves, black otherwise
+    const isWaveActive = gameState.waveState === WaveState.ACTIVE;
 
     for (let y = startTileY; y <= endTileY; y++) {
       for (let x = startTileX; x <= endTileX; x++) {
@@ -459,7 +462,16 @@ export class MapManager {
 
         if (drawWidth <= 0 || drawHeight <= 0) continue;
 
-        ctx.globalAlpha = finalOpacity;
+        // Set fill style based on wave state
+        if (isWaveActive) {
+          // Reddish tint during waves: dark red with opacity
+          ctx.fillStyle = `rgba(50, 0, 0, ${finalOpacity})`;
+        } else {
+          // Normal black darkness
+          ctx.fillStyle = `rgba(20, 0, 0, ${finalOpacity})`;
+        }
+
+        ctx.globalAlpha = 1; // Set to 1 since opacity is in fillStyle
         ctx.fillRect(drawX, drawY, drawWidth, drawHeight);
       }
     }

@@ -8,6 +8,7 @@ import Vector2 from "@/util/vector2";
 import Groupable from "@/extensions/groupable";
 import Static from "@/extensions/static";
 import { GameMessageEvent } from "@shared/events/server-sent/game-message-event";
+import { CarRepairEvent } from "@shared/events/server-sent/car-repair-event";
 import Interactive from "@/extensions/interactive";
 
 export class Car extends Entity {
@@ -77,6 +78,10 @@ export class Car extends Entity {
       // Only repair if the car is damaged
       if (destructible.getHealth() < destructible.getMaxHealth()) {
         destructible.heal(1);
+        // Broadcast repair event so clients can play sound
+        this.getGameManagers()
+          .getBroadcaster()
+          .broadcastEvent(new CarRepairEvent(this.getId()));
       }
     }
   }

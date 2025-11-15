@@ -17,6 +17,7 @@ export class Entity<TSerializableFields extends readonly string[] = readonly str
   private readonly gameManagers: IGameManagers;
   private markedForRemoval = false;
   private removedExtensions: string[] = []; // Track removed extensions
+  private hasBeenSerialized: boolean = false; // Track if entity has been serialized at least once
 
   // Dirty field tracking for custom entity fields
   private dirtyFields: Set<TSerializableFields[number]> = new Set();
@@ -210,13 +211,21 @@ export class Entity<TSerializableFields extends readonly string[] = readonly str
   }
 
   public serialize(onlyDirty: boolean = false): RawEntity {
+    // For new entities (first serialization), always serialize all extensions
+    // This ensures clients receive all extensions even if they haven't changed from initial values
+    const isFirstSerialization = !this.hasBeenSerialized;
+    const shouldSerializeAllExtensions = !onlyDirty || isFirstSerialization;
+
     const serialized: RawEntity = {
       id: this.id,
       type: this.type,
       extensions: Array.from(this.extensions.values())
         .map((ext) => {
-          if (onlyDirty) {
-            // Only serialize dirty extensions
+          if (shouldSerializeAllExtensions) {
+            // Serialize all extensions (either full state or first time)
+            return ext.serialize();
+          } else {
+            // Only serialize dirty extensions for subsequent updates
             if (ext.isDirty()) {
               // Use serializeDirty if available, otherwise fall back to serialize
               if (ext.serializeDirty) {
@@ -226,13 +235,13 @@ export class Entity<TSerializableFields extends readonly string[] = readonly str
               return ext.serialize();
             }
             return null;
-          } else {
-            // Serialize all extensions
-            return ext.serialize();
           }
         })
         .filter((ext) => ext !== null) as any[],
     };
+
+    // Mark entity as having been serialized
+    this.hasBeenSerialized = true;
 
     // Only include removedExtensions if there are any
     if (this.removedExtensions.length > 0) {

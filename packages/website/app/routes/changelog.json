@@ -1,5 +1,26 @@
 [
   {
+    "version": "0.12.0",
+    "date": "2025-11-14",
+    "changes": [
+      "Added comprehensive sound effect system - car repair, wave start, crafting, and building sounds now play positionally",
+      "Added background music system - ambient music plays during exploration with automatic transitions",
+      "Added battle music - intense music plays during wave combat and stops when wave ends",
+      "Added campfire ambient sound - looping campfire crackling with distance-based volume",
+      "Added horn sound effect - plays when wave starts to alert players",
+      "Added campsite fire entity - animated fire with 5-frame animation cycle at the campsite",
+      "Refactored entity image loading - all entities now use getImage() method for consistent asset management",
+      "Added comprehensive sound documentation - complete guide for adding sounds with event system examples",
+      "Improved sound manager with looping sound support - updateCampfireSoundVolume() for dynamic volume control",
+      "Fixed wave state transitions - battle music stops correctly when wave ends (ACTIVE to PREPARATION)",
+      "Added build sound support - different build sounds for different placeable items (walls, spikes, etc)",
+      "Improved client event handling - added CarRepairEvent, WaveStartEvent, CraftEvent, and BuildEvent handlers",
+      "Enhanced campfire rendering - uses entity type for dynamic asset loading instead of hardcoded keys",
+      "Optimized campfire sound updates - caches campsite fire reference to avoid repeated entity searches",
+      "Added sound cleanup on game exit - stops all music and sounds when leaving game"
+    ]
+  },
+  {
     "version": "0.11.7",
     "date": "2025-11-14",
     "changes": [

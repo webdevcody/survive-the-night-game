@@ -22,7 +22,7 @@ export class FireClient extends ClientEntityBase implements Renderable {
       duration: 500,
       frames: 5,
     });
-    const image = this.imageLoader.getFrameIndex("flame", frameIndex);
+    const image = this.imageLoader.getFrameIndex(this.getType(), frameIndex);
     ctx.drawImage(image, position.x, position.y);
   }
 }

@@ -30,6 +30,10 @@ import { ExplosionEvent } from "@shared/events/server-sent/explosion-event";
 import { DelayedSocket } from "../util/delayed-socket";
 import { SIMULATION_CONFIG } from "@/config/client-prediction";
 import { CoinPickupEvent } from "@shared/events/server-sent/coin-pickup-event";
+import { CarRepairEvent } from "@shared/events/server-sent/car-repair-event";
+import { WaveStartEvent } from "@shared/events/server-sent/wave-start-event";
+import { CraftEvent } from "@shared/events/server-sent/craft-event";
+import { BuildEvent } from "@shared/events/server-sent/build-event";
 
 export type EntityDto = { id: string } & any;
 
@@ -59,6 +63,10 @@ const SERVER_EVENT_MAP = {
   [ServerSentEvents.CHAT_MESSAGE]: ChatMessageEvent,
   [ServerSentEvents.GAME_MESSAGE]: GameMessageEvent,
   [ServerSentEvents.EXPLOSION]: ExplosionEvent,
+  [ServerSentEvents.CAR_REPAIR]: CarRepairEvent,
+  [ServerSentEvents.WAVE_START]: WaveStartEvent,
+  [ServerSentEvents.CRAFT]: CraftEvent,
+  [ServerSentEvents.BUILD]: BuildEvent,
 } as const;
 
 export class ClientSocketManager {

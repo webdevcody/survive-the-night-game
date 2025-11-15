@@ -5,6 +5,7 @@ export interface EnvironmentAssetConfig {
   width?: number;
   height?: number;
   sheet?: string;
+  totalFrames?: number; // For animated assets
 }
 
 export interface EnvironmentConfig {

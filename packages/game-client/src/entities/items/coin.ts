@@ -21,7 +21,7 @@ export class CoinClient extends ClientEntity implements Renderable {
   public render(ctx: CanvasRenderingContext2D, gameState: GameState): void {
     super.render(ctx, gameState);
 
-    const image = this.imageLoader.get("coin");
+    const image = this.getImage();
     const position = this.getExt(ClientPositionable).getPosition();
 
     // Calculate bounce offset using an exponential easing function

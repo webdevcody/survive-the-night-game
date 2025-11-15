@@ -16,6 +16,7 @@ export interface ItemConfig extends BehaviorConfigs {
   assets: ItemAssetConfig;
   hideWhenSelected?: boolean; // If true, don't render overlay when item is selected/equipped
   placeable?: boolean; // If true, item can be placed as a structure
+  placeSound?: string; // Sound type to play when item is placed (e.g., "build"). If not set, no sound plays.
 }
 
 class ItemRegistry {

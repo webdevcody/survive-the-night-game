@@ -19,6 +19,10 @@ export abstract class ClientEntityBase {
     this.deserialize(data);
   }
 
+  public getImage(): HTMLImageElement {
+    return this.imageLoader.get(this.type);
+  }
+
   public getType(): EntityType {
     return this.type;
   }

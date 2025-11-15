@@ -40,6 +40,8 @@ export const CAMPSITE: BiomeData = {
     [3, 3, 3, 3, 3, 3, -1, -1, -1, -1, 3, 3, 3, 3, 3, 3]
   ],
   decals: [
+    // Campfire decal is now converted to a CampsiteFire entity in MapManager.placeBiome()
+    // Keeping this for reference - the decal will be converted to an entity during map generation
     {
       id: 'campfire',
       position: { x: 8, y: 7 },

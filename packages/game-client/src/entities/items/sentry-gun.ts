@@ -30,9 +30,7 @@ export class SentryGunClient extends ClientEntity implements Renderable {
 
     const positionable = this.getExt(ClientPositionable);
     const position = positionable.getPosition();
-    // Use pistol sprite for sentry gun
-    const image = this.imageLoader.get("pistol");
-    ctx.drawImage(image, position.x, position.y);
+    ctx.drawImage(this.getImage(), position.x, position.y);
 
     drawHealthBar(ctx, position, this.getHealth(), this.getMaxHealth());
   }

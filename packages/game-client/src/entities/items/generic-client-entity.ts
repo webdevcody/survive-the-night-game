@@ -31,7 +31,7 @@ export class GenericClientEntity extends ClientEntity implements Renderable {
     const position = positionable.getPosition();
 
     try {
-      const image = this.imageLoader.get(this.config.assets.assetKey as any);
+      const image = this.getImage();
       ctx.drawImage(image, position.x, position.y);
     } catch (error) {
       // Asset not found - might be a custom entity that needs a custom class

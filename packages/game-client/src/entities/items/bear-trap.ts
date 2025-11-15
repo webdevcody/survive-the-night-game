@@ -22,7 +22,7 @@ export class BearTrapClient extends ClientEntity implements Renderable {
     super.render(ctx, gameState);
     const positionable = this.getExt(ClientPositionable);
     const position = positionable.getPosition();
-    const image = this.imageLoader.get("bear_trap");
+    const image = this.getImage();
 
     // Draw the bear trap
     // If disarmed, draw it darker or with a different visual state

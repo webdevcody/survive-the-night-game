@@ -38,6 +38,7 @@ import { AK47Client } from "@/entities/weapons/ak47";
 import { GrenadeLauncherClient } from "@/entities/weapons/grenade-launcher";
 import { FlamethrowerClient } from "@/entities/weapons/flamethrower";
 import { FireClient } from "@/entities/environment/fire";
+import { CampsiteFireClient } from "@/entities/environment/campsite-fire";
 import { MerchantClient } from "./environment/merchant";
 import { CarClient } from "./environment/car";
 import { SurvivorClient } from "./environment/survivor";
@@ -106,6 +107,7 @@ export function registerCustomClientEntities(): void {
 
   // Environment
   clientEntityOverrideRegistry.register("fire", FireClient);
+  clientEntityOverrideRegistry.register("campsite_fire", CampsiteFireClient);
   clientEntityOverrideRegistry.register("merchant", MerchantClient);
   clientEntityOverrideRegistry.register("car", CarClient);
   clientEntityOverrideRegistry.register("survivor", SurvivorClient);

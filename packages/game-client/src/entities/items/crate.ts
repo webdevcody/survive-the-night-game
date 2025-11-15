@@ -36,7 +36,7 @@ export class CrateClient extends ClientEntity implements Renderable {
       [3]: 0,
     };
     const frameIndex = frameIndexHealthMap[this.getHealth() as keyof typeof frameIndexHealthMap];
-    const image = this.imageLoader.getFrameIndex("crate", frameIndex);
+    const image = this.imageLoader.getFrameIndex(this.getType(), frameIndex);
     ctx.drawImage(image, position.x, position.y);
 
     drawHealthBar(ctx, position, this.getHealth(), this.getMaxHealth());

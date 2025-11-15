@@ -34,6 +34,7 @@ import { itemRegistry } from "@shared/entities";
 import { weaponRegistry } from "@shared/entities";
 import { Entities } from "@shared/constants";
 import { Crate } from "@/entities/items/crate";
+import { CampsiteFire } from "@/entities/environment/campsite-fire";
 
 export const BIOME_SIZE = 16;
 export const MAP_SIZE = 9;
@@ -956,12 +957,30 @@ export class MapManager implements IMapManager {
     }
 
     // Place biome decals with converted absolute positions
+    // Special handling: campfire decals become CampsiteFire entities instead
     if (biome.decals && biome.decals.length > 0) {
       for (const decal of biome.decals) {
         // Convert local biome position (0-15) to absolute map position
         const absoluteX = biomeX * BIOME_SIZE + decal.position.x;
         const absoluteY = biomeY * BIOME_SIZE + decal.position.y;
 
+        // If this is a campfire decal, create a CampsiteFire entity instead
+        if (decal.id === "campfire") {
+          const campsiteFire = new CampsiteFire(this.getGameManagers());
+          campsiteFire
+            .getExt(Positionable)
+            .setPosition(
+              new Vector2(
+                absoluteX * getConfig().world.TILE_SIZE,
+                absoluteY * getConfig().world.TILE_SIZE
+              )
+            );
+          this.getEntityManager().addEntity(campsiteFire);
+          // Don't add to decals array - it's now an entity
+          continue;
+        }
+
+        // For other decals, add to decals array as before
         this.decals.push({
           ...decal,
           position: { x: absoluteX, y: absoluteY },

@@ -21,7 +21,7 @@ export class LandmineClient extends ClientEntity implements Renderable {
     super.render(ctx, gameState);
 
     const position = this.getExt(ClientPositionable).getCenterPosition();
-    const image = this.imageLoader.get("landmine");
+    const image = this.getImage();
 
     if (!this.isActive) {
       ctx.save();

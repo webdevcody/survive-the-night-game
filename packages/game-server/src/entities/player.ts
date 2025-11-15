@@ -25,6 +25,7 @@ import { Cooldown } from "@/entities/util/cooldown";
 import { Weapon } from "@/entities/weapons/weapon";
 import { weaponHandlerRegistry } from "@/entities/weapons/weapon-handler-registry";
 import { PlayerDeathEvent } from "@shared/events/server-sent/player-death-event";
+import { CraftEvent } from "@shared/events/server-sent/craft-event";
 import { getConfig } from "@shared/config";
 import Vector2 from "@/util/vector2";
 import { Rectangle } from "@/util/shape";
@@ -91,8 +92,8 @@ export class Player extends Entity<typeof PLAYER_SERIALIZABLE_FIELDS> {
     this.addExtension(new ResourcesBag(this, gameManagers.getBroadcaster()));
     this.addExtension(
       new Collidable(this)
-        .setSize(new Vector2(Player.PLAYER_WIDTH - 4, Player.PLAYER_WIDTH - 4))
-        .setOffset(new Vector2(2, 2))
+        .setSize(new Vector2(Player.PLAYER_WIDTH - 8, Player.PLAYER_WIDTH - 8))
+        .setOffset(new Vector2(4, 4))
     );
     this.addExtension(
       new Positionable(this).setSize(new Vector2(Player.PLAYER_WIDTH, Player.PLAYER_WIDTH))
@@ -247,7 +248,13 @@ export class Player extends Entity<typeof PLAYER_SERIALIZABLE_FIELDS> {
   craftRecipe(recipe: RecipeType): void {
     const resourcesBag = this.getExt(ResourcesBag);
     const resources = resourcesBag.getAllResources();
-    const result = this.getExt(Inventory).craftRecipe(recipe, resources);
+    const inventory = this.getExt(Inventory);
+    const originalInventoryJson = JSON.stringify(inventory.getItems());
+    const result = inventory.craftRecipe(recipe, resources);
+
+    // Check if crafting succeeded (inventory changed or item was dropped)
+    const inventoryChanged = JSON.stringify(inventory.getItems()) !== originalInventoryJson;
+    const craftingSucceeded = inventoryChanged || result.itemToDrop !== undefined;
 
     // Update player's resource counts using generic setResource
     resourcesBag.setResource("wood", result.resources.wood);
@@ -274,6 +281,11 @@ export class Player extends Entity<typeof PLAYER_SERIALIZABLE_FIELDS> {
 
         this.getEntityManager()?.addEntity(entity);
       }
+    }
+
+    // Broadcast craft event if crafting succeeded
+    if (craftingSucceeded) {
+      this.getGameManagers().getBroadcaster().broadcastEvent(new CraftEvent(this.getId()));
     }
 
     this.setIsCrafting(false);

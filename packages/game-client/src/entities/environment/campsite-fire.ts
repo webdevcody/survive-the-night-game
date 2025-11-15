@@ -1,12 +1,12 @@
+import { ClientPositionable } from "@/extensions";
+import { ClientEntityBase } from "@/extensions/client-entity";
 import { AssetManager } from "@/managers/asset";
 import { GameState } from "@/state";
-import { Renderable } from "@/entities/util";
-import { ClientEntity } from "@/entities/client-entity";
 import { RawEntity } from "@shared/types/entity";
-import { ClientPositionable } from "@/extensions";
 import { Z_INDEX } from "@shared/map";
+import { Renderable, getFrameIndex } from "@/entities/util";
 
-export class ShotgunAmmoClient extends ClientEntity implements Renderable {
+export class CampsiteFireClient extends ClientEntityBase implements Renderable {
   constructor(data: RawEntity, assetManager: AssetManager) {
     super(data, assetManager);
   }
@@ -16,11 +16,14 @@ export class ShotgunAmmoClient extends ClientEntity implements Renderable {
   }
 
   render(ctx: CanvasRenderingContext2D, gameState: GameState): void {
-    super.render(ctx, gameState);
-
     const positionable = this.getExt(ClientPositionable);
     const position = positionable.getPosition();
-    const image = this.getImage();
+    const frameIndex = getFrameIndex(gameState.startedAt, {
+      duration: 500,
+      frames: 5,
+    });
+    // Use entity type to get the campsite_fire assets from the ground sheet
+    const image = this.imageLoader.getFrameIndex(this.getType(), frameIndex);
     ctx.drawImage(image, position.x, position.y);
   }
 }

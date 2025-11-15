@@ -16,7 +16,7 @@ export class BoltActionRifleClient extends ClientEntity implements Renderable {
 
   render(ctx: CanvasRenderingContext2D, gameState: GameState): void {
     super.render(ctx, gameState);
-    const image = this.imageLoader.get("bolt_action_rifle");
+    const image = this.getImage();
     const positionable = this.getExt(ClientPositionable);
     const position = positionable.getPosition();
     ctx.drawImage(image, position.x, position.y);

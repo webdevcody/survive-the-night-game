@@ -20,7 +20,7 @@ export class AK47AmmoClient extends ClientEntity implements Renderable {
 
     const positionable = this.getExt(ClientPositionable);
     const position = positionable.getPosition();
-    const image = this.imageLoader.get("ak47_ammo");
+    const image = this.getImage();
     ctx.drawImage(image, position.x, position.y);
   }
 }

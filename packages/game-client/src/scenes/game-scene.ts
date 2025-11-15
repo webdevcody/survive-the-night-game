@@ -30,6 +30,9 @@ export class GameScene extends Scene {
 
     // Start the game
     this.gameClient.start();
+
+    // Start background music
+    this.gameClient.getSoundManager().playBackgroundMusic();
   }
 
   update(_deltaTime: number): void {

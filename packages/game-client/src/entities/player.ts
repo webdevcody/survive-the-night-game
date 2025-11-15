@@ -6,6 +6,7 @@ import {
   ClientIgnitable,
   ClientInventory,
   ClientResourcesBag,
+  ClientCollidable,
 } from "@/extensions";
 import { ImageLoader, getItemAssetKey } from "@/managers/asset";
 import { GameState } from "@/state";
@@ -150,8 +151,8 @@ export class PlayerClient extends ClientEntity implements IClientEntity, Rendera
   }
 
   getDamageBox(): Hitbox {
-    const positionable = this.getExt(ClientPositionable);
-    return getHitboxWithPadding(positionable.getPosition(), 0);
+    const positionable = this.getExt(ClientCollidable);
+    return positionable.getHitBox();
   }
 
   getHealth(): number {

@@ -354,7 +354,7 @@ export const assetsMap = {
     environmentRegistry.getAll().filter((config) => {
       const sheet = config.assets.sheet || "default";
       // Only include assets that use standard sheets
-      return sheet === "default" || sheet === "items" || sheet === "characters";
+      return sheet === "default" || sheet === "items" || sheet === "characters" || sheet === "ground";
     }),
     (config) =>
       createSimpleAsset(
@@ -363,7 +363,8 @@ export const assetsMap = {
         config.assets.y,
         config.assets.width,
         config.assets.height,
-        config.assets.sheet || "default"
+        config.assets.sheet || "default",
+        config.assets.totalFrames
       )
   ),
   // Auto-generate all decal assets from registry
@@ -429,11 +430,12 @@ export class AssetManager implements ImageLoader {
       return;
     }
 
-    // Load all sprite sheets (3 total)
+    // Load all sprite sheets (4 total)
     const sheetPaths = [
       { key: "default", path: "/tile-sheet.png" },
       { key: "items", path: "/sheets/items-sheet.png" },
       { key: "characters", path: "/sheets/characters-sheet.png" },
+      { key: "ground", path: "/sheets/ground.png" },
     ];
 
     const loadedSheets: Record<string, HTMLImageElement> = {};

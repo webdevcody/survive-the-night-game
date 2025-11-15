@@ -13,17 +13,17 @@ Feel free to pick any item listed out here to work on.
 
 ## Game Design
 
+- the knife doesn't hurt crates
+- the knife doesn't explode gas cans
 - a new melee weapon called baseball bat (longer range than knife, easier to kite enemies)
 - add more gore for when zombies are shot or killed
 - add more gore when player is killed
 - Could not spawn all zombies at location (1136, 848)
-- play a repair sound when you repair the car
 - the drop crates HUD is over the inventory, they should be under, change the render ordering to make the hud indicators be under all other UI elements
 - hide the repair interaction text until the car's repair cooldown is ready
 - a new zombie type who immobilizes you if hit
 - a new zombie type who can poison you
 - ​​add gate that works like wall but users can go through while zombies not
-- play a sound when the wave starts
 - complaints of a lack of ammo
 - add back the ability to attack with space bar
 - have a weapon menu separate from inventory
@@ -33,7 +33,6 @@ Feel free to pick any item listed out here to work on.
 - game mode: battle royal mode (1 player zombie, everyone else human)
 - play a siren noise and up battle music for the wave
 - play a low tempo ambient music during non wave
-- add sound for item craft
 - a user can search gallon drums for items
 - do not play walking animation for surviver when they are non rescued
 - on death, a player will now turn into a zombie. plan and implement this implementation. player zombies will spawn on the outskirts of the map.

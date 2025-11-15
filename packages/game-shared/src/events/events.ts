@@ -29,6 +29,10 @@ export const ServerSentEvents = {
   CHAT_MESSAGE: "chatMessage",
   EXPLOSION: "explosion",
   GAME_MESSAGE: "gameMessage",
+  CAR_REPAIR: "carRepair",
+  WAVE_START: "waveStart",
+  CRAFT: "craft",
+  BUILD: "build",
 } as const;
 
 export const ClientSentEvents = {

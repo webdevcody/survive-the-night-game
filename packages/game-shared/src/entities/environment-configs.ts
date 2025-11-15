@@ -31,16 +31,6 @@ export const ENVIRONMENT_CONFIGS: Record<string, EnvironmentConfig> = {
       sheet: "items",
     },
   },
-  sentry_gun: {
-    id: "sentry_gun",
-    category: "structure",
-    assets: {
-      assetKey: "sentry_gun",
-      x: 17,
-      y: 149,
-      sheet: "default",
-    },
-  },
   car: {
     id: "car",
     category: "structure",
@@ -82,12 +72,26 @@ export const ENVIRONMENT_CONFIGS: Record<string, EnvironmentConfig> = {
     id: "fire",
     category: "obstacle",
     assets: {
-      // Note: Fire entity uses animated "flame" frames from decal-configs
-      // Client renders using imageLoader.getFrameIndex("flame", frameIndex)
+      // Note: Fire entity uses animated fire frames
+      // Client renders using imageLoader.getFrameIndex("fire", frameIndex)
       assetKey: "fire",
       x: 85, // Start position matches flame decal animated frames
       y: 266,
       sheet: "default",
+      totalFrames: 5, // 5 animation frames for fire
+    },
+  },
+  campsite_fire: {
+    id: "campsite_fire",
+    category: "obstacle",
+    assets: {
+      // Note: CampsiteFire entity uses animated campfire frames from ground sheet
+      // Client renders using imageLoader.getFrameIndex("campsite_fire", frameIndex)
+      assetKey: "campsite_fire",
+      x: 0, // Start position matches campfire decal animated frames
+      y: 272,
+      sheet: "ground",
+      totalFrames: 5, // 5 animation frames for campfire
     },
   },
 };

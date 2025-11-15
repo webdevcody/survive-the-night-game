@@ -20,7 +20,7 @@ export class MinersHatClient extends ClientEntity implements Renderable {
 
     const positionable = this.getExt(ClientPositionable);
     const position = positionable.getPosition();
-    const image = this.imageLoader.get("miners_hat");
+    const image = this.getImage();
     ctx.drawImage(image, position.x, position.y);
   }
 }

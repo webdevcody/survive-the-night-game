@@ -6,6 +6,7 @@ import {
 } from "@shared/events/server-sent/game-state-event";
 import { GameStartedEvent } from "@shared/events/server-sent/game-started-event";
 import { GameMessageEvent } from "@shared/events/server-sent/game-message-event";
+import { WaveStartEvent } from "@shared/events/server-sent/wave-start-event";
 import { ServerUpdatingEvent } from "@shared/events/server-sent/server-updating-event";
 import { GameEvent } from "@shared/events/types";
 import { CommandManager } from "@/managers/command-manager";
@@ -190,6 +191,13 @@ export class GameServer {
       new GameMessageEvent({
         message: `Wave ${this.waveNumber} incoming! Get back to base!`,
         color: "red",
+      })
+    );
+
+    // Broadcast wave start event for sound
+    this.socketManager.broadcastEvent(
+      new WaveStartEvent({
+        waveNumber: this.waveNumber,
       })
     );
   }

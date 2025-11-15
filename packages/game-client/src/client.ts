@@ -23,6 +23,7 @@ import { Input } from "../../game-shared/src/util/input";
 import { ClientEntityBase } from "@/extensions/client-entity";
 import { ClientDestructible } from "@/extensions/destructible";
 import { ClientPositionable, ClientResourcesBag } from "@/extensions";
+import { CampsiteFireClient } from "@/entities/environment/campsite-fire";
 import { WaveState } from "@shared/types/wave";
 import { ParticleManager } from "./managers/particles";
 import { PredictionManager } from "./managers/prediction";
@@ -84,6 +85,9 @@ export class GameClient {
   private teleportStartTime: number = 0;
   private teleportCancelledByDamage: boolean = false;
   private readonly TELEPORT_DURATION = 3000; // 3 seconds
+
+  // Cached campsite fire reference (there should only ever be one)
+  private campsiteFire: CampsiteFireClient | null = null;
 
   constructor(canvas: HTMLCanvasElement, assetManager?: AssetManager, soundManager?: SoundManager) {
     this.ctx = canvas.getContext("2d")!;
@@ -465,6 +469,11 @@ export class GameClient {
     this.stop();
     this.resizeController.cleanUp();
 
+    // Stop background music
+    this.soundManager.stopBackgroundMusic();
+    // Stop battle music
+    this.soundManager.stopBattleMusic();
+
     // Disconnect from server to prevent duplicate connections
     if (this.socketManager) {
       this.socketManager.disconnect();
@@ -598,6 +607,7 @@ export class GameClient {
     this.updateTeleportProgress();
     this.hud.update(this.gameState);
     this.updatePlayerMovementSounds();
+    this.updateCampfireSounds();
     this.updateCursorVisibility();
   }
 
@@ -790,6 +800,29 @@ export class GameClient {
 
     // Update volumes for all active looping sounds based on current positions
     this.soundManager.updateLoopingSoundsVolumes();
+  }
+
+  /**
+   * Update campfire sound volume based on distance
+   * The sound is always playing on loop, we just adjust the volume
+   */
+  private updateCampfireSounds(): void {
+    // Find campsite fire if we don't have a cached reference or if it's been removed
+    if (!this.campsiteFire || !this.gameState.entityMap.has(this.campsiteFire.getId())) {
+      this.campsiteFire =
+        (this.gameState.entities.find(
+          (entity) => entity instanceof CampsiteFireClient
+        ) as CampsiteFireClient) || null;
+    }
+
+    // Update sound volume if campsite fire exists
+    if (this.campsiteFire && this.campsiteFire.hasExt(ClientPositionable)) {
+      const position = this.campsiteFire.getExt(ClientPositionable).getPosition();
+      this.soundManager.updateCampfireSoundVolume(position);
+    } else {
+      // No campsite fire exists, stop the sound
+      this.soundManager.stopCampfireSound();
+    }
   }
 
   private positionCameraOnPlayer(): void {

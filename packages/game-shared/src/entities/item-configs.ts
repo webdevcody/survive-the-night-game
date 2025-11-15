@@ -242,6 +242,7 @@ export const ITEM_CONFIGS: Record<string, ItemConfig> = {
     id: "spikes",
     category: "placeable",
     placeable: true,
+    placeSound: "build",
     assets: {
       assetKey: "spikes",
       x: 357,
@@ -280,6 +281,7 @@ export const ITEM_CONFIGS: Record<string, ItemConfig> = {
     id: "wall",
     category: "structure",
     placeable: true,
+    placeSound: "build",
     assets: {
       assetKey: "wall",
       x: 64,
@@ -315,11 +317,12 @@ export const ITEM_CONFIGS: Record<string, ItemConfig> = {
     id: "sentry_gun",
     category: "structure",
     placeable: true,
+    placeSound: "build",
     assets: {
       assetKey: "sentry_gun",
-      x: 17,
-      y: 149,
-      sheet: "default",
+      x: 80,
+      y: 144,
+      sheet: "items",
     },
     recipe: {
       enabled: true,

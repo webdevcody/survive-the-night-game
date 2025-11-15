@@ -23,7 +23,7 @@ import { PlayerClient } from "@/entities/player";
 import { ZombieClient } from "@/entities/zombie";
 import { ClientPositionable } from "@/extensions";
 import { ClientSocketManager } from "@/managers/client-socket-manager";
-import { SOUND_TYPES_TO_MP3 } from "@/managers/sound-manager";
+import { SOUND_TYPES_TO_MP3, SoundType } from "@/managers/sound-manager";
 import {
   GameState,
   addEntity,
@@ -41,10 +41,15 @@ import { GameMessageEvent } from "@shared/events/server-sent/game-message-event"
 import { PlayerLeftEvent } from "@shared/events/server-sent/player-left-event";
 import { ExplosionParticle } from "./particles/explosion";
 import { ExplosionEvent } from "@shared/events/server-sent/explosion-event";
+import { CarRepairEvent } from "@shared/events/server-sent/car-repair-event";
+import { WaveStartEvent } from "@shared/events/server-sent/wave-start-event";
+import { CraftEvent } from "@shared/events/server-sent/craft-event";
+import { BuildEvent } from "@shared/events/server-sent/build-event";
 import { InterpolationManager } from "@/managers/interpolation";
 import { ExtensionTypes } from "@shared/util/extension-types";
 import Vector2 from "@shared/util/vector2";
 import { CoinClient } from "./entities/items/coin";
+import { WaveState } from "@shared/types/wave";
 
 export class ClientEventListener {
   private socketManager: ClientSocketManager;
@@ -54,6 +59,7 @@ export class ClientEventListener {
   private hasReceivedPlayerId = false;
   private hasReceivedInitialState = false;
   private interpolation: InterpolationManager = new InterpolationManager();
+  private previousWaveState: WaveState | undefined = undefined;
 
   private isInitialized(): boolean {
     return this.hasReceivedMap && this.hasReceivedPlayerId && this.hasReceivedInitialState;
@@ -100,6 +106,10 @@ export class ClientEventListener {
       this.onPlayerPickedUpResource.bind(this)
     );
     this.socketManager.on(ServerSentEvents.EXPLOSION, this.onExplosion.bind(this));
+    this.socketManager.on(ServerSentEvents.CAR_REPAIR, this.onCarRepair.bind(this));
+    this.socketManager.on(ServerSentEvents.WAVE_START, this.onWaveStart.bind(this));
+    this.socketManager.on(ServerSentEvents.CRAFT, this.onCraft.bind(this));
+    this.socketManager.on(ServerSentEvents.BUILD, this.onBuild.bind(this));
   }
 
   onServerUpdating(serverUpdatingEvent: ServerUpdatingEvent) {
@@ -173,7 +183,16 @@ export class ClientEventListener {
       this.gameState.waveNumber = gameStateEvent.getWaveNumber()!;
     }
     if (gameStateEvent.getWaveState() !== undefined) {
-      this.gameState.waveState = gameStateEvent.getWaveState()!;
+      const newWaveState = gameStateEvent.getWaveState()!;
+      const oldWaveState = this.previousWaveState;
+      
+      // Stop battle music when wave transitions from ACTIVE to PREPARATION
+      if (oldWaveState === WaveState.ACTIVE && newWaveState === WaveState.PREPARATION) {
+        this.gameClient.getSoundManager().stopBattleMusic();
+      }
+      
+      this.gameState.waveState = newWaveState;
+      this.previousWaveState = newWaveState;
     }
     if (gameStateEvent.getPhaseStartTime() !== undefined) {
       this.gameState.phaseStartTime = gameStateEvent.getPhaseStartTime()!;
@@ -511,6 +530,59 @@ export class ClientEventListener {
     particle.setPosition(event.serialize().position);
     particle.onInitialized();
     this.gameClient.getParticleManager().addParticle(particle);
+  }
+
+  onCarRepair(carRepairEvent: CarRepairEvent) {
+    const car = this.gameClient.getEntityById(carRepairEvent.getCarId());
+    if (!car || !car.hasExt(ClientPositionable)) return;
+
+    const carPosition = car.getExt(ClientPositionable).getCenterPosition();
+    this.gameClient
+      .getSoundManager()
+      .playPositionalSound(SOUND_TYPES_TO_MP3.REPAIR, carPosition);
+  }
+
+  onWaveStart(waveStartEvent: WaveStartEvent) {
+    // Play horn sound at player's position (or center if player doesn't exist)
+    const myPlayer = this.gameClient.getMyPlayer();
+    if (myPlayer && myPlayer.hasExt(ClientPositionable)) {
+      const playerPosition = myPlayer.getExt(ClientPositionable).getCenterPosition();
+      this.gameClient
+        .getSoundManager()
+        .playPositionalSound(SOUND_TYPES_TO_MP3.HORN, playerPosition);
+    } else {
+      // Fallback: play at origin if player doesn't exist yet
+      const fallbackPosition = new Vector2(0, 0);
+      this.gameClient
+        .getSoundManager()
+        .playPositionalSound(SOUND_TYPES_TO_MP3.HORN, fallbackPosition);
+    }
+
+    // Start battle music (plays on top of background music)
+    this.gameClient.getSoundManager().playBattleMusic();
+  }
+
+  onCraft(craftEvent: CraftEvent) {
+    const player = this.gameClient.getEntityById(craftEvent.getPlayerId());
+    if (!player || !player.hasExt(ClientPositionable)) return;
+
+    const playerPosition = player.getExt(ClientPositionable).getCenterPosition();
+    this.gameClient
+      .getSoundManager()
+      .playPositionalSound(SOUND_TYPES_TO_MP3.CRAFT, playerPosition);
+  }
+
+  onBuild(buildEvent: BuildEvent) {
+    const buildPosition = buildEvent.getPosition();
+    const position = new Vector2(buildPosition.x, buildPosition.y);
+    const soundType = buildEvent.getSoundType() as SoundType;
+    
+    // Only play sound if it's a valid sound type
+    if (soundType && Object.values(SOUND_TYPES_TO_MP3).includes(soundType as any)) {
+      this.gameClient
+        .getSoundManager()
+        .playPositionalSound(soundType, position);
+    }
   }
 
   private checkInitialization() {

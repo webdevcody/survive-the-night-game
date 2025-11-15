@@ -17,7 +17,7 @@ export class GrenadeLauncherClient extends ClientEntity implements Renderable {
 
   render(ctx: CanvasRenderingContext2D, gameState: GameState): void {
     super.render(ctx, gameState);
-    const image = this.imageLoader.get("ak47");
+    const image = this.getImage();
     const positionable = this.getExt(ClientPositionable);
     const position = positionable.getPosition();
     ctx.drawImage(image, position.x, position.y);
