@@ -1,8 +1,8 @@
 /**
  * ========================================================================
- * COMBAT CONFIGURATION
+ * ENTITY CONFIGURATION
  * ========================================================================
- * Combat ranges, weapon stats, and damage settings
+ * Everything about entities
  */
 
 export const entityConfig = {
