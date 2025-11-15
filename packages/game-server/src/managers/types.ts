@@ -8,7 +8,7 @@ import { EntityStateTracker } from "./entity-state-tracker";
 export interface IEntityManager {
   generateEntityId(): string;
   addEntity(entity: IEntity): void;
-  markEntityForRemoval(entity: IEntity): void;
+  markEntityForRemoval(entity: IEntity, expiration?: number): void;
   removeEntity(entityId: string): void;
   createEntityFromItem(item: InventoryItem): IEntity | null;
   isColliding(entity: IEntity, IEntityTypes?: EntityType[]): IEntity | null;

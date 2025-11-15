@@ -5,6 +5,8 @@ import { Entities, PLAYER_TYPES } from "@/constants";
 import { Entity } from "@/entities/entity";
 import Vector2 from "@/util/vector2";
 import { CoinPickupEvent } from "@shared/events/server-sent/coin-pickup-event";
+import { getConfig } from "@shared/config";
+
 export class Coin extends Entity {
   public static readonly Size = new Vector2(16, 16);
   private static readonly TRIGGER_RADIUS = 16;
@@ -19,6 +21,9 @@ export class Coin extends Entity {
         targetTypes: [Entities.PLAYER],
       }).onTrigger(() => this.collect())
     );
+
+    // Mark coin for removal if not collected
+    this.getEntityManager().markEntityForRemoval(this, getConfig().entity.ENTITY_DESPAWN_TIME_MS);
   }
 
   private collect(): void {
