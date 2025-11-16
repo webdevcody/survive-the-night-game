@@ -23,6 +23,11 @@ export const waveConfig = {
   FIRST_WAVE_DELAY: 90,
 
   /**
+   * Wave number when bosses begin spawning
+   */
+  BOSS_SPAWN_WAVE: 1,
+
+  /**
    * Whether waves auto-start after preparation or require manual trigger
    */
   AUTO_START_WAVES: true,

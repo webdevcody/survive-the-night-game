@@ -16,6 +16,7 @@ import { ClientInteractive } from "@/extensions";
 import { RawEntity } from "@shared/types/entity";
 import { Z_INDEX } from "@shared/map";
 import { IClientEntity, Renderable, getFrameIndex, drawHealthBar } from "@/entities/util";
+import { renderBossPresentation } from "./util/boss-presentation";
 import Vector2 from "@shared/util/vector2";
 import PoolManager from "@shared/util/pool-manager";
 import { DEBUG_SHOW_WAYPOINTS } from "@shared/debug";
@@ -152,6 +153,10 @@ export abstract class EnemyClient extends ClientEntityBase implements IClientEnt
     return this.config.assets.animationDuration;
   }
 
+  protected getAnimationFrameCount(): number {
+    return this.config.assets.frameLayout.totalFrames ?? 3;
+  }
+
   protected renderFlames(
     gameState: GameState,
     ctx: CanvasRenderingContext2D,
@@ -173,10 +178,12 @@ export abstract class EnemyClient extends ClientEntityBase implements IClientEnt
     ctx: CanvasRenderingContext2D,
     renderPosition: Vector2
   ) {
+    const positionable = this.getExt(ClientPositionable);
+    const collidable = this.getExt(ClientCollidable);
     const facing = determineDirection(this.getVelocity());
     const frameIndex = getFrameIndex(gameState.startedAt, {
       duration: this.getAnimationDuration(),
-      frames: 3,
+      frames: this.getAnimationFrameCount(),
     });
     const image = this.imageLoader.getFrameWithDirection(
       this.getEnemyAssetPrefix() as any,
@@ -184,11 +191,21 @@ export abstract class EnemyClient extends ClientEntityBase implements IClientEnt
       frameIndex
     );
     ctx.drawImage(image, renderPosition.x, renderPosition.y);
-    drawHealthBar(ctx, renderPosition, this.getHealth(), this.getMaxHealth());
+
+    if (this.config.boss) {
+      renderBossPresentation({
+        ctx,
+        metadata: this.config.boss,
+        renderPosition,
+        entitySize: positionable.getSize(),
+        health: this.getHealth(),
+        maxHealth: this.getMaxHealth(),
+      });
+    } else {
+      drawHealthBar(ctx, renderPosition, this.getHealth(), this.getMaxHealth());
+    }
 
     // Debug hitboxes
-    const positionable = this.getExt(ClientPositionable);
-    const collidable = this.getExt(ClientCollidable);
     debugDrawHitbox(ctx, collidable.getHitBox(), "yellow");
     debugDrawHitbox(ctx, getHitboxWithPadding(positionable.getPosition(), 0), "red");
     drawCenterPositionWithLabel(ctx, this.getCenterPosition());

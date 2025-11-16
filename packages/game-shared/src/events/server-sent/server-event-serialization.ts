@@ -143,6 +143,27 @@ export function serializeServerEvent(event: string, args: any[]): Buffer | null 
       writer.writeString(data.soundType ?? "");
       break;
     }
+    case ServerSentEvents.BOSS_STEP: {
+      const data = args[0] ?? {};
+      writer.writeUInt16(data.bossId ?? 0);
+      writer.writeFloat64(data.intensity ?? 0);
+      writer.writeFloat64(data.durationMs ?? 0);
+      break;
+    }
+    case ServerSentEvents.BOSS_SUMMON: {
+      const data = args[0] ?? {};
+      const summons = Array.isArray(data.summons) ? data.summons : [];
+      if (summons.length > 255) {
+        throw new Error(`summon payload too large (${summons.length} entries)`);
+      }
+      writer.writeUInt16(data.bossId ?? 0);
+      writer.writeUInt8(summons.length);
+      summons.forEach((summon: { x: number; y: number }) => {
+        writer.writeFloat64(summon?.x ?? 0);
+        writer.writeFloat64(summon?.y ?? 0);
+      });
+      break;
+    }
     case ServerSentEvents.GAME_MESSAGE: {
       const data = args[0] ?? {};
       writer.writeString(data.message ?? "");
@@ -286,6 +307,23 @@ export function deserializeServerEvent(event: string, buffer: ArrayBuffer): any[
       const y = reader.readFloat64();
       const soundType = reader.readString();
       return [{ playerId, position: { x, y }, soundType }];
+    }
+    case ServerSentEvents.BOSS_STEP: {
+      const bossId = reader.readUInt16();
+      const intensity = reader.readFloat64();
+      const durationMs = reader.readFloat64();
+      return [{ bossId, intensity, durationMs }];
+    }
+    case ServerSentEvents.BOSS_SUMMON: {
+      const bossId = reader.readUInt16();
+      const count = reader.readUInt8();
+      const summons: Array<{ x: number; y: number }> = [];
+      for (let i = 0; i < count; i++) {
+        const x = reader.readFloat64();
+        const y = reader.readFloat64();
+        summons.push({ x, y });
+      }
+      return [{ bossId, summons }];
     }
     case ServerSentEvents.GAME_MESSAGE: {
       const message = reader.readString();

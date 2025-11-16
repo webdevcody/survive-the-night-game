@@ -41,11 +41,14 @@ import { ChatMessageEvent } from "@shared/events/server-sent/chat-message-event"
 import { GameMessageEvent } from "@shared/events/server-sent/game-message-event";
 import { PlayerLeftEvent } from "@shared/events/server-sent/player-left-event";
 import { ExplosionParticle } from "./particles/explosion";
+import { SummonParticle } from "./particles/summon";
 import { ExplosionEvent } from "@shared/events/server-sent/explosion-event";
 import { CarRepairEvent } from "@shared/events/server-sent/car-repair-event";
 import { WaveStartEvent } from "@shared/events/server-sent/wave-start-event";
 import { CraftEvent } from "@shared/events/server-sent/craft-event";
 import { BuildEvent } from "@shared/events/server-sent/build-event";
+import { BossStepEvent } from "@shared/events/server-sent/boss-step-event";
+import { BossSummonEvent } from "@shared/events/server-sent/boss-summon-event";
 import { InterpolationManager } from "@/managers/interpolation";
 import { ExtensionTypes } from "@shared/util/extension-types";
 import Vector2 from "@shared/util/vector2";
@@ -125,6 +128,8 @@ export class ClientEventListener {
     this.socketManager.on(ServerSentEvents.WAVE_START, this.onWaveStart.bind(this));
     this.socketManager.on(ServerSentEvents.CRAFT, this.onCraft.bind(this));
     this.socketManager.on(ServerSentEvents.BUILD, this.onBuild.bind(this));
+    this.socketManager.on(ServerSentEvents.BOSS_STEP, this.onBossStep.bind(this));
+    this.socketManager.on(ServerSentEvents.BOSS_SUMMON, this.onBossSummon.bind(this));
 
     // Request full state after all listeners are set up
     // If already connected, request immediately; otherwise the connect handler will request it
@@ -829,6 +834,23 @@ export class ClientEventListener {
     this.gameClient.getParticleManager().addParticle(particle);
 
     this.applyExplosionCameraShake(explosionPosition);
+  }
+
+  onBossStep(event: BossStepEvent) {
+    this.gameClient.shakeCamera(event.getIntensity(), event.getDurationMs());
+  }
+
+  onBossSummon(event: BossSummonEvent) {
+    const summons = event.getSummons();
+    summons.forEach((summon) => {
+      const particle = new SummonParticle(
+        this.gameClient.getImageLoader(),
+        this.gameClient.getSoundManager()
+      );
+      particle.setPosition(new Vector2(summon.x, summon.y));
+      particle.onInitialized();
+      this.gameClient.getParticleManager().addParticle(particle);
+    });
   }
 
   onCarRepair(carRepairEvent: CarRepairEvent) {

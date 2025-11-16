@@ -33,6 +33,8 @@ export const ServerSentEvents = {
   WAVE_START: "waveStart",
   CRAFT: "craft",
   BUILD: "build",
+  BOSS_STEP: "bossStep",
+  BOSS_SUMMON: "bossSummon",
 } as const;
 
 export const ClientSentEvents = {
