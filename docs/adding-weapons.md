@@ -40,6 +40,7 @@ export const WEAPON_CONFIGS: Record<string, WeaponConfig> = {
       sheet: "items", // or "default"
     },
     sound: "my_weapon",
+    ammo_type: "my_ammo",
     spawn: {
       enabled: true,
       chance: 0.002, // Optional: spawn chance on map

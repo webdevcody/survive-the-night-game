@@ -68,6 +68,7 @@ export const WEAPON_CONFIGS: Record<string, WeaponConfig> = {
       sheet: "default",
     },
     sound: "pistol",
+    ammoType: "pistol_ammo",
     spawn: {
       enabled: true,
       chance: 0.002,
@@ -92,6 +93,7 @@ export const WEAPON_CONFIGS: Record<string, WeaponConfig> = {
       sheet: "default",
     },
     sound: "shotgun_fire",
+    ammoType: "shotgun_ammo",
     spawn: {
       enabled: true,
       chance: 0.0015,
@@ -114,6 +116,7 @@ export const WEAPON_CONFIGS: Record<string, WeaponConfig> = {
       sheet: "items",
     },
     sound: "pistol",
+    ammoType: "bolt_action_ammo",
     spawn: {
       enabled: true,
       chance: 0.0015,
@@ -136,6 +139,7 @@ export const WEAPON_CONFIGS: Record<string, WeaponConfig> = {
       sheet: "items",
     },
     sound: "pistol",
+    ammoType: "ak47_ammo",
     spawn: {
       enabled: true,
       chance: 0.0015,
@@ -158,6 +162,7 @@ export const WEAPON_CONFIGS: Record<string, WeaponConfig> = {
       sheet: "items",
     },
     sound: "pistol",
+    ammoType: "grenade_launcher_ammo",
   },
   flamethrower: {
     id: "flamethrower",
@@ -176,6 +181,7 @@ export const WEAPON_CONFIGS: Record<string, WeaponConfig> = {
       sheet: "items",
     },
     sound: "pistol", // Will use pistol sound until we have a flamethrower sound
+    ammoType: "flamethrower_ammo",
   },
   bow: {
     id: "bow",
@@ -194,6 +200,7 @@ export const WEAPON_CONFIGS: Record<string, WeaponConfig> = {
       sheet: "items",
     },
     sound: "pistol",
+    ammoType: "arrow_ammo", // Bow uses arrow_ammo instead of bow_ammo
     spawn: {
       enabled: true,
       chance: 0.002,
