@@ -1,7 +1,9 @@
 import { Cooldown } from "@/entities/util/cooldown";
-import { Extension, ExtensionSerialized } from "@/extensions/types";
+import { Extension } from "@/extensions/types";
 import Destructible from "@/extensions/destructible";
 import { IEntity } from "@/entities/types";
+import { BufferWriter } from "@shared/util/buffer-serialization";
+import { encodeExtensionType } from "@shared/util/extension-type-encoding";
 
 export default class Ignitable implements Extension {
   public static readonly type = "ignitable";
@@ -50,9 +52,7 @@ export default class Ignitable implements Extension {
     this.dirty = false;
   }
 
-  public serialize(): ExtensionSerialized {
-    return {
-      type: Ignitable.type,
-    };
+  public serializeToBuffer(writer: BufferWriter): void {
+    writer.writeUInt32(encodeExtensionType(Ignitable.type));
   }
 }

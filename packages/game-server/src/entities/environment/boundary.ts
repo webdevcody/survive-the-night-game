@@ -1,6 +1,5 @@
 import { IGameManagers } from "@/managers/types";
 import { Entities } from "@shared/constants";
-import { RawEntity } from "@shared/types/entity";
 import Positionable from "@/extensions/positionable";
 import Collidable from "@/extensions/collidable";
 import { Entity } from "@/entities/entity";

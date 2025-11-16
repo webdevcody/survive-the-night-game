@@ -11,7 +11,6 @@ import { Direction, normalizeDirection } from "@/util/direction";
 import { Entity } from "@/entities/entity";
 import { distance } from "@/util/physics";
 import { IEntity } from "@/entities/types";
-import { RawEntity } from "@/types/entity";
 import Vector2 from "@/util/vector2";
 import { Line, Rectangle } from "@/util/shape";
 import { Player } from "@/entities/player";
@@ -27,7 +26,7 @@ export class FlameProjectile extends Entity {
   private static readonly FLAME_SPEED = 200; // Slower than bullets
   private static readonly FLAME_SIZE = new Vector2(8, 8);
   private lastPosition: Vector2;
-  private shooterId: string = "";
+  private shooterId: number = 0;
   private damage: number;
   private maxDistance: number; // Random max distance for this projectile
 
@@ -46,11 +45,11 @@ export class FlameProjectile extends Entity {
     this.lastPosition = this.getPosition();
   }
 
-  setShooterId(id: string) {
+  setShooterId(id: number) {
     this.shooterId = id;
   }
 
-  getShooterId(): string {
+  getShooterId(): number {
     return this.shooterId;
   }
 

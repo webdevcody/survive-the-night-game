@@ -6,19 +6,19 @@ import { EntityType } from "@/types/entity";
 import { EntityStateTracker } from "./entity-state-tracker";
 
 export interface IEntityManager {
-  generateEntityId(): string;
+  generateEntityId(): number;
   addEntity(entity: IEntity): void;
   markEntityForRemoval(entity: IEntity, expiration?: number): void;
-  removeEntity(entityId: string): void;
+  removeEntity(entityId: number): void;
   createEntityFromItem(item: InventoryItem): IEntity | null;
   isColliding(entity: IEntity, IEntityTypes?: EntityType[]): IEntity | null;
   getClosestAlivePlayer(entity: IEntity): IEntity | null;
-  getEntityById(id: string): IEntity | null;
+  getEntityById(id: number): IEntity | null;
   getNearbyEntities(position: Vector2, radius?: number, filterSet?: Set<EntityType>): IEntity[];
   getNearbyIntersectingDestructableEntities(sourceEntity: IEntity): IEntity[];
   getBroadcaster(): Broadcaster;
   getPlayerEntities(): IEntity[];
-  getEntitiesToRemove(): Array<{ id: string; expiration: number }>;
+  getEntitiesToRemove(): Array<{ id: number; expiration: number }>;
   clear(): void;
   update(deltaTime: number): void;
   getEntities(): IEntity[];

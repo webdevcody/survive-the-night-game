@@ -1,6 +1,8 @@
 import { IEntity } from "@/entities/types";
-import { Extension, ExtensionSerialized } from "@/extensions/types";
+import { Extension } from "@/extensions/types";
 import Vector2 from "@/util/vector2";
+import { BufferWriter } from "@shared/util/buffer-serialization";
+import { encodeExtensionType } from "@shared/util/extension-type-encoding";
 
 export default class Movable implements Extension {
   public static readonly type = "movable";
@@ -37,11 +39,9 @@ export default class Movable implements Extension {
     return this;
   }
 
-  public serialize(): ExtensionSerialized {
-    return {
-      type: Movable.type,
-      velocity: this.velocity,
-    };
+  public serializeToBuffer(writer: BufferWriter): void {
+    writer.writeUInt32(encodeExtensionType(Movable.type));
+    writer.writeVelocity2(this.velocity);
   }
 
   public update(deltaTime: number): void {
@@ -74,10 +74,4 @@ export default class Movable implements Extension {
     this.dirty = false;
   }
 
-  public serializeDirty(): ExtensionSerialized | null {
-    if (!this.dirty) {
-      return null;
-    }
-    return this.serialize();
-  }
 }

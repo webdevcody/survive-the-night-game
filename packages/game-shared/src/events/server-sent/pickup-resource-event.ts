@@ -3,13 +3,13 @@ import { GameEvent } from "@/events/types";
 import { ResourceType } from "@/util/inventory";
 
 interface PlayerPickedUpResourceEventData {
-  playerId: string;
+  playerId: number;
   resourceType: ResourceType;
 }
 
 export class PlayerPickedUpResourceEvent implements GameEvent<PlayerPickedUpResourceEventData> {
   private readonly type: EventType;
-  private readonly playerId: string;
+  private readonly playerId: number;
   private readonly resourceType: ResourceType;
 
   constructor(data: PlayerPickedUpResourceEventData) {
@@ -22,7 +22,7 @@ export class PlayerPickedUpResourceEvent implements GameEvent<PlayerPickedUpReso
     return this.type;
   }
 
-  getPlayerId(): string {
+  getPlayerId(): number {
     return this.playerId;
   }
 

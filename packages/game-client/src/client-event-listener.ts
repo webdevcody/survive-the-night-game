@@ -30,6 +30,8 @@ import {
   clearEntities,
   replaceAllEntities,
 } from "@/state";
+import { BufferReader } from "@shared/util/buffer-serialization";
+import { entityTypeRegistry } from "@shared/util/entity-type-encoding";
 import { SwipeParticle } from "./particles/swipe";
 import { Direction, determineDirection } from "@shared/util/direction";
 import { GameStartedEvent } from "@shared/events/server-sent/game-started-event";
@@ -65,6 +67,7 @@ export class ClientEventListener {
   private hasReceivedInitialState = false;
   private interpolation: InterpolationManager = new InterpolationManager();
   private previousWaveState: WaveState | undefined = undefined;
+  private pendingFullStateEvent: GameStateEvent | null = null;
 
   private isInitialized(): boolean {
     return this.hasReceivedMap && this.hasReceivedPlayerId && this.hasReceivedInitialState;
@@ -160,12 +163,17 @@ export class ClientEventListener {
   }
 
   onGameStateUpdate(gameStateEvent: GameStateEvent) {
-    // Only process state updates once we have map and player ID
     if (!this.hasReceivedMap || !this.hasReceivedPlayerId) {
+      if (gameStateEvent.isFullState()) {
+        this.pendingFullStateEvent = gameStateEvent;
+      }
       return;
     }
 
-    const entitiesFromServer = gameStateEvent.getEntities();
+    this.handleGameStateUpdate(gameStateEvent);
+  }
+
+  private handleGameStateUpdate(gameStateEvent: GameStateEvent) {
     const timestamp = gameStateEvent.getTimestamp() ?? Date.now();
 
     // Calculate server time offset: clientTime - serverTime
@@ -217,138 +225,324 @@ export class ClientEventListener {
       this.gameState.totalZombies = gameStateEvent.getTotalZombies()!;
     }
 
-    if (gameStateEvent.isFullState()) {
-      // Full state update - replace all entities
-      const createdEntities = entitiesFromServer.map((entity) => {
-        const created = this.gameClient.getEntityFactory().createEntity(entity);
-        // Seed interpolation snapshots for non-local players
-        if (created.getId() !== this.gameState.playerId && created.hasExt(ClientPositionable)) {
-          const pos = created.getExt(ClientPositionable).getPosition();
-          this.interpolation.addSnapshot(created.getId(), pos, timestamp);
+    // Check if we have a buffer for buffer-based deserialization
+    const buffer = (gameStateEvent as any).getBuffer?.();
+
+    if (buffer) {
+      // Use buffer-based deserialization
+      // Buffer format: [entityCount][entities...][gameState][removedEntityIds]
+      let reader = new BufferReader(buffer);
+
+      // Read entity count (first thing in buffer)
+      const entityCount = reader.readUInt16();
+
+      if (gameStateEvent.isFullState()) {
+        // Full state update - replace all entities
+        const createdEntities: any[] = [];
+        for (let i = 0; i < entityCount; i++) {
+          const entityLength = reader.readUInt16();
+          const entityStartOffset = reader.getOffset();
+
+          // Read entity ID and type to create entity
+          const idReader = reader.atOffset(entityStartOffset);
+          const id = idReader.readUInt16();
+          // Read entity type as 1-byte numeric ID and decode to string
+          const typeId = idReader.readUInt8();
+          const type = entityTypeRegistry.decode(typeId);
+
+          // Check if entity already exists
+          let entity = this.gameState.entityMap.get(id);
+          if (!entity) {
+            // Create new entity with minimal data
+            const entityData = { id, type };
+            entity = this.gameClient.getEntityFactory().createEntity(entityData);
+            addEntity(this.gameState, entity);
+          }
+
+          // Deserialize entity from buffer (starting from entityStartOffset)
+          entity.deserializeFromBuffer(reader.atOffset(entityStartOffset));
+
+          // Advance reader past this entity
+          reader = reader.atOffset(entityStartOffset + entityLength);
+
+          // Seed interpolation snapshots for non-local players
+          if (entity.getId() !== this.gameState.playerId && entity.hasExt(ClientPositionable)) {
+            const pos = entity.getExt(ClientPositionable).getPosition();
+            this.interpolation.addSnapshot(entity.getId(), pos, timestamp);
+          }
+
+          // If new entity is my local player, seed the ghost position too
+          if (
+            entity.getId() === this.gameState.playerId &&
+            entity.hasExt(ClientPositionable) &&
+            entity instanceof PlayerClient
+          ) {
+            const pos = entity.getExt(ClientPositionable).getPosition();
+            (entity as unknown as PlayerClient).setServerGhostPosition(pos);
+          }
+
+          createdEntities.push(entity);
         }
-        return created;
-      });
-      replaceAllEntities(this.gameState, createdEntities);
 
-      if (!this.hasReceivedInitialState) {
-        this.hasReceivedInitialState = true;
-        this.checkInitialization();
+        // Replace all entities
+        replaceAllEntities(this.gameState, createdEntities);
+
+        if (!this.hasReceivedInitialState) {
+          this.hasReceivedInitialState = true;
+          this.checkInitialization();
+        }
+      } else {
+        // Only process delta updates after we have initial state
+        if (!this.hasReceivedInitialState) {
+          return;
+        }
+
+        // Delta update - update only changed entities
+        const removedIds = gameStateEvent.getRemovedEntityIds();
+
+        // Remove entities that were deleted
+        removedIds.forEach((id) => {
+          removeEntityFromState(this.gameState, id);
+        });
+
+        // Update or add changed entities from buffer
+        for (let i = 0; i < entityCount; i++) {
+          const entityLength = reader.readUInt16();
+          const entityStartOffset = reader.getOffset();
+
+          // Read entity ID and type
+          const idReader = reader.atOffset(entityStartOffset);
+          const id = idReader.readUInt16();
+          // Read entity type as 1-byte numeric ID and decode to string
+          const typeId = idReader.readUInt8();
+          const type = entityTypeRegistry.decode(typeId);
+
+          const existingEntity = this.gameState.entityMap.get(id);
+          if (existingEntity) {
+            // Update existing entity from buffer
+            // For local player, handle position reconciliation
+            if (
+              existingEntity.getId() === this.gameState.playerId &&
+              existingEntity.hasExt(ClientPositionable)
+            ) {
+              // Store current position before deserializing
+              const clientPos = existingEntity.getExt(ClientPositionable).getPosition();
+
+              // Deserialize entity
+              existingEntity.deserializeFromBuffer(reader.atOffset(entityStartOffset));
+
+              // Get server position after deserialization
+              const serverPos = existingEntity.getExt(ClientPositionable).getPosition();
+              const dx = clientPos.x - serverPos.x;
+              const dy = clientPos.y - serverPos.y;
+              const error = Math.hypot(dx, dy);
+
+              // Store server ghost position for reconciliation
+              if (existingEntity instanceof PlayerClient) {
+                (existingEntity as unknown as PlayerClient).setServerGhostPosition(serverPos);
+
+                // For very large errors, snap immediately
+                if (error > (window.config?.prediction?.errorThreshold ?? 50)) {
+                  // Already deserialized, position is updated
+                } else {
+                  // Restore client position for smooth reconciliation
+                  existingEntity.getExt(ClientPositionable).setPosition(clientPos);
+                }
+              }
+            } else {
+              // Deserialize entity from buffer
+              existingEntity.deserializeFromBuffer(reader.atOffset(entityStartOffset));
+            }
+
+            // For other players, smooth movement with interpolation
+            if (
+              existingEntity.getId() !== this.gameState.playerId &&
+              existingEntity.hasExt(ClientPositionable)
+            ) {
+              const rawPos = existingEntity.getExt(ClientPositionable).getPosition();
+              this.interpolation.addSnapshot(existingEntity.getId(), rawPos, timestamp);
+              const smooth = this.interpolation.getInterpolatedPosition(existingEntity.getId());
+              if (smooth) {
+                existingEntity.getExt(ClientPositionable).setPosition(smooth);
+              }
+            }
+          } else {
+            // Add new entity
+            const entityData = { id, type };
+            const created = this.gameClient.getEntityFactory().createEntity(entityData);
+            // Deserialize from buffer
+            created.deserializeFromBuffer(reader.atOffset(entityStartOffset));
+
+            if (created.getId() !== this.gameState.playerId && created.hasExt(ClientPositionable)) {
+              const pos = created.getExt(ClientPositionable).getPosition();
+              this.interpolation.addSnapshot(created.getId(), pos, timestamp);
+            }
+            // If new entity is my local player, seed the ghost position too
+            if (
+              created.getId() === this.gameState.playerId &&
+              created.hasExt(ClientPositionable) &&
+              created instanceof PlayerClient
+            ) {
+              const pos = created.getExt(ClientPositionable).getPosition();
+              (created as unknown as PlayerClient).setServerGhostPosition(pos);
+            }
+            addEntity(this.gameState, created);
+          }
+
+          // Advance reader past this entity
+          reader = reader.atOffset(entityStartOffset + entityLength);
+        }
       }
+
+      // After reading entities, the reader should be at the start of game state metadata
+      // But GameStateEvent.deserializeFromBuffer already read it, so we don't need to read it again here
+      // The gameStateEvent object already has the deserialized game state data
     } else {
-      // Only process delta updates after we have initial state
-      if (!this.hasReceivedInitialState) {
-        return;
-      }
+      // Fallback to object-based deserialization (for backward compatibility)
+      const entitiesFromServer = gameStateEvent.getEntities();
+      if (gameStateEvent.isFullState()) {
+        // Full state update - replace all entities
+        const createdEntities = entitiesFromServer.map((entity) => {
+          const created = this.gameClient.getEntityFactory().createEntity(entity);
+          // Seed interpolation snapshots for non-local players
+          if (created.getId() !== this.gameState.playerId && created.hasExt(ClientPositionable)) {
+            const pos = created.getExt(ClientPositionable).getPosition();
+            this.interpolation.addSnapshot(created.getId(), pos, timestamp);
+          }
+          return created;
+        });
+        replaceAllEntities(this.gameState, createdEntities);
 
-      // Delta update - update only changed entities
-      const removedIds = gameStateEvent.getRemovedEntityIds();
+        if (!this.hasReceivedInitialState) {
+          this.hasReceivedInitialState = true;
+          this.checkInitialization();
+        }
+      } else {
+        // Only process delta updates after we have initial state
+        if (!this.hasReceivedInitialState) {
+          return;
+        }
 
-      // Remove entities that were deleted
-      removedIds.forEach((id) => {
-        removeEntityFromState(this.gameState, id);
-      });
+        // Delta update - update only changed entities
+        const removedIds = gameStateEvent.getRemovedEntityIds();
 
-      // Update or add changed entities
-      entitiesFromServer.forEach((serverEntityData) => {
-        const existingEntity = this.gameState.entityMap.get(serverEntityData.id);
-        if (existingEntity) {
-          // Only update properties that were included in the delta update
-          for (const [key, value] of Object.entries(serverEntityData)) {
-            if (key !== "id") {
-              // Skip the ID since it's used for lookup
-              // For local player, avoid overriding client-predicted position unless necessary
-              if (
-                existingEntity.getId() === this.gameState.playerId &&
-                key === "extensions" &&
-                Array.isArray(value)
-              ) {
-                const posExt = value.find((v: any) => v.type === ExtensionTypes.POSITIONABLE);
-                if (posExt && existingEntity.hasExt(ClientPositionable)) {
-                  const clientPos = existingEntity.getExt(ClientPositionable).getPosition();
-                  const serverPos = posExt.position;
-                  const dx = clientPos.x - serverPos.x;
-                  const dy = clientPos.y - serverPos.y;
-                  const error = Math.hypot(dx, dy);
+        // Remove entities that were deleted
+        removedIds.forEach((id) => {
+          removeEntityFromState(this.gameState, id);
+        });
 
-                  // Store server ghost position for reconciliation
-                  // The PredictionManager will handle smooth reconciliation
-                  if (existingEntity instanceof PlayerClient) {
-                    (existingEntity as unknown as PlayerClient).setServerGhostPosition(
-                      new (existingEntity.getExt(ClientPositionable).getPosition()
-                        .constructor as any)(serverPos.x, serverPos.y)
-                    );
+        // Update or add changed entities
+        entitiesFromServer.forEach((serverEntityData) => {
+          const existingEntity = this.gameState.entityMap.get(serverEntityData.id);
+          if (existingEntity) {
+            // Only update properties that were included in the delta update
+            for (const [key, value] of Object.entries(serverEntityData)) {
+              if (key !== "id") {
+                // Skip the ID since it's used for lookup
+                // For local player, avoid overriding client-predicted position unless necessary
+                if (
+                  existingEntity.getId() === this.gameState.playerId &&
+                  key === "extensions" &&
+                  Array.isArray(value)
+                ) {
+                  const posExt = value.find((v: any) => v.type === ExtensionTypes.POSITIONABLE);
+                  if (posExt && existingEntity.hasExt(ClientPositionable)) {
+                    const clientPos = existingEntity.getExt(ClientPositionable).getPosition();
+                    const serverPos = posExt.position;
+                    const dx = clientPos.x - serverPos.x;
+                    const dy = clientPos.y - serverPos.y;
+                    const error = Math.hypot(dx, dy);
 
-                    // For very large errors, snap immediately to prevent unbounded drift
-                    // The PredictionManager's reconciliation will handle smaller errors smoothly
-                    if (error > (window.config?.prediction?.errorThreshold ?? 50)) {
-                      // Large error: snap immediately to server position
-                      existingEntity.deserializeProperty(key, value);
-                    } else {
-                      // Let PredictionManager handle reconciliation for smaller errors
-                      // Apply other extension updates without positionable
-                      const filteredExts = value.filter(
-                        (v: any) => v.type !== ExtensionTypes.POSITIONABLE
+                    // Store server ghost position for reconciliation
+                    // The PredictionManager will handle smooth reconciliation
+                    if (existingEntity instanceof PlayerClient) {
+                      (existingEntity as unknown as PlayerClient).setServerGhostPosition(
+                        new (existingEntity.getExt(ClientPositionable).getPosition()
+                          .constructor as any)(serverPos.x, serverPos.y)
                       );
-                      if (filteredExts.length > 0) {
-                        existingEntity.deserializeProperty("extensions", filteredExts);
+
+                      // For very large errors, snap immediately to prevent unbounded drift
+                      // The PredictionManager's reconciliation will handle smaller errors smoothly
+                      if (error > (window.config?.prediction?.errorThreshold ?? 50)) {
+                        // Large error: snap immediately to server position
+                        existingEntity.deserializeProperty(key, value);
+                      } else {
+                        // Let PredictionManager handle reconciliation for smaller errors
+                        // Apply other extension updates without positionable
+                        const filteredExts = value.filter(
+                          (v: any) => v.type !== ExtensionTypes.POSITIONABLE
+                        );
+                        if (filteredExts.length > 0) {
+                          existingEntity.deserializeProperty("extensions", filteredExts);
+                        }
                       }
+                    } else {
+                      // For non-player entities, apply position directly
+                      existingEntity.deserializeProperty(key, value);
                     }
                   } else {
-                    // For non-player entities, apply position directly
                     existingEntity.deserializeProperty(key, value);
                   }
                 } else {
                   existingEntity.deserializeProperty(key, value);
                 }
-              } else {
-                existingEntity.deserializeProperty(key, value);
               }
             }
-          }
 
-          // For other players, smooth movement with interpolation
-          if (
-            existingEntity.getId() !== this.gameState.playerId &&
-            existingEntity.hasExt(ClientPositionable)
-          ) {
-            const rawPos = existingEntity.getExt(ClientPositionable).getPosition();
-            this.interpolation.addSnapshot(existingEntity.getId(), rawPos, timestamp);
-            const smooth = this.interpolation.getInterpolatedPosition(existingEntity.getId());
-            if (smooth) {
-              existingEntity.getExt(ClientPositionable).setPosition(smooth);
+            // For other players, smooth movement with interpolation
+            if (
+              existingEntity.getId() !== this.gameState.playerId &&
+              existingEntity.hasExt(ClientPositionable)
+            ) {
+              const rawPos = existingEntity.getExt(ClientPositionable).getPosition();
+              this.interpolation.addSnapshot(existingEntity.getId(), rawPos, timestamp);
+              const smooth = this.interpolation.getInterpolatedPosition(existingEntity.getId());
+              if (smooth) {
+                existingEntity.getExt(ClientPositionable).setPosition(smooth);
+              }
             }
+          } else {
+            // Add new entity
+            const created = this.gameClient.getEntityFactory().createEntity(serverEntityData);
+            if (created.getId() !== this.gameState.playerId && created.hasExt(ClientPositionable)) {
+              const pos = created.getExt(ClientPositionable).getPosition();
+              this.interpolation.addSnapshot(created.getId(), pos, timestamp);
+            }
+            // If new entity is my local player, seed the ghost position too
+            if (
+              created.getId() === this.gameState.playerId &&
+              created.hasExt(ClientPositionable) &&
+              created instanceof PlayerClient
+            ) {
+              const pos = created.getExt(ClientPositionable).getPosition();
+              (created as unknown as PlayerClient).setServerGhostPosition(pos);
+            }
+            addEntity(this.gameState, created);
           }
-        } else {
-          // Add new entity
-          const created = this.gameClient.getEntityFactory().createEntity(serverEntityData);
-          if (created.getId() !== this.gameState.playerId && created.hasExt(ClientPositionable)) {
-            const pos = created.getExt(ClientPositionable).getPosition();
-            this.interpolation.addSnapshot(created.getId(), pos, timestamp);
-          }
-          // If new entity is my local player, seed the ghost position too
-          if (
-            created.getId() === this.gameState.playerId &&
-            created.hasExt(ClientPositionable) &&
-            created instanceof PlayerClient
-          ) {
-            const pos = created.getExt(ClientPositionable).getPosition();
-            (created as unknown as PlayerClient).setServerGhostPosition(pos);
-          }
-          addEntity(this.gameState, created);
-        }
-      });
+        });
+      }
+    }
+  }
+
+  private processPendingFullStateIfReady(): void {
+    if (this.pendingFullStateEvent && this.hasReceivedMap && this.hasReceivedPlayerId) {
+      const pendingEvent = this.pendingFullStateEvent;
+      this.pendingFullStateEvent = null;
+      this.handleGameStateUpdate(pendingEvent);
     }
   }
 
   onMap(mapEvent: MapEvent) {
     this.gameClient.getMapManager().setMap(mapEvent.getMapData());
     this.hasReceivedMap = true;
+    this.processPendingFullStateIfReady();
     this.checkInitialization();
   }
 
   onYourId(yourIdEvent: YourIdEvent) {
     this.gameState.playerId = yourIdEvent.getPlayerId();
     this.hasReceivedPlayerId = true;
+    this.processPendingFullStateIfReady();
     this.checkInitialization();
   }
 

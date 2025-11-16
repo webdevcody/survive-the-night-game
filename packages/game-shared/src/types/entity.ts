@@ -10,7 +10,7 @@ export interface ExtensionSerialized {
 }
 
 export interface RawEntity {
-  id: string;
+  id: number;
   type: EntityType;
   extensions?: ExtensionSerialized[];
   removedExtensions?: string[]; // Array of extension types that were removed

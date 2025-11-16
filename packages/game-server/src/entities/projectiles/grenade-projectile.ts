@@ -9,7 +9,6 @@ import { getConfig } from "@shared/config";
 import { Direction, normalizeDirection } from "@/util/direction";
 import { Entity } from "@/entities/entity";
 import { distance } from "@/util/physics";
-import { RawEntity } from "@/types/entity";
 import Vector2 from "@/util/vector2";
 import { ExplosionEvent } from "@/events/server-sent/explosion-event";
 
@@ -21,7 +20,7 @@ const EXPLOSION_DAMAGE = 5;
 export class GrenadeProjectile extends Entity {
   private traveledDistance: number = 0;
   private startPosition: Vector2;
-  private shooterId: string = "";
+  private shooterId: number = 0;
 
   constructor(gameManagers: IGameManagers) {
     super(gameManagers, Entities.GRENADE_PROJECTILE);
@@ -38,11 +37,11 @@ export class GrenadeProjectile extends Entity {
     this.startPosition = this.getPosition();
   }
 
-  setShooterId(id: string) {
+  setShooterId(id: number) {
     this.shooterId = id;
   }
 
-  getShooterId(): string {
+  getShooterId(): number {
     return this.shooterId;
   }
 

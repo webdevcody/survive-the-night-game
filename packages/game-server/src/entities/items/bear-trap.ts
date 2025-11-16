@@ -9,7 +9,6 @@ import { IEntity } from "@/entities/types";
 import Destructible from "@/extensions/destructible";
 import OneTimeTrigger from "@/extensions/one-time-trigger";
 import Vector2 from "@/util/vector2";
-import { RawEntity } from "@/types/entity";
 import Updatable from "@/extensions/updatable";
 import Movable from "@/extensions/movable";
 import Snared from "@/extensions/snared";
@@ -19,7 +18,10 @@ import { distance } from "../../../../game-shared/src/util/physics";
  * A bear trap that snares zombies when they step on it, preventing them from moving
  * The trap can be rearmed after being triggered
  */
-export class BearTrap extends Entity implements IEntity {
+const BEAR_TRAP_SERIALIZABLE_FIELDS = ["isArmed", "snaredZombieId"] as const;
+
+export class BearTrap extends Entity<typeof BEAR_TRAP_SERIALIZABLE_FIELDS> implements IEntity {
+  protected serializableFields = BEAR_TRAP_SERIALIZABLE_FIELDS;
   private static readonly SIZE = new Vector2(16, 16);
   private static readonly DAMAGE = 1;
   private static readonly TRIGGER_RADIUS = 16;
@@ -45,8 +47,8 @@ export class BearTrap extends Entity implements IEntity {
   }
 
   public activate(): void {
-    this.isArmed = true;
-    this.snaredZombieId = null;
+    this.setIsArmed(true);
+    this.setSnaredZombieId(null);
 
     // Update display name to show it's armed
     this.interactiveExtension.setDisplayName("bear trap");
@@ -67,6 +69,20 @@ export class BearTrap extends Entity implements IEntity {
     this.addExtension(trigger);
   }
 
+  private setIsArmed(value: boolean): void {
+    if (this.isArmed !== value) {
+      this.isArmed = value;
+      this.markFieldDirty("isArmed");
+    }
+  }
+
+  private setSnaredZombieId(id: string | null): void {
+    if (this.snaredZombieId !== id) {
+      this.snaredZombieId = id;
+      this.markFieldDirty("snaredZombieId");
+    }
+  }
+
   public updateBearTrap(deltaTime: number) {
     // Keep the snared zombie's velocity at 0 (backup in case movement strategy tries to override)
     if (this.snaredZombieId) {
@@ -75,7 +91,7 @@ export class BearTrap extends Entity implements IEntity {
         zombie.getExt(Movable).setVelocity(new Vector2(0, 0));
       } else {
         // Zombie was removed or doesn't exist anymore
-        this.snaredZombieId = null;
+        this.setSnaredZombieId(null);
       }
     }
   }
@@ -100,7 +116,7 @@ export class BearTrap extends Entity implements IEntity {
 
       if (dist <= BearTrap.TRIGGER_RADIUS) {
         // Snare the zombie - add Snared extension to prevent movement
-        this.snaredZombieId = entity.getId();
+        this.setSnaredZombieId(entity.getId());
         entity.getExt(Movable).setVelocity(new Vector2(0, 0));
 
         // Add Snared extension if not already present
@@ -114,7 +130,7 @@ export class BearTrap extends Entity implements IEntity {
         }
 
         // Disarm the trap
-        this.isArmed = false;
+        this.setIsArmed(false);
 
         // Update display name to show it can be rearmed
         this.interactiveExtension.setDisplayName("rearm bear trap");
@@ -137,20 +153,11 @@ export class BearTrap extends Entity implements IEntity {
     // If disarmed, rearm the trap
     if (!this.isArmed) {
       // Clear the snared zombie reference
-      this.snaredZombieId = null;
       this.activate();
       return;
     }
 
     // If armed, allow pickup
     this.getExt(Carryable).pickup(entityId);
-  }
-
-  public serialize(): RawEntity {
-    return {
-      ...super.serialize(),
-      isArmed: this.isArmed,
-      snaredZombieId: this.snaredZombieId,
-    };
   }
 }

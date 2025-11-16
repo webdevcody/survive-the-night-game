@@ -5,7 +5,7 @@ import { IGameManagers } from "@/managers/types";
 import { Entities } from "@/constants";
 import { getConfig } from "@shared/config";
 import { Entity } from "@/entities/entity";
-import { RawEntity, ItemState } from "@/types/entity";
+import { ItemState } from "@/types/entity";
 import Vector2 from "@/util/vector2";
 import Groupable from "@/extensions/groupable";
 import Static from "@/extensions/static";
@@ -40,10 +40,4 @@ export class Crate extends Entity {
     this.getExt(Inventory).scatterItems(this.getExt(Positionable).getPosition());
   }
 
-  public serialize(): RawEntity {
-    return {
-      ...super.serialize(),
-      health: this.getExt(Destructible).getHealth(),
-    };
-  }
 }

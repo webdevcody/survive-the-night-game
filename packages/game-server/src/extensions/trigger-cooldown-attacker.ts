@@ -1,9 +1,11 @@
-import { Extension, ExtensionSerialized } from "@/extensions/types";
+import { Extension } from "@/extensions/types";
 import { Cooldown } from "@/entities/util/cooldown";
 import Positionable from "@/extensions/positionable";
 import Destructible from "@/extensions/destructible";
 import { EntityType } from "@/types/entity";
 import { IEntity } from "@/entities/types";
+import { BufferWriter } from "@shared/util/buffer-serialization";
+import { encodeExtensionType } from "@shared/util/extension-type-encoding";
 
 /**
  * This extension will cause the entity to fire an attack when the cooldown is ready.
@@ -116,10 +118,8 @@ export default class TriggerCooldownAttacker implements Extension {
     this.dirty = false;
   }
 
-  public serialize(): ExtensionSerialized {
-    return {
-      type: TriggerCooldownAttacker.type,
-      isReady: this.isReady,
-    };
+  public serializeToBuffer(writer: BufferWriter): void {
+    writer.writeUInt32(encodeExtensionType(TriggerCooldownAttacker.type));
+    writer.writeBoolean(this.isReady);
   }
 }

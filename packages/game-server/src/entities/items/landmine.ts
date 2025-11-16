@@ -11,7 +11,7 @@ import { IEntity } from "@/entities/types";
 import Destructible from "@/extensions/destructible";
 import OneTimeTrigger from "@/extensions/one-time-trigger";
 import Vector2 from "@/util/vector2";
-import { RawEntity, ItemState } from "@/types/entity";
+import { ItemState } from "@/types/entity";
 import { ExplosionEvent } from "@shared/events/server-sent/explosion-event";
 import { Cooldown } from "../util/cooldown";
 import Updatable from "@/extensions/updatable";
@@ -19,7 +19,10 @@ import Updatable from "@/extensions/updatable";
 /**
  * A landmine that explodes when enemies step on it, damaging all nearby enemies
  */
-export class Landmine extends Entity implements IEntity {
+const LANDMINE_SERIALIZABLE_FIELDS = ["isActive"] as const;
+
+export class Landmine extends Entity<typeof LANDMINE_SERIALIZABLE_FIELDS> implements IEntity {
+  protected serializableFields = LANDMINE_SERIALIZABLE_FIELDS;
   private static readonly SIZE = new Vector2(16, 16);
   private static readonly DAMAGE = 7;
   private static readonly TRIGGER_RADIUS = 16;
@@ -45,8 +48,15 @@ export class Landmine extends Entity implements IEntity {
     this.addExtension(new Updatable(this, this.updateLandmine.bind(this)));
   }
 
+  private setIsActive(value: boolean): void {
+    if (this.isActive !== value) {
+      this.isActive = value;
+      this.markFieldDirty("isActive");
+    }
+  }
+
   public activate(): void {
-    this.isActive = true;
+    this.setIsActive(true);
     this.addExtension(
       new OneTimeTrigger(this, {
         triggerRadius: Landmine.TRIGGER_RADIUS,
@@ -103,10 +113,4 @@ export class Landmine extends Entity implements IEntity {
     );
   }
 
-  public serialize(): RawEntity {
-    return {
-      ...super.serialize(),
-      isActive: this.isActive,
-    };
-  }
 }

@@ -10,13 +10,23 @@ import { roundVector2 } from "@shared/util/physics";
 import { debugDrawHitbox } from "@/util/debug";
 import { ClientCollidable } from "@/extensions";
 import { getConfig } from "@shared/config";
+import { BufferReader } from "@shared/util/buffer-serialization";
 
 export class BulletClient extends ClientEntityBase implements IClientEntity, Renderable {
   private lastRenderPosition: Vector2;
+  private hasInitializedPosition = false;
 
   constructor(data: RawEntity, assetManager: AssetManager) {
     super(data, assetManager);
-    this.lastRenderPosition = this.getPosition();
+    this.lastRenderPosition = new Vector2(0, 0);
+  }
+
+  override deserializeFromBuffer(reader: BufferReader): void {
+    super.deserializeFromBuffer(reader);
+    if (!this.hasInitializedPosition && this.hasExt(ClientPositionable)) {
+      this.lastRenderPosition = this.getPosition();
+      this.hasInitializedPosition = true;
+    }
   }
 
   getPosition(): Vector2 {

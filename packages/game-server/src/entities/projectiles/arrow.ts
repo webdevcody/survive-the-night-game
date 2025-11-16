@@ -21,7 +21,7 @@ export class Arrow extends Entity {
   private traveledDistance: number = 0;
   private static readonly ARROW_SPEED = 200; // Slower than bullets
   private lastPosition: Vector2;
-  private shooterId: string = "";
+  private shooterId: number = 0;
 
   constructor(gameManagers: IGameManagers) {
     super(gameManagers, "arrow");
@@ -38,11 +38,11 @@ export class Arrow extends Entity {
     this.lastPosition = this.getPosition();
   }
 
-  setShooterId(id: string) {
+  setShooterId(id: number) {
     this.shooterId = id;
   }
 
-  getShooterId(): string {
+  getShooterId(): number {
     return this.shooterId;
   }
 

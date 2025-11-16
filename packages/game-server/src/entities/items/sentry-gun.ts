@@ -9,7 +9,7 @@ import { IGameManagers } from "@/managers/types";
 import { Entities, Zombies } from "@shared/constants";
 import { getConfig } from "@shared/config";
 import { Entity } from "@/entities/entity";
-import { RawEntity, ItemState } from "@/types/entity";
+import { ItemState } from "@/types/entity";
 import Vector2 from "@/util/vector2";
 import { distance } from "@/util/physics";
 import { Cooldown } from "../util/cooldown";
@@ -151,10 +151,4 @@ export class SentryGun extends Entity {
     this.getEntityManager().markEntityForRemoval(this);
   }
 
-  public serialize(): RawEntity {
-    return {
-      ...super.serialize(),
-      health: this.getExt(Destructible).getHealth(),
-    };
-  }
 }

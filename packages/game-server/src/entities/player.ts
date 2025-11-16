@@ -21,7 +21,6 @@ import { Input } from "../../../game-shared/src/util/input";
 import { InventoryItem, ItemType } from "../../../game-shared/src/util/inventory";
 import { normalizeVector, distance } from "../../../game-shared/src/util/physics";
 import { RecipeType } from "../../../game-shared/src/util/recipes";
-import { RawEntity } from "@shared/types/entity";
 import { Cooldown } from "@/entities/util/cooldown";
 import { Weapon } from "@/entities/weapons/weapon";
 import { weaponHandlerRegistry } from "@/entities/weapons/weapon-handler-registry";
@@ -223,10 +222,6 @@ export class Player extends Entity<typeof PLAYER_SERIALIZABLE_FIELDS> {
   getCenterPosition(): Vector2 {
     const positionable = this.getExt(Positionable);
     return positionable.getCenterPosition();
-  }
-
-  serialize(onlyDirty: boolean = false): RawEntity {
-    return super.serialize(onlyDirty);
   }
 
   getHitbox(): Rectangle {

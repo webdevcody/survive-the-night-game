@@ -1,11 +1,12 @@
-import { EntityType, RawEntity } from "@/types/entity";
+import { EntityType } from "@/types/entity";
 import { Extension, ExtensionCtor } from "@/extensions/types";
 import { IEntityManager } from "@/managers/types";
 import { EntityCategory } from "@shared/entities";
+import { BufferWriter } from "@/util/buffer-serialization";
 
 export interface IEntity extends EventTarget {
   getType(): EntityType;
-  getId(): string;
+  getId(): number;
   getEntityManager(): IEntityManager;
   getCategory(): EntityCategory;
 
@@ -16,8 +17,8 @@ export interface IEntity extends EventTarget {
   hasExt<T>(ext: ExtensionCtor<T>): boolean;
   getExt<T>(ext: ExtensionCtor<T>): T;
 
-  serialize(onlyDirty?: boolean): RawEntity;
   isDirty(): boolean;
   markExtensionDirty(extension: Extension): void;
   clearDirtyFlags(): void;
+  serializeToBuffer(writer: BufferWriter, onlyDirty: boolean): void;
 }

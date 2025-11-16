@@ -1,7 +1,9 @@
-import { Extension, ExtensionSerialized } from "@/extensions/types";
+import { Extension } from "@/extensions/types";
 import { IEntity } from "@/entities/types";
 import { ExtensionTypes } from "@/util/extension-types";
 import Vector2 from "@shared/util/vector2";
+import { BufferWriter } from "@shared/util/buffer-serialization";
+import { encodeExtensionType } from "@shared/util/extension-type-encoding";
 
 export default class Positionable implements Extension {
   public static readonly type = ExtensionTypes.POSITIONABLE;
@@ -76,18 +78,9 @@ export default class Positionable implements Extension {
     this.dirty = false;
   }
 
-  public serializeDirty(): ExtensionSerialized | null {
-    if (!this.dirty) {
-      return null;
-    }
-    return this.serialize();
-  }
-
-  public serialize(): ExtensionSerialized {
-    return {
-      type: Positionable.type,
-      position: this.position,
-      size: this.size,
-    };
+  public serializeToBuffer(writer: BufferWriter): void {
+    writer.writeUInt32(encodeExtensionType(Positionable.type));
+    writer.writePosition2(this.position);
+    writer.writeSize2(this.size);
   }
 }

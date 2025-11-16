@@ -4,7 +4,7 @@ import { ItemType } from "@shared/util/inventory";
 import { itemRegistry } from "@shared/entities/item-registry";
 import { CameraManager } from "./camera";
 import { MapManager } from "./map";
-import { Socket } from "socket.io-client";
+import { ISocketAdapter } from "@shared/network/socket-adapter";
 import { ClientSentEvents } from "@shared/events/events";
 import { PlayerClient } from "@/entities/player";
 import { ClientEntityBase } from "@/extensions/client-entity";
@@ -27,7 +27,7 @@ export class PlacementManager {
     private mapManager: MapManager,
     private getPlayer: () => PlayerClient | null,
     private getEntities: () => ClientEntityBase[],
-    private socket: Socket
+    private socket: ISocketAdapter
   ) {
     this.setupMouseTracking();
   }

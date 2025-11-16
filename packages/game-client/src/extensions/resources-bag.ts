@@ -2,6 +2,7 @@ import { ExtensionTypes } from "../../../game-shared/src/util/extension-types";
 import { ClientExtensionSerialized } from "@/extensions/types";
 import { BaseClientExtension } from "./base-extension";
 import { ResourceType } from "@shared/util/inventory";
+import { BufferReader } from "@shared/util/buffer-serialization";
 
 export class ClientResourcesBag extends BaseClientExtension {
   public static readonly type = ExtensionTypes.RESOURCES_BAG;
@@ -46,6 +47,18 @@ export class ClientResourcesBag extends BaseClientExtension {
       }
     }
 
+    return this;
+  }
+
+  public deserializeFromBuffer(reader: BufferReader): this {
+    // Type is already read by the entity deserializer
+    this.coins = reader.readFloat64();
+    // Read resources record
+    const resources = reader.readRecord(() => reader.readFloat64());
+    this.resources.clear();
+    for (const [key, value] of Object.entries(resources)) {
+      this.resources.set(key as ResourceType, value);
+    }
     return this;
   }
 }

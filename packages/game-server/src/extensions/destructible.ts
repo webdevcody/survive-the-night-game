@@ -1,8 +1,10 @@
 import { IEntity } from "@/entities/types";
-import { Extension, ExtensionSerialized } from "@/extensions/types";
+import { Extension } from "@/extensions/types";
 import Positionable from "@/extensions/positionable";
 import { Rectangle } from "@/util/shape";
 import Vector2 from "@/util/vector2";
+import { BufferWriter } from "@shared/util/buffer-serialization";
+import { encodeExtensionType } from "@shared/util/extension-type-encoding";
 
 type DestructibleDeathHandler = () => void;
 type DestructibleDamagedHandler = () => void;
@@ -127,18 +129,9 @@ export default class Destructible implements Extension {
     this.dirty = false;
   }
 
-  public serializeDirty(): ExtensionSerialized | null {
-    if (!this.dirty) {
-      return null;
-    }
-    return this.serialize();
-  }
-
-  public serialize(): ExtensionSerialized {
-    return {
-      type: Destructible.type,
-      health: this.health,
-      maxHealth: this.maxHealth,
-    };
+  public serializeToBuffer(writer: BufferWriter): void {
+    writer.writeUInt32(encodeExtensionType(Destructible.type));
+    writer.writeFloat64(this.health);
+    writer.writeFloat64(this.maxHealth);
   }
 }

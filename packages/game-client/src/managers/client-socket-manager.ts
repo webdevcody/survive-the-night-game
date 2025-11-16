@@ -21,7 +21,6 @@ import { PongEvent } from "@shared/events/server-sent/pong-event";
 import { AdminCommand } from "@shared/commands/commands";
 import { Input } from "../../../game-shared/src/util/input";
 import { RecipeType } from "../../../game-shared/src/util/recipes";
-import { Socket, io } from "socket.io-client";
 import { ServerUpdatingEvent } from "@shared/events/server-sent/server-updating-event";
 import { ChatMessageEvent } from "@shared/events/server-sent/chat-message-event";
 import { GameMessageEvent } from "@shared/events/server-sent/game-message-event";
@@ -34,6 +33,10 @@ import { CarRepairEvent } from "@shared/events/server-sent/car-repair-event";
 import { WaveStartEvent } from "@shared/events/server-sent/wave-start-event";
 import { CraftEvent } from "@shared/events/server-sent/craft-event";
 import { BuildEvent } from "@shared/events/server-sent/build-event";
+import { ISocketAdapter } from "@shared/network/socket-adapter";
+import { IClientAdapter } from "@shared/network/client-adapter";
+import { createClientAdapter } from "@/network/adapter-factory";
+import { deserializeServerEvent } from "@shared/events/server-sent/server-event-serialization";
 
 export type EntityDto = { id: string } & any;
 
@@ -71,17 +74,40 @@ const SERVER_EVENT_MAP = {
 
 export class ClientSocketManager {
   private socket: DelayedSocket;
-  private rawSocket: Socket;
+  private rawSocket: ISocketAdapter;
+  private clientAdapter: IClientAdapter;
   private pingInterval: ReturnType<typeof setInterval> | null = null;
   private onPingUpdate?: (ping: number) => void;
   private isDisconnected: boolean = false;
 
   public on<K extends keyof typeof SERVER_EVENT_MAP>(eventType: K, handler: (event: any) => void) {
-    // Use DelayedSocket.on() which automatically decodes payloads
+    // Use DelayedSocket.on() which automatically decodes payloads (except buffers)
     this.socket.on(eventType as any, (decodedEvent: any) => {
       const run = () => {
         const Ctor = (SERVER_EVENT_MAP as any)[eventType];
-        const event = new Ctor(decodedEvent);
+        let event: any;
+
+        // Special handling for GAME_STATE_UPDATE with buffer
+        if (
+          eventType === ServerSentEvents.GAME_STATE_UPDATE &&
+          decodedEvent instanceof ArrayBuffer
+        ) {
+          event = Ctor.deserializeFromBuffer(decodedEvent);
+        } else if (decodedEvent instanceof ArrayBuffer) {
+          // Binary format - deserialize
+          const deserialized = deserializeServerEvent(eventType as string, decodedEvent);
+          if (deserialized !== null) {
+            // Create event from deserialized data
+            event = new Ctor(deserialized[0]);
+          } else {
+            // Fall back to JSON if deserialization fails
+            event = new Ctor(decodedEvent);
+          }
+        } else {
+          // JSON format - use directly
+          event = new Ctor(decodedEvent);
+        }
+
         handler(event);
       };
       if (SIMULATION_CONFIG.simulatedLatencyMs > 0) {
@@ -100,7 +126,10 @@ export class ClientSocketManager {
     }
 
     console.log("Connecting to game server", serverUrl);
-    this.rawSocket = io(`${serverUrl}?displayName=${displayName}`, {
+
+    // Create client adapter based on configuration and connect
+    this.clientAdapter = createClientAdapter();
+    this.rawSocket = this.clientAdapter.connect(`${serverUrl}?displayName=${displayName}`, {
       // Ensure we create a new connection each time
       forceNew: true,
     });
@@ -123,7 +152,22 @@ export class ClientSocketManager {
 
     // Set up pong handler (using DelayedSocket.on() which automatically decodes)
     this.socket.on(ServerSentEvents.PONG, (decodedEvent: any) => {
-      const event = new PongEvent(decodedEvent.timestamp);
+      // Handle binary serialization
+      let timestamp: number;
+      if (decodedEvent instanceof ArrayBuffer) {
+        // Binary format - deserialize
+        const deserialized = deserializeServerEvent(ServerSentEvents.PONG, decodedEvent);
+        if (deserialized === null || deserialized.length === 0) {
+          console.error("Failed to deserialize PONG event from binary");
+          return;
+        }
+        timestamp = deserialized[0].timestamp;
+      } else {
+        // JSON format - use directly
+        timestamp = decodedEvent.timestamp;
+      }
+
+      const event = new PongEvent(timestamp);
       // Both Date.now() and timestamp are Unix timestamps (milliseconds since epoch, UTC)
       // This calculation is timezone-independent
       const latency = Date.now() - event.getData().timestamp;
@@ -204,7 +248,7 @@ export class ClientSocketManager {
     this.socket.emit(ClientSentEvents.TELEPORT_TO_BASE);
   }
 
-  public getSocket(): Socket {
+  public getSocket(): ISocketAdapter {
     return this.rawSocket;
   }
 

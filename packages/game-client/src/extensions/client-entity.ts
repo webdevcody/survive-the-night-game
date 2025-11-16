@@ -4,9 +4,12 @@ import { clientExtensionsMap } from "@/extensions/index";
 import { EntityType, RawEntity } from "@shared/types/entity";
 import Vector2 from "@shared/util/vector2";
 import { EntityCategory, EntityCategories } from "@shared/entities";
+import { BufferReader } from "@shared/util/buffer-serialization";
+import { decodeExtensionType } from "@shared/util/extension-type-encoding";
+import { entityTypeRegistry } from "@shared/util/entity-type-encoding";
 
 export abstract class ClientEntityBase {
-  private id: string;
+  private id: number;
   private type: EntityType;
   protected imageLoader: ImageLoader;
   private extensions: ClientExtension[] = [];
@@ -43,7 +46,7 @@ export abstract class ClientEntityBase {
     );
   }
 
-  public getId(): string {
+  public getId(): number {
     return this.id;
   }
 
@@ -187,6 +190,100 @@ export abstract class ClientEntityBase {
     } else {
       // Handle direct property updates
       (this as any)[key] = value;
+    }
+  }
+
+  public deserializeFromBuffer(reader: BufferReader): void {
+    let currentReader = reader;
+
+    const id = currentReader.readUInt16();
+    if (id !== this.id) {
+      console.warn(`Entity ID mismatch: expected ${this.id}, got ${id}`);
+    }
+
+    // Read entity type as 1-byte numeric ID and decode to string
+    const typeId = currentReader.readUInt8();
+    const type = entityTypeRegistry.decode(typeId);
+    if (type !== this.type) {
+      console.warn(`Entity type mismatch: expected ${this.type}, got ${type}`);
+    }
+
+    const fieldCount = currentReader.readUInt32();
+    for (let i = 0; i < fieldCount; i++) {
+      const fieldName = currentReader.readString();
+      const valueType = currentReader.readUInt32();
+      let value: any;
+      if (valueType === 0) {
+        value = currentReader.readString();
+      } else if (valueType === 1) {
+        value = currentReader.readFloat64();
+      } else if (valueType === 2) {
+        value = currentReader.readBoolean();
+      } else if (valueType === 3) {
+        const jsonStr = currentReader.readString();
+        try {
+          value = JSON.parse(jsonStr);
+        } catch {
+          value = jsonStr;
+        }
+      } else {
+        value = currentReader.readString();
+      }
+      (this as any)[fieldName] = value;
+    }
+
+    const extensionCount = currentReader.readUInt32();
+    const existingExtensions = new Map<string, ClientExtension>();
+    for (const ext of this.extensions) {
+      const extType = (ext.constructor as any).type;
+      if (extType) {
+        existingExtensions.set(extType, ext);
+      }
+    }
+
+    const processedTypes = new Set<string>();
+    for (let i = 0; i < extensionCount; i++) {
+      const extensionLength = currentReader.readUInt16();
+      const extensionStartOffset = currentReader.getOffset();
+      const extensionEndOffset = extensionStartOffset + extensionLength;
+
+      const extensionReader = currentReader.atOffset(extensionStartOffset);
+      const encodedType = extensionReader.readUInt32();
+      const extensionType = decodeExtensionType(encodedType);
+
+      const ClientExtCtor = clientExtensionsMap[extensionType as keyof typeof clientExtensionsMap];
+      if (!ClientExtCtor) {
+        console.warn(`No client extension found for type: ${extensionType}`);
+        currentReader = currentReader.atOffset(extensionEndOffset);
+        continue;
+      }
+
+      try {
+        let ext = existingExtensions.get(extensionType);
+        if (!ext) {
+          ext = new ClientExtCtor(this as any);
+          this.extensions.push(ext);
+        }
+        ext.deserializeFromBuffer(extensionReader);
+        processedTypes.add(extensionType);
+      } catch (error) {
+        console.error(`Error deserializing extension ${extensionType}:`, error);
+      }
+
+      currentReader = currentReader.atOffset(extensionEndOffset);
+    }
+
+    const removedCount = currentReader.readUInt32();
+    const removedTypes: string[] = [];
+    for (let i = 0; i < removedCount; i++) {
+      removedTypes.push(currentReader.readString());
+    }
+
+    if (removedTypes.length > 0) {
+      this.extensions = this.extensions.filter((ext) => {
+        const type = (ext.constructor as any).type;
+        return !removedTypes.includes(type);
+      });
     }
   }
 }

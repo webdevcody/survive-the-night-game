@@ -1,5 +1,7 @@
 import { IEntity } from "@/entities/types";
-import { Extension, ExtensionSerialized } from "@/extensions/types";
+import { Extension } from "@/extensions/types";
+import { BufferWriter } from "@shared/util/buffer-serialization";
+import { encodeExtensionType } from "@shared/util/extension-type-encoding";
 
 type UpdateFunction = (deltaTime: number) => void;
 
@@ -42,9 +44,7 @@ export default class Updatable implements Extension {
     this.dirty = false;
   }
 
-  public serialize(): ExtensionSerialized {
-    return {
-      type: Updatable.type,
-    };
+  public serializeToBuffer(writer: BufferWriter): void {
+    writer.writeUInt32(encodeExtensionType(Updatable.type));
   }
 }

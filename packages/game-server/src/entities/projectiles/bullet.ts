@@ -11,7 +11,6 @@ import { Direction, normalizeDirection } from "@/util/direction";
 import { Entity } from "@/entities/entity";
 import { normalizeVector, distance } from "@/util/physics";
 import { IEntity } from "@/entities/types";
-import { RawEntity } from "@/types/entity";
 import Vector2 from "@/util/vector2";
 import { Line, Rectangle } from "@/util/shape";
 import { Player } from "@/entities/player";
@@ -21,7 +20,7 @@ export class Bullet extends Entity {
   private traveledDistance: number = 0;
   private static readonly BULLET_SPEED = 400;
   private lastPosition: Vector2;
-  private shooterId: string = "";
+  private shooterId: number = 0;
   private damage: number;
 
   constructor(gameManagers: IGameManagers, damage: number = 1) {
@@ -40,11 +39,11 @@ export class Bullet extends Entity {
     this.lastPosition = this.getPosition();
   }
 
-  setShooterId(id: string) {
+  setShooterId(id: number) {
     this.shooterId = id;
   }
 
-  getShooterId(): string {
+  getShooterId(): number {
     return this.shooterId;
   }
 

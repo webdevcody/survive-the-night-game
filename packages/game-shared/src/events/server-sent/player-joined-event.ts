@@ -3,12 +3,12 @@ import { GameEvent } from "@/events/types";
 
 export type PlayerJoinedEventData = {
   displayName: string;
-  playerId: string;
+  playerId: number;
 };
 
 export class PlayerJoinedEvent implements GameEvent<PlayerJoinedEventData> {
   private readonly type: EventType;
-  private readonly playerId: string;
+  private readonly playerId: number;
   private readonly displayName: string;
 
   constructor(data: PlayerJoinedEventData) {
@@ -21,7 +21,7 @@ export class PlayerJoinedEvent implements GameEvent<PlayerJoinedEventData> {
     return this.type;
   }
 
-  getPlayerId(): string {
+  getPlayerId(): number {
     return this.playerId;
   }
 

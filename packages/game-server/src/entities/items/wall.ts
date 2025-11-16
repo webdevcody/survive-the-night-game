@@ -9,7 +9,7 @@ import { IGameManagers } from "@/managers/types";
 import { Entities } from "@/constants";
 import { getConfig } from "@shared/config";
 import { Entity } from "@/entities/entity";
-import { RawEntity, ItemState } from "@/types/entity";
+import { ItemState } from "@/types/entity";
 import Vector2 from "@/util/vector2";
 
 export class Wall extends Entity {
@@ -40,7 +40,7 @@ export class Wall extends Entity {
     this.addExtension(new Placeable(this));
   }
 
-  private interact(entityId: string): void {
+  private interact(entityId: number): void {
     const entity = this.getEntityManager().getEntityById(entityId);
     if (!entity) return;
 
@@ -68,12 +68,5 @@ export class Wall extends Entity {
 
   private onDeath(): void {
     this.getEntityManager().markEntityForRemoval(this);
-  }
-
-  public serialize(): RawEntity {
-    return {
-      ...super.serialize(),
-      health: this.getExt(Destructible).getHealth(),
-    };
   }
 }

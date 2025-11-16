@@ -7,13 +7,23 @@ import { ClientPositionable } from "@/extensions/positionable";
 import { Z_INDEX } from "@shared/map";
 import Vector2 from "@shared/util/vector2";
 import { roundVector2 } from "@shared/util/physics";
+import { BufferReader } from "@shared/util/buffer-serialization";
 
 export class GrenadeProjectileClient extends ClientEntityBase implements IClientEntity, Renderable {
   private lastRenderPosition: Vector2;
+  private hasInitializedPosition = false;
 
   constructor(data: RawEntity, assetManager: AssetManager) {
     super(data, assetManager);
-    this.lastRenderPosition = this.getPosition();
+    this.lastRenderPosition = new Vector2(0, 0);
+  }
+
+  override deserializeFromBuffer(reader: BufferReader): void {
+    super.deserializeFromBuffer(reader);
+    if (!this.hasInitializedPosition && this.hasExt(ClientPositionable)) {
+      this.lastRenderPosition = this.getPosition();
+      this.hasInitializedPosition = true;
+    }
   }
 
   getPosition(): Vector2 {

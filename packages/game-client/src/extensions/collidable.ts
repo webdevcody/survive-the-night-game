@@ -5,6 +5,7 @@ import { ClientExtensionSerialized } from "@/extensions/types";
 import { ClientPositionable } from "./positionable";
 import Vector2 from "@shared/util/vector2";
 import { BaseClientExtension } from "./base-extension";
+import { BufferReader } from "@shared/util/buffer-serialization";
 
 export class ClientCollidable extends BaseClientExtension {
   public static readonly type = ExtensionTypes.COLLIDABLE;
@@ -43,6 +44,14 @@ export class ClientCollidable extends BaseClientExtension {
     if (data.enabled !== undefined) {
       this.enabled = data.enabled;
     }
+    return this;
+  }
+
+  public deserializeFromBuffer(reader: BufferReader): this {
+    // Type is already read by the entity deserializer
+    this.offset = reader.readVector2();
+    this.size = reader.readVector2();
+    this.enabled = reader.readBoolean();
     return this;
   }
 }

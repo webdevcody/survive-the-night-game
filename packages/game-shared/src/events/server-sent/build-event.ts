@@ -2,7 +2,7 @@ import { EventType, ServerSentEvents } from "../events";
 import { GameEvent } from "@/events/types";
 
 export interface BuildEventData {
-  playerId: string;
+  playerId: number;
   position: { x: number; y: number };
   soundType: string;
 }
@@ -28,7 +28,7 @@ export class BuildEvent implements GameEvent<BuildEventData> {
     return this.data;
   }
 
-  getPlayerId(): string {
+  getPlayerId(): number {
     return this.data.playerId;
   }
 

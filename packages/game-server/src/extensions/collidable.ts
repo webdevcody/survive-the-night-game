@@ -1,8 +1,10 @@
 import { IEntity } from "@/entities/types";
 import Positionable from "@/extensions/positionable";
-import { Extension, ExtensionSerialized } from "@/extensions/types";
+import { Extension } from "@/extensions/types";
 import { Rectangle } from "@/util/shape";
 import Vector2 from "@/util/vector2";
+import { BufferWriter } from "@shared/util/buffer-serialization";
+import { encodeExtensionType } from "@shared/util/extension-type-encoding";
 
 export default class Collidable implements Extension {
   public static readonly type = "collidable";
@@ -74,19 +76,10 @@ export default class Collidable implements Extension {
     this.dirty = false;
   }
 
-  public serializeDirty(): ExtensionSerialized | null {
-    if (!this.dirty) {
-      return null;
-    }
-    return this.serialize();
-  }
-
-  public serialize(): ExtensionSerialized {
-    return {
-      type: Collidable.type,
-      offset: this.offset,
-      size: this.size,
-      enabled: this.enabled,
-    };
+  public serializeToBuffer(writer: BufferWriter): void {
+    writer.writeUInt32(encodeExtensionType(Collidable.type));
+    writer.writeVector2(this.offset);
+    writer.writeVector2(this.size);
+    writer.writeBoolean(this.enabled);
   }
 }

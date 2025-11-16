@@ -2,6 +2,7 @@ import Vector2 from "@shared/util/vector2";
 import { ExtensionTypes } from "../../../game-shared/src/util/extension-types";
 import { ClientExtensionSerialized } from "@/extensions/types";
 import { BaseClientExtension } from "./base-extension";
+import { BufferReader } from "@shared/util/buffer-serialization";
 
 export class ClientPositionable extends BaseClientExtension {
   public static readonly type = ExtensionTypes.POSITIONABLE;
@@ -33,6 +34,13 @@ export class ClientPositionable extends BaseClientExtension {
   public deserialize(data: ClientExtensionSerialized): this {
     this.position = new Vector2(data.position.x, data.position.y);
     this.size = new Vector2(data.size.x, data.size.y);
+    return this;
+  }
+
+  public deserializeFromBuffer(reader: BufferReader): this {
+    // Type is already read by the entity deserializer
+    this.position = reader.readPosition2();
+    this.size = reader.readSize2();
     return this;
   }
 }

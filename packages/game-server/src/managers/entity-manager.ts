@@ -31,11 +31,11 @@ const STATIC_ENTITIES: EntityType[] = [Entities.BOUNDARY, Entities.CAR];
 
 export class EntityManager implements IEntityManager {
   private entities: Entity[];
-  private entityMap: Map<string, Entity> = new Map(); // Fast lookup by ID
+  private entityMap: Map<number, Entity> = new Map(); // Fast lookup by ID
   private players: Player[];
   private zombies: BaseEnemy[] = [];
   private merchants: Entity[] = [];
-  private entitiesToRemove: Array<{ id: string; expiration: number }> = [];
+  private entitiesToRemove: Array<{ id: number; expiration: number }> = [];
   private id: number = 0;
   private entityFinder: EntityFinder | null = null;
   private gameManagers?: IGameManagers;
@@ -70,7 +70,7 @@ export class EntityManager implements IEntityManager {
     return this.gameManagers;
   }
 
-  public getEntityById(id: string): Entity | null {
+  public getEntityById(id: number): Entity | null {
     return this.entityMap.get(id) ?? null;
   }
 
@@ -189,7 +189,7 @@ export class EntityManager implements IEntityManager {
     return this.entities;
   }
 
-  getEntitiesToRemove(): Array<{ id: string; expiration: number }> {
+  getEntitiesToRemove(): Array<{ id: number; expiration: number }> {
     return this.entitiesToRemove;
   }
 
@@ -201,14 +201,17 @@ export class EntityManager implements IEntityManager {
     });
   }
 
-  removeEntity(entityId: string) {
+  removeEntity(entityId: number) {
     const entity = this.entityMap.get(entityId);
     if (entity) {
+      // Track removal so clients receive the removal in the next state update
+      this.entityStateTracker.trackRemoval(entity.getId());
+
       // Clean up tracking data
       this.dirtyEntities.delete(entity);
       this.entitiesInGrid.delete(entity);
       this.entitiesToAddToGrid.delete(entity);
-      // Untrack from entity state tracker
+      // Untrack from entity state tracker (entity is being removed)
       this.entityStateTracker.untrackDirtyEntity(entity);
       // Remove from updatable entities and update entity count
       const updatableIndex = this.updatableEntities.indexOf(entity);
@@ -219,6 +222,12 @@ export class EntityManager implements IEntityManager {
         // Decrement entity count for this type
       }
 
+      // Remove from dynamic entities list
+      const dynamicIndex = this.dynamicEntities.indexOf(entity);
+      if (dynamicIndex > -1) {
+        this.dynamicEntities.splice(dynamicIndex, 1);
+      }
+
       // Remove from spatial grid if it's in there
       if (this.entityFinder && entity.hasExt(Positionable)) {
         this.entityFinder.removeEntity(entity);
@@ -226,6 +235,7 @@ export class EntityManager implements IEntityManager {
     }
 
     this.entityMap.delete(entityId);
+    this.entitiesToRemove = this.entitiesToRemove.filter((it) => it.id !== entityId);
     this.spliceWhere(this.players, (it) => it.getId() === entityId);
     this.spliceWhere(this.zombies, (it) => it.getId() === entityId);
     this.spliceWhere(this.merchants, (it) => it.getId() === entityId);
@@ -240,11 +250,11 @@ export class EntityManager implements IEntityManager {
     }
   }
 
-  generateEntityId(): string {
-    return `${this.id++}`;
+  generateEntityId(): number {
+    return this.id++;
   }
 
-  isEntityMarkedForRemoval(entityId: string): boolean {
+  isEntityMarkedForRemoval(entityId: number): boolean {
     return this.entitiesToRemove.some((it) => it.id === entityId);
   }
 
@@ -255,7 +265,7 @@ export class EntityManager implements IEntityManager {
       return;
     }
 
-    const entitiesToRemoveMap = new Map<string, { id: string; expiration: number }>([]);
+    const entitiesToRemoveMap = new Map<number, { id: number; expiration: number }>([]);
     for (const entity of this.entitiesToRemove) {
       entitiesToRemoveMap.set(entity.id, entity);
     }

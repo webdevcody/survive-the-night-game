@@ -8,7 +8,7 @@ export interface Renderable {
 }
 
 export interface IClientEntity {
-  getId: () => string;
+  getId: () => number;
 }
 
 export function getFrameIndex(

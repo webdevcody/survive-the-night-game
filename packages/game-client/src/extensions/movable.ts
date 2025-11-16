@@ -2,6 +2,7 @@ import { ExtensionTypes } from "../../../game-shared/src/util/extension-types";
 import Vector2 from "@shared/util/vector2";
 import { ClientExtensionSerialized } from "@/extensions/types";
 import { BaseClientExtension } from "./base-extension";
+import { BufferReader } from "@shared/util/buffer-serialization";
 
 export class ClientMovable extends BaseClientExtension {
   public static readonly type = ExtensionTypes.MOVABLE;
@@ -25,6 +26,12 @@ export class ClientMovable extends BaseClientExtension {
         this.velocity = new Vector2(data.velocity.x || 0, data.velocity.y || 0);
       }
     }
+    return this;
+  }
+
+  public deserializeFromBuffer(reader: BufferReader): this {
+    // Type is already read by the entity deserializer
+    this.velocity = reader.readVelocity2();
     return this;
   }
 }

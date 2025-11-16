@@ -25,6 +25,7 @@
     "dotenv": "^16.4.7",
     "express": "^5.1.0",
     "obscenity": "^0.4.5",
-    "socket.io": "^4.8.1"
+    "socket.io": "^4.8.1",
+    "uwebsockets.js": "github:uNetworking/uWebSockets.js#v20.56.0"
   }
 }
