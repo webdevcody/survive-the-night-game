@@ -1,18 +1,9 @@
-/**
- * WeaponsHUD – Option B Clean Refactor
- * --------------------------------------------------------------
- * No behavior changes.
- * No visual changes.
- * No precomputation except storing per-frame values.
- * Removes all repeated param passing.
- */
-
 import { Renderable } from "@/entities/util";
 import { InputManager } from "@/managers/input";
 import { AssetManager, getItemAssetKey } from "@/managers/asset";
-import { InventoryItem } from "../../../game-shared/src/util/inventory";
+import { InventoryItem } from "@shared/util/inventory";
 import { calculateHudScale } from "@/util/hud-scale";
-import { weaponRegistry } from "../../../game-shared/src/entities/weapon-registry";
+import { weaponRegistry } from "@shared/entities/weapon-registry";
 import { Z_INDEX } from "@shared/map";
 
 const TWO_PI = Math.PI * 2;
@@ -20,7 +11,6 @@ const TWO_PI = Math.PI * 2;
 const WHEEL = {
   innerRadius: 80,
   outerRadius: 250,
-  labelFont: "bold 22px Arial",
 
   segmentLocked: "#2a1a0f",
   segmentOwned: "#3d2617",
@@ -47,15 +37,17 @@ export class WeaponsHUD implements Renderable {
     img: HTMLImageElement;
     imgLocked: HTMLCanvasElement;
     owned: boolean;
+    ammoType: string | null;
+    iconW: number;
+    iconH: number;
   }[] = [];
 
   private segments: { start: number; end: number; mid: number }[] = [];
   private weaponIndex: Record<string, number> = {};
-
   private initialized = false;
+
   private lastOwnedMask = "";
 
-  // 🎯 NEW: Frame context (stored once per frame)
   private frame = {
     cx: 0,
     cy: 0,
@@ -65,41 +57,29 @@ export class WeaponsHUD implements Renderable {
     hover: -1,
   };
 
-  constructor(
-    assetManager: AssetManager,
-    inputManager: InputManager,
-    getInventory: () => InventoryItem[]
-  ) {
-    this.assets = assetManager;
-    this.input = inputManager;
-    this.getInventory = getInventory;
-
+  constructor(asset: AssetManager, input: InputManager, getInv: () => InventoryItem[]) {
+    this.assets = asset;
+    this.input = input;
+    this.getInventory = getInv;
     this.buildStaticData();
   }
 
   // ---------------------------------------------------------
-  // ONE-TIME BUILD
+  // BUILD STATIC
   // ---------------------------------------------------------
   private buildStaticData() {
-    const allWeapons = weaponRegistry.getAllWeaponTypes();
+    const allWeapons = weaponRegistry.getAll();
     const count = allWeapons.length;
-    if (count === 0) return;
 
-    this.items.length = count;
-    this.segments.length = count;
+    if (count === 0) return;
 
     const angleStep = TWO_PI / count;
 
     for (let i = 0; i < count; i++) {
-      const weaponType = allWeapons[i];
-      const img = this.assets.get(getItemAssetKey({ itemType: weaponType }));
+      const weapon = allWeapons[i];
+      const type = weapon.id;
 
-      this.items[i] = {
-        name: weaponType,
-        img,
-        imgLocked: this.createTint(img),
-        owned: false,
-      };
+      const img = this.assets.get(getItemAssetKey({ itemType: type }));
 
       const start = i * angleStep - Math.PI / 2;
 
@@ -109,66 +89,42 @@ export class WeaponsHUD implements Renderable {
         mid: start + angleStep / 2,
       };
 
-      this.weaponIndex[weaponType] = i;
+      this.items[i] = {
+        name: type,
+        img,
+        imgLocked: this.createTint(img),
+        owned: false,
+        ammoType: weapon.ammoType ?? null,
+        iconW: 0,
+        iconH: 0,
+      };
+
+      this.weaponIndex[type] = i;
     }
 
     this.initialized = true;
   }
 
-  private drawHotkeyForSegment(ctx: CanvasRenderingContext2D, index: number) {
-    const { cx, cy, rIn, rOut, scale } = this.frame;
-    const seg = this.segments[index];
-    const angle = seg.mid;
+  // ---------------------------------------------------------
+  // ICON SIZE PRECOMPUTE
+  // ---------------------------------------------------------
+  private computeIconSizes(scale: number) {
+    for (let i = 0; i < this.items.length; i++) {
+      const item = this.items[i];
+      const sprite = item.img;
 
-    // Base position toward inner radius
-    const baseDist = rIn + (rOut - rIn) * 0.08;
-    let x = cx + Math.cos(angle) * baseDist;
-    let y = cy + Math.sin(angle) * baseDist;
+      const iw = sprite.width;
+      const ih = sprite.height;
 
-    // Shift into a consistent “corner” inside each wedge
-    const perp = angle - Math.PI / 2;
-    const shift = 15 * scale;
-    x += Math.cos(perp) * shift;
-    y += Math.sin(perp) * shift;
+      const ratio =
+        Math.min((WHEEL.iconMaxSize * scale) / iw, (WHEEL.iconMaxSize * scale) / ih) *
+        WHEEL.iconScale;
 
-    // Hotkey (1–9)
-    const label = String(index + 1);
-
-    // Smaller text
-    const size = 14 * scale;
-    ctx.font = `bold ${size}px Arial`;
-    ctx.textAlign = "center";
-    ctx.textBaseline = "middle";
-
-    // Locked vs owned color
-    const owned = this.items[index].owned;
-
-    const mainColor = owned ? "#d4a574" : "#6b4b33"; // gold vs dim brown
-    const outlineColor = "#000000";
-
-    // Slight shadow for nicer UI
-    ctx.shadowColor = "rgba(0,0,0,0.3)";
-    ctx.shadowBlur = 2 * scale;
-    ctx.shadowOffsetX = 0;
-    ctx.shadowOffsetY = 0;
-
-    // Multi-direction outline (cheap & fast)
-    const o = 1 * scale;
-    ctx.fillStyle = outlineColor;
-    ctx.fillText(label, x - o, y);
-    ctx.fillText(label, x + o, y);
-    ctx.fillText(label, x, y - o);
-    ctx.fillText(label, x, y + o);
-
-    // Main text (gold or dim brown)
-    ctx.fillStyle = mainColor;
-    ctx.fillText(label, x, y);
-
-    // Reset shadow for icons
-    ctx.shadowBlur = 0;
+      item.iconW = iw * ratio;
+      item.iconH = ih * ratio;
+    }
   }
 
-  // Tint locked weapon sprite once (never repeated)
   private createTint(img: HTMLImageElement): HTMLCanvasElement {
     const c = document.createElement("canvas");
     c.width = img.width;
@@ -197,12 +153,15 @@ export class WeaponsHUD implements Renderable {
 
     let mask = "";
     for (let i = 0; i < count; i++) {
-      const name = this.items[i].name;
-      const owned = inv.some((it) => it && it.itemType === name);
-      mask += owned ? "1" : "0";
+      const type = this.items[i].name;
+
+      const weaponOwned = inv.some((it) => it && it.itemType === type);
+
+      mask += weaponOwned ? "1" : "0";
     }
 
     if (mask === this.lastOwnedMask) return;
+
     this.lastOwnedMask = mask;
 
     for (let i = 0; i < count; i++) {
@@ -225,101 +184,152 @@ export class WeaponsHUD implements Renderable {
 
     const scale = calculateHudScale(w, h);
 
-    // Compute once
     const cx = w * 0.5;
     const cy = h * 0.5;
+
     const rIn = WHEEL.innerRadius * scale;
     const rOut = WHEEL.outerRadius * scale;
 
-    // Hover detection
-    const hover = this.detectSegment(cx, cy, rIn, rOut);
+    this.computeIconSizes(scale);
 
-    // Store in frame ctx
-    const f = this.frame;
-    f.cx = cx;
-    f.cy = cy;
-    f.rIn = rIn;
-    f.rOut = rOut;
-    f.scale = scale;
-    f.hover = hover;
+    const hover = this.detectSegment();
+
+    this.frame.cx = cx;
+    this.frame.cy = cy;
+    this.frame.rIn = rIn;
+    this.frame.rOut = rOut;
+    this.frame.scale = scale;
+    this.frame.hover = hover;
+
+    const inventory = this.getInventory();
+    const ammoCounts: Record<string, number> = {};
+
+    for (const it of inventory) {
+      if (it?.itemType && it.state?.count != null) {
+        ammoCounts[it.itemType] = it.state.count;
+      }
+    }
 
     ctx.save();
-    this.drawWheel(ctx);
+    this.drawWheel(ctx, ammoCounts);
     ctx.restore();
   }
 
   // ---------------------------------------------------------
   // HOVER DETECTION
   // ---------------------------------------------------------
-  private detectSegment(cx: number, cy: number, rIn: number, rOut: number): number {
+  private detectSegment(): number {
+    const { cx, cy, rIn, rOut } = this.frame;
     const dx = this.mouseX - cx;
     const dy = this.mouseY - cy;
+
     const dist = dx * dx + dy * dy;
 
-    if (dist < rIn * rIn || dist > rOut * rOut) return -1;
+    if (dist < rIn * rIn) return -1;
+    if (dist > rOut * rOut) return -1;
 
     const angle = (Math.atan2(dy, dx) + Math.PI / 2 + TWO_PI) % TWO_PI;
-    return (angle / (TWO_PI / this.items.length)) | 0;
+
+    const index = (angle / (TWO_PI / this.items.length)) | 0;
+    return index;
   }
 
   // ---------------------------------------------------------
-  // DRAW WHEEL
+  // DRAW WHEEL (READABLE)
   // ---------------------------------------------------------
-  private drawWheel(ctx: CanvasRenderingContext2D) {
+  private drawWheel(ctx: CanvasRenderingContext2D, ammoCounts: Record<string, number>) {
     const { cx, cy, rIn, rOut, scale, hover } = this.frame;
 
     ctx.lineWidth = WHEEL.borderWidth * scale;
     ctx.strokeStyle = WHEEL.borderColor;
 
-    const items = this.items;
-    const segments = this.segments;
-    const count = items.length;
+    for (let i = 0; i < this.items.length; i++) {
+      const item = this.items[i];
+      const seg = this.segments[i];
 
-    for (let i = 0; i < count; i++) {
-      const seg = segments[i];
-      const item = items[i];
+      // PICK SEGMENT COLOR (readable version)
+      let fillColor = WHEEL.segmentOwned;
 
+      if (!item.owned) {
+        fillColor = WHEEL.segmentLocked;
+      } else if (i === hover) {
+        fillColor = WHEEL.highlight;
+      }
+
+      // Draw wedge
       ctx.beginPath();
       ctx.arc(cx, cy, rOut, seg.start, seg.end);
       ctx.arc(cx, cy, rIn, seg.end, seg.start, true);
       ctx.closePath();
 
-      ctx.fillStyle =
-        item.owned === false
-          ? WHEEL.segmentLocked
-          : i === hover
-          ? WHEEL.highlight
-          : WHEEL.segmentOwned;
-
+      ctx.fillStyle = fillColor;
       ctx.fill();
       ctx.stroke();
 
+      // ICON
       this.drawIcon(ctx, item, seg.mid);
-      //   TODO: maybe add hotkeys and if more than 9 add combination of F + 1 and so on
-      //   this.drawHotkeyForSegment(ctx, i);
+
+      // AMMO
+      if (item.ammoType) {
+        const ammo = ammoCounts[item.ammoType] ?? 0;
+        this.drawAmmoCount(ctx, item, seg.mid, ammo);
+      }
     }
   }
 
   // ---------------------------------------------------------
-  // ICON DRAW
+  // DRAW ICON
   // ---------------------------------------------------------
-  private drawIcon(ctx: CanvasRenderingContext2D, item: any, angle: number) {
-    const { cx, cy, rIn, rOut, scale } = this.frame;
+  private drawIcon(
+    ctx: CanvasRenderingContext2D,
+    item: (typeof this.items)[number],
+    angle: number
+  ) {
+    const { cx, cy, rIn, rOut } = this.frame;
 
     const sprite = item.owned ? item.img : item.imgLocked;
     if (!sprite) return;
 
-    const x = cx + Math.cos(angle) * (rIn + (rOut - rIn) * 0.55);
-    const y = cy + Math.sin(angle) * (rIn + (rOut - rIn) * 0.55);
+    const iconX = cx + Math.cos(angle) * (rIn + (rOut - rIn) * 0.55);
+    const iconY = cy + Math.sin(angle) * (rIn + (rOut - rIn) * 0.55);
 
-    const iw = sprite.width;
-    const ih = sprite.height;
+    ctx.drawImage(sprite, iconX - item.iconW / 2, iconY - item.iconH / 2, item.iconW, item.iconH);
+  }
 
-    const s =
-      Math.min((WHEEL.iconMaxSize * scale) / iw, (WHEEL.iconMaxSize * scale) / ih) *
-      WHEEL.iconScale;
+  // ---------------------------------------------------------
+  // DRAW AMMO
+  // ---------------------------------------------------------
+  private drawAmmoCount(
+    ctx: CanvasRenderingContext2D,
+    item: (typeof this.items)[number],
+    angle: number,
+    ammo: number
+  ) {
+    const { cx, cy, rIn, rOut, scale } = this.frame;
 
-    ctx.drawImage(sprite, x - (iw * s) / 2, y - (ih * s) / 2, iw * s, ih * s);
+    const iconX = cx + Math.cos(angle) * (rIn + (rOut - rIn) * 0.55);
+    const iconY = cy + Math.sin(angle) * (rIn + (rOut - rIn) * 0.55);
+
+    const textX = iconX + item.iconW / 2 + 2 * scale;
+    const textY = iconY + item.iconH / 2 + 2 * scale;
+
+    const fontSize = 14 * scale;
+    ctx.font = `bold ${fontSize}px Arial`;
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+
+    ctx.shadowColor = "rgba(0,0,0,0.6)";
+    ctx.shadowBlur = 3 * scale;
+
+    if (ammo > 0) {
+      ctx.fillStyle = "#ffe066";
+    } else {
+      ctx.fillStyle = "#ff5c5c";
+    }
+
+    ctx.fillText(String(ammo), textX, textY);
+
+    ctx.shadowBlur = 0;
   }
 
   // ---------------------------------------------------------
@@ -329,8 +339,9 @@ export class WeaponsHUD implements Renderable {
     if (!this.input.isAltKeyHeld()) return false;
 
     const scale = calculateHudScale(canvasWidth, canvasHeight);
-    const cx = canvasWidth / 2;
-    const cy = canvasHeight / 2;
+    const cx = canvasWidth * 0.5;
+    const cy = canvasHeight * 0.5;
+
     const rIn = WHEEL.innerRadius * scale;
     const rOut = WHEEL.outerRadius * scale;
 
@@ -338,20 +349,24 @@ export class WeaponsHUD implements Renderable {
     const dy = y - cy;
     const dist = dx * dx + dy * dy;
 
-    if (dist < rIn * rIn || dist > rOut * rOut) return false;
+    if (dist < rIn * rIn) return false;
+    if (dist > rOut * rOut) return false;
 
     const angle = (Math.atan2(dy, dx) + Math.PI / 2 + TWO_PI) % TWO_PI;
-    const i = (angle / (TWO_PI / this.items.length)) | 0;
 
-    const it = this.items[i];
-    if (!it.owned) return true;
+    const index = (angle / (TWO_PI / this.items.length)) | 0;
+    const item = this.items[index];
 
+    if (!item || !item.owned) return true;
+
+    // Find inventory slot for weapon
     const inv = this.getInventory();
-    const slot = inv.findIndex((v) => v && v.itemType === it.name);
-    if (slot === -1) return true;
+    const slot = inv.findIndex((v) => v && v.itemType === item.name);
 
-    this.input.setInventorySlot(slot + 1);
-    this.input.setAltKeyHeld(false);
+    if (slot !== -1) {
+      this.input.setInventorySlot(slot + 1);
+      this.input.setAltKeyHeld(false);
+    }
 
     return true;
   }
