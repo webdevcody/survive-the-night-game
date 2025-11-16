@@ -1,6 +1,7 @@
 import { BaseEnemy, MovementStrategy } from "../../base-enemy";
 import Movable from "@/extensions/movable";
 import Vector2 from "@/util/vector2";
+import PoolManager from "@shared/util/pool-manager";
 import { velocityTowards } from "@/util/physics";
 import { TargetChecker } from "../movement-utils";
 
@@ -18,14 +19,18 @@ export class FlyTowardsPlayerStrategy implements MovementStrategy {
     // If no target, stop moving
     if (!currentTarget) {
       const movable = zombie.getExt(Movable);
-      movable.setVelocity(new Vector2(0, 0));
+      const poolManager = PoolManager.getInstance();
+      movable.setVelocity(poolManager.vector2.claim(0, 0));
       return true;
     }
 
     // Calculate velocity directly towards target (no pathfinding since it's flying)
-    const velocity = velocityTowards(zombiePos, currentTarget);
+    const velocity = velocityTowards(zombiePos.clone(), currentTarget.clone());
     const movable = zombie.getExt(Movable);
-    movable.setVelocity(velocity.mul(zombie.getSpeed()));
+    const poolManager = PoolManager.getInstance();
+    movable.setVelocity(
+      poolManager.vector2.claim(velocity.x * zombie.getSpeed(), velocity.y * zombie.getSpeed())
+    );
 
     // Update position directly without collision checks
     const position = zombie.getPosition();

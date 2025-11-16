@@ -157,14 +157,11 @@ Key Extension Types:
 
 #### Entity Serialization
 
-Entities can serialize/deserialize for network transmission:
+Entities serialize directly into binary buffers for network transmission:
 
 ```typescript
-entity.serialize() -> RawEntity {
-  id: string
-  type: EntityType
-  extensions: ExtensionSerialized[]
-}
+const writer = new BufferWriter();
+entity.serializeToBuffer(writer, false); // full state
 ```
 
 ### 3.2 Networking & Multiplayer Implementation

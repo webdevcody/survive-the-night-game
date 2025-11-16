@@ -2,13 +2,13 @@ import { ServerSentEvents, EventType } from "../events";
 import { GameEvent } from "../types";
 
 interface PlayerLeftEventData {
-  playerId: string;
+  playerId: number;
   displayName: string;
 }
 
 export class PlayerLeftEvent implements GameEvent<PlayerLeftEventData> {
   private type: EventType;
-  private playerId: string;
+  private playerId: number;
   private displayName: string;
 
   constructor(data: PlayerLeftEventData) {
@@ -21,7 +21,7 @@ export class PlayerLeftEvent implements GameEvent<PlayerLeftEventData> {
     return this.type;
   }
 
-  getPlayerId(): string {
+  getPlayerId(): number {
     return this.playerId;
   }
 

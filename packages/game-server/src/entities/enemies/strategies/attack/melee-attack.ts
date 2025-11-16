@@ -42,7 +42,7 @@ export class MeleeAttackStrategy implements AttackStrategy {
     // Track entity query
     const endEntityQuery =
       tickPerformanceTracker?.startMethod("attackEntityQuery", "attackStrategy") || (() => {});
-    const zombieCenter = zombie.getCenterPosition();
+    const zombieCenter = zombie.getCenterPosition().clone();
     const attackRadius = getConfig().combat.ZOMBIE_ATTACK_RADIUS;
 
     // Get all nearby entities that can be attacked

@@ -9,8 +9,9 @@ import { IGameManagers } from "@/managers/types";
 import { Entities, Zombies } from "@shared/constants";
 import { getConfig } from "@shared/config";
 import { Entity } from "@/entities/entity";
-import { RawEntity, ItemState } from "@/types/entity";
+import { ItemState } from "@/types/entity";
 import Vector2 from "@/util/vector2";
+import PoolManager from "@shared/util/pool-manager";
 import { distance } from "@/util/physics";
 import { Cooldown } from "../util/cooldown";
 import { Bullet } from "@/entities/projectiles/bullet";
@@ -21,7 +22,9 @@ import Groupable from "@/extensions/groupable";
  * Has health, can be damaged, and acts like a normal item that can be picked up and moved.
  */
 export class SentryGun extends Entity {
-  public static readonly Size = new Vector2(16, 16);
+  public static get Size(): Vector2 {
+    return PoolManager.getInstance().vector2.claim(16, 16);
+  }
   public static readonly DEFAULT_COUNT = 1;
 
   private fireCooldown: Cooldown;
@@ -32,9 +35,10 @@ export class SentryGun extends Entity {
     this.fireCooldown = new Cooldown(getConfig().world.SENTRY_GUN_FIRE_COOLDOWN / 1000);
 
     const count = itemState?.count ?? SentryGun.DEFAULT_COUNT;
-
-    this.addExtension(new Positionable(this).setSize(SentryGun.Size));
-    this.addExtension(new Collidable(this).setSize(SentryGun.Size));
+    const poolManager = PoolManager.getInstance();
+    const size = poolManager.vector2.claim(16, 16);
+    this.addExtension(new Positionable(this).setSize(size));
+    this.addExtension(new Collidable(this).setSize(size));
     this.addExtension(
       new Interactive(this).onInteract(this.interact.bind(this)).setDisplayName("sentry gun")
     );
@@ -105,7 +109,8 @@ export class SentryGun extends Entity {
     const targetPosition = target.getExt(Positionable).getCenterPosition();
 
     // Calculate direction to target
-    const direction = new Vector2(
+    const poolManager = PoolManager.getInstance();
+    const direction = poolManager.vector2.claim(
       targetPosition.x - sentryPosition.x,
       targetPosition.y - sentryPosition.y
     );
@@ -151,10 +156,4 @@ export class SentryGun extends Entity {
     this.getEntityManager().markEntityForRemoval(this);
   }
 
-  public serialize(): RawEntity {
-    return {
-      ...super.serialize(),
-      health: this.getExt(Destructible).getHealth(),
-    };
-  }
 }

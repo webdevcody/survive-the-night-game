@@ -6,6 +6,7 @@ import { DEBUG_START_ZOMBIE } from "@shared/debug";
 import { IGameManagers, IEntityManager, IMapManager } from "@/managers/types";
 import Positionable from "@/extensions/positionable";
 import Vector2 from "@/util/vector2";
+import PoolManager from "@shared/util/pool-manager";
 import { BigZombie } from "@/entities/enemies/big-zombie";
 import { FastZombie } from "@/entities/enemies/fast-zombie";
 import { BatZombie } from "@/entities/enemies/bat-zombie";
@@ -411,35 +412,35 @@ export class MapManager implements IMapManager {
       if (spawnedCount.bat < distribution.bat) {
         const zombie = new BatZombie(this.getGameManagers());
         zombie.setPosition(
-          new Vector2(x * getConfig().world.TILE_SIZE, y * getConfig().world.TILE_SIZE)
+          PoolManager.getInstance().vector2.claim(x * getConfig().world.TILE_SIZE, y * getConfig().world.TILE_SIZE)
         );
         this.getEntityManager().addEntity(zombie);
         spawnedCount.bat++;
       } else if (spawnedCount.big < distribution.big) {
         const zombie = new BigZombie(this.getGameManagers());
         zombie.setPosition(
-          new Vector2(x * getConfig().world.TILE_SIZE, y * getConfig().world.TILE_SIZE)
+          PoolManager.getInstance().vector2.claim(x * getConfig().world.TILE_SIZE, y * getConfig().world.TILE_SIZE)
         );
         this.getEntityManager().addEntity(zombie);
         spawnedCount.big++;
       } else if (spawnedCount.fast < distribution.fast) {
         const zombie = new FastZombie(this.getGameManagers());
         zombie.setPosition(
-          new Vector2(x * getConfig().world.TILE_SIZE, y * getConfig().world.TILE_SIZE)
+          PoolManager.getInstance().vector2.claim(x * getConfig().world.TILE_SIZE, y * getConfig().world.TILE_SIZE)
         );
         this.getEntityManager().addEntity(zombie);
         spawnedCount.fast++;
       } else if (spawnedCount.regular < distribution.regular) {
         const zombie = new Zombie(this.getGameManagers());
         zombie.setPosition(
-          new Vector2(x * getConfig().world.TILE_SIZE, y * getConfig().world.TILE_SIZE)
+          PoolManager.getInstance().vector2.claim(x * getConfig().world.TILE_SIZE, y * getConfig().world.TILE_SIZE)
         );
         this.getEntityManager().addEntity(zombie);
         spawnedCount.regular++;
       } else if (spawnedCount.spitter < distribution.spitter) {
         const zombie = new SpitterZombie(this.getGameManagers());
         zombie.setPosition(
-          new Vector2(x * getConfig().world.TILE_SIZE, y * getConfig().world.TILE_SIZE)
+          PoolManager.getInstance().vector2.claim(x * getConfig().world.TILE_SIZE, y * getConfig().world.TILE_SIZE)
         );
         this.getEntityManager().addEntity(zombie);
         spawnedCount.spitter++;
@@ -668,7 +669,7 @@ export class MapManager implements IMapManager {
             car
               .getExt(Positionable)
               .setPosition(
-                new Vector2(x * getConfig().world.TILE_SIZE, y * getConfig().world.TILE_SIZE)
+                PoolManager.getInstance().vector2.claim(x * getConfig().world.TILE_SIZE, y * getConfig().world.TILE_SIZE)
               );
             this.getEntityManager().addEntity(car);
             carSpawned = true;
@@ -683,7 +684,7 @@ export class MapManager implements IMapManager {
             // Spawn regular boundary for non-car tiles
             const boundary = new Boundary(this.getGameManagers());
             boundary.setPosition(
-              new Vector2(x * getConfig().world.TILE_SIZE, y * getConfig().world.TILE_SIZE)
+              PoolManager.getInstance().vector2.claim(x * getConfig().world.TILE_SIZE, y * getConfig().world.TILE_SIZE)
             );
             this.getEntityManager().addEntity(boundary);
           }
@@ -701,7 +702,7 @@ export class MapManager implements IMapManager {
         if (collidableTileId === 255) {
           const merchant = new Merchant(this.getGameManagers());
           merchant.setPosition(
-            new Vector2(x * getConfig().world.TILE_SIZE, y * getConfig().world.TILE_SIZE)
+            PoolManager.getInstance().vector2.claim(x * getConfig().world.TILE_SIZE, y * getConfig().world.TILE_SIZE)
           );
           this.getEntityManager().addEntity(merchant);
         }
@@ -738,7 +739,7 @@ export class MapManager implements IMapManager {
           entity
             .getExt(Positionable)
             .setPosition(
-              new Vector2(x * getConfig().world.TILE_SIZE, y * getConfig().world.TILE_SIZE)
+              PoolManager.getInstance().vector2.claim(x * getConfig().world.TILE_SIZE, y * getConfig().world.TILE_SIZE)
             );
           this.getEntityManager().addEntity(entity);
         }
@@ -754,7 +755,8 @@ export class MapManager implements IMapManager {
       const middleY = Math.floor(totalSize / 2) * getConfig().world.TILE_SIZE;
 
       const zombie = new Zombie(this.getGameManagers());
-      zombie.setPosition(new Vector2(middleX + 16 * 4 * getConfig().world.TILE_SIZE, middleY));
+      const poolManager = PoolManager.getInstance();
+      zombie.setPosition(poolManager.vector2.claim(middleX + 16 * 4 * getConfig().world.TILE_SIZE, middleY));
       this.getEntityManager().addEntity(zombie);
     }
   }
@@ -782,7 +784,7 @@ export class MapManager implements IMapManager {
           if (Math.random() < IDLE_ZOMBIE_SPAWN_CHANCE) {
             const zombie = new Zombie(this.getGameManagers(), true); // true = idle mode
             zombie.setPosition(
-              new Vector2(x * getConfig().world.TILE_SIZE, y * getConfig().world.TILE_SIZE)
+              PoolManager.getInstance().vector2.claim(x * getConfig().world.TILE_SIZE, y * getConfig().world.TILE_SIZE)
             );
             this.getEntityManager().addEntity(zombie);
           }
@@ -833,7 +835,7 @@ export class MapManager implements IMapManager {
       entity
         .getExt(Positionable)
         .setPosition(
-          new Vector2(
+          PoolManager.getInstance().vector2.claim(
             position.x * getConfig().world.TILE_SIZE,
             position.y * getConfig().world.TILE_SIZE
           )
@@ -883,7 +885,7 @@ export class MapManager implements IMapManager {
       entity
         .getExt(Positionable)
         .setPosition(
-          new Vector2(
+          PoolManager.getInstance().vector2.claim(
             position.x * getConfig().world.TILE_SIZE,
             position.y * getConfig().world.TILE_SIZE
           )
@@ -979,7 +981,7 @@ export class MapManager implements IMapManager {
           campsiteFire
             .getExt(Positionable)
             .setPosition(
-              new Vector2(
+              PoolManager.getInstance().vector2.claim(
                 absoluteX * getConfig().world.TILE_SIZE,
                 absoluteY * getConfig().world.TILE_SIZE
               )
@@ -1035,7 +1037,8 @@ export class MapManager implements IMapManager {
           groundTile === 8 || groundTile === 4 || groundTile === 14 || groundTile === 24;
 
         if (isValidGround && this.collidablesLayer[y][x] === -1) {
-          const position = new Vector2(
+          const poolManager = PoolManager.getInstance();
+          const position = poolManager.vector2.claim(
             x * getConfig().world.TILE_SIZE,
             y * getConfig().world.TILE_SIZE
           );
@@ -1062,7 +1065,8 @@ export class MapManager implements IMapManager {
 
     if (validPositions.length === 0) {
       // Fallback to center if no grass tiles found
-      return new Vector2(
+      const poolManager = PoolManager.getInstance();
+      return poolManager.vector2.claim(
         (totalSize * getConfig().world.TILE_SIZE) / 2,
         (totalSize * getConfig().world.TILE_SIZE) / 2
       );
@@ -1160,7 +1164,8 @@ export class MapManager implements IMapManager {
           groundTile === 8 || groundTile === 4 || groundTile === 14 || groundTile === 24;
 
         if (isValidGround && this.collidablesLayer[mapY][mapX] === -1) {
-          const position = new Vector2(
+          const poolManager = PoolManager.getInstance();
+          const position = poolManager.vector2.claim(
             mapX * getConfig().world.TILE_SIZE,
             mapY * getConfig().world.TILE_SIZE
           );
@@ -1231,7 +1236,7 @@ export class MapManager implements IMapManager {
       crate
         .getExt(Positionable)
         .setPosition(
-          new Vector2(
+          PoolManager.getInstance().vector2.claim(
             position.x * getConfig().world.TILE_SIZE,
             position.y * getConfig().world.TILE_SIZE
           )

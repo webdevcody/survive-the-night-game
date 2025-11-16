@@ -11,10 +11,10 @@ import { Direction, normalizeDirection } from "@/util/direction";
 import { Entity } from "@/entities/entity";
 import { distance } from "@/util/physics";
 import { IEntity } from "@/entities/types";
-import { RawEntity } from "@/types/entity";
 import Vector2 from "@/util/vector2";
 import { Line, Rectangle } from "@/util/shape";
 import { Player } from "@/entities/player";
+import PoolManager from "@shared/util/pool-manager";
 
 // Random distance range for flame projectiles
 const MIN_TRAVEL_DISTANCE = 100;
@@ -25,9 +25,11 @@ const FLAME_SPREAD_ANGLE = 15;
 export class FlameProjectile extends Entity {
   private traveledDistance: number = 0;
   private static readonly FLAME_SPEED = 200; // Slower than bullets
-  private static readonly FLAME_SIZE = new Vector2(8, 8);
+  private static get FLAME_SIZE(): Vector2 {
+    return PoolManager.getInstance().vector2.claim(8, 8);
+  }
   private lastPosition: Vector2;
-  private shooterId: string = "";
+  private shooterId: number = 0;
   private damage: number;
   private maxDistance: number; // Random max distance for this projectile
 
@@ -38,23 +40,26 @@ export class FlameProjectile extends Entity {
     this.maxDistance =
       MIN_TRAVEL_DISTANCE + Math.random() * (MAX_TRAVEL_DISTANCE - MIN_TRAVEL_DISTANCE);
 
-    this.addExtension(new Positionable(this).setSize(FlameProjectile.FLAME_SIZE));
+    const poolManager = PoolManager.getInstance();
+    const flameSize = poolManager.vector2.claim(8, 8);
+    this.addExtension(new Positionable(this).setSize(flameSize));
     this.addExtension(new Movable(this).setHasFriction(false));
     this.addExtension(new Updatable(this, this.updateFlame.bind(this)));
-    this.addExtension(new Collidable(this).setSize(FlameProjectile.FLAME_SIZE));
+    this.addExtension(new Collidable(this).setSize(flameSize));
 
     this.lastPosition = this.getPosition();
   }
 
-  setShooterId(id: string) {
+  setShooterId(id: number) {
     this.shooterId = id;
   }
 
-  getShooterId(): string {
+  getShooterId(): number {
     return this.shooterId;
   }
 
   setDirection(direction: Direction) {
+    const poolManager = PoolManager.getInstance();
     const normalized = normalizeDirection(direction);
 
     // Add 5-degree spread (±2.5 degrees from center)
@@ -67,7 +72,7 @@ export class FlameProjectile extends Entity {
     const rotatedY = normalized.x * sin + normalized.y * cos;
 
     this.getExt(Movable).setVelocity(
-      new Vector2(rotatedX * FlameProjectile.FLAME_SPEED, rotatedY * FlameProjectile.FLAME_SPEED)
+      poolManager.vector2.claim(rotatedX * FlameProjectile.FLAME_SPEED, rotatedY * FlameProjectile.FLAME_SPEED)
     );
   }
 
@@ -76,6 +81,7 @@ export class FlameProjectile extends Entity {
    * @param angle Angle in radians (0 = right, PI/2 = down, PI = left, 3PI/2 = up)
    */
   setDirectionFromAngle(angle: number) {
+    const poolManager = PoolManager.getInstance();
     // Add random spread (±7.5 degrees from center)
     const spreadAngle = (Math.random() - 0.5) * FLAME_SPREAD_ANGLE * (Math.PI / 180);
     const totalAngle = angle + spreadAngle;
@@ -84,7 +90,7 @@ export class FlameProjectile extends Entity {
     const dirY = Math.sin(totalAngle);
 
     this.getExt(Movable).setVelocity(
-      new Vector2(dirX * FlameProjectile.FLAME_SPEED, dirY * FlameProjectile.FLAME_SPEED)
+      poolManager.vector2.claim(dirX * FlameProjectile.FLAME_SPEED, dirY * FlameProjectile.FLAME_SPEED)
     );
   }
 
@@ -134,12 +140,13 @@ export class FlameProjectile extends Entity {
   }
 
   private updatePositions(deltaTime: number) {
+    const poolManager = PoolManager.getInstance();
     const movable = this.getExt(Movable);
     const velocity = movable.getVelocity();
     const positionable = this.getExt(Positionable);
 
     positionable.setPosition(
-      new Vector2(
+      poolManager.vector2.claim(
         positionable.getPosition().x + velocity.x * deltaTime,
         positionable.getPosition().y + velocity.y * deltaTime
       )
@@ -147,16 +154,19 @@ export class FlameProjectile extends Entity {
   }
 
   private handleIntersections(fromPosition: Vector2, toPosition: Vector2): boolean {
-    // Convert corner positions to center positions for more accurate collision
-    const flameCenterOffset = new Vector2(
-      FlameProjectile.FLAME_SIZE.x / 2,
-      FlameProjectile.FLAME_SIZE.y / 2
+    const poolManager = PoolManager.getInstance();
+    const flameRadius = 4; // FLAME_SIZE.x / 2 = 8 / 2 = 4
+    
+    const fromCenter = poolManager.vector2.claim(
+      fromPosition.x + flameRadius,
+      fromPosition.y + flameRadius
     );
-    const fromCenter = fromPosition.add(flameCenterOffset);
-    const toCenter = toPosition.add(flameCenterOffset);
+    const toCenter = poolManager.vector2.claim(
+      toPosition.x + flameRadius,
+      toPosition.y + flameRadius
+    );
 
-    const flamePath = new Line(fromCenter, toCenter);
-    const flameRadius = FlameProjectile.FLAME_SIZE.x / 2;
+    const flamePath = poolManager.line.claim(fromCenter, toCenter);
 
     // Calculate a bounding box that encompasses the flame's path plus its size
     const minX = Math.min(fromCenter.x, toCenter.x) - flameRadius;
@@ -164,10 +174,11 @@ export class FlameProjectile extends Entity {
     const maxX = Math.max(fromCenter.x, toCenter.x) + flameRadius;
     const maxY = Math.max(fromCenter.y, toCenter.y) + flameRadius;
 
-    const boundingBox = new Rectangle(
-      new Vector2(minX, minY),
-      new Vector2(maxX - minX, maxY - minY)
-    );
+    const boundingBoxPos = poolManager.vector2.claim(minX, minY);
+    const boundingBoxSize = poolManager.vector2.claim(maxX - minX, maxY - minY);
+    const boundingBox = poolManager.rectangle.claim(boundingBoxPos, boundingBoxSize);
+    poolManager.vector2.release(boundingBoxPos);
+    poolManager.vector2.release(boundingBoxSize);
 
     const isEnemy = (entity: IEntity) =>
       entity.hasExt(Groupable) && entity.getExt(Groupable).getGroup() === "enemy";
@@ -188,13 +199,21 @@ export class FlameProjectile extends Entity {
       let collision = false;
 
       // Expand the rectangle by the flame's radius to account for the flame's size
-      const expandedRect = new Rectangle(
-        new Vector2(hitbox.position.x - flameRadius, hitbox.position.y - flameRadius),
-        new Vector2(hitbox.size.x + flameRadius * 2, hitbox.size.y + flameRadius * 2)
+      const expandedPos = poolManager.vector2.claim(
+        hitbox.position.x - flameRadius,
+        hitbox.position.y - flameRadius
       );
+      const expandedSize = poolManager.vector2.claim(
+        hitbox.size.x + flameRadius * 2,
+        hitbox.size.y + flameRadius * 2
+      );
+      const expandedRect = poolManager.rectangle.claim(expandedPos, expandedSize);
+      poolManager.vector2.release(expandedPos);
+      poolManager.vector2.release(expandedSize);
 
       // Check if either the flame path intersects the expanded rectangle
       collision = flamePath.intersects(expandedRect);
+      poolManager.rectangle.release(expandedRect);
 
       // Additional check for edge case: if either endpoint is inside or very close to the rectangle
       if (!collision) {
@@ -216,6 +235,10 @@ export class FlameProjectile extends Entity {
       }
 
       if (collision) {
+        poolManager.line.release(flamePath);
+        poolManager.rectangle.release(boundingBox);
+        poolManager.vector2.release(fromCenter);
+        poolManager.vector2.release(toCenter);
         // Spawn fire on ground where enemy was hit
         this.spawnFireOnGround(toCenter);
         this.getEntityManager().markEntityForRemoval(this);
@@ -239,6 +262,10 @@ export class FlameProjectile extends Entity {
       }
     }
 
+    poolManager.line.release(flamePath);
+    poolManager.rectangle.release(boundingBox);
+    poolManager.vector2.release(fromCenter);
+    poolManager.vector2.release(toCenter);
     return false;
   }
 

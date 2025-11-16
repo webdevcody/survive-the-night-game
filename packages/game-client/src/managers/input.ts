@@ -5,6 +5,7 @@ import {
 } from "../../../game-shared/src/util/direction";
 import { Input } from "../../../game-shared/src/util/input";
 import Vector2 from "../../../game-shared/src/util/vector2";
+import PoolManager from "../../../game-shared/src/util/pool-manager";
 import { getConfig } from "@shared/config";
 import { itemRegistry } from "../../../game-shared/src/entities/item-registry";
 
@@ -410,7 +411,8 @@ export class InputManager {
   }
 
   private updateDirection() {
-    const vec = new Vector2(this.inputs.dx, this.inputs.dy);
+    const poolManager = PoolManager.getInstance();
+    const vec = poolManager.vector2.claim(this.inputs.dx, this.inputs.dy);
     this.inputs.facing = determineDirection(vec) ?? this.inputs.facing;
   }
 
@@ -552,7 +554,8 @@ export class InputManager {
    * Update mouse position in canvas coordinates
    */
   updateMousePosition(canvasX: number, canvasY: number) {
-    this.mousePosition = new Vector2(canvasX, canvasY);
+    const poolManager = PoolManager.getInstance();
+    this.mousePosition = poolManager.vector2.claim(canvasX, canvasY);
   }
 
   /**

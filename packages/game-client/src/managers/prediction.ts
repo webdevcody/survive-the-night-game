@@ -1,5 +1,6 @@
 import { Input } from "@shared/util/input";
 import Vector2 from "@shared/util/vector2";
+import PoolManager from "@shared/util/pool-manager";
 import { PlayerClient } from "@/entities/player";
 import { normalizeVector, isColliding } from "@shared/util/physics";
 import { ClientMovable } from "@/extensions/movable";
@@ -68,7 +69,8 @@ export class PredictionManager {
     }
 
     const currentPosition = player.getPosition();
-    const direction = normalizeVector(new Vector2(input.dx, input.dy));
+    const poolManager = PoolManager.getInstance();
+    const direction = normalizeVector(poolManager.vector2.claim(input.dx, input.dy));
 
     // Check if player can sprint based on stamina (must match server logic)
     const hasStamina = player.getStamina() > 0;
@@ -100,14 +102,14 @@ export class PredictionManager {
       }
     }
 
-    const next = new Vector2(nextX, nextY);
+    const next = poolManager.vector2.claim(nextX, nextY);
     player.setPosition(next);
 
     // Update client-side velocity to reflect actual allowed move
     if (player.hasExt(ClientMovable)) {
       const actualDx = moveX / Math.max(deltaSeconds, 1e-6);
       const actualDy = moveY / Math.max(deltaSeconds, 1e-6);
-      player.getExt(ClientMovable).setVelocity(new Vector2(actualDx, actualDy));
+      player.getExt(ClientMovable).setVelocity(poolManager.vector2.claim(actualDx, actualDy));
     }
   }
 

@@ -1,5 +1,6 @@
 import { BaseEnemy, MovementStrategy } from "../../base-enemy";
 import Vector2 from "@/util/vector2";
+import PoolManager from "@shared/util/pool-manager";
 import Movable from "@/extensions/movable";
 import Snared from "@/extensions/snared";
 import { pathTowards, velocityTowards } from "@/util/physics";
@@ -15,7 +16,8 @@ export class MeleeMovementStrategy implements MovementStrategy {
   update(zombie: BaseEnemy, deltaTime: number): boolean {
     // If zombie is snared, don't move
     if (zombie.hasExt(Snared)) {
-      zombie.getExt(Movable).setVelocity(new Vector2(0, 0));
+      const poolManager = PoolManager.getInstance();
+      zombie.getExt(Movable).setVelocity(poolManager.vector2.claim(0, 0));
       return false;
     }
 
@@ -29,12 +31,13 @@ export class MeleeMovementStrategy implements MovementStrategy {
 
     // If no target, stop moving
     if (!currentTarget) {
-      zombie.getExt(Movable).setVelocity(new Vector2(0, 0));
+      const poolManager = PoolManager.getInstance();
+      zombie.getExt(Movable).setVelocity(poolManager.vector2.claim(0, 0));
       return false;
     }
 
     // If we don't have a waypoint or we've reached the current one, get a new one
-    const needNewWaypoint = !this.currentWaypoint || zombiePos.distance(this.currentWaypoint) <= 1;
+    const needNewWaypoint = !this.currentWaypoint || zombiePos.clone().sub(this.currentWaypoint).length() <= 1;
 
     // Update path periodically or when we need a new waypoint
     if (
@@ -42,8 +45,8 @@ export class MeleeMovementStrategy implements MovementStrategy {
       this.pathRecalculationTimer >= MeleeMovementStrategy.PATH_RECALCULATION_INTERVAL
     ) {
       const waypoint = pathTowards(
-        zombiePos,
-        currentTarget,
+        zombiePos.clone(),
+        currentTarget.clone(),
         mapManager.getGroundLayer(),
         mapManager.getCollidablesLayer()
       );
@@ -53,11 +56,15 @@ export class MeleeMovementStrategy implements MovementStrategy {
 
     // If we have a waypoint, move towards it
     if (this.currentWaypoint) {
-      const velocity = velocityTowards(zombiePos, this.currentWaypoint);
-      zombie.getExt(Movable).setVelocity(velocity.mul(zombie.getSpeed()));
+      const velocity = velocityTowards(zombiePos.clone(), this.currentWaypoint.clone());
+      const poolManager = PoolManager.getInstance();
+      zombie.getExt(Movable).setVelocity(
+        poolManager.vector2.claim(velocity.x * zombie.getSpeed(), velocity.y * zombie.getSpeed())
+      );
     } else {
       // If no waypoint found, stop moving
-      zombie.getExt(Movable).setVelocity(new Vector2(0, 0));
+      const poolManager = PoolManager.getInstance();
+      zombie.getExt(Movable).setVelocity(poolManager.vector2.claim(0, 0));
     }
 
     return false; // Let base enemy handle collision movement

@@ -3,6 +3,7 @@ import type { IEntity } from "@/entities/types";
 import Vector2 from "@/util/vector2";
 import { Direction, normalizeDirection } from "@shared/util/direction";
 import { normalizeVector } from "@shared/util/physics";
+import PoolManager from "@shared/util/pool-manager";
 
 interface RecoilOptions {
   player: IEntity;
@@ -17,9 +18,10 @@ export function applyWeaponRecoil(options: RecoilOptions): void {
     return;
   }
 
+  const poolManager = PoolManager.getInstance();
   let directionVector: Vector2;
   if (aimAngle !== undefined) {
-    directionVector = new Vector2(Math.cos(aimAngle), Math.sin(aimAngle));
+    directionVector = poolManager.vector2.claim(Math.cos(aimAngle), Math.sin(aimAngle));
   } else {
     directionVector = normalizeDirection(facing);
   }
@@ -29,6 +31,6 @@ export function applyWeaponRecoil(options: RecoilOptions): void {
     return;
   }
 
-  const recoilVelocity = new Vector2(-normalized.x * strength, -normalized.y * strength);
+  const recoilVelocity = poolManager.vector2.claim(-normalized.x * strength, -normalized.y * strength);
   player.getExt(Movable).setVelocity(recoilVelocity);
 }

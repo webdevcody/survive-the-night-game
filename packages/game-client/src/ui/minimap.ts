@@ -9,6 +9,7 @@ import { perfTimer } from "@shared/util/performance";
 import { getConfig } from "@shared/config";
 import { ClientIlluminated } from "@/extensions/illuminated";
 import Vector2 from "@shared/util/vector2";
+import PoolManager from "@shared/util/pool-manager";
 import { scaleHudValue } from "@/util/hud-scale";
 import { getEntityMapColor } from "@/util/entity-map-colors";
 
@@ -167,7 +168,8 @@ export class Minimap {
           const radius = decal.light.radius * intensity;
 
           // Convert grid position to world position (center of tile)
-          const position = new Vector2(
+          const poolManager = PoolManager.getInstance();
+          const position = poolManager.vector2.claim(
             decal.position.x * this.tileSize + this.tileSize / 2,
             decal.position.y * this.tileSize + this.tileSize / 2
           );
@@ -717,7 +719,8 @@ export class Minimap {
         const worldX = playerPos.x + relativeX;
         const worldY = playerPos.y + relativeY;
 
-        const worldPos = new Vector2(worldX, worldY);
+        const poolManager = PoolManager.getInstance();
+        const worldPos = poolManager.vector2.claim(worldX, worldY);
 
         // Check if this world position is visible
         if (!this.isPositionVisible(worldPos, lightSources)) {

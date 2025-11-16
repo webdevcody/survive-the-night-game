@@ -1,4 +1,4 @@
-FROM node:20-alpine as build
+FROM node:24-slim as build
 
 WORKDIR /app
 
@@ -23,7 +23,7 @@ WORKDIR /app/packages/game-server
 
 RUN npm run build
 
-FROM node:20-alpine
+FROM node:24-slim
 
 WORKDIR /app
 

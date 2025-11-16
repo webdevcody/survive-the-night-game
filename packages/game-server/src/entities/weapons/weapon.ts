@@ -9,21 +9,25 @@ import Vector2 from "@/util/vector2";
 import { WeaponConfig, weaponRegistry } from "@shared/entities";
 import type { IEntity } from "@/entities/types";
 import { applyWeaponRecoil } from "@/entities/util/recoil";
+import PoolManager from "@shared/util/pool-manager";
 
 export abstract class Weapon extends Entity {
-  public static readonly Size = new Vector2(16, 16);
+  public static get Size(): Vector2 {
+    return PoolManager.getInstance().vector2.claim(16, 16);
+  }
 
   constructor(gameManagers: IGameManagers, weaponKey: WeaponKey) {
     super(gameManagers, weaponKey);
-
-    this.addExtension(new Positionable(this).setSize(Weapon.Size));
+    const poolManager = PoolManager.getInstance();
+    const size = poolManager.vector2.claim(16, 16);
+    this.addExtension(new Positionable(this).setSize(size));
     this.addExtension(
       new Interactive(this).onInteract(this.interact.bind(this)).setDisplayName(weaponKey)
     );
     this.addExtension(new Carryable(this, weaponKey));
   }
 
-  private interact(entityId: string): void {
+  private interact(entityId: number): void {
     this.getExt(Carryable).pickup(entityId);
   }
 
@@ -32,7 +36,7 @@ export abstract class Weapon extends Entity {
   }
 
   public abstract attack(
-    playerId: string,
+    playerId: number,
     position: { x: number; y: number },
     facing: Direction,
     aimAngle?: number

@@ -6,6 +6,7 @@ import { ClientEntityBase } from "@/extensions/client-entity";
 import { ClientPositionable, ClientMovable } from "@/extensions";
 import { Z_INDEX } from "@shared/map";
 import Vector2 from "@shared/util/vector2";
+import PoolManager from "@shared/util/pool-manager";
 import { roundVector2 } from "@shared/util/physics";
 
 export class AcidProjectileClient extends ClientEntityBase implements IClientEntity, Renderable {
@@ -26,11 +27,11 @@ export class AcidProjectileClient extends ClientEntityBase implements IClientEnt
     // Interpolate position for smooth movement
     this.lastRenderPosition = this.lerpPosition(
       targetPosition,
-      new Vector2(this.lastRenderPosition.x, this.lastRenderPosition.y)
+      PoolManager.getInstance().vector2.claim(this.lastRenderPosition.x, this.lastRenderPosition.y)
     );
 
     const renderPosition = roundVector2(
-      new Vector2(this.lastRenderPosition.x, this.lastRenderPosition.y)
+      PoolManager.getInstance().vector2.claim(this.lastRenderPosition.x, this.lastRenderPosition.y)
     );
 
     // Draw green outer circle

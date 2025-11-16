@@ -1,4 +1,5 @@
 import Vector2 from "@shared/util/vector2";
+import PoolManager from "@shared/util/pool-manager";
 import { PlayerClient } from "@/entities/player";
 import { ClientPositionable } from "@/extensions";
 import { getConfig } from "@shared/config";
@@ -46,7 +47,8 @@ export class ReconciliationManager {
     const error = this.calculateError(clientPos, serverPosition);
 
     // Store server ghost position for visualization
-    (player as any).setServerGhostPosition?.(new Vector2(serverPosition.x, serverPosition.y));
+    const poolManager = PoolManager.getInstance();
+    (player as any).setServerGhostPosition?.(poolManager.vector2.claim(serverPosition.x, serverPosition.y));
 
     // Reconciliation strategy:
     // 1. Large error (> errorThreshold): Snap immediately (emergency correction)
@@ -91,7 +93,8 @@ export class ReconciliationManager {
     const correctedX = currentPos.x + (serverPosition.x - currentPos.x) * lerpSpeed;
     const correctedY = currentPos.y + (serverPosition.y - currentPos.y) * lerpSpeed;
 
-    player.getExt(ClientPositionable).setPosition(new Vector2(correctedX, correctedY));
+    const poolManager = PoolManager.getInstance();
+    player.getExt(ClientPositionable).setPosition(poolManager.vector2.claim(correctedX, correctedY));
   }
 
   /**
@@ -101,7 +104,7 @@ export class ReconciliationManager {
     if (player.hasExt(ClientPositionable)) {
       player
         .getExt(ClientPositionable)
-        .setPosition(new Vector2(serverPosition.x, serverPosition.y));
+        .setPosition(PoolManager.getInstance().vector2.claim(serverPosition.x, serverPosition.y));
     }
   }
 }

@@ -1,4 +1,5 @@
 import Vector2 from "@shared/util/vector2";
+import PoolManager from "@shared/util/pool-manager";
 
 type Snapshot = { position: Vector2; timestamp: number };
 
@@ -38,7 +39,8 @@ export class InterpolationManager {
     const span = next.timestamp - prev.timestamp;
     if (span <= 0) return next.position;
     const t = Math.min(1, Math.max(0, (renderTime - prev.timestamp) / span));
-    return new Vector2(
+    const poolManager = PoolManager.getInstance();
+    return poolManager.vector2.claim(
       prev.position.x + (next.position.x - prev.position.x) * t,
       prev.position.y + (next.position.y - prev.position.y) * t
     );

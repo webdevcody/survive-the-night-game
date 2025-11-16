@@ -1,9 +1,11 @@
-import { Extension, ExtensionSerialized } from "@/extensions/types";
+import { Extension } from "@/extensions/types";
 import { IEntity } from "@/entities/types";
 import { EntityType } from "@/types/entity";
 import Positionable from "@/extensions/positionable";
 import { Circle } from "@/util/shape";
 import { Cooldown } from "@/entities/util/cooldown";
+import { BufferWriter } from "@shared/util/buffer-serialization";
+import { encodeExtensionType } from "@shared/util/extension-type-encoding";
 
 interface OneTimeTriggerOptions {
   triggerRadius: number;
@@ -62,7 +64,7 @@ export default class OneTimeTrigger implements Extension {
 
       const entityPos = entity.getExt(Positionable).getCenterPosition();
       const selfPos = this.self.getExt(Positionable).getCenterPosition();
-      const distance = entityPos.sub(selfPos).length();
+      const distance = entityPos.clone().sub(selfPos).length();
 
       if (distance <= this.triggerRadius) {
         this.hasTriggered = true;
@@ -88,10 +90,8 @@ export default class OneTimeTrigger implements Extension {
     this.dirty = false;
   }
 
-  public serialize(): ExtensionSerialized {
-    return {
-      type: OneTimeTrigger.type,
-      hasTriggered: this.hasTriggered,
-    };
+  public serializeToBuffer(writer: BufferWriter): void {
+    writer.writeUInt32(encodeExtensionType(OneTimeTrigger.type));
+    writer.writeBoolean(this.hasTriggered);
   }
 }

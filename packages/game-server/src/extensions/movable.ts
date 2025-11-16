@@ -1,6 +1,9 @@
 import { IEntity } from "@/entities/types";
-import { Extension, ExtensionSerialized } from "@/extensions/types";
+import { Extension } from "@/extensions/types";
 import Vector2 from "@/util/vector2";
+import { BufferWriter } from "@shared/util/buffer-serialization";
+import { encodeExtensionType } from "@shared/util/extension-type-encoding";
+import PoolManager from "@shared/util/pool-manager";
 
 export default class Movable implements Extension {
   public static readonly type = "movable";
@@ -12,7 +15,7 @@ export default class Movable implements Extension {
 
   public constructor(self: IEntity) {
     this.self = self;
-    this.velocity = new Vector2(0, 0);
+    this.velocity = PoolManager.getInstance().vector2.claim(0, 0);
     this.hasFriction = true; // Default to having friction
   }
 
@@ -22,7 +25,7 @@ export default class Movable implements Extension {
 
   public setVelocity(velocity: Vector2): void {
     const velocityChanged = this.velocity.x !== velocity.x || this.velocity.y !== velocity.y;
-    this.velocity = velocity;
+    this.velocity.reset(velocity.x, velocity.y);
     if (velocityChanged) {
       this.markDirty();
     }
@@ -37,11 +40,9 @@ export default class Movable implements Extension {
     return this;
   }
 
-  public serialize(): ExtensionSerialized {
-    return {
-      type: Movable.type,
-      velocity: this.velocity,
-    };
+  public serializeToBuffer(writer: BufferWriter): void {
+    writer.writeUInt32(encodeExtensionType(Movable.type));
+    writer.writeVelocity2(this.velocity);
   }
 
   public update(deltaTime: number): void {
@@ -74,10 +75,4 @@ export default class Movable implements Extension {
     this.dirty = false;
   }
 
-  public serializeDirty(): ExtensionSerialized | null {
-    if (!this.dirty) {
-      return null;
-    }
-    return this.serialize();
-  }
 }

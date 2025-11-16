@@ -40,7 +40,7 @@ interface EntityUpdateState {
  * Entities are grouped into tiers and updated at different frequencies.
  */
 export class UpdateScheduler {
-  private entityStates: Map<string, EntityUpdateState> = new Map();
+  private entityStates: Map<number, EntityUpdateState> = new Map();
   private currentFrame: number = 0;
   private readonly tiers = getConfig().simulation.UPDATE_TIERS;
 
@@ -86,7 +86,7 @@ export class UpdateScheduler {
   /**
    * Unregister an entity from the scheduler
    */
-  public unregisterEntity(entityId: string): void {
+  public unregisterEntity(entityId: number): void {
     this.entityStates.delete(entityId);
   }
 

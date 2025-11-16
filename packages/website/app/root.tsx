@@ -63,6 +63,14 @@ export default function App() {
 }
 
 export function ErrorBoundary({ error }: Route.ErrorBoundaryProps) {
+  // Silently handle .well-known paths (Chrome DevTools requests)
+  if (isRouteErrorResponse(error) && error.status === 404) {
+    const url = typeof window !== "undefined" ? window.location.pathname : "";
+    if (url.startsWith("/.well-known/")) {
+      return null;
+    }
+  }
+
   let message = "Oops!";
   let details = "An unexpected error occurred.";
   let stack: string | undefined;

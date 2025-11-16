@@ -199,4 +199,22 @@ export const WEAPON_CONFIGS: Record<string, WeaponConfig> = {
       chance: 0.002,
     },
   },
+  grenade: {
+    id: "grenade",
+    type: "ranged",
+    stats: {
+      cooldown: 0.5,
+      cameraShakeIntensity: 0.5,
+    },
+    assets: {
+      assetPrefix: "grenade",
+      spritePositions: {
+        right: { x: 64, y: 0 },
+        up: { x: 64, y: 0 },
+        down: { x: 64, y: 0 },
+      },
+      sheet: "items",
+    },
+    sound: "pistol",
+  },
 };

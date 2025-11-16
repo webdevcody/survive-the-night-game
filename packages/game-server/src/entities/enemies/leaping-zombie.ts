@@ -1,6 +1,7 @@
 import { IGameManagers } from "@/managers/types";
 import { Entities } from "@shared/constants";
 import Vector2 from "@shared/util/vector2";
+import PoolManager from "@shared/util/pool-manager";
 import { BaseEnemy } from "./base-enemy";
 import Collidable from "@/extensions/collidable";
 import { Cooldown } from "@/entities/util/cooldown";
@@ -17,10 +18,11 @@ export class LeapingZombie extends BaseEnemy {
       throw new Error("LeapingZombie requires leapConfig in zombie config");
     }
 
+    const poolManager = PoolManager.getInstance();
     const collidable = this.getExt(Collidable);
     collidable
       .setSize(this.config.stats.size)
-      .setOffset(new Vector2(this.positionThreshold, this.positionThreshold));
+      .setOffset(poolManager.vector2.claim(this.positionThreshold, this.positionThreshold));
 
     // Create shared state between movement and attack strategies
     const leapingState = new LeapingState();

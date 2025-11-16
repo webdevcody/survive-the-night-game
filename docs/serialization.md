@@ -117,11 +117,13 @@ this.markFieldDirty("stamina");
 ### Serialization Methods
 
 ```typescript
-// Serialize all fields
-const fullState = entity.serialize(false);
+const writer = new BufferWriter();
+
+// Serialize all fields into the buffer writer
+entity.serializeToBuffer(writer, false);
 
 // Serialize only dirty fields (for efficient updates)
-const deltaState = entity.serialize(true);
+entity.serializeToBuffer(writer, true);
 ```
 
 ## Key Benefits

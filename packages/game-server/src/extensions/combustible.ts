@@ -2,8 +2,11 @@ import { Entities } from "@/constants";
 import { IEntity } from "@/entities/types";
 import { EntityType } from "@/types/entity";
 import Positionable from "@/extensions/positionable";
-import { Extension, ExtensionSerialized } from "@/extensions/types";
+import { Extension } from "@/extensions/types";
 import Vector2 from "@/util/vector2";
+import PoolManager from "@shared/util/pool-manager";
+import { BufferWriter } from "@shared/util/buffer-serialization";
+import { encodeExtensionType } from "@shared/util/extension-type-encoding";
 
 type EntityFactory = (type: EntityType) => IEntity;
 
@@ -37,7 +40,8 @@ export default class Combustible implements Extension {
   private getRandomPositionInRadius(center: Vector2, radius: number): Vector2 {
     const angle = Math.random() * Math.PI * 2;
     const distance = Math.random() * radius;
-    return new Vector2(
+    const poolManager = PoolManager.getInstance();
+    return poolManager.vector2.claim(
       center.x + Math.cos(angle) * distance,
       center.y + Math.sin(angle) * distance
     );
@@ -58,11 +62,9 @@ export default class Combustible implements Extension {
     this.dirty = false;
   }
 
-  public serialize(): ExtensionSerialized {
-    return {
-      type: Combustible.type,
-      numFires: this.numFires,
-      spreadRadius: this.spreadRadius,
-    };
+  public serializeToBuffer(writer: BufferWriter): void {
+    writer.writeUInt32(encodeExtensionType(Combustible.type));
+    writer.writeUInt32(this.numFires);
+    writer.writeFloat64(this.spreadRadius);
   }
 }

@@ -7,6 +7,7 @@ import { MapManager } from "@/managers/map";
 import { getConfig } from "@shared/config";
 import { ClientIlluminated } from "@/extensions/illuminated";
 import Vector2 from "@shared/util/vector2";
+import PoolManager from "@shared/util/pool-manager";
 import { MINIMAP_SETTINGS } from "./minimap";
 import { getEntityMapColor } from "@/util/entity-map-colors";
 
@@ -47,7 +48,7 @@ export class FullScreenMap {
   private zoomInButtonBounds: { x: number; y: number; width: number; height: number } | null = null;
   private zoomOutButtonBounds: { x: number; y: number; width: number; height: number } | null =
     null;
-  private mapOffset: Vector2 = new Vector2(0, 0);
+  private mapOffset: Vector2 = PoolManager.getInstance().vector2.claim(0, 0);
   private isDragging: boolean = false;
   private dragStartPos: { x: number; y: number } | null = null;
   private dragStartOffset: Vector2 | null = null;
@@ -63,7 +64,7 @@ export class FullScreenMap {
 
     // Reset offset when closing map
     if (wasVisible && !this.isVisible) {
-      this.mapOffset = new Vector2(0, 0);
+      this.mapOffset = PoolManager.getInstance().vector2.claim(0, 0);
       this.isDragging = false;
       this.dragStartPos = null;
       this.dragStartOffset = null;
@@ -77,7 +78,7 @@ export class FullScreenMap {
   public hide(): void {
     this.isVisible = false;
     // Reset offset when closing map
-    this.mapOffset = new Vector2(0, 0);
+    this.mapOffset = PoolManager.getInstance().vector2.claim(0, 0);
     this.isDragging = false;
     this.dragStartPos = null;
     this.dragStartOffset = null;
@@ -124,7 +125,8 @@ export class FullScreenMap {
           const intensity = decal.light.intensity ?? 1.0;
           const radius = decal.light.radius * intensity;
 
-          const position = new Vector2(
+          const poolManager = PoolManager.getInstance();
+          const position = poolManager.vector2.claim(
             decal.position.x * this.tileSize + this.tileSize / 2,
             decal.position.y * this.tileSize + this.tileSize / 2
           );
@@ -567,7 +569,8 @@ export class FullScreenMap {
         const worldX = playerPos.x + relativeX;
         const worldY = playerPos.y + relativeY;
 
-        const worldPos = new Vector2(worldX, worldY);
+        const poolManager = PoolManager.getInstance();
+        const worldPos = poolManager.vector2.claim(worldX, worldY);
 
         if (!this.isPositionVisible(worldPos, lightSources)) {
           ctx.fillStyle = settings.fogOfWar.fogColor;
@@ -838,7 +841,8 @@ export class FullScreenMap {
     // Start drag
     this.isDragging = true;
     this.dragStartPos = { x, y };
-    this.dragStartOffset = new Vector2(this.mapOffset.x, this.mapOffset.y);
+    const poolManager = PoolManager.getInstance();
+    this.dragStartOffset = poolManager.vector2.claim(this.mapOffset.x, this.mapOffset.y);
     return true;
   }
 

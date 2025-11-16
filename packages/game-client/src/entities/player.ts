@@ -23,6 +23,7 @@ import { RawEntity } from "@shared/types/entity";
 import { IClientEntity, Renderable, getFrameIndex, drawHealthBar } from "@/entities/util";
 import { getConfig } from "@shared/config";
 import Vector2 from "@shared/util/vector2";
+import PoolManager from "@shared/util/pool-manager";
 import { ClientEntity } from "./client-entity";
 import { SKIN_TYPES, SkinType } from "@shared/commands/commands";
 import { getDebugConfig } from "@/config/client-prediction";
@@ -149,7 +150,8 @@ export class PlayerClient extends ClientEntity implements IClientEntity, Rendera
   }
 
   setServerGhostPosition(pos: Vector2 | null): void {
-    this.serverGhostPos = pos ? new Vector2(pos.x, pos.y) : null;
+    const poolManager = PoolManager.getInstance();
+    this.serverGhostPos = pos ? poolManager.vector2.claim(pos.x, pos.y) : null;
   }
 
   getDamageBox(): Hitbox {
@@ -203,12 +205,13 @@ export class PlayerClient extends ClientEntity implements IClientEntity, Rendera
     } else {
       this.lastRenderPosition = this.lerpPosition(
         targetPosition,
-        new Vector2(this.lastRenderPosition.x, this.lastRenderPosition.y)
+        PoolManager.getInstance().vector2.claim(this.lastRenderPosition.x, this.lastRenderPosition.y)
       );
     }
 
+    const poolManager = PoolManager.getInstance();
     const renderPosition = roundVector2(
-      new Vector2(this.lastRenderPosition.x, this.lastRenderPosition.y)
+      poolManager.vector2.claim(this.lastRenderPosition.x, this.lastRenderPosition.y)
     );
 
     ctx.save();
@@ -280,8 +283,8 @@ export class PlayerClient extends ClientEntity implements IClientEntity, Rendera
       const animatedPosition = animate(gameState.startedAt, renderPosition, {
         duration: 2000,
         frames: {
-          0: new Vector2(0, 0),
-          50: new Vector2(0, 5),
+          0: PoolManager.getInstance().vector2.claim(0, 0),
+          50: PoolManager.getInstance().vector2.claim(0, 5),
         },
       });
       ctx.fillText("🔧", animatedPosition.x + 3, animatedPosition.y - 6);

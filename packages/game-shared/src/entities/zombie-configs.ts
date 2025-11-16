@@ -1,5 +1,6 @@
 import { combatConfig } from "../config/combat-config";
 import Vector2 from "../util/vector2";
+import PoolManager from "../util/pool-manager";
 import { ZombieConfig, EntityCategories } from "./zombie-registry";
 
 export const ZOMBIE_CONFIGS: Record<string, ZombieConfig> = {
@@ -13,7 +14,7 @@ export const ZOMBIE_CONFIGS: Record<string, ZombieConfig> = {
       attackCooldown: 1,
       attackRadius: combatConfig.ZOMBIE_ATTACK_RADIUS,
       dropChance: 0.7,
-      size: new Vector2(16, 16),
+      size: PoolManager.getInstance().vector2.claim(16, 16),
     },
     assets: {
       assetPrefix: "zombie",
@@ -47,7 +48,7 @@ export const ZOMBIE_CONFIGS: Record<string, ZombieConfig> = {
       attackCooldown: 1.5,
       attackRadius: combatConfig.ZOMBIE_ATTACK_RADIUS,
       dropChance: 1,
-      size: new Vector2(16, 16),
+      size: PoolManager.getInstance().vector2.claim(16, 16),
     },
     assets: {
       assetPrefix: "big_zombie",
@@ -81,7 +82,7 @@ export const ZOMBIE_CONFIGS: Record<string, ZombieConfig> = {
       attackCooldown: 0.5,
       attackRadius: combatConfig.ZOMBIE_ATTACK_RADIUS,
       dropChance: 0.3,
-      size: new Vector2(8, 8),
+      size: PoolManager.getInstance().vector2.claim(8, 8),
     },
     assets: {
       assetPrefix: "fast_zombie",
@@ -115,7 +116,7 @@ export const ZOMBIE_CONFIGS: Record<string, ZombieConfig> = {
       attackCooldown: 0.5,
       attackRadius: combatConfig.ZOMBIE_ATTACK_RADIUS,
       dropChance: 0.3,
-      size: new Vector2(8, 8),
+      size: PoolManager.getInstance().vector2.claim(8, 8),
     },
     assets: {
       assetPrefix: "exploding_zombie",
@@ -149,7 +150,7 @@ export const ZOMBIE_CONFIGS: Record<string, ZombieConfig> = {
       attackCooldown: 0.5,
       attackRadius: combatConfig.ZOMBIE_ATTACK_RADIUS,
       dropChance: 0.2,
-      size: new Vector2(8, 8),
+      size: PoolManager.getInstance().vector2.claim(8, 8),
     },
     assets: {
       assetPrefix: "bat_zombie",
@@ -183,7 +184,7 @@ export const ZOMBIE_CONFIGS: Record<string, ZombieConfig> = {
       attackCooldown: 2,
       attackRadius: 100, // Larger attack radius for ranged
       dropChance: 0.5,
-      size: new Vector2(16, 16),
+      size: PoolManager.getInstance().vector2.claim(16, 16),
     },
     assets: {
       assetPrefix: "spitter_zombie",
@@ -217,7 +218,7 @@ export const ZOMBIE_CONFIGS: Record<string, ZombieConfig> = {
       attackCooldown: 1, // Cooldown for swipe attack
       attackRadius: 28,
       dropChance: 0.5,
-      size: new Vector2(16, 16),
+      size: PoolManager.getInstance().vector2.claim(16, 16),
     },
     assets: {
       assetPrefix: "leaping_zombie",

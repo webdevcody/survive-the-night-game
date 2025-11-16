@@ -1,4 +1,4 @@
-import { Extension, ExtensionSerialized } from "@/extensions/types";
+import { Extension } from "@/extensions/types";
 import Positionable from "@/extensions/positionable";
 import Collidable from "@/extensions/collidable";
 import { EntityType } from "@/types/entity";
@@ -6,6 +6,8 @@ import { ExtensionTypes } from "@/util/extension-types";
 import { IEntity } from "@/entities/types";
 import { Circle } from "@/util/shape";
 import Vector2 from "@/util/vector2";
+import { BufferWriter } from "@shared/util/buffer-serialization";
+import { encodeExtensionType } from "@shared/util/extension-type-encoding";
 
 export default class Triggerable implements Extension {
   public static readonly type = ExtensionTypes.TRIGGERABLE;
@@ -21,7 +23,7 @@ export default class Triggerable implements Extension {
    */
   public constructor(self: IEntity, size: Vector2, filter: EntityType[]) {
     this.self = self;
-    this.size = size;
+    this.size = size.clone();
     this.filter = filter;
   }
 
@@ -58,11 +60,9 @@ export default class Triggerable implements Extension {
     this.dirty = false;
   }
 
-  public serialize(): ExtensionSerialized {
-    return {
-      type: Triggerable.type,
-      width: this.size.x,
-      height: this.size.y,
-    };
+  public serializeToBuffer(writer: BufferWriter): void {
+    writer.writeUInt32(encodeExtensionType(Triggerable.type));
+    writer.writeFloat64(this.size.x);
+    writer.writeFloat64(this.size.y);
   }
 }

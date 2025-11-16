@@ -16,6 +16,7 @@ import { RawEntity } from "@shared/types/entity";
 import { Z_INDEX } from "@shared/map";
 import { IClientEntity, Renderable, getFrameIndex, drawHealthBar } from "@/entities/util";
 import Vector2 from "@shared/util/vector2";
+import PoolManager from "@shared/util/pool-manager";
 import { DEBUG_SHOW_WAYPOINTS } from "@shared/debug";
 import { determineDirection } from "@shared/util/direction";
 import { getHitboxWithPadding } from "@shared/util/hitbox";
@@ -102,12 +103,13 @@ export abstract class EnemyClient extends ClientEntityBase implements IClientEnt
       const targetPosition = this.getPosition();
       this.lastRenderPosition = this.lerpPosition(
         targetPosition,
-        new Vector2(this.lastRenderPosition.x, this.lastRenderPosition.y)
+        PoolManager.getInstance().vector2.claim(this.lastRenderPosition.x, this.lastRenderPosition.y)
       );
     }
 
+    const poolManager = PoolManager.getInstance();
     const renderPosition = roundVector2(
-      new Vector2(this.lastRenderPosition.x, this.lastRenderPosition.y)
+      poolManager.vector2.claim(this.lastRenderPosition.x, this.lastRenderPosition.y)
     );
 
     isDead
@@ -220,7 +222,8 @@ export abstract class EnemyClient extends ClientEntityBase implements IClientEnt
       // Use frozen render position to prevent jittering of loot text
       const positionable = this.getExt(ClientPositionable);
       const size = positionable.getSize();
-      const centerPosition = new Vector2(
+      const poolManager = PoolManager.getInstance();
+      const centerPosition = poolManager.vector2.claim(
         renderPosition.x + size.x / 2,
         renderPosition.y + size.y / 2
       );

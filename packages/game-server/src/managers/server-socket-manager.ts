@@ -10,8 +10,8 @@ import { RecipeType } from "../../../game-shared/src/util/recipes";
 import { ItemType, isResourceItem, ResourceType } from "@shared/util/inventory";
 import { itemRegistry } from "@shared/entities/item-registry";
 import Vector2 from "@/util/vector2";
+import PoolManager from "@shared/util/pool-manager";
 import { createServer } from "http";
-import { Server, Socket } from "socket.io";
 import express from "express";
 import biomeRoutes from "../api/biome-routes.js";
 import { CommandManager } from "@/managers/command-manager";
@@ -34,13 +34,18 @@ import {
   englishRecommendedTransformers,
 } from "obscenity";
 import { TickPerformanceTracker } from "@/util/tick-performance-tracker";
+import { IServerAdapter } from "@shared/network/server-adapter";
+import { ISocketAdapter } from "@shared/network/socket-adapter";
+import { createServerAdapter } from "@/network/adapter-factory";
+import { BufferManager } from "./buffer-manager";
+import { serializeServerEvent } from "@shared/events/server-sent/server-event-serialization";
 
 /**
  * Any and all functionality related to sending server side events
  * or listening for client side events should live here.
  */
 export class ServerSocketManager implements Broadcaster {
-  private io: Server;
+  private io: IServerAdapter;
   private delayedIo: DelayedServer;
   private players: Map<string, Player> = new Map();
   private playerDisplayNames: Map<string, string> = new Map();
@@ -55,48 +60,62 @@ export class ServerSocketManager implements Broadcaster {
   private profanityMatcher: RegExpMatcher;
   private profanityCensor: TextCensor;
   private tickPerformanceTracker: TickPerformanceTracker | null = null;
+  private bufferManager: BufferManager;
 
   constructor(port: number, gameServer: GameServer) {
     this.port = port;
+    this.bufferManager = new BufferManager();
 
-    // Set up Express app
-    const app = express();
+    const implementation = getConfig().network.WEBSOCKET_IMPLEMENTATION;
 
-    // Add middleware
-    app.use(express.json());
-    app.use((req, res, next) => {
-      res.header("Access-Control-Allow-Origin", "*");
-      res.header("Access-Control-Allow-Headers", "Content-Type");
-      res.header("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
-      if (req.method === "OPTIONS") {
-        res.sendStatus(200);
+    // For Socket.IO, we need Express for HTTP API routes (biome editor)
+    // For uWebSockets, we can handle HTTP directly or skip it entirely
+    if (implementation === "socketio") {
+      // Set up Express app for Socket.IO
+      const app = express();
+
+      // Add middleware
+      app.use(express.json());
+      app.use((req, res, next) => {
+        res.header("Access-Control-Allow-Origin", "*");
+        res.header("Access-Control-Allow-Headers", "Content-Type");
+        res.header("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
+        if (req.method === "OPTIONS") {
+          res.sendStatus(200);
+        } else {
+          next();
+        }
+      });
+
+      // Register API routes (biome editor only available in development)
+      if (process.env.NODE_ENV !== "production") {
+        console.log("Registering biome routes at /api (development mode)");
+        app.use("/api", biomeRoutes);
       } else {
-        next();
+        console.log("Biome editor disabled in production mode");
       }
-    });
 
-    // Register API routes (biome editor only available in development)
-    if (process.env.NODE_ENV !== "production") {
-      console.log("Registering biome routes at /api (development mode)");
-      app.use("/api", biomeRoutes);
+      // Add a test route to verify Express is working
+      app.get("/test", (req, res) => {
+        res.json({ message: "Express is working!" });
+      });
+
+      // Create HTTP server with Express app
+      this.httpServer = createServer(app);
     } else {
-      console.log("Biome editor disabled in production mode");
+      // For uWebSockets, we don't need Express - create a minimal HTTP server
+      // or pass null if the adapter doesn't need it
+      this.httpServer = createServer((req, res) => {
+        // Minimal HTTP handler - uWebSockets will handle everything
+        res.writeHead(404, { "Content-Type": "text/plain" });
+        res.end("Not Found");
+      });
     }
 
-    // Add a test route to verify Express is working
-    app.get("/test", (req, res) => {
-      res.json({ message: "Express is working!" });
-    });
-
-    // Create HTTP server with Express app
-    this.httpServer = createServer(app);
-
-    // Wrap HTTP server with Socket.io
-    this.io = new Server(this.httpServer, {
-      cors: {
-        origin: "*",
-        methods: ["GET", "POST"],
-      },
+    // Create server adapter based on configuration
+    this.io = createServerAdapter(this.httpServer, {
+      origin: "*",
+      methods: ["GET", "POST"],
     });
 
     // Wrap the io server with DelayedServer to handle latency simulation and byte tracking
@@ -114,12 +133,12 @@ export class ServerSocketManager implements Broadcaster {
     });
     this.profanityCensor = new TextCensor();
 
-    this.io.on("connection", (socket: Socket) => {
+    this.io.on("connection", (socket: ISocketAdapter) => {
       const { displayName } = socket.handshake.query;
 
       // Filter bad words and replace with asterisks
       const filteredDisplayName = displayName
-        ? this.sanitizeText(displayName as string)
+        ? this.sanitizeText(Array.isArray(displayName) ? displayName[0] : displayName)
         : undefined;
 
       // Allow multiple connections with the same display name
@@ -132,7 +151,7 @@ export class ServerSocketManager implements Broadcaster {
   /**
    * Wrap a socket with DelayedServerSocket for latency simulation
    */
-  private wrapSocket(socket: Socket): DelayedServerSocket {
+  private wrapSocket(socket: ISocketAdapter): DelayedServerSocket {
     return new DelayedServerSocket(socket, getConfig().network.SIMULATED_LATENCY_MS);
   }
 
@@ -188,6 +207,46 @@ export class ServerSocketManager implements Broadcaster {
     this.mapManager = mapManager;
   }
 
+  private createPlayerForSocket(socket: ISocketAdapter): Player {
+    const player = new Player(this.getGameManagers());
+    player.setDisplayName(this.playerDisplayNames.get(socket.id) ?? "Unknown");
+
+    const spawnPosition = this.getMapManager().getRandomGrassPosition();
+    if (spawnPosition) {
+      player.getExt(Positionable).setPosition(spawnPosition);
+    } else {
+      console.warn(
+        `No spawn position available for socket ${socket.id}, defaulting player to origin`
+      );
+      const poolManager = PoolManager.getInstance();
+      player.getExt(Positionable).setPosition(poolManager.vector2.claim(0, 0));
+    }
+
+    this.players.set(socket.id, player);
+    this.getEntityManager().addEntity(player);
+
+    return player;
+  }
+
+  private sendInitialDataToSocket(socket: ISocketAdapter, player: Player): void {
+    const delayedSocket = this.wrapSocket(socket);
+    const mapData = this.getMapManager().getMapData();
+    delayedSocket.emit(ServerSentEvents.MAP, mapData);
+
+    const yourIdBuffer = serializeServerEvent(ServerSentEvents.YOUR_ID, [player.getId()]);
+    if (yourIdBuffer !== null) {
+      delayedSocket.emit(ServerSentEvents.YOUR_ID, yourIdBuffer);
+    } else {
+      delayedSocket.emit(ServerSentEvents.YOUR_ID, player.getId());
+    }
+  }
+
+  private broadcastPlayerJoined(player: Player): void {
+    this.broadcastEvent(
+      new PlayerJoinedEvent({ playerId: player.getId(), displayName: player.getDisplayName() })
+    );
+  }
+
   public recreatePlayersForConnectedSockets(): void {
     // Clear existing player map
     this.players.clear();
@@ -197,37 +256,29 @@ export class ServerSocketManager implements Broadcaster {
 
     // Create new players for each connected socket
     sockets.forEach((socket) => {
-      const player = new Player(this.getGameManagers());
-      player.setDisplayName(this.playerDisplayNames.get(socket.id) ?? "Unknown");
-
-      // Position player at random grass location
-      const spawnPosition = this.getMapManager().getRandomGrassPosition();
-      player.getExt(Positionable).setPosition(spawnPosition);
-
-      // Add to player map and entity manager
-      this.players.set(socket.id, player);
-      this.getEntityManager().addEntity(player);
-
-      // Send map and player ID to client
-      // DelayedSocket will automatically encode the payload and track bytes
-      const mapData = this.getMapManager().getMapData();
-      const delayedSocket = this.wrapSocket(socket);
-      delayedSocket.emit(ServerSentEvents.MAP, mapData);
-      delayedSocket.emit(ServerSentEvents.YOUR_ID, player.getId());
-      this.broadcastEvent(
-        new PlayerJoinedEvent({ playerId: player.getId(), displayName: player.getDisplayName() })
-      );
+      const player = this.createPlayerForSocket(socket);
+      this.sendInitialDataToSocket(socket, player);
+      this.broadcastPlayerJoined(player);
     });
   }
 
   public listen(): void {
-    // Listen using the HTTP server directly (which has Express attached)
-    this.httpServer.listen(this.port, () => {
-      console.log(`Server listening on port ${this.port}`);
-    });
+    const implementation = getConfig().network.WEBSOCKET_IMPLEMENTATION;
+
+    if (implementation === "uwebsockets") {
+      // uWebSockets listens directly on the port - no HTTP server needed
+      this.io.listen(this.port, () => {
+        console.log(`Server listening on port ${this.port} (uWebSockets)`);
+      });
+    } else {
+      // Socket.IO: Listen using the HTTP server directly (which has Express attached)
+      this.httpServer.listen(this.port, () => {
+        console.log(`Server listening on port ${this.port} (Socket.IO)`);
+      });
+    }
   }
 
-  private onDisconnect(socket: Socket): void {
+  private onDisconnect(socket: ISocketAdapter): void {
     console.log("Player disconnected", socket.id);
     const player = this.players.get(socket.id);
     const displayName = this.playerDisplayNames.get(socket.id);
@@ -254,7 +305,7 @@ export class ServerSocketManager implements Broadcaster {
     }
   }
 
-  private onCraftRequest(socket: Socket, recipe: RecipeType): void {
+  private onCraftRequest(socket: ISocketAdapter, recipe: RecipeType): void {
     const player = this.players.get(socket.id);
 
     if (player) {
@@ -262,7 +313,10 @@ export class ServerSocketManager implements Broadcaster {
     }
   }
 
-  private onMerchantBuy(socket: Socket, data: { merchantId: string; itemIndex: number }): void {
+  private onMerchantBuy(
+    socket: ISocketAdapter,
+    data: { merchantId: number; itemIndex: number }
+  ): void {
     const player = this.players.get(socket.id);
     if (!player) return;
 
@@ -306,7 +360,8 @@ export class ServerSocketManager implements Broadcaster {
       if (inventory.isFull()) {
         // Drop item 32 pixels down from player
         const playerPos = player.getExt(Positionable).getPosition();
-        const dropPosition = new Vector2(playerPos.x, playerPos.y + 32);
+        const poolManager = PoolManager.getInstance();
+        const dropPosition = poolManager.vector2.claim(playerPos.x, playerPos.y + 32);
         const droppedEntity = this.getEntityManager().createEntityFromItem(item);
         droppedEntity.getExt(Positionable).setPosition(dropPosition);
         console.log(`Dropped ${itemType} on ground for player ${player.getId()}`);
@@ -318,7 +373,7 @@ export class ServerSocketManager implements Broadcaster {
   }
 
   private onPlaceStructure(
-    socket: Socket,
+    socket: ISocketAdapter,
     data: { itemType: ItemType; position: { x: number; y: number } }
   ): void {
     const player = this.players.get(socket.id);
@@ -331,7 +386,8 @@ export class ServerSocketManager implements Broadcaster {
 
     // Validate placement distance
     const playerPos = player.getExt(Positionable).getCenterPosition();
-    const placePos = new Vector2(data.position.x, data.position.y);
+    const poolManager = PoolManager.getInstance();
+    const placePos = poolManager.vector2.claim(data.position.x, data.position.y);
     const distance = playerPos.distance(placePos);
     const { MAX_PLACEMENT_RANGE, TILE_SIZE } = getConfig().world;
 
@@ -426,21 +482,32 @@ export class ServerSocketManager implements Broadcaster {
     }
   }
 
-  private onPlayerInput(socket: Socket, input: Input): void {
+  private onPlayerInput(socket: ISocketAdapter, input: Input): void {
     const player = this.players.get(socket.id);
     if (!player) return;
     player.setInput(input);
   }
 
-  private setPlayerCrafting(socket: Socket, isCrafting: boolean): void {
+  private setPlayerCrafting(socket: ISocketAdapter, isCrafting: boolean): void {
     const player = this.players.get(socket.id);
     if (!player) return;
     player.setIsCrafting(isCrafting);
   }
 
-  private sendFullState(socket: Socket): void {
+  private sendFullState(socket: ISocketAdapter): void {
     const entities = this.getEntityManager().getEntities();
     const currentTime = Date.now();
+
+    // Cache game state data needed for metadata serialization
+    const dayNumber = this.gameServer.getDayNumber();
+    const cycleStartTime = this.gameServer.getCycleStartTime();
+    const cycleDuration = this.gameServer.getCycleDuration();
+    const isDay = this.gameServer.getIsDay();
+    const waveNumber = this.gameServer.getWaveNumber();
+    const waveState = this.gameServer.getWaveState();
+    const phaseStartTime = this.gameServer.getPhaseStartTime();
+    const phaseDuration = this.gameServer.getPhaseDuration();
+    const totalZombies = this.gameServer.getTotalZombies();
 
     // Clear dirty flags for all entities after sending full state
     // so they're not treated as "new" in subsequent updates
@@ -449,26 +516,33 @@ export class ServerSocketManager implements Broadcaster {
     });
 
     const delayedSocket = this.wrapSocket(socket);
-    const fullState = {
-      entities: entities.map((entity) => entity.serialize()),
+
+    // Serialize full state to buffer
+    this.bufferManager.clear();
+    this.bufferManager.writeEntityCount(entities.length);
+    for (const entity of entities) {
+      this.bufferManager.writeEntity(entity, false);
+    }
+    this.bufferManager.writeGameState({
       timestamp: currentTime,
       isFullState: true,
-      dayNumber: this.gameServer.getDayNumber(),
-      cycleStartTime: this.gameServer.getCycleStartTime(),
-      cycleDuration: this.gameServer.getCycleDuration(),
-      isDay: this.gameServer.getIsDay(),
-      // Wave system
-      waveNumber: this.gameServer.getWaveNumber(),
-      waveState: this.gameServer.getWaveState(),
-      phaseStartTime: this.gameServer.getPhaseStartTime(),
-      phaseDuration: this.gameServer.getPhaseDuration(),
-      totalZombies: this.gameServer.getTotalZombies(),
-    };
-    // DelayedSocket will automatically encode the payload and track bytes
-    delayedSocket.emit(ServerSentEvents.GAME_STATE_UPDATE, fullState);
+      dayNumber,
+      cycleStartTime,
+      cycleDuration,
+      isDay,
+      waveNumber,
+      waveState,
+      phaseStartTime,
+      phaseDuration,
+      totalZombies,
+    });
+    this.bufferManager.writeRemovedEntityIds([]);
+
+    const buffer = this.bufferManager.getBuffer();
+    delayedSocket.emit(ServerSentEvents.GAME_STATE_UPDATE, buffer);
   }
 
-  private setupSocketListeners(socket: Socket): void {
+  private setupSocketListeners(socket: ISocketAdapter): void {
     socket.on(ClientSentEvents.PLAYER_INPUT, (input: Input) => this.onPlayerInput(socket, input));
     socket.on(ClientSentEvents.CRAFT_REQUEST, (recipe: RecipeType) =>
       this.onCraftRequest(socket, recipe)
@@ -485,7 +559,7 @@ export class ServerSocketManager implements Broadcaster {
     socket.on(ClientSentEvents.SET_DISPLAY_NAME, (displayName: string) =>
       this.setPlayerDisplayName(socket, displayName)
     );
-    socket.on(ClientSentEvents.MERCHANT_BUY, (data: { merchantId: string; itemIndex: number }) =>
+    socket.on(ClientSentEvents.MERCHANT_BUY, (data: { merchantId: number; itemIndex: number }) =>
       this.onMerchantBuy(socket, data)
     );
     socket.on(ClientSentEvents.REQUEST_FULL_STATE, () => this.sendFullState(socket));
@@ -514,7 +588,7 @@ export class ServerSocketManager implements Broadcaster {
     });
   }
 
-  private setPlayerDisplayName(socket: Socket, displayName: string): void {
+  private setPlayerDisplayName(socket: ISocketAdapter, displayName: string): void {
     const player = this.players.get(socket.id);
     if (!player) return;
     if (displayName.length > 12) {
@@ -525,7 +599,7 @@ export class ServerSocketManager implements Broadcaster {
     player.setDisplayName(filteredDisplayName);
   }
 
-  private onPlayerRespawnRequest(socket: Socket): void {
+  private onPlayerRespawnRequest(socket: ISocketAdapter): void {
     const player = this.players.get(socket.id);
     if (!player) return;
     if (!player.isDead()) return;
@@ -533,7 +607,7 @@ export class ServerSocketManager implements Broadcaster {
     player.respawn();
   }
 
-  private onTeleportToBase(socket: Socket): void {
+  private onTeleportToBase(socket: ISocketAdapter): void {
     const player = this.players.get(socket.id);
     if (!player) return;
     if (player.isDead()) return;
@@ -545,11 +619,20 @@ export class ServerSocketManager implements Broadcaster {
     }
   }
 
-  private onConnection(socket: Socket): void {
+  private onConnection(socket: ISocketAdapter): void {
     console.log(`Player connected: ${socket.id} - ${this.playerDisplayNames.get(socket.id)}`);
 
     // Set up socket event listeners first
     this.setupSocketListeners(socket);
+
+    // Check if there's already a player for this socket ID (can happen on quick reconnect)
+    const existingPlayer = this.players.get(socket.id);
+    if (existingPlayer) {
+      console.log(`Cleaning up existing player for socket ${socket.id} before creating new one`);
+      // Remove the existing player entity to prevent duplicates
+      this.getEntityManager().removeEntity(existingPlayer.getId());
+      this.players.delete(socket.id);
+    }
 
     const totalPlayers = this.getEntityManager()
       .getPlayerEntities()
@@ -558,33 +641,26 @@ export class ServerSocketManager implements Broadcaster {
     if (totalPlayers === 0) {
       console.log("Starting new game");
       this.gameServer.startNewGame();
-      // Don't return early, let the map data be sent below
+      let player = this.players.get(socket.id);
+      let shouldBroadcastJoin = false;
+
+      if (!player) {
+        player = this.createPlayerForSocket(socket);
+        shouldBroadcastJoin = true;
+      }
+
+      this.sendInitialDataToSocket(socket, player);
+
+      if (shouldBroadcastJoin) {
+        this.broadcastPlayerJoined(player);
+      }
+
+      return;
     }
 
-    // If we didn't just create a new game, create a new player
-    if (totalPlayers !== 0) {
-      const player = new Player(this.getGameManagers());
-      player.setDisplayName(this.playerDisplayNames.get(socket.id) ?? "Unknown");
-
-      // Position player at random grass location
-      const spawnPosition = this.getMapManager().getRandomGrassPosition();
-      player.getExt(Positionable).setPosition(spawnPosition);
-
-      this.players.set(socket.id, player);
-      this.getEntityManager().addEntity(player);
-
-      const delayedSocket = this.wrapSocket(socket);
-      delayedSocket.emit(ServerSentEvents.YOUR_ID, player.getId());
-      this.broadcastEvent(
-        new PlayerJoinedEvent({ playerId: player.getId(), displayName: player.getDisplayName() })
-      );
-    }
-
-    // Always send the map data
-    // DelayedSocket will automatically encode the payload and track bytes
-    const mapData = this.getMapManager().getMapData();
-    const delayedSocket = this.wrapSocket(socket);
-    delayedSocket.emit(ServerSentEvents.MAP, mapData);
+    const player = this.createPlayerForSocket(socket);
+    this.sendInitialDataToSocket(socket, player);
+    this.broadcastPlayerJoined(player);
   }
 
   public broadcastEvent(event: GameEvent<any>): void {
@@ -664,13 +740,20 @@ export class ServerSocketManager implements Broadcaster {
       const totalZombies = this.gameServer.getTotalZombies();
       endGameStatePrep();
 
+      // Clear buffer manager for new game loop
+      this.bufferManager.clear();
+
       // Track entity serialization
       const endEntitySerialization =
         this.tickPerformanceTracker?.startMethod("entitySerialization", "broadcastGameState") ||
         (() => {});
-      // For each changed entity, serialize based on dirty state
+      // Write entity count
+      this.bufferManager.writeEntityCount(changedCount);
+      // For each changed entity, serialize to buffer based on dirty state
       // Changed entities will have only dirty extensions, so serialize(true) will include only changes
-      const changedEntityData = changedEntities.map((entity) => entity.serialize(true));
+      for (const entity of changedEntities) {
+        this.bufferManager.writeEntity(entity, true);
+      }
       endEntitySerialization();
 
       // Track game state merging
@@ -705,13 +788,15 @@ export class ServerSocketManager implements Broadcaster {
       // Reuse timestamp from eventData if available, otherwise use Date.now()
       const timestamp = eventData.timestamp !== undefined ? eventData.timestamp : Date.now();
 
-      const gameStateEvent = new GameStateEvent({
-        entities: changedEntityData,
-        removedEntityIds,
-        isFullState: false,
-        timestamp,
+      // Write game state metadata to buffer
+      this.bufferManager.writeGameState({
         ...mergedGameState,
+        timestamp,
+        isFullState: false,
       });
+
+      // Write removed entity IDs
+      this.bufferManager.writeRemovedEntityIds(removedEntityIds);
       endGameStateMerging();
 
       // Track cleanup operations
@@ -725,7 +810,7 @@ export class ServerSocketManager implements Broadcaster {
         if (dirtyEntityInfo.length > 0) {
           this.tickPerformanceTracker.recordDirtyEntities(
             dirtyEntityInfo.map((info) => ({
-              id: info.id,
+              id: String(info.id),
               type: info.type,
               reason: info.reason,
             })),
@@ -750,27 +835,44 @@ export class ServerSocketManager implements Broadcaster {
       const endWebSocketEmit =
         this.tickPerformanceTracker?.startMethod("webSocketEmit", "broadcastGameState") ||
         (() => {});
-      // DelayedServer will automatically encode the payload and track bytes
-      this.delayedIo.emit(gameStateEvent.getType(), gameStateEvent.serialize());
+      // Send buffer directly instead of serializing to objects
+      const buffer = this.bufferManager.getBuffer();
+      this.delayedIo.emit(event.getType(), buffer);
       endWebSocketEmit();
     } else {
-      // DelayedServer will automatically encode the payload and track bytes
-      this.delayedIo.emit(event.getType(), event.serialize());
+      // Try to serialize as binary, fall back to JSON if not supported
+      const serializedData = event.serialize();
+      const binaryBuffer = serializeServerEvent(event.getType(), [serializedData]);
+      if (binaryBuffer !== null) {
+        // Send as binary
+        this.delayedIo.emit(event.getType(), binaryBuffer);
+      } else {
+        // Fall back to JSON
+        this.delayedIo.emit(event.getType(), serializedData);
+      }
     }
   }
 
-  private handlePing(socket: Socket, timestamp: number): void {
+  private handlePing(socket: ISocketAdapter, timestamp: number): void {
     // Send pong event back to client
     // timestamp is a Unix timestamp in milliseconds (UTC, timezone-independent)
     const delayedSocket = this.wrapSocket(socket);
-    const serializedPong = new PongEvent(timestamp).serialize();
-    // DelayedSocket will automatically encode the payload and track bytes
-    delayedSocket.emit(ServerSentEvents.PONG, serializedPong);
+
+    // Try to serialize as binary, fall back to JSON if not supported
+    const binaryBuffer = serializeServerEvent(ServerSentEvents.PONG, [{ timestamp }]);
+    if (binaryBuffer !== null) {
+      // Send as binary
+      delayedSocket.emit(ServerSentEvents.PONG, binaryBuffer);
+    } else {
+      // Fall back to JSON
+      const pongEvent = new PongEvent(timestamp);
+      delayedSocket.emit(ServerSentEvents.PONG, pongEvent.serialize());
+    }
     // Note: We no longer calculate latency here because it can be negative due to clock skew.
     // Instead, the client calculates round-trip latency and sends it via PING_UPDATE event.
   }
 
-  private handlePingUpdate(socket: Socket, latency: number): void {
+  private handlePingUpdate(socket: ISocketAdapter, latency: number): void {
     // Update player's ping with the latency calculated by the client
     // This ensures accurate ping calculation without clock skew issues
     const player = this.players.get(socket.id);
@@ -780,7 +882,7 @@ export class ServerSocketManager implements Broadcaster {
     }
   }
 
-  private async handleChat(socket: Socket, message: string): Promise<void> {
+  private async handleChat(socket: ISocketAdapter, message: string): Promise<void> {
     const player = this.players.get(socket.id);
     if (!player) return;
 
@@ -795,11 +897,17 @@ export class ServerSocketManager implements Broadcaster {
       // If command returned a message, send it as a system message
       if (result) {
         const chatEvent = new ChatMessageEvent({
-          playerId: "system",
+          playerId: 0, // System message uses ID 0
           message: result,
         });
         const delayedSocket = this.wrapSocket(socket);
-        delayedSocket.emit(ServerSentEvents.CHAT_MESSAGE, chatEvent.getData());
+        const chatData = chatEvent.getData();
+        const chatBuffer = serializeServerEvent(ServerSentEvents.CHAT_MESSAGE, [chatData]);
+        if (chatBuffer !== null) {
+          delayedSocket.emit(ServerSentEvents.CHAT_MESSAGE, chatBuffer);
+        } else {
+          delayedSocket.emit(ServerSentEvents.CHAT_MESSAGE, chatData);
+        }
       }
       return;
     }
@@ -812,8 +920,13 @@ export class ServerSocketManager implements Broadcaster {
     });
 
     const chatEventData = chatEvent.getData();
-    // DelayedServer will automatically encode the payload and track bytes
-    this.delayedIo.emit(ServerSentEvents.CHAT_MESSAGE, chatEventData);
+    // Try to serialize as binary
+    const chatBuffer = serializeServerEvent(ServerSentEvents.CHAT_MESSAGE, [chatEventData]);
+    if (chatBuffer !== null) {
+      this.delayedIo.emit(ServerSentEvents.CHAT_MESSAGE, chatBuffer);
+    } else {
+      this.delayedIo.emit(ServerSentEvents.CHAT_MESSAGE, chatEventData);
+    }
   }
 
   /**

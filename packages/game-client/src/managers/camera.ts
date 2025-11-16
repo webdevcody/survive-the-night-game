@@ -1,12 +1,13 @@
 import Vector2 from "@shared/util/vector2";
+import PoolManager from "@shared/util/pool-manager";
 
 export class CameraManager {
   private ctx: CanvasRenderingContext2D;
   private scale: number = 1;
-  private position: Vector2 = new Vector2(0, 0);
-  private targetPosition: Vector2 = new Vector2(0, 0);
+  private position: Vector2 = PoolManager.getInstance().vector2.claim(0, 0);
+  private targetPosition: Vector2 = PoolManager.getInstance().vector2.claim(0, 0);
   private readonly LERP_FACTOR = 0.04;
-  private shakeOffset: Vector2 = new Vector2(0, 0);
+  private shakeOffset: Vector2 = PoolManager.getInstance().vector2.claim(0, 0);
   private shakeMagnitude: number = 0;
   private shakeDurationMs: number = 0;
   private shakeStartTime: number = 0;
@@ -16,7 +17,8 @@ export class CameraManager {
   }
 
   getPosition(): Vector2 {
-    return new Vector2(this.position.x + this.shakeOffset.x, this.position.y + this.shakeOffset.y);
+    const poolManager = PoolManager.getInstance();
+    return poolManager.vector2.claim(this.position.x + this.shakeOffset.x, this.position.y + this.shakeOffset.y);
   }
 
   getScale(): number {

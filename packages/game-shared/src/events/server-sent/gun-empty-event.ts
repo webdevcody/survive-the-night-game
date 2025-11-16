@@ -1,11 +1,11 @@
 import { EventType, ServerSentEvents } from "../events";
 import { GameEvent } from "@/events/types";
 
-export class GunEmptyEvent implements GameEvent<string> {
+export class GunEmptyEvent implements GameEvent<number> {
   private readonly type: EventType;
-  private readonly entityId: string;
+  private readonly entityId: number;
 
-  constructor(entityid: string) {
+  constructor(entityid: number) {
     this.type = ServerSentEvents.GUN_EMPTY;
     this.entityId = entityid;
   }
@@ -14,11 +14,11 @@ export class GunEmptyEvent implements GameEvent<string> {
     return this.type;
   }
 
-  serialize(): string {
+  serialize(): number {
     return this.entityId;
   }
 
-  getEntityId(): string {
+  getEntityId(): number {
     return this.entityId;
   }
 }
