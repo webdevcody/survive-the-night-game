@@ -102,6 +102,66 @@ export class WeaponsHUD implements Renderable {
     this.initialized = true;
   }
 
+  private drawHotkeyForSegment(
+    ctx: CanvasRenderingContext2D,
+    index: number,
+    cx: number,
+    cy: number,
+    rIn: number,
+    rOut: number,
+    scale: number
+  ) {
+    const seg = this.segments[index];
+    const angle = seg.mid;
+
+    // Base position toward inner radius
+    const baseDist = rIn + (rOut - rIn) * 0.08;
+    let x = cx + Math.cos(angle) * baseDist;
+    let y = cy + Math.sin(angle) * baseDist;
+
+    // Shift into a consistent “corner” inside each wedge
+    const perp = angle - Math.PI / 2;
+    const shift = 15 * scale;
+    x += Math.cos(perp) * shift;
+    y += Math.sin(perp) * shift;
+
+    // Hotkey (1–9)
+    const label = String(index + 1);
+
+    // Smaller text
+    const size = 14 * scale;
+    ctx.font = `bold ${size}px Arial`;
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+
+    // Locked vs owned color
+    const owned = this.items[index].owned;
+
+    const mainColor = owned ? "#d4a574" : "#6b4b33"; // gold vs dim brown
+    const outlineColor = "#000000";
+
+    // Slight shadow for nicer UI
+    ctx.shadowColor = "rgba(0,0,0,0.3)";
+    ctx.shadowBlur = 2 * scale;
+    ctx.shadowOffsetX = 0;
+    ctx.shadowOffsetY = 0;
+
+    // Multi-direction outline (cheap & fast)
+    const o = 1 * scale;
+    ctx.fillStyle = outlineColor;
+    ctx.fillText(label, x - o, y);
+    ctx.fillText(label, x + o, y);
+    ctx.fillText(label, x, y - o);
+    ctx.fillText(label, x, y + o);
+
+    // Main text (gold or dim brown)
+    ctx.fillStyle = mainColor;
+    ctx.fillText(label, x, y);
+
+    // Reset shadow for icons
+    ctx.shadowBlur = 0;
+  }
+
   // Tint locked weapon sprite once (never repeated)
   private createTint(img: HTMLImageElement): HTMLCanvasElement {
     const c = document.createElement("canvas");
@@ -225,6 +285,8 @@ export class WeaponsHUD implements Renderable {
       ctx.stroke();
 
       this.drawIcon(ctx, item, cx, cy, seg.mid, rIn, rOut, scale);
+      // TODO: maybe add hotkeys and if more than 9 add combination of F + 1 and so on
+      // this.drawHotkeyForSegment(ctx, i, cx, cy, rIn, rOut, scale);
     }
   }
 
