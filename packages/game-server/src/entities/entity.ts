@@ -1,14 +1,16 @@
 import { IEntityManager, IGameManagers } from "@/managers/types";
 import { Extension, ExtensionCtor } from "@/extensions/types";
-import { EntityType, RawEntity } from "@/types/entity";
+import { EntityType } from "@/types/entity";
 import { IEntity } from "./types";
 import { EntityCategory, EntityCategories } from "@shared/entities";
+import { BufferWriter } from "@shared/util/buffer-serialization";
+import { entityTypeRegistry } from "@shared/util/entity-type-encoding";
 
 export class Entity<TSerializableFields extends readonly string[] = readonly string[]>
   extends EventTarget
   implements IEntity
 {
-  private readonly id: string;
+  private readonly id: number;
   private readonly type: EntityType;
   protected extensions: Map<ExtensionCtor, Extension> = new Map();
   private updatableExtensions: Extension[] = []; // Extensions that have an update method
@@ -50,7 +52,7 @@ export class Entity<TSerializableFields extends readonly string[] = readonly str
     return this.type;
   }
 
-  public getId(): string {
+  public getId(): number {
     return this.id;
   }
 
@@ -210,56 +212,87 @@ export class Entity<TSerializableFields extends readonly string[] = readonly str
     return extension as T;
   }
 
-  public serialize(onlyDirty: boolean = false): RawEntity {
+  public serializeToBuffer(writer: BufferWriter, onlyDirty: boolean = false): void {
     // For new entities (first serialization), always serialize all extensions
-    // This ensures clients receive all extensions even if they haven't changed from initial values
     const isFirstSerialization = !this.hasBeenSerialized;
     const shouldSerializeAllExtensions = !onlyDirty || isFirstSerialization;
 
-    const serialized: RawEntity = {
-      id: this.id,
-      type: this.type,
-      extensions: Array.from(this.extensions.values())
-        .map((ext) => {
-          if (shouldSerializeAllExtensions) {
-            // Serialize all extensions (either full state or first time)
-            return ext.serialize();
-          } else {
-            // Only serialize dirty extensions for subsequent updates
-            if (ext.isDirty()) {
-              // Use serializeDirty if available, otherwise fall back to serialize
-              if (ext.serializeDirty) {
-                const dirtyData = ext.serializeDirty();
-                return dirtyData !== null ? dirtyData : ext.serialize();
-              }
-              return ext.serialize();
-            }
-            return null;
-          }
-        })
-        .filter((ext) => ext !== null) as any[],
-    };
+    // Write entity ID as unsigned 2-byte integer
+    writer.writeUInt16(this.id);
 
-    // Mark entity as having been serialized
-    this.hasBeenSerialized = true;
+    // Write entity type as 1-byte numeric ID
+    writer.writeUInt8(entityTypeRegistry.encode(this.type));
 
-    // Only include removedExtensions if there are any
-    if (this.removedExtensions.length > 0) {
-      serialized.removedExtensions = [...this.removedExtensions];
-      // Clear the removed extensions after serializing
-      this.removedExtensions = [];
-    }
-
-    // Serialize custom entity fields based on serializableFields definition
+    // Write custom entity fields based on serializableFields definition
+    // First write count of fields that will be included
+    let fieldsToWrite = 0;
+    const fieldValues: Array<{ name: string; value: any }> = [];
     if (this.serializableFields.length > 0) {
       for (const fieldName of this.serializableFields) {
         if (!onlyDirty || this.dirtyFields.has(fieldName)) {
-          // Access the field value from the entity instance
-          serialized[fieldName] = (this as any)[fieldName];
+          fieldsToWrite++;
+          fieldValues.push({
+            name: fieldName,
+            value: (this as any)[fieldName],
+          });
         }
       }
     }
+    writer.writeUInt32(fieldsToWrite);
+    // Write each field: name, type byte, then value
+    // Type bytes: 0 = string, 1 = number, 2 = boolean, 3 = object (JSON string)
+    for (const field of fieldValues) {
+      writer.writeString(field.name);
+      const value = field.value;
+      if (typeof value === "string") {
+        writer.writeUInt32(0); // Type: string
+        writer.writeString(value);
+      } else if (typeof value === "number") {
+        writer.writeUInt32(1); // Type: number
+        writer.writeFloat64(value);
+      } else if (typeof value === "boolean") {
+        writer.writeUInt32(2); // Type: boolean
+        writer.writeBoolean(value);
+      } else if (value && typeof value === "object") {
+        writer.writeUInt32(3); // Type: object (JSON string)
+        writer.writeString(JSON.stringify(value));
+      } else {
+        writer.writeUInt32(0); // Type: string (fallback)
+        writer.writeString(String(value ?? ""));
+      }
+    }
 
-    return serialized;
+    // Write extensions
+    const extensionsToWrite: Extension[] = [];
+    for (const ext of this.extensions.values()) {
+      if (shouldSerializeAllExtensions) {
+        extensionsToWrite.push(ext);
+      } else {
+        // Only serialize dirty extensions for subsequent updates
+        if (ext.isDirty()) {
+          extensionsToWrite.push(ext);
+        }
+      }
+    }
+    writer.writeUInt32(extensionsToWrite.length);
+    for (const ext of extensionsToWrite) {
+      // Write extension to temporary buffer first to get its length
+      const tempWriter = new BufferWriter(1024);
+      ext.serializeToBuffer(tempWriter);
+      const extensionBuffer = tempWriter.getBuffer();
+      // Write extension data (length prefix handled by writeBuffer)
+      writer.writeBuffer(extensionBuffer);
+    }
+
+    // Write removed extensions array (if any)
+    writer.writeUInt32(this.removedExtensions.length);
+    for (const removedType of this.removedExtensions) {
+      writer.writeString(removedType);
+    }
+    // Clear the removed extensions after serializing
+    this.removedExtensions = [];
+
+    // Mark entity as having been serialized
+    this.hasBeenSerialized = true;
   }
 }

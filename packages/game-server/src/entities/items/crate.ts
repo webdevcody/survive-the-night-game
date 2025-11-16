@@ -5,20 +5,24 @@ import { IGameManagers } from "@/managers/types";
 import { Entities } from "@/constants";
 import { getConfig } from "@shared/config";
 import { Entity } from "@/entities/entity";
-import { RawEntity, ItemState } from "@/types/entity";
+import { ItemState } from "@/types/entity";
 import Vector2 from "@/util/vector2";
+import PoolManager from "@shared/util/pool-manager";
 import Groupable from "@/extensions/groupable";
 import Static from "@/extensions/static";
 import Inventory from "@/extensions/inventory";
 
 export class Crate extends Entity {
-  public static readonly Size = new Vector2(16, 16);
+  public static get Size(): Vector2 {
+    return PoolManager.getInstance().vector2.claim(16, 16);
+  }
 
   constructor(gameManagers: IGameManagers, itemState?: ItemState) {
     super(gameManagers, Entities.CRATE);
-
-    this.addExtension(new Positionable(this).setSize(Crate.Size));
-    this.addExtension(new Collidable(this).setSize(Crate.Size));
+    const poolManager = PoolManager.getInstance();
+    const size = poolManager.vector2.claim(16, 16);
+    this.addExtension(new Positionable(this).setSize(size));
+    this.addExtension(new Collidable(this).setSize(size));
     this.addExtension(
       new Destructible(this)
         .setMaxHealth(getConfig().world.CRATE_HEALTH)
@@ -40,10 +44,4 @@ export class Crate extends Entity {
     this.getExt(Inventory).scatterItems(this.getExt(Positionable).getPosition());
   }
 
-  public serialize(): RawEntity {
-    return {
-      ...super.serialize(),
-      health: this.getExt(Destructible).getHealth(),
-    };
-  }
 }

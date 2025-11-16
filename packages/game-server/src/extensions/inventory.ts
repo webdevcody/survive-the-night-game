@@ -1,4 +1,4 @@
-import { Extension, ExtensionSerialized } from "@/extensions/types";
+import { Extension } from "@/extensions/types";
 import { InventoryItem, ItemType, isWeapon } from "../../../game-shared/src/util/inventory";
 import { recipes, RecipeType } from "../../../game-shared/src/util/recipes";
 import { Broadcaster } from "@/managers/types";
@@ -6,7 +6,10 @@ import { PlayerPickedUpItemEvent } from "@shared/events/server-sent/pickup-item-
 import Positionable from "@/extensions/positionable";
 import { IEntity } from "@/entities/types";
 import Vector2 from "@/util/vector2";
+import PoolManager from "@shared/util/pool-manager";
 import { getConfig } from "@/config";
+import { BufferWriter } from "@shared/util/buffer-serialization";
+import { encodeExtensionType } from "@shared/util/extension-type-encoding";
 
 /**
  * Item drop table with weighted chances.
@@ -192,7 +195,8 @@ export default class Inventory implements Extension {
       if (!entity) return;
       const theta = Math.random() * 2 * Math.PI;
       const radius = Math.random() * offset;
-      const pos = new Vector2(
+      const poolManager = PoolManager.getInstance();
+      const pos = poolManager.vector2.claim(
         position.x + radius * Math.cos(theta),
         position.y + radius * Math.sin(theta)
       );
@@ -227,17 +231,24 @@ export default class Inventory implements Extension {
     this.dirty = false;
   }
 
-  public serializeDirty(): ExtensionSerialized | null {
-    if (!this.dirty) {
-      return null;
-    }
-    return this.serialize();
-  }
-
-  public serialize(): ExtensionSerialized {
-    return {
-      type: Inventory.type,
-      items: this.items,
-    };
+  public serializeToBuffer(writer: BufferWriter): void {
+    writer.writeUInt32(encodeExtensionType(Inventory.type));
+    // Serialize items array, handling null values
+    writer.writeArray(this.items, (item) => {
+      if (item === null || item === undefined) {
+        writer.writeBoolean(false);
+      } else {
+        writer.writeBoolean(true);
+        writer.writeString(item.itemType);
+        // Serialize ItemState
+        writer.writeRecord(item.state || {}, (value) => {
+          if (typeof value === "number") {
+            writer.writeFloat64(value);
+          } else {
+            writer.writeString(String(value));
+          }
+        });
+      }
+    });
   }
 }

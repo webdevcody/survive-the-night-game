@@ -4,14 +4,14 @@ import { WeaponKey } from "../../util/inventory";
 import { Direction } from "../../util/direction";
 
 interface PlayerAttackedEventData {
-  playerId: string;
+  playerId: number;
   weaponKey: WeaponKey;
   attackDirection?: Direction;
 }
 
 export class PlayerAttackedEvent implements GameEvent<PlayerAttackedEventData> {
   private readonly type: EventType = ServerSentEvents.PLAYER_ATTACKED;
-  private readonly playerId: string;
+  private readonly playerId: number;
   private readonly weaponKey: WeaponKey;
   private readonly attackDirection?: Direction;
 
@@ -25,7 +25,7 @@ export class PlayerAttackedEvent implements GameEvent<PlayerAttackedEventData> {
     return this.type;
   }
 
-  getPlayerId(): string {
+  getPlayerId(): number {
     return this.playerId;
   }
 

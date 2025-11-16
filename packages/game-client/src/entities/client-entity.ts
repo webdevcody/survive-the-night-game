@@ -23,7 +23,15 @@ export abstract class ClientEntity extends ClientEntityBase implements Renderabl
     const positionable = this.getExt(ClientPositionable);
     const interactive = this.getExt(ClientInteractive);
 
-    if (myPlayer && interactive.getDisplayName()) {
+    if (!myPlayer) {
+      return;
+    }
+
+    if (myPlayer.getId() === this.getId()) {
+      return;
+    }
+
+    if (interactive.getDisplayName()) {
       const displayName = formatDisplayName(interactive.getDisplayName());
       const isPlaceable = this.hasExt(ClientPlaceable);
 
@@ -35,13 +43,17 @@ export abstract class ClientEntity extends ClientEntityBase implements Renderabl
       interactMessage += `${getConfig().keybindings.INTERACT}`;
       text += ` (${interactMessage})`;
 
+      // Check if this is the closest interactive entity (cached in gameState)
+      const isClosest = gameState.closestInteractiveEntityId === this.getId();
+
       renderInteractionText(
         ctx,
         text,
         positionable.getCenterPosition(),
         positionable.getPosition(),
         myPlayer.getCenterPosition(),
-        interactive.getOffset()
+        interactive.getOffset(),
+        isClosest
       );
     }
   }

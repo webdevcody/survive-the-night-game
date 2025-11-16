@@ -1,6 +1,8 @@
-import { Extension, ExtensionSerialized } from "@/extensions/types";
+import { Extension } from "@/extensions/types";
 import { IEntity } from "@/entities/types";
 import { ExtensionTypes } from "@/util/extension-types";
+import { BufferWriter } from "@shared/util/buffer-serialization";
+import { encodeExtensionType } from "@shared/util/extension-type-encoding";
 
 export default class Static implements Extension {
   public static readonly type = ExtensionTypes.STATIC;
@@ -27,9 +29,7 @@ export default class Static implements Extension {
     this.dirty = false;
   }
 
-  public serialize(): ExtensionSerialized {
-    return {
-      type: Static.type,
-    };
+  public serializeToBuffer(writer: BufferWriter): void {
+    writer.writeUInt32(encodeExtensionType(Static.type));
   }
 }

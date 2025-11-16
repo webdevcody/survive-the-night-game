@@ -1,27 +1,24 @@
-import { Socket, Server } from "socket.io";
-import { encodePayload } from "@shared/util/compression";
+import { ISocketAdapter } from "@shared/network/socket-adapter";
+import { IServerAdapter } from "@shared/network/server-adapter";
 
 /**
- * Wraps a socket.io Server Socket to add simulated latency to all emit calls
- * and automatically encode payloads for network transmission
+ * Wraps a socket adapter to add simulated latency to all emit calls
+ * while preserving binary payloads
  */
 export class DelayedServerSocket {
-  private socket: Socket;
+  private socket: ISocketAdapter;
   private latencyMs: number;
 
-  constructor(socket: Socket, latencyMs: number = 0) {
+  constructor(socket: ISocketAdapter, latencyMs: number = 0) {
     this.socket = socket;
     this.latencyMs = latencyMs;
   }
 
   /**
-   * Emit an event with simulated latency and automatic payload encoding
+   * Emit an event with simulated latency while preserving binary payloads
    */
   public emit(event: string, ...args: any[]): boolean {
-    // Encode all arguments (except the first which is the event name)
-    const encodedArgs = args.map((arg) => encodePayload(arg));
-
-    const send = () => this.socket.emit(event, ...encodedArgs);
+    const send = () => this.socket.emit(event, ...args);
 
     if (this.latencyMs > 0) {
       setTimeout(send, this.latencyMs);
@@ -58,31 +55,31 @@ export class DelayedServerSocket {
   /**
    * Get handshake data
    */
-  public get handshake(): Socket["handshake"] {
+  public get handshake(): ISocketAdapter["handshake"] {
     return this.socket.handshake;
   }
 
   /**
-   * Get the underlying socket instance (for cases where direct access is needed)
+   * Get the underlying socket adapter instance (for cases where direct access is needed)
    */
-  public getUnderlyingSocket(): Socket {
+  public getUnderlyingSocket(): ISocketAdapter {
     return this.socket;
   }
 }
 
 /**
- * Wraps a socket.io Server to add simulated latency to all broadcast emit calls
- * and automatically encode payloads for network transmission with byte tracking
+ * Wraps a server adapter to add simulated latency to all broadcast emit calls
+ * with optional bandwidth tracking
  */
 export class DelayedServer {
-  private io: Server;
+  private io: IServerAdapter;
   private latencyMs: number;
   private totalBytesSent: number = 0;
   private bytesSentThisSecond: number = 0;
   private lastSecondTimestamp: number = Date.now();
   private statsInterval: NodeJS.Timeout | null = null;
 
-  constructor(io: Server, latencyMs: number = 0) {
+  constructor(io: IServerAdapter, latencyMs: number = 0) {
     this.io = io;
     this.latencyMs = latencyMs;
 
@@ -98,6 +95,10 @@ export class DelayedServer {
   private calculateEventBytes(eventData: any): number {
     if (eventData === undefined || eventData === null) {
       return 0;
+    }
+    // If it's a Buffer, return its length directly
+    if (Buffer.isBuffer(eventData)) {
+      return eventData.length;
     }
     try {
       const serialized = JSON.stringify(eventData);
@@ -182,18 +183,17 @@ export class DelayedServer {
   }
 
   /**
-   * Emit an event to all connected clients with simulated latency and automatic payload encoding
+   * Emit an event to all connected clients with simulated latency
    */
   public emit(event: string, ...args: any[]): boolean {
-    // Encode all arguments (except the first which is the event name)
-    const encodedArgs = args.map((arg) => encodePayload(arg));
+    const processedArgs = args;
 
     // Track bytes sent (for first arg, which is typically the payload)
-    if (encodedArgs.length > 0) {
-      this.trackBytesSent(encodedArgs[0]);
+    if (processedArgs.length > 0) {
+      this.trackBytesSent(processedArgs[0]);
     }
 
-    const send = () => this.io.emit(event, ...encodedArgs);
+    const send = () => this.io.emit(event, ...processedArgs);
 
     if (this.latencyMs > 0) {
       setTimeout(send, this.latencyMs);
@@ -225,14 +225,14 @@ export class DelayedServer {
   /**
    * Get the sockets namespace
    */
-  public get sockets(): Server["sockets"] {
+  public get sockets(): IServerAdapter["sockets"] {
     return this.io.sockets;
   }
 
   /**
-   * Get the underlying server instance (for cases where direct access is needed)
+   * Get the underlying server adapter instance (for cases where direct access is needed)
    */
-  public getUnderlyingServer(): Server {
+  public getUnderlyingServer(): IServerAdapter {
     return this.io;
   }
 }

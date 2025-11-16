@@ -16,6 +16,7 @@ import { characterRegistry } from "./character-registry";
 import { CHARACTER_CONFIGS } from "./character-configs";
 import { initializeEntities, Zombies } from "../constants";
 import { generateEntities } from "../constants/entity-generator";
+import { entityTypeRegistry } from "../util/entity-type-encoding";
 
 // Export behavior configs for use by systems
 export * from "./behavior-configs";
@@ -68,6 +69,9 @@ Zombies.push(...zombieRegistry.getAllZombieTypes());
 // This ensures adding a new item/weapon/etc. to configs automatically adds it to Entities
 const generatedEntities = generateEntities();
 initializeEntities(generatedEntities);
+
+// Initialize entity type registry for efficient serialization (1 byte per type)
+entityTypeRegistry.initialize();
 
 export * from "./zombie-registry";
 export * from "./zombie-configs";

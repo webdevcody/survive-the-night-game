@@ -1,25 +1,27 @@
 import Vector2 from "@shared/util/vector2";
+import PoolManager from "@shared/util/pool-manager";
 import { ExtensionTypes } from "../../../game-shared/src/util/extension-types";
 import { ClientExtensionSerialized } from "@/extensions/types";
 import { BaseClientExtension } from "./base-extension";
+import { BufferReader } from "@shared/util/buffer-serialization";
 
 export class ClientPositionable extends BaseClientExtension {
   public static readonly type = ExtensionTypes.POSITIONABLE;
 
-  private position: Vector2 = new Vector2(0, 0);
-  private size: Vector2 = new Vector2(0, 0);
+  private position: Vector2 = PoolManager.getInstance().vector2.claim(0, 0);
+  private size: Vector2 = PoolManager.getInstance().vector2.claim(0, 0);
 
   public getSize(): Vector2 {
     return this.size.clone();
   }
 
   public setSize(size: Vector2): this {
-    this.size = size;
+    this.size.reset(size.x, size.y);
     return this;
   }
 
   public getCenterPosition(): Vector2 {
-    return this.size.div(2).add(this.position);
+    return this.size.clone().div(2).add(this.position);
   }
 
   public getPosition(): Vector2 {
@@ -27,12 +29,23 @@ export class ClientPositionable extends BaseClientExtension {
   }
 
   public setPosition(position: Vector2): void {
-    this.position = position;
+    this.position.reset(position.x, position.y);
   }
 
   public deserialize(data: ClientExtensionSerialized): this {
-    this.position = new Vector2(data.position.x, data.position.y);
-    this.size = new Vector2(data.size.x, data.size.y);
+    this.position.reset(data.position.x, data.position.y);
+    this.size.reset(data.size.x, data.size.y);
+    return this;
+  }
+
+  public deserializeFromBuffer(reader: BufferReader): this {
+    // Type is already read by the entity deserializer
+    const pos = reader.readPosition2();
+    const size = reader.readSize2();
+    this.position.reset(pos.x, pos.y);
+    this.size.reset(size.x, size.y);
+    PoolManager.getInstance().vector2.release(pos);
+    PoolManager.getInstance().vector2.release(size);
     return this;
   }
 }

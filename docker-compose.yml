@@ -28,6 +28,7 @@ services:
     environment:
       - NODE_ENV=production
       - ADMIN_PASSWORD=${ADMIN_PASSWORD:-admin}
+      - ENABLE_PERFORMANCE_MONITORING=true
     networks:
       - web
 

@@ -1,11 +1,12 @@
 import { getConfig } from "@/config";
 import { Hitbox } from "./hitbox";
 import Vector2 from "./vector2";
+import PoolManager from "./pool-manager";
 
 export { Vector2 };
 
 export function roundVector2(vector: Vector2): Vector2 {
-  return new Vector2(Math.round(vector.x), Math.round(vector.y));
+  return PoolManager.getInstance().vector2.claim(Math.round(vector.x), Math.round(vector.y));
 }
 
 export function distance(a: Vector2, b: Vector2): number {
@@ -14,12 +15,13 @@ export function distance(a: Vector2, b: Vector2): number {
 
 export function velocityTowards(a: Vector2, b: Vector2): Vector2 {
   const d = distance(a, b);
+  const poolManager = PoolManager.getInstance();
 
   if (d === 0) {
-    return new Vector2(0, 0);
+    return poolManager.vector2.claim(0, 0);
   }
 
-  return new Vector2((b.x - a.x) / d, (b.y - a.y) / d);
+  return poolManager.vector2.claim((b.x - a.x) / d, (b.y - a.y) / d);
 }
 
 interface Node {
@@ -81,7 +83,8 @@ export function pathTowards(
       }
 
       // Return the center position of the next tile to move to
-      return new Vector2(
+      const poolManager = PoolManager.getInstance();
+      return poolManager.vector2.claim(
         firstStep.x * getConfig().world.TILE_SIZE + getConfig().world.TILE_SIZE / 2,
         firstStep.y * getConfig().world.TILE_SIZE + getConfig().world.TILE_SIZE / 2
       );
@@ -167,8 +170,9 @@ export function pathTowards(
 
 export function normalizeVector(vector: Vector2): Vector2 {
   const magnitude = Math.sqrt(vector.x * vector.x + vector.y * vector.y);
-  if (magnitude === 0) return new Vector2(0, 0);
-  return new Vector2(vector.x / magnitude, vector.y / magnitude);
+  const poolManager = PoolManager.getInstance();
+  if (magnitude === 0) return poolManager.vector2.claim(0, 0);
+  return poolManager.vector2.claim(vector.x / magnitude, vector.y / magnitude);
 }
 
 export function isColliding(a: Hitbox, b: Hitbox): boolean {

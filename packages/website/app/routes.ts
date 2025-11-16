@@ -25,4 +25,8 @@ export default [
     path: "/terms",
     file: "routes/terms.tsx",
   },
+  {
+    path: "/.well-known/*",
+    file: "routes/.well-known.$.tsx",
+  },
 ] satisfies RouteConfig;

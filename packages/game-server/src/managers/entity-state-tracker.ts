@@ -3,7 +3,7 @@ import { WaveState } from "@shared/types/wave";
 import { ENABLE_PERFORMANCE_MONITORING } from "@/config/config";
 
 export interface DirtyEntityInfo {
-  id: string;
+  id: number;
   type: string;
   dirtyExtensions: string[];
   dirtyFields: string[];
@@ -11,9 +11,9 @@ export interface DirtyEntityInfo {
 }
 
 export class EntityStateTracker {
-  private removedEntityIds: Set<string> = new Set();
+  private removedEntityIds: Set<number> = new Set();
   private dirtyEntities: Set<IEntity> = new Set();
-  private dirtyEntityInfo: Map<string, DirtyEntityInfo> = new Map();
+  private dirtyEntityInfo: Map<number, DirtyEntityInfo> = new Map();
   private previousGameState: {
     dayNumber?: number;
     cycleStartTime?: number;
@@ -27,7 +27,7 @@ export class EntityStateTracker {
     totalZombies?: number;
   } = {};
 
-  public trackRemoval(entityId: string): void {
+  public trackRemoval(entityId: number): void {
     this.removedEntityIds.add(entityId);
   }
 
@@ -81,7 +81,7 @@ export class EntityStateTracker {
     this.dirtyEntityInfo.clear();
   }
 
-  public getRemovedEntityIds(): string[] {
+  public getRemovedEntityIds(): number[] {
     return Array.from(this.removedEntityIds);
   }
 
@@ -89,12 +89,12 @@ export class EntityStateTracker {
     this.removedEntityIds.clear();
   }
 
-  public getPreviousEntityState(entityId: string): any {
+  public getPreviousEntityState(entityId: number): any {
     // No longer tracking previous state - dirty flags handle change detection
     return null;
   }
 
-  public getPreviousExtensionTypes(entityId: string): string[] {
+  public getPreviousExtensionTypes(entityId: number): string[] {
     // No longer tracking extension types - entity's removedExtensions array handles this
     return [];
   }

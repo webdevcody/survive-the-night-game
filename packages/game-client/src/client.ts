@@ -21,7 +21,7 @@ import { Direction } from "../../game-shared/src/util/direction";
 import { Input } from "../../game-shared/src/util/input";
 import { ClientEntityBase } from "@/extensions/client-entity";
 import { ClientDestructible } from "@/extensions/destructible";
-import { ClientPositionable, ClientResourcesBag } from "@/extensions";
+import { ClientPositionable, ClientResourcesBag, ClientInventory } from "@/extensions";
 import { CampsiteFireClient } from "@/entities/environment/campsite-fire";
 import { WaveState } from "@shared/types/wave";
 import { ParticleManager } from "./managers/particles";
@@ -31,9 +31,10 @@ import { SequenceManager } from "./managers/sequence-manager";
 import { getConfig } from "@shared/config";
 import { distance } from "@shared/util/physics";
 import Vector2 from "@shared/util/vector2";
+import PoolManager from "@shared/util/pool-manager";
 import { getAssetSpriteInfo } from "@/managers/asset";
 import { PlacementManager } from "@/managers/placement";
-import { isWeapon, ItemType } from "@shared/util/inventory";
+import { isWeapon, ItemType, InventoryItem } from "@shared/util/inventory";
 
 export class GameClient {
   private ctx: CanvasRenderingContext2D;
@@ -417,7 +418,7 @@ export class GameClient {
       this.mapManager,
       () => this.getMyPlayer(),
       () => this.gameState.entities,
-      this.socketManager.getSocket()
+      () => this.socketManager.getSocket()
     );
 
     // Set up ping display
@@ -581,7 +582,10 @@ export class GameClient {
 
       if (isAlive) {
         // Get inputs with aim angle calculated from mouse position
-        const playerPos = player.getCenterPosition();
+        if (!player.hasExt(ClientPositionable)) {
+          return; // Player doesn't have position yet
+        }
+        const playerPos = player.getExt(ClientPositionable).getCenterPosition();
         const cameraPos = this.cameraManager.getPosition();
         const cameraScale = this.cameraManager.getScale();
         const input = this.inputManager.getInputsWithAim(
@@ -688,8 +692,8 @@ export class GameClient {
 
     // Check if player is already near the campsite
     const biomePositions = this.mapManager.getBiomePositions();
-    if (biomePositions?.campsite) {
-      const playerPos = player.getCenterPosition();
+    if (biomePositions?.campsite && player.hasExt(ClientPositionable)) {
+      const playerPos = player.getExt(ClientPositionable).getCenterPosition();
       // Convert biome coordinates to world coordinates (center of campsite biome)
       // Each biome is 16 tiles, and campsite is at center of map (biome 4,4)
       const BIOME_SIZE = 16;
@@ -700,7 +704,8 @@ export class GameClient {
         (campsiteBiomeX * BIOME_SIZE + BIOME_SIZE / 2) * getConfig().world.TILE_SIZE;
       const campsiteCenterY =
         (campsiteBiomeY * BIOME_SIZE + BIOME_SIZE / 2) * getConfig().world.TILE_SIZE;
-      const campsitePos = new Vector2(campsiteCenterX, campsiteCenterY);
+      const poolManager = PoolManager.getInstance();
+      const campsitePos = poolManager.vector2.claim(campsiteCenterX, campsiteCenterY);
 
       const distanceToCampsite = distance(playerPos, campsitePos);
       const TELEPORT_MIN_DISTANCE = 200; // Don't allow teleport if within 200 pixels of campsite center
@@ -741,8 +746,8 @@ export class GameClient {
 
     // Play explosion sound immediately (client-side feedback)
     const player = this.getMyPlayer();
-    if (player) {
-      const playerPosition = player.getCenterPosition();
+    if (player && player.hasExt(ClientPositionable)) {
+      const playerPosition = player.getExt(ClientPositionable).getCenterPosition();
       this.soundManager.playPositionalSound(SOUND_TYPES_TO_MP3.EXPLOSION, playerPosition);
     }
   }
@@ -866,9 +871,9 @@ export class GameClient {
   private positionCameraOnPlayer(): void {
     const playerToFollow = this.getMyPlayer() as PlayerClient | undefined;
 
-    if (playerToFollow) {
+    if (playerToFollow && playerToFollow.hasExt(ClientPositionable)) {
       // Position camera at player's center to match aim angle calculation
-      this.cameraManager.translateTo(playerToFollow.getCenterPosition());
+      this.cameraManager.translateTo(playerToFollow.getExt(ClientPositionable).getCenterPosition());
     }
   }
 
@@ -902,12 +907,21 @@ export class GameClient {
       cloth = resourcesBag.getCloth();
     }
 
+    // Safely get inventory - check if method exists (player might not be fully initialized)
+    let inventory: InventoryItem[] = [];
+    if (typeof player.getInventory === "function") {
+      inventory = player.getInventory();
+    } else if (player.hasExt(ClientInventory)) {
+      // Fallback: get inventory directly from extension if method doesn't exist
+      inventory = player.getExt(ClientInventory).getItems();
+    }
+
     return {
       resources: {
         wood,
         cloth,
       },
-      inventory: player.getInventory(),
+      inventory,
       playerId: this.gameState.playerId,
     };
   }

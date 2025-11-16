@@ -13,6 +13,7 @@ import { Entity } from "@/entities/entity";
 import { LootEvent } from "@/events/server-sent/loot-event";
 import { Rectangle } from "@/util/shape";
 import Vector2 from "@/util/vector2";
+import PoolManager from "@shared/util/pool-manager";
 import { EntityType } from "@shared/types/entity";
 import { ZombieDeathEvent } from "@/events/server-sent/zombie-death-event";
 import { ZombieHurtEvent } from "@/events/server-sent/zombie-hurt-event";
@@ -80,13 +81,13 @@ export abstract class BaseEnemy extends Entity<typeof BASE_ENEMY_SERIALIZABLE_FI
         .setMaxHealth(this.config.stats.health)
         .setHealth(this.config.stats.health)
         .onDamaged(this.onDamaged.bind(this))
-        .setOffset(new Vector2(4, 4))
+        .setOffset(PoolManager.getInstance().vector2.claim(4, 4))
         .onDeath(this.onDeath.bind(this))
     );
     this.addExtension(new Groupable(this, "enemy"));
     this.addExtension(new Positionable(this).setSize(this.config.stats.size));
     this.addExtension(
-      new Collidable(this).setSize(this.config.stats.size.div(2)).setOffset(new Vector2(4, 4))
+      new Collidable(this).setSize(this.config.stats.size.clone().div(2)).setOffset(PoolManager.getInstance().vector2.claim(4, 4))
     );
     this.addExtension(new Movable(this));
     this.addExtension(new Updatable(this, this.updateEnemy.bind(this)));
@@ -119,10 +120,14 @@ export abstract class BaseEnemy extends Entity<typeof BASE_ENEMY_SERIALIZABLE_FI
   }
 
   getCenterPosition(): Vector2 {
+    const poolManager = PoolManager.getInstance();
     const positionable = this.getExt(Positionable);
     const size = positionable.getSize();
     const position = positionable.getPosition();
-    return new Rectangle(position, size).center;
+    const rect = poolManager.rectangle.claim(position, size);
+    const center = rect.center;
+    poolManager.rectangle.release(rect);
+    return center;
   }
 
   getHitbox(): Rectangle {

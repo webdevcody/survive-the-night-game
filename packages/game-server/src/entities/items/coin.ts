@@ -4,17 +4,21 @@ import { IGameManagers } from "@/managers/types";
 import { Entities, PLAYER_TYPES } from "@/constants";
 import { Entity } from "@/entities/entity";
 import Vector2 from "@/util/vector2";
+import PoolManager from "@shared/util/pool-manager";
 import { CoinPickupEvent } from "@shared/events/server-sent/coin-pickup-event";
 import { getConfig } from "@shared/config";
 
 export class Coin extends Entity {
-  public static readonly Size = new Vector2(16, 16);
+  public static get Size(): Vector2 {
+    return PoolManager.getInstance().vector2.claim(16, 16);
+  }
   private static readonly TRIGGER_RADIUS = 16;
 
   constructor(gameManagers: IGameManagers) {
     super(gameManagers, Entities.COIN);
-
-    this.addExtension(new Positionable(this).setSize(Coin.Size));
+    const poolManager = PoolManager.getInstance();
+    const size = poolManager.vector2.claim(16, 16);
+    this.addExtension(new Positionable(this).setSize(size));
     this.addExtension(
       new OneTimeTrigger(this, {
         triggerRadius: Coin.TRIGGER_RADIUS,

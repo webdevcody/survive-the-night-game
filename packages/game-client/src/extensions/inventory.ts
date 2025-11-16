@@ -2,6 +2,7 @@ import { ExtensionTypes } from "../../../game-shared/src/util/extension-types";
 import { InventoryItem, isWeapon, ItemType } from "../../../game-shared/src/util/inventory";
 import { ClientExtensionSerialized } from "@/extensions/types";
 import { BaseClientExtension } from "./base-extension";
+import { BufferReader } from "@shared/util/buffer-serialization";
 
 export class ClientInventory extends BaseClientExtension {
   public static readonly type = ExtensionTypes.INVENTORY;
@@ -31,6 +32,21 @@ export class ClientInventory extends BaseClientExtension {
     if (data.items) {
       this.items = data.items;
     }
+    return this;
+  }
+
+  public deserializeFromBuffer(reader: BufferReader): this {
+    // Type is already read by the entity deserializer
+    // Read items array
+    this.items = reader.readArray(() => {
+      if (!reader.readBoolean()) {
+        return null as any;
+      }
+      const itemType = reader.readString();
+      // Read ItemState record (values are numbers)
+      const state = reader.readRecord(() => reader.readFloat64());
+      return { itemType, state };
+    });
     return this;
   }
 }

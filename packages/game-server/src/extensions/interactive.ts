@@ -1,8 +1,11 @@
 import { IEntity } from "@/entities/types";
-import { Extension, ExtensionSerialized } from "@/extensions/types";
+import { Extension } from "@/extensions/types";
 import Vector2 from "@/util/vector2";
+import PoolManager from "@shared/util/pool-manager";
+import { BufferWriter } from "@shared/util/buffer-serialization";
+import { encodeExtensionType } from "@shared/util/extension-type-encoding";
 
-type InteractiveHandler = (entityId: string) => void;
+type InteractiveHandler = (entityId: number) => void;
 
 export default class Interactive implements Extension {
   public static readonly type = "interactive";
@@ -10,7 +13,7 @@ export default class Interactive implements Extension {
   private self: IEntity;
   private handler: InteractiveHandler | null = null;
   private displayName: string = "";
-  private offset: Vector2 = new Vector2(0, 0);
+  private offset: Vector2 = PoolManager.getInstance().vector2.claim(0, 0);
   private dirty: boolean = false;
 
   public constructor(self: IEntity) {
@@ -24,7 +27,7 @@ export default class Interactive implements Extension {
 
   public setOffset(offset: Vector2): this {
     const offsetChanged = this.offset.x !== offset.x || this.offset.y !== offset.y;
-    this.offset = offset;
+    this.offset.reset(offset.x, offset.y);
     if (offsetChanged) {
       this.markDirty();
     }
@@ -32,7 +35,7 @@ export default class Interactive implements Extension {
   }
 
   public getOffset(): Vector2 {
-    return this.offset;
+    return this.offset.clone();
   }
 
   public setDisplayName(name: string): this {
@@ -48,7 +51,7 @@ export default class Interactive implements Extension {
     return this.displayName;
   }
 
-  public interact(entityId: string): void {
+  public interact(entityId: number): void {
     this.handler?.(entityId);
   }
 
@@ -67,18 +70,9 @@ export default class Interactive implements Extension {
     this.dirty = false;
   }
 
-  public serializeDirty(): ExtensionSerialized | null {
-    if (!this.dirty) {
-      return null;
-    }
-    return this.serialize();
-  }
-
-  public serialize(): ExtensionSerialized {
-    return {
-      type: Interactive.type,
-      displayName: this.displayName,
-      offset: this.offset,
-    };
+  public serializeToBuffer(writer: BufferWriter): void {
+    writer.writeUInt32(encodeExtensionType(Interactive.type));
+    writer.writeString(this.displayName);
+    writer.writeVector2(this.offset);
   }
 }

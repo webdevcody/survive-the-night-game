@@ -1,11 +1,11 @@
 import { EventType, ServerSentEvents } from "../events";
 import { GameEvent } from "@/events/types";
 
-export class YourIdEvent implements GameEvent<string> {
+export class YourIdEvent implements GameEvent<number> {
   private readonly type: EventType;
-  private readonly playerId: string;
+  private readonly playerId: number;
 
-  constructor(playerId: string) {
+  constructor(playerId: number) {
     this.type = ServerSentEvents.YOUR_ID;
     this.playerId = playerId;
   }
@@ -14,11 +14,11 @@ export class YourIdEvent implements GameEvent<string> {
     return this.type;
   }
 
-  getPlayerId(): string {
+  getPlayerId(): number {
     return this.playerId;
   }
 
-  serialize(): string {
+  serialize(): number {
     return this.playerId;
   }
 }

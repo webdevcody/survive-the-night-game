@@ -1,6 +1,7 @@
 import { ImageLoader } from "@/managers/asset";
 import { GameState } from "@/state";
 import Vector2 from "@shared/util/vector2";
+import PoolManager from "@shared/util/pool-manager";
 
 export const ParticleTypes = {
   SWING: "swipe",
@@ -13,7 +14,7 @@ export type ParticleType = (typeof ParticleTypes)[keyof typeof ParticleTypes];
 export abstract class Particle {
   public type: ParticleType;
   private imageLoader: ImageLoader;
-  private position: Vector2 = new Vector2(0, 0);
+  private position: Vector2 = PoolManager.getInstance().vector2.claim(0, 0);
   private isActive: boolean = true;
 
   constructor(type: ParticleType, imageLoader: ImageLoader) {
@@ -22,7 +23,7 @@ export abstract class Particle {
   }
 
   public getPosition(): Vector2 {
-    return this.position;
+    return this.position.clone();
   }
 
   public getIsActive(): boolean {
@@ -30,7 +31,7 @@ export abstract class Particle {
   }
 
   public setPosition(position: Vector2) {
-    this.position = position;
+    this.position.reset(position.x, position.y);
   }
 
   public getImageLoader(): ImageLoader {

@@ -7,6 +7,7 @@ import { IGameManagers } from "@/managers/types";
 import { Entities } from "@/constants";
 import { Entity } from "@/entities/entity";
 import Vector2 from "@/util/vector2";
+import PoolManager from "@/util/pool-manager";
 import { ItemState } from "@/types/entity";
 
 /**
@@ -14,7 +15,9 @@ import { ItemState } from "@/types/entity";
  */
 export class Spikes extends Entity {
   private static readonly DAMAGE = 2;
-  private static readonly SIZE = new Vector2(16, 16);
+  private static get SIZE(): Vector2 {
+    return PoolManager.getInstance().vector2.claim(16, 16);
+  }
   public static readonly DEFAULT_COUNT = 1;
 
   constructor(gameManagers: IGameManagers, itemState?: ItemState) {
@@ -22,7 +25,9 @@ export class Spikes extends Entity {
 
     const count = itemState?.count ?? Spikes.DEFAULT_COUNT;
 
-    this.addExtension(new Positionable(this).setSize(Spikes.SIZE));
+    const poolManager = PoolManager.getInstance();
+    const size = poolManager.vector2.claim(16, 16);
+    this.addExtension(new Positionable(this).setSize(size));
     // TriggerCooldownAttacker handles finding and attacking nearby zombies
     // No need for Triggerable since it had no callback and was redundant
     this.addExtension(

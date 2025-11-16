@@ -6,6 +6,7 @@ import { ClientEntityBase } from "@/extensions/client-entity";
 import { ClientPositionable, ClientMovable } from "@/extensions";
 import { Z_INDEX } from "@shared/map";
 import Vector2 from "@shared/util/vector2";
+import PoolManager from "@shared/util/pool-manager";
 import { roundVector2 } from "@shared/util/physics";
 import { getFrameIndex } from "@/entities/util";
 
@@ -29,11 +30,11 @@ export class FlameProjectileClient extends ClientEntityBase implements IClientEn
     // Interpolate position for smooth movement
     this.lastRenderPosition = this.lerpPosition(
       targetPosition,
-      new Vector2(this.lastRenderPosition.x, this.lastRenderPosition.y)
+      PoolManager.getInstance().vector2.claim(this.lastRenderPosition.x, this.lastRenderPosition.y)
     );
 
     const renderPosition = roundVector2(
-      new Vector2(this.lastRenderPosition.x, this.lastRenderPosition.y)
+      PoolManager.getInstance().vector2.claim(this.lastRenderPosition.x, this.lastRenderPosition.y)
     );
 
     // Use flame animation if available, otherwise draw a simple orange/yellow circle

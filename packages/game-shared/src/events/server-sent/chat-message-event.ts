@@ -1,5 +1,5 @@
 export interface ChatMessageEventData {
-  playerId: string;
+  playerId: number;
   message: string;
 }
 
@@ -14,7 +14,7 @@ export class ChatMessageEvent {
     return this.data;
   }
 
-  public getPlayerId(): string {
+  public getPlayerId(): number {
     return this.data.playerId;
   }
 

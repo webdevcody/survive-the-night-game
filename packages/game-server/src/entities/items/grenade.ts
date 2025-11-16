@@ -1,6 +1,7 @@
 import Positionable from "@/extensions/positionable";
 import { IGameManagers } from "@/managers/types";
 import Vector2 from "@/util/vector2";
+import PoolManager from "@shared/util/pool-manager";
 import Destructible from "@/extensions/destructible";
 import { Direction } from "@shared/util/direction";
 import { Cooldown } from "@/entities/util/cooldown";
@@ -21,7 +22,7 @@ export class Grenade extends Weapon {
   private static readonly COOLDOWN = 0.5;
   private static readonly DEFAULT_COUNT = 1;
 
-  private velocity: Vector2 = new Vector2(0, 0);
+  private velocity: Vector2 = PoolManager.getInstance().vector2.claim(0, 0);
   private isArmed: boolean = false;
   private explosionTimer: Cooldown;
   private isExploded: boolean = false;
@@ -44,7 +45,7 @@ export class Grenade extends Weapon {
     // Override Interactive callback to use merge strategy for stacking
     if (this.hasExt(Interactive)) {
       const interactive = this.getExt(Interactive);
-      interactive.onInteract((entityId: string) => {
+      interactive.onInteract((entityId: number) => {
         const carryable = this.getExt(Carryable);
         // Use helper method to preserve count when picking up dropped grenades
         carryable.pickup(
@@ -60,7 +61,7 @@ export class Grenade extends Weapon {
   }
 
   public attack(
-    playerId: string,
+    playerId: number,
     position: { x: number; y: number },
     facing: Direction,
     aimAngle?: number
@@ -98,10 +99,16 @@ export class Grenade extends Weapon {
     if (aimAngle !== undefined) {
       const dirX = Math.cos(aimAngle);
       const dirY = Math.sin(aimAngle);
-      this.velocity = new Vector2(dirX * Grenade.THROW_SPEED, dirY * Grenade.THROW_SPEED);
+      const poolManager = PoolManager.getInstance();
+      this.velocity = poolManager.vector2.claim(
+        dirX * Grenade.THROW_SPEED,
+        dirY * Grenade.THROW_SPEED
+      );
     } else {
       const directionVector = normalizeDirection(facing);
-      this.velocity = new Vector2(directionVector.x, directionVector.y).mul(Grenade.THROW_SPEED);
+      const poolManager = PoolManager.getInstance();
+      this.velocity = poolManager.vector2.claim(directionVector.x, directionVector.y);
+      this.velocity.mul(Grenade.THROW_SPEED);
     }
 
     // Arm the grenade
@@ -116,11 +123,15 @@ export class Grenade extends Weapon {
 
     // Update position based on velocity
     const pos = this.getExt(Positionable).getPosition();
-    const newPos = pos.add(this.velocity.mul(deltaTime));
+    const poolManager = PoolManager.getInstance();
+    const velocityScaled = poolManager.vector2.claim(this.velocity.x, this.velocity.y);
+    velocityScaled.mul(deltaTime);
+    const newPos = pos.clone().add(velocityScaled);
+    poolManager.vector2.release(velocityScaled);
     this.getExt(Positionable).setPosition(newPos);
 
     // Apply friction to slow down
-    this.velocity = this.velocity.mul(0.95);
+    this.velocity.mul(0.95);
 
     // Update explosion timer
     this.explosionTimer.update(deltaTime);

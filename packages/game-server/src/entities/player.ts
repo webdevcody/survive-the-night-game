@@ -21,7 +21,6 @@ import { Input } from "../../../game-shared/src/util/input";
 import { InventoryItem, ItemType } from "../../../game-shared/src/util/inventory";
 import { normalizeVector, distance } from "../../../game-shared/src/util/physics";
 import { RecipeType } from "../../../game-shared/src/util/recipes";
-import { RawEntity } from "@shared/types/entity";
 import { Cooldown } from "@/entities/util/cooldown";
 import { Weapon } from "@/entities/weapons/weapon";
 import { weaponHandlerRegistry } from "@/entities/weapons/weapon-handler-registry";
@@ -29,6 +28,7 @@ import { PlayerDeathEvent } from "@shared/events/server-sent/player-death-event"
 import { CraftEvent } from "@shared/events/server-sent/craft-event";
 import { getConfig } from "@shared/config";
 import Vector2 from "@/util/vector2";
+import PoolManager from "@shared/util/pool-manager";
 import { Rectangle } from "@/util/shape";
 import Carryable from "@/extensions/carryable";
 import { SkinType, SKIN_TYPES } from "@shared/commands/commands";
@@ -46,7 +46,6 @@ const PLAYER_SERIALIZABLE_FIELDS = [
   "maxStamina",
   "input",
   "activeItem",
-  "inventory",
   "pickupProgress",
 ] as const;
 
@@ -57,7 +56,7 @@ export class Player extends Entity<typeof PLAYER_SERIALIZABLE_FIELDS> {
   private static readonly DROP_COOLDOWN = 0.25;
   private static readonly INTERACT_COOLDOWN = 0.25;
   private static readonly CONSUME_COOLDOWN = 0.5;
-  private static readonly PICKUP_HOLD_DURATION = 1.0; // 1 second in seconds
+  private static readonly PICKUP_HOLD_DURATION = 0.5; // 1 second in seconds
 
   // Internal state
   private fireCooldown = new Cooldown(0.4, true);
@@ -69,7 +68,7 @@ export class Player extends Entity<typeof PLAYER_SERIALIZABLE_FIELDS> {
   private exhaustionTimer: number = 0; // Time remaining before stamina can regenerate
   // Item pickup hold tracking
   private pickupHoldTimer: number = 0; // Time F has been held for pickup
-  private targetPickupEntity: string | null = null; // Entity ID being targeted for pickup
+  private targetPickupEntity: number | null = null; // Entity ID being targeted for pickup
 
   // Serializable fields (base class will access these directly)
   private input: Input = {
@@ -93,20 +92,30 @@ export class Player extends Entity<typeof PLAYER_SERIALIZABLE_FIELDS> {
   private maxStamina: number = getConfig().player.MAX_STAMINA;
   private pickupProgress: number = 0; // 0-1 value representing pickup progress
 
+  private setPickupProgress(progress: number): void {
+    const clampedProgress = Math.max(0, Math.min(1, progress));
+    if (this.pickupProgress === clampedProgress) {
+      return;
+    }
+    this.pickupProgress = clampedProgress;
+    this.markFieldDirty("pickupProgress");
+  }
+
   constructor(gameManagers: IGameManagers) {
     super(gameManagers, Entities.PLAYER);
     this.broadcaster = gameManagers.getBroadcaster();
 
     this.addExtension(new Inventory(this, gameManagers.getBroadcaster()));
+    const poolManager = PoolManager.getInstance();
     this.addExtension(new ResourcesBag(this, gameManagers.getBroadcaster()));
-    this.addExtension(
-      new Collidable(this)
-        .setSize(new Vector2(Player.PLAYER_WIDTH - 8, Player.PLAYER_WIDTH - 8))
-        .setOffset(new Vector2(4, 4))
+    const collidableSize = poolManager.vector2.claim(
+      Player.PLAYER_WIDTH - 8,
+      Player.PLAYER_WIDTH - 8
     );
-    this.addExtension(
-      new Positionable(this).setSize(new Vector2(Player.PLAYER_WIDTH, Player.PLAYER_WIDTH))
-    );
+    const collidableOffset = poolManager.vector2.claim(4, 4);
+    this.addExtension(new Collidable(this).setSize(collidableSize).setOffset(collidableOffset));
+    const positionableSize = poolManager.vector2.claim(Player.PLAYER_WIDTH, Player.PLAYER_WIDTH);
+    this.addExtension(new Positionable(this).setSize(positionableSize));
     this.addExtension(
       new Destructible(this)
         .setHealth(getConfig().player.MAX_PLAYER_HEALTH)
@@ -225,10 +234,6 @@ export class Player extends Entity<typeof PLAYER_SERIALIZABLE_FIELDS> {
     return positionable.getCenterPosition();
   }
 
-  serialize(onlyDirty: boolean = false): RawEntity {
-    return super.serialize(onlyDirty);
-  }
-
   getHitbox(): Rectangle {
     const collidable = this.getExt(Collidable);
     const hitbox = collidable.getHitBox();
@@ -283,7 +288,8 @@ export class Player extends Entity<typeof PLAYER_SERIALIZABLE_FIELDS> {
         // Add small random offset so it doesn't spawn exactly on the player
         const offset = 20;
         const theta = Math.random() * 2 * Math.PI;
-        const pos = new Vector2(
+        const poolManager = PoolManager.getInstance();
+        const pos = poolManager.vector2.claim(
           position.x + offset * Math.cos(theta),
           position.y + offset * Math.sin(theta)
         );
@@ -320,6 +326,8 @@ export class Player extends Entity<typeof PLAYER_SERIALIZABLE_FIELDS> {
       console.log("createEntityFromItem returned null for", activeWeapon.itemType);
       return;
     }
+    // Ensure temporary weapon entity doesn't get tracked for networking
+    weaponEntity.clearDirtyFlags();
 
     const weaponType = activeWeapon.itemType;
     console.log(
@@ -345,18 +353,18 @@ export class Player extends Entity<typeof PLAYER_SERIALIZABLE_FIELDS> {
         customHandler.handler(
           weaponEntity,
           this.getId(),
-          this.getCenterPosition(),
+          this.getCenterPosition().clone(),
           this.input.facing,
           this.input.aimAngle,
           inventoryIndex
         );
+        weaponEntity.clearDirtyFlags();
       }
       return;
     }
 
     // Handle weapons that extend Weapon class (including grenades now)
     if (!(weaponEntity instanceof Weapon)) {
-      console.log("weaponEntity is not instanceof Weapon, type:", weaponEntity.constructor.name);
       return;
     }
 
@@ -367,14 +375,14 @@ export class Player extends Entity<typeof PLAYER_SERIALIZABLE_FIELDS> {
 
     if (this.fireCooldown.isReady()) {
       this.fireCooldown.reset();
-      console.log("attacking with", weaponType);
       // Use aimAngle if provided (mouse aiming), otherwise fall back to facing direction
       weaponEntity.attack(
         this.getId(),
-        this.getCenterPosition(),
+        this.getCenterPosition().clone(),
         this.input.facing,
         this.input.aimAngle
       );
+      weaponEntity.clearDirtyFlags();
     }
   }
 
@@ -389,10 +397,12 @@ export class Player extends Entity<typeof PLAYER_SERIALIZABLE_FIELDS> {
     );
     if (currentSpeed < getConfig().player.PLAYER_SPEED * 2) {
       // Set velocity based on current input
+      const poolManager = PoolManager.getInstance();
       if (this.input.dx === 0 && this.input.dy === 0) {
-        movable.setVelocity(new Vector2(0, 0));
+        movable.setVelocity(poolManager.vector2.claim(0, 0));
       } else {
-        const normalized = normalizeVector(new Vector2(this.input.dx, this.input.dy));
+        const inputVec = poolManager.vector2.claim(this.input.dx, this.input.dy);
+        const normalized = normalizeVector(inputVec);
 
         // Can only sprint if: has stamina AND not exhausted
         const canSprint = this.input.sprint && this.stamina > 0 && this.exhaustionTimer <= 0;
@@ -413,7 +423,7 @@ export class Player extends Entity<typeof PLAYER_SERIALIZABLE_FIELDS> {
         }
 
         movable.setVelocity(
-          new Vector2(
+          poolManager.vector2.claim(
             normalized.x * getConfig().player.PLAYER_SPEED * speedMultiplier,
             normalized.y * getConfig().player.PLAYER_SPEED * speedMultiplier
           )
@@ -447,6 +457,7 @@ export class Player extends Entity<typeof PLAYER_SERIALIZABLE_FIELDS> {
 
   setDisplayName(displayName: string): void {
     this.displayName = displayName;
+    this.markFieldDirty("displayName");
   }
 
   getDisplayName(): string {
@@ -459,63 +470,77 @@ export class Player extends Entity<typeof PLAYER_SERIALIZABLE_FIELDS> {
     if (!this.input.interact) {
       this.pickupHoldTimer = 0;
       this.targetPickupEntity = null;
+      this.setPickupProgress(0);
       return;
     }
 
-    if (this.interactCooldown.isReady()) {
-      this.interactCooldown.reset();
+    // Cache position and radius once
+    const playerPos = this.getCenterPosition();
+    const maxRadius = getConfig().player.MAX_INTERACT_RADIUS;
 
-      // Cache position and radius once
-      const playerPos = this.getCenterPosition();
-      const maxRadius = getConfig().player.MAX_INTERACT_RADIUS;
+    // Get nearby entities (already filtered by distance in getNearbyEntities)
+    const entities = this.getEntityManager()
+      .getNearbyEntities(playerPos, maxRadius)
+      .filter((entity) => entity.hasExt(Interactive));
 
-      // Get nearby entities (already filtered by distance in getNearbyEntities)
-      const entities = this.getEntityManager()
-        .getNearbyEntities(playerPos, maxRadius)
-        .filter((entity) => entity.hasExt(Interactive));
+    if (entities.length === 0) {
+      this.setPickupProgress(0);
+      this.pickupHoldTimer = 0;
+      this.targetPickupEntity = null;
+      return;
+    }
 
-      if (entities.length === 0) return;
+    // Pre-calculate distances and dead player flags to avoid repeated calculations
+    const entityData = entities.map((entity) => {
+      const entityPos = entity.getExt(Positionable).getCenterPosition();
+      return {
+        entity,
+        distance: distance(playerPos, entityPos),
+        isDeadPlayer: entity.getType() === Entities.PLAYER && (entity as Player).isDead(),
+        isPlaceable: entity.hasExt(Placeable),
+      };
+    });
 
-      // Pre-calculate distances and dead player flags to avoid repeated calculations
-      const entityData = entities.map((entity) => {
-        const entityPos = entity.getExt(Positionable).getCenterPosition();
-        return {
-          entity,
-          distance: distance(playerPos, entityPos),
-          isDeadPlayer: entity.getType() === Entities.PLAYER && (entity as Player).isDead(),
-          isPlaceable: entity.hasExt(Placeable),
-        };
-      });
+    // Sort by priority (dead players first) then by distance
+    entityData.sort((a, b) => {
+      // Dead players should come first
+      if (a.isDeadPlayer && !b.isDeadPlayer) return -1;
+      if (!a.isDeadPlayer && b.isDeadPlayer) return 1;
+      // If both are dead players or both are not, sort by distance
+      return a.distance - b.distance;
+    });
 
-      // Sort by priority (dead players first) then by distance
-      entityData.sort((a, b) => {
-        // Dead players should come first
-        if (a.isDeadPlayer && !b.isDeadPlayer) return -1;
-        if (!a.isDeadPlayer && b.isDeadPlayer) return 1;
-        // If both are dead players or both are not, sort by distance
-        return a.distance - b.distance;
-      });
+    // Get the closest entity (already filtered and sorted)
+    const closestEntity = entityData[0];
 
-      // Get the closest entity (already filtered and sorted)
-      const closestEntity = entityData[0];
+    const now = new Date().getTime();
+    if (this.pickupHoldTimer == 0) {
+      this.pickupHoldTimer = now;
+    }
+    let timeSincePickup = now - this.pickupHoldTimer;
+    this.targetPickupEntity = closestEntity.entity.getId();
 
-      const now = new Date().getTime();
-      if (this.pickupHoldTimer == 0) {
-        this.pickupHoldTimer = now;
-      }
-      let timeSincePickup = now - this.pickupHoldTimer;
-      this.targetPickupEntity = closestEntity.entity.getId();
+    if (closestEntity.isPlaceable) {
+      // Calculate progress (0-1) based on hold duration - update every frame
+      const holdDurationMs = Player.PICKUP_HOLD_DURATION * 1000; // Convert seconds to milliseconds
+      this.setPickupProgress(timeSincePickup / holdDurationMs);
 
-      if (closestEntity.isPlaceable) {
-        if (timeSincePickup >= Player.PICKUP_HOLD_DURATION) {
-          closestEntity.entity.getExt(Interactive).interact(this.getId());
-          this.pickupHoldTimer = 0;
-          this.targetPickupEntity = null;
-        }
-      } else {
+      // Check for pickup completion every frame (not just when cooldown is ready)
+      if (timeSincePickup >= holdDurationMs) {
         closestEntity.entity.getExt(Interactive).interact(this.getId());
         this.pickupHoldTimer = 0;
         this.targetPickupEntity = null;
+        this.setPickupProgress(0);
+      }
+    } else {
+      this.setPickupProgress(0);
+      // For non-placeable items, respect the cooldown (instant interactions)
+      if (this.interactCooldown.isReady()) {
+        this.interactCooldown.reset();
+        closestEntity.entity.getExt(Interactive).interact(this.getId());
+        this.pickupHoldTimer = 0;
+        this.targetPickupEntity = null;
+        this.setPickupProgress(0);
       }
     }
   }
@@ -560,7 +585,8 @@ export class Player extends Entity<typeof PLAYER_SERIALIZABLE_FIELDS> {
           dx = offset;
         }
 
-        const pos = new Vector2(this.getPosition().x + dx, this.getPosition().y + dy);
+        const poolManager = PoolManager.getInstance();
+        const pos = poolManager.vector2.claim(this.getPosition().x + dx, this.getPosition().y + dy);
 
         if (entity.hasExt(Positionable)) {
           entity.getExt(Positionable).setPosition(pos);
@@ -736,6 +762,7 @@ export class Player extends Entity<typeof PLAYER_SERIALIZABLE_FIELDS> {
 
   incrementKills() {
     this.kills++;
+    this.markFieldDirty("kills");
   }
 
   getKills(): number {
@@ -744,6 +771,7 @@ export class Player extends Entity<typeof PLAYER_SERIALIZABLE_FIELDS> {
 
   setPing(ping: number): void {
     this.ping = ping;
+    this.markFieldDirty("ping");
   }
 
   getPing(): number {

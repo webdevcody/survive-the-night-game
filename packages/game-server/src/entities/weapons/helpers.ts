@@ -3,6 +3,7 @@ import { Direction } from "@/util/direction";
 import { IEntity } from "../types";
 import { IEntityManager } from "@/managers/types";
 import Vector2 from "@/util/vector2";
+import PoolManager from "@shared/util/pool-manager";
 import Inventory from "@/extensions/inventory";
 import Static from "@/extensions/static";
 
@@ -32,10 +33,11 @@ export function knockBack(
     newPosition.y += distance;
   }
 
-  positionable.setPosition(new Vector2(newPosition.x, newPosition.y));
+  const poolManager = PoolManager.getInstance();
+  positionable.setPosition(poolManager.vector2.claim(newPosition.x, newPosition.y));
 
   if (entityManager.isColliding(entity)) {
-    positionable.setPosition(new Vector2(originalPosition.x, originalPosition.y));
+    positionable.setPosition(poolManager.vector2.claim(originalPosition.x, originalPosition.y));
   }
 }
 

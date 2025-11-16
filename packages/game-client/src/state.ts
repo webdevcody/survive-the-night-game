@@ -3,9 +3,9 @@ import { WaveState } from "@shared/types/wave";
 
 export type GameState = {
   startedAt: number;
-  playerId: string;
+  playerId: number;
   entities: ClientEntityBase[];
-  entityMap: Map<string, ClientEntityBase>;
+  entityMap: Map<number, ClientEntityBase>;
   // Legacy day/night cycle (deprecated)
   dayNumber: number;
   cycleStartTime: number;
@@ -20,9 +20,11 @@ export type GameState = {
   crafting: boolean;
   // Server time synchronization
   serverTimeOffset: number; // Offset in milliseconds: clientTime - serverTime
+  // Cached closest interactive entity ID (calculated once per frame in renderer)
+  closestInteractiveEntityId?: number | null;
 };
 
-export function getEntityById(gameState: GameState, id: string): ClientEntityBase | undefined {
+export function getEntityById(gameState: GameState, id: number): ClientEntityBase | undefined {
   return gameState.entityMap.get(id);
 }
 
@@ -37,7 +39,7 @@ export function addEntity(gameState: GameState, entity: ClientEntityBase): void 
 /**
  * Helper function to remove an entity from both the array and map
  */
-export function removeEntity(gameState: GameState, id: string): void {
+export function removeEntity(gameState: GameState, id: number): void {
   const index = gameState.entities.findIndex((entity) => entity.getId() === id);
   if (index !== -1) {
     gameState.entities.splice(index, 1);

@@ -4,6 +4,7 @@ import Positionable from "@/extensions/positionable";
 import Interactive from "@/extensions/interactive";
 import { Entity } from "@/entities/entity";
 import Vector2 from "@/util/vector2";
+import PoolManager from "@shared/util/pool-manager";
 import { getConfig, type MerchantShopItem } from "@shared/config";
 
 // Define serializable fields for type safety
@@ -12,15 +13,18 @@ const MERCHANT_SERIALIZABLE_FIELDS = ["shopItems"] as const;
 export class Merchant extends Entity<typeof MERCHANT_SERIALIZABLE_FIELDS> {
   protected serializableFields = MERCHANT_SERIALIZABLE_FIELDS;
 
-  public static readonly Size = new Vector2(16, 16);
+  public static get Size(): Vector2 {
+    return PoolManager.getInstance().vector2.claim(16, 16);
+  }
 
   // Serializable field
   private shopItems: MerchantShopItem[] = [];
 
   constructor(gameManagers: IGameManagers) {
     super(gameManagers, Entities.MERCHANT);
-
-    this.addExtension(new Positionable(this).setSize(Merchant.Size));
+    const poolManager = PoolManager.getInstance();
+    const size = poolManager.vector2.claim(16, 16);
+    this.addExtension(new Positionable(this).setSize(size));
     this.addExtension(
       new Interactive(this)
         .onInteract(this.interact.bind(this))

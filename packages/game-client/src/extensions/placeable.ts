@@ -1,6 +1,7 @@
 import { ClientExtensionSerialized } from "@/extensions/types";
 import { BaseClientExtension } from "./base-extension";
 import { ExtensionTypes } from "@shared/util/extension-types";
+import { BufferReader } from "@shared/util/buffer-serialization";
 
 /**
  * ClientPlaceable extension marks entities that are structures placed on the ground
@@ -13,6 +14,11 @@ export class ClientPlaceable extends BaseClientExtension {
   public static readonly type = ExtensionTypes.PLACEABLE;
 
   public deserialize(data: ClientExtensionSerialized): this {
+    return this;
+  }
+
+  public deserializeFromBuffer(reader: BufferReader): this {
+    // Type is already read by the entity deserializer, no data to read
     return this;
   }
 }

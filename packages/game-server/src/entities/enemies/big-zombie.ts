@@ -1,6 +1,7 @@
 import { IGameManagers } from "@/managers/types";
 import { Entities } from "@/constants";
 import Vector2 from "@/util/vector2";
+import PoolManager from "@shared/util/pool-manager";
 import { BaseEnemy } from "./base-enemy";
 import { IEntity } from "@/entities/types";
 import { Player } from "@/entities/player";
@@ -21,13 +22,14 @@ export class BigZombie extends BaseEnemy {
       // Apply knockback if it's a player
       if (entity instanceof Player) {
         const knockbackDirection = normalizeVector(
-          new Vector2(
+          PoolManager.getInstance().vector2.claim(
             entity.getCenterPosition().x - this.getCenterPosition().x,
             entity.getCenterPosition().y - this.getCenterPosition().y
           )
         );
 
-        const knockbackVelocity = new Vector2(
+        const poolManager = PoolManager.getInstance();
+        const knockbackVelocity = poolManager.vector2.claim(
           knockbackDirection.x * BigZombie.KNOCKBACK_FORCE,
           knockbackDirection.y * BigZombie.KNOCKBACK_FORCE
         );

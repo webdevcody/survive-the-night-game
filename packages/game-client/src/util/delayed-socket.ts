@@ -1,15 +1,18 @@
-import { Socket } from "socket.io-client";
-import { decodePayload } from "@shared/util/compression";
+import { ISocketAdapter } from "@shared/network/socket-adapter";
+import { ClientSentEvents, type ClientSentEventType } from "@shared/events/events";
+import { serializeClientEvent } from "@shared/events/client-sent/client-event-serialization";
+
+const CLIENT_EVENT_VALUES = new Set<string>(Object.values(ClientSentEvents));
 
 /**
- * Wraps a socket.io client Socket to add simulated latency to all emit calls
+ * Wraps a socket adapter to add simulated latency to all emit calls
  * and automatically decode payloads received from the server
  */
 export class DelayedSocket {
-  private socket: Socket;
+  private socket: ISocketAdapter;
   private latencyMs: number;
 
-  constructor(socket: Socket, latencyMs: number = 0) {
+  constructor(socket: ISocketAdapter, latencyMs: number = 0) {
     this.socket = socket;
     this.latencyMs = latencyMs;
   }
@@ -18,7 +21,15 @@ export class DelayedSocket {
    * Emit an event with simulated latency
    */
   public emit(event: string, ...args: any[]): this {
-    const send = () => this.socket.emit(event, ...args);
+    let payloadArgs = args;
+    if (CLIENT_EVENT_VALUES.has(event as ClientSentEventType)) {
+      const buffer = serializeClientEvent(event, args);
+      if (buffer !== null) {
+        payloadArgs = [buffer];
+      }
+    }
+
+    const send = () => this.socket.emit(event, ...payloadArgs);
 
     if (this.latencyMs > 0) {
       setTimeout(send, this.latencyMs);
@@ -34,9 +45,7 @@ export class DelayedSocket {
    */
   public on(event: string, listener: (...args: any[]) => void): this {
     this.socket.on(event, (...args: any[]) => {
-      // Decode all arguments automatically
-      const decodedArgs = args.map((arg) => decodePayload(arg));
-      listener(...decodedArgs);
+      listener(...args);
     });
     return this;
   }
@@ -57,9 +66,9 @@ export class DelayedSocket {
   }
 
   /**
-   * Get the underlying socket instance (for cases where direct access is needed)
+   * Get the underlying socket adapter instance (for cases where direct access is needed)
    */
-  public getUnderlyingSocket(): Socket {
+  public getUnderlyingSocket(): ISocketAdapter {
     return this.socket;
   }
 }

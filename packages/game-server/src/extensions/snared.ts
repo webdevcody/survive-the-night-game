@@ -1,5 +1,7 @@
-import { Extension, ExtensionSerialized } from "@/extensions/types";
+import { Extension } from "@/extensions/types";
 import { IEntity } from "@/entities/types";
+import { BufferWriter } from "@shared/util/buffer-serialization";
+import { encodeExtensionType } from "@shared/util/extension-type-encoding";
 
 /**
  * Extension that marks an entity as snared/immobilized
@@ -30,9 +32,7 @@ export default class Snared implements Extension {
     this.dirty = false;
   }
 
-  public serialize(): ExtensionSerialized {
-    return {
-      type: Snared.type,
-    };
+  public serializeToBuffer(writer: BufferWriter): void {
+    writer.writeUInt32(encodeExtensionType(Snared.type));
   }
 }

@@ -1,14 +1,17 @@
-import { Extension, ExtensionSerialized } from "@/extensions/types";
+import { Extension } from "@/extensions/types";
 import { IEntity } from "@/entities/types";
 import { ExtensionTypes } from "@/util/extension-types";
 import Vector2 from "@shared/util/vector2";
+import { BufferWriter } from "@shared/util/buffer-serialization";
+import { encodeExtensionType } from "@shared/util/extension-type-encoding";
+import PoolManager from "@shared/util/pool-manager";
 
 export default class Positionable implements Extension {
   public static readonly type = ExtensionTypes.POSITIONABLE;
 
   private self: IEntity;
-  private position: Vector2 = new Vector2(0, 0);
-  private size: Vector2 = new Vector2(0, 0);
+  private position: Vector2 = PoolManager.getInstance().vector2.claim(0, 0);
+  private size: Vector2 = PoolManager.getInstance().vector2.claim(0, 0);
   private onPositionChange?: (entity: IEntity) => void;
   private dirty: boolean = false;
 
@@ -27,7 +30,7 @@ export default class Positionable implements Extension {
 
   public setSize(size: Vector2): this {
     const sizeChanged = this.size.x !== size.x || this.size.y !== size.y;
-    this.size = size;
+    this.size.reset(size.x, size.y);
     if (sizeChanged) {
       this.markDirty();
     }
@@ -35,9 +38,12 @@ export default class Positionable implements Extension {
   }
 
   public getCenterPosition(): Vector2 {
-    // Avoid allocation of a new Vector2 for (size/2) by reusing arithmetic
+    // Return a new Vector2 to prevent mutation of pooled vectors
     // x_center = position.x + size.x/2, y_center = position.y + size.y/2
-    return new Vector2(this.position.x + this.size.x / 2, this.position.y + this.size.y / 2);
+    return new Vector2(
+      this.position.x + this.size.x / 2,
+      this.position.y + this.size.y / 2
+    );
   }
 
   public getPosition(): Vector2 {
@@ -47,8 +53,7 @@ export default class Positionable implements Extension {
   public setPosition(position: Vector2): this {
     // Only trigger callback if position actually changed
     const positionChanged = this.position.x !== position.x || this.position.y !== position.y;
-    // Clone the position to prevent external mutations from affecting our state
-    this.position = position.clone();
+    this.position.reset(position.x, position.y);
 
     if (positionChanged) {
       if (this.onPositionChange) {
@@ -76,18 +81,9 @@ export default class Positionable implements Extension {
     this.dirty = false;
   }
 
-  public serializeDirty(): ExtensionSerialized | null {
-    if (!this.dirty) {
-      return null;
-    }
-    return this.serialize();
-  }
-
-  public serialize(): ExtensionSerialized {
-    return {
-      type: Positionable.type,
-      position: this.position,
-      size: this.size,
-    };
+  public serializeToBuffer(writer: BufferWriter): void {
+    writer.writeUInt32(encodeExtensionType(Positionable.type));
+    writer.writePosition2(this.position);
+    writer.writeSize2(this.size);
   }
 }

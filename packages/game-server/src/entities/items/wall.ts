@@ -9,20 +9,24 @@ import { IGameManagers } from "@/managers/types";
 import { Entities } from "@/constants";
 import { getConfig } from "@shared/config";
 import { Entity } from "@/entities/entity";
-import { RawEntity, ItemState } from "@/types/entity";
+import { ItemState } from "@/types/entity";
 import Vector2 from "@/util/vector2";
+import PoolManager from "@shared/util/pool-manager";
 
 export class Wall extends Entity {
-  public static readonly Size = new Vector2(16, 16);
+  public static get Size(): Vector2 {
+    return PoolManager.getInstance().vector2.claim(16, 16);
+  }
   public static readonly DEFAULT_COUNT = 1;
 
   constructor(gameManagers: IGameManagers, itemState?: ItemState) {
     super(gameManagers, Entities.WALL);
 
     const count = itemState?.count ?? Wall.DEFAULT_COUNT;
-
-    this.addExtension(new Positionable(this).setSize(Wall.Size));
-    this.addExtension(new Collidable(this).setSize(Wall.Size));
+    const poolManager = PoolManager.getInstance();
+    const size = poolManager.vector2.claim(16, 16);
+    this.addExtension(new Positionable(this).setSize(size));
+    this.addExtension(new Collidable(this).setSize(size));
     this.addExtension(
       new Interactive(this).onInteract(this.interact.bind(this)).setDisplayName("wall")
     );
@@ -40,7 +44,7 @@ export class Wall extends Entity {
     this.addExtension(new Placeable(this));
   }
 
-  private interact(entityId: string): void {
+  private interact(entityId: number): void {
     const entity = this.getEntityManager().getEntityById(entityId);
     if (!entity) return;
 
@@ -68,12 +72,5 @@ export class Wall extends Entity {
 
   private onDeath(): void {
     this.getEntityManager().markEntityForRemoval(this);
-  }
-
-  public serialize(): RawEntity {
-    return {
-      ...super.serialize(),
-      health: this.getExt(Destructible).getHealth(),
-    };
   }
 }

@@ -1,9 +1,11 @@
-import { Extension, ExtensionSerialized } from "@/extensions/types";
+import { Extension } from "@/extensions/types";
 import { PlayerPickedUpItemEvent } from "@/events/server-sent/pickup-item-event";
 import Inventory from "@/extensions/inventory";
 import { ItemType } from "@/util/inventory";
 import { IEntity } from "@/entities/types";
 import { ItemState } from "@/types/entity";
+import { BufferWriter } from "@shared/util/buffer-serialization";
+import { encodeExtensionType } from "@shared/util/extension-type-encoding";
 
 interface PickupOptions {
   state?: ItemState;
@@ -54,7 +56,7 @@ export default class Carryable implements Extension {
     };
   }
 
-  public pickup(entityId: string, options?: PickupOptions): boolean {
+  public pickup(entityId: number, options?: PickupOptions): boolean {
     // Prevent crash if itemType is null (entity may be in invalid state)
     if (!this.itemType) {
       console.warn("Attempted to pickup item with null itemType");
@@ -128,18 +130,10 @@ export default class Carryable implements Extension {
     this.dirty = false;
   }
 
-  public serializeDirty(): ExtensionSerialized | null {
-    if (!this.dirty) {
-      return null;
-    }
-    return this.serialize();
-  }
-
-  public serialize(): ExtensionSerialized {
-    return {
-      type: Carryable.type,
-      itemType: this.itemType,
-      state: this.state,
-    };
+  public serializeToBuffer(writer: BufferWriter): void {
+    writer.writeUInt32(encodeExtensionType(Carryable.type));
+    writer.writeString(this.itemType);
+    // Serialize ItemState as record (values are always numbers)
+    writer.writeRecord(this.state, (value) => writer.writeFloat64(value as number));
   }
 }

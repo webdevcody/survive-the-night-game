@@ -1,8 +1,11 @@
 import { IEntity } from "@/entities/types";
-import { Extension, ExtensionSerialized } from "@/extensions/types";
+import { Extension } from "@/extensions/types";
 import Positionable from "@/extensions/positionable";
 import { Rectangle } from "@/util/shape";
 import Vector2 from "@/util/vector2";
+import { BufferWriter } from "@shared/util/buffer-serialization";
+import { encodeExtensionType } from "@shared/util/extension-type-encoding";
+import PoolManager from "@shared/util/pool-manager";
 
 type DestructibleDeathHandler = () => void;
 type DestructibleDamagedHandler = () => void;
@@ -13,7 +16,7 @@ export default class Destructible implements Extension {
   private self: IEntity;
   private health = 0;
   private maxHealth = 0;
-  private offset = new Vector2(0, 0);
+  private offset = PoolManager.getInstance().vector2.claim(0, 0);
   private deathHandler: DestructibleDeathHandler | null = null;
   private onDamagedHandler: DestructibleDamagedHandler | null = null;
   private dirty: boolean = false;
@@ -28,7 +31,7 @@ export default class Destructible implements Extension {
   }
 
   public setOffset(offset: Vector2): this {
-    this.offset = offset;
+    this.offset.reset(offset.x, offset.y);
     return this;
   }
 
@@ -82,11 +85,14 @@ export default class Destructible implements Extension {
   }
 
   public getDamageBox(): Rectangle {
+    const poolManager = PoolManager.getInstance();
     const positionable = this.self.getExt(Positionable);
     const position = positionable.getPosition();
     const size = positionable.getSize();
-
-    return new Rectangle(new Vector2(position.x + this.offset.x, position.y + this.offset.y), size);
+    const adjustedPos = poolManager.vector2.claim(position.x + this.offset.x, position.y + this.offset.y);
+    const rect = poolManager.rectangle.claim(adjustedPos, size);
+    poolManager.vector2.release(adjustedPos);
+    return rect;
   }
 
   public heal(amount: number): void {
@@ -127,18 +133,9 @@ export default class Destructible implements Extension {
     this.dirty = false;
   }
 
-  public serializeDirty(): ExtensionSerialized | null {
-    if (!this.dirty) {
-      return null;
-    }
-    return this.serialize();
-  }
-
-  public serialize(): ExtensionSerialized {
-    return {
-      type: Destructible.type,
-      health: this.health,
-      maxHealth: this.maxHealth,
-    };
+  public serializeToBuffer(writer: BufferWriter): void {
+    writer.writeUInt32(encodeExtensionType(Destructible.type));
+    writer.writeFloat64(this.health);
+    writer.writeFloat64(this.maxHealth);
   }
 }

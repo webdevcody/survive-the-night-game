@@ -51,13 +51,17 @@ export class CarClient extends ClientEntity implements Renderable {
       const displayName = formatDisplayName(interactive.getDisplayName());
       let text = `${displayName} (${getConfig().keybindings.INTERACT})`;
 
+      // Check if this is the closest interactive entity (cached in gameState)
+      const isClosest = gameState.closestInteractiveEntityId === this.getId();
+
       renderInteractionText(
         ctx,
         text,
         positionable.getCenterPosition(),
         positionable.getPosition(),
         myPlayer.getCenterPosition(),
-        interactive.getOffset()
+        interactive.getOffset(),
+        isClosest
       );
     }
   }
