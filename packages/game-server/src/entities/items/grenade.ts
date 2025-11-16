@@ -45,7 +45,7 @@ export class Grenade extends Weapon {
     // Override Interactive callback to use merge strategy for stacking
     if (this.hasExt(Interactive)) {
       const interactive = this.getExt(Interactive);
-      interactive.onInteract((entityId: string) => {
+      interactive.onInteract((entityId: number) => {
         const carryable = this.getExt(Carryable);
         // Use helper method to preserve count when picking up dropped grenades
         carryable.pickup(
@@ -61,11 +61,12 @@ export class Grenade extends Weapon {
   }
 
   public attack(
-    playerId: string,
+    playerId: number,
     position: { x: number; y: number },
     facing: Direction,
     aimAngle?: number
   ): void {
+    console.log("playerId", playerId);
     const player = this.getEntityManager().getEntityById(playerId);
     if (!player || !player.hasExt(Positionable)) return;
 
@@ -100,7 +101,10 @@ export class Grenade extends Weapon {
       const dirX = Math.cos(aimAngle);
       const dirY = Math.sin(aimAngle);
       const poolManager = PoolManager.getInstance();
-      this.velocity = poolManager.vector2.claim(dirX * Grenade.THROW_SPEED, dirY * Grenade.THROW_SPEED);
+      this.velocity = poolManager.vector2.claim(
+        dirX * Grenade.THROW_SPEED,
+        dirY * Grenade.THROW_SPEED
+      );
     } else {
       const directionVector = normalizeDirection(facing);
       const poolManager = PoolManager.getInstance();

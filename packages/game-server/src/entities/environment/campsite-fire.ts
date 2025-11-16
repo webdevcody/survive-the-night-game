@@ -1,13 +1,10 @@
-import Ignitable from "@/extensions/ignitable";
 import Illuminated from "@/extensions/illuminated";
 import Positionable from "@/extensions/positionable";
-import Triggerable from "@/extensions/trigger";
 import { IGameManagers } from "@/managers/types";
-import { Entities, Zombies } from "@/constants";
+import { Entities } from "@/constants";
 import { Entity } from "@/entities/entity";
 import Vector2 from "@/util/vector2";
 import PoolManager from "@shared/util/pool-manager";
-import { IEntity } from "@/entities/types";
 
 export class CampsiteFire extends Entity {
   public static get Size(): Vector2 {
@@ -19,19 +16,6 @@ export class CampsiteFire extends Entity {
     const poolManager = PoolManager.getInstance();
     const size = poolManager.vector2.claim(16, 16);
     this.addExtension(new Positionable(this).setSize(size));
-    this.addExtension(
-      new Triggerable(this, CampsiteFire.Size, [
-        ...Zombies.filter((z) => z !== Entities.BAT_ZOMBIE),
-        Entities.PLAYER,
-      ]).setOnEntityEntered(this.catchFire.bind(this))
-    );
-    // Campsite fire is permanent - no Expirable extension
     this.addExtension(new Illuminated(this, 150));
-  }
-
-  catchFire(entity: IEntity) {
-    if (!entity.hasExt(Ignitable)) {
-      entity.addExtension(new Ignitable(entity));
-    }
   }
 }

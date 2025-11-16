@@ -27,7 +27,7 @@ export abstract class Weapon extends Entity {
     this.addExtension(new Carryable(this, weaponKey));
   }
 
-  private interact(entityId: string): void {
+  private interact(entityId: number): void {
     this.getExt(Carryable).pickup(entityId);
   }
 
@@ -36,7 +36,7 @@ export abstract class Weapon extends Entity {
   }
 
   public abstract attack(
-    playerId: string,
+    playerId: number,
     position: { x: number; y: number },
     facing: Direction,
     aimAngle?: number
