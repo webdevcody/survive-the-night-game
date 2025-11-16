@@ -10,9 +10,10 @@ const INTERACTION_TEXT_HIGHLIGHT_COLOR = "yellow";
 
 type QueuedInteractionText = {
   text: string;
-  x: number;
-  y: number;
-  fillStyle: string;
+  baseY: number;
+  centerX: number;
+  textWidth: number;
+  isClosest: boolean;
 };
 
 const queuedInteractionTexts: QueuedInteractionText[] = [];
@@ -37,14 +38,12 @@ export function renderInteractionText(
 
   const baseY = position.y - 3 + offset.y;
   const centerX = centerPosition.x + offset.x;
-  const y = resolveStackedLabelY(centerX, textWidth, baseY);
-  const x = centerX - textWidth / 2;
-
   queuedInteractionTexts.push({
     text,
-    x,
-    y,
-    fillStyle: isClosest ? INTERACTION_TEXT_HIGHLIGHT_COLOR : INTERACTION_TEXT_COLOR,
+    baseY,
+    centerX,
+    textWidth,
+    isClosest,
   });
 }
 
@@ -60,10 +59,22 @@ export function flushInteractionText(ctx: CanvasRenderingContext2D): void {
 
   ctx.save();
   ctx.font = INTERACTION_TEXT_FONT;
-  queuedInteractionTexts.forEach(({ text, x, y, fillStyle }) => {
-    ctx.fillStyle = fillStyle;
-    ctx.fillText(text, x, y);
-  });
+  queuedInteractionTexts
+    .sort((a, b) => {
+      if (a.isClosest !== b.isClosest) {
+        return a.isClosest ? -1 : 1;
+      }
+      if (a.baseY !== b.baseY) {
+        return a.baseY - b.baseY;
+      }
+      return a.centerX - b.centerX;
+    })
+    .forEach(({ text, centerX, baseY, textWidth, isClosest }) => {
+      const y = resolveStackedLabelY(centerX, textWidth, baseY, isClosest);
+      const x = centerX - textWidth / 2;
+      ctx.fillStyle = isClosest ? INTERACTION_TEXT_HIGHLIGHT_COLOR : INTERACTION_TEXT_COLOR;
+      ctx.fillText(text, x, y);
+    });
   ctx.restore();
 
   queuedInteractionTexts.length = 0;

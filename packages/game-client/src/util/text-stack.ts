@@ -20,21 +20,32 @@ function overlaps(box: LabelBox, centerX: number, width: number, y: number): boo
   return horizontalOverlap && verticalOverlap;
 }
 
-export function resolveStackedLabelY(centerX: number, width: number, baseY: number): number {
-  let y = baseY;
-  let steps = 0;
+export function resolveStackedLabelY(
+  centerX: number,
+  width: number,
+  baseY: number,
+  preferUp: boolean = false
+): number {
+  const candidateOffsets: number[] = [0];
 
-  while (steps < MAX_RESOLVE_STEPS) {
-    const overlappingBox = labelBoxes.find((box) => overlaps(box, centerX, width, y));
-    if (!overlappingBox) {
-      break;
+  for (let step = 1; step <= MAX_RESOLVE_STEPS; step += 1) {
+    const offset = step * STACK_LINE_HEIGHT;
+    if (preferUp) {
+      candidateOffsets.push(-offset, offset);
+    } else {
+      candidateOffsets.push(offset, -offset);
     }
-
-    const direction = centerX >= overlappingBox.centerX ? 1 : -1;
-    y += direction * STACK_LINE_HEIGHT;
-    steps += 1;
   }
 
-  labelBoxes.push({ centerX, width, y });
-  return y;
+  for (const offset of candidateOffsets) {
+    const candidateY = baseY + offset;
+    if (!labelBoxes.some((box) => overlaps(box, centerX, width, candidateY))) {
+      labelBoxes.push({ centerX, width, y: candidateY });
+      return candidateY;
+    }
+  }
+
+  const fallbackY = baseY + (preferUp ? -MAX_RESOLVE_STEPS : MAX_RESOLVE_STEPS) * STACK_LINE_HEIGHT;
+  labelBoxes.push({ centerX, width, y: fallbackY });
+  return fallbackY;
 }
