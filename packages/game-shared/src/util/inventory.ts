@@ -34,3 +34,19 @@ export function isResourceItem(itemType: ItemType): boolean {
 export function isWeapon(itemType: ItemType): boolean {
   return weaponRegistry.has(itemType);
 }
+
+/**
+ * Get the ammo type for a weapon. Returns null if the weapon doesn't use ammo.
+ * Pattern: {weapon_id}_ammo (e.g., "pistol" -> "pistol_ammo")
+ * Melee weapons (knife, baseball_bat) don't use ammo.
+ */
+export function getWeaponAmmoType(weaponType: ItemType): ItemType | null {
+  const weaponConfig = weaponRegistry.get(weaponType);
+  if (!weaponConfig) return null;
+  
+  // Melee weapons don't use ammo
+  if (weaponConfig.type === "melee") return null;
+  
+  // Ranged weapons use {weapon_id}_ammo pattern
+  return `${weaponType}_ammo` as ItemType;
+}
