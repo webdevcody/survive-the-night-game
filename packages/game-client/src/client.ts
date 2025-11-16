@@ -352,6 +352,9 @@ export class GameClient {
       onInventorySlotChanged: (slot) => {
         this.handleLocalInventorySlotChanged(slot);
       },
+      onWeaponSelectByIndex: (index) => {
+        this.hud.selectWeaponByIndex(index);
+      },
     });
 
     // Create HUD after inputManager is initialized

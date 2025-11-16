@@ -19,6 +19,7 @@ export const keybindingsConfig = {
   TOGGLE_MUTE: "m",
   TOGGLE_INSTRUCTIONS: "i",
   PLAYER_LIST: "tab",
+  WEAPONS_HUD: "alt",
 } as const;
 
 export type KeybindingsConfig = typeof keybindingsConfig;

@@ -61,6 +61,7 @@ export class InputManager {
   private callbacks: InputManagerOptions = {};
   private mousePosition: Vector2 | null = null;
   private canvas: HTMLCanvasElement | null = null;
+  private isAltHeld = false;
 
   private checkIfChanged() {
     this.hasChanged = JSON.stringify(this.inputs) !== JSON.stringify(this.lastInputs);
@@ -136,6 +137,11 @@ export class InputManager {
 
       const eventCode = e.code;
       const eventKey = e.key.toLowerCase();
+
+      // Track ALT key state
+      if (eventCode === "AltLeft" || eventCode === "AltRight") {
+        this.isAltHeld = true;
+      }
 
       // Check if player is dead - if so, any key triggers respawn
       const isPlayerDead = callbacks.isPlayerDead?.() ?? false;
@@ -321,6 +327,11 @@ export class InputManager {
 
       const eventCode = e.code;
       const eventKey = e.key.toLowerCase();
+
+      // Track ALT key state
+      if (eventCode === "AltLeft" || eventCode === "AltRight") {
+        this.isAltHeld = false;
+      }
 
       // Check if this key was consumed by merchant panel during keydown
       if (this.merchantPanelConsumedKeys.has(eventKey)) {
@@ -560,6 +571,20 @@ export class InputManager {
    */
   getMousePosition(): Vector2 | null {
     return this.mousePosition;
+  }
+
+  /**
+   * Check if ALT key is currently held
+   */
+  isAltKeyHeld(): boolean {
+    return this.isAltHeld;
+  }
+
+  /**
+   * Set ALT key state (used to close weapons HUD programmatically)
+   */
+  setAltKeyHeld(held: boolean): void {
+    this.isAltHeld = held;
   }
 
   /**
