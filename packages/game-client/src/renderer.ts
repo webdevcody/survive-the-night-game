@@ -13,9 +13,12 @@ import { getConfig } from "@shared/config";
 import { perfTimer } from "@shared/util/performance";
 import { DEBUG_PERFORMANCE } from "@shared/debug";
 import { isWeapon } from "@shared/util/inventory";
-import { beginTextStackFrame } from "@/util/text-stack";
 import { PlayerClient } from "@/entities/player";
 import { Entities } from "@shared/constants";
+import {
+  beginInteractionTextFrame,
+  flushInteractionText,
+} from "@/util/interaction-text";
 
 export class Renderer {
   private ctx: CanvasRenderingContext2D;
@@ -192,8 +195,9 @@ export class Renderer {
 
     // Render entities
     perfTimer.start("renderEntities");
-    beginTextStackFrame();
+    beginInteractionTextFrame();
     this.renderEntities();
+    flushInteractionText(this.ctx);
     perfTimer.end("renderEntities");
 
     // Render particles
