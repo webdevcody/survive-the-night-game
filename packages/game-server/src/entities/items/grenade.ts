@@ -66,7 +66,6 @@ export class Grenade extends Weapon {
     facing: Direction,
     aimAngle?: number
   ): void {
-    console.log("playerId", playerId);
     const player = this.getEntityManager().getEntityById(playerId);
     if (!player || !player.hasExt(Positionable)) return;
 
