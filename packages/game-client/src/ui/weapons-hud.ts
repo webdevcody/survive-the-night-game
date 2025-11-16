@@ -166,8 +166,6 @@ export class WeaponsHUD implements Renderable {
     const rOut = WHEEL.outerRadius * scale;
 
     const hoverIndex = this.detectSegment(cx, cy, rIn, rOut);
-    canvas.style.cursor =
-      hoverIndex === -1 ? "default" : this.items[hoverIndex].owned ? "pointer" : "not-allowed";
 
     ctx.save();
     this.drawWheel(ctx, cx, cy, rIn, rOut, scale, hoverIndex);
