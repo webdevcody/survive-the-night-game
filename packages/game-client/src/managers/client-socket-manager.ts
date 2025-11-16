@@ -79,67 +79,52 @@ export class ClientSocketManager {
   private pingInterval: ReturnType<typeof setInterval> | null = null;
   private onPingUpdate?: (ping: number) => void;
   private isDisconnected: boolean = false;
+  private serverUrl: string;
+  private reconnectTimeout: ReturnType<typeof setTimeout> | null = null;
+  private reconnectAttempts: number = 0;
+  private readonly MAX_RECONNECT_ATTEMPTS = Infinity; // Keep trying indefinitely
+  private readonly RECONNECT_DELAY_MS = 1000; // Start with 1 second delay
+  private eventHandlers: Map<string, Array<(event: any) => void>> = new Map();
+  private socketDisconnectHandlers: Array<() => void> = [];
 
   public on<K extends keyof typeof SERVER_EVENT_MAP>(eventType: K, handler: (event: any) => void) {
-    // Use DelayedSocket.on() which automatically decodes payloads (except buffers)
-    this.socket.on(eventType as any, (decodedEvent: any) => {
-      const run = () => {
-        const Ctor = (SERVER_EVENT_MAP as any)[eventType];
-        let event: any;
-
-        // Special handling for GAME_STATE_UPDATE with buffer
-        if (
-          eventType === ServerSentEvents.GAME_STATE_UPDATE &&
-          decodedEvent instanceof ArrayBuffer
-        ) {
-          event = Ctor.deserializeFromBuffer(decodedEvent);
-        } else if (decodedEvent instanceof ArrayBuffer) {
-          // Binary format - deserialize
-          const deserialized = deserializeServerEvent(eventType as string, decodedEvent);
-          if (deserialized !== null) {
-            // Create event from deserialized data
-            event = new Ctor(deserialized[0]);
-          } else {
-            // Fall back to JSON if deserialization fails
-            event = new Ctor(decodedEvent);
-          }
-        } else {
-          // JSON format - use directly
-          event = new Ctor(decodedEvent);
-        }
-
-        handler(event);
-      };
-      if (SIMULATION_CONFIG.simulatedLatencyMs > 0) {
-        setTimeout(run, SIMULATION_CONFIG.simulatedLatencyMs);
-      } else {
-        run();
-      }
-    });
+    const eventKey = eventType as string;
+    if (!this.eventHandlers.has(eventKey)) {
+      this.eventHandlers.set(eventKey, []);
+    }
+    this.eventHandlers.get(eventKey)!.push(handler);
+    this.attachHandler(eventKey, handler);
   }
 
   constructor(serverUrl: string) {
+    this.serverUrl = serverUrl;
+    this.connect();
+  }
+
+  private connect(): void {
     const displayName = localStorage.getItem("displayName");
 
     if (!displayName) {
       throw new Error("No display name found");
     }
 
-    console.log("Connecting to game server", serverUrl);
+    console.log("Connecting to game server", this.serverUrl);
 
     // Create client adapter based on configuration and connect
     this.clientAdapter = createClientAdapter();
-    this.rawSocket = this.clientAdapter.connect(`${serverUrl}?displayName=${displayName}`, {
+    this.rawSocket = this.clientAdapter.connect(`${this.serverUrl}?displayName=${displayName}`, {
       // Ensure we create a new connection each time
       forceNew: true,
     });
 
     // Wrap the socket with DelayedSocket to handle latency simulation
     this.socket = new DelayedSocket(this.rawSocket, SIMULATION_CONFIG.simulatedLatencyMs);
+    this.registerStoredHandlers();
 
     this.rawSocket.on("connect", () => {
       console.log("Connected to game server", this.rawSocket.id);
       this.isDisconnected = false;
+      this.reconnectAttempts = 0; // Reset reconnect attempts on successful connection
       this.socket.emit(ClientSentEvents.REQUEST_FULL_STATE);
       this.startPingMeasurement();
     });
@@ -148,6 +133,14 @@ export class ClientSocketManager {
       console.log("Disconnected from game server");
       this.isDisconnected = true;
       this.stopPingMeasurement();
+      this.socketDisconnectHandlers.forEach((handler) => {
+        try {
+          handler();
+        } catch (error) {
+          console.error("Error in socket disconnect handler", error);
+        }
+      });
+      this.attemptReconnect();
     });
 
     // Set up pong handler (using DelayedSocket.on() which automatically decodes)
@@ -178,6 +171,81 @@ export class ClientSocketManager {
       // This ensures accurate ping calculation without clock skew issues
       this.socket.emit(ClientSentEvents.PING_UPDATE, latency);
     });
+  }
+
+  private attemptReconnect(): void {
+    // Clear any existing reconnect timeout
+    if (this.reconnectTimeout) {
+      clearTimeout(this.reconnectTimeout);
+      this.reconnectTimeout = null;
+    }
+
+    if (this.reconnectAttempts >= this.MAX_RECONNECT_ATTEMPTS) {
+      console.error("Max reconnect attempts reached, giving up");
+      return;
+    }
+
+    // Exponential backoff: 1s, 2s, 4s, 8s, max 10s
+    const delay = Math.min(
+      this.RECONNECT_DELAY_MS * Math.pow(2, this.reconnectAttempts),
+      10000
+    );
+    this.reconnectAttempts++;
+
+    console.log(
+      `Attempting to reconnect in ${delay}ms (attempt ${this.reconnectAttempts})...`
+    );
+
+    this.reconnectTimeout = setTimeout(() => {
+      console.log("Reconnecting to game server...");
+      this.connect();
+    }, delay);
+  }
+
+  private attachHandler(eventType: string, handler: (event: any) => void): void {
+    if (!this.socket) {
+      return;
+    }
+
+    this.socket.on(eventType as any, (decodedEvent: any) => {
+      const run = () => {
+        const Ctor = (SERVER_EVENT_MAP as any)[eventType];
+        let eventInstance: any;
+
+        if (eventType === ServerSentEvents.GAME_STATE_UPDATE && decodedEvent instanceof ArrayBuffer) {
+          eventInstance = Ctor.deserializeFromBuffer(decodedEvent);
+        } else if (decodedEvent instanceof ArrayBuffer) {
+          const deserialized = deserializeServerEvent(eventType as string, decodedEvent);
+          if (deserialized !== null) {
+            eventInstance = new Ctor(deserialized[0]);
+          } else {
+            eventInstance = new Ctor(decodedEvent);
+          }
+        } else {
+          eventInstance = new Ctor(decodedEvent);
+        }
+
+        handler(eventInstance);
+      };
+
+      if (SIMULATION_CONFIG.simulatedLatencyMs > 0) {
+        setTimeout(run, SIMULATION_CONFIG.simulatedLatencyMs);
+      } else {
+        run();
+      }
+    });
+  }
+
+  private registerStoredHandlers(): void {
+    this.eventHandlers.forEach((handlers, eventType) => {
+      handlers.forEach((handler) => this.attachHandler(eventType, handler));
+    });
+  }
+
+  public onSocketDisconnect(handler: () => void): void {
+    if (!this.socketDisconnectHandlers.includes(handler)) {
+      this.socketDisconnectHandlers.push(handler);
+    }
   }
 
   private startPingMeasurement(): void {
@@ -232,6 +300,10 @@ export class ClientSocketManager {
     this.socket.emit(ClientSentEvents.REQUEST_FULL_STATE);
   }
 
+  public getIsDisconnected(): boolean {
+    return this.isDisconnected;
+  }
+
   public sendMerchantBuy(merchantId: string, itemIndex: number) {
     this.socket.emit(ClientSentEvents.MERCHANT_BUY, { merchantId, itemIndex });
   }
@@ -258,6 +330,12 @@ export class ClientSocketManager {
   public disconnect(): void {
     if (this.isDisconnected) {
       return; // Already disconnected
+    }
+
+    // Clear reconnect timeout if we're manually disconnecting
+    if (this.reconnectTimeout) {
+      clearTimeout(this.reconnectTimeout);
+      this.reconnectTimeout = null;
     }
 
     this.stopPingMeasurement();

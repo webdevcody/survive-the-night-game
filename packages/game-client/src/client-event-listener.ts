@@ -81,6 +81,7 @@ export class ClientEventListener {
     // Prevent game from starting until we're initialized
     this.gameClient.stop();
 
+    // Set up event listeners first, before requesting state
     this.socketManager.on(ServerSentEvents.GAME_STATE_UPDATE, this.onGameStateUpdate.bind(this));
     this.socketManager.on(ServerSentEvents.MAP, this.onMap.bind(this));
     this.socketManager.on(ServerSentEvents.YOUR_ID, this.onYourId.bind(this));
@@ -118,6 +119,39 @@ export class ClientEventListener {
     this.socketManager.on(ServerSentEvents.WAVE_START, this.onWaveStart.bind(this));
     this.socketManager.on(ServerSentEvents.CRAFT, this.onCraft.bind(this));
     this.socketManager.on(ServerSentEvents.BUILD, this.onBuild.bind(this));
+
+    // Request full state after all listeners are set up
+    // If already connected, request immediately; otherwise the connect handler will request it
+    // Use setTimeout to ensure this runs after the constructor completes and socket is ready
+    setTimeout(() => {
+      if (!this.socketManager.getIsDisconnected()) {
+        console.log("[ClientEventListener] Requesting full state after listener setup");
+        this.socketManager.sendRequestFullState();
+      }
+    }, 0);
+
+    // Listen for disconnect to reset initialization state
+    this.socketManager.onSocketDisconnect(() => {
+      this.handleDisconnect();
+    });
+  }
+
+  private handleDisconnect(): void {
+    console.log("[ClientEventListener] Server disconnected, resetting initialization state");
+    // Reset initialization flags so we wait for fresh data on reconnect
+    this.hasReceivedMap = false;
+    this.hasReceivedPlayerId = false;
+    this.hasReceivedInitialState = false;
+    this.pendingFullStateEvent = null;
+    
+    // Stop the game until we're re-initialized
+    this.gameClient.stop();
+    
+    // Clear entities to prevent stale state
+    clearEntities(this.gameState);
+    
+    // Show message to user
+    this.gameClient.getHud().addMessage("Disconnected from server. Reconnecting...", "yellow");
   }
 
   onServerUpdating(serverUpdatingEvent: ServerUpdatingEvent) {

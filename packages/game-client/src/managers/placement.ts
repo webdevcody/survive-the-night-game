@@ -27,7 +27,7 @@ export class PlacementManager {
     private mapManager: MapManager,
     private getPlayer: () => PlayerClient | null,
     private getEntities: () => ClientEntityBase[],
-    private socket: ISocketAdapter
+    private getSocket: () => ISocketAdapter
   ) {
     this.setupMouseTracking();
   }
@@ -196,7 +196,7 @@ export class PlacementManager {
     if (!this.ghostPosition || !this.isValidPlacement) return;
 
     // Send placement request to server
-    this.socket.emit(ClientSentEvents.PLACE_STRUCTURE, {
+    this.getSocket().emit(ClientSentEvents.PLACE_STRUCTURE, {
       itemType: selectedItem,
       position: {
         x: this.ghostPosition.x,

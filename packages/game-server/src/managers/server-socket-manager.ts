@@ -206,6 +206,45 @@ export class ServerSocketManager implements Broadcaster {
     this.mapManager = mapManager;
   }
 
+  private createPlayerForSocket(socket: ISocketAdapter): Player {
+    const player = new Player(this.getGameManagers());
+    player.setDisplayName(this.playerDisplayNames.get(socket.id) ?? "Unknown");
+
+    const spawnPosition = this.getMapManager().getRandomGrassPosition();
+    if (spawnPosition) {
+      player.getExt(Positionable).setPosition(spawnPosition);
+    } else {
+      console.warn(
+        `No spawn position available for socket ${socket.id}, defaulting player to origin`
+      );
+      player.getExt(Positionable).setPosition(new Vector2(0, 0));
+    }
+
+    this.players.set(socket.id, player);
+    this.getEntityManager().addEntity(player);
+
+    return player;
+  }
+
+  private sendInitialDataToSocket(socket: ISocketAdapter, player: Player): void {
+    const delayedSocket = this.wrapSocket(socket);
+    const mapData = this.getMapManager().getMapData();
+    delayedSocket.emit(ServerSentEvents.MAP, mapData);
+
+    const yourIdBuffer = serializeServerEvent(ServerSentEvents.YOUR_ID, [player.getId()]);
+    if (yourIdBuffer !== null) {
+      delayedSocket.emit(ServerSentEvents.YOUR_ID, yourIdBuffer);
+    } else {
+      delayedSocket.emit(ServerSentEvents.YOUR_ID, player.getId());
+    }
+  }
+
+  private broadcastPlayerJoined(player: Player): void {
+    this.broadcastEvent(
+      new PlayerJoinedEvent({ playerId: player.getId(), displayName: player.getDisplayName() })
+    );
+  }
+
   public recreatePlayersForConnectedSockets(): void {
     // Clear existing player map
     this.players.clear();
@@ -215,33 +254,9 @@ export class ServerSocketManager implements Broadcaster {
 
     // Create new players for each connected socket
     sockets.forEach((socket) => {
-      const player = new Player(this.getGameManagers());
-      player.setDisplayName(this.playerDisplayNames.get(socket.id) ?? "Unknown");
-
-      // Position player at random grass location
-      const spawnPosition = this.getMapManager().getRandomGrassPosition();
-      player.getExt(Positionable).setPosition(spawnPosition);
-
-      // Add to player map and entity manager
-      this.players.set(socket.id, player);
-      this.getEntityManager().addEntity(player);
-
-      // Send map and player ID to client
-      // DelayedSocket will automatically encode the payload and track bytes
-      const mapData = this.getMapManager().getMapData();
-      const delayedSocket = this.wrapSocket(socket);
-      // MAP is a complex event - keep as JSON for now
-      delayedSocket.emit(ServerSentEvents.MAP, mapData);
-      // Try to serialize YOUR_ID as binary
-      const yourIdBuffer = serializeServerEvent(ServerSentEvents.YOUR_ID, [player.getId()]);
-      if (yourIdBuffer !== null) {
-        delayedSocket.emit(ServerSentEvents.YOUR_ID, yourIdBuffer);
-      } else {
-        delayedSocket.emit(ServerSentEvents.YOUR_ID, player.getId());
-      }
-      this.broadcastEvent(
-        new PlayerJoinedEvent({ playerId: player.getId(), displayName: player.getDisplayName() })
-      );
+      const player = this.createPlayerForSocket(socket);
+      this.sendInitialDataToSocket(socket, player);
+      this.broadcastPlayerJoined(player);
     });
   }
 
@@ -622,40 +637,26 @@ export class ServerSocketManager implements Broadcaster {
     if (totalPlayers === 0) {
       console.log("Starting new game");
       this.gameServer.startNewGame();
-      // Don't return early, let the map data be sent below
-    }
+      let player = this.players.get(socket.id);
+      let shouldBroadcastJoin = false;
 
-    // If we didn't just create a new game, create a new player
-    if (totalPlayers !== 0) {
-      const player = new Player(this.getGameManagers());
-      player.setDisplayName(this.playerDisplayNames.get(socket.id) ?? "Unknown");
-
-      // Position player at random grass location
-      const spawnPosition = this.getMapManager().getRandomGrassPosition();
-      player.getExt(Positionable).setPosition(spawnPosition);
-
-      this.players.set(socket.id, player);
-      this.getEntityManager().addEntity(player);
-
-      const delayedSocket = this.wrapSocket(socket);
-      // Try to serialize YOUR_ID as binary
-      const yourIdBuffer = serializeServerEvent(ServerSentEvents.YOUR_ID, [player.getId()]);
-      if (yourIdBuffer !== null) {
-        delayedSocket.emit(ServerSentEvents.YOUR_ID, yourIdBuffer);
-      } else {
-        delayedSocket.emit(ServerSentEvents.YOUR_ID, player.getId());
+      if (!player) {
+        player = this.createPlayerForSocket(socket);
+        shouldBroadcastJoin = true;
       }
-      this.broadcastEvent(
-        new PlayerJoinedEvent({ playerId: player.getId(), displayName: player.getDisplayName() })
-      );
+
+      this.sendInitialDataToSocket(socket, player);
+
+      if (shouldBroadcastJoin) {
+        this.broadcastPlayerJoined(player);
+      }
+
+      return;
     }
 
-    // Always send the map data
-    // DelayedSocket will automatically encode the payload and track bytes
-    const mapData = this.getMapManager().getMapData();
-    const delayedSocket = this.wrapSocket(socket);
-    // MAP is a complex event - keep as JSON for now (could be optimized later)
-    delayedSocket.emit(ServerSentEvents.MAP, mapData);
+    const player = this.createPlayerForSocket(socket);
+    this.sendInitialDataToSocket(socket, player);
+    this.broadcastPlayerJoined(player);
   }
 
   public broadcastEvent(event: GameEvent<any>): void {

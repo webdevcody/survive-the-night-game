@@ -414,7 +414,7 @@ export class GameClient {
       this.mapManager,
       () => this.getMyPlayer(),
       () => this.gameState.entities,
-      this.socketManager.getSocket()
+      () => this.socketManager.getSocket()
     );
 
     // Set up ping display

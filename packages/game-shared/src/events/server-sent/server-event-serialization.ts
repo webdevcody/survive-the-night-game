@@ -1,5 +1,6 @@
 import { ServerSentEvents, type ServerSentEventType } from "../events";
 import { BufferWriter, BufferReader } from "../../util/buffer-serialization";
+import Vector2 from "../../util/vector2";
 
 const SERVER_EVENT_VALUES = new Set<string>(Object.values(ServerSentEvents));
 
@@ -98,8 +99,12 @@ export function serializeServerEvent(event: string, args: any[]): Buffer | null 
     }
     case ServerSentEvents.EXPLOSION: {
       const data = args[0] ?? {};
-      writer.writeFloat64(data.x ?? 0);
-      writer.writeFloat64(data.y ?? 0);
+      // Handle both { position: Vector2 } and { x, y } formats
+      const position = data.position ?? data;
+      const x = position?.x ?? 0;
+      const y = position?.y ?? 0;
+      writer.writeFloat64(x);
+      writer.writeFloat64(y);
       writer.writeFloat64(data.radius ?? 0);
       break;
     }
@@ -244,7 +249,8 @@ export function deserializeServerEvent(event: string, buffer: ArrayBuffer): any[
       const x = reader.readFloat64();
       const y = reader.readFloat64();
       const radius = reader.readFloat64();
-      return [{ x, y, radius }];
+      // Return in format expected by ExplosionEvent constructor: { position: Vector2 }
+      return [{ position: new Vector2(x, y), radius }];
     }
     case ServerSentEvents.CAR_REPAIR: {
       const playerId = reader.readUInt16();
