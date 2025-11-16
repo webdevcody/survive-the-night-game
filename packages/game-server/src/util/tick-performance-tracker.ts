@@ -66,7 +66,7 @@ export interface SpikeStats {
 export class TickPerformanceTracker {
   private methodTimings: Map<string, number[]> = new Map();
   private methodHierarchy: Map<string, { parent?: string; depth: number }> = new Map();
-  private entityTimings: Map<string, { type: EntityType; times: number[] }> = new Map();
+  private entityTimings: Map<number, { type: EntityType; times: number[] }> = new Map();
   private tickTimes: number[] = [];
   private tickTimeHistory: number[] = []; // For graph display
   private bandwidthHistory: number[] = []; // For bandwidth graph display
@@ -129,7 +129,7 @@ export class TickPerformanceTracker {
     };
   }
 
-  public startEntityUpdate(entityId: string, entityType: EntityType): () => void {
+  public startEntityUpdate(entityId: number, entityType: EntityType): () => void {
     if (!ENABLE_PERFORMANCE_MONITORING) {
       return () => {}; // No-op when disabled
     }
@@ -370,7 +370,7 @@ export class TickPerformanceTracker {
     // Calculate entity type statistics (aggregated by type)
     const entityTypeStatsMap = new Map<
       EntityType,
-      { totalTime: number; callCount: number; entityIds: Set<string> }
+      { totalTime: number; callCount: number; entityIds: Set<number> }
     >();
 
     for (const [entityId, data] of this.entityTimings.entries()) {

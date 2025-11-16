@@ -36,7 +36,9 @@ export class EntityManager implements IEntityManager {
   private zombies: BaseEnemy[] = [];
   private merchants: Entity[] = [];
   private entitiesToRemove: Array<{ id: number; expiration: number }> = [];
-  private id: number = 0;
+  private availableIds: number[] = [];
+  private maxId: number = 65535; // Maximum ID value (uint16 max)
+  private nextNewId: number = 0; // Counter for generating new IDs when pool is empty
   private entityFinder: EntityFinder | null = null;
   private gameManagers?: IGameManagers;
   private entityStateTracker: EntityStateTracker;
@@ -53,6 +55,8 @@ export class EntityManager implements IEntityManager {
     this.players = [];
     this.entityStateTracker = new EntityStateTracker();
     this.updateScheduler = new UpdateScheduler();
+    // Initialize ID pool with all valid IDs
+    this.availableIds = Array.from({ length: this.maxId + 1 }, (_, i) => i);
   }
 
   setGameManagers(gameManagers: IGameManagers) {
@@ -240,6 +244,9 @@ export class EntityManager implements IEntityManager {
     this.spliceWhere(this.zombies, (it) => it.getId() === entityId);
     this.spliceWhere(this.merchants, (it) => it.getId() === entityId);
     this.spliceWhere(this.entities, (it) => it.getId() === entityId);
+
+    // Return the ID to the pool for reuse
+    this.availableIds.push(entityId);
   }
 
   private spliceWhere(array: any[], predicate: (item: any) => boolean): void {
@@ -251,7 +258,16 @@ export class EntityManager implements IEntityManager {
   }
 
   generateEntityId(): number {
-    return this.id++;
+    // Pop an ID from the available pool
+    const id = this.availableIds.pop();
+    if (id !== undefined) {
+      return id;
+    }
+    // If pool is empty, generate a new ID (shouldn't happen in normal operation)
+    if (this.nextNewId > this.maxId) {
+      throw new Error(`Entity ID pool exhausted. Max ID: ${this.maxId}`);
+    }
+    return this.nextNewId++;
   }
 
   isEntityMarkedForRemoval(entityId: number): boolean {
@@ -341,6 +357,9 @@ export class EntityManager implements IEntityManager {
           this.merchants.splice(merchantIndex, 1);
         }
       }
+
+      // Return the ID to the pool for reuse
+      this.availableIds.push(entity.getId());
     }
 
     // Clean up expired entries from entitiesToRemove
@@ -359,6 +378,9 @@ export class EntityManager implements IEntityManager {
     this.entitiesInGrid.clear();
     this.entitiesToAddToGrid.clear();
     this.updateScheduler.clear();
+    // Reset ID pool to contain all valid IDs
+    this.availableIds = Array.from({ length: this.maxId + 1 }, (_, i) => i);
+    this.nextNewId = 0;
   }
 
   getNearbyEntities(position: Vector2, radius: number = 64, filterSet?: Set<EntityType>): Entity[] {
