@@ -1,5 +1,32 @@
 [
   {
+    "version": "0.16.1",
+    "date": "2025-11-16",
+    "changes": [
+      "Added pickup progress indicator above players while holding interact on placeable items",
+      "Improved teleport and pickup visuals by reusing shared radial progress renderer",
+      "Reduced pickup hold time to 0.5 seconds and broadcast progress to clients for faster feedback",
+      "Fixed leaderboard data by marking display name, kills, and ping fields dirty immediately"
+    ]
+  },
+  {
+    "version": "0.16.0",
+    "date": "2025-11-16",
+    "changes": [
+      "Added biome-editor-server package - new server infrastructure for biome management and editing",
+      "Implemented object pooling system - vectors and rectangles now use memory pools for improved performance and reduced garbage collection",
+      "Refactored entity serialization to use BufferWriter - significantly improved network efficiency and reduced bandwidth usage",
+      "Enhanced entity ID management - implemented pool-based ID system to prevent ID exhaustion and improve efficiency",
+      "Improved client event handling - added disconnect handling with automatic reconnect attempts and exponential backoff",
+      "Refactored weapon recoil mechanics - consolidated recoil system in Weapon class for better maintainability and consistency",
+      "Added camera shake effects - weapons now trigger camera shake on attack, and zombie deaths create proximity-based shake for enhanced immersion",
+      "Improved item pickup interaction - players can now hold interact key to pick up placeable items for better control",
+      "Added automatic entity cleanup - entities are automatically removed after 2 minutes to prevent memory leaks",
+      "Updated infrastructure - upgraded to TypeScript 5.7.2 and Node.js 24-slim for improved performance and features",
+      "Added performance monitoring environment variable - ENABLE_PERFORMANCE_MONITORING flag for enhanced debugging capabilities"
+    ]
+  },
+  {
     "version": "0.15.0",
     "date": "2025-11-15",
     "changes": [

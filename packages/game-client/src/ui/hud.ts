@@ -25,6 +25,7 @@ import { InventoryBarUI } from "./inventory-bar";
 import { InputManager } from "@/managers/input";
 import { PlayerClient } from "@/entities/player";
 import { InventoryItem } from "../../../game-shared/src/util/inventory";
+import { renderRadialProgressIndicator } from "@/util/radial-progress-indicator";
 
 const HUD_SETTINGS = {
   GameMessages: {
@@ -523,38 +524,46 @@ export class Hud {
     playerPosition: { x: number; y: number },
     progress: number
   ): void {
-    if (progress <= 0) {
-      return;
-    }
-
     // Position above player's head (offset by player height + padding)
     const indicatorY = playerPosition.y - 20; // 16px player height + 4px padding
     const indicatorX = playerPosition.x + 8; // Center on player (player is 16px wide)
 
-    const radius = 8; // Reduced from 12
-    const startAngle = -Math.PI / 2; // Start from top
-    const endAngle = startAngle + Math.PI * 2 * progress; // Progress around circle
+    renderRadialProgressIndicator(ctx, {
+      progress,
+      x: indicatorX,
+      y: indicatorY,
+      radius: 8,
+      progressColor: "rgba(100, 200, 255, 0.9)", // Blue for teleport
+      borderColor: "rgba(255, 255, 255, 0.8)",
+      borderWidth: 1.5,
+      backgroundColor: "rgba(0, 0, 0, 0.7)",
+      startAngle: -Math.PI / 2, // Start from top
+    });
+  }
 
-    // Draw outer circle (border)
-    ctx.beginPath();
-    ctx.arc(indicatorX, indicatorY, radius, 0, Math.PI * 2);
-    ctx.strokeStyle = "rgba(255, 255, 255, 0.8)";
-    ctx.lineWidth = 1.5; // Reduced from 2
-    ctx.stroke();
+  /**
+   * Render pickup progress indicator above player's head
+   */
+  public renderPickupProgress(
+    ctx: CanvasRenderingContext2D,
+    playerPosition: { x: number; y: number },
+    progress: number
+  ): void {
+    // Position above player's head (offset by player height + padding)
+    const indicatorY = playerPosition.y - 20; // 16px player height + 4px padding
+    const indicatorX = playerPosition.x + 8; // Center on player (player is 16px wide)
 
-    // Draw progress arc
-    ctx.beginPath();
-    ctx.moveTo(indicatorX, indicatorY);
-    ctx.arc(indicatorX, indicatorY, radius - 1.5, startAngle, endAngle); // Reduced from radius - 2
-    ctx.closePath();
-    ctx.fillStyle = "rgba(100, 200, 255, 0.9)";
-    ctx.fill();
-
-    // Draw inner circle (background)
-    ctx.beginPath();
-    ctx.arc(indicatorX, indicatorY, radius - 3, 0, Math.PI * 2); // Reduced from radius - 4
-    ctx.fillStyle = "rgba(0, 0, 0, 0.7)";
-    ctx.fill();
+    renderRadialProgressIndicator(ctx, {
+      progress,
+      x: indicatorX,
+      y: indicatorY,
+      radius: 8,
+      progressColor: "rgba(100, 255, 100, 0.9)", // Green for pickup
+      borderColor: "rgba(255, 255, 255, 0.8)",
+      borderWidth: 1.5,
+      backgroundColor: "rgba(0, 0, 0, 0.7)",
+      startAngle: -Math.PI / 2, // Start from top
+    });
   }
 
   public addMessage(message: string, color?: string): void {

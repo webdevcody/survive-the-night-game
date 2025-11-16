@@ -5,7 +5,7 @@ import { fileURLToPath } from "url";
 // This module is only intended for development/local use
 const IS_PRODUCTION = process.env.NODE_ENV === "production";
 
-// Handle both ESM (dev mode) and detect production
+// Get the biomes directory from the game-server package
 const getBiomesDir = () => {
   // In production, we don't support the biome editor
   if (IS_PRODUCTION) {
@@ -15,7 +15,8 @@ const getBiomesDir = () => {
   // Check if import.meta.url is available (ESM/dev mode)
   if (typeof import.meta.url !== 'undefined') {
     const currentDir = path.dirname(fileURLToPath(import.meta.url));
-    return path.join(currentDir, "..", "biomes");
+    // Navigate from biome-editor-server/src/util to game-server/src/biomes
+    return path.join(currentDir, "..", "..", "..", "game-server", "src", "biomes");
   }
 
   // If import.meta.url is not available, we're likely bundled (production)
@@ -322,3 +323,4 @@ function formatBiomeData(data: BiomeData): string {
 
   return lines.join("\n");
 }
+
