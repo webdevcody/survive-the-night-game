@@ -1,14 +1,16 @@
 /**
- * WeaponsHUD – Ultra-Optimized Version
+ * WeaponsHUD – Option B Clean Refactor
  * --------------------------------------------------------------
- * Zero allocations during render.
- * All heavy work done only when inventory or window size changes.
+ * No behavior changes.
+ * No visual changes.
+ * No precomputation except storing per-frame values.
+ * Removes all repeated param passing.
  */
 
 import { Renderable } from "@/entities/util";
 import { InputManager } from "@/managers/input";
 import { AssetManager, getItemAssetKey } from "@/managers/asset";
-import { InventoryItem, isWeapon } from "../../../game-shared/src/util/inventory";
+import { InventoryItem } from "../../../game-shared/src/util/inventory";
 import { calculateHudScale } from "@/util/hud-scale";
 import { weaponRegistry } from "../../../game-shared/src/entities/weapon-registry";
 import { Z_INDEX } from "@shared/map";
@@ -48,10 +50,20 @@ export class WeaponsHUD implements Renderable {
   }[] = [];
 
   private segments: { start: number; end: number; mid: number }[] = [];
-  private weaponIndex: Record<string, number> = {}; // weaponType -> index
+  private weaponIndex: Record<string, number> = {};
 
   private initialized = false;
-  private lastOwnedMask = ""; // simple string mask tracks ownership changes
+  private lastOwnedMask = "";
+
+  // 🎯 NEW: Frame context (stored once per frame)
+  private frame = {
+    cx: 0,
+    cy: 0,
+    rIn: 0,
+    rOut: 0,
+    scale: 1,
+    hover: -1,
+  };
 
   constructor(
     assetManager: AssetManager,
@@ -62,12 +74,12 @@ export class WeaponsHUD implements Renderable {
     this.input = inputManager;
     this.getInventory = getInventory;
 
-    this.buildStaticData(); // one-time heavy build
+    this.buildStaticData();
   }
 
-  // ---------------------------------------------------------------------
-  // INITIAL ONE-TIME BUILD
-  // ---------------------------------------------------------------------
+  // ---------------------------------------------------------
+  // ONE-TIME BUILD
+  // ---------------------------------------------------------
   private buildStaticData() {
     const allWeapons = weaponRegistry.getAllWeaponTypes();
     const count = allWeapons.length;
@@ -90,6 +102,7 @@ export class WeaponsHUD implements Renderable {
       };
 
       const start = i * angleStep - Math.PI / 2;
+
       this.segments[i] = {
         start,
         end: start + angleStep,
@@ -102,15 +115,8 @@ export class WeaponsHUD implements Renderable {
     this.initialized = true;
   }
 
-  private drawHotkeyForSegment(
-    ctx: CanvasRenderingContext2D,
-    index: number,
-    cx: number,
-    cy: number,
-    rIn: number,
-    rOut: number,
-    scale: number
-  ) {
+  private drawHotkeyForSegment(ctx: CanvasRenderingContext2D, index: number) {
+    const { cx, cy, rIn, rOut, scale } = this.frame;
     const seg = this.segments[index];
     const angle = seg.mid;
 
@@ -182,14 +188,13 @@ export class WeaponsHUD implements Renderable {
     this.mouseY = y;
   }
 
-  // ---------------------------------------------------------------------
-  // UPDATE OWNERSHIP (only when needed)
-  // ---------------------------------------------------------------------
+  // ---------------------------------------------------------
+  // OWNERSHIP UPDATE
+  // ---------------------------------------------------------
   private updateOwnership() {
     const inv = this.getInventory();
     const count = this.items.length;
 
-    // Build a mask string like "10100101" for owned weapons
     let mask = "";
     for (let i = 0; i < count; i++) {
       const name = this.items[i].name;
@@ -197,18 +202,17 @@ export class WeaponsHUD implements Renderable {
       mask += owned ? "1" : "0";
     }
 
-    if (mask === this.lastOwnedMask) return; // no changes
+    if (mask === this.lastOwnedMask) return;
     this.lastOwnedMask = mask;
 
-    // Apply ownership states without allocating new objects
     for (let i = 0; i < count; i++) {
       this.items[i].owned = mask[i] === "1";
     }
   }
 
-  // ---------------------------------------------------------------------
+  // ---------------------------------------------------------
   // RENDER
-  // ---------------------------------------------------------------------
+  // ---------------------------------------------------------
   render(ctx: CanvasRenderingContext2D) {
     if (!this.input.isAltKeyHeld()) return;
     if (!this.initialized) return;
@@ -220,21 +224,33 @@ export class WeaponsHUD implements Renderable {
     const h = canvas.height;
 
     const scale = calculateHudScale(w, h);
-    const cx = w / 2;
-    const cy = h / 2;
+
+    // Compute once
+    const cx = w * 0.5;
+    const cy = h * 0.5;
     const rIn = WHEEL.innerRadius * scale;
     const rOut = WHEEL.outerRadius * scale;
 
-    const hoverIndex = this.detectSegment(cx, cy, rIn, rOut);
+    // Hover detection
+    const hover = this.detectSegment(cx, cy, rIn, rOut);
+
+    // Store in frame ctx
+    const f = this.frame;
+    f.cx = cx;
+    f.cy = cy;
+    f.rIn = rIn;
+    f.rOut = rOut;
+    f.scale = scale;
+    f.hover = hover;
 
     ctx.save();
-    this.drawWheel(ctx, cx, cy, rIn, rOut, scale, hoverIndex);
+    this.drawWheel(ctx);
     ctx.restore();
   }
 
-  // ---------------------------------------------------------------------
-  // DETECT HOVER (O(1))
-  // ---------------------------------------------------------------------
+  // ---------------------------------------------------------
+  // HOVER DETECTION
+  // ---------------------------------------------------------
   private detectSegment(cx: number, cy: number, rIn: number, rOut: number): number {
     const dx = this.mouseX - cx;
     const dy = this.mouseY - cy;
@@ -246,18 +262,12 @@ export class WeaponsHUD implements Renderable {
     return (angle / (TWO_PI / this.items.length)) | 0;
   }
 
-  // ---------------------------------------------------------------------
+  // ---------------------------------------------------------
   // DRAW WHEEL
-  // ---------------------------------------------------------------------
-  private drawWheel(
-    ctx: CanvasRenderingContext2D,
-    cx: number,
-    cy: number,
-    rIn: number,
-    rOut: number,
-    scale: number,
-    hover: number
-  ) {
+  // ---------------------------------------------------------
+  private drawWheel(ctx: CanvasRenderingContext2D) {
+    const { cx, cy, rIn, rOut, scale, hover } = this.frame;
+
     ctx.lineWidth = WHEEL.borderWidth * scale;
     ctx.strokeStyle = WHEEL.borderColor;
 
@@ -284,25 +294,18 @@ export class WeaponsHUD implements Renderable {
       ctx.fill();
       ctx.stroke();
 
-      this.drawIcon(ctx, item, cx, cy, seg.mid, rIn, rOut, scale);
-      // TODO: maybe add hotkeys and if more than 9 add combination of F + 1 and so on
-      // this.drawHotkeyForSegment(ctx, i, cx, cy, rIn, rOut, scale);
+      this.drawIcon(ctx, item, seg.mid);
+      //   TODO: maybe add hotkeys and if more than 9 add combination of F + 1 and so on
+      //   this.drawHotkeyForSegment(ctx, i);
     }
   }
 
-  // ---------------------------------------------------------------------
-  // ICON RENDER
-  // ---------------------------------------------------------------------
-  private drawIcon(
-    ctx: CanvasRenderingContext2D,
-    item: any,
-    cx: number,
-    cy: number,
-    angle: number,
-    rIn: number,
-    rOut: number,
-    scale: number
-  ) {
+  // ---------------------------------------------------------
+  // ICON DRAW
+  // ---------------------------------------------------------
+  private drawIcon(ctx: CanvasRenderingContext2D, item: any, angle: number) {
+    const { cx, cy, rIn, rOut, scale } = this.frame;
+
     const sprite = item.owned ? item.img : item.imgLocked;
     if (!sprite) return;
 
@@ -311,6 +314,7 @@ export class WeaponsHUD implements Renderable {
 
     const iw = sprite.width;
     const ih = sprite.height;
+
     const s =
       Math.min((WHEEL.iconMaxSize * scale) / iw, (WHEEL.iconMaxSize * scale) / ih) *
       WHEEL.iconScale;
@@ -318,9 +322,9 @@ export class WeaponsHUD implements Renderable {
     ctx.drawImage(sprite, x - (iw * s) / 2, y - (ih * s) / 2, iw * s, ih * s);
   }
 
-  // ---------------------------------------------------------------------
+  // ---------------------------------------------------------
   // CLICK HANDLING
-  // ---------------------------------------------------------------------
+  // ---------------------------------------------------------
   handleClick(x: number, y: number, canvasWidth: number, canvasHeight: number): boolean {
     if (!this.input.isAltKeyHeld()) return false;
 
