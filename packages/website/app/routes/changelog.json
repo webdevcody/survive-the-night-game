@@ -1,5 +1,16 @@
 [
   {
+    "version": "0.17.0",
+    "date": "2025-11-16",
+    "changes": [
+      "Added closest interactive entity highlighting - interaction text now shows yellow for the closest entity and white for others",
+      "Improved interaction feedback - players can now easily identify which entity they will interact with when multiple are nearby",
+      "Added priority system for dead players - dead players are prioritized over other interactive entities for looting",
+      "Optimized interaction detection - closest interactive entity is calculated once per frame and cached in gameState",
+      "Updated interaction text rendering across all entity types - car, survivor, enemy, and generic entities now use consistent highlighting"
+    ]
+  },
+  {
     "version": "0.16.1",
     "date": "2025-11-16",
     "changes": [

@@ -7,6 +7,7 @@ import { GameOverDialogUI } from "@/ui/game-over-dialog";
 import { ParticleManager } from "./managers/particles";
 import { PlacementManager } from "./managers/placement";
 import { ClientPositionable } from "@/extensions/positionable";
+import { ClientInteractive } from "@/extensions";
 import { ClientEntityBase } from "@/extensions/client-entity";
 import { getConfig } from "@shared/config";
 import { perfTimer } from "@shared/util/performance";
@@ -14,6 +15,7 @@ import { DEBUG_PERFORMANCE } from "@shared/debug";
 import { isWeapon } from "@shared/util/inventory";
 import { beginTextStackFrame } from "@/util/text-stack";
 import { PlayerClient } from "@/entities/player";
+import { Entities } from "@shared/constants";
 
 export class Renderer {
   private ctx: CanvasRenderingContext2D;
@@ -89,6 +91,7 @@ export class Renderer {
 
     if (!player || !player.hasExt(ClientPositionable)) {
       // If no player or player has no position, render everything
+      this.gameState.closestInteractiveEntityId = null;
       renderableEntities.sort((a, b) => a.getZIndex() - b.getZIndex());
       renderableEntities.forEach((entity) => {
         try {
@@ -105,8 +108,14 @@ export class Renderer {
     // Filter and sort entities within radius
     const renderRadius = getConfig().render.ENTITY_RENDER_RADIUS;
     const renderRadiusSquared = renderRadius * renderRadius;
+    const interactRadius = getConfig().player.MAX_INTERACT_RADIUS;
+    const interactRadiusSquared = interactRadius * interactRadius;
 
     var entitiesToRender = [];
+    var closestInteractiveEntity: ClientEntityBase | null = null;
+    var closestInteractiveDistanceSquared = Infinity;
+    var closestIsDeadPlayer = false;
+
     for (var i = 0, len = renderableEntities.length; i < len; ++i) {
       var entity = renderableEntities[i];
       if (!(entity instanceof ClientEntityBase)) continue;
@@ -115,10 +124,40 @@ export class Renderer {
       var dx = entityPos.x - playerPos.x;
       var dy = entityPos.y - playerPos.y;
       var distanceSquared = dx * dx + dy * dy;
+
       if (distanceSquared <= renderRadiusSquared) {
         entitiesToRender.push(entity);
       }
+
+      // Check if this is an interactive entity within interaction range
+      if (
+        entity.hasExt(ClientInteractive) &&
+        entity.getId() !== player.getId() &&
+        distanceSquared <= interactRadiusSquared
+      ) {
+        const isDeadPlayer =
+          entity.getType() === Entities.PLAYER && (entity as PlayerClient).isDead();
+
+        // Priority: dead players first, then closest by distance (using squared distance for comparison)
+        let isCloser = false;
+        if (isDeadPlayer && !closestIsDeadPlayer) {
+          isCloser = true;
+        } else if (!isDeadPlayer && closestIsDeadPlayer) {
+          isCloser = false;
+        } else {
+          isCloser = distanceSquared < closestInteractiveDistanceSquared;
+        }
+
+        if (isCloser) {
+          closestInteractiveEntity = entity;
+          closestInteractiveDistanceSquared = distanceSquared;
+          closestIsDeadPlayer = isDeadPlayer;
+        }
+      }
     }
+
+    // Cache the closest interactive entity ID for entities to check
+    this.gameState.closestInteractiveEntityId = closestInteractiveEntity?.getId() ?? null;
 
     entitiesToRender.sort((a, b) => a.getZIndex() - b.getZIndex());
 

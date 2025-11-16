@@ -20,6 +20,8 @@ export type GameState = {
   crafting: boolean;
   // Server time synchronization
   serverTimeOffset: number; // Offset in milliseconds: clientTime - serverTime
+  // Cached closest interactive entity ID (calculated once per frame in renderer)
+  closestInteractiveEntityId?: number | null;
 };
 
 export function getEntityById(gameState: GameState, id: number): ClientEntityBase | undefined {

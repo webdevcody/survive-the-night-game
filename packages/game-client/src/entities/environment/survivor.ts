@@ -158,7 +158,10 @@ export class SurvivorClient extends ClientEntity implements Renderable {
       const targetPosition = this.getPosition();
       this.lastRenderPosition = this.lerpPosition(
         targetPosition,
-        PoolManager.getInstance().vector2.claim(this.lastRenderPosition.x, this.lastRenderPosition.y)
+        PoolManager.getInstance().vector2.claim(
+          this.lastRenderPosition.x,
+          this.lastRenderPosition.y
+        )
       );
     }
 
@@ -249,12 +252,17 @@ export class SurvivorClient extends ClientEntity implements Renderable {
         renderPosition.y + size.y / 2
       );
 
+      // Check if this is the closest interactive entity (cached in gameState)
+      const isClosest = gameState.closestInteractiveEntityId === this.getId();
+
       renderInteractionText(
         ctx,
         `loot (${getConfig().keybindings.INTERACT})`,
         centerPosition,
         renderPosition,
-        myPlayer.getPosition()
+        myPlayer.getPosition(),
+        PoolManager.getInstance().vector2.claim(0, 0),
+        isClosest
       );
     }
   }

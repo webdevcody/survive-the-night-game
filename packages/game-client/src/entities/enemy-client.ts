@@ -12,6 +12,7 @@ import { debugDrawHitbox, drawCenterPositionWithLabel } from "@/util/debug";
 import { getPlayer } from "@/util/get-player";
 import { renderInteractionText } from "@/util/interaction-text";
 import { createFlashEffect } from "@/util/render";
+import { ClientInteractive } from "@/extensions";
 import { RawEntity } from "@shared/types/entity";
 import { Z_INDEX } from "@shared/map";
 import { IClientEntity, Renderable, getFrameIndex, drawHealthBar } from "@/entities/util";
@@ -228,12 +229,17 @@ export abstract class EnemyClient extends ClientEntityBase implements IClientEnt
         renderPosition.y + size.y / 2
       );
 
+      // Check if this is the closest interactive entity (cached in gameState)
+      const isClosest = gameState.closestInteractiveEntityId === this.getId();
+
       renderInteractionText(
         ctx,
         `loot (${getConfig().keybindings.INTERACT})`,
         centerPosition,
         renderPosition,
-        myPlayer.getPosition()
+        myPlayer.getPosition(),
+        PoolManager.getInstance().vector2.claim(0, 0),
+        isClosest
       );
     }
   }

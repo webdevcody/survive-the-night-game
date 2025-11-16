@@ -10,7 +10,8 @@ export function renderInteractionText(
   centerPosition: Vector2,
   position: Vector2,
   playerPosition: Vector2,
-  offset = PoolManager.getInstance().vector2.claim(0, 0)
+  offset = PoolManager.getInstance().vector2.claim(0, 0),
+  isClosest = false
 ): void {
   if (distance(playerPosition, centerPosition) >= getConfig().player.MAX_INTERACT_RADIUS) {
     return;
@@ -18,7 +19,7 @@ export function renderInteractionText(
 
   ctx.save();
   ctx.font = "6px Arial";
-  ctx.fillStyle = "white";
+  ctx.fillStyle = isClosest ? "yellow" : "white";
   const textWidth = ctx.measureText(text).width;
   const baseY = position.y - 3 + offset.y;
   const centerX = centerPosition.x + offset.x;
