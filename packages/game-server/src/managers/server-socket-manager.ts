@@ -10,6 +10,7 @@ import { RecipeType } from "../../../game-shared/src/util/recipes";
 import { ItemType, isResourceItem, ResourceType } from "@shared/util/inventory";
 import { itemRegistry } from "@shared/entities/item-registry";
 import Vector2 from "@/util/vector2";
+import PoolManager from "@shared/util/pool-manager";
 import { createServer } from "http";
 import express from "express";
 import biomeRoutes from "../api/biome-routes.js";
@@ -217,7 +218,8 @@ export class ServerSocketManager implements Broadcaster {
       console.warn(
         `No spawn position available for socket ${socket.id}, defaulting player to origin`
       );
-      player.getExt(Positionable).setPosition(new Vector2(0, 0));
+      const poolManager = PoolManager.getInstance();
+      player.getExt(Positionable).setPosition(poolManager.vector2.claim(0, 0));
     }
 
     this.players.set(socket.id, player);
@@ -358,7 +360,8 @@ export class ServerSocketManager implements Broadcaster {
       if (inventory.isFull()) {
         // Drop item 32 pixels down from player
         const playerPos = player.getExt(Positionable).getPosition();
-        const dropPosition = new Vector2(playerPos.x, playerPos.y + 32);
+        const poolManager = PoolManager.getInstance();
+        const dropPosition = poolManager.vector2.claim(playerPos.x, playerPos.y + 32);
         const droppedEntity = this.getEntityManager().createEntityFromItem(item);
         droppedEntity.getExt(Positionable).setPosition(dropPosition);
         console.log(`Dropped ${itemType} on ground for player ${player.getId()}`);
@@ -383,7 +386,8 @@ export class ServerSocketManager implements Broadcaster {
 
     // Validate placement distance
     const playerPos = player.getExt(Positionable).getCenterPosition();
-    const placePos = new Vector2(data.position.x, data.position.y);
+    const poolManager = PoolManager.getInstance();
+    const placePos = poolManager.vector2.claim(data.position.x, data.position.y);
     const distance = playerPos.distance(placePos);
     const { MAX_PLACEMENT_RANGE, TILE_SIZE } = getConfig().world;
 
@@ -711,7 +715,6 @@ export class ServerSocketManager implements Broadcaster {
         entities = this.getEntityManager().getEntities();
         changedEntities = entityStateTracker.getChangedEntities();
         changedCount = changedEntities.length;
-        console.log("changedCount", changedCount);
       }
 
       // Final early return check

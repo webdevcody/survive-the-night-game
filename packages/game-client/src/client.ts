@@ -31,6 +31,7 @@ import { SequenceManager } from "./managers/sequence-manager";
 import { getConfig } from "@shared/config";
 import { distance } from "@shared/util/physics";
 import Vector2 from "@shared/util/vector2";
+import PoolManager from "@shared/util/pool-manager";
 import { getAssetSpriteInfo } from "@/managers/asset";
 import { PlacementManager } from "@/managers/placement";
 import { isWeapon, ItemType } from "@shared/util/inventory";
@@ -697,7 +698,8 @@ export class GameClient {
         (campsiteBiomeX * BIOME_SIZE + BIOME_SIZE / 2) * getConfig().world.TILE_SIZE;
       const campsiteCenterY =
         (campsiteBiomeY * BIOME_SIZE + BIOME_SIZE / 2) * getConfig().world.TILE_SIZE;
-      const campsitePos = new Vector2(campsiteCenterX, campsiteCenterY);
+      const poolManager = PoolManager.getInstance();
+      const campsitePos = poolManager.vector2.claim(campsiteCenterX, campsiteCenterY);
 
       const distanceToCampsite = distance(playerPos, campsitePos);
       const TELEPORT_MIN_DISTANCE = 200; // Don't allow teleport if within 200 pixels of campsite center

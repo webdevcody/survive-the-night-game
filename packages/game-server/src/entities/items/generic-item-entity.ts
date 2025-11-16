@@ -7,6 +7,7 @@ import Carryable from "@/extensions/carryable";
 import Consumable from "@/extensions/consumable";
 import Inventory from "@/extensions/inventory";
 import Vector2 from "@/util/vector2";
+import PoolManager from "@shared/util/pool-manager";
 import { ItemConfig } from "@shared/entities/item-registry";
 import { Extension } from "@/extensions/types";
 
@@ -15,12 +16,15 @@ import { Extension } from "@/extensions/types";
  * Used as a fallback when no custom entity class exists
  */
 export class GenericItemEntity extends Entity {
-  public static readonly Size = new Vector2(16, 16);
+  public static get Size(): Vector2 {
+    return PoolManager.getInstance().vector2.claim(16, 16);
+  }
 
   constructor(gameManagers: IGameManagers, entityType: EntityType, config: ItemConfig) {
     super(gameManagers, entityType);
-
-    this.addExtension(new Positionable(this).setSize(GenericItemEntity.Size));
+    const poolManager = PoolManager.getInstance();
+    const size = poolManager.vector2.claim(16, 16);
+    this.addExtension(new Positionable(this).setSize(size));
 
     // Most items are interactive and carryable
     if (config.category !== "structure") {

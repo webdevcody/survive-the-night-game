@@ -1,4 +1,5 @@
 import Vector2 from "@shared/util/vector2";
+import PoolManager from "@shared/util/pool-manager";
 import { ExtensionTypes } from "../../../game-shared/src/util/extension-types";
 import { ClientExtensionSerialized } from "@/extensions/types";
 import { BaseClientExtension } from "./base-extension";
@@ -7,8 +8,8 @@ import { BufferReader } from "@shared/util/buffer-serialization";
 export class ClientPositionable extends BaseClientExtension {
   public static readonly type = ExtensionTypes.POSITIONABLE;
 
-  private position: Vector2 = new Vector2(0, 0);
-  private size: Vector2 = new Vector2(0, 0);
+  private position: Vector2 = PoolManager.getInstance().vector2.claim(0, 0);
+  private size: Vector2 = PoolManager.getInstance().vector2.claim(0, 0);
 
   public getSize(): Vector2 {
     return this.size.clone();
@@ -32,8 +33,9 @@ export class ClientPositionable extends BaseClientExtension {
   }
 
   public deserialize(data: ClientExtensionSerialized): this {
-    this.position = new Vector2(data.position.x, data.position.y);
-    this.size = new Vector2(data.size.x, data.size.y);
+    const poolManager = PoolManager.getInstance();
+    this.position = poolManager.vector2.claim(data.position.x, data.position.y);
+    this.size = poolManager.vector2.claim(data.size.x, data.size.y);
     return this;
   }
 

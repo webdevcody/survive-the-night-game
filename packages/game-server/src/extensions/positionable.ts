@@ -4,13 +4,14 @@ import { ExtensionTypes } from "@/util/extension-types";
 import Vector2 from "@shared/util/vector2";
 import { BufferWriter } from "@shared/util/buffer-serialization";
 import { encodeExtensionType } from "@shared/util/extension-type-encoding";
+import PoolManager from "@shared/util/pool-manager";
 
 export default class Positionable implements Extension {
   public static readonly type = ExtensionTypes.POSITIONABLE;
 
   private self: IEntity;
-  private position: Vector2 = new Vector2(0, 0);
-  private size: Vector2 = new Vector2(0, 0);
+  private position: Vector2 = PoolManager.getInstance().vector2.claim(0, 0);
+  private size: Vector2 = PoolManager.getInstance().vector2.claim(0, 0);
   private onPositionChange?: (entity: IEntity) => void;
   private dirty: boolean = false;
 
@@ -39,7 +40,10 @@ export default class Positionable implements Extension {
   public getCenterPosition(): Vector2 {
     // Avoid allocation of a new Vector2 for (size/2) by reusing arithmetic
     // x_center = position.x + size.x/2, y_center = position.y + size.y/2
-    return new Vector2(this.position.x + this.size.x / 2, this.position.y + this.size.y / 2);
+    return PoolManager.getInstance().vector2.claim(
+      this.position.x + this.size.x / 2,
+      this.position.y + this.size.y / 2
+    );
   }
 
   public getPosition(): Vector2 {

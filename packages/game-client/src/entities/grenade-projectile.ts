@@ -6,6 +6,7 @@ import { ClientEntityBase } from "@/extensions/client-entity";
 import { ClientPositionable } from "@/extensions/positionable";
 import { Z_INDEX } from "@shared/map";
 import Vector2 from "@shared/util/vector2";
+import PoolManager from "@shared/util/pool-manager";
 import { roundVector2 } from "@shared/util/physics";
 import { BufferReader } from "@shared/util/buffer-serialization";
 
@@ -15,7 +16,7 @@ export class GrenadeProjectileClient extends ClientEntityBase implements IClient
 
   constructor(data: RawEntity, assetManager: AssetManager) {
     super(data, assetManager);
-    this.lastRenderPosition = new Vector2(0, 0);
+    this.lastRenderPosition = PoolManager.getInstance().vector2.claim(0, 0);
   }
 
   override deserializeFromBuffer(reader: BufferReader): void {
@@ -43,7 +44,7 @@ export class GrenadeProjectileClient extends ClientEntityBase implements IClient
     const targetPosition = this.getPosition();
     this.lastRenderPosition = this.lerpPosition(
       targetPosition,
-      new Vector2(this.lastRenderPosition.x, this.lastRenderPosition.y)
+      PoolManager.getInstance().vector2.claim(this.lastRenderPosition.x, this.lastRenderPosition.y)
     );
 
     const renderPosition = roundVector2(this.lastRenderPosition);

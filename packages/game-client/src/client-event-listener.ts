@@ -49,6 +49,7 @@ import { BuildEvent } from "@shared/events/server-sent/build-event";
 import { InterpolationManager } from "@/managers/interpolation";
 import { ExtensionTypes } from "@shared/util/extension-types";
 import Vector2 from "@shared/util/vector2";
+import PoolManager from "@shared/util/pool-manager";
 import { distance } from "@shared/util/physics";
 import { CoinClient } from "./entities/items/coin";
 import { WaveState } from "@shared/types/wave";
@@ -820,7 +821,8 @@ export class ClientEventListener {
         .playPositionalSound(SOUND_TYPES_TO_MP3.HORN, playerPosition);
     } else {
       // Fallback: play at origin if player doesn't exist yet
-      const fallbackPosition = new Vector2(0, 0);
+      const poolManager = PoolManager.getInstance();
+      const fallbackPosition = poolManager.vector2.claim(0, 0);
       this.gameClient
         .getSoundManager()
         .playPositionalSound(SOUND_TYPES_TO_MP3.HORN, fallbackPosition);
@@ -840,7 +842,8 @@ export class ClientEventListener {
 
   onBuild(buildEvent: BuildEvent) {
     const buildPosition = buildEvent.getPosition();
-    const position = new Vector2(buildPosition.x, buildPosition.y);
+    const poolManager = PoolManager.getInstance();
+    const position = poolManager.vector2.claim(buildPosition.x, buildPosition.y);
     const soundType = buildEvent.getSoundType() as SoundType;
 
     // Only play sound if it's a valid sound type

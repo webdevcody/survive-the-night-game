@@ -4,14 +4,15 @@ import { Hitbox } from "../../../game-shared/src/util/hitbox";
 import { ClientExtensionSerialized } from "@/extensions/types";
 import { ClientPositionable } from "./positionable";
 import Vector2 from "@shared/util/vector2";
+import PoolManager from "@shared/util/pool-manager";
 import { BaseClientExtension } from "./base-extension";
 import { BufferReader } from "@shared/util/buffer-serialization";
 
 export class ClientCollidable extends BaseClientExtension {
   public static readonly type = ExtensionTypes.COLLIDABLE;
 
-  private size = new Vector2(16, 16);
-  private offset = new Vector2(0, 0);
+  private size = PoolManager.getInstance().vector2.claim(16, 16);
+  private offset = PoolManager.getInstance().vector2.claim(0, 0);
   private enabled = true;
 
   public setEnabled(enabled: boolean): this {

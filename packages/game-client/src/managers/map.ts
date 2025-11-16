@@ -2,6 +2,7 @@ import { GameClient } from "@/client";
 import { DEBUG_MAP_BOUNDS } from "@shared/debug";
 import { ClientIlluminated, ClientPositionable } from "@/extensions";
 import Vector2 from "@shared/util/vector2";
+import PoolManager from "@shared/util/pool-manager";
 import { distance } from "@shared/util/physics";
 import { getConfig } from "@shared/config";
 import { DecalData } from "@shared/config/decals-config";
@@ -215,7 +216,7 @@ export class MapManager {
       const currentWorldPos = this.tileToWorld(row, col);
       const distFromSource = distance(
         source.position,
-        new Vector2(currentWorldPos.x, currentWorldPos.y)
+        PoolManager.getInstance().vector2.claim(currentWorldPos.x, currentWorldPos.y)
       );
 
       // Apply smooth distance-based falloff (quadratic falloff for natural lighting)
@@ -289,7 +290,8 @@ export class MapManager {
         const radius = decal.light.radius * intensity * radiusMultiplier;
 
         // Convert grid position to world position (center of tile)
-        const position = new Vector2(
+        const poolManager = PoolManager.getInstance();
+        const position = poolManager.vector2.claim(
           decal.position.x * this.tileSize + this.tileSize / 2,
           decal.position.y * this.tileSize + this.tileSize / 2
         );

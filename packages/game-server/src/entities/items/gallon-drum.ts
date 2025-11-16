@@ -3,18 +3,22 @@ import { IGameManagers } from "@/managers/types";
 import { Entities } from "@/constants";
 import { Entity } from "@/entities/entity";
 import Vector2 from "@/util/vector2";
+import PoolManager from "@shared/util/pool-manager";
 import Static from "@/extensions/static";
 import Inventory from "@/extensions/inventory";
 import Interactive from "@/extensions/interactive";
 import { LootEvent } from "@/events/server-sent/loot-event";
 
 export class GallonDrum extends Entity {
-  public static readonly Size = new Vector2(16, 16);
+  public static get Size(): Vector2 {
+    return PoolManager.getInstance().vector2.claim(16, 16);
+  }
 
   constructor(gameManagers: IGameManagers) {
     super(gameManagers, Entities.GALLON_DRUM);
-
-    this.addExtension(new Positionable(this).setSize(GallonDrum.Size));
+    const poolManager = PoolManager.getInstance();
+    const size = poolManager.vector2.claim(16, 16);
+    this.addExtension(new Positionable(this).setSize(size));
     this.addExtension(
       new Inventory(this, gameManagers.getBroadcaster()).addRandomItem().addRandomItem()
     );

@@ -1,4 +1,5 @@
 import Vector2 from "@shared/util/vector2";
+import PoolManager from "@shared/util/pool-manager";
 
 export interface Animation {
   duration: number;
@@ -33,7 +34,8 @@ export function animate(startedAt: number, position: Vector2, animation: Animati
 
   const frameProgress = (currentProgress - currentFrameStep) / frameLength;
 
-  return new Vector2(
+  const poolManager = PoolManager.getInstance();
+  return poolManager.vector2.claim(
     position.x + x0 + (x1 - x0) * frameProgress,
     position.y + y0 + (y1 - y0) * frameProgress
   );
@@ -43,9 +45,9 @@ export function bounce(size: number): Animation {
   return {
     duration: 700,
     frames: {
-      0: new Vector2(0, 0),
-      20: new Vector2(0, size * 0.1),
-      40: new Vector2(0, 0),
+      0: PoolManager.getInstance().vector2.claim(0, 0),
+      20: PoolManager.getInstance().vector2.claim(0, size * 0.1),
+      40: PoolManager.getInstance().vector2.claim(0, 0),
     },
   };
 }

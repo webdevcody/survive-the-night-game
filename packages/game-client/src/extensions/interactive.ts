@@ -2,13 +2,14 @@ import { ExtensionTypes } from "../../../game-shared/src/util/extension-types";
 import { ClientExtensionSerialized } from "@/extensions/types";
 import { BaseClientExtension } from "./base-extension";
 import Vector2 from "@shared/util/vector2";
+import PoolManager from "@shared/util/pool-manager";
 import { BufferReader } from "@shared/util/buffer-serialization";
 
 export class ClientInteractive extends BaseClientExtension {
   public static readonly type = ExtensionTypes.INTERACTIVE;
 
   private displayName = "";
-  private offset: Vector2 = new Vector2(0, 0);
+  private offset: Vector2 = PoolManager.getInstance().vector2.claim(0, 0);
 
   public getDisplayName(): string {
     return this.displayName;

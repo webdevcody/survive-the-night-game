@@ -6,6 +6,7 @@ import { PlayerPickedUpItemEvent } from "@shared/events/server-sent/pickup-item-
 import Positionable from "@/extensions/positionable";
 import { IEntity } from "@/entities/types";
 import Vector2 from "@/util/vector2";
+import PoolManager from "@shared/util/pool-manager";
 import { getConfig } from "@/config";
 import { BufferWriter } from "@shared/util/buffer-serialization";
 import { encodeExtensionType } from "@shared/util/extension-type-encoding";
@@ -194,7 +195,8 @@ export default class Inventory implements Extension {
       if (!entity) return;
       const theta = Math.random() * 2 * Math.PI;
       const radius = Math.random() * offset;
-      const pos = new Vector2(
+      const poolManager = PoolManager.getInstance();
+      const pos = poolManager.vector2.claim(
         position.x + radius * Math.cos(theta),
         position.y + radius * Math.sin(theta)
       );

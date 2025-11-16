@@ -15,6 +15,7 @@ import Vector2 from "@/util/vector2";
 import { Line, Rectangle } from "@/util/shape";
 import { Player } from "@/entities/player";
 import { ArrowAmmo } from "../items/arrow-ammo";
+import PoolManager from "@shared/util/pool-manager";
 
 const MAX_TRAVEL_DISTANCE = 100;
 export class Arrow extends Entity {
@@ -26,12 +27,13 @@ export class Arrow extends Entity {
   constructor(gameManagers: IGameManagers) {
     super(gameManagers, "arrow");
 
+    const poolManager = PoolManager.getInstance();
     this.addExtension(new Positionable(this));
     this.addExtension(new Movable(this).setHasFriction(false));
     this.addExtension(new Updatable(this, this.updateArrow.bind(this)));
     this.addExtension(
       new Collidable(this).setSize(
-        new Vector2(getConfig().combat.BULLET_SIZE, getConfig().combat.BULLET_SIZE)
+        poolManager.vector2.claim(getConfig().combat.BULLET_SIZE, getConfig().combat.BULLET_SIZE)
       )
     );
 
@@ -47,9 +49,10 @@ export class Arrow extends Entity {
   }
 
   setDirection(direction: Direction) {
+    const poolManager = PoolManager.getInstance();
     const normalized = normalizeDirection(direction);
     this.getExt(Movable).setVelocity(
-      new Vector2(normalized.x * Arrow.ARROW_SPEED, normalized.y * Arrow.ARROW_SPEED)
+      poolManager.vector2.claim(normalized.x * Arrow.ARROW_SPEED, normalized.y * Arrow.ARROW_SPEED)
     );
   }
 
@@ -68,9 +71,10 @@ export class Arrow extends Entity {
 
     // Normalize the rotated vector
     const length = Math.sqrt(rotatedX * rotatedX + rotatedY * rotatedY);
+    const poolManager = PoolManager.getInstance();
 
     this.getExt(Movable).setVelocity(
-      new Vector2((rotatedX / length) * Arrow.ARROW_SPEED, (rotatedY / length) * Arrow.ARROW_SPEED)
+      poolManager.vector2.claim((rotatedX / length) * Arrow.ARROW_SPEED, (rotatedY / length) * Arrow.ARROW_SPEED)
     );
   }
 
@@ -79,15 +83,16 @@ export class Arrow extends Entity {
   }
 
   setDirectionFromVelocity(velocity: Vector2) {
+    const poolManager = PoolManager.getInstance();
     if (velocity.x === 0 && velocity.y === 0) {
       // Default direction (right) if no velocity
-      this.getExt(Movable).setVelocity(new Vector2(Arrow.ARROW_SPEED, 0));
+      this.getExt(Movable).setVelocity(poolManager.vector2.claim(Arrow.ARROW_SPEED, 0));
       return;
     }
 
     const normalized = normalizeVector(velocity);
     this.getExt(Movable).setVelocity(
-      new Vector2(normalized.x * Arrow.ARROW_SPEED, normalized.y * Arrow.ARROW_SPEED)
+      poolManager.vector2.claim(normalized.x * Arrow.ARROW_SPEED, normalized.y * Arrow.ARROW_SPEED)
     );
   }
 
@@ -96,11 +101,12 @@ export class Arrow extends Entity {
    * @param angle Angle in radians (0 = right, PI/2 = down, PI = left, 3PI/2 = up)
    */
   setDirectionFromAngle(angle: number) {
+    const poolManager = PoolManager.getInstance();
     const dirX = Math.cos(angle);
     const dirY = Math.sin(angle);
 
     this.getExt(Movable).setVelocity(
-      new Vector2(dirX * Arrow.ARROW_SPEED, dirY * Arrow.ARROW_SPEED)
+      poolManager.vector2.claim(dirX * Arrow.ARROW_SPEED, dirY * Arrow.ARROW_SPEED)
     );
   }
 
@@ -130,12 +136,13 @@ export class Arrow extends Entity {
   }
 
   private updatePositions(deltaTime: number) {
+    const poolManager = PoolManager.getInstance();
     const movable = this.getExt(Movable);
     const velocity = movable.getVelocity();
     const positionable = this.getExt(Positionable);
 
     positionable.setPosition(
-      new Vector2(
+      poolManager.vector2.claim(
         positionable.getPosition().x + velocity.x * deltaTime,
         positionable.getPosition().y + velocity.y * deltaTime
       )
@@ -143,16 +150,19 @@ export class Arrow extends Entity {
   }
 
   private handleIntersections(fromPosition: Vector2, toPosition: Vector2): boolean {
-    // Convert corner positions to center positions for more accurate collision
-    const arrowCenterOffset = new Vector2(
-      getConfig().combat.BULLET_SIZE / 2,
-      getConfig().combat.BULLET_SIZE / 2
-    );
-    const fromCenter = fromPosition.add(arrowCenterOffset);
-    const toCenter = toPosition.add(arrowCenterOffset);
-
-    const arrowPath = new Line(fromCenter, toCenter);
+    const poolManager = PoolManager.getInstance();
     const arrowRadius = getConfig().combat.BULLET_SIZE / 2;
+    
+    const fromCenter = poolManager.vector2.claim(
+      fromPosition.x + arrowRadius,
+      fromPosition.y + arrowRadius
+    );
+    const toCenter = poolManager.vector2.claim(
+      toPosition.x + arrowRadius,
+      toPosition.y + arrowRadius
+    );
+
+    const arrowPath = poolManager.line.claim(fromCenter, toCenter);
 
     const isEnemy = (entity: IEntity) =>
       entity.hasExt(Groupable) && entity.getExt(Groupable).getGroup() === "enemy";
@@ -173,13 +183,21 @@ export class Arrow extends Entity {
       let collision = false;
 
       // Expand the rectangle by the arrow's radius to account for the arrow's size
-      const expandedRect = new Rectangle(
-        new Vector2(hitbox.position.x - arrowRadius, hitbox.position.y - arrowRadius),
-        new Vector2(hitbox.size.x + arrowRadius * 2, hitbox.size.y + arrowRadius * 2)
+      const expandedPos = poolManager.vector2.claim(
+        hitbox.position.x - arrowRadius,
+        hitbox.position.y - arrowRadius
       );
+      const expandedSize = poolManager.vector2.claim(
+        hitbox.size.x + arrowRadius * 2,
+        hitbox.size.y + arrowRadius * 2
+      );
+      const expandedRect = poolManager.rectangle.claim(expandedPos, expandedSize);
+      poolManager.vector2.release(expandedPos);
+      poolManager.vector2.release(expandedSize);
 
       // Check if either the arrow path intersects the expanded rectangle
       collision = arrowPath.intersects(expandedRect);
+      poolManager.rectangle.release(expandedRect);
 
       // Additional check for edge case: if either endpoint is inside or very close to the rectangle
       if (!collision) {
@@ -201,6 +219,9 @@ export class Arrow extends Entity {
       }
 
       if (collision) {
+        poolManager.line.release(arrowPath);
+        poolManager.vector2.release(fromCenter);
+        poolManager.vector2.release(toCenter);
         this.getEntityManager().markEntityForRemoval(this);
         const destructible = enemy.getExt(Destructible);
         const wasAlive = !destructible.isDead();
@@ -242,6 +263,9 @@ export class Arrow extends Entity {
       }
     }
 
+    poolManager.line.release(arrowPath);
+    poolManager.vector2.release(fromCenter);
+    poolManager.vector2.release(toCenter);
     return false;
   }
 

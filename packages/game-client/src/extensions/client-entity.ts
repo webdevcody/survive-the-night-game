@@ -3,6 +3,7 @@ import { ClientExtension, ClientExtensionCtor } from "@/extensions/types";
 import { clientExtensionsMap } from "@/extensions/index";
 import { EntityType, RawEntity } from "@shared/types/entity";
 import Vector2 from "@shared/util/vector2";
+import PoolManager from "@shared/util/pool-manager";
 import { EntityCategory, EntityCategories } from "@shared/entities";
 import { BufferReader } from "@shared/util/buffer-serialization";
 import { decodeExtensionType } from "@shared/util/extension-type-encoding";
@@ -40,7 +41,8 @@ export abstract class ClientEntityBase {
     if (distance > 100) {
       return target.clone();
     }
-    return new Vector2(
+    const poolManager = PoolManager.getInstance();
+    return poolManager.vector2.claim(
       current.x + (target.x - current.x) * ClientEntityBase.LERP_FACTOR,
       current.y + (target.y - current.y) * ClientEntityBase.LERP_FACTOR
     );

@@ -8,10 +8,13 @@ import Inventory from "@/extensions/inventory";
 import Positionable from "@/extensions/positionable";
 import { Entity } from "@/entities/entity";
 import Vector2 from "@/util/vector2";
+import PoolManager from "@shared/util/pool-manager";
 import { ItemState } from "@/types/entity";
 
 export class Bandage extends Entity {
-  public static readonly Size = new Vector2(16, 16);
+  public static get Size(): Vector2 {
+    return PoolManager.getInstance().vector2.claim(16, 16);
+  }
   public static readonly healingAmount = 5;
   public static readonly DEFAULT_COUNT = 1;
 
@@ -19,8 +22,9 @@ export class Bandage extends Entity {
     super(gameManagers, Entities.BANDAGE);
 
     const count = itemState?.count ?? Bandage.DEFAULT_COUNT;
-
-    this.addExtension(new Positionable(this).setSize(Bandage.Size));
+    const poolManager = PoolManager.getInstance();
+    const size = poolManager.vector2.claim(16, 16);
+    this.addExtension(new Positionable(this).setSize(size));
     this.addExtension(
       new Interactive(this).onInteract(this.interact.bind(this)).setDisplayName("bandage")
     );

@@ -91,4 +91,10 @@ export default class Vector2 {
   clone() {
     return new Vector2(this.x, this.y);
   }
+
+  reset(x: number, y: number): this {
+    this.x = x;
+    this.y = y;
+    return this;
+  }
 }

@@ -1,5 +1,6 @@
 import { Entity } from "@/entities/entity";
 import Shape, { Rectangle } from "@/util/shape";
+import PoolManager from "@shared/util/pool-manager";
 
 export class QuadTree {
   private shapes: Map<Shape, Entity> = new Map();
@@ -62,13 +63,24 @@ export class QuadTree {
   }
 
   private subdivide(): void {
+    const poolManager = PoolManager.getInstance();
     const { position, size } = this.boundary;
     const half = size.div(2);
+    
+    const halfX = poolManager.vector2.claim(position.x + half.x, position.y);
+    const halfY = poolManager.vector2.claim(position.x, position.y + half.y);
+    const halfBoth = poolManager.vector2.claim(position.x + half.x, position.y + half.y);
+    const halfSize = poolManager.vector2.claim(half.x, half.y);
 
-    this.northeast = new QuadTree(new Rectangle(position.add(half, "x"), half), this.capacity);
-    this.northwest = new QuadTree(new Rectangle(position, half), this.capacity);
-    this.southeast = new QuadTree(new Rectangle(position.add(half), half), this.capacity);
-    this.southwest = new QuadTree(new Rectangle(position.add(half, "y"), half), this.capacity);
+    this.northeast = new QuadTree(poolManager.rectangle.claim(halfX, halfSize), this.capacity);
+    this.northwest = new QuadTree(poolManager.rectangle.claim(position, halfSize), this.capacity);
+    this.southeast = new QuadTree(poolManager.rectangle.claim(halfBoth, halfSize), this.capacity);
+    this.southwest = new QuadTree(poolManager.rectangle.claim(halfY, halfSize), this.capacity);
+    
+    poolManager.vector2.release(halfX);
+    poolManager.vector2.release(halfY);
+    poolManager.vector2.release(halfBoth);
+    poolManager.vector2.release(halfSize);
 
     // Redistribute existing shapes to children
     const existingShapes = Array.from(this.shapes.entries());

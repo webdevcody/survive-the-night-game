@@ -5,13 +5,14 @@ import { Rectangle } from "@/util/shape";
 import Vector2 from "@/util/vector2";
 import { BufferWriter } from "@shared/util/buffer-serialization";
 import { encodeExtensionType } from "@shared/util/extension-type-encoding";
+import PoolManager from "@shared/util/pool-manager";
 
 export default class Collidable implements Extension {
   public static readonly type = "collidable";
 
   private self: IEntity;
-  private size: Vector2 = new Vector2(16, 16);
-  private offset: Vector2 = new Vector2(0, 0);
+  private size: Vector2 = PoolManager.getInstance().vector2.claim(16, 16);
+  private offset: Vector2 = PoolManager.getInstance().vector2.claim(0, 0);
   private enabled: boolean;
   private dirty: boolean = false;
 
@@ -56,9 +57,13 @@ export default class Collidable implements Extension {
   }
 
   public getHitBox(): Rectangle {
+    const poolManager = PoolManager.getInstance();
     const positionable = this.self.getExt(Positionable);
     const position = positionable.getPosition();
-    return new Rectangle(position.add(this.offset), this.size);
+    const adjustedPos = poolManager.vector2.claim(position.x + this.offset.x, position.y + this.offset.y);
+    const rect = poolManager.rectangle.claim(adjustedPos, this.size);
+    poolManager.vector2.release(adjustedPos);
+    return rect;
   }
 
   public isDirty(): boolean {

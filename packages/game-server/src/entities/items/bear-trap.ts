@@ -9,6 +9,7 @@ import { IEntity } from "@/entities/types";
 import Destructible from "@/extensions/destructible";
 import OneTimeTrigger from "@/extensions/one-time-trigger";
 import Vector2 from "@/util/vector2";
+import PoolManager from "@shared/util/pool-manager";
 import Updatable from "@/extensions/updatable";
 import Movable from "@/extensions/movable";
 import Snared from "@/extensions/snared";
@@ -22,7 +23,9 @@ const BEAR_TRAP_SERIALIZABLE_FIELDS = ["isArmed", "snaredZombieId"] as const;
 
 export class BearTrap extends Entity<typeof BEAR_TRAP_SERIALIZABLE_FIELDS> implements IEntity {
   protected serializableFields = BEAR_TRAP_SERIALIZABLE_FIELDS;
-  private static readonly SIZE = new Vector2(16, 16);
+  private static get SIZE(): Vector2 {
+    return PoolManager.getInstance().vector2.claim(16, 16);
+  }
   private static readonly DAMAGE = 1;
   private static readonly TRIGGER_RADIUS = 16;
   private isArmed = true;
@@ -32,8 +35,9 @@ export class BearTrap extends Entity<typeof BEAR_TRAP_SERIALIZABLE_FIELDS> imple
 
   constructor(gameManagers: IGameManagers) {
     super(gameManagers, Entities.BEAR_TRAP);
-
-    this.addExtension(new Positionable(this).setSize(BearTrap.SIZE));
+    const poolManager = PoolManager.getInstance();
+    const size = poolManager.vector2.claim(16, 16);
+    this.addExtension(new Positionable(this).setSize(size));
     this.interactiveExtension = new Interactive(this)
       .onInteract((entityId: string) => this.interact(entityId))
       .setDisplayName("bear trap");
@@ -88,7 +92,8 @@ export class BearTrap extends Entity<typeof BEAR_TRAP_SERIALIZABLE_FIELDS> imple
     if (this.snaredZombieId) {
       const zombie = this.getEntityManager().getEntityById(this.snaredZombieId);
       if (zombie && zombie.hasExt(Movable)) {
-        zombie.getExt(Movable).setVelocity(new Vector2(0, 0));
+        const poolManager = PoolManager.getInstance();
+        zombie.getExt(Movable).setVelocity(poolManager.vector2.claim(0, 0));
       } else {
         // Zombie was removed or doesn't exist anymore
         this.setSnaredZombieId(null);
@@ -117,7 +122,8 @@ export class BearTrap extends Entity<typeof BEAR_TRAP_SERIALIZABLE_FIELDS> imple
       if (dist <= BearTrap.TRIGGER_RADIUS) {
         // Snare the zombie - add Snared extension to prevent movement
         this.setSnaredZombieId(entity.getId());
-        entity.getExt(Movable).setVelocity(new Vector2(0, 0));
+        const poolManager = PoolManager.getInstance();
+        entity.getExt(Movable).setVelocity(poolManager.vector2.claim(0, 0));
 
         // Add Snared extension if not already present
         if (!entity.hasExt(Snared)) {

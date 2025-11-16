@@ -1,5 +1,6 @@
 import { Input } from "@shared/util/input";
 import Vector2 from "@shared/util/vector2";
+import PoolManager from "@shared/util/pool-manager";
 import { PlayerClient } from "@/entities/player";
 import { ClientPositionable } from "@/extensions";
 import { getConfig } from "@shared/config";
@@ -46,10 +47,10 @@ export class InputHistory {
   ): void {
     const position = player.hasExt(ClientPositionable)
       ? player.getExt(ClientPositionable).getPosition()
-      : new Vector2(0, 0);
+      : PoolManager.getInstance().vector2.claim(0, 0);
 
     const state: PlayerState = {
-      position: new Vector2(position.x, position.y),
+      position: PoolManager.getInstance().vector2.claim(position.x, position.y),
     };
 
     this.buffer.push({
@@ -98,7 +99,7 @@ export class InputHistory {
     const startState = this.buffer[startIndex].clientState;
     if (player.hasExt(ClientPositionable)) {
       player.getExt(ClientPositionable).setPosition(
-        new Vector2(startState.position.x, startState.position.y)
+        PoolManager.getInstance().vector2.claim(startState.position.x, startState.position.y)
       );
     }
 

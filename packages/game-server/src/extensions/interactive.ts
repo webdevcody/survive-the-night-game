@@ -1,6 +1,7 @@
 import { IEntity } from "@/entities/types";
 import { Extension } from "@/extensions/types";
 import Vector2 from "@/util/vector2";
+import PoolManager from "@shared/util/pool-manager";
 import { BufferWriter } from "@shared/util/buffer-serialization";
 import { encodeExtensionType } from "@shared/util/extension-type-encoding";
 
@@ -12,7 +13,7 @@ export default class Interactive implements Extension {
   private self: IEntity;
   private handler: InteractiveHandler | null = null;
   private displayName: string = "";
-  private offset: Vector2 = new Vector2(0, 0);
+  private offset: Vector2 = PoolManager.getInstance().vector2.claim(0, 0);
   private dirty: boolean = false;
 
   public constructor(self: IEntity) {

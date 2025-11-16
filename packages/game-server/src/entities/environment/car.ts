@@ -5,6 +5,7 @@ import { IGameManagers } from "@/managers/types";
 import { Entities } from "@/constants";
 import { Entity } from "@/entities/entity";
 import Vector2 from "@/util/vector2";
+import PoolManager from "@shared/util/pool-manager";
 import Groupable from "@/extensions/groupable";
 import Static from "@/extensions/static";
 import { GameMessageEvent } from "@shared/events/server-sent/game-message-event";
@@ -12,7 +13,9 @@ import { CarRepairEvent } from "@shared/events/server-sent/car-repair-event";
 import Interactive from "@/extensions/interactive";
 
 export class Car extends Entity {
-  public static readonly Size = new Vector2(32, 16);
+  public static get Size(): Vector2 {
+    return PoolManager.getInstance().vector2.claim(32, 16);
+  }
   private static readonly INITIAL_HEALTH = 100;
   private static readonly ATTACK_MESSAGE_COOLDOWN = 5000; // 5 seconds
   private static readonly REPAIR_COOLDOWN = 1000; // 1 second
@@ -22,9 +25,10 @@ export class Car extends Entity {
 
   constructor(gameManagers: IGameManagers) {
     super(gameManagers, Entities.CAR);
-
-    this.addExtension(new Positionable(this).setSize(Car.Size));
-    this.addExtension(new Collidable(this).setSize(Car.Size));
+    const poolManager = PoolManager.getInstance();
+    const size = poolManager.vector2.claim(32, 16);
+    this.addExtension(new Positionable(this).setSize(size));
+    this.addExtension(new Collidable(this).setSize(size));
     this.addExtension(
       new Destructible(this)
         .setMaxHealth(Car.INITIAL_HEALTH)

@@ -1,5 +1,6 @@
 import { BaseEnemy, MovementStrategy } from "../../base-enemy";
 import Vector2 from "@/util/vector2";
+import PoolManager from "@shared/util/pool-manager";
 import Movable from "@/extensions/movable";
 import Snared from "@/extensions/snared";
 import { pathTowards, velocityTowards } from "@/util/physics";
@@ -18,7 +19,8 @@ export class IdleMovementStrategy implements MovementStrategy {
   update(zombie: BaseEnemy, deltaTime: number): boolean {
     // If zombie is snared, don't move
     if (zombie.hasExt(Snared)) {
-      zombie.getExt(Movable).setVelocity(new Vector2(0, 0));
+      const poolManager = PoolManager.getInstance();
+      zombie.getExt(Movable).setVelocity(poolManager.vector2.claim(0, 0));
       return false;
     }
 
@@ -47,7 +49,8 @@ export class IdleMovementStrategy implements MovementStrategy {
 
     // If not activated yet, stay idle (don't target friendly entities)
     if (!this.isActivated) {
-      zombie.getExt(Movable).setVelocity(new Vector2(0, 0));
+      const poolManager = PoolManager.getInstance();
+      zombie.getExt(Movable).setVelocity(poolManager.vector2.claim(0, 0));
       return false;
     }
 
@@ -63,7 +66,8 @@ export class IdleMovementStrategy implements MovementStrategy {
 
     if (!targetPos) {
       // No target nearby, stay idle
-      zombie.getExt(Movable).setVelocity(new Vector2(0, 0));
+      const poolManager = PoolManager.getInstance();
+      zombie.getExt(Movable).setVelocity(poolManager.vector2.claim(0, 0));
       return false;
     }
 
@@ -95,7 +99,8 @@ export class IdleMovementStrategy implements MovementStrategy {
       zombie.getExt(Movable).setVelocity(velocity.mul(zombie.getSpeed()));
     } else {
       // If no waypoint found, stop moving
-      zombie.getExt(Movable).setVelocity(new Vector2(0, 0));
+      const poolManager = PoolManager.getInstance();
+      zombie.getExt(Movable).setVelocity(poolManager.vector2.claim(0, 0));
     }
 
     return false; // Let base enemy handle collision movement

@@ -1,16 +1,22 @@
 import Vector2 from "./vector2";
+import PoolManager from "./pool-manager";
 
 abstract class Shape {
-  readonly position: Vector2;
+  position: Vector2;
 
   constructor(position: Vector2) {
     this.position = position;
   }
 
   abstract intersects(other: Shape): boolean;
+  abstract reset(...args: any[]): this;
 }
 
 class Point extends Shape {
+  constructor(position: Vector2) {
+    super(position);
+  }
+
   intersects(other: Shape): boolean {
     if (other instanceof Point) {
       return this.position.x === other.position.x && this.position.y === other.position.y;
@@ -19,11 +25,16 @@ class Point extends Shape {
     }
     return false;
   }
+
+  reset(position: Vector2): this {
+    this.position = position;
+    return this;
+  }
 }
 
 class Line extends Shape {
-  readonly start: Vector2;
-  readonly end: Vector2;
+  start: Vector2;
+  end: Vector2;
 
   constructor(start: Vector2, end: Vector2) {
     super(start.add(end).div(2));
@@ -32,9 +43,12 @@ class Line extends Shape {
   }
 
   getClosestPoint(point: Vector2): Vector2 {
+    const poolManager = PoolManager.getInstance();
     const lineVector = this.end.sub(this.start);
     const pointVector = point.sub(this.start);
-    const lineLengthSquared = lineVector.distanceSquared(new Vector2(0, 0));
+    const zeroVec = poolManager.vector2.claim(0, 0);
+    const lineLengthSquared = lineVector.distanceSquared(zeroVec);
+    poolManager.vector2.release(zeroVec);
     const t = Math.max(0, Math.min(1, pointVector.dot(lineVector) / lineLengthSquared));
     return this.start.add(lineVector.mul(t));
   }
@@ -69,10 +83,17 @@ class Line extends Shape {
 
     return false;
   }
+
+  reset(start: Vector2, end: Vector2): this {
+    this.start = start;
+    this.end = end;
+    this.position = start.add(end).div(2);
+    return this;
+  }
 }
 
 class Circle extends Shape {
-  readonly radius: number;
+  radius: number;
 
   constructor(position: Vector2, r: number) {
     super(position);
@@ -93,9 +114,12 @@ class Circle extends Shape {
       const closest = this.position.closest(other.position, other.size);
       return this.position.distanceSquared(closest) <= this.radius * this.radius;
     } else if (other instanceof Line) {
+      const poolManager = PoolManager.getInstance();
       const lineVector = other.end.sub(other.start);
       const pointVector = this.position.sub(other.start);
-      const lineLengthSquared = lineVector.distanceSquared(new Vector2(0, 0));
+      const zeroVec = poolManager.vector2.claim(0, 0);
+      const lineLengthSquared = lineVector.distanceSquared(zeroVec);
+      poolManager.vector2.release(zeroVec);
       const t = Math.max(0, Math.min(1, pointVector.dot(lineVector) / lineLengthSquared));
       const closestPoint = other.start.add(lineVector.mul(t));
       return this.position.distanceSquared(closestPoint) <= this.radius * this.radius;
@@ -103,21 +127,35 @@ class Circle extends Shape {
 
     return false;
   }
+
+  reset(position: Vector2, radius: number): this {
+    this.position = position;
+    this.radius = radius;
+    return this;
+  }
 }
 
 class Rectangle extends Shape {
-  readonly size: Vector2;
+  size: Vector2;
 
   get topLeft() {
     return this.position;
   }
 
   get topRight() {
-    return this.position.add(new Vector2(this.size.x, 0));
+    const poolManager = PoolManager.getInstance();
+    const vec = poolManager.vector2.claim(this.size.x, 0);
+    const result = this.position.add(vec);
+    poolManager.vector2.release(vec);
+    return result;
   }
 
   get bottomLeft() {
-    return this.position.add(new Vector2(0, this.size.y));
+    const poolManager = PoolManager.getInstance();
+    const vec = poolManager.vector2.claim(0, this.size.y);
+    const result = this.position.add(vec);
+    poolManager.vector2.release(vec);
+    return result;
   }
 
   get bottomRight() {
@@ -129,11 +167,15 @@ class Rectangle extends Shape {
   }
 
   get edges() {
+    const poolManager = PoolManager.getInstance();
+    const topRight = this.topRight;
+    const bottomRight = this.bottomRight;
+    const bottomLeft = this.bottomLeft;
     return [
-      new Line(this.topLeft, this.topRight),
-      new Line(this.topRight, this.bottomRight),
-      new Line(this.bottomRight, this.bottomLeft),
-      new Line(this.bottomLeft, this.topLeft),
+      poolManager.line.claim(this.topLeft, topRight),
+      poolManager.line.claim(topRight, bottomRight),
+      poolManager.line.claim(bottomRight, bottomLeft),
+      poolManager.line.claim(bottomLeft, this.topLeft),
     ];
   }
 
@@ -174,6 +216,12 @@ class Rectangle extends Shape {
       );
     }
     return false;
+  }
+
+  reset(position: Vector2, size: Vector2): this {
+    this.position = position;
+    this.size = size;
+    return this;
   }
 }
 

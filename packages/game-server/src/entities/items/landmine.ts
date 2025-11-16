@@ -11,6 +11,7 @@ import { IEntity } from "@/entities/types";
 import Destructible from "@/extensions/destructible";
 import OneTimeTrigger from "@/extensions/one-time-trigger";
 import Vector2 from "@/util/vector2";
+import PoolManager from "@shared/util/pool-manager";
 import { ItemState } from "@/types/entity";
 import { ExplosionEvent } from "@shared/events/server-sent/explosion-event";
 import { Cooldown } from "../util/cooldown";
@@ -23,7 +24,9 @@ const LANDMINE_SERIALIZABLE_FIELDS = ["isActive"] as const;
 
 export class Landmine extends Entity<typeof LANDMINE_SERIALIZABLE_FIELDS> implements IEntity {
   protected serializableFields = LANDMINE_SERIALIZABLE_FIELDS;
-  private static readonly SIZE = new Vector2(16, 16);
+  private static get SIZE(): Vector2 {
+    return PoolManager.getInstance().vector2.claim(16, 16);
+  }
   private static readonly DAMAGE = 7;
   private static readonly TRIGGER_RADIUS = 16;
   public static readonly DEFAULT_COUNT = 1;
@@ -37,7 +40,9 @@ export class Landmine extends Entity<typeof LANDMINE_SERIALIZABLE_FIELDS> implem
 
     const count = itemState?.count ?? Landmine.DEFAULT_COUNT;
 
-    this.addExtension(new Positionable(this).setSize(Landmine.SIZE));
+    const poolManager = PoolManager.getInstance();
+    const size = poolManager.vector2.claim(16, 16);
+    this.addExtension(new Positionable(this).setSize(size));
     this.addExtension(
       new Interactive(this)
         .onInteract((entityId: string) => this.interact(entityId))

@@ -11,6 +11,7 @@ import { Entity } from "@/entities/entity";
 import { distance } from "@/util/physics";
 import Vector2 from "@/util/vector2";
 import { ExplosionEvent } from "@/events/server-sent/explosion-event";
+import PoolManager from "@shared/util/pool-manager";
 
 const MAX_TRAVEL_DISTANCE = 300;
 const GRENADE_PROJECTILE_SPEED = 200;
@@ -25,12 +26,13 @@ export class GrenadeProjectile extends Entity {
   constructor(gameManagers: IGameManagers) {
     super(gameManagers, Entities.GRENADE_PROJECTILE);
 
+    const poolManager = PoolManager.getInstance();
     this.addExtension(new Positionable(this));
     this.addExtension(new Movable(this).setHasFriction(false));
     this.addExtension(new Updatable(this, this.updateGrenadeProjectile.bind(this)));
     this.addExtension(
       new Collidable(this).setSize(
-        new Vector2(getConfig().combat.BULLET_SIZE, getConfig().combat.BULLET_SIZE)
+        poolManager.vector2.claim(getConfig().combat.BULLET_SIZE, getConfig().combat.BULLET_SIZE)
       )
     );
 
@@ -46,9 +48,10 @@ export class GrenadeProjectile extends Entity {
   }
 
   setDirection(direction: Direction) {
+    const poolManager = PoolManager.getInstance();
     const normalized = normalizeDirection(direction);
     this.getExt(Movable).setVelocity(
-      new Vector2(normalized.x * GRENADE_PROJECTILE_SPEED, normalized.y * GRENADE_PROJECTILE_SPEED)
+      poolManager.vector2.claim(normalized.x * GRENADE_PROJECTILE_SPEED, normalized.y * GRENADE_PROJECTILE_SPEED)
     );
   }
 
@@ -57,11 +60,12 @@ export class GrenadeProjectile extends Entity {
    * @param angle Angle in radians (0 = right, PI/2 = down, PI = left, 3PI/2 = up)
    */
   setDirectionFromAngle(angle: number) {
+    const poolManager = PoolManager.getInstance();
     const dirX = Math.cos(angle);
     const dirY = Math.sin(angle);
 
     this.getExt(Movable).setVelocity(
-      new Vector2(dirX * GRENADE_PROJECTILE_SPEED, dirY * GRENADE_PROJECTILE_SPEED)
+      poolManager.vector2.claim(dirX * GRENADE_PROJECTILE_SPEED, dirY * GRENADE_PROJECTILE_SPEED)
     );
   }
 
@@ -71,8 +75,9 @@ export class GrenadeProjectile extends Entity {
   }
 
   private updateGrenadeProjectile(deltaTime: number): void {
+    const poolManager = PoolManager.getInstance();
     const currentPosition = this.getPosition();
-    const lastPosition = new Vector2(currentPosition.x, currentPosition.y);
+    const lastPosition = poolManager.vector2.claim(currentPosition.x, currentPosition.y);
 
     // Update position
     const movable = this.getExt(Movable);
@@ -80,7 +85,7 @@ export class GrenadeProjectile extends Entity {
     const positionable = this.getExt(Positionable);
 
     positionable.setPosition(
-      new Vector2(
+      poolManager.vector2.claim(
         positionable.getPosition().x + velocity.x * deltaTime,
         positionable.getPosition().y + velocity.y * deltaTime
       )

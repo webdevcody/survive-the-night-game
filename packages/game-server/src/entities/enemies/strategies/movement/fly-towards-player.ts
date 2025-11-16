@@ -1,6 +1,7 @@
 import { BaseEnemy, MovementStrategy } from "../../base-enemy";
 import Movable from "@/extensions/movable";
 import Vector2 from "@/util/vector2";
+import PoolManager from "@shared/util/pool-manager";
 import { velocityTowards } from "@/util/physics";
 import { TargetChecker } from "../movement-utils";
 
@@ -18,7 +19,8 @@ export class FlyTowardsPlayerStrategy implements MovementStrategy {
     // If no target, stop moving
     if (!currentTarget) {
       const movable = zombie.getExt(Movable);
-      movable.setVelocity(new Vector2(0, 0));
+      const poolManager = PoolManager.getInstance();
+      movable.setVelocity(poolManager.vector2.claim(0, 0));
       return true;
     }
 

@@ -1,4 +1,5 @@
 import Vector2 from "./vector2";
+import PoolManager from "./pool-manager";
 
 /**
  * BufferWriter - Server-side buffer writing utility
@@ -343,7 +344,7 @@ export class BufferReader {
   readVector2(): Vector2 {
     const x = this.readFloat64();
     const y = this.readFloat64();
-    return new Vector2(x, y);
+    return PoolManager.getInstance().vector2.claim(x, y);
   }
 
   /**
@@ -356,7 +357,7 @@ export class BufferReader {
     const scale = 100;
     const x = this.readInt16() / scale;
     const y = this.readInt16() / scale;
-    return new Vector2(x, y);
+    return PoolManager.getInstance().vector2.claim(x, y);
   }
 
   /**
@@ -369,7 +370,7 @@ export class BufferReader {
     const scale = 10;
     const x = this.readInt16() / scale;
     const y = this.readInt16() / scale;
-    return new Vector2(x, y);
+    return PoolManager.getInstance().vector2.claim(x, y);
   }
 
   /**
@@ -379,7 +380,7 @@ export class BufferReader {
   readSize2(): Vector2 {
     const x = this.readUInt8();
     const y = this.readUInt8();
-    return new Vector2(x, y);
+    return PoolManager.getInstance().vector2.claim(x, y);
   }
 
   /**

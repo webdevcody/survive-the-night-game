@@ -10,6 +10,7 @@ import { IGameManagers } from "@/managers/types";
 import { Entities, Zombies } from "@shared/constants";
 import { Entity } from "@/entities/entity";
 import Vector2 from "@/util/vector2";
+import PoolManager from "@shared/util/pool-manager";
 import { distance, normalizeVector } from "@/util/physics";
 import { Cooldown } from "../util/cooldown";
 import { Bullet } from "@/entities/projectiles/bullet";
@@ -19,7 +20,7 @@ import { BIOME_SIZE, MAP_SIZE } from "@/managers/map-manager";
 import { GunFiredEvent } from "@/events/server-sent/gun-fired-event";
 
 const SURVIVOR_MAX_HEALTH = 10;
-const SURVIVOR_SIZE = new Vector2(16, 16);
+const SURVIVOR_SIZE = PoolManager.getInstance().vector2.claim(16, 16);
 const SURVIVOR_SHOOT_COOLDOWN = 1.0; // 1 second
 const SURVIVOR_SHOOT_DAMAGE = 1;
 const SURVIVOR_SHOOT_RANGE = 100; // Similar to sentry gun range
@@ -55,7 +56,7 @@ export class Survivor extends Entity<typeof SERIALIZABLE_FIELDS> {
 
     this.addExtension(new Positionable(this).setSize(SURVIVOR_SIZE));
     this.addExtension(
-      new Collidable(this).setSize(SURVIVOR_SIZE.div(2)).setOffset(new Vector2(4, 4))
+      new Collidable(this).setSize(SURVIVOR_SIZE.div(2)).setOffset(PoolManager.getInstance().vector2.claim(4, 4))
     );
     // Don't add Destructible extension until rescued - makes survivor invincible until then
     this.addExtension(new Movable(this).setHasFriction(false));
@@ -106,7 +107,8 @@ export class Survivor extends Entity<typeof SERIALIZABLE_FIELDS> {
         const centerBiomeX = Math.floor(MAP_SIZE / 2); // MAP_SIZE / 2
         const centerBiomeY = Math.floor(MAP_SIZE / 2);
         const TILE_SIZE = getConfig().world.TILE_SIZE;
-        this.campsiteCenter = new Vector2(
+        const poolManager = PoolManager.getInstance();
+        this.campsiteCenter = poolManager.vector2.claim(
           (centerBiomeX * BIOME_SIZE + BIOME_SIZE / 2) * TILE_SIZE,
           (centerBiomeY * BIOME_SIZE + BIOME_SIZE / 2) * TILE_SIZE
         );
@@ -137,11 +139,12 @@ export class Survivor extends Entity<typeof SERIALIZABLE_FIELDS> {
     // Check if we're outside the wander radius
     if (distanceFromCenter > SURVIVOR_WANDER_RADIUS) {
       // Move back towards center
-      const direction = normalizeVector(
-        new Vector2(wanderCenter.x - currentPos.x, wanderCenter.y - currentPos.y)
-      );
+      const poolManager = PoolManager.getInstance();
+      const directionVec = poolManager.vector2.claim(wanderCenter.x - currentPos.x, wanderCenter.y - currentPos.y);
+      const direction = normalizeVector(directionVec);
+      poolManager.vector2.release(directionVec);
       movable.setVelocity(
-        new Vector2(direction.x * SURVIVOR_WANDER_SPEED, direction.y * SURVIVOR_WANDER_SPEED)
+        poolManager.vector2.claim(direction.x * SURVIVOR_WANDER_SPEED, direction.y * SURVIVOR_WANDER_SPEED)
       );
       this.isWandering = true;
       this.wanderTimer = WANDER_MOVE_DURATION;
@@ -157,11 +160,13 @@ export class Survivor extends Entity<typeof SERIALIZABLE_FIELDS> {
         // Switch to pause
         this.isWandering = false;
         this.wanderTimer = 0;
-        movable.setVelocity(new Vector2(0, 0));
+        const poolManager = PoolManager.getInstance();
+        movable.setVelocity(poolManager.vector2.claim(0, 0));
       } else if (this.wanderDirection) {
         // Continue moving in current direction
+        const poolManager = PoolManager.getInstance();
         movable.setVelocity(
-          new Vector2(
+          poolManager.vector2.claim(
             this.wanderDirection.x * SURVIVOR_WANDER_SPEED,
             this.wanderDirection.y * SURVIVOR_WANDER_SPEED
           )
@@ -176,10 +181,13 @@ export class Survivor extends Entity<typeof SERIALIZABLE_FIELDS> {
 
         // Pick random direction
         const angle = Math.random() * Math.PI * 2;
-        this.wanderDirection = normalizeVector(new Vector2(Math.cos(angle), Math.sin(angle)));
+        const poolManager = PoolManager.getInstance();
+        const angleVec = poolManager.vector2.claim(Math.cos(angle), Math.sin(angle));
+        this.wanderDirection = normalizeVector(angleVec);
+        poolManager.vector2.release(angleVec);
 
         // Ensure direction keeps us within bounds
-        const testPos = new Vector2(
+        const testPos = poolManager.vector2.claim(
           currentPos.x + this.wanderDirection.x * SURVIVOR_WANDER_SPEED * WANDER_MOVE_DURATION,
           currentPos.y + this.wanderDirection.y * SURVIVOR_WANDER_SPEED * WANDER_MOVE_DURATION
         );
@@ -187,20 +195,21 @@ export class Survivor extends Entity<typeof SERIALIZABLE_FIELDS> {
 
         // If new position would be outside bounds, reverse direction
         if (testDistance > SURVIVOR_WANDER_RADIUS) {
-          this.wanderDirection = normalizeVector(
-            new Vector2(wanderCenter.x - currentPos.x, wanderCenter.y - currentPos.y)
-          );
+          const directionVec = poolManager.vector2.claim(wanderCenter.x - currentPos.x, wanderCenter.y - currentPos.y);
+          this.wanderDirection = normalizeVector(directionVec);
+          poolManager.vector2.release(directionVec);
         }
 
         movable.setVelocity(
-          new Vector2(
+          poolManager.vector2.claim(
             this.wanderDirection.x * SURVIVOR_WANDER_SPEED,
             this.wanderDirection.y * SURVIVOR_WANDER_SPEED
           )
         );
       } else {
         // Stay paused
-        movable.setVelocity(new Vector2(0, 0));
+        const poolManager = PoolManager.getInstance();
+        movable.setVelocity(poolManager.vector2.claim(0, 0));
       }
     }
   }
@@ -217,7 +226,8 @@ export class Survivor extends Entity<typeof SERIALIZABLE_FIELDS> {
     const originalPosition = positionable.getPosition();
 
     if (velocity.x !== 0) {
-      const attemptedPosition = new Vector2(
+      const poolManager = PoolManager.getInstance();
+      const attemptedPosition = poolManager.vector2.claim(
         originalPosition.x + velocity.x * deltaTime,
         originalPosition.y
       );
@@ -231,7 +241,8 @@ export class Survivor extends Entity<typeof SERIALIZABLE_FIELDS> {
     const afterXPosition = positionable.getPosition();
 
     if (velocity.y !== 0) {
-      const attemptedPosition = new Vector2(
+      const poolManager = PoolManager.getInstance();
+      const attemptedPosition = poolManager.vector2.claim(
         afterXPosition.x,
         afterXPosition.y + velocity.y * deltaTime
       );
@@ -288,7 +299,8 @@ export class Survivor extends Entity<typeof SERIALIZABLE_FIELDS> {
     const targetPosition = target.getExt(Positionable).getCenterPosition();
 
     // Calculate direction to target
-    const direction = new Vector2(
+    const poolManager = PoolManager.getInstance();
+    const direction = poolManager.vector2.claim(
       targetPosition.x - survivorPosition.x,
       targetPosition.y - survivorPosition.y
     );
@@ -345,7 +357,8 @@ export class Survivor extends Entity<typeof SERIALIZABLE_FIELDS> {
 
   private onDeath(): void {
     // Stop all movement and AI
-    this.getExt(Movable).setVelocity(new Vector2(0, 0));
+    const poolManager = PoolManager.getInstance();
+    this.getExt(Movable).setVelocity(poolManager.vector2.claim(0, 0));
 
     // Add interactive extension for looting
     this.addExtension(

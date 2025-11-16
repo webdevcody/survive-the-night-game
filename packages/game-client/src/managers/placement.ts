@@ -1,4 +1,5 @@
 import Vector2 from "@shared/util/vector2";
+import PoolManager from "@shared/util/pool-manager";
 import { getConfig } from "@shared/config";
 import { ItemType } from "@shared/util/inventory";
 import { itemRegistry } from "@shared/entities/item-registry";
@@ -74,7 +75,7 @@ export class PlacementManager {
     const worldX = (canvasX - centerX) / cameraScale + cameraPos.x;
     const worldY = (canvasY - centerY) / cameraScale + cameraPos.y;
 
-    return new Vector2(worldX, worldY);
+    return PoolManager.getInstance().vector2.claim(worldX, worldY);
   }
 
   /**
@@ -83,7 +84,7 @@ export class PlacementManager {
   private snapToGrid(pos: Vector2): Vector2 {
     const gridX = Math.floor(pos.x / TILE_SIZE) * TILE_SIZE;
     const gridY = Math.floor(pos.y / TILE_SIZE) * TILE_SIZE;
-    return new Vector2(gridX, gridY);
+    return PoolManager.getInstance().vector2.claim(gridX, gridY);
   }
 
   /**
@@ -111,7 +112,8 @@ export class PlacementManager {
     const playerPos = player.getCenterPosition();
 
     // Check distance from player (center to center of ghost tile)
-    const ghostCenter = new Vector2(position.x + TILE_SIZE / 2, position.y + TILE_SIZE / 2);
+    const poolManager = PoolManager.getInstance();
+    const ghostCenter = poolManager.vector2.claim(position.x + TILE_SIZE / 2, position.y + TILE_SIZE / 2);
     const distance = playerPos.distance(ghostCenter);
     if (distance > MAX_PLACEMENT_RANGE) {
       return false;
@@ -144,7 +146,7 @@ export class PlacementManager {
 
     // Check if any entities are at this position
     const entities = this.getEntities();
-    const wallCenter = new Vector2(position.x + TILE_SIZE / 2, position.y + TILE_SIZE / 2);
+    const wallCenter = poolManager.vector2.claim(position.x + TILE_SIZE / 2, position.y + TILE_SIZE / 2);
 
     for (const entity of entities) {
       if (!entity.hasExt(ClientPositionable)) continue;

@@ -28,6 +28,7 @@ import { PlayerDeathEvent } from "@shared/events/server-sent/player-death-event"
 import { CraftEvent } from "@shared/events/server-sent/craft-event";
 import { getConfig } from "@shared/config";
 import Vector2 from "@/util/vector2";
+import PoolManager from "@shared/util/pool-manager";
 import { Rectangle } from "@/util/shape";
 import Carryable from "@/extensions/carryable";
 import { SkinType, SKIN_TYPES } from "@shared/commands/commands";
@@ -97,14 +98,18 @@ export class Player extends Entity<typeof PLAYER_SERIALIZABLE_FIELDS> {
     this.broadcaster = gameManagers.getBroadcaster();
 
     this.addExtension(new Inventory(this, gameManagers.getBroadcaster()));
+    const poolManager = PoolManager.getInstance();
     this.addExtension(new ResourcesBag(this, gameManagers.getBroadcaster()));
+    const collidableSize = poolManager.vector2.claim(Player.PLAYER_WIDTH - 8, Player.PLAYER_WIDTH - 8);
+    const collidableOffset = poolManager.vector2.claim(4, 4);
     this.addExtension(
       new Collidable(this)
-        .setSize(new Vector2(Player.PLAYER_WIDTH - 8, Player.PLAYER_WIDTH - 8))
-        .setOffset(new Vector2(4, 4))
+        .setSize(collidableSize)
+        .setOffset(collidableOffset)
     );
+    const positionableSize = poolManager.vector2.claim(Player.PLAYER_WIDTH, Player.PLAYER_WIDTH);
     this.addExtension(
-      new Positionable(this).setSize(new Vector2(Player.PLAYER_WIDTH, Player.PLAYER_WIDTH))
+      new Positionable(this).setSize(positionableSize)
     );
     this.addExtension(
       new Destructible(this)
@@ -278,7 +283,8 @@ export class Player extends Entity<typeof PLAYER_SERIALIZABLE_FIELDS> {
         // Add small random offset so it doesn't spawn exactly on the player
         const offset = 20;
         const theta = Math.random() * 2 * Math.PI;
-        const pos = new Vector2(
+        const poolManager = PoolManager.getInstance();
+        const pos = poolManager.vector2.claim(
           position.x + offset * Math.cos(theta),
           position.y + offset * Math.sin(theta)
         );
@@ -384,10 +390,12 @@ export class Player extends Entity<typeof PLAYER_SERIALIZABLE_FIELDS> {
     );
     if (currentSpeed < getConfig().player.PLAYER_SPEED * 2) {
       // Set velocity based on current input
+      const poolManager = PoolManager.getInstance();
       if (this.input.dx === 0 && this.input.dy === 0) {
-        movable.setVelocity(new Vector2(0, 0));
+        movable.setVelocity(poolManager.vector2.claim(0, 0));
       } else {
-        const normalized = normalizeVector(new Vector2(this.input.dx, this.input.dy));
+        const inputVec = poolManager.vector2.claim(this.input.dx, this.input.dy);
+        const normalized = normalizeVector(inputVec);
 
         // Can only sprint if: has stamina AND not exhausted
         const canSprint = this.input.sprint && this.stamina > 0 && this.exhaustionTimer <= 0;
@@ -408,7 +416,7 @@ export class Player extends Entity<typeof PLAYER_SERIALIZABLE_FIELDS> {
         }
 
         movable.setVelocity(
-          new Vector2(
+          poolManager.vector2.claim(
             normalized.x * getConfig().player.PLAYER_SPEED * speedMultiplier,
             normalized.y * getConfig().player.PLAYER_SPEED * speedMultiplier
           )
@@ -555,7 +563,8 @@ export class Player extends Entity<typeof PLAYER_SERIALIZABLE_FIELDS> {
           dx = offset;
         }
 
-        const pos = new Vector2(this.getPosition().x + dx, this.getPosition().y + dy);
+        const poolManager = PoolManager.getInstance();
+        const pos = poolManager.vector2.claim(this.getPosition().x + dx, this.getPosition().y + dy);
 
         if (entity.hasExt(Positionable)) {
           entity.getExt(Positionable).setPosition(pos);

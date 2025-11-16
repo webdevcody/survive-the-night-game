@@ -1,6 +1,7 @@
 import { getConfig } from "@shared/config";
 import { distance } from "../../../game-shared/src/util/physics";
 import Vector2 from "@shared/util/vector2";
+import PoolManager from "@shared/util/pool-manager";
 
 export function renderInteractionText(
   ctx: CanvasRenderingContext2D,
@@ -8,7 +9,7 @@ export function renderInteractionText(
   centerPosition: Vector2,
   position: Vector2,
   playerPosition: Vector2,
-  offset = new Vector2(0, 0)
+  offset = PoolManager.getInstance().vector2.claim(0, 0)
 ): void {
   if (distance(playerPosition, centerPosition) < getConfig().player.MAX_INTERACT_RADIUS) {
     ctx.fillStyle = "white";

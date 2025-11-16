@@ -1,6 +1,7 @@
 import { IGameManagers } from "@/managers/types";
 import { Entities } from "@shared/constants";
 import Vector2 from "@shared/util/vector2";
+import PoolManager from "@shared/util/pool-manager";
 import { BaseEnemy } from "./base-enemy";
 import Collidable from "@/extensions/collidable";
 import { Cooldown } from "@/entities/util/cooldown";
@@ -14,10 +15,11 @@ export class FastZombie extends BaseEnemy {
     super(gameManagers, Entities.FAST_ZOMBIE);
 
     // Override collision box size and offset for smaller zombie
+    const poolManager = PoolManager.getInstance();
     const collidable = this.getExt(Collidable);
     collidable
       .setSize(this.config.stats.size)
-      .setOffset(new Vector2(this.positionThreshold, this.positionThreshold));
+      .setOffset(poolManager.vector2.claim(this.positionThreshold, this.positionThreshold));
 
     this.setMovementStrategy(new MeleeMovementStrategy());
     this.setAttackStrategy(new MeleeAttackStrategy());

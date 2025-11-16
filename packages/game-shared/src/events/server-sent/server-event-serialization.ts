@@ -1,6 +1,7 @@
 import { ServerSentEvents, type ServerSentEventType } from "../events";
 import { BufferWriter, BufferReader } from "../../util/buffer-serialization";
 import Vector2 from "../../util/vector2";
+import PoolManager from "../../util/pool-manager";
 
 const SERVER_EVENT_VALUES = new Set<string>(Object.values(ServerSentEvents));
 
@@ -250,7 +251,8 @@ export function deserializeServerEvent(event: string, buffer: ArrayBuffer): any[
       const y = reader.readFloat64();
       const radius = reader.readFloat64();
       // Return in format expected by ExplosionEvent constructor: { position: Vector2 }
-      return [{ position: new Vector2(x, y), radius }];
+      const poolManager = PoolManager.getInstance();
+      return [{ position: poolManager.vector2.claim(x, y), radius }];
     }
     case ServerSentEvents.CAR_REPAIR: {
       const playerId = reader.readUInt16();

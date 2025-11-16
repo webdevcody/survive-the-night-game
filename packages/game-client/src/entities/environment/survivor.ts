@@ -14,6 +14,7 @@ import { getFrameIndex, drawHealthBar } from "@/entities/util";
 import { determineDirection, Direction, angleToDirection } from "@shared/util/direction";
 import { roundVector2 } from "@shared/util/physics";
 import Vector2 from "@shared/util/vector2";
+import PoolManager from "@shared/util/pool-manager";
 import { getConfig } from "@shared/config";
 import { getPlayer } from "@/util/get-player";
 import { renderInteractionText } from "@/util/interaction-text";
@@ -112,7 +113,7 @@ export class SurvivorClient extends ClientEntity implements Renderable {
 
   private getVelocity(): Vector2 {
     if (!this.hasExt(ClientMovable)) {
-      return new Vector2(0, 0);
+      return PoolManager.getInstance().vector2.claim(0, 0);
     }
     const movable = this.getExt(ClientMovable);
     return movable.getVelocity();
@@ -157,12 +158,12 @@ export class SurvivorClient extends ClientEntity implements Renderable {
       const targetPosition = this.getPosition();
       this.lastRenderPosition = this.lerpPosition(
         targetPosition,
-        new Vector2(this.lastRenderPosition.x, this.lastRenderPosition.y)
+        PoolManager.getInstance().vector2.claim(this.lastRenderPosition.x, this.lastRenderPosition.y)
       );
     }
 
     const renderPosition = roundVector2(
-      new Vector2(this.lastRenderPosition.x, this.lastRenderPosition.y)
+      PoolManager.getInstance().vector2.claim(this.lastRenderPosition.x, this.lastRenderPosition.y)
     );
 
     if (isDead) {
@@ -242,7 +243,8 @@ export class SurvivorClient extends ClientEntity implements Renderable {
     if (myPlayer && this.hasExt(ClientInteractive)) {
       const positionable = this.getExt(ClientPositionable);
       const size = positionable.getSize();
-      const centerPosition = new Vector2(
+      const poolManager = PoolManager.getInstance();
+      const centerPosition = poolManager.vector2.claim(
         renderPosition.x + size.x / 2,
         renderPosition.y + size.y / 2
       );

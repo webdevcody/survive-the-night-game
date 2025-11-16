@@ -3,6 +3,7 @@ import { Extension } from "@/extensions/types";
 import Vector2 from "@/util/vector2";
 import { BufferWriter } from "@shared/util/buffer-serialization";
 import { encodeExtensionType } from "@shared/util/extension-type-encoding";
+import PoolManager from "@shared/util/pool-manager";
 
 export default class Movable implements Extension {
   public static readonly type = "movable";
@@ -14,7 +15,7 @@ export default class Movable implements Extension {
 
   public constructor(self: IEntity) {
     this.self = self;
-    this.velocity = new Vector2(0, 0);
+    this.velocity = PoolManager.getInstance().vector2.claim(0, 0);
     this.hasFriction = true; // Default to having friction
   }
 

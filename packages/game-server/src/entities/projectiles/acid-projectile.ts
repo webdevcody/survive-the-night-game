@@ -1,6 +1,7 @@
 import { IGameManagers } from "@/managers/types";
 import { Entities } from "@/constants";
 import Vector2 from "@/util/vector2";
+import PoolManager from "@shared/util/pool-manager";
 import { Entity } from "@/entities/entity";
 import Positionable from "@/extensions/positionable";
 import Movable from "@/extensions/movable";
@@ -12,7 +13,9 @@ import { Extension } from "@/extensions/types";
 
 export class AcidProjectile extends Entity {
   private static readonly PROJECTILE_SPEED = 100;
-  private static readonly PROJECTILE_SIZE = new Vector2(8, 8);
+  private static get PROJECTILE_SIZE(): Vector2 {
+    return PoolManager.getInstance().vector2.claim(8, 8);
+  }
   private static readonly PROJECTILE_DAMAGE = 1;
   private static readonly MAX_DISTANCE = 200;
   private readonly startPosition: Vector2;
@@ -26,9 +29,11 @@ export class AcidProjectile extends Entity {
     const direction = targetPosition.sub(startPosition).unit();
     const velocity = direction.mul(AcidProjectile.PROJECTILE_SPEED);
 
+    const poolManager = PoolManager.getInstance();
     const positionable = new Positionable(this);
     positionable.setPosition(startPosition);
-    positionable.setSize(AcidProjectile.PROJECTILE_SIZE);
+    const projectileSize = poolManager.vector2.claim(8, 8);
+    positionable.setSize(projectileSize);
 
     const movable = new Movable(this);
     movable.setVelocity(velocity);

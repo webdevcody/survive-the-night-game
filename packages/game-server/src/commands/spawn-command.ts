@@ -1,6 +1,7 @@
 import Positionable from "@/extensions/positionable";
 import { BaseCommand, type CommandContext } from "./base-command";
 import Vector2 from "@/util/vector2";
+import PoolManager from "@shared/util/pool-manager";
 import { SPAWNABLE_ENTITY_TYPES } from "@/constants";
 
 export class SpawnCommand extends BaseCommand {
@@ -27,7 +28,7 @@ export class SpawnCommand extends BaseCommand {
     if (spawnedEntity) {
       spawnedEntity
         .getExt(Positionable)
-        .setPosition(new Vector2(playerPosition.x + 32, playerPosition.y));
+        .setPosition(PoolManager.getInstance().vector2.claim(playerPosition.x + 32, playerPosition.y));
       entityManager.addEntity(spawnedEntity);
       return `Spawned ${entityName} near you.`;
     }

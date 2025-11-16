@@ -4,6 +4,7 @@ import { EntityType } from "@/types/entity";
 import Positionable from "@/extensions/positionable";
 import { Extension } from "@/extensions/types";
 import Vector2 from "@/util/vector2";
+import PoolManager from "@shared/util/pool-manager";
 import { BufferWriter } from "@shared/util/buffer-serialization";
 import { encodeExtensionType } from "@shared/util/extension-type-encoding";
 
@@ -39,7 +40,8 @@ export default class Combustible implements Extension {
   private getRandomPositionInRadius(center: Vector2, radius: number): Vector2 {
     const angle = Math.random() * Math.PI * 2;
     const distance = Math.random() * radius;
-    return new Vector2(
+    const poolManager = PoolManager.getInstance();
+    return poolManager.vector2.claim(
       center.x + Math.cos(angle) * distance,
       center.y + Math.sin(angle) * distance
     );

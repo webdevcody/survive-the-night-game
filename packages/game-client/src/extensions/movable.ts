@@ -1,5 +1,6 @@
 import { ExtensionTypes } from "../../../game-shared/src/util/extension-types";
 import Vector2 from "@shared/util/vector2";
+import PoolManager from "@shared/util/pool-manager";
 import { ClientExtensionSerialized } from "@/extensions/types";
 import { BaseClientExtension } from "./base-extension";
 import { BufferReader } from "@shared/util/buffer-serialization";
@@ -7,7 +8,7 @@ import { BufferReader } from "@shared/util/buffer-serialization";
 export class ClientMovable extends BaseClientExtension {
   public static readonly type = ExtensionTypes.MOVABLE;
 
-  private velocity: Vector2 = new Vector2(0, 0);
+  private velocity: Vector2 = PoolManager.getInstance().vector2.claim(0, 0);
 
   public getVelocity(): Vector2 {
     return this.velocity;
@@ -23,7 +24,8 @@ export class ClientMovable extends BaseClientExtension {
       if (data.velocity instanceof Vector2) {
         this.velocity = data.velocity;
       } else {
-        this.velocity = new Vector2(data.velocity.x || 0, data.velocity.y || 0);
+        const poolManager = PoolManager.getInstance();
+        this.velocity = poolManager.vector2.claim(data.velocity.x || 0, data.velocity.y || 0);
       }
     }
     return this;

@@ -1,4 +1,5 @@
 import { Vector2 } from "./physics";
+import PoolManager from "./pool-manager";
 
 export enum Direction {
   Down,
@@ -60,7 +61,7 @@ export function normalizeDirection(direction: Direction): Vector2 {
     y += 1;
   }
 
-  return new Vector2(x, y);
+  return PoolManager.getInstance().vector2.claim(x, y);
 }
 
 /**
