@@ -12,6 +12,7 @@ import { getConfig } from "@shared/config";
 import { perfTimer } from "@shared/util/performance";
 import { DEBUG_PERFORMANCE } from "@shared/debug";
 import { isWeapon } from "@shared/util/inventory";
+import { beginTextStackFrame } from "@/util/text-stack";
 
 export class Renderer {
   private ctx: CanvasRenderingContext2D;
@@ -151,6 +152,7 @@ export class Renderer {
 
     // Render entities
     perfTimer.start("renderEntities");
+    beginTextStackFrame();
     this.renderEntities();
     perfTimer.end("renderEntities");
 

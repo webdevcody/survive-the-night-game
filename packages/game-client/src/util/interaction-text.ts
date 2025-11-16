@@ -1,3 +1,4 @@
+import { resolveStackedLabelY } from "@/util/text-stack";
 import { getConfig } from "@shared/config";
 import { distance } from "../../../game-shared/src/util/physics";
 import Vector2 from "@shared/util/vector2";
@@ -11,10 +12,18 @@ export function renderInteractionText(
   playerPosition: Vector2,
   offset = PoolManager.getInstance().vector2.claim(0, 0)
 ): void {
-  if (distance(playerPosition, centerPosition) < getConfig().player.MAX_INTERACT_RADIUS) {
-    ctx.fillStyle = "white";
-    ctx.font = "6px Arial";
-    const textWidth = ctx.measureText(text).width;
-    ctx.fillText(text, centerPosition.x - textWidth / 2 + offset.x, position.y - 3 + offset.y);
+  if (distance(playerPosition, centerPosition) >= getConfig().player.MAX_INTERACT_RADIUS) {
+    return;
   }
+
+  ctx.save();
+  ctx.font = "6px Arial";
+  ctx.fillStyle = "white";
+  const textWidth = ctx.measureText(text).width;
+  const baseY = position.y - 3 + offset.y;
+  const centerX = centerPosition.x + offset.x;
+  const y = resolveStackedLabelY(centerX, textWidth, baseY);
+  const x = centerX - textWidth / 2;
+  ctx.fillText(text, x, y);
+  ctx.restore();
 }
