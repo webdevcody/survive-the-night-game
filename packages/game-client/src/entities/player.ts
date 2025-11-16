@@ -267,7 +267,9 @@ export class PlayerClient extends ClientEntity implements IClientEntity, Rendera
 
     drawCenterPositionWithLabel(ctx, this.getCenterPosition());
 
-    if (this.displayName) {
+    const isLocalPlayer = gameState.playerId === this.getId();
+
+    if (this.displayName && !isLocalPlayer) {
       ctx.save();
       ctx.font = "4px Arial";
       ctx.fillStyle = "white";

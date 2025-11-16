@@ -57,7 +57,12 @@ import { WaveState } from "@shared/types/wave";
 const ZOMBIE_SHAKE_MAX_DISTANCE = 480;
 const ZOMBIE_SHAKE_DURATION_MS = 160;
 const ZOMBIE_SHAKE_MAX_INTENSITY = 4;
+const EXPLOSION_SHAKE_MAX_DISTANCE = 640;
+const EXPLOSION_SHAKE_DURATION_MS = 240;
+const EXPLOSION_SHAKE_MAX_INTENSITY = 5.5;
 const WEAPON_SHAKE_DURATION_MS = 140;
+const WAVE_START_SHAKE_INTENSITY = 4.5;
+const WAVE_START_SHAKE_DURATION_MS = 420;
 
 export class ClientEventListener {
   private socketManager: ClientSocketManager;
@@ -698,6 +703,25 @@ export class ClientEventListener {
     this.gameClient.shakeCamera(intensity, WEAPON_SHAKE_DURATION_MS);
   }
 
+  private applyExplosionCameraShake(explosionPosition: Vector2) {
+    const localPlayer = this.gameClient.getMyPlayer();
+    if (!localPlayer) {
+      return;
+    }
+
+    const playerPosition = localPlayer.getCenterPosition();
+    const distToPlayer = distance(playerPosition, explosionPosition);
+    if (distToPlayer > EXPLOSION_SHAKE_MAX_DISTANCE) {
+      return;
+    }
+
+    const proximity = 1 - distToPlayer / EXPLOSION_SHAKE_MAX_DISTANCE;
+    const intensity = EXPLOSION_SHAKE_MAX_INTENSITY * proximity;
+    if (intensity > 0) {
+      this.gameClient.shakeCamera(intensity, EXPLOSION_SHAKE_DURATION_MS);
+    }
+  }
+
   onZombieDeath(zombieDeathEvent: ZombieDeathEvent) {
     const zombie = this.gameClient.getEntityById(zombieDeathEvent.getZombieId());
     if (!zombie) return;
@@ -798,9 +822,13 @@ export class ClientEventListener {
       this.gameClient.getImageLoader(),
       this.gameClient.getSoundManager()
     );
-    particle.setPosition(event.serialize().position);
+    const serialized = event.serialize();
+    const explosionPosition = new Vector2(serialized.position.x, serialized.position.y);
+    particle.setPosition(explosionPosition);
     particle.onInitialized();
     this.gameClient.getParticleManager().addParticle(particle);
+
+    this.applyExplosionCameraShake(explosionPosition);
   }
 
   onCarRepair(carRepairEvent: CarRepairEvent) {
@@ -827,6 +855,9 @@ export class ClientEventListener {
         .getSoundManager()
         .playPositionalSound(SOUND_TYPES_TO_MP3.HORN, fallbackPosition);
     }
+
+    // Kick off the round with a noticeable screen shake so players feel the threat ramping up
+    this.gameClient.shakeCamera(WAVE_START_SHAKE_INTENSITY, WAVE_START_SHAKE_DURATION_MS);
 
     // Start battle music (plays on top of background music)
     this.gameClient.getSoundManager().playBattleMusic();
