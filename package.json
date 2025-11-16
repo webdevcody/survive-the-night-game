@@ -6,6 +6,7 @@
     "dev": "npm-run-all --parallel dev:*",
     "dev:website": "npm run dev --workspace=packages/website",
     "dev:server": "npm run dev --workspace=packages/game-server",
+    "dev:biome-editor": "npm run dev --workspace=packages/biome-editor-server",
     "build:server": "npm run build --workspace=packages/game-server",
     "build:website": "npm run build --workspace=packages/website",
     "test:game-client": "npm run test --workspace=packages/game-client",

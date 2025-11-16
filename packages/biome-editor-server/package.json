@@ -1,7 +1,7 @@
 {
-  "name": "@survive-the-night/game-server",
+  "name": "@survive-the-night/biome-editor-server",
   "version": "1.0.0",
-  "main": "src/index.ts",
+  "main": "src/server.ts",
   "scripts": {
     "dev": "tsx watch src/server.ts",
     "build": "tsup src/server.ts",
@@ -11,8 +11,9 @@
   "type": "module",
   "author": "",
   "license": "MIT",
-  "description": "",
+  "description": "Biome editor API server for development",
   "devDependencies": {
+    "@types/express": "^5.0.4",
     "@types/node": "^22.9.3",
     "tsup": "^8.3.5",
     "tsx": "^4.19.2",
@@ -22,9 +23,7 @@
   },
   "dependencies": {
     "@survive-the-night/game-shared": "*",
-    "dotenv": "^16.4.7",
-    "obscenity": "^0.4.5",
-    "socket.io": "^4.8.1",
-    "uwebsockets.js": "github:uNetworking/uWebSockets.js#v20.56.0"
+    "express": "^5.1.0"
   }
 }
+

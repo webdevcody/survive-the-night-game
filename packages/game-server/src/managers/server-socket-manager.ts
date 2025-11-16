@@ -12,8 +12,6 @@ import { itemRegistry } from "@shared/entities/item-registry";
 import Vector2 from "@/util/vector2";
 import PoolManager from "@shared/util/pool-manager";
 import { createServer } from "http";
-import express from "express";
-import biomeRoutes from "../api/biome-routes.js";
 import { CommandManager } from "@/managers/command-manager";
 import { MapManager } from "@/managers/map-manager";
 import { Broadcaster, IEntityManager, IGameManagers } from "@/managers/types";
@@ -68,43 +66,17 @@ export class ServerSocketManager implements Broadcaster {
 
     const implementation = getConfig().network.WEBSOCKET_IMPLEMENTATION;
 
-    // For Socket.IO, we need Express for HTTP API routes (biome editor)
-    // For uWebSockets, we can handle HTTP directly or skip it entirely
+    // Create HTTP server for websocket adapter
+    // Note: Biome editor API is now in a separate service (biome-editor-server)
     if (implementation === "socketio") {
-      // Set up Express app for Socket.IO
-      const app = express();
-
-      // Add middleware
-      app.use(express.json());
-      app.use((req, res, next) => {
-        res.header("Access-Control-Allow-Origin", "*");
-        res.header("Access-Control-Allow-Headers", "Content-Type");
-        res.header("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
-        if (req.method === "OPTIONS") {
-          res.sendStatus(200);
-        } else {
-          next();
-        }
+      // For Socket.IO, create a minimal HTTP server
+      this.httpServer = createServer((req, res) => {
+        // Minimal HTTP handler - websocket server doesn't handle HTTP routes
+        res.writeHead(404, { "Content-Type": "text/plain" });
+        res.end("Not Found");
       });
-
-      // Register API routes (biome editor only available in development)
-      if (process.env.NODE_ENV !== "production") {
-        console.log("Registering biome routes at /api (development mode)");
-        app.use("/api", biomeRoutes);
-      } else {
-        console.log("Biome editor disabled in production mode");
-      }
-
-      // Add a test route to verify Express is working
-      app.get("/test", (req, res) => {
-        res.json({ message: "Express is working!" });
-      });
-
-      // Create HTTP server with Express app
-      this.httpServer = createServer(app);
     } else {
-      // For uWebSockets, we don't need Express - create a minimal HTTP server
-      // or pass null if the adapter doesn't need it
+      // For uWebSockets, create a minimal HTTP server
       this.httpServer = createServer((req, res) => {
         // Minimal HTTP handler - uWebSockets will handle everything
         res.writeHead(404, { "Content-Type": "text/plain" });
