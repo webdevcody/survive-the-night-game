@@ -391,7 +391,7 @@ export class EntityManager implements IEntityManager {
       const entity = entities[i];
       if (!entity.hasExt(Positionable)) continue;
       const entityPosition = entity.getExt(Positionable).getCenterPosition();
-      if (position.distance(entityPosition) <= radius) {
+      if (position.clone().sub(entityPosition).length() <= radius) {
         filteredEntities.push(entity);
       }
     }

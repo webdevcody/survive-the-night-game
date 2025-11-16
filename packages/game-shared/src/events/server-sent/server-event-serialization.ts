@@ -85,11 +85,21 @@ export function serializeServerEvent(event: string, args: any[]): Buffer | null 
     case ServerSentEvents.BIG_ZOMBIE_DEATH:
     case ServerSentEvents.BIG_ZOMBIE_HURT:
     case ServerSentEvents.BIG_ZOMBIE_ATTACKED:
-    case ServerSentEvents.PLAYER_HURT:
-    case ServerSentEvents.PLAYER_ATTACKED: {
+    case ServerSentEvents.PLAYER_HURT: {
       // Simple string events - just write the string
       const value = String(args[0] ?? "");
       writer.writeString(value);
+      break;
+    }
+    case ServerSentEvents.PLAYER_ATTACKED: {
+      // PlayerAttackedEvent has object data: { playerId, weaponKey, attackDirection? }
+      const data = args[0] as { playerId: number; weaponKey: string; attackDirection?: number };
+      writer.writeUInt16(data.playerId);
+      writer.writeString(data.weaponKey);
+      writer.writeUInt8(data.attackDirection !== undefined ? 1 : 0);
+      if (data.attackDirection !== undefined) {
+        writer.writeUInt8(data.attackDirection);
+      }
       break;
     }
     case ServerSentEvents.GAME_STARTED:
@@ -126,11 +136,11 @@ export function serializeServerEvent(event: string, args: any[]): Buffer | null 
       break;
     }
     case ServerSentEvents.BUILD: {
-      const data = args[0] ?? {};
+      const data = args[0] as { playerId: number; position: { x: number; y: number }; soundType: string };
       writer.writeUInt16(data.playerId ?? 0);
-      writer.writeString(data.itemType ?? "");
-      writer.writeFloat64(data.x ?? 0);
-      writer.writeFloat64(data.y ?? 0);
+      writer.writeFloat64(data.position?.x ?? 0);
+      writer.writeFloat64(data.position?.y ?? 0);
+      writer.writeString(data.soundType ?? "");
       break;
     }
     case ServerSentEvents.GAME_MESSAGE: {
@@ -234,10 +244,16 @@ export function deserializeServerEvent(event: string, buffer: ArrayBuffer): any[
     case ServerSentEvents.BIG_ZOMBIE_DEATH:
     case ServerSentEvents.BIG_ZOMBIE_HURT:
     case ServerSentEvents.BIG_ZOMBIE_ATTACKED:
-    case ServerSentEvents.PLAYER_HURT:
-    case ServerSentEvents.PLAYER_ATTACKED: {
+    case ServerSentEvents.PLAYER_HURT: {
       const value = reader.readString();
       return [value];
+    }
+    case ServerSentEvents.PLAYER_ATTACKED: {
+      const playerId = reader.readUInt16();
+      const weaponKey = reader.readString();
+      const hasDirection = reader.readUInt8() === 1;
+      const attackDirection = hasDirection ? reader.readUInt8() : undefined;
+      return [{ playerId, weaponKey, attackDirection }];
     }
     case ServerSentEvents.GAME_STARTED:
     case ServerSentEvents.GAME_OVER:
@@ -266,10 +282,10 @@ export function deserializeServerEvent(event: string, buffer: ArrayBuffer): any[
     }
     case ServerSentEvents.BUILD: {
       const playerId = reader.readUInt16();
-      const itemType = reader.readString();
       const x = reader.readFloat64();
       const y = reader.readFloat64();
-      return [{ playerId, itemType, x, y }];
+      const soundType = reader.readString();
+      return [{ playerId, position: { x, y }, soundType }];
     }
     case ServerSentEvents.GAME_MESSAGE: {
       const message = reader.readString();

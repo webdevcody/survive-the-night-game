@@ -321,6 +321,8 @@ export class Player extends Entity<typeof PLAYER_SERIALIZABLE_FIELDS> {
       console.log("createEntityFromItem returned null for", activeWeapon.itemType);
       return;
     }
+    // Ensure temporary weapon entity doesn't get tracked for networking
+    weaponEntity.clearDirtyFlags();
 
     const weaponType = activeWeapon.itemType;
     console.log(
@@ -346,11 +348,12 @@ export class Player extends Entity<typeof PLAYER_SERIALIZABLE_FIELDS> {
         customHandler.handler(
           weaponEntity,
           this.getId(),
-          this.getCenterPosition(),
+          this.getCenterPosition().clone(),
           this.input.facing,
           this.input.aimAngle,
           inventoryIndex
         );
+        weaponEntity.clearDirtyFlags();
       }
       return;
     }
@@ -372,10 +375,11 @@ export class Player extends Entity<typeof PLAYER_SERIALIZABLE_FIELDS> {
       // Use aimAngle if provided (mouse aiming), otherwise fall back to facing direction
       weaponEntity.attack(
         this.getId(),
-        this.getCenterPosition(),
+        this.getCenterPosition().clone(),
         this.input.facing,
         this.input.aimAngle
       );
+      weaponEntity.clearDirtyFlags();
     }
   }
 

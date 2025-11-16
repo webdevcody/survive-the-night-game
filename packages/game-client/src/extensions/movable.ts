@@ -11,29 +11,27 @@ export class ClientMovable extends BaseClientExtension {
   private velocity: Vector2 = PoolManager.getInstance().vector2.claim(0, 0);
 
   public getVelocity(): Vector2 {
-    return this.velocity;
+    return this.velocity.clone();
   }
 
   public setVelocity(velocity: Vector2): void {
-    this.velocity = velocity;
+    this.velocity.reset(velocity.x, velocity.y);
   }
 
   public deserialize(data: ClientExtensionSerialized): this {
     if (data.velocity) {
-      // Ensure velocity is a Vector2 instance
-      if (data.velocity instanceof Vector2) {
-        this.velocity = data.velocity;
-      } else {
-        const poolManager = PoolManager.getInstance();
-        this.velocity = poolManager.vector2.claim(data.velocity.x || 0, data.velocity.y || 0);
-      }
+      const vx = data.velocity.x || 0;
+      const vy = data.velocity.y || 0;
+      this.velocity.reset(vx, vy);
     }
     return this;
   }
 
   public deserializeFromBuffer(reader: BufferReader): this {
     // Type is already read by the entity deserializer
-    this.velocity = reader.readVelocity2();
+    const vel = reader.readVelocity2();
+    this.velocity.reset(vel.x, vel.y);
+    PoolManager.getInstance().vector2.release(vel);
     return this;
   }
 }

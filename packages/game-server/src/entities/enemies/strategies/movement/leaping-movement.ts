@@ -51,7 +51,7 @@ export class LeapingMovementStrategy implements MovementStrategy {
     }
 
     // If we don't have a waypoint or we've reached the current one, get a new one
-    const needNewWaypoint = !this.currentWaypoint || zombiePos.distance(this.currentWaypoint) <= 1;
+    const needNewWaypoint = !this.currentWaypoint || zombiePos.clone().sub(this.currentWaypoint).length() <= 1;
 
     // Update path periodically or when we need a new waypoint
     if (
@@ -59,8 +59,8 @@ export class LeapingMovementStrategy implements MovementStrategy {
       this.pathRecalculationTimer >= LeapingMovementStrategy.PATH_RECALCULATION_INTERVAL
     ) {
       const waypoint = pathTowards(
-        zombiePos,
-        currentTarget,
+        zombiePos.clone(),
+        currentTarget.clone(),
         mapManager.getGroundLayer(),
         mapManager.getCollidablesLayer()
       );
@@ -70,8 +70,11 @@ export class LeapingMovementStrategy implements MovementStrategy {
 
     // If we have a waypoint, move towards it
     if (this.currentWaypoint) {
-      const velocity = velocityTowards(zombiePos, this.currentWaypoint);
-      zombie.getExt(Movable).setVelocity(velocity.mul(zombie.getSpeed()));
+      const velocity = velocityTowards(zombiePos.clone(), this.currentWaypoint.clone());
+      const poolManager = PoolManager.getInstance();
+      zombie.getExt(Movable).setVelocity(
+        poolManager.vector2.claim(velocity.x * zombie.getSpeed(), velocity.y * zombie.getSpeed())
+      );
     } else {
       // If no waypoint found, stop moving
       const poolManager = PoolManager.getInstance();

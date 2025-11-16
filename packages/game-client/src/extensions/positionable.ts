@@ -16,12 +16,12 @@ export class ClientPositionable extends BaseClientExtension {
   }
 
   public setSize(size: Vector2): this {
-    this.size = size;
+    this.size.reset(size.x, size.y);
     return this;
   }
 
   public getCenterPosition(): Vector2 {
-    return this.size.div(2).add(this.position);
+    return this.size.clone().div(2).add(this.position);
   }
 
   public getPosition(): Vector2 {
@@ -29,20 +29,23 @@ export class ClientPositionable extends BaseClientExtension {
   }
 
   public setPosition(position: Vector2): void {
-    this.position = position;
+    this.position.reset(position.x, position.y);
   }
 
   public deserialize(data: ClientExtensionSerialized): this {
-    const poolManager = PoolManager.getInstance();
-    this.position = poolManager.vector2.claim(data.position.x, data.position.y);
-    this.size = poolManager.vector2.claim(data.size.x, data.size.y);
+    this.position.reset(data.position.x, data.position.y);
+    this.size.reset(data.size.x, data.size.y);
     return this;
   }
 
   public deserializeFromBuffer(reader: BufferReader): this {
     // Type is already read by the entity deserializer
-    this.position = reader.readPosition2();
-    this.size = reader.readSize2();
+    const pos = reader.readPosition2();
+    const size = reader.readSize2();
+    this.position.reset(pos.x, pos.y);
+    this.size.reset(size.x, size.y);
+    PoolManager.getInstance().vector2.release(pos);
+    PoolManager.getInstance().vector2.release(size);
     return this;
   }
 }

@@ -586,7 +586,7 @@ export class ClientEventListener {
     if (!zombie) return;
 
     const zombieClient = zombie as unknown as ZombieClient;
-    const zombiePosition = zombieClient.getCenterPosition();
+    const zombiePosition = zombieClient.getCenterPosition().clone();
 
     // Play attack sounds
     this.gameClient
@@ -655,7 +655,7 @@ export class ClientEventListener {
     if (!entity) return;
 
     const player = entity as unknown as PlayerClient;
-    const playerPosition = player.getCenterPosition();
+    const playerPosition = player.getCenterPosition().clone();
 
     // Get weapon config to determine sound
     const weaponKey = playerAttackedEvent.getWeaponKey();

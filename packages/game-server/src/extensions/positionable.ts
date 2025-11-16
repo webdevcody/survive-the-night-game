@@ -30,7 +30,7 @@ export default class Positionable implements Extension {
 
   public setSize(size: Vector2): this {
     const sizeChanged = this.size.x !== size.x || this.size.y !== size.y;
-    this.size = size;
+    this.size.reset(size.x, size.y);
     if (sizeChanged) {
       this.markDirty();
     }
@@ -38,9 +38,9 @@ export default class Positionable implements Extension {
   }
 
   public getCenterPosition(): Vector2 {
-    // Avoid allocation of a new Vector2 for (size/2) by reusing arithmetic
+    // Return a new Vector2 to prevent mutation of pooled vectors
     // x_center = position.x + size.x/2, y_center = position.y + size.y/2
-    return PoolManager.getInstance().vector2.claim(
+    return new Vector2(
       this.position.x + this.size.x / 2,
       this.position.y + this.size.y / 2
     );
@@ -53,8 +53,7 @@ export default class Positionable implements Extension {
   public setPosition(position: Vector2): this {
     // Only trigger callback if position actually changed
     const positionChanged = this.position.x !== position.x || this.position.y !== position.y;
-    // Clone the position to prevent external mutations from affecting our state
-    this.position = position.clone();
+    this.position.reset(position.x, position.y);
 
     if (positionChanged) {
       if (this.onPositionChange) {

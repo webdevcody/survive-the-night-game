@@ -16,24 +16,26 @@ export class ClientInteractive extends BaseClientExtension {
   }
 
   public getOffset(): Vector2 {
-    return this.offset;
+    return this.offset.clone();
   }
 
   public setOffset(offset: Vector2): this {
-    this.offset = offset;
+    this.offset.reset(offset.x, offset.y);
     return this;
   }
 
   public deserialize(data: ClientExtensionSerialized): this {
     this.displayName = data.displayName;
-    this.offset = data.offset;
+    this.offset.reset(data.offset.x, data.offset.y);
     return this;
   }
 
   public deserializeFromBuffer(reader: BufferReader): this {
     // Type is already read by the entity deserializer
     this.displayName = reader.readString();
-    this.offset = reader.readVector2();
+    const offset = reader.readVector2();
+    this.offset.reset(offset.x, offset.y);
+    PoolManager.getInstance().vector2.release(offset);
     return this;
   }
 }

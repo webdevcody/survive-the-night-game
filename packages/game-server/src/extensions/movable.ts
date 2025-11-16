@@ -25,7 +25,7 @@ export default class Movable implements Extension {
 
   public setVelocity(velocity: Vector2): void {
     const velocityChanged = this.velocity.x !== velocity.x || this.velocity.y !== velocity.y;
-    this.velocity = velocity;
+    this.velocity.reset(velocity.x, velocity.y);
     if (velocityChanged) {
       this.markDirty();
     }

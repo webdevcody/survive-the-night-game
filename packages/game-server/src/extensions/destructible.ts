@@ -31,7 +31,7 @@ export default class Destructible implements Extension {
   }
 
   public setOffset(offset: Vector2): this {
-    this.offset = offset;
+    this.offset.reset(offset.x, offset.y);
     return this;
   }
 

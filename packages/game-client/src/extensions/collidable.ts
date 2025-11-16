@@ -25,7 +25,7 @@ export class ClientCollidable extends BaseClientExtension {
   }
 
   public getSize(): Vector2 {
-    return this.size;
+    return this.size.clone();
   }
 
   public getHitBox(): Hitbox {
@@ -40,8 +40,8 @@ export class ClientCollidable extends BaseClientExtension {
   }
 
   public deserialize(data: ClientExtensionSerialized): this {
-    this.offset = data.offset;
-    this.size = data.size;
+    this.offset.reset(data.offset.x, data.offset.y);
+    this.size.reset(data.size.x, data.size.y);
     if (data.enabled !== undefined) {
       this.enabled = data.enabled;
     }
@@ -50,8 +50,12 @@ export class ClientCollidable extends BaseClientExtension {
 
   public deserializeFromBuffer(reader: BufferReader): this {
     // Type is already read by the entity deserializer
-    this.offset = reader.readVector2();
-    this.size = reader.readVector2();
+    const offset = reader.readVector2();
+    const size = reader.readVector2();
+    this.offset.reset(offset.x, offset.y);
+    this.size.reset(size.x, size.y);
+    PoolManager.getInstance().vector2.release(offset);
+    PoolManager.getInstance().vector2.release(size);
     this.enabled = reader.readBoolean();
     return this;
   }

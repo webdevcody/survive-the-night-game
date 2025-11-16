@@ -47,7 +47,7 @@ class ObjectPool<T> {
 
 export class PoolManager {
   private static instance: PoolManager;
-  
+
   public readonly vector2: ObjectPool<Vector2>;
   public readonly rectangle: ObjectPool<Rectangle>;
   public readonly circle: ObjectPool<Circle>;
@@ -70,88 +70,68 @@ export class PoolManager {
 
     // Rectangle pool - needs Vector2 instances for position and size
     this.rectangle = new ObjectPool<Rectangle>(
-      () => {
-        const pos = this.vector2.claim(0, 0);
-        const size = this.vector2.claim(0, 0);
-        return new Rectangle(pos, size);
-      },
-      (rect, position: Vector2 | { x: number; y: number }, size: Vector2 | { x: number; y: number }) => {
-        const posX = position instanceof Vector2 ? position.x : position.x;
-        const posY = position instanceof Vector2 ? position.y : position.y;
-        const sizeX = size instanceof Vector2 ? size.x : size.x;
-        const sizeY = size instanceof Vector2 ? size.y : size.y;
+      () => new Rectangle(new Vector2(0, 0), new Vector2(0, 0)),
+      (
+        rect,
+        position: Vector2 | { x: number; y: number },
+        size: Vector2 | { x: number; y: number }
+      ) => {
+        const pos = position as { x: number; y: number };
+        const sz = size as { x: number; y: number };
+        const posX = pos.x;
+        const posY = pos.y;
+        const sizeX = sz.x;
+        const sizeY = sz.y;
         rect.position.reset(posX, posY);
         rect.size.reset(sizeX, sizeY);
         return rect;
       },
-      rectanglePoolSize,
-      (rect) => {
-        // Release the Vector2 instances when releasing the rectangle
-        // These are internal Vector2 instances owned by the rectangle
-        this.vector2.release(rect.position);
-        this.vector2.release(rect.size);
-      }
+      rectanglePoolSize
     );
 
     // Circle pool
     this.circle = new ObjectPool<Circle>(
-      () => {
-        const pos = this.vector2.claim(0, 0);
-        return new Circle(pos, 0);
-      },
+      () => new Circle(new Vector2(0, 0), 0),
       (circle, position: Vector2 | { x: number; y: number }, radius: number) => {
-        const posX = position instanceof Vector2 ? position.x : position.x;
-        const posY = position instanceof Vector2 ? position.y : position.y;
-        circle.position.reset(posX, posY);
+        const pos = position as { x: number; y: number };
+        circle.position.reset(pos.x, pos.y);
         circle.radius = radius;
         return circle;
       },
-      circlePoolSize,
-      (circle) => {
-        this.vector2.release(circle.position);
-      }
+      circlePoolSize
     );
 
     // Line pool
     this.line = new ObjectPool<Line>(
-      () => {
-        const start = this.vector2.claim(0, 0);
-        const end = this.vector2.claim(0, 0);
-        return new Line(start, end);
-      },
-      (line, start: Vector2 | { x: number; y: number }, end: Vector2 | { x: number; y: number }) => {
-        const startX = start instanceof Vector2 ? start.x : start.x;
-        const startY = start instanceof Vector2 ? start.y : start.y;
-        const endX = end instanceof Vector2 ? end.x : end.x;
-        const endY = end instanceof Vector2 ? end.y : end.y;
+      () => new Line(new Vector2(0, 0), new Vector2(0, 0)),
+      (
+        line,
+        start: Vector2 | { x: number; y: number },
+        end: Vector2 | { x: number; y: number }
+      ) => {
+        const s = start as { x: number; y: number };
+        const e = end as { x: number; y: number };
+        const startX = s.x;
+        const startY = s.y;
+        const endX = e.x;
+        const endY = e.y;
         line.start.reset(startX, startY);
         line.end.reset(endX, endY);
-        line.position = line.start.add(line.end).div(2);
+        line.position.reset((startX + endX) / 2, (startY + endY) / 2);
         return line;
       },
-      linePoolSize,
-      (line) => {
-        this.vector2.release(line.start);
-        this.vector2.release(line.end);
-      }
+      linePoolSize
     );
 
     // Point pool
     this.point = new ObjectPool<Point>(
-      () => {
-        const pos = this.vector2.claim(0, 0);
-        return new Point(pos);
-      },
+      () => new Point(new Vector2(0, 0)),
       (point, position: Vector2 | { x: number; y: number }) => {
-        const posX = position instanceof Vector2 ? position.x : position.x;
-        const posY = position instanceof Vector2 ? position.y : position.y;
-        point.position.reset(posX, posY);
+        const pos = position as { x: number; y: number };
+        point.position.reset(pos.x, pos.y);
         return point;
       },
-      pointPoolSize,
-      (point) => {
-        this.vector2.release(point.position);
-      }
+      pointPoolSize
     );
   }
 
@@ -168,4 +148,3 @@ export class PoolManager {
 }
 
 export default PoolManager;
-

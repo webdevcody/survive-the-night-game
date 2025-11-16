@@ -23,7 +23,7 @@ export abstract class Particle {
   }
 
   public getPosition(): Vector2 {
-    return this.position;
+    return this.position.clone();
   }
 
   public getIsActive(): boolean {
@@ -31,7 +31,7 @@ export abstract class Particle {
   }
 
   public setPosition(position: Vector2) {
-    this.position = position;
+    this.position.reset(position.x, position.y);
   }
 
   public getImageLoader(): ImageLoader {

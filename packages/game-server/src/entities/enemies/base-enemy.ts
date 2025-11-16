@@ -87,7 +87,7 @@ export abstract class BaseEnemy extends Entity<typeof BASE_ENEMY_SERIALIZABLE_FI
     this.addExtension(new Groupable(this, "enemy"));
     this.addExtension(new Positionable(this).setSize(this.config.stats.size));
     this.addExtension(
-      new Collidable(this).setSize(this.config.stats.size.div(2)).setOffset(PoolManager.getInstance().vector2.claim(4, 4))
+      new Collidable(this).setSize(this.config.stats.size.clone().div(2)).setOffset(PoolManager.getInstance().vector2.claim(4, 4))
     );
     this.addExtension(new Movable(this));
     this.addExtension(new Updatable(this, this.updateEnemy.bind(this)));

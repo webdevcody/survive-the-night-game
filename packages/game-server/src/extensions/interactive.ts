@@ -27,7 +27,7 @@ export default class Interactive implements Extension {
 
   public setOffset(offset: Vector2): this {
     const offsetChanged = this.offset.x !== offset.x || this.offset.y !== offset.y;
-    this.offset = offset;
+    this.offset.reset(offset.x, offset.y);
     if (offsetChanged) {
       this.markDirty();
     }
@@ -35,7 +35,7 @@ export default class Interactive implements Extension {
   }
 
   public getOffset(): Vector2 {
-    return this.offset;
+    return this.offset.clone();
   }
 
   public setDisplayName(name: string): this {

@@ -26,7 +26,7 @@ export class AcidProjectile extends Entity {
     this.startPosition = startPosition;
 
     // Calculate velocity towards target
-    const direction = targetPosition.sub(startPosition).unit();
+    const direction = targetPosition.clone().sub(startPosition).unit();
     const velocity = direction.mul(AcidProjectile.PROJECTILE_SPEED);
 
     const poolManager = PoolManager.getInstance();
@@ -51,7 +51,7 @@ export class AcidProjectile extends Entity {
 
   private update(deltaTime: number): Extension[] {
     const position = this.getExt(Positionable).getPosition();
-    const distance = position.sub(this.startPosition).length();
+    const distance = position.clone().sub(this.startPosition).length();
 
     // Remove projectile if it has traveled too far
     if (distance > AcidProjectile.MAX_DISTANCE) {

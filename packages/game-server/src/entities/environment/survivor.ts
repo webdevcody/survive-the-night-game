@@ -56,7 +56,7 @@ export class Survivor extends Entity<typeof SERIALIZABLE_FIELDS> {
 
     this.addExtension(new Positionable(this).setSize(SURVIVOR_SIZE));
     this.addExtension(
-      new Collidable(this).setSize(SURVIVOR_SIZE.div(2)).setOffset(PoolManager.getInstance().vector2.claim(4, 4))
+      new Collidable(this).setSize(SURVIVOR_SIZE.clone().div(2)).setOffset(PoolManager.getInstance().vector2.claim(4, 4))
     );
     // Don't add Destructible extension until rescued - makes survivor invincible until then
     this.addExtension(new Movable(this).setHasFriction(false));

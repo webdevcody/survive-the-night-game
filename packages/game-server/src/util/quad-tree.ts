@@ -65,7 +65,7 @@ export class QuadTree {
   private subdivide(): void {
     const poolManager = PoolManager.getInstance();
     const { position, size } = this.boundary;
-    const half = size.div(2);
+    const half = size.clone().div(2);
     
     const halfX = poolManager.vector2.claim(position.x + half.x, position.y);
     const halfY = poolManager.vector2.claim(position.x, position.y + half.y);

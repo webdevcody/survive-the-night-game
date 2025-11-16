@@ -23,7 +23,7 @@ export default class Triggerable implements Extension {
    */
   public constructor(self: IEntity, size: Vector2, filter: EntityType[]) {
     this.self = self;
-    this.size = size;
+    this.size = size.clone();
     this.filter = filter;
   }
 

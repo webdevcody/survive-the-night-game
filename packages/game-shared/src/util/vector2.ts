@@ -9,36 +9,43 @@ export default class Vector2 {
     this.y = y;
   }
 
-  add(other: Vector2, axis?: "x" | "y"): Vector2 {
+  add(other: Vector2, axis?: "x" | "y"): this {
     if (axis === "x") {
-      return new Vector2(this.x + other.x, this.y);
+      this.x += other.x;
     } else if (axis === "y") {
-      return new Vector2(this.x, this.y + other.y);
+      this.y += other.y;
+    } else {
+      this.x += other.x;
+      this.y += other.y;
     }
-    return new Vector2(this.x + other.x, this.y + other.y);
+    return this;
   }
 
-  sub(other: Vector2, axis?: "x" | "y"): Vector2 {
+  sub(other: Vector2, axis?: "x" | "y"): this {
     if (axis === "x") {
-      return new Vector2(this.x - other.x, this.y);
+      this.x -= other.x;
     } else if (axis === "y") {
-      return new Vector2(this.x, this.y - other.y);
+      this.y -= other.y;
+    } else {
+      this.x -= other.x;
+      this.y -= other.y;
     }
-    return new Vector2(this.x - other.x, this.y - other.y);
+    return this;
   }
 
-  mul(scalar: number): Vector2 {
-    if (scalar === 0) {
-      throw new Error("Cannot multiply by zero.");
-    }
-    return new Vector2(this.x * scalar, this.y * scalar);
+  mul(scalar: number): this {
+    this.x *= scalar;
+    this.y *= scalar;
+    return this;
   }
 
-  div(scalar: number): Vector2 {
+  div(scalar: number): this {
     if (scalar === 0) {
       throw new Error("Cannot divide by zero.");
     }
-    return new Vector2(this.x / scalar, this.y / scalar);
+    this.x /= scalar;
+    this.y /= scalar;
+    return this;
   }
 
   dot(other: Vector2): number {
@@ -74,7 +81,7 @@ export default class Vector2 {
     return Math.acos(dotProduct / lengths);
   }
 
-  unit(): Vector2 {
+  unit(): this {
     const len = this.length();
     if (len === 0) {
       throw new Error("Cannot create a unit vector from a zero-length vector.");
@@ -82,10 +89,12 @@ export default class Vector2 {
     return this.div(len);
   }
 
-  closest(other: Vector2, size: Vector2): Vector2 {
+  closest(other: Vector2, size: Vector2): this {
     const closestX = Math.max(other.x, Math.min(this.x, other.x + size.x));
     const closestY = Math.max(other.y, Math.min(this.y, other.y + size.y));
-    return new Vector2(closestX, closestY);
+    this.x = closestX;
+    this.y = closestY;
+    return this;
   }
 
   clone() {

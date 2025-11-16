@@ -36,7 +36,7 @@ export default class Collidable implements Extension {
 
   public setSize(size: Vector2) {
     const sizeChanged = this.size.x !== size.x || this.size.y !== size.y;
-    this.size = size;
+    this.size.reset(size.x, size.y);
     if (sizeChanged) {
       this.markDirty();
     }
@@ -49,7 +49,7 @@ export default class Collidable implements Extension {
 
   public setOffset(offset: Vector2) {
     const offsetChanged = this.offset.x !== offset.x || this.offset.y !== offset.y;
-    this.offset = offset;
+    this.offset.reset(offset.x, offset.y);
     if (offsetChanged) {
       this.markDirty();
     }
