@@ -12,6 +12,7 @@ import { getConfig } from "@shared/config";
 import { perfTimer } from "@shared/util/performance";
 import { DEBUG_PERFORMANCE } from "@shared/debug";
 import { isWeapon } from "@shared/util/inventory";
+import { PlayerClient } from "@/entities/player";
 
 export class Renderer {
   private ctx: CanvasRenderingContext2D;
@@ -180,6 +181,22 @@ export class Renderer {
       }
     }
     perfTimer.end("renderTeleportProgress");
+
+    // Render pickup progress indicator above player's head
+    perfTimer.start("renderPickupProgress");
+    if (this.gameState.playerId) {
+      const player = this.gameState.entities.find(
+        (e) => e.getId() === this.gameState.playerId
+      ) as PlayerClient;
+      if (player && player.hasExt(ClientPositionable)) {
+        const pickupProgress = player.getPickupProgress();
+        if (pickupProgress > 0) {
+          const playerPos = player.getExt(ClientPositionable).getPosition();
+          this.hud.renderPickupProgress(this.ctx, playerPos, pickupProgress);
+        }
+      }
+    }
+    perfTimer.end("renderPickupProgress");
 
     // Apply darkness overlay on top of everything (ground, collidables, entities)
     perfTimer.start("renderDarkness");
