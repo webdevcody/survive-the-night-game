@@ -15,16 +15,13 @@ export class EntityStateTracker {
   private dirtyEntities: Set<IEntity> = new Set();
   private dirtyEntityInfo: Map<number, DirtyEntityInfo> = new Map();
   private previousGameState: {
-    dayNumber?: number;
     cycleStartTime?: number;
     cycleDuration?: number;
-    isDay?: boolean;
     // Wave system
     waveNumber?: number;
     waveState?: WaveState;
     phaseStartTime?: number;
     phaseDuration?: number;
-    totalZombies?: number;
   } = {};
 
   public trackRemoval(entityId: number): void {
@@ -107,31 +104,25 @@ export class EntityStateTracker {
   }
 
   public trackGameState(gameState: {
-    dayNumber: number;
     cycleStartTime: number;
     cycleDuration: number;
-    isDay: boolean;
     // Wave system
     waveNumber?: number;
     waveState?: WaveState;
     phaseStartTime?: number;
     phaseDuration?: number;
-    totalZombies?: number;
   }): void {
     this.previousGameState = { ...gameState };
   }
 
   public getChangedGameStateProperties(currentGameState: {
-    dayNumber: number;
     cycleStartTime: number;
     cycleDuration: number;
-    isDay: boolean;
     // Wave system
     waveNumber?: number;
     waveState?: WaveState;
     phaseStartTime?: number;
     phaseDuration?: number;
-    totalZombies?: number;
   }): Partial<typeof currentGameState> {
     const changedProps: Partial<typeof currentGameState> = {};
 

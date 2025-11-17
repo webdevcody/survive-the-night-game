@@ -4,20 +4,19 @@ import Vector2 from "@/util/vector2";
 import PoolManager from "@shared/util/pool-manager";
 import { BufferWriter } from "@shared/util/buffer-serialization";
 import { encodeExtensionType } from "@shared/util/extension-type-encoding";
+import { ExtensionBase } from "./extension-base";
 
 type InteractiveHandler = (entityId: number) => void;
 
-export default class Interactive implements Extension {
+export default class Interactive extends ExtensionBase {
   public static readonly type = "interactive";
 
-  private self: IEntity;
   private handler: InteractiveHandler | null = null;
-  private displayName: string = "";
-  private offset: Vector2 = PoolManager.getInstance().vector2.claim(0, 0);
-  private dirty: boolean = false;
+  private offset: Vector2;
 
   public constructor(self: IEntity) {
-    this.self = self;
+    super(self, { displayName: "", offset: { x: 0, y: 0 } });
+    this.offset = PoolManager.getInstance().vector2.claim(0, 0);
   }
 
   public onInteract(handler: InteractiveHandler): this {
@@ -26,11 +25,7 @@ export default class Interactive implements Extension {
   }
 
   public setOffset(offset: Vector2): this {
-    const offsetChanged = this.offset.x !== offset.x || this.offset.y !== offset.y;
-    this.offset.reset(offset.x, offset.y);
-    if (offsetChanged) {
-      this.markDirty();
-    }
+    this.setVector2Field("offset", this.offset, offset);
     return this;
   }
 
@@ -39,40 +34,24 @@ export default class Interactive implements Extension {
   }
 
   public setDisplayName(name: string): this {
-    const nameChanged = this.displayName !== name;
-    this.displayName = name;
-    if (nameChanged) {
-      this.markDirty();
-    }
+    const serialized = this.serialized as any;
+    serialized.displayName = name;
     return this;
   }
 
   public getDisplayName(): string {
-    return this.displayName;
+    const serialized = this.serialized as any;
+    return serialized.displayName;
   }
 
   public interact(entityId: number): void {
     this.handler?.(entityId);
   }
 
-  public isDirty(): boolean {
-    return this.dirty;
-  }
-
-  public markDirty(): void {
-    this.dirty = true;
-    if (this.self.markExtensionDirty) {
-      this.self.markExtensionDirty(this);
-    }
-  }
-
-  public clearDirty(): void {
-    this.dirty = false;
-  }
-
   public serializeToBuffer(writer: BufferWriter): void {
-    writer.writeUInt32(encodeExtensionType(Interactive.type));
-    writer.writeString(this.displayName);
+    const serialized = this.serialized as any;
+    writer.writeUInt8(encodeExtensionType(Interactive.type));
+    writer.writeString(serialized.displayName);
     writer.writeVector2(this.offset);
   }
 }

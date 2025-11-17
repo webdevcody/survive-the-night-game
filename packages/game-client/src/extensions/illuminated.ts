@@ -24,7 +24,7 @@ export class ClientIlluminated extends BaseClientExtension {
 
   public deserializeFromBuffer(reader: BufferReader): this {
     // Type is already read by the entity deserializer
-    this.radius = reader.readFloat64();
+    this.radius = reader.readUInt16();
     return this;
   }
 }

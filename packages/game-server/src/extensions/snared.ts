@@ -33,6 +33,6 @@ export default class Snared implements Extension {
   }
 
   public serializeToBuffer(writer: BufferWriter): void {
-    writer.writeUInt32(encodeExtensionType(Snared.type));
+    writer.writeUInt8(encodeExtensionType(Snared.type));
   }
 }

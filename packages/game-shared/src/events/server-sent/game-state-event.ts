@@ -4,6 +4,7 @@ import { RawEntity } from "../../types/entity";
 import { WaveState } from "../../types/wave";
 import { BufferReader } from "../../util/buffer-serialization";
 import { entityTypeRegistry } from "../../util/entity-type-encoding";
+import { decodeExtensionType } from "../../util/extension-type-encoding";
 
 export interface EntityState extends RawEntity {
   id: number;
@@ -14,16 +15,13 @@ export interface GameStateData {
   removedEntityIds?: number[];
   isFullState?: boolean;
   // Legacy day/night cycle data (deprecated)
-  dayNumber?: number;
   cycleStartTime?: number;
   cycleDuration?: number;
-  isDay?: boolean;
   // Wave system data
   waveNumber?: number;
   waveState?: WaveState;
   phaseStartTime?: number;
   phaseDuration?: number;
-  totalZombies?: number;
   timestamp?: number;
 }
 
@@ -60,9 +58,6 @@ export class GameStateEvent implements GameEvent<GameStateData> {
     return this.data.timestamp;
   }
 
-  public getDayNumber(): number | undefined {
-    return this.data.dayNumber;
-  }
 
   public getCycleStartTime(): number | undefined {
     return this.data.cycleStartTime;
@@ -70,10 +65,6 @@ export class GameStateEvent implements GameEvent<GameStateData> {
 
   public getCycleDuration(): number | undefined {
     return this.data.cycleDuration;
-  }
-
-  public getIsDay(): boolean | undefined {
-    return this.data.isDay;
   }
 
   public getWaveNumber(): number | undefined {
@@ -92,9 +83,6 @@ export class GameStateEvent implements GameEvent<GameStateData> {
     return this.data.phaseDuration;
   }
 
-  public getTotalZombies(): number | undefined {
-    return this.data.totalZombies;
-  }
 
   /**
    * Deserialize GameStateEvent from buffer
@@ -158,16 +146,10 @@ export class GameStateEvent implements GameEvent<GameStateData> {
       gameStateData.timestamp = gameStateReader.readFloat64();
     }
     if (gameStateReader.readBoolean()) {
-      gameStateData.dayNumber = gameStateReader.readUInt8();
-    }
-    if (gameStateReader.readBoolean()) {
       gameStateData.cycleStartTime = gameStateReader.readFloat64();
     }
     if (gameStateReader.readBoolean()) {
       gameStateData.cycleDuration = gameStateReader.readFloat64();
-    }
-    if (gameStateReader.readBoolean()) {
-      gameStateData.isDay = gameStateReader.readBoolean();
     }
     if (gameStateReader.readBoolean()) {
       gameStateData.waveNumber = gameStateReader.readUInt8();
@@ -182,14 +164,11 @@ export class GameStateEvent implements GameEvent<GameStateData> {
       gameStateData.phaseDuration = gameStateReader.readFloat64();
     }
     if (gameStateReader.readBoolean()) {
-      gameStateData.totalZombies = gameStateReader.readUInt16();
-    }
-    if (gameStateReader.readBoolean()) {
       gameStateData.isFullState = gameStateReader.readBoolean();
     }
 
     // Read removed entity IDs
-    const removedEntityCount = gameStateReader.readUInt32();
+    const removedEntityCount = gameStateReader.readUInt16();
     if (removedEntityCount > 0) {
       gameStateData.removedEntityIds = [];
       for (let i = 0; i < removedEntityCount; i++) {
@@ -271,11 +250,12 @@ export class GameStateEvent implements GameEvent<GameStateData> {
     }
 
     // Read removed extensions
-    const removedCount = reader.readUInt32();
+    const removedCount = reader.readUInt8();
     if (removedCount > 0) {
       entityData.removedExtensions = [];
       for (let i = 0; i < removedCount; i++) {
-        entityData.removedExtensions.push(reader.readString());
+        const encodedType = reader.readUInt8();
+        entityData.removedExtensions.push(decodeExtensionType(encodedType));
       }
     }
 

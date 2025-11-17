@@ -430,6 +430,16 @@ export class ServerSocketManager implements Broadcaster {
       inventory.removeItem(itemIndex);
     }
 
+    // Ensure player entity is marked dirty so inventory changes are broadcast
+    // The inventory extension should already mark itself dirty via markDirty(),
+    // but we explicitly ensure the extension is tracked in dirtyExtensions set
+    // to guarantee the inventory update is serialized and sent to clients
+    player.markExtensionDirty(inventory);
+
+    // Mark activeItem as dirty since it's computed from inventory and needs to be updated
+    // This ensures activeItem is included in delta updates sent to clients
+    player.markActiveItemDirty();
+
     const placedEntity = this.getEntityManager().createEntityFromItem({
       itemType: data.itemType,
       state: {},
@@ -471,15 +481,12 @@ export class ServerSocketManager implements Broadcaster {
     const currentTime = Date.now();
 
     // Cache game state data needed for metadata serialization
-    const dayNumber = this.gameServer.getDayNumber();
     const cycleStartTime = this.gameServer.getCycleStartTime();
     const cycleDuration = this.gameServer.getCycleDuration();
-    const isDay = this.gameServer.getIsDay();
     const waveNumber = this.gameServer.getWaveNumber();
     const waveState = this.gameServer.getWaveState();
     const phaseStartTime = this.gameServer.getPhaseStartTime();
     const phaseDuration = this.gameServer.getPhaseDuration();
-    const totalZombies = this.gameServer.getTotalZombies();
 
     // Clear dirty flags for all entities after sending full state
     // so they're not treated as "new" in subsequent updates
@@ -498,15 +505,12 @@ export class ServerSocketManager implements Broadcaster {
     this.bufferManager.writeGameState({
       timestamp: currentTime,
       isFullState: true,
-      dayNumber,
       cycleStartTime,
       cycleDuration,
-      isDay,
       waveNumber,
       waveState,
       phaseStartTime,
       phaseDuration,
-      totalZombies,
     });
     this.bufferManager.writeRemovedEntityIds([]);
 
@@ -701,15 +705,12 @@ export class ServerSocketManager implements Broadcaster {
         this.tickPerformanceTracker?.startMethod("gameStatePreparation", "broadcastGameState") ||
         (() => {});
       // Cache all gameServer getter results before creating currentGameState object
-      const dayNumber = this.gameServer.getDayNumber();
       const cycleStartTime = this.gameServer.getCycleStartTime();
       const cycleDuration = this.gameServer.getCycleDuration();
-      const isDay = this.gameServer.getIsDay();
       const waveNumber = this.gameServer.getWaveNumber();
       const waveState = this.gameServer.getWaveState();
       const phaseStartTime = this.gameServer.getPhaseStartTime();
       const phaseDuration = this.gameServer.getPhaseDuration();
-      const totalZombies = this.gameServer.getTotalZombies();
       endGameStatePrep();
 
       // Clear buffer manager for new game loop
@@ -734,16 +735,13 @@ export class ServerSocketManager implements Broadcaster {
         (() => {});
       // Get current game state (using cached values)
       const currentGameState = {
-        dayNumber,
         cycleStartTime,
         cycleDuration,
-        isDay,
         // Wave system
         waveNumber,
         waveState,
         phaseStartTime,
         phaseDuration,
-        totalZombies,
       };
 
       // Get only changed game state properties

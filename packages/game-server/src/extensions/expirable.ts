@@ -41,6 +41,6 @@ export default class Expirable implements Extension {
   }
 
   public serializeToBuffer(writer: BufferWriter): void {
-    writer.writeUInt32(encodeExtensionType(Expirable.type));
+    writer.writeUInt8(encodeExtensionType(Expirable.type));
   }
 }

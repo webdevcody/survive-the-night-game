@@ -17,13 +17,13 @@ import { ExplosionEvent } from "@shared/events/server-sent/explosion-event";
 import { Cooldown } from "../util/cooldown";
 import Updatable from "@/extensions/updatable";
 
+import { SerializableFields } from "@/util/serializable-fields";
+
 /**
  * A landmine that explodes when enemies step on it, damaging all nearby enemies
  */
-const LANDMINE_SERIALIZABLE_FIELDS = ["isActive"] as const;
 
-export class Landmine extends Entity<typeof LANDMINE_SERIALIZABLE_FIELDS> implements IEntity {
-  protected serializableFields = LANDMINE_SERIALIZABLE_FIELDS;
+export class Landmine extends Entity implements IEntity {
   private static get SIZE(): Vector2 {
     return PoolManager.getInstance().vector2.claim(16, 16);
   }
@@ -31,10 +31,12 @@ export class Landmine extends Entity<typeof LANDMINE_SERIALIZABLE_FIELDS> implem
   private static readonly TRIGGER_RADIUS = 16;
   public static readonly DEFAULT_COUNT = 1;
   private untilActive: Cooldown;
-  private isActive = false;
 
   constructor(gameManagers: IGameManagers, itemState?: ItemState) {
     super(gameManagers, Entities.LANDMINE);
+
+    // Initialize serializable fields
+    this.serialized = new SerializableFields({ isActive: false }, () => this.markEntityDirty());
 
     this.untilActive = new Cooldown(2);
 
@@ -54,9 +56,9 @@ export class Landmine extends Entity<typeof LANDMINE_SERIALIZABLE_FIELDS> implem
   }
 
   private setIsActive(value: boolean): void {
-    if (this.isActive !== value) {
-      this.isActive = value;
-      this.markFieldDirty("isActive");
+    const serialized = this.serialized as any;
+    if (serialized.isActive !== value) {
+      serialized.isActive = value;
     }
   }
 
@@ -72,7 +74,8 @@ export class Landmine extends Entity<typeof LANDMINE_SERIALIZABLE_FIELDS> implem
 
   public updateLandmine(deltaTime: number) {
     this.untilActive.update(deltaTime);
-    if (this.untilActive.isReady() && !this.isActive) {
+    const serialized = this.serialized as any;
+    if (this.untilActive.isReady() && !serialized.isActive) {
       this.activate();
     }
   }
@@ -117,5 +120,4 @@ export class Landmine extends Entity<typeof LANDMINE_SERIALIZABLE_FIELDS> implem
       Carryable.createStackablePickupOptions(carryable, Landmine.DEFAULT_COUNT)
     );
   }
-
 }

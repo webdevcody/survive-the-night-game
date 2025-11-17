@@ -4,19 +4,18 @@ import Vector2 from "@/util/vector2";
 import { BufferWriter } from "@shared/util/buffer-serialization";
 import { encodeExtensionType } from "@shared/util/extension-type-encoding";
 import PoolManager from "@shared/util/pool-manager";
+import { ExtensionBase } from "./extension-base";
 
-export default class Movable implements Extension {
+export default class Movable extends ExtensionBase {
   public static readonly type = "movable";
 
-  private self: IEntity;
   private velocity: Vector2;
   private hasFriction: boolean;
-  private dirty: boolean = false;
 
   public constructor(self: IEntity) {
-    this.self = self;
+    super(self, { velocity: { x: 0, y: 0 } });
     this.velocity = PoolManager.getInstance().vector2.claim(0, 0);
-    this.hasFriction = true; // Default to having friction
+    this.hasFriction = true; // Default to having friction (not serialized)
   }
 
   public getVelocity(): Vector2 {
@@ -24,24 +23,16 @@ export default class Movable implements Extension {
   }
 
   public setVelocity(velocity: Vector2): void {
-    const velocityChanged = this.velocity.x !== velocity.x || this.velocity.y !== velocity.y;
-    this.velocity.reset(velocity.x, velocity.y);
-    if (velocityChanged) {
-      this.markDirty();
-    }
+    this.setVector2Field("velocity", this.velocity, velocity);
   }
 
   public setHasFriction(hasFriction: boolean): this {
-    const frictionChanged = this.hasFriction !== hasFriction;
-    this.hasFriction = hasFriction;
-    if (frictionChanged) {
-      this.markDirty();
-    }
+    this.hasFriction = hasFriction; // Not serialized, so no need to mark dirty
     return this;
   }
 
   public serializeToBuffer(writer: BufferWriter): void {
-    writer.writeUInt32(encodeExtensionType(Movable.type));
+    writer.writeUInt8(encodeExtensionType(Movable.type));
     writer.writeVelocity2(this.velocity);
   }
 
@@ -55,24 +46,10 @@ export default class Movable implements Extension {
       this.velocity.y *= Math.pow(friction, deltaTime * 60);
       // Only mark dirty if velocity actually changed (avoid marking dirty every frame if velocity is 0)
       if (Math.abs(oldX - this.velocity.x) > 0.001 || Math.abs(oldY - this.velocity.y) > 0.001) {
-        this.markDirty();
+        // Update serialized field to mark dirty
+        const serialized = this.serialized as any;
+        serialized.velocity = { x: this.velocity.x, y: this.velocity.y };
       }
     }
   }
-
-  public isDirty(): boolean {
-    return this.dirty;
-  }
-
-  public markDirty(): void {
-    this.dirty = true;
-    if (this.self.markExtensionDirty) {
-      this.self.markExtensionDirty(this);
-    }
-  }
-
-  public clearDirty(): void {
-    this.dirty = false;
-  }
-
 }

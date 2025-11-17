@@ -463,7 +463,7 @@ function parseGameStateUpdate(buffer: ArrayBuffer): Segment[] {
         extLength = entityReader.readUInt16();
         const extDataStartOffset = entityReader.getOffset();
 
-        if (extDataStartOffset + 4 > buffer.byteLength) {
+        if (extDataStartOffset + 1 > buffer.byteLength) {
           extensionsSegment.children!.push({
             label: `Extension ${j}`,
             type: "error",
@@ -474,7 +474,7 @@ function parseGameStateUpdate(buffer: ArrayBuffer): Segment[] {
           break;
         }
 
-        const encodedType = entityReader.readUInt32();
+        const encodedType = entityReader.readUInt8();
         const extType = decodeExtensionType(encodedType);
 
         const extSegment: Segment = {
@@ -493,16 +493,16 @@ function parseGameStateUpdate(buffer: ArrayBuffer): Segment[] {
             },
             {
               label: "Type",
-              type: "uint32 (decoded)",
+              type: "uint8 (decoded)",
               value: `${encodedType} → "${extType}"`,
               offset: extDataStartOffset,
-              bytes: 4,
+              bytes: 1,
             },
           ],
         };
 
         // Try to parse extension data based on type
-        const extDataReader = entityReader.atOffset(extDataStartOffset + 4);
+        const extDataReader = entityReader.atOffset(extDataStartOffset + 1);
         const extDataEndOffset = extDataStartOffset + extLength;
 
         try {
@@ -517,19 +517,19 @@ function parseGameStateUpdate(buffer: ArrayBuffer): Segment[] {
               label: "Data",
               type: "struct",
               value: "",
-              offset: extDataStartOffset + 4,
-              bytes: extLength - 4,
+              offset: extDataStartOffset + 1,
+              bytes: extLength - 1,
               children: extDataSegments,
             });
           }
         } catch (e) {
           // If we can't parse, just show raw bytes
-          const remainingBytes = extDataEndOffset - (extDataStartOffset + 4);
+          const remainingBytes = extDataEndOffset - (extDataStartOffset + 1);
           extSegment.children!.push({
             label: "Data",
             type: `raw bytes (${remainingBytes} bytes)`,
             value: "...",
-            offset: extDataStartOffset + 4,
+            offset: extDataStartOffset + 1,
             bytes: remainingBytes,
           });
         }
@@ -556,9 +556,9 @@ function parseGameStateUpdate(buffer: ArrayBuffer): Segment[] {
     let removedCount = 0;
     let removedCountOffset = entityReader.getOffset();
     try {
-      if (entityReader.getOffset() + 4 <= buffer.byteLength) {
-        removedCount = entityReader.readUInt32();
-        removedCountOffset = entityReader.getOffset() - 4;
+      if (entityReader.getOffset() + 1 <= buffer.byteLength) {
+        removedCount = entityReader.readUInt8();
+        removedCountOffset = entityReader.getOffset() - 1;
       }
     } catch {
       // Error reading removed count, skip removed extensions
@@ -573,9 +573,27 @@ function parseGameStateUpdate(buffer: ArrayBuffer): Segment[] {
     };
 
     for (let j = 0; j < removedCount; j++) {
-      const result = readStringSegment(entityReader, `Removed ${j}`, buffer);
-      removedSegment.children!.push(result.segment);
-      entityReader = result.newReader;
+      try {
+        const removedOffset = entityReader.getOffset();
+        const encodedType = entityReader.readUInt8();
+        const removedType = decodeExtensionType(encodedType);
+        removedSegment.children!.push({
+          label: `Removed ${j}`,
+          type: "uint8 (decoded)",
+          value: `${encodedType} → "${removedType}"`,
+          offset: removedOffset,
+          bytes: 1,
+        });
+      } catch (error: any) {
+        removedSegment.children!.push({
+          label: `Removed ${j}`,
+          type: "error",
+          value: `[Error reading removed extension: ${error.message}]`,
+          offset: entityReader.getOffset(),
+          bytes: 1,
+        });
+        break;
+      }
     }
 
     if (removedCount > 0) {
@@ -604,10 +622,8 @@ function parseGameStateUpdate(buffer: ArrayBuffer): Segment[] {
   // Optional fields with boolean flags
   const optionalFields = [
     { name: "Timestamp", readFn: () => reader.readFloat64(), type: "float64" },
-    { name: "Day Number", readFn: () => reader.readUInt8(), type: "uint8" },
     { name: "Cycle Start Time", readFn: () => reader.readFloat64(), type: "float64" },
     { name: "Cycle Duration", readFn: () => reader.readFloat64(), type: "float64" },
-    { name: "Is Day", readFn: () => reader.readBoolean(), type: "uint8 (boolean)" },
     { name: "Wave Number", readFn: () => reader.readUInt8(), type: "uint8" },
     {
       name: "Wave State",
@@ -622,7 +638,6 @@ function parseGameStateUpdate(buffer: ArrayBuffer): Segment[] {
     },
     { name: "Phase Start Time", readFn: () => reader.readFloat64(), type: "float64" },
     { name: "Phase Duration", readFn: () => reader.readFloat64(), type: "float64" },
-    { name: "Total Zombies", readFn: () => reader.readUInt16(), type: "uint16" },
     { name: "Is Full State", readFn: () => reader.readBoolean(), type: "uint8 (boolean)" },
   ];
 
@@ -651,30 +666,41 @@ function parseGameStateUpdate(buffer: ArrayBuffer): Segment[] {
   let removedEntityIdsCount = 0;
   let removedIdsOffset = reader.getOffset();
   try {
-    if (reader.getOffset() + 4 <= buffer.byteLength) {
-      removedEntityIdsCount = reader.readUInt32();
-      removedIdsOffset = reader.getOffset() - 4;
+    if (reader.getOffset() + 2 <= buffer.byteLength) {
+      removedEntityIdsCount = reader.readUInt16();
+      removedIdsOffset = reader.getOffset() - 2;
     }
   } catch {
     // Error reading removed entity IDs count, skip
   }
   const removedIdsSegment: Segment = {
-    label: "Removed Entity IDs",
-    type: `array (${removedEntityIdsCount} items)`,
+    label: "Removed Entity IDs Count",
+    type: "uint16",
     value: removedEntityIdsCount,
     offset: removedIdsOffset,
-    bytes: 0,
+    bytes: 2,
     children: [],
   };
-
-  for (let i = 0; i < removedEntityIdsCount; i++) {
-    const result = readStringSegment(reader, `ID ${i}`, buffer);
-    removedIdsSegment.children!.push(result.segment);
-    reader = result.newReader;
-  }
+  gameStateSegment.children!.push(removedIdsSegment);
 
   if (removedEntityIdsCount > 0) {
-    gameStateSegment.children!.push(removedIdsSegment);
+    const removedIdsArraySegment: Segment = {
+      label: "Removed Entity IDs",
+      type: `array (${removedEntityIdsCount} items)`,
+      value: removedEntityIdsCount,
+      offset: reader.getOffset(),
+      bytes: 0,
+      children: [],
+    };
+
+    for (let i = 0; i < removedEntityIdsCount; i++) {
+      removedIdsArraySegment.children!.push(
+        readSegment(reader, `ID ${i}`, () => reader.readUInt16(), "uint16")
+      );
+    }
+
+    removedIdsArraySegment.bytes = reader.getOffset() - removedIdsArraySegment.offset;
+    gameStateSegment.children!.push(removedIdsArraySegment);
   }
 
   gameStateSegment.bytes = reader.getOffset() - gameStateStartOffset;
@@ -857,17 +883,51 @@ function parseExtensionData(
 }
 
 /**
+ * Get ANSI color code based on byte count
+ */
+function getByteColor(bytes: number): string {
+  if (bytes >= 8) {
+    return "\x1b[31m"; // Red
+  } else if (bytes >= 4) {
+    return "\x1b[38;5;208m"; // Orange
+  } else if (bytes >= 2) {
+    return "\x1b[33m"; // Yellow
+  } else if (bytes === 1) {
+    return "\x1b[32m"; // Green
+  }
+  return ""; // No color for 0 bytes
+}
+
+/**
  * Print segment tree
  */
 function printSegmentTree(segments: Segment[], indent: string = ""): void {
   for (const segment of segments) {
-    const valueStr =
-      typeof segment.value === "object" && segment.value !== null
-        ? JSON.stringify(segment.value)
-        : String(segment.value);
+    const reset = "\x1b[0m";
+    
+    // For decoded types, extract just the decoded part (e.g., "illuminated" from "16384 → \"illuminated\"")
+    let typeDisplay = segment.type;
+    let decodedPart = "";
+    
+    if (segment.type.includes("(decoded)")) {
+      const valueStr = String(segment.value);
+      const match = valueStr.match(/→\s*"([^"]+)"/);
+      if (match) {
+        decodedPart = match[1];
+        // Colorize "illuminated" extension type in cyan
+        if (decodedPart === "illuminated") {
+          const cyan = "\x1b[36m";
+          decodedPart = `${cyan}${decodedPart}${reset}`;
+        }
+        typeDisplay = `${typeDisplay} → "${decodedPart}"`;
+      }
+    }
+
+    const color = getByteColor(segment.bytes);
+    const bytesStr = color ? `${color}bytes: ${segment.bytes}${reset}` : `bytes: ${segment.bytes}`;
 
     console.log(
-      `${indent}${segment.label}: [${segment.type}] = ${valueStr} (offset: ${segment.offset}, bytes: ${segment.bytes})`
+      `${indent}${segment.label}: [${typeDisplay}] (${bytesStr})`
     );
 
     if (segment.children && segment.children.length > 0) {

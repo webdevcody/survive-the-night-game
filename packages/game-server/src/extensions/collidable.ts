@@ -6,40 +6,33 @@ import Vector2 from "@/util/vector2";
 import { BufferWriter } from "@shared/util/buffer-serialization";
 import { encodeExtensionType } from "@shared/util/extension-type-encoding";
 import PoolManager from "@shared/util/pool-manager";
+import { ExtensionBase } from "./extension-base";
 
-export default class Collidable implements Extension {
+export default class Collidable extends ExtensionBase {
   public static readonly type = "collidable";
 
-  private self: IEntity;
-  private size: Vector2 = PoolManager.getInstance().vector2.claim(16, 16);
-  private offset: Vector2 = PoolManager.getInstance().vector2.claim(0, 0);
-  private enabled: boolean;
-  private dirty: boolean = false;
+  private size: Vector2;
+  private offset: Vector2;
 
   public constructor(self: IEntity) {
-    this.self = self;
-    this.enabled = true;
+    super(self, { size: { x: 16, y: 16 }, offset: { x: 0, y: 0 }, enabled: true });
+    this.size = PoolManager.getInstance().vector2.claim(16, 16);
+    this.offset = PoolManager.getInstance().vector2.claim(0, 0);
   }
 
   public setEnabled(enabled: boolean) {
-    const enabledChanged = this.enabled !== enabled;
-    this.enabled = enabled;
-    if (enabledChanged) {
-      this.markDirty();
-    }
+    const serialized = this.serialized as any;
+    serialized.enabled = enabled;
     return this;
   }
 
   public isEnabled() {
-    return this.enabled;
+    const serialized = this.serialized as any;
+    return serialized.enabled;
   }
 
   public setSize(size: Vector2) {
-    const sizeChanged = this.size.x !== size.x || this.size.y !== size.y;
-    this.size.reset(size.x, size.y);
-    if (sizeChanged) {
-      this.markDirty();
-    }
+    this.setVector2Field('size', this.size, size);
     return this;
   }
 
@@ -48,11 +41,7 @@ export default class Collidable implements Extension {
   }
 
   public setOffset(offset: Vector2) {
-    const offsetChanged = this.offset.x !== offset.x || this.offset.y !== offset.y;
-    this.offset.reset(offset.x, offset.y);
-    if (offsetChanged) {
-      this.markDirty();
-    }
+    this.setVector2Field('offset', this.offset, offset);
     return this;
   }
 
@@ -66,25 +55,11 @@ export default class Collidable implements Extension {
     return rect;
   }
 
-  public isDirty(): boolean {
-    return this.dirty;
-  }
-
-  public markDirty(): void {
-    this.dirty = true;
-    if (this.self.markExtensionDirty) {
-      this.self.markExtensionDirty(this);
-    }
-  }
-
-  public clearDirty(): void {
-    this.dirty = false;
-  }
-
   public serializeToBuffer(writer: BufferWriter): void {
-    writer.writeUInt32(encodeExtensionType(Collidable.type));
+    const serialized = this.serialized as any;
+    writer.writeUInt8(encodeExtensionType(Collidable.type));
     writer.writeVector2(this.offset);
     writer.writeVector2(this.size);
-    writer.writeBoolean(this.enabled);
+    writer.writeBoolean(serialized.enabled);
   }
 }

@@ -41,6 +41,6 @@ export default class Consumable implements Extension {
   }
 
   public serializeToBuffer(writer: BufferWriter): void {
-    writer.writeUInt32(encodeExtensionType(Consumable.type));
+    writer.writeUInt8(encodeExtensionType(Consumable.type));
   }
 }

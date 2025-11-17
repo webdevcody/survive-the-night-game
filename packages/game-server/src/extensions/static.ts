@@ -30,6 +30,6 @@ export default class Static implements Extension {
   }
 
   public serializeToBuffer(writer: BufferWriter): void {
-    writer.writeUInt32(encodeExtensionType(Static.type));
+    writer.writeUInt8(encodeExtensionType(Static.type));
   }
 }

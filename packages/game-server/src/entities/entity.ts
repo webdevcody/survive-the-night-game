@@ -5,6 +5,8 @@ import { IEntity } from "./types";
 import { EntityCategory, EntityCategories } from "@shared/entities";
 import { BufferWriter } from "@shared/util/buffer-serialization";
 import { entityTypeRegistry } from "@shared/util/entity-type-encoding";
+import { encodeExtensionType } from "@shared/util/extension-type-encoding";
+import { SerializableFields } from "@/util/serializable-fields";
 
 export class Entity<TSerializableFields extends readonly string[] = readonly string[]>
   extends EventTarget
@@ -21,11 +23,11 @@ export class Entity<TSerializableFields extends readonly string[] = readonly str
   private removedExtensions: string[] = []; // Track removed extensions
   private hasBeenSerialized: boolean = false; // Track if entity has been serialized at least once
 
-  // Dirty field tracking for custom entity fields
-  private dirtyFields: Set<TSerializableFields[number]> = new Set();
-
-  // Subclasses should override this to define which fields should be serialized
-  protected serializableFields: TSerializableFields = [] as unknown as TSerializableFields;
+  // Serializable fields with automatic dirty tracking
+  // Subclasses should initialize this in their constructor with default values
+  protected serialized: SerializableFields = new SerializableFields({}, () =>
+    this.markEntityDirty()
+  );
 
   public constructor(gameManagers: IGameManagers, type: EntityType) {
     super();
@@ -162,7 +164,7 @@ export class Entity<TSerializableFields extends readonly string[] = readonly str
       }
     }
     this.dirtyExtensions.clear();
-    this.dirtyFields.clear();
+    this.serialized.resetDirty();
     if (this.dirty) {
       this.dirty = false;
       this.notifyTrackerClean();
@@ -170,12 +172,20 @@ export class Entity<TSerializableFields extends readonly string[] = readonly str
   }
 
   /**
-   * Mark a field as dirty so it will be included in the next dirty-only serialization.
-   * @param fieldName - The name of the field to mark as dirty
+   * Mark entity as dirty (called automatically when serialized fields change).
+   * @deprecated Use serialized.set() or serialized.field = value instead
    */
   protected markFieldDirty(fieldName: TSerializableFields[number]): void {
-    this.dirtyFields.add(fieldName);
-    // Mark entity as dirty when a field is marked dirty
+    // Legacy support - now handled automatically by SerializableFields Proxy
+    // This method is kept for backward compatibility but does nothing
+    // since the Proxy automatically marks fields dirty
+  }
+
+  /**
+   * Internal method to mark entity as dirty when serialized fields change.
+   * Made protected so subclasses can use it in callbacks.
+   */
+  protected markEntityDirty(): void {
     if (!this.dirty) {
       this.dirty = true;
       this.notifyTrackerDirty();
@@ -186,8 +196,8 @@ export class Entity<TSerializableFields extends readonly string[] = readonly str
    * Check if a field is marked as dirty.
    * @param fieldName - The name of the field to check
    */
-  protected isFieldDirty(fieldName: TSerializableFields[number]): boolean {
-    return this.dirtyFields.has(fieldName);
+  protected isFieldDirty(fieldName: string): boolean {
+    return this.serialized.getDirtyFields().has(fieldName);
   }
 
   public markExtensionDirty(extension: Extension): void {
@@ -223,22 +233,22 @@ export class Entity<TSerializableFields extends readonly string[] = readonly str
     // Write entity type as 1-byte numeric ID
     writer.writeUInt8(entityTypeRegistry.encode(this.type));
 
-    // Write custom entity fields based on serializableFields definition
+    // Write custom entity fields from serialized Map
     // First write count of fields that will be included
-    let fieldsToWrite = 0;
+    const dirtyFields = this.serialized.getDirtyFields();
+    const allKeys = this.serialized.getAllKeys();
     const fieldValues: Array<{ name: string; value: any }> = [];
-    if (this.serializableFields.length > 0) {
-      for (const fieldName of this.serializableFields) {
-        if (!onlyDirty || this.dirtyFields.has(fieldName)) {
-          fieldsToWrite++;
-          fieldValues.push({
-            name: fieldName,
-            value: (this as any)[fieldName],
-          });
-        }
+
+    for (const fieldName of allKeys) {
+      if (!onlyDirty || dirtyFields.has(fieldName)) {
+        fieldValues.push({
+          name: fieldName,
+          value: this.serialized.get(fieldName),
+        });
       }
     }
-    writer.writeUInt32(fieldsToWrite);
+
+    writer.writeUInt32(fieldValues.length);
     // Write each field: name, type byte, then value
     // Type bytes: 0 = string, 1 = number, 2 = boolean, 3 = object (JSON string)
     for (const field of fieldValues) {
@@ -249,7 +259,12 @@ export class Entity<TSerializableFields extends readonly string[] = readonly str
         writer.writeString(value);
       } else if (typeof value === "number") {
         writer.writeUInt32(1); // Type: number
-        writer.writeFloat64(value);
+        // Special case: ping field uses UInt8 instead of Float64
+        if (field.name === "ping") {
+          writer.writeUInt8(value);
+        } else {
+          writer.writeFloat64(value);
+        }
       } else if (typeof value === "boolean") {
         writer.writeUInt32(2); // Type: boolean
         writer.writeBoolean(value);
@@ -285,9 +300,14 @@ export class Entity<TSerializableFields extends readonly string[] = readonly str
     }
 
     // Write removed extensions array (if any)
-    writer.writeUInt32(this.removedExtensions.length);
+    if (this.removedExtensions.length > 255) {
+      throw new Error(
+        `Removed extensions count ${this.removedExtensions.length} exceeds UInt8 maximum (255)`
+      );
+    }
+    writer.writeUInt8(this.removedExtensions.length);
     for (const removedType of this.removedExtensions) {
-      writer.writeString(removedType);
+      writer.writeUInt8(encodeExtensionType(removedType));
     }
     // Clear the removed extensions after serializing
     this.removedExtensions = [];

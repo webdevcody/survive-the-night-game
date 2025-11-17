@@ -50,17 +50,6 @@ export class BufferManager {
       this.writer.writeBoolean(false);
     }
 
-    // Write dayNumber (uint8: 0-255)
-    if (gameState.dayNumber !== undefined) {
-      this.writer.writeBoolean(true);
-      if (gameState.dayNumber > 255) {
-        throw new Error(`dayNumber ${gameState.dayNumber} exceeds uint8 maximum (255)`);
-      }
-      this.writer.writeUInt8(gameState.dayNumber);
-    } else {
-      this.writer.writeBoolean(false);
-    }
-
     // Write cycleStartTime
     if (gameState.cycleStartTime !== undefined) {
       this.writer.writeBoolean(true);
@@ -73,14 +62,6 @@ export class BufferManager {
     if (gameState.cycleDuration !== undefined) {
       this.writer.writeBoolean(true);
       this.writer.writeFloat64(gameState.cycleDuration);
-    } else {
-      this.writer.writeBoolean(false);
-    }
-
-    // Write isDay
-    if (gameState.isDay !== undefined) {
-      this.writer.writeBoolean(true);
-      this.writer.writeBoolean(gameState.isDay);
     } else {
       this.writer.writeBoolean(false);
     }
@@ -120,17 +101,6 @@ export class BufferManager {
       this.writer.writeBoolean(false);
     }
 
-    // Write totalZombies (uint16: 0-65535)
-    if (gameState.totalZombies !== undefined) {
-      this.writer.writeBoolean(true);
-      if (gameState.totalZombies > 65535) {
-        throw new Error(`totalZombies ${gameState.totalZombies} exceeds uint16 maximum (65535)`);
-      }
-      this.writer.writeUInt16(gameState.totalZombies);
-    } else {
-      this.writer.writeBoolean(false);
-    }
-
     // Write isFullState
     if (gameState.isFullState !== undefined) {
       this.writer.writeBoolean(true);
@@ -145,7 +115,10 @@ export class BufferManager {
    * @param removedIds - Array of entity IDs that were removed
    */
   writeRemovedEntityIds(removedIds: number[]): void {
-    this.writer.writeUInt32(removedIds.length);
+    if (removedIds.length > 65535) {
+      throw new Error(`Removed entity IDs count ${removedIds.length} exceeds UInt16 maximum (65535)`);
+    }
+    this.writer.writeUInt16(removedIds.length);
     for (const id of removedIds) {
       this.writer.writeUInt16(id);
     }

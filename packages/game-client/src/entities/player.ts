@@ -205,7 +205,10 @@ export class PlayerClient extends ClientEntity implements IClientEntity, Rendera
     } else {
       this.lastRenderPosition = this.lerpPosition(
         targetPosition,
-        PoolManager.getInstance().vector2.claim(this.lastRenderPosition.x, this.lastRenderPosition.y)
+        PoolManager.getInstance().vector2.claim(
+          this.lastRenderPosition.x,
+          this.lastRenderPosition.y
+        )
       );
     }
 
@@ -375,6 +378,11 @@ export class PlayerClient extends ClientEntity implements IClientEntity, Rendera
       return;
     }
 
+    // Ensure activeItem has a valid itemType
+    if (!this.activeItem.itemType) {
+      return;
+    }
+
     // Skip rendering held item if it's a wearable item (should show as overlay instead)
     const itemConfig = itemRegistry.get(this.activeItem.itemType);
     if (itemConfig?.hideWhenSelected) {
@@ -443,7 +451,12 @@ export class PlayerClient extends ClientEntity implements IClientEntity, Rendera
     }
 
     if (key === "activeItem") {
-      this.activeItem = value ?? null;
+      // Ensure activeItem has a valid structure
+      if (value && typeof value === "object" && value.itemType) {
+        this.activeItem = value;
+      } else {
+        this.activeItem = null;
+      }
       return;
     }
 
@@ -454,7 +467,13 @@ export class PlayerClient extends ClientEntity implements IClientEntity, Rendera
     super.deserialize(data);
     this.isCrafting = data.isCrafting;
     if (data.activeItem !== undefined) {
-      this.activeItem = data.activeItem ?? null;
+      // Ensure activeItem has a valid structure
+      if (data.activeItem && typeof data.activeItem === "object" && data.activeItem.itemType) {
+        this.activeItem = data.activeItem;
+      } else {
+        this.activeItem = null;
+        this.updateActiveItemFromInventory();
+      }
     } else {
       this.updateActiveItemFromInventory();
     }

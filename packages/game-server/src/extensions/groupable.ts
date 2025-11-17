@@ -2,50 +2,30 @@ import { IEntity } from "@/entities/types";
 import { Extension } from "@/extensions/types";
 import { BufferWriter } from "@shared/util/buffer-serialization";
 import { encodeExtensionType } from "@shared/util/extension-type-encoding";
+import { ExtensionBase } from "./extension-base";
 
 export type Group = "friendly" | "enemy";
 
-export default class Groupable implements Extension {
+export default class Groupable extends ExtensionBase {
   public static readonly type = "groupable";
 
-  private self: IEntity;
-  private group: Group;
-  private dirty: boolean = false;
-
-  public constructor(self: IEntity, group: Group) {
-    this.self = self;
-    this.group = group;
+  constructor(self: IEntity, group: Group) {
+    super(self, { group });
   }
 
   public getGroup(): Group {
-    return this.group;
+    const serialized = this.serialized as any;
+    return serialized.group;
   }
 
   public setGroup(group: Group): void {
-    const groupChanged = this.group !== group;
-    this.group = group;
-    if (groupChanged) {
-      this.markDirty();
-    }
-  }
-
-  public isDirty(): boolean {
-    return this.dirty;
-  }
-
-  public markDirty(): void {
-    this.dirty = true;
-    if (this.self.markExtensionDirty) {
-      this.self.markExtensionDirty(this);
-    }
-  }
-
-  public clearDirty(): void {
-    this.dirty = false;
+    const serialized = this.serialized as any;
+    serialized.group = group;
   }
 
   public serializeToBuffer(writer: BufferWriter): void {
-    writer.writeUInt32(encodeExtensionType(Groupable.type));
-    writer.writeString(this.group);
+    const serialized = this.serialized as any;
+    writer.writeUInt8(encodeExtensionType(Groupable.type));
+    writer.writeString(serialized.group);
   }
 }

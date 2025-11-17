@@ -6,37 +6,34 @@ import { IEntity } from "@/entities/types";
 import { ItemState } from "@/types/entity";
 import { BufferWriter } from "@shared/util/buffer-serialization";
 import { encodeExtensionType } from "@shared/util/extension-type-encoding";
+import { ExtensionBase } from "./extension-base";
 
 interface PickupOptions {
   state?: ItemState;
   mergeStrategy?: (existingState: ItemState, pickupState: ItemState) => ItemState;
 }
 
-export default class Carryable implements Extension {
+export default class Carryable extends ExtensionBase {
   public static readonly type = "carryable" as const;
 
-  private self: IEntity;
-  private itemType: ItemType;
-  private state: ItemState = {};
-  private dirty: boolean = false;
-
   public constructor(self: IEntity, itemType: ItemType) {
-    this.self = self;
-    this.itemType = itemType;
-    this.state = {};
+    super(self, { itemType, state: {} });
   }
 
   public setItemState(state: ItemState): this {
-    const stateChanged = JSON.stringify(this.state) !== JSON.stringify(state);
-    this.state = state;
-    if (stateChanged) {
-      this.markDirty();
-    }
+    const serialized = this.serialized as any;
+    serialized.state = state;
     return this;
   }
 
   public getItemState(): ItemState {
-    return this.state;
+    const serialized = this.serialized as any;
+    return serialized.state;
+  }
+
+  public getItemType(): ItemType {
+    const serialized = this.serialized as any;
+    return serialized.itemType;
   }
 
   /**
@@ -57,8 +54,11 @@ export default class Carryable implements Extension {
   }
 
   public pickup(entityId: number, options?: PickupOptions): boolean {
+    const serialized = this.serialized as any;
+    const itemType = serialized.itemType;
+    
     // Prevent crash if itemType is null (entity may be in invalid state)
-    if (!this.itemType) {
+    if (!itemType) {
       console.warn("Attempted to pickup item with null itemType");
       return false;
     }
@@ -78,7 +78,7 @@ export default class Carryable implements Extension {
     if (options?.mergeStrategy) {
       const existingItemIndex = inventory
         .getItems()
-        .findIndex((item) => item != null && item.itemType === this.itemType);
+        .findIndex((item) => item != null && item.itemType === itemType);
       if (existingItemIndex >= 0) {
         const existingItem = inventory.getItems()[existingItemIndex];
         if (existingItem) {
@@ -96,7 +96,7 @@ export default class Carryable implements Extension {
     }
 
     inventory.addItem({
-      itemType: this.itemType,
+      itemType: itemType,
       state: options?.state,
     });
 
@@ -108,32 +108,18 @@ export default class Carryable implements Extension {
       .broadcastEvent(
         new PlayerPickedUpItemEvent({
           playerId: entityId,
-          itemType: this.itemType,
+          itemType: itemType,
         })
       );
 
     return true;
   }
 
-  public isDirty(): boolean {
-    return this.dirty;
-  }
-
-  public markDirty(): void {
-    this.dirty = true;
-    if (this.self.markExtensionDirty) {
-      this.self.markExtensionDirty(this);
-    }
-  }
-
-  public clearDirty(): void {
-    this.dirty = false;
-  }
-
   public serializeToBuffer(writer: BufferWriter): void {
-    writer.writeUInt32(encodeExtensionType(Carryable.type));
-    writer.writeString(this.itemType);
+    const serialized = this.serialized as any;
+    writer.writeUInt8(encodeExtensionType(Carryable.type));
+    writer.writeString(serialized.itemType);
     // Serialize ItemState as record (values are always numbers)
-    writer.writeRecord(this.state, (value) => writer.writeFloat64(value as number));
+    writer.writeRecord(serialized.state, (value) => writer.writeFloat64(value as number));
   }
 }

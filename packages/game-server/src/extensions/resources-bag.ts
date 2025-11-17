@@ -6,42 +6,45 @@ import { Broadcaster } from "@/managers/types";
 import { PlayerPickedUpResourceEvent } from "@shared/events/server-sent/pickup-resource-event";
 import { BufferWriter } from "@shared/util/buffer-serialization";
 import { encodeExtensionType } from "@shared/util/extension-type-encoding";
+import { ExtensionBase } from "./extension-base";
 
-export default class ResourcesBag implements Extension {
+export default class ResourcesBag extends ExtensionBase {
   public static readonly type = "resources-bag";
 
-  private self: IEntity;
   private broadcaster: Broadcaster;
   private resources: Map<ResourceType, number> = new Map();
-  private coins: number = 0;
-  private dirty: boolean = false;
 
   public constructor(self: IEntity, broadcaster: Broadcaster) {
-    this.self = self;
+    // Initialize serialized with coins and empty resources record
+    const initialResources: Record<string, number> = {};
+    resourceRegistry.getAllResourceTypes().forEach((resource) => {
+      initialResources[resource] = 0;
+      // Also initialize the Map for internal use
+    });
+    super(self, { coins: 0, resources: initialResources });
     this.broadcaster = broadcaster;
 
-    // Initialize all resources to 0
+    // Initialize all resources to 0 in Map
     resourceRegistry.getAllResourceTypes().forEach((resource) => {
       this.resources.set(resource as ResourceType, 0);
     });
   }
 
   public getCoins(): number {
-    return this.coins;
+    const serialized = this.serialized as any;
+    return serialized.coins;
   }
 
   public addCoins(amount: number): void {
     if (amount !== 0) {
-      this.coins += amount;
-      this.markDirty();
+      const serialized = this.serialized as any;
+      serialized.coins += amount;
     }
   }
 
   public setCoins(amount: number): void {
-    if (this.coins !== amount) {
-      this.coins = Math.max(0, amount);
-      this.markDirty();
-    }
+    const serialized = this.serialized as any;
+    serialized.coins = Math.max(0, amount);
   }
 
   public getResource(resourceType: ResourceType): number {
@@ -65,21 +68,22 @@ export default class ResourcesBag implements Extension {
   }
 
   public setResource(resourceType: ResourceType, amount: number): void {
-    const currentAmount = this.resources.get(resourceType) || 0;
     const newAmount = Math.max(0, amount);
-    if (currentAmount !== newAmount) {
-      this.resources.set(resourceType, newAmount);
-      this.markDirty();
-    }
+    this.resources.set(resourceType, newAmount);
+    
+    // Update serialized resources
+    const serialized = this.serialized as any;
+    serialized.resources = { ...serialized.resources, [resourceType]: newAmount };
   }
 
   public removeResource(resourceType: ResourceType, amount: number): void {
     const currentAmount = this.resources.get(resourceType) || 0;
     const newAmount = Math.max(0, currentAmount - amount);
-    if (currentAmount !== newAmount) {
-      this.resources.set(resourceType, newAmount);
-      this.markDirty();
-    }
+    this.resources.set(resourceType, newAmount);
+    
+    // Update serialized resources
+    const serialized = this.serialized as any;
+    serialized.resources = { ...serialized.resources, [resourceType]: newAmount };
   }
 
   // Backward compatibility getters/setters for wood
@@ -115,30 +119,12 @@ export default class ResourcesBag implements Extension {
     };
   }
 
-  public isDirty(): boolean {
-    return this.dirty;
-  }
-
-  public markDirty(): void {
-    this.dirty = true;
-    if (this.self.markExtensionDirty) {
-      this.self.markExtensionDirty(this);
-    }
-  }
-
-  public clearDirty(): void {
-    this.dirty = false;
-  }
-
   public serializeToBuffer(writer: BufferWriter): void {
-    writer.writeUInt32(encodeExtensionType(ResourcesBag.type));
-    writer.writeFloat64(this.coins);
-    // Serialize resources map as record
-    const resources: Record<string, number> = {};
-    resourceRegistry.getAllResourceTypes().forEach((resource) => {
-      resources[resource] = this.resources.get(resource as ResourceType) || 0;
-    });
-    writer.writeRecord(resources, (value) => writer.writeFloat64(value));
+    const serialized = this.serialized as any;
+    writer.writeUInt8(encodeExtensionType(ResourcesBag.type));
+    writer.writeFloat64(serialized.coins);
+    // Serialize resources from serialized (already a record)
+    writer.writeRecord(serialized.resources, (value) => writer.writeFloat64(value));
   }
 }
 

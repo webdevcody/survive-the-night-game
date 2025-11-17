@@ -226,17 +226,11 @@ export class ClientEventListener {
 
     // Update game state properties only if they are included in the update
     // Legacy day/night cycle
-    if (gameStateEvent.getDayNumber() !== undefined) {
-      this.gameState.dayNumber = gameStateEvent.getDayNumber()!;
-    }
     if (gameStateEvent.getCycleStartTime() !== undefined) {
       this.gameState.cycleStartTime = gameStateEvent.getCycleStartTime()!;
     }
     if (gameStateEvent.getCycleDuration() !== undefined) {
       this.gameState.cycleDuration = gameStateEvent.getCycleDuration()!;
-    }
-    if (gameStateEvent.getIsDay() !== undefined) {
-      this.gameState.isDay = gameStateEvent.getIsDay()!;
     }
 
     // Wave system
@@ -260,9 +254,6 @@ export class ClientEventListener {
     }
     if (gameStateEvent.getPhaseDuration() !== undefined) {
       this.gameState.phaseDuration = gameStateEvent.getPhaseDuration()!;
-    }
-    if (gameStateEvent.getTotalZombies() !== undefined) {
-      this.gameState.totalZombies = gameStateEvent.getTotalZombies()!;
     }
 
     // Check if we have a buffer for buffer-based deserialization

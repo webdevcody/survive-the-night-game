@@ -49,46 +49,53 @@ const ITEM_DROP_TABLE: Array<{ itemType: ItemType; weight: number }> = [
   { itemType: "coin", weight: 10 },
 ];
 
-export default class Inventory implements Extension {
+import { ExtensionBase } from "./extension-base";
+
+export default class Inventory extends ExtensionBase {
   public static readonly type = "inventory";
 
-  private self: IEntity;
-  private items: InventoryItem[] = [];
   private broadcaster: Broadcaster;
-  private dirty: boolean = false;
 
   public constructor(self: IEntity, broadcaster: Broadcaster) {
-    this.self = self;
+    super(self, { items: [] });
     this.broadcaster = broadcaster;
   }
 
   public getItems(): InventoryItem[] {
-    return this.items;
+    const serialized = this.serialized as any;
+    return serialized.items;
   }
 
   public isFull(): boolean {
+    const serialized = this.serialized as any;
+    const items = serialized.items;
     // Count non-null items instead of array length to support sparse arrays
-    const itemCount = this.items.filter((item) => item != null).length;
+    const itemCount = items.filter((item: InventoryItem | null) => item != null).length;
     return itemCount >= getConfig().player.MAX_INVENTORY_SLOTS;
   }
 
   public hasItem(itemType: ItemType): boolean {
-    return this.items.some((it) => it?.itemType === itemType);
+    const serialized = this.serialized as any;
+    return serialized.items.some((it: InventoryItem | null) => it?.itemType === itemType);
   }
 
   public addItem(item: InventoryItem): void {
     if (this.isFull()) return;
 
+    const serialized = this.serialized as any;
+    const items = serialized.items;
+
     // Find first empty slot (null/undefined) to fill
-    const emptySlotIndex = this.items.findIndex((it) => it == null);
+    const emptySlotIndex = items.findIndex((it: InventoryItem | null) => it == null);
     if (emptySlotIndex !== -1) {
-      this.items[emptySlotIndex] = item;
+      items[emptySlotIndex] = item;
     } else {
       // No empty slots, push to end
-      this.items.push(item);
+      items.push(item);
     }
 
-    this.markDirty();
+    // Update serialized (array reference changes, so assign new array to trigger dirty)
+    serialized.items = [...items];
 
     this.broadcaster.broadcastEvent(
       new PlayerPickedUpItemEvent({
@@ -99,26 +106,34 @@ export default class Inventory implements Extension {
   }
 
   public removeItem(index: number): InventoryItem | undefined {
+    const serialized = this.serialized as any;
+    const items = serialized.items;
     // Don't use splice - just set to null to preserve inventory positions
-    const item = this.items[index];
+    const item = items[index];
     if (item != null) {
-      this.items[index] = null as any;
-      this.markDirty();
+      items[index] = null;
+      // Update serialized (array reference changes, so assign new array to trigger dirty)
+      serialized.items = [...items];
     }
     return item;
   }
 
   public updateItemState(index: number, state: any): void {
-    if (index >= 0 && index < this.items.length && this.items[index] != null) {
-      this.items[index].state = state;
-      this.markDirty();
+    const serialized = this.serialized as any;
+    const items = serialized.items;
+    if (index >= 0 && index < items.length && items[index] != null) {
+      items[index].state = state;
+      // Update serialized (array reference changes, so assign new array to trigger dirty)
+      serialized.items = [...items];
     }
   }
 
   public getActiveItem(index: number | null): InventoryItem | null {
     if (index === null) return null;
+    const serialized = this.serialized as any;
+    const items = serialized.items;
     // TODO: refactor this to be 0 based, why are we subtracting 1?
-    return this.items[index - 1] ?? null;
+    return items[index - 1] ?? null;
   }
 
   public getActiveWeapon(activeItem: InventoryItem | null): InventoryItem | null {
@@ -134,18 +149,15 @@ export default class Inventory implements Extension {
     resources: { wood: number; cloth: number };
     itemToDrop?: InventoryItem;
   } {
+    const serialized = this.serialized as any;
     const foundRecipe = recipes.find((it) => it.getType() === recipe);
     if (foundRecipe === undefined) {
-      return { inventory: this.items, resources };
+      return { inventory: serialized.items, resources };
     }
 
     const maxSlots = getConfig().player.MAX_INVENTORY_SLOTS;
-    const result = foundRecipe.craft(this.items, resources, maxSlots);
-    const itemsChanged = JSON.stringify(this.items) !== JSON.stringify(result.inventory);
-    this.items = result.inventory;
-    if (itemsChanged) {
-      this.markDirty();
-    }
+    const result = foundRecipe.craft(serialized.items, resources, maxSlots);
+    serialized.items = result.inventory;
     return result;
   }
 
@@ -181,15 +193,16 @@ export default class Inventory implements Extension {
   }
 
   public clear(): void {
-    if (this.items.length > 0) {
-      this.items = [];
-      this.markDirty();
+    const serialized = this.serialized as any;
+    if (serialized.items.length > 0) {
+      serialized.items = [];
     }
   }
 
   public scatterItems(position: { x: number; y: number }): void {
+    const serialized = this.serialized as any;
     const offset = 32;
-    this.items.forEach((item) => {
+    serialized.items.forEach((item: InventoryItem | null) => {
       if (item == null) return; // Skip null/undefined items
       const entity = this.createEntityFromItem(item);
       if (!entity) return;
@@ -209,32 +222,18 @@ export default class Inventory implements Extension {
 
       this.self.getEntityManager()?.addEntity(entity);
     });
-    this.items = [];
+    serialized.items = [];
   }
 
   private createEntityFromItem(item: InventoryItem) {
     return this.self.getEntityManager()!.createEntityFromItem(item);
   }
 
-  public isDirty(): boolean {
-    return this.dirty;
-  }
-
-  public markDirty(): void {
-    this.dirty = true;
-    if (this.self.markExtensionDirty) {
-      this.self.markExtensionDirty(this);
-    }
-  }
-
-  public clearDirty(): void {
-    this.dirty = false;
-  }
-
   public serializeToBuffer(writer: BufferWriter): void {
-    writer.writeUInt32(encodeExtensionType(Inventory.type));
+    const serialized = this.serialized as any;
+    writer.writeUInt8(encodeExtensionType(Inventory.type));
     // Serialize items array, handling null values
-    writer.writeArray(this.items, (item) => {
+    writer.writeArray(serialized.items, (item) => {
       if (item === null || item === undefined) {
         writer.writeBoolean(false);
       } else {

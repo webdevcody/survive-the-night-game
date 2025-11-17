@@ -6,23 +6,20 @@ import Vector2 from "@/util/vector2";
 import { BufferWriter } from "@shared/util/buffer-serialization";
 import { encodeExtensionType } from "@shared/util/extension-type-encoding";
 import PoolManager from "@shared/util/pool-manager";
+import { ExtensionBase } from "./extension-base";
 
 type DestructibleDeathHandler = () => void;
 type DestructibleDamagedHandler = () => void;
 
-export default class Destructible implements Extension {
+export default class Destructible extends ExtensionBase {
   public static readonly type = "destructible";
 
-  private self: IEntity;
-  private health = 0;
-  private maxHealth = 0;
   private offset = PoolManager.getInstance().vector2.claim(0, 0);
   private deathHandler: DestructibleDeathHandler | null = null;
   private onDamagedHandler: DestructibleDamagedHandler | null = null;
-  private dirty: boolean = false;
 
   public constructor(self: IEntity) {
-    this.self = self;
+    super(self, { health: 0, maxHealth: 0 });
   }
 
   public onDeath(deathHandler: DestructibleDeathHandler): this {
@@ -41,20 +38,14 @@ export default class Destructible implements Extension {
   }
 
   public setHealth(health: number): this {
-    const healthChanged = this.health !== health;
-    this.health = health;
-    if (healthChanged) {
-      this.markDirty();
-    }
+    const serialized = this.serialized as any;
+    serialized.health = health;
     return this;
   }
 
   public setMaxHealth(maxHealth: number): this {
-    const maxHealthChanged = this.maxHealth !== maxHealth;
-    this.maxHealth = maxHealth;
-    if (maxHealthChanged) {
-      this.markDirty();
-    }
+    const serialized = this.serialized as any;
+    serialized.maxHealth = maxHealth;
     return this;
   }
 
@@ -63,11 +54,8 @@ export default class Destructible implements Extension {
       return;
     }
 
-    const oldHealth = this.health;
-    this.health = Math.max(0, this.health - damage);
-    if (oldHealth !== this.health) {
-      this.markDirty();
-    }
+    const serialized = this.serialized as any;
+    serialized.health = Math.max(0, serialized.health - damage);
     this.onDamagedHandler?.();
 
     if (this.isDead()) {
@@ -76,11 +64,8 @@ export default class Destructible implements Extension {
   }
 
   public kill(): void {
-    const wasDead = this.isDead();
-    this.health = 0;
-    if (!wasDead) {
-      this.markDirty();
-    }
+    const serialized = this.serialized as any;
+    serialized.health = 0;
     this.deathHandler?.();
   }
 
@@ -99,43 +84,29 @@ export default class Destructible implements Extension {
     if (this.isDead()) {
       return;
     }
-    const oldHealth = this.health;
-    this.health = Math.min(this.health + amount, this.maxHealth);
-    if (oldHealth !== this.health) {
-      this.markDirty();
-    }
+    const serialized = this.serialized as any;
+    serialized.health = Math.min(serialized.health + amount, serialized.maxHealth);
   }
 
   public isDead(): boolean {
-    return this.health === 0;
+    const serialized = this.serialized as any;
+    return serialized.health === 0;
   }
 
   public getHealth(): number {
-    return this.health;
+    const serialized = this.serialized as any;
+    return serialized.health;
   }
 
   public getMaxHealth(): number {
-    return this.maxHealth;
-  }
-
-  public isDirty(): boolean {
-    return this.dirty;
-  }
-
-  public markDirty(): void {
-    this.dirty = true;
-    if (this.self.markExtensionDirty) {
-      this.self.markExtensionDirty(this);
-    }
-  }
-
-  public clearDirty(): void {
-    this.dirty = false;
+    const serialized = this.serialized as any;
+    return serialized.maxHealth;
   }
 
   public serializeToBuffer(writer: BufferWriter): void {
-    writer.writeUInt32(encodeExtensionType(Destructible.type));
-    writer.writeFloat64(this.health);
-    writer.writeFloat64(this.maxHealth);
+    const serialized = this.serialized as any;
+    writer.writeUInt8(encodeExtensionType(Destructible.type));
+    writer.writeFloat64(serialized.health);
+    writer.writeFloat64(serialized.maxHealth);
   }
 }

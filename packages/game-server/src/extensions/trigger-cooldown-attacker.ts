@@ -119,7 +119,7 @@ export default class TriggerCooldownAttacker implements Extension {
   }
 
   public serializeToBuffer(writer: BufferWriter): void {
-    writer.writeUInt32(encodeExtensionType(TriggerCooldownAttacker.type));
+    writer.writeUInt8(encodeExtensionType(TriggerCooldownAttacker.type));
     writer.writeBoolean(this.isReady);
   }
 }

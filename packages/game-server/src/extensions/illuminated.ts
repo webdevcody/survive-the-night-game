@@ -2,50 +2,30 @@ import { IEntity } from "@/entities/types";
 import { Extension } from "@/extensions/types";
 import { BufferWriter } from "@shared/util/buffer-serialization";
 import { encodeExtensionType } from "@shared/util/extension-type-encoding";
+import { ExtensionBase } from "./extension-base";
 
-export default class Illuminated implements Extension {
+export default class Illuminated extends ExtensionBase {
   public static readonly type = "illuminated";
 
-  private self: IEntity;
-  private radius: number;
-  private dirty: boolean = false;
-
-  public constructor(self: IEntity, radius: number = 150) {
-    this.self = self;
-    this.radius = radius;
+  constructor(self: IEntity, radius: number = 150) {
+    super(self, { radius });
   }
 
   public getRadius(): number {
-    return this.radius;
+    const serialized = this.serialized as any;
+    return serialized.radius;
   }
 
   public setRadius(radius: number): this {
-    const radiusChanged = this.radius !== radius;
-    this.radius = radius;
-    if (radiusChanged) {
-      this.markDirty();
-    }
+    const serialized = this.serialized as any;
+    serialized.radius = radius;
     return this;
   }
 
-  public isDirty(): boolean {
-    return this.dirty;
-  }
-
-  public markDirty(): void {
-    this.dirty = true;
-    if (this.self.markExtensionDirty) {
-      this.self.markExtensionDirty(this);
-    }
-  }
-
-  public clearDirty(): void {
-    this.dirty = false;
-  }
-
   public serializeToBuffer(writer: BufferWriter): void {
-    writer.writeUInt32(encodeExtensionType(Illuminated.type));
-    writer.writeFloat64(this.radius);
+    const serialized = this.serialized as any;
+    writer.writeUInt8(encodeExtensionType(Illuminated.type));
+    writer.writeUInt16(serialized.radius);
   }
 }
 

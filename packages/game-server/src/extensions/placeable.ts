@@ -36,6 +36,6 @@ export default class Placeable implements Extension {
   }
 
   public serializeToBuffer(writer: BufferWriter): void {
-    writer.writeUInt32(encodeExtensionType(Placeable.type));
+    writer.writeUInt8(encodeExtensionType(Placeable.type));
   }
 }

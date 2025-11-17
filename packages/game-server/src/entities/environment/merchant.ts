@@ -6,29 +6,23 @@ import { Entity } from "@/entities/entity";
 import Vector2 from "@/util/vector2";
 import PoolManager from "@shared/util/pool-manager";
 import { getConfig, type MerchantShopItem } from "@shared/config";
+import { SerializableFields } from "@/util/serializable-fields";
 
-// Define serializable fields for type safety
-const MERCHANT_SERIALIZABLE_FIELDS = ["shopItems"] as const;
-
-export class Merchant extends Entity<typeof MERCHANT_SERIALIZABLE_FIELDS> {
-  protected serializableFields = MERCHANT_SERIALIZABLE_FIELDS;
-
+export class Merchant extends Entity {
   public static get Size(): Vector2 {
     return PoolManager.getInstance().vector2.claim(16, 16);
   }
 
-  // Serializable field
-  private shopItems: MerchantShopItem[] = [];
-
   constructor(gameManagers: IGameManagers) {
     super(gameManagers, Entities.MERCHANT);
+
+    // Initialize serializable fields
+    this.serialized = new SerializableFields({ shopItems: [] }, () => this.markEntityDirty());
     const poolManager = PoolManager.getInstance();
     const size = poolManager.vector2.claim(16, 16);
     this.addExtension(new Positionable(this).setSize(size));
     this.addExtension(
-      new Interactive(this)
-        .onInteract(this.interact.bind(this))
-        .setDisplayName("buy")
+      new Interactive(this).onInteract(this.interact.bind(this)).setDisplayName("buy")
     );
 
     // Initialize with 3 random items
@@ -44,22 +38,21 @@ export class Merchant extends Entity<typeof MERCHANT_SERIALIZABLE_FIELDS> {
    * Randomizes the 3 shop items from the available merchant items
    */
   public randomizeShopItems(): void {
+    const serialized = this.serialized as any;
     const availableItems = [...getConfig().merchant.SHOP_ITEMS];
-    this.shopItems = [];
+    serialized.shopItems = [];
 
     // Pick 3 random items
     for (let i = 0; i < 3 && availableItems.length > 0; i++) {
       const randomIndex = Math.floor(Math.random() * availableItems.length);
-      this.shopItems.push(availableItems[randomIndex]);
+      serialized.shopItems.push(availableItems[randomIndex]);
       availableItems.splice(randomIndex, 1);
     }
-
-    // Mark field as dirty since we changed it
-    this.markFieldDirty("shopItems");
   }
 
   public getShopItems(): MerchantShopItem[] {
-    return this.shopItems;
+    const serialized = this.serialized as any;
+    return serialized.shopItems;
   }
 
   setPosition(position: Vector2): void {

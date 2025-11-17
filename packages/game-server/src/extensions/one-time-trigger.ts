@@ -91,7 +91,7 @@ export default class OneTimeTrigger implements Extension {
   }
 
   public serializeToBuffer(writer: BufferWriter): void {
-    writer.writeUInt32(encodeExtensionType(OneTimeTrigger.type));
+    writer.writeUInt8(encodeExtensionType(OneTimeTrigger.type));
     writer.writeBoolean(this.hasTriggered);
   }
 }

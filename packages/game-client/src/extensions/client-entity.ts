@@ -218,7 +218,12 @@ export abstract class ClientEntityBase {
       if (valueType === 0) {
         value = currentReader.readString();
       } else if (valueType === 1) {
-        value = currentReader.readFloat64();
+        // Special case: ping field uses UInt8 instead of Float64
+        if (fieldName === "ping") {
+          value = currentReader.readUInt8();
+        } else {
+          value = currentReader.readFloat64();
+        }
       } else if (valueType === 2) {
         value = currentReader.readBoolean();
       } else if (valueType === 3) {
@@ -250,7 +255,7 @@ export abstract class ClientEntityBase {
       const extensionEndOffset = extensionStartOffset + extensionLength;
 
       const extensionReader = currentReader.atOffset(extensionStartOffset);
-      const encodedType = extensionReader.readUInt32();
+      const encodedType = extensionReader.readUInt8();
       const extensionType = decodeExtensionType(encodedType);
 
       const ClientExtCtor = clientExtensionsMap[extensionType as keyof typeof clientExtensionsMap];
@@ -275,10 +280,11 @@ export abstract class ClientEntityBase {
       currentReader = currentReader.atOffset(extensionEndOffset);
     }
 
-    const removedCount = currentReader.readUInt32();
+    const removedCount = currentReader.readUInt8();
     const removedTypes: string[] = [];
     for (let i = 0; i < removedCount; i++) {
-      removedTypes.push(currentReader.readString());
+      const encodedType = currentReader.readUInt8();
+      removedTypes.push(decodeExtensionType(encodedType));
     }
 
     if (removedTypes.length > 0) {

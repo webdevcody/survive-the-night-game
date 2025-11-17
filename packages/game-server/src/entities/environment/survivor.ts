@@ -18,6 +18,7 @@ import { LootEvent } from "@/events/server-sent/loot-event";
 import { getConfig } from "@/config";
 import { BIOME_SIZE, MAP_SIZE } from "@/managers/map-manager";
 import { GunFiredEvent } from "@/events/server-sent/gun-fired-event";
+import { SerializableFields } from "@/util/serializable-fields";
 
 const SURVIVOR_MAX_HEALTH = 10;
 const SURVIVOR_SIZE = PoolManager.getInstance().vector2.claim(16, 16);
@@ -29,12 +30,7 @@ const SURVIVOR_WANDER_SPEED = 30; // Movement speed when wandering
 const WANDER_MOVE_DURATION = 2.0; // Move for 2 seconds
 const WANDER_PAUSE_DURATION = 2.0; // Pause for 2 seconds
 
-const SERIALIZABLE_FIELDS = ["isRescued"] as const;
-
-export class Survivor extends Entity<typeof SERIALIZABLE_FIELDS> {
-  // Define serializable fields at the top
-  protected serializableFields = SERIALIZABLE_FIELDS;
-
+export class Survivor extends Entity {
   // Internal state fields
   private fireCooldown: Cooldown;
   private wanderTimer: number = 0;
@@ -43,11 +39,11 @@ export class Survivor extends Entity<typeof SERIALIZABLE_FIELDS> {
   private campsiteCenter: Vector2 | null = null;
   private initialSpawnPosition: Vector2 | null = null;
 
-  // Serializable fields
-  private isRescued: boolean = false;
-
   constructor(gameManagers: IGameManagers) {
     super(gameManagers, Entities.SURVIVOR);
+
+    // Initialize serializable fields
+    this.serialized = new SerializableFields({ isRescued: false }, () => this.markEntityDirty());
 
     // Offset cooldown randomly to prevent all survivors from shooting simultaneously
     const randomOffset = Math.random() * SURVIVOR_SHOOT_COOLDOWN;
@@ -56,7 +52,9 @@ export class Survivor extends Entity<typeof SERIALIZABLE_FIELDS> {
 
     this.addExtension(new Positionable(this).setSize(SURVIVOR_SIZE));
     this.addExtension(
-      new Collidable(this).setSize(SURVIVOR_SIZE.clone().div(2)).setOffset(PoolManager.getInstance().vector2.claim(4, 4))
+      new Collidable(this)
+        .setSize(SURVIVOR_SIZE.clone().div(2))
+        .setOffset(PoolManager.getInstance().vector2.claim(4, 4))
     );
     // Don't add Destructible extension until rescued - makes survivor invincible until then
     this.addExtension(new Movable(this).setHasFriction(false));
@@ -85,7 +83,8 @@ export class Survivor extends Entity<typeof SERIALIZABLE_FIELDS> {
     this.fireCooldown.update(deltaTime);
 
     // Always wander - use different center based on rescue status
-    if (this.isRescued) {
+    const serialized = this.serialized as any;
+    if (serialized.isRescued) {
       this.updateWanderingAtCampsite(deltaTime);
     } else {
       this.updateWanderingAtSpawn(deltaTime);
@@ -93,7 +92,7 @@ export class Survivor extends Entity<typeof SERIALIZABLE_FIELDS> {
     this.handleMovement(deltaTime);
 
     // Try to shoot at zombies (only when rescued)
-    if (this.isRescued && this.fireCooldown.isReady()) {
+    if (serialized.isRescued && this.fireCooldown.isReady()) {
       this.tryShootAtZombie();
     }
   }
@@ -140,11 +139,17 @@ export class Survivor extends Entity<typeof SERIALIZABLE_FIELDS> {
     if (distanceFromCenter > SURVIVOR_WANDER_RADIUS) {
       // Move back towards center
       const poolManager = PoolManager.getInstance();
-      const directionVec = poolManager.vector2.claim(wanderCenter.x - currentPos.x, wanderCenter.y - currentPos.y);
+      const directionVec = poolManager.vector2.claim(
+        wanderCenter.x - currentPos.x,
+        wanderCenter.y - currentPos.y
+      );
       const direction = normalizeVector(directionVec);
       poolManager.vector2.release(directionVec);
       movable.setVelocity(
-        poolManager.vector2.claim(direction.x * SURVIVOR_WANDER_SPEED, direction.y * SURVIVOR_WANDER_SPEED)
+        poolManager.vector2.claim(
+          direction.x * SURVIVOR_WANDER_SPEED,
+          direction.y * SURVIVOR_WANDER_SPEED
+        )
       );
       this.isWandering = true;
       this.wanderTimer = WANDER_MOVE_DURATION;
@@ -195,7 +200,10 @@ export class Survivor extends Entity<typeof SERIALIZABLE_FIELDS> {
 
         // If new position would be outside bounds, reverse direction
         if (testDistance > SURVIVOR_WANDER_RADIUS) {
-          const directionVec = poolManager.vector2.claim(wanderCenter.x - currentPos.x, wanderCenter.y - currentPos.y);
+          const directionVec = poolManager.vector2.claim(
+            wanderCenter.x - currentPos.x,
+            wanderCenter.y - currentPos.y
+          );
           this.wanderDirection = normalizeVector(directionVec);
           poolManager.vector2.release(directionVec);
         }
@@ -320,7 +328,8 @@ export class Survivor extends Entity<typeof SERIALIZABLE_FIELDS> {
 
   private onRescue(entityId: string): void {
     // Only allow rescue if not already rescued
-    if (this.isRescued) {
+    const serialized = this.serialized as any;
+    if (serialized.isRescued) {
       return;
     }
 
@@ -329,8 +338,7 @@ export class Survivor extends Entity<typeof SERIALIZABLE_FIELDS> {
 
     if (campsitePos) {
       this.getExt(Positionable).setPosition(campsitePos);
-      this.isRescued = true;
-      this.markFieldDirty("isRescued");
+      serialized.isRescued = true;
 
       // Add Destructible extension now that survivor is rescued (can take damage)
       this.addExtension(
@@ -383,6 +391,7 @@ export class Survivor extends Entity<typeof SERIALIZABLE_FIELDS> {
   }
 
   public getIsRescued(): boolean {
-    return this.isRescued;
+    const serialized = this.serialized as any;
+    return serialized.isRescued;
   }
 }

@@ -15,31 +15,34 @@ import Movable from "@/extensions/movable";
 import Snared from "@/extensions/snared";
 import { distance } from "../../../../game-shared/src/util/physics";
 
+import { SerializableFields } from "@/util/serializable-fields";
+
 /**
  * A bear trap that snares zombies when they step on it, preventing them from moving
  * The trap can be rearmed after being triggered
  */
-const BEAR_TRAP_SERIALIZABLE_FIELDS = ["isArmed", "snaredZombieId"] as const;
-
-export class BearTrap extends Entity<typeof BEAR_TRAP_SERIALIZABLE_FIELDS> implements IEntity {
-  protected serializableFields = BEAR_TRAP_SERIALIZABLE_FIELDS;
+export class BearTrap extends Entity implements IEntity {
   private static get SIZE(): Vector2 {
     return PoolManager.getInstance().vector2.claim(16, 16);
   }
   private static readonly DAMAGE = 1;
   private static readonly TRIGGER_RADIUS = 16;
-  private isArmed = true;
-  private snaredZombieId: string | null = null;
   private triggerExtension: OneTimeTrigger | null = null;
   private interactiveExtension: Interactive;
 
   constructor(gameManagers: IGameManagers) {
     super(gameManagers, Entities.BEAR_TRAP);
+
+    // Initialize serializable fields
+    this.serialized = new SerializableFields({ isArmed: true, snaredZombieId: null }, () =>
+      this.markEntityDirty()
+    );
+
     const poolManager = PoolManager.getInstance();
     const size = poolManager.vector2.claim(16, 16);
     this.addExtension(new Positionable(this).setSize(size));
     this.interactiveExtension = new Interactive(this)
-      .onInteract((entityId: string) => this.interact(entityId))
+      .onInteract((entityId: number) => this.interact(entityId))
       .setDisplayName("bear trap");
     this.addExtension(this.interactiveExtension);
     this.addExtension(new Carryable(this, "bear_trap" as any));
@@ -74,23 +77,24 @@ export class BearTrap extends Entity<typeof BEAR_TRAP_SERIALIZABLE_FIELDS> imple
   }
 
   private setIsArmed(value: boolean): void {
-    if (this.isArmed !== value) {
-      this.isArmed = value;
-      this.markFieldDirty("isArmed");
+    const serialized = this.serialized as any;
+    if (serialized.isArmed !== value) {
+      serialized.isArmed = value;
     }
   }
 
   private setSnaredZombieId(id: string | null): void {
-    if (this.snaredZombieId !== id) {
-      this.snaredZombieId = id;
-      this.markFieldDirty("snaredZombieId");
+    const serialized = this.serialized as any;
+    if (serialized.snaredZombieId !== id) {
+      serialized.snaredZombieId = id;
     }
   }
 
   public updateBearTrap(deltaTime: number) {
+    const serialized = this.serialized as any;
     // Keep the snared zombie's velocity at 0 (backup in case movement strategy tries to override)
-    if (this.snaredZombieId) {
-      const zombie = this.getEntityManager().getEntityById(this.snaredZombieId);
+    if (serialized.snaredZombieId) {
+      const zombie = this.getEntityManager().getEntityById(serialized.snaredZombieId);
       if (zombie && zombie.hasExt(Movable)) {
         const poolManager = PoolManager.getInstance();
         zombie.getExt(Movable).setVelocity(poolManager.vector2.claim(0, 0));
@@ -102,7 +106,8 @@ export class BearTrap extends Entity<typeof BEAR_TRAP_SERIALIZABLE_FIELDS> imple
   }
 
   private snare() {
-    if (!this.isArmed) return;
+    const serialized = this.serialized as any;
+    if (!serialized.isArmed) return;
 
     const position = this.getExt(Positionable).getCenterPosition();
     const nearbyEntities = this.getEntityManager().getNearbyEntities(
@@ -152,12 +157,13 @@ export class BearTrap extends Entity<typeof BEAR_TRAP_SERIALIZABLE_FIELDS> imple
     }
   }
 
-  private interact(entityId: string) {
+  private interact(entityId: number) {
     const entity = this.getEntityManager().getEntityById(entityId);
     if (!entity || entity.getType() !== Entities.PLAYER) return;
 
     // If disarmed, rearm the trap
-    if (!this.isArmed) {
+    const serialized = this.serialized as any;
+    if (!serialized.isArmed) {
       // Clear the snared zombie reference
       this.activate();
       return;

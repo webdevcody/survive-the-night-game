@@ -63,7 +63,7 @@ export default class Combustible implements Extension {
   }
 
   public serializeToBuffer(writer: BufferWriter): void {
-    writer.writeUInt32(encodeExtensionType(Combustible.type));
+    writer.writeUInt8(encodeExtensionType(Combustible.type));
     writer.writeUInt32(this.numFires);
     writer.writeFloat64(this.spreadRadius);
   }

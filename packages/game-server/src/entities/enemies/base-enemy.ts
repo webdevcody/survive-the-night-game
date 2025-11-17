@@ -31,12 +31,9 @@ export interface AttackStrategy {
   update(zombie: BaseEnemy, deltaTime: number): void;
 }
 
-// Define serializable fields for type safety
-const BASE_ENEMY_SERIALIZABLE_FIELDS = ["debugWaypoint"] as const;
+import { SerializableFields } from "@/util/serializable-fields";
 
-export abstract class BaseEnemy extends Entity<typeof BASE_ENEMY_SERIALIZABLE_FIELDS> {
-  protected serializableFields = BASE_ENEMY_SERIALIZABLE_FIELDS;
-
+export abstract class BaseEnemy extends Entity {
   // Internal state (not serialized)
   protected currentWaypoint: Vector2 | null = null;
   protected attackCooldown: Cooldown;
@@ -51,12 +48,11 @@ export abstract class BaseEnemy extends Entity<typeof BASE_ENEMY_SERIALIZABLE_FI
   private attackStrategy?: AttackStrategy;
   protected config: ZombieConfig;
 
-  // Serializable field for debugging (synced from currentWaypoint via setCurrentWaypoint)
-  // Field is used for serialization via base Entity class
-  private debugWaypoint: Vector2 | null = null;
-
   constructor(gameManagers: IGameManagers, entityType: EntityType, config?: ZombieConfig) {
     super(gameManagers, entityType);
+
+    // Initialize serializable fields
+    this.serialized = new SerializableFields({ debugWaypoint: null }, () => this.markEntityDirty());
 
     // Get config from registry if not provided
     this.config = config || zombieRegistry.get(entityType)!;
@@ -87,7 +83,9 @@ export abstract class BaseEnemy extends Entity<typeof BASE_ENEMY_SERIALIZABLE_FI
     this.addExtension(new Groupable(this, "enemy"));
     this.addExtension(new Positionable(this).setSize(this.config.stats.size));
     this.addExtension(
-      new Collidable(this).setSize(this.config.stats.size.clone().div(2)).setOffset(PoolManager.getInstance().vector2.claim(4, 4))
+      new Collidable(this)
+        .setSize(this.config.stats.size.clone().div(2))
+        .setOffset(PoolManager.getInstance().vector2.claim(4, 4))
     );
     this.addExtension(new Movable(this));
     this.addExtension(new Updatable(this, this.updateEnemy.bind(this)));
@@ -103,10 +101,8 @@ export abstract class BaseEnemy extends Entity<typeof BASE_ENEMY_SERIALIZABLE_FI
 
   protected setCurrentWaypoint(waypoint: Vector2 | null) {
     this.currentWaypoint = waypoint;
-    this.debugWaypoint = waypoint;
-    if (waypoint !== null) {
-      this.markFieldDirty("debugWaypoint");
-    }
+    const serialized = this.serialized as any;
+    serialized.debugWaypoint = waypoint;
   }
 
   onDamaged(): void {

@@ -61,7 +61,7 @@ export default class Triggerable implements Extension {
   }
 
   public serializeToBuffer(writer: BufferWriter): void {
-    writer.writeUInt32(encodeExtensionType(Triggerable.type));
+    writer.writeUInt8(encodeExtensionType(Triggerable.type));
     writer.writeFloat64(this.size.x);
     writer.writeFloat64(this.size.y);
   }

@@ -1,13 +1,13 @@
 import { ExtensionTypes } from "./extension-types";
 
 /**
- * Extension type encoding using bit shifting.
- * Each extension type is assigned a unique bit position (0-31).
- * This allows encoding multiple extension types in a single uint32.
+ * Extension type encoding using sequential IDs.
+ * Each extension type is assigned a unique sequential ID (0-255).
+ * This allows encoding extension types as uint8 instead of uint32.
  */
 
-// Bit positions for each extension type (0-31)
-export const EXTENSION_TYPE_BITS: Record<string, number> = {
+// Sequential IDs for each extension type (0-255)
+export const EXTENSION_TYPE_IDS: Record<string, number> = {
   [ExtensionTypes.POSITIONABLE]: 0,
   [ExtensionTypes.COLLIDABLE]: 1,
   [ExtensionTypes.CONSUMABLE]: 2,
@@ -32,40 +32,38 @@ export const EXTENSION_TYPE_BITS: Record<string, number> = {
   ["snared"]: 21, // Snared extension type
 } as const;
 
-// Reverse lookup: bit position -> extension type string
-const BIT_TO_TYPE: Record<number, string> = {};
-for (const [type, bit] of Object.entries(EXTENSION_TYPE_BITS)) {
-  BIT_TO_TYPE[bit] = type;
+// Reverse lookup: ID -> extension type string
+const ID_TO_TYPE: Record<number, string> = {};
+for (const [type, id] of Object.entries(EXTENSION_TYPE_IDS)) {
+  ID_TO_TYPE[id] = type;
 }
 
 /**
- * Encode a single extension type string to a uint32 bitmap.
+ * Encode a single extension type string to a uint8 ID.
  * @param type The extension type string
- * @returns Encoded uint32 value (1 << bitPosition)
+ * @returns Encoded uint8 value (0-255)
  */
 export function encodeExtensionType(type: string): number {
-  const bit = EXTENSION_TYPE_BITS[type];
-  if (bit === undefined) {
+  const id = EXTENSION_TYPE_IDS[type];
+  if (id === undefined) {
     throw new Error(`Unknown extension type: ${type}`);
   }
-  return 1 << bit;
+  return id;
 }
 
 /**
- * Decode a uint32 bitmap to an extension type string.
- * @param encoded The encoded uint32 value
+ * Decode a uint8 ID to an extension type string.
+ * @param encoded The encoded uint8 value
  * @returns The extension type string
  */
 export function decodeExtensionType(encoded: number): string {
-  // Find the bit position (should only be one bit set)
-  const bit = Math.log2(encoded);
-  if (!Number.isInteger(bit) || bit < 0 || bit > 31) {
-    throw new Error(`Invalid encoded extension type: ${encoded}`);
+  if (encoded < 0 || encoded > 255) {
+    throw new Error(`Invalid encoded extension type: ${encoded} (must be 0-255)`);
   }
   
-  const type = BIT_TO_TYPE[bit];
+  const type = ID_TO_TYPE[encoded];
   if (!type) {
-    throw new Error(`No extension type found for bit position: ${bit}`);
+    throw new Error(`No extension type found for ID: ${encoded}`);
   }
   
   return type;
