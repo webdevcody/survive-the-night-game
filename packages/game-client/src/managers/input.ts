@@ -40,6 +40,38 @@ export interface InputManagerOptions {
   onInventorySlotChanged?: (slot: number) => void;
 }
 
+const shouldBlock = new Set([
+  "Space",
+  "Tab",
+  "ArrowUp",
+  "ArrowDown",
+  "ArrowLeft",
+  "ArrowRight",
+  "AltLeft",
+  "AltRight",
+  "KeyW",
+  "KeyA",
+  "KeyS",
+  "KeyD",
+  "KeyQ",
+  "KeyE",
+  "KeyF",
+  "KeyG",
+  "KeyH",
+  "KeyC",
+  "Escape",
+  "Digit1",
+  "Digit2",
+  "Digit3",
+  "Digit4",
+  "Digit5",
+  "Digit6",
+  "Digit7",
+  "Digit8",
+  "Digit9",
+  "Digit0",
+]);
+
 export class InputManager {
   private hasChanged = false;
   private inputs: Input = {
@@ -62,6 +94,7 @@ export class InputManager {
   private callbacks: InputManagerOptions = {};
   private mousePosition: Vector2 | null = null;
   private canvas: HTMLCanvasElement | null = null;
+  private isAltHeld = false;
 
   private checkIfChanged() {
     this.hasChanged = JSON.stringify(this.inputs) !== JSON.stringify(this.lastInputs);
@@ -126,9 +159,20 @@ export class InputManager {
     }
   }
 
+  // ================================
+  // Prevent browser stealing inputs
+  // ================================
+  private blockBrowserKeys(e: KeyboardEvent) {
+    if (shouldBlock.has(e.code)) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
+  }
+
   constructor(callbacks: InputManagerOptions = {}) {
     this.callbacks = callbacks;
     window.addEventListener("keydown", (e) => {
+      this.blockBrowserKeys(e);
       // Ignore inputs when user is typing in a form element
       const target = e.target as HTMLElement;
       if (target.tagName === "INPUT" || target.tagName === "TEXTAREA" || target.isContentEditable) {
@@ -137,6 +181,11 @@ export class InputManager {
 
       const eventCode = e.code;
       const eventKey = e.key.toLowerCase();
+
+      // Track ALT key state
+      if (eventCode === "AltLeft" || eventCode === "AltRight") {
+        this.isAltHeld = true;
+      }
 
       // Check if player is dead - if so, any key triggers respawn
       const isPlayerDead = callbacks.isPlayerDead?.() ?? false;
@@ -322,6 +371,11 @@ export class InputManager {
 
       const eventCode = e.code;
       const eventKey = e.key.toLowerCase();
+
+      // Track ALT key state
+      if (eventCode === "AltLeft" || eventCode === "AltRight") {
+        this.isAltHeld = false;
+      }
 
       // Check if this key was consumed by merchant panel during keydown
       if (this.merchantPanelConsumedKeys.has(eventKey)) {
@@ -563,6 +617,20 @@ export class InputManager {
    */
   getMousePosition(): Vector2 | null {
     return this.mousePosition;
+  }
+
+  /**
+   * Check if ALT key is currently held
+   */
+  isAltKeyHeld(): boolean {
+    return this.isAltHeld;
+  }
+
+  /**
+   * Set ALT key state (used to close weapons HUD programmatically)
+   */
+  setAltKeyHeld(held: boolean): void {
+    this.isAltHeld = held;
   }
 
   /**

@@ -34,3 +34,14 @@ export function isResourceItem(itemType: ItemType): boolean {
 export function isWeapon(itemType: ItemType): boolean {
   return weaponRegistry.has(itemType);
 }
+
+/**
+ * Get the ammo type for a weapon. Returns null if the weapon doesn't use ammo.
+ */
+export function getWeaponAmmoType(weaponType: ItemType): ItemType | null {
+  const weaponConfig = weaponRegistry.get(weaponType);
+  if (!weaponConfig) return null;
+
+  const ammoType = weaponConfig.ammoType;
+  return ammoType || null;
+}

@@ -3,7 +3,11 @@ import { InputManager } from "@/managers/input";
 import { Z_INDEX } from "@shared/map";
 import { Renderable } from "@/entities/util";
 import { AssetManager, getItemAssetKey } from "@/managers/asset";
-import { InventoryItem } from "../../../game-shared/src/util/inventory";
+import {
+  InventoryItem,
+  isWeapon,
+  getWeaponAmmoType,
+} from "../../../game-shared/src/util/inventory";
 import { getConfig } from "@shared/config";
 import { HeartsPanel } from "./panels/hearts-panel";
 import { StaminaPanel } from "./panels/stamina-panel";
@@ -296,6 +300,26 @@ export class InventoryBarUI implements Renderable {
         const countY = slotsBottom - 6 * hudScale;
         ctx.strokeText(`${inventoryItem.state.count}`, countX, countY);
         ctx.fillText(`${inventoryItem.state.count}`, countX, countY);
+      }
+
+      if (isWeapon(inventoryItem?.itemType)) {
+        const ammoType = getWeaponAmmoType(inventoryItem.itemType);
+        if (ammoType) {
+          const ammoItem = this.getInventory().find(
+            (item) => item?.itemType == getWeaponAmmoType(inventoryItem.itemType)
+          );
+          const ammoCount = ammoItem?.state?.count ?? 0;
+          const ammoFontSize = slotFontSize * 0.7;
+          ctx.font = `bold ${ammoFontSize}px Arial`;
+          ctx.textAlign = "right";
+          ctx.fillStyle = ammoCount > 0 ? "rgba(255, 255, 0, 1)" : "rgba(255, 100, 100, 1)";
+          ctx.strokeStyle = "rgba(0, 0, 0, 0.8)";
+          ctx.lineWidth = 2 * hudScale;
+          const ammoX = slotRight - 6 * hudScale; // right padding
+          const ammoY = slotsBottom - 6 * hudScale; // bottom padding
+          ctx.strokeText(`${ammoCount}`, ammoX, ammoY);
+          ctx.fillText(`${ammoCount}`, ammoX, ammoY);
+        }
       }
     }
 

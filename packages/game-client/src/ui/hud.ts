@@ -22,6 +22,7 @@ import { getConfig } from "@shared/config";
 import { scaleHudValue, calculateHudScale } from "@/util/hud-scale";
 import { GameOverDialogUI } from "./game-over-dialog";
 import { InventoryBarUI } from "./inventory-bar";
+import { WeaponsHUD } from "@/ui/weapons-hud";
 import { InputManager } from "@/managers/input";
 import { PlayerClient } from "@/entities/player";
 import { InventoryItem } from "../../../game-shared/src/util/inventory";
@@ -155,6 +156,7 @@ export class Hud {
   private survivorIndicatorsPanel: SurvivorIndicatorsPanel;
   private gameOverDialog: GameOverDialogUI;
   private hotbar: InventoryBarUI;
+  private weaponsHud: WeaponsHUD;
   private inputManager: InputManager;
   private currentGameState: GameState | null = null;
 
@@ -189,6 +191,10 @@ export class Hud {
 
     // Initialize hotbar
     this.hotbar = new InventoryBarUI(this.assetManager, this.inputManager, getInventory);
+
+    // Initialize weapons HUD
+    this.weaponsHud = new WeaponsHUD(this.assetManager, this.inputManager, getInventory);
+
     this.minimap = new Minimap(mapManager);
     this.fullscreenMap = new FullScreenMap(mapManager);
     this.leaderboard = new Leaderboard();
@@ -491,6 +497,9 @@ export class Hud {
 
     ctx.restore();
 
+    // Render weapons HUD (only when ALT is held)
+    this.weaponsHud.render(ctx, gameState);
+
     // Render game messages (player joined/died)
     this.gameMessagesPanel.render(ctx, gameState);
 
@@ -613,6 +622,11 @@ export class Hud {
       return true;
     }
 
+    // Check if click is on weapons HUD (when ALT is held)
+    if (this.weaponsHud.handleClick(x, y, canvasWidth, canvasHeight)) {
+      return true;
+    }
+
     // Check if click is on mute button
     if (this.muteButtonPanel.handleClick(x, y, canvasHeight)) {
       return true;
@@ -648,6 +662,15 @@ export class Hud {
   ): void {
     if (this.hotbar) {
       this.hotbar.updateMousePosition(x, y, canvasWidth, canvasHeight);
+    }
+    if (this.weaponsHud) {
+      this.weaponsHud.updateMouse(x, y);
+    }
+  }
+
+  public selectWeaponByIndex(index: number): void {
+    if (this.weaponsHud) {
+      this.weaponsHud.selectWeaponByIndex(index);
     }
   }
 }

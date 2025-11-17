@@ -33,6 +33,7 @@ export interface WeaponConfig extends BehaviorConfigs {
   stats: WeaponStats;
   assets: WeaponAssetConfig;
   sound?: string; // Sound file name (without .mp3 extension) to play when weapon is fired
+  ammoType?: string;
 }
 
 class WeaponRegistry {
