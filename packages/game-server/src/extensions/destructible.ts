@@ -74,7 +74,10 @@ export default class Destructible extends ExtensionBase {
     const positionable = this.self.getExt(Positionable);
     const position = positionable.getPosition();
     const size = positionable.getSize();
-    const adjustedPos = poolManager.vector2.claim(position.x + this.offset.x, position.y + this.offset.y);
+    const adjustedPos = poolManager.vector2.claim(
+      position.x + this.offset.x,
+      position.y + this.offset.y
+    );
     const rect = poolManager.rectangle.claim(adjustedPos, size);
     poolManager.vector2.release(adjustedPos);
     return rect;
@@ -103,10 +106,34 @@ export default class Destructible extends ExtensionBase {
     return serialized.maxHealth;
   }
 
-  public serializeToBuffer(writer: BufferWriter): void {
+  public serializeToBuffer(writer: BufferWriter, onlyDirty: boolean = false): void {
     const serialized = this.serialized as any;
     writer.writeUInt8(encodeExtensionType(Destructible.type));
-    writer.writeFloat64(serialized.health);
-    writer.writeFloat64(serialized.maxHealth);
+
+    if (onlyDirty) {
+      const dirtyFields = this.serialized.getDirtyFields();
+      const fieldsToWrite: Array<{ index: number; value: number }> = [];
+
+      // Field indices: health = 0, maxHealth = 1
+      if (dirtyFields.has("health")) {
+        fieldsToWrite.push({ index: 0, value: serialized.health });
+      }
+      if (dirtyFields.has("maxHealth")) {
+        fieldsToWrite.push({ index: 1, value: serialized.maxHealth });
+      }
+
+      writer.writeUInt8(fieldsToWrite.length);
+      for (const field of fieldsToWrite) {
+        writer.writeUInt8(field.index);
+        writer.writeFloat64(field.value);
+      }
+    } else {
+      // Write all fields: field count = 2, then fields in order
+      writer.writeUInt8(2); // field count
+      writer.writeUInt8(0); // health index
+      writer.writeFloat64(serialized.health);
+      writer.writeUInt8(1); // maxHealth index
+      writer.writeFloat64(serialized.maxHealth);
+    }
   }
 }

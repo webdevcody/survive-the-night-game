@@ -15,8 +15,6 @@ export class EntityStateTracker {
   private dirtyEntities: Set<IEntity> = new Set();
   private dirtyEntityInfo: Map<number, DirtyEntityInfo> = new Map();
   private previousGameState: {
-    cycleStartTime?: number;
-    cycleDuration?: number;
     // Wave system
     waveNumber?: number;
     waveState?: WaveState;
@@ -104,8 +102,6 @@ export class EntityStateTracker {
   }
 
   public trackGameState(gameState: {
-    cycleStartTime: number;
-    cycleDuration: number;
     // Wave system
     waveNumber?: number;
     waveState?: WaveState;
@@ -116,8 +112,6 @@ export class EntityStateTracker {
   }
 
   public getChangedGameStateProperties(currentGameState: {
-    cycleStartTime: number;
-    cycleDuration: number;
     // Wave system
     waveNumber?: number;
     waveState?: WaveState;

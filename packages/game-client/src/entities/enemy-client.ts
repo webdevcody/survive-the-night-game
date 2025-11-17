@@ -236,7 +236,7 @@ export abstract class EnemyClient extends ClientEntityBase implements IClientEnt
     const image = this.imageLoader.get(`${this.getEnemyAssetPrefix()}_dead` as any);
     ctx.drawImage(image, renderPosition.x, renderPosition.y);
 
-    if (myPlayer) {
+    if (myPlayer && myPlayer.hasExt(ClientPositionable)) {
       // Use frozen render position to prevent jittering of loot text
       const positionable = this.getExt(ClientPositionable);
       const size = positionable.getSize();
@@ -254,7 +254,7 @@ export abstract class EnemyClient extends ClientEntityBase implements IClientEnt
         `loot (${getConfig().keybindings.INTERACT})`,
         centerPosition,
         renderPosition,
-        myPlayer.getPosition(),
+        myPlayer.getExt(ClientPositionable).getPosition(),
         PoolManager.getInstance().vector2.claim(0, 0),
         isClosest
       );

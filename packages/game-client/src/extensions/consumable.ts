@@ -11,7 +11,10 @@ export class ClientConsumable extends BaseClientExtension {
   }
 
   public deserializeFromBuffer(reader: BufferReader): this {
-    // Type is already read by the entity deserializer, no data to read
+    // Type is already read by the entity deserializer
+    // Read field count (always present now, should be 0 for Consumable extension)
+    const fieldCount = reader.readUInt8();
+    // Consumable extension has no fields, so nothing to read
     return this;
   }
 }

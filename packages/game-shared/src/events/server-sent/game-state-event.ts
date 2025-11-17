@@ -14,9 +14,6 @@ export interface GameStateData {
   entities: EntityState[];
   removedEntityIds?: number[];
   isFullState?: boolean;
-  // Legacy day/night cycle data (deprecated)
-  cycleStartTime?: number;
-  cycleDuration?: number;
   // Wave system data
   waveNumber?: number;
   waveState?: WaveState;
@@ -58,14 +55,6 @@ export class GameStateEvent implements GameEvent<GameStateData> {
     return this.data.timestamp;
   }
 
-
-  public getCycleStartTime(): number | undefined {
-    return this.data.cycleStartTime;
-  }
-
-  public getCycleDuration(): number | undefined {
-    return this.data.cycleDuration;
-  }
 
   public getWaveNumber(): number | undefined {
     return this.data.waveNumber;
@@ -146,12 +135,6 @@ export class GameStateEvent implements GameEvent<GameStateData> {
       gameStateData.timestamp = gameStateReader.readFloat64();
     }
     if (gameStateReader.readBoolean()) {
-      gameStateData.cycleStartTime = gameStateReader.readFloat64();
-    }
-    if (gameStateReader.readBoolean()) {
-      gameStateData.cycleDuration = gameStateReader.readFloat64();
-    }
-    if (gameStateReader.readBoolean()) {
       gameStateData.waveNumber = gameStateReader.readUInt8();
     }
     if (gameStateReader.readBoolean()) {
@@ -213,7 +196,7 @@ export class GameStateEvent implements GameEvent<GameStateData> {
     const entityData: any = { id, type };
 
     // Read custom fields
-    const fieldCount = reader.readUInt32();
+    const fieldCount = reader.readUInt8();
     for (let i = 0; i < fieldCount; i++) {
       const fieldName = reader.readString();
       const valueType = reader.readUInt32();
@@ -238,7 +221,7 @@ export class GameStateEvent implements GameEvent<GameStateData> {
     }
 
     // Read extensions (store as placeholder - client will deserialize properly)
-    const extensionCount = reader.readUInt32();
+    const extensionCount = reader.readUInt8();
     entityData.extensions = [];
     for (let i = 0; i < extensionCount; i++) {
       const extLength = reader.readUInt16();

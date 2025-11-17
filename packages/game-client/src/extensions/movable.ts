@@ -29,9 +29,19 @@ export class ClientMovable extends BaseClientExtension {
 
   public deserializeFromBuffer(reader: BufferReader): this {
     // Type is already read by the entity deserializer
-    const vel = reader.readVelocity2();
-    this.velocity.reset(vel.x, vel.y);
-    PoolManager.getInstance().vector2.release(vel);
+    // Read field count (always present now)
+    const fieldCount = reader.readUInt8();
+    
+    // Read fields by index
+    for (let i = 0; i < fieldCount; i++) {
+      const fieldIndex = reader.readUInt8();
+      // Field index: velocity = 0
+      if (fieldIndex === 0) {
+        const vel = reader.readVelocity2();
+        this.velocity.reset(vel.x, vel.y);
+        PoolManager.getInstance().vector2.release(vel);
+      }
+    }
     return this;
   }
 }

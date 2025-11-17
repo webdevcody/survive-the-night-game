@@ -369,14 +369,9 @@ export class GameClient {
 
     this.gameState = {
       startedAt: Date.now(),
-      playerId: "",
+      playerId: 0,
       entities: [],
       entityMap: new Map(),
-      // Legacy day/night cycle
-      dayNumber: 0,
-      cycleStartTime: Date.now(),
-      cycleDuration: getConfig().dayNight.DAY_DURATION,
-      isDay: false, // Always night now
       // Wave system
       waveNumber: 1,
       waveState: WaveState.PREPARATION, // Start in preparation phase
@@ -573,7 +568,7 @@ export class GameClient {
     // Predict local player movement using fixed timestep simulation
     // This ensures consistent movement speed regardless of frame rate
     const player = this.getMyPlayer();
-    if (player) {
+    if (player && player instanceof PlayerClient) {
       const mapData = this.mapManager.getMapData();
 
       // Only predict movement and send input if player is alive
@@ -597,7 +592,8 @@ export class GameClient {
         );
 
         // Check if facing direction changed (for mouse aiming)
-        const previousInput = player.getInput();
+        // Ensure player has getInput method before calling it
+        const previousInput = typeof player.getInput === "function" ? player.getInput() : null;
         const facingChanged = previousInput?.facing !== input.facing;
         // Check if aimAngle changed (important for continuous firing while moving mouse)
         const aimAngleChanged =
@@ -824,6 +820,8 @@ export class GameClient {
       existingPlayerIds.add(playerId);
 
       // Get player input to determine if they're intentionally moving
+      // Safety check: ensure getInput method exists before calling
+      if (typeof player.getInput !== "function") return;
       const input = player.getInput();
       const hasMovementInput = input.dx !== 0 || input.dy !== 0;
 

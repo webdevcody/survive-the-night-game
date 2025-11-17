@@ -12,22 +12,22 @@ interface ZombieDistribution {
 interface ZombieType {
   type: string;
   ratio: number;
-  minNight: number;
+  minWave: number;
 }
 
 // Constants
-const ADDITIONAL_ZOMBIES_PER_NIGHT = 7;
+const ADDITIONAL_ZOMBIES_PER_WAVE = 7;
 const MAX_TOTAL_ZOMBIES = 200;
 const BASE_ZOMBIES = 10;
 
 const ZOMBIE_TYPES: ZombieType[] = [
-  { type: "regular", ratio: 0.4, minNight: 1 },
-  { type: "fast", ratio: 0.2, minNight: 2 },
-  { type: "big", ratio: 0.15, minNight: 3 },
-  { type: "bat", ratio: 0.15, minNight: 4 },
-  { type: "spitter", ratio: 0.1, minNight: 5 },
-  { type: "exploding", ratio: 0.1, minNight: 6 },
-  { type: "leaping", ratio: 0.1, minNight: 7 },
+  { type: "regular", ratio: 0.4, minWave: 1 },
+  { type: "fast", ratio: 0.2, minWave: 2 },
+  { type: "big", ratio: 0.15, minWave: 3 },
+  { type: "bat", ratio: 0.15, minWave: 4 },
+  { type: "spitter", ratio: 0.1, minWave: 5 },
+  { type: "exploding", ratio: 0.1, minWave: 6 },
+  { type: "leaping", ratio: 0.1, minWave: 7 },
 ];
 
 export class GameMaster {
@@ -37,14 +37,14 @@ export class GameMaster {
     this.gameManagers = gameManagers;
   }
 
-  public getNumberOfZombies(dayNumber: number): ZombieDistribution {
-    // Calculate total zombies based on players and day number
+  public getNumberOfZombies(waveNumber: number): ZombieDistribution {
+    // Calculate total zombies based on players and wave number
     const baseZombies = BASE_ZOMBIES;
-    const additionalZombies = (dayNumber - 1) * ADDITIONAL_ZOMBIES_PER_NIGHT;
+    const additionalZombies = (waveNumber - 1) * ADDITIONAL_ZOMBIES_PER_WAVE;
     const totalZombies = Math.min(baseZombies + additionalZombies, MAX_TOTAL_ZOMBIES);
 
-    // Filter available zombie types based on current day
-    const availableTypes = ZOMBIE_TYPES.filter((type) => dayNumber >= type.minNight);
+    // Filter available zombie types based on current wave
+    const availableTypes = ZOMBIE_TYPES.filter((type) => waveNumber >= type.minWave);
 
     // Recalculate ratios based on available types
     const totalRatio = availableTypes.reduce((sum, type) => sum + type.ratio, 0);

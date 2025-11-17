@@ -154,13 +154,13 @@ export class ClientEventListener {
     this.hasReceivedPlayerId = false;
     this.hasReceivedInitialState = false;
     this.pendingFullStateEvent = null;
-    
+
     // Stop the game until we're re-initialized
     this.gameClient.stop();
-    
+
     // Clear entities to prevent stale state
     clearEntities(this.gameState);
-    
+
     // Show message to user
     this.gameClient.getHud().addMessage("Disconnected from server. Reconnecting...", "yellow");
   }
@@ -230,14 +230,6 @@ export class ClientEventListener {
     }
 
     // Update game state properties only if they are included in the update
-    // Legacy day/night cycle
-    if (gameStateEvent.getCycleStartTime() !== undefined) {
-      this.gameState.cycleStartTime = gameStateEvent.getCycleStartTime()!;
-    }
-    if (gameStateEvent.getCycleDuration() !== undefined) {
-      this.gameState.cycleDuration = gameStateEvent.getCycleDuration()!;
-    }
-
     // Wave system
     if (gameStateEvent.getWaveNumber() !== undefined) {
       this.gameState.waveNumber = gameStateEvent.getWaveNumber()!;
@@ -656,6 +648,9 @@ export class ClientEventListener {
     if (!entity) return;
 
     const player = entity as unknown as PlayerClient;
+    // Safety check: ensure player is actually a PlayerClient instance
+    if (!(player instanceof PlayerClient) || typeof player.getInput !== "function") return;
+
     const playerPosition = player.getCenterPosition().clone();
 
     // Get weapon config to determine sound

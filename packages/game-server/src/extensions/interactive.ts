@@ -48,10 +48,38 @@ export default class Interactive extends ExtensionBase {
     this.handler?.(entityId);
   }
 
-  public serializeToBuffer(writer: BufferWriter): void {
+  public serializeToBuffer(writer: BufferWriter, onlyDirty: boolean = false): void {
     const serialized = this.serialized as any;
     writer.writeUInt8(encodeExtensionType(Interactive.type));
-    writer.writeString(serialized.displayName);
-    writer.writeVector2(this.offset);
+
+    if (onlyDirty) {
+      const dirtyFields = this.serialized.getDirtyFields();
+      const fieldsToWrite: Array<{ index: number }> = [];
+
+      // Field indices: displayName = 0, offset = 1
+      if (dirtyFields.has("displayName")) {
+        fieldsToWrite.push({ index: 0 });
+      }
+      if (dirtyFields.has("offset")) {
+        fieldsToWrite.push({ index: 1 });
+      }
+
+      writer.writeUInt8(fieldsToWrite.length);
+      for (const field of fieldsToWrite) {
+        writer.writeUInt8(field.index);
+        if (field.index === 0) {
+          writer.writeString(serialized.displayName);
+        } else if (field.index === 1) {
+          writer.writeVector2(this.offset);
+        }
+      }
+    } else {
+      // Write all fields: field count = 2, then fields in order
+      writer.writeUInt8(2); // field count
+      writer.writeUInt8(0); // displayName index
+      writer.writeString(serialized.displayName);
+      writer.writeUInt8(1); // offset index
+      writer.writeVector2(this.offset);
+    }
   }
 }

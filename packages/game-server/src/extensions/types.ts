@@ -1,7 +1,7 @@
 import { BufferWriter } from "@shared/util/buffer-serialization";
 
 export interface Extension {
-  serializeToBuffer: (writer: BufferWriter) => void;
+  serializeToBuffer: (writer: BufferWriter, onlyDirty?: boolean) => void;
   update?: (deltaTime: number) => void;
   // Required dirty tracking methods - all extensions must support dirty tracking
   isDirty: () => boolean;

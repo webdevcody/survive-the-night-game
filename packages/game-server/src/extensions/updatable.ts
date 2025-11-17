@@ -2,21 +2,20 @@ import { IEntity } from "@/entities/types";
 import { Extension } from "@/extensions/types";
 import { BufferWriter } from "@shared/util/buffer-serialization";
 import { encodeExtensionType } from "@shared/util/extension-type-encoding";
+import { ExtensionBase } from "./extension-base";
 
 type UpdateFunction = (deltaTime: number) => void;
 
-export default class Updatable implements Extension {
+export default class Updatable extends ExtensionBase {
   public static readonly type = "updatable";
 
-  private self: IEntity;
   private updateFunction: UpdateFunction;
-  private dirty: boolean = false;
 
   /**
    * will create a trigger box around an entity which should be used for various purposes.
    */
   public constructor(self: IEntity, updateFunction: UpdateFunction) {
-    this.self = self;
+    super(self, {});
     this.updateFunction = updateFunction;
   }
 
@@ -29,22 +28,9 @@ export default class Updatable implements Extension {
     this.updateFunction(deltaTime);
   }
 
-  public isDirty(): boolean {
-    return this.dirty;
-  }
-
-  public markDirty(): void {
-    this.dirty = true;
-    if (this.self.markExtensionDirty) {
-      this.self.markExtensionDirty(this);
-    }
-  }
-
-  public clearDirty(): void {
-    this.dirty = false;
-  }
-
-  public serializeToBuffer(writer: BufferWriter): void {
+  public serializeToBuffer(writer: BufferWriter, onlyDirty: boolean = false): void {
     writer.writeUInt8(encodeExtensionType(Updatable.type));
+    // Updatable extension has no serialized fields, so always write 0 field count
+    writer.writeUInt8(0);
   }
 }

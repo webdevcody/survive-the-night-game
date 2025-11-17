@@ -29,8 +29,19 @@ export class ClientDestructible extends BaseClientExtension {
 
   public deserializeFromBuffer(reader: BufferReader): this {
     // Type is already read by the entity deserializer
-    this.health = reader.readFloat64();
-    this.maxHealth = reader.readFloat64();
+    // Read field count (always present now)
+    const fieldCount = reader.readUInt8();
+    
+    // Read fields by index
+    for (let i = 0; i < fieldCount; i++) {
+      const fieldIndex = reader.readUInt8();
+      // Field indices: health = 0, maxHealth = 1
+      if (fieldIndex === 0) {
+        this.health = reader.readFloat64();
+      } else if (fieldIndex === 1) {
+        this.maxHealth = reader.readFloat64();
+      }
+    }
     return this;
   }
 }

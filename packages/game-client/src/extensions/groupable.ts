@@ -21,7 +21,17 @@ export class ClientGroupable extends BaseClientExtension {
 
   public deserializeFromBuffer(reader: BufferReader): this {
     // Type is already read by the entity deserializer
-    this.group = reader.readString() as Group;
+    // Read field count (always present now)
+    const fieldCount = reader.readUInt8();
+    
+    // Read fields by index
+    for (let i = 0; i < fieldCount; i++) {
+      const fieldIndex = reader.readUInt8();
+      // Field index: group = 0
+      if (fieldIndex === 0) {
+        this.group = reader.readString() as Group;
+      }
+    }
     return this;
   }
 }

@@ -243,7 +243,7 @@ export class SurvivorClient extends ClientEntity implements Renderable {
     }
 
     // Render loot interaction text
-    if (myPlayer && this.hasExt(ClientInteractive)) {
+    if (myPlayer && myPlayer.hasExt(ClientPositionable) && this.hasExt(ClientInteractive)) {
       const positionable = this.getExt(ClientPositionable);
       const size = positionable.getSize();
       const poolManager = PoolManager.getInstance();
@@ -260,7 +260,7 @@ export class SurvivorClient extends ClientEntity implements Renderable {
         `loot (${getConfig().keybindings.INTERACT})`,
         centerPosition,
         renderPosition,
-        myPlayer.getPosition(),
+        myPlayer.getExt(ClientPositionable).getPosition(),
         PoolManager.getInstance().vector2.claim(0, 0),
         isClosest
       );

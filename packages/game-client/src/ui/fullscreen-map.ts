@@ -231,22 +231,20 @@ export class FullScreenMap {
       mapHeight
     );
 
-    // Draw fog of war (only during nighttime)
-    if (!gameState.isDay) {
-      const lightSources = this.getLightSources(gameState);
-      this.renderFogOfWar(
-        ctx,
-        effectiveCenterPos,
-        lightSources,
-        zoom,
-        centerX,
-        centerY,
-        mapWidth,
-        mapHeight,
-        mapX,
-        mapY
-      );
-    }
+    // Draw fog of war
+    const lightSources = this.getLightSources(gameState);
+    this.renderFogOfWar(
+      ctx,
+      effectiveCenterPos,
+      lightSources,
+      zoom,
+      centerX,
+      centerY,
+      mapWidth,
+      mapHeight,
+      mapX,
+      mapY
+    );
 
     // Draw crate indicators (after fog of war so they're always visible)
     this.renderCrateIndicators(

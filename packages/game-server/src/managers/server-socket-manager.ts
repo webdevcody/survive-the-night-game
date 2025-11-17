@@ -481,8 +481,6 @@ export class ServerSocketManager implements Broadcaster {
     const currentTime = Date.now();
 
     // Cache game state data needed for metadata serialization
-    const cycleStartTime = this.gameServer.getCycleStartTime();
-    const cycleDuration = this.gameServer.getCycleDuration();
     const waveNumber = this.gameServer.getWaveNumber();
     const waveState = this.gameServer.getWaveState();
     const phaseStartTime = this.gameServer.getPhaseStartTime();
@@ -505,8 +503,6 @@ export class ServerSocketManager implements Broadcaster {
     this.bufferManager.writeGameState({
       timestamp: currentTime,
       isFullState: true,
-      cycleStartTime,
-      cycleDuration,
       waveNumber,
       waveState,
       phaseStartTime,
@@ -705,8 +701,6 @@ export class ServerSocketManager implements Broadcaster {
         this.tickPerformanceTracker?.startMethod("gameStatePreparation", "broadcastGameState") ||
         (() => {});
       // Cache all gameServer getter results before creating currentGameState object
-      const cycleStartTime = this.gameServer.getCycleStartTime();
-      const cycleDuration = this.gameServer.getCycleDuration();
       const waveNumber = this.gameServer.getWaveNumber();
       const waveState = this.gameServer.getWaveState();
       const phaseStartTime = this.gameServer.getPhaseStartTime();
@@ -735,8 +729,6 @@ export class ServerSocketManager implements Broadcaster {
         (() => {});
       // Get current game state (using cached values)
       const currentGameState = {
-        cycleStartTime,
-        cycleDuration,
         // Wave system
         waveNumber,
         waveState,

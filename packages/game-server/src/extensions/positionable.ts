@@ -57,9 +57,38 @@ export default class Positionable extends ExtensionBase {
     return this;
   }
 
-  public serializeToBuffer(writer: BufferWriter): void {
+  public serializeToBuffer(writer: BufferWriter, onlyDirty: boolean = false): void {
+    const serialized = this.serialized as any;
     writer.writeUInt8(encodeExtensionType(Positionable.type));
-    writer.writePosition2(this.position);
-    writer.writeSize2(this.size);
+
+    if (onlyDirty) {
+      const dirtyFields = this.serialized.getDirtyFields();
+      const fieldsToWrite: Array<{ index: number; value: any }> = [];
+
+      // Field indices: position = 0, size = 1
+      if (dirtyFields.has("position")) {
+        fieldsToWrite.push({ index: 0, value: this.position });
+      }
+      if (dirtyFields.has("size")) {
+        fieldsToWrite.push({ index: 1, value: this.size });
+      }
+
+      writer.writeUInt8(fieldsToWrite.length);
+      for (const field of fieldsToWrite) {
+        writer.writeUInt8(field.index);
+        if (field.index === 0) {
+          writer.writePosition2(field.value);
+        } else if (field.index === 1) {
+          writer.writeSize2(field.value);
+        }
+      }
+    } else {
+      // Write all fields: field count = 2, then fields in order
+      writer.writeUInt8(2); // field count
+      writer.writeUInt8(0); // position index
+      writer.writePosition2(this.position);
+      writer.writeUInt8(1); // size index
+      writer.writeSize2(this.size);
+    }
   }
 }

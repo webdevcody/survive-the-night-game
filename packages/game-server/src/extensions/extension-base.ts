@@ -78,5 +78,31 @@ export abstract class ExtensionBase implements Extension {
     this.serialized.resetDirty();
   }
 
-  abstract serializeToBuffer(writer: any): void;
+  /**
+   * Get the field indices for this extension.
+   * Subclasses should override this to define which fields map to which indices.
+   * Field indices are used for efficient field-level delta compression.
+   *
+   * @returns Map of field name to field index (0-based)
+   */
+  protected getFieldIndices(): Map<string, number> {
+    // Default implementation: use order from getAllKeys()
+    const indices = new Map<string, number>();
+    const keys = this.serialized.getAllKeys();
+    keys.forEach((key, index) => {
+      indices.set(key, index);
+    });
+    return indices;
+  }
+
+  /**
+   * Get the field name for a given index.
+   * Subclasses should override this if they want custom field ordering.
+   */
+  protected getFieldNameForIndex(index: number): string | null {
+    const keys = this.serialized.getAllKeys();
+    return keys[index] || null;
+  }
+
+  abstract serializeToBuffer(writer: any, onlyDirty?: boolean): void;
 }

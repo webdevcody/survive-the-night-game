@@ -56,7 +56,7 @@ export default class Carryable extends ExtensionBase {
   public pickup(entityId: number, options?: PickupOptions): boolean {
     const serialized = this.serialized as any;
     const itemType = serialized.itemType;
-    
+
     // Prevent crash if itemType is null (entity may be in invalid state)
     if (!itemType) {
       console.warn("Attempted to pickup item with null itemType");
@@ -115,11 +115,38 @@ export default class Carryable extends ExtensionBase {
     return true;
   }
 
-  public serializeToBuffer(writer: BufferWriter): void {
+  public serializeToBuffer(writer: BufferWriter, onlyDirty: boolean = false): void {
     const serialized = this.serialized as any;
     writer.writeUInt8(encodeExtensionType(Carryable.type));
-    writer.writeString(serialized.itemType);
-    // Serialize ItemState as record (values are always numbers)
-    writer.writeRecord(serialized.state, (value) => writer.writeFloat64(value as number));
+
+    if (onlyDirty) {
+      const dirtyFields = this.serialized.getDirtyFields();
+      const fieldsToWrite: Array<{ index: number }> = [];
+
+      // Field indices: itemType = 0, state = 1
+      if (dirtyFields.has("itemType")) {
+        fieldsToWrite.push({ index: 0 });
+      }
+      if (dirtyFields.has("state")) {
+        fieldsToWrite.push({ index: 1 });
+      }
+
+      writer.writeUInt8(fieldsToWrite.length);
+      for (const field of fieldsToWrite) {
+        writer.writeUInt8(field.index);
+        if (field.index === 0) {
+          writer.writeString(serialized.itemType);
+        } else if (field.index === 1) {
+          writer.writeRecord(serialized.state, (value) => writer.writeFloat64(value as number));
+        }
+      }
+    } else {
+      // Write all fields: field count = 2, then fields in order
+      writer.writeUInt8(2); // field count
+      writer.writeUInt8(0); // itemType index
+      writer.writeString(serialized.itemType);
+      writer.writeUInt8(1); // state index
+      writer.writeRecord(serialized.state, (value) => writer.writeFloat64(value as number));
+    }
   }
 }

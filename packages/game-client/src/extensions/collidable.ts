@@ -50,13 +50,25 @@ export class ClientCollidable extends BaseClientExtension {
 
   public deserializeFromBuffer(reader: BufferReader): this {
     // Type is already read by the entity deserializer
-    const offset = reader.readVector2();
-    const size = reader.readVector2();
-    this.offset.reset(offset.x, offset.y);
-    this.size.reset(size.x, size.y);
-    PoolManager.getInstance().vector2.release(offset);
-    PoolManager.getInstance().vector2.release(size);
-    this.enabled = reader.readBoolean();
+    // Read field count (always present now)
+    const fieldCount = reader.readUInt8();
+    
+    // Read fields by index
+    for (let i = 0; i < fieldCount; i++) {
+      const fieldIndex = reader.readUInt8();
+      // Field indices: offset = 0, size = 1, enabled = 2
+      if (fieldIndex === 0) {
+        const offset = reader.readVector2();
+        this.offset.reset(offset.x, offset.y);
+        PoolManager.getInstance().vector2.release(offset);
+      } else if (fieldIndex === 1) {
+        const size = reader.readVector2();
+        this.size.reset(size.x, size.y);
+        PoolManager.getInstance().vector2.release(size);
+      } else if (fieldIndex === 2) {
+        this.enabled = reader.readBoolean();
+      }
+    }
     return this;
   }
 }

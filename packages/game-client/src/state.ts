@@ -6,11 +6,6 @@ export type GameState = {
   playerId: number;
   entities: ClientEntityBase[];
   entityMap: Map<number, ClientEntityBase>;
-  // Legacy day/night cycle (deprecated)
-  dayNumber: number;
-  cycleStartTime: number;
-  cycleDuration: number;
-  isDay: boolean;
   // Wave system
   waveNumber: number;
   waveState: WaveState;

@@ -52,12 +52,23 @@ export class ClientResourcesBag extends BaseClientExtension {
 
   public deserializeFromBuffer(reader: BufferReader): this {
     // Type is already read by the entity deserializer
-    this.coins = reader.readFloat64();
-    // Read resources record
-    const resources = reader.readRecord(() => reader.readFloat64());
-    this.resources.clear();
-    for (const [key, value] of Object.entries(resources)) {
-      this.resources.set(key as ResourceType, value);
+    // Read field count (always present now)
+    const fieldCount = reader.readUInt8();
+    
+    // Read fields by index
+    for (let i = 0; i < fieldCount; i++) {
+      const fieldIndex = reader.readUInt8();
+      // Field indices: coins = 0, resources = 1
+      if (fieldIndex === 0) {
+        this.coins = reader.readFloat64();
+      } else if (fieldIndex === 1) {
+        // Read resources record
+        const resources = reader.readRecord(() => reader.readFloat64());
+        this.resources.clear();
+        for (const [key, value] of Object.entries(resources)) {
+          this.resources.set(key as ResourceType, value);
+        }
+      }
     }
     return this;
   }

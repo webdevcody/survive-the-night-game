@@ -32,11 +32,6 @@ export class GameServer {
   private phaseStartTime: number = Date.now();
   private phaseDuration: number = getConfig().wave.FIRST_WAVE_DELAY;
   private totalZombies: number = 0;
-  // Legacy day/night cycle state (for backwards compatibility)
-  private dayNumber: number = 1;
-  private cycleStartTime: number = Date.now();
-  private cycleDuration: number = getConfig().dayNight.DAY_DURATION;
-  private isDay: boolean = true;
   private isGameReady: boolean = false;
   private isGameOver: boolean = false;
 
@@ -51,32 +46,12 @@ export class GameServer {
   private mapManager: MapManager;
   private socketManager: ServerSocketManager;
   private lastBroadcastedState = {
-    dayNumber: -1,
-    cycleStartTime: -1,
-    cycleDuration: -1,
-    isDay: undefined as boolean | undefined,
     waveNumber: -1,
     waveState: undefined as WaveState | undefined,
     phaseStartTime: -1,
     phaseDuration: -1,
     totalZombies: -1,
   };
-
-  public getDayNumber(): number {
-    return this.dayNumber;
-  }
-
-  public getCycleStartTime(): number {
-    return this.cycleStartTime;
-  }
-
-  public getCycleDuration(): number {
-    return this.cycleDuration;
-  }
-
-  public getIsDay(): boolean {
-    return this.isDay;
-  }
 
   public getWaveNumber(): number {
     return this.waveNumber;
@@ -137,11 +112,6 @@ export class GameServer {
     this.phaseDuration = getConfig().wave.FIRST_WAVE_DELAY;
     this.totalZombies = 0;
 
-    // Legacy day/night cycle (kept for compatibility)
-    this.dayNumber = 1;
-    this.cycleStartTime = Date.now();
-    this.cycleDuration = getConfig().dayNight.DAY_DURATION;
-    this.isDay = false; // Always night now
 
     // Clear all entities first
     this.entityManager.clear();
@@ -385,11 +355,6 @@ export class GameServer {
       phaseStartTime: this.phaseStartTime,
       phaseDuration: this.phaseDuration,
       totalZombies: this.totalZombies,
-      // Legacy day/night cycle state (for backwards compatibility)
-      dayNumber: this.dayNumber,
-      cycleStartTime: this.cycleStartTime,
-      cycleDuration: this.cycleDuration,
-      isDay: this.isDay,
     };
   }
 

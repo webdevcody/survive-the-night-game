@@ -6,19 +6,19 @@ import { EntityType } from "@/types/entity";
 import { IEntity } from "@/entities/types";
 import { BufferWriter } from "@shared/util/buffer-serialization";
 import { encodeExtensionType } from "@shared/util/extension-type-encoding";
+import { ExtensionBase } from "./extension-base";
 
 /**
  * This extension will cause the entity to fire an attack when the cooldown is ready.
  * You can pass in the type of victim you should attack.
  */
-export default class TriggerCooldownAttacker implements Extension {
+export default class TriggerCooldownAttacker extends ExtensionBase {
   public static readonly type = "trigger-cooldown-attacker";
   private static readonly RADIUS = 16;
   private static readonly RADIUS_SQUARED =
     TriggerCooldownAttacker.RADIUS * TriggerCooldownAttacker.RADIUS;
   private static readonly CHECK_INTERVAL = 0.5; // Check for enemies every half second
 
-  private self: IEntity;
   private attackCooldown: Cooldown;
   private checkCooldown: Cooldown;
   private options: {
@@ -26,10 +26,6 @@ export default class TriggerCooldownAttacker implements Extension {
     victimType: EntityType;
     cooldown: number;
   };
-
-  // SERIALIZED PROPERTIES
-  public isReady: boolean; // used to change spike view
-  private dirty: boolean = false;
 
   public constructor(
     self: IEntity,
@@ -39,23 +35,28 @@ export default class TriggerCooldownAttacker implements Extension {
       cooldown: number;
     }
   ) {
-    this.self = self;
+    super(self, { isReady: true });
     this.attackCooldown = new Cooldown(options.cooldown, true);
     this.checkCooldown = new Cooldown(TriggerCooldownAttacker.CHECK_INTERVAL);
     // Set random offset to spread checks across time
     this.checkCooldown.setTimeRemaining(Math.random() * TriggerCooldownAttacker.CHECK_INTERVAL);
-    this.isReady = true;
     this.options = options;
   }
 
+  public getIsReady(): boolean {
+    const serialized = this.serialized as any;
+    return serialized.isReady;
+  }
+
   public update(deltaTime: number) {
+    const serialized = this.serialized as any;
     this.attackCooldown.update(deltaTime);
     this.checkCooldown.update(deltaTime);
 
-    const wasReady = this.isReady;
-    this.isReady = this.attackCooldown.isReady();
-    if (wasReady !== this.isReady) {
-      this.markDirty(); // Mark dirty when ready state changes
+    // Only update serialized if value actually changed to avoid unnecessary dirty marking
+    const newIsReady = this.attackCooldown.isReady();
+    if (serialized.isReady !== newIsReady) {
+      serialized.isReady = newIsReady;
     }
 
     // Early exit: skip expensive spatial query if attack cooldown isn't ready
@@ -103,23 +104,24 @@ export default class TriggerCooldownAttacker implements Extension {
     }
   }
 
-  public isDirty(): boolean {
-    return this.dirty;
-  }
-
-  public markDirty(): void {
-    this.dirty = true;
-    if (this.self.markExtensionDirty) {
-      this.self.markExtensionDirty(this);
-    }
-  }
-
-  public clearDirty(): void {
-    this.dirty = false;
-  }
-
-  public serializeToBuffer(writer: BufferWriter): void {
+  public serializeToBuffer(writer: BufferWriter, onlyDirty: boolean = false): void {
+    const serialized = this.serialized as any;
     writer.writeUInt8(encodeExtensionType(TriggerCooldownAttacker.type));
-    writer.writeBoolean(this.isReady);
+    
+    if (onlyDirty) {
+      const dirtyFields = this.serialized.getDirtyFields();
+      if (dirtyFields.has("isReady")) {
+        writer.writeUInt8(1); // field count
+        writer.writeUInt8(0); // isReady index
+        writer.writeBoolean(serialized.isReady);
+      } else {
+        writer.writeUInt8(0); // field count
+      }
+    } else {
+      // Write all fields: field count = 1, then field
+      writer.writeUInt8(1); // field count
+      writer.writeUInt8(0); // isReady index
+      writer.writeBoolean(serialized.isReady);
+    }
   }
 }

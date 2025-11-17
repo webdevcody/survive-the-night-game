@@ -285,13 +285,11 @@ export class Minimap {
     }
     perfTimer.end("minimap:entities");
 
-    // Draw fog of war overlay (only during nighttime)
-    if (!gameState.isDay) {
-      perfTimer.start("minimap:fogOfWar");
-      const lightSources = this.getLightSources(gameState);
-      this.renderFogOfWar(ctx, playerPos, lightSources, settings, top);
-      perfTimer.end("minimap:fogOfWar");
-    }
+    // Draw fog of war overlay
+    perfTimer.start("minimap:fogOfWar");
+    const lightSources = this.getLightSources(gameState);
+    this.renderFogOfWar(ctx, playerPos, lightSources, settings, top);
+    perfTimer.end("minimap:fogOfWar");
 
     // Draw crate indicators (after fog of war so they're always visible)
     perfTimer.start("minimap:crates");

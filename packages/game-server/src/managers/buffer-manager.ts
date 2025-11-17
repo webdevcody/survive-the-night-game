@@ -39,29 +39,13 @@ export class BufferManager {
 
   /**
    * Write game state metadata to the buffer
-   * @param gameState - Game state data (wave info, day/night cycle, etc.)
+   * @param gameState - Game state data (wave info, etc.)
    */
   writeGameState(gameState: Partial<GameStateData>): void {
     // Write timestamp
     if (gameState.timestamp !== undefined) {
       this.writer.writeBoolean(true);
       this.writer.writeFloat64(gameState.timestamp);
-    } else {
-      this.writer.writeBoolean(false);
-    }
-
-    // Write cycleStartTime
-    if (gameState.cycleStartTime !== undefined) {
-      this.writer.writeBoolean(true);
-      this.writer.writeFloat64(gameState.cycleStartTime);
-    } else {
-      this.writer.writeBoolean(false);
-    }
-
-    // Write cycleDuration
-    if (gameState.cycleDuration !== undefined) {
-      this.writer.writeBoolean(true);
-      this.writer.writeFloat64(gameState.cycleDuration);
     } else {
       this.writer.writeBoolean(false);
     }

@@ -20,6 +20,7 @@ export const ExtensionTypes = {
   LANDMINE_UPDATE: "landmine-update",
   ONE_TIME_TRIGGER: "one-time-trigger",
   RESOURCES_BAG: "resources-bag",
+  SNARED: "snared",
 } as const;
 
 export type ExtensionType = (typeof ExtensionTypes)[keyof typeof ExtensionTypes];

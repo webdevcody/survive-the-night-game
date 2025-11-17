@@ -29,7 +29,7 @@ export const EXTENSION_TYPE_IDS: Record<string, number> = {
   [ExtensionTypes.LANDMINE_UPDATE]: 18,
   [ExtensionTypes.ONE_TIME_TRIGGER]: 19,
   [ExtensionTypes.RESOURCES_BAG]: 20,
-  ["snared"]: 21, // Snared extension type
+  [ExtensionTypes.SNARED]: 21,
 } as const;
 
 // Reverse lookup: ID -> extension type string
@@ -60,12 +60,11 @@ export function decodeExtensionType(encoded: number): string {
   if (encoded < 0 || encoded > 255) {
     throw new Error(`Invalid encoded extension type: ${encoded} (must be 0-255)`);
   }
-  
+
   const type = ID_TO_TYPE[encoded];
   if (!type) {
     throw new Error(`No extension type found for ID: ${encoded}`);
   }
-  
+
   return type;
 }
-

@@ -210,7 +210,7 @@ export abstract class ClientEntityBase {
       console.warn(`Entity type mismatch: expected ${this.type}, got ${type}`);
     }
 
-    const fieldCount = currentReader.readUInt32();
+    const fieldCount = currentReader.readUInt8();
     for (let i = 0; i < fieldCount; i++) {
       const fieldName = currentReader.readString();
       const valueType = currentReader.readUInt32();
@@ -239,7 +239,7 @@ export abstract class ClientEntityBase {
       (this as any)[fieldName] = value;
     }
 
-    const extensionCount = currentReader.readUInt32();
+    const extensionCount = currentReader.readUInt8();
     const existingExtensions = new Map<string, ClientExtension>();
     for (const ext of this.extensions) {
       const extType = (ext.constructor as any).type;

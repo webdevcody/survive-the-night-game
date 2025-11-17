@@ -55,7 +55,12 @@ export default class ResourcesBag extends ExtensionBase {
     if (amount <= 0) return;
 
     const currentAmount = this.resources.get(resourceType) || 0;
-    this.resources.set(resourceType, currentAmount + amount);
+    const newAmount = currentAmount + amount;
+    this.resources.set(resourceType, newAmount);
+
+    // Update serialized resources
+    const serialized = this.serialized as any;
+    serialized.resources = { ...serialized.resources, [resourceType]: newAmount };
     this.markDirty();
 
     // Broadcast resource pickup event
@@ -70,7 +75,7 @@ export default class ResourcesBag extends ExtensionBase {
   public setResource(resourceType: ResourceType, amount: number): void {
     const newAmount = Math.max(0, amount);
     this.resources.set(resourceType, newAmount);
-    
+
     // Update serialized resources
     const serialized = this.serialized as any;
     serialized.resources = { ...serialized.resources, [resourceType]: newAmount };
@@ -80,7 +85,7 @@ export default class ResourcesBag extends ExtensionBase {
     const currentAmount = this.resources.get(resourceType) || 0;
     const newAmount = Math.max(0, currentAmount - amount);
     this.resources.set(resourceType, newAmount);
-    
+
     // Update serialized resources
     const serialized = this.serialized as any;
     serialized.resources = { ...serialized.resources, [resourceType]: newAmount };
@@ -119,13 +124,38 @@ export default class ResourcesBag extends ExtensionBase {
     };
   }
 
-  public serializeToBuffer(writer: BufferWriter): void {
+  public serializeToBuffer(writer: BufferWriter, onlyDirty: boolean = false): void {
     const serialized = this.serialized as any;
     writer.writeUInt8(encodeExtensionType(ResourcesBag.type));
-    writer.writeFloat64(serialized.coins);
-    // Serialize resources from serialized (already a record)
-    writer.writeRecord(serialized.resources, (value) => writer.writeFloat64(value));
+
+    if (onlyDirty) {
+      const dirtyFields = this.serialized.getDirtyFields();
+      const fieldsToWrite: Array<{ index: number }> = [];
+
+      // Field indices: coins = 0, resources = 1
+      if (dirtyFields.has("coins")) {
+        fieldsToWrite.push({ index: 0 });
+      }
+      if (dirtyFields.has("resources")) {
+        fieldsToWrite.push({ index: 1 });
+      }
+
+      writer.writeUInt8(fieldsToWrite.length);
+      for (const field of fieldsToWrite) {
+        writer.writeUInt8(field.index);
+        if (field.index === 0) {
+          writer.writeFloat64(serialized.coins);
+        } else if (field.index === 1) {
+          writer.writeRecord(serialized.resources, (value) => writer.writeFloat64(value as number));
+        }
+      }
+    } else {
+      // Write all fields: field count = 2, then fields in order
+      writer.writeUInt8(2); // field count
+      writer.writeUInt8(0); // coins index
+      writer.writeFloat64(serialized.coins);
+      writer.writeUInt8(1); // resources index
+      writer.writeRecord(serialized.resources, (value) => writer.writeFloat64(value as number));
+    }
   }
 }
-
-

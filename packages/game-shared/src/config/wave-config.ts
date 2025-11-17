@@ -25,7 +25,7 @@ export const waveConfig = {
   /**
    * Wave number when bosses begin spawning
    */
-  BOSS_SPAWN_WAVE: 1,
+  BOSS_SPAWN_WAVE: 3,
 
   /**
    * Whether waves auto-start after preparation or require manual trigger

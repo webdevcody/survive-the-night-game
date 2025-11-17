@@ -23,9 +23,24 @@ export default class Groupable extends ExtensionBase {
     serialized.group = group;
   }
 
-  public serializeToBuffer(writer: BufferWriter): void {
+  public serializeToBuffer(writer: BufferWriter, onlyDirty: boolean = false): void {
     const serialized = this.serialized as any;
     writer.writeUInt8(encodeExtensionType(Groupable.type));
-    writer.writeString(serialized.group);
+
+    if (onlyDirty) {
+      const dirtyFields = this.serialized.getDirtyFields();
+      if (dirtyFields.has("group")) {
+        writer.writeUInt8(1); // field count
+        writer.writeUInt8(0); // field index (group = 0)
+        writer.writeString(serialized.group);
+      } else {
+        writer.writeUInt8(0); // no fields
+      }
+    } else {
+      // Write all fields: field count = 1, then field
+      writer.writeUInt8(1); // field count
+      writer.writeUInt8(0); // group index
+      writer.writeString(serialized.group);
+    }
   }
 }

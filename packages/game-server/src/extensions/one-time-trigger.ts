@@ -6,26 +6,24 @@ import { Circle } from "@/util/shape";
 import { Cooldown } from "@/entities/util/cooldown";
 import { BufferWriter } from "@shared/util/buffer-serialization";
 import { encodeExtensionType } from "@shared/util/extension-type-encoding";
+import { ExtensionBase } from "./extension-base";
 
 interface OneTimeTriggerOptions {
   triggerRadius: number;
   targetTypes: EntityType[];
 }
 
-export default class OneTimeTrigger implements Extension {
+export default class OneTimeTrigger extends ExtensionBase {
   public static readonly type = "one-time-trigger";
   private static readonly CHECK_INTERVAL = 0.5; // Check for enemies every half second
 
-  private self: IEntity;
   private triggerRadius: number;
   private targetTypes: EntityType[];
-  private hasTriggered = false;
   private triggerCallback?: () => void;
-  private dirty: boolean = false;
   private checkCooldown: Cooldown;
 
   constructor(self: IEntity, options: OneTimeTriggerOptions) {
-    this.self = self;
+    super(self, { hasTriggered: false, triggerRadius: options.triggerRadius, targetTypes: options.targetTypes });
     this.triggerRadius = options.triggerRadius;
     this.targetTypes = options.targetTypes;
     this.checkCooldown = new Cooldown(OneTimeTrigger.CHECK_INTERVAL);
@@ -39,7 +37,8 @@ export default class OneTimeTrigger implements Extension {
   }
 
   public update(deltaTime: number) {
-    if (this.hasTriggered) return;
+    const serialized = this.serialized as any;
+    if (serialized.hasTriggered) return;
 
     // Update cooldown
     this.checkCooldown.update(deltaTime);
@@ -53,10 +52,11 @@ export default class OneTimeTrigger implements Extension {
     this.checkCooldown.reset();
 
     const positionable = this.self.getExt(Positionable);
-    const targetTypesSet = new Set<EntityType>(this.targetTypes);
+    // Use serialized values for consistency (these never change after construction, but good practice)
+    const targetTypesSet = new Set<EntityType>(serialized.targetTypes);
     const nearbyEntities = this.self
       .getEntityManager()
-      .getNearbyEntities(positionable.getCenterPosition(), this.triggerRadius, targetTypesSet);
+      .getNearbyEntities(positionable.getCenterPosition(), serialized.triggerRadius, targetTypesSet);
 
     // Check if any target entity is within trigger radius
     for (const entity of nearbyEntities) {
@@ -66,32 +66,32 @@ export default class OneTimeTrigger implements Extension {
       const selfPos = this.self.getExt(Positionable).getCenterPosition();
       const distance = entityPos.clone().sub(selfPos).length();
 
-      if (distance <= this.triggerRadius) {
-        this.hasTriggered = true;
-        this.markDirty(); // Mark dirty when triggered
+      if (distance <= serialized.triggerRadius) {
+        serialized.hasTriggered = true;
         this.triggerCallback?.();
         break;
       }
     }
   }
 
-  public isDirty(): boolean {
-    return this.dirty;
-  }
-
-  public markDirty(): void {
-    this.dirty = true;
-    if (this.self.markExtensionDirty) {
-      this.self.markExtensionDirty(this);
-    }
-  }
-
-  public clearDirty(): void {
-    this.dirty = false;
-  }
-
-  public serializeToBuffer(writer: BufferWriter): void {
+  public serializeToBuffer(writer: BufferWriter, onlyDirty: boolean = false): void {
+    const serialized = this.serialized as any;
     writer.writeUInt8(encodeExtensionType(OneTimeTrigger.type));
-    writer.writeBoolean(this.hasTriggered);
+    
+    if (onlyDirty) {
+      const dirtyFields = this.serialized.getDirtyFields();
+      if (dirtyFields.has("hasTriggered")) {
+        writer.writeUInt8(1); // field count
+        writer.writeUInt8(0); // hasTriggered index
+        writer.writeBoolean(serialized.hasTriggered);
+      } else {
+        writer.writeUInt8(0); // field count
+      }
+    } else {
+      // Write all fields: field count = 1, then field
+      writer.writeUInt8(1); // field count
+      writer.writeUInt8(0); // hasTriggered index
+      writer.writeBoolean(serialized.hasTriggered);
+    }
   }
 }

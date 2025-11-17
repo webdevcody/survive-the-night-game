@@ -244,11 +244,10 @@ Main Loop:
 3. Logic:
    - Cooldown processing
    - AI behavior (zombie pathfinding, attacking)
-4. Day/Night Cycle:
-   - Track elapsed time
-   - Spawn zombies on night start
-   - Kill zombies on day start
-   - Revive dead players on day start
+4. Wave System:
+   - Track wave phases (PREPARATION, ACTIVE, COMPLETED)
+   - Spawn zombies when wave starts
+   - Manage wave progression
 5. Broadcast:
    - Serialize all dynamic entities
    - Send GameStateEvent to all clients
@@ -263,10 +262,10 @@ Main Loop:
 
 ```typescript
 GameServer {
-  dayNumber: number          // Current day
-  cycleStartTime: number     // When current cycle started
-  cycleDuration: number      // Day: 180s, Night: 120s
-  isDay: boolean             // Current cycle phase
+  waveNumber: number         // Current wave number
+  waveState: WaveState       // Current wave phase (PREPARATION, ACTIVE, COMPLETED)
+  phaseStartTime: number     // When current phase started
+  phaseDuration: number      // Duration of current phase
   isGameReady: boolean       // Game started
   isGameOver: boolean        // All players dead
 }
@@ -279,10 +278,10 @@ GameState {
   startedAt: number          // When game started on client
   playerId: string           // This client's player ID
   entities: ClientEntityBase[] // All visible entities
-  dayNumber: number
-  cycleStartTime: number
-  cycleDuration: number
-  isDay: boolean
+  waveNumber: number         // Current wave number
+  waveState: WaveState       // Current wave phase
+  phaseStartTime: number     // When current phase started
+  phaseDuration: number      // Duration of current phase
   crafting: boolean          // UI state: crafting menu open
 }
 ```
@@ -880,9 +879,10 @@ Server Tick (every 33ms):
 └─────────────────────────────────────┘
            ↓
 ┌─────────────────────────────────────┐
-│ 2. handleDayNightCycle()            │
-│    - Check elapsed time             │
-│    - Spawn/kill entities            │
+│ 2. Wave System Management           │
+│    - Track wave phases              │
+│    - Spawn zombies on wave start   │
+│    - Manage wave progression        │
 └─────────────────────────────────────┘
            ↓
 ┌─────────────────────────────────────┐

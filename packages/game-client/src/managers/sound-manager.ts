@@ -174,9 +174,9 @@ export class SoundManager {
     if (this.isMuted || DEBUG_DISABLE_SOUNDS || !this.gameClient) return;
 
     const myPlayer = this.gameClient.getMyPlayer();
-    if (!myPlayer) return;
+    if (!myPlayer || !myPlayer.hasExt(ClientPositionable)) return;
 
-    const dist = distance(myPlayer.getPosition(), position);
+    const dist = distance(myPlayer.getExt(ClientPositionable).getPosition(), position);
     const baseVolume = this.getBaseVolume(sound);
     const volume =
       baseVolume * linearFalloff(dist, SoundManager.MAX_DISTANCE) * DEBUG_VOLUME_REDUCTION;
@@ -211,7 +211,7 @@ export class SoundManager {
     }
 
     const myPlayer = this.gameClient.getMyPlayer();
-    if (!myPlayer) {
+    if (!myPlayer || !myPlayer.hasExt(ClientPositionable)) {
       this.stopLoopingSound(playerId);
       return;
     }
@@ -226,7 +226,7 @@ export class SoundManager {
 
     // If the same sound is already playing, just update volume
     if (existingSound && existingSound.soundType === soundType) {
-      const dist = distance(myPlayer.getPosition(), position);
+      const dist = distance(myPlayer.getExt(ClientPositionable).getPosition(), position);
       const baseVolume = this.getBaseVolume(soundType);
       const volume =
         baseVolume * linearFalloff(dist, SoundManager.MAX_DISTANCE) * DEBUG_VOLUME_REDUCTION;
@@ -253,7 +253,7 @@ export class SoundManager {
     // Clone the audio element instead of creating new one to avoid re-fetching
     const audio = cachedAudio.cloneNode() as HTMLAudioElement;
 
-    const dist = distance(myPlayer.getPosition(), position);
+    const dist = distance(myPlayer.getExt(ClientPositionable).getPosition(), position);
     const baseVolume = this.getBaseVolume(soundType);
     const volume =
       baseVolume * linearFalloff(dist, SoundManager.MAX_DISTANCE) * DEBUG_VOLUME_REDUCTION;
@@ -303,9 +303,9 @@ export class SoundManager {
     if (!this.gameClient || this.isMuted || DEBUG_DISABLE_SOUNDS) return;
 
     const myPlayer = this.gameClient.getMyPlayer();
-    if (!myPlayer) return;
+    if (!myPlayer || !myPlayer.hasExt(ClientPositionable)) return;
 
-    const myPosition = myPlayer.getPosition();
+    const myPosition = myPlayer.getExt(ClientPositionable).getPosition();
 
     // Update volumes for all looping sounds
     this.loopingSounds.forEach((loopingSound, entityId) => {
@@ -491,7 +491,7 @@ export class SoundManager {
     }
 
     const myPlayer = this.gameClient.getMyPlayer();
-    if (!myPlayer || !position) {
+    if (!myPlayer || !myPlayer.hasExt(ClientPositionable) || !position) {
       // No player or no campsite fire position, stop the sound
       if (this.campfireSound) {
         this.campfireSound.pause();
@@ -531,7 +531,7 @@ export class SoundManager {
     }
 
     // Calculate volume based on distance
-    const dist = distance(myPlayer.getPosition(), position);
+    const dist = distance(myPlayer.getExt(ClientPositionable).getPosition(), position);
     const baseVolume = this.getBaseVolume(SOUND_TYPES_TO_MP3.CAMPFIRE);
     const volume = baseVolume * linearFalloff(dist, 200) * DEBUG_VOLUME_REDUCTION;
 

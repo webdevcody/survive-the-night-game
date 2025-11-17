@@ -22,10 +22,25 @@ export default class Illuminated extends ExtensionBase {
     return this;
   }
 
-  public serializeToBuffer(writer: BufferWriter): void {
+  public serializeToBuffer(writer: BufferWriter, onlyDirty: boolean = false): void {
     const serialized = this.serialized as any;
     writer.writeUInt8(encodeExtensionType(Illuminated.type));
-    writer.writeUInt16(serialized.radius);
+
+    if (onlyDirty) {
+      const dirtyFields = this.serialized.getDirtyFields();
+      if (dirtyFields.has("radius")) {
+        writer.writeUInt8(1); // field count
+        writer.writeUInt8(0); // field index (radius = 0)
+        writer.writeUInt16(serialized.radius);
+      } else {
+        writer.writeUInt8(0); // no fields
+      }
+    } else {
+      // Write all fields: field count = 1, then field
+      writer.writeUInt8(1); // field count
+      writer.writeUInt8(0); // radius index
+      writer.writeUInt16(serialized.radius);
+    }
   }
 }
 

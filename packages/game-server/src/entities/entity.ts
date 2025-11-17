@@ -248,7 +248,10 @@ export class Entity<TSerializableFields extends readonly string[] = readonly str
       }
     }
 
-    writer.writeUInt32(fieldValues.length);
+    if (fieldValues.length > 255) {
+      throw new Error(`Field count ${fieldValues.length} exceeds UInt8 maximum (255)`);
+    }
+    writer.writeUInt8(fieldValues.length);
     // Write each field: name, type byte, then value
     // Type bytes: 0 = string, 1 = number, 2 = boolean, 3 = object (JSON string)
     for (const field of fieldValues) {
@@ -278,22 +281,17 @@ export class Entity<TSerializableFields extends readonly string[] = readonly str
     }
 
     // Write extensions
-    const extensionsToWrite: Extension[] = [];
-    for (const ext of this.extensions.values()) {
-      if (shouldSerializeAllExtensions) {
-        extensionsToWrite.push(ext);
-      } else {
-        // Only serialize dirty extensions for subsequent updates
-        if (ext.isDirty()) {
-          extensionsToWrite.push(ext);
-        }
-      }
+    // Always send all extensions that exist on the entity
+    // The "only dirty" logic applies to fields within extensions, not to whether extensions are sent
+    const extensionsToWrite: Extension[] = Array.from(this.extensions.values());
+    if (extensionsToWrite.length > 255) {
+      throw new Error(`Extension count ${extensionsToWrite.length} exceeds UInt8 maximum (255)`);
     }
-    writer.writeUInt32(extensionsToWrite.length);
+    writer.writeUInt8(extensionsToWrite.length);
     for (const ext of extensionsToWrite) {
       // Write extension to temporary buffer first to get its length
       const tempWriter = new BufferWriter(1024);
-      ext.serializeToBuffer(tempWriter);
+      ext.serializeToBuffer(tempWriter, onlyDirty && !isFirstSerialization);
       const extensionBuffer = tempWriter.getBuffer();
       // Write extension data (length prefix handled by writeBuffer)
       writer.writeBuffer(extensionBuffer);
