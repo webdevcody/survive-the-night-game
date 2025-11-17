@@ -40,6 +40,38 @@ export interface InputManagerOptions {
   onInventorySlotChanged?: (slot: number) => void;
 }
 
+const shouldBlock = new Set([
+  "Space",
+  "Tab",
+  "ArrowUp",
+  "ArrowDown",
+  "ArrowLeft",
+  "ArrowRight",
+  "AltLeft",
+  "AltRight",
+  "KeyW",
+  "KeyA",
+  "KeyS",
+  "KeyD",
+  "KeyQ",
+  "KeyE",
+  "KeyF",
+  "KeyG",
+  "KeyH",
+  "KeyC",
+  "Escape",
+  "Digit1",
+  "Digit2",
+  "Digit3",
+  "Digit4",
+  "Digit5",
+  "Digit6",
+  "Digit7",
+  "Digit8",
+  "Digit9",
+  "Digit0",
+]);
+
 export class InputManager {
   private hasChanged = false;
   private inputs: Input = {
@@ -127,9 +159,20 @@ export class InputManager {
     }
   }
 
+  // ================================
+  // Prevent browser stealing inputs
+  // ================================
+  private blockBrowserKeys(e: KeyboardEvent) {
+    if (shouldBlock.has(e.code)) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
+  }
+
   constructor(callbacks: InputManagerOptions = {}) {
     this.callbacks = callbacks;
     window.addEventListener("keydown", (e) => {
+      this.blockBrowserKeys(e);
       // Ignore inputs when user is typing in a form element
       const target = e.target as HTMLElement;
       if (target.tagName === "INPUT" || target.tagName === "TEXTAREA" || target.isContentEditable) {
