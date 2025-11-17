@@ -10,6 +10,7 @@ import PoolManager from "@shared/util/pool-manager";
 import { BigZombie } from "@/entities/enemies/big-zombie";
 import { FastZombie } from "@/entities/enemies/fast-zombie";
 import { BatZombie } from "@/entities/enemies/bat-zombie";
+import { BossZombie } from "@/entities/enemies/boss-zombie";
 import { GameMaster } from "./game-master";
 import { SpitterZombie } from "@/entities/enemies/spitter-zombie";
 import { Merchant } from "@/entities/environment/merchant";
@@ -220,6 +221,8 @@ export class MapManager implements IMapManager {
 
       this.spawnZombieGroupAtLocation(location, locationDistribution, totalSize);
     });
+
+    this.spawnBossIfNeeded(dayNumber, spawnLocations);
   }
 
   /**
@@ -446,6 +449,46 @@ export class MapManager implements IMapManager {
         spawnedCount.spitter++;
       }
     }
+  }
+
+  private spawnBossIfNeeded(
+    dayNumber: number,
+    spawnLocations: Array<{ x: number; y: number }>
+  ): void {
+    if (dayNumber < getConfig().wave.BOSS_SPAWN_WAVE) {
+      return;
+    }
+
+    if (this.isBossActive()) {
+      return;
+    }
+
+    const spawnPoint = spawnLocations[0] ?? this.getFallbackBossSpawnLocation();
+    this.spawnBossAt(spawnPoint);
+  }
+
+  private isBossActive(): boolean {
+    return this.getEntityManager()
+      .getEntities()
+      .some((entity) => entity.getType() === Entities.BOSS_ZOMBIE);
+  }
+
+  private getFallbackBossSpawnLocation(): { x: number; y: number } {
+    const tileSize = getConfig().world.TILE_SIZE;
+    const totalTiles = BIOME_SIZE * MAP_SIZE;
+    const centerTile = Math.floor(totalTiles / 2);
+    return {
+      x: centerTile * tileSize,
+      y: centerTile * tileSize,
+    };
+  }
+
+  private spawnBossAt(position: { x: number; y: number }): void {
+    const boss = new BossZombie(this.getGameManagers());
+    boss.setPosition(
+      PoolManager.getInstance().vector2.claim(position.x, position.y)
+    );
+    this.getEntityManager().addEntity(boss);
   }
 
   generateEmptyMap(width: number, height: number) {

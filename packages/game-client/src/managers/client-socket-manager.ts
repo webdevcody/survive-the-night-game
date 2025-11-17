@@ -33,6 +33,8 @@ import { CarRepairEvent } from "@shared/events/server-sent/car-repair-event";
 import { WaveStartEvent } from "@shared/events/server-sent/wave-start-event";
 import { CraftEvent } from "@shared/events/server-sent/craft-event";
 import { BuildEvent } from "@shared/events/server-sent/build-event";
+import { BossStepEvent } from "@shared/events/server-sent/boss-step-event";
+import { BossSummonEvent } from "@shared/events/server-sent/boss-summon-event";
 import { ISocketAdapter } from "@shared/network/socket-adapter";
 import { IClientAdapter } from "@shared/network/client-adapter";
 import { createClientAdapter } from "@/network/adapter-factory";
@@ -70,6 +72,8 @@ const SERVER_EVENT_MAP = {
   [ServerSentEvents.WAVE_START]: WaveStartEvent,
   [ServerSentEvents.CRAFT]: CraftEvent,
   [ServerSentEvents.BUILD]: BuildEvent,
+  [ServerSentEvents.BOSS_STEP]: BossStepEvent,
+  [ServerSentEvents.BOSS_SUMMON]: BossSummonEvent,
 } as const;
 
 export class ClientSocketManager {

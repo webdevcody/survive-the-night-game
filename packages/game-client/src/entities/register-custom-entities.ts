@@ -72,6 +72,7 @@ export function registerCustomClientEntities(): void {
   clientEntityOverrideRegistry.register("spitter_zombie", SpitterZombieClient);
   clientEntityOverrideRegistry.register("exploding_zombie", ExplodingZombieClient);
   clientEntityOverrideRegistry.register("leaping_zombie", LeapingZombieClient);
+  clientEntityOverrideRegistry.register("boss_zombie", ZombieClient);
 
   // Projectiles
   clientEntityOverrideRegistry.register("bullet", BulletClient);

@@ -50,6 +50,30 @@ export interface LeapConfig {
   leapDuration: number; // How long the leap velocity boost lasts
 }
 
+export interface BossHealthBarConfig {
+  width: number;
+  height?: number;
+  offsetY?: number;
+  backgroundColor?: string;
+  fillColor?: string;
+  borderColor?: string;
+}
+
+export interface BossCameraShakeConfig {
+  intensity: number;
+  durationMs: number;
+  intervalMs: number;
+}
+
+export interface BossMetadata {
+  name: string;
+  nameColor?: string;
+  nameFont?: string;
+  nameOffsetY?: number;
+  healthBar?: BossHealthBarConfig;
+  cameraShake?: BossCameraShakeConfig;
+}
+
 export interface ZombieConfig {
   id: EntityType;
   category: EntityCategory;
@@ -58,6 +82,7 @@ export interface ZombieConfig {
   movementStrategy: "melee" | "flying" | "ranged";
   attackStrategy: "melee" | "exploding" | "ranged" | "leaping";
   leapConfig?: LeapConfig;
+  boss?: BossMetadata;
 }
 
 class ZombieRegistry {

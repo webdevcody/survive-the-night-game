@@ -7,6 +7,7 @@ import { BatZombie } from "@/entities/enemies/bat-zombie";
 import { SpitterZombie } from "@/entities/enemies/spitter-zombie";
 import { ExplodingZombie } from "@/entities/enemies/exploding-zombie";
 import { LeapingZombie } from "@/entities/enemies/leaping-zombie";
+import { BossZombie } from "@/entities/enemies/boss-zombie";
 import { Bullet } from "@/entities/projectiles/bullet";
 import { Arrow } from "@/entities/projectiles/arrow";
 import { GrenadeProjectile } from "@/entities/projectiles/grenade-projectile";
@@ -70,6 +71,7 @@ export function registerCustomEntities(): void {
   entityOverrideRegistry.register("spitter_zombie", SpitterZombie);
   entityOverrideRegistry.register("exploding_zombie", ExplodingZombie);
   entityOverrideRegistry.register("leaping_zombie", LeapingZombie);
+  entityOverrideRegistry.register("boss_zombie", BossZombie);
 
   // Projectiles
   entityOverrideRegistry.register("bullet", Bullet);

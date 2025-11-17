@@ -248,4 +248,56 @@ export const ZOMBIE_CONFIGS: Record<string, ZombieConfig> = {
       leapDuration: 0.7, // How long the leap velocity boost lasts
     },
   },
+  boss_zombie: {
+    id: "boss_zombie",
+    category: EntityCategories.ZOMBIE,
+    stats: {
+      speed: 25,
+      health: 50,
+      damage: 4,
+      attackCooldown: 1.25,
+      attackRadius: combatConfig.ZOMBIE_ATTACK_RADIUS,
+      dropChance: 1,
+      size: PoolManager.getInstance().vector2.claim(16, 16),
+    },
+    assets: {
+      assetPrefix: "boss_zombie",
+      animationDuration: 700,
+      debugWaypointColor: "crimson",
+      minimapColor: "orange",
+      frameLayout: {
+        startX: 0,
+        downY: 16,
+        leftY: 32,
+        upY: 0,
+        totalFrames: 4,
+        sheet: "characters",
+      },
+      deadFrame: {
+        x: 144,
+        y: 0,
+        sheet: "characters",
+      },
+    },
+    movementStrategy: "melee",
+    attackStrategy: "melee",
+    boss: {
+      name: "Grave Tyrant",
+      nameColor: "#ff3b30",
+      nameFont: "6px Arial",
+      healthBar: {
+        width: 24,
+        height: 3,
+        offsetY: 6,
+        backgroundColor: "rgba(0, 0, 0, 0.85)",
+        fillColor: "#ff5555",
+        borderColor: "#3d0000",
+      },
+      cameraShake: {
+        intensity: 0.35,
+        durationMs: 220,
+        intervalMs: 2000,
+      },
+    },
+  },
 };
