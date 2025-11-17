@@ -17,6 +17,14 @@ const PATH_ATTENUATION = 0.96; // Light retention on walkable tiles (per tile st
 const COLLIDABLE_ATTENUATION = 0.9; // Light retention through collidables (per tile step)
 const MIN_LIGHT_INTENSITY = 0.01; // Threshold to stop BFS propagation
 const DARKNESS_RENDER_DISTANCE = 400; // Maximum distance (in pixels) from player to render darkness tiles
+const LIGHT_SOURCE_CULL_MARGIN = 160; // Extra world-space distance beyond render radius to keep lights active
+
+type TileBounds = {
+  startTileX: number;
+  startTileY: number;
+  endTileX: number;
+  endTileY: number;
+};
 
 interface LightSource {
   position: Vector2;
@@ -93,6 +101,11 @@ export class MapManager {
     // Pre-render both layers once
     this.prerenderGround();
     this.prerenderCollidables();
+
+    // Reset lighting caches now that the underlying map changed
+    this.lightMapCache.clear();
+    this.lightSourcePositions.clear();
+    this.combinedLightMap = this.createEmptyLightMap();
   }
 
   getMap(): number[][] | null {
@@ -260,7 +273,10 @@ export class MapManager {
     return lightMap;
   }
 
-  private getLightSources(): LightSourceWithId[] {
+  private getLightSources(
+    playerPosition?: Vector2 | null,
+    cullDistance: number = DARKNESS_RENDER_DISTANCE
+  ): LightSourceWithId[] {
     const sources: LightSourceWithId[] = [];
     const entities = this.gameClient.getGameState().entities;
     const currentTime = Date.now();
@@ -275,10 +291,19 @@ export class MapManager {
         // Skip entities with no light (radius 0 or very small)
         if (baseRadius <= 0) return;
         const position = gameEntity.getExt(ClientPositionable).getCenterPosition();
+        const radius = baseRadius * radiusMultiplier;
+
+        if (playerPosition) {
+          const distToPlayer = distance(playerPosition, position);
+          if (distToPlayer - radius > cullDistance) {
+            return;
+          }
+        }
+
         sources.push({
           entityId,
           position,
-          radius: baseRadius * radiusMultiplier,
+          radius,
         });
       }
     });
@@ -296,6 +321,13 @@ export class MapManager {
           decal.position.y * this.tileSize + this.tileSize / 2
         );
 
+        if (playerPosition) {
+          const distToPlayer = distance(playerPosition, position);
+          if (distToPlayer - radius > cullDistance) {
+            return;
+          }
+        }
+
         sources.push({
           entityId: -1000 - index, // Use negative IDs for decals to avoid collision with entities
           position,
@@ -308,11 +340,13 @@ export class MapManager {
   }
 
   // Update light cache with change detection and combine all light maps
-  private updateLightCache(currentSources: LightSourceWithId[]): void {
+  private updateLightCache(currentSources: LightSourceWithId[], bounds: TileBounds): void {
     if (!this.groundLayer || !this.collidablesLayer) return;
 
     const rows = this.groundLayer.length;
     const cols = this.groundLayer[0].length;
+
+    this.ensureCombinedLightMap();
 
     // Track current entity IDs
     const currentEntityIds = new Set(currentSources.map((s) => s.entityId));
@@ -341,16 +375,11 @@ export class MapManager {
     }
 
     // Step 3: Combine all cached light maps into combinedLightMap
-    // Initialize combined map with zeros
-    this.combinedLightMap = this.createEmptyLightMap();
-
     // Only combine light maps within visible range for performance
-    const bounds = this.getVisibleTileBounds(DARKNESS_RENDER_DISTANCE);
-    if (!bounds) {
-      return;
-    }
-
     const { startTileX, startTileY, endTileX, endTileY } = bounds;
+
+    // Clear previous intensities for the visible region only
+    this.clearCombinedLightMap(bounds);
 
     // Iterate through all cached light maps and combine them (only visible tiles)
     for (const [, lightMap] of this.lightMapCache) {
@@ -371,18 +400,22 @@ export class MapManager {
 
     const currentTime = Date.now();
     const timeSinceLastRecalc = currentTime - this.lastLightRecalculationTime;
+    const player = this.gameClient.getMyPlayer();
+    if (!player || !player.hasExt(ClientPositionable)) {
+      return;
+    }
+
+    const playerPos = player.getExt(ClientPositionable).getCenterPosition();
+    const bounds = this.getVisibleTileBounds(DARKNESS_RENDER_DISTANCE, playerPos);
+    if (!bounds) return;
 
     // Only recalculate light cache every LIGHT_RECALCULATION_INTERVAL ms (10Hz)
     if (timeSinceLastRecalc >= this.LIGHT_RECALCULATION_INTERVAL) {
-      const lightSources = this.getLightSources();
-      this.updateLightCache(lightSources);
+      const cullDistance = DARKNESS_RENDER_DISTANCE + LIGHT_SOURCE_CULL_MARGIN;
+      const lightSources = this.getLightSources(playerPos, cullDistance);
+      this.updateLightCache(lightSources, bounds);
       this.lastLightRecalculationTime = currentTime;
     }
-
-    const baseDarkness = BASE_NIGHT_DARKNESS;
-
-    const bounds = this.getVisibleTileBounds(DARKNESS_RENDER_DISTANCE);
-    if (!bounds) return;
 
     const { startTileX, startTileY, endTileX, endTileY } = bounds;
 
@@ -404,6 +437,16 @@ export class MapManager {
 
     // Use reddish tint during active waves, black otherwise
     const gameState = this.gameClient.getGameState();
+    const elapsedTime = (currentTime - gameState.cycleStartTime) / 1000;
+    const cycleProgress = elapsedTime / gameState.cycleDuration;
+
+    let baseDarkness;
+    if (gameState.isDay) {
+      const exponentialProgress = Math.pow(cycleProgress, DARKNESS_EXPONENTIAL);
+      baseDarkness = exponentialProgress * BASE_NIGHT_DARKNESS;
+    } else {
+      baseDarkness = BASE_NIGHT_DARKNESS;
+    }
     const isWaveActive = gameState.waveState === WaveState.ACTIVE;
 
     for (let y = startTileY; y <= endTileY; y++) {
@@ -470,20 +513,19 @@ export class MapManager {
   }
 
   // Helper to get visible tile bounds
-  private getVisibleTileBounds(renderDistance?: number): {
-    startTileX: number;
-    startTileY: number;
-    endTileX: number;
-    endTileY: number;
-  } | null {
+  private getVisibleTileBounds(renderDistance?: number, playerPosition?: Vector2): TileBounds | null {
     if (!this.groundLayer) return null;
 
-    const player = this.gameClient.getMyPlayer();
-    if (!player || !player.hasExt(ClientPositionable)) {
-      return null;
+    let playerPos = playerPosition;
+    if (!playerPos) {
+      const player = this.gameClient.getMyPlayer();
+      if (!player || !player.hasExt(ClientPositionable)) {
+        return null;
+      }
+
+      playerPos = player.getExt(ClientPositionable).getCenterPosition();
     }
 
-    const playerPos = player.getExt(ClientPositionable).getCenterPosition();
     const distance = renderDistance ?? getConfig().render.ENTITY_RENDER_RADIUS;
 
     return {
@@ -498,6 +540,34 @@ export class MapManager {
         Math.ceil((playerPos.y + distance) / this.tileSize)
       ),
     };
+  }
+
+  private ensureCombinedLightMap(): void {
+    if (!this.groundLayer) return;
+    if (
+      this.combinedLightMap.length !== this.groundLayer.length ||
+      this.combinedLightMap[0]?.length !== this.groundLayer[0].length
+    ) {
+      this.combinedLightMap = this.createEmptyLightMap();
+    }
+  }
+
+  private clearCombinedLightMap(bounds: TileBounds): void {
+    if (!this.combinedLightMap.length) return;
+
+    const maxRow = this.combinedLightMap.length - 1;
+    const maxCol = this.combinedLightMap[0].length - 1;
+    const startRow = Math.max(0, Math.min(bounds.startTileY, maxRow));
+    const endRow = Math.min(maxRow, Math.max(bounds.endTileY, 0));
+    const startCol = Math.max(0, Math.min(bounds.startTileX, maxCol));
+    const endCol = Math.min(maxCol, Math.max(bounds.endTileX, 0));
+
+    for (let row = startRow; row <= endRow; row++) {
+      const rowData = this.combinedLightMap[row];
+      for (let col = startCol; col <= endCol; col++) {
+        rowData[col] = 0;
+      }
+    }
   }
 
   // Generic function to pre-render a tile layer into a canvas
