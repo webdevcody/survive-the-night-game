@@ -598,6 +598,37 @@ export class InputManager {
   }
 
   /**
+   * Trigger a single-frame drop input (used for drag-to-drop interactions)
+   */
+  triggerDropTap() {
+    if (this.isChatting) return;
+
+    // If drop input is already active (e.g., key held), don't re-trigger
+    if (this.inputs.drop) {
+      return;
+    }
+
+    this.inputs.drop = true;
+    this.hasChanged = true;
+
+    const release = () => {
+      this.inputs.drop = false;
+      this.hasChanged = true;
+    };
+
+    const hasRaf = typeof window !== "undefined" && typeof window.requestAnimationFrame === "function";
+    if (hasRaf) {
+      window.requestAnimationFrame(() => {
+        window.requestAnimationFrame(() => {
+          release();
+        });
+      });
+    } else {
+      setTimeout(release, 50);
+    }
+  }
+
+  /**
    * Set the canvas element for mouse tracking
    */
   setCanvas(canvas: HTMLCanvasElement) {
