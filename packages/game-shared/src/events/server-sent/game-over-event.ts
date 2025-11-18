@@ -2,30 +2,41 @@ import { EventType, ServerSentEvents } from "../events";
 import { GameEvent } from "../types";
 import { BufferWriter, BufferReader } from "../../util/buffer-serialization";
 
-export class GameOverEvent implements GameEvent<void> {
-  private readonly type: EventType;
+export interface GameOverEventData {
+  timestamp: number;
+}
 
-  constructor() {
+export class GameOverEvent implements GameEvent<GameOverEventData> {
+  private readonly type: EventType;
+  private readonly data: GameOverEventData;
+
+  constructor(timestamp: number = Date.now()) {
     this.type = ServerSentEvents.GAME_OVER;
+    this.data = { timestamp };
   }
 
   getType(): EventType {
     return this.type;
   }
 
-  serialize(): void {
-    return;
+  serialize(): GameOverEventData {
+    return this.data;
   }
 
-  getGameState(): void {
-    return;
+  getData(): GameOverEventData {
+    return this.data;
   }
 
-  static serializeToBuffer(_writer: BufferWriter, _data: void): void {
-    // No payload events - zero-length buffer
+  getGameState(): GameOverEventData {
+    return this.data;
   }
 
-  static deserializeFromBuffer(_reader: BufferReader): void {
-    // No payload events - return undefined
+  static serializeToBuffer(writer: BufferWriter, data: GameOverEventData): void {
+    writer.writeFloat64(data.timestamp);
+  }
+
+  static deserializeFromBuffer(reader: BufferReader): GameOverEventData {
+    const timestamp = reader.readFloat64();
+    return { timestamp };
   }
 }

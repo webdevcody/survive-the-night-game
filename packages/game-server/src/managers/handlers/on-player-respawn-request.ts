@@ -1,6 +1,5 @@
 import { ISocketAdapter } from "@shared/network/socket-adapter";
-import { HandlerContext } from "../context";
-import { SocketEventHandler } from "./types";
+import { HandlerContext } from "./handler-context";
 
 export function onPlayerRespawnRequest(context: HandlerContext, socket: ISocketAdapter): void {
   const player = context.players.get(socket.id);
@@ -10,7 +9,3 @@ export function onPlayerRespawnRequest(context: HandlerContext, socket: ISocketA
   player.respawn();
 }
 
-export const playerRespawnRequestHandler: SocketEventHandler<void> = {
-  event: "PLAYER_RESPAWN_REQUEST",
-  handler: onPlayerRespawnRequest,
-};

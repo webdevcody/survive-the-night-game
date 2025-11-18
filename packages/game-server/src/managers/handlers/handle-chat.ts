@@ -1,8 +1,9 @@
 import { ISocketAdapter } from "@shared/network/socket-adapter";
-import { HandlerContext } from "../context";
+import { HandlerContext } from "./handler-context";
+import { ServerSentEvents } from "@shared/events/events";
 import { ChatMessageEvent } from "@shared/events/server-sent/chat-message-event";
+import { serializeServerEvent } from "@shared/events/server-sent/server-event-serialization";
 import { EntityManager } from "@/managers/entity-manager";
-import { SocketEventHandler } from "./types";
 
 export async function handleChat(
   context: HandlerContext,
@@ -26,7 +27,14 @@ export async function handleChat(
         playerId: 0, // System message uses ID 0
         message: result,
       });
-      context.sendEventToSocket(socket, chatEvent);
+      const delayedSocket = context.wrapSocket(socket);
+      const chatData = chatEvent.getData();
+      const chatBuffer = serializeServerEvent(ServerSentEvents.CHAT_MESSAGE, [chatData]);
+      if (chatBuffer !== null) {
+        delayedSocket.emit(ServerSentEvents.CHAT_MESSAGE, chatBuffer);
+      } else {
+        delayedSocket.emit(ServerSentEvents.CHAT_MESSAGE, chatData);
+      }
     }
     return;
   }
@@ -38,10 +46,12 @@ export async function handleChat(
     message: filteredMessage,
   });
 
-  context.broadcastEvent(chatEvent);
+  const chatEventData = chatEvent.getData();
+  // Try to serialize as binary
+  const chatBuffer = serializeServerEvent(ServerSentEvents.CHAT_MESSAGE, [chatEventData]);
+  if (chatBuffer !== null) {
+    context.delayedIo.emit(ServerSentEvents.CHAT_MESSAGE, chatBuffer);
+  } else {
+    context.delayedIo.emit(ServerSentEvents.CHAT_MESSAGE, chatEventData);
+  }
 }
-
-export const sendChatHandler: SocketEventHandler<{ message: string }> = {
-  event: "SEND_CHAT",
-  handler: (context, socket, data) => handleChat(context, socket, data.message),
-};

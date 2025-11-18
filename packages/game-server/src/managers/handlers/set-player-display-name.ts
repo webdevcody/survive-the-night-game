@@ -1,6 +1,5 @@
 import { ISocketAdapter } from "@shared/network/socket-adapter";
-import { HandlerContext } from "../context";
-import { SocketEventHandler } from "./types";
+import { HandlerContext } from "./handler-context";
 
 export function setPlayerDisplayName(
   context: HandlerContext,
@@ -17,7 +16,3 @@ export function setPlayerDisplayName(
   player.setDisplayName(filteredDisplayName);
 }
 
-export const setDisplayNameHandler: SocketEventHandler<string> = {
-  event: "SET_DISPLAY_NAME",
-  handler: setPlayerDisplayName,
-};

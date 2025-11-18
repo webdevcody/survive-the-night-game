@@ -1,11 +1,10 @@
 import { ISocketAdapter } from "@shared/network/socket-adapter";
-import { HandlerContext } from "../context";
+import { HandlerContext } from "./handler-context";
 import Positionable from "@/extensions/positionable";
 import Inventory from "@/extensions/inventory";
 import { ItemType, isResourceItem, ResourceType } from "@shared/util/inventory";
 import PoolManager from "@shared/util/pool-manager";
 import { Merchant } from "@/entities/environment/merchant";
-import { SocketEventHandler } from "./types";
 
 export function onMerchantBuy(
   context: HandlerContext,
@@ -67,9 +66,3 @@ export function onMerchantBuy(
     }
   }
 }
-
-export const merchantBuyHandler: SocketEventHandler<{ merchantId: number; itemIndex: number }> = {
-  event: "MERCHANT_BUY",
-  handler: onMerchantBuy,
-};
-

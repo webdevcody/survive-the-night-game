@@ -6,9 +6,9 @@ export class PongEvent implements GameEvent<{ timestamp: number }> {
   private type: EventType;
   private data: { timestamp: number };
 
-  constructor(timestamp: number) {
+  constructor(data: { timestamp: number }) {
     this.type = ServerSentEvents.PONG;
-    this.data = { timestamp };
+    this.data = data;
   }
 
   getType(): EventType {

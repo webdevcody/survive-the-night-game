@@ -89,26 +89,14 @@ export function serializeServerEvent(event: string, args: any[]): Buffer | null 
     return null;
   }
 
-  // Complex events handled specially elsewhere
-  if (event === ServerSentEvents.MAP || event === ServerSentEvents.GAME_STATE_UPDATE) {
-    return null;
-  }
-
   const serializer = eventRegistry[event];
   if (!serializer) {
-    // Unknown or unhandled server event – fall back to JSON by returning null
+    // Unknown or unhandled server event (e.g., MAP, GAME_STATE_UPDATE) – fall back to JSON by returning null
     return null;
   }
 
   const writer = new BufferWriter(1024);
-
-  // Normalize data format - handle both direct values and objects
-  let data = args[0];
-
-  // Handle special cases where args[0] might be a primitive but we need an object
-  if (event === ServerSentEvents.PONG && typeof data === "number") {
-    data = { timestamp: data };
-  }
+  const data = args[0];
 
   serializer.serializeToBuffer(writer, data);
 
@@ -124,27 +112,13 @@ export function deserializeServerEvent(event: string, buffer: ArrayBuffer): any[
     return null;
   }
 
-  // Complex events handled specially elsewhere
-  if (event === ServerSentEvents.MAP || event === ServerSentEvents.GAME_STATE_UPDATE) {
-    return null;
-  }
-
   const serializer = eventRegistry[event];
   if (!serializer) {
     return null;
   }
 
-  // Handle no-payload events
+  // Events that expect payload should not receive empty buffers
   if (buffer.byteLength === 0) {
-    const noPayloadEvents = [
-      ServerSentEvents.GAME_STARTED,
-      ServerSentEvents.GAME_OVER,
-      ServerSentEvents.SERVER_UPDATING,
-    ];
-    if (noPayloadEvents.includes(event as any)) {
-      return [];
-    }
-    // Events that expect payload should not receive empty buffers
     return null;
   }
 

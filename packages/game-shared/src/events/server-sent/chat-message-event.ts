@@ -1,15 +1,25 @@
 import { BufferWriter, BufferReader } from "../../util/buffer-serialization";
+import { ServerSentEvents, EventType } from "../events";
+import { GameEvent } from "../types";
 
 export interface ChatMessageEventData {
   playerId: number;
   message: string;
 }
 
-export class ChatMessageEvent {
+export class ChatMessageEvent implements GameEvent<ChatMessageEventData> {
   private data: ChatMessageEventData;
 
   constructor(data: ChatMessageEventData) {
     this.data = data;
+  }
+
+  getType(): EventType {
+    return ServerSentEvents.CHAT_MESSAGE;
+  }
+
+  serialize(): ChatMessageEventData {
+    return this.data;
   }
 
   public getData(): ChatMessageEventData {

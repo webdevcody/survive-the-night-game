@@ -1,7 +1,6 @@
 import { ISocketAdapter } from "@shared/network/socket-adapter";
-import { HandlerContext } from "../context";
+import { HandlerContext } from "./handler-context";
 import { ServerSentEvents } from "@shared/events/events";
-import { SocketEventHandler } from "./types";
 
 export function sendFullState(context: HandlerContext, socket: ISocketAdapter): void {
   const entities = context.getEntityManager().getEntities();
@@ -45,7 +44,3 @@ export function sendFullState(context: HandlerContext, socket: ISocketAdapter): 
   delayedSocket.emit(ServerSentEvents.GAME_STATE_UPDATE, buffer);
 }
 
-export const requestFullStateHandler: SocketEventHandler<void> = {
-  event: "REQUEST_FULL_STATE",
-  handler: sendFullState,
-};

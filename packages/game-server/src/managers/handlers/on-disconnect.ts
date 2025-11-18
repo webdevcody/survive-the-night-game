@@ -1,7 +1,6 @@
 import { ISocketAdapter } from "@shared/network/socket-adapter";
-import { HandlerContext } from "../context";
-import { PlayerLeftEvent } from "@shared/events/server-sent/player-left-event";
-import { SocketEventHandler } from "./types";
+import { HandlerContext } from "./handler-context";
+import { PlayerLeftEvent } from "@/events/server-sent/player-left-event";
 
 export function onDisconnect(context: HandlerContext, socket: ISocketAdapter): void {
   console.log("Player disconnected", socket.id);
@@ -29,9 +28,3 @@ export function onDisconnect(context: HandlerContext, socket: ISocketAdapter): v
     context.gameServer.setIsGameReady(false);
   }
 }
-
-export const disconnectHandler: SocketEventHandler<void> = {
-  event: "disconnect",
-  handler: onDisconnect,
-};
-

@@ -4,17 +4,11 @@ import { GameEvent } from "@shared/events/types";
 import Positionable from "@/extensions/positionable";
 import Inventory from "@/extensions/inventory";
 import { GameServer } from "@/core/server";
-import { AdminCommand } from "@shared/commands/commands";
-import { Input } from "../../../game-shared/src/util/input";
-import { RecipeType } from "../../../game-shared/src/util/recipes";
-import { ItemType } from "@shared/util/inventory";
 import PoolManager from "@shared/util/pool-manager";
 import { createServer } from "http";
 import { CommandManager } from "@/managers/command-manager";
 import { MapManager } from "@/world/map-manager";
 import { Broadcaster, IEntityManager, IGameManagers } from "@/managers/types";
-import { IEntity } from "@/entities/types";
-import { PlayerJoinedEvent } from "@shared/events/server-sent/player-joined-event";
 import { getConfig } from "@shared/config";
 import { DelayedServer, DelayedServerSocket } from "@/util/delayed-socket";
 import { createCommandRegistry, CommandRegistry } from "@/commands";
@@ -28,25 +22,12 @@ import { TickPerformanceTracker } from "@/util/tick-performance-tracker";
 import { IServerAdapter } from "@shared/network/server-adapter";
 import { ISocketAdapter } from "@shared/network/socket-adapter";
 import { createServerAdapter } from "@/network/adapter-factory";
-import { BufferManager } from "./buffer-manager";
+import { BufferManager } from "@/broadcasting/buffer-manager";
+import { Broadcaster as BroadcastingBroadcaster } from "@/broadcasting/broadcaster";
+import { PlayerJoinedEvent } from "@shared/events/server-sent/player-joined-event";
+import { HandlerContext, onDisconnect, onConnection } from "@/events/handlers";
+import { socketEventHandlers } from "@/events/handlers/registry";
 import { serializeServerEvent } from "@shared/events/server-sent/server-event-serialization";
-import {
-  HandlerContext,
-  onDisconnect,
-  onCraftRequest,
-  onMerchantBuy,
-  onPlaceStructure,
-  onPlayerInput,
-  setPlayerCrafting,
-  sendFullState,
-  setPlayerDisplayName,
-  onPlayerRespawnRequest,
-  onTeleportToBase,
-  onConnection,
-  handlePing,
-  handlePingUpdate,
-  handleChat,
-} from "@/events/handlers";
 
 /**
  * Any and all functionality related to sending server side events
@@ -69,6 +50,7 @@ export class ServerSocketManager implements Broadcaster {
   private profanityCensor: TextCensor;
   private tickPerformanceTracker: TickPerformanceTracker | null = null;
   private bufferManager: BufferManager;
+  private broadcaster: BroadcastingBroadcaster;
 
   constructor(port: number, gameServer: GameServer) {
     this.port = port;
@@ -115,6 +97,16 @@ export class ServerSocketManager implements Broadcaster {
     });
     this.profanityCensor = new TextCensor();
 
+    // Initialize broadcaster (will be fully initialized after entityManager is set)
+    this.broadcaster = new BroadcastingBroadcaster({
+      io: this.io,
+      delayedIo: this.delayedIo,
+      entityManager: null as any, // Will be set when entityManager is set
+      gameServer: this.gameServer,
+      bufferManager: this.bufferManager,
+      tickPerformanceTracker: this.tickPerformanceTracker,
+    });
+
     this.io.on("connection", (socket: ISocketAdapter) => {
       const { displayName } = socket.handshake.query;
 
@@ -156,6 +148,8 @@ export class ServerSocketManager implements Broadcaster {
       getGameManagers: () => this.getGameManagers(),
       wrapSocket: (socket: ISocketAdapter) => this.wrapSocket(socket),
       broadcastEvent: (event: GameEvent<any>) => this.broadcastEvent(event),
+      sendEventToSocket: (socket: ISocketAdapter, event: GameEvent<any>) =>
+        this.sendEventToSocket(socket, event),
       sanitizeText: (text: string) => this.sanitizeText(text),
       createPlayerForSocket: (socket: ISocketAdapter) => this.createPlayerForSocket(socket),
       sendInitialDataToSocket: (socket: ISocketAdapter, player: Player) =>
@@ -170,6 +164,17 @@ export class ServerSocketManager implements Broadcaster {
 
   setTickPerformanceTracker(tracker: TickPerformanceTracker) {
     this.tickPerformanceTracker = tracker;
+    // Update broadcaster with tick performance tracker
+    if (this.entityManager) {
+      this.broadcaster = new BroadcastingBroadcaster({
+        io: this.io,
+        delayedIo: this.delayedIo,
+        entityManager: this.entityManager,
+        gameServer: this.gameServer,
+        bufferManager: this.bufferManager,
+        tickPerformanceTracker: tracker,
+      });
+    }
   }
 
   getCurrentBandwidth(): number {
@@ -210,6 +215,15 @@ export class ServerSocketManager implements Broadcaster {
 
   public setEntityManager(entityManager: IEntityManager): void {
     this.entityManager = entityManager;
+    // Update broadcaster with entity manager
+    this.broadcaster = new BroadcastingBroadcaster({
+      io: this.io,
+      delayedIo: this.delayedIo,
+      entityManager: entityManager,
+      gameServer: this.gameServer,
+      bufferManager: this.bufferManager,
+      tickPerformanceTracker: this.tickPerformanceTracker,
+    });
   }
 
   public setMapManager(mapManager: MapManager): void {
@@ -238,16 +252,10 @@ export class ServerSocketManager implements Broadcaster {
   }
 
   private sendInitialDataToSocket(socket: ISocketAdapter, player: Player): void {
-    const delayedSocket = this.wrapSocket(socket);
     const mapData = this.getMapManager().getMapData();
-    delayedSocket.emit(ServerSentEvents.MAP, mapData);
-
-    const yourIdBuffer = serializeServerEvent(ServerSentEvents.YOUR_ID, [player.getId()]);
-    if (yourIdBuffer !== null) {
-      delayedSocket.emit(ServerSentEvents.YOUR_ID, yourIdBuffer);
-    } else {
-      delayedSocket.emit(ServerSentEvents.YOUR_ID, player.getId());
-    }
+    this.broadcaster.sendInitialDataToSocket(socket, player.getId(), mapData, (sock) =>
+      this.wrapSocket(sock)
+    );
   }
 
   private broadcastPlayerJoined(player: Player): void {
@@ -289,51 +297,18 @@ export class ServerSocketManager implements Broadcaster {
 
   private setupSocketListeners(socket: ISocketAdapter): void {
     const context = this.getHandlerContext();
-    socket.on(ClientSentEvents.PLAYER_INPUT, (input: Input) =>
-      onPlayerInput(context, socket, input)
-    );
-    socket.on(ClientSentEvents.CRAFT_REQUEST, (recipe: RecipeType) =>
-      onCraftRequest(context, socket, recipe)
-    );
-    socket.on(ClientSentEvents.START_CRAFTING, (recipe: RecipeType) =>
-      setPlayerCrafting(context, socket, true)
-    );
-    socket.on(ClientSentEvents.STOP_CRAFTING, (recipe: RecipeType) =>
-      setPlayerCrafting(context, socket, false)
-    );
-    socket.on(ClientSentEvents.ADMIN_COMMAND, (command: AdminCommand) =>
-      this.getCommandManager().handleCommand(command)
-    );
-    socket.on(ClientSentEvents.SET_DISPLAY_NAME, (displayName: string) =>
-      setPlayerDisplayName(context, socket, displayName)
-    );
-    socket.on(ClientSentEvents.MERCHANT_BUY, (data: { merchantId: number; itemIndex: number }) =>
-      onMerchantBuy(context, socket, data)
-    );
-    socket.on(ClientSentEvents.REQUEST_FULL_STATE, () => sendFullState(context, socket));
-    socket.on(ClientSentEvents.PING, (timestamp: number) => {
-      handlePing(context, socket, timestamp);
-    });
-    socket.on(ClientSentEvents.PING_UPDATE, (latency: number) => {
-      handlePingUpdate(context, socket, latency);
-    });
-    socket.on(ClientSentEvents.SEND_CHAT, (data: { message: string }) => {
-      handleChat(context, socket, data.message);
-    });
-    socket.on(
-      ClientSentEvents.PLACE_STRUCTURE,
-      (data: { itemType: ItemType; position: { x: number; y: number } }) =>
-        onPlaceStructure(context, socket, data)
-    );
-    socket.on(ClientSentEvents.PLAYER_RESPAWN_REQUEST, () => {
-      onPlayerRespawnRequest(context, socket);
-    });
-    socket.on(ClientSentEvents.TELEPORT_TO_BASE, () => {
-      onTeleportToBase(context, socket);
-    });
-    socket.on("disconnect", () => {
-      onDisconnect(context, socket);
-    });
+
+    // Automatically register all handlers from the registry
+    for (const handlerRegistration of socketEventHandlers) {
+      const eventName =
+        handlerRegistration.event === "disconnect"
+          ? "disconnect"
+          : ClientSentEvents[handlerRegistration.event as keyof typeof ClientSentEvents];
+
+      socket.on(eventName, (payload: any) => {
+        handlerRegistration.handler(context, socket, payload);
+      });
+    }
   }
 
   private onConnection(socket: ISocketAdapter): void {
@@ -345,187 +320,20 @@ export class ServerSocketManager implements Broadcaster {
   }
 
   public broadcastEvent(event: GameEvent<any>): void {
-    // Early return optimization: if no clients connected, skip broadcasting
-    const connectedClients = this.io.sockets.sockets.size;
-    if (connectedClients === 0) {
-      return;
-    }
+    this.broadcaster.broadcastEvent(event);
+  }
 
-    if (event.getType() === ServerSentEvents.GAME_STATE_UPDATE) {
-      // Track entity state tracking operations
-      const endEntityStateTracking =
-        this.tickPerformanceTracker?.startMethod("entityStateTracking", "broadcastGameState") ||
-        (() => {});
-      const entityStateTracker = this.getEntityManager().getEntityStateTracker();
-
-      // Early return optimization: check cheapest checks first
-      const removedEntityIds = entityStateTracker.getRemovedEntityIds();
-      const removedCount = removedEntityIds.length;
-
-      // Extract game state properties from the passed event (optimized)
-      const eventSerialize = (event as any).serialize;
-      const eventData = eventSerialize ? eventSerialize.call(event) : {};
-
-      // Optimize hasGameStateChanges check: iterate directly instead of Object.keys().some()
-      let hasGameStateChanges = false;
-      for (const key in eventData) {
-        if (key !== "entities" && key !== "timestamp" && eventData[key] !== undefined) {
-          hasGameStateChanges = true;
-          break;
-        }
-      }
-
-      // Early return optimization: only get entities if we might have changes
-      // If we have removed entities or game state changes, we definitely need to process
-      // Otherwise, check changed entities to see if we can early return
-      let entities: IEntity[];
-      let changedEntities: IEntity[];
-      let changedCount: number;
-
-      if (removedCount === 0 && !hasGameStateChanges) {
-        // No removed entities and no game state changes - check if any entities changed
-        changedEntities = entityStateTracker.getChangedEntities();
-        changedCount = changedEntities.length;
-        if (changedCount === 0) {
-          endEntityStateTracking();
-          return; // No changes to broadcast
-        }
-        entities = this.getEntityManager().getEntities();
-      } else {
-        // We have removed entities or game state changes - need to process
-        entities = this.getEntityManager().getEntities();
-        changedEntities = entityStateTracker.getChangedEntities();
-        changedCount = changedEntities.length;
-      }
-
-      // Final early return check
-      if (changedCount === 0 && removedCount === 0 && !hasGameStateChanges) {
-        endEntityStateTracking();
-        return; // No changes to broadcast
-      }
-      endEntityStateTracking();
-
-      // Track game state preparation
-      const endGameStatePrep =
-        this.tickPerformanceTracker?.startMethod("gameStatePreparation", "broadcastGameState") ||
-        (() => {});
-      // Cache all gameServer getter results before creating currentGameState object
-      const waveNumber = this.gameServer.getWaveNumber();
-      const waveState = this.gameServer.getWaveState();
-      const phaseStartTime = this.gameServer.getPhaseStartTime();
-      const phaseDuration = this.gameServer.getPhaseDuration();
-      endGameStatePrep();
-
-      // Clear buffer manager for new game loop
-      this.bufferManager.clear();
-
-      // Track entity serialization
-      const endEntitySerialization =
-        this.tickPerformanceTracker?.startMethod("entitySerialization", "broadcastGameState") ||
-        (() => {});
-      // Write entity count
-      this.bufferManager.writeEntityCount(changedCount);
-      // For each changed entity, serialize to buffer based on dirty state
-      // Changed entities will have only dirty extensions, so serialize(true) will include only changes
-      for (const entity of changedEntities) {
-        this.bufferManager.writeEntity(entity, true);
-      }
-      endEntitySerialization();
-
-      // Track game state merging
-      const endGameStateMerging =
-        this.tickPerformanceTracker?.startMethod("gameStateMerging", "broadcastGameState") ||
-        (() => {});
-      // Get current game state (using cached values)
-      const currentGameState = {
-        // Wave system
-        waveNumber,
-        waveState,
-        phaseStartTime,
-        phaseDuration,
-      };
-
-      // Get only changed game state properties
-      const changedGameState = entityStateTracker.getChangedGameStateProperties(currentGameState);
-
-      // Optimize mergedGameState construction: build object directly instead of Object.fromEntries/Object.entries
-      const mergedGameState: Record<string, any> = { ...changedGameState };
-      for (const key in eventData) {
-        if (key !== "entities" && key !== "timestamp") {
-          mergedGameState[key] = eventData[key];
-        }
-      }
-
-      // Reuse timestamp from eventData if available, otherwise use Date.now()
-      const timestamp = eventData.timestamp !== undefined ? eventData.timestamp : Date.now();
-
-      // Write game state metadata to buffer
-      const hasRemovedEntities = removedCount > 0;
-      this.bufferManager.writeGameState(
-        {
-          ...mergedGameState,
-          timestamp,
-          isFullState: false,
-        },
-        hasRemovedEntities
-      );
-
-      // Write removed entity IDs (only if there are any)
-      this.bufferManager.writeRemovedEntityIds(removedEntityIds);
-      endGameStateMerging();
-
-      // Track cleanup operations
-      const endCleanup =
-        this.tickPerformanceTracker?.startMethod("broadcastCleanup", "broadcastGameState") ||
-        (() => {});
-
-      // Log dirty entity information for diagnostics (if performance monitoring enabled)
-      if (this.tickPerformanceTracker && changedCount > 0) {
-        const dirtyEntityInfo = entityStateTracker.getDirtyEntityInfo();
-        if (dirtyEntityInfo.length > 0) {
-          this.tickPerformanceTracker.recordDirtyEntities(
-            dirtyEntityInfo.map((info) => ({
-              id: String(info.id),
-              type: info.type,
-              reason: info.reason,
-            })),
-            changedCount,
-            entities.length
-          );
-        }
-      }
-
-      // Clear dirty flags after broadcasting (optimized loop)
-      for (const entity of changedEntities) {
-        entity.clearDirtyFlags();
-      }
-      entityStateTracker.trackGameState(currentGameState);
-      // Clear removed entity IDs after they've been sent
-      entityStateTracker.clearRemovedEntityIds();
-      // Clear dirty entity info after logging
-      entityStateTracker.clearDirtyEntityInfo();
-      endCleanup();
-
-      // Track websocket emit
-      const endWebSocketEmit =
-        this.tickPerformanceTracker?.startMethod("webSocketEmit", "broadcastGameState") ||
-        (() => {});
-      // Send buffer directly instead of serializing to objects
-      const buffer = this.bufferManager.getBuffer();
-      // this.bufferManager.logStats();
-      this.delayedIo.emit(event.getType(), buffer);
-      endWebSocketEmit();
+  /**
+   * Send an event to a single socket (handles serialization automatically)
+   */
+  public sendEventToSocket(socket: ISocketAdapter, event: GameEvent<any>): void {
+    const delayedSocket = this.wrapSocket(socket);
+    const serializedData = event.serialize();
+    const binaryBuffer = serializeServerEvent(event.getType(), [serializedData]);
+    if (binaryBuffer !== null) {
+      delayedSocket.emit(event.getType(), binaryBuffer);
     } else {
-      // Try to serialize as binary, fall back to JSON if not supported
-      const serializedData = event.serialize();
-      const binaryBuffer = serializeServerEvent(event.getType(), [serializedData]);
-      if (binaryBuffer !== null) {
-        // Send as binary
-        this.delayedIo.emit(event.getType(), binaryBuffer);
-      } else {
-        // Fall back to JSON
-        this.delayedIo.emit(event.getType(), serializedData);
-      }
+      delayedSocket.emit(event.getType(), serializedData);
     }
   }
 

@@ -1,6 +1,5 @@
 import { ISocketAdapter } from "@shared/network/socket-adapter";
-import { HandlerContext } from "../context";
-import { SocketEventHandler } from "./types";
+import { HandlerContext } from "./handler-context";
 
 export function onTeleportToBase(context: HandlerContext, socket: ISocketAdapter): void {
   const player = context.players.get(socket.id);
@@ -14,7 +13,3 @@ export function onTeleportToBase(context: HandlerContext, socket: ISocketAdapter
   }
 }
 
-export const teleportToBaseHandler: SocketEventHandler<void> = {
-  event: "TELEPORT_TO_BASE",
-  handler: onTeleportToBase,
-};

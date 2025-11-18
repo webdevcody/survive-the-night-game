@@ -11,4 +11,5 @@ export { onTeleportToBase } from "./teleport";
 export { onConnection } from "./connection";
 export { handlePing, handlePingUpdate } from "./ping";
 export { handleChat } from "./chat";
-
+export { socketEventHandlers } from "./registry";
+export type { SocketEventHandler } from "./types";

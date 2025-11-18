@@ -1,12 +1,15 @@
 import { ISocketAdapter } from "@shared/network/socket-adapter";
 import { HandlerContext } from "../context";
-import { ServerSentEvents } from "@shared/events/events";
-import { serializeServerEvent } from "@shared/events/server-sent/server-event-serialization";
+import { PongEvent } from "@shared/events/server-sent/pong-event";
+import { SocketEventHandler } from "./types";
 
-export function handlePing(context: HandlerContext, socket: ISocketAdapter, timestamp: number): void {
-  const delayedSocket = context.wrapSocket(socket);
-  const binaryBuffer = serializeServerEvent(ServerSentEvents.PONG, [{ timestamp }]);
-  delayedSocket.emit(ServerSentEvents.PONG, binaryBuffer);
+export function handlePing(
+  context: HandlerContext,
+  socket: ISocketAdapter,
+  timestamp: number
+): void {
+  const pongEvent = new PongEvent({ timestamp });
+  context.sendEventToSocket(socket, pongEvent);
 }
 
 export function handlePingUpdate(
@@ -23,3 +26,12 @@ export function handlePingUpdate(
   }
 }
 
+export const pingHandler: SocketEventHandler<number> = {
+  event: "PING",
+  handler: handlePing,
+};
+
+export const pingUpdateHandler: SocketEventHandler<number> = {
+  event: "PING_UPDATE",
+  handler: handlePingUpdate,
+};

@@ -1,7 +1,6 @@
 import { ISocketAdapter } from "@shared/network/socket-adapter";
-import { HandlerContext } from "../context";
+import { HandlerContext } from "./handler-context";
 import { ItemType } from "@shared/util/inventory";
-import { SocketEventHandler } from "./types";
 import { itemRegistry } from "@shared/entities/item-registry";
 import Positionable from "@/extensions/positionable";
 import Inventory from "@/extensions/inventory";
@@ -115,7 +114,9 @@ export function onPlaceStructure(
   placedEntity.getExt(Positionable).setPosition(placePos);
   context.getEntityManager().addEntity(placedEntity);
 
-  console.log(`Player ${player.getId()} placed ${data.itemType} at (${placePos.x}, ${placePos.y})`);
+  console.log(
+    `Player ${player.getId()} placed ${data.itemType} at (${placePos.x}, ${placePos.y})`
+  );
 
   // Broadcast build event if item has a placeSound configured
   if (itemConfig.placeSound) {
@@ -129,10 +130,3 @@ export function onPlaceStructure(
   }
 }
 
-export const placeStructureHandler: SocketEventHandler<{
-  itemType: ItemType;
-  position: { x: number; y: number };
-}> = {
-  event: "PLACE_STRUCTURE",
-  handler: onPlaceStructure,
-};
