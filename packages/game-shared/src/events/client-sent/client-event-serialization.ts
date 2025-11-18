@@ -10,16 +10,16 @@ import { PlaceStructureEvent } from "./events/place-structure";
 import { PingEvent } from "./events/ping";
 import { PingUpdateEvent } from "./events/ping-update";
 import { NoPayloadEvent } from "./events/no-payload";
+import {
+  serializeEvent,
+  deserializeEvent,
+  type IBufferWriter,
+} from "../shared-event-serialization";
 
 const CLIENT_EVENT_VALUES = new Set<string>(Object.values(ClientSentEvents));
 
 // Registry mapping event strings to event classes with serialization methods
-type EventSerializer = {
-  serializeToBuffer: (writer: ArrayBufferWriter, data: any) => void;
-  deserializeFromBuffer: (reader: BufferReader) => any;
-};
-
-const eventRegistry: Record<string, EventSerializer> = {
+const eventRegistry: Record<string, IBufferWriter> = {
   [ClientSentEvents.CRAFT_REQUEST]: CraftRequestEvent,
   [ClientSentEvents.PLAYER_INPUT]: PlayerInputEvent,
   [ClientSentEvents.ADMIN_COMMAND]: AdminCommandEvent,
@@ -45,23 +45,19 @@ function isClientSentEvent(event: string): event is ClientSentEventType {
  * Returns null if the event should be sent as JSON instead
  */
 export function serializeClientEvent(event: string, args: any[]): ArrayBuffer | null {
-  if (!isClientSentEvent(event)) {
-    return null;
-  }
-
-  const serializer = eventRegistry[event];
-  if (!serializer) {
-    // Unknown or unhandled client event – fall back to JSON by returning null
-    return null;
-  }
-
-  const writer = new ArrayBufferWriter(256);
-  // For no-payload events, args[0] may be undefined, so use empty object
-  const data = args[0] ?? {};
-
-  serializer.serializeToBuffer(writer, data);
-
-  return writer.getBuffer();
+  return serializeEvent(
+    event,
+    args,
+    eventRegistry,
+    isClientSentEvent,
+    (size) => new ArrayBufferWriter(size),
+    256,
+    (event) => {
+      // Check if this event uses NoPayloadEvent serializer
+      const serializer = eventRegistry[event];
+      return serializer === NoPayloadEvent ? {} : undefined;
+    }
+  );
 }
 
 /**
@@ -69,38 +65,13 @@ export function serializeClientEvent(event: string, args: any[]): ArrayBuffer | 
  * Returns null if the event should be deserialized as JSON instead
  */
 export function deserializeClientEvent(event: string, buffer: ArrayBuffer): any[] | null {
-  if (!isClientSentEvent(event)) {
-    return null;
-  }
-
-  const serializer = eventRegistry[event];
-  if (!serializer) {
-    return null;
-  }
-
-  // Handle empty buffers for no-payload events
-  if (buffer.byteLength === 0) {
-    const noPayloadEvents = new Set<string>([
-      ClientSentEvents.START_CRAFTING,
-      ClientSentEvents.STOP_CRAFTING,
-      ClientSentEvents.REQUEST_FULL_STATE,
-      ClientSentEvents.PLAYER_RESPAWN_REQUEST,
-      ClientSentEvents.TELEPORT_TO_BASE,
-    ]);
-    if (noPayloadEvents.has(event)) {
+  return deserializeEvent(event, buffer, eventRegistry, isClientSentEvent, (event, buffer) => {
+    const serializer = eventRegistry[event];
+    // Check if this event uses NoPayloadEvent serializer
+    if (serializer === NoPayloadEvent) {
       const data = serializer.deserializeFromBuffer(new BufferReader(buffer));
       return [data];
     }
-    // Events that expect payload should not receive empty buffers
     return null;
-  }
-
-  const reader = new BufferReader(buffer);
-  const data = serializer.deserializeFromBuffer(reader);
-
-  // Normalize return format - wrap primitives in array, keep objects as-is
-  if (typeof data === "number" || typeof data === "string" || data === undefined) {
-    return [data];
-  }
-  return [data];
+  });
 }

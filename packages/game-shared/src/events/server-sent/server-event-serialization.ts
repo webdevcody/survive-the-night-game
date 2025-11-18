@@ -1,5 +1,5 @@
 import { ServerSentEvents, type ServerSentEventType } from "../events";
-import { BufferWriter, BufferReader } from "../../util/buffer-serialization";
+import { BufferWriter } from "../../util/buffer-serialization";
 import { PongEvent } from "./events/pong-event";
 import { YourIdEvent } from "./events/your-id-event";
 import { PlayerJoinedEvent } from "./events/player-joined-event";
@@ -32,6 +32,11 @@ import { BuildEvent } from "./events/build-event";
 import { BossStepEvent } from "./events/boss-step-event";
 import { BossSummonEvent } from "./events/boss-summon-event";
 import { GameMessageEvent } from "./events/game-message-event";
+import {
+  serializeEvent,
+  deserializeEvent,
+  type IBufferWriter,
+} from "../shared-event-serialization";
 
 const SERVER_EVENT_VALUES = new Set<string>(Object.values(ServerSentEvents));
 
@@ -40,12 +45,7 @@ function isServerSentEvent(event: string): event is ServerSentEventType {
 }
 
 // Registry mapping event strings to event classes with serialization methods
-type EventSerializer = {
-  serializeToBuffer: (writer: BufferWriter, data: any) => void;
-  deserializeFromBuffer: (reader: BufferReader) => any;
-};
-
-const eventRegistry: Record<string, EventSerializer> = {
+const eventRegistry: Record<string, IBufferWriter> = {
   [ServerSentEvents.PONG]: PongEvent,
   [ServerSentEvents.YOUR_ID]: YourIdEvent,
   [ServerSentEvents.PLAYER_JOINED]: PlayerJoinedEvent,
@@ -85,22 +85,14 @@ const eventRegistry: Record<string, EventSerializer> = {
  * Returns null if the event should be sent as JSON instead
  */
 export function serializeServerEvent(event: string, args: any[]): Buffer | null {
-  if (!isServerSentEvent(event)) {
-    return null;
-  }
-
-  const serializer = eventRegistry[event];
-  if (!serializer) {
-    // Unknown or unhandled server event (e.g., MAP, GAME_STATE_UPDATE) – fall back to JSON by returning null
-    return null;
-  }
-
-  const writer = new BufferWriter(1024);
-  const data = args[0];
-
-  serializer.serializeToBuffer(writer, data);
-
-  return writer.getBuffer();
+  return serializeEvent(
+    event,
+    args,
+    eventRegistry,
+    isServerSentEvent,
+    (size) => new BufferWriter(size),
+    1024
+  );
 }
 
 /**
@@ -108,26 +100,5 @@ export function serializeServerEvent(event: string, args: any[]): Buffer | null 
  * Returns null if the event should be deserialized as JSON instead
  */
 export function deserializeServerEvent(event: string, buffer: ArrayBuffer): any[] | null {
-  if (!isServerSentEvent(event)) {
-    return null;
-  }
-
-  const serializer = eventRegistry[event];
-  if (!serializer) {
-    return null;
-  }
-
-  // Events that expect payload should not receive empty buffers
-  if (buffer.byteLength === 0) {
-    return null;
-  }
-
-  const reader = new BufferReader(buffer);
-  const data = serializer.deserializeFromBuffer(reader);
-
-  // Normalize return format - wrap primitives in array, keep objects as-is
-  if (typeof data === "number" || typeof data === "string" || data === undefined) {
-    return [data];
-  }
-  return [data];
+  return deserializeEvent(event, buffer, eventRegistry, isServerSentEvent);
 }
