@@ -96,6 +96,8 @@ export default class Inventory extends ExtensionBase {
 
     // Update serialized (array reference changes, so assign new array to trigger dirty)
     serialized.items = [...items];
+    // Explicitly mark dirty to ensure inventory changes are broadcast
+    this.markDirty();
 
     this.broadcaster.broadcastEvent(
       new PlayerPickedUpItemEvent({
@@ -114,6 +116,8 @@ export default class Inventory extends ExtensionBase {
       items[index] = null;
       // Update serialized (array reference changes, so assign new array to trigger dirty)
       serialized.items = [...items];
+      // Explicitly mark dirty to ensure inventory changes are broadcast
+      this.markDirty();
     }
     return item;
   }
@@ -125,6 +129,8 @@ export default class Inventory extends ExtensionBase {
       items[index].state = state;
       // Update serialized (array reference changes, so assign new array to trigger dirty)
       serialized.items = [...items];
+      // Explicitly mark dirty to ensure inventory changes are broadcast
+      this.markDirty();
     }
   }
 
@@ -158,6 +164,8 @@ export default class Inventory extends ExtensionBase {
     const maxSlots = getConfig().player.MAX_INVENTORY_SLOTS;
     const result = foundRecipe.craft(serialized.items, resources, maxSlots);
     serialized.items = result.inventory;
+    // Explicitly mark dirty to ensure inventory changes are broadcast
+    this.markDirty();
     return result;
   }
 
@@ -196,6 +204,8 @@ export default class Inventory extends ExtensionBase {
     const serialized = this.serialized as any;
     if (serialized.items.length > 0) {
       serialized.items = [];
+      // Explicitly mark dirty to ensure inventory changes are broadcast
+      this.markDirty();
     }
   }
 
@@ -223,35 +233,50 @@ export default class Inventory extends ExtensionBase {
       this.self.getEntityManager()?.addEntity(entity);
     });
     serialized.items = [];
+    // Explicitly mark dirty to ensure inventory changes are broadcast
+    this.markDirty();
   }
 
   private createEntityFromItem(item: InventoryItem) {
     return this.self.getEntityManager()!.createEntityFromItem(item);
   }
 
-  public serializeToBuffer(writer: BufferWriter | MonitoredBufferWriter, onlyDirty: boolean = false): void {
+  public serializeToBuffer(
+    writer: BufferWriter | MonitoredBufferWriter,
+    onlyDirty: boolean = false
+  ): void {
     const serialized = this.serialized as any;
-    const isMonitored = writer instanceof MonitoredBufferWriter || (writer as any).constructor?.name === 'MonitoredBufferWriter';
+    const isMonitored =
+      writer instanceof MonitoredBufferWriter ||
+      (writer as any).constructor?.name === "MonitoredBufferWriter";
     const mw = isMonitored ? (writer as MonitoredBufferWriter) : null;
-    
+
     if (isMonitored) {
       mw!.writeUInt8(encodeExtensionType(Inventory.type), "ExtensionType");
-      mw!.writeArray(serialized.items, (item: InventoryItem | null, label?: string) => {
-        if (item === null || item === undefined) {
-          mw!.writeBoolean(false, label ? `${label}.HasItem` : undefined);
-        } else {
-          mw!.writeBoolean(true, label ? `${label}.HasItem` : undefined);
-          mw!.writeString(item.itemType, label ? `${label}.ItemType` : undefined);
-          // Serialize ItemState
-          mw!.writeRecord((item.state || {}) as Record<string, unknown>, (value, valueLabel?: string) => {
-            if (typeof value === "number") {
-              mw!.writeFloat64(value, valueLabel);
-            } else {
-              mw!.writeString(String(value), valueLabel);
-            }
-          }, label ? `${label}.ItemState` : undefined);
-        }
-      }, "Items");
+      mw!.writeArray(
+        serialized.items,
+        (item: InventoryItem | null, label?: string) => {
+          if (item === null || item === undefined) {
+            mw!.writeBoolean(false, label ? `${label}.HasItem` : undefined);
+          } else {
+            mw!.writeBoolean(true, label ? `${label}.HasItem` : undefined);
+            mw!.writeString(item.itemType, label ? `${label}.ItemType` : undefined);
+            // Serialize ItemState
+            mw!.writeRecord(
+              (item.state || {}) as Record<string, unknown>,
+              (value, valueLabel?: string) => {
+                if (typeof value === "number") {
+                  mw!.writeFloat64(value, valueLabel);
+                } else {
+                  mw!.writeString(String(value), valueLabel);
+                }
+              },
+              label ? `${label}.ItemState` : undefined
+            );
+          }
+        },
+        "Items"
+      );
     } else {
       writer.writeUInt8(encodeExtensionType(Inventory.type));
       writer.writeArray(serialized.items, (item: InventoryItem | null) => {

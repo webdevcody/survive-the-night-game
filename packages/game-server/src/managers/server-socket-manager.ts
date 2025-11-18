@@ -436,10 +436,6 @@ export class ServerSocketManager implements Broadcaster {
     // to guarantee the inventory update is serialized and sent to clients
     player.markExtensionDirty(inventory);
 
-    // Mark activeItem as dirty since it's computed from inventory and needs to be updated
-    // This ensures activeItem is included in delta updates sent to clients
-    player.markActiveItemDirty();
-
     const placedEntity = this.getEntityManager().createEntityFromItem({
       itemType: data.itemType,
       state: {},

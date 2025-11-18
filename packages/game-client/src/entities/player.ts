@@ -35,7 +35,6 @@ export class PlayerClient extends ClientEntity implements IClientEntity, Rendera
 
   private lastRenderPosition = { x: 0, y: 0 };
   private isCrafting = false;
-  private activeItem: InventoryItem | null = null;
   private previousHealth: number | undefined;
   private damageFlashUntil: number = 0;
   private skin: SkinType = SKIN_TYPES.DEFAULT;
@@ -67,7 +66,6 @@ export class PlayerClient extends ClientEntity implements IClientEntity, Rendera
   constructor(data: RawEntity, imageLoader: ImageLoader) {
     super(data, imageLoader);
     this.isCrafting = data.isCrafting;
-    this.activeItem = data.activeItem ?? null;
     // Ensure input is always defined, fallback to default if missing
     this.input = data.input || {
       facing: Direction.Right,
@@ -352,45 +350,33 @@ export class PlayerClient extends ClientEntity implements IClientEntity, Rendera
     }
   }
 
-  private updateActiveItemFromInventory(slotOverride?: number): void {
-    const maxSlots = getConfig().player.MAX_INVENTORY_SLOTS;
-    const slot = slotOverride ?? this.input?.inventoryItem ?? 1;
-    const clampedSlot = Math.min(Math.max(slot, 1), maxSlots);
-
-    if (this.hasExt(ClientInventory)) {
-      this.activeItem = this.getExt(ClientInventory).getActiveItem(clampedSlot);
-      return;
-    }
-
-    const inventory = this.getInventory();
-    this.activeItem = inventory[clampedSlot - 1] ?? null;
-  }
-
   public setLocalInventorySlot(slot: number): void {
     const maxSlots = getConfig().player.MAX_INVENTORY_SLOTS;
     const clampedSlot = Math.min(Math.max(slot, 1), maxSlots);
     this.input.inventoryItem = clampedSlot;
-    this.updateActiveItemFromInventory(clampedSlot);
   }
 
   renderInventoryItem(ctx: CanvasRenderingContext2D, renderPosition: Vector2) {
-    if (this.activeItem === null || this.activeItem === undefined) {
+    const activeItem = this.getActiveItem();
+    if (activeItem === null || activeItem === undefined) {
       return;
     }
 
     // Ensure activeItem has a valid itemType
-    if (!this.activeItem.itemType) {
+    if (!activeItem.itemType) {
       return;
     }
 
     // Skip rendering held item if it's a wearable item (should show as overlay instead)
-    const itemConfig = itemRegistry.get(this.activeItem.itemType);
+    const itemConfig = itemRegistry.get(activeItem.itemType);
     if (itemConfig?.hideWhenSelected) {
       return; // Don't render as held item - it's worn and shown as overlay
     }
 
     const { facing } = this.input;
-    const image = this.imageLoader.getWithDirection(getItemAssetKey(this.activeItem), facing);
+    // Ensure facing is never undefined - fallback to Right if missing
+    const direction = facing ?? Direction.Right;
+    const image = this.imageLoader.getWithDirection(getItemAssetKey(activeItem), direction);
     ctx.drawImage(image, renderPosition.x + 2, renderPosition.y);
   }
 
@@ -434,9 +420,6 @@ export class PlayerClient extends ClientEntity implements IClientEntity, Rendera
   public deserializeProperty(key: string, value: any): void {
     if (key === "extensions" && Array.isArray(value)) {
       super.deserializeProperty(key, value);
-      if (value.some((ext: any) => ext.type === ClientInventory.type)) {
-        this.updateActiveItemFromInventory();
-      }
       return;
     }
 
@@ -445,24 +428,20 @@ export class PlayerClient extends ClientEntity implements IClientEntity, Rendera
       super.deserializeProperty(key, value);
       // Reconstruct input object whenever any input field changes
       this.reconstructInputObject();
-      // Update inventory if inventoryItem changed
-      if (key === "inputInventoryItem") {
-        this.updateActiveItemFromInventory();
-      }
+
       return;
     }
 
+    // activeItem is derived from inventory, ignore server's activeItem field
     if (key === "activeItem") {
-      // Ensure activeItem has a valid structure
-      if (value && typeof value === "object" && value.itemType) {
-        this.activeItem = value;
-      } else {
-        this.activeItem = null;
-      }
       return;
     }
 
     super.deserializeProperty(key, value);
+  }
+
+  public getActiveItem(): InventoryItem | null {
+    return this.getExt(ClientInventory).getActiveItem(this.input.inventoryItem);
   }
 
   private reconstructInputObject(): void {
@@ -494,17 +473,6 @@ export class PlayerClient extends ClientEntity implements IClientEntity, Rendera
   deserialize(data: RawEntity): void {
     super.deserialize(data);
     this.isCrafting = data.isCrafting;
-    if (data.activeItem !== undefined) {
-      // Ensure activeItem has a valid structure
-      if (data.activeItem && typeof data.activeItem === "object" && data.activeItem.itemType) {
-        this.activeItem = data.activeItem;
-      } else {
-        this.activeItem = null;
-        this.updateActiveItemFromInventory();
-      }
-    } else {
-      this.updateActiveItemFromInventory();
-    }
 
     // Reconstruct input object from individual fields (if they exist in data)
     // This handles the old JSON format for backward compatibility

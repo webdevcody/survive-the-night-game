@@ -30,4 +30,3 @@ export class ClientSnared extends BaseClientExtension {
     return this;
   }
 }
-

@@ -82,7 +82,6 @@ export class Player extends Entity {
         inputConsumeItemType: null as string | null,
         inputSprint: false,
         inputAimAngle: NaN, // NaN represents undefined for optional field
-        activeItem: null,
         pickupProgress: 0,
       },
       () => this.markEntityDirty()
@@ -127,9 +126,6 @@ export class Player extends Entity {
         },
       },
     ].forEach((item) => inventory.addItem(item));
-
-    // Initialize activeItem after inventory is set up
-    this.markActiveItemDirty();
   }
 
   private setPickupProgress(progress: number): void {
@@ -144,17 +140,6 @@ export class Player extends Entity {
   get activeItem(): InventoryItem | null {
     const serialized = this.serialized as any;
     return this.getExt(Inventory).getActiveItem(serialized.inputInventoryItem);
-  }
-
-  /**
-   * Mark activeItem as dirty when inventory changes.
-   * Since activeItem is computed from inventory, it needs to be marked dirty
-   * so it's included in delta updates sent to clients.
-   */
-  public markActiveItemDirty(): void {
-    // Update the computed activeItem value in serialized
-    const serialized = this.serialized as any;
-    serialized.activeItem = this.activeItem;
   }
 
   setIsCrafting(isCrafting: boolean): void {
@@ -267,8 +252,7 @@ export class Player extends Entity {
   }
 
   getActiveWeapon(): InventoryItem | null {
-    const serialized = this.serialized as any;
-    return this.getExt(Inventory).getActiveWeapon(serialized.activeItem);
+    return this.getExt(Inventory).getActiveWeapon(this.activeItem);
   }
 
   setPosition(position: Vector2) {
@@ -285,11 +269,6 @@ export class Player extends Entity {
     // Check if crafting succeeded (inventory changed or item was dropped)
     const inventoryChanged = JSON.stringify(inventory.getItems()) !== originalInventoryJson;
     const craftingSucceeded = inventoryChanged || result.itemToDrop !== undefined;
-
-    // Mark activeItem as dirty if inventory changed
-    if (inventoryChanged) {
-      this.markActiveItemDirty();
-    }
 
     // Update player's resource counts using generic setResource
     resourcesBag.setResource("wood", result.resources.wood);
@@ -575,9 +554,6 @@ export class Player extends Entity {
       // For other items, drop the entire stack
       const item = inventory.removeItem(itemIndex);
 
-      // Mark activeItem as dirty since inventory changed
-      this.markActiveItemDirty();
-
       if (item) {
         const entity = this.getEntityManager().createEntityFromItem(item);
 
@@ -747,17 +723,11 @@ export class Player extends Entity {
     serialized.inputConsumeItemType = input.consumeItemType ?? null;
     serialized.inputSprint = input.sprint ?? false;
     serialized.inputAimAngle = input.aimAngle ?? NaN; // NaN represents undefined
-    // Update activeItem if inventory slot changed
-    if (input.inventoryItem !== previousSlot) {
-      this.markActiveItemDirty();
-    }
   }
 
   selectInventoryItem(index: number) {
     const serialized = this.serialized as any;
     serialized.inputInventoryItem = index;
-    // Update activeItem when inventory slot changes
-    this.markActiveItemDirty();
   }
 
   setAsFiring(firing: boolean) {
