@@ -158,6 +158,10 @@ export class PlayerClient extends ClientEntity implements IClientEntity, Rendera
   }
 
   getHealth(): number {
+    if (!this.hasExt(ClientDestructible)) {
+      console.warn(`Player ${this.getId()} does not have destructible extension`);
+      return 0;
+    }
     return this.getExt(ClientDestructible).getHealth();
   }
 

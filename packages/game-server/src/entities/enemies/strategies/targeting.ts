@@ -49,6 +49,11 @@ export class TargetingSystem {
         continue;
       }
 
+      // Skip dead entities
+      if (entity.hasExt(Destructible) && entity.getExt(Destructible).isDead()) {
+        continue;
+      }
+
       const position = entity.getExt(Positionable).getCenterPosition();
       const distance = zombiePos.distance(position);
 
@@ -81,6 +86,11 @@ export class TargetingSystem {
 
     for (const entity of nearbyEntities) {
       if (!entity.hasExt(Destructible) || !entity.hasExt(Positionable)) continue;
+
+      // Skip dead entities
+      if (entity.getExt(Destructible).isDead()) {
+        continue;
+      }
 
       const position = entity.getExt(Positionable).getCenterPosition();
       const distance = zombiePos.distance(position);
