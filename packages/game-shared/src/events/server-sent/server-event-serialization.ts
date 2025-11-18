@@ -86,9 +86,9 @@ export function serializeServerEvent(event: string, args: any[]): Buffer | null 
     case ServerSentEvents.BIG_ZOMBIE_HURT:
     case ServerSentEvents.BIG_ZOMBIE_ATTACKED:
     case ServerSentEvents.PLAYER_HURT: {
-      // Simple string events - just write the string
-      const value = String(args[0] ?? "");
-      writer.writeString(value);
+      // Simple number events - write as UInt16
+      const value = Number(args[0] ?? 0);
+      writer.writeUInt16(value);
       break;
     }
     case ServerSentEvents.PLAYER_ATTACKED: {
@@ -266,7 +266,7 @@ export function deserializeServerEvent(event: string, buffer: ArrayBuffer): any[
     case ServerSentEvents.BIG_ZOMBIE_HURT:
     case ServerSentEvents.BIG_ZOMBIE_ATTACKED:
     case ServerSentEvents.PLAYER_HURT: {
-      const value = reader.readString();
+      const value = reader.readUInt16();
       return [value];
     }
     case ServerSentEvents.PLAYER_ATTACKED: {

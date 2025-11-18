@@ -47,7 +47,11 @@ export class CarClient extends ClientEntity implements Renderable {
 
   protected renderInteractionText(ctx: CanvasRenderingContext2D, gameState: GameState): void {
     // Only show interaction text if the car is damaged and has the interactive extension
-    if (!this.hasExt(ClientDestructible) || this.getHealth() >= this.getMaxHealth() || !this.hasExt(ClientInteractive)) {
+    if (
+      !this.hasExt(ClientDestructible) ||
+      this.getHealth() >= this.getMaxHealth() ||
+      !this.hasExt(ClientInteractive)
+    ) {
       return;
     }
 
