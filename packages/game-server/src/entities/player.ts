@@ -735,11 +735,26 @@ export class Player extends Entity {
     serialized.inputConsumeItemType = input.consumeItemType ?? null;
     serialized.inputSprint = input.sprint ?? false;
     serialized.inputAimAngle = input.aimAngle ?? NaN; // NaN represents undefined
+
+    // Mark inventory extension as dirty when inventory slot changes
+    // This ensures other clients receive inventory data to render the active item
+    if (previousSlot !== serialized.inputInventoryItem) {
+      const inventory = this.getExt(Inventory);
+      this.markExtensionDirty(inventory);
+    }
   }
 
   selectInventoryItem(index: number) {
     const serialized = this.serialized as any;
+    const previousSlot = serialized.inputInventoryItem;
     serialized.inputInventoryItem = index;
+
+    // Mark inventory extension as dirty when inventory slot changes
+    // This ensures other clients receive inventory data to render the active item
+    if (previousSlot !== index) {
+      const inventory = this.getExt(Inventory);
+      this.markExtensionDirty(inventory);
+    }
   }
 
   setAsFiring(firing: boolean) {

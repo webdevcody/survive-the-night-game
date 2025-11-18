@@ -22,10 +22,19 @@ export default class Illuminated extends ExtensionBase {
     return this;
   }
 
-  public serializeToBuffer(writer: BufferWriter | MonitoredBufferWriter, onlyDirty: boolean = false): void {
+  public serializeToBuffer(
+    writer: BufferWriter | MonitoredBufferWriter,
+    onlyDirty: boolean = false
+  ): void {
     const serialized = this.serialized as any;
-    if (writer instanceof MonitoredBufferWriter || (writer as any).constructor?.name === 'MonitoredBufferWriter') {
-      (writer as MonitoredBufferWriter).writeUInt8(encodeExtensionType(Illuminated.type), "ExtensionType");
+    if (
+      writer instanceof MonitoredBufferWriter ||
+      (writer as any).constructor?.name === "MonitoredBufferWriter"
+    ) {
+      (writer as MonitoredBufferWriter).writeUInt8(
+        encodeExtensionType(Illuminated.type),
+        "ExtensionType"
+      );
       (writer as MonitoredBufferWriter).writeUInt16(serialized.radius, "Radius");
     } else {
       writer.writeUInt8(encodeExtensionType(Illuminated.type));

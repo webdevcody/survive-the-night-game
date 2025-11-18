@@ -372,23 +372,20 @@ export class Entity<TSerializableFields extends readonly string[] = readonly str
     // Write extensions
     // When onlyDirty is true, only send extensions that are dirty
     // When onlyDirty is false (full state), send all extensions
+    // Exception: For first serialization, always send all extensions (even if onlyDirty=true)
     // The "only dirty" logic also applies to fields within extensions
     (global as any).logDepth = 1;
-    const extensionsToWrite: Extension[] = onlyDirty
-      ? this.getDirtyExtensions()
-      : Array.from(this.extensions.values());
+    const extensionsToWrite: Extension[] =
+      shouldSerializeAllExtensions || !onlyDirty
+        ? Array.from(this.extensions.values())
+        : this.getDirtyExtensions();
     if (extensionsToWrite.length > 255) {
       throw new Error(`Extension count ${extensionsToWrite.length} exceeds UInt8 maximum (255)`);
     }
     writeUInt8(extensionsToWrite.length, "ExtensionCount");
     for (let i = 0; i < extensionsToWrite.length; i++) {
       const ext = extensionsToWrite[i];
-      // Write extension to temporary buffer first to get its length
-      // const tempWriter = new MonitoredBufferWriter(1024);
       ext.serializeToBuffer(writer, onlyDirty && !isFirstSerialization);
-      // const extensionBuffer = tempWriter.getBuffer();
-      // Write extension data (length prefix handled by writeBuffer)
-      // writeBuffer(extensionBuffer, `ExtensionData[${i}]`);
     }
 
     // Write removed extensions array (if any)

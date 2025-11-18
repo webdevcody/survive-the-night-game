@@ -82,6 +82,14 @@ export class ClientEventListener {
     return this.hasReceivedMap && this.hasReceivedPlayerId && this.hasReceivedInitialState;
   }
 
+  /**
+   * Guards against processing events that depend on entities before initial state is received.
+   * Returns true if the event should be processed, false if it should be ignored.
+   */
+  private shouldProcessEntityEvent(): boolean {
+    return this.hasReceivedInitialState;
+  }
+
   constructor(client: GameClient, socketManager: ClientSocketManager) {
     this.gameClient = client;
     this.socketManager = socketManager;
@@ -170,6 +178,7 @@ export class ClientEventListener {
   }
 
   onGunEmpty(gunEmptyEvent: GunEmptyEvent) {
+    if (!this.shouldProcessEntityEvent()) return;
     const player = this.gameClient.getEntityById(gunEmptyEvent.getEntityId());
     if (!player || !(player instanceof PlayerClient)) return;
 
@@ -180,6 +189,7 @@ export class ClientEventListener {
   }
 
   onGunFired(gunFiredEvent: GunFiredEvent) {
+    if (!this.shouldProcessEntityEvent()) return;
     const player = this.gameClient.getEntityById(gunFiredEvent.getEntityId());
     if (!player || !(player instanceof PlayerClient)) return;
 
@@ -190,6 +200,7 @@ export class ClientEventListener {
   }
 
   onCoinPickup(coinPickupEvent: CoinPickupEvent) {
+    if (!this.shouldProcessEntityEvent()) return;
     const coin = this.gameClient.getEntityById(coinPickupEvent.getEntityId());
     if (!coin) return;
 
@@ -200,6 +211,7 @@ export class ClientEventListener {
   }
 
   onPlayerLeft(playerLeftEvent: PlayerLeftEvent) {
+    if (!this.shouldProcessEntityEvent()) return;
     const playerId = playerLeftEvent.getPlayerId();
     const player = this.gameClient.getEntityById(playerId);
     if (!player) return;
@@ -575,6 +587,7 @@ export class ClientEventListener {
   }
 
   onZombieAttacked(zombieAttackedEvent: ZombieAttackedEvent) {
+    if (!this.shouldProcessEntityEvent()) return;
     const zombie = this.gameClient.getEntityById(zombieAttackedEvent.getZombieId());
     if (!zombie) return;
 
@@ -598,6 +611,7 @@ export class ClientEventListener {
   }
 
   onPlayerHurt(playerHurtEvent: PlayerHurtEvent) {
+    if (!this.shouldProcessEntityEvent()) return;
     const player = this.gameClient.getEntityById(playerHurtEvent.getPlayerId());
     if (!player || !(player instanceof PlayerClient)) return;
 
@@ -621,6 +635,7 @@ export class ClientEventListener {
   }
 
   onLoot(lootEvent: LootEvent) {
+    if (!this.shouldProcessEntityEvent()) return;
     const loot = this.gameClient.getEntityById(lootEvent.getEntityId());
     if (!loot) return;
 
@@ -632,6 +647,7 @@ export class ClientEventListener {
   }
 
   onPlayerDeath(playerDeathEvent: PlayerDeathEvent) {
+    if (!this.shouldProcessEntityEvent()) return;
     this.gameClient.getHud().showPlayerDeath(playerDeathEvent.getDisplayName());
 
     const player = this.gameClient.getEntityById(playerDeathEvent.getPlayerId());
@@ -644,6 +660,7 @@ export class ClientEventListener {
   }
 
   onPlayerAttacked(playerAttackedEvent: PlayerAttackedEvent) {
+    if (!this.shouldProcessEntityEvent()) return;
     const entity = this.gameClient.getEntityById(playerAttackedEvent.getPlayerId());
     if (!entity) return;
 
@@ -714,6 +731,7 @@ export class ClientEventListener {
   }
 
   onZombieDeath(zombieDeathEvent: ZombieDeathEvent) {
+    if (!this.shouldProcessEntityEvent()) return;
     const zombie = this.gameClient.getEntityById(zombieDeathEvent.getZombieId());
     if (!zombie) return;
 
@@ -738,6 +756,7 @@ export class ClientEventListener {
   }
 
   onZombieHurt(zombieHurtEvent: ZombieHurtEvent) {
+    if (!this.shouldProcessEntityEvent()) return;
     const zombie = this.gameClient.getEntityById(zombieHurtEvent.getZombieId());
     if (!zombie) return;
 
@@ -748,6 +767,7 @@ export class ClientEventListener {
   }
 
   onPlayerDroppedItem(playerDroppedItemEvent: PlayerDroppedItemEvent) {
+    if (!this.shouldProcessEntityEvent()) return;
     const player = this.gameClient.getEntityById(playerDroppedItemEvent.getPlayerId());
     if (!player || !(player instanceof PlayerClient)) return;
 
@@ -758,6 +778,7 @@ export class ClientEventListener {
   }
 
   onPlayerPickedUpItem(playerPickedUpItemEvent: PlayerPickedUpItemEvent) {
+    if (!this.shouldProcessEntityEvent()) return;
     const player = this.gameClient.getEntityById(playerPickedUpItemEvent.getPlayerId());
     if (!player || !(player instanceof PlayerClient)) return;
 
@@ -768,6 +789,7 @@ export class ClientEventListener {
   }
 
   onPlayerPickedUpResource(playerPickedUpResourceEvent: PlayerPickedUpResourceEvent) {
+    if (!this.shouldProcessEntityEvent()) return;
     const player = this.gameClient.getEntityById(playerPickedUpResourceEvent.getPlayerId());
     if (!player || !(player instanceof PlayerClient)) return;
 
@@ -809,6 +831,7 @@ export class ClientEventListener {
   }
 
   onExplosion(event: ExplosionEvent) {
+    if (!this.shouldProcessEntityEvent()) return;
     const particle = new ExplosionParticle(
       this.gameClient.getImageLoader(),
       this.gameClient.getSoundManager()
@@ -840,6 +863,7 @@ export class ClientEventListener {
   }
 
   onCarRepair(carRepairEvent: CarRepairEvent) {
+    if (!this.shouldProcessEntityEvent()) return;
     const car = this.gameClient.getEntityById(carRepairEvent.getCarId());
     if (!car || !car.hasExt(ClientPositionable)) return;
 
@@ -872,6 +896,7 @@ export class ClientEventListener {
   }
 
   onCraft(craftEvent: CraftEvent) {
+    if (!this.shouldProcessEntityEvent()) return;
     const player = this.gameClient.getEntityById(craftEvent.getPlayerId());
     if (!player || !player.hasExt(ClientPositionable)) return;
 
