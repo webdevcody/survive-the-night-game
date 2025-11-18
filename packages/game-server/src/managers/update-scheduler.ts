@@ -8,7 +8,7 @@
 
 import { IEntity } from "@/entities/types";
 import { Entity } from "@/entities/entity";
-import { Player } from "@/entities/player";
+import { Player } from "@/entities/players/player";
 import Positionable from "@/extensions/positionable";
 import { getConfig } from "@shared/config";
 import { Entities } from "@/constants";

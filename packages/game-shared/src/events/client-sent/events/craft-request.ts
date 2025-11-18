@@ -1,16 +1,36 @@
+import { EventType, ClientSentEvents } from "../../events";
+import { GameEvent } from "../../types";
 import { ArrayBufferWriter, BufferReader } from "../../../util/buffer-serialization";
 import type { RecipeType } from "../../../util/recipes";
 
-export function serialize(args: any[]): ArrayBuffer | null {
-  const writer = new ArrayBufferWriter(256);
-  const recipe = (args[0] ?? "") as RecipeType | string;
-  writer.writeString(String(recipe));
-  return writer.getBuffer();
-}
+export type CraftRequestEventData = RecipeType;
 
-export function deserialize(buffer: ArrayBuffer): any[] | null {
-  const reader = new BufferReader(buffer);
-  const recipe = reader.readString() as RecipeType;
-  return [recipe];
+export class CraftRequestEvent implements GameEvent<CraftRequestEventData> {
+  private readonly type: EventType = ClientSentEvents.CRAFT_REQUEST;
+  private readonly data: CraftRequestEventData;
+
+  constructor(data: CraftRequestEventData) {
+    this.data = data;
+  }
+
+  getType(): EventType {
+    return this.type;
+  }
+
+  serialize(): CraftRequestEventData {
+    return this.data;
+  }
+
+  getRecipe(): RecipeType {
+    return this.data;
+  }
+
+  static serializeToBuffer(writer: ArrayBufferWriter, data: CraftRequestEventData): void {
+    writer.writeString(String(data));
+  }
+
+  static deserializeFromBuffer(reader: BufferReader): CraftRequestEventData {
+    return reader.readString() as RecipeType;
+  }
 }
 

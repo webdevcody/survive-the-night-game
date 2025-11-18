@@ -5,7 +5,7 @@ import { Entities, PLAYER_TYPES } from "@/constants";
 import { Entity } from "@/entities/entity";
 import Vector2 from "@/util/vector2";
 import PoolManager from "@shared/util/pool-manager";
-import { CoinPickupEvent } from "@shared/events/server-sent/coin-pickup-event";
+import { CoinPickupEvent } from "../../../../game-shared/src/events/server-sent/events/coin-pickup-event";
 import { getConfig } from "@shared/config";
 
 export class Coin extends Entity {

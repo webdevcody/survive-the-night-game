@@ -3,7 +3,7 @@ import { Extension } from "@/extensions/types";
 import { ResourceType } from "@shared/util/inventory";
 import { resourceRegistry } from "@shared/entities";
 import { Broadcaster } from "@/managers/types";
-import { PlayerPickedUpResourceEvent } from "@shared/events/server-sent/pickup-resource-event";
+import { PlayerPickedUpResourceEvent } from "../../../game-shared/src/events/server-sent/events/pickup-resource-event";
 import { BufferWriter } from "@shared/util/buffer-serialization";
 import { encodeExtensionType } from "@shared/util/extension-type-encoding";
 import { ExtensionBase } from "./extension-base";

@@ -10,7 +10,7 @@ import { IEntityManager } from "@/managers/types";
 import Positionable from "@/extensions/positionable";
 import Vector2 from "@/util/vector2";
 import PoolManager from "@shared/util/pool-manager";
-import { Player } from "@/entities/player";
+import { Player } from "@/entities/players/player";
 import { ADMIN_PASSWORD } from "@/config/env";
 
 export class CommandManager {
@@ -46,7 +46,9 @@ export class CommandManager {
     });
     if (!item) return;
     const poolManager = PoolManager.getInstance();
-    item.getExt(Positionable).setPosition(poolManager.vector2.claim(payload.position.x + 32, payload.position.y));
+    item
+      .getExt(Positionable)
+      .setPosition(poolManager.vector2.claim(payload.position.x + 32, payload.position.y));
     this.entityManager.addEntity(item);
   }
 
@@ -55,7 +57,9 @@ export class CommandManager {
     if (!entity) return;
     entity
       .getExt(Positionable)
-      .setPosition(PoolManager.getInstance().vector2.claim(payload.position.x + 32, payload.position.y));
+      .setPosition(
+        PoolManager.getInstance().vector2.claim(payload.position.x + 32, payload.position.y)
+      );
     this.entityManager.addEntity(entity);
   }
 

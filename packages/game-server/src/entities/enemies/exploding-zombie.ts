@@ -10,7 +10,7 @@ import { MeleeAttackStrategy } from "./strategies/attack";
 import { IEntity } from "../types";
 import Positionable from "@/extensions/positionable";
 import Destructible from "@/extensions/destructible";
-import { ExplosionEvent } from "@/events/server-sent/explosion-event";
+import { ExplosionEvent } from "../../../../game-shared/src/events/server-sent/events/explosion-event";
 
 export class ExplodingZombie extends BaseEnemy {
   private static readonly EXPLOSION_RADIUS = 32;

@@ -1,5 +1,5 @@
 import { entityOverrideRegistry } from "./entity-override-registry";
-import { Player } from "@/entities/player";
+import { Player } from "@/entities/players/player";
 import { Zombie } from "@/entities/enemies/zombie";
 import { BigZombie } from "@/entities/enemies/big-zombie";
 import { FastZombie } from "@/entities/enemies/fast-zombie";
@@ -49,7 +49,7 @@ import { CampsiteFire } from "@/entities/environment/campsite-fire";
 import { Merchant } from "@/entities/environment/merchant";
 import { Car } from "@/entities/environment/car";
 import { Survivor } from "@/entities/environment/survivor";
-import { Blood } from "@/entities/blood";
+import { Blood } from "@/entities/effects/blood";
 
 /**
  * Registers all custom entity classes in the override registry
@@ -124,6 +124,4 @@ export function registerCustomEntities(): void {
   entityOverrideRegistry.register("car", Car);
   entityOverrideRegistry.register("survivor", Survivor);
   entityOverrideRegistry.register("blood", Blood);
-
-  // Note: Boundary is server-only and created manually, no need to register
 }

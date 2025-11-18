@@ -4,7 +4,7 @@ import Movable from "@/extensions/movable";
 import Destructible from "@/extensions/destructible";
 import { Cooldown } from "@/entities/util/cooldown";
 import { getConfig } from "@shared/config";
-import { ZombieAttackedEvent } from "@/events/server-sent/zombie-attacked-event";
+import { ZombieAttackedEvent } from "../../../../../../game-shared/src/events/server-sent/events/zombie-attacked-event";
 import { LeapConfig } from "@shared/entities";
 import { velocityTowards } from "@/util/physics";
 import { TargetingSystem } from "../targeting";
@@ -55,12 +55,14 @@ export class LeapingAttackStrategy implements AttackStrategy {
       // Initiate leap - apply velocity boost
       const leapVelocity = velocityTowards(zombiePos.clone(), playerPos.clone());
       const poolManager = PoolManager.getInstance();
-      zombie.getExt(Movable).setVelocity(
-        poolManager.vector2.claim(
-          leapVelocity.x * this.leapConfig.leapSpeed,
-          leapVelocity.y * this.leapConfig.leapSpeed
-        )
-      );
+      zombie
+        .getExt(Movable)
+        .setVelocity(
+          poolManager.vector2.claim(
+            leapVelocity.x * this.leapConfig.leapSpeed,
+            leapVelocity.y * this.leapConfig.leapSpeed
+          )
+        );
       this.leapingState.isLeaping = true;
       this.leapDuration = 0;
       this.leapCooldown.reset();

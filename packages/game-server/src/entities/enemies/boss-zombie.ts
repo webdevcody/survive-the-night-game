@@ -6,7 +6,7 @@ import { MeleeAttackStrategy } from "./strategies/attack";
 import { Cooldown } from "@/entities/util/cooldown";
 import { Zombie } from "./zombie";
 import Positionable from "@/extensions/positionable";
-import { BossSummonEvent } from "@shared/events/server-sent/boss-summon-event";
+import { BossSummonEvent } from "../../../../game-shared/src/events/server-sent/events/boss-summon-event";
 import Vector2 from "@shared/util/vector2";
 import Destructible from "@/extensions/destructible";
 
@@ -83,7 +83,10 @@ export class BossZombie extends BossEnemy {
     const distance =
       BossZombie.MIN_SUMMON_RADIUS +
       Math.random() * (BossZombie.SUMMON_RADIUS - BossZombie.MIN_SUMMON_RADIUS);
-    return new Vector2(center.x + Math.cos(angle) * distance, center.y + Math.sin(angle) * distance);
+    return new Vector2(
+      center.x + Math.cos(angle) * distance,
+      center.y + Math.sin(angle) * distance
+    );
   }
 
   private broadcastSummonEvent(summons: Array<{ x: number; y: number }>): void {

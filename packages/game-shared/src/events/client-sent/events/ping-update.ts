@@ -1,15 +1,34 @@
+import { EventType, ClientSentEvents } from "../../events";
+import { GameEvent } from "../../types";
 import { ArrayBufferWriter, BufferReader } from "../../../util/buffer-serialization";
 
-export function serialize(args: any[]): ArrayBuffer | null {
-  const writer = new ArrayBufferWriter(256);
-  const latency = Number(args[0] ?? 0);
-  writer.writeFloat64(latency);
-  return writer.getBuffer();
-}
+export type PingUpdateEventData = number;
 
-export function deserialize(buffer: ArrayBuffer): any[] | null {
-  const reader = new BufferReader(buffer);
-  const latency = reader.readFloat64();
-  return [latency];
-}
+export class PingUpdateEvent implements GameEvent<PingUpdateEventData> {
+  private readonly type: EventType = ClientSentEvents.PING_UPDATE;
+  private readonly data: PingUpdateEventData;
 
+  constructor(data: PingUpdateEventData) {
+    this.data = data;
+  }
+
+  getType(): EventType {
+    return this.type;
+  }
+
+  serialize(): PingUpdateEventData {
+    return this.data;
+  }
+
+  getLatency(): number {
+    return this.data;
+  }
+
+  static serializeToBuffer(writer: ArrayBufferWriter, data: PingUpdateEventData): void {
+    writer.writeFloat64(data);
+  }
+
+  static deserializeFromBuffer(reader: BufferReader): PingUpdateEventData {
+    return reader.readFloat64();
+  }
+}

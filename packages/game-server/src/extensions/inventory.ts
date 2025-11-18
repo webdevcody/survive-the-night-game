@@ -2,7 +2,7 @@ import { Extension } from "@/extensions/types";
 import { InventoryItem, ItemType, isWeapon } from "../../../game-shared/src/util/inventory";
 import { recipes, RecipeType } from "../../../game-shared/src/util/recipes";
 import { Broadcaster } from "@/managers/types";
-import { PlayerPickedUpItemEvent } from "@shared/events/server-sent/pickup-item-event";
+import { PlayerPickedUpItemEvent } from "../../../game-shared/src/events/server-sent/events/pickup-item-event";
 import Positionable from "@/extensions/positionable";
 import { IEntity } from "@/entities/types";
 import Vector2 from "@/util/vector2";
@@ -241,10 +241,7 @@ export default class Inventory extends ExtensionBase {
     return this.self.getEntityManager()!.createEntityFromItem(item);
   }
 
-  public serializeToBuffer(
-    writer: BufferWriter,
-    onlyDirty: boolean = false
-  ): void {
+  public serializeToBuffer(writer: BufferWriter, onlyDirty: boolean = false): void {
     const serialized = this.serialized as any;
     writer.writeUInt8(encodeExtensionType(Inventory.type));
     writer.writeArray(serialized.items, (item: InventoryItem | null) => {
