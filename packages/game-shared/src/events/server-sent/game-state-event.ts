@@ -12,6 +12,11 @@ import {
   GAME_STATE_BIT_IS_FULL_STATE,
   GAME_STATE_BIT_REMOVED_ENTITY_IDS,
   GAME_STATE_FIELD_BITS,
+  FIELD_TYPE_STRING,
+  FIELD_TYPE_NUMBER,
+  FIELD_TYPE_BOOLEAN,
+  FIELD_TYPE_OBJECT,
+  FIELD_TYPE_NULL,
 } from "../../util/serialization-constants";
 import { entityTypeRegistry } from "../../util/entity-type-encoding";
 import { decodeExtensionType } from "../../util/extension-type-encoding";
@@ -224,22 +229,41 @@ export class GameStateEvent implements GameEvent<GameStateData> {
     const fieldCount = reader.readUInt8();
     for (let i = 0; i < fieldCount; i++) {
       const fieldName = reader.readString();
-      const valueType = reader.readUInt32();
+      const valueType = reader.readUInt8();
       let value: any;
-      if (valueType === 0) {
+      if (valueType === FIELD_TYPE_STRING) {
         value = reader.readString();
-      } else if (valueType === 1) {
-        value = reader.readFloat64();
-      } else if (valueType === 2) {
+      } else if (valueType === FIELD_TYPE_NUMBER) {
+        // Read number subtype: 0=uint8, 1=uint16, 2=uint32, 3=float64
+        const numberSubtype = reader.readUInt8();
+        if (numberSubtype === 0) {
+          // uint8
+          value = reader.readUInt8();
+        } else if (numberSubtype === 1) {
+          // uint16
+          value = reader.readUInt16();
+        } else if (numberSubtype === 2) {
+          // uint32 - check for optional field sentinel (0xFFFFFFFF)
+          const numValue = reader.readUInt32();
+          value = numValue === 0xffffffff ? undefined : numValue;
+        } else {
+          // float64 (subtype 3) - check for optional field sentinel (NaN)
+          const numValue = reader.readFloat64();
+          value = isNaN(numValue) ? undefined : numValue;
+        }
+      } else if (valueType === FIELD_TYPE_BOOLEAN) {
         value = reader.readBoolean();
-      } else if (valueType === 3) {
+      } else if (valueType === FIELD_TYPE_OBJECT) {
         const jsonStr = reader.readString();
         try {
           value = JSON.parse(jsonStr);
         } catch {
           value = jsonStr;
         }
+      } else if (valueType === FIELD_TYPE_NULL) {
+        value = null;
       } else {
+        // Unknown type - fallback to reading as string
         value = reader.readString();
       }
       entityData[fieldName] = value;

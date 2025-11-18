@@ -12,6 +12,7 @@ import {
   FIELD_TYPE_NUMBER,
   FIELD_TYPE_BOOLEAN,
   FIELD_TYPE_OBJECT,
+  FIELD_TYPE_NULL,
 } from "@shared/util/serialization-constants";
 
 export class Entity<TSerializableFields extends readonly string[] = readonly string[]>
@@ -313,49 +314,60 @@ export class Entity<TSerializableFields extends readonly string[] = readonly str
       throw new Error(`Field count ${fieldValues.length} exceeds UInt8 maximum (255)`);
     }
     writeUInt8(fieldValues.length, "FieldCount");
-    // for (let i = 0; i < fieldValues.length; i++) {
-    //   const field = fieldValues[i];
-    //   writeString(field.name, `FieldName[${i}]`);
-    //   const value = field.value;
 
-    //   if (typeof value === "string") {
-    //     writeUInt8(FIELD_TYPE_STRING, `FieldType[${i}]`);
-    //     writeString(value, `FieldValue[${i}]`);
-    //   } else if (typeof value === "number") {
-    //     writeUInt8(FIELD_TYPE_NUMBER, `FieldType[${i}]`);
-    //     // Special cases for field-specific serialization
-    //     if (field.name === "ping") {
-    //       writeUInt16(value, `FieldValue[${i}]`);
-    //     } else if (field.name === "inputFacing" || field.name === "inputInventoryItem") {
-    //       // Input fields that are UInt8
-    //       writeUInt8(value, `FieldValue[${i}]`);
-    //     } else if (field.name === "inputSequenceNumber") {
-    //       // Optional UInt32 field - -1 represents undefined (but we serialize as UInt32, so use max value or handle specially)
-    //       // Actually, UInt32 can't be negative, so let's use 0xFFFFFFFF as sentinel
-    //       const numValue = value === undefined || value === -1 ? 0xffffffff : value;
-    //       writeUInt32(numValue, `FieldValue[${i}]`);
-    //     } else if (field.name === "inputAimAngle") {
-    //       // Optional Float64 field - NaN represents undefined
-    //       const numValue = value === undefined || isNaN(value) ? NaN : value;
-    //       writeFloat64(numValue, `FieldValue[${i}]`);
-    //     } else {
-    //       writeFloat64(value, `FieldValue[${i}]`);
-    //     }
-    //   } else if (typeof value === "boolean") {
-    //     writeUInt8(FIELD_TYPE_BOOLEAN, `FieldType[${i}]`);
-    //     writeBoolean(value, `FieldValue[${i}]`);
-    //   } else if (value === null) {
-    //     // Handle null values (e.g., inputConsumeItemType)
-    //     writeUInt8(FIELD_TYPE_STRING, `FieldType[${i}]`); // Use STRING type for null
-    //     writeString("", `FieldValue[${i}]`); // Empty string represents null
-    //   } else if (value && typeof value === "object") {
-    //     writeUInt8(FIELD_TYPE_OBJECT, `FieldType[${i}]`);
-    //     writeString(JSON.stringify(value), `FieldValue[${i}]`);
-    //   } else {
-    //     writeUInt8(FIELD_TYPE_STRING, `FieldType[${i}]`); // Type: string (fallback)
-    //     writeString(String(value ?? ""), `FieldValue[${i}]`);
-    //   }
-    // }
+    // Write field names and values
+    for (let i = 0; i < fieldValues.length; i++) {
+      const field = fieldValues[i];
+      writeString(field.name, `FieldName[${i}]`);
+      const value = field.value;
+      const metadata = this.serialized.getFieldMetadata?.(field.name);
+
+      if (typeof value === "string") {
+        writeUInt8(FIELD_TYPE_STRING, `FieldType[${i}]`);
+        writeString(value, `FieldValue[${i}]`);
+      } else if (typeof value === "number") {
+        writeUInt8(FIELD_TYPE_NUMBER, `FieldType[${i}]`);
+        // Use metadata to determine number serialization type, fallback to float64
+        const numberType = metadata?.numberType || "float64";
+        // Write number subtype: 0=uint8, 1=uint16, 2=uint32, 3=float64
+        const numberSubtype =
+          numberType === "uint8"
+            ? 0
+            : numberType === "uint16"
+            ? 1
+            : numberType === "uint32"
+            ? 2
+            : 3;
+        writeUInt8(numberSubtype, `NumberSubtype[${i}]`);
+        if (numberType === "uint8") {
+          writeUInt8(value, `FieldValue[${i}]`);
+        } else if (numberType === "uint16") {
+          writeUInt16(value, `FieldValue[${i}]`);
+        } else if (numberType === "uint32") {
+          // Handle optional fields: undefined/-1 becomes 0xFFFFFFFF
+          const numValue =
+            metadata?.optional && (value === undefined || value === -1) ? 0xffffffff : value;
+          writeUInt32(numValue, `FieldValue[${i}]`);
+        } else {
+          // float64 - handle optional fields: undefined becomes NaN
+          const numValue = metadata?.optional && value === undefined ? NaN : value;
+          writeFloat64(numValue, `FieldValue[${i}]`);
+        }
+      } else if (typeof value === "boolean") {
+        writeUInt8(FIELD_TYPE_BOOLEAN, `FieldType[${i}]`);
+        writeBoolean(value, `FieldValue[${i}]`);
+      } else if (value === null) {
+        // Handle null values using dedicated null type
+        writeUInt8(FIELD_TYPE_NULL, `FieldType[${i}]`);
+        // No value written for null
+      } else if (value && typeof value === "object") {
+        writeUInt8(FIELD_TYPE_OBJECT, `FieldType[${i}]`);
+        writeString(JSON.stringify(value), `FieldValue[${i}]`);
+      } else {
+        writeUInt8(FIELD_TYPE_STRING, `FieldType[${i}]`); // Type: string (fallback)
+        writeString(String(value ?? ""), `FieldValue[${i}]`);
+      }
+    }
 
     // Write extensions
     // When onlyDirty is true, only send extensions that are dirty

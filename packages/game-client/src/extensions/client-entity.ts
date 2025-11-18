@@ -13,6 +13,7 @@ import {
   FIELD_TYPE_NUMBER,
   FIELD_TYPE_BOOLEAN,
   FIELD_TYPE_OBJECT,
+  FIELD_TYPE_NULL,
 } from "@shared/util/serialization-constants";
 
 export abstract class ClientEntityBase {
@@ -216,54 +217,51 @@ export abstract class ClientEntityBase {
       console.warn(`Entity type mismatch: expected ${this.type}, got ${type}`);
     }
 
-    // Read field count (server writes this even though fields are commented out)
+    // Read field count and fields
     const fieldCount = currentReader.readUInt8();
-    // Fields are not currently serialized, so we skip reading them
-    // for (let i = 0; i < fieldCount; i++) {
-    //   const fieldName = currentReader.readString();
-    //   const valueType = currentReader.readUInt8();
-    //   let value: any;
-    //   if (valueType === FIELD_TYPE_STRING) {
-    //     const strValue = currentReader.readString();
-    //     // Handle null values (empty string represents null for nullable fields)
-    //     if (fieldName === "inputConsumeItemType" && strValue === "") {
-    //       value = null;
-    //     } else {
-    //       value = strValue;
-    //     }
-    //   } else if (valueType === FIELD_TYPE_NUMBER) {
-    //     // Special cases for field-specific deserialization
-    //     if (fieldName === "ping") {
-    //       value = currentReader.readUInt16();
-    //     } else if (fieldName === "inputFacing" || fieldName === "inputInventoryItem") {
-    //       // Input fields that are UInt8
-    //       value = currentReader.readUInt8();
-    //     } else if (fieldName === "inputSequenceNumber") {
-    //       // Optional UInt32 field - 0xFFFFFFFF represents undefined
-    //       const numValue = currentReader.readUInt32();
-    //       value = numValue === 0xffffffff ? undefined : numValue;
-    //     } else if (fieldName === "inputAimAngle") {
-    //       // Optional Float64 field - NaN represents undefined
-    //       const numValue = currentReader.readFloat64();
-    //       value = isNaN(numValue) ? undefined : numValue;
-    //     } else {
-    //       value = currentReader.readFloat64();
-    //     }
-    //   } else if (valueType === FIELD_TYPE_BOOLEAN) {
-    //     value = currentReader.readBoolean();
-    //   } else if (valueType === FIELD_TYPE_OBJECT) {
-    //     const jsonStr = currentReader.readString();
-    //     try {
-    //       value = JSON.parse(jsonStr);
-    //     } catch {
-    //       value = jsonStr;
-    //     }
-    //   } else {
-    //     // Unknown type - fallback to reading as string
-    //     value = currentReader.readString();
-    //   }
-    //   (this as any)[fieldName] = value;
-    // }
+
+    for (let i = 0; i < fieldCount; i++) {
+      const fieldName = currentReader.readString();
+      const valueType = currentReader.readUInt8();
+      let value: any;
+      if (valueType === FIELD_TYPE_STRING) {
+        value = currentReader.readString();
+      } else if (valueType === FIELD_TYPE_NULL) {
+        value = null;
+      } else if (valueType === FIELD_TYPE_NUMBER) {
+        // Read number subtype: 0=uint8, 1=uint16, 2=uint32, 3=float64
+        const numberSubtype = currentReader.readUInt8();
+        if (numberSubtype === 0) {
+          // uint8
+          value = currentReader.readUInt8();
+        } else if (numberSubtype === 1) {
+          // uint16
+          value = currentReader.readUInt16();
+        } else if (numberSubtype === 2) {
+          // uint32 - check for optional field sentinel (0xFFFFFFFF)
+          const numValue = currentReader.readUInt32();
+          value = numValue === 0xffffffff ? undefined : numValue;
+        } else {
+          // float64 (subtype 3) - check for optional field sentinel (NaN)
+          const numValue = currentReader.readFloat64();
+          value = isNaN(numValue) ? undefined : numValue;
+        }
+      } else if (valueType === FIELD_TYPE_BOOLEAN) {
+        value = currentReader.readBoolean();
+      } else if (valueType === FIELD_TYPE_OBJECT) {
+        const jsonStr = currentReader.readString();
+        try {
+          value = JSON.parse(jsonStr);
+        } catch {
+          value = jsonStr;
+        }
+      } else {
+        // Unknown type - fallback to reading as string
+        value = currentReader.readString();
+      }
+      // Store the value on the entity instance
+      (this as any)[fieldName] = value;
+    }
 
     const extensionCount = currentReader.readUInt8();
     const existingExtensions = new Map<string, ClientExtension>();

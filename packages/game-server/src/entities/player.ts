@@ -84,7 +84,15 @@ export class Player extends Entity {
         inputAimAngle: NaN, // NaN represents undefined for optional field
         pickupProgress: 0,
       },
-      () => this.markEntityDirty()
+      () => this.markEntityDirty(),
+      {
+        // Define serialization metadata for number fields
+        ping: { numberType: "uint16" },
+        inputFacing: { numberType: "uint8" },
+        inputInventoryItem: { numberType: "uint8" },
+        inputAimAngle: { numberType: "float64", optional: true },
+        // Note: inputSequenceNumber is not in SerializableFields, so no metadata needed
+      }
     );
 
     this.addExtension(new Inventory(this, gameManagers.getBroadcaster()));

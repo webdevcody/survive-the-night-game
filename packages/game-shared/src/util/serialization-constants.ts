@@ -6,6 +6,7 @@ export const FIELD_TYPE_STRING = 0;
 export const FIELD_TYPE_NUMBER = 1;
 export const FIELD_TYPE_BOOLEAN = 2;
 export const FIELD_TYPE_OBJECT = 3;
+export const FIELD_TYPE_NULL = 4;
 
 /**
  * Bitset flags for game state fields
