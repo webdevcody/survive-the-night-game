@@ -117,11 +117,7 @@ export class GameClient {
       // Update inventory bar hover state
       if (this.hud) {
         this.hud.updateMousePosition(x, y, canvas.width, canvas.height);
-      }
-
-      // Forward mouse move to fullscreen map for drag handling
-      if (isFullscreenMapOpen && this.hud) {
-        this.hud.handleMouseMove(x, y);
+        this.hud.handleMouseMove(x, y, canvas.width, canvas.height);
       }
 
       // Block aiming when fullscreen map is open
@@ -183,12 +179,16 @@ export class GameClient {
     canvas.addEventListener("mouseup", (e) => {
       if (e.button !== 0) return; // Only handle left click
 
+      const rect = canvas.getBoundingClientRect();
+      const scaleX = canvas.width / rect.width;
+      const scaleY = canvas.height / rect.height;
+      const x = (e.clientX - rect.left) * scaleX;
+      const y = (e.clientY - rect.top) * scaleY;
       // Check if fullscreen map is open
       const isFullscreenMapOpen = this.hud?.isFullscreenMapOpen() ?? false;
 
-      // Forward mouse up to fullscreen map for drag handling
-      if (isFullscreenMapOpen && this.hud) {
-        this.hud.handleMouseUp();
+      if (this.hud) {
+        this.hud.handleMouseUp(x, y, canvas.width, canvas.height);
       }
 
       // Block weapon release when fullscreen map is open

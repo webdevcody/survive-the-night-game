@@ -62,6 +62,30 @@ const HOTBAR_SETTINGS = {
   },
 };
 
+const DRAG_START_THRESHOLD = 12;
+const DRAG_START_THRESHOLD_SQUARED = DRAG_START_THRESHOLD * DRAG_START_THRESHOLD;
+
+type HotbarMetrics = {
+  hotbarX: number;
+  hotbarY: number;
+  hotbarWidth: number;
+  hotbarHeight: number;
+  slotsLeft: number;
+  slotsTop: number;
+  slotSize: number;
+  slotsGap: number;
+  slotsNumber: number;
+};
+
+type DragState = {
+  slotIndex: number;
+  startX: number;
+  startY: number;
+  currentX: number;
+  currentY: number;
+  isDragging: boolean;
+};
+
 export class InventoryBarUI implements Renderable {
   private assetManager: AssetManager;
   private inputManager: InputManager;
@@ -71,6 +95,9 @@ export class InventoryBarUI implements Renderable {
   private hoveredSlot: number | null = null;
   private mouseX: number = 0;
   private mouseY: number = 0;
+  private dragState: DragState | null = null;
+  private lastCanvasWidth: number = 0;
+  private lastCanvasHeight: number = 0;
 
   public constructor(
     assetManager: AssetManager,
@@ -133,68 +160,103 @@ export class InventoryBarUI implements Renderable {
   ): void {
     this.mouseX = x;
     this.mouseY = y;
+    this.lastCanvasWidth = canvasWidth;
+    this.lastCanvasHeight = canvasHeight;
 
-    const settings = HOTBAR_SETTINGS.Inventory;
-    const slotsNumber = getConfig().player.MAX_INVENTORY_SLOTS;
+    if (this.dragState) {
+      this.dragState.currentX = x;
+      this.dragState.currentY = y;
+      if (this.dragState.isDragging) {
+        this.hoveredSlot = null;
+        return;
+      }
+    }
 
-    const hotbarWidth =
-      slotsNumber * settings.slotSize +
-      (slotsNumber - 1) * settings.slotsGap +
-      settings.padding.left +
-      settings.padding.right;
-    const hotbarHeight = settings.slotSize + settings.padding.top + settings.padding.bottom;
+    const metrics = this.getHotbarMetrics(canvasWidth, canvasHeight);
+    if (!metrics) {
+      this.hoveredSlot = null;
+      return;
+    }
 
-    const hotbarX = canvasWidth / 2 - hotbarWidth / 2;
-    const hotbarY = canvasHeight - hotbarHeight - settings.screenMarginBottom;
+    this.hoveredSlot = this.getSlotIndexAtPosition(x, y, metrics);
+  }
 
-    const slotsLeft = hotbarX + settings.padding.left;
-    const slotsTop = hotbarY + settings.padding.top;
+  public handleClick(x: number, y: number, canvasWidth: number, canvasHeight: number): boolean {
+    this.lastCanvasWidth = canvasWidth;
+    this.lastCanvasHeight = canvasHeight;
 
-    // Check which slot is being hovered
-    this.hoveredSlot = null;
-    for (let i = 0; i < slotsNumber; i++) {
-      const slotLeft = slotsLeft + i * (settings.slotSize + settings.slotsGap);
-      const slotRight = slotLeft + settings.slotSize;
-      const slotBottom = slotsTop + settings.slotSize;
+    const metrics = this.getHotbarMetrics(canvasWidth, canvasHeight);
+    if (!metrics) {
+      this.dragState = null;
+      return false;
+    }
 
-      if (x >= slotLeft && x <= slotRight && y >= slotsTop && y <= slotBottom) {
-        this.hoveredSlot = i;
-        break;
+    const slotIndex = this.getSlotIndexAtPosition(x, y, metrics);
+    if (slotIndex === null) {
+      this.dragState = null;
+      return false; // Click was not on inventory
+    }
+
+    // Click is on slot i, select it (convert to 1-indexed)
+    this.inputManager.setInventorySlot(slotIndex + 1);
+    this.prepareDragState(slotIndex, x, y);
+    return true;
+  }
+
+  public handleMouseMove(
+    x: number,
+    y: number,
+    canvasWidth?: number,
+    canvasHeight?: number
+  ): void {
+    if (canvasWidth !== undefined && canvasHeight !== undefined) {
+      this.lastCanvasWidth = canvasWidth;
+      this.lastCanvasHeight = canvasHeight;
+    }
+
+    if (!this.dragState) {
+      return;
+    }
+
+    this.dragState.currentX = x;
+    this.dragState.currentY = y;
+
+    if (!this.dragState.isDragging) {
+      const dx = x - this.dragState.startX;
+      const dy = y - this.dragState.startY;
+      if (dx * dx + dy * dy >= DRAG_START_THRESHOLD_SQUARED) {
+        this.dragState.isDragging = true;
+        this.hoveredSlot = null;
       }
     }
   }
 
-  public handleClick(x: number, y: number, canvasWidth: number, canvasHeight: number): boolean {
-    const settings = HOTBAR_SETTINGS.Inventory;
-    const slotsNumber = getConfig().player.MAX_INVENTORY_SLOTS;
+  public handleMouseUp(
+    x: number,
+    y: number,
+    canvasWidth?: number,
+    canvasHeight?: number
+  ): void {
+    if (canvasWidth !== undefined && canvasHeight !== undefined) {
+      this.lastCanvasWidth = canvasWidth;
+      this.lastCanvasHeight = canvasHeight;
+    }
+    const metrics = this.getHotbarMetrics(canvasWidth, canvasHeight);
+    const dragState = this.dragState;
+    this.dragState = null;
 
-    const hotbarWidth =
-      slotsNumber * settings.slotSize +
-      (slotsNumber - 1) * settings.slotsGap +
-      settings.padding.left +
-      settings.padding.right;
-    const hotbarHeight = settings.slotSize + settings.padding.top + settings.padding.bottom;
-
-    const hotbarX = canvasWidth / 2 - hotbarWidth / 2;
-    const hotbarY = canvasHeight - hotbarHeight - settings.screenMarginBottom;
-
-    const slotsLeft = hotbarX + settings.padding.left;
-    const slotsTop = hotbarY + settings.padding.top;
-
-    // Check if click is within the inventory hotbar area
-    for (let i = 0; i < slotsNumber; i++) {
-      const slotLeft = slotsLeft + i * (settings.slotSize + settings.slotsGap);
-      const slotRight = slotLeft + settings.slotSize;
-      const slotBottom = slotsTop + settings.slotSize;
-
-      if (x >= slotLeft && x <= slotRight && y >= slotsTop && y <= slotBottom) {
-        // Click is on slot i, select it (convert to 1-indexed)
-        this.inputManager.setInventorySlot(i + 1);
-        return true; // Click was handled
-      }
+    if (!dragState || !metrics) {
+      return;
     }
 
-    return false; // Click was not on inventory
+    if (!dragState.isDragging) {
+      return;
+    }
+
+    const isInsideHotbar = this.isPointInsideHotbar(x, y, metrics);
+    if (!isInsideHotbar) {
+      this.dropSlot(dragState.slotIndex);
+    }
   }
 
   private renderInventory(ctx: CanvasRenderingContext2D, gameState: GameState): void {
@@ -245,15 +307,24 @@ export class InventoryBarUI implements Renderable {
     const slotsBottom = slotsTop + scaledSlotSize;
     const items = this.getInventory();
     const activeItemIdx = this.inputManager.getInputs().inventoryItem - 1;
+    const dragState = this.dragState;
+    const isDragging = !!dragState?.isDragging;
+    const draggingSlotIndex = isDragging ? dragState?.slotIndex ?? null : null;
 
     for (let i = 0; i < slotsNumber; i++) {
       const slotLeft = slotsLeft + i * (scaledSlotSize + scaledSlotsGap);
       const slotRight = slotLeft + scaledSlotSize;
       const isActive = activeItemIdx === i;
+      const isDraggingSlot = isDragging && draggingSlotIndex === i;
 
       // Draw slot background
       ctx.fillStyle = settings.slotBackground;
       ctx.fillRect(slotLeft, slotsTop, scaledSlotSize, scaledSlotSize);
+
+      if (isDraggingSlot) {
+        ctx.fillStyle = "rgba(255, 255, 255, 0.1)";
+        ctx.fillRect(slotLeft, slotsTop, scaledSlotSize, scaledSlotSize);
+      }
 
       // Draw slot border
       ctx.strokeStyle = isActive ? settings.activeBorderColor : settings.borderColor;
@@ -267,13 +338,26 @@ export class InventoryBarUI implements Renderable {
 
       if (image) {
         const imagePadding = 8 * hudScale;
-        ctx.drawImage(
-          image,
-          slotLeft + imagePadding,
-          slotsTop + imagePadding,
-          scaledSlotSize - imagePadding * 2,
-          scaledSlotSize - imagePadding * 2
-        );
+        if (isDraggingSlot) {
+          ctx.save();
+          ctx.globalAlpha = 0.35;
+          ctx.drawImage(
+            image,
+            slotLeft + imagePadding,
+            slotsTop + imagePadding,
+            scaledSlotSize - imagePadding * 2,
+            scaledSlotSize - imagePadding * 2
+          );
+          ctx.restore();
+        } else {
+          ctx.drawImage(
+            image,
+            slotLeft + imagePadding,
+            slotsTop + imagePadding,
+            scaledSlotSize - imagePadding * 2,
+            scaledSlotSize - imagePadding * 2
+          );
+        }
       }
 
       // Draw slot number (show "0" for slot 10)
@@ -323,10 +407,15 @@ export class InventoryBarUI implements Renderable {
       }
     }
 
+    this.renderDragPreview(ctx, scaledSlotSize);
     ctx.restore();
   }
 
   private renderTooltip(ctx: CanvasRenderingContext2D, gameState: GameState): void {
+    if (this.dragState?.isDragging) {
+      return;
+    }
+
     if (this.hoveredSlot === null) {
       return;
     }
@@ -407,5 +496,127 @@ export class InventoryBarUI implements Renderable {
     ctx.fillText(itemName, slotCenterX, textY);
 
     ctx.restore();
+  }
+
+  private renderDragPreview(ctx: CanvasRenderingContext2D, scaledSlotSize: number): void {
+    if (!this.dragState?.isDragging) {
+      return;
+    }
+
+    const items = this.getInventory();
+    const draggedItem = items[this.dragState.slotIndex];
+    if (!draggedItem) {
+      return;
+    }
+
+    const image = this.assetManager.get(getItemAssetKey(draggedItem));
+    if (!image) {
+      return;
+    }
+
+    const previewSize = scaledSlotSize * 0.85;
+    const drawX = this.dragState.currentX - previewSize / 2;
+    const drawY = this.dragState.currentY - previewSize / 2;
+
+    ctx.save();
+    ctx.globalAlpha = 0.9;
+    ctx.drawImage(image, drawX, drawY, previewSize, previewSize);
+    ctx.restore();
+  }
+
+  private prepareDragState(slotIndex: number, startX: number, startY: number): void {
+    const items = this.getInventory();
+    const item = items[slotIndex];
+    if (!item) {
+      this.dragState = null;
+      return;
+    }
+
+    this.dragState = {
+      slotIndex,
+      startX,
+      startY,
+      currentX: startX,
+      currentY: startY,
+      isDragging: false,
+    };
+  }
+
+  private dropSlot(slotIndex: number): void {
+    const inventory = this.getInventory();
+    if (!inventory[slotIndex]) {
+      return;
+    }
+
+    // Ensure the dragged slot is active before requesting a drop
+    this.inputManager.setInventorySlot(slotIndex + 1);
+    this.inputManager.triggerDropTap();
+  }
+
+  private getHotbarMetrics(
+    canvasWidth?: number,
+    canvasHeight?: number
+  ): HotbarMetrics | null {
+    const width = canvasWidth ?? this.lastCanvasWidth;
+    const height = canvasHeight ?? this.lastCanvasHeight;
+
+    if (!width || !height) {
+      return null;
+    }
+
+    return this.calculateHotbarMetrics(width, height);
+  }
+
+  private calculateHotbarMetrics(canvasWidth: number, canvasHeight: number): HotbarMetrics {
+    const settings = HOTBAR_SETTINGS.Inventory;
+    const slotsNumber = getConfig().player.MAX_INVENTORY_SLOTS;
+
+    const hotbarWidth =
+      slotsNumber * settings.slotSize +
+      (slotsNumber - 1) * settings.slotsGap +
+      settings.padding.left +
+      settings.padding.right;
+    const hotbarHeight = settings.slotSize + settings.padding.top + settings.padding.bottom;
+
+    const hotbarX = canvasWidth / 2 - hotbarWidth / 2;
+    const hotbarY = canvasHeight - hotbarHeight - settings.screenMarginBottom;
+
+    const slotsLeft = hotbarX + settings.padding.left;
+    const slotsTop = hotbarY + settings.padding.top;
+
+    return {
+      hotbarX,
+      hotbarY,
+      hotbarWidth,
+      hotbarHeight,
+      slotsLeft,
+      slotsTop,
+      slotSize: settings.slotSize,
+      slotsGap: settings.slotsGap,
+      slotsNumber,
+    };
+  }
+
+  private getSlotIndexAtPosition(x: number, y: number, metrics: HotbarMetrics): number | null {
+    const slotBottom = metrics.slotsTop + metrics.slotSize;
+    for (let i = 0; i < metrics.slotsNumber; i++) {
+      const slotLeft = metrics.slotsLeft + i * (metrics.slotSize + metrics.slotsGap);
+      const slotRight = slotLeft + metrics.slotSize;
+
+      if (x >= slotLeft && x <= slotRight && y >= metrics.slotsTop && y <= slotBottom) {
+        return i;
+      }
+    }
+
+    return null;
+  }
+
+  private isPointInsideHotbar(x: number, y: number, metrics: HotbarMetrics): boolean {
+    return (
+      x >= metrics.hotbarX &&
+      x <= metrics.hotbarX + metrics.hotbarWidth &&
+      y >= metrics.hotbarY &&
+      y <= metrics.hotbarY + metrics.hotbarHeight
+    );
   }
 }
