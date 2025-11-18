@@ -20,7 +20,7 @@ export class Tree extends Entity {
     this.addExtension(new Interactive(this).onInteract(this.interact.bind(this)).setDisplayName("wood"));
   }
 
-  private interact(entityId: string): void {
+  private interact(entityId: number): void {
     const player = this.getEntityManager().getEntityById(entityId) as Player;
     if (!player) return;
 

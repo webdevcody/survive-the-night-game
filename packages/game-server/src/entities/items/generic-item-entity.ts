@@ -38,7 +38,7 @@ export class GenericItemEntity extends Entity {
     // Consumables get the Consumable extension
     if (config.category === "consumable") {
       this.addExtension(
-        new Consumable(this).onConsume((entityId: string, idx: number) => {
+        new Consumable(this).onConsume((entityId: number, idx: number) => {
           // Default consume behavior: just remove from inventory
           const entity = this.getEntityManager().getEntityById(entityId);
           if (entity?.hasExt(Inventory)) {
@@ -49,7 +49,7 @@ export class GenericItemEntity extends Entity {
     }
   }
 
-  private interact(entityId: string): void {
+  private interact(entityId: number): void {
     const entity = this.getEntityManager().getEntityById(entityId);
     if (!entity) return;
 

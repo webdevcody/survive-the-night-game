@@ -86,7 +86,13 @@ export class PredictionManager {
     let nextY = currentPosition.y;
 
     if (collidables && player.hasExt(ClientCollidable) && player.hasExt(ClientPositionable)) {
-      const { blocked, adjusted } = this.blockIfCollides(player, nextX, nextY, collidables, entities);
+      const { blocked, adjusted } = this.blockIfCollides(
+        player,
+        nextX,
+        nextY,
+        collidables,
+        entities
+      );
       if (blocked) {
         nextX = adjusted.x;
         moveX = nextX - currentPosition.x;
@@ -95,7 +101,13 @@ export class PredictionManager {
 
     nextY = currentPosition.y + moveY;
     if (collidables && player.hasExt(ClientCollidable) && player.hasExt(ClientPositionable)) {
-      const { blocked, adjusted } = this.blockIfCollides(player, nextX, nextY, collidables, entities);
+      const { blocked, adjusted } = this.blockIfCollides(
+        player,
+        nextX,
+        nextY,
+        collidables,
+        entities
+      );
       if (blocked) {
         nextY = adjusted.y;
         moveY = nextY - currentPosition.y;
@@ -198,7 +210,7 @@ export class PredictionManager {
   private overlapsAnyEntity(
     playerHitbox: Hitbox,
     entities: ClientEntityBase[],
-    playerEntityId: string
+    playerEntityId: number
   ): boolean {
     for (const entity of entities) {
       // Skip the player entity itself

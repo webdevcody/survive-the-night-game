@@ -35,7 +35,7 @@ export class Gasoline extends Entity {
     this.addExtension(new Groupable(this, "enemy"));
   }
 
-  private interact(entityId: string): void {
+  private interact(entityId: number): void {
     const carryable = this.getExt(Carryable);
     // Use helper method to preserve count when picking up dropped gasoline
     carryable.pickup(entityId, Carryable.createStackablePickupOptions(carryable, Gasoline.DEFAULT_COUNT));

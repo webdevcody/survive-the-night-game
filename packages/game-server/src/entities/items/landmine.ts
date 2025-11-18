@@ -47,7 +47,7 @@ export class Landmine extends Entity implements IEntity {
     this.addExtension(new Positionable(this).setSize(size));
     this.addExtension(
       new Interactive(this)
-        .onInteract((entityId: string) => this.interact(entityId))
+        .onInteract((entityId: number) => this.interact(entityId))
         .setDisplayName("landmine")
     );
     this.addExtension(new Carryable(this, "landmine").setItemState({ count }));
@@ -109,7 +109,7 @@ export class Landmine extends Entity implements IEntity {
     this.getEntityManager().markEntityForRemoval(this);
   }
 
-  private interact(entityId: string) {
+  private interact(entityId: number) {
     const entity = this.getEntityManager().getEntityById(entityId);
     if (!entity || entity.getType() !== Entities.PLAYER) return;
 

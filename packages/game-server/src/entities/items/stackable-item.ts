@@ -38,7 +38,7 @@ export abstract class StackableItem extends Entity {
     );
   }
 
-  protected interact(entityId: string): void {
+  protected interact(entityId: number): void {
     const entity = this.getEntityManager().getEntityById(entityId);
     if (!entity) return;
 

@@ -4,7 +4,7 @@ import { BufferWriter, MonitoredBufferWriter } from "@shared/util/buffer-seriali
 import { encodeExtensionType } from "@shared/util/extension-type-encoding";
 import { ExtensionBase } from "./extension-base";
 
-type ConsumableHandler = (entityId: string, idx: number) => void;
+type ConsumableHandler = (entityId: number, idx: number) => void;
 
 export default class Consumable extends ExtensionBase {
   public static readonly type = "consumable";
@@ -20,13 +20,22 @@ export default class Consumable extends ExtensionBase {
     return this;
   }
 
-  public consume(entityId: string, idx: number): void {
+  public consume(entityId: number, idx: number): void {
     this.handler?.(entityId, idx);
   }
 
-  public serializeToBuffer(writer: BufferWriter | MonitoredBufferWriter, onlyDirty: boolean = false): void {
-    if (writer instanceof MonitoredBufferWriter || (writer as any).constructor?.name === 'MonitoredBufferWriter') {
-      (writer as MonitoredBufferWriter).writeUInt8(encodeExtensionType(Consumable.type), "ExtensionType");
+  public serializeToBuffer(
+    writer: BufferWriter | MonitoredBufferWriter,
+    onlyDirty: boolean = false
+  ): void {
+    if (
+      writer instanceof MonitoredBufferWriter ||
+      (writer as any).constructor?.name === "MonitoredBufferWriter"
+    ) {
+      (writer as MonitoredBufferWriter).writeUInt8(
+        encodeExtensionType(Consumable.type),
+        "ExtensionType"
+      );
     } else {
       writer.writeUInt8(encodeExtensionType(Consumable.type));
     }

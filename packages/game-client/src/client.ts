@@ -803,7 +803,7 @@ export class GameClient {
       (entity) => entity instanceof PlayerClient
     ) as PlayerClient[];
 
-    const existingPlayerIds = new Set<string>();
+    const existingPlayerIds = new Set<number>();
 
     players.forEach((player) => {
       if (!player.hasExt(ClientPositionable)) return;

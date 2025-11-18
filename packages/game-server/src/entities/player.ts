@@ -611,36 +611,40 @@ export class Player extends Entity {
 
     if (!serialized.inputConsume) return;
 
-    if (this.consumeCooldown.isReady()) {
-      this.consumeCooldown.reset();
+    // Check cooldown - if not ready, wait
+    if (!this.consumeCooldown.isReady()) {
+      return;
+    }
 
-      let itemIndex: number | undefined;
-      let item: InventoryItem | null = null;
+    // Cooldown is ready, process consume and reset cooldown
+    this.consumeCooldown.reset();
 
-      // If consumeItemType is specified, find the first item of that type
-      if (serialized.inputConsumeItemType !== null) {
-        const inventory = this.getExt(Inventory).getItems();
-        const foundIndex = inventory.findIndex(
-          (invItem) => invItem?.itemType === serialized.inputConsumeItemType
-        );
+    let itemIndex: number | undefined;
+    let item: InventoryItem | null = null;
 
-        if (foundIndex !== -1) {
-          itemIndex = foundIndex;
-          item = inventory[itemIndex];
-        }
-      } else if (serialized.inputInventoryItem !== null) {
-        // Otherwise, use the currently selected inventory slot
-        itemIndex = serialized.inputInventoryItem - 1;
-        item = this.getExt(Inventory).getItems()[itemIndex];
+    // If consumeItemType is specified, find the first item of that type
+    if (serialized.inputConsumeItemType !== null) {
+      const inventory = this.getExt(Inventory).getItems();
+      const foundIndex = inventory.findIndex(
+        (invItem) => invItem?.itemType === serialized.inputConsumeItemType
+      );
+
+      if (foundIndex !== -1) {
+        itemIndex = foundIndex;
+        item = inventory[itemIndex];
       }
+    } else if (serialized.inputInventoryItem !== null) {
+      // Otherwise, use the currently selected inventory slot
+      itemIndex = serialized.inputInventoryItem - 1;
+      item = this.getExt(Inventory).getItems()[itemIndex];
+    }
 
-      if (item && itemIndex !== undefined) {
-        const entity = this.getEntityManager().createEntityFromItem(item);
-        if (!entity) return;
+    if (item && itemIndex !== undefined) {
+      const entity = this.getEntityManager().createEntityFromItem(item);
+      if (!entity) return;
 
-        if (entity.hasExt(Consumable)) {
-          entity.getExt(Consumable).consume(String(this.getId()), itemIndex);
-        }
+      if (entity.hasExt(Consumable)) {
+        entity.getExt(Consumable).consume(this.getId(), itemIndex);
       }
     }
   }

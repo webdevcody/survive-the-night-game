@@ -25,7 +25,7 @@ export class Torch extends Entity {
     this.addExtension(new Illuminated(this, 200));
   }
 
-  private interact(entityId: string): void {
+  private interact(entityId: number): void {
     this.getExt(Carryable).pickup(entityId);
   }
 }

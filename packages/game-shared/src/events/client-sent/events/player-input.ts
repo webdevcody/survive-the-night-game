@@ -109,5 +109,6 @@ export function deserialize(buffer: ArrayBuffer): any[] | null {
     sprint,
     aimAngle,
   };
+
   return [input];
 }

@@ -9,7 +9,7 @@ import { Cooldown } from "@/entities/util/cooldown";
  */
 export type WeaponHandler = (
   weaponEntity: Entity,
-  playerId: string,
+  playerId: number,
   position: { x: number; y: number },
   facing: Direction,
   aimAngle: number | undefined,

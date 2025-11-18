@@ -75,9 +75,9 @@ import { GameEvent } from "@/events/types";
 
 export class MySoundEvent implements GameEvent<string> {
   private readonly type: EventType;
-  private readonly entityId: string;
+  private readonly entityId: number;
 
-  constructor(entityId: string) {
+  constructor(entityId: number) {
     this.type = ServerSentEvents.MY_SOUND;
     this.entityId = entityId;
   }
@@ -349,10 +349,10 @@ See `packages/game-client/src/client.ts` (`updatePlayerMovementSounds` method) f
 ### `playPositionalSound(sound: SoundType, position: Vector2)`
 Plays a one-time sound at a specific position with distance-based volume.
 
-### `updateLoopingSound(playerId: string, soundType: SoundType | null, position: Vector2)`
+### `updateLoopingSound(playerId: number, soundType: SoundType | null, position: Vector2)`
 Updates or starts a looping sound for a player. Set `soundType` to `null` to stop.
 
-### `stopLoopingSound(playerId: string)`
+### `stopLoopingSound(playerId: number)`
 Stops a looping sound for a specific player.
 
 ### `toggleMute()`
