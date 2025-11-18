@@ -11,7 +11,7 @@ import { BigZombie } from "@/entities/enemies/big-zombie";
 import { FastZombie } from "@/entities/enemies/fast-zombie";
 import { BatZombie } from "@/entities/enemies/bat-zombie";
 import { BossZombie } from "@/entities/enemies/boss-zombie";
-import { GameMaster } from "./game-master";
+import { GameMaster } from "@/managers/game-master";
 import { SpitterZombie } from "@/entities/enemies/spitter-zombie";
 import { Merchant } from "@/entities/environment/merchant";
 import {
@@ -27,8 +27,8 @@ import {
   FOREST4,
   DOCK,
   SHED,
-} from "@/biomes";
-import type { BiomeData } from "@/biomes/types";
+} from "@/world/biomes";
+import type { BiomeData } from "@/world/biomes/types";
 import type { MapData } from "@shared/events/server-sent/map-event";
 import type { DecalData } from "@shared/config/decals-config";
 import { getConfig } from "@/config";

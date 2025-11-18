@@ -1,6 +1,6 @@
 import { ISocketAdapter } from "@shared/network/socket-adapter";
-import { HandlerContext } from "./handler-context";
-import { PlayerLeftEvent } from "@/events/server-sent/player-left-event";
+import { HandlerContext } from "../context";
+import { PlayerLeftEvent } from "@shared/events/server-sent/player-left-event";
 
 export function onDisconnect(context: HandlerContext, socket: ISocketAdapter): void {
   console.log("Player disconnected", socket.id);

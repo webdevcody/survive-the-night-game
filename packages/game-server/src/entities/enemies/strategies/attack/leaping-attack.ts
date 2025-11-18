@@ -4,7 +4,7 @@ import Movable from "@/extensions/movable";
 import Destructible from "@/extensions/destructible";
 import { Cooldown } from "@/entities/util/cooldown";
 import { getConfig } from "@shared/config";
-import { ZombieAttackedEvent } from "@/events/server-sent/zombie-attacked-event";
+import { ZombieAttackedEvent } from "@shared/events/server-sent/zombie-attacked-event";
 import { LeapConfig } from "@shared/entities";
 import { velocityTowards } from "@/util/physics";
 import { TargetingSystem } from "../targeting";

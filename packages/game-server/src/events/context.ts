@@ -1,11 +1,11 @@
-import { Player } from "@/entities/player";
-import { GameServer } from "@/server";
+import { Player } from "@/entities/players/player";
+import { GameServer } from "@/core/server";
 import { CommandManager } from "@/managers/command-manager";
-import { MapManager } from "@/managers/map-manager";
+import { MapManager } from "@/world/map-manager";
 import { IEntityManager, IGameManagers } from "@/managers/types";
 import { DelayedServerSocket } from "@/util/delayed-socket";
 import { CommandRegistry } from "@/commands";
-import { BufferManager } from "../buffer-manager";
+import { BufferManager } from "@/managers/buffer-manager";
 import { DelayedServer } from "@/util/delayed-socket";
 import { GameEvent } from "@shared/events/types";
 import { RegExpMatcher, TextCensor } from "obscenity";
@@ -30,4 +30,3 @@ export interface HandlerContext {
   sendInitialDataToSocket(socket: any, player: Player): void;
   broadcastPlayerJoined(player: Player): void;
 }
-

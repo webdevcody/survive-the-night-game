@@ -1,6 +1,6 @@
 import { ISocketAdapter } from "@shared/network/socket-adapter";
-import { HandlerContext } from "./handler-context";
-import { Player } from "@/entities/player";
+import { HandlerContext } from "../context";
+import { Player } from "@/entities/players/player";
 
 export function onConnection(context: HandlerContext, socket: ISocketAdapter): void {
   console.log(`Player connected: ${socket.id} - ${context.playerDisplayNames.get(socket.id)}`);

@@ -1,5 +1,5 @@
 import { ISocketAdapter } from "@shared/network/socket-adapter";
-import { HandlerContext } from "./handler-context";
+import { HandlerContext } from "../context";
 import { ServerSentEvents } from "@shared/events/events";
 
 export function sendFullState(context: HandlerContext, socket: ISocketAdapter): void {

@@ -14,10 +14,10 @@ import PoolManager from "@shared/util/pool-manager";
 import { distance, normalizeVector } from "@/util/physics";
 import { Cooldown } from "../util/cooldown";
 import { Bullet } from "@/entities/projectiles/bullet";
-import { LootEvent } from "@/events/server-sent/loot-event";
+import { LootEvent } from "@shared/events/server-sent/loot-event";
 import { getConfig } from "@/config";
-import { BIOME_SIZE, MAP_SIZE } from "@/managers/map-manager";
-import { GunFiredEvent } from "@/events/server-sent/gun-fired-event";
+import { BIOME_SIZE, MAP_SIZE } from "@/world/map-manager";
+import { GunFiredEvent } from "@shared/events/server-sent/gun-fired-event";
 import { SerializableFields } from "@/util/serializable-fields";
 
 const SURVIVOR_MAX_HEALTH = 10;

@@ -6,7 +6,7 @@ import { Weapon } from "@/entities/weapons/weapon";
 import { Direction } from "../../../../game-shared/src/util/direction";
 import Vector2 from "@/util/vector2";
 import { consumeAmmo } from "./helpers";
-import { GunEmptyEvent } from "@/events/server-sent/gun-empty-event";
+import { GunEmptyEvent } from "@shared/events/server-sent/gun-empty-event";
 
 export class Shotgun extends Weapon {
   constructor(gameManagers: IGameManagers) {

@@ -11,7 +11,7 @@ import { Entity } from "@/entities/entity";
 import { Fire } from "@/entities/environment/fire";
 import Vector2 from "@/util/vector2";
 import PoolManager from "@shared/util/pool-manager";
-import { ExplosionEvent } from "@/events/server-sent/explosion-event";
+import { ExplosionEvent } from "@shared/events/server-sent/explosion-event";
 import { ItemState } from "@/types/entity";
 
 export class Gasoline extends Entity {

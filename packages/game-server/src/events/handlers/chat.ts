@@ -1,5 +1,5 @@
 import { ISocketAdapter } from "@shared/network/socket-adapter";
-import { HandlerContext } from "./handler-context";
+import { HandlerContext } from "../context";
 import { ServerSentEvents } from "@shared/events/events";
 import { ChatMessageEvent } from "@shared/events/server-sent/chat-message-event";
 import { serializeServerEvent } from "@shared/events/server-sent/server-event-serialization";
@@ -55,3 +55,4 @@ export async function handleChat(
     context.delayedIo.emit(ServerSentEvents.CHAT_MESSAGE, chatEventData);
   }
 }
+

@@ -10,7 +10,7 @@ import { Direction, normalizeDirection } from "@/util/direction";
 import { Entity } from "@/entities/entity";
 import { distance } from "@/util/physics";
 import Vector2 from "@/util/vector2";
-import { ExplosionEvent } from "@/events/server-sent/explosion-event";
+import { ExplosionEvent } from "@shared/events/server-sent/explosion-event";
 import PoolManager from "@shared/util/pool-manager";
 
 const MAX_TRAVEL_DISTANCE = 300;

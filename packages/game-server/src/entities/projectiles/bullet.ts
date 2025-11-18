@@ -13,7 +13,7 @@ import { normalizeVector, distance } from "@/util/physics";
 import { IEntity } from "@/entities/types";
 import Vector2 from "@/util/vector2";
 import { Line, Rectangle } from "@/util/shape";
-import { Player } from "@/entities/player";
+import { Player } from "@/entities/players/player";
 import PoolManager from "@shared/util/pool-manager";
 
 const MAX_TRAVEL_DISTANCE = 200;

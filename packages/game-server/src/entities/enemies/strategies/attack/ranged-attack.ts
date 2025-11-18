@@ -1,7 +1,7 @@
 import { BaseEnemy, AttackStrategy } from "../../base-enemy";
 import { SpitterZombie } from "../../spitter-zombie";
 import { AcidProjectile } from "@/entities/projectiles/acid-projectile";
-import { ZombieAttackedEvent } from "@/events/server-sent/zombie-attacked-event";
+import { ZombieAttackedEvent } from "@shared/events/server-sent/zombie-attacked-event";
 import { TargetingSystem } from "../targeting";
 
 export class RangedAttackStrategy implements AttackStrategy {

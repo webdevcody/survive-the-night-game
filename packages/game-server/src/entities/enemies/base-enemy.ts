@@ -10,17 +10,17 @@ import Positionable from "@/extensions/positionable";
 import Updatable from "@/extensions/updatable";
 import { Entities } from "@shared/constants";
 import { Entity } from "@/entities/entity";
-import { LootEvent } from "@/events/server-sent/loot-event";
+import { LootEvent } from "@shared/events/server-sent/loot-event";
 import { Rectangle } from "@/util/shape";
 import Vector2 from "@/util/vector2";
 import PoolManager from "@shared/util/pool-manager";
 import { EntityType } from "@shared/types/entity";
-import { ZombieDeathEvent } from "@/events/server-sent/zombie-death-event";
-import { ZombieHurtEvent } from "@/events/server-sent/zombie-hurt-event";
+import { ZombieDeathEvent } from "@shared/events/server-sent/zombie-death-event";
+import { ZombieHurtEvent } from "@shared/events/server-sent/zombie-hurt-event";
 import { EntityCategory, EntityCategories, ZombieConfig, zombieRegistry } from "@shared/entities";
 import { IdleMovementStrategy } from "./strategies/movement/idle-movement";
 import { getConfig } from "@shared/config";
-import { Blood } from "@/entities/blood";
+import { Blood } from "@/entities/effects/blood";
 
 export interface MovementStrategy {
   // Return true if the strategy handled movement completely, false if it needs default movement handling

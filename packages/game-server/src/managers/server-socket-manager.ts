@@ -1,9 +1,9 @@
-import { Player } from "@/entities/player";
+import { Player } from "@/entities/players/player";
 import { ServerSentEvents, ClientSentEvents } from "@shared/events/events";
 import { GameEvent } from "@shared/events/types";
 import Positionable from "@/extensions/positionable";
 import Inventory from "@/extensions/inventory";
-import { GameServer } from "@/server";
+import { GameServer } from "@/core/server";
 import { AdminCommand } from "@shared/commands/commands";
 import { Input } from "../../../game-shared/src/util/input";
 import { RecipeType } from "../../../game-shared/src/util/recipes";
@@ -11,7 +11,7 @@ import { ItemType } from "@shared/util/inventory";
 import PoolManager from "@shared/util/pool-manager";
 import { createServer } from "http";
 import { CommandManager } from "@/managers/command-manager";
-import { MapManager } from "@/managers/map-manager";
+import { MapManager } from "@/world/map-manager";
 import { Broadcaster, IEntityManager, IGameManagers } from "@/managers/types";
 import { IEntity } from "@/entities/types";
 import { PlayerJoinedEvent } from "@shared/events/server-sent/player-joined-event";
@@ -46,7 +46,7 @@ import {
   handlePing,
   handlePingUpdate,
   handleChat,
-} from "./handlers";
+} from "@/events/handlers";
 
 /**
  * Any and all functionality related to sending server side events

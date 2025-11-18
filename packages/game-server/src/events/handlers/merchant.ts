@@ -1,5 +1,5 @@
 import { ISocketAdapter } from "@shared/network/socket-adapter";
-import { HandlerContext } from "./handler-context";
+import { HandlerContext } from "../context";
 import Positionable from "@/extensions/positionable";
 import Inventory from "@/extensions/inventory";
 import { ItemType, isResourceItem, ResourceType } from "@shared/util/inventory";
@@ -66,3 +66,4 @@ export function onMerchantBuy(
     }
   }
 }
+
