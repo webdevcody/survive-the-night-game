@@ -1,11 +1,11 @@
 import { EventType, ServerSentEvents } from "../events";
 import { GameEvent } from "@/events/types";
 
-export class BigZombieDeathEvent implements GameEvent<string> {
+export class BigZombieDeathEvent implements GameEvent<number> {
   private readonly type: EventType = ServerSentEvents.BIG_ZOMBIE_DEATH;
-  private readonly zombieId: string;
+  private readonly zombieId: number;
 
-  constructor(zombieId: string) {
+  constructor(zombieId: number) {
     this.zombieId = zombieId;
   }
 
@@ -13,11 +13,11 @@ export class BigZombieDeathEvent implements GameEvent<string> {
     return this.type;
   }
 
-  getZombieId(): string {
+  getZombieId(): number {
     return this.zombieId;
   }
 
-  serialize(): string {
+  serialize(): number {
     return this.zombieId;
   }
 }

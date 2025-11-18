@@ -326,7 +326,7 @@ export class Survivor extends Entity {
       .broadcastEvent(new GunFiredEvent(this.getId(), "pistol"));
   }
 
-  private onRescue(entityId: string): void {
+  private onRescue(entityId: number): void {
     // Only allow rescue if not already rescued
     const serialized = this.serialized as any;
     if (serialized.isRescued) {

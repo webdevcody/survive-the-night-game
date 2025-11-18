@@ -436,10 +436,6 @@ export class ServerSocketManager implements Broadcaster {
     // to guarantee the inventory update is serialized and sent to clients
     player.markExtensionDirty(inventory);
 
-    // Mark activeItem as dirty since it's computed from inventory and needs to be updated
-    // This ensures activeItem is included in delta updates sent to clients
-    player.markActiveItemDirty();
-
     const placedEntity = this.getEntityManager().createEntityFromItem({
       itemType: data.itemType,
       state: {},
@@ -500,17 +496,21 @@ export class ServerSocketManager implements Broadcaster {
     for (const entity of entities) {
       this.bufferManager.writeEntity(entity, false);
     }
-    this.bufferManager.writeGameState({
-      timestamp: currentTime,
-      isFullState: true,
-      waveNumber,
-      waveState,
-      phaseStartTime,
-      phaseDuration,
-    });
+    this.bufferManager.writeGameState(
+      {
+        timestamp: currentTime,
+        isFullState: true,
+        waveNumber,
+        waveState,
+        phaseStartTime,
+        phaseDuration,
+      },
+      false // No removed entities in full state
+    );
     this.bufferManager.writeRemovedEntityIds([]);
 
     const buffer = this.bufferManager.getBuffer();
+    // this.bufferManager.logStats();
     delayedSocket.emit(ServerSentEvents.GAME_STATE_UPDATE, buffer);
   }
 
@@ -751,13 +751,17 @@ export class ServerSocketManager implements Broadcaster {
       const timestamp = eventData.timestamp !== undefined ? eventData.timestamp : Date.now();
 
       // Write game state metadata to buffer
-      this.bufferManager.writeGameState({
-        ...mergedGameState,
-        timestamp,
-        isFullState: false,
-      });
+      const hasRemovedEntities = removedCount > 0;
+      this.bufferManager.writeGameState(
+        {
+          ...mergedGameState,
+          timestamp,
+          isFullState: false,
+        },
+        hasRemovedEntities
+      );
 
-      // Write removed entity IDs
+      // Write removed entity IDs (only if there are any)
       this.bufferManager.writeRemovedEntityIds(removedEntityIds);
       endGameStateMerging();
 
@@ -799,6 +803,7 @@ export class ServerSocketManager implements Broadcaster {
         (() => {});
       // Send buffer directly instead of serializing to objects
       const buffer = this.bufferManager.getBuffer();
+      // this.bufferManager.logStats();
       this.delayedIo.emit(event.getType(), buffer);
       endWebSocketEmit();
     } else {
@@ -816,22 +821,9 @@ export class ServerSocketManager implements Broadcaster {
   }
 
   private handlePing(socket: ISocketAdapter, timestamp: number): void {
-    // Send pong event back to client
-    // timestamp is a Unix timestamp in milliseconds (UTC, timezone-independent)
     const delayedSocket = this.wrapSocket(socket);
-
-    // Try to serialize as binary, fall back to JSON if not supported
     const binaryBuffer = serializeServerEvent(ServerSentEvents.PONG, [{ timestamp }]);
-    if (binaryBuffer !== null) {
-      // Send as binary
-      delayedSocket.emit(ServerSentEvents.PONG, binaryBuffer);
-    } else {
-      // Fall back to JSON
-      const pongEvent = new PongEvent(timestamp);
-      delayedSocket.emit(ServerSentEvents.PONG, pongEvent.serialize());
-    }
-    // Note: We no longer calculate latency here because it can be negative due to clock skew.
-    // Instead, the client calculates round-trip latency and sends it via PING_UPDATE event.
+    delayedSocket.emit(ServerSentEvents.PONG, binaryBuffer);
   }
 
   private handlePingUpdate(socket: ISocketAdapter, latency: number): void {

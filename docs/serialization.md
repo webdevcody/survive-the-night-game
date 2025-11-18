@@ -52,7 +52,6 @@ const PLAYER_SERIALIZABLE_FIELDS = [
   "stamina",
   "maxStamina",
   "input",
-  "activeItem",
   "inventory",
 ] as const;
 

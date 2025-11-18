@@ -96,6 +96,8 @@ export default class Inventory extends ExtensionBase {
 
     // Update serialized (array reference changes, so assign new array to trigger dirty)
     serialized.items = [...items];
+    // Explicitly mark dirty to ensure inventory changes are broadcast
+    this.markDirty();
 
     this.broadcaster.broadcastEvent(
       new PlayerPickedUpItemEvent({
@@ -114,6 +116,8 @@ export default class Inventory extends ExtensionBase {
       items[index] = null;
       // Update serialized (array reference changes, so assign new array to trigger dirty)
       serialized.items = [...items];
+      // Explicitly mark dirty to ensure inventory changes are broadcast
+      this.markDirty();
     }
     return item;
   }
@@ -125,6 +129,8 @@ export default class Inventory extends ExtensionBase {
       items[index].state = state;
       // Update serialized (array reference changes, so assign new array to trigger dirty)
       serialized.items = [...items];
+      // Explicitly mark dirty to ensure inventory changes are broadcast
+      this.markDirty();
     }
   }
 
@@ -158,6 +164,8 @@ export default class Inventory extends ExtensionBase {
     const maxSlots = getConfig().player.MAX_INVENTORY_SLOTS;
     const result = foundRecipe.craft(serialized.items, resources, maxSlots);
     serialized.items = result.inventory;
+    // Explicitly mark dirty to ensure inventory changes are broadcast
+    this.markDirty();
     return result;
   }
 
@@ -196,6 +204,8 @@ export default class Inventory extends ExtensionBase {
     const serialized = this.serialized as any;
     if (serialized.items.length > 0) {
       serialized.items = [];
+      // Explicitly mark dirty to ensure inventory changes are broadcast
+      this.markDirty();
     }
   }
 
@@ -223,62 +233,35 @@ export default class Inventory extends ExtensionBase {
       this.self.getEntityManager()?.addEntity(entity);
     });
     serialized.items = [];
+    // Explicitly mark dirty to ensure inventory changes are broadcast
+    this.markDirty();
   }
 
   private createEntityFromItem(item: InventoryItem) {
     return this.self.getEntityManager()!.createEntityFromItem(item);
   }
 
-  public serializeToBuffer(writer: BufferWriter, onlyDirty: boolean = false): void {
+  public serializeToBuffer(
+    writer: BufferWriter,
+    onlyDirty: boolean = false
+  ): void {
     const serialized = this.serialized as any;
     writer.writeUInt8(encodeExtensionType(Inventory.type));
-
-    if (onlyDirty) {
-      const dirtyFields = this.serialized.getDirtyFields();
-      if (dirtyFields.has("items")) {
-        writer.writeUInt8(1); // field count
-        writer.writeUInt8(0); // field index (items = 0)
-        // Serialize items array, handling null values
-        writer.writeArray(serialized.items, (item: InventoryItem | null) => {
-          if (item === null || item === undefined) {
-            writer.writeBoolean(false);
+    writer.writeArray(serialized.items, (item: InventoryItem | null) => {
+      if (item === null || item === undefined) {
+        writer.writeBoolean(false);
+      } else {
+        writer.writeBoolean(true);
+        writer.writeString(item.itemType);
+        // Serialize ItemState
+        writer.writeRecord((item.state || {}) as Record<string, unknown>, (value) => {
+          if (typeof value === "number") {
+            writer.writeFloat64(value);
           } else {
-            writer.writeBoolean(true);
-            writer.writeString(item.itemType);
-            // Serialize ItemState
-            writer.writeRecord((item.state || {}) as Record<string, unknown>, (value) => {
-              if (typeof value === "number") {
-                writer.writeFloat64(value);
-              } else {
-                writer.writeString(String(value));
-              }
-            });
+            writer.writeString(String(value));
           }
         });
-      } else {
-        writer.writeUInt8(0); // no fields
       }
-    } else {
-      // Write all fields: field count = 1, then field
-      writer.writeUInt8(1); // field count
-      writer.writeUInt8(0); // items index
-      // Serialize items array, handling null values
-      writer.writeArray(serialized.items, (item: InventoryItem | null) => {
-        if (item === null || item === undefined) {
-          writer.writeBoolean(false);
-        } else {
-          writer.writeBoolean(true);
-          writer.writeString(item.itemType);
-          // Serialize ItemState
-          writer.writeRecord((item.state || {}) as Record<string, unknown>, (value) => {
-            if (typeof value === "number") {
-              writer.writeFloat64(value);
-            } else {
-              writer.writeString(String(value));
-            }
-          });
-        }
-      });
-    }
+    });
   }
 }

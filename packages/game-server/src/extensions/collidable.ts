@@ -61,42 +61,8 @@ export default class Collidable extends ExtensionBase {
   public serializeToBuffer(writer: BufferWriter, onlyDirty: boolean = false): void {
     const serialized = this.serialized as any;
     writer.writeUInt8(encodeExtensionType(Collidable.type));
-
-    if (onlyDirty) {
-      const dirtyFields = this.serialized.getDirtyFields();
-      const fieldsToWrite: Array<{ index: number; value: any }> = [];
-
-      // Field indices: offset = 0, size = 1, enabled = 2
-      if (dirtyFields.has("offset")) {
-        fieldsToWrite.push({ index: 0, value: this.offset });
-      }
-      if (dirtyFields.has("size")) {
-        fieldsToWrite.push({ index: 1, value: this.size });
-      }
-      if (dirtyFields.has("enabled")) {
-        fieldsToWrite.push({ index: 2, value: serialized.enabled });
-      }
-
-      writer.writeUInt8(fieldsToWrite.length);
-      for (const field of fieldsToWrite) {
-        writer.writeUInt8(field.index);
-        if (field.index === 0) {
-          writer.writeVector2(field.value);
-        } else if (field.index === 1) {
-          writer.writeVector2(field.value);
-        } else if (field.index === 2) {
-          writer.writeBoolean(field.value);
-        }
-      }
-    } else {
-      // Write all fields: field count = 3, then fields in order
-      writer.writeUInt8(3); // field count
-      writer.writeUInt8(0); // offset index
-      writer.writeVector2(this.offset);
-      writer.writeUInt8(1); // size index
-      writer.writeVector2(this.size);
-      writer.writeUInt8(2); // enabled index
-      writer.writeBoolean(serialized.enabled);
-    }
+    writer.writeVector2(this.offset);
+    writer.writeVector2(this.size);
+    writer.writeBoolean(serialized.enabled);
   }
 }

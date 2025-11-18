@@ -23,18 +23,7 @@ export class ClientIlluminated extends BaseClientExtension {
   }
 
   public deserializeFromBuffer(reader: BufferReader): this {
-    // Type is already read by the entity deserializer
-    // Read field count (always present now)
-    const fieldCount = reader.readUInt8();
-    
-    // Read fields by index
-    for (let i = 0; i < fieldCount; i++) {
-      const fieldIndex = reader.readUInt8();
-      // Field index: radius = 0
-      if (fieldIndex === 0) {
-        this.radius = reader.readUInt16();
-      }
-    }
+    this.radius = reader.readUInt16();
     return this;
   }
 }

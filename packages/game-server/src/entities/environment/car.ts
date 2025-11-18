@@ -69,7 +69,7 @@ export class Car extends Entity {
     this.getEntityManager().markEntityForRemoval(this);
   }
 
-  private onRepair(entityId: string): void {
+  private onRepair(entityId: number): void {
     const now = Date.now();
     const timeSinceLastRepair = now - this.lastRepairTime;
 

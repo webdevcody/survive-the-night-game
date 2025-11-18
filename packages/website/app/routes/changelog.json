@@ -1,5 +1,24 @@
 [
   {
+    "version": "0.18.0",
+    "date": "2025-11-17",
+    "changes": [
+      "Added event processing guard - events are only processed after initial game state is received, preventing race conditions",
+      "Refactored entity interaction system - changed entity IDs from string to number type for improved performance and consistency",
+      "Enhanced entity serialization - introduced FIELD_TYPE_NULL and field metadata for better handling of optional and typed fields",
+      "Refactored Player entity - removed activeItem field and now derive activeItem directly from inventory for cleaner architecture",
+      "Added ClientSnared extension - new extension system for marking entities as immobilized on the client",
+      "Refactored input handling - removed SequenceManager and improved input serialization with dedicated event classes",
+      "Added field-level delta compression analysis - comprehensive documentation and implementation for efficient network updates",
+      "Added boss entity functionality - implemented boss step and summon events with enhanced enemy rendering for boss presentation",
+      "Improved weapons HUD - added ammo display and refactored code for better weapon information visibility",
+      "Enhanced entity serialization with BufferWriter - refactored all extensions to use MonitoredBufferWriter for improved logging and performance",
+      "Improved map manager - now skips entities without positionable extension to prevent rendering errors",
+      "Refactored game architecture - removed deprecated day/night cycle components and transitioned to wave system management",
+      "Added comprehensive serialization documentation - new guides explaining extension field-level delta compression analysis"
+    ]
+  },
+  {
     "version": "0.17.0",
     "date": "2025-11-16",
     "changes": [

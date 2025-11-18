@@ -15,11 +15,19 @@ export class WallClient extends ClientEntity implements Renderable {
   }
 
   private getHealth(): number {
+    if (!this.hasExt(ClientDestructible)) {
+      console.warn(`Wall ${this.getId()} does not have destructible extension`);
+      return 0;
+    }
     const destructible = this.getExt(ClientDestructible);
     return destructible.getHealth();
   }
 
   private getMaxHealth(): number {
+    if (!this.hasExt(ClientDestructible)) {
+      console.warn(`Wall ${this.getId()} does not have destructible extension`);
+      return 0;
+    }
     const destructible = this.getExt(ClientDestructible);
     return destructible.getMaxHealth();
   }
@@ -32,6 +40,8 @@ export class WallClient extends ClientEntity implements Renderable {
     const image = this.getImage();
     ctx.drawImage(image, position.x, position.y);
 
-    drawHealthBar(ctx, position, this.getHealth(), this.getMaxHealth());
+    if (this.hasExt(ClientDestructible)) {
+      drawHealthBar(ctx, position, this.getHealth(), this.getMaxHealth());
+    }
   }
 }

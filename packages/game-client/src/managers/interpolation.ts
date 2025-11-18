@@ -6,9 +6,9 @@ type Snapshot = { position: Vector2; timestamp: number };
 const MAX_SNAPSHOTS = 3; // Keep last 3 snapshots for interpolation
 
 export class InterpolationManager {
-  private snapshots: Map<string, Snapshot[]> = new Map();
+  private snapshots: Map<number, Snapshot[]> = new Map();
 
-  addSnapshot(entityId: string, position: Vector2, timestamp: number): void {
+  addSnapshot(entityId: number, position: Vector2, timestamp: number): void {
     const list = this.snapshots.get(entityId) || [];
     list.push({ position, timestamp });
     // Keep only most recent snapshots
@@ -16,7 +16,7 @@ export class InterpolationManager {
     this.snapshots.set(entityId, list);
   }
 
-  getInterpolatedPosition(entityId: string, now: number = Date.now()): Vector2 | null {
+  getInterpolatedPosition(entityId: number, now: number = Date.now()): Vector2 | null {
     const list = this.snapshots.get(entityId);
     if (!list || list.length === 0) return null;
 

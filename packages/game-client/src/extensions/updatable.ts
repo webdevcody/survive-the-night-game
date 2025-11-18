@@ -24,10 +24,7 @@ export class ClientUpdatable extends BaseClientExtension {
   }
 
   public deserializeFromBuffer(reader: BufferReader): this {
-    // Type is already read by the entity deserializer
-    // Read field count (always present now, should be 0 for Updatable extension)
-    const fieldCount = reader.readUInt8();
-    // Updatable extension has no fields, so nothing to read
+    // Updatable extension has no fields
     return this;
   }
 }

@@ -49,6 +49,7 @@ import { CraftEvent } from "@shared/events/server-sent/craft-event";
 import { BuildEvent } from "@shared/events/server-sent/build-event";
 import { BossStepEvent } from "@shared/events/server-sent/boss-step-event";
 import { BossSummonEvent } from "@shared/events/server-sent/boss-summon-event";
+import { PongEvent } from "@shared/events/server-sent/pong-event";
 import { InterpolationManager } from "@/managers/interpolation";
 import { ExtensionTypes } from "@shared/util/extension-types";
 import Vector2 from "@shared/util/vector2";
@@ -82,13 +83,18 @@ export class ClientEventListener {
     return this.hasReceivedMap && this.hasReceivedPlayerId && this.hasReceivedInitialState;
   }
 
+  /**
+   * Guards against processing events that depend on entities before initial state is received.
+   * Returns true if the event should be processed, false if it should be ignored.
+   */
+  private shouldProcessEntityEvent(): boolean {
+    return this.hasReceivedInitialState;
+  }
+
   constructor(client: GameClient, socketManager: ClientSocketManager) {
     this.gameClient = client;
     this.socketManager = socketManager;
     this.gameState = this.gameClient.getGameState();
-
-    // Prevent game from starting until we're initialized
-    this.gameClient.stop();
 
     // Set up event listeners first, before requesting state
     this.socketManager.on(ServerSentEvents.GAME_STATE_UPDATE, this.onGameStateUpdate.bind(this));
@@ -130,18 +136,8 @@ export class ClientEventListener {
     this.socketManager.on(ServerSentEvents.BUILD, this.onBuild.bind(this));
     this.socketManager.on(ServerSentEvents.BOSS_STEP, this.onBossStep.bind(this));
     this.socketManager.on(ServerSentEvents.BOSS_SUMMON, this.onBossSummon.bind(this));
+    this.socketManager.on(ServerSentEvents.PONG, this.onPong.bind(this));
 
-    // Request full state after all listeners are set up
-    // If already connected, request immediately; otherwise the connect handler will request it
-    // Use setTimeout to ensure this runs after the constructor completes and socket is ready
-    setTimeout(() => {
-      if (!this.socketManager.getIsDisconnected()) {
-        console.log("[ClientEventListener] Requesting full state after listener setup");
-        this.socketManager.sendRequestFullState();
-      }
-    }, 0);
-
-    // Listen for disconnect to reset initialization state
     this.socketManager.onSocketDisconnect(() => {
       this.handleDisconnect();
     });
@@ -170,6 +166,7 @@ export class ClientEventListener {
   }
 
   onGunEmpty(gunEmptyEvent: GunEmptyEvent) {
+    if (!this.shouldProcessEntityEvent()) return;
     const player = this.gameClient.getEntityById(gunEmptyEvent.getEntityId());
     if (!player || !(player instanceof PlayerClient)) return;
 
@@ -180,6 +177,7 @@ export class ClientEventListener {
   }
 
   onGunFired(gunFiredEvent: GunFiredEvent) {
+    if (!this.shouldProcessEntityEvent()) return;
     const player = this.gameClient.getEntityById(gunFiredEvent.getEntityId());
     if (!player || !(player instanceof PlayerClient)) return;
 
@@ -190,6 +188,7 @@ export class ClientEventListener {
   }
 
   onCoinPickup(coinPickupEvent: CoinPickupEvent) {
+    if (!this.shouldProcessEntityEvent()) return;
     const coin = this.gameClient.getEntityById(coinPickupEvent.getEntityId());
     if (!coin) return;
 
@@ -200,6 +199,7 @@ export class ClientEventListener {
   }
 
   onPlayerLeft(playerLeftEvent: PlayerLeftEvent) {
+    if (!this.shouldProcessEntityEvent()) return;
     const playerId = playerLeftEvent.getPlayerId();
     const player = this.gameClient.getEntityById(playerId);
     if (!player) return;
@@ -575,6 +575,7 @@ export class ClientEventListener {
   }
 
   onZombieAttacked(zombieAttackedEvent: ZombieAttackedEvent) {
+    if (!this.shouldProcessEntityEvent()) return;
     const zombie = this.gameClient.getEntityById(zombieAttackedEvent.getZombieId());
     if (!zombie) return;
 
@@ -598,6 +599,7 @@ export class ClientEventListener {
   }
 
   onPlayerHurt(playerHurtEvent: PlayerHurtEvent) {
+    if (!this.shouldProcessEntityEvent()) return;
     const player = this.gameClient.getEntityById(playerHurtEvent.getPlayerId());
     if (!player || !(player instanceof PlayerClient)) return;
 
@@ -621,6 +623,7 @@ export class ClientEventListener {
   }
 
   onLoot(lootEvent: LootEvent) {
+    if (!this.shouldProcessEntityEvent()) return;
     const loot = this.gameClient.getEntityById(lootEvent.getEntityId());
     if (!loot) return;
 
@@ -632,6 +635,7 @@ export class ClientEventListener {
   }
 
   onPlayerDeath(playerDeathEvent: PlayerDeathEvent) {
+    if (!this.shouldProcessEntityEvent()) return;
     this.gameClient.getHud().showPlayerDeath(playerDeathEvent.getDisplayName());
 
     const player = this.gameClient.getEntityById(playerDeathEvent.getPlayerId());
@@ -644,6 +648,7 @@ export class ClientEventListener {
   }
 
   onPlayerAttacked(playerAttackedEvent: PlayerAttackedEvent) {
+    if (!this.shouldProcessEntityEvent()) return;
     const entity = this.gameClient.getEntityById(playerAttackedEvent.getPlayerId());
     if (!entity) return;
 
@@ -680,7 +685,7 @@ export class ClientEventListener {
     }
   }
 
-  private applyWeaponCameraShake(attackingPlayerId: string, weaponConfig?: WeaponConfig) {
+  private applyWeaponCameraShake(attackingPlayerId: number, weaponConfig?: WeaponConfig) {
     const intensity = weaponConfig?.stats.cameraShakeIntensity;
     if (!intensity || intensity <= 0) {
       return;
@@ -714,6 +719,7 @@ export class ClientEventListener {
   }
 
   onZombieDeath(zombieDeathEvent: ZombieDeathEvent) {
+    if (!this.shouldProcessEntityEvent()) return;
     const zombie = this.gameClient.getEntityById(zombieDeathEvent.getZombieId());
     if (!zombie) return;
 
@@ -738,6 +744,7 @@ export class ClientEventListener {
   }
 
   onZombieHurt(zombieHurtEvent: ZombieHurtEvent) {
+    if (!this.shouldProcessEntityEvent()) return;
     const zombie = this.gameClient.getEntityById(zombieHurtEvent.getZombieId());
     if (!zombie) return;
 
@@ -748,6 +755,7 @@ export class ClientEventListener {
   }
 
   onPlayerDroppedItem(playerDroppedItemEvent: PlayerDroppedItemEvent) {
+    if (!this.shouldProcessEntityEvent()) return;
     const player = this.gameClient.getEntityById(playerDroppedItemEvent.getPlayerId());
     if (!player || !(player instanceof PlayerClient)) return;
 
@@ -758,6 +766,7 @@ export class ClientEventListener {
   }
 
   onPlayerPickedUpItem(playerPickedUpItemEvent: PlayerPickedUpItemEvent) {
+    if (!this.shouldProcessEntityEvent()) return;
     const player = this.gameClient.getEntityById(playerPickedUpItemEvent.getPlayerId());
     if (!player || !(player instanceof PlayerClient)) return;
 
@@ -768,6 +777,7 @@ export class ClientEventListener {
   }
 
   onPlayerPickedUpResource(playerPickedUpResourceEvent: PlayerPickedUpResourceEvent) {
+    if (!this.shouldProcessEntityEvent()) return;
     const player = this.gameClient.getEntityById(playerPickedUpResourceEvent.getPlayerId());
     if (!player || !(player instanceof PlayerClient)) return;
 
@@ -809,6 +819,7 @@ export class ClientEventListener {
   }
 
   onExplosion(event: ExplosionEvent) {
+    if (!this.shouldProcessEntityEvent()) return;
     const particle = new ExplosionParticle(
       this.gameClient.getImageLoader(),
       this.gameClient.getSoundManager()
@@ -840,6 +851,7 @@ export class ClientEventListener {
   }
 
   onCarRepair(carRepairEvent: CarRepairEvent) {
+    if (!this.shouldProcessEntityEvent()) return;
     const car = this.gameClient.getEntityById(carRepairEvent.getCarId());
     if (!car || !car.hasExt(ClientPositionable)) return;
 
@@ -872,6 +884,7 @@ export class ClientEventListener {
   }
 
   onCraft(craftEvent: CraftEvent) {
+    if (!this.shouldProcessEntityEvent()) return;
     const player = this.gameClient.getEntityById(craftEvent.getPlayerId());
     if (!player || !player.hasExt(ClientPositionable)) return;
 
@@ -889,6 +902,17 @@ export class ClientEventListener {
     if (soundType && Object.values(SOUND_TYPES_TO_MP3).includes(soundType as any)) {
       this.gameClient.getSoundManager().playPositionalSound(soundType, position);
     }
+  }
+
+  onPong(pongEvent: PongEvent) {
+    // The event is already deserialized by the socket manager's attachHandler
+    // Both Date.now() and timestamp are Unix timestamps (milliseconds since epoch, UTC)
+    // This calculation is timezone-independent
+    const latency = Date.now() - pongEvent.getData().timestamp;
+
+    // Send calculated latency to server so it can update the player's ping
+    // This ensures accurate ping calculation without clock skew issues
+    this.socketManager.sendPingUpdate(latency);
   }
 
   private checkInitialization() {

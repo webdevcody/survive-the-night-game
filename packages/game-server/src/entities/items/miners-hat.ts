@@ -21,7 +21,7 @@ export class MinersHat extends Entity {
     this.addExtension(new Carryable(this, "miners_hat"));
   }
 
-  private interact(entityId: string): void {
+  private interact(entityId: number): void {
     this.getExt(Carryable).pickup(entityId);
   }
 }

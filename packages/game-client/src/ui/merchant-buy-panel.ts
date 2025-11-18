@@ -60,13 +60,13 @@ const MERCHANT_BUY_PANEL_SETTINGS = {
 
 export interface MerchantBuyPanelOptions {
   getPlayer: () => PlayerClient | null;
-  onBuy: (merchantId: string, itemIndex: number) => void;
+  onBuy: (merchantId: number, itemIndex: number) => void;
 }
 
 export class MerchantBuyPanel implements Renderable {
   private assetManager: AssetManager;
   private getPlayer: () => PlayerClient | null;
-  private onBuy: (merchantId: string, itemIndex: number) => void;
+  private onBuy: (merchantId: number, itemIndex: number) => void;
   private activeMerchantId: string | null = null;
   private shopItems: MerchantShopItem[] = [];
   private selectedIndex: number = 0;
@@ -81,7 +81,7 @@ export class MerchantBuyPanel implements Renderable {
     return Z_INDEX.UI;
   }
 
-  public open(merchantId: string, shopItems: MerchantShopItem[]): void {
+  public open(merchantId: number, shopItems: MerchantShopItem[]): void {
     this.activeMerchantId = merchantId;
     this.shopItems = shopItems;
     this.selectedIndex = 0;

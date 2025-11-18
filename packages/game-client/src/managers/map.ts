@@ -287,6 +287,8 @@ export class MapManager {
     entities.forEach((entity, entityId) => {
       const gameEntity = entity;
       if (gameEntity.hasExt(ClientIlluminated)) {
+        // Skip entities without positionable extension (can't get position)
+        if (!gameEntity.hasExt(ClientPositionable)) return;
         const baseRadius = gameEntity.getExt(ClientIlluminated).getRadius();
         // Skip entities with no light (radius 0 or very small)
         if (baseRadius <= 0) return;

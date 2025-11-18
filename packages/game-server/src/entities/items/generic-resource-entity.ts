@@ -30,7 +30,7 @@ export class GenericResourceEntity extends Entity {
     );
   }
 
-  private interact(entityId: string): void {
+  private interact(entityId: number): void {
     const player = this.getEntityManager().getEntityById(entityId) as Player;
     if (!player) return;
 

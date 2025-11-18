@@ -8,6 +8,13 @@ import { EntityCategory, EntityCategories } from "@shared/entities";
 import { BufferReader } from "@shared/util/buffer-serialization";
 import { decodeExtensionType } from "@shared/util/extension-type-encoding";
 import { entityTypeRegistry } from "@shared/util/entity-type-encoding";
+import {
+  FIELD_TYPE_STRING,
+  FIELD_TYPE_NUMBER,
+  FIELD_TYPE_BOOLEAN,
+  FIELD_TYPE_OBJECT,
+  FIELD_TYPE_NULL,
+} from "@shared/util/serialization-constants";
 
 export abstract class ClientEntityBase {
   private id: number;
@@ -210,23 +217,38 @@ export abstract class ClientEntityBase {
       console.warn(`Entity type mismatch: expected ${this.type}, got ${type}`);
     }
 
+    // Read field count and fields
     const fieldCount = currentReader.readUInt8();
+
     for (let i = 0; i < fieldCount; i++) {
       const fieldName = currentReader.readString();
-      const valueType = currentReader.readUInt32();
+      const valueType = currentReader.readUInt8();
       let value: any;
-      if (valueType === 0) {
+      if (valueType === FIELD_TYPE_STRING) {
         value = currentReader.readString();
-      } else if (valueType === 1) {
-        // Special case: ping field uses UInt8 instead of Float64
-        if (fieldName === "ping") {
+      } else if (valueType === FIELD_TYPE_NULL) {
+        value = null;
+      } else if (valueType === FIELD_TYPE_NUMBER) {
+        // Read number subtype: 0=uint8, 1=uint16, 2=uint32, 3=float64
+        const numberSubtype = currentReader.readUInt8();
+        if (numberSubtype === 0) {
+          // uint8
           value = currentReader.readUInt8();
+        } else if (numberSubtype === 1) {
+          // uint16
+          value = currentReader.readUInt16();
+        } else if (numberSubtype === 2) {
+          // uint32 - check for optional field sentinel (0xFFFFFFFF)
+          const numValue = currentReader.readUInt32();
+          value = numValue === 0xffffffff ? undefined : numValue;
         } else {
-          value = currentReader.readFloat64();
+          // float64 (subtype 3) - check for optional field sentinel (NaN)
+          const numValue = currentReader.readFloat64();
+          value = isNaN(numValue) ? undefined : numValue;
         }
-      } else if (valueType === 2) {
+      } else if (valueType === FIELD_TYPE_BOOLEAN) {
         value = currentReader.readBoolean();
-      } else if (valueType === 3) {
+      } else if (valueType === FIELD_TYPE_OBJECT) {
         const jsonStr = currentReader.readString();
         try {
           value = JSON.parse(jsonStr);
@@ -234,8 +256,10 @@ export abstract class ClientEntityBase {
           value = jsonStr;
         }
       } else {
+        // Unknown type - fallback to reading as string
         value = currentReader.readString();
       }
+      // Store the value on the entity instance
       (this as any)[fieldName] = value;
     }
 
@@ -249,35 +273,43 @@ export abstract class ClientEntityBase {
     }
 
     const processedTypes = new Set<string>();
+    // Extensions are written directly without length prefixes on the server
+    // Format: [extensionType (UInt8)][extensionData...]
+    // Read them sequentially from the current position
     for (let i = 0; i < extensionCount; i++) {
-      const extensionLength = currentReader.readUInt16();
-      const extensionStartOffset = currentReader.getOffset();
-      const extensionEndOffset = extensionStartOffset + extensionLength;
-
-      const extensionReader = currentReader.atOffset(extensionStartOffset);
-      const encodedType = extensionReader.readUInt8();
+      // Read extension type first to identify which extension this is
+      // The server writes the type byte, but client extensions don't read it
+      const encodedType = currentReader.readUInt8();
       const extensionType = decodeExtensionType(encodedType);
 
       const ClientExtCtor = clientExtensionsMap[extensionType as keyof typeof clientExtensionsMap];
       if (!ClientExtCtor) {
         console.warn(`No client extension found for type: ${extensionType}`);
-        currentReader = currentReader.atOffset(extensionEndOffset);
-        continue;
+        // Can't skip unknown extension without knowing its size
+        // This will cause deserialization to fail - better to throw
+        throw new Error(`Unknown extension type: ${extensionType}`);
       }
 
       try {
+        // Extension reader starts at current position (after type byte)
+        // Client extensions don't read the type byte, they just read their data
+        const extensionReader = currentReader;
+
         let ext = existingExtensions.get(extensionType);
         if (!ext) {
           ext = new ClientExtCtor(this as any);
           this.extensions.push(ext);
         }
+
+        // Deserialize the extension (reads data only, not type byte)
         ext.deserializeFromBuffer(extensionReader);
+
+        // currentReader is automatically advanced by the extension's read operations
         processedTypes.add(extensionType);
       } catch (error) {
         console.error(`Error deserializing extension ${extensionType}:`, error);
+        throw error;
       }
-
-      currentReader = currentReader.atOffset(extensionEndOffset);
     }
 
     const removedCount = currentReader.readUInt8();

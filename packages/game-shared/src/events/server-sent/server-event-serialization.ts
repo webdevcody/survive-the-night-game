@@ -86,9 +86,9 @@ export function serializeServerEvent(event: string, args: any[]): Buffer | null 
     case ServerSentEvents.BIG_ZOMBIE_HURT:
     case ServerSentEvents.BIG_ZOMBIE_ATTACKED:
     case ServerSentEvents.PLAYER_HURT: {
-      // Simple string events - just write the string
-      const value = String(args[0] ?? "");
-      writer.writeString(value);
+      // Simple number events - write as UInt16
+      const value = Number(args[0] ?? 0);
+      writer.writeUInt16(value);
       break;
     }
     case ServerSentEvents.PLAYER_ATTACKED: {
@@ -136,7 +136,11 @@ export function serializeServerEvent(event: string, args: any[]): Buffer | null 
       break;
     }
     case ServerSentEvents.BUILD: {
-      const data = args[0] as { playerId: number; position: { x: number; y: number }; soundType: string };
+      const data = args[0] as {
+        playerId: number;
+        position: { x: number; y: number };
+        soundType: string;
+      };
       writer.writeUInt16(data.playerId ?? 0);
       writer.writeFloat64(data.position?.x ?? 0);
       writer.writeFloat64(data.position?.y ?? 0);
@@ -212,7 +216,7 @@ export function deserializeServerEvent(event: string, buffer: ArrayBuffer): any[
   switch (event) {
     case ServerSentEvents.PONG: {
       const timestamp = reader.readFloat64();
-      return [{ timestamp }];
+      return [timestamp];
     }
     case ServerSentEvents.YOUR_ID: {
       const playerId = reader.readUInt16();
@@ -266,7 +270,7 @@ export function deserializeServerEvent(event: string, buffer: ArrayBuffer): any[
     case ServerSentEvents.BIG_ZOMBIE_HURT:
     case ServerSentEvents.BIG_ZOMBIE_ATTACKED:
     case ServerSentEvents.PLAYER_HURT: {
-      const value = reader.readString();
+      const value = reader.readUInt16();
       return [value];
     }
     case ServerSentEvents.PLAYER_ATTACKED: {

@@ -36,27 +36,16 @@ export class ClientInventory extends BaseClientExtension {
   }
 
   public deserializeFromBuffer(reader: BufferReader): this {
-    // Type is already read by the entity deserializer
-    // Read field count (always present now)
-    const fieldCount = reader.readUInt8();
-    
-    // Read fields by index
-    for (let i = 0; i < fieldCount; i++) {
-      const fieldIndex = reader.readUInt8();
-      // Field index: items = 0
-      if (fieldIndex === 0) {
-        // Read items array
-        this.items = reader.readArray(() => {
-          if (!reader.readBoolean()) {
-            return null as any;
-          }
-          const itemType = reader.readString();
-          // Read ItemState record (values are numbers)
-          const state = reader.readRecord(() => reader.readFloat64());
-          return { itemType, state };
-        });
+    // Read items array
+    this.items = reader.readArray(() => {
+      if (!reader.readBoolean()) {
+        return null as any;
       }
-    }
+      const itemType = reader.readString();
+      // Read ItemState record (values are numbers)
+      const state = reader.readRecord(() => reader.readFloat64());
+      return { itemType, state };
+    });
     return this;
   }
 }

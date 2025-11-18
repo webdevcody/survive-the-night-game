@@ -32,29 +32,8 @@ export default class Movable extends ExtensionBase {
   }
 
   public serializeToBuffer(writer: BufferWriter, onlyDirty: boolean = false): void {
-    const serialized = this.serialized as any;
     writer.writeUInt8(encodeExtensionType(Movable.type));
-    
-    if (onlyDirty) {
-      const dirtyFields = this.serialized.getDirtyFields();
-      const fieldsToWrite: Array<{ index: number; value: any }> = [];
-      
-      // Field index: velocity = 0
-      if (dirtyFields.has("velocity")) {
-        fieldsToWrite.push({ index: 0, value: this.velocity });
-      }
-      
-      writer.writeUInt8(fieldsToWrite.length);
-      for (const field of fieldsToWrite) {
-        writer.writeUInt8(field.index);
-        writer.writeVelocity2(field.value);
-      }
-    } else {
-      // Write all fields: field count = 1, then field
-      writer.writeUInt8(1); // field count
-      writer.writeUInt8(0); // velocity index
-      writer.writeVelocity2(this.velocity);
-    }
+    writer.writeVelocity2(this.velocity);
   }
 
   public update(deltaTime: number): void {

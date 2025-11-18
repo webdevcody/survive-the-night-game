@@ -241,6 +241,203 @@ export class BufferWriter {
 }
 
 /**
+ * MonitoredBufferWriter - Wraps BufferWriter with logging
+ * Logs all write operations with bytes used, label, and value
+ */
+export class MonitoredBufferWriter {
+  private writer: BufferWriter;
+
+  constructor(initialSize: number = 1024 * 1024) {
+    this.writer = new BufferWriter(initialSize);
+  }
+
+  private log(bytes: number, label: string, value: any): void {
+    // console.log(`${"  ".repeat((global as any).logDepth ?? 0)}${bytes}B - ${label} - ${value}`);
+  }
+
+  writeUInt8(value: number, label?: string): void {
+    if (label) {
+      this.log(1, label, value);
+    }
+    this.writer.writeUInt8(value);
+  }
+
+  writeUInt16(value: number, label?: string): void {
+    if (label) {
+      this.log(2, label, value);
+    }
+    this.writer.writeUInt16(value);
+  }
+
+  writeInt16(value: number, label?: string): void {
+    if (label) {
+      this.log(2, label, value);
+    }
+    this.writer.writeInt16(value);
+  }
+
+  writeUInt32(value: number, label?: string): void {
+    if (label) {
+      this.log(4, label, value);
+    }
+    this.writer.writeUInt32(value);
+  }
+
+  writeFloat64(value: number, label?: string): void {
+    if (label) {
+      this.log(8, label, value);
+    }
+    this.writer.writeFloat64(value);
+  }
+
+  writeBoolean(value: boolean, label?: string): void {
+    if (label) {
+      this.log(1, label, value);
+    }
+    this.writer.writeBoolean(value);
+  }
+
+  writeString(value: string, label?: string): void {
+    const strBytes = Buffer.from(value, "utf8");
+    const totalBytes = 4 + strBytes.length; // UInt32 length + string bytes
+    if (label) {
+      this.log(totalBytes, label, value);
+    }
+    // Call underlying writer - internal writeUInt32 won't log since it's unwrapped
+    this.writer.writeString(value);
+  }
+
+  writeVector2(value: Vector2, label?: string): void {
+    if (label) {
+      // Log each component separately
+      this.writeFloat64(value.x, label ? `${label}.X` : undefined);
+      this.writeFloat64(value.y, label ? `${label}.Y` : undefined);
+    } else {
+      this.writer.writeVector2(value);
+    }
+  }
+
+  writeVelocity2(value: Vector2, label?: string): void {
+    if (label) {
+      // Log each component separately
+      const scale = 100;
+      const scaledX = Math.round(value.x * scale);
+      const scaledY = Math.round(value.y * scale);
+      const clampedX = Math.max(-32768, Math.min(32767, scaledX));
+      const clampedY = Math.max(-32768, Math.min(32767, scaledY));
+      this.writeInt16(clampedX, label ? `${label}.X` : undefined);
+      this.writeInt16(clampedY, label ? `${label}.Y` : undefined);
+    } else {
+      this.writer.writeVelocity2(value);
+    }
+  }
+
+  writePosition2(value: Vector2, label?: string): void {
+    if (label) {
+      // Log each component separately
+      const scale = 10;
+      const scaledX = Math.round(value.x * scale);
+      const scaledY = Math.round(value.y * scale);
+      const clampedX = Math.max(-32768, Math.min(32767, scaledX));
+      const clampedY = Math.max(-32768, Math.min(32767, scaledY));
+      this.writeInt16(clampedX, label ? `${label}.X` : undefined);
+      this.writeInt16(clampedY, label ? `${label}.Y` : undefined);
+    } else {
+      this.writer.writePosition2(value);
+    }
+  }
+
+  writeSize2(value: Vector2, label?: string): void {
+    if (label) {
+      // Log each component separately
+      const clampedX = Math.max(0, Math.min(255, Math.round(value.x)));
+      const clampedY = Math.max(0, Math.min(255, Math.round(value.y)));
+      this.writeUInt8(clampedX, label ? `${label}.X` : undefined);
+      this.writeUInt8(clampedY, label ? `${label}.Y` : undefined);
+    } else {
+      this.writer.writeSize2(value);
+    }
+  }
+
+  writeArray<T>(items: T[], writer: (item: T, label?: string) => void, label?: string): void {
+    if (label) {
+      this.writeUInt32(items.length, `${label}.Count`);
+    } else {
+      this.writer.writeUInt32(items.length);
+    }
+    for (let i = 0; i < items.length; i++) {
+      const itemLabel = label ? `${label}[${i}]` : undefined;
+      writer(items[i], itemLabel);
+    }
+  }
+
+  writeBuffer(data: Buffer, label?: string): void {
+    const totalBytes = 2 + data.length; // UInt16 length + buffer bytes
+    if (label) {
+      this.log(totalBytes, label, `Buffer(${data.length} bytes)`);
+    }
+    // Call underlying writer - internal writeUInt16 won't log since it's unwrapped
+    this.writer.writeBuffer(data);
+  }
+
+  writeNullable<T>(
+    value: T | null | undefined,
+    writer: (item: T, label?: string) => void,
+    label?: string
+  ): void {
+    if (value === null || value === undefined) {
+      if (label) {
+        this.log(1, `${label}.HasValue`, false);
+      } else {
+        this.writer.writeBoolean(false);
+      }
+    } else {
+      if (label) {
+        this.log(1, `${label}.HasValue`, true);
+      } else {
+        this.writer.writeBoolean(true);
+      }
+      writer(value, label);
+    }
+  }
+
+  writeRecord<T>(
+    record: Record<string, T>,
+    valueWriter: (value: T, label?: string) => void,
+    label?: string
+  ): void {
+    const keys = Object.keys(record);
+    if (label) {
+      this.writeUInt32(keys.length, `${label}.Count`);
+    } else {
+      this.writer.writeUInt32(keys.length);
+    }
+    for (const key of keys) {
+      const keyLabel = label ? `${label}.Key` : undefined;
+      const valueLabel = label ? `${label}.${key}` : undefined;
+      this.writeString(key, keyLabel);
+      valueWriter(record[key], valueLabel);
+    }
+  }
+
+  getBuffer(): Buffer {
+    return this.writer.getBuffer();
+  }
+
+  getOffset(): number {
+    return this.writer.getOffset();
+  }
+
+  reset(): void {
+    this.writer.reset();
+  }
+
+  clear(): void {
+    this.writer.clear();
+  }
+}
+
+/**
  * BufferReader - Client-side buffer reading utility
  * Reads data from ArrayBuffer
  */
@@ -503,6 +700,18 @@ export class ArrayBufferWriter {
     this.ensureCapacity(1);
     this.view.setUint8(this.offset, value);
     this.offset += 1;
+  }
+
+  writeUInt16(value: number): void {
+    this.ensureCapacity(2);
+    this.view.setUint16(this.offset, value >>> 0, true);
+    this.offset += 2;
+  }
+
+  writeInt16(value: number): void {
+    this.ensureCapacity(2);
+    this.view.setInt16(this.offset, value | 0, true);
+    this.offset += 2;
   }
 
   writeBoolean(value: boolean): void {

@@ -20,7 +20,5 @@ export default class Placeable extends ExtensionBase {
 
   public serializeToBuffer(writer: BufferWriter, onlyDirty: boolean = false): void {
     writer.writeUInt8(encodeExtensionType(Placeable.type));
-    // Placeable extension has no serialized fields, so always write 0 field count
-    writer.writeUInt8(0);
   }
 }

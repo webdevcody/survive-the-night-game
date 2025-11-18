@@ -46,32 +46,8 @@ export default class Triggerable extends ExtensionBase {
   }
 
   public serializeToBuffer(writer: BufferWriter, onlyDirty: boolean = false): void {
-    const serialized = this.serialized as any;
     writer.writeUInt8(encodeExtensionType(Triggerable.type));
-    
-    if (onlyDirty) {
-      const dirtyFields = this.serialized.getDirtyFields();
-      const fieldsToWrite: Array<{ index: number }> = [];
-      
-      // Field indices: size = 0, filter = 1 (but filter is not serialized, only size)
-      if (dirtyFields.has("size")) {
-        fieldsToWrite.push({ index: 0 });
-      }
-      
-      writer.writeUInt8(fieldsToWrite.length);
-      for (const field of fieldsToWrite) {
-        writer.writeUInt8(field.index);
-        if (field.index === 0) {
-          writer.writeFloat64(this.size.x);
-          writer.writeFloat64(this.size.y);
-        }
-      }
-    } else {
-      // Write all fields: field count = 1, then field
-      writer.writeUInt8(1); // field count
-      writer.writeUInt8(0); // size index
-      writer.writeFloat64(this.size.x);
-      writer.writeFloat64(this.size.y);
-    }
+    writer.writeFloat64(this.size.x);
+    writer.writeFloat64(this.size.y);
   }
 }

@@ -123,7 +123,7 @@ export class SentryGun extends Entity {
     this.getEntityManager().addEntity(bullet);
   }
 
-  private interact(entityId: string): void {
+  private interact(entityId: number): void {
     const entity = this.getEntityManager().getEntityById(entityId);
     if (!entity) return;
 

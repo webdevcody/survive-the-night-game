@@ -20,7 +20,7 @@ export class Cloth extends Entity {
     this.addExtension(new Interactive(this).onInteract(this.interact.bind(this)).setDisplayName("cloth"));
   }
 
-  private interact(entityId: string): void {
+  private interact(entityId: number): void {
     const player = this.getEntityManager().getEntityById(entityId) as Player;
     if (!player) return;
 

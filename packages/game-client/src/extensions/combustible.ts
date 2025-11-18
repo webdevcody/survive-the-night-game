@@ -11,20 +11,8 @@ export class ClientCombustible extends BaseClientExtension {
   }
 
   public deserializeFromBuffer(reader: BufferReader): this {
-    // Type is already read by the entity deserializer
-    // Read field count (always present now)
-    const fieldCount = reader.readUInt8();
-    
-    // Read fields by index (client doesn't use these values, but must read them)
-    for (let i = 0; i < fieldCount; i++) {
-      const fieldIndex = reader.readUInt8();
-      // Field indices: numFires = 0, spreadRadius = 1
-      if (fieldIndex === 0) {
-        reader.readUInt32(); // numFires
-      } else if (fieldIndex === 1) {
-        reader.readFloat64(); // spreadRadius
-      }
-    }
+    reader.readUInt32(); // numFires (not used on client)
+    reader.readFloat64(); // spreadRadius (not used on client)
     return this;
   }
 }

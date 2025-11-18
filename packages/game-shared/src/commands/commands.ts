@@ -45,7 +45,7 @@ export type ChangeSkinCommand = {
   command: "changeSkin";
   payload: {
     skinType: SkinType;
-    playerId: string;
+    playerId: number;
   };
   password: string;
 };

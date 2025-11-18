@@ -9,7 +9,6 @@ import { getConfig } from "@shared/config";
  * Snapshot of input with associated state
  */
 export interface InputSnapshot {
-  sequenceNumber: number;
   input: Input;
   timestamp: number;
   clientState: PlayerState;
@@ -26,8 +25,9 @@ export interface PlayerState {
 /**
  * Input history buffer for rollback/replay
  * 
- * Stores recent inputs with sequence numbers to enable
- * rolling back and replaying when server corrections arrive.
+ * Stores recent inputs to enable rolling back and replaying when server corrections arrive.
+ * 
+ * NOTE: This class is currently unused in the codebase.
  */
 export class InputHistory {
   private buffer: InputSnapshot[] = [];
@@ -41,7 +41,6 @@ export class InputHistory {
    * Add an input to the history buffer
    */
   addInput(
-    seq: number,
     input: Input,
     player: PlayerClient
   ): void {
@@ -54,7 +53,6 @@ export class InputHistory {
     };
 
     this.buffer.push({
-      sequenceNumber: seq,
       input: { ...input },
       timestamp: Date.now(),
       clientState: state,
@@ -67,44 +65,43 @@ export class InputHistory {
   }
 
   /**
-   * Get the state at a specific sequence number
+   * Get the state at a specific index
    */
-  getStateAtSequence(seq: number): PlayerState | null {
-    const snapshot = this.buffer.find((s) => s.sequenceNumber === seq);
+  getStateAtIndex(index: number): PlayerState | null {
+    const snapshot = this.buffer[index];
     return snapshot ? { ...snapshot.clientState } : null;
   }
 
   /**
-   * Get the snapshot at a specific sequence number
+   * Get the snapshot at a specific index
    */
-  getSnapshotAtSequence(seq: number): InputSnapshot | null {
-    return this.buffer.find((s) => s.sequenceNumber === seq) || null;
+  getSnapshotAtIndex(index: number): InputSnapshot | null {
+    return this.buffer[index] || null;
   }
 
   /**
-   * Replay inputs from a specific sequence number
+   * Replay inputs from a specific index
    * This is used for rollback/replay when server corrections arrive
    */
-  replayFromSequence(
-    seq: number,
+  replayFromIndex(
+    index: number,
     player: PlayerClient,
     applyInput: (player: PlayerClient, input: Input, deltaTime: number) => void
   ): void {
-    const startIndex = this.buffer.findIndex((s) => s.sequenceNumber === seq);
-    if (startIndex === -1) {
-      return; // No history available for this sequence
+    if (index < 0 || index >= this.buffer.length) {
+      return; // No history available for this index
     }
 
-    // Restore state at the server's acknowledged sequence
-    const startState = this.buffer[startIndex].clientState;
+    // Restore state at the server's acknowledged index
+    const startState = this.buffer[index].clientState;
     if (player.hasExt(ClientPositionable)) {
       player.getExt(ClientPositionable).setPosition(
         PoolManager.getInstance().vector2.claim(startState.position.x, startState.position.y)
       );
     }
 
-    // Replay all inputs after this sequence
-    for (let i = startIndex + 1; i < this.buffer.length; i++) {
+    // Replay all inputs after this index
+    for (let i = index + 1; i < this.buffer.length; i++) {
       const snapshot = this.buffer[i];
       // Use fixed timestep for replay to match server
       applyInput(player, snapshot.input, getConfig().simulation.FIXED_TIMESTEP);
@@ -119,12 +116,10 @@ export class InputHistory {
   }
 
   /**
-   * Get the most recent sequence number
+   * Get the buffer length
    */
-  getLastSequence(): number | null {
-    return this.buffer.length > 0
-      ? this.buffer[this.buffer.length - 1].sequenceNumber
-      : null;
+  getLength(): number {
+    return this.buffer.length;
   }
 }
 

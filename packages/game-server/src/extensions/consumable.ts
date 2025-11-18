@@ -4,7 +4,7 @@ import { BufferWriter } from "@shared/util/buffer-serialization";
 import { encodeExtensionType } from "@shared/util/extension-type-encoding";
 import { ExtensionBase } from "./extension-base";
 
-type ConsumableHandler = (entityId: string, idx: number) => void;
+type ConsumableHandler = (entityId: number, idx: number) => void;
 
 export default class Consumable extends ExtensionBase {
   public static readonly type = "consumable";
@@ -20,13 +20,11 @@ export default class Consumable extends ExtensionBase {
     return this;
   }
 
-  public consume(entityId: string, idx: number): void {
+  public consume(entityId: number, idx: number): void {
     this.handler?.(entityId, idx);
   }
 
   public serializeToBuffer(writer: BufferWriter, onlyDirty: boolean = false): void {
     writer.writeUInt8(encodeExtensionType(Consumable.type));
-    // Consumable extension has no serialized fields, so always write 0 field count
-    writer.writeUInt8(0);
   }
 }
