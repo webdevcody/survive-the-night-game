@@ -821,22 +821,9 @@ export class ServerSocketManager implements Broadcaster {
   }
 
   private handlePing(socket: ISocketAdapter, timestamp: number): void {
-    // Send pong event back to client
-    // timestamp is a Unix timestamp in milliseconds (UTC, timezone-independent)
     const delayedSocket = this.wrapSocket(socket);
-
-    // Try to serialize as binary, fall back to JSON if not supported
     const binaryBuffer = serializeServerEvent(ServerSentEvents.PONG, [{ timestamp }]);
-    if (binaryBuffer !== null) {
-      // Send as binary
-      delayedSocket.emit(ServerSentEvents.PONG, binaryBuffer);
-    } else {
-      // Fall back to JSON
-      const pongEvent = new PongEvent(timestamp);
-      delayedSocket.emit(ServerSentEvents.PONG, pongEvent.serialize());
-    }
-    // Note: We no longer calculate latency here because it can be negative due to clock skew.
-    // Instead, the client calculates round-trip latency and sends it via PING_UPDATE event.
+    delayedSocket.emit(ServerSentEvents.PONG, binaryBuffer);
   }
 
   private handlePingUpdate(socket: ISocketAdapter, latency: number): void {

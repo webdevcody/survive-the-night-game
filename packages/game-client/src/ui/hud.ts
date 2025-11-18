@@ -134,8 +134,6 @@ const HUD_SETTINGS = {
 export class Hud {
   private showInstructions: boolean = false;
   private mapManager: MapManager;
-  private currentPing: number = 0;
-  private lastPingUpdate: number = 0;
   private chatWidget: ChatWidget;
   private currentFps: number = 0;
   private minimap: Minimap;
@@ -357,14 +355,6 @@ export class Hud {
     return this.fullscreenMap.isOpen();
   }
 
-  public updatePing(ping: number): void {
-    this.currentPing = ping;
-    this.lastPingUpdate = Date.now();
-    // Update ping panel
-    this.pingPanel.setText(`${Math.round(ping)}ms`);
-    (this.pingPanel as any).textSettings.textColor = this.getPingColor(ping);
-  }
-
   private getPingColor(ping: number): string {
     if (ping < 50) return HUD_SETTINGS.BottomRightPanels.pingColors.excellent;
     if (ping < 100) return HUD_SETTINGS.BottomRightPanels.pingColors.good;
@@ -484,7 +474,11 @@ export class Hud {
     this.fpsPanel.render(ctx, gameState);
     currentX += this.fpsPanel.getWidth(ctx) + topPanelsSettings.gap;
 
-    // Render ping panel (middle)
+    // Render ping panel (middle) - lookup ping from current player
+    const player = getPlayer(gameState);
+    const ping = player ? player.getPing() : 0;
+    this.pingPanel.setText(`${Math.round(ping)}ms`);
+    (this.pingPanel as any).textSettings.textColor = this.getPingColor(ping);
     (this.pingPanel as any).textSettings.x = currentX;
     (this.pingPanel as any).textSettings.y = topY;
     this.pingPanel.render(ctx, gameState);
@@ -608,7 +602,7 @@ export class Hud {
     this.chatWidget.clearChatInput();
   }
 
-  public addChatMessage(playerId: string, message: string): void {
+  public addChatMessage(playerId: number, message: string): void {
     this.chatWidget.addChatMessage(playerId, message);
   }
 

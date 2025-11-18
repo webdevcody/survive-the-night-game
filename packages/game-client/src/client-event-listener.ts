@@ -49,6 +49,7 @@ import { CraftEvent } from "@shared/events/server-sent/craft-event";
 import { BuildEvent } from "@shared/events/server-sent/build-event";
 import { BossStepEvent } from "@shared/events/server-sent/boss-step-event";
 import { BossSummonEvent } from "@shared/events/server-sent/boss-summon-event";
+import { PongEvent } from "@shared/events/server-sent/pong-event";
 import { InterpolationManager } from "@/managers/interpolation";
 import { ExtensionTypes } from "@shared/util/extension-types";
 import Vector2 from "@shared/util/vector2";
@@ -95,9 +96,6 @@ export class ClientEventListener {
     this.socketManager = socketManager;
     this.gameState = this.gameClient.getGameState();
 
-    // Prevent game from starting until we're initialized
-    this.gameClient.stop();
-
     // Set up event listeners first, before requesting state
     this.socketManager.on(ServerSentEvents.GAME_STATE_UPDATE, this.onGameStateUpdate.bind(this));
     this.socketManager.on(ServerSentEvents.MAP, this.onMap.bind(this));
@@ -138,18 +136,8 @@ export class ClientEventListener {
     this.socketManager.on(ServerSentEvents.BUILD, this.onBuild.bind(this));
     this.socketManager.on(ServerSentEvents.BOSS_STEP, this.onBossStep.bind(this));
     this.socketManager.on(ServerSentEvents.BOSS_SUMMON, this.onBossSummon.bind(this));
+    this.socketManager.on(ServerSentEvents.PONG, this.onPong.bind(this));
 
-    // Request full state after all listeners are set up
-    // If already connected, request immediately; otherwise the connect handler will request it
-    // Use setTimeout to ensure this runs after the constructor completes and socket is ready
-    setTimeout(() => {
-      if (!this.socketManager.getIsDisconnected()) {
-        console.log("[ClientEventListener] Requesting full state after listener setup");
-        this.socketManager.sendRequestFullState();
-      }
-    }, 0);
-
-    // Listen for disconnect to reset initialization state
     this.socketManager.onSocketDisconnect(() => {
       this.handleDisconnect();
     });
@@ -697,7 +685,7 @@ export class ClientEventListener {
     }
   }
 
-  private applyWeaponCameraShake(attackingPlayerId: string, weaponConfig?: WeaponConfig) {
+  private applyWeaponCameraShake(attackingPlayerId: number, weaponConfig?: WeaponConfig) {
     const intensity = weaponConfig?.stats.cameraShakeIntensity;
     if (!intensity || intensity <= 0) {
       return;
@@ -914,6 +902,17 @@ export class ClientEventListener {
     if (soundType && Object.values(SOUND_TYPES_TO_MP3).includes(soundType as any)) {
       this.gameClient.getSoundManager().playPositionalSound(soundType, position);
     }
+  }
+
+  onPong(pongEvent: PongEvent) {
+    // The event is already deserialized by the socket manager's attachHandler
+    // Both Date.now() and timestamp are Unix timestamps (milliseconds since epoch, UTC)
+    // This calculation is timezone-independent
+    const latency = Date.now() - pongEvent.getData().timestamp;
+
+    // Send calculated latency to server so it can update the player's ping
+    // This ensures accurate ping calculation without clock skew issues
+    this.socketManager.sendPingUpdate(latency);
   }
 
   private checkInitialization() {

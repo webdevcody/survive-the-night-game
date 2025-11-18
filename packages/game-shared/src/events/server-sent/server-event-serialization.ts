@@ -136,7 +136,11 @@ export function serializeServerEvent(event: string, args: any[]): Buffer | null 
       break;
     }
     case ServerSentEvents.BUILD: {
-      const data = args[0] as { playerId: number; position: { x: number; y: number }; soundType: string };
+      const data = args[0] as {
+        playerId: number;
+        position: { x: number; y: number };
+        soundType: string;
+      };
       writer.writeUInt16(data.playerId ?? 0);
       writer.writeFloat64(data.position?.x ?? 0);
       writer.writeFloat64(data.position?.y ?? 0);
@@ -212,7 +216,7 @@ export function deserializeServerEvent(event: string, buffer: ArrayBuffer): any[
   switch (event) {
     case ServerSentEvents.PONG: {
       const timestamp = reader.readFloat64();
-      return [{ timestamp }];
+      return [timestamp];
     }
     case ServerSentEvents.YOUR_ID: {
       const playerId = reader.readUInt16();

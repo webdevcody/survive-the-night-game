@@ -77,9 +77,9 @@ const SERVER_EVENT_MAP = {
 } as const;
 
 export class ClientSocketManager {
-  private socket: DelayedSocket;
-  private rawSocket: ISocketAdapter;
-  private clientAdapter: IClientAdapter;
+  private socket!: DelayedSocket;
+  private rawSocket!: ISocketAdapter;
+  private clientAdapter!: IClientAdapter;
   private pingInterval: ReturnType<typeof setInterval> | null = null;
   private onPingUpdate?: (ping: number) => void;
   private isDisconnected: boolean = false;
@@ -88,8 +88,17 @@ export class ClientSocketManager {
   private reconnectAttempts: number = 0;
   private readonly MAX_RECONNECT_ATTEMPTS = Infinity; // Keep trying indefinitely
   private readonly RECONNECT_DELAY_MS = 1000; // Start with 1 second delay
+  private readonly MAX_CONNECTION_ATTEMPTS = 10;
+  private readonly CONNECTION_TIMEOUT_MS = 10000; // 10 seconds timeout per attempt
   private eventHandlers: Map<string, Array<(event: any) => void>> = new Map();
   private socketDisconnectHandlers: Array<() => void> = [];
+  private connectionPromiseResolve?: () => void;
+  private connectionPromiseReject?: (error: Error) => void;
+  private connectionTimeout?: ReturnType<typeof setTimeout>;
+  private connectionResolved: boolean = false;
+  private connectHandler?: () => void;
+  private errorHandler?: (error: any) => void;
+  private PING_INTERVAL_MS = 500;
 
   public on<K extends keyof typeof SERVER_EVENT_MAP>(eventType: K, handler: (event: any) => void) {
     const eventKey = eventType as string;
@@ -102,17 +111,68 @@ export class ClientSocketManager {
 
   constructor(serverUrl: string) {
     this.serverUrl = serverUrl;
-    this.connect();
   }
 
-  private connect(): void {
+  public connect(): Promise<void> {
+    return new Promise((resolve, reject) => {
+      const displayName = localStorage.getItem("displayName");
+
+      if (!displayName) {
+        reject(new Error("No display name found"));
+        return;
+      }
+
+      this.connectionPromiseResolve = resolve;
+      this.connectionPromiseReject = reject;
+      this.connectionResolved = false;
+
+      this.attemptConnection(0);
+    });
+  }
+
+  private attemptConnection(attemptNumber: number): void {
+    if (attemptNumber >= this.MAX_CONNECTION_ATTEMPTS) {
+      const error = new Error(`Failed to connect after ${this.MAX_CONNECTION_ATTEMPTS} attempts`);
+      console.error(error.message);
+      if (this.connectionPromiseReject) {
+        this.connectionPromiseReject(error);
+      }
+      return;
+    }
+
+    if (attemptNumber > 0) {
+      // Exponential backoff: 1s, 2s, 4s, 8s, max 10s
+      const delay = Math.min(this.RECONNECT_DELAY_MS * Math.pow(2, attemptNumber - 1), 10000);
+      console.log(
+        `Retrying connection in ${delay}ms (attempt ${attemptNumber + 1}/${
+          this.MAX_CONNECTION_ATTEMPTS
+        })...`
+      );
+      setTimeout(() => {
+        this.performConnection(attemptNumber);
+      }, delay);
+    } else {
+      this.performConnection(attemptNumber);
+    }
+  }
+
+  private performConnection(attemptNumber: number): void {
     const displayName = localStorage.getItem("displayName");
 
     if (!displayName) {
-      throw new Error("No display name found");
+      if (this.connectionPromiseReject) {
+        this.connectionPromiseReject(new Error("No display name found"));
+      }
+      return;
     }
 
-    console.log("Connecting to game server", this.serverUrl);
+    console.log(
+      `Connecting to game server (attempt ${attemptNumber + 1}/${this.MAX_CONNECTION_ATTEMPTS})`,
+      this.serverUrl
+    );
+
+    // Clean up any existing connection
+    this.cleanupConnection();
 
     // Create client adapter based on configuration and connect
     this.clientAdapter = createClientAdapter();
@@ -125,14 +185,53 @@ export class ClientSocketManager {
     this.socket = new DelayedSocket(this.rawSocket, SIMULATION_CONFIG.simulatedLatencyMs);
     this.registerStoredHandlers();
 
-    this.rawSocket.on("connect", () => {
+    // Set up connection timeout
+    this.connectionTimeout = setTimeout(() => {
+      console.log(
+        `Connection timeout after ${this.CONNECTION_TIMEOUT_MS}ms (attempt ${attemptNumber + 1})`
+      );
+      this.cleanupConnection();
+      this.attemptConnection(attemptNumber + 1);
+    }, this.CONNECTION_TIMEOUT_MS);
+
+    // Set up connection success handler
+    this.connectHandler = () => {
+      if (this.connectionResolved) {
+        return; // Already resolved, ignore duplicate calls
+      }
+
       console.log("Connected to game server", this.rawSocket.id);
       this.isDisconnected = false;
       this.reconnectAttempts = 0; // Reset reconnect attempts on successful connection
-      this.socket.emit(ClientSentEvents.REQUEST_FULL_STATE);
-      this.startPingMeasurement();
-    });
 
+      // Clear timeout
+      if (this.connectionTimeout) {
+        clearTimeout(this.connectionTimeout);
+        this.connectionTimeout = undefined;
+      }
+
+      // Mark as resolved and resolve the promise
+      this.connectionResolved = true;
+      if (this.connectionPromiseResolve) {
+        this.connectionPromiseResolve();
+      }
+    };
+
+    // Set up connection error handler
+    this.errorHandler = (error: any) => {
+      if (this.connectionResolved) {
+        return; // Already resolved, ignore errors
+      }
+
+      console.error("Connection error:", error);
+      this.cleanupConnection();
+      this.attemptConnection(attemptNumber + 1);
+    };
+
+    this.rawSocket.on("connect", this.connectHandler);
+    this.rawSocket.on("error", this.errorHandler);
+
+    // Set up disconnect handler (for after successful connection)
     this.rawSocket.on("disconnect", () => {
       console.log("Disconnected from game server");
       this.isDisconnected = true;
@@ -146,35 +245,29 @@ export class ClientSocketManager {
       });
       this.attemptReconnect();
     });
+  }
 
-    // Set up pong handler (using DelayedSocket.on() which automatically decodes)
-    this.socket.on(ServerSentEvents.PONG, (decodedEvent: any) => {
-      // Handle binary serialization
-      let timestamp: number;
-      if (decodedEvent instanceof ArrayBuffer) {
-        // Binary format - deserialize
-        const deserialized = deserializeServerEvent(ServerSentEvents.PONG, decodedEvent);
-        if (deserialized === null || deserialized.length === 0) {
-          console.error("Failed to deserialize PONG event from binary");
-          return;
-        }
-        timestamp = deserialized[0].timestamp;
-      } else {
-        // JSON format - use directly
-        timestamp = decodedEvent.timestamp;
-      }
+  private cleanupConnection(): void {
+    if (this.connectionTimeout) {
+      clearTimeout(this.connectionTimeout);
+      this.connectionTimeout = undefined;
+    }
 
-      const event = new PongEvent(timestamp);
-      // Both Date.now() and timestamp are Unix timestamps (milliseconds since epoch, UTC)
-      // This calculation is timezone-independent
-      const latency = Date.now() - event.getData().timestamp;
-      if (this.onPingUpdate) {
-        this.onPingUpdate(latency);
+    // Clear handler references
+    this.connectHandler = undefined;
+    this.errorHandler = undefined;
+
+    if (this.rawSocket) {
+      try {
+        this.rawSocket.disconnect();
+      } catch (error) {
+        // Ignore errors during cleanup
       }
-      // Send calculated latency to server so it can update the player's ping
-      // This ensures accurate ping calculation without clock skew issues
-      this.socket.emit(ClientSentEvents.PING_UPDATE, latency);
-    });
+    }
+  }
+
+  public requestFullState(): void {
+    this.socket.emit(ClientSentEvents.REQUEST_FULL_STATE);
   }
 
   private attemptReconnect(): void {
@@ -190,19 +283,18 @@ export class ClientSocketManager {
     }
 
     // Exponential backoff: 1s, 2s, 4s, 8s, max 10s
-    const delay = Math.min(
-      this.RECONNECT_DELAY_MS * Math.pow(2, this.reconnectAttempts),
-      10000
-    );
+    const delay = Math.min(this.RECONNECT_DELAY_MS * Math.pow(2, this.reconnectAttempts), 10000);
     this.reconnectAttempts++;
 
-    console.log(
-      `Attempting to reconnect in ${delay}ms (attempt ${this.reconnectAttempts})...`
-    );
+    console.log(`Attempting to reconnect in ${delay}ms (attempt ${this.reconnectAttempts})...`);
 
     this.reconnectTimeout = setTimeout(() => {
       console.log("Reconnecting to game server...");
-      this.connect();
+      this.connect().catch((error) => {
+        console.error("Reconnection attempt failed:", error);
+        // Continue attempting reconnection
+        this.attemptReconnect();
+      });
     }, delay);
   }
 
@@ -216,7 +308,10 @@ export class ClientSocketManager {
         const Ctor = (SERVER_EVENT_MAP as any)[eventType];
         let eventInstance: any;
 
-        if (eventType === ServerSentEvents.GAME_STATE_UPDATE && decodedEvent instanceof ArrayBuffer) {
+        if (
+          eventType === ServerSentEvents.GAME_STATE_UPDATE &&
+          decodedEvent instanceof ArrayBuffer
+        ) {
           eventInstance = Ctor.deserializeFromBuffer(decodedEvent);
         } else if (decodedEvent instanceof ArrayBuffer) {
           const deserialized = deserializeServerEvent(eventType as string, decodedEvent);
@@ -252,7 +347,7 @@ export class ClientSocketManager {
     }
   }
 
-  private startPingMeasurement(): void {
+  public startPingMeasurement(): void {
     if (this.pingInterval) return;
 
     // Send initial ping
@@ -261,7 +356,7 @@ export class ClientSocketManager {
     // Set up interval for regular pings
     this.pingInterval = setInterval(() => {
       this.sendPing();
-    }, 1000);
+    }, this.PING_INTERVAL_MS);
   }
 
   private stopPingMeasurement(): void {
@@ -276,8 +371,8 @@ export class ClientSocketManager {
     this.socket.emit(ClientSentEvents.PING, Date.now());
   }
 
-  public onPing(callback: (ping: number) => void): void {
-    this.onPingUpdate = callback;
+  public sendPingUpdate(latency: number): void {
+    this.socket.emit(ClientSentEvents.PING_UPDATE, latency);
   }
 
   public sendCraftRequest(recipe: RecipeType) {

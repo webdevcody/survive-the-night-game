@@ -9,7 +9,7 @@ const CHAT_INPUT_HEIGHT = 50;
 const CHAT_BOTTOM_MARGIN = 140; // Distance from bottom of screen to chat input (above inventory bar)
 
 interface ChatMessage {
-  playerId: string;
+  playerId: number;
   message: string;
   timestamp: number;
 }
@@ -104,7 +104,7 @@ export class ChatWidget {
     this.historyIndex = -1;
   }
 
-  public addChatMessage(playerId: string, message: string): void {
+  public addChatMessage(playerId: number, message: string): void {
     // Only truncate user messages, not system messages
     const truncatedMessage =
       playerId === "system" ? message : message.slice(0, this.MAX_MESSAGE_LENGTH);

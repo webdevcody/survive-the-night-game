@@ -398,10 +398,14 @@ export class GameClient {
   /**
    * Connect to the game server
    */
-  public connectToServer(serverUrl: string): void {
+  public async connectToServer(serverUrl: string): Promise<void> {
     this.socketManager = new ClientSocketManager(serverUrl);
     this.clientEventListener = new ClientEventListener(this, this.socketManager);
     this.commandManager = new CommandManager(this.socketManager, this.gameState);
+
+    await this.socketManager.connect();
+    this.socketManager.startPingMeasurement();
+    this.socketManager.requestFullState();
 
     // Initialize placement manager
     this.placementManager = new PlacementManager(
@@ -412,11 +416,6 @@ export class GameClient {
       () => this.gameState.entities,
       () => this.socketManager.getSocket()
     );
-
-    // Set up ping display
-    this.socketManager.onPing((ping) => {
-      this.hud.updatePing(ping);
-    });
 
     // Set game client reference for sound manager
     this.soundManager.setGameClient(this);
@@ -438,7 +437,7 @@ export class GameClient {
     return this.gameState;
   }
 
-  public removeEntity(id: string) {
+  public removeEntity(id: number) {
     removeEntityFromState(this.gameState, id);
   }
 
@@ -513,7 +512,7 @@ export class GameClient {
     this.isMounted = false;
   }
 
-  public getEntityById(id: string) {
+  public getEntityById(id: number) {
     return getEntityById(this.gameState, id);
   }
 
