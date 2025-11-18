@@ -81,7 +81,6 @@ export class Player extends Entity {
         inputConsume: false,
         inputConsumeItemType: null as string | null,
         inputSprint: false,
-        inputSequenceNumber: -1, // -1 represents undefined for optional field
         inputAimAngle: NaN, // NaN represents undefined for optional field
         activeItem: null,
         pickupProgress: 0,
@@ -747,7 +746,6 @@ export class Player extends Entity {
     serialized.inputConsume = input.consume ?? false;
     serialized.inputConsumeItemType = input.consumeItemType ?? null;
     serialized.inputSprint = input.sprint ?? false;
-    serialized.inputSequenceNumber = input.sequenceNumber ?? -1; // -1 represents undefined
     serialized.inputAimAngle = input.aimAngle ?? NaN; // NaN represents undefined
     // Update activeItem if inventory slot changed
     if (input.inventoryItem !== previousSlot) {

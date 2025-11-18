@@ -467,7 +467,6 @@ export class PlayerClient extends ClientEntity implements IClientEntity, Rendera
 
   private reconstructInputObject(): void {
     // Reconstruct input object from individual serialized fields
-    const inputSequenceNumber = (this as any).inputSequenceNumber;
     const inputAimAngle = (this as any).inputAimAngle;
     const input: Input = {
       facing: (this as any).inputFacing ?? Direction.Right,
@@ -480,8 +479,7 @@ export class PlayerClient extends ClientEntity implements IClientEntity, Rendera
       consume: (this as any).inputConsume ?? false,
       consumeItemType: (this as any).inputConsumeItemType ?? null,
       sprint: (this as any).inputSprint ?? false,
-      // 0xFFFFFFFF represents undefined for sequenceNumber, NaN represents undefined for aimAngle
-      sequenceNumber: inputSequenceNumber === 0xffffffff ? undefined : inputSequenceNumber,
+      // NaN represents undefined for aimAngle
       aimAngle: inputAimAngle === undefined || isNaN(inputAimAngle) ? undefined : inputAimAngle,
     };
 

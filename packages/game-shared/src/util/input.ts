@@ -12,6 +12,5 @@ export type Input = {
   consume: boolean;
   consumeItemType: ItemType | null;
   sprint: boolean;
-  sequenceNumber?: number; // Optional: sequence number for client-side prediction rollback
   aimAngle?: number; // Optional: angle in radians for directional shooting (mouse aiming)
 };

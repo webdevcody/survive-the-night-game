@@ -702,6 +702,18 @@ export class ArrayBufferWriter {
     this.offset += 1;
   }
 
+  writeUInt16(value: number): void {
+    this.ensureCapacity(2);
+    this.view.setUint16(this.offset, value >>> 0, true);
+    this.offset += 2;
+  }
+
+  writeInt16(value: number): void {
+    this.ensureCapacity(2);
+    this.view.setInt16(this.offset, value | 0, true);
+    this.offset += 2;
+  }
+
   writeBoolean(value: boolean): void {
     this.ensureCapacity(1);
     this.view.setUint8(this.offset, value ? 1 : 0);

@@ -27,7 +27,6 @@ import { WaveState } from "@shared/types/wave";
 import { ParticleManager } from "./managers/particles";
 import { PredictionManager } from "./managers/prediction";
 import { FixedTimestepSimulator } from "./managers/fixed-timestep-simulator";
-import { SequenceManager } from "./managers/sequence-manager";
 import { getConfig } from "@shared/config";
 import { distance } from "@shared/util/physics";
 import Vector2 from "@shared/util/vector2";
@@ -53,7 +52,6 @@ export class GameClient {
   private particleManager: ParticleManager;
   private predictionManager: PredictionManager;
   private fixedTimestepSimulator: FixedTimestepSimulator;
-  private sequenceManager: SequenceManager;
   private placementManager!: PlacementManager;
 
   // FPS tracking
@@ -101,7 +99,6 @@ export class GameClient {
     this.particleManager = new ParticleManager(this);
     this.predictionManager = new PredictionManager();
     this.fixedTimestepSimulator = new FixedTimestepSimulator(getConfig().simulation.FIXED_TIMESTEP);
-    this.sequenceManager = new SequenceManager();
 
     // Add mousemove event listener for UI hover interactions and aiming
     canvas.addEventListener("mousemove", (e) => {
@@ -623,11 +620,6 @@ export class GameClient {
 
         // Send input to server when it changed, facing direction changed, or aimAngle changed
         if (this.inputManager.getHasChanged() || facingChanged || aimAngleChanged) {
-          // Get sequence number for this input
-          if (!input.sequenceNumber) {
-            input.sequenceNumber = this.sequenceManager.getNextSequence();
-          }
-
           // Send input to server
           this.sendInput(input);
           this.inputManager.reset();
