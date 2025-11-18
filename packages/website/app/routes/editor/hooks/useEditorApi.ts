@@ -55,36 +55,28 @@ export function useSaveBiome() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async ({
-      biomeName,
-      ground,
-      collidables,
-      items,
-      decals,
-    }: {
-      biomeName: string;
-      ground: number[][];
-      collidables: number[][];
-      items: string[];
-      decals?: Array<{
-        id: string;
-        position: { x: number; y: number };
-        animation?: any;
-        light?: any;
-      }>;
-    }) => {
-      const response = await fetch(API_ENDPOINTS.biome(biomeName), {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          ground,
-          collidables,
-          items,
-          decals,
-        }),
-      });
+      mutationFn: async ({
+        biomeName,
+        ground,
+        collidables,
+        items,
+      }: {
+        biomeName: string;
+        ground: number[][];
+        collidables: number[][];
+        items: string[];
+      }) => {
+        const response = await fetch(API_ENDPOINTS.biome(biomeName), {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            ground,
+            collidables,
+            items,
+          }),
+        });
 
       if (!response.ok) {
         throw new Error(`Failed to save biome ${biomeName}`);

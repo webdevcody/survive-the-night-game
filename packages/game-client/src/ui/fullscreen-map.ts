@@ -104,7 +104,7 @@ export class FullScreenMap {
     return FULLSCREEN_MAP_SETTINGS.zoomLevels[this.currentZoomIndex];
   }
 
-  // Get all light sources from entities and decals
+    // Get all light sources from entities
   private getLightSources(gameState: GameState): LightSource[] {
     const sources: LightSource[] = [];
 
@@ -117,24 +117,6 @@ export class FullScreenMap {
       }
     }
 
-    // Add decal light sources
-    const mapData = this.mapManager.getMapData();
-    if (mapData?.decals) {
-      mapData.decals.forEach((decal) => {
-        if (decal.light) {
-          const intensity = decal.light.intensity ?? 1.0;
-          const radius = decal.light.radius * intensity;
-
-          const poolManager = PoolManager.getInstance();
-          const position = poolManager.vector2.claim(
-            decal.position.x * this.tileSize + this.tileSize / 2,
-            decal.position.y * this.tileSize + this.tileSize / 2
-          );
-
-          sources.push({ position, radius });
-        }
-      });
-    }
 
     return sources;
   }

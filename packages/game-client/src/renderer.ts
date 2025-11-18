@@ -188,10 +188,6 @@ export class Renderer {
     this.mapManager.renderCollidables(this.ctx);
     perfTimer.end("renderCollidables");
 
-    // Render decals (animated decorative sprites above ground/collidables but below entities)
-    perfTimer.start("renderDecals");
-    this.mapManager.renderDecals(this.ctx);
-    perfTimer.end("renderDecals");
 
     // Render entities
     perfTimer.start("renderEntities");

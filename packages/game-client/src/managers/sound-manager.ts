@@ -296,7 +296,7 @@ export class SoundManager {
 
   /**
    * Update volumes for all active looping sounds based on current player position
-   * Skips sounds that don't have corresponding entities (e.g., campfire decals)
+   * Skips sounds that don't have corresponding entities
    * as those are handled separately
    */
   public updateLoopingSoundsVolumes(): void {

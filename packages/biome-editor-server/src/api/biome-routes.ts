@@ -116,29 +116,6 @@ router.post("/biomes/:name", async (req: Request, res: Response) => {
       }
     }
 
-    // Validate decals if present
-    if (biomeData.decals) {
-      for (const decal of biomeData.decals) {
-        if (!decal.id || !decal.position) {
-          res.status(400).json({
-            error: "Invalid decal: must have id and position",
-          });
-          return;
-        }
-        if (
-          decal.position.x < 0 ||
-          decal.position.x >= 16 ||
-          decal.position.y < 0 ||
-          decal.position.y >= 16
-        ) {
-          res.status(400).json({
-            error: "Invalid decal position: must be within 16x16 grid",
-          });
-          return;
-        }
-      }
-    }
-
     await writeBiomeData(name, biomeData);
     res.json({ success: true, message: "Biome saved successfully" });
   } catch (error) {

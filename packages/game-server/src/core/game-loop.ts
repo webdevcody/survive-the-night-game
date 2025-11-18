@@ -251,7 +251,7 @@ export class GameLoop {
     const bandwidth = this.socketManager.getCurrentBandwidth();
     this.tickPerformanceTracker.recordBandwidth(bandwidth);
 
-    this.trackPerformance(updateStartTime, Date.now());
+    this.trackPerformance(updateStartTime);
     this.lastUpdateTime = currentTime;
   }
 
@@ -325,7 +325,7 @@ export class GameLoop {
     }, 5000);
   }
 
-  private trackPerformance(updateStartTime: number, currentTime: number) {
+  private trackPerformance(updateStartTime: number) {
     const updateDuration = performance.now() - updateStartTime;
 
     // Warn if update took longer than tick rate

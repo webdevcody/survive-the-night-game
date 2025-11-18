@@ -30,7 +30,6 @@ import {
 } from "@/world/biomes";
 import type { BiomeData } from "@/world/biomes/types";
 import type { MapData } from "../../../game-shared/src/events/server-sent/events/map-event";
-import type { DecalData } from "@shared/config/decals-config";
 import { getConfig } from "@/config";
 import { itemRegistry, weaponRegistry, resourceRegistry } from "@shared/entities";
 import { Entities } from "@shared/constants";
@@ -86,7 +85,6 @@ function buildSpawnTable(): Array<{ chance: number; entityType: string }> {
 export class MapManager implements IMapManager {
   private groundLayer: number[][] = [];
   private collidablesLayer: number[][] = [];
-  private decals: DecalData[] = [];
   private gameManagers?: IGameManagers;
   private entityManager?: IEntityManager;
   private gameMaster?: GameMaster;
@@ -128,19 +126,9 @@ export class MapManager implements IMapManager {
     const centerBiomeX = Math.floor(MAP_SIZE / 2);
     const centerBiomeY = Math.floor(MAP_SIZE / 2);
 
-    // Ensure decals array is always present and contains expected decals
-    // If decals are missing, it might indicate the map wasn't fully generated
-    if (this.decals.length === 0) {
-      console.warn(
-        "MapManager.getMapData(): decals array is empty - map may not be fully generated"
-      );
-    }
-
     return {
       ground: this.groundLayer,
       collidables: this.collidablesLayer,
-      // Always include decals array (even if empty) to ensure consistency
-      decals: this.decals.length > 0 ? this.decals : [],
       biomePositions: {
         campsite: { x: centerBiomeX, y: centerBiomeY },
         farm: this.farmBiomePosition,
@@ -520,7 +508,6 @@ export class MapManager implements IMapManager {
 
   generateMap() {
     this.getEntityManager().clear();
-    this.decals = []; // Clear decals for new map
     this.generateSpatialGrid();
     this.initializeMap();
     this.selectRandomFarmBiomePosition();
@@ -1040,36 +1027,24 @@ export class MapManager implements IMapManager {
       }
     }
 
-    // Place biome decals with converted absolute positions
-    // Special handling: campfire decals become CampsiteFire entities instead
-    if (biome.decals && biome.decals.length > 0) {
-      for (const decal of biome.decals) {
-        // Convert local biome position (0-15) to absolute map position
-        const absoluteX = biomeX * BIOME_SIZE + decal.position.x;
-        const absoluteY = biomeY * BIOME_SIZE + decal.position.y;
+    // Hard-code campfire entity spawn for campsite biome
+    // Campfire position: x=8, y=7 within the biome (center of campsite)
+    if (biome === CAMPSITE) {
+      const campfireLocalX = 8;
+      const campfireLocalY = 7;
+      const absoluteX = biomeX * BIOME_SIZE + campfireLocalX;
+      const absoluteY = biomeY * BIOME_SIZE + campfireLocalY;
 
-        // If this is a campfire decal, create a CampsiteFire entity instead
-        if (decal.id === "campfire") {
-          const campsiteFire = new CampsiteFire(this.getGameManagers());
-          campsiteFire
-            .getExt(Positionable)
-            .setPosition(
-              PoolManager.getInstance().vector2.claim(
-                absoluteX * getConfig().world.TILE_SIZE,
-                absoluteY * getConfig().world.TILE_SIZE
-              )
-            );
-          this.getEntityManager().addEntity(campsiteFire);
-          // Don't add to decals array - it's now an entity
-          continue;
-        }
-
-        // For other decals, add to decals array as before
-        this.decals.push({
-          ...decal,
-          position: { x: absoluteX, y: absoluteY },
-        });
-      }
+      const campsiteFire = new CampsiteFire(this.getGameManagers());
+      campsiteFire
+        .getExt(Positionable)
+        .setPosition(
+          PoolManager.getInstance().vector2.claim(
+            absoluteX * getConfig().world.TILE_SIZE,
+            absoluteY * getConfig().world.TILE_SIZE
+          )
+        );
+      this.getEntityManager().addEntity(campsiteFire);
     }
 
     this.spawnBiomeItems(biome, biomeX, biomeY);
