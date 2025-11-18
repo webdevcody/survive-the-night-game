@@ -1,4 +1,4 @@
-import { ExplosionEvent } from "@shared/events/server-sent/explosion-event";
+import { ExplosionEvent } from "../../../game-shared/src/events/server-sent/events/explosion-event";
 import { SOUND_TYPES_TO_MP3 } from "@/managers/sound-manager";
 import { ExplosionParticle } from "@/particles/explosion";
 import Vector2 from "@shared/util/vector2";
@@ -42,4 +42,3 @@ export const onExplosion = (context: ClientEventContext, event: ExplosionEvent) 
 
   applyExplosionCameraShake(context, explosionPosition);
 };
-

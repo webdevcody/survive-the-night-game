@@ -1,4 +1,4 @@
-import { WaveStartEvent } from "@shared/events/server-sent/wave-start-event";
+import { WaveStartEvent } from "../../../game-shared/src/events/server-sent/events/wave-start-event";
 import { ClientPositionable } from "@/extensions";
 import { SOUND_TYPES_TO_MP3 } from "@/managers/sound-manager";
 import PoolManager from "@shared/util/pool-manager";
@@ -30,4 +30,3 @@ export const onWaveStart = (context: ClientEventContext, event: WaveStartEvent) 
   // Start battle music (plays on top of background music)
   context.gameClient.getSoundManager().playBattleMusic();
 };
-

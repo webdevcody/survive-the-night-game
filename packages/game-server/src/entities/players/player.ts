@@ -1,5 +1,5 @@
-import { PlayerDroppedItemEvent } from "@shared/events/server-sent/player-dropped-item-event";
-import { PlayerHurtEvent } from "@shared/events/server-sent/player-hurt-event";
+import { PlayerDroppedItemEvent } from "../../../../game-shared/src/events/server-sent/events/player-dropped-item-event";
+import { PlayerHurtEvent } from "../../../../game-shared/src/events/server-sent/events/player-hurt-event";
 import { ResourceType } from "@shared/util/inventory";
 import Collidable from "@/extensions/collidable";
 import Consumable from "@/extensions/consumable";
@@ -22,8 +22,8 @@ import { normalizeVector, distance } from "@shared/util/physics";
 import { RecipeType } from "@shared/util/recipes";
 import { Cooldown } from "@/entities/util/cooldown";
 import { weaponHandlerRegistry } from "@/entities/weapons/weapon-handler-registry";
-import { PlayerDeathEvent } from "@shared/events/server-sent/player-death-event";
-import { CraftEvent } from "@shared/events/server-sent/craft-event";
+import { PlayerDeathEvent } from "../../../../game-shared/src/events/server-sent/events/player-death-event";
+import { CraftEvent } from "../../../../game-shared/src/events/server-sent/events/craft-event";
 import { getConfig } from "@shared/config";
 import Vector2 from "@/util/vector2";
 import PoolManager from "@shared/util/pool-manager";

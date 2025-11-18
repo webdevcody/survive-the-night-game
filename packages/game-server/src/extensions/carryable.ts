@@ -1,5 +1,5 @@
 import { Extension } from "@/extensions/types";
-import { PlayerPickedUpItemEvent } from "@shared/events/server-sent/pickup-item-event";
+import { PlayerPickedUpItemEvent } from "../../../game-shared/src/events/server-sent/events/pickup-item-event";
 import Inventory from "@/extensions/inventory";
 import { ItemType } from "@/util/inventory";
 import { IEntity } from "@/entities/types";

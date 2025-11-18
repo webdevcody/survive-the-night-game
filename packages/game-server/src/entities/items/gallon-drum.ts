@@ -7,7 +7,7 @@ import PoolManager from "@shared/util/pool-manager";
 import Static from "@/extensions/static";
 import Inventory from "@/extensions/inventory";
 import Interactive from "@/extensions/interactive";
-import { LootEvent } from "@shared/events/server-sent/loot-event";
+import { LootEvent } from "../../../../game-shared/src/events/server-sent/events/loot-event";
 
 export class GallonDrum extends Entity {
   public static get Size(): Vector2 {

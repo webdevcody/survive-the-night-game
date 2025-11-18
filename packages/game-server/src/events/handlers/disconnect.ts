@@ -1,6 +1,6 @@
 import { ISocketAdapter } from "@shared/network/socket-adapter";
 import { HandlerContext } from "../context";
-import { PlayerLeftEvent } from "@shared/events/server-sent/player-left-event";
+import { PlayerLeftEvent } from "../../../../game-shared/src/events/server-sent/events/player-left-event";
 import { SocketEventHandler } from "./types";
 
 export function onDisconnect(context: HandlerContext, socket: ISocketAdapter): void {

@@ -1,4 +1,4 @@
-import { GunFiredEvent } from "@shared/events/server-sent/gun-fired-event";
+import { GunFiredEvent } from "../../../game-shared/src/events/server-sent/events/gun-fired-event";
 import { PlayerClient } from "@/entities/player";
 import { SOUND_TYPES_TO_MP3 } from "@/managers/sound-manager";
 import { ClientEventContext } from "./types";

@@ -3,7 +3,7 @@ export { GameServer } from "./core/server";
 
 // Start the server (main entry point)
 import { GameServer } from "./core/server";
-import { ServerUpdatingEvent } from "@shared/events/server-sent/server-updating-event";
+import { ServerUpdatingEvent } from "../../game-shared/src/events/server-sent/events/server-updating-event";
 
 const gameServer = new GameServer();
 

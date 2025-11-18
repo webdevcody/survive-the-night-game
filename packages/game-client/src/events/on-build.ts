@@ -1,4 +1,4 @@
-import { BuildEvent } from "@shared/events/server-sent/build-event";
+import { BuildEvent } from "../../../game-shared/src/events/server-sent/events/build-event";
 import { SOUND_TYPES_TO_MP3, SoundType } from "@/managers/sound-manager";
 import PoolManager from "@shared/util/pool-manager";
 import { ClientEventContext } from "./types";
@@ -14,4 +14,3 @@ export const onBuild = (context: ClientEventContext, event: BuildEvent) => {
     context.gameClient.getSoundManager().playPositionalSound(soundType, position);
   }
 };
-

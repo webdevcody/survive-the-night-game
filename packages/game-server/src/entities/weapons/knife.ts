@@ -2,7 +2,7 @@ import Destructible from "@/extensions/destructible";
 import { IGameManagers } from "@/managers/types";
 import { Direction, angleToDirection } from "../../../../game-shared/src/util/direction";
 import { Weapon } from "@/entities/weapons/weapon";
-import { PlayerAttackedEvent } from "@shared/events/server-sent/player-attacked-event";
+import { PlayerAttackedEvent } from "../../../../game-shared/src/events/server-sent/events/player-attacked-event";
 import Vector2 from "@/util/vector2";
 import Positionable from "@/extensions/positionable";
 import Groupable from "@/extensions/groupable";

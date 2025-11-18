@@ -13,7 +13,7 @@ import OneTimeTrigger from "@/extensions/one-time-trigger";
 import Vector2 from "@/util/vector2";
 import PoolManager from "@shared/util/pool-manager";
 import { ItemState } from "@/types/entity";
-import { ExplosionEvent } from "@shared/events/server-sent/explosion-event";
+import { ExplosionEvent } from "../../../../game-shared/src/events/server-sent/events/explosion-event";
 import { Cooldown } from "../util/cooldown";
 import Updatable from "@/extensions/updatable";
 

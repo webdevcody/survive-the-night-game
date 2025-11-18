@@ -1,4 +1,4 @@
-import { PlayerAttackedEvent } from "@shared/events/server-sent/player-attacked-event";
+import { PlayerAttackedEvent } from "../../../game-shared/src/events/server-sent/events/player-attacked-event";
 import { PlayerClient } from "@/entities/player";
 import { SOUND_TYPES_TO_MP3 } from "@/managers/sound-manager";
 import { SwipeParticle } from "@/particles/swipe";
@@ -62,4 +62,3 @@ export const onPlayerAttacked = (context: ClientEventContext, event: PlayerAttac
     context.gameClient.getParticleManager().addParticle(particle);
   }
 };
-

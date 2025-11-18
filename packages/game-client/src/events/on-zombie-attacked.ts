@@ -1,4 +1,4 @@
-import { ZombieAttackedEvent } from "@shared/events/server-sent/zombie-attacked-event";
+import { ZombieAttackedEvent } from "../../../game-shared/src/events/server-sent/events/zombie-attacked-event";
 import { ZombieClient } from "@/entities/zombie";
 import { SOUND_TYPES_TO_MP3 } from "@/managers/sound-manager";
 import { SwipeParticle } from "@/particles/swipe";
@@ -28,4 +28,3 @@ export const onZombieAttacked = (context: ClientEventContext, event: ZombieAttac
   particle.setPosition(zombiePosition);
   context.gameClient.getParticleManager().addParticle(particle);
 };
-

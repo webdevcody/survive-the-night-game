@@ -8,8 +8,8 @@ import Vector2 from "@/util/vector2";
 import PoolManager from "@shared/util/pool-manager";
 import Groupable from "@/extensions/groupable";
 import Static from "@/extensions/static";
-import { GameMessageEvent } from "@shared/events/server-sent/game-message-event";
-import { CarRepairEvent } from "@shared/events/server-sent/car-repair-event";
+import { GameMessageEvent } from "../../../../game-shared/src/events/server-sent/events/game-message-event";
+import { CarRepairEvent } from "../../../../game-shared/src/events/server-sent/events/car-repair-event";
 import Interactive from "@/extensions/interactive";
 
 export class Car extends Entity {

@@ -1,4 +1,4 @@
-import { BossSummonEvent } from "@shared/events/server-sent/boss-summon-event";
+import { BossSummonEvent } from "../../../game-shared/src/events/server-sent/events/boss-summon-event";
 import { SummonParticle } from "@/particles/summon";
 import Vector2 from "@shared/util/vector2";
 import { ClientEventContext } from "./types";

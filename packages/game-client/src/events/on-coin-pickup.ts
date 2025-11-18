@@ -1,4 +1,4 @@
-import { CoinPickupEvent } from "@shared/events/server-sent/coin-pickup-event";
+import { CoinPickupEvent } from "../../../game-shared/src/events/server-sent/events/coin-pickup-event";
 import { ClientPositionable } from "@/extensions";
 import { SOUND_TYPES_TO_MP3 } from "@/managers/sound-manager";
 import { ClientEventContext } from "./types";
@@ -13,4 +13,3 @@ export const onCoinPickup = (context: ClientEventContext, event: CoinPickupEvent
     .getSoundManager()
     .playPositionalSound(SOUND_TYPES_TO_MP3.COIN_PICKUP, coinPosition);
 };
-

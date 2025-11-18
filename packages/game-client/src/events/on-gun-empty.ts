@@ -1,4 +1,4 @@
-import { GunEmptyEvent } from "@shared/events/server-sent/gun-empty-event";
+import { GunEmptyEvent } from "../../../game-shared/src/events/server-sent/events/gun-empty-event";
 import { PlayerClient } from "@/entities/player";
 import { SOUND_TYPES_TO_MP3 } from "@/managers/sound-manager";
 import { ClientEventContext } from "./types";
@@ -13,4 +13,3 @@ export const onGunEmpty = (context: ClientEventContext, event: GunEmptyEvent) =>
     .getSoundManager()
     .playPositionalSound(SOUND_TYPES_TO_MP3.GUN_EMPTY, playerPosition);
 };
-

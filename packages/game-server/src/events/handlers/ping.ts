@@ -1,6 +1,6 @@
 import { ISocketAdapter } from "@shared/network/socket-adapter";
 import { HandlerContext } from "../context";
-import { PongEvent } from "@shared/events/server-sent/pong-event";
+import { PongEvent } from "../../../../game-shared/src/events/server-sent/events/pong-event";
 import { SocketEventHandler } from "./types";
 
 export function handlePing(

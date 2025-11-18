@@ -1,4 +1,4 @@
-import { PlayerHurtEvent } from "@shared/events/server-sent/player-hurt-event";
+import { PlayerHurtEvent } from "../../../game-shared/src/events/server-sent/events/player-hurt-event";
 import { PlayerClient } from "@/entities/player";
 import { SOUND_TYPES_TO_MP3 } from "@/managers/sound-manager";
 import { ClientEventContext } from "./types";
@@ -22,4 +22,3 @@ export const onPlayerHurt = (context: ClientEventContext, event: PlayerHurtEvent
     context.gameClient.interruptTeleport();
   }
 };
-

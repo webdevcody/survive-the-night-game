@@ -24,7 +24,7 @@ import { ISocketAdapter } from "@shared/network/socket-adapter";
 import { createServerAdapter } from "@/network/adapter-factory";
 import { BufferManager } from "@/broadcasting/buffer-manager";
 import { Broadcaster as BroadcastingBroadcaster } from "@/broadcasting/broadcaster";
-import { PlayerJoinedEvent } from "@shared/events/server-sent/player-joined-event";
+import { PlayerJoinedEvent } from "../../../game-shared/src/events/server-sent/events/player-joined-event";
 import { HandlerContext, onDisconnect, onConnection } from "@/events/handlers";
 import { socketEventHandlers } from "@/events/handlers/registry";
 import { serializeServerEvent } from "@shared/events/server-sent/server-event-serialization";

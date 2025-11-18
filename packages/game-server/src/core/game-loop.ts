@@ -17,15 +17,15 @@
  * The loop only runs when isGameReady is true and stops when isGameOver is true.
  * When the game ends, it automatically restarts after 5 seconds.
  */
-import { GameOverEvent } from "@shared/events/server-sent/game-over-event";
+import { GameOverEvent } from "../../../game-shared/src/events/server-sent/events/game-over-event";
 import {
   GameStateEvent,
   GameStateData,
   EntityState,
-} from "@shared/events/server-sent/game-state-event";
-import { GameStartedEvent } from "@shared/events/server-sent/game-started-event";
-import { GameMessageEvent } from "@shared/events/server-sent/game-message-event";
-import { WaveStartEvent } from "@shared/events/server-sent/wave-start-event";
+} from "../../../game-shared/src/events/server-sent/events/game-state-event";
+import { GameStartedEvent } from "../../../game-shared/src/events/server-sent/events/game-started-event";
+import { GameMessageEvent } from "../../../game-shared/src/events/server-sent/events/game-message-event";
+import { WaveStartEvent } from "../../../game-shared/src/events/server-sent/events/wave-start-event";
 import { GameEvent } from "@shared/events/types";
 import { EntityManager } from "@/managers/entity-manager";
 import { MapManager } from "@/world/map-manager";

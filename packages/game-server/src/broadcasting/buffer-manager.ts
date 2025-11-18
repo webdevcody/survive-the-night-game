@@ -10,7 +10,7 @@ import {
   GAME_STATE_FIELD_BITS,
 } from "@shared/util/serialization-constants";
 import { IEntity } from "@/entities/types";
-import { GameStateData } from "@shared/events/server-sent/game-state-event";
+import { GameStateData } from "../../../game-shared/src/events/server-sent/events/game-state-event";
 
 /**
  * Centralized buffer manager for serializing game state to buffers.

@@ -1,4 +1,4 @@
-import { PlayerDeathEvent } from "@shared/events/server-sent/player-death-event";
+import { PlayerDeathEvent } from "../../../game-shared/src/events/server-sent/events/player-death-event";
 import { PlayerClient } from "@/entities/player";
 import { SOUND_TYPES_TO_MP3 } from "@/managers/sound-manager";
 import { ClientEventContext } from "./types";
@@ -15,4 +15,3 @@ export const onPlayerDeath = (context: ClientEventContext, event: PlayerDeathEve
     .getSoundManager()
     .playPositionalSound(SOUND_TYPES_TO_MP3.PLAYER_DEATH, playerPosition);
 };
-

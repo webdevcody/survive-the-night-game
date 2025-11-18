@@ -1,4 +1,4 @@
-import { ZombieHurtEvent } from "@shared/events/server-sent/zombie-hurt-event";
+import { ZombieHurtEvent } from "../../../game-shared/src/events/server-sent/events/zombie-hurt-event";
 import { ZombieClient } from "@/entities/zombie";
 import { SOUND_TYPES_TO_MP3 } from "@/managers/sound-manager";
 import { ClientEventContext } from "./types";
@@ -13,4 +13,3 @@ export const onZombieHurt = (context: ClientEventContext, event: ZombieHurtEvent
     .getSoundManager()
     .playPositionalSound(SOUND_TYPES_TO_MP3.ZOMBIE_HURT, zombiePosition);
 };
-

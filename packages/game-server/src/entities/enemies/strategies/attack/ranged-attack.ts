@@ -1,7 +1,7 @@
 import { BaseEnemy, AttackStrategy } from "../../base-enemy";
 import { SpitterZombie } from "../../spitter-zombie";
 import { AcidProjectile } from "@/entities/projectiles/acid-projectile";
-import { ZombieAttackedEvent } from "@shared/events/server-sent/zombie-attacked-event";
+import { ZombieAttackedEvent } from "../../../../../../game-shared/src/events/server-sent/events/zombie-attacked-event";
 import { TargetingSystem } from "../targeting";
 
 export class RangedAttackStrategy implements AttackStrategy {
@@ -11,7 +11,10 @@ export class RangedAttackStrategy implements AttackStrategy {
     if (!(zombie instanceof SpitterZombie)) return;
     if (!zombie.getAttackCooldown().isReady()) return;
 
-    const playerTarget = TargetingSystem.findClosestPlayer(zombie, RangedAttackStrategy.ATTACK_RANGE);
+    const playerTarget = TargetingSystem.findClosestPlayer(
+      zombie,
+      RangedAttackStrategy.ATTACK_RANGE
+    );
     if (!playerTarget) return;
 
     const playerPos = playerTarget.position;
@@ -30,4 +33,3 @@ export class RangedAttackStrategy implements AttackStrategy {
     }
   }
 }
-

@@ -1,4 +1,4 @@
-import { ZombieDeathEvent } from "@shared/events/server-sent/zombie-death-event";
+import { ZombieDeathEvent } from "../../../game-shared/src/events/server-sent/events/zombie-death-event";
 import { ZombieClient } from "@/entities/zombie";
 import { SOUND_TYPES_TO_MP3 } from "@/managers/sound-manager";
 import { distance } from "@shared/util/physics";
@@ -32,4 +32,3 @@ export const onZombieDeath = (context: ClientEventContext, event: ZombieDeathEve
     }
   }
 };
-

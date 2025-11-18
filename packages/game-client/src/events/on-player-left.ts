@@ -1,4 +1,4 @@
-import { PlayerLeftEvent } from "@shared/events/server-sent/player-left-event";
+import { PlayerLeftEvent } from "../../../game-shared/src/events/server-sent/events/player-left-event";
 import { ClientEventContext } from "./types";
 
 export const onPlayerLeft = (context: ClientEventContext, event: PlayerLeftEvent) => {
@@ -9,4 +9,3 @@ export const onPlayerLeft = (context: ClientEventContext, event: PlayerLeftEvent
   context.gameClient.getHud().addMessage(`${event.getDisplayName()} left the game`);
   context.gameClient.removeEntity(event.getPlayerId());
 };
-

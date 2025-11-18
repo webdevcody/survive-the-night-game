@@ -6,7 +6,7 @@ import Positionable from "@/extensions/positionable";
 import Inventory from "@/extensions/inventory";
 import { getConfig } from "@shared/config";
 import PoolManager from "@shared/util/pool-manager";
-import { BuildEvent } from "@shared/events/server-sent/build-event";
+import { BuildEvent } from "../../../../game-shared/src/events/server-sent/events/build-event";
 
 export function onPlaceStructure(
   context: HandlerContext,

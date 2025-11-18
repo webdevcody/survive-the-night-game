@@ -1,4 +1,4 @@
-import { PlayerDroppedItemEvent } from "@shared/events/server-sent/player-dropped-item-event";
+import { PlayerDroppedItemEvent } from "../../../game-shared/src/events/server-sent/events/player-dropped-item-event";
 import { PlayerClient } from "@/entities/player";
 import { SOUND_TYPES_TO_MP3 } from "@/managers/sound-manager";
 import { ClientEventContext } from "./types";
@@ -13,4 +13,3 @@ export const onPlayerDroppedItem = (context: ClientEventContext, event: PlayerDr
     .getSoundManager()
     .playPositionalSound(SOUND_TYPES_TO_MP3.DROP_ITEM, playerPosition);
 };
-

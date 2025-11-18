@@ -1,11 +1,7 @@
-import { GameStateEvent } from "@shared/events/server-sent/game-state-event";
+import { GameStateEvent } from "../../../game-shared/src/events/server-sent/events/game-state-event";
 import { PlayerClient } from "@/entities/player";
 import { ClientPositionable } from "@/extensions";
-import {
-  addEntity,
-  removeEntity as removeEntityFromState,
-  replaceAllEntities,
-} from "@/state";
+import { addEntity, removeEntity as removeEntityFromState, replaceAllEntities } from "@/state";
 import { BufferReader } from "@shared/util/buffer-serialization";
 import { entityTypeRegistry } from "@shared/util/entity-type-encoding";
 import { ExtensionTypes } from "@shared/util/extension-types";
@@ -26,10 +22,7 @@ export const onGameStateUpdate = (
   handleGameStateUpdate(context, gameStateEvent);
 };
 
-const handleGameStateUpdate = (
-  context: InitializationContext,
-  gameStateEvent: GameStateEvent
-) => {
+const handleGameStateUpdate = (context: InitializationContext, gameStateEvent: GameStateEvent) => {
   const timestamp = gameStateEvent.getTimestamp() ?? Date.now();
 
   // Calculate server time offset: clientTime - serverTime
@@ -212,7 +205,10 @@ const handleGameStateUpdate = (
           // Deserialize from buffer
           created.deserializeFromBuffer(reader.atOffset(entityStartOffset));
 
-          if (created.getId() !== context.gameState.playerId && created.hasExt(ClientPositionable)) {
+          if (
+            created.getId() !== context.gameState.playerId &&
+            created.hasExt(ClientPositionable)
+          ) {
             const pos = created.getExt(ClientPositionable).getPosition();
             context.interpolation.addSnapshot(created.getId(), pos, timestamp);
           }
@@ -343,7 +339,10 @@ const handleGameStateUpdate = (
         } else {
           // Add new entity
           const created = context.gameClient.getEntityFactory().createEntity(serverEntityData);
-          if (created.getId() !== context.gameState.playerId && created.hasExt(ClientPositionable)) {
+          if (
+            created.getId() !== context.gameState.playerId &&
+            created.hasExt(ClientPositionable)
+          ) {
             const pos = created.getExt(ClientPositionable).getPosition();
             context.interpolation.addSnapshot(created.getId(), pos, timestamp);
           }
@@ -362,4 +361,3 @@ const handleGameStateUpdate = (
     }
   }
 };
-

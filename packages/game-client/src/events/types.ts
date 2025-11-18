@@ -2,7 +2,7 @@ import { GameClient } from "@/client";
 import { GameState } from "@/state";
 import { ClientSocketManager } from "@/managers/client-socket-manager";
 import { InterpolationManager } from "@/managers/interpolation";
-import { GameStateEvent } from "@shared/events/server-sent/game-state-event";
+import { GameStateEvent } from "../../../game-shared/src/events/server-sent/events/game-state-event";
 import { WaveState } from "@shared/types/wave";
 
 export interface ClientEventContext {
@@ -27,4 +27,3 @@ export interface InitializationContext extends ClientEventContext {
   processPendingFullStateIfReady: () => void;
   checkInitialization: () => void;
 }
-

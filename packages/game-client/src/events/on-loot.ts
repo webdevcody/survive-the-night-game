@@ -1,4 +1,4 @@
-import { LootEvent } from "@shared/events/server-sent/loot-event";
+import { LootEvent } from "../../../game-shared/src/events/server-sent/events/loot-event";
 import { ClientPositionable } from "@/extensions";
 import { SOUND_TYPES_TO_MP3 } from "@/managers/sound-manager";
 import { ClientEventContext } from "./types";

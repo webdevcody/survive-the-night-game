@@ -1,6 +1,6 @@
 import { ISocketAdapter } from "@shared/network/socket-adapter";
 import { HandlerContext } from "../context";
-import { ChatMessageEvent } from "@shared/events/server-sent/chat-message-event";
+import { ChatMessageEvent } from "../../../../game-shared/src/events/server-sent/events/chat-message-event";
 import { EntityManager } from "@/managers/entity-manager";
 import { SocketEventHandler } from "./types";
 

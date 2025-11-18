@@ -16,7 +16,7 @@
  * only be instantiated once. It coordinates between all subsystems but doesn't
  * contain game logic itself - that's handled by GameLoop.
  */
-import { ServerUpdatingEvent } from "@shared/events/server-sent/server-updating-event";
+import { ServerUpdatingEvent } from "../../../game-shared/src/events/server-sent/events/server-updating-event";
 import { GameEvent } from "@shared/events/types";
 import { CommandManager } from "@/managers/command-manager";
 import { EntityManager } from "@/managers/entity-manager";

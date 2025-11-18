@@ -1,5 +1,5 @@
 import { ServerSentEvents } from "@shared/events/events";
-import { GameStateEvent } from "@shared/events/server-sent/game-state-event";
+import { GameStateEvent } from "../../game-shared/src/events/server-sent/events/game-state-event";
 import { GameClient } from "@/client";
 import { ClientSocketManager } from "@/managers/client-socket-manager";
 import { GameState } from "@/state";

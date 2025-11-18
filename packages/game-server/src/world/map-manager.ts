@@ -29,7 +29,7 @@ import {
   SHED,
 } from "@/world/biomes";
 import type { BiomeData } from "@/world/biomes/types";
-import type { MapData } from "@shared/events/server-sent/map-event";
+import type { MapData } from "../../../game-shared/src/events/server-sent/events/map-event";
 import type { DecalData } from "@shared/config/decals-config";
 import { getConfig } from "@/config";
 import { itemRegistry, weaponRegistry, resourceRegistry } from "@shared/entities";

@@ -1,4 +1,4 @@
-import { PongEvent } from "@shared/events/server-sent/pong-event";
+import { PongEvent } from "../../../game-shared/src/events/server-sent/events/pong-event";
 import { ClientEventContext } from "./types";
 
 export const onPong = (context: ClientEventContext, event: PongEvent) => {

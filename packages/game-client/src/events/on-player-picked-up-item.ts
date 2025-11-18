@@ -1,4 +1,4 @@
-import { PlayerPickedUpItemEvent } from "@shared/events/server-sent/pickup-item-event";
+import { PlayerPickedUpItemEvent } from "../../../game-shared/src/events/server-sent/events/pickup-item-event";
 import { PlayerClient } from "@/entities/player";
 import { SOUND_TYPES_TO_MP3 } from "@/managers/sound-manager";
 import { ClientEventContext } from "./types";
@@ -16,4 +16,3 @@ export const onPlayerPickedUpItem = (
     .getSoundManager()
     .playPositionalSound(SOUND_TYPES_TO_MP3.PICK_UP_ITEM, playerPosition);
 };
-

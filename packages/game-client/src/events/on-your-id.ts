@@ -1,4 +1,4 @@
-import { YourIdEvent } from "@shared/events/server-sent/your-id-event";
+import { YourIdEvent } from "../../../game-shared/src/events/server-sent/events/your-id-event";
 import { InitializationContext } from "./types";
 
 export const onYourId = (context: InitializationContext, yourIdEvent: YourIdEvent) => {
@@ -7,4 +7,3 @@ export const onYourId = (context: InitializationContext, yourIdEvent: YourIdEven
   context.processPendingFullStateIfReady();
   context.checkInitialization();
 };
-

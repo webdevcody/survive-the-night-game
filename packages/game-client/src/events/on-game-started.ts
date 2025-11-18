@@ -1,4 +1,4 @@
-import { GameStartedEvent } from "@shared/events/server-sent/game-started-event";
+import { GameStartedEvent } from "../../../game-shared/src/events/server-sent/events/game-started-event";
 import { clearEntities } from "@/state";
 import { ClientEventContext } from "./types";
 
@@ -18,4 +18,3 @@ export const onGameStarted = (context: ClientEventContext, event: GameStartedEve
   // Request full state from server
   context.socketManager.sendRequestFullState();
 };
-
