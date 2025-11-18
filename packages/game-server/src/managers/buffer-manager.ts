@@ -1,4 +1,4 @@
-import { MonitoredBufferWriter } from "@shared/util/buffer-serialization";
+import { BufferWriter } from "@shared/util/buffer-serialization";
 import {
   GAME_STATE_BIT_TIMESTAMP,
   GAME_STATE_BIT_WAVE_NUMBER,
@@ -17,13 +17,13 @@ import { GameStateData } from "@shared/events/server-sent/game-state-event";
  * Maintains a reusable buffer that gets cleared after each game loop.
  */
 export class BufferManager {
-  private writer: MonitoredBufferWriter;
+  private writer: BufferWriter;
   private initialSize: number;
 
   constructor(initialSize: number = 2 * 1024 * 1024) {
     // 2MB initial size - will grow as needed
     this.initialSize = initialSize;
-    this.writer = new MonitoredBufferWriter(initialSize);
+    this.writer = new BufferWriter(initialSize);
   }
 
   /**
@@ -40,11 +40,11 @@ export class BufferManager {
    */
   writeEntity(entity: IEntity, onlyDirty: boolean = false): void {
     // Write entity to temporary buffer first to get its length
-    const tempWriter = new MonitoredBufferWriter(1024);
+    const tempWriter = new BufferWriter(1024);
     entity.serializeToBuffer(tempWriter, onlyDirty);
     const entityBuffer = tempWriter.getBuffer();
     // Write entity data with length prefix handled by writeBuffer
-    this.writer.writeBuffer(entityBuffer, "EntityData");
+    this.writer.writeBuffer(entityBuffer);
   }
 
   /**
@@ -79,32 +79,32 @@ export class BufferManager {
     }
 
     // Write bitset as UInt8
-    this.writer.writeUInt8(bitset, "GameStateBitset");
+    this.writer.writeUInt8(bitset);
 
     // Iterate through bits deterministically and write only fields that are set
     for (const bit of GAME_STATE_FIELD_BITS) {
       if (bitset & bit) {
         switch (bit) {
           case GAME_STATE_BIT_TIMESTAMP:
-            this.writer.writeFloat64(gameState.timestamp!, "Timestamp");
+            this.writer.writeFloat64(gameState.timestamp!);
             break;
           case GAME_STATE_BIT_WAVE_NUMBER:
             if (gameState.waveNumber! > 255) {
               throw new Error(`waveNumber ${gameState.waveNumber} exceeds uint8 maximum (255)`);
             }
-            this.writer.writeUInt8(gameState.waveNumber!, "WaveNumber");
+            this.writer.writeUInt8(gameState.waveNumber!);
             break;
           case GAME_STATE_BIT_WAVE_STATE:
-            this.writer.writeString(gameState.waveState!, "WaveState");
+            this.writer.writeString(gameState.waveState!);
             break;
           case GAME_STATE_BIT_PHASE_START_TIME:
-            this.writer.writeFloat64(gameState.phaseStartTime!, "PhaseStartTime");
+            this.writer.writeFloat64(gameState.phaseStartTime!);
             break;
           case GAME_STATE_BIT_PHASE_DURATION:
-            this.writer.writeFloat64(gameState.phaseDuration!, "PhaseDuration");
+            this.writer.writeFloat64(gameState.phaseDuration!);
             break;
           case GAME_STATE_BIT_IS_FULL_STATE:
-            this.writer.writeBoolean(gameState.isFullState!, "IsFullState");
+            this.writer.writeBoolean(gameState.isFullState!);
             break;
           case GAME_STATE_BIT_REMOVED_ENTITY_IDS:
             // This bit is handled separately in writeRemovedEntityIds
@@ -131,9 +131,9 @@ export class BufferManager {
         `Removed entity IDs count ${removedIds.length} exceeds UInt16 maximum (65535)`
       );
     }
-    this.writer.writeUInt16(removedIds.length, "RemovedEntityIdCount");
+    this.writer.writeUInt16(removedIds.length);
     for (let i = 0; i < removedIds.length; i++) {
-      this.writer.writeUInt16(removedIds[i], `RemovedEntityId[${i}]`);
+      this.writer.writeUInt16(removedIds[i]);
     }
   }
 
@@ -145,7 +145,7 @@ export class BufferManager {
     if (count > 65535) {
       throw new Error(`Entity count ${count} exceeds UInt16 maximum (65535)`);
     }
-    this.writer.writeUInt16(count, "EntityCount");
+    this.writer.writeUInt16(count);
   }
 
   /**

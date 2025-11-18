@@ -2,7 +2,7 @@ import { IEntity } from "@/entities/types";
 import { Extension } from "@/extensions/types";
 import Vector2 from "@/util/vector2";
 import PoolManager from "@shared/util/pool-manager";
-import { BufferWriter, MonitoredBufferWriter } from "@shared/util/buffer-serialization";
+import { BufferWriter } from "@shared/util/buffer-serialization";
 import { encodeExtensionType } from "@shared/util/extension-type-encoding";
 import { ExtensionBase } from "./extension-base";
 
@@ -48,16 +48,10 @@ export default class Interactive extends ExtensionBase {
     this.handler?.(entityId);
   }
 
-  public serializeToBuffer(writer: BufferWriter | MonitoredBufferWriter, onlyDirty: boolean = false): void {
+  public serializeToBuffer(writer: BufferWriter, onlyDirty: boolean = false): void {
     const serialized = this.serialized as any;
-    if (writer instanceof MonitoredBufferWriter || (writer as any).constructor?.name === 'MonitoredBufferWriter') {
-      (writer as MonitoredBufferWriter).writeUInt8(encodeExtensionType(Interactive.type), "ExtensionType");
-      (writer as MonitoredBufferWriter).writeString(serialized.displayName, "DisplayName");
-      (writer as MonitoredBufferWriter).writeVector2(this.offset, "Offset");
-    } else {
-      writer.writeUInt8(encodeExtensionType(Interactive.type));
-      writer.writeString(serialized.displayName);
-      writer.writeVector2(this.offset);
-    }
+    writer.writeUInt8(encodeExtensionType(Interactive.type));
+    writer.writeString(serialized.displayName);
+    writer.writeVector2(this.offset);
   }
 }

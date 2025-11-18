@@ -6,7 +6,7 @@ import { ExtensionTypes } from "@/util/extension-types";
 import { IEntity } from "@/entities/types";
 import { Circle } from "@/util/shape";
 import Vector2 from "@/util/vector2";
-import { BufferWriter, MonitoredBufferWriter } from "@shared/util/buffer-serialization";
+import { BufferWriter } from "@shared/util/buffer-serialization";
 import { encodeExtensionType } from "@shared/util/extension-type-encoding";
 import PoolManager from "@shared/util/pool-manager";
 import { ExtensionBase } from "./extension-base";
@@ -45,15 +45,9 @@ export default class Triggerable extends ExtensionBase {
     }
   }
 
-  public serializeToBuffer(writer: BufferWriter | MonitoredBufferWriter, onlyDirty: boolean = false): void {
-    if (writer instanceof MonitoredBufferWriter || (writer as any).constructor?.name === 'MonitoredBufferWriter') {
-      (writer as MonitoredBufferWriter).writeUInt8(encodeExtensionType(Triggerable.type), "ExtensionType");
-      (writer as MonitoredBufferWriter).writeFloat64(this.size.x, "SizeX");
-      (writer as MonitoredBufferWriter).writeFloat64(this.size.y, "SizeY");
-    } else {
-      writer.writeUInt8(encodeExtensionType(Triggerable.type));
-      writer.writeFloat64(this.size.x);
-      writer.writeFloat64(this.size.y);
-    }
+  public serializeToBuffer(writer: BufferWriter, onlyDirty: boolean = false): void {
+    writer.writeUInt8(encodeExtensionType(Triggerable.type));
+    writer.writeFloat64(this.size.x);
+    writer.writeFloat64(this.size.y);
   }
 }

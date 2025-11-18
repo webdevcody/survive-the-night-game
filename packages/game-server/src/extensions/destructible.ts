@@ -3,7 +3,7 @@ import { Extension } from "@/extensions/types";
 import Positionable from "@/extensions/positionable";
 import { Rectangle } from "@/util/shape";
 import Vector2 from "@/util/vector2";
-import { BufferWriter, MonitoredBufferWriter } from "@shared/util/buffer-serialization";
+import { BufferWriter } from "@shared/util/buffer-serialization";
 import { encodeExtensionType } from "@shared/util/extension-type-encoding";
 import PoolManager from "@shared/util/pool-manager";
 import { ExtensionBase } from "./extension-base";
@@ -106,16 +106,10 @@ export default class Destructible extends ExtensionBase {
     return serialized.maxHealth;
   }
 
-  public serializeToBuffer(writer: BufferWriter | MonitoredBufferWriter, onlyDirty: boolean = false): void {
+  public serializeToBuffer(writer: BufferWriter, onlyDirty: boolean = false): void {
     const serialized = this.serialized as any;
-    if (writer instanceof MonitoredBufferWriter || (writer as any).constructor?.name === 'MonitoredBufferWriter') {
-      (writer as MonitoredBufferWriter).writeUInt8(encodeExtensionType(Destructible.type), "ExtensionType");
-      (writer as MonitoredBufferWriter).writeUInt8(serialized.health, "Health");
-      (writer as MonitoredBufferWriter).writeUInt8(serialized.maxHealth, "MaxHealth");
-    } else {
-      writer.writeUInt8(encodeExtensionType(Destructible.type));
-      writer.writeUInt8(serialized.health);
-      writer.writeUInt8(serialized.maxHealth);
-    }
+    writer.writeUInt8(encodeExtensionType(Destructible.type));
+    writer.writeUInt8(serialized.health);
+    writer.writeUInt8(serialized.maxHealth);
   }
 }

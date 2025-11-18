@@ -2,7 +2,7 @@ import { Extension } from "@/extensions/types";
 import { IEntity } from "@/entities/types";
 import { ExtensionTypes } from "@/util/extension-types";
 import Vector2 from "@shared/util/vector2";
-import { BufferWriter, MonitoredBufferWriter } from "@shared/util/buffer-serialization";
+import { BufferWriter } from "@shared/util/buffer-serialization";
 import { encodeExtensionType } from "@shared/util/extension-type-encoding";
 import PoolManager from "@shared/util/pool-manager";
 import { ExtensionBase } from "./extension-base";
@@ -57,15 +57,9 @@ export default class Positionable extends ExtensionBase {
     return this;
   }
 
-  public serializeToBuffer(writer: BufferWriter | MonitoredBufferWriter, onlyDirty: boolean = false): void {
-    if (writer instanceof MonitoredBufferWriter || (writer as any).constructor?.name === 'MonitoredBufferWriter') {
-      (writer as MonitoredBufferWriter).writeUInt8(encodeExtensionType(Positionable.type), "ExtensionType");
-      (writer as MonitoredBufferWriter).writePosition2(this.position, "Position");
-      (writer as MonitoredBufferWriter).writeSize2(this.size, "Size");
-    } else {
-      writer.writeUInt8(encodeExtensionType(Positionable.type));
-      writer.writePosition2(this.position);
-      writer.writeSize2(this.size);
-    }
+  public serializeToBuffer(writer: BufferWriter, onlyDirty: boolean = false): void {
+    writer.writeUInt8(encodeExtensionType(Positionable.type));
+    writer.writePosition2(this.position);
+    writer.writeSize2(this.size);
   }
 }

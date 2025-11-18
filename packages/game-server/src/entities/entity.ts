@@ -3,7 +3,7 @@ import { Extension, ExtensionCtor } from "@/extensions/types";
 import { EntityType } from "@/types/entity";
 import { IEntity } from "./types";
 import { EntityCategory, EntityCategories } from "@shared/entities";
-import { BufferWriter, MonitoredBufferWriter } from "@shared/util/buffer-serialization";
+import { BufferWriter } from "@shared/util/buffer-serialization";
 import { entityTypeRegistry } from "@shared/util/entity-type-encoding";
 import { encodeExtensionType } from "@shared/util/extension-type-encoding";
 import { SerializableFields } from "@/util/serializable-fields";
@@ -229,71 +229,17 @@ export class Entity<TSerializableFields extends readonly string[] = readonly str
     return extension as T;
   }
 
-  public serializeToBuffer(
-    writer: BufferWriter | MonitoredBufferWriter,
-    onlyDirty: boolean = false
-  ): void {
+  public serializeToBuffer(writer: BufferWriter, onlyDirty: boolean = false): void {
     // For new entities (first serialization), always serialize all extensions
     const isFirstSerialization = !this.hasBeenSerialized;
     const shouldSerializeAllExtensions = !onlyDirty || isFirstSerialization;
 
-    // Helper to call write methods with optional labels
-    const writeUInt16 = (value: number, label?: string) => {
-      if (label && "writeUInt16" in writer && (writer as any).writeUInt16.length === 2) {
-        (writer as MonitoredBufferWriter).writeUInt16(value, label);
-      } else {
-        writer.writeUInt16(value);
-      }
-    };
-    const writeUInt8 = (value: number, label?: string) => {
-      if (label && "writeUInt8" in writer && (writer as any).writeUInt8.length === 2) {
-        (writer as MonitoredBufferWriter).writeUInt8(value, label);
-      } else {
-        writer.writeUInt8(value);
-      }
-    };
-    const writeString = (value: string, label?: string) => {
-      if (label && "writeString" in writer && (writer as any).writeString.length === 2) {
-        (writer as MonitoredBufferWriter).writeString(value, label);
-      } else {
-        writer.writeString(value);
-      }
-    };
-    const writeFloat64 = (value: number, label?: string) => {
-      if (label && "writeFloat64" in writer && (writer as any).writeFloat64.length === 2) {
-        (writer as MonitoredBufferWriter).writeFloat64(value, label);
-      } else {
-        writer.writeFloat64(value);
-      }
-    };
-    const writeBoolean = (value: boolean, label?: string) => {
-      if (label && "writeBoolean" in writer && (writer as any).writeBoolean.length === 2) {
-        (writer as MonitoredBufferWriter).writeBoolean(value, label);
-      } else {
-        writer.writeBoolean(value);
-      }
-    };
-    const writeUInt32 = (value: number, label?: string) => {
-      if (label && "writeUInt32" in writer && (writer as any).writeUInt32.length === 2) {
-        (writer as MonitoredBufferWriter).writeUInt32(value, label);
-      } else {
-        writer.writeUInt32(value);
-      }
-    };
-    const writeBuffer = (value: Buffer, label?: string) => {
-      if (label && "writeBuffer" in writer && (writer as any).writeBuffer.length === 2) {
-        (writer as MonitoredBufferWriter).writeBuffer(value, label);
-      } else {
-        writer.writeBuffer(value);
-      }
-    };
-
     // Write entity ID as unsigned 2-byte integer
     (global as any).logDepth = 0;
-    writeUInt16(this.id, "EntityId");
+    writer.writeUInt16(this.id);
 
     // Write entity type as 1-byte numeric ID
-    writeUInt8(entityTypeRegistry.encode(this.type), "EntityType (" + this.type + ")");
+    writer.writeUInt8(entityTypeRegistry.encode(this.type));
 
     // Write custom entity fields from serialized Map
     // First write count of fields that will be included
@@ -313,20 +259,20 @@ export class Entity<TSerializableFields extends readonly string[] = readonly str
     if (fieldValues.length > 255) {
       throw new Error(`Field count ${fieldValues.length} exceeds UInt8 maximum (255)`);
     }
-    writeUInt8(fieldValues.length, "FieldCount");
+    writer.writeUInt8(fieldValues.length);
 
     // Write field names and values
     for (let i = 0; i < fieldValues.length; i++) {
       const field = fieldValues[i];
-      writeString(field.name, `FieldName[${i}]`);
+      writer.writeString(field.name);
       const value = field.value;
       const metadata = this.serialized.getFieldMetadata?.(field.name);
 
       if (typeof value === "string") {
-        writeUInt8(FIELD_TYPE_STRING, `FieldType[${i}]`);
-        writeString(value, `FieldValue[${i}]`);
+        writer.writeUInt8(FIELD_TYPE_STRING);
+        writer.writeString(value);
       } else if (typeof value === "number") {
-        writeUInt8(FIELD_TYPE_NUMBER, `FieldType[${i}]`);
+        writer.writeUInt8(FIELD_TYPE_NUMBER);
         // Use metadata to determine number serialization type, fallback to float64
         const numberType = metadata?.numberType || "float64";
         // Write number subtype: 0=uint8, 1=uint16, 2=uint32, 3=float64
@@ -338,34 +284,34 @@ export class Entity<TSerializableFields extends readonly string[] = readonly str
             : numberType === "uint32"
             ? 2
             : 3;
-        writeUInt8(numberSubtype, `NumberSubtype[${i}]`);
+        writer.writeUInt8(numberSubtype);
         if (numberType === "uint8") {
-          writeUInt8(value, `FieldValue[${i}]`);
+          writer.writeUInt8(value);
         } else if (numberType === "uint16") {
-          writeUInt16(value, `FieldValue[${i}]`);
+          writer.writeUInt16(value);
         } else if (numberType === "uint32") {
           // Handle optional fields: undefined/-1 becomes 0xFFFFFFFF
           const numValue =
             metadata?.optional && (value === undefined || value === -1) ? 0xffffffff : value;
-          writeUInt32(numValue, `FieldValue[${i}]`);
+          writer.writeUInt32(numValue);
         } else {
           // float64 - handle optional fields: undefined becomes NaN
           const numValue = metadata?.optional && value === undefined ? NaN : value;
-          writeFloat64(numValue, `FieldValue[${i}]`);
+          writer.writeFloat64(numValue);
         }
       } else if (typeof value === "boolean") {
-        writeUInt8(FIELD_TYPE_BOOLEAN, `FieldType[${i}]`);
-        writeBoolean(value, `FieldValue[${i}]`);
+        writer.writeUInt8(FIELD_TYPE_BOOLEAN);
+        writer.writeBoolean(value);
       } else if (value === null) {
         // Handle null values using dedicated null type
-        writeUInt8(FIELD_TYPE_NULL, `FieldType[${i}]`);
+        writer.writeUInt8(FIELD_TYPE_NULL);
         // No value written for null
       } else if (value && typeof value === "object") {
-        writeUInt8(FIELD_TYPE_OBJECT, `FieldType[${i}]`);
-        writeString(JSON.stringify(value), `FieldValue[${i}]`);
+        writer.writeUInt8(FIELD_TYPE_OBJECT);
+        writer.writeString(JSON.stringify(value));
       } else {
-        writeUInt8(FIELD_TYPE_STRING, `FieldType[${i}]`); // Type: string (fallback)
-        writeString(String(value ?? ""), `FieldValue[${i}]`);
+        writer.writeUInt8(FIELD_TYPE_STRING); // Type: string (fallback)
+        writer.writeString(String(value ?? ""));
       }
     }
 
@@ -382,7 +328,7 @@ export class Entity<TSerializableFields extends readonly string[] = readonly str
     if (extensionsToWrite.length > 255) {
       throw new Error(`Extension count ${extensionsToWrite.length} exceeds UInt8 maximum (255)`);
     }
-    writeUInt8(extensionsToWrite.length, "ExtensionCount");
+    writer.writeUInt8(extensionsToWrite.length);
     for (let i = 0; i < extensionsToWrite.length; i++) {
       const ext = extensionsToWrite[i];
       ext.serializeToBuffer(writer, onlyDirty && !isFirstSerialization);
@@ -394,10 +340,10 @@ export class Entity<TSerializableFields extends readonly string[] = readonly str
         `Removed extensions count ${this.removedExtensions.length} exceeds UInt8 maximum (255)`
       );
     }
-    writeUInt8(this.removedExtensions.length, "RemovedExtensionCount");
+    writer.writeUInt8(this.removedExtensions.length);
     for (let i = 0; i < this.removedExtensions.length; i++) {
       const removedType = this.removedExtensions[i];
-      writeUInt8(encodeExtensionType(removedType), `RemovedExtensionType[${i}]`);
+      writer.writeUInt8(encodeExtensionType(removedType));
     }
     // Clear the removed extensions after serializing
     this.removedExtensions = [];

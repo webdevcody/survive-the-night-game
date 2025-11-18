@@ -1,6 +1,6 @@
 import { IEntity } from "@/entities/types";
 import { Extension } from "@/extensions/types";
-import { BufferWriter, MonitoredBufferWriter } from "@shared/util/buffer-serialization";
+import { BufferWriter } from "@shared/util/buffer-serialization";
 import { encodeExtensionType } from "@shared/util/extension-type-encoding";
 import { ExtensionBase } from "./extension-base";
 
@@ -23,14 +23,9 @@ export default class Groupable extends ExtensionBase {
     serialized.group = group;
   }
 
-  public serializeToBuffer(writer: BufferWriter | MonitoredBufferWriter, onlyDirty: boolean = false): void {
+  public serializeToBuffer(writer: BufferWriter, onlyDirty: boolean = false): void {
     const serialized = this.serialized as any;
-    if (writer instanceof MonitoredBufferWriter || (writer as any).constructor?.name === 'MonitoredBufferWriter') {
-      (writer as MonitoredBufferWriter).writeUInt8(encodeExtensionType(Groupable.type), "ExtensionType");
-      (writer as MonitoredBufferWriter).writeString(serialized.group, "Group");
-    } else {
-      writer.writeUInt8(encodeExtensionType(Groupable.type));
-      writer.writeString(serialized.group);
-    }
+    writer.writeUInt8(encodeExtensionType(Groupable.type));
+    writer.writeString(serialized.group);
   }
 }

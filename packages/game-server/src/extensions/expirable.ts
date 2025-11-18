@@ -1,7 +1,7 @@
 import { Cooldown } from "@/entities/util/cooldown";
 import { IEntity } from "@/entities/types";
 import { Extension } from "@/extensions/types";
-import { BufferWriter, MonitoredBufferWriter } from "@shared/util/buffer-serialization";
+import { BufferWriter } from "@shared/util/buffer-serialization";
 import { encodeExtensionType } from "@shared/util/extension-type-encoding";
 import { ExtensionBase } from "./extension-base";
 
@@ -24,11 +24,7 @@ export default class Expirable extends ExtensionBase {
     }
   }
 
-  public serializeToBuffer(writer: BufferWriter | MonitoredBufferWriter, onlyDirty: boolean = false): void {
-    if (writer instanceof MonitoredBufferWriter || (writer as any).constructor?.name === 'MonitoredBufferWriter') {
-      (writer as MonitoredBufferWriter).writeUInt8(encodeExtensionType(Expirable.type), "ExtensionType");
-    } else {
-      writer.writeUInt8(encodeExtensionType(Expirable.type));
-    }
+  public serializeToBuffer(writer: BufferWriter, onlyDirty: boolean = false): void {
+    writer.writeUInt8(encodeExtensionType(Expirable.type));
   }
 }

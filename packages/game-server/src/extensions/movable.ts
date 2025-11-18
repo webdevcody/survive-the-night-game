@@ -1,7 +1,7 @@
 import { IEntity } from "@/entities/types";
 import { Extension } from "@/extensions/types";
 import Vector2 from "@/util/vector2";
-import { BufferWriter, MonitoredBufferWriter } from "@shared/util/buffer-serialization";
+import { BufferWriter } from "@shared/util/buffer-serialization";
 import { encodeExtensionType } from "@shared/util/extension-type-encoding";
 import PoolManager from "@shared/util/pool-manager";
 import { ExtensionBase } from "./extension-base";
@@ -31,14 +31,9 @@ export default class Movable extends ExtensionBase {
     return this;
   }
 
-  public serializeToBuffer(writer: BufferWriter | MonitoredBufferWriter, onlyDirty: boolean = false): void {
-    if (writer instanceof MonitoredBufferWriter || (writer as any).constructor?.name === 'MonitoredBufferWriter') {
-      (writer as MonitoredBufferWriter).writeUInt8(encodeExtensionType(Movable.type), "ExtensionType");
-      (writer as MonitoredBufferWriter).writeVelocity2(this.velocity, "Velocity");
-    } else {
-      writer.writeUInt8(encodeExtensionType(Movable.type));
-      writer.writeVelocity2(this.velocity);
-    }
+  public serializeToBuffer(writer: BufferWriter, onlyDirty: boolean = false): void {
+    writer.writeUInt8(encodeExtensionType(Movable.type));
+    writer.writeVelocity2(this.velocity);
   }
 
   public update(deltaTime: number): void {

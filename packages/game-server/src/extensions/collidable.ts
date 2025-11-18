@@ -3,7 +3,7 @@ import Positionable from "@/extensions/positionable";
 import { Extension } from "@/extensions/types";
 import { Rectangle } from "@/util/shape";
 import Vector2 from "@/util/vector2";
-import { BufferWriter, MonitoredBufferWriter } from "@shared/util/buffer-serialization";
+import { BufferWriter } from "@shared/util/buffer-serialization";
 import { encodeExtensionType } from "@shared/util/extension-type-encoding";
 import PoolManager from "@shared/util/pool-manager";
 import { ExtensionBase } from "./extension-base";
@@ -58,18 +58,11 @@ export default class Collidable extends ExtensionBase {
     return rect;
   }
 
-  public serializeToBuffer(writer: BufferWriter | MonitoredBufferWriter, onlyDirty: boolean = false): void {
+  public serializeToBuffer(writer: BufferWriter, onlyDirty: boolean = false): void {
     const serialized = this.serialized as any;
-    if (writer instanceof MonitoredBufferWriter || (writer as any).constructor?.name === 'MonitoredBufferWriter') {
-      (writer as MonitoredBufferWriter).writeUInt8(encodeExtensionType(Collidable.type), "ExtensionType");
-      (writer as MonitoredBufferWriter).writeVector2(this.offset, "Offset");
-      (writer as MonitoredBufferWriter).writeVector2(this.size, "Size");
-      (writer as MonitoredBufferWriter).writeBoolean(serialized.enabled, "Enabled");
-    } else {
-      writer.writeUInt8(encodeExtensionType(Collidable.type));
-      writer.writeVector2(this.offset);
-      writer.writeVector2(this.size);
-      writer.writeBoolean(serialized.enabled);
-    }
+    writer.writeUInt8(encodeExtensionType(Collidable.type));
+    writer.writeVector2(this.offset);
+    writer.writeVector2(this.size);
+    writer.writeBoolean(serialized.enabled);
   }
 }

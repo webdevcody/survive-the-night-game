@@ -4,7 +4,7 @@ import Positionable from "@/extensions/positionable";
 import Destructible from "@/extensions/destructible";
 import { EntityType } from "@/types/entity";
 import { IEntity } from "@/entities/types";
-import { BufferWriter, MonitoredBufferWriter } from "@shared/util/buffer-serialization";
+import { BufferWriter } from "@shared/util/buffer-serialization";
 import { encodeExtensionType } from "@shared/util/extension-type-encoding";
 import { ExtensionBase } from "./extension-base";
 
@@ -104,14 +104,9 @@ export default class TriggerCooldownAttacker extends ExtensionBase {
     }
   }
 
-  public serializeToBuffer(writer: BufferWriter | MonitoredBufferWriter, onlyDirty: boolean = false): void {
+  public serializeToBuffer(writer: BufferWriter, onlyDirty: boolean = false): void {
     const serialized = this.serialized as any;
-    if (writer instanceof MonitoredBufferWriter || (writer as any).constructor?.name === 'MonitoredBufferWriter') {
-      (writer as MonitoredBufferWriter).writeUInt8(encodeExtensionType(TriggerCooldownAttacker.type), "ExtensionType");
-      (writer as MonitoredBufferWriter).writeBoolean(serialized.isReady, "IsReady");
-    } else {
-      writer.writeUInt8(encodeExtensionType(TriggerCooldownAttacker.type));
-      writer.writeBoolean(serialized.isReady);
-    }
+    writer.writeUInt8(encodeExtensionType(TriggerCooldownAttacker.type));
+    writer.writeBoolean(serialized.isReady);
   }
 }

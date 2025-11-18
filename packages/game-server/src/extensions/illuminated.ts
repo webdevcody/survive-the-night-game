@@ -1,6 +1,6 @@
 import { IEntity } from "@/entities/types";
 import { Extension } from "@/extensions/types";
-import { BufferWriter, MonitoredBufferWriter } from "@shared/util/buffer-serialization";
+import { BufferWriter } from "@shared/util/buffer-serialization";
 import { encodeExtensionType } from "@shared/util/extension-type-encoding";
 import { ExtensionBase } from "./extension-base";
 
@@ -23,23 +23,12 @@ export default class Illuminated extends ExtensionBase {
   }
 
   public serializeToBuffer(
-    writer: BufferWriter | MonitoredBufferWriter,
+    writer: BufferWriter,
     onlyDirty: boolean = false
   ): void {
     const serialized = this.serialized as any;
-    if (
-      writer instanceof MonitoredBufferWriter ||
-      (writer as any).constructor?.name === "MonitoredBufferWriter"
-    ) {
-      (writer as MonitoredBufferWriter).writeUInt8(
-        encodeExtensionType(Illuminated.type),
-        "ExtensionType"
-      );
-      (writer as MonitoredBufferWriter).writeUInt16(serialized.radius, "Radius");
-    } else {
-      writer.writeUInt8(encodeExtensionType(Illuminated.type));
-      writer.writeUInt16(serialized.radius);
-    }
+    writer.writeUInt8(encodeExtensionType(Illuminated.type));
+    writer.writeUInt16(serialized.radius);
   }
 }
 

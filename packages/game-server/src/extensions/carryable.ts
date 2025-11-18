@@ -4,7 +4,7 @@ import Inventory from "@/extensions/inventory";
 import { ItemType } from "@/util/inventory";
 import { IEntity } from "@/entities/types";
 import { ItemState } from "@/types/entity";
-import { BufferWriter, MonitoredBufferWriter } from "@shared/util/buffer-serialization";
+import { BufferWriter } from "@shared/util/buffer-serialization";
 import { encodeExtensionType } from "@shared/util/extension-type-encoding";
 import { ExtensionBase } from "./extension-base";
 
@@ -115,19 +115,10 @@ export default class Carryable extends ExtensionBase {
     return true;
   }
 
-  public serializeToBuffer(writer: BufferWriter | MonitoredBufferWriter, onlyDirty: boolean = false): void {
+  public serializeToBuffer(writer: BufferWriter, onlyDirty: boolean = false): void {
     const serialized = this.serialized as any;
-    const isMonitored = writer instanceof MonitoredBufferWriter || (writer as any).constructor?.name === 'MonitoredBufferWriter';
-    const mw = isMonitored ? (writer as MonitoredBufferWriter) : null;
-    
-    if (isMonitored) {
-      mw!.writeUInt8(encodeExtensionType(Carryable.type), "ExtensionType");
-      mw!.writeString(serialized.itemType, "ItemType");
-      mw!.writeRecord(serialized.state, (value, label?: string) => mw!.writeFloat64(value as number, label), "ItemState");
-    } else {
-      writer.writeUInt8(encodeExtensionType(Carryable.type));
-      writer.writeString(serialized.itemType);
-      writer.writeRecord(serialized.state, (value) => writer.writeFloat64(value as number));
-    }
+    writer.writeUInt8(encodeExtensionType(Carryable.type));
+    writer.writeString(serialized.itemType);
+    writer.writeRecord(serialized.state, (value) => writer.writeFloat64(value as number));
   }
 }

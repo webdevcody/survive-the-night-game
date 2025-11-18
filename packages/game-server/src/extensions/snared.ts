@@ -1,6 +1,6 @@
 import { Extension } from "@/extensions/types";
 import { IEntity } from "@/entities/types";
-import { BufferWriter, MonitoredBufferWriter } from "@shared/util/buffer-serialization";
+import { BufferWriter } from "@shared/util/buffer-serialization";
 import { encodeExtensionType } from "@shared/util/extension-type-encoding";
 import { ExtensionBase } from "./extension-base";
 
@@ -15,11 +15,7 @@ export default class Snared extends ExtensionBase {
     super(self, {});
   }
 
-  public serializeToBuffer(writer: BufferWriter | MonitoredBufferWriter, onlyDirty: boolean = false): void {
-    if (writer instanceof MonitoredBufferWriter || (writer as any).constructor?.name === 'MonitoredBufferWriter') {
-      (writer as MonitoredBufferWriter).writeUInt8(encodeExtensionType(Snared.type), "ExtensionType");
-    } else {
-      writer.writeUInt8(encodeExtensionType(Snared.type));
-    }
+  public serializeToBuffer(writer: BufferWriter, onlyDirty: boolean = false): void {
+    writer.writeUInt8(encodeExtensionType(Snared.type));
   }
 }

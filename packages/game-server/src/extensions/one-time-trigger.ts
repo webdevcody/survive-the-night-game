@@ -4,7 +4,7 @@ import { EntityType } from "@/types/entity";
 import Positionable from "@/extensions/positionable";
 import { Circle } from "@/util/shape";
 import { Cooldown } from "@/entities/util/cooldown";
-import { BufferWriter, MonitoredBufferWriter } from "@shared/util/buffer-serialization";
+import { BufferWriter } from "@shared/util/buffer-serialization";
 import { encodeExtensionType } from "@shared/util/extension-type-encoding";
 import { ExtensionBase } from "./extension-base";
 
@@ -74,14 +74,9 @@ export default class OneTimeTrigger extends ExtensionBase {
     }
   }
 
-  public serializeToBuffer(writer: BufferWriter | MonitoredBufferWriter, onlyDirty: boolean = false): void {
+  public serializeToBuffer(writer: BufferWriter, onlyDirty: boolean = false): void {
     const serialized = this.serialized as any;
-    if (writer instanceof MonitoredBufferWriter || (writer as any).constructor?.name === 'MonitoredBufferWriter') {
-      (writer as MonitoredBufferWriter).writeUInt8(encodeExtensionType(OneTimeTrigger.type), "ExtensionType");
-      (writer as MonitoredBufferWriter).writeBoolean(serialized.hasTriggered, "HasTriggered");
-    } else {
-      writer.writeUInt8(encodeExtensionType(OneTimeTrigger.type));
-      writer.writeBoolean(serialized.hasTriggered);
-    }
+    writer.writeUInt8(encodeExtensionType(OneTimeTrigger.type));
+    writer.writeBoolean(serialized.hasTriggered);
   }
 }

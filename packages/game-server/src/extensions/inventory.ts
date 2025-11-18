@@ -8,7 +8,7 @@ import { IEntity } from "@/entities/types";
 import Vector2 from "@/util/vector2";
 import PoolManager from "@shared/util/pool-manager";
 import { getConfig } from "@/config";
-import { BufferWriter, MonitoredBufferWriter } from "@shared/util/buffer-serialization";
+import { BufferWriter } from "@shared/util/buffer-serialization";
 import { encodeExtensionType } from "@shared/util/extension-type-encoding";
 
 /**
@@ -242,59 +242,26 @@ export default class Inventory extends ExtensionBase {
   }
 
   public serializeToBuffer(
-    writer: BufferWriter | MonitoredBufferWriter,
+    writer: BufferWriter,
     onlyDirty: boolean = false
   ): void {
     const serialized = this.serialized as any;
-    const isMonitored =
-      writer instanceof MonitoredBufferWriter ||
-      (writer as any).constructor?.name === "MonitoredBufferWriter";
-    const mw = isMonitored ? (writer as MonitoredBufferWriter) : null;
-
-    if (isMonitored) {
-      mw!.writeUInt8(encodeExtensionType(Inventory.type), "ExtensionType");
-      mw!.writeArray(
-        serialized.items,
-        (item: InventoryItem | null, label?: string) => {
-          if (item === null || item === undefined) {
-            mw!.writeBoolean(false, label ? `${label}.HasItem` : undefined);
+    writer.writeUInt8(encodeExtensionType(Inventory.type));
+    writer.writeArray(serialized.items, (item: InventoryItem | null) => {
+      if (item === null || item === undefined) {
+        writer.writeBoolean(false);
+      } else {
+        writer.writeBoolean(true);
+        writer.writeString(item.itemType);
+        // Serialize ItemState
+        writer.writeRecord((item.state || {}) as Record<string, unknown>, (value) => {
+          if (typeof value === "number") {
+            writer.writeFloat64(value);
           } else {
-            mw!.writeBoolean(true, label ? `${label}.HasItem` : undefined);
-            mw!.writeString(item.itemType, label ? `${label}.ItemType` : undefined);
-            // Serialize ItemState
-            mw!.writeRecord(
-              (item.state || {}) as Record<string, unknown>,
-              (value, valueLabel?: string) => {
-                if (typeof value === "number") {
-                  mw!.writeFloat64(value, valueLabel);
-                } else {
-                  mw!.writeString(String(value), valueLabel);
-                }
-              },
-              label ? `${label}.ItemState` : undefined
-            );
+            writer.writeString(String(value));
           }
-        },
-        "Items"
-      );
-    } else {
-      writer.writeUInt8(encodeExtensionType(Inventory.type));
-      writer.writeArray(serialized.items, (item: InventoryItem | null) => {
-        if (item === null || item === undefined) {
-          writer.writeBoolean(false);
-        } else {
-          writer.writeBoolean(true);
-          writer.writeString(item.itemType);
-          // Serialize ItemState
-          writer.writeRecord((item.state || {}) as Record<string, unknown>, (value) => {
-            if (typeof value === "number") {
-              writer.writeFloat64(value);
-            } else {
-              writer.writeString(String(value));
-            }
-          });
-        }
-      });
-    }
+        });
+      }
+    });
   }
 }
