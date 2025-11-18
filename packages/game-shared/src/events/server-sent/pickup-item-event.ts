@@ -1,5 +1,6 @@
 import { EventType, ServerSentEvents } from "../events";
 import { GameEvent } from "@/events/types";
+import { BufferWriter, BufferReader } from "../../util/buffer-serialization";
 
 interface PlayerPickedUpItemEventData {
   playerId: number;
@@ -30,5 +31,16 @@ export class PlayerPickedUpItemEvent implements GameEvent<PlayerPickedUpItemEven
       playerId: this.playerId,
       itemType: this.itemType,
     };
+  }
+
+  static serializeToBuffer(writer: BufferWriter, data: PlayerPickedUpItemEventData): void {
+    writer.writeUInt16(data.playerId ?? 0);
+    writer.writeString(data.itemType ?? "");
+  }
+
+  static deserializeFromBuffer(reader: BufferReader): PlayerPickedUpItemEventData {
+    const playerId = reader.readUInt16();
+    const itemType = reader.readString();
+    return { playerId, itemType };
   }
 }

@@ -1,5 +1,6 @@
 import { EventType, ServerSentEvents } from "../events";
 import { GameEvent } from "@/events/types";
+import { BufferWriter, BufferReader } from "../../util/buffer-serialization";
 
 export type PlayerDeathEventData = {
   playerId: number;
@@ -34,5 +35,16 @@ export class PlayerDeathEvent implements GameEvent<PlayerDeathEventData> {
       playerId: this.playerId,
       displayName: this.displayName,
     };
+  }
+
+  static serializeToBuffer(writer: BufferWriter, data: PlayerDeathEventData): void {
+    writer.writeUInt16(data.playerId ?? 0);
+    writer.writeString(data.displayName ?? "");
+  }
+
+  static deserializeFromBuffer(reader: BufferReader): PlayerDeathEventData {
+    const playerId = reader.readUInt16();
+    const displayName = reader.readString();
+    return { playerId, displayName };
   }
 }

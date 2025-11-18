@@ -1,5 +1,6 @@
 import { GameEvent } from "@/events/types";
 import { ServerSentEvents } from "../events";
+import { BufferWriter, BufferReader } from "../../util/buffer-serialization";
 
 export class GameStartedEvent implements GameEvent<void> {
   constructor() {}
@@ -10,5 +11,13 @@ export class GameStartedEvent implements GameEvent<void> {
 
   public serialize(): void {
     return undefined;
+  }
+
+  static serializeToBuffer(_writer: BufferWriter, _data: void): void {
+    // No payload events - zero-length buffer
+  }
+
+  static deserializeFromBuffer(_reader: BufferReader): void {
+    // No payload events - return undefined
   }
 }

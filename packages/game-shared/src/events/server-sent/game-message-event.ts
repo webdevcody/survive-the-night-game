@@ -1,9 +1,11 @@
 import { GameEvent } from "@/events/types";
 import { EventType, ServerSentEvents } from "../events";
+import { BufferWriter, BufferReader } from "../../util/buffer-serialization";
 
 export interface GameMessageEventData {
   message: string;
   color?: string;
+  type?: number;
 }
 
 export class GameMessageEvent implements GameEvent<GameMessageEventData> {
@@ -33,5 +35,16 @@ export class GameMessageEvent implements GameEvent<GameMessageEventData> {
 
   public getColor(): string | undefined {
     return this.data.color;
+  }
+
+  static serializeToBuffer(writer: BufferWriter, data: GameMessageEventData): void {
+    writer.writeString(data.message ?? "");
+    writer.writeUInt32(data.type ?? 0);
+  }
+
+  static deserializeFromBuffer(reader: BufferReader): GameMessageEventData {
+    const message = reader.readString();
+    const type = reader.readUInt32();
+    return { message, type };
   }
 }

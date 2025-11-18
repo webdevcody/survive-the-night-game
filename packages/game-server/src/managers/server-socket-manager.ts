@@ -7,21 +7,14 @@ import { GameServer } from "@/server";
 import { AdminCommand } from "@shared/commands/commands";
 import { Input } from "../../../game-shared/src/util/input";
 import { RecipeType } from "../../../game-shared/src/util/recipes";
-import { ItemType, isResourceItem, ResourceType } from "@shared/util/inventory";
-import { itemRegistry } from "@shared/entities/item-registry";
-import Vector2 from "@/util/vector2";
+import { ItemType } from "@shared/util/inventory";
 import PoolManager from "@shared/util/pool-manager";
 import { createServer } from "http";
 import { CommandManager } from "@/managers/command-manager";
 import { MapManager } from "@/managers/map-manager";
 import { Broadcaster, IEntityManager, IGameManagers } from "@/managers/types";
 import { IEntity } from "@/entities/types";
-import { GameStateEvent } from "@shared/events/server-sent/game-state-event";
 import { PlayerJoinedEvent } from "@shared/events/server-sent/player-joined-event";
-import { PongEvent } from "@shared/events/server-sent/pong-event";
-import { ChatMessageEvent } from "@shared/events/server-sent/chat-message-event";
-import { PlayerLeftEvent } from "@/events/server-sent/player-left-event";
-import { BuildEvent } from "@shared/events/server-sent/build-event";
 import { getConfig } from "@shared/config";
 import { DelayedServer, DelayedServerSocket } from "@/util/delayed-socket";
 import { createCommandRegistry, CommandRegistry } from "@/commands";
@@ -37,6 +30,23 @@ import { ISocketAdapter } from "@shared/network/socket-adapter";
 import { createServerAdapter } from "@/network/adapter-factory";
 import { BufferManager } from "./buffer-manager";
 import { serializeServerEvent } from "@shared/events/server-sent/server-event-serialization";
+import {
+  HandlerContext,
+  onDisconnect,
+  onCraftRequest,
+  onMerchantBuy,
+  onPlaceStructure,
+  onPlayerInput,
+  setPlayerCrafting,
+  sendFullState,
+  setPlayerDisplayName,
+  onPlayerRespawnRequest,
+  onTeleportToBase,
+  onConnection,
+  handlePing,
+  handlePingUpdate,
+  handleChat,
+} from "./handlers";
 
 /**
  * Any and all functionality related to sending server side events
@@ -125,6 +135,33 @@ export class ServerSocketManager implements Broadcaster {
    */
   private wrapSocket(socket: ISocketAdapter): DelayedServerSocket {
     return new DelayedServerSocket(socket, getConfig().network.SIMULATED_LATENCY_MS);
+  }
+
+  /**
+   * Get handler context for passing to handler functions
+   */
+  private getHandlerContext(): HandlerContext {
+    return {
+      players: this.players,
+      playerDisplayNames: this.playerDisplayNames,
+      gameServer: this.gameServer,
+      bufferManager: this.bufferManager,
+      delayedIo: this.delayedIo,
+      chatCommandRegistry: this.chatCommandRegistry,
+      profanityMatcher: this.profanityMatcher,
+      profanityCensor: this.profanityCensor,
+      getEntityManager: () => this.getEntityManager(),
+      getMapManager: () => this.getMapManager(),
+      getCommandManager: () => this.getCommandManager(),
+      getGameManagers: () => this.getGameManagers(),
+      wrapSocket: (socket: ISocketAdapter) => this.wrapSocket(socket),
+      broadcastEvent: (event: GameEvent<any>) => this.broadcastEvent(event),
+      sanitizeText: (text: string) => this.sanitizeText(text),
+      createPlayerForSocket: (socket: ISocketAdapter) => this.createPlayerForSocket(socket),
+      sendInitialDataToSocket: (socket: ISocketAdapter, player: Player) =>
+        this.sendInitialDataToSocket(socket, player),
+      broadcastPlayerJoined: (player: Player) => this.broadcastPlayerJoined(player),
+    };
   }
 
   public setGameManagers(gameManagers: IGameManagers): void {
@@ -250,389 +287,61 @@ export class ServerSocketManager implements Broadcaster {
     }
   }
 
-  private onDisconnect(socket: ISocketAdapter): void {
-    console.log("Player disconnected", socket.id);
-    const player = this.players.get(socket.id);
-    const displayName = this.playerDisplayNames.get(socket.id);
-
-    // Clean up player and displayName
-    this.players.delete(socket.id);
-    this.playerDisplayNames.delete(socket.id);
-
-    if (player) {
-      // TODO: this is a hacker; I'd rather use this, but when I do there is a strange race condition where the round never restarts, so instead the
-      this.getEntityManager().removeEntity(player.getId());
-      // this.getEntityManager().markEntityForRemoval(player);
-      this.broadcastEvent(
-        new PlayerLeftEvent({
-          playerId: player.getId(),
-          displayName: displayName ?? "Unknown",
-        })
-      );
-    }
-
-    const isLastPlayer = this.players.size === 0;
-    if (isLastPlayer) {
-      this.gameServer.setIsGameReady(false);
-    }
-  }
-
-  private onCraftRequest(socket: ISocketAdapter, recipe: RecipeType): void {
-    const player = this.players.get(socket.id);
-
-    if (player) {
-      player.craftRecipe(recipe);
-    }
-  }
-
-  private onMerchantBuy(
-    socket: ISocketAdapter,
-    data: { merchantId: number; itemIndex: number }
-  ): void {
-    const player = this.players.get(socket.id);
-    if (!player) return;
-
-    // Find the merchant entity
-    const merchant = this.getEntityManager().getEntityById(data.merchantId);
-    if (!merchant || merchant.getType() !== "merchant") return;
-
-    // Get the shop items from the merchant
-    const shopItems = merchant.getShopItems?.();
-    if (!shopItems || data.itemIndex < 0 || data.itemIndex >= shopItems.length) return;
-
-    const selectedItem = shopItems[data.itemIndex];
-    const playerCoins = player.getCoins();
-
-    // Check if player has enough coins
-    if (playerCoins < selectedItem.price) {
-      console.log(
-        `Player ${player.getId()} tried to buy ${
-          selectedItem.itemType
-        } but doesn't have enough coins`
-      );
-      return;
-    }
-
-    // Deduct coins
-    player.addCoins(-selectedItem.price);
-
-    const itemType = selectedItem.itemType as ItemType;
-
-    // Check if this is a resource item (wood, cloth)
-    if (isResourceItem(itemType)) {
-      // Add directly to player's resource count (this will broadcast the pickup event)
-      player.addResource(itemType as ResourceType, 1);
-      console.log(`Player ${player.getId()} bought ${itemType} for ${selectedItem.price} coins`);
-    } else {
-      // Handle regular inventory items
-      const item = { itemType };
-      const inventory = player.getExt(Inventory);
-
-      // Add to inventory or drop on ground
-      if (inventory.isFull()) {
-        // Drop item 32 pixels down from player
-        const playerPos = player.getExt(Positionable).getPosition();
-        const poolManager = PoolManager.getInstance();
-        const dropPosition = poolManager.vector2.claim(playerPos.x, playerPos.y + 32);
-        const droppedEntity = this.getEntityManager().createEntityFromItem(item);
-        droppedEntity.getExt(Positionable).setPosition(dropPosition);
-        console.log(`Dropped ${itemType} on ground for player ${player.getId()}`);
-      } else {
-        inventory.addItem(item);
-        console.log(`Player ${player.getId()} bought ${itemType} for ${selectedItem.price} coins`);
-      }
-    }
-  }
-
-  private onPlaceStructure(
-    socket: ISocketAdapter,
-    data: { itemType: ItemType; position: { x: number; y: number } }
-  ): void {
-    const player = this.players.get(socket.id);
-    if (!player) return;
-
-    const itemConfig = itemRegistry.get(data.itemType);
-    if (!itemConfig?.placeable) {
-      return;
-    }
-
-    // Validate placement distance
-    const playerPos = player.getExt(Positionable).getCenterPosition();
-    const poolManager = PoolManager.getInstance();
-    const placePos = poolManager.vector2.claim(data.position.x, data.position.y);
-    const distance = playerPos.distance(placePos);
-    const { MAX_PLACEMENT_RANGE, TILE_SIZE } = getConfig().world;
-
-    if (distance > MAX_PLACEMENT_RANGE) {
-      console.log(
-        `Player ${player.getId()} tried to place ${data.itemType} too far away (${distance}px)`
-      );
-      return;
-    }
-
-    // Check if player has the item in inventory
-    const inventory = player.getExt(Inventory);
-    const inventoryItems = inventory.getItems();
-    const itemIndex = inventoryItems.findIndex((item) => item?.itemType === data.itemType);
-
-    if (itemIndex === -1) {
-      console.log(`Player ${player.getId()} tried to place ${data.itemType} without having one`);
-      return;
-    }
-
-    // Validate grid position is clear
-    const gridX = Math.floor(data.position.x / TILE_SIZE);
-    const gridY = Math.floor(data.position.y / TILE_SIZE);
-    const mapData = this.getMapManager().getMapData();
-
-    if (
-      gridY < 0 ||
-      gridY >= mapData.collidables.length ||
-      gridX < 0 ||
-      gridX >= mapData.collidables[0].length
-    ) {
-      console.log(`Player ${player.getId()} tried to place ${data.itemType} out of bounds`);
-      return;
-    }
-
-    if (mapData.collidables[gridY][gridX] !== -1) {
-      console.log(`Player ${player.getId()} tried to place ${data.itemType} on occupied tile`);
-      return;
-    }
-
-    // Check if any entities are at this position
-    const entities = this.getEntityManager().getEntities();
-    const structureSize = TILE_SIZE;
-
-    for (const entity of entities) {
-      if (!entity.hasExt(Positionable)) continue;
-
-      const entityPos = entity.getExt(Positionable).getCenterPosition();
-      const dx = Math.abs(entityPos.x - (placePos.x + structureSize / 2));
-      const dy = Math.abs(entityPos.y - (placePos.y + structureSize / 2));
-
-      if (dx < structureSize && dy < structureSize) {
-        console.log(`Player ${player.getId()} tried to place ${data.itemType} on existing entity`);
-        return;
-      }
-    }
-
-    // Remove item from inventory
-    const item = inventoryItems[itemIndex];
-    if (item?.state?.count && item.state.count > 1) {
-      // Decrease count if there are multiple
-      inventory.updateItemState(itemIndex, {
-        ...item.state,
-        count: item.state.count - 1,
-      });
-    } else {
-      // Remove the item completely
-      inventory.removeItem(itemIndex);
-    }
-
-    // Ensure player entity is marked dirty so inventory changes are broadcast
-    // The inventory extension should already mark itself dirty via markDirty(),
-    // but we explicitly ensure the extension is tracked in dirtyExtensions set
-    // to guarantee the inventory update is serialized and sent to clients
-    player.markExtensionDirty(inventory);
-
-    const placedEntity = this.getEntityManager().createEntityFromItem({
-      itemType: data.itemType,
-      state: {},
-    });
-
-    placedEntity.getExt(Positionable).setPosition(placePos);
-    this.getEntityManager().addEntity(placedEntity);
-
-    console.log(
-      `Player ${player.getId()} placed ${data.itemType} at (${placePos.x}, ${placePos.y})`
-    );
-
-    // Broadcast build event if item has a placeSound configured
-    if (itemConfig.placeSound) {
-      this.broadcastEvent(
-        new BuildEvent({
-          playerId: player.getId(),
-          position: { x: placePos.x, y: placePos.y },
-          soundType: itemConfig.placeSound,
-        })
-      );
-    }
-  }
-
-  private onPlayerInput(socket: ISocketAdapter, input: Input): void {
-    const player = this.players.get(socket.id);
-    if (!player) return;
-    player.setInput(input);
-  }
-
-  private setPlayerCrafting(socket: ISocketAdapter, isCrafting: boolean): void {
-    const player = this.players.get(socket.id);
-    if (!player) return;
-    player.setIsCrafting(isCrafting);
-  }
-
-  private sendFullState(socket: ISocketAdapter): void {
-    const entities = this.getEntityManager().getEntities();
-    const currentTime = Date.now();
-
-    // Cache game state data needed for metadata serialization
-    const waveNumber = this.gameServer.getWaveNumber();
-    const waveState = this.gameServer.getWaveState();
-    const phaseStartTime = this.gameServer.getPhaseStartTime();
-    const phaseDuration = this.gameServer.getPhaseDuration();
-
-    // Clear dirty flags for all entities after sending full state
-    // so they're not treated as "new" in subsequent updates
-    entities.forEach((entity) => {
-      entity.clearDirtyFlags();
-    });
-
-    const delayedSocket = this.wrapSocket(socket);
-
-    // Serialize full state to buffer
-    this.bufferManager.clear();
-    this.bufferManager.writeEntityCount(entities.length);
-    for (const entity of entities) {
-      this.bufferManager.writeEntity(entity, false);
-    }
-    this.bufferManager.writeGameState(
-      {
-        timestamp: currentTime,
-        isFullState: true,
-        waveNumber,
-        waveState,
-        phaseStartTime,
-        phaseDuration,
-      },
-      false // No removed entities in full state
-    );
-    this.bufferManager.writeRemovedEntityIds([]);
-
-    const buffer = this.bufferManager.getBuffer();
-    // this.bufferManager.logStats();
-    delayedSocket.emit(ServerSentEvents.GAME_STATE_UPDATE, buffer);
-  }
-
   private setupSocketListeners(socket: ISocketAdapter): void {
-    socket.on(ClientSentEvents.PLAYER_INPUT, (input: Input) => this.onPlayerInput(socket, input));
+    const context = this.getHandlerContext();
+    socket.on(ClientSentEvents.PLAYER_INPUT, (input: Input) =>
+      onPlayerInput(context, socket, input)
+    );
     socket.on(ClientSentEvents.CRAFT_REQUEST, (recipe: RecipeType) =>
-      this.onCraftRequest(socket, recipe)
+      onCraftRequest(context, socket, recipe)
     );
     socket.on(ClientSentEvents.START_CRAFTING, (recipe: RecipeType) =>
-      this.setPlayerCrafting(socket, true)
+      setPlayerCrafting(context, socket, true)
     );
     socket.on(ClientSentEvents.STOP_CRAFTING, (recipe: RecipeType) =>
-      this.setPlayerCrafting(socket, false)
+      setPlayerCrafting(context, socket, false)
     );
     socket.on(ClientSentEvents.ADMIN_COMMAND, (command: AdminCommand) =>
       this.getCommandManager().handleCommand(command)
     );
     socket.on(ClientSentEvents.SET_DISPLAY_NAME, (displayName: string) =>
-      this.setPlayerDisplayName(socket, displayName)
+      setPlayerDisplayName(context, socket, displayName)
     );
     socket.on(ClientSentEvents.MERCHANT_BUY, (data: { merchantId: number; itemIndex: number }) =>
-      this.onMerchantBuy(socket, data)
+      onMerchantBuy(context, socket, data)
     );
-    socket.on(ClientSentEvents.REQUEST_FULL_STATE, () => this.sendFullState(socket));
+    socket.on(ClientSentEvents.REQUEST_FULL_STATE, () => sendFullState(context, socket));
     socket.on(ClientSentEvents.PING, (timestamp: number) => {
-      this.handlePing(socket, timestamp);
+      handlePing(context, socket, timestamp);
     });
     socket.on(ClientSentEvents.PING_UPDATE, (latency: number) => {
-      this.handlePingUpdate(socket, latency);
+      handlePingUpdate(context, socket, latency);
     });
     socket.on(ClientSentEvents.SEND_CHAT, (data: { message: string }) => {
-      this.handleChat(socket, data.message);
+      handleChat(context, socket, data.message);
     });
     socket.on(
       ClientSentEvents.PLACE_STRUCTURE,
       (data: { itemType: ItemType; position: { x: number; y: number } }) =>
-        this.onPlaceStructure(socket, data)
+        onPlaceStructure(context, socket, data)
     );
     socket.on(ClientSentEvents.PLAYER_RESPAWN_REQUEST, () => {
-      this.onPlayerRespawnRequest(socket);
+      onPlayerRespawnRequest(context, socket);
     });
     socket.on(ClientSentEvents.TELEPORT_TO_BASE, () => {
-      this.onTeleportToBase(socket);
+      onTeleportToBase(context, socket);
     });
     socket.on("disconnect", () => {
-      this.onDisconnect(socket);
+      onDisconnect(context, socket);
     });
-  }
-
-  private setPlayerDisplayName(socket: ISocketAdapter, displayName: string): void {
-    const player = this.players.get(socket.id);
-    if (!player) return;
-    if (displayName.length > 12) {
-      displayName = displayName.substring(0, 12);
-    }
-    // Filter bad words and replace with asterisks
-    const filteredDisplayName = this.sanitizeText(displayName);
-    player.setDisplayName(filteredDisplayName);
-  }
-
-  private onPlayerRespawnRequest(socket: ISocketAdapter): void {
-    const player = this.players.get(socket.id);
-    if (!player) return;
-    if (!player.isDead()) return;
-
-    player.respawn();
-  }
-
-  private onTeleportToBase(socket: ISocketAdapter): void {
-    const player = this.players.get(socket.id);
-    if (!player) return;
-    if (player.isDead()) return;
-
-    // Get campsite position from map manager
-    const campsitePosition = this.getMapManager().getRandomCampsitePosition();
-    if (campsitePosition) {
-      player.setPosition(campsitePosition);
-    }
   }
 
   private onConnection(socket: ISocketAdapter): void {
-    console.log(`Player connected: ${socket.id} - ${this.playerDisplayNames.get(socket.id)}`);
-
+    const context = this.getHandlerContext();
     // Set up socket event listeners first
     this.setupSocketListeners(socket);
-
-    // Check if there's already a player for this socket ID (can happen on quick reconnect)
-    const existingPlayer = this.players.get(socket.id);
-    if (existingPlayer) {
-      console.log(`Cleaning up existing player for socket ${socket.id} before creating new one`);
-      // Remove the existing player entity to prevent duplicates
-      this.getEntityManager().removeEntity(existingPlayer.getId());
-      this.players.delete(socket.id);
-    }
-
-    const totalPlayers = this.getEntityManager()
-      .getPlayerEntities()
-      .filter((entity) => !(entity as Player).isMarkedForRemoval()).length;
-
-    if (totalPlayers === 0) {
-      console.log("Starting new game");
-      this.gameServer.startNewGame();
-      let player = this.players.get(socket.id);
-      let shouldBroadcastJoin = false;
-
-      if (!player) {
-        player = this.createPlayerForSocket(socket);
-        shouldBroadcastJoin = true;
-      }
-
-      this.sendInitialDataToSocket(socket, player);
-
-      if (shouldBroadcastJoin) {
-        this.broadcastPlayerJoined(player);
-      }
-
-      return;
-    }
-
-    const player = this.createPlayerForSocket(socket);
-    this.sendInitialDataToSocket(socket, player);
-    this.broadcastPlayerJoined(player);
+    // Then handle the connection
+    onConnection(context, socket);
   }
 
   public broadcastEvent(event: GameEvent<any>): void {
@@ -817,69 +526,6 @@ export class ServerSocketManager implements Broadcaster {
         // Fall back to JSON
         this.delayedIo.emit(event.getType(), serializedData);
       }
-    }
-  }
-
-  private handlePing(socket: ISocketAdapter, timestamp: number): void {
-    const delayedSocket = this.wrapSocket(socket);
-    const binaryBuffer = serializeServerEvent(ServerSentEvents.PONG, [{ timestamp }]);
-    delayedSocket.emit(ServerSentEvents.PONG, binaryBuffer);
-  }
-
-  private handlePingUpdate(socket: ISocketAdapter, latency: number): void {
-    // Update player's ping with the latency calculated by the client
-    // This ensures accurate ping calculation without clock skew issues
-    const player = this.players.get(socket.id);
-    if (player) {
-      // Ensure latency is non-negative (sanity check)
-      player.setPing(Math.max(0, latency));
-    }
-  }
-
-  private async handleChat(socket: ISocketAdapter, message: string): Promise<void> {
-    const player = this.players.get(socket.id);
-    if (!player) return;
-
-    // Check if it's a command
-    if (message.trim().startsWith("/")) {
-      const result = await this.chatCommandRegistry.executeFromChat(message.trim(), {
-        player,
-        args: [],
-        entityManager: this.getEntityManager(),
-      });
-
-      // If command returned a message, send it as a system message
-      if (result) {
-        const chatEvent = new ChatMessageEvent({
-          playerId: 0, // System message uses ID 0
-          message: result,
-        });
-        const delayedSocket = this.wrapSocket(socket);
-        const chatData = chatEvent.getData();
-        const chatBuffer = serializeServerEvent(ServerSentEvents.CHAT_MESSAGE, [chatData]);
-        if (chatBuffer !== null) {
-          delayedSocket.emit(ServerSentEvents.CHAT_MESSAGE, chatBuffer);
-        } else {
-          delayedSocket.emit(ServerSentEvents.CHAT_MESSAGE, chatData);
-        }
-      }
-      return;
-    }
-
-    // Regular chat message - filter bad words and replace with asterisks
-    const filteredMessage = this.sanitizeText(message);
-    const chatEvent = new ChatMessageEvent({
-      playerId: player.getId(),
-      message: filteredMessage,
-    });
-
-    const chatEventData = chatEvent.getData();
-    // Try to serialize as binary
-    const chatBuffer = serializeServerEvent(ServerSentEvents.CHAT_MESSAGE, [chatEventData]);
-    if (chatBuffer !== null) {
-      this.delayedIo.emit(ServerSentEvents.CHAT_MESSAGE, chatBuffer);
-    } else {
-      this.delayedIo.emit(ServerSentEvents.CHAT_MESSAGE, chatEventData);
     }
   }
 
