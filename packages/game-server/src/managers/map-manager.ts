@@ -1,18 +1,14 @@
 import { Tree } from "@/entities/items/tree";
 import { Boundary } from "@/entities/environment/boundary";
 import { Car } from "@/entities/environment/car";
-import { Zombie } from "@/entities/enemies/zombie";
+import { ZombiePoolManager } from "@/managers/zombie-pool-manager";
+import { IdleMovementStrategy } from "@/entities/enemies/strategies/movement";
 import { DEBUG_START_ZOMBIE } from "@shared/debug";
 import { IGameManagers, IEntityManager, IMapManager } from "@/managers/types";
 import Positionable from "@/extensions/positionable";
 import Vector2 from "@/util/vector2";
 import PoolManager from "@shared/util/pool-manager";
-import { BigZombie } from "@/entities/enemies/big-zombie";
-import { FastZombie } from "@/entities/enemies/fast-zombie";
-import { BatZombie } from "@/entities/enemies/bat-zombie";
-import { BossZombie } from "@/entities/enemies/boss-zombie";
 import { GameMaster } from "./game-master";
-import { SpitterZombie } from "@/entities/enemies/spitter-zombie";
 import { Merchant } from "@/entities/environment/merchant";
 import {
   CAMPSITE,
@@ -103,6 +99,7 @@ export class MapManager implements IMapManager {
     this.gameManagers = gameManagers;
     this.entityManager = gameManagers.getEntityManager();
     this.gameMaster = new GameMaster(gameManagers);
+    ZombiePoolManager.initialize(gameManagers);
   }
 
   public getGameManagers(): IGameManagers {
@@ -413,7 +410,7 @@ export class MapManager implements IMapManager {
 
       // Determine which type of zombie to spawn based on remaining counts
       if (spawnedCount.bat < distribution.bat) {
-        const zombie = new BatZombie(this.getGameManagers());
+        const zombie = ZombiePoolManager.getInstance().acquire("bat_zombie");
         zombie.setPosition(
           PoolManager.getInstance().vector2.claim(
             x * getConfig().world.TILE_SIZE,
@@ -423,7 +420,7 @@ export class MapManager implements IMapManager {
         this.getEntityManager().addEntity(zombie);
         spawnedCount.bat++;
       } else if (spawnedCount.big < distribution.big) {
-        const zombie = new BigZombie(this.getGameManagers());
+        const zombie = ZombiePoolManager.getInstance().acquire("big_zombie");
         zombie.setPosition(
           PoolManager.getInstance().vector2.claim(
             x * getConfig().world.TILE_SIZE,
@@ -433,7 +430,7 @@ export class MapManager implements IMapManager {
         this.getEntityManager().addEntity(zombie);
         spawnedCount.big++;
       } else if (spawnedCount.fast < distribution.fast) {
-        const zombie = new FastZombie(this.getGameManagers());
+        const zombie = ZombiePoolManager.getInstance().acquire("fast_zombie");
         zombie.setPosition(
           PoolManager.getInstance().vector2.claim(
             x * getConfig().world.TILE_SIZE,
@@ -443,7 +440,7 @@ export class MapManager implements IMapManager {
         this.getEntityManager().addEntity(zombie);
         spawnedCount.fast++;
       } else if (spawnedCount.regular < distribution.regular) {
-        const zombie = new Zombie(this.getGameManagers());
+        const zombie = ZombiePoolManager.getInstance().acquire("zombie");
         zombie.setPosition(
           PoolManager.getInstance().vector2.claim(
             x * getConfig().world.TILE_SIZE,
@@ -453,7 +450,7 @@ export class MapManager implements IMapManager {
         this.getEntityManager().addEntity(zombie);
         spawnedCount.regular++;
       } else if (spawnedCount.spitter < distribution.spitter) {
-        const zombie = new SpitterZombie(this.getGameManagers());
+        const zombie = ZombiePoolManager.getInstance().acquire("spitter_zombie");
         zombie.setPosition(
           PoolManager.getInstance().vector2.claim(
             x * getConfig().world.TILE_SIZE,
@@ -499,7 +496,7 @@ export class MapManager implements IMapManager {
   }
 
   private spawnBossAt(position: { x: number; y: number }): void {
-    const boss = new BossZombie(this.getGameManagers());
+    const boss = ZombiePoolManager.getInstance().acquire("boss_zombie");
     boss.setPosition(PoolManager.getInstance().vector2.claim(position.x, position.y));
     this.getEntityManager().addEntity(boss);
   }
@@ -822,7 +819,7 @@ export class MapManager implements IMapManager {
       const middleX = Math.floor(totalSize / 2) * getConfig().world.TILE_SIZE;
       const middleY = Math.floor(totalSize / 2) * getConfig().world.TILE_SIZE;
 
-      const zombie = new Zombie(this.getGameManagers());
+      const zombie = ZombiePoolManager.getInstance().acquire("zombie");
       const poolManager = PoolManager.getInstance();
       zombie.setPosition(
         poolManager.vector2.claim(middleX + 16 * 4 * getConfig().world.TILE_SIZE, middleY)
@@ -852,7 +849,8 @@ export class MapManager implements IMapManager {
 
         if (this.collidablesLayer[y][x] === -1) {
           if (Math.random() < IDLE_ZOMBIE_SPAWN_CHANCE) {
-            const zombie = new Zombie(this.getGameManagers(), true); // true = idle mode
+            const zombie = ZombiePoolManager.getInstance().acquire("zombie");
+            zombie.setMovementStrategy(new IdleMovementStrategy());
             zombie.setPosition(
               PoolManager.getInstance().vector2.claim(
                 x * getConfig().world.TILE_SIZE,

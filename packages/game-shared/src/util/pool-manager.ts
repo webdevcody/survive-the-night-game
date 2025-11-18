@@ -1,7 +1,7 @@
 import Vector2 from "./vector2";
 import { Point, Circle, Line, Rectangle } from "./shape";
 
-class ObjectPool<T> {
+export class ObjectPool<T> {
   private pool: T[] = [];
   private createFn: () => T;
   private resetFn: (obj: T, ...args: any[]) => T;

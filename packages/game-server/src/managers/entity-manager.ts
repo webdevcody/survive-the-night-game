@@ -23,6 +23,7 @@ import { perfTimer } from "@shared/util/performance";
 import { profiler } from "@/util/profiler";
 import { TickPerformanceTracker } from "@/util/tick-performance-tracker";
 import { UpdateScheduler } from "./update-scheduler";
+import { ZombiePoolManager } from "./zombie-pool-manager";
 
 // Register all custom entity classes at module load time
 registerCustomEntities();
@@ -236,6 +237,10 @@ export class EntityManager implements IEntityManager {
       if (this.entityFinder && entity.hasExt(Positionable)) {
         this.entityFinder.removeEntity(entity);
       }
+
+      if (entity instanceof BaseEnemy) {
+        ZombiePoolManager.getInstance().release(entity);
+      }
     }
 
     this.entityMap.delete(entityId);
@@ -345,6 +350,10 @@ export class EntityManager implements IEntityManager {
         const zombieIndex = this.zombies.findIndex((zombie) => zombie.getId() === entity.getId());
         if (zombieIndex !== -1) {
           this.zombies.splice(zombieIndex, 1);
+        }
+
+        if (entity instanceof BaseEnemy) {
+          ZombiePoolManager.getInstance().release(entity);
         }
       }
 

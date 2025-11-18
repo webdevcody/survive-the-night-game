@@ -33,6 +33,7 @@ export interface AttackStrategy {
 
 import { SerializableFields } from "@/util/serializable-fields";
 
+
 export abstract class BaseEnemy extends Entity {
   // Internal state (not serialized)
   protected currentWaypoint: Vector2 | null = null;
@@ -292,5 +293,47 @@ export abstract class BaseEnemy extends Entity {
 
   getCategory(): EntityCategory {
     return EntityCategories.ZOMBIE;
+  }
+
+  public reset(): void {
+    // Generate new ID for the recycled entity
+    this.resetId(this.getGameManagers().getEntityManager().generateEntityId());
+
+    // Reset base entity state (dirty flags, etc)
+    this.resetState();
+
+    // Reset internal state
+    this.currentWaypoint = null;
+    this.pathRecalculationTimer = 0;
+
+    // Randomize attack cooldown again
+    const randomOffset = Math.random() * this.config.stats.attackCooldown;
+    this.attackCooldown.setTimeRemaining(randomOffset);
+
+    // Reset Destructible
+    if (this.hasExt(Destructible)) {
+      const destructible = this.getExt(Destructible);
+      destructible.setHealth(destructible.getMaxHealth());
+    }
+
+    // Reset Inventory
+    if (this.hasExt(Inventory)) {
+      const inventory = this.getExt(Inventory);
+      inventory.clear();
+      inventory.addRandomItem(this.config.stats.dropChance);
+    }
+
+    // Reset Collidable
+    if (this.hasExt(Collidable)) {
+      this.getExt(Collidable).setEnabled(true);
+    }
+
+    // Remove Interactive extension (loot) if it exists
+    if (this.hasExt(Interactive)) {
+      // We need to find the extension instance to remove it
+      // getExt returns the instance
+      const interactive = this.getExt(Interactive);
+      this.removeExtension(interactive);
+    }
   }
 }

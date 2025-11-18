@@ -9,6 +9,7 @@ import Positionable from "@/extensions/positionable";
 import { BossSummonEvent } from "@shared/events/server-sent/boss-summon-event";
 import Vector2 from "@shared/util/vector2";
 import Destructible from "@/extensions/destructible";
+import { ZombiePoolManager } from "@/managers/zombie-pool-manager";
 
 export class BossZombie extends BossEnemy {
   private static readonly SUMMON_INTERVAL_SECONDS = 8;
@@ -48,7 +49,7 @@ export class BossZombie extends BossEnemy {
 
     for (let i = 0; i < spawnCount; i++) {
       const spawnPosition = this.createSummonPosition();
-      const minion = new Zombie(this.getGameManagers());
+      const minion = ZombiePoolManager.getInstance().acquire("zombie");
       minion.setPosition(spawnPosition);
       this.getEntityManager().addEntity(minion);
       this.summonedMinionIds.add(minion.getId());

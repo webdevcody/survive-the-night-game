@@ -285,14 +285,23 @@ export class PlayerClient extends ClientEntity implements IClientEntity, Rendera
 
     if (this.isCrafting) {
       ctx.font = "8px Arial";
-      const animatedPosition = animate(gameState.startedAt, renderPosition, {
+      const craftingAnimation = {
         duration: 2000,
-        frames: {
-          0: PoolManager.getInstance().vector2.claim(0, 0),
-          50: PoolManager.getInstance().vector2.claim(0, 5),
-        },
-      });
+        frames: [
+          { percent: 0, offset: { x: 0, y: 0 } },
+          { percent: 50, offset: { x: 0, y: 5 } },
+        ],
+      };
+      const animatedPosition = poolManager.vector2.claim(0, 0);
+      animate(
+        Date.now(),
+        gameState.startedAt,
+        renderPosition,
+        craftingAnimation,
+        animatedPosition
+      );
       ctx.fillText("🔧", animatedPosition.x + 3, animatedPosition.y - 6);
+      poolManager.vector2.release(animatedPosition);
     }
   }
 

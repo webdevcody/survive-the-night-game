@@ -12,7 +12,7 @@ export class Entity<TSerializableFields extends readonly string[] = readonly str
   extends EventTarget
   implements IEntity
 {
-  private readonly id: number;
+  private id: number;
   private readonly type: EntityType;
   protected extensions: Map<ExtensionCtor, Extension> = new Map();
   private updatableExtensions: Extension[] = []; // Extensions that have an update method
@@ -56,6 +56,27 @@ export class Entity<TSerializableFields extends readonly string[] = readonly str
 
   public getId(): number {
     return this.id;
+  }
+
+  public resetId(newId: number): void {
+    this.id = newId;
+  }
+
+  public resetState(): void {
+    this.hasBeenSerialized = false;
+    this.markedForRemoval = false;
+    this.removedExtensions = [];
+    this.dirty = true;
+    this.dirtyExtensions.clear();
+
+    // Mark all extensions as dirty
+    for (const extension of this.extensions.values()) {
+      extension.markDirty();
+      this.dirtyExtensions.add(extension);
+    }
+
+    this.serialized.resetDirty();
+    this.notifyTrackerDirty();
   }
 
   public getCategory(): EntityCategory {

@@ -26,4 +26,10 @@ export class Zombie extends BaseEnemy {
   getAttackDamage(): number {
     return this.attackDamage;
   }
+
+  public reset(): void {
+    super.reset();
+    // Reset to default behavior (not idle)
+    this.setMovementStrategy(new MeleeMovementStrategy());
+  }
 }
