@@ -11,10 +11,7 @@ export class ClientIgnitable extends BaseClientExtension {
   }
 
   public deserializeFromBuffer(reader: BufferReader): this {
-    // Type is already read by the entity deserializer
-    // Read field count (always present now, should be 0 for Ignitable extension)
-    const fieldCount = reader.readUInt8();
-    // Ignitable extension has no fields, so nothing to read
+    // Ignitable extension has no fields
     return this;
   }
 }

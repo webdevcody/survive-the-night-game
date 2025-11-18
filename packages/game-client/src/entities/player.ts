@@ -440,13 +440,15 @@ export class PlayerClient extends ClientEntity implements IClientEntity, Rendera
       return;
     }
 
-    if (key === "input" && value) {
-      const previousFacing = this.input?.facing;
+    // Reconstruct input object from individual input fields
+    if (key.startsWith("input")) {
       super.deserializeProperty(key, value);
-      if (this.input && previousFacing !== undefined) {
-        this.input.facing = previousFacing;
+      // Reconstruct input object whenever any input field changes
+      this.reconstructInputObject();
+      // Update inventory if inventoryItem changed
+      if (key === "inputInventoryItem") {
+        this.updateActiveItemFromInventory();
       }
-      this.updateActiveItemFromInventory();
       return;
     }
 
@@ -461,6 +463,34 @@ export class PlayerClient extends ClientEntity implements IClientEntity, Rendera
     }
 
     super.deserializeProperty(key, value);
+  }
+
+  private reconstructInputObject(): void {
+    // Reconstruct input object from individual serialized fields
+    const inputSequenceNumber = (this as any).inputSequenceNumber;
+    const inputAimAngle = (this as any).inputAimAngle;
+    const input: Input = {
+      facing: (this as any).inputFacing ?? Direction.Right,
+      dx: (this as any).inputDx ?? 0,
+      dy: (this as any).inputDy ?? 0,
+      interact: (this as any).inputInteract ?? false,
+      fire: (this as any).inputFire ?? false,
+      inventoryItem: (this as any).inputInventoryItem ?? 1,
+      drop: (this as any).inputDrop ?? false,
+      consume: (this as any).inputConsume ?? false,
+      consumeItemType: (this as any).inputConsumeItemType ?? null,
+      sprint: (this as any).inputSprint ?? false,
+      // 0xFFFFFFFF represents undefined for sequenceNumber, NaN represents undefined for aimAngle
+      sequenceNumber: inputSequenceNumber === 0xffffffff ? undefined : inputSequenceNumber,
+      aimAngle: inputAimAngle === undefined || isNaN(inputAimAngle) ? undefined : inputAimAngle,
+    };
+
+    // Preserve locally-calculated facing direction for cursor-based aiming
+    const previousFacing = this.input?.facing;
+    this.input = input;
+    if (previousFacing !== undefined) {
+      this.input.facing = previousFacing;
+    }
   }
 
   deserialize(data: RawEntity): void {
@@ -478,14 +508,17 @@ export class PlayerClient extends ClientEntity implements IClientEntity, Rendera
       this.updateActiveItemFromInventory();
     }
 
-    // Preserve locally-calculated facing direction for cursor-based aiming
-    // Only update facing from server for other input properties
-    if (this.input) {
-      const previousFacing = this.input.facing;
+    // Reconstruct input object from individual fields (if they exist in data)
+    // This handles the old JSON format for backward compatibility
+    if (data.input && typeof data.input === "object") {
+      const previousFacing = this.input?.facing;
       this.input = data.input;
-      this.input.facing = previousFacing;
+      if (previousFacing !== undefined) {
+        this.input.facing = previousFacing;
+      }
     } else {
-      this.input = data.input;
+      // Reconstruct from individual fields
+      this.reconstructInputObject();
     }
 
     this.skin = data.skin || SKIN_TYPES.DEFAULT;

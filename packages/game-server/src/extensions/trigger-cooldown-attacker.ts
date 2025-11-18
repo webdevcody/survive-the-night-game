@@ -4,7 +4,7 @@ import Positionable from "@/extensions/positionable";
 import Destructible from "@/extensions/destructible";
 import { EntityType } from "@/types/entity";
 import { IEntity } from "@/entities/types";
-import { BufferWriter } from "@shared/util/buffer-serialization";
+import { BufferWriter, MonitoredBufferWriter } from "@shared/util/buffer-serialization";
 import { encodeExtensionType } from "@shared/util/extension-type-encoding";
 import { ExtensionBase } from "./extension-base";
 
@@ -104,23 +104,13 @@ export default class TriggerCooldownAttacker extends ExtensionBase {
     }
   }
 
-  public serializeToBuffer(writer: BufferWriter, onlyDirty: boolean = false): void {
+  public serializeToBuffer(writer: BufferWriter | MonitoredBufferWriter, onlyDirty: boolean = false): void {
     const serialized = this.serialized as any;
-    writer.writeUInt8(encodeExtensionType(TriggerCooldownAttacker.type));
-    
-    if (onlyDirty) {
-      const dirtyFields = this.serialized.getDirtyFields();
-      if (dirtyFields.has("isReady")) {
-        writer.writeUInt8(1); // field count
-        writer.writeUInt8(0); // isReady index
-        writer.writeBoolean(serialized.isReady);
-      } else {
-        writer.writeUInt8(0); // field count
-      }
+    if (writer instanceof MonitoredBufferWriter || (writer as any).constructor?.name === 'MonitoredBufferWriter') {
+      (writer as MonitoredBufferWriter).writeUInt8(encodeExtensionType(TriggerCooldownAttacker.type), "ExtensionType");
+      (writer as MonitoredBufferWriter).writeBoolean(serialized.isReady, "IsReady");
     } else {
-      // Write all fields: field count = 1, then field
-      writer.writeUInt8(1); // field count
-      writer.writeUInt8(0); // isReady index
+      writer.writeUInt8(encodeExtensionType(TriggerCooldownAttacker.type));
       writer.writeBoolean(serialized.isReady);
     }
   }

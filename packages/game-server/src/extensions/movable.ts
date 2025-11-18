@@ -1,7 +1,7 @@
 import { IEntity } from "@/entities/types";
 import { Extension } from "@/extensions/types";
 import Vector2 from "@/util/vector2";
-import { BufferWriter } from "@shared/util/buffer-serialization";
+import { BufferWriter, MonitoredBufferWriter } from "@shared/util/buffer-serialization";
 import { encodeExtensionType } from "@shared/util/extension-type-encoding";
 import PoolManager from "@shared/util/pool-manager";
 import { ExtensionBase } from "./extension-base";
@@ -31,28 +31,12 @@ export default class Movable extends ExtensionBase {
     return this;
   }
 
-  public serializeToBuffer(writer: BufferWriter, onlyDirty: boolean = false): void {
-    const serialized = this.serialized as any;
-    writer.writeUInt8(encodeExtensionType(Movable.type));
-    
-    if (onlyDirty) {
-      const dirtyFields = this.serialized.getDirtyFields();
-      const fieldsToWrite: Array<{ index: number; value: any }> = [];
-      
-      // Field index: velocity = 0
-      if (dirtyFields.has("velocity")) {
-        fieldsToWrite.push({ index: 0, value: this.velocity });
-      }
-      
-      writer.writeUInt8(fieldsToWrite.length);
-      for (const field of fieldsToWrite) {
-        writer.writeUInt8(field.index);
-        writer.writeVelocity2(field.value);
-      }
+  public serializeToBuffer(writer: BufferWriter | MonitoredBufferWriter, onlyDirty: boolean = false): void {
+    if (writer instanceof MonitoredBufferWriter || (writer as any).constructor?.name === 'MonitoredBufferWriter') {
+      (writer as MonitoredBufferWriter).writeUInt8(encodeExtensionType(Movable.type), "ExtensionType");
+      (writer as MonitoredBufferWriter).writeVelocity2(this.velocity, "Velocity");
     } else {
-      // Write all fields: field count = 1, then field
-      writer.writeUInt8(1); // field count
-      writer.writeUInt8(0); // velocity index
+      writer.writeUInt8(encodeExtensionType(Movable.type));
       writer.writeVelocity2(this.velocity);
     }
   }

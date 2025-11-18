@@ -4,7 +4,7 @@ import Inventory from "@/extensions/inventory";
 import { ItemType } from "@/util/inventory";
 import { IEntity } from "@/entities/types";
 import { ItemState } from "@/types/entity";
-import { BufferWriter } from "@shared/util/buffer-serialization";
+import { BufferWriter, MonitoredBufferWriter } from "@shared/util/buffer-serialization";
 import { encodeExtensionType } from "@shared/util/extension-type-encoding";
 import { ExtensionBase } from "./extension-base";
 
@@ -115,37 +115,18 @@ export default class Carryable extends ExtensionBase {
     return true;
   }
 
-  public serializeToBuffer(writer: BufferWriter, onlyDirty: boolean = false): void {
+  public serializeToBuffer(writer: BufferWriter | MonitoredBufferWriter, onlyDirty: boolean = false): void {
     const serialized = this.serialized as any;
-    writer.writeUInt8(encodeExtensionType(Carryable.type));
-
-    if (onlyDirty) {
-      const dirtyFields = this.serialized.getDirtyFields();
-      const fieldsToWrite: Array<{ index: number }> = [];
-
-      // Field indices: itemType = 0, state = 1
-      if (dirtyFields.has("itemType")) {
-        fieldsToWrite.push({ index: 0 });
-      }
-      if (dirtyFields.has("state")) {
-        fieldsToWrite.push({ index: 1 });
-      }
-
-      writer.writeUInt8(fieldsToWrite.length);
-      for (const field of fieldsToWrite) {
-        writer.writeUInt8(field.index);
-        if (field.index === 0) {
-          writer.writeString(serialized.itemType);
-        } else if (field.index === 1) {
-          writer.writeRecord(serialized.state, (value) => writer.writeFloat64(value as number));
-        }
-      }
+    const isMonitored = writer instanceof MonitoredBufferWriter || (writer as any).constructor?.name === 'MonitoredBufferWriter';
+    const mw = isMonitored ? (writer as MonitoredBufferWriter) : null;
+    
+    if (isMonitored) {
+      mw!.writeUInt8(encodeExtensionType(Carryable.type), "ExtensionType");
+      mw!.writeString(serialized.itemType, "ItemType");
+      mw!.writeRecord(serialized.state, (value, label?: string) => mw!.writeFloat64(value as number, label), "ItemState");
     } else {
-      // Write all fields: field count = 2, then fields in order
-      writer.writeUInt8(2); // field count
-      writer.writeUInt8(0); // itemType index
+      writer.writeUInt8(encodeExtensionType(Carryable.type));
       writer.writeString(serialized.itemType);
-      writer.writeUInt8(1); // state index
       writer.writeRecord(serialized.state, (value) => writer.writeFloat64(value as number));
     }
   }

@@ -5,7 +5,7 @@ import Positionable from "@/extensions/positionable";
 import { Extension } from "@/extensions/types";
 import Vector2 from "@/util/vector2";
 import PoolManager from "@shared/util/pool-manager";
-import { BufferWriter } from "@shared/util/buffer-serialization";
+import { BufferWriter, MonitoredBufferWriter } from "@shared/util/buffer-serialization";
 import { encodeExtensionType } from "@shared/util/extension-type-encoding";
 import { ExtensionBase } from "./extension-base";
 
@@ -43,37 +43,15 @@ export default class Combustible extends ExtensionBase {
     );
   }
 
-  public serializeToBuffer(writer: BufferWriter, onlyDirty: boolean = false): void {
+  public serializeToBuffer(writer: BufferWriter | MonitoredBufferWriter, onlyDirty: boolean = false): void {
     const serialized = this.serialized as any;
-    writer.writeUInt8(encodeExtensionType(Combustible.type));
-
-    if (onlyDirty) {
-      const dirtyFields = this.serialized.getDirtyFields();
-      const fieldsToWrite: Array<{ index: number }> = [];
-
-      // Field indices: numFires = 0, spreadRadius = 1
-      if (dirtyFields.has("numFires")) {
-        fieldsToWrite.push({ index: 0 });
-      }
-      if (dirtyFields.has("spreadRadius")) {
-        fieldsToWrite.push({ index: 1 });
-      }
-
-      writer.writeUInt8(fieldsToWrite.length);
-      for (const field of fieldsToWrite) {
-        writer.writeUInt8(field.index);
-        if (field.index === 0) {
-          writer.writeUInt32(serialized.numFires);
-        } else if (field.index === 1) {
-          writer.writeFloat64(serialized.spreadRadius);
-        }
-      }
+    if (writer instanceof MonitoredBufferWriter || (writer as any).constructor?.name === 'MonitoredBufferWriter') {
+      (writer as MonitoredBufferWriter).writeUInt8(encodeExtensionType(Combustible.type), "ExtensionType");
+      (writer as MonitoredBufferWriter).writeUInt32(serialized.numFires, "NumFires");
+      (writer as MonitoredBufferWriter).writeFloat64(serialized.spreadRadius, "SpreadRadius");
     } else {
-      // Write all fields: field count = 2, then fields in order
-      writer.writeUInt8(2); // field count
-      writer.writeUInt8(0); // numFires index
+      writer.writeUInt8(encodeExtensionType(Combustible.type));
       writer.writeUInt32(serialized.numFires);
-      writer.writeUInt8(1); // spreadRadius index
       writer.writeFloat64(serialized.spreadRadius);
     }
   }

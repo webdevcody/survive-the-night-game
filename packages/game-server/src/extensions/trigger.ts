@@ -6,7 +6,7 @@ import { ExtensionTypes } from "@/util/extension-types";
 import { IEntity } from "@/entities/types";
 import { Circle } from "@/util/shape";
 import Vector2 from "@/util/vector2";
-import { BufferWriter } from "@shared/util/buffer-serialization";
+import { BufferWriter, MonitoredBufferWriter } from "@shared/util/buffer-serialization";
 import { encodeExtensionType } from "@shared/util/extension-type-encoding";
 import PoolManager from "@shared/util/pool-manager";
 import { ExtensionBase } from "./extension-base";
@@ -45,31 +45,13 @@ export default class Triggerable extends ExtensionBase {
     }
   }
 
-  public serializeToBuffer(writer: BufferWriter, onlyDirty: boolean = false): void {
-    const serialized = this.serialized as any;
-    writer.writeUInt8(encodeExtensionType(Triggerable.type));
-    
-    if (onlyDirty) {
-      const dirtyFields = this.serialized.getDirtyFields();
-      const fieldsToWrite: Array<{ index: number }> = [];
-      
-      // Field indices: size = 0, filter = 1 (but filter is not serialized, only size)
-      if (dirtyFields.has("size")) {
-        fieldsToWrite.push({ index: 0 });
-      }
-      
-      writer.writeUInt8(fieldsToWrite.length);
-      for (const field of fieldsToWrite) {
-        writer.writeUInt8(field.index);
-        if (field.index === 0) {
-          writer.writeFloat64(this.size.x);
-          writer.writeFloat64(this.size.y);
-        }
-      }
+  public serializeToBuffer(writer: BufferWriter | MonitoredBufferWriter, onlyDirty: boolean = false): void {
+    if (writer instanceof MonitoredBufferWriter || (writer as any).constructor?.name === 'MonitoredBufferWriter') {
+      (writer as MonitoredBufferWriter).writeUInt8(encodeExtensionType(Triggerable.type), "ExtensionType");
+      (writer as MonitoredBufferWriter).writeFloat64(this.size.x, "SizeX");
+      (writer as MonitoredBufferWriter).writeFloat64(this.size.y, "SizeY");
     } else {
-      // Write all fields: field count = 1, then field
-      writer.writeUInt8(1); // field count
-      writer.writeUInt8(0); // size index
+      writer.writeUInt8(encodeExtensionType(Triggerable.type));
       writer.writeFloat64(this.size.x);
       writer.writeFloat64(this.size.y);
     }

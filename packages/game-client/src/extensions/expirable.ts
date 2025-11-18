@@ -11,10 +11,7 @@ export class ClientExpirable extends BaseClientExtension {
   }
 
   public deserializeFromBuffer(reader: BufferReader): this {
-    // Type is already read by the entity deserializer
-    // Read field count (always present now, should be 0 for Expirable extension)
-    const fieldCount = reader.readUInt8();
-    // Expirable extension has no fields, so nothing to read
+    // Expirable extension has no fields
     return this;
   }
 }

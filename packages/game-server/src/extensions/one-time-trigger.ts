@@ -4,7 +4,7 @@ import { EntityType } from "@/types/entity";
 import Positionable from "@/extensions/positionable";
 import { Circle } from "@/util/shape";
 import { Cooldown } from "@/entities/util/cooldown";
-import { BufferWriter } from "@shared/util/buffer-serialization";
+import { BufferWriter, MonitoredBufferWriter } from "@shared/util/buffer-serialization";
 import { encodeExtensionType } from "@shared/util/extension-type-encoding";
 import { ExtensionBase } from "./extension-base";
 
@@ -74,23 +74,13 @@ export default class OneTimeTrigger extends ExtensionBase {
     }
   }
 
-  public serializeToBuffer(writer: BufferWriter, onlyDirty: boolean = false): void {
+  public serializeToBuffer(writer: BufferWriter | MonitoredBufferWriter, onlyDirty: boolean = false): void {
     const serialized = this.serialized as any;
-    writer.writeUInt8(encodeExtensionType(OneTimeTrigger.type));
-    
-    if (onlyDirty) {
-      const dirtyFields = this.serialized.getDirtyFields();
-      if (dirtyFields.has("hasTriggered")) {
-        writer.writeUInt8(1); // field count
-        writer.writeUInt8(0); // hasTriggered index
-        writer.writeBoolean(serialized.hasTriggered);
-      } else {
-        writer.writeUInt8(0); // field count
-      }
+    if (writer instanceof MonitoredBufferWriter || (writer as any).constructor?.name === 'MonitoredBufferWriter') {
+      (writer as MonitoredBufferWriter).writeUInt8(encodeExtensionType(OneTimeTrigger.type), "ExtensionType");
+      (writer as MonitoredBufferWriter).writeBoolean(serialized.hasTriggered, "HasTriggered");
     } else {
-      // Write all fields: field count = 1, then field
-      writer.writeUInt8(1); // field count
-      writer.writeUInt8(0); // hasTriggered index
+      writer.writeUInt8(encodeExtensionType(OneTimeTrigger.type));
       writer.writeBoolean(serialized.hasTriggered);
     }
   }

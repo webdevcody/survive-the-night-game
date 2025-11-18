@@ -3,6 +3,16 @@ import { ServerSentEvents } from "../events";
 import { RawEntity } from "../../types/entity";
 import { WaveState } from "../../types/wave";
 import { BufferReader } from "../../util/buffer-serialization";
+import {
+  GAME_STATE_BIT_TIMESTAMP,
+  GAME_STATE_BIT_WAVE_NUMBER,
+  GAME_STATE_BIT_WAVE_STATE,
+  GAME_STATE_BIT_PHASE_START_TIME,
+  GAME_STATE_BIT_PHASE_DURATION,
+  GAME_STATE_BIT_IS_FULL_STATE,
+  GAME_STATE_BIT_REMOVED_ENTITY_IDS,
+  GAME_STATE_FIELD_BITS,
+} from "../../util/serialization-constants";
 import { entityTypeRegistry } from "../../util/entity-type-encoding";
 import { decodeExtensionType } from "../../util/extension-type-encoding";
 
@@ -55,7 +65,6 @@ export class GameStateEvent implements GameEvent<GameStateData> {
     return this.data.timestamp;
   }
 
-
   public getWaveNumber(): number | undefined {
     return this.data.waveNumber;
   }
@@ -71,7 +80,6 @@ export class GameStateEvent implements GameEvent<GameStateData> {
   public getPhaseDuration(): number | undefined {
     return this.data.phaseDuration;
   }
-
 
   /**
    * Deserialize GameStateEvent from buffer
@@ -130,32 +138,49 @@ export class GameStateEvent implements GameEvent<GameStateData> {
       entities: [], // Empty - entities will be deserialized by ClientEventListener
     };
 
-    // Read optional game state fields using gameStateReader
-    if (gameStateReader.readBoolean()) {
-      gameStateData.timestamp = gameStateReader.readFloat64();
-    }
-    if (gameStateReader.readBoolean()) {
-      gameStateData.waveNumber = gameStateReader.readUInt8();
-    }
-    if (gameStateReader.readBoolean()) {
-      gameStateData.waveState = gameStateReader.readString() as WaveState;
-    }
-    if (gameStateReader.readBoolean()) {
-      gameStateData.phaseStartTime = gameStateReader.readFloat64();
-    }
-    if (gameStateReader.readBoolean()) {
-      gameStateData.phaseDuration = gameStateReader.readFloat64();
-    }
-    if (gameStateReader.readBoolean()) {
-      gameStateData.isFullState = gameStateReader.readBoolean();
+    // Read bitset to determine which fields are present
+    const bitset = gameStateReader.readUInt8();
+
+    // Iterate through bits deterministically and read only fields that are set
+    // Note: REMOVED_ENTITY_IDS bit is handled separately after the loop
+    for (const bit of GAME_STATE_FIELD_BITS) {
+      if (bit === GAME_STATE_BIT_REMOVED_ENTITY_IDS) {
+        // Skip this bit in the loop - it's handled separately after
+        continue;
+      }
+
+      if (bitset & bit) {
+        switch (bit) {
+          case GAME_STATE_BIT_TIMESTAMP:
+            gameStateData.timestamp = gameStateReader.readFloat64();
+            break;
+          case GAME_STATE_BIT_WAVE_NUMBER:
+            gameStateData.waveNumber = gameStateReader.readUInt8();
+            break;
+          case GAME_STATE_BIT_WAVE_STATE:
+            gameStateData.waveState = gameStateReader.readString() as WaveState;
+            break;
+          case GAME_STATE_BIT_PHASE_START_TIME:
+            gameStateData.phaseStartTime = gameStateReader.readFloat64();
+            break;
+          case GAME_STATE_BIT_PHASE_DURATION:
+            gameStateData.phaseDuration = gameStateReader.readFloat64();
+            break;
+          case GAME_STATE_BIT_IS_FULL_STATE:
+            gameStateData.isFullState = gameStateReader.readBoolean();
+            break;
+        }
+      }
     }
 
-    // Read removed entity IDs
-    const removedEntityCount = gameStateReader.readUInt16();
-    if (removedEntityCount > 0) {
-      gameStateData.removedEntityIds = [];
-      for (let i = 0; i < removedEntityCount; i++) {
-        gameStateData.removedEntityIds!.push(gameStateReader.readUInt16());
+    // Read removed entity IDs if bit is set (written after game state fields)
+    if (bitset & GAME_STATE_BIT_REMOVED_ENTITY_IDS) {
+      const removedEntityCount = gameStateReader.readUInt16();
+      if (removedEntityCount > 0) {
+        gameStateData.removedEntityIds = [];
+        for (let i = 0; i < removedEntityCount; i++) {
+          gameStateData.removedEntityIds!.push(gameStateReader.readUInt16());
+        }
       }
     }
 

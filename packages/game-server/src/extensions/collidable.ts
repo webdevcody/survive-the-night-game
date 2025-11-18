@@ -3,7 +3,7 @@ import Positionable from "@/extensions/positionable";
 import { Extension } from "@/extensions/types";
 import { Rectangle } from "@/util/shape";
 import Vector2 from "@/util/vector2";
-import { BufferWriter } from "@shared/util/buffer-serialization";
+import { BufferWriter, MonitoredBufferWriter } from "@shared/util/buffer-serialization";
 import { encodeExtensionType } from "@shared/util/extension-type-encoding";
 import PoolManager from "@shared/util/pool-manager";
 import { ExtensionBase } from "./extension-base";
@@ -58,44 +58,17 @@ export default class Collidable extends ExtensionBase {
     return rect;
   }
 
-  public serializeToBuffer(writer: BufferWriter, onlyDirty: boolean = false): void {
+  public serializeToBuffer(writer: BufferWriter | MonitoredBufferWriter, onlyDirty: boolean = false): void {
     const serialized = this.serialized as any;
-    writer.writeUInt8(encodeExtensionType(Collidable.type));
-
-    if (onlyDirty) {
-      const dirtyFields = this.serialized.getDirtyFields();
-      const fieldsToWrite: Array<{ index: number; value: any }> = [];
-
-      // Field indices: offset = 0, size = 1, enabled = 2
-      if (dirtyFields.has("offset")) {
-        fieldsToWrite.push({ index: 0, value: this.offset });
-      }
-      if (dirtyFields.has("size")) {
-        fieldsToWrite.push({ index: 1, value: this.size });
-      }
-      if (dirtyFields.has("enabled")) {
-        fieldsToWrite.push({ index: 2, value: serialized.enabled });
-      }
-
-      writer.writeUInt8(fieldsToWrite.length);
-      for (const field of fieldsToWrite) {
-        writer.writeUInt8(field.index);
-        if (field.index === 0) {
-          writer.writeVector2(field.value);
-        } else if (field.index === 1) {
-          writer.writeVector2(field.value);
-        } else if (field.index === 2) {
-          writer.writeBoolean(field.value);
-        }
-      }
+    if (writer instanceof MonitoredBufferWriter || (writer as any).constructor?.name === 'MonitoredBufferWriter') {
+      (writer as MonitoredBufferWriter).writeUInt8(encodeExtensionType(Collidable.type), "ExtensionType");
+      (writer as MonitoredBufferWriter).writeVector2(this.offset, "Offset");
+      (writer as MonitoredBufferWriter).writeVector2(this.size, "Size");
+      (writer as MonitoredBufferWriter).writeBoolean(serialized.enabled, "Enabled");
     } else {
-      // Write all fields: field count = 3, then fields in order
-      writer.writeUInt8(3); // field count
-      writer.writeUInt8(0); // offset index
+      writer.writeUInt8(encodeExtensionType(Collidable.type));
       writer.writeVector2(this.offset);
-      writer.writeUInt8(1); // size index
       writer.writeVector2(this.size);
-      writer.writeUInt8(2); // enabled index
       writer.writeBoolean(serialized.enabled);
     }
   }

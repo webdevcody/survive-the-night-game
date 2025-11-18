@@ -13,18 +13,7 @@ export class ClientOneTimeTrigger extends BaseClientExtension {
   }
 
   public deserializeFromBuffer(reader: BufferReader): this {
-    // Type is already read by the entity deserializer
-    // Read field count (always present now)
-    const fieldCount = reader.readUInt8();
-    
-    // Read fields by index
-    for (let i = 0; i < fieldCount; i++) {
-      const fieldIndex = reader.readUInt8();
-      // Field index: hasTriggered = 0
-      if (fieldIndex === 0) {
-        this.hasTriggered = reader.readBoolean();
-      }
-    }
+    this.hasTriggered = reader.readBoolean();
     return this;
   }
 }

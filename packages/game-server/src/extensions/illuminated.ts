@@ -1,6 +1,6 @@
 import { IEntity } from "@/entities/types";
 import { Extension } from "@/extensions/types";
-import { BufferWriter } from "@shared/util/buffer-serialization";
+import { BufferWriter, MonitoredBufferWriter } from "@shared/util/buffer-serialization";
 import { encodeExtensionType } from "@shared/util/extension-type-encoding";
 import { ExtensionBase } from "./extension-base";
 
@@ -22,23 +22,13 @@ export default class Illuminated extends ExtensionBase {
     return this;
   }
 
-  public serializeToBuffer(writer: BufferWriter, onlyDirty: boolean = false): void {
+  public serializeToBuffer(writer: BufferWriter | MonitoredBufferWriter, onlyDirty: boolean = false): void {
     const serialized = this.serialized as any;
-    writer.writeUInt8(encodeExtensionType(Illuminated.type));
-
-    if (onlyDirty) {
-      const dirtyFields = this.serialized.getDirtyFields();
-      if (dirtyFields.has("radius")) {
-        writer.writeUInt8(1); // field count
-        writer.writeUInt8(0); // field index (radius = 0)
-        writer.writeUInt16(serialized.radius);
-      } else {
-        writer.writeUInt8(0); // no fields
-      }
+    if (writer instanceof MonitoredBufferWriter || (writer as any).constructor?.name === 'MonitoredBufferWriter') {
+      (writer as MonitoredBufferWriter).writeUInt8(encodeExtensionType(Illuminated.type), "ExtensionType");
+      (writer as MonitoredBufferWriter).writeUInt16(serialized.radius, "Radius");
     } else {
-      // Write all fields: field count = 1, then field
-      writer.writeUInt8(1); // field count
-      writer.writeUInt8(0); // radius index
+      writer.writeUInt8(encodeExtensionType(Illuminated.type));
       writer.writeUInt16(serialized.radius);
     }
   }

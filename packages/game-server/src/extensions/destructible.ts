@@ -3,7 +3,7 @@ import { Extension } from "@/extensions/types";
 import Positionable from "@/extensions/positionable";
 import { Rectangle } from "@/util/shape";
 import Vector2 from "@/util/vector2";
-import { BufferWriter } from "@shared/util/buffer-serialization";
+import { BufferWriter, MonitoredBufferWriter } from "@shared/util/buffer-serialization";
 import { encodeExtensionType } from "@shared/util/extension-type-encoding";
 import PoolManager from "@shared/util/pool-manager";
 import { ExtensionBase } from "./extension-base";
@@ -106,34 +106,16 @@ export default class Destructible extends ExtensionBase {
     return serialized.maxHealth;
   }
 
-  public serializeToBuffer(writer: BufferWriter, onlyDirty: boolean = false): void {
+  public serializeToBuffer(writer: BufferWriter | MonitoredBufferWriter, onlyDirty: boolean = false): void {
     const serialized = this.serialized as any;
-    writer.writeUInt8(encodeExtensionType(Destructible.type));
-
-    if (onlyDirty) {
-      const dirtyFields = this.serialized.getDirtyFields();
-      const fieldsToWrite: Array<{ index: number; value: number }> = [];
-
-      // Field indices: health = 0, maxHealth = 1
-      if (dirtyFields.has("health")) {
-        fieldsToWrite.push({ index: 0, value: serialized.health });
-      }
-      if (dirtyFields.has("maxHealth")) {
-        fieldsToWrite.push({ index: 1, value: serialized.maxHealth });
-      }
-
-      writer.writeUInt8(fieldsToWrite.length);
-      for (const field of fieldsToWrite) {
-        writer.writeUInt8(field.index);
-        writer.writeFloat64(field.value);
-      }
+    if (writer instanceof MonitoredBufferWriter || (writer as any).constructor?.name === 'MonitoredBufferWriter') {
+      (writer as MonitoredBufferWriter).writeUInt8(encodeExtensionType(Destructible.type), "ExtensionType");
+      (writer as MonitoredBufferWriter).writeUInt8(serialized.health, "Health");
+      (writer as MonitoredBufferWriter).writeUInt8(serialized.maxHealth, "MaxHealth");
     } else {
-      // Write all fields: field count = 2, then fields in order
-      writer.writeUInt8(2); // field count
-      writer.writeUInt8(0); // health index
-      writer.writeFloat64(serialized.health);
-      writer.writeUInt8(1); // maxHealth index
-      writer.writeFloat64(serialized.maxHealth);
+      writer.writeUInt8(encodeExtensionType(Destructible.type));
+      writer.writeUInt8(serialized.health);
+      writer.writeUInt8(serialized.maxHealth);
     }
   }
 }

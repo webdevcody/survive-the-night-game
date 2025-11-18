@@ -18,23 +18,11 @@ export class ClientCarryable extends BaseClientExtension {
   }
 
   public deserializeFromBuffer(reader: BufferReader): this {
-    // Type is already read by the entity deserializer
-    // Read field count (always present now)
-    const fieldCount = reader.readUInt8();
-    
-    // Read fields by index
-    for (let i = 0; i < fieldCount; i++) {
-      const fieldIndex = reader.readUInt8();
-      // Field indices: itemType = 0, state = 1
-      if (fieldIndex === 0) {
-        const itemType = reader.readString();
-        this.itemKey = itemType; // Use itemType as itemKey
-      } else if (fieldIndex === 1) {
-        // Read ItemState record (values are numbers)
-        this.itemState = reader.readRecord(() => reader.readFloat64());
-        this.state = this.itemState; // For compatibility
-      }
-    }
+    const itemType = reader.readString();
+    this.itemKey = itemType; // Use itemType as itemKey
+    // Read ItemState record (values are numbers)
+    this.itemState = reader.readRecord(() => reader.readFloat64());
+    this.state = this.itemState; // For compatibility
     return this;
   }
 

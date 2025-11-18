@@ -2,7 +2,7 @@ import { Extension } from "@/extensions/types";
 import { IEntity } from "@/entities/types";
 import { ExtensionTypes } from "@/util/extension-types";
 import Vector2 from "@shared/util/vector2";
-import { BufferWriter } from "@shared/util/buffer-serialization";
+import { BufferWriter, MonitoredBufferWriter } from "@shared/util/buffer-serialization";
 import { encodeExtensionType } from "@shared/util/extension-type-encoding";
 import PoolManager from "@shared/util/pool-manager";
 import { ExtensionBase } from "./extension-base";
@@ -57,37 +57,14 @@ export default class Positionable extends ExtensionBase {
     return this;
   }
 
-  public serializeToBuffer(writer: BufferWriter, onlyDirty: boolean = false): void {
-    const serialized = this.serialized as any;
-    writer.writeUInt8(encodeExtensionType(Positionable.type));
-
-    if (onlyDirty) {
-      const dirtyFields = this.serialized.getDirtyFields();
-      const fieldsToWrite: Array<{ index: number; value: any }> = [];
-
-      // Field indices: position = 0, size = 1
-      if (dirtyFields.has("position")) {
-        fieldsToWrite.push({ index: 0, value: this.position });
-      }
-      if (dirtyFields.has("size")) {
-        fieldsToWrite.push({ index: 1, value: this.size });
-      }
-
-      writer.writeUInt8(fieldsToWrite.length);
-      for (const field of fieldsToWrite) {
-        writer.writeUInt8(field.index);
-        if (field.index === 0) {
-          writer.writePosition2(field.value);
-        } else if (field.index === 1) {
-          writer.writeSize2(field.value);
-        }
-      }
+  public serializeToBuffer(writer: BufferWriter | MonitoredBufferWriter, onlyDirty: boolean = false): void {
+    if (writer instanceof MonitoredBufferWriter || (writer as any).constructor?.name === 'MonitoredBufferWriter') {
+      (writer as MonitoredBufferWriter).writeUInt8(encodeExtensionType(Positionable.type), "ExtensionType");
+      (writer as MonitoredBufferWriter).writePosition2(this.position, "Position");
+      (writer as MonitoredBufferWriter).writeSize2(this.size, "Size");
     } else {
-      // Write all fields: field count = 2, then fields in order
-      writer.writeUInt8(2); // field count
-      writer.writeUInt8(0); // position index
+      writer.writeUInt8(encodeExtensionType(Positionable.type));
       writer.writePosition2(this.position);
-      writer.writeUInt8(1); // size index
       writer.writeSize2(this.size);
     }
   }

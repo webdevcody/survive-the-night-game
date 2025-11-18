@@ -500,17 +500,21 @@ export class ServerSocketManager implements Broadcaster {
     for (const entity of entities) {
       this.bufferManager.writeEntity(entity, false);
     }
-    this.bufferManager.writeGameState({
-      timestamp: currentTime,
-      isFullState: true,
-      waveNumber,
-      waveState,
-      phaseStartTime,
-      phaseDuration,
-    });
+    this.bufferManager.writeGameState(
+      {
+        timestamp: currentTime,
+        isFullState: true,
+        waveNumber,
+        waveState,
+        phaseStartTime,
+        phaseDuration,
+      },
+      false // No removed entities in full state
+    );
     this.bufferManager.writeRemovedEntityIds([]);
 
     const buffer = this.bufferManager.getBuffer();
+    // this.bufferManager.logStats();
     delayedSocket.emit(ServerSentEvents.GAME_STATE_UPDATE, buffer);
   }
 
@@ -751,13 +755,17 @@ export class ServerSocketManager implements Broadcaster {
       const timestamp = eventData.timestamp !== undefined ? eventData.timestamp : Date.now();
 
       // Write game state metadata to buffer
-      this.bufferManager.writeGameState({
-        ...mergedGameState,
-        timestamp,
-        isFullState: false,
-      });
+      const hasRemovedEntities = removedCount > 0;
+      this.bufferManager.writeGameState(
+        {
+          ...mergedGameState,
+          timestamp,
+          isFullState: false,
+        },
+        hasRemovedEntities
+      );
 
-      // Write removed entity IDs
+      // Write removed entity IDs (only if there are any)
       this.bufferManager.writeRemovedEntityIds(removedEntityIds);
       endGameStateMerging();
 
@@ -799,6 +807,7 @@ export class ServerSocketManager implements Broadcaster {
         (() => {});
       // Send buffer directly instead of serializing to objects
       const buffer = this.bufferManager.getBuffer();
+      // this.bufferManager.logStats();
       this.delayedIo.emit(event.getType(), buffer);
       endWebSocketEmit();
     } else {

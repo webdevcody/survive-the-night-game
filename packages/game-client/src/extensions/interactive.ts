@@ -31,22 +31,10 @@ export class ClientInteractive extends BaseClientExtension {
   }
 
   public deserializeFromBuffer(reader: BufferReader): this {
-    // Type is already read by the entity deserializer
-    // Read field count (always present now)
-    const fieldCount = reader.readUInt8();
-    
-    // Read fields by index
-    for (let i = 0; i < fieldCount; i++) {
-      const fieldIndex = reader.readUInt8();
-      // Field indices: displayName = 0, offset = 1
-      if (fieldIndex === 0) {
-        this.displayName = reader.readString();
-      } else if (fieldIndex === 1) {
-        const offset = reader.readVector2();
-        this.offset.reset(offset.x, offset.y);
-        PoolManager.getInstance().vector2.release(offset);
-      }
-    }
+    this.displayName = reader.readString();
+    const offset = reader.readVector2();
+    this.offset.reset(offset.x, offset.y);
+    PoolManager.getInstance().vector2.release(offset);
     return this;
   }
 }

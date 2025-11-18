@@ -60,6 +60,7 @@ export class Player extends Entity {
     this.broadcaster = gameManagers.getBroadcaster();
 
     // Initialize serializable fields with default values
+    // Input fields are stored individually for efficient serialization
     this.serialized = new SerializableFields(
       {
         isCrafting: false,
@@ -69,18 +70,19 @@ export class Player extends Entity {
         displayName: "",
         stamina: getConfig().player.MAX_STAMINA,
         maxStamina: getConfig().player.MAX_STAMINA,
-        input: {
-          facing: Direction.Right,
-          inventoryItem: 1,
-          dx: 0,
-          dy: 0,
-          interact: false,
-          fire: false,
-          drop: false,
-          consume: false,
-          consumeItemType: null,
-          sprint: false,
-        },
+        // Input fields stored individually for efficient serialization
+        inputFacing: Direction.Right,
+        inputDx: 0,
+        inputDy: 0,
+        inputInteract: false,
+        inputFire: false,
+        inputInventoryItem: 1,
+        inputDrop: false,
+        inputConsume: false,
+        inputConsumeItemType: null as string | null,
+        inputSprint: false,
+        inputSequenceNumber: -1, // -1 represents undefined for optional field
+        inputAimAngle: NaN, // NaN represents undefined for optional field
         activeItem: null,
         pickupProgress: 0,
       },
@@ -142,7 +144,7 @@ export class Player extends Entity {
 
   get activeItem(): InventoryItem | null {
     const serialized = this.serialized as any;
-    return this.getExt(Inventory).getActiveItem(serialized.input.inventoryItem);
+    return this.getExt(Inventory).getActiveItem(serialized.inputInventoryItem);
   }
 
   /**
@@ -330,7 +332,7 @@ export class Player extends Entity {
     this.fireCooldown.update(deltaTime);
     const serialized = this.serialized as any;
 
-    if (!serialized.input.fire) return;
+    if (!serialized.inputFire) return;
 
     const activeWeapon = this.getActiveWeapon();
     if (activeWeapon === null) return;
@@ -358,13 +360,13 @@ export class Player extends Entity {
 
       if (this.fireCooldown.isReady()) {
         this.fireCooldown.reset();
-        const inventoryIndex = serialized.input.inventoryItem - 1;
+        const inventoryIndex = serialized.inputInventoryItem - 1;
         customHandler.handler(
           weaponEntity,
           this.getId(),
           this.getCenterPosition().clone(),
-          serialized.input.facing,
-          serialized.input.aimAngle,
+          serialized.inputFacing,
+          serialized.inputAimAngle,
           inventoryIndex
         );
         weaponEntity.clearDirtyFlags();
@@ -388,8 +390,8 @@ export class Player extends Entity {
       weaponEntity.attack(
         this.getId(),
         this.getCenterPosition().clone(),
-        serialized.input.facing,
-        serialized.input.aimAngle
+        serialized.inputFacing,
+        serialized.inputAimAngle
       );
       weaponEntity.clearDirtyFlags();
     }
@@ -408,15 +410,15 @@ export class Player extends Entity {
     if (currentSpeed < getConfig().player.PLAYER_SPEED * 2) {
       // Set velocity based on current input
       const poolManager = PoolManager.getInstance();
-      if (serialized.input.dx === 0 && serialized.input.dy === 0) {
+      if (serialized.inputDx === 0 && serialized.inputDy === 0) {
         movable.setVelocity(poolManager.vector2.claim(0, 0));
       } else {
-        const inputVec = poolManager.vector2.claim(serialized.input.dx, serialized.input.dy);
+        const inputVec = poolManager.vector2.claim(serialized.inputDx, serialized.inputDy);
         const normalized = normalizeVector(inputVec);
 
         // Can only sprint if: has stamina AND not exhausted
         const canSprint =
-          serialized.input.sprint && serialized.stamina > 0 && this.exhaustionTimer <= 0;
+          serialized.inputSprint && serialized.stamina > 0 && this.exhaustionTimer <= 0;
         const speedMultiplier = canSprint ? getConfig().player.SPRINT_MULTIPLIER : 1;
 
         // Drain stamina while sprinting
@@ -479,7 +481,7 @@ export class Player extends Entity {
     this.interactCooldown.update(deltaTime);
     const serialized = this.serialized as any;
 
-    if (!serialized.input.interact) {
+    if (!serialized.inputInteract) {
       this.pickupHoldTimer = 0;
       this.targetPickupEntity = null;
       this.setPickupProgress(0);
@@ -561,11 +563,11 @@ export class Player extends Entity {
     this.dropCooldown.update(deltaTime);
     const serialized = this.serialized as any;
 
-    if (!serialized.input.drop) return;
+    if (!serialized.inputDrop) return;
 
-    if (this.dropCooldown.isReady() && serialized.input.inventoryItem !== null) {
+    if (this.dropCooldown.isReady() && serialized.inputInventoryItem !== null) {
       this.dropCooldown.reset();
-      const itemIndex = serialized.input.inventoryItem - 1;
+      const itemIndex = serialized.inputInventoryItem - 1;
       const inventory = this.getExt(Inventory);
       const currentItem = inventory.getItems()[itemIndex];
 
@@ -591,13 +593,13 @@ export class Player extends Entity {
         let dx = 0;
         let dy = 0;
 
-        if (serialized.input.facing === Direction.Up) {
+        if (serialized.inputFacing === Direction.Up) {
           dy = -offset;
-        } else if (serialized.input.facing === Direction.Down) {
+        } else if (serialized.inputFacing === Direction.Down) {
           dy = offset;
-        } else if (serialized.input.facing === Direction.Left) {
+        } else if (serialized.inputFacing === Direction.Left) {
           dx = -offset;
-        } else if (serialized.input.facing === Direction.Right) {
+        } else if (serialized.inputFacing === Direction.Right) {
           dx = offset;
         }
 
@@ -624,7 +626,7 @@ export class Player extends Entity {
     this.consumeCooldown.update(deltaTime);
     const serialized = this.serialized as any;
 
-    if (!serialized.input.consume) return;
+    if (!serialized.inputConsume) return;
 
     if (this.consumeCooldown.isReady()) {
       this.consumeCooldown.reset();
@@ -633,19 +635,19 @@ export class Player extends Entity {
       let item: InventoryItem | null = null;
 
       // If consumeItemType is specified, find the first item of that type
-      if (serialized.input.consumeItemType !== null) {
+      if (serialized.inputConsumeItemType !== null) {
         const inventory = this.getExt(Inventory).getItems();
         const foundIndex = inventory.findIndex(
-          (invItem) => invItem?.itemType === serialized.input.consumeItemType
+          (invItem) => invItem?.itemType === serialized.inputConsumeItemType
         );
 
         if (foundIndex !== -1) {
           itemIndex = foundIndex;
           item = inventory[itemIndex];
         }
-      } else if (serialized.input.inventoryItem !== null) {
+      } else if (serialized.inputInventoryItem !== null) {
         // Otherwise, use the currently selected inventory slot
-        itemIndex = serialized.input.inventoryItem - 1;
+        itemIndex = serialized.inputInventoryItem - 1;
         item = this.getExt(Inventory).getItems()[itemIndex];
       }
 
@@ -669,8 +671,8 @@ export class Player extends Entity {
 
     // Only regenerate stamina when not exhausted
     if (this.exhaustionTimer <= 0 && serialized.stamina < getConfig().player.MAX_STAMINA) {
-      const isMoving = serialized.input.dx !== 0 || serialized.input.dy !== 0;
-      const isSprinting = serialized.input.sprint && isMoving && serialized.stamina > 0;
+      const isMoving = serialized.inputDx !== 0 || serialized.inputDy !== 0;
+      const isSprinting = serialized.inputSprint && isMoving && serialized.stamina > 0;
 
       // Regenerate stamina when not sprinting
       if (!isSprinting) {
@@ -733,8 +735,20 @@ export class Player extends Entity {
 
   setInput(input: Input) {
     const serialized = this.serialized as any;
-    const previousSlot = serialized.input.inventoryItem;
-    serialized.input = input;
+    const previousSlot = serialized.inputInventoryItem;
+    // Map input object to individual serialized fields
+    serialized.inputFacing = input.facing ?? Direction.Right;
+    serialized.inputDx = input.dx ?? 0;
+    serialized.inputDy = input.dy ?? 0;
+    serialized.inputInteract = input.interact ?? false;
+    serialized.inputFire = input.fire ?? false;
+    serialized.inputInventoryItem = input.inventoryItem ?? 1;
+    serialized.inputDrop = input.drop ?? false;
+    serialized.inputConsume = input.consume ?? false;
+    serialized.inputConsumeItemType = input.consumeItemType ?? null;
+    serialized.inputSprint = input.sprint ?? false;
+    serialized.inputSequenceNumber = input.sequenceNumber ?? -1; // -1 represents undefined
+    serialized.inputAimAngle = input.aimAngle ?? NaN; // NaN represents undefined
     // Update activeItem if inventory slot changed
     if (input.inventoryItem !== previousSlot) {
       this.markActiveItemDirty();
@@ -743,29 +757,29 @@ export class Player extends Entity {
 
   selectInventoryItem(index: number) {
     const serialized = this.serialized as any;
-    serialized.input = { ...serialized.input, inventoryItem: index };
+    serialized.inputInventoryItem = index;
     // Update activeItem when inventory slot changes
     this.markActiveItemDirty();
   }
 
   setAsFiring(firing: boolean) {
     const serialized = this.serialized as any;
-    serialized.input = { ...serialized.input, fire: firing };
+    serialized.inputFire = firing;
   }
 
   setAsInteracting(interacting: boolean) {
     const serialized = this.serialized as any;
-    serialized.input = { ...serialized.input, interact: interacting };
+    serialized.inputInteract = interacting;
   }
 
   setAsDropping(dropping: boolean) {
     const serialized = this.serialized as any;
-    serialized.input = { ...serialized.input, drop: dropping };
+    serialized.inputDrop = dropping;
   }
 
   setUseItem(use: boolean) {
     const serialized = this.serialized as any;
-    serialized.input = { ...serialized.input, consume: use };
+    serialized.inputConsume = use;
   }
 
   heal(amount: number): void {
