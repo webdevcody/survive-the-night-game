@@ -73,11 +73,19 @@ export abstract class EnemyClient extends ClientEntityBase implements IClientEnt
   }
 
   getMaxHealth(): number {
+    if (!this.hasExt(ClientDestructible)) {
+      console.warn(`Entity ${this.getId()} (${this.getType()}) does not have destructible extension`);
+      return 0;
+    }
     const destructible = this.getExt(ClientDestructible);
     return destructible.getMaxHealth();
   }
 
   getHealth(): number {
+    if (!this.hasExt(ClientDestructible)) {
+      console.warn(`Entity ${this.getId()} (${this.getType()}) does not have destructible extension`);
+      return 0;
+    }
     const destructible = this.getExt(ClientDestructible);
     return destructible.getHealth();
   }
@@ -90,6 +98,11 @@ export abstract class EnemyClient extends ClientEntityBase implements IClientEnt
   }
 
   render(ctx: CanvasRenderingContext2D, gameState: GameState): void {
+    if (!this.hasExt(ClientDestructible)) {
+      console.warn(`Enemy ${this.getId()} (${this.getType()}) does not have destructible extension, skipping render`);
+      return;
+    }
+
     const currentHealth = this.getHealth();
 
     if (this.previousHealth !== undefined && currentHealth < this.previousHealth) {

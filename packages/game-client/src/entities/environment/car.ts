@@ -28,18 +28,30 @@ export class CarClient extends ClientEntity implements Renderable {
   }
 
   private getHealth(): number {
+    if (!this.hasExt(ClientDestructible)) {
+      console.warn(`Car ${this.getId()} does not have destructible extension`);
+      return 0;
+    }
     const destructible = this.getExt(ClientDestructible);
     return destructible.getHealth();
   }
 
   private getMaxHealth(): number {
+    if (!this.hasExt(ClientDestructible)) {
+      console.warn(`Car ${this.getId()} does not have destructible extension`);
+      return 0;
+    }
     const destructible = this.getExt(ClientDestructible);
     return destructible.getMaxHealth();
   }
 
   protected renderInteractionText(ctx: CanvasRenderingContext2D, gameState: GameState): void {
     // Only show interaction text if the car is damaged and has the interactive extension
-    if (this.getHealth() >= this.getMaxHealth() || !this.hasExt(ClientInteractive)) {
+    if (
+      !this.hasExt(ClientDestructible) ||
+      this.getHealth() >= this.getMaxHealth() ||
+      !this.hasExt(ClientInteractive)
+    ) {
       return;
     }
 
@@ -92,6 +104,8 @@ export class CarClient extends ClientEntity implements Renderable {
       );
     }
 
-    drawHealthBar(ctx, position, this.getHealth(), this.getMaxHealth(), 32);
+    if (this.hasExt(ClientDestructible)) {
+      drawHealthBar(ctx, position, this.getHealth(), this.getMaxHealth(), 32);
+    }
   }
 }

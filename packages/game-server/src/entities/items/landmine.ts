@@ -13,7 +13,7 @@ import OneTimeTrigger from "@/extensions/one-time-trigger";
 import Vector2 from "@/util/vector2";
 import PoolManager from "@shared/util/pool-manager";
 import { ItemState } from "@/types/entity";
-import { ExplosionEvent } from "@shared/events/server-sent/explosion-event";
+import { ExplosionEvent } from "../../../../game-shared/src/events/server-sent/events/explosion-event";
 import { Cooldown } from "../util/cooldown";
 import Updatable from "@/extensions/updatable";
 
@@ -47,7 +47,7 @@ export class Landmine extends Entity implements IEntity {
     this.addExtension(new Positionable(this).setSize(size));
     this.addExtension(
       new Interactive(this)
-        .onInteract((entityId: string) => this.interact(entityId))
+        .onInteract((entityId: number) => this.interact(entityId))
         .setDisplayName("landmine")
     );
     this.addExtension(new Carryable(this, "landmine").setItemState({ count }));
@@ -109,7 +109,7 @@ export class Landmine extends Entity implements IEntity {
     this.getEntityManager().markEntityForRemoval(this);
   }
 
-  private interact(entityId: string) {
+  private interact(entityId: number) {
     const entity = this.getEntityManager().getEntityById(entityId);
     if (!entity || entity.getType() !== Entities.PLAYER) return;
 

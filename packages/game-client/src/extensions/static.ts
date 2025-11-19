@@ -22,10 +22,7 @@ export class ClientStatic extends BaseClientExtension {
   }
 
   public deserializeFromBuffer(reader: BufferReader): this {
-    // Type is already read by the entity deserializer
-    // Read field count (always present now, should be 0 for Static extension)
-    const fieldCount = reader.readUInt8();
-    // Static extension has no fields, so nothing to read
+    // Static extension has no fields
     return this;
   }
 }

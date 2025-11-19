@@ -32,7 +32,7 @@ export class Bandage extends Entity {
     this.addExtension(new Carryable(this, "bandage").setItemState({ count }));
   }
 
-  private consume(entityId: string, idx: number): void {
+  private consume(entityId: number, idx: number): void {
     const entity = this.getEntityManager().getEntityById(entityId);
     if (!entity) {
       return;
@@ -43,10 +43,9 @@ export class Bandage extends Entity {
       return;
     }
 
-    const healAmount = Math.min(
-      Bandage.healingAmount,
-      destructible.getMaxHealth() - destructible.getHealth()
-    );
+    const currentHealth = destructible.getHealth();
+    const maxHealth = destructible.getMaxHealth();
+    const healAmount = Math.min(Bandage.healingAmount, maxHealth - currentHealth);
 
     if (healAmount === 0) {
       return;
@@ -70,7 +69,7 @@ export class Bandage extends Entity {
     }
   }
 
-  private interact(entityId: string): void {
+  private interact(entityId: number): void {
     const entity = this.getEntityManager().getEntityById(entityId);
     if (!entity) {
       return;

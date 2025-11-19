@@ -15,7 +15,7 @@ export default class Snared extends ExtensionBase {
     super(self, {});
   }
 
-  public serializeToBuffer(writer: BufferWriter): void {
+  public serializeToBuffer(writer: BufferWriter, onlyDirty: boolean = false): void {
     writer.writeUInt8(encodeExtensionType(Snared.type));
   }
 }

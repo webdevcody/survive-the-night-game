@@ -26,7 +26,6 @@ export default function BiomeEditor() {
   const setBiomes = useEditorStore((state) => state.setBiomes);
   const setGroundGrid = useEditorStore((state) => state.setGroundGrid);
   const setCollidablesGrid = useEditorStore((state) => state.setCollidablesGrid);
-  const setDecals = useEditorStore((state) => state.setDecals);
   const setCurrentItems = useEditorStore((state) => state.setCurrentItems);
   const setCurrentBiome = useEditorStore((state) => state.setCurrentBiome);
   const setSaveStatus = useEditorStore((state) => state.setSaveStatus);
@@ -41,7 +40,6 @@ export default function BiomeEditor() {
   const currentBiome = useEditorStore((state) => state.currentBiome);
   const groundGrid = useEditorStore((state) => state.groundGrid);
   const collidablesGrid = useEditorStore((state) => state.collidablesGrid);
-  const decals = useEditorStore((state) => state.decals);
   const currentItems = useEditorStore((state) => state.currentItems);
   const newBiomeName = useEditorStore((state) => state.newBiomeName);
 
@@ -68,7 +66,6 @@ export default function BiomeEditor() {
     if (biomeData && currentBiome) {
       setGroundGrid(biomeData.ground);
       setCollidablesGrid(biomeData.collidables);
-      setDecals(biomeData.decals || []);
       setCurrentItems(biomeData.items || []);
       setSaveStatus("idle");
       setHistory([]);
@@ -78,7 +75,6 @@ export default function BiomeEditor() {
     currentBiome,
     setGroundGrid,
     setCollidablesGrid,
-    setDecals,
     setCurrentItems,
     setSaveStatus,
     setHistory,
@@ -133,7 +129,6 @@ export default function BiomeEditor() {
         biomeName: currentBiome,
         ground: groundGrid,
         collidables: collidablesGrid,
-        decals: decals.length > 0 ? decals : undefined,
         items: currentItems,
       });
 

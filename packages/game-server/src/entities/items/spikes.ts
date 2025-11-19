@@ -44,7 +44,7 @@ export class Spikes extends Entity {
     this.addExtension(new Placeable(this));
   }
 
-  private interact(entityId: string): void {
+  private interact(entityId: number): void {
     const carryable = this.getExt(Carryable);
     // Use helper method to preserve count when picking up dropped spikes
     carryable.pickup(

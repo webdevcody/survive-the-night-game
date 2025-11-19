@@ -14,7 +14,5 @@ export default class Static extends ExtensionBase {
 
   public serializeToBuffer(writer: BufferWriter, onlyDirty: boolean = false): void {
     writer.writeUInt8(encodeExtensionType(Static.type));
-    // Static extension has no fields, so always write 0 field count
-    writer.writeUInt8(0);
   }
 }

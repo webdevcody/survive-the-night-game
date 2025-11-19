@@ -2,15 +2,12 @@ import { useEffect, useRef } from "react";
 import { Button } from "~/components/ui/button";
 import { useEditorStore } from "../store";
 import { getConfig } from "@shared/config";
-import { DECAL_REGISTRY } from "@shared/config/decals-config";
 
 export function TileMapEditor() {
   const groundGrid = useEditorStore((state) => state.groundGrid);
   const collidablesGrid = useEditorStore((state) => state.collidablesGrid);
-  const decals = useEditorStore((state) => state.decals);
   const activeLayer = useEditorStore((state) => state.activeLayer);
   const selectedTileId = useEditorStore((state) => state.selectedTileId);
-  const selectedDecalId = useEditorStore((state) => state.selectedDecalId);
   const currentBiome = useEditorStore((state) => state.currentBiome);
   const currentItems = useEditorStore((state) => state.currentItems);
   const history = useEditorStore((state) => state.history);
@@ -74,7 +71,7 @@ export function TileMapEditor() {
                   ? "Ground"
                   : activeLayer === "collidables"
                     ? "Collidables"
-                    : "Decals"}
+                    : ""}
               </span>
             </div>
           </div>
@@ -121,9 +118,6 @@ export function TileMapEditor() {
             <div key={rowIdx} className="flex">
               {row.map((groundTileId, colIdx) => {
                 const collidableTileId = collidablesGrid[rowIdx][colIdx];
-                const decalAtPosition = decals.find(
-                  (d) => d.position.x === colIdx && d.position.y === rowIdx
-                );
 
                 return (
                   <div
@@ -176,33 +170,6 @@ export function TileMapEditor() {
                         }}
                       />
                     )}
-                    {/* Decals layer - show first frame of animation */}
-                    {decalAtPosition && decalAtPosition.animation && (
-                      <div
-                        className="absolute inset-0 pointer-events-none"
-                        style={{
-                          backgroundImage: "url(/sheets/ground.png)",
-                          backgroundSize: `${
-                            groundDimensions.cols * getConfig().world.TILE_SIZE * 2
-                          }px ${groundDimensions.rows * getConfig().world.TILE_SIZE * 2}px`,
-                          backgroundPosition: `-${
-                            (decalAtPosition.animation.startX / getConfig().world.TILE_SIZE) *
-                            getConfig().world.TILE_SIZE *
-                            2
-                          }px -${
-                            (decalAtPosition.animation.startY / getConfig().world.TILE_SIZE) *
-                            getConfig().world.TILE_SIZE *
-                            2
-                          }px`,
-                          imageRendering: "pixelated",
-                          opacity: 0.9,
-                        }}
-                      />
-                    )}
-                    {/* Highlight decal position on decals layer */}
-                    {activeLayer === "decals" && decalAtPosition && (
-                      <div className="absolute inset-0 bg-purple-500 bg-opacity-20 pointer-events-none border-2 border-purple-400" />
-                    )}
                   </div>
                 );
               })}
@@ -215,11 +182,6 @@ export function TileMapEditor() {
             <span className="text-orange-400 font-semibold">
               Fill Bucket Mode Active - Click a tile to flood fill with Tile #{selectedTileId}
             </span>
-          ) : activeLayer === "decals" ? (
-            <>
-              Click to place decal • Click again to remove
-              {selectedDecalId && ` • Selected: ${selectedDecalId}`}
-            </>
           ) : (
             <>
               Click to place tile • Drag to paint
@@ -238,26 +200,20 @@ export function TileMapEditor() {
           <br />
           Editing:{" "}
           <span
-            className={
+            className=            {
               activeLayer === "ground"
                 ? "text-green-400"
-                : activeLayer === "collidables"
-                  ? "text-red-400"
-                  : "text-purple-400"
+                : "text-red-400"
             }
           >
             {activeLayer === "ground"
               ? "Ground"
-              : activeLayer === "collidables"
-                ? "Collidables"
-                : "Decals"}
+              : "Collidables"}
           </span>{" "}
           •{" "}
-          {activeLayer === "decals"
-            ? `Decal: ${selectedDecalId || "None"}`
-            : activeLayer === "collidables" && selectedTileId === -1
-              ? "Eraser (remove object)"
-              : `Tile #${selectedTileId}`}
+          {activeLayer === "collidables" && selectedTileId === -1
+            ? "Eraser (remove object)"
+            : `Tile #${selectedTileId}`}
         </div>
       </div>
     </div>

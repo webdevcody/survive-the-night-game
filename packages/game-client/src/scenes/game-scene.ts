@@ -31,7 +31,7 @@ export class GameScene extends Scene {
 
   async init(): Promise<void> {
     // Connect to server
-    this.gameClient.connectToServer(this.serverUrl);
+    await this.gameClient.connectToServer(this.serverUrl);
 
     // Start the game
     this.gameClient.start();

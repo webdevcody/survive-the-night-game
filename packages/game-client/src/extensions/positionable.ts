@@ -39,24 +39,12 @@ export class ClientPositionable extends BaseClientExtension {
   }
 
   public deserializeFromBuffer(reader: BufferReader): this {
-    // Type is already read by the entity deserializer
-    // Read field count (always present now)
-    const fieldCount = reader.readUInt8();
-    
-    // Read fields by index
-    for (let i = 0; i < fieldCount; i++) {
-      const fieldIndex = reader.readUInt8();
-      // Field indices: position = 0, size = 1
-      if (fieldIndex === 0) {
-        const pos = reader.readPosition2();
-        this.position.reset(pos.x, pos.y);
-        PoolManager.getInstance().vector2.release(pos);
-      } else if (fieldIndex === 1) {
-        const size = reader.readSize2();
-        this.size.reset(size.x, size.y);
-        PoolManager.getInstance().vector2.release(size);
-      }
-    }
+    const pos = reader.readPosition2();
+    this.position.reset(pos.x, pos.y);
+    PoolManager.getInstance().vector2.release(pos);
+    const size = reader.readSize2();
+    this.size.reset(size.x, size.y);
+    PoolManager.getInstance().vector2.release(size);
     return this;
   }
 }

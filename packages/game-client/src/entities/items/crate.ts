@@ -16,11 +16,19 @@ export class CrateClient extends ClientEntity implements Renderable {
   }
 
   private getHealth(): number {
+    if (!this.hasExt(ClientDestructible)) {
+      console.warn(`Crate ${this.getId()} does not have destructible extension`);
+      return 0;
+    }
     const destructible = this.getExt(ClientDestructible);
     return destructible.getHealth();
   }
 
   private getMaxHealth(): number {
+    if (!this.hasExt(ClientDestructible)) {
+      console.warn(`Crate ${this.getId()} does not have destructible extension`);
+      return 0;
+    }
     const destructible = this.getExt(ClientDestructible);
     return destructible.getMaxHealth();
   }
@@ -30,6 +38,14 @@ export class CrateClient extends ClientEntity implements Renderable {
 
     const positionable = this.getExt(ClientPositionable);
     const position = positionable.getPosition();
+    
+    if (!this.hasExt(ClientDestructible)) {
+      // If no destructible extension, just render the default image
+      const image = this.getImage();
+      ctx.drawImage(image, position.x, position.y);
+      return;
+    }
+
     const frameIndexHealthMap = {
       [1]: 2,
       [2]: 1,

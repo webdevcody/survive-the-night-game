@@ -29,7 +29,7 @@ export class Merchant extends Entity {
     this.randomizeShopItems();
   }
 
-  private interact(entityId: string): void {
+  private interact(entityId: number): void {
     // When player interacts, they will see the shop UI on the client
     // The shop items are already serialized and sent to the client
   }

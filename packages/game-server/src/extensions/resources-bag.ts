@@ -3,7 +3,7 @@ import { Extension } from "@/extensions/types";
 import { ResourceType } from "@shared/util/inventory";
 import { resourceRegistry } from "@shared/entities";
 import { Broadcaster } from "@/managers/types";
-import { PlayerPickedUpResourceEvent } from "@shared/events/server-sent/pickup-resource-event";
+import { PlayerPickedUpResourceEvent } from "../../../game-shared/src/events/server-sent/events/pickup-resource-event";
 import { BufferWriter } from "@shared/util/buffer-serialization";
 import { encodeExtensionType } from "@shared/util/extension-type-encoding";
 import { ExtensionBase } from "./extension-base";
@@ -127,35 +127,7 @@ export default class ResourcesBag extends ExtensionBase {
   public serializeToBuffer(writer: BufferWriter, onlyDirty: boolean = false): void {
     const serialized = this.serialized as any;
     writer.writeUInt8(encodeExtensionType(ResourcesBag.type));
-
-    if (onlyDirty) {
-      const dirtyFields = this.serialized.getDirtyFields();
-      const fieldsToWrite: Array<{ index: number }> = [];
-
-      // Field indices: coins = 0, resources = 1
-      if (dirtyFields.has("coins")) {
-        fieldsToWrite.push({ index: 0 });
-      }
-      if (dirtyFields.has("resources")) {
-        fieldsToWrite.push({ index: 1 });
-      }
-
-      writer.writeUInt8(fieldsToWrite.length);
-      for (const field of fieldsToWrite) {
-        writer.writeUInt8(field.index);
-        if (field.index === 0) {
-          writer.writeFloat64(serialized.coins);
-        } else if (field.index === 1) {
-          writer.writeRecord(serialized.resources, (value) => writer.writeFloat64(value as number));
-        }
-      }
-    } else {
-      // Write all fields: field count = 2, then fields in order
-      writer.writeUInt8(2); // field count
-      writer.writeUInt8(0); // coins index
-      writer.writeFloat64(serialized.coins);
-      writer.writeUInt8(1); // resources index
-      writer.writeRecord(serialized.resources, (value) => writer.writeFloat64(value as number));
-    }
+    writer.writeFloat64(serialized.coins);
+    writer.writeRecord(serialized.resources, (value) => writer.writeFloat64(value as number));
   }
 }

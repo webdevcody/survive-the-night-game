@@ -72,7 +72,7 @@ export type SoundLoadProgressCallback = (
 interface LoopingSound {
   audio: HTMLAudioElement;
   soundType: SoundType;
-  playerId: string;
+  playerId: number;
 }
 
 export class SoundManager {
@@ -82,7 +82,7 @@ export class SoundManager {
   private isMuted: boolean = false;
   private loaded: boolean = false;
   // Track active looping sounds by player ID
-  private loopingSounds: Map<string, LoopingSound> = new Map();
+  private loopingSounds: Map<number, LoopingSound> = new Map();
   // Background music audio element
   private backgroundMusic: HTMLAudioElement | null = null;
   // Battle music audio element (plays during waves)
@@ -201,7 +201,7 @@ export class SoundManager {
    * Update or start a looping positional sound for a player
    */
   public updateLoopingSound(
-    playerId: string,
+    playerId: number,
     soundType: SoundType | null,
     position: Vector2
   ): void {
@@ -286,7 +286,7 @@ export class SoundManager {
   /**
    * Stop a looping sound for a player
    */
-  public stopLoopingSound(playerId: string): void {
+  public stopLoopingSound(playerId: number): void {
     const loopingSound = this.loopingSounds.get(playerId);
     if (loopingSound) {
       loopingSound.audio.pause();
@@ -297,7 +297,7 @@ export class SoundManager {
 
   /**
    * Update volumes for all active looping sounds based on current player position
-   * Skips sounds that don't have corresponding entities (e.g., campfire decals)
+   * Skips sounds that don't have corresponding entities
    * as those are handled separately
    */
   public updateLoopingSoundsVolumes(): void {
@@ -335,8 +335,8 @@ export class SoundManager {
   /**
    * Clean up looping sounds for players that no longer exist
    */
-  public cleanupLoopingSounds(existingPlayerIds: Set<string>): void {
-    const playerIdsToRemove: string[] = [];
+  public cleanupLoopingSounds(existingPlayerIds: Set<number>): void {
+    const playerIdsToRemove: number[] = [];
     this.loopingSounds.forEach((_, playerId) => {
       if (!existingPlayerIds.has(playerId)) {
         playerIdsToRemove.push(playerId);
@@ -351,8 +351,8 @@ export class SoundManager {
   /**
    * Clean up looping sounds for entities that no longer exist, filtered by sound type
    */
-  public cleanupLoopingSoundsByType(existingEntityIds: Set<string>, soundType: SoundType): void {
-    const entityIdsToRemove: string[] = [];
+  public cleanupLoopingSoundsByType(existingEntityIds: Set<number>, soundType: SoundType): void {
+    const entityIdsToRemove: number[] = [];
     this.loopingSounds.forEach((loopingSound, entityId) => {
       if (loopingSound.soundType === soundType && !existingEntityIds.has(entityId)) {
         entityIdsToRemove.push(entityId);

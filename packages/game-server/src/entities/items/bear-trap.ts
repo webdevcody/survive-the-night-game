@@ -83,7 +83,7 @@ export class BearTrap extends Entity implements IEntity {
     }
   }
 
-  private setSnaredZombieId(id: string | null): void {
+  private setSnaredZombieId(id: number | null): void {
     const serialized = this.serialized as any;
     if (serialized.snaredZombieId !== id) {
       serialized.snaredZombieId = id;

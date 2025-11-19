@@ -26,7 +26,5 @@ export default class Expirable extends ExtensionBase {
 
   public serializeToBuffer(writer: BufferWriter, onlyDirty: boolean = false): void {
     writer.writeUInt8(encodeExtensionType(Expirable.type));
-    // Expirable extension has no serialized fields (expiresIn is not serialized), so always write 0 field count
-    writer.writeUInt8(0);
   }
 }

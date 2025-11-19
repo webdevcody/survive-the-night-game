@@ -30,7 +30,5 @@ export default class Updatable extends ExtensionBase {
 
   public serializeToBuffer(writer: BufferWriter, onlyDirty: boolean = false): void {
     writer.writeUInt8(encodeExtensionType(Updatable.type));
-    // Updatable extension has no serialized fields, so always write 0 field count
-    writer.writeUInt8(0);
   }
 }

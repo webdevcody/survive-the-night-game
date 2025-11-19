@@ -4,7 +4,7 @@ import Vector2 from "@/util/vector2";
 import Destructible from "@/extensions/destructible";
 import Positionable from "@/extensions/positionable";
 import { getConfig } from "@shared/config";
-import { ZombieAttackedEvent } from "@/events/server-sent/zombie-attacked-event";
+import { ZombieAttackedEvent } from "../../../../../../game-shared/src/events/server-sent/events/zombie-attacked-event";
 import { TargetingSystem } from "../targeting";
 
 export class MeleeAttackStrategy implements AttackStrategy {

@@ -144,7 +144,7 @@ export class Minimap {
     // Note: This assumes setMap is called on MapManager - we'll check on first render
   }
 
-  // Get all light sources from entities and decals
+    // Get all light sources from entities
   private getLightSources(gameState: GameState): LightSource[] {
     const sources: LightSource[] = [];
 
@@ -159,25 +159,6 @@ export class Minimap {
       }
     }
 
-    // Add decal light sources (campfires, etc.)
-    const mapData = this.mapManager.getMapData();
-    if (mapData?.decals) {
-      mapData.decals.forEach((decal) => {
-        if (decal.light) {
-          const intensity = decal.light.intensity ?? 1.0;
-          const radius = decal.light.radius * intensity;
-
-          // Convert grid position to world position (center of tile)
-          const poolManager = PoolManager.getInstance();
-          const position = poolManager.vector2.claim(
-            decal.position.x * this.tileSize + this.tileSize / 2,
-            decal.position.y * this.tileSize + this.tileSize / 2
-          );
-
-          sources.push({ position, radius });
-        }
-      });
-    }
 
     return sources;
   }

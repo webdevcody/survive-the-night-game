@@ -19,7 +19,9 @@ import { ClientUpdatable } from "@/extensions/updatable";
 import { ClientOneTimeTrigger } from "./one-time-trigger";
 import { ClientStatic } from "./static";
 import { ClientResourcesBag } from "./resources-bag";
+import { ClientSnared } from "./snared";
 
+// remember to update the extension type ids in extension-type-encoding.ts when adding a new extension
 export const clientExtensionsMap = {
   [ExtensionTypes.POSITIONABLE]: ClientPositionable,
   [ExtensionTypes.MOVABLE]: ClientMovable,
@@ -41,6 +43,7 @@ export const clientExtensionsMap = {
   [ExtensionTypes.ONE_TIME_TRIGGER]: ClientOneTimeTrigger,
   [ExtensionTypes.STATIC]: ClientStatic,
   [ExtensionTypes.RESOURCES_BAG]: ClientResourcesBag,
+  [ExtensionTypes.SNARED]: ClientSnared,
 } as const;
 
 export {
@@ -64,4 +67,5 @@ export {
   ClientOneTimeTrigger,
   ClientStatic,
   ClientResourcesBag,
+  ClientSnared,
 };

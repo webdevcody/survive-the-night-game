@@ -8,7 +8,7 @@ import { Cooldown } from "@/entities/util/cooldown";
 import Inventory from "@/extensions/inventory";
 import { normalizeDirection } from "@shared/util/direction";
 import Updatable from "@/extensions/updatable";
-import { ExplosionEvent } from "@/events/server-sent/explosion-event";
+import { ExplosionEvent } from "../../../../game-shared/src/events/server-sent/events/explosion-event";
 import { Weapon } from "@/entities/weapons/weapon";
 import Carryable from "@/extensions/carryable";
 import Interactive from "@/extensions/interactive";

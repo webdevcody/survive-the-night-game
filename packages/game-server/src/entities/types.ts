@@ -2,7 +2,7 @@ import { EntityType } from "@/types/entity";
 import { Extension, ExtensionCtor } from "@/extensions/types";
 import { IEntityManager } from "@/managers/types";
 import { EntityCategory } from "@shared/entities";
-import { BufferWriter } from "@/util/buffer-serialization";
+import { BufferWriter } from "@shared/util/buffer-serialization";
 
 export interface IEntity extends EventTarget {
   getType(): EntityType;

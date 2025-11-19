@@ -10,7 +10,7 @@ import { Direction, normalizeDirection } from "@/util/direction";
 import { Entity } from "@/entities/entity";
 import { distance } from "@/util/physics";
 import Vector2 from "@/util/vector2";
-import { ExplosionEvent } from "@/events/server-sent/explosion-event";
+import { ExplosionEvent } from "../../../../game-shared/src/events/server-sent/events/explosion-event";
 import PoolManager from "@shared/util/pool-manager";
 
 const MAX_TRAVEL_DISTANCE = 300;
@@ -51,7 +51,10 @@ export class GrenadeProjectile extends Entity {
     const poolManager = PoolManager.getInstance();
     const normalized = normalizeDirection(direction);
     this.getExt(Movable).setVelocity(
-      poolManager.vector2.claim(normalized.x * GRENADE_PROJECTILE_SPEED, normalized.y * GRENADE_PROJECTILE_SPEED)
+      poolManager.vector2.claim(
+        normalized.x * GRENADE_PROJECTILE_SPEED,
+        normalized.y * GRENADE_PROJECTILE_SPEED
+      )
     );
   }
 

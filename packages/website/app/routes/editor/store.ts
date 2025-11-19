@@ -9,17 +9,13 @@ import type {
   SheetDimensions,
 } from "./types";
 import { createEmptyGroundLayer, createEmptyCollidablesLayer, BIOME_SIZE } from "./utils";
-import type { DecalData } from "@shared/config/decals-config";
-import { DECAL_REGISTRY } from "@shared/config/decals-config";
 
 interface EditorState {
   // Grid state
   groundGrid: number[][];
   collidablesGrid: number[][];
-  decals: DecalData[];
   activeLayer: Layer;
   selectedTileId: number;
-  selectedDecalId: string | null; // ID of selected decal preset from DECAL_REGISTRY
 
   // Export state
   exportText: string;
@@ -70,12 +66,8 @@ interface EditorState {
   // Actions
   setGroundGrid: (grid: number[][]) => void;
   setCollidablesGrid: (grid: number[][]) => void;
-  setDecals: (decals: DecalData[]) => void;
   setActiveLayer: (layer: Layer) => void;
   setSelectedTileId: (id: number) => void;
-  setSelectedDecalId: (id: string | null) => void;
-  addDecal: (decal: DecalData) => void;
-  removeDecal: (index: number) => void;
   setExportText: (text: string) => void;
   setIsDragging: (dragging: boolean) => void;
   setHasModifiedDuringDrag: (modified: boolean) => void;
@@ -117,10 +109,8 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   // Initial state
   groundGrid: createEmptyGroundLayer(),
   collidablesGrid: createEmptyCollidablesLayer(),
-  decals: [],
   activeLayer: "ground",
   selectedTileId: 0,
-  selectedDecalId: null,
   exportText: "",
   isDragging: false,
   hasModifiedDuringDrag: false,
@@ -149,18 +139,8 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   // Simple setters
   setGroundGrid: (grid) => set({ groundGrid: grid }),
   setCollidablesGrid: (grid) => set({ collidablesGrid: grid }),
-  setDecals: (decals) => set({ decals }),
   setActiveLayer: (layer) => set({ activeLayer: layer }),
   setSelectedTileId: (id) => set({ selectedTileId: id }),
-  setSelectedDecalId: (id) => set({ selectedDecalId: id }),
-  addDecal: (decal) => {
-    const { decals } = get();
-    set({ decals: [...decals, decal] });
-  },
-  removeDecal: (index) => {
-    const { decals } = get();
-    set({ decals: decals.filter((_, i) => i !== index) });
-  },
   setExportText: (text) => set({ exportText: text }),
   setIsDragging: (dragging) => set({ isDragging: dragging }),
   setHasModifiedDuringDrag: (modified) => set({ hasModifiedDuringDrag: modified }),
@@ -188,14 +168,13 @@ export const useEditorStore = create<EditorState>((set, get) => ({
 
   // Complex actions
   saveToHistory: () => {
-    const { groundGrid, collidablesGrid, decals, history } = get();
+    const { groundGrid, collidablesGrid, history } = get();
     set({
       history: [
         ...history,
         {
           ground: groundGrid.map((row) => [...row]),
           collidables: collidablesGrid.map((row) => [...row]),
-          decals: decals.map((decal) => ({ ...decal })),
         },
       ],
     });
@@ -209,7 +188,6 @@ export const useEditorStore = create<EditorState>((set, get) => ({
     set({
       groundGrid: previousState.ground,
       collidablesGrid: previousState.collidables,
-      decals: previousState.decals || [],
       history: history.slice(0, -1),
     });
   },
@@ -232,8 +210,6 @@ export const useEditorStore = create<EditorState>((set, get) => ({
       set({ groundGrid: createEmptyGroundLayer() });
     } else if (activeLayer === "collidables") {
       set({ collidablesGrid: createEmptyCollidablesLayer() });
-    } else if (activeLayer === "decals") {
-      set({ decals: [] });
     }
   },
 
@@ -241,7 +217,6 @@ export const useEditorStore = create<EditorState>((set, get) => ({
     set({
       activeLayer: layer,
       selectedTileId: layer === "ground" ? 0 : -1,
-      selectedDecalId: layer === "decals" ? "campfire" : null,
       isPaletteSelectionMode: false,
       isGroundPaletteSelectionMode: false,
       paletteSelectionStart: null,
@@ -257,10 +232,8 @@ export const useEditorStore = create<EditorState>((set, get) => ({
     const {
       activeLayer,
       selectedTileId,
-      selectedDecalId,
       groundGrid,
       collidablesGrid,
-      decals,
       clipboard,
       isFillBucketMode,
       saveToHistory,
@@ -281,34 +254,6 @@ export const useEditorStore = create<EditorState>((set, get) => ({
     // If fill bucket mode is active and we're on the ground layer, do flood fill
     if (isFillBucketMode && activeLayer === "ground") {
       floodFillGround(row, col, selectedTileId);
-      return;
-    }
-
-    // Handle decals layer
-    if (activeLayer === "decals") {
-      if (!selectedDecalId) return;
-
-      const decalPreset = Object.values(DECAL_REGISTRY).find((d) => d.id === selectedDecalId);
-      if (!decalPreset) return;
-
-      // Check if a decal already exists at this position
-      const existingIndex = decals.findIndex(
-        (d) => d.position.x === col && d.position.y === row
-      );
-
-      if (existingIndex !== -1) {
-        // Remove existing decal at this position
-        set({ decals: decals.filter((_, i) => i !== existingIndex) });
-      } else {
-        // Add new decal
-        const newDecal = {
-          id: selectedDecalId,
-          position: { x: col, y: row },
-          animation: decalPreset.animation,
-          light: decalPreset.light,
-        };
-        set({ decals: [...decals, newDecal] });
-      }
       return;
     }
 

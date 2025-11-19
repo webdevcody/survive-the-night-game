@@ -6,7 +6,7 @@ import Interactive from "@/extensions/interactive";
 import Vector2 from "@/util/vector2";
 import PoolManager from "@shared/util/pool-manager";
 import { ResourceConfig } from "@shared/entities/resource-registry";
-import { Player } from "@/entities/player";
+import { Player } from "@/entities/players/player";
 
 /**
  * Generic resource entity that can be auto-generated from ResourceConfig
@@ -30,7 +30,7 @@ export class GenericResourceEntity extends Entity {
     );
   }
 
-  private interact(entityId: string): void {
+  private interact(entityId: number): void {
     const player = this.getEntityManager().getEntityById(entityId) as Player;
     if (!player) return;
 

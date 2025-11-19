@@ -5,7 +5,7 @@ import { Entities } from "@/constants";
 import { Entity } from "@/entities/entity";
 import Vector2 from "@/util/vector2";
 import PoolManager from "@shared/util/pool-manager";
-import { Player } from "@/entities/player";
+import { Player } from "@/entities/players/player";
 
 export class Tree extends Entity {
   public static get Size(): Vector2 {
@@ -20,7 +20,7 @@ export class Tree extends Entity {
     this.addExtension(new Interactive(this).onInteract(this.interact.bind(this)).setDisplayName("wood"));
   }
 
-  private interact(entityId: string): void {
+  private interact(entityId: number): void {
     const player = this.getEntityManager().getEntityById(entityId) as Player;
     if (!player) return;
 

@@ -1,11 +1,8 @@
-import { DecalData } from "@shared/config/decals-config";
-
-export type Layer = "ground" | "collidables" | "decals";
+export type Layer = "ground" | "collidables";
 
 export interface BiomeData {
   ground: number[][];
   collidables: number[][];
-  decals?: DecalData[];
 }
 
 export interface SheetDimensions {

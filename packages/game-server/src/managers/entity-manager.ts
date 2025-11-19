@@ -18,7 +18,7 @@ import { itemRegistry, resourceRegistry } from "@shared/entities";
 import { GenericItemEntity } from "@/entities/items/generic-item-entity";
 import { GenericResourceEntity } from "@/entities/items/generic-resource-entity";
 import { registerCustomEntities } from "@/entities/register-custom-entities";
-import { Player } from "@/entities/player";
+import { Player } from "@/entities/players/player";
 import { perfTimer } from "@shared/util/performance";
 import { profiler } from "@/util/profiler";
 import { TickPerformanceTracker } from "@/util/tick-performance-tracker";

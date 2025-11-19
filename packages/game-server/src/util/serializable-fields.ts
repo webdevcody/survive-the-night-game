@@ -1,9 +1,23 @@
 /**
+ * Field serialization metadata
+ */
+export interface FieldSerializationMetadata {
+  /** For number fields: 'uint8' | 'uint16' | 'uint32' | 'float64' */
+  numberType?: "uint8" | "uint16" | "uint32" | "float64";
+  /** Whether the field is optional (can be undefined/null) */
+  optional?: boolean;
+}
+
+/**
  * SerializableFields manages serializable entity fields with automatic dirty tracking.
  * Uses a Proxy to intercept property access and automatically mark fields as dirty on assignment.
  *
  * Usage:
- *   const serialized = new SerializableFields({ ping: 0, stamina: 100 }, () => entity.markDirty());
+ *   const serialized = new SerializableFields(
+ *     { ping: 0, stamina: 100 },
+ *     () => entity.markDirty(),
+ *     { ping: { numberType: 'uint16' } }
+ *   );
  *   serialized.ping = 5; // Automatically marks 'ping' as dirty and calls callback
  *   const value = serialized.ping; // Gets value
  *   serialized.resetDirty(); // Clears dirty tracking
@@ -13,15 +27,26 @@ export class SerializableFields {
   private fields: Map<string, any> = new Map();
   private dirtyFields: Set<string> = new Set();
   private onFieldDirty?: () => void;
+  private fieldMetadata: Map<string, FieldSerializationMetadata> = new Map();
 
   // Index signature to allow dynamic property access via Proxy
   [key: string]: any;
 
-  constructor(initialFields: Record<string, any> = {}, onFieldDirty?: () => void) {
+  constructor(
+    initialFields: Record<string, any> = {},
+    onFieldDirty?: () => void,
+    fieldMetadata?: Record<string, FieldSerializationMetadata>
+  ) {
     this.onFieldDirty = onFieldDirty;
     // Initialize fields from initial values
     for (const [key, value] of Object.entries(initialFields)) {
       this.fields.set(key, value);
+    }
+    // Store field metadata
+    if (fieldMetadata) {
+      for (const [key, metadata] of Object.entries(fieldMetadata)) {
+        this.fieldMetadata.set(key, metadata);
+      }
     }
 
     // Return proxy that intercepts property access
@@ -147,5 +172,12 @@ export class SerializableFields {
    */
   getAllKeys(): string[] {
     return Array.from(this.fields.keys());
+  }
+
+  /**
+   * Get serialization metadata for a field
+   */
+  getFieldMetadata(fieldName: string): FieldSerializationMetadata | undefined {
+    return this.fieldMetadata.get(fieldName);
   }
 }

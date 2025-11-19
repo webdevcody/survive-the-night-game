@@ -107,21 +107,6 @@ export default class TriggerCooldownAttacker extends ExtensionBase {
   public serializeToBuffer(writer: BufferWriter, onlyDirty: boolean = false): void {
     const serialized = this.serialized as any;
     writer.writeUInt8(encodeExtensionType(TriggerCooldownAttacker.type));
-    
-    if (onlyDirty) {
-      const dirtyFields = this.serialized.getDirtyFields();
-      if (dirtyFields.has("isReady")) {
-        writer.writeUInt8(1); // field count
-        writer.writeUInt8(0); // isReady index
-        writer.writeBoolean(serialized.isReady);
-      } else {
-        writer.writeUInt8(0); // field count
-      }
-    } else {
-      // Write all fields: field count = 1, then field
-      writer.writeUInt8(1); // field count
-      writer.writeUInt8(0); // isReady index
-      writer.writeBoolean(serialized.isReady);
-    }
+    writer.writeBoolean(serialized.isReady);
   }
 }

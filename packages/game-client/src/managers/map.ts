@@ -5,8 +5,6 @@ import Vector2 from "@shared/util/vector2";
 import PoolManager from "@shared/util/pool-manager";
 import { distance } from "@shared/util/physics";
 import { getConfig } from "@shared/config";
-import { DecalData } from "@shared/config/decals-config";
-import { getFrameIndex } from "@/entities/util";
 import { WaveState } from "@shared/types/wave";
 
 const PULSE_SPEED = 0.001; // Speed of the pulse (lower = slower)
@@ -39,8 +37,6 @@ export class MapManager {
   private tileSize = 16;
   private groundLayer: number[][] | null = null;
   private collidablesLayer: number[][] | null = null;
-  private decals: DecalData[] = [];
-  private decalsStartTime: number = Date.now();
 
   // Pre-rendered canvases for efficient rendering
   private groundCanvas: HTMLCanvasElement | null = null;
@@ -86,16 +82,9 @@ export class MapManager {
     };
   }
 
-  setMap(mapData: {
-    ground: number[][];
-    collidables: number[][];
-    decals?: DecalData[];
-    biomePositions?: any;
-  }) {
+  setMap(mapData: { ground: number[][]; collidables: number[][]; biomePositions?: any }) {
     this.groundLayer = mapData.ground;
     this.collidablesLayer = mapData.collidables;
-    this.decals = mapData.decals || [];
-    this.decalsStartTime = Date.now(); // Reset animation timer
     this.biomePositions = mapData.biomePositions;
 
     // Pre-render both layers once
@@ -116,13 +105,11 @@ export class MapManager {
   getMapData(): {
     ground: number[][] | null;
     collidables: number[][] | null;
-    decals?: DecalData[];
     biomePositions?: any;
   } {
     return {
       ground: this.groundLayer,
       collidables: this.collidablesLayer,
-      decals: this.decals,
       biomePositions: this.biomePositions,
     };
   }
@@ -287,6 +274,8 @@ export class MapManager {
     entities.forEach((entity, entityId) => {
       const gameEntity = entity;
       if (gameEntity.hasExt(ClientIlluminated)) {
+        // Skip entities without positionable extension (can't get position)
+        if (!gameEntity.hasExt(ClientPositionable)) return;
         const baseRadius = gameEntity.getExt(ClientIlluminated).getRadius();
         // Skip entities with no light (radius 0 or very small)
         if (baseRadius <= 0) return;
@@ -302,34 +291,6 @@ export class MapManager {
 
         sources.push({
           entityId,
-          position,
-          radius,
-        });
-      }
-    });
-
-    // Add decal light sources
-    this.decals.forEach((decal, index) => {
-      if (decal.light) {
-        const intensity = decal.light.intensity ?? 1.0;
-        const radius = decal.light.radius * intensity * radiusMultiplier;
-
-        // Convert grid position to world position (center of tile)
-        const poolManager = PoolManager.getInstance();
-        const position = poolManager.vector2.claim(
-          decal.position.x * this.tileSize + this.tileSize / 2,
-          decal.position.y * this.tileSize + this.tileSize / 2
-        );
-
-        if (playerPosition) {
-          const distToPlayer = distance(playerPosition, position);
-          if (distToPlayer - radius > cullDistance) {
-            return;
-          }
-        }
-
-        sources.push({
-          entityId: -1000 - index, // Use negative IDs for decals to avoid collision with entities
           position,
           radius,
         });
@@ -513,7 +474,10 @@ export class MapManager {
   }
 
   // Helper to get visible tile bounds
-  private getVisibleTileBounds(renderDistance?: number, playerPosition?: Vector2): TileBounds | null {
+  private getVisibleTileBounds(
+    renderDistance?: number,
+    playerPosition?: Vector2
+  ): TileBounds | null {
     if (!this.groundLayer) return null;
 
     let playerPos = playerPosition;
@@ -802,74 +766,9 @@ export class MapManager {
     }
   }
 
-  renderDecals(ctx: CanvasRenderingContext2D) {
-    if (this.decals.length === 0 || !this.groundTilesheet.complete) return;
-
-    const bounds = this.getVisibleTileBounds();
-    if (!bounds) return;
-
-    const { startTileX, startTileY, endTileX, endTileY } = bounds;
-    const tilesheetCols = this.groundTilesheet.width / this.tileSize;
-
-    for (const decal of this.decals) {
-      const { position, animation } = decal;
-
-      // Only render decals in visible bounds
-      if (
-        position.x < startTileX ||
-        position.x > endTileX ||
-        position.y < startTileY ||
-        position.y > endTileY
-      ) {
-        continue;
-      }
-
-      // Calculate tile ID based on animation (if present)
-      let tileId: number;
-      if (animation) {
-        // Get current frame index based on animation timing
-        const frameIndex = getFrameIndex(this.decalsStartTime, {
-          frames: animation.frameCount,
-          duration: animation.duration,
-        });
-
-        // Calculate tile ID from sprite sheet coordinates
-        // Each frame is offset horizontally by frameWidth (default 16)
-        const frameWidth = animation.frameWidth || 16;
-        const frameX = animation.startX + frameIndex * frameWidth;
-        const frameY = animation.startY;
-
-        // Convert pixel coordinates to tile ID
-        const tilesheetTileX = Math.floor(frameX / this.tileSize);
-        const tilesheetTileY = Math.floor(frameY / this.tileSize);
-        tileId = tilesheetTileY * tilesheetCols + tilesheetTileX;
-      } else {
-        // Static decal - use ID directly
-        tileId = 0; // Fallback, though static decals should have animation config
-      }
-
-      // Render the tile
-      const col = tileId % tilesheetCols;
-      const row = Math.floor(tileId / tilesheetCols);
-
-      ctx.drawImage(
-        this.groundTilesheet,
-        col * this.tileSize,
-        row * this.tileSize,
-        this.tileSize,
-        this.tileSize,
-        position.x * this.tileSize,
-        position.y * this.tileSize,
-        this.tileSize,
-        this.tileSize
-      );
-    }
-  }
-
   // Legacy method for backward compatibility
   render(ctx: CanvasRenderingContext2D) {
     this.renderGround(ctx);
     this.renderCollidables(ctx);
-    this.renderDecals(ctx);
   }
 }

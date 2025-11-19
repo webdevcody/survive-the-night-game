@@ -150,7 +150,7 @@ export class MyLightItem extends Entity {
     ];
   }
 
-  private interact(entityId: string): void {
+  private interact(entityId: number): void {
     this.getExt(Carryable).pickup(entityId);
   }
 }

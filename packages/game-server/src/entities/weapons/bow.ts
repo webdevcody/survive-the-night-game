@@ -3,9 +3,9 @@ import { IGameManagers } from "@/managers/types";
 import { Arrow } from "@/entities/projectiles/arrow";
 import { Weapon } from "@/entities/weapons/weapon";
 import { Direction } from "../../../../game-shared/src/util/direction";
-import { GunEmptyEvent } from "@shared/events/server-sent/gun-empty-event";
-import { GunFiredEvent } from "@shared/events/server-sent/gun-fired-event";
-import { PlayerAttackedEvent } from "@/events/server-sent/player-attacked-event";
+import { GunEmptyEvent } from "../../../../game-shared/src/events/server-sent/events/gun-empty-event";
+import { GunFiredEvent } from "../../../../game-shared/src/events/server-sent/events/gun-fired-event";
+import { PlayerAttackedEvent } from "../../../../game-shared/src/events/server-sent/events/player-attacked-event";
 import Vector2 from "@/util/vector2";
 import { consumeAmmo } from "./helpers";
 

@@ -1,4 +1,4 @@
-import type { Player } from "../entities/player";
+import type { Player } from "../entities/players/player";
 import type { EntityManager } from "../managers/entity-manager";
 
 export interface CommandContext {

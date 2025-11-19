@@ -14,10 +14,10 @@ import PoolManager from "@shared/util/pool-manager";
 import { distance, normalizeVector } from "@/util/physics";
 import { Cooldown } from "../util/cooldown";
 import { Bullet } from "@/entities/projectiles/bullet";
-import { LootEvent } from "@/events/server-sent/loot-event";
+import { LootEvent } from "../../../../game-shared/src/events/server-sent/events/loot-event";
 import { getConfig } from "@/config";
-import { BIOME_SIZE, MAP_SIZE } from "@/managers/map-manager";
-import { GunFiredEvent } from "@/events/server-sent/gun-fired-event";
+import { BIOME_SIZE, MAP_SIZE } from "@/world/map-manager";
+import { GunFiredEvent } from "../../../../game-shared/src/events/server-sent/events/gun-fired-event";
 import { SerializableFields } from "@/util/serializable-fields";
 
 const SURVIVOR_MAX_HEALTH = 10;
@@ -326,7 +326,7 @@ export class Survivor extends Entity {
       .broadcastEvent(new GunFiredEvent(this.getId(), "pistol"));
   }
 
-  private onRescue(entityId: string): void {
+  private onRescue(entityId: number): void {
     // Only allow rescue if not already rescued
     const serialized = this.serialized as any;
     if (serialized.isRescued) {

@@ -4,7 +4,7 @@ import { EntityType } from "@shared/types/entity";
 import { BossMetadata } from "@shared/entities";
 import Movable from "@/extensions/movable";
 import Destructible from "@/extensions/destructible";
-import { BossStepEvent } from "@shared/events/server-sent/boss-step-event";
+import { BossStepEvent } from "../../../../game-shared/src/events/server-sent/events/boss-step-event";
 
 export abstract class BossEnemy extends BaseEnemy {
   private static readonly MOVEMENT_EPSILON = 1;
