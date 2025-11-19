@@ -2,6 +2,7 @@ import { getConfig } from "@/config";
 import { Hitbox } from "./hitbox";
 import Vector2 from "./vector2";
 import PoolManager from "./pool-manager";
+import { PATHFINDING_DEBUG } from "../debug";
 
 export { Vector2 };
 
@@ -33,6 +34,39 @@ interface Node {
   parent: Node | null;
 }
 
+interface PathStep {
+  x: number;
+  y: number;
+}
+
+interface CacheEntry {
+  path: PathStep[]; // Full path from start to end
+}
+
+// LRU Cache for pathfinding results
+const MAX_CACHE_SIZE = 10000;
+const pathCache = new Map<string, CacheEntry>();
+let cacheHits = 0;
+let cacheMisses = 0;
+let lastLogTime = Date.now();
+const LOG_INTERVAL = 5000; // 5 seconds
+
+function logCacheStats(): void {
+  if (!PATHFINDING_DEBUG) {
+    return;
+  }
+
+  const now = Date.now();
+  if (now - lastLogTime >= LOG_INTERVAL) {
+    const total = cacheHits + cacheMisses;
+    const hitRate = total > 0 ? ((cacheHits / total) * 100).toFixed(2) : "0.00";
+    console.log(
+      `[Pathfinding Cache] Hits: ${cacheHits}, Misses: ${cacheMisses}, Hit Rate: ${hitRate}%, Size: ${pathCache.size}`
+    );
+    lastLogTime = now;
+  }
+}
+
 export function pathTowards(
   a: Vector2,
   b: Vector2,
@@ -52,6 +86,43 @@ export function pathTowards(
   if (isOutOfBounds || hasCollidable) {
     return null;
   }
+
+  // Check cache first
+  const cacheKey = `${startX},${startY}|${endX},${endY}`;
+  const cachedEntry = pathCache.get(cacheKey);
+
+  if (cachedEntry) {
+    // Cache hit - move to end (most recently used) for LRU
+    pathCache.delete(cacheKey);
+    pathCache.set(cacheKey, cachedEntry);
+    cacheHits++;
+    logCacheStats();
+
+    // Return the first step from the cached path (skip start position at index 0)
+    if (cachedEntry.path.length === 0) {
+      return null;
+    }
+
+    if (cachedEntry.path.length < 2) {
+      // Path is just start->end (adjacent tiles)
+      const lastStep = cachedEntry.path[cachedEntry.path.length - 1];
+      const poolManager = PoolManager.getInstance();
+      return poolManager.vector2.claim(
+        lastStep.x * getConfig().world.TILE_SIZE + getConfig().world.TILE_SIZE / 2,
+        lastStep.y * getConfig().world.TILE_SIZE + getConfig().world.TILE_SIZE / 2
+      );
+    }
+
+    const firstStep = cachedEntry.path[1]; // First step to move to (skip start at index 0)
+    const poolManager = PoolManager.getInstance();
+    return poolManager.vector2.claim(
+      firstStep.x * getConfig().world.TILE_SIZE + getConfig().world.TILE_SIZE / 2,
+      firstStep.y * getConfig().world.TILE_SIZE + getConfig().world.TILE_SIZE / 2
+    );
+  }
+
+  // Cache miss - proceed with pathfinding
+  cacheMisses++;
 
   const openSet: Node[] = [];
   const closedSet = new Set<string>();
@@ -76,13 +147,44 @@ export function pathTowards(
     });
 
     if (current.x === endX && current.y === endY) {
-      // Find the first step in the path by traversing up the parent chain
-      let firstStep = current;
-      while (firstStep.parent && firstStep.parent.parent) {
-        firstStep = firstStep.parent;
+      // Reconstruct the full path by traversing up the parent chain
+      const fullPath: PathStep[] = [];
+      let pathNode: Node | null = current;
+
+      while (pathNode) {
+        fullPath.unshift({ x: pathNode.x, y: pathNode.y });
+        pathNode = pathNode.parent;
       }
 
-      // Return the center position of the next tile to move to
+      // Cache the entire path
+      if (pathCache.size >= MAX_CACHE_SIZE) {
+        // Evict least recently used entry (first in Map)
+        const firstKey = pathCache.keys().next().value;
+        if (firstKey) {
+          pathCache.delete(firstKey);
+        }
+      }
+
+      const cacheEntry: CacheEntry = {
+        path: fullPath,
+      };
+      pathCache.set(cacheKey, cacheEntry);
+      logCacheStats();
+
+      // Return the first step (skip the start position, which is at index 0)
+      // The first step to move to is at index 1
+      if (fullPath.length < 2) {
+        // Path is just start->end (adjacent tiles)
+        const poolManager = PoolManager.getInstance();
+        return poolManager.vector2.claim(
+          fullPath[fullPath.length - 1].x * getConfig().world.TILE_SIZE +
+            getConfig().world.TILE_SIZE / 2,
+          fullPath[fullPath.length - 1].y * getConfig().world.TILE_SIZE +
+            getConfig().world.TILE_SIZE / 2
+        );
+      }
+
+      const firstStep = fullPath[1];
       const poolManager = PoolManager.getInstance();
       return poolManager.vector2.claim(
         firstStep.x * getConfig().world.TILE_SIZE + getConfig().world.TILE_SIZE / 2,
@@ -165,6 +267,8 @@ export function pathTowards(
     }
   }
 
+  // No path found
+  logCacheStats();
   return null;
 }
 

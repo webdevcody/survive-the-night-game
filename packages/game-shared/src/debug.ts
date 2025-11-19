@@ -10,3 +10,4 @@ export const DEBUG_ADMIN_COMMANDS = true;
 export const DEBUG_SHOW_WAYPOINTS = false;
 export const DEBUG_SHOW_ATTACK_RANGE = false;
 export const DEBUG_PERFORMANCE = true;
+export const PATHFINDING_DEBUG = true;
