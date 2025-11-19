@@ -6,7 +6,7 @@ const CHAT_FONT_FAMILY = "Arial";
 const CHAT_MONOSPACE_FONT_FAMILY = "Courier New, monospace";
 const CHAT_TEXT_COLOR = "white";
 const CHAT_INPUT_HEIGHT = 50;
-const CHAT_BOTTOM_MARGIN = 140; // Distance from bottom of screen to chat input (above inventory bar)
+const CHAT_BOTTOM_MARGIN = 210; // Distance from bottom of screen to chat input (above inventory bar)
 
 interface ChatMessage {
   playerId: number;
