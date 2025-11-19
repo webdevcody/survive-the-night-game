@@ -51,6 +51,7 @@ import { SurvivorClient } from "./environment/survivor";
 import { AcidProjectileClient } from "./acid-projectile";
 import { BoundaryClient } from "./items/boundary";
 import { BloodClient } from "./blood";
+import { NoteClient } from "./items/note";
 
 /**
  * Registers all custom client entity classes in the override registry
@@ -127,4 +128,5 @@ export function registerCustomClientEntities(): void {
   clientEntityOverrideRegistry.register("survivor", SurvivorClient);
   clientEntityOverrideRegistry.register("boundary", BoundaryClient);
   clientEntityOverrideRegistry.register("blood", BloodClient);
+  clientEntityOverrideRegistry.register("note", NoteClient);
 }

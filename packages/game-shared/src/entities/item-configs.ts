@@ -352,4 +352,20 @@ export const ITEM_CONFIGS: Record<string, ItemConfig> = {
       ],
     },
   },
+  note: {
+    id: "note",
+    category: "misc",
+    assets: {
+      assetKey: "note",
+      x: 0,
+      y: 0,
+      sheet: "note",
+      width: 16,
+      height: 16,
+    },
+    spawn: {
+      enabled: false,
+      chance: 0,
+    },
+  },
 };

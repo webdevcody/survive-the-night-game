@@ -32,6 +32,7 @@ import { itemRegistry, weaponRegistry, resourceRegistry } from "@shared/entities
 import { Entities } from "@shared/constants";
 import { Crate } from "@/entities/items/crate";
 import { CampsiteFire } from "@/entities/environment/campsite-fire";
+import { Note } from "@/entities/items/note";
 
 export const BIOME_SIZE = 16;
 export const MAP_SIZE = 9;
@@ -93,7 +94,7 @@ export class MapManager implements IMapManager {
   private shedBiomePosition?: { x: number; y: number };
   private merchantBiomePositions: Array<{ x: number; y: number }> = [];
 
-  constructor() {}
+  constructor() { }
 
   public setGameManagers(gameManagers: IGameManagers) {
     this.gameManagers = gameManagers;
@@ -530,6 +531,7 @@ export class MapManager implements IMapManager {
     this.createForestBoundaries();
     this.spawnMerchants();
     this.spawnItems();
+    this.spawnNote();
     this.spawnIdleZombies();
     this.spawnDebugZombieIfEnabled();
   }
@@ -770,6 +772,34 @@ export class MapManager implements IMapManager {
         }
       }
     }
+  }
+
+  private spawnNote() {
+    const centerBiomeX = Math.floor(MAP_SIZE / 2);
+    const centerBiomeY = Math.floor(MAP_SIZE / 2);
+    const centerTileX = centerBiomeX * BIOME_SIZE + Math.floor(BIOME_SIZE / 2);
+    const centerTileY = centerBiomeY * BIOME_SIZE + Math.floor(BIOME_SIZE / 2);
+
+    const note = new Note(this.getGameManagers());
+    note.title = "Day 4: They Don't Stop";
+    note.content = `I don't know if anyone will find this. If you do, turn back.
+
+We thought the cabin would be safe. It was secluded, off the main road, buried deep in the woods. We were wrong. The trees don't stop them. Nothing stops them.
+
+Sarah went out yesterday to check the traps. She didn't come back. I heard a scream, then... that sound. That wet, tearing sound. I sat behind the door with my shotgun for six hours, shaking so hard I could barely hold it.
+
+The scratching started an hour ago. Not at the door, but under the floorboards. They're testing the perimeter, looking for a weak point. I have three shells left. Three shells and a bottle of whiskey.
+
+If you're reading this, take the supplies in the crate. I won't need them anymore. And whatever you do, don't go out at night.
+
+- J.`;
+
+    // Place it slightly offset from the fire (2 tiles right, 2 tiles down)
+    const x = (centerTileX + 2) * getConfig().world.TILE_SIZE;
+    const y = (centerTileY + 2) * getConfig().world.TILE_SIZE;
+
+    note.getExt(Positionable).setPosition(PoolManager.getInstance().vector2.claim(x, y));
+    this.getEntityManager().addEntity(note);
   }
 
   private spawnItems() {

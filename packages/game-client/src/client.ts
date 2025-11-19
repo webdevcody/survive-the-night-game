@@ -23,6 +23,7 @@ import { ClientEntityBase } from "@/extensions/client-entity";
 import { ClientDestructible } from "@/extensions/destructible";
 import { ClientPositionable, ClientResourcesBag, ClientInventory } from "@/extensions";
 import { CampsiteFireClient } from "@/entities/environment/campsite-fire";
+import { NoteClient } from "@/entities/items/note";
 import { WaveState } from "@shared/types/wave";
 import { ParticleManager } from "./managers/particles";
 import { PredictionManager } from "./managers/prediction";
@@ -309,6 +310,23 @@ export class GameClient {
               }
             }
           }
+
+          // Check if there's a note nearby
+          const notes = this.gameState.entities.filter((e) => e.getType() === "note");
+          for (const noteEntity of notes) {
+            if (noteEntity.hasExt(ClientPositionable)) {
+              const notePos = noteEntity.getExt(ClientPositionable).getPosition();
+              const dx = notePos.x - playerPos.x;
+              const dy = notePos.y - playerPos.y;
+              const distance = Math.sqrt(dx * dx + dy * dy);
+
+              if (distance <= 20) {
+                const note = noteEntity as NoteClient;
+                this.hud.showNote(note.title, note.content);
+                return;
+              }
+            }
+          }
         }
 
         inputs.interact = true;
@@ -333,6 +351,10 @@ export class GameClient {
         this.merchantBuyPanel.buySelected(2);
       },
       onEscape: () => {
+        if (this.hud.isNoteOpen()) {
+          this.hud.hideNote();
+          return;
+        }
         if (this.merchantBuyPanel.isVisible()) {
           this.merchantBuyPanel.close();
         }

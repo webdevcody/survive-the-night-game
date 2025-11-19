@@ -453,6 +453,7 @@ export class AssetManager implements ImageLoader {
       { key: "items", path: "/sheets/items-sheet.png" },
       { key: "characters", path: "/sheets/characters-sheet.png" },
       { key: "ground", path: "/sheets/ground.png" },
+      { key: "note", path: "/sheets/note.png" },
     ];
 
     const loadedSheets: Record<string, HTMLImageElement> = {};
@@ -537,7 +538,7 @@ export class AssetManager implements ImageLoader {
       );
       console.error(
         `Tried getting an asset with direction that is not registered '${keyWithDirection}'. ` +
-          `Base key: '${key}', Available assets with prefix:`,
+        `Base key: '${key}', Available assets with prefix:`,
         availableAssets
       );
       throw new Error(

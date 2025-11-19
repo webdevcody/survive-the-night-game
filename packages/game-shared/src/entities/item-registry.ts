@@ -12,7 +12,7 @@ export interface ItemAssetConfig {
 
 export interface ItemConfig extends BehaviorConfigs {
   id: string;
-  category: "consumable" | "ammo" | "placeable" | "throwable" | "structure";
+  category: "consumable" | "ammo" | "placeable" | "throwable" | "structure" | "misc";
   assets: ItemAssetConfig;
   hideWhenSelected?: boolean; // If true, don't render overlay when item is selected/equipped
   placeable?: boolean; // If true, item can be placed as a structure

@@ -32,6 +32,7 @@ export const SOUND_TYPES_TO_MP3 = {
   MUSIC: "music",
   BATTLE: "battle",
   CAMPFIRE: "campfire",
+  NOTE_OPEN: "note_open",
 } as const;
 
 export type SoundType = (typeof SOUND_TYPES_TO_MP3)[keyof typeof SOUND_TYPES_TO_MP3];

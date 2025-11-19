@@ -27,6 +27,9 @@ import { InputManager } from "@/managers/input";
 import { PlayerClient } from "@/entities/player";
 import { InventoryItem } from "../../../game-shared/src/util/inventory";
 import { renderRadialProgressIndicator } from "@/util/radial-progress-indicator";
+import { NoteUI } from "./note-ui";
+import { ClientPositionable } from "@/extensions";
+import { SOUND_TYPES_TO_MP3 } from "@/managers/sound-manager";
 
 const HUD_SETTINGS = {
   GameMessages: {
@@ -159,6 +162,7 @@ export class Hud {
   private weaponsHud: WeaponsHUD;
   private inputManager: InputManager;
   private currentGameState: GameState | null = null;
+  private noteUI: NoteUI;
 
   constructor(
     mapManager: MapManager,
@@ -173,6 +177,21 @@ export class Hud {
     this.gameOverDialog = gameOverDialog;
     this.inputManager = inputManager;
     this.chatWidget = new ChatWidget();
+    this.noteUI = new NoteUI(() => {
+      if (this.currentGameState && this.currentGameState.playerId) {
+        const player = getEntityById(
+          this.currentGameState,
+          this.currentGameState.playerId
+        ) as PlayerClient;
+        if (player && player.hasExt(ClientPositionable)) {
+          const position = player.getExt(ClientPositionable).getPosition();
+          this.soundManager.playPositionalSound(
+            SOUND_TYPES_TO_MP3.NOTE_OPEN,
+            position
+          );
+        }
+      }
+    });
 
     // Create getInventory function for hotbar that uses currentGameState
     const getInventory = (): InventoryItem[] => {
@@ -431,9 +450,8 @@ export class Hud {
     (this.resourcesPanel as any).resourcesSettings.y = scaledResourcesY;
     // Scale font and sprite size
     const resourcesBaseFontSize = parseInt(resourcesSettings.font);
-    (this.resourcesPanel as any).resourcesSettings.font = `${
-      resourcesBaseFontSize * resourcesScale
-    }px Arial`;
+    (this.resourcesPanel as any).resourcesSettings.font = `${resourcesBaseFontSize * resourcesScale
+      }px Arial`;
     (this.resourcesPanel as any).resourcesSettings.spriteSize =
       resourcesSettings.spriteSize * resourcesScale;
     (this.resourcesPanel as any).resourcesSettings.iconGap =
@@ -458,9 +476,8 @@ export class Hud {
     const baseFontSize = parseInt(HUD_SETTINGS.Wave.font);
     const baseTimerFontSize = parseInt(HUD_SETTINGS.Wave.timerFont.match(/\d+/)?.[0] || "36");
     (this.wavePanel as any).waveSettings.font = `${baseFontSize * waveScale}px Arial`;
-    (this.wavePanel as any).waveSettings.timerFont = `bold ${
-      baseTimerFontSize * waveScale
-    }px monospace`;
+    (this.wavePanel as any).waveSettings.timerFont = `bold ${baseTimerFontSize * waveScale
+      }px monospace`;
     // Scale border width
     (this.wavePanel as any).settings.borderWidth = HUD_SETTINGS.Wave.borderWidth * waveScale;
     this.wavePanel.render(ctx, gameState);
@@ -680,5 +697,17 @@ export class Hud {
     if (this.weaponsHud) {
       this.weaponsHud.selectWeaponByIndex(index);
     }
+  }
+
+  public showNote(title: string, content: string): void {
+    this.noteUI.show(title, content);
+  }
+
+  public hideNote(): void {
+    this.noteUI.hide();
+  }
+
+  public isNoteOpen(): boolean {
+    return this.noteUI.isVisible();
   }
 }

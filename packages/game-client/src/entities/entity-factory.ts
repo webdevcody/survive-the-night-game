@@ -23,6 +23,7 @@ export class EntityFactory {
 
     // First check override registry for custom client entity classes
     const overrideConstructor = clientEntityOverrideRegistry.get(data.type);
+
     if (overrideConstructor) {
       return new overrideConstructor(data, this.assetManager) as ClientEntityBase;
     }
