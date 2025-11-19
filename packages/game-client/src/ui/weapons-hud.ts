@@ -47,6 +47,7 @@ export class WeaponsHUD implements Renderable {
   private initialized = false;
 
   private lastOwnedMask = "";
+  private lastSelectedIndex = -1;
 
   private frame = {
     cx: 0,
@@ -145,6 +146,28 @@ export class WeaponsHUD implements Renderable {
   }
 
   // ---------------------------------------------------------
+  // WEAPON SELECTION
+  // ---------------------------------------------------------
+  private selectWeapon(index: number): boolean {
+    if (index < 0 || index >= this.items.length) return false;
+
+    const item = this.items[index];
+    if (!item || !item.owned) return false;
+
+    // Find inventory slot for weapon
+    const inv = this.getInventory();
+    const slot = inv.findIndex((v) => v && v.itemType === item.name);
+
+    if (slot !== -1) {
+      this.input.setInventorySlot(slot + 1);
+      this.lastSelectedIndex = index;
+      return true;
+    }
+
+    return false;
+  }
+
+  // ---------------------------------------------------------
   // OWNERSHIP UPDATE
   // ---------------------------------------------------------
   private updateOwnership() {
@@ -173,7 +196,10 @@ export class WeaponsHUD implements Renderable {
   // RENDER
   // ---------------------------------------------------------
   render(ctx: CanvasRenderingContext2D) {
-    if (!this.input.isAltKeyHeld()) return;
+    if (!this.input.isAltKeyHeld()) {
+      this.lastSelectedIndex = -1;
+      return;
+    }
     if (!this.initialized) return;
 
     this.updateOwnership();
@@ -200,6 +226,11 @@ export class WeaponsHUD implements Renderable {
     this.frame.rOut = rOut;
     this.frame.scale = scale;
     this.frame.hover = hover;
+
+    // Select weapon on hover
+    if (hover !== -1 && hover !== this.lastSelectedIndex) {
+      this.selectWeapon(hover);
+    }
 
     const inventory = this.getInventory();
     const ammoCounts: Record<string, number> = {};
@@ -352,16 +383,9 @@ export class WeaponsHUD implements Renderable {
     const angle = (Math.atan2(dy, dx) + Math.PI / 2 + TWO_PI) % TWO_PI;
 
     const index = (angle / (TWO_PI / this.items.length)) | 0;
-    const item = this.items[index];
 
-    if (!item || !item.owned) return true;
-
-    // Find inventory slot for weapon
-    const inv = this.getInventory();
-    const slot = inv.findIndex((v) => v && v.itemType === item.name);
-
-    if (slot !== -1) {
-      this.input.setInventorySlot(slot + 1);
+    // Select weapon and close menu
+    if (this.selectWeapon(index)) {
       this.input.setAltKeyHeld(false);
     }
 
