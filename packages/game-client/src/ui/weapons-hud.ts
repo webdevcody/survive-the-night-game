@@ -272,7 +272,7 @@ export class WeaponsHUD implements Renderable {
       // AMMO
       if (item.ammoType) {
         const ammo = ammoCounts[item.ammoType] ?? 0;
-        this.drawAmmoCount(ctx, item, seg.mid, ammo);
+        this.drawAmmoCount(ctx, seg.mid, ammo);
       }
     }
   }
@@ -299,12 +299,7 @@ export class WeaponsHUD implements Renderable {
   // ---------------------------------------------------------
   // DRAW AMMO
   // ---------------------------------------------------------
-  private drawAmmoCount(
-    ctx: CanvasRenderingContext2D,
-    item: (typeof this.items)[number],
-    angle: number,
-    ammo: number
-  ) {
+  private drawAmmoCount(ctx: CanvasRenderingContext2D, angle: number, ammo: number) {
     const { cx, cy, rIn, rOut, scale } = this.frame;
 
     const iconX = cx + Math.cos(angle) * (rIn + (rOut - rIn) * 0.55);
