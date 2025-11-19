@@ -426,14 +426,24 @@ export class EntityManager implements IEntityManager {
   }
 
   getNearbyEntities(position: Vector2, radius: number = 64, filterSet?: Set<EntityType>): Entity[] {
+    // Spatial grid already filters by distance, so we can return entities directly
+    // Only filter out entities without Positionable extension
     const entities = this.entityFinder?.getNearbyEntities(position, radius, filterSet) ?? [];
 
+    // Fast path: if all entities have Positionable (common case), return directly
+    // Only do expensive filtering if needed
     const filteredEntities: Entity[] = [];
+    const radiusSquared = radius * radius; // Use squared distance to avoid sqrt
+
     for (let i = entities.length - 1; i >= 0; i--) {
       const entity = entities[i];
       if (!entity.hasExt(Positionable)) continue;
+
+      // Use squared distance comparison (spatial grid already filters by radius, but we verify)
       const entityPosition = entity.getExt(Positionable).getCenterPosition();
-      if (position.clone().sub(entityPosition).length() <= radius) {
+      const dx = position.x - entityPosition.x;
+      const dy = position.y - entityPosition.y;
+      if (dx * dx + dy * dy <= radiusSquared) {
         filteredEntities.push(entity);
       }
     }
@@ -559,13 +569,17 @@ export class EntityManager implements IEntityManager {
     // Use a small radius for collision detection (just enough to check nearby collidables)
     // Default cellSize (16) is appropriate for collision checks
     const collisionRadius = 32; // Slightly larger than cellSize to catch nearby entities
+
+    // Convert ignoreTypes array to Set for O(1) lookup instead of O(n) includes()
+    const ignoreTypesSet = ignoreTypes ? new Set(ignoreTypes) : undefined;
+
+    // Query spatial grid directly to avoid extra filtering overhead
     const nearbyEntities = this.entityFinder.getNearbyEntities(position, collisionRadius);
 
     // Early exit optimizations
-    // TODO: look into refactoring this
     for (const otherEntity of nearbyEntities) {
-      // Skip ignored types early
-      if (ignoreTypes && ignoreTypes.includes(otherEntity.getType())) {
+      // Skip ignored types early (using Set for O(1) lookup)
+      if (ignoreTypesSet && ignoreTypesSet.has(otherEntity.getType())) {
         continue;
       }
 

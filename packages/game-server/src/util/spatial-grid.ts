@@ -4,7 +4,7 @@ import Vector2 from "@/util/vector2";
 import { EntityType } from "@shared/types/entity";
 
 export class SpatialGrid {
-  private cells: Map<string, Entity>[][] = [];
+  private cells: Map<number, Entity>[][] = [];
   private cellSize: number = 16;
   private rowLength: number;
   private colLength: number;

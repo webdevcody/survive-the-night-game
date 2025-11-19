@@ -9,6 +9,7 @@ import Positionable from "@/extensions/positionable";
 import { BossSummonEvent } from "../../../../game-shared/src/events/server-sent/events/boss-summon-event";
 import Vector2 from "@shared/util/vector2";
 import Destructible from "@/extensions/destructible";
+import PoolManager from "@/util/pool-manager";
 
 export class BossZombie extends BossEnemy {
   private static readonly SUMMON_INTERVAL_SECONDS = 8;
@@ -83,10 +84,11 @@ export class BossZombie extends BossEnemy {
     const distance =
       BossZombie.MIN_SUMMON_RADIUS +
       Math.random() * (BossZombie.SUMMON_RADIUS - BossZombie.MIN_SUMMON_RADIUS);
-    return new Vector2(
+    const position = PoolManager.getInstance().vector2.claim(
       center.x + Math.cos(angle) * distance,
       center.y + Math.sin(angle) * distance
     );
+    return position;
   }
 
   private broadcastSummonEvent(summons: Array<{ x: number; y: number }>): void {

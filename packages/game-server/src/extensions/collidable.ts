@@ -46,16 +46,11 @@ export default class Collidable extends ExtensionBase {
   }
 
   public getHitBox(): Rectangle {
-    const poolManager = PoolManager.getInstance();
     const positionable = this.self.getExt(Positionable);
     const position = positionable.getPosition();
-    const adjustedPos = poolManager.vector2.claim(
-      position.x + this.offset.x,
-      position.y + this.offset.y
-    );
-    const rect = poolManager.rectangle.claim(adjustedPos, this.size);
-    poolManager.vector2.release(adjustedPos);
-    return rect;
+    this.hitBox.position.reset(position.x + this.offset.x, position.y + this.offset.y);
+    this.hitBox.size.reset(this.size.x, this.size.y);
+    return this.hitBox;
   }
 
   public serializeToBuffer(writer: BufferWriter, onlyDirty: boolean = false): void {

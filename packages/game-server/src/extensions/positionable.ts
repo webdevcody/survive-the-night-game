@@ -12,12 +12,14 @@ export default class Positionable extends ExtensionBase {
 
   private position: Vector2;
   private size: Vector2;
+  private centerPosition: Vector2;
   private onPositionChange?: (entity: IEntity) => void;
 
   public constructor(self: IEntity) {
     super(self, { position: { x: 0, y: 0 }, size: { x: 0, y: 0 } });
     this.position = PoolManager.getInstance().vector2.claim(0, 0);
     this.size = PoolManager.getInstance().vector2.claim(0, 0);
+    this.centerPosition = PoolManager.getInstance().vector2.claim(0, 0);
   }
 
   public setOnPositionChange(callback: (entity: IEntity) => void): this {
@@ -36,9 +38,8 @@ export default class Positionable extends ExtensionBase {
   }
 
   public getCenterPosition(): Vector2 {
-    // Return a new Vector2 to prevent mutation of pooled vectors
-    // x_center = position.x + size.x/2, y_center = position.y + size.y/2
-    return new Vector2(this.position.x + this.size.x / 2, this.position.y + this.size.y / 2);
+    this.centerPosition.reset(this.position.x + this.size.x / 2, this.position.y + this.size.y / 2);
+    return this.centerPosition;
   }
 
   public getPosition(): Vector2 {
