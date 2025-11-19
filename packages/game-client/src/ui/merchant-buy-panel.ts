@@ -67,7 +67,7 @@ export class MerchantBuyPanel implements Renderable {
   private assetManager: AssetManager;
   private getPlayer: () => PlayerClient | null;
   private onBuy: (merchantId: number, itemIndex: number) => void;
-  private activeMerchantId: string | null = null;
+  private activeMerchantId: number | null = null;
   private shopItems: MerchantShopItem[] = [];
   private selectedIndex: number = 0;
 

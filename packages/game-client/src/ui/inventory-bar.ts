@@ -90,6 +90,7 @@ export class InventoryBarUI implements Renderable {
   private assetManager: AssetManager;
   private inputManager: InputManager;
   private getInventory: () => InventoryItem[];
+  private sendDropItem: (slotIndex: number) => void;
   private heartsPanel: HeartsPanel;
   private staminaPanel: StaminaPanel;
   private hoveredSlot: number | null = null;
@@ -102,11 +103,13 @@ export class InventoryBarUI implements Renderable {
   public constructor(
     assetManager: AssetManager,
     inputManager: InputManager,
-    getInventory: () => InventoryItem[]
+    getInventory: () => InventoryItem[],
+    sendDropItem: (slotIndex: number) => void
   ) {
     this.assetManager = assetManager;
     this.inputManager = inputManager;
     this.getInventory = getInventory;
+    this.sendDropItem = sendDropItem;
 
     // Initialize panels with settings
     this.heartsPanel = new HeartsPanel({
@@ -203,12 +206,7 @@ export class InventoryBarUI implements Renderable {
     return true;
   }
 
-  public handleMouseMove(
-    x: number,
-    y: number,
-    canvasWidth?: number,
-    canvasHeight?: number
-  ): void {
+  public handleMouseMove(x: number, y: number, canvasWidth?: number, canvasHeight?: number): void {
     if (canvasWidth !== undefined && canvasHeight !== undefined) {
       this.lastCanvasWidth = canvasWidth;
       this.lastCanvasHeight = canvasHeight;
@@ -231,12 +229,7 @@ export class InventoryBarUI implements Renderable {
     }
   }
 
-  public handleMouseUp(
-    x: number,
-    y: number,
-    canvasWidth?: number,
-    canvasHeight?: number
-  ): void {
+  public handleMouseUp(x: number, y: number, canvasWidth?: number, canvasHeight?: number): void {
     if (canvasWidth !== undefined && canvasHeight !== undefined) {
       this.lastCanvasWidth = canvasWidth;
       this.lastCanvasHeight = canvasHeight;
@@ -306,7 +299,7 @@ export class InventoryBarUI implements Renderable {
     const slotsTop = hotbarY + scaledPadding.top;
     const slotsBottom = slotsTop + scaledSlotSize;
     const items = this.getInventory();
-    const activeItemIdx = this.inputManager.getInputs().inventoryItem - 1;
+    const activeItemIdx = this.inputManager.getCurrentInventorySlot() - 1;
     const dragState = this.dragState;
     const isDragging = !!dragState?.isDragging;
     const draggingSlotIndex = isDragging ? dragState?.slotIndex ?? null : null;
@@ -548,15 +541,11 @@ export class InventoryBarUI implements Renderable {
       return;
     }
 
-    // Ensure the dragged slot is active before requesting a drop
-    this.inputManager.setInventorySlot(slotIndex + 1);
-    this.inputManager.triggerDropTap();
+    // Send drop event immediately
+    this.sendDropItem(slotIndex);
   }
 
-  private getHotbarMetrics(
-    canvasWidth?: number,
-    canvasHeight?: number
-  ): HotbarMetrics | null {
+  private getHotbarMetrics(canvasWidth?: number, canvasHeight?: number): HotbarMetrics | null {
     const width = canvasWidth ?? this.lastCanvasWidth;
     const height = canvasHeight ?? this.lastCanvasHeight;
 

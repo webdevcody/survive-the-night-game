@@ -26,7 +26,13 @@ import { Direction } from "../../game-shared/src/util/direction";
 import { Input } from "../../game-shared/src/util/input";
 import { ClientEntityBase } from "@/extensions/client-entity";
 import { ClientDestructible } from "@/extensions/destructible";
-import { ClientPositionable, ClientResourcesBag, ClientInventory } from "@/extensions";
+import {
+  ClientPositionable,
+  ClientResourcesBag,
+  ClientInventory,
+  ClientPlaceable,
+  ClientInteractive,
+} from "@/extensions";
 import { CampsiteFireClient } from "@/entities/environment/campsite-fire";
 import { WaveState } from "@shared/types/wave";
 import { ParticleManager } from "./managers/particles";
@@ -39,6 +45,8 @@ import PoolManager from "@shared/util/pool-manager";
 import { getAssetSpriteInfo } from "@/managers/asset";
 import { PlacementManager } from "@/managers/placement";
 import { isWeapon, ItemType, InventoryItem } from "@shared/util/inventory";
+import { getClosestInteractiveEntity } from "@/util/get-closest-interactive";
+import { getPlayer } from "@/util/get-player";
 
 export class GameClient {
   private ctx: CanvasRenderingContext2D;
@@ -88,6 +96,13 @@ export class GameClient {
   private teleportStartTime: number = 0;
   private teleportCancelledByDamage: boolean = false;
   private readonly TELEPORT_DURATION = 3000; // 3 seconds
+
+  // Interact hold state
+  private isHoldingInteract: boolean = false;
+  private interactHoldStartTime: number = 0;
+  private interactHoldTargetEntityId: number | null = null;
+  private interactHoldCompleted: boolean = false; // Prevent immediate restart after completion
+  private readonly INTERACT_HOLD_DURATION = 500; // 0.5 seconds in milliseconds
 
   // Cached campsite fire reference (there should only ever be one)
   private campsiteFire: CampsiteFireClient | null = null;
@@ -170,7 +185,7 @@ export class GameClient {
       const player = getPlayer();
       if (player && !player.isDead()) {
         const inventory = getInventory();
-        const activeSlot = this.inputManager.getInputs().inventoryItem;
+        const activeSlot = this.inputManager.getCurrentInventorySlot();
         const activeItem = inventory[activeSlot - 1];
 
         // Only fire if player has a weapon equipped
@@ -228,7 +243,7 @@ export class GameClient {
     this.merchantBuyPanel = new MerchantBuyPanel(this.assetManager, {
       getPlayer,
       onBuy: (merchantId, itemIndex) => {
-        this.socketManager.sendMerchantBuy(merchantId, itemIndex);
+        this.socketManager.sendMerchantBuy(String(merchantId), itemIndex);
       },
     });
 
@@ -278,7 +293,7 @@ export class GameClient {
         inputs.dx = -1;
         inputs.facing = Direction.Left;
       },
-      onInteract: (inputs: Input) => {
+      onInteractStart: () => {
         // If merchant panel is open, close it (toggle functionality)
         if (this.merchantBuyPanel.isVisible()) {
           this.merchantBuyPanel.close();
@@ -313,10 +328,29 @@ export class GameClient {
           }
         }
 
-        inputs.interact = true;
+        // Start interact hold
+        this.startInteractHold();
       },
-      onDrop: (inputs: Input) => {
-        inputs.drop = true;
+      onInteractEnd: () => {
+        // Cancel interact hold (unless we just completed it)
+        if (!this.interactHoldCompleted) {
+          this.cancelInteractHold();
+        }
+      },
+      onSelectInventorySlot: (slotIndex: number) => {
+        if (this.socketManager) {
+          this.socketManager.sendSelectInventorySlot(slotIndex);
+        }
+      },
+      onConsumeItem: (itemType: string | null) => {
+        if (this.socketManager) {
+          this.socketManager.sendConsumeItem(itemType);
+        }
+      },
+      onDropItem: (slotIndex: number) => {
+        if (this.socketManager) {
+          this.socketManager.sendDropItem(slotIndex);
+        }
       },
       onFire: (inputs: Input) => {
         inputs.fire = true;
@@ -366,7 +400,12 @@ export class GameClient {
       this.soundManager,
       this.assetManager,
       this.gameOverDialog,
-      this.inputManager
+      this.inputManager,
+      (slotIndex: number) => {
+        if (this.socketManager) {
+          this.socketManager.sendDropItem(slotIndex);
+        }
+      }
     );
 
     this.gameState = {
@@ -640,6 +679,7 @@ export class GameClient {
 
     this.positionCameraOnPlayer();
     this.updateTeleportProgress();
+    this.updateInteractHold();
     this.hud.update(this.gameState);
     this.updatePlayerMovementSounds();
     this.updateCampfireSounds();
@@ -661,6 +701,167 @@ export class GameClient {
     // If progress reaches 1.0, teleport is complete
     if (this.teleportProgress >= 1.0) {
       this.completeTeleport();
+    }
+  }
+
+  /**
+   * Start interact hold - begins tracking hold progress for placeable items
+   */
+  private startInteractHold(): void {
+    // Don't restart if we just completed an interact (prevent immediate restart)
+    if (this.isHoldingInteract) {
+      return;
+    }
+
+    const player = getPlayer(this.gameState);
+    if (!player) return;
+
+    // Find closest interactive entity
+    const closestEntity = getClosestInteractiveEntity(this.gameState);
+    if (!closestEntity) {
+      // No entity nearby, nothing to interact with
+      return;
+    }
+
+    // Check if entity is placeable (requires hold)
+    const isPlaceable = closestEntity.hasExt(ClientPlaceable);
+
+    if (isPlaceable) {
+      // Start hold timer
+      this.isHoldingInteract = true;
+      this.interactHoldStartTime = Date.now();
+      this.interactHoldTargetEntityId = closestEntity.getId();
+      this.interactHoldCompleted = false; // Reset completion flag
+
+      // Initialize player's pickup progress for rendering
+      // TODO: this is ineficient
+      const playerEntity = this.gameState.entities.find(
+        (e) => e.getId() === this.gameState.playerId
+      ) as PlayerClient;
+      if (playerEntity) {
+        (playerEntity as any).pickupProgress = 0;
+      }
+    } else {
+      // Not placeable, send interact immediately
+      if (this.socketManager) {
+        this.socketManager.sendInteract(closestEntity.getId());
+      }
+    }
+  }
+
+  /**
+   * Cancel interact hold
+   */
+  private cancelInteractHold(): void {
+    if (!this.isHoldingInteract) return;
+
+    this.isHoldingInteract = false;
+    this.interactHoldStartTime = 0;
+    this.interactHoldTargetEntityId = null;
+
+    // Reset player's pickup progress
+    const playerEntity = this.gameState.entities.find(
+      (e) => e.getId() === this.gameState.playerId
+    ) as PlayerClient;
+    if (playerEntity) {
+      (playerEntity as any).pickupProgress = 0;
+    }
+  }
+
+  /**
+   * Complete interact hold - called after successfully sending interact event
+   */
+  private completeInteractHold(): void {
+    // Mark as completed to prevent immediate restart
+    this.interactHoldCompleted = true;
+
+    // Reset after a short delay to allow the event to be processed
+    setTimeout(() => {
+      this.interactHoldCompleted = false;
+    }, 100); // 100ms delay before allowing restart
+
+    this.cancelInteractHold();
+  }
+
+  /**
+   * Update interact hold progress and send event when complete
+   */
+  private updateInteractHold(): void {
+    if (!this.isHoldingInteract) {
+      return;
+    }
+
+    const player = getPlayer(this.gameState);
+    if (!player) {
+      this.cancelInteractHold();
+      return;
+    }
+
+    // Check if target entity still exists and is in range
+    const targetEntity = this.interactHoldTargetEntityId
+      ? this.gameState.entities.find((e) => e.getId() === this.interactHoldTargetEntityId)
+      : null;
+
+    if (
+      !targetEntity ||
+      !targetEntity.hasExt(ClientPositionable) ||
+      !targetEntity.hasExt(ClientInteractive)
+    ) {
+      this.cancelInteractHold();
+      return;
+    }
+
+    // Check distance
+    const playerPos = player.getCenterPosition();
+    const entityPos = targetEntity.getExt(ClientPositionable).getCenterPosition();
+    const dx = entityPos.x - playerPos.x;
+    const dy = entityPos.y - playerPos.y;
+    const distance = Math.sqrt(dx * dx + dy * dy);
+    const maxRadius = getConfig().player.MAX_INTERACT_RADIUS;
+
+    if (distance > maxRadius) {
+      this.cancelInteractHold();
+      return;
+    }
+
+    // Check if player moved (has movement input)
+    // Only cancel if movement is significant (allow tiny movements)
+    const input = this.inputManager.getInputs();
+    const hasMovement = Math.abs(input.dx) > 0.1 || Math.abs(input.dy) > 0.1;
+    if (hasMovement) {
+      this.cancelInteractHold();
+      return;
+    }
+
+    // Update progress
+    const now = Date.now();
+    const elapsed = now - this.interactHoldStartTime;
+    const progress = Math.min(1, elapsed / this.INTERACT_HOLD_DURATION);
+
+    // Update player's pickup progress for rendering
+    const playerEntity = this.gameState.entities.find(
+      (e) => e.getId() === this.gameState.playerId
+    ) as PlayerClient;
+    if (playerEntity) {
+      (playerEntity as any).pickupProgress = progress;
+    }
+
+    // If progress reaches 0.99 or higher, interact is complete
+    // Use 0.99 threshold to account for timing precision issues
+    if (progress >= 1) {
+      // Ensure progress is clamped to 1.0 for final render
+      if (playerEntity) {
+        (playerEntity as any).pickupProgress = 1.0;
+      }
+
+      // Send interact event to server targeting the entity we started with
+      if (this.socketManager && this.interactHoldTargetEntityId !== null) {
+        this.socketManager.sendInteract(this.interactHoldTargetEntityId);
+      }
+
+      // Complete the hold (prevents immediate restart)
+      this.completeInteractHold();
+      return; // Exit early to prevent further processing
     }
   }
 
@@ -791,8 +992,7 @@ export class GameClient {
       return;
     }
 
-    const input = this.inputManager.getInputs();
-    const activeSlot = input.inventoryItem;
+    const activeSlot = this.inputManager.getCurrentInventorySlot();
     const activeItem = inventory[activeSlot - 1];
 
     // Hide cursor when weapon is equipped

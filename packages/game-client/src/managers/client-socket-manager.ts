@@ -99,6 +99,7 @@ export class ClientSocketManager {
   private connectHandler?: () => void;
   private errorHandler?: (error: any) => void;
   private PING_INTERVAL_MS = 500;
+  private isConnecting: boolean = false; // Track if we're currently attempting to connect
 
   public on<K extends keyof typeof SERVER_EVENT_MAP>(eventType: K, handler: (event: any) => void) {
     const eventKey = eventType as string;
@@ -114,6 +115,30 @@ export class ClientSocketManager {
   }
 
   public connect(): Promise<void> {
+    // Prevent multiple simultaneous connection attempts
+    if (this.isConnecting) {
+      console.log("Connection already in progress, ignoring duplicate connect() call");
+      return new Promise((resolve, reject) => {
+        // Wait for the existing connection attempt to complete
+        const checkInterval = setInterval(() => {
+          if (!this.isConnecting) {
+            clearInterval(checkInterval);
+            if (this.isDisconnected) {
+              reject(new Error("Previous connection attempt failed"));
+            } else {
+              resolve();
+            }
+          }
+        }, 100);
+
+        // Timeout after 30 seconds
+        setTimeout(() => {
+          clearInterval(checkInterval);
+          reject(new Error("Connection check timeout"));
+        }, 30000);
+      });
+    }
+
     return new Promise((resolve, reject) => {
       const displayName = localStorage.getItem("displayName");
 
@@ -125,6 +150,7 @@ export class ClientSocketManager {
       this.connectionPromiseResolve = resolve;
       this.connectionPromiseReject = reject;
       this.connectionResolved = false;
+      this.isConnecting = true;
 
       this.attemptConnection(0);
     });
@@ -191,6 +217,7 @@ export class ClientSocketManager {
         `Connection timeout after ${this.CONNECTION_TIMEOUT_MS}ms (attempt ${attemptNumber + 1})`
       );
       this.cleanupConnection();
+      this.isConnecting = false; // Reset connecting flag on timeout
       this.attemptConnection(attemptNumber + 1);
     }, this.CONNECTION_TIMEOUT_MS);
 
@@ -202,6 +229,7 @@ export class ClientSocketManager {
 
       console.log("Connected to game server", this.rawSocket.id);
       this.isDisconnected = false;
+      this.isConnecting = false; // Connection successful
       this.reconnectAttempts = 0; // Reset reconnect attempts on successful connection
 
       // Clear timeout
@@ -225,6 +253,7 @@ export class ClientSocketManager {
 
       console.error("Connection error:", error);
       this.cleanupConnection();
+      this.isConnecting = false; // Reset connecting flag on error
       this.attemptConnection(attemptNumber + 1);
     };
 
@@ -264,6 +293,10 @@ export class ClientSocketManager {
         // Ignore errors during cleanup
       }
     }
+
+    // Reset connection state
+    this.connectionResolved = false;
+    this.isConnecting = false;
   }
 
   public requestFullState(): void {
@@ -271,6 +304,12 @@ export class ClientSocketManager {
   }
 
   private attemptReconnect(): void {
+    // Don't attempt reconnect if we're already connecting
+    if (this.isConnecting) {
+      console.log("Already connecting, skipping reconnect attempt");
+      return;
+    }
+
     // Clear any existing reconnect timeout
     if (this.reconnectTimeout) {
       clearTimeout(this.reconnectTimeout);
@@ -292,8 +331,10 @@ export class ClientSocketManager {
       console.log("Reconnecting to game server...");
       this.connect().catch((error) => {
         console.error("Reconnection attempt failed:", error);
-        // Continue attempting reconnection
-        this.attemptReconnect();
+        // Continue attempting reconnection only if we're not already connecting
+        if (!this.isConnecting) {
+          this.attemptReconnect();
+        }
       });
     }, delay);
   }
@@ -407,6 +448,22 @@ export class ClientSocketManager {
     this.socket.emit(ClientSentEvents.MERCHANT_BUY, { merchantId, itemIndex });
   }
 
+  public sendDropItem(slotIndex: number) {
+    this.socket.emit(ClientSentEvents.DROP_ITEM, { slotIndex });
+  }
+
+  public sendConsumeItem(itemType: string | null) {
+    this.socket.emit(ClientSentEvents.CONSUME_ITEM, { itemType });
+  }
+
+  public sendSelectInventorySlot(slotIndex: number) {
+    this.socket.emit(ClientSentEvents.SELECT_INVENTORY_SLOT, { slotIndex });
+  }
+
+  public sendInteract(targetEntityId?: number | null) {
+    this.socket.emit(ClientSentEvents.INTERACT, { targetEntityId });
+  }
+
   public sendChatMessage(message: string) {
     this.socket.emit(ClientSentEvents.SEND_CHAT, { message });
   }
@@ -438,6 +495,7 @@ export class ClientSocketManager {
     }
 
     this.stopPingMeasurement();
+    this.isConnecting = false; // Reset connecting flag
 
     if (this.rawSocket) {
       console.log("Disconnecting from game server");

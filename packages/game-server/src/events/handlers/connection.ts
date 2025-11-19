@@ -23,19 +23,22 @@ export function onConnection(context: HandlerContext, socket: ISocketAdapter): v
 
   if (totalPlayers === 0) {
     console.log("Starting new game");
+    // Start the new game (which will recreate all players including this newly connected socket)
     context.gameServer.startNewGame();
+
+    // After startNewGame(), recreatePlayersForConnectedSockets() should have created
+    // a player for all connected sockets including this one. Verify it exists.
     let player = context.players.get(socket.id);
-    let shouldBroadcastJoin = false;
-
     if (!player) {
+      // This shouldn't happen, but handle it gracefully
+      console.warn(`Player for socket ${socket.id} not found after startNewGame(), creating one`);
       player = context.createPlayerForSocket(socket);
-      shouldBroadcastJoin = true;
-    }
-
-    context.sendInitialDataToSocket(socket, player);
-
-    if (shouldBroadcastJoin) {
+      context.sendInitialDataToSocket(socket, player);
       context.broadcastPlayerJoined(player);
+    } else {
+      // Player was created by recreatePlayersForConnectedSockets(), which already
+      // sent initial data and broadcast join. Just verify initial data was sent.
+      // (recreatePlayersForConnectedSockets already handles this, so we don't need to do anything)
     }
 
     return;
@@ -45,4 +48,3 @@ export function onConnection(context: HandlerContext, socket: ISocketAdapter): v
   context.sendInitialDataToSocket(socket, player);
   context.broadcastPlayerJoined(player);
 }
-

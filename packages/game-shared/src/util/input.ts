@@ -5,12 +5,7 @@ export type Input = {
   facing: Direction;
   dx: number;
   dy: number;
-  interact: boolean;
   fire: boolean;
-  inventoryItem: number;
-  drop: boolean;
-  consume: boolean;
-  consumeItemType: ItemType | null;
   sprint: boolean;
   aimAngle?: number; // Optional: angle in radians for directional shooting (mouse aiming)
 };

@@ -3,573 +3,573 @@
     "version": "0.19.0",
     "date": "2025-11-18",
     "changes": [
-      "Major event system refactor - reorganized events into proper folder structure with dedicated handler classes for better maintainability",
-      "Removed MonitoredBufferWriter - replaced with standard BufferWriter for improved performance and reduced overhead",
-      "Added pathfinding cache - implemented LRU cache for pathfinding results to significantly improve AI performance",
-      "Optimized lighting system - culling far-away light sources, reusing combined light maps, and only updating visible tiles for better frame rates",
-      "Refactored game state management - entities now organized by type for improved organization and faster lookups",
-      "Improved boss zombie mechanics - enhanced position calculation and hitbox management for more accurate combat",
-      "Added Pong event system - implemented latency tracking and connection quality monitoring for better network diagnostics",
-      "Enhanced connection handling - improved error handling, reconnection logic with exponential backoff, and connection timeouts",
-      "Removed decal system from biome editor - streamlined editor experience by eliminating decal handling and related components",
-      "Improved UI layout - updated chat widget bottom margin for better visual spacing",
-      "Type consistency improvements - changed player IDs from string to number type for consistency across the codebase",
-      "Refactored server architecture - moved event handlers into dedicated handlers directory and improved code organization"
+      "🔧 Major event system refactor - reorganized events into proper folder structure with dedicated handler classes for better maintainability",
+      "⚡ Removed MonitoredBufferWriter - replaced with standard BufferWriter for improved performance and reduced overhead",
+      "⚡ Added pathfinding cache - implemented LRU cache for pathfinding results to significantly improve AI performance",
+      "⚡ Optimized lighting system - culling far-away light sources, reusing combined light maps, and only updating visible tiles for better frame rates",
+      "🔧 Refactored game state management - entities now organized by type for improved organization and faster lookups",
+      "✨ Improved boss zombie mechanics - enhanced position calculation and hitbox management for more accurate combat",
+      "✨ Added Pong event system - implemented latency tracking and connection quality monitoring for better network diagnostics",
+      "✨ Enhanced connection handling - improved error handling, reconnection logic with exponential backoff, and connection timeouts",
+      "🔧 Removed decal system from biome editor - streamlined editor experience by eliminating decal handling and related components",
+      "🎨 Improved UI layout - updated chat widget bottom margin for better visual spacing",
+      "🔧 Type consistency improvements - changed player IDs from string to number type for consistency across the codebase",
+      "🔧 Refactored server architecture - moved event handlers into dedicated handlers directory and improved code organization"
     ]
   },
   {
     "version": "0.18.0",
     "date": "2025-11-17",
     "changes": [
-      "Added event processing guard - events are only processed after initial game state is received, preventing race conditions",
-      "Refactored entity interaction system - changed entity IDs from string to number type for improved performance and consistency",
-      "Enhanced entity serialization - introduced FIELD_TYPE_NULL and field metadata for better handling of optional and typed fields",
-      "Refactored Player entity - removed activeItem field and now derive activeItem directly from inventory for cleaner architecture",
-      "Added ClientSnared extension - new extension system for marking entities as immobilized on the client",
-      "Refactored input handling - removed SequenceManager and improved input serialization with dedicated event classes",
-      "Added field-level delta compression analysis - comprehensive documentation and implementation for efficient network updates",
-      "Added boss entity functionality - implemented boss step and summon events with enhanced enemy rendering for boss presentation",
-      "Improved weapons HUD - added ammo display and refactored code for better weapon information visibility",
-      "Enhanced entity serialization with BufferWriter - refactored all extensions to use MonitoredBufferWriter for improved logging and performance",
-      "Improved map manager - now skips entities without positionable extension to prevent rendering errors",
-      "Refactored game architecture - removed deprecated day/night cycle components and transitioned to wave system management",
-      "Added comprehensive serialization documentation - new guides explaining extension field-level delta compression analysis"
+      "🐛 Added event processing guard - events are only processed after initial game state is received, preventing race conditions",
+      "🔧 Refactored entity interaction system - changed entity IDs from string to number type for improved performance and consistency",
+      "🔧 Enhanced entity serialization - introduced FIELD_TYPE_NULL and field metadata for better handling of optional and typed fields",
+      "🔧 Refactored Player entity - removed activeItem field and now derive activeItem directly from inventory for cleaner architecture",
+      "✨ Added ClientSnared extension - new extension system for marking entities as immobilized on the client",
+      "🔧 Refactored input handling - removed SequenceManager and improved input serialization with dedicated event classes",
+      "📝 Added field-level delta compression analysis - comprehensive documentation and implementation for efficient network updates",
+      "✨ Added boss entity functionality - implemented boss step and summon events with enhanced enemy rendering for boss presentation",
+      "🎨 Improved weapons HUD - added ammo display and refactored code for better weapon information visibility",
+      "⚡ Enhanced entity serialization with BufferWriter - refactored all extensions to use MonitoredBufferWriter for improved logging and performance",
+      "🐛 Improved map manager - now skips entities without positionable extension to prevent rendering errors",
+      "🔧 Refactored game architecture - removed deprecated day/night cycle components and transitioned to wave system management",
+      "📝 Added comprehensive serialization documentation - new guides explaining extension field-level delta compression analysis"
     ]
   },
   {
     "version": "0.17.0",
     "date": "2025-11-16",
     "changes": [
-      "Added closest interactive entity highlighting - interaction text now shows yellow for the closest entity and white for others",
-      "Improved interaction feedback - players can now easily identify which entity they will interact with when multiple are nearby",
-      "Added priority system for dead players - dead players are prioritized over other interactive entities for looting",
-      "Optimized interaction detection - closest interactive entity is calculated once per frame and cached in gameState",
-      "Updated interaction text rendering across all entity types - car, survivor, enemy, and generic entities now use consistent highlighting"
+      "✨ Added closest interactive entity highlighting - interaction text now shows yellow for the closest entity and white for others",
+      "🎨 Improved interaction feedback - players can now easily identify which entity they will interact with when multiple are nearby",
+      "✨ Added priority system for dead players - dead players are prioritized over other interactive entities for looting",
+      "⚡ Optimized interaction detection - closest interactive entity is calculated once per frame and cached in gameState",
+      "🎨 Updated interaction text rendering across all entity types - car, survivor, enemy, and generic entities now use consistent highlighting"
     ]
   },
   {
     "version": "0.16.1",
     "date": "2025-11-16",
     "changes": [
-      "Added pickup progress indicator above players while holding interact on placeable items",
-      "Improved teleport and pickup visuals by reusing shared radial progress renderer",
-      "Reduced pickup hold time to 0.5 seconds and broadcast progress to clients for faster feedback",
-      "Fixed leaderboard data by marking display name, kills, and ping fields dirty immediately"
+      "✨ Added pickup progress indicator above players while holding interact on placeable items",
+      "🎨 Improved teleport and pickup visuals by reusing shared radial progress renderer",
+      "🎯 Reduced pickup hold time to 0.5 seconds and broadcast progress to clients for faster feedback",
+      "🐛 Fixed leaderboard data by marking display name, kills, and ping fields dirty immediately"
     ]
   },
   {
     "version": "0.16.0",
     "date": "2025-11-16",
     "changes": [
-      "Added biome-editor-server package - new server infrastructure for biome management and editing",
-      "Implemented object pooling system - vectors and rectangles now use memory pools for improved performance and reduced garbage collection",
-      "Refactored entity serialization to use BufferWriter - significantly improved network efficiency and reduced bandwidth usage",
-      "Enhanced entity ID management - implemented pool-based ID system to prevent ID exhaustion and improve efficiency",
-      "Improved client event handling - added disconnect handling with automatic reconnect attempts and exponential backoff",
-      "Refactored weapon recoil mechanics - consolidated recoil system in Weapon class for better maintainability and consistency",
-      "Added camera shake effects - weapons now trigger camera shake on attack, and zombie deaths create proximity-based shake for enhanced immersion",
-      "Improved item pickup interaction - players can now hold interact key to pick up placeable items for better control",
-      "Added automatic entity cleanup - entities are automatically removed after 2 minutes to prevent memory leaks",
-      "Updated infrastructure - upgraded to TypeScript 5.7.2 and Node.js 24-slim for improved performance and features",
-      "Added performance monitoring environment variable - ENABLE_PERFORMANCE_MONITORING flag for enhanced debugging capabilities"
+      "🏗️ Added biome-editor-server package - new server infrastructure for biome management and editing",
+      "⚡ Implemented object pooling system - vectors and rectangles now use memory pools for improved performance and reduced garbage collection",
+      "⚡ Refactored entity serialization to use BufferWriter - significantly improved network efficiency and reduced bandwidth usage",
+      "⚡ Enhanced entity ID management - implemented pool-based ID system to prevent ID exhaustion and improve efficiency",
+      "✨ Improved client event handling - added disconnect handling with automatic reconnect attempts and exponential backoff",
+      "🔧 Refactored weapon recoil mechanics - consolidated recoil system in Weapon class for better maintainability and consistency",
+      "✨ Added camera shake effects - weapons now trigger camera shake on attack, and zombie deaths create proximity-based shake for enhanced immersion",
+      "✨ Improved item pickup interaction - players can now hold interact key to pick up placeable items for better control",
+      "⚡ Added automatic entity cleanup - entities are automatically removed after 2 minutes to prevent memory leaks",
+      "🚀 Updated infrastructure - upgraded to TypeScript 5.7.2 and Node.js 24-slim for improved performance and features",
+      "✨ Added performance monitoring environment variable - ENABLE_PERFORMANCE_MONITORING flag for enhanced debugging capabilities"
     ]
   },
   {
     "version": "0.15.0",
     "date": "2025-11-15",
     "changes": [
-      "Added gallon drum containers - new lootable environmental objects that spawn randomly on the map",
-      "Gallon drums can be searched for random items - contains 2 random items from the spawn pool",
-      "Added spacebar attack support - players can now attack using spacebar in addition to mouse clicks",
-      "Improved combat controls - spacebar provides quick melee/ranged attack alternative to clicking",
-      "Enhanced compression system with gallon_drum entity support for network efficiency",
-      "Updated items sprite sheet with new gallon drum graphics",
-      "Gallon drums are destroyed after being looted and disappear from the map"
+      "✨ Added gallon drum containers - new lootable environmental objects that spawn randomly on the map",
+      "✨ Gallon drums can be searched for random items - contains 2 random items from the spawn pool",
+      "✨ Added spacebar attack support - players can now attack using spacebar in addition to mouse clicks",
+      "🎮 Improved combat controls - spacebar provides quick melee/ranged attack alternative to clicking",
+      "⚡ Enhanced compression system with gallon_drum entity support for network efficiency",
+      "🎨 Updated items sprite sheet with new gallon drum graphics",
+      "✨ Gallon drums are destroyed after being looted and disappear from the map"
     ]
   },
   {
     "version": "0.14.0",
     "date": "2025-11-15",
     "changes": [
-      "Added blood decals - blood splatter appears when players and zombies take damage, fading over 10 seconds",
-      "Added arrow recovery system - arrows that reach max travel distance drop as collectible arrow items",
-      "Improved bow and arrow gameplay - reduced arrow travel distance from 200 to 100 pixels for better balance",
-      "Enhanced visual feedback with new blood sprite on ground texture sheet",
-      "Added Expirable extension for temporary entities - blood decals automatically expire after duration",
-      "Fixed arrow and bow sprite positioning in items sheet for correct visual alignment",
-      "Added DECALS z-index layer between ground and items for proper rendering order",
-      "Enhanced compression system with blood entity support for network efficiency",
-      "Updated ground and items sprite sheets with new blood and arrow graphics"
+      "✨ Added blood decals - blood splatter appears when players and zombies take damage, fading over 10 seconds",
+      "✨ Added arrow recovery system - arrows that reach max travel distance drop as collectible arrow items",
+      "🎯 Improved bow and arrow gameplay - reduced arrow travel distance from 200 to 100 pixels for better balance",
+      "🎨 Enhanced visual feedback with new blood sprite on ground texture sheet",
+      "✨ Added Expirable extension for temporary entities - blood decals automatically expire after duration",
+      "🐛 Fixed arrow and bow sprite positioning in items sheet for correct visual alignment",
+      "🔧 Added DECALS z-index layer between ground and items for proper rendering order",
+      "⚡ Enhanced compression system with blood entity support for network efficiency",
+      "🎨 Updated ground and items sprite sheets with new blood and arrow graphics"
     ]
   },
   {
     "version": "0.13.2",
     "date": "2025-11-14",
     "changes": [
-      "Added fullscreen map drag functionality - players can now pan around the map with mouse dragging",
-      "Implemented map offset tracking - view position persists while map is open",
-      "Fixed input blocking when fullscreen map is open - weapon firing and aiming disabled during map view",
-      "Improved player indicator on map - shows actual player position relative to dragged view instead of always center",
-      "Added proper drag state management - drag is canceled when closing the map"
+      "✨ Added fullscreen map drag functionality - players can now pan around the map with mouse dragging",
+      "✨ Implemented map offset tracking - view position persists while map is open",
+      "🐛 Fixed input blocking when fullscreen map is open - weapon firing and aiming disabled during map view",
+      "🎨 Improved player indicator on map - shows actual player position relative to dragged view instead of always center",
+      "✨ Added proper drag state management - drag is canceled when closing the map"
     ]
   },
   {
     "version": "0.13.1",
     "date": "2025-11-14",
     "changes": [
-      "Added wood resource entity - wood can now be collected and managed as a resource item",
-      "Refactored wearable items system - miners hat and other wearables now use config-based detection",
-      "Enhanced entity factory to support resource registry - resources spawn correctly client-side",
-      "Updated hardcoded lists documentation with critical maintenance checklist",
-      "Improved code organization by reducing hardcoded item type checks",
-      "Added resource configuration system for data-driven resource management"
+      "✨ Added wood resource entity - wood can now be collected and managed as a resource item",
+      "🔧 Refactored wearable items system - miners hat and other wearables now use config-based detection",
+      "✨ Enhanced entity factory to support resource registry - resources spawn correctly client-side",
+      "📝 Updated hardcoded lists documentation with critical maintenance checklist",
+      "🔧 Improved code organization by reducing hardcoded item type checks",
+      "✨ Added resource configuration system for data-driven resource management"
     ]
   },
   {
     "version": "0.13.0",
     "date": "2025-11-14",
     "changes": [
-      "Added baseball bat weapon - new melee weapon for close-range combat",
-      "Implemented survivor indicators panel - displays status and count of rescued survivors",
-      "Added comprehensive hardcoded lists documentation - maps all content registrations and maintenance points",
-      "Improved melee weapon detection - refactored to use weapon config type checking instead of hardcoded lists",
-      "Consolidated hotbar into main HUD system - simplified UI architecture and click handling",
-      "Added server time synchronization - client now calculates server time offset for accurate timing",
-      "Enhanced display name formatting utility - consistent text formatting for interactive entities",
-      "Refactored swipe animation logic - melee attacks now use config-based detection for better extensibility",
-      "Improved code organization - removed redundant weapon type checks throughout codebase",
-      "Enhanced input manager integration - hotbar now properly integrated with HUD event handling"
+      "✨ Added baseball bat weapon - new melee weapon for close-range combat",
+      "✨ Implemented survivor indicators panel - displays status and count of rescued survivors",
+      "📝 Added comprehensive hardcoded lists documentation - maps all content registrations and maintenance points",
+      "🔧 Improved melee weapon detection - refactored to use weapon config type checking instead of hardcoded lists",
+      "🔧 Consolidated hotbar into main HUD system - simplified UI architecture and click handling",
+      "✨ Added server time synchronization - client now calculates server time offset for accurate timing",
+      "🔧 Enhanced display name formatting utility - consistent text formatting for interactive entities",
+      "🔧 Refactored swipe animation logic - melee attacks now use config-based detection for better extensibility",
+      "🔧 Improved code organization - removed redundant weapon type checks throughout codebase",
+      "🔧 Enhanced input manager integration - hotbar now properly integrated with HUD event handling"
     ]
   },
   {
     "version": "0.12.0",
     "date": "2025-11-14",
     "changes": [
-      "Added comprehensive sound effect system - car repair, wave start, crafting, and building sounds now play positionally",
-      "Added background music system - ambient music plays during exploration with automatic transitions",
-      "Added battle music - intense music plays during wave combat and stops when wave ends",
-      "Added campfire ambient sound - looping campfire crackling with distance-based volume",
-      "Added horn sound effect - plays when wave starts to alert players",
-      "Added campsite fire entity - animated fire with 5-frame animation cycle at the campsite",
-      "Refactored entity image loading - all entities now use getImage() method for consistent asset management",
-      "Added comprehensive sound documentation - complete guide for adding sounds with event system examples",
-      "Improved sound manager with looping sound support - updateCampfireSoundVolume() for dynamic volume control",
-      "Fixed wave state transitions - battle music stops correctly when wave ends (ACTIVE to PREPARATION)",
-      "Added build sound support - different build sounds for different placeable items (walls, spikes, etc)",
-      "Improved client event handling - added CarRepairEvent, WaveStartEvent, CraftEvent, and BuildEvent handlers",
-      "Enhanced campfire rendering - uses entity type for dynamic asset loading instead of hardcoded keys",
-      "Optimized campfire sound updates - caches campsite fire reference to avoid repeated entity searches",
-      "Added sound cleanup on game exit - stops all music and sounds when leaving game"
+      "🎵 Added comprehensive sound effect system - car repair, wave start, crafting, and building sounds now play positionally",
+      "🎵 Added background music system - ambient music plays during exploration with automatic transitions",
+      "🎵 Added battle music - intense music plays during wave combat and stops when wave ends",
+      "🎵 Added campfire ambient sound - looping campfire crackling with distance-based volume",
+      "🎵 Added horn sound effect - plays when wave starts to alert players",
+      "✨ Added campsite fire entity - animated fire with 5-frame animation cycle at the campsite",
+      "🔧 Refactored entity image loading - all entities now use getImage() method for consistent asset management",
+      "📝 Added comprehensive sound documentation - complete guide for adding sounds with event system examples",
+      "✨ Improved sound manager with looping sound support - updateCampfireSoundVolume() for dynamic volume control",
+      "🐛 Fixed wave state transitions - battle music stops correctly when wave ends (ACTIVE to PREPARATION)",
+      "🎵 Added build sound support - different build sounds for different placeable items (walls, spikes, etc)",
+      "🔧 Improved client event handling - added CarRepairEvent, WaveStartEvent, CraftEvent, and BuildEvent handlers",
+      "🔧 Enhanced campfire rendering - uses entity type for dynamic asset loading instead of hardcoded keys",
+      "⚡ Optimized campfire sound updates - caches campsite fire reference to avoid repeated entity searches",
+      "✨ Added sound cleanup on game exit - stops all music and sounds when leaving game"
     ]
   },
   {
     "version": "0.11.7",
     "date": "2025-11-14",
     "changes": [
-      "Optimized AI targeting - zombies now prioritize closest friendly entities (players/survivors) over car, reducing unnecessary long-distance pathfinding",
-      "Refactored movement strategies - centralized targeting logic into shared movement-utils module for consistency across all zombie AI types",
-      "Added tiered entity update system - entities far from players now update less frequently to reduce CPU usage (configurable via UPDATE_TIERS config)",
-      "Optimized trigger extensions - OneTimeTrigger and TriggerCooldownAttacker now check for entities every 0.5 seconds instead of every tick",
-      "Added random cooldown offsets to trigger checks - prevents multiple triggers from checking simultaneously and spreads queries over time",
-      "Added UpdateScheduler class - manages entity update frequency based on distance tiers (0-500px, 500-1000px, 1000+px ranges)",
-      "Integrated UpdateScheduler into EntityManager - entities automatically register/unregister and update based on proximity to players",
-      "Added getCarLocation() method to MapManager - provides centralized access to car position for AI targeting",
-      "Improved zombie AI efficiency - all movement strategies now use TargetChecker class to cache target positions and reduce redundant calculations",
-      "Added UPDATE_TIERS configuration - allows enabling/disabling tiered updates and customizing update intervals per tier"
+      "⚡ Optimized AI targeting - zombies now prioritize closest friendly entities (players/survivors) over car, reducing unnecessary long-distance pathfinding",
+      "🔧 Refactored movement strategies - centralized targeting logic into shared movement-utils module for consistency across all zombie AI types",
+      "⚡ Added tiered entity update system - entities far from players now update less frequently to reduce CPU usage (configurable via UPDATE_TIERS config)",
+      "⚡ Optimized trigger extensions - OneTimeTrigger and TriggerCooldownAttacker now check for entities every 0.5 seconds instead of every tick",
+      "⚡ Added random cooldown offsets to trigger checks - prevents multiple triggers from checking simultaneously and spreads queries over time",
+      "⚡ Added UpdateScheduler class - manages entity update frequency based on distance tiers (0-500px, 500-1000px, 1000+px ranges)",
+      "⚡ Integrated UpdateScheduler into EntityManager - entities automatically register/unregister and update based on proximity to players",
+      "🔧 Added getCarLocation() method to MapManager - provides centralized access to car position for AI targeting",
+      "⚡ Improved zombie AI efficiency - all movement strategies now use TargetChecker class to cache target positions and reduce redundant calculations",
+      "⚡ Added UPDATE_TIERS configuration - allows enabling/disabling tiered updates and customizing update intervals per tier"
     ]
   },
   {
     "version": "0.11.6",
     "date": "2025-11-14",
     "changes": [
-      "Optimized zombie AI performance - offset attack cooldowns randomly to prevent simultaneous attacks and spread expensive queries over time",
-      "Optimized idle zombie behavior - reduced player check frequency from every tick to every 0.5 seconds for significant CPU savings",
-      "Optimized survivor targeting - converted to filterSet-based entity queries and squared distance calculations for faster nearest zombie detection",
-      "Improved attack strategy efficiency - idle zombies now skip attack queries when no players are nearby (avoids expensive operations when zombies are far away)",
-      "Added granular performance tracking instrumentation throughout zombie AI update loops for detailed profiling",
-      "Added ENABLE_PERFORMANCE_MONITORING config flag - performance monitoring disabled by default for production safety",
-      "Removed fire extinguisher item from the game (cleaned up both client and server implementations)",
-      "Fixed player activeItem handling - added proper null/undefined checks to prevent rendering crashes",
-      "Removed debug console.log statements from asset manager for cleaner production logs"
+      "⚡ Optimized zombie AI performance - offset attack cooldowns randomly to prevent simultaneous attacks and spread expensive queries over time",
+      "⚡ Optimized idle zombie behavior - reduced player check frequency from every tick to every 0.5 seconds for significant CPU savings",
+      "⚡ Optimized survivor targeting - converted to filterSet-based entity queries and squared distance calculations for faster nearest zombie detection",
+      "⚡ Improved attack strategy efficiency - idle zombies now skip attack queries when no players are nearby (avoids expensive operations when zombies are far away)",
+      "✨ Added granular performance tracking instrumentation throughout zombie AI update loops for detailed profiling",
+      "✨ Added ENABLE_PERFORMANCE_MONITORING config flag - performance monitoring disabled by default for production safety",
+      "🔧 Removed fire extinguisher item from the game (cleaned up both client and server implementations)",
+      "🐛 Fixed player activeItem handling - added proper null/undefined checks to prevent rendering crashes",
+      "🔧 Removed debug console.log statements from asset manager for cleaner production logs"
     ]
   },
   {
     "version": "0.11.5",
     "date": "2025-11-13",
     "changes": [
-      "Optimized entity dirty tracking - implemented O(1) lookup with entity-level dirty flag instead of checking all extensions",
-      "Optimized extension storage - changed from array to Map for O(1) hasExt() and getExt() lookups",
-      "Optimized entity lookup - added Map for O(1) getEntityById() instead of O(n) array search",
-      "Fixed input crash bug - added null/undefined checks for previousInput in facing and aim angle comparisons",
-      "Fixed client rendering crash - added extension existence check before accessing ClientCollidable in BulletClient",
-      "Fixed player initialization - ensured input is always defined with fallback to default values",
-      "Simplified zombie targeting - removed unused filterTypes parameters from findNearbyAttackableEntities and findClosestAttackableEntity",
-      "Refactored grenade initialization - replaced array find() with hasExt/getExt pattern for consistency",
-      "Optimized player interaction - cached position/radius, pre-calculated distances, and removed redundant filters",
-      "Fixed OneTimeTrigger distance calculation - changed from getPosition() to getCenterPosition() for accurate trigger detection",
-      "Optimized Positionable.getCenterPosition() - reduced Vector2 allocations by computing center directly",
-      "Integrated EntityStateTracker - added notifyTrackerDirty() and notifyTrackerClean() for automatic dirty entity tracking",
-      "Fixed entity removal cleanup - corrected expire logic in entitiesToRemove splice condition",
-      "Removed performance timing tracking - cleaned up updateExtensionsTiming Map and related code"
+      "⚡ Optimized entity dirty tracking - implemented O(1) lookup with entity-level dirty flag instead of checking all extensions",
+      "⚡ Optimized extension storage - changed from array to Map for O(1) hasExt() and getExt() lookups",
+      "⚡ Optimized entity lookup - added Map for O(1) getEntityById() instead of O(n) array search",
+      "🐛 Fixed input crash bug - added null/undefined checks for previousInput in facing and aim angle comparisons",
+      "🐛 Fixed client rendering crash - added extension existence check before accessing ClientCollidable in BulletClient",
+      "🐛 Fixed player initialization - ensured input is always defined with fallback to default values",
+      "🔧 Simplified zombie targeting - removed unused filterTypes parameters from findNearbyAttackableEntities and findClosestAttackableEntity",
+      "🔧 Refactored grenade initialization - replaced array find() with hasExt/getExt pattern for consistency",
+      "⚡ Optimized player interaction - cached position/radius, pre-calculated distances, and removed redundant filters",
+      "🐛 Fixed OneTimeTrigger distance calculation - changed from getPosition() to getCenterPosition() for accurate trigger detection",
+      "⚡ Optimized Positionable.getCenterPosition() - reduced Vector2 allocations by computing center directly",
+      "🔧 Integrated EntityStateTracker - added notifyTrackerDirty() and notifyTrackerClean() for automatic dirty entity tracking",
+      "🐛 Fixed entity removal cleanup - corrected expire logic in entitiesToRemove splice condition",
+      "🔧 Removed performance timing tracking - cleaned up updateExtensionsTiming Map and related code"
     ]
   },
   {
     "version": "0.11.4",
     "date": "2025-11-13",
     "changes": [
-      "Optimized spatial queries - converted entity type filters from arrays to Sets for O(1) lookups instead of O(n)",
-      "Reduced bullet travel distance from 400 to 200 pixels for better game balance",
-      "Fixed mouse aiming - continuous firing now works correctly when moving mouse while holding click",
-      "Improved AI targeting performance - moved entity type filtering to constants for reuse across systems",
-      "Optimized TriggerCooldownAttacker - added early exit when cooldown not ready to skip expensive spatial queries",
-      "Reduced query radius in TriggerCooldownAttacker from 100 to 16 pixels to avoid unnecessary entity lookups",
-      "Optimized distance calculations - replaced sqrt with squared distance comparison in TriggerCooldownAttacker",
-      "Enhanced getNearbyEntities performance - reverse iteration and early continue for better cache locality",
-      "Removed redundant Triggerable extension from Spikes - TriggerCooldownAttacker already handles triggering",
-      "Fixed entity count tracking - properly increment/decrement counts when adding/removing updatable entities",
-      "Added per-entity-type timing tracking in EntityManager for performance profiling and debugging",
-      "Improved EntityFinder signature - accepts Set<EntityType> instead of array for consistency",
-      "Fixed Interactive range - now uses MAX_INTERACT_RADIUS constant instead of hardcoded 64 pixels",
-      "Added ATTACKABLE_TYPES and FRIENDLY_TYPES constants to reduce allocations in hot paths"
+      "⚡ Optimized spatial queries - converted entity type filters from arrays to Sets for O(1) lookups instead of O(n)",
+      "🎯 Reduced bullet travel distance from 400 to 200 pixels for better game balance",
+      "🐛 Fixed mouse aiming - continuous firing now works correctly when moving mouse while holding click",
+      "⚡ Improved AI targeting performance - moved entity type filtering to constants for reuse across systems",
+      "⚡ Optimized TriggerCooldownAttacker - added early exit when cooldown not ready to skip expensive spatial queries",
+      "⚡ Reduced query radius in TriggerCooldownAttacker from 100 to 16 pixels to avoid unnecessary entity lookups",
+      "⚡ Optimized distance calculations - replaced sqrt with squared distance comparison in TriggerCooldownAttacker",
+      "⚡ Enhanced getNearbyEntities performance - reverse iteration and early continue for better cache locality",
+      "🔧 Removed redundant Triggerable extension from Spikes - TriggerCooldownAttacker already handles triggering",
+      "🐛 Fixed entity count tracking - properly increment/decrement counts when adding/removing updatable entities",
+      "✨ Added per-entity-type timing tracking in EntityManager for performance profiling and debugging",
+      "🔧 Improved EntityFinder signature - accepts Set<EntityType> instead of array for consistency",
+      "🐛 Fixed Interactive range - now uses MAX_INTERACT_RADIUS constant instead of hardcoded 64 pixels",
+      "⚡ Added ATTACKABLE_TYPES and FRIENDLY_TYPES constants to reduce allocations in hot paths"
     ]
   },
   {
     "version": "0.11.3",
     "date": "2025-11-13",
     "changes": [
-      "Refactored entity extension initialization - replaced array assignment with addExtension() method calls",
-      "Removed syncExtensionTracking() method - no longer needed with proper addExtension() usage",
-      "Simplified extension dirty tracking - all extensions now consistently marked dirty on creation",
-      "Improved type safety - removed optional chaining for isDirty() and serializeDirty() checks",
-      "Enhanced code maintainability with consistent extension registration pattern across 40+ entity classes"
+      "🔧 Refactored entity extension initialization - replaced array assignment with addExtension() method calls",
+      "🔧 Removed syncExtensionTracking() method - no longer needed with proper addExtension() usage",
+      "🔧 Simplified extension dirty tracking - all extensions now consistently marked dirty on creation",
+      "🔧 Improved type safety - removed optional chaining for isDirty() and serializeDirty() checks",
+      "🔧 Enhanced code maintainability with consistent extension registration pattern across 40+ entity classes"
     ]
   },
   {
     "version": "0.11.2",
     "date": "2025-11-13",
     "changes": [
-      "Refactored enemy AI with strategy pattern - separated movement, attack, and targeting behaviors into composable strategies",
-      "Added specialized movement strategies - melee, ranged, flying, leaping, and idle movement patterns for different zombie types",
-      "Added specialized attack strategies - melee, ranged, and leaping attack behaviors with configurable damage and cooldowns",
-      "Improved survivor NPC rendering - survivors now display pistol weapon when rescued and patrol campsite",
-      "Fixed survivor animation - survivors no longer animate during pause periods between wandering movements",
-      "Added GunFired event - plays positional pistol sound when survivors and players fire weapons",
-      "Added comprehensive serialization documentation explaining entity state sync patterns and dirty tracking system",
-      "Improved type safety in client event handlers - better instanceof checks for PlayerClient entities",
-      "Removed zombiesRemaining from game state - simplified wave tracking to use totalZombies only",
-      "Fixed unused variable warnings in bullet.ts for cleaner codebase",
-      "Added Boundary entity to client - syncs map boundaries between server and client for collision detection"
+      "🔧 Refactored enemy AI with strategy pattern - separated movement, attack, and targeting behaviors into composable strategies",
+      "✨ Added specialized movement strategies - melee, ranged, flying, leaping, and idle movement patterns for different zombie types",
+      "✨ Added specialized attack strategies - melee, ranged, and leaping attack behaviors with configurable damage and cooldowns",
+      "🎨 Improved survivor NPC rendering - survivors now display pistol weapon when rescued and patrol campsite",
+      "🐛 Fixed survivor animation - survivors no longer animate during pause periods between wandering movements",
+      "🎵 Added GunFired event - plays positional pistol sound when survivors and players fire weapons",
+      "📝 Added comprehensive serialization documentation explaining entity state sync patterns and dirty tracking system",
+      "🔧 Improved type safety in client event handlers - better instanceof checks for PlayerClient entities",
+      "🔧 Removed zombiesRemaining from game state - simplified wave tracking to use totalZombies only",
+      "🔧 Fixed unused variable warnings in bullet.ts for cleaner codebase",
+      "✨ Added Boundary entity to client - syncs map boundaries between server and client for collision detection"
     ]
   },
   {
     "version": "0.11.1",
     "date": "2025-11-13",
     "changes": [
-      "Refactored network compression layer - moved encoding/decoding into DelayedSocket and DelayedServer classes",
-      "Improved bandwidth tracking - centralized byte tracking in DelayedServer for better monitoring",
-      "Simplified socket event handling - removed manual compression calls throughout codebase",
-      "Fixed minimap fog of war radius calculation for more accurate reveal area",
-      "Added 'resourceType' to compression dictionary for improved network efficiency",
-      "Fixed server restart bug by removing unnecessary entityManager.clear() call"
+      "🔧 Refactored network compression layer - moved encoding/decoding into DelayedSocket and DelayedServer classes",
+      "🔧 Improved bandwidth tracking - centralized byte tracking in DelayedServer for better monitoring",
+      "🔧 Simplified socket event handling - removed manual compression calls throughout codebase",
+      "🐛 Fixed minimap fog of war radius calculation for more accurate reveal area",
+      "⚡ Added 'resourceType' to compression dictionary for improved network efficiency",
+      "🐛 Fixed server restart bug by removing unnecessary entityManager.clear() call"
     ]
   },
   {
     "version": "0.11.0",
     "date": "2025-11-12",
     "changes": [
-      "Added Survivor NPCs - rescue survivors scattered across the map to recruit defenders for your campsite",
-      "Survivors automatically shoot at zombies within range after being rescued and teleported to campsite",
-      "Survivors wander around campsite area with periodic movement and pause behavior",
-      "Survivors are invincible in special biomes but vulnerable elsewhere - zombies skip them in safe zones",
-      "Added stackable item system - bandages, gasoline, grenades, landmines, spikes, and walls now stack",
-      "Items display count badge in inventory when stacked for better space management",
-      "Improved UI scaling - reduced font sizes from 32px/48px to 24px for cleaner HUD appearance",
-      "Repositioned chat widget from 320px to 140px above bottom for better visibility",
-      "Fixed death screen overlap - death screen no longer displays during game over dialog",
-      "Added Asset Manager documentation explaining sprite loading and asset management system",
-      "Survivors can be looted when killed, dropping their inventory items"
+      "✨ Added Survivor NPCs - rescue survivors scattered across the map to recruit defenders for your campsite",
+      "✨ Survivors automatically shoot at zombies within range after being rescued and teleported to campsite",
+      "✨ Survivors wander around campsite area with periodic movement and pause behavior",
+      "✨ Survivors are invincible in special biomes but vulnerable elsewhere - zombies skip them in safe zones",
+      "✨ Added stackable item system - bandages, gasoline, grenades, landmines, spikes, and walls now stack",
+      "🎨 Items display count badge in inventory when stacked for better space management",
+      "🎨 Improved UI scaling - reduced font sizes from 32px/48px to 24px for cleaner HUD appearance",
+      "🎨 Repositioned chat widget from 320px to 140px above bottom for better visibility",
+      "🐛 Fixed death screen overlap - death screen no longer displays during game over dialog",
+      "📝 Added Asset Manager documentation explaining sprite loading and asset management system",
+      "✨ Survivors can be looted when killed, dropping their inventory items"
     ]
   },
   {
     "version": "0.10.1",
     "date": "2025-11-11",
     "changes": [
-      "Added ResourcesBag extension - moved resource tracking (coins, wood, cloth) into dedicated extension system",
-      "Added Inventory extension - refactored inventory management into extension-based architecture",
-      "Optimized entity performance with dirty tracking - only serialize changed extensions to reduce network traffic",
-      "Added fast extension lookups using Set for O(1) hasExt() checks instead of O(n) array iteration",
-      "Added separate tracking for updatable extensions to avoid checking every extension on each tick",
-      "Fixed UI click blocking - clicking HUD elements no longer triggers placement system",
-      "Added inventory slot change callback system for better reactivity to player input",
-      "Fixed enemy collision detection - enemies now properly update position during collision checks",
-      "Improved serialization efficiency with dirty-only mode - significant reduction in bandwidth usage",
-      "Added local inventory slot tracking on client for smoother UI responsiveness"
+      "🔧 Added ResourcesBag extension - moved resource tracking (coins, wood, cloth) into dedicated extension system",
+      "🔧 Added Inventory extension - refactored inventory management into extension-based architecture",
+      "⚡ Optimized entity performance with dirty tracking - only serialize changed extensions to reduce network traffic",
+      "⚡ Added fast extension lookups using Set for O(1) hasExt() checks instead of O(n) array iteration",
+      "⚡ Added separate tracking for updatable extensions to avoid checking every extension on each tick",
+      "🐛 Fixed UI click blocking - clicking HUD elements no longer triggers placement system",
+      "✨ Added inventory slot change callback system for better reactivity to player input",
+      "🐛 Fixed enemy collision detection - enemies now properly update position during collision checks",
+      "⚡ Improved serialization efficiency with dirty-only mode - significant reduction in bandwidth usage",
+      "✨ Added local inventory slot tracking on client for smoother UI responsiveness"
     ]
   },
   {
     "version": "0.10.0",
     "date": "2025-11-11",
     "changes": [
-      "Added teleport-to-base feature - players can hold C to channel a 3-second teleport back to campsite",
-      "Teleport is interrupted if player takes damage during the channel time",
-      "Added circular progress indicator above player's head showing teleport channel progress",
-      "Changed quick heal keybinding from Z to H for better ergonomics",
-      "Removed crafting keybinding (C key now used for teleport)",
-      "Players cannot teleport if already near the campsite (minimum 200 pixel distance required)",
-      "Updated instruction panel to reflect new keybindings",
-      "Added teleport cancel event when releasing C key before completion"
+      "✨ Added teleport-to-base feature - players can hold C to channel a 3-second teleport back to campsite",
+      "✨ Teleport is interrupted if player takes damage during the channel time",
+      "✨ Added circular progress indicator above player's head showing teleport channel progress",
+      "🎮 Changed quick heal keybinding from Z to H for better ergonomics",
+      "🔧 Removed crafting keybinding (C key now used for teleport)",
+      "✨ Players cannot teleport if already near the campsite (minimum 200 pixel distance required)",
+      "🎨 Updated instruction panel to reflect new keybindings",
+      "✨ Added teleport cancel event when releasing C key before completion"
     ]
   },
   {
     "version": "0.9.4",
     "date": "2025-11-11",
     "changes": [
-      "Added resource pickup event system - broadcasts when players collect wood, cloth, or other resources",
-      "Refactored player resource management to use generic Map-based system for extensibility",
-      "Made grenades stackable - grenades now stack in inventory with count tracking",
-      "Converted grenades to Weapon class for consistent weapon behavior",
-      "Added weapon handler registry for extensible weapon behavior without hardcoded checks",
-      "Fixed SPAWNABLE_ENTITY_TYPES proxy for improved React compatibility"
+      "✨ Added resource pickup event system - broadcasts when players collect wood, cloth, or other resources",
+      "🔧 Refactored player resource management to use generic Map-based system for extensibility",
+      "✨ Made grenades stackable - grenades now stack in inventory with count tracking",
+      "🔧 Converted grenades to Weapon class for consistent weapon behavior",
+      "✨ Added weapon handler registry for extensible weapon behavior without hardcoded checks",
+      "🐛 Fixed SPAWNABLE_ENTITY_TYPES proxy for improved React compatibility"
     ]
   },
   {
     "version": "0.9.3",
     "date": "2025-11-11",
     "changes": [
-      "Added entity override registry system for registering custom entity classes",
-      "Created generic entity classes that auto-generate from configuration (no manual class creation needed)",
-      "Added entity generator utility to auto-generate entity constants from configs",
-      "Simplified item and weapon creation process - simple items now only require config definition",
-      "Completely rewrote documentation for adding inventory light items with simplified approach",
-      "Completely rewrote documentation for adding weapons with simplified data-driven approach",
-      "Reduced code duplication by auto-generating server and client entities from shared configs"
+      "✨ Added entity override registry system for registering custom entity classes",
+      "✨ Created generic entity classes that auto-generate from configuration (no manual class creation needed)",
+      "✨ Added entity generator utility to auto-generate entity constants from configs",
+      "🔧 Simplified item and weapon creation process - simple items now only require config definition",
+      "📝 Completely rewrote documentation for adding inventory light items with simplified approach",
+      "📝 Completely rewrote documentation for adding weapons with simplified data-driven approach",
+      "🔧 Reduced code duplication by auto-generating server and client entities from shared configs"
     ]
   },
   {
     "version": "0.9.2",
     "date": "2025-11-10",
     "changes": [
-      "Refactored spawn system to use dynamic spawn tables built from item and weapon registries",
-      "Refactored merchant shop to auto-generate items from registry configurations",
-      "Added behavior configuration system (spawn, merchant, recipe) for items and weapons",
-      "Removed legacy Canvas-based crafting table UI in favor of React component",
-      "Centralized item and weapon configuration with spawn chances and merchant pricing"
+      "🔧 Refactored spawn system to use dynamic spawn tables built from item and weapon registries",
+      "🔧 Refactored merchant shop to auto-generate items from registry configurations",
+      "✨ Added behavior configuration system (spawn, merchant, recipe) for items and weapons",
+      "🔧 Removed legacy Canvas-based crafting table UI in favor of React component",
+      "🔧 Centralized item and weapon configuration with spawn chances and merchant pricing"
     ]
   },
   {
     "version": "0.9.1",
     "date": "2025-11-10",
     "changes": [
-      "Improved release script code formatting and consistency"
+      "🔧 Improved release script code formatting and consistency"
     ]
   },
   {
     "version": "0.9.0",
     "date": "2025-11-10",
     "changes": [
-      "Minor version update and improvements"
+      "🔧 Minor version update and improvements"
     ]
   },
   {
     "version": "0.8.3",
     "date": "2025-11-10",
     "changes": [
-      "Redesigned homepage with full-screen splash image background for improved visual appeal.",
-      "Changed loading scene background color to black for better contrast.",
-      "Changed play route background to black for consistent dark theme.",
-      "Added splash images (splash.jpg and splash.png) for homepage display."
+      "🎨 Redesigned homepage with full-screen splash image background for improved visual appeal.",
+      "🎨 Changed loading scene background color to black for better contrast.",
+      "🎨 Changed play route background to black for consistent dark theme.",
+      "🎨 Added splash images (splash.jpg and splash.png) for homepage display."
     ]
   },
   {
     "version": "0.8.2",
     "date": "2025-11-09",
     "changes": [
-      "Added mouse aiming support for grenades - grenades now use aim angle from mouse input when available.",
-      "Increased spike trap damage from 1 to 2 for better effectiveness.",
-      "Increased first wave delay from 10 seconds to 90 seconds to give players more preparation time."
+      "✨ Added mouse aiming support for grenades - grenades now use aim angle from mouse input when available.",
+      "🎯 Increased spike trap damage from 1 to 2 for better effectiveness.",
+      "🎯 Increased first wave delay from 10 seconds to 90 seconds to give players more preparation time."
     ]
   },
   {
     "version": "0.8.1",
     "date": "2025-11-08",
     "changes": [
-      "Added Miners Hat - a wearable item that provides passive lighting when in inventory.",
-      "Miners Hat automatically emits light without needing to be equipped or selected.",
-      "Miners Hat renders as an overlay on the player sprite when in inventory.",
-      "Miners Hat never shows as a 'held item' when selected since it's worn, not held.",
-      "Fixed right-facing direction rendering issues for player sprites and animations."
+      "✨ Added Miners Hat - a wearable item that provides passive lighting when in inventory.",
+      "✨ Miners Hat automatically emits light without needing to be equipped or selected.",
+      "🎨 Miners Hat renders as an overlay on the player sprite when in inventory.",
+      "✨ Miners Hat never shows as a 'held item' when selected since it's worn, not held.",
+      "🐛 Fixed right-facing direction rendering issues for player sprites and animations."
     ]
   },
   {
     "version": "0.8.0",
     "date": "2025-11-08",
     "changes": [
-      "Removed player revival system - players can no longer revive each other.",
-      "Added individual player respawn system with 'Press any key to respawn' prompt.",
-      "Players now respawn at the campsite with full health when they press any key after dying.",
-      "Inventory is cleared on death and items remain scattered on the ground.",
-      "Death screen displays with semi-transparent overlay when player dies.",
-      "Added mouse aiming for weapons - aim with cursor and click to shoot.",
-      "Players can now aim in any direction independent of movement direction.",
-      "Improved weapon firing mechanics with precise angle-based targeting."
+      "🔧 Removed player revival system - players can no longer revive each other.",
+      "✨ Added individual player respawn system with 'Press any key to respawn' prompt.",
+      "✨ Players now respawn at the campsite with full health when they press any key after dying.",
+      "✨ Inventory is cleared on death and items remain scattered on the ground.",
+      "✨ Death screen displays with semi-transparent overlay when player dies.",
+      "✨ Added mouse aiming for weapons - aim with cursor and click to shoot.",
+      "✨ Players can now aim in any direction independent of movement direction.",
+      "🎮 Improved weapon firing mechanics with precise angle-based targeting."
     ]
   },
   {
     "version": "0.7.1",
     "date": "2025-11-08",
     "changes": [
-      "Players no longer emit light unless they have a torch equipped.",
-      "Torches must now be actively selected to provide illumination.",
-      "Improved lighting system performance by filtering out entities with no light radius.",
-      "Enhanced strategic gameplay - players must choose between weapons and visibility.",
-      "Minimap fog of war now respects player lighting (only reveals areas when torch is equipped)."
+      "🎮 Players no longer emit light unless they have a torch equipped.",
+      "🎮 Torches must now be actively selected to provide illumination.",
+      "⚡ Improved lighting system performance by filtering out entities with no light radius.",
+      "🎮 Enhanced strategic gameplay - players must choose between weapons and visibility.",
+      "✨ Minimap fog of war now respects player lighting (only reveals areas when torch is equipped)."
     ]
   },
   {
     "version": "0.7.0",
     "date": "2025-11-08",
     "changes": [
-      "Replaced day/night cycle with wave-based gameplay system.",
-      "Game now features timed waves with preparation periods between zombie attacks.",
-      "Added wave timer HUD display showing current wave number and time until next wave.",
-      "Implemented idle zombie behavior - zombies now wander around when not chasing players.",
-      "Zombies exhibit more dynamic movement patterns during waves.",
-      "Added map darkness overlay for enhanced atmosphere and visibility challenge.",
-      "Darkness effect creates more tension during zombie waves.",
-      "Refactored map rendering system for improved performance and maintainability.",
-      "Optimized chunk rendering and camera viewport calculations."
+      "🎮 Replaced day/night cycle with wave-based gameplay system.",
+      "🎮 Game now features timed waves with preparation periods between zombie attacks.",
+      "✨ Added wave timer HUD display showing current wave number and time until next wave.",
+      "✨ Implemented idle zombie behavior - zombies now wander around when not chasing players.",
+      "✨ Zombies exhibit more dynamic movement patterns during waves.",
+      "🎨 Added map darkness overlay for enhanced atmosphere and visibility challenge.",
+      "🎮 Darkness effect creates more tension during zombie waves.",
+      "🔧 Refactored map rendering system for improved performance and maintainability.",
+      "⚡ Optimized chunk rendering and camera viewport calculations."
     ]
   },
   {
     "version": "0.6.0",
     "date": "2025-11-07",
     "changes": [
-      "Add car defense mechanic - players must protect the car to survive",
-      "Implement mouse cursor aiming for weapons (replaces 4-directional shooting)",
-      "Add angle-based knife attack direction using mouse position",
-      "Create car health panel UI at top of screen",
-      "Add crate indicators with arrows pointing to nearby supply crates",
-      "Implement death screen panel with respawn prompt",
-      "Add game messages system for important announcements (yellow/red colored)",
-      "Create mute button panel for audio control",
-      "Refactor UI into modular panel components (CarHealthPanel, DeathScreenPanel, GameMessagesPanel, MuteButtonPanel, CrateIndicatorsPanel)",
-      "Fix chat input blocking - prevent movement/actions while typing",
-      "Update knife swipe animation to face mouse attack direction",
-      "Store attack direction in player attack events",
-      "Update camera to follow player center position for accurate aiming",
-      "Add welcome message on game start about defending the car",
-      "Update player facing direction based on mouse position",
-      "Add new car sprite to collidables sheet",
-      "Fix input handling when entering chat mode",
-      "Added Sentry Gun craftable item that automatically targets and shoots zombies.",
-      "Sentry guns can be placed using the interactive placement system.",
-      "Sentry guns have 360-degree detection radius and automatically engage zombies within range.",
-      "Added campfire sprite and decal system for enhanced visual detail.",
-      "Decals can now be placed in the map editor for decorative elements.",
-      "New DecalsPanel in the map editor allows browsing and placing decal sprites.",
-      "Campfire decal added to campsite biomes for improved atmosphere."
+      "✨ Add car defense mechanic - players must protect the car to survive",
+      "✨ Implement mouse cursor aiming for weapons (replaces 4-directional shooting)",
+      "✨ Add angle-based knife attack direction using mouse position",
+      "✨ Create car health panel UI at top of screen",
+      "✨ Add crate indicators with arrows pointing to nearby supply crates",
+      "✨ Implement death screen panel with respawn prompt",
+      "✨ Add game messages system for important announcements (yellow/red colored)",
+      "✨ Create mute button panel for audio control",
+      "🔧 Refactor UI into modular panel components (CarHealthPanel, DeathScreenPanel, GameMessagesPanel, MuteButtonPanel, CrateIndicatorsPanel)",
+      "🐛 Fix chat input blocking - prevent movement/actions while typing",
+      "🎨 Update knife swipe animation to face mouse attack direction",
+      "🔧 Store attack direction in player attack events",
+      "🔧 Update camera to follow player center position for accurate aiming",
+      "✨ Add welcome message on game start about defending the car",
+      "🔧 Update player facing direction based on mouse position",
+      "🎨 Add new car sprite to collidables sheet",
+      "🐛 Fix input handling when entering chat mode",
+      "✨ Added Sentry Gun craftable item that automatically targets and shoots zombies.",
+      "✨ Sentry guns can be placed using the interactive placement system.",
+      "✨ Sentry guns have 360-degree detection radius and automatically engage zombies within range.",
+      "🎨 Added campfire sprite and decal system for enhanced visual detail.",
+      "✨ Decals can now be placed in the map editor for decorative elements.",
+      "✨ New DecalsPanel in the map editor allows browsing and placing decal sprites.",
+      "🎨 Campfire decal added to campsite biomes for improved atmosphere."
     ]
   },
   {
     "version": "0.5.0",
     "date": "2025-11-07",
     "changes": [
-      "Added interactive wall placement system with mouse targeting.",
-      "Walls can now be placed by selecting them from inventory and clicking on the map.",
-      "Ghost template preview shows valid (green) and invalid (red) placement locations.",
-      "Walls snap to 16x16 pixel grid for clean alignment.",
-      "Placement range limited to 100 pixels from player with visual range indicator.",
-      "Server validates all placements to prevent cheating and ensure fair gameplay.",
-      "Placement blocked on occupied tiles, near entities, or outside map bounds."
+      "✨ Added interactive wall placement system with mouse targeting.",
+      "✨ Walls can now be placed by selecting them from inventory and clicking on the map.",
+      "🎨 Ghost template preview shows valid (green) and invalid (red) placement locations.",
+      "✨ Walls snap to 16x16 pixel grid for clean alignment.",
+      "✨ Placement range limited to 100 pixels from player with visual range indicator.",
+      "🔒 Server validates all placements to prevent cheating and ensure fair gameplay.",
+      "✨ Placement blocked on occupied tiles, near entities, or outside map bounds."
     ]
   },
   {
     "version": "0.4.2",
     "date": "2025-11-07",
     "changes": [
-      "Improved client-side prediction to reduce player drift during movement.",
-      "Added continuous gentle correction that pulls player towards server position while moving.",
-      "Simplified reconciliation system by removing adaptive lerp in favor of fixed correction speeds.",
-      "Direction changes now feel more accurate with less visible drift accumulation."
+      "⚡ Improved client-side prediction to reduce player drift during movement.",
+      "⚡ Added continuous gentle correction that pulls player towards server position while moving.",
+      "🔧 Simplified reconciliation system by removing adaptive lerp in favor of fixed correction speeds.",
+      "🎮 Direction changes now feel more accurate with less visible drift accumulation."
     ]
   },
   {
     "version": "0.4.1",
     "date": "2025-11-07",
     "changes": [
-      "Refactored instructions menu to remove dark background overlay.",
-      "Instructions menu now toggles when clicking the settings button.",
-      "Added click-outside-to-close functionality for instructions menu."
+      "🎨 Refactored instructions menu to remove dark background overlay.",
+      "✨ Instructions menu now toggles when clicking the settings button.",
+      "✨ Added click-outside-to-close functionality for instructions menu."
     ]
   },
   {
     "version": "0.4.0",
     "date": "2025-11-07",
     "changes": [
-      "Fixed game inputs triggering while typing in UI input fields (spawn panel, config panel, etc.).",
-      "Add an exploding zombie",
-      "A player shouldn't be colliding with a dead zombie",
-      "Fix bullet from coming out of players head",
-      "A bullet was not blowing up the gas can (because I forgot to add the groupable extension to the gas can)",
-      "A user can search a dead zombie body for items (randomly drop items)",
-      "A zombie should be lootable, but the label isn't showing",
-      "Refactor the zombie constructor"
+      "🐛 Fixed game inputs triggering while typing in UI input fields (spawn panel, config panel, etc.).",
+      "✨ Add an exploding zombie",
+      "🐛 A player shouldn't be colliding with a dead zombie",
+      "🐛 Fix bullet from coming out of players head",
+      "🐛 A bullet was not blowing up the gas can (because I forgot to add the groupable extension to the gas can)",
+      "✨ A user can search a dead zombie body for items (randomly drop items)",
+      "🐛 A zombie should be lootable, but the label isn't showing",
+      "🔧 Refactor the zombie constructor"
     ]
   },
   {
     "version": "0.3.0",
     "date": "2024-12-19",
     "changes": [
-      "Add sound for shotgun",
-      "Add sound for player hurt",
-      "Add sound for zombie hurt",
-      "Add sound for item pickup",
-      "Add sound for item drop",
-      "Add sound for player death",
-      "Add a way to toggle the instructions on and off",
-      "When a player is killed, notify all players in the game a player has died"
+      "🎵 Add sound for shotgun",
+      "🎵 Add sound for player hurt",
+      "🎵 Add sound for zombie hurt",
+      "🎵 Add sound for item pickup",
+      "🎵 Add sound for item drop",
+      "🎵 Add sound for player death",
+      "✨ Add a way to toggle the instructions on and off",
+      "✨ When a player is killed, notify all players in the game a player has died"
     ]
   },
   {
     "version": "0.2.0",
     "date": "2024-12-01",
     "changes": [
-      "A user can drop items from their inventory",
-      "A user shall be able to harvest trees",
-      "Create an entry point function for the client code which creates a canvas, connects to a server, and starts the game loop",
-      "A user shall be able to move their player around with w,s,a,d",
-      "A user shall be able to move in a diagonal direction",
-      "A user shall be able to attack using space",
-      "A user shall be able to see a health bar which shows how much health they have",
-      "Create an next.js application which will use the client code to render the game",
-      "A user can move up, down, left, and right",
-      "Create initial server logic for the game",
-      "A user should be able to pick up previously placed walls",
-      "A zombie can attack a player",
-      "Add in collidable entities (barrels, boxes, etc.)",
-      "A user can hold one weapon at a time",
-      "Add a day cycle which let's players explore, build, gather",
-      "Add a basic night cycle which spawns zombies",
-      "A user can pick up wood and place into inventory",
-      "A user can build a barricade using wood",
-      "A user can fire in the direction they are facing",
-      "A zombie can attack walls (walls have hp)",
-      "Picking up a damaged walled shouldn't restore it's health back to full when replacing",
-      "When picking up items, it should pick up the CLOSEST item first",
-      "The health bars need to be attached to the player group so that when they interpolate they don't lag behind",
-      "A player shouldn't be able to move when crafting",
-      "Fix the size of the wrench icon",
-      "Figure out why the wrench icon becomes small when near a tree",
-      "Close the crafting menu after making an item",
-      "A player shouldn't be able to open the craft menu when dead; also close it if they die while crafting",
-      "A player should drop all items when they die and scatter them around their body",
-      "The player should have a running animation (keep it simple), 2 frames with legs going up and down",
-      "Every player faces the same direction as YOUR player which is a bug (FIXED)",
-      "The crafting recipe should be red or grayed out if you don't have enough items to craft it",
-      "Pressing space while crafting an item you don't have enough resources to craft should not auto close the crafting menu",
-      "Zombie should use walk animation as well",
-      "When a player is killed by a zombie, it seems like the zombie gets stuck either on the player, or thinks it still needs to attack the player",
-      "A player is able to shoot themself, this is bad (FIXED)"
+      "✨ A user can drop items from their inventory",
+      "✨ A user shall be able to harvest trees",
+      "🏗️ Create an entry point function for the client code which creates a canvas, connects to a server, and starts the game loop",
+      "✨ A user shall be able to move their player around with w,s,a,d",
+      "✨ A user shall be able to move in a diagonal direction",
+      "✨ A user shall be able to attack using space",
+      "✨ A user shall be able to see a health bar which shows how much health they have",
+      "🏗️ Create an next.js application which will use the client code to render the game",
+      "✨ A user can move up, down, left, and right",
+      "🏗️ Create initial server logic for the game",
+      "✨ A user should be able to pick up previously placed walls",
+      "✨ A zombie can attack a player",
+      "✨ Add in collidable entities (barrels, boxes, etc.)",
+      "✨ A user can hold one weapon at a time",
+      "✨ Add a day cycle which let's players explore, build, gather",
+      "✨ Add a basic night cycle which spawns zombies",
+      "✨ A user can pick up wood and place into inventory",
+      "✨ A user can build a barricade using wood",
+      "✨ A user can fire in the direction they are facing",
+      "✨ A zombie can attack walls (walls have hp)",
+      "🐛 Picking up a damaged walled shouldn't restore it's health back to full when replacing",
+      "🐛 When picking up items, it should pick up the CLOSEST item first",
+      "🐛 The health bars need to be attached to the player group so that when they interpolate they don't lag behind",
+      "🐛 A player shouldn't be able to move when crafting",
+      "🐛 Fix the size of the wrench icon",
+      "🐛 Figure out why the wrench icon becomes small when near a tree",
+      "🐛 Close the crafting menu after making an item",
+      "🐛 A player shouldn't be able to open the craft menu when dead; also close it if they die while crafting",
+      "✨ A player should drop all items when they die and scatter them around their body",
+      "🎨 The player should have a running animation (keep it simple), 2 frames with legs going up and down",
+      "🐛 Every player faces the same direction as YOUR player which is a bug (FIXED)",
+      "🎨 The crafting recipe should be red or grayed out if you don't have enough items to craft it",
+      "🐛 Pressing space while crafting an item you don't have enough resources to craft should not auto close the crafting menu",
+      "🎨 Zombie should use walk animation as well",
+      "🐛 When a player is killed by a zombie, it seems like the zombie gets stuck either on the player, or thinks it still needs to attack the player",
+      "🐛 A player is able to shoot themself, this is bad (FIXED)"
     ]
   }
 ]

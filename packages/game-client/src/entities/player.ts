@@ -43,19 +43,14 @@ export class PlayerClient extends ClientEntity implements IClientEntity, Rendera
   private displayName: string = "";
   private stamina: number = 100;
   private maxStamina: number = 100;
-  private pickupProgress: number = 0;
+  private pickupProgress: number = 0; // Client-only field for interact hold progress
   private serverGhostPos: Vector2 | null = null;
 
   private input: Input = {
     facing: Direction.Right,
-    inventoryItem: 1,
     dx: 0,
     dy: 0,
-    interact: false,
     fire: false,
-    drop: false,
-    consume: false,
-    consumeItemType: null,
     sprint: false,
   };
 
@@ -69,14 +64,9 @@ export class PlayerClient extends ClientEntity implements IClientEntity, Rendera
     // Ensure input is always defined, fallback to default if missing
     this.input = data.input || {
       facing: Direction.Right,
-      inventoryItem: 1,
       dx: 0,
       dy: 0,
-      interact: false,
       fire: false,
-      drop: false,
-      consume: false,
-      consumeItemType: null,
       sprint: false,
     };
     this.skin = data.skin || SKIN_TYPES.DEFAULT;
@@ -100,8 +90,9 @@ export class PlayerClient extends ClientEntity implements IClientEntity, Rendera
   }
 
   getSelectedInventorySlot(): number {
-    // inventoryItem is 1-indexed (1-10), convert to 0-indexed (0-9)
-    return this.input.inventoryItem - 1;
+    // inputInventoryItem is 1-indexed (1-10), convert to 0-indexed (0-9)
+    const slot = (this as any).inputInventoryItem ?? 1;
+    return slot - 1;
   }
 
   getInput(): Input {
@@ -128,21 +119,38 @@ export class PlayerClient extends ClientEntity implements IClientEntity, Rendera
   }
 
   getPosition(): Vector2 {
+    if (!this.hasExt(ClientPositionable)) {
+      console.warn(`Player ${this.getId()} missing ClientPositionable extension`);
+      return PoolManager.getInstance().vector2.claim(0, 0);
+    }
     const positionable = this.getExt(ClientPositionable);
     return positionable.getPosition();
   }
 
   setPosition(position: Vector2): void {
+    if (!this.hasExt(ClientPositionable)) {
+      console.warn(`Player ${this.getId()} missing ClientPositionable extension`);
+      return;
+    }
     const positionable = this.getExt(ClientPositionable);
     positionable.setPosition(position);
   }
 
   getCenterPosition(): Vector2 {
+    if (!this.hasExt(ClientPositionable)) {
+      // Fallback: return zero vector if positionable is missing
+      console.warn(`Player ${this.getId()} missing ClientPositionable extension`);
+      return PoolManager.getInstance().vector2.claim(0, 0);
+    }
     const positionable = this.getExt(ClientPositionable);
     return positionable.getCenterPosition();
   }
 
   getVelocity(): Vector2 {
+    if (!this.hasExt(ClientMovable)) {
+      console.warn(`Player ${this.getId()} missing ClientMovable extension`);
+      return PoolManager.getInstance().vector2.claim(0, 0);
+    }
     const movable = this.getExt(ClientMovable);
     return movable.getVelocity();
   }
@@ -153,8 +161,21 @@ export class PlayerClient extends ClientEntity implements IClientEntity, Rendera
   }
 
   getDamageBox(): Hitbox {
-    const positionable = this.getExt(ClientCollidable);
-    return positionable.getHitBox();
+    // Use collidable if available, otherwise fall back to positionable
+    if (this.hasExt(ClientCollidable)) {
+      const collidable = this.getExt(ClientCollidable);
+      return collidable.getHitBox();
+    }
+    // Fallback: use positionable size for damage box
+    const positionable = this.getExt(ClientPositionable);
+    const position = positionable.getPosition();
+    const size = positionable.getSize();
+    return {
+      x: position.x,
+      y: position.y,
+      width: size.x,
+      height: size.y,
+    };
   }
 
   getHealth(): number {
@@ -355,9 +376,9 @@ export class PlayerClient extends ClientEntity implements IClientEntity, Rendera
   }
 
   public setLocalInventorySlot(slot: number): void {
-    const maxSlots = getConfig().player.MAX_INVENTORY_SLOTS;
-    const clampedSlot = Math.min(Math.max(slot, 1), maxSlots);
-    this.input.inventoryItem = clampedSlot;
+    // This method is called when server updates the slot
+    // The slot is already set via deserializeProperty for inputInventoryItem
+    // No need to update input object since inventoryItem is no longer in Input
   }
 
   renderInventoryItem(ctx: CanvasRenderingContext2D, renderPosition: Vector2) {
@@ -436,16 +457,12 @@ export class PlayerClient extends ClientEntity implements IClientEntity, Rendera
       return;
     }
 
-    // activeItem is derived from inventory, ignore server's activeItem field
-    if (key === "activeItem") {
-      return;
-    }
-
     super.deserializeProperty(key, value);
   }
 
   public getActiveItem(): InventoryItem | null {
-    return this.getExt(ClientInventory).getActiveItem(this.input.inventoryItem);
+    const slot = (this as any).inputInventoryItem ?? 1;
+    return this.getExt(ClientInventory).getActiveItem(slot);
   }
 
   private reconstructInputObject(): void {
@@ -455,12 +472,7 @@ export class PlayerClient extends ClientEntity implements IClientEntity, Rendera
       facing: (this as any).inputFacing ?? Direction.Right,
       dx: (this as any).inputDx ?? 0,
       dy: (this as any).inputDy ?? 0,
-      interact: (this as any).inputInteract ?? false,
       fire: (this as any).inputFire ?? false,
-      inventoryItem: (this as any).inputInventoryItem ?? 1,
-      drop: (this as any).inputDrop ?? false,
-      consume: (this as any).inputConsume ?? false,
-      consumeItemType: (this as any).inputConsumeItemType ?? null,
       sprint: (this as any).inputSprint ?? false,
       // NaN represents undefined for aimAngle
       aimAngle: inputAimAngle === undefined || isNaN(inputAimAngle) ? undefined : inputAimAngle,
@@ -497,7 +509,8 @@ export class PlayerClient extends ClientEntity implements IClientEntity, Rendera
     this.displayName = data.displayName || "Unknown";
     this.stamina = data.stamina ?? 100;
     this.maxStamina = data.maxStamina ?? 100;
-    this.pickupProgress = data.pickupProgress ?? 0;
+    // pickupProgress is client-only, initialized to 0
+    this.pickupProgress = 0;
   }
 
   getPickupProgress(): number {

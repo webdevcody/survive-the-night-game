@@ -38,16 +38,12 @@ import { Weapon } from "../weapons/weapon";
 
 export class Player extends Entity {
   private static readonly PLAYER_WIDTH = 16;
-  private static readonly DROP_COOLDOWN = 0.25;
   private static readonly INTERACT_COOLDOWN = 0.25;
-  private static readonly CONSUME_COOLDOWN = 0.5;
   private static readonly PICKUP_HOLD_DURATION = 0.5; // 1 second in seconds
 
   // Internal state
   private fireCooldown = new Cooldown(0.4, true);
-  private dropCooldown = new Cooldown(Player.DROP_COOLDOWN, true);
   private interactCooldown = new Cooldown(Player.INTERACT_COOLDOWN, true);
-  private consumeCooldown = new Cooldown(Player.CONSUME_COOLDOWN, true);
   private broadcaster: Broadcaster;
   private lastWeaponType: ItemType | null = null;
   private exhaustionTimer: number = 0; // Time remaining before stamina can regenerate
@@ -74,15 +70,10 @@ export class Player extends Entity {
         inputFacing: Direction.Right,
         inputDx: 0,
         inputDy: 0,
-        inputInteract: false,
         inputFire: false,
-        inputInventoryItem: 1,
-        inputDrop: false,
-        inputConsume: false,
-        inputConsumeItemType: null as string | null,
+        inputInventoryItem: 1, // Still tracked for consume/drop when itemType is null
         inputSprint: false,
         inputAimAngle: NaN, // NaN represents undefined for optional field
-        pickupProgress: 0,
       },
       () => this.markEntityDirty(),
       {
@@ -136,25 +127,16 @@ export class Player extends Entity {
     ].forEach((item) => inventory.addItem(item));
   }
 
-  private setPickupProgress(progress: number): void {
-    const clampedProgress = Math.max(0, Math.min(1, progress));
-    const currentProgress = this.serialized.get('pickupProgress');
-    if (currentProgress === clampedProgress) {
-      return;
-    }
-    this.serialized.set('pickupProgress', clampedProgress);
-  }
-
   get activeItem(): InventoryItem | null {
-    return this.getExt(Inventory).getActiveItem(this.serialized.get('inputInventoryItem'));
+    return this.getExt(Inventory).getActiveItem(this.serialized.get("inputInventoryItem"));
   }
 
   setIsCrafting(isCrafting: boolean): void {
-    this.serialized.set('isCrafting', isCrafting);
+    this.serialized.set("isCrafting", isCrafting);
   }
 
   getIsCrafting(): boolean {
-    return this.serialized.get('isCrafting');
+    return this.serialized.get("isCrafting");
   }
 
   isDead(): boolean {
@@ -314,7 +296,7 @@ export class Player extends Entity {
   handleAttack(deltaTime: number) {
     this.fireCooldown.update(deltaTime);
 
-    if (!this.serialized.get('inputFire')) return;
+    if (!this.serialized.get("inputFire")) return;
 
     const activeWeapon = this.getActiveWeapon();
     if (activeWeapon === null) return;
@@ -342,13 +324,13 @@ export class Player extends Entity {
 
       if (this.fireCooldown.isReady()) {
         this.fireCooldown.reset();
-        const inventoryIndex = this.serialized.get('inputInventoryItem') - 1;
+        const inventoryIndex = this.serialized.get("inputInventoryItem") - 1;
         customHandler.handler(
           weaponEntity,
           this.getId(),
           this.getCenterPosition().clone(),
-          this.serialized.get('inputFacing'),
-          this.serialized.get('inputAimAngle'),
+          this.serialized.get("inputFacing"),
+          this.serialized.get("inputAimAngle"),
           inventoryIndex
         );
         weaponEntity.clearDirtyFlags();
@@ -372,8 +354,8 @@ export class Player extends Entity {
       weaponEntity.attack(
         this.getId(),
         this.getCenterPosition().clone(),
-        this.serialized.get('inputFacing'),
-        this.serialized.get('inputAimAngle')
+        this.serialized.get("inputFacing"),
+        this.serialized.get("inputAimAngle")
       );
       weaponEntity.clearDirtyFlags();
     }
@@ -391,8 +373,8 @@ export class Player extends Entity {
     if (currentSpeed < getConfig().player.PLAYER_SPEED * 2) {
       // Set velocity based on current input
       const poolManager = PoolManager.getInstance();
-      const inputDx = this.serialized.get('inputDx');
-      const inputDy = this.serialized.get('inputDy');
+      const inputDx = this.serialized.get("inputDx");
+      const inputDy = this.serialized.get("inputDy");
       if (inputDx === 0 && inputDy === 0) {
         movable.setVelocity(poolManager.vector2.claim(0, 0));
       } else {
@@ -400,18 +382,18 @@ export class Player extends Entity {
         const normalized = normalizeVector(inputVec);
 
         // Can only sprint if: has stamina AND not exhausted
-        const stamina = this.serialized.get('stamina');
+        const stamina = this.serialized.get("stamina");
         const canSprint =
-          this.serialized.get('inputSprint') && stamina > 0 && this.exhaustionTimer <= 0;
+          this.serialized.get("inputSprint") && stamina > 0 && this.exhaustionTimer <= 0;
         const speedMultiplier = canSprint ? getConfig().player.SPRINT_MULTIPLIER : 1;
 
         // Drain stamina while sprinting
         if (canSprint) {
           const newStamina = stamina - getConfig().player.STAMINA_DRAIN_RATE * deltaTime;
-          this.serialized.set('stamina', Math.max(0, newStamina));
+          this.serialized.set("stamina", Math.max(0, newStamina));
           // maxStamina doesn't change, but mark it dirty for consistency if needed
-          const maxStamina = this.serialized.get('maxStamina');
-          this.serialized.set('maxStamina', maxStamina);
+          const maxStamina = this.serialized.get("maxStamina");
+          this.serialized.set("maxStamina", maxStamina);
 
           // If stamina just hit zero, start exhaustion timer
           if (newStamina <= 0) {
@@ -453,198 +435,11 @@ export class Player extends Entity {
   }
 
   setDisplayName(displayName: string): void {
-    this.serialized.set('displayName', displayName);
+    this.serialized.set("displayName", displayName);
   }
 
   getDisplayName(): string {
-    return this.serialized.get('displayName');
-  }
-
-  handleInteract(deltaTime: number) {
-    this.interactCooldown.update(deltaTime);
-
-    if (!this.serialized.get('inputInteract')) {
-      this.pickupHoldTimer = 0;
-      this.targetPickupEntity = null;
-      this.setPickupProgress(0);
-      return;
-    }
-
-    // Cache position and radius once
-    const playerPos = this.getCenterPosition();
-    const maxRadius = getConfig().player.MAX_INTERACT_RADIUS;
-
-    // Get nearby entities (already filtered by distance in getNearbyEntities)
-    const entities = this.getEntityManager()
-      .getNearbyEntities(playerPos, maxRadius)
-      .filter((entity) => entity.hasExt(Interactive));
-
-    if (entities.length === 0) {
-      this.setPickupProgress(0);
-      this.pickupHoldTimer = 0;
-      this.targetPickupEntity = null;
-      return;
-    }
-
-    // Pre-calculate distances and dead player flags to avoid repeated calculations
-    const entityData = entities.map((entity) => {
-      const entityPos = entity.getExt(Positionable).getCenterPosition();
-      return {
-        entity,
-        distance: distance(playerPos, entityPos),
-        isDeadPlayer: entity.getType() === Entities.PLAYER && (entity as Player).isDead(),
-        isPlaceable: entity.hasExt(Placeable),
-      };
-    });
-
-    // Sort by priority (dead players first) then by distance
-    entityData.sort((a, b) => {
-      // Dead players should come first
-      if (a.isDeadPlayer && !b.isDeadPlayer) return -1;
-      if (!a.isDeadPlayer && b.isDeadPlayer) return 1;
-      // If both are dead players or both are not, sort by distance
-      return a.distance - b.distance;
-    });
-
-    // Get the closest entity (already filtered and sorted)
-    const closestEntity = entityData[0];
-
-    const now = new Date().getTime();
-    if (this.pickupHoldTimer == 0) {
-      this.pickupHoldTimer = now;
-    }
-    let timeSincePickup = now - this.pickupHoldTimer;
-    this.targetPickupEntity = closestEntity.entity.getId();
-
-    if (closestEntity.isPlaceable) {
-      // Calculate progress (0-1) based on hold duration - update every frame
-      const holdDurationMs = Player.PICKUP_HOLD_DURATION * 1000; // Convert seconds to milliseconds
-      this.setPickupProgress(timeSincePickup / holdDurationMs);
-
-      // Check for pickup completion every frame (not just when cooldown is ready)
-      if (timeSincePickup >= holdDurationMs) {
-        closestEntity.entity.getExt(Interactive).interact(this.getId());
-        this.pickupHoldTimer = 0;
-        this.targetPickupEntity = null;
-        this.setPickupProgress(0);
-      }
-    } else {
-      this.setPickupProgress(0);
-      // For non-placeable items, respect the cooldown (instant interactions)
-      if (this.interactCooldown.isReady()) {
-        this.interactCooldown.reset();
-        closestEntity.entity.getExt(Interactive).interact(this.getId());
-        this.pickupHoldTimer = 0;
-        this.targetPickupEntity = null;
-        this.setPickupProgress(0);
-      }
-    }
-  }
-
-  handleDrop(deltaTime: number) {
-    this.dropCooldown.update(deltaTime);
-
-    if (!this.serialized.get('inputDrop')) return;
-
-    const inputInventoryItem = this.serialized.get('inputInventoryItem');
-    if (this.dropCooldown.isReady() && inputInventoryItem !== null) {
-      this.dropCooldown.reset();
-      const itemIndex = inputInventoryItem - 1;
-      const inventory = this.getExt(Inventory);
-      const currentItem = inventory.getItems()[itemIndex];
-
-      if (!currentItem) return;
-
-      // For other items, drop the entire stack
-      const item = inventory.removeItem(itemIndex);
-
-      if (item) {
-        const entity = this.getEntityManager().createEntityFromItem(item);
-
-        if (!entity) return;
-
-        const carryable = entity.getExt(Carryable);
-        carryable.setItemState({
-          count: item.state?.count || 0,
-        });
-
-        const offset = 16;
-        let dx = 0;
-        let dy = 0;
-        const inputFacing = this.serialized.get('inputFacing');
-
-        if (inputFacing === Direction.Up) {
-          dy = -offset;
-        } else if (inputFacing === Direction.Down) {
-          dy = offset;
-        } else if (inputFacing === Direction.Left) {
-          dx = -offset;
-        } else if (inputFacing === Direction.Right) {
-          dx = offset;
-        }
-
-        const poolManager = PoolManager.getInstance();
-        const pos = poolManager.vector2.claim(this.getPosition().x + dx, this.getPosition().y + dy);
-
-        if (entity.hasExt(Positionable)) {
-          entity.getExt(Positionable).setPosition(pos);
-        }
-
-        this.getEntityManager().addEntity(entity);
-
-        this.broadcaster.broadcastEvent(
-          new PlayerDroppedItemEvent({
-            playerId: this.getId(),
-            itemType: item.itemType,
-          })
-        );
-      }
-    }
-  }
-
-  handleConsume(deltaTime: number) {
-    this.consumeCooldown.update(deltaTime);
-
-    if (!this.serialized.get('inputConsume')) return;
-
-    // Check cooldown - if not ready, wait
-    if (!this.consumeCooldown.isReady()) {
-      return;
-    }
-
-    // Cooldown is ready, process consume and reset cooldown
-    this.consumeCooldown.reset();
-
-    let itemIndex: number | undefined;
-    let item: InventoryItem | null = null;
-    const inputConsumeItemType = this.serialized.get('inputConsumeItemType');
-    const inputInventoryItem = this.serialized.get('inputInventoryItem');
-
-    // If consumeItemType is specified, find the first item of that type
-    if (inputConsumeItemType !== null) {
-      const inventory = this.getExt(Inventory).getItems();
-      const foundIndex = inventory.findIndex(
-        (invItem) => invItem?.itemType === inputConsumeItemType
-      );
-
-      if (foundIndex !== -1) {
-        itemIndex = foundIndex;
-        item = inventory[itemIndex];
-      }
-    } else if (inputInventoryItem !== null) {
-      // Otherwise, use the currently selected inventory slot
-      itemIndex = inputInventoryItem - 1;
-      item = this.getExt(Inventory).getItems()[itemIndex];
-    }
-
-    if (item && itemIndex !== undefined) {
-      const entity = this.getEntityManager().createEntityFromItem(item);
-      if (!entity) return;
-
-      if (entity.hasExt(Consumable)) {
-        entity.getExt(Consumable).consume(this.getId(), itemIndex);
-      }
-    }
+    return this.serialized.get("displayName");
   }
 
   handleStamina(deltaTime: number) {
@@ -654,12 +449,12 @@ export class Player extends Entity {
     }
 
     // Only regenerate stamina when not exhausted
-    const stamina = this.serialized.get('stamina');
+    const stamina = this.serialized.get("stamina");
     if (this.exhaustionTimer <= 0 && stamina < getConfig().player.MAX_STAMINA) {
-      const inputDx = this.serialized.get('inputDx');
-      const inputDy = this.serialized.get('inputDy');
+      const inputDx = this.serialized.get("inputDx");
+      const inputDy = this.serialized.get("inputDy");
       const isMoving = inputDx !== 0 || inputDy !== 0;
-      const isSprinting = this.serialized.get('inputSprint') && isMoving && stamina > 0;
+      const isSprinting = this.serialized.get("inputSprint") && isMoving && stamina > 0;
 
       // Regenerate stamina when not sprinting
       if (!isSprinting) {
@@ -668,19 +463,19 @@ export class Player extends Entity {
           getConfig().player.MAX_STAMINA,
           stamina + getConfig().player.STAMINA_REGEN_RATE * deltaTime
         );
-        this.serialized.set('stamina', newStamina);
+        this.serialized.set("stamina", newStamina);
 
         // Mark maxStamina dirty if stamina changed (for consistency)
         if (Math.abs(oldStamina - newStamina) > 0.01) {
-          const maxStamina = this.serialized.get('maxStamina');
-          this.serialized.set('maxStamina', maxStamina);
+          const maxStamina = this.serialized.get("maxStamina");
+          this.serialized.set("maxStamina", maxStamina);
         }
       }
     }
   }
 
   private updatePlayer(deltaTime: number) {
-    if (this.serialized.get('isCrafting')) {
+    if (this.serialized.get("isCrafting")) {
       return;
     }
 
@@ -690,9 +485,6 @@ export class Player extends Entity {
 
     this.handleAttack(deltaTime);
     this.handleMovement(deltaTime);
-    this.handleInteract(deltaTime);
-    this.handleDrop(deltaTime);
-    this.handleConsume(deltaTime);
     this.handleStamina(deltaTime);
     this.updateLighting();
   }
@@ -722,32 +514,18 @@ export class Player extends Entity {
   }
 
   setInput(input: Input) {
-    const previousSlot = this.serialized.get('inputInventoryItem');
     // Map input object to individual serialized fields
-    this.serialized.set('inputFacing', input.facing ?? Direction.Right);
-    this.serialized.set('inputDx', input.dx ?? 0);
-    this.serialized.set('inputDy', input.dy ?? 0);
-    this.serialized.set('inputInteract', input.interact ?? false);
-    this.serialized.set('inputFire', input.fire ?? false);
-    this.serialized.set('inputInventoryItem', input.inventoryItem ?? 1);
-    this.serialized.set('inputDrop', input.drop ?? false);
-    this.serialized.set('inputConsume', input.consume ?? false);
-    this.serialized.set('inputConsumeItemType', input.consumeItemType ?? null);
-    this.serialized.set('inputSprint', input.sprint ?? false);
-    this.serialized.set('inputAimAngle', input.aimAngle ?? NaN); // NaN represents undefined
-
-    // Mark inventory extension as dirty when inventory slot changes
-    // This ensures other clients receive inventory data to render the active item
-    const newSlot = this.serialized.get('inputInventoryItem');
-    if (previousSlot !== newSlot) {
-      const inventory = this.getExt(Inventory);
-      this.markExtensionDirty(inventory);
-    }
+    this.serialized.set("inputFacing", input.facing ?? Direction.Right);
+    this.serialized.set("inputDx", input.dx ?? 0);
+    this.serialized.set("inputDy", input.dy ?? 0);
+    this.serialized.set("inputFire", input.fire ?? false);
+    this.serialized.set("inputSprint", input.sprint ?? false);
+    this.serialized.set("inputAimAngle", input.aimAngle ?? NaN); // NaN represents undefined
   }
 
   selectInventoryItem(index: number) {
-    const previousSlot = this.serialized.get('inputInventoryItem');
-    this.serialized.set('inputInventoryItem', index);
+    const previousSlot = this.serialized.get("inputInventoryItem");
+    this.serialized.set("inputInventoryItem", index);
 
     // Mark inventory extension as dirty when inventory slot changes
     // This ensures other clients receive inventory data to render the active item
@@ -758,19 +536,7 @@ export class Player extends Entity {
   }
 
   setAsFiring(firing: boolean) {
-    this.serialized.set('inputFire', firing);
-  }
-
-  setAsInteracting(interacting: boolean) {
-    this.serialized.set('inputInteract', interacting);
-  }
-
-  setAsDropping(dropping: boolean) {
-    this.serialized.set('inputDrop', dropping);
-  }
-
-  setUseItem(use: boolean) {
-    this.serialized.set('inputConsume', use);
+    this.serialized.set("inputFire", firing);
   }
 
   heal(amount: number): void {
@@ -784,28 +550,28 @@ export class Player extends Entity {
   }
 
   setSkin(skin: SkinType): void {
-    this.serialized.set('skin', skin);
+    this.serialized.set("skin", skin);
   }
 
   getSkin(): SkinType {
-    return this.serialized.get('skin');
+    return this.serialized.get("skin");
   }
 
   incrementKills() {
-    const currentKills = this.serialized.get('kills') || 0;
-    this.serialized.set('kills', currentKills + 1);
+    const currentKills = this.serialized.get("kills") || 0;
+    this.serialized.set("kills", currentKills + 1);
   }
 
   getKills(): number {
-    return this.serialized.get('kills') || 0;
+    return this.serialized.get("kills") || 0;
   }
 
   setPing(ping: number): void {
-    this.serialized.set('ping', ping);
+    this.serialized.set("ping", ping);
   }
 
   getPing(): number {
-    return this.serialized.get('ping');
+    return this.serialized.get("ping");
   }
 
   addCoins(amount: number): void {

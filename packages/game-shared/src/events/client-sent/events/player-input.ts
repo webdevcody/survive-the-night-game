@@ -33,16 +33,10 @@ export class PlayerInputEvent implements GameEvent<PlayerInputEventData> {
 
     // Pack booleans into a bitset (1 byte)
     const hasAimAngle = input.aimAngle !== undefined;
-    const hasConsumeItemType =
-      input.consumeItemType !== null && input.consumeItemType !== undefined;
     let bitset = 0;
-    if (input.interact) bitset |= 1 << 0;
-    if (input.fire) bitset |= 1 << 1;
-    if (input.drop) bitset |= 1 << 2;
-    if (input.consume) bitset |= 1 << 3;
-    if (input.sprint) bitset |= 1 << 4;
-    if (hasAimAngle) bitset |= 1 << 5;
-    if (hasConsumeItemType) bitset |= 1 << 6;
+    if (input.fire) bitset |= 1 << 0;
+    if (input.sprint) bitset |= 1 << 1;
+    if (hasAimAngle) bitset |= 1 << 2;
     writer.writeUInt8(bitset);
 
     // facing: uint8 (Direction enum)
@@ -54,14 +48,6 @@ export class PlayerInputEvent implements GameEvent<PlayerInputEventData> {
     const dy = Math.max(-1, Math.min(1, Math.round(input.dy ?? 0)));
     const encoded = (dx + 1) * 3 + (dy + 1);
     writer.writeUInt8(encoded);
-
-    // inventoryItem: uint8 (0-255 slots)
-    writer.writeUInt8(Math.max(0, Math.min(255, (input.inventoryItem ?? 1) >>> 0)));
-
-    // consumeItemType: uint16 (only if bit is set)
-    if (hasConsumeItemType) {
-      writer.writeUInt16(itemTypeToUInt16(input.consumeItemType));
-    }
 
     // aimAngle: uint16, scale from 0-2π to 0-65535
     if (hasAimAngle && input.aimAngle !== undefined) {
@@ -77,13 +63,9 @@ export class PlayerInputEvent implements GameEvent<PlayerInputEventData> {
   static deserializeFromBuffer(reader: BufferReader): PlayerInputEventData {
     // Read bitset (1 byte)
     const bitset = reader.readUInt8();
-    const interact = (bitset & (1 << 0)) !== 0;
-    const fire = (bitset & (1 << 1)) !== 0;
-    const drop = (bitset & (1 << 2)) !== 0;
-    const consume = (bitset & (1 << 3)) !== 0;
-    const sprint = (bitset & (1 << 4)) !== 0;
-    const hasAimAngle = (bitset & (1 << 5)) !== 0;
-    const hasConsumeItemType = (bitset & (1 << 6)) !== 0;
+    const fire = (bitset & (1 << 0)) !== 0;
+    const sprint = (bitset & (1 << 1)) !== 0;
+    const hasAimAngle = (bitset & (1 << 2)) !== 0;
 
     // facing: uint8
     const facing = reader.readUInt8() as Direction;
@@ -96,15 +78,6 @@ export class PlayerInputEvent implements GameEvent<PlayerInputEventData> {
     const dx = Math.floor(encoded / 3) - 1;
     const dy = (encoded % 3) - 1;
 
-    // inventoryItem: uint8
-    const inventoryItem = reader.readUInt8();
-
-    // consumeItemType: uint16 (only if bit is set)
-    let consumeItemType: ItemType | null = null;
-    if (hasConsumeItemType) {
-      consumeItemType = uint16ToItemType(reader.readUInt16());
-    }
-
     // aimAngle: uint16, unclamp by scaling from 0-65535 to 0-2π
     let aimAngle: number | undefined = undefined;
     if (hasAimAngle) {
@@ -116,12 +89,7 @@ export class PlayerInputEvent implements GameEvent<PlayerInputEventData> {
       facing,
       dx,
       dy,
-      interact,
       fire,
-      inventoryItem,
-      drop,
-      consume,
-      consumeItemType,
       sprint,
       aimAngle,
     };

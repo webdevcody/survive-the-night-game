@@ -300,7 +300,10 @@ export class Renderer {
     const inventory = (player as any).getInventory?.();
     if (!inventory) return;
 
-    const activeSlot = (player as any).getInput?.()?.inventoryItem || 1;
+    // Get slot from player entity (reads inputInventoryItem from server data)
+    const activeSlot = (player as any).getSelectedInventorySlot?.() !== undefined 
+      ? (player as any).getSelectedInventorySlot() + 1 // Convert 0-indexed to 1-indexed
+      : ((player as any).inputInventoryItem ?? 1);
     const activeItem = inventory[activeSlot - 1];
 
     // Check if active item is a weapon

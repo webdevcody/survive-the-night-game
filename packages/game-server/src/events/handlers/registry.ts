@@ -11,6 +11,10 @@ import { placeStructureHandler } from "./structure";
 import { playerRespawnRequestHandler } from "./respawn";
 import { teleportToBaseHandler } from "./teleport";
 import { disconnectHandler } from "./disconnect";
+import { dropItemHandler } from "./drop-item";
+import { consumeItemHandler } from "./consume-item";
+import { selectInventorySlotHandler } from "./select-inventory-slot";
+import { interactHandler } from "./interact";
 
 /**
  * Registry of all socket event handlers.
@@ -35,4 +39,8 @@ export const socketEventHandlers: SocketEventHandler[] = [
   playerRespawnRequestHandler,
   teleportToBaseHandler,
   disconnectHandler,
+  dropItemHandler,
+  consumeItemHandler,
+  selectInventorySlotHandler,
+  interactHandler,
 ];

@@ -16,8 +16,11 @@ export interface InputManagerOptions {
   onUp?: (inputs: Input) => void;
   onLeft?: (inputs: Input) => void;
   onRight?: (inputs: Input) => void;
-  onInteract?: (inputs: Input) => void;
-  onDrop?: (inputs: Input) => void;
+  onInteractStart?: () => void;
+  onInteractEnd?: () => void;
+  onSelectInventorySlot?: (slotIndex: number) => void;
+  onConsumeItem?: (itemType: string | null) => void;
+  onDropItem?: (slotIndex: number) => void;
   onToggleInstructions?: () => void;
   onShowPlayerList?: () => void;
   onHidePlayerList?: () => void;
@@ -33,6 +36,7 @@ export interface InputManagerOptions {
   onRespawnRequest?: () => void;
   onTeleportStart?: () => void;
   onTeleportCancel?: () => void;
+  onWeaponSelectByIndex?: (index: number) => void;
   isMerchantPanelOpen?: () => boolean;
   isFullscreenMapOpen?: () => boolean;
   isPlayerDead?: () => boolean;
@@ -56,7 +60,6 @@ const shouldBlock = new Set([
   "KeyQ",
   "KeyE",
   "KeyF",
-  "KeyG",
   "KeyH",
   "KeyC",
   "Escape",
@@ -78,14 +81,10 @@ export class InputManager {
     facing: Direction.Right,
     dx: 0,
     dy: 0,
-    interact: false,
     fire: false,
-    inventoryItem: 1,
-    drop: false,
-    consume: false,
-    consumeItemType: null,
     sprint: false,
   };
+  private currentInventorySlot: number = 1; // Track locally for drop/consume
   private lastInputs = {
     ...this.inputs,
   };
@@ -105,7 +104,7 @@ export class InputManager {
     const inventory = this.callbacks.getInventory?.() || [];
     if (inventory.length === 0) return;
 
-    const currentSlot = this.inputs.inventoryItem; // 1-indexed (1-10)
+    const currentSlot = this.currentInventorySlot; // 1-indexed (1-10)
     const maxSlots = getConfig().player.MAX_INVENTORY_SLOTS;
 
     // Find all slots that have items
@@ -153,9 +152,8 @@ export class InputManager {
     });
 
     if (healableItem) {
-      // Set the consumeItemType to the healable item and trigger consume
-      this.inputs.consumeItemType = healableItem.itemType;
-      this.inputs.consume = true;
+      // Send consume event with the healable item type
+      this.callbacks.onConsumeItem?.(healableItem.itemType);
     }
   }
 
@@ -321,10 +319,12 @@ export class InputManager {
           callbacks.onRight?.(this.inputs);
           break;
         case "KeyF":
-          callbacks.onInteract?.(this.inputs);
+          callbacks.onInteractStart?.();
           break;
         case "KeyG":
-          callbacks.onDrop?.(this.inputs);
+          // Drop currently selected item
+          const currentSlot = this.currentInventorySlot - 1; // Convert to 0-indexed
+          callbacks.onDropItem?.(currentSlot);
           break;
         case "Space":
           // Trigger attack with spacebar
@@ -409,10 +409,6 @@ export class InputManager {
 
       // Use physical key codes for WASD and other action keys
       switch (eventCode) {
-        case "KeyH":
-          this.inputs.consume = false;
-          this.inputs.consumeItemType = null;
-          break;
         case "KeyC":
           this.callbacks.onTeleportCancel?.();
           break;
@@ -441,10 +437,7 @@ export class InputManager {
           this.inputs.dx = this.inputs.dx === 1 ? 0 : this.inputs.dx;
           break;
         case "KeyF":
-          this.inputs.interact = false;
-          break;
-        case "KeyG":
-          this.inputs.drop = false;
+          callbacks.onInteractEnd?.();
           break;
         case "Space":
           // Release attack with spacebar
@@ -474,11 +467,7 @@ export class InputManager {
     // Reset all action inputs to their default state
     this.inputs.dx = 0;
     this.inputs.dy = 0;
-    this.inputs.interact = false;
     this.inputs.fire = false;
-    this.inputs.drop = false;
-    this.inputs.consume = false;
-    this.inputs.consumeItemType = null;
     this.inputs.sprint = false;
     this.checkIfChanged();
   }
@@ -498,12 +487,7 @@ export class InputManager {
         facing: this.inputs.facing,
         dx: 0,
         dy: 0,
-        interact: false,
         fire: false,
-        inventoryItem: this.inputs.inventoryItem,
-        drop: false,
-        consume: false,
-        consumeItemType: null,
         sprint: false,
       };
     }
@@ -533,12 +517,7 @@ export class InputManager {
         facing: this.inputs.facing,
         dx: 0,
         dy: 0,
-        interact: false,
         fire: false,
-        inventoryItem: this.inputs.inventoryItem,
-        drop: false,
-        consume: false,
-        consumeItemType: null,
         sprint: false,
       };
     }
@@ -564,13 +543,17 @@ export class InputManager {
       return;
     }
 
-    if (this.inputs.inventoryItem === slot) {
+    if (this.currentInventorySlot === slot) {
       return;
     }
 
-    this.inputs.inventoryItem = slot;
-    this.hasChanged = true;
+    this.currentInventorySlot = slot;
+    this.callbacks.onSelectInventorySlot?.(slot);
     this.callbacks.onInventorySlotChanged?.(slot);
+  }
+
+  getCurrentInventorySlot(): number {
+    return this.currentInventorySlot;
   }
 
   reset() {
@@ -595,37 +578,6 @@ export class InputManager {
     if (this.isChatting) return;
     this.inputs.fire = false;
     this.hasChanged = true;
-  }
-
-  /**
-   * Trigger a single-frame drop input (used for drag-to-drop interactions)
-   */
-  triggerDropTap() {
-    if (this.isChatting) return;
-
-    // If drop input is already active (e.g., key held), don't re-trigger
-    if (this.inputs.drop) {
-      return;
-    }
-
-    this.inputs.drop = true;
-    this.hasChanged = true;
-
-    const release = () => {
-      this.inputs.drop = false;
-      this.hasChanged = true;
-    };
-
-    const hasRaf = typeof window !== "undefined" && typeof window.requestAnimationFrame === "function";
-    if (hasRaf) {
-      window.requestAnimationFrame(() => {
-        window.requestAnimationFrame(() => {
-          release();
-        });
-      });
-    } else {
-      setTimeout(release, 50);
-    }
   }
 
   /**

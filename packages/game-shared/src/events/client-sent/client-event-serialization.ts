@@ -10,6 +10,10 @@ import { PlaceStructureEvent } from "./events/place-structure";
 import { PingEvent } from "./events/ping";
 import { PingUpdateEvent } from "./events/ping-update";
 import { NoPayloadEvent } from "./events/no-payload";
+import { DropItemEvent } from "./events/drop-item";
+import { ConsumeItemEvent } from "./events/consume-item";
+import { SelectInventorySlotEvent } from "./events/select-inventory-slot";
+import { InteractEvent } from "./events/interact";
 import {
   serializeEvent,
   deserializeEvent,
@@ -34,6 +38,10 @@ const eventRegistry: Record<string, IBufferWriter> = {
   [ClientSentEvents.REQUEST_FULL_STATE]: NoPayloadEvent,
   [ClientSentEvents.PLAYER_RESPAWN_REQUEST]: NoPayloadEvent,
   [ClientSentEvents.TELEPORT_TO_BASE]: NoPayloadEvent,
+  [ClientSentEvents.DROP_ITEM]: DropItemEvent,
+  [ClientSentEvents.CONSUME_ITEM]: ConsumeItemEvent,
+  [ClientSentEvents.SELECT_INVENTORY_SLOT]: SelectInventorySlotEvent,
+  [ClientSentEvents.INTERACT]: InteractEvent,
 };
 
 function isClientSentEvent(event: string): event is ClientSentEventType {
