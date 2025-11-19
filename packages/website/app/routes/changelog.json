@@ -1,5 +1,23 @@
 [
   {
+    "version": "0.19.0",
+    "date": "2025-11-18",
+    "changes": [
+      "Major event system refactor - reorganized events into proper folder structure with dedicated handler classes for better maintainability",
+      "Removed MonitoredBufferWriter - replaced with standard BufferWriter for improved performance and reduced overhead",
+      "Added pathfinding cache - implemented LRU cache for pathfinding results to significantly improve AI performance",
+      "Optimized lighting system - culling far-away light sources, reusing combined light maps, and only updating visible tiles for better frame rates",
+      "Refactored game state management - entities now organized by type for improved organization and faster lookups",
+      "Improved boss zombie mechanics - enhanced position calculation and hitbox management for more accurate combat",
+      "Added Pong event system - implemented latency tracking and connection quality monitoring for better network diagnostics",
+      "Enhanced connection handling - improved error handling, reconnection logic with exponential backoff, and connection timeouts",
+      "Removed decal system from biome editor - streamlined editor experience by eliminating decal handling and related components",
+      "Improved UI layout - updated chat widget bottom margin for better visual spacing",
+      "Type consistency improvements - changed player IDs from string to number type for consistency across the codebase",
+      "Refactored server architecture - moved event handlers into dedicated handlers directory and improved code organization"
+    ]
+  },
+  {
     "version": "0.18.0",
     "date": "2025-11-17",
     "changes": [
