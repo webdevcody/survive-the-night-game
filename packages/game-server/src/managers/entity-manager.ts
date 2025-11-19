@@ -32,6 +32,7 @@ const STATIC_ENTITIES: EntityType[] = [Entities.BOUNDARY, Entities.CAR];
 export class EntityManager implements IEntityManager {
   private entities: Entity[];
   private entityMap: Map<number, Entity> = new Map(); // Fast lookup by ID
+  private entitiesByType: Map<EntityType, Entity[]> = new Map(); // Fast lookup by type
   private players: Player[];
   private zombies: BaseEnemy[] = [];
   private merchants: Entity[] = [];
@@ -76,6 +77,10 @@ export class EntityManager implements IEntityManager {
 
   public getEntityById(id: number): Entity | null {
     return this.entityMap.get(id) ?? null;
+  }
+
+  public getEntitiesByType(type: EntityType): Entity[] {
+    return this.entitiesByType.get(type) ?? [];
   }
 
   public hasRegisteredItem(type: ItemType): boolean {
@@ -147,6 +152,14 @@ export class EntityManager implements IEntityManager {
   addEntity(entity: Entity) {
     this.entities.push(entity);
     this.entityMap.set(entity.getId(), entity);
+
+    // Add to type-based map
+    const entityType = entity.getType();
+    if (!this.entitiesByType.has(entityType)) {
+      this.entitiesByType.set(entityType, []);
+    }
+    this.entitiesByType.get(entityType)!.push(entity);
+
     if (entity.getType() === Entities.PLAYER) {
       this.players.push(entity as Player);
     }
@@ -235,6 +248,20 @@ export class EntityManager implements IEntityManager {
       // Remove from spatial grid if it's in there
       if (this.entityFinder && entity.hasExt(Positionable)) {
         this.entityFinder.removeEntity(entity);
+      }
+
+      // Remove from type-based map
+      const entityType = entity.getType();
+      const typeEntities = this.entitiesByType.get(entityType);
+      if (typeEntities) {
+        const typeIndex = typeEntities.indexOf(entity);
+        if (typeIndex > -1) {
+          typeEntities.splice(typeIndex, 1);
+        }
+        // Clean up empty arrays
+        if (typeEntities.length === 0) {
+          this.entitiesByType.delete(entityType);
+        }
       }
     }
 
@@ -358,6 +385,20 @@ export class EntityManager implements IEntityManager {
         }
       }
 
+      // Remove from type-based map
+      const entityType = entity.getType();
+      const typeEntities = this.entitiesByType.get(entityType);
+      if (typeEntities) {
+        const typeIndex = typeEntities.indexOf(entity);
+        if (typeIndex > -1) {
+          typeEntities.splice(typeIndex, 1);
+        }
+        // Clean up empty arrays
+        if (typeEntities.length === 0) {
+          this.entitiesByType.delete(entityType);
+        }
+      }
+
       // Return the ID to the pool for reuse
       this.availableIds.push(entity.getId());
     }
@@ -369,6 +410,7 @@ export class EntityManager implements IEntityManager {
   clear() {
     this.entities = [];
     this.entityMap.clear();
+    this.entitiesByType.clear();
     this.players = [];
     this.zombies = [];
     this.merchants = [];

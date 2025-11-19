@@ -22,12 +22,13 @@ export default class Combustible extends ExtensionBase {
   }
 
   public onDeath() {
-    const serialized = this.serialized as any;
     const position = this.self.getExt(Positionable).getPosition();
+    const numFires = this.serialized.get('numFires');
+    const spreadRadius = this.serialized.get('spreadRadius');
 
-    for (let i = 0; i < serialized.numFires; i++) {
+    for (let i = 0; i < numFires; i++) {
       const fire = this.entityFactory(Entities.FIRE);
-      const randomPosition = this.getRandomPositionInRadius(position, serialized.spreadRadius);
+      const randomPosition = this.getRandomPositionInRadius(position, spreadRadius);
       fire.getExt(Positionable).setPosition(randomPosition);
       this.self.getEntityManager().addEntity(fire);
     }
@@ -44,9 +45,8 @@ export default class Combustible extends ExtensionBase {
   }
 
   public serializeToBuffer(writer: BufferWriter, onlyDirty: boolean = false): void {
-    const serialized = this.serialized as any;
     writer.writeUInt8(encodeExtensionType(Combustible.type));
-    writer.writeUInt32(serialized.numFires);
-    writer.writeFloat64(serialized.spreadRadius);
+    writer.writeUInt32(this.serialized.get('numFires'));
+    writer.writeFloat64(this.serialized.get('spreadRadius'));
   }
 }

@@ -6,6 +6,7 @@ import { DEBUG_START_ZOMBIE } from "@shared/debug";
 import { IGameManagers, IEntityManager, IMapManager } from "@/managers/types";
 import Positionable from "@/extensions/positionable";
 import Vector2 from "@/util/vector2";
+import { IEntity } from "@/entities/types";
 import PoolManager from "@shared/util/pool-manager";
 import { BigZombie } from "@/entities/enemies/big-zombie";
 import { FastZombie } from "@/entities/enemies/fast-zombie";
@@ -94,6 +95,8 @@ export class MapManager implements IMapManager {
   private dockBiomePosition?: { x: number; y: number };
   private shedBiomePosition?: { x: number; y: number };
   private merchantBiomePositions: Array<{ x: number; y: number }> = [];
+  private carLocation?: Vector2 | null;
+  private carEntity?: IEntity | null;
 
   constructor() {}
 
@@ -471,9 +474,7 @@ export class MapManager implements IMapManager {
   }
 
   private isBossActive(): boolean {
-    return this.getEntityManager()
-      .getEntities()
-      .some((entity) => entity.getType() === Entities.BOSS_ZOMBIE);
+    return this.getEntityManager().getEntitiesByType(Entities.BOSS_ZOMBIE).length > 0;
   }
 
   private getFallbackBossSpawnLocation(): { x: number; y: number } {
@@ -504,10 +505,14 @@ export class MapManager implements IMapManager {
     this.collidablesLayer = Array(height)
       .fill(0)
       .map(() => Array(width).fill(-1));
+    this.carLocation = null;
+    this.carEntity = null;
   }
 
   generateMap() {
     this.getEntityManager().clear();
+    this.carLocation = null;
+    this.carEntity = null;
     this.generateSpatialGrid();
     this.initializeMap();
     this.selectRandomFarmBiomePosition();
@@ -709,15 +714,15 @@ export class MapManager implements IMapManager {
             // TODO: this is hacky for sure
             // Spawn the car entity at tile 265 (left side of car)
             const car = new Car(this.getGameManagers());
-            car
-              .getExt(Positionable)
-              .setPosition(
-                PoolManager.getInstance().vector2.claim(
-                  x * getConfig().world.TILE_SIZE,
-                  y * getConfig().world.TILE_SIZE
-                )
-              );
+            const carPosition = PoolManager.getInstance().vector2.claim(
+              x * getConfig().world.TILE_SIZE,
+              y * getConfig().world.TILE_SIZE
+            );
+            car.getExt(Positionable).setPosition(carPosition);
             this.getEntityManager().addEntity(car);
+            // Cache the car entity and location for fast lookup
+            this.carEntity = car;
+            this.carLocation = car.getExt(Positionable).getCenterPosition();
             carSpawned = true;
 
             // Clear the car tiles from collidables layer so pathfinding works
@@ -1072,11 +1077,6 @@ export class MapManager implements IMapManager {
     const totalSize = BIOME_SIZE * MAP_SIZE;
     const validPositions: Vector2[] = [];
 
-    // Get all car entities to check against
-    const carEntities = this.getEntityManager()
-      .getEntities()
-      .filter((e) => e.getType() === "car");
-
     // Collect all valid ground tile positions (8, 4, 14, 24 are grass/ground tiles)
     for (let y = 0; y < totalSize; y++) {
       for (let x = 0; x < totalSize; x++) {
@@ -1091,20 +1091,8 @@ export class MapManager implements IMapManager {
             y * getConfig().world.TILE_SIZE
           );
 
-          // Check if this position overlaps with any car entity
-          const overlapsWithCar = carEntities.some((car) => {
-            if (!car.hasExt(Positionable)) return false;
-            const carPos = car.getExt(Positionable).getPosition();
-            // Car is 2 tiles wide (32px), check if position is within car bounds
-            return (
-              position.x >= carPos.x &&
-              position.x < carPos.x + getConfig().world.TILE_SIZE * 2 &&
-              position.y >= carPos.y &&
-              position.y < carPos.y + getConfig().world.TILE_SIZE
-            );
-          });
-
-          if (!overlapsWithCar) {
+          // Check if this position overlaps with the car
+          if (!this.doesPositionOverlapWithCar(position)) {
             validPositions.push(position);
           }
         }
@@ -1175,19 +1163,62 @@ export class MapManager implements IMapManager {
     return false;
   }
 
-  public getCarLocation(): Vector2 | null {
-    // Get all car entities
-    const carEntities = this.getEntityManager()
-      .getEntities()
-      .filter((e) => e.getType() === "car");
+  /**
+   * Gets the car entity. Since there's only ever 1 car, this uses a cache.
+   */
+  private getCarEntity(): IEntity | null {
+    // Return cached car entity if available
+    if (this.carEntity !== undefined) {
+      return this.carEntity;
+    }
 
-    // Find the first car entity with a position
-    for (const car of carEntities) {
-      if (car.hasExt(Positionable)) {
-        return car.getExt(Positionable).getCenterPosition();
+    // Fallback: search for car entity if cache is not set (shouldn't happen after map load)
+    const entities = this.getEntityManager().getEntities();
+    for (const entity of entities) {
+      if (entity.getType() === "car") {
+        this.carEntity = entity;
+        return entity;
       }
     }
 
+    this.carEntity = null;
+    return null;
+  }
+
+  /**
+   * Checks if a position overlaps with the car entity.
+   * Car is 2 tiles wide (32px).
+   */
+  private doesPositionOverlapWithCar(position: Vector2): boolean {
+    const car = this.getCarEntity();
+    if (!car || !car.hasExt(Positionable)) {
+      return false;
+    }
+
+    const carPos = car.getExt(Positionable).getPosition();
+    // Car is 2 tiles wide (32px), check if position is within car bounds
+    return (
+      position.x >= carPos.x &&
+      position.x < carPos.x + getConfig().world.TILE_SIZE * 2 &&
+      position.y >= carPos.y &&
+      position.y < carPos.y + getConfig().world.TILE_SIZE
+    );
+  }
+
+  public getCarLocation(): Vector2 | null {
+    // Return cached car location if available
+    if (this.carLocation !== undefined) {
+      return this.carLocation;
+    }
+
+    // Fallback: search for car entity if cache is not set (shouldn't happen after map load)
+    const car = this.getCarEntity();
+    if (car && car.hasExt(Positionable)) {
+      this.carLocation = car.getExt(Positionable).getCenterPosition();
+      return this.carLocation;
+    }
+
+    this.carLocation = null;
     return null;
   }
 
@@ -1195,11 +1226,6 @@ export class MapManager implements IMapManager {
     const centerBiomeX = Math.floor(MAP_SIZE / 2);
     const centerBiomeY = Math.floor(MAP_SIZE / 2);
     const validPositions: Vector2[] = [];
-
-    // Get all car entities to check against
-    const carEntities = this.getEntityManager()
-      .getEntities()
-      .filter((e) => e.getType() === "car");
 
     // Iterate through the campsite biome tiles
     for (let y = 0; y < BIOME_SIZE; y++) {
@@ -1218,20 +1244,8 @@ export class MapManager implements IMapManager {
             mapY * getConfig().world.TILE_SIZE
           );
 
-          // Check if this position overlaps with any car entity
-          const overlapsWithCar = carEntities.some((car) => {
-            if (!car.hasExt(Positionable)) return false;
-            const carPos = car.getExt(Positionable).getPosition();
-            // Car is 2 tiles wide (32px), check if position is within car bounds
-            return (
-              position.x >= carPos.x &&
-              position.x < carPos.x + getConfig().world.TILE_SIZE * 2 &&
-              position.y >= carPos.y &&
-              position.y < carPos.y + getConfig().world.TILE_SIZE
-            );
-          });
-
-          if (!overlapsWithCar) {
+          // Check if this position overlaps with the car
+          if (!this.doesPositionOverlapWithCar(position)) {
             validPositions.push(position);
           }
         }

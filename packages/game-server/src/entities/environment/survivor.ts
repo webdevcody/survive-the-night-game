@@ -83,8 +83,8 @@ export class Survivor extends Entity {
     this.fireCooldown.update(deltaTime);
 
     // Always wander - use different center based on rescue status
-    const serialized = this.serialized as any;
-    if (serialized.isRescued) {
+    const isRescued = this.serialized.get('isRescued');
+    if (isRescued) {
       this.updateWanderingAtCampsite(deltaTime);
     } else {
       this.updateWanderingAtSpawn(deltaTime);
@@ -92,7 +92,7 @@ export class Survivor extends Entity {
     this.handleMovement(deltaTime);
 
     // Try to shoot at zombies (only when rescued)
-    if (serialized.isRescued && this.fireCooldown.isReady()) {
+    if (isRescued && this.fireCooldown.isReady()) {
       this.tryShootAtZombie();
     }
   }
@@ -328,8 +328,7 @@ export class Survivor extends Entity {
 
   private onRescue(entityId: number): void {
     // Only allow rescue if not already rescued
-    const serialized = this.serialized as any;
-    if (serialized.isRescued) {
+    if (this.serialized.get('isRescued')) {
       return;
     }
 
@@ -338,7 +337,7 @@ export class Survivor extends Entity {
 
     if (campsitePos) {
       this.getExt(Positionable).setPosition(campsitePos);
-      serialized.isRescued = true;
+      this.serialized.set('isRescued', true);
 
       // Add Destructible extension now that survivor is rescued (can take damage)
       this.addExtension(
@@ -391,7 +390,6 @@ export class Survivor extends Entity {
   }
 
   public getIsRescued(): boolean {
-    const serialized = this.serialized as any;
-    return serialized.isRescued;
+    return this.serialized.get('isRescued');
   }
 }

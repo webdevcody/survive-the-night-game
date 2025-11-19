@@ -37,8 +37,7 @@ export default class OneTimeTrigger extends ExtensionBase {
   }
 
   public update(deltaTime: number) {
-    const serialized = this.serialized as any;
-    if (serialized.hasTriggered) return;
+    if (this.serialized.get('hasTriggered')) return;
 
     // Update cooldown
     this.checkCooldown.update(deltaTime);
@@ -53,10 +52,11 @@ export default class OneTimeTrigger extends ExtensionBase {
 
     const positionable = this.self.getExt(Positionable);
     // Use serialized values for consistency (these never change after construction, but good practice)
-    const targetTypesSet = new Set<EntityType>(serialized.targetTypes);
+    const targetTypesSet = new Set<EntityType>(this.serialized.get('targetTypes'));
+    const triggerRadius = this.serialized.get('triggerRadius');
     const nearbyEntities = this.self
       .getEntityManager()
-      .getNearbyEntities(positionable.getCenterPosition(), serialized.triggerRadius, targetTypesSet);
+      .getNearbyEntities(positionable.getCenterPosition(), triggerRadius, targetTypesSet);
 
     // Check if any target entity is within trigger radius
     for (const entity of nearbyEntities) {
@@ -66,8 +66,8 @@ export default class OneTimeTrigger extends ExtensionBase {
       const selfPos = this.self.getExt(Positionable).getCenterPosition();
       const distance = entityPos.clone().sub(selfPos).length();
 
-      if (distance <= serialized.triggerRadius) {
-        serialized.hasTriggered = true;
+      if (distance <= triggerRadius) {
+        this.serialized.set('hasTriggered', true);
         this.triggerCallback?.();
         break;
       }
@@ -75,8 +75,7 @@ export default class OneTimeTrigger extends ExtensionBase {
   }
 
   public serializeToBuffer(writer: BufferWriter, onlyDirty: boolean = false): void {
-    const serialized = this.serialized as any;
     writer.writeUInt8(encodeExtensionType(OneTimeTrigger.type));
-    writer.writeBoolean(serialized.hasTriggered);
+    writer.writeBoolean(this.serialized.get('hasTriggered'));
   }
 }

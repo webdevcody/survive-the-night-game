@@ -38,21 +38,20 @@ export class Merchant extends Entity {
    * Randomizes the 3 shop items from the available merchant items
    */
   public randomizeShopItems(): void {
-    const serialized = this.serialized as any;
     const availableItems = [...getConfig().merchant.SHOP_ITEMS];
-    serialized.shopItems = [];
+    const shopItems: MerchantShopItem[] = [];
 
     // Pick 3 random items
     for (let i = 0; i < 3 && availableItems.length > 0; i++) {
       const randomIndex = Math.floor(Math.random() * availableItems.length);
-      serialized.shopItems.push(availableItems[randomIndex]);
+      shopItems.push(availableItems[randomIndex]);
       availableItems.splice(randomIndex, 1);
     }
+    this.serialized.set('shopItems', shopItems);
   }
 
   public getShopItems(): MerchantShopItem[] {
-    const serialized = this.serialized as any;
-    return serialized.shopItems;
+    return this.serialized.get('shopItems');
   }
 
   setPosition(position: Vector2): void {

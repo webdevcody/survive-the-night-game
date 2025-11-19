@@ -14,18 +14,15 @@ export default class Groupable extends ExtensionBase {
   }
 
   public getGroup(): Group {
-    const serialized = this.serialized as any;
-    return serialized.group;
+    return this.serialized.get('group');
   }
 
   public setGroup(group: Group): void {
-    const serialized = this.serialized as any;
-    serialized.group = group;
+    this.serialized.set('group', group);
   }
 
   public serializeToBuffer(writer: BufferWriter, onlyDirty: boolean = false): void {
-    const serialized = this.serialized as any;
     writer.writeUInt8(encodeExtensionType(Groupable.type));
-    writer.writeString(serialized.group);
+    writer.writeString(this.serialized.get('group'));
   }
 }

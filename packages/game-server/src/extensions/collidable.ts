@@ -13,22 +13,22 @@ export default class Collidable extends ExtensionBase {
 
   private size: Vector2;
   private offset: Vector2;
+  private readonly hitBox: Rectangle;
 
   public constructor(self: IEntity) {
     super(self, { size: { x: 16, y: 16 }, offset: { x: 0, y: 0 }, enabled: true });
     this.size = PoolManager.getInstance().vector2.claim(16, 16);
     this.offset = PoolManager.getInstance().vector2.claim(0, 0);
+    this.hitBox = PoolManager.getInstance().rectangle.claim(0, 0, 0, 0);
   }
 
   public setEnabled(enabled: boolean) {
-    const serialized = this.serialized as any;
-    serialized.enabled = enabled;
+    this.serialized.set("enabled", enabled);
     return this;
   }
 
   public isEnabled() {
-    const serialized = this.serialized as any;
-    return serialized.enabled;
+    return this.serialized.get("enabled");
   }
 
   public setSize(size: Vector2) {
@@ -59,10 +59,9 @@ export default class Collidable extends ExtensionBase {
   }
 
   public serializeToBuffer(writer: BufferWriter, onlyDirty: boolean = false): void {
-    const serialized = this.serialized as any;
     writer.writeUInt8(encodeExtensionType(Collidable.type));
     writer.writeVector2(this.offset);
     writer.writeVector2(this.size);
-    writer.writeBoolean(serialized.enabled);
+    writer.writeBoolean(this.serialized.get("enabled"));
   }
 }

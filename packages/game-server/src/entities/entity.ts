@@ -180,12 +180,12 @@ export class Entity<TSerializableFields extends readonly string[] = readonly str
 
   /**
    * Mark entity as dirty (called automatically when serialized fields change).
-   * @deprecated Use serialized.set() or serialized.field = value instead
+   * @deprecated Use serialized.set() instead
    */
   protected markFieldDirty(fieldName: TSerializableFields[number]): void {
-    // Legacy support - now handled automatically by SerializableFields Proxy
+    // Legacy support - now handled automatically by SerializableFields.set()
     // This method is kept for backward compatibility but does nothing
-    // since the Proxy automatically marks fields dirty
+    // since set() automatically marks fields dirty
   }
 
   /**

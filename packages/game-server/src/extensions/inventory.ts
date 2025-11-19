@@ -62,28 +62,25 @@ export default class Inventory extends ExtensionBase {
   }
 
   public getItems(): InventoryItem[] {
-    const serialized = this.serialized as any;
-    return serialized.items;
+    return this.serialized.get('items');
   }
 
   public isFull(): boolean {
-    const serialized = this.serialized as any;
-    const items = serialized.items;
+    const items = this.serialized.get('items');
     // Count non-null items instead of array length to support sparse arrays
     const itemCount = items.filter((item: InventoryItem | null) => item != null).length;
     return itemCount >= getConfig().player.MAX_INVENTORY_SLOTS;
   }
 
   public hasItem(itemType: ItemType): boolean {
-    const serialized = this.serialized as any;
-    return serialized.items.some((it: InventoryItem | null) => it?.itemType === itemType);
+    const items = this.serialized.get('items');
+    return items.some((it: InventoryItem | null) => it?.itemType === itemType);
   }
 
   public addItem(item: InventoryItem): void {
     if (this.isFull()) return;
 
-    const serialized = this.serialized as any;
-    const items = serialized.items;
+    const items = this.serialized.get('items');
 
     // Find first empty slot (null/undefined) to fill
     const emptySlotIndex = items.findIndex((it: InventoryItem | null) => it == null);
@@ -95,7 +92,7 @@ export default class Inventory extends ExtensionBase {
     }
 
     // Update serialized (array reference changes, so assign new array to trigger dirty)
-    serialized.items = [...items];
+    this.serialized.set('items', [...items]);
     // Explicitly mark dirty to ensure inventory changes are broadcast
     this.markDirty();
 
@@ -108,14 +105,13 @@ export default class Inventory extends ExtensionBase {
   }
 
   public removeItem(index: number): InventoryItem | undefined {
-    const serialized = this.serialized as any;
-    const items = serialized.items;
+    const items = this.serialized.get('items');
     // Don't use splice - just set to null to preserve inventory positions
     const item = items[index];
     if (item != null) {
       items[index] = null;
       // Update serialized (array reference changes, so assign new array to trigger dirty)
-      serialized.items = [...items];
+      this.serialized.set('items', [...items]);
       // Explicitly mark dirty to ensure inventory changes are broadcast
       this.markDirty();
     }
@@ -123,12 +119,11 @@ export default class Inventory extends ExtensionBase {
   }
 
   public updateItemState(index: number, state: any): void {
-    const serialized = this.serialized as any;
-    const items = serialized.items;
+    const items = this.serialized.get('items');
     if (index >= 0 && index < items.length && items[index] != null) {
       items[index].state = state;
       // Update serialized (array reference changes, so assign new array to trigger dirty)
-      serialized.items = [...items];
+      this.serialized.set('items', [...items]);
       // Explicitly mark dirty to ensure inventory changes are broadcast
       this.markDirty();
     }
@@ -136,8 +131,7 @@ export default class Inventory extends ExtensionBase {
 
   public getActiveItem(index: number | null): InventoryItem | null {
     if (index === null) return null;
-    const serialized = this.serialized as any;
-    const items = serialized.items;
+    const items = this.serialized.get('items');
     // TODO: refactor this to be 0 based, why are we subtracting 1?
     return items[index - 1] ?? null;
   }
@@ -155,15 +149,15 @@ export default class Inventory extends ExtensionBase {
     resources: { wood: number; cloth: number };
     itemToDrop?: InventoryItem;
   } {
-    const serialized = this.serialized as any;
+    const items = this.serialized.get('items');
     const foundRecipe = recipes.find((it) => it.getType() === recipe);
     if (foundRecipe === undefined) {
-      return { inventory: serialized.items, resources };
+      return { inventory: items, resources };
     }
 
     const maxSlots = getConfig().player.MAX_INVENTORY_SLOTS;
-    const result = foundRecipe.craft(serialized.items, resources, maxSlots);
-    serialized.items = result.inventory;
+    const result = foundRecipe.craft(items, resources, maxSlots);
+    this.serialized.set('items', result.inventory);
     // Explicitly mark dirty to ensure inventory changes are broadcast
     this.markDirty();
     return result;
@@ -201,18 +195,18 @@ export default class Inventory extends ExtensionBase {
   }
 
   public clear(): void {
-    const serialized = this.serialized as any;
-    if (serialized.items.length > 0) {
-      serialized.items = [];
+    const items = this.serialized.get('items');
+    if (items.length > 0) {
+      this.serialized.set('items', []);
       // Explicitly mark dirty to ensure inventory changes are broadcast
       this.markDirty();
     }
   }
 
   public scatterItems(position: { x: number; y: number }): void {
-    const serialized = this.serialized as any;
+    const items = this.serialized.get('items');
     const offset = 32;
-    serialized.items.forEach((item: InventoryItem | null) => {
+    items.forEach((item: InventoryItem | null) => {
       if (item == null) return; // Skip null/undefined items
       const entity = this.createEntityFromItem(item);
       if (!entity) return;
@@ -232,7 +226,7 @@ export default class Inventory extends ExtensionBase {
 
       this.self.getEntityManager()?.addEntity(entity);
     });
-    serialized.items = [];
+    this.serialized.set('items', []);
     // Explicitly mark dirty to ensure inventory changes are broadcast
     this.markDirty();
   }
@@ -242,9 +236,8 @@ export default class Inventory extends ExtensionBase {
   }
 
   public serializeToBuffer(writer: BufferWriter, onlyDirty: boolean = false): void {
-    const serialized = this.serialized as any;
     writer.writeUInt8(encodeExtensionType(Inventory.type));
-    writer.writeArray(serialized.items, (item: InventoryItem | null) => {
+    writer.writeArray(this.serialized.get('items'), (item: InventoryItem | null) => {
       if (item === null || item === undefined) {
         writer.writeBoolean(false);
       } else {

@@ -38,14 +38,12 @@ export default class Destructible extends ExtensionBase {
   }
 
   public setHealth(health: number): this {
-    const serialized = this.serialized as any;
-    serialized.health = health;
+    this.serialized.set("health", health);
     return this;
   }
 
   public setMaxHealth(maxHealth: number): this {
-    const serialized = this.serialized as any;
-    serialized.maxHealth = maxHealth;
+    this.serialized.set("maxHealth", maxHealth);
     return this;
   }
 
@@ -54,8 +52,8 @@ export default class Destructible extends ExtensionBase {
       return;
     }
 
-    const serialized = this.serialized as any;
-    serialized.health = Math.max(0, serialized.health - damage);
+    const currentHealth = this.serialized.get("health");
+    this.serialized.set("health", Math.max(0, currentHealth - damage));
     this.onDamagedHandler?.();
 
     if (this.isDead()) {
@@ -64,8 +62,7 @@ export default class Destructible extends ExtensionBase {
   }
 
   public kill(): void {
-    const serialized = this.serialized as any;
-    serialized.health = 0;
+    this.serialized.set("health", 0);
     this.deathHandler?.();
   }
 
@@ -87,29 +84,26 @@ export default class Destructible extends ExtensionBase {
     if (this.isDead()) {
       return;
     }
-    const serialized = this.serialized as any;
-    serialized.health = Math.min(serialized.health + amount, serialized.maxHealth);
+    const currentHealth = this.serialized.get("health");
+    const maxHealth = this.serialized.get("maxHealth");
+    this.serialized.set("health", Math.min(currentHealth + amount, maxHealth));
   }
 
   public isDead(): boolean {
-    const serialized = this.serialized as any;
-    return serialized.health === 0;
+    return this.serialized.get("health") === 0;
   }
 
   public getHealth(): number {
-    const serialized = this.serialized as any;
-    return serialized.health;
+    return this.serialized.get("health");
   }
 
   public getMaxHealth(): number {
-    const serialized = this.serialized as any;
-    return serialized.maxHealth;
+    return this.serialized.get("maxHealth");
   }
 
   public serializeToBuffer(writer: BufferWriter, onlyDirty: boolean = false): void {
-    const serialized = this.serialized as any;
     writer.writeUInt8(encodeExtensionType(Destructible.type));
-    writer.writeUInt8(serialized.health);
-    writer.writeUInt8(serialized.maxHealth);
+    writer.writeUInt8(this.serialized.get("health"));
+    writer.writeUInt8(this.serialized.get("maxHealth"));
   }
 }

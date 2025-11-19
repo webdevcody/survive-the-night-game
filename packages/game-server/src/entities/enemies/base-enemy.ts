@@ -101,8 +101,7 @@ export abstract class BaseEnemy extends Entity {
 
   protected setCurrentWaypoint(waypoint: Vector2 | null) {
     this.currentWaypoint = waypoint;
-    const serialized = this.serialized as any;
-    serialized.debugWaypoint = waypoint;
+    this.serialized.set('debugWaypoint', waypoint);
   }
 
   onDamaged(): void {

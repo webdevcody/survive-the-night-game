@@ -20,14 +20,15 @@ export default class Ignitable extends ExtensionBase {
   }
 
   public update(deltaTime: number) {
-    const serialized = this.serialized as any;
     this.cooldown.update(deltaTime);
     if (this.cooldown.isReady()) {
       this.cooldown.reset();
       this.self.getExt(Destructible).damage(this.damage);
-      serialized.totalDamage += this.damage;
+      const currentTotalDamage = this.serialized.get('totalDamage');
+      this.serialized.set('totalDamage', currentTotalDamage + this.damage);
 
-      if (serialized.totalDamage >= serialized.maxDamage) {
+      const maxDamage = this.serialized.get('maxDamage');
+      if (currentTotalDamage + this.damage >= maxDamage) {
         this.self.removeExtension(this);
       }
     }

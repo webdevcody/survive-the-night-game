@@ -5,7 +5,7 @@ import Vector2 from "@/util/vector2";
 
 /**
  * Base class for extensions that provides automatic dirty tracking via SerializableFields.
- * Extensions can extend this class and use `this.serialized.field = value` to automatically mark dirty.
+ * Extensions can extend this class and use `this.serialized.set('field', value)` to automatically mark dirty.
  *
  * Usage:
  *   class MyExtension extends ExtensionBase {
@@ -14,11 +14,11 @@ import Vector2 from "@/util/vector2";
  *     }
  *
  *     setMyField(value: number) {
- *       this.serialized.myField = value; // Automatically marks dirty
+ *       this.serialized.set('myField', value); // Automatically marks dirty
  *     }
  *
  *     serializeToBuffer(writer: BufferWriter) {
- *       writer.writeFloat64(this.serialized.myField);
+ *       writer.writeFloat64(this.serialized.get('myField'));
  *     }
  *   }
  *
@@ -47,11 +47,10 @@ export abstract class ExtensionBase implements Extension {
    * Updates both the Vector2 object and the serialized field, automatically marking dirty.
    */
   protected setVector2Field(fieldName: string, vector: Vector2, newValue: Vector2): void {
-    const serialized = this.serialized as any;
     const changed = vector.x !== newValue.x || vector.y !== newValue.y;
     if (changed) {
       vector.reset(newValue.x, newValue.y);
-      serialized[fieldName] = { x: newValue.x, y: newValue.y };
+      this.serialized.set(fieldName, { x: newValue.x, y: newValue.y });
     }
   }
 
@@ -59,8 +58,7 @@ export abstract class ExtensionBase implements Extension {
    * Helper method to get a Vector2 field from serialized storage.
    */
   protected getVector2FromSerialized(fieldName: string): { x: number; y: number } {
-    const serialized = this.serialized as any;
-    return serialized[fieldName];
+    return this.serialized.get(fieldName);
   }
 
   public isDirty(): boolean {

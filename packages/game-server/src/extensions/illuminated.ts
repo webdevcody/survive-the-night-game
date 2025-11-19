@@ -12,13 +12,11 @@ export default class Illuminated extends ExtensionBase {
   }
 
   public getRadius(): number {
-    const serialized = this.serialized as any;
-    return serialized.radius;
+    return this.serialized.get('radius');
   }
 
   public setRadius(radius: number): this {
-    const serialized = this.serialized as any;
-    serialized.radius = radius;
+    this.serialized.set('radius', radius);
     return this;
   }
 
@@ -26,9 +24,8 @@ export default class Illuminated extends ExtensionBase {
     writer: BufferWriter,
     onlyDirty: boolean = false
   ): void {
-    const serialized = this.serialized as any;
     writer.writeUInt8(encodeExtensionType(Illuminated.type));
-    writer.writeUInt16(serialized.radius);
+    writer.writeUInt16(this.serialized.get('radius'));
   }
 }
 

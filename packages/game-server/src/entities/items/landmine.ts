@@ -56,9 +56,9 @@ export class Landmine extends Entity implements IEntity {
   }
 
   private setIsActive(value: boolean): void {
-    const serialized = this.serialized as any;
-    if (serialized.isActive !== value) {
-      serialized.isActive = value;
+    const currentIsActive = this.serialized.get('isActive');
+    if (currentIsActive !== value) {
+      this.serialized.set('isActive', value);
     }
   }
 
@@ -74,8 +74,8 @@ export class Landmine extends Entity implements IEntity {
 
   public updateLandmine(deltaTime: number) {
     this.untilActive.update(deltaTime);
-    const serialized = this.serialized as any;
-    if (this.untilActive.isReady() && !serialized.isActive) {
+    const isActive = this.serialized.get('isActive');
+    if (this.untilActive.isReady() && !isActive) {
       this.activate();
     }
   }

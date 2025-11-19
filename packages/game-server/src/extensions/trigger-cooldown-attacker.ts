@@ -44,19 +44,18 @@ export default class TriggerCooldownAttacker extends ExtensionBase {
   }
 
   public getIsReady(): boolean {
-    const serialized = this.serialized as any;
-    return serialized.isReady;
+    return this.serialized.get('isReady');
   }
 
   public update(deltaTime: number) {
-    const serialized = this.serialized as any;
     this.attackCooldown.update(deltaTime);
     this.checkCooldown.update(deltaTime);
 
     // Only update serialized if value actually changed to avoid unnecessary dirty marking
     const newIsReady = this.attackCooldown.isReady();
-    if (serialized.isReady !== newIsReady) {
-      serialized.isReady = newIsReady;
+    const currentIsReady = this.serialized.get('isReady');
+    if (currentIsReady !== newIsReady) {
+      this.serialized.set('isReady', newIsReady);
     }
 
     // Early exit: skip expensive spatial query if attack cooldown isn't ready
@@ -105,8 +104,7 @@ export default class TriggerCooldownAttacker extends ExtensionBase {
   }
 
   public serializeToBuffer(writer: BufferWriter, onlyDirty: boolean = false): void {
-    const serialized = this.serialized as any;
     writer.writeUInt8(encodeExtensionType(TriggerCooldownAttacker.type));
-    writer.writeBoolean(serialized.isReady);
+    writer.writeBoolean(this.serialized.get('isReady'));
   }
 }

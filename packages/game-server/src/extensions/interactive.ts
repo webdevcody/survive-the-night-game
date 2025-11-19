@@ -34,14 +34,12 @@ export default class Interactive extends ExtensionBase {
   }
 
   public setDisplayName(name: string): this {
-    const serialized = this.serialized as any;
-    serialized.displayName = name;
+    this.serialized.set('displayName', name);
     return this;
   }
 
   public getDisplayName(): string {
-    const serialized = this.serialized as any;
-    return serialized.displayName;
+    return this.serialized.get('displayName');
   }
 
   public interact(entityId: number): void {
@@ -49,9 +47,8 @@ export default class Interactive extends ExtensionBase {
   }
 
   public serializeToBuffer(writer: BufferWriter, onlyDirty: boolean = false): void {
-    const serialized = this.serialized as any;
     writer.writeUInt8(encodeExtensionType(Interactive.type));
-    writer.writeString(serialized.displayName);
+    writer.writeString(this.serialized.get('displayName'));
     writer.writeVector2(this.offset);
   }
 }

@@ -4,7 +4,12 @@ import { ClientSocketManager } from "@/managers/client-socket-manager";
 import { PlayerClient } from "@/entities/player";
 import { CameraManager } from "@/managers/camera";
 import { MapManager } from "@/managers/map";
-import { GameState, getEntityById, removeEntity as removeEntityFromState } from "@/state";
+import {
+  GameState,
+  getEntityById,
+  getEntitiesByType,
+  removeEntity as removeEntityFromState,
+} from "@/state";
 import { MerchantBuyPanel } from "@/ui/merchant-buy-panel";
 import { StorageManager } from "@/managers/storage";
 import { Hud } from "@/ui/hud";
@@ -284,7 +289,7 @@ export class GameClient {
         const player = getPlayer();
         if (player) {
           const playerPos = player.getPosition();
-          const merchants = this.gameState.entities.filter((e) => e.getType() === "merchant");
+          const merchants = getEntitiesByType(this.gameState, "merchant");
 
           for (const merchantEntity of merchants) {
             if (merchantEntity.hasExt(ClientPositionable)) {
@@ -369,6 +374,7 @@ export class GameClient {
       playerId: 0,
       entities: [],
       entityMap: new Map(),
+      entitiesByType: new Map(),
       // Wave system
       waveNumber: 1,
       waveState: WaveState.PREPARATION, // Start in preparation phase

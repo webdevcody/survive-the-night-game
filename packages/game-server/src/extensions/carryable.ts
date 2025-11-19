@@ -21,19 +21,16 @@ export default class Carryable extends ExtensionBase {
   }
 
   public setItemState(state: ItemState): this {
-    const serialized = this.serialized as any;
-    serialized.state = state;
+    this.serialized.set('state', state);
     return this;
   }
 
   public getItemState(): ItemState {
-    const serialized = this.serialized as any;
-    return serialized.state;
+    return this.serialized.get('state');
   }
 
   public getItemType(): ItemType {
-    const serialized = this.serialized as any;
-    return serialized.itemType;
+    return this.serialized.get('itemType');
   }
 
   /**
@@ -54,8 +51,7 @@ export default class Carryable extends ExtensionBase {
   }
 
   public pickup(entityId: number, options?: PickupOptions): boolean {
-    const serialized = this.serialized as any;
-    const itemType = serialized.itemType;
+    const itemType = this.serialized.get('itemType');
 
     // Prevent crash if itemType is null (entity may be in invalid state)
     if (!itemType) {
@@ -116,9 +112,8 @@ export default class Carryable extends ExtensionBase {
   }
 
   public serializeToBuffer(writer: BufferWriter, onlyDirty: boolean = false): void {
-    const serialized = this.serialized as any;
     writer.writeUInt8(encodeExtensionType(Carryable.type));
-    writer.writeString(serialized.itemType);
-    writer.writeRecord(serialized.state, (value) => writer.writeFloat64(value as number));
+    writer.writeString(this.serialized.get('itemType'));
+    writer.writeRecord(this.serialized.get('state'), (value) => writer.writeFloat64(value as number));
   }
 }

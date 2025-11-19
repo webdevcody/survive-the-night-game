@@ -67,10 +67,10 @@ export function onPlaceStructure(
   }
 
   // Check if any entities are at this position
-  const entities = context.getEntityManager().getEntities();
   const structureSize = TILE_SIZE;
+  const nearbyEntities = context.getEntityManager().getNearbyEntities(placePos, structureSize * 2);
 
-  for (const entity of entities) {
+  for (const entity of nearbyEntities) {
     if (!entity.hasExt(Positionable)) continue;
 
     const entityPos = entity.getExt(Positionable).getCenterPosition();

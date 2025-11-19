@@ -77,24 +77,24 @@ export class BearTrap extends Entity implements IEntity {
   }
 
   private setIsArmed(value: boolean): void {
-    const serialized = this.serialized as any;
-    if (serialized.isArmed !== value) {
-      serialized.isArmed = value;
+    const currentIsArmed = this.serialized.get('isArmed');
+    if (currentIsArmed !== value) {
+      this.serialized.set('isArmed', value);
     }
   }
 
   private setSnaredZombieId(id: number | null): void {
-    const serialized = this.serialized as any;
-    if (serialized.snaredZombieId !== id) {
-      serialized.snaredZombieId = id;
+    const currentSnaredZombieId = this.serialized.get('snaredZombieId');
+    if (currentSnaredZombieId !== id) {
+      this.serialized.set('snaredZombieId', id);
     }
   }
 
   public updateBearTrap(deltaTime: number) {
-    const serialized = this.serialized as any;
+    const snaredZombieId = this.serialized.get('snaredZombieId');
     // Keep the snared zombie's velocity at 0 (backup in case movement strategy tries to override)
-    if (serialized.snaredZombieId) {
-      const zombie = this.getEntityManager().getEntityById(serialized.snaredZombieId);
+    if (snaredZombieId) {
+      const zombie = this.getEntityManager().getEntityById(snaredZombieId);
       if (zombie && zombie.hasExt(Movable)) {
         const poolManager = PoolManager.getInstance();
         zombie.getExt(Movable).setVelocity(poolManager.vector2.claim(0, 0));
@@ -106,8 +106,7 @@ export class BearTrap extends Entity implements IEntity {
   }
 
   private snare() {
-    const serialized = this.serialized as any;
-    if (!serialized.isArmed) return;
+    if (!this.serialized.get('isArmed')) return;
 
     const position = this.getExt(Positionable).getCenterPosition();
     const nearbyEntities = this.getEntityManager().getNearbyEntities(
@@ -162,8 +161,7 @@ export class BearTrap extends Entity implements IEntity {
     if (!entity || entity.getType() !== Entities.PLAYER) return;
 
     // If disarmed, rearm the trap
-    const serialized = this.serialized as any;
-    if (!serialized.isArmed) {
+    if (!this.serialized.get('isArmed')) {
       // Clear the snared zombie reference
       this.activate();
       return;

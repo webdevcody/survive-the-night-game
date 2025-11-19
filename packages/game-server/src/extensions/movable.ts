@@ -47,8 +47,7 @@ export default class Movable extends ExtensionBase {
       // Only mark dirty if velocity actually changed (avoid marking dirty every frame if velocity is 0)
       if (Math.abs(oldX - this.velocity.x) > 0.001 || Math.abs(oldY - this.velocity.y) > 0.001) {
         // Update serialized field to mark dirty
-        const serialized = this.serialized as any;
-        serialized.velocity = { x: this.velocity.x, y: this.velocity.y };
+        this.serialized.set('velocity', { x: this.velocity.x, y: this.velocity.y });
       }
     }
   }

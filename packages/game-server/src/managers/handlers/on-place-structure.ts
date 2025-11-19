@@ -66,10 +66,10 @@ export function onPlaceStructure(
   }
 
   // Check if any entities are at this position
-  const entities = context.getEntityManager().getEntities();
   const structureSize = TILE_SIZE;
+  const nearbyEntities = context.getEntityManager().getNearbyEntities(placePos, structureSize * 2);
 
-  for (const entity of entities) {
+  for (const entity of nearbyEntities) {
     if (!entity.hasExt(Positionable)) continue;
 
     const entityPos = entity.getExt(Positionable).getCenterPosition();
@@ -114,9 +114,7 @@ export function onPlaceStructure(
   placedEntity.getExt(Positionable).setPosition(placePos);
   context.getEntityManager().addEntity(placedEntity);
 
-  console.log(
-    `Player ${player.getId()} placed ${data.itemType} at (${placePos.x}, ${placePos.y})`
-  );
+  console.log(`Player ${player.getId()} placed ${data.itemType} at (${placePos.x}, ${placePos.y})`);
 
   // Broadcast build event if item has a placeSound configured
   if (itemConfig.placeSound) {
@@ -129,4 +127,3 @@ export function onPlaceStructure(
     );
   }
 }
-
