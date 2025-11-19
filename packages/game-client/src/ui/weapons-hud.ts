@@ -9,8 +9,8 @@ import { Z_INDEX } from "@shared/map";
 const TWO_PI = Math.PI * 2;
 
 const WHEEL = {
-  innerRadius: 80,
-  outerRadius: 250,
+  innerRadius: 60,
+  outerRadius: 220,
 
   segmentLocked: "#2a1a0f",
   segmentOwned: "#3d2617",
@@ -310,8 +310,10 @@ export class WeaponsHUD implements Renderable {
     const iconX = cx + Math.cos(angle) * (rIn + (rOut - rIn) * 0.55);
     const iconY = cy + Math.sin(angle) * (rIn + (rOut - rIn) * 0.55);
 
-    const textX = iconX + item.iconW / 2 + 2 * scale;
-    const textY = iconY + item.iconH / 2 + 2 * scale;
+    const translateX = 25;
+    const translateY = 25;
+    const textX = iconX + translateX * scale;
+    const textY = iconY + translateY * scale;
 
     const fontSize = 14 * scale;
     ctx.font = `bold ${fontSize}px Arial`;
