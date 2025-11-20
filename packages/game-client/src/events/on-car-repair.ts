@@ -5,7 +5,11 @@ import { ClientEventContext } from "./types";
 
 export const onCarRepair = (context: ClientEventContext, event: CarRepairEvent) => {
   if (!context.shouldProcessEntityEvent()) return;
-  const car = context.gameClient.getEntityById(event.getCarId());
+
+  const carId = event.getCarId();
+  if (!carId) return;
+
+  const car = context.gameClient.getEntityById(carId);
   if (!car || !car.hasExt(ClientPositionable)) return;
 
   const carPosition = car.getExt(ClientPositionable).getCenterPosition();

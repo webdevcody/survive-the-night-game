@@ -7,7 +7,7 @@ import { GameOverDialogUI } from "@/ui/game-over-dialog";
 import { ParticleManager } from "./managers/particles";
 import { PlacementManager } from "./managers/placement";
 import { ClientPositionable } from "@/extensions/positionable";
-import { ClientInteractive } from "@/extensions";
+import { ClientInteractive, ClientInventory } from "@/extensions";
 import { ClientEntityBase } from "@/extensions/client-entity";
 import { getConfig } from "@shared/config";
 import { perfTimer } from "@shared/util/performance";
@@ -15,10 +15,7 @@ import { DEBUG_PERFORMANCE } from "@shared/debug";
 import { isWeapon } from "@shared/util/inventory";
 import { PlayerClient } from "@/entities/player";
 import { Entities } from "@shared/constants";
-import {
-  beginInteractionTextFrame,
-  flushInteractionText,
-} from "@/util/interaction-text";
+import { beginInteractionTextFrame, flushInteractionText } from "@/util/interaction-text";
 
 export class Renderer {
   private ctx: CanvasRenderingContext2D;
@@ -139,7 +136,7 @@ export class Renderer {
         distanceSquared <= interactRadiusSquared
       ) {
         const isDeadPlayer =
-          entity.getType() === Entities.PLAYER && (entity as PlayerClient).isDead();
+          entity.getType() === Entities.PLAYER && entity instanceof PlayerClient && entity.isDead();
 
         // Priority: dead players first, then closest by distance (using squared distance for comparison)
         let isCloser = false;
@@ -187,7 +184,6 @@ export class Renderer {
     perfTimer.start("renderCollidables");
     this.mapManager.renderCollidables(this.ctx);
     perfTimer.end("renderCollidables");
-
 
     // Render entities
     perfTimer.start("renderEntities");
@@ -294,16 +290,18 @@ export class Renderer {
       ? this.gameState.entities.find((e) => e.getId() === this.gameState.playerId)
       : null;
 
-    if (!player) return;
+    if (!player || !(player instanceof PlayerClient)) return;
+
+    // Defensive check: ensure player has inventory extension
+    if (!player.hasExt(ClientInventory)) return;
 
     // Get player's active inventory item
-    const inventory = (player as any).getInventory?.();
-    if (!inventory) return;
+    const inventory = player.getInventory();
+    if (!inventory || !Array.isArray(inventory)) return;
 
     // Get slot from player entity (reads inputInventoryItem from server data)
-    const activeSlot = (player as any).getSelectedInventorySlot?.() !== undefined 
-      ? (player as any).getSelectedInventorySlot() + 1 // Convert 0-indexed to 1-indexed
-      : ((player as any).inputInventoryItem ?? 1);
+    const selectedSlot = player.getSelectedInventorySlot();
+    const activeSlot = selectedSlot >= 0 ? selectedSlot + 1 : 1; // Convert 0-indexed to 1-indexed
     const activeItem = inventory[activeSlot - 1];
 
     // Check if active item is a weapon

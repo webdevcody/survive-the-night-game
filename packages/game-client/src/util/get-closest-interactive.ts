@@ -11,9 +11,7 @@ import { PlayerClient } from "@/entities/player";
  * Finds the closest interactive entity to the player.
  * Uses the same logic as the server-side interaction handling.
  */
-export function getClosestInteractiveEntity(
-  gameState: GameState
-): ClientEntityBase | null {
+export function getClosestInteractiveEntity(gameState: GameState): ClientEntityBase | null {
   const player = getPlayer(gameState);
   if (!player || !player.hasExt(ClientPositionable)) {
     return null;
@@ -44,8 +42,7 @@ export function getClosestInteractiveEntity(
       entity,
       distance: distance(playerPos, entityPos),
       isDeadPlayer:
-        entity.getType() === Entities.PLAYER &&
-        (entity as PlayerClient).isDead(),
+        entity.getType() === Entities.PLAYER && entity instanceof PlayerClient && entity.isDead(),
     };
   });
 
@@ -60,4 +57,3 @@ export function getClosestInteractiveEntity(
 
   return entityData[0].entity;
 }
-

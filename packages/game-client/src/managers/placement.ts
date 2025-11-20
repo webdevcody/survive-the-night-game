@@ -9,7 +9,7 @@ import { ISocketAdapter } from "@shared/network/socket-adapter";
 import { ClientSentEvents } from "@shared/events/events";
 import { PlayerClient } from "@/entities/player";
 import { ClientEntityBase } from "@/extensions/client-entity";
-import { ClientPositionable } from "@/extensions";
+import { ClientPositionable, ClientInventory } from "@/extensions";
 
 const { TILE_SIZE, MAX_PLACEMENT_RANGE } = getConfig().world;
 
@@ -109,11 +109,19 @@ export class PlacementManager {
       return false;
     }
 
+    // Defensive check: ensure player has positionable extension
+    if (!player.hasExt(ClientPositionable)) {
+      return false;
+    }
+
     const playerPos = player.getCenterPosition();
 
     // Check distance from player (center to center of ghost tile)
     const poolManager = PoolManager.getInstance();
-    const ghostCenter = poolManager.vector2.claim(position.x + TILE_SIZE / 2, position.y + TILE_SIZE / 2);
+    const ghostCenter = poolManager.vector2.claim(
+      position.x + TILE_SIZE / 2,
+      position.y + TILE_SIZE / 2
+    );
     const distance = playerPos.distance(ghostCenter);
     if (distance > MAX_PLACEMENT_RANGE) {
       return false;
@@ -146,7 +154,10 @@ export class PlacementManager {
 
     // Check if any entities are at this position
     const entities = this.getEntities();
-    const wallCenter = poolManager.vector2.claim(position.x + TILE_SIZE / 2, position.y + TILE_SIZE / 2);
+    const wallCenter = poolManager.vector2.claim(
+      position.x + TILE_SIZE / 2,
+      position.y + TILE_SIZE / 2
+    );
 
     for (const entity of entities) {
       if (!entity.hasExt(ClientPositionable)) continue;
@@ -170,7 +181,16 @@ export class PlacementManager {
     const player = this.getPlayer();
     if (!player) return null;
 
+    // Defensive check: ensure player has inventory extension
+    if (!player.hasExt(ClientInventory)) {
+      return null;
+    }
+
     const inventory = player.getInventory();
+    if (!inventory || !Array.isArray(inventory)) {
+      return null;
+    }
+
     const selectedSlot = player.getSelectedInventorySlot();
 
     if (selectedSlot < 0 || selectedSlot >= inventory.length) {
@@ -241,7 +261,7 @@ export class PlacementManager {
 
     // Draw range indicator circle around player
     const player = this.getPlayer();
-    if (player) {
+    if (player && player.hasExt(ClientPositionable)) {
       const playerPos = player.getCenterPosition();
       ctx.save();
       ctx.strokeStyle = "rgba(255, 255, 255, 0.3)";

@@ -986,13 +986,24 @@ export class GameClient {
       return;
     }
 
+    // Defensive check: ensure player has inventory extension
+    if (!player.hasExt(ClientInventory)) {
+      this.ctx.canvas.style.cursor = "default";
+      return;
+    }
+
     const inventory = player.getInventory();
-    if (!inventory) {
+    if (!inventory || !Array.isArray(inventory)) {
       this.ctx.canvas.style.cursor = "default";
       return;
     }
 
     const activeSlot = this.inputManager.getCurrentInventorySlot();
+    if (activeSlot < 0 || activeSlot >= inventory.length) {
+      this.ctx.canvas.style.cursor = "default";
+      return;
+    }
+
     const activeItem = inventory[activeSlot - 1];
 
     // Hide cursor when weapon is equipped
