@@ -4,6 +4,7 @@ import { ArrayBufferWriter, BufferReader } from "../../../util/buffer-serializat
 
 export interface DropItemEventData {
   slotIndex: number;
+  amount?: number;
 }
 
 export class DropItemEvent implements GameEvent<DropItemEventData> {
@@ -28,11 +29,18 @@ export class DropItemEvent implements GameEvent<DropItemEventData> {
 
   static serializeToBuffer(writer: ArrayBufferWriter, data: DropItemEventData): void {
     writer.writeUInt8(Math.max(0, Math.min(255, data.slotIndex ?? 0)));
+    writer.writeBoolean(data.amount != null);
+    if (data.amount != null) {
+      writer.writeUInt16(Math.max(0, Math.min(65535, data.amount)));
+    }
   }
 
   static deserializeFromBuffer(reader: BufferReader): DropItemEventData {
     const slotIndex = reader.readUInt8();
-    return { slotIndex };
+    let amount: number | undefined;
+    if (reader.hasMore() && reader.readBoolean()) {
+      amount = reader.readUInt16();
+    }
+    return { slotIndex, amount };
   }
 }
-

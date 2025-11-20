@@ -448,8 +448,15 @@ export class ClientSocketManager {
     this.socket.emit(ClientSentEvents.MERCHANT_BUY, { merchantId, itemIndex });
   }
 
-  public sendDropItem(slotIndex: number) {
-    this.socket.emit(ClientSentEvents.DROP_ITEM, { slotIndex });
+  public sendDropItem(slotIndex: number, amount?: number) {
+    const payload =
+      amount != null
+        ? {
+            slotIndex,
+            amount,
+          }
+        : { slotIndex };
+    this.socket.emit(ClientSentEvents.DROP_ITEM, payload);
   }
 
   public sendConsumeItem(itemType: string | null) {

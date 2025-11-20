@@ -7,10 +7,11 @@ import PoolManager from "@shared/util/pool-manager";
 import { SocketEventHandler } from "./types";
 import { PlayerDroppedItemEvent } from "@/events/server-sent/events/player-dropped-item-event";
 import { HandlerContext } from "@/events/context";
+
 export function onDropItem(
   context: HandlerContext,
   socket: ISocketAdapter,
-  data: { slotIndex: number }
+  data: { slotIndex: number; amount?: number }
 ): void {
   const player = context.players.get(socket.id);
   if (!player) return;
@@ -19,101 +20,179 @@ export function onDropItem(
   const items = inventory.getItems();
 
   const index = data.slotIndex;
-  const itemInSlot = items[index];
-  if (!itemInSlot) return;
+  const item = items[index];
+  if (!item) return;
 
-  // Remove from inventory
-  const removedItem = inventory.removeItem(index);
-  if (!removedItem) return;
+  let totalCount = 1;
+  if (item.state && typeof item.state.count === "number") {
+    totalCount = item.state.count;
+  }
 
-  const entityManager = player.getEntityManager();
-  const droppedType = removedItem.itemType;
+  let reqAmount = data.amount;
+  let dropAmount = totalCount;
 
-  // Create dropped entity
-  const newEntity = entityManager.createEntityFromItem(removedItem);
-  if (!newEntity) return;
+  // Validate amount
+  if (reqAmount != null) {
+    reqAmount = Math.floor(reqAmount);
 
-  const carryable = newEntity.getExt(Carryable);
-  const dropCount = removedItem.state?.count ?? 1;
-  carryable.setItemState({ count: dropCount });
+    if (reqAmount < 1) {
+      reqAmount = 1;
+    }
 
-  const pool = PoolManager.getInstance();
-
-  // --- FIRST: try combining at PLAYER POSITION ---
-  const playerPos = player.getPosition();
-  const combineCheckPos = pool.vector2.claim(playerPos.x, playerPos.y);
-
-  const COMBINE_RADIUS = 20;
-  const COMBINE_RADIUS_SQ = COMBINE_RADIUS * COMBINE_RADIUS;
-
-  const nearby = entityManager.getNearbyEntities(combineCheckPos, COMBINE_RADIUS);
-
-  for (let i = 0; i < nearby.length; i++) {
-    const e = nearby[i];
-
-    if (!e.hasExt(Carryable) || !e.hasExt(Positionable)) continue;
-
-    const eCarry = e.getExt(Carryable);
-    if (eCarry.getItemType() !== droppedType) continue;
-
-    // Distance check
-    const ePos = e.getExt(Positionable).getCenterPosition();
-
-    const dx = combineCheckPos.x - ePos.x;
-    const dy = combineCheckPos.y - ePos.y;
-
-    if (dx * dx + dy * dy <= COMBINE_RADIUS_SQ) {
-      // Merge them: fastest possible
-      const state = eCarry.getItemState();
-      const existingCount = state?.count ?? 1;
-      eCarry.setItemState({ count: existingCount + dropCount });
-
-      entityManager.markEntityForRemoval(newEntity);
-
-      entityManager.getBroadcaster().broadcastEvent(
-        new PlayerDroppedItemEvent({
-          playerId: player.getId(),
-          itemType: droppedType,
-        })
-      );
-
-      return; // done
+    if (reqAmount < dropAmount) {
+      dropAmount = reqAmount;
     }
   }
 
-  // --- NO COMBINE → DROP AT FACING OFFSET ---
-  const facing = player.getSerialized().get("inputFacing") ?? Direction.Right;
+  if (dropAmount <= 0) return;
+
+  const entityManager = player.getEntityManager();
+  let itemToDrop = item;
+
+  // ---------------------------------------------
+  // PARTIAL DROP OR FULL DROP
+  // ---------------------------------------------
+  if (item.state && totalCount > dropAmount) {
+    // Partial drop
+    const remaining = totalCount - dropAmount;
+    item.state.count = remaining;
+
+    itemToDrop = {
+      itemType: item.itemType,
+      state: {
+        count: dropAmount,
+      },
+    };
+  } else {
+    // Full drop
+    const removed = inventory.removeItem(index);
+    if (!removed) return;
+
+    if (removed.state && typeof removed.state.count === "number") {
+      removed.state.count = dropAmount;
+    }
+
+    itemToDrop = removed;
+  }
+
+  inventory.markDirty();
+
+  // CREATE ENTITY
+  const entity = entityManager.createEntityFromItem(itemToDrop);
+  if (!entity) return;
+
+  const carryable = entity.getExt(Carryable);
+  let finalCount = 1;
+
+  if (itemToDrop.state && typeof itemToDrop.state.count === "number") {
+    finalCount = itemToDrop.state.count;
+  }
+
+  carryable.setItemState({ count: finalCount });
+
+  // -------------------------------------------------------
+  // COMBINE LOGIC
+  // -------------------------------------------------------
+  const pool = PoolManager.getInstance();
+  const playerPos = player.getPosition();
+  const droppedType = itemToDrop.itemType;
+
+  const COMBINE_RADIUS_PLAYER = 20;
+  const COMBINE_RADIUS_DROP = 20;
+
+  function tryCombineAtPosition(x: number, y: number, radius: number): boolean {
+    const checkPos = pool.vector2.claim(x, y);
+    const nearby = entityManager.getNearbyEntities(checkPos, radius);
+
+    for (let i = 0; i < nearby.length; i++) {
+      const other = nearby[i];
+
+      if (!other.hasExt(Carryable)) continue;
+      if (!other.hasExt(Positionable)) continue;
+
+      const otherCarry = other.getExt(Carryable);
+
+      if (otherCarry.getItemType() !== droppedType) continue;
+
+      const posExt = other.getExt(Positionable);
+      const otherPos = posExt.getCenterPosition();
+
+      const dx = checkPos.x - otherPos.x;
+      const dy = checkPos.y - otherPos.y;
+
+      if (dx * dx + dy * dy <= radius * radius) {
+        const st = otherCarry.getItemState();
+
+        let existing = 1;
+        if (st && typeof st.count === "number") {
+          existing = st.count;
+        }
+
+        const newCount = existing + finalCount;
+        otherCarry.setItemState({ count: newCount });
+
+        if (!entity) return false;
+        entityManager.markEntityForRemoval(entity);
+
+        if (!player) return false;
+        const broadcaster = entityManager.getBroadcaster();
+        broadcaster.broadcastEvent(
+          new PlayerDroppedItemEvent({
+            playerId: player.getId(),
+            itemType: droppedType,
+          })
+        );
+
+        return true;
+      }
+    }
+
+    return false;
+  }
+
+  // 1) Try merging at player's feet
+  const mergedAtPlayer = tryCombineAtPosition(playerPos.x, playerPos.y, COMBINE_RADIUS_PLAYER);
+  if (mergedAtPlayer) return;
+
+  // ---------------------------------------------
+  // DETERMINE DROP OFFSET
+  // ---------------------------------------------
+  const facing = player.getSerialized().get("inputFacing");
 
   let dx = 0;
   let dy = 0;
 
-  // fastest readable switch
-  switch (facing) {
-    case Direction.Up:
-      dy = -16;
-      break;
-    case Direction.Down:
-      dy = 16;
-      break;
-    case Direction.Left:
-      dx = -16;
-      break;
-    case Direction.Right:
-      dx = 16;
-      break;
+  if (facing === Direction.Up) {
+    dy = -16;
+  } else if (facing === Direction.Down) {
+    dy = 16;
+  } else if (facing === Direction.Left) {
+    dx = -16;
+  } else {
+    dx = 16;
   }
 
-  const dropPos = pool.vector2.claim(playerPos.x + dx, playerPos.y + dy);
+  const dropPosX = playerPos.x + dx;
+  const dropPosY = playerPos.y + dy;
 
-  const posExt = newEntity.getExt(Positionable);
+  // 2) Try merging at drop location
+  const mergedAtDrop = tryCombineAtPosition(dropPosX, dropPosY, COMBINE_RADIUS_DROP);
+  if (mergedAtDrop) return;
+
+  // ---------------------------------------------
+  // FINAL: PLACE ITEM ON FLOOR
+  // ---------------------------------------------
+  const dropPos = pool.vector2.claim(dropPosX, dropPosY);
+  const posExt = entity.getExt(Positionable);
+
   if (posExt) {
     posExt.setPosition(dropPos);
   }
 
-  entityManager.addEntity(newEntity);
+  entityManager.addEntity(entity);
 
-  // broadcast
-  entityManager.getBroadcaster().broadcastEvent(
+  const broadcaster = entityManager.getBroadcaster();
+  broadcaster.broadcastEvent(
     new PlayerDroppedItemEvent({
       playerId: player.getId(),
       itemType: droppedType,
@@ -121,7 +200,7 @@ export function onDropItem(
   );
 }
 
-export const dropItemHandler: SocketEventHandler<{ slotIndex: number }> = {
+export const dropItemHandler: SocketEventHandler<{ slotIndex: number; amount?: number }> = {
   event: "DROP_ITEM",
   handler: onDropItem,
 };

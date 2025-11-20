@@ -20,7 +20,7 @@ export interface InputManagerOptions {
   onInteractEnd?: () => void;
   onSelectInventorySlot?: (slotIndex: number) => void;
   onConsumeItem?: (itemType: string | null) => void;
-  onDropItem?: (slotIndex: number) => void;
+  onDropItem?: (slotIndex: number, amount?: number) => void;
   onToggleInstructions?: () => void;
   onShowPlayerList?: () => void;
   onHidePlayerList?: () => void;
@@ -321,11 +321,32 @@ export class InputManager {
         case "KeyF":
           callbacks.onInteractStart?.();
           break;
-        case "KeyG":
+        case "KeyG": {
           // Drop currently selected item
           const currentSlot = this.currentInventorySlot - 1; // Convert to 0-indexed
           callbacks.onDropItem?.(currentSlot);
           break;
+        }
+        case "KeyX": {
+          // Split half of the currently selected stack (if stackable)
+          const splitSlot = this.currentInventorySlot - 1; // Convert to 0-indexed
+          if (splitSlot < 0) break;
+
+          const inventory = callbacks.getInventory?.();
+          if (!inventory) break;
+
+          const item = inventory[splitSlot];
+          if (!item) break;
+
+          const count = item.state?.count ?? 1;
+          if (count <= 1) break;
+
+          const dropAmount = Math.floor(count / 2);
+          if (dropAmount <= 0) break;
+
+          callbacks.onDropItem?.(splitSlot, dropAmount);
+          break;
+        }
         case "Space":
           // Trigger attack with spacebar
           e.preventDefault(); // Prevent page scrolling
