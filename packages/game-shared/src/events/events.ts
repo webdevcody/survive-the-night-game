@@ -55,6 +55,7 @@ export const ClientSentEvents = {
   DROP_ITEM: "dropItem",
   CONSUME_ITEM: "consumeItem",
   SELECT_INVENTORY_SLOT: "selectInventorySlot",
+  SWAP_INVENTORY_ITEMS: "swapInventoryItems",
   INTERACT: "interact",
 } as const;
 

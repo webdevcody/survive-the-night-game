@@ -129,6 +129,31 @@ export default class Inventory extends ExtensionBase {
     }
   }
 
+  public swapItems(fromIndex: number, toIndex: number): void {
+    const items = this.serialized.get('items');
+    
+    // Validate indices are non-negative
+    if (fromIndex < 0 || toIndex < 0) {
+      return;
+    }
+
+    // Ensure array is large enough (expand with nulls if needed)
+    const maxIndex = Math.max(fromIndex, toIndex);
+    while (items.length <= maxIndex) {
+      items.push(null);
+    }
+
+    // Swap items (works for both empty slots (null) and occupied slots)
+    const temp = items[fromIndex];
+    items[fromIndex] = items[toIndex];
+    items[toIndex] = temp;
+
+    // Update serialized (array reference changes, so assign new array to trigger dirty)
+    this.serialized.set('items', [...items]);
+    // Explicitly mark dirty to ensure inventory changes are broadcast
+    this.markDirty();
+  }
+
   public getActiveItem(index: number | null): InventoryItem | null {
     if (index === null) return null;
     const items = this.serialized.get('items');

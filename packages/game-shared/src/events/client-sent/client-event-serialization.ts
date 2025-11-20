@@ -13,6 +13,7 @@ import { NoPayloadEvent } from "./events/no-payload";
 import { DropItemEvent } from "./events/drop-item";
 import { ConsumeItemEvent } from "./events/consume-item";
 import { SelectInventorySlotEvent } from "./events/select-inventory-slot";
+import { SwapInventoryItemsEvent } from "./events/swap-inventory-items";
 import { InteractEvent } from "./events/interact";
 import {
   serializeEvent,
@@ -41,6 +42,7 @@ const eventRegistry: Record<string, IBufferWriter> = {
   [ClientSentEvents.DROP_ITEM]: DropItemEvent,
   [ClientSentEvents.CONSUME_ITEM]: ConsumeItemEvent,
   [ClientSentEvents.SELECT_INVENTORY_SLOT]: SelectInventorySlotEvent,
+  [ClientSentEvents.SWAP_INVENTORY_ITEMS]: SwapInventoryItemsEvent,
   [ClientSentEvents.INTERACT]: InteractEvent,
 };
 

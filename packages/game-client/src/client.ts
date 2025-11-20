@@ -405,6 +405,11 @@ export class GameClient {
         if (this.socketManager) {
           this.socketManager.sendDropItem(slotIndex);
         }
+      },
+      (fromSlotIndex: number, toSlotIndex: number) => {
+        if (this.socketManager) {
+          this.socketManager.sendSwapItems(fromSlotIndex, toSlotIndex);
+        }
       }
     );
 

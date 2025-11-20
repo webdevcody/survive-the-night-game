@@ -164,7 +164,8 @@ export class Hud {
     assetManager: AssetManager,
     gameOverDialog: GameOverDialogUI,
     inputManager: InputManager,
-    sendDropItem: (slotIndex: number) => void
+    sendDropItem: (slotIndex: number) => void,
+    sendSwapItems: (fromSlotIndex: number, toSlotIndex: number) => void
   ) {
     this.mapManager = mapManager;
     this.soundManager = soundManager;
@@ -189,7 +190,13 @@ export class Hud {
     };
 
     // Initialize hotbar
-    this.hotbar = new InventoryBarUI(this.assetManager, this.inputManager, getInventory, sendDropItem);
+    this.hotbar = new InventoryBarUI(
+      this.assetManager,
+      this.inputManager,
+      getInventory,
+      sendDropItem,
+      sendSwapItems
+    );
 
     // Initialize weapons HUD
     this.weaponsHud = new WeaponsHUD(this.assetManager, this.inputManager, getInventory);
