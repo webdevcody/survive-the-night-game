@@ -35,10 +35,13 @@ import { CraftEvent } from "../../../game-shared/src/events/server-sent/events/c
 import { BuildEvent } from "../../../game-shared/src/events/server-sent/events/build-event";
 import { BossStepEvent } from "../../../game-shared/src/events/server-sent/events/boss-step-event";
 import { BossSummonEvent } from "../../../game-shared/src/events/server-sent/events/boss-summon-event";
+import { VersionMismatchEvent } from "../../../game-shared/src/events/server-sent/events/version-mismatch-event";
+import { UserBannedEvent } from "../../../game-shared/src/events/server-sent/events/user-banned-event";
 import { ISocketAdapter } from "@shared/network/socket-adapter";
 import { IClientAdapter } from "@shared/network/client-adapter";
 import { createClientAdapter } from "@/network/adapter-factory";
 import { deserializeServerEvent } from "@shared/events/server-sent/server-event-serialization";
+import { getConfig } from "@shared/config";
 
 export type EntityDto = { id: string } & any;
 
@@ -74,6 +77,8 @@ const SERVER_EVENT_MAP = {
   [ServerSentEvents.BUILD]: BuildEvent,
   [ServerSentEvents.BOSS_STEP]: BossStepEvent,
   [ServerSentEvents.BOSS_SUMMON]: BossSummonEvent,
+  [ServerSentEvents.VERSION_MISMATCH]: VersionMismatchEvent,
+  [ServerSentEvents.USER_BANNED]: UserBannedEvent,
 } as const;
 
 export class ClientSocketManager {
@@ -87,7 +92,7 @@ export class ClientSocketManager {
   private reconnectTimeout: ReturnType<typeof setTimeout> | null = null;
   private reconnectAttempts: number = 0;
   private readonly MAX_RECONNECT_ATTEMPTS = Infinity; // Keep trying indefinitely
-  private readonly RECONNECT_DELAY_MS = 1000; // Start with 1 second delay
+  private readonly RECONNECT_DELAY_MS = 5000; // 5 seconds delay
   private readonly MAX_CONNECTION_ATTEMPTS = 10;
   private readonly CONNECTION_TIMEOUT_MS = 10000; // 10 seconds timeout per attempt
   private eventHandlers: Map<string, Array<(event: any) => void>> = new Map();
@@ -100,6 +105,8 @@ export class ClientSocketManager {
   private errorHandler?: (error: any) => void;
   private PING_INTERVAL_MS = 500;
   private isConnecting: boolean = false; // Track if we're currently attempting to connect
+  private shouldReconnect: boolean = true; // Flag to prevent reconnection (e.g., on version mismatch or ban)
+  private lastConnectionTime: number = 0; // Track when we last successfully connected
 
   public on<K extends keyof typeof SERVER_EVENT_MAP>(eventType: K, handler: (event: any) => void) {
     const eventKey = eventType as string;
@@ -202,10 +209,14 @@ export class ClientSocketManager {
 
     // Create client adapter based on configuration and connect
     this.clientAdapter = createClientAdapter();
-    this.rawSocket = this.clientAdapter.connect(`${this.serverUrl}?displayName=${displayName}`, {
-      // Ensure we create a new connection each time
-      forceNew: true,
-    });
+    const version = getConfig().meta.VERSION;
+    this.rawSocket = this.clientAdapter.connect(
+      `${this.serverUrl}?displayName=${displayName}&version=${version}`,
+      {
+        // Ensure we create a new connection each time
+        forceNew: true,
+      }
+    );
 
     // Wrap the socket with DelayedSocket to handle latency simulation
     this.socket = new DelayedSocket(this.rawSocket, SIMULATION_CONFIG.simulatedLatencyMs);
@@ -231,6 +242,8 @@ export class ClientSocketManager {
       this.isDisconnected = false;
       this.isConnecting = false; // Connection successful
       this.reconnectAttempts = 0; // Reset reconnect attempts on successful connection
+      this.shouldReconnect = true; // Re-enable reconnection on successful connection
+      this.lastConnectionTime = Date.now(); // Track successful connection time
 
       // Clear timeout
       if (this.connectionTimeout) {
@@ -272,7 +285,31 @@ export class ClientSocketManager {
           console.error("Error in socket disconnect handler", error);
         }
       });
-      this.attemptReconnect();
+
+      // Only attempt reconnect if we should (not banned/version mismatch) and if we had a successful connection
+      // Check if we connected recently (within last 2 seconds) - if so, might be immediate disconnect
+      const timeSinceConnection = Date.now() - this.lastConnectionTime;
+      const wasRecentConnection = this.lastConnectionTime > 0 && timeSinceConnection < 2000;
+
+      if (!this.shouldReconnect) {
+        console.log("Reconnection disabled (likely due to version mismatch or ban)");
+        return; // Don't attempt reconnect if disabled
+      }
+
+      if (wasRecentConnection) {
+        console.log(
+          "Skipping immediate reconnect after recent connection (likely server-side disconnect)"
+        );
+        // Still attempt reconnect but with a longer delay to avoid rapid reconnection loops
+        setTimeout(() => {
+          if (this.shouldReconnect && this.isDisconnected && !this.isConnecting) {
+            this.attemptReconnect();
+          }
+        }, this.RECONNECT_DELAY_MS);
+      } else {
+        // Normal disconnect, attempt reconnect
+        this.attemptReconnect();
+      }
     });
   }
 
@@ -304,9 +341,14 @@ export class ClientSocketManager {
   }
 
   private attemptReconnect(): void {
-    // Don't attempt reconnect if we're already connecting
+    // Don't attempt reconnect if we're already connecting or if reconnection is disabled
     if (this.isConnecting) {
       console.log("Already connecting, skipping reconnect attempt");
+      return;
+    }
+
+    if (!this.shouldReconnect) {
+      console.log("Reconnection disabled, skipping reconnect attempt");
       return;
     }
 
@@ -321,18 +363,24 @@ export class ClientSocketManager {
       return;
     }
 
-    // Exponential backoff: 1s, 2s, 4s, 8s, max 10s
-    const delay = Math.min(this.RECONNECT_DELAY_MS * Math.pow(2, this.reconnectAttempts), 10000);
+    // Use fixed delay of 5 seconds instead of exponential backoff to avoid rapid reconnection
+    const delay = this.RECONNECT_DELAY_MS;
     this.reconnectAttempts++;
 
     console.log(`Attempting to reconnect in ${delay}ms (attempt ${this.reconnectAttempts})...`);
 
     this.reconnectTimeout = setTimeout(() => {
+      // Double-check that we should still reconnect
+      if (!this.shouldReconnect) {
+        console.log("Reconnection was disabled during delay, cancelling reconnect");
+        return;
+      }
+
       console.log("Reconnecting to game server...");
       this.connect().catch((error) => {
         console.error("Reconnection attempt failed:", error);
-        // Continue attempting reconnection only if we're not already connecting
-        if (!this.isConnecting) {
+        // Continue attempting reconnection only if we're not already connecting and should reconnect
+        if (!this.isConnecting && this.shouldReconnect) {
           this.attemptReconnect();
         }
       });
@@ -448,8 +496,15 @@ export class ClientSocketManager {
     this.socket.emit(ClientSentEvents.MERCHANT_BUY, { merchantId, itemIndex });
   }
 
-  public sendDropItem(slotIndex: number) {
-    this.socket.emit(ClientSentEvents.DROP_ITEM, { slotIndex });
+  public sendDropItem(slotIndex: number, amount?: number) {
+    const payload =
+      amount != null
+        ? {
+            slotIndex,
+            amount,
+          }
+        : { slotIndex };
+    this.socket.emit(ClientSentEvents.DROP_ITEM, payload);
   }
 
   public sendSwapItems(fromSlotIndex: number, toSlotIndex: number) {
@@ -495,6 +550,9 @@ export class ClientSocketManager {
       return; // Already disconnected
     }
 
+    // Disable reconnection when manually disconnecting
+    this.shouldReconnect = false;
+
     // Clear reconnect timeout if we're manually disconnecting
     if (this.reconnectTimeout) {
       clearTimeout(this.reconnectTimeout);
@@ -508,6 +566,19 @@ export class ClientSocketManager {
       console.log("Disconnecting from game server");
       this.rawSocket.disconnect();
       this.isDisconnected = true;
+    }
+  }
+
+  /**
+   * Disable reconnection (e.g., when version mismatch or ban is detected)
+   */
+  public disableReconnection(): void {
+    console.log("Disabling reconnection");
+    this.shouldReconnect = false;
+    // Clear any pending reconnect timeout
+    if (this.reconnectTimeout) {
+      clearTimeout(this.reconnectTimeout);
+      this.reconnectTimeout = null;
     }
   }
 }

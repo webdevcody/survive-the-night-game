@@ -27,7 +27,8 @@ export class AcidProjectileClient extends ClientEntityBase implements IClientEnt
     // Interpolate position for smooth movement
     this.lastRenderPosition = this.lerpPosition(
       targetPosition,
-      PoolManager.getInstance().vector2.claim(this.lastRenderPosition.x, this.lastRenderPosition.y)
+      PoolManager.getInstance().vector2.claim(this.lastRenderPosition.x, this.lastRenderPosition.y),
+      gameState.dt
     );
 
     const renderPosition = roundVector2(

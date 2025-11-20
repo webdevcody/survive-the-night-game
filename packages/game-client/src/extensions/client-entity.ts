@@ -20,7 +20,7 @@ export abstract class ClientEntityBase {
   private id: number;
   private type: EntityType;
   protected imageLoader: ImageLoader;
-  private extensions: ClientExtension[] = [];
+  private extensions: Map<string, ClientExtension> = new Map();
   private static readonly LERP_FACTOR = 0.2;
 
   public constructor(data: RawEntity, imageLoader: ImageLoader) {
@@ -43,15 +43,29 @@ export abstract class ClientEntityBase {
     return EntityCategories.ITEM;
   }
 
-  public lerpPosition(target: Vector2, current: Vector2): Vector2 {
+  public lerpPosition(target: Vector2, current: Vector2, dt?: number): Vector2 {
     const distance = target.distance(current);
     if (distance > 100) {
       return target.clone();
     }
+
+    // Use time-based lerp if dt is provided, otherwise fallback to constant factor (for backward compatibility)
+    // Formula: factor = 1 - exp(-lambda * dt)
+    // Lambda ~13.4 corresponds to factor 0.2 at 60FPS (dt=0.0166)
+    let factor = ClientEntityBase.LERP_FACTOR;
+
+    if (dt !== undefined && dt > 0) {
+      // Use a lambda that gives roughly 0.2 at 60fps
+      // 0.2 = 1 - exp(-lambda * 0.0166) -> lambda ~ 13.4
+      // Increasing slightly to 15 for snappier response
+      const lambda = 15;
+      factor = 1 - Math.exp(-lambda * dt);
+    }
+
     const poolManager = PoolManager.getInstance();
     return poolManager.vector2.claim(
-      current.x + (target.x - current.x) * ClientEntityBase.LERP_FACTOR,
-      current.y + (target.y - current.y) * ClientEntityBase.LERP_FACTOR
+      current.x + (target.x - current.x) * factor,
+      current.y + (target.y - current.y) * factor
     );
   }
 
@@ -63,18 +77,28 @@ export abstract class ClientEntityBase {
     return this.imageLoader;
   }
 
+  private getExtensionType(ctor: ClientExtensionCtor): string {
+    const type = (ctor as any).type;
+    if (!type) {
+      throw new Error(`Extension constructor ${ctor.name} does not have a static 'type' property`);
+    }
+    return type;
+  }
+
   public hasExt<T extends ClientExtension>(ctor: ClientExtensionCtor<T>): boolean {
-    return this.extensions.some((ext) => ext instanceof ctor);
+    const type = this.getExtensionType(ctor);
+    return this.extensions.has(type);
   }
 
   public getExt<T extends ClientExtension>(ctor: ClientExtensionCtor<T>): T {
-    const ext = this.extensions.find((ext) => ext instanceof ctor);
+    const type = this.getExtensionType(ctor);
+    const ext = this.extensions.get(type);
     if (!ext) {
       console.error(
         `Extension ${ctor.name} not found for entity ${this.id}. Available extensions:`,
-        this.extensions.map((e) => e.constructor.name),
+        Array.from(this.extensions.values()).map((e) => e.constructor.name),
         "\nExtension types:",
-        this.extensions.map((e) => (e.constructor as any).type)
+        Array.from(this.extensions.keys())
       );
       throw new Error(`Extension ${ctor.name} not found`);
     }
@@ -84,10 +108,9 @@ export abstract class ClientEntityBase {
   public deserialize(data: RawEntity): void {
     // Handle extension removals first
     if (data.removedExtensions) {
-      this.extensions = this.extensions.filter((ext) => {
-        const type = (ext.constructor as any).type;
-        return !data.removedExtensions?.includes(type);
-      });
+      for (const removedType of data.removedExtensions) {
+        this.extensions.delete(removedType);
+      }
     }
 
     if (!data.extensions) {
@@ -98,17 +121,6 @@ export abstract class ClientEntityBase {
       return;
     }
 
-    // Create a map of existing extensions by their type
-    const existingExtensions = new Map<string, ClientExtension>();
-    for (const ext of this.extensions) {
-      const type = (ext.constructor as any).type;
-      if (type) {
-        existingExtensions.set(type, ext);
-      }
-    }
-
-    // Create and deserialize extensions
-    const newExtensions: ClientExtension[] = [...this.extensions]; // Preserve existing extensions
     const processedTypes = new Set<string>();
 
     for (const extData of data.extensions) {
@@ -126,10 +138,10 @@ export abstract class ClientEntityBase {
 
       try {
         // Reuse existing extension if available
-        let ext = existingExtensions.get(extData.type);
+        let ext = this.extensions.get(extData.type);
         if (!ext) {
           ext = new ClientExtCtor(this as any);
-          newExtensions.push(ext);
+          this.extensions.set(extData.type, ext);
         }
         ext.deserialize(extData);
         processedTypes.add(extData.type);
@@ -140,34 +152,22 @@ export abstract class ClientEntityBase {
 
     // Only remove unprocessed extensions if this is a full update
     if (data.isFullState) {
-      this.extensions = newExtensions.filter((ext) => {
-        const type = (ext.constructor as any).type;
-        return processedTypes.has(type);
-      });
-    } else {
-      this.extensions = newExtensions;
+      for (const [type] of this.extensions) {
+        if (!processedTypes.has(type)) {
+          this.extensions.delete(type);
+        }
+      }
     }
   }
 
   public deserializeProperty(key: string, value: any): void {
     if (key === "removedExtensions" && Array.isArray(value)) {
       // Handle extension removals
-      this.extensions = this.extensions.filter((ext) => {
-        const type = (ext.constructor as any).type;
-        return !value.includes(type);
-      });
-    } else if (key === "extensions" && Array.isArray(value)) {
-      // Create a map of existing extensions by their type
-      const existingExtensions = new Map<string, ClientExtension>();
-      for (const ext of this.extensions) {
-        const type = (ext.constructor as any).type;
-        if (type) {
-          existingExtensions.set(type, ext);
-        }
+      for (const removedType of value) {
+        this.extensions.delete(removedType);
       }
-
-      // Create and deserialize extensions (similar to full deserialize method)
-      const newExtensions: ClientExtension[] = [...this.extensions]; // Preserve existing extensions
+    } else if (key === "extensions" && Array.isArray(value)) {
+      // Deserialize extensions
       for (const extData of value) {
         if (!extData.type) {
           console.warn(`Extension data missing type: ${JSON.stringify(extData)}`);
@@ -183,19 +183,16 @@ export abstract class ClientEntityBase {
 
         try {
           // Reuse existing extension if available
-          let ext = existingExtensions.get(extData.type);
+          let ext = this.extensions.get(extData.type);
           if (!ext) {
             ext = new ClientExtCtor(this as any);
-            newExtensions.push(ext);
+            this.extensions.set(extData.type, ext);
           }
           ext.deserialize(extData);
         } catch (error) {
           console.error(`Error creating/updating extension ${extData.type}:`, error);
         }
       }
-
-      // Update extensions list while preserving existing extensions
-      this.extensions = newExtensions;
     } else {
       // Handle direct property updates
       (this as any)[key] = value;
@@ -264,14 +261,6 @@ export abstract class ClientEntityBase {
     }
 
     const extensionCount = currentReader.readUInt8();
-    const existingExtensions = new Map<string, ClientExtension>();
-    for (const ext of this.extensions) {
-      const extType = (ext.constructor as any).type;
-      if (extType) {
-        existingExtensions.set(extType, ext);
-      }
-    }
-
     const processedTypes = new Set<string>();
     // Extensions are written directly without length prefixes on the server
     // Format: [extensionType (UInt8)][extensionData...]
@@ -295,10 +284,10 @@ export abstract class ClientEntityBase {
         // Client extensions don't read the type byte, they just read their data
         const extensionReader = currentReader;
 
-        let ext = existingExtensions.get(extensionType);
+        let ext = this.extensions.get(extensionType);
         if (!ext) {
           ext = new ClientExtCtor(this as any);
-          this.extensions.push(ext);
+          this.extensions.set(extensionType, ext);
         }
 
         // Deserialize the extension (reads data only, not type byte)
@@ -307,7 +296,10 @@ export abstract class ClientEntityBase {
         // currentReader is automatically advanced by the extension's read operations
         processedTypes.add(extensionType);
       } catch (error) {
-        console.error(`Error deserializing extension ${extensionType}:`, error);
+        console.error(
+          `Error deserializing extension ${extensionType} for entity ${this.id} (${this.type}):`,
+          error
+        );
         throw error;
       }
     }
@@ -320,10 +312,9 @@ export abstract class ClientEntityBase {
     }
 
     if (removedTypes.length > 0) {
-      this.extensions = this.extensions.filter((ext) => {
-        const type = (ext.constructor as any).type;
-        return !removedTypes.includes(type);
-      });
+      for (const removedType of removedTypes) {
+        this.extensions.delete(removedType);
+      }
     }
   }
 }

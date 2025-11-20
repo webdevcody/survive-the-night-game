@@ -2,13 +2,20 @@ import { EventType, ServerSentEvents } from "../../events";
 import { GameEvent } from "@/events/types";
 import { BufferWriter, BufferReader } from "../../../util/buffer-serialization";
 
-export class ZombieDeathEvent implements GameEvent<number> {
+interface ZombieDeathEventData {
+  zombieId: number;
+  killerId: number;
+}
+
+export class ZombieDeathEvent implements GameEvent<ZombieDeathEventData> {
   private readonly type: EventType;
   private readonly zombieId: number;
+  private readonly killerId: number;
 
-  constructor(zombieId: number) {
+  constructor(zombieId: number, killerId: number = 0) {
     this.type = ServerSentEvents.ZOMBIE_DEATH;
     this.zombieId = zombieId;
+    this.killerId = killerId;
   }
 
   getType(): EventType {
@@ -19,15 +26,25 @@ export class ZombieDeathEvent implements GameEvent<number> {
     return this.zombieId;
   }
 
-  serialize(): number {
-    return this.zombieId;
+  getKillerId(): number {
+    return this.killerId;
   }
 
-  static serializeToBuffer(writer: BufferWriter, data: number): void {
-    writer.writeUInt16(data);
+  serialize(): ZombieDeathEventData {
+    return {
+      zombieId: this.zombieId,
+      killerId: this.killerId,
+    };
   }
 
-  static deserializeFromBuffer(reader: BufferReader): number {
-    return reader.readUInt16();
+  static serializeToBuffer(writer: BufferWriter, data: ZombieDeathEventData): void {
+    writer.writeUInt16(data.zombieId);
+    writer.writeUInt16(data.killerId);
+  }
+
+  static deserializeFromBuffer(reader: BufferReader): ZombieDeathEventData {
+    const zombieId = reader.readUInt16();
+    const killerId = reader.readUInt16();
+    return { zombieId, killerId };
   }
 }

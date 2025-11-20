@@ -108,6 +108,10 @@ export function InstructionPanel({ isOpen, onClose }: InstructionPanelProps) {
                 <span className="font-mono">G</span>
               </div>
               <div className="flex justify-between">
+                <span className="text-gray-300">Split Drop Item:</span>
+                <span className="font-mono">X</span>
+              </div>
+              <div className="flex justify-between">
                 <span className="text-gray-300">Weapons HUD:</span>
                 <span className="font-mono">ALT</span>
               </div>

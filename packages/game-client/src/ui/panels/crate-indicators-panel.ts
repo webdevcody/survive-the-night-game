@@ -1,4 +1,4 @@
-import { GameState } from "@/state";
+import { GameState, getEntitiesByType } from "@/state";
 import { Panel, PanelSettings } from "./panel";
 import { getPlayer } from "@/util/get-player";
 import { ClientPositionable } from "@/extensions/positionable";
@@ -32,8 +32,8 @@ export class CrateIndicatorsPanel extends Panel {
     const playerPos = player.getExt(ClientPositionable).getCenterPosition();
     const { width, height } = ctx.canvas;
 
-    // Find all crates in the game state
-    const crates = gameState.entities.filter(
+    // Get all crates from the type-based map (more efficient than filtering all entities)
+    const crates = getEntitiesByType(gameState, "crate").filter(
       (entity) => entity instanceof CrateClient && entity.hasExt(ClientPositionable)
     );
 
@@ -97,15 +97,9 @@ export class CrateIndicatorsPanel extends Panel {
       ctx.fillStyle = this.indicatorSettings.arrowColor;
       ctx.beginPath();
       ctx.moveTo(this.indicatorSettings.arrowSize / 2, 0); // Arrow tip
-      ctx.lineTo(
-        -this.indicatorSettings.arrowSize / 2,
-        -this.indicatorSettings.arrowSize / 3
-      );
+      ctx.lineTo(-this.indicatorSettings.arrowSize / 2, -this.indicatorSettings.arrowSize / 3);
       ctx.lineTo(-this.indicatorSettings.arrowSize / 3, 0);
-      ctx.lineTo(
-        -this.indicatorSettings.arrowSize / 2,
-        this.indicatorSettings.arrowSize / 3
-      );
+      ctx.lineTo(-this.indicatorSettings.arrowSize / 2, this.indicatorSettings.arrowSize / 3);
       ctx.closePath();
       ctx.fill();
 

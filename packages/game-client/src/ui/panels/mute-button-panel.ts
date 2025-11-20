@@ -104,4 +104,16 @@ export class MuteButtonPanel extends Panel {
 
     return false;
   }
+
+  public isMouseOver(x: number, y: number, canvasHeight: number): boolean {
+    const buttonX = this.buttonSettings.left;
+    const buttonY = canvasHeight - this.buttonSettings.bottom - this.buttonSettings.height;
+
+    return (
+      x >= buttonX &&
+      x <= buttonX + this.buttonSettings.width &&
+      y >= buttonY &&
+      y <= buttonY + this.buttonSettings.height
+    );
+  }
 }

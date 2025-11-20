@@ -38,6 +38,8 @@ import { onGameMessage } from "./events/on-game-message";
 import { onGameStateUpdate } from "./events/on-game-state-update";
 import { onMap } from "./events/on-map";
 import { onYourId } from "./events/on-your-id";
+import { onVersionMismatch } from "./events/on-version-mismatch";
+import { onUserBanned } from "./events/on-user-banned";
 import { ClientEventContext, InitializationContext } from "./events/types";
 
 export class ClientEventListener {
@@ -122,6 +124,8 @@ export class ClientEventListener {
     this.socketManager.on(ServerSentEvents.WAVE_START, (e) => onWaveStart(context, e));
     this.socketManager.on(ServerSentEvents.CRAFT, (e) => onCraft(context, e));
     this.socketManager.on(ServerSentEvents.BUILD, (e) => onBuild(context, e));
+    this.socketManager.on(ServerSentEvents.VERSION_MISMATCH, (e) => onVersionMismatch(context, e));
+    this.socketManager.on(ServerSentEvents.USER_BANNED, (e) => onUserBanned(context, e));
 
     this.socketManager.onSocketDisconnect(() => {
       this.handleDisconnect();

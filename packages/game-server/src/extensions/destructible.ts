@@ -8,7 +8,7 @@ import { encodeExtensionType } from "@shared/util/extension-type-encoding";
 import PoolManager from "@shared/util/pool-manager";
 import { ExtensionBase } from "./extension-base";
 
-type DestructibleDeathHandler = () => void;
+type DestructibleDeathHandler = (killerId?: number) => void;
 type DestructibleDamagedHandler = () => void;
 
 export default class Destructible extends ExtensionBase {
@@ -47,7 +47,7 @@ export default class Destructible extends ExtensionBase {
     return this;
   }
 
-  public damage(damage: number): void {
+  public damage(damage: number, attackerId?: number): void {
     if (this.isDead()) {
       return;
     }
@@ -57,13 +57,13 @@ export default class Destructible extends ExtensionBase {
     this.onDamagedHandler?.();
 
     if (this.isDead()) {
-      this.deathHandler?.();
+      this.deathHandler?.(attackerId);
     }
   }
 
-  public kill(): void {
+  public kill(killerId?: number): void {
     this.serialized.set("health", 0);
-    this.deathHandler?.();
+    this.deathHandler?.(killerId);
   }
 
   public getDamageBox(): Rectangle {
@@ -103,7 +103,9 @@ export default class Destructible extends ExtensionBase {
 
   public serializeToBuffer(writer: BufferWriter, onlyDirty: boolean = false): void {
     writer.writeUInt8(encodeExtensionType(Destructible.type));
-    writer.writeUInt8(this.serialized.get("health"));
-    writer.writeUInt8(this.serialized.get("maxHealth"));
+    const health = Math.max(0, Math.min(255, Math.round(this.serialized.get("health"))));
+    const maxHealth = Math.max(0, Math.min(255, Math.round(this.serialized.get("maxHealth"))));
+    writer.writeUInt8(health);
+    writer.writeUInt8(maxHealth);
   }
 }

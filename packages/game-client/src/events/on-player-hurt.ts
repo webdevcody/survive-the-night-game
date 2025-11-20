@@ -19,6 +19,7 @@ export const onPlayerHurt = (context: ClientEventContext, event: PlayerHurtEvent
 
   // Compare IDs directly - if the hurt player is the local player, interrupt teleport
   if (localPlayerId && hurtPlayerId === localPlayerId) {
+    context.gameClient.shakeCamera(4, 250);
     context.gameClient.interruptTeleport();
   }
 };

@@ -2,10 +2,9 @@ import { RawEntity } from "@shared/types/entity";
 import { AssetManager } from "@/managers/asset";
 import { GameState } from "@/state";
 import { ClientEntity } from "@/entities/client-entity";
-import { Renderable } from "@/entities/util";
 import { Z_INDEX } from "@shared/map";
 
-export class BoundaryClient extends ClientEntity implements Renderable {
+export class BoundaryClient extends ClientEntity {
   constructor(data: RawEntity, assetManager: AssetManager) {
     super(data, assetManager);
   }

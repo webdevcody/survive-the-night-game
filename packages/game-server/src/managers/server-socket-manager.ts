@@ -25,9 +25,12 @@ import { createServerAdapter } from "@/network/adapter-factory";
 import { BufferManager } from "@/broadcasting/buffer-manager";
 import { Broadcaster as BroadcastingBroadcaster } from "@/broadcasting/broadcaster";
 import { PlayerJoinedEvent } from "../../../game-shared/src/events/server-sent/events/player-joined-event";
+import { VersionMismatchEvent } from "../../../game-shared/src/events/server-sent/events/version-mismatch-event";
+import { UserBannedEvent } from "../../../game-shared/src/events/server-sent/events/user-banned-event";
 import { HandlerContext, onDisconnect, onConnection } from "@/events/handlers";
 import { socketEventHandlers } from "@/events/handlers/registry";
 import { serializeServerEvent } from "@shared/events/server-sent/server-event-serialization";
+import { RateLimiter } from "./rate-limiter";
 
 /**
  * Any and all functionality related to sending server side events
@@ -51,10 +54,17 @@ export class ServerSocketManager implements Broadcaster {
   private tickPerformanceTracker: TickPerformanceTracker | null = null;
   private bufferManager: BufferManager;
   private broadcaster: BroadcastingBroadcaster;
+  private rateLimiter: RateLimiter;
 
   constructor(port: number, gameServer: GameServer) {
     this.port = port;
     this.bufferManager = new BufferManager();
+    this.rateLimiter = new RateLimiter();
+
+    // Clean up old connection attempts every 5 minutes
+    setInterval(() => {
+      this.rateLimiter.cleanup();
+    }, 5 * 60 * 1000);
 
     const implementation = getConfig().network.WEBSOCKET_IMPLEMENTATION;
 
@@ -108,12 +118,84 @@ export class ServerSocketManager implements Broadcaster {
     });
 
     this.io.on("connection", (socket: ISocketAdapter) => {
-      const { displayName } = socket.handshake.query;
+      const { displayName, version } = socket.handshake.query;
+
+      // Get display name for rate limiting
+      const rawDisplayName = displayName
+        ? Array.isArray(displayName)
+          ? displayName[0]
+          : displayName
+        : "Unknown";
+
+      // Check if user is banned
+      if (this.rateLimiter.isBanned(rawDisplayName)) {
+        const banExpiration = this.rateLimiter.getBanExpiration(rawDisplayName);
+        const remainingMinutes = banExpiration
+          ? Math.ceil((banExpiration - Date.now()) / (60 * 1000))
+          : 0;
+        console.warn(
+          `User ${rawDisplayName} (socket ${socket.id}) is banned. Disconnecting. Ban expires in ${remainingMinutes} minutes.`
+        );
+        // Send banned event before disconnecting
+        const bannedEvent = new UserBannedEvent({
+          banExpirationTime: banExpiration || Date.now(),
+          reason: "You have been banned for connecting too frequently.",
+        });
+        this.sendEventToSocket(socket, bannedEvent);
+        // Give a small delay to ensure the event is sent before disconnecting
+        setTimeout(() => {
+          socket.disconnect();
+        }, 100);
+        return;
+      }
+
+      // Record connection attempt and check if it triggers a ban
+      const shouldBan = this.rateLimiter.recordConnectionAttempt(rawDisplayName);
+      if (shouldBan) {
+        const banExpiration = this.rateLimiter.getBanExpiration(rawDisplayName);
+        const remainingMinutes = banExpiration
+          ? Math.ceil((banExpiration - Date.now()) / (60 * 1000))
+          : 0;
+        console.warn(
+          `User ${rawDisplayName} (socket ${socket.id}) exceeded connection limit. Banned (${remainingMinutes} minutes remaining). Disconnecting.`
+        );
+        // Send banned event before disconnecting
+        const bannedEvent = new UserBannedEvent({
+          banExpirationTime: banExpiration || Date.now(),
+          reason:
+            "You have been banned for connecting too frequently. Please wait before trying again.",
+        });
+        this.sendEventToSocket(socket, bannedEvent);
+        // Give a small delay to ensure the event is sent before disconnecting
+        setTimeout(() => {
+          socket.disconnect();
+        }, 100);
+        return;
+      }
+
+      // Check version compatibility
+      const clientVersion = Array.isArray(version) ? version[0] : version;
+      const serverVersion = getConfig().meta.VERSION;
+
+      if (!clientVersion || clientVersion !== serverVersion) {
+        console.warn(
+          `Version mismatch: client version ${clientVersion} does not match server version ${serverVersion}. Disconnecting socket ${socket.id}`
+        );
+        // Send version mismatch event before disconnecting
+        const versionMismatchEvent = new VersionMismatchEvent({
+          serverVersion,
+          clientVersion: clientVersion || undefined,
+        });
+        this.sendEventToSocket(socket, versionMismatchEvent);
+        // Give a small delay to ensure the event is sent before disconnecting
+        setTimeout(() => {
+          socket.disconnect();
+        }, 100);
+        return;
+      }
 
       // Filter bad words and replace with asterisks
-      const filteredDisplayName = displayName
-        ? this.sanitizeText(Array.isArray(displayName) ? displayName[0] : displayName)
-        : undefined;
+      const filteredDisplayName = rawDisplayName ? this.sanitizeText(rawDisplayName) : undefined;
 
       // Allow multiple connections with the same display name
       // Each connection gets its own player entity

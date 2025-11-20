@@ -269,11 +269,13 @@ export default class Inventory extends ExtensionBase {
         writer.writeBoolean(true);
         writer.writeString(item.itemType);
         // Serialize ItemState
+        // Note: Client currently only supports reading Float64 values for state
         writer.writeRecord((item.state || {}) as Record<string, unknown>, (value) => {
           if (typeof value === "number") {
             writer.writeFloat64(value);
           } else {
-            writer.writeString(String(value));
+            console.warn(`Inventory item state has non-number value: ${value}. Writing NaN to maintain protocol.`);
+            writer.writeFloat64(NaN);
           }
         });
       }

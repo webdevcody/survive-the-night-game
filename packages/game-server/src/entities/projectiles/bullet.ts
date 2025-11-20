@@ -237,7 +237,7 @@ export class Bullet extends Entity {
         this.getEntityManager().markEntityForRemoval(this);
         const destructible = enemy.getExt(Destructible);
         const wasAlive = !destructible.isDead();
-        destructible.damage(this.damage);
+        destructible.damage(this.damage, this.shooterId);
 
         // If the enemy died from this hit, increment the shooter's kill count
         if (wasAlive && destructible.isDead()) {

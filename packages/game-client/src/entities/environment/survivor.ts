@@ -161,7 +161,8 @@ export class SurvivorClient extends ClientEntity implements Renderable {
         PoolManager.getInstance().vector2.claim(
           this.lastRenderPosition.x,
           this.lastRenderPosition.y
-        )
+        ),
+        gameState.dt
       );
     }
 

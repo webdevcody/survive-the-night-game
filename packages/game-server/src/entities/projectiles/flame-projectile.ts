@@ -244,7 +244,7 @@ export class FlameProjectile extends Entity {
         this.getEntityManager().markEntityForRemoval(this);
         const destructible = enemy.getExt(Destructible);
         const wasAlive = !destructible.isDead();
-        destructible.damage(this.damage);
+        destructible.damage(this.damage, this.shooterId);
 
         // Set enemy on fire
         if (!enemy.hasExt(Ignitable)) {

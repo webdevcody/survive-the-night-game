@@ -118,7 +118,8 @@ export abstract class EnemyClient extends ClientEntityBase implements IClientEnt
       const targetPosition = this.getPosition();
       this.lastRenderPosition = this.lerpPosition(
         targetPosition,
-        PoolManager.getInstance().vector2.claim(this.lastRenderPosition.x, this.lastRenderPosition.y)
+        PoolManager.getInstance().vector2.claim(this.lastRenderPosition.x, this.lastRenderPosition.y),
+        gameState.dt
       );
     }
 
