@@ -7,6 +7,29 @@ import PoolManager from "@shared/util/pool-manager";
 import { SocketEventHandler } from "./types";
 import { PlayerDroppedItemEvent } from "@/events/server-sent/events/player-dropped-item-event";
 import { HandlerContext } from "@/events/context";
+import { itemRegistry } from "@shared/entities/item-registry";
+import { InventoryItem } from "@shared/util/inventory";
+
+/**
+ * Check if an item can be stacked in inventory.
+ * Items are stackable if:
+ * - They have a count state property (meaning they're stackable in inventory)
+ * - OR they have category "ammo" (all ammo items are stackable)
+ */
+function isStackableItem(item: InventoryItem): boolean {
+  // Check if item has count state (stackable in inventory)
+  if (item.state && typeof item.state.count === "number") {
+    return true;
+  }
+
+  // Check if item category is "ammo" (all ammo is stackable)
+  const itemConfig = itemRegistry.get(item.itemType);
+  if (itemConfig && itemConfig.category === "ammo") {
+    return true;
+  }
+
+  return false;
+}
 
 export function onDropItem(
   context: HandlerContext,
@@ -100,7 +123,13 @@ export function onDropItem(
   const COMBINE_RADIUS_PLAYER = 15;
   const COMBINE_RADIUS_DROP = 20;
 
+  // Only allow combining if the item is stackable
+  const isStackable = isStackableItem(itemToDrop);
+
   function tryCombineAtPosition(x: number, y: number, radius: number): boolean {
+    // Don't try to combine if item is not stackable
+    if (!isStackable) return false;
+
     const checkPos = pool.vector2.claim(x, y);
     const nearby = entityManager.getNearbyEntities(checkPos, radius);
 
@@ -113,6 +142,14 @@ export function onDropItem(
       const otherCarry = other.getExt(Carryable);
 
       if (otherCarry.getItemType() !== droppedType) continue;
+
+      // Also check if the nearby item is stackable
+      const otherItemState = otherCarry.getItemState();
+      const otherItem: InventoryItem = {
+        itemType: otherCarry.getItemType(),
+        state: otherItemState,
+      };
+      if (!isStackableItem(otherItem)) continue;
 
       const posExt = other.getExt(Positionable);
       const otherPos = posExt.getCenterPosition();
