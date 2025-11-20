@@ -35,10 +35,13 @@ import { CraftEvent } from "../../../game-shared/src/events/server-sent/events/c
 import { BuildEvent } from "../../../game-shared/src/events/server-sent/events/build-event";
 import { BossStepEvent } from "../../../game-shared/src/events/server-sent/events/boss-step-event";
 import { BossSummonEvent } from "../../../game-shared/src/events/server-sent/events/boss-summon-event";
+import { VersionMismatchEvent } from "../../../game-shared/src/events/server-sent/events/version-mismatch-event";
+import { UserBannedEvent } from "../../../game-shared/src/events/server-sent/events/user-banned-event";
 import { ISocketAdapter } from "@shared/network/socket-adapter";
 import { IClientAdapter } from "@shared/network/client-adapter";
 import { createClientAdapter } from "@/network/adapter-factory";
 import { deserializeServerEvent } from "@shared/events/server-sent/server-event-serialization";
+import { getConfig } from "@shared/config";
 
 export type EntityDto = { id: string } & any;
 
@@ -74,6 +77,8 @@ const SERVER_EVENT_MAP = {
   [ServerSentEvents.BUILD]: BuildEvent,
   [ServerSentEvents.BOSS_STEP]: BossStepEvent,
   [ServerSentEvents.BOSS_SUMMON]: BossSummonEvent,
+  [ServerSentEvents.VERSION_MISMATCH]: VersionMismatchEvent,
+  [ServerSentEvents.USER_BANNED]: UserBannedEvent,
 } as const;
 
 export class ClientSocketManager {
@@ -202,10 +207,14 @@ export class ClientSocketManager {
 
     // Create client adapter based on configuration and connect
     this.clientAdapter = createClientAdapter();
-    this.rawSocket = this.clientAdapter.connect(`${this.serverUrl}?displayName=${displayName}`, {
-      // Ensure we create a new connection each time
-      forceNew: true,
-    });
+    const version = getConfig().meta.VERSION;
+    this.rawSocket = this.clientAdapter.connect(
+      `${this.serverUrl}?displayName=${displayName}&version=${version}`,
+      {
+        // Ensure we create a new connection each time
+        forceNew: true,
+      }
+    );
 
     // Wrap the socket with DelayedSocket to handle latency simulation
     this.socket = new DelayedSocket(this.rawSocket, SIMULATION_CONFIG.simulatedLatencyMs);

@@ -35,6 +35,8 @@ export const ServerSentEvents = {
   BUILD: "build",
   BOSS_STEP: "bossStep",
   BOSS_SUMMON: "bossSummon",
+  VERSION_MISMATCH: "versionMismatch",
+  USER_BANNED: "userBanned",
 } as const;
 
 export const ClientSentEvents = {
