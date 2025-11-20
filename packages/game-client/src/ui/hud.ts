@@ -167,7 +167,7 @@ export class Hud {
     assetManager: AssetManager,
     gameOverDialog: GameOverDialogUI,
     inputManager: InputManager,
-    sendDropItem: (slotIndex: number) => void
+    sendDropItem: (slotIndex: number, amount?: number) => void
   ) {
     this.mapManager = mapManager;
     this.soundManager = soundManager;

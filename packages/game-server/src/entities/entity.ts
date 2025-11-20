@@ -45,6 +45,10 @@ export class Entity<TSerializableFields extends readonly string[] = readonly str
     this.extensions = new Map();
   }
 
+  public getSerialized(): SerializableFields {
+    return this.serialized;
+  }
+
   public setMarkedForRemoval(isMarkedForRemoval: boolean) {
     this.markedForRemoval = isMarkedForRemoval;
   }

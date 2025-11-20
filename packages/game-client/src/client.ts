@@ -348,9 +348,9 @@ export class GameClient {
           this.socketManager.sendConsumeItem(itemType);
         }
       },
-      onDropItem: (slotIndex: number) => {
+      onDropItem: (slotIndex: number, amount?: number) => {
         if (this.socketManager) {
-          this.socketManager.sendDropItem(slotIndex);
+          this.socketManager.sendDropItem(slotIndex, amount);
         }
       },
       onFire: (inputs: Input) => {
@@ -402,9 +402,9 @@ export class GameClient {
       this.assetManager,
       this.gameOverDialog,
       this.inputManager,
-      (slotIndex: number) => {
+      (slotIndex: number, amount?: number) => {
         if (this.socketManager) {
-          this.socketManager.sendDropItem(slotIndex);
+          this.socketManager.sendDropItem(slotIndex, amount);
         }
       }
     );

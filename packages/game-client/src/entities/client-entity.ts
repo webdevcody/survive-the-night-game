@@ -5,7 +5,12 @@ import { getPlayer } from "@/util/get-player";
 import { renderInteractionText } from "@/util/interaction-text";
 import { ClientEntityBase } from "@/extensions/client-entity";
 import { ImageLoader } from "@/managers/asset";
-import { ClientInteractive, ClientPlaceable, ClientPositionable } from "@/extensions";
+import {
+  ClientInteractive,
+  ClientPlaceable,
+  ClientPositionable,
+  ClientCarryable,
+} from "@/extensions";
 import Vector2 from "@shared/util/vector2";
 import { DEBUG_SHOW_ATTACK_RANGE } from "@shared/debug";
 import { getConfig } from "@shared/config";
@@ -35,7 +40,17 @@ export abstract class ClientEntity extends ClientEntityBase implements Renderabl
       const displayName = formatDisplayName(interactive.getDisplayName());
       const isPlaceable = this.hasExt(ClientPlaceable);
 
+      // Add item count to display name if available
       let text = displayName;
+      if (this.hasExt(ClientCarryable)) {
+        const carryable = this.getExt(ClientCarryable);
+        const itemState = carryable.getItemState();
+        const count = itemState?.count;
+        if (count && count > 1) {
+          text += ` x${count}`;
+        }
+      }
+
       let interactMessage = "";
       if (isPlaceable) {
         interactMessage += "hold ";

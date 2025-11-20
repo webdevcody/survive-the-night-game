@@ -90,7 +90,7 @@ export class InventoryBarUI implements Renderable {
   private assetManager: AssetManager;
   private inputManager: InputManager;
   private getInventory: () => InventoryItem[];
-  private sendDropItem: (slotIndex: number) => void;
+  private sendDropItem: (slotIndex: number, amount?: number) => void;
   private heartsPanel: HeartsPanel;
   private staminaPanel: StaminaPanel;
   private hoveredSlot: number | null = null;
@@ -104,7 +104,7 @@ export class InventoryBarUI implements Renderable {
     assetManager: AssetManager,
     inputManager: InputManager,
     getInventory: () => InventoryItem[],
-    sendDropItem: (slotIndex: number) => void
+    sendDropItem: (slotIndex: number, amount?: number) => void
   ) {
     this.assetManager = assetManager;
     this.inputManager = inputManager;
