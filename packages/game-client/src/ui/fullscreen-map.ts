@@ -104,7 +104,7 @@ export class FullScreenMap {
     return FULLSCREEN_MAP_SETTINGS.zoomLevels[this.currentZoomIndex];
   }
 
-    // Get all light sources from entities
+  // Get all light sources from entities
   private getLightSources(gameState: GameState): LightSource[] {
     const sources: LightSource[] = [];
 
@@ -116,7 +116,6 @@ export class FullScreenMap {
         sources.push({ position, radius });
       }
     }
-
 
     return sources;
   }

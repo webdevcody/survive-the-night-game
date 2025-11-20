@@ -167,7 +167,8 @@ export class Hud {
     assetManager: AssetManager,
     gameOverDialog: GameOverDialogUI,
     inputManager: InputManager,
-    sendDropItem: (slotIndex: number, amount?: number) => void
+    sendDropItem: (slotIndex: number) => void,
+    sendSwapItems: (fromSlotIndex: number, toSlotIndex: number) => void
   ) {
     this.mapManager = mapManager;
     this.soundManager = soundManager;
@@ -196,7 +197,8 @@ export class Hud {
       this.assetManager,
       this.inputManager,
       getInventory,
-      sendDropItem
+      sendDropItem,
+      sendSwapItems
     );
 
     // Initialize weapons HUD

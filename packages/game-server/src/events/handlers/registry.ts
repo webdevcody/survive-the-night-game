@@ -14,6 +14,7 @@ import { disconnectHandler } from "./disconnect";
 import { dropItemHandler } from "./drop-item";
 import { consumeItemHandler } from "./consume-item";
 import { selectInventorySlotHandler } from "./select-inventory-slot";
+import { swapInventoryItemsHandler } from "./swap-inventory-items";
 import { interactHandler } from "./interact";
 
 /**
@@ -42,5 +43,6 @@ export const socketEventHandlers: SocketEventHandler[] = [
   dropItemHandler,
   consumeItemHandler,
   selectInventorySlotHandler,
+  swapInventoryItemsHandler,
   interactHandler,
 ];
