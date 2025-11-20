@@ -56,11 +56,55 @@ export function onDropItem(
   const poolManager = PoolManager.getInstance();
   const pos = poolManager.vector2.claim(player.getPosition().x + dx, player.getPosition().y + dy);
 
-  if (entity.hasExt(Positionable)) {
-    entity.getExt(Positionable).setPosition(pos);
+  // Check for nearby items of the same type within radius 20
+  const combineRadius = 20;
+  const nearbyEntities = player.getEntityManager().getNearbyEntities(pos, combineRadius);
+  
+  // Find an item of the same type to combine with
+  let combined = false;
+  for (const nearbyEntity of nearbyEntities) {
+    if (!nearbyEntity.hasExt(Carryable) || !nearbyEntity.hasExt(Positionable)) {
+      continue;
+    }
+
+    const nearbyCarryable = nearbyEntity.getExt(Carryable);
+    if (nearbyCarryable.getItemType() !== item.itemType) {
+      continue;
+    }
+
+    // Check if within radius (getNearbyEntities uses spatial grid which may include slightly further entities)
+    const nearbyPos = nearbyEntity.getExt(Positionable).getCenterPosition();
+    const dx2 = pos.x - nearbyPos.x;
+    const dy2 = pos.y - nearbyPos.y;
+    const distanceSquared = dx2 * dx2 + dy2 * dy2;
+    
+    if (distanceSquared <= combineRadius * combineRadius) {
+      // Combine counts
+      const nearbyState = nearbyCarryable.getItemState();
+      const nearbyCount = nearbyState?.count || 1;
+      const droppedCount = item.state?.count || 1;
+      const newCount = nearbyCount + droppedCount;
+      
+      // setItemState automatically marks the extension as dirty
+      nearbyCarryable.setItemState({
+        ...nearbyState,
+        count: newCount,
+      });
+      
+      // Remove the dropped entity since we combined it
+      player.getEntityManager().markEntityForRemoval(entity);
+      combined = true;
+      break;
+    }
   }
 
-  player.getEntityManager().addEntity(entity);
+  // If not combined, add the entity normally
+  if (!combined) {
+    if (entity.hasExt(Positionable)) {
+      entity.getExt(Positionable).setPosition(pos);
+    }
+    player.getEntityManager().addEntity(entity);
+  }
 
   // Broadcast drop event
   player
