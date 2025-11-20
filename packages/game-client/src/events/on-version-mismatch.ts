@@ -1,15 +1,19 @@
 import { VersionMismatchEvent } from "../../../game-shared/src/events/server-sent/events/version-mismatch-event";
+import { ClientEventContext } from "./types";
 
 /**
  * Handle version mismatch event from server
- * Refreshes the browser and redirects to home page
+ * Disables reconnection and refreshes the browser and redirects to home page
  */
-export const onVersionMismatch = (event: VersionMismatchEvent): void => {
+export const onVersionMismatch = (context: ClientEventContext, event: VersionMismatchEvent): void => {
   console.warn(
     `Version mismatch detected. Server version: ${event.getServerVersion()}, Client version: ${
       event.getClientVersion() || "unknown"
     }`
   );
+
+  // Disable reconnection to prevent infinite reconnect loop
+  context.socketManager.disableReconnection();
 
   // Check if we're in a browser environment
   if (typeof window !== "undefined") {

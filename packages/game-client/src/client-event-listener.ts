@@ -124,8 +124,8 @@ export class ClientEventListener {
     this.socketManager.on(ServerSentEvents.WAVE_START, (e) => onWaveStart(context, e));
     this.socketManager.on(ServerSentEvents.CRAFT, (e) => onCraft(context, e));
     this.socketManager.on(ServerSentEvents.BUILD, (e) => onBuild(context, e));
-    this.socketManager.on(ServerSentEvents.VERSION_MISMATCH, (e) => onVersionMismatch(e));
-    this.socketManager.on(ServerSentEvents.USER_BANNED, (e) => onUserBanned(e));
+    this.socketManager.on(ServerSentEvents.VERSION_MISMATCH, (e) => onVersionMismatch(context, e));
+    this.socketManager.on(ServerSentEvents.USER_BANNED, (e) => onUserBanned(context, e));
 
     this.socketManager.onSocketDisconnect(() => {
       this.handleDisconnect();
