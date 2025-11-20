@@ -609,32 +609,39 @@ export class InventoryBarUI implements Renderable {
   }
 
   private calculateHotbarMetrics(canvasWidth: number, canvasHeight: number): HotbarMetrics {
-    const settings = HOTBAR_SETTINGS.Inventory;
-    const slotsNumber = getConfig().player.MAX_INVENTORY_SLOTS;
+    const hudScale = calculateHudScale(canvasWidth, canvasHeight);
+    const cfg = HOTBAR_SETTINGS.Inventory;
+    const slots = getConfig().player.MAX_INVENTORY_SLOTS;
 
-    const hotbarWidth =
-      slotsNumber * settings.slotSize +
-      (slotsNumber - 1) * settings.slotsGap +
-      settings.padding.left +
-      settings.padding.right;
-    const hotbarHeight = settings.slotSize + settings.padding.top + settings.padding.bottom;
+    // Scale only what is actually needed
+    const slotSize = cfg.slotSize * hudScale;
+    const gap = cfg.slotsGap * hudScale;
 
-    const hotbarX = canvasWidth / 2 - hotbarWidth / 2;
-    const hotbarY = canvasHeight - hotbarHeight - settings.screenMarginBottom;
+    const padLeft = cfg.padding.left * hudScale;
+    const padRight = cfg.padding.right * hudScale;
+    const padTop = cfg.padding.top * hudScale;
+    const padBottom = cfg.padding.bottom * hudScale;
 
-    const slotsLeft = hotbarX + settings.padding.left;
-    const slotsTop = hotbarY + settings.padding.top;
+    const marginBottom = cfg.screenMarginBottom * hudScale;
+
+    // Compute width/height directly
+    const width = slots * slotSize + (slots - 1) * gap + padLeft + padRight;
+    const height = slotSize + padTop + padBottom;
+
+    // Center horizontally / place above bottom
+    const x = (canvasWidth - width) * 0.5;
+    const y = canvasHeight - height - marginBottom;
 
     return {
-      hotbarX,
-      hotbarY,
-      hotbarWidth,
-      hotbarHeight,
-      slotsLeft,
-      slotsTop,
-      slotSize: settings.slotSize,
-      slotsGap: settings.slotsGap,
-      slotsNumber,
+      hotbarX: x,
+      hotbarY: y,
+      hotbarWidth: width,
+      hotbarHeight: height,
+      slotsLeft: x + padLeft,
+      slotsTop: y + padTop,
+      slotSize,
+      slotsGap: gap,
+      slotsNumber: slots,
     };
   }
 
