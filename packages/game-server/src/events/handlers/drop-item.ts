@@ -97,7 +97,7 @@ export function onDropItem(
   const playerPos = player.getPosition();
   const droppedType = itemToDrop.itemType;
 
-  const COMBINE_RADIUS_PLAYER = 20;
+  const COMBINE_RADIUS_PLAYER = 15;
   const COMBINE_RADIUS_DROP = 20;
 
   function tryCombineAtPosition(x: number, y: number, radius: number): boolean {
