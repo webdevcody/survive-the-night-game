@@ -12,6 +12,9 @@ import Vector2 from "@shared/util/vector2";
 import PoolManager from "@shared/util/pool-manager";
 import { scaleHudValue } from "@/util/hud-scale";
 import { getEntityMapColor } from "@/util/entity-map-colors";
+import { Renderer } from "@/renderer";
+import { SpatialGrid } from "@shared/util/spatial-grid";
+import { ClientEntityBase } from "@/extensions/client-entity";
 
 // Performance optimization constants - adjust these to balance quality vs performance
 // To view performance stats in console, run:
@@ -25,15 +28,15 @@ export const MINIMAP_RENDER_DISTANCE = {
   // Calculated as: (minimap size / 2) / scale + buffer
   // Default: (400 / 2) / 0.7 + 100 = ~385 pixels
   // Lower values = better performance, but entities may pop in/out
-  ENTITIES: 400,
+  ENTITIES: 300,
 
   // Maximum world distance (in pixels) to check for collidable tiles
   // Same calculation as entities
   // Lower values = better performance, but tiles may pop in/out
-  COLLIDABLES: 400,
+  COLLIDABLES: 300,
 
   // Maximum world distance (in pixels) to check for ground tiles (if needed)
-  GROUND: 400,
+  GROUND: 300,
 };
 
 export const MINIMAP_SETTINGS = {
@@ -129,6 +132,7 @@ interface LightSource {
 
 export class Minimap {
   private mapManager: MapManager;
+  private renderer: Renderer | null = null;
   // Pre-rendered canvas for collidables indicators (at world coordinates, 1:1 scale)
   private collidablesCanvas: HTMLCanvasElement | null = null;
   private readonly tileSize = 16; // Match MapManager tile size
@@ -144,12 +148,22 @@ export class Minimap {
     // Note: This assumes setMap is called on MapManager - we'll check on first render
   }
 
-    // Get all light sources from entities
-  private getLightSources(gameState: GameState): LightSource[] {
+  public setRenderer(renderer: Renderer): void {
+    this.renderer = renderer;
+  }
+
+  private getSpatialGrid(): SpatialGrid<ClientEntityBase> | null {
+    // Access spatial grid through renderer
+    // We'll use a getter method on renderer to access the private spatialGrid
+    return (this.renderer as any)?.spatialGrid ?? null;
+  }
+
+  // Get all light sources from entities
+  private getLightSources(entities: ClientEntityBase[]): LightSource[] {
     const sources: LightSource[] = [];
 
     // Add entity light sources (torches, campfires, etc.)
-    for (const entity of gameState.entities) {
+    for (const entity of entities) {
       if (entity.hasExt(ClientIlluminated) && entity.hasExt(ClientPositionable)) {
         const radius = entity.getExt(ClientIlluminated).getRadius();
         // Skip entities with no light (radius 0 or very small)
@@ -158,7 +172,6 @@ export class Minimap {
         sources.push({ position, radius });
       }
     }
-
 
     return sources;
   }
@@ -189,6 +202,36 @@ export class Minimap {
 
     const playerPos = myPlayer.getExt(ClientPositionable).getCenterPosition();
 
+    // Fetch entities once using spatial grid
+    const spatialGrid = this.getSpatialGrid();
+    if (!spatialGrid) {
+      perfTimer.end("minimap:total");
+      return;
+    }
+
+    const excludeSet = new Set(["boundary" as const]);
+    const allEntities = spatialGrid.getNearbyEntities(
+      playerPos,
+      MINIMAP_RENDER_DISTANCE.ENTITIES,
+      undefined,
+      excludeSet
+    );
+
+    // Filter entities into specific categories for efficient rendering
+    const playerEntities: PlayerClient[] = [];
+    const crateEntities: CrateClient[] = [];
+    const survivorEntities: SurvivorClient[] = [];
+
+    for (const entity of allEntities) {
+      if (entity instanceof PlayerClient) {
+        playerEntities.push(entity);
+      } else if (entity instanceof CrateClient) {
+        crateEntities.push(entity);
+      } else if (entity instanceof SurvivorClient) {
+        survivorEntities.push(entity);
+      }
+    }
+
     ctx.save();
     ctx.setTransform(1, 0, 0, 1, 0, 0);
 
@@ -217,12 +260,12 @@ export class Minimap {
     this.renderCollidables(ctx, playerPos, settings, top, scaledLeft, scaledSize);
     perfTimer.end("minimap:collidables");
 
-    // Loop through all entities and draw them on minimap
+    // Loop through nearby entities and draw them on minimap
     perfTimer.start("minimap:entities");
     const maxEntityDistanceSquared =
       MINIMAP_RENDER_DISTANCE.ENTITIES * MINIMAP_RENDER_DISTANCE.ENTITIES;
 
-    for (const entity of gameState.entities) {
+    for (const entity of allEntities) {
       if (!entity.hasExt(ClientPositionable)) continue;
 
       const positionable = entity.getExt(ClientPositionable);
@@ -268,18 +311,18 @@ export class Minimap {
 
     // Draw fog of war overlay
     perfTimer.start("minimap:fogOfWar");
-    const lightSources = this.getLightSources(gameState);
+    const lightSources = this.getLightSources(allEntities);
     this.renderFogOfWar(ctx, playerPos, lightSources, settings, top);
     perfTimer.end("minimap:fogOfWar");
 
     // Draw crate indicators (after fog of war so they're always visible)
     perfTimer.start("minimap:crates");
-    this.renderCrateIndicators(ctx, gameState, playerPos, settings, top);
+    this.renderCrateIndicators(ctx, crateEntities, playerPos, settings, top);
     perfTimer.end("minimap:crates");
 
     // Draw survivor indicators (after fog of war so they're always visible)
     perfTimer.start("minimap:survivors");
-    this.renderSurvivorIndicators(ctx, gameState, playerPos, settings, top);
+    this.renderSurvivorIndicators(ctx, survivorEntities, playerPos, settings, top);
     perfTimer.end("minimap:survivors");
 
     // Draw radar circle border using scaled values
@@ -307,7 +350,15 @@ export class Minimap {
 
     // Draw player directional indicators
     perfTimer.start("minimap:playerIndicators");
-    this.renderPlayerIndicators(ctx, gameState, playerPos, settings, top, scaledLeft, scaledSize);
+    this.renderPlayerIndicators(
+      ctx,
+      playerEntities,
+      playerPos,
+      settings,
+      top,
+      scaledLeft,
+      scaledSize
+    );
     perfTimer.end("minimap:playerIndicators");
 
     ctx.restore();
@@ -416,7 +467,7 @@ export class Minimap {
 
   private renderPlayerIndicators(
     ctx: CanvasRenderingContext2D,
-    gameState: GameState,
+    playerEntities: PlayerClient[],
     playerPos: { x: number; y: number },
     settings: typeof MINIMAP_SETTINGS,
     top: number,
@@ -427,9 +478,8 @@ export class Minimap {
     const centerY = top + scaledSize / 2;
     const radius = scaledSize / 2;
 
-    // Loop through all entities to find other players
-    for (const entity of gameState.entities) {
-      if (!(entity instanceof PlayerClient)) continue;
+    // Loop through player entities
+    for (const entity of playerEntities) {
       if (!entity.hasExt(ClientPositionable)) continue;
 
       const positionable = entity.getExt(ClientPositionable);
@@ -495,7 +545,7 @@ export class Minimap {
 
   private renderCrateIndicators(
     ctx: CanvasRenderingContext2D,
-    gameState: GameState,
+    crateEntities: CrateClient[],
     playerPos: { x: number; y: number },
     settings: typeof MINIMAP_SETTINGS,
     top: number
@@ -513,9 +563,8 @@ export class Minimap {
     const centerY = topPos + scaledSize / 2;
     const maxDistanceSquared = MINIMAP_RENDER_DISTANCE.ENTITIES * MINIMAP_RENDER_DISTANCE.ENTITIES;
 
-    // Loop through all entities to find crates
-    for (const entity of gameState.entities) {
-      if (!(entity instanceof CrateClient)) continue;
+    // Loop through crate entities
+    for (const entity of crateEntities) {
       if (!entity.hasExt(ClientPositionable)) continue;
 
       const positionable = entity.getExt(ClientPositionable);
@@ -580,7 +629,7 @@ export class Minimap {
 
   private renderSurvivorIndicators(
     ctx: CanvasRenderingContext2D,
-    gameState: GameState,
+    survivorEntities: SurvivorClient[],
     playerPos: { x: number; y: number },
     settings: typeof MINIMAP_SETTINGS,
     top: number
@@ -598,9 +647,8 @@ export class Minimap {
     const centerY = topPos + scaledSize / 2;
     const maxDistanceSquared = MINIMAP_RENDER_DISTANCE.ENTITIES * MINIMAP_RENDER_DISTANCE.ENTITIES;
 
-    // Loop through all entities to find survivors
-    for (const entity of gameState.entities) {
-      if (!(entity instanceof SurvivorClient)) continue;
+    // Loop through survivor entities
+    for (const entity of survivorEntities) {
       if (!entity.hasExt(ClientPositionable)) continue;
 
       const positionable = entity.getExt(ClientPositionable);

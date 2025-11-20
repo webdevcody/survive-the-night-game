@@ -1,4 +1,4 @@
-import { GameState } from "@/state";
+import { GameState, getEntitiesByType } from "@/state";
 import { Panel, PanelSettings } from "./panel";
 import { getPlayer } from "@/util/get-player";
 import { ClientPositionable } from "@/extensions/positionable";
@@ -32,8 +32,8 @@ export class SurvivorIndicatorsPanel extends Panel {
     const playerPos = player.getExt(ClientPositionable).getCenterPosition();
     const { width, height } = ctx.canvas;
 
-    // Find all survivors in the game state
-    const survivors = gameState.entities.filter(
+    // Get all survivors from the type-based map (more efficient than filtering all entities)
+    const survivors = getEntitiesByType(gameState, "survivor").filter(
       (entity) => entity instanceof SurvivorClient && entity.hasExt(ClientPositionable)
     );
 

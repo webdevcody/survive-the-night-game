@@ -231,7 +231,8 @@ export class PlayerClient extends ClientEntity implements IClientEntity, Rendera
         PoolManager.getInstance().vector2.claim(
           this.lastRenderPosition.x,
           this.lastRenderPosition.y
-        )
+        ),
+        gameState.dt
       );
     }
 
@@ -462,6 +463,10 @@ export class PlayerClient extends ClientEntity implements IClientEntity, Rendera
 
   public getActiveItem(): InventoryItem | null {
     const slot = (this as any).inputInventoryItem ?? 1;
+    if (!this.hasExt(ClientInventory)) {
+      console.warn(`Player ${this.getId()} missing ClientInventory extension`);
+      return null;
+    }
     return this.getExt(ClientInventory).getActiveItem(slot);
   }
 

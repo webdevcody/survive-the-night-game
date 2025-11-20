@@ -82,7 +82,7 @@ export class MeleeAttackStrategy implements AttackStrategy {
       closestTarget.entity.hasExt(Destructible) &&
       closestDistance <= getConfig().combat.ZOMBIE_ATTACK_RADIUS
     ) {
-      closestTarget.entity.getExt(Destructible).damage(zombie.getAttackDamage());
+      closestTarget.entity.getExt(Destructible).damage(zombie.getAttackDamage(), zombie.getId());
 
       // Call the damage hook if provided
       if (this.onEntityDamaged) {

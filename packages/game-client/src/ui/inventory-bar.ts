@@ -151,6 +151,10 @@ export class InventoryBarUI implements Renderable {
     this.renderTooltip(ctx, gameState);
   }
 
+  public isHovering(): boolean {
+    return this.hoveredSlot !== null;
+  }
+
   public getZIndex(): number {
     return Z_INDEX.UI;
   }

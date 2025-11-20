@@ -58,7 +58,11 @@ export class BaseballBat extends Weapon {
     if (targetZombie) {
       const destructible = targetZombie.getExt(Destructible);
       const wasAlive = !destructible.isDead();
-      destructible.damage(this.config.stats.damage!);
+      
+      const player = this.getEntityManager().getEntityById(playerId);
+      const attackerId = player ? player.getId() : 0;
+      destructible.damage(this.config.stats.damage!, attackerId);
+      
       knockBack(
         this.getEntityManager(),
         targetZombie,
@@ -67,7 +71,6 @@ export class BaseballBat extends Weapon {
       );
 
       if (wasAlive && destructible.isDead()) {
-        const player = this.getEntityManager().getEntityById(playerId);
         if (player instanceof Player) {
           player.incrementKills();
         }

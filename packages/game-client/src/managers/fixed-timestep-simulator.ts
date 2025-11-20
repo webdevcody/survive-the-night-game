@@ -8,7 +8,7 @@
 export class FixedTimestepSimulator {
   private readonly FIXED_TIMESTEP: number;
   private accumulator: number = 0;
-  private lastTime: number = Date.now();
+  private lastTime: number = performance.now();
 
   constructor(fixedTimestep: number) {
     this.FIXED_TIMESTEP = fixedTimestep;
@@ -17,15 +17,26 @@ export class FixedTimestepSimulator {
   /**
    * Update simulation using fixed timestep
    * @param updateCallback - Called with fixed deltaTime (always FIXED_TIMESTEP)
+   * @param deltaTimeSeconds - Optional frame delta time in seconds. If not provided, calculates internally.
+   *                           This allows the caller to pass a more accurate delta time (e.g., from requestAnimationFrame).
    * @returns Number of simulation steps processed
    */
-  update(updateCallback: (deltaTime: number) => void): number {
-    const currentTime = Date.now();
-    const frameTime = (currentTime - this.lastTime) / 1000; // Convert to seconds
-    this.lastTime = currentTime;
+  update(updateCallback: (deltaTime: number) => void, deltaTimeSeconds?: number): number {
+    let frameTime: number;
+    
+    if (deltaTimeSeconds !== undefined) {
+      // Use provided delta time (more accurate, especially at low FPS)
+      frameTime = deltaTimeSeconds;
+    } else {
+      // Fallback: calculate delta time internally
+      const currentTime = performance.now();
+      frameTime = (currentTime - this.lastTime) / 1000; // Convert to seconds
+      this.lastTime = currentTime;
+    }
 
     // Clamp frameTime to prevent large jumps (e.g., tab switch)
-    const clampedFrameTime = Math.min(frameTime, this.FIXED_TIMESTEP * 5); // Max 5 steps
+    // Increased max steps from 5 to 10 to handle lower FPS better (allows up to 0.5 seconds catch-up)
+    const clampedFrameTime = Math.min(frameTime, this.FIXED_TIMESTEP * 10);
 
     // Accumulate time
     this.accumulator += clampedFrameTime;
@@ -54,7 +65,7 @@ export class FixedTimestepSimulator {
    */
   reset(): void {
     this.accumulator = 0;
-    this.lastTime = Date.now();
+    this.lastTime = performance.now();
   }
 }
 

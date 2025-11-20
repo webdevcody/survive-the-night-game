@@ -119,6 +119,9 @@ const handleGameStateUpdate = (context: InitializationContext, gameStateEvent: G
       // Replace all entities
       replaceAllEntities(context.gameState, createdEntities);
 
+      // Rebuild spatial grid for full state update
+      context.gameClient.getRenderer().initializeSpatialGrid();
+
       if (!context.hasReceivedInitialState) {
         context.setHasReceivedInitialState(true);
         context.checkInitialization();
@@ -134,6 +137,10 @@ const handleGameStateUpdate = (context: InitializationContext, gameStateEvent: G
 
       // Remove entities that were deleted
       removedIds.forEach((id) => {
+        const entity = context.gameState.entityMap.get(id);
+        if (entity) {
+          context.gameClient.getRenderer().removeEntityFromSpatialGrid(entity);
+        }
         removeEntityFromState(context.gameState, id);
       });
 
@@ -151,6 +158,12 @@ const handleGameStateUpdate = (context: InitializationContext, gameStateEvent: G
 
         const existingEntity = context.gameState.entityMap.get(id);
         if (existingEntity) {
+          // Track if position might have changed
+          const hadPosition = existingEntity.hasExt(ClientPositionable);
+          const oldPos = hadPosition
+            ? existingEntity.getExt(ClientPositionable).getPosition()
+            : null;
+
           // Update existing entity from buffer
           // For local player, handle position reconciliation
           if (
@@ -176,6 +189,8 @@ const handleGameStateUpdate = (context: InitializationContext, gameStateEvent: G
               // For very large errors, snap immediately
               if (error > (window.config?.prediction?.errorThreshold ?? 50)) {
                 // Already deserialized, position is updated
+                // Update spatial grid since position changed
+                context.gameClient.getRenderer().updateEntityInSpatialGrid(existingEntity);
               } else {
                 // Restore client position for smooth reconciliation
                 existingEntity.getExt(ClientPositionable).setPosition(clientPos);
@@ -196,6 +211,14 @@ const handleGameStateUpdate = (context: InitializationContext, gameStateEvent: G
             const smooth = context.interpolation.getInterpolatedPosition(existingEntity.getId());
             if (smooth) {
               existingEntity.getExt(ClientPositionable).setPosition(smooth);
+            }
+          }
+
+          // Update spatial grid if position changed
+          if (existingEntity.hasExt(ClientPositionable)) {
+            const newPos = existingEntity.getExt(ClientPositionable).getPosition();
+            if (!oldPos || oldPos.x !== newPos.x || oldPos.y !== newPos.y) {
+              context.gameClient.getRenderer().updateEntityInSpatialGrid(existingEntity);
             }
           }
         } else {
@@ -222,6 +245,8 @@ const handleGameStateUpdate = (context: InitializationContext, gameStateEvent: G
             (created as unknown as PlayerClient).setServerGhostPosition(pos);
           }
           addEntity(context.gameState, created);
+          // Add to spatial grid
+          context.gameClient.getRenderer().addEntityToSpatialGrid(created);
         }
 
         // Advance reader past this entity
@@ -248,6 +273,9 @@ const handleGameStateUpdate = (context: InitializationContext, gameStateEvent: G
       });
       replaceAllEntities(context.gameState, createdEntities);
 
+      // Rebuild spatial grid for full state update
+      context.gameClient.getRenderer().initializeSpatialGrid();
+
       if (!context.hasReceivedInitialState) {
         context.setHasReceivedInitialState(true);
         context.checkInitialization();
@@ -263,6 +291,10 @@ const handleGameStateUpdate = (context: InitializationContext, gameStateEvent: G
 
       // Remove entities that were deleted
       removedIds.forEach((id) => {
+        const entity = context.gameState.entityMap.get(id);
+        if (entity) {
+          context.gameClient.getRenderer().removeEntityFromSpatialGrid(entity);
+        }
         removeEntityFromState(context.gameState, id);
       });
 
@@ -270,6 +302,12 @@ const handleGameStateUpdate = (context: InitializationContext, gameStateEvent: G
       entitiesFromServer.forEach((serverEntityData) => {
         const existingEntity = context.gameState.entityMap.get(serverEntityData.id);
         if (existingEntity) {
+          // Track if position might have changed
+          const hadPosition = existingEntity.hasExt(ClientPositionable);
+          const oldPos = hadPosition
+            ? existingEntity.getExt(ClientPositionable).getPosition()
+            : null;
+
           // Only update properties that were included in the delta update
           for (const [key, value] of Object.entries(serverEntityData)) {
             if (key !== "id") {
@@ -301,6 +339,8 @@ const handleGameStateUpdate = (context: InitializationContext, gameStateEvent: G
                     if (error > (window.config?.prediction?.errorThreshold ?? 50)) {
                       // Large error: snap immediately to server position
                       existingEntity.deserializeProperty(key, value);
+                      // Update spatial grid since position changed
+                      context.gameClient.getRenderer().updateEntityInSpatialGrid(existingEntity);
                     } else {
                       // Let PredictionManager handle reconciliation for smaller errors
                       // Apply other extension updates without positionable
@@ -314,6 +354,8 @@ const handleGameStateUpdate = (context: InitializationContext, gameStateEvent: G
                   } else {
                     // For non-player entities, apply position directly
                     existingEntity.deserializeProperty(key, value);
+                    // Update spatial grid since position changed
+                    context.gameClient.getRenderer().updateEntityInSpatialGrid(existingEntity);
                   }
                 } else {
                   existingEntity.deserializeProperty(key, value);
@@ -336,6 +378,14 @@ const handleGameStateUpdate = (context: InitializationContext, gameStateEvent: G
               existingEntity.getExt(ClientPositionable).setPosition(smooth);
             }
           }
+
+          // Update spatial grid if position changed
+          if (existingEntity.hasExt(ClientPositionable)) {
+            const newPos = existingEntity.getExt(ClientPositionable).getPosition();
+            if (!oldPos || oldPos.x !== newPos.x || oldPos.y !== newPos.y) {
+              context.gameClient.getRenderer().updateEntityInSpatialGrid(existingEntity);
+            }
+          }
         } else {
           // Add new entity
           const created = context.gameClient.getEntityFactory().createEntity(serverEntityData);
@@ -356,6 +406,8 @@ const handleGameStateUpdate = (context: InitializationContext, gameStateEvent: G
             (created as unknown as PlayerClient).setServerGhostPosition(pos);
           }
           addEntity(context.gameState, created);
+          // Add to spatial grid
+          context.gameClient.getRenderer().addEntityToSpatialGrid(created);
         }
       });
     }

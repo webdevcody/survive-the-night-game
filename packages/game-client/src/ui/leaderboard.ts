@@ -1,5 +1,6 @@
-import { GameState } from "@/state";
+import { GameState, getEntitiesByType } from "@/state";
 import { PlayerClient } from "@/entities/player";
+import { Entities } from "@shared/constants";
 
 const LEADERBOARD_SETTINGS = {
   background: "rgba(20, 20, 20, 0.95)",
@@ -97,7 +98,8 @@ export class Leaderboard {
     if (!this.show) return;
 
     const settings = LEADERBOARD_SETTINGS;
-    const players = gameState.entities.filter((entity) => entity instanceof PlayerClient);
+    const players = getEntitiesByType(gameState, Entities.PLAYER) as PlayerClient[];
+    if (players.length === 0) return;
 
     ctx.save();
     ctx.setTransform(1, 0, 0, 1, 0, 0);

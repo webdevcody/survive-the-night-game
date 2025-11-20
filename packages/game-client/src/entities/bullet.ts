@@ -47,7 +47,8 @@ export class BulletClient extends ClientEntityBase implements IClientEntity, Ren
     const targetPosition = this.getPosition();
     this.lastRenderPosition = this.lerpPosition(
       targetPosition,
-      PoolManager.getInstance().vector2.claim(this.lastRenderPosition.x, this.lastRenderPosition.y)
+      PoolManager.getInstance().vector2.claim(this.lastRenderPosition.x, this.lastRenderPosition.y),
+      gameState.dt
     );
 
     const renderPosition = roundVector2(this.lastRenderPosition);

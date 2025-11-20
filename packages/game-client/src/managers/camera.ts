@@ -65,7 +65,7 @@ export class CameraManager {
     this.shakeOffset.y = (Math.random() * 2 - 1) * magnitude;
   }
 
-  translateTo(position: Vector2): void {
+  translateTo(position: Vector2, dt?: number): void {
     this.targetPosition = position;
     const dx = this.targetPosition.x - this.position.x;
     const dy = this.targetPosition.y - this.position.y;
@@ -75,8 +75,18 @@ export class CameraManager {
       this.position.x = this.targetPosition.x;
       this.position.y = this.targetPosition.y;
     } else {
-      this.position.x += dx * this.LERP_FACTOR;
-      this.position.y += dy * this.LERP_FACTOR;
+      // Use time-based lerp if dt is provided, otherwise fallback to constant factor
+      // Original factor was 0.04
+      // 0.04 = 1 - exp(-lambda * 0.0166) -> lambda ~ 2.5
+      let factor = this.LERP_FACTOR;
+      
+      if (dt !== undefined && dt > 0) {
+        const lambda = 2.5;
+        factor = 1 - Math.exp(-lambda * dt);
+      }
+
+      this.position.x += dx * factor;
+      this.position.y += dy * factor;
     }
 
     this.updateShake();

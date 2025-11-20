@@ -227,7 +227,7 @@ export class Arrow extends Entity {
         const wasAlive = !destructible.isDead();
 
         // Deal 1 damage
-        destructible.damage(1);
+        destructible.damage(1, this.shooterId);
 
         // Add arrow to zombie's inventory (stacking)
         if (enemy.hasExt(Inventory)) {

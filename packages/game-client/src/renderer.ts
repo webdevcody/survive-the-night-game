@@ -1,6 +1,6 @@
 import { Renderable } from "@/entities/util";
 import { MapManager } from "@/managers/map";
-import { GameState } from "@/state";
+import { GameState, getEntityById } from "@/state";
 import { MerchantBuyPanel } from "@/ui/merchant-buy-panel";
 import { Hud } from "@/ui/hud";
 import { GameOverDialogUI } from "@/ui/game-over-dialog";
@@ -8,14 +8,17 @@ import { ParticleManager } from "./managers/particles";
 import { PlacementManager } from "./managers/placement";
 import { ClientPositionable } from "@/extensions/positionable";
 import { ClientInteractive, ClientInventory } from "@/extensions";
+import { SpatialGrid } from "@shared/util/spatial-grid";
 import { ClientEntityBase } from "@/extensions/client-entity";
-import { getConfig } from "@shared/config";
+import { ClientDestructible } from "@/extensions/destructible";
 import { perfTimer } from "@shared/util/performance";
+import { beginInteractionTextFrame, flushInteractionText } from "./util/interaction-text";
+import { PlayerClient } from "./entities/player";
 import { DEBUG_PERFORMANCE } from "@shared/debug";
 import { isWeapon } from "@shared/util/inventory";
-import { PlayerClient } from "@/entities/player";
 import { Entities } from "@shared/constants";
-import { beginInteractionTextFrame, flushInteractionText } from "@/util/interaction-text";
+import { getConfig } from "@shared/config";
+import { getPlayer } from "./util/get-player";
 
 export class Renderer {
   private ctx: CanvasRenderingContext2D;
@@ -29,6 +32,7 @@ export class Renderer {
   private getTeleportState: () => { isTeleporting: boolean; progress: number } | null;
   private lastPerfLogTime: number | null = null;
   private mousePosition: { x: number; y: number } | null = null;
+  public spatialGrid: SpatialGrid<ClientEntityBase> | null = null;
 
   constructor(
     ctx: CanvasRenderingContext2D,
@@ -53,10 +57,66 @@ export class Renderer {
     this.resizeCanvas();
   }
 
-  private getRenderableEntities(): Renderable[] {
-    return this.gameState.entities.filter((entity) => {
-      return "render" in entity;
-    }) as unknown as Renderable[];
+  /**
+   * Initialize the spatial grid when a new map is loaded
+   */
+  public initializeSpatialGrid(): void {
+    const mapData = this.mapManager.getMapData();
+    if (!mapData.ground) return;
+
+    // Calculate map dimensions from ground layer
+    const mapWidth = mapData.ground[0].length * 16; // tileSize
+    const mapHeight = mapData.ground.length * 16;
+
+    // Clear existing grid if it exists
+    if (this.spatialGrid) {
+      this.spatialGrid.clear();
+    }
+
+    // Initialize with 256 cell size (16 tiles) for larger chunks
+    this.spatialGrid = new SpatialGrid(mapWidth, mapHeight, 16, (entity) => {
+      if (entity.hasExt(ClientPositionable)) {
+        return entity.getExt(ClientPositionable).getCenterPosition();
+      }
+      return null;
+    });
+
+    // Add all existing entities to the grid
+    const entities = this.gameState.entities;
+    for (let i = 0; i < entities.length; i++) {
+      const entity = entities[i];
+      if (entity.hasExt(ClientPositionable)) {
+        this.spatialGrid.addEntity(entity);
+      }
+    }
+  }
+
+  /**
+   * Add an entity to the spatial grid
+   */
+  public addEntityToSpatialGrid(entity: ClientEntityBase): void {
+    if (!this.spatialGrid) return;
+    if (entity.hasExt(ClientPositionable)) {
+      this.spatialGrid.addEntity(entity);
+    }
+  }
+
+  /**
+   * Remove an entity from the spatial grid
+   */
+  public removeEntityFromSpatialGrid(entity: ClientEntityBase): void {
+    if (!this.spatialGrid) return;
+    this.spatialGrid.removeEntity(entity);
+  }
+
+  /**
+   * Update an entity's position in the spatial grid
+   */
+  public updateEntityInSpatialGrid(entity: ClientEntityBase): void {
+    if (!this.spatialGrid) return;
+    if (entity.hasExt(ClientPositionable)) {
+      this.spatialGrid.updateEntity(entity);
+    }
   }
 
   public resizeCanvas(): void {
@@ -81,50 +141,42 @@ export class Renderer {
   }
 
   private renderEntities(): void {
-    const renderableEntities = this.getRenderableEntities();
+    const player = getEntityById(this.gameState, this.gameState.playerId);
 
-    const player = this.gameState.playerId
-      ? (this.gameState.entities.find(
-          (e) => e.getId() === this.gameState.playerId
-        ) as ClientEntityBase)
-      : null;
-
-    if (!player || !player.hasExt(ClientPositionable)) {
-      // If no player or player has no position, render everything
-      this.gameState.closestInteractiveEntityId = null;
-      renderableEntities.sort((a, b) => a.getZIndex() - b.getZIndex());
-      renderableEntities.forEach((entity) => {
-        try {
-          entity.render(this.ctx, this.gameState);
-        } catch (error) {
-          console.error(`Error rendering entity ${entity.constructor.name}:`, error);
-        }
-      });
+    if (!player || !player.hasExt(ClientPositionable) || !this.spatialGrid) {
       return;
     }
 
     const playerPos = player.getExt(ClientPositionable).getCenterPosition();
 
-    // Filter and sort entities within radius
+    // Use spatial grid to get nearby entities
     const renderRadius = getConfig().render.ENTITY_RENDER_RADIUS;
     const renderRadiusSquared = renderRadius * renderRadius;
     const interactRadius = getConfig().player.MAX_INTERACT_RADIUS;
     const interactRadiusSquared = interactRadius * interactRadius;
 
-    var entitiesToRender = [];
+    const nearbyEntities = this.spatialGrid.getNearbyEntities(playerPos, renderRadius);
+
+    const entitiesToRender: any[] = [];
     var closestInteractiveEntity: ClientEntityBase | null = null;
     var closestInteractiveDistanceSquared = Infinity;
     var closestIsDeadPlayer = false;
 
-    for (var i = 0, len = renderableEntities.length; i < len; ++i) {
-      var entity = renderableEntities[i];
-      if (!(entity instanceof ClientEntityBase)) continue;
-      if (!entity.hasExt(ClientPositionable)) continue;
-      var entityPos = entity.getExt(ClientPositionable).getCenterPosition();
-      var dx = entityPos.x - playerPos.x;
-      var dy = entityPos.y - playerPos.y;
-      var distanceSquared = dx * dx + dy * dy;
+    for (let i = 0; i < nearbyEntities.length; i++) {
+      const entity = nearbyEntities[i];
 
+      // Skip if not renderable (doesn't have render method)
+      if (!("render" in entity)) continue;
+
+      // Position check should be guaranteed by spatial grid, but safe to check ext
+      if (!entity.hasExt(ClientPositionable)) continue;
+
+      const entityPos = entity.getExt(ClientPositionable).getCenterPosition();
+      const dx = entityPos.x - playerPos.x;
+      const dy = entityPos.y - playerPos.y;
+      const distanceSquared = dx * dx + dy * dy;
+
+      // Precise circle culling
       if (distanceSquared <= renderRadiusSquared) {
         entitiesToRender.push(entity);
       }
@@ -138,7 +190,7 @@ export class Renderer {
         const isDeadPlayer =
           entity.getType() === Entities.PLAYER && entity instanceof PlayerClient && entity.isDead();
 
-        // Priority: dead players first, then closest by distance (using squared distance for comparison)
+        // Priority: dead players first, then closest by distance
         let isCloser = false;
         if (isDeadPlayer && !closestIsDeadPlayer) {
           isCloser = true;
@@ -156,18 +208,19 @@ export class Renderer {
       }
     }
 
-    // Cache the closest interactive entity ID for entities to check
+    // Cache the closest interactive entity ID
     this.gameState.closestInteractiveEntityId = closestInteractiveEntity?.getId() ?? null;
 
+    // Sort by Z-index and render
     entitiesToRender.sort((a, b) => a.getZIndex() - b.getZIndex());
 
-    entitiesToRender.forEach((entity) => {
+    for (const entity of entitiesToRender) {
       try {
         entity.render(this.ctx, this.gameState);
       } catch (error) {
         console.error(`Error rendering entity ${entity.constructor.name}:`, error);
       }
-    });
+    }
   }
 
   public render(): void {
@@ -209,11 +262,9 @@ export class Renderer {
     perfTimer.start("renderTeleportProgress");
     const teleportState = this.getTeleportState();
     if (teleportState?.isTeleporting && this.gameState.playerId) {
-      const player = this.gameState.entities.find(
-        (e) => e.getId() === this.gameState.playerId
-      ) as ClientEntityBase;
+      const player = getPlayer(this.gameState);
       if (player && player.hasExt(ClientPositionable)) {
-        const playerPos = player.getExt(ClientPositionable).getPosition();
+        const playerPos = player.getPosition();
         this.hud.renderTeleportProgress(this.ctx, playerPos, teleportState.progress);
       }
     }
@@ -222,13 +273,11 @@ export class Renderer {
     // Render pickup progress indicator above player's head
     perfTimer.start("renderPickupProgress");
     if (this.gameState.playerId) {
-      const player = this.gameState.entities.find(
-        (e) => e.getId() === this.gameState.playerId
-      ) as PlayerClient;
+      const player = getPlayer(this.gameState);
       if (player && player.hasExt(ClientPositionable)) {
         const pickupProgress = player.getPickupProgress();
         if (pickupProgress > 0) {
-          const playerPos = player.getExt(ClientPositionable).getPosition();
+          const playerPos = player.getPosition();
           this.hud.renderPickupProgress(this.ctx, playerPos, pickupProgress);
         }
       }
@@ -286,11 +335,8 @@ export class Renderer {
     if (!this.mousePosition) return;
 
     // Check if player has a weapon equipped
-    const player = this.gameState.playerId
-      ? this.gameState.entities.find((e) => e.getId() === this.gameState.playerId)
-      : null;
-
-    if (!player || !(player instanceof PlayerClient)) return;
+    const player = getPlayer(this.gameState);
+    if (!player) return;
 
     // Defensive check: ensure player has inventory extension
     if (!player.hasExt(ClientInventory)) return;

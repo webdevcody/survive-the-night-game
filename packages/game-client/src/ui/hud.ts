@@ -157,6 +157,9 @@ export class Hud {
   private weaponsHud: WeaponsHUD;
   private inputManager: InputManager;
   private currentGameState: GameState | null = null;
+  private mouseX: number = 0;
+  private mouseY: number = 0;
+  private canvasHeight: number = 0;
 
   constructor(
     mapManager: MapManager,
@@ -189,7 +192,12 @@ export class Hud {
     };
 
     // Initialize hotbar
-    this.hotbar = new InventoryBarUI(this.assetManager, this.inputManager, getInventory, sendDropItem);
+    this.hotbar = new InventoryBarUI(
+      this.assetManager,
+      this.inputManager,
+      getInventory,
+      sendDropItem
+    );
 
     // Initialize weapons HUD
     this.weaponsHud = new WeaponsHUD(this.assetManager, this.inputManager, getInventory);
@@ -265,7 +273,7 @@ export class Hud {
         iconGap: HUD_SETTINGS.Resources.iconGap,
         resourceGap: HUD_SETTINGS.Resources.resourceGap,
       },
-      assetManager
+      this.assetManager
     );
 
     // Initialize car health panel (center top of screen)
@@ -309,7 +317,7 @@ export class Hud {
         font: `${HUD_SETTINGS.MuteButton.baseFont}px Arial`, // Will be scaled dynamically
         hoverBackground: HUD_SETTINGS.MuteButton.hoverBackground,
       },
-      soundManager,
+      this.soundManager,
       {
         baseWidth: HUD_SETTINGS.MuteButton.baseWidth,
         baseHeight: HUD_SETTINGS.MuteButton.baseHeight,
@@ -326,7 +334,7 @@ export class Hud {
       {
         ...HUD_SETTINGS.CrateIndicators,
       },
-      assetManager
+      this.assetManager
     );
 
     // Initialize survivor indicators panel
@@ -334,8 +342,12 @@ export class Hud {
       {
         ...HUD_SETTINGS.SurvivorIndicators,
       },
-      assetManager
+      this.assetManager
     );
+  }
+
+  public setRenderer(renderer: import("@/renderer").Renderer): void {
+    this.minimap.setRenderer(renderer);
   }
 
   public update(gameState: GameState): void {
@@ -611,6 +623,14 @@ export class Hud {
     this.chatWidget.saveChatMessage(message);
   }
 
+  public isHoveringInventory(): boolean {
+    return this.hotbar ? this.hotbar.isHovering() : false;
+  }
+
+  public isHoveringMuteButton(): boolean {
+    return this.muteButtonPanel.isMouseOver(this.mouseX, this.mouseY, this.canvasHeight);
+  }
+
   public handleClick(x: number, y: number, canvasWidth: number, canvasHeight: number): boolean {
     // Check fullscreen map clicks first (if open)
     if (this.fullscreenMap.handleClick(x, y)) {
@@ -663,6 +683,10 @@ export class Hud {
     canvasWidth: number,
     canvasHeight: number
   ): void {
+    this.mouseX = x;
+    this.mouseY = y;
+    this.canvasHeight = canvasHeight;
+
     if (this.hotbar) {
       this.hotbar.updateMousePosition(x, y, canvasWidth, canvasHeight);
     }

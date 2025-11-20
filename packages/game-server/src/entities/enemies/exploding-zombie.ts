@@ -60,7 +60,7 @@ export class ExplodingZombie extends BaseEnemy {
         // Scale damage based on distance from explosion
         const damageScale = 1 - dist / ExplodingZombie.EXPLOSION_RADIUS;
         const damage = Math.ceil(ExplodingZombie.EXPLOSION_DAMAGE * damageScale);
-        entity.getExt(Destructible).damage(damage);
+        entity.getExt(Destructible).damage(damage, this.getId());
       }
     }
 

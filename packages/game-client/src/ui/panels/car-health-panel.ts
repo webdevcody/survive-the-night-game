@@ -1,4 +1,4 @@
-import { GameState } from "@/state";
+import { GameState, getEntitiesByType } from "@/state";
 import { Entities } from "@shared/constants";
 import { ClientDestructible } from "@/extensions";
 import { Panel, PanelSettings } from "./panel";
@@ -25,8 +25,10 @@ export class CarHealthPanel extends Panel {
 
   public render(ctx: CanvasRenderingContext2D, gameState: GameState): void {
     // Find the car entity
-    const car = gameState.entities.find((entity) => entity.getType() === Entities.CAR);
-    if (!car || !car.hasExt(ClientDestructible)) return;
+    const carEntities = getEntitiesByType(gameState, Entities.CAR);
+    if (carEntities.length === 0) return;
+
+    const car = carEntities[0];
 
     const { width: canvasWidth, height: canvasHeight } = ctx.canvas;
     const hudScale = calculateHudScale(canvasWidth, canvasHeight);

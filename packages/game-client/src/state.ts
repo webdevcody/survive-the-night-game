@@ -19,6 +19,8 @@ export type GameState = {
   serverTimeOffset: number; // Offset in milliseconds: clientTime - serverTime
   // Cached closest interactive entity ID (calculated once per frame in renderer)
   closestInteractiveEntityId?: number | null;
+  // Delta time in seconds for the current frame (used for time-based lerping)
+  dt: number;
 };
 
 export function getEntityById(gameState: GameState, id: number): ClientEntityBase | undefined {

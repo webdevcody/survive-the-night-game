@@ -47,6 +47,7 @@ import { PlacementManager } from "@/managers/placement";
 import { isWeapon, ItemType, InventoryItem } from "@shared/util/inventory";
 import { getClosestInteractiveEntity } from "@/util/get-closest-interactive";
 import { getPlayer } from "@/util/get-player";
+import { Entities } from "@shared/constants";
 
 export class GameClient {
   private ctx: CanvasRenderingContext2D;
@@ -423,6 +424,7 @@ export class GameClient {
       crafting: false,
       // Server time synchronization
       serverTimeOffset: 0, // Will be calculated when receiving game state updates
+      dt: 0,
     };
 
     this.renderer = new Renderer(
@@ -436,6 +438,9 @@ export class GameClient {
       () => this.getPlacementManager(),
       () => this.getTeleportState()
     );
+
+    // Set renderer reference on minimap so it can use the spatial grid
+    this.hud.setRenderer(this.renderer);
 
     this.resizeController = new ResizeController(this.renderer);
   }
@@ -516,6 +521,10 @@ export class GameClient {
     return this.zoomController;
   }
 
+  public getRenderer(): Renderer {
+    return this.renderer;
+  }
+
   public isChatting(): boolean {
     return this.inputManager.isChatInputActive();
   }
@@ -567,7 +576,7 @@ export class GameClient {
     }
 
     this.isStarted = true;
-    this.lastUpdateTimeMs = Date.now();
+    this.lastUpdateTimeMs = performance.now();
 
     const tick = () => {
       this.update();
@@ -594,15 +603,20 @@ export class GameClient {
   private update(): void {
     // Update FPS
     this.frameCount++;
-    const now = Date.now();
+    const now = performance.now();
     const deltaSecondsRaw = (now - this.lastUpdateTimeMs) / 1000;
     this.lastUpdateTimeMs = now;
-    // Clamp to avoid large jumps on tab switches; cap to ~20 FPS minimum
-    const deltaSeconds = Math.max(0, Math.min(deltaSecondsRaw, 0.05));
-    if (now - this.lastFpsUpdate >= this.FPS_UPDATE_INTERVAL) {
-      this.currentFps = Math.round((this.frameCount * 1000) / (now - this.lastFpsUpdate));
+    // Clamp to avoid large jumps on tab switches; cap to allow up to 10 steps catch-up (~0.5 seconds)
+    // This ensures responsiveness even at very low FPS (e.g., 20 FPS)
+    const maxDeltaSeconds = getConfig().simulation.FIXED_TIMESTEP * 10;
+    const deltaSeconds = Math.max(0, Math.min(deltaSecondsRaw, maxDeltaSeconds));
+    this.gameState.dt = deltaSeconds;
+
+    const nowMs = Date.now();
+    if (nowMs - this.lastFpsUpdate >= this.FPS_UPDATE_INTERVAL) {
+      this.currentFps = Math.round((this.frameCount * 1000) / (nowMs - this.lastFpsUpdate));
       this.frameCount = 0;
-      this.lastFpsUpdate = now;
+      this.lastFpsUpdate = nowMs;
       this.hud.updateFps(this.currentFps);
     }
 
@@ -650,6 +664,7 @@ export class GameClient {
         reconciliationManager.setIsMoving(hasMovementInput);
 
         // Use fixed timestep simulator for consistent physics
+        // Pass the calculated deltaSeconds to ensure accurate timing, especially at low FPS
         // This ensures client and server use the same timestep
         this.fixedTimestepSimulator.update((fixedDeltaTime) => {
           // deltaTime is always FIXED_TIMESTEP (0.05 seconds) for physics
@@ -660,7 +675,7 @@ export class GameClient {
             mapData.collidables,
             this.gameState.entities
           );
-        });
+        }, deltaSeconds);
 
         // Send input to server when it changed, facing direction changed, or aimAngle changed
         if (this.inputManager.getHasChanged() || facingChanged || aimAngleChanged) {
@@ -716,8 +731,9 @@ export class GameClient {
     const player = getPlayer(this.gameState);
     if (!player) return;
 
-    // Find closest interactive entity
-    const closestEntity = getClosestInteractiveEntity(this.gameState);
+    // Find closest interactive entity (use spatial grid if available)
+    const spatialGrid = this.renderer?.spatialGrid ?? null;
+    const closestEntity = getClosestInteractiveEntity(this.gameState, spatialGrid);
     if (!closestEntity) {
       // No entity nearby, nothing to interact with
       return;
@@ -735,9 +751,7 @@ export class GameClient {
 
       // Initialize player's pickup progress for rendering
       // TODO: this is ineficient
-      const playerEntity = this.gameState.entities.find(
-        (e) => e.getId() === this.gameState.playerId
-      ) as PlayerClient;
+      const playerEntity = getPlayer(this.gameState);
       if (playerEntity) {
         (playerEntity as any).pickupProgress = 0;
       }
@@ -760,9 +774,7 @@ export class GameClient {
     this.interactHoldTargetEntityId = null;
 
     // Reset player's pickup progress
-    const playerEntity = this.gameState.entities.find(
-      (e) => e.getId() === this.gameState.playerId
-    ) as PlayerClient;
+    const playerEntity = getPlayer(this.gameState);
     if (playerEntity) {
       (playerEntity as any).pickupProgress = 0;
     }
@@ -799,7 +811,7 @@ export class GameClient {
 
     // Check if target entity still exists and is in range
     const targetEntity = this.interactHoldTargetEntityId
-      ? this.gameState.entities.find((e) => e.getId() === this.interactHoldTargetEntityId)
+      ? getEntityById(this.gameState, this.interactHoldTargetEntityId)
       : null;
 
     if (
@@ -839,9 +851,7 @@ export class GameClient {
     const progress = Math.min(1, elapsed / this.INTERACT_HOLD_DURATION);
 
     // Update player's pickup progress for rendering
-    const playerEntity = this.gameState.entities.find(
-      (e) => e.getId() === this.gameState.playerId
-    ) as PlayerClient;
+    const playerEntity = getPlayer(this.gameState);
     if (playerEntity) {
       (playerEntity as any).pickupProgress = progress;
     }
@@ -980,6 +990,20 @@ export class GameClient {
    * Update cursor visibility based on whether player has a weapon equipped
    */
   private updateCursorVisibility(): void {
+    // Show cursor if any UI overlay is active
+    if (
+      this.merchantBuyPanel.isVisible() ||
+      (this.hud && this.hud.isFullscreenMapOpen()) ||
+      (this.hud && this.hud.isHoveringInventory()) ||
+      (this.hud && this.hud.isHoveringMuteButton()) ||
+      (this.gameOverDialog && this.gameOverDialog.isGameOver()) ||
+      this.inputManager.isChatInputActive() ||
+      this.inputManager.isAltKeyHeld()
+    ) {
+      this.ctx.canvas.style.cursor = "default";
+      return;
+    }
+
     const player = this.getMyPlayer();
     if (!player) {
       this.ctx.canvas.style.cursor = "default";
@@ -1015,13 +1039,10 @@ export class GameClient {
    * Update walk/run sounds for all players based on their input state
    */
   private updatePlayerMovementSounds(): void {
-    const players = this.gameState.entities.filter(
-      (entity) => entity instanceof PlayerClient
-    ) as PlayerClient[];
-
+    const players = getEntitiesByType(this.gameState, Entities.PLAYER) as PlayerClient[];
     const existingPlayerIds = new Set<number>();
 
-    players.forEach((player) => {
+    for (const player of players) {
       if (!player.hasExt(ClientPositionable)) return;
 
       const playerId = player.getId();
@@ -1042,7 +1063,7 @@ export class GameClient {
         // Player is not moving intentionally, stop the sound
         this.soundManager.updateLoopingSound(playerId, null, player.getPosition());
       }
-    });
+    }
 
     // Clean up sounds for players that no longer exist
     this.soundManager.cleanupLoopingSounds(existingPlayerIds);
@@ -1059,9 +1080,7 @@ export class GameClient {
     // Find campsite fire if we don't have a cached reference or if it's been removed
     if (!this.campsiteFire || !this.gameState.entityMap.has(this.campsiteFire.getId())) {
       this.campsiteFire =
-        (this.gameState.entities.find(
-          (entity) => entity instanceof CampsiteFireClient
-        ) as CampsiteFireClient) || null;
+        (getEntitiesByType(this.gameState, Entities.CAMPFIRE)[0] as CampsiteFireClient) || null;
     }
 
     // Update sound volume if campsite fire exists
@@ -1079,12 +1098,11 @@ export class GameClient {
 
     if (playerToFollow && playerToFollow.hasExt(ClientPositionable)) {
       // Position camera at player's center to match aim angle calculation
-      this.cameraManager.translateTo(playerToFollow.getExt(ClientPositionable).getCenterPosition());
+      this.cameraManager.translateTo(
+        playerToFollow.getExt(ClientPositionable).getCenterPosition(),
+        this.gameState.dt
+      );
     }
-  }
-
-  private getEntities(): ClientEntityBase[] {
-    return this.gameState.entities;
   }
 
   public getEntityFactory(): EntityFactory {

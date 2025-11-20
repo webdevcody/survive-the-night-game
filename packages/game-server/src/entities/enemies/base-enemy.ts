@@ -130,12 +130,12 @@ export abstract class BaseEnemy extends Entity {
     return collidable.getHitBox();
   }
 
-  onDeath(): void {
+  onDeath(killerId?: number): void {
     this.addExtension(
       new Interactive(this).onInteract(this.onLooted.bind(this)).setDisplayName("loot")
     );
     this.getExt(Collidable).setEnabled(false);
-    this.getGameManagers().getBroadcaster().broadcastEvent(new ZombieDeathEvent(this.getId()));
+    this.getGameManagers().getBroadcaster().broadcastEvent(new ZombieDeathEvent(this.getId(), killerId || 0));
 
     // Spawn a coin when zombie dies
     this.spawnCoin();

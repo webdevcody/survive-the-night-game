@@ -74,7 +74,7 @@ export class LeapingAttackStrategy implements AttackStrategy {
       const closestTarget = TargetingSystem.findClosestAttackableEntity(zombie, attackRadius);
       // Attack the closest entity
       if (closestTarget && closestTarget.entity.hasExt(Destructible)) {
-        closestTarget.entity.getExt(Destructible).damage(zombie.getAttackDamage());
+        closestTarget.entity.getExt(Destructible).damage(zombie.getAttackDamage(), zombie.getId());
 
         if (this.onEntityDamaged) {
           this.onEntityDamaged(closestTarget.entity);
