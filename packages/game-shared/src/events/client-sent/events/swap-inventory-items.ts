@@ -1,10 +1,11 @@
 import { EventType, ClientSentEvents } from "../../events";
 import { GameEvent } from "../../types";
 import { ArrayBufferWriter, BufferReader } from "../../../util/buffer-serialization";
+import { getConfig } from "../../../config";
 
 export interface SwapInventoryItemsEventData {
-  fromSlotIndex: number; // 0-indexed (0-9)
-  toSlotIndex: number; // 0-indexed (0-9)
+  fromSlotIndex: number;
+  toSlotIndex: number;
 }
 
 export class SwapInventoryItemsEvent implements GameEvent<SwapInventoryItemsEventData> {
@@ -32,8 +33,9 @@ export class SwapInventoryItemsEvent implements GameEvent<SwapInventoryItemsEven
   }
 
   static serializeToBuffer(writer: ArrayBufferWriter, data: SwapInventoryItemsEventData): void {
-    writer.writeUInt8(Math.max(0, Math.min(9, data.fromSlotIndex ?? 0)));
-    writer.writeUInt8(Math.max(0, Math.min(9, data.toSlotIndex ?? 0)));
+    const maxSlots = getConfig().player.MAX_INVENTORY_SLOTS;
+    writer.writeUInt8(Math.max(0, Math.min(maxSlots - 1, data.fromSlotIndex ?? 0)));
+    writer.writeUInt8(Math.max(0, Math.min(maxSlots - 1, data.toSlotIndex ?? 0)));
   }
 
   static deserializeFromBuffer(reader: BufferReader): SwapInventoryItemsEventData {
