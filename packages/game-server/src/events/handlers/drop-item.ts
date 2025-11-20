@@ -82,7 +82,7 @@ export function onDropItem(
   }
 
   // --- NO COMBINE → DROP AT FACING OFFSET ---
-  const facing = player.serialized.get("inputFacing") ?? Direction.Right;
+  const facing = player.getSerialized().get("inputFacing") ?? Direction.Right;
 
   let dx = 0;
   let dy = 0;
