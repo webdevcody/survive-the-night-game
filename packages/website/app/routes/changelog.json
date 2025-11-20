@@ -1,5 +1,20 @@
 [
   {
+    "version": "0.19.1",
+    "date": "2025-11-19",
+    "changes": [
+      "✨ Added inventory drag and drop functionality - players can now drag items from inventory slots to drop them",
+      "✨ Implemented interact hold system - players can hold the interact key for a duration before executing interactions",
+      "🔧 Refactored inventory management - introduced selected inventory slot system for improved item selection and drop mechanics",
+      "✨ Added drop item event handler - new server-side handler for dropping items from inventory slots",
+      "✨ Added consume item event handler - new server-side handler for consuming items with proper validation",
+      "✨ Added select inventory slot event - players can now explicitly select inventory slots via dedicated event",
+      "🎨 Improved inventory UI - drag preview shows item being dragged with visual feedback",
+      "🔧 Enhanced input handling - updated input system to support new interaction events (onInteractStart, onInteractEnd)",
+      "🔧 Improved player entity serialization - streamlined inventory and interaction data handling for better network efficiency"
+    ]
+  },
+  {
     "version": "0.19.0",
     "date": "2025-11-18",
     "changes": [
