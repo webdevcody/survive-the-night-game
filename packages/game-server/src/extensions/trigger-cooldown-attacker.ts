@@ -12,7 +12,11 @@ import { ExtensionBase } from "./extension-base";
  * This extension will cause the entity to fire an attack when the cooldown is ready.
  * You can pass in the type of victim you should attack.
  */
-export default class TriggerCooldownAttacker extends ExtensionBase {
+type TriggerCooldownAttackerFields = {
+  isReady: boolean;
+};
+
+export default class TriggerCooldownAttacker extends ExtensionBase<TriggerCooldownAttackerFields> {
   public static readonly type = "trigger-cooldown-attacker";
   private static readonly RADIUS = 16;
   private static readonly RADIUS_SQUARED =

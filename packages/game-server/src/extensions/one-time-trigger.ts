@@ -13,7 +13,13 @@ interface OneTimeTriggerOptions {
   targetTypes: EntityType[];
 }
 
-export default class OneTimeTrigger extends ExtensionBase {
+type OneTimeTriggerFields = {
+  hasTriggered: boolean;
+  triggerRadius: number;
+  targetTypes: EntityType[];
+};
+
+export default class OneTimeTrigger extends ExtensionBase<OneTimeTriggerFields> {
   public static readonly type = "one-time-trigger";
   private static readonly CHECK_INTERVAL = 0.5; // Check for enemies every half second
 

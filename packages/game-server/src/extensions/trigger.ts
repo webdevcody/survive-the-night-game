@@ -11,7 +11,12 @@ import { encodeExtensionType } from "@shared/util/extension-type-encoding";
 import PoolManager from "@shared/util/pool-manager";
 import { ExtensionBase } from "./extension-base";
 
-export default class Triggerable extends ExtensionBase {
+type TriggerableFields = {
+  size: { x: number; y: number };
+  filter: EntityType[];
+};
+
+export default class Triggerable extends ExtensionBase<TriggerableFields> {
   public static readonly type = ExtensionTypes.TRIGGERABLE;
 
   private size: Vector2;

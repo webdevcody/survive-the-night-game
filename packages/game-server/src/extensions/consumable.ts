@@ -6,7 +6,9 @@ import { ExtensionBase } from "./extension-base";
 
 type ConsumableHandler = (entityId: number, idx: number) => void;
 
-export default class Consumable extends ExtensionBase {
+type ConsumableFields = Record<string, never>;
+
+export default class Consumable extends ExtensionBase<ConsumableFields> {
   public static readonly type = "consumable";
 
   private handler: ConsumableHandler | null = null;

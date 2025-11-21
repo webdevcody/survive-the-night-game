@@ -51,7 +51,11 @@ const ITEM_DROP_TABLE: Array<{ itemType: ItemType; weight: number }> = [
 
 import { ExtensionBase } from "./extension-base";
 
-export default class Inventory extends ExtensionBase {
+type InventoryFields = {
+  items: InventoryItem[];
+};
+
+export default class Inventory extends ExtensionBase<InventoryFields> {
   public static readonly type = "inventory";
 
   private broadcaster: Broadcaster;

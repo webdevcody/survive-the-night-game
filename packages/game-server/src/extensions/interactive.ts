@@ -8,7 +8,12 @@ import { ExtensionBase } from "./extension-base";
 
 type InteractiveHandler = (entityId: number) => void;
 
-export default class Interactive extends ExtensionBase {
+type InteractiveFields = {
+  displayName: string;
+  offset: { x: number; y: number };
+};
+
+export default class Interactive extends ExtensionBase<InteractiveFields> {
   public static readonly type = "interactive";
 
   private handler: InteractiveHandler | null = null;

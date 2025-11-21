@@ -6,7 +6,11 @@ import { encodeExtensionType } from "@shared/util/extension-type-encoding";
 import { ExtensionBase } from "./extension-base";
 
 // an extension which will automatically remove the entity after a certain amount of time.
-export default class Expirable extends ExtensionBase {
+type ExpirableFields = {
+  expiresIn: number;
+};
+
+export default class Expirable extends ExtensionBase<ExpirableFields> {
   public static readonly type = "expirable";
 
   private expireCooldown: Cooldown;

@@ -13,7 +13,12 @@ interface PickupOptions {
   mergeStrategy?: (existingState: ItemState, pickupState: ItemState) => ItemState;
 }
 
-export default class Carryable extends ExtensionBase {
+type CarryableFields = {
+  itemType: ItemType;
+  state: ItemState;
+};
+
+export default class Carryable extends ExtensionBase<CarryableFields> {
   public static readonly type = "carryable" as const;
 
   public constructor(self: IEntity, itemType: ItemType) {

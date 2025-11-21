@@ -7,7 +7,12 @@ import { encodeExtensionType } from "@shared/util/extension-type-encoding";
 import PoolManager from "@shared/util/pool-manager";
 import { ExtensionBase } from "./extension-base";
 
-export default class Positionable extends ExtensionBase {
+type PositionableFields = {
+  position: { x: number; y: number };
+  size: { x: number; y: number };
+};
+
+export default class Positionable extends ExtensionBase<PositionableFields> {
   public static readonly type = ExtensionTypes.POSITIONABLE;
 
   private position: Vector2;

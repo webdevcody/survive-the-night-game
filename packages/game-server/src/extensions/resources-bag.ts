@@ -8,7 +8,12 @@ import { BufferWriter } from "@shared/util/buffer-serialization";
 import { encodeExtensionType } from "@shared/util/extension-type-encoding";
 import { ExtensionBase } from "./extension-base";
 
-export default class ResourcesBag extends ExtensionBase {
+type ResourcesBagFields = {
+  coins: number;
+  resources: Record<string, number>;
+};
+
+export default class ResourcesBag extends ExtensionBase<ResourcesBagFields> {
   public static readonly type = "resources-bag";
 
   private broadcaster: Broadcaster;

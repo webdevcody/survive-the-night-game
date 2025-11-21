@@ -11,7 +11,12 @@ import { ExtensionBase } from "./extension-base";
 type DestructibleDeathHandler = (killerId?: number) => void;
 type DestructibleDamagedHandler = () => void;
 
-export default class Destructible extends ExtensionBase {
+type DestructibleFields = {
+  health: number;
+  maxHealth: number;
+};
+
+export default class Destructible extends ExtensionBase<DestructibleFields> {
   public static readonly type = "destructible";
 
   private offset = PoolManager.getInstance().vector2.claim(0, 0);

@@ -11,7 +11,9 @@ import { ExtensionBase } from "./extension-base";
  * This is used to determine if an item requires holding F to pick up.
  * Placeable items require holding F, while regular droppable items are instant.
  */
-export default class Placeable extends ExtensionBase {
+type PlaceableFields = Record<string, never>;
+
+export default class Placeable extends ExtensionBase<PlaceableFields> {
   public static readonly type = "placeable" as const;
 
   public constructor(self: IEntity) {

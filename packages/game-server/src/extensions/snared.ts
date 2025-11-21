@@ -8,7 +8,9 @@ import { ExtensionBase } from "./extension-base";
  * Extension that marks an entity as snared/immobilized
  * When present, the entity should not be able to move
  */
-export default class Snared extends ExtensionBase {
+type SnaredFields = Record<string, never>;
+
+export default class Snared extends ExtensionBase<SnaredFields> {
   public static readonly type = "snared";
 
   public constructor(self: IEntity) {

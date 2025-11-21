@@ -11,7 +11,12 @@ import { ExtensionBase } from "./extension-base";
 
 type EntityFactory = (type: EntityType) => IEntity;
 
-export default class Combustible extends ExtensionBase {
+type CombustibleFields = {
+  numFires: number;
+  spreadRadius: number;
+};
+
+export default class Combustible extends ExtensionBase<CombustibleFields> {
   public static readonly type = "combustible";
 
   private entityFactory: EntityFactory;

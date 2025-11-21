@@ -8,7 +8,13 @@ import { encodeExtensionType } from "@shared/util/extension-type-encoding";
 import PoolManager from "@shared/util/pool-manager";
 import { ExtensionBase } from "./extension-base";
 
-export default class Collidable extends ExtensionBase {
+type CollidableFields = {
+  size: { x: number; y: number };
+  offset: { x: number; y: number };
+  enabled: boolean;
+};
+
+export default class Collidable extends ExtensionBase<CollidableFields> {
   public static readonly type = "collidable";
 
   private size: Vector2;

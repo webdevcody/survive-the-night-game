@@ -4,7 +4,11 @@ import { BufferWriter } from "@shared/util/buffer-serialization";
 import { encodeExtensionType } from "@shared/util/extension-type-encoding";
 import { ExtensionBase } from "./extension-base";
 
-export default class Illuminated extends ExtensionBase {
+type IlluminatedFields = {
+  radius: number;
+};
+
+export default class Illuminated extends ExtensionBase<IlluminatedFields> {
   public static readonly type = "illuminated";
 
   constructor(self: IEntity, radius: number = 150) {

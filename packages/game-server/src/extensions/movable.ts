@@ -6,7 +6,11 @@ import { encodeExtensionType } from "@shared/util/extension-type-encoding";
 import PoolManager from "@shared/util/pool-manager";
 import { ExtensionBase } from "./extension-base";
 
-export default class Movable extends ExtensionBase {
+type MovableFields = {
+  velocity: { x: number; y: number };
+};
+
+export default class Movable extends ExtensionBase<MovableFields> {
   public static readonly type = "movable";
 
   private velocity: Vector2;

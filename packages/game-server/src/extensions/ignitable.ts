@@ -6,7 +6,12 @@ import { BufferWriter } from "@shared/util/buffer-serialization";
 import { encodeExtensionType } from "@shared/util/extension-type-encoding";
 import { ExtensionBase } from "./extension-base";
 
-export default class Ignitable extends ExtensionBase {
+type IgnitableFields = {
+  maxDamage: number;
+  totalDamage: number;
+};
+
+export default class Ignitable extends ExtensionBase<IgnitableFields> {
   public static readonly type = "ignitable";
 
   private cooldown: Cooldown;

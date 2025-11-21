@@ -8,17 +8,17 @@ import Vector2 from "@/util/vector2";
  * Extensions can extend this class and use `this.serialized.set('field', value)` to automatically mark dirty.
  *
  * Usage:
- *   class MyExtension extends ExtensionBase {
+ *   class MyExtension extends ExtensionBase<{ myField: number }> {
  *     constructor(self: IEntity) {
  *       super(self, { myField: 0 });
  *     }
  *
  *     setMyField(value: number) {
- *       this.serialized.set('myField', value); // Automatically marks dirty
+ *       this.serialized.set('myField', value); // Automatically marks dirty, type-safe!
  *     }
  *
  *     serializeToBuffer(writer: BufferWriter) {
- *       writer.writeFloat64(this.serialized.get('myField'));
+ *       writer.writeFloat64(this.serialized.get('myField')); // Type-safe with autocomplete!
  *     }
  *   }
  *
@@ -33,32 +33,40 @@ import Vector2 from "@/util/vector2";
  *     this.setVector2Field('position', this.position, pos);
  *   }
  */
-export abstract class ExtensionBase implements Extension {
+export abstract class ExtensionBase<TFields extends Record<string, any> = Record<string, any>>
+  implements Extension
+{
   protected self: IEntity;
-  protected serialized: SerializableFields;
+  protected serialized: SerializableFields<TFields>;
 
-  constructor(self: IEntity, initialFields: Record<string, any> = {}) {
+  constructor(self: IEntity, initialFields: TFields) {
     this.self = self;
-    this.serialized = new SerializableFields(initialFields, () => this.markDirty());
+    this.serialized = new SerializableFields<TFields>(initialFields, () => this.markDirty());
   }
 
   /**
    * Helper method to sync a Vector2 field between the actual Vector2 object and serialized storage.
    * Updates both the Vector2 object and the serialized field, automatically marking dirty.
    */
-  protected setVector2Field(fieldName: string, vector: Vector2, newValue: Vector2): void {
+  protected setVector2Field<K extends keyof TFields>(
+    fieldName: K,
+    vector: Vector2,
+    newValue: Vector2
+  ): void {
     const changed = vector.x !== newValue.x || vector.y !== newValue.y;
     if (changed) {
       vector.reset(newValue.x, newValue.y);
-      this.serialized.set(fieldName, { x: newValue.x, y: newValue.y });
+      this.serialized.set(fieldName, { x: newValue.x, y: newValue.y } as TFields[K]);
     }
   }
 
   /**
    * Helper method to get a Vector2 field from serialized storage.
    */
-  protected getVector2FromSerialized(fieldName: string): { x: number; y: number } {
-    return this.serialized.get(fieldName);
+  protected getVector2FromSerialized<K extends keyof TFields>(
+    fieldName: K
+  ): { x: number; y: number } {
+    return this.serialized.get(fieldName) as { x: number; y: number };
   }
 
   public isDirty(): boolean {

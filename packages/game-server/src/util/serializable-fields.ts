@@ -23,16 +23,16 @@ export interface FieldSerializationMetadata {
  *   serialized.resetDirty(); // Clears dirty tracking
  *   const dirtyFields = serialized.getDirtyFields(); // Returns Set of dirty field names
  */
-export class SerializableFields {
+export class SerializableFields<TFields extends Record<string, any> = Record<string, any>> {
   private fields: Map<string, any> = new Map();
   private dirtyFields: Set<string> = new Set();
   private onFieldDirty?: () => void;
   private fieldMetadata: Map<string, FieldSerializationMetadata> = new Map();
 
   constructor(
-    initialFields: Record<string, any> = {},
+    initialFields: TFields,
     onFieldDirty?: () => void,
-    fieldMetadata?: Record<string, FieldSerializationMetadata>
+    fieldMetadata?: Partial<Record<keyof TFields, FieldSerializationMetadata>>
   ) {
     this.onFieldDirty = onFieldDirty;
     // Initialize fields from initial values
@@ -50,17 +50,17 @@ export class SerializableFields {
   /**
    * Explicit getter for a field value
    */
-  get(key: string): any {
-    return this.fields.get(key);
+  get<K extends keyof TFields>(key: K): TFields[K] {
+    return this.fields.get(key as string) as TFields[K];
   }
 
   /**
    * Explicit setter for a field value (marks dirty automatically)
    */
-  set(key: string, value: any): void {
-    const wasAlreadyDirty = this.dirtyFields.has(key);
-    this.fields.set(key, value);
-    this.dirtyFields.add(key);
+  set<K extends keyof TFields>(key: K, value: TFields[K]): void {
+    const wasAlreadyDirty = this.dirtyFields.has(key as string);
+    this.fields.set(key as string, value);
+    this.dirtyFields.add(key as string);
     // Notify entity if field wasn't already dirty
     if (!wasAlreadyDirty && this.onFieldDirty) {
       this.onFieldDirty();
@@ -70,8 +70,8 @@ export class SerializableFields {
   /**
    * Check if a field exists
    */
-  has(key: string): boolean {
-    return this.fields.has(key);
+  has<K extends keyof TFields>(key: K): boolean {
+    return this.fields.has(key as string);
   }
 
   /**
@@ -98,7 +98,7 @@ export class SerializableFields {
   /**
    * Get serialization metadata for a field
    */
-  getFieldMetadata(fieldName: string): FieldSerializationMetadata | undefined {
-    return this.fieldMetadata.get(fieldName);
+  getFieldMetadata<K extends keyof TFields>(fieldName: K): FieldSerializationMetadata | undefined {
+    return this.fieldMetadata.get(fieldName as string);
   }
 }

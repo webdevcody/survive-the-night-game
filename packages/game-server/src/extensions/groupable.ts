@@ -6,7 +6,11 @@ import { ExtensionBase } from "./extension-base";
 
 export type Group = "friendly" | "enemy";
 
-export default class Groupable extends ExtensionBase {
+type GroupableFields = {
+  group: Group;
+};
+
+export default class Groupable extends ExtensionBase<GroupableFields> {
   public static readonly type = "groupable";
 
   constructor(self: IEntity, group: Group) {
@@ -14,15 +18,15 @@ export default class Groupable extends ExtensionBase {
   }
 
   public getGroup(): Group {
-    return this.serialized.get('group');
+    return this.serialized.get("group");
   }
 
   public setGroup(group: Group): void {
-    this.serialized.set('group', group);
+    this.serialized.set("group", group);
   }
 
   public serializeToBuffer(writer: BufferWriter, onlyDirty: boolean = false): void {
     writer.writeUInt8(encodeExtensionType(Groupable.type));
-    writer.writeString(this.serialized.get('group'));
+    writer.writeString(this.serialized.get("group"));
   }
 }

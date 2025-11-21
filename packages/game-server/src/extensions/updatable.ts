@@ -6,7 +6,9 @@ import { ExtensionBase } from "./extension-base";
 
 type UpdateFunction = (deltaTime: number) => void;
 
-export default class Updatable extends ExtensionBase {
+type UpdatableFields = Record<string, never>;
+
+export default class Updatable extends ExtensionBase<UpdatableFields> {
   public static readonly type = "updatable";
 
   private updateFunction: UpdateFunction;
