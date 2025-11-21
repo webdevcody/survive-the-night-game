@@ -461,16 +461,20 @@ export class MapManager implements IMapManager {
     waveNumber: number,
     spawnLocations: Array<{ x: number; y: number }>
   ): void {
-    if (waveNumber < getConfig().wave.BOSS_SPAWN_WAVE) {
+    const bossWaveMapping = getConfig().wave.BOSS_WAVE_MAPPING as Record<number, string>;
+    const bossType = bossWaveMapping[waveNumber];
+
+    if (!bossType) {
       return;
     }
 
+    // Don't spawn if a boss is already active
     if (this.isBossActive()) {
       return;
     }
 
     const spawnPoint = spawnLocations[0] ?? this.getFallbackBossSpawnLocation();
-    this.spawnBossAt(spawnPoint);
+    this.spawnBossAt(spawnPoint, bossType);
   }
 
   private isBossActive(): boolean {
@@ -487,9 +491,19 @@ export class MapManager implements IMapManager {
     };
   }
 
-  private spawnBossAt(position: { x: number; y: number }): void {
-    const boss = new BossZombie(this.getGameManagers());
-    boss.setPosition(PoolManager.getInstance().vector2.claim(position.x, position.y));
+  private spawnBossAt(position: { x: number; y: number }, bossType: string): void {
+    const boss = this.getEntityManager().createEntity(bossType as any);
+    if (!boss) {
+      console.warn(`Failed to spawn boss of type: ${bossType}`);
+      return;
+    }
+    if (!boss.hasExt(Positionable)) {
+      console.warn(`Boss entity ${bossType} does not have Positionable extension`);
+      return;
+    }
+    boss
+      .getExt(Positionable)
+      .setPosition(PoolManager.getInstance().vector2.claim(position.x, position.y));
     this.getEntityManager().addEntity(boss);
   }
 

@@ -81,10 +81,6 @@ export function InstructionPanel({ isOpen, onClose }: InstructionPanelProps) {
                 <span className="text-gray-300">Fire Weapon:</span>
                 <span className="font-mono">LEFT CLICK</span>
               </div>
-              <div className="flex justify-between">
-                <span className="text-gray-300">Cycle Weapon:</span>
-                <span className="font-mono">Q / E</span>
-              </div>
             </div>
           </div>
 
@@ -93,7 +89,7 @@ export function InstructionPanel({ isOpen, onClose }: InstructionPanelProps) {
             <div className="space-y-2 text-sm">
               <div className="flex justify-between">
                 <span className="text-gray-300">Interact:</span>
-                <span className="font-mono">F</span>
+                <span className="font-mono">E</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-gray-300">Teleport to Base:</span>
@@ -113,7 +109,7 @@ export function InstructionPanel({ isOpen, onClose }: InstructionPanelProps) {
               </div>
               <div className="flex justify-between">
                 <span className="text-gray-300">Weapons HUD:</span>
-                <span className="font-mono">ALT</span>
+                <span className="font-mono">F</span>
               </div>
             </div>
           </div>

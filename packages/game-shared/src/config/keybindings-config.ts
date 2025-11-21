@@ -7,19 +7,17 @@
  */
 
 export const keybindingsConfig = {
-  INTERACT: "f",
+  INTERACT: "e",
   FIRE: "left click",
   DROP: "g",
   QUICK_HEAL: "z",
   CRAFT: "c",
-  CYCLE_WEAPON_PREV: "q",
-  CYCLE_WEAPON_NEXT: "e",
   SPRINT: "shift",
   CHAT: "y",
   TOGGLE_MUTE: "m",
   TOGGLE_INSTRUCTIONS: "i",
   PLAYER_LIST: "tab",
-  WEAPONS_HUD: "alt",
+  WEAPONS_HUD: "f",
 } as const;
 
 export type KeybindingsConfig = typeof keybindingsConfig;

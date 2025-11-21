@@ -196,7 +196,7 @@ export class WeaponsHUD implements Renderable {
   // RENDER
   // ---------------------------------------------------------
   render(ctx: CanvasRenderingContext2D) {
-    if (!this.input.isAltKeyHeld()) {
+    if (!this.input.isFKeyHeld()) {
       this.lastSelectedIndex = -1;
       return;
     }
@@ -364,7 +364,7 @@ export class WeaponsHUD implements Renderable {
   // CLICK HANDLING
   // ---------------------------------------------------------
   handleClick(x: number, y: number, canvasWidth: number, canvasHeight: number): boolean {
-    if (!this.input.isAltKeyHeld()) return false;
+    if (!this.input.isFKeyHeld()) return false;
 
     const scale = calculateHudScale(canvasWidth, canvasHeight);
     const cx = canvasWidth * 0.5;
@@ -386,7 +386,7 @@ export class WeaponsHUD implements Renderable {
 
     // Select weapon and close menu
     if (this.selectWeapon(index)) {
-      this.input.setAltKeyHeld(false);
+      this.input.setFKeyHeld(false);
     }
 
     return true;

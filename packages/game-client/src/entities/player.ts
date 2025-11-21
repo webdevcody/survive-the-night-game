@@ -451,9 +451,18 @@ export class PlayerClient extends ClientEntity implements IClientEntity, Rendera
 
     // Reconstruct input object from individual input fields
     if (key.startsWith("input")) {
+      const previousInputInventoryItem = (this as any).inputInventoryItem;
       super.deserializeProperty(key, value);
       // Reconstruct input object whenever any input field changes
       this.reconstructInputObject();
+
+      // If inputInventoryItem changed, notify that it needs syncing
+      // The actual sync will be handled by the game client when it processes the update
+      if (key === "inputInventoryItem" && value !== previousInputInventoryItem) {
+        // Store a flag that this needs syncing - the game client will handle it
+        (this as any)._inventorySlotNeedsSync = true;
+        (this as any)._serverInventorySlot = value;
+      }
 
       return;
     }
@@ -462,12 +471,26 @@ export class PlayerClient extends ClientEntity implements IClientEntity, Rendera
   }
 
   public getActiveItem(): InventoryItem | null {
-    const slot = (this as any).inputInventoryItem ?? 1;
+    // Get inputInventoryItem from server (1-indexed: 1-10)
+    // If not set, return null instead of defaulting to slot 1
+    // This prevents showing wrong item when server hasn't synced yet
+    const inputInventoryItem = (this as any).inputInventoryItem;
+    if (inputInventoryItem === undefined || inputInventoryItem === null) {
+      return null;
+    }
+
     if (!this.hasExt(ClientInventory)) {
       console.warn(`Player ${this.getId()} missing ClientInventory extension`);
       return null;
     }
-    return this.getExt(ClientInventory).getActiveItem(slot);
+
+    const inventory = this.getExt(ClientInventory).getItems();
+    // Validate slot is within inventory bounds
+    if (inputInventoryItem < 1 || inputInventoryItem > inventory.length) {
+      return null;
+    }
+
+    return this.getExt(ClientInventory).getActiveItem(inputInventoryItem);
   }
 
   private reconstructInputObject(): void {

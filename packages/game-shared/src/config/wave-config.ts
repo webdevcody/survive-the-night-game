@@ -23,9 +23,15 @@ export const waveConfig = {
   FIRST_WAVE_DELAY: 90,
 
   /**
-   * Wave number when bosses begin spawning
+   * Mapping of wave numbers to boss entity types that should spawn on that wave.
+   * Only one boss will spawn per wave (if a boss is already active, no new boss will spawn).
+   * Example: { 3: "boss_zombie", 5: "boss_zombie", 10: "boss_zombie" }
    */
-  BOSS_SPAWN_WAVE: 3,
+  BOSS_WAVE_MAPPING: {
+    3: "boss_zombie",
+    5: "boss_zombie",
+    10: "boss_zombie",
+  },
 
   /**
    * Whether waves auto-start after preparation or require manual trigger

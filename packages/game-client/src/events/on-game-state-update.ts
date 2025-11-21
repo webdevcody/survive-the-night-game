@@ -103,7 +103,7 @@ const handleGameStateUpdate = (context: InitializationContext, gameStateEvent: G
           context.interpolation.addSnapshot(entity.getId(), pos, timestamp);
         }
 
-        // If new entity is my local player, seed the ghost position too
+        // If new entity is my local player, seed the ghost position and sync inventory
         if (
           entity.getId() === context.gameState.playerId &&
           entity.hasExt(ClientPositionable) &&
@@ -111,6 +111,12 @@ const handleGameStateUpdate = (context: InitializationContext, gameStateEvent: G
         ) {
           const pos = entity.getExt(ClientPositionable).getPosition();
           (entity as unknown as PlayerClient).setServerGhostPosition(pos);
+
+          // Sync inventory slot from server to client inputManager on initial load
+          const inputInventoryItem = (entity as any).inputInventoryItem;
+          if (inputInventoryItem !== undefined && inputInventoryItem !== null) {
+            context.gameClient.syncInventorySlotFromServer(inputInventoryItem);
+          }
         }
 
         createdEntities.push(entity);
@@ -185,6 +191,12 @@ const handleGameStateUpdate = (context: InitializationContext, gameStateEvent: G
             // Store server ghost position for reconciliation
             if (existingEntity instanceof PlayerClient) {
               (existingEntity as unknown as PlayerClient).setServerGhostPosition(serverPos);
+
+              // Sync inventory slot from server to client inputManager
+              const inputInventoryItem = (existingEntity as any).inputInventoryItem;
+              if (inputInventoryItem !== undefined && inputInventoryItem !== null) {
+                context.gameClient.syncInventorySlotFromServer(inputInventoryItem);
+              }
 
               // For very large errors, snap immediately
               if (error > (window.config?.prediction?.errorThreshold ?? 50)) {

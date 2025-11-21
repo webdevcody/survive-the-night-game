@@ -33,6 +33,11 @@ export class BossZombie extends BossEnemy {
   }
 
   private updateSummoning(deltaTime: number): void {
+    const destructible = this.getExt(Destructible);
+    if (destructible.isDead()) {
+      return;
+    }
+
     this.cleanupSummonedMinions();
     this.summonCooldown.update(deltaTime);
     if (!this.summonCooldown.isReady()) {

@@ -5,6 +5,7 @@ import Movable from "@/extensions/movable";
 import Snared from "@/extensions/snared";
 import { pathTowards, velocityTowards } from "@/util/physics";
 import { TargetChecker } from "../movement-utils";
+import { calculateSeparationForce, blendSeparationForce } from "../separation";
 
 export class MeleeMovementStrategy implements MovementStrategy {
   private static readonly PATH_RECALCULATION_INTERVAL = 1;
@@ -94,13 +95,23 @@ export class MeleeMovementStrategy implements MovementStrategy {
 
     // If we have a waypoint, move towards it
     if (this.currentWaypoint) {
-      const velocity = velocityTowards(zombiePos.clone(), this.currentWaypoint.clone());
+      const pathfindingVelocity = velocityTowards(zombiePos.clone(), this.currentWaypoint.clone());
       const poolManager = PoolManager.getInstance();
-      zombie
-        .getExt(Movable)
-        .setVelocity(
-          poolManager.vector2.claim(velocity.x * zombie.getSpeed(), velocity.y * zombie.getSpeed())
-        );
+      const pathfindingVelScaled = poolManager.vector2.claim(
+        pathfindingVelocity.x * zombie.getSpeed(),
+        pathfindingVelocity.y * zombie.getSpeed()
+      );
+
+      // Apply separation force to avoid clustering
+      const separationForce = calculateSeparationForce(zombie);
+      const finalVelocity = blendSeparationForce(pathfindingVelScaled, separationForce);
+
+      zombie.getExt(Movable).setVelocity(finalVelocity);
+
+      // Release pooled vectors (finalVelocity values are copied by Movable)
+      poolManager.vector2.release(pathfindingVelScaled);
+      poolManager.vector2.release(separationForce);
+      poolManager.vector2.release(finalVelocity);
     } else {
       // If no waypoint found, stop moving
       const poolManager = PoolManager.getInstance();

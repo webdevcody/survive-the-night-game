@@ -504,7 +504,7 @@ export class Hud {
 
     ctx.restore();
 
-    // Render weapons HUD (only when ALT is held)
+    // Render weapons HUD (only when F is held)
     this.weaponsHud.render(ctx, gameState);
 
     // Render game messages (player joined/died)
@@ -637,7 +637,7 @@ export class Hud {
       return true;
     }
 
-    // Check if click is on weapons HUD (when ALT is held)
+    // Check if click is on weapons HUD (when F is held)
     if (this.weaponsHud.handleClick(x, y, canvasWidth, canvasHeight)) {
       return true;
     }

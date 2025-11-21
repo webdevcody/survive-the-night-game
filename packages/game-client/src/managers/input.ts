@@ -51,8 +51,6 @@ const shouldBlock = new Set([
   "ArrowDown",
   "ArrowLeft",
   "ArrowRight",
-  "AltLeft",
-  "AltRight",
   "KeyW",
   "KeyA",
   "KeyS",
@@ -93,52 +91,13 @@ export class InputManager {
   private callbacks: InputManagerOptions = {};
   private mousePosition: Vector2 | null = null;
   private canvas: HTMLCanvasElement | null = null;
-  private isAltHeld = false;
+  private fKeyHeld = false;
 
   private checkIfChanged() {
     this.hasChanged = JSON.stringify(this.inputs) !== JSON.stringify(this.lastInputs);
     this.lastInputs = { ...this.inputs };
   }
 
-  private cycleItem(direction: 1 | -1) {
-    const inventory = this.callbacks.getInventory?.() || [];
-    if (inventory.length === 0) return;
-
-    const currentSlot = this.currentInventorySlot; // 1-indexed (1-10)
-    const maxSlots = getConfig().player.MAX_INVENTORY_SLOTS;
-
-    // Find all slots that have items
-    const occupiedSlots: number[] = [];
-    inventory.forEach((item: any, index: number) => {
-      if (item) {
-        occupiedSlots.push(index + 1); // 1-indexed
-      }
-    });
-
-    // If no items, don't cycle
-    if (occupiedSlots.length === 0) return;
-
-    // If only one item and it's already selected, don't cycle
-    if (occupiedSlots.length === 1 && occupiedSlots[0] === currentSlot) return;
-
-    // Find current slot in occupied slots list
-    let currentIdx = occupiedSlots.indexOf(currentSlot);
-
-    // If current slot is empty, start from -1 to select first/last item
-    if (currentIdx === -1) {
-      currentIdx = direction === 1 ? -1 : occupiedSlots.length;
-    }
-
-    // Move to next/previous occupied slot with wrapping
-    let nextIdx = currentIdx + direction;
-    if (nextIdx >= occupiedSlots.length) {
-      nextIdx = 0; // Wrap to first
-    } else if (nextIdx < 0) {
-      nextIdx = occupiedSlots.length - 1; // Wrap to last
-    }
-
-    this.setInventorySlot(occupiedSlots[nextIdx]);
-  }
 
   private quickHeal() {
     const inventory = this.callbacks.getInventory?.() || [];
@@ -180,9 +139,9 @@ export class InputManager {
       const eventCode = e.code;
       const eventKey = e.key.toLowerCase();
 
-      // Track ALT key state
-      if (eventCode === "AltLeft" || eventCode === "AltRight") {
-        this.isAltHeld = true;
+      // Track F key state for weapons HUD
+      if (eventCode === "KeyF") {
+        this.fKeyHeld = true;
       }
 
       // Check if player is dead - if so, any key triggers respawn
@@ -272,12 +231,6 @@ export class InputManager {
 
       // Normal game input handling - use physical key codes for WASD
       switch (eventCode) {
-        case "KeyQ":
-          this.cycleItem(-1); // Cycle to previous item
-          break;
-        case "KeyE":
-          this.cycleItem(1); // Cycle to next item
-          break;
         case "KeyH":
           this.quickHeal();
           break;
@@ -318,7 +271,7 @@ export class InputManager {
         case "ArrowRight":
           callbacks.onRight?.(this.inputs);
           break;
-        case "KeyF":
+        case "KeyE":
           callbacks.onInteractStart?.();
           break;
         case "KeyG": {
@@ -393,9 +346,9 @@ export class InputManager {
       const eventCode = e.code;
       const eventKey = e.key.toLowerCase();
 
-      // Track ALT key state
-      if (eventCode === "AltLeft" || eventCode === "AltRight") {
-        this.isAltHeld = false;
+      // Track F key state for weapons HUD
+      if (eventCode === "KeyF") {
+        this.fKeyHeld = false;
       }
 
       // Check if this key was consumed by merchant panel during keydown
@@ -457,7 +410,7 @@ export class InputManager {
         case "ArrowRight":
           this.inputs.dx = this.inputs.dx === 1 ? 0 : this.inputs.dx;
           break;
-        case "KeyF":
+        case "KeyE":
           callbacks.onInteractEnd?.();
           break;
         case "Space":
@@ -573,6 +526,25 @@ export class InputManager {
     this.callbacks.onInventorySlotChanged?.(slot);
   }
 
+  /**
+   * Set inventory slot without triggering server callbacks
+   * Used when syncing from server to avoid circular updates
+   */
+  setInventorySlotSilent(slot: number): void {
+    const maxSlots = getConfig().player.MAX_INVENTORY_SLOTS;
+    if (slot < 1 || slot > maxSlots) {
+      return;
+    }
+
+    if (this.currentInventorySlot === slot) {
+      return;
+    }
+
+    this.currentInventorySlot = slot;
+    // Only trigger UI update callback, not server send callback
+    this.callbacks.onInventorySlotChanged?.(slot);
+  }
+
   getCurrentInventorySlot(): number {
     return this.currentInventorySlot;
   }
@@ -624,17 +596,31 @@ export class InputManager {
   }
 
   /**
-   * Check if ALT key is currently held
+   * Check if F key is currently held (for weapons HUD)
    */
-  isAltKeyHeld(): boolean {
-    return this.isAltHeld;
+  isFKeyHeld(): boolean {
+    return this.fKeyHeld;
   }
 
   /**
-   * Set ALT key state (used to close weapons HUD programmatically)
+   * Set F key state (used to close weapons HUD programmatically)
+   */
+  setFKeyHeld(held: boolean): void {
+    this.fKeyHeld = held;
+  }
+
+  /**
+   * @deprecated Use isFKeyHeld() instead
+   */
+  isAltKeyHeld(): boolean {
+    return this.fKeyHeld;
+  }
+
+  /**
+   * @deprecated Use setFKeyHeld() instead
    */
   setAltKeyHeld(held: boolean): void {
-    this.isAltHeld = held;
+    this.fKeyHeld = held;
   }
 
   /**

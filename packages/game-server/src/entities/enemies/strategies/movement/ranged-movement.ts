@@ -5,6 +5,7 @@ import Movable from "@/extensions/movable";
 import Snared from "@/extensions/snared";
 import { pathTowards, velocityTowards } from "@/util/physics";
 import { TargetChecker } from "../movement-utils";
+import { calculateSeparationForce, blendSeparationForce } from "../separation";
 
 export class RangedMovementStrategy implements MovementStrategy {
   private static readonly ATTACK_RANGE = 100;
@@ -47,7 +48,8 @@ export class RangedMovementStrategy implements MovementStrategy {
     }
 
     // If we don't have a waypoint or we've reached the current one, get a new one
-    const needNewWaypoint = !this.currentWaypoint || zombiePos.clone().sub(this.currentWaypoint).length() <= 1;
+    const needNewWaypoint =
+      !this.currentWaypoint || zombiePos.clone().sub(this.currentWaypoint).length() <= 1;
 
     // Update path periodically or when we need a new waypoint
     if (
@@ -66,19 +68,43 @@ export class RangedMovementStrategy implements MovementStrategy {
 
     // If we have a waypoint, move towards it
     if (this.currentWaypoint) {
-      const velocity = velocityTowards(zombiePos.clone(), this.currentWaypoint.clone());
+      const pathfindingVelocity = velocityTowards(zombiePos.clone(), this.currentWaypoint.clone());
       const poolManager = PoolManager.getInstance();
-      zombie.getExt(Movable).setVelocity(
-        poolManager.vector2.claim(velocity.x * zombie.getSpeed(), velocity.y * zombie.getSpeed())
+      const pathfindingVelScaled = poolManager.vector2.claim(
+        pathfindingVelocity.x * zombie.getSpeed(),
+        pathfindingVelocity.y * zombie.getSpeed()
       );
+
+      // Apply separation force to avoid clustering
+      const separationForce = calculateSeparationForce(zombie);
+      const finalVelocity = blendSeparationForce(pathfindingVelScaled, separationForce);
+
+      zombie.getExt(Movable).setVelocity(finalVelocity);
+
+      // Release pooled vectors (finalVelocity values are copied by Movable)
+      poolManager.vector2.release(pathfindingVelScaled);
+      poolManager.vector2.release(separationForce);
+      poolManager.vector2.release(finalVelocity);
     } else {
       // If no waypoint found, try moving directly towards target
-      const velocity = velocityTowards(zombiePos.clone(), currentTarget.clone());
+      const pathfindingVelocity = velocityTowards(zombiePos.clone(), currentTarget.clone());
       const poolManager = PoolManager.getInstance();
       const speed = zombie.getSpeed() * 0.5; // Move slower when no path found
-      zombie.getExt(Movable).setVelocity(
-        poolManager.vector2.claim(velocity.x * speed, velocity.y * speed)
+      const pathfindingVelScaled = poolManager.vector2.claim(
+        pathfindingVelocity.x * speed,
+        pathfindingVelocity.y * speed
       );
+
+      // Apply separation force to avoid clustering
+      const separationForce = calculateSeparationForce(zombie);
+      const finalVelocity = blendSeparationForce(pathfindingVelScaled, separationForce);
+
+      zombie.getExt(Movable).setVelocity(finalVelocity);
+
+      // Release pooled vectors (finalVelocity values are copied by Movable)
+      poolManager.vector2.release(pathfindingVelScaled);
+      poolManager.vector2.release(separationForce);
+      poolManager.vector2.release(finalVelocity);
     }
 
     return false; // Let base enemy handle collision movement

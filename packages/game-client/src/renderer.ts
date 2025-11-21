@@ -345,13 +345,30 @@ export class Renderer {
     const inventory = player.getInventory();
     if (!inventory || !Array.isArray(inventory)) return;
 
-    // Get slot from player entity (reads inputInventoryItem from server data)
-    const selectedSlot = player.getSelectedInventorySlot();
-    const activeSlot = selectedSlot >= 0 ? selectedSlot + 1 : 1; // Convert 0-indexed to 1-indexed
-    const activeItem = inventory[activeSlot - 1];
+    // Check if inputInventoryItem is actually set (not undefined/null)
+    // This property comes from server and might not be initialized initially
+    const inputInventoryItem = (player as any).inputInventoryItem;
+    const hasServerSlotData = inputInventoryItem !== undefined && inputInventoryItem !== null;
 
-    // Check if active item is a weapon
-    const hasWeapon = activeItem && isWeapon(activeItem.itemType);
+    let hasWeapon = false;
+
+    if (hasServerSlotData) {
+      // Use server's selected slot if available
+      const selectedSlot = player.getSelectedInventorySlot();
+      const activeSlot = selectedSlot >= 0 ? selectedSlot + 1 : 1; // Convert 0-indexed to 1-indexed
+      const activeItem = inventory[activeSlot - 1];
+      hasWeapon = activeItem && isWeapon(activeItem.itemType);
+    } else {
+      // If server slot data isn't available yet, check all inventory slots for any weapon
+      // This handles the case where inputInventoryItem hasn't been synced from the server yet
+      for (let i = 0; i < inventory.length; i++) {
+        const item = inventory[i];
+        if (item && isWeapon(item.itemType)) {
+          hasWeapon = true;
+          break;
+        }
+      }
+    }
 
     if (!hasWeapon) return;
 

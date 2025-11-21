@@ -689,6 +689,10 @@ export class GameClient {
           player,
           (player as any).serverGhostPos || player.getPosition()
         );
+
+        // Update spatial grid after position changes from prediction/reconciliation
+        // This ensures the player is always findable in the spatial grid for rendering
+        this.renderer.updateEntityInSpatialGrid(player);
       }
     }
 
@@ -977,6 +981,20 @@ export class GameClient {
   }
 
   /**
+   * Sync client's inputManager inventory slot with server's inputInventoryItem
+   * This ensures UI and visual representation stay in sync
+   * This method updates the inputManager without triggering server callbacks
+   */
+  public syncInventorySlotFromServer(slot: number | null | undefined): void {
+    if (slot === null || slot === undefined) {
+      return; // Don't sync if server hasn't set it yet
+    }
+    // Server slot is 1-indexed, inputManager expects 1-indexed
+    // Use silent method to avoid sending update back to server
+    this.inputManager.setInventorySlotSilent(slot);
+  }
+
+  /**
    * Get teleport state for HUD rendering
    */
   public getTeleportState(): { isTeleporting: boolean; progress: number } {
@@ -998,7 +1016,7 @@ export class GameClient {
       (this.hud && this.hud.isHoveringMuteButton()) ||
       (this.gameOverDialog && this.gameOverDialog.isGameOver()) ||
       this.inputManager.isChatInputActive() ||
-      this.inputManager.isAltKeyHeld()
+      this.inputManager.isFKeyHeld()
     ) {
       this.ctx.canvas.style.cursor = "default";
       return;

@@ -4,6 +4,7 @@ import Vector2 from "@/util/vector2";
 import PoolManager from "@shared/util/pool-manager";
 import { velocityTowards } from "@/util/physics";
 import { TargetChecker } from "../movement-utils";
+import { calculateSeparationForce, blendSeparationForce } from "../separation";
 
 export class FlyTowardsPlayerStrategy implements MovementStrategy {
   private targetChecker = new TargetChecker();
@@ -25,12 +26,24 @@ export class FlyTowardsPlayerStrategy implements MovementStrategy {
     }
 
     // Calculate velocity directly towards target (no pathfinding since it's flying)
-    const velocity = velocityTowards(zombiePos.clone(), currentTarget.clone());
+    const pathfindingVelocity = velocityTowards(zombiePos.clone(), currentTarget.clone());
     const movable = zombie.getExt(Movable);
     const poolManager = PoolManager.getInstance();
-    movable.setVelocity(
-      poolManager.vector2.claim(velocity.x * zombie.getSpeed(), velocity.y * zombie.getSpeed())
+    const pathfindingVelScaled = poolManager.vector2.claim(
+      pathfindingVelocity.x * zombie.getSpeed(),
+      pathfindingVelocity.y * zombie.getSpeed()
     );
+    
+    // Apply separation force to avoid clustering
+    const separationForce = calculateSeparationForce(zombie);
+    const finalVelocity = blendSeparationForce(pathfindingVelScaled, separationForce);
+    
+    movable.setVelocity(finalVelocity);
+    
+    // Release pooled vectors (finalVelocity values are copied by Movable)
+    poolManager.vector2.release(pathfindingVelScaled);
+    poolManager.vector2.release(separationForce);
+    poolManager.vector2.release(finalVelocity);
 
     // Update position directly without collision checks
     const position = zombie.getPosition();
