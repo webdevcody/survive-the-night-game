@@ -1,5 +1,28 @@
 [
   {
+    "version": "0.20.0",
+    "date": "2025-11-21",
+    "changes": [
+      "✨ Added throwing knife weapon - new throwable melee weapon that can be thrown at enemies and recovered",
+      "✨ Added molotov cocktail weapon - throwable fire weapon that creates area damage and flames on impact",
+      "✨ Enhanced zombie alert system - zombies now broadcast alert events when detecting players, triggering sound effects for better awareness",
+      "✨ Added smoke particle system - visual smoke effects for molotov cocktails and other fire-based weapons",
+      "✨ Implemented inventory item stacking - items can now be stacked in inventory slots with count display",
+      "✨ Added inventory item switching - players can drag and drop items to swap positions in inventory",
+      "✨ Added split item functionality - players can split stacked items and drop them separately",
+      "✨ Implemented full state request on reconnect - clients now request complete game state when reconnecting for seamless recovery",
+      "✨ Added user ban event handling - server can now ban users with proper client-side notification",
+      "✨ Added version mismatch detection - clients are notified when game version doesn't match server",
+      "🎨 Improved merchant shop UI - enhanced item browsing, purchasing, and inventory management interactions",
+      "🎨 Improved weapons HUD - better ammo display positioning and wheel sizing adjustments",
+      "🔧 Refactored extension system - all extensions now use generic fields for improved type safety and code clarity",
+      "🔧 Enhanced zombie AI separation behavior - zombies now maintain separation distance to prevent clustering",
+      "⚡ Optimized client entity management - improved performance through better state handling and cleanup",
+      "🔧 Removed delayed socket implementation - simplified socket management by removing unused delayed socket code",
+      "🔧 Improved spatial grid management - better cleanup and state management for entity queries"
+    ]
+  },
+  {
     "version": "0.19.1",
     "date": "2025-11-19",
     "changes": [
