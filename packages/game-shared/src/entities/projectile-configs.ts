@@ -45,10 +45,10 @@ export const PROJECTILE_CONFIGS: Record<string, ProjectileConfig> = {
     id: "throwing_knife_projectile",
     category: "bullet",
     assets: {
-      assetKey: "throwing_knife",
-      x: 17,
-      y: 171,
-      sheet: "default",
+      assetKey: "throwing_knife_projectile",
+      x: 80,
+      y: 48,
+      sheet: "items",
     },
   },
 };

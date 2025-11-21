@@ -14,6 +14,7 @@ export const ServerSentEvents = {
   ZOMBIE_DEATH: "zombieDeath",
   ZOMBIE_HURT: "zombieHurt",
   ZOMBIE_ATTACKED: "zombieAttacked",
+  ZOMBIE_ALERTED: "zombieAlerted",
   COIN_PICKUP: "coinPickup",
   BIG_ZOMBIE_DEATH: "bigZombieDeath",
   BIG_ZOMBIE_HURT: "bigZombieHurt",

@@ -17,6 +17,7 @@ import { YourIdEvent } from "../../../game-shared/src/events/server-sent/events/
 import { ZombieAttackedEvent } from "../../../game-shared/src/events/server-sent/events/zombie-attacked-event";
 import { ZombieDeathEvent } from "../../../game-shared/src/events/server-sent/events/zombie-death-event";
 import { ZombieHurtEvent } from "../../../game-shared/src/events/server-sent/events/zombie-hurt-event";
+import { ZombieAlertedEvent } from "../../../game-shared/src/events/server-sent/events/zombie-alerted-event";
 import { PongEvent } from "../../../game-shared/src/events/server-sent/events/pong-event";
 import { AdminCommand } from "@shared/commands/commands";
 import { Input } from "../../../game-shared/src/util/input";
@@ -26,8 +27,7 @@ import { ChatMessageEvent } from "../../../game-shared/src/events/server-sent/ev
 import { GameMessageEvent } from "../../../game-shared/src/events/server-sent/events/game-message-event";
 import { PlayerLeftEvent } from "../../../game-shared/src/events/server-sent/events/player-left-event";
 import { ExplosionEvent } from "../../../game-shared/src/events/server-sent/events/explosion-event";
-import { DelayedSocket } from "../util/delayed-socket";
-import { SIMULATION_CONFIG } from "@/config/client-prediction";
+import { serializeClientEvent } from "@shared/events/client-sent/client-event-serialization";
 import { CoinPickupEvent } from "../../../game-shared/src/events/server-sent/events/coin-pickup-event";
 import { CarRepairEvent } from "../../../game-shared/src/events/server-sent/events/car-repair-event";
 import { WaveStartEvent } from "../../../game-shared/src/events/server-sent/events/wave-start-event";
@@ -62,6 +62,7 @@ const SERVER_EVENT_MAP = {
   [ServerSentEvents.GUN_EMPTY]: GunEmptyEvent,
   [ServerSentEvents.GUN_FIRED]: GunFiredEvent,
   [ServerSentEvents.ZOMBIE_ATTACKED]: ZombieAttackedEvent,
+  [ServerSentEvents.ZOMBIE_ALERTED]: ZombieAlertedEvent,
   [ServerSentEvents.LOOT]: LootEvent,
   [ServerSentEvents.GAME_STARTED]: GameStartedEvent,
   [ServerSentEvents.COIN_PICKUP]: CoinPickupEvent,
@@ -82,8 +83,7 @@ const SERVER_EVENT_MAP = {
 } as const;
 
 export class ClientSocketManager {
-  private socket!: DelayedSocket;
-  private rawSocket!: ISocketAdapter;
+  private socket!: ISocketAdapter;
   private clientAdapter!: IClientAdapter;
   private pingInterval: ReturnType<typeof setInterval> | null = null;
   private onPingUpdate?: (ping: number) => void;
@@ -210,7 +210,7 @@ export class ClientSocketManager {
     // Create client adapter based on configuration and connect
     this.clientAdapter = createClientAdapter();
     const version = getConfig().meta.VERSION;
-    this.rawSocket = this.clientAdapter.connect(
+    this.socket = this.clientAdapter.connect(
       `${this.serverUrl}?displayName=${displayName}&version=${version}`,
       {
         // Ensure we create a new connection each time
@@ -218,8 +218,6 @@ export class ClientSocketManager {
       }
     );
 
-    // Wrap the socket with DelayedSocket to handle latency simulation
-    this.socket = new DelayedSocket(this.rawSocket, SIMULATION_CONFIG.simulatedLatencyMs);
     this.registerStoredHandlers();
 
     // Set up connection timeout
@@ -238,7 +236,7 @@ export class ClientSocketManager {
         return; // Already resolved, ignore duplicate calls
       }
 
-      console.log("Connected to game server", this.rawSocket.id);
+      console.log("Connected to game server", this.socket.id);
       this.isDisconnected = false;
       this.isConnecting = false; // Connection successful
       this.reconnectAttempts = 0; // Reset reconnect attempts on successful connection
@@ -270,11 +268,11 @@ export class ClientSocketManager {
       this.attemptConnection(attemptNumber + 1);
     };
 
-    this.rawSocket.on("connect", this.connectHandler);
-    this.rawSocket.on("error", this.errorHandler);
+    this.socket.on("connect", this.connectHandler);
+    this.socket.on("error", this.errorHandler);
 
     // Set up disconnect handler (for after successful connection)
-    this.rawSocket.on("disconnect", () => {
+    this.socket.on("disconnect", () => {
       console.log("Disconnected from game server");
       this.isDisconnected = true;
       this.stopPingMeasurement();
@@ -323,9 +321,9 @@ export class ClientSocketManager {
     this.connectHandler = undefined;
     this.errorHandler = undefined;
 
-    if (this.rawSocket) {
+    if (this.socket) {
       try {
-        this.rawSocket.disconnect();
+        this.socket.disconnect();
       } catch (error) {
         // Ignore errors during cleanup
       }
@@ -337,7 +335,7 @@ export class ClientSocketManager {
   }
 
   public requestFullState(): void {
-    this.socket.emit(ClientSentEvents.REQUEST_FULL_STATE);
+    this.emitClientEvent(ClientSentEvents.REQUEST_FULL_STATE);
   }
 
   private attemptReconnect(): void {
@@ -393,34 +391,23 @@ export class ClientSocketManager {
     }
 
     this.socket.on(eventType as any, (decodedEvent: any) => {
-      const run = () => {
-        const Ctor = (SERVER_EVENT_MAP as any)[eventType];
-        let eventInstance: any;
+      const Ctor = (SERVER_EVENT_MAP as any)[eventType];
+      let eventInstance: any;
 
-        if (
-          eventType === ServerSentEvents.GAME_STATE_UPDATE &&
-          decodedEvent instanceof ArrayBuffer
-        ) {
-          eventInstance = Ctor.deserializeFromBuffer(decodedEvent);
-        } else if (decodedEvent instanceof ArrayBuffer) {
-          const deserialized = deserializeServerEvent(eventType as string, decodedEvent);
-          if (deserialized !== null) {
-            eventInstance = new Ctor(deserialized[0]);
-          } else {
-            eventInstance = new Ctor(decodedEvent);
-          }
+      if (eventType === ServerSentEvents.GAME_STATE_UPDATE && decodedEvent instanceof ArrayBuffer) {
+        eventInstance = Ctor.deserializeFromBuffer(decodedEvent);
+      } else if (decodedEvent instanceof ArrayBuffer) {
+        const deserialized = deserializeServerEvent(eventType as string, decodedEvent);
+        if (deserialized !== null) {
+          eventInstance = new Ctor(deserialized[0]);
         } else {
           eventInstance = new Ctor(decodedEvent);
         }
-
-        handler(eventInstance);
-      };
-
-      if (SIMULATION_CONFIG.simulatedLatencyMs > 0) {
-        setTimeout(run, SIMULATION_CONFIG.simulatedLatencyMs);
       } else {
-        run();
+        eventInstance = new Ctor(decodedEvent);
       }
+
+      handler(eventInstance);
     });
   }
 
@@ -457,35 +444,35 @@ export class ClientSocketManager {
 
   private sendPing(): void {
     // Date.now() returns Unix timestamp in milliseconds (UTC, timezone-independent)
-    this.socket.emit(ClientSentEvents.PING, Date.now());
+    this.emitClientEvent(ClientSentEvents.PING, Date.now());
   }
 
   public sendPingUpdate(latency: number): void {
-    this.socket.emit(ClientSentEvents.PING_UPDATE, latency);
+    this.emitClientEvent(ClientSentEvents.PING_UPDATE, latency);
   }
 
   public sendCraftRequest(recipe: RecipeType) {
-    this.socket.emit(ClientSentEvents.CRAFT_REQUEST, recipe);
+    this.emitClientEvent(ClientSentEvents.CRAFT_REQUEST, recipe);
   }
 
   public sendStartCrafting() {
-    this.socket.emit(ClientSentEvents.START_CRAFTING);
+    this.emitClientEvent(ClientSentEvents.START_CRAFTING);
   }
 
   public sendStopCrafting() {
-    this.socket.emit(ClientSentEvents.STOP_CRAFTING);
+    this.emitClientEvent(ClientSentEvents.STOP_CRAFTING);
   }
 
   public sendInput(input: Input) {
-    this.socket.emit(ClientSentEvents.PLAYER_INPUT, input);
+    this.emitClientEvent(ClientSentEvents.PLAYER_INPUT, input);
   }
 
   public sendAdminCommand(command: AdminCommand) {
-    this.socket.emit(ClientSentEvents.ADMIN_COMMAND, command);
+    this.emitClientEvent(ClientSentEvents.ADMIN_COMMAND, command);
   }
 
   public sendRequestFullState() {
-    this.socket.emit(ClientSentEvents.REQUEST_FULL_STATE);
+    this.emitClientEvent(ClientSentEvents.REQUEST_FULL_STATE);
   }
 
   public getIsDisconnected(): boolean {
@@ -493,7 +480,7 @@ export class ClientSocketManager {
   }
 
   public sendMerchantBuy(merchantId: string, itemIndex: number) {
-    this.socket.emit(ClientSentEvents.MERCHANT_BUY, { merchantId, itemIndex });
+    this.emitClientEvent(ClientSentEvents.MERCHANT_BUY, { merchantId, itemIndex });
   }
 
   public sendDropItem(slotIndex: number, amount?: number) {
@@ -504,42 +491,60 @@ export class ClientSocketManager {
             amount,
           }
         : { slotIndex };
-    this.socket.emit(ClientSentEvents.DROP_ITEM, payload);
+    this.emitClientEvent(ClientSentEvents.DROP_ITEM, payload);
   }
 
   public sendSwapItems(fromSlotIndex: number, toSlotIndex: number) {
-    this.socket.emit(ClientSentEvents.SWAP_INVENTORY_ITEMS, {
+    this.emitClientEvent(ClientSentEvents.SWAP_INVENTORY_ITEMS, {
       fromSlotIndex,
       toSlotIndex,
     });
   }
 
   public sendConsumeItem(itemType: string | null) {
-    this.socket.emit(ClientSentEvents.CONSUME_ITEM, { itemType });
+    this.emitClientEvent(ClientSentEvents.CONSUME_ITEM, { itemType });
   }
 
   public sendSelectInventorySlot(slotIndex: number) {
-    this.socket.emit(ClientSentEvents.SELECT_INVENTORY_SLOT, { slotIndex });
+    this.emitClientEvent(ClientSentEvents.SELECT_INVENTORY_SLOT, { slotIndex });
   }
 
   public sendInteract(targetEntityId?: number | null) {
-    this.socket.emit(ClientSentEvents.INTERACT, { targetEntityId });
+    this.emitClientEvent(ClientSentEvents.INTERACT, { targetEntityId });
   }
 
   public sendChatMessage(message: string) {
-    this.socket.emit(ClientSentEvents.SEND_CHAT, { message });
+    this.emitClientEvent(ClientSentEvents.SEND_CHAT, { message });
   }
 
   public requestRespawn() {
-    this.socket.emit(ClientSentEvents.PLAYER_RESPAWN_REQUEST);
+    this.emitClientEvent(ClientSentEvents.PLAYER_RESPAWN_REQUEST);
   }
 
   public sendTeleportToBase() {
-    this.socket.emit(ClientSentEvents.TELEPORT_TO_BASE);
+    this.emitClientEvent(ClientSentEvents.TELEPORT_TO_BASE);
   }
 
   public getSocket(): ISocketAdapter {
-    return this.rawSocket;
+    return this.socket;
+  }
+
+  /**
+   * Emit a client event with automatic serialization
+   * All client events should be serializable as binary buffers
+   */
+  private emitClientEvent(event: string, ...args: any[]): void {
+    const buffer = serializeClientEvent(event, args);
+    if (buffer !== null) {
+      this.socket.emit(event, buffer);
+    } else {
+      // This should never happen if all events are properly registered
+      console.error(
+        `Failed to serialize client event ${event} as binary buffer. Event may not be registered in eventRegistry.`
+      );
+      // Still emit as fallback, but this indicates a configuration error
+      this.socket.emit(event, ...args);
+    }
   }
 
   /**
@@ -562,9 +567,9 @@ export class ClientSocketManager {
     this.stopPingMeasurement();
     this.isConnecting = false; // Reset connecting flag
 
-    if (this.rawSocket) {
+    if (this.socket) {
       console.log("Disconnecting from game server");
-      this.rawSocket.disconnect();
+      this.socket.disconnect();
       this.isDisconnected = true;
     }
   }

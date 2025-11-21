@@ -14,6 +14,7 @@ import { onPlayerAttacked } from "./events/on-player-attacked";
 import { onZombieDeath } from "./events/on-zombie-death";
 import { onZombieHurt } from "./events/on-zombie-hurt";
 import { onZombieAttacked } from "./events/on-zombie-attacked";
+import { onZombieAlerted } from "./events/on-zombie-alerted";
 import { onGunEmpty } from "./events/on-gun-empty";
 import { onGunFired } from "./events/on-gun-fired";
 import { onExplosion } from "./events/on-explosion";
@@ -52,6 +53,9 @@ export class ClientEventListener {
   private interpolation: InterpolationManager = new InterpolationManager();
   private previousWaveState: WaveState | undefined = undefined;
   private pendingFullStateEvent: GameStateEvent | null = null;
+  private lastFullStateRequestAt: number | null = null;
+  private lastFullStateRequestReason: string | null = null;
+  private fullStateRequestTimer: ReturnType<typeof setTimeout> | null = null;
 
   private isInitialized(): boolean {
     return this.hasReceivedMap && this.hasReceivedPlayerId && this.hasReceivedInitialState;
@@ -93,6 +97,7 @@ export class ClientEventListener {
     this.socketManager.on(ServerSentEvents.ZOMBIE_DEATH, (e) => onZombieDeath(context, e));
     this.socketManager.on(ServerSentEvents.ZOMBIE_HURT, (e) => onZombieHurt(context, e));
     this.socketManager.on(ServerSentEvents.ZOMBIE_ATTACKED, (e) => onZombieAttacked(context, e));
+    this.socketManager.on(ServerSentEvents.ZOMBIE_ALERTED, (e) => onZombieAlerted(context, e));
 
     this.socketManager.on(ServerSentEvents.GUN_EMPTY, (e) => onGunEmpty(context, e));
     this.socketManager.on(ServerSentEvents.GUN_FIRED, (e) => onGunFired(context, e));
@@ -113,7 +118,9 @@ export class ClientEventListener {
     );
 
     this.socketManager.on(ServerSentEvents.GAME_OVER, (e) => onGameOver(context, e));
-    this.socketManager.on(ServerSentEvents.GAME_STARTED, (e) => onGameStarted(context, e));
+    this.socketManager.on(ServerSentEvents.GAME_STARTED, (e) =>
+      onGameStarted(this.createInitializationContext(), e)
+    );
     this.socketManager.on(ServerSentEvents.SERVER_UPDATING, (e) => onServerUpdating(context, e));
     this.socketManager.on(ServerSentEvents.PONG, (e) => onPong(context, e));
 
@@ -138,6 +145,8 @@ export class ClientEventListener {
       socketManager: this.socketManager,
       gameState: this.gameState,
       shouldProcessEntityEvent: this.shouldProcessEntityEvent.bind(this),
+      requestFullState: this.requestFullState.bind(this),
+      invalidateInitialState: this.invalidateInitialState.bind(this),
     };
   }
 
@@ -156,8 +165,19 @@ export class ClientEventListener {
       setHasReceivedPlayerId: (value: boolean) => {
         this.hasReceivedPlayerId = value;
       },
-      setHasReceivedInitialState: (value: boolean) => {
+      setHasReceivedInitialState: (value: boolean, reason?: string) => {
+        const changed = this.hasReceivedInitialState !== value;
         this.hasReceivedInitialState = value;
+        if (!changed) {
+          return;
+        }
+        if (value) {
+          const suffix = reason ? ` (${reason})` : "";
+          console.log(`[ClientEventListener] Initial full state ready${suffix}`);
+          this.clearFullStateRequestTimer("Initial full state applied");
+        } else {
+          this.invalidateInitialState(reason ?? "Initial state flag reset");
+        }
       },
       setPendingFullStateEvent: (event: GameStateEvent | null) => {
         this.pendingFullStateEvent = event;
@@ -175,18 +195,73 @@ export class ClientEventListener {
   }
 
   private handleDisconnect(): void {
+    this.invalidateInitialState("Socket disconnected");
     // Reset initialization flags so we wait for fresh data on reconnect
     this.hasReceivedMap = false;
     this.hasReceivedPlayerId = false;
-    this.hasReceivedInitialState = false;
-    this.pendingFullStateEvent = null;
 
     // Handle side effects
     handleDisconnect(this.createContext());
   }
 
+  private requestFullState(reason: string = "manual"): void {
+    console.log(`[ClientEventListener] Requesting full state (${reason})`);
+    this.lastFullStateRequestReason = reason;
+    const now = typeof performance !== "undefined" ? performance.now() : Date.now();
+    this.lastFullStateRequestAt = now;
+    this.socketManager.sendRequestFullState();
+    this.scheduleFullStateTimeout();
+  }
+
+  private scheduleFullStateTimeout(): void {
+    if (this.fullStateRequestTimer) {
+      clearTimeout(this.fullStateRequestTimer);
+    }
+    this.fullStateRequestTimer = setTimeout(() => {
+      if (this.hasReceivedInitialState) {
+        this.clearFullStateRequestTimer();
+        return;
+      }
+
+      const now = typeof performance !== "undefined" ? performance.now() : Date.now();
+      const elapsed =
+        this.lastFullStateRequestAt !== null ? Math.round(now - this.lastFullStateRequestAt) : null;
+      const elapsedLabel = elapsed !== null ? ` (${elapsed}ms elapsed)` : "";
+      console.warn(
+        `[ClientEventListener] Still waiting for full state${elapsedLabel}. Retrying request...`
+      );
+      this.socketManager.sendRequestFullState();
+      this.scheduleFullStateTimeout();
+    }, 4000);
+  }
+
+  private clearFullStateRequestTimer(message?: string): void {
+    if (this.fullStateRequestTimer) {
+      clearTimeout(this.fullStateRequestTimer);
+      this.fullStateRequestTimer = null;
+    }
+    if (message) {
+      console.log(`[ClientEventListener] ${message}`);
+    }
+    this.lastFullStateRequestAt = null;
+    this.lastFullStateRequestReason = null;
+  }
+
+  private invalidateInitialState(reason: string = "unspecified"): void {
+    if (this.hasReceivedInitialState) {
+      console.warn(`[ClientEventListener] Initial state invalidated: ${reason}`);
+    } else {
+      console.log(`[ClientEventListener] Waiting for initial state (${reason})`);
+    }
+    this.hasReceivedInitialState = false;
+    this.pendingFullStateEvent = null;
+    this.interpolation.reset();
+    this.clearFullStateRequestTimer();
+  }
+
   private processPendingFullStateIfReady(): void {
     if (this.pendingFullStateEvent && this.hasReceivedMap && this.hasReceivedPlayerId) {
+      console.log("[ClientEventListener] Processing deferred full state event");
       const pendingEvent = this.pendingFullStateEvent;
       this.pendingFullStateEvent = null;
       const initContext = this.createInitializationContext();
@@ -197,10 +272,10 @@ export class ClientEventListener {
       this.hasReceivedPlayerId &&
       !this.hasReceivedInitialState
     ) {
-      // We have MAP and YOUR_ID but no pending full state event and haven't received initial state yet
-      // This happens on reconnect - request full state from server
-      console.log("[ClientEventListener] Requesting full state after reconnect");
-      this.socketManager.sendRequestFullState();
+      console.log(
+        "[ClientEventListener] Map & player ID received but still missing full state; requesting it"
+      );
+      this.requestFullState("Handshake complete but waiting for full state");
     }
   }
 

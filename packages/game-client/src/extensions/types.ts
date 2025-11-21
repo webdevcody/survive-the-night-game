@@ -1,4 +1,3 @@
-import { ClientEntity } from "@/entities/client-entity";
 import { BufferReader } from "@shared/util/buffer-serialization";
 
 export interface ClientExtension {

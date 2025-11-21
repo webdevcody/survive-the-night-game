@@ -7,6 +7,7 @@ import Vector2 from "@/util/vector2";
 import PoolManager from "@shared/util/pool-manager";
 import { getConfig, type MerchantShopItem } from "@shared/config";
 import { SerializableFields } from "@/util/serializable-fields";
+import Illuminated from "@/extensions/illuminated";
 
 export class Merchant extends Entity {
   public static get Size(): Vector2 {
@@ -24,6 +25,7 @@ export class Merchant extends Entity {
     this.addExtension(
       new Interactive(this).onInteract(this.interact.bind(this)).setDisplayName("buy")
     );
+    this.addExtension(new Illuminated(this, 150));
 
     // Initialize with all buyable items
     this.initializeShopItems();
@@ -39,11 +41,11 @@ export class Merchant extends Entity {
    */
   public initializeShopItems(): void {
     const shopItems = [...getConfig().merchant.SHOP_ITEMS];
-    this.serialized.set('shopItems', shopItems);
+    this.serialized.set("shopItems", shopItems);
   }
 
   public getShopItems(): MerchantShopItem[] {
-    return this.serialized.get('shopItems');
+    return this.serialized.get("shopItems");
   }
 
   setPosition(position: Vector2): void {

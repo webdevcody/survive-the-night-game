@@ -76,7 +76,9 @@ function buildRecipes(): Recipe[] {
   weaponRegistry.getAll().forEach((weaponConfig) => {
     if (weaponConfig.recipe?.enabled && weaponConfig.recipe.components) {
       const resultCount = weaponConfig.recipe.resultCount ?? 1;
-      recipeList.push(new ConfigRecipe(weaponConfig.id, weaponConfig.recipe.components, resultCount));
+      recipeList.push(
+        new ConfigRecipe(weaponConfig.id, weaponConfig.recipe.components, resultCount)
+      );
     }
   });
 

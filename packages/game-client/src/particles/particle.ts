@@ -8,6 +8,7 @@ export const ParticleTypes = {
   ZOMBIE_SWING: "zombie_swing",
   EXPLOSION: "explosion",
   SUMMON: "summon",
+  SMOKE: "smoke",
 } as const;
 
 export type ParticleType = (typeof ParticleTypes)[keyof typeof ParticleTypes];

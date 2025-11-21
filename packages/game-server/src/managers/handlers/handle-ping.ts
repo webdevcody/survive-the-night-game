@@ -8,7 +8,10 @@ export function handlePing(
   socket: ISocketAdapter,
   timestamp: number
 ): void {
-  const delayedSocket = context.wrapSocket(socket);
   const binaryBuffer = serializeServerEvent(ServerSentEvents.PONG, [{ timestamp }]);
-  delayedSocket.emit(ServerSentEvents.PONG, binaryBuffer);
+  if (binaryBuffer !== null) {
+    socket.emit(ServerSentEvents.PONG, binaryBuffer);
+  } else {
+    console.error(`Failed to serialize ${ServerSentEvents.PONG} as binary buffer`);
+  }
 }

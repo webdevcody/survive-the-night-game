@@ -284,9 +284,9 @@ export const WEAPON_CONFIGS: Record<string, WeaponConfig> = {
     assets: {
       assetPrefix: "molotov_cocktail",
       spritePositions: {
-        right: { x: 80, y: 0 },
-        up: { x: 80, y: 0 },
-        down: { x: 80, y: 0 },
+        right: { x: 144, y: 32 },
+        up: { x: 144, y: 32 },
+        down: { x: 144, y: 32 },
       },
       sheet: "items",
     },
@@ -312,11 +312,11 @@ export const WEAPON_CONFIGS: Record<string, WeaponConfig> = {
     assets: {
       assetPrefix: "throwing_knife",
       spritePositions: {
-        right: { x: 17, y: 171 },
-        down: { x: 51, y: 171 },
-        up: { x: 34, y: 171 },
+        right: { x: 80, y: 48 },
+        down: { x: 80, y: 48 },
+        up: { x: 80, y: 48 },
       },
-      sheet: "default",
+      sheet: "items",
     },
     sound: "knife_swing",
     merchant: {

@@ -1,5 +1,6 @@
 import Collidable from "@/extensions/collidable";
 import Destructible from "@/extensions/destructible";
+import Groupable from "@/extensions/groupable";
 import Inventory from "@/extensions/inventory";
 import Movable from "@/extensions/movable";
 import Positionable from "@/extensions/positionable";
@@ -12,13 +13,14 @@ import { Entity } from "@/entities/entity";
 import { normalizeVector, distance } from "@/util/physics";
 import { IEntity } from "@/entities/types";
 import Vector2 from "@/util/vector2";
-import { Line, Rectangle } from "@/util/shape";
+import { Rectangle } from "@/util/shape";
 import { Player } from "@/entities/players/player";
-import { BaseEnemy } from "@/entities/enemies/base-enemy";
+import { Car } from "@/entities/environment/car";
 import PoolManager from "@shared/util/pool-manager";
 import { Entities } from "@/constants";
 
 const MAX_TRAVEL_DISTANCE = 100;
+
 export class ThrowingKnifeProjectile extends Entity {
   private traveledDistance: number = 0;
   private static readonly KNIFE_SPEED = 200; // Same speed as arrows
@@ -29,13 +31,15 @@ export class ThrowingKnifeProjectile extends Entity {
     super(gameManagers, Entities.THROWING_KNIFE_PROJECTILE);
 
     const poolManager = PoolManager.getInstance();
+    const bulletSize = getConfig().combat.BULLET_SIZE;
+    const bulletRadius = bulletSize / 2;
     this.addExtension(new Positionable(this));
     this.addExtension(new Movable(this).setHasFriction(false));
     this.addExtension(new Updatable(this, this.updateKnife.bind(this)));
     this.addExtension(
-      new Collidable(this).setSize(
-        poolManager.vector2.claim(getConfig().combat.BULLET_SIZE, getConfig().combat.BULLET_SIZE)
-      )
+      new Collidable(this)
+        .setSize(poolManager.vector2.claim(bulletSize, bulletSize))
+        .setOffset(poolManager.vector2.claim(-bulletRadius, -bulletRadius))
     );
 
     this.lastPosition = this.getPosition();
@@ -143,8 +147,8 @@ export class ThrowingKnifeProjectile extends Entity {
       // Check for collisions with collidable entities (trees, walls, boundaries, etc.)
       const collidingEntity = this.getEntityManager().getIntersectingCollidableEntity(this);
       if (collidingEntity) {
-        // Don't stop if we hit the shooter
-        if (collidingEntity.getId() !== this.shooterId) {
+        // Don't stop if we hit the shooter or the car
+        if (collidingEntity.getId() !== this.shooterId && !(collidingEntity instanceof Car)) {
           // Hit a boundary/collidable - create pickup item and remove projectile
           this.createPickupItem(newStepPosition);
           this.getEntityManager().markEntityForRemoval(this);
@@ -184,33 +188,28 @@ export class ThrowingKnifeProjectile extends Entity {
     const poolManager = PoolManager.getInstance();
     const knifeRadius = getConfig().combat.BULLET_SIZE / 2;
 
-    const fromCenter = poolManager.vector2.claim(
-      fromPosition.x + knifeRadius,
-      fromPosition.y + knifeRadius
-    );
-    const toCenter = poolManager.vector2.claim(
-      toPosition.x + knifeRadius,
-      toPosition.y + knifeRadius
-    );
+    // Position is now the center of the hitbox (due to Collidable offset)
+    const fromCenter = poolManager.vector2.claim(fromPosition.x, fromPosition.y);
+    const toCenter = poolManager.vector2.claim(toPosition.x, toPosition.y);
 
     const knifePath = poolManager.line.claim(fromCenter, toCenter);
 
-    // Only check for zombies (BaseEnemy instances), not just any enemy group
-    const isZombie = (entity: IEntity) => entity instanceof BaseEnemy;
+    const isEnemy = (entity: IEntity) =>
+      entity.hasExt(Groupable) && entity.getExt(Groupable).getGroup() === "enemy";
 
-    const zombies = this.getEntityManager()
+    const enemies = this.getEntityManager()
       .getNearbyIntersectingDestructableEntities(this)
-      .filter(isZombie);
+      .filter(isEnemy);
 
-    // Sort zombies by distance to knife start position to ensure we hit the closest zombie first
-    zombies.sort((a, b) => {
+    // Sort enemies by distance to knife start position to ensure we hit the closest enemy first
+    enemies.sort((a, b) => {
       const distA = distance(fromCenter, a.getExt(Positionable).getPosition());
       const distB = distance(fromCenter, b.getExt(Positionable).getPosition());
       return distA - distB;
     });
 
-    for (const zombie of zombies) {
-      const hitbox = zombie.getExt(Destructible).getDamageBox();
+    for (const enemy of enemies) {
+      const hitbox = enemy.getExt(Destructible).getDamageBox();
       let collision = false;
 
       // Expand the rectangle by the knife's radius to account for the knife's size
@@ -250,21 +249,19 @@ export class ThrowingKnifeProjectile extends Entity {
       }
 
       if (collision) {
-        // This is confirmed to be a zombie (BaseEnemy) - process the hit
         poolManager.line.release(knifePath);
         poolManager.vector2.release(fromCenter);
         poolManager.vector2.release(toCenter);
         this.getEntityManager().markEntityForRemoval(this);
-        const destructible = zombie.getExt(Destructible);
+        const destructible = enemy.getExt(Destructible);
         const wasAlive = !destructible.isDead();
 
         // Deal 1 damage
         destructible.damage(1, this.shooterId);
 
-        // Add throwing knife to zombie's inventory (stacking)
-        // Zombies always have Inventory extension (added in BaseEnemy constructor)
-        if (zombie.hasExt(Inventory)) {
-          const inventory = zombie.getExt(Inventory);
+        // Add throwing knife to enemy's inventory (stacking)
+        if (enemy.hasExt(Inventory)) {
+          const inventory = enemy.getExt(Inventory);
           const existingKnifeIndex = inventory
             .getItems()
             .findIndex((item) => item != null && item.itemType === "throwing_knife");
@@ -285,7 +282,7 @@ export class ThrowingKnifeProjectile extends Entity {
           }
         }
 
-        // If the zombie died from this hit, increment the shooter's kill count
+        // If the enemy died from this hit, increment the shooter's kill count
         if (wasAlive && destructible.isDead()) {
           const shooter = this.getEntityManager().getEntityById(this.shooterId);
           if (shooter instanceof Player) {

@@ -376,7 +376,6 @@ export class InventoryBarUI implements Renderable {
 
       const inventoryItem = items[i];
 
-      // Draw item image
       const image = inventoryItem && this.assetManager.get(getItemAssetKey(inventoryItem));
 
       if (image) {

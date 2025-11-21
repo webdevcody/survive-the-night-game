@@ -27,13 +27,12 @@ export async function handleChat(
         playerId: 0, // System message uses ID 0
         message: result,
       });
-      const delayedSocket = context.wrapSocket(socket);
       const chatData = chatEvent.getData();
       const chatBuffer = serializeServerEvent(ServerSentEvents.CHAT_MESSAGE, [chatData]);
       if (chatBuffer !== null) {
-        delayedSocket.emit(ServerSentEvents.CHAT_MESSAGE, chatBuffer);
+        socket.emit(ServerSentEvents.CHAT_MESSAGE, chatBuffer);
       } else {
-        delayedSocket.emit(ServerSentEvents.CHAT_MESSAGE, chatData);
+        console.error(`Failed to serialize ${ServerSentEvents.CHAT_MESSAGE} as binary buffer`);
       }
     }
     return;
@@ -46,12 +45,5 @@ export async function handleChat(
     message: filteredMessage,
   });
 
-  const chatEventData = chatEvent.getData();
-  // Try to serialize as binary
-  const chatBuffer = serializeServerEvent(ServerSentEvents.CHAT_MESSAGE, [chatEventData]);
-  if (chatBuffer !== null) {
-    context.delayedIo.emit(ServerSentEvents.CHAT_MESSAGE, chatBuffer);
-  } else {
-    context.delayedIo.emit(ServerSentEvents.CHAT_MESSAGE, chatEventData);
-  }
+  context.broadcastEvent(chatEvent);
 }

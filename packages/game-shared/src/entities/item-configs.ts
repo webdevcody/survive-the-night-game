@@ -106,7 +106,7 @@ export const ITEM_CONFIGS: Record<string, ItemConfig> = {
     category: "ammo",
     assets: {
       assetKey: "grenade_launcher_ammo",
-      x: 112,
+      x: 128,
       y: 16,
       sheet: "items",
     },
@@ -121,7 +121,7 @@ export const ITEM_CONFIGS: Record<string, ItemConfig> = {
     category: "ammo",
     assets: {
       assetKey: "flamethrower_ammo",
-      x: 112,
+      x: 144,
       y: 16,
       sheet: "items",
     },
@@ -189,32 +189,15 @@ export const ITEM_CONFIGS: Record<string, ItemConfig> = {
       price: 20,
     },
   },
-  throwing_knife: {
-    id: "throwing_knife",
-    category: "throwable",
-    assets: {
-      assetKey: "throwing_knife",
-      x: 17,
-      y: 171,
-      sheet: "default",
-    },
-    spawn: {
-      enabled: false,
-      chance: 0,
-    },
-    merchant: {
-      enabled: false,
-      buyable: false,
-    },
-  },
   torch: {
     id: "torch",
     category: "placeable",
     placeable: true,
     assets: {
       assetKey: "torch",
-      x: 68,
-      y: 266,
+      x: 0,
+      y: 0,
+      sheet: "items",
     },
     spawn: {
       enabled: false,
@@ -237,8 +220,9 @@ export const ITEM_CONFIGS: Record<string, ItemConfig> = {
     placeable: true,
     assets: {
       assetKey: "gasoline",
-      x: 255,
-      y: 38,
+      x: 0,
+      y: 48,
+      sheet: "items",
     },
     spawn: {
       enabled: true,

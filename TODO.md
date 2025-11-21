@@ -8,10 +8,15 @@ Feel free to pick any item listed out here to work on.
 
 ## DevEx
 
+- all the item configs should reference the proper item sheets and remove "default" from all over the codebase. first start with any items that are set to "default", those need to be refactored, then refactor the javascript
+- I need to refactor how the assets are managed. At the very least, throw an error if the same asset is loaded with the same asset key.
+- check if the deserialize method on extensions is used, at this point we should only be using deserializeFromBuffer
 - the approach for compression is very hacky, find a more elegant solution
+- find an abstract method or class for projectiles as there is a lot of common functionality in terms of them traveling for X amount of distance, then needing to run some logic after that distance is reached, also similar groups they intersect with to damage. Maybe put arrow, knife, bullet, and grenade as similar type of projectiles when updating. the common logic is how they update, but there are difference in what happens when they go the max distance (a throwing knife and arrow will land on the ground to be picked up later, the grenade explodes with a timer so the max distance acts more as a potential trigger, bullet will travel a max distance as well).
 
 ## UX
 
+- interactive text over the merchant is hard to read, maybe add an option to offset interactive text or change color or add background color
 - when the car is destroyed, change it to a broken car sprite display
 - refactor how the car is defined in the editor. the car should not be part of the map but something in the entities list so it can be easily modified on death.
 

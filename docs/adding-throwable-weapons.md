@@ -1,6 +1,7 @@
 # Guide: Adding Throwable Weapons
 
 This guide documents all the changes required to add a new throwable weapon (like grenades or Molotov cocktails) that:
+
 - Can be thrown by players
 - Shows up in the buy menu
 - Can be crafted via recipes
@@ -13,9 +14,11 @@ Throwable weapons are weapons that can be thrown, travel through the air, and ex
 ## Files to Create
 
 ### 1. Server-Side Entity Class
+
 **Location:** `packages/game-server/src/entities/items/{weapon-name}.ts`
 
 **Template:**
+
 ```typescript
 import Positionable from "@/extensions/positionable";
 import { IGameManagers } from "@/managers/types";
@@ -71,7 +74,10 @@ export class YourThrowableWeapon extends Weapon {
         const carryable = this.getExt(Carryable);
         carryable.pickup(
           entityId,
-          Carryable.createStackablePickupOptions(carryable, YourThrowableWeapon.DEFAULT_COUNT)
+          Carryable.createStackablePickupOptions(
+            carryable,
+            YourThrowableWeapon.DEFAULT_COUNT
+          )
         );
       });
     }
@@ -126,7 +132,10 @@ export class YourThrowableWeapon extends Weapon {
     } else {
       const directionVector = normalizeDirection(facing);
       const poolManager = PoolManager.getInstance();
-      this.velocity = poolManager.vector2.claim(directionVector.x, directionVector.y);
+      this.velocity = poolManager.vector2.claim(
+        directionVector.x,
+        directionVector.y
+      );
       this.velocity.mul(YourThrowableWeapon.THROW_SPEED);
     }
 
@@ -143,7 +152,10 @@ export class YourThrowableWeapon extends Weapon {
     // Update position based on velocity
     const pos = this.getExt(Positionable).getPosition();
     const poolManager = PoolManager.getInstance();
-    const velocityScaled = poolManager.vector2.claim(this.velocity.x, this.velocity.y);
+    const velocityScaled = poolManager.vector2.claim(
+      this.velocity.x,
+      this.velocity.y
+    );
     velocityScaled.mul(deltaTime);
     const newPos = pos.clone().add(velocityScaled);
     poolManager.vector2.release(velocityScaled);
@@ -179,7 +191,9 @@ export class YourThrowableWeapon extends Weapon {
       if (dist <= YourThrowableWeapon.EXPLOSION_RADIUS) {
         // Scale damage based on distance from explosion
         const damageScale = 1 - dist / YourThrowableWeapon.EXPLOSION_RADIUS;
-        const damage = Math.ceil(YourThrowableWeapon.EXPLOSION_DAMAGE * damageScale);
+        const damage = Math.ceil(
+          YourThrowableWeapon.EXPLOSION_DAMAGE * damageScale
+        );
         entity.getExt(Destructible).damage(damage);
       }
     }
@@ -200,6 +214,7 @@ export class YourThrowableWeapon extends Weapon {
 ```
 
 **Key Points:**
+
 - Extends `Weapon` base class
 - Uses `Updatable` extension for physics simulation
 - Implements stackable item support via `Carryable` extension
@@ -208,9 +223,11 @@ export class YourThrowableWeapon extends Weapon {
 - Explodes after a delay timer
 
 ### 2. Client-Side Entity Class
+
 **Location:** `packages/game-client/src/entities/items/{weapon-name}.ts`
 
 **Template:**
+
 ```typescript
 import { GameState } from "@/state";
 import { Renderable } from "@/entities/util";
@@ -218,7 +235,10 @@ import { ClientEntity } from "@/entities/client-entity";
 import { ClientPositionable } from "@/extensions";
 import { Z_INDEX } from "@shared/map";
 
-export class YourThrowableWeaponClient extends ClientEntity implements Renderable {
+export class YourThrowableWeaponClient
+  extends ClientEntity
+  implements Renderable
+{
   public getZIndex(): number {
     return Z_INDEX.ITEMS;
   }
@@ -234,6 +254,7 @@ export class YourThrowableWeaponClient extends ClientEntity implements Renderabl
 ```
 
 **Key Points:**
+
 - Implements `Renderable` interface
 - Uses `Z_INDEX.ITEMS` for proper layering
 - Renders the weapon sprite at its position
@@ -241,9 +262,11 @@ export class YourThrowableWeaponClient extends ClientEntity implements Renderabl
 ## Files to Modify
 
 ### 1. Weapon Configuration
+
 **File:** `packages/game-shared/src/entities/weapon-configs.ts`
 
 **Add entry to `WEAPON_CONFIGS` object:**
+
 ```typescript
 your_weapon_id: {
   id: "your_weapon_id",
@@ -279,6 +302,7 @@ your_weapon_id: {
 ```
 
 **Key Points:**
+
 - `id` must match the entity type string used in constructor
 - `assetPrefix` must match your sprite asset name
 - `spritePositions` define where the sprite is in the sprite sheet
@@ -287,48 +311,61 @@ your_weapon_id: {
 - `recipe.resultCount` allows creating multiple items per craft
 
 ### 2. Server Entity Registry
+
 **File:** `packages/game-server/src/entities/register-custom-entities.ts`
 
 **Add import at top:**
+
 ```typescript
 import { YourThrowableWeapon } from "@/entities/items/your-weapon-name";
 ```
 
 **Add registration in `registerCustomEntities()` function:**
+
 ```typescript
 // Items with custom behavior section
 entityOverrideRegistry.register("your_weapon_id", YourThrowableWeapon);
 ```
 
 **Key Points:**
+
 - Import path must match your file location
 - Registration string must match the weapon `id` in config
 - Place in appropriate section (items, weapons, etc.)
 
 ### 3. Client Entity Registry
+
 **File:** `packages/game-client/src/entities/register-custom-entities.ts`
 
 **Add import at top:**
+
 ```typescript
 import { YourThrowableWeaponClient } from "./items/your-weapon-name";
 ```
 
 **Add registration in `registerCustomClientEntities()` function:**
+
 ```typescript
 // Items with custom behavior section
-clientEntityOverrideRegistry.register("your_weapon_id", YourThrowableWeaponClient);
+clientEntityOverrideRegistry.register(
+  "your_weapon_id",
+  YourThrowableWeaponClient
+);
 ```
 
 **Key Points:**
+
 - Import path uses relative path (`./items/`)
 - Registration string must match server registration
 
 ### 4. Recipe System (if creating multiple items)
+
 **File:** `packages/game-shared/src/util/recipes.ts`
 
 **Already updated to support `resultCount` - no changes needed unless adding new functionality.**
 
 The recipe system now supports:
+
 - `resultCount` in `RecipeConfig` interface
 - Creating multiple items per craft operation
 - Proper stacking when items already exist in inventory
@@ -375,6 +412,7 @@ private spawnCustomEffects(centerPosition: Vector2): void {
 ### Different Throw Mechanics
 
 To modify throw behavior:
+
 - Change `THROW_SPEED` constant for faster/slower throws
 - Modify friction multiplier (`velocity.mul(0.95)`) for different deceleration
 - Adjust `EXPLOSION_DELAY` for different fuse times
@@ -403,10 +441,12 @@ When adding a new throwable weapon, ensure:
 As a reference, here's what was changed to add the Molotov Cocktail:
 
 1. **Created:**
+
    - `packages/game-server/src/entities/items/molotov-cocktail.ts`
    - `packages/game-client/src/entities/items/molotov-cocktail.ts`
 
 2. **Modified:**
+
    - `packages/game-shared/src/entities/weapon-configs.ts` - Added config with recipe
    - `packages/game-shared/src/entities/behavior-configs.ts` - Added `resultCount` to `RecipeConfig`
    - `packages/game-shared/src/util/recipes.ts` - Updated to support `resultCount`
@@ -426,4 +466,3 @@ As a reference, here's what was changed to add the Molotov Cocktail:
 - **Network Sync:** Position and state changes are automatically synced via the entity system
 - **Stacking:** Stackable weapons use the `Carryable` extension with count state
 - **Resources vs Items:** Recipe components can be either inventory items (like gasoline) or resources (like cloth/wood) from the resources bag
-

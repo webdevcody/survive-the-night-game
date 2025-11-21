@@ -10,6 +10,8 @@ export interface ClientEventContext {
   socketManager: ClientSocketManager;
   gameState: GameState;
   shouldProcessEntityEvent: () => boolean;
+  requestFullState: (reason?: string) => void;
+  invalidateInitialState: (reason?: string) => void;
 }
 
 export interface InitializationContext extends ClientEventContext {
@@ -21,7 +23,7 @@ export interface InitializationContext extends ClientEventContext {
   hasReceivedInitialState: boolean;
   setHasReceivedMap: (value: boolean) => void;
   setHasReceivedPlayerId: (value: boolean) => void;
-  setHasReceivedInitialState: (value: boolean) => void;
+  setHasReceivedInitialState: (value: boolean, reason?: string) => void;
   setPendingFullStateEvent: (event: GameStateEvent | null) => void;
   setPreviousWaveState: (state: WaveState | undefined) => void;
   processPendingFullStateIfReady: () => void;

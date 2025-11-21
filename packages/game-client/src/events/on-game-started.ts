@@ -1,11 +1,17 @@
 import { GameStartedEvent } from "../../../game-shared/src/events/server-sent/events/game-started-event";
 import { clearEntities } from "@/state";
-import { ClientEventContext } from "./types";
+import { InitializationContext } from "./types";
 
-export const onGameStarted = (context: ClientEventContext, event: GameStartedEvent) => {
-  // Clear all client-side entities and particles
+export const onGameStarted = (context: InitializationContext, event: GameStartedEvent) => {
+  console.log("[GameStarted] Server announced a new round – resetting client state");
+
+  // Invalidate current state and wait for a new full snapshot
+  context.invalidateInitialState("Server broadcast GAME_STARTED");
+
+  // Clear all client-side entities, particles, and spatial references
   clearEntities(context.gameState);
   context.gameClient.getParticleManager().clear();
+  context.gameClient.getRenderer().clearSpatialGrid();
 
   // Hide game over dialog if it was showing
   context.gameClient.getGameOverDialog().hide();
@@ -15,6 +21,6 @@ export const onGameStarted = (context: ClientEventContext, event: GameStartedEve
     .getHud()
     .addMessage("The car is our only way out... don't let them destroy it!", "yellow");
 
-  // Request full state from server
-  context.socketManager.sendRequestFullState();
+  // Request a fresh full state now that the game restarted
+  context.requestFullState("GameStarted event");
 };

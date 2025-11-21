@@ -36,6 +36,7 @@ import {
 import { CampsiteFireClient } from "@/entities/environment/campsite-fire";
 import { WaveState } from "@shared/types/wave";
 import { ParticleManager } from "./managers/particles";
+import { SmokeParticleManager } from "./managers/smoke-particles";
 import { PredictionManager } from "./managers/prediction";
 import { FixedTimestepSimulator } from "./managers/fixed-timestep-simulator";
 import { getConfig } from "@shared/config";
@@ -64,6 +65,7 @@ export class GameClient {
   private clientEventListener!: ClientEventListener;
   private entityFactory: EntityFactory;
   private particleManager: ParticleManager;
+  private smokeParticleManager: SmokeParticleManager;
   private predictionManager: PredictionManager;
   private fixedTimestepSimulator: FixedTimestepSimulator;
   private placementManager!: PlacementManager;
@@ -118,6 +120,7 @@ export class GameClient {
     this.soundManager = soundManager || new SoundManager();
     this.entityFactory = new EntityFactory(this.assetManager);
     this.particleManager = new ParticleManager(this);
+    this.smokeParticleManager = new SmokeParticleManager(this, this.assetManager);
     this.predictionManager = new PredictionManager();
     this.fixedTimestepSimulator = new FixedTimestepSimulator(getConfig().simulation.FIXED_TIMESTEP);
 
@@ -706,6 +709,7 @@ export class GameClient {
     this.updateTeleportProgress();
     this.updateInteractHold();
     this.hud.update(this.gameState);
+    this.smokeParticleManager.update(deltaSeconds);
     this.updatePlayerMovementSounds();
     this.updateCampfireSounds();
     this.updateCursorVisibility();

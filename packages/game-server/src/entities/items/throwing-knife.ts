@@ -12,8 +12,7 @@ import { ItemState } from "@/types/entity";
 import { ThrowingKnifeProjectile } from "@/entities/projectiles/throwing-knife-projectile";
 
 export class ThrowingKnife extends Weapon {
-  private static readonly THROW_SPEED = 200;
-  private static readonly COOLDOWN = 0.5;
+  private static readonly COOLDOWN = 0.3;
   private static readonly DEFAULT_COUNT = 5;
 
   constructor(gameManagers: IGameManagers, itemState?: ItemState) {

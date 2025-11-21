@@ -10,7 +10,6 @@ import { CommandManager } from "@/managers/command-manager";
 import { MapManager } from "@/world/map-manager";
 import { Broadcaster, IEntityManager, IGameManagers } from "@/managers/types";
 import { getConfig } from "@shared/config";
-import { DelayedServer, DelayedServerSocket } from "@/util/delayed-socket";
 import { createCommandRegistry, CommandRegistry } from "@/commands";
 import {
   RegExpMatcher,
@@ -38,7 +37,6 @@ import { RateLimiter } from "./rate-limiter";
  */
 export class ServerSocketManager implements Broadcaster {
   private io: IServerAdapter;
-  private delayedIo: DelayedServer;
   private players: Map<string, Player> = new Map();
   private playerDisplayNames: Map<string, string> = new Map();
   private port: number;
@@ -92,9 +90,6 @@ export class ServerSocketManager implements Broadcaster {
       methods: ["GET", "POST"],
     });
 
-    // Wrap the io server with DelayedServer to handle latency simulation and byte tracking
-    this.delayedIo = new DelayedServer(this.io, getConfig().network.SIMULATED_LATENCY_MS);
-
     this.gameServer = gameServer;
 
     // Initialize chat command registry
@@ -110,7 +105,6 @@ export class ServerSocketManager implements Broadcaster {
     // Initialize broadcaster (will be fully initialized after entityManager is set)
     this.broadcaster = new BroadcastingBroadcaster({
       io: this.io,
-      delayedIo: this.delayedIo,
       entityManager: null as any, // Will be set when entityManager is set
       gameServer: this.gameServer,
       bufferManager: this.bufferManager,
@@ -205,13 +199,6 @@ export class ServerSocketManager implements Broadcaster {
   }
 
   /**
-   * Wrap a socket with DelayedServerSocket for latency simulation
-   */
-  private wrapSocket(socket: ISocketAdapter): DelayedServerSocket {
-    return new DelayedServerSocket(socket, getConfig().network.SIMULATED_LATENCY_MS);
-  }
-
-  /**
    * Get handler context for passing to handler functions
    */
   private getHandlerContext(): HandlerContext {
@@ -220,7 +207,6 @@ export class ServerSocketManager implements Broadcaster {
       playerDisplayNames: this.playerDisplayNames,
       gameServer: this.gameServer,
       bufferManager: this.bufferManager,
-      delayedIo: this.delayedIo,
       chatCommandRegistry: this.chatCommandRegistry,
       profanityMatcher: this.profanityMatcher,
       profanityCensor: this.profanityCensor,
@@ -228,7 +214,6 @@ export class ServerSocketManager implements Broadcaster {
       getMapManager: () => this.getMapManager(),
       getCommandManager: () => this.getCommandManager(),
       getGameManagers: () => this.getGameManagers(),
-      wrapSocket: (socket: ISocketAdapter) => this.wrapSocket(socket),
       broadcastEvent: (event: GameEvent<any>) => this.broadcastEvent(event),
       sendEventToSocket: (socket: ISocketAdapter, event: GameEvent<any>) =>
         this.sendEventToSocket(socket, event),
@@ -250,7 +235,6 @@ export class ServerSocketManager implements Broadcaster {
     if (this.entityManager) {
       this.broadcaster = new BroadcastingBroadcaster({
         io: this.io,
-        delayedIo: this.delayedIo,
         entityManager: this.entityManager,
         gameServer: this.gameServer,
         bufferManager: this.bufferManager,
@@ -260,7 +244,7 @@ export class ServerSocketManager implements Broadcaster {
   }
 
   getCurrentBandwidth(): number {
-    return this.delayedIo.getCurrentBandwidth();
+    return this.broadcaster.getCurrentBandwidth();
   }
 
   public getGameManagers(): IGameManagers {
@@ -300,7 +284,6 @@ export class ServerSocketManager implements Broadcaster {
     // Update broadcaster with entity manager
     this.broadcaster = new BroadcastingBroadcaster({
       io: this.io,
-      delayedIo: this.delayedIo,
       entityManager: entityManager,
       gameServer: this.gameServer,
       bufferManager: this.bufferManager,
@@ -335,9 +318,7 @@ export class ServerSocketManager implements Broadcaster {
 
   private sendInitialDataToSocket(socket: ISocketAdapter, player: Player): void {
     const mapData = this.getMapManager().getMapData();
-    this.broadcaster.sendInitialDataToSocket(socket, player.getId(), mapData, (sock) =>
-      this.wrapSocket(sock)
-    );
+    this.broadcaster.sendInitialDataToSocket(socket, player.getId(), mapData);
   }
 
   private broadcastPlayerJoined(player: Player): void {
@@ -409,13 +390,12 @@ export class ServerSocketManager implements Broadcaster {
    * Send an event to a single socket (handles serialization automatically)
    */
   public sendEventToSocket(socket: ISocketAdapter, event: GameEvent<any>): void {
-    const delayedSocket = this.wrapSocket(socket);
     const serializedData = event.serialize();
     const binaryBuffer = serializeServerEvent(event.getType(), [serializedData]);
     if (binaryBuffer !== null) {
-      delayedSocket.emit(event.getType(), binaryBuffer);
+      socket.emit(event.getType(), binaryBuffer);
     } else {
-      delayedSocket.emit(event.getType(), serializedData);
+      console.error(`Failed to serialize event ${event.getType()} as binary buffer`);
     }
   }
 

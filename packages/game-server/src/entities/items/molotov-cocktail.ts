@@ -206,4 +206,3 @@ export class MolotovCocktail extends Weapon {
     }
   }
 }
-

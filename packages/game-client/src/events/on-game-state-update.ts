@@ -14,7 +14,14 @@ export const onGameStateUpdate = (
 ) => {
   if (!context.hasReceivedMap || !context.hasReceivedPlayerId) {
     if (gameStateEvent.isFullState()) {
+      console.warn(
+        `[GameStateUpdate] Received full state before prerequisites (mapReady=${context.hasReceivedMap}, playerReady=${context.hasReceivedPlayerId}). Deferring.`
+      );
       context.setPendingFullStateEvent(gameStateEvent);
+    } else {
+      console.log(
+        `[GameStateUpdate] Dropping delta update before initialization (mapReady=${context.hasReceivedMap}, playerReady=${context.hasReceivedPlayerId}).`
+      );
     }
     return;
   }
@@ -67,6 +74,11 @@ const handleGameStateUpdate = (context: InitializationContext, gameStateEvent: G
 
     // Read entity count (first thing in buffer)
     const entityCount = reader.readUInt16();
+    if (gameStateEvent.isFullState()) {
+      console.log(
+        `[GameStateUpdate] Processing full state buffer (${entityCount} entities, ts=${timestamp})`
+      );
+    }
 
     if (gameStateEvent.isFullState()) {
       // Full state update - replace all entities
@@ -124,17 +136,21 @@ const handleGameStateUpdate = (context: InitializationContext, gameStateEvent: G
 
       // Replace all entities
       replaceAllEntities(context.gameState, createdEntities);
+      console.log(
+        `[GameStateUpdate] Applied full state (buffer) with ${createdEntities.length} entities`
+      );
 
       // Rebuild spatial grid for full state update
       context.gameClient.getRenderer().initializeSpatialGrid();
 
       if (!context.hasReceivedInitialState) {
-        context.setHasReceivedInitialState(true);
+        context.setHasReceivedInitialState(true, "Full state buffer applied");
         context.checkInitialization();
       }
     } else {
       // Only process delta updates after we have initial state
       if (!context.hasReceivedInitialState) {
+        console.warn("[GameStateUpdate] Ignoring delta update before initial full state is ready");
         return;
       }
 
@@ -284,17 +300,21 @@ const handleGameStateUpdate = (context: InitializationContext, gameStateEvent: G
         return created;
       });
       replaceAllEntities(context.gameState, createdEntities);
+      console.log(
+        `[GameStateUpdate] Applied full state (object fallback) with ${createdEntities.length} entities`
+      );
 
       // Rebuild spatial grid for full state update
       context.gameClient.getRenderer().initializeSpatialGrid();
 
       if (!context.hasReceivedInitialState) {
-        context.setHasReceivedInitialState(true);
+        context.setHasReceivedInitialState(true, "Full state (object) applied");
         context.checkInitialization();
       }
     } else {
       // Only process delta updates after we have initial state
       if (!context.hasReceivedInitialState) {
+        console.warn("[GameStateUpdate] Ignoring delta update before initial full state is ready");
         return;
       }
 

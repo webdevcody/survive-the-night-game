@@ -5,12 +5,7 @@
  * - window.config.prediction.showDebugVisuals = true
  * - window.config.player.PLAYER_SPEED = 120
  */
-import * as NetworkConfig from "@shared/config/network";
 import { getConfig } from "@shared/config";
-
-export const SIMULATION_CONFIG = {
-  simulatedLatencyMs: NetworkConfig.networkConfig.SIMULATED_LATENCY_MS,
-} as const;
 
 // Helper function to get current debug config
 export function getDebugConfig() {

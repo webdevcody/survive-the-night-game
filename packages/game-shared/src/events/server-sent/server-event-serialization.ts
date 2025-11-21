@@ -17,6 +17,7 @@ import { LootEvent } from "./events/loot-event";
 import { ZombieDeathEvent } from "./events/zombie-death-event";
 import { ZombieHurtEvent } from "./events/zombie-hurt-event";
 import { ZombieAttackedEvent } from "./events/zombie-attacked-event";
+import { ZombieAlertedEvent } from "./events/zombie-alerted-event";
 import { BigZombieDeathEvent } from "./events/big-zombie-death-event";
 import { BigZombieHurtEvent } from "./events/big-zombie-hurt-event";
 import { BigZombieAttackedEvent } from "./events/big-zombie-attacked-event";
@@ -63,6 +64,7 @@ const eventRegistry: Record<string, IBufferWriter> = {
   [ServerSentEvents.ZOMBIE_DEATH]: ZombieDeathEvent,
   [ServerSentEvents.ZOMBIE_HURT]: ZombieHurtEvent,
   [ServerSentEvents.ZOMBIE_ATTACKED]: ZombieAttackedEvent,
+  [ServerSentEvents.ZOMBIE_ALERTED]: ZombieAlertedEvent,
   [ServerSentEvents.BIG_ZOMBIE_DEATH]: BigZombieDeathEvent,
   [ServerSentEvents.BIG_ZOMBIE_HURT]: BigZombieHurtEvent,
   [ServerSentEvents.BIG_ZOMBIE_ATTACKED]: BigZombieAttackedEvent,

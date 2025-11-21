@@ -17,4 +17,3 @@ export class MolotovCocktailClient extends ClientEntity implements Renderable {
     ctx.drawImage(image, position.x, position.y);
   }
 }
-

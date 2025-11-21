@@ -77,7 +77,7 @@ export abstract class BaseEnemy extends Entity {
         .setMaxHealth(this.config.stats.health)
         .setHealth(this.config.stats.health)
         .onDamaged(this.onDamaged.bind(this))
-        .setOffset(PoolManager.getInstance().vector2.claim(4, 4))
+        .setOffset(PoolManager.getInstance().vector2.claim(0, 0))
         .onDeath(this.onDeath.bind(this))
     );
     this.addExtension(new Groupable(this, "enemy"));
@@ -101,7 +101,7 @@ export abstract class BaseEnemy extends Entity {
 
   protected setCurrentWaypoint(waypoint: Vector2 | null) {
     this.currentWaypoint = waypoint;
-    this.serialized.set('debugWaypoint', waypoint);
+    this.serialized.set("debugWaypoint", waypoint);
   }
 
   onDamaged(): void {
@@ -135,7 +135,9 @@ export abstract class BaseEnemy extends Entity {
       new Interactive(this).onInteract(this.onLooted.bind(this)).setDisplayName("loot")
     );
     this.getExt(Collidable).setEnabled(false);
-    this.getGameManagers().getBroadcaster().broadcastEvent(new ZombieDeathEvent(this.getId(), killerId || 0));
+    this.getGameManagers()
+      .getBroadcaster()
+      .broadcastEvent(new ZombieDeathEvent(this.getId(), killerId || 0));
 
     // Spawn a coin when zombie dies
     this.spawnCoin();

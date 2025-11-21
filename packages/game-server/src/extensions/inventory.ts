@@ -28,6 +28,7 @@ const ITEM_DROP_TABLE: Array<{ itemType: ItemType; weight: number }> = [
   { itemType: "pistol", weight: 8 },
   { itemType: "shotgun", weight: 6 },
   { itemType: "knife", weight: 8 },
+  { itemType: "throwing_knife", weight: 8 },
   { itemType: "wall", weight: 8 },
   { itemType: "torch", weight: 10 },
   { itemType: "miners_hat", weight: 8 },
@@ -66,25 +67,25 @@ export default class Inventory extends ExtensionBase<InventoryFields> {
   }
 
   public getItems(): InventoryItem[] {
-    return this.serialized.get('items');
+    return this.serialized.get("items");
   }
 
   public isFull(): boolean {
-    const items = this.serialized.get('items');
+    const items = this.serialized.get("items");
     // Count non-null items instead of array length to support sparse arrays
     const itemCount = items.filter((item: InventoryItem | null) => item != null).length;
     return itemCount >= getConfig().player.MAX_INVENTORY_SLOTS;
   }
 
   public hasItem(itemType: ItemType): boolean {
-    const items = this.serialized.get('items');
+    const items = this.serialized.get("items");
     return items.some((it: InventoryItem | null) => it?.itemType === itemType);
   }
 
   public addItem(item: InventoryItem): void {
     if (this.isFull()) return;
 
-    const items = this.serialized.get('items');
+    const items = this.serialized.get("items");
 
     // Find first empty slot (null/undefined) to fill
     const emptySlotIndex = items.findIndex((it: InventoryItem | null) => it == null);
@@ -96,7 +97,7 @@ export default class Inventory extends ExtensionBase<InventoryFields> {
     }
 
     // Update serialized (array reference changes, so assign new array to trigger dirty)
-    this.serialized.set('items', [...items]);
+    this.serialized.set("items", [...items]);
     // Explicitly mark dirty to ensure inventory changes are broadcast
     this.markDirty();
 
@@ -109,13 +110,13 @@ export default class Inventory extends ExtensionBase<InventoryFields> {
   }
 
   public removeItem(index: number): InventoryItem | undefined {
-    const items = this.serialized.get('items');
+    const items = this.serialized.get("items");
     // Don't use splice - just set to null to preserve inventory positions
     const item = items[index];
     if (item != null) {
       items[index] = null;
       // Update serialized (array reference changes, so assign new array to trigger dirty)
-      this.serialized.set('items', [...items]);
+      this.serialized.set("items", [...items]);
       // Explicitly mark dirty to ensure inventory changes are broadcast
       this.markDirty();
     }
@@ -123,19 +124,19 @@ export default class Inventory extends ExtensionBase<InventoryFields> {
   }
 
   public updateItemState(index: number, state: any): void {
-    const items = this.serialized.get('items');
+    const items = this.serialized.get("items");
     if (index >= 0 && index < items.length && items[index] != null) {
       items[index].state = state;
       // Update serialized (array reference changes, so assign new array to trigger dirty)
-      this.serialized.set('items', [...items]);
+      this.serialized.set("items", [...items]);
       // Explicitly mark dirty to ensure inventory changes are broadcast
       this.markDirty();
     }
   }
 
   public swapItems(fromIndex: number, toIndex: number): void {
-    const items = this.serialized.get('items');
-    
+    const items = this.serialized.get("items");
+
     // Validate indices are non-negative
     if (fromIndex < 0 || toIndex < 0) {
       return;
@@ -153,14 +154,14 @@ export default class Inventory extends ExtensionBase<InventoryFields> {
     items[toIndex] = temp;
 
     // Update serialized (array reference changes, so assign new array to trigger dirty)
-    this.serialized.set('items', [...items]);
+    this.serialized.set("items", [...items]);
     // Explicitly mark dirty to ensure inventory changes are broadcast
     this.markDirty();
   }
 
   public getActiveItem(index: number | null): InventoryItem | null {
     if (index === null) return null;
-    const items = this.serialized.get('items');
+    const items = this.serialized.get("items");
     // TODO: refactor this to be 0 based, why are we subtracting 1?
     return items[index - 1] ?? null;
   }
@@ -178,7 +179,7 @@ export default class Inventory extends ExtensionBase<InventoryFields> {
     resources: { wood: number; cloth: number };
     itemToDrop?: InventoryItem;
   } {
-    const items = this.serialized.get('items');
+    const items = this.serialized.get("items");
     const foundRecipe = recipes.find((it) => it.getType() === recipe);
     if (foundRecipe === undefined) {
       return { inventory: items, resources };
@@ -186,7 +187,7 @@ export default class Inventory extends ExtensionBase<InventoryFields> {
 
     const maxSlots = getConfig().player.MAX_INVENTORY_SLOTS;
     const result = foundRecipe.craft(items, resources, maxSlots);
-    this.serialized.set('items', result.inventory);
+    this.serialized.set("items", result.inventory);
     // Explicitly mark dirty to ensure inventory changes are broadcast
     this.markDirty();
     return result;
@@ -224,16 +225,16 @@ export default class Inventory extends ExtensionBase<InventoryFields> {
   }
 
   public clear(): void {
-    const items = this.serialized.get('items');
+    const items = this.serialized.get("items");
     if (items.length > 0) {
-      this.serialized.set('items', []);
+      this.serialized.set("items", []);
       // Explicitly mark dirty to ensure inventory changes are broadcast
       this.markDirty();
     }
   }
 
   public scatterItems(position: { x: number; y: number }): void {
-    const items = this.serialized.get('items');
+    const items = this.serialized.get("items");
     const offset = 32;
     items.forEach((item: InventoryItem | null) => {
       if (item == null) return; // Skip null/undefined items
@@ -255,7 +256,7 @@ export default class Inventory extends ExtensionBase<InventoryFields> {
 
       this.self.getEntityManager()?.addEntity(entity);
     });
-    this.serialized.set('items', []);
+    this.serialized.set("items", []);
     // Explicitly mark dirty to ensure inventory changes are broadcast
     this.markDirty();
   }
@@ -266,7 +267,7 @@ export default class Inventory extends ExtensionBase<InventoryFields> {
 
   public serializeToBuffer(writer: BufferWriter, onlyDirty: boolean = false): void {
     writer.writeUInt8(encodeExtensionType(Inventory.type));
-    writer.writeArray(this.serialized.get('items'), (item: InventoryItem | null) => {
+    writer.writeArray(this.serialized.get("items"), (item: InventoryItem | null) => {
       if (item === null || item === undefined) {
         writer.writeBoolean(false);
       } else {
@@ -278,7 +279,9 @@ export default class Inventory extends ExtensionBase<InventoryFields> {
           if (typeof value === "number") {
             writer.writeFloat64(value);
           } else {
-            console.warn(`Inventory item state has non-number value: ${value}. Writing NaN to maintain protocol.`);
+            console.warn(
+              `Inventory item state has non-number value: ${value}. Writing NaN to maintain protocol.`
+            );
             writer.writeFloat64(NaN);
           }
         });

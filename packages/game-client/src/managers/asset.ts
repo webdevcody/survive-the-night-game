@@ -587,6 +587,7 @@ export function getItemAssetKey(item: InventoryItem): Asset {
 
 /**
  * Get sprite info for an asset key (exported for React components)
+ * For weapons, resolves itemType to assetPrefix first
  */
 export function getAssetSpriteInfo(assetKey: string): {
   sheet: string;
@@ -595,7 +596,11 @@ export function getAssetSpriteInfo(assetKey: string): {
   width: number;
   height: number;
 } | null {
-  const spriteInfo = assetsMap[assetKey as Asset];
+  // Check if it's a weapon first - weapons use assetPrefix
+  const weaponConfig = weaponRegistry.get(assetKey as any);
+  const actualAssetKey = weaponConfig ? weaponConfig.assets.assetPrefix : assetKey;
+
+  const spriteInfo = assetsMap[actualAssetKey as Asset];
 
   if (!spriteInfo) {
     return null;

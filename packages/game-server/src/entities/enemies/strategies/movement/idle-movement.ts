@@ -6,6 +6,7 @@ import Snared from "@/extensions/snared";
 import { pathTowards, velocityTowards } from "@/util/physics";
 import { TargetingSystem } from "../targeting";
 import { calculateSeparationForce, blendSeparationForce } from "../separation";
+import { ZombieAlertedEvent } from "../../../../../../game-shared/src/events/server-sent/events/zombie-alerted-event";
 
 export class IdleMovementStrategy implements MovementStrategy {
   private static readonly PATH_RECALCULATION_INTERVAL = 1;
@@ -43,6 +44,15 @@ export class IdleMovementStrategy implements MovementStrategy {
       if (playerTarget) {
         // Check if player is within activation radius
         if (playerTarget.distance <= IdleMovementStrategy.ACTIVATION_RADIUS) {
+          // Broadcast alert event when zombie transitions from idle to activated
+          if (!this.isActivated) {
+            zombie
+              .getGameManagers()
+              .getBroadcaster()
+              .broadcastEvent(
+                new ZombieAlertedEvent(zombie.getId(), { x: zombiePos.x, y: zombiePos.y })
+              );
+          }
           this.isActivated = true;
         }
       }

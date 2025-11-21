@@ -8,6 +8,10 @@ const MAX_SNAPSHOTS = 3; // Keep last 3 snapshots for interpolation
 export class InterpolationManager {
   private snapshots: Map<number, Snapshot[]> = new Map();
 
+  reset(): void {
+    this.snapshots.clear();
+  }
+
   addSnapshot(entityId: number, position: Vector2, timestamp: number): void {
     const list = this.snapshots.get(entityId) || [];
     list.push({ position, timestamp });

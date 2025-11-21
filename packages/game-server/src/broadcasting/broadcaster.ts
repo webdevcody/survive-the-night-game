@@ -2,7 +2,6 @@ import { ServerSentEvents } from "@shared/events/events";
 import { GameEvent } from "@shared/events/types";
 import { IServerAdapter } from "@shared/network/server-adapter";
 import { ISocketAdapter } from "@shared/network/socket-adapter";
-import { DelayedServer } from "@/util/delayed-socket";
 import { IEntityManager } from "@/managers/types";
 import { IEntity } from "@/entities/types";
 import { GameServer } from "@/core/server";
@@ -12,7 +11,6 @@ import { serializeServerEvent } from "@shared/events/server-sent/server-event-se
 
 export interface BroadcastDependencies {
   io: IServerAdapter;
-  delayedIo: DelayedServer;
   entityManager: IEntityManager;
   gameServer: GameServer;
   bufferManager: BufferManager;
@@ -24,7 +22,110 @@ export interface BroadcastDependencies {
  * Extracted from ServerSocketManager to separate concerns.
  */
 export class Broadcaster {
-  constructor(private deps: BroadcastDependencies) {}
+  private totalBytesSent: number = 0;
+  private bytesSentThisSecond: number = 0;
+  private lastSecondTimestamp: number = Date.now();
+  private statsInterval: NodeJS.Timeout | null = null;
+
+  constructor(private deps: BroadcastDependencies) {
+    // Start stats reporting interval (every 5 seconds)
+    this.statsInterval = setInterval(() => {
+      this.printStats();
+    }, 5000);
+  }
+
+  /**
+   * Calculate the byte size of event data
+   */
+  private calculateEventBytes(eventData: any): number {
+    if (eventData === undefined || eventData === null) {
+      return 0;
+    }
+    // If it's a Buffer, return its length directly
+    if (Buffer.isBuffer(eventData)) {
+      return eventData.length;
+    }
+    try {
+      const serialized = JSON.stringify(eventData);
+      if (serialized === undefined || serialized === null) {
+        return 0;
+      }
+      // Use Buffer.byteLength to get accurate UTF-8 byte count
+      return Buffer.byteLength(String(serialized), "utf8");
+    } catch (error) {
+      // Handle circular references or other serialization errors
+      console.warn("Failed to calculate event bytes:", error);
+      return 0;
+    }
+  }
+
+  /**
+   * Track bytes sent for a broadcast event
+   */
+  private trackBytesSent(eventData: any): void {
+    const bytesPerEvent = this.calculateEventBytes(eventData);
+    const playerCount = this.deps.io.sockets.sockets.size;
+    const totalBytesForBroadcast = bytesPerEvent * playerCount;
+
+    this.totalBytesSent += totalBytesForBroadcast;
+
+    const now = Date.now();
+    const elapsedMs = now - this.lastSecondTimestamp;
+
+    // If more than 1 second has passed since last reset, reset the counter
+    if (elapsedMs >= 1000) {
+      this.bytesSentThisSecond = totalBytesForBroadcast;
+      this.lastSecondTimestamp = now;
+    } else {
+      // Accumulate bytes for the current second
+      this.bytesSentThisSecond += totalBytesForBroadcast;
+    }
+  }
+
+  /**
+   * Get current bandwidth stats (bytes sent in the last second)
+   */
+  public getCurrentBandwidth(): number {
+    const now = Date.now();
+    const elapsedSeconds = (now - this.lastSecondTimestamp) / 1000;
+
+    if (elapsedSeconds > 1) {
+      // More than 1 second has passed, return 0
+      return 0;
+    }
+
+    // Return bytes per second
+    return elapsedSeconds > 0
+      ? this.bytesSentThisSecond / elapsedSeconds
+      : this.bytesSentThisSecond;
+  }
+
+  /**
+   * Print bandwidth statistics every 5 seconds
+   */
+  private printStats(): void {
+    const now = Date.now();
+    const elapsedSeconds = (now - this.lastSecondTimestamp) / 1000;
+
+    // Calculate MB/s based on bytes sent in the current second
+    // Use elapsed time to get accurate per-second rate
+    const mbPerSecond =
+      elapsedSeconds > 0 ? this.bytesSentThisSecond / (1024 * 1024) / elapsedSeconds : 0;
+
+    console.log(
+      `[Bandwidth] ${mbPerSecond.toFixed(5)} MB/s (${this.deps.io.sockets.sockets.size} players)`
+    );
+  }
+
+  /**
+   * Clean up resources (stop stats interval)
+   */
+  public cleanup(): void {
+    if (this.statsInterval) {
+      clearInterval(this.statsInterval);
+      this.statsInterval = null;
+    }
+  }
 
   /**
    * Broadcast an event to all connected clients
@@ -208,7 +309,8 @@ export class Broadcaster {
     // Send buffer directly instead of serializing to objects
     const buffer = this.deps.bufferManager.getBuffer();
     // this.deps.bufferManager.logStats();
-    this.deps.delayedIo.emit(event.getType(), buffer);
+    this.trackBytesSent(buffer);
+    this.deps.io.emit(event.getType(), buffer);
     endWebSocketEmit();
   }
 
@@ -216,35 +318,30 @@ export class Broadcaster {
    * Broadcast a regular event (non-game-state-update)
    */
   private broadcastRegularEvent(event: GameEvent<any>): void {
-    // Try to serialize as binary, fall back to JSON if not supported
+    // Serialize as binary buffer only
     const serializedData = event.serialize();
     const binaryBuffer = serializeServerEvent(event.getType(), [serializedData]);
     if (binaryBuffer !== null) {
       // Send as binary
-      this.deps.delayedIo.emit(event.getType(), binaryBuffer);
+      this.trackBytesSent(binaryBuffer);
+      this.deps.io.emit(event.getType(), binaryBuffer);
     } else {
-      // Fall back to JSON
-      this.deps.delayedIo.emit(event.getType(), serializedData);
+      // If binary serialization fails, log error but don't send JSON fallback
+      console.error(`Failed to serialize event ${event.getType()} as binary buffer`);
     }
   }
 
   /**
    * Send initial data to a newly connected socket (MAP and YOUR_ID events)
    */
-  public sendInitialDataToSocket(
-    socket: ISocketAdapter,
-    playerId: number,
-    mapData: any,
-    wrapSocket: (socket: ISocketAdapter) => any
-  ): void {
-    const delayedSocket = wrapSocket(socket);
-    delayedSocket.emit(ServerSentEvents.MAP, mapData);
+  public sendInitialDataToSocket(socket: ISocketAdapter, playerId: number, mapData: any): void {
+    socket.emit(ServerSentEvents.MAP, mapData);
 
     const yourIdBuffer = serializeServerEvent(ServerSentEvents.YOUR_ID, [playerId]);
     if (yourIdBuffer !== null) {
-      delayedSocket.emit(ServerSentEvents.YOUR_ID, yourIdBuffer);
+      socket.emit(ServerSentEvents.YOUR_ID, yourIdBuffer);
     } else {
-      delayedSocket.emit(ServerSentEvents.YOUR_ID, playerId);
+      console.error(`Failed to serialize ${ServerSentEvents.YOUR_ID} as binary buffer`);
     }
   }
 }

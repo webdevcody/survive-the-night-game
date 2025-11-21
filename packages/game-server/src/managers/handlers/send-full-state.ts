@@ -18,8 +18,6 @@ export function sendFullState(context: HandlerContext, socket: ISocketAdapter): 
     entity.clearDirtyFlags();
   });
 
-  const delayedSocket = context.wrapSocket(socket);
-
   // Serialize full state to buffer
   context.bufferManager.clear();
   context.bufferManager.writeEntityCount(entities.length);
@@ -41,6 +39,6 @@ export function sendFullState(context: HandlerContext, socket: ISocketAdapter): 
 
   const buffer = context.bufferManager.getBuffer();
   // this.bufferManager.logStats();
-  delayedSocket.emit(ServerSentEvents.GAME_STATE_UPDATE, buffer);
+  socket.emit(ServerSentEvents.GAME_STATE_UPDATE, buffer);
 }
 
