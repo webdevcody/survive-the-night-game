@@ -191,6 +191,16 @@ export class ClientEventListener {
       this.pendingFullStateEvent = null;
       const initContext = this.createInitializationContext();
       onGameStateUpdate(initContext, pendingEvent);
+    } else if (
+      !this.pendingFullStateEvent &&
+      this.hasReceivedMap &&
+      this.hasReceivedPlayerId &&
+      !this.hasReceivedInitialState
+    ) {
+      // We have MAP and YOUR_ID but no pending full state event and haven't received initial state yet
+      // This happens on reconnect - request full state from server
+      console.log("[ClientEventListener] Requesting full state after reconnect");
+      this.socketManager.sendRequestFullState();
     }
   }
 

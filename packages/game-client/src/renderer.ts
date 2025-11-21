@@ -110,6 +110,15 @@ export class Renderer {
   }
 
   /**
+   * Clear the spatial grid (useful for reconnection/reset scenarios)
+   */
+  public clearSpatialGrid(): void {
+    if (this.spatialGrid) {
+      this.spatialGrid.clear();
+    }
+  }
+
+  /**
    * Update an entity's position in the spatial grid
    */
   public updateEntityInSpatialGrid(entity: ClientEntityBase): void {
