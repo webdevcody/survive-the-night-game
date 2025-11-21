@@ -44,6 +44,8 @@ import { AK47Client } from "@/entities/weapons/ak47";
 import { GrenadeLauncherClient } from "@/entities/weapons/grenade-launcher";
 import { FlamethrowerClient } from "@/entities/weapons/flamethrower";
 import { BowClient } from "@/entities/weapons/bow";
+import { ThrowingKnifeClient } from "./items/throwing-knife";
+import { ThrowingKnifeProjectileClient } from "@/entities/throwing-knife-projectile";
 import { FireClient } from "@/entities/environment/fire";
 import { CampsiteFireClient } from "@/entities/environment/campsite-fire";
 import { MerchantClient } from "./environment/merchant";
@@ -78,6 +80,7 @@ export function registerCustomClientEntities(): void {
   // Projectiles
   clientEntityOverrideRegistry.register("bullet", BulletClient);
   clientEntityOverrideRegistry.register("arrow", ArrowClient);
+  clientEntityOverrideRegistry.register("throwing_knife_projectile", ThrowingKnifeProjectileClient);
   clientEntityOverrideRegistry.register("grenade_projectile", GrenadeProjectileClient);
   clientEntityOverrideRegistry.register("flame_projectile", FlameProjectileClient);
   clientEntityOverrideRegistry.register("acid_projectile", AcidProjectileClient);
@@ -97,6 +100,7 @@ export function registerCustomClientEntities(): void {
   clientEntityOverrideRegistry.register("bear_trap", BearTrapClient);
   clientEntityOverrideRegistry.register("grenade", GrenadeClient);
   clientEntityOverrideRegistry.register("molotov_cocktail", MolotovCocktailClient);
+  clientEntityOverrideRegistry.register("throwing_knife", ThrowingKnifeClient);
   clientEntityOverrideRegistry.register("crate", CrateClient);
   clientEntityOverrideRegistry.register("gallon_drum", GallonDrumClient);
   clientEntityOverrideRegistry.register("sentry_gun", SentryGunClient);

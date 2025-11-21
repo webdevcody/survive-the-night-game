@@ -45,6 +45,8 @@ import { AK47 } from "@/entities/weapons/ak47";
 import { GrenadeLauncher } from "@/entities/weapons/grenade-launcher";
 import { Flamethrower } from "@/entities/weapons/flamethrower";
 import { Bow } from "@/entities/weapons/bow";
+import { ThrowingKnife } from "@/entities/items/throwing-knife";
+import { ThrowingKnifeProjectile } from "@/entities/projectiles/throwing-knife-projectile";
 import { Fire } from "@/entities/environment/fire";
 import { CampsiteFire } from "@/entities/environment/campsite-fire";
 import { Merchant } from "@/entities/environment/merchant";
@@ -77,6 +79,7 @@ export function registerCustomEntities(): void {
   // Projectiles
   entityOverrideRegistry.register("bullet", Bullet);
   entityOverrideRegistry.register("arrow", Arrow);
+  entityOverrideRegistry.register("throwing_knife_projectile", ThrowingKnifeProjectile);
   entityOverrideRegistry.register("grenade_projectile", GrenadeProjectile);
   entityOverrideRegistry.register("flame_projectile", FlameProjectile);
 
@@ -95,6 +98,7 @@ export function registerCustomEntities(): void {
   entityOverrideRegistry.register("bear_trap", BearTrap);
   entityOverrideRegistry.register("grenade", Grenade);
   entityOverrideRegistry.register("molotov_cocktail", MolotovCocktail);
+  entityOverrideRegistry.register("throwing_knife", ThrowingKnife);
   entityOverrideRegistry.register("crate", Crate);
   entityOverrideRegistry.register("gallon_drum", GallonDrum);
   entityOverrideRegistry.register("sentry_gun", SentryGun);

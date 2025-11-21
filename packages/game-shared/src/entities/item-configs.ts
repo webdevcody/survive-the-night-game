@@ -189,6 +189,24 @@ export const ITEM_CONFIGS: Record<string, ItemConfig> = {
       price: 20,
     },
   },
+  throwing_knife: {
+    id: "throwing_knife",
+    category: "throwable",
+    assets: {
+      assetKey: "throwing_knife",
+      x: 17,
+      y: 171,
+      sheet: "default",
+    },
+    spawn: {
+      enabled: false,
+      chance: 0,
+    },
+    merchant: {
+      enabled: false,
+      buyable: false,
+    },
+  },
   torch: {
     id: "torch",
     category: "placeable",

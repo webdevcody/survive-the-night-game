@@ -302,4 +302,32 @@ export const WEAPON_CONFIGS: Record<string, WeaponConfig> = {
       resultCount: 2,
     },
   },
+  throwing_knife: {
+    id: "throwing_knife",
+    type: "ranged",
+    stats: {
+      cooldown: 0.5,
+      cameraShakeIntensity: 0.5,
+    },
+    assets: {
+      assetPrefix: "throwing_knife",
+      spritePositions: {
+        right: { x: 17, y: 171 },
+        down: { x: 51, y: 171 },
+        up: { x: 34, y: 171 },
+      },
+      sheet: "default",
+    },
+    sound: "knife_swing",
+    merchant: {
+      enabled: true,
+      buyable: true,
+      price: 20,
+    },
+    recipe: {
+      enabled: true,
+      components: [{ type: "knife" }, { type: "cloth" }],
+      resultCount: 5,
+    },
+  },
 };

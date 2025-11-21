@@ -20,6 +20,7 @@ export const NON_SPAWNABLE = new Set<EntityType>([
   "acid_projectile",
   "grenade_projectile",
   "flame_projectile",
+  "throwing_knife_projectile",
   "merchant",
   "car",
 ]);

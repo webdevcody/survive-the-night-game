@@ -41,4 +41,14 @@ export const PROJECTILE_CONFIGS: Record<string, ProjectileConfig> = {
       sheet: "default",
     },
   },
+  throwing_knife_projectile: {
+    id: "throwing_knife_projectile",
+    category: "bullet",
+    assets: {
+      assetKey: "throwing_knife",
+      x: 17,
+      y: 171,
+      sheet: "default",
+    },
+  },
 };
