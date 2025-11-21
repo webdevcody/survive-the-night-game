@@ -274,4 +274,32 @@ export const WEAPON_CONFIGS: Record<string, WeaponConfig> = {
       price: 20,
     },
   },
+  molotov_cocktail: {
+    id: "molotov_cocktail",
+    type: "ranged",
+    stats: {
+      cooldown: 0.5,
+      cameraShakeIntensity: 0.5,
+    },
+    assets: {
+      assetPrefix: "molotov_cocktail",
+      spritePositions: {
+        right: { x: 80, y: 0 },
+        up: { x: 80, y: 0 },
+        down: { x: 80, y: 0 },
+      },
+      sheet: "items",
+    },
+    sound: "pistol",
+    merchant: {
+      enabled: true,
+      buyable: true,
+      price: 25,
+    },
+    recipe: {
+      enabled: true,
+      components: [{ type: "gasoline" }, { type: "cloth" }],
+      resultCount: 2,
+    },
+  },
 };

@@ -25,6 +25,7 @@ import { MinersHat } from "@/entities/items/miners-hat";
 import { Landmine } from "@/entities/items/landmine";
 import { BearTrap } from "@/entities/items/bear-trap";
 import { Grenade } from "@/entities/items/grenade";
+import { MolotovCocktail } from "@/entities/items/molotov-cocktail";
 import { Crate } from "@/entities/items/crate";
 import { GallonDrum } from "@/entities/items/gallon-drum";
 import { SentryGun } from "@/entities/items/sentry-gun";
@@ -93,6 +94,7 @@ export function registerCustomEntities(): void {
   entityOverrideRegistry.register("landmine", Landmine);
   entityOverrideRegistry.register("bear_trap", BearTrap);
   entityOverrideRegistry.register("grenade", Grenade);
+  entityOverrideRegistry.register("molotov_cocktail", MolotovCocktail);
   entityOverrideRegistry.register("crate", Crate);
   entityOverrideRegistry.register("gallon_drum", GallonDrum);
   entityOverrideRegistry.register("sentry_gun", SentryGun);

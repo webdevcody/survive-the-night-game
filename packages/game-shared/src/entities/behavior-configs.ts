@@ -34,6 +34,10 @@ export interface RecipeConfig {
    * Takes precedence over components if both are provided
    */
   recipeType?: string;
+  /**
+   * Number of items created when crafting (defaults to 1)
+   */
+  resultCount?: number;
 }
 
 /**

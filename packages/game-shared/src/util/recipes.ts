@@ -18,10 +18,12 @@ export enum RecipeType {
 class ConfigRecipe implements Recipe {
   private itemId: string;
   private recipeComponents: RecipeComponent[];
+  private resultCount: number;
 
-  constructor(itemId: string, components: RecipeComponent[]) {
+  constructor(itemId: string, components: RecipeComponent[], resultCount: number = 1) {
     this.itemId = itemId;
     this.recipeComponents = components;
+    this.resultCount = resultCount;
   }
 
   public getType(): RecipeType {
@@ -50,6 +52,7 @@ class ConfigRecipe implements Recipe {
   public resultingComponent(): RecipeComponent {
     return {
       type: this.itemId as ItemType,
+      count: this.resultCount,
     };
   }
 }
@@ -64,14 +67,16 @@ function buildRecipes(): Recipe[] {
   // Add config-based recipes from items
   itemRegistry.getAll().forEach((itemConfig) => {
     if (itemConfig.recipe?.enabled && itemConfig.recipe.components) {
-      recipeList.push(new ConfigRecipe(itemConfig.id, itemConfig.recipe.components));
+      const resultCount = itemConfig.recipe.resultCount ?? 1;
+      recipeList.push(new ConfigRecipe(itemConfig.id, itemConfig.recipe.components, resultCount));
     }
   });
 
   // Add config-based recipes from weapons
   weaponRegistry.getAll().forEach((weaponConfig) => {
     if (weaponConfig.recipe?.enabled && weaponConfig.recipe.components) {
-      recipeList.push(new ConfigRecipe(weaponConfig.id, weaponConfig.recipe.components));
+      const resultCount = weaponConfig.recipe.resultCount ?? 1;
+      recipeList.push(new ConfigRecipe(weaponConfig.id, weaponConfig.recipe.components, resultCount));
     }
   });
 
@@ -250,6 +255,7 @@ export function craftRecipe(
 
   // Add the resulting item - check if it can stack with existing items
   const resulting = recipe.resultingComponent();
+  const resultCount = resulting.count || 1; // Support count in resultingComponent
   const existingItemIndex = newInventory.findIndex((item) => item?.itemType === resulting.type);
 
   if (existingItemIndex !== -1) {
@@ -259,7 +265,7 @@ export function craftRecipe(
       ...existingItem,
       state: {
         ...existingItem.state,
-        count: (existingItem.state?.count || 1) + 1,
+        count: (existingItem.state?.count || 1) + resultCount,
       },
     };
     return { inventory: newInventory, resources: newResources };
@@ -274,7 +280,7 @@ export function craftRecipe(
       resources: newResources,
       itemToDrop: {
         itemType: resulting.type,
-        state: { count: 1 },
+        state: { count: resultCount },
       },
     };
   }
@@ -282,7 +288,7 @@ export function craftRecipe(
   // Add as new item with count
   newInventory.push({
     itemType: resulting.type,
-    state: { count: 1 },
+    state: { count: resultCount },
   });
 
   return { inventory: newInventory, resources: newResources };

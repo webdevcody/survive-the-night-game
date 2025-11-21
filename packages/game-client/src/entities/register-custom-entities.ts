@@ -24,6 +24,7 @@ import { MinersHatClient } from "@/entities/items/miners-hat";
 import { LandmineClient } from "@/entities/items/landmine";
 import { BearTrapClient } from "@/entities/items/bear-trap";
 import { GrenadeClient } from "./items/grenade";
+import { MolotovCocktailClient } from "./items/molotov-cocktail";
 import { CrateClient } from "./items/crate";
 import { GallonDrumClient } from "./items/gallon-drum";
 import { SentryGunClient } from "./items/sentry-gun";
@@ -95,6 +96,7 @@ export function registerCustomClientEntities(): void {
   clientEntityOverrideRegistry.register("landmine", LandmineClient);
   clientEntityOverrideRegistry.register("bear_trap", BearTrapClient);
   clientEntityOverrideRegistry.register("grenade", GrenadeClient);
+  clientEntityOverrideRegistry.register("molotov_cocktail", MolotovCocktailClient);
   clientEntityOverrideRegistry.register("crate", CrateClient);
   clientEntityOverrideRegistry.register("gallon_drum", GallonDrumClient);
   clientEntityOverrideRegistry.register("sentry_gun", SentryGunClient);
