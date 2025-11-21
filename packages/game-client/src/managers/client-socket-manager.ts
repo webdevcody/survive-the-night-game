@@ -507,6 +507,13 @@ export class ClientSocketManager {
     this.socket.emit(ClientSentEvents.DROP_ITEM, payload);
   }
 
+  public sendSwapItems(fromSlotIndex: number, toSlotIndex: number) {
+    this.socket.emit(ClientSentEvents.SWAP_INVENTORY_ITEMS, {
+      fromSlotIndex,
+      toSlotIndex,
+    });
+  }
+
   public sendConsumeItem(itemType: string | null) {
     this.socket.emit(ClientSentEvents.CONSUME_ITEM, { itemType });
   }
