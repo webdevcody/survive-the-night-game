@@ -25,8 +25,8 @@ export class Merchant extends Entity {
       new Interactive(this).onInteract(this.interact.bind(this)).setDisplayName("buy")
     );
 
-    // Initialize with 3 random items
-    this.randomizeShopItems();
+    // Initialize with all buyable items
+    this.initializeShopItems();
   }
 
   private interact(entityId: number): void {
@@ -35,18 +35,10 @@ export class Merchant extends Entity {
   }
 
   /**
-   * Randomizes the 3 shop items from the available merchant items
+   * Initialize shop items with all buyable items (no randomization)
    */
-  public randomizeShopItems(): void {
-    const availableItems = [...getConfig().merchant.SHOP_ITEMS];
-    const shopItems: MerchantShopItem[] = [];
-
-    // Pick 3 random items
-    for (let i = 0; i < 3 && availableItems.length > 0; i++) {
-      const randomIndex = Math.floor(Math.random() * availableItems.length);
-      shopItems.push(availableItems[randomIndex]);
-      availableItems.splice(randomIndex, 1);
-    }
+  public initializeShopItems(): void {
+    const shopItems = [...getConfig().merchant.SHOP_ITEMS];
     this.serialized.set('shopItems', shopItems);
   }
 

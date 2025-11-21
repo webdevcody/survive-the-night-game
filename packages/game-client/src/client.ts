@@ -170,6 +170,12 @@ export class GameClient {
       // Check if fullscreen map is open
       const isFullscreenMapOpen = this.hud?.isFullscreenMapOpen() ?? false;
 
+      // Check merchant panel clicks first (if open)
+      if (this.merchantBuyPanel.isVisible() && this.merchantBuyPanel.handleClick(x, y)) {
+        this.placementManager?.skipNextClick();
+        return; // Click was handled by merchant panel
+      }
+
       // Handle UI clicks (inventory bar, HUD mute button, etc.)
       // HUD handles both hotbar and other UI clicks
       if (this.hud && this.hud.handleClick(x, y, canvas.width, canvas.height)) {
@@ -246,6 +252,7 @@ export class GameClient {
       onBuy: (merchantId, itemIndex) => {
         this.socketManager.sendMerchantBuy(String(merchantId), itemIndex);
       },
+      getCanvas: () => canvas,
     });
 
     // TODO: refactor to use event emitter
@@ -360,14 +367,8 @@ export class GameClient {
         inputs.dy = -1;
         inputs.facing = Direction.Up;
       },
-      onMerchantKey1: () => {
-        this.merchantBuyPanel.buySelected(0);
-      },
-      onMerchantKey2: () => {
-        this.merchantBuyPanel.buySelected(1);
-      },
-      onMerchantKey3: () => {
-        this.merchantBuyPanel.buySelected(2);
+      onMerchantKeyDown: (key: string) => {
+        this.merchantBuyPanel.handleKeyDown(key);
       },
       onEscape: () => {
         if (this.merchantBuyPanel.isVisible()) {

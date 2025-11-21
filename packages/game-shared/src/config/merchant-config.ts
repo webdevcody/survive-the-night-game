@@ -16,14 +16,16 @@ export interface MerchantShopItem {
 
 /**
  * Generate shop items dynamically from item, weapon, and resource registries
- * Items/weapons/resources with merchant.enabled === true will be included
+ * Items/weapons/resources with merchant.buyable === true will be included
+ * Returns all buyable items (no randomization)
  */
 function generateShopItems(): MerchantShopItem[] {
   const shopItems: MerchantShopItem[] = [];
 
-  // Add items with merchant enabled
+  // Add items with merchant buyable
   itemRegistry.getAll().forEach((itemConfig) => {
-    if (itemConfig.merchant?.enabled) {
+    const buyable = itemConfig.merchant?.buyable ?? itemConfig.merchant?.enabled ?? false;
+    if (buyable && itemConfig.merchant?.price !== undefined) {
       shopItems.push({
         itemType: itemConfig.id,
         price: itemConfig.merchant.price,
@@ -31,9 +33,10 @@ function generateShopItems(): MerchantShopItem[] {
     }
   });
 
-  // Add weapons with merchant enabled
+  // Add weapons with merchant buyable
   weaponRegistry.getAll().forEach((weaponConfig) => {
-    if (weaponConfig.merchant?.enabled) {
+    const buyable = weaponConfig.merchant?.buyable ?? weaponConfig.merchant?.enabled ?? false;
+    if (buyable && weaponConfig.merchant?.price !== undefined) {
       shopItems.push({
         itemType: weaponConfig.id,
         price: weaponConfig.merchant.price,
@@ -41,9 +44,10 @@ function generateShopItems(): MerchantShopItem[] {
     }
   });
 
-  // Add resources with merchant enabled
+  // Add resources with merchant buyable
   resourceRegistry.getAll().forEach((resourceConfig) => {
-    if (resourceConfig.merchant?.enabled) {
+    const buyable = resourceConfig.merchant?.buyable ?? resourceConfig.merchant?.enabled ?? false;
+    if (buyable && resourceConfig.merchant?.price !== undefined) {
       shopItems.push({
         itemType: resourceConfig.id,
         price: resourceConfig.merchant.price,

@@ -25,6 +25,11 @@ export const WEAPON_CONFIGS: Record<string, WeaponConfig> = {
       enabled: true,
       chance: 0.003,
     },
+    merchant: {
+      enabled: true,
+      buyable: true,
+      price: 15,
+    },
   },
   baseball_bat: {
     id: "baseball_bat",
@@ -49,6 +54,11 @@ export const WEAPON_CONFIGS: Record<string, WeaponConfig> = {
       enabled: true,
       chance: 0.003,
     },
+    merchant: {
+      enabled: true,
+      buyable: true,
+      price: 20,
+    },
   },
   pistol: {
     id: "pistol",
@@ -72,6 +82,11 @@ export const WEAPON_CONFIGS: Record<string, WeaponConfig> = {
     spawn: {
       enabled: true,
       chance: 0.002,
+    },
+    merchant: {
+      enabled: true,
+      buyable: true,
+      price: 50,
     },
   },
   shotgun: {
@@ -98,6 +113,11 @@ export const WEAPON_CONFIGS: Record<string, WeaponConfig> = {
       enabled: true,
       chance: 0.0015,
     },
+    merchant: {
+      enabled: true,
+      buyable: true,
+      price: 75,
+    },
   },
   bolt_action_rifle: {
     id: "bolt_action_rifle",
@@ -120,6 +140,11 @@ export const WEAPON_CONFIGS: Record<string, WeaponConfig> = {
     spawn: {
       enabled: true,
       chance: 0.0015,
+    },
+    merchant: {
+      enabled: true,
+      buyable: true,
+      price: 100,
     },
   },
   ak47: {
@@ -144,6 +169,11 @@ export const WEAPON_CONFIGS: Record<string, WeaponConfig> = {
       enabled: true,
       chance: 0.0015,
     },
+    merchant: {
+      enabled: true,
+      buyable: true,
+      price: 150,
+    },
   },
   grenade_launcher: {
     id: "grenade_launcher",
@@ -163,6 +193,11 @@ export const WEAPON_CONFIGS: Record<string, WeaponConfig> = {
     },
     sound: "pistol",
     ammoType: "grenade_launcher_ammo",
+    merchant: {
+      enabled: true,
+      buyable: true,
+      price: 200,
+    },
   },
   flamethrower: {
     id: "flamethrower",
@@ -182,6 +217,11 @@ export const WEAPON_CONFIGS: Record<string, WeaponConfig> = {
     },
     sound: "pistol", // Will use pistol sound until we have a flamethrower sound
     ammoType: "flamethrower_ammo",
+    merchant: {
+      enabled: true,
+      buyable: true,
+      price: 180,
+    },
   },
   bow: {
     id: "bow",
@@ -205,6 +245,11 @@ export const WEAPON_CONFIGS: Record<string, WeaponConfig> = {
       enabled: true,
       chance: 0.002,
     },
+    merchant: {
+      enabled: true,
+      buyable: true,
+      price: 40,
+    },
   },
   grenade: {
     id: "grenade",
@@ -223,5 +268,10 @@ export const WEAPON_CONFIGS: Record<string, WeaponConfig> = {
       sheet: "items",
     },
     sound: "pistol",
+    merchant: {
+      enabled: true,
+      buyable: true,
+      price: 20,
+    },
   },
 };

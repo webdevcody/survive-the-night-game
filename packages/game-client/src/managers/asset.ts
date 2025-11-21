@@ -482,6 +482,13 @@ export class AssetManager implements ImageLoader {
     return asset;
   }
 
+  public getSheet(sheetName: string): HTMLImageElement | null {
+    if (!this.loaded) {
+      return null;
+    }
+    return this.sheets[sheetName] || null;
+  }
+
   public getFrameIndex(key: Asset, frameIndex: number) {
     const keyWithFrame = `${key}_${frameIndex}`;
     return this.get(keyWithFrame as Asset);

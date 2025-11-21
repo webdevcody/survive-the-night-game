@@ -15,6 +15,7 @@ export const RESOURCE_CONFIGS: Record<string, ResourceConfig> = {
     },
     merchant: {
       enabled: true,
+      buyable: true,
       price: 2,
     },
   },
@@ -32,6 +33,7 @@ export const RESOURCE_CONFIGS: Record<string, ResourceConfig> = {
     },
     merchant: {
       enabled: true,
+      buyable: true,
       price: 4,
     },
   },

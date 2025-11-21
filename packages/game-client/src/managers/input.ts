@@ -29,9 +29,7 @@ export interface InputManagerOptions {
   onSendChat?: () => void;
   onToggleMute?: () => void;
   onToggleMap?: () => void;
-  onMerchantKey1?: () => void;
-  onMerchantKey2?: () => void;
-  onMerchantKey3?: () => void;
+  onMerchantKeyDown?: (key: string) => void;
   onEscape?: () => void;
   onRespawnRequest?: () => void;
   onTeleportStart?: () => void;
@@ -207,23 +205,38 @@ export class InputManager {
 
       // Handle merchant panel inputs first
       if (isMerchantPanelOpen) {
-        switch (eventCode) {
-          case "Digit1":
+        // Pass all keys to merchant panel for handling
+        if (callbacks.onMerchantKeyDown) {
+          // Convert event code/key to a format the panel understands
+          let key = eventKey;
+          if (eventCode.startsWith("Arrow")) {
+            key = eventCode.replace("Arrow", "");
+          } else if (eventCode.startsWith("Digit")) {
+            key = eventCode.replace("Digit", "");
+          } else if (eventCode === "Enter") {
+            key = "Enter";
+          } else if (eventCode === "Escape") {
+            key = "Escape";
+          } else if (eventCode === "KeyE") {
+            key = "e";
+          } else if (eventCode === "KeyW") {
+            key = "w";
+          } else if (eventCode === "KeyA") {
+            key = "a";
+          } else if (eventCode === "KeyS") {
+            key = "s";
+          } else if (eventCode === "KeyD") {
+            key = "d";
+          } else if (eventCode === "Space") {
+            key = " ";
+          }
+          
+          callbacks.onMerchantKeyDown(key);
+          
+          // Mark key as consumed if it's a number key or WASD
+          if (eventCode.startsWith("Digit") || eventCode === "KeyW" || eventCode === "KeyA" || eventCode === "KeyS" || eventCode === "KeyD") {
             this.merchantPanelConsumedKeys.add(eventKey);
-            callbacks.onMerchantKey1?.();
-            break;
-          case "Digit2":
-            this.merchantPanelConsumedKeys.add(eventKey);
-            callbacks.onMerchantKey2?.();
-            break;
-          case "Digit3":
-            this.merchantPanelConsumedKeys.add(eventKey);
-            callbacks.onMerchantKey3?.();
-            break;
-          case "KeyF":
-          case "Escape":
-            callbacks.onEscape?.();
-            break;
+          }
         }
         // Block all other inputs when merchant panel is open
         return;
@@ -321,15 +334,6 @@ export class InputManager {
           break;
         case "Escape":
           callbacks.onEscape?.();
-          break;
-        case "Digit1":
-          callbacks.onMerchantKey1?.();
-          break;
-        case "Digit2":
-          callbacks.onMerchantKey2?.();
-          break;
-        case "Digit3":
-          callbacks.onMerchantKey3?.();
           break;
       }
 

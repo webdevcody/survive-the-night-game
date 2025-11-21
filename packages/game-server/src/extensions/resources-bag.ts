@@ -21,7 +21,7 @@ export default class ResourcesBag extends ExtensionBase {
       initialResources[resource] = 0;
       // Also initialize the Map for internal use
     });
-    super(self, { coins: 0, resources: initialResources });
+    super(self, { coins: 20, resources: initialResources });
     this.broadcaster = broadcaster;
 
     // Initialize all resources to 0 in Map
@@ -31,18 +31,18 @@ export default class ResourcesBag extends ExtensionBase {
   }
 
   public getCoins(): number {
-    return this.serialized.get('coins');
+    return this.serialized.get("coins");
   }
 
   public addCoins(amount: number): void {
     if (amount !== 0) {
-      const currentCoins = this.serialized.get('coins');
-      this.serialized.set('coins', currentCoins + amount);
+      const currentCoins = this.serialized.get("coins");
+      this.serialized.set("coins", currentCoins + amount);
     }
   }
 
   public setCoins(amount: number): void {
-    this.serialized.set('coins', Math.max(0, amount));
+    this.serialized.set("coins", Math.max(0, amount));
   }
 
   public getResource(resourceType: ResourceType): number {
@@ -57,8 +57,8 @@ export default class ResourcesBag extends ExtensionBase {
     this.resources.set(resourceType, newAmount);
 
     // Update serialized resources
-    const currentResources = this.serialized.get('resources');
-    this.serialized.set('resources', { ...currentResources, [resourceType]: newAmount });
+    const currentResources = this.serialized.get("resources");
+    this.serialized.set("resources", { ...currentResources, [resourceType]: newAmount });
     this.markDirty();
 
     // Broadcast resource pickup event
@@ -75,8 +75,8 @@ export default class ResourcesBag extends ExtensionBase {
     this.resources.set(resourceType, newAmount);
 
     // Update serialized resources
-    const currentResources = this.serialized.get('resources');
-    this.serialized.set('resources', { ...currentResources, [resourceType]: newAmount });
+    const currentResources = this.serialized.get("resources");
+    this.serialized.set("resources", { ...currentResources, [resourceType]: newAmount });
   }
 
   public removeResource(resourceType: ResourceType, amount: number): void {
@@ -85,8 +85,8 @@ export default class ResourcesBag extends ExtensionBase {
     this.resources.set(resourceType, newAmount);
 
     // Update serialized resources
-    const currentResources = this.serialized.get('resources');
-    this.serialized.set('resources', { ...currentResources, [resourceType]: newAmount });
+    const currentResources = this.serialized.get("resources");
+    this.serialized.set("resources", { ...currentResources, [resourceType]: newAmount });
   }
 
   // Backward compatibility getters/setters for wood
@@ -124,7 +124,9 @@ export default class ResourcesBag extends ExtensionBase {
 
   public serializeToBuffer(writer: BufferWriter, onlyDirty: boolean = false): void {
     writer.writeUInt8(encodeExtensionType(ResourcesBag.type));
-    writer.writeFloat64(this.serialized.get('coins'));
-    writer.writeRecord(this.serialized.get('resources'), (value) => writer.writeFloat64(value as number));
+    writer.writeFloat64(this.serialized.get("coins"));
+    writer.writeRecord(this.serialized.get("resources"), (value) =>
+      writer.writeFloat64(value as number)
+    );
   }
 }

@@ -17,6 +17,7 @@ export const ITEM_CONFIGS: Record<string, ItemConfig> = {
     },
     merchant: {
       enabled: true,
+      buyable: true,
       price: 10,
     },
     recipe: {
@@ -39,6 +40,7 @@ export const ITEM_CONFIGS: Record<string, ItemConfig> = {
     },
     merchant: {
       enabled: true,
+      buyable: true,
       price: 8,
     },
   },
@@ -57,6 +59,7 @@ export const ITEM_CONFIGS: Record<string, ItemConfig> = {
     },
     merchant: {
       enabled: true,
+      buyable: true,
       price: 12,
     },
   },
@@ -73,6 +76,11 @@ export const ITEM_CONFIGS: Record<string, ItemConfig> = {
       enabled: true,
       chance: 0.005,
     },
+    merchant: {
+      enabled: true,
+      buyable: true,
+      price: 15,
+    },
   },
   ak47_ammo: {
     id: "ak47_ammo",
@@ -87,6 +95,11 @@ export const ITEM_CONFIGS: Record<string, ItemConfig> = {
       enabled: true,
       chance: 0.005,
     },
+    merchant: {
+      enabled: true,
+      buyable: true,
+      price: 10,
+    },
   },
   grenade_launcher_ammo: {
     id: "grenade_launcher_ammo",
@@ -97,6 +110,11 @@ export const ITEM_CONFIGS: Record<string, ItemConfig> = {
       y: 16,
       sheet: "items",
     },
+    merchant: {
+      enabled: true,
+      buyable: true,
+      price: 25,
+    },
   },
   flamethrower_ammo: {
     id: "flamethrower_ammo",
@@ -106,6 +124,11 @@ export const ITEM_CONFIGS: Record<string, ItemConfig> = {
       x: 112,
       y: 16,
       sheet: "items",
+    },
+    merchant: {
+      enabled: true,
+      buyable: true,
+      price: 20,
     },
   },
   arrow_ammo: {
@@ -123,6 +146,7 @@ export const ITEM_CONFIGS: Record<string, ItemConfig> = {
     },
     merchant: {
       enabled: true,
+      buyable: true,
       price: 8,
     },
   },
@@ -142,6 +166,7 @@ export const ITEM_CONFIGS: Record<string, ItemConfig> = {
     },
     merchant: {
       enabled: true,
+      buyable: true,
       price: 20,
     },
   },
@@ -159,7 +184,8 @@ export const ITEM_CONFIGS: Record<string, ItemConfig> = {
       chance: 0,
     },
     merchant: {
-      enabled: true,
+      enabled: false,
+      buyable: false,
       price: 20,
     },
   },
@@ -178,6 +204,7 @@ export const ITEM_CONFIGS: Record<string, ItemConfig> = {
     },
     merchant: {
       enabled: true,
+      buyable: true,
       price: 5,
     },
     recipe: {
@@ -201,6 +228,7 @@ export const ITEM_CONFIGS: Record<string, ItemConfig> = {
     },
     merchant: {
       enabled: true,
+      buyable: true,
       price: 10,
     },
   },
@@ -254,6 +282,11 @@ export const ITEM_CONFIGS: Record<string, ItemConfig> = {
       enabled: true,
       chance: 0.0001,
     },
+    merchant: {
+      enabled: true,
+      buyable: true,
+      price: 30,
+    },
     lightIntensity: 200,
   },
   spikes: {
@@ -270,6 +303,11 @@ export const ITEM_CONFIGS: Record<string, ItemConfig> = {
     spawn: {
       enabled: true,
       chance: 0.003,
+    },
+    merchant: {
+      enabled: true,
+      buyable: true,
+      price: 15,
     },
     recipe: {
       enabled: true,
@@ -290,6 +328,11 @@ export const ITEM_CONFIGS: Record<string, ItemConfig> = {
       enabled: true,
       chance: 0.002,
     },
+    merchant: {
+      enabled: true,
+      buyable: true,
+      price: 25,
+    },
     recipe: {
       enabled: true,
       components: [{ type: "knife" }, { type: "wood", count: 3 }, { type: "cloth", count: 1 }],
@@ -309,6 +352,11 @@ export const ITEM_CONFIGS: Record<string, ItemConfig> = {
     spawn: {
       enabled: true,
       chance: 0.005,
+    },
+    merchant: {
+      enabled: true,
+      buyable: true,
+      price: 8,
     },
     recipe: {
       enabled: true,
@@ -341,6 +389,11 @@ export const ITEM_CONFIGS: Record<string, ItemConfig> = {
       x: 80,
       y: 144,
       sheet: "items",
+    },
+    merchant: {
+      enabled: true,
+      buyable: true,
+      price: 100,
     },
     recipe: {
       enabled: true,

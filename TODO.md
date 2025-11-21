@@ -17,6 +17,8 @@ Feel free to pick any item listed out here to work on.
 
 ## Game Design
 
+- gasoline and torch need to be configured to be on the items sheet
+- all items should live on the items sheet
 - new zombie types
   - a new zombie type who immobilizes you if hit
   - a new zombie type who can poison you

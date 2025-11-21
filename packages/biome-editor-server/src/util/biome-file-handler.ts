@@ -13,10 +13,10 @@ const getBiomesDir = () => {
   }
 
   // Check if import.meta.url is available (ESM/dev mode)
-  if (typeof import.meta.url !== 'undefined') {
+  if (typeof import.meta.url !== "undefined") {
     const currentDir = path.dirname(fileURLToPath(import.meta.url));
     // Navigate from biome-editor-server/src/util to game-server/src/biomes
-    return path.join(currentDir, "..", "..", "..", "game-server", "src", "biomes");
+    return path.join(currentDir, "..", "..", "..", "game-server", "src", "world", "biomes");
   }
 
   // If import.meta.url is not available, we're likely bundled (production)
@@ -51,9 +51,7 @@ export async function listBiomes(): Promise<BiomeInfo[]> {
   ensureBiomeEditorAvailable();
   const files = await fs.readdir(BIOMES_DIR!);
 
-  const biomeFiles = files.filter(
-    (file) => file.endsWith(".ts") && file !== "index.ts"
-  );
+  const biomeFiles = files.filter((file) => file.endsWith(".ts") && file !== "index.ts");
 
   return biomeFiles.map((fileName) => {
     const name = fileName.replace(".ts", "");
@@ -80,9 +78,7 @@ export async function readBiomeData(biomeName: string): Promise<BiomeData> {
 
   // Extract the biome data object using regex
   // Match pattern: export const NAME: BiomeData = { ... };
-  const biomeDataMatch = content.match(
-    /export\s+const\s+\w+:\s*BiomeData\s*=\s*(\{[\s\S]*?\n\});/
-  );
+  const biomeDataMatch = content.match(/export\s+const\s+\w+:\s*BiomeData\s*=\s*(\{[\s\S]*?\n\});/);
 
   if (!biomeDataMatch) {
     throw new Error(`Could not parse biome data from ${biomeName}.ts`);
@@ -101,10 +97,7 @@ export async function readBiomeData(biomeName: string): Promise<BiomeData> {
 /**
  * Write biome data back to the TypeScript file while preserving structure
  */
-export async function writeBiomeData(
-  biomeName: string,
-  biomeData: BiomeData
-): Promise<void> {
+export async function writeBiomeData(biomeName: string, biomeData: BiomeData): Promise<void> {
   ensureBiomeEditorAvailable();
   const filePath = path.join(BIOMES_DIR!, `${biomeName}.ts`);
   const content = await fs.readFile(filePath, "utf-8");
@@ -143,7 +136,6 @@ export async function writeBiomeData(
     }
   }
 
-
   await fs.writeFile(filePath, newContent, "utf-8");
 }
 
@@ -165,13 +157,15 @@ export async function createBiome(biomeName: string): Promise<void> {
   }
 
   // Convert kebab-case to CONSTANT_CASE
-  const constantName = biomeName
-    .toUpperCase()
-    .replace(/-/g, "_");
+  const constantName = biomeName.toUpperCase().replace(/-/g, "_");
 
   // Create empty 16x16 grids
-  const emptyGround = Array(16).fill(0).map(() => Array(16).fill(0));
-  const emptyCollidables = Array(16).fill(0).map(() => Array(16).fill(-1));
+  const emptyGround = Array(16)
+    .fill(0)
+    .map(() => Array(16).fill(0));
+  const emptyCollidables = Array(16)
+    .fill(0)
+    .map(() => Array(16).fill(-1));
 
   // Generate file content
   const fileContent = `import { EntityType } from "@shared/types/entity";
@@ -184,10 +178,10 @@ export interface BiomeData {
 
 export const ${constantName}: BiomeData = {
   ground: [
-${emptyGround.map(row => `    [${row.join(", ")}]`).join(",\n")}
+${emptyGround.map((row) => `    [${row.join(", ")}]`).join(",\n")}
   ],
   collidables: [
-${emptyCollidables.map(row => `    [${row.join(", ")}]`).join(",\n")}
+${emptyCollidables.map((row) => `    [${row.join(", ")}]`).join(",\n")}
   ],
 };
 `;
@@ -207,9 +201,7 @@ async function updateBiomesIndex(): Promise<void> {
   const indexPath = path.join(BIOMES_DIR!, "index.ts");
   const files = await fs.readdir(BIOMES_DIR!);
 
-  const biomeFiles = files
-    .filter((file) => file.endsWith(".ts") && file !== "index.ts")
-    .sort();
+  const biomeFiles = files.filter((file) => file.endsWith(".ts") && file !== "index.ts").sort();
 
   const exports: string[] = [];
 
@@ -272,4 +264,3 @@ function formatBiomeData(data: BiomeData): string {
 
   return lines.join("\n");
 }
-

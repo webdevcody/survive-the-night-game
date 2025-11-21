@@ -146,13 +146,7 @@ export class GameLoop {
   private onPreparationStart(): void {
     console.log(`Preparation for wave ${this.waveNumber} started`);
 
-    // Reset merchant shop items
-    const merchants = this.entityManager.getMerchantEntities();
-    merchants.forEach((merchant) => {
-      if ("randomizeShopItems" in merchant && typeof merchant.randomizeShopItems === "function") {
-        (merchant as any).randomizeShopItems();
-      }
-    });
+    // Merchant shop items are now static and don't need to be reset
   }
 
   private onWaveStart(): void {

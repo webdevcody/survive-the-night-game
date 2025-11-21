@@ -92,9 +92,9 @@ export class ClientSocketManager {
   private reconnectTimeout: ReturnType<typeof setTimeout> | null = null;
   private reconnectAttempts: number = 0;
   private readonly MAX_RECONNECT_ATTEMPTS = Infinity; // Keep trying indefinitely
-  private readonly RECONNECT_DELAY_MS = 5000; // 5 seconds delay
+  private readonly RECONNECT_DELAY_MS = 3000; // 3 seconds delay
   private readonly MAX_CONNECTION_ATTEMPTS = 10;
-  private readonly CONNECTION_TIMEOUT_MS = 10000; // 10 seconds timeout per attempt
+  private readonly CONNECTION_TIMEOUT_MS = 3000;
   private eventHandlers: Map<string, Array<(event: any) => void>> = new Map();
   private socketDisconnectHandlers: Array<() => void> = [];
   private connectionPromiseResolve?: () => void;
