@@ -13,10 +13,17 @@ export function meta() {
   ];
 }
 
+interface ChangelogChanges {
+  features: string[];
+  bugFixes: string[];
+  refactoring: string[];
+  performance: string[];
+}
+
 interface ChangelogEntry {
   version: string;
   date: string;
-  changes: string[];
+  changes: ChangelogChanges;
 }
 
 const changelog: ChangelogEntry[] = changelogData;
@@ -136,18 +143,86 @@ export default function Index() {
                 </div>
 
                 {/* Changes List */}
-                <div className="px-5 sm:px-6 py-5">
-                  <ul className="space-y-2.5">
-                    {entry.changes.map((change, changeIndex) => (
-                      <li
-                        key={changeIndex}
-                        className="flex items-start gap-3 text-sm sm:text-base text-gray-300 leading-relaxed"
-                      >
-                        <span className="text-red-500 mt-1.5 flex-shrink-0 text-xs">●</span>
-                        <span>{change}</span>
-                      </li>
-                    ))}
-                  </ul>
+                <div className="px-5 sm:px-6 py-5 space-y-6">
+                  {/* Features */}
+                  {entry.changes.features.length > 0 && (
+                    <div>
+                      <h3 className="text-sm font-semibold text-green-400 mb-3 uppercase tracking-wide">
+                        ✨ Features
+                      </h3>
+                      <ul className="space-y-2.5">
+                        {entry.changes.features.map((change, changeIndex) => (
+                          <li
+                            key={`feature-${changeIndex}`}
+                            className="flex items-start gap-3 text-sm sm:text-base text-gray-300 leading-relaxed"
+                          >
+                            <span className="text-green-500 mt-1.5 flex-shrink-0 text-xs">●</span>
+                            <span>{change}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+
+                  {/* Bug Fixes */}
+                  {entry.changes.bugFixes.length > 0 && (
+                    <div>
+                      <h3 className="text-sm font-semibold text-red-400 mb-3 uppercase tracking-wide">
+                        🐛 Bug Fixes
+                      </h3>
+                      <ul className="space-y-2.5">
+                        {entry.changes.bugFixes.map((change, changeIndex) => (
+                          <li
+                            key={`bugfix-${changeIndex}`}
+                            className="flex items-start gap-3 text-sm sm:text-base text-gray-300 leading-relaxed"
+                          >
+                            <span className="text-red-500 mt-1.5 flex-shrink-0 text-xs">●</span>
+                            <span>{change}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+
+                  {/* Refactoring */}
+                  {entry.changes.refactoring.length > 0 && (
+                    <div>
+                      <h3 className="text-sm font-semibold text-blue-400 mb-3 uppercase tracking-wide">
+                        🔧 Refactoring
+                      </h3>
+                      <ul className="space-y-2.5">
+                        {entry.changes.refactoring.map((change, changeIndex) => (
+                          <li
+                            key={`refactor-${changeIndex}`}
+                            className="flex items-start gap-3 text-sm sm:text-base text-gray-300 leading-relaxed"
+                          >
+                            <span className="text-blue-500 mt-1.5 flex-shrink-0 text-xs">●</span>
+                            <span>{change}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+
+                  {/* Performance */}
+                  {entry.changes.performance.length > 0 && (
+                    <div>
+                      <h3 className="text-sm font-semibold text-yellow-400 mb-3 uppercase tracking-wide">
+                        ⚡ Performance
+                      </h3>
+                      <ul className="space-y-2.5">
+                        {entry.changes.performance.map((change, changeIndex) => (
+                          <li
+                            key={`performance-${changeIndex}`}
+                            className="flex items-start gap-3 text-sm sm:text-base text-gray-300 leading-relaxed"
+                          >
+                            <span className="text-yellow-500 mt-1.5 flex-shrink-0 text-xs">●</span>
+                            <span>{change}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
                 </div>
               </div>
             ))}
