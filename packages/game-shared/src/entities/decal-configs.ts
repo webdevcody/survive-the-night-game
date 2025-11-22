@@ -28,6 +28,19 @@ export const DECAL_CONFIGS: Record<string, DecalConfig> = {
       },
     },
   },
+  acid: {
+    id: "acid",
+    category: "effect",
+    assets: {
+      assetKey: "acid",
+      type: "single",
+      position: {
+        x: 16,
+        y: 256,
+        sheet: "ground",
+      },
+    },
+  },
   explosion: {
     id: "explosion",
     category: "effect",

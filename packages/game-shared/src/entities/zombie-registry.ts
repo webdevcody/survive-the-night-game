@@ -60,6 +60,12 @@ export interface ChargeConfig {
   knockbackForce: number; // Knockback force applied to players
 }
 
+export interface CrossDiveConfig {
+  approachDistance: number; // Distance from car to start diving
+  diveCooldownDuration: number; // Cooldown between dives
+  acidDropInterval: number; // Interval between acid drops during dive
+}
+
 export interface BossHealthBarConfig {
   width: number;
   height?: number;
@@ -89,10 +95,11 @@ export interface ZombieConfig {
   category: EntityCategory;
   stats: ZombieStats;
   assets: ZombieAssetConfig;
-  movementStrategy: "melee" | "flying" | "ranged";
+  movementStrategy: "melee" | "flying" | "ranged" | "cross-dive";
   attackStrategy: "melee" | "exploding" | "ranged" | "leaping";
   leapConfig?: LeapConfig;
   chargeConfig?: ChargeConfig;
+  crossDiveConfig?: CrossDiveConfig;
   boss?: BossMetadata;
 }
 

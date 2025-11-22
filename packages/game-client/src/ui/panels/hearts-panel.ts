@@ -3,6 +3,7 @@ import { getPlayer } from "@/util/get-player";
 import { getConfig } from "@shared/config";
 import { Panel, PanelSettings } from "./panel";
 import { calculateHudScale } from "@/util/hud-scale";
+import { ClientPoison } from "@/extensions/poison";
 
 interface HeartsPanelSettings extends PanelSettings {
   marginBottom: number;
@@ -88,13 +89,18 @@ export class HeartsPanel extends Panel {
     ctx.font = `${scaledFontSize}px Arial`;
     ctx.textBaseline = "top";
 
+    // Check if player is poisoned
+    const isPoisoned = player.hasExt(ClientPoison);
+
     // Render hearts
     for (let i = 0; i < maxHealth; i++) {
       const x = heartsX + i * (scaledHeartSize + scaledHeartGap);
       const isFilled = i < currentHealth;
 
-      // Use filled heart for current health, empty heart for missing health
-      const heartIcon = isFilled ? "❤️" : "🖤";
+      // Use green heart when poisoned, red heart when normal, empty heart for missing health
+      const heartIcon = isFilled 
+        ? (isPoisoned ? "💚" : "❤️")
+        : "🖤";
       ctx.fillText(heartIcon, x, heartsY);
     }
 

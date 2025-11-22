@@ -7,6 +7,7 @@ import { BatZombieClient } from "@/entities/bat-zombie";
 import { SpitterZombieClient } from "./spitter-zombie";
 import { ExplodingZombieClient } from "./exploding-zombie";
 import { LeapingZombieClient } from "./enemies/leaping-zombie";
+import { AcidFlyerClient } from "./acid-flyer";
 import { BulletClient } from "@/entities/bullet";
 import { ArrowClient } from "@/entities/arrow";
 import { GrenadeProjectileClient } from "./grenade-projectile";
@@ -54,6 +55,7 @@ import { SurvivorClient } from "./environment/survivor";
 import { AcidProjectileClient } from "./acid-projectile";
 import { BoundaryClient } from "./items/boundary";
 import { BloodClient } from "./blood";
+import { AcidClient } from "./acid";
 
 /**
  * Registers all custom client entity classes in the override registry
@@ -77,6 +79,7 @@ export function registerCustomClientEntities(): void {
   clientEntityOverrideRegistry.register("leaping_zombie", LeapingZombieClient);
   clientEntityOverrideRegistry.register("grave_tyrant", ZombieClient);
   clientEntityOverrideRegistry.register("charging_tyrant", ZombieClient);
+  clientEntityOverrideRegistry.register("acid_flyer", AcidFlyerClient);
 
   // Projectiles
   clientEntityOverrideRegistry.register("bullet", BulletClient);
@@ -134,4 +137,5 @@ export function registerCustomClientEntities(): void {
   clientEntityOverrideRegistry.register("survivor", SurvivorClient);
   clientEntityOverrideRegistry.register("boundary", BoundaryClient);
   clientEntityOverrideRegistry.register("blood", BloodClient);
+  clientEntityOverrideRegistry.register("acid", AcidClient);
 }

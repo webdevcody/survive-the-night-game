@@ -32,7 +32,7 @@ export const waveConfig = {
   BOSS_WAVE_MAPPING: {
     3: "grave_tyrant",
     5: "charging_tyrant",
-    7: "grave_tyrant",
+    7: "acid_flyer",
   },
 
   /**

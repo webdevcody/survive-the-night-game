@@ -21,6 +21,8 @@ export const ExtensionTypes = {
   ONE_TIME_TRIGGER: "one-time-trigger",
   RESOURCES_BAG: "resources-bag",
   SNARED: "snared",
+  POISON: "poison",
+  ACID_TRIGGER: "acid-trigger",
 } as const;
 
 export type ExtensionType = (typeof ExtensionTypes)[keyof typeof ExtensionTypes];

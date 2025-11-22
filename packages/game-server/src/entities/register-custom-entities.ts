@@ -9,6 +9,7 @@ import { ExplodingZombie } from "@/entities/enemies/exploding-zombie";
 import { LeapingZombie } from "@/entities/enemies/leaping-zombie";
 import { BossZombie } from "@/entities/enemies/boss-zombie";
 import { ChargingTyrant } from "@/entities/enemies/charging-tyrant";
+import { AcidFlyer } from "@/entities/enemies/acid-flyer";
 import { Bullet } from "@/entities/projectiles/bullet";
 import { Arrow } from "@/entities/projectiles/arrow";
 import { GrenadeProjectile } from "@/entities/projectiles/grenade-projectile";
@@ -54,6 +55,7 @@ import { Merchant } from "@/entities/environment/merchant";
 import { Car } from "@/entities/environment/car";
 import { Survivor } from "@/entities/environment/survivor";
 import { Blood } from "@/entities/effects/blood";
+import { Acid } from "@/entities/effects/acid";
 
 /**
  * Registers all custom entity classes in the override registry
@@ -77,6 +79,7 @@ export function registerCustomEntities(): void {
   entityOverrideRegistry.register("leaping_zombie", LeapingZombie);
   entityOverrideRegistry.register("grave_tyrant", BossZombie);
   entityOverrideRegistry.register("charging_tyrant", ChargingTyrant);
+  entityOverrideRegistry.register("acid_flyer", AcidFlyer);
 
   // Projectiles
   entityOverrideRegistry.register("bullet", Bullet);
@@ -132,4 +135,5 @@ export function registerCustomEntities(): void {
   entityOverrideRegistry.register("car", Car);
   entityOverrideRegistry.register("survivor", Survivor);
   entityOverrideRegistry.register("blood", Blood);
+  entityOverrideRegistry.register("acid", Acid);
 }

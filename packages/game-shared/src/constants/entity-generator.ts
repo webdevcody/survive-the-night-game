@@ -98,6 +98,9 @@ export function generateEntities() {
     entities[key] = bloodDecal.id;
   }
 
+  // Add acid entity (uses blood decal for rendering but is separate entity type)
+  entities["ACID"] = "acid";
+
   return entities;
 }
 

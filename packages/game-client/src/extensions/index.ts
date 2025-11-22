@@ -20,6 +20,8 @@ import { ClientOneTimeTrigger } from "./one-time-trigger";
 import { ClientStatic } from "./static";
 import { ClientResourcesBag } from "./resources-bag";
 import { ClientSnared } from "./snared";
+import { ClientPoison } from "./poison";
+import { ClientAcidTrigger } from "./acid-trigger";
 
 // remember to update the extension type ids in extension-type-encoding.ts when adding a new extension
 export const clientExtensionsMap = {
@@ -44,6 +46,8 @@ export const clientExtensionsMap = {
   [ExtensionTypes.STATIC]: ClientStatic,
   [ExtensionTypes.RESOURCES_BAG]: ClientResourcesBag,
   [ExtensionTypes.SNARED]: ClientSnared,
+  [ExtensionTypes.POISON]: ClientPoison,
+  [ExtensionTypes.ACID_TRIGGER]: ClientAcidTrigger,
 } as const;
 
 export {
@@ -68,4 +72,6 @@ export {
   ClientStatic,
   ClientResourcesBag,
   ClientSnared,
+  ClientPoison,
+  ClientAcidTrigger,
 };

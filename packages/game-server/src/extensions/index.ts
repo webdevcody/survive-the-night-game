@@ -17,6 +17,8 @@ import Placeable from "@/extensions/placeable";
 import Groupable from "@/extensions/groupable";
 import Snared from "@/extensions/snared";
 import ResourcesBag from "@/extensions/resources-bag";
+import Poison from "@/extensions/poison";
+import AcidTrigger from "@/extensions/acid-trigger";
 
 export const extensionsMap = {
   [Collidable.type]: Collidable,
@@ -38,4 +40,6 @@ export const extensionsMap = {
   [Groupable.type]: Groupable,
   [Snared.type]: Snared,
   [ResourcesBag.type]: ResourcesBag,
+  [Poison.type]: Poison,
+  [AcidTrigger.type]: AcidTrigger,
 } as const;
