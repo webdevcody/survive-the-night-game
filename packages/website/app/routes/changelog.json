@@ -1,5 +1,27 @@
 [
   {
+    "version": "0.23.0",
+    "date": "2025-11-22",
+    "changes": {
+      "features": [
+        "Added Acid Flyer zombie - new flying zombie type with cross-dive movement pattern that drops acid on players",
+        "Implemented Acid and Poison effects - players can be poisoned when walking over acid pools left by Acid Flyers",
+        "Added Grave Tyrant boss zombie - replaced BossZombie with new Grave Tyrant boss type",
+        "Added Charging Tyrant boss zombie - new boss type with ground slam attack and charging movement strategy",
+        "Implemented player display name functionality - players can now change their display names with validation and local storage support"
+      ],
+      "bugFixes": [
+        "Fixed game instructions toggle - instructions menu no longer toggles when typing username on initial screen"
+      ],
+      "refactoring": [
+        "Enhanced zombie movement strategies - added cross-dive movement pattern for Acid Flyer and charging movement for Charging Tyrant",
+        "Improved attack strategies - added ground slam attack for Charging Tyrant with area damage effect",
+        "Updated wave configuration - integrated new zombie types into wave spawn system"
+      ],
+      "performance": []
+    }
+  },
+  {
     "version": "0.22.0",
     "date": "2025-11-22",
     "changes": {
