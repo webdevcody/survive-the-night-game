@@ -147,8 +147,17 @@ export class ThrowingKnifeProjectile extends Entity {
       // Check for collisions with collidable entities (trees, walls, boundaries, etc.)
       const collidingEntity = this.getEntityManager().getIntersectingCollidableEntity(this);
       if (collidingEntity) {
-        // Don't stop if we hit the shooter or the car
-        if (collidingEntity.getId() !== this.shooterId && !(collidingEntity instanceof Car)) {
+        // Check if it's an enemy - if so, let handleIntersections deal with it
+        const isEnemy =
+          collidingEntity.hasExt(Groupable) &&
+          collidingEntity.getExt(Groupable).getGroup() === "enemy";
+
+        // Don't stop if we hit the shooter, the car, or an enemy (enemies are handled by handleIntersections)
+        if (
+          collidingEntity.getId() !== this.shooterId &&
+          !(collidingEntity instanceof Car) &&
+          !isEnemy
+        ) {
           // Hit a boundary/collidable - create pickup item and remove projectile
           this.createPickupItem(newStepPosition);
           this.getEntityManager().markEntityForRemoval(this);

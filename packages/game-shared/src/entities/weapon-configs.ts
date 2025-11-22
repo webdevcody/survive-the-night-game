@@ -14,11 +14,11 @@ export const WEAPON_CONFIGS: Record<string, WeaponConfig> = {
     assets: {
       assetPrefix: "knife",
       spritePositions: {
-        right: { x: 17, y: 171 },
-        down: { x: 51, y: 171 },
-        up: { x: 34, y: 171 },
+        right: { x: 16, y: 32 },
+        down: { x: 48, y: 32 },
+        up: { x: 32, y: 32 },
       },
-      sheet: "default",
+      sheet: "items",
     },
     sound: "knife_swing",
     spawn: {
@@ -71,11 +71,11 @@ export const WEAPON_CONFIGS: Record<string, WeaponConfig> = {
     assets: {
       assetPrefix: "pistol",
       spritePositions: {
-        right: { x: 17, y: 149 },
-        down: { x: 51, y: 149 },
-        up: { x: 34, y: 149 },
+        right: { x: 16, y: 16 },
+        down: { x: 16, y: 16 },
+        up: { x: 16, y: 16 },
       },
-      sheet: "default",
+      sheet: "items",
     },
     sound: "pistol",
     ammoType: "pistol_ammo",
@@ -101,11 +101,11 @@ export const WEAPON_CONFIGS: Record<string, WeaponConfig> = {
     assets: {
       assetPrefix: "shotgun",
       spritePositions: {
-        right: { x: 17, y: 133 },
-        down: { x: 51, y: 133 },
-        up: { x: 34, y: 133 },
+        right: { x: 0, y: 64 },
+        down: { x: 16, y: 64 },
+        up: { x: 32, y: 64 },
       },
-      sheet: "default",
+      sheet: "items",
     },
     sound: "shotgun_fire",
     ammoType: "shotgun_ammo",

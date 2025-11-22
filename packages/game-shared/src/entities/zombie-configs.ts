@@ -22,17 +22,17 @@ export const ZOMBIE_CONFIGS: Record<string, ZombieConfig> = {
       debugWaypointColor: "yellow",
       minimapColor: "red",
       frameLayout: {
-        startX: 496,
-        downY: 76,
-        leftY: 95,
-        upY: 57,
+        startX: 0,
+        downY: 16,
+        leftY: 32,
+        upY: 0,
         totalFrames: 3,
-        sheet: "default", // Regular zombie uses default sheet
+        sheet: "characters", // Regular zombie uses characters sheet
       },
       deadFrame: {
-        x: 289,
-        y: 19,
-        sheet: "default", // Dead frame also on default sheet
+        x: 144,
+        y: 0,
+        sheet: "characters", // Dead frame also on characters sheet
       },
     },
     movementStrategy: "melee",

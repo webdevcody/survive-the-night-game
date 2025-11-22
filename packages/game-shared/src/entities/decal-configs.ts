@@ -9,22 +9,9 @@ export const DECAL_CONFIGS: Record<string, DecalConfig> = {
       type: "animated",
       frameCount: 5,
       frameLayout: {
-        startX: 85,
-        startY: 266,
-        sheet: "default",
-      },
-    },
-  },
-  fire: {
-    id: "fire",
-    category: "effect",
-    assets: {
-      assetKey: "fire",
-      type: "single",
-      position: {
-        x: 51,
-        y: 265,
-        sheet: "default",
+        startX: 0,
+        startY: 80,
+        sheet: "items",
       },
     },
   },
@@ -80,19 +67,6 @@ export const DECAL_CONFIGS: Record<string, DecalConfig> = {
         startY: 112,
         totalFrames: 4,
         sheet: "items",
-      },
-    },
-  },
-  spikes: {
-    id: "spikes",
-    category: "structure",
-    assets: {
-      assetKey: "spikes",
-      type: "single",
-      position: {
-        x: 357,
-        y: 57,
-        sheet: "default",
       },
     },
   },

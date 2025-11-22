@@ -8,7 +8,7 @@ export const PROJECTILE_CONFIGS: Record<string, ProjectileConfig> = {
       assetKey: "bullet",
       x: 68,
       y: 171,
-      sheet: "default",
+      sheet: "ground",
     },
   },
   acid_projectile: {
@@ -18,7 +18,7 @@ export const PROJECTILE_CONFIGS: Record<string, ProjectileConfig> = {
       assetKey: "acid_projectile",
       x: 96,
       y: 171,
-      sheet: "default",
+      sheet: "ground",
     },
   },
   grenade_projectile: {
@@ -38,7 +38,7 @@ export const PROJECTILE_CONFIGS: Record<string, ProjectileConfig> = {
       assetKey: "flame",
       x: 85,
       y: 266,
-      sheet: "default",
+      sheet: "ground",
     },
   },
   throwing_knife_projectile: {

@@ -298,9 +298,9 @@ export const ITEM_CONFIGS: Record<string, ItemConfig> = {
     placeSound: "build",
     assets: {
       assetKey: "spikes",
-      x: 357,
-      y: 57,
-      sheet: "default",
+      x: 0,
+      y: 16,
+      sheet: "items",
     },
     spawn: {
       enabled: true,

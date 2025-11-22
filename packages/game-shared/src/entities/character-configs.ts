@@ -32,7 +32,7 @@ export const CHARACTER_CONFIGS: Record<string, CharacterConfig> = {
       deadFrame: {
         x: 493,
         y: 190,
-        sheet: "default",
+        sheet: "characters",
       },
     },
   },
@@ -52,7 +52,7 @@ export const CHARACTER_CONFIGS: Record<string, CharacterConfig> = {
       deadFrame: {
         x: 493,
         y: 190,
-        sheet: "default",
+        sheet: "characters",
       },
     },
   },

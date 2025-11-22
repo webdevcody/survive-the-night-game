@@ -44,7 +44,7 @@ export const ENVIRONMENT_CONFIGS: Record<string, EnvironmentConfig> = {
       assetKey: "merchant",
       x: 0,
       y: 0,
-      sheet: "default",
+      sheet: "ground",
     },
   },
   boundary: {
@@ -55,19 +55,17 @@ export const ENVIRONMENT_CONFIGS: Record<string, EnvironmentConfig> = {
       assetKey: "boundary",
       x: 0,
       y: 0,
-      sheet: "default",
+      sheet: "ground",
     },
   },
   fire: {
     id: "fire",
     category: "obstacle",
     assets: {
-      // Note: Fire entity uses animated fire frames
-      // Client renders using imageLoader.getFrameIndex("fire", frameIndex)
       assetKey: "fire",
-      x: 85, // Start position matches flame decal animated frames
-      y: 266,
-      sheet: "default",
+      x: 0,
+      y: 80,
+      sheet: "items",
       totalFrames: 5, // 5 animation frames for fire
     },
   },

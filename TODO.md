@@ -16,6 +16,7 @@ Feel free to pick any item listed out here to work on.
 
 ## UX
 
+- when trying to type into the spawn item menu, I can't type because certain characters such as a are used already
 - interactive text over the merchant is hard to read, maybe add an option to offset interactive text or change color or add background color
 - when the car is destroyed, change it to a broken car sprite display
 - refactor how the car is defined in the editor. the car should not be part of the map but something in the entities list so it can be easily modified on death.
