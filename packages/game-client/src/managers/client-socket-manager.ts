@@ -521,6 +521,10 @@ export class ClientSocketManager {
     this.emitClientEvent(ClientSentEvents.SEND_CHAT, { message });
   }
 
+  public sendDisplayName(displayName: string) {
+    this.emitClientEvent(ClientSentEvents.SET_DISPLAY_NAME, { displayName });
+  }
+
   public requestRespawn() {
     this.emitClientEvent(ClientSentEvents.PLAYER_RESPAWN_REQUEST);
   }

@@ -132,9 +132,13 @@ export class UWebSocketsSocketAdapter implements ISocketAdapter {
 
             handlers.forEach((handler) => {
               try {
-                if (handlerArgs) {
-                  handler(...handlerArgs);
+                if (handlerArgs && handlerArgs.length > 0) {
+                  // handlerArgs is an array like [{ displayName: "..." }] or [data]
+                  // The handler wrapper from setupSocketListeners expects (payload)
+                  // and will add (context, socket) automatically
+                  handler(handlerArgs[0]);
                 } else if (payload.byteLength > 0) {
+                  // Fallback: pass raw payload if deserialization failed
                   handler(payload);
                 } else {
                   handler();

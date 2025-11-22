@@ -57,7 +57,7 @@ export function DropdownMenu({
 
       {isOpen && (
         <div
-          className={`absolute top-full mt-2 w-48 bg-gray-800 border border-gray-700 rounded-lg shadow-xl z-50 ${
+          className={`absolute top-full mt-2 w-48 bg-gray-800 border border-gray-700 rounded-lg shadow-xl z-[10000] ${
             align === "right" ? "right-0" : "left-0"
           }`}
         >

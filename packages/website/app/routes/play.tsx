@@ -4,6 +4,7 @@ import { PredictionConfigPanel } from "./play/components/PredictionConfigPanel";
 import { InstructionPanel } from "./play/components/InstructionPanel";
 import { CraftingPanel } from "./play/components/CraftingPanel";
 import { SpawnPanel } from "./play/components/SpawnPanel";
+import { NameChangePanel } from "./play/components/NameChangePanel";
 import { Button } from "~/components/ui/button";
 import { DropdownMenu, DropdownMenuItem } from "~/components/ui/dropdown-menu";
 
@@ -26,7 +27,10 @@ function GameClientLoader() {
   const [isClient, setIsClient] = useState(false);
   const [showInstructions, setShowInstructions] = useState(false);
   const [showSpawnPanel, setShowSpawnPanel] = useState(false);
+  const [showNameChangePanel, setShowNameChangePanel] = useState(false);
   const [gameClient, setGameClient] = useState<any>(null);
+  const [savedDisplayName, setSavedDisplayName] = useState<string>("");
+  const [currentPlayerName, setCurrentPlayerName] = useState<string>("");
 
   const handleLeaveGame = () => {
     // Clean up game client before leaving
@@ -40,6 +44,13 @@ function GameClientLoader() {
   useEffect(() => {
     // Mark as client-side after mount
     setIsClient(true);
+    // Load saved display name from localStorage (client-side only)
+    if (typeof window !== "undefined") {
+      const savedName = localStorage.getItem("displayName");
+      if (savedName) {
+        setSavedDisplayName(savedName);
+      }
+    }
   }, []);
 
   // Poll for game client once scene manager is loaded
@@ -65,9 +76,42 @@ function GameClientLoader() {
     return () => clearInterval(pollGameClient);
   }, [isClient]);
 
+  // Poll for current player name updates
+  useEffect(() => {
+    if (!gameClient || !isClient) return;
+
+    const updatePlayerName = () => {
+      const player = gameClient.getMyPlayer?.();
+      if (player) {
+        const name = player.getDisplayName?.();
+        if (name) {
+          setCurrentPlayerName(name);
+        }
+      }
+    };
+
+    // Update immediately
+    updatePlayerName();
+
+    // Poll for updates every 500ms
+    const interval = setInterval(updatePlayerName, 500);
+    return () => clearInterval(interval);
+  }, [gameClient, isClient]);
+
   // Handle I key for toggling instructions
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
+      // Don't process if user is typing in an input field
+      const target = e.target as HTMLElement;
+      if (
+        target.tagName === "INPUT" ||
+        target.tagName === "TEXTAREA" ||
+        target.isContentEditable ||
+        showNameChangePanel
+      ) {
+        return;
+      }
+
       // Don't toggle instructions if user is chatting
       if (gameClient && gameClient.isChatting && gameClient.isChatting()) {
         return;
@@ -80,31 +124,50 @@ function GameClientLoader() {
 
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [gameClient]);
+  }, [gameClient, showNameChangePanel]);
 
   // Handle ESC key to close any open panels (but not toggle)
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      // Don't close panels if user is chatting (chat handles ESC itself)
-      if (gameClient && gameClient.isChatting && gameClient.isChatting()) {
-        return;
-      }
+      // Don't process if user is typing in an input field (except ESC which should still work)
+      const target = e.target as HTMLElement;
+      const isInputField =
+        target.tagName === "INPUT" || target.tagName === "TEXTAREA" || target.isContentEditable;
 
+      // ESC can still close panels even from input fields
       if (e.key === "Escape") {
+        // Close name change panel if open (highest priority)
+        if (showNameChangePanel) {
+          setShowNameChangePanel(false);
+          e.stopPropagation();
+          return;
+        }
         // Close instructions panel if open
         if (showInstructions) {
           setShowInstructions(false);
+          return;
         }
         // Close spawn panel if open
         if (showSpawnPanel) {
           setShowSpawnPanel(false);
+          return;
         }
+      }
+
+      // For all other keys, don't process if user is typing in an input field
+      if (isInputField || showNameChangePanel) {
+        return;
+      }
+
+      // Don't close panels if user is chatting (chat handles ESC itself)
+      if (gameClient && gameClient.isChatting && gameClient.isChatting()) {
+        return;
       }
     };
 
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [gameClient, showInstructions, showSpawnPanel]);
+    window.addEventListener("keydown", handleKeyDown, true); // Use capture phase
+    return () => window.removeEventListener("keydown", handleKeyDown, true);
+  }, [gameClient, showInstructions, showSpawnPanel, showNameChangePanel]);
 
   useEffect(() => {
     if (!isClient || !canvasRef.current) {
@@ -140,7 +203,7 @@ function GameClientLoader() {
       <canvas ref={canvasRef} />
 
       {/* Top left controls - Game menu, Info button and Config panel */}
-      <div className="fixed left-4 top-4 z-50 flex items-start gap-2">
+      <div className="fixed left-4 top-4 z-[10000] flex items-start gap-2">
         <DropdownMenu
           trigger={
             <Button
@@ -160,14 +223,32 @@ function GameClientLoader() {
                 strokeLinecap="round"
                 strokeLinejoin="round"
               >
-                <circle cx="12" cy="12" r="3" />
-                <path d="M12 1v6m0 6v6m9-9h-6m-6 0H3" />
-                <path d="m19.8 4.2-4.2 4.2m0 7.2 4.2 4.2M4.2 19.8l4.2-4.2m0-7.2L4.2 4.2" />
+                <line x1="3" y1="12" x2="21" y2="12" />
+                <line x1="3" y1="6" x2="21" y2="6" />
+                <line x1="3" y1="18" x2="21" y2="18" />
               </svg>
             </Button>
           }
           align="left"
         >
+          <DropdownMenuItem onClick={() => setShowNameChangePanel(true)}>
+            <div className="flex items-center gap-2">
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                width="16"
+                height="16"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z" />
+              </svg>
+              <span>Change Name</span>
+            </div>
+          </DropdownMenuItem>
           <DropdownMenuItem onClick={handleLeaveGame}>
             <div className="flex items-center gap-2">
               <svg
@@ -230,6 +311,21 @@ function GameClientLoader() {
 
       {/* Instruction Panel Modal */}
       <InstructionPanel isOpen={showInstructions} onClose={() => setShowInstructions(false)} />
+
+      {/* Name Change Panel */}
+      <NameChangePanel
+        isOpen={showNameChangePanel}
+        onClose={() => setShowNameChangePanel(false)}
+        currentName={currentPlayerName || savedDisplayName || ""}
+        onNameChange={(newName) => {
+          // Update local state immediately for UI feedback
+          setSavedDisplayName(newName);
+          // Send to server
+          if (gameClient?.getSocketManager?.()) {
+            gameClient.getSocketManager().sendDisplayName(newName);
+          }
+        }}
+      />
 
       {/* Crafting Panel */}
       {gameClient && <CraftingPanel gameClient={gameClient} />}
