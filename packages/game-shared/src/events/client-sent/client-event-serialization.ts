@@ -5,6 +5,7 @@ import { PlayerInputEvent } from "./events/player-input";
 import { AdminCommandEvent } from "./events/admin-command";
 import { SetDisplayNameEvent } from "./events/set-display-name";
 import { MerchantBuyEvent } from "./events/merchant-buy";
+import { MerchantSellEvent } from "./events/merchant-sell";
 import { SendChatEvent } from "./events/send-chat";
 import { PlaceStructureEvent } from "./events/place-structure";
 import { PingEvent } from "./events/ping";
@@ -30,6 +31,7 @@ const eventRegistry: Record<string, IBufferWriter> = {
   [ClientSentEvents.ADMIN_COMMAND]: AdminCommandEvent,
   [ClientSentEvents.SET_DISPLAY_NAME]: SetDisplayNameEvent,
   [ClientSentEvents.MERCHANT_BUY]: MerchantBuyEvent,
+  [ClientSentEvents.MERCHANT_SELL]: MerchantSellEvent,
   [ClientSentEvents.SEND_CHAT]: SendChatEvent,
   [ClientSentEvents.PLACE_STRUCTURE]: PlaceStructureEvent,
   [ClientSentEvents.PING]: PingEvent,

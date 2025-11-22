@@ -3,7 +3,7 @@ import { playerInputHandler } from "./player-input";
 import { craftRequestHandler, startCraftingHandler, stopCraftingHandler } from "./craft";
 import { adminCommandHandler } from "./admin-command";
 import { setDisplayNameHandler } from "./display-name";
-import { merchantBuyHandler } from "./merchant";
+import { merchantBuyHandler, merchantSellHandler } from "./merchant";
 import { requestFullStateHandler } from "./full-state";
 import { pingHandler, pingUpdateHandler } from "./ping";
 import { sendChatHandler } from "./chat";
@@ -32,6 +32,7 @@ export const socketEventHandlers: SocketEventHandler[] = [
   adminCommandHandler,
   setDisplayNameHandler,
   merchantBuyHandler,
+  merchantSellHandler,
   requestFullStateHandler,
   pingHandler,
   pingUpdateHandler,
