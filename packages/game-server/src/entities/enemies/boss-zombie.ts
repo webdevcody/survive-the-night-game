@@ -23,7 +23,7 @@ export class BossZombie extends BossEnemy {
   private summonedMinionIds: Set<number> = new Set();
 
   constructor(gameManagers: IGameManagers) {
-    super(gameManagers, Entities.BOSS_ZOMBIE);
+    super(gameManagers, Entities.GRAVE_TYRANT);
     this.setMovementStrategy(new MeleeMovementStrategy());
     this.setAttackStrategy(new MeleeAttackStrategy());
   }

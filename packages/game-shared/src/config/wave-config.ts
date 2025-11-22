@@ -27,12 +27,12 @@ export const waveConfig = {
   /**
    * Mapping of wave numbers to boss entity types that should spawn on that wave.
    * Only one boss will spawn per wave (if a boss is already active, no new boss will spawn).
-   * Example: { 3: "boss_zombie", 5: "boss_zombie", 10: "boss_zombie" }
+   * Example: { 3: "grave_tyrant", 5: "grave_tyrant", 10: "grave_tyrant" }
    */
   BOSS_WAVE_MAPPING: {
-    3: "boss_zombie",
-    5: "boss_zombie",
-    10: "boss_zombie",
+    3: "grave_tyrant",
+    5: "charging_tyrant",
+    7: "grave_tyrant",
   },
 
   /**

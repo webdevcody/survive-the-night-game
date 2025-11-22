@@ -50,6 +50,16 @@ export interface LeapConfig {
   leapDuration: number; // How long the leap velocity boost lasts
 }
 
+export interface ChargeConfig {
+  chargeDistanceThreshold: number; // Start charging when player is within this distance
+  slamDistanceThreshold: number; // Slam when within this distance of player
+  recoveryTime: number; // Recovery time in seconds after slam
+  chargeSpeedMultiplier: number; // Speed multiplier during charge (e.g., 3 = 3x normal speed)
+  slamRadius: number; // Radius of ground slam attack
+  slamDamage: number; // Damage dealt by ground slam
+  knockbackForce: number; // Knockback force applied to players
+}
+
 export interface BossHealthBarConfig {
   width: number;
   height?: number;
@@ -82,6 +92,7 @@ export interface ZombieConfig {
   movementStrategy: "melee" | "flying" | "ranged";
   attackStrategy: "melee" | "exploding" | "ranged" | "leaping";
   leapConfig?: LeapConfig;
+  chargeConfig?: ChargeConfig;
   boss?: BossMetadata;
 }
 

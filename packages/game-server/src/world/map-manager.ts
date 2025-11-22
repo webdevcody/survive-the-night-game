@@ -657,7 +657,7 @@ export class MapManager implements IMapManager {
   }
 
   private isBossActive(): boolean {
-    return this.getEntityManager().getEntitiesByType(Entities.BOSS_ZOMBIE).length > 0;
+    return this.getEntityManager().getEntitiesByType(Entities.GRAVE_TYRANT).length > 0;
   }
 
   private getFallbackBossSpawnLocation(): { x: number; y: number } {

@@ -248,12 +248,12 @@ export const ZOMBIE_CONFIGS: Record<string, ZombieConfig> = {
       leapDuration: 0.7, // How long the leap velocity boost lasts
     },
   },
-  boss_zombie: {
-    id: "boss_zombie",
+  grave_tyrant: {
+    id: "grave_tyrant",
     category: EntityCategories.ZOMBIE,
     stats: {
       speed: 25,
-      health: 50,
+      health: 35,
       damage: 4,
       attackCooldown: 1.25,
       attackRadius: combatConfig.ZOMBIE_ATTACK_RADIUS,
@@ -261,7 +261,7 @@ export const ZOMBIE_CONFIGS: Record<string, ZombieConfig> = {
       size: PoolManager.getInstance().vector2.claim(16, 16),
     },
     assets: {
-      assetPrefix: "boss_zombie",
+      assetPrefix: "grave_tyrant",
       animationDuration: 700,
       debugWaypointColor: "crimson",
       minimapColor: "orange",
@@ -297,6 +297,67 @@ export const ZOMBIE_CONFIGS: Record<string, ZombieConfig> = {
         intensity: 0.35,
         durationMs: 220,
         intervalMs: 2000,
+      },
+    },
+  },
+  charging_tyrant: {
+    id: "charging_tyrant",
+    category: EntityCategories.ZOMBIE,
+    stats: {
+      speed: 15,
+      health: 50,
+      damage: 2,
+      attackCooldown: 2,
+      attackRadius: 64,
+      dropChance: 1,
+      size: PoolManager.getInstance().vector2.claim(16, 16),
+    },
+    assets: {
+      assetPrefix: "charging_tyrant",
+      animationDuration: 500,
+      debugWaypointColor: "darkred",
+      minimapColor: "darkorange",
+      frameLayout: {
+        startX: 0,
+        downY: 64,
+        leftY: 80,
+        upY: 48,
+        totalFrames: 3,
+        sheet: "characters",
+      },
+      deadFrame: {
+        x: 144,
+        y: 0,
+        sheet: "characters",
+      },
+    },
+    movementStrategy: "melee",
+    attackStrategy: "melee",
+    chargeConfig: {
+      chargeDistanceThreshold: 200, // Start charging when player is within this distance
+      slamDistanceThreshold: 24, // Slam when within this distance of player
+      recoveryTime: 2, // Recovery time in seconds after slam
+      chargeSpeedMultiplier: 6, // Speed multiplier during charge (3x normal speed)
+      slamRadius: 32, // Radius of ground slam attack
+      slamDamage: 2, // Damage dealt by ground slam
+      knockbackForce: 600, // Knockback force applied to players
+    },
+    boss: {
+      name: "Big Bertha",
+      nameColor: "#8b0000",
+      nameFont: "6px Arial",
+      healthBar: {
+        width: 24,
+        height: 3,
+        offsetY: 6,
+        backgroundColor: "rgba(0, 0, 0, 0.85)",
+        fillColor: "#ff3333",
+        borderColor: "#3d0000",
+      },
+      cameraShake: {
+        intensity: 2.0,
+        durationMs: 300,
+        intervalMs: 1500,
       },
     },
   },
