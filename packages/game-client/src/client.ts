@@ -749,7 +749,7 @@ export class GameClient {
     }
 
     const inventory = player.getExt(ClientInventory);
-    
+
     // If inventory is not full, can always pick up
     if (!inventory.isFull()) {
       return true;
@@ -765,7 +765,7 @@ export class GameClient {
     const itemConfig = itemRegistry.get(itemType);
     const hasCountState = itemState && typeof itemState.count === "number";
     const isStackable = itemConfig?.category === "ammo" || hasCountState;
-    
+
     // If stackable, check if player already has this item type
     if (isStackable) {
       const items = inventory.getItems();
@@ -835,7 +835,7 @@ export class GameClient {
         this.showInventoryFullMessage();
         return;
       }
-      
+
       // Send interact immediately
       if (this.socketManager) {
         this.socketManager.sendInteract(closestEntity.getId());

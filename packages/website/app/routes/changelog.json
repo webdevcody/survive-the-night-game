@@ -1,5 +1,26 @@
 [
   {
+    "version": "0.21.0",
+    "date": "2025-11-22",
+    "changes": {
+      "features": [
+        "Added merchant item selling functionality - players can now sell items to merchants for coins",
+        "Enhanced item pickup logic - improved feedback when inventory is full with visual messages and color-coded interaction text",
+        "Added interaction text background - improved visibility of interaction prompts with background styling",
+        "Enhanced SpawnPanel - categorized spawnable entities into weapons, items, zombies, and ammo for better organization",
+        "Improved inventory capacity checking - accurate detection of full inventory based on non-null item count"
+      ],
+      "bugFixes": [],
+      "refactoring": [
+        "Refactored merchant UI styling - improved merchant buy panel code organization and maintainability",
+        "Updated entity configurations - improved collision handling and entity type definitions",
+        "Enhanced stackable item system - better support for item stacking logic and validation",
+        "Improved map manager - enhanced entity spawning and management logic"
+      ],
+      "performance": []
+    }
+  },
+  {
     "version": "0.20.0",
     "date": "2025-11-21",
     "changes": {
