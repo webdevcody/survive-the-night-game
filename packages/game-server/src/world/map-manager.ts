@@ -1498,8 +1498,6 @@ export class MapManager implements IMapManager {
 
         poolManager.vector2.release(tileCenter);
 
-        console.log("hasZombie", hasZombie);
-
         if (!hasZombie) {
           validPositions.push(position);
         } else {
