@@ -1,5 +1,25 @@
 [
   {
+    "version": "0.22.0",
+    "date": "2025-11-22",
+    "changes": {
+      "features": [
+        "Added car destruction mechanics - car can now be destroyed, spawning zombies around the campsite and creating explosion effects",
+        "Enhanced zombie spawning system - implemented robust spawn logic that ensures zombies spawn at valid positions with proper distribution"
+      ],
+      "bugFixes": [
+        "Fixed chat widget player name retrieval - now correctly checks if entity is PlayerClient instance before retrieving name"
+      ],
+      "refactoring": [
+        "Refactored MapManager - introduced constants for ground and collidable tile IDs to improve readability and maintainability",
+        "Improved spawn logic and tile handling - enhanced biome proximity checks and merchant spawn logic for better configurability",
+        "Updated resource bag initialization - players now start with zero coins instead of twenty for improved game balance",
+        "Enhanced throwing knife projectile - now stops at boundaries while allowing it to pass through walls"
+      ],
+      "performance": []
+    }
+  },
+  {
     "version": "0.21.0",
     "date": "2025-11-22",
     "changes": {
