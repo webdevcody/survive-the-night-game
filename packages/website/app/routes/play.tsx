@@ -73,7 +73,8 @@ function GameClientLoader() {
         return;
       }
 
-      if (e.key === "i" || e.key === "I") {
+      // Don't toggle instructions if user is typing username
+      if (gameClient && (e.key === "i" || e.key === "I")) {
         setShowInstructions((prev) => !prev);
       }
     };
