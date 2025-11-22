@@ -40,6 +40,44 @@ import { CampsiteFire } from "@/entities/environment/campsite-fire";
 export const BIOME_SIZE = 16;
 export const MAP_SIZE = 9;
 
+// Ground tile IDs for valid spawn/placement locations
+const GROUND_TILE_ID_1 = 8;
+const GROUND_TILE_ID_2 = 4;
+const GROUND_TILE_ID_3 = 14;
+const GROUND_TILE_ID_4 = 24;
+
+// Collidable tile IDs
+const EMPTY_COLLIDABLE_TILE_ID = -1;
+const CAR_TILE_ID_LEFT = 265;
+const CAR_TILE_ID_RIGHT = 266;
+const MERCHANT_TILE_ID = 255;
+
+// Spawn configuration
+const SPAWN_RADIUS_TILES = 4;
+const IDLE_ZOMBIE_SPAWN_CHANCE = 0.01;
+const MERCHANT_BIOME_COUNT = 2;
+
+// Survivor spawn configuration
+const SURVIVOR_SPAWN_PROBABILITY = 0.5;
+const SURVIVOR_MIN_COUNT = 1;
+const SURVIVOR_MAX_COUNT = 2;
+
+// Campfire position within campsite biome
+const CAMPSITE_CAMPFIRE_LOCAL_X = 8;
+const CAMPSITE_CAMPFIRE_LOCAL_Y = 7;
+
+// Car dimensions
+const CAR_WIDTH_TILES = 2;
+
+// Biome proximity
+const CAMPSITE_PROXIMITY_DISTANCE = 1;
+
+// Debug zombie spawn offset
+const DEBUG_ZOMBIE_OFFSET_TILES = 16 * 4;
+
+// Map initialization
+const EMPTY_GROUND_TILE_VALUE = 0;
+
 /**
  * Build spawn table dynamically from item, weapon, and resource registries
  * Items/weapons/resources with spawn.enabled === true will be included
@@ -469,7 +507,6 @@ export class MapManager implements IMapManager {
     }
 
     // Create a spawn area around the center point (8x8 tiles)
-    const SPAWN_RADIUS_TILES = 4;
     const spawnAreaStartX = Math.max(0, centerTileX - SPAWN_RADIUS_TILES);
     const spawnAreaStartY = Math.max(0, centerTileY - SPAWN_RADIUS_TILES);
     const spawnAreaEndX = Math.min(totalSize, centerTileX + SPAWN_RADIUS_TILES);
@@ -486,8 +523,11 @@ export class MapManager implements IMapManager {
         // Skip if not on valid ground tile
         const groundTile = this.groundLayer[y]?.[x];
         const isValidGround =
-          groundTile === 8 || groundTile === 4 || groundTile === 14 || groundTile === 24;
-        const hasCollidable = this.collidablesLayer[y]?.[x] !== -1;
+          groundTile === GROUND_TILE_ID_1 ||
+          groundTile === GROUND_TILE_ID_2 ||
+          groundTile === GROUND_TILE_ID_3 ||
+          groundTile === GROUND_TILE_ID_4;
+        const hasCollidable = this.collidablesLayer[y]?.[x] !== EMPTY_COLLIDABLE_TILE_ID;
 
         if (!isValidGround || hasCollidable) {
           continue;
@@ -653,11 +693,11 @@ export class MapManager implements IMapManager {
       height * getConfig().world.TILE_SIZE
     );
     this.groundLayer = Array(height)
-      .fill(0)
-      .map(() => Array(width).fill(0));
+      .fill(EMPTY_GROUND_TILE_VALUE)
+      .map(() => Array(width).fill(EMPTY_GROUND_TILE_VALUE));
     this.collidablesLayer = Array(height)
-      .fill(0)
-      .map(() => Array(width).fill(-1));
+      .fill(EMPTY_GROUND_TILE_VALUE)
+      .map(() => Array(width).fill(EMPTY_COLLIDABLE_TILE_ID));
     this.carLocation = null;
     this.carEntity = null;
   }
@@ -692,11 +732,11 @@ export class MapManager implements IMapManager {
   private initializeMap() {
     const totalSize = BIOME_SIZE * MAP_SIZE;
     this.groundLayer = Array(totalSize)
-      .fill(0)
-      .map(() => Array(totalSize).fill(0));
+      .fill(EMPTY_GROUND_TILE_VALUE)
+      .map(() => Array(totalSize).fill(EMPTY_GROUND_TILE_VALUE));
     this.collidablesLayer = Array(totalSize)
-      .fill(0)
-      .map(() => Array(totalSize).fill(-1));
+      .fill(EMPTY_GROUND_TILE_VALUE)
+      .map(() => Array(totalSize).fill(EMPTY_COLLIDABLE_TILE_ID));
   }
 
   /**
@@ -707,7 +747,7 @@ export class MapManager implements IMapManager {
     const centerBiomeX = Math.floor(MAP_SIZE / 2);
     const centerBiomeY = Math.floor(MAP_SIZE / 2);
     const distance = Math.abs(biomeX - centerBiomeX) + Math.abs(biomeY - centerBiomeY);
-    return distance <= 1;
+    return distance <= CAMPSITE_PROXIMITY_DISTANCE;
   }
 
   /**
@@ -827,8 +867,8 @@ export class MapManager implements IMapManager {
     // Clear any previous merchant positions
     this.merchantBiomePositions = [];
 
-    // Spawn 2 merchant biomes
-    for (let i = 0; i < 2; i++) {
+    // Spawn merchant biomes
+    for (let i = 0; i < MERCHANT_BIOME_COUNT; i++) {
       const position = this.selectRandomBiomePosition([
         this.farmBiomePosition,
         this.gasStationBiomePosition,
@@ -854,7 +894,7 @@ export class MapManager implements IMapManager {
 
   private createForestBoundaries() {
     const totalSize = BIOME_SIZE * MAP_SIZE;
-    const carTiles = new Set([265, 266]);
+    const carTiles = new Set([CAR_TILE_ID_LEFT, CAR_TILE_ID_RIGHT]);
     let carSpawned = false;
 
     for (let y = 0; y < totalSize; y++) {
@@ -862,13 +902,13 @@ export class MapManager implements IMapManager {
         // Check collidables layer for any non-empty tile
         const collidableTileId = this.collidablesLayer[y][x];
 
-        if (collidableTileId !== -1) {
+        if (collidableTileId !== EMPTY_COLLIDABLE_TILE_ID) {
           if (carTiles.has(collidableTileId)) {
             // Always clear car tiles so they don't render as static map tiles
-            this.collidablesLayer[y][x] = -1;
+            this.collidablesLayer[y][x] = EMPTY_COLLIDABLE_TILE_ID;
 
             // Spawn the car entity if we find the left side (265) and haven't spawned yet
-            if (collidableTileId === 265 && !carSpawned) {
+            if (collidableTileId === CAR_TILE_ID_LEFT && !carSpawned) {
               const car = new Car(this.getGameManagers());
               const carPosition = PoolManager.getInstance().vector2.claim(
                 x * getConfig().world.TILE_SIZE,
@@ -902,9 +942,9 @@ export class MapManager implements IMapManager {
     const totalSize = BIOME_SIZE * MAP_SIZE;
     for (let y = 0; y < totalSize; y++) {
       for (let x = 0; x < totalSize; x++) {
-        // Check collidables layer for merchant tile (255)
+        // Check collidables layer for merchant tile
         const collidableTileId = this.collidablesLayer[y][x];
-        if (collidableTileId === 255) {
+        if (collidableTileId === MERCHANT_TILE_ID) {
           const merchant = new Merchant(this.getGameManagers());
           merchant.setPosition(
             PoolManager.getInstance().vector2.claim(
@@ -922,12 +962,15 @@ export class MapManager implements IMapManager {
     const totalSize = BIOME_SIZE * MAP_SIZE;
     for (let y = 0; y < totalSize; y++) {
       for (let x = 0; x < totalSize; x++) {
-        // Check ground layer for valid ground tiles (8, 4, 14, 24) and ensure no collidable is blocking
+        // Check ground layer for valid ground tiles and ensure no collidable is blocking
         const groundTile = this.groundLayer[y][x];
         const isValidGround =
-          groundTile === 8 || groundTile === 4 || groundTile === 14 || groundTile === 24;
+          groundTile === GROUND_TILE_ID_1 ||
+          groundTile === GROUND_TILE_ID_2 ||
+          groundTile === GROUND_TILE_ID_3 ||
+          groundTile === GROUND_TILE_ID_4;
 
-        if (isValidGround && this.collidablesLayer[y][x] === -1) {
+        if (isValidGround && this.collidablesLayer[y][x] === EMPTY_COLLIDABLE_TILE_ID) {
           this.trySpawnItemAt(x, y);
         }
       }
@@ -968,7 +1011,10 @@ export class MapManager implements IMapManager {
       const zombie = new Zombie(this.getGameManagers());
       const poolManager = PoolManager.getInstance();
       zombie.setPosition(
-        poolManager.vector2.claim(middleX + 16 * 4 * getConfig().world.TILE_SIZE, middleY)
+        poolManager.vector2.claim(
+          middleX + DEBUG_ZOMBIE_OFFSET_TILES * getConfig().world.TILE_SIZE,
+          middleY
+        )
       );
       this.getEntityManager().addEntity(zombie);
     }
@@ -976,7 +1022,6 @@ export class MapManager implements IMapManager {
 
   private spawnIdleZombies() {
     const totalSize = BIOME_SIZE * MAP_SIZE;
-    const IDLE_ZOMBIE_SPAWN_CHANCE = 0.01; // 0.5% chance per valid tile
 
     // Calculate campsite biome bounds (center biome)
     const centerBiomeX = Math.floor(MAP_SIZE / 2);
@@ -993,7 +1038,7 @@ export class MapManager implements IMapManager {
           continue;
         }
 
-        if (this.collidablesLayer[y][x] === -1) {
+        if (this.collidablesLayer[y][x] === EMPTY_COLLIDABLE_TILE_ID) {
           if (Math.random() < IDLE_ZOMBIE_SPAWN_CHANCE) {
             const zombie = new Zombie(this.getGameManagers(), true); // true = idle mode
             zombie.setPosition(
@@ -1011,7 +1056,8 @@ export class MapManager implements IMapManager {
 
   private spawnSurvivorsInBiome(biomeX: number, biomeY: number): void {
     // Spawn 1-2 survivors randomly
-    const survivorCount = Math.random() < 0.5 ? 1 : 2;
+    const survivorCount =
+      Math.random() < SURVIVOR_SPAWN_PROBABILITY ? SURVIVOR_MIN_COUNT : SURVIVOR_MAX_COUNT;
 
     // Collect all valid spawn positions within this biome
     const validPositions: { x: number; y: number }[] = [];
@@ -1021,9 +1067,12 @@ export class MapManager implements IMapManager {
         const mapX = biomeX * BIOME_SIZE + x;
         const groundTile = this.groundLayer[mapY][mapX];
         const isValidGround =
-          groundTile === 8 || groundTile === 4 || groundTile === 14 || groundTile === 24;
+          groundTile === GROUND_TILE_ID_1 ||
+          groundTile === GROUND_TILE_ID_2 ||
+          groundTile === GROUND_TILE_ID_3 ||
+          groundTile === GROUND_TILE_ID_4;
 
-        if (isValidGround && this.collidablesLayer[mapY][mapX] === -1) {
+        if (isValidGround && this.collidablesLayer[mapY][mapX] === EMPTY_COLLIDABLE_TILE_ID) {
           validPositions.push({ x: mapX, y: mapY });
         }
       }
@@ -1073,9 +1122,12 @@ export class MapManager implements IMapManager {
         const mapX = biomeX * BIOME_SIZE + x;
         const groundTile = this.groundLayer[mapY][mapX];
         const isValidGround =
-          groundTile === 8 || groundTile === 4 || groundTile === 14 || groundTile === 24;
+          groundTile === GROUND_TILE_ID_1 ||
+          groundTile === GROUND_TILE_ID_2 ||
+          groundTile === GROUND_TILE_ID_3 ||
+          groundTile === GROUND_TILE_ID_4;
 
-        if (isValidGround && this.collidablesLayer[mapY][mapX] === -1) {
+        if (isValidGround && this.collidablesLayer[mapY][mapX] === EMPTY_COLLIDABLE_TILE_ID) {
           validPositions.push({ x: mapX, y: mapY });
         }
       }
@@ -1186,8 +1238,8 @@ export class MapManager implements IMapManager {
     // Hard-code campfire entity spawn for campsite biome
     // Campfire position: x=8, y=7 within the biome (center of campsite)
     if (biome === CAMPSITE) {
-      const campfireLocalX = 8;
-      const campfireLocalY = 7;
+      const campfireLocalX = CAMPSITE_CAMPFIRE_LOCAL_X;
+      const campfireLocalY = CAMPSITE_CAMPFIRE_LOCAL_Y;
       const absoluteX = biomeX * BIOME_SIZE + campfireLocalX;
       const absoluteY = biomeY * BIOME_SIZE + campfireLocalY;
 
@@ -1228,14 +1280,17 @@ export class MapManager implements IMapManager {
     const totalSize = BIOME_SIZE * MAP_SIZE;
     const validPositions: Vector2[] = [];
 
-    // Collect all valid ground tile positions (8, 4, 14, 24 are grass/ground tiles)
+    // Collect all valid ground tile positions
     for (let y = 0; y < totalSize; y++) {
       for (let x = 0; x < totalSize; x++) {
         const groundTile = this.groundLayer[y][x];
         const isValidGround =
-          groundTile === 8 || groundTile === 4 || groundTile === 14 || groundTile === 24;
+          groundTile === GROUND_TILE_ID_1 ||
+          groundTile === GROUND_TILE_ID_2 ||
+          groundTile === GROUND_TILE_ID_3 ||
+          groundTile === GROUND_TILE_ID_4;
 
-        if (isValidGround && this.collidablesLayer[y][x] === -1) {
+        if (isValidGround && this.collidablesLayer[y][x] === EMPTY_COLLIDABLE_TILE_ID) {
           const poolManager = PoolManager.getInstance();
           const position = poolManager.vector2.claim(
             x * getConfig().world.TILE_SIZE,
@@ -1350,7 +1405,7 @@ export class MapManager implements IMapManager {
     // Car is 2 tiles wide (32px), check if position is within car bounds
     return (
       position.x >= carPos.x &&
-      position.x < carPos.x + getConfig().world.TILE_SIZE * 2 &&
+      position.x < carPos.x + getConfig().world.TILE_SIZE * CAR_WIDTH_TILES &&
       position.y >= carPos.y &&
       position.y < carPos.y + getConfig().world.TILE_SIZE
     );
@@ -1395,9 +1450,12 @@ export class MapManager implements IMapManager {
         // Check if it's a valid ground tile (8, 4, 14, 24) and no collidable blocking
         const groundTile = this.groundLayer[mapY][mapX];
         const isValidGround =
-          groundTile === 8 || groundTile === 4 || groundTile === 14 || groundTile === 24;
+          groundTile === GROUND_TILE_ID_1 ||
+          groundTile === GROUND_TILE_ID_2 ||
+          groundTile === GROUND_TILE_ID_3 ||
+          groundTile === GROUND_TILE_ID_4;
 
-        if (isValidGround && this.collidablesLayer[mapY][mapX] === -1) {
+        if (isValidGround && this.collidablesLayer[mapY][mapX] === EMPTY_COLLIDABLE_TILE_ID) {
           const poolManager = PoolManager.getInstance();
           const position = poolManager.vector2.claim(
             mapX * getConfig().world.TILE_SIZE,
@@ -1447,14 +1505,17 @@ export class MapManager implements IMapManager {
     // Check if it's a valid ground tile
     const groundTile = this.groundLayer[gridY]?.[gridX];
     const isValidGround =
-      groundTile === 8 || groundTile === 4 || groundTile === 14 || groundTile === 24;
+      groundTile === GROUND_TILE_ID_1 ||
+      groundTile === GROUND_TILE_ID_2 ||
+      groundTile === GROUND_TILE_ID_3 ||
+      groundTile === GROUND_TILE_ID_4;
 
     if (!isValidGround) {
       return false;
     }
 
     // Check if there's a collidable
-    if (this.collidablesLayer[gridY]?.[gridX] !== -1) {
+    if (this.collidablesLayer[gridY]?.[gridX] !== EMPTY_COLLIDABLE_TILE_ID) {
       return false;
     }
 
@@ -1511,14 +1572,17 @@ export class MapManager implements IMapManager {
         // Check if it's a valid ground tile
         const groundTile = this.groundLayer[y]?.[x];
         const isValidGround =
-          groundTile === 8 || groundTile === 4 || groundTile === 14 || groundTile === 24;
+          groundTile === GROUND_TILE_ID_1 ||
+          groundTile === GROUND_TILE_ID_2 ||
+          groundTile === GROUND_TILE_ID_3 ||
+          groundTile === GROUND_TILE_ID_4;
 
         if (!isValidGround) {
           continue;
         }
 
         // Check if there's a collidable
-        if (this.collidablesLayer[y]?.[x] !== -1) {
+        if (this.collidablesLayer[y]?.[x] !== EMPTY_COLLIDABLE_TILE_ID) {
           continue;
         }
 
@@ -1658,14 +1722,17 @@ export class MapManager implements IMapManager {
         // Check if it's a valid ground tile
         const groundTile = this.groundLayer[y]?.[x];
         const isValidGround =
-          groundTile === 8 || groundTile === 4 || groundTile === 14 || groundTile === 24;
+          groundTile === GROUND_TILE_ID_1 ||
+          groundTile === GROUND_TILE_ID_2 ||
+          groundTile === GROUND_TILE_ID_3 ||
+          groundTile === GROUND_TILE_ID_4;
 
         if (!isValidGround) {
           continue;
         }
 
         // Check if there's a collidable
-        if (this.collidablesLayer[y]?.[x] !== -1) {
+        if (this.collidablesLayer[y]?.[x] !== EMPTY_COLLIDABLE_TILE_ID) {
           continue;
         }
 
@@ -1742,9 +1809,12 @@ export class MapManager implements IMapManager {
       for (let x = 0; x < totalSize; x++) {
         const groundTile = this.groundLayer[y][x];
         const isValidGround =
-          groundTile === 8 || groundTile === 4 || groundTile === 14 || groundTile === 24;
+          groundTile === GROUND_TILE_ID_1 ||
+          groundTile === GROUND_TILE_ID_2 ||
+          groundTile === GROUND_TILE_ID_3 ||
+          groundTile === GROUND_TILE_ID_4;
 
-        if (isValidGround && this.collidablesLayer[y][x] === -1) {
+        if (isValidGround && this.collidablesLayer[y][x] === EMPTY_COLLIDABLE_TILE_ID) {
           validPositions.push({ x, y });
         }
       }
