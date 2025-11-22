@@ -41,6 +41,12 @@ export interface IMapManager {
   getGroundLayer(): number[][];
   getCollidablesLayer(): number[][];
   getCarLocation(): Vector2 | null;
+  isPositionValidForPlacement(
+    position: Vector2,
+    checkEntities?: boolean,
+    entitySize?: number
+  ): boolean;
+  getEmptyGroundTiles(center?: Vector2, radius?: number): Set<Vector2>;
 }
 
 export interface IGameServer {

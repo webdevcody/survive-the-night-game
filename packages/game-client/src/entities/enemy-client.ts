@@ -74,7 +74,9 @@ export abstract class EnemyClient extends ClientEntityBase implements IClientEnt
 
   getMaxHealth(): number {
     if (!this.hasExt(ClientDestructible)) {
-      console.warn(`Entity ${this.getId()} (${this.getType()}) does not have destructible extension`);
+      console.warn(
+        `Entity ${this.getId()} (${this.getType()}) does not have destructible extension`
+      );
       return 0;
     }
     const destructible = this.getExt(ClientDestructible);
@@ -83,7 +85,9 @@ export abstract class EnemyClient extends ClientEntityBase implements IClientEnt
 
   getHealth(): number {
     if (!this.hasExt(ClientDestructible)) {
-      console.warn(`Entity ${this.getId()} (${this.getType()}) does not have destructible extension`);
+      console.warn(
+        `Entity ${this.getId()} (${this.getType()}) does not have destructible extension`
+      );
       return 0;
     }
     const destructible = this.getExt(ClientDestructible);
@@ -99,7 +103,9 @@ export abstract class EnemyClient extends ClientEntityBase implements IClientEnt
 
   render(ctx: CanvasRenderingContext2D, gameState: GameState): void {
     if (!this.hasExt(ClientDestructible)) {
-      console.warn(`Enemy ${this.getId()} (${this.getType()}) does not have destructible extension, skipping render`);
+      console.warn(
+        `Enemy ${this.getId()} (${this.getType()}) does not have destructible extension, skipping render`
+      );
       return;
     }
 
@@ -118,7 +124,10 @@ export abstract class EnemyClient extends ClientEntityBase implements IClientEnt
       const targetPosition = this.getPosition();
       this.lastRenderPosition = this.lerpPosition(
         targetPosition,
-        PoolManager.getInstance().vector2.claim(this.lastRenderPosition.x, this.lastRenderPosition.y),
+        PoolManager.getInstance().vector2.claim(
+          this.lastRenderPosition.x,
+          this.lastRenderPosition.y
+        ),
         gameState.dt
       );
     }
@@ -220,8 +229,9 @@ export abstract class EnemyClient extends ClientEntityBase implements IClientEnt
     }
 
     // Debug hitboxes
+    const destructible = this.getExt(ClientDestructible);
     debugDrawHitbox(ctx, collidable.getHitBox(), "yellow");
-    debugDrawHitbox(ctx, getHitboxWithPadding(positionable.getPosition(), 0), "red");
+    debugDrawHitbox(ctx, destructible.getDamageBox(), "red");
     drawCenterPositionWithLabel(ctx, this.getCenterPosition());
 
     this.renderFlames(gameState, ctx, renderPosition);

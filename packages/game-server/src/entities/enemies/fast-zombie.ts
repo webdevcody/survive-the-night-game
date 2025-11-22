@@ -9,17 +9,15 @@ import { MeleeMovementStrategy } from "./strategies/movement";
 import { MeleeAttackStrategy } from "./strategies/attack";
 
 export class FastZombie extends BaseEnemy {
-  private readonly positionThreshold = 4; // Larger threshold for faster speed
+  // private readonly positionThreshold = 4; // Larger threshold for faster speed
 
   constructor(gameManagers: IGameManagers) {
     super(gameManagers, Entities.FAST_ZOMBIE);
 
     // Override collision box size and offset for smaller zombie
-    const poolManager = PoolManager.getInstance();
     const collidable = this.getExt(Collidable);
-    collidable
-      .setSize(this.config.stats.size)
-      .setOffset(poolManager.vector2.claim(this.positionThreshold, this.positionThreshold));
+    collidable.setSize(this.config.stats.size.clone().div(2));
+    // .setOffset(poolManager.vector2.claim(this.positionThreshold, this.positionThreshold));
 
     this.setMovementStrategy(new MeleeMovementStrategy());
     this.setAttackStrategy(new MeleeAttackStrategy());

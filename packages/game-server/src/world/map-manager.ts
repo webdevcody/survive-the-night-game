@@ -33,7 +33,7 @@ import type { BiomeData } from "@/world/biomes/types";
 import type { MapData } from "../../../game-shared/src/events/server-sent/events/map-event";
 import { getConfig } from "@/config";
 import { itemRegistry, weaponRegistry, resourceRegistry } from "@shared/entities";
-import { Entities } from "@shared/constants";
+import { Entities, getZombieTypesSet } from "@shared/constants";
 import { Crate } from "@/entities/items/crate";
 import { CampsiteFire } from "@/entities/environment/campsite-fire";
 
@@ -1273,6 +1273,177 @@ export class MapManager implements IMapManager {
     // Return a random position from valid positions
     const randomIndex = Math.floor(Math.random() * validPositions.length);
     return validPositions[randomIndex];
+  }
+
+  /**
+   * Checks if a specific position is a valid ground tile without collidables and without zombies.
+   * @param position The position to check (in pixels)
+   * @param checkEntities Whether to check for existing entities at the position (default: true)
+   * @param entitySize Size of entity to check for collisions (default: TILE_SIZE)
+   * @returns True if the position is valid for placement/spawning
+   */
+  public isPositionValidForPlacement(
+    position: Vector2,
+    checkEntities: boolean = true,
+    entitySize?: number
+  ): boolean {
+    const { TILE_SIZE } = getConfig().world;
+    const size = entitySize ?? TILE_SIZE;
+    const gridX = Math.floor(position.x / TILE_SIZE);
+    const gridY = Math.floor(position.y / TILE_SIZE);
+    const totalSize = BIOME_SIZE * MAP_SIZE;
+
+    // Check bounds
+    if (gridY < 0 || gridY >= totalSize || gridX < 0 || gridX >= totalSize) {
+      return false;
+    }
+
+    // Check if it's a valid ground tile
+    const groundTile = this.groundLayer[gridY]?.[gridX];
+    const isValidGround =
+      groundTile === 8 || groundTile === 4 || groundTile === 14 || groundTile === 24;
+
+    if (!isValidGround) {
+      return false;
+    }
+
+    // Check if there's a collidable
+    if (this.collidablesLayer[gridY]?.[gridX] !== -1) {
+      return false;
+    }
+
+    // Check if there are any entities at this position
+    if (checkEntities) {
+      const poolManager = PoolManager.getInstance();
+      const positionCenter = poolManager.vector2.claim(
+        position.x + size / 2,
+        position.y + size / 2
+      );
+      const nearbyEntities = this.getEntityManager().getNearbyEntities(positionCenter, size);
+
+      for (const entity of nearbyEntities) {
+        if (!entity.hasExt(Positionable)) continue;
+
+        const entityPos = entity.getExt(Positionable).getCenterPosition();
+        const dx = Math.abs(entityPos.x - positionCenter.x);
+        const dy = Math.abs(entityPos.y - positionCenter.y);
+
+        if (dx < size && dy < size) {
+          poolManager.vector2.release(positionCenter);
+          return false;
+        }
+      }
+
+      poolManager.vector2.release(positionCenter);
+    }
+
+    return true;
+  }
+
+  /**
+   * Returns a Set of positions that are valid ground tiles without collidables and without zombies.
+   * Optionally filters by a center position and radius.
+   * @param center Optional center position to filter positions around
+   * @param radius Optional radius around center position (in pixels)
+   * @returns Set of Vector2 positions representing valid empty ground tiles
+   */
+  public getEmptyGroundTiles(center?: Vector2, radius?: number): Set<Vector2> {
+    const { TILE_SIZE } = getConfig().world;
+    const totalSize = BIOME_SIZE * MAP_SIZE;
+    const validPositions = new Set<Vector2>();
+    const poolManager = PoolManager.getInstance();
+    const zombieTypes = getZombieTypesSet();
+
+    // Calculate bounds if center and radius are provided
+    let minTileX = 0;
+    let maxTileX = totalSize;
+    let minTileY = 0;
+    let maxTileY = totalSize;
+
+    if (center && radius !== undefined) {
+      const centerTileX = Math.floor(center.x / TILE_SIZE);
+      const centerTileY = Math.floor(center.y / TILE_SIZE);
+      const radiusTiles = Math.ceil(radius / TILE_SIZE);
+      minTileX = Math.max(0, centerTileX - radiusTiles);
+      maxTileX = Math.min(totalSize, centerTileX + radiusTiles);
+      minTileY = Math.max(0, centerTileY - radiusTiles);
+      maxTileY = Math.min(totalSize, centerTileY + radiusTiles);
+    }
+
+    // Iterate through tiles in the specified bounds
+    for (let y = minTileY; y < maxTileY; y++) {
+      for (let x = minTileX; x < maxTileX; x++) {
+        // Check if it's a valid ground tile
+        const groundTile = this.groundLayer[y]?.[x];
+        const isValidGround =
+          groundTile === 8 || groundTile === 4 || groundTile === 14 || groundTile === 24;
+
+        if (!isValidGround) {
+          continue;
+        }
+
+        // Check if there's a collidable
+        if (this.collidablesLayer[y]?.[x] !== -1) {
+          continue;
+        }
+
+        // Convert tile coordinates to pixel coordinates
+        const position = poolManager.vector2.claim(x * TILE_SIZE, y * TILE_SIZE);
+
+        // If center and radius are provided, check distance
+        if (center && radius !== undefined) {
+          const centerPos = poolManager.vector2.claim(
+            position.x + TILE_SIZE / 2,
+            position.y + TILE_SIZE / 2
+          );
+          const distance = center.distance(centerPos);
+          if (distance > radius) {
+            poolManager.vector2.release(centerPos);
+            poolManager.vector2.release(position);
+            continue;
+          }
+          poolManager.vector2.release(centerPos);
+        }
+
+        // Check if there are any zombies at this position
+        const tileCenter = poolManager.vector2.claim(
+          position.x + TILE_SIZE / 2,
+          position.y + TILE_SIZE / 2
+        );
+        const nearbyEntities = this.getEntityManager().getNearbyEntities(
+          tileCenter,
+          TILE_SIZE / 2,
+          zombieTypes
+        );
+
+        // Check if any nearby entities are zombies
+        let hasZombie = false;
+        for (const entity of nearbyEntities) {
+          if (zombieTypes.has(entity.getType())) {
+            // Verify the zombie is actually at this tile position
+            if (entity.hasExt(Positionable)) {
+              const entityPos = entity.getExt(Positionable).getPosition();
+              const tileX = Math.floor(entityPos.x / TILE_SIZE);
+              const tileY = Math.floor(entityPos.y / TILE_SIZE);
+              if (tileX === x && tileY === y) {
+                hasZombie = true;
+                break;
+              }
+            }
+          }
+        }
+
+        poolManager.vector2.release(tileCenter);
+
+        if (!hasZombie) {
+          validPositions.add(position);
+        } else {
+          poolManager.vector2.release(position);
+        }
+      }
+    }
+
+    return validPositions;
   }
 
   /**

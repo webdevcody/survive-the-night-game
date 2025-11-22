@@ -82,7 +82,7 @@ export const ZOMBIE_CONFIGS: Record<string, ZombieConfig> = {
       attackCooldown: 0.5,
       attackRadius: combatConfig.ZOMBIE_ATTACK_RADIUS,
       dropChance: 0.3,
-      size: PoolManager.getInstance().vector2.claim(8, 8),
+      size: PoolManager.getInstance().vector2.claim(16, 16),
     },
     assets: {
       assetPrefix: "fast_zombie",
@@ -266,11 +266,11 @@ export const ZOMBIE_CONFIGS: Record<string, ZombieConfig> = {
       debugWaypointColor: "crimson",
       minimapColor: "orange",
       frameLayout: {
-        startX: 0,
+        startX: 64,
         downY: 16,
         leftY: 32,
         upY: 0,
-        totalFrames: 4,
+        totalFrames: 3,
         sheet: "characters",
       },
       deadFrame: {

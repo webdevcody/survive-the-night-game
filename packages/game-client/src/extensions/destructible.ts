@@ -2,6 +2,8 @@ import { ExtensionTypes } from "../../../game-shared/src/util/extension-types";
 import { ClientExtensionSerialized } from "@/extensions/types";
 import { BaseClientExtension } from "./base-extension";
 import { BufferReader } from "@shared/util/buffer-serialization";
+import { ClientPositionable } from "./positionable";
+import { Hitbox } from "@shared/util/hitbox";
 
 export class ClientDestructible extends BaseClientExtension {
   public static readonly type = ExtensionTypes.DESTRUCTIBLE;
@@ -19,6 +21,18 @@ export class ClientDestructible extends BaseClientExtension {
 
   public isDead(): boolean {
     return this.health === 0;
+  }
+
+  public getDamageBox(): Hitbox {
+    const positionable = this.clientEntity.getExt(ClientPositionable);
+    const position = positionable.getPosition();
+    const size = positionable.getSize();
+    return {
+      x: position.x,
+      y: position.y,
+      width: size.x,
+      height: size.y,
+    };
   }
 
   public deserialize(data: ClientExtensionSerialized): this {

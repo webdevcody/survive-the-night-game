@@ -45,41 +45,10 @@ export function onPlaceStructure(
     return;
   }
 
-  // Validate grid position is clear
-  const gridX = Math.floor(data.position.x / TILE_SIZE);
-  const gridY = Math.floor(data.position.y / TILE_SIZE);
-  const mapData = context.getMapManager().getMapData();
-
-  if (
-    gridY < 0 ||
-    gridY >= mapData.collidables.length ||
-    gridX < 0 ||
-    gridX >= mapData.collidables[0].length
-  ) {
-    console.log(`Player ${player.getId()} tried to place ${data.itemType} out of bounds`);
+  // Validate grid position is clear using MapManager helper
+  if (!context.getMapManager().isPositionValidForPlacement(placePos, true, TILE_SIZE)) {
+    console.log(`Player ${player.getId()} tried to place ${data.itemType} at invalid position`);
     return;
-  }
-
-  if (mapData.collidables[gridY][gridX] !== -1) {
-    console.log(`Player ${player.getId()} tried to place ${data.itemType} on occupied tile`);
-    return;
-  }
-
-  // Check if any entities are at this position
-  const structureSize = TILE_SIZE;
-  const nearbyEntities = context.getEntityManager().getNearbyEntities(placePos, structureSize * 2);
-
-  for (const entity of nearbyEntities) {
-    if (!entity.hasExt(Positionable)) continue;
-
-    const entityPos = entity.getExt(Positionable).getCenterPosition();
-    const dx = Math.abs(entityPos.x - (placePos.x + structureSize / 2));
-    const dy = Math.abs(entityPos.y - (placePos.y + structureSize / 2));
-
-    if (dx < structureSize && dy < structureSize) {
-      console.log(`Player ${player.getId()} tried to place ${data.itemType} on existing entity`);
-      return;
-    }
   }
 
   // Remove item from inventory

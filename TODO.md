@@ -6,8 +6,35 @@ Feel free to pick any item listed out here to work on.
 
 - if you pick up a wall that is damaged and put it back down, it seems to go back to full hp again.
 
+- the server randomly crashed with the following
+
+/app/packages/game-server/dist/server.cjs:2686
+throw new Error(`Unknown entity type: ${type}`);
+^
+
+Error: Unknown entity type: arrow
+at EntityTypeRegistry.encode (/app/packages/game-server/dist/server.cjs:2686:13)
+at \_Arrow.serializeToBuffer (/app/packages/game-server/dist/server.cjs:3892:42)
+at BufferManager.writeEntity (/app/packages/game-server/dist/server.cjs:14203:12)
+at Broadcaster.broadcastGameStateUpdate (/app/packages/game-server/dist/server.cjs:14911:31)
+at Broadcaster.broadcastEvent (/app/packages/game-server/dist/server.cjs:14854:12)
+at ServerSocketManager.broadcastEvent (/app/packages/game-server/dist/server.cjs:16053:22)
+at GameLoop.broadcastGameState (/app/packages/game-server/dist/server.cjs:17276:24)
+at GameLoop.update (/app/packages/game-server/dist/server.cjs:17176:10)
+at Timeout.\_onTimeout (/app/packages/game-server/dist/server.cjs:17114:12)
+at listOnTimeout (node:internal/timers:605:17)
+
+Node.js v24.11.
+
 ## DevEx
 
+- when inventory is full, and you are trying to interact with a progress interable, the radial progress bar inifintely just loops, instead give feedback to the user that their inventory is full (make interactive text red and put small inventory full text above / below), (make item flip)
+- scale the merchant menu on smaller screens
+- Can you make it where we scroll our mouse to switch hotbar slots
+- some items are way to expensive
+- key shortcuts to switch to prev weapon (q)
+- force next round button
+- ability to sell weapons to merchant. on the merchant panel, add a buy / sell tab, buy is default, when they click sell, show every item in their inventory and allow them to click it to sell it for X amount of money. sell for 10% less
 - all the item configs should reference the proper item sheets and remove "default" from all over the codebase. first start with any items that are set to "default", those need to be refactored, then refactor the javascript
 - I need to refactor how the assets are managed. At the very least, throw an error if the same asset is loaded with the same asset key.
 - check if the deserialize method on extensions is used, at this point we should only be using deserializeFromBuffer
@@ -16,6 +43,10 @@ Feel free to pick any item listed out here to work on.
 
 ## UX
 
+- boss zombie is spawning zombies in trees
+- small zombies keep getting stuck pathfinding **important**
+- buying shotgun ammo from merchant and I can't use it
+- throwing knifes don't go over walls or trees which is annoying
 - when trying to type into the spawn item menu, I can't type because certain characters such as a are used already
 - interactive text over the merchant is hard to read, maybe add an option to offset interactive text or change color or add background color
 - when the car is destroyed, change it to a broken car sprite display

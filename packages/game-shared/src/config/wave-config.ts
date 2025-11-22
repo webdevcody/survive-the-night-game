@@ -9,7 +9,7 @@ export const waveConfig = {
   /**
    * Preparation phase duration in seconds (time between waves)
    */
-  PREPARATION_DURATION: 90,
+  PREPARATION_DURATION: 60,
 
   /**
    * Active wave duration in seconds
@@ -20,7 +20,7 @@ export const waveConfig = {
   /**
    * Delay before automatically starting first wave (in seconds)
    */
-  FIRST_WAVE_DELAY: 90,
+  FIRST_WAVE_DELAY: 60,
 
   /**
    * Mapping of wave numbers to boss entity types that should spawn on that wave.

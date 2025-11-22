@@ -10,6 +10,7 @@ import { BossSummonEvent } from "../../../../game-shared/src/events/server-sent/
 import Vector2 from "@shared/util/vector2";
 import Destructible from "@/extensions/destructible";
 import PoolManager from "@/util/pool-manager";
+import { getConfig } from "@/config";
 
 export class BossZombie extends BossEnemy {
   private static readonly SUMMON_INTERVAL_SECONDS = 8;
@@ -53,7 +54,10 @@ export class BossZombie extends BossEnemy {
     const summons: Array<{ x: number; y: number }> = [];
 
     for (let i = 0; i < spawnCount; i++) {
-      const spawnPosition = this.createSummonPosition();
+      const spawnPosition = this.findValidSpawnPosition();
+      if (!spawnPosition) {
+        continue;
+      }
       const minion = new Zombie(this.getGameManagers());
       minion.setPosition(spawnPosition);
       this.getEntityManager().addEntity(minion);
@@ -82,18 +86,60 @@ export class BossZombie extends BossEnemy {
     }
   }
 
-  private createSummonPosition(): Vector2 {
+  private findValidSpawnPosition(): Vector2 | null {
     const positionable = this.getExt(Positionable);
     const center = positionable.getCenterPosition();
-    const angle = Math.random() * Math.PI * 2;
-    const distance =
-      BossZombie.MIN_SUMMON_RADIUS +
-      Math.random() * (BossZombie.SUMMON_RADIUS - BossZombie.MIN_SUMMON_RADIUS);
-    const position = PoolManager.getInstance().vector2.claim(
-      center.x + Math.cos(angle) * distance,
-      center.y + Math.sin(angle) * distance
-    );
-    return position;
+    const mapManager = this.getGameManagers().getMapManager();
+
+    // Get all empty ground tiles within summon radius
+    const emptyTiles = mapManager.getEmptyGroundTiles(center, BossZombie.SUMMON_RADIUS);
+
+    if (emptyTiles.size === 0) {
+      return null;
+    }
+
+    // Filter tiles to only those within the min/max radius
+    const validTiles: Vector2[] = [];
+    const poolManager = PoolManager.getInstance();
+
+    for (const tile of emptyTiles) {
+      const tileCenter = poolManager.vector2.claim(
+        tile.x + getConfig().world.TILE_SIZE / 2,
+        tile.y + getConfig().world.TILE_SIZE / 2
+      );
+      const distance = center.distance(tileCenter);
+
+      if (distance >= BossZombie.MIN_SUMMON_RADIUS && distance <= BossZombie.SUMMON_RADIUS) {
+        validTiles.push(tile);
+      } else {
+        poolManager.vector2.release(tile);
+      }
+
+      poolManager.vector2.release(tileCenter);
+    }
+
+    if (validTiles.length === 0) {
+      // Release remaining tiles
+      for (const tile of emptyTiles) {
+        if (!validTiles.includes(tile)) {
+          poolManager.vector2.release(tile);
+        }
+      }
+      return null;
+    }
+
+    // Pick a random valid tile
+    const randomIndex = Math.floor(Math.random() * validTiles.length);
+    const selectedTile = validTiles[randomIndex];
+
+    // Release other tiles
+    for (const tile of validTiles) {
+      if (tile !== selectedTile) {
+        poolManager.vector2.release(tile);
+      }
+    }
+
+    return selectedTile;
   }
 
   private broadcastSummonEvent(summons: Array<{ x: number; y: number }>): void {
