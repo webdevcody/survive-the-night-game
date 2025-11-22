@@ -28,7 +28,7 @@ export const WEAPON_CONFIGS: Record<string, WeaponConfig> = {
     merchant: {
       enabled: true,
       buyable: true,
-      price: 15,
+      price: 10,
     },
   },
   baseball_bat: {
@@ -57,7 +57,7 @@ export const WEAPON_CONFIGS: Record<string, WeaponConfig> = {
     merchant: {
       enabled: true,
       buyable: true,
-      price: 20,
+      price: 15,
     },
   },
   pistol: {
@@ -86,7 +86,7 @@ export const WEAPON_CONFIGS: Record<string, WeaponConfig> = {
     merchant: {
       enabled: true,
       buyable: true,
-      price: 50,
+      price: 20,
     },
   },
   shotgun: {
@@ -116,7 +116,7 @@ export const WEAPON_CONFIGS: Record<string, WeaponConfig> = {
     merchant: {
       enabled: true,
       buyable: true,
-      price: 75,
+      price: 25,
     },
   },
   bolt_action_rifle: {
@@ -144,7 +144,7 @@ export const WEAPON_CONFIGS: Record<string, WeaponConfig> = {
     merchant: {
       enabled: true,
       buyable: true,
-      price: 100,
+      price: 30,
     },
   },
   ak47: {
@@ -172,7 +172,7 @@ export const WEAPON_CONFIGS: Record<string, WeaponConfig> = {
     merchant: {
       enabled: true,
       buyable: true,
-      price: 150,
+      price: 40,
     },
   },
   grenade_launcher: {
@@ -196,7 +196,7 @@ export const WEAPON_CONFIGS: Record<string, WeaponConfig> = {
     merchant: {
       enabled: true,
       buyable: true,
-      price: 200,
+      price: 50,
     },
   },
   flamethrower: {
@@ -220,7 +220,7 @@ export const WEAPON_CONFIGS: Record<string, WeaponConfig> = {
     merchant: {
       enabled: true,
       buyable: true,
-      price: 180,
+      price: 50,
     },
   },
   bow: {
@@ -248,7 +248,7 @@ export const WEAPON_CONFIGS: Record<string, WeaponConfig> = {
     merchant: {
       enabled: true,
       buyable: true,
-      price: 40,
+      price: 20,
     },
   },
   grenade: {
@@ -294,7 +294,7 @@ export const WEAPON_CONFIGS: Record<string, WeaponConfig> = {
     merchant: {
       enabled: true,
       buyable: true,
-      price: 25,
+      price: 20,
     },
     recipe: {
       enabled: true,
@@ -322,7 +322,7 @@ export const WEAPON_CONFIGS: Record<string, WeaponConfig> = {
     merchant: {
       enabled: true,
       buyable: true,
-      price: 20,
+      price: 10,
     },
     recipe: {
       enabled: true,

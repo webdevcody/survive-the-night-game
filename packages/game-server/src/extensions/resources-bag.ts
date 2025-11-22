@@ -26,7 +26,7 @@ export default class ResourcesBag extends ExtensionBase<ResourcesBagFields> {
       initialResources[resource] = 0;
       // Also initialize the Map for internal use
     });
-    super(self, { coins: 20, resources: initialResources });
+    super(self, { coins: 0, resources: initialResources });
     this.broadcaster = broadcaster;
 
     // Initialize all resources to 0 in Map

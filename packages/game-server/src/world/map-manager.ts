@@ -713,10 +713,9 @@ export class MapManager implements IMapManager {
     this.selectRandomCityBiomePosition();
     this.selectRandomDockBiomePosition();
     this.selectRandomShedBiomePosition();
-    this.selectRandomMerchantBiomePositions();
     this.fillMapWithBiomes();
     this.createForestBoundaries();
-    // this.spawnMerchants();
+    this.spawnMerchants();
     this.spawnItems();
     this.spawnIdleZombies();
     this.spawnDebugZombieIfEnabled();
@@ -861,27 +860,6 @@ export class MapManager implements IMapManager {
       this.cityBiomePosition,
       this.dockBiomePosition,
     ]);
-  }
-
-  private selectRandomMerchantBiomePositions() {
-    // Clear any previous merchant positions
-    this.merchantBiomePositions = [];
-
-    // Spawn merchant biomes
-    for (let i = 0; i < MERCHANT_BIOME_COUNT; i++) {
-      const position = this.selectRandomBiomePosition([
-        this.farmBiomePosition,
-        this.gasStationBiomePosition,
-        this.cityBiomePosition,
-        this.dockBiomePosition,
-        this.shedBiomePosition,
-        ...this.merchantBiomePositions,
-      ]);
-
-      if (position) {
-        this.merchantBiomePositions.push(position);
-      }
-    }
   }
 
   private fillMapWithBiomes() {

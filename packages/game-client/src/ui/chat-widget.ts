@@ -188,8 +188,9 @@ export class ChatWidget {
         text = chat.message;
       } else {
         // Get the player entity by ID to get their display name
-        const player = getEntityById(gameState, chat.playerId) as PlayerClient;
-        const userName = player?.getDisplayName() ?? "Unknown";
+        const entity = getEntityById(gameState, chat.playerId);
+        const userName =
+          entity instanceof PlayerClient ? entity.getDisplayName() : "Unknown";
         text = `${userName}: ${chat.message}`;
       }
       const lines = this.wrapText(text);
