@@ -14,7 +14,7 @@ import { debugDrawHitbox, drawCenterPositionWithLabel } from "@/util/debug";
 import { createFlashEffect } from "@/util/render";
 import { Z_INDEX } from "@shared/map";
 import { Direction, normalizeDirection } from "../../../game-shared/src/util/direction";
-import { getHitboxWithPadding, Hitbox } from "../../../game-shared/src/util/hitbox";
+import { Hitbox } from "../../../game-shared/src/util/hitbox";
 import { Input } from "../../../game-shared/src/util/input";
 import { InventoryItem } from "../../../game-shared/src/util/inventory";
 import { itemRegistry } from "@shared/entities";

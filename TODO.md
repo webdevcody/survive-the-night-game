@@ -34,7 +34,6 @@ Node.js v24.11.
 - some items are way to expensive
 - key shortcuts to switch to prev weapon (q)
 - force next round button
-- ability to sell weapons to merchant. on the merchant panel, add a buy / sell tab, buy is default, when they click sell, show every item in their inventory and allow them to click it to sell it for X amount of money. sell for 10% less
 - all the item configs should reference the proper item sheets and remove "default" from all over the codebase. first start with any items that are set to "default", those need to be refactored, then refactor the javascript
 - I need to refactor how the assets are managed. At the very least, throw an error if the same asset is loaded with the same asset key.
 - check if the deserialize method on extensions is used, at this point we should only be using deserializeFromBuffer
@@ -43,23 +42,16 @@ Node.js v24.11.
 
 ## UX
 
-- boss zombie is spawning zombies in trees
-- small zombies keep getting stuck pathfinding **important**
 - buying shotgun ammo from merchant and I can't use it
 - throwing knifes don't go over walls or trees which is annoying
-- when trying to type into the spawn item menu, I can't type because certain characters such as a are used already
-- interactive text over the merchant is hard to read, maybe add an option to offset interactive text or change color or add background color
 - when the car is destroyed, change it to a broken car sprite display
 - refactor how the car is defined in the editor. the car should not be part of the map but something in the entities list so it can be easily modified on death.
 
 ## Game Design
 
-- gasoline and torch need to be configured to be on the items sheet
-- all items should live on the items sheet
 - new zombie types
   - a new zombie type who immobilizes you if hit
   - a new zombie type who can poison you
-- remove decal idea from map
 - Could not spawn all zombies at location (1136, 848)
 - ​​add gate that works like wall but users can go through while zombies not
 - combine weapon / ammo in hud so it's easier to read how much you got left
@@ -69,18 +61,15 @@ Node.js v24.11.
 - on death, a player will now turn into a zombie. plan and implement this implementation. player zombies will spawn on the outskirts of the map.
 - have a weapon menu separate from inventory
 - changing items with scroll bar would be useful
-- I agree, having a semi-translucened circurar weapon inventory would look cool, it would enable to quickly changing weapons.
+- having a semi-translucened circurar weapon inventory would look cool, it would enable to quickly changing weapons.
 
 ## Bug
 
-- add ability to drag fullscreen map around with a click drag approach
-- figure out why negative latencies are a thing in the leaderboard
 - sometimes the shift / run gets stuck down and I have to press shift again to untoggle it
 
 ## Devex
 
 - when the server updates, it doesn't auto refresh the users... just force reload their browser
-- hook the configuration panel so that values propigate to the server as well so I don't have to restart the server when tweaking values
 - proximity voice chat
 
 ## Lobby
