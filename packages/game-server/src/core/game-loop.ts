@@ -40,7 +40,7 @@ export class GameLoop {
   private timer: ReturnType<typeof setInterval> | null = null;
 
   // Wave system state
-  private waveNumber: number = 1;
+  private waveNumber: number = getConfig().wave.START_WAVE_NUMBER;
   private waveState: WaveState = WaveState.PREPARATION;
   private phaseStartTime: number = Date.now();
   private phaseDuration: number = getConfig().wave.FIRST_WAVE_DELAY;
@@ -108,7 +108,7 @@ export class GameLoop {
     this.isGameOver = false;
 
     // Initialize wave system
-    this.waveNumber = 1;
+    this.waveNumber = getConfig().wave.START_WAVE_NUMBER;
     this.waveState = WaveState.PREPARATION;
     this.phaseStartTime = Date.now();
     this.phaseDuration = getConfig().wave.FIRST_WAVE_DELAY;

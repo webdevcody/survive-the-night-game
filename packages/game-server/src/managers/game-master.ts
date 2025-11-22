@@ -63,9 +63,30 @@ export class GameMaster {
       spitter: 0,
     };
 
+    // Calculate base counts using floor
+    const counts: Array<{ type: string; count: number; remainder: number }> = [];
+    let totalAssigned = 0;
+
     normalizedTypes.forEach((type) => {
       const count = Math.floor(totalZombies * type.ratio);
-      distribution[type.type as keyof Omit<ZombieDistribution, "total">] = count;
+      const remainder = totalZombies * type.ratio - count;
+      counts.push({ type: type.type, count, remainder });
+      totalAssigned += count;
+    });
+
+    // Distribute any remainder to ensure exact total
+    const remainder = totalZombies - totalAssigned;
+    if (remainder > 0) {
+      // Sort by remainder (largest first) and distribute the remainder
+      counts.sort((a, b) => b.remainder - a.remainder);
+      for (let i = 0; i < remainder; i++) {
+        counts[i].count++;
+      }
+    }
+
+    // Assign counts to distribution
+    counts.forEach(({ type, count }) => {
+      distribution[type as keyof Omit<ZombieDistribution, "total">] = count;
     });
 
     return distribution;

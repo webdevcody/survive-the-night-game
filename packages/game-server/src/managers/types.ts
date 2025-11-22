@@ -47,6 +47,12 @@ export interface IMapManager {
     entitySize?: number
   ): boolean;
   getEmptyGroundTiles(center?: Vector2, radius?: number): Set<Vector2>;
+  getValidSpawnPositionsInBiome(biomeX: number, biomeY: number): Vector2[];
+  findRandomValidSpawnPosition(
+    center: Vector2,
+    minRadius: number,
+    maxRadius: number
+  ): Vector2 | null;
 }
 
 export interface IGameServer {

@@ -20,16 +20,25 @@ import { renderBossPresentation } from "./util/boss-presentation";
 import Vector2 from "@shared/util/vector2";
 import PoolManager from "@shared/util/pool-manager";
 import { DEBUG_SHOW_WAYPOINTS } from "@shared/debug";
-import { determineDirection } from "@shared/util/direction";
+import { determineDirection, Direction } from "@shared/util/direction";
 import { getHitboxWithPadding } from "@shared/util/hitbox";
 import { roundVector2 } from "@shared/util/physics";
 import { EntityCategory, EntityCategories, zombieRegistry, ZombieConfig } from "@shared/entities";
 import { getConfig } from "@shared/config";
 
+const ZOMBIE_MOVEMENT_EPSILON = 0.5; // Threshold to prevent animation during pause periods
+
+function isMoving(vector: Vector2): boolean {
+  return (
+    Math.abs(vector.x) > ZOMBIE_MOVEMENT_EPSILON || Math.abs(vector.y) > ZOMBIE_MOVEMENT_EPSILON
+  );
+}
+
 export abstract class EnemyClient extends ClientEntityBase implements IClientEntity, Renderable {
   private lastRenderPosition = { x: 0, y: 0 };
   private previousHealth: number | undefined;
   private damageFlashUntil: number = 0;
+  private lastFacing: Direction = Direction.Down;
   protected debugWaypoint: Vector2 | null = null;
   protected config: ZombieConfig;
 
@@ -203,16 +212,36 @@ export abstract class EnemyClient extends ClientEntityBase implements IClientEnt
   ) {
     const positionable = this.getExt(ClientPositionable);
     const collidable = this.getExt(ClientCollidable);
-    const facing = determineDirection(this.getVelocity());
-    const frameIndex = getFrameIndex(gameState.startedAt, {
-      duration: this.getAnimationDuration(),
-      frames: this.getAnimationFrameCount(),
-    });
-    const image = this.imageLoader.getFrameWithDirection(
-      this.getEnemyAssetPrefix() as any,
-      facing,
-      frameIndex
-    );
+    const velocity = this.getVelocity();
+    const movingByVelocity = isMoving(velocity);
+    // Only animate if velocity indicates movement (server sets velocity to 0 during pause)
+    // Don't use position delta to avoid animation from interpolation jitter when paused
+    const shouldAnimate = movingByVelocity;
+    
+    let image: HTMLImageElement;
+    if (shouldAnimate) {
+      // Update facing direction when moving
+      const facing = determineDirection(velocity);
+      if (facing !== null) {
+        this.lastFacing = facing;
+      }
+      
+      const frameIndex = getFrameIndex(gameState.startedAt, {
+        duration: this.getAnimationDuration(),
+        frames: this.getAnimationFrameCount(),
+      });
+      image = this.imageLoader.getFrameWithDirection(
+        this.getEnemyAssetPrefix() as any,
+        this.lastFacing,
+        frameIndex
+      );
+    } else {
+      // Use static frame when idle
+      image = this.imageLoader.getWithDirection(
+        this.getEnemyAssetPrefix() as any,
+        this.lastFacing
+      );
+    }
     ctx.drawImage(image, renderPosition.x, renderPosition.y);
 
     if (this.config.boss) {

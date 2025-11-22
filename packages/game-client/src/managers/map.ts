@@ -357,6 +357,7 @@ export class MapManager {
   }
 
   renderDarkness(ctx: CanvasRenderingContext2D) {
+    if (!getConfig().render.RENDER_DARKNESS) return;
     if (!this.groundLayer) return;
 
     const currentTime = Date.now();

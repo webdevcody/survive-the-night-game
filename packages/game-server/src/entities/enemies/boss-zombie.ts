@@ -91,55 +91,11 @@ export class BossZombie extends BossEnemy {
     const center = positionable.getCenterPosition();
     const mapManager = this.getGameManagers().getMapManager();
 
-    // Get all empty ground tiles within summon radius
-    const emptyTiles = mapManager.getEmptyGroundTiles(center, BossZombie.SUMMON_RADIUS);
-
-    if (emptyTiles.size === 0) {
-      return null;
-    }
-
-    // Filter tiles to only those within the min/max radius
-    const validTiles: Vector2[] = [];
-    const poolManager = PoolManager.getInstance();
-
-    for (const tile of emptyTiles) {
-      const tileCenter = poolManager.vector2.claim(
-        tile.x + getConfig().world.TILE_SIZE / 2,
-        tile.y + getConfig().world.TILE_SIZE / 2
-      );
-      const distance = center.distance(tileCenter);
-
-      if (distance >= BossZombie.MIN_SUMMON_RADIUS && distance <= BossZombie.SUMMON_RADIUS) {
-        validTiles.push(tile);
-      } else {
-        poolManager.vector2.release(tile);
-      }
-
-      poolManager.vector2.release(tileCenter);
-    }
-
-    if (validTiles.length === 0) {
-      // Release remaining tiles
-      for (const tile of emptyTiles) {
-        if (!validTiles.includes(tile)) {
-          poolManager.vector2.release(tile);
-        }
-      }
-      return null;
-    }
-
-    // Pick a random valid tile
-    const randomIndex = Math.floor(Math.random() * validTiles.length);
-    const selectedTile = validTiles[randomIndex];
-
-    // Release other tiles
-    for (const tile of validTiles) {
-      if (tile !== selectedTile) {
-        poolManager.vector2.release(tile);
-      }
-    }
-
-    return selectedTile;
+    return mapManager.findRandomValidSpawnPosition(
+      center,
+      BossZombie.MIN_SUMMON_RADIUS,
+      BossZombie.SUMMON_RADIUS
+    );
   }
 
   private broadcastSummonEvent(summons: Array<{ x: number; y: number }>): void {

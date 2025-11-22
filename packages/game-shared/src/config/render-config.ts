@@ -12,6 +12,8 @@ export const renderConfig = {
    */
   ENTITY_RENDER_RADIUS: 400,
 
+  RENDER_DARKNESS: true,
+
   /**
    * Whether to show health bars above entities
    * Set to false to hide health bars on players, zombies, and buildings

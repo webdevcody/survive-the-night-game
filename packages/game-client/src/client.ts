@@ -112,6 +112,10 @@ export class GameClient {
   // Cached campsite fire reference (there should only ever be one)
   private campsiteFire: CampsiteFireClient | null = null;
 
+  // Scroll accumulation for trackpad sensitivity
+  private scrollAccumulator: number = 0;
+  private readonly SCROLL_THRESHOLD = 50; // Accumulate this much deltaY before switching slots
+
   constructor(canvas: HTMLCanvasElement, assetManager?: AssetManager, soundManager?: SoundManager) {
     this.ctx = canvas.getContext("2d")!;
 
@@ -228,6 +232,78 @@ export class GameClient {
         this.inputManager.releaseFire();
       }
     });
+
+    // Add wheel event listener for hotbar slot switching
+    canvas.addEventListener(
+      "wheel",
+      (e) => {
+        // Prevent default scrolling behavior
+        e.preventDefault();
+
+        // Check if player is dead
+        const player = getPlayer();
+        if (player && player.isDead()) {
+          this.scrollAccumulator = 0; // Reset accumulator
+          return;
+        }
+
+        // Check if chatting
+        if (this.inputManager.isChatInputActive()) {
+          this.scrollAccumulator = 0; // Reset accumulator
+          return;
+        }
+
+        // Check if merchant panel is open
+        if (this.merchantBuyPanel.isVisible()) {
+          this.scrollAccumulator = 0; // Reset accumulator
+          return;
+        }
+
+        // Check if fullscreen map is open
+        const isFullscreenMapOpen = this.hud?.isFullscreenMapOpen() ?? false;
+        if (isFullscreenMapOpen) {
+          this.scrollAccumulator = 0; // Reset accumulator
+          return;
+        }
+
+        // Accumulate scroll delta to handle trackpad sensitivity
+        // Trackpads send many small deltaY values, mouse wheels send larger discrete values
+        this.scrollAccumulator += e.deltaY;
+
+        // Only switch slots when accumulated delta exceeds threshold
+        const absAccumulator = Math.abs(this.scrollAccumulator);
+        if (absAccumulator < this.SCROLL_THRESHOLD) {
+          return; // Not enough scroll yet
+        }
+
+        // Get current slot and max slots
+        const currentSlot = this.inputManager.getCurrentInventorySlot();
+        const maxSlots = getConfig().player.MAX_INVENTORY_SLOTS;
+
+        // Determine direction: scroll up (negative deltaY) = decrement, scroll down (positive deltaY) = increment
+        const scrollDelta = this.scrollAccumulator > 0 ? 1 : -1;
+        let newSlot = currentSlot + scrollDelta;
+
+        // Wrap around: if at max, go to 1; if at 1, go to max
+        if (newSlot > maxSlots) {
+          newSlot = 1;
+        } else if (newSlot < 1) {
+          newSlot = maxSlots;
+        }
+
+        // Set the new inventory slot
+        this.inputManager.setInventorySlot(newSlot);
+
+        // Reset accumulator after switching (keep remainder for smooth scrolling)
+        // Subtract threshold amount in the direction we scrolled
+        if (this.scrollAccumulator > 0) {
+          this.scrollAccumulator -= this.SCROLL_THRESHOLD;
+        } else {
+          this.scrollAccumulator += this.SCROLL_THRESHOLD;
+        }
+      },
+      { passive: false }
+    );
 
     const getInventory = () => {
       if (this.gameState.playerId) {

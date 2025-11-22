@@ -22,6 +22,8 @@ export const waveConfig = {
    */
   FIRST_WAVE_DELAY: 60,
 
+  START_WAVE_NUMBER: 1,
+
   /**
    * Mapping of wave numbers to boss entity types that should spawn on that wave.
    * Only one boss will spawn per wave (if a boss is already active, no new boss will spawn).

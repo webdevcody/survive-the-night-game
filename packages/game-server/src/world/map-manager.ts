@@ -162,14 +162,12 @@ export class MapManager implements IMapManager {
 
     console.log("Spawning zombies", zombiesToSpawn);
 
-    const totalSize = BIOME_SIZE * MAP_SIZE;
-
     // Get campsite biome position (center biome)
     const centerBiomeX = Math.floor(MAP_SIZE / 2);
     const centerBiomeY = Math.floor(MAP_SIZE / 2);
 
-    // Get spawn locations in the 8 forest biomes surrounding the campsite
-    const spawnLocations = this.selectCampsiteSurroundingBiomeSpawnLocations(
+    // Get all valid spawn locations in the 8 forest biomes surrounding the campsite
+    let spawnLocations = this.selectCampsiteSurroundingBiomeSpawnLocations(
       centerBiomeX,
       centerBiomeY
     );
@@ -179,46 +177,96 @@ export class MapManager implements IMapManager {
       return;
     }
 
-    // Divide zombies across the spawn locations
-    const numLocations = spawnLocations.length;
-    const zombiesPerLocation = {
-      regular: Math.floor(zombieDistribution.regular / numLocations),
-      fast: Math.floor(zombieDistribution.fast / numLocations),
-      big: Math.floor(zombieDistribution.big / numLocations),
-      bat: Math.floor(zombieDistribution.bat / numLocations),
-      spitter: Math.floor(zombieDistribution.spitter / numLocations),
+    // Shuffle spawn locations for random distribution
+    for (let i = spawnLocations.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [spawnLocations[i], spawnLocations[j]] = [spawnLocations[j], spawnLocations[i]];
+    }
+
+    // Create a list of all zombies to spawn with their types
+    const zombiesToSpawnList: Array<"regular" | "fast" | "big" | "bat" | "spitter"> = [];
+    for (let i = 0; i < zombieDistribution.regular; i++) {
+      zombiesToSpawnList.push("regular");
+    }
+    for (let i = 0; i < zombieDistribution.fast; i++) {
+      zombiesToSpawnList.push("fast");
+    }
+    for (let i = 0; i < zombieDistribution.big; i++) {
+      zombiesToSpawnList.push("big");
+    }
+    for (let i = 0; i < zombieDistribution.bat; i++) {
+      zombiesToSpawnList.push("bat");
+    }
+    for (let i = 0; i < zombieDistribution.spitter; i++) {
+      zombiesToSpawnList.push("spitter");
+    }
+
+    // Shuffle the zombie list for random type distribution
+    for (let i = zombiesToSpawnList.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [zombiesToSpawnList[i], zombiesToSpawnList[j]] = [
+        zombiesToSpawnList[j],
+        zombiesToSpawnList[i],
+      ];
+    }
+
+    // Track total spawned to verify exact count
+    let totalSpawned = {
+      regular: 0,
+      fast: 0,
+      big: 0,
+      bat: 0,
+      spitter: 0,
     };
 
-    // Handle remainder zombies (distribute to first location)
-    const remainderZombies = {
-      regular: zombieDistribution.regular % numLocations,
-      fast: zombieDistribution.fast % numLocations,
-      big: zombieDistribution.big % numLocations,
-      bat: zombieDistribution.bat % numLocations,
-      spitter: zombieDistribution.spitter % numLocations,
-    };
+    // Spawn each zombie at a random location, removing locations after use to prevent stacking
+    for (const zombieType of zombiesToSpawnList) {
+      if (spawnLocations.length === 0) {
+        console.warn("Ran out of spawn locations before spawning all zombies");
+        break;
+      }
 
-    // Spawn zombies at each location
-    spawnLocations.forEach((location, index) => {
-      const isFirstLocation = index === 0;
+      // Pick a random location and remove it
+      const randomIndex = Math.floor(Math.random() * spawnLocations.length);
+      const location = spawnLocations.splice(randomIndex, 1)[0];
 
-      const locationDistribution = {
-        regular: zombiesPerLocation.regular + (isFirstLocation ? remainderZombies.regular : 0),
-        fast: zombiesPerLocation.fast + (isFirstLocation ? remainderZombies.fast : 0),
-        big: zombiesPerLocation.big + (isFirstLocation ? remainderZombies.big : 0),
-        bat: zombiesPerLocation.bat + (isFirstLocation ? remainderZombies.bat : 0),
-        spitter: zombiesPerLocation.spitter + (isFirstLocation ? remainderZombies.spitter : 0),
-      };
+      // Spawn the zombie at this location
+      this.spawnZombieAtLocation(location, zombieType);
 
-      this.spawnZombieGroupAtLocation(location, locationDistribution, totalSize);
-    });
+      // Track spawned counts
+      totalSpawned[zombieType]++;
+    }
 
-    this.spawnBossIfNeeded(waveNumber, spawnLocations);
+    // Verify exact count match
+    const expectedTotal = zombieDistribution.total;
+    const actualTotal =
+      totalSpawned.regular +
+      totalSpawned.fast +
+      totalSpawned.big +
+      totalSpawned.bat +
+      totalSpawned.spitter;
+
+    if (expectedTotal !== actualTotal) {
+      console.error(
+        `Zombie count mismatch! Expected: ${expectedTotal}, Actual: ${actualTotal}. ` +
+          `Distribution: regular=${totalSpawned.regular}, fast=${totalSpawned.fast}, ` +
+          `big=${totalSpawned.big}, bat=${totalSpawned.bat}, spitter=${totalSpawned.spitter}`
+      );
+    } else {
+      console.log(
+        `Successfully spawned exactly ${actualTotal} zombies: ` +
+          `regular=${totalSpawned.regular}, fast=${totalSpawned.fast}, ` +
+          `big=${totalSpawned.big}, bat=${totalSpawned.bat}, spitter=${totalSpawned.spitter}`
+      );
+    }
+
+    // Spawn boss if needed (use first spawn location or fallback)
+    this.spawnBossIfNeeded(waveNumber, spawnLocations.length > 0 ? [spawnLocations[0]] : []);
   }
 
   /**
-   * Select zombie spawn locations in the 8 forest biomes surrounding the campsite.
-   * For each biome, picks a random valid ground tile as a spawn location.
+   * Select all valid zombie spawn locations in the 8 forest biomes surrounding the campsite.
+   * Returns all valid empty ground tile positions from all surrounding biomes.
    */
   private selectCampsiteSurroundingBiomeSpawnLocations(
     campsiteBiomeX: number,
@@ -245,33 +293,16 @@ export class MapManager implements IMapManager {
       }
     }
 
-    // For each surrounding biome, find valid ground tiles and pick one randomly
+    // Collect all valid spawn positions from all surrounding biomes
     for (const { biomeX, biomeY } of surroundingBiomes) {
-      const validPositions: Array<{ x: number; y: number }> = [];
+      const validPositions = this.getValidSpawnPositionsInBiome(biomeX, biomeY);
 
-      // Collect all valid spawn positions within this biome
-      for (let y = 0; y < BIOME_SIZE; y++) {
-        for (let x = 0; x < BIOME_SIZE; x++) {
-          const mapY = biomeY * BIOME_SIZE + y;
-          const mapX = biomeX * BIOME_SIZE + x;
-          const groundTile = this.groundLayer[mapY]?.[mapX];
-          const isValidGround =
-            groundTile === 8 || groundTile === 4 || groundTile === 14 || groundTile === 24;
-
-          if (isValidGround && this.collidablesLayer[mapY]?.[mapX] === -1) {
-            // Convert tile coordinates to pixel coordinates
-            validPositions.push({
-              x: mapX * getConfig().world.TILE_SIZE,
-              y: mapY * getConfig().world.TILE_SIZE,
-            });
-          }
-        }
-      }
-
-      // Pick a random valid position from this biome
-      if (validPositions.length > 0) {
-        const randomIndex = Math.floor(Math.random() * validPositions.length);
-        spawnLocations.push(validPositions[randomIndex]);
+      // Add all valid positions from this biome
+      for (const position of validPositions) {
+        spawnLocations.push({
+          x: position.x,
+          y: position.y,
+        });
       }
     }
 
@@ -306,6 +337,43 @@ export class MapManager implements IMapManager {
     }
 
     return selectedLocations;
+  }
+
+  /**
+   * Spawns a single zombie of the specified type at the given location.
+   */
+  private spawnZombieAtLocation(
+    location: { x: number; y: number },
+    zombieType: "regular" | "fast" | "big" | "bat" | "spitter"
+  ): void {
+    const poolManager = PoolManager.getInstance();
+    let zombie: Zombie | BigZombie | FastZombie | BatZombie | SpitterZombie;
+
+    // Create the appropriate zombie type
+    switch (zombieType) {
+      case "regular":
+        zombie = new Zombie(this.getGameManagers());
+        break;
+      case "fast":
+        zombie = new FastZombie(this.getGameManagers());
+        break;
+      case "big":
+        zombie = new BigZombie(this.getGameManagers());
+        break;
+      case "bat":
+        zombie = new BatZombie(this.getGameManagers());
+        break;
+      case "spitter":
+        zombie = new SpitterZombie(this.getGameManagers());
+        break;
+      default:
+        console.error(`Unknown zombie type: ${zombieType}`);
+        return;
+    }
+
+    // Set position and add to entity manager
+    zombie.setPosition(poolManager.vector2.claim(location.x, location.y));
+    this.getEntityManager().addEntity(zombie);
   }
 
   private spawnZombieGroupAtLocation(
@@ -357,50 +425,53 @@ export class MapManager implements IMapManager {
     const spawnAreaEndX = Math.min(totalSize, centerTileX + SPAWN_RADIUS_TILES);
     const spawnAreaEndY = Math.min(totalSize, centerTileY + SPAWN_RADIUS_TILES);
 
-    // Track occupied positions to prevent spawning on top of each other
-    const occupiedPositions = new Set<string>();
+    // Collect all valid spawn positions in the spawn area
+    // This ensures we don't spawn on top of existing zombies or each other
+    const validSpawnPositions: Array<{ x: number; y: number }> = [];
+    const poolManager = PoolManager.getInstance();
+    const { TILE_SIZE } = getConfig().world;
 
-    let attempts = 0;
-    const maxAttempts = totalZombies * 20; // Increased attempts for better spreading
+    for (let y = spawnAreaStartY; y < spawnAreaEndY; y++) {
+      for (let x = spawnAreaStartX; x < spawnAreaEndX; x++) {
+        // Skip if not on valid ground tile
+        const groundTile = this.groundLayer[y]?.[x];
+        const isValidGround =
+          groundTile === 8 || groundTile === 4 || groundTile === 14 || groundTile === 24;
+        const hasCollidable = this.collidablesLayer[y]?.[x] !== -1;
 
+        if (!isValidGround || hasCollidable) {
+          continue;
+        }
+
+        // Check if there's already a zombie or other entity at this position
+        const position = poolManager.vector2.claim(x * TILE_SIZE, y * TILE_SIZE);
+        if (this.isPositionValidForPlacement(position, true)) {
+          validSpawnPositions.push({ x, y });
+        }
+        poolManager.vector2.release(position);
+      }
+    }
+
+    // Shuffle the valid positions for random selection
+    for (let i = validSpawnPositions.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [validSpawnPositions[i], validSpawnPositions[j]] = [
+        validSpawnPositions[j],
+        validSpawnPositions[i],
+      ];
+    }
+
+    // Spawn zombies at valid positions
+    let positionIndex = 0;
     while (
-      spawnedCount.regular < distribution.regular ||
-      spawnedCount.fast < distribution.fast ||
-      spawnedCount.big < distribution.big ||
-      spawnedCount.bat < distribution.bat ||
-      spawnedCount.spitter < distribution.spitter
+      positionIndex < validSpawnPositions.length &&
+      (spawnedCount.regular < distribution.regular ||
+        spawnedCount.fast < distribution.fast ||
+        spawnedCount.big < distribution.big ||
+        spawnedCount.bat < distribution.bat ||
+        spawnedCount.spitter < distribution.spitter)
     ) {
-      if (attempts++ > maxAttempts) {
-        const locStr =
-          location.x !== undefined
-            ? `(${location.x}, ${location.y})`
-            : `biome (${location.biomeX}, ${location.biomeY})`;
-        console.warn(`Could not spawn all zombies at location ${locStr}`);
-        break;
-      }
-
-      // Random position within the spawn area
-      const x = Math.floor(Math.random() * (spawnAreaEndX - spawnAreaStartX)) + spawnAreaStartX;
-      const y = Math.floor(Math.random() * (spawnAreaEndY - spawnAreaStartY)) + spawnAreaStartY;
-
-      // Check if position is already occupied
-      const posKey = `${x},${y}`;
-      if (occupiedPositions.has(posKey)) {
-        continue;
-      }
-
-      // Skip if not on valid ground tile
-      const groundTile = this.groundLayer[y]?.[x];
-      const isValidGround =
-        groundTile === 8 || groundTile === 4 || groundTile === 14 || groundTile === 24;
-      const hasCollidable = this.collidablesLayer[y]?.[x] !== -1;
-
-      if (!isValidGround || hasCollidable) {
-        continue;
-      }
-
-      // Mark position as occupied
-      occupiedPositions.add(posKey);
+      const { x, y } = validSpawnPositions[positionIndex++];
 
       // Determine which type of zombie to spawn based on remaining counts
       if (spawnedCount.bat < distribution.bat) {
@@ -454,6 +525,24 @@ export class MapManager implements IMapManager {
         this.getEntityManager().addEntity(zombie);
         spawnedCount.spitter++;
       }
+    }
+
+    // Warn if we couldn't spawn all zombies due to lack of valid positions
+    if (
+      positionIndex >= validSpawnPositions.length &&
+      (spawnedCount.regular < distribution.regular ||
+        spawnedCount.fast < distribution.fast ||
+        spawnedCount.big < distribution.big ||
+        spawnedCount.bat < distribution.bat ||
+        spawnedCount.spitter < distribution.spitter)
+    ) {
+      const locStr =
+        location.x !== undefined
+          ? `(${location.x}, ${location.y})`
+          : `biome (${location.biomeX}, ${location.biomeY})`;
+      console.warn(
+        `Could not spawn all zombies at location ${locStr}. Only ${validSpawnPositions.length} valid positions available.`
+      );
     }
   }
 
@@ -537,7 +626,7 @@ export class MapManager implements IMapManager {
     this.selectRandomMerchantBiomePositions();
     this.fillMapWithBiomes();
     this.createForestBoundaries();
-    this.spawnMerchants();
+    // this.spawnMerchants();
     this.spawnItems();
     this.spawnIdleZombies();
     this.spawnDebugZombieIfEnabled();
@@ -1338,6 +1427,144 @@ export class MapManager implements IMapManager {
     }
 
     return true;
+  }
+
+  /**
+   * Gets valid spawn positions within a specific biome.
+   * Checks for valid ground tiles, collidables, and existing zombies.
+   * @param biomeX Biome X coordinate
+   * @param biomeY Biome Y coordinate
+   * @returns Array of Vector2 positions representing valid empty ground tiles in the biome
+   */
+  public getValidSpawnPositionsInBiome(biomeX: number, biomeY: number): Vector2[] {
+    const { TILE_SIZE } = getConfig().world;
+    const validPositions: Vector2[] = [];
+    const poolManager = PoolManager.getInstance();
+    const zombieTypes = getZombieTypesSet();
+
+    // Calculate biome bounds
+    const minTileX = biomeX * BIOME_SIZE;
+    const maxTileX = Math.min((biomeX + 1) * BIOME_SIZE, BIOME_SIZE * MAP_SIZE);
+    const minTileY = biomeY * BIOME_SIZE;
+    const maxTileY = Math.min((biomeY + 1) * BIOME_SIZE, BIOME_SIZE * MAP_SIZE);
+
+    // Iterate through tiles in the biome
+    for (let y = minTileY; y < maxTileY; y++) {
+      for (let x = minTileX; x < maxTileX; x++) {
+        // Check if it's a valid ground tile
+        const groundTile = this.groundLayer[y]?.[x];
+        const isValidGround =
+          groundTile === 8 || groundTile === 4 || groundTile === 14 || groundTile === 24;
+
+        if (!isValidGround) {
+          continue;
+        }
+
+        // Check if there's a collidable
+        if (this.collidablesLayer[y]?.[x] !== -1) {
+          continue;
+        }
+
+        // Convert tile coordinates to pixel coordinates
+        const position = poolManager.vector2.claim(x * TILE_SIZE, y * TILE_SIZE);
+
+        // Check if there are any zombies at this position
+        const tileCenter = poolManager.vector2.claim(
+          position.x + TILE_SIZE / 2,
+          position.y + TILE_SIZE / 2
+        );
+        const nearbyEntities = this.getEntityManager().getNearbyEntities(
+          tileCenter,
+          TILE_SIZE / 2,
+          zombieTypes
+        );
+
+        // Check if any nearby entities are zombies
+        let hasZombie = false;
+        for (const entity of nearbyEntities) {
+          if (zombieTypes.has(entity.getType())) {
+            // Verify the zombie is actually at this tile position
+            if (entity.hasExt(Positionable)) {
+              const entityPos = entity.getExt(Positionable).getPosition();
+              const tileX = Math.floor(entityPos.x / TILE_SIZE);
+              const tileY = Math.floor(entityPos.y / TILE_SIZE);
+              if (tileX === x && tileY === y) {
+                hasZombie = true;
+                break;
+              }
+            }
+          }
+        }
+
+        poolManager.vector2.release(tileCenter);
+
+        console.log("hasZombie", hasZombie);
+
+        if (!hasZombie) {
+          validPositions.push(position);
+        } else {
+          poolManager.vector2.release(position);
+        }
+      }
+    }
+
+    return validPositions;
+  }
+
+  /**
+   * Finds a random valid spawn position within a radius range from a center point.
+   * Checks for valid ground tiles, collidables, and existing zombies.
+   * @param center Center position to search around
+   * @param minRadius Minimum distance from center (in pixels)
+   * @param maxRadius Maximum distance from center (in pixels)
+   * @returns A random valid spawn position, or null if none found
+   */
+  public findRandomValidSpawnPosition(
+    center: Vector2,
+    minRadius: number,
+    maxRadius: number
+  ): Vector2 | null {
+    // Get all empty ground tiles within max radius
+    const emptyTiles = this.getEmptyGroundTiles(center, maxRadius);
+
+    if (emptyTiles.size === 0) {
+      return null;
+    }
+
+    // Filter tiles to only those within the min/max radius
+    const validTiles: Vector2[] = [];
+    const poolManager = PoolManager.getInstance();
+    const { TILE_SIZE } = getConfig().world;
+
+    for (const tile of emptyTiles) {
+      const tileCenter = poolManager.vector2.claim(tile.x + TILE_SIZE / 2, tile.y + TILE_SIZE / 2);
+      const distance = center.distance(tileCenter);
+
+      if (distance >= minRadius && distance <= maxRadius) {
+        validTiles.push(tile);
+      } else {
+        poolManager.vector2.release(tile);
+      }
+
+      poolManager.vector2.release(tileCenter);
+    }
+
+    if (validTiles.length === 0) {
+      return null;
+    }
+
+    // Pick a random valid tile
+    const randomIndex = Math.floor(Math.random() * validTiles.length);
+    const selectedTile = validTiles[randomIndex];
+
+    // Release other tiles
+    for (const tile of validTiles) {
+      if (tile !== selectedTile) {
+        poolManager.vector2.release(tile);
+      }
+    }
+
+    return selectedTile;
   }
 
   /**
