@@ -7,6 +7,8 @@ import PoolManager from "@shared/util/pool-manager";
 const INTERACTION_TEXT_FONT = "6px Arial";
 const INTERACTION_TEXT_COLOR = "white";
 const INTERACTION_TEXT_HIGHLIGHT_COLOR = "yellow";
+const INTERACTION_TEXT_BG_COLOR = "rgba(0, 0, 0, 0.6)";
+const INTERACTION_TEXT_PADDING_X = 2;
 
 type QueuedInteractionText = {
   text: string;
@@ -72,6 +74,16 @@ export function flushInteractionText(ctx: CanvasRenderingContext2D): void {
     .forEach(({ text, centerX, baseY, textWidth, isClosest }) => {
       const y = resolveStackedLabelY(centerX, textWidth, baseY, isClosest);
       const x = centerX - textWidth / 2;
+
+      // Draw background
+      ctx.fillStyle = INTERACTION_TEXT_BG_COLOR;
+      ctx.fillRect(
+        x - INTERACTION_TEXT_PADDING_X,
+        y - 6, // 6px font, draw slightly above baseline
+        textWidth + INTERACTION_TEXT_PADDING_X * 2,
+        8 // 6px font + 2px padding
+      );
+
       ctx.fillStyle = isClosest ? INTERACTION_TEXT_HIGHLIGHT_COLOR : INTERACTION_TEXT_COLOR;
       ctx.fillText(text, x, y);
     });
