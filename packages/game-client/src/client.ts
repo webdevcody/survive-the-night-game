@@ -49,6 +49,8 @@ import { isWeapon, ItemType, InventoryItem } from "@shared/util/inventory";
 import { getClosestInteractiveEntity } from "@/util/get-closest-interactive";
 import { getPlayer } from "@/util/get-player";
 import { Entities } from "@shared/constants";
+import { itemRegistry } from "@shared/entities";
+import { ClientCarryable } from "@/extensions";
 
 export class GameClient {
   private ctx: CanvasRenderingContext2D;
@@ -734,6 +736,64 @@ export class GameClient {
   }
 
   /**
+   * Check if an item can be picked up (merged into existing slot) or requires a new slot
+   */
+  private canItemBePickedUp(entity: ClientEntityBase): boolean {
+    const player = getPlayer(this.gameState);
+    if (!player || !player.hasExt(ClientInventory)) {
+      return false;
+    }
+
+    if (!entity.hasExt(ClientCarryable)) {
+      return true; // Not a carryable item, can always interact
+    }
+
+    const inventory = player.getExt(ClientInventory);
+    
+    // If inventory is not full, can always pick up
+    if (!inventory.isFull()) {
+      return true;
+    }
+
+    // Check if item is stackable (can merge with existing)
+    // Items are stackable if:
+    // - They have category "ammo" (all ammo items are stackable)
+    // - They have a count state property (meaning they're stackable in inventory)
+    const carryable = entity.getExt(ClientCarryable);
+    const itemType = carryable.getItemKey() as ItemType;
+    const itemState = carryable.getItemState();
+    const itemConfig = itemRegistry.get(itemType);
+    const hasCountState = itemState && typeof itemState.count === "number";
+    const isStackable = itemConfig?.category === "ammo" || hasCountState;
+    
+    // If stackable, check if player already has this item type
+    if (isStackable) {
+      const items = inventory.getItems();
+      return items.some((item) => item?.itemType === itemType);
+    }
+
+    // Not stackable and inventory is full - cannot pick up
+    return false;
+  }
+
+  /**
+   * Show inventory full message with cooldown
+   */
+  private static lastInventoryFullMessageTime: number = 0;
+  private static readonly INVENTORY_FULL_MESSAGE_COOLDOWN = 2000; // 2 seconds
+
+  private showInventoryFullMessage(): void {
+    const now = Date.now();
+    const timeSinceLastMessage = now - GameClient.lastInventoryFullMessageTime;
+
+    // Only show message if enough time has passed since the last one
+    if (timeSinceLastMessage >= GameClient.INVENTORY_FULL_MESSAGE_COOLDOWN) {
+      GameClient.lastInventoryFullMessageTime = now;
+      this.hud.addMessage("Inventory full!", "red");
+    }
+  }
+
+  /**
    * Start interact hold - begins tracking hold progress for placeable items
    */
   private startInteractHold(): void {
@@ -770,7 +830,13 @@ export class GameClient {
         (playerEntity as any).pickupProgress = 0;
       }
     } else {
-      // Not placeable, send interact immediately
+      // Not placeable, check if can pick up before sending interact
+      if (!this.canItemBePickedUp(closestEntity)) {
+        this.showInventoryFullMessage();
+        return;
+      }
+      
+      // Send interact immediately
       if (this.socketManager) {
         this.socketManager.sendInteract(closestEntity.getId());
       }
@@ -876,6 +942,13 @@ export class GameClient {
       // Ensure progress is clamped to 1.0 for final render
       if (playerEntity) {
         (playerEntity as any).pickupProgress = 1.0;
+      }
+
+      // Check if can pick up before sending interact
+      if (targetEntity && !this.canItemBePickedUp(targetEntity)) {
+        this.showInventoryFullMessage();
+        this.cancelInteractHold();
+        return;
       }
 
       // Send interact event to server targeting the entity we started with

@@ -300,6 +300,7 @@ export class Renderer {
 
     // Render UI without transforms
     perfTimer.start("renderUI");
+    this.ctx.save();
     this.ctx.setTransform(1, 0, 0, 1, 0, 0);
     this.hud.render(this.ctx, this.gameState);
     // Crafting table is now rendered in React component (CraftingPanel.tsx)
@@ -309,6 +310,7 @@ export class Renderer {
     // Render cursor (crosshair when weapon is equipped)
     this.renderCursor();
 
+    this.ctx.restore();
     perfTimer.end("renderUI");
 
     perfTimer.end("render");

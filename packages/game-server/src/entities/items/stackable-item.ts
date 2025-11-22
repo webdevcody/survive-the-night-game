@@ -13,6 +13,25 @@ export abstract class StackableItem extends Entity {
     return PoolManager.getInstance().vector2.claim(16, 16);
   }
 
+  /**
+   * Get the default count for a StackableItem class without instantiating it.
+   * Subclasses should override this static method to return their default count.
+   * If not overridden, this will attempt to create a temporary instance to get the count.
+   */
+  public static getDefaultCount(
+    constructor: new (gameManagers: IGameManagers, ...args: any[]) => StackableItem,
+    gameManagers: IGameManagers
+  ): number | undefined {
+    try {
+      // Try to create a temporary instance to call getDefaultCount()
+      // We pass undefined for itemState so it uses the default count
+      const tempInstance = new constructor(gameManagers);
+      return tempInstance.getDefaultCount();
+    } catch {
+      return undefined;
+    }
+  }
+
   constructor(
     gameManagers: IGameManagers,
     entityType: EntityType,

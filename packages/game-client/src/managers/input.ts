@@ -8,6 +8,7 @@ import Vector2 from "../../../game-shared/src/util/vector2";
 import PoolManager from "../../../game-shared/src/util/pool-manager";
 import { getConfig } from "@shared/config";
 import { itemRegistry } from "../../../game-shared/src/entities/item-registry";
+import { isWeapon } from "@shared/util/inventory";
 
 export interface InputManagerOptions {
   onCraft?: () => unknown;
@@ -81,6 +82,7 @@ export class InputManager {
     sprint: false,
   };
   private currentInventorySlot: number = 1; // Track locally for drop/consume
+  private previousWeaponSlot: number | null = null; // Track previous weapon slot for quick switch
   private lastInputs = {
     ...this.inputs,
   };
@@ -287,6 +289,11 @@ export class InputManager {
         case "KeyE":
           callbacks.onInteractStart?.();
           break;
+        case "KeyQ": {
+          // Quick switch to previous weapon
+          this.quickSwitchWeapon();
+          break;
+        }
         case "KeyG": {
           // Drop currently selected item
           const currentSlot = this.currentInventorySlot - 1; // Convert to 0-indexed
@@ -525,6 +532,27 @@ export class InputManager {
       return;
     }
 
+    const inventory = this.callbacks.getInventory?.();
+    if (inventory) {
+      // Check if the slot we're switching TO contains a weapon
+      const newItem = inventory[slot - 1];
+      if (newItem && isWeapon(newItem.itemType)) {
+        // If we're switching to a weapon, save the current slot as previous weapon
+        // (if current slot also has a weapon, otherwise keep existing previous weapon)
+        const currentItem = inventory[this.currentInventorySlot - 1];
+        if (currentItem && isWeapon(currentItem.itemType)) {
+          // Current slot has a weapon, save it as previous
+          this.previousWeaponSlot = this.currentInventorySlot;
+        } else if (this.previousWeaponSlot === null) {
+          // Current slot doesn't have a weapon, but we don't have a previous weapon yet
+          // Don't update previousWeaponSlot - keep it null or keep existing value
+          // This allows Q to still work if we had a previous weapon before switching to non-weapon
+        }
+        // If current slot doesn't have a weapon and we already have a previous weapon,
+        // keep the existing previousWeaponSlot so we can still switch back
+      }
+    }
+
     this.currentInventorySlot = slot;
     this.callbacks.onSelectInventorySlot?.(slot);
     this.callbacks.onInventorySlotChanged?.(slot);
@@ -551,6 +579,31 @@ export class InputManager {
 
   getCurrentInventorySlot(): number {
     return this.currentInventorySlot;
+  }
+
+  /**
+   * Quick switch to the previous weapon
+   */
+  private quickSwitchWeapon(): void {
+    // Don't allow quick switch while chatting
+    if (this.isChatting) return;
+
+    // Check if we have a previous weapon slot
+    if (this.previousWeaponSlot === null) return;
+
+    const inventory = this.callbacks.getInventory?.();
+    if (!inventory) return;
+
+    // Verify the previous weapon slot still has a weapon
+    const previousItem = inventory[this.previousWeaponSlot - 1];
+    if (!previousItem || !isWeapon(previousItem.itemType)) {
+      // Previous weapon slot no longer has a weapon, clear it
+      this.previousWeaponSlot = null;
+      return;
+    }
+
+    // Switch to previous weapon
+    this.setInventorySlot(this.previousWeaponSlot);
   }
 
   reset() {

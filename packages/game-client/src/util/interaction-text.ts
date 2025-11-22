@@ -16,6 +16,7 @@ type QueuedInteractionText = {
   centerX: number;
   textWidth: number;
   isClosest: boolean;
+  color?: string;
 };
 
 const queuedInteractionTexts: QueuedInteractionText[] = [];
@@ -27,7 +28,8 @@ export function renderInteractionText(
   position: Vector2,
   playerPosition: Vector2,
   offset = PoolManager.getInstance().vector2.claim(0, 0),
-  isClosest = false
+  isClosest = false,
+  color?: string
 ): void {
   if (distance(playerPosition, centerPosition) >= getConfig().player.MAX_INTERACT_RADIUS) {
     return;
@@ -46,6 +48,7 @@ export function renderInteractionText(
     centerX,
     textWidth,
     isClosest,
+    color,
   });
 }
 
@@ -71,7 +74,7 @@ export function flushInteractionText(ctx: CanvasRenderingContext2D): void {
       }
       return a.centerX - b.centerX;
     })
-    .forEach(({ text, centerX, baseY, textWidth, isClosest }) => {
+    .forEach(({ text, centerX, baseY, textWidth, isClosest, color }) => {
       const y = resolveStackedLabelY(centerX, textWidth, baseY, isClosest);
       const x = centerX - textWidth / 2;
 
@@ -84,7 +87,12 @@ export function flushInteractionText(ctx: CanvasRenderingContext2D): void {
         8 // 6px font + 2px padding
       );
 
-      ctx.fillStyle = isClosest ? INTERACTION_TEXT_HIGHLIGHT_COLOR : INTERACTION_TEXT_COLOR;
+      // Use custom color if provided, otherwise use default highlight/color logic
+      if (color) {
+        ctx.fillStyle = color;
+      } else {
+        ctx.fillStyle = isClosest ? INTERACTION_TEXT_HIGHLIGHT_COLOR : INTERACTION_TEXT_COLOR;
+      }
       ctx.fillText(text, x, y);
     });
   ctx.restore();

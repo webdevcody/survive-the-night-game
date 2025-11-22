@@ -7,6 +7,39 @@ import PoolManager from "@shared/util/pool-manager";
 import { Merchant } from "@/entities/environment/merchant";
 import { SocketEventHandler } from "./types";
 import { itemRegistry, weaponRegistry, resourceRegistry } from "@shared/entities";
+import { entityOverrideRegistry } from "@/entities/entity-override-registry";
+import { StackableItem } from "@/entities/items/stackable-item";
+import { IGameManagers } from "@/managers/types";
+
+/**
+ * Get the default count for a stackable item type (like ammo)
+ * Returns undefined if the item doesn't have a default count or isn't a StackableItem
+ */
+function getDefaultCountForItem(
+  itemType: ItemType,
+  gameManagers: IGameManagers
+): number | undefined {
+  const entityConstructor = entityOverrideRegistry.get(itemType);
+  if (!entityConstructor) {
+    return undefined;
+  }
+
+  // Check if the constructor extends StackableItem by creating a temporary instance
+  // and checking with instanceof. This is safe because we catch any errors.
+  try {
+    // Create a temporary instance to check if it's a StackableItem
+    // We only need gameManagers since itemState is optional
+    const tempInstance = new entityConstructor(gameManagers);
+    if (tempInstance instanceof StackableItem) {
+      // Use the static method to get the default count
+      return StackableItem.getDefaultCount(entityConstructor as any, gameManagers);
+    }
+  } catch {
+    // If construction fails or instance isn't a StackableItem, return undefined
+  }
+
+  return undefined;
+}
 
 export function onMerchantBuy(
   context: HandlerContext,
@@ -48,7 +81,11 @@ export function onMerchantBuy(
     console.log(`Player ${player.getId()} bought ${itemType} for ${selectedItem.price} coins`);
   } else {
     // Handle regular inventory items
-    const item = { itemType };
+    // Get default count for stackable items (like ammo)
+    const gameManagers = context.getGameManagers();
+    const defaultCount = getDefaultCountForItem(itemType, gameManagers);
+    const item =
+      defaultCount !== undefined ? { itemType, state: { count: defaultCount } } : { itemType };
     const inventory = player.getExt(Inventory);
 
     // Add to inventory or drop on ground
@@ -84,7 +121,7 @@ export function onMerchantSell(
   const inventory = player.getExt(Inventory);
   const items = inventory.getItems();
   const item = items[data.inventorySlot];
-  
+
   if (!item) {
     return;
   }
@@ -101,10 +138,10 @@ export function onMerchantSell(
     if (itemConfig?.merchant?.price) {
       buyPrice = itemConfig.merchant.price;
     } else {
-        const resourceConfig = resourceRegistry.get(itemType);
-        if (resourceConfig?.merchant?.price) {
-            buyPrice = resourceConfig.merchant.price;
-        }
+      const resourceConfig = resourceRegistry.get(itemType);
+      if (resourceConfig?.merchant?.price) {
+        buyPrice = resourceConfig.merchant.price;
+      }
     }
   }
 
@@ -123,7 +160,7 @@ export function onMerchantSell(
 
   // Add coins
   player.addCoins(sellPrice);
-  
+
   console.log(`Player ${player.getId()} sold ${itemType} for ${sellPrice} coins.`);
 }
 
@@ -132,8 +169,10 @@ export const merchantBuyHandler: SocketEventHandler<{ merchantId: number; itemIn
   handler: onMerchantBuy,
 };
 
-export const merchantSellHandler: SocketEventHandler<{ merchantId: number; inventorySlot: number }> = {
+export const merchantSellHandler: SocketEventHandler<{
+  merchantId: number;
+  inventorySlot: number;
+}> = {
   event: "MERCHANT_SELL",
   handler: onMerchantSell,
 };
-

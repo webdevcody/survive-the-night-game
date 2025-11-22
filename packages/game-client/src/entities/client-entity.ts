@@ -10,11 +10,14 @@ import {
   ClientPlaceable,
   ClientPositionable,
   ClientCarryable,
+  ClientInventory,
 } from "@/extensions";
 import Vector2 from "@shared/util/vector2";
 import { DEBUG_SHOW_ATTACK_RANGE } from "@shared/debug";
 import { getConfig } from "@shared/config";
 import { formatDisplayName } from "@/util/format";
+import { itemRegistry } from "@shared/entities";
+import { ItemType } from "@shared/util/inventory";
 
 export abstract class ClientEntity extends ClientEntityBase implements Renderable {
   constructor(data: RawEntity, imageLoader: ImageLoader) {
@@ -22,6 +25,39 @@ export abstract class ClientEntity extends ClientEntityBase implements Renderabl
   }
 
   abstract getZIndex(): number;
+
+  /**
+   * Check if an item can be picked up (merged into existing slot) or requires a new slot
+   */
+  private canItemBePickedUp(player: any, itemType: ItemType, itemState?: any): boolean {
+    if (!player.hasExt(ClientInventory)) {
+      return false;
+    }
+
+    const inventory = player.getExt(ClientInventory);
+    
+    // If inventory is not full, can always pick up
+    if (!inventory.isFull()) {
+      return true;
+    }
+
+    // Check if item is stackable (can merge with existing)
+    // Items are stackable if:
+    // - They have category "ammo" (all ammo items are stackable)
+    // - They have a count state property (meaning they're stackable in inventory)
+    const itemConfig = itemRegistry.get(itemType);
+    const hasCountState = itemState && typeof itemState.count === "number";
+    const isStackable = itemConfig?.category === "ammo" || hasCountState;
+    
+    // If stackable, check if player already has this item type
+    if (isStackable) {
+      const items = inventory.getItems();
+      return items.some((item) => item?.itemType === itemType);
+    }
+
+    // Not stackable and inventory is full - cannot pick up
+    return false;
+  }
 
   protected renderInteractionText(ctx: CanvasRenderingContext2D, gameState: GameState): void {
     const myPlayer = getPlayer(gameState);
@@ -61,6 +97,17 @@ export abstract class ClientEntity extends ClientEntityBase implements Renderabl
       // Check if this is the closest interactive entity (cached in gameState)
       const isClosest = gameState.closestInteractiveEntityId === this.getId();
 
+      // Check if item can be picked up (for carryable items)
+      let textColor: string | undefined;
+      if (this.hasExt(ClientCarryable)) {
+        const carryable = this.getExt(ClientCarryable);
+        const itemType = carryable.getItemKey() as ItemType;
+        const itemState = carryable.getItemState();
+        if (!this.canItemBePickedUp(myPlayer, itemType, itemState)) {
+          textColor = "red"; // Show red if inventory is full and item can't be merged
+        }
+      }
+
       renderInteractionText(
         ctx,
         text,
@@ -68,7 +115,8 @@ export abstract class ClientEntity extends ClientEntityBase implements Renderabl
         positionable.getPosition(),
         myPlayer.getCenterPosition(),
         interactive.getOffset(),
-        isClosest
+        isClosest,
+        textColor
       );
     }
   }

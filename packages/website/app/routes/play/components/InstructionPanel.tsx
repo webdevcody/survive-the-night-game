@@ -111,6 +111,10 @@ export function InstructionPanel({ isOpen, onClose }: InstructionPanelProps) {
                 <span className="text-gray-300">Weapons HUD:</span>
                 <span className="font-mono">F</span>
               </div>
+              <div className="flex justify-between">
+                <span className="text-gray-300">Quick Switch Weapon:</span>
+                <span className="font-mono">Q</span>
+              </div>
             </div>
           </div>
 

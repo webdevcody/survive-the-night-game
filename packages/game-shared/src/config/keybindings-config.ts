@@ -18,6 +18,7 @@ export const keybindingsConfig = {
   TOGGLE_INSTRUCTIONS: "i",
   PLAYER_LIST: "tab",
   WEAPONS_HUD: "f",
+  QUICK_SWITCH: "q",
 } as const;
 
 export type KeybindingsConfig = typeof keybindingsConfig;

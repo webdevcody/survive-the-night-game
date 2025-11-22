@@ -51,4 +51,14 @@ export const PROJECTILE_CONFIGS: Record<string, ProjectileConfig> = {
       sheet: "items",
     },
   },
+  arrow: {
+    id: "arrow",
+    category: "bullet",
+    assets: {
+      assetKey: "arrow",
+      x: 68,
+      y: 171,
+      sheet: "ground",
+    },
+  },
 };

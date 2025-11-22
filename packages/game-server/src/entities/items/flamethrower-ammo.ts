@@ -5,13 +5,14 @@ import { StackableItem } from "@/entities/items/stackable-item";
 export class FlamethrowerAmmo extends StackableItem {
   public static readonly DEFAULT_AMMO_COUNT = 30;
 
-  constructor(gameManagers: IGameManagers) {
+  constructor(gameManagers: IGameManagers, itemState?: { count?: number }) {
     super(
       gameManagers,
       Entities.FLAMETHROWER_AMMO,
       "flamethrower_ammo",
       FlamethrowerAmmo.DEFAULT_AMMO_COUNT,
-      "flamethrower ammo"
+      "flamethrower ammo",
+      itemState
     );
   }
 

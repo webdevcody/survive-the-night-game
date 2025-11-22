@@ -478,6 +478,10 @@ export class MerchantBuyPanel implements Renderable {
   public render(ctx: CanvasRenderingContext2D, gameState: GameState): void {
     if (!this.isVisible()) return;
 
+    // Save context state and ensure we're working in pixel coordinates
+    ctx.save();
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+
     // Always refresh inventory on render to catch server updates
     this.refreshItems();
 
@@ -622,6 +626,9 @@ export class MerchantBuyPanel implements Renderable {
     // Footer / Details
     const footerY = startY + height - footerHeight;
     this.renderFooter(ctx, startX, footerY, width, footerHeight, playerCoins);
+
+    // Restore context state
+    ctx.restore();
   }
 
   private renderPane(

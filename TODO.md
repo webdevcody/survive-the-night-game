@@ -6,26 +6,6 @@ Feel free to pick any item listed out here to work on.
 
 - if you pick up a wall that is damaged and put it back down, it seems to go back to full hp again.
 
-- the server randomly crashed with the following
-
-/app/packages/game-server/dist/server.cjs:2686
-throw new Error(`Unknown entity type: ${type}`);
-^
-
-Error: Unknown entity type: arrow
-at EntityTypeRegistry.encode (/app/packages/game-server/dist/server.cjs:2686:13)
-at \_Arrow.serializeToBuffer (/app/packages/game-server/dist/server.cjs:3892:42)
-at BufferManager.writeEntity (/app/packages/game-server/dist/server.cjs:14203:12)
-at Broadcaster.broadcastGameStateUpdate (/app/packages/game-server/dist/server.cjs:14911:31)
-at Broadcaster.broadcastEvent (/app/packages/game-server/dist/server.cjs:14854:12)
-at ServerSocketManager.broadcastEvent (/app/packages/game-server/dist/server.cjs:16053:22)
-at GameLoop.broadcastGameState (/app/packages/game-server/dist/server.cjs:17276:24)
-at GameLoop.update (/app/packages/game-server/dist/server.cjs:17176:10)
-at Timeout.\_onTimeout (/app/packages/game-server/dist/server.cjs:17114:12)
-at listOnTimeout (node:internal/timers:605:17)
-
-Node.js v24.11.
-
 ## DevEx
 
 - when inventory is full, and you are trying to interact with a progress interable, the radial progress bar inifintely just loops, instead give feedback to the user that their inventory is full (make interactive text red and put small inventory full text above / below), (make item flip)

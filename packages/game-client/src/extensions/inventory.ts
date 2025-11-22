@@ -3,10 +3,10 @@ import { InventoryItem, isWeapon, ItemType } from "../../../game-shared/src/util
 import { ClientExtensionSerialized } from "@/extensions/types";
 import { BaseClientExtension } from "./base-extension";
 import { BufferReader } from "@shared/util/buffer-serialization";
+import { playerConfig } from "@shared/config";
 
 export class ClientInventory extends BaseClientExtension {
   public static readonly type = ExtensionTypes.INVENTORY;
-  public static readonly MAX_SLOTS = 8;
 
   private items: InventoryItem[] = [];
 
@@ -15,7 +15,9 @@ export class ClientInventory extends BaseClientExtension {
   }
 
   public isFull(): boolean {
-    return this.items.length >= ClientInventory.MAX_SLOTS;
+    // Count non-null items instead of array length to support sparse arrays
+    const itemCount = this.items.filter((item: InventoryItem | null) => item != null).length;
+    return itemCount >= playerConfig.MAX_INVENTORY_SLOTS;
   }
 
   public getActiveItem(index: number | null): InventoryItem | null {
