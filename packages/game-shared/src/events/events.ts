@@ -52,6 +52,7 @@ export const ClientSentEvents = {
   PING_UPDATE: "pingUpdate",
   SEND_CHAT: "sendChat",
   MERCHANT_BUY: "merchantBuy",
+  MERCHANT_SELL: "merchantSell",
   PLACE_STRUCTURE: "placeStructure",
   PLAYER_RESPAWN_REQUEST: "playerRespawnRequest",
   TELEPORT_TO_BASE: "teleportToBase",

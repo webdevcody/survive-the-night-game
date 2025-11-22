@@ -483,6 +483,10 @@ export class ClientSocketManager {
     this.emitClientEvent(ClientSentEvents.MERCHANT_BUY, { merchantId, itemIndex });
   }
 
+  public sendMerchantSell(merchantId: number, inventorySlot: number) {
+    this.emitClientEvent(ClientSentEvents.MERCHANT_SELL, { merchantId, inventorySlot });
+  }
+
   public sendDropItem(slotIndex: number, amount?: number) {
     const payload =
       amount != null

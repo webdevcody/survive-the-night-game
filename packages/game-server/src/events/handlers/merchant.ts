@@ -6,6 +6,7 @@ import { ItemType, isResourceItem, ResourceType } from "@shared/util/inventory";
 import PoolManager from "@shared/util/pool-manager";
 import { Merchant } from "@/entities/environment/merchant";
 import { SocketEventHandler } from "./types";
+import { itemRegistry, weaponRegistry, resourceRegistry } from "@shared/entities";
 
 export function onMerchantBuy(
   context: HandlerContext,
@@ -68,8 +69,71 @@ export function onMerchantBuy(
   }
 }
 
+export function onMerchantSell(
+  context: HandlerContext,
+  socket: ISocketAdapter,
+  data: { merchantId: number; inventorySlot: number }
+): void {
+  const player = context.players.get(socket.id);
+  if (!player) return;
+
+  // Find the merchant entity
+  const merchant = context.getEntityManager().getEntityById(data.merchantId);
+  if (!merchant || merchant.getType() !== "merchant") return;
+
+  const inventory = player.getExt(Inventory);
+  const items = inventory.getItems();
+  const item = items[data.inventorySlot];
+  
+  if (!item) {
+    return;
+  }
+
+  const itemType = item.itemType;
+  let buyPrice = 0;
+
+  // Determine buy price (base value)
+  const weaponConfig = weaponRegistry.get(itemType);
+  if (weaponConfig?.merchant?.price) {
+    buyPrice = weaponConfig.merchant.price;
+  } else {
+    const itemConfig = itemRegistry.get(itemType);
+    if (itemConfig?.merchant?.price) {
+      buyPrice = itemConfig.merchant.price;
+    } else {
+        const resourceConfig = resourceRegistry.get(itemType);
+        if (resourceConfig?.merchant?.price) {
+            buyPrice = resourceConfig.merchant.price;
+        }
+    }
+  }
+
+  // If item has no price, it might not be sellable or defaults to 0
+  // Let's assume sell price is 50% of buy price.
+  // If buyPrice is 0/undefined, sellPrice is 0.
+  const sellPrice = Math.floor(buyPrice * 0.5);
+
+  if (sellPrice <= 0) {
+    console.log(`Player ${player.getId()} tried to sell ${itemType} which has no value.`);
+    return;
+  }
+
+  // Remove item from inventory
+  inventory.removeItem(data.inventorySlot);
+
+  // Add coins
+  player.addCoins(sellPrice);
+  
+  console.log(`Player ${player.getId()} sold ${itemType} for ${sellPrice} coins.`);
+}
+
 export const merchantBuyHandler: SocketEventHandler<{ merchantId: number; itemIndex: number }> = {
   event: "MERCHANT_BUY",
   handler: onMerchantBuy,
+};
+
+export const merchantSellHandler: SocketEventHandler<{ merchantId: number; inventorySlot: number }> = {
+  event: "MERCHANT_SELL",
+  handler: onMerchantSell,
 };
 
