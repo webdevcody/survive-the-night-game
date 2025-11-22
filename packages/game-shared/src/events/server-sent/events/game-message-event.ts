@@ -39,12 +39,14 @@ export class GameMessageEvent implements GameEvent<GameMessageEventData> {
 
   static serializeToBuffer(writer: BufferWriter, data: GameMessageEventData): void {
     writer.writeString(data.message ?? "");
+    writer.writeString(data.color ?? "");
     writer.writeUInt32(data.type ?? 0);
   }
 
   static deserializeFromBuffer(reader: BufferReader): GameMessageEventData {
     const message = reader.readString();
+    const color = reader.readString();
     const type = reader.readUInt32();
-    return { message, type };
+    return { message, color: color || undefined, type };
   }
 }

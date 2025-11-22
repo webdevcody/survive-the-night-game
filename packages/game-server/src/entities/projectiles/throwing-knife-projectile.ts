@@ -152,13 +152,18 @@ export class ThrowingKnifeProjectile extends Entity {
           collidingEntity.hasExt(Groupable) &&
           collidingEntity.getExt(Groupable).getGroup() === "enemy";
 
+        // Check if it's a boundary - throwing knives should stop at boundaries but pass through walls
+        const isBoundary = collidingEntity.getType() === Entities.BOUNDARY;
+
         // Don't stop if we hit the shooter, the car, or an enemy (enemies are handled by handleIntersections)
+        // Only stop at boundaries, not walls or other collidables (similar to bullets)
         if (
           collidingEntity.getId() !== this.shooterId &&
           !(collidingEntity instanceof Car) &&
-          !isEnemy
+          !isEnemy &&
+          isBoundary
         ) {
-          // Hit a boundary/collidable - create pickup item and remove projectile
+          // Hit a boundary - create pickup item and remove projectile
           this.createPickupItem(newStepPosition);
           this.getEntityManager().markEntityForRemoval(this);
           hitSomething = true;

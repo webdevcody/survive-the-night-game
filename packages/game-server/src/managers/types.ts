@@ -53,6 +53,10 @@ export interface IMapManager {
     minRadius: number,
     maxRadius: number
   ): Vector2 | null;
+  spawnZombiesAroundCampsite(
+    zombieType: "regular" | "fast" | "big" | "bat" | "spitter",
+    count: number
+  ): void;
 }
 
 export interface IGameServer {

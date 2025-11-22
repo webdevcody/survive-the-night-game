@@ -376,6 +376,56 @@ export class MapManager implements IMapManager {
     this.getEntityManager().addEntity(zombie);
   }
 
+  /**
+   * Spawns zombies around the campsite using the same spawn location logic as normal waves.
+   */
+  public spawnZombiesAroundCampsite(
+    zombieType: "regular" | "fast" | "big" | "bat" | "spitter",
+    count: number
+  ): void {
+    // Get campsite biome position (center biome)
+    const centerBiomeX = Math.floor(MAP_SIZE / 2);
+    const centerBiomeY = Math.floor(MAP_SIZE / 2);
+
+    // Get all valid spawn locations in the 8 forest biomes surrounding the campsite
+    let spawnLocations = this.selectCampsiteSurroundingBiomeSpawnLocations(
+      centerBiomeX,
+      centerBiomeY
+    );
+
+    if (spawnLocations.length === 0) {
+      console.warn("No valid spawn locations found around campsite");
+      return;
+    }
+
+    // Shuffle spawn locations for random distribution
+    for (let i = spawnLocations.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [spawnLocations[i], spawnLocations[j]] = [spawnLocations[j], spawnLocations[i]];
+    }
+
+    // Spawn zombies at valid positions (up to count or available positions)
+    const zombiesToSpawn = Math.min(count, spawnLocations.length);
+    for (let i = 0; i < zombiesToSpawn; i++) {
+      const { x, y } = spawnLocations[i];
+      this.spawnZombieAtLocation(
+        {
+          x,
+          y,
+        },
+        zombieType
+      );
+    }
+
+    if (zombiesToSpawn < count) {
+      console.warn(
+        `Could not spawn all ${count} zombies around campsite. Only ${zombiesToSpawn} valid positions available.`
+      );
+    } else {
+      console.log(`Successfully spawned ${zombiesToSpawn} ${zombieType} zombies around campsite.`);
+    }
+  }
+
   private spawnZombieGroupAtLocation(
     location: { x?: number; y?: number; biomeX?: number; biomeY?: number },
     distribution: {
@@ -811,30 +861,28 @@ export class MapManager implements IMapManager {
       for (let x = 0; x < totalSize; x++) {
         // Check collidables layer for any non-empty tile
         const collidableTileId = this.collidablesLayer[y][x];
-        if (collidableTileId !== -1) {
-          // Check if this is a car tile (265 or 266)
-          if (carTiles.has(collidableTileId) && !carSpawned) {
-            // TODO: this is hacky for sure
-            // Spawn the car entity at tile 265 (left side of car)
-            const car = new Car(this.getGameManagers());
-            const carPosition = PoolManager.getInstance().vector2.claim(
-              x * getConfig().world.TILE_SIZE,
-              y * getConfig().world.TILE_SIZE
-            );
-            car.getExt(Positionable).setPosition(carPosition);
-            this.getEntityManager().addEntity(car);
-            // Cache the car entity and location for fast lookup
-            this.carEntity = car;
-            this.carLocation = car.getExt(Positionable).getCenterPosition();
-            carSpawned = true;
 
-            // Clear the car tiles from collidables layer so pathfinding works
-            // Car is 2 tiles wide (265, 266), so clear both tiles
+        if (collidableTileId !== -1) {
+          if (carTiles.has(collidableTileId)) {
+            // Always clear car tiles so they don't render as static map tiles
             this.collidablesLayer[y][x] = -1;
-            if (x + 1 < totalSize) {
-              this.collidablesLayer[y][x + 1] = -1;
+
+            // Spawn the car entity if we find the left side (265) and haven't spawned yet
+            if (collidableTileId === 265 && !carSpawned) {
+              const car = new Car(this.getGameManagers());
+              const carPosition = PoolManager.getInstance().vector2.claim(
+                x * getConfig().world.TILE_SIZE,
+                y * getConfig().world.TILE_SIZE
+              );
+              car.getExt(Positionable).setPosition(carPosition);
+              this.getEntityManager().addEntity(car);
+
+              // Cache the car entity and location for fast lookup
+              this.carEntity = car;
+              this.carLocation = car.getExt(Positionable).getCenterPosition();
+              carSpawned = true;
             }
-          } else if (!carTiles.has(collidableTileId)) {
+          } else {
             // Spawn regular boundary for non-car tiles
             const boundary = new Boundary(this.getGameManagers());
             boundary.setPosition(
@@ -1323,6 +1371,15 @@ export class MapManager implements IMapManager {
 
     this.carLocation = null;
     return null;
+  }
+
+  /**
+   * Clears the cached car entity and location.
+   * Should be called when the car is destroyed/removed.
+   */
+  public clearCarCache(): void {
+    this.carEntity = null;
+    this.carLocation = null;
   }
 
   public getRandomCampsitePosition(): Vector2 | null {

@@ -10,13 +10,14 @@ import Groupable from "@/extensions/groupable";
 import Static from "@/extensions/static";
 import { GameMessageEvent } from "../../../../game-shared/src/events/server-sent/events/game-message-event";
 import { CarRepairEvent } from "../../../../game-shared/src/events/server-sent/events/car-repair-event";
+import { ExplosionEvent } from "../../../../game-shared/src/events/server-sent/events/explosion-event";
 import Interactive from "@/extensions/interactive";
 
 export class Car extends Entity {
   public static get Size(): Vector2 {
     return PoolManager.getInstance().vector2.claim(32, 16);
   }
-  private static readonly INITIAL_HEALTH = 100;
+  private static readonly INITIAL_HEALTH = 10;
   private static readonly ATTACK_MESSAGE_COOLDOWN = 5000; // 5 seconds
   private static readonly REPAIR_COOLDOWN = 1000; // 1 second
 
@@ -64,9 +65,50 @@ export class Car extends Entity {
   }
 
   private onDeath(): void {
-    // End the game when car is destroyed
-    this.getGameManagers().getGameServer().endGame();
-    this.getEntityManager().markEntityForRemoval(this);
+    const carPosition = this.getExt(Positionable).getCenterPosition();
+    const poolManager = PoolManager.getInstance();
+    const broadcaster = this.getGameManagers().getBroadcaster();
+
+    // Broadcast death message
+    broadcaster.broadcastEvent(
+      new GameMessageEvent({
+        message: "WE ARE DEAD!!",
+        color: "red",
+      })
+    );
+
+    // Spawn 200 big zombies around the campsite
+    this.getGameManagers().getMapManager().spawnZombiesAroundCampsite("big", 200);
+    this.getGameManagers().getMapManager().spawnZombiesAroundCampsite("bat", 100);
+
+    // Play multiple explosion animations at the car entity location
+    // Create explosions with slight random offsets to make it look like multiple explosions
+    const EXPLOSION_COUNT = 8;
+    const EXPLOSION_SPREAD = 24; // pixels
+    for (let i = 0; i < EXPLOSION_COUNT; i++) {
+      const offsetX = (Math.random() - 0.5) * EXPLOSION_SPREAD;
+      const offsetY = (Math.random() - 0.5) * EXPLOSION_SPREAD;
+      const explosionPosition = poolManager.vector2.claim(
+        carPosition.x + offsetX,
+        carPosition.y + offsetY
+      );
+
+      broadcaster.broadcastEvent(
+        new ExplosionEvent({
+          position: explosionPosition,
+        })
+      );
+      poolManager.vector2.release(explosionPosition);
+    }
+
+    // Remove the car entity immediately (car is static, so it won't be processed by pruneEntities)
+    this.getEntityManager().removeEntity(this.getId());
+
+    // Clear the map manager's car cache
+    const mapManager = this.getGameManagers().getMapManager() as any;
+    if (mapManager && typeof mapManager.clearCarCache === "function") {
+      mapManager.clearCarCache();
+    }
   }
 
   private onRepair(entityId: number): void {

@@ -18,7 +18,6 @@ Feel free to pick any item listed out here to work on.
 
 ## UX
 
-- throwing knifes don't go over walls or trees which is annoying
 - when the car is destroyed, change it to a broken car sprite display
 - refactor how the car is defined in the editor. the car should not be part of the map but something in the entities list so it can be easily modified on death.
 
