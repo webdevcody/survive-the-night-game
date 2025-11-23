@@ -12,6 +12,7 @@ import { distance } from "@/util/physics";
 import Vector2 from "@/util/vector2";
 import { ExplosionEvent } from "../../../../game-shared/src/events/server-sent/events/explosion-event";
 import PoolManager from "@shared/util/pool-manager";
+import Groupable from "@/extensions/groupable";
 
 const MAX_TRAVEL_DISTANCE = 300;
 const GRENADE_PROJECTILE_SPEED = 200;
@@ -118,12 +119,18 @@ export class GrenadeProjectile extends Entity {
     const position = this.getExt(Positionable).getCenterPosition();
     const nearbyEntities = this.getEntityManager().getNearbyEntities(position, EXPLOSION_RADIUS);
 
-    // Damage all destructible entities in explosion radius
+    // Damage only enemy group entities (zombies) in explosion radius
     for (const entity of nearbyEntities) {
       // Don't damage the shooter
       if (entity.getId() === this.shooterId) continue;
 
       if (!entity.hasExt(Destructible)) continue;
+
+      // Only damage entities in the "enemy" group (zombies)
+      // This prevents damage to players (friendly group) and structures (no group)
+      if (!entity.hasExt(Groupable) || entity.getExt(Groupable).getGroup() !== "enemy") {
+        continue;
+      }
 
       const entityPos = entity.getExt(Positionable).getCenterPosition();
       const dist = position.distance(entityPos);

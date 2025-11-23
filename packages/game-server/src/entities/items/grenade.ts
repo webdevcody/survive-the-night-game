@@ -13,6 +13,7 @@ import { Weapon } from "@/entities/weapons/weapon";
 import Carryable from "@/extensions/carryable";
 import Interactive from "@/extensions/interactive";
 import { ItemState } from "@/types/entity";
+import Groupable from "@/extensions/groupable";
 
 export class Grenade extends Weapon {
   private static readonly EXPLOSION_RADIUS = 64;
@@ -150,9 +151,15 @@ export class Grenade extends Weapon {
       Grenade.EXPLOSION_RADIUS
     );
 
-    // Damage all destructible entities in explosion radius
+    // Damage only enemy group entities (zombies) in explosion radius
     for (const entity of nearbyEntities) {
       if (!entity.hasExt(Destructible)) continue;
+
+      // Only damage entities in the "enemy" group (zombies)
+      // This prevents damage to players (friendly group) and structures (no group)
+      if (!entity.hasExt(Groupable) || entity.getExt(Groupable).getGroup() !== "enemy") {
+        continue;
+      }
 
       const entityPos = entity.getExt(Positionable).getCenterPosition();
       const dist = position.distance(entityPos);

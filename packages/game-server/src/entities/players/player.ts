@@ -420,7 +420,7 @@ export class Player extends Entity {
     position.x += velocity.x * deltaTime;
     this.setPosition(position);
 
-    if (this.getEntityManager().isColliding(this, [Entities.PLAYER])) {
+    if (this.getEntityManager().isColliding(this, [Entities.PLAYER, Entities.WALL, Entities.SENTRY_GUN])) {
       position.x = previousX;
       this.setPosition(position);
     }
@@ -428,7 +428,7 @@ export class Player extends Entity {
     position.y += velocity.y * deltaTime;
     this.setPosition(position);
 
-    if (this.getEntityManager().isColliding(this, [Entities.PLAYER])) {
+    if (this.getEntityManager().isColliding(this, [Entities.PLAYER, Entities.WALL, Entities.SENTRY_GUN])) {
       position.y = previousY;
       this.setPosition(position);
     }

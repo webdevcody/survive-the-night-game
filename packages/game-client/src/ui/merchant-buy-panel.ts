@@ -11,6 +11,7 @@ import { itemRegistry } from "@shared/entities/item-registry";
 import { isWeapon } from "@shared/util/inventory";
 import { ClientResourcesBag, ClientInventory } from "@/extensions";
 import { formatDisplayName } from "@/util/format";
+import { balanceConfig } from "@shared/config/balance-config";
 
 // --- CONSTANTS & STYLES ---
 
@@ -22,16 +23,16 @@ const THEME = {
   colors: {
     overlay: "rgba(0, 0, 0, 0.75)", // Slightly lighter overlay for better contrast
     panelBgStart: "#0f172a", // Slate-900
-    panelBgEnd: "#1e293b",   // Slate-800
-    panelBorder: "#334155",  // Slate-700
+    panelBgEnd: "#1e293b", // Slate-800
+    panelBorder: "#334155", // Slate-700
     headerBg: "rgba(15, 23, 42, 0.9)",
-    accent: "#fbbf24",       // Amber-400
-    accentHover: "#f59e0b",  // Amber-500
+    accent: "#fbbf24", // Amber-400
+    accentHover: "#f59e0b", // Amber-500
     accentDim: "rgba(251, 191, 36, 0.15)",
-    text: "#f8fafc",         // Slate-50
-    textDim: "#94a3b8",      // Slate-400
-    textGreen: "#4ade80",    // Green-400
-    textRed: "#f87171",      // Red-400
+    text: "#f8fafc", // Slate-50
+    textDim: "#94a3b8", // Slate-400
+    textGreen: "#4ade80", // Green-400
+    textRed: "#f87171", // Red-400
     itemBg: "rgba(30, 41, 59, 0.6)",
     itemBgHover: "rgba(51, 65, 85, 0.8)",
     selectionBorder: "#fbbf24",
@@ -66,7 +67,7 @@ const THEME = {
     panel: "0 20px 50px rgba(0,0,0,0.5)",
     card: "0 4px 6px rgba(0,0,0,0.1)",
     glow: "0 0 15px rgba(251, 191, 36, 0.4)",
-  }
+  },
 };
 
 type TabType = "ALL" | "WEAPONS" | "AMMO" | "ITEMS";
@@ -82,7 +83,8 @@ function getItemStats(itemType: string): { label: string; value: string }[] {
   const weapon = weaponRegistry.get(itemType);
   if (weapon) {
     stats.push({ label: "Damage", value: weapon.stats.damage?.toString() ?? "-" });
-    if (weapon.stats.cooldown) stats.push({ label: "Rate", value: `${(1000 / weapon.stats.cooldown).toFixed(1)}/s` });
+    if (weapon.stats.cooldown)
+      stats.push({ label: "Rate", value: `${(1000 / weapon.stats.cooldown).toFixed(1)}/s` });
     return stats;
   }
 
@@ -137,7 +139,8 @@ export class MerchantBuyPanel implements Renderable {
   private panelBounds: { x: number; y: number; width: number; height: number } | null = null;
   private shopItemRegions: Array<{ x: number; y: number; index: number }> = [];
   private inventoryItemRegions: Array<{ x: number; y: number; index: number }> = [];
-  private tabRegions: Array<{ x: number; y: number; width: number; height: number; tab: TabType }> = [];
+  private tabRegions: Array<{ x: number; y: number; width: number; height: number; tab: TabType }> =
+    [];
   private actionButtonRegion: { x: number; y: number; width: number; height: number } | null = null;
 
   private wheelHandler: ((e: WheelEvent) => void) | null = null;
@@ -192,8 +195,8 @@ export class MerchantBuyPanel implements Renderable {
       if (this.matchesTab(item.itemType)) {
         this.shopDisplayItems.push({
           itemType: item.itemType,
-          price: item.price,
-          originalIndex: index
+          price: item.price + balanceConfig.BASE_PURCHASE_PRICE,
+          originalIndex: index,
         });
       }
     });
@@ -204,7 +207,8 @@ export class MerchantBuyPanel implements Renderable {
       if (inventory) {
         const items = inventory.getItems();
         items.forEach((item, slotIndex) => {
-          if (item) { // Show all inventory items regardless of tab? Or filter?
+          if (item) {
+            // Show all inventory items regardless of tab? Or filter?
             // Let's filter inventory too, makes finding stuff easier
             if (this.matchesTab(item.itemType)) {
               const basePrice = this.getBasePrice(item.itemType);
@@ -214,7 +218,7 @@ export class MerchantBuyPanel implements Renderable {
                   itemType: item.itemType,
                   price: sellPrice,
                   originalIndex: slotIndex,
-                  isSellable: true
+                  isSellable: true,
                 });
               }
             }
@@ -224,8 +228,10 @@ export class MerchantBuyPanel implements Renderable {
     }
 
     // Clamp selections
-    if (this.shopSelectedIndex >= this.shopDisplayItems.length) this.shopSelectedIndex = Math.max(0, this.shopDisplayItems.length - 1);
-    if (this.inventorySelectedIndex >= this.inventoryDisplayItems.length) this.inventorySelectedIndex = Math.max(0, this.inventoryDisplayItems.length - 1);
+    if (this.shopSelectedIndex >= this.shopDisplayItems.length)
+      this.shopSelectedIndex = Math.max(0, this.shopDisplayItems.length - 1);
+    if (this.inventorySelectedIndex >= this.inventoryDisplayItems.length)
+      this.inventorySelectedIndex = Math.max(0, this.inventoryDisplayItems.length - 1);
   }
 
   private matchesTab(itemType: string): boolean {
@@ -244,7 +250,7 @@ export class MerchantBuyPanel implements Renderable {
   }
 
   private getBasePrice(itemType: string): number {
-    const shopItem = this.shopItems.find(i => i.itemType === itemType);
+    const shopItem = this.shopItems.find((i) => i.itemType === itemType);
     if (shopItem) return shopItem.price;
     const weapon = weaponRegistry.get(itemType);
     if (weapon?.merchant?.price) return weapon.merchant.price;
@@ -266,11 +272,23 @@ export class MerchantBuyPanel implements Renderable {
       const scrollDelta = e.deltaY > 0 ? 1 : -1;
 
       if (this.activePane === "SHOP") {
-        const maxScroll = Math.max(0, Math.ceil(this.shopDisplayItems.length / ITEMS_PER_ROW) - VISIBLE_ROWS);
-        this.shopScrollOffset = Math.max(0, Math.min(maxScroll, this.shopScrollOffset + scrollDelta));
+        const maxScroll = Math.max(
+          0,
+          Math.ceil(this.shopDisplayItems.length / ITEMS_PER_ROW) - VISIBLE_ROWS
+        );
+        this.shopScrollOffset = Math.max(
+          0,
+          Math.min(maxScroll, this.shopScrollOffset + scrollDelta)
+        );
       } else {
-        const maxScroll = Math.max(0, Math.ceil(this.inventoryDisplayItems.length / ITEMS_PER_ROW) - VISIBLE_ROWS);
-        this.inventoryScrollOffset = Math.max(0, Math.min(maxScroll, this.inventoryScrollOffset + scrollDelta));
+        const maxScroll = Math.max(
+          0,
+          Math.ceil(this.inventoryDisplayItems.length / ITEMS_PER_ROW) - VISIBLE_ROWS
+        );
+        this.inventoryScrollOffset = Math.max(
+          0,
+          Math.min(maxScroll, this.inventoryScrollOffset + scrollDelta)
+        );
       }
     };
 
@@ -356,14 +374,25 @@ export class MerchantBuyPanel implements Renderable {
     if (!this.isVisible() || !this.panelBounds) return false;
 
     // Check Action Button
-    if (this.actionButtonRegion && x >= this.actionButtonRegion.x && x <= this.actionButtonRegion.x + this.actionButtonRegion.width && y >= this.actionButtonRegion.y && y <= this.actionButtonRegion.y + this.actionButtonRegion.height) {
+    if (
+      this.actionButtonRegion &&
+      x >= this.actionButtonRegion.x &&
+      x <= this.actionButtonRegion.x + this.actionButtonRegion.width &&
+      y >= this.actionButtonRegion.y &&
+      y <= this.actionButtonRegion.y + this.actionButtonRegion.height
+    ) {
       this.executeTransaction();
       return true;
     }
 
     // Check Tabs
     for (const region of this.tabRegions) {
-      if (x >= region.x && x <= region.x + region.width && y >= region.y && y <= region.y + region.height) {
+      if (
+        x >= region.x &&
+        x <= region.x + region.width &&
+        y >= region.y &&
+        y <= region.y + region.height
+      ) {
         this.currentTab = region.tab;
         this.refreshItems();
         return true;
@@ -394,7 +423,10 @@ export class MerchantBuyPanel implements Renderable {
     // Simple check: left half vs right half
     if (x >= this.panelBounds.x && x <= this.panelBounds.x + this.panelBounds.width / 2) {
       this.activePane = "SHOP";
-    } else if (x > this.panelBounds.x + this.panelBounds.width / 2 && x <= this.panelBounds.x + this.panelBounds.width) {
+    } else if (
+      x > this.panelBounds.x + this.panelBounds.width / 2 &&
+      x <= this.panelBounds.x + this.panelBounds.width
+    ) {
       this.activePane = "INVENTORY";
     }
 
@@ -426,11 +458,20 @@ export class MerchantBuyPanel implements Renderable {
     }
   }
 
-  private getItemIconInfo(itemType: string): { image: HTMLImageElement; x: number; y: number; w: number; h: number } | null {
+  private getItemIconInfo(
+    itemType: string
+  ): { image: HTMLImageElement; x: number; y: number; w: number; h: number } | null {
     const weapon = weaponRegistry.get(itemType);
     if (weapon) {
       const img = this.assetManager.getSheet(weapon.assets.sheet || "default");
-      if (img) return { image: img, x: weapon.assets.spritePositions.down.x, y: weapon.assets.spritePositions.down.y, w: 16, h: 16 };
+      if (img)
+        return {
+          image: img,
+          x: weapon.assets.spritePositions.down.x,
+          y: weapon.assets.spritePositions.down.y,
+          w: 16,
+          h: 16,
+        };
     }
     const item = itemRegistry.get(itemType);
     if (item) {
@@ -445,7 +486,14 @@ export class MerchantBuyPanel implements Renderable {
     return null;
   }
 
-  private fillRoundedRect(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, r: number) {
+  private fillRoundedRect(
+    ctx: CanvasRenderingContext2D,
+    x: number,
+    y: number,
+    w: number,
+    h: number,
+    r: number
+  ) {
     ctx.beginPath();
     ctx.moveTo(x + r, y);
     ctx.lineTo(x + w - r, y);
@@ -460,7 +508,14 @@ export class MerchantBuyPanel implements Renderable {
     ctx.fill();
   }
 
-  private strokeRoundedRect(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, r: number) {
+  private strokeRoundedRect(
+    ctx: CanvasRenderingContext2D,
+    x: number,
+    y: number,
+    w: number,
+    h: number,
+    r: number
+  ) {
     ctx.beginPath();
     ctx.moveTo(x + r, y);
     ctx.lineTo(x + w - r, y);
@@ -486,9 +541,13 @@ export class MerchantBuyPanel implements Renderable {
     this.refreshItems();
 
     const player = this.getPlayer();
-    const playerCoins = player && player.hasExt(ClientResourcesBag) ? player.getExt(ClientResourcesBag).getCoins() : 0;
+    const playerCoins =
+      player && player.hasExt(ClientResourcesBag)
+        ? player.getExt(ClientResourcesBag).getCoins()
+        : 0;
 
-    const { width, height, padding, gap, itemSize, headerHeight, footerHeight, cornerRadius } = THEME.layout;
+    const { width, height, padding, gap, itemSize, headerHeight, footerHeight, cornerRadius } =
+      THEME.layout;
     const centerX = ctx.canvas.width / 2;
     const centerY = ctx.canvas.height / 2;
     const startX = centerX - width / 2;
@@ -515,7 +574,7 @@ export class MerchantBuyPanel implements Renderable {
     bgGradient.addColorStop(0, THEME.colors.panelBgStart);
     bgGradient.addColorStop(1, THEME.colors.panelBgEnd);
     ctx.fillStyle = bgGradient;
-    
+
     this.fillRoundedRect(ctx, startX, startY, width, height, cornerRadius);
     ctx.restore(); // Clear shadow
 
@@ -569,7 +628,7 @@ export class MerchantBuyPanel implements Renderable {
         ctx.fillStyle = THEME.colors.tabActive;
         this.fillRoundedRect(ctx, x, tabY, tabW, tabH, 6);
       } else {
-         // Subtle hover or inactive state could go here
+        // Subtle hover or inactive state could go here
       }
 
       ctx.fillStyle = active ? "#0f172a" : THEME.colors.textDim;
@@ -584,7 +643,11 @@ export class MerchantBuyPanel implements Renderable {
     ctx.textAlign = "right";
     ctx.fillStyle = THEME.colors.accent;
     ctx.font = THEME.fonts.header;
-    ctx.fillText(`${playerCoins.toLocaleString()} Coins`, startX + width - padding, startY + headerHeight / 2);
+    ctx.fillText(
+      `${playerCoins.toLocaleString()} Coins`,
+      startX + width - padding,
+      startY + headerHeight / 2
+    );
 
     // Content Area
     const contentY = startY + headerHeight + gap;
@@ -656,7 +719,7 @@ export class MerchantBuyPanel implements Renderable {
     // Pane Background (Rounded)
     ctx.fillStyle = "rgba(15, 23, 42, 0.3)"; // Subtle darker bg for pane area
     this.fillRoundedRect(ctx, x, y, w, h, 8);
-    
+
     ctx.strokeStyle = isActive ? THEME.colors.activePaneBorder : THEME.colors.inactivePaneBorder;
     ctx.lineWidth = isActive ? 2 : 1;
     this.strokeRoundedRect(ctx, x, y, w, h, 8);
@@ -691,7 +754,7 @@ export class MerchantBuyPanel implements Renderable {
       // Item Background
       ctx.fillStyle = isSelected ? THEME.colors.itemBgHover : THEME.colors.itemBg;
       this.fillRoundedRect(ctx, itemX, itemY, itemSize, itemSize, itemRadius);
-      
+
       ctx.shadowBlur = 0; // Reset shadow
 
       // Border
@@ -703,11 +766,26 @@ export class MerchantBuyPanel implements Renderable {
       const icon = this.getItemIconInfo(item.itemType);
       if (icon) {
         const size = 48;
-        ctx.drawImage(icon.image, icon.x, icon.y, icon.w, icon.h, itemX + (itemSize - size) / 2, itemY + 10, size, size);
+        ctx.drawImage(
+          icon.image,
+          icon.x,
+          icon.y,
+          icon.w,
+          icon.h,
+          itemX + (itemSize - size) / 2,
+          itemY + 10,
+          size,
+          size
+        );
       }
 
       // Price Tag
-      ctx.fillStyle = (type === "SHOP" && !canAfford) ? THEME.colors.textRed : (type === "INVENTORY" ? THEME.colors.textGreen : THEME.colors.accent);
+      ctx.fillStyle =
+        type === "SHOP" && !canAfford
+          ? THEME.colors.textRed
+          : type === "INVENTORY"
+          ? THEME.colors.textGreen
+          : THEME.colors.accent;
       ctx.font = THEME.fonts.price;
       ctx.textAlign = "center";
       ctx.fillText(`${item.price}`, itemX + itemSize / 2, itemY + itemSize - 10);
@@ -731,16 +809,24 @@ export class MerchantBuyPanel implements Renderable {
 
       ctx.fillStyle = "#334155";
       this.fillRoundedRect(ctx, barX, barY, barW, barH, 3);
-      
+
       ctx.fillStyle = THEME.colors.accent;
       this.fillRoundedRect(ctx, barX, thumbY, barW, thumbH, 3);
     }
   }
 
-  private renderFooter(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, playerCoins: number): void {
-    const activeItem = this.activePane === "SHOP"
-      ? this.shopDisplayItems[this.shopSelectedIndex]
-      : this.inventoryDisplayItems[this.inventorySelectedIndex];
+  private renderFooter(
+    ctx: CanvasRenderingContext2D,
+    x: number,
+    y: number,
+    w: number,
+    h: number,
+    playerCoins: number
+  ): void {
+    const activeItem =
+      this.activePane === "SHOP"
+        ? this.shopDisplayItems[this.shopSelectedIndex]
+        : this.inventoryDisplayItems[this.inventorySelectedIndex];
 
     // Separator
     ctx.beginPath();
@@ -761,7 +847,14 @@ export class MerchantBuyPanel implements Renderable {
       const iconY = y + (h - iconSize) / 2;
 
       // Glow backing
-      const g = ctx.createRadialGradient(iconX + iconSize / 2, iconY + iconSize / 2, 10, iconX + iconSize / 2, iconY + iconSize / 2, 70);
+      const g = ctx.createRadialGradient(
+        iconX + iconSize / 2,
+        iconY + iconSize / 2,
+        10,
+        iconX + iconSize / 2,
+        iconY + iconSize / 2,
+        70
+      );
       g.addColorStop(0, THEME.colors.accentDim);
       g.addColorStop(1, "transparent");
       ctx.fillStyle = g;
@@ -772,7 +865,7 @@ export class MerchantBuyPanel implements Renderable {
 
     // Info Text
     const textX = x + padding + iconSize + 30;
-    
+
     ctx.fillStyle = THEME.colors.text;
     ctx.font = THEME.fonts.title;
     ctx.textAlign = "left";
@@ -789,10 +882,10 @@ export class MerchantBuyPanel implements Renderable {
       const labelW = ctx.measureText(stat.label + ": ").width;
       ctx.fillStyle = THEME.colors.textDim;
       ctx.fillText(`${stat.label}:`, statX, statY);
-      
+
       ctx.fillStyle = THEME.colors.text;
       ctx.fillText(stat.value, statX + labelW, statY);
-      
+
       statX += labelW + ctx.measureText(stat.value).width + 40; // Spacing
     });
 
@@ -813,19 +906,19 @@ export class MerchantBuyPanel implements Renderable {
 
     // Button Gradient
     if (isBuy) {
-        if (canAfford) {
-            const btnGrad = ctx.createLinearGradient(btnX, btnY, btnX, btnY + btnH);
-            btnGrad.addColorStop(0, THEME.colors.buttonGradientStart);
-            btnGrad.addColorStop(1, THEME.colors.buttonGradientEnd);
-            ctx.fillStyle = btnGrad;
-        } else {
-            ctx.fillStyle = THEME.colors.buttonDisabled;
-        }
-    } else {
+      if (canAfford) {
         const btnGrad = ctx.createLinearGradient(btnX, btnY, btnX, btnY + btnH);
-        btnGrad.addColorStop(0, "#4ade80");
-        btnGrad.addColorStop(1, "#16a34a");
+        btnGrad.addColorStop(0, THEME.colors.buttonGradientStart);
+        btnGrad.addColorStop(1, THEME.colors.buttonGradientEnd);
         ctx.fillStyle = btnGrad;
+      } else {
+        ctx.fillStyle = THEME.colors.buttonDisabled;
+      }
+    } else {
+      const btnGrad = ctx.createLinearGradient(btnX, btnY, btnX, btnY + btnH);
+      btnGrad.addColorStop(0, "#4ade80");
+      btnGrad.addColorStop(1, "#16a34a");
+      ctx.fillStyle = btnGrad;
     }
 
     this.fillRoundedRect(ctx, btnX, btnY, btnW, btnH, 12);

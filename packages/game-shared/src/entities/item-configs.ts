@@ -365,8 +365,6 @@ export const ITEM_CONFIGS: Record<string, ItemConfig> = {
       components: [{ type: "wood", count: 2 }],
     },
   },
-  // Tree is special - it's in environment-configs but spawns like an item
-  // Entity type is "tree" but we reference it here for spawn config
   tree: {
     id: "tree",
     category: "structure",
@@ -401,7 +399,7 @@ export const ITEM_CONFIGS: Record<string, ItemConfig> = {
       enabled: true,
       components: [
         { type: "pistol" },
-        { type: "pistol_ammo", count: 5 },
+        { type: "pistol_ammo", count: 8 },
         { type: "wood", count: 3 },
         { type: "cloth", count: 2 },
       ],

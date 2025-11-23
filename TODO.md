@@ -6,10 +6,14 @@ Feel free to pick any item listed out here to work on.
 
 - if you pick up a wall that is damaged and put it back down, it seems to go back to full hp again.
 
+- default stack size should be defined in configs instead on the server entities constants to make it easier to configure.
+
 ## DevEx
 
+- ability to upgrade sentries, walls, spikes with gold
+- walls just dissapear for some reason
+- each player should be able to repair the car with their own cooldown
 - scale the merchant menu on smaller screens
-- some items are way to expensive
 - force next round button
 - all the item configs should reference the proper item sheets and remove "default" from all over the codebase. first start with any items that are set to "default", those need to be refactored, then refactor the javascript
 - I need to refactor how the assets are managed. At the very least, throw an error if the same asset is loaded with the same asset key.

@@ -3,7 +3,6 @@ import { Cooldown } from "@/entities/util/cooldown";
 import Collidable from "@/extensions/collidable";
 import Destructible from "@/extensions/destructible";
 import Groupable from "@/extensions/groupable";
-import Interactive from "@/extensions/interactive";
 import Inventory from "@/extensions/inventory";
 import Movable from "@/extensions/movable";
 import Positionable from "@/extensions/positionable";
@@ -21,6 +20,8 @@ import { EntityCategory, EntityCategories, ZombieConfig, zombieRegistry } from "
 import { IdleMovementStrategy } from "./strategies/movement/idle-movement";
 import { getConfig } from "@shared/config";
 import { Blood } from "@/entities/effects/blood";
+import { distance } from "@shared/util/physics";
+import { Player } from "@/entities/players/player";
 
 export interface MovementStrategy {
   // Return true if the strategy handled movement completely, false if it needs default movement handling
@@ -47,6 +48,7 @@ export abstract class BaseEnemy extends Entity {
   private movementStrategy?: MovementStrategy;
   private attackStrategy?: AttackStrategy;
   protected config: ZombieConfig;
+  private hasBeenLooted: boolean = false;
 
   constructor(gameManagers: IGameManagers, entityType: EntityType, config?: ZombieConfig) {
     super(gameManagers, entityType);
@@ -131,9 +133,6 @@ export abstract class BaseEnemy extends Entity {
   }
 
   onDeath(killerId?: number): void {
-    this.addExtension(
-      new Interactive(this).onInteract(this.onLooted.bind(this)).setDisplayName("loot")
-    );
     this.getExt(Collidable).setEnabled(false);
     this.getGameManagers()
       .getBroadcaster()
@@ -155,6 +154,12 @@ export abstract class BaseEnemy extends Entity {
   }
 
   onLooted(): void {
+    // Prevent multiple loots
+    if (this.hasBeenLooted) {
+      return;
+    }
+    this.hasBeenLooted = true;
+
     const inventory = this.getExt(Inventory);
     if (inventory) {
       inventory.scatterItems(this.getPosition());
@@ -223,6 +228,30 @@ export abstract class BaseEnemy extends Entity {
 
     const destructible = this.getExt(Destructible);
     if (destructible.isDead()) {
+      // Check for auto-looting when dead (only if not already looted)
+      if (!this.hasBeenLooted) {
+        const zombiePos = this.getCenterPosition();
+        const interactRadius = getConfig().player.MAX_INTERACT_RADIUS;
+        
+        // Check for nearby alive players
+        const nearbyPlayers = this.getEntityManager()
+          .getNearbyEntities(zombiePos, interactRadius, new Set([Entities.PLAYER]))
+          .filter((entity) => entity instanceof Player && !entity.isDead());
+        
+        // If any player is within interaction range, auto-loot
+        if (nearbyPlayers.length > 0) {
+          for (const player of nearbyPlayers) {
+            if (player instanceof Player && player.hasExt(Positionable)) {
+              const playerPos = player.getExt(Positionable).getCenterPosition();
+              const dist = distance(zombiePos, playerPos);
+              if (dist <= interactRadius) {
+                this.onLooted();
+                return;
+              }
+            }
+          }
+        }
+      }
       return;
     }
 

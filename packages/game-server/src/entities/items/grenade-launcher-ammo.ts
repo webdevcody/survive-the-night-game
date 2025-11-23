@@ -3,7 +3,7 @@ import { Entities } from "@/constants";
 import { StackableItem } from "@/entities/items/stackable-item";
 
 export class GrenadeLauncherAmmo extends StackableItem {
-  public static readonly DEFAULT_AMMO_COUNT = 10;
+  public static readonly DEFAULT_AMMO_COUNT = 4;
 
   constructor(gameManagers: IGameManagers, itemState?: { count?: number }) {
     super(
@@ -20,4 +20,3 @@ export class GrenadeLauncherAmmo extends StackableItem {
     return GrenadeLauncherAmmo.DEFAULT_AMMO_COUNT;
   }
 }
-

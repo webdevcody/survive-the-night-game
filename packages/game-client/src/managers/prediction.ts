@@ -218,6 +218,12 @@ export class PredictionManager {
         continue;
       }
 
+      // Skip walls and sentry guns - players can walk through them
+      const entityType = entity.getType();
+      if (entityType === "wall" || entityType === "sentry_gun") {
+        continue;
+      }
+
       // Only check collision with entities that have collidable extension
       if (!entity.hasExt(ClientCollidable)) {
         continue;

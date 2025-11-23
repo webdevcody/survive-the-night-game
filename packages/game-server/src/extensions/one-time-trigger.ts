@@ -21,7 +21,7 @@ type OneTimeTriggerFields = {
 
 export default class OneTimeTrigger extends ExtensionBase<OneTimeTriggerFields> {
   public static readonly type = "one-time-trigger";
-  private static readonly CHECK_INTERVAL = 0.5; // Check for enemies every half second
+  private static readonly CHECK_INTERVAL = 0.25; // Check for enemies every half second
 
   private triggerRadius: number;
   private targetTypes: EntityType[];
@@ -29,7 +29,11 @@ export default class OneTimeTrigger extends ExtensionBase<OneTimeTriggerFields> 
   private checkCooldown: Cooldown;
 
   constructor(self: IEntity, options: OneTimeTriggerOptions) {
-    super(self, { hasTriggered: false, triggerRadius: options.triggerRadius, targetTypes: options.targetTypes });
+    super(self, {
+      hasTriggered: false,
+      triggerRadius: options.triggerRadius,
+      targetTypes: options.targetTypes,
+    });
     this.triggerRadius = options.triggerRadius;
     this.targetTypes = options.targetTypes;
     this.checkCooldown = new Cooldown(OneTimeTrigger.CHECK_INTERVAL);
@@ -43,7 +47,7 @@ export default class OneTimeTrigger extends ExtensionBase<OneTimeTriggerFields> 
   }
 
   public update(deltaTime: number) {
-    if (this.serialized.get('hasTriggered')) return;
+    if (this.serialized.get("hasTriggered")) return;
 
     // Update cooldown
     this.checkCooldown.update(deltaTime);
@@ -58,8 +62,8 @@ export default class OneTimeTrigger extends ExtensionBase<OneTimeTriggerFields> 
 
     const positionable = this.self.getExt(Positionable);
     // Use serialized values for consistency (these never change after construction, but good practice)
-    const targetTypesSet = new Set<EntityType>(this.serialized.get('targetTypes'));
-    const triggerRadius = this.serialized.get('triggerRadius');
+    const targetTypesSet = new Set<EntityType>(this.serialized.get("targetTypes"));
+    const triggerRadius = this.serialized.get("triggerRadius");
     const nearbyEntities = this.self
       .getEntityManager()
       .getNearbyEntities(positionable.getCenterPosition(), triggerRadius, targetTypesSet);
@@ -73,7 +77,7 @@ export default class OneTimeTrigger extends ExtensionBase<OneTimeTriggerFields> 
       const distance = entityPos.clone().sub(selfPos).length();
 
       if (distance <= triggerRadius) {
-        this.serialized.set('hasTriggered', true);
+        this.serialized.set("hasTriggered", true);
         this.triggerCallback?.();
         break;
       }
@@ -82,6 +86,6 @@ export default class OneTimeTrigger extends ExtensionBase<OneTimeTriggerFields> 
 
   public serializeToBuffer(writer: BufferWriter, onlyDirty: boolean = false): void {
     writer.writeUInt8(encodeExtensionType(OneTimeTrigger.type));
-    writer.writeBoolean(this.serialized.get('hasTriggered'));
+    writer.writeBoolean(this.serialized.get("hasTriggered"));
   }
 }
