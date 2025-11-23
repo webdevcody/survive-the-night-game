@@ -1,5 +1,22 @@
 [
   {
+    "version": "0.24.0",
+    "date": "2025-11-22",
+    "changes": {
+      "features": [
+        "Added Splitter Boss zombie - new boss type that splits into smaller versions when reaching health thresholds, spawning on wave 9",
+        "Implemented boss split mechanics - Splitter Boss splits up to 2 times with configurable speed, health, and damage multipliers per split",
+        "Added boss split event system - client and server-side event handling for boss splitting behavior with visual feedback"
+      ],
+      "bugFixes": [],
+      "refactoring": [
+        "Enhanced boss entity system - added split configuration support for dynamic boss behavior",
+        "Updated wave configuration - integrated Splitter Boss into wave spawn system as wave 9 boss"
+      ],
+      "performance": []
+    }
+  },
+  {
     "version": "0.23.0",
     "date": "2025-11-22",
     "changes": {
