@@ -18,7 +18,7 @@ export class Pistol extends Weapon {
     return this.getConfig().stats.cooldown;
   }
 
-  public attack(playerId: string, position: Vector2, facing: Direction, aimAngle?: number): void {
+  public attack(playerId: number, position: Vector2, facing: Direction, aimAngle?: number): void {
     const player = this.getEntityManager().getEntityById(playerId);
     if (!player) return;
 

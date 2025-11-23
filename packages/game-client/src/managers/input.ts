@@ -143,13 +143,6 @@ export class InputManager {
         this.fKeyHeld = true;
       }
 
-      // Check if player is dead - if so, any key triggers respawn
-      const isPlayerDead = callbacks.isPlayerDead?.() ?? false;
-      if (isPlayerDead) {
-        callbacks.onRespawnRequest?.();
-        return;
-      }
-
       // Handle chat mode FIRST - block ALL game inputs when chatting
       // This must come before any other input handling to prevent hotkeys from triggering
       if (eventKey === "y" && !this.isChatting) {

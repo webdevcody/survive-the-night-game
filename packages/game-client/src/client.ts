@@ -783,6 +783,15 @@ export class GameClient {
         // Update spatial grid after position changes from prediction/reconciliation
         // This ensures the player is always findable in the spatial grid for rendering
         this.renderer.updateEntityInSpatialGrid(player);
+      } else {
+        // Player is dead - check if respawn cooldown has expired
+        if (player.isDead()) {
+          const cooldownRemaining = player.getRespawnCooldownRemaining();
+          if (cooldownRemaining === 0) {
+            // Cooldown expired, automatically request respawn
+            this.socketManager.requestRespawn();
+          }
+        }
       }
     }
 

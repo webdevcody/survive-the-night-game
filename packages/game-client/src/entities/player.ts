@@ -45,6 +45,7 @@ export class PlayerClient extends ClientEntity implements IClientEntity, Rendera
   private maxStamina: number = 100;
   private pickupProgress: number = 0; // Client-only field for interact hold progress
   private serverGhostPos: Vector2 | null = null;
+  private deathTime: number = 0; // Timestamp when player died, 0 means not dead
 
   private input: Input = {
     facing: Direction.Right,
@@ -76,6 +77,7 @@ export class PlayerClient extends ClientEntity implements IClientEntity, Rendera
     this.stamina = data.stamina ?? 100;
     this.maxStamina = data.maxStamina ?? 100;
     this.pickupProgress = data.pickupProgress ?? 0;
+    this.deathTime = data.deathTime ?? 0;
   }
 
   private getPlayerAssetKey(): string {
@@ -539,6 +541,19 @@ export class PlayerClient extends ClientEntity implements IClientEntity, Rendera
     this.maxStamina = data.maxStamina ?? 100;
     // pickupProgress is client-only, initialized to 0
     this.pickupProgress = 0;
+    this.deathTime = data.deathTime ?? 0;
+  }
+
+  getDeathTime(): number {
+    return this.deathTime;
+  }
+
+  getRespawnCooldownRemaining(): number {
+    if (this.deathTime === 0) return 0;
+    const RESPAWN_COOLDOWN_MS = 5000; // 5 seconds
+    const timeSinceDeath = Date.now() - this.deathTime;
+    const remaining = RESPAWN_COOLDOWN_MS - timeSinceDeath;
+    return Math.max(0, remaining);
   }
 
   getPickupProgress(): number {

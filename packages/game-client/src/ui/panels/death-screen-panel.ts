@@ -26,8 +26,22 @@ export class DeathScreenPanel extends Panel {
 
     this.resetTransform(ctx);
 
+    // Calculate respawn cooldown remaining
+    const cooldownRemaining = player.getRespawnCooldownRemaining();
+    const cooldownSeconds = Math.ceil(cooldownRemaining / 1000);
+
+    // Determine text to display
+    let displayText: string;
+    if (cooldownRemaining > 0) {
+      displayText = `You died. Respawning in ${cooldownSeconds} second${
+        cooldownSeconds !== 1 ? "s" : ""
+      }...`;
+    } else {
+      displayText = "You died. Respawning...";
+    }
+
     ctx.font = this.deathSettings.font;
-    const metrics = ctx.measureText(this.deathSettings.text);
+    const metrics = ctx.measureText(displayText);
     const padding = 30;
 
     // Calculate centered position
@@ -46,7 +60,7 @@ export class DeathScreenPanel extends Panel {
 
     // Draw text
     ctx.fillStyle = this.deathSettings.textColor;
-    ctx.fillText(this.deathSettings.text, x + padding, y + 65);
+    ctx.fillText(displayText, x + padding, y + 65);
 
     this.restoreContext(ctx);
   }

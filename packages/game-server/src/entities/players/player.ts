@@ -40,6 +40,7 @@ export class Player extends Entity {
   private static readonly PLAYER_WIDTH = 16;
   private static readonly INTERACT_COOLDOWN = 0.25;
   private static readonly PICKUP_HOLD_DURATION = 0.5; // 1 second in seconds
+  private static readonly RESPAWN_COOLDOWN_MS = 5000; // 5 seconds
 
   // Internal state
   private fireCooldown = new Cooldown(0.4, true);
@@ -66,6 +67,7 @@ export class Player extends Entity {
         displayName: "",
         stamina: getConfig().player.MAX_STAMINA,
         maxStamina: getConfig().player.MAX_STAMINA,
+        deathTime: 0, // Timestamp when player died, 0 means not dead
         // Input fields stored individually for efficient serialization
         inputFacing: Direction.Right,
         inputDx: 0,
@@ -82,6 +84,7 @@ export class Player extends Entity {
         inputFacing: { numberType: "uint8" },
         inputInventoryItem: { numberType: "uint8" },
         inputAimAngle: { numberType: "float64", optional: true },
+        deathTime: { numberType: "float64" },
         // Note: inputSequenceNumber is not in SerializableFields, so no metadata needed
       }
     );
@@ -121,7 +124,7 @@ export class Player extends Entity {
       {
         itemType: "pistol_ammo" as const,
         state: {
-          count: 18,
+          count: 8,
         },
       },
     ].forEach((item) => inventory.addItem(item));
@@ -172,7 +175,9 @@ export class Player extends Entity {
 
   onDeath(): void {
     this.setIsCrafting(false);
-    this.getExt(Inventory).scatterItems(this.getPosition());
+    // Don't drop inventory items on death
+    // this.getExt(Inventory).scatterItems(this.getPosition());
+    this.serialized.set("deathTime", Date.now());
     this.broadcaster.broadcastEvent(
       new PlayerDeathEvent({
         playerId: this.getId(),
@@ -185,8 +190,20 @@ export class Player extends Entity {
   respawn(): void {
     if (!this.isDead()) return;
 
-    // Clear inventory
-    this.getExt(Inventory).clear();
+    // Check respawn cooldown
+    const deathTime = this.serialized.get("deathTime");
+    if (deathTime > 0) {
+      const timeSinceDeath = Date.now() - deathTime;
+      if (timeSinceDeath < Player.RESPAWN_COOLDOWN_MS) {
+        return; // Still in cooldown
+      }
+    }
+
+    // Clear death time
+    this.serialized.set("deathTime", 0);
+
+    // Don't clear inventory - keep items on respawn
+    // this.getExt(Inventory).clear();
 
     // Re-enable collision
     this.getExt(Collidable).setEnabled(true);
@@ -200,6 +217,14 @@ export class Player extends Entity {
     if (campsitePosition) {
       this.setPosition(campsitePosition);
     }
+  }
+
+  getRespawnCooldownRemaining(): number {
+    const deathTime = this.serialized.get("deathTime");
+    if (deathTime === 0) return 0;
+    const timeSinceDeath = Date.now() - deathTime;
+    const remaining = Player.RESPAWN_COOLDOWN_MS - timeSinceDeath;
+    return Math.max(0, remaining);
   }
 
   isInventoryFull(): boolean {
@@ -420,7 +445,13 @@ export class Player extends Entity {
     position.x += velocity.x * deltaTime;
     this.setPosition(position);
 
-    if (this.getEntityManager().isColliding(this, [Entities.PLAYER, Entities.WALL, Entities.SENTRY_GUN])) {
+    if (
+      this.getEntityManager().isColliding(this, [
+        Entities.PLAYER,
+        Entities.WALL,
+        Entities.SENTRY_GUN,
+      ])
+    ) {
       position.x = previousX;
       this.setPosition(position);
     }
@@ -428,7 +459,13 @@ export class Player extends Entity {
     position.y += velocity.y * deltaTime;
     this.setPosition(position);
 
-    if (this.getEntityManager().isColliding(this, [Entities.PLAYER, Entities.WALL, Entities.SENTRY_GUN])) {
+    if (
+      this.getEntityManager().isColliding(this, [
+        Entities.PLAYER,
+        Entities.WALL,
+        Entities.SENTRY_GUN,
+      ])
+    ) {
       position.y = previousY;
       this.setPosition(position);
     }
