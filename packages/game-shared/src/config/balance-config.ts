@@ -21,7 +21,7 @@ export const balanceConfig = {
    * Applied to zombie drop chances when they spawn
    * Value of 0.01 means zombies drop items 1% as often as configured
    */
-  ZOMBIE_ITEM_DROP_MULTIPLIER: 0.7,
+  ZOMBIE_ITEM_DROP_MULTIPLIER: 0.3,
 } as const;
 
 export type BalanceConfig = typeof balanceConfig;

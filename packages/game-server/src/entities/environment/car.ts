@@ -17,7 +17,7 @@ export class Car extends Entity {
   public static get Size(): Vector2 {
     return PoolManager.getInstance().vector2.claim(32, 16);
   }
-  private static readonly INITIAL_HEALTH = 10;
+  private static readonly INITIAL_HEALTH = 20;
   private static readonly ATTACK_MESSAGE_COOLDOWN = 5000; // 5 seconds
   private static readonly REPAIR_COOLDOWN = 1000; // 1 second
 

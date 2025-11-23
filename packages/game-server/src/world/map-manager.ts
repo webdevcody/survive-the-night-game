@@ -216,6 +216,9 @@ export class MapManager implements IMapManager {
       return;
     }
 
+    // Spawn boss if needed (use first spawn location or fallback)
+    this.spawnBossIfNeeded(waveNumber, spawnLocations.length > 0 ? [spawnLocations[0]] : []);
+
     // Shuffle spawn locations for random distribution
     for (let i = spawnLocations.length - 1; i > 0; i--) {
       const j = Math.floor(Math.random() * (i + 1));
@@ -298,9 +301,6 @@ export class MapManager implements IMapManager {
           `big=${totalSpawned.big}, bat=${totalSpawned.bat}, spitter=${totalSpawned.spitter}`
       );
     }
-
-    // Spawn boss if needed (use first spawn location or fallback)
-    this.spawnBossIfNeeded(waveNumber, spawnLocations.length > 0 ? [spawnLocations[0]] : []);
   }
 
   /**

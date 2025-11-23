@@ -78,11 +78,12 @@ export class MeleeAttackStrategy implements AttackStrategy {
     const endAttackExecution =
       tickPerformanceTracker?.startMethod("attackExecution", "attackStrategy") || (() => {});
     // Attack the closest entity if within range
-    // If the closest target is a car, give zombies an extra 8 pixel of attack leeway.
+    // If the closest target is a car or wall, give zombies an extra 8 pixel of attack leeway.
     let extraAttackDistance = 0;
     if (closestTarget && closestTarget.entity.hasExt(Destructible)) {
-      // Check if the entity type is a car
-      if (closestTarget.entity.getType() === Entities.CAR) {
+      const entityType = closestTarget.entity.getType();
+      // Check if the entity type is a car or wall
+      if (entityType === Entities.CAR || entityType === Entities.WALL) {
         extraAttackDistance = 8;
       }
     }

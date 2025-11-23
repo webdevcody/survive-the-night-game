@@ -662,23 +662,25 @@ export class FullScreenMap {
       const mapX = centerX + relativeX * zoom;
       const mapY = centerY + relativeY * zoom;
 
-      // Draw survivor indicator with green circle
+      const isRescued = entity.getIsRescued();
       const iconSize = 24 * Math.max(0.5, zoom);
       const halfIcon = iconSize / 2;
 
-      // Draw green circle around survivor first
-      const circleRadius = 40 * Math.max(0.5, zoom);
-      ctx.strokeStyle = "rgba(50, 255, 50, 0.8)";
-      ctx.lineWidth = 2 * Math.max(0.5, zoom);
-      ctx.beginPath();
-      ctx.arc(mapX, mapY, circleRadius, 0, Math.PI * 2);
-      ctx.stroke();
+      // Draw green circle around survivor only if not rescued
+      if (!isRescued) {
+        const circleRadius = 40 * Math.max(0.5, zoom);
+        ctx.strokeStyle = "rgba(50, 255, 50, 0.8)";
+        ctx.lineWidth = 2 * Math.max(0.5, zoom);
+        ctx.beginPath();
+        ctx.arc(mapX, mapY, circleRadius, 0, Math.PI * 2);
+        ctx.stroke();
 
-      // Draw inner filled circle for visibility
-      ctx.fillStyle = "rgba(50, 255, 50, 0.15)";
-      ctx.beginPath();
-      ctx.arc(mapX, mapY, circleRadius, 0, Math.PI * 2);
-      ctx.fill();
+        // Draw inner filled circle for visibility
+        ctx.fillStyle = "rgba(50, 255, 50, 0.15)";
+        ctx.beginPath();
+        ctx.arc(mapX, mapY, circleRadius, 0, Math.PI * 2);
+        ctx.fill();
+      }
 
       // Draw survivor icon (simple person shape)
       ctx.fillStyle = "#4CAF50";

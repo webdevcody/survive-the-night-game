@@ -42,8 +42,8 @@ export const ZOMBIE_CONFIGS: Record<string, ZombieConfig> = {
     id: "big_zombie",
     category: EntityCategories.ZOMBIE,
     stats: {
-      speed: 20,
-      health: 11,
+      speed: 25,
+      health: 8,
       damage: 3,
       attackCooldown: 1.5,
       attackRadius: combatConfig.ZOMBIE_ATTACK_RADIUS,
@@ -76,10 +76,10 @@ export const ZOMBIE_CONFIGS: Record<string, ZombieConfig> = {
     id: "fast_zombie",
     category: EntityCategories.ZOMBIE,
     stats: {
-      speed: 45,
-      health: 1,
+      speed: 40,
+      health: 2,
       damage: 1,
-      attackCooldown: 0.5,
+      attackCooldown: 0.75,
       attackRadius: combatConfig.ZOMBIE_ATTACK_RADIUS,
       dropChance: 0.3,
       size: PoolManager.getInstance().vector2.claim(16, 16),
@@ -144,7 +144,7 @@ export const ZOMBIE_CONFIGS: Record<string, ZombieConfig> = {
     id: "bat_zombie",
     category: EntityCategories.ZOMBIE,
     stats: {
-      speed: 30,
+      speed: 40,
       health: 1,
       damage: 1,
       attackCooldown: 0.5,
@@ -179,10 +179,10 @@ export const ZOMBIE_CONFIGS: Record<string, ZombieConfig> = {
     category: EntityCategories.ZOMBIE,
     stats: {
       speed: 25,
-      health: 2,
+      health: 5,
       damage: 2,
-      attackCooldown: 2,
-      attackRadius: 100, // Larger attack radius for ranged
+      attackCooldown: 1,
+      attackRadius: 150,
       dropChance: 0.5,
       size: PoolManager.getInstance().vector2.claim(16, 16),
     },
@@ -253,7 +253,7 @@ export const ZOMBIE_CONFIGS: Record<string, ZombieConfig> = {
     category: EntityCategories.ZOMBIE,
     stats: {
       speed: 25,
-      health: 35,
+      health: 20,
       damage: 4,
       attackCooldown: 1.25,
       attackRadius: combatConfig.ZOMBIE_ATTACK_RADIUS,

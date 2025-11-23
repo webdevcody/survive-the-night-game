@@ -666,23 +666,25 @@ export class Minimap {
       const minimapX = centerX + relativeX * settings.scale;
       const minimapY = centerY + relativeY * settings.scale;
 
-      // Draw survivor indicator with green circle
+      const isRescued = entity.getIsRescued();
       const iconSize = 16;
       const halfIcon = iconSize / 2;
 
-      // Draw green circle around survivor first
-      const circleRadius = 24;
-      ctx.strokeStyle = "rgba(50, 255, 50, 0.9)";
-      ctx.lineWidth = 2;
-      ctx.beginPath();
-      ctx.arc(minimapX, minimapY, circleRadius, 0, Math.PI * 2);
-      ctx.stroke();
+      // Draw green circle around survivor only if not rescued
+      if (!isRescued) {
+        const circleRadius = 24;
+        ctx.strokeStyle = "rgba(50, 255, 50, 0.9)";
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.arc(minimapX, minimapY, circleRadius, 0, Math.PI * 2);
+        ctx.stroke();
 
-      // Draw inner filled circle for visibility
-      ctx.fillStyle = "rgba(50, 255, 50, 0.15)";
-      ctx.beginPath();
-      ctx.arc(minimapX, minimapY, circleRadius, 0, Math.PI * 2);
-      ctx.fill();
+        // Draw inner filled circle for visibility
+        ctx.fillStyle = "rgba(50, 255, 50, 0.15)";
+        ctx.beginPath();
+        ctx.arc(minimapX, minimapY, circleRadius, 0, Math.PI * 2);
+        ctx.fill();
+      }
 
       // Draw survivor icon (simple person shape)
       ctx.fillStyle = "#4CAF50";

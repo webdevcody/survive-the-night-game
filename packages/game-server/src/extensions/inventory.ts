@@ -20,12 +20,16 @@ const ITEM_DROP_TABLE: Array<{ itemType: ItemType; weight: number }> = [
   { itemType: "wood", weight: 25 },
   { itemType: "cloth", weight: 25 },
   { itemType: "bandage", weight: 15 },
+  { itemType: "coin", weight: 10 },
+
+  // Ammo (medium weight)
   { itemType: "pistol_ammo", weight: 12 },
   { itemType: "shotgun_ammo", weight: 12 },
   { itemType: "arrow_ammo", weight: 12 },
+  { itemType: "bow", weight: 10 },
+  { itemType: "pistol", weight: 10 },
 
   // Uncommon items (medium weight)
-  { itemType: "pistol", weight: 8 },
   { itemType: "shotgun", weight: 6 },
   { itemType: "knife", weight: 8 },
   { itemType: "throwing_knife", weight: 8 },
@@ -47,7 +51,6 @@ const ITEM_DROP_TABLE: Array<{ itemType: ItemType; weight: number }> = [
   { itemType: "landmine", weight: 4 },
   { itemType: "sentry_gun", weight: 2 },
   { itemType: "gasoline", weight: 6 },
-  { itemType: "coin", weight: 10 },
 ];
 
 import { ExtensionBase } from "./extension-base";

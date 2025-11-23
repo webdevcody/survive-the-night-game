@@ -29,6 +29,7 @@ export class MolotovCocktail extends Weapon {
   private isArmed: boolean = false;
   private explosionTimer: Cooldown;
   private isExploded: boolean = false;
+  private interactiveExtension: Interactive | null = null;
 
   constructor(gameManagers: IGameManagers, itemState?: ItemState) {
     super(gameManagers, "molotov_cocktail");
@@ -45,10 +46,10 @@ export class MolotovCocktail extends Weapon {
       carryable.setItemState({ count });
     }
 
-    // Override Interactive callback to use merge strategy for stacking
+    // Store reference to Interactive extension for removal when thrown
     if (this.hasExt(Interactive)) {
-      const interactive = this.getExt(Interactive);
-      interactive.onInteract((entityId: number) => {
+      this.interactiveExtension = this.getExt(Interactive);
+      this.interactiveExtension.onInteract((entityId: number) => {
         const carryable = this.getExt(Carryable);
         // Use helper method to preserve count when picking up dropped molotovs
         carryable.pickup(
@@ -116,6 +117,12 @@ export class MolotovCocktail extends Weapon {
 
     // Arm the molotov
     this.isArmed = true;
+
+    // Remove Interactive extension - once thrown, molotovs are "live" and cannot be picked up
+    if (this.interactiveExtension) {
+      this.removeExtension(this.interactiveExtension);
+      this.interactiveExtension = null;
+    }
 
     // Add to world
     this.getEntityManager().addEntity(this);

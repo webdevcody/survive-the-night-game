@@ -33,8 +33,9 @@ export class SurvivorIndicatorsPanel extends Panel {
     const { width, height } = ctx.canvas;
 
     // Get all survivors from the type-based map (more efficient than filtering all entities)
+    // Filter out rescued survivors - they don't need indicators
     const survivors = getEntitiesByType(gameState, "survivor").filter(
-      (entity) => entity instanceof SurvivorClient && entity.hasExt(ClientPositionable)
+      (entity) => entity instanceof SurvivorClient && entity.hasExt(ClientPositionable) && !entity.getIsRescued()
     );
 
     this.resetTransform(ctx);

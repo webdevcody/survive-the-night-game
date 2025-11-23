@@ -97,6 +97,10 @@ export class SurvivorClient extends ClientEntity implements Renderable {
     return Z_INDEX.ITEMS;
   }
 
+  public getIsRescued(): boolean {
+    return this.isRescued;
+  }
+
   private getSurvivorAssetPrefix(): string {
     return "survivor";
   }
