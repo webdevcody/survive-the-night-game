@@ -1,5 +1,23 @@
 [
   {
+    "version": "0.27.0",
+    "date": "2025-11-23",
+    "changes": {
+      "features": [
+        "Added thunderstorm event management - thunderstorms trigger after wave completions with configurable duration and lightning intervals",
+        "Added lightning bolt effects - visual lightning strikes that damage players caught in the strike area",
+        "Added rain particle effects - visual rain particles during thunderstorms for enhanced environmental immersion",
+        "Enhanced environmental event system - refactored to support multiple environmental strategies including toxic gas and thunderstorm events"
+      ],
+      "bugFixes": [],
+      "refactoring": [
+        "Refactored environmental event manager - moved to strategy pattern with separate strategies for each event type for better extensibility",
+        "Enhanced game state management - added support for global illumination and darkness hue changes during thunderstorms"
+      ],
+      "performance": []
+    }
+  },
+  {
     "version": "0.26.0",
     "date": "2025-11-23",
     "changes": {
