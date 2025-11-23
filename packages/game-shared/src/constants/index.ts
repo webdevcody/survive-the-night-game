@@ -23,6 +23,11 @@ export const NON_SPAWNABLE = new Set<EntityType>([
   "throwing_knife_projectile",
   "merchant",
   "car",
+  "acid",
+  "blood",
+  "fire",
+  "campsite_fire",
+  "crate",
 ]);
 
 // Computed lazily to avoid circular reference during module initialization

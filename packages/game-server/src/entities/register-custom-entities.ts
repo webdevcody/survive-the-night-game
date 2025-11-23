@@ -10,6 +10,7 @@ import { LeapingZombie } from "@/entities/enemies/leaping-zombie";
 import { BossZombie } from "@/entities/enemies/boss-zombie";
 import { ChargingTyrant } from "@/entities/enemies/charging-tyrant";
 import { AcidFlyer } from "@/entities/enemies/acid-flyer";
+import { SplitterBoss } from "@/entities/enemies/splitter-boss";
 import { Bullet } from "@/entities/projectiles/bullet";
 import { Arrow } from "@/entities/projectiles/arrow";
 import { GrenadeProjectile } from "@/entities/projectiles/grenade-projectile";
@@ -80,6 +81,7 @@ export function registerCustomEntities(): void {
   entityOverrideRegistry.register("grave_tyrant", BossZombie);
   entityOverrideRegistry.register("charging_tyrant", ChargingTyrant);
   entityOverrideRegistry.register("acid_flyer", AcidFlyer);
+  entityOverrideRegistry.register("splitter_boss", SplitterBoss);
 
   // Projectiles
   entityOverrideRegistry.register("bullet", Bullet);

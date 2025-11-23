@@ -33,6 +33,7 @@ export const waveConfig = {
     3: "grave_tyrant",
     5: "charging_tyrant",
     7: "acid_flyer",
+    9: "splitter_boss",
   },
 
   /**

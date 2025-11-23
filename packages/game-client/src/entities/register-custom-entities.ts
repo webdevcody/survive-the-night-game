@@ -8,6 +8,7 @@ import { SpitterZombieClient } from "./spitter-zombie";
 import { ExplodingZombieClient } from "./exploding-zombie";
 import { LeapingZombieClient } from "./enemies/leaping-zombie";
 import { AcidFlyerClient } from "./acid-flyer";
+import { SplitterBossClient } from "./splitter-boss";
 import { BulletClient } from "@/entities/bullet";
 import { ArrowClient } from "@/entities/arrow";
 import { GrenadeProjectileClient } from "./grenade-projectile";
@@ -80,6 +81,7 @@ export function registerCustomClientEntities(): void {
   clientEntityOverrideRegistry.register("grave_tyrant", ZombieClient);
   clientEntityOverrideRegistry.register("charging_tyrant", ZombieClient);
   clientEntityOverrideRegistry.register("acid_flyer", AcidFlyerClient);
+  clientEntityOverrideRegistry.register("splitter_boss", SplitterBossClient);
 
   // Projectiles
   clientEntityOverrideRegistry.register("bullet", BulletClient);

@@ -32,6 +32,7 @@ import { WaveStartEvent } from "./events/wave-start-event";
 import { BuildEvent } from "./events/build-event";
 import { BossStepEvent } from "./events/boss-step-event";
 import { BossSummonEvent } from "./events/boss-summon-event";
+import { BossSplitEvent } from "./events/boss-split-event";
 import { GameMessageEvent } from "./events/game-message-event";
 import {
   serializeEvent,
@@ -79,6 +80,7 @@ const eventRegistry: Record<string, IBufferWriter> = {
   [ServerSentEvents.BUILD]: BuildEvent,
   [ServerSentEvents.BOSS_STEP]: BossStepEvent,
   [ServerSentEvents.BOSS_SUMMON]: BossSummonEvent,
+  [ServerSentEvents.BOSS_SPLIT]: BossSplitEvent,
   [ServerSentEvents.GAME_MESSAGE]: GameMessageEvent,
 };
 

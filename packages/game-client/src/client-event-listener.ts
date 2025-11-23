@@ -20,6 +20,7 @@ import { onGunFired } from "./events/on-gun-fired";
 import { onExplosion } from "./events/on-explosion";
 import { onBossStep } from "./events/on-boss-step";
 import { onBossSummon } from "./events/on-boss-summon";
+import { onBossSplit } from "./events/on-boss-split";
 import { onLoot } from "./events/on-loot";
 import { onCoinPickup } from "./events/on-coin-pickup";
 import { onPlayerDroppedItem } from "./events/on-player-dropped-item";
@@ -104,6 +105,7 @@ export class ClientEventListener {
     this.socketManager.on(ServerSentEvents.EXPLOSION, (e) => onExplosion(context, e));
     this.socketManager.on(ServerSentEvents.BOSS_STEP, (e) => onBossStep(context, e));
     this.socketManager.on(ServerSentEvents.BOSS_SUMMON, (e) => onBossSummon(context, e));
+    this.socketManager.on(ServerSentEvents.BOSS_SPLIT, (e) => onBossSplit(context, e));
 
     this.socketManager.on(ServerSentEvents.LOOT, (e) => onLoot(context, e));
     this.socketManager.on(ServerSentEvents.COIN_PICKUP, (e) => onCoinPickup(context, e));

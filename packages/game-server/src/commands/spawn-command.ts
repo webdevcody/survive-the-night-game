@@ -28,11 +28,10 @@ export class SpawnCommand extends BaseCommand {
     if (spawnedEntity) {
       spawnedEntity
         .getExt(Positionable)
-        .setPosition(PoolManager.getInstance().vector2.claim(playerPosition.x + 32, playerPosition.y));
+        .setPosition(
+          PoolManager.getInstance().vector2.claim(playerPosition.x + 32, playerPosition.y)
+        );
       entityManager.addEntity(spawnedEntity);
-      return `Spawned ${entityName} near you.`;
     }
-
-    return `Failed to spawn ${entityName}.`;
   }
 }

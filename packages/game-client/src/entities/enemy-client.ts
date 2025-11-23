@@ -37,7 +37,7 @@ function isMoving(vector: Vector2): boolean {
 export abstract class EnemyClient extends ClientEntityBase implements IClientEntity, Renderable {
   private lastRenderPosition = { x: 0, y: 0 };
   private previousHealth: number | undefined;
-  private damageFlashUntil: number = 0;
+  protected damageFlashUntil: number = 0;
   private lastFacing: Direction = Direction.Down;
   protected debugWaypoint: Vector2 | null = null;
   protected config: ZombieConfig;

@@ -66,6 +66,13 @@ export interface CrossDiveConfig {
   acidDropInterval: number; // Interval between acid drops during dive
 }
 
+export interface SplitConfig {
+  splitsRemaining: number; // Number of splits remaining (default 3)
+  speedMultiplierPerSplit: number; // Speed multiplier per generation (e.g., 1.5)
+  healthMultiplierPerSplit: number; // Health multiplier per generation (e.g., 0.5)
+  damageMultiplierPerSplit: number; // Damage multiplier per generation (e.g., 0.75)
+}
+
 export interface BossHealthBarConfig {
   width: number;
   height?: number;
@@ -100,6 +107,7 @@ export interface ZombieConfig {
   leapConfig?: LeapConfig;
   chargeConfig?: ChargeConfig;
   crossDiveConfig?: CrossDiveConfig;
+  splitConfig?: SplitConfig;
   boss?: BossMetadata;
 }
 

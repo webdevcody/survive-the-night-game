@@ -72,7 +72,7 @@ export class Car extends Entity {
     // Broadcast death message
     broadcaster.broadcastEvent(
       new GameMessageEvent({
-        message: "WE ARE DEAD!!",
+        message: "WE'RE GOING TO DIE!!",
         color: "red",
       })
     );

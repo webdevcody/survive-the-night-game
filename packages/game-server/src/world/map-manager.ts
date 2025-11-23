@@ -657,7 +657,21 @@ export class MapManager implements IMapManager {
   }
 
   private isBossActive(): boolean {
-    return this.getEntityManager().getEntitiesByType(Entities.GRAVE_TYRANT).length > 0;
+    // Check for any boss zombie types
+    const bossTypes = [
+      Entities.GRAVE_TYRANT,
+      Entities.CHARGING_TYRANT,
+      Entities.ACID_FLYER,
+      Entities.SPLITTER_BOSS,
+    ];
+
+    for (const bossType of bossTypes) {
+      if (this.getEntityManager().getEntitiesByType(bossType).length > 0) {
+        return true;
+      }
+    }
+
+    return false;
   }
 
   private getFallbackBossSpawnLocation(): { x: number; y: number } {

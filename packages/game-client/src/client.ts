@@ -333,6 +333,9 @@ export class GameClient {
       onBuy: (merchantId, itemIndex) => {
         this.socketManager.sendMerchantBuy(String(merchantId), itemIndex);
       },
+      onSell: (merchantId, inventorySlot) => {
+        this.socketManager.sendMerchantSell(merchantId, inventorySlot);
+      },
       getCanvas: () => canvas,
     });
 

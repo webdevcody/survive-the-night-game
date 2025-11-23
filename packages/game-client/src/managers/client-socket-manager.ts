@@ -35,6 +35,7 @@ import { CraftEvent } from "../../../game-shared/src/events/server-sent/events/c
 import { BuildEvent } from "../../../game-shared/src/events/server-sent/events/build-event";
 import { BossStepEvent } from "../../../game-shared/src/events/server-sent/events/boss-step-event";
 import { BossSummonEvent } from "../../../game-shared/src/events/server-sent/events/boss-summon-event";
+import { BossSplitEvent } from "../../../game-shared/src/events/server-sent/events/boss-split-event";
 import { VersionMismatchEvent } from "../../../game-shared/src/events/server-sent/events/version-mismatch-event";
 import { UserBannedEvent } from "../../../game-shared/src/events/server-sent/events/user-banned-event";
 import { ISocketAdapter } from "@shared/network/socket-adapter";
@@ -78,6 +79,7 @@ const SERVER_EVENT_MAP = {
   [ServerSentEvents.BUILD]: BuildEvent,
   [ServerSentEvents.BOSS_STEP]: BossStepEvent,
   [ServerSentEvents.BOSS_SUMMON]: BossSummonEvent,
+  [ServerSentEvents.BOSS_SPLIT]: BossSplitEvent,
   [ServerSentEvents.VERSION_MISMATCH]: VersionMismatchEvent,
   [ServerSentEvents.USER_BANNED]: UserBannedEvent,
 } as const;
