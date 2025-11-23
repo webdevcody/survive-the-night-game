@@ -1,5 +1,23 @@
 [
   {
+    "version": "0.26.0",
+    "date": "2025-11-23",
+    "changes": {
+      "features": [
+        "Added toxic gas cloud entity and environmental event management - toxic gas clouds spawn after wave completions, expanding over time and creating hazardous areas",
+        "Added energy drink item - consumable item that provides temporary infinite run effect, allowing players to sprint without depleting stamina",
+        "Implemented automatic player respawn mechanics - players automatically respawn after death when cooldown expires, with countdown display on death screen",
+        "Added survivor and crate spawning mechanics - survivors and crates now spawn in random biomes at wave start, improving item distribution and gameplay dynamics"
+      ],
+      "bugFixes": [],
+      "refactoring": [
+        "Enhanced survivor indicators and UI responsiveness - survivor indicators now only show unrescued survivors on map and minimap, improving visual clarity",
+        "Improved item drop balance - adjusted item drop chances for zombies and overall spawn rates using global multipliers for better game balance"
+      ],
+      "performance": []
+    }
+  },
+  {
     "version": "0.25.0",
     "date": "2025-11-23",
     "changes": {

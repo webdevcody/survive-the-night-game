@@ -52,3 +52,4 @@ export const environmentalEventsConfig = {
 } as const;
 
 export type EnvironmentalEventsConfig = typeof environmentalEventsConfig;
+
