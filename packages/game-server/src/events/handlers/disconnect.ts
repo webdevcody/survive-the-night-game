@@ -13,12 +13,25 @@ export function onDisconnect(context: HandlerContext, socket: ISocketAdapter): v
   context.playerDisplayNames.delete(socket.id);
 
   if (player) {
-    // TODO: this is a hacker; I'd rather use this, but when I do there is a strange race condition where the round never restarts, so instead the
-    context.getEntityManager().removeEntity(player.getId());
-    // this.getEntityManager().markEntityForRemoval(player);
+    const playerId = player.getId();
+    // Verify entity exists in entity manager before removing
+    const entityManager = context.getEntityManager();
+    const entityInManager = entityManager.getEntityById(playerId);
+    
+    if (entityInManager) {
+      console.log(`Removing player entity ${playerId} from entity manager`);
+      // TODO: this is a hacker; I'd rather use this, but when I do there is a strange race condition where the round never restarts, so instead the
+      entityManager.removeEntity(playerId);
+      // this.getEntityManager().markEntityForRemoval(player);
+    } else {
+      console.warn(`Player entity ${playerId} not found in entity manager, but removing anyway to ensure cleanup`);
+      // Still call removeEntity to ensure removal is tracked and cleanup happens
+      entityManager.removeEntity(playerId);
+    }
+    
     context.broadcastEvent(
       new PlayerLeftEvent({
-        playerId: player.getId(),
+        playerId: playerId,
         displayName: displayName ?? "Unknown",
       })
     );

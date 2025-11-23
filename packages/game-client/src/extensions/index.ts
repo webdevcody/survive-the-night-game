@@ -22,6 +22,7 @@ import { ClientResourcesBag } from "./resources-bag";
 import { ClientSnared } from "./snared";
 import { ClientPoison } from "./poison";
 import { ClientAcidTrigger } from "./acid-trigger";
+import { ClientInfiniteRun } from "./infinite-run";
 
 // remember to update the extension type ids in extension-type-encoding.ts when adding a new extension
 export const clientExtensionsMap = {
@@ -48,6 +49,7 @@ export const clientExtensionsMap = {
   [ExtensionTypes.SNARED]: ClientSnared,
   [ExtensionTypes.POISON]: ClientPoison,
   [ExtensionTypes.ACID_TRIGGER]: ClientAcidTrigger,
+  [ExtensionTypes.INFINITE_RUN]: ClientInfiniteRun,
 } as const;
 
 export {
@@ -74,4 +76,5 @@ export {
   ClientSnared,
   ClientPoison,
   ClientAcidTrigger,
+  ClientInfiniteRun,
 };

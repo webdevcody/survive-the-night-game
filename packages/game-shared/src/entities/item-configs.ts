@@ -244,6 +244,26 @@ export const ITEM_CONFIGS: Record<string, ItemConfig> = {
       sheet: "items",
     },
   },
+  energy_drink: {
+    id: "energy_drink",
+    category: "consumable",
+    assets: {
+      assetKey: "energy_drink",
+      x: 112,
+      y: 144,
+      sheet: "items",
+    },
+    spawn: {
+      enabled: true,
+      chance: 0.003,
+    },
+    merchant: {
+      enabled: true,
+      buyable: true,
+      price: 15,
+    },
+    duration: 20, // Duration in seconds for unlimited running
+  },
   crate: {
     id: "crate",
     category: "structure",

@@ -18,6 +18,7 @@ import { FlameProjectile } from "@/entities/projectiles/flame-projectile";
 import { Tree } from "@/entities/items/tree";
 import { Wall } from "@/entities/items/wall";
 import { Bandage } from "@/entities/items/bandage";
+import { EnergyDrink } from "@/entities/items/energy-drink";
 import { Cloth } from "@/entities/items/cloth";
 import { Wood } from "@/entities/items/wood";
 import { Coin } from "@/entities/items/coin";
@@ -94,6 +95,7 @@ export function registerCustomEntities(): void {
   entityOverrideRegistry.register("tree", Tree);
   entityOverrideRegistry.register("wall", Wall);
   entityOverrideRegistry.register("bandage", Bandage);
+  entityOverrideRegistry.register("energy_drink", EnergyDrink);
   entityOverrideRegistry.register("cloth", Cloth);
   entityOverrideRegistry.register("wood", Wood);
   entityOverrideRegistry.register("coin", Coin);

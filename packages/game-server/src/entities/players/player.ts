@@ -35,6 +35,7 @@ import { Blood } from "@/entities/effects/blood";
 import { SerializableFields } from "@/util/serializable-fields";
 import { Direction } from "@/util/direction";
 import { Weapon } from "../weapons/weapon";
+import InfiniteRun from "@/extensions/infinite-run";
 
 export class Player extends Entity {
   private static readonly PLAYER_WIDTH = 16;
@@ -323,6 +324,32 @@ export class Player extends Entity {
 
     if (!this.serialized.get("inputFire")) return;
 
+    // Check if active item is a consumable (like energy drink or bandage)
+    const activeItem = this.activeItem;
+    if (activeItem) {
+      const activeItemEntity = this.getEntityManager().createEntityFromItem(activeItem);
+      if (activeItemEntity && activeItemEntity.hasExt(Consumable)) {
+        const itemIndex = this.serialized.get("inputInventoryItem") - 1;
+        // Add a small cooldown to prevent rapid consumption
+        if (this.fireCooldown === null || this.fireCooldown.isReady()) {
+          this.fireCooldown = new Cooldown(0.5, true);
+          this.fireCooldown.reset();
+        } else {
+          // Still on cooldown, don't consume yet
+          activeItemEntity.clearDirtyFlags();
+          return;
+        }
+        // Consume the item (handles energy drink, bandage, and other consumables)
+        activeItemEntity.getExt(Consumable).consume(this.getId(), itemIndex);
+        activeItemEntity.clearDirtyFlags();
+        return;
+      }
+      // If it's not a consumable, clear the entity and continue to weapon handling
+      if (activeItemEntity) {
+        activeItemEntity.clearDirtyFlags();
+      }
+    }
+
     const activeWeapon = this.getActiveWeapon();
     if (activeWeapon === null) return;
 
@@ -406,14 +433,18 @@ export class Player extends Entity {
         const inputVec = poolManager.vector2.claim(inputDx, inputDy);
         const normalized = normalizeVector(inputVec);
 
-        // Can only sprint if: has stamina AND not exhausted
+        // Check if infinite run extension is active
+        const hasInfiniteRun = this.hasExt(InfiniteRun);
+
+        // Can only sprint if: has stamina AND not exhausted (or infinite run is active)
         const stamina = this.serialized.get("stamina");
         const canSprint =
-          this.serialized.get("inputSprint") && stamina > 0 && this.exhaustionTimer <= 0;
+          this.serialized.get("inputSprint") &&
+          (hasInfiniteRun || (stamina > 0 && this.exhaustionTimer <= 0));
         const speedMultiplier = canSprint ? getConfig().player.SPRINT_MULTIPLIER : 1;
 
-        // Drain stamina while sprinting
-        if (canSprint) {
+        // Drain stamina while sprinting (unless infinite run is active)
+        if (canSprint && !hasInfiniteRun) {
           const newStamina = stamina - getConfig().player.STAMINA_DRAIN_RATE * deltaTime;
           this.serialized.set("stamina", Math.max(0, newStamina));
           // maxStamina doesn't change, but mark it dirty for consistency if needed
@@ -487,11 +518,12 @@ export class Player extends Entity {
 
     // Only regenerate stamina when not exhausted
     const stamina = this.serialized.get("stamina");
+    const hasInfiniteRun = this.hasExt(InfiniteRun);
     if (this.exhaustionTimer <= 0 && stamina < getConfig().player.MAX_STAMINA) {
       const inputDx = this.serialized.get("inputDx");
       const inputDy = this.serialized.get("inputDy");
       const isMoving = inputDx !== 0 || inputDy !== 0;
-      const isSprinting = this.serialized.get("inputSprint") && isMoving && stamina > 0;
+      const isSprinting = this.serialized.get("inputSprint") && isMoving && (hasInfiniteRun || stamina > 0);
 
       // Regenerate stamina when not sprinting
       if (!isSprinting) {

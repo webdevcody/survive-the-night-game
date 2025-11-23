@@ -1,5 +1,6 @@
 import { GameEvent } from "@/events/types";
 import { EventType, ServerSentEvents } from "../../events";
+import { BufferWriter, BufferReader } from "../../../util/buffer-serialization";
 
 export interface UserBannedEventData {
   banExpirationTime: number;
@@ -47,6 +48,21 @@ export class UserBannedEvent implements GameEvent<UserBannedEventData> {
    */
   public getRemainingBanTimeMinutes(): number {
     return Math.ceil(this.getRemainingBanTimeMs() / (60 * 1000));
+  }
+
+  static serializeToBuffer(writer: BufferWriter, data: UserBannedEventData): void {
+    writer.writeFloat64(data.banExpirationTime);
+    writer.writeUInt8(data.reason !== undefined ? 1 : 0);
+    if (data.reason !== undefined) {
+      writer.writeString(data.reason);
+    }
+  }
+
+  static deserializeFromBuffer(reader: BufferReader): UserBannedEventData {
+    const banExpirationTime = reader.readFloat64();
+    const hasReason = reader.readUInt8() === 1;
+    const reason = hasReason ? reader.readString() : undefined;
+    return { banExpirationTime, reason };
   }
 }
 

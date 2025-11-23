@@ -32,6 +32,7 @@ export const EXTENSION_TYPE_IDS: Record<string, number> = {
   [ExtensionTypes.SNARED]: 21,
   [ExtensionTypes.POISON]: 22,
   [ExtensionTypes.ACID_TRIGGER]: 23,
+  [ExtensionTypes.INFINITE_RUN]: 24,
 } as const;
 
 // Reverse lookup: ID -> extension type string

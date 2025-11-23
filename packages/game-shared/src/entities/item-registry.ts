@@ -20,6 +20,7 @@ export interface ItemConfig extends BehaviorConfigs {
   healable?: boolean; // If true, item can be used for quick heal (must also be consumable)
   lightIntensity?: number; // Light radius provided when item is equipped or in inventory (0 = no light)
   wearable?: boolean; // If true, item is wearable and should be rendered as an overlay when in inventory
+  duration?: number; // Duration in seconds for consumable effects (e.g., energy drink)
 }
 
 class ItemRegistry {

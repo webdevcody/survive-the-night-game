@@ -19,6 +19,7 @@ import Snared from "@/extensions/snared";
 import ResourcesBag from "@/extensions/resources-bag";
 import Poison from "@/extensions/poison";
 import AcidTrigger from "@/extensions/acid-trigger";
+import InfiniteRun from "@/extensions/infinite-run";
 
 export const extensionsMap = {
   [Collidable.type]: Collidable,
@@ -42,4 +43,5 @@ export const extensionsMap = {
   [ResourcesBag.type]: ResourcesBag,
   [Poison.type]: Poison,
   [AcidTrigger.type]: AcidTrigger,
+  [InfiniteRun.type]: InfiniteRun,
 } as const;

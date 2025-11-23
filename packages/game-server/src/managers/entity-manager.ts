@@ -236,11 +236,12 @@ export class EntityManager implements IEntityManager {
   }
 
   removeEntity(entityId: number) {
+    // Always track removal so clients receive the removal in the next state update
+    // This ensures removal is tracked even if entity isn't found (defensive programming)
+    this.entityStateTracker.trackRemoval(entityId);
+
     const entity = this.entityMap.get(entityId);
     if (entity) {
-      // Track removal so clients receive the removal in the next state update
-      this.entityStateTracker.trackRemoval(entity.getId());
-
       // Clean up tracking data
       this.dirtyEntities.delete(entity);
       this.entitiesInGrid.delete(entity);

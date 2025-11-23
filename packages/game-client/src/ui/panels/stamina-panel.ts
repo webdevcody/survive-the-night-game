@@ -3,6 +3,7 @@ import { getPlayer } from "@/util/get-player";
 import { getConfig } from "@shared/config";
 import { Panel, PanelSettings } from "./panel";
 import { calculateHudScale } from "@/util/hud-scale";
+import { ClientInfiniteRun } from "@/extensions/infinite-run";
 
 interface StaminaPanelSettings extends PanelSettings {
   marginBottom: number;
@@ -106,7 +107,11 @@ export class StaminaPanel extends Panel {
     const staminaPercent = currentStamina / maxStamina;
     const fillWidth = scaledBarWidth * staminaPercent;
 
-    ctx.fillStyle = this.staminaSettings.barColor;
+    // Check if infinite run extension is active (blue bar)
+    const hasInfiniteRun = player.hasExt(ClientInfiniteRun);
+
+    // Use blue color if infinite run is active, otherwise use default color
+    ctx.fillStyle = hasInfiniteRun ? "rgba(100, 150, 255, 0.9)" : this.staminaSettings.barColor;
     ctx.fillRect(barX, barY, fillWidth, scaledBarHeight);
 
     this.restoreContext(ctx);

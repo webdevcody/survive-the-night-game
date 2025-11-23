@@ -33,4 +33,8 @@ export class Cooldown {
   isReady(): boolean {
     return this.timeRemaining <= 0;
   }
+
+  getRemainingTime(): number {
+    return this.timeRemaining;
+  }
 }

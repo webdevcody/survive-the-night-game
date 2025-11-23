@@ -34,6 +34,7 @@ import { BossStepEvent } from "./events/boss-step-event";
 import { BossSummonEvent } from "./events/boss-summon-event";
 import { BossSplitEvent } from "./events/boss-split-event";
 import { GameMessageEvent } from "./events/game-message-event";
+import { UserBannedEvent } from "./events/user-banned-event";
 import {
   serializeEvent,
   deserializeEvent,
@@ -82,6 +83,7 @@ const eventRegistry: Record<string, IBufferWriter> = {
   [ServerSentEvents.BOSS_SUMMON]: BossSummonEvent,
   [ServerSentEvents.BOSS_SPLIT]: BossSplitEvent,
   [ServerSentEvents.GAME_MESSAGE]: GameMessageEvent,
+  [ServerSentEvents.USER_BANNED]: UserBannedEvent,
 };
 
 /**

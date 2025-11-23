@@ -197,16 +197,24 @@ export class GameClient {
         return;
       }
 
-      // If click wasn't handled by UI, trigger weapon fire
+      // If click wasn't handled by UI, trigger weapon fire or consumable use
       const player = getPlayer();
       if (player && !player.isDead()) {
         const inventory = getInventory();
         const activeSlot = this.inputManager.getCurrentInventorySlot();
         const activeItem = inventory[activeSlot - 1];
 
-        // Only fire if player has a weapon equipped
-        if (activeItem && this.isWeaponItem(activeItem.itemType)) {
-          this.inputManager.triggerFire();
+        if (activeItem) {
+          // Check if it's a weapon
+          const isWeapon = this.isWeaponItem(activeItem.itemType);
+          // Check if it's a consumable (like energy drink)
+          const itemConfig = itemRegistry.get(activeItem.itemType);
+          const isConsumable = itemConfig?.category === "consumable";
+
+          // Trigger fire for both weapons and consumables
+          if (isWeapon || isConsumable) {
+            this.inputManager.triggerFire();
+          }
         }
       }
     });

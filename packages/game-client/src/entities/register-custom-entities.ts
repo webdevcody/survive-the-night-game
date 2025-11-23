@@ -16,6 +16,7 @@ import { FlameProjectileClient } from "./flame-projectile";
 import { TreeClient } from "@/entities/items/tree";
 import { WallClient } from "@/entities/items/wall";
 import { BandageClient } from "@/entities/items/bandage";
+import { EnergyDrinkClient } from "@/entities/items/energy-drink";
 import { ClothClient } from "@/entities/items/cloth";
 import { WoodClient } from "@/entities/items/wood";
 import { CoinClient } from "@/entities/items/coin";
@@ -95,6 +96,7 @@ export function registerCustomClientEntities(): void {
   clientEntityOverrideRegistry.register("tree", TreeClient);
   clientEntityOverrideRegistry.register("wall", WallClient);
   clientEntityOverrideRegistry.register("bandage", BandageClient);
+  clientEntityOverrideRegistry.register("energy_drink", EnergyDrinkClient);
   clientEntityOverrideRegistry.register("cloth", ClothClient);
   clientEntityOverrideRegistry.register("wood", WoodClient);
   clientEntityOverrideRegistry.register("coin", CoinClient);
