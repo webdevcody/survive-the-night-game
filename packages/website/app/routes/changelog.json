@@ -1,5 +1,27 @@
 [
   {
+    "version": "0.25.0",
+    "date": "2025-11-23",
+    "changes": {
+      "features": [
+        "Enhanced merchant panel functionality - improved UI layout with title area, close button, and better spacing for better user interaction",
+        "Added balance configuration system - centralized pricing configuration for consistent item pricing across merchants",
+        "Implemented individual player cooldowns for car repairs - each player now has their own repair cooldown timer"
+      ],
+      "bugFixes": [],
+      "refactoring": [
+        "Refactored input handling - restricted key inputs when merchant panel is open, allowing only Escape and E to close the panel",
+        "Enhanced entity management - added safety checks to prevent duplicate entity IDs and ensure proper ID recycling",
+        "Improved merchant buy panel - always displays all inventory items without tab filtering for better visibility",
+        "Updated prediction manager - skips collision checks for walls and sentry guns to improve performance",
+        "Adjusted Splitter Boss balance - reduced splits remaining from 4 to 3 for better game balance",
+        "Improved one-time trigger extension - enhanced check interval for more responsive interactions",
+        "Updated item stack sizes and inventory handling - improved gameplay experience with better stack management"
+      ],
+      "performance": []
+    }
+  },
+  {
     "version": "0.24.0",
     "date": "2025-11-22",
     "changes": {
