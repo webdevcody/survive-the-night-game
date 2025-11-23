@@ -16,7 +16,7 @@ import { balanceConfig } from "@shared/config/balance-config";
 // --- CONSTANTS & STYLES ---
 
 const SCROLL_SPEED = 1;
-const ITEMS_PER_ROW = 3;
+const ITEMS_PER_ROW = 4;
 const VISIBLE_ROWS = 4;
 
 const THEME = {
@@ -52,6 +52,7 @@ const THEME = {
     itemSize: 80,
     headerHeight: 70,
     footerHeight: 140,
+    titleAreaHeight: 50, // Height for pane title and tabs area
     cornerRadius: 16, // Rounded corners
     itemRadius: 8,
   },
@@ -142,6 +143,7 @@ export class MerchantBuyPanel implements Renderable {
   private tabRegions: Array<{ x: number; y: number; width: number; height: number; tab: TabType }> =
     [];
   private actionButtonRegion: { x: number; y: number; width: number; height: number } | null = null;
+  private closeButtonRegion: { x: number; y: number; width: number; height: number } | null = null;
 
   private wheelHandler: ((e: WheelEvent) => void) | null = null;
 
@@ -201,26 +203,23 @@ export class MerchantBuyPanel implements Renderable {
       }
     });
 
-    // Populate Inventory Items
+    // Populate Inventory Items (always show all items, no tab filtering)
     if (player) {
       const inventory = player.getExt(ClientInventory);
       if (inventory) {
         const items = inventory.getItems();
         items.forEach((item, slotIndex) => {
           if (item) {
-            // Show all inventory items regardless of tab? Or filter?
-            // Let's filter inventory too, makes finding stuff easier
-            if (this.matchesTab(item.itemType)) {
-              const basePrice = this.getBasePrice(item.itemType);
-              const sellPrice = Math.floor(basePrice * 0.5);
-              if (sellPrice > 0) {
-                this.inventoryDisplayItems.push({
-                  itemType: item.itemType,
-                  price: sellPrice,
-                  originalIndex: slotIndex,
-                  isSellable: true,
-                });
-              }
+            // Always show all inventory items regardless of tab
+            const basePrice = this.getBasePrice(item.itemType);
+            const sellPrice = Math.floor(basePrice * 0.5);
+            if (sellPrice > 0) {
+              this.inventoryDisplayItems.push({
+                itemType: item.itemType,
+                price: sellPrice,
+                originalIndex: slotIndex,
+                isSellable: true,
+              });
             }
           }
         });
@@ -372,6 +371,18 @@ export class MerchantBuyPanel implements Renderable {
 
   public handleClick(x: number, y: number): boolean {
     if (!this.isVisible() || !this.panelBounds) return false;
+
+    // Check Close Button
+    if (
+      this.closeButtonRegion &&
+      x >= this.closeButtonRegion.x &&
+      x <= this.closeButtonRegion.x + this.closeButtonRegion.width &&
+      y >= this.closeButtonRegion.y &&
+      y <= this.closeButtonRegion.y + this.closeButtonRegion.height
+    ) {
+      this.close();
+      return true;
+    }
 
     // Check Action Button
     if (
@@ -556,8 +567,9 @@ export class MerchantBuyPanel implements Renderable {
     this.panelBounds = { x: startX, y: startY, width, height };
     this.shopItemRegions = [];
     this.inventoryItemRegions = [];
-    this.tabRegions = [];
+    this.tabRegions = []; // Will be populated in renderPane for SHOP pane
     this.actionButtonRegion = null;
+    this.closeButtonRegion = null;
 
     // Overlay
     ctx.fillStyle = THEME.colors.overlay;
@@ -613,51 +625,60 @@ export class MerchantBuyPanel implements Renderable {
     ctx.textBaseline = "middle";
     ctx.fillText("MERCHANT EXCHANGE", startX + padding, startY + headerHeight / 2);
 
-    // Tabs (Center Top)
-    const tabW = 110;
-    const tabH = 36;
-    const tabStartX = startX + width / 2 - (TABS.length * tabW) / 2;
-    const tabY = startY + (headerHeight - tabH) / 2;
-
-    TABS.forEach((tab, i) => {
-      const x = tabStartX + i * tabW;
-      const active = this.currentTab === tab;
-
-      // Tab Background
-      if (active) {
-        ctx.fillStyle = THEME.colors.tabActive;
-        this.fillRoundedRect(ctx, x, tabY, tabW, tabH, 6);
-      } else {
-        // Subtle hover or inactive state could go here
-      }
-
-      ctx.fillStyle = active ? "#0f172a" : THEME.colors.textDim;
-      ctx.font = active ? "bold 13px 'Segoe UI'" : "13px 'Segoe UI'";
-      ctx.textAlign = "center";
-      ctx.fillText(tab, x + tabW / 2, tabY + tabH / 2 + 1);
-
-      this.tabRegions.push({ x, y: tabY, width: tabW, height: tabH, tab });
-    });
-
-    // Coins (Right Top)
+    // Coins (Right Top, before close button)
     ctx.textAlign = "right";
     ctx.fillStyle = THEME.colors.accent;
     ctx.font = THEME.fonts.header;
-    ctx.fillText(
-      `${playerCoins.toLocaleString()} Coins`,
-      startX + width - padding,
-      startY + headerHeight / 2
-    );
+    const closeButtonSize = 32;
+    const closeButtonPadding = 8;
+    const coinsX = startX + width - padding - closeButtonSize - closeButtonPadding;
+    ctx.fillText(`${playerCoins.toLocaleString()} Coins`, coinsX, startY + headerHeight / 2);
 
-    // Content Area
-    const contentY = startY + headerHeight + gap;
-    const contentH = height - headerHeight - footerHeight - gap * 2;
+    // Close Button (Top Right)
+    const closeButtonX = startX + width - padding - closeButtonSize;
+    const closeButtonY = startY + (headerHeight - closeButtonSize) / 2;
+
+    // Close button background (hover state could be added later)
+    ctx.fillStyle = "rgba(51, 65, 85, 0.6)";
+    this.fillRoundedRect(ctx, closeButtonX, closeButtonY, closeButtonSize, closeButtonSize, 6);
+
+    // Close button border
+    ctx.strokeStyle = THEME.colors.panelBorder;
+    ctx.lineWidth = 1;
+    this.strokeRoundedRect(ctx, closeButtonX, closeButtonY, closeButtonSize, closeButtonSize, 6);
+
+    // X icon
+    ctx.strokeStyle = THEME.colors.text;
+    ctx.lineWidth = 2;
+    ctx.lineCap = "round";
+    const iconPadding = 8;
+    ctx.beginPath();
+    ctx.moveTo(closeButtonX + iconPadding, closeButtonY + iconPadding);
+    ctx.lineTo(
+      closeButtonX + closeButtonSize - iconPadding,
+      closeButtonY + closeButtonSize - iconPadding
+    );
+    ctx.moveTo(closeButtonX + closeButtonSize - iconPadding, closeButtonY + iconPadding);
+    ctx.lineTo(closeButtonX + iconPadding, closeButtonY + closeButtonSize - iconPadding);
+    ctx.stroke();
+
+    this.closeButtonRegion = {
+      x: closeButtonX,
+      y: closeButtonY,
+      width: closeButtonSize,
+      height: closeButtonSize,
+    };
+
+    // Content Area - add extra space for title area with tabs
+    const { titleAreaHeight } = THEME.layout;
+    const contentY = startY + headerHeight + gap + titleAreaHeight;
+    const contentH = height - headerHeight - footerHeight - gap * 2 - titleAreaHeight;
     const paneWidth = (width - padding * 2 - gap) / 2;
 
     // Left Pane (Shop)
     this.renderPane(
       ctx,
-      "MERCHANT STOCK",
+      "STOCK",
       this.shopDisplayItems,
       this.activePane === "SHOP",
       this.shopSelectedIndex,
@@ -708,13 +729,62 @@ export class MerchantBuyPanel implements Renderable {
     type: PaneType,
     playerCoins: number
   ): void {
-    const { itemSize, gap, itemRadius } = THEME.layout;
+    const { itemSize, gap, itemRadius, titleAreaHeight } = THEME.layout;
+
+    // Title area - position title and tabs with proper spacing
+    const titleY = y - titleAreaHeight + 20;
 
     // Pane Header
     ctx.fillStyle = isActive ? THEME.colors.text : THEME.colors.textDim;
     ctx.font = THEME.fonts.header;
     ctx.textAlign = "left";
-    ctx.fillText(title, x, y - 10);
+    ctx.textBaseline = "middle"; // Use middle baseline for easier alignment
+    ctx.fillText(title, x, titleY);
+
+    // Render tabs next to title for SHOP pane only
+    if (type === "SHOP") {
+      // Calculate available width for tabs
+      ctx.save(); // Save context to measure text
+      ctx.font = THEME.fonts.header;
+      const titleWidth = ctx.measureText(title).width;
+      ctx.restore();
+
+      const startOffset = titleWidth + 24;
+      const availableWidth = w - startOffset;
+      const tabSpacing = 4;
+
+      // Calculate ideal tab width to fit all tabs
+      const idealTabW = (availableWidth - (TABS.length - 1) * tabSpacing) / TABS.length;
+      const tabW = Math.min(70, Math.floor(idealTabW)); // Cap at 70px
+      const tabH = 24;
+
+      const tabStartX = x + startOffset;
+      const tabY = titleY; // Center tabs vertically with title (both use middle baseline)
+      const tabRectY = tabY - tabH / 2; // Top Y for background rect
+
+      TABS.forEach((tab, i) => {
+        const tabX = tabStartX + i * (tabW + tabSpacing);
+        const active = this.currentTab === tab;
+
+        // Tab Background
+        if (active) {
+          ctx.fillStyle = THEME.colors.tabActive;
+          this.fillRoundedRect(ctx, tabX, tabRectY, tabW, tabH, 6);
+        } else {
+          // Subtle inactive state
+          ctx.fillStyle = "rgba(51, 65, 85, 0.4)";
+          this.fillRoundedRect(ctx, tabX, tabRectY, tabW, tabH, 6);
+        }
+
+        ctx.fillStyle = active ? "#0f172a" : THEME.colors.textDim;
+        ctx.font = active ? "bold 11px 'Segoe UI'" : "11px 'Segoe UI'";
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle"; // Center text vertically in tab
+        ctx.fillText(tab, tabX + tabW / 2, tabY);
+
+        this.tabRegions.push({ x: tabX, y: tabRectY, width: tabW, height: tabH, tab });
+      });
+    }
 
     // Pane Background (Rounded)
     ctx.fillStyle = "rgba(15, 23, 42, 0.3)"; // Subtle darker bg for pane area

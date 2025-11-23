@@ -204,45 +204,14 @@ export class InputManager {
         return; // Block all other inputs when map is open
       }
 
-      // Handle merchant panel inputs first
+      // Handle merchant panel inputs - only allow Escape and E to close
       if (isMerchantPanelOpen) {
-        // Pass all keys to merchant panel for handling
-        if (callbacks.onMerchantKeyDown) {
-          // Convert event code/key to a format the panel understands
-          let key = eventKey;
-          if (eventCode.startsWith("Arrow")) {
-            key = eventCode.replace("Arrow", "");
-          } else if (eventCode.startsWith("Digit")) {
-            key = eventCode.replace("Digit", "");
-          } else if (eventCode === "Enter") {
-            key = "Enter";
-          } else if (eventCode === "Escape") {
-            key = "Escape";
-          } else if (eventCode === "KeyE") {
-            key = "e";
-          } else if (eventCode === "KeyW") {
-            key = "w";
-          } else if (eventCode === "KeyA") {
-            key = "a";
-          } else if (eventCode === "KeyS") {
-            key = "s";
-          } else if (eventCode === "KeyD") {
-            key = "d";
-          } else if (eventCode === "Space") {
-            key = " ";
-          }
-
-          callbacks.onMerchantKeyDown(key);
-
-          // Mark key as consumed if it's a number key or WASD
-          if (
-            eventCode.startsWith("Digit") ||
-            eventCode === "KeyW" ||
-            eventCode === "KeyA" ||
-            eventCode === "KeyS" ||
-            eventCode === "KeyD"
-          ) {
-            this.merchantPanelConsumedKeys.add(eventKey);
+        // Only allow Escape or E keys to close the menu
+        if (eventCode === "Escape" || eventCode === "KeyE") {
+          if (callbacks.onMerchantKeyDown) {
+            // Convert event code to a format the panel understands
+            const key = eventCode === "Escape" ? "Escape" : "e";
+            callbacks.onMerchantKeyDown(key);
           }
         }
         // Block all other inputs when merchant panel is open
@@ -367,14 +336,19 @@ export class InputManager {
         this.fKeyHeld = false;
       }
 
+      // Check if merchant panel is open - block all inputs
+      const isMerchantPanelOpen = callbacks.isMerchantPanelOpen?.() ?? false;
+
+      // Block all keyup events when merchant panel is open
+      if (isMerchantPanelOpen) {
+        return; // Block all keyup events when merchant panel is open
+      }
+
       // Check if this key was consumed by merchant panel during keydown
       if (this.merchantPanelConsumedKeys.has(eventKey)) {
         this.merchantPanelConsumedKeys.delete(eventKey);
         return; // Block this keyup event since it was consumed by merchant panel
       }
-
-      // Check if merchant panel is open - block inventory switching if so
-      const isMerchantPanelOpen = callbacks.isMerchantPanelOpen?.() ?? false;
 
       // Use key for number keys (characters work the same across layouts)
       // Only allow inventory switching when merchant panel is closed
@@ -488,6 +462,17 @@ export class InputManager {
         sprint: false,
       };
     }
+    // If merchant panel is open, force all inputs to false/zero to prevent movement
+    const isMerchantPanelOpen = this.callbacks.isMerchantPanelOpen?.() ?? false;
+    if (isMerchantPanelOpen) {
+      return {
+        facing: this.inputs.facing,
+        dx: 0,
+        dy: 0,
+        fire: false,
+        sprint: false,
+      };
+    }
     // Return a copy to prevent external modifications from affecting internal state
     // Note: aimAngle will be calculated and set externally after getting inputs
     return { ...this.inputs };
@@ -510,6 +495,17 @@ export class InputManager {
   ): Input {
     // If chatting, return cleared inputs (same as getInputs)
     if (this.isChatting) {
+      return {
+        facing: this.inputs.facing,
+        dx: 0,
+        dy: 0,
+        fire: false,
+        sprint: false,
+      };
+    }
+    // If merchant panel is open, return cleared inputs to prevent movement
+    const isMerchantPanelOpen = this.callbacks.isMerchantPanelOpen?.() ?? false;
+    if (isMerchantPanelOpen) {
       return {
         facing: this.inputs.facing,
         dx: 0,
@@ -628,6 +624,9 @@ export class InputManager {
   triggerFire() {
     // Don't allow firing while chatting
     if (this.isChatting) return;
+    // Don't allow firing when merchant panel is open
+    const isMerchantPanelOpen = this.callbacks.isMerchantPanelOpen?.() ?? false;
+    if (isMerchantPanelOpen) return;
     this.inputs.fire = true;
     this.hasChanged = true;
   }
@@ -638,6 +637,9 @@ export class InputManager {
   releaseFire() {
     // Don't allow firing while chatting
     if (this.isChatting) return;
+    // Don't allow firing when merchant panel is open
+    const isMerchantPanelOpen = this.callbacks.isMerchantPanelOpen?.() ?? false;
+    if (isMerchantPanelOpen) return;
     this.inputs.fire = false;
     this.hasChanged = true;
   }
