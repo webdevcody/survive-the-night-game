@@ -232,12 +232,12 @@ export abstract class BaseEnemy extends Entity {
       if (!this.hasBeenLooted) {
         const zombiePos = this.getCenterPosition();
         const interactRadius = getConfig().player.MAX_INTERACT_RADIUS;
-        
+
         // Check for nearby alive players
         const nearbyPlayers = this.getEntityManager()
           .getNearbyEntities(zombiePos, interactRadius, new Set([Entities.PLAYER]))
           .filter((entity) => entity instanceof Player && !entity.isDead());
-        
+
         // If any player is within interaction range, auto-loot
         if (nearbyPlayers.length > 0) {
           for (const player of nearbyPlayers) {

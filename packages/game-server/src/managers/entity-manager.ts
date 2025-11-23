@@ -150,6 +150,23 @@ export class EntityManager implements IEntityManager {
   }
 
   addEntity(entity: Entity) {
+    // Safety check: duplicate IDs cause severe state corruption
+    if (this.entityMap.has(entity.getId())) {
+      console.error(
+        `[Server] CRITICAL: addEntity called for existing ID ${entity.getId()}. Force cleaning up old entity to prevent corruption.`
+      );
+      // Remove the old entity to clean up lists/maps
+      this.removeEntity(entity.getId());
+
+      // removeEntity puts the ID back into availableIds for reuse.
+      // But we are strictly using this ID right now for the new entity.
+      // So we must remove it from the pool to prevent it being given to someone else.
+      const idIndex = this.availableIds.indexOf(entity.getId());
+      if (idIndex !== -1) {
+        this.availableIds.splice(idIndex, 1);
+      }
+    }
+
     this.entities.push(entity);
     this.entityMap.set(entity.getId(), entity);
 
@@ -272,8 +289,11 @@ export class EntityManager implements IEntityManager {
     this.spliceWhere(this.merchants, (it) => it.getId() === entityId);
     this.spliceWhere(this.entities, (it) => it.getId() === entityId);
 
-    // Return the ID to the pool for reuse
-    this.availableIds.push(entityId);
+    // Return the ID to the pool for reuse (only if it's not already there)
+    // This prevents duplicate IDs in the pool if removeEntity is called multiple times
+    if (!this.availableIds.includes(entityId)) {
+      this.availableIds.push(entityId);
+    }
   }
 
   private spliceWhere(array: any[], predicate: (item: any) => boolean): void {
@@ -290,11 +310,42 @@ export class EntityManager implements IEntityManager {
     if (id !== undefined) {
       return id;
     }
-    // If pool is empty, generate a new ID (shouldn't happen in normal operation)
-    if (this.nextNewId > this.maxId) {
-      throw new Error(`Entity ID pool exhausted. Max ID: ${this.maxId}`);
+
+    // If pool is empty, all 65536 IDs are in use
+    // Check if we've actually exhausted all IDs or if there's a recycling issue
+    const activeEntityCount = this.entityMap.size;
+    const expectedAvailableIds = this.maxId + 1 - activeEntityCount;
+
+    if (activeEntityCount >= this.maxId + 1) {
+      // All IDs are in use - this is the real limit
+      throw new Error(
+        `Entity ID pool exhausted. Max ID: ${this.maxId}, Active entities: ${activeEntityCount}. ` +
+          `Cannot create more entities.`
+      );
     }
-    return this.nextNewId++;
+
+    // Pool is empty but we have fewer than maxId+1 entities
+    // This indicates IDs are not being recycled properly
+    console.error(
+      `CRITICAL: Entity ID pool empty but only ${activeEntityCount} entities exist ` +
+        `(expected ${expectedAvailableIds} available IDs). This indicates IDs are not being recycled properly. ` +
+        `Attempting to recover by finding unused IDs...`
+    );
+
+    // Try to find an unused ID by checking entityMap
+    // This is a fallback recovery mechanism
+    for (let i = 0; i <= this.maxId; i++) {
+      if (!this.entityMap.has(i)) {
+        console.warn(`Recovered unused ID ${i} for reuse`);
+        return i;
+      }
+    }
+
+    // If we get here, something is very wrong
+    throw new Error(
+      `Entity ID pool exhausted and recovery failed. Max ID: ${this.maxId}, ` +
+        `Active entities: ${activeEntityCount}, Available IDs: ${this.availableIds.length}`
+    );
   }
 
   isEntityMarkedForRemoval(entityId: number): boolean {
@@ -399,8 +450,12 @@ export class EntityManager implements IEntityManager {
         }
       }
 
-      // Return the ID to the pool for reuse
-      this.availableIds.push(entity.getId());
+      // Return the ID to the pool for reuse (only if it's not already there)
+      // This prevents duplicate IDs in the pool if pruneEntities processes the same entity twice
+      const entityId = entity.getId();
+      if (!this.availableIds.includes(entityId)) {
+        this.availableIds.push(entityId);
+      }
     }
 
     // Clean up expired entries from entitiesToRemove

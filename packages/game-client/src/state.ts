@@ -38,6 +38,12 @@ export function getEntitiesByType(gameState: GameState, type: EntityType): Clien
  * Helper function to add an entity to both the array and map
  */
 export function addEntity(gameState: GameState, entity: ClientEntityBase): void {
+  // Safety check: if entity with this ID already exists, remove it first to prevent duplicates
+  if (gameState.entityMap.has(entity.getId())) {
+    console.warn(`[Client] addEntity called for existing ID ${entity.getId()}. removing old entity.`);
+    removeEntity(gameState, entity.getId());
+  }
+
   gameState.entities.push(entity);
   gameState.entityMap.set(entity.getId(), entity);
   

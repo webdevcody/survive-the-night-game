@@ -21,7 +21,7 @@ export class SplitterBoss extends BossEnemy {
   constructor(
     gameManagers: IGameManagers,
     splitGeneration: number = 0,
-    splitsRemaining: number = 4
+    splitsRemaining: number = 3
   ) {
     super(gameManagers, Entities.SPLITTER_BOSS);
     this.setMovementStrategy(new MeleeMovementStrategy());

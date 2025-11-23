@@ -98,7 +98,6 @@ export class InputManager {
     this.lastInputs = { ...this.inputs };
   }
 
-
   private quickHeal() {
     const inventory = this.callbacks.getInventory?.() || [];
     if (inventory.length === 0) return;
@@ -232,11 +231,17 @@ export class InputManager {
           } else if (eventCode === "Space") {
             key = " ";
           }
-          
+
           callbacks.onMerchantKeyDown(key);
-          
+
           // Mark key as consumed if it's a number key or WASD
-          if (eventCode.startsWith("Digit") || eventCode === "KeyW" || eventCode === "KeyA" || eventCode === "KeyS" || eventCode === "KeyD") {
+          if (
+            eventCode.startsWith("Digit") ||
+            eventCode === "KeyW" ||
+            eventCode === "KeyA" ||
+            eventCode === "KeyS" ||
+            eventCode === "KeyD"
+          ) {
             this.merchantPanelConsumedKeys.add(eventKey);
           }
         }
@@ -439,6 +444,13 @@ export class InputManager {
       }
 
       this.checkIfChanged();
+    });
+
+    window.addEventListener("focus", () => {
+      this.clearInputs();
+      this.fKeyHeld = false;
+      this.callbacks.onInteractEnd?.();
+      this.callbacks.onTeleportCancel?.();
     });
   }
 

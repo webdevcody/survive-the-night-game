@@ -22,7 +22,7 @@ export class Car extends Entity {
   private static readonly REPAIR_COOLDOWN = 1000; // 1 second
 
   private lastAttackMessageTime: number = 0;
-  private lastRepairTime: number = 0;
+  private playerRepairTimes: Map<number, number> = new Map();
 
   constructor(gameManagers: IGameManagers) {
     super(gameManagers, Entities.CAR);
@@ -113,11 +113,12 @@ export class Car extends Entity {
 
   private onRepair(entityId: number): void {
     const now = Date.now();
-    const timeSinceLastRepair = now - this.lastRepairTime;
+    const playerLastRepair = this.playerRepairTimes.get(entityId) ?? 0;
+    const timeSinceLastRepair = now - playerLastRepair;
 
-    // Only repair if enough time has passed since the last repair
+    // Only repair if enough time has passed since this player's last repair
     if (timeSinceLastRepair >= Car.REPAIR_COOLDOWN) {
-      this.lastRepairTime = now;
+      this.playerRepairTimes.set(entityId, now);
 
       const destructible = this.getExt(Destructible);
 
