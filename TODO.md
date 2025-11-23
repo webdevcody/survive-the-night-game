@@ -10,6 +10,7 @@ Feel free to pick any item listed out here to work on.
 
 - ability to upgrade sentries, walls, spikes with gold
 - force next round button
+- an energy drink item which allows players to run for 20 seconds non stop and does not decrease their stamina bar (also turns their stamina bar blue)
 
 ## DevEx
 
@@ -44,4 +45,3 @@ Feel free to pick any item listed out here to work on.
 - [ ] a user shall be able to create a new lobby
 - [ ] a lobby leader shall be able to start the game
 - [ ] a lobby leader shall be able to leave the lobby (which will promote another user to the leader)
-
