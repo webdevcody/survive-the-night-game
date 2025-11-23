@@ -1,7 +1,7 @@
 import Vector2 from "@shared/util/vector2";
 import PoolManager from "@shared/util/pool-manager";
 import { getConfig } from "@shared/config";
-import { ItemType } from "@shared/util/inventory";
+import { ItemType, InventoryItem } from "@shared/util/inventory";
 import { itemRegistry } from "@shared/entities/item-registry";
 import { CameraManager } from "./camera";
 import { MapManager } from "./map";
@@ -186,7 +186,15 @@ export class PlacementManager {
       return null;
     }
 
-    const inventory = player.getInventory();
+    // Safely get inventory - check if method exists (player might not be fully initialized)
+    let inventory: InventoryItem[] = [];
+    if (typeof player.getInventory === "function") {
+      inventory = player.getInventory();
+    } else {
+      // Fallback: get inventory directly from extension if method doesn't exist
+      inventory = player.getExt(ClientInventory).getItems();
+    }
+
     if (!inventory || !Array.isArray(inventory)) {
       return null;
     }

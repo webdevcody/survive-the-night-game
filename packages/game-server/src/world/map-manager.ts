@@ -34,6 +34,7 @@ import type { MapData } from "../../../game-shared/src/events/server-sent/events
 import { getConfig } from "@/config";
 import { itemRegistry, weaponRegistry, resourceRegistry } from "@shared/entities";
 import { Entities, getZombieTypesSet } from "@shared/constants";
+import { balanceConfig } from "@shared/config/balance-config";
 import { Crate } from "@/entities/items/crate";
 import { CampsiteFire } from "@/entities/environment/campsite-fire";
 
@@ -976,7 +977,8 @@ export class MapManager implements IMapManager {
 
     for (const { chance, entityType } of spawnTable) {
       cumulativeChance += chance;
-      if (random < cumulativeChance) {
+      // Apply global spawn multiplier to reduce overall item spawn rate
+      if (random < cumulativeChance * balanceConfig.MAP_ITEM_SPAWN_MULTIPLIER) {
         const entity = this.getEntityManager().createEntity(entityType as any);
         if (entity) {
           entity
@@ -1099,6 +1101,65 @@ export class MapManager implements IMapManager {
         );
       this.getEntityManager().addEntity(entity);
     }
+  }
+
+  /**
+   * Spawn a single survivor in a random biome
+   * @returns true if survivor was successfully spawned, false otherwise
+   */
+  public spawnSurvivorInRandomBiome(): boolean {
+    const biomePosition = this.selectRandomBiomePosition([]);
+    if (!biomePosition) {
+      console.warn("No valid biome position found to spawn survivor");
+      return false;
+    }
+
+    // Collect all valid spawn positions within this biome
+    const validPositions: { x: number; y: number }[] = [];
+    for (let y = 0; y < BIOME_SIZE; y++) {
+      for (let x = 0; x < BIOME_SIZE; x++) {
+        const mapY = biomePosition.y * BIOME_SIZE + y;
+        const mapX = biomePosition.x * BIOME_SIZE + x;
+        const groundTile = this.groundLayer[mapY][mapX];
+        const isValidGround =
+          groundTile === GROUND_TILE_ID_1 ||
+          groundTile === GROUND_TILE_ID_2 ||
+          groundTile === GROUND_TILE_ID_3 ||
+          groundTile === GROUND_TILE_ID_4;
+
+        if (isValidGround && this.collidablesLayer[mapY][mapX] === EMPTY_COLLIDABLE_TILE_ID) {
+          validPositions.push({ x: mapX, y: mapY });
+        }
+      }
+    }
+
+    if (validPositions.length === 0) {
+      console.warn(
+        `No valid positions to spawn survivor in biome at (${biomePosition.x}, ${biomePosition.y})`
+      );
+      return false;
+    }
+
+    const entity = this.getEntityManager().createEntity(Entities.SURVIVOR);
+    if (!entity) {
+      console.warn(`Failed to create survivor entity`);
+      return false;
+    }
+
+    // Pick a random position from valid positions
+    const randomIndex = Math.floor(Math.random() * validPositions.length);
+    const position = validPositions[randomIndex];
+
+    entity
+      .getExt(Positionable)
+      .setPosition(
+        PoolManager.getInstance().vector2.claim(
+          position.x * getConfig().world.TILE_SIZE,
+          position.y * getConfig().world.TILE_SIZE
+        )
+      );
+    this.getEntityManager().addEntity(entity);
+    return true;
   }
 
   private spawnBiomeItems(biome: BiomeData, biomeX: number, biomeY: number) {
@@ -1248,17 +1309,6 @@ export class MapManager implements IMapManager {
     }
 
     this.spawnBiomeItems(biome, biomeX, biomeY);
-
-    // Spawn survivors in special biomes
-    if (
-      biome === FARM ||
-      biome === GAS_STATION ||
-      biome === CITY ||
-      biome === DOCK ||
-      biome === SHED
-    ) {
-      this.spawnSurvivorsInBiome(biomeX, biomeY);
-    }
   }
 
   public getRandomGrassPosition(): Vector2 {
@@ -1836,5 +1886,63 @@ export class MapManager implements IMapManager {
     }
 
     console.log(`Spawned ${cratesSpawned} crate(s) on the map`);
+  }
+
+  /**
+   * Spawns a single crate in a random biome with 10 items.
+   * @returns true if crate was successfully spawned, false otherwise
+   */
+  public spawnCrateInRandomBiome(): boolean {
+    // Select a random biome position
+    const biomePosition = this.selectRandomBiomePosition([]);
+    if (!biomePosition) {
+      console.warn("No valid biome position found to spawn crate");
+      return false;
+    }
+
+    // Collect all valid spawn positions within this biome
+    const validPositions: { x: number; y: number }[] = [];
+    for (let y = 0; y < BIOME_SIZE; y++) {
+      for (let x = 0; x < BIOME_SIZE; x++) {
+        const mapY = biomePosition.y * BIOME_SIZE + y;
+        const mapX = biomePosition.x * BIOME_SIZE + x;
+        const groundTile = this.groundLayer[mapY][mapX];
+        const isValidGround =
+          groundTile === GROUND_TILE_ID_1 ||
+          groundTile === GROUND_TILE_ID_2 ||
+          groundTile === GROUND_TILE_ID_3 ||
+          groundTile === GROUND_TILE_ID_4;
+
+        if (isValidGround && this.collidablesLayer[mapY][mapX] === EMPTY_COLLIDABLE_TILE_ID) {
+          validPositions.push({ x: mapX, y: mapY });
+        }
+      }
+    }
+
+    if (validPositions.length === 0) {
+      console.warn(
+        `No valid positions to spawn crate in biome at (${biomePosition.x}, ${biomePosition.y})`
+      );
+      return false;
+    }
+
+    // Pick a random position from valid positions
+    const randomIndex = Math.floor(Math.random() * validPositions.length);
+    const position = validPositions[randomIndex];
+
+    // Spawn crate with 10 items
+    const crate = new Crate(this.getGameManagers(), undefined, 10);
+    crate
+      .getExt(Positionable)
+      .setPosition(
+        PoolManager.getInstance().vector2.claim(
+          position.x * getConfig().world.TILE_SIZE,
+          position.y * getConfig().world.TILE_SIZE
+        )
+      );
+    this.getEntityManager().addEntity(crate);
+
+    console.log(`Spawned crate with 10 items in biome at (${biomePosition.x}, ${biomePosition.y})`);
+    return true;
   }
 }

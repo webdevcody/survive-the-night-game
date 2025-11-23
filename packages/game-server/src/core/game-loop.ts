@@ -34,6 +34,8 @@ import { TICK_RATE, TICK_RATE_MS } from "@/config/config";
 import { getConfig } from "@shared/config";
 import { TickPerformanceTracker } from "@/util/tick-performance-tracker";
 import { WaveState } from "@shared/types/wave";
+import { Survivor } from "@/entities/environment/survivor";
+import { Entities } from "@shared/constants";
 
 export class GameLoop {
   private lastUpdateTime: number = performance.now();
@@ -151,6 +153,33 @@ export class GameLoop {
 
   private onWaveStart(): void {
     console.log(`Wave ${this.waveNumber} started`);
+    
+    // Remove all unrescued survivors at wave start
+    const survivors = this.entityManager.getEntitiesByType(Entities.SURVIVOR);
+    let removedCount = 0;
+    for (const survivor of survivors) {
+      if (survivor instanceof Survivor && !survivor.getIsRescued()) {
+        this.entityManager.removeEntity(survivor.getId());
+        removedCount++;
+      }
+    }
+    if (removedCount > 0) {
+      console.log(`Removed ${removedCount} unrescued survivor(s) at wave start`);
+    }
+
+    // Spawn crate on even waves (2, 4, 6, etc.) at a random biome
+    if (this.waveNumber % 2 === 0) {
+      const crateSpawned = this.mapManager.spawnCrateInRandomBiome();
+      if (crateSpawned) {
+        this.socketManager.broadcastEvent(
+          new GameMessageEvent({
+            message: `Supply crate dropped at a random location!`,
+            color: "green",
+          })
+        );
+      }
+    }
+
     this.mapManager.spawnZombies(this.waveNumber);
 
     // Broadcast wave start message
@@ -180,17 +209,16 @@ export class GameLoop {
       })
     );
 
-    // Spawn crates at wave end
-    this.mapManager.spawnCrates(getConfig().wave.CRATES_SPAWNED_PER_WAVE);
-
-    // Broadcast crate spawn message
-    const crateCount = getConfig().wave.CRATES_SPAWNED_PER_WAVE;
-    this.socketManager.broadcastEvent(
-      new GameMessageEvent({
-        message: `${crateCount} supply crate${crateCount > 1 ? "s" : ""} dropped nearby!`,
-        color: "green",
-      })
-    );
+    // Spawn a survivor in a random biome after wave ends
+    const survivorSpawned = this.mapManager.spawnSurvivorInRandomBiome();
+    if (survivorSpawned) {
+      this.socketManager.broadcastEvent(
+        new GameMessageEvent({
+          message: "A survivor signaled for help, save them!",
+          color: "yellow",
+        })
+      );
+    }
 
     this.waveNumber++;
   }

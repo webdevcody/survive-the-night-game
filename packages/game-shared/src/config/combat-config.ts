@@ -19,7 +19,7 @@ export const combatConfig = {
   /**
    * Zombie attack radius in pixels
    */
-  ZOMBIE_ATTACK_RADIUS: 18,
+  ZOMBIE_ATTACK_RADIUS: 4,
 
   /**
    * Bullet visual size in pixels

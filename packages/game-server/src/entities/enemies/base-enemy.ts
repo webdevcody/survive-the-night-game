@@ -19,6 +19,7 @@ import { ZombieHurtEvent } from "../../../../game-shared/src/events/server-sent/
 import { EntityCategory, EntityCategories, ZombieConfig, zombieRegistry } from "@shared/entities";
 import { IdleMovementStrategy } from "./strategies/movement/idle-movement";
 import { getConfig } from "@shared/config";
+import { balanceConfig } from "@shared/config/balance-config";
 import { Blood } from "@/entities/effects/blood";
 import { distance } from "@shared/util/physics";
 import { Player } from "@/entities/players/player";
@@ -71,8 +72,11 @@ export abstract class BaseEnemy extends Entity {
     this.attackCooldown.setTimeRemaining(randomOffset);
     this.attackRadius = this.config.stats.attackRadius;
     this.attackDamage = this.config.stats.damage;
+    // Apply global multiplier to reduce zombie item drop chance
+    const adjustedDropChance =
+      this.config.stats.dropChance * balanceConfig.ZOMBIE_ITEM_DROP_MULTIPLIER;
     this.addExtension(
-      new Inventory(this, gameManagers.getBroadcaster()).addRandomItem(this.config.stats.dropChance)
+      new Inventory(this, gameManagers.getBroadcaster()).addRandomItem(adjustedDropChance)
     );
     this.addExtension(
       new Destructible(this)

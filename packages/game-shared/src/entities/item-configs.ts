@@ -313,7 +313,7 @@ export const ITEM_CONFIGS: Record<string, ItemConfig> = {
     },
     recipe: {
       enabled: true,
-      components: [{ type: "knife" }, { type: "wood", count: 2 }],
+      components: [{ type: "wood", count: 4 }],
     },
   },
   bear_trap: {
@@ -337,7 +337,10 @@ export const ITEM_CONFIGS: Record<string, ItemConfig> = {
     },
     recipe: {
       enabled: true,
-      components: [{ type: "knife" }, { type: "wood", count: 3 }, { type: "cloth", count: 1 }],
+      components: [
+        { type: "wood", count: 3 },
+        { type: "cloth", count: 1 },
+      ],
     },
   },
   wall: {

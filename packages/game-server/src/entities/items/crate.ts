@@ -17,7 +17,7 @@ export class Crate extends Entity {
     return PoolManager.getInstance().vector2.claim(16, 16);
   }
 
-  constructor(gameManagers: IGameManagers, itemState?: ItemState) {
+  constructor(gameManagers: IGameManagers, itemState?: ItemState, itemCount: number = 3) {
     super(gameManagers, Entities.CRATE);
     const poolManager = PoolManager.getInstance();
     const size = poolManager.vector2.claim(16, 16);
@@ -30,12 +30,11 @@ export class Crate extends Entity {
         .onDeath(() => this.onDeath())
     );
     this.addExtension(new Groupable(this, "enemy"));
-    this.addExtension(
-      new Inventory(this, gameManagers.getBroadcaster())
-        .addRandomItem()
-        .addRandomItem()
-        .addRandomItem()
-    );
+    const inventory = new Inventory(this, gameManagers.getBroadcaster());
+    for (let i = 0; i < itemCount; i++) {
+      inventory.addRandomItem();
+    }
+    this.addExtension(inventory);
     this.addExtension(new Static(this));
   }
 

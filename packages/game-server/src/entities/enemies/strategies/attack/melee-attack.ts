@@ -6,6 +6,7 @@ import Positionable from "@/extensions/positionable";
 import { getConfig } from "@shared/config";
 import { ZombieAttackedEvent } from "../../../../../../game-shared/src/events/server-sent/events/zombie-attacked-event";
 import { TargetingSystem } from "../targeting";
+import { Entities } from "@/constants";
 
 export class MeleeAttackStrategy implements AttackStrategy {
   onEntityDamaged?: (entity: IEntity) => void;
@@ -77,10 +78,19 @@ export class MeleeAttackStrategy implements AttackStrategy {
     const endAttackExecution =
       tickPerformanceTracker?.startMethod("attackExecution", "attackStrategy") || (() => {});
     // Attack the closest entity if within range
+    // If the closest target is a car, give zombies an extra 8 pixel of attack leeway.
+    let extraAttackDistance = 0;
+    if (closestTarget && closestTarget.entity.hasExt(Destructible)) {
+      // Check if the entity type is a car
+      if (closestTarget.entity.getType() === Entities.CAR) {
+        extraAttackDistance = 8;
+      }
+    }
+
     if (
       closestTarget &&
       closestTarget.entity.hasExt(Destructible) &&
-      closestDistance <= getConfig().combat.ZOMBIE_ATTACK_RADIUS
+      closestDistance <= getConfig().combat.ZOMBIE_ATTACK_RADIUS + extraAttackDistance
     ) {
       closestTarget.entity.getExt(Destructible).damage(zombie.getAttackDamage(), zombie.getId());
 
