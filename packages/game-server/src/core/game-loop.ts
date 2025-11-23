@@ -36,6 +36,7 @@ import { TickPerformanceTracker } from "@/util/tick-performance-tracker";
 import { WaveState } from "@shared/types/wave";
 import { Survivor } from "@/entities/environment/survivor";
 import { Entities } from "@shared/constants";
+import { EnvironmentalEventManager } from "@/managers/environmental-event-manager";
 
 export class GameLoop {
   private lastUpdateTime: number = performance.now();
@@ -54,6 +55,7 @@ export class GameLoop {
   private entityManager: EntityManager;
   private mapManager: MapManager;
   private socketManager: ServerSocketManager;
+  private environmentalEventManager: EnvironmentalEventManager | null = null;
 
   private lastBroadcastedState = {
     waveNumber: -1,
@@ -73,6 +75,17 @@ export class GameLoop {
     this.entityManager = entityManager;
     this.mapManager = mapManager;
     this.socketManager = socketManager;
+  }
+
+  /**
+   * Set game managers (called after construction to avoid circular dependency)
+   */
+  public setGameManagers(gameManagers: any): void {
+    this.environmentalEventManager = new EnvironmentalEventManager(
+      gameManagers,
+      this.entityManager,
+      this.mapManager
+    );
   }
 
   public getWaveNumber(): number {
@@ -153,7 +166,7 @@ export class GameLoop {
 
   private onWaveStart(): void {
     console.log(`Wave ${this.waveNumber} started`);
-    
+
     // Remove all unrescued survivors at wave start
     const survivors = this.entityManager.getEntitiesByType(Entities.SURVIVOR);
     let removedCount = 0;
@@ -218,6 +231,12 @@ export class GameLoop {
           color: "yellow",
         })
       );
+    }
+
+    // Check for environmental events
+    if (this.environmentalEventManager) {
+      console.log(`Checking for environmental events on wave ${this.waveNumber}`);
+      this.environmentalEventManager.onWaveComplete(this.waveNumber);
     }
 
     this.waveNumber++;
@@ -362,6 +381,9 @@ export class GameLoop {
 
   private updateEntities(deltaTime: number): void {
     this.entityManager.update(deltaTime);
+    if (this.environmentalEventManager) {
+      this.environmentalEventManager.update(deltaTime);
+    }
   }
 
   private getCurrentGameState(): Record<string, any> {

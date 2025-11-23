@@ -15,12 +15,12 @@ export const waveConfig = {
    * Active wave duration in seconds
    * Wave will end after this time and transition to preparation
    */
-  WAVE_DURATION: 30,
+  WAVE_DURATION: 5,
 
   /**
    * Delay before automatically starting first wave (in seconds)
    */
-  FIRST_WAVE_DELAY: 60,
+  FIRST_WAVE_DELAY: 5,
 
   START_WAVE_NUMBER: 1,
 

@@ -59,11 +59,16 @@ export const MINIMAP_SETTINGS = {
     acid: "green",
     bat: "blue",
     spitter: "purple",
+    toxicGas: "rgba(0, 255, 0, 0.5)",
   },
   indicators: {
     acid: {
       shape: "circle",
       size: 6,
+    },
+    toxicGas: {
+      shape: "rectangle",
+      size: 4,
     },
     enemy: {
       shape: "circle",

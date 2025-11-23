@@ -58,6 +58,7 @@ import { Car } from "@/entities/environment/car";
 import { Survivor } from "@/entities/environment/survivor";
 import { Blood } from "@/entities/effects/blood";
 import { Acid } from "@/entities/effects/acid";
+import { ToxicGasCloud } from "@/entities/environment/toxic-gas-cloud";
 
 /**
  * Registers all custom entity classes in the override registry
@@ -140,4 +141,5 @@ export function registerCustomEntities(): void {
   entityOverrideRegistry.register("survivor", Survivor);
   entityOverrideRegistry.register("blood", Blood);
   entityOverrideRegistry.register("acid", Acid);
+  entityOverrideRegistry.register("toxic_gas_cloud", ToxicGasCloud);
 }

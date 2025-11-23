@@ -20,6 +20,7 @@ import ResourcesBag from "@/extensions/resources-bag";
 import Poison from "@/extensions/poison";
 import AcidTrigger from "@/extensions/acid-trigger";
 import InfiniteRun from "@/extensions/infinite-run";
+import { ToxicGasCloudExtension } from "@/extensions/toxic-gas-cloud-extension";
 
 export const extensionsMap = {
   [Collidable.type]: Collidable,
@@ -44,4 +45,5 @@ export const extensionsMap = {
   [Poison.type]: Poison,
   [AcidTrigger.type]: AcidTrigger,
   [InfiniteRun.type]: InfiniteRun,
+  [ToxicGasCloudExtension.type]: ToxicGasCloudExtension,
 } as const;

@@ -10,7 +10,6 @@ Feel free to pick any item listed out here to work on.
 
 - ability to upgrade sentries, walls, spikes with gold
 - force next round button
-- an energy drink item which allows players to run for 20 seconds non stop and does not decrease their stamina bar (also turns their stamina bar blue)
 
 ## DevEx
 
@@ -23,8 +22,6 @@ Feel free to pick any item listed out here to work on.
 ## UX
 
 - scale the merchant menu on smaller screens
-- when the car is destroyed, change it to a broken car sprite display
-- refactor how the car is defined in the editor. the car should not be part of the map but something in the entities list so it can be easily modified on death.
 
 ## Game Design
 

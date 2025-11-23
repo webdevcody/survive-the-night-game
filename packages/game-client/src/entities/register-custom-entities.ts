@@ -58,6 +58,7 @@ import { AcidProjectileClient } from "./acid-projectile";
 import { BoundaryClient } from "./items/boundary";
 import { BloodClient } from "./blood";
 import { AcidClient } from "./acid";
+import { ToxicGasCloudClient } from "./environment/toxic-gas-cloud";
 
 /**
  * Registers all custom client entity classes in the override registry
@@ -142,4 +143,5 @@ export function registerCustomClientEntities(): void {
   clientEntityOverrideRegistry.register("boundary", BoundaryClient);
   clientEntityOverrideRegistry.register("blood", BloodClient);
   clientEntityOverrideRegistry.register("acid", AcidClient);
+  clientEntityOverrideRegistry.register("toxic_gas_cloud", ToxicGasCloudClient);
 }

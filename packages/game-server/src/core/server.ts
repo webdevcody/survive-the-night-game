@@ -71,6 +71,7 @@ export class GameServer {
       this.mapManager,
       this.socketManager
     );
+    this.gameLoop.setGameManagers(this.gameManagers);
     this.gameLoop.start();
   }
 

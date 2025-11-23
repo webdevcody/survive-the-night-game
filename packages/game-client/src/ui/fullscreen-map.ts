@@ -27,8 +27,17 @@ const FULLSCREEN_MAP_SETTINGS = {
   buttonGap: 10,
   zoomLevels: [0.3, 0.5, 0.7, 1.0, 1.5, 2.0], // Available zoom levels
   defaultZoomIndex: 0, // Start at 0.7 (index 2)
-  colors: MINIMAP_SETTINGS.colors,
-  indicators: MINIMAP_SETTINGS.indicators,
+  colors: {
+    ...MINIMAP_SETTINGS.colors,
+    toxicGas: "rgba(0, 255, 0, 0.5)",
+  },
+  indicators: {
+    ...MINIMAP_SETTINGS.indicators,
+    toxicGas: {
+      shape: "rectangle",
+      size: 4,
+    },
+  },
   biomeIndicators: MINIMAP_SETTINGS.biomeIndicators,
   fogOfWar: MINIMAP_SETTINGS.fogOfWar,
 };

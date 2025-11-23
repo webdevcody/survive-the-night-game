@@ -8,6 +8,7 @@ import { TreeClient } from "@/entities/items/tree";
 import { ClothClient } from "@/entities/items/cloth";
 import { CrateClient } from "@/entities/items/crate";
 import { AcidProjectileClient } from "@/entities/acid-projectile";
+import { ToxicGasCloudClient } from "@/entities/environment/toxic-gas-cloud";
 
 export interface EntityMapIndicator {
   color: string;
@@ -26,9 +27,11 @@ export interface MapColorSettings {
     item: string;
     tree: string;
     acid: string;
+    toxicGas: string;
   };
   indicators: {
     acid: { shape: string; size: number };
+    toxicGas: { shape: string; size: number };
     enemy: { shape: string; size: number };
     player: { shape: string; size: number };
     wall: { shape: string; size: number };
@@ -130,6 +133,14 @@ export function getEntityMapColor(
     return {
       color: settings.colors.acid,
       indicator: convertIndicator(settings.indicators.acid),
+    };
+  }
+
+  // Toxic gas clouds
+  if (entity instanceof ToxicGasCloudClient) {
+    return {
+      color: settings.colors.toxicGas,
+      indicator: convertIndicator(settings.indicators.toxicGas),
     };
   }
 

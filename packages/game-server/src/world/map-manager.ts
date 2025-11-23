@@ -1596,6 +1596,45 @@ export class MapManager implements IMapManager {
    * @param biomeY Biome Y coordinate
    * @returns Array of Vector2 positions representing valid empty ground tiles in the biome
    */
+  /**
+   * Get the center world positions of biomes directly surrounding the campsite
+   * Returns an array of Vector2 positions representing the center of each surrounding biome
+   */
+  public getCampsiteSurroundingBiomeCenters(): Vector2[] {
+    const centerBiomeX = Math.floor(MAP_SIZE / 2);
+    const centerBiomeY = Math.floor(MAP_SIZE / 2);
+    const tileSize = getConfig().world.TILE_SIZE;
+    const poolManager = PoolManager.getInstance();
+    const centers: Vector2[] = [];
+
+    // Get the 8 surrounding biomes (3x3 grid minus the center campsite)
+    for (let dy = -1; dy <= 1; dy++) {
+      for (let dx = -1; dx <= 1; dx++) {
+        // Skip the center campsite biome itself
+        if (dx === 0 && dy === 0) {
+          continue;
+        }
+
+        const biomeX = centerBiomeX + dx;
+        const biomeY = centerBiomeY + dy;
+
+        // Ensure biome is within map bounds
+        if (biomeX >= 0 && biomeX < MAP_SIZE && biomeY >= 0 && biomeY < MAP_SIZE) {
+          // Convert biome coordinates to world pixel coordinates
+          // Center of biome = biomeX * BIOME_SIZE * TILE_SIZE + (BIOME_SIZE / 2) * TILE_SIZE
+          const centerTileX = biomeX * BIOME_SIZE + Math.floor(BIOME_SIZE / 2);
+          const centerTileY = biomeY * BIOME_SIZE + Math.floor(BIOME_SIZE / 2);
+          const worldX = centerTileX * tileSize;
+          const worldY = centerTileY * tileSize;
+
+          centers.push(poolManager.vector2.claim(worldX, worldY));
+        }
+      }
+    }
+
+    return centers;
+  }
+
   public getValidSpawnPositionsInBiome(biomeX: number, biomeY: number): Vector2[] {
     const { TILE_SIZE } = getConfig().world;
     const validPositions: Vector2[] = [];
