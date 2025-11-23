@@ -35,6 +35,7 @@ import { BossSummonEvent } from "./events/boss-summon-event";
 import { BossSplitEvent } from "./events/boss-split-event";
 import { GameMessageEvent } from "./events/game-message-event";
 import { UserBannedEvent } from "./events/user-banned-event";
+import { LightningBoltEvent } from "./events/lightning-bolt-event";
 import {
   serializeEvent,
   deserializeEvent,
@@ -84,6 +85,7 @@ const eventRegistry: Record<string, IBufferWriter> = {
   [ServerSentEvents.BOSS_SPLIT]: BossSplitEvent,
   [ServerSentEvents.GAME_MESSAGE]: GameMessageEvent,
   [ServerSentEvents.USER_BANNED]: UserBannedEvent,
+  [ServerSentEvents.LIGHTNING_BOLT]: LightningBoltEvent,
 };
 
 /**

@@ -49,7 +49,34 @@ export const environmentalEventsConfig = {
      */
     PRIMARY_DIRECTION_WEIGHT: 0.7,
   },
+
+  /**
+   * Thunderstorm Event Configuration
+   */
+  THUNDERSTORM: {
+    /**
+     * Chance to trigger thunderstorm event after wave completion (0.0 to 1.0)
+     */
+    TRIGGER_CHANCE: 0.15,
+
+    /**
+     * Minimum wave number before thunderstorm can trigger (after first wave)
+     */
+    MIN_WAVE: 2,
+
+    /**
+     * Duration of thunderstorm event in seconds
+     */
+    DURATION: 85,
+
+    /**
+     * Lightning flash interval range in seconds
+     */
+    LIGHTNING_INTERVAL: {
+      min: 3,
+      max: 10,
+    },
+  },
 } as const;
 
 export type EnvironmentalEventsConfig = typeof environmentalEventsConfig;
-

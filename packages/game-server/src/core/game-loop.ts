@@ -195,6 +195,11 @@ export class GameLoop {
 
     this.mapManager.spawnZombies(this.waveNumber);
 
+    // Notify environmental event manager of wave start
+    if (this.environmentalEventManager) {
+      this.environmentalEventManager.onWaveStart();
+    }
+
     // Broadcast wave start message
     this.socketManager.broadcastEvent(
       new GameMessageEvent({
@@ -265,6 +270,11 @@ export class GameLoop {
     const endHandleWaveSystem = this.tickPerformanceTracker.startMethod("handleWaveSystem");
     this.handleWaveSystem(deltaTime);
     endHandleWaveSystem();
+
+    // Track environmental events
+    if (this.environmentalEventManager) {
+      this.environmentalEventManager.update(deltaTime);
+    }
 
     // Track handleIfGameOver
     const endHandleIfGameOver = this.tickPerformanceTracker.startMethod("handleIfGameOver");

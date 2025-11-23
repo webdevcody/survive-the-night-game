@@ -37,6 +37,9 @@ import { CampsiteFireClient } from "@/entities/environment/campsite-fire";
 import { WaveState } from "@shared/types/wave";
 import { ParticleManager } from "./managers/particles";
 import { SmokeParticleManager } from "./managers/smoke-particles";
+import { RainParticleManager } from "./managers/rain-particles";
+import { LightningBoltManager } from "./managers/lightning-bolt";
+import { updateLightningFlash } from "./events/on-lightning-bolt";
 import { PredictionManager } from "./managers/prediction";
 import { FixedTimestepSimulator } from "./managers/fixed-timestep-simulator";
 import { getConfig } from "@shared/config";
@@ -68,6 +71,8 @@ export class GameClient {
   private entityFactory: EntityFactory;
   private particleManager: ParticleManager;
   private smokeParticleManager: SmokeParticleManager;
+  public rainParticleManager: RainParticleManager;
+  public lightningBoltManager: LightningBoltManager;
   private predictionManager: PredictionManager;
   private fixedTimestepSimulator: FixedTimestepSimulator;
   private placementManager!: PlacementManager;
@@ -127,6 +132,8 @@ export class GameClient {
     this.entityFactory = new EntityFactory(this.assetManager);
     this.particleManager = new ParticleManager(this);
     this.smokeParticleManager = new SmokeParticleManager(this, this.assetManager);
+    this.rainParticleManager = new RainParticleManager(this, this.assetManager);
+    this.lightningBoltManager = new LightningBoltManager(this);
     this.predictionManager = new PredictionManager();
     this.fixedTimestepSimulator = new FixedTimestepSimulator(getConfig().simulation.FIXED_TIMESTEP);
 
@@ -523,6 +530,10 @@ export class GameClient {
       // Server time synchronization
       serverTimeOffset: 0, // Will be calculated when receiving game state updates
       dt: 0,
+      // Global illumination multiplier (default: 1.0)
+      globalIlluminationMultiplier: 1.0,
+      // Darkness hue (default: "red")
+      darknessHue: "red",
     };
 
     this.renderer = new Renderer(
@@ -534,7 +545,8 @@ export class GameClient {
       this.gameOverDialog,
       this.particleManager,
       () => this.getPlacementManager(),
-      () => this.getTeleportState()
+      () => this.getTeleportState(),
+      () => this.lightningBoltManager
     );
 
     // Set renderer reference on minimap so it can use the spatial grid
@@ -808,6 +820,9 @@ export class GameClient {
     this.updateInteractHold();
     this.hud.update(this.gameState);
     this.smokeParticleManager.update(deltaSeconds);
+    this.rainParticleManager.update(deltaSeconds);
+    this.lightningBoltManager.update();
+    updateLightningFlash(this.gameState);
     this.updatePlayerMovementSounds();
     this.updateCampfireSounds();
     this.updateCursorVisibility();

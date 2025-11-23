@@ -14,7 +14,7 @@ export class ToxicGasCloud extends Entity {
     return PoolManager.getInstance().vector2.claim(16, 16);
   }
 
-  private environmentalEventManager: any = null; // Will be set by EnvironmentalEventManager
+  private toxicGasStrategy: any = null; // Will be set by ToxicGasEventStrategy
 
   constructor(gameManagers: IGameManagers, position: Vector2) {
     super(gameManagers, "toxic_gas_cloud" as any);
@@ -29,17 +29,17 @@ export class ToxicGasCloud extends Entity {
   }
 
   /**
-   * Set the environmental event manager reference (called by EnvironmentalEventManager)
+   * Set the toxic gas strategy reference (called by ToxicGasEventStrategy)
    */
   public setEnvironmentalEventManager(manager: any): void {
-    this.environmentalEventManager = manager;
+    this.toxicGasStrategy = manager;
   }
 
   /**
-   * Get the environmental event manager reference
+   * Get the toxic gas strategy reference
    */
   public getEnvironmentalEventManager(): any {
-    return this.environmentalEventManager;
+    return this.toxicGasStrategy;
   }
 
   /**

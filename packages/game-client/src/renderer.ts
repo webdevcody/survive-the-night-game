@@ -28,6 +28,7 @@ export class Renderer {
   private merchantBuyPanel: MerchantBuyPanel;
   private gameOverDialog: GameOverDialogUI;
   private particleManager: ParticleManager;
+  private getLightningBoltManager: () => { render: (ctx: CanvasRenderingContext2D) => void } | null;
   private getPlacementManager: () => PlacementManager | null;
   private getTeleportState: () => { isTeleporting: boolean; progress: number } | null;
   private lastPerfLogTime: number | null = null;
@@ -43,7 +44,8 @@ export class Renderer {
     gameOverDialog: GameOverDialogUI,
     particleManager: ParticleManager,
     getPlacementManager: () => PlacementManager | null,
-    getTeleportState: () => { isTeleporting: boolean; progress: number } | null
+    getTeleportState: () => { isTeleporting: boolean; progress: number } | null,
+    getLightningBoltManager: () => { render: (ctx: CanvasRenderingContext2D) => void } | null
   ) {
     this.ctx = ctx;
     this.gameState = gameState;
@@ -54,6 +56,7 @@ export class Renderer {
     this.particleManager = particleManager;
     this.getPlacementManager = getPlacementManager;
     this.getTeleportState = getTeleportState;
+    this.getLightningBoltManager = getLightningBoltManager;
     this.resizeCanvas();
   }
 
@@ -258,6 +261,14 @@ export class Renderer {
     perfTimer.start("renderParticles");
     this.particleManager.render(this.ctx);
     perfTimer.end("renderParticles");
+
+    // Render lightning bolts
+    perfTimer.start("renderLightningBolts");
+    const lightningBoltManager = this.getLightningBoltManager();
+    if (lightningBoltManager) {
+      lightningBoltManager.render(this.ctx);
+    }
+    perfTimer.end("renderLightningBolts");
 
     // Render placement ghost (if active)
     perfTimer.start("renderPlacement");

@@ -39,6 +39,9 @@ export const ServerSentEvents = {
   BOSS_SPLIT: "bossSplit",
   VERSION_MISMATCH: "versionMismatch",
   USER_BANNED: "userBanned",
+  LIGHTNING_BOLT: "lightningBolt",
+  THUNDERSTORM_START: "thunderstormStart",
+  THUNDERSTORM_END: "thunderstormEnd",
 } as const;
 
 export const ClientSentEvents = {

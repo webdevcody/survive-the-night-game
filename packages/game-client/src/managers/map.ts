@@ -48,6 +48,7 @@ export class MapManager {
   private combinedLightMap: number[][] = []; // Final combined light map
   private lastLightRecalculationTime: number = 0;
   private readonly LIGHT_RECALCULATION_INTERVAL = 300;
+  private previousIlluminationMultiplier: number = 1.0; // Track previous multiplier to detect changes
 
   private biomePositions?: {
     campsite: { x: number; y: number };
@@ -270,13 +271,19 @@ export class MapManager {
     const pulseOffset = Math.sin(currentTime * PULSE_SPEED);
     const radiusMultiplier = 1 + pulseOffset * PULSE_INTENSITY;
 
+    // Get global illumination multiplier from game state
+    const gameState = this.gameClient.getGameState();
+    const illuminationMultiplier = gameState.globalIlluminationMultiplier ?? 1.0;
+
     // Add entity light sources
     entities.forEach((entity, entityId) => {
       const gameEntity = entity;
       if (gameEntity.hasExt(ClientIlluminated)) {
         // Skip entities without positionable extension (can't get position)
         if (!gameEntity.hasExt(ClientPositionable)) return;
-        const baseRadius = gameEntity.getExt(ClientIlluminated).getRadius();
+        let baseRadius = gameEntity.getExt(ClientIlluminated).getRadius();
+        // Apply illumination multiplier (keep as float for smooth lighting)
+        baseRadius = baseRadius * illuminationMultiplier;
         // Skip entities with no light (radius 0 or very small)
         if (baseRadius <= 0) return;
         const position = gameEntity.getExt(ClientPositionable).getCenterPosition();
@@ -371,12 +378,28 @@ export class MapManager {
     const bounds = this.getVisibleTileBounds(DARKNESS_RENDER_DISTANCE, playerPos);
     if (!bounds) return;
 
-    // Only recalculate light cache every LIGHT_RECALCULATION_INTERVAL ms (10Hz)
-    if (timeSinceLastRecalc >= this.LIGHT_RECALCULATION_INTERVAL) {
+    // Check if global illumination multiplier changed (for lightning flash)
+    const gameState = this.gameClient.getGameState();
+    const currentIlluminationMultiplier = gameState.globalIlluminationMultiplier ?? 1.0;
+    const illuminationChanged =
+      currentIlluminationMultiplier !== this.previousIlluminationMultiplier;
+
+    // Recalculate light cache if:
+    // 1. Enough time has passed (normal interval), OR
+    // 2. Global illumination multiplier changed (for lightning flash)
+    if (timeSinceLastRecalc >= this.LIGHT_RECALCULATION_INTERVAL || illuminationChanged) {
       const cullDistance = DARKNESS_RENDER_DISTANCE + LIGHT_SOURCE_CULL_MARGIN;
       const lightSources = this.getLightSources(playerPos, cullDistance);
       this.updateLightCache(lightSources, bounds);
       this.lastLightRecalculationTime = currentTime;
+      this.previousIlluminationMultiplier = currentIlluminationMultiplier;
+
+      // If illumination changed, invalidate cache to force recalculation
+      if (illuminationChanged) {
+        // Clear cache so all light sources are recalculated with new multiplier
+        this.lightMapCache.clear();
+        this.lightSourcePositions.clear();
+      }
     }
 
     const { startTileX, startTileY, endTileX, endTileY } = bounds;
@@ -398,18 +421,22 @@ export class MapManager {
     ctx.setTransform(1, 0, 0, 1, 0, 0);
 
     // Use reddish tint during active waves, black otherwise
-    const gameState = this.gameClient.getGameState();
-    const elapsedTime = (currentTime - gameState.cycleStartTime) / 1000;
-    const cycleProgress = elapsedTime / gameState.cycleDuration;
+    const elapsedTime = (currentTime - (gameState as any).cycleStartTime) / 1000;
+    const cycleProgress = elapsedTime / ((gameState as any).cycleDuration || 1);
 
     let baseDarkness;
-    if (gameState.isDay) {
+    if ((gameState as any).isDay) {
       const exponentialProgress = Math.pow(cycleProgress, DARKNESS_EXPONENTIAL);
       baseDarkness = exponentialProgress * BASE_NIGHT_DARKNESS;
     } else {
       baseDarkness = BASE_NIGHT_DARKNESS;
     }
     const isWaveActive = gameState.waveState === WaveState.ACTIVE;
+
+    // Get darkness hue from game state
+    // Note: illumination multiplier is already applied to light sources in getLightSources(),
+    // so we don't need to apply it again here to the light intensity
+    const darknessHue = gameState.darknessHue ?? "red";
 
     for (let y = startTileY; y <= endTileY; y++) {
       for (let x = startTileX; x <= endTileX; x++) {
@@ -456,13 +483,21 @@ export class MapManager {
 
         if (drawWidth <= 0 || drawHeight <= 0) continue;
 
-        // Set fill style based on wave state
-        if (isWaveActive) {
-          // Reddish tint during waves: dark red with opacity
-          ctx.fillStyle = `rgba(50, 0, 0, ${finalOpacity})`;
+        // Set fill style based on wave state and darkness hue
+        if (darknessHue === "blue") {
+          // Blue tint during thunderstorm (more visible blue)
+          if (isWaveActive) {
+            ctx.fillStyle = `rgba(0, 0, 50, ${finalOpacity})`;
+          } else {
+            ctx.fillStyle = `rgba(0, 0, 20, ${finalOpacity})`;
+          }
         } else {
-          // Normal black darkness
-          ctx.fillStyle = `rgba(20, 0, 0, ${finalOpacity})`;
+          // Reddish tint during waves (default)
+          if (isWaveActive) {
+            ctx.fillStyle = `rgba(50, 0, 0, ${finalOpacity})`;
+          } else {
+            ctx.fillStyle = `rgba(20, 0, 0, ${finalOpacity})`;
+          }
         }
 
         ctx.globalAlpha = 1; // Set to 1 since opacity is in fillStyle

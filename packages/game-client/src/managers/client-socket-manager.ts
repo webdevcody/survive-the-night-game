@@ -38,6 +38,7 @@ import { BossSummonEvent } from "../../../game-shared/src/events/server-sent/eve
 import { BossSplitEvent } from "../../../game-shared/src/events/server-sent/events/boss-split-event";
 import { VersionMismatchEvent } from "../../../game-shared/src/events/server-sent/events/version-mismatch-event";
 import { UserBannedEvent } from "../../../game-shared/src/events/server-sent/events/user-banned-event";
+import { LightningBoltEvent } from "../../../game-shared/src/events/server-sent/events/lightning-bolt-event";
 import { ISocketAdapter } from "@shared/network/socket-adapter";
 import { IClientAdapter } from "@shared/network/client-adapter";
 import { createClientAdapter } from "@/network/adapter-factory";
@@ -82,6 +83,9 @@ const SERVER_EVENT_MAP = {
   [ServerSentEvents.BOSS_SPLIT]: BossSplitEvent,
   [ServerSentEvents.VERSION_MISMATCH]: VersionMismatchEvent,
   [ServerSentEvents.USER_BANNED]: UserBannedEvent,
+  [ServerSentEvents.LIGHTNING_BOLT]: LightningBoltEvent,
+  [ServerSentEvents.THUNDERSTORM_START]: GameMessageEvent,
+  [ServerSentEvents.THUNDERSTORM_END]: GameMessageEvent,
 } as const;
 
 export class ClientSocketManager {

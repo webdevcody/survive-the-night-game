@@ -9,6 +9,7 @@ export const ParticleTypes = {
   EXPLOSION: "explosion",
   SUMMON: "summon",
   SMOKE: "smoke",
+  RAIN: "rain",
 } as const;
 
 export type ParticleType = (typeof ParticleTypes)[keyof typeof ParticleTypes];
@@ -46,4 +47,5 @@ export abstract class Particle {
 
   public abstract render(ctx: CanvasRenderingContext2D, gameState: GameState): void;
   public abstract onInitialized(): void;
+  public abstract update(deltaTime: number, ...args: any[]): void;
 }

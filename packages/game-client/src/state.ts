@@ -21,6 +21,10 @@ export type GameState = {
   closestInteractiveEntityId?: number | null;
   // Delta time in seconds for the current frame (used for time-based lerping)
   dt: number;
+  // Global illumination multiplier (affects all light sources)
+  globalIlluminationMultiplier: number;
+  // Darkness hue ("red" or "blue")
+  darknessHue: "red" | "blue";
 };
 
 export function getEntityById(gameState: GameState, id: number): ClientEntityBase | undefined {

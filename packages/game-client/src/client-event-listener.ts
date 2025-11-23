@@ -38,6 +38,7 @@ import { handleDisconnect } from "./events/handle-disconnect";
 import { onChatMessage } from "./events/on-chat-message";
 import { onGameMessage } from "./events/on-game-message";
 import { onGameStateUpdate } from "./events/on-game-state-update";
+import { onLightningBolt } from "./events/on-lightning-bolt";
 import { onMap } from "./events/on-map";
 import { onYourId } from "./events/on-your-id";
 import { onVersionMismatch } from "./events/on-version-mismatch";
@@ -135,6 +136,7 @@ export class ClientEventListener {
     this.socketManager.on(ServerSentEvents.BUILD, (e) => onBuild(context, e));
     this.socketManager.on(ServerSentEvents.VERSION_MISMATCH, (e) => onVersionMismatch(context, e));
     this.socketManager.on(ServerSentEvents.USER_BANNED, (e) => onUserBanned(context, e));
+    this.socketManager.on(ServerSentEvents.LIGHTNING_BOLT, (e) => onLightningBolt(context, e));
 
     this.socketManager.onSocketDisconnect(() => {
       this.handleDisconnect();
