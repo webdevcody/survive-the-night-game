@@ -33,6 +33,6 @@
       "path": "../game-server"
     },
   ],
-  "include": ["**/*.ts", "**/*.tsx", "tests/**/*"],
+  "include": ["**/*.ts", "**/*.tsx", "tests/**/*", "../game-shared/src/config/keybinds.ts"],
   "exclude": ["node_modules"],
 }

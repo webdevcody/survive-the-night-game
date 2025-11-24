@@ -9,6 +9,7 @@ import PoolManager from "../../../game-shared/src/util/pool-manager";
 import { getConfig } from "@shared/config";
 import { itemRegistry } from "../../../game-shared/src/entities/item-registry";
 import { isWeapon } from "@shared/util/inventory";
+import { loadKeyBinds } from "@shared/config/keybinds";
 
 export interface InputManagerOptions {
   onCraft?: () => unknown;
@@ -92,6 +93,8 @@ export class InputManager {
   private mousePosition: Vector2 | null = null;
   private canvas: HTMLCanvasElement | null = null;
   private fKeyHeld = false;
+
+  private keybinds = loadKeyBinds();
 
   private checkIfChanged() {
     this.hasChanged = JSON.stringify(this.inputs) !== JSON.stringify(this.lastInputs);
@@ -229,16 +232,16 @@ export class InputManager {
           }
           break;
         }
-        case "KeyW":
+        case this.keybinds.moveUp:
           callbacks.onUp?.(this.inputs);
           break;
-        case "KeyS":
+        case this.keybinds.moveDown:
           callbacks.onDown?.(this.inputs);
           break;
-        case "KeyA":
+        case this.keybinds.moveLeft:
           callbacks.onLeft?.(this.inputs);
           break;
-        case "KeyD":
+        case this.keybinds.moveRight:
           callbacks.onRight?.(this.inputs);
           break;
         case "ArrowUp":
@@ -369,16 +372,16 @@ export class InputManager {
         case "KeyC":
           this.callbacks.onTeleportCancel?.();
           break;
-        case "KeyW":
+        case this.keybinds.moveUp:
           this.inputs.dy = this.inputs.dy === -1 ? 0 : this.inputs.dy;
           break;
-        case "KeyS":
+        case this.keybinds.moveDown:
           this.inputs.dy = this.inputs.dy === 1 ? 0 : this.inputs.dy;
           break;
-        case "KeyA":
+        case this.keybinds.moveLeft:
           this.inputs.dx = this.inputs.dx === -1 ? 0 : this.inputs.dx;
           break;
-        case "KeyD":
+        case this.keybinds.moveRight:
           this.inputs.dx = this.inputs.dx === 1 ? 0 : this.inputs.dx;
           break;
         case "ArrowUp":

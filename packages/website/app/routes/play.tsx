@@ -7,6 +7,7 @@ import { SpawnPanel } from "./play/components/SpawnPanel";
 import { NameChangePanel } from "./play/components/NameChangePanel";
 import { Button } from "~/components/ui/button";
 import { DropdownMenu, DropdownMenuItem } from "~/components/ui/dropdown-menu";
+import { loadKeyBinds, saveKeyBinds, type KeyBindConfig } from "@shared/config/keybinds";
 
 export function meta() {
   return [
@@ -31,6 +32,13 @@ function GameClientLoader() {
   const [gameClient, setGameClient] = useState<any>(null);
   const [savedDisplayName, setSavedDisplayName] = useState<string>("");
   const [currentPlayerName, setCurrentPlayerName] = useState<string>("");
+
+  const [keybinds, setkeybinds] = useState(loadKeyBinds());
+
+  const handleUpdateKeyBinds = (changes: any) => {
+    const newBinds = saveKeyBinds(changes);
+    setkeybinds(newBinds);
+  };
 
   const handleLeaveGame = () => {
     // Clean up game client before leaving
@@ -311,7 +319,12 @@ function GameClientLoader() {
       </div>
 
       {/* Instruction Panel Modal */}
-      <InstructionPanel isOpen={showInstructions} onClose={() => setShowInstructions(false)} />
+      <InstructionPanel
+        isOpen={showInstructions}
+        onClose={() => setShowInstructions(false)}
+        keybinds={keybinds}
+        onUpdateKeybinds={handleUpdateKeyBinds}
+      />
 
       {/* Name Change Panel */}
       <NameChangePanel

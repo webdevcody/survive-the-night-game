@@ -1,15 +1,23 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Button } from "~/components/ui/button";
+import type { KeyBindConfig } from "@shared/config/keybinds";
 
 interface InstructionPanelProps {
   isOpen: boolean;
   onClose: () => void;
+  keybinds: KeyBindConfig;
+  onUpdateKeybinds: (changes: Partial<KeyBindConfig>) => void;
 }
 
 /**
  * Panel displaying game controls and instructions
  */
-export function InstructionPanel({ isOpen, onClose }: InstructionPanelProps) {
+export function InstructionPanel({
+  isOpen,
+  onClose,
+  keybinds,
+  onUpdateKeybinds,
+}: InstructionPanelProps) {
   const panelRef = useRef<HTMLDivElement>(null);
 
   // Handle ESC key to close
@@ -46,6 +54,44 @@ export function InstructionPanel({ isOpen, onClose }: InstructionPanelProps) {
 
   if (!isOpen) return null;
 
+  function KeyBindRow({
+    label,
+    bind,
+    onRebind,
+  }: {
+    label: string;
+    bind: string;
+    onRebind: (newKey: string) => void;
+  }) {
+    // wait till user input
+
+    const [waiting, setWaiting] = useState(false);
+
+    useEffect(() => {
+      if (!waiting) return;
+      const handler = (e: KeyboardEvent) => {
+        e.preventDefault();
+        onRebind(e.code);
+        setWaiting(false);
+      };
+
+      window.addEventListener("keydown", handler, { once: true });
+      return () => window.removeEventListener("keydown", handler);
+    }, [waiting, onRebind]);
+
+    return (
+      <div className="flex items-center gap-3">
+        <span className="text-gray-300">{label}</span>
+        <button
+          className="px-3 py-1 bg-gray-700 rounded-md text-white"
+          onClick={() => setWaiting(true)}
+        >
+          {waiting ? "Press anykey..." : bind}
+        </button>
+      </div>
+    );
+  }
+
   return (
     <div className="fixed left-4 top-20 z-[9999]">
       <div
@@ -63,10 +109,26 @@ export function InstructionPanel({ isOpen, onClose }: InstructionPanelProps) {
           <div className="space-y-3">
             <h3 className="font-semibold text-lg text-blue-400 mb-2">Movement</h3>
             <div className="space-y-2 text-sm">
-              <div className="flex justify-between">
-                <span className="text-gray-300">Move:</span>
-                <span className="font-mono">W A S D</span>
-              </div>
+              <KeyBindRow
+                label="Move up"
+                bind={keybinds.moveUp}
+                onRebind={(code) => onUpdateKeybinds({ moveUp: code })}
+              />
+              <KeyBindRow
+                label="Move down"
+                bind={keybinds.moveDown}
+                onRebind={(code) => onUpdateKeybinds({ moveDown: code })}
+              />
+              <KeyBindRow
+                label="Move left"
+                bind={keybinds.moveLeft}
+                onRebind={(code) => onUpdateKeybinds({ moveLeft: code })}
+              />
+              <KeyBindRow
+                label="Move right"
+                bind={keybinds.moveRight}
+                onRebind={(code) => onUpdateKeybinds({ moveRight: code })}
+              />
               <div className="flex justify-between">
                 <span className="text-gray-300">Sprint:</span>
                 <span className="font-mono">SHIFT</span>
