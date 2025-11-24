@@ -13,7 +13,7 @@ export const environmentalEventsConfig = {
     /**
      * Chance to trigger toxic gas event after wave completion (0.0 to 1.0)
      */
-    TRIGGER_CHANCE: 0.15,
+    TRIGGER_CHANCE: 1,
 
     /**
      * Minimum wave number before toxic gas can trigger (after first wave)

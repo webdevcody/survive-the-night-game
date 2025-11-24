@@ -272,6 +272,7 @@ export const WEAPON_CONFIGS: Record<string, WeaponConfig> = {
       enabled: true,
       buyable: true,
       price: 20,
+      stackSize: 1,
     },
   },
   molotov_cocktail: {
@@ -295,6 +296,7 @@ export const WEAPON_CONFIGS: Record<string, WeaponConfig> = {
       enabled: true,
       buyable: true,
       price: 20,
+      stackSize: 1,
     },
     recipe: {
       enabled: true,
@@ -323,6 +325,7 @@ export const WEAPON_CONFIGS: Record<string, WeaponConfig> = {
       enabled: true,
       buyable: true,
       price: 10,
+      stackSize: 5,
     },
     recipe: {
       enabled: true,

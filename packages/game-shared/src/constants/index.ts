@@ -96,8 +96,12 @@ export const FIRE_TYPES = new Set<EntityType>(["fire"]);
 // Attackable entities (walls, players, sentry guns, cars, survivors)
 export const ATTACKABLE_TYPES = new Set<EntityType>([
   "wall",
+  "wall_level_2",
+  "wall_level_3",
   "player",
   "sentry_gun",
+  "sentry_gun_level_2",
+  "sentry_gun_level_3",
   "car",
   "survivor",
 ]);

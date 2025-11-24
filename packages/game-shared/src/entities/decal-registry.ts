@@ -5,20 +5,20 @@ export interface DecalFrameConfig {
   frameLayout?: {
     startX: number;
     startY: number;
-    sheet?: string;
+    sheet: string; // Required when frameLayout is provided
   };
   // For directional decals (like swing animations)
   directionalFrames?: {
     startX: number;
     startY: number;
     totalFrames: number;
-    sheet?: string;
+    sheet: string; // Required when directionalFrames is provided
   };
   // For simple single-frame decals
   position?: {
     x: number;
     y: number;
-    sheet?: string;
+    sheet: string; // Required when position is provided
   };
 }
 
@@ -37,6 +37,27 @@ class DecalRegistry {
   private decals = new Map<string, DecalConfig>();
 
   register(config: DecalConfig): void {
+    const { assets } = config;
+
+    if (assets.type === "single" && assets.position && !assets.position.sheet) {
+      throw new Error(
+        `Decal "${config.id}" has position but is missing required 'sheet' property. ` +
+          `When position is provided, sheet must be specified.`
+      );
+    }
+    if (assets.type === "animated" && assets.frameLayout && !assets.frameLayout.sheet) {
+      throw new Error(
+        `Decal "${config.id}" has frameLayout but is missing required 'sheet' property. ` +
+          `When frameLayout is provided, sheet must be specified.`
+      );
+    }
+    if (assets.type === "directional" && assets.directionalFrames && !assets.directionalFrames.sheet) {
+      throw new Error(
+        `Decal "${config.id}" has directionalFrames but is missing required 'sheet' property. ` +
+          `When directionalFrames is provided, sheet must be specified.`
+      );
+    }
+
     this.decals.set(config.id, config);
   }
 

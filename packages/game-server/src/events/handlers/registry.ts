@@ -16,6 +16,7 @@ import { consumeItemHandler } from "./consume-item";
 import { selectInventorySlotHandler } from "./select-inventory-slot";
 import { swapInventoryItemsHandler } from "./swap-inventory-items";
 import { interactHandler } from "./interact";
+import { changePlayerColorHandler } from "./change-player-color";
 
 /**
  * Registry of all socket event handlers.
@@ -46,4 +47,5 @@ export const socketEventHandlers: SocketEventHandler[] = [
   selectInventorySlotHandler,
   swapInventoryItemsHandler,
   interactHandler,
+  changePlayerColorHandler,
 ];

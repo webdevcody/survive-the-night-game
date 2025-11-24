@@ -539,6 +539,10 @@ export class ClientSocketManager {
     this.emitClientEvent(ClientSentEvents.TELEPORT_TO_BASE);
   }
 
+  public sendPlayerColor(color: string) {
+    this.emitClientEvent(ClientSentEvents.CHANGE_PLAYER_COLOR, { color });
+  }
+
   public getSocket(): ISocketAdapter {
     return this.socket;
   }

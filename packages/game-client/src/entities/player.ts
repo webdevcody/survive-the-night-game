@@ -25,7 +25,7 @@ import { getConfig } from "@shared/config";
 import Vector2 from "@shared/util/vector2";
 import PoolManager from "@shared/util/pool-manager";
 import { ClientEntity } from "./client-entity";
-import { SKIN_TYPES, SkinType } from "@shared/commands/commands";
+import { SKIN_TYPES, SkinType, PLAYER_COLORS, PlayerColor } from "@shared/commands/commands";
 import { getDebugConfig } from "@/config/client-prediction";
 
 export class PlayerClient extends ClientEntity implements IClientEntity, Renderable {
@@ -38,6 +38,7 @@ export class PlayerClient extends ClientEntity implements IClientEntity, Rendera
   private previousHealth: number | undefined;
   private damageFlashUntil: number = 0;
   private skin: SkinType = SKIN_TYPES.DEFAULT;
+  private playerColor: PlayerColor = PLAYER_COLORS.NONE;
   private kills: number = 0;
   private ping: number = 0;
   private displayName: string = "";
@@ -71,6 +72,7 @@ export class PlayerClient extends ClientEntity implements IClientEntity, Rendera
       sprint: false,
     };
     this.skin = data.skin || SKIN_TYPES.DEFAULT;
+    this.playerColor = data.playerColor || PLAYER_COLORS.NONE;
     this.kills = data.kills || 0;
     this.ping = data.ping || 0;
     this.displayName = data.displayName || "Unknown";
@@ -81,7 +83,16 @@ export class PlayerClient extends ClientEntity implements IClientEntity, Rendera
   }
 
   private getPlayerAssetKey(): string {
-    return this.skin === SKIN_TYPES.WDC ? "player_wdc" : "player";
+    const baseSkin = this.skin === SKIN_TYPES.WDC ? "player_wdc" : "player";
+    // If player has a color, append it to the asset key
+    if (this.playerColor && this.playerColor !== PLAYER_COLORS.NONE) {
+      return `${baseSkin}_${this.playerColor}`;
+    }
+    return baseSkin;
+  }
+
+  public getPlayerColor(): PlayerColor {
+    return this.playerColor;
   }
 
   getInventory(): InventoryItem[] {
@@ -534,6 +545,7 @@ export class PlayerClient extends ClientEntity implements IClientEntity, Rendera
     }
 
     this.skin = data.skin || SKIN_TYPES.DEFAULT;
+    this.playerColor = data.playerColor || PLAYER_COLORS.NONE;
     this.kills = data.kills || 0;
     this.ping = data.ping || 0;
     this.displayName = data.displayName || "Unknown";

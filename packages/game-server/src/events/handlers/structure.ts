@@ -9,6 +9,69 @@ import { getConfig } from "@shared/config";
 import PoolManager from "@shared/util/pool-manager";
 import { BuildEvent } from "../../../../game-shared/src/events/server-sent/events/build-event";
 import { entityBlocksPlacement } from "@shared/entities/decal-registry";
+import { IEntity } from "@/entities/types";
+import { EntityType } from "@shared/types/entity";
+import Vector2 from "@/util/vector2";
+
+/**
+ * Check if placing an item on an existing entity should trigger an upgrade.
+ * Returns the upgrade target item type if an upgrade is possible, null otherwise.
+ */
+function getUpgradeTarget(
+  placingItemType: ItemType,
+  existingEntityType: EntityType
+): ItemType | null {
+  const itemConfig = itemRegistry.get(placingItemType);
+  if (!itemConfig?.upgradeTo) {
+    return null;
+  }
+
+  // Check if the existing entity is the same type as what we're placing
+  // (e.g., placing a "wall" on a "wall" entity should upgrade to "wall_level_2")
+  if (existingEntityType === placingItemType) {
+    return itemConfig.upgradeTo as ItemType;
+  }
+
+  return null;
+}
+
+/**
+ * Find an existing entity at the placement position that can be upgraded.
+ * Returns the entity if found and upgradeable, null otherwise.
+ */
+function findUpgradeableEntity(
+  context: HandlerContext,
+  placePos: Vector2,
+  placingItemType: ItemType,
+  structureSize: number
+): IEntity | null {
+  const nearbyEntities = context.getEntityManager().getNearbyEntities(placePos, structureSize * 2);
+
+  for (const entity of nearbyEntities) {
+    if (!entity.hasExt(Positionable)) continue;
+
+    const entityType = entity.getType();
+    // Skip entities that don't block placement (e.g., visual-only decals)
+    if (!entityBlocksPlacement(entityType)) continue;
+
+    const entityPos = entity.getExt(Positionable).getCenterPosition();
+    const dx = Math.abs(entityPos.x - (placePos.x + structureSize / 2));
+    const dy = Math.abs(entityPos.y - (placePos.y + structureSize / 2));
+
+    if (dx < structureSize && dy < structureSize) {
+      // Check if this entity can be upgraded
+      const upgradeTarget = getUpgradeTarget(placingItemType, entityType);
+      console.log(
+        `[Upgrade Check] Placing ${placingItemType} on ${entityType}, upgrade target: ${upgradeTarget}`
+      );
+      if (upgradeTarget) {
+        return entity;
+      }
+    }
+  }
+
+  return null;
+}
 
 export function onPlaceStructure(
   context: HandlerContext,
@@ -47,7 +110,7 @@ export function onPlaceStructure(
     return;
   }
 
-  // Validate grid position is clear
+  // Validate grid position bounds
   const gridX = Math.floor(data.position.x / TILE_SIZE);
   const gridY = Math.floor(data.position.y / TILE_SIZE);
   const mapData = context.getMapManager().getMapData();
@@ -62,13 +125,74 @@ export function onPlaceStructure(
     return;
   }
 
+  // Check if any entities are at this position
+  const structureSize = TILE_SIZE;
+
+  // First, check if we can upgrade an existing structure (before checking collidables)
+  const upgradeableEntity = findUpgradeableEntity(context, placePos, data.itemType, structureSize);
+
+  if (upgradeableEntity) {
+    // Handle upgrade scenario
+    const upgradeTarget = getUpgradeTarget(data.itemType, upgradeableEntity.getType())!;
+
+    // Remove item from inventory
+    const item = inventoryItems[itemIndex];
+    if (item?.state?.count && item.state.count > 1) {
+      inventory.updateItemState(itemIndex, {
+        ...item.state,
+        count: item.state.count - 1,
+      });
+    } else {
+      inventory.removeItem(itemIndex);
+    }
+    player.markExtensionDirty(inventory);
+
+    // Get the position of the existing entity before removing it
+    const existingPos = upgradeableEntity.getExt(Positionable).getPosition();
+
+    // Remove the existing entity
+    context.getEntityManager().markEntityForRemoval(upgradeableEntity);
+
+    // Create the upgraded entity
+    const upgradedEntity = context.getEntityManager().createEntityFromItem({
+      itemType: upgradeTarget,
+      state: {},
+    });
+
+    if (!upgradedEntity) {
+      console.log(`Failed to create upgraded entity for ${upgradeTarget}`);
+      return;
+    }
+
+    upgradedEntity.getExt(Positionable).setPosition(existingPos);
+    context.getEntityManager().addEntity(upgradedEntity);
+
+    console.log(
+      `Player ${player.getId()} upgraded ${upgradeableEntity.getType()} to ${upgradeTarget} at (${existingPos.x}, ${existingPos.y})`
+    );
+
+    // Broadcast build event for upgrade
+    const upgradeItemConfig = itemRegistry.get(upgradeTarget);
+    if (upgradeItemConfig?.placeSound) {
+      context.broadcastEvent(
+        new BuildEvent({
+          playerId: player.getId(),
+          position: { x: existingPos.x, y: existingPos.y },
+          soundType: upgradeItemConfig.placeSound,
+        })
+      );
+    }
+
+    return;
+  }
+
+  // Normal placement - check if grid position is occupied by map tile
   if (mapData.collidables[gridY][gridX] !== -1) {
     console.log(`Player ${player.getId()} tried to place ${data.itemType} on occupied tile`);
     return;
   }
 
-  // Check if any entities are at this position
-  const structureSize = TILE_SIZE;
+  // Check if position is blocked by entities
   const nearbyEntities = context.getEntityManager().getNearbyEntities(placePos, structureSize * 2);
 
   for (const entity of nearbyEntities) {

@@ -15,6 +15,8 @@ import { GrenadeProjectileClient } from "./grenade-projectile";
 import { FlameProjectileClient } from "./flame-projectile";
 import { TreeClient } from "@/entities/items/tree";
 import { WallClient } from "@/entities/items/wall";
+import { WallLevel2Client } from "@/entities/items/wall-level-2";
+import { WallLevel3Client } from "@/entities/items/wall-level-3";
 import { BandageClient } from "@/entities/items/bandage";
 import { EnergyDrinkClient } from "@/entities/items/energy-drink";
 import { ClothClient } from "@/entities/items/cloth";
@@ -22,6 +24,8 @@ import { WoodClient } from "@/entities/items/wood";
 import { CoinClient } from "@/entities/items/coin";
 import { GasolineClient } from "@/entities/items/gasoline";
 import { SpikesClient } from "@/entities/items/spikes";
+import { SpikesLevel2Client } from "@/entities/items/spikes-level-2";
+import { SpikesLevel3Client } from "@/entities/items/spikes-level-3";
 import { TorchClient } from "@/entities/items/torch";
 import { MinersHatClient } from "@/entities/items/miners-hat";
 import { LandmineClient } from "@/entities/items/landmine";
@@ -31,6 +35,8 @@ import { MolotovCocktailClient } from "./items/molotov-cocktail";
 import { CrateClient } from "./items/crate";
 import { GallonDrumClient } from "./items/gallon-drum";
 import { SentryGunClient } from "./items/sentry-gun";
+import { SentryGunLevel2Client } from "./items/sentry-gun-level-2";
+import { SentryGunLevel3Client } from "./items/sentry-gun-level-3";
 import { PistolAmmoClient } from "@/entities/weapons/pistol-ammo";
 import { ShotgunAmmoClient } from "@/entities/weapons/shotgun-ammo";
 import { BoltActionAmmoClient } from "@/entities/weapons/bolt-action-ammo";
@@ -96,6 +102,8 @@ export function registerCustomClientEntities(): void {
   // Items with custom behavior
   clientEntityOverrideRegistry.register("tree", TreeClient);
   clientEntityOverrideRegistry.register("wall", WallClient);
+  clientEntityOverrideRegistry.register("wall_level_2", WallLevel2Client);
+  clientEntityOverrideRegistry.register("wall_level_3", WallLevel3Client);
   clientEntityOverrideRegistry.register("bandage", BandageClient);
   clientEntityOverrideRegistry.register("energy_drink", EnergyDrinkClient);
   clientEntityOverrideRegistry.register("cloth", ClothClient);
@@ -103,6 +111,8 @@ export function registerCustomClientEntities(): void {
   clientEntityOverrideRegistry.register("coin", CoinClient);
   clientEntityOverrideRegistry.register("gasoline", GasolineClient);
   clientEntityOverrideRegistry.register("spikes", SpikesClient);
+  clientEntityOverrideRegistry.register("spikes_level_2", SpikesLevel2Client);
+  clientEntityOverrideRegistry.register("spikes_level_3", SpikesLevel3Client);
   clientEntityOverrideRegistry.register("torch", TorchClient);
   clientEntityOverrideRegistry.register("miners_hat", MinersHatClient);
   clientEntityOverrideRegistry.register("landmine", LandmineClient);
@@ -113,6 +123,8 @@ export function registerCustomClientEntities(): void {
   clientEntityOverrideRegistry.register("crate", CrateClient);
   clientEntityOverrideRegistry.register("gallon_drum", GallonDrumClient);
   clientEntityOverrideRegistry.register("sentry_gun", SentryGunClient);
+  clientEntityOverrideRegistry.register("sentry_gun_level_2", SentryGunLevel2Client);
+  clientEntityOverrideRegistry.register("sentry_gun_level_3", SentryGunLevel3Client);
 
   // Ammo
   clientEntityOverrideRegistry.register("pistol_ammo", PistolAmmoClient);

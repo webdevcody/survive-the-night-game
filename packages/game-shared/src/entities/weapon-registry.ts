@@ -24,7 +24,7 @@ export interface WeaponAssetConfig {
     up: { x: number; y: number };
     // left will be right flipped
   };
-  sheet?: string;
+  sheet: string; // Required - must specify which sprite sheet to use
 }
 
 export interface WeaponConfig extends BehaviorConfigs {
@@ -40,6 +40,12 @@ class WeaponRegistry {
   private weapons = new Map<string, WeaponConfig>();
 
   register(config: WeaponConfig): void {
+    if (!config.assets.sheet) {
+      throw new Error(
+        `Weapon "${config.id}" is missing required 'sheet' property in assets. ` +
+          `All weapons must specify which sprite sheet to use.`
+      );
+    }
     this.weapons.set(config.id, config);
   }
 

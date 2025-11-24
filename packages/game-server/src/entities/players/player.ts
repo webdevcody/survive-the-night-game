@@ -29,7 +29,7 @@ import Vector2 from "@/util/vector2";
 import PoolManager from "@shared/util/pool-manager";
 import { Rectangle } from "@/util/shape";
 import Carryable from "@/extensions/carryable";
-import { SkinType, SKIN_TYPES } from "@shared/commands/commands";
+import { SkinType, SKIN_TYPES, PlayerColor, PLAYER_COLORS } from "@shared/commands/commands";
 import { itemRegistry } from "@shared/entities";
 import { Blood } from "@/entities/effects/blood";
 import { SerializableFields } from "@/util/serializable-fields";
@@ -63,6 +63,7 @@ export class Player extends Entity {
       {
         isCrafting: false,
         skin: SKIN_TYPES.DEFAULT,
+        playerColor: PLAYER_COLORS.NONE,
         kills: 0,
         ping: 0,
         displayName: "",
@@ -625,6 +626,14 @@ export class Player extends Entity {
 
   getSkin(): SkinType {
     return this.serialized.get("skin");
+  }
+
+  setPlayerColor(color: PlayerColor): void {
+    this.serialized.set("playerColor", color);
+  }
+
+  getPlayerColor(): PlayerColor {
+    return this.serialized.get("playerColor");
   }
 
   incrementKills() {

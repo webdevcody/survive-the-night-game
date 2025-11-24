@@ -1,12 +1,9 @@
 /**
  * Asset Manager
  *
- * This module handles sprite asset loading and management for the game client.
- * It automatically generates asset maps from entity registries (weapons, items, projectiles,
- * zombies, characters, etc.) and provides utilities to load and access sprite assets from
- * sprite sheets. The AssetManager class loads sprite sheets, crops individual sprites,
- * and caches them for efficient rendering. It also provides helper functions to retrieve
- * assets with directional variants and animation frames.
+ * Handles sprite asset loading and management for the game client.
+ * Generates asset maps from entity registries and provides utilities
+ * to load and access sprite assets from sprite sheets.
  */
 
 import {
@@ -28,401 +25,329 @@ import {
   environmentRegistry,
   characterRegistry,
 } from "@shared/entities";
+import { PLAYER_COLORS, PLAYER_COLOR_HEX, PlayerColor } from "@shared/commands/commands";
 
-const tileSize = 16;
+// Ensure registries are populated before generating assets
+import "@shared/entities";
 
-function assetMap({
-  flipX = false,
-  x,
-  y,
-  width = tileSize,
-  height = tileSize,
-  sheet = "default",
-  rotation = 0,
-}: Partial<CropOptions> & Pick<CropOptions, "x" | "y"> & { sheet?: string }): CropOptions & {
+const TILE_SIZE = 16;
+
+// Valid sprite sheets that can be loaded
+const SPRITE_SHEETS = {
+  default: "/tile-sheet.png",
+  items: "/sheets/items-sheet.png",
+  characters: "/sheets/characters-sheet.png",
+  ground: "/sheets/ground.png",
+} as const;
+
+type SheetName = keyof typeof SPRITE_SHEETS;
+
+interface AssetDefinition extends CropOptions {
   sheet: string;
-} {
-  return { flipX, x, y, width, height, sheet, rotation };
 }
 
-function getFrameOrigin({
-  startX,
-  startY,
-  frameIndex,
-}: {
-  startX: number;
-  startY: number;
-  frameIndex: number;
-}) {
+// ============================================================================
+// Asset Definition Helpers
+// ============================================================================
+
+function defineAsset(
+  x: number,
+  y: number,
+  sheet: string,
+  options: Partial<CropOptions> = {}
+): AssetDefinition {
   return {
-    x: startX + tileSize * frameIndex,
-    y: startY,
+    x,
+    y,
+    sheet,
+    width: options.width ?? TILE_SIZE,
+    height: options.height ?? TILE_SIZE,
+    flipX: options.flipX ?? false,
+    rotation: options.rotation ?? 0,
+    tintColor: options.tintColor,
   };
 }
 
-function getFrameOrigins({ startX, startY, totalFrames, sheet }: FrameInfo): FrameOrigin[] {
-  return Array.from({ length: totalFrames }, (_, index) => ({
-    ...getFrameOrigin({ startX, startY, frameIndex: index }),
-    sheet,
-  }));
+// ============================================================================
+// Weapon Asset Generation
+// ============================================================================
+
+function generateWeaponAssets(): Record<string, AssetDefinition> {
+  const assets: Record<string, AssetDefinition> = {};
+
+  for (const config of weaponRegistry.getAll()) {
+    const { assetPrefix, spritePositions, sheet } = config.assets;
+
+    assets[assetPrefix] = defineAsset(spritePositions.right.x, spritePositions.right.y, sheet);
+    assets[`${assetPrefix}_facing_down`] = defineAsset(
+      spritePositions.down.x,
+      spritePositions.down.y,
+      sheet
+    );
+    assets[`${assetPrefix}_facing_left`] = defineAsset(
+      spritePositions.right.x,
+      spritePositions.right.y,
+      sheet,
+      { flipX: true }
+    );
+    assets[`${assetPrefix}_facing_right`] = defineAsset(
+      spritePositions.right.x,
+      spritePositions.right.y,
+      sheet
+    );
+    assets[`${assetPrefix}_facing_up`] = defineAsset(
+      spritePositions.up.x,
+      spritePositions.up.y,
+      sheet
+    );
+  }
+
+  return assets;
 }
 
-function createCharacterFrames({
-  startX,
-  downY,
-  leftY,
-  upY,
-  totalFrames,
-  sheet = "characters",
-}: {
+// ============================================================================
+// Simple Asset Generation (Items, Resources, Projectiles, Environment)
+// ============================================================================
+
+interface SimpleAssetConfig {
+  assetKey: string;
+  x: number;
+  y: number;
+  width?: number;
+  height?: number;
+  sheet: string;
+  totalFrames?: number;
+}
+
+function generateSimpleAssets(
+  configs: { assets: SimpleAssetConfig }[],
+  filter?: (config: { assets: SimpleAssetConfig }) => boolean
+): Record<string, AssetDefinition> {
+  const assets: Record<string, AssetDefinition> = {};
+
+  for (const config of configs) {
+    if (filter && !filter(config)) continue;
+
+    const { assetKey, x, y, width, height, sheet, totalFrames } = config.assets;
+
+    if (totalFrames) {
+      for (let i = 0; i < totalFrames; i++) {
+        assets[`${assetKey}_${i}`] = defineAsset(x + i * TILE_SIZE, y, sheet, { width, height });
+      }
+    } else {
+      assets[assetKey] = defineAsset(x, y, sheet, { width, height });
+    }
+  }
+
+  return assets;
+}
+
+// ============================================================================
+// Decal Asset Generation
+// ============================================================================
+
+function generateDecalAssets(): Record<string, AssetDefinition> {
+  const assets: Record<string, AssetDefinition> = {};
+
+  for (const config of decalRegistry.getAll()) {
+    const { assetKey, type, frameCount, frameLayout, directionalFrames, position } = config.assets;
+
+    if (type === "single" && position) {
+      assets[assetKey] = defineAsset(position.x, position.y, position.sheet);
+    } else if (type === "animated" && frameLayout) {
+      assets[assetKey] = defineAsset(frameLayout.startX, frameLayout.startY, frameLayout.sheet);
+      for (let i = 0; i < (frameCount ?? 0); i++) {
+        assets[`${assetKey}_${i}`] = defineAsset(
+          frameLayout.startX + i * TILE_SIZE,
+          frameLayout.startY,
+          frameLayout.sheet
+        );
+      }
+    } else if (type === "directional" && directionalFrames) {
+      const { startX, startY, totalFrames, sheet } = directionalFrames;
+
+      assets[assetKey] = defineAsset(startX, startY, sheet);
+
+      const rotations: Record<string, number> = {
+        up: 180,
+        down: 0,
+        left: 90,
+        right: 270,
+      };
+
+      for (const [dirName, rotation] of Object.entries(rotations)) {
+        for (let i = 0; i < totalFrames; i++) {
+          assets[`${assetKey}_facing_${dirName}_${i}`] = defineAsset(
+            startX + i * TILE_SIZE,
+            startY,
+            sheet,
+            { rotation }
+          );
+        }
+      }
+    }
+  }
+
+  return assets;
+}
+
+// ============================================================================
+// Character/Zombie Asset Generation (with directional animation frames)
+// ============================================================================
+
+interface FrameLayout {
   startX: number;
   downY: number;
   leftY: number;
   upY: number;
   totalFrames: number;
-  sheet?: string;
-}) {
-  return {
-    down: getFrameOrigins({ startX, startY: downY, totalFrames, sheet }),
-    left: getFrameOrigins({ startX, startY: leftY, totalFrames, sheet }),
-    up: getFrameOrigins({ startX, startY: upY, totalFrames, sheet }),
-    right: getFrameOrigins({ startX, startY: leftY, totalFrames, sheet }), // Reuse left frames and flip
-  };
+  sheet: string;
 }
 
-function createCharacterAssets(
-  name: string,
-  frames: ReturnType<typeof createCharacterFrames>,
-  deadX?: number,
-  deadY?: number,
-  deadSheet?: string
-) {
-  const assets: Record<string, CropOptions & { sheet: string }> = {
-    [`${name}`]: assetMap(frames.down[0]),
-    ...frames.down.reduce(
-      (acc, frame, index) => ({
-        ...acc,
-        [`${name}_${index}`]: assetMap(frame),
-      }),
-      {}
-    ),
-  };
-
-  if (deadX !== undefined && deadY !== undefined) {
-    assets[`${name}_dead`] = assetMap({ x: deadX, y: deadY, sheet: deadSheet || "characters" });
-  }
-
-  // Add directional frames
-  const directions = ["down", "left", "up"] as const;
-  directions.forEach((direction) => {
-    frames[direction].forEach((frame, index) => {
-      assets[`${name}_facing_${direction}_${index}`] = assetMap(frame);
-    });
-  });
-
-  directions.forEach((direction) => {
-    assets[`${name}_facing_${direction}`] = assetMap(frames[direction][0]);
-  });
-
-  // add right frames for non index
-  assets[`${name}_facing_right`] = assetMap({ ...frames.left[0], flipX: true });
-
-  // Add right frames (flipped from left sprites)
-  frames.right.forEach((frame, index) => {
-    assets[`${name}_facing_right_${index}`] = loadFlipXAsset(frame);
-  });
-
-  return assets;
-}
-
-function loadFlipXAsset(frameOrigin: FrameOrigin) {
-  return assetMap({ ...frameOrigin, flipX: true });
-}
-
-type FrameInfo = {
-  startX: number;
-  startY: number;
-  totalFrames: number;
-  sheet?: string;
-};
-
-type FrameOrigin = {
+interface DeadFrame {
   x: number;
   y: number;
-};
-
-// Helper function to generate character-like assets from a config with frameLayout
-function generateCharacterAssetsFromConfig(config: {
-  assets: {
-    assetPrefix: string;
-    frameLayout: {
-      startX: number;
-      downY: number;
-      leftY: number;
-      upY: number;
-      totalFrames: number;
-      sheet?: string;
-    };
-    deadFrame?: {
-      x: number;
-      y: number;
-      sheet?: string;
-    };
-  };
-}) {
-  const frames = createCharacterFrames({
-    startX: config.assets.frameLayout.startX,
-    downY: config.assets.frameLayout.downY,
-    leftY: config.assets.frameLayout.leftY,
-    upY: config.assets.frameLayout.upY,
-    totalFrames: config.assets.frameLayout.totalFrames,
-    sheet: config.assets.frameLayout.sheet || "default",
-  });
-
-  return createCharacterAssets(
-    config.assets.assetPrefix,
-    frames,
-    config.assets.deadFrame?.x,
-    config.assets.deadFrame?.y,
-    config.assets.deadFrame?.sheet
-  );
+  sheet: string;
 }
 
-const ROTATION_MAP: Record<Direction, number> = {
-  [Direction.Up]: 180,
-  [Direction.Down]: 0,
-  [Direction.Left]: 90,
-  [Direction.Right]: 270,
-  [Direction.UpLeft]: 135,
-  [Direction.UpRight]: 225,
-  [Direction.DownLeft]: 45,
-  [Direction.DownRight]: 315,
-};
-
-function createDirectionalFrames(baseFrames: FrameOrigin[], prefix: string) {
-  const frames: Record<string, CropOptions & { sheet: string }> = {};
-
-  // Add base frame
-  frames[prefix] = assetMap(baseFrames[0]);
-
-  // Add directional frames for main directions only
-  [Direction.Up, Direction.Down, Direction.Left, Direction.Right].forEach((direction) => {
-    const dirName = Direction[direction].toLowerCase();
-    baseFrames.forEach((frame, index) => {
-      const key = `${prefix}_facing_${dirName}_${index}`;
-      frames[key] = assetMap({ ...frame, rotation: ROTATION_MAP[direction] });
-    });
-  });
-
-  return frames;
-}
-
-function createWeaponAssets(
+function generateCharacterFrameAssets(
   assetPrefix: string,
-  spritePositions: {
-    right: { x: number; y: number };
-    down: { x: number; y: number };
-    up: { x: number; y: number };
-  },
-  sheet: string = "default"
-) {
-  return {
-    [assetPrefix]: assetMap({ x: spritePositions.right.x, y: spritePositions.right.y, sheet }),
-    [`${assetPrefix}_facing_down`]: assetMap({
-      x: spritePositions.down.x,
-      y: spritePositions.down.y,
-      sheet,
-    }),
-    [`${assetPrefix}_facing_left`]: assetMap({
-      x: spritePositions.right.x,
-      y: spritePositions.right.y,
-      flipX: true,
-      sheet,
-    }),
-    [`${assetPrefix}_facing_right`]: assetMap({
-      x: spritePositions.right.x,
-      y: spritePositions.right.y,
-      sheet,
-    }),
-    [`${assetPrefix}_facing_up`]: assetMap({
-      x: spritePositions.up.x,
-      y: spritePositions.up.y,
-      sheet,
-    }),
-  };
-}
+  frameLayout: FrameLayout,
+  deadFrame?: DeadFrame,
+  tintColor?: string
+): Record<string, AssetDefinition> {
+  const assets: Record<string, AssetDefinition> = {};
+  const { startX, downY, leftY, upY, totalFrames, sheet } = frameLayout;
 
-function createSimpleAsset(
-  assetKey: string,
-  x: number,
-  y: number,
-  width?: number,
-  height?: number,
-  sheet: string = "default",
-  totalFrames?: number
-) {
-  if (totalFrames) {
-    const assets: Record<string, CropOptions & { sheet: string }> = {};
-    for (let i = 0; i < totalFrames; i++) {
-      assets[`${assetKey}_${i}`] = assetMap({ x: x + i * tileSize, y, width, height, sheet });
-    }
-    return assets;
+  const directions = {
+    down: downY,
+    left: leftY,
+    up: upY,
+  } as const;
+
+  // Base asset (first down frame)
+  assets[assetPrefix] = defineAsset(startX, downY, sheet, { tintColor });
+
+  // Indexed frames (for animation)
+  for (let i = 0; i < totalFrames; i++) {
+    assets[`${assetPrefix}_${i}`] = defineAsset(startX + i * TILE_SIZE, downY, sheet, { tintColor });
   }
 
-  return {
-    [assetKey]: assetMap({ x, y, width, height, sheet }),
-  };
-}
+  // Dead frame
+  if (deadFrame) {
+    assets[`${assetPrefix}_dead`] = defineAsset(deadFrame.x, deadFrame.y, deadFrame.sheet, {
+      tintColor,
+    });
+  }
 
-function createAnimatedAsset(
-  assetKey: string,
-  frameCount: number,
-  startX: number,
-  startY: number,
-  sheet: string = "default"
-) {
-  const assets: Record<string, CropOptions & { sheet: string }> = {};
+  // Directional frames
+  for (const [dirName, y] of Object.entries(directions)) {
+    // Base directional frame
+    assets[`${assetPrefix}_facing_${dirName}`] = defineAsset(startX, y, sheet, { tintColor });
 
-  // Base asset
-  assets[assetKey] = assetMap({ x: startX, y: startY, sheet });
+    // Indexed directional frames
+    for (let i = 0; i < totalFrames; i++) {
+      assets[`${assetPrefix}_facing_${dirName}_${i}`] = defineAsset(startX + i * TILE_SIZE, y, sheet, {
+        tintColor,
+      });
+    }
+  }
 
-  // Individual frames
-  for (let i = 0; i < frameCount; i++) {
-    assets[`${assetKey}_${i}`] = assetMap({ x: startX + i * tileSize, y: startY, sheet });
+  // Right frames (flipped from left)
+  assets[`${assetPrefix}_facing_right`] = defineAsset(startX, leftY, sheet, {
+    flipX: true,
+    tintColor,
+  });
+
+  for (let i = 0; i < totalFrames; i++) {
+    assets[`${assetPrefix}_facing_right_${i}`] = defineAsset(startX + i * TILE_SIZE, leftY, sheet, {
+      flipX: true,
+      tintColor,
+    });
   }
 
   return assets;
 }
 
-// Generic helper to merge assets from multiple configs
-function mergeAssetsFromConfigs<T>(
-  configs: T[],
-  assetGenerator: (config: T) => Record<string, CropOptions & { sheet: string }>
-): Record<string, CropOptions & { sheet: string }> {
-  return configs.reduce(
-    (acc, config) => ({
-      ...acc,
-      ...assetGenerator(config),
-    }),
-    {}
+function generateZombieAssets(): Record<string, AssetDefinition> {
+  const assets: Record<string, AssetDefinition> = {};
+
+  for (const config of zombieRegistry.getAll()) {
+    const { assetPrefix, frameLayout, deadFrame } = config.assets;
+    Object.assign(
+      assets,
+      generateCharacterFrameAssets(assetPrefix, frameLayout, deadFrame)
+    );
+  }
+
+  return assets;
+}
+
+function generateCharacterAssets(): Record<string, AssetDefinition> {
+  const assets: Record<string, AssetDefinition> = {};
+
+  for (const config of characterRegistry.getAll()) {
+    const { assetPrefix, frameLayout, deadFrame } = config.assets;
+
+    // Base character assets
+    Object.assign(
+      assets,
+      generateCharacterFrameAssets(assetPrefix, frameLayout, deadFrame)
+    );
+
+    // Generate colored variants for all player colors
+    for (const colorValue of Object.values(PLAYER_COLORS)) {
+      if (colorValue === "none") continue;
+
+      const colorHex = PLAYER_COLOR_HEX[colorValue as PlayerColor];
+      const coloredPrefix = `${assetPrefix}_${colorValue}`;
+
+      Object.assign(
+        assets,
+        generateCharacterFrameAssets(coloredPrefix, frameLayout, deadFrame, colorHex)
+      );
+    }
+  }
+
+  return assets;
+}
+
+// ============================================================================
+// Environment Asset Generation (with special sheet filtering)
+// ============================================================================
+
+function generateEnvironmentAssets(): Record<string, AssetDefinition> {
+  // Filter out entities that use special sheets not in the standard asset system
+  const standardSheets = new Set(["default", "items", "characters", "ground"]);
+
+  return generateSimpleAssets(
+    environmentRegistry.getAll(),
+    (config) => standardSheets.has(config.assets.sheet)
   );
 }
 
-// Ensure registries are populated before generating assets
-// Importing from @shared/entities triggers registration code
-// Force evaluation of entities/index.ts to ensure registration happens
-import "@shared/entities";
-
-const weaponConfigs = weaponRegistry.getAll();
-const itemConfigs = itemRegistry.getAll();
-const resourceConfigs = resourceRegistry.getAll();
+// ============================================================================
+// Combined Asset Map
+// ============================================================================
 
 export const assetsMap = {
-  // Auto-generate all weapon assets from registry
-  ...mergeAssetsFromConfigs(weaponConfigs, (config) => {
-    const assets = createWeaponAssets(
-      config.assets.assetPrefix,
-      config.assets.spritePositions,
-      config.assets.sheet || "default"
-    );
-    return assets;
-  }),
-  // Auto-generate all item assets from registry
-  ...mergeAssetsFromConfigs(itemConfigs, (config) =>
-    createSimpleAsset(
-      config.assets.assetKey,
-      config.assets.x,
-      config.assets.y,
-      config.assets.width,
-      config.assets.height,
-      config.assets.sheet || "default",
-      config.assets.totalFrames
-    )
-  ),
-  // Auto-generate all resource assets from registry
-  ...mergeAssetsFromConfigs(resourceConfigs, (config) =>
-    createSimpleAsset(
-      config.assets.assetKey,
-      config.assets.x,
-      config.assets.y,
-      config.assets.width,
-      config.assets.height,
-      config.assets.sheet || "default",
-      config.assets.totalFrames
-    )
-  ),
-  // Auto-generate all projectile assets from registry
-  ...mergeAssetsFromConfigs(projectileRegistry.getAll(), (config) =>
-    createSimpleAsset(
-      config.assets.assetKey,
-      config.assets.x,
-      config.assets.y,
-      config.assets.width,
-      config.assets.height,
-      config.assets.sheet || "default"
-    )
-  ),
-  // Auto-generate all environment assets from registry
-  // Filter out entities that use special sheets (like "collidables") that aren't in the standard asset system
-  ...mergeAssetsFromConfigs(
-    environmentRegistry.getAll().filter((config) => {
-      const sheet = config.assets.sheet || "default";
-      // Only include assets that use standard sheets
-      return (
-        sheet === "default" || sheet === "items" || sheet === "characters" || sheet === "ground"
-      );
-    }),
-    (config) =>
-      createSimpleAsset(
-        config.assets.assetKey,
-        config.assets.x,
-        config.assets.y,
-        config.assets.width,
-        config.assets.height,
-        config.assets.sheet || "default",
-        config.assets.totalFrames
-      )
-  ),
-  // Auto-generate all decal assets from registry
-  ...mergeAssetsFromConfigs(decalRegistry.getAll(), (config) => {
-    if (config.assets.type === "single" && config.assets.position) {
-      return createSimpleAsset(
-        config.assets.assetKey,
-        config.assets.position.x,
-        config.assets.position.y,
-        undefined,
-        undefined,
-        config.assets.position.sheet || "default"
-      );
-    } else if (config.assets.type === "animated" && config.assets.frameLayout) {
-      return createAnimatedAsset(
-        config.assets.assetKey,
-        config.assets.frameCount!,
-        config.assets.frameLayout.startX,
-        config.assets.frameLayout.startY,
-        config.assets.frameLayout.sheet || "default"
-      );
-    } else if (config.assets.type === "directional" && config.assets.directionalFrames) {
-      const frameOrigins = getFrameOrigins({
-        startX: config.assets.directionalFrames.startX,
-        startY: config.assets.directionalFrames.startY,
-        totalFrames: config.assets.directionalFrames.totalFrames,
-        sheet: config.assets.directionalFrames.sheet || "items",
-      });
-      return createDirectionalFrames(frameOrigins, config.assets.assetKey);
-    }
-    return {};
-  }),
-  // Auto-generate all zombie assets from registry
-  ...mergeAssetsFromConfigs(zombieRegistry.getAll(), generateCharacterAssetsFromConfig),
-  // Auto-generate all character assets from registry
-  ...mergeAssetsFromConfigs(characterRegistry.getAll(), generateCharacterAssetsFromConfig),
-  // Note: blood asset is auto-generated from decal registry above
+  ...generateWeaponAssets(),
+  ...generateSimpleAssets(itemRegistry.getAll()),
+  ...generateSimpleAssets(resourceRegistry.getAll()),
+  ...generateSimpleAssets(projectileRegistry.getAll()),
+  ...generateEnvironmentAssets(),
+  ...generateDecalAssets(),
+  ...generateZombieAssets(),
+  ...generateCharacterAssets(),
 } as const;
 
 export type Asset = keyof typeof assetsMap;
 
 export const assetsCache = {} as { [K in Asset]: HTMLImageElement };
+
+// ============================================================================
+// Image Loader Interface
+// ============================================================================
 
 export interface ImageLoader {
   get(assetKey: Asset): HTMLImageElement;
@@ -437,36 +362,27 @@ export interface ImageLoader {
 
 export type LoadProgressCallback = (progress: number, total: number, stage: string) => void;
 
+// ============================================================================
+// Asset Manager Class
+// ============================================================================
+
 export class AssetManager implements ImageLoader {
   private imageManager = new ImageManager();
   private sheets: Record<string, HTMLImageElement> = {};
   private loaded = false;
 
   public async load(onProgress?: LoadProgressCallback): Promise<void> {
-    if (this.loaded) {
-      return;
+    if (this.loaded) return;
+
+    const sheetEntries = Object.entries(SPRITE_SHEETS);
+
+    for (let i = 0; i < sheetEntries.length; i++) {
+      const [key, path] = sheetEntries[i];
+      onProgress?.(i, sheetEntries.length, `Loading sprite sheet: ${key}`);
+      this.sheets[key] = await this.imageManager.load(path);
     }
 
-    // Load all sprite sheets (4 total)
-    const sheetPaths = [
-      { key: "default", path: "/tile-sheet.png" },
-      { key: "items", path: "/sheets/items-sheet.png" },
-      { key: "characters", path: "/sheets/characters-sheet.png" },
-      { key: "ground", path: "/sheets/ground.png" },
-    ];
-
-    const loadedSheets: Record<string, HTMLImageElement> = {};
-
-    for (let i = 0; i < sheetPaths.length; i++) {
-      const { key, path } = sheetPaths[i];
-      onProgress?.(i, sheetPaths.length, `Loading sprite sheet: ${key}`);
-      loadedSheets[key] = await this.imageManager.load(path);
-    }
-
-    this.sheets = loadedSheets;
-
-    // Report progress for cache population
-    onProgress?.(sheetPaths.length, sheetPaths.length, "Processing sprites...");
+    onProgress?.(sheetEntries.length, sheetEntries.length, "Processing sprites...");
     await this.populateCache();
 
     this.loaded = true;
@@ -475,120 +391,106 @@ export class AssetManager implements ImageLoader {
   public get(assetKey: Asset): HTMLImageElement {
     if (!this.loaded) {
       throw new Error(
-        "Tried getting an asset without having it loaded, make sure to call `.load()` first"
+        "Tried getting an asset without having it loaded. Call `.load()` first."
       );
     }
-    const asset = assetsCache[assetKey];
-    return asset;
+    return assetsCache[assetKey];
   }
 
   public getSheet(sheetName: string): HTMLImageElement | null {
-    if (!this.loaded) {
-      return null;
-    }
-    return this.sheets[sheetName] || null;
+    return this.loaded ? this.sheets[sheetName] ?? null : null;
   }
 
-  public getFrameIndex(key: Asset, frameIndex: number) {
-    const keyWithFrame = `${key}_${frameIndex}`;
-    return this.get(keyWithFrame as Asset);
+  public getFrameIndex(key: Asset, frameIndex: number): HTMLImageElement {
+    return this.get(`${key}_${frameIndex}` as Asset);
   }
 
-  public getFrameWithDirection(key: Asset, direction: Direction | null, frameIndex: number) {
+  public getFrameWithDirection(
+    key: Asset,
+    direction: Direction | null,
+    frameIndex: number
+  ): HTMLImageElement {
     const keyWithDirection = this.addDirectionSuffix(key, direction);
-    const keyWithFrame = `${keyWithDirection}_${frameIndex}`;
-    const image = this.get(keyWithFrame as Asset);
+    const keyWithFrame = `${keyWithDirection}_${frameIndex}` as Asset;
+    const image = this.get(keyWithFrame);
     if (!image) {
       throw new Error(`Image not found: ${keyWithFrame}`);
     }
     return image;
   }
 
-  /**
-   * Adds a direction suffix to asset key such as "Player" -> "PlayerFacingLeft"
-   * @param key - The asset key
-   * @param direction - The direction
-   * @returns The asset key with the direction suffix
-   */
-  addDirectionSuffix(key: Asset, direction: Direction | null) {
-    let suffix = "";
-
-    if (direction !== null) {
-      if (isDirectionLeft(direction)) {
-        suffix = "_facing_left";
-      } else if (isDirectionRight(direction)) {
-        suffix = "_facing_right";
-      } else if (isDirectionDown(direction)) {
-        suffix = "_facing_down";
-      } else if (isDirectionUp(direction)) {
-        suffix = "_facing_up";
-      }
-    }
-
-    const keyWithDirection = `${key}${suffix}` as Asset;
-    return keyWithDirection;
-  }
-
   public getWithDirection(key: Asset, direction: Direction | null): HTMLImageElement {
     const keyWithDirection = this.addDirectionSuffix(key, direction);
 
-    let asset = this.get(keyWithDirection);
+    let asset = assetsCache[keyWithDirection as Asset];
     if (asset === undefined) {
-      asset = this.get(key);
+      asset = assetsCache[key];
     }
 
     if (asset === undefined) {
-      // Debug: Log available assets that match the prefix
       const availableAssets = Object.keys(assetsMap).filter((k) =>
         String(k).startsWith(String(key))
       );
       console.error(
-        `Tried getting an asset with direction that is not registered '${keyWithDirection}'. ` +
-          `Base key: '${key}', Available assets with prefix:`,
+        `Asset not found: '${keyWithDirection}'. Base key: '${key}'. Available:`,
         availableAssets
       );
-      throw new Error(
-        `Tried getting an asset with direction that is not registered '${keyWithDirection}'`
-      );
+      throw new Error(`Asset not found: '${keyWithDirection}'`);
     }
 
     return asset;
+  }
+
+  private addDirectionSuffix(key: Asset, direction: Direction | null): string {
+    const keyStr = String(key);
+    if (direction === null) return keyStr;
+
+    if (isDirectionLeft(direction)) return `${keyStr}_facing_left`;
+    if (isDirectionRight(direction)) return `${keyStr}_facing_right`;
+    if (isDirectionDown(direction)) return `${keyStr}_facing_down`;
+    if (isDirectionUp(direction)) return `${keyStr}_facing_up`;
+
+    return keyStr;
   }
 
   private async populateCache(): Promise<void> {
     await Promise.all(
       Object.keys(assetsMap).map(async (assetKey) => {
         const asset = assetKey as Asset;
-        const cropOptions = assetsMap[asset] as CropOptions & { sheet: string };
-        const sheet = this.sheets[cropOptions.sheet || "default"];
+        const cropOptions = assetsMap[asset] as AssetDefinition;
+        const sheet = this.sheets[cropOptions.sheet];
+
         if (!sheet) {
-          throw new Error(`Sheet not found: ${cropOptions.sheet}`);
+          throw new Error(
+            `Sheet "${cropOptions.sheet}" not found for asset "${assetKey}". ` +
+              `Available sheets: ${Object.keys(this.sheets).join(", ")}`
+          );
         }
+
         assetsCache[asset] = await this.imageManager.crop(sheet, cropOptions);
       })
     );
   }
 }
 
+// ============================================================================
+// Utility Functions
+// ============================================================================
+
 export function getItemAssetKey(item: InventoryItem): Asset {
-  // Check if it's a weapon first - weapons use assetPrefix
   const weaponConfig = weaponRegistry.get(item.itemType as any);
   if (weaponConfig) {
     return weaponConfig.assets.assetPrefix as Asset;
   }
-  // Check if it's a resource - resources use assetKey
+
   const resourceConfig = resourceRegistry.get(item.itemType);
   if (resourceConfig) {
     return resourceConfig.assets.assetKey as Asset;
   }
-  // Otherwise, use itemType directly (for regular items)
+
   return item.itemType as Asset;
 }
 
-/**
- * Get sprite info for an asset key (exported for React components)
- * For weapons and zombies, resolves itemType to assetPrefix first
- */
 export function getAssetSpriteInfo(assetKey: string): {
   sheet: string;
   x: number;
@@ -596,47 +498,45 @@ export function getAssetSpriteInfo(assetKey: string): {
   width: number;
   height: number;
 } | null {
-  // Check if it's a weapon first - weapons use assetPrefix
+  // Check if it's a weapon
   const weaponConfig = weaponRegistry.get(assetKey as any);
   if (weaponConfig) {
     const spriteInfo = assetsMap[weaponConfig.assets.assetPrefix as Asset];
     if (spriteInfo) {
       return {
-        sheet: spriteInfo.sheet || "default",
+        sheet: spriteInfo.sheet,
         x: spriteInfo.x,
         y: spriteInfo.y,
-        width: spriteInfo.width || 16,
-        height: spriteInfo.height || 16,
+        width: spriteInfo.width ?? TILE_SIZE,
+        height: spriteInfo.height ?? TILE_SIZE,
       };
     }
   }
 
-  // Check if it's a zombie - zombies also use assetPrefix
+  // Check if it's a zombie
   const zombieConfig = zombieRegistry.get(assetKey as any);
   if (zombieConfig) {
     const spriteInfo = assetsMap[zombieConfig.assets.assetPrefix as Asset];
     if (spriteInfo) {
       return {
-        sheet: spriteInfo.sheet || "default",
+        sheet: spriteInfo.sheet,
         x: spriteInfo.x,
         y: spriteInfo.y,
-        width: spriteInfo.width || 16,
-        height: spriteInfo.height || 16,
+        width: spriteInfo.width ?? TILE_SIZE,
+        height: spriteInfo.height ?? TILE_SIZE,
       };
     }
   }
 
-  // Fall back to direct lookup
+  // Direct lookup
   const spriteInfo = assetsMap[assetKey as Asset];
-  if (!spriteInfo) {
-    return null;
-  }
+  if (!spriteInfo) return null;
 
   return {
-    sheet: spriteInfo.sheet || "default",
+    sheet: spriteInfo.sheet,
     x: spriteInfo.x,
     y: spriteInfo.y,
-    width: spriteInfo.width || 16,
-    height: spriteInfo.height || 16,
+    width: spriteInfo.width ?? TILE_SIZE,
+    height: spriteInfo.height ?? TILE_SIZE,
   };
 }

@@ -12,6 +12,18 @@ import { ClientEntityBase } from "@/extensions/client-entity";
 import { ClientPositionable, ClientInventory } from "@/extensions";
 import { entityBlocksPlacement } from "@shared/entities/decal-registry";
 
+/**
+ * Check if placing an item on an existing entity would trigger an upgrade.
+ */
+function canUpgradeEntity(placingItemType: ItemType, existingEntityType: string): boolean {
+  const itemConfig = itemRegistry.get(placingItemType);
+  if (!itemConfig?.upgradeTo) {
+    return false;
+  }
+  // Can upgrade if placing the same type on itself (e.g., wall on wall)
+  return existingEntityType === placingItemType;
+}
+
 const { TILE_SIZE, MAX_PLACEMENT_RANGE } = getConfig().world;
 
 /**
@@ -97,14 +109,15 @@ export class PlacementManager {
     // Calculate grid-snapped ghost position
     if (this.mouseWorldPos) {
       this.ghostPosition = this.snapToGrid(this.mouseWorldPos);
-      this.isValidPlacement = this.validatePlacement(this.ghostPosition);
+      const selectedItem = this.getSelectedPlaceableItem();
+      this.isValidPlacement = this.validatePlacement(this.ghostPosition, selectedItem ?? undefined);
     }
   }
 
   /**
    * Validate if placement is allowed at the given position
    */
-  private validatePlacement(position: Vector2): boolean {
+  private validatePlacement(position: Vector2, placingItemType?: ItemType): boolean {
     const player = this.getPlayer();
     if (!player) {
       return false;
@@ -147,19 +160,15 @@ export class PlacementManager {
       return false;
     }
 
-    // Check if there's already a collidable at this position
-    const collidableValue = mapData.collidables[gridY][gridX];
-    if (collidableValue !== -1) {
-      return false;
-    }
-
-    // Check if any entities are at this position
+    // Check if any entities are at this position that could be upgraded
     const entities = this.getEntities();
     const wallCenter = poolManager.vector2.claim(
       position.x + TILE_SIZE / 2,
       position.y + TILE_SIZE / 2
     );
 
+    // First pass: check if there's an upgradeable entity at this position
+    let hasUpgradeableEntity = false;
     for (const entity of entities) {
       if (!entity.hasExt(ClientPositionable)) continue;
 
@@ -168,12 +177,28 @@ export class PlacementManager {
       if (!entityBlocksPlacement(entityType)) continue;
 
       const entityPos = entity.getExt(ClientPositionable).getCenterPosition();
-      const distance = entityPos.distance(wallCenter);
+      const dist = entityPos.distance(wallCenter);
 
-      // If entity is within half a tile size, it overlaps
-      if (distance < TILE_SIZE) {
-        return false;
+      // If entity is within a tile size, check if it can be upgraded
+      if (dist < TILE_SIZE) {
+        if (placingItemType && canUpgradeEntity(placingItemType, entityType)) {
+          hasUpgradeableEntity = true;
+        } else {
+          // Blocked by a non-upgradeable entity
+          return false;
+        }
       }
+    }
+
+    // If there's an upgradeable entity, allow placement (skip collidables check for entity-placed structures)
+    if (hasUpgradeableEntity) {
+      return true;
+    }
+
+    // No upgradeable entity found, check if there's a map collidable at this position
+    const collidableValue = mapData.collidables[gridY][gridX];
+    if (collidableValue !== -1) {
+      return false;
     }
 
     return true;

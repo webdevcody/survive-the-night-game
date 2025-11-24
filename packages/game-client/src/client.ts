@@ -567,6 +567,12 @@ export class GameClient {
     this.socketManager.startPingMeasurement();
     this.socketManager.requestFullState();
 
+    // Send saved player color if exists
+    const savedColor = localStorage.getItem("playerColor");
+    if (savedColor) {
+      this.socketManager.sendPlayerColor(savedColor);
+    }
+
     // Initialize placement manager
     this.placementManager = new PlacementManager(
       this.ctx.canvas,

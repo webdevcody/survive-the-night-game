@@ -21,7 +21,7 @@ export class MolotovCocktail extends Weapon {
   private static readonly THROW_SPEED = 130;
   private static readonly EXPLOSION_DELAY = 1;
   private static readonly COOLDOWN = 0.5;
-  private static readonly DEFAULT_COUNT = 1;
+  public static readonly DEFAULT_COUNT = 1;
   private static readonly FIRE_COUNT = 8; // Number of fire entities to spawn
   private static readonly FIRE_SPREAD_RADIUS = 48; // Radius to spread fires
 

@@ -4,7 +4,7 @@ export interface ProjectileAssetConfig {
   y: number;
   width?: number;
   height?: number;
-  sheet?: string;
+  sheet: string; // Required - must specify which sprite sheet to use
 }
 
 export interface ProjectileConfig {
@@ -17,6 +17,12 @@ class ProjectileRegistry {
   private projectiles = new Map<string, ProjectileConfig>();
 
   register(config: ProjectileConfig): void {
+    if (!config.assets.sheet) {
+      throw new Error(
+        `Projectile "${config.id}" is missing required 'sheet' property in assets. ` +
+          `All projectiles must specify which sprite sheet to use.`
+      );
+    }
     this.projectiles.set(config.id, config);
   }
 

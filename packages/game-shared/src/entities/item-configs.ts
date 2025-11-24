@@ -42,6 +42,7 @@ export const ITEM_CONFIGS: Record<string, ItemConfig> = {
       enabled: true,
       buyable: true,
       price: 8,
+      stackSize: 8,
     },
   },
   shotgun_ammo: {
@@ -61,6 +62,7 @@ export const ITEM_CONFIGS: Record<string, ItemConfig> = {
       enabled: true,
       buyable: true,
       price: 12,
+      stackSize: 8,
     },
   },
   bolt_action_ammo: {
@@ -80,6 +82,7 @@ export const ITEM_CONFIGS: Record<string, ItemConfig> = {
       enabled: true,
       buyable: true,
       price: 15,
+      stackSize: 10,
     },
   },
   ak47_ammo: {
@@ -99,6 +102,7 @@ export const ITEM_CONFIGS: Record<string, ItemConfig> = {
       enabled: true,
       buyable: true,
       price: 10,
+      stackSize: 30,
     },
   },
   grenade_launcher_ammo: {
@@ -114,6 +118,7 @@ export const ITEM_CONFIGS: Record<string, ItemConfig> = {
       enabled: true,
       buyable: true,
       price: 25,
+      stackSize: 4,
     },
   },
   flamethrower_ammo: {
@@ -129,6 +134,7 @@ export const ITEM_CONFIGS: Record<string, ItemConfig> = {
       enabled: true,
       buyable: true,
       price: 20,
+      stackSize: 30,
     },
   },
   arrow_ammo: {
@@ -148,6 +154,7 @@ export const ITEM_CONFIGS: Record<string, ItemConfig> = {
       enabled: true,
       buyable: true,
       price: 8,
+      stackSize: 16,
     },
   },
   landmine: {
@@ -335,6 +342,50 @@ export const ITEM_CONFIGS: Record<string, ItemConfig> = {
       enabled: true,
       components: [{ type: "wood", count: 4 }],
     },
+    upgradeTo: "spikes_level_2",
+  },
+  spikes_level_2: {
+    id: "spikes_level_2",
+    category: "placeable",
+    placeable: true,
+    placeSound: "build",
+    assets: {
+      assetKey: "spikes_level_2",
+      x: 128,
+      y: 128,
+      sheet: "items",
+    },
+    spawn: {
+      enabled: false,
+      chance: 0,
+    },
+    merchant: {
+      enabled: false,
+      buyable: false,
+      price: 0,
+    },
+    upgradeTo: "spikes_level_3",
+  },
+  spikes_level_3: {
+    id: "spikes_level_3",
+    category: "placeable",
+    placeable: true,
+    placeSound: "build",
+    assets: {
+      assetKey: "spikes_level_3",
+      x: 128,
+      y: 144,
+      sheet: "items",
+    },
+    spawn: {
+      enabled: false,
+      chance: 0,
+    },
+    merchant: {
+      enabled: false,
+      buyable: false,
+      price: 0,
+    },
   },
   bear_trap: {
     id: "bear_trap",
@@ -387,6 +438,50 @@ export const ITEM_CONFIGS: Record<string, ItemConfig> = {
       enabled: true,
       components: [{ type: "wood", count: 2 }],
     },
+    upgradeTo: "wall_level_2",
+  },
+  wall_level_2: {
+    id: "wall_level_2",
+    category: "structure",
+    placeable: true,
+    placeSound: "build",
+    assets: {
+      assetKey: "wall_level_2",
+      x: 144,
+      y: 64,
+      sheet: "items",
+    },
+    spawn: {
+      enabled: false,
+      chance: 0,
+    },
+    merchant: {
+      enabled: false,
+      buyable: false,
+      price: 0,
+    },
+    upgradeTo: "wall_level_3",
+  },
+  wall_level_3: {
+    id: "wall_level_3",
+    category: "structure",
+    placeable: true,
+    placeSound: "build",
+    assets: {
+      assetKey: "wall_level_3",
+      x: 144,
+      y: 80,
+      sheet: "items",
+    },
+    spawn: {
+      enabled: false,
+      chance: 0,
+    },
+    merchant: {
+      enabled: false,
+      buyable: false,
+      price: 0,
+    },
   },
   tree: {
     id: "tree",
@@ -426,6 +521,50 @@ export const ITEM_CONFIGS: Record<string, ItemConfig> = {
         { type: "wood", count: 3 },
         { type: "cloth", count: 2 },
       ],
+    },
+    upgradeTo: "sentry_gun_level_2",
+  },
+  sentry_gun_level_2: {
+    id: "sentry_gun_level_2",
+    category: "structure",
+    placeable: true,
+    placeSound: "build",
+    assets: {
+      assetKey: "sentry_gun_level_2",
+      x: 144,
+      y: 128,
+      sheet: "items",
+    },
+    spawn: {
+      enabled: false,
+      chance: 0,
+    },
+    merchant: {
+      enabled: false,
+      buyable: false,
+      price: 0,
+    },
+    upgradeTo: "sentry_gun_level_3",
+  },
+  sentry_gun_level_3: {
+    id: "sentry_gun_level_3",
+    category: "structure",
+    placeable: true,
+    placeSound: "build",
+    assets: {
+      assetKey: "sentry_gun_level_3",
+      x: 144,
+      y: 144,
+      sheet: "items",
+    },
+    spawn: {
+      enabled: false,
+      chance: 0,
+    },
+    merchant: {
+      enabled: false,
+      buyable: false,
+      price: 0,
     },
   },
 };

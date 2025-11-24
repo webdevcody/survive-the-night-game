@@ -12,44 +12,41 @@ import { ItemState } from "@/types/entity";
 import { getConfig } from "@shared/config";
 
 /**
- * A spike trap which only hurts zombies who step on it. Can be picked up and placed again.
+ * Level 3 spikes that deal 3 damage to zombies.
  */
-export class Spikes extends Entity {
+export class SpikesLevel3 extends Entity {
   private static get SIZE(): Vector2 {
     return PoolManager.getInstance().vector2.claim(16, 16);
   }
   public static readonly DEFAULT_COUNT = 1;
 
   constructor(gameManagers: IGameManagers, itemState?: ItemState) {
-    super(gameManagers, Entities.SPIKES);
+    super(gameManagers, "spikes_level_3");
 
-    const count = itemState?.count ?? Spikes.DEFAULT_COUNT;
+    const count = itemState?.count ?? SpikesLevel3.DEFAULT_COUNT;
 
     const poolManager = PoolManager.getInstance();
     const size = poolManager.vector2.claim(16, 16);
     this.addExtension(new Positionable(this).setSize(size));
-    // TriggerCooldownAttacker handles finding and attacking nearby zombies
-    // No need for Triggerable since it had no callback and was redundant
     this.addExtension(
       new TriggerCooldownAttacker(this, {
-        damage: getConfig().world.SPIKES_DAMAGE,
+        damage: getConfig().world.SPIKES_LEVEL_3_DAMAGE,
         victimType: Entities.ZOMBIE,
         cooldown: 1,
       })
     );
     this.addExtension(
-      new Interactive(this).onInteract(this.interact.bind(this)).setDisplayName("spikes")
+      new Interactive(this).onInteract(this.interact.bind(this)).setDisplayName("deadly spikes")
     );
-    this.addExtension(new Carryable(this, "spikes").setItemState({ count }));
+    this.addExtension(new Carryable(this, "spikes_level_3").setItemState({ count }));
     this.addExtension(new Placeable(this));
   }
 
   private interact(entityId: number): void {
     const carryable = this.getExt(Carryable);
-    // Use helper method to preserve count when picking up dropped spikes
     carryable.pickup(
       entityId,
-      Carryable.createStackablePickupOptions(carryable, Spikes.DEFAULT_COUNT)
+      Carryable.createStackablePickupOptions(carryable, SpikesLevel3.DEFAULT_COUNT)
     );
   }
 }

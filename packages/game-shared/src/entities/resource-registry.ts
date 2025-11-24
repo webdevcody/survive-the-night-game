@@ -6,7 +6,7 @@ export interface ResourceAssetConfig {
   y: number;
   width?: number;
   height?: number;
-  sheet?: string;
+  sheet: string; // Required - must specify which sprite sheet to use
   totalFrames?: number;
 }
 
@@ -19,6 +19,12 @@ class ResourceRegistry {
   private resources = new Map<string, ResourceConfig>();
 
   register(config: ResourceConfig): void {
+    if (!config.assets.sheet) {
+      throw new Error(
+        `Resource "${config.id}" is missing required 'sheet' property in assets. ` +
+          `All resources must specify which sprite sheet to use.`
+      );
+    }
     this.resources.set(config.id, config);
   }
 

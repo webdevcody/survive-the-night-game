@@ -99,6 +99,30 @@ function getItemStats(itemType: string): { label: string; value: string }[] {
   return stats;
 }
 
+/**
+ * Get the required stack size for selling an item.
+ * Returns the stackSize from merchant config, or 1 if not specified.
+ */
+function getRequiredStackSize(itemType: string): number {
+  const weapon = weaponRegistry.get(itemType);
+  if (weapon?.merchant?.stackSize !== undefined) {
+    return weapon.merchant.stackSize;
+  }
+
+  const item = itemRegistry.get(itemType);
+  if (item?.merchant?.stackSize !== undefined) {
+    return item.merchant.stackSize;
+  }
+
+  const resource = resourceRegistry.get(itemType);
+  if (resource?.merchant?.stackSize !== undefined) {
+    return resource.merchant.stackSize;
+  }
+
+  // Default to 1 for non-stackable items
+  return 1;
+}
+
 interface DisplayItem {
   itemType: string;
   price: number;
@@ -214,11 +238,16 @@ export class MerchantBuyPanel implements Renderable {
             const basePrice = this.getBasePrice(item.itemType);
             const sellPrice = Math.floor(basePrice * 0.5);
             if (sellPrice > 0) {
+              // Check if player has enough items to sell (meets required stack size)
+              const requiredStackSize = getRequiredStackSize(item.itemType);
+              const currentCount = item.state?.count ?? 1;
+              const canSell = currentCount >= requiredStackSize;
+
               this.inventoryDisplayItems.push({
                 itemType: item.itemType,
                 price: sellPrice,
                 originalIndex: slotIndex,
-                isSellable: true,
+                isSellable: canSell,
               });
             }
           }
@@ -462,7 +491,7 @@ export class MerchantBuyPanel implements Renderable {
       }
     } else {
       const item = this.inventoryDisplayItems[this.inventorySelectedIndex];
-      if (item) {
+      if (item && item.isSellable) {
         this.onSell(this.activeMerchantId, item.originalIndex);
         // For sell mode, we should refresh immediately to show empty slot, but best to wait for server update loop in render
       }
@@ -849,16 +878,37 @@ export class MerchantBuyPanel implements Renderable {
         );
       }
 
-      // Price Tag
+      // Price Tag - show red if can't afford (shop) or can't sell (inventory)
+      const canSellItem = type === "INVENTORY" ? item.isSellable !== false : true;
       ctx.fillStyle =
         type === "SHOP" && !canAfford
+          ? THEME.colors.textRed
+          : type === "INVENTORY" && !canSellItem
           ? THEME.colors.textRed
           : type === "INVENTORY"
           ? THEME.colors.textGreen
           : THEME.colors.accent;
       ctx.font = THEME.fonts.price;
-      ctx.textAlign = "center";
-      ctx.fillText(`${item.price}`, itemX + itemSize / 2, itemY + itemSize - 10);
+
+      // Draw price with coin icon
+      const priceText = `${item.price}`;
+      const textWidth = ctx.measureText(priceText).width;
+      const coinIconSize = 24;
+      const coinGap = 3;
+      const totalWidth = textWidth + coinGap + coinIconSize;
+      const priceStartX = itemX + (itemSize - totalWidth) / 2;
+      const priceY = itemY + itemSize - 10;
+
+      ctx.textAlign = "left";
+      ctx.fillText(priceText, priceStartX, priceY);
+
+      // Draw coin icon
+      const coinSheet = this.assetManager.getSheet("items");
+      if (coinSheet) {
+        const coinX = priceStartX + textWidth + coinGap;
+        const coinY = priceY - coinIconSize / 2 - 2;
+        ctx.drawImage(coinSheet, 32, 48, 16, 16, coinX, coinY, coinIconSize, coinIconSize);
+      }
 
       // Register click region
       if (type === "SHOP") this.shopItemRegions.push({ x: itemX, y: itemY, index: i });
@@ -967,6 +1017,7 @@ export class MerchantBuyPanel implements Renderable {
 
     const isBuy = this.activePane === "SHOP";
     const canAfford = isBuy ? playerCoins >= activeItem.price : true;
+    const canSell = !isBuy ? activeItem.isSellable !== false : true;
 
     // Button Shadow
     ctx.save();
@@ -985,23 +1036,29 @@ export class MerchantBuyPanel implements Renderable {
         ctx.fillStyle = THEME.colors.buttonDisabled;
       }
     } else {
-      const btnGrad = ctx.createLinearGradient(btnX, btnY, btnX, btnY + btnH);
-      btnGrad.addColorStop(0, "#4ade80");
-      btnGrad.addColorStop(1, "#16a34a");
-      ctx.fillStyle = btnGrad;
+      // Sell button - check if item is sellable
+      if (canSell) {
+        const btnGrad = ctx.createLinearGradient(btnX, btnY, btnX, btnY + btnH);
+        btnGrad.addColorStop(0, "#4ade80");
+        btnGrad.addColorStop(1, "#16a34a");
+        ctx.fillStyle = btnGrad;
+      } else {
+        ctx.fillStyle = THEME.colors.buttonDisabled;
+      }
     }
 
     this.fillRoundedRect(ctx, btnX, btnY, btnW, btnH, 12);
     ctx.restore(); // restore shadow
 
     // Button Text
-    ctx.fillStyle = isBuy ? (canAfford ? "#0f172a" : "#94a3b8") : "#064e3b";
+    ctx.fillStyle = isBuy ? (canAfford ? "#0f172a" : "#94a3b8") : canSell ? "#064e3b" : "#94a3b8";
     ctx.font = THEME.fonts.button;
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
 
     let actionText = isBuy ? "BUY" : "SELL";
     if (isBuy && !canAfford) actionText = "NO FUNDS";
+    if (!isBuy && !canSell) actionText = "NEED MORE";
 
     ctx.fillText(actionText, btnX + btnW / 2, btnY + btnH / 2 - 12);
     ctx.font = "bold 16px 'Segoe UI'";

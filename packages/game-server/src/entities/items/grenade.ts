@@ -21,7 +21,7 @@ export class Grenade extends Weapon {
   private static readonly THROW_SPEED = 130;
   private static readonly EXPLOSION_DELAY = 1;
   private static readonly COOLDOWN = 0.5;
-  private static readonly DEFAULT_COUNT = 1;
+  public static readonly DEFAULT_COUNT = 1;
 
   private velocity: Vector2 = PoolManager.getInstance().vector2.claim(0, 0);
   private isArmed: boolean = false;

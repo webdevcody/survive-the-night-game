@@ -36,8 +36,8 @@ function isStackableItem(item: InventoryItem): boolean {
 }
 
 /**
- * Get the default count for a stackable item type (like ammo)
- * Returns undefined if the item doesn't have a default count or isn't a StackableItem
+ * Get the default count for a stackable item type (like ammo, throwables, placeables)
+ * Returns undefined if the item doesn't have a default count
  */
 function getDefaultCountForItem(
   itemType: ItemType,
@@ -48,14 +48,25 @@ function getDefaultCountForItem(
     return undefined;
   }
 
-  // Check if the constructor extends StackableItem by creating a temporary instance
-  // and checking with instanceof. This is safe because we catch any errors.
+  // First, check for static DEFAULT_COUNT or DEFAULT_AMMO_COUNT properties on the class
+  // This covers non-StackableItem entities like MolotovCocktail, Grenade, ThrowingKnife, etc.
+  const constructorWithStatic = entityConstructor as unknown as {
+    DEFAULT_COUNT?: number;
+    DEFAULT_AMMO_COUNT?: number;
+  };
+
+  if (typeof constructorWithStatic.DEFAULT_COUNT === "number") {
+    return constructorWithStatic.DEFAULT_COUNT;
+  }
+
+  if (typeof constructorWithStatic.DEFAULT_AMMO_COUNT === "number") {
+    return constructorWithStatic.DEFAULT_AMMO_COUNT;
+  }
+
+  // Fall back to StackableItem method for items that extend StackableItem
   try {
-    // Create a temporary instance to check if it's a StackableItem
-    // We only need gameManagers since itemState is optional
     const tempInstance = new entityConstructor(gameManagers);
     if (tempInstance instanceof StackableItem) {
-      // Use the static method to get the default count
       return StackableItem.getDefaultCount(entityConstructor as any, gameManagers);
     }
   } catch {
@@ -230,30 +241,29 @@ export function onMerchantSell(
   const currentCount = item.state?.count ?? (isStackable ? defaultCount ?? 1 : 1);
 
   if (isStackable && defaultCount !== undefined) {
-    // Stackable item: sell default count amount
-    if (currentCount >= defaultCount) {
-      // Subtract default count from stack
-      const remainingCount = currentCount - defaultCount;
-      if (remainingCount > 0) {
-        // Update the item state with remaining count
-        inventory.updateItemState(data.inventorySlot, { count: remainingCount });
-      } else {
-        // Remove item if count reaches 0
-        inventory.removeItem(data.inventorySlot);
-      }
-      // Give coins based on sell price
-      player.addCoins(sellPrice);
+    // Stackable item: must have at least the default count to sell
+    if (currentCount < defaultCount) {
+      // Not enough to sell - player needs a full stack
       console.log(
-        `Player ${player.getId()} sold ${defaultCount} ${itemType} (${currentCount} -> ${remainingCount}) for ${sellPrice} coins.`
+        `Player ${player.getId()} tried to sell ${itemType} but only has ${currentCount}/${defaultCount} (need full stack).`
       );
-    } else {
-      // Not enough to meet default count, sell for 1 gold
-      inventory.removeItem(data.inventorySlot);
-      player.addCoins(1);
-      console.log(
-        `Player ${player.getId()} sold ${itemType} (only ${currentCount} < ${defaultCount}) for 1 coin.`
-      );
+      return;
     }
+
+    // Subtract default count from stack
+    const remainingCount = currentCount - defaultCount;
+    if (remainingCount > 0) {
+      // Update the item state with remaining count
+      inventory.updateItemState(data.inventorySlot, { count: remainingCount });
+    } else {
+      // Remove item if count reaches 0
+      inventory.removeItem(data.inventorySlot);
+    }
+    // Give coins based on sell price
+    player.addCoins(sellPrice);
+    console.log(
+      `Player ${player.getId()} sold ${defaultCount} ${itemType} (${currentCount} -> ${remainingCount}) for ${sellPrice} coins.`
+    );
   } else {
     // Non-stackable item: sell entire item
     inventory.removeItem(data.inventorySlot);

@@ -4,7 +4,7 @@ export interface EnvironmentAssetConfig {
   y: number;
   width?: number;
   height?: number;
-  sheet?: string;
+  sheet: string; // Required - must specify which sprite sheet to use
   totalFrames?: number; // For animated assets
 }
 
@@ -18,6 +18,12 @@ class EnvironmentRegistry {
   private environments = new Map<string, EnvironmentConfig>();
 
   register(config: EnvironmentConfig): void {
+    if (!config.assets.sheet) {
+      throw new Error(
+        `Environment "${config.id}" is missing required 'sheet' property in assets. ` +
+          `All environments must specify which sprite sheet to use.`
+      );
+    }
     this.environments.set(config.id, config);
   }
 

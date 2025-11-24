@@ -16,6 +16,7 @@ export interface MerchantConfig {
   enabled: boolean;
   price: number; // Price in coins
   buyable?: boolean; // If true, item appears in the buy menu (defaults to enabled value)
+  stackSize?: number; // Number of items required to sell (and received when buying). Defaults to 1 for non-stackable items.
 }
 
 /**

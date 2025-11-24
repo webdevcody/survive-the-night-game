@@ -16,6 +16,7 @@ import { ConsumeItemEvent } from "./events/consume-item";
 import { SelectInventorySlotEvent } from "./events/select-inventory-slot";
 import { SwapInventoryItemsEvent } from "./events/swap-inventory-items";
 import { InteractEvent } from "./events/interact";
+import { ChangePlayerColorEvent } from "./events/change-player-color";
 import {
   serializeEvent,
   deserializeEvent,
@@ -46,6 +47,7 @@ const eventRegistry: Record<string, IBufferWriter> = {
   [ClientSentEvents.SELECT_INVENTORY_SLOT]: SelectInventorySlotEvent,
   [ClientSentEvents.SWAP_INVENTORY_ITEMS]: SwapInventoryItemsEvent,
   [ClientSentEvents.INTERACT]: InteractEvent,
+  [ClientSentEvents.CHANGE_PLAYER_COLOR]: ChangePlayerColorEvent,
 };
 
 function isClientSentEvent(event: string): event is ClientSentEventType {

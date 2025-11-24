@@ -17,6 +17,8 @@ import { GrenadeProjectile } from "@/entities/projectiles/grenade-projectile";
 import { FlameProjectile } from "@/entities/projectiles/flame-projectile";
 import { Tree } from "@/entities/items/tree";
 import { Wall } from "@/entities/items/wall";
+import { WallLevel2 } from "@/entities/items/wall-level-2";
+import { WallLevel3 } from "@/entities/items/wall-level-3";
 import { Bandage } from "@/entities/items/bandage";
 import { EnergyDrink } from "@/entities/items/energy-drink";
 import { Cloth } from "@/entities/items/cloth";
@@ -24,6 +26,8 @@ import { Wood } from "@/entities/items/wood";
 import { Coin } from "@/entities/items/coin";
 import { Gasoline } from "@/entities/items/gasoline";
 import { Spikes } from "@/entities/items/spikes";
+import { SpikesLevel2 } from "@/entities/items/spikes-level-2";
+import { SpikesLevel3 } from "@/entities/items/spikes-level-3";
 import { Torch } from "@/entities/items/torch";
 import { MinersHat } from "@/entities/items/miners-hat";
 import { Landmine } from "@/entities/items/landmine";
@@ -33,6 +37,8 @@ import { MolotovCocktail } from "@/entities/items/molotov-cocktail";
 import { Crate } from "@/entities/items/crate";
 import { GallonDrum } from "@/entities/items/gallon-drum";
 import { SentryGun } from "@/entities/items/sentry-gun";
+import { SentryGunLevel2 } from "@/entities/items/sentry-gun-level-2";
+import { SentryGunLevel3 } from "@/entities/items/sentry-gun-level-3";
 import { PistolAmmo } from "@/entities/items/pistol-ammo";
 import { ShotgunAmmo } from "@/entities/items/shotgun-ammo";
 import { BoltActionAmmo } from "@/entities/items/bolt-action-ammo";
@@ -95,6 +101,8 @@ export function registerCustomEntities(): void {
   // Items with custom behavior
   entityOverrideRegistry.register("tree", Tree);
   entityOverrideRegistry.register("wall", Wall);
+  entityOverrideRegistry.register("wall_level_2", WallLevel2);
+  entityOverrideRegistry.register("wall_level_3", WallLevel3);
   entityOverrideRegistry.register("bandage", Bandage);
   entityOverrideRegistry.register("energy_drink", EnergyDrink);
   entityOverrideRegistry.register("cloth", Cloth);
@@ -102,6 +110,8 @@ export function registerCustomEntities(): void {
   entityOverrideRegistry.register("coin", Coin);
   entityOverrideRegistry.register("gasoline", Gasoline);
   entityOverrideRegistry.register("spikes", Spikes);
+  entityOverrideRegistry.register("spikes_level_2", SpikesLevel2);
+  entityOverrideRegistry.register("spikes_level_3", SpikesLevel3);
   entityOverrideRegistry.register("torch", Torch);
   entityOverrideRegistry.register("miners_hat", MinersHat);
   entityOverrideRegistry.register("landmine", Landmine);
@@ -112,6 +122,8 @@ export function registerCustomEntities(): void {
   entityOverrideRegistry.register("crate", Crate);
   entityOverrideRegistry.register("gallon_drum", GallonDrum);
   entityOverrideRegistry.register("sentry_gun", SentryGun);
+  entityOverrideRegistry.register("sentry_gun_level_2", SentryGunLevel2);
+  entityOverrideRegistry.register("sentry_gun_level_3", SentryGunLevel3);
 
   // Ammo (uses StackableItem base class)
   entityOverrideRegistry.register("pistol_ammo", PistolAmmo);

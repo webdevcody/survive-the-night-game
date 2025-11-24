@@ -5,6 +5,7 @@ import { InstructionPanel } from "./play/components/InstructionPanel";
 import { CraftingPanel } from "./play/components/CraftingPanel";
 import { SpawnPanel } from "./play/components/SpawnPanel";
 import { NameChangePanel } from "./play/components/NameChangePanel";
+import { CharacterColorPanel } from "./play/components/CharacterColorPanel";
 import { Button } from "~/components/ui/button";
 import { DropdownMenu, DropdownMenuItem } from "~/components/ui/dropdown-menu";
 
@@ -28,9 +29,11 @@ function GameClientLoader() {
   const [showInstructions, setShowInstructions] = useState(false);
   const [showSpawnPanel, setShowSpawnPanel] = useState(false);
   const [showNameChangePanel, setShowNameChangePanel] = useState(false);
+  const [showCharacterColorPanel, setShowCharacterColorPanel] = useState(false);
   const [gameClient, setGameClient] = useState<any>(null);
   const [savedDisplayName, setSavedDisplayName] = useState<string>("");
   const [currentPlayerName, setCurrentPlayerName] = useState<string>("");
+  const [currentPlayerColor, setCurrentPlayerColor] = useState<string>("none");
 
   const handleLeaveGame = () => {
     // Clean up game client before leaving
@@ -44,11 +47,15 @@ function GameClientLoader() {
   useEffect(() => {
     // Mark as client-side after mount
     setIsClient(true);
-    // Load saved display name from localStorage (client-side only)
+    // Load saved display name and color from localStorage (client-side only)
     if (typeof window !== "undefined") {
       const savedName = localStorage.getItem("displayName");
       if (savedName) {
         setSavedDisplayName(savedName);
+      }
+      const savedColor = localStorage.getItem("playerColor");
+      if (savedColor) {
+        setCurrentPlayerColor(savedColor);
       }
     }
   }, []);
@@ -76,25 +83,29 @@ function GameClientLoader() {
     return () => clearInterval(pollGameClient);
   }, [isClient]);
 
-  // Poll for current player name updates
+  // Poll for current player name and color updates
   useEffect(() => {
     if (!gameClient || !isClient) return;
 
-    const updatePlayerName = () => {
+    const updatePlayerInfo = () => {
       const player = gameClient.getMyPlayer?.();
       if (player) {
         const name = player.getDisplayName?.();
         if (name) {
           setCurrentPlayerName(name);
         }
+        const color = player.getPlayerColor?.();
+        if (color) {
+          setCurrentPlayerColor(color);
+        }
       }
     };
 
     // Update immediately
-    updatePlayerName();
+    updatePlayerInfo();
 
     // Poll for updates every 500ms
-    const interval = setInterval(updatePlayerName, 500);
+    const interval = setInterval(updatePlayerInfo, 500);
     return () => clearInterval(interval);
   }, [gameClient, isClient]);
 
@@ -143,6 +154,12 @@ function GameClientLoader() {
           e.stopPropagation();
           return;
         }
+        // Close character color panel if open
+        if (showCharacterColorPanel) {
+          setShowCharacterColorPanel(false);
+          e.stopPropagation();
+          return;
+        }
         // Close instructions panel if open
         if (showInstructions) {
           setShowInstructions(false);
@@ -156,7 +173,7 @@ function GameClientLoader() {
       }
 
       // For all other keys, don't process if user is typing in an input field
-      if (isInputField || showNameChangePanel) {
+      if (isInputField || showNameChangePanel || showCharacterColorPanel) {
         return;
       }
 
@@ -168,7 +185,7 @@ function GameClientLoader() {
 
     window.addEventListener("keydown", handleKeyDown, true); // Use capture phase
     return () => window.removeEventListener("keydown", handleKeyDown, true);
-  }, [gameClient, showInstructions, showSpawnPanel, showNameChangePanel]);
+  }, [gameClient, showInstructions, showSpawnPanel, showNameChangePanel, showCharacterColorPanel]);
 
   useEffect(() => {
     if (!isClient || !canvasRef.current) {
@@ -250,6 +267,28 @@ function GameClientLoader() {
               <span>Change Name</span>
             </div>
           </DropdownMenuItem>
+          <DropdownMenuItem onClick={() => setShowCharacterColorPanel(true)}>
+            <div className="flex items-center gap-2">
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                width="16"
+                height="16"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <circle cx="12" cy="12" r="10" />
+                <circle cx="12" cy="12" r="4" />
+                <line x1="21.17" y1="8" x2="12" y2="8" />
+                <line x1="3.95" y1="6.06" x2="8.54" y2="14" />
+                <line x1="10.88" y1="21.94" x2="15.46" y2="14" />
+              </svg>
+              <span>Change Character</span>
+            </div>
+          </DropdownMenuItem>
           <DropdownMenuItem onClick={handleLeaveGame}>
             <div className="flex items-center gap-2">
               <svg
@@ -324,6 +363,21 @@ function GameClientLoader() {
           // Send to server
           if (gameClient?.getSocketManager?.()) {
             gameClient.getSocketManager().sendDisplayName(newName);
+          }
+        }}
+      />
+
+      {/* Character Color Panel */}
+      <CharacterColorPanel
+        isOpen={showCharacterColorPanel}
+        onClose={() => setShowCharacterColorPanel(false)}
+        currentColor={currentPlayerColor as any}
+        onColorChange={(newColor) => {
+          // Update local state immediately for UI feedback
+          setCurrentPlayerColor(newColor);
+          // Send to server
+          if (gameClient?.getSocketManager?.()) {
+            gameClient.getSocketManager().sendPlayerColor(newColor);
           }
         }}
       />

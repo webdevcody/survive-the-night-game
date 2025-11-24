@@ -34,12 +34,12 @@ export interface ZombieAssetConfig {
     leftY: number;
     upY: number;
     totalFrames: number;
-    sheet?: string;
+    sheet: string; // Required - must specify which sprite sheet to use
   };
   deadFrame?: {
     x: number;
     y: number;
-    sheet?: string;
+    sheet: string; // Required when deadFrame is provided
   };
 }
 
@@ -115,6 +115,18 @@ class ZombieRegistry {
   private zombies = new Map<EntityType, ZombieConfig>();
 
   register(config: ZombieConfig): void {
+    if (!config.assets.frameLayout.sheet) {
+      throw new Error(
+        `Zombie "${config.id}" is missing required 'sheet' property in frameLayout. ` +
+          `All zombies must specify which sprite sheet to use.`
+      );
+    }
+    if (config.assets.deadFrame && !config.assets.deadFrame.sheet) {
+      throw new Error(
+        `Zombie "${config.id}" has deadFrame but is missing required 'sheet' property. ` +
+          `When deadFrame is provided, sheet must be specified.`
+      );
+    }
     this.zombies.set(config.id, config);
   }
 
