@@ -119,9 +119,9 @@ export class Player extends Entity {
     const inventory = this.getExt(Inventory);
 
     [
+      { itemType: "pistol" as const },
       { itemType: "torch" as const },
       { itemType: "knife" as const },
-      { itemType: "pistol" as const },
       {
         itemType: "pistol_ammo" as const,
         state: {
@@ -523,7 +523,8 @@ export class Player extends Entity {
       const inputDx = this.serialized.get("inputDx");
       const inputDy = this.serialized.get("inputDy");
       const isMoving = inputDx !== 0 || inputDy !== 0;
-      const isSprinting = this.serialized.get("inputSprint") && isMoving && (hasInfiniteRun || stamina > 0);
+      const isSprinting =
+        this.serialized.get("inputSprint") && isMoving && (hasInfiniteRun || stamina > 0);
 
       // Regenerate stamina when not sprinting
       if (!isSprinting) {

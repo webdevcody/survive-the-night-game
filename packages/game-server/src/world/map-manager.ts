@@ -33,6 +33,7 @@ import type { BiomeData } from "@/world/biomes/types";
 import type { MapData } from "../../../game-shared/src/events/server-sent/events/map-event";
 import { getConfig } from "@/config";
 import { itemRegistry, weaponRegistry, resourceRegistry } from "@shared/entities";
+import { entityBlocksPlacement } from "@shared/entities/decal-registry";
 import { Entities, getZombieTypesSet } from "@shared/constants";
 import { balanceConfig } from "@shared/config/balance-config";
 import { Crate } from "@/entities/items/crate";
@@ -1570,15 +1571,12 @@ export class MapManager implements IMapManager {
       );
       const nearbyEntities = this.getEntityManager().getNearbyEntities(positionCenter, size);
 
-      // Decal entities that shouldn't block placement (visual effects only)
-      const DECAL_TYPES = new Set<string>(["blood", "acid"]);
-
       for (const entity of nearbyEntities) {
         if (!entity.hasExt(Positionable)) continue;
 
-        // Skip decal entities - they're visual effects and shouldn't block placement
         const entityType = entity.getType();
-        if (DECAL_TYPES.has(entityType)) continue;
+        // Skip entities that don't block placement (e.g., visual-only decals)
+        if (!entityBlocksPlacement(entityType)) continue;
 
         const entityPos = entity.getExt(Positionable).getCenterPosition();
         const dx = Math.abs(entityPos.x - positionCenter.x);

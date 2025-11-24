@@ -8,6 +8,7 @@ import Inventory from "@/extensions/inventory";
 import { getConfig } from "@shared/config";
 import PoolManager from "@shared/util/pool-manager";
 import { BuildEvent } from "../../../../game-shared/src/events/server-sent/events/build-event";
+import { entityBlocksPlacement } from "@shared/entities/decal-registry";
 
 export function onPlaceStructure(
   context: HandlerContext,
@@ -72,6 +73,10 @@ export function onPlaceStructure(
 
   for (const entity of nearbyEntities) {
     if (!entity.hasExt(Positionable)) continue;
+
+    const entityType = entity.getType();
+    // Skip entities that don't block placement (e.g., visual-only decals)
+    if (!entityBlocksPlacement(entityType)) continue;
 
     const entityPos = entity.getExt(Positionable).getCenterPosition();
     const dx = Math.abs(entityPos.x - (placePos.x + structureSize / 2));

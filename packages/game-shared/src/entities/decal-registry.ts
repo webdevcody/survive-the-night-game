@@ -26,6 +26,11 @@ export interface DecalConfig {
   id: string;
   category: "effect" | "animation" | "structure";
   assets: DecalFrameConfig;
+  /**
+   * Whether this decal entity blocks structure placement.
+   * Defaults to true for safety, but should be false for visual-only decals like blood and acid.
+   */
+  blocksPlacement?: boolean;
 }
 
 class DecalRegistry {
@@ -53,3 +58,20 @@ class DecalRegistry {
 }
 
 export const decalRegistry = new DecalRegistry();
+
+/**
+ * Checks if an entity type blocks structure placement.
+ * Decals with blocksPlacement: false (like blood and acid) won't block placement.
+ * All other entities block placement by default.
+ * @param entityType The entity type to check
+ * @returns true if the entity blocks placement, false otherwise
+ */
+export function entityBlocksPlacement(entityType: string): boolean {
+  const decalConfig = decalRegistry.get(entityType);
+  if (decalConfig) {
+    // If it's a decal, check the blocksPlacement flag (defaults to true if not specified)
+    return decalConfig.blocksPlacement !== false;
+  }
+  // Non-decal entities block placement by default
+  return true;
+}

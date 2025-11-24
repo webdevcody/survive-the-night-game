@@ -10,6 +10,7 @@ import { ClientSentEvents } from "@shared/events/events";
 import { PlayerClient } from "@/entities/player";
 import { ClientEntityBase } from "@/extensions/client-entity";
 import { ClientPositionable, ClientInventory } from "@/extensions";
+import { entityBlocksPlacement } from "@shared/entities/decal-registry";
 
 const { TILE_SIZE, MAX_PLACEMENT_RANGE } = getConfig().world;
 
@@ -159,15 +160,12 @@ export class PlacementManager {
       position.y + TILE_SIZE / 2
     );
 
-    // Decal entities that shouldn't block placement (visual effects only)
-    const DECAL_TYPES = new Set<string>(["blood", "acid"]);
-
     for (const entity of entities) {
       if (!entity.hasExt(ClientPositionable)) continue;
 
-      // Skip decal entities - they're visual effects and shouldn't block placement
       const entityType = entity.getType();
-      if (DECAL_TYPES.has(entityType)) continue;
+      // Skip entities that don't block placement (e.g., visual-only decals)
+      if (!entityBlocksPlacement(entityType)) continue;
 
       const entityPos = entity.getExt(ClientPositionable).getCenterPosition();
       const distance = entityPos.distance(wallCenter);

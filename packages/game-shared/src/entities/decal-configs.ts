@@ -27,6 +27,7 @@ export const DECAL_CONFIGS: Record<string, DecalConfig> = {
         sheet: "ground",
       },
     },
+    blocksPlacement: false,
   },
   acid: {
     id: "acid",
@@ -40,6 +41,7 @@ export const DECAL_CONFIGS: Record<string, DecalConfig> = {
         sheet: "ground",
       },
     },
+    blocksPlacement: false,
   },
   explosion: {
     id: "explosion",
