@@ -127,7 +127,7 @@ export class ToxicGasCloudExtension extends ExtensionBase<ToxicGasCloudFields> {
       if (distanceSquared < radiusSquared) {
         // Player is in cloud - apply poison if not already poisoned
         if (!entity.hasExt(Poison)) {
-          entity.addExtension(new Poison(entity, 1, 1, 3)); // maxDamage: 1, damagePerTick: 1, interval: 1
+          entity.addExtension(new Poison(entity, 3, 1, 1)); // maxDamage: 1, damagePerTick: 1, interval: 1
         }
       }
     }
