@@ -1570,8 +1570,15 @@ export class MapManager implements IMapManager {
       );
       const nearbyEntities = this.getEntityManager().getNearbyEntities(positionCenter, size);
 
+      // Decal entities that shouldn't block placement (visual effects only)
+      const DECAL_TYPES = new Set<string>(["blood", "acid"]);
+
       for (const entity of nearbyEntities) {
         if (!entity.hasExt(Positionable)) continue;
+
+        // Skip decal entities - they're visual effects and shouldn't block placement
+        const entityType = entity.getType();
+        if (DECAL_TYPES.has(entityType)) continue;
 
         const entityPos = entity.getExt(Positionable).getCenterPosition();
         const dx = Math.abs(entityPos.x - positionCenter.x);
