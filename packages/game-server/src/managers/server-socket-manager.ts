@@ -173,18 +173,15 @@ export class ServerSocketManager implements Broadcaster {
 
       if (!clientVersion || clientVersion !== serverVersion) {
         console.warn(
-          `Version mismatch: client version ${clientVersion} does not match server version ${serverVersion}. Disconnecting socket ${socket.id}`
+          `Version mismatch: client version ${clientVersion} does not match server version ${serverVersion}. Socket ${socket.id} will receive mismatch event.`
         );
-        // Send version mismatch event before disconnecting
+        // Send version mismatch event - client will handle redirect and disconnect
         const versionMismatchEvent = new VersionMismatchEvent({
           serverVersion,
           clientVersion: clientVersion || undefined,
         });
         this.sendEventToSocket(socket, versionMismatchEvent);
-        // Give a small delay to ensure the event is sent before disconnecting
-        setTimeout(() => {
-          socket.disconnect();
-        }, 100);
+        // Don't call onConnection or set up the player - just keep socket alive for the event
         return;
       }
 

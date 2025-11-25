@@ -1,5 +1,6 @@
 import { GameEvent } from "@/events/types";
 import { EventType, ServerSentEvents } from "../../events";
+import { BufferWriter, BufferReader } from "../../../util/buffer-serialization";
 
 export interface VersionMismatchEventData {
   serverVersion: string;
@@ -33,5 +34,20 @@ export class VersionMismatchEvent implements GameEvent<VersionMismatchEventData>
 
   public getClientVersion(): string | undefined {
     return this.data.clientVersion;
+  }
+
+  static serializeToBuffer(writer: BufferWriter, data: VersionMismatchEventData): void {
+    writer.writeString(data.serverVersion);
+    writer.writeUInt8(data.clientVersion !== undefined ? 1 : 0);
+    if (data.clientVersion !== undefined) {
+      writer.writeString(data.clientVersion);
+    }
+  }
+
+  static deserializeFromBuffer(reader: BufferReader): VersionMismatchEventData {
+    const serverVersion = reader.readString();
+    const hasClientVersion = reader.readUInt8() === 1;
+    const clientVersion = hasClientVersion ? reader.readString() : undefined;
+    return { serverVersion, clientVersion };
   }
 }
