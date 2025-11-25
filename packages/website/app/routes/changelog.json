@@ -1,5 +1,26 @@
 [
   {
+    "version": "0.28.0",
+    "date": "2025-11-24",
+    "changes": {
+      "features": [
+        "Added player color customization - players can now select from a range of colors to personalize their appearance",
+        "Added upgraded structure entities - WallLevel2, WallLevel3, SentryGunLevel2, SentryGunLevel3, SpikesLevel2, and SpikesLevel3 for enhanced gameplay strategies",
+        "Improved wave pacing - reduced wave duration from 60 seconds to 30 seconds for faster-paced gameplay"
+      ],
+      "bugFixes": [],
+      "refactoring": [
+        "Refactored placement logic - introduced entityBlocksPlacement function to improve clarity and maintainability of structure placement",
+        "Enhanced placement system - decal entities (blood, acid) no longer block structure placement, allowing visual effects without interfering with gameplay",
+        "Updated poison extension parameters - increased toxic gas cloud max damage from 1 to 3 for improved gameplay dynamics"
+      ],
+      "performance": [
+        "Optimized network serialization - implemented efficient serialization methods for ItemState, reducing data size during network transmission",
+        "Introduced encoding systems - added item type, group, interactable text, and wave state encoding to map strings to numeric IDs for improved network efficiency"
+      ]
+    }
+  },
+  {
     "version": "0.27.0",
     "date": "2025-11-23",
     "changes": {

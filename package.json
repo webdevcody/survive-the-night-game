@@ -1,6 +1,6 @@
 {
   "name": "survive-the-night",
-  "version": "0.27.0",
+  "version": "0.28.0",
   "main": "index.js",
   "scripts": {
     "dev": "npm-run-all --parallel dev:*",
