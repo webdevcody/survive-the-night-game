@@ -4,6 +4,7 @@ import Vector2 from "@/util/vector2";
 import PoolManager from "@shared/util/pool-manager";
 import { BufferWriter } from "@shared/util/buffer-serialization";
 import { encodeExtensionType } from "@shared/util/extension-type-encoding";
+import { encodeInteractableText } from "@shared/util/interactable-text-encoding";
 import { ExtensionBase } from "./extension-base";
 
 type InteractiveHandler = (entityId: number) => void;
@@ -53,7 +54,7 @@ export default class Interactive extends ExtensionBase<InteractiveFields> {
 
   public serializeToBuffer(writer: BufferWriter, onlyDirty: boolean = false): void {
     writer.writeUInt8(encodeExtensionType(Interactive.type));
-    writer.writeString(this.serialized.get('displayName'));
+    writer.writeUInt8(encodeInteractableText(this.serialized.get('displayName')));
     writer.writeVector2(this.offset);
   }
 }

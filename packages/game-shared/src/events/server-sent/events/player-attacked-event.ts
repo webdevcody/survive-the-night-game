@@ -3,6 +3,7 @@ import { GameEvent } from "@/events/types";
 import { WeaponKey } from "../../../util/inventory";
 import { Direction } from "../../../util/direction";
 import { BufferWriter, BufferReader } from "../../../util/buffer-serialization";
+import { itemTypeRegistry } from "../../../util/item-type-encoding";
 
 interface PlayerAttackedEventData {
   playerId: number;
@@ -48,7 +49,7 @@ export class PlayerAttackedEvent implements GameEvent<PlayerAttackedEventData> {
 
   static serializeToBuffer(writer: BufferWriter, data: PlayerAttackedEventData): void {
     writer.writeUInt16(data.playerId);
-    writer.writeString(data.weaponKey);
+    writer.writeUInt8(itemTypeRegistry.encode(data.weaponKey));
     writer.writeUInt8(data.attackDirection !== undefined ? 1 : 0);
     if (data.attackDirection !== undefined) {
       writer.writeUInt8(data.attackDirection);
@@ -57,7 +58,7 @@ export class PlayerAttackedEvent implements GameEvent<PlayerAttackedEventData> {
 
   static deserializeFromBuffer(reader: BufferReader): PlayerAttackedEventData {
     const playerId = reader.readUInt16();
-    const weaponKey = reader.readString() as WeaponKey;
+    const weaponKey = itemTypeRegistry.decode(reader.readUInt8()) as WeaponKey;
     const hasDirection = reader.readUInt8() === 1;
     const attackDirection = hasDirection ? reader.readUInt8() : undefined;
     return { playerId, weaponKey, attackDirection };

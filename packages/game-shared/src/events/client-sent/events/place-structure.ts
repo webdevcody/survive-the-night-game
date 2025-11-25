@@ -2,6 +2,7 @@ import { EventType, ClientSentEvents } from "../../events";
 import { GameEvent } from "../../types";
 import { ArrayBufferWriter, BufferReader } from "../../../util/buffer-serialization";
 import type { ItemType } from "../../../util/inventory";
+import { itemTypeRegistry } from "../../../util/item-type-encoding";
 
 export interface PlaceStructureEventData {
   itemType: ItemType;
@@ -33,17 +34,16 @@ export class PlaceStructureEvent implements GameEvent<PlaceStructureEventData> {
   }
 
   static serializeToBuffer(writer: ArrayBufferWriter, data: PlaceStructureEventData): void {
-    writer.writeString(String(data.itemType));
+    writer.writeUInt8(itemTypeRegistry.encode(String(data.itemType)));
     const position = data.position ?? { x: 0, y: 0 };
-    writer.writeFloat64(position.x ?? 0);
-    writer.writeFloat64(position.y ?? 0);
+    // Use Position2 (4 bytes) instead of 2x Float64 (16 bytes)
+    writer.writePosition2({ x: position.x ?? 0, y: position.y ?? 0 });
   }
 
   static deserializeFromBuffer(reader: BufferReader): PlaceStructureEventData {
-    const itemType = reader.readString() as ItemType;
-    const x = reader.readFloat64();
-    const y = reader.readFloat64();
-    return { itemType, position: { x, y } };
+    const itemType = itemTypeRegistry.decode(reader.readUInt8()) as ItemType;
+    const position = reader.readPosition2();
+    return { itemType, position: { x: position.x, y: position.y } };
   }
 }
 

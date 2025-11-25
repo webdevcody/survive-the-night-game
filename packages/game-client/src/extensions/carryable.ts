@@ -3,6 +3,8 @@ import { ClientExtensionSerialized } from "@/extensions/types";
 import { BaseClientExtension } from "./base-extension";
 import { ItemState } from "@shared/types/entity";
 import { BufferReader } from "@shared/util/buffer-serialization";
+import { itemTypeRegistry } from "@shared/util/item-type-encoding";
+import { readItemState } from "@shared/util/item-state-serialization";
 
 export class ClientCarryable extends BaseClientExtension {
   public static readonly type = ExtensionTypes.CARRYABLE;
@@ -18,10 +20,10 @@ export class ClientCarryable extends BaseClientExtension {
   }
 
   public deserializeFromBuffer(reader: BufferReader): this {
-    const itemType = reader.readString();
+    const itemType = itemTypeRegistry.decode(reader.readUInt8());
     this.itemKey = itemType; // Use itemType as itemKey
-    // Read ItemState record (values are numbers)
-    this.itemState = reader.readRecord(() => reader.readFloat64());
+    // Read ItemState using optimized format
+    this.itemState = readItemState(reader);
     this.state = this.itemState; // For compatibility
     return this;
   }

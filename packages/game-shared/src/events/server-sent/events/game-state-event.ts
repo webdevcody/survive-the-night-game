@@ -20,6 +20,7 @@ import {
 } from "../../../util/serialization-constants";
 import { entityTypeRegistry } from "../../../util/entity-type-encoding";
 import { decodeExtensionType } from "../../../util/extension-type-encoding";
+import { decodeWaveState } from "../../../util/wave-state-encoding";
 
 export interface EntityState extends RawEntity {
   id: number;
@@ -163,7 +164,7 @@ export class GameStateEvent implements GameEvent<GameStateData> {
             gameStateData.waveNumber = gameStateReader.readUInt8();
             break;
           case GAME_STATE_BIT_WAVE_STATE:
-            gameStateData.waveState = gameStateReader.readString() as WaveState;
+            gameStateData.waveState = decodeWaveState(gameStateReader.readUInt8());
             break;
           case GAME_STATE_BIT_PHASE_START_TIME:
             gameStateData.phaseStartTime = gameStateReader.readFloat64();

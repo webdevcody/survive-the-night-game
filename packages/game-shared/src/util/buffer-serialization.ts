@@ -733,6 +733,27 @@ export class ArrayBufferWriter {
     this.writeFloat64(value.y);
   }
 
+  /**
+   * Write a Position2 (2 Int16 values with 10x scaling)
+   * Range: -3000.0 to 3000.0 (scaled to -30000 to 30000)
+   * Precision: 0.1 units
+   * Size: 4 bytes (vs 16 bytes for Vector2)
+   */
+  writePosition2(value: { x: number; y: number }): void {
+    // Scale by 10: -3000.0 to 3000.0 becomes -30000 to 30000
+    // Clamp to int16 range: -32768 to 32767
+    const scale = 10;
+    const scaledX = Math.round(value.x * scale);
+    const scaledY = Math.round(value.y * scale);
+
+    // Clamp to int16 range
+    const clampedX = Math.max(-32768, Math.min(32767, scaledX));
+    const clampedY = Math.max(-32768, Math.min(32767, scaledY));
+
+    this.writeInt16(clampedX);
+    this.writeInt16(clampedY);
+  }
+
   writeNullable<T>(value: T | null | undefined, writer: (inner: T) => void): void {
     if (value === null || value === undefined) {
       this.writeBoolean(false);

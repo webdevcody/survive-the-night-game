@@ -10,6 +10,8 @@ import PoolManager from "@shared/util/pool-manager";
 import { getConfig } from "@/config";
 import { BufferWriter } from "@shared/util/buffer-serialization";
 import { encodeExtensionType } from "@shared/util/extension-type-encoding";
+import { itemTypeRegistry } from "@shared/util/item-type-encoding";
+import { writeItemState } from "@shared/util/item-state-serialization";
 
 /**
  * Item drop table with weighted chances.
@@ -275,19 +277,8 @@ export default class Inventory extends ExtensionBase<InventoryFields> {
         writer.writeBoolean(false);
       } else {
         writer.writeBoolean(true);
-        writer.writeString(item.itemType);
-        // Serialize ItemState
-        // Note: Client currently only supports reading Float64 values for state
-        writer.writeRecord((item.state || {}) as Record<string, unknown>, (value) => {
-          if (typeof value === "number") {
-            writer.writeFloat64(value);
-          } else {
-            console.warn(
-              `Inventory item state has non-number value: ${value}. Writing NaN to maintain protocol.`
-            );
-            writer.writeFloat64(NaN);
-          }
-        });
+        writer.writeUInt8(itemTypeRegistry.encode(item.itemType));
+        writeItemState(writer, item.state);
       }
     });
   }

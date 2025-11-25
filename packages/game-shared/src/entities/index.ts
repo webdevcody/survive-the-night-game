@@ -17,6 +17,7 @@ import { CHARACTER_CONFIGS } from "./character-configs";
 import { initializeEntities, Zombies } from "../constants";
 import { generateEntities } from "../constants/entity-generator";
 import { entityTypeRegistry } from "../util/entity-type-encoding";
+import { itemTypeRegistry } from "../util/item-type-encoding";
 
 // Export behavior configs for use by systems
 export * from "./behavior-configs";
@@ -72,6 +73,9 @@ initializeEntities(generatedEntities);
 
 // Initialize entity type registry for efficient serialization (1 byte per type)
 entityTypeRegistry.initialize();
+
+// Initialize item type registry for efficient serialization (1 byte per item/weapon/resource type)
+itemTypeRegistry.initialize();
 
 export * from "./zombie-registry";
 export * from "./zombie-configs";

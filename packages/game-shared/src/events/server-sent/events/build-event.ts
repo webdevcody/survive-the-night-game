@@ -1,6 +1,7 @@
 import { EventType, ServerSentEvents } from "../../events";
 import { GameEvent } from "@/events/types";
 import { BufferWriter, BufferReader } from "../../../util/buffer-serialization";
+import { encodeSoundType, decodeSoundType } from "../../../util/sound-type-encoding";
 
 export interface BuildEventData {
   playerId: number;
@@ -43,16 +44,16 @@ export class BuildEvent implements GameEvent<BuildEventData> {
 
   static serializeToBuffer(writer: BufferWriter, data: BuildEventData): void {
     writer.writeUInt16(data.playerId ?? 0);
-    writer.writeFloat64(data.position?.x ?? 0);
-    writer.writeFloat64(data.position?.y ?? 0);
-    writer.writeString(data.soundType ?? "");
+    // Use Position2 (4 bytes) instead of 2x Float64 (16 bytes)
+    const pos = data.position ?? { x: 0, y: 0 };
+    writer.writePosition2({ x: pos.x, y: pos.y } as any);
+    writer.writeUInt8(encodeSoundType(data.soundType ?? "build"));
   }
 
   static deserializeFromBuffer(reader: BufferReader): BuildEventData {
     const playerId = reader.readUInt16();
-    const x = reader.readFloat64();
-    const y = reader.readFloat64();
-    const soundType = reader.readString();
-    return { playerId, position: { x, y }, soundType };
+    const position = reader.readPosition2();
+    const soundType = decodeSoundType(reader.readUInt8());
+    return { playerId, position: { x: position.x, y: position.y }, soundType };
   }
 }

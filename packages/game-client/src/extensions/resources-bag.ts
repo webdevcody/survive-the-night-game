@@ -51,13 +51,12 @@ export class ClientResourcesBag extends BaseClientExtension {
   }
 
   public deserializeFromBuffer(reader: BufferReader): this {
-    this.coins = reader.readFloat64();
-    // Read resources record
-    const resources = reader.readRecord(() => reader.readFloat64());
+    // Coins as UInt32
+    this.coins = reader.readUInt32();
+    // Resources in fixed order: wood, cloth (UInt16 each)
     this.resources.clear();
-    for (const [key, value] of Object.entries(resources)) {
-      this.resources.set(key as ResourceType, value);
-    }
+    this.resources.set("wood", reader.readUInt16());
+    this.resources.set("cloth", reader.readUInt16());
     return this;
   }
 }

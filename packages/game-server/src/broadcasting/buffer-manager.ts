@@ -9,6 +9,7 @@ import {
   GAME_STATE_BIT_REMOVED_ENTITY_IDS,
   GAME_STATE_FIELD_BITS,
 } from "@shared/util/serialization-constants";
+import { encodeWaveState } from "@shared/util/wave-state-encoding";
 import { IEntity } from "@/entities/types";
 import { GameStateData } from "../../../game-shared/src/events/server-sent/events/game-state-event";
 
@@ -95,7 +96,7 @@ export class BufferManager {
             this.writer.writeUInt8(gameState.waveNumber!);
             break;
           case GAME_STATE_BIT_WAVE_STATE:
-            this.writer.writeString(gameState.waveState!);
+            this.writer.writeUInt8(encodeWaveState(gameState.waveState!));
             break;
           case GAME_STATE_BIT_PHASE_START_TIME:
             this.writer.writeFloat64(gameState.phaseStartTime!);

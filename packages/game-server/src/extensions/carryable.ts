@@ -6,6 +6,8 @@ import { IEntity } from "@/entities/types";
 import { ItemState } from "@/types/entity";
 import { BufferWriter } from "@shared/util/buffer-serialization";
 import { encodeExtensionType } from "@shared/util/extension-type-encoding";
+import { itemTypeRegistry } from "@shared/util/item-type-encoding";
+import { writeItemState } from "@shared/util/item-state-serialization";
 import { ExtensionBase } from "./extension-base";
 
 interface PickupOptions {
@@ -118,9 +120,7 @@ export default class Carryable extends ExtensionBase<CarryableFields> {
 
   public serializeToBuffer(writer: BufferWriter, onlyDirty: boolean = false): void {
     writer.writeUInt8(encodeExtensionType(Carryable.type));
-    writer.writeString(this.serialized.get("itemType"));
-    writer.writeRecord(this.serialized.get("state") as Record<string, unknown>, (value) =>
-      writer.writeFloat64(value as number)
-    );
+    writer.writeUInt8(itemTypeRegistry.encode(this.serialized.get("itemType")));
+    writeItemState(writer, this.serialized.get("state"));
   }
 }

@@ -4,6 +4,8 @@ import { ClientExtensionSerialized } from "@/extensions/types";
 import { BaseClientExtension } from "./base-extension";
 import { BufferReader } from "@shared/util/buffer-serialization";
 import { playerConfig } from "@shared/config";
+import { itemTypeRegistry } from "@shared/util/item-type-encoding";
+import { readItemState } from "@shared/util/item-state-serialization";
 
 export class ClientInventory extends BaseClientExtension {
   public static readonly type = ExtensionTypes.INVENTORY;
@@ -43,9 +45,9 @@ export class ClientInventory extends BaseClientExtension {
       if (!reader.readBoolean()) {
         return null as any;
       }
-      const itemType = reader.readString();
-      // Read ItemState record (values are numbers)
-      const state = reader.readRecord(() => reader.readFloat64());
+      const itemType = itemTypeRegistry.decode(reader.readUInt8());
+      // Read ItemState using optimized format
+      const state = readItemState(reader);
       return { itemType, state };
     });
     return this;

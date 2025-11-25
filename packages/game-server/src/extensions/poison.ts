@@ -53,8 +53,9 @@ export default class Poison extends ExtensionBase<PoisonFields> {
 
   public serializeToBuffer(writer: BufferWriter, onlyDirty: boolean = false): void {
     writer.writeUInt8(encodeExtensionType(Poison.type));
-    writer.writeFloat64(this.serialized.get("maxDamage"));
-    writer.writeFloat64(this.serialized.get("totalDamage"));
+    // maxDamage and totalDamage are small integers (typically 0-255)
+    writer.writeUInt8(Math.min(255, Math.max(0, this.serialized.get("maxDamage"))));
+    writer.writeUInt8(Math.min(255, Math.max(0, this.serialized.get("totalDamage"))));
   }
 }
 

@@ -2,9 +2,8 @@ import { IEntity } from "@/entities/types";
 import { Extension } from "@/extensions/types";
 import { BufferWriter } from "@shared/util/buffer-serialization";
 import { encodeExtensionType } from "@shared/util/extension-type-encoding";
+import { encodeGroup, Group } from "@shared/util/group-encoding";
 import { ExtensionBase } from "./extension-base";
-
-export type Group = "friendly" | "enemy";
 
 type GroupableFields = {
   group: Group;
@@ -27,6 +26,6 @@ export default class Groupable extends ExtensionBase<GroupableFields> {
 
   public serializeToBuffer(writer: BufferWriter, onlyDirty: boolean = false): void {
     writer.writeUInt8(encodeExtensionType(Groupable.type));
-    writer.writeString(this.serialized.get("group"));
+    writer.writeUInt8(encodeGroup(this.serialized.get("group")));
   }
 }

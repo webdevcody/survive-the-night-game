@@ -2,6 +2,7 @@ import { EventType, ServerSentEvents } from "../../events";
 import { GameEvent } from "@/events/types";
 import { ResourceType } from "@/util/inventory";
 import { BufferWriter, BufferReader } from "../../../util/buffer-serialization";
+import { itemTypeRegistry } from "../../../util/item-type-encoding";
 
 interface PlayerPickedUpResourceEventData {
   playerId: number;
@@ -40,7 +41,7 @@ export class PlayerPickedUpResourceEvent implements GameEvent<PlayerPickedUpReso
 
   static serializeToBuffer(writer: BufferWriter, data: PlayerPickedUpResourceEventData): void {
     writer.writeUInt16(data.playerId ?? 0);
-    writer.writeString(data.resourceType ?? "");
+    writer.writeUInt8(itemTypeRegistry.encode(data.resourceType ?? ""));
     writer.writeUInt32((data as any).amount ?? 0);
   }
 
@@ -48,7 +49,7 @@ export class PlayerPickedUpResourceEvent implements GameEvent<PlayerPickedUpReso
     reader: BufferReader
   ): PlayerPickedUpResourceEventData & { amount: number } {
     const playerId = reader.readUInt16();
-    const resourceType = reader.readString() as ResourceType;
+    const resourceType = itemTypeRegistry.decode(reader.readUInt8()) as ResourceType;
     const amount = reader.readUInt32();
     return { playerId, resourceType, amount };
   }

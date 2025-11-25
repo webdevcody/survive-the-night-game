@@ -32,8 +32,9 @@ export class ClientPoison extends BaseClientExtension {
   }
 
   public deserializeFromBuffer(reader: BufferReader): this {
-    this.maxDamage = reader.readFloat64();
-    this.totalDamage = reader.readFloat64();
+    // maxDamage and totalDamage are UInt8 (0-255)
+    this.maxDamage = reader.readUInt8();
+    this.totalDamage = reader.readUInt8();
     return this;
   }
 }

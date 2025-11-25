@@ -129,9 +129,11 @@ export default class ResourcesBag extends ExtensionBase<ResourcesBagFields> {
 
   public serializeToBuffer(writer: BufferWriter, onlyDirty: boolean = false): void {
     writer.writeUInt8(encodeExtensionType(ResourcesBag.type));
-    writer.writeFloat64(this.serialized.get("coins"));
-    writer.writeRecord(this.serialized.get("resources"), (value) =>
-      writer.writeFloat64(value as number)
-    );
+    // Coins as UInt32 (0-4294967295, plenty for coins)
+    writer.writeUInt32(Math.min(4294967295, Math.max(0, this.serialized.get("coins"))));
+    // Resources in fixed order: wood, cloth (UInt16 each, 0-65535)
+    const resources = this.serialized.get("resources");
+    writer.writeUInt16(Math.min(65535, Math.max(0, resources["wood"] || 0)));
+    writer.writeUInt16(Math.min(65535, Math.max(0, resources["cloth"] || 0)));
   }
 }
