@@ -1,8 +1,7 @@
 import { Player } from "@/entities/players/player";
-import { ServerSentEvents, ClientSentEvents } from "@shared/events/events";
+import { ClientSentEvents } from "@shared/events/events";
 import { GameEvent } from "@shared/events/types";
 import Positionable from "@/extensions/positionable";
-import Inventory from "@/extensions/inventory";
 import { GameServer } from "@/core/server";
 import PoolManager from "@shared/util/pool-manager";
 import { createServer } from "http";
@@ -11,6 +10,7 @@ import { MapManager } from "@/world/map-manager";
 import { Broadcaster, IEntityManager, IGameManagers } from "@/managers/types";
 import { getConfig } from "@shared/config";
 import { createCommandRegistry, CommandRegistry } from "@/commands";
+import { PlayerColor } from "@shared/commands/commands";
 import {
   RegExpMatcher,
   TextCensor,
@@ -25,11 +25,10 @@ import { BufferManager } from "@/broadcasting/buffer-manager";
 import { Broadcaster as BroadcastingBroadcaster } from "@/broadcasting/broadcaster";
 import { PlayerJoinedEvent } from "../../../game-shared/src/events/server-sent/events/player-joined-event";
 import { VersionMismatchEvent } from "../../../game-shared/src/events/server-sent/events/version-mismatch-event";
-import { UserBannedEvent } from "../../../game-shared/src/events/server-sent/events/user-banned-event";
-import { HandlerContext, onDisconnect, onConnection } from "@/events/handlers";
+import { YourIdEvent } from "../../../game-shared/src/events/server-sent/events/your-id-event";
+import { HandlerContext, onConnection, sendFullState } from "@/events/handlers";
 import { socketEventHandlers } from "@/events/handlers/registry";
 import { serializeServerEvent } from "@shared/events/server-sent/server-event-serialization";
-import { RateLimiter } from "./rate-limiter";
 
 /**
  * Any and all functionality related to sending server side events
@@ -39,6 +38,7 @@ export class ServerSocketManager implements Broadcaster {
   private io: IServerAdapter;
   private players: Map<string, Player> = new Map();
   private playerDisplayNames: Map<string, string> = new Map();
+  private playerColors: Map<string, PlayerColor> = new Map();
   private port: number;
   private httpServer: any;
   private entityManager?: IEntityManager;
@@ -52,17 +52,10 @@ export class ServerSocketManager implements Broadcaster {
   private tickPerformanceTracker: TickPerformanceTracker | null = null;
   private bufferManager: BufferManager;
   private broadcaster: BroadcastingBroadcaster;
-  private rateLimiter: RateLimiter;
 
   constructor(port: number, gameServer: GameServer) {
     this.port = port;
     this.bufferManager = new BufferManager();
-    this.rateLimiter = new RateLimiter();
-
-    // Clean up old connection attempts every 5 minutes
-    setInterval(() => {
-      this.rateLimiter.cleanup();
-    }, 5 * 60 * 1000);
 
     const implementation = getConfig().network.WEBSOCKET_IMPLEMENTATION;
 
@@ -114,58 +107,11 @@ export class ServerSocketManager implements Broadcaster {
     this.io.on("connection", (socket: ISocketAdapter) => {
       const { displayName, version } = socket.handshake.query;
 
-      // Get display name for rate limiting
       const rawDisplayName = displayName
         ? Array.isArray(displayName)
           ? displayName[0]
           : displayName
         : "Unknown";
-
-      // Check if user is banned
-      if (this.rateLimiter.isBanned(rawDisplayName)) {
-        const banExpiration = this.rateLimiter.getBanExpiration(rawDisplayName);
-        const remainingMinutes = banExpiration
-          ? Math.ceil((banExpiration - Date.now()) / (60 * 1000))
-          : 0;
-        console.warn(
-          `User ${rawDisplayName} (socket ${socket.id}) is banned. Disconnecting. Ban expires in ${remainingMinutes} minutes.`
-        );
-        // Send banned event before disconnecting
-        const bannedEvent = new UserBannedEvent({
-          banExpirationTime: banExpiration || Date.now(),
-          reason: "You have been banned for connecting too frequently.",
-        });
-        this.sendEventToSocket(socket, bannedEvent);
-        // Give a small delay to ensure the event is sent before disconnecting
-        setTimeout(() => {
-          socket.disconnect();
-        }, 100);
-        return;
-      }
-
-      // Record connection attempt and check if it triggers a ban
-      const shouldBan = this.rateLimiter.recordConnectionAttempt(rawDisplayName);
-      if (shouldBan) {
-        const banExpiration = this.rateLimiter.getBanExpiration(rawDisplayName);
-        const remainingMinutes = banExpiration
-          ? Math.ceil((banExpiration - Date.now()) / (60 * 1000))
-          : 0;
-        console.warn(
-          `User ${rawDisplayName} (socket ${socket.id}) exceeded connection limit. Banned (${remainingMinutes} minutes remaining). Disconnecting.`
-        );
-        // Send banned event before disconnecting
-        const bannedEvent = new UserBannedEvent({
-          banExpirationTime: banExpiration || Date.now(),
-          reason:
-            "You have been banned for connecting too frequently. Please wait before trying again.",
-        });
-        this.sendEventToSocket(socket, bannedEvent);
-        // Give a small delay to ensure the event is sent before disconnecting
-        setTimeout(() => {
-          socket.disconnect();
-        }, 100);
-        return;
-      }
 
       // Check version compatibility
       const clientVersion = Array.isArray(version) ? version[0] : version;
@@ -202,6 +148,7 @@ export class ServerSocketManager implements Broadcaster {
     return {
       players: this.players,
       playerDisplayNames: this.playerDisplayNames,
+      playerColors: this.playerColors,
       gameServer: this.gameServer,
       bufferManager: this.bufferManager,
       chatCommandRegistry: this.chatCommandRegistry,
@@ -216,8 +163,6 @@ export class ServerSocketManager implements Broadcaster {
         this.sendEventToSocket(socket, event),
       sanitizeText: (text: string) => this.sanitizeText(text),
       createPlayerForSocket: (socket: ISocketAdapter) => this.createPlayerForSocket(socket),
-      sendInitialDataToSocket: (socket: ISocketAdapter, player: Player) =>
-        this.sendInitialDataToSocket(socket, player),
       broadcastPlayerJoined: (player: Player) => this.broadcastPlayerJoined(player),
     };
   }
@@ -296,6 +241,12 @@ export class ServerSocketManager implements Broadcaster {
     const player = new Player(this.getGameManagers());
     player.setDisplayName(this.playerDisplayNames.get(socket.id) ?? "Unknown");
 
+    // Apply saved player color if one exists for this socket
+    const savedColor = this.playerColors.get(socket.id);
+    if (savedColor) {
+      player.setPlayerColor(savedColor);
+    }
+
     const spawnPosition = this.getMapManager().getRandomGrassPosition();
     if (spawnPosition) {
       player.getExt(Positionable).setPosition(spawnPosition);
@@ -313,11 +264,6 @@ export class ServerSocketManager implements Broadcaster {
     return player;
   }
 
-  private sendInitialDataToSocket(socket: ISocketAdapter, player: Player): void {
-    const mapData = this.getMapManager().getMapData();
-    this.broadcaster.sendInitialDataToSocket(socket, player.getId(), mapData);
-  }
-
   private broadcastPlayerJoined(player: Player): void {
     this.broadcastEvent(
       new PlayerJoinedEvent({ playerId: player.getId(), displayName: player.getDisplayName() })
@@ -332,11 +278,39 @@ export class ServerSocketManager implements Broadcaster {
     const sockets = Array.from(this.io.sockets.sockets.values());
 
     // Create new players for each connected socket
+    // Note: YOUR_ID is NOT sent here - it must be sent AFTER GAME_STARTED
+    // so clients receive it after they reset their state
     sockets.forEach((socket) => {
-      const player = this.createPlayerForSocket(socket);
-      this.sendInitialDataToSocket(socket, player);
-      this.broadcastPlayerJoined(player);
+      this.createPlayerForSocket(socket);
     });
+  }
+
+  /**
+   * Send initialization data (YOUR_ID + full state) to all connected sockets.
+   * Call this AFTER broadcasting GAME_STARTED so clients receive it after resetting their state.
+   */
+  public sendInitializationToAllSockets(): void {
+    const sockets = Array.from(this.io.sockets.sockets.values());
+    const context = this.getHandlerContext();
+
+    sockets.forEach((socket) => {
+      const player = this.players.get(socket.id);
+      if (player) {
+        // Send YOUR_ID first so client knows their entity ID
+        const yourIdEvent = new YourIdEvent(player.getId());
+        this.sendEventToSocket(socket, yourIdEvent);
+
+        // Then send full state with all entities and map data
+        this.sendFullStateToSocket(context, socket);
+      }
+    });
+  }
+
+  /**
+   * Send full game state to a specific socket
+   */
+  private sendFullStateToSocket(context: HandlerContext, socket: ISocketAdapter): void {
+    sendFullState(context, socket);
   }
 
   public listen(): void {
@@ -366,7 +340,14 @@ export class ServerSocketManager implements Broadcaster {
           : ClientSentEvents[handlerRegistration.event as keyof typeof ClientSentEvents];
 
       socket.on(eventName, (payload: any) => {
-        handlerRegistration.handler(context, socket, payload);
+        try {
+          handlerRegistration.handler(context, socket, payload);
+        } catch (error) {
+          console.error(
+            `Error handling event ${handlerRegistration.event} from socket ${socket.id}:`,
+            error
+          );
+        }
       });
     }
   }

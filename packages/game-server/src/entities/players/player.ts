@@ -38,10 +38,10 @@ import { Weapon } from "../weapons/weapon";
 import InfiniteRun from "@/extensions/infinite-run";
 
 export class Player extends Entity {
-  private static readonly PLAYER_WIDTH = 16;
-  private static readonly INTERACT_COOLDOWN = 0.25;
-  private static readonly PICKUP_HOLD_DURATION = 0.5; // 1 second in seconds
-  private static readonly RESPAWN_COOLDOWN_MS = 5000; // 5 seconds
+  private static readonly PLAYER_WIDTH = getConfig().world.TILE_SIZE;
+  private static readonly INTERACT_COOLDOWN = getConfig().entity.PLAYER_INTERACT_COOLDOWN;
+  private static readonly PICKUP_HOLD_DURATION = getConfig().entity.PLAYER_PICKUP_HOLD_DURATION;
+  private static readonly RESPAWN_COOLDOWN_MS = getConfig().entity.PLAYER_RESPAWN_COOLDOWN_MS;
 
   // Internal state
   private fireCooldown = new Cooldown(0.4, true);
@@ -114,7 +114,7 @@ export class Player extends Entity {
     );
     this.addExtension(new Updatable(this, this.updatePlayer.bind(this)));
     this.addExtension(new Movable(this));
-    this.addExtension(new Illuminated(this, 200));
+    this.addExtension(new Illuminated(this, getConfig().world.LIGHT_RADIUS_PLAYER));
     this.addExtension(new Groupable(this, "friendly"));
 
     const inventory = this.getExt(Inventory);

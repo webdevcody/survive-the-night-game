@@ -10,14 +10,15 @@ import Updatable from "@/extensions/updatable";
 import Destructible from "@/extensions/destructible";
 import Groupable from "@/extensions/groupable";
 import { Extension } from "@/extensions/types";
+import { getConfig } from "@shared/config";
 
 export class AcidProjectile extends Entity {
-  private static readonly PROJECTILE_SPEED = 100;
+  private static readonly PROJECTILE_SPEED = getConfig().combat.PROJECTILE_SPEED_SLOW;
   private static get PROJECTILE_SIZE(): Vector2 {
     return PoolManager.getInstance().vector2.claim(8, 8);
   }
   private static readonly PROJECTILE_DAMAGE = 1;
-  private static readonly MAX_DISTANCE = 200;
+  private static readonly MAX_DISTANCE = getConfig().combat.TRAVEL_DISTANCE_MEDIUM;
   private readonly startPosition: Vector2;
 
   constructor(gameManagers: IGameManagers, startPosition: Vector2, targetPosition: Vector2) {

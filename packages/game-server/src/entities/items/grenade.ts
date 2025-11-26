@@ -14,13 +14,14 @@ import Carryable from "@/extensions/carryable";
 import Interactive from "@/extensions/interactive";
 import { ItemState } from "@/types/entity";
 import Groupable from "@/extensions/groupable";
+import { getConfig } from "@shared/config";
 
 export class Grenade extends Weapon {
-  private static readonly EXPLOSION_RADIUS = 64;
-  private static readonly EXPLOSION_DAMAGE = 5;
-  private static readonly THROW_SPEED = 130;
-  private static readonly EXPLOSION_DELAY = 1;
-  private static readonly COOLDOWN = 0.5;
+  private static readonly EXPLOSION_RADIUS = getConfig().combat.EXPLOSION_RADIUS_MEDIUM;
+  private static readonly EXPLOSION_DAMAGE = getConfig().combat.EXPLOSION_DAMAGE_STANDARD;
+  private static readonly THROW_SPEED = getConfig().combat.THROW_SPEED;
+  private static readonly EXPLOSION_DELAY = getConfig().combat.EXPLOSION_DELAY;
+  private static readonly COOLDOWN = getConfig().combat.THROWABLE_COOLDOWN;
   public static readonly DEFAULT_COUNT = 1;
 
   private velocity: Vector2 = PoolManager.getInstance().vector2.claim(0, 0);

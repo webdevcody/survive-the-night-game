@@ -456,33 +456,6 @@ export class PlayerClient extends ClientEntity implements IClientEntity, Rendera
     return 0;
   }
 
-  public deserializeProperty(key: string, value: any): void {
-    if (key === "extensions" && Array.isArray(value)) {
-      super.deserializeProperty(key, value);
-      return;
-    }
-
-    // Reconstruct input object from individual input fields
-    if (key.startsWith("input")) {
-      const previousInputInventoryItem = (this as any).inputInventoryItem;
-      super.deserializeProperty(key, value);
-      // Reconstruct input object whenever any input field changes
-      this.reconstructInputObject();
-
-      // If inputInventoryItem changed, notify that it needs syncing
-      // The actual sync will be handled by the game client when it processes the update
-      if (key === "inputInventoryItem" && value !== previousInputInventoryItem) {
-        // Store a flag that this needs syncing - the game client will handle it
-        (this as any)._inventorySlotNeedsSync = true;
-        (this as any)._serverInventorySlot = value;
-      }
-
-      return;
-    }
-
-    super.deserializeProperty(key, value);
-  }
-
   public getActiveItem(): InventoryItem | null {
     // Get inputInventoryItem from server (1-indexed: 1-10)
     // If not set, return null instead of defaulting to slot 1
@@ -525,35 +498,6 @@ export class PlayerClient extends ClientEntity implements IClientEntity, Rendera
     if (previousFacing !== undefined) {
       this.input.facing = previousFacing;
     }
-  }
-
-  deserialize(data: RawEntity): void {
-    super.deserialize(data);
-    this.isCrafting = data.isCrafting;
-
-    // Reconstruct input object from individual fields (if they exist in data)
-    // This handles the old JSON format for backward compatibility
-    if (data.input && typeof data.input === "object") {
-      const previousFacing = this.input?.facing;
-      this.input = data.input;
-      if (previousFacing !== undefined) {
-        this.input.facing = previousFacing;
-      }
-    } else {
-      // Reconstruct from individual fields
-      this.reconstructInputObject();
-    }
-
-    this.skin = data.skin || SKIN_TYPES.DEFAULT;
-    this.playerColor = data.playerColor || PLAYER_COLORS.NONE;
-    this.kills = data.kills || 0;
-    this.ping = data.ping || 0;
-    this.displayName = data.displayName || "Unknown";
-    this.stamina = data.stamina ?? 100;
-    this.maxStamina = data.maxStamina ?? 100;
-    // pickupProgress is client-only, initialized to 0
-    this.pickupProgress = 0;
-    this.deathTime = data.deathTime ?? 0;
   }
 
   getDeathTime(): number {

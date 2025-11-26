@@ -14,6 +14,50 @@ import { EntityType } from "@shared/types/entity";
 import Vector2 from "@/util/vector2";
 
 /**
+ * Validate place structure data
+ */
+function validatePlaceStructureData(
+  data: unknown
+): { itemType: ItemType; position: { x: number; y: number } } | null {
+  if (typeof data !== "object" || data === null) {
+    return null;
+  }
+
+  const obj = data as Record<string, unknown>;
+
+  // Validate itemType - must be a string
+  const itemType = obj.itemType;
+  if (typeof itemType !== "string") {
+    return null;
+  }
+
+  // Validate position object
+  const position = obj.position;
+  if (typeof position !== "object" || position === null) {
+    return null;
+  }
+
+  const posObj = position as Record<string, unknown>;
+
+  // Validate position.x - must be a finite number
+  const x = posObj.x;
+  if (typeof x !== "number" || !Number.isFinite(x)) {
+    return null;
+  }
+
+  // Validate position.y - must be a finite number
+  const y = posObj.y;
+  if (typeof y !== "number" || !Number.isFinite(y)) {
+    return null;
+  }
+
+  return {
+    itemType: itemType as ItemType,
+    position: { x, y },
+  };
+}
+
+/**
  * Check if placing an item on an existing entity should trigger an upgrade.
  * Returns the upgrade target item type if an upgrade is possible, null otherwise.
  */
@@ -263,5 +307,12 @@ export const placeStructureHandler: SocketEventHandler<{
   position: { x: number; y: number };
 }> = {
   event: "PLACE_STRUCTURE",
-  handler: onPlaceStructure,
+  handler: (context, socket, data) => {
+    const validated = validatePlaceStructureData(data);
+    if (!validated) {
+      console.warn(`Invalid place structure data from socket ${socket.id}`);
+      return;
+    }
+    onPlaceStructure(context, socket, validated);
+  },
 };

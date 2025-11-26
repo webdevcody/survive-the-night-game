@@ -1,7 +1,6 @@
 import { ExtensionTypes } from "../../../game-shared/src/util/extension-types";
 import Vector2 from "@shared/util/vector2";
 import PoolManager from "@shared/util/pool-manager";
-import { ClientExtensionSerialized } from "@/extensions/types";
 import { BaseClientExtension } from "./base-extension";
 import { BufferReader } from "@shared/util/buffer-serialization";
 
@@ -16,15 +15,6 @@ export class ClientMovable extends BaseClientExtension {
 
   public setVelocity(velocity: Vector2): void {
     this.velocity.reset(velocity.x, velocity.y);
-  }
-
-  public deserialize(data: ClientExtensionSerialized): this {
-    if (data.velocity) {
-      const vx = data.velocity.x || 0;
-      const vy = data.velocity.y || 0;
-      this.velocity.reset(vx, vy);
-    }
-    return this;
   }
 
   public deserializeFromBuffer(reader: BufferReader): this {

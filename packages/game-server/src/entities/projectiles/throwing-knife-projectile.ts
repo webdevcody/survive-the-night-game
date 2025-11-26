@@ -19,11 +19,11 @@ import { Car } from "@/entities/environment/car";
 import PoolManager from "@shared/util/pool-manager";
 import { Entities } from "@/constants";
 
-const MAX_TRAVEL_DISTANCE = 100;
+const MAX_TRAVEL_DISTANCE = getConfig().combat.TRAVEL_DISTANCE_SHORT;
 
 export class ThrowingKnifeProjectile extends Entity {
   private traveledDistance: number = 0;
-  private static readonly KNIFE_SPEED = 200; // Same speed as arrows
+  private static readonly KNIFE_SPEED = getConfig().combat.PROJECTILE_SPEED_STANDARD;
   private lastPosition: Vector2;
   private shooterId: number = 0;
 
@@ -133,7 +133,8 @@ export class ThrowingKnifeProjectile extends Entity {
     const currentPosition = this.getPosition();
 
     // Break down the movement into smaller steps to prevent tunneling
-    const numSteps = Math.ceil((ThrowingKnifeProjectile.KNIFE_SPEED * deltaTime) / 10); // One step per 10 units of movement
+    const stepSize = getConfig().combat.PROJECTILE_STEP_SIZE;
+    const numSteps = Math.ceil((ThrowingKnifeProjectile.KNIFE_SPEED * deltaTime) / stepSize);
     const stepDelta = deltaTime / numSteps;
 
     let lastStepPosition = currentPosition;

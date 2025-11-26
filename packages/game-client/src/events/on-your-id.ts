@@ -2,8 +2,8 @@ import { YourIdEvent } from "../../../game-shared/src/events/server-sent/events/
 import { InitializationContext } from "./types";
 
 export const onYourId = (context: InitializationContext, yourIdEvent: YourIdEvent) => {
+  console.log("Received your ID", yourIdEvent.getPlayerId());
   context.gameState.playerId = yourIdEvent.getPlayerId();
   context.setHasReceivedPlayerId(true);
-  context.processPendingFullStateIfReady();
   context.checkInitialization();
 };

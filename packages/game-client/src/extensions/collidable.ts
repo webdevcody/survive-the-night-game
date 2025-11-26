@@ -1,7 +1,5 @@
-import { Rectangle } from "@shared/util/shape";
 import { ExtensionTypes } from "../../../game-shared/src/util/extension-types";
 import { Hitbox } from "../../../game-shared/src/util/hitbox";
-import { ClientExtensionSerialized } from "@/extensions/types";
 import { ClientPositionable } from "./positionable";
 import Vector2 from "@shared/util/vector2";
 import PoolManager from "@shared/util/pool-manager";
@@ -37,15 +35,6 @@ export class ClientCollidable extends BaseClientExtension {
       width: this.size.x,
       height: this.size.y,
     };
-  }
-
-  public deserialize(data: ClientExtensionSerialized): this {
-    this.offset.reset(data.offset.x, data.offset.y);
-    this.size.reset(data.size.x, data.size.y);
-    if (data.enabled !== undefined) {
-      this.enabled = data.enabled;
-    }
-    return this;
   }
 
   public deserializeFromBuffer(reader: BufferReader): this {

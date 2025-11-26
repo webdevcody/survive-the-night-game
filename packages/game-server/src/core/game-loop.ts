@@ -139,7 +139,12 @@ export class GameLoop {
     this.socketManager.recreatePlayersForConnectedSockets();
 
     // Broadcast game started event
+    // This tells clients to reset their state and wait for initialization
     this.socketManager.broadcastEvent(new GameStartedEvent());
+
+    // Send initialization data (YOUR_ID + full state) to all sockets
+    // This MUST happen AFTER GAME_STARTED so clients receive it after resetting
+    this.socketManager.sendInitializationToAllSockets();
   }
 
   public setIsGameOver(isGameOver: boolean): void {

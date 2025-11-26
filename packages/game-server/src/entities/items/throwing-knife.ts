@@ -10,9 +10,10 @@ import Carryable from "@/extensions/carryable";
 import Interactive from "@/extensions/interactive";
 import { ItemState } from "@/types/entity";
 import { ThrowingKnifeProjectile } from "@/entities/projectiles/throwing-knife-projectile";
+import { getConfig } from "@shared/config";
 
 export class ThrowingKnife extends Weapon {
-  private static readonly COOLDOWN = 0.3;
+  private static readonly COOLDOWN = getConfig().combat.THROWING_KNIFE_COOLDOWN;
   public static readonly DEFAULT_COUNT = 5;
 
   constructor(gameManagers: IGameManagers, itemState?: ItemState) {

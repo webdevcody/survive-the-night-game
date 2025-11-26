@@ -2,6 +2,7 @@ import { Entity } from "@/entities/entity";
 import { EntityType } from "@/types/entity";
 import Vector2 from "@/util/vector2";
 import { SpatialGrid as SpatialGridUtil } from "@/util/spatial-grid";
+import { getConfig } from "@shared/config";
 
 export class EntityFinder {
   private grid: SpatialGridUtil;
@@ -26,7 +27,7 @@ export class EntityFinder {
     this.grid.updateEntity(entity);
   }
 
-  getNearbyEntities(position: Vector2, radius: number = 16, filterSet?: Set<EntityType>): Entity[] {
+  getNearbyEntities(position: Vector2, radius: number = getConfig().world.TILE_SIZE, filterSet?: Set<EntityType>): Entity[] {
     return this.grid.getNearbyEntities(position, radius, filterSet);
   }
 }

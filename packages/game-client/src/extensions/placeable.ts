@@ -1,4 +1,3 @@
-import { ClientExtensionSerialized } from "@/extensions/types";
 import { BaseClientExtension } from "./base-extension";
 import { ExtensionTypes } from "@shared/util/extension-types";
 import { BufferReader } from "@shared/util/buffer-serialization";
@@ -12,10 +11,6 @@ import { BufferReader } from "@shared/util/buffer-serialization";
  */
 export class ClientPlaceable extends BaseClientExtension {
   public static readonly type = ExtensionTypes.PLACEABLE;
-
-  public deserialize(data: ClientExtensionSerialized): this {
-    return this;
-  }
 
   public deserializeFromBuffer(reader: BufferReader): this {
     // Placeable extension has no fields

@@ -1,6 +1,7 @@
-import { EventType, ServerSentEvents } from "../../events";
-import { GameEvent } from "@/events/types";
-
+/**
+ * Map data structure used in full game state updates.
+ * Map data is now sent as part of the GAME_STATE_UPDATE event rather than a separate MAP event.
+ */
 export interface MapData {
   ground: number[][];
   collidables: number[][];
@@ -13,26 +14,4 @@ export interface MapData {
     shed?: { x: number; y: number };
     merchants?: Array<{ x: number; y: number }>;
   };
-}
-
-export class MapEvent implements GameEvent<MapData> {
-  private readonly type: EventType;
-  private readonly mapData: MapData;
-
-  constructor(mapData: MapData) {
-    this.type = ServerSentEvents.MAP;
-    this.mapData = mapData;
-  }
-
-  getType(): EventType {
-    return this.type;
-  }
-
-  getMapData(): MapData {
-    return this.mapData;
-  }
-
-  serialize(): MapData {
-    return this.mapData;
-  }
 }

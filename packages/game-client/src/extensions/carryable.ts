@@ -1,5 +1,4 @@
 import { ExtensionTypes } from "../../../game-shared/src/util/extension-types";
-import { ClientExtensionSerialized } from "@/extensions/types";
 import { BaseClientExtension } from "./base-extension";
 import { ItemState } from "@shared/types/entity";
 import { BufferReader } from "@shared/util/buffer-serialization";
@@ -11,13 +10,6 @@ export class ClientCarryable extends BaseClientExtension {
   private state: any = {};
   private itemState: ItemState = {};
   private itemKey: string = "";
-
-  public deserialize(data: ClientExtensionSerialized): this {
-    this.state = data.state;
-    this.itemState = data.itemState;
-    this.itemKey = data.itemKey;
-    return this;
-  }
 
   public deserializeFromBuffer(reader: BufferReader): this {
     const itemType = itemTypeRegistry.decode(reader.readUInt8());

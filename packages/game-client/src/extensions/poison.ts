@@ -1,5 +1,4 @@
 import { ExtensionTypes } from "../../../game-shared/src/util/extension-types";
-import { ClientExtensionSerialized } from "@/extensions/types";
 import { BaseClientExtension } from "./base-extension";
 import { ClientEntity } from "@/entities/client-entity";
 import { BufferReader } from "@shared/util/buffer-serialization";
@@ -15,20 +14,6 @@ export class ClientPoison extends BaseClientExtension {
 
   public constructor(clientEntity: ClientEntity) {
     super(clientEntity);
-  }
-
-  public serialize(): ClientExtensionSerialized {
-    return {
-      type: ClientPoison.type,
-      maxDamage: this.maxDamage,
-      totalDamage: this.totalDamage,
-    };
-  }
-
-  public deserialize(data: ClientExtensionSerialized): this {
-    this.maxDamage = data.maxDamage ?? 0;
-    this.totalDamage = data.totalDamage ?? 0;
-    return this;
   }
 
   public deserializeFromBuffer(reader: BufferReader): this {

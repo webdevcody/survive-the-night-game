@@ -17,10 +17,10 @@ import { Player } from "@/entities/players/player";
 import { ArrowAmmo } from "../items/arrow-ammo";
 import PoolManager from "@shared/util/pool-manager";
 
-const MAX_TRAVEL_DISTANCE = 100;
+const MAX_TRAVEL_DISTANCE = getConfig().combat.TRAVEL_DISTANCE_SHORT;
 export class Arrow extends Entity {
   private traveledDistance: number = 0;
-  private static readonly ARROW_SPEED = 200; // Slower than bullets
+  private static readonly ARROW_SPEED = getConfig().combat.PROJECTILE_SPEED_STANDARD;
   private lastPosition: Vector2;
   private shooterId: number = 0;
 
@@ -114,7 +114,8 @@ export class Arrow extends Entity {
     const currentPosition = this.getPosition();
 
     // Break down the movement into smaller steps to prevent tunneling
-    const numSteps = Math.ceil((Arrow.ARROW_SPEED * deltaTime) / 10); // One step per 10 units of movement
+    const stepSize = getConfig().combat.PROJECTILE_STEP_SIZE;
+    const numSteps = Math.ceil((Arrow.ARROW_SPEED * deltaTime) / stepSize);
     const stepDelta = deltaTime / numSteps;
 
     let lastStepPosition = currentPosition;

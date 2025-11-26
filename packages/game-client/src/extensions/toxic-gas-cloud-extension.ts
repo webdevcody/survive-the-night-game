@@ -1,5 +1,4 @@
 import { ExtensionTypes } from "../../../game-shared/src/util/extension-types";
-import { ClientExtensionSerialized } from "@/extensions/types";
 import { BaseClientExtension } from "./base-extension";
 import { ClientEntity } from "@/entities/client-entity";
 import { BufferReader } from "@shared/util/buffer-serialization";
@@ -18,26 +17,6 @@ export class ClientToxicGasCloudExtension extends BaseClientExtension {
 
   public constructor(clientEntity: ClientEntity) {
     super(clientEntity);
-  }
-
-  public serialize(): ClientExtensionSerialized {
-    return {
-      type: ClientToxicGasCloudExtension.type,
-      age: this.age,
-      canReproduce: this.canReproduce,
-      primaryDirectionX: this.primaryDirectionX,
-      primaryDirectionY: this.primaryDirectionY,
-      isOriginalCloud: this.isOriginalCloud,
-    };
-  }
-
-  public deserialize(data: ClientExtensionSerialized): this {
-    this.age = data.age ?? 0;
-    this.canReproduce = data.canReproduce ?? true;
-    this.primaryDirectionX = data.primaryDirectionX ?? 0;
-    this.primaryDirectionY = data.primaryDirectionY ?? 0;
-    this.isOriginalCloud = data.isOriginalCloud ?? true;
-    return this;
   }
 
   public deserializeFromBuffer(reader: BufferReader): this {

@@ -7,6 +7,7 @@ import { IEntity } from "@/entities/types";
 import { BufferWriter } from "@shared/util/buffer-serialization";
 import { encodeExtensionType } from "@shared/util/extension-type-encoding";
 import { ExtensionBase } from "./extension-base";
+import { getConfig } from "@shared/config";
 
 /**
  * This extension will cause the entity to fire an attack when the cooldown is ready.
@@ -18,10 +19,10 @@ type TriggerCooldownAttackerFields = {
 
 export default class TriggerCooldownAttacker extends ExtensionBase<TriggerCooldownAttackerFields> {
   public static readonly type = "trigger-cooldown-attacker";
-  private static readonly RADIUS = 16;
+  private static readonly RADIUS = getConfig().combat.ITEM_TRIGGER_RADIUS;
   private static readonly RADIUS_SQUARED =
     TriggerCooldownAttacker.RADIUS * TriggerCooldownAttacker.RADIUS;
-  private static readonly CHECK_INTERVAL = 0.5; // Check for enemies every half second
+  private static readonly CHECK_INTERVAL = getConfig().entity.PLAYER_CHECK_INTERVAL;
 
   private attackCooldown: Cooldown;
   private checkCooldown: Cooldown;

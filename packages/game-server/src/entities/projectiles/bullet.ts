@@ -16,10 +16,10 @@ import { Line, Rectangle } from "@/util/shape";
 import { Player } from "@/entities/players/player";
 import PoolManager from "@shared/util/pool-manager";
 
-const MAX_TRAVEL_DISTANCE = 200;
+const MAX_TRAVEL_DISTANCE = getConfig().combat.TRAVEL_DISTANCE_MEDIUM;
 export class Bullet extends Entity {
   private traveledDistance: number = 0;
-  private static readonly BULLET_SPEED = 400;
+  private static readonly BULLET_SPEED = getConfig().combat.BULLET_SPEED;
   private lastPosition: Vector2;
   private shooterId: number = 0;
   private damage: number;
@@ -124,7 +124,8 @@ export class Bullet extends Entity {
     const currentPosition = this.getPosition();
 
     // Break down the movement into smaller steps to prevent tunneling
-    const numSteps = Math.ceil((Bullet.BULLET_SPEED * deltaTime) / 10); // One step per 10 units of movement
+    const stepSize = getConfig().combat.PROJECTILE_STEP_SIZE;
+    const numSteps = Math.ceil((Bullet.BULLET_SPEED * deltaTime) / stepSize);
     const stepDelta = deltaTime / numSteps;
 
     let lastStepPosition = currentPosition;

@@ -1,5 +1,4 @@
 import { ExtensionTypes } from "../../../game-shared/src/util/extension-types";
-import { ClientExtensionSerialized } from "@/extensions/types";
 import { BaseClientExtension } from "./base-extension";
 import { ResourceType } from "@shared/util/inventory";
 import { BufferReader } from "@shared/util/buffer-serialization";
@@ -33,26 +32,9 @@ export class ClientResourcesBag extends BaseClientExtension {
     };
   }
 
-  public deserialize(data: ClientExtensionSerialized): this {
-    if (data.coins !== undefined) {
-      this.coins = data.coins;
-    }
-
-    if (data.resources && typeof data.resources === "object") {
-      // Update resources from serialized data
-      for (const [key, value] of Object.entries(data.resources)) {
-        if (typeof value === "number") {
-          this.resources.set(key as ResourceType, value);
-        }
-      }
-    }
-
-    return this;
-  }
-
   public deserializeFromBuffer(reader: BufferReader): this {
-    // Coins as UInt32
-    this.coins = reader.readUInt32();
+    // Coins as UInt16 (matches server serialization)
+    this.coins = reader.readUInt16();
     // Resources in fixed order: wood, cloth (UInt16 each)
     this.resources.clear();
     this.resources.set("wood", reader.readUInt16());
@@ -60,5 +42,3 @@ export class ClientResourcesBag extends BaseClientExtension {
     return this;
   }
 }
-
-

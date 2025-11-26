@@ -5,6 +5,7 @@ import Positionable from "@/extensions/positionable";
 import Placeable from "@/extensions/placeable";
 import { IGameManagers } from "@/managers/types";
 import { Entities } from "@/constants";
+import { getConfig } from "@shared/config";
 import { Entity } from "@/entities/entity";
 import Vector2 from "@/util/vector2";
 import PoolManager from "@shared/util/pool-manager";
@@ -22,7 +23,7 @@ export class Torch extends Entity {
     this.addExtension(new Interactive(this).onInteract(this.interact.bind(this)).setDisplayName("torch"));
     this.addExtension(new Carryable(this, "torch"));
     this.addExtension(new Placeable(this));
-    this.addExtension(new Illuminated(this, 200));
+    this.addExtension(new Illuminated(this, getConfig().world.LIGHT_RADIUS_PLAYER));
   }
 
   private interact(entityId: number): void {

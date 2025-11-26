@@ -103,13 +103,6 @@ export abstract class EnemyClient extends ClientEntityBase implements IClientEnt
     return destructible.getHealth();
   }
 
-  deserializeProperty(key: string, value: any): void {
-    super.deserializeProperty(key, value);
-    if (key === "debugWaypoint") {
-      this.debugWaypoint = value;
-    }
-  }
-
   render(ctx: CanvasRenderingContext2D, gameState: GameState): void {
     if (!this.hasExt(ClientDestructible)) {
       console.warn(

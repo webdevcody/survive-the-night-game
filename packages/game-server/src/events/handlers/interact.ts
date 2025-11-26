@@ -10,6 +10,35 @@ import { Player } from "@/entities/players/player";
 import { SocketEventHandler } from "./types";
 import { IEntity } from "@/entities/types";
 
+/**
+ * Validate interact data
+ */
+function validateInteractData(
+  data: unknown
+): { targetEntityId?: number | null } | null {
+  if (typeof data !== "object" || data === null) {
+    return null;
+  }
+
+  const obj = data as Record<string, unknown>;
+
+  // Validate targetEntityId - optional, but if present must be a finite non-negative integer or null
+  const targetEntityId = obj.targetEntityId;
+  if (targetEntityId !== undefined && targetEntityId !== null) {
+    if (
+      typeof targetEntityId !== "number" ||
+      !Number.isFinite(targetEntityId) ||
+      !Number.isInteger(targetEntityId) ||
+      targetEntityId < 0
+    ) {
+      return null;
+    }
+    return { targetEntityId };
+  }
+
+  return { targetEntityId: targetEntityId as null | undefined };
+}
+
 export function onInteract(
   context: HandlerContext,
   socket: ISocketAdapter,
@@ -83,6 +112,13 @@ export function onInteract(
 
 export const interactHandler: SocketEventHandler<{ targetEntityId?: number | null }> = {
   event: "INTERACT",
-  handler: onInteract,
+  handler: (context, socket, data) => {
+    const validated = validateInteractData(data);
+    if (!validated) {
+      console.warn(`Invalid interact data from socket ${socket.id}`);
+      return;
+    }
+    onInteract(context, socket, validated);
+  },
 };
 

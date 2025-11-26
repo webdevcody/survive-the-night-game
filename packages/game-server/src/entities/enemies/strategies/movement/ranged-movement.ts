@@ -6,10 +6,11 @@ import Snared from "@/extensions/snared";
 import { pathTowards, velocityTowards } from "@/util/physics";
 import { TargetChecker } from "../movement-utils";
 import { calculateSeparationForce, blendSeparationForce } from "../separation";
+import { getConfig } from "@shared/config";
 
 export class RangedMovementStrategy implements MovementStrategy {
-  private static readonly ATTACK_RANGE = 100;
-  private static readonly PATH_RECALCULATION_INTERVAL = 1;
+  private static readonly ATTACK_RANGE = getConfig().combat.RANGED_ATTACK_RANGE;
+  private static readonly PATH_RECALCULATION_INTERVAL = getConfig().entity.PATH_RECALCULATION_INTERVAL;
   private pathRecalculationTimer: number =
     Math.random() * RangedMovementStrategy.PATH_RECALCULATION_INTERVAL;
   private targetChecker = new TargetChecker();

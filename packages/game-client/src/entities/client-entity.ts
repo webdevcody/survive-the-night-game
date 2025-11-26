@@ -52,7 +52,7 @@ export abstract class ClientEntity extends ClientEntityBase implements Renderabl
     // If stackable, check if player already has this item type
     if (isStackable) {
       const items = inventory.getItems();
-      return items.some((item) => item?.itemType === itemType);
+      return items.some((item: any) => item?.itemType === itemType);
     }
 
     // Not stackable and inventory is full - cannot pick up

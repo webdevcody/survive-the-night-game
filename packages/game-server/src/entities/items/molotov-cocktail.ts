@@ -14,16 +14,17 @@ import Carryable from "@/extensions/carryable";
 import Interactive from "@/extensions/interactive";
 import { ItemState } from "@/types/entity";
 import { Entities } from "@/constants";
+import { getConfig } from "@shared/config";
 
 export class MolotovCocktail extends Weapon {
-  private static readonly EXPLOSION_RADIUS = 64;
+  private static readonly EXPLOSION_RADIUS = getConfig().combat.EXPLOSION_RADIUS_MEDIUM;
   private static readonly EXPLOSION_DAMAGE = 3;
-  private static readonly THROW_SPEED = 130;
-  private static readonly EXPLOSION_DELAY = 1;
-  private static readonly COOLDOWN = 0.5;
+  private static readonly THROW_SPEED = getConfig().combat.THROW_SPEED;
+  private static readonly EXPLOSION_DELAY = getConfig().combat.EXPLOSION_DELAY;
+  private static readonly COOLDOWN = getConfig().combat.THROWABLE_COOLDOWN;
   public static readonly DEFAULT_COUNT = 1;
-  private static readonly FIRE_COUNT = 8; // Number of fire entities to spawn
-  private static readonly FIRE_SPREAD_RADIUS = 48; // Radius to spread fires
+  private static readonly FIRE_COUNT = getConfig().combat.MOLOTOV_FIRE_COUNT;
+  private static readonly FIRE_SPREAD_RADIUS = getConfig().combat.MOLOTOV_FIRE_SPREAD_RADIUS;
 
   private velocity: Vector2 = PoolManager.getInstance().vector2.claim(0, 0);
   private isArmed: boolean = false;

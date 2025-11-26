@@ -52,45 +52,12 @@ export class SurvivorClient extends ClientEntity implements Renderable {
   private lastRenderPosition = { x: 0, y: 0 };
   private previousHealth: number | undefined;
   private damageFlashUntil: number = 0;
-  private isRescued: boolean = false;
+  public isRescued: boolean = false;
   private lastFacing: Direction = Direction.Down;
   private hasRenderedOnce: boolean = false;
 
   constructor(data: RawEntity, assetManager: AssetManager) {
     super(data, assetManager);
-    this.isRescued = data.isRescued || false;
-  }
-
-  public deserialize(data: RawEntity): void {
-    super.deserialize(data);
-    if (data.isRescued !== undefined) {
-      this.isRescued = data.isRescued;
-      // Initialize facing direction when rescued
-      if (this.isRescued && this.lastFacing === Direction.Down) {
-        const velocity = this.getVelocity();
-        const velocityDirection = determineDirection(velocity);
-        if (velocityDirection) {
-          this.lastFacing = velocityDirection;
-        }
-      }
-    }
-  }
-
-  public deserializeProperty(key: string, value: any): void {
-    if (key === "isRescued") {
-      const wasRescued = this.isRescued;
-      this.isRescued = value;
-      // Initialize facing direction when rescued
-      if (this.isRescued && !wasRescued && this.lastFacing === Direction.Down) {
-        const velocity = this.getVelocity();
-        const velocityDirection = determineDirection(velocity);
-        if (velocityDirection) {
-          this.lastFacing = velocityDirection;
-        }
-      }
-    } else {
-      super.deserializeProperty(key, value);
-    }
   }
 
   public getZIndex(): number {

@@ -13,13 +13,15 @@ import { CarRepairEvent } from "../../../../game-shared/src/events/server-sent/e
 import { ExplosionEvent } from "../../../../game-shared/src/events/server-sent/events/explosion-event";
 import Interactive from "@/extensions/interactive";
 
+import { getConfig } from "@shared/config";
+
 export class Car extends Entity {
   public static get Size(): Vector2 {
     return PoolManager.getInstance().vector2.claim(32, 16);
   }
   private static readonly INITIAL_HEALTH = 20;
-  private static readonly ATTACK_MESSAGE_COOLDOWN = 5000; // 5 seconds
-  private static readonly REPAIR_COOLDOWN = 1000; // 1 second
+  private static readonly ATTACK_MESSAGE_COOLDOWN = getConfig().entity.CAR_ATTACK_MESSAGE_COOLDOWN_MS;
+  private static readonly REPAIR_COOLDOWN = getConfig().entity.CAR_REPAIR_COOLDOWN_MS;
 
   private lastAttackMessageTime: number = 0;
   private playerRepairTimes: Map<number, number> = new Map();

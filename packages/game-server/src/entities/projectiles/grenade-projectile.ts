@@ -14,10 +14,10 @@ import { ExplosionEvent } from "../../../../game-shared/src/events/server-sent/e
 import PoolManager from "@shared/util/pool-manager";
 import Groupable from "@/extensions/groupable";
 
-const MAX_TRAVEL_DISTANCE = 300;
-const GRENADE_PROJECTILE_SPEED = 200;
-const EXPLOSION_RADIUS = 64;
-const EXPLOSION_DAMAGE = 5;
+const MAX_TRAVEL_DISTANCE = getConfig().combat.TRAVEL_DISTANCE_LONG;
+const GRENADE_PROJECTILE_SPEED = getConfig().combat.PROJECTILE_SPEED_STANDARD;
+const EXPLOSION_RADIUS = getConfig().combat.EXPLOSION_RADIUS_MEDIUM;
+const EXPLOSION_DAMAGE = getConfig().combat.EXPLOSION_DAMAGE_STANDARD;
 
 export class GrenadeProjectile extends Entity {
   private traveledDistance: number = 0;

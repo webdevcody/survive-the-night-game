@@ -15,6 +15,80 @@ import { PlayerPickedUpItemEvent } from "@shared/events/server-sent/events/picku
 import { balanceConfig } from "@shared/config/balance-config";
 
 /**
+ * Validate merchant buy data
+ */
+function validateMerchantBuyData(
+  data: unknown
+): { merchantId: number; itemIndex: number } | null {
+  if (typeof data !== "object" || data === null) {
+    return null;
+  }
+
+  const obj = data as Record<string, unknown>;
+
+  // Validate merchantId - must be a finite positive integer
+  const merchantId = obj.merchantId;
+  if (
+    typeof merchantId !== "number" ||
+    !Number.isFinite(merchantId) ||
+    !Number.isInteger(merchantId) ||
+    merchantId < 0
+  ) {
+    return null;
+  }
+
+  // Validate itemIndex - must be a finite non-negative integer
+  const itemIndex = obj.itemIndex;
+  if (
+    typeof itemIndex !== "number" ||
+    !Number.isFinite(itemIndex) ||
+    !Number.isInteger(itemIndex) ||
+    itemIndex < 0
+  ) {
+    return null;
+  }
+
+  return { merchantId, itemIndex };
+}
+
+/**
+ * Validate merchant sell data
+ */
+function validateMerchantSellData(
+  data: unknown
+): { merchantId: number; inventorySlot: number } | null {
+  if (typeof data !== "object" || data === null) {
+    return null;
+  }
+
+  const obj = data as Record<string, unknown>;
+
+  // Validate merchantId - must be a finite positive integer
+  const merchantId = obj.merchantId;
+  if (
+    typeof merchantId !== "number" ||
+    !Number.isFinite(merchantId) ||
+    !Number.isInteger(merchantId) ||
+    merchantId < 0
+  ) {
+    return null;
+  }
+
+  // Validate inventorySlot - must be a finite non-negative integer
+  const inventorySlot = obj.inventorySlot;
+  if (
+    typeof inventorySlot !== "number" ||
+    !Number.isFinite(inventorySlot) ||
+    !Number.isInteger(inventorySlot) ||
+    inventorySlot < 0
+  ) {
+    return null;
+  }
+
+  return { merchantId, inventorySlot };
+}
+
+/**
  * Check if an item can be stacked in inventory.
  * Items are stackable if:
  * - They have a count state property (meaning they're stackable in inventory)
@@ -274,7 +348,14 @@ export function onMerchantSell(
 
 export const merchantBuyHandler: SocketEventHandler<{ merchantId: number; itemIndex: number }> = {
   event: "MERCHANT_BUY",
-  handler: onMerchantBuy,
+  handler: (context, socket, data) => {
+    const validated = validateMerchantBuyData(data);
+    if (!validated) {
+      console.warn(`Invalid merchant buy data from socket ${socket.id}`);
+      return;
+    }
+    onMerchantBuy(context, socket, validated);
+  },
 };
 
 export const merchantSellHandler: SocketEventHandler<{
@@ -282,5 +363,12 @@ export const merchantSellHandler: SocketEventHandler<{
   inventorySlot: number;
 }> = {
   event: "MERCHANT_SELL",
-  handler: onMerchantSell,
+  handler: (context, socket, data) => {
+    const validated = validateMerchantSellData(data);
+    if (!validated) {
+      console.warn(`Invalid merchant sell data from socket ${socket.id}`);
+      return;
+    }
+    onMerchantSell(context, socket, validated);
+  },
 };

@@ -52,7 +52,7 @@ export class FullScreenMap {
   private isVisible: boolean = false;
   private currentZoomIndex: number = FULLSCREEN_MAP_SETTINGS.defaultZoomIndex;
   private collidablesCanvas: HTMLCanvasElement | null = null;
-  private readonly tileSize = 16;
+  private readonly tileSize = getConfig().world.TILE_SIZE;
   private cachedCollidablesReference: number[][] | null = null;
   private zoomInButtonBounds: { x: number; y: number; width: number; height: number } | null = null;
   private zoomOutButtonBounds: { x: number; y: number; width: number; height: number } | null =
@@ -542,7 +542,7 @@ export class FullScreenMap {
     const settings = FULLSCREEN_MAP_SETTINGS;
     if (!settings.fogOfWar.enabled) return;
 
-    const gridSize = 16; // Fog tile size in screen pixels
+    const gridSize = getConfig().world.TILE_SIZE; // Fog tile size in screen pixels
     const tilesX = Math.ceil(mapWidth / gridSize);
     const tilesY = Math.ceil(mapHeight / gridSize);
 
@@ -723,7 +723,7 @@ export class FullScreenMap {
     if (!biomePositions) return;
 
     const settings = FULLSCREEN_MAP_SETTINGS;
-    const BIOME_SIZE = 16;
+    const { BIOME_SIZE, TILE_SIZE } = getConfig().world;
 
     const biomes = [
       { position: biomePositions.farm, config: settings.biomeIndicators.farm },
@@ -746,8 +746,8 @@ export class FullScreenMap {
     biomes.forEach(({ position, config }) => {
       if (!position) return;
 
-      const biomeWorldX = (position.x * BIOME_SIZE + BIOME_SIZE / 2) * getConfig().world.TILE_SIZE;
-      const biomeWorldY = (position.y * BIOME_SIZE + BIOME_SIZE / 2) * getConfig().world.TILE_SIZE;
+      const biomeWorldX = (position.x * BIOME_SIZE + BIOME_SIZE / 2) * TILE_SIZE;
+      const biomeWorldY = (position.y * BIOME_SIZE + BIOME_SIZE / 2) * TILE_SIZE;
 
       const relativeX = biomeWorldX - playerPos.x;
       const relativeY = biomeWorldY - playerPos.y;

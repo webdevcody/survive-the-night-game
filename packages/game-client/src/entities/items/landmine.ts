@@ -7,7 +7,7 @@ import { ClientPositionable } from "@/extensions";
 import { getConfig } from "@shared/config";
 
 export class LandmineClient extends ClientEntity implements Renderable {
-  private isActive = false;
+  public isActive = false;
 
   constructor(data: RawEntity, imageLoader: ImageLoader) {
     super(data, imageLoader);
@@ -41,10 +41,5 @@ export class LandmineClient extends ClientEntity implements Renderable {
       ctx.stroke();
       ctx.restore();
     }
-  }
-
-  public deserialize(data: RawEntity): void {
-    super.deserialize(data);
-    this.isActive = data.isActive;
   }
 }

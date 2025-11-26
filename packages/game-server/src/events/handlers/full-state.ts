@@ -13,17 +13,15 @@ export function sendFullState(context: HandlerContext, socket: ISocketAdapter): 
   const phaseStartTime = context.gameServer.getPhaseStartTime();
   const phaseDuration = context.gameServer.getPhaseDuration();
 
-  // Clear dirty flags for all entities after sending full state
-  // so they're not treated as "new" in subsequent updates
-  entities.forEach((entity) => {
-    entity.clearDirtyFlags();
-  });
+  // Get map data to include in full state
+  const mapData = context.getMapManager().getMapData();
 
   // Serialize full state to buffer
+  // Pass onlyDirty=false to serialize all fields and all extensions with all their data
   context.bufferManager.clear();
   context.bufferManager.writeEntityCount(entities.length);
   for (const entity of entities) {
-    context.bufferManager.writeEntity(entity, false);
+    context.bufferManager.writeEntity(entity, false); // onlyDirty=false (full serialization)
   }
   context.bufferManager.writeGameState(
     {
@@ -34,9 +32,11 @@ export function sendFullState(context: HandlerContext, socket: ISocketAdapter): 
       phaseStartTime,
       phaseDuration,
     },
-    false // No removed entities in full state
+    false, // No removed entities in full state
+    mapData // Include map data in full state
   );
   context.bufferManager.writeRemovedEntityIds([]);
+  context.bufferManager.writeMapData(mapData);
 
   const buffer = context.bufferManager.getBuffer();
   // this.bufferManager.logStats();

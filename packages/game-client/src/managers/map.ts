@@ -34,7 +34,7 @@ interface LightSourceWithId extends LightSource {
 }
 
 export class MapManager {
-  private tileSize = 16;
+  private tileSize = getConfig().world.TILE_SIZE;
   private groundLayer: number[][] | null = null;
   private collidablesLayer: number[][] | null = null;
 

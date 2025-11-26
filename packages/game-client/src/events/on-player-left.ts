@@ -7,5 +7,8 @@ export const onPlayerLeft = (context: ClientEventContext, event: PlayerLeftEvent
   const player = context.gameClient.getEntityById(playerId);
   if (!player) return;
   context.gameClient.getHud().addMessage(`${event.getDisplayName()} left the game`);
+  
+  // Remove from spatial grid before removing from state (same pattern as delta updates)
+  context.gameClient.getRenderer().removeEntityFromSpatialGrid(player);
   context.gameClient.removeEntity(event.getPlayerId());
 };

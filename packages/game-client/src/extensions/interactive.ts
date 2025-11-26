@@ -1,5 +1,4 @@
 import { ExtensionTypes } from "../../../game-shared/src/util/extension-types";
-import { ClientExtensionSerialized } from "@/extensions/types";
 import { BaseClientExtension } from "./base-extension";
 import Vector2 from "@shared/util/vector2";
 import PoolManager from "@shared/util/pool-manager";
@@ -22,12 +21,6 @@ export class ClientInteractive extends BaseClientExtension {
 
   public setOffset(offset: Vector2): this {
     this.offset.reset(offset.x, offset.y);
-    return this;
-  }
-
-  public deserialize(data: ClientExtensionSerialized): this {
-    this.displayName = data.displayName;
-    this.offset.reset(data.offset.x, data.offset.y);
     return this;
   }
 

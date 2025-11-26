@@ -1,12 +1,12 @@
 import { ExtensionTypes } from "../../../game-shared/src/util/extension-types";
-import { ClientExtensionSerialized } from "@/extensions/types";
 import { BaseClientExtension } from "./base-extension";
 import { BufferReader } from "@shared/util/buffer-serialization";
+import { getConfig } from "@shared/config";
 
 export class ClientIlluminated extends BaseClientExtension {
   public static readonly type = ExtensionTypes.ILLUMINATED;
 
-  private radius = 150;
+  private radius = getConfig().world.LIGHT_RADIUS_FIRE;
 
   public getRadius(): number {
     return this.radius;
@@ -14,11 +14,6 @@ export class ClientIlluminated extends BaseClientExtension {
 
   public setRadius(radius: number): this {
     this.radius = radius;
-    return this;
-  }
-
-  public deserialize(data: ClientExtensionSerialized): this {
-    this.radius = data.radius;
     return this;
   }
 

@@ -1,12 +1,13 @@
 import { BaseEnemy } from "../base-enemy";
 import Vector2 from "@/util/vector2";
 import { TargetingSystem } from "./targeting";
+import { getConfig } from "@shared/config";
 
 /**
- * Shared constants for movement strategies
+ * Shared constants for movement strategies - values from entity config
  */
-export const TARGET_CHECK_INTERVAL = 1; // Check for friendly entities every second
-export const FRIENDLY_SEARCH_RADIUS = 500; // Search radius for friendly entities
+export const TARGET_CHECK_INTERVAL = getConfig().entity.TARGET_CHECK_INTERVAL;
+export const FRIENDLY_SEARCH_RADIUS = getConfig().entity.FRIENDLY_SEARCH_RADIUS;
 
 /**
  * Gets the best target position for a zombie to move towards.

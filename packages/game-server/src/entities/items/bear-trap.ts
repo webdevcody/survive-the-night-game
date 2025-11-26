@@ -1,6 +1,7 @@
 import { Entity } from "@/entities/entity";
 import { IGameManagers } from "@/managers/types";
 import { Entities, Zombies, getZombieTypesSet } from "../../../../game-shared/src/constants";
+import { getConfig } from "@shared/config";
 import Positionable from "@/extensions/positionable";
 import Interactive from "@/extensions/interactive";
 import Carryable from "@/extensions/carryable";
@@ -26,7 +27,7 @@ export class BearTrap extends Entity implements IEntity {
     return PoolManager.getInstance().vector2.claim(16, 16);
   }
   private static readonly DAMAGE = 1;
-  private static readonly TRIGGER_RADIUS = 16;
+  private static readonly TRIGGER_RADIUS = getConfig().combat.ITEM_TRIGGER_RADIUS;
   private triggerExtension: OneTimeTrigger | null = null;
   private interactiveExtension: Interactive;
 
@@ -77,21 +78,21 @@ export class BearTrap extends Entity implements IEntity {
   }
 
   private setIsArmed(value: boolean): void {
-    const currentIsArmed = this.serialized.get('isArmed');
+    const currentIsArmed = this.serialized.get("isArmed");
     if (currentIsArmed !== value) {
-      this.serialized.set('isArmed', value);
+      this.serialized.set("isArmed", value);
     }
   }
 
   private setSnaredZombieId(id: number | null): void {
-    const currentSnaredZombieId = this.serialized.get('snaredZombieId');
+    const currentSnaredZombieId = this.serialized.get("snaredZombieId");
     if (currentSnaredZombieId !== id) {
-      this.serialized.set('snaredZombieId', id);
+      this.serialized.set("snaredZombieId", id);
     }
   }
 
   public updateBearTrap(deltaTime: number) {
-    const snaredZombieId = this.serialized.get('snaredZombieId');
+    const snaredZombieId = this.serialized.get("snaredZombieId");
     // Keep the snared zombie's velocity at 0 (backup in case movement strategy tries to override)
     if (snaredZombieId) {
       const zombie = this.getEntityManager().getEntityById(snaredZombieId);
@@ -106,7 +107,7 @@ export class BearTrap extends Entity implements IEntity {
   }
 
   private snare() {
-    if (!this.serialized.get('isArmed')) return;
+    if (!this.serialized.get("isArmed")) return;
 
     const position = this.getExt(Positionable).getCenterPosition();
     const nearbyEntities = this.getEntityManager().getNearbyEntities(
@@ -161,7 +162,7 @@ export class BearTrap extends Entity implements IEntity {
     if (!entity || entity.getType() !== Entities.PLAYER) return;
 
     // If disarmed, rearm the trap
-    if (!this.serialized.get('isArmed')) {
+    if (!this.serialized.get("isArmed")) {
       // Clear the snared zombie reference
       this.activate();
       return;

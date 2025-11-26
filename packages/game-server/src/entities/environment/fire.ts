@@ -5,6 +5,7 @@ import Positionable from "@/extensions/positionable";
 import Triggerable from "@/extensions/trigger";
 import { IGameManagers } from "@/managers/types";
 import { Entities, Zombies } from "@/constants";
+import { getConfig } from "@shared/config";
 import { Entity } from "@/entities/entity";
 import Vector2 from "@/util/vector2";
 import PoolManager from "@shared/util/pool-manager";
@@ -27,7 +28,7 @@ export class Fire extends Entity {
       ]).setOnEntityEntered(this.catchFire.bind(this))
     );
     this.addExtension(new Expirable(this, 6));
-    this.addExtension(new Illuminated(this, 150));
+    this.addExtension(new Illuminated(this, getConfig().world.LIGHT_RADIUS_FIRE));
   }
 
   catchFire(entity: IEntity) {

@@ -28,7 +28,7 @@ export class Landmine extends Entity implements IEntity {
     return PoolManager.getInstance().vector2.claim(16, 16);
   }
   private static readonly DAMAGE = 7;
-  private static readonly TRIGGER_RADIUS = 16;
+  private static readonly TRIGGER_RADIUS = getConfig().combat.ITEM_TRIGGER_RADIUS;
   public static readonly DEFAULT_COUNT = 1;
   private untilActive: Cooldown;
 

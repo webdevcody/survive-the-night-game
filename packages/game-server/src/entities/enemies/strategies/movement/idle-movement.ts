@@ -7,13 +7,14 @@ import { pathTowards, velocityTowards } from "@/util/physics";
 import { TargetingSystem } from "../targeting";
 import { calculateSeparationForce, blendSeparationForce } from "../separation";
 import { ZombieAlertedEvent } from "../../../../../../game-shared/src/events/server-sent/events/zombie-alerted-event";
+import { getConfig } from "@shared/config";
 
 export class IdleMovementStrategy implements MovementStrategy {
-  private static readonly PATH_RECALCULATION_INTERVAL = 1;
+  private static readonly PATH_RECALCULATION_INTERVAL = getConfig().entity.PATH_RECALCULATION_INTERVAL;
   private pathRecalculationTimer: number =
     Math.random() * IdleMovementStrategy.PATH_RECALCULATION_INTERVAL;
-  private static readonly ACTIVATION_RADIUS = 100; // Pixels
-  private static readonly PLAYER_CHECK_INTERVAL = 0.5; // Check for players every 0.5 seconds instead of every tick
+  private static readonly ACTIVATION_RADIUS = getConfig().entity.IDLE_ACTIVATION_RADIUS;
+  private static readonly PLAYER_CHECK_INTERVAL = getConfig().entity.PLAYER_CHECK_INTERVAL;
   private currentWaypoint: Vector2 | null = null;
   private isActivated: boolean = false;
   private playerCheckTimer: number = Math.random() * IdleMovementStrategy.PLAYER_CHECK_INTERVAL; // Offset to spread checks

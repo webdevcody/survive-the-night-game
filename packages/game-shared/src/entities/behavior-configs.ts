@@ -1,4 +1,3 @@
-import { ItemType } from "../util/inventory";
 import { RecipeComponent } from "../util/recipes";
 
 /**

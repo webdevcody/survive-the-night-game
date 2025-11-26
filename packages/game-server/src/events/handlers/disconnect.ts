@@ -8,9 +8,10 @@ export function onDisconnect(context: HandlerContext, socket: ISocketAdapter): v
   const player = context.players.get(socket.id);
   const displayName = context.playerDisplayNames.get(socket.id);
 
-  // Clean up player and displayName
+  // Clean up player, displayName, and playerColor
   context.players.delete(socket.id);
   context.playerDisplayNames.delete(socket.id);
+  context.playerColors.delete(socket.id);
 
   if (player) {
     const playerId = player.getId();

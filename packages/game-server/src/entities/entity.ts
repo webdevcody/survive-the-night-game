@@ -14,6 +14,7 @@ import {
   FIELD_TYPE_OBJECT,
   FIELD_TYPE_NULL,
 } from "@shared/util/serialization-constants";
+import { Entities } from "@/constants";
 
 export class Entity<TSerializableFields extends readonly string[] = readonly string[]>
   extends EventTarget
@@ -28,7 +29,6 @@ export class Entity<TSerializableFields extends readonly string[] = readonly str
   private readonly gameManagers: IGameManagers;
   private markedForRemoval = false;
   private removedExtensions: string[] = []; // Track removed extensions
-  private hasBeenSerialized: boolean = false; // Track if entity has been serialized at least once
 
   // Serializable fields with automatic dirty tracking
   // Subclasses should initialize this in their constructor with default values
@@ -107,7 +107,20 @@ export class Entity<TSerializableFields extends readonly string[] = readonly str
   }
 
   public addExtension(extension: Extension) {
-    this.extensions.set(extension.constructor as ExtensionCtor, extension);
+    const constructor = extension.constructor as ExtensionCtor;
+    // Remove old extension of the same type if it exists
+    const oldExtension = this.extensions.get(constructor);
+    if (oldExtension && oldExtension !== extension) {
+      // Remove old extension from dirtyExtensions Set
+      this.dirtyExtensions.delete(oldExtension);
+      // Remove from updatableExtensions array if present
+      const updatableIndex = this.updatableExtensions.indexOf(oldExtension);
+      if (updatableIndex > -1) {
+        this.updatableExtensions.splice(updatableIndex, 1);
+      }
+    }
+
+    this.extensions.set(constructor, extension);
     // Track extensions with update methods
     if ("update" in extension && typeof (extension as any).update === "function") {
       this.updatableExtensions.push(extension);
@@ -234,9 +247,9 @@ export class Entity<TSerializableFields extends readonly string[] = readonly str
   }
 
   public serializeToBuffer(writer: BufferWriter, onlyDirty: boolean = false): void {
-    // For new entities (first serialization), always serialize all extensions
-    const isFirstSerialization = !this.hasBeenSerialized;
-    const shouldSerializeAllExtensions = !onlyDirty || isFirstSerialization;
+    // When onlyDirty=false, serialize all fields and all extensions with all their data
+    const shouldSerializeAllExtensions = !onlyDirty;
+    const shouldSerializeAllFields = !onlyDirty;
 
     // Write entity ID as unsigned 2-byte integer
     (global as any).logDepth = 0;
@@ -252,7 +265,7 @@ export class Entity<TSerializableFields extends readonly string[] = readonly str
     const fieldValues: Array<{ name: string; value: any }> = [];
 
     for (const fieldName of allKeys) {
-      if (!onlyDirty || dirtyFields.has(fieldName)) {
+      if (shouldSerializeAllFields || dirtyFields.has(fieldName)) {
         fieldValues.push({
           name: fieldName,
           value: this.serialized.get(fieldName),
@@ -321,21 +334,35 @@ export class Entity<TSerializableFields extends readonly string[] = readonly str
 
     // Write extensions
     // When onlyDirty is true, only send extensions that are dirty
-    // When onlyDirty is false (full state), send all extensions
-    // Exception: For first serialization, always send all extensions (even if onlyDirty=true)
-    // The "only dirty" logic also applies to fields within extensions
+    // When onlyDirty is false (full state), send all extensions with all their data
     (global as any).logDepth = 1;
-    const extensionsToWrite: Extension[] =
-      shouldSerializeAllExtensions || !onlyDirty
-        ? Array.from(this.extensions.values())
-        : this.getDirtyExtensions();
+    let extensionsToWrite: Extension[] = shouldSerializeAllExtensions
+      ? Array.from(this.extensions.values())
+      : this.getDirtyExtensions();
+
+    // Deduplicate extensions by type (safety check - should never be needed)
+    // Keep only the first instance of each extension type
+    const seenTypes = new Set<string>();
+    const deduplicatedExtensions: Extension[] = [];
+    for (const ext of extensionsToWrite) {
+      const extType = (ext.constructor as any).type;
+      if (!seenTypes.has(extType)) {
+        seenTypes.add(extType);
+        deduplicatedExtensions.push(ext);
+      }
+    }
+    extensionsToWrite = deduplicatedExtensions;
+
     if (extensionsToWrite.length > 255) {
       throw new Error(`Extension count ${extensionsToWrite.length} exceeds UInt8 maximum (255)`);
     }
+
     writer.writeUInt8(extensionsToWrite.length);
+    // When onlyDirty=false, serialize all extension data. When onlyDirty=true, serialize only dirty extension data
+    const extensionOnlyDirty = onlyDirty;
     for (let i = 0; i < extensionsToWrite.length; i++) {
       const ext = extensionsToWrite[i];
-      ext.serializeToBuffer(writer, onlyDirty && !isFirstSerialization);
+      ext.serializeToBuffer(writer, extensionOnlyDirty);
     }
 
     // Write removed extensions array (if any)
@@ -351,8 +378,5 @@ export class Entity<TSerializableFields extends readonly string[] = readonly str
     }
     // Clear the removed extensions after serializing
     this.removedExtensions = [];
-
-    // Mark entity as having been serialized
-    this.hasBeenSerialized = true;
   }
 }

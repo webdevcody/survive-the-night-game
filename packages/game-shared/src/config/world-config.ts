@@ -12,6 +12,21 @@ export const worldConfig = {
   TILE_SIZE: 16,
 
   /**
+   * Number of tiles per biome (16x16 tiles = 1 biome)
+   */
+  BIOME_SIZE: 16,
+
+  /**
+   * Number of biomes in each dimension of the map (9x9 = 81 total biomes)
+   */
+  MAP_SIZE: 9,
+
+  /**
+   * Sprite sheet width in tiles (for decals/ground.png calculations)
+   */
+  SHEET_WIDTH_TILES: 16,
+
+  /**
    * Maximum health for walls and structures
    */
   WALL_MAX_HEALTH: 10,
@@ -51,6 +66,22 @@ export const worldConfig = {
   SPIKES_DAMAGE: 1,
   SPIKES_LEVEL_2_DAMAGE: 2,
   SPIKES_LEVEL_3_DAMAGE: 3,
+
+  /**
+   * ========================================================================
+   * LIGHT RADIUS CONSTANTS
+   * ========================================================================
+   */
+
+  /**
+   * Light radius for player and torches (in pixels)
+   */
+  LIGHT_RADIUS_PLAYER: 200,
+
+  /**
+   * Light radius for fires, campfires, and merchants (in pixels)
+   */
+  LIGHT_RADIUS_FIRE: 150,
 } as const;
 
 export type WorldConfig = typeof worldConfig;

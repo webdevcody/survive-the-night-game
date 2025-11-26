@@ -11,6 +11,7 @@ import {
   GAME_STATE_BIT_PHASE_DURATION,
   GAME_STATE_BIT_IS_FULL_STATE,
   GAME_STATE_BIT_REMOVED_ENTITY_IDS,
+  GAME_STATE_BIT_MAP_DATA,
   GAME_STATE_FIELD_BITS,
   FIELD_TYPE_STRING,
   FIELD_TYPE_NUMBER,
@@ -21,6 +22,7 @@ import {
 import { entityTypeRegistry } from "../../../util/entity-type-encoding";
 import { decodeExtensionType } from "../../../util/extension-type-encoding";
 import { decodeWaveState } from "../../../util/wave-state-encoding";
+import { MapData } from "./map-event";
 
 export interface EntityState extends RawEntity {
   id: number;
@@ -36,6 +38,8 @@ export interface GameStateData {
   phaseStartTime?: number;
   phaseDuration?: number;
   timestamp?: number;
+  // Map data (only included in full state updates)
+  mapData?: MapData;
 }
 
 export class GameStateEvent implements GameEvent<GameStateData> {
@@ -85,6 +89,10 @@ export class GameStateEvent implements GameEvent<GameStateData> {
 
   public getPhaseDuration(): number | undefined {
     return this.data.phaseDuration;
+  }
+
+  public getMapData(): MapData | undefined {
+    return this.data.mapData;
   }
 
   /**
@@ -148,10 +156,10 @@ export class GameStateEvent implements GameEvent<GameStateData> {
     const bitset = gameStateReader.readUInt8();
 
     // Iterate through bits deterministically and read only fields that are set
-    // Note: REMOVED_ENTITY_IDS bit is handled separately after the loop
+    // Note: REMOVED_ENTITY_IDS and MAP_DATA bits are handled separately after the loop
     for (const bit of GAME_STATE_FIELD_BITS) {
-      if (bit === GAME_STATE_BIT_REMOVED_ENTITY_IDS) {
-        // Skip this bit in the loop - it's handled separately after
+      if (bit === GAME_STATE_BIT_REMOVED_ENTITY_IDS || bit === GAME_STATE_BIT_MAP_DATA) {
+        // Skip these bits in the loop - they're handled separately after
         continue;
       }
 
@@ -187,6 +195,16 @@ export class GameStateEvent implements GameEvent<GameStateData> {
         for (let i = 0; i < removedEntityCount; i++) {
           gameStateData.removedEntityIds!.push(gameStateReader.readUInt16());
         }
+      }
+    }
+
+    // Read map data if bit is set (only sent on full state)
+    if (bitset & GAME_STATE_BIT_MAP_DATA) {
+      const mapDataJson = gameStateReader.readString();
+      try {
+        gameStateData.mapData = JSON.parse(mapDataJson);
+      } catch (e) {
+        console.error("Failed to parse map data:", e);
       }
     }
 

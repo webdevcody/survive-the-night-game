@@ -6,10 +6,11 @@ import Snared from "@/extensions/snared";
 import { pathTowards, velocityTowards } from "@/util/physics";
 import { TargetChecker } from "../movement-utils";
 import { calculateSeparationForce, blendSeparationForce } from "../separation";
+import { getConfig } from "@shared/config";
 
 export class MeleeMovementStrategy implements MovementStrategy {
-  private static readonly PATH_RECALCULATION_INTERVAL = 1;
-  private static readonly STUCK_DETECTION_TIME = 0.3; // Force new waypoint if stuck for 0.3 seconds
+  private static readonly PATH_RECALCULATION_INTERVAL = getConfig().entity.PATH_RECALCULATION_INTERVAL;
+  private static readonly STUCK_DETECTION_TIME = getConfig().entity.STUCK_DETECTION_TIME;
   private static readonly WAYPOINT_REACHED_THRESHOLD = 8; // Increased threshold for reaching waypoint
   private pathRecalculationTimer: number =
     Math.random() * MeleeMovementStrategy.PATH_RECALCULATION_INTERVAL;

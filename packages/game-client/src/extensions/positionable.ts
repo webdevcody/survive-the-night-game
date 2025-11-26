@@ -1,7 +1,6 @@
 import Vector2 from "@shared/util/vector2";
 import PoolManager from "@shared/util/pool-manager";
 import { ExtensionTypes } from "../../../game-shared/src/util/extension-types";
-import { ClientExtensionSerialized } from "@/extensions/types";
 import { BaseClientExtension } from "./base-extension";
 import { BufferReader } from "@shared/util/buffer-serialization";
 
@@ -30,12 +29,6 @@ export class ClientPositionable extends BaseClientExtension {
 
   public setPosition(position: Vector2): void {
     this.position.reset(position.x, position.y);
-  }
-
-  public deserialize(data: ClientExtensionSerialized): this {
-    this.position.reset(data.position.x, data.position.y);
-    this.size.reset(data.size.x, data.size.y);
-    return this;
   }
 
   public deserializeFromBuffer(reader: BufferReader): this {

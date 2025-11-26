@@ -30,14 +30,6 @@ export class SplitterBossClient extends EnemyClient {
     }
   }
 
-  public deserializeProperty(key: string, value: any): void {
-    if (key === "splitGeneration") {
-      this.splitGeneration = value ?? 0;
-      return;
-    }
-    super.deserializeProperty(key, value);
-  }
-
   protected override renderEnemyAlive(
     gameState: GameState,
     ctx: CanvasRenderingContext2D,

@@ -11,9 +11,10 @@ import { IEntity } from "../types";
 import Positionable from "@/extensions/positionable";
 import Destructible from "@/extensions/destructible";
 import { ExplosionEvent } from "../../../../game-shared/src/events/server-sent/events/explosion-event";
+import { getConfig } from "@shared/config";
 
 export class ExplodingZombie extends BaseEnemy {
-  private static readonly EXPLOSION_RADIUS = 32;
+  private static readonly EXPLOSION_RADIUS = getConfig().combat.EXPLOSION_RADIUS_SMALL;
   private static readonly EXPLOSION_DAMAGE = 5;
   private readonly positionThreshold = 4; // Larger threshold for faster speed
 

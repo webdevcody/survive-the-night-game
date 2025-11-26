@@ -1,5 +1,4 @@
 import { ExtensionTypes } from "../../../game-shared/src/util/extension-types";
-import { ClientExtensionSerialized } from "@/extensions/types";
 import { BaseClientExtension } from "./base-extension";
 import { BufferReader } from "@shared/util/buffer-serialization";
 
@@ -17,10 +16,6 @@ export class ClientUpdatable extends BaseClientExtension {
 
   public update(deltaTime: number): void {
     this.updateFunction(deltaTime);
-  }
-
-  public deserialize(data: ClientExtensionSerialized): this {
-    return this;
   }
 
   public deserializeFromBuffer(reader: BufferReader): this {

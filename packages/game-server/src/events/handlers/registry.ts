@@ -5,6 +5,7 @@ import { adminCommandHandler } from "./admin-command";
 import { setDisplayNameHandler } from "./display-name";
 import { merchantBuyHandler, merchantSellHandler } from "./merchant";
 import { requestFullStateHandler } from "./full-state";
+import { requestPlayerIdHandler } from "./player-id";
 import { pingHandler, pingUpdateHandler } from "./ping";
 import { sendChatHandler } from "./chat";
 import { placeStructureHandler } from "./structure";
@@ -35,6 +36,7 @@ export const socketEventHandlers: SocketEventHandler[] = [
   merchantBuyHandler,
   merchantSellHandler,
   requestFullStateHandler,
+  requestPlayerIdHandler,
   pingHandler,
   pingUpdateHandler,
   sendChatHandler,

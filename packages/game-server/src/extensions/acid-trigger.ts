@@ -8,6 +8,7 @@ import { encodeExtensionType } from "@shared/util/extension-type-encoding";
 import { ExtensionBase } from "./extension-base";
 import Poison from "./poison";
 import { Entities } from "@shared/constants";
+import { getConfig } from "@shared/config";
 
 /**
  * Extension that triggers when a player walks over acid, adding poison extension
@@ -19,7 +20,7 @@ type AcidTriggerFields = {
 
 export default class AcidTrigger extends ExtensionBase<AcidTriggerFields> {
   public static readonly type = "acid-trigger";
-  private static readonly RADIUS = 16;
+  private static readonly RADIUS = getConfig().combat.ITEM_TRIGGER_RADIUS;
   private static readonly RADIUS_SQUARED = AcidTrigger.RADIUS * AcidTrigger.RADIUS;
   private static readonly CHECK_INTERVAL = 0.2; // Check for players every half second
 

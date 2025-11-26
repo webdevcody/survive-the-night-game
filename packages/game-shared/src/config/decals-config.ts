@@ -5,6 +5,8 @@
  * but below collidables. They use the ground.png sprite sheet.
  */
 
+import { worldConfig } from "./world-config";
+
 export interface AnimatedDecalConfig {
   /** Starting X coordinate in sprite sheet (pixels) */
   startX: number;
@@ -79,11 +81,10 @@ export const DECAL_REGISTRY: Record<string, DecalPreset> = {
 
 /**
  * Helper function to get tile ID from sprite sheet coordinates
- * Assumes 16x16 tiles and sprite sheet width of 16 tiles (256 pixels)
+ * Uses TILE_SIZE and SHEET_WIDTH_TILES from world config
  */
 export function getTileIdFromCoords(x: number, y: number): number {
-  const TILE_SIZE = 16;
-  const SHEET_WIDTH_TILES = 16;
+  const { TILE_SIZE, SHEET_WIDTH_TILES } = worldConfig;
 
   const tileX = Math.floor(x / TILE_SIZE);
   const tileY = Math.floor(y / TILE_SIZE);
@@ -95,8 +96,7 @@ export function getTileIdFromCoords(x: number, y: number): number {
  * Helper function to get sprite sheet coordinates from tile ID
  */
 export function getCoordsFromTileId(tileId: number): { x: number; y: number } {
-  const TILE_SIZE = 16;
-  const SHEET_WIDTH_TILES = 16;
+  const { TILE_SIZE, SHEET_WIDTH_TILES } = worldConfig;
 
   const tileX = tileId % SHEET_WIDTH_TILES;
   const tileY = Math.floor(tileId / SHEET_WIDTH_TILES);

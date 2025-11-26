@@ -2,33 +2,45 @@ import { ISocketAdapter } from "@shared/network/socket-adapter";
 import { HandlerContext } from "../context";
 import { SocketEventHandler } from "./types";
 
+// Maximum display name length
+const MAX_DISPLAY_NAME_LENGTH = 12;
+
+/**
+ * Validate display name data
+ * Returns sanitized display name or null if invalid
+ */
+function validateDisplayNameData(payload: unknown): string | null {
+  // Handle string format
+  if (typeof payload === "string") {
+    if (payload.length === 0) {
+      return null;
+    }
+    return payload.substring(0, MAX_DISPLAY_NAME_LENGTH);
+  }
+
+  // Handle object format
+  if (typeof payload === "object" && payload !== null) {
+    const obj = payload as Record<string, unknown>;
+    const displayName = obj.displayName;
+
+    if (typeof displayName !== "string" || displayName.length === 0) {
+      return null;
+    }
+
+    return displayName.substring(0, MAX_DISPLAY_NAME_LENGTH);
+  }
+
+  return null;
+}
+
 export function setPlayerDisplayName(
   context: HandlerContext,
   socket: ISocketAdapter,
-  payload: { displayName: string } | string
+  displayName: string
 ): void {
-  // Extract displayName from payload (handles both object and string formats)
-  let displayName: string;
-  if (typeof payload === "string") {
-    displayName = payload;
-  } else if (payload && typeof payload === "object" && "displayName" in payload) {
-    displayName = payload.displayName;
-  } else {
-    console.error("Invalid payload for setDisplayName:", payload);
-    return;
-  }
-
-  // Ensure displayName is a string
-  if (typeof displayName !== "string") {
-    console.error("displayName is not a string:", displayName);
-    return;
-  }
-
   const player = context.players.get(socket.id);
   if (!player) return;
-  if (displayName.length > 12) {
-    displayName = displayName.substring(0, 12);
-  }
+
   // Filter bad words and replace with asterisks
   const filteredDisplayName = context.sanitizeText(displayName);
   player.setDisplayName(filteredDisplayName);
@@ -40,5 +52,12 @@ export function setPlayerDisplayName(
 
 export const setDisplayNameHandler: SocketEventHandler<{ displayName: string }> = {
   event: "SET_DISPLAY_NAME",
-  handler: (context, socket, data) => setPlayerDisplayName(context, socket, data),
+  handler: (context, socket, data) => {
+    const validated = validateDisplayNameData(data);
+    if (!validated) {
+      console.warn(`Invalid display name data from socket ${socket.id}`);
+      return;
+    }
+    setPlayerDisplayName(context, socket, validated);
+  },
 };

@@ -13,6 +13,8 @@ Feel free to pick any item listed out here to work on.
 
 ## DevEx
 
+- make the serialization / deserialization uniform so that I can't accidently mess up the types and cause a giant issue with how the client deserializes and breaks
+- remove socket.io from code base
 - default stack size should be defined in configs instead on the server entities constants to make it easier to configure.
 - all the item configs should reference the proper item sheets and remove "default" from all over the codebase. first start with any items that are set to "default", those need to be refactored, then refactor the javascript
 - I need to refactor how the assets are managed. At the very least, throw an error if the same asset is loaded with the same asset key.

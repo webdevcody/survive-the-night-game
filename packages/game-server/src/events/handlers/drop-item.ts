@@ -9,6 +9,47 @@ import { PlayerDroppedItemEvent } from "@/events/server-sent/events/player-dropp
 import { HandlerContext } from "@/events/context";
 import { itemRegistry } from "@shared/entities/item-registry";
 import { InventoryItem } from "@shared/util/inventory";
+import { getConfig } from "@shared/config";
+
+/**
+ * Validate drop item data
+ */
+function validateDropItemData(
+  data: unknown
+): { slotIndex: number; amount?: number } | null {
+  if (typeof data !== "object" || data === null) {
+    return null;
+  }
+
+  const obj = data as Record<string, unknown>;
+
+  // Validate slotIndex - must be a finite non-negative integer
+  const slotIndex = obj.slotIndex;
+  if (
+    typeof slotIndex !== "number" ||
+    !Number.isFinite(slotIndex) ||
+    !Number.isInteger(slotIndex) ||
+    slotIndex < 0
+  ) {
+    return null;
+  }
+
+  // Validate amount - optional, but if present must be a finite positive integer
+  const amount = obj.amount;
+  if (amount !== undefined && amount !== null) {
+    if (
+      typeof amount !== "number" ||
+      !Number.isFinite(amount) ||
+      !Number.isInteger(amount) ||
+      amount < 1
+    ) {
+      return null;
+    }
+    return { slotIndex, amount };
+  }
+
+  return { slotIndex };
+}
 
 /**
  * Check if an item can be stacked in inventory.
@@ -199,14 +240,15 @@ export function onDropItem(
   let dx = 0;
   let dy = 0;
 
+  const dropOffset = getConfig().world.TILE_SIZE;
   if (facing === Direction.Up) {
-    dy = -16;
+    dy = -dropOffset;
   } else if (facing === Direction.Down) {
-    dy = 16;
+    dy = dropOffset;
   } else if (facing === Direction.Left) {
-    dx = -16;
+    dx = -dropOffset;
   } else {
-    dx = 16;
+    dx = dropOffset;
   }
 
   const dropPosX = playerPos.x + dx;
@@ -239,5 +281,12 @@ export function onDropItem(
 
 export const dropItemHandler: SocketEventHandler<{ slotIndex: number; amount?: number }> = {
   event: "DROP_ITEM",
-  handler: onDropItem,
+  handler: (context, socket, data) => {
+    const validated = validateDropItemData(data);
+    if (!validated) {
+      console.warn(`Invalid drop item data from socket ${socket.id}`);
+      return;
+    }
+    onDropItem(context, socket, validated);
+  },
 };

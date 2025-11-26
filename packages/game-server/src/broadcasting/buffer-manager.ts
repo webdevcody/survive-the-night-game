@@ -7,11 +7,13 @@ import {
   GAME_STATE_BIT_PHASE_DURATION,
   GAME_STATE_BIT_IS_FULL_STATE,
   GAME_STATE_BIT_REMOVED_ENTITY_IDS,
+  GAME_STATE_BIT_MAP_DATA,
   GAME_STATE_FIELD_BITS,
 } from "@shared/util/serialization-constants";
 import { encodeWaveState } from "@shared/util/wave-state-encoding";
 import { IEntity } from "@/entities/types";
 import { GameStateData } from "../../../game-shared/src/events/server-sent/events/game-state-event";
+import { MapData } from "../../../game-shared/src/events/server-sent/events/map-event";
 
 /**
  * Centralized buffer manager for serializing game state to buffers.
@@ -19,12 +21,15 @@ import { GameStateData } from "../../../game-shared/src/events/server-sent/event
  */
 export class BufferManager {
   private writer: BufferWriter;
+  private tempWriter: BufferWriter; // Reusable temp buffer for entity serialization
   private initialSize: number;
 
   constructor(initialSize: number = 2 * 1024 * 1024) {
     // 2MB initial size - will grow as needed
     this.initialSize = initialSize;
     this.writer = new BufferWriter(initialSize);
+    // Temp buffer for individual entity serialization (64KB should be enough for any single entity)
+    this.tempWriter = new BufferWriter(64 * 1024);
   }
 
   /**
@@ -37,13 +42,13 @@ export class BufferManager {
   /**
    * Write an entity to the buffer
    * @param entity - The entity to serialize
-   * @param onlyDirty - Whether to only serialize dirty fields/extensions
+   * @param onlyDirty - Whether to only serialize dirty fields/extensions. When false, serializes all fields and all extensions with all their data.
    */
   writeEntity(entity: IEntity, onlyDirty: boolean = false): void {
-    // Write entity to temporary buffer first to get its length
-    const tempWriter = new BufferWriter(1024);
-    entity.serializeToBuffer(tempWriter, onlyDirty);
-    const entityBuffer = tempWriter.getBuffer();
+    // Reset and reuse temp buffer for entity serialization
+    this.tempWriter.reset();
+    entity.serializeToBuffer(this.tempWriter, onlyDirty);
+    const entityBuffer = this.tempWriter.getBuffer();
     // Write entity data with length prefix handled by writeBuffer
     this.writer.writeBuffer(entityBuffer);
   }
@@ -52,8 +57,13 @@ export class BufferManager {
    * Write game state metadata to the buffer using bitset approach
    * @param gameState - Game state data (wave info, etc.)
    * @param hasRemovedEntities - Whether there are removed entities (for bitset)
+   * @param mapData - Optional map data to include (only for full state updates)
    */
-  writeGameState(gameState: Partial<GameStateData>, hasRemovedEntities: boolean = false): void {
+  writeGameState(
+    gameState: Partial<GameStateData>,
+    hasRemovedEntities: boolean = false,
+    mapData?: MapData
+  ): void {
     // Build bitset to track which fields are present
     let bitset = 0;
 
@@ -78,11 +88,15 @@ export class BufferManager {
     if (hasRemovedEntities) {
       bitset |= GAME_STATE_BIT_REMOVED_ENTITY_IDS;
     }
+    if (mapData !== undefined) {
+      bitset |= GAME_STATE_BIT_MAP_DATA;
+    }
 
     // Write bitset as UInt8
     this.writer.writeUInt8(bitset);
 
     // Iterate through bits deterministically and write only fields that are set
+    // Note: REMOVED_ENTITY_IDS and MAP_DATA are handled separately after the loop
     for (const bit of GAME_STATE_FIELD_BITS) {
       if (bitset & bit) {
         switch (bit) {
@@ -111,9 +125,23 @@ export class BufferManager {
             // This bit is handled separately in writeRemovedEntityIds
             // We don't write anything here, just track that removals exist
             break;
+          case GAME_STATE_BIT_MAP_DATA:
+            // This bit is handled separately in writeMapData
+            // We don't write anything here, just track that map data exists
+            break;
         }
       }
     }
+  }
+
+  /**
+   * Write map data to the buffer (should be called after writeRemovedEntityIds)
+   * @param mapData - The map data to serialize
+   */
+  writeMapData(mapData: MapData): void {
+    // Serialize map data as JSON string
+    // This is simple and works well for map data which doesn't change often
+    this.writer.writeString(JSON.stringify(mapData));
   }
 
   /**

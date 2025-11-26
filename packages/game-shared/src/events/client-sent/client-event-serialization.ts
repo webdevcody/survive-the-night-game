@@ -40,6 +40,7 @@ const eventRegistry: Record<string, IBufferWriter> = {
   [ClientSentEvents.START_CRAFTING]: NoPayloadEvent,
   [ClientSentEvents.STOP_CRAFTING]: NoPayloadEvent,
   [ClientSentEvents.REQUEST_FULL_STATE]: NoPayloadEvent,
+  [ClientSentEvents.REQUEST_PLAYER_ID]: NoPayloadEvent,
   [ClientSentEvents.PLAYER_RESPAWN_REQUEST]: NoPayloadEvent,
   [ClientSentEvents.TELEPORT_TO_BASE]: NoPayloadEvent,
   [ClientSentEvents.DROP_ITEM]: DropItemEvent,

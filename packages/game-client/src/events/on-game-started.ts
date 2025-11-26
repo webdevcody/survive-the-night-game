@@ -5,9 +5,6 @@ import { InitializationContext } from "./types";
 export const onGameStarted = (context: InitializationContext, event: GameStartedEvent) => {
   console.log("[GameStarted] Server announced a new round – resetting client state");
 
-  // Invalidate current state and wait for a new full snapshot
-  context.invalidateInitialState("Server broadcast GAME_STARTED");
-
   // Clear all client-side entities, particles, and spatial references
   clearEntities(context.gameState);
   context.gameClient.getParticleManager().clear();
@@ -21,6 +18,7 @@ export const onGameStarted = (context: InitializationContext, event: GameStarted
     .getHud()
     .addMessage("The car is our only way out... don't let them destroy it!", "yellow");
 
-  // Request a fresh full state now that the game restarted
-  context.requestFullState("GameStarted event");
+  // Reset initialization and request fresh player ID + full game state
+  // Players get new entity IDs when a new game starts, so we need both
+  context.resetAndRequestInitialization("GameStarted event");
 };

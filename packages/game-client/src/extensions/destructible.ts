@@ -1,5 +1,4 @@
 import { ExtensionTypes } from "../../../game-shared/src/util/extension-types";
-import { ClientExtensionSerialized } from "@/extensions/types";
 import { BaseClientExtension } from "./base-extension";
 import { BufferReader } from "@shared/util/buffer-serialization";
 import { ClientPositionable } from "./positionable";
@@ -33,12 +32,6 @@ export class ClientDestructible extends BaseClientExtension {
       width: size.x,
       height: size.y,
     };
-  }
-
-  public deserialize(data: ClientExtensionSerialized): this {
-    this.health = data.health;
-    this.maxHealth = data.maxHealth;
-    return this;
   }
 
   public deserializeFromBuffer(reader: BufferReader): this {

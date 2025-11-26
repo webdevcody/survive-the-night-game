@@ -331,14 +331,14 @@ export class Renderer {
       DEBUG_PERFORMANCE &&
       (!this.lastPerfLogTime || performance.now() - this.lastPerfLogTime > 5000)
     ) {
-      perfTimer.logStats("renderGround");
-      perfTimer.logStats("renderCollidables");
-      perfTimer.logStats("renderEntities");
-      perfTimer.logStats("renderParticles");
-      perfTimer.logStats("renderDarkness");
-      perfTimer.logStats("renderUI");
-      perfTimer.logStats("render");
-      console.log("--------------------------------");
+      // perfTimer.logStats("renderGround");
+      // perfTimer.logStats("renderCollidables");
+      // perfTimer.logStats("renderEntities");
+      // perfTimer.logStats("renderParticles");
+      // perfTimer.logStats("renderDarkness");
+      // perfTimer.logStats("renderUI");
+      // perfTimer.logStats("render");
+      // console.log("--------------------------------");
       this.lastPerfLogTime = performance.now();
     }
   }

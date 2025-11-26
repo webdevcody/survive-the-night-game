@@ -7,6 +7,7 @@ import Positionable from "@/extensions/positionable";
 import Updatable from "@/extensions/updatable";
 import { IGameManagers } from "@/managers/types";
 import { Entities } from "@/constants";
+import { getConfig } from "@shared/config";
 import { Direction, normalizeDirection } from "@/util/direction";
 import { Entity } from "@/entities/entity";
 import { distance } from "@/util/physics";
@@ -17,14 +18,14 @@ import { Player } from "@/entities/players/player";
 import PoolManager from "@shared/util/pool-manager";
 
 // Random distance range for flame projectiles
-const MIN_TRAVEL_DISTANCE = 100;
-const MAX_TRAVEL_DISTANCE = 200;
+const MIN_TRAVEL_DISTANCE = getConfig().combat.TRAVEL_DISTANCE_SHORT;
+const MAX_TRAVEL_DISTANCE = getConfig().combat.TRAVEL_DISTANCE_MEDIUM;
 
 const FLAME_SPREAD_ANGLE = 15;
 
 export class FlameProjectile extends Entity {
   private traveledDistance: number = 0;
-  private static readonly FLAME_SPEED = 200; // Slower than bullets
+  private static readonly FLAME_SPEED = getConfig().combat.PROJECTILE_SPEED_STANDARD;
   private static get FLAME_SIZE(): Vector2 {
     return PoolManager.getInstance().vector2.claim(8, 8);
   }
@@ -102,7 +103,8 @@ export class FlameProjectile extends Entity {
     const currentPosition = this.getPosition();
 
     // Break down the movement into smaller steps to prevent tunneling
-    const numSteps = Math.ceil((FlameProjectile.FLAME_SPEED * deltaTime) / 10);
+    const stepSize = getConfig().combat.PROJECTILE_STEP_SIZE;
+    const numSteps = Math.ceil((FlameProjectile.FLAME_SPEED * deltaTime) / stepSize);
     const stepDelta = deltaTime / numSteps;
 
     let lastStepPosition = currentPosition;

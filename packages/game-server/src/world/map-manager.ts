@@ -39,8 +39,9 @@ import { balanceConfig } from "@shared/config/balance-config";
 import { Crate } from "@/entities/items/crate";
 import { CampsiteFire } from "@/entities/environment/campsite-fire";
 
-export const BIOME_SIZE = 16;
-export const MAP_SIZE = 9;
+// Re-export from shared config for backward compatibility
+export const BIOME_SIZE = getConfig().world.BIOME_SIZE;
+export const MAP_SIZE = getConfig().world.MAP_SIZE;
 
 // Ground tile IDs for valid spawn/placement locations
 const GROUND_TILE_ID_1 = 8;

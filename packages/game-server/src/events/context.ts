@@ -8,10 +8,12 @@ import { BufferManager } from "@/broadcasting/buffer-manager";
 import { GameEvent } from "@shared/events/types";
 import { RegExpMatcher, TextCensor } from "obscenity";
 import { ISocketAdapter } from "@shared/network/socket-adapter";
+import { PlayerColor } from "@shared/commands/commands";
 
 export interface HandlerContext {
   players: Map<string, Player>;
   playerDisplayNames: Map<string, string>;
+  playerColors: Map<string, PlayerColor>;
   gameServer: GameServer;
   bufferManager: BufferManager;
   chatCommandRegistry: CommandRegistry;
@@ -25,6 +27,5 @@ export interface HandlerContext {
   sendEventToSocket(socket: ISocketAdapter, event: GameEvent<any>): void;
   sanitizeText(text: string): string;
   createPlayerForSocket(socket: any): Player;
-  sendInitialDataToSocket(socket: any, player: Player): void;
   broadcastPlayerJoined(player: Player): void;
 }

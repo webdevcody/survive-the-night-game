@@ -1,5 +1,4 @@
 import { ExtensionTypes } from "../../../game-shared/src/util/extension-types";
-import { ClientExtensionSerialized } from "@/extensions/types";
 import { BaseClientExtension } from "./base-extension";
 import { ClientEntity } from "@/entities/client-entity";
 import { BufferReader } from "@shared/util/buffer-serialization";
@@ -15,18 +14,6 @@ export class ClientAcidTrigger extends BaseClientExtension {
 
   public constructor(clientEntity: ClientEntity) {
     super(clientEntity);
-  }
-
-  public serialize(): ClientExtensionSerialized {
-    return {
-      type: ClientAcidTrigger.type,
-      isReady: this.isReady,
-    };
-  }
-
-  public deserialize(data: ClientExtensionSerialized): this {
-    this.isReady = data.isReady ?? false;
-    return this;
   }
 
   public deserializeFromBuffer(reader: BufferReader): this {

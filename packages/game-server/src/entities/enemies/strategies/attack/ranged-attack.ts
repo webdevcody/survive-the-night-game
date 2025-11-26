@@ -3,9 +3,10 @@ import { SpitterZombie } from "../../spitter-zombie";
 import { AcidProjectile } from "@/entities/projectiles/acid-projectile";
 import { ZombieAttackedEvent } from "../../../../../../game-shared/src/events/server-sent/events/zombie-attacked-event";
 import { TargetingSystem } from "../targeting";
+import { getConfig } from "@shared/config";
 
 export class RangedAttackStrategy implements AttackStrategy {
-  private static readonly ATTACK_RANGE = 100;
+  private static readonly ATTACK_RANGE = getConfig().combat.RANGED_ATTACK_RANGE;
 
   update(zombie: BaseEnemy, deltaTime: number): void {
     if (!(zombie instanceof SpitterZombie)) return;

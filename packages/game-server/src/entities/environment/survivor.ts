@@ -15,7 +15,7 @@ import { distance, normalizeVector } from "@/util/physics";
 import { Cooldown } from "../util/cooldown";
 import { Bullet } from "@/entities/projectiles/bullet";
 import { LootEvent } from "../../../../game-shared/src/events/server-sent/events/loot-event";
-import { getConfig } from "@/config";
+import { getConfig } from "@shared/config";
 import { BIOME_SIZE, MAP_SIZE } from "@/world/map-manager";
 import { GunFiredEvent } from "../../../../game-shared/src/events/server-sent/events/gun-fired-event";
 import { SerializableFields } from "@/util/serializable-fields";
@@ -24,8 +24,8 @@ const SURVIVOR_MAX_HEALTH = 10;
 const SURVIVOR_SIZE = PoolManager.getInstance().vector2.claim(16, 16);
 const SURVIVOR_SHOOT_COOLDOWN = 1.0; // 1 second
 const SURVIVOR_SHOOT_DAMAGE = 1;
-const SURVIVOR_SHOOT_RANGE = 100; // Similar to sentry gun range
-const SURVIVOR_WANDER_RADIUS = 100; // Max distance from campsite center
+const SURVIVOR_SHOOT_RANGE = getConfig().entity.SURVIVOR_SHOOT_RANGE;
+const SURVIVOR_WANDER_RADIUS = getConfig().entity.SURVIVOR_WANDER_RADIUS;
 const SURVIVOR_WANDER_SPEED = 30; // Movement speed when wandering
 const WANDER_MOVE_DURATION = 2.0; // Move for 2 seconds
 const WANDER_PAUSE_DURATION = 2.0; // Pause for 2 seconds

@@ -3,12 +3,39 @@ import { HandlerContext } from "../context";
 import { RecipeType } from "@shared/util/recipes";
 import { SocketEventHandler } from "./types";
 
-export function onCraftRequest(context: HandlerContext, socket: ISocketAdapter, recipe: RecipeType): void {
-  const player = context.players.get(socket.id);
+// Cache valid recipe types for validation
+const VALID_RECIPE_TYPES = new Set(Object.values(RecipeType));
 
-  if (player) {
-    player.craftRecipe(recipe);
+/**
+ * Validate recipe type
+ */
+function validateRecipeType(recipe: unknown): RecipeType | null {
+  if (typeof recipe !== "string") {
+    return null;
   }
+
+  if (!VALID_RECIPE_TYPES.has(recipe as RecipeType)) {
+    return null;
+  }
+
+  return recipe as RecipeType;
+}
+
+export function onCraftRequest(
+  context: HandlerContext,
+  socket: ISocketAdapter,
+  recipe: unknown
+): void {
+  const player = context.players.get(socket.id);
+  if (!player) return;
+
+  const validatedRecipe = validateRecipeType(recipe);
+  if (!validatedRecipe) {
+    console.warn(`Invalid craft request from socket ${socket.id}: ${recipe}`);
+    return;
+  }
+
+  player.craftRecipe(validatedRecipe);
 }
 
 export function setPlayerCrafting(
@@ -26,12 +53,12 @@ export const craftRequestHandler: SocketEventHandler<RecipeType> = {
   handler: onCraftRequest,
 };
 
-export const startCraftingHandler: SocketEventHandler<RecipeType> = {
+export const startCraftingHandler: SocketEventHandler<void> = {
   event: "START_CRAFTING",
   handler: (context, socket) => setPlayerCrafting(context, socket, true),
 };
 
-export const stopCraftingHandler: SocketEventHandler<RecipeType> = {
+export const stopCraftingHandler: SocketEventHandler<void> = {
   event: "STOP_CRAFTING",
   handler: (context, socket) => setPlayerCrafting(context, socket, false),
 };

@@ -5,7 +5,6 @@ import { GameStartedEvent } from "../../../game-shared/src/events/server-sent/ev
 import { GunEmptyEvent } from "../../../game-shared/src/events/server-sent/events/gun-empty-event";
 import { GunFiredEvent } from "../../../game-shared/src/events/server-sent/events/gun-fired-event";
 import { LootEvent } from "../../../game-shared/src/events/server-sent/events/loot-event";
-import { MapEvent } from "../../../game-shared/src/events/server-sent/events/map-event";
 import { PlayerPickedUpItemEvent } from "../../../game-shared/src/events/server-sent/events/pickup-item-event";
 import { PlayerPickedUpResourceEvent } from "../../../game-shared/src/events/server-sent/events/pickup-resource-event";
 import { PlayerAttackedEvent } from "../../../game-shared/src/events/server-sent/events/player-attacked-event";
@@ -50,7 +49,6 @@ export type EntityDto = { id: string } & any;
 const SERVER_EVENT_MAP = {
   [ServerSentEvents.GAME_STATE_UPDATE]: GameStateEvent,
   [ServerSentEvents.PLAYER_DEATH]: PlayerDeathEvent,
-  [ServerSentEvents.MAP]: MapEvent,
   [ServerSentEvents.YOUR_ID]: YourIdEvent,
   [ServerSentEvents.PLAYER_HURT]: PlayerHurtEvent,
   [ServerSentEvents.PLAYER_ATTACKED]: PlayerAttackedEvent,
@@ -98,7 +96,7 @@ export class ClientSocketManager {
   private reconnectTimeout: ReturnType<typeof setTimeout> | null = null;
   private reconnectAttempts: number = 0;
   private readonly MAX_RECONNECT_ATTEMPTS = Infinity; // Keep trying indefinitely
-  private readonly RECONNECT_DELAY_MS = 3000; // 3 seconds delay
+  private readonly RECONNECT_DELAY_MS = 1000; // 1 second delay
   private readonly MAX_CONNECTION_ATTEMPTS = 10;
   private readonly CONNECTION_TIMEOUT_MS = 3000;
   private eventHandlers: Map<string, Array<(event: any) => void>> = new Map();
@@ -329,6 +327,7 @@ export class ClientSocketManager {
 
     if (this.socket) {
       try {
+        console.log("Disconnecting from game server", this.socket.id);
         this.socket.disconnect();
       } catch (error) {
         // Ignore errors during cleanup
@@ -342,6 +341,13 @@ export class ClientSocketManager {
 
   public requestFullState(): void {
     this.emitClientEvent(ClientSentEvents.REQUEST_FULL_STATE);
+  }
+
+  public requestPlayerId(): void {
+    // Request player ID from server
+    // The server should respond with YOUR_ID event
+    console.log("Requesting player ID");
+    this.emitClientEvent(ClientSentEvents.REQUEST_PLAYER_ID);
   }
 
   private attemptReconnect(): void {
@@ -381,13 +387,20 @@ export class ClientSocketManager {
       }
 
       console.log("Reconnecting to game server...");
-      this.connect().catch((error) => {
-        console.error("Reconnection attempt failed:", error);
-        // Continue attempting reconnection only if we're not already connecting and should reconnect
-        if (!this.isConnecting && this.shouldReconnect) {
-          this.attemptReconnect();
-        }
-      });
+      this.connect()
+        .then(() => {
+          // Successfully reconnected - request fresh player ID and full game state
+          console.log("Reconnected successfully, requesting player ID and full state");
+          this.requestPlayerId();
+          this.sendRequestFullState();
+        })
+        .catch((error) => {
+          console.error("Reconnection attempt failed:", error);
+          // Continue attempting reconnection only if we're not already connecting and should reconnect
+          if (!this.isConnecting && this.shouldReconnect) {
+            this.attemptReconnect();
+          }
+        });
     }, delay);
   }
 

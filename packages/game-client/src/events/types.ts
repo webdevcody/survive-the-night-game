@@ -17,15 +17,15 @@ export interface ClientEventContext {
 export interface InitializationContext extends ClientEventContext {
   interpolation: InterpolationManager;
   previousWaveState: WaveState | undefined;
-  pendingFullStateEvent: GameStateEvent | null;
-  hasReceivedMap: boolean;
   hasReceivedPlayerId: boolean;
   hasReceivedInitialState: boolean;
-  setHasReceivedMap: (value: boolean) => void;
   setHasReceivedPlayerId: (value: boolean) => void;
   setHasReceivedInitialState: (value: boolean, reason?: string) => void;
-  setPendingFullStateEvent: (event: GameStateEvent | null) => void;
   setPreviousWaveState: (state: WaveState | undefined) => void;
-  processPendingFullStateIfReady: () => void;
   checkInitialization: () => void;
+  /**
+   * Resets initialization state and requests fresh player ID + full game state.
+   * Used when reconnecting or when a new game starts (players get new entity IDs).
+   */
+  resetAndRequestInitialization: (reason: string) => void;
 }

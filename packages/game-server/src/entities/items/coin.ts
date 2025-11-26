@@ -12,7 +12,7 @@ export class Coin extends Entity {
   public static get Size(): Vector2 {
     return PoolManager.getInstance().vector2.claim(16, 16);
   }
-  private static readonly TRIGGER_RADIUS = 16;
+  private static readonly TRIGGER_RADIUS = getConfig().combat.ITEM_TRIGGER_RADIUS;
 
   constructor(gameManagers: IGameManagers) {
     super(gameManagers, Entities.COIN);

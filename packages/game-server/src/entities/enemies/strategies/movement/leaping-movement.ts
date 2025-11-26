@@ -6,6 +6,7 @@ import Snared from "@/extensions/snared";
 import { pathTowards, velocityTowards } from "@/util/physics";
 import { TargetChecker } from "../movement-utils";
 import { calculateSeparationForce, blendSeparationForce } from "../separation";
+import { getConfig } from "@shared/config";
 
 // Shared state between movement and attack strategies
 export class LeapingState {
@@ -13,7 +14,7 @@ export class LeapingState {
 }
 
 export class LeapingMovementStrategy implements MovementStrategy {
-  private static readonly PATH_RECALCULATION_INTERVAL = 1;
+  private static readonly PATH_RECALCULATION_INTERVAL = getConfig().entity.PATH_RECALCULATION_INTERVAL;
   private pathRecalculationTimer: number =
     Math.random() * LeapingMovementStrategy.PATH_RECALCULATION_INTERVAL;
   private targetChecker = new TargetChecker();

@@ -330,18 +330,4 @@ export class Broadcaster {
       console.error(`Failed to serialize event ${event.getType()} as binary buffer`);
     }
   }
-
-  /**
-   * Send initial data to a newly connected socket (MAP and YOUR_ID events)
-   */
-  public sendInitialDataToSocket(socket: ISocketAdapter, playerId: number, mapData: any): void {
-    socket.emit(ServerSentEvents.MAP, mapData);
-
-    const yourIdBuffer = serializeServerEvent(ServerSentEvents.YOUR_ID, [playerId]);
-    if (yourIdBuffer !== null) {
-      socket.emit(ServerSentEvents.YOUR_ID, yourIdBuffer);
-    } else {
-      console.error(`Failed to serialize ${ServerSentEvents.YOUR_ID} as binary buffer`);
-    }
-  }
 }

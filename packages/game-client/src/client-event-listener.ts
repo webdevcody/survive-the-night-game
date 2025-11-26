@@ -39,7 +39,6 @@ import { onChatMessage } from "./events/on-chat-message";
 import { onGameMessage } from "./events/on-game-message";
 import { onGameStateUpdate } from "./events/on-game-state-update";
 import { onLightningBolt } from "./events/on-lightning-bolt";
-import { onMap } from "./events/on-map";
 import { onYourId } from "./events/on-your-id";
 import { onVersionMismatch } from "./events/on-version-mismatch";
 import { onUserBanned } from "./events/on-user-banned";
@@ -49,18 +48,16 @@ export class ClientEventListener {
   private socketManager: ClientSocketManager;
   private gameClient: GameClient;
   private gameState: GameState;
-  private hasReceivedMap = false;
   private hasReceivedPlayerId = false;
   private hasReceivedInitialState = false;
   private interpolation: InterpolationManager = new InterpolationManager();
   private previousWaveState: WaveState | undefined = undefined;
-  private pendingFullStateEvent: GameStateEvent | null = null;
   private lastFullStateRequestAt: number | null = null;
   private lastFullStateRequestReason: string | null = null;
   private fullStateRequestTimer: ReturnType<typeof setTimeout> | null = null;
 
   private isInitialized(): boolean {
-    return this.hasReceivedMap && this.hasReceivedPlayerId && this.hasReceivedInitialState;
+    return this.hasReceivedPlayerId && this.hasReceivedInitialState;
   }
 
   /**
@@ -82,9 +79,6 @@ export class ClientEventListener {
     // Create initialization context fresh each time to get current state values
     this.socketManager.on(ServerSentEvents.GAME_STATE_UPDATE, (e) =>
       onGameStateUpdate(this.createInitializationContext(), e)
-    );
-    this.socketManager.on(ServerSentEvents.MAP, (e) =>
-      onMap(this.createInitializationContext(), e)
     );
     this.socketManager.on(ServerSentEvents.YOUR_ID, (e) =>
       onYourId(this.createInitializationContext(), e)
@@ -159,13 +153,8 @@ export class ClientEventListener {
       ...this.createContext(),
       interpolation: this.interpolation,
       previousWaveState: this.previousWaveState,
-      pendingFullStateEvent: this.pendingFullStateEvent,
-      hasReceivedMap: this.hasReceivedMap,
       hasReceivedPlayerId: this.hasReceivedPlayerId,
       hasReceivedInitialState: this.hasReceivedInitialState,
-      setHasReceivedMap: (value: boolean) => {
-        this.hasReceivedMap = value;
-      },
       setHasReceivedPlayerId: (value: boolean) => {
         this.hasReceivedPlayerId = value;
       },
@@ -183,17 +172,14 @@ export class ClientEventListener {
           this.invalidateInitialState(reason ?? "Initial state flag reset");
         }
       },
-      setPendingFullStateEvent: (event: GameStateEvent | null) => {
-        this.pendingFullStateEvent = event;
-      },
       setPreviousWaveState: (state: WaveState | undefined) => {
         this.previousWaveState = state;
       },
-      processPendingFullStateIfReady: () => {
-        this.processPendingFullStateIfReady();
-      },
       checkInitialization: () => {
         this.checkInitialization();
+      },
+      resetAndRequestInitialization: (reason: string) => {
+        this.resetAndRequestInitialization(reason);
       },
     };
   }
@@ -201,7 +187,6 @@ export class ClientEventListener {
   private handleDisconnect(): void {
     this.invalidateInitialState("Socket disconnected");
     // Reset initialization flags so we wait for fresh data on reconnect
-    this.hasReceivedMap = false;
     this.hasReceivedPlayerId = false;
 
     // Handle side effects
@@ -258,28 +243,31 @@ export class ClientEventListener {
       console.log(`[ClientEventListener] Waiting for initial state (${reason})`);
     }
     this.hasReceivedInitialState = false;
-    this.pendingFullStateEvent = null;
     this.interpolation.reset();
     this.clearFullStateRequestTimer();
   }
 
-  private processPendingFullStateIfReady(): void {
-    if (this.pendingFullStateEvent && this.hasReceivedMap && this.hasReceivedPlayerId) {
-      console.log("[ClientEventListener] Processing deferred full state event");
-      const pendingEvent = this.pendingFullStateEvent;
-      this.pendingFullStateEvent = null;
-      const initContext = this.createInitializationContext();
-      onGameStateUpdate(initContext, pendingEvent);
-    } else if (
-      !this.pendingFullStateEvent &&
-      this.hasReceivedMap &&
-      this.hasReceivedPlayerId &&
-      !this.hasReceivedInitialState
-    ) {
-      console.log(
-        "[ClientEventListener] Map & player ID received but still missing full state; requesting it"
-      );
-      this.requestFullState("Handshake complete but waiting for full state");
+  /**
+   * Resets initialization state and requests both player ID and full game state.
+   * Used when a new game starts (players get new entity IDs) or on reconnection.
+   */
+  private resetAndRequestInitialization(reason: string): void {
+    console.log(`[ClientEventListener] Resetting initialization: ${reason}`);
+
+    // Reset both flags - we need fresh player ID and full state
+    this.hasReceivedPlayerId = false;
+    this.hasReceivedInitialState = false;
+    this.interpolation.reset();
+    this.clearFullStateRequestTimer();
+
+    // Request both player ID and full state
+    console.log(`[ClientEventListener] Requesting player ID (${reason})`);
+    this.socketManager.requestPlayerId();
+    this.requestFullState(reason);
+
+    const savedColor = localStorage.getItem("playerColor");
+    if (savedColor) {
+      this.socketManager.sendPlayerColor(savedColor);
     }
   }
 

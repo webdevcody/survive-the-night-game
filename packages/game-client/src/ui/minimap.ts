@@ -140,7 +140,7 @@ export class Minimap {
   private renderer: Renderer | null = null;
   // Pre-rendered canvas for collidables indicators (at world coordinates, 1:1 scale)
   private collidablesCanvas: HTMLCanvasElement | null = null;
-  private readonly tileSize = 16; // Match MapManager tile size
+  private readonly tileSize = getConfig().world.TILE_SIZE;
   private cachedCollidablesReference: number[][] | null = null; // Track which map data we've cached
 
   constructor(mapManager: MapManager) {
@@ -381,8 +381,7 @@ export class Minimap {
     const biomePositions = this.mapManager.getBiomePositions();
     if (!biomePositions) return;
 
-    const BIOME_SIZE = 16; // tiles
-    const TILE_SIZE = 16; // pixels
+    const { BIOME_SIZE, TILE_SIZE } = getConfig().world;
     const centerX = scaledLeft + scaledSize / 2;
     const centerY = top + scaledSize / 2;
     const radius = scaledSize / 2;
@@ -427,8 +426,8 @@ export class Minimap {
       if (!position) return;
 
       // Convert biome position to world coordinates (center of biome)
-      const biomeWorldX = (position.x * BIOME_SIZE + BIOME_SIZE / 2) * getConfig().world.TILE_SIZE;
-      const biomeWorldY = (position.y * BIOME_SIZE + BIOME_SIZE / 2) * getConfig().world.TILE_SIZE;
+      const biomeWorldX = (position.x * BIOME_SIZE + BIOME_SIZE / 2) * TILE_SIZE;
+      const biomeWorldY = (position.y * BIOME_SIZE + BIOME_SIZE / 2) * TILE_SIZE;
 
       // Calculate relative position to player
       const relativeX = biomeWorldX - playerPos.x;

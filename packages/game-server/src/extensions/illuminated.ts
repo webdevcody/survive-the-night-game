@@ -3,6 +3,7 @@ import { Extension } from "@/extensions/types";
 import { BufferWriter } from "@shared/util/buffer-serialization";
 import { encodeExtensionType } from "@shared/util/extension-type-encoding";
 import { ExtensionBase } from "./extension-base";
+import { getConfig } from "@shared/config";
 
 type IlluminatedFields = {
   radius: number;
@@ -11,7 +12,7 @@ type IlluminatedFields = {
 export default class Illuminated extends ExtensionBase<IlluminatedFields> {
   public static readonly type = "illuminated";
 
-  constructor(self: IEntity, radius: number = 150) {
+  constructor(self: IEntity, radius: number = getConfig().world.LIGHT_RADIUS_FIRE) {
     super(self, { radius });
   }
 

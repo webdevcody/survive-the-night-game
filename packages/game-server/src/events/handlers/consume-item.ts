@@ -5,6 +5,25 @@ import Consumable from "@/extensions/consumable";
 import { ItemType } from "@shared/util/inventory";
 import { SocketEventHandler } from "./types";
 
+/**
+ * Validate consume item data
+ */
+function validateConsumeItemData(data: unknown): { itemType: ItemType | null } | null {
+  if (typeof data !== "object" || data === null) {
+    return null;
+  }
+
+  const obj = data as Record<string, unknown>;
+
+  // Validate itemType - must be a string or null
+  const itemType = obj.itemType;
+  if (itemType !== null && typeof itemType !== "string") {
+    return null;
+  }
+
+  return { itemType: itemType as ItemType | null };
+}
+
 export function onConsumeItem(
   context: HandlerContext,
   socket: ISocketAdapter,
@@ -31,8 +50,15 @@ export function onConsumeItem(
     }
   } else if (inputInventoryItem !== null) {
     // Otherwise, use the currently selected inventory slot
-    itemIndex = inputInventoryItem - 1;
-    item = inventory.getItems()[itemIndex];
+    // Validate that inputInventoryItem is in valid range before using
+    if (
+      typeof inputInventoryItem === "number" &&
+      inputInventoryItem >= 1 &&
+      inputInventoryItem <= 10
+    ) {
+      itemIndex = inputInventoryItem - 1;
+      item = inventory.getItems()[itemIndex];
+    }
   }
 
   if (item && itemIndex !== undefined) {
@@ -47,6 +73,13 @@ export function onConsumeItem(
 
 export const consumeItemHandler: SocketEventHandler<{ itemType: ItemType | null }> = {
   event: "CONSUME_ITEM",
-  handler: onConsumeItem,
+  handler: (context, socket, data) => {
+    const validated = validateConsumeItemData(data);
+    if (!validated) {
+      console.warn(`Invalid consume item data from socket ${socket.id}`);
+      return;
+    }
+    onConsumeItem(context, socket, validated);
+  },
 };
 

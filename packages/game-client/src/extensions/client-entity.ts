@@ -27,7 +27,6 @@ export abstract class ClientEntityBase {
     this.id = data.id;
     this.type = data.type;
     this.imageLoader = imageLoader;
-    this.deserialize(data);
   }
 
   public getImage(): HTMLImageElement {
@@ -105,100 +104,6 @@ export abstract class ClientEntityBase {
     return ext as T;
   }
 
-  public deserialize(data: RawEntity): void {
-    // Handle extension removals first
-    if (data.removedExtensions) {
-      for (const removedType of data.removedExtensions) {
-        this.extensions.delete(removedType);
-      }
-    }
-
-    if (!data.extensions) {
-      // Only warn if this is a full state update and we expect extensions
-      if (data.isFullState) {
-        console.warn(`No extensions found for entity ${this.id}`);
-      }
-      return;
-    }
-
-    const processedTypes = new Set<string>();
-
-    for (const extData of data.extensions) {
-      if (!extData.type) {
-        console.warn(`Extension data missing type: ${JSON.stringify(extData)}`);
-        continue;
-      }
-
-      const type = extData.type as keyof typeof clientExtensionsMap;
-      const ClientExtCtor = clientExtensionsMap[type];
-      if (!ClientExtCtor) {
-        console.warn(`No client extension found for type: ${extData.type}`);
-        continue;
-      }
-
-      try {
-        // Reuse existing extension if available
-        let ext = this.extensions.get(extData.type);
-        if (!ext) {
-          ext = new ClientExtCtor(this as any);
-          this.extensions.set(extData.type, ext);
-        }
-        ext.deserialize(extData);
-        processedTypes.add(extData.type);
-      } catch (error) {
-        console.error(`Error creating/updating extension ${extData.type}:`, error);
-      }
-    }
-
-    // Only remove unprocessed extensions if this is a full update
-    if (data.isFullState) {
-      for (const [type] of this.extensions) {
-        if (!processedTypes.has(type)) {
-          this.extensions.delete(type);
-        }
-      }
-    }
-  }
-
-  public deserializeProperty(key: string, value: any): void {
-    if (key === "removedExtensions" && Array.isArray(value)) {
-      // Handle extension removals
-      for (const removedType of value) {
-        this.extensions.delete(removedType);
-      }
-    } else if (key === "extensions" && Array.isArray(value)) {
-      // Deserialize extensions
-      for (const extData of value) {
-        if (!extData.type) {
-          console.warn(`Extension data missing type: ${JSON.stringify(extData)}`);
-          continue;
-        }
-
-        const type = extData.type as keyof typeof clientExtensionsMap;
-        const ClientExtCtor = clientExtensionsMap[type];
-        if (!ClientExtCtor) {
-          console.warn(`No client extension found for type: ${extData.type}`);
-          continue;
-        }
-
-        try {
-          // Reuse existing extension if available
-          let ext = this.extensions.get(extData.type);
-          if (!ext) {
-            ext = new ClientExtCtor(this as any);
-            this.extensions.set(extData.type, ext);
-          }
-          ext.deserialize(extData);
-        } catch (error) {
-          console.error(`Error creating/updating extension ${extData.type}:`, error);
-        }
-      }
-    } else {
-      // Handle direct property updates
-      (this as any)[key] = value;
-    }
-  }
-
   public deserializeFromBuffer(reader: BufferReader): void {
     let currentReader = reader;
 
@@ -261,7 +166,6 @@ export abstract class ClientEntityBase {
     }
 
     const extensionCount = currentReader.readUInt8();
-    const processedTypes = new Set<string>();
     // Extensions are written directly without length prefixes on the server
     // Format: [extensionType (UInt8)][extensionData...]
     // Read them sequentially from the current position
@@ -294,7 +198,6 @@ export abstract class ClientEntityBase {
         ext.deserializeFromBuffer(extensionReader);
 
         // currentReader is automatically advanced by the extension's read operations
-        processedTypes.add(extensionType);
       } catch (error) {
         console.error(
           `Error deserializing extension ${extensionType} for entity ${this.id} (${this.type}):`,

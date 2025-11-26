@@ -54,6 +54,7 @@ import { getPlayer } from "@/util/get-player";
 import { Entities } from "@shared/constants";
 import { itemRegistry } from "@shared/entities";
 import { ClientCarryable } from "@/extensions";
+import { PlayerColor } from "@shared/commands/commands";
 
 export class GameClient {
   private ctx: CanvasRenderingContext2D;
@@ -563,14 +564,26 @@ export class GameClient {
     this.clientEventListener = new ClientEventListener(this, this.socketManager);
     this.commandManager = new CommandManager(this.socketManager, this.gameState);
 
+    console.log("Connecting to server");
     await this.socketManager.connect();
-    this.socketManager.startPingMeasurement();
+    console.log("Connected to server");
+
+    // Request player ID and full game state
+    console.log("Requesting player ID");
+    this.socketManager.requestPlayerId();
+    console.log("Requesting full game state");
     this.socketManager.requestFullState();
+
+    // Note: Rendering will start automatically when both playerId and full game state
+    // are received, handled by checkInitialization() in ClientEventListener
+    // The flags are tracked in socketManager and checked by the event handlers
+
+    this.socketManager.startPingMeasurement();
 
     // Send saved player color if exists
     const savedColor = localStorage.getItem("playerColor");
     if (savedColor) {
-      this.socketManager.sendPlayerColor(savedColor);
+      this.socketManager.sendPlayerColor(savedColor as PlayerColor);
     }
 
     // Initialize placement manager
@@ -1103,15 +1116,12 @@ export class GameClient {
     if (biomePositions?.campsite && player.hasExt(ClientPositionable)) {
       const playerPos = player.getExt(ClientPositionable).getCenterPosition();
       // Convert biome coordinates to world coordinates (center of campsite biome)
-      // Each biome is 16 tiles, and campsite is at center of map (biome 4,4)
-      const BIOME_SIZE = 16;
+      const { BIOME_SIZE, TILE_SIZE } = getConfig().world;
       const campsiteBiomeX = biomePositions.campsite.x;
       const campsiteBiomeY = biomePositions.campsite.y;
       // Calculate center of campsite biome in world coordinates
-      const campsiteCenterX =
-        (campsiteBiomeX * BIOME_SIZE + BIOME_SIZE / 2) * getConfig().world.TILE_SIZE;
-      const campsiteCenterY =
-        (campsiteBiomeY * BIOME_SIZE + BIOME_SIZE / 2) * getConfig().world.TILE_SIZE;
+      const campsiteCenterX = (campsiteBiomeX * BIOME_SIZE + BIOME_SIZE / 2) * TILE_SIZE;
+      const campsiteCenterY = (campsiteBiomeY * BIOME_SIZE + BIOME_SIZE / 2) * TILE_SIZE;
       const poolManager = PoolManager.getInstance();
       const campsitePos = poolManager.vector2.claim(campsiteCenterX, campsiteCenterY);
 

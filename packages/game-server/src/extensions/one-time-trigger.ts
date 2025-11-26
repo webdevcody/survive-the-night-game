@@ -7,6 +7,7 @@ import { Cooldown } from "@/entities/util/cooldown";
 import { BufferWriter } from "@shared/util/buffer-serialization";
 import { encodeExtensionType } from "@shared/util/extension-type-encoding";
 import { ExtensionBase } from "./extension-base";
+import { getConfig } from "@shared/config";
 
 interface OneTimeTriggerOptions {
   triggerRadius: number;
@@ -21,7 +22,7 @@ type OneTimeTriggerFields = {
 
 export default class OneTimeTrigger extends ExtensionBase<OneTimeTriggerFields> {
   public static readonly type = "one-time-trigger";
-  private static readonly CHECK_INTERVAL = 0.25; // Check for enemies every half second
+  private static readonly CHECK_INTERVAL = getConfig().combat.TRIGGER_CHECK_INTERVAL;
 
   private triggerRadius: number;
   private targetTypes: EntityType[];

@@ -1,6 +1,5 @@
 import { ExtensionTypes } from "../../../game-shared/src/util/extension-types";
-import { InventoryItem, isWeapon, ItemType } from "../../../game-shared/src/util/inventory";
-import { ClientExtensionSerialized } from "@/extensions/types";
+import { InventoryItem, isWeapon } from "../../../game-shared/src/util/inventory";
 import { BaseClientExtension } from "./base-extension";
 import { BufferReader } from "@shared/util/buffer-serialization";
 import { playerConfig } from "@shared/config";
@@ -30,13 +29,6 @@ export class ClientInventory extends BaseClientExtension {
   public getActiveWeapon(activeItem: InventoryItem | null): InventoryItem | null {
     if (!activeItem) return null;
     return isWeapon(activeItem.itemType) ? activeItem : null;
-  }
-
-  public deserialize(data: ClientExtensionSerialized): this {
-    if (data.items) {
-      this.items = data.items;
-    }
-    return this;
   }
 
   public deserializeFromBuffer(reader: BufferReader): this {

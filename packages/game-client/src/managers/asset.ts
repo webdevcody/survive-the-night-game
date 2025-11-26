@@ -29,8 +29,9 @@ import { PLAYER_COLORS, PLAYER_COLOR_HEX, PlayerColor } from "@shared/commands/c
 
 // Ensure registries are populated before generating assets
 import "@shared/entities";
+import { getConfig } from "@shared/config";
 
-const TILE_SIZE = 16;
+const TILE_SIZE = getConfig().world.TILE_SIZE;
 
 // Valid sprite sheets that can be loaded
 const SPRITE_SHEETS = {

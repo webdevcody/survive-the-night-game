@@ -166,7 +166,8 @@ export class ToxicGasCloudExtension extends ExtensionBase<ToxicGasCloudFields> {
     const newY = currentPos.y + direction.y * this.TILE_SIZE;
 
     // Check bounds (map size)
-    const mapSize = getConfig().world.TILE_SIZE * 16 * 9; // BIOME_SIZE * MAP_SIZE * TILE_SIZE
+    const { TILE_SIZE, BIOME_SIZE, MAP_SIZE } = getConfig().world;
+    const mapSize = TILE_SIZE * BIOME_SIZE * MAP_SIZE;
     if (newX < 0 || newX >= mapSize || newY < 0 || newY >= mapSize) {
       return;
     }

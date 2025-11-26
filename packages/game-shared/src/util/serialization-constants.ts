@@ -19,7 +19,7 @@ export const FIELD_TYPE_NULL = 4;
  * 4: phaseDuration
  * 5: isFullState
  * 6: removedEntityIds (has removals)
- * 7: reserved
+ * 7: mapData (only sent on full state)
  */
 export const GAME_STATE_BIT_TIMESTAMP = 1 << 0; // 0x01
 export const GAME_STATE_BIT_WAVE_NUMBER = 1 << 1; // 0x02
@@ -28,6 +28,7 @@ export const GAME_STATE_BIT_PHASE_START_TIME = 1 << 3; // 0x08
 export const GAME_STATE_BIT_PHASE_DURATION = 1 << 4; // 0x10
 export const GAME_STATE_BIT_IS_FULL_STATE = 1 << 5; // 0x20
 export const GAME_STATE_BIT_REMOVED_ENTITY_IDS = 1 << 6; // 0x40
+export const GAME_STATE_BIT_MAP_DATA = 1 << 7; // 0x80
 
 /**
  * Array of game state field bits in deterministic order for serialization/deserialization
@@ -41,4 +42,5 @@ export const GAME_STATE_FIELD_BITS = [
   GAME_STATE_BIT_PHASE_DURATION,
   GAME_STATE_BIT_IS_FULL_STATE,
   GAME_STATE_BIT_REMOVED_ENTITY_IDS,
+  GAME_STATE_BIT_MAP_DATA,
 ] as const;

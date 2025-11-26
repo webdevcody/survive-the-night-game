@@ -7,8 +7,8 @@ import { ClientPositionable } from "@/extensions";
 import { Z_INDEX } from "@shared/map";
 
 export class BearTrapClient extends ClientEntity implements Renderable {
-  private isArmed = true;
-  private snaredZombieId: string | null = null;
+  public isArmed = true;
+  public snaredZombieId: string | null = null;
 
   constructor(data: RawEntity, assetManager: AssetManager) {
     super(data, assetManager);
@@ -34,12 +34,6 @@ export class BearTrapClient extends ClientEntity implements Renderable {
     if (!this.isArmed) {
       ctx.restore();
     }
-  }
-
-  public deserialize(data: RawEntity): void {
-    super.deserialize(data);
-    this.isArmed = data.isArmed ?? true;
-    this.snaredZombieId = data.snaredZombieId ?? null;
   }
 }
 

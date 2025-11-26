@@ -25,7 +25,7 @@ export class Merchant extends Entity {
     this.addExtension(
       new Interactive(this).onInteract(this.interact.bind(this)).setDisplayName("buy")
     );
-    this.addExtension(new Illuminated(this, 150));
+    this.addExtension(new Illuminated(this, getConfig().world.LIGHT_RADIUS_FIRE));
 
     // Initialize with all buyable items
     this.initializeShopItems();

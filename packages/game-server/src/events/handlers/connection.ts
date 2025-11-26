@@ -33,18 +33,12 @@ export function onConnection(context: HandlerContext, socket: ISocketAdapter): v
       // This shouldn't happen, but handle it gracefully
       console.warn(`Player for socket ${socket.id} not found after startNewGame(), creating one`);
       player = context.createPlayerForSocket(socket);
-      context.sendInitialDataToSocket(socket, player);
       context.broadcastPlayerJoined(player);
-    } else {
-      // Player was created by recreatePlayersForConnectedSockets(), which already
-      // sent initial data and broadcast join. Just verify initial data was sent.
-      // (recreatePlayersForConnectedSockets already handles this, so we don't need to do anything)
     }
 
     return;
   }
 
   const player = context.createPlayerForSocket(socket);
-  context.sendInitialDataToSocket(socket, player);
   context.broadcastPlayerJoined(player);
 }
