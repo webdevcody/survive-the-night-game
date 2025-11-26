@@ -30,6 +30,7 @@ export interface InputManagerOptions {
   onSendChat?: () => void;
   onToggleMute?: () => void;
   onToggleMap?: () => void;
+  onToggleInventory?: () => void;
   onMerchantKeyDown?: (key: string) => void;
   onEscape?: () => void;
   onRespawnRequest?: () => void;
@@ -38,6 +39,7 @@ export interface InputManagerOptions {
   onWeaponSelectByIndex?: (index: number) => void;
   isMerchantPanelOpen?: () => boolean;
   isFullscreenMapOpen?: () => boolean;
+  isInventoryPanelOpen?: () => boolean;
   isPlayerDead?: () => boolean;
   getInventory?: () => any[];
   onInventorySlotChanged?: (slot: number) => void;
@@ -268,23 +270,8 @@ export class InputManager {
           break;
         }
         case "KeyX": {
-          // Split half of the currently selected stack (if stackable)
-          const splitSlot = this.currentInventorySlot - 1; // Convert to 0-indexed
-          if (splitSlot < 0) break;
-
-          const inventory = callbacks.getInventory?.();
-          if (!inventory) break;
-
-          const item = inventory[splitSlot];
-          if (!item) break;
-
-          const count = item.state?.count ?? 1;
-          if (count <= 1) break;
-
-          const dropAmount = Math.floor(count / 2);
-          if (dropAmount <= 0) break;
-
-          callbacks.onDropItem?.(splitSlot, dropAmount);
+          // Toggle inventory panel
+          callbacks.onToggleInventory?.();
           break;
         }
         case "Space":

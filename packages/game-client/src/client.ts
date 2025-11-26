@@ -193,6 +193,11 @@ export class GameClient {
         return; // Click was handled by merchant panel
       }
 
+      // Update shift key state for quick move feature
+      if (this.hud) {
+        this.hud.setShiftHeld(e.shiftKey);
+      }
+
       // Handle UI clicks (inventory bar, HUD mute button, etc.)
       // HUD handles both hotbar and other UI clicks
       if (this.hud && this.hud.handleClick(x, y, canvas.width, canvas.height)) {
@@ -360,6 +365,7 @@ export class GameClient {
       getInventory,
       isMerchantPanelOpen: () => this.merchantBuyPanel.isVisible(),
       isFullscreenMapOpen: () => this.hud.isFullscreenMapOpen(),
+      isInventoryPanelOpen: () => this.hud.isInventoryPanelOpen(),
       onToggleInstructions: () => {
         this.hud.toggleInstructions();
       },
@@ -388,6 +394,9 @@ export class GameClient {
       },
       onToggleMap: () => {
         this.hud.toggleFullscreenMap();
+      },
+      onToggleInventory: () => {
+        this.hud.toggleInventoryPanel();
       },
       onDown: (inputs: Input) => {
         inputs.dy = 1;
