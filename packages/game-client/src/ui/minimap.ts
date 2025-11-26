@@ -4,6 +4,7 @@ import { ClientPositionable } from "@/extensions/positionable";
 import { PlayerClient } from "@/entities/player";
 import { CrateClient } from "@/entities/items/crate";
 import { SurvivorClient } from "@/entities/environment/survivor";
+import { ToxicBiomeZoneClient } from "@/entities/environment/toxic-biome-zone";
 import { MapManager } from "@/managers/map";
 import { perfTimer } from "@shared/util/performance";
 import { getConfig } from "@shared/config";
@@ -164,12 +165,18 @@ export class Minimap {
   }
 
   // Get all light sources from entities
-  private getLightSources(entities: ClientEntityBase[]): LightSource[] {
+  private getLightSources(entities: ClientEntityBase[], gameState: GameState): LightSource[] {
     const sources: LightSource[] = [];
+    const isBattleRoyale = gameState.gameMode === "battle_royale";
 
     // Add entity light sources (torches, campfires, etc.)
     for (const entity of entities) {
       if (entity.hasExt(ClientIlluminated) && entity.hasExt(ClientPositionable)) {
+        // In Battle Royale, hide other players' light sources to not reveal their position
+        if (isBattleRoyale && entity instanceof PlayerClient && entity.getId() !== gameState.playerId) {
+          continue;
+        }
+
         const radius = entity.getExt(ClientIlluminated).getRadius();
         // Skip entities with no light (radius 0 or very small)
         if (radius <= 0) continue;
@@ -226,6 +233,7 @@ export class Minimap {
     const playerEntities: PlayerClient[] = [];
     const crateEntities: CrateClient[] = [];
     const survivorEntities: SurvivorClient[] = [];
+    const toxicZoneEntities: ToxicBiomeZoneClient[] = [];
 
     for (const entity of allEntities) {
       if (entity instanceof PlayerClient) {
@@ -234,6 +242,8 @@ export class Minimap {
         crateEntities.push(entity);
       } else if (entity instanceof SurvivorClient) {
         survivorEntities.push(entity);
+      } else if (entity instanceof ToxicBiomeZoneClient) {
+        toxicZoneEntities.push(entity);
       }
     }
 
@@ -265,10 +275,20 @@ export class Minimap {
     this.renderCollidables(ctx, playerPos, settings, top, scaledLeft, scaledSize);
     perfTimer.end("minimap:collidables");
 
+    // Draw toxic biome zones (large areas covering entire biomes)
+    perfTimer.start("minimap:toxicZones");
+    this.renderToxicZones(ctx, toxicZoneEntities, playerPos, settings, top, scaledLeft, scaledSize);
+    perfTimer.end("minimap:toxicZones");
+
     // Loop through nearby entities and draw them on minimap
     perfTimer.start("minimap:entities");
     const maxEntityDistanceSquared =
       MINIMAP_RENDER_DISTANCE.ENTITIES * MINIMAP_RENDER_DISTANCE.ENTITIES;
+
+    // Battle Royale: limit player visibility range (approx 200 pixels / ~12 tiles)
+    const isBattleRoyale = gameState.gameMode === "battle_royale";
+    const playerVisibilityRange = 200;
+    const playerVisibilityRangeSquared = playerVisibilityRange * playerVisibilityRange;
 
     for (const entity of allEntities) {
       if (!entity.hasExt(ClientPositionable)) continue;
@@ -284,12 +304,20 @@ export class Minimap {
       const distanceSquared = relativeX * relativeX + relativeY * relativeY;
       if (distanceSquared > maxEntityDistanceSquared) continue;
 
+      // In Battle Royale, only show other players if they're within visibility range
+      if (isBattleRoyale && entity instanceof PlayerClient && entity.getId() !== gameState.playerId) {
+        if (distanceSquared > playerVisibilityRangeSquared) continue;
+      }
+
       // Convert to minimap coordinates (centered on player) using scaled values
       const minimapX = scaledLeft + scaledSize / 2 + relativeX * settings.scale;
       const minimapY = top + scaledSize / 2 + relativeY * settings.scale;
 
       // Get entity color and indicator using shared utility
-      const mapIndicator = getEntityMapColor(entity, settings);
+      const mapIndicator = getEntityMapColor(entity, settings, {
+        gameState,
+        myPlayerId: gameState.playerId,
+      });
       if (!mapIndicator) {
         // Skip entities that return null (e.g., crates)
         continue;
@@ -316,7 +344,7 @@ export class Minimap {
 
     // Draw fog of war overlay
     perfTimer.start("minimap:fogOfWar");
-    const lightSources = this.getLightSources(allEntities);
+    const lightSources = this.getLightSources(allEntities, gameState);
     this.renderFogOfWar(ctx, playerPos, lightSources, settings, top);
     perfTimer.end("minimap:fogOfWar");
 
@@ -362,7 +390,8 @@ export class Minimap {
       settings,
       top,
       scaledLeft,
-      scaledSize
+      scaledSize,
+      gameState
     );
     perfTimer.end("minimap:playerIndicators");
 
@@ -476,11 +505,16 @@ export class Minimap {
     settings: typeof MINIMAP_SETTINGS,
     top: number,
     scaledLeft: number,
-    scaledSize: number
+    scaledSize: number,
+    gameState: GameState
   ): void {
     const centerX = scaledLeft + scaledSize / 2;
     const centerY = top + scaledSize / 2;
     const radius = scaledSize / 2;
+
+    // Battle Royale: limit player visibility range and show as red
+    const isBattleRoyale = gameState.gameMode === "battle_royale";
+    const playerVisibilityRange = 200;
 
     // Loop through player entities
     for (const entity of playerEntities) {
@@ -496,6 +530,9 @@ export class Minimap {
       // Skip if this is the current player (distance ~0)
       const distance = Math.sqrt(relativeX * relativeX + relativeY * relativeY);
       if (distance < 10) continue; // Skip if very close (likely the same player)
+
+      // In Battle Royale, don't show directional indicators for players outside visibility range
+      if (isBattleRoyale && distance > playerVisibilityRange) continue;
 
       // Calculate scaled distance on minimap
       const scaledDistance = distance * settings.scale;
@@ -514,8 +551,11 @@ export class Minimap {
       // Draw the indicator - use a triangle pointing in the direction
       const indicatorSize = 12;
 
+      // In Battle Royale, other players are enemies (red)
+      const indicatorColor = isBattleRoyale ? settings.colors.enemy : settings.colors.player;
+
       // Draw filled triangle
-      ctx.fillStyle = settings.colors.player;
+      ctx.fillStyle = indicatorColor;
       ctx.beginPath();
       ctx.moveTo(edgeX + Math.cos(angle) * indicatorSize, edgeY + Math.sin(angle) * indicatorSize);
       ctx.lineTo(
@@ -707,6 +747,53 @@ export class Minimap {
       ctx.stroke();
       ctx.strokeRect(minimapX - iconSize / 6, minimapY - iconSize / 6, iconSize / 3, iconSize / 2);
     }
+  }
+
+  /**
+   * Render toxic biome zones as filled rectangles covering their actual area
+   */
+  private renderToxicZones(
+    ctx: CanvasRenderingContext2D,
+    toxicZoneEntities: ToxicBiomeZoneClient[],
+    playerPos: { x: number; y: number },
+    settings: typeof MINIMAP_SETTINGS,
+    top: number,
+    scaledLeft: number,
+    scaledSize: number
+  ): void {
+    if (toxicZoneEntities.length === 0) return;
+
+    const centerX = scaledLeft + scaledSize / 2;
+    const centerY = top + scaledSize / 2;
+
+    ctx.save();
+    ctx.fillStyle = settings.colors.toxicGas;
+
+    // Small overlap to prevent gaps between adjacent zones due to floating-point precision
+    const overlap = 1;
+
+    for (const zone of toxicZoneEntities) {
+      if (!zone.hasExt(ClientPositionable)) continue;
+
+      const positionable = zone.getExt(ClientPositionable);
+      const position = positionable.getPosition();
+      const size = positionable.getSize();
+
+      // Calculate position relative to player
+      const relativeX = position.x - playerPos.x;
+      const relativeY = position.y - playerPos.y;
+
+      // Convert to minimap coordinates
+      const minimapX = centerX + relativeX * settings.scale;
+      const minimapY = centerY + relativeY * settings.scale;
+      const minimapWidth = size.x * settings.scale + overlap;
+      const minimapHeight = size.y * settings.scale + overlap;
+
+      // Draw the toxic zone as a filled rectangle
+      ctx.fillRect(minimapX, minimapY, minimapWidth, minimapHeight);
+    }
+
+    ctx.restore();
   }
 
   // Render fog of war overlay - darken areas not in light

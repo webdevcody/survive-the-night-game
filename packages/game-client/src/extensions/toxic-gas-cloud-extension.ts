@@ -10,6 +10,7 @@ export class ClientToxicGasCloudExtension extends BaseClientExtension {
   public static readonly type = ExtensionTypes.TOXIC_GAS_CLOUD;
 
   public age: number = 0; // Made public for rendering access
+  public permanent: boolean = false; // Made public for rendering access
   private canReproduce: boolean = true;
   private primaryDirectionX: number = 0;
   private primaryDirectionY: number = 0;
@@ -25,6 +26,7 @@ export class ClientToxicGasCloudExtension extends BaseClientExtension {
     this.primaryDirectionX = reader.readFloat64();
     this.primaryDirectionY = reader.readFloat64();
     this.isOriginalCloud = reader.readBoolean();
+    this.permanent = reader.readBoolean();
     return this;
   }
 }

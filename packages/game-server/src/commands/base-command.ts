@@ -1,10 +1,12 @@
 import type { Player } from "../entities/players/player";
 import type { EntityManager } from "../managers/entity-manager";
+import type { IGameLoop } from "../managers/types";
 
 export interface CommandContext {
   player: Player;
   args: string[];
   entityManager: EntityManager;
+  gameLoop: IGameLoop;
 }
 
 export interface ICommand {

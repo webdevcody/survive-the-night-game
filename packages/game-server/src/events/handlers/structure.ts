@@ -5,6 +5,7 @@ import { SocketEventHandler } from "./types";
 import { itemRegistry } from "@shared/entities/item-registry";
 import Positionable from "@/extensions/positionable";
 import Inventory from "@/extensions/inventory";
+import Placeable from "@/extensions/placeable";
 import { getConfig } from "@shared/config";
 import PoolManager from "@shared/util/pool-manager";
 import { BuildEvent } from "../../../../game-shared/src/events/server-sent/events/build-event";
@@ -209,6 +210,12 @@ export function onPlaceStructure(
     }
 
     upgradedEntity.getExt(Positionable).setPosition(existingPos);
+
+    // Set owner ID on placeable structures (for friendly fire in Battle Royale)
+    if (upgradedEntity.hasExt(Placeable)) {
+      upgradedEntity.getExt(Placeable).setOwnerId(player.getId());
+    }
+
     context.getEntityManager().addEntity(upgradedEntity);
 
     console.log(
@@ -286,6 +293,12 @@ export function onPlaceStructure(
   }
 
   placedEntity.getExt(Positionable).setPosition(placePos);
+
+  // Set owner ID on placeable structures (for friendly fire in Battle Royale)
+  if (placedEntity.hasExt(Placeable)) {
+    placedEntity.getExt(Placeable).setOwnerId(player.getId());
+  }
+
   context.getEntityManager().addEntity(placedEntity);
 
   console.log(`Player ${player.getId()} placed ${data.itemType} at (${placePos.x}, ${placePos.y})`);

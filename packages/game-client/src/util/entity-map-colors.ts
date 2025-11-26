@@ -9,6 +9,8 @@ import { ClothClient } from "@/entities/items/cloth";
 import { CrateClient } from "@/entities/items/crate";
 import { AcidProjectileClient } from "@/entities/acid-projectile";
 import { ToxicGasCloudClient } from "@/entities/environment/toxic-gas-cloud";
+import { ToxicBiomeZoneClient } from "@/entities/environment/toxic-biome-zone";
+import { GameState } from "@/state";
 
 export interface EntityMapIndicator {
   color: string;
@@ -40,6 +42,11 @@ export interface MapColorSettings {
   };
 }
 
+export interface MapColorOptions {
+  gameState?: GameState;
+  myPlayerId?: number;
+}
+
 /**
  * Determines the color and indicator settings for an entity on the map.
  * This function centralizes the logic for entity coloring so it can be reused
@@ -47,11 +54,13 @@ export interface MapColorSettings {
  *
  * @param entity - The entity to determine color for
  * @param settings - Map color settings containing colors and indicators
+ * @param options - Optional settings including gameState for mode-specific logic
  * @returns EntityMapIndicator with color and indicator, or null if entity should be skipped
  */
 export function getEntityMapColor(
   entity: ClientEntityBase,
-  settings: MapColorSettings
+  settings: MapColorSettings,
+  options?: MapColorOptions
 ): EntityMapIndicator | null {
   const category = entity.getCategory();
 
@@ -75,6 +84,17 @@ export function getEntityMapColor(
 
   // Players
   if (entity instanceof PlayerClient) {
+    const isBattleRoyale = options?.gameState?.gameMode === "battle_royale";
+    const isMyPlayer = options?.myPlayerId !== undefined && entity.getId() === options.myPlayerId;
+
+    // In Battle Royale, other players show as red (enemies)
+    if (isBattleRoyale && !isMyPlayer) {
+      return {
+        color: settings.colors.enemy, // Red for enemy players
+        indicator: convertIndicator(settings.indicators.player),
+      };
+    }
+
     return {
       color: settings.colors.player,
       indicator: convertIndicator(settings.indicators.player),
@@ -138,6 +158,14 @@ export function getEntityMapColor(
 
   // Toxic gas clouds
   if (entity instanceof ToxicGasCloudClient) {
+    return {
+      color: settings.colors.toxicGas,
+      indicator: convertIndicator(settings.indicators.toxicGas),
+    };
+  }
+
+  // Toxic biome zones (consolidated toxic zones covering entire biomes)
+  if (entity instanceof ToxicBiomeZoneClient) {
     return {
       color: settings.colors.toxicGas,
       indicator: convertIndicator(settings.indicators.toxicGas),

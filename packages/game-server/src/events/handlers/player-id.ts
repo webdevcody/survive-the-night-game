@@ -10,7 +10,8 @@ export function sendPlayerId(context: HandlerContext, socket: ISocketAdapter): v
     return;
   }
 
-  const yourIdEvent = new YourIdEvent(player.getId());
+  const gameMode = context.gameServer.getGameLoop().getGameModeStrategy().getConfig().modeId as "waves" | "battle_royale";
+  const yourIdEvent = new YourIdEvent(player.getId(), gameMode);
   context.sendEventToSocket(socket, yourIdEvent);
 }
 

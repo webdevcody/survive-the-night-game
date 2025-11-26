@@ -68,4 +68,13 @@ export class ToxicGasCloud extends Entity {
       this.getExt(ToxicGasCloudExtension).setPrimaryDirection(direction);
     }
   }
+
+  /**
+   * Set whether this cloud is permanent (never expires)
+   */
+  public setPermanent(permanent: boolean): void {
+    if (this.hasExt(ToxicGasCloudExtension)) {
+      this.getExt(ToxicGasCloudExtension).setPermanent(permanent);
+    }
+  }
 }

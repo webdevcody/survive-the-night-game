@@ -3,6 +3,8 @@ import { getPlayer } from "@/util/get-player";
 import { ClientPositionable } from "@/extensions/positionable";
 import { CrateClient } from "@/entities/items/crate";
 import { SurvivorClient } from "@/entities/environment/survivor";
+import { PlayerClient } from "@/entities/player";
+import { ToxicBiomeZoneClient } from "@/entities/environment/toxic-biome-zone";
 import { MapManager } from "@/managers/map";
 import { getConfig } from "@shared/config";
 import { ClientIlluminated } from "@/extensions/illuminated";
@@ -116,10 +118,16 @@ export class FullScreenMap {
   // Get all light sources from entities
   private getLightSources(gameState: GameState): LightSource[] {
     const sources: LightSource[] = [];
+    const isBattleRoyale = gameState.gameMode === "battle_royale";
 
     // Add entity light sources
     for (const entity of gameState.entities) {
       if (entity.hasExt(ClientIlluminated) && entity.hasExt(ClientPositionable)) {
+        // In Battle Royale, hide other players' light sources to not reveal their position
+        if (isBattleRoyale && entity instanceof PlayerClient && entity.getId() !== gameState.playerId) {
+          continue;
+        }
+
         const radius = entity.getExt(ClientIlluminated).getRadius() / 2;
         const position = entity.getExt(ClientPositionable).getCenterPosition();
         sources.push({ position, radius });
@@ -208,6 +216,9 @@ export class FullScreenMap {
 
     // Draw collidable tiles
     this.renderCollidables(ctx, effectiveCenterPos, zoom, centerX, centerY, mapWidth, mapHeight);
+
+    // Draw toxic biome zones (large areas covering entire biomes)
+    this.renderToxicZones(ctx, gameState, effectiveCenterPos, zoom, centerX, centerY);
 
     // Draw entities
     this.renderEntities(
@@ -487,6 +498,17 @@ export class FullScreenMap {
     const settings = FULLSCREEN_MAP_SETTINGS;
     const maxDistanceSquared = ((mapWidth / zoom) ** 2 + (mapHeight / zoom) ** 2) / 4;
 
+    // Battle Royale: limit player visibility range (approx 200 pixels / ~12 tiles)
+    const isBattleRoyale = gameState.gameMode === "battle_royale";
+    const playerVisibilityRange = 200;
+    const playerVisibilityRangeSquared = playerVisibilityRange * playerVisibilityRange;
+
+    // Get the actual player position for distance calculations (not the map center)
+    const myPlayer = getPlayer(gameState);
+    const myPlayerPos = myPlayer?.hasExt(ClientPositionable)
+      ? myPlayer.getExt(ClientPositionable).getCenterPosition()
+      : playerPos;
+
     for (const entity of gameState.entities) {
       if (!entity.hasExt(ClientPositionable)) continue;
 
@@ -499,11 +521,22 @@ export class FullScreenMap {
       const distanceSquared = relativeX * relativeX + relativeY * relativeY;
       if (distanceSquared > maxDistanceSquared) continue;
 
+      // In Battle Royale, only show other players if they're within visibility range of the actual player
+      if (isBattleRoyale && entity instanceof PlayerClient && entity.getId() !== gameState.playerId) {
+        const playerRelX = position.x - myPlayerPos.x;
+        const playerRelY = position.y - myPlayerPos.y;
+        const playerDistSquared = playerRelX * playerRelX + playerRelY * playerRelY;
+        if (playerDistSquared > playerVisibilityRangeSquared) continue;
+      }
+
       const mapX = centerX + relativeX * zoom;
       const mapY = centerY + relativeY * zoom;
 
       // Get entity color and indicator using shared utility
-      const mapIndicator = getEntityMapColor(entity, settings);
+      const mapIndicator = getEntityMapColor(entity, settings, {
+        gameState,
+        myPlayerId: gameState.playerId,
+      });
       if (!mapIndicator) {
         // Skip entities that return null (e.g., crates)
         continue;
@@ -774,6 +807,50 @@ export class FullScreenMap {
       ctx.textBaseline = "middle";
       ctx.fillText(config.label, biomeX, biomeY);
     });
+  }
+
+  /**
+   * Render toxic biome zones as filled rectangles covering their actual area
+   */
+  private renderToxicZones(
+    ctx: CanvasRenderingContext2D,
+    gameState: GameState,
+    playerPos: { x: number; y: number },
+    zoom: number,
+    centerX: number,
+    centerY: number
+  ): void {
+    const settings = FULLSCREEN_MAP_SETTINGS;
+
+    ctx.save();
+    ctx.fillStyle = settings.colors.toxicGas;
+
+    // Small overlap to prevent gaps between adjacent zones due to floating-point precision
+    const overlap = 1;
+
+    for (const entity of gameState.entities) {
+      if (!(entity instanceof ToxicBiomeZoneClient)) continue;
+      if (!entity.hasExt(ClientPositionable)) continue;
+
+      const positionable = entity.getExt(ClientPositionable);
+      const position = positionable.getPosition();
+      const size = positionable.getSize();
+
+      // Calculate position relative to player
+      const relativeX = position.x - playerPos.x;
+      const relativeY = position.y - playerPos.y;
+
+      // Convert to map coordinates
+      const mapX = centerX + relativeX * zoom;
+      const mapY = centerY + relativeY * zoom;
+      const mapWidth = size.x * zoom + overlap;
+      const mapHeight = size.y * zoom + overlap;
+
+      // Draw the toxic zone as a filled rectangle
+      ctx.fillRect(mapX, mapY, mapWidth, mapHeight);
+    }
+
+    ctx.restore();
   }
 
   public handleClick(x: number, y: number): boolean {

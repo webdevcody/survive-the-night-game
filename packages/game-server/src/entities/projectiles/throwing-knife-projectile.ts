@@ -1,6 +1,5 @@
 import Collidable from "@/extensions/collidable";
 import Destructible from "@/extensions/destructible";
-import Groupable from "@/extensions/groupable";
 import Inventory from "@/extensions/inventory";
 import Movable from "@/extensions/movable";
 import Positionable from "@/extensions/positionable";
@@ -148,20 +147,19 @@ export class ThrowingKnifeProjectile extends Entity {
       // Check for collisions with collidable entities (trees, walls, boundaries, etc.)
       const collidingEntity = this.getEntityManager().getIntersectingCollidableEntity(this);
       if (collidingEntity) {
-        // Check if it's an enemy - if so, let handleIntersections deal with it
-        const isEnemy =
-          collidingEntity.hasExt(Groupable) &&
-          collidingEntity.getExt(Groupable).getGroup() === "enemy";
+        // Check if it's a valid target - if so, let handleIntersections deal with it
+        const strategy = this.getGameManagers().getGameServer().getGameLoop().getGameModeStrategy();
+        const isValidTarget = strategy.shouldDamageTarget(this, collidingEntity, this.shooterId);
 
         // Check if it's a boundary - throwing knives should stop at boundaries but pass through walls
         const isBoundary = collidingEntity.getType() === Entities.BOUNDARY;
 
-        // Don't stop if we hit the shooter, the car, or an enemy (enemies are handled by handleIntersections)
+        // Don't stop if we hit the shooter, the car, or a valid target (targets are handled by handleIntersections)
         // Only stop at boundaries, not walls or other collidables (similar to bullets)
         if (
           collidingEntity.getId() !== this.shooterId &&
           !(collidingEntity instanceof Car) &&
-          !isEnemy &&
+          !isValidTarget &&
           isBoundary
         ) {
           // Hit a boundary - create pickup item and remove projectile
@@ -209,22 +207,24 @@ export class ThrowingKnifeProjectile extends Entity {
 
     const knifePath = poolManager.line.claim(fromCenter, toCenter);
 
-    const isEnemy = (entity: IEntity) =>
-      entity.hasExt(Groupable) && entity.getExt(Groupable).getGroup() === "enemy";
+    // Use game mode strategy to determine valid targets
+    const strategy = this.getGameManagers().getGameServer().getGameLoop().getGameModeStrategy();
+    const isValidTarget = (entity: IEntity) =>
+      strategy.shouldDamageTarget(this, entity, this.shooterId);
 
-    const enemies = this.getEntityManager()
+    const targets = this.getEntityManager()
       .getNearbyIntersectingDestructableEntities(this)
-      .filter(isEnemy);
+      .filter(isValidTarget);
 
-    // Sort enemies by distance to knife start position to ensure we hit the closest enemy first
-    enemies.sort((a, b) => {
+    // Sort targets by distance to knife start position to ensure we hit the closest target first
+    targets.sort((a, b) => {
       const distA = distance(fromCenter, a.getExt(Positionable).getPosition());
       const distB = distance(fromCenter, b.getExt(Positionable).getPosition());
       return distA - distB;
     });
 
-    for (const enemy of enemies) {
-      const hitbox = enemy.getExt(Destructible).getDamageBox();
+    for (const target of targets) {
+      const hitbox = target.getExt(Destructible).getDamageBox();
       let collision = false;
 
       // Expand the rectangle by the knife's radius to account for the knife's size
@@ -268,15 +268,15 @@ export class ThrowingKnifeProjectile extends Entity {
         poolManager.vector2.release(fromCenter);
         poolManager.vector2.release(toCenter);
         this.getEntityManager().markEntityForRemoval(this);
-        const destructible = enemy.getExt(Destructible);
+        const destructible = target.getExt(Destructible);
         const wasAlive = !destructible.isDead();
 
         // Deal 1 damage
         destructible.damage(1, this.shooterId);
 
-        // Add throwing knife to enemy's inventory (stacking)
-        if (enemy.hasExt(Inventory)) {
-          const inventory = enemy.getExt(Inventory);
+        // Add throwing knife to target's inventory (stacking) if it has one
+        if (target.hasExt(Inventory)) {
+          const inventory = target.getExt(Inventory);
           const existingKnifeIndex = inventory
             .getItems()
             .findIndex((item) => item != null && item.itemType === "throwing_knife");
@@ -297,7 +297,7 @@ export class ThrowingKnifeProjectile extends Entity {
           }
         }
 
-        // If the enemy died from this hit, increment the shooter's kill count
+        // If the target died from this hit, increment the shooter's kill count
         if (wasAlive && destructible.isDead()) {
           const shooter = this.getEntityManager().getEntityById(this.shooterId);
           if (shooter instanceof Player) {

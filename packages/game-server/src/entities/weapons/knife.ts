@@ -5,7 +5,6 @@ import { Weapon } from "@/entities/weapons/weapon";
 import { PlayerAttackedEvent } from "../../../../game-shared/src/events/server-sent/events/player-attacked-event";
 import Vector2 from "@/util/vector2";
 import Positionable from "@/extensions/positionable";
-import Groupable from "@/extensions/groupable";
 import { knockBack } from "./helpers";
 import { Player } from "@/entities/players/player";
 import { getConfig } from "@shared/config";
@@ -19,7 +18,7 @@ export class Knife extends Weapon {
     return this.getConfig().stats.cooldown;
   }
 
-  public attack(playerId: string, position: Vector2, facing: Direction, aimAngle?: number): void {
+  public attack(playerId: number, position: Vector2, facing: Direction, aimAngle?: number): void {
     // Use aimAngle to determine attack direction if provided, otherwise use facing
     const attackDirection = aimAngle !== undefined ? angleToDirection(aimAngle) : facing;
 
@@ -27,14 +26,17 @@ export class Knife extends Weapon {
       position,
       getConfig().combat.KNIFE_ATTACK_RANGE + 24
     );
-    const nearbyEnemies = nearbyEntities.filter(
-      (entity) => entity.hasExt(Groupable) && entity.getExt(Groupable).getGroup() === "enemy"
+
+    // Use game mode strategy to determine valid targets
+    const strategy = this.getGameManagers().getGameServer().getGameLoop().getGameModeStrategy();
+    const validTargets = nearbyEntities.filter(
+      (entity) => entity.hasExt(Destructible) && strategy.shouldDamageTarget(this, entity, playerId)
     );
 
-    const targetZombie = nearbyEnemies.find((entity) => {
-      const zombiePos = entity.getExt(Positionable).getCenterPosition();
-      const dx = zombiePos.x - position.x;
-      const dy = zombiePos.y - position.y;
+    const target = validTargets.find((entity) => {
+      const targetPos = entity.getExt(Positionable).getCenterPosition();
+      const dx = targetPos.x - position.x;
+      const dy = targetPos.y - position.y;
       const distance = Math.sqrt(dx * dx + dy * dy);
 
       const destructible = entity.getExt(Destructible);
@@ -42,7 +44,7 @@ export class Knife extends Weapon {
 
       if (distance > getConfig().combat.KNIFE_ATTACK_RANGE) return false;
 
-      // Check if enemy is in the attack direction
+      // Check if target is in the attack direction
       if (attackDirection === Direction.Right && dx < 0) return false;
       if (attackDirection === Direction.Left && dx > 0) return false;
       if (attackDirection === Direction.Up && dy > 0) return false;
@@ -51,22 +53,21 @@ export class Knife extends Weapon {
       return true;
     });
 
-    if (targetZombie) {
-      const destructible = targetZombie.getExt(Destructible);
+    if (target) {
+      const destructible = target.getExt(Destructible);
       const wasAlive = !destructible.isDead();
-      
-      const player = this.getEntityManager().getEntityById(playerId);
-      const attackerId = player ? player.getId() : 0;
-      destructible.damage(this.getConfig().stats.damage!, attackerId);
-      
+
+      destructible.damage(this.getConfig().stats.damage!, playerId);
+
       knockBack(
         this.getEntityManager(),
-        targetZombie,
+        target,
         attackDirection,
         this.getConfig().stats.pushDistance!
       );
 
       if (wasAlive && destructible.isDead()) {
+        const player = this.getEntityManager().getEntityById(playerId);
         if (player instanceof Player) {
           player.incrementKills();
         }

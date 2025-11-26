@@ -105,15 +105,17 @@ const HUD_SETTINGS = {
   },
   Wave: {
     width: 300,
-    height: 90,
+    height: 110,
     padding: 12,
     background: "rgba(0, 0, 0, 0.85)",
     borderColor: "rgba(200, 50, 50, 0.8)", // Red border
     borderWidth: 3,
     font: "18px Arial",
     timerFont: "bold 36px monospace", // Monospace for digital clock feel
+    modeFont: "14px Arial",
     textColor: "rgba(255, 255, 255, 0.9)",
     timerColor: "rgba(255, 50, 50, 1)", // Bright red for timer
+    modeColor: "rgba(200, 200, 200, 0.8)", // Subtle gray for mode text
     right: 40,
     top: 40,
   },
@@ -218,10 +220,12 @@ export class Hud {
       height: HUD_SETTINGS.Wave.height,
       font: HUD_SETTINGS.Wave.font,
       timerFont: HUD_SETTINGS.Wave.timerFont,
+      modeFont: HUD_SETTINGS.Wave.modeFont,
       x: 0, // Will be calculated in render
       y: 0, // Will be calculated in render
       textColor: HUD_SETTINGS.Wave.textColor,
       timerColor: HUD_SETTINGS.Wave.timerColor,
+      modeColor: HUD_SETTINGS.Wave.modeColor,
     });
 
     // Initialize bottom right panels

@@ -50,6 +50,7 @@ export async function handleChat(
       player,
       args: [],
       entityManager: context.getEntityManager() as EntityManager,
+      gameLoop: context.gameServer.getGameLoop(),
     });
 
     // If command returned a message, send it as a system message

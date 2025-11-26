@@ -20,6 +20,7 @@ type ToxicGasCloudFields = {
   primaryDirectionX: number;
   primaryDirectionY: number;
   isOriginalCloud: boolean;
+  permanent: boolean; // If true, cloud never expires (for Battle Royale)
 };
 
 /**
@@ -39,6 +40,7 @@ export class ToxicGasCloudExtension extends ExtensionBase<ToxicGasCloudFields> {
       primaryDirectionX: 0,
       primaryDirectionY: 0,
       isOriginalCloud: true,
+      permanent: false,
     });
 
     // Initialize growth cooldown
@@ -74,10 +76,12 @@ export class ToxicGasCloudExtension extends ExtensionBase<ToxicGasCloudFields> {
     this.lifetime += deltaTime;
     const config = environmentalEventsConfig.TOXIC_GAS;
 
-    // All clouds should be removed after their lifetime expires
+    // All clouds should be removed after their lifetime expires (unless permanent)
     // Original clouds: 10 seconds
     // Spawned clouds: also 10 seconds (they inherit the same lifetime)
-    if (this.lifetime >= config.ORIGINAL_LIFETIME) {
+    // Permanent clouds (Battle Royale): never expire
+    const isPermanent = this.serialized.get("permanent");
+    if (!isPermanent && this.lifetime >= config.ORIGINAL_LIFETIME) {
       // Remove immediately - don't wait for prune cycle
       const entityManager = this.self.getEntityManager();
       const entityId = this.self.getId();
@@ -218,6 +222,13 @@ export class ToxicGasCloudExtension extends ExtensionBase<ToxicGasCloudFields> {
     this.serialized.set("primaryDirectionY", direction.y);
   }
 
+  /**
+   * Set whether this cloud is permanent (never expires)
+   */
+  public setPermanent(permanent: boolean): void {
+    this.serialized.set("permanent", permanent);
+  }
+
   public serializeToBuffer(writer: BufferWriter, onlyDirty: boolean = false): void {
     writer.writeUInt8(encodeExtensionType(ToxicGasCloudExtension.type));
     writer.writeFloat64(this.serialized.get("age"));
@@ -225,5 +236,6 @@ export class ToxicGasCloudExtension extends ExtensionBase<ToxicGasCloudFields> {
     writer.writeFloat64(this.serialized.get("primaryDirectionX"));
     writer.writeFloat64(this.serialized.get("primaryDirectionY"));
     writer.writeBoolean(this.serialized.get("isOriginalCloud"));
+    writer.writeBoolean(this.serialized.get("permanent"));
   }
 }

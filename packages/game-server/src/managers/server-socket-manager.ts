@@ -1,9 +1,7 @@
 import { Player } from "@/entities/players/player";
 import { ClientSentEvents } from "@shared/events/events";
 import { GameEvent } from "@shared/events/types";
-import Positionable from "@/extensions/positionable";
 import { GameServer } from "@/core/server";
-import PoolManager from "@shared/util/pool-manager";
 import { createServer } from "http";
 import { CommandManager } from "@/managers/command-manager";
 import { MapManager } from "@/world/map-manager";
@@ -247,16 +245,10 @@ export class ServerSocketManager implements Broadcaster {
       player.setPlayerColor(savedColor);
     }
 
-    const spawnPosition = this.getMapManager().getRandomGrassPosition();
-    if (spawnPosition) {
-      player.getExt(Positionable).setPosition(spawnPosition);
-    } else {
-      console.warn(
-        `No spawn position available for socket ${socket.id}, defaulting player to origin`
-      );
-      const poolManager = PoolManager.getInstance();
-      player.getExt(Positionable).setPosition(poolManager.vector2.claim(0, 0));
-    }
+    // Use the game mode strategy to handle player spawning
+    // This allows each mode to determine spawn location (campsite for waves, random for battle royale)
+    const gameModeStrategy = this.gameServer.getGameLoop().getGameModeStrategy();
+    gameModeStrategy.handlePlayerSpawn(player, this.getGameManagers());
 
     this.players.set(socket.id, player);
     this.getEntityManager().addEntity(player);
@@ -292,12 +284,13 @@ export class ServerSocketManager implements Broadcaster {
   public sendInitializationToAllSockets(): void {
     const sockets = Array.from(this.io.sockets.sockets.values());
     const context = this.getHandlerContext();
+    const gameMode = this.gameServer.getGameLoop().getGameModeStrategy().getConfig().modeId as "waves" | "battle_royale";
 
     sockets.forEach((socket) => {
       const player = this.players.get(socket.id);
       if (player) {
-        // Send YOUR_ID first so client knows their entity ID
-        const yourIdEvent = new YourIdEvent(player.getId());
+        // Send YOUR_ID first so client knows their entity ID and game mode
+        const yourIdEvent = new YourIdEvent(player.getId(), gameMode);
         this.sendEventToSocket(socket, yourIdEvent);
 
         // Then send full state with all entities and map data

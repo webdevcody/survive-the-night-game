@@ -24,6 +24,7 @@ import { ClientPoison } from "./poison";
 import { ClientAcidTrigger } from "./acid-trigger";
 import { ClientInfiniteRun } from "./infinite-run";
 import { ClientToxicGasCloudExtension } from "./toxic-gas-cloud-extension";
+import { ClientToxicBiomeZoneExtension } from "./toxic-biome-zone-extension";
 
 // remember to update the extension type ids in extension-type-encoding.ts when adding a new extension
 export const clientExtensionsMap = {
@@ -52,6 +53,7 @@ export const clientExtensionsMap = {
   [ExtensionTypes.ACID_TRIGGER]: ClientAcidTrigger,
   [ExtensionTypes.INFINITE_RUN]: ClientInfiniteRun,
   [ExtensionTypes.TOXIC_GAS_CLOUD]: ClientToxicGasCloudExtension,
+  [ExtensionTypes.TOXIC_BIOME_ZONE]: ClientToxicBiomeZoneExtension,
 } as const;
 
 export {
@@ -80,4 +82,5 @@ export {
   ClientAcidTrigger,
   ClientInfiniteRun,
   ClientToxicGasCloudExtension,
+  ClientToxicBiomeZoneExtension,
 };

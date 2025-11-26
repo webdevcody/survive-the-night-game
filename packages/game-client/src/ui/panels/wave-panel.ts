@@ -8,10 +8,12 @@ interface WavePanelSettings extends PanelSettings {
   height: number;
   font: string;
   timerFont: string;
+  modeFont: string;
   x: number;
   y: number;
   textColor: string;
   timerColor: string;
+  modeColor: string;
 }
 
 export class WavePanel extends Panel {
@@ -32,23 +34,32 @@ export class WavePanel extends Panel {
     const elapsedTime = (serverTime - gameState.phaseStartTime) / 1000;
     const remainingTime = Math.max(0, gameState.phaseDuration - elapsedTime);
 
-    // Determine text based on wave state
+    // Determine text based on wave state and game mode
     const isPreparation = gameState.waveState === WaveState.PREPARATION;
+    const isBattleRoyale = gameState.gameMode === "battle_royale";
     let displayText: string;
     let timerText: string;
+    const modeText = isBattleRoyale ? "Mode: Royale" : "Mode: Waves";
 
-    if (isPreparation) {
-      // During preparation, show countdown to current wave starting
-      displayText = `WAVE ${gameState.waveNumber} STARTS IN`;
-      timerText = this.formatTime(remainingTime);
-    } else if (gameState.waveState === WaveState.ACTIVE) {
-      // During active wave, show countdown to wave ending
-      displayText = `WAVE ${gameState.waveNumber} ENDS IN`;
+    if (isBattleRoyale) {
+      // Battle Royale mode - show arena constriction timer
+      displayText = "ARENA SHRINKS IN";
       timerText = this.formatTime(remainingTime);
     } else {
-      // COMPLETED or unknown state - show preparation for next wave
-      displayText = `WAVE ${gameState.waveNumber + 1} STARTS IN`;
-      timerText = this.formatTime(getConfig().wave.PREPARATION_DURATION);
+      // Waves mode - show wave timer
+      if (isPreparation) {
+        // During preparation, show countdown to current wave starting
+        displayText = `WAVE ${gameState.waveNumber} STARTS IN`;
+        timerText = this.formatTime(remainingTime);
+      } else if (gameState.waveState === WaveState.ACTIVE) {
+        // During active wave, show countdown to wave ending
+        displayText = `WAVE ${gameState.waveNumber} ENDS IN`;
+        timerText = this.formatTime(remainingTime);
+      } else {
+        // COMPLETED or unknown state - show preparation for next wave
+        displayText = `WAVE ${gameState.waveNumber + 1} STARTS IN`;
+        timerText = this.formatTime(getConfig().wave.PREPARATION_DURATION);
+      }
     }
 
     // Draw background panel
@@ -66,10 +77,10 @@ export class WavePanel extends Panel {
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
     ctx.fillStyle = this.waveSettings.textColor;
-    ctx.fillText(displayText, x + width / 2, y + height * 0.35);
+    ctx.fillText(displayText, x + width / 2, y + height * 0.25);
     ctx.restore();
 
-    // Draw digital timer (bottom) with glow effect
+    // Draw digital timer (middle) with glow effect
     ctx.save();
     ctx.font = this.waveSettings.timerFont;
     ctx.textAlign = "center";
@@ -79,12 +90,21 @@ export class WavePanel extends Panel {
     ctx.shadowColor = this.waveSettings.timerColor;
     ctx.shadowBlur = 10;
     ctx.fillStyle = this.waveSettings.timerColor;
-    ctx.fillText(timerText, x + width / 2, y + height * 0.75);
+    ctx.fillText(timerText, x + width / 2, y + height * 0.55);
 
     // Stronger glow
     ctx.shadowBlur = 20;
-    ctx.fillText(timerText, x + width / 2, y + height * 0.75);
+    ctx.fillText(timerText, x + width / 2, y + height * 0.55);
 
+    ctx.restore();
+
+    // Draw game mode (bottom)
+    ctx.save();
+    ctx.font = this.waveSettings.modeFont;
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillStyle = this.waveSettings.modeColor;
+    ctx.fillText(modeText, x + width / 2, y + height * 0.85);
     ctx.restore();
 
     this.restoreContext(ctx);

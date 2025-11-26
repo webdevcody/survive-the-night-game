@@ -1,7 +1,6 @@
 import Collidable from "@/extensions/collidable";
 import Destructible from "@/extensions/destructible";
 import Ignitable from "@/extensions/ignitable";
-import Groupable from "@/extensions/groupable";
 import Movable from "@/extensions/movable";
 import Positionable from "@/extensions/positionable";
 import Updatable from "@/extensions/updatable";
@@ -182,22 +181,24 @@ export class FlameProjectile extends Entity {
     poolManager.vector2.release(boundingBoxPos);
     poolManager.vector2.release(boundingBoxSize);
 
-    const isEnemy = (entity: IEntity) =>
-      entity.hasExt(Groupable) && entity.getExt(Groupable).getGroup() === "enemy";
+    // Use game mode strategy to determine valid targets
+    const strategy = this.getGameManagers().getGameServer().getGameLoop().getGameModeStrategy();
+    const isValidTarget = (entity: IEntity) =>
+      strategy.shouldDamageTarget(this, entity, this.shooterId);
 
-    const enemies = this.getEntityManager()
+    const targets = this.getEntityManager()
       .getNearbyIntersectingDestructableEntities(this)
-      .filter(isEnemy);
+      .filter(isValidTarget);
 
-    // Sort enemies by distance to flame start position to ensure we hit the closest enemy first
-    enemies.sort((a, b) => {
+    // Sort targets by distance to flame start position to ensure we hit the closest target first
+    targets.sort((a, b) => {
       const distA = distance(fromCenter, a.getExt(Positionable).getPosition());
       const distB = distance(fromCenter, b.getExt(Positionable).getPosition());
       return distA - distB;
     });
 
-    for (const enemy of enemies) {
-      const hitbox = enemy.getExt(Destructible).getDamageBox();
+    for (const target of targets) {
+      const hitbox = target.getExt(Destructible).getDamageBox();
       let collision = false;
 
       // Expand the rectangle by the flame's radius to account for the flame's size
@@ -241,19 +242,19 @@ export class FlameProjectile extends Entity {
         poolManager.rectangle.release(boundingBox);
         poolManager.vector2.release(fromCenter);
         poolManager.vector2.release(toCenter);
-        // Spawn fire on ground where enemy was hit
+        // Spawn fire on ground where target was hit
         this.spawnFireOnGround(toCenter);
         this.getEntityManager().markEntityForRemoval(this);
-        const destructible = enemy.getExt(Destructible);
+        const destructible = target.getExt(Destructible);
         const wasAlive = !destructible.isDead();
         destructible.damage(this.damage, this.shooterId);
 
-        // Set enemy on fire
-        if (!enemy.hasExt(Ignitable)) {
-          enemy.addExtension(new Ignitable(enemy));
+        // Set target on fire
+        if (!target.hasExt(Ignitable)) {
+          target.addExtension(new Ignitable(target));
         }
 
-        // If the enemy died from this hit, increment the shooter's kill count
+        // If the target died from this hit, increment the shooter's kill count
         if (wasAlive && destructible.isDead()) {
           const shooter = this.getEntityManager().getEntityById(this.shooterId);
           if (shooter instanceof Player) {

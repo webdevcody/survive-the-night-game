@@ -1,6 +1,7 @@
 import { Extension } from "@/extensions/types";
 import { Cooldown } from "@/entities/util/cooldown";
 import Positionable from "@/extensions/positionable";
+import Placeable from "@/extensions/placeable";
 import Destructible from "@/extensions/destructible";
 import { EntityType } from "@/types/entity";
 import { IEntity } from "@/entities/types";
@@ -8,6 +9,7 @@ import { BufferWriter } from "@shared/util/buffer-serialization";
 import { encodeExtensionType } from "@shared/util/extension-type-encoding";
 import { ExtensionBase } from "./extension-base";
 import { getConfig } from "@shared/config";
+import { Entities } from "@shared/constants";
 
 /**
  * This extension will cause the entity to fire an attack when the cooldown is ready.
@@ -16,6 +18,14 @@ import { getConfig } from "@shared/config";
 type TriggerCooldownAttackerFields = {
   isReady: boolean;
 };
+
+interface TriggerCooldownAttackerOptions {
+  damage: number;
+  victimType: EntityType;
+  cooldown: number;
+  /** If true, include players in target types based on game mode (for Battle Royale friendly fire) */
+  includePlayersInBattleRoyale?: boolean;
+}
 
 export default class TriggerCooldownAttacker extends ExtensionBase<TriggerCooldownAttackerFields> {
   public static readonly type = "trigger-cooldown-attacker";
@@ -26,20 +36,9 @@ export default class TriggerCooldownAttacker extends ExtensionBase<TriggerCooldo
 
   private attackCooldown: Cooldown;
   private checkCooldown: Cooldown;
-  private options: {
-    damage: number;
-    victimType: EntityType;
-    cooldown: number;
-  };
+  private options: TriggerCooldownAttackerOptions;
 
-  public constructor(
-    self: IEntity,
-    options: {
-      damage: number;
-      victimType: EntityType;
-      cooldown: number;
-    }
-  ) {
+  public constructor(self: IEntity, options: TriggerCooldownAttackerOptions) {
     super(self, { isReady: true });
     this.attackCooldown = new Cooldown(options.cooldown, true);
     this.checkCooldown = new Cooldown(TriggerCooldownAttacker.CHECK_INTERVAL);
@@ -83,14 +82,29 @@ export default class TriggerCooldownAttacker extends ExtensionBase<TriggerCooldo
     // Add small buffer (2) to account for entity size when querying spatial grid
     const queryRadius = TriggerCooldownAttacker.RADIUS + 2;
     const victimTypeSet = new Set<EntityType>([this.options.victimType]);
+
+    // Check if we should include players based on game mode (Battle Royale friendly fire)
+    if (this.options.includePlayersInBattleRoyale) {
+      const strategy = this.self.getGameManagers().getGameServer().getGameLoop().getGameModeStrategy();
+      if (strategy.getConfig().friendlyFireEnabled) {
+        victimTypeSet.add(Entities.PLAYER);
+      }
+    }
+
     const entities = this.self
       .getEntityManager()
       .getNearbyEntities(positionable.getPosition(), queryRadius, victimTypeSet);
+
+    // Get owner ID to exclude from targeting
+    const ownerId = this.self.hasExt(Placeable) ? this.self.getExt(Placeable).getOwnerId() : null;
 
     for (const entity of entities) {
       if (!entity.hasExt(Destructible)) {
         continue;
       }
+
+      // Skip the owner (never damage the player who placed this)
+      if (ownerId !== null && entity.getId() === ownerId) continue;
 
       const destructible = entity.getExt(Destructible);
       const entityCenter = entity.getExt(Positionable).getCenterPosition();

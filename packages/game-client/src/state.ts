@@ -1,6 +1,7 @@
 import { ClientEntityBase } from "@/extensions/client-entity";
 import { WaveState } from "@shared/types/wave";
 import { EntityType } from "@shared/types/entity";
+import { GameModeId } from "@shared/events/server-sent/events/game-started-event";
 
 export type GameState = {
   startedAt: number;
@@ -8,6 +9,8 @@ export type GameState = {
   entities: ClientEntityBase[];
   entityMap: Map<number, ClientEntityBase>;
   entitiesByType: Map<EntityType, ClientEntityBase[]>;
+  // Game mode
+  gameMode: GameModeId;
   // Wave system
   waveNumber: number;
   waveState: WaveState;

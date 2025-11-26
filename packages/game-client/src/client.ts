@@ -521,6 +521,8 @@ export class GameClient {
       entities: [],
       entityMap: new Map(),
       entitiesByType: new Map(),
+      // Game mode (default: waves)
+      gameMode: "waves",
       // Wave system
       waveNumber: 1,
       waveState: WaveState.PREPARATION, // Start in preparation phase

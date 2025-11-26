@@ -34,6 +34,7 @@ export const EXTENSION_TYPE_IDS: Record<string, number> = {
   [ExtensionTypes.ACID_TRIGGER]: 23,
   [ExtensionTypes.INFINITE_RUN]: 24,
   [ExtensionTypes.TOXIC_GAS_CLOUD]: 25,
+  [ExtensionTypes.TOXIC_BIOME_ZONE]: 26,
 } as const;
 
 // Reverse lookup: ID -> extension type string

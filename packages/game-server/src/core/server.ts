@@ -118,4 +118,8 @@ export class GameServer {
   public endGame(): void {
     this.gameLoop.endGame();
   }
+
+  public getGameLoop(): GameLoop {
+    return this.gameLoop;
+  }
 }

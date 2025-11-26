@@ -30,13 +30,14 @@ import { GameEvent } from "@shared/events/types";
 import { EntityManager } from "@/managers/entity-manager";
 import { MapManager } from "@/world/map-manager";
 import { ServerSocketManager } from "@/managers/server-socket-manager";
-import { TICK_RATE, TICK_RATE_MS } from "@/config/config";
+import { TICK_RATE, TICK_RATE_MS, ENABLE_PERFORMANCE_MONITORING, DEFAULT_GAME_MODE } from "@/config/config";
 import { getConfig } from "@shared/config";
 import { TickPerformanceTracker } from "@/util/tick-performance-tracker";
 import { WaveState } from "@shared/types/wave";
 import { Survivor } from "@/entities/environment/survivor";
 import { Entities } from "@shared/constants";
 import { EnvironmentalEventManager } from "@/managers/environmental-event-manager";
+import { IGameModeStrategy, WinConditionResult, WavesModeStrategy, BattleRoyaleModeStrategy } from "@/game-modes";
 
 export class GameLoop {
   private lastUpdateTime: number = performance.now();
@@ -51,11 +52,17 @@ export class GameLoop {
   private isGameReady: boolean = false;
   private isGameOver: boolean = false;
 
+  // Game mode strategy - initialized based on DEFAULT_GAME_MODE config
+  private gameModeStrategy: IGameModeStrategy = DEFAULT_GAME_MODE === "battle_royale"
+    ? new BattleRoyaleModeStrategy()
+    : new WavesModeStrategy();
+
   private tickPerformanceTracker: TickPerformanceTracker;
   private entityManager: EntityManager;
   private mapManager: MapManager;
   private socketManager: ServerSocketManager;
   private environmentalEventManager: EnvironmentalEventManager | null = null;
+  private gameManagers: any = null;
 
   private lastBroadcastedState = {
     waveNumber: -1,
@@ -81,11 +88,26 @@ export class GameLoop {
    * Set game managers (called after construction to avoid circular dependency)
    */
   public setGameManagers(gameManagers: any): void {
+    this.gameManagers = gameManagers;
     this.environmentalEventManager = new EnvironmentalEventManager(
       gameManagers,
       this.entityManager,
       this.mapManager
     );
+  }
+
+  /**
+   * Get the current game mode strategy
+   */
+  public getGameModeStrategy(): IGameModeStrategy {
+    return this.gameModeStrategy;
+  }
+
+  /**
+   * Set the game mode strategy (used to switch game modes)
+   */
+  public setGameModeStrategy(strategy: IGameModeStrategy): void {
+    this.gameModeStrategy = strategy;
   }
 
   public getWaveNumber(): number {
@@ -108,6 +130,14 @@ export class GameLoop {
     return this.totalZombies;
   }
 
+  /**
+   * Set the phase timer (used by game mode strategies for custom timers)
+   */
+  public setPhaseTimer(startTime: number, duration: number): void {
+    this.phaseStartTime = startTime;
+    this.phaseDuration = duration;
+  }
+
   public start(): void {
     this.startGameLoop();
   }
@@ -118,11 +148,16 @@ export class GameLoop {
     }
   }
 
-  public startNewGame(): void {
+  public startNewGame(strategy?: IGameModeStrategy): void {
+    // Set strategy if provided (used when switching game modes)
+    if (strategy) {
+      this.gameModeStrategy = strategy;
+    }
+
     this.isGameReady = true;
     this.isGameOver = false;
 
-    // Initialize wave system
+    // Initialize wave system (only relevant for modes with waves)
     this.waveNumber = getConfig().wave.START_WAVE_NUMBER;
     this.waveState = WaveState.PREPARATION;
     this.phaseStartTime = Date.now();
@@ -138,9 +173,15 @@ export class GameLoop {
     // Recreate players for all connected sockets
     this.socketManager.recreatePlayersForConnectedSockets();
 
-    // Broadcast game started event
+    // Notify strategy of game start
+    if (this.gameManagers) {
+      this.gameModeStrategy.onGameStart(this.gameManagers);
+    }
+
+    // Broadcast game started event with game mode
     // This tells clients to reset their state and wait for initialization
-    this.socketManager.broadcastEvent(new GameStartedEvent());
+    const gameMode = this.gameModeStrategy.getConfig().modeId as "waves" | "battle_royale";
+    this.socketManager.broadcastEvent(new GameStartedEvent(Date.now(), gameMode));
 
     // Send initialization data (YOUR_ID + full state) to all sockets
     // This MUST happen AFTER GAME_STARTED so clients receive it after resetting
@@ -276,6 +317,11 @@ export class GameLoop {
     this.handleWaveSystem(deltaTime);
     endHandleWaveSystem();
 
+    // Update game mode strategy (for mode-specific logic like BR toxic zones)
+    if (this.gameManagers) {
+      this.gameModeStrategy.update(deltaTime, this.gameManagers);
+    }
+
     // Track environmental events
     if (this.environmentalEventManager) {
       this.environmentalEventManager.update(deltaTime);
@@ -309,9 +355,16 @@ export class GameLoop {
 
     this.trackPerformance(updateStartTime);
     this.lastUpdateTime = currentTime;
+
+    // TODO: print all the performance stats for each method and total server tick time averages.
   }
 
   private handleWaveSystem(deltaTime: number) {
+    // Skip wave system if not enabled by the current game mode
+    if (!this.gameModeStrategy.getConfig().hasWaveSystem) {
+      return;
+    }
+
     const currentTime = Date.now();
     const elapsedTime = (currentTime - this.phaseStartTime) / 1000;
 
@@ -363,18 +416,33 @@ export class GameLoop {
   }
 
   private handleIfGameOver(): void {
-    const players = this.entityManager.getPlayerEntities();
-    if (players.length > 0 && players.every((player) => player.isDead())) {
-      this.endGame();
+    if (!this.gameManagers) return;
+
+    const result = this.gameModeStrategy.checkWinCondition(this.gameManagers);
+    if (result.gameEnded) {
+      this.endGame(result);
     }
   }
 
-  public endGame(): void {
-    console.log("Game over");
+  public endGame(result?: WinConditionResult): void {
+    console.log("Game over:", result?.message || "No message");
     this.isGameOver = true;
-    this.socketManager.broadcastEvent(new GameOverEvent());
 
-    // Restart the game after 5 seconds
+    // Notify strategy of game end
+    if (this.gameManagers) {
+      this.gameModeStrategy.onGameEnd(this.gameManagers);
+    }
+
+    // Broadcast game over event with winner info
+    this.socketManager.broadcastEvent(
+      new GameOverEvent({
+        winnerId: result?.winnerId ?? null,
+        winnerName: result?.winnerName ?? null,
+        message: result?.message ?? "Game Over",
+      })
+    );
+
+    // Restart the game after 5 seconds with the same game mode
     setTimeout(() => {
       console.log("Restarting game...");
       this.startNewGame();

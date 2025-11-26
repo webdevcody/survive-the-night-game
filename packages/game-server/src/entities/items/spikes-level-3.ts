@@ -33,6 +33,7 @@ export class SpikesLevel3 extends Entity {
         damage: getConfig().world.SPIKES_LEVEL_3_DAMAGE,
         victimType: Entities.ZOMBIE,
         cooldown: 1,
+        includePlayersInBattleRoyale: true, // Allow targeting other players in Battle Royale
       })
     );
     this.addExtension(

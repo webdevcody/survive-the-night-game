@@ -36,6 +36,7 @@ import { SerializableFields } from "@/util/serializable-fields";
 import { Direction } from "@/util/direction";
 import { Weapon } from "../weapons/weapon";
 import InfiniteRun from "@/extensions/infinite-run";
+import Snared from "@/extensions/snared";
 
 export class Player extends Entity {
   private static readonly PLAYER_WIDTH = getConfig().world.TILE_SIZE;
@@ -177,8 +178,14 @@ export class Player extends Entity {
 
   onDeath(): void {
     this.setIsCrafting(false);
-    // Don't drop inventory items on death
-    // this.getExt(Inventory).scatterItems(this.getPosition());
+
+    // In Battle Royale mode, drop all inventory items on death
+    const strategy = this.getGameManagers().getGameServer().getGameLoop().getGameModeStrategy();
+    if (!strategy.getConfig().allowRespawn) {
+      // Drop all items when respawning is disabled (Battle Royale)
+      this.getExt(Inventory).scatterItems(this.getPosition());
+    }
+
     this.serialized.set("deathTime", Date.now());
     this.broadcaster.broadcastEvent(
       new PlayerDeathEvent({
@@ -416,6 +423,14 @@ export class Player extends Entity {
 
   handleMovement(deltaTime: number) {
     const movable = this.getExt(Movable);
+
+    // If snared (e.g., by bear trap), cannot move at all
+    if (this.hasExt(Snared)) {
+      const poolManager = PoolManager.getInstance();
+      movable.setVelocity(poolManager.vector2.claim(0, 0));
+      return;
+    }
+
     const currentVelocity = movable.getVelocity();
 
     // Only set velocity from input if we're not being knocked back

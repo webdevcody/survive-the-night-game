@@ -68,6 +68,7 @@ export class Landmine extends Entity implements IEntity {
       new OneTimeTrigger(this, {
         triggerRadius: Landmine.TRIGGER_RADIUS,
         targetTypes: Zombies,
+        includePlayersInBattleRoyale: true, // Allow targeting other players in Battle Royale
       }).onTrigger(() => this.explode())
     );
   }
@@ -87,9 +88,15 @@ export class Landmine extends Entity implements IEntity {
       getConfig().combat.LANDMINE_EXPLOSION_RADIUS
     );
 
-    // Damage all things in explosion radius
+    // Get owner ID to exclude
+    const ownerId = this.hasExt(Placeable) ? this.getExt(Placeable).getOwnerId() : null;
+
+    // Damage all things in explosion radius (except the owner)
     for (const entity of nearbyEntities) {
       if (!entity.hasExt(Destructible)) continue;
+
+      // Skip the owner
+      if (ownerId !== null && entity.getId() === ownerId) continue;
 
       const entityPos = entity.getExt(Positionable).getPosition();
       const dist = distance(position, entityPos);

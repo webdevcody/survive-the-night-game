@@ -62,16 +62,23 @@ export class SentryGun extends Entity {
     this.fireCooldown.update(deltaTime);
 
     if (this.fireCooldown.isReady()) {
-      this.tryShootAtZombie();
+      this.tryShootAtTarget();
     }
   }
 
-  private tryShootAtZombie(): void {
+  private tryShootAtTarget(): void {
     const position = this.getExt(Positionable).getCenterPosition();
     const range = getConfig().world.SENTRY_GUN_RANGE;
 
-    // Find closest zombie within range
-    let closestZombie: Entity | null = null;
+    // Check if we should include players (Battle Royale friendly fire)
+    const strategy = this.getGameManagers().getGameServer().getGameLoop().getGameModeStrategy();
+    const includePlayersAsFoes = strategy.getConfig().friendlyFireEnabled;
+
+    // Get owner ID to exclude
+    const ownerId = this.hasExt(Placeable) ? this.getExt(Placeable).getOwnerId() : null;
+
+    // Find closest target within range
+    let closestTarget: Entity | null = null;
     let closestDistance = Infinity;
 
     const nearbyEntities = this.getEntityManager().getNearbyEntities(
@@ -80,26 +87,32 @@ export class SentryGun extends Entity {
     );
 
     for (const entity of nearbyEntities) {
-      // Check if entity is a zombie
+      // Check if entity is a valid target
       const isZombie = Zombies.includes(entity.getType());
-      if (!isZombie) continue;
+      const isPlayer = entity.getType() === Entities.PLAYER;
 
-      // Check if zombie has destructible (is alive)
+      // Skip if not a zombie and not a player (or players aren't valid targets)
+      if (!isZombie && !(isPlayer && includePlayersAsFoes)) continue;
+
+      // Skip the owner (never target the player who placed this)
+      if (ownerId !== null && entity.getId() === ownerId) continue;
+
+      // Check if entity has destructible (is alive)
       if (!entity.hasExt(Destructible)) continue;
       if (entity.getExt(Destructible).isDead()) continue;
 
-      const zombiePos = entity.getExt(Positionable).getCenterPosition();
-      const dist = distance(position, zombiePos);
+      const targetPos = entity.getExt(Positionable).getCenterPosition();
+      const dist = distance(position, targetPos);
 
       if (dist <= range && dist < closestDistance) {
         closestDistance = dist;
-        closestZombie = entity;
+        closestTarget = entity;
       }
     }
 
-    // Shoot at closest zombie
-    if (closestZombie) {
-      this.shootAt(closestZombie);
+    // Shoot at closest target
+    if (closestTarget) {
+      this.shootAt(closestTarget);
       this.fireCooldown.reset();
     }
   }

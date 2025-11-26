@@ -19,8 +19,9 @@ import { distance } from "../../../../game-shared/src/util/physics";
 import { SerializableFields } from "@/util/serializable-fields";
 
 /**
- * A bear trap that snares zombies when they step on it, preventing them from moving
- * The trap can be rearmed after being triggered
+ * A bear trap that snares zombies (and players in Battle Royale) when they step on it
+ * The trap can be rearmed after being triggered (by the owner)
+ * Trapped players must pick up the trap to free themselves
  */
 export class BearTrap extends Entity implements IEntity {
   private static get SIZE(): Vector2 {
@@ -35,7 +36,7 @@ export class BearTrap extends Entity implements IEntity {
     super(gameManagers, Entities.BEAR_TRAP);
 
     // Initialize serializable fields
-    this.serialized = new SerializableFields({ isArmed: true, snaredZombieId: null }, () =>
+    this.serialized = new SerializableFields({ isArmed: true, snaredEntityId: null }, () =>
       this.markEntityDirty()
     );
 
@@ -56,7 +57,7 @@ export class BearTrap extends Entity implements IEntity {
 
   public activate(): void {
     this.setIsArmed(true);
-    this.setSnaredZombieId(null);
+    this.setSnaredEntityId(null);
 
     // Update display name to show it's armed
     this.interactiveExtension.setDisplayName("bear trap");
@@ -71,6 +72,7 @@ export class BearTrap extends Entity implements IEntity {
     const trigger = new OneTimeTrigger(this, {
       triggerRadius: BearTrap.TRIGGER_RADIUS,
       targetTypes: Zombies,
+      includePlayersInBattleRoyale: true, // Allow targeting other players in Battle Royale
     }).onTrigger(() => this.snare());
 
     this.triggerExtension = trigger;
@@ -84,24 +86,28 @@ export class BearTrap extends Entity implements IEntity {
     }
   }
 
-  private setSnaredZombieId(id: number | null): void {
-    const currentSnaredZombieId = this.serialized.get("snaredZombieId");
-    if (currentSnaredZombieId !== id) {
-      this.serialized.set("snaredZombieId", id);
+  private setSnaredEntityId(id: number | null): void {
+    const currentSnaredEntityId = this.serialized.get("snaredEntityId");
+    if (currentSnaredEntityId !== id) {
+      this.serialized.set("snaredEntityId", id);
     }
   }
 
+  private getSnaredEntityId(): number | null {
+    return this.serialized.get("snaredEntityId");
+  }
+
   public updateBearTrap(deltaTime: number) {
-    const snaredZombieId = this.serialized.get("snaredZombieId");
-    // Keep the snared zombie's velocity at 0 (backup in case movement strategy tries to override)
-    if (snaredZombieId) {
-      const zombie = this.getEntityManager().getEntityById(snaredZombieId);
-      if (zombie && zombie.hasExt(Movable)) {
+    const snaredEntityId = this.getSnaredEntityId();
+    // Keep the snared entity's velocity at 0 (backup in case movement strategy tries to override)
+    if (snaredEntityId) {
+      const snaredEntity = this.getEntityManager().getEntityById(snaredEntityId);
+      if (snaredEntity && snaredEntity.hasExt(Movable)) {
         const poolManager = PoolManager.getInstance();
-        zombie.getExt(Movable).setVelocity(poolManager.vector2.claim(0, 0));
+        snaredEntity.getExt(Movable).setVelocity(poolManager.vector2.claim(0, 0));
       } else {
-        // Zombie was removed or doesn't exist anymore
-        this.setSnaredZombieId(null);
+        // Entity was removed or doesn't exist anymore
+        this.setSnaredEntityId(null);
       }
     }
   }
@@ -110,23 +116,37 @@ export class BearTrap extends Entity implements IEntity {
     if (!this.serialized.get("isArmed")) return;
 
     const position = this.getExt(Positionable).getCenterPosition();
+
+    // Build target types set - include players in Battle Royale
+    const targetTypesSet = getZombieTypesSet();
+    const strategy = this.getGameManagers().getGameServer().getGameLoop().getGameModeStrategy();
+    if (strategy.getConfig().friendlyFireEnabled) {
+      targetTypesSet.add(Entities.PLAYER);
+    }
+
     const nearbyEntities = this.getEntityManager().getNearbyEntities(
       position,
       BearTrap.TRIGGER_RADIUS,
-      getZombieTypesSet()
+      targetTypesSet
     );
 
-    // Find the zombie that triggered the trap (OneTimeTrigger already verified one exists)
+    // Get owner ID to exclude
+    const ownerId = this.hasExt(Placeable) ? this.getExt(Placeable).getOwnerId() : null;
+
+    // Find the entity that triggered the trap (OneTimeTrigger already verified one exists)
     for (const entity of nearbyEntities) {
       if (!entity.hasExt(Positionable) || !entity.hasExt(Movable)) continue;
 
-      // Check if zombie is within trigger radius (using center positions for consistency)
+      // Skip the owner
+      if (ownerId !== null && entity.getId() === ownerId) continue;
+
+      // Check if entity is within trigger radius (using center positions for consistency)
       const entityPos = entity.getExt(Positionable).getCenterPosition();
       const dist = distance(position, entityPos);
 
       if (dist <= BearTrap.TRIGGER_RADIUS) {
-        // Snare the zombie - add Snared extension to prevent movement
-        this.setSnaredZombieId(entity.getId());
+        // Snare the entity - track the snared entity and stop their movement
+        this.setSnaredEntityId(entity.getId());
         const poolManager = PoolManager.getInstance();
         entity.getExt(Movable).setVelocity(poolManager.vector2.claim(0, 0));
 
@@ -135,7 +155,7 @@ export class BearTrap extends Entity implements IEntity {
           entity.addExtension(new Snared(entity));
         }
 
-        // Damage the zombie
+        // Damage the entity
         if (entity.hasExt(Destructible)) {
           entity.getExt(Destructible).damage(BearTrap.DAMAGE);
         }
@@ -143,8 +163,12 @@ export class BearTrap extends Entity implements IEntity {
         // Disarm the trap
         this.setIsArmed(false);
 
-        // Update display name to show it can be rearmed
-        this.interactiveExtension.setDisplayName("rearm bear trap");
+        // Update display name based on who is trapped
+        if (entity.getType() === Entities.PLAYER) {
+          this.interactiveExtension.setDisplayName("escape bear trap");
+        } else {
+          this.interactiveExtension.setDisplayName("rearm bear trap");
+        }
 
         // Remove the trigger extension
         if (this.triggerExtension) {
@@ -157,14 +181,50 @@ export class BearTrap extends Entity implements IEntity {
     }
   }
 
+  private releaseSnaredEntity(): void {
+    const snaredEntityId = this.getSnaredEntityId();
+    if (snaredEntityId) {
+      const snaredEntity = this.getEntityManager().getEntityById(snaredEntityId);
+      if (snaredEntity && snaredEntity.hasExt(Snared)) {
+        snaredEntity.removeExtension(snaredEntity.getExt(Snared));
+      }
+      this.setSnaredEntityId(null);
+    }
+  }
+
   private interact(entityId: number) {
     const entity = this.getEntityManager().getEntityById(entityId);
     if (!entity || entity.getType() !== Entities.PLAYER) return;
 
-    // If disarmed, rearm the trap
+    const snaredEntityId = this.getSnaredEntityId();
+    const ownerId = this.hasExt(Placeable) ? this.getExt(Placeable).getOwnerId() : null;
+    const isOwner = ownerId !== null && entityId === ownerId;
+    const isTrappedPlayer = snaredEntityId !== null && entityId === snaredEntityId;
+
+    // If the interacting player is trapped by this trap, they must pick it up to escape
+    if (isTrappedPlayer) {
+      this.releaseSnaredEntity();
+      this.getExt(Carryable).pickup(entityId);
+      return;
+    }
+
+    // If trap is disarmed (has caught something)
     if (!this.serialized.get("isArmed")) {
-      // Clear the snared zombie reference
-      this.activate();
+      // Only the owner can rearm the trap (if a zombie is caught, not a player)
+      if (isOwner && snaredEntityId !== null) {
+        const snaredEntity = this.getEntityManager().getEntityById(snaredEntityId);
+        // Only allow rearming if the snared entity is not a player
+        if (snaredEntity && snaredEntity.getType() !== Entities.PLAYER) {
+          this.releaseSnaredEntity();
+          this.activate();
+          return;
+        }
+      }
+
+      // Enemy players (not owner) just pick up the trap, no rearm option
+      // Also if owner and no snared entity, just pick it up
+      this.releaseSnaredEntity();
+      this.getExt(Carryable).pickup(entityId);
       return;
     }
 

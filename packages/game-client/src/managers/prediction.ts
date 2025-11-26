@@ -11,6 +11,7 @@ import { getPredictionConfig } from "@/config/client-prediction";
 import { ClientEntityBase } from "@/extensions/client-entity";
 import { Hitbox } from "@shared/util/hitbox";
 import { ReconciliationManager } from "./reconciliation-manager";
+import { ClientSnared } from "@/extensions/snared";
 
 type PredictionConfig = {
   playerSpeed: number; // pixels per second
@@ -46,6 +47,11 @@ export class PredictionManager {
     entities: ClientEntityBase[] = []
   ): void {
     if (deltaSeconds <= 0) return;
+
+    // If player is snared (e.g., by bear trap), cannot move at all
+    if (player.hasExt(ClientSnared)) {
+      return;
+    }
 
     // Verify deltaTime matches server (should be FIXED_TIMESTEP for physics)
     const expectedDelta = getConfig().simulation.FIXED_TIMESTEP;

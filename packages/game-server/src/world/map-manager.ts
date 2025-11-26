@@ -892,6 +892,10 @@ export class MapManager implements IMapManager {
     const carTiles = new Set([CAR_TILE_ID_LEFT, CAR_TILE_ID_RIGHT]);
     let carSpawned = false;
 
+    // Check if game mode has car entity
+    const gameModeConfig = this.getGameManagers().getGameServer().getGameLoop().getGameModeStrategy().getConfig();
+    const shouldSpawnCar = gameModeConfig.hasCarEntity;
+
     for (let y = 0; y < totalSize; y++) {
       for (let x = 0; x < totalSize; x++) {
         // Check collidables layer for any non-empty tile
@@ -902,8 +906,8 @@ export class MapManager implements IMapManager {
             // Always clear car tiles so they don't render as static map tiles
             this.collidablesLayer[y][x] = EMPTY_COLLIDABLE_TILE_ID;
 
-            // Spawn the car entity if we find the left side (265) and haven't spawned yet
-            if (collidableTileId === CAR_TILE_ID_LEFT && !carSpawned) {
+            // Spawn the car entity if we find the left side (265), haven't spawned yet, and game mode has car
+            if (collidableTileId === CAR_TILE_ID_LEFT && !carSpawned && shouldSpawnCar) {
               const car = new Car(this.getGameManagers());
               const carPosition = PoolManager.getInstance().vector2.claim(
                 x * getConfig().world.TILE_SIZE,
@@ -1356,6 +1360,54 @@ export class MapManager implements IMapManager {
         (totalSize * getConfig().world.TILE_SIZE) / 2,
         (totalSize * getConfig().world.TILE_SIZE) / 2
       );
+    }
+
+    // Return a random position from valid positions
+    const randomIndex = Math.floor(Math.random() * validPositions.length);
+    return validPositions[randomIndex];
+  }
+
+  /**
+   * Get a random grass position on the map, excluding the campsite biome.
+   * Used for Battle Royale mode where players should spawn spread throughout the map.
+   */
+  public getRandomGrassPositionExcludingCampsite(): Vector2 {
+    const totalSize = BIOME_SIZE * MAP_SIZE;
+    const centerBiomeX = Math.floor(MAP_SIZE / 2);
+    const centerBiomeY = Math.floor(MAP_SIZE / 2);
+    const validPositions: Vector2[] = [];
+
+    // Collect all valid ground tile positions (excluding campsite biome)
+    for (let y = 0; y < totalSize; y++) {
+      for (let x = 0; x < totalSize; x++) {
+        // Check if this tile is in the campsite biome - skip if so
+        const biomeX = Math.floor(x / BIOME_SIZE);
+        const biomeY = Math.floor(y / BIOME_SIZE);
+        if (biomeX === centerBiomeX && biomeY === centerBiomeY) {
+          continue;
+        }
+
+        const groundTile = this.groundLayer[y][x];
+        const isValidGround =
+          groundTile === GROUND_TILE_ID_1 ||
+          groundTile === GROUND_TILE_ID_2 ||
+          groundTile === GROUND_TILE_ID_3 ||
+          groundTile === GROUND_TILE_ID_4;
+
+        if (isValidGround && this.collidablesLayer[y][x] === EMPTY_COLLIDABLE_TILE_ID) {
+          const poolManager = PoolManager.getInstance();
+          const position = poolManager.vector2.claim(
+            x * getConfig().world.TILE_SIZE,
+            y * getConfig().world.TILE_SIZE
+          );
+          validPositions.push(position);
+        }
+      }
+    }
+
+    if (validPositions.length === 0) {
+      // Fallback to any grass position if no positions found outside campsite
+      return this.getRandomGrassPosition();
     }
 
     // Return a random position from valid positions

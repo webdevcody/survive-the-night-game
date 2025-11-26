@@ -16,6 +16,7 @@ export const InteractableTexts = {
   TORCH: "torch",
   BEAR_TRAP: "bear trap",
   REARM_BEAR_TRAP: "rearm bear trap",
+  ESCAPE_BEAR_TRAP: "escape bear trap",
   WOOD: "wood",
   FORTIFIED_WALL: "fortified wall",
   IMPROVED_SENTRY_GUN: "improved sentry gun",

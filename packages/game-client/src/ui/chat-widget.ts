@@ -105,9 +105,9 @@ export class ChatWidget {
   }
 
   public addChatMessage(playerId: number, message: string): void {
-    // Only truncate user messages, not system messages
-    const truncatedMessage =
-      playerId === "system" ? message : message.slice(0, this.MAX_MESSAGE_LENGTH);
+    // Only truncate user messages, not system messages (system messages use playerId 0)
+    const isSystem = playerId === 0;
+    const truncatedMessage = isSystem ? message : message.slice(0, this.MAX_MESSAGE_LENGTH);
 
     this.chatMessages.push({
       playerId,
@@ -181,9 +181,9 @@ export class ChatWidget {
 
     // Process messages and calculate total height
     const processedMessages = messages.slice(-maxMessages).map((chat) => {
-      // For system messages, don't prepend username
+      // For system messages (playerId 0), don't prepend username
       let text: string;
-      const isSystem = chat.playerId === "system";
+      const isSystem = chat.playerId === 0;
       if (isSystem) {
         text = chat.message;
       } else {

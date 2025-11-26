@@ -8,7 +8,6 @@ import {
 } from "@shared/commands/commands";
 import { IEntityManager } from "@/managers/types";
 import Positionable from "@/extensions/positionable";
-import Vector2 from "@/util/vector2";
 import PoolManager from "@shared/util/pool-manager";
 import { Player } from "@/entities/players/player";
 import { ADMIN_PASSWORD } from "@/config/env";

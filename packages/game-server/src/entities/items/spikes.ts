@@ -28,13 +28,14 @@ export class Spikes extends Entity {
     const poolManager = PoolManager.getInstance();
     const size = poolManager.vector2.claim(16, 16);
     this.addExtension(new Positionable(this).setSize(size));
-    // TriggerCooldownAttacker handles finding and attacking nearby zombies
+    // TriggerCooldownAttacker handles finding and attacking nearby entities
     // No need for Triggerable since it had no callback and was redundant
     this.addExtension(
       new TriggerCooldownAttacker(this, {
         damage: getConfig().world.SPIKES_DAMAGE,
         victimType: Entities.ZOMBIE,
         cooldown: 1,
+        includePlayersInBattleRoyale: true, // Allow targeting other players in Battle Royale
       })
     );
     this.addExtension(

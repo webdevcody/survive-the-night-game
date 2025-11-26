@@ -28,9 +28,12 @@ export class RangedMovementStrategy implements MovementStrategy {
     const zombiePos = zombie.getCenterPosition();
 
     // Update target using shared utility
-    const mapManager = zombie.getGameManagers().getMapManager();
-    const carLocation = mapManager.getCarLocation();
-    const currentTarget = this.targetChecker.updateTarget(zombie, deltaTime, carLocation);
+    // Get fallback target from game mode strategy (car in waves mode, null in battle royale)
+    const gameManagers = zombie.getGameManagers();
+    const mapManager = gameManagers.getMapManager();
+    const strategy = gameManagers.getGameServer().getGameLoop().getGameModeStrategy();
+    const fallbackTarget = strategy.getZombieFallbackTarget(gameManagers);
+    const currentTarget = this.targetChecker.updateTarget(zombie, deltaTime, fallbackTarget);
 
     // If no target, stop moving
     if (!currentTarget) {

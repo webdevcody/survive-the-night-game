@@ -4,6 +4,7 @@ import Vector2 from "@shared/util/vector2";
 import { IEntity } from "@/entities/types";
 import { EntityType } from "@/types/entity";
 import { EntityStateTracker } from "./entity-state-tracker";
+import { IGameModeStrategy } from "@/game-modes/game-mode-strategy";
 
 export interface IEntityManager {
   generateEntityId(): number;
@@ -57,10 +58,21 @@ export interface IMapManager {
     zombieType: "regular" | "fast" | "big" | "bat" | "spitter",
     count: number
   ): void;
+  getRandomCampsitePosition(): Vector2 | null;
+  getRandomGrassPosition(): Vector2;
+  getRandomGrassPositionExcludingCampsite(): Vector2;
+  spawnCrateInRandomBiome(): boolean;
+}
+
+export interface IGameLoop {
+  getGameModeStrategy(): IGameModeStrategy;
+  startNewGame(strategy?: IGameModeStrategy): void;
+  setPhaseTimer(startTime: number, duration: number): void;
 }
 
 export interface IGameServer {
   endGame(): void;
+  getGameLoop(): IGameLoop;
 }
 
 export interface IGameManagers {

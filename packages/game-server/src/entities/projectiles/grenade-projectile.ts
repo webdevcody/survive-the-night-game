@@ -12,7 +12,6 @@ import { distance } from "@/util/physics";
 import Vector2 from "@/util/vector2";
 import { ExplosionEvent } from "../../../../game-shared/src/events/server-sent/events/explosion-event";
 import PoolManager from "@shared/util/pool-manager";
-import Groupable from "@/extensions/groupable";
 
 const MAX_TRAVEL_DISTANCE = getConfig().combat.TRAVEL_DISTANCE_LONG;
 const GRENADE_PROJECTILE_SPEED = getConfig().combat.PROJECTILE_SPEED_STANDARD;
@@ -119,16 +118,15 @@ export class GrenadeProjectile extends Entity {
     const position = this.getExt(Positionable).getCenterPosition();
     const nearbyEntities = this.getEntityManager().getNearbyEntities(position, EXPLOSION_RADIUS);
 
-    // Damage only enemy group entities (zombies) in explosion radius
-    for (const entity of nearbyEntities) {
-      // Don't damage the shooter
-      if (entity.getId() === this.shooterId) continue;
+    // Use game mode strategy to determine valid targets
+    const strategy = this.getGameManagers().getGameServer().getGameLoop().getGameModeStrategy();
 
+    // Damage valid targets in explosion radius
+    for (const entity of nearbyEntities) {
       if (!entity.hasExt(Destructible)) continue;
 
-      // Only damage entities in the "enemy" group (zombies)
-      // This prevents damage to players (friendly group) and structures (no group)
-      if (!entity.hasExt(Groupable) || entity.getExt(Groupable).getGroup() !== "enemy") {
+      // Use strategy to determine if this entity should be damaged
+      if (!strategy.shouldDamageTarget(this, entity, this.shooterId)) {
         continue;
       }
 
@@ -139,7 +137,7 @@ export class GrenadeProjectile extends Entity {
         // Scale damage based on distance from explosion
         const damageScale = 1 - dist / EXPLOSION_RADIUS;
         const damage = Math.ceil(EXPLOSION_DAMAGE * damageScale);
-        entity.getExt(Destructible).damage(damage);
+        entity.getExt(Destructible).damage(damage, this.shooterId);
       }
     }
 

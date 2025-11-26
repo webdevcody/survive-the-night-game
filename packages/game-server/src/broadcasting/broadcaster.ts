@@ -29,9 +29,9 @@ export class Broadcaster {
 
   constructor(private deps: BroadcastDependencies) {
     // Start stats reporting interval (every 5 seconds)
-    this.statsInterval = setInterval(() => {
-      this.printStats();
-    }, 5000);
+    // this.statsInterval = setInterval(() => {
+    //   this.printStats();
+    // }, 5000);
   }
 
   /**

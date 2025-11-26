@@ -210,7 +210,7 @@ export abstract class EnemyClient extends ClientEntityBase implements IClientEnt
     // Only animate if velocity indicates movement (server sets velocity to 0 during pause)
     // Don't use position delta to avoid animation from interpolation jitter when paused
     const shouldAnimate = movingByVelocity;
-    
+
     let image: HTMLImageElement;
     if (shouldAnimate) {
       // Update facing direction when moving
@@ -218,7 +218,7 @@ export abstract class EnemyClient extends ClientEntityBase implements IClientEnt
       if (facing !== null) {
         this.lastFacing = facing;
       }
-      
+
       const frameIndex = getFrameIndex(gameState.startedAt, {
         duration: this.getAnimationDuration(),
         frames: this.getAnimationFrameCount(),
@@ -230,10 +230,7 @@ export abstract class EnemyClient extends ClientEntityBase implements IClientEnt
       );
     } else {
       // Use static frame when idle
-      image = this.imageLoader.getWithDirection(
-        this.getEnemyAssetPrefix() as any,
-        this.lastFacing
-      );
+      image = this.imageLoader.getWithDirection(this.getEnemyAssetPrefix() as any, this.lastFacing);
     }
     ctx.drawImage(image, renderPosition.x, renderPosition.y);
 
@@ -278,32 +275,7 @@ export abstract class EnemyClient extends ClientEntityBase implements IClientEnt
     ctx: CanvasRenderingContext2D,
     renderPosition: Vector2
   ) {
-    const myPlayer = getPlayer(gameState);
     const image = this.imageLoader.get(`${this.getEnemyAssetPrefix()}_dead` as any);
     ctx.drawImage(image, renderPosition.x, renderPosition.y);
-
-    if (myPlayer && myPlayer.hasExt(ClientPositionable)) {
-      // Use frozen render position to prevent jittering of loot text
-      const positionable = this.getExt(ClientPositionable);
-      const size = positionable.getSize();
-      const poolManager = PoolManager.getInstance();
-      const centerPosition = poolManager.vector2.claim(
-        renderPosition.x + size.x / 2,
-        renderPosition.y + size.y / 2
-      );
-
-      // Check if this is the closest interactive entity (cached in gameState)
-      const isClosest = gameState.closestInteractiveEntityId === this.getId();
-
-      renderInteractionText(
-        ctx,
-        `loot (${getConfig().keybindings.INTERACT})`,
-        centerPosition,
-        renderPosition,
-        myPlayer.getExt(ClientPositionable).getPosition(),
-        PoolManager.getInstance().vector2.claim(0, 0),
-        isClosest
-      );
-    }
   }
 }
