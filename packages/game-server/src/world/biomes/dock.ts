@@ -18,7 +18,7 @@ export const DOCK: BiomeData = {
     [5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5],
     [5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5],
     [5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5],
-    [5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5],
+    [5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5]
   ],
   collidables: [
     [3, 3, 3, 3, -1, -1, -1, -1, -1, -1, -1, -1, 3, 3, 3, 3],
@@ -36,11 +36,16 @@ export const DOCK: BiomeData = {
     [-1, 151, 151, 142, 141, 141, 141, 141, 142, 141, 141, 141, 142, 151, 151, -1],
     [-1, 151, 151, 151, 151, 151, 151, 151, 151, 151, 151, 151, 151, 151, 151, -1],
     [-1, -1, 151, 151, 151, 151, 151, 151, 151, 151, 151, 151, 151, 151, -1, -1],
-    [-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1],
+    [-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1]
   ],
   items: [
     Entities.GRENADE_LAUNCHER,
     Entities.GRENADE_LAUNCHER_AMMO,
     Entities.GRENADE_LAUNCHER_AMMO,
+    Entities.ENERGY_DRINK,
+    Entities.GRENADE_LAUNCHER_AMMO,
+    Entities.GRENADE_LAUNCHER,
+    Entities.MOLOTOV_COCKTAIL,
+    Entities.MOLOTOV_COCKTAIL
   ],
 };

@@ -1,23 +1,18 @@
 import { Button } from "~/components/ui/button";
 import { useEditorStore } from "../store";
-import { SPAWNABLE_ENTITY_TYPES, Entities } from "@shared/constants";
+import { useSpawnableEntities } from "../hooks/useEditorApi";
 import type { EntityType } from "@shared/types/entity";
 
 // Zombie entity types to filter out from items panel
 const ZOMBIE_ENTITIES = new Set([
-  Entities.ZOMBIE,
-  Entities.BIG_ZOMBIE,
-  Entities.FAST_ZOMBIE,
-  Entities.EXPLODING_ZOMBIE,
-  Entities.BAT_ZOMBIE,
-  Entities.SPITTER_ZOMBIE,
-  Entities.LEAPING_ZOMBIE,
+  "zombie",
+  "big_zombie",
+  "fast_zombie",
+  "exploding_zombie",
+  "bat_zombie",
+  "spitter_zombie",
+  "leaping_zombie",
 ]);
-
-// Filter out zombies from spawnable entities to show only items
-const ITEM_ENTITY_TYPES = SPAWNABLE_ENTITY_TYPES.filter(
-  (entity) => !ZOMBIE_ENTITIES.has(entity as EntityType)
-);
 
 export function ItemsModal() {
   const isItemsModalOpen = useEditorStore((state) => state.isItemsModalOpen);
@@ -26,6 +21,13 @@ export function ItemsModal() {
   const currentItems = useEditorStore((state) => state.currentItems);
   const addItem = useEditorStore((state) => state.addItem);
   const removeItem = useEditorStore((state) => state.removeItem);
+  
+  const { data: spawnableEntities, isLoading, error } = useSpawnableEntities();
+
+  // Filter out zombies from spawnable entities to show only items
+  const itemEntityTypes = spawnableEntities
+    ? spawnableEntities.filter((entity) => !ZOMBIE_ENTITIES.has(entity as EntityType))
+    : [];
 
   if (!isItemsModalOpen) return null;
 
@@ -74,19 +76,27 @@ export function ItemsModal() {
         <div>
           <div className="text-sm text-gray-400 mb-2">Available Entities (Click to add):</div>
           <div className="flex flex-wrap gap-2 bg-gray-900 p-3 rounded max-h-[400px] overflow-y-auto">
-            {ITEM_ENTITY_TYPES.map((entity: EntityType) => {
-              const displayName = entity.replace(/_/g, " ");
-              return (
-                <button
-                  key={entity}
-                  onClick={() => addItem(entity)}
-                  className="px-3 py-1 bg-blue-600 hover:bg-blue-700 text-white rounded text-sm transition-colors cursor-pointer"
-                  title={`Add ${displayName}`}
-                >
-                  {displayName}
-                </button>
-              );
-            })}
+            {isLoading ? (
+              <div className="text-gray-500 text-sm">Loading entities...</div>
+            ) : error ? (
+              <div className="text-red-500 text-sm">Failed to load entities. Please try again.</div>
+            ) : itemEntityTypes.length === 0 ? (
+              <div className="text-gray-500 text-sm">No entities available.</div>
+            ) : (
+              itemEntityTypes.map((entity: EntityType) => {
+                const displayName = entity.replace(/_/g, " ");
+                return (
+                  <button
+                    key={entity}
+                    onClick={() => addItem(entity)}
+                    className="px-3 py-1 bg-blue-600 hover:bg-blue-700 text-white rounded text-sm transition-colors cursor-pointer"
+                    title={`Add ${displayName}`}
+                  >
+                    {displayName}
+                  </button>
+                );
+              })
+            )}
           </div>
         </div>
       </div>

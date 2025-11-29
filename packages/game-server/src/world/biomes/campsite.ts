@@ -43,12 +43,11 @@ export const CAMPSITE: BiomeData = {
     Entities.BANDAGE,
     Entities.BANDAGE,
     Entities.BANDAGE,
-    Entities.BANDAGE,
-    Entities.BANDAGE,
     Entities.PISTOL,
     Entities.PISTOL_AMMO,
     Entities.PISTOL_AMMO,
     Entities.PISTOL_AMMO,
-    Entities.KNIFE
+    Entities.KNIFE,
+    Entities.PISTOL_AMMO
   ],
 };

@@ -7,6 +7,8 @@ import {
   BiomeData,
 } from "../util/biome-file-handler.js";
 import { SPAWNABLE_ENTITY_TYPES } from "@shared/constants";
+// Import entities to ensure initialization
+import "@shared/entities";
 
 const router = Router();
 

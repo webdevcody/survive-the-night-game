@@ -17,6 +17,7 @@ interface BiomeDataResponse {
 export const editorQueryKeys = {
   biomes: ["biomes"] as const,
   biome: (name: string) => ["biome", name] as const,
+  spawnableEntities: ["spawnableEntities"] as const,
 };
 
 // Hooks
@@ -118,6 +119,24 @@ export function useCreateBiome() {
       queryClient.invalidateQueries({
         queryKey: editorQueryKeys.biomes,
       });
+    },
+  });
+}
+
+interface SpawnableEntitiesResponse {
+  entities: string[];
+}
+
+export function useSpawnableEntities() {
+  return useQuery({
+    queryKey: editorQueryKeys.spawnableEntities,
+    queryFn: async (): Promise<string[]> => {
+      const response = await fetch(API_ENDPOINTS.spawnableEntities());
+      if (!response.ok) {
+        throw new Error("Failed to fetch spawnable entities");
+      }
+      const data: SpawnableEntitiesResponse = await response.json();
+      return data.entities;
     },
   });
 }
