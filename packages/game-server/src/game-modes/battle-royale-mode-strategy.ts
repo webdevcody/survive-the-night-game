@@ -18,6 +18,7 @@ import { ToxicBiomeZoneExtension } from "@/extensions/toxic-biome-zone-extension
 import Groupable from "@/extensions/groupable";
 import Illuminated from "@/extensions/illuminated";
 import { Groups } from "@shared/util/group-encoding";
+import { distance } from "@shared/util/physics";
 
 // Battle Royale timing constants (in seconds)
 const TOXIC_ZONE_INTERVAL = 60; // Every 60 seconds, toxic zones spread
@@ -225,7 +226,9 @@ export class BattleRoyaleModeStrategy implements IGameModeStrategy {
       return; // No one left to kill
     }
 
-    console.log(`[BattleRoyaleModeStrategy] Endgame - killing ${livingPlayers.length} remaining players`);
+    console.log(
+      `[BattleRoyaleModeStrategy] Endgame - killing ${livingPlayers.length} remaining players`
+    );
 
     // Broadcast endgame message
     gameManagers.getBroadcaster().broadcastEvent(
@@ -272,7 +275,11 @@ export class BattleRoyaleModeStrategy implements IGameModeStrategy {
         const playerId = player.getId();
         if (!this.deathOrder.includes(playerId)) {
           this.deathOrder.push(playerId);
-          console.log(`[BattleRoyaleModeStrategy] Recorded death #${this.deathOrder.length} for ${player.getDisplayName()} (ID: ${playerId})`);
+          console.log(
+            `[BattleRoyaleModeStrategy] Recorded death #${
+              this.deathOrder.length
+            } for ${player.getDisplayName()} (ID: ${playerId})`
+          );
         }
       }
 
@@ -385,6 +392,66 @@ export class BattleRoyaleModeStrategy implements IGameModeStrategy {
 
   getPlayerSpawnPosition(player: Player, gameManagers: IGameManagers): Vector2 {
     // Spawn players at random positions throughout the map, excluding the campsite
+    // Ensure players spawn with minimum distance from each other to prevent clustering
+    const MIN_SPAWN_DISTANCE = 200; // pixels (~12.5 tiles)
+    const MAX_ATTEMPTS = 50; // Try up to 50 random positions
+
+    const entityManager = gameManagers.getEntityManager();
+    const existingPlayers = entityManager.getPlayerEntities() as Player[];
+
+    // Filter out dead players and the current player (if already spawned)
+    const livingPlayers = existingPlayers.filter(
+      (p) => !p.isDead() && p.getId() !== player.getId() && p.hasExt(Positionable)
+    );
+
+    // If no other players exist, just return a random position
+    if (livingPlayers.length === 0) {
+      return gameManagers.getMapManager().getRandomGrassPositionExcludingCampsite();
+    }
+
+    // Player size is TILE_SIZE x TILE_SIZE, so center offset is TILE_SIZE/2
+    const playerCenterOffset = this.TILE_SIZE / 2;
+    const poolManager = PoolManager.getInstance();
+
+    // Try multiple positions until we find one that's far enough from other players
+    for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
+      const candidatePosition = gameManagers
+        .getMapManager()
+        .getRandomGrassPositionExcludingCampsite();
+
+      // Calculate the center position where the player would spawn
+      // (spawn position is top-left corner, center is offset by half tile size)
+      const candidateCenter = poolManager.vector2.claim(
+        candidatePosition.x + playerCenterOffset,
+        candidatePosition.y + playerCenterOffset
+      );
+
+      // Check if this position is far enough from all existing players
+      let isValidPosition = true;
+      for (const otherPlayer of livingPlayers) {
+        const otherPos = otherPlayer.getExt(Positionable).getCenterPosition();
+        const dist = distance(candidateCenter, otherPos);
+
+        if (dist < MIN_SPAWN_DISTANCE) {
+          isValidPosition = false;
+          break;
+        }
+      }
+
+      // Release the temporary vector
+      poolManager.vector2.release(candidateCenter);
+
+      // If this position is valid, return it
+      if (isValidPosition) {
+        return candidatePosition;
+      }
+    }
+
+    // If we couldn't find a valid position after many attempts, fall back to random
+    // This can happen if the map is very crowded or small
+    console.warn(
+      `[BattleRoyaleModeStrategy] Could not find spawn position with minimum distance after ${MAX_ATTEMPTS} attempts, using random position`
+    );
     return gameManagers.getMapManager().getRandomGrassPositionExcludingCampsite();
   }
 
@@ -392,7 +459,7 @@ export class BattleRoyaleModeStrategy implements IGameModeStrategy {
     // In Battle Royale mode, spawn players randomly throughout the map (not at campsite)
     const spawnPosition = this.getPlayerSpawnPosition(player, gameManagers);
     player.getExt(Positionable).setPosition(spawnPosition);
-    
+
     // Check if player spawned in toxic gas and apply poison if needed
     this.checkPlayerInToxicGas(player, gameManagers);
   }
@@ -416,20 +483,20 @@ export class BattleRoyaleModeStrategy implements IGameModeStrategy {
     const playerCenter = playerPos.getCenterPosition();
     const entityManager = gameManagers.getEntityManager();
     const TILE_SIZE = getConfig().world.TILE_SIZE;
-    
+
     // Check toxic gas clouds
     const toxicGasClouds = entityManager.getEntitiesByType("toxic_gas_cloud" as any);
     for (const cloud of toxicGasClouds) {
       if (!cloud.hasExt(Positionable) || !cloud.hasExt(ToxicGasCloudExtension)) continue;
       if (cloud.isMarkedForRemoval()) continue;
-      
+
       const cloudPos = cloud.getExt(Positionable).getCenterPosition();
       const radius = TILE_SIZE / 2; // Half tile radius
       const dx = cloudPos.x - playerCenter.x;
       const dy = cloudPos.y - playerCenter.y;
       const distanceSquared = dx * dx + dy * dy;
       const radiusSquared = radius * radius;
-      
+
       if (distanceSquared < radiusSquared) {
         // Player is in cloud - apply poison if not already poisoned
         if (!player.hasExt(Poison)) {
@@ -438,16 +505,16 @@ export class BattleRoyaleModeStrategy implements IGameModeStrategy {
         return; // Found one, no need to check others
       }
     }
-    
+
     // Check toxic biome zones
     const toxicBiomeZones = entityManager.getEntitiesByType("toxic_biome_zone" as any);
     for (const zone of toxicBiomeZones) {
       if (!zone.hasExt(Positionable) || !zone.hasExt(ToxicBiomeZoneExtension)) continue;
       if (zone.isMarkedForRemoval()) continue;
-      
+
       const zonePos = zone.getExt(Positionable).getPosition();
       const zoneSize = zone.getExt(Positionable).getSize();
-      
+
       // Check if player center is within zone bounds
       if (
         playerCenter.x >= zonePos.x &&
@@ -527,7 +594,8 @@ export class BattleRoyaleModeStrategy implements IGameModeStrategy {
 
     // Check if attacker is a zombie player
     const attackerEntity = attacker.getType() === "player" ? attacker : null;
-    const isZombiePlayer = attackerEntity instanceof Player && (attackerEntity as Player).isZombie();
+    const isZombiePlayer =
+      attackerEntity instanceof Player && (attackerEntity as Player).isZombie();
 
     if (isZombiePlayer) {
       // Zombie players can ONLY damage living non-zombie players
@@ -600,7 +668,9 @@ export class BattleRoyaleModeStrategy implements IGameModeStrategy {
       const selectedBiome = this.selectRandomBiomeFromCurrentRing();
       if (!selectedBiome) {
         if (spawnedBiomes.length === 0 && !this.allBiomesToxic) {
-          console.log("[BattleRoyaleModeStrategy] All biomes are now toxic - arena fully closed, triggering endgame");
+          console.log(
+            "[BattleRoyaleModeStrategy] All biomes are now toxic - arena fully closed, triggering endgame"
+          );
           this.allBiomesToxic = true;
 
           // Broadcast final warning

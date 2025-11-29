@@ -19,7 +19,7 @@ export const worldConfig = {
   /**
    * Number of biomes in each dimension of the map (9x9 = 81 total biomes)
    */
-  MAP_SIZE: 5,
+  MAP_SIZE: 7,
 
   /**
    * Sprite sheet width in tiles (for decals/ground.png calculations)

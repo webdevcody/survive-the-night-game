@@ -11,7 +11,6 @@ import { Weapon } from "@/entities/weapons/weapon";
 import Carryable from "@/extensions/carryable";
 import Interactive from "@/extensions/interactive";
 import { ItemState } from "@/types/entity";
-import Groupable from "@/extensions/groupable";
 import { getConfig } from "@shared/config";
 import { calculateProjectileVelocity } from "@/entities/weapons/helpers";
 import { distance } from "@/util/physics";
@@ -30,6 +29,7 @@ export class Grenade extends Weapon {
   private targetDistance: number = Grenade.DEFAULT_THROW_DISTANCE;
   private isExploded: boolean = false;
   private interactiveExtension: Interactive | null = null;
+  private throwerId: number = 0;
 
   constructor(gameManagers: IGameManagers, itemState?: ItemState) {
     super(gameManagers, "grenade");
@@ -111,6 +111,7 @@ export class Grenade extends Weapon {
     // Arm the grenade
     this.isArmed = true;
     this.traveledDistance = 0;
+    this.throwerId = playerId;
 
     // Remove Interactive extension - once thrown, grenades are "live" and cannot be picked up
     if (this.interactiveExtension) {
@@ -153,13 +154,15 @@ export class Grenade extends Weapon {
       Grenade.EXPLOSION_RADIUS
     );
 
-    // Damage only enemy group entities (zombies) in explosion radius
+    // Use game mode strategy to determine valid targets
+    const strategy = this.getGameManagers().getGameServer().getGameLoop().getGameModeStrategy();
+
+    // Damage valid targets in explosion radius
     for (const entity of nearbyEntities) {
       if (!entity.hasExt(Destructible)) continue;
 
-      // Only damage entities in the "enemy" group (zombies)
-      // This prevents damage to players (friendly group) and structures (no group)
-      if (!entity.hasExt(Groupable) || entity.getExt(Groupable).getGroup() !== "enemy") {
+      // Use strategy to determine if this entity should be damaged
+      if (!strategy.shouldDamageTarget(this, entity, this.throwerId)) {
         continue;
       }
 
@@ -170,7 +173,7 @@ export class Grenade extends Weapon {
         // Scale damage based on distance from explosion
         const damageScale = 1 - dist / Grenade.EXPLOSION_RADIUS;
         const damage = Math.ceil(Grenade.EXPLOSION_DAMAGE * damageScale);
-        entity.getExt(Destructible).damage(damage);
+        entity.getExt(Destructible).damage(damage, this.throwerId);
       }
     }
 
