@@ -404,8 +404,15 @@ export class BattleRoyaleModeStrategy implements IGameModeStrategy {
       (p) => !p.isDead() && p.getId() !== player.getId() && p.hasExt(Positionable)
     );
 
-    // If no other players exist, just return a random position
+    // If no other players exist, validate and return a random position
     if (livingPlayers.length === 0) {
+      const position = gameManagers.getMapManager().getRandomGrassPositionExcludingCampsite();
+      // Validate position is valid for placement (checks ground tiles, collidables, and existing entities)
+      if (gameManagers.getMapManager().isPositionValidForPlacement(position, true)) {
+        return position;
+      }
+      // If invalid, try again (should be rare since getRandomGrassPositionExcludingCampsite filters valid tiles)
+      // But this ensures we don't spawn in trees or on other entities
       return gameManagers.getMapManager().getRandomGrassPositionExcludingCampsite();
     }
 
@@ -418,6 +425,11 @@ export class BattleRoyaleModeStrategy implements IGameModeStrategy {
       const candidatePosition = gameManagers
         .getMapManager()
         .getRandomGrassPositionExcludingCampsite();
+
+      // Validate position is valid for placement (checks ground tiles, collidables, and existing entities)
+      if (!gameManagers.getMapManager().isPositionValidForPlacement(candidatePosition, true)) {
+        continue; // Skip invalid positions
+      }
 
       // Calculate the center position where the player would spawn
       // (spawn position is top-left corner, center is offset by half tile size)
@@ -452,7 +464,13 @@ export class BattleRoyaleModeStrategy implements IGameModeStrategy {
     console.warn(
       `[BattleRoyaleModeStrategy] Could not find spawn position with minimum distance after ${MAX_ATTEMPTS} attempts, using random position`
     );
-    return gameManagers.getMapManager().getRandomGrassPositionExcludingCampsite();
+    const fallbackPosition = gameManagers.getMapManager().getRandomGrassPositionExcludingCampsite();
+    // Validate fallback position (should already be valid, but double-check)
+    if (gameManagers.getMapManager().isPositionValidForPlacement(fallbackPosition, true)) {
+      return fallbackPosition;
+    }
+    // Last resort: return anyway (should never happen, but prevents crashes)
+    return fallbackPosition;
   }
 
   handlePlayerSpawn(player: Player, gameManagers: IGameManagers): void {

@@ -8,6 +8,8 @@ import { Z_INDEX } from "@shared/map";
 import { getConfig } from "@shared/config";
 import { ClientToxicGasCloudExtension } from "@/extensions/toxic-gas-cloud-extension";
 import { environmentalEventsConfig } from "@shared/config/environmental-events-config";
+import { roundVector2 } from "@shared/util/physics";
+import PoolManager from "@shared/util/pool-manager";
 
 /**
  * Client entity for toxic gas cloud
@@ -65,10 +67,18 @@ export class ToxicGasCloudClient extends ClientEntity implements Renderable {
     }
 
     // Render as transparent green rectangle with age-based opacity
+    // Round position to prevent sub-pixel rendering offsets
+    const poolManager = PoolManager.getInstance();
+    const roundedPosition = roundVector2(position);
+
     ctx.save();
     ctx.globalAlpha = opacity;
     ctx.fillStyle = `rgba(0, ${Math.floor(greenIntensity)}, 0, ${opacity})`;
-    ctx.fillRect(position.x, position.y, size.x, size.y);
+    ctx.fillRect(roundedPosition.x, roundedPosition.y, size.x, size.y);
     ctx.restore();
+
+    // Release pooled vectors
+    poolManager.vector2.release(position);
+    poolManager.vector2.release(roundedPosition);
   }
 }

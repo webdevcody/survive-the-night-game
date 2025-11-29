@@ -1044,16 +1044,35 @@ export class MapManager implements IMapManager {
           continue;
         }
 
-        if (this.collidablesLayer[y][x] === EMPTY_COLLIDABLE_TILE_ID) {
+        // Check if it's a valid ground tile (grass tiles: 8, 4, 14, 24)
+        const groundTile = this.groundLayer[y][x];
+        const isValidGround =
+          groundTile === GROUND_TILE_ID_1 ||
+          groundTile === GROUND_TILE_ID_2 ||
+          groundTile === GROUND_TILE_ID_3 ||
+          groundTile === GROUND_TILE_ID_4;
+
+        // Check if there's no collidable blocking the spawn
+        const hasCollidable = this.collidablesLayer[y][x] !== EMPTY_COLLIDABLE_TILE_ID;
+
+        // Only spawn on valid ground tiles without collidables
+        if (isValidGround && !hasCollidable) {
           if (Math.random() < IDLE_ZOMBIE_SPAWN_CHANCE) {
-            const zombie = new Zombie(this.getGameManagers(), true); // true = idle mode
-            zombie.setPosition(
-              PoolManager.getInstance().vector2.claim(
-                x * getConfig().world.TILE_SIZE,
-                y * getConfig().world.TILE_SIZE
-              )
+            const poolManager = PoolManager.getInstance();
+            const position = poolManager.vector2.claim(
+              x * getConfig().world.TILE_SIZE,
+              y * getConfig().world.TILE_SIZE
             );
-            this.getEntityManager().addEntity(zombie);
+
+            // Validate position is valid for placement (checks for existing entities)
+            if (this.isPositionValidForPlacement(position, true)) {
+              const zombie = new Zombie(this.getGameManagers(), true); // true = idle mode
+              zombie.setPosition(position);
+              this.getEntityManager().addEntity(zombie);
+            } else {
+              // Release position if not valid
+              poolManager.vector2.release(position);
+            }
           }
         }
       }
