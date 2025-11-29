@@ -161,13 +161,19 @@ export class Leaderboard {
       ctx.fillStyle = index % 2 === 0 ? settings.rowBackground.even : settings.rowBackground.odd;
       ctx.fillRect(x, rowY, width, settings.lineHeight);
 
-      // Draw player name (with skull emoji if dead or zombie)
+      // Draw player name (with skull emoji if dead or zombie, robot emoji if AI)
       ctx.font = settings.font;
       ctx.fillStyle = settings.color;
       const isDeadOrZombie = player.isDead() || player.isZombiePlayer();
-      const displayName = isDeadOrZombie
-        ? `💀 ${player.getDisplayName()}`
-        : player.getDisplayName();
+      const isAI = player.getIsAI();
+      let displayName = player.getDisplayName();
+      if (isDeadOrZombie && isAI) {
+        displayName = `💀 🤖 ${displayName}`;
+      } else if (isDeadOrZombie) {
+        displayName = `💀 ${displayName}`;
+      } else if (isAI) {
+        displayName = `🤖 ${displayName}`;
+      }
       ctx.fillText(
         displayName,
         x + settings.padding.left,

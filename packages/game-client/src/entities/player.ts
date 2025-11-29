@@ -382,6 +382,10 @@ export class PlayerClient extends ClientEntity implements IClientEntity, Rendera
     return this.displayName;
   }
 
+  public getIsAI(): boolean {
+    return this.isAI;
+  }
+
   /**
    * Get color for AI state display
    */
