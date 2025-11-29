@@ -184,12 +184,13 @@ export class Hud {
       if (!this.currentGameState || !this.currentGameState.playerId) {
         return [];
       }
-      const player = getEntityById(
+      const entity = getEntityById(
         this.currentGameState,
         this.currentGameState.playerId
-      ) as PlayerClient;
-      if (player) {
-        return player.getInventory();
+      );
+      // Validate entity is a PlayerClient before accessing inventory
+      if (entity && entity instanceof PlayerClient) {
+        return entity.getInventory();
       }
       return [];
     };

@@ -329,9 +329,10 @@ export class GameClient {
 
     const getInventory = () => {
       if (this.gameState.playerId) {
-        const player = getEntityById(this.gameState, this.gameState.playerId) as PlayerClient;
-        if (player) {
-          return player.getInventory();
+        const entity = getEntityById(this.gameState, this.gameState.playerId);
+        // Validate entity is a PlayerClient before accessing inventory
+        if (entity && entity instanceof PlayerClient) {
+          return entity.getInventory();
         }
       }
 
@@ -340,7 +341,11 @@ export class GameClient {
 
     const getPlayer = () => {
       if (this.gameState.playerId) {
-        return getEntityById(this.gameState, this.gameState.playerId) as unknown as PlayerClient;
+        const entity = getEntityById(this.gameState, this.gameState.playerId);
+        // Validate entity is a PlayerClient before returning
+        if (entity && entity instanceof PlayerClient) {
+          return entity;
+        }
       }
 
       return null;
@@ -633,9 +638,15 @@ export class GameClient {
   }
 
   public getMyPlayer(): PlayerClient | null {
-    return this.gameState.playerId
-      ? (getEntityById(this.gameState, this.gameState.playerId) as unknown as PlayerClient)
-      : null;
+    if (!this.gameState.playerId) {
+      return null;
+    }
+    const entity = getEntityById(this.gameState, this.gameState.playerId);
+    // Validate entity is a PlayerClient before returning
+    if (entity && entity instanceof PlayerClient) {
+      return entity;
+    }
+    return null;
   }
 
   public getPlacementManager(): PlacementManager | null {
