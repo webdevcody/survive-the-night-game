@@ -64,9 +64,20 @@ export class CarClient extends ClientEntity implements Renderable {
       return;
     }
 
-    if (myPlayer && interactive.getDisplayName()) {
-      const displayName = formatDisplayName(interactive.getDisplayName());
-      let text = `${displayName} (${getConfig().keybindings.INTERACT})`;
+    // Skip rendering if autoPickupEnabled is true
+    if (interactive.getAutoPickupEnabled()) {
+      return;
+    }
+
+    const displayName = interactive.getDisplayName();
+    // Skip rendering if displayName is empty, null, or undefined
+    if (!displayName || displayName.trim() === "") {
+      return;
+    }
+
+    if (myPlayer) {
+      const formattedDisplayName = formatDisplayName(displayName);
+      let text = `${formattedDisplayName} (${getConfig().keybindings.INTERACT})`;
 
       // Check if this is the closest interactive entity (cached in gameState)
       const isClosest = gameState.closestInteractiveEntityId === this.getId();

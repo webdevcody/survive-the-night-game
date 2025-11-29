@@ -42,11 +42,16 @@ export class CommandRegistry {
 
   /**
    * Execute a command from a chat message
-   * @param message - The chat message (e.g., "/spawn zombie" or "/spawn zombie <password>")
+   * @param message - The chat message (e.g., "/spawn zombie")
    * @param context - The command execution context
+   * @param adminPassword - Optional admin password from localStorage
    * @returns The result message, or undefined if not a command or no permission
    */
-  async executeFromChat(message: string, context: CommandContext): Promise<string | void> {
+  async executeFromChat(
+    message: string,
+    context: CommandContext,
+    adminPassword?: string
+  ): Promise<string | void> {
     // Check if message is a command
     if (!message.startsWith("/")) {
       return;
@@ -65,24 +70,12 @@ export class CommandRegistry {
 
     // Check admin privileges if required
     if (command.requiresAdmin) {
-      // Check if last argument is a password
-      const providedPassword = args.length > 0 ? args[args.length - 1] : undefined;
-
-      if (!this.isAdmin(providedPassword)) {
-        // If password was provided but incorrect, remove it from args
-        if (providedPassword !== undefined) {
-          args.pop();
-        }
+      if (!this.isAdmin(adminPassword)) {
         return `Command /${commandName} requires admin privileges. ${
           ADMIN_PASSWORD === DEFAULT_ADMIN_PASSWORD
             ? ""
-            : "Provide the admin password as the last argument."
+            : "Set the admin password in localStorage with key 'admin_password'."
         }`;
-      }
-
-      // If password was provided and correct, remove it from args before executing
-      if (providedPassword !== undefined && providedPassword === ADMIN_PASSWORD) {
-        args.pop();
       }
     }
 

@@ -6,7 +6,6 @@ export const DEBUG_MAP_BOUNDS = false;
 export const DEBUG_SHOW_POSITIONS = false;
 export const DEBUG_START_ZOMBIE = false;
 export const DEBUG_VOLUME_REDUCTION = 0.8;
-export const DEBUG_ADMIN_COMMANDS = true;
 export const DEBUG_SHOW_WAYPOINTS = false;
 export const DEBUG_SHOW_ATTACK_RANGE = false;
 export const DEBUG_PERFORMANCE = true;

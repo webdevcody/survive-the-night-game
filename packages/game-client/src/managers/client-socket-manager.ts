@@ -18,7 +18,6 @@ import { ZombieDeathEvent } from "../../../game-shared/src/events/server-sent/ev
 import { ZombieHurtEvent } from "../../../game-shared/src/events/server-sent/events/zombie-hurt-event";
 import { ZombieAlertedEvent } from "../../../game-shared/src/events/server-sent/events/zombie-alerted-event";
 import { PongEvent } from "../../../game-shared/src/events/server-sent/events/pong-event";
-import { AdminCommand } from "@shared/commands/commands";
 import { Input } from "../../../game-shared/src/util/input";
 import { RecipeType } from "../../../game-shared/src/util/recipes";
 import { ServerUpdatingEvent } from "../../../game-shared/src/events/server-sent/events/server-updating-event";
@@ -486,10 +485,6 @@ export class ClientSocketManager {
     this.emitClientEvent(ClientSentEvents.PLAYER_INPUT, input);
   }
 
-  public sendAdminCommand(command: AdminCommand) {
-    this.emitClientEvent(ClientSentEvents.ADMIN_COMMAND, command);
-  }
-
   public sendRequestFullState() {
     this.emitClientEvent(ClientSentEvents.REQUEST_FULL_STATE);
   }
@@ -537,7 +532,14 @@ export class ClientSocketManager {
   }
 
   public sendChatMessage(message: string) {
-    this.emitClientEvent(ClientSentEvents.SEND_CHAT, { message });
+    // Check if it's a command and include admin password from localStorage if available
+    const isCommand = message.trim().startsWith("/");
+    const adminPassword = isCommand ? localStorage.getItem("admin_password") : undefined;
+    
+    this.emitClientEvent(ClientSentEvents.SEND_CHAT, { 
+      message,
+      adminPassword: adminPassword || undefined
+    });
   }
 
   public sendDisplayName(displayName: string) {

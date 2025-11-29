@@ -84,53 +84,62 @@ export abstract class ClientEntity extends ClientEntityBase implements Renderabl
       return;
     }
 
-    if (interactive.getDisplayName()) {
-      const displayName = formatDisplayName(interactive.getDisplayName());
-      const isPlaceable = this.hasExt(ClientPlaceable);
-
-      // Add item count to display name if available
-      let text = displayName;
-      if (this.hasExt(ClientCarryable)) {
-        const carryable = this.getExt(ClientCarryable);
-        const itemState = carryable.getItemState();
-        const count = itemState?.count;
-        if (count && count > 1) {
-          text += ` x${count}`;
-        }
-      }
-
-      let interactMessage = "";
-      if (isPlaceable) {
-        interactMessage += "hold ";
-      }
-      interactMessage += `${getConfig().keybindings.INTERACT}`;
-      text += ` (${interactMessage})`;
-
-      // Check if this is the closest interactive entity (cached in gameState)
-      const isClosest = gameState.closestInteractiveEntityId === this.getId();
-
-      // Check if item can be picked up (for carryable items)
-      let textColor: string | undefined;
-      if (this.hasExt(ClientCarryable)) {
-        const carryable = this.getExt(ClientCarryable);
-        const itemType = carryable.getItemKey() as ItemType;
-        const itemState = carryable.getItemState();
-        if (!this.canItemBePickedUp(myPlayer, itemType, itemState)) {
-          textColor = "red"; // Show red if inventory is full and item can't be merged
-        }
-      }
-
-      renderInteractionText(
-        ctx,
-        text,
-        positionable.getCenterPosition(),
-        positionable.getPosition(),
-        myPlayer.getCenterPosition(),
-        interactive.getOffset(),
-        isClosest,
-        textColor
-      );
+    // Skip rendering if autoPickupEnabled is true
+    if (interactive.getAutoPickupEnabled()) {
+      return;
     }
+
+    const displayName = interactive.getDisplayName();
+    // Skip rendering if displayName is empty, null, or undefined
+    if (!displayName || displayName.trim() === "") {
+      return;
+    }
+
+    const formattedDisplayName = formatDisplayName(displayName);
+    const isPlaceable = this.hasExt(ClientPlaceable);
+
+    // Add item count to display name if available
+    let text = formattedDisplayName;
+    if (this.hasExt(ClientCarryable)) {
+      const carryable = this.getExt(ClientCarryable);
+      const itemState = carryable.getItemState();
+      const count = itemState?.count;
+      if (count && count > 1) {
+        text += ` x${count}`;
+      }
+    }
+
+    let interactMessage = "";
+    if (isPlaceable) {
+      interactMessage += "hold ";
+    }
+    interactMessage += `${getConfig().keybindings.INTERACT}`;
+    text += ` (${interactMessage})`;
+
+    // Check if this is the closest interactive entity (cached in gameState)
+    const isClosest = gameState.closestInteractiveEntityId === this.getId();
+
+    // Check if item can be picked up (for carryable items)
+    let textColor: string | undefined;
+    if (this.hasExt(ClientCarryable)) {
+      const carryable = this.getExt(ClientCarryable);
+      const itemType = carryable.getItemKey() as ItemType;
+      const itemState = carryable.getItemState();
+      if (!this.canItemBePickedUp(myPlayer, itemType, itemState)) {
+        textColor = "red"; // Show red if inventory is full and item can't be merged
+      }
+    }
+
+    renderInteractionText(
+      ctx,
+      text,
+      positionable.getCenterPosition(),
+      positionable.getPosition(),
+      myPlayer.getCenterPosition(),
+      interactive.getOffset(),
+      isClosest,
+      textColor
+    );
   }
 
   public render(ctx: CanvasRenderingContext2D, gameState: GameState): void {

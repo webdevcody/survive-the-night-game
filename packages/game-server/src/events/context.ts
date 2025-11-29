@@ -1,6 +1,5 @@
 import { Player } from "@/entities/players/player";
 import { GameServer } from "@/core/server";
-import { CommandManager } from "@/managers/command-manager";
 import { MapManager } from "@/world/map-manager";
 import { IEntityManager, IGameManagers } from "@/managers/types";
 import { CommandRegistry } from "@/commands";
@@ -21,7 +20,6 @@ export interface HandlerContext {
   profanityCensor: TextCensor;
   getEntityManager(): IEntityManager;
   getMapManager(): MapManager;
-  getCommandManager(): CommandManager;
   getGameManagers(): IGameManagers;
   broadcastEvent(event: GameEvent<any>): void;
   sendEventToSocket(socket: ISocketAdapter, event: GameEvent<any>): void;

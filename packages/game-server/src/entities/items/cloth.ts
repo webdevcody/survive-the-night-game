@@ -17,7 +17,12 @@ export class Cloth extends Entity {
     const poolManager = PoolManager.getInstance();
     const size = poolManager.vector2.claim(16, 16);
     this.addExtension(new Positionable(this).setSize(size));
-    this.addExtension(new Interactive(this).onInteract(this.interact.bind(this)).setDisplayName("cloth"));
+    this.addExtension(
+      new Interactive(this)
+        .onInteract(this.interact.bind(this))
+        .setDisplayName("cloth")
+        .setAutoPickupEnabled(true)
+    );
   }
 
   private interact(entityId: number): void {

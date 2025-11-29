@@ -24,7 +24,10 @@ export class GallonDrum extends Entity {
     );
     this.addExtension(new Static(this));
     this.addExtension(
-      new Interactive(this).onInteract(this.onLooted.bind(this)).setDisplayName("search")
+      new Interactive(this)
+        .onInteract(this.onLooted.bind(this))
+        .setDisplayName("search")
+        .setAutoPickupEnabled(true)
     );
   }
 

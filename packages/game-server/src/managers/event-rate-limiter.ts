@@ -37,9 +37,6 @@ export class EventRateLimiter {
     REQUEST_FULL_STATE: { maxEvents: 5, windowMs: 1000 },
     CHANGE_PLAYER_COLOR: { maxEvents: 10, windowMs: 1000 },
     SET_DISPLAY_NAME: { maxEvents: 5, windowMs: 1000 },
-
-    // Admin commands - restricted
-    ADMIN_COMMAND: { maxEvents: 10, windowMs: 10000 }, // 10 per 10 seconds
   };
 
   // Default limit for unknown events (generous to avoid false positives)

@@ -18,7 +18,6 @@
  */
 import { ServerUpdatingEvent } from "../../../game-shared/src/events/server-sent/events/server-updating-event";
 import { GameEvent } from "@shared/events/types";
-import { CommandManager } from "@/managers/command-manager";
 import { EntityManager } from "@/managers/entity-manager";
 import { GameManagers } from "@/managers/game-managers";
 import { MapManager } from "@/world/map-manager";
@@ -34,7 +33,6 @@ export class GameServer {
 
   // MANAGERS
   private gameManagers: GameManagers;
-  private commandManager: CommandManager;
   private entityManager: EntityManager;
   private mapManager: MapManager;
   private socketManager: ServerSocketManager;
@@ -47,7 +45,6 @@ export class GameServer {
     this.socketManager = new ServerSocketManager(port, this);
     this.entityManager = new EntityManager();
     this.mapManager = new MapManager();
-    this.commandManager = new CommandManager(this.entityManager);
     this.gameManagers = new GameManagers(
       this.entityManager,
       this.mapManager,
@@ -58,7 +55,6 @@ export class GameServer {
     this.entityManager.setGameManagers(this.gameManagers);
     this.entityManager.setTickPerformanceTracker(this.tickPerformanceTracker);
     this.mapManager.setGameManagers(this.gameManagers);
-    this.socketManager.setCommandManager(this.commandManager);
     this.socketManager.setEntityManager(this.entityManager);
     this.socketManager.setMapManager(this.mapManager);
     this.socketManager.setGameManagers(this.gameManagers);

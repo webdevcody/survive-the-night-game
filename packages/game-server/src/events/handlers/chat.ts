@@ -32,7 +32,8 @@ function validateMessage(message: unknown): string | null {
 export async function handleChat(
   context: HandlerContext,
   socket: ISocketAdapter,
-  message: unknown
+  message: unknown,
+  adminPassword?: string
 ): Promise<void> {
   const player = context.players.get(socket.id);
   if (!player) return;
@@ -46,12 +47,16 @@ export async function handleChat(
 
   // Check if it's a command
   if (validatedMessage.trim().startsWith("/")) {
-    const result = await context.chatCommandRegistry.executeFromChat(validatedMessage.trim(), {
-      player,
-      args: [],
-      entityManager: context.getEntityManager() as EntityManager,
-      gameLoop: context.gameServer.getGameLoop(),
-    });
+    const result = await context.chatCommandRegistry.executeFromChat(
+      validatedMessage.trim(),
+      {
+        player,
+        args: [],
+        entityManager: context.getEntityManager() as EntityManager,
+        gameLoop: context.gameServer.getGameLoop(),
+      },
+      adminPassword
+    );
 
     // If command returned a message, send it as a system message
     if (result) {
@@ -77,23 +82,29 @@ export async function handleChat(
 /**
  * Validate chat data payload
  */
-function validateChatData(data: unknown): string | null {
+function validateChatData(data: unknown): { message: string; adminPassword?: string } | null {
   if (typeof data !== "object" || data === null) {
     return null;
   }
 
   const obj = data as Record<string, unknown>;
-  return validateMessage(obj.message);
+  const message = validateMessage(obj.message);
+  if (message === null) {
+    return null;
+  }
+
+  const adminPassword = typeof obj.adminPassword === "string" ? obj.adminPassword : undefined;
+  return { message, adminPassword };
 }
 
-export const sendChatHandler: SocketEventHandler<{ message: string }> = {
+export const sendChatHandler: SocketEventHandler<{ message: string; adminPassword?: string }> = {
   event: "SEND_CHAT",
   handler: (context, socket, data) => {
-    const message = validateChatData(data);
-    if (message === null) {
+    const validated = validateChatData(data);
+    if (validated === null) {
       console.warn(`Invalid chat data from socket ${socket.id}`);
       return;
     }
-    handleChat(context, socket, message);
+    handleChat(context, socket, validated.message, validated.adminPassword);
   },
 };

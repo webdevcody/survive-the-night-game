@@ -12,6 +12,7 @@ type InteractiveHandler = (entityId: number) => void;
 type InteractiveFields = {
   displayName: string;
   offset: { x: number; y: number };
+  autoPickupEnabled: boolean;
 };
 
 export default class Interactive extends ExtensionBase<InteractiveFields> {
@@ -21,7 +22,7 @@ export default class Interactive extends ExtensionBase<InteractiveFields> {
   private offset: Vector2;
 
   public constructor(self: IEntity) {
-    super(self, { displayName: "", offset: { x: 0, y: 0 } });
+    super(self, { displayName: "", offset: { x: 0, y: 0 }, autoPickupEnabled: false });
     this.offset = PoolManager.getInstance().vector2.claim(0, 0);
   }
 
@@ -48,6 +49,15 @@ export default class Interactive extends ExtensionBase<InteractiveFields> {
     return this.serialized.get('displayName');
   }
 
+  public setAutoPickupEnabled(enabled: boolean): this {
+    this.serialized.set('autoPickupEnabled', enabled);
+    return this;
+  }
+
+  public getAutoPickupEnabled(): boolean {
+    return this.serialized.get('autoPickupEnabled');
+  }
+
   public interact(entityId: number): void {
     this.handler?.(entityId);
   }
@@ -56,5 +66,6 @@ export default class Interactive extends ExtensionBase<InteractiveFields> {
     writer.writeUInt8(encodeExtensionType(Interactive.type));
     writer.writeUInt8(encodeInteractableText(this.serialized.get('displayName')));
     writer.writeVector2(this.offset);
+    writer.writeBoolean(this.serialized.get('autoPickupEnabled'));
   }
 }

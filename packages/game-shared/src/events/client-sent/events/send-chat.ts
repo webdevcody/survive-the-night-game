@@ -4,6 +4,7 @@ import { ArrayBufferWriter, BufferReader } from "../../../util/buffer-serializat
 
 export interface SendChatEventData {
   message: string;
+  adminPassword?: string;
 }
 
 export class SendChatEvent implements GameEvent<SendChatEventData> {
@@ -28,11 +29,16 @@ export class SendChatEvent implements GameEvent<SendChatEventData> {
 
   static serializeToBuffer(writer: ArrayBufferWriter, data: SendChatEventData): void {
     writer.writeString(data.message ?? "");
+    writer.writeString(data.adminPassword ?? "");
   }
 
   static deserializeFromBuffer(reader: BufferReader): SendChatEventData {
     const message = reader.readString();
-    return { message };
+    const adminPassword = reader.readString();
+    return { 
+      message,
+      adminPassword: adminPassword || undefined
+    };
   }
 }
 

@@ -76,8 +76,14 @@ export function shouldAutoPickup(entity: IEntity, player: Player): boolean {
 export function attemptAutoPickup(entity: IEntity, player: Player): boolean {
   // For resources and items with Interactive extension, trigger interact
   if (entity.hasExt(Interactive)) {
-    entity.getExt(Interactive).interact(player.getId());
-    return true;
+    const interactive = entity.getExt(Interactive);
+    // Auto-pickup if:
+    // 1. autoPickupEnabled is explicitly true (for resources, gallon drums, etc.)
+    // 2. OR shouldAutoPickup returns true (for ammo that player already has)
+    if (interactive.getAutoPickupEnabled() || shouldAutoPickup(entity, player)) {
+      interactive.interact(player.getId());
+      return true;
+    }
   }
 
   return false;

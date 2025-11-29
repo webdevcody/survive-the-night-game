@@ -18,7 +18,10 @@ export class Wood extends Entity {
     const size = poolManager.vector2.claim(16, 16);
     this.addExtension(new Positionable(this).setSize(size));
     this.addExtension(
-      new Interactive(this).onInteract(this.interact.bind(this)).setDisplayName("wood")
+      new Interactive(this)
+        .onInteract(this.interact.bind(this))
+        .setDisplayName("wood")
+        .setAutoPickupEnabled(true)
     );
   }
 

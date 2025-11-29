@@ -2,7 +2,6 @@ import { ClientSentEvents, type ClientSentEventType } from "../events";
 import { ArrayBufferWriter, BufferReader } from "../../util/buffer-serialization";
 import { CraftRequestEvent } from "./events/craft-request";
 import { PlayerInputEvent } from "./events/player-input";
-import { AdminCommandEvent } from "./events/admin-command";
 import { SetDisplayNameEvent } from "./events/set-display-name";
 import { MerchantBuyEvent } from "./events/merchant-buy";
 import { MerchantSellEvent } from "./events/merchant-sell";
@@ -29,7 +28,6 @@ const CLIENT_EVENT_VALUES = new Set<string>(Object.values(ClientSentEvents));
 const eventRegistry: Record<string, IBufferWriter> = {
   [ClientSentEvents.CRAFT_REQUEST]: CraftRequestEvent,
   [ClientSentEvents.PLAYER_INPUT]: PlayerInputEvent,
-  [ClientSentEvents.ADMIN_COMMAND]: AdminCommandEvent,
   [ClientSentEvents.SET_DISPLAY_NAME]: SetDisplayNameEvent,
   [ClientSentEvents.MERCHANT_BUY]: MerchantBuyEvent,
   [ClientSentEvents.MERCHANT_SELL]: MerchantSellEvent,

@@ -1,5 +1,5 @@
 import { ClientEntityBase } from "@/extensions/client-entity";
-import { ClientCarryable, ClientInventory } from "@/extensions";
+import { ClientCarryable, ClientInventory, ClientInteractive } from "@/extensions";
 import { isWeapon, isResourceItem, ItemType } from "@shared/util/inventory";
 
 /**

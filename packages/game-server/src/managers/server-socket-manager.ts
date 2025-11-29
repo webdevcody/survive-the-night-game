@@ -3,7 +3,6 @@ import { ClientSentEvents } from "@shared/events/events";
 import { GameEvent } from "@shared/events/types";
 import { GameServer } from "@/core/server";
 import { createServer } from "http";
-import { CommandManager } from "@/managers/command-manager";
 import { MapManager } from "@/world/map-manager";
 import { Broadcaster, IEntityManager, IGameManagers } from "@/managers/types";
 import { getConfig } from "@shared/config";
@@ -42,7 +41,6 @@ export class ServerSocketManager implements Broadcaster {
   private entityManager?: IEntityManager;
   private mapManager?: MapManager;
   private gameServer: GameServer;
-  private commandManager?: CommandManager;
   private gameManagers?: IGameManagers;
   private chatCommandRegistry: CommandRegistry;
   private profanityMatcher: RegExpMatcher;
@@ -154,7 +152,6 @@ export class ServerSocketManager implements Broadcaster {
       profanityCensor: this.profanityCensor,
       getEntityManager: () => this.getEntityManager(),
       getMapManager: () => this.getMapManager(),
-      getCommandManager: () => this.getCommandManager(),
       getGameManagers: () => this.getGameManagers(),
       broadcastEvent: (event: GameEvent<any>) => this.broadcastEvent(event),
       sendEventToSocket: (socket: ISocketAdapter, event: GameEvent<any>) =>
@@ -192,17 +189,6 @@ export class ServerSocketManager implements Broadcaster {
       throw new Error("Game managers not set");
     }
     return this.gameManagers;
-  }
-
-  public setCommandManager(commandManager: CommandManager): void {
-    this.commandManager = commandManager;
-  }
-
-  public getCommandManager(): CommandManager {
-    if (!this.commandManager) {
-      throw new Error("Command manager not set");
-    }
-    return this.commandManager;
   }
 
   public getEntityManager(): IEntityManager {

@@ -20,8 +20,6 @@ import { ResizeController } from "@/resize-controller";
 import { ClientEventListener } from "@/client-event-listener";
 import { SoundManager, SOUND_TYPES_TO_MP3 } from "@/managers/sound-manager";
 import { GameOverDialogUI } from "@/ui/game-over-dialog";
-import { CommandManager } from "@/managers/command-manager";
-import { DEBUG_ADMIN_COMMANDS } from "@shared/debug";
 import { Direction } from "../../game-shared/src/util/direction";
 import { Input } from "../../game-shared/src/util/input";
 import { ClientEntityBase } from "@/extensions/client-entity";
@@ -67,7 +65,6 @@ export class GameClient {
   private mapManager: MapManager;
   private storageManager: StorageManager;
   private soundManager: SoundManager;
-  private commandManager!: CommandManager;
   private clientEventListener!: ClientEventListener;
   private entityFactory: EntityFactory;
   private particleManager: ParticleManager;
@@ -575,7 +572,6 @@ export class GameClient {
   public async connectToServer(serverUrl: string): Promise<void> {
     this.socketManager = new ClientSocketManager(serverUrl);
     this.clientEventListener = new ClientEventListener(this, this.socketManager);
-    this.commandManager = new CommandManager(this.socketManager, this.gameState);
 
     console.log("Connecting to server");
     await this.socketManager.connect();
@@ -611,10 +607,6 @@ export class GameClient {
 
     // Set game client reference for sound manager
     this.soundManager.setGameClient(this);
-
-    if (DEBUG_ADMIN_COMMANDS) {
-      (window as any).commandManager = this.commandManager;
-    }
   }
 
   public getGameOverDialog(): GameOverDialogUI {

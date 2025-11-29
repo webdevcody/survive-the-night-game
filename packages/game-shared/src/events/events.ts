@@ -49,7 +49,6 @@ export const ClientSentEvents = {
   START_CRAFTING: "startCrafting",
   SET_DISPLAY_NAME: "setDisplayName",
   STOP_CRAFTING: "stopCrafting",
-  ADMIN_COMMAND: "adminCommand",
   REQUEST_FULL_STATE: "requestFullState",
   REQUEST_PLAYER_ID: "requestPlayerId",
   PING: "ping",

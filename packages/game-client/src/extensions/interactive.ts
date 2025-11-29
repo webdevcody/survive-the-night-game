@@ -10,6 +10,7 @@ export class ClientInteractive extends BaseClientExtension {
 
   private displayName = "";
   private offset: Vector2 = PoolManager.getInstance().vector2.claim(0, 0);
+  private autoPickupEnabled = false;
 
   public getDisplayName(): string {
     return this.displayName;
@@ -24,11 +25,16 @@ export class ClientInteractive extends BaseClientExtension {
     return this;
   }
 
+  public getAutoPickupEnabled(): boolean {
+    return this.autoPickupEnabled;
+  }
+
   public deserializeFromBuffer(reader: BufferReader): this {
     this.displayName = decodeInteractableText(reader.readUInt8());
     const offset = reader.readVector2();
     this.offset.reset(offset.x, offset.y);
     PoolManager.getInstance().vector2.release(offset);
+    this.autoPickupEnabled = reader.readBoolean();
     return this;
   }
 }

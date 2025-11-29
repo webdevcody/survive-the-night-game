@@ -1,7 +1,6 @@
 import { SocketEventHandler } from "./types";
 import { playerInputHandler } from "./player-input";
 import { craftRequestHandler, startCraftingHandler, stopCraftingHandler } from "./craft";
-import { adminCommandHandler } from "./admin-command";
 import { setDisplayNameHandler } from "./display-name";
 import { merchantBuyHandler, merchantSellHandler } from "./merchant";
 import { requestFullStateHandler } from "./full-state";
@@ -31,7 +30,6 @@ export const socketEventHandlers: SocketEventHandler[] = [
   craftRequestHandler,
   startCraftingHandler,
   stopCraftingHandler,
-  adminCommandHandler,
   setDisplayNameHandler,
   merchantBuyHandler,
   merchantSellHandler,
