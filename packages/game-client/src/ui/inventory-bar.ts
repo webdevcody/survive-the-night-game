@@ -200,7 +200,7 @@ export class InventoryBarUI implements Renderable {
     this.hoveredSlot = this.getSlotIndexAtPosition(x, y, metrics);
   }
 
-  public handleClick(x: number, y: number, canvasWidth: number, canvasHeight: number): boolean {
+  public handleClick(x: number, y: number, canvasWidth: number, canvasHeight: number, shiftHeld: boolean = false): boolean {
     this.lastCanvasWidth = canvasWidth;
     this.lastCanvasHeight = canvasHeight;
 
@@ -216,10 +216,51 @@ export class InventoryBarUI implements Renderable {
       return false; // Click was not on inventory
     }
 
+    // Shift+click: quick move to inventory panel
+    if (shiftHeld) {
+      const items = this.getInventory();
+      const item = items[slotIndex];
+      if (item) {
+        const targetSlot = this.findTargetSlotInInventory(slotIndex, items);
+        if (targetSlot !== null) {
+          this.sendSwapItems(slotIndex, targetSlot);
+          return true;
+        }
+      }
+    }
+
     // Click is on slot i, select it (convert to 1-indexed)
     this.inputManager.setInventorySlot(slotIndex + 1);
     this.prepareDragState(slotIndex, x, y);
     return true;
+  }
+
+  // Find target slot in extended inventory for quick move
+  private findTargetSlotInInventory(fromSlot: number, items: InventoryItem[]): number | null {
+    const hotbarSlots = getConfig().player.HOTBAR_SLOTS;
+    const maxSlots = getConfig().player.MAX_INVENTORY_SLOTS;
+    
+    // Preferred slot: corresponding position in inventory (slot 0 -> 10, slot 1 -> 11, etc.)
+    const preferredSlot = hotbarSlots + fromSlot;
+    
+    // If preferred slot is empty or within range, use it
+    if (preferredSlot < maxSlots && !items[preferredSlot]) {
+      return preferredSlot;
+    }
+    
+    // Otherwise find first empty slot in inventory range
+    for (let i = hotbarSlots; i < maxSlots; i++) {
+      if (!items[i]) {
+        return i;
+      }
+    }
+    
+    // No empty slot, swap with preferred slot anyway
+    if (preferredSlot < maxSlots) {
+      return preferredSlot;
+    }
+    
+    return null;
   }
 
   public handleMouseMove(x: number, y: number, canvasWidth?: number, canvasHeight?: number): void {
@@ -294,7 +335,7 @@ export class InventoryBarUI implements Renderable {
     // Scale inventory bar based on screen width for responsive design
     const hudScale = calculateHudScale(canvasWidth, canvasHeight);
     const settings = HOTBAR_SETTINGS.Inventory;
-    const slotsNumber = getConfig().player.MAX_INVENTORY_SLOTS;
+    const slotsNumber = getConfig().player.HOTBAR_SLOTS;
 
     ctx.save();
     ctx.setTransform(1, 0, 0, 1, 0, 0);
@@ -471,7 +512,7 @@ export class InventoryBarUI implements Renderable {
     const { width: canvasWidth, height: canvasHeight } = ctx.canvas;
     const hudScale = calculateHudScale(canvasWidth, canvasHeight);
     const settings = HOTBAR_SETTINGS.Inventory;
-    const slotsNumber = getConfig().player.MAX_INVENTORY_SLOTS;
+    const slotsNumber = getConfig().player.HOTBAR_SLOTS;
 
     ctx.save();
     ctx.setTransform(1, 0, 0, 1, 0, 0);
@@ -614,7 +655,7 @@ export class InventoryBarUI implements Renderable {
   private calculateHotbarMetrics(canvasWidth: number, canvasHeight: number): HotbarMetrics {
     const hudScale = calculateHudScale(canvasWidth, canvasHeight);
     const cfg = HOTBAR_SETTINGS.Inventory;
-    const slots = getConfig().player.MAX_INVENTORY_SLOTS;
+    const slots = getConfig().player.HOTBAR_SLOTS;
 
     // Scale only what is actually needed
     const slotSize = cfg.slotSize * hudScale;
@@ -669,5 +710,21 @@ export class InventoryBarUI implements Renderable {
       y >= metrics.hotbarY &&
       y <= metrics.hotbarY + metrics.hotbarHeight
     );
+  }
+
+  // Handle external drag from inventory panel ending on this hotbar
+  public handleExternalDrop(fromSlotIndex: number, x: number, y: number): boolean {
+    const metrics = this.getHotbarMetrics(this.lastCanvasWidth, this.lastCanvasHeight);
+    if (!metrics) return false;
+
+    if (!this.isPointInsideHotbar(x, y, metrics)) return false;
+
+    const targetSlotIndex = this.getSlotIndexAtPosition(x, y, metrics);
+    if (targetSlotIndex !== null) {
+      this.sendSwapItems(fromSlotIndex, targetSlotIndex);
+      return true;
+    }
+
+    return false;
   }
 }
