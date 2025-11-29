@@ -9,6 +9,7 @@ import { ExtensionBase } from "./extension-base";
 import Poison from "./poison";
 import { Entities } from "@shared/constants";
 import { getConfig } from "@shared/config";
+import { Player } from "@/entities/players/player";
 
 /**
  * Extension that triggers when a player walks over acid, adding poison extension
@@ -90,6 +91,11 @@ export default class AcidTrigger extends ExtensionBase<AcidTriggerFields> {
 
     for (const entity of entities) {
       if (!entity.hasExt(Positionable)) {
+        continue;
+      }
+
+      // Skip zombie players - acid only affects human players
+      if (entity instanceof Player && entity.isZombie()) {
         continue;
       }
 

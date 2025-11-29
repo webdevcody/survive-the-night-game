@@ -28,21 +28,25 @@ export class CommandRegistry {
 
   /**
    * Check if user has admin privileges
+   * In development mode (default password), anyone can use admin commands
+   * In production mode (custom password), password must be provided
    */
-  private isAdmin(): boolean {
-    return ADMIN_PASSWORD === DEFAULT_ADMIN_PASSWORD;
+  private isAdmin(password?: string): boolean {
+    // If using default password, allow admin commands (dev mode)
+    if (ADMIN_PASSWORD === DEFAULT_ADMIN_PASSWORD) {
+      return true;
+    }
+    // Otherwise, require password to match ADMIN_PASSWORD
+    return password === ADMIN_PASSWORD;
   }
 
   /**
    * Execute a command from a chat message
-   * @param message - The chat message (e.g., "/spawn zombie")
+   * @param message - The chat message (e.g., "/spawn zombie" or "/spawn zombie <password>")
    * @param context - The command execution context
    * @returns The result message, or undefined if not a command or no permission
    */
-  async executeFromChat(
-    message: string,
-    context: CommandContext
-  ): Promise<string | void> {
+  async executeFromChat(message: string, context: CommandContext): Promise<string | void> {
     // Check if message is a command
     if (!message.startsWith("/")) {
       return;
@@ -60,8 +64,26 @@ export class CommandRegistry {
     }
 
     // Check admin privileges if required
-    if (command.requiresAdmin && !this.isAdmin()) {
-      return `Command /${commandName} requires admin privileges.`;
+    if (command.requiresAdmin) {
+      // Check if last argument is a password
+      const providedPassword = args.length > 0 ? args[args.length - 1] : undefined;
+
+      if (!this.isAdmin(providedPassword)) {
+        // If password was provided but incorrect, remove it from args
+        if (providedPassword !== undefined) {
+          args.pop();
+        }
+        return `Command /${commandName} requires admin privileges. ${
+          ADMIN_PASSWORD === DEFAULT_ADMIN_PASSWORD
+            ? ""
+            : "Provide the admin password as the last argument."
+        }`;
+      }
+
+      // If password was provided and correct, remove it from args before executing
+      if (providedPassword !== undefined && providedPassword === ADMIN_PASSWORD) {
+        args.pop();
+      }
     }
 
     // Update context with parsed args

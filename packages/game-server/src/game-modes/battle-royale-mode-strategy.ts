@@ -97,6 +97,9 @@ export class BattleRoyaleModeStrategy implements IGameModeStrategy {
   // Only tracks human deaths (not zombie deaths)
   private deathOrder: number[] = [];
 
+  // Track if the entire map is toxic (endgame state)
+  private allBiomesToxic: boolean = false;
+
   getConfig(): GameModeConfig {
     return this.config;
   }
@@ -113,6 +116,7 @@ export class BattleRoyaleModeStrategy implements IGameModeStrategy {
     this.consolidatedBiomes.clear();
     this.toxicBiomeZones = [];
     this.deathOrder = [];
+    this.allBiomesToxic = false;
 
     console.log("[BattleRoyaleModeStrategy] Game started in Battle Royale mode");
     console.log(
@@ -158,6 +162,7 @@ export class BattleRoyaleModeStrategy implements IGameModeStrategy {
     this.consolidatedBiomes.clear();
     this.currentRing = 0;
     this.deathOrder = [];
+    this.allBiomesToxic = false;
 
     // Clean up AI players
     if (this.aiPlayerManager) {
@@ -201,6 +206,43 @@ export class BattleRoyaleModeStrategy implements IGameModeStrategy {
 
     // Check for dead non-zombie players and respawn them as zombies
     this.handleZombieRespawns(gameManagers);
+
+    // Check if all biomes are toxic and trigger endgame
+    if (this.allBiomesToxic) {
+      this.killAllRemainingPlayers(gameManagers);
+    }
+  }
+
+  /**
+   * Kill all remaining living (non-zombie) players when the entire map is toxic
+   * This triggers the endgame - last player to die wins
+   */
+  private killAllRemainingPlayers(gameManagers: IGameManagers): void {
+    const players = gameManagers.getEntityManager().getPlayerEntities() as Player[];
+    const livingPlayers = players.filter((p) => !p.isDead() && !p.isZombie());
+
+    if (livingPlayers.length === 0) {
+      return; // No one left to kill
+    }
+
+    console.log(`[BattleRoyaleModeStrategy] Endgame - killing ${livingPlayers.length} remaining players`);
+
+    // Broadcast endgame message
+    gameManagers.getBroadcaster().broadcastEvent(
+      new GameMessageEvent({
+        message: "The toxic gas has consumed the entire arena!",
+        color: "red",
+      })
+    );
+
+    // Kill all living players by dealing massive damage
+    for (const player of livingPlayers) {
+      if (player.hasExt(Destructible)) {
+        const destructible = player.getExt(Destructible);
+        // Deal damage equal to current health to kill them instantly
+        destructible.damage(destructible.getHealth());
+      }
+    }
   }
 
   /**
@@ -209,6 +251,9 @@ export class BattleRoyaleModeStrategy implements IGameModeStrategy {
    * - Zombie players: respawn as zombie again
    */
   private handleZombieRespawns(gameManagers: IGameManagers): void {
+    // Don't respawn anyone during endgame - just record deaths
+    const skipRespawns = this.allBiomesToxic;
+
     const players = gameManagers.getEntityManager().getPlayerEntities() as Player[];
 
     for (const player of players) {
@@ -238,6 +283,11 @@ export class BattleRoyaleModeStrategy implements IGameModeStrategy {
 
       if (deathTime > 0 && timeSinceDeath < respawnCooldown) {
         continue; // Still in cooldown
+      }
+
+      // Skip respawns during endgame
+      if (skipRespawns) {
+        continue;
       }
 
       // Respawn the player
@@ -358,7 +408,10 @@ export class BattleRoyaleModeStrategy implements IGameModeStrategy {
    */
   private checkPlayerInToxicGas(player: Player, gameManagers: IGameManagers): void {
     if (!player.hasExt(Positionable)) return;
-    
+
+    // Zombie players are immune to toxic gas
+    if (player.isZombie()) return;
+
     const playerPos = player.getExt(Positionable);
     const playerCenter = playerPos.getCenterPosition();
     const entityManager = gameManagers.getEntityManager();
@@ -546,8 +599,17 @@ export class BattleRoyaleModeStrategy implements IGameModeStrategy {
     for (let i = 0; i < biomesToSpawn; i++) {
       const selectedBiome = this.selectRandomBiomeFromCurrentRing();
       if (!selectedBiome) {
-        if (spawnedBiomes.length === 0) {
-          console.log("[BattleRoyaleModeStrategy] All biomes are now toxic - arena fully closed");
+        if (spawnedBiomes.length === 0 && !this.allBiomesToxic) {
+          console.log("[BattleRoyaleModeStrategy] All biomes are now toxic - arena fully closed, triggering endgame");
+          this.allBiomesToxic = true;
+
+          // Broadcast final warning
+          gameManagers.getBroadcaster().broadcastEvent(
+            new GameMessageEvent({
+              message: "The campsite has been consumed! Last one standing wins!",
+              color: "gold",
+            })
+          );
         }
         break;
       }

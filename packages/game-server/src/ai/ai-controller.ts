@@ -542,8 +542,8 @@ export class AIController {
         }
       }
 
-      // Check if in melee attack range (use fist/default melee range)
-      const meleeRange = AI_CONFIG.MELEE_RANGE;
+      // Check if in melee attack range - use actual zombie claw range
+      const meleeRange = getConfig().combat.ZOMBIE_PLAYER_CLAW_RANGE;
 
       if (closestDistance <= meleeRange) {
         // In range - attack!

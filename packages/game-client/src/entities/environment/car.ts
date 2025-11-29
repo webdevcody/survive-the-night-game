@@ -59,6 +59,11 @@ export class CarClient extends ClientEntity implements Renderable {
     const positionable = this.getExt(ClientPositionable);
     const interactive = this.getExt(ClientInteractive);
 
+    // Zombie players cannot interact with anything
+    if (myPlayer?.isZombiePlayer()) {
+      return;
+    }
+
     if (myPlayer && interactive.getDisplayName()) {
       const displayName = formatDisplayName(interactive.getDisplayName());
       let text = `${displayName} (${getConfig().keybindings.INTERACT})`;

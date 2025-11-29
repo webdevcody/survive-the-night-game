@@ -82,7 +82,10 @@ export class WavesModeStrategy implements IGameModeStrategy {
    */
   private checkPlayerInToxicGas(player: Player, gameManagers: IGameManagers): void {
     if (!player.hasExt(Positionable)) return;
-    
+
+    // Zombie players are immune to toxic gas
+    if (player.isZombie()) return;
+
     const playerPos = player.getExt(Positionable);
     const playerCenter = playerPos.getCenterPosition();
     const entityManager = gameManagers.getEntityManager();

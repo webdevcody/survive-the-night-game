@@ -6,6 +6,7 @@ import Positionable from "./positionable";
 import Poison from "./poison";
 import { Entities } from "@shared/constants";
 import { getConfig } from "@shared/config";
+import { Player } from "@/entities/players/player";
 
 type ToxicBiomeZoneFields = {
   age: number;
@@ -57,6 +58,9 @@ export class ToxicBiomeZoneExtension extends ExtensionBase<ToxicBiomeZoneFields>
 
     for (const entity of nearbyEntities) {
       if (!entity.hasExt(Positionable)) continue;
+
+      // Skip zombie players - toxic zones only affect human players
+      if (entity instanceof Player && entity.isZombie()) continue;
 
       const entityPos = entity.getExt(Positionable);
       const entityCenter = entityPos.getCenterPosition();

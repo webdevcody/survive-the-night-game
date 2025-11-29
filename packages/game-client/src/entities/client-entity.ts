@@ -73,6 +73,11 @@ export abstract class ClientEntity extends ClientEntityBase implements Renderabl
       return;
     }
 
+    // Zombie players cannot interact with anything - hide interaction text
+    if (myPlayer.isZombiePlayer()) {
+      return;
+    }
+
     // Skip rendering interaction text for auto-pickup items
     // These items will be picked up automatically when walked over
     if (isAutoPickupItem(this, myPlayer)) {

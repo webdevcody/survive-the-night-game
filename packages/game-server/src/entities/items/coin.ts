@@ -7,6 +7,7 @@ import Vector2 from "@/util/vector2";
 import PoolManager from "@shared/util/pool-manager";
 import { CoinPickupEvent } from "../../../../game-shared/src/events/server-sent/events/coin-pickup-event";
 import { getConfig } from "@shared/config";
+import { Player } from "@/entities/players/player";
 
 export class Coin extends Entity {
   public static get Size(): Vector2 {
@@ -39,7 +40,13 @@ export class Coin extends Entity {
     );
 
     if (nearbyPlayers.length > 0) {
-      const player = nearbyPlayers[0] as any;
+      const player = nearbyPlayers[0] as Player;
+
+      // Zombie players cannot pick up coins
+      if (player.isZombie()) {
+        return;
+      }
+
       // Increment player's coins
       if (player.addCoins) {
         player.addCoins(1);

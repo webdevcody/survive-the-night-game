@@ -214,8 +214,8 @@ export class SurvivorClient extends ClientEntity implements Renderable {
       ctx.drawImage(image, renderPosition.x, renderPosition.y);
     }
 
-    // Render loot interaction text
-    if (myPlayer && myPlayer.hasExt(ClientPositionable) && this.hasExt(ClientInteractive)) {
+    // Render loot interaction text (not for zombie players)
+    if (myPlayer && !myPlayer.isZombiePlayer() && myPlayer.hasExt(ClientPositionable) && this.hasExt(ClientInteractive)) {
       const positionable = this.getExt(ClientPositionable);
       const size = positionable.getSize();
       const poolManager = PoolManager.getInstance();

@@ -13,6 +13,7 @@ import { getConfig } from "@shared/config";
 import { ToxicGasCloud } from "@/entities/environment/toxic-gas-cloud";
 import Vector2 from "@/util/vector2";
 import PoolManager from "@shared/util/pool-manager";
+import { Player } from "@/entities/players/player";
 
 type ToxicGasCloudFields = {
   age: number;
@@ -124,6 +125,9 @@ export class ToxicGasCloudExtension extends ExtensionBase<ToxicGasCloudFields> {
 
     for (const entity of nearbyEntities) {
       if (!entity.hasExt(Positionable)) continue;
+
+      // Skip zombie players - toxic gas only affects human players
+      if (entity instanceof Player && entity.isZombie()) continue;
 
       const entityCenter = entity.getExt(Positionable).getCenterPosition();
       const dx = position.x - entityCenter.x;
