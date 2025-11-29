@@ -4,6 +4,7 @@ Feel free to pick any item listed out here to work on.
 
 ## Bug
 
+- people will spawn inside trees where they can't get out off, fix to get a valid list of spawn locations by doing flood fill from campsite and only marketing those files reached as valid spawn locations.
 - if you pick up a wall that is damaged and put it back down, it seems to go back to full hp again.
 
 ## Gameplay

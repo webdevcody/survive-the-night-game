@@ -132,6 +132,8 @@ export class ToxicGasEventStrategy implements IEnvironmentalEventStrategy {
       const cloud = new ToxicGasCloud(this.gameManagers, position);
       cloud.setEnvironmentalEventManager(this); // Set reference for growth requests
       this.entityManager.addEntity(cloud);
+      // Immediately check for players already in the cloud (fixes issue where stationary players don't get poisoned)
+      cloud.checkForPlayersImmediately();
       this.toxicGasClouds.push(cloud);
       // Mark tile as occupied
       this.markTileOccupied(position);
@@ -203,6 +205,8 @@ export class ToxicGasEventStrategy implements IEnvironmentalEventStrategy {
     cloud.setCanReproduce(canReproduce);
     cloud.setPrimaryDirection(primaryDirection);
     this.entityManager.addEntity(cloud);
+    // Immediately check for players already in the cloud (fixes issue where stationary players don't get poisoned)
+    cloud.checkForPlayersImmediately();
     this.toxicGasClouds.push(cloud);
     this.markTileOccupied(position);
 

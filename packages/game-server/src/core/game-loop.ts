@@ -30,14 +30,24 @@ import { GameEvent } from "@shared/events/types";
 import { EntityManager } from "@/managers/entity-manager";
 import { MapManager } from "@/world/map-manager";
 import { ServerSocketManager } from "@/managers/server-socket-manager";
-import { TICK_RATE, TICK_RATE_MS, ENABLE_PERFORMANCE_MONITORING, DEFAULT_GAME_MODE } from "@/config/config";
+import {
+  TICK_RATE,
+  TICK_RATE_MS,
+  ENABLE_PERFORMANCE_MONITORING,
+  DEFAULT_GAME_MODE,
+} from "@/config/config";
 import { getConfig } from "@shared/config";
 import { TickPerformanceTracker } from "@/util/tick-performance-tracker";
 import { WaveState } from "@shared/types/wave";
 import { Survivor } from "@/entities/environment/survivor";
 import { Entities } from "@shared/constants";
 import { EnvironmentalEventManager } from "@/managers/environmental-event-manager";
-import { IGameModeStrategy, WinConditionResult, WavesModeStrategy, BattleRoyaleModeStrategy } from "@/game-modes";
+import {
+  IGameModeStrategy,
+  WinConditionResult,
+  WavesModeStrategy,
+  BattleRoyaleModeStrategy,
+} from "@/game-modes";
 
 export class GameLoop {
   private lastUpdateTime: number = performance.now();
@@ -53,9 +63,10 @@ export class GameLoop {
   private isGameOver: boolean = false;
 
   // Game mode strategy - initialized based on DEFAULT_GAME_MODE config
-  private gameModeStrategy: IGameModeStrategy = DEFAULT_GAME_MODE === "battle_royale"
-    ? new BattleRoyaleModeStrategy()
-    : new WavesModeStrategy();
+  private gameModeStrategy: IGameModeStrategy =
+    DEFAULT_GAME_MODE === "battle_royale"
+      ? new BattleRoyaleModeStrategy()
+      : new WavesModeStrategy();
 
   private tickPerformanceTracker: TickPerformanceTracker;
   private entityManager: EntityManager;
@@ -194,6 +205,14 @@ export class GameLoop {
 
   public setIsGameReady(isReady: boolean): void {
     this.isGameReady = isReady;
+  }
+
+  public getIsGameReady(): boolean {
+    return this.isGameReady;
+  }
+
+  public getIsGameOver(): boolean {
+    return this.isGameOver;
   }
 
   private startGameLoop(): void {

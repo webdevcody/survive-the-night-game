@@ -17,7 +17,7 @@ export class GrenadeLauncher extends Weapon {
     return this.getConfig().stats.cooldown;
   }
 
-  public attack(playerId: string, position: Vector2, facing: Direction, aimAngle?: number): void {
+  public attack(playerId: string, position: Vector2, facing: Direction, aimAngle?: number, aimDistance?: number): void {
     const player = this.getEntityManager().getEntityById(playerId);
     if (!player) return;
 
@@ -30,6 +30,11 @@ export class GrenadeLauncher extends Weapon {
 
     const grenadeProjectile = new GrenadeProjectile(this.getGameManagers());
     grenadeProjectile.setPosition(position);
+
+    // Set target distance if provided (mouse aiming), grenade will explode at crosshair position
+    if (aimDistance !== undefined && !isNaN(aimDistance)) {
+      grenadeProjectile.setTargetDistance(aimDistance);
+    }
 
     // Use aimAngle if provided (mouse aiming), otherwise use facing direction
     if (aimAngle !== undefined) {

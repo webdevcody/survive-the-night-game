@@ -7,6 +7,7 @@ import { getConfig } from "@shared/config";
 import { Entities } from "@shared/constants";
 import { PlayerClient } from "@/entities/player";
 import { SpatialGrid } from "@shared/util/spatial-grid";
+import { isAutoPickupItem } from "@/util/auto-pickup";
 
 /**
  * Finds the closest interactive entity to the player.
@@ -42,9 +43,17 @@ export function getClosestInteractiveEntity(
   }
 
   // Filter to entities within exact radius (spatial grid gives approximate results)
+  // Also filter out auto-pickup items - they don't need manual interaction
   const interactiveEntities = candidateEntities.filter((entity) => {
     const entityPos = entity.getExt(ClientPositionable).getCenterPosition();
-    return distance(playerPos, entityPos) <= maxRadius;
+    if (distance(playerPos, entityPos) > maxRadius) {
+      return false;
+    }
+    // Skip auto-pickup items - they will be picked up automatically
+    if (isAutoPickupItem(entity, player)) {
+      return false;
+    }
+    return true;
   });
 
   if (interactiveEntities.length === 0) {

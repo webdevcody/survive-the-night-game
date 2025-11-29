@@ -4,9 +4,7 @@ import Vector2 from "@/util/vector2";
 import PoolManager from "@shared/util/pool-manager";
 import Destructible from "@/extensions/destructible";
 import { Direction } from "@shared/util/direction";
-import { Cooldown } from "@/entities/util/cooldown";
 import Inventory from "@/extensions/inventory";
-import { normalizeDirection } from "@shared/util/direction";
 import Updatable from "@/extensions/updatable";
 import { ExplosionEvent } from "../../../../game-shared/src/events/server-sent/events/explosion-event";
 import { Weapon } from "@/entities/weapons/weapon";
@@ -15,25 +13,26 @@ import Interactive from "@/extensions/interactive";
 import { ItemState } from "@/types/entity";
 import Groupable from "@/extensions/groupable";
 import { getConfig } from "@shared/config";
+import { calculateProjectileVelocity } from "@/entities/weapons/helpers";
+import { distance } from "@/util/physics";
 
 export class Grenade extends Weapon {
   private static readonly EXPLOSION_RADIUS = getConfig().combat.EXPLOSION_RADIUS_MEDIUM;
   private static readonly EXPLOSION_DAMAGE = getConfig().combat.EXPLOSION_DAMAGE_STANDARD;
   private static readonly THROW_SPEED = getConfig().combat.THROW_SPEED;
-  private static readonly EXPLOSION_DELAY = getConfig().combat.EXPLOSION_DELAY;
+  private static readonly DEFAULT_THROW_DISTANCE = getConfig().combat.TRAVEL_DISTANCE_MEDIUM;
   private static readonly COOLDOWN = getConfig().combat.THROWABLE_COOLDOWN;
   public static readonly DEFAULT_COUNT = 1;
 
   private velocity: Vector2 = PoolManager.getInstance().vector2.claim(0, 0);
   private isArmed: boolean = false;
-  private explosionTimer: Cooldown;
+  private traveledDistance: number = 0;
+  private targetDistance: number = Grenade.DEFAULT_THROW_DISTANCE;
   private isExploded: boolean = false;
   private interactiveExtension: Interactive | null = null;
 
   constructor(gameManagers: IGameManagers, itemState?: ItemState) {
     super(gameManagers, "grenade");
-
-    this.explosionTimer = new Cooldown(Grenade.EXPLOSION_DELAY);
 
     // Add Updatable extension for grenade physics after it's thrown
     this.addExtension(new Updatable(this, this.updateGrenade.bind(this)));
@@ -65,9 +64,10 @@ export class Grenade extends Weapon {
 
   public attack(
     playerId: number,
-    position: { x: number; y: number },
+    _position: { x: number; y: number },
     facing: Direction,
-    aimAngle?: number
+    aimAngle?: number,
+    aimDistance?: number
   ): void {
     const player = this.getEntityManager().getEntityById(playerId);
     if (!player || !player.hasExt(Positionable)) return;
@@ -98,24 +98,19 @@ export class Grenade extends Weapon {
     // Set grenade position to player position
     this.getExt(Positionable).setPosition(playerPos);
 
-    // Set velocity based on aim angle if provided (mouse aiming), otherwise use facing direction
-    if (aimAngle !== undefined) {
-      const dirX = Math.cos(aimAngle);
-      const dirY = Math.sin(aimAngle);
-      const poolManager = PoolManager.getInstance();
-      this.velocity = poolManager.vector2.claim(
-        dirX * Grenade.THROW_SPEED,
-        dirY * Grenade.THROW_SPEED
-      );
+    // Set target distance if provided (mouse aiming), grenade will explode at crosshair position
+    if (aimDistance !== undefined && !isNaN(aimDistance)) {
+      this.targetDistance = aimDistance;
     } else {
-      const directionVector = normalizeDirection(facing);
-      const poolManager = PoolManager.getInstance();
-      this.velocity = poolManager.vector2.claim(directionVector.x, directionVector.y);
-      this.velocity.mul(Grenade.THROW_SPEED);
+      this.targetDistance = Grenade.DEFAULT_THROW_DISTANCE;
     }
+
+    // Set velocity using shared utility function
+    this.velocity = calculateProjectileVelocity(facing, Grenade.THROW_SPEED, aimAngle);
 
     // Arm the grenade
     this.isArmed = true;
+    this.traveledDistance = 0;
 
     // Remove Interactive extension - once thrown, grenades are "live" and cannot be picked up
     if (this.interactiveExtension) {
@@ -130,21 +125,20 @@ export class Grenade extends Weapon {
   private updateGrenade(deltaTime: number): void {
     if (!this.isArmed) return;
 
-    // Update position based on velocity
-    const pos = this.getExt(Positionable).getPosition();
     const poolManager = PoolManager.getInstance();
-    const velocityScaled = poolManager.vector2.claim(this.velocity.x, this.velocity.y);
-    velocityScaled.mul(deltaTime);
-    const newPos = pos.clone().add(velocityScaled);
-    poolManager.vector2.release(velocityScaled);
-    this.getExt(Positionable).setPosition(newPos);
+    const positionable = this.getExt(Positionable);
+    const lastPosition = positionable.getPosition().clone();
 
-    // Apply friction to slow down
-    this.velocity.mul(0.95);
+    // Update position based on velocity (no friction - travels at constant speed like grenade launcher)
+    const newPos = poolManager.vector2.claim(
+      lastPosition.x + this.velocity.x * deltaTime,
+      lastPosition.y + this.velocity.y * deltaTime
+    );
+    positionable.setPosition(newPos);
 
-    // Update explosion timer
-    this.explosionTimer.update(deltaTime);
-    if (this.explosionTimer.isReady()) {
+    // Check if grenade has reached target distance
+    this.traveledDistance += distance(lastPosition, newPos);
+    if (this.traveledDistance >= this.targetDistance) {
       this.explode();
     }
   }

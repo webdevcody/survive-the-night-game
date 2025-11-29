@@ -41,6 +41,7 @@ export function CraftingPanel({ gameClient }: CraftingPanelProps) {
   const [hoveredRecipe, setHoveredRecipe] = useState<RecipeType | null>(null);
   const [itemSprites, setItemSprites] = useState<Record<string, SpriteInfo>>({});
   const [spriteSheets, setSpriteSheets] = useState<Record<string, string>>({});
+  const [isZombie, setIsZombie] = useState(false);
 
   // Load sprite sheet URLs and sprite positions
   useEffect(() => {
@@ -76,6 +77,8 @@ export function CraftingPanel({ gameClient }: CraftingPanelProps) {
       try {
         const state = gameClient.getCraftingState();
         setCraftingState(state);
+        // Check if player is a zombie
+        setIsZombie(gameClient.isPlayerZombie?.() ?? false);
       } catch (error) {
         console.error("Failed to get crafting state:", error);
       }
@@ -129,7 +132,8 @@ export function CraftingPanel({ gameClient }: CraftingPanelProps) {
     return requirements;
   };
 
-  if (!gameClient) {
+  // Hide crafting panel for zombie players
+  if (!gameClient || isZombie) {
     return null;
   }
 

@@ -161,11 +161,15 @@ export class Leaderboard {
       ctx.fillStyle = index % 2 === 0 ? settings.rowBackground.even : settings.rowBackground.odd;
       ctx.fillRect(x, rowY, width, settings.lineHeight);
 
-      // Draw player ID
+      // Draw player name (with skull emoji if dead or zombie)
       ctx.font = settings.font;
       ctx.fillStyle = settings.color;
+      const isDeadOrZombie = player.isDead() || player.isZombiePlayer();
+      const displayName = isDeadOrZombie
+        ? `💀 ${player.getDisplayName()}`
+        : player.getDisplayName();
       ctx.fillText(
-        player.getDisplayName(),
+        displayName,
         x + settings.padding.left,
         rowY + settings.lineHeight / 2
       );

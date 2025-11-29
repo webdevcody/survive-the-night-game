@@ -33,10 +33,12 @@ export class PlayerInputEvent implements GameEvent<PlayerInputEventData> {
 
     // Pack booleans into a bitset (1 byte)
     const hasAimAngle = input.aimAngle !== undefined;
+    const hasAimDistance = input.aimDistance !== undefined;
     let bitset = 0;
     if (input.fire) bitset |= 1 << 0;
     if (input.sprint) bitset |= 1 << 1;
     if (hasAimAngle) bitset |= 1 << 2;
+    if (hasAimDistance) bitset |= 1 << 3;
     writer.writeUInt8(bitset);
 
     // facing: uint8 (Direction enum)
@@ -58,6 +60,13 @@ export class PlayerInputEvent implements GameEvent<PlayerInputEventData> {
       // Scale to uint16: 0-65535
       writer.writeUInt16(Math.round((angle / (2 * Math.PI)) * 65535));
     }
+
+    // aimDistance: uint16, scale to support distances up to 1000 world units
+    if (hasAimDistance && input.aimDistance !== undefined) {
+      // Clamp distance to reasonable max (1000 units) and scale to uint16
+      const clampedDistance = Math.min(1000, Math.max(0, input.aimDistance));
+      writer.writeUInt16(Math.round((clampedDistance / 1000) * 65535));
+    }
   }
 
   static deserializeFromBuffer(reader: BufferReader): PlayerInputEventData {
@@ -66,6 +75,7 @@ export class PlayerInputEvent implements GameEvent<PlayerInputEventData> {
     const fire = (bitset & (1 << 0)) !== 0;
     const sprint = (bitset & (1 << 1)) !== 0;
     const hasAimAngle = (bitset & (1 << 2)) !== 0;
+    const hasAimDistance = (bitset & (1 << 3)) !== 0;
 
     // facing: uint8
     const facing = reader.readUInt8() as Direction;
@@ -85,6 +95,13 @@ export class PlayerInputEvent implements GameEvent<PlayerInputEventData> {
       aimAngle = (angleScaled / 65535) * (2 * Math.PI);
     }
 
+    // aimDistance: uint16, scale from 0-65535 to 0-1000 world units
+    let aimDistance: number | undefined = undefined;
+    if (hasAimDistance) {
+      const distanceScaled = reader.readUInt16();
+      aimDistance = (distanceScaled / 65535) * 1000;
+    }
+
     const input: Input = {
       facing,
       dx,
@@ -92,6 +109,7 @@ export class PlayerInputEvent implements GameEvent<PlayerInputEventData> {
       fire,
       sprint,
       aimAngle,
+      aimDistance,
     };
 
     return input;

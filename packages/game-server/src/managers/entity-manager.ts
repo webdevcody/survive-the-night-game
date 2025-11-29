@@ -554,7 +554,8 @@ export class EntityManager implements IEntityManager {
     let closestPlayerDistance = Infinity;
 
     for (const player of this.players) {
-      if (player.isDead()) continue;
+      // Skip dead players and zombie players (zombies shouldn't be targeted by enemy AI)
+      if (player.isDead() || player.isZombie()) continue;
 
       const playerDistance = distance(entityPosition, player.getPosition());
 

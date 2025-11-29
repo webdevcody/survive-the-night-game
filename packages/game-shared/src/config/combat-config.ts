@@ -22,6 +22,21 @@ export const combatConfig = {
   ZOMBIE_ATTACK_RADIUS: 4,
 
   /**
+   * Zombie player claw attack range in pixels (Battle Royale)
+   */
+  ZOMBIE_PLAYER_CLAW_RANGE: 26,
+
+  /**
+   * Zombie player claw attack damage (Battle Royale)
+   */
+  ZOMBIE_PLAYER_CLAW_DAMAGE: 1,
+
+  /**
+   * Zombie player claw attack cooldown in seconds
+   */
+  ZOMBIE_PLAYER_CLAW_COOLDOWN: 0.8,
+
+  /**
    * Bullet visual size in pixels
    */
   BULLET_SIZE: 4,

@@ -4,12 +4,20 @@ import { Player } from "@/entities/players/player";
 import { IEntity } from "@/entities/types";
 import Vector2 from "@/util/vector2";
 import Destructible from "@/extensions/destructible";
+import Collidable from "@/extensions/collidable";
 import { ToxicGasCloud } from "@/entities/environment/toxic-gas-cloud";
 import { ToxicBiomeZone } from "@/entities/environment/toxic-biome-zone";
 import { getConfig } from "@shared/config";
 import { GameMessageEvent } from "@shared/events/server-sent/events/game-message-event";
 import PoolManager from "@shared/util/pool-manager";
 import Positionable from "@/extensions/positionable";
+import { AIPlayerManager } from "@/ai/ai-player-manager";
+import Poison from "@/extensions/poison";
+import { ToxicGasCloudExtension } from "@/extensions/toxic-gas-cloud-extension";
+import { ToxicBiomeZoneExtension } from "@/extensions/toxic-biome-zone-extension";
+import Groupable from "@/extensions/groupable";
+import Illuminated from "@/extensions/illuminated";
+import { Groups } from "@shared/util/group-encoding";
 
 // Battle Royale timing constants (in seconds)
 const TOXIC_ZONE_INTERVAL = 60; // Every 60 seconds, toxic zones spread
@@ -82,6 +90,13 @@ export class BattleRoyaleModeStrategy implements IGameModeStrategy {
   // Total tiles per biome (BIOME_SIZE * BIOME_SIZE)
   private readonly TILES_PER_BIOME = this.BIOME_SIZE * this.BIOME_SIZE;
 
+  // AI Player Manager
+  private aiPlayerManager: AIPlayerManager | null = null;
+
+  // Track death order for placement - stores player IDs in order of death (first death = first element)
+  // Only tracks human deaths (not zombie deaths)
+  private deathOrder: number[] = [];
+
   getConfig(): GameModeConfig {
     return this.config;
   }
@@ -97,6 +112,7 @@ export class BattleRoyaleModeStrategy implements IGameModeStrategy {
     this.biomeTileCounts.clear();
     this.consolidatedBiomes.clear();
     this.toxicBiomeZones = [];
+    this.deathOrder = [];
 
     console.log("[BattleRoyaleModeStrategy] Game started in Battle Royale mode");
     console.log(
@@ -113,6 +129,10 @@ export class BattleRoyaleModeStrategy implements IGameModeStrategy {
         color: "gold",
       })
     );
+
+    // Initialize and spawn AI players
+    this.aiPlayerManager = new AIPlayerManager(gameManagers);
+    this.aiPlayerManager.spawnAIPlayers(4);
   }
 
   onGameEnd(gameManagers: IGameManagers): void {
@@ -137,6 +157,13 @@ export class BattleRoyaleModeStrategy implements IGameModeStrategy {
     this.biomeTileCounts.clear();
     this.consolidatedBiomes.clear();
     this.currentRing = 0;
+    this.deathOrder = [];
+
+    // Clean up AI players
+    if (this.aiPlayerManager) {
+      this.aiPlayerManager.cleanup();
+      this.aiPlayerManager = null;
+    }
 
     console.log("[BattleRoyaleModeStrategy] Game ended");
   }
@@ -166,6 +193,144 @@ export class BattleRoyaleModeStrategy implements IGameModeStrategy {
     // Check if any biomes are fully filled and should be consolidated
     // This replaces many individual cloud entities with a single zone entity
     this.checkBiomeConsolidation(gameManagers);
+
+    // Update AI players
+    if (this.aiPlayerManager) {
+      this.aiPlayerManager.update(deltaTime);
+    }
+
+    // Check for dead non-zombie players and respawn them as zombies
+    this.handleZombieRespawns(gameManagers);
+  }
+
+  /**
+   * Check for dead players and handle respawns:
+   * - Non-zombie players: convert to zombie and respawn
+   * - Zombie players: respawn as zombie again
+   */
+  private handleZombieRespawns(gameManagers: IGameManagers): void {
+    const players = gameManagers.getEntityManager().getPlayerEntities() as Player[];
+
+    for (const player of players) {
+      const isDead = player.isDead();
+      const isZombie = player.isZombie();
+      const isMarkedForRemoval = player.isMarkedForRemoval();
+
+      // Skip players who are alive or marked for removal
+      if (!isDead || isMarkedForRemoval) {
+        continue;
+      }
+
+      // Track human deaths in the death order (only if not already tracked)
+      // Zombie deaths don't count for placement
+      if (!isZombie) {
+        const playerId = player.getId();
+        if (!this.deathOrder.includes(playerId)) {
+          this.deathOrder.push(playerId);
+          console.log(`[BattleRoyaleModeStrategy] Recorded death #${this.deathOrder.length} for ${player.getDisplayName()} (ID: ${playerId})`);
+        }
+      }
+
+      // Check respawn cooldown (use deathTime)
+      const deathTime = player.getDeathTime();
+      const timeSinceDeath = Date.now() - deathTime;
+      const respawnCooldown = getConfig().entity.PLAYER_RESPAWN_COOLDOWN_MS;
+
+      if (deathTime > 0 && timeSinceDeath < respawnCooldown) {
+        continue; // Still in cooldown
+      }
+
+      // Respawn the player
+      if (isZombie) {
+        // Already a zombie - just respawn them as zombie again
+        this.respawnZombiePlayer(player, gameManagers);
+      } else {
+        // Convert to zombie and respawn
+        this.respawnAsZombie(player, gameManagers);
+      }
+    }
+  }
+
+  /**
+   * Respawn a zombie player who died (they stay as zombie)
+   */
+  private respawnZombiePlayer(player: Player, gameManagers: IGameManagers): void {
+    console.log(`[BattleRoyaleModeStrategy] ${player.getDisplayName()} (zombie) respawning`);
+
+    // Re-enable collision
+    if (player.hasExt(Collidable)) {
+      player.getExt(Collidable).setEnabled(true);
+    }
+
+    // Restore health to max
+    const destructible = player.getExt(Destructible);
+    if (destructible) {
+      destructible.setHealth(destructible.getMaxHealth());
+    }
+
+    // Spawn at random position
+    const spawnPosition = this.getPlayerSpawnPosition(player, gameManagers);
+    player.getExt(Positionable).setPosition(spawnPosition);
+
+    // Clear death time
+    player.setDeathTime(0);
+
+    // Check if spawned in toxic gas
+    this.checkPlayerInToxicGas(player, gameManagers);
+  }
+
+  /**
+   * Respawn a dead player as a zombie
+   */
+  private respawnAsZombie(player: Player, gameManagers: IGameManagers): void {
+    console.log(`[BattleRoyaleModeStrategy] ${player.getDisplayName()} respawning as zombie`);
+
+    // Convert to zombie
+    player.setIsZombie(true);
+
+    // Change group to "enemy" so other zombies don't target this player
+    if (player.hasExt(Groupable)) {
+      player.getExt(Groupable).setGroup(Groups.ENEMY);
+    }
+
+    // Add illumination so zombie players can see in the dark (small radius)
+    if (!player.hasExt(Illuminated)) {
+      player.addExtension(new Illuminated(player, 80)); // Small light radius for zombie vision
+    } else {
+      player.getExt(Illuminated).setRadius(80);
+    }
+
+    // Clear their inventory (zombies don't use items)
+    player.clearInventory();
+
+    // Re-enable collision
+    if (player.hasExt(Collidable)) {
+      player.getExt(Collidable).setEnabled(true);
+    }
+
+    // Restore health to max
+    const destructible = player.getExt(Destructible);
+    if (destructible) {
+      destructible.setHealth(destructible.getMaxHealth());
+    }
+
+    // Spawn at random position (away from safe zones)
+    const spawnPosition = this.getPlayerSpawnPosition(player, gameManagers);
+    player.getExt(Positionable).setPosition(spawnPosition);
+
+    // Clear death time
+    player.setDeathTime(0);
+
+    // Check if spawned in toxic gas
+    this.checkPlayerInToxicGas(player, gameManagers);
+
+    // Broadcast message
+    gameManagers.getBroadcaster().broadcastEvent(
+      new GameMessageEvent({
+        message: `${player.getDisplayName()} has risen as a zombie!`,
+        color: "red",
+      })
+    );
   }
 
   getPlayerSpawnPosition(player: Player, gameManagers: IGameManagers): Vector2 {
@@ -177,22 +342,84 @@ export class BattleRoyaleModeStrategy implements IGameModeStrategy {
     // In Battle Royale mode, spawn players randomly throughout the map (not at campsite)
     const spawnPosition = this.getPlayerSpawnPosition(player, gameManagers);
     player.getExt(Positionable).setPosition(spawnPosition);
+    
+    // Check if player spawned in toxic gas and apply poison if needed
+    this.checkPlayerInToxicGas(player, gameManagers);
   }
 
   canPlayerRespawn(player: Player): boolean {
-    // No respawning in Battle Royale
-    return false;
+    // In Battle Royale, dead players can respawn as zombies (one-time)
+    // If already a zombie, cannot respawn again
+    return !player.isZombie();
+  }
+
+  /**
+   * Check if a player is inside any toxic gas clouds or zones and apply poison if needed
+   */
+  private checkPlayerInToxicGas(player: Player, gameManagers: IGameManagers): void {
+    if (!player.hasExt(Positionable)) return;
+    
+    const playerPos = player.getExt(Positionable);
+    const playerCenter = playerPos.getCenterPosition();
+    const entityManager = gameManagers.getEntityManager();
+    const TILE_SIZE = getConfig().world.TILE_SIZE;
+    
+    // Check toxic gas clouds
+    const toxicGasClouds = entityManager.getEntitiesByType("toxic_gas_cloud" as any);
+    for (const cloud of toxicGasClouds) {
+      if (!cloud.hasExt(Positionable) || !cloud.hasExt(ToxicGasCloudExtension)) continue;
+      if (cloud.isMarkedForRemoval()) continue;
+      
+      const cloudPos = cloud.getExt(Positionable).getCenterPosition();
+      const radius = TILE_SIZE / 2; // Half tile radius
+      const dx = cloudPos.x - playerCenter.x;
+      const dy = cloudPos.y - playerCenter.y;
+      const distanceSquared = dx * dx + dy * dy;
+      const radiusSquared = radius * radius;
+      
+      if (distanceSquared < radiusSquared) {
+        // Player is in cloud - apply poison if not already poisoned
+        if (!player.hasExt(Poison)) {
+          player.addExtension(new Poison(player, 3, 1, 1));
+        }
+        return; // Found one, no need to check others
+      }
+    }
+    
+    // Check toxic biome zones
+    const toxicBiomeZones = entityManager.getEntitiesByType("toxic_biome_zone" as any);
+    for (const zone of toxicBiomeZones) {
+      if (!zone.hasExt(Positionable) || !zone.hasExt(ToxicBiomeZoneExtension)) continue;
+      if (zone.isMarkedForRemoval()) continue;
+      
+      const zonePos = zone.getExt(Positionable).getPosition();
+      const zoneSize = zone.getExt(Positionable).getSize();
+      
+      // Check if player center is within zone bounds
+      if (
+        playerCenter.x >= zonePos.x &&
+        playerCenter.x <= zonePos.x + zoneSize.x &&
+        playerCenter.y >= zonePos.y &&
+        playerCenter.y <= zonePos.y + zoneSize.y
+      ) {
+        // Player is in zone - apply poison if not already poisoned
+        if (!player.hasExt(Poison)) {
+          player.addExtension(new Poison(player, 3, 1, 1));
+        }
+        return; // Found one, no need to check others
+      }
+    }
   }
 
   checkWinCondition(gameManagers: IGameManagers): WinConditionResult {
     const players = gameManagers.getEntityManager().getPlayerEntities() as Player[];
 
-    // Filter for alive players
-    const alivePlayers = players.filter((p) => !p.isDead());
+    // Filter for living players (not dead AND not zombies)
+    const livingPlayers = players.filter((p) => !p.isDead() && !p.isZombie());
 
-    // If only one player is alive, they win
-    if (alivePlayers.length === 1 && players.length >= this.config.minPlayers) {
-      const winner = alivePlayers[0];
+    // If only one living player remains, they win
+    if (livingPlayers.length === 1 && players.length >= this.config.minPlayers) {
+      const winner = livingPlayers[0];
       return {
         gameEnded: true,
         winnerId: winner.getId(),
@@ -201,13 +428,28 @@ export class BattleRoyaleModeStrategy implements IGameModeStrategy {
       };
     }
 
-    // If no players are alive, game over with no winner
-    if (alivePlayers.length === 0 && players.length > 0) {
+    // If no living players remain (all dead or zombies), the last person to die wins
+    if (livingPlayers.length === 0 && players.length > 0) {
+      // Edge case: if everyone is dead/zombie, pick the last person to die as the winner
+      if (this.deathOrder.length > 0) {
+        const lastDeadPlayerId = this.deathOrder[this.deathOrder.length - 1];
+        const lastDeadPlayer = players.find((p) => p.getId() === lastDeadPlayerId);
+        if (lastDeadPlayer) {
+          return {
+            gameEnded: true,
+            winnerId: lastDeadPlayer.getId(),
+            winnerName: lastDeadPlayer.getDisplayName(),
+            message: `${lastDeadPlayer.getDisplayName()} wins the Battle Royale! (Last survivor)`,
+          };
+        }
+      }
+
+      // Fallback if we couldn't find the last dead player
       return {
         gameEnded: true,
         winnerId: null,
         winnerName: null,
-        message: "No survivors - Everyone is dead!",
+        message: "No survivors - The zombies have won!",
       };
     }
 
@@ -225,19 +467,61 @@ export class BattleRoyaleModeStrategy implements IGameModeStrategy {
       return false;
     }
 
-    // In Battle Royale, damage all entities with Destructible extension
-    // This includes players, zombies, and any other destructible entities
+    // Must have Destructible extension to take damage
     if (!target.hasExt(Destructible)) {
       return false;
     }
 
-    // Allow damage to all destructible entities (friendly fire enabled)
+    // Check if attacker is a zombie player
+    const attackerEntity = attacker.getType() === "player" ? attacker : null;
+    const isZombiePlayer = attackerEntity instanceof Player && (attackerEntity as Player).isZombie();
+
+    if (isZombiePlayer) {
+      // Zombie players can ONLY damage living non-zombie players
+      if (target instanceof Player) {
+        return !target.isZombie() && !target.isDead();
+      }
+      // Zombies cannot damage other entities (walls, crates, etc.)
+      return false;
+    }
+
+    // Normal living players can damage all destructible entities (friendly fire enabled)
     return true;
   }
 
   getZombieFallbackTarget(gameManagers: IGameManagers): Vector2 | null {
     // Zombies have no fallback target in Battle Royale - they only target nearby players
     return null;
+  }
+
+  /**
+   * Get the set of toxic biomes (for AI pathfinding to avoid)
+   * Returns biome keys in format "x,y"
+   */
+  public getToxicBiomes(): Set<string> {
+    return this.toxicBiomes;
+  }
+
+  /**
+   * Get the death order array (for placement/points calculation)
+   * First element = first death (worst placement), last element = last death (best placement among dead)
+   * Only tracks human deaths, not zombie deaths
+   */
+  public getDeathOrder(): number[] {
+    return [...this.deathOrder];
+  }
+
+  /**
+   * Get the placement for a player (1 = winner, higher = worse placement)
+   * Returns null if the player is still alive
+   */
+  public getPlayerPlacement(playerId: number, totalPlayers: number): number | null {
+    const deathIndex = this.deathOrder.indexOf(playerId);
+    if (deathIndex === -1) {
+      return null; // Player hasn't died yet (still alive)
+    }
+    // First death = last place, last death = 2nd place (or winner if everyone died)
+    return totalPlayers - deathIndex;
   }
 
   /**
@@ -332,6 +616,8 @@ export class BattleRoyaleModeStrategy implements IGameModeStrategy {
     cloud.setPrimaryDirection({ x: dirX !== 0 ? dirX : 1, y: dirY !== 0 ? dirY : 1 });
     cloud.setPermanent(true); // Battle Royale clouds never expire
     gameManagers.getEntityManager().addEntity(cloud);
+    // Immediately check for players already in the cloud (fixes issue where stationary players don't get poisoned)
+    cloud.checkForPlayersImmediately();
     this.toxicGasClouds.push(cloud);
     this.markTileOccupied(position);
   }
@@ -585,6 +871,8 @@ export class BattleRoyaleModeStrategy implements IGameModeStrategy {
 
     const zone = new ToxicBiomeZone(gameManagers, zonePosition, zoneSize);
     gameManagers.getEntityManager().addEntity(zone);
+    // Immediately check for players already in the zone (fixes issue where stationary players don't get poisoned)
+    zone.checkForPlayersImmediately();
     this.toxicBiomeZones.push(zone);
 
     // Mark biome as consolidated
@@ -657,6 +945,8 @@ export class BattleRoyaleModeStrategy implements IGameModeStrategy {
     cloud.setPrimaryDirection(primaryDirection);
     cloud.setPermanent(true); // Battle Royale clouds never expire
     gameManagers.getEntityManager().addEntity(cloud);
+    // Immediately check for players already in the cloud (fixes issue where stationary players don't get poisoned)
+    cloud.checkForPlayersImmediately();
     this.toxicGasClouds.push(cloud);
     this.markTileOccupied(position);
 

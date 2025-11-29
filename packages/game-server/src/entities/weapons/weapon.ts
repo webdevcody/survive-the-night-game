@@ -39,7 +39,8 @@ export abstract class Weapon extends Entity {
     playerId: number,
     position: { x: number; y: number },
     facing: Direction,
-    aimAngle?: number
+    aimAngle?: number,
+    aimDistance?: number
   ): void;
 
   public abstract getCooldown(): number;

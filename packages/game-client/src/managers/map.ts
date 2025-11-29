@@ -6,6 +6,10 @@ import PoolManager from "@shared/util/pool-manager";
 import { distance } from "@shared/util/physics";
 import { getConfig } from "@shared/config";
 import { WaveState } from "@shared/types/wave";
+import { PlayerClient } from "@/entities/player";
+
+// Zombie player illumination radius (allows them to see around themselves)
+const ZOMBIE_ILLUMINATION_RADIUS = 80;
 
 const PULSE_SPEED = 0.001; // Speed of the pulse (lower = slower)
 const PULSE_INTENSITY = 0.07; // How much the light radius varies (0.0 to 1.0)
@@ -275,6 +279,10 @@ export class MapManager {
     const gameState = this.gameClient.getGameState();
     const illuminationMultiplier = gameState.globalIlluminationMultiplier ?? 1.0;
 
+    // Track if we've added light for the current player (zombie check)
+    const currentPlayerId = gameState.playerId;
+    let addedCurrentPlayerLight = false;
+
     // Add entity light sources
     entities.forEach((entity, entityId) => {
       const gameEntity = entity;
@@ -301,8 +309,30 @@ export class MapManager {
           position,
           radius,
         });
+
+        // Mark if we added light for the current player
+        if (entityId === currentPlayerId) {
+          addedCurrentPlayerLight = true;
+        }
       }
     });
+
+    // Add illumination for zombie players who don't have ClientIlluminated extension
+    // This ensures zombie players can always see around themselves
+    if (!addedCurrentPlayerLight && currentPlayerId) {
+      const currentPlayer = this.gameClient.getMyPlayer();
+      if (currentPlayer instanceof PlayerClient && currentPlayer.isZombiePlayer?.()) {
+        if (currentPlayer.hasExt(ClientPositionable)) {
+          const position = currentPlayer.getExt(ClientPositionable).getCenterPosition();
+          const radius = ZOMBIE_ILLUMINATION_RADIUS * illuminationMultiplier * radiusMultiplier;
+          sources.push({
+            entityId: currentPlayerId,
+            position,
+            radius,
+          });
+        }
+      }
+    }
 
     return sources;
   }
@@ -506,6 +536,46 @@ export class MapManager {
     }
 
     ctx.globalAlpha = 1;
+    ctx.restore();
+  }
+
+  /**
+   * Render a red-tinged "undead view" overlay for zombie players.
+   * This gives a blood-vision effect when playing as a zombie.
+   */
+  renderZombieOverlay(ctx: CanvasRenderingContext2D): void {
+    const player = this.gameClient.getMyPlayer();
+    if (!(player instanceof PlayerClient) || !player.isZombiePlayer?.()) {
+      return; // Not a zombie, no overlay needed
+    }
+
+    const canvasWidth = ctx.canvas.width;
+    const canvasHeight = ctx.canvas.height;
+
+    ctx.save();
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+
+    // Red tint overlay for undead vision
+    ctx.fillStyle = "rgba(80, 0, 0, 0.15)";
+    ctx.fillRect(0, 0, canvasWidth, canvasHeight);
+
+    // Add a subtle pulsing vignette effect around the edges
+    const currentTime = Date.now();
+    const pulseOffset = Math.sin(currentTime * 0.002) * 0.03 + 0.1;
+
+    const gradient = ctx.createRadialGradient(
+      canvasWidth / 2,
+      canvasHeight / 2,
+      Math.min(canvasWidth, canvasHeight) * 0.3,
+      canvasWidth / 2,
+      canvasHeight / 2,
+      Math.max(canvasWidth, canvasHeight) * 0.7
+    );
+    gradient.addColorStop(0, "rgba(100, 0, 0, 0)");
+    gradient.addColorStop(1, `rgba(100, 0, 0, ${pulseOffset})`);
+    ctx.fillStyle = gradient;
+    ctx.fillRect(0, 0, canvasWidth, canvasHeight);
+
     ctx.restore();
   }
 

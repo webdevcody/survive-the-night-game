@@ -16,6 +16,8 @@ export class ToxicGasCloud extends Entity {
 
   private toxicGasStrategy: any = null; // Will be set by ToxicGasEventStrategy
 
+  private cloudExtension: ToxicGasCloudExtension;
+
   constructor(gameManagers: IGameManagers, position: Vector2) {
     super(gameManagers, "toxic_gas_cloud" as any);
 
@@ -25,7 +27,18 @@ export class ToxicGasCloud extends Entity {
     this.addExtension(new Positionable(this).setSize(size).setPosition(position));
 
     // Add the cloud extension that handles growth and poison logic
-    this.addExtension(new ToxicGasCloudExtension(this));
+    this.cloudExtension = new ToxicGasCloudExtension(this);
+    this.addExtension(this.cloudExtension);
+  }
+
+  /**
+   * Call this immediately after adding the cloud to entity manager
+   * to check for players that are already in the cloud
+   */
+  public checkForPlayersImmediately(): void {
+    if (!this.isMarkedForRemoval()) {
+      this.cloudExtension.checkForPlayers();
+    }
   }
 
   /**

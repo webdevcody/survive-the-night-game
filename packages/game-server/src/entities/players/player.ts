@@ -24,6 +24,7 @@ import { Cooldown } from "@/entities/util/cooldown";
 import { weaponHandlerRegistry } from "@/entities/weapons/weapon-handler-registry";
 import { PlayerDeathEvent } from "../../../../game-shared/src/events/server-sent/events/player-death-event";
 import { CraftEvent } from "../../../../game-shared/src/events/server-sent/events/craft-event";
+import { PlayerAttackedEvent } from "../../../../game-shared/src/events/server-sent/events/player-attacked-event";
 import { getConfig } from "@shared/config";
 import Vector2 from "@/util/vector2";
 import PoolManager from "@shared/util/pool-manager";
@@ -34,9 +35,11 @@ import { itemRegistry } from "@shared/entities";
 import { Blood } from "@/entities/effects/blood";
 import { SerializableFields } from "@/util/serializable-fields";
 import { Direction } from "@/util/direction";
+import { performMeleeAttack } from "@/entities/weapons/helpers";
 import { Weapon } from "../weapons/weapon";
 import InfiniteRun from "@/extensions/infinite-run";
 import Snared from "@/extensions/snared";
+import { shouldAutoPickup, attemptAutoPickup } from "@/util/auto-pickup";
 
 export class Player extends Entity {
   private static readonly PLAYER_WIDTH = getConfig().world.TILE_SIZE;
@@ -71,6 +74,9 @@ export class Player extends Entity {
         stamina: getConfig().player.MAX_STAMINA,
         maxStamina: getConfig().player.MAX_STAMINA,
         deathTime: 0, // Timestamp when player died, 0 means not dead
+        isAI: false, // Whether this player is controlled by AI
+        aiState: "", // Current AI state (for debugging)
+        isZombie: false, // Whether this player has become a zombie (Battle Royale)
         // Input fields stored individually for efficient serialization
         inputFacing: Direction.Right,
         inputDx: 0,
@@ -79,6 +85,7 @@ export class Player extends Entity {
         inputInventoryItem: 1, // Still tracked for consume/drop when itemType is null
         inputSprint: false,
         inputAimAngle: NaN, // NaN represents undefined for optional field
+        inputAimDistance: NaN, // NaN represents undefined for optional field
       },
       () => this.markEntityDirty(),
       {
@@ -87,6 +94,7 @@ export class Player extends Entity {
         inputFacing: { numberType: "uint8" },
         inputInventoryItem: { numberType: "uint8" },
         inputAimAngle: { numberType: "float64", optional: true },
+        inputAimDistance: { numberType: "float64", optional: true },
         deathTime: { numberType: "float64" },
         // Note: inputSequenceNumber is not in SerializableFields, so no metadata needed
       }
@@ -147,6 +155,17 @@ export class Player extends Entity {
 
   isDead(): boolean {
     return this.getExt(Destructible).isDead();
+  }
+
+  isZombie(): boolean {
+    return this.serialized.get("isZombie");
+  }
+
+  setIsZombie(value: boolean): void {
+    this.serialized.set("isZombie", value);
+    if (value) {
+      this.serialized.set("skin", SKIN_TYPES.ZOMBIE);
+    }
   }
 
   getHealth(): number {
@@ -234,6 +253,14 @@ export class Player extends Entity {
     const timeSinceDeath = Date.now() - deathTime;
     const remaining = Player.RESPAWN_COOLDOWN_MS - timeSinceDeath;
     return Math.max(0, remaining);
+  }
+
+  getDeathTime(): number {
+    return this.serialized.get("deathTime");
+  }
+
+  setDeathTime(value: number): void {
+    this.serialized.set("deathTime", value);
   }
 
   isInventoryFull(): boolean {
@@ -332,15 +359,27 @@ export class Player extends Entity {
 
     if (!this.serialized.get("inputFire")) return;
 
+    // Zombie players can only use claw attacks
+    if (this.isZombie()) {
+      this.handleZombieClawAttack();
+      return;
+    }
+
     // Check if active item is a consumable (like energy drink or bandage)
     const activeItem = this.activeItem;
     if (activeItem) {
       const activeItemEntity = this.getEntityManager().createEntityFromItem(activeItem);
       if (activeItemEntity && activeItemEntity.hasExt(Consumable)) {
         const itemIndex = this.serialized.get("inputInventoryItem") - 1;
-        // Add a small cooldown to prevent rapid consumption
-        if (this.fireCooldown === null || this.fireCooldown.isReady()) {
+        const itemType = activeItem.itemType;
+        // Reset cooldown when switching to a consumable from a different item type
+        // This ensures weapon cooldowns don't block consumable use
+        if (this.fireCooldown === null || this.lastWeaponType !== itemType) {
           this.fireCooldown = new Cooldown(0.5, true);
+          this.lastWeaponType = itemType;
+        }
+        // Add a small cooldown to prevent rapid consumption
+        if (this.fireCooldown.isReady()) {
           this.fireCooldown.reset();
         } else {
           // Still on cooldown, don't consume yet
@@ -348,6 +387,10 @@ export class Player extends Entity {
           return;
         }
         // Consume the item (handles energy drink, bandage, and other consumables)
+        const isAI = this.serialized.get("isAI");
+        if (isAI) {
+          console.log(`[AI] ${this.getDisplayName()} using ${itemType} (health: ${this.getHealth()}/${this.getMaxHealth()})`);
+        }
         activeItemEntity.getExt(Consumable).consume(this.getId(), itemIndex);
         activeItemEntity.clearDirtyFlags();
         return;
@@ -415,10 +458,46 @@ export class Player extends Entity {
         this.getId(),
         this.getCenterPosition().clone(),
         this.serialized.get("inputFacing"),
-        this.serialized.get("inputAimAngle")
+        this.serialized.get("inputAimAngle"),
+        this.serialized.get("inputAimDistance")
       );
       weaponEntity.clearDirtyFlags();
     }
+  }
+
+  private handleZombieClawAttack(): void {
+    // Set cooldown for zombie claw attack if not already set
+    if (this.lastWeaponType !== "zombie_claw") {
+      this.fireCooldown = new Cooldown(getConfig().combat.ZOMBIE_PLAYER_CLAW_COOLDOWN, true);
+      this.lastWeaponType = "zombie_claw" as ItemType;
+    }
+
+    if (!this.fireCooldown.isReady()) return;
+    this.fireCooldown.reset();
+
+    const aimAngle = this.serialized.get("inputAimAngle");
+
+    // Use the reusable melee attack utility
+    performMeleeAttack({
+      entityManager: this.getEntityManager(),
+      gameManagers: this.getGameManagers(),
+      attackerId: this.getId(),
+      position: this.getCenterPosition(),
+      facing: this.serialized.get("inputFacing"),
+      aimAngle: isNaN(aimAngle) ? undefined : aimAngle,
+      attackRange: getConfig().combat.ZOMBIE_PLAYER_CLAW_RANGE,
+      damage: getConfig().combat.ZOMBIE_PLAYER_CLAW_DAMAGE,
+      weaponKey: "knife", // Use knife animation for claw attack
+      targetFilter: (entity, attackerId) => {
+        // Don't target self
+        if (entity.getId() === attackerId) return false;
+        // Zombie players can ONLY damage living non-zombie players
+        if (entity instanceof Player) {
+          return !entity.isZombie() && !entity.isDead();
+        }
+        return false;
+      },
+    });
   }
 
   handleMovement(deltaTime: number) {
@@ -452,12 +531,20 @@ export class Player extends Entity {
         // Check if infinite run extension is active
         const hasInfiniteRun = this.hasExt(InfiniteRun);
 
-        // Can only sprint if: has stamina AND not exhausted (or infinite run is active)
+        // Zombies cannot sprint
+        const isZombie = this.serialized.get("isZombie");
+
+        // Can only sprint if: has stamina AND not exhausted (or infinite run is active) AND not a zombie
         const stamina = this.serialized.get("stamina");
         const canSprint =
+          !isZombie &&
           this.serialized.get("inputSprint") &&
           (hasInfiniteRun || (stamina > 0 && this.exhaustionTimer <= 0));
-        const speedMultiplier = canSprint ? getConfig().player.SPRINT_MULTIPLIER : 1;
+        const sprintMultiplier = canSprint ? getConfig().player.SPRINT_MULTIPLIER : 1;
+
+        // Apply zombie speed reduction (70% speed)
+        const zombieMultiplier = isZombie ? getConfig().player.ZOMBIE_SPEED_MULTIPLIER : 1;
+        const speedMultiplier = sprintMultiplier * zombieMultiplier;
 
         // Drain stamina while sprinting (unless infinite run is active)
         if (canSprint && !hasInfiniteRun) {
@@ -560,6 +647,45 @@ export class Player extends Entity {
     }
   }
 
+  private handleAutoPickup(): void {
+    // Zombies cannot pick up items
+    if (this.isZombie()) {
+      return;
+    }
+
+    const playerPos = this.getCenterPosition();
+    const autoPickupRadius = getConfig().player.AUTO_PICKUP_RADIUS;
+
+    // Get nearby entities that might be pickupable
+    const nearbyEntities = this.getEntityManager().getNearbyEntities(
+      playerPos,
+      autoPickupRadius
+    );
+
+    for (const entity of nearbyEntities) {
+      // Skip self
+      if (entity.getId() === this.getId()) {
+        continue;
+      }
+
+      // Skip entities already marked for removal
+      if (entity.isMarkedForRemoval()) {
+        continue;
+      }
+
+      // Check if entity has Interactive extension (required for pickup)
+      if (!entity.hasExt(Interactive)) {
+        continue;
+      }
+
+      // Check if should auto-pickup
+      if (shouldAutoPickup(entity, this)) {
+        attemptAutoPickup(entity, this);
+        // Continue to pick up all eligible items (user requested "all at once")
+      }
+    }
+  }
+
   private updatePlayer(deltaTime: number) {
     if (this.serialized.get("isCrafting")) {
       return;
@@ -572,6 +698,7 @@ export class Player extends Entity {
     this.handleAttack(deltaTime);
     this.handleMovement(deltaTime);
     this.handleStamina(deltaTime);
+    this.handleAutoPickup();
     this.updateLighting();
   }
 
@@ -607,6 +734,7 @@ export class Player extends Entity {
     this.serialized.set("inputFire", input.fire ?? false);
     this.serialized.set("inputSprint", input.sprint ?? false);
     this.serialized.set("inputAimAngle", input.aimAngle ?? NaN); // NaN represents undefined
+    this.serialized.set("inputAimDistance", input.aimDistance ?? NaN); // NaN represents undefined
   }
 
   selectInventoryItem(index: number) {

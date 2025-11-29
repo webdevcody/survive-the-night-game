@@ -5,6 +5,7 @@ import { ItemType } from "../util/inventory";
 export const SKIN_TYPES = {
   DEFAULT: "default",
   WDC: "wdc",
+  ZOMBIE: "zombie",
 } as const;
 
 export type SkinType = (typeof SKIN_TYPES)[keyof typeof SKIN_TYPES];

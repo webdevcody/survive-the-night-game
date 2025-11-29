@@ -1,10 +1,10 @@
 import { ISocketAdapter } from "@shared/network/socket-adapter";
 import { HandlerContext } from "../context";
-import { RecipeType } from "@shared/util/recipes";
+import { RecipeType, getCraftableItemIds } from "@shared/util/recipes";
 import { SocketEventHandler } from "./types";
 
-// Cache valid recipe types for validation
-const VALID_RECIPE_TYPES = new Set(Object.values(RecipeType));
+// Cache valid recipe types for validation - built dynamically from config-based recipes
+const VALID_RECIPE_TYPES = new Set(getCraftableItemIds());
 
 /**
  * Validate recipe type
@@ -14,7 +14,7 @@ function validateRecipeType(recipe: unknown): RecipeType | null {
     return null;
   }
 
-  if (!VALID_RECIPE_TYPES.has(recipe as RecipeType)) {
+  if (!VALID_RECIPE_TYPES.has(recipe)) {
     return null;
   }
 
@@ -28,6 +28,9 @@ export function onCraftRequest(
 ): void {
   const player = context.players.get(socket.id);
   if (!player) return;
+
+  // Zombie players cannot craft
+  if (player.isZombie()) return;
 
   const validatedRecipe = validateRecipeType(recipe);
   if (!validatedRecipe) {
@@ -45,6 +48,10 @@ export function setPlayerCrafting(
 ): void {
   const player = context.players.get(socket.id);
   if (!player) return;
+
+  // Zombie players cannot craft
+  if (player.isZombie()) return;
+
   player.setIsCrafting(isCrafting);
 }
 

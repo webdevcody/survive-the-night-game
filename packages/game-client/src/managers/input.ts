@@ -82,7 +82,11 @@ export class InputManager {
     sprint: false,
   };
   private currentInventorySlot: number = 1; // Track locally for drop/consume
-  private previousWeaponSlot: number | null = null; // Track previous weapon slot for quick switch
+  // Track the last two weapon slots used for quick switch (Q key)
+  // currentWeaponSlot is the most recently selected weapon slot
+  // previousWeaponSlot is the weapon slot before that
+  private currentWeaponSlot: number | null = null;
+  private previousWeaponSlot: number | null = null;
   private lastInputs = {
     ...this.inputs,
   };
@@ -508,17 +512,18 @@ export class InputManager {
       };
     }
     const inputs: Input = { ...this.inputs };
-    const aimAngle = this.calculateAimAngle(
+    const aimInfo = this.calculateAimInfo(
       playerWorldPos,
       cameraPos,
       canvasWidth,
       canvasHeight,
       cameraScale
     );
-    if (aimAngle !== null) {
-      inputs.aimAngle = aimAngle;
+    if (aimInfo !== null) {
+      inputs.aimAngle = aimInfo.angle;
+      inputs.aimDistance = aimInfo.distance;
       // Update facing direction based on mouse cursor position
-      inputs.facing = angleToDirection(aimAngle);
+      inputs.facing = angleToDirection(aimInfo.angle);
     }
     return inputs;
   }
@@ -538,20 +543,14 @@ export class InputManager {
       // Check if the slot we're switching TO contains a weapon
       const newItem = inventory[slot - 1];
       if (newItem && isWeapon(newItem.itemType)) {
-        // If we're switching to a weapon, save the current slot as previous weapon
-        // (if current slot also has a weapon, otherwise keep existing previous weapon)
-        const currentItem = inventory[this.currentInventorySlot - 1];
-        if (currentItem && isWeapon(currentItem.itemType)) {
-          // Current slot has a weapon, save it as previous
-          this.previousWeaponSlot = this.currentInventorySlot;
-        } else if (this.previousWeaponSlot === null) {
-          // Current slot doesn't have a weapon, but we don't have a previous weapon yet
-          // Don't update previousWeaponSlot - keep it null or keep existing value
-          // This allows Q to still work if we had a previous weapon before switching to non-weapon
+        // Only track weapon slots - non-weapon selections don't affect quick switch
+        if (this.currentWeaponSlot !== slot) {
+          // Switching to a different weapon, update the weapon tracking
+          this.previousWeaponSlot = this.currentWeaponSlot;
+          this.currentWeaponSlot = slot;
         }
-        // If current slot doesn't have a weapon and we already have a previous weapon,
-        // keep the existing previousWeaponSlot so we can still switch back
       }
+      // Non-weapon items are ignored for weapon tracking
     }
 
     this.currentInventorySlot = slot;
@@ -583,28 +582,46 @@ export class InputManager {
   }
 
   /**
-   * Quick switch to the previous weapon
+   * Quick switch between the last two weapons used
+   * Works even when a non-weapon item is currently selected
    */
   private quickSwitchWeapon(): void {
     // Don't allow quick switch while chatting
     if (this.isChatting) return;
 
-    // Check if we have a previous weapon slot
-    if (this.previousWeaponSlot === null) return;
-
     const inventory = this.callbacks.getInventory?.();
     if (!inventory) return;
 
-    // Verify the previous weapon slot still has a weapon
-    const previousItem = inventory[this.previousWeaponSlot - 1];
-    if (!previousItem || !isWeapon(previousItem.itemType)) {
-      // Previous weapon slot no longer has a weapon, clear it
-      this.previousWeaponSlot = null;
+    // Determine which weapon slot to switch to
+    // If we're currently on the current weapon slot, switch to previous
+    // If we're on any other slot (including non-weapons), switch to current weapon
+    let targetSlot: number | null = null;
+
+    if (this.currentInventorySlot === this.currentWeaponSlot) {
+      // Currently on the most recent weapon, switch to previous weapon
+      targetSlot = this.previousWeaponSlot;
+    } else {
+      // Currently on a different slot (non-weapon or previous weapon), switch to current weapon
+      targetSlot = this.currentWeaponSlot;
+    }
+
+    if (targetSlot === null) return;
+
+    // Verify the target weapon slot still has a weapon
+    const targetItem = inventory[targetSlot - 1];
+    if (!targetItem || !isWeapon(targetItem.itemType)) {
+      // Target weapon slot no longer has a weapon, try to clean up tracking
+      if (targetSlot === this.currentWeaponSlot) {
+        this.currentWeaponSlot = this.previousWeaponSlot;
+        this.previousWeaponSlot = null;
+      } else if (targetSlot === this.previousWeaponSlot) {
+        this.previousWeaponSlot = null;
+      }
       return;
     }
 
-    // Switch to previous weapon
-    this.setInventorySlot(this.previousWeaponSlot);
+    // Switch to the target weapon
+    this.setInventorySlot(targetSlot);
   }
 
   reset() {
@@ -695,6 +712,7 @@ export class InputManager {
    * @param canvasHeight Canvas height in pixels (1:1 mapping, devicePixelRatio disabled)
    * @param cameraScale Camera zoom scale
    * @returns Angle in radians, or null if mouse position not available
+   * @deprecated Use calculateAimInfo instead
    */
   calculateAimAngle(
     playerWorldPos: Vector2,
@@ -703,6 +721,32 @@ export class InputManager {
     canvasHeight: number,
     cameraScale: number = 1
   ): number | null {
+    const aimInfo = this.calculateAimInfo(
+      playerWorldPos,
+      cameraPos,
+      canvasWidth,
+      canvasHeight,
+      cameraScale
+    );
+    return aimInfo?.angle ?? null;
+  }
+
+  /**
+   * Calculate aim angle and distance from player center to mouse position in world coordinates
+   * @param playerWorldPos Player's center position in world coordinates
+   * @param cameraPos Camera position in world coordinates (what the camera is centered on)
+   * @param canvasWidth Canvas width in pixels (1:1 mapping, devicePixelRatio disabled)
+   * @param canvasHeight Canvas height in pixels (1:1 mapping, devicePixelRatio disabled)
+   * @param cameraScale Camera zoom scale
+   * @returns Object with angle (radians) and distance (world units), or null if mouse position not available
+   */
+  calculateAimInfo(
+    playerWorldPos: Vector2,
+    cameraPos: Vector2,
+    canvasWidth: number,
+    canvasHeight: number,
+    cameraScale: number = 1
+  ): { angle: number; distance: number } | null {
     if (!this.mousePosition) return null;
 
     // Mouse position is in canvas pixels (1:1 mapping, devicePixelRatio is disabled)
@@ -724,10 +768,13 @@ export class InputManager {
     const worldMouseX = cameraPos.x + offsetX / cameraScale;
     const worldMouseY = cameraPos.y + offsetY / cameraScale;
 
-    // Calculate angle from player to mouse
+    // Calculate angle and distance from player to mouse
     const dx = worldMouseX - playerWorldPos.x;
     const dy = worldMouseY - playerWorldPos.y;
 
-    return Math.atan2(dy, dx);
+    return {
+      angle: Math.atan2(dy, dx),
+      distance: Math.sqrt(dx * dx + dy * dy),
+    };
   }
 }

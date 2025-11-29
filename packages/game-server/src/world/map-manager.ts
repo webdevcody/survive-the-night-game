@@ -981,10 +981,16 @@ export class MapManager implements IMapManager {
     const random = Math.random();
     let cumulativeChance = 0;
 
+    // Use battle royale multiplier if in that game mode, otherwise use default
+    const gameModeConfig = this.getGameManagers().getGameServer().getGameLoop().getGameModeStrategy().getConfig();
+    const spawnMultiplier = gameModeConfig.modeId === "battle_royale"
+      ? balanceConfig.BATTLE_ROYALE_ITEM_SPAWN_MULTIPLIER
+      : balanceConfig.MAP_ITEM_SPAWN_MULTIPLIER;
+
     for (const { chance, entityType } of spawnTable) {
       cumulativeChance += chance;
       // Apply global spawn multiplier to reduce overall item spawn rate
-      if (random < cumulativeChance * balanceConfig.MAP_ITEM_SPAWN_MULTIPLIER) {
+      if (random < cumulativeChance * spawnMultiplier) {
         const entity = this.getEntityManager().createEntity(entityType as any);
         if (entity) {
           entity
@@ -2028,7 +2034,7 @@ export class MapManager implements IMapManager {
     const position = validPositions[randomIndex];
 
     // Spawn crate with 10 items
-    const crate = new Crate(this.getGameManagers(), undefined, 10);
+    const crate = new Crate(this.getGameManagers(), 10);
     crate
       .getExt(Positionable)
       .setPosition(

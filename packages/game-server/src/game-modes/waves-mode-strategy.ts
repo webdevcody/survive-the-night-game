@@ -9,6 +9,10 @@ import { IEntity } from "@/entities/types";
 import Vector2 from "@/util/vector2";
 import Groupable from "@/extensions/groupable";
 import Positionable from "@/extensions/positionable";
+import Poison from "@/extensions/poison";
+import { ToxicGasCloudExtension } from "@/extensions/toxic-gas-cloud-extension";
+import { ToxicBiomeZoneExtension } from "@/extensions/toxic-biome-zone-extension";
+import { getConfig } from "@shared/config";
 
 /**
  * Waves Mode Strategy - The default survival mode
@@ -63,11 +67,72 @@ export class WavesModeStrategy implements IGameModeStrategy {
     // In waves mode, spawn players at the campsite
     const spawnPosition = this.getPlayerSpawnPosition(player, gameManagers);
     player.getExt(Positionable).setPosition(spawnPosition);
+    
+    // Check if player spawned in toxic gas and apply poison if needed
+    this.checkPlayerInToxicGas(player, gameManagers);
   }
 
   canPlayerRespawn(player: Player): boolean {
     // Always allow respawn in waves mode
     return true;
+  }
+
+  /**
+   * Check if a player is inside any toxic gas clouds or zones and apply poison if needed
+   */
+  private checkPlayerInToxicGas(player: Player, gameManagers: IGameManagers): void {
+    if (!player.hasExt(Positionable)) return;
+    
+    const playerPos = player.getExt(Positionable);
+    const playerCenter = playerPos.getCenterPosition();
+    const entityManager = gameManagers.getEntityManager();
+    const TILE_SIZE = getConfig().world.TILE_SIZE;
+    
+    // Check toxic gas clouds
+    const toxicGasClouds = entityManager.getEntitiesByType("toxic_gas_cloud" as any);
+    for (const cloud of toxicGasClouds) {
+      if (!cloud.hasExt(Positionable) || !cloud.hasExt(ToxicGasCloudExtension)) continue;
+      if (cloud.isMarkedForRemoval()) continue;
+      
+      const cloudPos = cloud.getExt(Positionable).getCenterPosition();
+      const radius = TILE_SIZE / 2; // Half tile radius
+      const dx = cloudPos.x - playerCenter.x;
+      const dy = cloudPos.y - playerCenter.y;
+      const distanceSquared = dx * dx + dy * dy;
+      const radiusSquared = radius * radius;
+      
+      if (distanceSquared < radiusSquared) {
+        // Player is in cloud - apply poison if not already poisoned
+        if (!player.hasExt(Poison)) {
+          player.addExtension(new Poison(player, 3, 1, 1));
+        }
+        return; // Found one, no need to check others
+      }
+    }
+    
+    // Check toxic biome zones
+    const toxicBiomeZones = entityManager.getEntitiesByType("toxic_biome_zone" as any);
+    for (const zone of toxicBiomeZones) {
+      if (!zone.hasExt(Positionable) || !zone.hasExt(ToxicBiomeZoneExtension)) continue;
+      if (zone.isMarkedForRemoval()) continue;
+      
+      const zonePos = zone.getExt(Positionable).getPosition();
+      const zoneSize = zone.getExt(Positionable).getSize();
+      
+      // Check if player center is within zone bounds
+      if (
+        playerCenter.x >= zonePos.x &&
+        playerCenter.x <= zonePos.x + zoneSize.x &&
+        playerCenter.y >= zonePos.y &&
+        playerCenter.y <= zonePos.y + zoneSize.y
+      ) {
+        // Player is in zone - apply poison if not already poisoned
+        if (!player.hasExt(Poison)) {
+          player.addExtension(new Poison(player, 3, 1, 1));
+        }
+        return; // Found one, no need to check others
+      }
+    }
   }
 
   checkWinCondition(gameManagers: IGameManagers): WinConditionResult {

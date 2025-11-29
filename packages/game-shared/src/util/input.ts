@@ -8,4 +8,5 @@ export type Input = {
   fire: boolean;
   sprint: boolean;
   aimAngle?: number; // Optional: angle in radians for directional shooting (mouse aiming)
+  aimDistance?: number; // Optional: distance from player to crosshair in world units
 };

@@ -208,6 +208,12 @@ export class GameClient {
       // If click wasn't handled by UI, trigger weapon fire or consumable use
       const player = getPlayer();
       if (player && !player.isDead()) {
+        // Zombie players can always attack with claw (no inventory needed)
+        if (player.isZombiePlayer?.()) {
+          this.inputManager.triggerFire();
+          return;
+        }
+
         const inventory = getInventory();
         const activeSlot = this.inputManager.getCurrentInventorySlot();
         const activeItem = inventory[activeSlot - 1];
@@ -1378,6 +1384,15 @@ export class GameClient {
       inventory,
       playerId: this.gameState.playerId,
     };
+  }
+
+  /**
+   * Check if the current player is a zombie (for React components)
+   */
+  public isPlayerZombie(): boolean {
+    const player = this.getMyPlayer();
+    if (!player) return false;
+    return player.isZombiePlayer?.() ?? false;
   }
 
   /**

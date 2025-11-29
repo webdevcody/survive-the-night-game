@@ -27,6 +27,7 @@ import PoolManager from "@shared/util/pool-manager";
 import { ClientEntity } from "./client-entity";
 import { SKIN_TYPES, SkinType, PLAYER_COLORS, PlayerColor } from "@shared/commands/commands";
 import { getDebugConfig } from "@/config/client-prediction";
+import { BufferReader } from "@shared/util/buffer-serialization";
 
 export class PlayerClient extends ClientEntity implements IClientEntity, Renderable {
   private readonly ARROW_LENGTH = 20;
@@ -47,6 +48,9 @@ export class PlayerClient extends ClientEntity implements IClientEntity, Rendera
   private pickupProgress: number = 0; // Client-only field for interact hold progress
   private serverGhostPos: Vector2 | null = null;
   private deathTime: number = 0; // Timestamp when player died, 0 means not dead
+  private isAI: boolean = false; // Whether this player is controlled by AI
+  private aiState: string = ""; // Current AI state (for debugging)
+  private isZombie: boolean = false; // Whether this player has become a zombie (Battle Royale)
 
   private input: Input = {
     facing: Direction.Right,
@@ -80,9 +84,38 @@ export class PlayerClient extends ClientEntity implements IClientEntity, Rendera
     this.maxStamina = data.maxStamina ?? 100;
     this.pickupProgress = data.pickupProgress ?? 0;
     this.deathTime = data.deathTime ?? 0;
+    this.isAI = (data as any).isAI ?? false;
+    this.aiState = (data as any).aiState ?? "";
+    this.isZombie = (data as any).isZombie ?? false;
+  }
+
+  public deserializeFromBuffer(reader: BufferReader): void {
+    super.deserializeFromBuffer(reader);
+    // Update fields from deserialized data
+    // Note: super.deserializeFromBuffer sets fields directly on (this as any)[fieldName]
+    // so we need to read them and sync to our private fields
+    this.isAI = (this as any).isAI ?? false;
+    this.aiState = (this as any).aiState ?? "";
+    this.isZombie = (this as any).isZombie ?? false;
+    // Update skin if it was changed (e.g., when converted to zombie)
+    if ((this as any).skin !== undefined) {
+      this.skin = (this as any).skin;
+    }
+  }
+
+  public isZombiePlayer(): boolean {
+    return this.isZombie;
   }
 
   private getPlayerAssetKey(): string {
+    // Zombie players use zombie skin (regular zombie walk animation)
+    // Read isZombie from deserialized data as fallback (in case it hasn't been synced yet)
+    const isZombie = this.isZombie || (this as any).isZombie || false;
+    const skin = this.skin || (this as any).skin;
+    if (isZombie || skin === SKIN_TYPES.ZOMBIE) {
+      return "grave_tyrant"; // Use regular zombie sprite for zombie players
+    }
+
     const baseSkin = this.skin === SKIN_TYPES.WDC ? "player_wdc" : "player";
     // If player has a color, append it to the asset key
     if (this.playerColor && this.playerColor !== PLAYER_COLORS.NONE) {
@@ -320,6 +353,18 @@ export class PlayerClient extends ClientEntity implements IClientEntity, Rendera
       ctx.restore();
     }
 
+    // Render AI state above head if enabled (controlled by server-side DEBUG_SHOW_AI_STATE flag)
+    if (this.isAI && this.aiState && !isLocalPlayer) {
+      ctx.save();
+      ctx.font = "3px Arial";
+      ctx.fillStyle = this.getAIStateColor(this.aiState);
+      ctx.textAlign = "center";
+      const stateX = renderPosition.x + image.width / 2;
+      const stateY = renderPosition.y - (this.displayName ? 12 : 6); // Position above name if name exists
+      ctx.fillText(this.aiState, stateX, stateY);
+      ctx.restore();
+    }
+
     if (this.isCrafting) {
       ctx.font = "8px Arial";
       const animatedPosition = animate(gameState.startedAt, renderPosition, {
@@ -335,6 +380,26 @@ export class PlayerClient extends ClientEntity implements IClientEntity, Rendera
 
   public getDisplayName(): string {
     return this.displayName;
+  }
+
+  /**
+   * Get color for AI state display
+   */
+  private getAIStateColor(state: string): string {
+    switch (state) {
+      case "ENGAGE":
+        return "#ff0000"; // Red for combat
+      case "RETREAT":
+        return "#ffff00"; // Yellow for retreating
+      case "LOOT":
+        return "#00ff00"; // Green for looting
+      case "HUNT":
+        return "#00aaff"; // Blue for hunting
+      case "EXPLORE":
+        return "#ffffff"; // White for exploring
+      default:
+        return "#00ff00"; // Default to green
+    }
   }
 
   renderArrow(ctx: CanvasRenderingContext2D, image: HTMLImageElement, renderPosition: Vector2) {

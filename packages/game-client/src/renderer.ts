@@ -309,6 +309,9 @@ export class Renderer {
     this.mapManager.renderDarkness(this.ctx);
     perfTimer.end("renderDarkness");
 
+    // Apply zombie "undead view" overlay if player is a zombie
+    this.mapManager.renderZombieOverlay(this.ctx);
+
     // Render UI without transforms
     perfTimer.start("renderUI");
     this.ctx.save();

@@ -22,6 +22,13 @@ export const playerConfig = {
   MAX_INTERACT_RADIUS: 20,
 
   /**
+   * Radius for automatic item pickup (in pixels)
+   * Items within this radius that qualify for auto-pickup will be picked up automatically
+   * Smaller than MAX_INTERACT_RADIUS for more intentional pickups
+   */
+  AUTO_PICKUP_RADIUS: 12,
+
+  /**
    * Player movement speed in pixels per second
    * Used by both client prediction and server authoritative movement
    */
@@ -52,6 +59,11 @@ export const playerConfig = {
    * Seconds before stamina can regenerate after full depletion
    */
   EXHAUSTION_DURATION: 3.0,
+
+  /**
+   * Speed multiplier for zombie players (70% of normal speed)
+   */
+  ZOMBIE_SPEED_MULTIPLIER: 0.7,
 } as const;
 
 export type PlayerConfig = typeof playerConfig;

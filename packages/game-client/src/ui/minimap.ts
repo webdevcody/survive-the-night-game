@@ -168,6 +168,7 @@ export class Minimap {
   private getLightSources(entities: ClientEntityBase[], gameState: GameState): LightSource[] {
     const sources: LightSource[] = [];
     const isBattleRoyale = gameState.gameMode === "battle_royale";
+    let addedCurrentPlayerLight = false;
 
     // Add entity light sources (torches, campfires, etc.)
     for (const entity of entities) {
@@ -182,6 +183,24 @@ export class Minimap {
         if (radius <= 0) continue;
         const position = entity.getExt(ClientPositionable).getCenterPosition();
         sources.push({ position, radius });
+
+        // Track if we added light for the current player
+        if (entity.getId() === gameState.playerId) {
+          addedCurrentPlayerLight = true;
+        }
+      }
+    }
+
+    // Add illumination for zombie players who don't have ClientIlluminated extension
+    // This ensures zombie players can always see their surroundings on the minimap
+    if (!addedCurrentPlayerLight && gameState.playerId) {
+      const currentPlayer = entities.find((e) => e.getId() === gameState.playerId);
+      if (currentPlayer instanceof PlayerClient && currentPlayer.isZombiePlayer?.()) {
+        if (currentPlayer.hasExt(ClientPositionable)) {
+          const position = currentPlayer.getExt(ClientPositionable).getCenterPosition();
+          const radius = 80; // Match ZOMBIE_ILLUMINATION_RADIUS from map manager
+          sources.push({ position, radius });
+        }
       }
     }
 

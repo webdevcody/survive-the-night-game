@@ -47,6 +47,11 @@ export function onInteract(
   const player = context.players.get(socket.id);
   if (!player) return;
 
+  // Zombie players cannot interact with anything
+  if (player.isZombie()) {
+    return;
+  }
+
   // Cache position and radius once
   const playerPos = player.getCenterPosition();
   const maxRadius = getConfig().player.MAX_INTERACT_RADIUS;

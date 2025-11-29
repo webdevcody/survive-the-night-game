@@ -52,6 +52,12 @@ function validateInput(input: unknown): Input | null {
     return null;
   }
 
+  // Validate aimDistance - optional, but if present must be a finite positive number
+  const aimDistance = obj.aimDistance;
+  if (aimDistance !== undefined && (typeof aimDistance !== "number" || !Number.isFinite(aimDistance) || aimDistance < 0)) {
+    return null;
+  }
+
   // Return sanitized input with clamped values
   return {
     facing: facing as Direction,
@@ -60,12 +66,16 @@ function validateInput(input: unknown): Input | null {
     fire,
     sprint,
     aimAngle: aimAngle !== undefined ? (aimAngle as number) : undefined,
+    aimDistance: aimDistance !== undefined ? Math.min(1000, aimDistance as number) : undefined, // Clamp to max 1000
   };
 }
 
 export function onPlayerInput(context: HandlerContext, socket: ISocketAdapter, input: unknown): void {
   const player = context.players.get(socket.id);
-  if (!player) return;
+  if (!player) {
+    console.warn(`[onPlayerInput] No player found for socket ${socket.id}. Players in map: ${context.players.size}`);
+    return;
+  }
 
   // Validate input
   const validatedInput = validateInput(input);

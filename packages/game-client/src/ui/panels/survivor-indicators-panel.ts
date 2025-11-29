@@ -133,6 +133,28 @@ export class SurvivorIndicatorsPanel extends Panel {
           this.indicatorSettings.survivorSpriteSize
         );
       }
+
+      // Convert distance from pixels to feet (1 pixel = 0.1 feet, so 10 pixels = 1 foot)
+      const distanceInFeet = Math.round(distance * 0.1);
+      const distanceText = `${distanceInFeet} ft`;
+
+      // Draw distance text below the sprite
+      ctx.save();
+      ctx.font = "14px Arial";
+      ctx.fillStyle = "white";
+      ctx.strokeStyle = "rgba(0, 0, 0, 0.8)";
+      ctx.lineWidth = 3;
+      ctx.textAlign = "center";
+      ctx.textBaseline = "top";
+      
+      const textX = indicatorX + spriteOffsetX;
+      const textY = spriteY + this.indicatorSettings.survivorSpriteSize + 4;
+      
+      // Draw text outline for better visibility
+      ctx.strokeText(distanceText, textX, textY);
+      // Draw text
+      ctx.fillText(distanceText, textX, textY);
+      ctx.restore();
     }
 
     this.restoreContext(ctx);

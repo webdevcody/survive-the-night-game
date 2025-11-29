@@ -18,6 +18,7 @@ import { getConfig } from "@shared/config";
 import { formatDisplayName } from "@/util/format";
 import { itemRegistry } from "@shared/entities";
 import { ItemType } from "@shared/util/inventory";
+import { isAutoPickupItem } from "@/util/auto-pickup";
 
 export abstract class ClientEntity extends ClientEntityBase implements Renderable {
   constructor(data: RawEntity, imageLoader: ImageLoader) {
@@ -69,6 +70,12 @@ export abstract class ClientEntity extends ClientEntityBase implements Renderabl
     }
 
     if (myPlayer.getId() === this.getId()) {
+      return;
+    }
+
+    // Skip rendering interaction text for auto-pickup items
+    // These items will be picked up automatically when walked over
+    if (isAutoPickupItem(this, myPlayer)) {
       return;
     }
 

@@ -108,16 +108,19 @@ export class ToxicGasCloudExtension extends ExtensionBase<ToxicGasCloudFields> {
 
   /**
    * Check for players in cloud radius and apply poison
+   * Made public so it can be called immediately when cloud spawns
    */
-  private checkForPlayers(): void {
+  public checkForPlayers(): void {
     const positionable = this.self.getExt(Positionable);
     const position = positionable.getCenterPosition();
     const radius = this.TILE_SIZE / 2; // Half tile radius
 
     const playerTypeSet = new Set([Entities.PLAYER]);
+    // Use a larger search radius to ensure we find all nearby players
+    // The actual collision check below uses the precise radius
     const nearbyEntities = this.self
       .getEntityManager()
-      .getNearbyEntities(positionable.getPosition(), radius + 2, playerTypeSet);
+      .getNearbyEntities(position, this.TILE_SIZE * 2, playerTypeSet);
 
     for (const entity of nearbyEntities) {
       if (!entity.hasExt(Positionable)) continue;
@@ -129,9 +132,12 @@ export class ToxicGasCloudExtension extends ExtensionBase<ToxicGasCloudFields> {
       const radiusSquared = radius * radius;
 
       if (distanceSquared < radiusSquared) {
-        // Player is in cloud - apply poison if not already poisoned
-        if (!entity.hasExt(Poison)) {
-          entity.addExtension(new Poison(entity, 3, 1, 1)); // maxDamage: 1, damagePerTick: 1, interval: 1
+        // Player is in cloud - apply or refresh poison
+        if (entity.hasExt(Poison)) {
+          // Refresh the poison to keep damaging while in cloud
+          entity.getExt(Poison).refresh();
+        } else {
+          entity.addExtension(new Poison(entity, 3, 1, 1)); // maxDamage: 3, damagePerTick: 1, interval: 1
         }
       }
     }

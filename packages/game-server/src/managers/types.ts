@@ -37,8 +37,11 @@ export interface Broadcaster {
   broadcastEvent(event: GameEvent<any>): void;
 }
 
+import type { MapData } from "../../game-shared/src/events/server-sent/events/map-event";
+
 export interface IMapManager {
   getMap(): number[][];
+  getMapData(): MapData;
   getGroundLayer(): number[][];
   getCollidablesLayer(): number[][];
   getCarLocation(): Vector2 | null;

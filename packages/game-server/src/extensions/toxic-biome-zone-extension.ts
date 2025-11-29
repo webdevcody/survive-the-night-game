@@ -36,14 +36,17 @@ export class ToxicBiomeZoneExtension extends ExtensionBase<ToxicBiomeZoneFields>
 
   /**
    * Check for players within the zone bounds and apply poison
+   * Made public so it can be called immediately when zone spawns
    */
-  private checkForPlayers(): void {
+  public checkForPlayers(): void {
     const positionable = this.self.getExt(Positionable);
     const position = positionable.getPosition();
     const size = positionable.getSize();
 
-    // Get nearby entities within the zone's bounding box plus some margin
-    const checkRadius = Math.max(size.x, size.y) / 2 + this.TILE_SIZE;
+    // Get nearby entities within the zone's bounding box plus generous margin
+    // Use diagonal distance to ensure we catch all players, even on corners
+    const diagonalDistance = Math.sqrt(size.x * size.x + size.y * size.y) / 2;
+    const checkRadius = diagonalDistance + this.TILE_SIZE * 2; // Extra margin for safety
     const centerX = position.x + size.x / 2;
     const centerY = position.y + size.y / 2;
 
@@ -58,16 +61,20 @@ export class ToxicBiomeZoneExtension extends ExtensionBase<ToxicBiomeZoneFields>
       const entityPos = entity.getExt(Positionable);
       const entityCenter = entityPos.getCenterPosition();
 
-      // Check if entity center is within zone bounds
+      // Check if entity center is within zone bounds (inclusive on all sides)
+      // Use <= on max bounds to catch players exactly on the edge
       if (
         entityCenter.x >= position.x &&
-        entityCenter.x < position.x + size.x &&
+        entityCenter.x <= position.x + size.x &&
         entityCenter.y >= position.y &&
-        entityCenter.y < position.y + size.y
+        entityCenter.y <= position.y + size.y
       ) {
-        // Player is in zone - apply poison if not already poisoned
-        if (!entity.hasExt(Poison)) {
-          entity.addExtension(new Poison(entity, 3, 1, 1)); // maxDamage: 1, damagePerTick: 1, interval: 1
+        // Player is in zone - apply or refresh poison
+        if (entity.hasExt(Poison)) {
+          // Refresh the poison to keep damaging while in zone
+          entity.getExt(Poison).refresh();
+        } else {
+          entity.addExtension(new Poison(entity, 3, 1, 1)); // maxDamage: 3, damagePerTick: 1, interval: 1
         }
       }
     }

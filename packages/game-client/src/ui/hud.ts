@@ -416,44 +416,51 @@ export class Hud {
     const waveX = width - scaledWaveRight - scaledWaveWidth;
     const waveY = carHealthTopMargin; // Same Y position as car health panel
 
+    // Check if current player is a zombie (zombies don't see resources panel)
+    const resourcesPlayer = getPlayer(gameState);
+    const isZombieForResources = resourcesPlayer?.isZombiePlayer?.() ?? false;
+
     // Render resources panel (right side, vertically centered) with scaled dimensions
-    ctx.save();
-    ctx.setTransform(1, 0, 0, 1, 0, 0);
-    const resourcesSettings = HUD_SETTINGS.Resources;
-    const resourcesScale = calculateHudScale(width, height);
-    // Calculate panel dimensions for positioning
-    const scaledSpriteSize = resourcesSettings.spriteSize * resourcesScale;
-    const scaledResourceGap = resourcesSettings.resourceGap * resourcesScale;
-    const scaledPadding = resourcesSettings.padding * resourcesScale;
-    const scaledIconGap = resourcesSettings.iconGap * resourcesScale;
-    // Estimate panel width (sprite + gap + text width estimate)
-    const estimatedTextWidth = scaleHudValue(40, width, height); // Approximate text width
-    const maxContentWidth = scaledSpriteSize + scaledIconGap + estimatedTextWidth;
-    const resourcesPanelWidth = maxContentWidth + scaledPadding * 2;
-    const resourcesPanelHeight = scaledSpriteSize * 3 + scaledResourceGap * 2 + scaledPadding * 2;
-    // Position resources panel on the right side of screen
-    const scaledResourcesRight = scaleHudValue(0, width, height); // 20px from right edge
-    const scaledResourcesX = width - scaledResourcesRight - resourcesPanelWidth;
-    // Center vertically
-    const scaledResourcesY = (height - resourcesPanelHeight) / 3;
-    (this.resourcesPanel as any).resourcesSettings.x = scaledResourcesX;
-    (this.resourcesPanel as any).resourcesSettings.y = scaledResourcesY;
-    // Scale font and sprite size
-    const resourcesBaseFontSize = parseInt(resourcesSettings.font);
-    (this.resourcesPanel as any).resourcesSettings.font = `${
-      resourcesBaseFontSize * resourcesScale
-    }px Arial`;
-    (this.resourcesPanel as any).resourcesSettings.spriteSize =
-      resourcesSettings.spriteSize * resourcesScale;
-    (this.resourcesPanel as any).resourcesSettings.iconGap =
-      resourcesSettings.iconGap * resourcesScale;
-    (this.resourcesPanel as any).resourcesSettings.resourceGap =
-      resourcesSettings.resourceGap * resourcesScale;
-    (this.resourcesPanel as any).settings.padding = resourcesSettings.padding * resourcesScale;
-    (this.resourcesPanel as any).settings.borderWidth =
-      resourcesSettings.borderWidth * resourcesScale;
-    this.resourcesPanel.render(ctx, gameState);
-    ctx.restore();
+    // Hide for zombie players - they don't collect resources
+    if (!isZombieForResources) {
+      ctx.save();
+      ctx.setTransform(1, 0, 0, 1, 0, 0);
+      const resourcesSettings = HUD_SETTINGS.Resources;
+      const resourcesScale = calculateHudScale(width, height);
+      // Calculate panel dimensions for positioning
+      const scaledSpriteSize = resourcesSettings.spriteSize * resourcesScale;
+      const scaledResourceGap = resourcesSettings.resourceGap * resourcesScale;
+      const scaledPadding = resourcesSettings.padding * resourcesScale;
+      const scaledIconGap = resourcesSettings.iconGap * resourcesScale;
+      // Estimate panel width (sprite + gap + text width estimate)
+      const estimatedTextWidth = scaleHudValue(40, width, height); // Approximate text width
+      const maxContentWidth = scaledSpriteSize + scaledIconGap + estimatedTextWidth;
+      const resourcesPanelWidth = maxContentWidth + scaledPadding * 2;
+      const resourcesPanelHeight = scaledSpriteSize * 3 + scaledResourceGap * 2 + scaledPadding * 2;
+      // Position resources panel on the right side of screen
+      const scaledResourcesRight = scaleHudValue(0, width, height); // 20px from right edge
+      const scaledResourcesX = width - scaledResourcesRight - resourcesPanelWidth;
+      // Center vertically
+      const scaledResourcesY = (height - resourcesPanelHeight) / 3;
+      (this.resourcesPanel as any).resourcesSettings.x = scaledResourcesX;
+      (this.resourcesPanel as any).resourcesSettings.y = scaledResourcesY;
+      // Scale font and sprite size
+      const resourcesBaseFontSize = parseInt(resourcesSettings.font);
+      (this.resourcesPanel as any).resourcesSettings.font = `${
+        resourcesBaseFontSize * resourcesScale
+      }px Arial`;
+      (this.resourcesPanel as any).resourcesSettings.spriteSize =
+        resourcesSettings.spriteSize * resourcesScale;
+      (this.resourcesPanel as any).resourcesSettings.iconGap =
+        resourcesSettings.iconGap * resourcesScale;
+      (this.resourcesPanel as any).resourcesSettings.resourceGap =
+        resourcesSettings.resourceGap * resourcesScale;
+      (this.resourcesPanel as any).settings.padding = resourcesSettings.padding * resourcesScale;
+      (this.resourcesPanel as any).settings.borderWidth =
+        resourcesSettings.borderWidth * resourcesScale;
+      this.resourcesPanel.render(ctx, gameState);
+      ctx.restore();
+    }
 
     // Render wave panel in top right with scaled dimensions, aligned with car health panel
     ctx.save();
@@ -526,8 +533,12 @@ export class Hud {
     this.leaderboard.render(ctx, gameState);
     this.chatWidget.render(ctx, gameState);
 
-    // Render hotbar
-    this.hotbar.render(ctx, gameState);
+    // Render hotbar (hide for zombie players - they can't use items)
+    const currentPlayer = getPlayer(gameState);
+    const isZombiePlayer = currentPlayer?.isZombiePlayer?.() ?? false;
+    if (!isZombiePlayer) {
+      this.hotbar.render(ctx, gameState);
+    }
 
     // Render death screen if player is dead and game is not over
     if (!this.gameOverDialog.isGameOver()) {

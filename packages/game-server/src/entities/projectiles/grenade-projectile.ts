@@ -6,20 +6,25 @@ import Updatable from "@/extensions/updatable";
 import { IGameManagers } from "@/managers/types";
 import { Entities } from "@/constants";
 import { getConfig } from "@shared/config";
-import { Direction, normalizeDirection } from "@/util/direction";
+import { Direction } from "@/util/direction";
 import { Entity } from "@/entities/entity";
 import { distance } from "@/util/physics";
 import Vector2 from "@/util/vector2";
 import { ExplosionEvent } from "../../../../game-shared/src/events/server-sent/events/explosion-event";
 import PoolManager from "@shared/util/pool-manager";
+import {
+  calculateVelocityFromAngle,
+  calculateVelocityFromDirection,
+} from "@/entities/weapons/helpers";
 
-const MAX_TRAVEL_DISTANCE = getConfig().combat.TRAVEL_DISTANCE_LONG;
+const DEFAULT_TRAVEL_DISTANCE = getConfig().combat.TRAVEL_DISTANCE_MEDIUM;
 const GRENADE_PROJECTILE_SPEED = getConfig().combat.PROJECTILE_SPEED_STANDARD;
 const EXPLOSION_RADIUS = getConfig().combat.EXPLOSION_RADIUS_MEDIUM;
 const EXPLOSION_DAMAGE = getConfig().combat.EXPLOSION_DAMAGE_STANDARD;
 
 export class GrenadeProjectile extends Entity {
   private traveledDistance: number = 0;
+  private targetDistance: number = DEFAULT_TRAVEL_DISTANCE;
   private startPosition: Vector2;
   private shooterId: number = 0;
 
@@ -47,14 +52,17 @@ export class GrenadeProjectile extends Entity {
     return this.shooterId;
   }
 
+  /**
+   * Set the target distance for the grenade (where it will explode)
+   * @param distance Distance in world units from the starting position
+   */
+  setTargetDistance(distance: number) {
+    this.targetDistance = distance;
+  }
+
   setDirection(direction: Direction) {
-    const poolManager = PoolManager.getInstance();
-    const normalized = normalizeDirection(direction);
     this.getExt(Movable).setVelocity(
-      poolManager.vector2.claim(
-        normalized.x * GRENADE_PROJECTILE_SPEED,
-        normalized.y * GRENADE_PROJECTILE_SPEED
-      )
+      calculateVelocityFromDirection(direction, GRENADE_PROJECTILE_SPEED)
     );
   }
 
@@ -63,12 +71,8 @@ export class GrenadeProjectile extends Entity {
    * @param angle Angle in radians (0 = right, PI/2 = down, PI = left, 3PI/2 = up)
    */
   setDirectionFromAngle(angle: number) {
-    const poolManager = PoolManager.getInstance();
-    const dirX = Math.cos(angle);
-    const dirY = Math.sin(angle);
-
     this.getExt(Movable).setVelocity(
-      poolManager.vector2.claim(dirX * GRENADE_PROJECTILE_SPEED, dirY * GRENADE_PROJECTILE_SPEED)
+      calculateVelocityFromAngle(angle, GRENADE_PROJECTILE_SPEED)
     );
   }
 
@@ -106,9 +110,9 @@ export class GrenadeProjectile extends Entity {
       }
     }
 
-    // Check max distance
+    // Check if grenade has reached target distance
     this.traveledDistance += distance(lastPosition, newPosition);
-    if (this.traveledDistance > MAX_TRAVEL_DISTANCE) {
+    if (this.traveledDistance >= this.targetDistance) {
       this.explode();
       return;
     }

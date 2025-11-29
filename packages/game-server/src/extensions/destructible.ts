@@ -9,7 +9,7 @@ import PoolManager from "@shared/util/pool-manager";
 import { ExtensionBase } from "./extension-base";
 
 type DestructibleDeathHandler = (killerId?: number) => void;
-type DestructibleDamagedHandler = () => void;
+type DestructibleDamagedHandler = (attackerId?: number, damage?: number) => void;
 
 type DestructibleFields = {
   health: number;
@@ -59,7 +59,7 @@ export default class Destructible extends ExtensionBase<DestructibleFields> {
 
     const currentHealth = this.serialized.get("health");
     this.serialized.set("health", Math.max(0, currentHealth - damage));
-    this.onDamagedHandler?.();
+    this.onDamagedHandler?.(attackerId, damage);
 
     if (this.isDead()) {
       this.deathHandler?.(attackerId);

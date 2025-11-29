@@ -51,6 +51,14 @@ export default class Poison extends ExtensionBase<PoisonFields> {
     }
   }
 
+  /**
+   * Refresh the poison by resetting totalDamage to 0
+   * Used by toxic zones to keep poison active while player remains in zone
+   */
+  public refresh(): void {
+    this.serialized.set("totalDamage", 0);
+  }
+
   public serializeToBuffer(writer: BufferWriter, onlyDirty: boolean = false): void {
     writer.writeUInt8(encodeExtensionType(Poison.type));
     // maxDamage and totalDamage are small integers (typically 0-255)
