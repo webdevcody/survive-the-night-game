@@ -1,5 +1,33 @@
 [
   {
+    "version": "0.29.0",
+    "date": "2025-11-29",
+    "changes": {
+      "features": [
+        "Added Battle Royale game mode - new competitive mode with shrinking toxic zones, crate spawns, and last-player-standing victory condition",
+        "Implemented AI system for zombie players - comprehensive AI with state machines, pathfinding, targeting, threat assessment, and combat decision-making",
+        "Added auto-pickup functionality - resources, coins, trees, and stackable items automatically collect when walked over for smoother gameplay",
+        "Added Toxic Biome Zone entity - new environmental hazard that applies poison effects to players within its area",
+        "Enhanced version mismatch handling - clients now receive graceful version mismatch events instead of immediate disconnection",
+        "Added game mode system - extensible strategy pattern supporting multiple game modes (Waves and Battle Royale)",
+        "Improved zombie player interactions - zombie players can no longer interact with items, vehicles, crafting, or toxic zones"
+      ],
+      "bugFixes": [],
+      "refactoring": [
+        "Removed admin command manager - eliminated CommandManager from both client and server for improved security and code simplicity",
+        "Refactored player entity validation - enhanced type safety with proper PlayerClient instance checks throughout game client and HUD",
+        "Refactored interactive entity rendering - improved performance by skipping rendering when auto-pickup is enabled or display name is empty",
+        "Enhanced event handling architecture - refactored socket managers and event handlers to support new game modes and improved error handling",
+        "Improved entity management - better handling of zombie player restrictions and game mode-specific behaviors",
+        "Added comprehensive client-server initialization documentation - detailed guide explaining serialization behavior and game state management"
+      ],
+      "performance": [
+        "Optimized interactive entity rendering - reduced unnecessary rendering calls when entities have auto-pickup enabled",
+        "Enhanced event rate limiting - improved server-side event handling with better rate limiting mechanisms"
+      ]
+    }
+  },
+  {
     "version": "0.28.0",
     "date": "2025-11-24",
     "changes": {

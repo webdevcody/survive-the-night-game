@@ -6,7 +6,7 @@
  */
 
 export const metaConfig = {
-  VERSION: "v0.28.0",
+  VERSION: "v0.29.0",
 } as const;
 
 export type MetaConfig = typeof metaConfig;
