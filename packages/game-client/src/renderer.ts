@@ -4,6 +4,7 @@ import { GameState, getEntityById } from "@/state";
 import { MerchantBuyPanel } from "@/ui/merchant-buy-panel";
 import { Hud } from "@/ui/hud";
 import { GameOverDialogUI } from "@/ui/game-over-dialog";
+import { VotingPanel } from "@/ui/voting-panel";
 import { ParticleManager } from "./managers/particles";
 import { PlacementManager } from "./managers/placement";
 import { ClientPositionable } from "@/extensions/positionable";
@@ -27,6 +28,7 @@ export class Renderer {
   private hud: Hud;
   private merchantBuyPanel: MerchantBuyPanel;
   private gameOverDialog: GameOverDialogUI;
+  private votingPanel: VotingPanel;
   private particleManager: ParticleManager;
   private getLightningBoltManager: () => { render: (ctx: CanvasRenderingContext2D) => void } | null;
   private getPlacementManager: () => PlacementManager | null;
@@ -42,6 +44,7 @@ export class Renderer {
     hud: Hud,
     merchantBuyPanel: MerchantBuyPanel,
     gameOverDialog: GameOverDialogUI,
+    votingPanel: VotingPanel,
     particleManager: ParticleManager,
     getPlacementManager: () => PlacementManager | null,
     getTeleportState: () => { isTeleporting: boolean; progress: number } | null,
@@ -53,6 +56,7 @@ export class Renderer {
     this.hud = hud;
     this.merchantBuyPanel = merchantBuyPanel;
     this.gameOverDialog = gameOverDialog;
+    this.votingPanel = votingPanel;
     this.particleManager = particleManager;
     this.getPlacementManager = getPlacementManager;
     this.getTeleportState = getTeleportState;
@@ -320,6 +324,7 @@ export class Renderer {
     // Crafting table is now rendered in React component (CraftingPanel.tsx)
     this.merchantBuyPanel.render(this.ctx, this.gameState);
     this.gameOverDialog.render(this.ctx, this.gameState);
+    this.votingPanel.render(this.ctx, this.gameState);
 
     // Render cursor (crosshair when weapon is equipped)
     this.renderCursor();

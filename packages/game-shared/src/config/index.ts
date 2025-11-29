@@ -23,6 +23,7 @@ import { predictionConfig, type PredictionConfig } from "./prediction";
 import { networkConfig, type NetworkConfig } from "./network";
 import { renderConfig, type RenderConfig } from "./render-config";
 import { entityConfig, EntityConfig } from "@/config/entity-config";
+import { votingConfig, type VotingConfig } from "./voting-config";
 /**
  * Combined game configuration object
  */
@@ -39,6 +40,7 @@ export interface GameConfig {
   network: NetworkConfig;
   render: RenderConfig;
   entity: EntityConfig;
+  voting: VotingConfig;
 }
 
 /**
@@ -57,6 +59,7 @@ const defaultConfig: GameConfig = {
   network: networkConfig,
   render: renderConfig,
   entity: entityConfig,
+  voting: votingConfig,
 };
 
 /**
@@ -111,6 +114,7 @@ export {
   predictionConfig,
   networkConfig,
   renderConfig,
+  votingConfig,
 };
 
 /**
@@ -128,6 +132,7 @@ export type {
   PredictionConfig,
   NetworkConfig,
   RenderConfig,
+  VotingConfig,
 };
 
 /**

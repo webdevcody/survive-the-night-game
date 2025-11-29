@@ -48,6 +48,7 @@ import {
   WavesModeStrategy,
   BattleRoyaleModeStrategy,
 } from "@/game-modes";
+import { VotableGameMode, VotingState } from "@shared/types/voting";
 
 export class GameLoop {
   private lastUpdateTime: number = performance.now();
@@ -61,6 +62,12 @@ export class GameLoop {
   private totalZombies: number = 0;
   private isGameReady: boolean = false;
   private isGameOver: boolean = false;
+
+  // Voting system state
+  private isVotingPhase: boolean = false;
+  private votingEndTime: number = 0;
+  private votes: Map<string, VotableGameMode> = new Map(); // socketId -> vote
+  private voteCounts = { waves: 0, battle_royale: 0, infection: 0 };
 
   // Game mode strategy - initialized based on DEFAULT_GAME_MODE config
   private gameModeStrategy: IGameModeStrategy =
@@ -215,6 +222,86 @@ export class GameLoop {
     return this.isGameOver;
   }
 
+  // Voting system methods
+  public startVotingPhase(): void {
+    this.isVotingPhase = true;
+    this.votingEndTime = Date.now() + getConfig().voting.VOTING_DURATION;
+    this.votes.clear();
+    this.voteCounts = { waves: 0, battle_royale: 0, infection: 0 };
+    const votingSeconds = getConfig().voting.VOTING_DURATION / 1000;
+    console.log(`Voting phase started. Players have ${votingSeconds} seconds to vote.`);
+  }
+
+  public registerVote(socketId: string, playerId: number, mode: VotableGameMode): void {
+    if (!this.isVotingPhase) return;
+    if (getConfig().voting.DISABLED_MODES.includes(mode)) return;
+
+    // Check if player is AI (AI players cannot vote, but zombie players CAN)
+    const player = this.entityManager.getEntityById(playerId);
+    if (!player) return;
+    const serialized = (player as any).serialized;
+    if (serialized?.get("isAI")) return;
+
+    // Remove previous vote
+    const previousVote = this.votes.get(socketId);
+    if (previousVote) {
+      this.voteCounts[previousVote]--;
+    }
+
+    // Register new vote
+    this.votes.set(socketId, mode);
+    this.voteCounts[mode]++;
+    console.log(`Player ${playerId} voted for ${mode}. Current votes:`, this.voteCounts);
+  }
+
+  private getWinningMode(): VotableGameMode {
+    const validModes: VotableGameMode[] = ["waves", "battle_royale"];
+    let maxVotes = -1;
+    let winners: VotableGameMode[] = [];
+
+    for (const mode of validModes) {
+      if (this.voteCounts[mode] > maxVotes) {
+        maxVotes = this.voteCounts[mode];
+        winners = [mode];
+      } else if (this.voteCounts[mode] === maxVotes) {
+        winners.push(mode);
+      }
+    }
+
+    // Random selection on tie
+    const winner = winners[Math.floor(Math.random() * winners.length)];
+    console.log(`Voting ended. Winner: ${winner} (votes: ${this.voteCounts[winner]})`);
+    return winner;
+  }
+
+  private handleVotingPhase(): void {
+    if (!this.isVotingPhase) return;
+    if (Date.now() >= this.votingEndTime) {
+      this.endVotingPhase();
+    }
+  }
+
+  private endVotingPhase(): void {
+    const winningMode = this.getWinningMode();
+    this.isVotingPhase = false;
+
+    const strategy =
+      winningMode === "battle_royale" ? new BattleRoyaleModeStrategy() : new WavesModeStrategy();
+
+    console.log(`Starting new game with mode: ${winningMode}`);
+    this.startNewGame(strategy);
+  }
+
+  public getVotingState(): VotingState | null {
+    if (!this.isVotingPhase) return null;
+    return {
+      isVotingActive: true,
+      votingEndTime: this.votingEndTime,
+      votes: { ...this.voteCounts },
+      disabledModes: [...getConfig().voting.DISABLED_MODES],
+    };
+  }
+
   private startGameLoop(): void {
     this.timer = setInterval(() => {
       // console.profile();
@@ -314,6 +401,13 @@ export class GameLoop {
 
   private update(): void {
     if (!this.isGameReady) {
+      return;
+    }
+
+    // Handle voting phase - continue broadcasting state during voting
+    if (this.isVotingPhase) {
+      this.handleVotingPhase();
+      this.broadcastGameState();
       return;
     }
 
@@ -461,11 +555,11 @@ export class GameLoop {
       })
     );
 
-    // Restart the game after 5 seconds with the same game mode
+    // Start voting phase after showing game over for 3 seconds
     setTimeout(() => {
-      console.log("Restarting game...");
-      this.startNewGame();
-    }, 5000);
+      console.log("Starting voting phase...");
+      this.startVotingPhase();
+    }, getConfig().voting.GAME_OVER_DISPLAY_DURATION);
   }
 
   private trackPerformance(updateStartTime: number) {
@@ -489,7 +583,7 @@ export class GameLoop {
   }
 
   private getCurrentGameState(): Record<string, any> {
-    return {
+    const state: Record<string, any> = {
       timestamp: Date.now(),
       waveNumber: this.waveNumber,
       waveState: this.waveState,
@@ -497,6 +591,14 @@ export class GameLoop {
       phaseDuration: this.phaseDuration,
       totalZombies: this.totalZombies,
     };
+
+    // Include voting state when voting is active
+    const votingState = this.getVotingState();
+    if (votingState) {
+      state.votingState = votingState;
+    }
+
+    return state;
   }
 
   private broadcastGameState(): void {

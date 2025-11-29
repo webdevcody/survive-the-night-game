@@ -69,6 +69,15 @@ const handleGameStateUpdate = (context: InitializationContext, gameStateEvent: G
     context.gameState.phaseDuration = gameStateEvent.getPhaseDuration()!;
   }
 
+  // Voting state
+  const votingState = gameStateEvent.getVotingState();
+  if (votingState !== undefined) {
+    context.gameState.votingState = votingState;
+  } else if (context.gameState.votingState?.isVotingActive) {
+    // Clear voting state if it was active but no longer included in updates
+    context.gameState.votingState = null;
+  }
+
   // Use buffer-based deserialization
   // Buffer format: [entityCount][entities...][gameState][removedEntityIds]
   const buffer = gameStateEvent.getBuffer();

@@ -2,6 +2,7 @@ import { ClientEntityBase } from "@/extensions/client-entity";
 import { WaveState } from "@shared/types/wave";
 import { EntityType } from "@shared/types/entity";
 import { GameModeId } from "@shared/events/server-sent/events/game-started-event";
+import { VotingState } from "@shared/types/voting";
 
 export type GameState = {
   startedAt: number;
@@ -28,6 +29,8 @@ export type GameState = {
   globalIlluminationMultiplier: number;
   // Darkness hue ("red" or "blue")
   darknessHue: "red" | "blue";
+  // Voting state (active during voting phase after game ends)
+  votingState: VotingState | null;
 };
 
 export function getEntityById(gameState: GameState, id: number): ClientEntityBase | undefined {

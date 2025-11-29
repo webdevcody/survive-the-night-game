@@ -174,11 +174,7 @@ export class Leaderboard {
       } else if (isAI) {
         displayName = `🤖 ${displayName}`;
       }
-      ctx.fillText(
-        displayName,
-        x + settings.padding.left,
-        rowY + settings.lineHeight / 2
-      );
+      ctx.fillText(displayName, x + settings.padding.left, rowY + settings.lineHeight / 2);
 
       // Draw ping with color based on value
       const ping = player.getPing();

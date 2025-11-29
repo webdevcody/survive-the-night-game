@@ -558,6 +558,10 @@ export class ClientSocketManager {
     this.emitClientEvent(ClientSentEvents.CHANGE_PLAYER_COLOR, { color });
   }
 
+  public sendVoteGameMode(mode: string) {
+    this.emitClientEvent(ClientSentEvents.VOTE_GAME_MODE, { mode });
+  }
+
   public getSocket(): ISocketAdapter {
     return this.socket;
   }

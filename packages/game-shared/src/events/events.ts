@@ -65,6 +65,7 @@ export const ClientSentEvents = {
   SWAP_INVENTORY_ITEMS: "swapInventoryItems",
   INTERACT: "interact",
   CHANGE_PLAYER_COLOR: "changePlayerColor",
+  VOTE_GAME_MODE: "voteGameMode",
 } as const;
 
 export type ServerSentEventType = (typeof ServerSentEvents)[keyof typeof ServerSentEvents];

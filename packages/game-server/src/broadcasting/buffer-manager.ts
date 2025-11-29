@@ -8,8 +8,10 @@ import {
   GAME_STATE_BIT_IS_FULL_STATE,
   GAME_STATE_BIT_REMOVED_ENTITY_IDS,
   GAME_STATE_BIT_MAP_DATA,
+  GAME_STATE_BIT_VOTING_STATE,
   GAME_STATE_FIELD_BITS,
 } from "@shared/util/serialization-constants";
+import { VotingState } from "@shared/types/voting";
 import { encodeWaveState } from "@shared/util/wave-state-encoding";
 import { IEntity } from "@/entities/types";
 import { GameStateData } from "../../../game-shared/src/events/server-sent/events/game-state-event";
@@ -58,11 +60,13 @@ export class BufferManager {
    * @param gameState - Game state data (wave info, etc.)
    * @param hasRemovedEntities - Whether there are removed entities (for bitset)
    * @param mapData - Optional map data to include (only for full state updates)
+   * @param votingState - Optional voting state to include (during voting phase)
    */
   writeGameState(
     gameState: Partial<GameStateData>,
     hasRemovedEntities: boolean = false,
-    mapData?: MapData
+    mapData?: MapData,
+    votingState?: VotingState
   ): void {
     // Build bitset to track which fields are present
     let bitset = 0;
@@ -91,12 +95,15 @@ export class BufferManager {
     if (mapData !== undefined) {
       bitset |= GAME_STATE_BIT_MAP_DATA;
     }
+    if (votingState !== undefined) {
+      bitset |= GAME_STATE_BIT_VOTING_STATE;
+    }
 
-    // Write bitset as UInt8
-    this.writer.writeUInt8(bitset);
+    // Write bitset as UInt16 (to support more than 8 flags)
+    this.writer.writeUInt16(bitset);
 
     // Iterate through bits deterministically and write only fields that are set
-    // Note: REMOVED_ENTITY_IDS and MAP_DATA are handled separately after the loop
+    // Note: REMOVED_ENTITY_IDS, MAP_DATA, and VOTING_STATE are handled separately after the loop
     for (const bit of GAME_STATE_FIELD_BITS) {
       if (bitset & bit) {
         switch (bit) {
@@ -129,6 +136,10 @@ export class BufferManager {
             // This bit is handled separately in writeMapData
             // We don't write anything here, just track that map data exists
             break;
+          case GAME_STATE_BIT_VOTING_STATE:
+            // This bit is handled separately in writeVotingState
+            // We don't write anything here, just track that voting state exists
+            break;
         }
       }
     }
@@ -142,6 +153,15 @@ export class BufferManager {
     // Serialize map data as JSON string
     // This is simple and works well for map data which doesn't change often
     this.writer.writeString(JSON.stringify(mapData));
+  }
+
+  /**
+   * Write voting state to the buffer (should be called after writeMapData)
+   * @param votingState - The voting state to serialize
+   */
+  writeVotingState(votingState: VotingState): void {
+    // Serialize voting state as JSON string
+    this.writer.writeString(JSON.stringify(votingState));
   }
 
   /**

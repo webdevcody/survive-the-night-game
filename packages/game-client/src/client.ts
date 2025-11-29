@@ -20,6 +20,7 @@ import { ResizeController } from "@/resize-controller";
 import { ClientEventListener } from "@/client-event-listener";
 import { SoundManager, SOUND_TYPES_TO_MP3 } from "@/managers/sound-manager";
 import { GameOverDialogUI } from "@/ui/game-over-dialog";
+import { VotingPanel } from "@/ui/voting-panel";
 import { Direction } from "../../game-shared/src/util/direction";
 import { Input } from "../../game-shared/src/util/input";
 import { ClientEntityBase } from "@/extensions/client-entity";
@@ -91,6 +92,7 @@ export class GameClient {
   private hud: Hud;
   private merchantBuyPanel: MerchantBuyPanel;
   private gameOverDialog: GameOverDialogUI;
+  private votingPanel: VotingPanel;
 
   // State
   private gameState: GameState;
@@ -184,7 +186,16 @@ export class GameClient {
       // Check if fullscreen map is open
       const isFullscreenMapOpen = this.hud?.isFullscreenMapOpen() ?? false;
 
-      // Check merchant panel clicks first (if open)
+      // Check voting panel clicks first (if voting is active)
+      if (
+        this.gameState.votingState?.isVotingActive &&
+        this.votingPanel.handleClick(x, y, canvas.width, canvas.height)
+      ) {
+        this.placementManager?.skipNextClick();
+        return; // Click was handled by voting panel
+      }
+
+      // Check merchant panel clicks (if open)
       if (this.merchantBuyPanel.isVisible() && this.merchantBuyPanel.handleClick(x, y)) {
         this.placementManager?.skipNextClick();
         return; // Click was handled by merchant panel
@@ -350,6 +361,11 @@ export class GameClient {
 
     this.mapManager = new MapManager(this);
     this.gameOverDialog = new GameOverDialogUI();
+    this.votingPanel = new VotingPanel({
+      onVote: (mode) => {
+        this.socketManager.sendVoteGameMode(mode);
+      },
+    });
 
     // TODO: refactor to use event emitter
     this.merchantBuyPanel = new MerchantBuyPanel(this.assetManager, {
@@ -545,6 +561,8 @@ export class GameClient {
       globalIlluminationMultiplier: 1.0,
       // Darkness hue (default: "red")
       darknessHue: "red",
+      // Voting state (null when not in voting phase)
+      votingState: null,
     };
 
     this.renderer = new Renderer(
@@ -554,6 +572,7 @@ export class GameClient {
       this.hud,
       this.merchantBuyPanel,
       this.gameOverDialog,
+      this.votingPanel,
       this.particleManager,
       () => this.getPlacementManager(),
       () => this.getTeleportState(),
@@ -663,6 +682,10 @@ export class GameClient {
 
   public getRenderer(): Renderer {
     return this.renderer;
+  }
+
+  public getVotingPanel(): VotingPanel {
+    return this.votingPanel;
   }
 
   public isChatting(): boolean {

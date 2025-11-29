@@ -257,17 +257,25 @@ export class Broadcaster {
 
     // Write game state metadata to buffer
     const hasRemovedEntities = removedCount > 0;
+    const votingState = mergedGameState.votingState;
     this.deps.bufferManager.writeGameState(
       {
         ...mergedGameState,
         timestamp,
         isFullState: false,
       },
-      hasRemovedEntities
+      hasRemovedEntities,
+      undefined, // no mapData for delta updates
+      votingState
     );
 
     // Write removed entity IDs (only if there are any)
     this.deps.bufferManager.writeRemovedEntityIds(removedEntityIds);
+
+    // Write voting state (only if present)
+    if (votingState) {
+      this.deps.bufferManager.writeVotingState(votingState);
+    }
     endGameStateMerging();
 
     // Track cleanup operations

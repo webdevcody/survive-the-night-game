@@ -15,6 +15,10 @@ export const onGameStarted = (context: InitializationContext, event: GameStarted
   // Hide game over dialog if it was showing
   context.gameClient.getGameOverDialog().hide();
 
+  // Reset voting state
+  context.gameState.votingState = null;
+  context.gameClient.getVotingPanel().reset();
+
   // Set game mode from server
   context.gameState.gameMode = data.gameMode;
 

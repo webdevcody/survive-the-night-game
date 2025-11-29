@@ -2,6 +2,7 @@ import { GameEvent } from "../../types";
 import { ServerSentEvents } from "../../events";
 import { RawEntity } from "../../../types/entity";
 import { WaveState } from "../../../types/wave";
+import { VotingState } from "../../../types/voting";
 import { BufferReader } from "../../../util/buffer-serialization";
 import {
   GAME_STATE_BIT_TIMESTAMP,
@@ -12,6 +13,7 @@ import {
   GAME_STATE_BIT_IS_FULL_STATE,
   GAME_STATE_BIT_REMOVED_ENTITY_IDS,
   GAME_STATE_BIT_MAP_DATA,
+  GAME_STATE_BIT_VOTING_STATE,
   GAME_STATE_FIELD_BITS,
   FIELD_TYPE_STRING,
   FIELD_TYPE_NUMBER,
@@ -40,6 +42,8 @@ export interface GameStateData {
   timestamp?: number;
   // Map data (only included in full state updates)
   mapData?: MapData;
+  // Voting state (included during voting phase)
+  votingState?: VotingState;
 }
 
 export class GameStateEvent implements GameEvent<GameStateData> {
@@ -93,6 +97,10 @@ export class GameStateEvent implements GameEvent<GameStateData> {
 
   public getMapData(): MapData | undefined {
     return this.data.mapData;
+  }
+
+  public getVotingState(): VotingState | undefined {
+    return this.data.votingState;
   }
 
   /**
@@ -152,13 +160,17 @@ export class GameStateEvent implements GameEvent<GameStateData> {
       entities: [], // Empty - entities will be deserialized by ClientEventListener
     };
 
-    // Read bitset to determine which fields are present
-    const bitset = gameStateReader.readUInt8();
+    // Read bitset to determine which fields are present (UInt16 to support more flags)
+    const bitset = gameStateReader.readUInt16();
 
     // Iterate through bits deterministically and read only fields that are set
-    // Note: REMOVED_ENTITY_IDS and MAP_DATA bits are handled separately after the loop
+    // Note: REMOVED_ENTITY_IDS, MAP_DATA, and VOTING_STATE bits are handled separately after the loop
     for (const bit of GAME_STATE_FIELD_BITS) {
-      if (bit === GAME_STATE_BIT_REMOVED_ENTITY_IDS || bit === GAME_STATE_BIT_MAP_DATA) {
+      if (
+        bit === GAME_STATE_BIT_REMOVED_ENTITY_IDS ||
+        bit === GAME_STATE_BIT_MAP_DATA ||
+        bit === GAME_STATE_BIT_VOTING_STATE
+      ) {
         // Skip these bits in the loop - they're handled separately after
         continue;
       }
@@ -205,6 +217,16 @@ export class GameStateEvent implements GameEvent<GameStateData> {
         gameStateData.mapData = JSON.parse(mapDataJson);
       } catch (e) {
         console.error("Failed to parse map data:", e);
+      }
+    }
+
+    // Read voting state if bit is set (sent during voting phase)
+    if (bitset & GAME_STATE_BIT_VOTING_STATE) {
+      const votingStateJson = gameStateReader.readString();
+      try {
+        gameStateData.votingState = JSON.parse(votingStateJson);
+      } catch (e) {
+        console.error("Failed to parse voting state:", e);
       }
     }
 
