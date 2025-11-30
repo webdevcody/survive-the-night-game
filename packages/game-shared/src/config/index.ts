@@ -26,6 +26,7 @@ import { entityConfig, EntityConfig } from "@/config/entity-config";
 import { votingConfig, type VotingConfig } from "./voting-config";
 import { infectionConfig, type InfectionConfig } from "./infection-config";
 import { hudConfig, type HudConfig } from "./hud-config";
+import { aiPlayerConfig, type AiPlayerConfig } from "./ai-player-config";
 /**
  * Combined game configuration object
  */
@@ -45,6 +46,7 @@ export interface GameConfig {
   voting: VotingConfig;
   infection: InfectionConfig;
   hud: HudConfig;
+  aiPlayer: AiPlayerConfig;
 }
 
 /**
@@ -66,6 +68,7 @@ const defaultConfig: GameConfig = {
   voting: votingConfig,
   infection: infectionConfig,
   hud: hudConfig,
+  aiPlayer: aiPlayerConfig,
 };
 
 /**
@@ -123,6 +126,7 @@ export {
   votingConfig,
   infectionConfig,
   hudConfig,
+  aiPlayerConfig,
 };
 
 /**
@@ -143,6 +147,7 @@ export type {
   VotingConfig,
   InfectionConfig,
   HudConfig,
+  AiPlayerConfig,
 };
 
 /**

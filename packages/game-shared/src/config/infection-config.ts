@@ -35,6 +35,18 @@ export const infectionConfig = {
    * Default: 5 minutes (300000ms)
    */
   GAME_DURATION_MS: 5 * 60 * 1000,
+
+  /**
+   * Cooldown in milliseconds for zombie players to spawn minions
+   * Default: 10 seconds (10000ms)
+   */
+  ZOMBIE_SPAWN_COOLDOWN_MS: 10000,
+
+  /**
+   * Maximum radius in pixels from zombie player where they can spawn minions
+   * Default: 128 pixels (8 tiles)
+   */
+  ZOMBIE_SPAWN_RADIUS: 128,
 } as const;
 
 export type InfectionConfig = typeof infectionConfig;

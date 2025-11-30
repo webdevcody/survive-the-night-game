@@ -63,9 +63,16 @@ export class InfectionModeStrategy implements IGameModeStrategy {
 
     console.log("[InfectionModeStrategy] Game started in Infection mode");
 
-    // Initialize and spawn AI human players
+    // Initialize AI player manager and spawn initial AI players based on config
     this.aiPlayerManager = new AIPlayerManager(gameManagers);
-    this.aiPlayerManager.spawnAIPlayers(getConfig().infection.AI_HUMAN_COUNT);
+    // Calculate initial AI count based on current real players
+    const realPlayerCount = this.getRealPlayerCount(gameManagers);
+    const aiConfig = getConfig().aiPlayer;
+    const targetAI = Math.max(
+      aiConfig.MIN_AI_PLAYERS,
+      aiConfig.TOTAL_PLAYER_THRESHOLD - realPlayerCount
+    );
+    this.aiPlayerManager.spawnAIPlayers(targetAI);
 
     // Select initial zombie immediately
     this.selectInitialZombie(gameManagers);
@@ -198,6 +205,9 @@ export class InfectionModeStrategy implements IGameModeStrategy {
 
     // Clear death time
     player.setDeathTime(0);
+
+    // Set zombie spawn cooldown as ready so they can spawn minions immediately
+    player.setZombieSpawnReady();
   }
 
   /**
@@ -583,5 +593,58 @@ export class InfectionModeStrategy implements IGameModeStrategy {
    */
   public getMaxZombieLives(): number {
     return this.maxZombieLives;
+  }
+
+  /**
+   * Get the AI player manager for dynamic AI adjustment
+   */
+  getAIPlayerManager(): AIPlayerManager | null {
+    return this.aiPlayerManager;
+  }
+
+  /**
+   * Ensure at least one zombie exists in the game.
+   * If the zombie player disconnected, randomly select a human to become the new zombie.
+   * Should be called after a player disconnects.
+   */
+  ensureZombieExists(gameManagers: IGameManagers): void {
+    if (!this.initialZombieSelected) return; // Game hasn't started yet
+
+    const players = gameManagers.getEntityManager().getPlayerEntities() as Player[];
+    const livingZombies = players.filter((p) => !p.isDead() && p.isZombie() && !p.isMarkedForRemoval());
+    const livingHumans = players.filter((p) => !p.isDead() && !p.isZombie() && !p.isMarkedForRemoval());
+
+    // If there are no living zombies but there are humans, select a new zombie
+    if (livingZombies.length === 0 && livingHumans.length > 0) {
+      console.log("[InfectionModeStrategy] No zombies remaining, selecting new Patient Zero");
+
+      // Pick a random human to become zombie
+      const randomIndex = Math.floor(Math.random() * livingHumans.length);
+      const newZombie = livingHumans[randomIndex];
+
+      console.log(`[InfectionModeStrategy] Selected "${newZombie.getDisplayName()}" as new Patient Zero`);
+
+      // Convert to zombie
+      this.convertToZombie(newZombie, gameManagers, false);
+
+      // Broadcast message
+      gameManagers.getBroadcaster().broadcastEvent(
+        new GameMessageEvent({
+          message: `${newZombie.getDisplayName()} has become Patient Zero!`,
+          color: "red",
+        })
+      );
+    }
+  }
+
+  /**
+   * Count real (non-AI) players in the game
+   */
+  private getRealPlayerCount(gameManagers: IGameManagers): number {
+    return gameManagers
+      .getEntityManager()
+      .getPlayerEntities()
+      .filter((p) => !(p as any).serialized?.get("isAI") && !p.isMarkedForRemoval())
+      .length;
   }
 }

@@ -2,6 +2,17 @@ import { ISocketAdapter } from "@shared/network/socket-adapter";
 import { HandlerContext } from "../context";
 import { PlayerLeftEvent } from "../../../../game-shared/src/events/server-sent/events/player-left-event";
 import { SocketEventHandler } from "./types";
+import { IEntityManager } from "@/managers/types";
+
+/**
+ * Count real (non-AI) players in the game
+ */
+function getRealPlayerCount(entityManager: IEntityManager): number {
+  return entityManager
+    .getPlayerEntities()
+    .filter((p) => !(p as any).serialized?.get("isAI") && !p.isMarkedForRemoval())
+    .length;
+}
 
 export function onDisconnect(context: HandlerContext, socket: ISocketAdapter): void {
   console.log("Player disconnected", socket.id);
@@ -36,6 +47,22 @@ export function onDisconnect(context: HandlerContext, socket: ISocketAdapter): v
         displayName: displayName ?? "Unknown",
       })
     );
+  }
+
+  // Adjust AI player count when real player leaves (add AI back if needed)
+  // Only if not the last player (game will reset otherwise)
+  if (context.players.size > 0) {
+    const gameLoop = context.gameServer.getGameLoop();
+    const strategy = gameLoop.getGameModeStrategy();
+    const aiManager = strategy.getAIPlayerManager?.();
+    if (aiManager) {
+      const realPlayerCount = getRealPlayerCount(context.getEntityManager());
+      console.log(`[onDisconnect] Adjusting AI players for ${realPlayerCount} real players`);
+      aiManager.adjustAIPlayerCount(realPlayerCount);
+    }
+
+    // Ensure game mode invariants (e.g., Infection mode always has at least one zombie)
+    strategy.ensureZombieExists?.(context.getGameManagers());
   }
 
   const isLastPlayer = context.players.size === 0;

@@ -66,6 +66,7 @@ export const ClientSentEvents = {
   INTERACT: "interact",
   CHANGE_PLAYER_COLOR: "changePlayerColor",
   VOTE_GAME_MODE: "voteGameMode",
+  SPAWN_ZOMBIE: "spawnZombie",
 } as const;
 
 export type ServerSentEventType = (typeof ServerSentEvents)[keyof typeof ServerSentEvents];

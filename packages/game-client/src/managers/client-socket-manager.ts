@@ -562,6 +562,10 @@ export class ClientSocketManager {
     this.emitClientEvent(ClientSentEvents.VOTE_GAME_MODE, { mode });
   }
 
+  public sendSpawnZombie(x: number, y: number) {
+    this.emitClientEvent(ClientSentEvents.SPAWN_ZOMBIE, { x, y });
+  }
+
   public getSocket(): ISocketAdapter {
     return this.socket;
   }

@@ -308,6 +308,18 @@ export class Renderer {
     }
     perfTimer.end("renderPickupProgress");
 
+    // Render zombie spawn cooldown indicator above zombie player's head (infection mode)
+    perfTimer.start("renderZombieSpawnCooldown");
+    if (this.gameState.playerId && this.gameState.gameMode === "infection") {
+      const player = getPlayer(this.gameState);
+      if (player && player.hasExt(ClientPositionable) && player.isZombiePlayer?.()) {
+        const cooldownProgress = player.getZombieSpawnCooldownProgress?.() ?? 1;
+        const playerPos = player.getPosition();
+        this.hud.renderZombieSpawnCooldown(this.ctx, playerPos, cooldownProgress);
+      }
+    }
+    perfTimer.end("renderZombieSpawnCooldown");
+
     // Apply darkness overlay on top of everything (ground, collidables, entities)
     perfTimer.start("renderDarkness");
     this.mapManager.renderDarkness(this.ctx);

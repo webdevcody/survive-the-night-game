@@ -51,6 +51,7 @@ export class PlayerClient extends ClientEntity implements IClientEntity, Rendera
   private isAI: boolean = false; // Whether this player is controlled by AI
   private aiState: string = ""; // Current AI state (for debugging)
   private isZombie: boolean = false; // Whether this player has become a zombie (Battle Royale)
+  private zombieSpawnCooldownProgress: number = 1; // 0-1 progress for zombie spawn ability (1 = ready)
 
   private input: Input = {
     facing: Direction.Right,
@@ -87,6 +88,7 @@ export class PlayerClient extends ClientEntity implements IClientEntity, Rendera
     this.isAI = (data as any).isAI ?? false;
     this.aiState = (data as any).aiState ?? "";
     this.isZombie = (data as any).isZombie ?? false;
+    this.zombieSpawnCooldownProgress = (data as any).zombieSpawnCooldownProgress ?? 1;
   }
 
   public deserializeFromBuffer(reader: BufferReader): void {
@@ -97,6 +99,7 @@ export class PlayerClient extends ClientEntity implements IClientEntity, Rendera
     this.isAI = (this as any).isAI ?? false;
     this.aiState = (this as any).aiState ?? "";
     this.isZombie = (this as any).isZombie ?? false;
+    this.zombieSpawnCooldownProgress = (this as any).zombieSpawnCooldownProgress ?? 1;
     // Update skin if it was changed (e.g., when converted to zombie)
     if ((this as any).skin !== undefined) {
       this.skin = (this as any).skin;
@@ -105,6 +108,10 @@ export class PlayerClient extends ClientEntity implements IClientEntity, Rendera
 
   public isZombiePlayer(): boolean {
     return this.isZombie;
+  }
+
+  public getZombieSpawnCooldownProgress(): number {
+    return this.zombieSpawnCooldownProgress;
   }
 
   private getPlayerAssetKey(): string {

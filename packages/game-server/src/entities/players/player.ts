@@ -39,6 +39,7 @@ import { Weapon } from "../weapons/weapon";
 import InfiniteRun from "@/extensions/infinite-run";
 import Snared from "@/extensions/snared";
 import { shouldAutoPickup, attemptAutoPickup } from "@/util/auto-pickup";
+import { infectionConfig } from "@shared/config/infection-config";
 
 export class Player extends Entity {
   private static readonly PLAYER_WIDTH = getConfig().world.TILE_SIZE;
@@ -49,6 +50,7 @@ export class Player extends Entity {
   // Internal state
   private fireCooldown = new Cooldown(0.4, true);
   private interactCooldown = new Cooldown(Player.INTERACT_COOLDOWN, true);
+  private zombieSpawnCooldown = new Cooldown(infectionConfig.ZOMBIE_SPAWN_COOLDOWN_MS / 1000, true); // Convert ms to seconds
   private broadcaster: Broadcaster;
   private lastWeaponType: ItemType | null = null;
   private exhaustionTimer: number = 0; // Time remaining before stamina can regenerate
@@ -76,6 +78,7 @@ export class Player extends Entity {
         isAI: false, // Whether this player is controlled by AI
         aiState: "", // Current AI state (for debugging)
         isZombie: false, // Whether this player has become a zombie (Battle Royale)
+        zombieSpawnCooldownProgress: 1, // 0-1 progress for zombie spawn ability (1 = ready)
         // Input fields stored individually for efficient serialization
         inputFacing: Direction.Right,
         inputDx: 0,
@@ -497,9 +500,13 @@ export class Player extends Entity {
       targetFilter: (entity, attackerId) => {
         // Don't target self
         if (entity.getId() === attackerId) return false;
-        // Zombie players can ONLY damage living non-zombie players
+        // Zombie players can damage living non-zombie players
         if (entity instanceof Player) {
           return !entity.isZombie() && !entity.isDead();
+        }
+        // Zombie players can also damage the car
+        if (entity.getType() === Entities.CAR) {
+          return true;
         }
         return false;
       },
@@ -706,6 +713,22 @@ export class Player extends Entity {
     this.handleStamina(deltaTime);
     this.handleAutoPickup();
     this.updateLighting();
+    this.updateZombieSpawnCooldown(deltaTime);
+  }
+
+  private updateZombieSpawnCooldown(deltaTime: number): void {
+    // Only update cooldown for zombie players
+    if (!this.isZombie()) {
+      return;
+    }
+
+    this.zombieSpawnCooldown.update(deltaTime);
+
+    // Update the serialized progress (0 = just used, 1 = ready)
+    const totalDuration = infectionConfig.ZOMBIE_SPAWN_COOLDOWN_MS / 1000;
+    const remaining = this.zombieSpawnCooldown.getRemainingTime();
+    const progress = 1 - remaining / totalDuration;
+    this.serialized.set("zombieSpawnCooldownProgress", Math.min(1, Math.max(0, progress)));
   }
 
   private updateLighting() {
@@ -863,6 +886,25 @@ export class Player extends Entity {
 
   removeCloth(amount: number): void {
     this.getExt(ResourcesBag).removeCloth(amount);
+  }
+
+  // Zombie spawn cooldown methods
+  isZombieSpawnReady(): boolean {
+    return this.zombieSpawnCooldown.isReady();
+  }
+
+  resetZombieSpawnCooldown(): void {
+    this.zombieSpawnCooldown.reset();
+    this.serialized.set("zombieSpawnCooldownProgress", 0);
+  }
+
+  setZombieSpawnReady(): void {
+    this.zombieSpawnCooldown.setAsReady();
+    this.serialized.set("zombieSpawnCooldownProgress", 1);
+  }
+
+  getZombieSpawnCooldownProgress(): number {
+    return this.serialized.get("zombieSpawnCooldownProgress");
   }
 
   // Base class already handles isDirty and clearDirtyFlags with the dirty fields set

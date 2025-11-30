@@ -54,6 +54,7 @@ import { Entities } from "@shared/constants";
 import { itemRegistry } from "@shared/entities";
 import { ClientCarryable } from "@/extensions";
 import { PlayerColor } from "@shared/commands/commands";
+import { infectionConfig } from "@shared/config/infection-config";
 
 export class GameClient {
   private ctx: CanvasRenderingContext2D;
@@ -216,8 +217,24 @@ export class GameClient {
       // If click wasn't handled by UI, trigger weapon fire or consumable use
       const player = getPlayer();
       if (player && !player.isDead()) {
-        // Zombie players can always attack with claw (no inventory needed)
+        // Zombie players can spawn zombies or attack with claw
         if (player.isZombiePlayer?.()) {
+          // Check if we're in infection mode
+          if (this.gameState.gameMode === "infection") {
+            // Convert canvas coordinates to world coordinates
+            const worldPos = this.canvasToWorld(x, y, canvas);
+            const playerPos = player.getPosition();
+            const dist = distance(playerPos, worldPos);
+
+            // Check if click is within spawn radius and cooldown is ready
+            const cooldownProgress = player.getZombieSpawnCooldownProgress?.() ?? 1;
+            if (dist <= infectionConfig.ZOMBIE_SPAWN_RADIUS && cooldownProgress >= 1) {
+              // Spawn zombie at clicked position
+              this.socketManager.sendSpawnZombie(worldPos.x, worldPos.y);
+              return;
+            }
+          }
+          // If not spawning, use claw attack
           this.inputManager.triggerFire();
           return;
         }
@@ -1459,6 +1476,21 @@ export class GameClient {
       items: "/sheets/items-sheet.png",
       characters: "/sheets/characters-sheet.png",
     };
+  }
+
+  /**
+   * Convert canvas coordinates to world coordinates
+   */
+  private canvasToWorld(canvasX: number, canvasY: number, canvas: HTMLCanvasElement): Vector2 {
+    const cameraScale = this.cameraManager.getScale();
+    const cameraPos = this.cameraManager.getPosition();
+    const centerX = canvas.width / 2;
+    const centerY = canvas.height / 2;
+
+    const worldX = (canvasX - centerX) / cameraScale + cameraPos.x;
+    const worldY = (canvasY - centerY) / cameraScale + cameraPos.y;
+
+    return PoolManager.getInstance().vector2.claim(worldX, worldY);
   }
 
   /**

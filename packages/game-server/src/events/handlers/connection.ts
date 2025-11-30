@@ -1,6 +1,17 @@
 import { ISocketAdapter } from "@shared/network/socket-adapter";
 import { HandlerContext } from "../context";
 import { Player } from "@/entities/players/player";
+import { IEntityManager } from "@/managers/types";
+
+/**
+ * Count real (non-AI) players in the game
+ */
+function getRealPlayerCount(entityManager: IEntityManager): number {
+  return entityManager
+    .getPlayerEntities()
+    .filter((p) => !(p as any).serialized?.get("isAI") && !p.isMarkedForRemoval())
+    .length;
+}
 
 export function onConnection(context: HandlerContext, socket: ISocketAdapter): void {
   const gameLoop = context.gameServer.getGameLoop();
@@ -50,6 +61,18 @@ export function onConnection(context: HandlerContext, socket: ISocketAdapter): v
   const player = context.createPlayerForSocket(socket);
   console.log(`[onConnection] Player ${player.getId()} created for socket ${socket.id}, now ${context.players.size} players in map`);
   context.broadcastPlayerJoined(player);
+
+  // Adjust AI player count when real player joins mid-game
+  const strategy = gameLoop.getGameModeStrategy();
+  const aiManager = strategy.getAIPlayerManager?.();
+  if (aiManager) {
+    const realPlayerCount = getRealPlayerCount(context.getEntityManager());
+    console.log(`[onConnection] Adjusting AI players for ${realPlayerCount} real players`);
+    aiManager.adjustAIPlayerCount(realPlayerCount);
+  }
+
+  // Ensure game mode invariants (e.g., if AI zombie was removed, pick a new zombie)
+  strategy.ensureZombieExists?.(context.getGameManagers());
 
   // Ensure the game is ready when a human player joins
   // This handles the case where AI players exist but isGameReady was set to false

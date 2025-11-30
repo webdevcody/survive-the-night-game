@@ -659,6 +659,37 @@ export class Hud {
     });
   }
 
+  /**
+   * Render zombie spawn cooldown indicator above player's head
+   * Shows green progress filling up as the ability recharges
+   */
+  public renderZombieSpawnCooldown(
+    ctx: CanvasRenderingContext2D,
+    playerPosition: { x: number; y: number },
+    progress: number
+  ): void {
+    // Don't render if cooldown is ready
+    if (progress >= 1) {
+      return;
+    }
+
+    // Position above player's head (offset by player height + padding)
+    const indicatorY = playerPosition.y - 20; // 16px player height + 4px padding
+    const indicatorX = playerPosition.x + 8; // Center on player (player is 16px wide)
+
+    renderRadialProgressIndicator(ctx, {
+      progress,
+      x: indicatorX,
+      y: indicatorY,
+      radius: 8,
+      progressColor: "rgba(100, 255, 100, 0.9)", // Green for spawn cooldown
+      borderColor: "rgba(255, 255, 255, 0.8)",
+      borderWidth: 1.5,
+      backgroundColor: "rgba(0, 0, 0, 0.7)",
+      startAngle: -Math.PI / 2, // Start from top
+    });
+  }
+
   public addMessage(message: string, color?: string): void {
     this.gameMessagesPanel.addMessage(message, color);
   }

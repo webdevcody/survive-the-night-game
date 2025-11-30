@@ -79,9 +79,13 @@ export class Car extends Entity {
       })
     );
 
-    // Spawn 200 big zombies around the campsite
-    this.getGameManagers().getMapManager().spawnZombiesAroundCampsite("big", 200);
-    this.getGameManagers().getMapManager().spawnZombiesAroundCampsite("bat", 100);
+    // Only spawn zombies in wave mode - skip in infection mode
+    const gameMode = this.getGameManagers().getGameServer().getGameLoop().getGameModeStrategy().getConfig().modeId;
+    if (gameMode !== "infection") {
+      // Spawn 200 big zombies around the campsite
+      this.getGameManagers().getMapManager().spawnZombiesAroundCampsite("big", 200);
+      this.getGameManagers().getMapManager().spawnZombiesAroundCampsite("bat", 100);
+    }
 
     // Play multiple explosion animations at the car entity location
     // Create explosions with slight random offsets to make it look like multiple explosions

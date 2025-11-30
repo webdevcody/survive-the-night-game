@@ -135,9 +135,34 @@ export class BattleRoyaleModeStrategy implements IGameModeStrategy {
       })
     );
 
-    // Initialize and spawn AI players
+    // Initialize AI player manager and spawn initial AI players based on config
     this.aiPlayerManager = new AIPlayerManager(gameManagers);
-    this.aiPlayerManager.spawnAIPlayers(4);
+    // Calculate initial AI count based on current real players
+    const realPlayerCount = this.getRealPlayerCount(gameManagers);
+    const config = getConfig().aiPlayer;
+    const targetAI = Math.max(
+      config.MIN_AI_PLAYERS,
+      config.TOTAL_PLAYER_THRESHOLD - realPlayerCount
+    );
+    this.aiPlayerManager.spawnAIPlayers(targetAI);
+  }
+
+  /**
+   * Get the AI player manager for dynamic AI adjustment
+   */
+  getAIPlayerManager(): AIPlayerManager | null {
+    return this.aiPlayerManager;
+  }
+
+  /**
+   * Count real (non-AI) players in the game
+   */
+  private getRealPlayerCount(gameManagers: IGameManagers): number {
+    return gameManagers
+      .getEntityManager()
+      .getPlayerEntities()
+      .filter((p) => !(p as any).serialized?.get("isAI") && !p.isMarkedForRemoval())
+      .length;
   }
 
   onGameEnd(gameManagers: IGameManagers): void {

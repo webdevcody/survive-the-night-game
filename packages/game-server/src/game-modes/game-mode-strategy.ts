@@ -2,6 +2,7 @@ import { IGameManagers } from "@/managers/types";
 import { Player } from "@/entities/players/player";
 import { IEntity } from "@/entities/types";
 import Vector2 from "@/util/vector2";
+import { AIPlayerManager } from "@/ai/ai-player-manager";
 
 /**
  * Configuration for the game mode (immutable after creation)
@@ -115,4 +116,16 @@ export interface IGameModeStrategy {
   onWaveStart?(waveNumber: number, gameManagers: IGameManagers): void;
   onWaveComplete?(waveNumber: number, gameManagers: IGameManagers): void;
   onPreparationStart?(waveNumber: number, gameManagers: IGameManagers): void;
+
+  /**
+   * Get the AI player manager for this game mode (optional).
+   * Used for dynamic AI player adjustment when real players join/leave.
+   */
+  getAIPlayerManager?(): AIPlayerManager | null;
+
+  /**
+   * Ensure game mode invariants are maintained after a player disconnects (optional).
+   * For example, Infection mode uses this to ensure there's always at least one zombie.
+   */
+  ensureZombieExists?(gameManagers: IGameManagers): void;
 }
