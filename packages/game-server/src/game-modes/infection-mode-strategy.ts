@@ -611,8 +611,12 @@ export class InfectionModeStrategy implements IGameModeStrategy {
     if (!this.initialZombieSelected) return; // Game hasn't started yet
 
     const players = gameManagers.getEntityManager().getPlayerEntities() as Player[];
-    const livingZombies = players.filter((p) => !p.isDead() && p.isZombie() && !p.isMarkedForRemoval());
-    const livingHumans = players.filter((p) => !p.isDead() && !p.isZombie() && !p.isMarkedForRemoval());
+    const livingZombies = players.filter(
+      (p) => !p.isDead() && p.isZombie() && !p.isMarkedForRemoval()
+    );
+    const livingHumans = players.filter(
+      (p) => !p.isDead() && !p.isZombie() && !p.isMarkedForRemoval()
+    );
 
     // If there are no living zombies but there are humans, select a new zombie
     if (livingZombies.length === 0 && livingHumans.length > 0) {
@@ -622,7 +626,9 @@ export class InfectionModeStrategy implements IGameModeStrategy {
       const randomIndex = Math.floor(Math.random() * livingHumans.length);
       const newZombie = livingHumans[randomIndex];
 
-      console.log(`[InfectionModeStrategy] Selected "${newZombie.getDisplayName()}" as new Patient Zero`);
+      console.log(
+        `[InfectionModeStrategy] Selected "${newZombie.getDisplayName()}" as new Patient Zero`
+      );
 
       // Convert to zombie
       this.convertToZombie(newZombie, gameManagers, false);
@@ -644,7 +650,6 @@ export class InfectionModeStrategy implements IGameModeStrategy {
     return gameManagers
       .getEntityManager()
       .getPlayerEntities()
-      .filter((p) => !(p as any).serialized?.get("isAI") && !p.isMarkedForRemoval())
-      .length;
+      .filter((p) => !(p as any).serialized?.get("isAI") && !p.isMarkedForRemoval()).length;
   }
 }

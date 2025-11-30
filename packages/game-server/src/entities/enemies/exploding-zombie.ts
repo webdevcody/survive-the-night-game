@@ -15,8 +15,6 @@ import { getConfig } from "@shared/config";
 
 export class ExplodingZombie extends BaseEnemy {
   private static readonly EXPLOSION_RADIUS = getConfig().combat.EXPLOSION_RADIUS_SMALL;
-  private static readonly EXPLOSION_DAMAGE = 5;
-  private readonly positionThreshold = 4; // Larger threshold for faster speed
 
   constructor(gameManagers: IGameManagers) {
     super(gameManagers, Entities.EXPLODING_ZOMBIE);
@@ -24,9 +22,10 @@ export class ExplodingZombie extends BaseEnemy {
     // Override collision box size and offset for smaller zombie
     const poolManager = PoolManager.getInstance();
     const collidable = this.getExt(Collidable);
+    const collisionThreshold = getConfig().boss.EXPLODING_ZOMBIE_COLLISION_THRESHOLD;
     collidable
       .setSize(this.config.stats.size)
-      .setOffset(poolManager.vector2.claim(this.positionThreshold, this.positionThreshold));
+      .setOffset(poolManager.vector2.claim(collisionThreshold, collisionThreshold));
 
     this.setMovementStrategy(new MeleeMovementStrategy());
 
@@ -60,7 +59,7 @@ export class ExplodingZombie extends BaseEnemy {
       if (dist <= ExplodingZombie.EXPLOSION_RADIUS) {
         // Scale damage based on distance from explosion
         const damageScale = 1 - dist / ExplodingZombie.EXPLOSION_RADIUS;
-        const damage = Math.ceil(ExplodingZombie.EXPLOSION_DAMAGE * damageScale);
+        const damage = Math.ceil(getConfig().boss.EXPLODING_ZOMBIE_EXPLOSION_DAMAGE * damageScale);
         entity.getExt(Destructible).damage(damage, this.getId());
       }
     }

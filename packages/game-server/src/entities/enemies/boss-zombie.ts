@@ -10,16 +10,10 @@ import { BossSummonEvent } from "../../../../game-shared/src/events/server-sent/
 import Vector2 from "@shared/util/vector2";
 import Destructible from "@/extensions/destructible";
 import PoolManager from "@/util/pool-manager";
-import { getConfig } from "@/config";
+import { getConfig } from "@shared/config";
 
 export class BossZombie extends BossEnemy {
-  private static readonly SUMMON_INTERVAL_SECONDS = 8;
-  private static readonly SUMMON_BATCH_SIZE = 3;
-  private static readonly MAX_SUMMONED_MINIONS = 10;
-  private static readonly MIN_SUMMON_RADIUS = 12;
-  private static readonly SUMMON_RADIUS = 96;
-
-  private summonCooldown = new Cooldown(BossZombie.SUMMON_INTERVAL_SECONDS, true);
+  private summonCooldown = new Cooldown(getConfig().boss.BOSS_ZOMBIE_SUMMON_INTERVAL, true);
   private summonedMinionIds: Set<number> = new Set();
 
   constructor(gameManagers: IGameManagers) {
@@ -45,12 +39,12 @@ export class BossZombie extends BossEnemy {
       return;
     }
 
-    const availableSlots = BossZombie.MAX_SUMMONED_MINIONS - this.summonedMinionIds.size;
+    const availableSlots = getConfig().boss.BOSS_ZOMBIE_MAX_SUMMONED_MINIONS - this.summonedMinionIds.size;
     if (availableSlots <= 0) {
       return;
     }
 
-    const spawnCount = Math.min(BossZombie.SUMMON_BATCH_SIZE, availableSlots);
+    const spawnCount = Math.min(getConfig().boss.BOSS_ZOMBIE_SUMMON_BATCH_SIZE, availableSlots);
     const summons: Array<{ x: number; y: number }> = [];
 
     for (let i = 0; i < spawnCount; i++) {
@@ -93,8 +87,8 @@ export class BossZombie extends BossEnemy {
 
     return mapManager.findRandomValidSpawnPosition(
       center,
-      BossZombie.MIN_SUMMON_RADIUS,
-      BossZombie.SUMMON_RADIUS
+      getConfig().boss.BOSS_ZOMBIE_MIN_SUMMON_RADIUS,
+      getConfig().boss.BOSS_ZOMBIE_SUMMON_RADIUS
     );
   }
 

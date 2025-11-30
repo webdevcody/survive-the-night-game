@@ -46,6 +46,36 @@ export const entityConfig = {
   SURVIVOR_WANDER_RADIUS: 100,
 
   /**
+   * Survivor maximum health points
+   */
+  SURVIVOR_MAX_HEALTH: 10,
+
+  /**
+   * Survivor shooting cooldown in seconds
+   */
+  SURVIVOR_SHOOT_COOLDOWN: 1.0,
+
+  /**
+   * Survivor shooting damage per hit
+   */
+  SURVIVOR_SHOOT_DAMAGE: 1,
+
+  /**
+   * Survivor movement speed when wandering (pixels/second)
+   */
+  SURVIVOR_WANDER_SPEED: 30,
+
+  /**
+   * Duration survivor moves before pausing (seconds)
+   */
+  SURVIVOR_WANDER_MOVE_DURATION: 2.0,
+
+  /**
+   * Duration survivor pauses before moving again (seconds)
+   */
+  SURVIVOR_WANDER_PAUSE_DURATION: 2.0,
+
+  /**
    * ========================================================================
    * ENEMY AI CONSTANTS
    * ========================================================================
@@ -82,6 +112,45 @@ export const entityConfig = {
   STUCK_DETECTION_TIME: 0.3,
 
   /**
+   * Distance threshold for considering waypoint reached (in pixels)
+   */
+  POSITION_THRESHOLD: 1,
+
+  /**
+   * Distance threshold for melee movement to consider waypoint reached (in pixels)
+   * Increased threshold for faster zombies
+   */
+  WAYPOINT_REACHED_THRESHOLD: 8,
+
+  /**
+   * ========================================================================
+   * ZOMBIE SEPARATION BEHAVIOR
+   * ========================================================================
+   */
+
+  /**
+   * Radius to check for nearby zombies for separation (in pixels)
+   */
+  ZOMBIE_SEPARATION_RADIUS: 8,
+
+  /**
+   * Maximum strength of separation force
+   */
+  ZOMBIE_SEPARATION_STRENGTH: 200,
+
+  /**
+   * Weight of separation force relative to pathfinding velocity (0-1)
+   * Higher values mean separation has more influence
+   */
+  ZOMBIE_SEPARATION_WEIGHT: 0.3,
+
+  /**
+   * Minimum distance before separation kicks in (in pixels)
+   * Prevents jittery movement when zombies are far apart
+   */
+  ZOMBIE_MIN_SEPARATION_DISTANCE: 4,
+
+  /**
    * ========================================================================
    * VEHICLE CONSTANTS
    * ========================================================================
@@ -96,6 +165,21 @@ export const entityConfig = {
    * Car repair cooldown in milliseconds
    */
   CAR_REPAIR_COOLDOWN_MS: 1000,
+
+  /**
+   * Car initial health points
+   */
+  CAR_INITIAL_HEALTH: 20,
+
+  /**
+   * Number of explosion effects when car is destroyed
+   */
+  CAR_DEATH_EXPLOSION_COUNT: 8,
+
+  /**
+   * Spread distance for car death explosions (in pixels)
+   */
+  CAR_DEATH_EXPLOSION_SPREAD: 24,
 } as const;
 
 export type EntityConfig = typeof entityConfig;

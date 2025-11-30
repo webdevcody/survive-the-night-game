@@ -9,11 +9,9 @@ import Vector2 from "@shared/util/vector2";
 import Destructible from "@/extensions/destructible";
 import PoolManager from "@/util/pool-manager";
 import Collidable from "@/extensions/collidable";
+import { getConfig } from "@shared/config";
 
 export class SplitterBoss extends BossEnemy {
-  private static readonly SPLIT_THRESHOLDS = [0.5]; // 50%
-  private static readonly MIN_SPLIT_RADIUS = 32;
-  private static readonly MAX_SPLIT_RADIUS = 64;
 
   private crossedThresholds: Set<number> = new Set();
   private lastHealth: number = 0;
@@ -95,8 +93,9 @@ export class SplitterBoss extends BossEnemy {
     }
 
     // Check each threshold
-    for (let i = 0; i < SplitterBoss.SPLIT_THRESHOLDS.length; i++) {
-      const threshold = SplitterBoss.SPLIT_THRESHOLDS[i];
+    const splitThresholds = getConfig().boss.SPLITTER_BOSS_SPLIT_THRESHOLDS;
+    for (let i = 0; i < splitThresholds.length; i++) {
+      const threshold = splitThresholds[i];
 
       // Check if we've crossed this threshold (health went from above to below threshold)
       if (!this.crossedThresholds.has(threshold)) {
@@ -133,20 +132,20 @@ export class SplitterBoss extends BossEnemy {
     const newIds: number[] = [];
     const positions: Array<{ x: number; y: number }> = [];
     const usedPositions: Vector2[] = [];
-    const MIN_DISTANCE_BETWEEN_SPLITTERS = 32; // Minimum distance between spawned splitters
+    const minDistanceBetweenSplitters = getConfig().boss.SPLITTER_BOSS_MIN_DISTANCE_BETWEEN;
 
     // Create 2 new splitter bosses
     for (let i = 0; i < 2; i++) {
       let spawnPosition: Vector2 | null = null;
       let attempts = 0;
-      const maxAttempts = 20;
+      const maxAttempts = getConfig().boss.SPLITTER_BOSS_SPAWN_ATTEMPTS;
 
       // Try to find a valid position that doesn't overlap with already spawned splitters
       while (!spawnPosition && attempts < maxAttempts) {
         const candidatePosition = mapManager.findRandomValidSpawnPosition(
           center,
-          SplitterBoss.MIN_SPLIT_RADIUS,
-          SplitterBoss.MAX_SPLIT_RADIUS
+          getConfig().boss.SPLITTER_BOSS_MIN_SPLIT_RADIUS,
+          getConfig().boss.SPLITTER_BOSS_MAX_SPLIT_RADIUS
         );
 
         if (candidatePosition) {
@@ -163,7 +162,7 @@ export class SplitterBoss extends BossEnemy {
             const distance = candidateCenter.distance(usedCenter);
             poolManager.vector2.release(usedCenter);
 
-            if (distance < MIN_DISTANCE_BETWEEN_SPLITTERS) {
+            if (distance < minDistanceBetweenSplitters) {
               isValidPosition = false;
               break;
             }
@@ -185,9 +184,10 @@ export class SplitterBoss extends BossEnemy {
       // If we still don't have a valid position, try a simple offset
       if (!spawnPosition) {
         const angle = (Math.PI * 2 * i) / 2; // 0 and PI radians
+        const fallbackDistance = getConfig().boss.SPLITTER_BOSS_FALLBACK_SPAWN_DISTANCE;
         const offset = PoolManager.getInstance().vector2.claim(
-          Math.cos(angle) * 40,
-          Math.sin(angle) * 40
+          Math.cos(angle) * fallbackDistance,
+          Math.sin(angle) * fallbackDistance
         );
         spawnPosition = PoolManager.getInstance().vector2.claim(
           center.x + offset.x,

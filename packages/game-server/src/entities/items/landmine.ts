@@ -27,7 +27,6 @@ export class Landmine extends Entity implements IEntity {
   private static get SIZE(): Vector2 {
     return PoolManager.getInstance().vector2.claim(16, 16);
   }
-  private static readonly DAMAGE = 7;
   private static readonly TRIGGER_RADIUS = getConfig().combat.ITEM_TRIGGER_RADIUS;
   public static readonly DEFAULT_COUNT = 1;
   private untilActive: Cooldown;
@@ -38,7 +37,7 @@ export class Landmine extends Entity implements IEntity {
     // Initialize serializable fields
     this.serialized = new SerializableFields({ isActive: false }, () => this.markEntityDirty());
 
-    this.untilActive = new Cooldown(2);
+    this.untilActive = new Cooldown(getConfig().trap.LANDMINE_ACTIVATION_DELAY);
 
     const count = itemState?.count ?? Landmine.DEFAULT_COUNT;
 
@@ -102,7 +101,7 @@ export class Landmine extends Entity implements IEntity {
       const dist = distance(position, entityPos);
 
       if (dist <= getConfig().combat.LANDMINE_EXPLOSION_RADIUS) {
-        entity.getExt(Destructible).damage(Landmine.DAMAGE);
+        entity.getExt(Destructible).damage(getConfig().trap.LANDMINE_DAMAGE);
       }
     }
 

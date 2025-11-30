@@ -27,6 +27,12 @@ import { votingConfig, type VotingConfig } from "./voting-config";
 import { infectionConfig, type InfectionConfig } from "./infection-config";
 import { hudConfig, type HudConfig } from "./hud-config";
 import { aiPlayerConfig, type AiPlayerConfig } from "./ai-player-config";
+import { bossConfig, type BossConfig } from "./boss-config";
+import { trapConfig, type TrapConfig } from "./trap-config";
+import { ammoConfig, type AmmoConfig } from "./ammo-config";
+import { projectileBalanceConfig, type ProjectileBalanceConfig } from "./projectile-balance-config";
+import { aiConfig, type AiConfig, aiThreatWeights, type AiThreatWeights, getAiWeaponRanges } from "./ai-config";
+
 /**
  * Combined game configuration object
  */
@@ -47,6 +53,12 @@ export interface GameConfig {
   infection: InfectionConfig;
   hud: HudConfig;
   aiPlayer: AiPlayerConfig;
+  boss: BossConfig;
+  trap: TrapConfig;
+  ammo: AmmoConfig;
+  projectileBalance: ProjectileBalanceConfig;
+  ai: AiConfig;
+  aiThreatWeights: AiThreatWeights;
 }
 
 /**
@@ -69,6 +81,12 @@ const defaultConfig: GameConfig = {
   infection: infectionConfig,
   hud: hudConfig,
   aiPlayer: aiPlayerConfig,
+  boss: bossConfig,
+  trap: trapConfig,
+  ammo: ammoConfig,
+  projectileBalance: projectileBalanceConfig,
+  ai: aiConfig,
+  aiThreatWeights: aiThreatWeights,
 };
 
 /**
@@ -127,6 +145,12 @@ export {
   infectionConfig,
   hudConfig,
   aiPlayerConfig,
+  bossConfig,
+  trapConfig,
+  ammoConfig,
+  projectileBalanceConfig,
+  aiConfig,
+  aiThreatWeights,
 };
 
 /**
@@ -148,9 +172,27 @@ export type {
   InfectionConfig,
   HudConfig,
   AiPlayerConfig,
+  BossConfig,
+  TrapConfig,
+  AmmoConfig,
+  ProjectileBalanceConfig,
+  AiConfig,
+  AiThreatWeights,
 };
 
 /**
  * Re-export merchant types
  */
 export type { MerchantShopItem } from "./merchant-config";
+
+/**
+ * Re-export AI helper constants
+ */
+export {
+  AI_GOOD_WEAPONS,
+  AI_ALL_WEAPONS,
+  AI_WEAPON_AMMO_MAP,
+  AI_WEAPON_PRIORITY,
+  AI_MELEE_WEAPONS,
+  getAiWeaponRanges,
+} from "./ai-config";

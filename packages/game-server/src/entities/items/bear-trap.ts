@@ -27,7 +27,6 @@ export class BearTrap extends Entity implements IEntity {
   private static get SIZE(): Vector2 {
     return PoolManager.getInstance().vector2.claim(16, 16);
   }
-  private static readonly DAMAGE = 1;
   private static readonly TRIGGER_RADIUS = getConfig().combat.ITEM_TRIGGER_RADIUS;
   private triggerExtension: OneTimeTrigger | null = null;
   private interactiveExtension: Interactive;
@@ -157,7 +156,7 @@ export class BearTrap extends Entity implements IEntity {
 
         // Damage the entity
         if (entity.hasExt(Destructible)) {
-          entity.getExt(Destructible).damage(BearTrap.DAMAGE);
+          entity.getExt(Destructible).damage(getConfig().trap.BEAR_TRAP_DAMAGE);
         }
 
         // Disarm the trap

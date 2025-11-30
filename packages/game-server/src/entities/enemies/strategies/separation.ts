@@ -5,33 +5,7 @@ import { getZombieTypesSet } from "@shared/constants";
 import { normalizeVector } from "@/util/physics";
 import Positionable from "@/extensions/positionable";
 import Destructible from "@/extensions/destructible";
-
-/**
- * Configuration for zombie separation behavior
- */
-export const SEPARATION_CONFIG = {
-  /**
-   * Radius to check for nearby zombies (in pixels)
-   */
-  SEPARATION_RADIUS: 8,
-
-  /**
-   * Maximum strength of separation force
-   */
-  SEPARATION_STRENGTH: 200,
-
-  /**
-   * Weight of separation force relative to pathfinding velocity (0-1)
-   * Higher values mean separation has more influence
-   */
-  SEPARATION_WEIGHT: 0.3,
-
-  /**
-   * Minimum distance before separation kicks in (in pixels)
-   * Prevents jittery movement when zombies are far apart
-   */
-  MIN_SEPARATION_DISTANCE: 4,
-} as const;
+import { getConfig } from "@shared/config";
 
 /**
  * Calculates separation force to push zombie away from nearby zombies.
@@ -46,9 +20,10 @@ export function calculateSeparationForce(zombie: BaseEnemy): Vector2 {
   const zombieTypesSet = getZombieTypesSet();
 
   // Find nearby zombies using spatial grid
+  const entityConfig = getConfig().entity;
   const nearbyZombies = zombie
     .getEntityManager()
-    .getNearbyEntities(zombiePos, SEPARATION_CONFIG.SEPARATION_RADIUS, zombieTypesSet);
+    .getNearbyEntities(zombiePos, entityConfig.ZOMBIE_SEPARATION_RADIUS, zombieTypesSet);
 
   // If no nearby zombies, return zero vector
   if (nearbyZombies.length === 0) {
@@ -82,8 +57,8 @@ export function calculateSeparationForce(zombie: BaseEnemy): Vector2 {
 
     // Skip if too far or too close (avoid division by zero)
     if (
-      distance < SEPARATION_CONFIG.MIN_SEPARATION_DISTANCE ||
-      distance > SEPARATION_CONFIG.SEPARATION_RADIUS
+      distance < entityConfig.ZOMBIE_MIN_SEPARATION_DISTANCE ||
+      distance > entityConfig.ZOMBIE_SEPARATION_RADIUS
     ) {
       continue;
     }
@@ -106,8 +81,8 @@ export function calculateSeparationForce(zombie: BaseEnemy): Vector2 {
         poolManager.vector2.claim(separationX, separationY)
       );
       const separationForce = poolManager.vector2.claim(
-        normalizedSeparation.x * SEPARATION_CONFIG.SEPARATION_STRENGTH,
-        normalizedSeparation.y * SEPARATION_CONFIG.SEPARATION_STRENGTH
+        normalizedSeparation.x * entityConfig.ZOMBIE_SEPARATION_STRENGTH,
+        normalizedSeparation.y * entityConfig.ZOMBIE_SEPARATION_STRENGTH
       );
       poolManager.vector2.release(normalizedSeparation);
       return separationForce;
@@ -129,13 +104,14 @@ export function blendSeparationForce(
   separationForce: Vector2
 ): Vector2 {
   const poolManager = PoolManager.getInstance();
+  const entityConfig = getConfig().entity;
 
   // Blend: (1 - weight) * pathfinding + weight * separation
-  const pathWeight = 1 - SEPARATION_CONFIG.SEPARATION_WEIGHT;
+  const pathWeight = 1 - entityConfig.ZOMBIE_SEPARATION_WEIGHT;
   const blendedX =
-    pathfindingVelocity.x * pathWeight + separationForce.x * SEPARATION_CONFIG.SEPARATION_WEIGHT;
+    pathfindingVelocity.x * pathWeight + separationForce.x * entityConfig.ZOMBIE_SEPARATION_WEIGHT;
   const blendedY =
-    pathfindingVelocity.y * pathWeight + separationForce.y * SEPARATION_CONFIG.SEPARATION_WEIGHT;
+    pathfindingVelocity.y * pathWeight + separationForce.y * entityConfig.ZOMBIE_SEPARATION_WEIGHT;
 
   return poolManager.vector2.claim(blendedX, blendedY);
 }

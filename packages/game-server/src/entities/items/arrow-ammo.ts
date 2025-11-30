@@ -1,8 +1,11 @@
 import { IGameManagers } from "@/managers/types";
 import { StackableItem } from "@/entities/items/stackable-item";
+import { getConfig } from "@shared/config";
 
 export class ArrowAmmo extends StackableItem {
-  public static readonly DEFAULT_AMMO_COUNT = 16;
+  public static get DEFAULT_AMMO_COUNT(): number {
+    return getConfig().ammo.ARROW_AMMO_DEFAULT_COUNT;
+  }
 
   constructor(gameManagers: IGameManagers, itemState?: { count?: number }) {
     super(

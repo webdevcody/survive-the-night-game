@@ -10,9 +10,9 @@ import Movable from "@/extensions/movable";
 import { Cooldown } from "@/entities/util/cooldown";
 import { MeleeMovementStrategy } from "./strategies/movement";
 import { MeleeAttackStrategy } from "./strategies/attack";
+import { getConfig } from "@shared/config";
 
 export class BigZombie extends BaseEnemy {
-  public static readonly KNOCKBACK_FORCE = 600;
 
   constructor(gameManagers: IGameManagers) {
     super(gameManagers, Entities.BIG_ZOMBIE);
@@ -29,9 +29,10 @@ export class BigZombie extends BaseEnemy {
         );
 
         const poolManager = PoolManager.getInstance();
+        const knockbackForce = getConfig().boss.BIG_ZOMBIE_KNOCKBACK_FORCE;
         const knockbackVelocity = poolManager.vector2.claim(
-          knockbackDirection.x * BigZombie.KNOCKBACK_FORCE,
-          knockbackDirection.y * BigZombie.KNOCKBACK_FORCE
+          knockbackDirection.x * knockbackForce,
+          knockbackDirection.y * knockbackForce
         );
 
         entity.getExt(Movable).setVelocity(knockbackVelocity);

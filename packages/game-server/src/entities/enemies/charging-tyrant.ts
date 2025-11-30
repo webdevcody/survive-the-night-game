@@ -10,6 +10,7 @@ import Movable from "@/extensions/movable";
 import { TargetingSystem } from "./strategies/targeting";
 import PoolManager from "@shared/util/pool-manager";
 import Vector2 from "@/util/vector2";
+import { getConfig } from "@shared/config";
 
 enum ChargingState {
   WALKING, // Normal pathfinding to players
@@ -37,7 +38,6 @@ export class ChargingTyrant extends BossEnemy {
   private chargeTarget: { position: Vector2 } | null = null;
   private lastChargePosition: Vector2 | null = null;
   private wallCollisionTimer: number = 0;
-  private static readonly WALL_COLLISION_DETECTION_TIME = 0.1; // Detect wall collision after 0.1 seconds of no movement
 
   constructor(gameManagers: IGameManagers) {
     super(gameManagers, Entities.CHARGING_TYRANT);
@@ -108,7 +108,7 @@ export class ChargingTyrant extends BossEnemy {
         this.wallCollisionTimer += deltaTime;
 
         // If we've been stuck for a short time, trigger ground slam
-        if (this.wallCollisionTimer >= ChargingTyrant.WALL_COLLISION_DETECTION_TIME) {
+        if (this.wallCollisionTimer >= getConfig().boss.CHARGING_TYRANT_WALL_COLLISION_DETECTION_TIME) {
           this.performGroundSlam();
           this.state = ChargingState.RECOVERING;
           this.recoveryCooldown.reset();
