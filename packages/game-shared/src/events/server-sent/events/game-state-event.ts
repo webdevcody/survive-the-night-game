@@ -3,6 +3,7 @@ import { ServerSentEvents } from "../../events";
 import { RawEntity } from "../../../types/entity";
 import { WaveState } from "../../../types/wave";
 import { VotingState } from "../../../types/voting";
+import { ZombieLivesState } from "../../../types/zombie-lives";
 import { BufferReader } from "../../../util/buffer-serialization";
 import {
   GAME_STATE_BIT_TIMESTAMP,
@@ -14,6 +15,7 @@ import {
   GAME_STATE_BIT_REMOVED_ENTITY_IDS,
   GAME_STATE_BIT_MAP_DATA,
   GAME_STATE_BIT_VOTING_STATE,
+  GAME_STATE_BIT_ZOMBIE_LIVES_STATE,
   GAME_STATE_FIELD_BITS,
   FIELD_TYPE_STRING,
   FIELD_TYPE_NUMBER,
@@ -44,6 +46,8 @@ export interface GameStateData {
   mapData?: MapData;
   // Voting state (included during voting phase)
   votingState?: VotingState;
+  // Zombie lives state (included during infection mode)
+  zombieLivesState?: ZombieLivesState;
 }
 
 export class GameStateEvent implements GameEvent<GameStateData> {
@@ -101,6 +105,10 @@ export class GameStateEvent implements GameEvent<GameStateData> {
 
   public getVotingState(): VotingState | undefined {
     return this.data.votingState;
+  }
+
+  public getZombieLivesState(): ZombieLivesState | undefined {
+    return this.data.zombieLivesState;
   }
 
   /**
@@ -164,12 +172,13 @@ export class GameStateEvent implements GameEvent<GameStateData> {
     const bitset = gameStateReader.readUInt16();
 
     // Iterate through bits deterministically and read only fields that are set
-    // Note: REMOVED_ENTITY_IDS, MAP_DATA, and VOTING_STATE bits are handled separately after the loop
+    // Note: REMOVED_ENTITY_IDS, MAP_DATA, VOTING_STATE, and ZOMBIE_LIVES_STATE bits are handled separately after the loop
     for (const bit of GAME_STATE_FIELD_BITS) {
       if (
         bit === GAME_STATE_BIT_REMOVED_ENTITY_IDS ||
         bit === GAME_STATE_BIT_MAP_DATA ||
-        bit === GAME_STATE_BIT_VOTING_STATE
+        bit === GAME_STATE_BIT_VOTING_STATE ||
+        bit === GAME_STATE_BIT_ZOMBIE_LIVES_STATE
       ) {
         // Skip these bits in the loop - they're handled separately after
         continue;
@@ -228,6 +237,13 @@ export class GameStateEvent implements GameEvent<GameStateData> {
       } catch (e) {
         console.error("Failed to parse voting state:", e);
       }
+    }
+
+    // Read zombie lives state if bit is set (sent during infection mode)
+    if (bitset & GAME_STATE_BIT_ZOMBIE_LIVES_STATE) {
+      const current = gameStateReader.readUInt16();
+      const max = gameStateReader.readUInt16();
+      gameStateData.zombieLivesState = { current, max };
     }
 
     const event = new GameStateEvent(gameStateData as GameStateData);

@@ -9,9 +9,11 @@ import {
   GAME_STATE_BIT_REMOVED_ENTITY_IDS,
   GAME_STATE_BIT_MAP_DATA,
   GAME_STATE_BIT_VOTING_STATE,
+  GAME_STATE_BIT_ZOMBIE_LIVES_STATE,
   GAME_STATE_FIELD_BITS,
 } from "@shared/util/serialization-constants";
 import { VotingState } from "@shared/types/voting";
+import { ZombieLivesState } from "@shared/types/zombie-lives";
 import { encodeWaveState } from "@shared/util/wave-state-encoding";
 import { IEntity } from "@/entities/types";
 import { GameStateData } from "../../../game-shared/src/events/server-sent/events/game-state-event";
@@ -61,12 +63,14 @@ export class BufferManager {
    * @param hasRemovedEntities - Whether there are removed entities (for bitset)
    * @param mapData - Optional map data to include (only for full state updates)
    * @param votingState - Optional voting state to include (during voting phase)
+   * @param zombieLivesState - Optional zombie lives state to include (during infection mode)
    */
   writeGameState(
     gameState: Partial<GameStateData>,
     hasRemovedEntities: boolean = false,
     mapData?: MapData,
-    votingState?: VotingState
+    votingState?: VotingState,
+    zombieLivesState?: ZombieLivesState
   ): void {
     // Build bitset to track which fields are present
     let bitset = 0;
@@ -98,12 +102,15 @@ export class BufferManager {
     if (votingState !== undefined) {
       bitset |= GAME_STATE_BIT_VOTING_STATE;
     }
+    if (zombieLivesState !== undefined) {
+      bitset |= GAME_STATE_BIT_ZOMBIE_LIVES_STATE;
+    }
 
     // Write bitset as UInt16 (to support more than 8 flags)
     this.writer.writeUInt16(bitset);
 
     // Iterate through bits deterministically and write only fields that are set
-    // Note: REMOVED_ENTITY_IDS, MAP_DATA, and VOTING_STATE are handled separately after the loop
+    // Note: REMOVED_ENTITY_IDS, MAP_DATA, VOTING_STATE, and ZOMBIE_LIVES_STATE are handled separately after the loop
     for (const bit of GAME_STATE_FIELD_BITS) {
       if (bitset & bit) {
         switch (bit) {
@@ -140,6 +147,10 @@ export class BufferManager {
             // This bit is handled separately in writeVotingState
             // We don't write anything here, just track that voting state exists
             break;
+          case GAME_STATE_BIT_ZOMBIE_LIVES_STATE:
+            // This bit is handled separately in writeZombieLivesState
+            // We don't write anything here, just track that zombie lives state exists
+            break;
         }
       }
     }
@@ -162,6 +173,16 @@ export class BufferManager {
   writeVotingState(votingState: VotingState): void {
     // Serialize voting state as JSON string
     this.writer.writeString(JSON.stringify(votingState));
+  }
+
+  /**
+   * Write zombie lives state to the buffer (should be called after writeVotingState)
+   * @param zombieLivesState - The zombie lives state to serialize
+   */
+  writeZombieLivesState(zombieLivesState: ZombieLivesState): void {
+    // Write current and max as UInt16 values (more efficient than JSON)
+    this.writer.writeUInt16(zombieLivesState.current);
+    this.writer.writeUInt16(zombieLivesState.max);
   }
 
   /**

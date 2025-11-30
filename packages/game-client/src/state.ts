@@ -3,6 +3,9 @@ import { WaveState } from "@shared/types/wave";
 import { EntityType } from "@shared/types/entity";
 import { GameModeId } from "@shared/events/server-sent/events/game-started-event";
 import { VotingState } from "@shared/types/voting";
+import { ZombieLivesState } from "@shared/types/zombie-lives";
+
+export type { ZombieLivesState };
 
 export type GameState = {
   startedAt: number;
@@ -31,6 +34,8 @@ export type GameState = {
   darknessHue: "red" | "blue";
   // Voting state (active during voting phase after game ends)
   votingState: VotingState | null;
+  // Zombie lives state (infection mode only)
+  zombieLivesState: ZombieLivesState | null;
 };
 
 export function getEntityById(gameState: GameState, id: number): ClientEntityBase | undefined {

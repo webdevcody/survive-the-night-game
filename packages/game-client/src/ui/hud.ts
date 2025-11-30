@@ -17,6 +17,8 @@ import {
   MuteButtonPanel,
   CrateIndicatorsPanel,
   SurvivorIndicatorsPanel,
+  HumanIndicatorsPanel,
+  ZombieLivesPanel,
 } from "./panels";
 import { getConfig } from "@shared/config";
 import { scaleHudValue, calculateHudScale } from "@/util/hud-scale";
@@ -51,28 +53,8 @@ const HUD_SETTINGS = {
     panelBackground: "white",
     text: "Press any key to respawn",
   },
-  CrateIndicators: {
-    padding: 0,
-    background: "transparent",
-    borderColor: "transparent",
-    borderWidth: 0,
-    arrowSize: 30,
-    arrowDistance: 60,
-    arrowColor: "rgba(255, 50, 50, 0.9)",
-    crateSpriteSize: 32,
-    minDistance: 100,
-  },
-  SurvivorIndicators: {
-    padding: 0,
-    background: "transparent",
-    borderColor: "transparent",
-    borderWidth: 0,
-    arrowSize: 30,
-    arrowDistance: 60,
-    arrowColor: "rgba(50, 255, 50, 0.9)", // Green color for survivors
-    survivorSpriteSize: 32,
-    minDistance: 100,
-  },
+  // Note: CrateIndicators, SurvivorIndicators, and HumanIndicators settings
+  // are now loaded from getConfig().hud in the constructor
   BottomRightPanels: {
     right: 20,
     bottom: 20,
@@ -131,6 +113,17 @@ const HUD_SETTINGS = {
     right: 40,
     marginTop: 2, // Gap below clock
   },
+  ZombieLives: {
+    padding: 10,
+    background: "rgba(0, 0, 0, 0.85)",
+    borderColor: "rgba(100, 200, 100, 0.8)", // Green border for zombie lives
+    borderWidth: 3,
+    font: "bold 28px monospace",
+    labelFont: "14px Arial",
+    textColor: "rgba(255, 255, 255, 0.9)",
+    livesColor: "rgba(100, 255, 100, 1)", // Bright green for lives count
+    marginTop: 8, // Gap below wave panel
+  },
 };
 
 export class Hud {
@@ -154,6 +147,8 @@ export class Hud {
   private muteButtonPanel: MuteButtonPanel;
   private crateIndicatorsPanel: CrateIndicatorsPanel;
   private survivorIndicatorsPanel: SurvivorIndicatorsPanel;
+  private humanIndicatorsPanel: HumanIndicatorsPanel;
+  private zombieLivesPanel: ZombieLivesPanel;
   private gameOverDialog: GameOverDialogUI;
   private hotbar: InventoryBarUI;
   private weaponsHud: WeaponsHUD;
@@ -336,21 +331,68 @@ export class Hud {
       }
     );
 
-    // Initialize crate indicators panel
+    // Initialize crate indicators panel (using config values)
+    const hudCfg = getConfig().hud;
     this.crateIndicatorsPanel = new CrateIndicatorsPanel(
       {
-        ...HUD_SETTINGS.CrateIndicators,
+        padding: 0,
+        background: "transparent",
+        borderColor: "transparent",
+        borderWidth: 0,
+        arrowSize: hudCfg.crateIndicators.arrowSize,
+        arrowDistance: hudCfg.crateIndicators.arrowDistance,
+        arrowColor: hudCfg.crateIndicators.arrowColor,
+        crateSpriteSize: hudCfg.crateIndicators.spriteSize,
+        minDistance: hudCfg.crateIndicators.minDistance,
       },
       this.assetManager
     );
 
-    // Initialize survivor indicators panel
+    // Initialize survivor indicators panel (using config values)
     this.survivorIndicatorsPanel = new SurvivorIndicatorsPanel(
       {
-        ...HUD_SETTINGS.SurvivorIndicators,
+        padding: 0,
+        background: "transparent",
+        borderColor: "transparent",
+        borderWidth: 0,
+        arrowSize: hudCfg.survivorIndicators.arrowSize,
+        arrowDistance: hudCfg.survivorIndicators.arrowDistance,
+        arrowColor: hudCfg.survivorIndicators.arrowColor,
+        survivorSpriteSize: hudCfg.survivorIndicators.spriteSize,
+        minDistance: hudCfg.survivorIndicators.minDistance,
       },
       this.assetManager
     );
+
+    // Initialize human indicators panel (for zombie players in infection/battle royale)
+    this.humanIndicatorsPanel = new HumanIndicatorsPanel(
+      {
+        padding: 0,
+        background: "transparent",
+        borderColor: "transparent",
+        borderWidth: 0,
+        arrowSize: hudCfg.humanIndicators.arrowSize,
+        arrowDistance: hudCfg.humanIndicators.arrowDistance,
+        arrowColor: hudCfg.humanIndicators.arrowColor,
+        playerSpriteSize: hudCfg.humanIndicators.spriteSize,
+        minDistance: hudCfg.humanIndicators.minDistance,
+      },
+      this.assetManager
+    );
+
+    // Initialize zombie lives panel (for infection mode)
+    this.zombieLivesPanel = new ZombieLivesPanel({
+      padding: HUD_SETTINGS.ZombieLives.padding,
+      background: HUD_SETTINGS.ZombieLives.background,
+      borderColor: HUD_SETTINGS.ZombieLives.borderColor,
+      borderWidth: HUD_SETTINGS.ZombieLives.borderWidth,
+      font: HUD_SETTINGS.ZombieLives.font,
+      labelFont: HUD_SETTINGS.ZombieLives.labelFont,
+      textColor: HUD_SETTINGS.ZombieLives.textColor,
+      livesColor: HUD_SETTINGS.ZombieLives.livesColor,
+      x: 0, // Will be calculated in render
+      y: 0, // Will be calculated in render
+    });
   }
 
   public setRenderer(renderer: import("@/renderer").Renderer): void {
@@ -395,6 +437,7 @@ export class Hud {
     // Render indicators FIRST so they appear behind the panels that render after
     this.crateIndicatorsPanel.render(ctx, gameState);
     this.survivorIndicatorsPanel.render(ctx, gameState);
+    this.humanIndicatorsPanel.render(ctx, gameState); // Only renders for zombie players
 
     // Calculate scaled minimap values once for reuse
     const minimapSize = scaleHudValue(240, width, height); // MINIMAP_SETTINGS.size (reduced from 280, was 400 originally)
@@ -483,6 +526,18 @@ export class Hud {
     this.wavePanel.render(ctx, gameState);
     ctx.restore();
 
+    // Render zombie lives panel below wave panel (infection mode only)
+    if (gameState.zombieLivesState) {
+      ctx.save();
+      ctx.setTransform(1, 0, 0, 1, 0, 0);
+      const zombieLivesY = waveY + scaledWaveHeight + scaleHudValue(HUD_SETTINGS.ZombieLives.marginTop, width, height);
+      const zombieLivesWidth = this.zombieLivesPanel.getWidth(ctx, gameState);
+      const zombieLivesX = width - scaledWaveRight - zombieLivesWidth;
+      this.zombieLivesPanel.setPosition(zombieLivesX, zombieLivesY);
+      this.zombieLivesPanel.render(ctx, gameState);
+      ctx.restore();
+    }
+
     // Render top panels (FPS, ping, version) at top-left, to the right of config button
     ctx.save();
     ctx.setTransform(1, 0, 0, 1, 0, 0);
@@ -537,8 +592,12 @@ export class Hud {
     // Render hotbar (hide for zombie players - they can't use items)
     const currentPlayer = getPlayer(gameState);
     const isZombiePlayer = currentPlayer?.isZombiePlayer?.() ?? false;
+    const isInfectionMode = gameState.gameMode === "infection";
     if (!isZombiePlayer) {
       this.hotbar.render(ctx, gameState);
+    } else if (isInfectionMode) {
+      // Show health and stamina bars for zombie players in infection mode
+      this.hotbar.renderHealthAndStamina(ctx, gameState);
     }
 
     // Render death screen if player is dead and game is not over

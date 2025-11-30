@@ -12,7 +12,6 @@ import Movable from "@/extensions/movable";
 import Positionable from "@/extensions/positionable";
 import Updatable from "@/extensions/updatable";
 import ResourcesBag from "@/extensions/resources-bag";
-import Placeable from "@/extensions/placeable";
 import { Broadcaster, IGameManagers } from "@/managers/types";
 import { Entities } from "@/constants";
 import { Entity } from "@/entities/entity";
@@ -130,7 +129,12 @@ export class Player extends Entity {
 
     [
       { itemType: "pistol" as const },
-      { itemType: "torch" as const },
+      {
+        itemType: "torch" as const,
+        state: {
+          count: 1,
+        },
+      },
       { itemType: "knife" as const },
       {
         itemType: "pistol_ammo" as const,
@@ -389,7 +393,9 @@ export class Player extends Entity {
         // Consume the item (handles energy drink, bandage, and other consumables)
         const isAI = this.serialized.get("isAI");
         if (isAI) {
-          console.log(`[AI] ${this.getDisplayName()} using ${itemType} (health: ${this.getHealth()}/${this.getMaxHealth()})`);
+          console.log(
+            `[AI] ${this.getDisplayName()} using ${itemType} (health: ${this.getHealth()}/${this.getMaxHealth()})`
+          );
         }
         activeItemEntity.getExt(Consumable).consume(this.getId(), itemIndex);
         activeItemEntity.clearDirtyFlags();
@@ -531,13 +537,16 @@ export class Player extends Entity {
         // Check if infinite run extension is active
         const hasInfiniteRun = this.hasExt(InfiniteRun);
 
-        // Zombies cannot sprint
+        // Zombies cannot sprint EXCEPT in infection mode
         const isZombie = this.serialized.get("isZombie");
+        const strategy = this.getGameManagers().getGameServer().getGameLoop().getGameModeStrategy();
+        const isInfectionMode = strategy.getConfig().modeId === "infection";
+        const zombieCanSprint = isZombie && isInfectionMode;
 
-        // Can only sprint if: has stamina AND not exhausted (or infinite run is active) AND not a zombie
+        // Can sprint if: (human with stamina) OR (zombie in infection mode with stamina)
         const stamina = this.serialized.get("stamina");
         const canSprint =
-          !isZombie &&
+          (!isZombie || zombieCanSprint) &&
           this.serialized.get("inputSprint") &&
           (hasInfiniteRun || (stamina > 0 && this.exhaustionTimer <= 0));
         const sprintMultiplier = canSprint ? getConfig().player.SPRINT_MULTIPLIER : 1;
@@ -657,10 +666,7 @@ export class Player extends Entity {
     const autoPickupRadius = getConfig().player.AUTO_PICKUP_RADIUS;
 
     // Get nearby entities that might be pickupable
-    const nearbyEntities = this.getEntityManager().getNearbyEntities(
-      playerPos,
-      autoPickupRadius
-    );
+    const nearbyEntities = this.getEntityManager().getNearbyEntities(playerPos, autoPickupRadius);
 
     for (const entity of nearbyEntities) {
       // Skip self

@@ -114,10 +114,32 @@ export class AITargetingSystem {
     }
 
     // Check for other players
+    // Get game mode settings to determine if we should target other players
+    const strategy = this.gameManagers.getGameServer().getGameLoop().getGameModeStrategy();
+    const friendlyFireEnabled = strategy.getConfig().friendlyFireEnabled;
+    const isZombiePlayer = player.isZombie();
+
     const players = entityManager.getPlayerEntities() as Player[];
     for (const otherPlayer of players) {
       if (otherPlayer.getId() === player.getId()) continue;
       if (otherPlayer.isDead()) continue;
+
+      // Determine if this player is a valid target based on game mode and zombie status
+      // - Zombie AI: only targets non-zombie players (always)
+      // - Human AI with friendly fire OFF: only targets zombie players
+      // - Human AI with friendly fire ON: targets all other players
+      const otherIsZombie = otherPlayer.isZombie();
+
+      if (isZombiePlayer) {
+        // Zombie AI only targets non-zombie players
+        if (otherIsZombie) continue;
+      } else {
+        // Human AI - check friendly fire rules
+        if (!friendlyFireEnabled && !otherIsZombie) {
+          // Friendly fire disabled and other player is human - skip
+          continue;
+        }
+      }
 
       const otherPos = otherPlayer.getCenterPosition();
       const dist = distance(playerPos, otherPos);
@@ -205,14 +227,32 @@ export class AITargetingSystem {
     }
 
     // Scan players
+    // Get game mode settings to determine if we should target other players
+    const strategy = this.gameManagers.getGameServer().getGameLoop().getGameModeStrategy();
+    const friendlyFireEnabled = strategy.getConfig().friendlyFireEnabled;
+
     const players = entityManager.getPlayerEntities() as Player[];
     const isZombieAI = player.isZombie();
     for (const otherPlayer of players) {
       if (otherPlayer.getId() === player.getId()) continue;
       if (otherPlayer.isDead()) continue;
 
-      // Zombie AI only considers non-zombie players as threats
-      if (isZombieAI && otherPlayer.isZombie()) continue;
+      // Determine if this player is a valid target based on game mode and zombie status
+      // - Zombie AI: only targets non-zombie players (always)
+      // - Human AI with friendly fire OFF: only targets zombie players
+      // - Human AI with friendly fire ON: targets all other players
+      const otherIsZombie = otherPlayer.isZombie();
+
+      if (isZombieAI) {
+        // Zombie AI only considers non-zombie players as threats
+        if (otherIsZombie) continue;
+      } else {
+        // Human AI - check friendly fire rules
+        if (!friendlyFireEnabled && !otherIsZombie) {
+          // Friendly fire disabled and other player is human - skip
+          continue;
+        }
+      }
 
       const assessment = ThreatScorer.assessThreat(
         playerPos,
@@ -427,13 +467,28 @@ export class AITargetingSystem {
     }
 
     // Check players
+    // Get game mode settings to determine if we should target other players
+    const strategy = this.gameManagers.getGameServer().getGameLoop().getGameModeStrategy();
+    const friendlyFireEnabled = strategy.getConfig().friendlyFireEnabled;
+
     const players = entityManager.getPlayerEntities() as Player[];
     for (const otherPlayer of players) {
       if (otherPlayer.getId() === player.getId()) continue;
       if (otherPlayer.isDead()) continue;
 
-      // Zombie AI only targets non-zombie players
-      if (isZombieAI && otherPlayer.isZombie()) continue;
+      // Determine if this player is a valid target based on game mode and zombie status
+      const otherIsZombie = otherPlayer.isZombie();
+
+      if (isZombieAI) {
+        // Zombie AI only targets non-zombie players
+        if (otherIsZombie) continue;
+      } else {
+        // Human AI - check friendly fire rules
+        if (!friendlyFireEnabled && !otherIsZombie) {
+          // Friendly fire disabled and other player is human - skip
+          continue;
+        }
+      }
 
       const otherPos = otherPlayer.getCenterPosition();
       const dist = distance(playerPos, otherPos);
@@ -474,6 +529,18 @@ export class AITargetingSystem {
     const needsAmmo = this.needsAmmo(inventory);
     const healthPercent = player.getHealth() / player.getMaxHealth();
     const needsHealth = healthPercent < 0.7;
+
+    // Build set of useful ammo types (ammo for weapons we own)
+    // Also build set of owned weapon types to avoid picking up duplicates
+    const ownedWeapons = this.getOwnedWeapons(inventory);
+    const ownedWeaponTypes = new Set<string>(ownedWeapons);
+    const usefulAmmoTypes = new Set<string>();
+    for (const weapon of ownedWeapons) {
+      const ammoType = WEAPON_AMMO_MAP[weapon];
+      if (ammoType) {
+        usefulAmmoTypes.add(ammoType);
+      }
+    }
 
     // Calculate urgency multipliers based on how critical the need is
     // This ensures health packs are strongly prioritized when low HP
@@ -566,6 +633,16 @@ export class AITargetingSystem {
       // Skip items we can't pick up (inventory full and not stackable)
       if (!this.canPickUpItem(inventory, itemType)) continue;
 
+      // Skip ammo for weapons we don't own (prevents drop/pickup loop)
+      if (itemType.includes("ammo") && !usefulAmmoTypes.has(itemType)) {
+        continue;
+      }
+
+      // Skip weapons we already own (prevents hovering over duplicate weapons)
+      if ((ALL_WEAPONS as readonly string[]).includes(itemType) && ownedWeaponTypes.has(itemType)) {
+        continue;
+      }
+
       // Get base priority and apply urgency multipliers
       let priority = this.getLootPriority(itemType, needsWeapon, needsAmmo, needsHealth);
       if (priority <= 0) continue;
@@ -643,13 +720,20 @@ export class AITargetingSystem {
 
   /**
    * Find the best player target to hunt
-   * If the AI is a zombie, only targets non-zombie living players
+   * Respects game mode friendly fire settings
+   * - Zombie AI: only targets non-zombie players
+   * - Human AI with friendly fire OFF: only targets zombie players
+   * - Human AI with friendly fire ON: targets all other players
    */
   findBestPlayerTarget(player: Player): AITarget | null {
     const playerPos = player.getCenterPosition();
     const entityManager = this.gameManagers.getEntityManager();
     const players = entityManager.getPlayerEntities() as Player[];
     const isZombieAI = player.isZombie();
+
+    // Get game mode settings to determine if we should target other players
+    const strategy = this.gameManagers.getGameServer().getGameLoop().getGameModeStrategy();
+    const friendlyFireEnabled = strategy.getConfig().friendlyFireEnabled;
 
     let closestPlayer: Player | null = null;
     let closestDistance = Infinity;
@@ -658,8 +742,19 @@ export class AITargetingSystem {
       if (otherPlayer.getId() === player.getId()) continue;
       if (otherPlayer.isDead()) continue;
 
-      // Zombie AI can only target non-zombie players
-      if (isZombieAI && otherPlayer.isZombie()) continue;
+      // Determine if this player is a valid target based on game mode and zombie status
+      const otherIsZombie = otherPlayer.isZombie();
+
+      if (isZombieAI) {
+        // Zombie AI can only target non-zombie players
+        if (otherIsZombie) continue;
+      } else {
+        // Human AI - check friendly fire rules
+        if (!friendlyFireEnabled && !otherIsZombie) {
+          // Friendly fire disabled and other player is human - skip
+          continue;
+        }
+      }
 
       const otherPos = otherPlayer.getCenterPosition();
       if (this.pathfinder.isToxicPosition(otherPos)) continue;
@@ -1020,6 +1115,18 @@ export class AITargetingSystem {
     const healthPercent = player.getHealth() / player.getMaxHealth();
     const needsHealth = healthPercent < 0.7;
 
+    // Build set of useful ammo types (ammo for weapons we own)
+    // Also build set of owned weapon types to avoid picking up duplicates
+    const ownedWeapons = this.getOwnedWeapons(inventory);
+    const ownedWeaponTypes = new Set<string>(ownedWeapons);
+    const usefulAmmoTypes = new Set<string>();
+    for (const weapon of ownedWeapons) {
+      const ammoType = WEAPON_AMMO_MAP[weapon];
+      if (ammoType) {
+        usefulAmmoTypes.add(ammoType);
+      }
+    }
+
     for (const entity of nearbyEntities) {
       if (entity.getId() === player.getId()) continue;
       if (!entity.hasExt(Carryable) || !entity.hasExt(Positionable)) continue;
@@ -1034,6 +1141,16 @@ export class AITargetingSystem {
       // Skip items we can't pick up (inventory full and not stackable)
       if (!this.canPickUpItem(inventory, itemType)) continue;
 
+      // Skip ammo for weapons we don't own (prevents drop/pickup loop)
+      if (itemType.includes("ammo") && !usefulAmmoTypes.has(itemType)) {
+        continue;
+      }
+
+      // Skip weapons we already own (prevents hovering over duplicate weapons)
+      if ((ALL_WEAPONS as readonly string[]).includes(itemType) && ownedWeaponTypes.has(itemType)) {
+        continue;
+      }
+
       // Calculate priority for this item
       let priority = 0;
 
@@ -1041,7 +1158,7 @@ export class AITargetingSystem {
       if ((GOOD_WEAPONS as readonly string[]).includes(itemType)) {
         priority = AI_CONFIG.PRIORITY_GOOD_WEAPON;
       }
-      // Ammo when needed
+      // Ammo when needed (already filtered to useful ammo above)
       else if (needsAmmo && itemType.includes("ammo")) {
         priority = AI_CONFIG.PRIORITY_AMMO_NEEDED;
       }
@@ -1053,7 +1170,7 @@ export class AITargetingSystem {
       else if (needsWeapon && itemType === "pistol") {
         priority = AI_CONFIG.PRIORITY_ANY_WEAPON;
       }
-      // Any ammo (pick it up)
+      // Useful ammo (already filtered above)
       else if (itemType.includes("ammo")) {
         priority = AI_CONFIG.PRIORITY_ANY_AMMO;
       }

@@ -6,6 +6,8 @@ import { AI_CONFIG } from "../ai-config";
 import { AIDecision } from "../ai-decision-engine";
 import { KitePhase } from "../ai-state-machine";
 import Positionable from "@/extensions/positionable";
+import Destructible from "@/extensions/destructible";
+import { Player } from "@/entities/players/player";
 import {
   getEffectiveShootingRange,
   getMeleeAttackRange,
@@ -46,6 +48,17 @@ export class EngageStateHandler implements AIStateHandler {
     }
 
     const enemy = combatTarget.entity;
+
+    // Check if target is dead - clear target and find new one
+    const isTargetDead = enemy instanceof Player
+      ? enemy.isDead()
+      : (enemy.hasExt(Destructible) && enemy.getExt(Destructible).isDead());
+
+    if (isTargetDead) {
+      context.setCombatTarget(null);
+      return;
+    }
+
     if (!enemy.hasExt(Positionable)) return;
 
     const enemyPos = enemy.getExt(Positionable).getCenterPosition();

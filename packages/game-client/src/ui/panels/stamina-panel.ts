@@ -41,25 +41,9 @@ export class StaminaPanel extends Panel {
 
     this.resetTransform(ctx);
 
-    // Calculate inventory bar position using scaled values (same as inventory-bar.ts)
-    const scaledSlotSize = settings.slotSize * hudScale;
-    const scaledSlotsGap = settings.slotsGap * hudScale;
-    const scaledPadding = {
-      left: settings.padding.left * hudScale,
-      right: settings.padding.right * hudScale,
-      top: settings.padding.top * hudScale,
-      bottom: settings.padding.bottom * hudScale,
-    };
-    const scaledScreenMarginBottom = settings.screenMarginBottom * hudScale;
-
-    const hotbarWidth =
-      slotsNumber * scaledSlotSize +
-      (slotsNumber - 1) * scaledSlotsGap +
-      scaledPadding.left +
-      scaledPadding.right;
-    const hotbarHeight = scaledSlotSize + scaledPadding.top + scaledPadding.bottom;
-    const hotbarX = canvasWidth / 2 - hotbarWidth / 2;
-    const hotbarY = canvasHeight - hotbarHeight - scaledScreenMarginBottom;
+    // Check if inventory is displayed (not a zombie player)
+    const isZombiePlayer = player.isZombiePlayer?.() ?? false;
+    const inventoryDisplayed = !isZombiePlayer;
 
     // Scale stamina panel dimensions
     const scaledBarWidth = this.staminaSettings.width * hudScale;
@@ -77,9 +61,41 @@ export class StaminaPanel extends Panel {
       scaledIconSize + scaledPanelPadding * 2
     );
 
-    // Position stamina bar above the inventory bar, aligned to the right
-    const staminaX = hotbarX + hotbarWidth - containerWidth;
-    const staminaY = hotbarY - containerHeight - scaledMarginBottom;
+    let staminaX: number;
+    let staminaY: number;
+
+    if (inventoryDisplayed) {
+      // Calculate inventory bar position using scaled values (same as inventory-bar.ts)
+      const scaledSlotSize = settings.slotSize * hudScale;
+      const scaledSlotsGap = settings.slotsGap * hudScale;
+      const scaledPadding = {
+        left: settings.padding.left * hudScale,
+        right: settings.padding.right * hudScale,
+        top: settings.padding.top * hudScale,
+        bottom: settings.padding.bottom * hudScale,
+      };
+      const scaledScreenMarginBottom = settings.screenMarginBottom * hudScale;
+
+      const hotbarWidth =
+        slotsNumber * scaledSlotSize +
+        (slotsNumber - 1) * scaledSlotsGap +
+        scaledPadding.left +
+        scaledPadding.right;
+      const hotbarHeight = scaledSlotSize + scaledPadding.top + scaledPadding.bottom;
+      const hotbarX = canvasWidth / 2 - hotbarWidth / 2;
+      const hotbarY = canvasHeight - hotbarHeight - scaledScreenMarginBottom;
+
+      // Position stamina bar above the inventory bar, aligned to the right
+      staminaX = hotbarX + hotbarWidth - containerWidth;
+      staminaY = hotbarY - containerHeight - scaledMarginBottom;
+    } else {
+      // Position stamina bar at bottom right of center (zombie mode - side by side with hearts)
+      const scaledScreenMarginBottom = settings.screenMarginBottom * hudScale;
+      // Position to the right of center with a small gap
+      const gap = 8 * hudScale;
+      staminaX = canvasWidth / 2 + gap;
+      staminaY = canvasHeight - scaledScreenMarginBottom - containerHeight;
+    }
 
     // Draw background with border
     this.drawPanelBackground(ctx, staminaX, staminaY, containerWidth, containerHeight);

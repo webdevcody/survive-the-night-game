@@ -45,6 +45,7 @@ export interface MapColorSettings {
 export interface MapColorOptions {
   gameState?: GameState;
   myPlayerId?: number;
+  myPlayerIsZombie?: boolean;
 }
 
 /**
@@ -85,6 +86,7 @@ export function getEntityMapColor(
   // Players
   if (entity instanceof PlayerClient) {
     const isBattleRoyale = options?.gameState?.gameMode === "battle_royale";
+    const isInfection = options?.gameState?.gameMode === "infection";
     const isMyPlayer = options?.myPlayerId !== undefined && entity.getId() === options.myPlayerId;
 
     // In Battle Royale, other players show as red (enemies)
@@ -93,6 +95,20 @@ export function getEntityMapColor(
         color: settings.colors.enemy, // Red for enemy players
         indicator: convertIndicator(settings.indicators.player),
       };
+    }
+
+    // In Infection mode, zombies and humans see each other as enemies
+    if (isInfection && !isMyPlayer) {
+      const otherPlayerIsZombie = entity.isZombiePlayer();
+      const myPlayerIsZombie = options?.myPlayerIsZombie ?? false;
+
+      // If I'm a zombie and they're human, or I'm human and they're a zombie, show as enemy
+      if (myPlayerIsZombie !== otherPlayerIsZombie) {
+        return {
+          color: settings.colors.enemy, // Red for enemy players
+          indicator: convertIndicator(settings.indicators.player),
+        };
+      }
     }
 
     return {

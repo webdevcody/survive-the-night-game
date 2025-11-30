@@ -24,6 +24,8 @@ import { networkConfig, type NetworkConfig } from "./network";
 import { renderConfig, type RenderConfig } from "./render-config";
 import { entityConfig, EntityConfig } from "@/config/entity-config";
 import { votingConfig, type VotingConfig } from "./voting-config";
+import { infectionConfig, type InfectionConfig } from "./infection-config";
+import { hudConfig, type HudConfig } from "./hud-config";
 /**
  * Combined game configuration object
  */
@@ -41,6 +43,8 @@ export interface GameConfig {
   render: RenderConfig;
   entity: EntityConfig;
   voting: VotingConfig;
+  infection: InfectionConfig;
+  hud: HudConfig;
 }
 
 /**
@@ -60,6 +64,8 @@ const defaultConfig: GameConfig = {
   render: renderConfig,
   entity: entityConfig,
   voting: votingConfig,
+  infection: infectionConfig,
+  hud: hudConfig,
 };
 
 /**
@@ -115,6 +121,8 @@ export {
   networkConfig,
   renderConfig,
   votingConfig,
+  infectionConfig,
+  hudConfig,
 };
 
 /**
@@ -133,6 +141,8 @@ export type {
   NetworkConfig,
   RenderConfig,
   VotingConfig,
+  InfectionConfig,
+  HudConfig,
 };
 
 /**

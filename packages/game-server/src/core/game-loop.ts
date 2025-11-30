@@ -47,6 +47,7 @@ import {
   WinConditionResult,
   WavesModeStrategy,
   BattleRoyaleModeStrategy,
+  InfectionModeStrategy,
 } from "@/game-modes";
 import { VotableGameMode, VotingState } from "@shared/types/voting";
 
@@ -175,6 +176,12 @@ export class GameLoop {
     this.isGameReady = true;
     this.isGameOver = false;
 
+    // Reset voting state to prevent stale values
+    this.isVotingPhase = false;
+    this.votingEndTime = 0;
+    this.votes.clear();
+    this.voteCounts = { waves: 0, battle_royale: 0, infection: 0 };
+
     // Initialize wave system (only relevant for modes with waves)
     this.waveNumber = getConfig().wave.START_WAVE_NUMBER;
     this.waveState = WaveState.PREPARATION;
@@ -198,7 +205,7 @@ export class GameLoop {
 
     // Broadcast game started event with game mode
     // This tells clients to reset their state and wait for initialization
-    const gameMode = this.gameModeStrategy.getConfig().modeId as "waves" | "battle_royale";
+    const gameMode = this.gameModeStrategy.getConfig().modeId as "waves" | "battle_royale" | "infection";
     this.socketManager.broadcastEvent(new GameStartedEvent(Date.now(), gameMode));
 
     // Send initialization data (YOUR_ID + full state) to all sockets
@@ -255,11 +262,14 @@ export class GameLoop {
   }
 
   private getWinningMode(): VotableGameMode {
-    const validModes: VotableGameMode[] = ["waves", "battle_royale"];
+    const validModes: VotableGameMode[] = ["waves", "battle_royale", "infection"];
     let maxVotes = -1;
     let winners: VotableGameMode[] = [];
 
     for (const mode of validModes) {
+      // Skip disabled modes
+      if (getConfig().voting.DISABLED_MODES.includes(mode)) continue;
+
       if (this.voteCounts[mode] > maxVotes) {
         maxVotes = this.voteCounts[mode];
         winners = [mode];
@@ -285,8 +295,14 @@ export class GameLoop {
     const winningMode = this.getWinningMode();
     this.isVotingPhase = false;
 
-    const strategy =
-      winningMode === "battle_royale" ? new BattleRoyaleModeStrategy() : new WavesModeStrategy();
+    let strategy: IGameModeStrategy;
+    if (winningMode === "battle_royale") {
+      strategy = new BattleRoyaleModeStrategy();
+    } else if (winningMode === "infection") {
+      strategy = new InfectionModeStrategy();
+    } else {
+      strategy = new WavesModeStrategy();
+    }
 
     console.log(`Starting new game with mode: ${winningMode}`);
     this.startNewGame(strategy);
@@ -598,7 +614,33 @@ export class GameLoop {
       state.votingState = votingState;
     }
 
+    // Include zombie lives state for infection mode
+    const zombieLivesState = this.getZombieLivesState();
+    if (zombieLivesState) {
+      state.zombieLivesState = zombieLivesState;
+    }
+
     return state;
+  }
+
+  /**
+   * Get zombie lives state for infection mode
+   */
+  private getZombieLivesState(): { current: number; max: number } | null {
+    if (this.gameModeStrategy.getConfig().modeId !== "infection") {
+      return null;
+    }
+
+    // Access the infection strategy's zombie lives
+    const strategy = this.gameModeStrategy as any;
+    if (typeof strategy.getSharedZombieLives === "function" && typeof strategy.getMaxZombieLives === "function") {
+      return {
+        current: strategy.getSharedZombieLives(),
+        max: strategy.getMaxZombieLives(),
+      };
+    }
+
+    return null;
   }
 
   private broadcastGameState(): void {
@@ -612,13 +654,49 @@ export class GameLoop {
 
     // Compare current state with last broadcasted state using Object.keys
     Object.keys(currentState).forEach((key) => {
-      if (
-        key !== "timestamp" &&
-        currentState[key] !==
-          this.lastBroadcastedState[key as keyof typeof this.lastBroadcastedState]
-      ) {
-        (stateUpdate as any)[key] = currentState[key];
-        (this.lastBroadcastedState as any)[key] = currentState[key];
+      if (key === "timestamp") return;
+
+      const currentValue = currentState[key];
+      const lastValue = (this.lastBroadcastedState as any)[key];
+
+      // Always include zombieLivesState and votingState when they exist (they're important for UI)
+      // This ensures clients always have the latest values, especially after deaths
+      const alwaysInclude = key === "zombieLivesState" || key === "votingState";
+
+      // For objects (like zombieLivesState, votingState), do deep comparison
+      let hasChanged = false;
+      if (currentValue === null || currentValue === undefined) {
+        hasChanged = lastValue !== currentValue;
+      } else if (typeof currentValue === "object" && !Array.isArray(currentValue)) {
+        // Deep comparison for objects
+        if (lastValue === null || lastValue === undefined) {
+          hasChanged = true;
+        } else {
+          // Compare object properties
+          const currentKeys = Object.keys(currentValue);
+          const lastKeys = Object.keys(lastValue || {});
+          if (currentKeys.length !== lastKeys.length) {
+            hasChanged = true;
+          } else {
+            hasChanged = currentKeys.some(
+              (k) => (currentValue as any)[k] !== (lastValue as any)[k]
+            );
+          }
+        }
+      } else {
+        // Primitive comparison
+        hasChanged = currentValue !== lastValue;
+      }
+
+      // Include if changed OR if it's a state we always include when it exists
+      if (hasChanged || (alwaysInclude && currentValue !== null && currentValue !== undefined)) {
+        (stateUpdate as any)[key] = currentValue;
+        // Deep copy objects to avoid reference issues
+        if (currentValue !== null && typeof currentValue === "object" && !Array.isArray(currentValue)) {
+          (this.lastBroadcastedState as any)[key] = { ...currentValue };
+        } else {
+          (this.lastBroadcastedState as any)[key] = currentValue;
+        }
       }
     });
 

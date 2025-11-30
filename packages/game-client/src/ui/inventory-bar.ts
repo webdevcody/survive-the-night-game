@@ -155,6 +155,14 @@ export class InventoryBarUI implements Renderable {
     this.renderTooltip(ctx, gameState);
   }
 
+  /**
+   * Render only the health and stamina bars (used for zombie players in infection mode)
+   */
+  public renderHealthAndStamina(ctx: CanvasRenderingContext2D, gameState: GameState): void {
+    this.heartsPanel.render(ctx, gameState);
+    this.staminaPanel.render(ctx, gameState);
+  }
+
   public isHovering(): boolean {
     return this.hoveredSlot !== null;
   }

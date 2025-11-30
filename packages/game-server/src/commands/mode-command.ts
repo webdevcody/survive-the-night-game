@@ -1,21 +1,22 @@
 import { BaseCommand, type CommandContext } from "./base-command";
 import { WavesModeStrategy } from "@/game-modes/waves-mode-strategy";
 import { BattleRoyaleModeStrategy } from "@/game-modes/battle-royale-mode-strategy";
+import { InfectionModeStrategy } from "@/game-modes/infection-mode-strategy";
 
-const VALID_MODES = ["royale", "waves"] as const;
+const VALID_MODES = ["royale", "waves", "infection"] as const;
 type GameMode = (typeof VALID_MODES)[number];
 
 export class ModeCommand extends BaseCommand {
   name = "mode";
   description = "Switches the game mode and restarts the game";
-  usage = "/mode <royale|waves>";
+  usage = "/mode <royale|waves|infection>";
 
   execute(context: CommandContext): string | void {
     const { args, gameLoop } = context;
 
     if (args.length === 0) {
       const currentMode = gameLoop.getGameModeStrategy().getConfig().modeId;
-      return `Current mode: ${currentMode}. Usage: /mode <royale|waves>`;
+      return `Current mode: ${currentMode}. Usage: /mode <royale|waves|infection>`;
     }
 
     const mode = args[0].toLowerCase() as GameMode;
@@ -34,6 +35,11 @@ export class ModeCommand extends BaseCommand {
         console.log("[ModeCommand] Starting Waves mode");
         gameLoop.startNewGame(new WavesModeStrategy());
         return "Starting Waves mode...";
+
+      case "infection":
+        console.log("[ModeCommand] Starting Infection mode");
+        gameLoop.startNewGame(new InfectionModeStrategy());
+        return "Starting Infection mode...";
     }
   }
 }

@@ -23,7 +23,7 @@ export const votingConfig = {
    * Game modes that are disabled and cannot be voted for
    * These will show as "Coming Soon" in the voting panel
    */
-  DISABLED_MODES: ["infection"] as VotableGameMode[],
+  DISABLED_MODES: [] as VotableGameMode[],
 } as const;
 
 export type VotingConfig = typeof votingConfig;

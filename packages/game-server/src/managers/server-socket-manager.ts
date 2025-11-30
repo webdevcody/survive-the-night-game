@@ -270,7 +270,7 @@ export class ServerSocketManager implements Broadcaster {
   public sendInitializationToAllSockets(): void {
     const sockets = Array.from(this.io.sockets.sockets.values());
     const context = this.getHandlerContext();
-    const gameMode = this.gameServer.getGameLoop().getGameModeStrategy().getConfig().modeId as "waves" | "battle_royale";
+    const gameMode = this.gameServer.getGameLoop().getGameModeStrategy().getConfig().modeId as "waves" | "battle_royale" | "infection";
 
     sockets.forEach((socket) => {
       const player = this.players.get(socket.id);

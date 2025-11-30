@@ -119,6 +119,11 @@ export class FullScreenMap {
   private getLightSources(gameState: GameState): LightSource[] {
     const sources: LightSource[] = [];
     const isBattleRoyale = gameState.gameMode === "battle_royale";
+    const isInfection = gameState.gameMode === "infection";
+
+    // Check if current player is a zombie (for infection mode visibility)
+    const currentPlayer = gameState.entities.find((e) => e.getId() === gameState.playerId);
+    const myPlayerIsZombie = currentPlayer instanceof PlayerClient && currentPlayer.isZombiePlayer?.();
 
     // Add entity light sources
     for (const entity of gameState.entities) {
@@ -128,9 +133,32 @@ export class FullScreenMap {
           continue;
         }
 
+        // In Infection mode, zombie players can see all illuminated players' light sources
+        if (isInfection && myPlayerIsZombie && entity instanceof PlayerClient) {
+          const radius = entity.getExt(ClientIlluminated).getRadius() / 2;
+          const position = entity.getExt(ClientPositionable).getCenterPosition();
+          sources.push({ position, radius });
+          continue;
+        }
+
         const radius = entity.getExt(ClientIlluminated).getRadius() / 2;
         const position = entity.getExt(ClientPositionable).getCenterPosition();
         sources.push({ position, radius });
+      }
+    }
+
+    // For zombie players in infection mode, add ALL human player positions as light sources
+    // This ensures zombies can see human players through the fog of war
+    if (isInfection && myPlayerIsZombie) {
+      for (const entity of gameState.entities) {
+        if (entity instanceof PlayerClient &&
+            entity.getId() !== gameState.playerId &&
+            !entity.isZombiePlayer() &&
+            entity.hasExt(ClientPositionable)) {
+          const position = entity.getExt(ClientPositionable).getCenterPosition();
+          // Use a small radius so only the player dot is visible, not a large area
+          sources.push({ position, radius: 20 });
+        }
       }
     }
 
@@ -500,11 +528,13 @@ export class FullScreenMap {
 
     // Battle Royale: limit player visibility range (approx 200 pixels / ~12 tiles)
     const isBattleRoyale = gameState.gameMode === "battle_royale";
+    const isInfection = gameState.gameMode === "infection";
     const playerVisibilityRange = 200;
     const playerVisibilityRangeSquared = playerVisibilityRange * playerVisibilityRange;
 
     // Get the actual player position for distance calculations (not the map center)
     const myPlayer = getPlayer(gameState);
+    const myPlayerIsZombie = myPlayer?.isZombiePlayer() ?? false;
     const myPlayerPos = myPlayer?.hasExt(ClientPositionable)
       ? myPlayer.getExt(ClientPositionable).getCenterPosition()
       : playerPos;
@@ -519,7 +549,18 @@ export class FullScreenMap {
       const relativeY = position.y - playerPos.y;
 
       const distanceSquared = relativeX * relativeX + relativeY * relativeY;
-      if (distanceSquared > maxDistanceSquared) continue;
+
+      // In Infection mode, zombie players can see ALL human players anywhere on the map
+      let shouldRender = distanceSquared <= maxDistanceSquared;
+      if (!shouldRender && isInfection && myPlayerIsZombie && entity instanceof PlayerClient) {
+        const otherPlayerIsZombie = entity.isZombiePlayer();
+        // Zombies can see all human players regardless of distance
+        if (!otherPlayerIsZombie) {
+          shouldRender = true;
+        }
+      }
+
+      if (!shouldRender) continue;
 
       // In Battle Royale, only show other players if they're within visibility range of the actual player
       if (isBattleRoyale && entity instanceof PlayerClient && entity.getId() !== gameState.playerId) {
@@ -536,6 +577,7 @@ export class FullScreenMap {
       const mapIndicator = getEntityMapColor(entity, settings, {
         gameState,
         myPlayerId: gameState.playerId,
+        myPlayerIsZombie: myPlayer?.isZombiePlayer() ?? false,
       });
       if (!mapIndicator) {
         // Skip entities that return null (e.g., crates)

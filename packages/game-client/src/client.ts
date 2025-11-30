@@ -563,6 +563,8 @@ export class GameClient {
       darknessHue: "red",
       // Voting state (null when not in voting phase)
       votingState: null,
+      // Zombie lives state (infection mode only)
+      zombieLivesState: null,
     };
 
     this.renderer = new Renderer(

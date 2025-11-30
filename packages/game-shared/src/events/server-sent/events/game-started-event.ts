@@ -2,7 +2,7 @@ import { GameEvent } from "@/events/types";
 import { ServerSentEvents } from "../../events";
 import { BufferWriter, BufferReader } from "../../../util/buffer-serialization";
 
-export type GameModeId = "waves" | "battle_royale";
+export type GameModeId = "waves" | "battle_royale" | "infection";
 
 export interface GameStartedEventData {
   timestamp: number;

@@ -11,6 +11,8 @@ import Vector2 from "@/util/vector2";
 import PoolManager from "@shared/util/pool-manager";
 
 export class Torch extends Entity {
+  public static readonly DEFAULT_COUNT = 1;
+
   public static get Size(): Vector2 {
     return PoolManager.getInstance().vector2.claim(16, 16);
   }
@@ -27,6 +29,10 @@ export class Torch extends Entity {
   }
 
   private interact(entityId: number): void {
-    this.getExt(Carryable).pickup(entityId);
+    const carryable = this.getExt(Carryable);
+    carryable.pickup(
+      entityId,
+      Carryable.createStackablePickupOptions(carryable, Torch.DEFAULT_COUNT)
+    );
   }
 }

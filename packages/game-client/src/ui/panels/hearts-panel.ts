@@ -37,25 +37,9 @@ export class HeartsPanel extends Panel {
 
     this.resetTransform(ctx);
 
-    // Calculate inventory bar position using scaled values (same as inventory-bar.ts)
-    const scaledSlotSize = settings.slotSize * hudScale;
-    const scaledSlotsGap = settings.slotsGap * hudScale;
-    const scaledPadding = {
-      left: settings.padding.left * hudScale,
-      right: settings.padding.right * hudScale,
-      top: settings.padding.top * hudScale,
-      bottom: settings.padding.bottom * hudScale,
-    };
-    const scaledScreenMarginBottom = settings.screenMarginBottom * hudScale;
-
-    const hotbarWidth =
-      slotsNumber * scaledSlotSize +
-      (slotsNumber - 1) * scaledSlotsGap +
-      scaledPadding.left +
-      scaledPadding.right;
-    const hotbarHeight = scaledSlotSize + scaledPadding.top + scaledPadding.bottom;
-    const hotbarX = canvasWidth / 2 - hotbarWidth / 2;
-    const hotbarY = canvasHeight - hotbarHeight - scaledScreenMarginBottom;
+    // Check if inventory is displayed (not a zombie player)
+    const isZombiePlayer = player.isZombiePlayer?.() ?? false;
+    const inventoryDisplayed = !isZombiePlayer;
 
     // Scale heart panel dimensions
     const scaledHeartSize = this.heartSettings.heartSize * hudScale;
@@ -63,9 +47,44 @@ export class HeartsPanel extends Panel {
     const scaledMarginBottom = this.heartSettings.marginBottom * hudScale;
     const scaledPanelPadding = this.settings.padding * hudScale;
 
-    // Position hearts above the inventory bar, aligned to the left
-    const heartsX = hotbarX + scaledPadding.left;
-    const heartsY = hotbarY - scaledHeartSize - scaledMarginBottom;
+    let heartsX: number;
+    let heartsY: number;
+
+    if (inventoryDisplayed) {
+      // Calculate inventory bar position using scaled values (same as inventory-bar.ts)
+      const scaledSlotSize = settings.slotSize * hudScale;
+      const scaledSlotsGap = settings.slotsGap * hudScale;
+      const scaledPadding = {
+        left: settings.padding.left * hudScale,
+        right: settings.padding.right * hudScale,
+        top: settings.padding.top * hudScale,
+        bottom: settings.padding.bottom * hudScale,
+      };
+      const scaledScreenMarginBottom = settings.screenMarginBottom * hudScale;
+
+      const hotbarWidth =
+        slotsNumber * scaledSlotSize +
+        (slotsNumber - 1) * scaledSlotsGap +
+        scaledPadding.left +
+        scaledPadding.right;
+      const hotbarHeight = scaledSlotSize + scaledPadding.top + scaledPadding.bottom;
+      const hotbarX = canvasWidth / 2 - hotbarWidth / 2;
+      const hotbarY = canvasHeight - hotbarHeight - scaledScreenMarginBottom;
+
+      // Position hearts above the inventory bar, aligned to the left
+      heartsX = hotbarX + scaledPadding.left;
+      heartsY = hotbarY - scaledHeartSize - scaledMarginBottom;
+    } else {
+      // Position hearts at bottom left of center (zombie mode - side by side with stamina)
+      const scaledScreenMarginBottom = settings.screenMarginBottom * hudScale;
+      const heartsContainerWidth = getConfig().player.MAX_PLAYER_HEALTH * scaledHeartSize +
+        (getConfig().player.MAX_PLAYER_HEALTH - 1) * scaledHeartGap;
+      // Position to the left of center with a small gap
+      const gap = 8 * hudScale;
+      heartsX = canvasWidth / 2 - heartsContainerWidth - scaledPanelPadding * 2 - gap;
+      // Align bottom edge with stamina panel (panel is drawn at heartsY - scaledPanelPadding)
+      heartsY = canvasHeight - scaledScreenMarginBottom - scaledHeartSize - scaledPanelPadding;
+    }
 
     const currentHealth = player.getHealth();
     const maxHealth = getConfig().player.MAX_PLAYER_HEALTH;

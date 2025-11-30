@@ -78,6 +78,12 @@ const handleGameStateUpdate = (context: InitializationContext, gameStateEvent: G
     context.gameState.votingState = null;
   }
 
+  // Zombie lives state
+  const zombieLivesState = gameStateEvent.getZombieLivesState();
+  if (zombieLivesState !== undefined) {
+    context.gameState.zombieLivesState = zombieLivesState;
+  }
+
   // Use buffer-based deserialization
   // Buffer format: [entityCount][entities...][gameState][removedEntityIds]
   const buffer = gameStateEvent.getBuffer();

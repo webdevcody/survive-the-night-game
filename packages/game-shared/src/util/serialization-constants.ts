@@ -11,7 +11,7 @@ export const FIELD_TYPE_NULL = 4;
 /**
  * Bitset flags for game state fields
  * Used to track which game state fields have changed and need to be serialized
- * Bit positions (0-8, UInt16):
+ * Bit positions (0-9, UInt16):
  * 0: timestamp
  * 1: waveNumber
  * 2: waveState
@@ -21,6 +21,7 @@ export const FIELD_TYPE_NULL = 4;
  * 6: removedEntityIds (has removals)
  * 7: mapData (only sent on full state)
  * 8: votingState (sent during voting phase)
+ * 9: zombieLivesState (sent during infection mode)
  */
 export const GAME_STATE_BIT_TIMESTAMP = 1 << 0; // 0x0001
 export const GAME_STATE_BIT_WAVE_NUMBER = 1 << 1; // 0x0002
@@ -31,6 +32,7 @@ export const GAME_STATE_BIT_IS_FULL_STATE = 1 << 5; // 0x0020
 export const GAME_STATE_BIT_REMOVED_ENTITY_IDS = 1 << 6; // 0x0040
 export const GAME_STATE_BIT_MAP_DATA = 1 << 7; // 0x0080
 export const GAME_STATE_BIT_VOTING_STATE = 1 << 8; // 0x0100
+export const GAME_STATE_BIT_ZOMBIE_LIVES_STATE = 1 << 9; // 0x0200
 
 /**
  * Array of game state field bits in deterministic order for serialization/deserialization
@@ -46,4 +48,5 @@ export const GAME_STATE_FIELD_BITS = [
   GAME_STATE_BIT_REMOVED_ENTITY_IDS,
   GAME_STATE_BIT_MAP_DATA,
   GAME_STATE_BIT_VOTING_STATE,
+  GAME_STATE_BIT_ZOMBIE_LIVES_STATE,
 ] as const;

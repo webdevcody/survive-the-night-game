@@ -37,14 +37,29 @@ export class WavePanel extends Panel {
     // Determine text based on wave state and game mode
     const isPreparation = gameState.waveState === WaveState.PREPARATION;
     const isBattleRoyale = gameState.gameMode === "battle_royale";
+    const isInfection = gameState.gameMode === "infection";
     let displayText: string;
     let timerText: string;
-    const modeText = isBattleRoyale ? "Mode: Royale" : "Mode: Waves";
+    let modeText: string;
+
+    if (isBattleRoyale) {
+      modeText = "Mode: Royale";
+    } else if (isInfection) {
+      modeText = "Mode: Infection";
+    } else {
+      modeText = "Mode: Waves";
+    }
 
     if (isBattleRoyale) {
       // Battle Royale mode - show arena constriction timer
       displayText = "ARENA SHRINKS IN";
       timerText = this.formatTime(remainingTime);
+    } else if (isInfection) {
+      // Infection mode - show survival countdown
+      const gameDuration = getConfig().infection.GAME_DURATION_MS / 1000; // Convert to seconds
+      const infectionRemaining = Math.max(0, gameDuration - elapsedTime);
+      displayText = "SURVIVE FOR";
+      timerText = this.formatTime(infectionRemaining);
     } else {
       // Waves mode - show wave timer
       if (isPreparation) {

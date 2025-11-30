@@ -242,6 +242,10 @@ export class AIController {
     // Check if this AI is a zombie - zombies only attack non-zombie players
     const isZombieAI = this.player.isZombie();
 
+    // Get game mode settings to determine if we should attack other players
+    const strategy = this.gameManagers.getGameServer().getGameLoop().getGameModeStrategy();
+    const friendlyFireEnabled = strategy.getConfig().friendlyFireEnabled;
+
     // Zombie AI doesn't attack other zombies
     if (!isZombieAI) {
       // Check zombies (only for non-zombie AI)
@@ -268,8 +272,22 @@ export class AIController {
       if (otherPlayer.getId() === this.player.getId()) continue;
       if (otherPlayer.isDead()) continue;
 
-      // Zombie AI only attacks non-zombie players
-      if (isZombieAI && otherPlayer.isZombie()) continue;
+      // Determine if this player is a valid target based on game mode and zombie status
+      // - Zombie AI: only attacks non-zombie players (always)
+      // - Human AI with friendly fire OFF: only attacks zombie players
+      // - Human AI with friendly fire ON: attacks all other players
+      const otherIsZombie = otherPlayer.isZombie();
+
+      if (isZombieAI) {
+        // Zombie AI only attacks non-zombie players
+        if (otherIsZombie) continue;
+      } else {
+        // Human AI - check friendly fire rules
+        if (!friendlyFireEnabled && !otherIsZombie) {
+          // Friendly fire disabled and other player is human - skip
+          continue;
+        }
+      }
 
       const otherPos = otherPlayer.getCenterPosition();
       const dist = distance(playerPos, otherPos);
@@ -430,6 +448,18 @@ export class AIController {
         } else if (!enhancedThreatInfo.hasNearbyEnemy) {
           this.combatTarget = null;
         }
+      }
+    }
+
+    // Always validate combat target is still alive - clear if dead
+    if (this.combatTarget?.entity) {
+      const target = this.combatTarget.entity;
+      const isTargetDead = target instanceof Player
+        ? target.isDead()
+        : (target.hasExt(Destructible) && target.getExt(Destructible).isDead());
+      if (isTargetDead) {
+        this.combatTarget = null;
+        this.forceRetarget = true;
       }
     }
 
@@ -1166,8 +1196,11 @@ export class AIController {
         );
         if (result.success) {
           this.interactTimer = 0;
+          return true;
         }
-        return true;
+        // If pickup failed (inventory full, can't stack, etc.), don't block other actions
+        // Let the normal state behavior handle it - this prevents getting stuck
+        return false;
       }
       // If item is nearby but not quite in range, move toward it
       // Only do this if the item is VERY close (within 50px) to not disrupt current task too much

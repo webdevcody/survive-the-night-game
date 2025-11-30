@@ -5,6 +5,7 @@ import { AIStateHandler, AIStateContext } from "./base-state";
 import { AI_CONFIG } from "../ai-config";
 import { AIInteractionHelper } from "../ai-interaction-helper";
 import { equipMeleeWeaponForCrate, aimAtTarget } from "../ai-utils";
+import Carryable from "@/extensions/carryable";
 
 /**
  * LOOT state handler - collect items
@@ -14,6 +15,22 @@ export class LootStateHandler implements AIStateHandler {
     if (!context.currentTarget) {
       context.moveTowardWaypoint(input, playerPos);
       return;
+    }
+
+    // CRITICAL: Validate item targets can still be picked up
+    // This catches cases where inventory became full after target was set
+    if (context.currentTarget.type === "item" && context.currentTarget.entity) {
+      const inventory = context.player.getInventory();
+      const itemType = context.currentTarget.entity.hasExt(Carryable)
+        ? context.currentTarget.entity.getExt(Carryable).getItemType()
+        : "unknown";
+
+      if (!context.targetingSystem.canPickUpItem(inventory, itemType)) {
+        // Can't pick up this item anymore - clear target and find new one
+        context.setCurrentTarget(null);
+        context.moveTowardWaypoint(input, playerPos);
+        return;
+      }
     }
 
     const targetPos = context.currentTarget.position;

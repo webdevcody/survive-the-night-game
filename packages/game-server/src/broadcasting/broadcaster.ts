@@ -258,6 +258,7 @@ export class Broadcaster {
     // Write game state metadata to buffer
     const hasRemovedEntities = removedCount > 0;
     const votingState = mergedGameState.votingState;
+    const zombieLivesState = mergedGameState.zombieLivesState;
     this.deps.bufferManager.writeGameState(
       {
         ...mergedGameState,
@@ -266,7 +267,8 @@ export class Broadcaster {
       },
       hasRemovedEntities,
       undefined, // no mapData for delta updates
-      votingState
+      votingState,
+      zombieLivesState
     );
 
     // Write removed entity IDs (only if there are any)
@@ -275,6 +277,11 @@ export class Broadcaster {
     // Write voting state (only if present)
     if (votingState) {
       this.deps.bufferManager.writeVotingState(votingState);
+    }
+
+    // Write zombie lives state (only if present)
+    if (zombieLivesState) {
+      this.deps.bufferManager.writeZombieLivesState(zombieLivesState);
     }
     endGameStateMerging();
 

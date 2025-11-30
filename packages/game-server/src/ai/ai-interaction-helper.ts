@@ -46,22 +46,20 @@ export class AIInteractionHelper {
 
     const inventory = player.getInventory();
 
-    // Check if inventory is full
-    if (targetingSystem.isInventoryFull(inventory)) {
-      // Get item type to check if we can stack it
-      const itemType = entity.hasExt(Carryable)
-        ? entity.getExt(Carryable).getItemType()
-        : "unknown";
+    // Get item type for logging and checks
+    const itemType = entity.hasExt(Carryable)
+      ? entity.getExt(Carryable).getItemType()
+      : "unknown";
 
-      // Check if item can be stacked with existing inventory
-      if (!targetingSystem.canPickUpItem(inventory, itemType)) {
-        // Log debug info
-        const statePrefix = stateName ? ` (${stateName})` : "";
-        console.log(
-          `[AI DEBUG] ${player.getDisplayName()}${statePrefix} tried to interact with ${itemType} but inventory is FULL and cannot stack. Inventory: ${this.formatInventory(inventory)}`
-        );
-        return { success: false, reason: "cannot_stack" };
-      }
+    // Check if we can actually pick up this item
+    if (!targetingSystem.canPickUpItem(inventory, itemType)) {
+      // This is a LOGIC ERROR - AI should never attempt to pick up items they can't carry
+      // This means the targeting system failed to filter this item out
+      const statePrefix = stateName ? ` (${stateName})` : "";
+      console.error(
+        `[AI ERROR] ${player.getDisplayName()}${statePrefix} attempted to pick up ${itemType} but CANNOT - inventory full and not stackable. This is a targeting logic error! Inventory: ${this.formatInventory(inventory)}`
+      );
+      return { success: false, reason: "inventory_full" };
     }
 
     // All checks passed - perform the interaction

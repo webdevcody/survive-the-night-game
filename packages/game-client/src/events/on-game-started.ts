@@ -19,6 +19,9 @@ export const onGameStarted = (context: InitializationContext, event: GameStarted
   context.gameState.votingState = null;
   context.gameClient.getVotingPanel().reset();
 
+  // Reset zombie lives state (infection mode only)
+  context.gameState.zombieLivesState = null;
+
   // Set game mode from server
   context.gameState.gameMode = data.gameMode;
 

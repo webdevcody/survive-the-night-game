@@ -168,13 +168,31 @@ export class Minimap {
   private getLightSources(entities: ClientEntityBase[], gameState: GameState): LightSource[] {
     const sources: LightSource[] = [];
     const isBattleRoyale = gameState.gameMode === "battle_royale";
+    const isInfection = gameState.gameMode === "infection";
     let addedCurrentPlayerLight = false;
+
+    // Check if current player is a zombie (for infection mode visibility)
+    const currentPlayer = entities.find((e) => e.getId() === gameState.playerId);
+    const myPlayerIsZombie = currentPlayer instanceof PlayerClient && currentPlayer.isZombiePlayer?.();
 
     // Add entity light sources (torches, campfires, etc.)
     for (const entity of entities) {
       if (entity.hasExt(ClientIlluminated) && entity.hasExt(ClientPositionable)) {
         // In Battle Royale, hide other players' light sources to not reveal their position
         if (isBattleRoyale && entity instanceof PlayerClient && entity.getId() !== gameState.playerId) {
+          continue;
+        }
+
+        // In Infection mode, zombie players can see all illuminated players' light sources
+        if (isInfection && myPlayerIsZombie && entity instanceof PlayerClient) {
+          const radius = entity.getExt(ClientIlluminated).getRadius();
+          if (radius > 0) {
+            const position = entity.getExt(ClientPositionable).getCenterPosition();
+            sources.push({ position, radius });
+          }
+          if (entity.getId() === gameState.playerId) {
+            addedCurrentPlayerLight = true;
+          }
           continue;
         }
 
@@ -194,12 +212,26 @@ export class Minimap {
     // Add illumination for zombie players who don't have ClientIlluminated extension
     // This ensures zombie players can always see their surroundings on the minimap
     if (!addedCurrentPlayerLight && gameState.playerId) {
-      const currentPlayer = entities.find((e) => e.getId() === gameState.playerId);
       if (currentPlayer instanceof PlayerClient && currentPlayer.isZombiePlayer?.()) {
         if (currentPlayer.hasExt(ClientPositionable)) {
           const position = currentPlayer.getExt(ClientPositionable).getCenterPosition();
           const radius = 80; // Match ZOMBIE_ILLUMINATION_RADIUS from map manager
           sources.push({ position, radius });
+        }
+      }
+    }
+
+    // For zombie players in infection mode, add ALL human player positions as light sources
+    // This ensures zombies can see human players through the fog of war
+    if (isInfection && myPlayerIsZombie) {
+      for (const entity of entities) {
+        if (entity instanceof PlayerClient &&
+            entity.getId() !== gameState.playerId &&
+            !entity.isZombiePlayer() &&
+            entity.hasExt(ClientPositionable)) {
+          const position = entity.getExt(ClientPositionable).getCenterPosition();
+          // Use a small radius so only the player dot is visible, not a large area
+          sources.push({ position, radius: 20 });
         }
       }
     }
@@ -248,13 +280,31 @@ export class Minimap {
       excludeSet
     );
 
+    // For zombie players in infection mode, add ALL human players so they can hunt them
+    const isInfection = gameState.gameMode === "infection";
+    const myPlayerIsZombie = myPlayer.isZombiePlayer();
+    const extendedEntities = new Set<ClientEntityBase>(allEntities);
+
+    if (isInfection && myPlayerIsZombie) {
+      // Add ALL human players for zombie players to see (they can hunt humans)
+      for (const entity of gameState.entities) {
+        if (entity instanceof PlayerClient &&
+            entity.getId() !== gameState.playerId &&
+            !entity.isZombiePlayer() &&
+            entity.hasExt(ClientPositionable)) {
+          // Add all human players for zombies to track
+          extendedEntities.add(entity);
+        }
+      }
+    }
+
     // Filter entities into specific categories for efficient rendering
     const playerEntities: PlayerClient[] = [];
     const crateEntities: CrateClient[] = [];
     const survivorEntities: SurvivorClient[] = [];
     const toxicZoneEntities: ToxicBiomeZoneClient[] = [];
 
-    for (const entity of allEntities) {
+    for (const entity of extendedEntities) {
       if (entity instanceof PlayerClient) {
         playerEntities.push(entity);
       } else if (entity instanceof CrateClient) {
@@ -309,7 +359,7 @@ export class Minimap {
     const playerVisibilityRange = 200;
     const playerVisibilityRangeSquared = playerVisibilityRange * playerVisibilityRange;
 
-    for (const entity of allEntities) {
+    for (const entity of extendedEntities) {
       if (!entity.hasExt(ClientPositionable)) continue;
 
       const positionable = entity.getExt(ClientPositionable);
@@ -321,7 +371,18 @@ export class Minimap {
 
       // Early distance check using squared distance (faster than sqrt)
       const distanceSquared = relativeX * relativeX + relativeY * relativeY;
-      if (distanceSquared > maxEntityDistanceSquared) continue;
+
+      // In Infection mode, zombie players can see ALL human players anywhere on the map
+      let shouldRender = distanceSquared <= maxEntityDistanceSquared;
+      if (!shouldRender && isInfection && myPlayerIsZombie && entity instanceof PlayerClient) {
+        const otherPlayerIsZombie = entity.isZombiePlayer();
+        // Zombies can see all human players regardless of distance
+        if (!otherPlayerIsZombie) {
+          shouldRender = true;
+        }
+      }
+
+      if (!shouldRender) continue;
 
       // In Battle Royale, only show other players if they're within visibility range
       if (isBattleRoyale && entity instanceof PlayerClient && entity.getId() !== gameState.playerId) {
@@ -336,6 +397,7 @@ export class Minimap {
       const mapIndicator = getEntityMapColor(entity, settings, {
         gameState,
         myPlayerId: gameState.playerId,
+        myPlayerIsZombie: myPlayer.isZombiePlayer(),
       });
       if (!mapIndicator) {
         // Skip entities that return null (e.g., crates)
@@ -363,7 +425,7 @@ export class Minimap {
 
     // Draw fog of war overlay
     perfTimer.start("minimap:fogOfWar");
-    const lightSources = this.getLightSources(allEntities, gameState);
+    const lightSources = this.getLightSources(Array.from(extendedEntities), gameState);
     this.renderFogOfWar(ctx, playerPos, lightSources, settings, top);
     perfTimer.end("minimap:fogOfWar");
 
@@ -410,7 +472,8 @@ export class Minimap {
       top,
       scaledLeft,
       scaledSize,
-      gameState
+      gameState,
+      myPlayer
     );
     perfTimer.end("minimap:playerIndicators");
 
@@ -525,7 +588,8 @@ export class Minimap {
     top: number,
     scaledLeft: number,
     scaledSize: number,
-    gameState: GameState
+    gameState: GameState,
+    myPlayer: PlayerClient
   ): void {
     const centerX = scaledLeft + scaledSize / 2;
     const centerY = top + scaledSize / 2;
@@ -533,6 +597,8 @@ export class Minimap {
 
     // Battle Royale: limit player visibility range and show as red
     const isBattleRoyale = gameState.gameMode === "battle_royale";
+    const isInfection = gameState.gameMode === "infection";
+    const myPlayerIsZombie = myPlayer.isZombiePlayer();
     const playerVisibilityRange = 200;
 
     // Loop through player entities
@@ -570,8 +636,18 @@ export class Minimap {
       // Draw the indicator - use a triangle pointing in the direction
       const indicatorSize = 12;
 
-      // In Battle Royale, other players are enemies (red)
-      const indicatorColor = isBattleRoyale ? settings.colors.enemy : settings.colors.player;
+      // Determine indicator color based on game mode
+      let indicatorColor = settings.colors.player;
+      if (isBattleRoyale) {
+        // In Battle Royale, other players are enemies (red)
+        indicatorColor = settings.colors.enemy;
+      } else if (isInfection) {
+        // In Infection, zombies and humans see each other as enemies
+        const otherPlayerIsZombie = entity.isZombiePlayer();
+        if (myPlayerIsZombie !== otherPlayerIsZombie) {
+          indicatorColor = settings.colors.enemy;
+        }
+      }
 
       // Draw filled triangle
       ctx.fillStyle = indicatorColor;

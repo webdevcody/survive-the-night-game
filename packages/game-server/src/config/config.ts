@@ -7,5 +7,5 @@ export const TICK_RATE_MS = 1000 / TICK_RATE;
 export const ENABLE_PERFORMANCE_MONITORING = process.env.ENABLE_PERFORMANCE_MONITORING === "true";
 
 // Default game mode: "waves" or "battle_royale"
-export const DEFAULT_GAME_MODE: "waves" | "battle_royale" = "battle_royale";
+export const DEFAULT_GAME_MODE: "waves" | "battle_royale" | "infection" = "battle_royale";
 
