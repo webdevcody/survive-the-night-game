@@ -135,7 +135,7 @@ export class GrenadeProjectile extends Entity {
       }
 
       const entityPos = entity.getExt(Positionable).getCenterPosition();
-      const dist = position.distance(entityPos);
+      const dist = distance(position, entityPos);
 
       if (dist <= EXPLOSION_RADIUS) {
         // Scale damage based on distance from explosion

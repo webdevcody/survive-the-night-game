@@ -1,4 +1,8 @@
 import { entityOverrideRegistry } from "./entity-override-registry";
+import { ENTITY_REGISTRATION_CONFIG } from "@shared/config/entity-registration";
+import { EntityType } from "@shared/types/entity";
+import { Entity } from "@/entities/entity";
+import { IGameManagers } from "@/managers/types";
 import { Player } from "@/entities/players/player";
 import { Zombie } from "@/entities/enemies/zombie";
 import { BigZombie } from "@/entities/enemies/big-zombie";
@@ -15,6 +19,7 @@ import { Bullet } from "@/entities/projectiles/bullet";
 import { Arrow } from "@/entities/projectiles/arrow";
 import { GrenadeProjectile } from "@/entities/projectiles/grenade-projectile";
 import { FlameProjectile } from "@/entities/projectiles/flame-projectile";
+import { ThrowingKnifeProjectile } from "@/entities/projectiles/throwing-knife-projectile";
 import { Tree } from "@/entities/items/tree";
 import { Wall } from "@/entities/items/wall";
 import { WallLevel2 } from "@/entities/items/wall-level-2";
@@ -34,6 +39,7 @@ import { Landmine } from "@/entities/items/landmine";
 import { BearTrap } from "@/entities/items/bear-trap";
 import { Grenade } from "@/entities/items/grenade";
 import { MolotovCocktail } from "@/entities/items/molotov-cocktail";
+import { ThrowingKnife } from "@/entities/items/throwing-knife";
 import { Crate } from "@/entities/items/crate";
 import { GallonDrum } from "@/entities/items/gallon-drum";
 import { SentryGun } from "@/entities/items/sentry-gun";
@@ -55,8 +61,6 @@ import { AK47 } from "@/entities/weapons/ak47";
 import { GrenadeLauncher } from "@/entities/weapons/grenade-launcher";
 import { Flamethrower } from "@/entities/weapons/flamethrower";
 import { Bow } from "@/entities/weapons/bow";
-import { ThrowingKnife } from "@/entities/items/throwing-knife";
-import { ThrowingKnifeProjectile } from "@/entities/projectiles/throwing-knife-projectile";
 import { Fire } from "@/entities/environment/fire";
 import { CampsiteFire } from "@/entities/environment/campsite-fire";
 import { Merchant } from "@/entities/environment/merchant";
@@ -66,94 +70,100 @@ import { Blood } from "@/entities/effects/blood";
 import { Acid } from "@/entities/effects/acid";
 import { ToxicGasCloud } from "@/entities/environment/toxic-gas-cloud";
 import { ToxicBiomeZone } from "@/entities/environment/toxic-biome-zone";
+import { AcidProjectile } from "@/entities/projectiles/acid-projectile";
+import { Boundary } from "@/entities/environment/boundary";
+
+type EntityConstructor = new (gameManagers: IGameManagers, ...args: any[]) => Entity;
+
+/**
+ * Mapping of entity types to their server constructor classes
+ * Used with ENTITY_REGISTRATION_CONFIG to register entities
+ */
+const SERVER_ENTITY_CONSTRUCTORS: Record<EntityType, EntityConstructor> = {
+  player: Player,
+  zombie: Zombie,
+  big_zombie: BigZombie,
+  fast_zombie: FastZombie,
+  bat_zombie: BatZombie,
+  spitter_zombie: SpitterZombie,
+  exploding_zombie: ExplodingZombie,
+  leaping_zombie: LeapingZombie,
+  grave_tyrant: BossZombie,
+  charging_tyrant: ChargingTyrant,
+  acid_flyer: AcidFlyer,
+  splitter_boss: SplitterBoss,
+  bullet: Bullet,
+  arrow: Arrow,
+  throwing_knife_projectile: ThrowingKnifeProjectile,
+  grenade_projectile: GrenadeProjectile,
+  flame_projectile: FlameProjectile,
+  acid_projectile: AcidProjectile,
+  tree: Tree,
+  wall: Wall,
+  wall_level_2: WallLevel2,
+  wall_level_3: WallLevel3,
+  bandage: Bandage,
+  energy_drink: EnergyDrink,
+  cloth: Cloth,
+  wood: Wood,
+  coin: Coin,
+  gasoline: Gasoline,
+  spikes: Spikes,
+  spikes_level_2: SpikesLevel2,
+  spikes_level_3: SpikesLevel3,
+  torch: Torch,
+  miners_hat: MinersHat,
+  landmine: Landmine,
+  bear_trap: BearTrap,
+  grenade: Grenade,
+  molotov_cocktail: MolotovCocktail,
+  throwing_knife: ThrowingKnife,
+  crate: Crate,
+  gallon_drum: GallonDrum,
+  sentry_gun: SentryGun,
+  sentry_gun_level_2: SentryGunLevel2,
+  sentry_gun_level_3: SentryGunLevel3,
+  pistol_ammo: PistolAmmo,
+  shotgun_ammo: ShotgunAmmo,
+  bolt_action_ammo: BoltActionAmmo,
+  ak47_ammo: AK47Ammo,
+  grenade_launcher_ammo: GrenadeLauncherAmmo,
+  flamethrower_ammo: FlamethrowerAmmo,
+  arrow_ammo: ArrowAmmo,
+  knife: Knife,
+  baseball_bat: BaseballBat,
+  pistol: Pistol,
+  shotgun: Shotgun,
+  bolt_action_rifle: BoltActionRifle,
+  ak47: AK47,
+  grenade_launcher: GrenadeLauncher,
+  flamethrower: Flamethrower,
+  bow: Bow,
+  fire: Fire,
+  campsite_fire: CampsiteFire,
+  merchant: Merchant,
+  car: Car,
+  survivor: Survivor,
+  blood: Blood,
+  acid: Acid,
+  toxic_gas_cloud: ToxicGasCloud,
+  toxic_biome_zone: ToxicBiomeZone,
+  boundary: Boundary,
+} as Record<EntityType, EntityConstructor>;
 
 /**
  * Registers all custom entity classes in the override registry
  * This allows the system to use custom classes when they exist,
  * and fall back to generic entities for simple items
  *
- * Uses string literals instead of Entities constants to avoid dependency on Entities
- * being initialized before this runs
+ * Uses ENTITY_REGISTRATION_CONFIG to maintain consistent registration order
+ * between server and client
  */
 export function registerCustomEntities(): void {
-  // Player (special - no config)
-  entityOverrideRegistry.register("player", Player);
-
-  // Zombies
-  entityOverrideRegistry.register("zombie", Zombie);
-  entityOverrideRegistry.register("big_zombie", BigZombie);
-  entityOverrideRegistry.register("fast_zombie", FastZombie);
-  entityOverrideRegistry.register("bat_zombie", BatZombie);
-  entityOverrideRegistry.register("spitter_zombie", SpitterZombie);
-  entityOverrideRegistry.register("exploding_zombie", ExplodingZombie);
-  entityOverrideRegistry.register("leaping_zombie", LeapingZombie);
-  entityOverrideRegistry.register("grave_tyrant", BossZombie);
-  entityOverrideRegistry.register("charging_tyrant", ChargingTyrant);
-  entityOverrideRegistry.register("acid_flyer", AcidFlyer);
-  entityOverrideRegistry.register("splitter_boss", SplitterBoss);
-
-  // Projectiles
-  entityOverrideRegistry.register("bullet", Bullet);
-  entityOverrideRegistry.register("arrow", Arrow);
-  entityOverrideRegistry.register("throwing_knife_projectile", ThrowingKnifeProjectile);
-  entityOverrideRegistry.register("grenade_projectile", GrenadeProjectile);
-  entityOverrideRegistry.register("flame_projectile", FlameProjectile);
-
-  // Items with custom behavior
-  entityOverrideRegistry.register("tree", Tree);
-  entityOverrideRegistry.register("wall", Wall);
-  entityOverrideRegistry.register("wall_level_2", WallLevel2);
-  entityOverrideRegistry.register("wall_level_3", WallLevel3);
-  entityOverrideRegistry.register("bandage", Bandage);
-  entityOverrideRegistry.register("energy_drink", EnergyDrink);
-  entityOverrideRegistry.register("cloth", Cloth);
-  entityOverrideRegistry.register("wood", Wood);
-  entityOverrideRegistry.register("coin", Coin);
-  entityOverrideRegistry.register("gasoline", Gasoline);
-  entityOverrideRegistry.register("spikes", Spikes);
-  entityOverrideRegistry.register("spikes_level_2", SpikesLevel2);
-  entityOverrideRegistry.register("spikes_level_3", SpikesLevel3);
-  entityOverrideRegistry.register("torch", Torch);
-  entityOverrideRegistry.register("miners_hat", MinersHat);
-  entityOverrideRegistry.register("landmine", Landmine);
-  entityOverrideRegistry.register("bear_trap", BearTrap);
-  entityOverrideRegistry.register("grenade", Grenade);
-  entityOverrideRegistry.register("molotov_cocktail", MolotovCocktail);
-  entityOverrideRegistry.register("throwing_knife", ThrowingKnife);
-  entityOverrideRegistry.register("crate", Crate);
-  entityOverrideRegistry.register("gallon_drum", GallonDrum);
-  entityOverrideRegistry.register("sentry_gun", SentryGun);
-  entityOverrideRegistry.register("sentry_gun_level_2", SentryGunLevel2);
-  entityOverrideRegistry.register("sentry_gun_level_3", SentryGunLevel3);
-
-  // Ammo (uses StackableItem base class)
-  entityOverrideRegistry.register("pistol_ammo", PistolAmmo);
-  entityOverrideRegistry.register("shotgun_ammo", ShotgunAmmo);
-  entityOverrideRegistry.register("bolt_action_ammo", BoltActionAmmo);
-  entityOverrideRegistry.register("ak47_ammo", AK47Ammo);
-  entityOverrideRegistry.register("grenade_launcher_ammo", GrenadeLauncherAmmo);
-  entityOverrideRegistry.register("flamethrower_ammo", FlamethrowerAmmo);
-  entityOverrideRegistry.register("arrow_ammo", ArrowAmmo);
-
-  // Weapons
-  entityOverrideRegistry.register("knife", Knife);
-  entityOverrideRegistry.register("baseball_bat", BaseballBat);
-  entityOverrideRegistry.register("pistol", Pistol);
-  entityOverrideRegistry.register("shotgun", Shotgun);
-  entityOverrideRegistry.register("bolt_action_rifle", BoltActionRifle);
-  entityOverrideRegistry.register("ak47", AK47);
-  entityOverrideRegistry.register("grenade_launcher", GrenadeLauncher);
-  entityOverrideRegistry.register("flamethrower", Flamethrower);
-  entityOverrideRegistry.register("bow", Bow);
-
-  // Environment
-  entityOverrideRegistry.register("fire", Fire);
-  entityOverrideRegistry.register("campsite_fire", CampsiteFire);
-  entityOverrideRegistry.register("merchant", Merchant);
-  entityOverrideRegistry.register("car", Car);
-  entityOverrideRegistry.register("survivor", Survivor);
-  entityOverrideRegistry.register("blood", Blood);
-  entityOverrideRegistry.register("acid", Acid);
-  entityOverrideRegistry.register("toxic_gas_cloud", ToxicGasCloud);
-  entityOverrideRegistry.register("toxic_biome_zone", ToxicBiomeZone);
+  for (const entry of ENTITY_REGISTRATION_CONFIG) {
+    const constructor = SERVER_ENTITY_CONSTRUCTORS[entry.type];
+    if (constructor) {
+      entityOverrideRegistry.register(entry.type, constructor);
+    }
+  }
 }

@@ -1,5 +1,7 @@
 import Vector2 from "@shared/util/vector2";
 import PoolManager from "@shared/util/pool-manager";
+import { distance } from "@shared/util/physics";
+import { getConfig } from "@shared/config";
 
 export class CameraManager {
   private ctx: CanvasRenderingContext2D;
@@ -18,7 +20,10 @@ export class CameraManager {
 
   getPosition(): Vector2 {
     const poolManager = PoolManager.getInstance();
-    return poolManager.vector2.claim(this.position.x + this.shakeOffset.x, this.position.y + this.shakeOffset.y);
+    return poolManager.vector2.claim(
+      this.position.x + this.shakeOffset.x,
+      this.position.y + this.shakeOffset.y
+    );
   }
 
   getScale(): number {
@@ -67,11 +72,9 @@ export class CameraManager {
 
   translateTo(position: Vector2, dt?: number): void {
     this.targetPosition = position;
-    const dx = this.targetPosition.x - this.position.x;
-    const dy = this.targetPosition.y - this.position.y;
-    const distance = Math.sqrt(dx * dx + dy * dy);
+    const dist = distance(this.targetPosition, this.position);
 
-    if (distance > 100) {
+    if (dist > getConfig().render.CAMERA_SNAP_DISTANCE_THRESHOLD) {
       this.position.x = this.targetPosition.x;
       this.position.y = this.targetPosition.y;
     } else {
@@ -79,12 +82,14 @@ export class CameraManager {
       // Original factor was 0.04
       // 0.04 = 1 - exp(-lambda * 0.0166) -> lambda ~ 2.5
       let factor = this.LERP_FACTOR;
-      
+
       if (dt !== undefined && dt > 0) {
         const lambda = 2.5;
         factor = 1 - Math.exp(-lambda * dt);
       }
 
+      const dx = this.targetPosition.x - this.position.x;
+      const dy = this.targetPosition.y - this.position.y;
       this.position.x += dx * factor;
       this.position.y += dy * factor;
     }

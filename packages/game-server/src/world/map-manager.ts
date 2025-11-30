@@ -8,12 +8,14 @@ import Positionable from "@/extensions/positionable";
 import Vector2 from "@/util/vector2";
 import { IEntity } from "@/entities/types";
 import PoolManager from "@shared/util/pool-manager";
+import { distance } from "@/util/physics";
 import { BigZombie } from "@/entities/enemies/big-zombie";
 import { FastZombie } from "@/entities/enemies/fast-zombie";
 import { BatZombie } from "@/entities/enemies/bat-zombie";
 import { BossZombie } from "@/entities/enemies/boss-zombie";
 import { GameMaster } from "@/managers/game-master";
 import { SpitterZombie } from "@/entities/enemies/spitter-zombie";
+import { ZombieFactory } from "@/util/zombie-factory";
 import { Merchant } from "@/entities/environment/merchant";
 import {
   CAMPSITE,
@@ -38,6 +40,7 @@ import { Entities, getZombieTypesSet } from "@shared/constants";
 import { balanceConfig } from "@shared/config/balance-config";
 import { Crate } from "@/entities/items/crate";
 import { CampsiteFire } from "@/entities/environment/campsite-fire";
+import { buildSpawnTable } from "./spawn-table-builder";
 
 // Re-export from shared config for backward compatibility
 export const BIOME_SIZE = getConfig().world.BIOME_SIZE;
@@ -81,48 +84,7 @@ const DEBUG_ZOMBIE_OFFSET_TILES = 16 * 4;
 // Map initialization
 const EMPTY_GROUND_TILE_VALUE = 0;
 
-/**
- * Build spawn table dynamically from item, weapon, and resource registries
- * Items/weapons/resources with spawn.enabled === true will be included
- */
-function buildSpawnTable(): Array<{ chance: number; entityType: string }> {
-  const spawnTable: Array<{ chance: number; entityType: string }> = [];
-
-  // Add items with spawn enabled
-  itemRegistry.getAll().forEach((itemConfig) => {
-    if (itemConfig.spawn?.enabled) {
-      // Map item ID to EntityType (most match directly)
-      const entityType = itemConfig.id;
-
-      spawnTable.push({
-        chance: itemConfig.spawn.chance,
-        entityType,
-      });
-    }
-  });
-
-  // Add weapons with spawn enabled
-  weaponRegistry.getAll().forEach((weaponConfig) => {
-    if (weaponConfig.spawn?.enabled) {
-      spawnTable.push({
-        chance: weaponConfig.spawn.chance,
-        entityType: weaponConfig.id,
-      });
-    }
-  });
-
-  // Add resources with spawn enabled
-  resourceRegistry.getAll().forEach((resourceConfig) => {
-    if (resourceConfig.spawn?.enabled) {
-      spawnTable.push({
-        chance: resourceConfig.spawn.chance,
-        entityType: resourceConfig.id,
-      });
-    }
-  });
-
-  return spawnTable;
-}
+// buildSpawnTable moved to spawn-table-builder.ts
 
 export class MapManager implements IMapManager {
   private groundLayer: number[][] = [];
@@ -387,34 +349,7 @@ export class MapManager implements IMapManager {
     location: { x: number; y: number },
     zombieType: "regular" | "fast" | "big" | "bat" | "spitter"
   ): void {
-    const poolManager = PoolManager.getInstance();
-    let zombie: Zombie | BigZombie | FastZombie | BatZombie | SpitterZombie;
-
-    // Create the appropriate zombie type
-    switch (zombieType) {
-      case "regular":
-        zombie = new Zombie(this.getGameManagers());
-        break;
-      case "fast":
-        zombie = new FastZombie(this.getGameManagers());
-        break;
-      case "big":
-        zombie = new BigZombie(this.getGameManagers());
-        break;
-      case "bat":
-        zombie = new BatZombie(this.getGameManagers());
-        break;
-      case "spitter":
-        zombie = new SpitterZombie(this.getGameManagers());
-        break;
-      default:
-        console.error(`Unknown zombie type: ${zombieType}`);
-        return;
-    }
-
-    // Set position and add to entity manager
-    zombie.setPosition(poolManager.vector2.claim(location.x, location.y));
-    this.getEntityManager().addEntity(zombie);
+    ZombieFactory.spawnZombieAtLocation(zombieType, location, this.getGameManagers());
   }
 
   /**
@@ -568,54 +503,39 @@ export class MapManager implements IMapManager {
 
       // Determine which type of zombie to spawn based on remaining counts
       if (spawnedCount.bat < distribution.bat) {
-        const zombie = new BatZombie(this.getGameManagers());
-        zombie.setPosition(
-          PoolManager.getInstance().vector2.claim(
-            x * getConfig().world.TILE_SIZE,
-            y * getConfig().world.TILE_SIZE
-          )
+        ZombieFactory.spawnZombieAtLocation(
+          "bat",
+          { x: x * getConfig().world.TILE_SIZE, y: y * getConfig().world.TILE_SIZE },
+          this.getGameManagers()
         );
-        this.getEntityManager().addEntity(zombie);
         spawnedCount.bat++;
       } else if (spawnedCount.big < distribution.big) {
-        const zombie = new BigZombie(this.getGameManagers());
-        zombie.setPosition(
-          PoolManager.getInstance().vector2.claim(
-            x * getConfig().world.TILE_SIZE,
-            y * getConfig().world.TILE_SIZE
-          )
+        ZombieFactory.spawnZombieAtLocation(
+          "big",
+          { x: x * getConfig().world.TILE_SIZE, y: y * getConfig().world.TILE_SIZE },
+          this.getGameManagers()
         );
-        this.getEntityManager().addEntity(zombie);
         spawnedCount.big++;
       } else if (spawnedCount.fast < distribution.fast) {
-        const zombie = new FastZombie(this.getGameManagers());
-        zombie.setPosition(
-          PoolManager.getInstance().vector2.claim(
-            x * getConfig().world.TILE_SIZE,
-            y * getConfig().world.TILE_SIZE
-          )
+        ZombieFactory.spawnZombieAtLocation(
+          "fast",
+          { x: x * getConfig().world.TILE_SIZE, y: y * getConfig().world.TILE_SIZE },
+          this.getGameManagers()
         );
-        this.getEntityManager().addEntity(zombie);
         spawnedCount.fast++;
       } else if (spawnedCount.regular < distribution.regular) {
-        const zombie = new Zombie(this.getGameManagers());
-        zombie.setPosition(
-          PoolManager.getInstance().vector2.claim(
-            x * getConfig().world.TILE_SIZE,
-            y * getConfig().world.TILE_SIZE
-          )
+        ZombieFactory.spawnZombieAtLocation(
+          "regular",
+          { x: x * getConfig().world.TILE_SIZE, y: y * getConfig().world.TILE_SIZE },
+          this.getGameManagers()
         );
-        this.getEntityManager().addEntity(zombie);
         spawnedCount.regular++;
       } else if (spawnedCount.spitter < distribution.spitter) {
-        const zombie = new SpitterZombie(this.getGameManagers());
-        zombie.setPosition(
-          PoolManager.getInstance().vector2.claim(
-            x * getConfig().world.TILE_SIZE,
-            y * getConfig().world.TILE_SIZE
-          )
+        ZombieFactory.spawnZombieAtLocation(
+          "spitter",
+          { x: x * getConfig().world.TILE_SIZE, y: y * getConfig().world.TILE_SIZE },
+          this.getGameManagers()
         );
-        this.getEntityManager().addEntity(zombie);
         spawnedCount.spitter++;
       }
     }
@@ -893,7 +813,11 @@ export class MapManager implements IMapManager {
     let carSpawned = false;
 
     // Check if game mode has car entity
-    const gameModeConfig = this.getGameManagers().getGameServer().getGameLoop().getGameModeStrategy().getConfig();
+    const gameModeConfig = this.getGameManagers()
+      .getGameServer()
+      .getGameLoop()
+      .getGameModeStrategy()
+      .getConfig();
     const shouldSpawnCar = gameModeConfig.hasCarEntity;
 
     for (let y = 0; y < totalSize; y++) {
@@ -982,10 +906,15 @@ export class MapManager implements IMapManager {
     let cumulativeChance = 0;
 
     // Use battle royale multiplier if in that game mode, otherwise use default
-    const gameModeConfig = this.getGameManagers().getGameServer().getGameLoop().getGameModeStrategy().getConfig();
-    const spawnMultiplier = gameModeConfig.modeId === "battle_royale"
-      ? balanceConfig.BATTLE_ROYALE_ITEM_SPAWN_MULTIPLIER
-      : balanceConfig.MAP_ITEM_SPAWN_MULTIPLIER;
+    const gameModeConfig = this.getGameManagers()
+      .getGameServer()
+      .getGameLoop()
+      .getGameModeStrategy()
+      .getConfig();
+    const spawnMultiplier =
+      gameModeConfig.modeId === "battle_royale"
+        ? balanceConfig.BATTLE_ROYALE_ITEM_SPAWN_MULTIPLIER
+        : balanceConfig.MAP_ITEM_SPAWN_MULTIPLIER;
 
     for (const { chance, entityType } of spawnTable) {
       cumulativeChance += chance;
@@ -1066,9 +995,11 @@ export class MapManager implements IMapManager {
 
             // Validate position is valid for placement (checks for existing entities)
             if (this.isPositionValidForPlacement(position, true)) {
-              const zombie = new Zombie(this.getGameManagers(), true); // true = idle mode
-              zombie.setPosition(position);
-              this.getEntityManager().addEntity(zombie);
+              ZombieFactory.createZombie("regular", this.getGameManagers(), {
+                position,
+                addToManager: true,
+                isIdle: true,
+              });
             } else {
               // Release position if not valid
               poolManager.vector2.release(position);
@@ -1821,9 +1752,9 @@ export class MapManager implements IMapManager {
 
     for (const tile of emptyTiles) {
       const tileCenter = poolManager.vector2.claim(tile.x + TILE_SIZE / 2, tile.y + TILE_SIZE / 2);
-      const distance = center.distance(tileCenter);
+      const dist = distance(center, tileCenter);
 
-      if (distance >= minRadius && distance <= maxRadius) {
+      if (dist >= minRadius && dist <= maxRadius) {
         validTiles.push(tile);
       } else {
         poolManager.vector2.release(tile);
@@ -1909,8 +1840,8 @@ export class MapManager implements IMapManager {
             position.x + TILE_SIZE / 2,
             position.y + TILE_SIZE / 2
           );
-          const distance = center.distance(centerPos);
-          if (distance > radius) {
+          const dist = distance(center, centerPos);
+          if (dist > radius) {
             poolManager.vector2.release(centerPos);
             poolManager.vector2.release(position);
             continue;

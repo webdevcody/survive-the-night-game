@@ -1,4 +1,8 @@
 import { clientEntityOverrideRegistry } from "./entity-override-registry";
+import { ENTITY_REGISTRATION_CONFIG } from "@shared/config/entity-registration";
+import { EntityType, RawEntity } from "@shared/types/entity";
+import { IClientEntity } from "@/entities/util";
+import { AssetManager } from "@/managers/asset";
 import { PlayerClient } from "@/entities/player";
 import { ZombieClient } from "@/entities/zombie";
 import { BigZombieClient } from "@/entities/big-zombie";
@@ -13,6 +17,7 @@ import { BulletClient } from "@/entities/bullet";
 import { ArrowClient } from "@/entities/arrow";
 import { GrenadeProjectileClient } from "./grenade-projectile";
 import { FlameProjectileClient } from "./flame-projectile";
+import { AcidProjectileClient } from "./acid-projectile";
 import { TreeClient } from "@/entities/items/tree";
 import { WallClient } from "@/entities/items/wall";
 import { WallLevel2Client } from "@/entities/items/wall-level-2";
@@ -32,11 +37,13 @@ import { LandmineClient } from "@/entities/items/landmine";
 import { BearTrapClient } from "@/entities/items/bear-trap";
 import { GrenadeClient } from "./items/grenade";
 import { MolotovCocktailClient } from "./items/molotov-cocktail";
+import { ThrowingKnifeClient } from "./items/throwing-knife";
 import { CrateClient } from "./items/crate";
 import { GallonDrumClient } from "./items/gallon-drum";
 import { SentryGunClient } from "./items/sentry-gun";
 import { SentryGunLevel2Client } from "./items/sentry-gun-level-2";
 import { SentryGunLevel3Client } from "./items/sentry-gun-level-3";
+import { BoundaryClient } from "./items/boundary";
 import { PistolAmmoClient } from "@/entities/weapons/pistol-ammo";
 import { ShotgunAmmoClient } from "@/entities/weapons/shotgun-ammo";
 import { BoltActionAmmoClient } from "@/entities/weapons/bolt-action-ammo";
@@ -53,109 +60,112 @@ import { AK47Client } from "@/entities/weapons/ak47";
 import { GrenadeLauncherClient } from "@/entities/weapons/grenade-launcher";
 import { FlamethrowerClient } from "@/entities/weapons/flamethrower";
 import { BowClient } from "@/entities/weapons/bow";
-import { ThrowingKnifeClient } from "./items/throwing-knife";
 import { ThrowingKnifeProjectileClient } from "@/entities/throwing-knife-projectile";
 import { FireClient } from "@/entities/environment/fire";
 import { CampsiteFireClient } from "@/entities/environment/campsite-fire";
 import { MerchantClient } from "./environment/merchant";
 import { CarClient } from "./environment/car";
 import { SurvivorClient } from "./environment/survivor";
-import { AcidProjectileClient } from "./acid-projectile";
-import { BoundaryClient } from "./items/boundary";
 import { BloodClient } from "./blood";
 import { AcidClient } from "./acid";
 import { ToxicGasCloudClient } from "./environment/toxic-gas-cloud";
 import { ToxicBiomeZoneClient } from "./environment/toxic-biome-zone";
+
+type ClientEntityConstructor = new (
+  data: RawEntity,
+  assetManager: AssetManager,
+  ...args: any[]
+) => IClientEntity;
+
+/**
+ * Mapping of entity types to their client constructor classes
+ * Used with ENTITY_REGISTRATION_CONFIG to register entities
+ */
+const CLIENT_ENTITY_CONSTRUCTORS: Record<EntityType, ClientEntityConstructor> = {
+  player: PlayerClient,
+  zombie: ZombieClient,
+  big_zombie: BigZombieClient,
+  fast_zombie: FastZombieClient,
+  bat_zombie: BatZombieClient,
+  spitter_zombie: SpitterZombieClient,
+  exploding_zombie: ExplodingZombieClient,
+  leaping_zombie: LeapingZombieClient,
+  grave_tyrant: ZombieClient,
+  charging_tyrant: ZombieClient,
+  acid_flyer: AcidFlyerClient,
+  splitter_boss: SplitterBossClient,
+  bullet: BulletClient,
+  arrow: ArrowClient,
+  throwing_knife_projectile: ThrowingKnifeProjectileClient,
+  grenade_projectile: GrenadeProjectileClient,
+  flame_projectile: FlameProjectileClient,
+  acid_projectile: AcidProjectileClient,
+  tree: TreeClient,
+  wall: WallClient,
+  wall_level_2: WallLevel2Client,
+  wall_level_3: WallLevel3Client,
+  bandage: BandageClient,
+  energy_drink: EnergyDrinkClient,
+  cloth: ClothClient,
+  wood: WoodClient,
+  coin: CoinClient,
+  gasoline: GasolineClient,
+  spikes: SpikesClient,
+  spikes_level_2: SpikesLevel2Client,
+  spikes_level_3: SpikesLevel3Client,
+  torch: TorchClient,
+  miners_hat: MinersHatClient,
+  landmine: LandmineClient,
+  bear_trap: BearTrapClient,
+  grenade: GrenadeClient,
+  molotov_cocktail: MolotovCocktailClient,
+  throwing_knife: ThrowingKnifeClient,
+  crate: CrateClient,
+  gallon_drum: GallonDrumClient,
+  sentry_gun: SentryGunClient,
+  sentry_gun_level_2: SentryGunLevel2Client,
+  sentry_gun_level_3: SentryGunLevel3Client,
+  boundary: BoundaryClient,
+  pistol_ammo: PistolAmmoClient,
+  shotgun_ammo: ShotgunAmmoClient,
+  bolt_action_ammo: BoltActionAmmoClient,
+  ak47_ammo: AK47AmmoClient,
+  grenade_launcher_ammo: GrenadeLauncherAmmoClient,
+  flamethrower_ammo: FlamethrowerAmmoClient,
+  arrow_ammo: ArrowAmmoClient,
+  knife: KnifeClient,
+  baseball_bat: BaseballBatClient,
+  pistol: PistolClient,
+  shotgun: ShotgunClient,
+  bolt_action_rifle: BoltActionRifleClient,
+  ak47: AK47Client,
+  grenade_launcher: GrenadeLauncherClient,
+  flamethrower: FlamethrowerClient,
+  bow: BowClient,
+  fire: FireClient,
+  campsite_fire: CampsiteFireClient,
+  merchant: MerchantClient,
+  car: CarClient,
+  survivor: SurvivorClient,
+  blood: BloodClient,
+  acid: AcidClient,
+  toxic_gas_cloud: ToxicGasCloudClient,
+  toxic_biome_zone: ToxicBiomeZoneClient,
+} as Record<EntityType, ClientEntityConstructor>;
 
 /**
  * Registers all custom client entity classes in the override registry
  * This allows the system to use custom classes when they exist,
  * and fall back to generic entities for simple items
  *
- * Uses string literals instead of Entities constants to avoid dependency on Entities
- * being initialized before this runs
+ * Uses ENTITY_REGISTRATION_CONFIG to maintain consistent registration order
+ * between server and client
  */
 export function registerCustomClientEntities(): void {
-  // Player (special - no config)
-  clientEntityOverrideRegistry.register("player", PlayerClient);
-
-  // Zombies
-  clientEntityOverrideRegistry.register("zombie", ZombieClient);
-  clientEntityOverrideRegistry.register("big_zombie", BigZombieClient);
-  clientEntityOverrideRegistry.register("fast_zombie", FastZombieClient);
-  clientEntityOverrideRegistry.register("bat_zombie", BatZombieClient);
-  clientEntityOverrideRegistry.register("spitter_zombie", SpitterZombieClient);
-  clientEntityOverrideRegistry.register("exploding_zombie", ExplodingZombieClient);
-  clientEntityOverrideRegistry.register("leaping_zombie", LeapingZombieClient);
-  clientEntityOverrideRegistry.register("grave_tyrant", ZombieClient);
-  clientEntityOverrideRegistry.register("charging_tyrant", ZombieClient);
-  clientEntityOverrideRegistry.register("acid_flyer", AcidFlyerClient);
-  clientEntityOverrideRegistry.register("splitter_boss", SplitterBossClient);
-
-  // Projectiles
-  clientEntityOverrideRegistry.register("bullet", BulletClient);
-  clientEntityOverrideRegistry.register("arrow", ArrowClient);
-  clientEntityOverrideRegistry.register("throwing_knife_projectile", ThrowingKnifeProjectileClient);
-  clientEntityOverrideRegistry.register("grenade_projectile", GrenadeProjectileClient);
-  clientEntityOverrideRegistry.register("flame_projectile", FlameProjectileClient);
-  clientEntityOverrideRegistry.register("acid_projectile", AcidProjectileClient);
-
-  // Items with custom behavior
-  clientEntityOverrideRegistry.register("tree", TreeClient);
-  clientEntityOverrideRegistry.register("wall", WallClient);
-  clientEntityOverrideRegistry.register("wall_level_2", WallLevel2Client);
-  clientEntityOverrideRegistry.register("wall_level_3", WallLevel3Client);
-  clientEntityOverrideRegistry.register("bandage", BandageClient);
-  clientEntityOverrideRegistry.register("energy_drink", EnergyDrinkClient);
-  clientEntityOverrideRegistry.register("cloth", ClothClient);
-  clientEntityOverrideRegistry.register("wood", WoodClient);
-  clientEntityOverrideRegistry.register("coin", CoinClient);
-  clientEntityOverrideRegistry.register("gasoline", GasolineClient);
-  clientEntityOverrideRegistry.register("spikes", SpikesClient);
-  clientEntityOverrideRegistry.register("spikes_level_2", SpikesLevel2Client);
-  clientEntityOverrideRegistry.register("spikes_level_3", SpikesLevel3Client);
-  clientEntityOverrideRegistry.register("torch", TorchClient);
-  clientEntityOverrideRegistry.register("miners_hat", MinersHatClient);
-  clientEntityOverrideRegistry.register("landmine", LandmineClient);
-  clientEntityOverrideRegistry.register("bear_trap", BearTrapClient);
-  clientEntityOverrideRegistry.register("grenade", GrenadeClient);
-  clientEntityOverrideRegistry.register("molotov_cocktail", MolotovCocktailClient);
-  clientEntityOverrideRegistry.register("throwing_knife", ThrowingKnifeClient);
-  clientEntityOverrideRegistry.register("crate", CrateClient);
-  clientEntityOverrideRegistry.register("gallon_drum", GallonDrumClient);
-  clientEntityOverrideRegistry.register("sentry_gun", SentryGunClient);
-  clientEntityOverrideRegistry.register("sentry_gun_level_2", SentryGunLevel2Client);
-  clientEntityOverrideRegistry.register("sentry_gun_level_3", SentryGunLevel3Client);
-
-  // Ammo
-  clientEntityOverrideRegistry.register("pistol_ammo", PistolAmmoClient);
-  clientEntityOverrideRegistry.register("shotgun_ammo", ShotgunAmmoClient);
-  clientEntityOverrideRegistry.register("bolt_action_ammo", BoltActionAmmoClient);
-  clientEntityOverrideRegistry.register("ak47_ammo", AK47AmmoClient);
-  clientEntityOverrideRegistry.register("grenade_launcher_ammo", GrenadeLauncherAmmoClient);
-  clientEntityOverrideRegistry.register("flamethrower_ammo", FlamethrowerAmmoClient);
-  clientEntityOverrideRegistry.register("arrow_ammo", ArrowAmmoClient);
-
-  // Weapons
-  clientEntityOverrideRegistry.register("knife", KnifeClient);
-  clientEntityOverrideRegistry.register("baseball_bat", BaseballBatClient);
-  clientEntityOverrideRegistry.register("pistol", PistolClient);
-  clientEntityOverrideRegistry.register("shotgun", ShotgunClient);
-  clientEntityOverrideRegistry.register("bolt_action_rifle", BoltActionRifleClient);
-  clientEntityOverrideRegistry.register("ak47", AK47Client);
-  clientEntityOverrideRegistry.register("grenade_launcher", GrenadeLauncherClient);
-  clientEntityOverrideRegistry.register("flamethrower", FlamethrowerClient);
-  clientEntityOverrideRegistry.register("bow", BowClient);
-
-  // Environment
-  clientEntityOverrideRegistry.register("fire", FireClient);
-  clientEntityOverrideRegistry.register("campsite_fire", CampsiteFireClient);
-  clientEntityOverrideRegistry.register("merchant", MerchantClient);
-  clientEntityOverrideRegistry.register("car", CarClient);
-  clientEntityOverrideRegistry.register("survivor", SurvivorClient);
-  clientEntityOverrideRegistry.register("boundary", BoundaryClient);
-  clientEntityOverrideRegistry.register("blood", BloodClient);
-  clientEntityOverrideRegistry.register("acid", AcidClient);
-  clientEntityOverrideRegistry.register("toxic_gas_cloud", ToxicGasCloudClient);
-  clientEntityOverrideRegistry.register("toxic_biome_zone", ToxicBiomeZoneClient);
+  for (const entry of ENTITY_REGISTRATION_CONFIG) {
+    const constructor = CLIENT_ENTITY_CONSTRUCTORS[entry.type];
+    if (constructor) {
+      clientEntityOverrideRegistry.register(entry.type, constructor);
+    }
+  }
 }

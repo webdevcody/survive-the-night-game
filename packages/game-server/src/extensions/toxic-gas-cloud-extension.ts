@@ -14,6 +14,7 @@ import { ToxicGasCloud } from "@/entities/environment/toxic-gas-cloud";
 import Vector2 from "@/util/vector2";
 import PoolManager from "@shared/util/pool-manager";
 import { Player } from "@/entities/players/player";
+import { distance } from "@/util/physics";
 
 type ToxicGasCloudFields = {
   age: number;
@@ -130,12 +131,9 @@ export class ToxicGasCloudExtension extends ExtensionBase<ToxicGasCloudFields> {
       if (entity instanceof Player && entity.isZombie()) continue;
 
       const entityCenter = entity.getExt(Positionable).getCenterPosition();
-      const dx = position.x - entityCenter.x;
-      const dy = position.y - entityCenter.y;
-      const distanceSquared = dx * dx + dy * dy;
-      const radiusSquared = radius * radius;
+      const dist = distance(position, entityCenter);
 
-      if (distanceSquared < radiusSquared) {
+      if (dist < radius) {
         // Player is in cloud - apply or refresh poison
         if (entity.hasExt(Poison)) {
           // Refresh the poison to keep damaging while in cloud

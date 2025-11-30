@@ -10,6 +10,7 @@ import { BIOME_SIZE, MAP_SIZE } from "@/world/map-manager";
 import { getConfig } from "@shared/config";
 import { GameMessageEvent } from "@shared/events/server-sent/events/game-message-event";
 import Positionable from "@/extensions/positionable";
+import { distance } from "@/util/physics";
 
 /**
  * Strategy for managing toxic gas environmental events
@@ -268,10 +269,8 @@ export class ToxicGasEventStrategy implements IEnvironmentalEventStrategy {
         // Check if position is far enough from existing positions
         validPosition = true;
         for (const existingPos of positions) {
-          const dx = position.x - existingPos.x;
-          const dy = position.y - existingPos.y;
-          const distance = Math.sqrt(dx * dx + dy * dy);
-          if (distance < minDistance) {
+          const dist = distance(position, existingPos);
+          if (dist < minDistance) {
             validPosition = false;
             break;
           }

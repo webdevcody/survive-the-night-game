@@ -7,6 +7,8 @@ import { getConfig } from "@shared/config";
 import { ZombieAttackedEvent } from "../../../../../../game-shared/src/events/server-sent/events/zombie-attacked-event";
 import { TargetingSystem } from "../targeting";
 import { Entities } from "@/constants";
+import { distance } from "@/util/physics";
+import PoolManager from "@shared/util/pool-manager";
 
 export class MeleeAttackStrategy implements AttackStrategy {
   onEntityDamaged?: (entity: IEntity) => void;
@@ -20,10 +22,11 @@ export class MeleeAttackStrategy implements AttackStrategy {
     const closestY = Math.max(rectPos.y, Math.min(point.y, rectPos.y + rectSize.y));
 
     // Calculate distance from point to closest point on rectangle
-    const dx = point.x - closestX;
-    const dy = point.y - closestY;
-
-    return Math.sqrt(dx * dx + dy * dy);
+    const poolManager = PoolManager.getInstance();
+    const closestPoint = poolManager.vector2.claim(closestX, closestY);
+    const dist = distance(point, closestPoint);
+    poolManager.vector2.release(closestPoint);
+    return dist;
   }
 
   update(zombie: BaseEnemy, _deltaTime: number): void {

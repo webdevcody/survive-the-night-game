@@ -11,6 +11,7 @@ import { PlayerClient } from "@/entities/player";
 import { ClientEntityBase } from "@/extensions/client-entity";
 import { ClientPositionable, ClientInventory } from "@/extensions";
 import { entityBlocksPlacement } from "@shared/entities/decal-registry";
+import { distance } from "@shared/util/physics";
 
 /**
  * Check if placing an item on an existing entity would trigger an upgrade.
@@ -136,8 +137,8 @@ export class PlacementManager {
       position.x + TILE_SIZE / 2,
       position.y + TILE_SIZE / 2
     );
-    const distance = playerPos.distance(ghostCenter);
-    if (distance > MAX_PLACEMENT_RANGE) {
+    const dist = distance(playerPos, ghostCenter);
+    if (dist > MAX_PLACEMENT_RANGE) {
       return false;
     }
 
@@ -177,7 +178,7 @@ export class PlacementManager {
       if (!entityBlocksPlacement(entityType)) continue;
 
       const entityPos = entity.getExt(ClientPositionable).getCenterPosition();
-      const dist = entityPos.distance(wallCenter);
+      const dist = distance(entityPos, wallCenter);
 
       // If entity is within a tile size, check if it can be upgraded
       if (dist < TILE_SIZE) {

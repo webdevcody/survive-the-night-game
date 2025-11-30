@@ -3,9 +3,7 @@ import { HandlerContext } from "../context";
 import { SocketEventHandler } from "./types";
 import { infectionConfig } from "@shared/config/infection-config";
 import { distance } from "@shared/util/physics";
-import { Zombie } from "@/entities/enemies/zombie";
-import Positionable from "@/extensions/positionable";
-import PoolManager from "@shared/util/pool-manager";
+import { ZombieFactory } from "@/util/zombie-factory";
 
 export interface SpawnZombiePayload {
   x: number;
@@ -47,15 +45,7 @@ export function onSpawnZombie(
 
   // Create the zombie at the spawn position
   const gameManagers = context.getGameManagers();
-  const zombie = new Zombie(gameManagers, false); // false = not idle, uses melee movement
-
-  // Set position
-  const poolManager = PoolManager.getInstance();
-  const position = poolManager.vector2.claim(payload.x, payload.y);
-  zombie.getExt(Positionable).setPosition(position);
-
-  // Add to entity manager
-  gameManagers.getEntityManager().addEntity(zombie);
+  ZombieFactory.spawnZombieAtLocation("regular", payload, gameManagers, false);
 
   // Reset the cooldown
   player.resetZombieSpawnCooldown();

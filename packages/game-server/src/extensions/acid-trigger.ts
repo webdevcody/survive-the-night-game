@@ -10,6 +10,7 @@ import Poison from "./poison";
 import { Entities } from "@shared/constants";
 import { getConfig } from "@shared/config";
 import { Player } from "@/entities/players/player";
+import { distance } from "@/util/physics";
 
 /**
  * Extension that triggers when a player walks over acid, adding poison extension
@@ -22,7 +23,6 @@ type AcidTriggerFields = {
 export default class AcidTrigger extends ExtensionBase<AcidTriggerFields> {
   public static readonly type = "acid-trigger";
   private static readonly RADIUS = getConfig().combat.ITEM_TRIGGER_RADIUS;
-  private static readonly RADIUS_SQUARED = AcidTrigger.RADIUS * AcidTrigger.RADIUS;
   private static readonly CHECK_INTERVAL = 0.2; // Check for players every half second
 
   private triggerCooldown: Cooldown;
@@ -101,12 +101,9 @@ export default class AcidTrigger extends ExtensionBase<AcidTriggerFields> {
 
       const entityCenter = entity.getExt(Positionable).getCenterPosition();
 
-      // Use squared distance comparison to avoid expensive sqrt calculation
-      const dx = position.x - entityCenter.x;
-      const dy = position.y - entityCenter.y;
-      const centerDistanceSquared = dx * dx + dy * dy;
+      const centerDistance = distance(position, entityCenter);
 
-      if (centerDistanceSquared < AcidTrigger.RADIUS_SQUARED) {
+      if (centerDistance < AcidTrigger.RADIUS) {
         // Add poison extension if player doesn't already have it
         if (!entity.hasExt(Poison)) {
           entity.addExtension(

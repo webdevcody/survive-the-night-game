@@ -6,6 +6,7 @@ import Vector2 from "@/util/vector2";
 import Positionable from "@/extensions/positionable";
 import Destructible from "@/extensions/destructible";
 import Groupable from "@/extensions/groupable";
+import { distance } from "@/util/physics";
 
 export interface TargetResult {
   entity: IEntity;
@@ -55,10 +56,10 @@ export class TargetingSystem {
       }
 
       const position = entity.getExt(Positionable).getCenterPosition();
-      const distance = zombiePos.distance(position);
+      const dist = distance(zombiePos, position);
 
-      if (distance < closestDistance) {
-        closestDistance = distance;
+      if (dist < closestDistance) {
+        closestDistance = dist;
         closestEntity = entity;
         closestPosition = position;
       }
@@ -93,9 +94,9 @@ export class TargetingSystem {
       }
 
       const position = entity.getExt(Positionable).getCenterPosition();
-      const distance = zombiePos.distance(position);
+      const dist = distance(zombiePos, position);
 
-      results.push({ entity, position, distance });
+      results.push({ entity, position, distance: dist });
     }
 
     return results;
@@ -135,13 +136,13 @@ export class TargetingSystem {
 
     const zombiePos = zombie.getCenterPosition();
     const playerPos = player.getExt(Positionable).getCenterPosition();
-    const distance = zombiePos.distance(playerPos);
+    const dist = distance(zombiePos, playerPos);
 
     // If radius is specified, check if player is within range
-    if (searchRadius !== undefined && distance > searchRadius) {
+    if (searchRadius !== undefined && dist > searchRadius) {
       return null;
     }
 
-    return { entity: player, position: playerPos, distance };
+    return { entity: player, position: playerPos, distance: dist };
   }
 }

@@ -9,6 +9,7 @@ import PoolManager from "../../../game-shared/src/util/pool-manager";
 import { getConfig } from "@shared/config";
 import { itemRegistry } from "../../../game-shared/src/entities/item-registry";
 import { isWeapon } from "@shared/util/inventory";
+import { distance } from "@shared/util/physics";
 
 export interface InputManagerOptions {
   onCraft?: () => unknown;
@@ -769,12 +770,14 @@ export class InputManager {
     const worldMouseY = cameraPos.y + offsetY / cameraScale;
 
     // Calculate angle and distance from player to mouse
+    const mousePos = new Vector2(worldMouseX, worldMouseY);
+    const dist = distance(playerWorldPos, mousePos);
     const dx = worldMouseX - playerWorldPos.x;
     const dy = worldMouseY - playerWorldPos.y;
 
     return {
       angle: Math.atan2(dy, dx),
-      distance: Math.sqrt(dx * dx + dy * dy),
+      distance: dist,
     };
   }
 }

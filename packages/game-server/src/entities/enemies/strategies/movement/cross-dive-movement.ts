@@ -3,7 +3,7 @@ import Movable from "@/extensions/movable";
 import Positionable from "@/extensions/positionable";
 import Vector2 from "@/util/vector2";
 import PoolManager from "@shared/util/pool-manager";
-import { velocityTowards } from "@/util/physics";
+import { velocityTowards, distance } from "@/util/physics";
 import { calculateSeparationForce, blendSeparationForce } from "../separation";
 import { Acid } from "@/entities/effects/acid";
 import { Cooldown } from "@/entities/util/cooldown";
@@ -31,7 +31,7 @@ export class AcidFlyerApproachStrategy implements MovementStrategy {
 
     // Check distance to car
     if (carLocation) {
-      const distanceToCar = zombiePos.distance(carLocation);
+      const distanceToCar = distance(zombiePos, carLocation);
 
       // If close enough, switch to dive strategy
       if (distanceToCar <= this.config.approachDistance) {

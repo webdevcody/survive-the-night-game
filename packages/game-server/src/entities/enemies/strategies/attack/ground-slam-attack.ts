@@ -6,7 +6,7 @@ import Positionable from "@/extensions/positionable";
 import Movable from "@/extensions/movable";
 import { Player } from "@/entities/players/player";
 import PoolManager from "@shared/util/pool-manager";
-import { normalizeVector } from "@/util/physics";
+import { normalizeVector, distance } from "@/util/physics";
 import { ExplosionEvent } from "../../../../../../game-shared/src/events/server-sent/events/explosion-event";
 
 export class GroundSlamAttackStrategy implements AttackStrategy {
@@ -37,7 +37,7 @@ export class GroundSlamAttackStrategy implements AttackStrategy {
       if (!entity.hasExt(Destructible) || !entity.hasExt(Positionable)) continue;
 
       const entityPos = entity.getExt(Positionable).getCenterPosition();
-      const dist = position.distance(entityPos);
+      const dist = distance(position, entityPos);
 
       if (dist <= this.slamRadius) {
         // Deal damage

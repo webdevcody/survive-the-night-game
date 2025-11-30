@@ -7,6 +7,7 @@ import { entityTypeRegistry } from "@shared/util/entity-type-encoding";
 import { WaveState } from "@shared/types/wave";
 import { InitializationContext } from "./types";
 import { Entities } from "@shared/constants";
+import { distance } from "@shared/util/physics";
 
 export const onGameStateUpdate = (
   context: InitializationContext,
@@ -223,9 +224,7 @@ const handleGameStateUpdate = (context: InitializationContext, gameStateEvent: G
 
           // Get server position after deserialization
           const serverPos = existingEntity.getExt(ClientPositionable).getPosition();
-          const dx = clientPos.x - serverPos.x;
-          const dy = clientPos.y - serverPos.y;
-          const error = Math.hypot(dx, dy);
+          const error = distance(clientPos, serverPos);
 
           // Store server ghost position for reconciliation
           if (existingEntity instanceof PlayerClient) {

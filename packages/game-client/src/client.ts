@@ -55,6 +55,9 @@ import { itemRegistry } from "@shared/entities";
 import { ClientCarryable } from "@/extensions";
 import { PlayerColor } from "@shared/commands/commands";
 import { infectionConfig } from "@shared/config/infection-config";
+import { TeleportManager } from "./managers/teleport-manager";
+import { InteractionManager } from "./managers/interaction-manager";
+import { ClientEventHandlers } from "./managers/client-event-handlers";
 
 export class GameClient {
   private ctx: CanvasRenderingContext2D;
@@ -101,19 +104,10 @@ export class GameClient {
   private isStarted = false;
   private isMounted = true;
 
-  // Teleport state
-  private isTeleporting: boolean = false;
-  private teleportProgress: number = 0;
-  private teleportStartTime: number = 0;
-  private teleportCancelledByDamage: boolean = false;
-  private readonly TELEPORT_DURATION = 3000; // 3 seconds
-
-  // Interact hold state
-  private isHoldingInteract: boolean = false;
-  private interactHoldStartTime: number = 0;
-  private interactHoldTargetEntityId: number | null = null;
-  private interactHoldCompleted: boolean = false; // Prevent immediate restart after completion
-  private readonly INTERACT_HOLD_DURATION = 500; // 0.5 seconds in milliseconds
+  // Managers
+  private teleportManager: TeleportManager;
+  private interactionManager: InteractionManager;
+  private eventHandlers: ClientEventHandlers;
 
   // Cached campsite fire reference (there should only ever be one)
   private campsiteFire: CampsiteFireClient | null = null;
@@ -138,6 +132,15 @@ export class GameClient {
     this.predictionManager = new PredictionManager();
     this.fixedTimestepSimulator = new FixedTimestepSimulator(getConfig().simulation.FIXED_TIMESTEP);
 
+    // Initialize managers
+    this.teleportManager = new TeleportManager();
+    this.interactionManager = new InteractionManager();
+    this.eventHandlers = new ClientEventHandlers(this);
+
+    // Setup event listeners
+    this.eventHandlers.setupEventListeners(canvas);
+
+    // Legacy event listeners (will be removed after full migration)
     // Add mousemove event listener for UI hover interactions and aiming
     canvas.addEventListener("mousemove", (e) => {
       const rect = canvas.getBoundingClientRect();
@@ -458,12 +461,12 @@ export class GameClient {
           for (const merchantEntity of merchants) {
             if (merchantEntity.hasExt(ClientPositionable)) {
               const merchantPos = merchantEntity.getExt(ClientPositionable).getPosition();
-              const dx = merchantPos.x - playerPos.x;
-              const dy = merchantPos.y - playerPos.y;
-              const distance = Math.sqrt(dx * dx + dy * dy);
+              const merchantCenterPos = merchantEntity
+                .getExt(ClientPositionable)
+                .getCenterPosition();
+              const dist = distance(playerPos, merchantCenterPos);
 
-              // MAX_INTERACT_RADIUS from game config is 20
-              if (distance <= 20) {
+              if (dist <= getConfig().player.MAX_INTERACT_RADIUS) {
                 // Cast to MerchantClient to access shop items
                 const merchant = merchantEntity as any;
                 const shopItems = merchant.getShopItems?.();
@@ -478,13 +481,24 @@ export class GameClient {
         }
 
         // Start interact hold
-        this.startInteractHold();
+        const spatialGrid = this.renderer?.spatialGrid ?? null;
+        const entityId = this.interactionManager.startInteractHold(
+          this.gameState,
+          spatialGrid,
+          (message, color) => this.hud.addMessage(message, color)
+        );
+
+        // If entity ID returned and not placeable, send interact immediately
+        if (entityId !== null) {
+          const entity = getEntityById(this.gameState, entityId);
+          if (entity && !entity.hasExt(ClientPlaceable) && this.socketManager) {
+            this.socketManager.sendInteract(entityId);
+          }
+        }
       },
       onInteractEnd: () => {
-        // Cancel interact hold (unless we just completed it)
-        if (!this.interactHoldCompleted) {
-          this.cancelInteractHold();
-        }
+        // Cancel interact hold
+        this.interactionManager.cancelInteractHold(this.gameState);
       },
       onSelectInventorySlot: (slotIndex: number) => {
         if (this.socketManager) {
@@ -904,16 +918,10 @@ export class GameClient {
    * Update teleport progress and send event when complete
    */
   private updateTeleportProgress(): void {
-    if (!this.isTeleporting) {
-      return;
-    }
-
-    const now = Date.now();
-    const elapsed = now - this.teleportStartTime;
-    this.teleportProgress = Math.min(1, elapsed / this.TELEPORT_DURATION);
+    this.teleportManager.updateProgress();
 
     // If progress reaches 1.0, teleport is complete
-    if (this.teleportProgress >= 1.0) {
+    if (this.teleportManager.isComplete()) {
       this.completeTeleport();
     }
   }
@@ -976,172 +984,21 @@ export class GameClient {
     }
   }
 
-  /**
-   * Start interact hold - begins tracking hold progress for placeable items
-   */
-  private startInteractHold(): void {
-    // Don't restart if we just completed an interact (prevent immediate restart)
-    if (this.isHoldingInteract) {
-      return;
-    }
-
-    const player = getPlayer(this.gameState);
-    if (!player) return;
-
-    // Find closest interactive entity (use spatial grid if available)
-    const spatialGrid = this.renderer?.spatialGrid ?? null;
-    const closestEntity = getClosestInteractiveEntity(this.gameState, spatialGrid);
-    if (!closestEntity) {
-      // No entity nearby, nothing to interact with
-      return;
-    }
-
-    // Check if entity is placeable (requires hold)
-    const isPlaceable = closestEntity.hasExt(ClientPlaceable);
-
-    if (isPlaceable) {
-      // Start hold timer
-      this.isHoldingInteract = true;
-      this.interactHoldStartTime = Date.now();
-      this.interactHoldTargetEntityId = closestEntity.getId();
-      this.interactHoldCompleted = false; // Reset completion flag
-
-      // Initialize player's pickup progress for rendering
-      // TODO: this is ineficient
-      const playerEntity = getPlayer(this.gameState);
-      if (playerEntity) {
-        (playerEntity as any).pickupProgress = 0;
-      }
-    } else {
-      // Not placeable, check if can pick up before sending interact
-      if (!this.canItemBePickedUp(closestEntity)) {
-        this.showInventoryFullMessage();
-        return;
-      }
-
-      // Send interact immediately
-      if (this.socketManager) {
-        this.socketManager.sendInteract(closestEntity.getId());
-      }
-    }
-  }
-
-  /**
-   * Cancel interact hold
-   */
-  private cancelInteractHold(): void {
-    if (!this.isHoldingInteract) return;
-
-    this.isHoldingInteract = false;
-    this.interactHoldStartTime = 0;
-    this.interactHoldTargetEntityId = null;
-
-    // Reset player's pickup progress
-    const playerEntity = getPlayer(this.gameState);
-    if (playerEntity) {
-      (playerEntity as any).pickupProgress = 0;
-    }
-  }
-
-  /**
-   * Complete interact hold - called after successfully sending interact event
-   */
-  private completeInteractHold(): void {
-    // Mark as completed to prevent immediate restart
-    this.interactHoldCompleted = true;
-
-    // Reset after a short delay to allow the event to be processed
-    setTimeout(() => {
-      this.interactHoldCompleted = false;
-    }, 100); // 100ms delay before allowing restart
-
-    this.cancelInteractHold();
-  }
+  // Interaction methods moved to InteractionManager
 
   /**
    * Update interact hold progress and send event when complete
    */
   private updateInteractHold(): void {
-    if (!this.isHoldingInteract) {
-      return;
-    }
+    const entityId = this.interactionManager.updateInteractHold(
+      this.gameState,
+      this.inputManager,
+      (message, color) => this.hud.addMessage(message, color)
+    );
 
-    const player = getPlayer(this.gameState);
-    if (!player) {
-      this.cancelInteractHold();
-      return;
-    }
-
-    // Check if target entity still exists and is in range
-    const targetEntity = this.interactHoldTargetEntityId
-      ? getEntityById(this.gameState, this.interactHoldTargetEntityId)
-      : null;
-
-    if (
-      !targetEntity ||
-      !targetEntity.hasExt(ClientPositionable) ||
-      !targetEntity.hasExt(ClientInteractive)
-    ) {
-      this.cancelInteractHold();
-      return;
-    }
-
-    // Check distance
-    const playerPos = player.getCenterPosition();
-    const entityPos = targetEntity.getExt(ClientPositionable).getCenterPosition();
-    const dx = entityPos.x - playerPos.x;
-    const dy = entityPos.y - playerPos.y;
-    const distance = Math.sqrt(dx * dx + dy * dy);
-    const maxRadius = getConfig().player.MAX_INTERACT_RADIUS;
-
-    if (distance > maxRadius) {
-      this.cancelInteractHold();
-      return;
-    }
-
-    // Check if player moved (has movement input)
-    // Only cancel if movement is significant (allow tiny movements)
-    const input = this.inputManager.getInputs();
-    const hasMovement = Math.abs(input.dx) > 0.1 || Math.abs(input.dy) > 0.1;
-    if (hasMovement) {
-      this.cancelInteractHold();
-      return;
-    }
-
-    // Update progress
-    const now = Date.now();
-    const elapsed = now - this.interactHoldStartTime;
-    const progress = Math.min(1, elapsed / this.INTERACT_HOLD_DURATION);
-
-    // Update player's pickup progress for rendering
-    const playerEntity = getPlayer(this.gameState);
-    if (playerEntity) {
-      (playerEntity as any).pickupProgress = progress;
-    }
-
-    // If progress reaches 0.99 or higher, interact is complete
-    // Use 0.99 threshold to account for timing precision issues
-    if (progress >= 1) {
-      // Ensure progress is clamped to 1.0 for final render
-      if (playerEntity) {
-        (playerEntity as any).pickupProgress = 1.0;
-      }
-
-      // Check if can pick up before sending interact
-      if (targetEntity && !this.canItemBePickedUp(targetEntity)) {
-        this.showInventoryFullMessage();
-        this.cancelInteractHold();
-        return;
-      }
-
-      // Send interact event to server targeting the entity we started with
-      if (this.socketManager && this.interactHoldTargetEntityId !== null) {
-        this.socketManager.sendInteract(this.interactHoldTargetEntityId);
-      }
-
-      // Complete the hold (prevents immediate restart)
-      this.completeInteractHold();
-      return; // Exit early to prevent further processing
+    // If interaction should be triggered, send it to server
+    if (entityId !== null && this.socketManager) {
+      this.socketManager.sendInteract(entityId);
     }
   }
 
@@ -1149,66 +1006,24 @@ export class GameClient {
    * Start teleport progress
    */
   private startTeleport(): void {
-    // Don't restart if already teleporting
-    if (this.isTeleporting) {
-      return;
-    }
-
-    // Don't start if we just cancelled due to damage (prevents immediate restart if H is still held)
-    if (this.teleportCancelledByDamage) {
-      return;
-    }
-
     const player = this.getMyPlayer();
-    if (!player || player.isDead()) {
-      return;
-    }
-
-    // Check if player is already near the campsite
-    const biomePositions = this.mapManager.getBiomePositions();
-    if (biomePositions?.campsite && player.hasExt(ClientPositionable)) {
-      const playerPos = player.getExt(ClientPositionable).getCenterPosition();
-      // Convert biome coordinates to world coordinates (center of campsite biome)
-      const { BIOME_SIZE, TILE_SIZE } = getConfig().world;
-      const campsiteBiomeX = biomePositions.campsite.x;
-      const campsiteBiomeY = biomePositions.campsite.y;
-      // Calculate center of campsite biome in world coordinates
-      const campsiteCenterX = (campsiteBiomeX * BIOME_SIZE + BIOME_SIZE / 2) * TILE_SIZE;
-      const campsiteCenterY = (campsiteBiomeY * BIOME_SIZE + BIOME_SIZE / 2) * TILE_SIZE;
-      const poolManager = PoolManager.getInstance();
-      const campsitePos = poolManager.vector2.claim(campsiteCenterX, campsiteCenterY);
-
-      const distanceToCampsite = distance(playerPos, campsitePos);
-      const TELEPORT_MIN_DISTANCE = 200; // Don't allow teleport if within 200 pixels of campsite center
-
-      if (distanceToCampsite < TELEPORT_MIN_DISTANCE) {
-        return; // Player is too close to campsite, don't allow teleport
-      }
-    }
-
-    this.isTeleporting = true;
-    this.teleportStartTime = Date.now();
-    this.teleportProgress = 0;
-    this.teleportCancelledByDamage = false; // Reset flag when starting new teleport
+    this.teleportManager.startTeleport(player, () => this.mapManager.getBiomePositions() ?? null);
   }
 
   /**
    * Cancel teleport and reset progress
    */
   private cancelTeleport(): void {
-    this.isTeleporting = false;
-    this.teleportProgress = 0;
-    this.teleportStartTime = 0;
-    this.teleportCancelledByDamage = false; // Reset flag
+    this.teleportManager.cancelTeleport();
   }
 
   /**
    * Complete teleport and send event to server
    */
   private completeTeleport(): void {
-    this.isTeleporting = false;
-    this.teleportProgress = 0;
-    this.teleportStartTime = 0;
+    if (!this.teleportManager.completeTeleport()) {
+      return; // Teleport wasn't active
+    }
 
     // Send teleport request to server
     if (this.socketManager) {
@@ -1227,13 +1042,7 @@ export class GameClient {
    * Interrupt teleport (called when player takes damage)
    */
   public interruptTeleport(): void {
-    // Cancel teleport and set flag to prevent immediate restart if H is still held
-    if (this.isTeleporting) {
-      this.isTeleporting = false;
-      this.teleportProgress = 0;
-      this.teleportStartTime = 0;
-      this.teleportCancelledByDamage = true;
-    }
+    this.teleportManager.interruptTeleport();
   }
 
   private handleLocalInventorySlotChanged(slot: number): void {
@@ -1261,10 +1070,7 @@ export class GameClient {
    * Get teleport state for HUD rendering
    */
   public getTeleportState(): { isTeleporting: boolean; progress: number } {
-    return {
-      isTeleporting: this.isTeleporting,
-      progress: this.teleportProgress,
-    };
+    return this.teleportManager.getTeleportState();
   }
 
   /**

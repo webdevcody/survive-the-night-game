@@ -13,6 +13,7 @@ import Poison from "@/extensions/poison";
 import { ToxicGasCloudExtension } from "@/extensions/toxic-gas-cloud-extension";
 import { ToxicBiomeZoneExtension } from "@/extensions/toxic-biome-zone-extension";
 import { getConfig } from "@shared/config";
+import { distance } from "@shared/util/physics";
 
 /**
  * Waves Mode Strategy - The default survival mode
@@ -99,12 +100,9 @@ export class WavesModeStrategy implements IGameModeStrategy {
       
       const cloudPos = cloud.getExt(Positionable).getCenterPosition();
       const radius = TILE_SIZE / 2; // Half tile radius
-      const dx = cloudPos.x - playerCenter.x;
-      const dy = cloudPos.y - playerCenter.y;
-      const distanceSquared = dx * dx + dy * dy;
-      const radiusSquared = radius * radius;
-      
-      if (distanceSquared < radiusSquared) {
+      const dist = distance(cloudPos, playerCenter);
+
+      if (dist < radius) {
         // Player is in cloud - apply poison if not already poisoned
         if (!player.hasExt(Poison)) {
           player.addExtension(new Poison(player, 3, 1, 1));

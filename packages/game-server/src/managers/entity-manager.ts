@@ -15,9 +15,11 @@ import { BaseEnemy } from "@/entities/enemies/base-enemy";
 import { getConfig } from "@/config";
 import { entityOverrideRegistry } from "@/entities/entity-override-registry";
 import { itemRegistry, resourceRegistry } from "@shared/entities";
+import { createEntityWithFactory, EntityFactoryAdapter } from "@shared/util/entity-factory-pattern";
 import { GenericItemEntity } from "@/entities/items/generic-item-entity";
 import { GenericResourceEntity } from "@/entities/items/generic-resource-entity";
 import { registerCustomEntities } from "@/entities/register-custom-entities";
+import { addEntityToTypeMap, removeEntityFromTypeMap } from "@shared/util/entity-map-helpers";
 import { Player } from "@/entities/players/player";
 import { perfTimer } from "@shared/util/performance";
 import { profiler } from "@/util/profiler";
@@ -95,44 +97,32 @@ export class EntityManager implements IEntityManager {
   public createEntityFromItem(item: InventoryItem): Entity | null {
     const entityType = item.itemType as EntityType;
 
-    // First check override registry for custom entity classes
+    // First check if custom entity constructor accepts state parameter
     const overrideConstructor = entityOverrideRegistry.get(entityType);
-    if (overrideConstructor) {
-      // Custom entities may accept itemState as second parameter
-      // Try with state first, fallback to without if constructor doesn't accept it
+    if (overrideConstructor && item.state) {
+      // Some custom entities may accept itemState as second parameter
+      // Try with state first, fallback to createEntity() if constructor doesn't accept it
       try {
         const entity = new overrideConstructor(this.getGameManagers(), item.state);
-        return entity;
+        return entity as Entity;
       } catch (e) {
-        // If constructor doesn't accept state, try without
-        const entity = new overrideConstructor(this.getGameManagers());
-        return entity;
+        // Constructor doesn't accept state, fall through to use createEntity()
       }
     }
 
-    // Fallback to generic entity generation from configs
-    const genericEntity = this.createGenericEntityFromItem(entityType, item.state);
-    if (genericEntity) {
-      return genericEntity;
+    // Use the standard factory pattern via createEntity()
+    const entity = this.createEntity(entityType);
+    if (!entity) {
+      console.warn(`createEntityFromItem failed - Unknown item type: ${item.itemType}`);
+      return null;
     }
 
-    console.warn(`createEntityFromItem failed - Unknown item type: ${item.itemType}`);
-    return null;
-  }
-
-  private createGenericEntityFromItem(entityType: EntityType, state?: ItemState): Entity | null {
-    // Try to create from item registry
-    const itemConfig = itemRegistry.get(entityType);
-    if (itemConfig) {
-      const entity = new GenericItemEntity(this.getGameManagers(), entityType, itemConfig);
-      // Apply state if provided (e.g., health for destructible items)
-      if (state?.health !== undefined && entity.hasExt(Destructible)) {
-        entity.getExt(Destructible).setHealth(state.health);
-      }
-      return entity;
+    // Apply state if provided (e.g., health for destructible items)
+    if (item.state?.health !== undefined && entity.hasExt(Destructible)) {
+      entity.getExt(Destructible).setHealth(item.state.health);
     }
 
-    return null;
+    return entity as Entity;
   }
 
   setMapSize(width: number, height: number) {
@@ -170,12 +160,8 @@ export class EntityManager implements IEntityManager {
     this.entities.push(entity);
     this.entityMap.set(entity.getId(), entity);
 
-    // Add to type-based map
-    const entityType = entity.getType();
-    if (!this.entitiesByType.has(entityType)) {
-      this.entitiesByType.set(entityType, []);
-    }
-    this.entitiesByType.get(entityType)!.push(entity);
+    // Add to type-based map using shared utility
+    addEntityToTypeMap(entity, this.entitiesByType);
 
     if (entity.getType() === Entities.PLAYER) {
       this.players.push(entity as Player);
@@ -242,45 +228,14 @@ export class EntityManager implements IEntityManager {
 
     const entity = this.entityMap.get(entityId);
     if (entity) {
-      // Clean up tracking data
-      this.dirtyEntities.delete(entity);
-      this.entitiesInGrid.delete(entity);
-      this.entitiesToAddToGrid.delete(entity);
-      // Untrack from entity state tracker (entity is being removed)
-      this.entityStateTracker.untrackDirtyEntity(entity);
-      // Remove from updatable entities and update entity count
-      const updatableIndex = this.updatableEntities.indexOf(entity);
-      if (updatableIndex > -1) {
-        this.updatableEntities.splice(updatableIndex, 1);
-        // Unregister from update scheduler
-        this.updateScheduler.unregisterEntity(entity.getId());
-        // Decrement entity count for this type
-      }
-
       // Remove from dynamic entities list
       const dynamicIndex = this.dynamicEntities.indexOf(entity);
       if (dynamicIndex > -1) {
         this.dynamicEntities.splice(dynamicIndex, 1);
       }
 
-      // Remove from spatial grid if it's in there
-      if (this.entityFinder && entity.hasExt(Positionable)) {
-        this.entityFinder.removeEntity(entity);
-      }
-
-      // Remove from type-based map
-      const entityType = entity.getType();
-      const typeEntities = this.entitiesByType.get(entityType);
-      if (typeEntities) {
-        const typeIndex = typeEntities.indexOf(entity);
-        if (typeIndex > -1) {
-          typeEntities.splice(typeIndex, 1);
-        }
-        // Clean up empty arrays
-        if (typeEntities.length === 0) {
-          this.entitiesByType.delete(entityType);
-        }
-      }
+      // Clean up entity from all tracking structures
+      this.cleanupEntityFromTracking(entity);
     }
 
     this.entityMap.delete(entityId);
@@ -289,12 +244,6 @@ export class EntityManager implements IEntityManager {
     this.spliceWhere(this.zombies, (it) => it.getId() === entityId);
     this.spliceWhere(this.merchants, (it) => it.getId() === entityId);
     this.spliceWhere(this.entities, (it) => it.getId() === entityId);
-
-    // Return the ID to the pool for reuse (only if it's not already there)
-    // This prevents duplicate IDs in the pool if removeEntity is called multiple times
-    if (!this.availableIds.includes(entityId)) {
-      this.availableIds.push(entityId);
-    }
   }
 
   private spliceWhere(array: any[], predicate: (item: any) => boolean): void {
@@ -302,6 +251,42 @@ export class EntityManager implements IEntityManager {
       if (predicate(array[i])) {
         array.splice(i, 1);
       }
+    }
+  }
+
+  /**
+   * Cleans up entity from all tracking structures
+   * Handles common cleanup logic shared between removeEntity() and pruneEntities()
+   * Note: Does not remove from specialized arrays (players, zombies, merchants) or main entities array
+   */
+  private cleanupEntityFromTracking(entity: Entity): void {
+    // Clean up tracking data
+    this.dirtyEntities.delete(entity);
+    this.entitiesInGrid.delete(entity);
+    this.entitiesToAddToGrid.delete(entity);
+    // Untrack from entity state tracker (entity is being removed)
+    this.entityStateTracker.untrackDirtyEntity(entity);
+
+    // Remove from updatable entities and unregister from scheduler
+    const updatableIndex = this.updatableEntities.indexOf(entity);
+    if (updatableIndex > -1) {
+      this.updatableEntities.splice(updatableIndex, 1);
+      // Unregister from update scheduler
+      this.updateScheduler.unregisterEntity(entity.getId());
+    }
+
+    // Remove from spatial grid if it's in there
+    if (this.entityFinder && entity.hasExt(Positionable)) {
+      this.entityFinder.removeEntity(entity);
+    }
+
+    // Remove from type-based map using shared utility
+    removeEntityFromTypeMap(entity, this.entitiesByType);
+
+    // Return the ID to the pool for reuse (only if it's not already there)
+    const entityId = entity.getId();
+    if (!this.availableIds.includes(entityId)) {
+      this.availableIds.push(entityId);
     }
   }
 
@@ -380,83 +365,22 @@ export class EntityManager implements IEntityManager {
 
       // Track entity removal before removing it
       this.entityStateTracker.trackRemoval(entity.getId());
-      // Ensure removed entities are not treated as dirty changes
-      this.entityStateTracker.untrackDirtyEntity(entity);
 
-      // Clean up spatial grid tracking data
-      this.dirtyEntities.delete(entity);
-      this.entitiesInGrid.delete(entity);
-      this.entitiesToAddToGrid.delete(entity);
-
-      // Remove from updatable entities and update entity count
-      const updatableIndex = this.updatableEntities.indexOf(entity);
-      if (updatableIndex > -1) {
-        this.updatableEntities.splice(updatableIndex, 1);
-        // Unregister from update scheduler
-        this.updateScheduler.unregisterEntity(entity.getId());
-        // Decrement entity count for this type
-      }
-
-      if (this.entityFinder && entity.hasExt(Positionable)) {
-        this.entityFinder.removeEntity(entity);
-      }
-
-      // Remove from dynamicEntities
+      // Remove from dynamicEntities (done here since we're iterating backwards)
       this.dynamicEntities.splice(i, 1);
 
       // Remove from map and main entities array
       this.entityMap.delete(entity.getId());
-      const entityIndex = this.entities.findIndex((e) => e.getId() === entity.getId());
-      if (entityIndex !== -1) {
-        this.entities.splice(entityIndex, 1);
-      }
-
-      // Remove from players array if it's a player
-      if (entity.getType() === Entities.PLAYER) {
-        const playerIndex = this.players.findIndex((player) => player.getId() === entity.getId());
-        if (playerIndex !== -1) {
-          this.players.splice(playerIndex, 1);
-        }
-      }
-
-      // Remove from zombies array if it's a zombie
-      if (Zombies.includes(entity.getType())) {
-        const zombieIndex = this.zombies.findIndex((zombie) => zombie.getId() === entity.getId());
-        if (zombieIndex !== -1) {
-          this.zombies.splice(zombieIndex, 1);
-        }
-      }
-
-      // Remove from merchants array if it's a merchant
-      if (entity.getType() === Entities.MERCHANT) {
-        const merchantIndex = this.merchants.findIndex(
-          (merchant) => merchant.getId() === entity.getId()
-        );
-        if (merchantIndex !== -1) {
-          this.merchants.splice(merchantIndex, 1);
-        }
-      }
-
-      // Remove from type-based map
-      const entityType = entity.getType();
-      const typeEntities = this.entitiesByType.get(entityType);
-      if (typeEntities) {
-        const typeIndex = typeEntities.indexOf(entity);
-        if (typeIndex > -1) {
-          typeEntities.splice(typeIndex, 1);
-        }
-        // Clean up empty arrays
-        if (typeEntities.length === 0) {
-          this.entitiesByType.delete(entityType);
-        }
-      }
-
-      // Return the ID to the pool for reuse (only if it's not already there)
-      // This prevents duplicate IDs in the pool if pruneEntities processes the same entity twice
       const entityId = entity.getId();
-      if (!this.availableIds.includes(entityId)) {
-        this.availableIds.push(entityId);
-      }
+      this.spliceWhere(this.entities, (e) => e.getId() === entityId);
+
+      // Remove from specialized arrays using spliceWhere helper
+      this.spliceWhere(this.players, (p) => p.getId() === entityId);
+      this.spliceWhere(this.zombies, (z) => z.getId() === entityId);
+      this.spliceWhere(this.merchants, (m) => m.getId() === entityId);
+
+      // Clean up entity from all tracking structures
+      this.cleanupEntityFromTracking(entity);
     }
 
     // Clean up expired entries from entitiesToRemove
@@ -489,17 +413,15 @@ export class EntityManager implements IEntityManager {
     // Fast path: if all entities have Positionable (common case), return directly
     // Only do expensive filtering if needed
     const filteredEntities: Entity[] = [];
-    const radiusSquared = radius * radius; // Use squared distance to avoid sqrt
 
     for (let i = entities.length - 1; i >= 0; i--) {
       const entity = entities[i];
       if (!entity.hasExt(Positionable)) continue;
 
-      // Use squared distance comparison (spatial grid already filters by radius, but we verify)
+      // Verify distance (spatial grid already filters by radius, but we verify)
       const entityPosition = entity.getExt(Positionable).getCenterPosition();
-      const dx = position.x - entityPosition.x;
-      const dy = position.y - entityPosition.y;
-      if (dx * dx + dy * dy <= radiusSquared) {
+      const dist = distance(position, entityPosition);
+      if (dist <= radius) {
         filteredEntities.push(entity);
       }
     }
@@ -784,39 +706,31 @@ export class EntityManager implements IEntityManager {
   }
 
   createEntity(entityType: EntityType): IEntity | null {
-    // First check override registry for custom entity classes
-    const overrideConstructor = entityOverrideRegistry.get(entityType);
-    if (overrideConstructor) {
-      return new overrideConstructor(this.getGameManagers());
-    }
+    const adapter: EntityFactoryAdapter<IEntity> = {
+      getOverrideConstructor: (type) => {
+        const constructor = entityOverrideRegistry.get(type);
+        return constructor ? () => new constructor(this.getGameManagers()) : undefined;
+      },
+      createGenericFromItem: (type) => {
+        const itemConfig = itemRegistry.get(type);
+        if (itemConfig) {
+          return new GenericItemEntity(this.getGameManagers(), type, itemConfig);
+        }
+        return null;
+      },
+      createGenericFromResource: (type) => {
+        const resourceConfig = resourceRegistry.get(type);
+        if (resourceConfig) {
+          return new GenericResourceEntity(this.getGameManagers(), type, resourceConfig);
+        }
+        return null;
+      },
+      logCreationFailure: (type, reason) => {
+        console.warn(`createEntity failed - ${reason}: ${type}`);
+      },
+    };
 
-    // Fallback to generic entity generation from configs
-    const genericEntity = this.createGenericEntity(entityType);
-    if (genericEntity) {
-      return genericEntity;
-    }
-
-    console.warn(`createEntity failed - Unknown entity type: ${entityType}`);
-    return null;
-  }
-
-  private createGenericEntity(entityType: EntityType): IEntity | null {
-    // Try to create from item registry
-    const itemConfig = itemRegistry.get(entityType);
-    if (itemConfig) {
-      return new GenericItemEntity(this.getGameManagers(), entityType, itemConfig);
-    }
-
-    // Try to create from resource registry
-    const resourceConfig = resourceRegistry.get(entityType);
-    if (resourceConfig) {
-      return new GenericResourceEntity(this.getGameManagers(), entityType, resourceConfig);
-    }
-
-    // Could add other registry checks here (weapons, environment, etc.)
-    // For now, we'll focus on items and resources
-
-    return null;
+    return createEntityWithFactory(entityType, adapter);
   }
 
   public getEntityStateTracker(): EntityStateTracker {

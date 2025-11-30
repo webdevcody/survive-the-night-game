@@ -247,17 +247,18 @@ export class ThrowingKnifeProjectile extends Entity {
       // Additional check for edge case: if either endpoint is inside or very close to the rectangle
       if (!collision) {
         const isPointNearRect = (point: Vector2) => {
-          const dx = Math.max(
-            hitbox.position.x - point.x,
-            0,
-            point.x - (hitbox.position.x + hitbox.size.x)
+          const closestX = Math.max(
+            hitbox.position.x,
+            Math.min(point.x, hitbox.position.x + hitbox.size.x)
           );
-          const dy = Math.max(
-            hitbox.position.y - point.y,
-            0,
-            point.y - (hitbox.position.y + hitbox.size.y)
+          const closestY = Math.max(
+            hitbox.position.y,
+            Math.min(point.y, hitbox.position.y + hitbox.size.y)
           );
-          return Math.sqrt(dx * dx + dy * dy) <= knifeRadius;
+          const closestPoint = poolManager.vector2.claim(closestX, closestY);
+          const dist = distance(point, closestPoint);
+          poolManager.vector2.release(closestPoint);
+          return dist <= knifeRadius;
         };
 
         collision = isPointNearRect(fromCenter) || isPointNearRect(toCenter);

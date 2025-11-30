@@ -13,6 +13,7 @@ import { entityBlocksPlacement } from "@shared/entities/decal-registry";
 import { IEntity } from "@/entities/types";
 import { EntityType } from "@shared/types/entity";
 import Vector2 from "@/util/vector2";
+import { distance } from "@/util/physics";
 
 /**
  * Validate place structure data
@@ -135,12 +136,12 @@ export function onPlaceStructure(
   const playerPos = player.getExt(Positionable).getCenterPosition();
   const poolManager = PoolManager.getInstance();
   const placePos = poolManager.vector2.claim(data.position.x, data.position.y);
-  const distance = playerPos.distance(placePos);
+  const dist = distance(playerPos, placePos);
   const { MAX_PLACEMENT_RANGE, TILE_SIZE } = getConfig().world;
 
-  if (distance > MAX_PLACEMENT_RANGE) {
+  if (dist > MAX_PLACEMENT_RANGE) {
     console.log(
-      `Player ${player.getId()} tried to place ${data.itemType} too far away (${distance}px)`
+      `Player ${player.getId()} tried to place ${data.itemType} too far away (${dist}px)`
     );
     return;
   }

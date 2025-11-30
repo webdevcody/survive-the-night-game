@@ -18,7 +18,7 @@ import { Hitbox } from "../../../game-shared/src/util/hitbox";
 import { Input } from "../../../game-shared/src/util/input";
 import { InventoryItem } from "../../../game-shared/src/util/inventory";
 import { itemRegistry } from "@shared/entities";
-import { roundVector2 } from "../../../game-shared/src/util/physics";
+import { roundVector2, distance } from "../../../game-shared/src/util/physics";
 import { RawEntity } from "@shared/types/entity";
 import { IClientEntity, Renderable, getFrameIndex, drawHealthBar } from "@/entities/util";
 import { getConfig } from "@shared/config";
@@ -271,11 +271,9 @@ export class PlayerClient extends ClientEntity implements IClientEntity, Rendera
       });
       image = this.imageLoader.getFrameWithDirection(assetKey, facing, frameIndex);
     }
-    const dx = targetPosition.x - this.lastRenderPosition.x;
-    const dy = targetPosition.y - this.lastRenderPosition.y;
-    const distance = Math.sqrt(dx * dx + dy * dy);
+    const dist = distance(targetPosition, this.lastRenderPosition);
 
-    if (distance > 100) {
+    if (dist > 100) {
       this.lastRenderPosition.x = targetPosition.x;
       this.lastRenderPosition.y = targetPosition.y;
     } else {

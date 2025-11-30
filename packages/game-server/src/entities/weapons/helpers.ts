@@ -9,6 +9,7 @@ import Inventory from "@/extensions/inventory";
 import Static from "@/extensions/static";
 import { PlayerAttackedEvent } from "@shared/events/server-sent/events/player-attacked-event";
 import { Player } from "@/entities/players/player";
+import { distance } from "@/util/physics";
 
 export function knockBack(
   entityManager: IEntityManager,
@@ -197,6 +198,7 @@ export function findMeleeTarget(
   config: MeleeAttackConfig,
   attackDirection: Direction
 ): IEntity | null {
+  const poolManager = PoolManager.getInstance();
   const nearbyEntities = config.entityManager.getNearbyEntities(
     config.position,
     config.attackRange + 24
@@ -220,19 +222,19 @@ export function findMeleeTarget(
     if (!entity.hasExt(Positionable)) continue;
 
     const targetPos = entity.getExt(Positionable).getCenterPosition();
-    const dx = targetPos.x - config.position.x;
-    const dy = targetPos.y - config.position.y;
-    const distance = Math.sqrt(dx * dx + dy * dy);
+    const configPos = poolManager.vector2.claim(config.position.x, config.position.y);
+    const dist = distance(configPos, targetPos);
+    poolManager.vector2.release(configPos);
 
     // Must be within attack range
-    if (distance > config.attackRange) continue;
+    if (dist > config.attackRange) continue;
 
     // Must be in attack direction
     if (!isTargetInDirection(config.position, targetPos, attackDirection)) continue;
 
     // Track closest target
-    if (distance < closestDistance) {
-      closestDistance = distance;
+    if (dist < closestDistance) {
+      closestDistance = dist;
       closestTarget = entity;
     }
   }

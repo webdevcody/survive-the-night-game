@@ -11,7 +11,15 @@ export function roundVector2(vector: Vector2): Vector2 {
 }
 
 export function distance(a: Vector2, b: Vector2): number {
-  return Math.sqrt((a.x - b.x) ** 2 + (a.y - b.y) ** 2);
+  // Use Math.hypot for better numerical stability and performance
+  return Math.hypot(a.x - b.x, a.y - b.y);
+}
+
+export function distanceSquared(a: Vector2, b: Vector2): number {
+  // Avoid sqrt for distance comparisons - much faster
+  const dx = a.x - b.x;
+  const dy = a.y - b.y;
+  return dx * dx + dy * dy;
 }
 
 export function velocityTowards(a: Vector2, b: Vector2): Vector2 {

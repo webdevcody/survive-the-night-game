@@ -4,6 +4,7 @@ import { getPlayer } from "@/util/get-player";
 import { ClientPositionable } from "@/extensions/positionable";
 import { AssetManager } from "@/managers/asset";
 import { PlayerClient } from "@/entities/player";
+import { distance } from "@shared/util/physics";
 
 export interface HumanIndicatorsPanelSettings extends PanelSettings {
   arrowSize: number;
@@ -61,16 +62,16 @@ export class HumanIndicatorsPanel extends Panel {
       const humanPos = human.getExt(ClientPositionable).getCenterPosition();
 
       // Calculate vector from player to human
-      const dx = humanPos.x - playerPos.x;
-      const dy = humanPos.y - playerPos.y;
-      const distance = Math.sqrt(dx * dx + dy * dy);
+      const dist = distance(humanPos, playerPos);
 
       // Skip if human is very close (player can see it)
-      if (distance < this.indicatorSettings.minDistance) continue;
+      if (dist < this.indicatorSettings.minDistance) continue;
 
       // Normalize direction
-      const dirX = dx / distance;
-      const dirY = dy / distance;
+      const dx = humanPos.x - playerPos.x;
+      const dy = humanPos.y - playerPos.y;
+      const dirX = dx / dist;
+      const dirY = dy / dist;
 
       // Calculate screen position for indicator
       const centerX = width / 2;

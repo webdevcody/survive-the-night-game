@@ -11,6 +11,7 @@ import { TargetingSystem } from "./strategies/targeting";
 import PoolManager from "@shared/util/pool-manager";
 import Vector2 from "@/util/vector2";
 import { getConfig } from "@shared/config";
+import { distance } from "@/util/physics";
 
 enum ChargingState {
   WALKING, // Normal pathfinding to players
@@ -101,7 +102,7 @@ export class ChargingTyrant extends BossEnemy {
     const hasVelocity = Math.abs(velocity.x) > 0.1 || Math.abs(velocity.y) > 0.1;
 
     if (hasVelocity && this.lastChargePosition) {
-      const distanceMoved = currentPosition.distance(this.lastChargePosition);
+      const distanceMoved = distance(currentPosition, this.lastChargePosition);
 
       // If we have velocity but moved very little, we're likely hitting a wall
       if (distanceMoved < 2) {
@@ -159,7 +160,7 @@ export class ChargingTyrant extends BossEnemy {
         this.chargeTarget = { position: target.position.clone() };
 
         // Check if we're close enough to slam
-        const distanceToTarget = position.distance(target.position);
+        const distanceToTarget = distance(position, target.position);
         if (distanceToTarget <= this.chargeConfig.slamDistanceThreshold) {
           this.performGroundSlam();
           this.state = ChargingState.RECOVERING;

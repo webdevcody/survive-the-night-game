@@ -3,6 +3,7 @@ import PoolManager from "@shared/util/pool-manager";
 import { PlayerClient } from "@/entities/player";
 import { ClientPositionable } from "@/extensions";
 import { getConfig } from "@shared/config";
+import { distance } from "@shared/util/physics";
 
 /**
  * Reconciliation manager with continuous gentle correction
@@ -75,9 +76,7 @@ export class ReconciliationManager {
    * Calculate error distance between client and server positions
    */
   private calculateError(clientPos: Vector2, serverPos: Vector2): number {
-    const dx = clientPos.x - serverPos.x;
-    const dy = clientPos.y - serverPos.y;
-    return Math.hypot(dx, dy);
+    return distance(clientPos, serverPos);
   }
 
   /**

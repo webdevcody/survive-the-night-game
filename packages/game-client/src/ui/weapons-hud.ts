@@ -5,6 +5,8 @@ import { InventoryItem } from "@shared/util/inventory";
 import { calculateHudScale } from "@/util/hud-scale";
 import { weaponRegistry } from "@shared/entities/weapon-registry";
 import { Z_INDEX } from "@shared/map";
+import { distance } from "@shared/util/physics";
+import Vector2 from "@shared/util/vector2";
 
 const TWO_PI = Math.PI * 2;
 
@@ -251,13 +253,15 @@ export class WeaponsHUD implements Renderable {
   // ---------------------------------------------------------
   private detectSegment(): number {
     const { cx, cy, rIn, rOut } = this.frame;
+    const mousePos = new Vector2(this.mouseX, this.mouseY);
+    const centerPos = new Vector2(cx, cy);
+    const dist = distance(mousePos, centerPos);
+
+    if (dist < rIn) return -1;
+    if (dist > rOut) return -1;
+
     const dx = this.mouseX - cx;
     const dy = this.mouseY - cy;
-
-    const dist = dx * dx + dy * dy;
-
-    if (dist < rIn * rIn) return -1;
-    if (dist > rOut * rOut) return -1;
 
     const angle = (Math.atan2(dy, dx) + Math.PI / 2 + TWO_PI) % TWO_PI;
 
@@ -373,12 +377,15 @@ export class WeaponsHUD implements Renderable {
     const rIn = WHEEL.innerRadius * scale;
     const rOut = WHEEL.outerRadius * scale;
 
+    const clickPos = new Vector2(x, y);
+    const centerPos = new Vector2(cx, cy);
+    const dist = distance(clickPos, centerPos);
+
+    if (dist < rIn) return false;
+    if (dist > rOut) return false;
+
     const dx = x - cx;
     const dy = y - cy;
-    const dist = dx * dx + dy * dy;
-
-    if (dist < rIn * rIn) return false;
-    if (dist > rOut * rOut) return false;
 
     const angle = (Math.atan2(dy, dx) + Math.PI / 2 + TWO_PI) % TWO_PI;
 

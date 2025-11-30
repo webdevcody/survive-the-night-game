@@ -12,6 +12,11 @@ import Vector2 from "@shared/util/vector2";
 import PoolManager from "@shared/util/pool-manager";
 import { MINIMAP_SETTINGS } from "./minimap";
 import { getEntityMapColor } from "@/util/entity-map-colors";
+import { distance } from "@shared/util/physics";
+import { calculateLightSources } from "./utils/map-rendering-utils";
+import { prerenderCollidables, renderCollidablesFromCanvas } from "./utils/map-collidable-renderer";
+import { renderFullscreenMapFogOfWar } from "./utils/map-fog-of-war-renderer";
+import { renderToxicZones } from "./utils/map-toxic-zone-renderer";
 
 const FULLSCREEN_MAP_SETTINGS = {
   padding: 180, // Padding from screen edges
@@ -44,10 +49,7 @@ const FULLSCREEN_MAP_SETTINGS = {
   fogOfWar: MINIMAP_SETTINGS.fogOfWar,
 };
 
-interface LightSource {
-  position: Vector2;
-  radius: number;
-}
+// LightSource interface moved to map-rendering-utils
 
 export class FullScreenMap {
   private mapManager: MapManager;
@@ -115,70 +117,7 @@ export class FullScreenMap {
     return FULLSCREEN_MAP_SETTINGS.zoomLevels[this.currentZoomIndex];
   }
 
-  // Get all light sources from entities
-  private getLightSources(gameState: GameState): LightSource[] {
-    const sources: LightSource[] = [];
-    const isBattleRoyale = gameState.gameMode === "battle_royale";
-    const isInfection = gameState.gameMode === "infection";
-
-    // Check if current player is a zombie (for infection mode visibility)
-    const currentPlayer = gameState.entities.find((e) => e.getId() === gameState.playerId);
-    const myPlayerIsZombie = currentPlayer instanceof PlayerClient && currentPlayer.isZombiePlayer?.();
-
-    // Add entity light sources
-    for (const entity of gameState.entities) {
-      if (entity.hasExt(ClientIlluminated) && entity.hasExt(ClientPositionable)) {
-        // In Battle Royale, hide other players' light sources to not reveal their position
-        if (isBattleRoyale && entity instanceof PlayerClient && entity.getId() !== gameState.playerId) {
-          continue;
-        }
-
-        // In Infection mode, zombie players can see all illuminated players' light sources
-        if (isInfection && myPlayerIsZombie && entity instanceof PlayerClient) {
-          const radius = entity.getExt(ClientIlluminated).getRadius() / 2;
-          const position = entity.getExt(ClientPositionable).getCenterPosition();
-          sources.push({ position, radius });
-          continue;
-        }
-
-        const radius = entity.getExt(ClientIlluminated).getRadius() / 2;
-        const position = entity.getExt(ClientPositionable).getCenterPosition();
-        sources.push({ position, radius });
-      }
-    }
-
-    // For zombie players in infection mode, add ALL human player positions as light sources
-    // This ensures zombies can see human players through the fog of war
-    if (isInfection && myPlayerIsZombie) {
-      for (const entity of gameState.entities) {
-        if (entity instanceof PlayerClient &&
-            entity.getId() !== gameState.playerId &&
-            !entity.isZombiePlayer() &&
-            entity.hasExt(ClientPositionable)) {
-          const position = entity.getExt(ClientPositionable).getCenterPosition();
-          // Use a small radius so only the player dot is visible, not a large area
-          sources.push({ position, radius: 20 });
-        }
-      }
-    }
-
-    return sources;
-  }
-
-  // Check if a world position is visible
-  private isPositionVisible(worldPos: Vector2, lightSources: LightSource[]): boolean {
-    for (const source of lightSources) {
-      const dx = worldPos.x - source.position.x;
-      const dy = worldPos.y - source.position.y;
-      const distanceSquared = dx * dx + dy * dy;
-      const radiusSquared = source.radius * source.radius;
-
-      if (distanceSquared <= radiusSquared) {
-        return true;
-      }
-    }
-    return false;
-  }
+  // Light source calculation moved to map-rendering-utils
 
   public render(ctx: CanvasRenderingContext2D, gameState: GameState): void {
     if (!this.isVisible) return;
@@ -246,7 +185,18 @@ export class FullScreenMap {
     this.renderCollidables(ctx, effectiveCenterPos, zoom, centerX, centerY, mapWidth, mapHeight);
 
     // Draw toxic biome zones (large areas covering entire biomes)
-    this.renderToxicZones(ctx, gameState, effectiveCenterPos, zoom, centerX, centerY);
+    const toxicZoneEntities = gameState.entities.filter(
+      (e): e is ToxicBiomeZoneClient => e instanceof ToxicBiomeZoneClient
+    );
+    renderToxicZones(
+      ctx,
+      toxicZoneEntities,
+      effectiveCenterPos,
+      { colors: { toxicGas: settings.colors.toxicGas } },
+      centerX,
+      centerY,
+      zoom
+    );
 
     // Draw entities
     this.renderEntities(
@@ -261,11 +211,12 @@ export class FullScreenMap {
     );
 
     // Draw fog of war
-    const lightSources = this.getLightSources(gameState);
-    this.renderFogOfWar(
+    const lightSources = calculateLightSources(gameState.entities, gameState);
+    renderFullscreenMapFogOfWar(
       ctx,
       effectiveCenterPos,
       lightSources,
+      settings.fogOfWar,
       zoom,
       centerX,
       centerY,
@@ -403,47 +354,22 @@ export class FullScreenMap {
     const mapData = this.mapManager.getMapData();
     if (!mapData || !mapData.collidables) return;
 
-    const collidables = mapData.collidables;
-    this.cachedCollidablesReference = collidables;
-    const rows = collidables.length;
-    const cols = collidables[0]?.length ?? 0;
+    // Cache the reference to the current collidables array so we can detect when it changes
+    this.cachedCollidablesReference = mapData.collidables;
 
-    if (rows === 0 || cols === 0) return;
+    const canvas = prerenderCollidables(this.mapManager, {
+      colors: { tree: FULLSCREEN_MAP_SETTINGS.colors.tree },
+      indicators: {
+        tree: {
+          shape: FULLSCREEN_MAP_SETTINGS.indicators.tree.shape as "circle" | "rectangle",
+          size: FULLSCREEN_MAP_SETTINGS.indicators.tree.size,
+        },
+      },
+    });
 
-    const canvas = document.createElement("canvas");
-    canvas.width = cols * this.tileSize;
-    canvas.height = rows * this.tileSize;
-    const ctx = canvas.getContext("2d");
-
-    if (!ctx) return;
-
-    ctx.fillStyle = FULLSCREEN_MAP_SETTINGS.colors.tree;
-    const treeIndicator = FULLSCREEN_MAP_SETTINGS.indicators.tree;
-    const size = treeIndicator.size;
-    const halfSize = size / 2;
-
-    for (let y = 0; y < rows; y++) {
-      const row = collidables[y];
-      if (!row) continue;
-
-      for (let x = 0; x < cols; x++) {
-        const cell = row[x];
-        if (cell !== -1) {
-          const worldX = x * this.tileSize + this.tileSize / 2;
-          const worldY = y * this.tileSize + this.tileSize / 2;
-
-          if (treeIndicator.shape === "circle") {
-            ctx.beginPath();
-            ctx.arc(worldX, worldY, halfSize, 0, Math.PI * 2);
-            ctx.fill();
-          } else {
-            ctx.fillRect(worldX - halfSize, worldY - halfSize, size, size);
-          }
-        }
-      }
+    if (canvas) {
+      this.collidablesCanvas = canvas;
     }
-
-    this.collidablesCanvas = canvas;
   }
 
   private renderCollidables(
@@ -474,43 +400,16 @@ export class FullScreenMap {
 
     if (!this.collidablesCanvas) return;
 
-    // Calculate visible area in world coordinates
-    const visibleWorldWidth = mapWidth / zoom;
-    const visibleWorldHeight = mapHeight / zoom;
-
-    const worldMinX = playerPos.x - visibleWorldWidth / 2;
-    const worldMinY = playerPos.y - visibleWorldHeight / 2;
-    const worldMaxX = playerPos.x + visibleWorldWidth / 2;
-    const worldMaxY = playerPos.y + visibleWorldHeight / 2;
-
-    // Clamp to canvas bounds
-    const sourceX = Math.max(0, worldMinX);
-    const sourceY = Math.max(0, worldMinY);
-    const sourceWidth = Math.min(this.collidablesCanvas.width - sourceX, worldMaxX - sourceX);
-    const sourceHeight = Math.min(this.collidablesCanvas.height - sourceY, worldMaxY - sourceY);
-
-    // Calculate destination
-    const offsetX = (playerPos.x - sourceX) * zoom;
-    const offsetY = (playerPos.y - sourceY) * zoom;
-    const destX = centerX - offsetX;
-    const destY = centerY - offsetY;
-    const destWidth = sourceWidth * zoom;
-    const destHeight = sourceHeight * zoom;
-
-    ctx.save();
-    ctx.fillStyle = FULLSCREEN_MAP_SETTINGS.colors.tree;
-    ctx.drawImage(
+    renderCollidablesFromCanvas(
+      ctx,
       this.collidablesCanvas,
-      sourceX,
-      sourceY,
-      sourceWidth,
-      sourceHeight,
-      destX,
-      destY,
-      destWidth,
-      destHeight
+      playerPos,
+      centerX,
+      centerY,
+      zoom,
+      mapWidth,
+      mapHeight
     );
-    ctx.restore();
   }
 
   private renderEntities(
@@ -524,13 +423,12 @@ export class FullScreenMap {
     mapHeight: number
   ): void {
     const settings = FULLSCREEN_MAP_SETTINGS;
-    const maxDistanceSquared = ((mapWidth / zoom) ** 2 + (mapHeight / zoom) ** 2) / 4;
+    const maxDistance = Math.sqrt(((mapWidth / zoom) ** 2 + (mapHeight / zoom) ** 2) / 4);
 
     // Battle Royale: limit player visibility range (approx 200 pixels / ~12 tiles)
     const isBattleRoyale = gameState.gameMode === "battle_royale";
     const isInfection = gameState.gameMode === "infection";
     const playerVisibilityRange = 200;
-    const playerVisibilityRangeSquared = playerVisibilityRange * playerVisibilityRange;
 
     // Get the actual player position for distance calculations (not the map center)
     const myPlayer = getPlayer(gameState);
@@ -547,11 +445,17 @@ export class FullScreenMap {
 
       const relativeX = position.x - playerPos.x;
       const relativeY = position.y - playerPos.y;
-
-      const distanceSquared = relativeX * relativeX + relativeY * relativeY;
+      const poolManager = PoolManager.getInstance();
+      const relativePos = poolManager.vector2.claim(relativeX, relativeY);
+      const playerWorldPos = poolManager.vector2.claim(playerPos.x, playerPos.y);
+      const entityWorldPos = poolManager.vector2.claim(position.x, position.y);
+      const dist = distance(playerWorldPos, entityWorldPos);
+      poolManager.vector2.release(relativePos);
+      poolManager.vector2.release(playerWorldPos);
+      poolManager.vector2.release(entityWorldPos);
 
       // In Infection mode, zombie players can see ALL human players anywhere on the map
-      let shouldRender = distanceSquared <= maxDistanceSquared;
+      let shouldRender = dist <= maxDistance;
       if (!shouldRender && isInfection && myPlayerIsZombie && entity instanceof PlayerClient) {
         const otherPlayerIsZombie = entity.isZombiePlayer();
         // Zombies can see all human players regardless of distance
@@ -563,11 +467,17 @@ export class FullScreenMap {
       if (!shouldRender) continue;
 
       // In Battle Royale, only show other players if they're within visibility range of the actual player
-      if (isBattleRoyale && entity instanceof PlayerClient && entity.getId() !== gameState.playerId) {
-        const playerRelX = position.x - myPlayerPos.x;
-        const playerRelY = position.y - myPlayerPos.y;
-        const playerDistSquared = playerRelX * playerRelX + playerRelY * playerRelY;
-        if (playerDistSquared > playerVisibilityRangeSquared) continue;
+      if (
+        isBattleRoyale &&
+        entity instanceof PlayerClient &&
+        entity.getId() !== gameState.playerId
+      ) {
+        const myPlayerWorldPos = poolManager.vector2.claim(myPlayerPos.x, myPlayerPos.y);
+        const entityWorldPos = poolManager.vector2.claim(position.x, position.y);
+        const playerDist = distance(myPlayerWorldPos, entityWorldPos);
+        poolManager.vector2.release(myPlayerWorldPos);
+        poolManager.vector2.release(entityWorldPos);
+        if (playerDist > playerVisibilityRange) continue;
       }
 
       const mapX = centerX + relativeX * zoom;
@@ -602,46 +512,7 @@ export class FullScreenMap {
     }
   }
 
-  private renderFogOfWar(
-    ctx: CanvasRenderingContext2D,
-    playerPos: { x: number; y: number },
-    lightSources: LightSource[],
-    zoom: number,
-    centerX: number,
-    centerY: number,
-    mapWidth: number,
-    mapHeight: number,
-    mapX: number,
-    mapY: number
-  ): void {
-    const settings = FULLSCREEN_MAP_SETTINGS;
-    if (!settings.fogOfWar.enabled) return;
-
-    const gridSize = getConfig().world.TILE_SIZE; // Fog tile size in screen pixels
-    const tilesX = Math.ceil(mapWidth / gridSize);
-    const tilesY = Math.ceil(mapHeight / gridSize);
-
-    for (let ty = 0; ty < tilesY; ty++) {
-      for (let tx = 0; tx < tilesX; tx++) {
-        const screenX = mapX + tx * gridSize + gridSize / 2;
-        const screenY = mapY + ty * gridSize + gridSize / 2;
-
-        // Convert screen coordinates to world coordinates
-        const relativeX = (screenX - centerX) / zoom;
-        const relativeY = (screenY - centerY) / zoom;
-        const worldX = playerPos.x + relativeX;
-        const worldY = playerPos.y + relativeY;
-
-        const poolManager = PoolManager.getInstance();
-        const worldPos = poolManager.vector2.claim(worldX, worldY);
-
-        if (!this.isPositionVisible(worldPos, lightSources)) {
-          ctx.fillStyle = settings.fogOfWar.fogColor;
-          ctx.fillRect(screenX - gridSize / 2, screenY - gridSize / 2, gridSize, gridSize);
-        }
-      }
-    }
-  }
+  // renderFogOfWar moved to shared utilities
 
   private renderCrateIndicators(
     ctx: CanvasRenderingContext2D,
@@ -653,7 +524,7 @@ export class FullScreenMap {
     mapWidth: number,
     mapHeight: number
   ): void {
-    const maxDistanceSquared = ((mapWidth / zoom) ** 2 + (mapHeight / zoom) ** 2) / 4;
+    const maxDistance = Math.sqrt(((mapWidth / zoom) ** 2 + (mapHeight / zoom) ** 2) / 4);
 
     // Loop through all entities to find crates
     for (const entity of gameState.entities) {
@@ -665,9 +536,13 @@ export class FullScreenMap {
 
       const relativeX = position.x - playerPos.x;
       const relativeY = position.y - playerPos.y;
-
-      const distanceSquared = relativeX * relativeX + relativeY * relativeY;
-      if (distanceSquared > maxDistanceSquared) continue;
+      const poolManager = PoolManager.getInstance();
+      const playerWorldPos = poolManager.vector2.claim(playerPos.x, playerPos.y);
+      const entityWorldPos = poolManager.vector2.claim(position.x, position.y);
+      const dist = distance(playerWorldPos, entityWorldPos);
+      poolManager.vector2.release(playerWorldPos);
+      poolManager.vector2.release(entityWorldPos);
+      if (dist > maxDistance) continue;
 
       const mapX = centerX + relativeX * zoom;
       const mapY = centerY + relativeY * zoom;
@@ -727,7 +602,7 @@ export class FullScreenMap {
     mapWidth: number,
     mapHeight: number
   ): void {
-    const maxDistanceSquared = ((mapWidth / zoom) ** 2 + (mapHeight / zoom) ** 2) / 4;
+    const maxDistance = Math.sqrt(((mapWidth / zoom) ** 2 + (mapHeight / zoom) ** 2) / 4);
 
     // Loop through all entities to find survivors
     for (const entity of gameState.entities) {
@@ -739,9 +614,13 @@ export class FullScreenMap {
 
       const relativeX = position.x - playerPos.x;
       const relativeY = position.y - playerPos.y;
-
-      const distanceSquared = relativeX * relativeX + relativeY * relativeY;
-      if (distanceSquared > maxDistanceSquared) continue;
+      const poolManager = PoolManager.getInstance();
+      const playerWorldPos = poolManager.vector2.claim(playerPos.x, playerPos.y);
+      const entityWorldPos = poolManager.vector2.claim(position.x, position.y);
+      const dist = distance(playerWorldPos, entityWorldPos);
+      poolManager.vector2.release(playerWorldPos);
+      poolManager.vector2.release(entityWorldPos);
+      if (dist > maxDistance) continue;
 
       const mapX = centerX + relativeX * zoom;
       const mapY = centerY + relativeY * zoom;
@@ -851,49 +730,7 @@ export class FullScreenMap {
     });
   }
 
-  /**
-   * Render toxic biome zones as filled rectangles covering their actual area
-   */
-  private renderToxicZones(
-    ctx: CanvasRenderingContext2D,
-    gameState: GameState,
-    playerPos: { x: number; y: number },
-    zoom: number,
-    centerX: number,
-    centerY: number
-  ): void {
-    const settings = FULLSCREEN_MAP_SETTINGS;
-
-    ctx.save();
-    ctx.fillStyle = settings.colors.toxicGas;
-
-    // Small overlap to prevent gaps between adjacent zones due to floating-point precision
-    const overlap = 1;
-
-    for (const entity of gameState.entities) {
-      if (!(entity instanceof ToxicBiomeZoneClient)) continue;
-      if (!entity.hasExt(ClientPositionable)) continue;
-
-      const positionable = entity.getExt(ClientPositionable);
-      const position = positionable.getPosition();
-      const size = positionable.getSize();
-
-      // Calculate position relative to player
-      const relativeX = position.x - playerPos.x;
-      const relativeY = position.y - playerPos.y;
-
-      // Convert to map coordinates
-      const mapX = centerX + relativeX * zoom;
-      const mapY = centerY + relativeY * zoom;
-      const mapWidth = size.x * zoom + overlap;
-      const mapHeight = size.y * zoom + overlap;
-
-      // Draw the toxic zone as a filled rectangle
-      ctx.fillRect(mapX, mapY, mapWidth, mapHeight);
-    }
-
-    ctx.restore();
-  }
+  // renderToxicZones moved to shared utilities
 
   public handleClick(x: number, y: number): boolean {
     if (!this.isVisible) return false;

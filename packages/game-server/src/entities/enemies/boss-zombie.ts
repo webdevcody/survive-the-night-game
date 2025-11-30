@@ -5,6 +5,7 @@ import { MeleeMovementStrategy } from "./strategies/movement";
 import { MeleeAttackStrategy } from "./strategies/attack";
 import { Cooldown } from "@/entities/util/cooldown";
 import { Zombie } from "./zombie";
+import { ZombieFactory } from "@/util/zombie-factory";
 import Positionable from "@/extensions/positionable";
 import { BossSummonEvent } from "../../../../game-shared/src/events/server-sent/events/boss-summon-event";
 import Vector2 from "@shared/util/vector2";
@@ -52,9 +53,10 @@ export class BossZombie extends BossEnemy {
       if (!spawnPosition) {
         continue;
       }
-      const minion = new Zombie(this.getGameManagers());
-      minion.setPosition(spawnPosition);
-      this.getEntityManager().addEntity(minion);
+      const minion = ZombieFactory.createZombie("regular", this.getGameManagers(), {
+        position: spawnPosition,
+        addToManager: true,
+      });
       this.summonedMinionIds.add(minion.getId());
       summons.push({ x: spawnPosition.x, y: spawnPosition.y });
     }

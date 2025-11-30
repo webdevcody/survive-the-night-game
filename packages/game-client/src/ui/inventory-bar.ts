@@ -13,6 +13,8 @@ import { HeartsPanel } from "./panels/hearts-panel";
 import { StaminaPanel } from "./panels/stamina-panel";
 import { calculateHudScale } from "@/util/hud-scale";
 import { formatDisplayName } from "@/util/format";
+import { distance } from "@shared/util/physics";
+import Vector2 from "@shared/util/vector2";
 
 const HOTBAR_SETTINGS = {
   Inventory: {
@@ -63,7 +65,6 @@ const HOTBAR_SETTINGS = {
 };
 
 const DRAG_START_THRESHOLD = 12;
-const DRAG_START_THRESHOLD_SQUARED = DRAG_START_THRESHOLD * DRAG_START_THRESHOLD;
 
 type HotbarMetrics = {
   hotbarX: number;
@@ -244,9 +245,10 @@ export class InventoryBarUI implements Renderable {
     this.dragState.currentY = y;
 
     if (!this.dragState.isDragging) {
-      const dx = x - this.dragState.startX;
-      const dy = y - this.dragState.startY;
-      if (dx * dx + dy * dy >= DRAG_START_THRESHOLD_SQUARED) {
+      const startPos = new Vector2(this.dragState.startX, this.dragState.startY);
+      const currentPos = new Vector2(x, y);
+      const dist = distance(startPos, currentPos);
+      if (dist >= DRAG_START_THRESHOLD) {
         this.dragState.isDragging = true;
         this.hoveredSlot = null;
       }

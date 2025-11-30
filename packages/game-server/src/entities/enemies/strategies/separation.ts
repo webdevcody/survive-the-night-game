@@ -2,7 +2,7 @@ import { BaseEnemy } from "../base-enemy";
 import Vector2 from "@/util/vector2";
 import PoolManager from "@shared/util/pool-manager";
 import { getZombieTypesSet } from "@shared/constants";
-import { normalizeVector } from "@/util/physics";
+import { normalizeVector, distance } from "@/util/physics";
 import Positionable from "@/extensions/positionable";
 import Destructible from "@/extensions/destructible";
 import { getConfig } from "@shared/config";
@@ -51,14 +51,12 @@ export function calculateSeparationForce(zombie: BaseEnemy): Vector2 {
     }
 
     const otherPos = otherZombie.getExt(Positionable).getCenterPosition();
-    const dx = zombiePos.x - otherPos.x;
-    const dy = zombiePos.y - otherPos.y;
-    const distance = Math.sqrt(dx * dx + dy * dy);
+    const dist = distance(zombiePos, otherPos);
 
     // Skip if too far or too close (avoid division by zero)
     if (
-      distance < entityConfig.ZOMBIE_MIN_SEPARATION_DISTANCE ||
-      distance > entityConfig.ZOMBIE_SEPARATION_RADIUS
+      dist < entityConfig.ZOMBIE_MIN_SEPARATION_DISTANCE ||
+      dist > entityConfig.ZOMBIE_SEPARATION_RADIUS
     ) {
       continue;
     }

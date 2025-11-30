@@ -20,6 +20,7 @@ import { isWeapon } from "@shared/util/inventory";
 import { Entities } from "@shared/constants";
 import { getConfig } from "@shared/config";
 import { getPlayer } from "./util/get-player";
+import { distance } from "@shared/util/physics";
 
 export class Renderer {
   private ctx: CanvasRenderingContext2D;
@@ -167,15 +168,13 @@ export class Renderer {
 
     // Use spatial grid to get nearby entities
     const renderRadius = getConfig().render.ENTITY_RENDER_RADIUS;
-    const renderRadiusSquared = renderRadius * renderRadius;
     const interactRadius = getConfig().player.MAX_INTERACT_RADIUS;
-    const interactRadiusSquared = interactRadius * interactRadius;
 
     const nearbyEntities = this.spatialGrid.getNearbyEntities(playerPos, renderRadius);
 
     const entitiesToRender: any[] = [];
     var closestInteractiveEntity: ClientEntityBase | null = null;
-    var closestInteractiveDistanceSquared = Infinity;
+    var closestInteractiveDistance = Infinity;
     var closestIsDeadPlayer = false;
 
     for (let i = 0; i < nearbyEntities.length; i++) {
@@ -188,12 +187,10 @@ export class Renderer {
       if (!entity.hasExt(ClientPositionable)) continue;
 
       const entityPos = entity.getExt(ClientPositionable).getCenterPosition();
-      const dx = entityPos.x - playerPos.x;
-      const dy = entityPos.y - playerPos.y;
-      const distanceSquared = dx * dx + dy * dy;
+      const dist = distance(entityPos, playerPos);
 
       // Precise circle culling
-      if (distanceSquared <= renderRadiusSquared) {
+      if (dist <= renderRadius) {
         entitiesToRender.push(entity);
       }
 
@@ -201,7 +198,7 @@ export class Renderer {
       if (
         entity.hasExt(ClientInteractive) &&
         entity.getId() !== player.getId() &&
-        distanceSquared <= interactRadiusSquared
+        dist <= interactRadius
       ) {
         const isDeadPlayer =
           entity.getType() === Entities.PLAYER && entity instanceof PlayerClient && entity.isDead();
@@ -213,12 +210,12 @@ export class Renderer {
         } else if (!isDeadPlayer && closestIsDeadPlayer) {
           isCloser = false;
         } else {
-          isCloser = distanceSquared < closestInteractiveDistanceSquared;
+          isCloser = dist < closestInteractiveDistance;
         }
 
         if (isCloser) {
           closestInteractiveEntity = entity;
-          closestInteractiveDistanceSquared = distanceSquared;
+          closestInteractiveDistance = dist;
           closestIsDeadPlayer = isDeadPlayer;
         }
       }

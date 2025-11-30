@@ -276,21 +276,18 @@ export class Survivor extends Entity {
 
     // getNearbyEntities already filtered by distance, so we just need to find closest alive zombie
     let closestZombie: Entity | null = null;
-    let closestDistanceSquared = Infinity;
+    let closestDistance = Infinity;
 
     for (const entity of nearbyEntities) {
       // Check if zombie has destructible (is alive)
       if (!entity.hasExt(Destructible)) continue;
       if (entity.getExt(Destructible).isDead()) continue;
 
-      // Calculate squared distance (faster than distance calculation)
       const zombiePos = entity.getExt(Positionable).getCenterPosition();
-      const dx = position.x - zombiePos.x;
-      const dy = position.y - zombiePos.y;
-      const distSquared = dx * dx + dy * dy;
+      const dist = distance(position, zombiePos);
 
-      if (distSquared < closestDistanceSquared) {
-        closestDistanceSquared = distSquared;
+      if (dist < closestDistance) {
+        closestDistance = dist;
         closestZombie = entity;
       }
     }

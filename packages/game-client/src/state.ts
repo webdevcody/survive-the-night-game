@@ -4,6 +4,7 @@ import { EntityType } from "@shared/types/entity";
 import { GameModeId } from "@shared/events/server-sent/events/game-started-event";
 import { VotingState } from "@shared/types/voting";
 import { ZombieLivesState } from "@shared/types/zombie-lives";
+import { addEntityToTypeMap, removeEntityFromTypeMap } from "@shared/util/entity-map-helpers";
 
 export type { ZombieLivesState };
 
@@ -62,12 +63,8 @@ export function addEntity(gameState: GameState, entity: ClientEntityBase): void 
   gameState.entities.push(entity);
   gameState.entityMap.set(entity.getId(), entity);
   
-  // Add to type-based map
-  const entityType = entity.getType();
-  if (!gameState.entitiesByType.has(entityType)) {
-    gameState.entitiesByType.set(entityType, []);
-  }
-  gameState.entitiesByType.get(entityType)!.push(entity);
+  // Add to type-based map using shared utility
+  addEntityToTypeMap(entity, gameState.entitiesByType);
 }
 
 /**
@@ -82,19 +79,8 @@ export function removeEntity(gameState: GameState, id: number): void {
     }
     gameState.entityMap.delete(id);
     
-    // Remove from type-based map
-    const entityType = entity.getType();
-    const typeEntities = gameState.entitiesByType.get(entityType);
-    if (typeEntities) {
-      const typeIndex = typeEntities.indexOf(entity);
-      if (typeIndex > -1) {
-        typeEntities.splice(typeIndex, 1);
-      }
-      // Clean up empty arrays
-      if (typeEntities.length === 0) {
-        gameState.entitiesByType.delete(entityType);
-      }
-    }
+    // Remove from type-based map using shared utility
+    removeEntityFromTypeMap(entity, gameState.entitiesByType);
   }
 }
 
@@ -117,11 +103,7 @@ export function replaceAllEntities(gameState: GameState, entities: ClientEntityB
   entities.forEach((entity) => {
     gameState.entityMap.set(entity.getId(), entity);
     
-    // Add to type-based map
-    const entityType = entity.getType();
-    if (!gameState.entitiesByType.has(entityType)) {
-      gameState.entitiesByType.set(entityType, []);
-    }
-    gameState.entitiesByType.get(entityType)!.push(entity);
+    // Add to type-based map using shared utility
+    addEntityToTypeMap(entity, gameState.entitiesByType);
   });
 }

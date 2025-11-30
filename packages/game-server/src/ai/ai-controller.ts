@@ -41,6 +41,8 @@ import {
   angleToDirection,
   aimAtTarget,
 } from "./ai-utils";
+import { AITimerManager } from "./ai-timer-manager";
+import { AIMovementController } from "./ai-movement-controller";
 
 /**
  * AI Controller - Generates input for an AI player each tick
@@ -60,27 +62,15 @@ export class AIController {
   private threatTracker: ThreatTracker;
   private explorationTracker: AIExplorationTracker;
 
-  // Timers
-  private decisionTimer: number = 0;
-  private pathRecalcTimer: number = 0;
-  private interactTimer: number = 0;
-  private stuckCheckTimer: number = 0;
-  private fireTimer: number = 0;
-  private retargetTimer: number = 0;
-  private reactionTimer: number = 0; // Slight delay for humanlike reactions
-  private inventoryManagementTimer: number = 0; // Timer for dropping useless ammo
+  // Timer management
+  private timerManager: AITimerManager = new AITimerManager();
+
+  // Movement controller
+  private movementController: AIMovementController;
 
   // Current targets
   private currentTarget: AITarget | null = null;
   private combatTarget: AITarget | null = null;
-  private currentWaypoint: Vector2 | null = null;
-
-  // Stuck detection
-  private lastPosition: Vector2 | null = null;
-  private stuckCount: number = 0;
-
-  // Movement smoothing
-  private lastMovementDirection: Vector2 = new Vector2(0, 0);
 
   // Enhanced threat tracking
   private forceRetarget: boolean = false;
@@ -111,6 +101,9 @@ export class AIController {
     this.pathfinder = new AIPathfinder(gameManagers);
     this.threatTracker = new ThreatTracker();
     this.explorationTracker = new AIExplorationTracker();
+
+    // Initialize movement controller
+    this.movementController = new AIMovementController(this.pathfinder, this.timerManager);
 
     // Initialize state handlers
     this.engageHandler = new EngageStateHandler();
@@ -160,7 +153,7 @@ export class AIController {
     }
 
     // Add reaction delay for humanlike response
-    this.reactionTimer = AI_CONFIG.REACTION_DELAY;
+    this.timerManager.reactionTimer = AI_CONFIG.REACTION_DELAY;
   }
 
   /**
@@ -305,9 +298,9 @@ export class AIController {
       aimAtTarget(input, playerPos, closestPos);
 
       // Attack if fire timer allows
-      if (this.fireTimer >= AI_CONFIG.FIRE_RATE_DELAY) {
+      if (this.timerManager.fireTimer >= AI_CONFIG.FIRE_RATE_DELAY) {
         input.fire = true;
-        this.fireTimer = 0;
+        this.timerManager.fireTimer = 0;
       }
 
       // Stop moving to attack (stay in place)
@@ -343,18 +336,7 @@ export class AIController {
     }
 
     // Update all timers
-    this.decisionTimer += deltaTime;
-    this.pathRecalcTimer += deltaTime;
-    this.interactTimer += deltaTime;
-    this.stuckCheckTimer += deltaTime;
-    this.fireTimer += deltaTime;
-    this.retargetTimer += deltaTime;
-    this.inventoryManagementTimer += deltaTime;
-
-    // Update reaction timer
-    if (this.reactionTimer > 0) {
-      this.reactionTimer -= deltaTime;
-    }
+    this.timerManager.update(deltaTime);
 
     // Check if snared in bear trap and escape
     this.checkAndEscapeBearTrap();
@@ -369,7 +351,7 @@ export class AIController {
       // Clear ALL targets to focus only on escaping - no combat while fleeing
       this.currentTarget = null;
       this.combatTarget = null;
-      this.currentWaypoint = null;
+      this.movementController.clearWaypoint();
     } else if (this.stateMachine.getCurrentState() === AIState.FLEE) {
       // We were fleeing but reached safety - return to normal behavior
       this.stateMachine.forceTransitionTo(AIState.EXPLORE);
@@ -425,11 +407,11 @@ export class AIController {
     // Retarget immediately when a new threat appears (being chased) - no delay
     const shouldRetarget =
       this.forceRetarget ||
-      this.retargetTimer >= retargetInterval ||
+      this.timerManager.retargetTimer >= retargetInterval ||
       (this.combatTarget === null && enhancedThreatInfo.hasNearbyEnemy);
 
-    if (shouldRetarget && this.reactionTimer <= 0) {
-      this.retargetTimer = 0;
+    if (shouldRetarget && this.timerManager.reactionTimer <= 0) {
+      this.timerManager.retargetTimer = 0;
       this.forceRetarget = false;
 
       // Don't set combat target if we're in RETREAT state (unless it's an immediate threat)
@@ -464,14 +446,14 @@ export class AIController {
     }
 
     // Check if stuck periodically
-    if (this.stuckCheckTimer >= AI_CONFIG.STUCK_CHECK_INTERVAL) {
-      this.stuckCheckTimer = 0;
+    if (this.timerManager.stuckCheckTimer >= AI_CONFIG.STUCK_CHECK_INTERVAL) {
+      this.timerManager.stuckCheckTimer = 0;
       this.checkIfStuck();
     }
 
     // Manage inventory periodically - drop useless ammo when full
-    if (this.inventoryManagementTimer >= AI_CONFIG.INVENTORY_MANAGEMENT_INTERVAL) {
-      this.inventoryManagementTimer = 0;
+    if (this.timerManager.inventoryManagementTimer >= AI_CONFIG.INVENTORY_MANAGEMENT_INTERVAL) {
+      this.timerManager.inventoryManagementTimer = 0;
       this.manageInventory();
     }
 
@@ -479,8 +461,8 @@ export class AIController {
     this.explorationTracker.markExplored(playerPos);
 
     // Make high-level decisions periodically
-    if (this.decisionTimer >= AI_CONFIG.DECISION_INTERVAL) {
-      this.decisionTimer = 0;
+    if (this.timerManager.decisionTimer >= AI_CONFIG.DECISION_INTERVAL) {
+      this.timerManager.decisionTimer = 0;
       this.makeEnhancedDecisions(enhancedThreatInfo, deltaTime);
     }
 
@@ -495,8 +477,8 @@ export class AIController {
     }
 
     // Recalculate path periodically
-    if (this.pathRecalcTimer >= AI_CONFIG.PATH_RECALC_INTERVAL) {
-      this.pathRecalcTimer = 0;
+    if (this.timerManager.pathRecalcTimer >= AI_CONFIG.PATH_RECALC_INTERVAL) {
+      this.timerManager.pathRecalcTimer = 0;
       this.recalculatePath();
     }
 
@@ -518,9 +500,9 @@ export class AIController {
    */
   private updateZombieAI(deltaTime: number): void {
     // Update basic timers
-    this.fireTimer += deltaTime;
-    this.pathRecalcTimer += deltaTime;
-    this.stuckCheckTimer += deltaTime;
+    this.timerManager.fireTimer += deltaTime;
+    this.timerManager.pathRecalcTimer += deltaTime;
+    this.timerManager.stuckCheckTimer += deltaTime;
 
     // Check if snared in bear trap and escape
     this.checkAndEscapeBearTrap();
@@ -561,17 +543,6 @@ export class AIController {
     if (closestPlayer) {
       const targetPos = closestPlayer.getCenterPosition();
 
-      // Recalculate path periodically
-      if (this.pathRecalcTimer >= AI_CONFIG.PATH_RECALC_INTERVAL || !this.currentWaypoint) {
-        this.pathRecalcTimer = 0;
-        this.currentWaypoint = this.pathfinder.pathTowardsAvoidingToxic(playerPos, targetPos);
-
-        // If no path found, try direct movement
-        if (!this.currentWaypoint) {
-          this.currentWaypoint = targetPos;
-        }
-      }
-
       // Check if in melee attack range - use actual zombie claw range
       const meleeRange = getConfig().combat.ZOMBIE_PLAYER_CLAW_RANGE;
 
@@ -579,30 +550,20 @@ export class AIController {
         // In range - attack!
         aimAtTarget(input, playerPos, targetPos);
 
-        if (this.fireTimer >= AI_CONFIG.FIRE_RATE_DELAY) {
+        if (this.timerManager.fireTimer >= AI_CONFIG.FIRE_RATE_DELAY) {
           input.fire = true;
-          this.fireTimer = 0;
+          this.timerManager.fireTimer = 0;
         }
 
         // Stop moving when attacking
         input.dx = 0;
         input.dy = 0;
       } else {
-        // Move toward target
-        if (this.currentWaypoint) {
-          const waypointDist = distance(playerPos, this.currentWaypoint);
-
-          // If reached waypoint, get a new one
-          if (waypointDist < AI_CONFIG.WAYPOINT_THRESHOLD) {
-            this.currentWaypoint = this.pathfinder.pathTowardsAvoidingToxic(playerPos, targetPos);
-            if (!this.currentWaypoint) {
-              this.currentWaypoint = targetPos;
-            }
-          }
-
-          const vel = velocityTowards(playerPos, this.currentWaypoint);
-          input.dx = vel.x;
-          input.dy = vel.y;
+        // Move toward target using movement controller
+        const moved = this.movementController.moveTowardTarget(input, playerPos, targetPos);
+        if (moved) {
+          // Movement was generated, determine facing from input
+          const vel = new Vector2(input.dx, input.dy);
           input.facing = this.determineFacing(vel);
         }
 
@@ -614,8 +575,8 @@ export class AIController {
       }
     } else {
       // No living players found - wander randomly
-      if (this.pathRecalcTimer >= AI_CONFIG.PATH_RECALC_INTERVAL * 2 || !this.currentWaypoint) {
-        this.pathRecalcTimer = 0;
+      if (this.timerManager.pathRecalcTimer >= AI_CONFIG.PATH_RECALC_INTERVAL * 2 || !this.movementController.getCurrentWaypoint()) {
+        this.timerManager.pathRecalcTimer = 0;
 
         // Pick a random direction to wander
         const randomAngle = Math.random() * Math.PI * 2;
@@ -625,16 +586,18 @@ export class AIController {
           playerPos.y + Math.sin(randomAngle) * wanderDist
         );
 
-        this.currentWaypoint = this.pathfinder.pathTowardsAvoidingToxic(playerPos, wanderTarget);
+        const waypoint = this.pathfinder.pathTowardsAvoidingToxic(playerPos, wanderTarget);
+        this.movementController.setCurrentWaypoint(waypoint || wanderTarget);
       }
 
-      if (this.currentWaypoint) {
-        const waypointDist = distance(playerPos, this.currentWaypoint);
+      const waypoint = this.movementController.getCurrentWaypoint();
+      if (waypoint) {
+        const waypointDist = distance(playerPos, waypoint);
 
         if (waypointDist < AI_CONFIG.WAYPOINT_THRESHOLD) {
-          this.currentWaypoint = null;
+          this.movementController.clearWaypoint();
         } else {
-          const vel = velocityTowards(playerPos, this.currentWaypoint);
+          const vel = velocityTowards(playerPos, waypoint);
           input.dx = vel.x;
           input.dy = vel.y;
           input.facing = this.determineFacing(vel);
@@ -643,8 +606,8 @@ export class AIController {
     }
 
     // Check if stuck and handle it
-    if (this.stuckCheckTimer >= AI_CONFIG.STUCK_CHECK_INTERVAL) {
-      this.stuckCheckTimer = 0;
+    if (this.timerManager.stuckCheckTimer >= AI_CONFIG.STUCK_CHECK_INTERVAL) {
+      this.timerManager.stuckCheckTimer = 0;
       this.checkIfStuck();
     }
 
@@ -665,25 +628,16 @@ export class AIController {
    */
   private checkIfStuck(): void {
     const currentPos = this.player.getCenterPosition();
-
-    if (this.lastPosition) {
-      const moved = distance(currentPos, this.lastPosition);
-
-      if (moved < AI_CONFIG.STUCK_DISTANCE_THRESHOLD) {
-        this.stuckCount++;
-
-        // If stuck too many times, pick a new target
-        if (this.stuckCount >= AI_CONFIG.MAX_TARGET_ATTEMPTS) {
-          this.currentTarget = null;
-          this.currentWaypoint = null;
-          this.stuckCount = 0;
-        }
-      } else {
-        this.stuckCount = 0;
+    this.movementController.checkIfStuck(
+      currentPos,
+      AI_CONFIG.STUCK_DISTANCE_THRESHOLD,
+      AI_CONFIG.MAX_TARGET_ATTEMPTS,
+      () => {
+        // On stuck callback - clear targets
+        this.currentTarget = null;
+        this.movementController.clearWaypoint();
       }
-    }
-
-    this.lastPosition = new Vector2(currentPos.x, currentPos.y);
+    );
   }
 
   /**
@@ -750,7 +704,7 @@ export class AIController {
 
     // Only attempt escape periodically to avoid spamming interactions
     // Try every 0.1 seconds
-    if (this.interactTimer < 0.1) {
+    if (this.timerManager.interactTimer < 0.1) {
       return;
     }
 
@@ -768,7 +722,7 @@ export class AIController {
       if (snaredEntityId === playerId && bearTrap.hasExt(Interactive)) {
         // Found the bear trap that snared us - interact to escape
         bearTrap.getExt(Interactive).interact(playerId);
-        this.interactTimer = 0; // Reset timer after interaction
+        this.timerManager.interactTimer = 0; // Reset timer after interaction
         return;
       }
     }
@@ -1060,13 +1014,13 @@ export class AIController {
         : this.combatTarget.position;
 
       // Use findWalkableWaypoint to find alternative paths if blocked
-      this.currentWaypoint = this.findWalkableWaypoint(playerPos, targetPos);
+      this.movementController.setCurrentWaypoint(this.findWalkableWaypoint(playerPos, targetPos));
       return;
     }
 
     // For other states, path to current target
     if (!this.currentTarget) {
-      this.currentWaypoint = null;
+      this.movementController.clearWaypoint();
       return;
     }
 
@@ -1090,7 +1044,7 @@ export class AIController {
     }
 
     // Use findWalkableWaypoint to find alternative paths if blocked
-    this.currentWaypoint = this.findWalkableWaypoint(playerPos, targetPos);
+    this.movementController.setCurrentWaypoint(this.findWalkableWaypoint(playerPos, targetPos));
   }
 
   /**
@@ -1106,11 +1060,11 @@ export class AIController {
       explorationTracker: this.explorationTracker,
       currentTarget: this.currentTarget,
       combatTarget: this.combatTarget,
-      currentWaypoint: this.currentWaypoint,
+      currentWaypoint: this.movementController.getCurrentWaypoint(),
       enhancedThreatInfo: this.currentEnhancedThreatInfo,
       lastDecision: this.lastDecision,
-      fireTimer: this.fireTimer,
-      interactTimer: this.interactTimer,
+      fireTimer: this.timerManager.fireTimer,
+      interactTimer: this.timerManager.interactTimer,
       shouldSprint: (isUrgent: boolean) => this.shouldSprint(isUrgent),
       calculateAimAngle: (source: Vector2, target: Vector2) =>
         this.calculateAimAngle(source, target),
@@ -1126,13 +1080,13 @@ export class AIController {
         this.currentTarget = target;
       },
       setCurrentWaypoint: (waypoint: Vector2 | null) => {
-        this.currentWaypoint = waypoint;
+        this.movementController.setCurrentWaypoint(waypoint);
       },
       setCombatTarget: (target: AITarget | null) => {
         this.combatTarget = target;
       },
       resetInteractTimer: () => {
-        this.interactTimer = 0;
+        this.timerManager.interactTimer = 0;
       },
     };
   }
@@ -1162,7 +1116,7 @@ export class AIController {
         const targetPos = opportunisticCrate.position;
         aimAtTarget(input, playerPos, targetPos);
         input.fire = true;
-        this.fireTimer = 0;
+        this.timerManager.fireTimer = 0;
         return true;
       }
       // If crate is nearby but not quite in range, move toward it
@@ -1184,7 +1138,7 @@ export class AIController {
       // If we're close enough to pick up the item
       if (
         opportunisticItem.distance <= AI_CONFIG.INTERACT_RADIUS &&
-        this.interactTimer >= AI_CONFIG.INTERACT_COOLDOWN &&
+        this.timerManager.interactTimer >= AI_CONFIG.INTERACT_COOLDOWN &&
         opportunisticItem.entity
       ) {
         // Use helper for pickup (handles inventory checks and debug logging)
@@ -1195,7 +1149,7 @@ export class AIController {
           "OPPORTUNISTIC"
         );
         if (result.success) {
-          this.interactTimer = 0;
+          this.timerManager.interactTimer = 0;
           return true;
         }
         // If pickup failed (inventory full, can't stack, etc.), don't block other actions
@@ -1298,15 +1252,18 @@ export class AIController {
         this.currentTarget = this.targetingSystem.getExploreTarget(this.player);
       }
       // Trigger path recalculation
-      if (!this.currentWaypoint && this.currentTarget) {
-        this.currentWaypoint = this.pathfinder.pathTowardsAvoidingToxic(
+      const waypoint = this.movementController.getCurrentWaypoint();
+      if (!waypoint && this.currentTarget) {
+        const newWaypoint = this.pathfinder.pathTowardsAvoidingToxic(
           playerPos,
           this.currentTarget.position
         );
+        this.movementController.setCurrentWaypoint(newWaypoint);
       }
       // If we now have a waypoint, move toward it
-      if (this.currentWaypoint) {
-        const velocity = velocityTowards(playerPos, this.currentWaypoint);
+      const currentWaypoint = this.movementController.getCurrentWaypoint();
+      if (currentWaypoint) {
+        const velocity = velocityTowards(playerPos, currentWaypoint);
         input.dx = velocity.x;
         input.dy = velocity.y;
       }
@@ -1424,8 +1381,9 @@ export class AIController {
           this.stateMachine.setKitePhase(KitePhase.ATTACK);
         } else {
           // Use pathfinding to move toward enemy
-          if (this.currentWaypoint) {
-            const vel = velocityTowards(playerPos, this.currentWaypoint);
+          const waypoint = this.movementController.getCurrentWaypoint();
+          if (waypoint) {
+            const vel = velocityTowards(playerPos, waypoint);
             input.dx = vel.x;
             input.dy = vel.y;
           } else {
@@ -1443,9 +1401,9 @@ export class AIController {
         // CRITICAL: Only attack if STILL within actual melee range!
         // Use strict range check (actual range, not buffer) to prevent swinging when out of range
         if (dist <= actualMeleeRange) {
-          if (this.fireTimer >= AI_CONFIG.FIRE_RATE_DELAY) {
+          if (this.timerManager.fireTimer >= AI_CONFIG.FIRE_RATE_DELAY) {
             input.fire = true;
-            this.fireTimer = 0;
+            this.timerManager.fireTimer = 0;
           }
           // Stay in place briefly while attacking
           input.dx = 0;
@@ -1478,14 +1436,16 @@ export class AIController {
           input.dy = vel.y;
         } else {
           // If no path found, try current waypoint or recalculate
-          if (this.currentWaypoint) {
-            const vel = velocityTowards(playerPos, this.currentWaypoint);
+          const waypoint = this.movementController.getCurrentWaypoint();
+          if (waypoint) {
+            const vel = velocityTowards(playerPos, waypoint);
             input.dx = vel.x;
             input.dy = vel.y;
           } else {
             this.recalculatePath();
-            if (this.currentWaypoint) {
-              const vel = velocityTowards(playerPos, this.currentWaypoint);
+            const waypoint = this.movementController.getCurrentWaypoint();
+            if (waypoint) {
+        const vel = velocityTowards(playerPos, waypoint);
               input.dx = vel.x;
               input.dy = vel.y;
             }
@@ -1539,15 +1499,17 @@ export class AIController {
     } else {
       // If no path found at all, try to use waypoint from current target
       // This ensures we don't run blindly into obstacles
-      if (this.currentWaypoint) {
-        const vel = velocityTowards(playerPos, this.currentWaypoint);
+      const waypoint = this.movementController.getCurrentWaypoint();
+      if (waypoint) {
+        const vel = velocityTowards(playerPos, waypoint);
         input.dx = vel.x;
         input.dy = vel.y;
       } else {
         // Last resort: try to recalculate path to current target
         this.recalculatePath();
-        if (this.currentWaypoint) {
-          const vel = velocityTowards(playerPos, this.currentWaypoint);
+        const waypoint = this.movementController.getCurrentWaypoint();
+        if (waypoint) {
+        const vel = velocityTowards(playerPos, waypoint);
           input.dx = vel.x;
           input.dy = vel.y;
         }
@@ -1617,15 +1579,17 @@ export class AIController {
       input.dy = vel.y;
     } else {
       // If no path found, try to use waypoint from current target
-      if (this.currentWaypoint) {
-        const vel = velocityTowards(playerPos, this.currentWaypoint);
+      const waypoint = this.movementController.getCurrentWaypoint();
+      if (waypoint) {
+        const vel = velocityTowards(playerPos, waypoint);
         input.dx = vel.x;
         input.dy = vel.y;
       } else {
         // Try to recalculate path
         this.recalculatePath();
-        if (this.currentWaypoint) {
-          const vel = velocityTowards(playerPos, this.currentWaypoint);
+        const waypoint = this.movementController.getCurrentWaypoint();
+        if (waypoint) {
+        const vel = velocityTowards(playerPos, waypoint);
           input.dx = vel.x;
           input.dy = vel.y;
         }
@@ -1670,14 +1634,16 @@ export class AIController {
       input.dy = vel.y;
     } else {
       // If no path found, try current waypoint or recalculate
-      if (this.currentWaypoint) {
-        const vel = velocityTowards(playerPos, this.currentWaypoint);
+      const waypoint = this.movementController.getCurrentWaypoint();
+      if (waypoint) {
+        const vel = velocityTowards(playerPos, waypoint);
         input.dx = vel.x;
         input.dy = vel.y;
       } else {
         this.recalculatePath();
-        if (this.currentWaypoint) {
-          const vel = velocityTowards(playerPos, this.currentWaypoint);
+        const waypoint = this.movementController.getCurrentWaypoint();
+        if (waypoint) {
+        const vel = velocityTowards(playerPos, waypoint);
           input.dx = vel.x;
           input.dy = vel.y;
         }
@@ -1698,20 +1664,20 @@ export class AIController {
       const weaponType = activeItem?.itemType || "pistol";
       const effectiveRange = getEffectiveShootingRange(weaponType);
 
-      if (dist <= effectiveRange && this.fireTimer >= AI_CONFIG.FIRE_RATE_DELAY) {
+      if (dist <= effectiveRange && this.timerManager.fireTimer >= AI_CONFIG.FIRE_RATE_DELAY) {
         const inaccuracy = (Math.random() - 0.5) * AI_CONFIG.SHOOTING_INACCURACY * 1.5; // More inaccurate while moving
         input.aimAngle = this.calculateAimAngle(playerPos, enemyPos) + inaccuracy;
         input.fire = true;
-        this.fireTimer = 0;
+        this.timerManager.fireTimer = 0;
       }
     } else {
       // Melee: only attack if very close (use actual weapon range)
       const activeItem = this.player.activeItem;
       const actualMeleeRange = getMeleeAttackRange(activeItem || undefined);
 
-      if (dist <= actualMeleeRange && this.fireTimer >= AI_CONFIG.FIRE_RATE_DELAY) {
+      if (dist <= actualMeleeRange && this.timerManager.fireTimer >= AI_CONFIG.FIRE_RATE_DELAY) {
         input.fire = true;
-        this.fireTimer = 0;
+        this.timerManager.fireTimer = 0;
       }
     }
   }
@@ -1743,10 +1709,10 @@ export class AIController {
         // Check if close enough to pick up RIGHT NOW
         if (
           bandageTarget.distance <= AI_CONFIG.INTERACT_RADIUS &&
-          this.interactTimer >= AI_CONFIG.INTERACT_COOLDOWN &&
+          this.timerManager.interactTimer >= AI_CONFIG.INTERACT_COOLDOWN &&
           bandageTarget.entity
         ) {
-          this.interactTimer = 0;
+          this.timerManager.interactTimer = 0;
           if (
             !bandageTarget.entity.isMarkedForRemoval() &&
             bandageTarget.entity.hasExt(Interactive)
@@ -1763,20 +1729,22 @@ export class AIController {
             this.currentTarget.entity?.getId() !== bandageTarget.entity?.getId()
           ) {
             this.currentTarget = bandageTarget;
-            this.currentWaypoint = null;
+            this.movementController.clearWaypoint();
             this.recalculatePath();
           }
 
           // Move toward bandage using pathfinding
-          if (this.currentWaypoint) {
-            const vel = velocityTowards(playerPos, this.currentWaypoint);
+          const waypoint = this.movementController.getCurrentWaypoint();
+          if (waypoint) {
+            const vel = velocityTowards(playerPos, waypoint);
             input.dx = vel.x;
             input.dy = vel.y;
           } else {
             // Recalculate path if no waypoint
             this.recalculatePath();
-            if (this.currentWaypoint) {
-              const vel = velocityTowards(playerPos, this.currentWaypoint);
+            const waypoint = this.movementController.getCurrentWaypoint();
+            if (waypoint) {
+        const vel = velocityTowards(playerPos, waypoint);
               input.dx = vel.x;
               input.dy = vel.y;
             } else {
@@ -1808,11 +1776,11 @@ export class AIController {
     if (!movedToWaypoint) {
       // Get a new safe retreat position (away from all threats)
       this.currentTarget = this.targetingSystem.findSafeRetreatPosition(this.player);
-      this.currentWaypoint = null;
+      this.movementController.clearWaypoint();
       this.recalculatePath();
 
       // If we still have no waypoint after recalculation, find immediate movement direction
-      if (!this.currentWaypoint) {
+      if (!this.movementController.getCurrentWaypoint()) {
         const safestDir = this.currentEnhancedThreatInfo?.safestRetreatDirection;
         if (safestDir) {
           // Calculate retreat target away from threats
@@ -1823,7 +1791,7 @@ export class AIController {
           // Always use pathfinding - find walkable waypoint
           const retreatWaypoint = this.findWalkableWaypoint(playerPos, retreatTarget);
           if (retreatWaypoint) {
-            this.currentWaypoint = retreatWaypoint;
+            this.movementController.setCurrentWaypoint(retreatWaypoint);
             // Update current target to match the waypoint direction
             this.currentTarget = {
               type: "position",
@@ -1843,7 +1811,9 @@ export class AIController {
         }
       } else {
         // We got a waypoint from recalculation - use it
-        const vel = velocityTowards(playerPos, this.currentWaypoint);
+        const waypoint = this.movementController.getCurrentWaypoint();
+        if (!waypoint) return;
+        const vel = velocityTowards(playerPos, waypoint);
         input.dx = vel.x;
         input.dy = vel.y;
       }
@@ -1875,7 +1845,7 @@ export class AIController {
       // Always use pathfinding - find walkable waypoint
       const randomWaypoint = this.findWalkableWaypoint(playerPos, randomTarget);
       if (randomWaypoint) {
-        this.currentWaypoint = randomWaypoint;
+        this.movementController.setCurrentWaypoint(randomWaypoint);
         const vel = velocityTowards(playerPos, randomWaypoint);
         input.dx = vel.x;
         input.dy = vel.y;
@@ -1916,8 +1886,8 @@ export class AIController {
       input.dy = 0;
 
       // Check if cooldown is ready to interact
-      if (this.interactTimer >= AI_CONFIG.INTERACT_COOLDOWN) {
-        this.interactTimer = 0;
+      if (this.timerManager.interactTimer >= AI_CONFIG.INTERACT_COOLDOWN) {
+        this.timerManager.interactTimer = 0;
 
         // Verify entity still exists and hasn't been removed
         if (this.currentTarget.entity && this.currentTarget.entity.isMarkedForRemoval()) {
@@ -1978,11 +1948,11 @@ export class AIController {
 
         if (dist <= effectiveRange) {
           // In range - shoot
-          if (this.fireTimer >= AI_CONFIG.FIRE_RATE_DELAY) {
+          if (this.timerManager.fireTimer >= AI_CONFIG.FIRE_RATE_DELAY) {
             const inaccuracy = (Math.random() - 0.5) * AI_CONFIG.SHOOTING_INACCURACY;
             input.aimAngle = aimAngle + inaccuracy;
             input.fire = true;
-            this.fireTimer = 0;
+            this.timerManager.fireTimer = 0;
           }
 
           // Stop to shoot if close enough
@@ -2012,18 +1982,20 @@ export class AIController {
    * Returns true if movement was generated, false if waypoint was null or reached
    */
   private moveTowardWaypoint(input: Input, playerPos: Vector2): boolean {
-    if (!this.currentWaypoint) return false;
+    const waypoint = this.movementController.getCurrentWaypoint();
+    if (!waypoint) return false;
 
-    const dist = distance(playerPos, this.currentWaypoint);
+    const dist = distance(playerPos, waypoint);
 
     // Check if we've reached the waypoint
     if (dist < AI_CONFIG.WAYPOINT_THRESHOLD) {
-      this.currentWaypoint = null;
+      this.movementController.clearWaypoint();
       // Immediately trigger path recalculation to avoid stopping
       this.recalculatePath();
       // If we got a new waypoint, move toward it this frame
-      if (this.currentWaypoint) {
-        const velocity = velocityTowards(playerPos, this.currentWaypoint);
+      const newWaypoint = this.movementController.getCurrentWaypoint();
+      if (newWaypoint) {
+        const velocity = velocityTowards(playerPos, newWaypoint);
         input.dx = velocity.x;
         input.dy = velocity.y;
         input.facing = this.determineFacing(velocity);
@@ -2032,7 +2004,7 @@ export class AIController {
       return false;
     }
 
-    const velocity = velocityTowards(playerPos, this.currentWaypoint);
+    const velocity = velocityTowards(playerPos, waypoint);
     input.dx = velocity.x;
     input.dy = velocity.y;
     input.facing = this.determineFacing(velocity);
@@ -2043,15 +2015,7 @@ export class AIController {
    * Smooth movement to prevent jerky changes
    */
   private smoothMovement(input: Input): void {
-    const smoothing = 0.4; // Balance between smoothness and responsiveness
-
-    // Interpolate movement
-    if (input.dx !== 0 || input.dy !== 0) {
-      input.dx = this.lastMovementDirection.x * (1 - smoothing) + input.dx * smoothing;
-      input.dy = this.lastMovementDirection.y * (1 - smoothing) + input.dy * smoothing;
-    }
-
-    this.lastMovementDirection = new Vector2(input.dx, input.dy);
+    this.movementController.smoothMovement(input, 0.4);
   }
 
   /**

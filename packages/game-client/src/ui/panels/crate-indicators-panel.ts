@@ -4,6 +4,7 @@ import { getPlayer } from "@/util/get-player";
 import { ClientPositionable } from "@/extensions/positionable";
 import { AssetManager } from "@/managers/asset";
 import { CrateClient } from "@/entities/items/crate";
+import { distance } from "@shared/util/physics";
 
 export interface CrateIndicatorsPanelSettings extends PanelSettings {
   arrowSize: number;
@@ -46,16 +47,16 @@ export class CrateIndicatorsPanel extends Panel {
       const cratePos = crate.getExt(ClientPositionable).getCenterPosition();
 
       // Calculate vector from player to crate
-      const dx = cratePos.x - playerPos.x;
-      const dy = cratePos.y - playerPos.y;
-      const distance = Math.sqrt(dx * dx + dy * dy);
+      const dist = distance(cratePos, playerPos);
 
       // Skip if crate is very close (player can see it)
-      if (distance < this.indicatorSettings.minDistance) continue;
+      if (dist < this.indicatorSettings.minDistance) continue;
 
       // Normalize direction
-      const dirX = dx / distance;
-      const dirY = dy / distance;
+      const dx = cratePos.x - playerPos.x;
+      const dy = cratePos.y - playerPos.y;
+      const dirX = dx / dist;
+      const dirY = dy / dist;
 
       // Calculate screen position for indicator
       const centerX = width / 2;

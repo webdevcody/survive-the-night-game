@@ -297,7 +297,7 @@ export abstract class BaseEnemy extends Entity {
         if (player && player.hasExt(Positionable)) {
           const playerPos = player.getExt(Positionable).getCenterPosition();
           const zombiePos = this.getCenterPosition();
-          const distanceToPlayer = zombiePos.distance(playerPos);
+          const distanceToPlayer = distance(zombiePos, playerPos);
           const maxAttackRange = getConfig().combat.ZOMBIE_ATTACK_RADIUS + 100; // Add buffer
 
           if (distanceToPlayer <= maxAttackRange) {

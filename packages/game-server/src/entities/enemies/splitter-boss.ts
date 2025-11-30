@@ -10,6 +10,7 @@ import Destructible from "@/extensions/destructible";
 import PoolManager from "@/util/pool-manager";
 import Collidable from "@/extensions/collidable";
 import { getConfig } from "@shared/config";
+import { distance } from "@/util/physics";
 
 export class SplitterBoss extends BossEnemy {
 
@@ -159,10 +160,10 @@ export class SplitterBoss extends BossEnemy {
 
           for (const usedPos of usedPositions) {
             const usedCenter = poolManager.vector2.claim(usedPos.x + 16, usedPos.y + 16);
-            const distance = candidateCenter.distance(usedCenter);
+            const dist = distance(candidateCenter, usedCenter);
             poolManager.vector2.release(usedCenter);
 
-            if (distance < minDistanceBetweenSplitters) {
+            if (dist < minDistanceBetweenSplitters) {
               isValidPosition = false;
               break;
             }

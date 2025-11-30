@@ -16,6 +16,11 @@ import { getEntityMapColor } from "@/util/entity-map-colors";
 import { Renderer } from "@/renderer";
 import { SpatialGrid } from "@shared/util/spatial-grid";
 import { ClientEntityBase } from "@/extensions/client-entity";
+import { distance } from "@shared/util/physics";
+import { calculateLightSources } from "./utils/map-rendering-utils";
+import { prerenderCollidables, renderCollidablesFromCanvas } from "./utils/map-collidable-renderer";
+import { renderMinimapFogOfWar } from "./utils/map-fog-of-war-renderer";
+import { renderToxicZones } from "./utils/map-toxic-zone-renderer";
 
 // Performance optimization constants - adjust these to balance quality vs performance
 // To view performance stats in console, run:
@@ -131,10 +136,7 @@ export const MINIMAP_SETTINGS = {
   },
 };
 
-interface LightSource {
-  position: Vector2;
-  radius: number;
-}
+// LightSource interface moved to map-rendering-utils
 
 export class Minimap {
   private mapManager: MapManager;
@@ -164,95 +166,7 @@ export class Minimap {
     return (this.renderer as any)?.spatialGrid ?? null;
   }
 
-  // Get all light sources from entities
-  private getLightSources(entities: ClientEntityBase[], gameState: GameState): LightSource[] {
-    const sources: LightSource[] = [];
-    const isBattleRoyale = gameState.gameMode === "battle_royale";
-    const isInfection = gameState.gameMode === "infection";
-    let addedCurrentPlayerLight = false;
-
-    // Check if current player is a zombie (for infection mode visibility)
-    const currentPlayer = entities.find((e) => e.getId() === gameState.playerId);
-    const myPlayerIsZombie = currentPlayer instanceof PlayerClient && currentPlayer.isZombiePlayer?.();
-
-    // Add entity light sources (torches, campfires, etc.)
-    for (const entity of entities) {
-      if (entity.hasExt(ClientIlluminated) && entity.hasExt(ClientPositionable)) {
-        // In Battle Royale, hide other players' light sources to not reveal their position
-        if (isBattleRoyale && entity instanceof PlayerClient && entity.getId() !== gameState.playerId) {
-          continue;
-        }
-
-        // In Infection mode, zombie players can see all illuminated players' light sources
-        if (isInfection && myPlayerIsZombie && entity instanceof PlayerClient) {
-          const radius = entity.getExt(ClientIlluminated).getRadius();
-          if (radius > 0) {
-            const position = entity.getExt(ClientPositionable).getCenterPosition();
-            sources.push({ position, radius });
-          }
-          if (entity.getId() === gameState.playerId) {
-            addedCurrentPlayerLight = true;
-          }
-          continue;
-        }
-
-        const radius = entity.getExt(ClientIlluminated).getRadius();
-        // Skip entities with no light (radius 0 or very small)
-        if (radius <= 0) continue;
-        const position = entity.getExt(ClientPositionable).getCenterPosition();
-        sources.push({ position, radius });
-
-        // Track if we added light for the current player
-        if (entity.getId() === gameState.playerId) {
-          addedCurrentPlayerLight = true;
-        }
-      }
-    }
-
-    // Add illumination for zombie players who don't have ClientIlluminated extension
-    // This ensures zombie players can always see their surroundings on the minimap
-    if (!addedCurrentPlayerLight && gameState.playerId) {
-      if (currentPlayer instanceof PlayerClient && currentPlayer.isZombiePlayer?.()) {
-        if (currentPlayer.hasExt(ClientPositionable)) {
-          const position = currentPlayer.getExt(ClientPositionable).getCenterPosition();
-          const radius = 80; // Match ZOMBIE_ILLUMINATION_RADIUS from map manager
-          sources.push({ position, radius });
-        }
-      }
-    }
-
-    // For zombie players in infection mode, add ALL human player positions as light sources
-    // This ensures zombies can see human players through the fog of war
-    if (isInfection && myPlayerIsZombie) {
-      for (const entity of entities) {
-        if (entity instanceof PlayerClient &&
-            entity.getId() !== gameState.playerId &&
-            !entity.isZombiePlayer() &&
-            entity.hasExt(ClientPositionable)) {
-          const position = entity.getExt(ClientPositionable).getCenterPosition();
-          // Use a small radius so only the player dot is visible, not a large area
-          sources.push({ position, radius: 20 });
-        }
-      }
-    }
-
-    return sources;
-  }
-
-  // Check if a world position is visible (within any light source radius)
-  private isPositionVisible(worldPos: Vector2, lightSources: LightSource[]): boolean {
-    for (const source of lightSources) {
-      const dx = worldPos.x - source.position.x;
-      const dy = worldPos.y - source.position.y;
-      const distanceSquared = dx * dx + dy * dy;
-      const radiusSquared = (source.radius * source.radius) / 2;
-
-      if (distanceSquared <= radiusSquared) {
-        return true;
-      }
-    }
-    return false;
-  }
+  // Light source calculation moved to map-rendering-utils
 
   public render(ctx: CanvasRenderingContext2D, gameState: GameState): void {
     perfTimer.start("minimap:total");
@@ -288,10 +202,12 @@ export class Minimap {
     if (isInfection && myPlayerIsZombie) {
       // Add ALL human players for zombie players to see (they can hunt humans)
       for (const entity of gameState.entities) {
-        if (entity instanceof PlayerClient &&
-            entity.getId() !== gameState.playerId &&
-            !entity.isZombiePlayer() &&
-            entity.hasExt(ClientPositionable)) {
+        if (
+          entity instanceof PlayerClient &&
+          entity.getId() !== gameState.playerId &&
+          !entity.isZombiePlayer() &&
+          entity.hasExt(ClientPositionable)
+        ) {
           // Add all human players for zombies to track
           extendedEntities.add(entity);
         }
@@ -346,18 +262,26 @@ export class Minimap {
 
     // Draw toxic biome zones (large areas covering entire biomes)
     perfTimer.start("minimap:toxicZones");
-    this.renderToxicZones(ctx, toxicZoneEntities, playerPos, settings, top, scaledLeft, scaledSize);
+    const toxicCenterX = scaledLeft + scaledSize / 2;
+    const toxicCenterY = top + scaledSize / 2;
+    renderToxicZones(
+      ctx,
+      toxicZoneEntities,
+      playerPos,
+      { colors: { toxicGas: settings.colors.toxicGas } },
+      toxicCenterX,
+      toxicCenterY,
+      settings.scale
+    );
     perfTimer.end("minimap:toxicZones");
 
     // Loop through nearby entities and draw them on minimap
     perfTimer.start("minimap:entities");
-    const maxEntityDistanceSquared =
-      MINIMAP_RENDER_DISTANCE.ENTITIES * MINIMAP_RENDER_DISTANCE.ENTITIES;
+    const maxEntityDistance = MINIMAP_RENDER_DISTANCE.ENTITIES;
 
     // Battle Royale: limit player visibility range (approx 200 pixels / ~12 tiles)
     const isBattleRoyale = gameState.gameMode === "battle_royale";
     const playerVisibilityRange = 200;
-    const playerVisibilityRangeSquared = playerVisibilityRange * playerVisibilityRange;
 
     for (const entity of extendedEntities) {
       if (!entity.hasExt(ClientPositionable)) continue;
@@ -368,12 +292,15 @@ export class Minimap {
       // Calculate relative position to player
       const relativeX = position.x - playerPos.x;
       const relativeY = position.y - playerPos.y;
-
-      // Early distance check using squared distance (faster than sqrt)
-      const distanceSquared = relativeX * relativeX + relativeY * relativeY;
+      const poolManager = PoolManager.getInstance();
+      const playerWorldPos = poolManager.vector2.claim(playerPos.x, playerPos.y);
+      const entityWorldPos = poolManager.vector2.claim(position.x, position.y);
+      const dist = distance(playerWorldPos, entityWorldPos);
+      poolManager.vector2.release(playerWorldPos);
+      poolManager.vector2.release(entityWorldPos);
 
       // In Infection mode, zombie players can see ALL human players anywhere on the map
-      let shouldRender = distanceSquared <= maxEntityDistanceSquared;
+      let shouldRender = dist <= maxEntityDistance;
       if (!shouldRender && isInfection && myPlayerIsZombie && entity instanceof PlayerClient) {
         const otherPlayerIsZombie = entity.isZombiePlayer();
         // Zombies can see all human players regardless of distance
@@ -385,8 +312,12 @@ export class Minimap {
       if (!shouldRender) continue;
 
       // In Battle Royale, only show other players if they're within visibility range
-      if (isBattleRoyale && entity instanceof PlayerClient && entity.getId() !== gameState.playerId) {
-        if (distanceSquared > playerVisibilityRangeSquared) continue;
+      if (
+        isBattleRoyale &&
+        entity instanceof PlayerClient &&
+        entity.getId() !== gameState.playerId
+      ) {
+        if (dist > playerVisibilityRange) continue;
       }
 
       // Convert to minimap coordinates (centered on player) using scaled values
@@ -425,8 +356,25 @@ export class Minimap {
 
     // Draw fog of war overlay
     perfTimer.start("minimap:fogOfWar");
-    const lightSources = this.getLightSources(Array.from(extendedEntities), gameState);
-    this.renderFogOfWar(ctx, playerPos, lightSources, settings, top);
+    const lightSources = calculateLightSources(Array.from(extendedEntities), gameState);
+    const fogCenterX = scaledLeft + scaledSize / 2;
+    const fogCenterY = top + scaledSize / 2;
+    const radius = scaledSize / 2;
+    renderMinimapFogOfWar(
+      ctx,
+      playerPos,
+      lightSources,
+      settings.fogOfWar,
+      fogCenterX,
+      fogCenterY,
+      radius,
+      settings.scale,
+      top,
+      scaledLeft,
+      scaledSize,
+      canvasWidth,
+      canvasHeight
+    );
     perfTimer.end("minimap:fogOfWar");
 
     // Draw crate indicators (after fog of war so they're always visible)
@@ -700,7 +648,7 @@ export class Minimap {
 
     const centerX = scaledLeft + scaledSize / 2;
     const centerY = topPos + scaledSize / 2;
-    const maxDistanceSquared = MINIMAP_RENDER_DISTANCE.ENTITIES * MINIMAP_RENDER_DISTANCE.ENTITIES;
+    const maxDistance = MINIMAP_RENDER_DISTANCE.ENTITIES;
 
     // Loop through crate entities
     for (const entity of crateEntities) {
@@ -712,10 +660,13 @@ export class Minimap {
       // Calculate relative position to player
       const relativeX = position.x - playerPos.x;
       const relativeY = position.y - playerPos.y;
-
-      // Early distance check using squared distance (faster than sqrt)
-      const distanceSquared = relativeX * relativeX + relativeY * relativeY;
-      if (distanceSquared > maxDistanceSquared) continue;
+      const poolManager = PoolManager.getInstance();
+      const playerWorldPos = poolManager.vector2.claim(playerPos.x, playerPos.y);
+      const entityWorldPos = poolManager.vector2.claim(position.x, position.y);
+      const dist = distance(playerWorldPos, entityWorldPos);
+      poolManager.vector2.release(playerWorldPos);
+      poolManager.vector2.release(entityWorldPos);
+      if (dist > maxDistance) continue;
 
       // Convert to minimap coordinates (centered on player) - using scaled center
       const minimapX = centerX + relativeX * settings.scale;
@@ -784,7 +735,7 @@ export class Minimap {
 
     const centerX = scaledLeft + scaledSize / 2;
     const centerY = topPos + scaledSize / 2;
-    const maxDistanceSquared = MINIMAP_RENDER_DISTANCE.ENTITIES * MINIMAP_RENDER_DISTANCE.ENTITIES;
+    const maxDistance = MINIMAP_RENDER_DISTANCE.ENTITIES;
 
     // Loop through survivor entities
     for (const entity of survivorEntities) {
@@ -796,10 +747,13 @@ export class Minimap {
       // Calculate relative position to player
       const relativeX = position.x - playerPos.x;
       const relativeY = position.y - playerPos.y;
-
-      // Early distance check using squared distance (faster than sqrt)
-      const distanceSquared = relativeX * relativeX + relativeY * relativeY;
-      if (distanceSquared > maxDistanceSquared) continue;
+      const poolManager = PoolManager.getInstance();
+      const playerWorldPos = poolManager.vector2.claim(playerPos.x, playerPos.y);
+      const entityWorldPos = poolManager.vector2.claim(position.x, position.y);
+      const dist = distance(playerWorldPos, entityWorldPos);
+      poolManager.vector2.release(playerWorldPos);
+      poolManager.vector2.release(entityWorldPos);
+      if (dist > maxDistance) continue;
 
       // Convert to minimap coordinates (centered on player) - using scaled center
       const minimapX = centerX + relativeX * settings.scale;
@@ -844,164 +798,29 @@ export class Minimap {
     }
   }
 
-  /**
-   * Render toxic biome zones as filled rectangles covering their actual area
-   */
-  private renderToxicZones(
-    ctx: CanvasRenderingContext2D,
-    toxicZoneEntities: ToxicBiomeZoneClient[],
-    playerPos: { x: number; y: number },
-    settings: typeof MINIMAP_SETTINGS,
-    top: number,
-    scaledLeft: number,
-    scaledSize: number
-  ): void {
-    if (toxicZoneEntities.length === 0) return;
-
-    const centerX = scaledLeft + scaledSize / 2;
-    const centerY = top + scaledSize / 2;
-
-    ctx.save();
-    ctx.fillStyle = settings.colors.toxicGas;
-
-    // Small overlap to prevent gaps between adjacent zones due to floating-point precision
-    const overlap = 1;
-
-    for (const zone of toxicZoneEntities) {
-      if (!zone.hasExt(ClientPositionable)) continue;
-
-      const positionable = zone.getExt(ClientPositionable);
-      const position = positionable.getPosition();
-      const size = positionable.getSize();
-
-      // Calculate position relative to player
-      const relativeX = position.x - playerPos.x;
-      const relativeY = position.y - playerPos.y;
-
-      // Convert to minimap coordinates
-      const minimapX = centerX + relativeX * settings.scale;
-      const minimapY = centerY + relativeY * settings.scale;
-      const minimapWidth = size.x * settings.scale + overlap;
-      const minimapHeight = size.y * settings.scale + overlap;
-
-      // Draw the toxic zone as a filled rectangle
-      ctx.fillRect(minimapX, minimapY, minimapWidth, minimapHeight);
-    }
-
-    ctx.restore();
-  }
-
-  // Render fog of war overlay - darken areas not in light
-  private renderFogOfWar(
-    ctx: CanvasRenderingContext2D,
-    playerPos: { x: number; y: number },
-    lightSources: LightSource[],
-    settings: typeof MINIMAP_SETTINGS,
-    top: number
-  ): void {
-    if (!settings.fogOfWar.enabled) return;
-
-    // Calculate scaled values for fog of war
-    const canvasWidth = ctx.canvas.width;
-    const canvasHeight = ctx.canvas.height;
-    const scaledRight = scaleHudValue(settings.right, canvasWidth, canvasHeight);
-    const scaledSize = scaleHudValue(settings.size, canvasWidth, canvasHeight);
-    const scaledLeft = canvasWidth - scaledRight - scaledSize;
-
-    const centerX = scaledLeft + scaledSize / 2;
-    const centerY = top + scaledSize / 2;
-    const radius = scaledSize / 2;
-
-    // We'll render fog by checking a grid of points on the minimap
-    // For better performance, we'll check at lower resolution and draw tiles
-    const gridSize = scaleHudValue(8, canvasWidth, canvasHeight); // Size of fog tiles in minimap pixels
-    const tilesPerRow = Math.ceil(scaledSize / gridSize);
-
-    for (let ty = 0; ty < tilesPerRow; ty++) {
-      for (let tx = 0; tx < tilesPerRow; tx++) {
-        // Calculate minimap coordinates for this fog tile using scaled values
-        const minimapX = scaledLeft + tx * gridSize + gridSize / 2;
-        const minimapY = top + ty * gridSize + gridSize / 2;
-
-        // Check if this position is within the circular minimap bounds
-        const dx = minimapX - centerX;
-        const dy = minimapY - centerY;
-        if (dx * dx + dy * dy > radius * radius) continue;
-
-        // Convert minimap coordinates back to world coordinates
-        const relativeX = (minimapX - centerX) / settings.scale;
-        const relativeY = (minimapY - centerY) / settings.scale;
-        const worldX = playerPos.x + relativeX;
-        const worldY = playerPos.y + relativeY;
-
-        const poolManager = PoolManager.getInstance();
-        const worldPos = poolManager.vector2.claim(worldX, worldY);
-
-        // Check if this world position is visible
-        if (!this.isPositionVisible(worldPos, lightSources)) {
-          // Draw fog tile
-          ctx.fillStyle = settings.fogOfWar.fogColor;
-          ctx.fillRect(minimapX - gridSize / 2, minimapY - gridSize / 2, gridSize, gridSize);
-        }
-      }
-    }
-  }
+  // renderToxicZones and renderFogOfWar moved to shared utilities
 
   // Pre-render all collidables as simplified indicator shapes into a canvas
   private prerenderCollidables(): void {
     const mapData = this.mapManager.getMapData();
     if (!mapData || !mapData.collidables) return;
 
-    const collidables = mapData.collidables;
-
     // Cache the reference to the current collidables array so we can detect when it changes
-    this.cachedCollidablesReference = collidables;
-    const rows = collidables.length;
-    const cols = collidables[0]?.length ?? 0;
+    this.cachedCollidablesReference = mapData.collidables;
 
-    if (rows === 0 || cols === 0) return;
+    const canvas = prerenderCollidables(this.mapManager, {
+      colors: { tree: MINIMAP_SETTINGS.colors.tree },
+      indicators: {
+        tree: {
+          shape: MINIMAP_SETTINGS.indicators.tree.shape as "circle" | "rectangle",
+          size: MINIMAP_SETTINGS.indicators.tree.size,
+        },
+      },
+    });
 
-    // Create a canvas at world coordinates (1:1 scale)
-    const canvas = document.createElement("canvas");
-    canvas.width = cols * this.tileSize;
-    canvas.height = rows * this.tileSize;
-    const ctx = canvas.getContext("2d");
-
-    if (!ctx) return;
-
-    // Use a semi-transparent fill so overlapping tiles don't completely obscure each other
-    ctx.fillStyle = MINIMAP_SETTINGS.colors.tree;
-    const treeIndicator = MINIMAP_SETTINGS.indicators.tree;
-    const size = treeIndicator.size;
-    const halfSize = size / 2;
-
-    // Render all collidables as simplified shapes
-    // Note: Draw at tile corner positions (the canvas represents world coordinates)
-    for (let y = 0; y < rows; y++) {
-      const row = collidables[y];
-      if (!row) continue;
-
-      for (let x = 0; x < cols; x++) {
-        const cell = row[x];
-        // If there's a collidable (anything other than -1), draw it
-        if (cell !== -1) {
-          // Draw at tile corner (not center) - the canvas represents world coordinates 1:1
-          const worldX = x * this.tileSize + this.tileSize / 2;
-          const worldY = y * this.tileSize + this.tileSize / 2;
-
-          // Draw obstacle indicator based on shape at world coordinates
-          if (treeIndicator.shape === "circle") {
-            ctx.beginPath();
-            ctx.arc(worldX, worldY, halfSize, 0, Math.PI * 2);
-            ctx.fill();
-          } else {
-            ctx.fillRect(worldX - halfSize, worldY - halfSize, size, size);
-          }
-        }
-      }
+    if (canvas) {
+      this.collidablesCanvas = canvas;
     }
-
-    this.collidablesCanvas = canvas;
   }
 
   // Render collidables using pre-rendered canvas or fallback
@@ -1037,9 +856,8 @@ export class Minimap {
       return;
     }
 
-    // Pre-calculate squared distance for performance
-    const maxDistanceSquared =
-      MINIMAP_RENDER_DISTANCE.COLLIDABLES * MINIMAP_RENDER_DISTANCE.COLLIDABLES;
+    // Pre-calculate max distance for performance
+    const maxDistance = MINIMAP_RENDER_DISTANCE.COLLIDABLES;
 
     // Calculate tile range to check based on player position and max distance
     const playerTileX = Math.floor(playerPos.x / this.tileSize);
@@ -1109,9 +927,8 @@ export class Minimap {
   ): void {
     ctx.fillStyle = settings.colors.tree;
 
-    // Pre-calculate squared distance for performance
-    const maxDistanceSquared =
-      MINIMAP_RENDER_DISTANCE.COLLIDABLES * MINIMAP_RENDER_DISTANCE.COLLIDABLES;
+    // Pre-calculate max distance for performance
+    const maxDistance = MINIMAP_RENDER_DISTANCE.COLLIDABLES;
 
     // Calculate tile range to check based on player position and max distance
     const playerTileX = Math.floor(playerPos.x / this.tileSize);
@@ -1139,10 +956,13 @@ export class Minimap {
           // Calculate relative position to player
           const relativeX = worldX - playerPos.x;
           const relativeY = worldY - playerPos.y;
-
-          // Early distance check using squared distance (faster than sqrt)
-          const distanceSquared = relativeX * relativeX + relativeY * relativeY;
-          if (distanceSquared > maxDistanceSquared) continue;
+          const poolManager = PoolManager.getInstance();
+          const playerWorldPos = poolManager.vector2.claim(playerPos.x, playerPos.y);
+          const tileWorldPos = poolManager.vector2.claim(worldX, worldY);
+          const dist = distance(playerWorldPos, tileWorldPos);
+          poolManager.vector2.release(playerWorldPos);
+          poolManager.vector2.release(tileWorldPos);
+          if (dist > maxDistance) continue;
 
           // Convert to minimap coordinates (centered on player)
           // Calculate scaledLeft for fallback rendering

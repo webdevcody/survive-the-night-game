@@ -10,6 +10,7 @@ import { encodeExtensionType } from "@shared/util/extension-type-encoding";
 import { ExtensionBase } from "./extension-base";
 import { getConfig } from "@shared/config";
 import { Entities } from "@shared/constants";
+import { distance } from "@/util/physics";
 
 /**
  * This extension will cause the entity to fire an attack when the cooldown is ready.
@@ -30,8 +31,6 @@ interface TriggerCooldownAttackerOptions {
 export default class TriggerCooldownAttacker extends ExtensionBase<TriggerCooldownAttackerFields> {
   public static readonly type = "trigger-cooldown-attacker";
   private static readonly RADIUS = getConfig().combat.ITEM_TRIGGER_RADIUS;
-  private static readonly RADIUS_SQUARED =
-    TriggerCooldownAttacker.RADIUS * TriggerCooldownAttacker.RADIUS;
   private static readonly CHECK_INTERVAL = getConfig().entity.PLAYER_CHECK_INTERVAL;
 
   private attackCooldown: Cooldown;
@@ -109,12 +108,9 @@ export default class TriggerCooldownAttacker extends ExtensionBase<TriggerCooldo
       const destructible = entity.getExt(Destructible);
       const entityCenter = entity.getExt(Positionable).getCenterPosition();
 
-      // Use squared distance comparison to avoid expensive sqrt calculation
-      const dx = position.x - entityCenter.x;
-      const dy = position.y - entityCenter.y;
-      const centerDistanceSquared = dx * dx + dy * dy;
+      const centerDistance = distance(position, entityCenter);
 
-      if (centerDistanceSquared < TriggerCooldownAttacker.RADIUS_SQUARED) {
+      if (centerDistance < TriggerCooldownAttacker.RADIUS) {
         destructible.damage(this.options.damage);
         this.attackCooldown.reset();
         break;

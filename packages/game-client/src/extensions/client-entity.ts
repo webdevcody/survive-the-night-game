@@ -15,6 +15,7 @@ import {
   FIELD_TYPE_OBJECT,
   FIELD_TYPE_NULL,
 } from "@shared/util/serialization-constants";
+import { distance } from "@shared/util/physics";
 
 export abstract class ClientEntityBase {
   private id: number;
@@ -43,8 +44,8 @@ export abstract class ClientEntityBase {
   }
 
   public lerpPosition(target: Vector2, current: Vector2, dt?: number): Vector2 {
-    const distance = target.distance(current);
-    if (distance > 100) {
+    const dist = distance(target, current);
+    if (dist > 100) {
       return target.clone();
     }
 

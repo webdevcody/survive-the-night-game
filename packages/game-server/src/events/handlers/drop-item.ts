@@ -10,6 +10,7 @@ import { HandlerContext } from "@/events/context";
 import { itemRegistry } from "@shared/entities/item-registry";
 import { InventoryItem } from "@shared/util/inventory";
 import { getConfig } from "@shared/config";
+import { distance } from "@/util/physics";
 
 /**
  * Validate drop item data
@@ -195,10 +196,9 @@ export function onDropItem(
       const posExt = other.getExt(Positionable);
       const otherPos = posExt.getCenterPosition();
 
-      const dx = checkPos.x - otherPos.x;
-      const dy = checkPos.y - otherPos.y;
+      const dist = distance(checkPos, otherPos);
 
-      if (dx * dx + dy * dy <= radius * radius) {
+      if (dist <= radius) {
         const st = otherCarry.getItemState();
 
         let existing = 1;

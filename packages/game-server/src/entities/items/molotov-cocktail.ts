@@ -15,6 +15,7 @@ import Interactive from "@/extensions/interactive";
 import { ItemState } from "@/types/entity";
 import { Entities } from "@/constants";
 import { getConfig } from "@shared/config";
+import { distance } from "@/util/physics";
 
 export class MolotovCocktail extends Weapon {
   private static readonly EXPLOSION_RADIUS = getConfig().combat.EXPLOSION_RADIUS_MEDIUM;
@@ -166,7 +167,7 @@ export class MolotovCocktail extends Weapon {
       if (!entity.hasExt(Destructible)) continue;
 
       const entityPos = entity.getExt(Positionable).getCenterPosition();
-      const dist = position.distance(entityPos);
+      const dist = distance(position, entityPos);
 
       if (dist <= MolotovCocktail.EXPLOSION_RADIUS) {
         // Scale damage based on distance from explosion

@@ -4,6 +4,7 @@ import { getPlayer } from "@/util/get-player";
 import { ClientPositionable } from "@/extensions/positionable";
 import { AssetManager } from "@/managers/asset";
 import { SurvivorClient } from "@/entities/environment/survivor";
+import { distance } from "@shared/util/physics";
 
 export interface SurvivorIndicatorsPanelSettings extends PanelSettings {
   arrowSize: number;
@@ -47,16 +48,16 @@ export class SurvivorIndicatorsPanel extends Panel {
       const survivorPos = survivor.getExt(ClientPositionable).getCenterPosition();
 
       // Calculate vector from player to survivor
-      const dx = survivorPos.x - playerPos.x;
-      const dy = survivorPos.y - playerPos.y;
-      const distance = Math.sqrt(dx * dx + dy * dy);
+      const dist = distance(survivorPos, playerPos);
 
       // Skip if survivor is very close (player can see it)
-      if (distance < this.indicatorSettings.minDistance) continue;
+      if (dist < this.indicatorSettings.minDistance) continue;
 
       // Normalize direction
-      const dirX = dx / distance;
-      const dirY = dy / distance;
+      const dx = survivorPos.x - playerPos.x;
+      const dy = survivorPos.y - playerPos.y;
+      const dirX = dx / dist;
+      const dirY = dy / dist;
 
       // Calculate screen position for indicator
       const centerX = width / 2;

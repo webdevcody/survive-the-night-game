@@ -12,6 +12,7 @@ import Positionable from "@/extensions/positionable";
 import Destructible from "@/extensions/destructible";
 import { ExplosionEvent } from "../../../../game-shared/src/events/server-sent/events/explosion-event";
 import { getConfig } from "@shared/config";
+import { distance } from "@/util/physics";
 
 export class ExplodingZombie extends BaseEnemy {
   private static readonly EXPLOSION_RADIUS = getConfig().combat.EXPLOSION_RADIUS_SMALL;
@@ -54,7 +55,7 @@ export class ExplodingZombie extends BaseEnemy {
       if (!entity.hasExt(Destructible)) continue;
 
       const entityPos = entity.getExt(Positionable).getCenterPosition();
-      const dist = position.distance(entityPos);
+      const dist = distance(position, entityPos);
 
       if (dist <= ExplodingZombie.EXPLOSION_RADIUS) {
         // Scale damage based on distance from explosion
