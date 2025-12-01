@@ -24,6 +24,7 @@ import { getConfig } from "@shared/config";
 import { scaleHudValue, calculateHudScale } from "@/util/hud-scale";
 import { GameOverDialogUI } from "./game-over-dialog";
 import { InventoryBarUI } from "./inventory-bar";
+import { InventoryPanelUI } from "./inventory-panel";
 import { WeaponsHUD } from "@/ui/weapons-hud";
 import { InputManager } from "@/managers/input";
 import { PlayerClient } from "@/entities/player";
@@ -151,12 +152,14 @@ export class Hud {
   private zombieLivesPanel: ZombieLivesPanel;
   private gameOverDialog: GameOverDialogUI;
   private hotbar: InventoryBarUI;
+  private inventoryPanel: InventoryPanelUI;
   private weaponsHud: WeaponsHUD;
   private inputManager: InputManager;
   private currentGameState: GameState | null = null;
   private mouseX: number = 0;
   private mouseY: number = 0;
   private canvasHeight: number = 0;
+  private shiftHeld: boolean = false;
 
   constructor(
     mapManager: MapManager,
@@ -196,6 +199,14 @@ export class Hud {
       this.inputManager,
       getInventory,
       sendDropItem,
+      sendSwapItems
+    );
+
+    // Initialize inventory panel (extended inventory)
+    this.inventoryPanel = new InventoryPanelUI(
+      this.assetManager,
+      this.inputManager,
+      getInventory,
       sendSwapItems
     );
 
@@ -417,6 +428,14 @@ export class Hud {
     return this.fullscreenMap.isOpen();
   }
 
+  public toggleInventoryPanel(): void {
+    this.inventoryPanel.toggle();
+  }
+
+  public isInventoryPanelOpen(): boolean {
+    return this.inventoryPanel.isVisible();
+  }
+
   private getPingColor(ping: number): string {
     if (ping < 50) return HUD_SETTINGS.BottomRightPanels.pingColors.excellent;
     if (ping < 100) return HUD_SETTINGS.BottomRightPanels.pingColors.good;
@@ -600,6 +619,9 @@ export class Hud {
       this.hotbar.renderHealthAndStamina(ctx, gameState);
     }
 
+    // Render inventory panel (extended inventory)
+    this.inventoryPanel.render(ctx, gameState);
+
     // Render death screen if player is dead and game is not over
     if (!this.gameOverDialog.isGameOver()) {
       this.deathScreenPanel.render(ctx, gameState);
@@ -732,7 +754,9 @@ export class Hud {
   }
 
   public isHoveringInventory(): boolean {
-    return this.hotbar ? this.hotbar.isHovering() : false;
+    const hotbarHover = this.hotbar ? this.hotbar.isHovering() : false;
+    const panelHover = this.inventoryPanel ? this.inventoryPanel.isHovering() : false;
+    return hotbarHover || panelHover;
   }
 
   public isHoveringMuteButton(): boolean {
@@ -742,6 +766,11 @@ export class Hud {
   public handleClick(x: number, y: number, canvasWidth: number, canvasHeight: number): boolean {
     // Check fullscreen map clicks first (if open)
     if (this.fullscreenMap.handleClick(x, y)) {
+      return true;
+    }
+
+    // Check if click is on inventory panel (if open)
+    if (this.inventoryPanel && this.inventoryPanel.handleClick(x, y, canvasWidth, canvasHeight, this.shiftHeld)) {
       return true;
     }
 
@@ -756,16 +785,24 @@ export class Hud {
     }
 
     // Check if click is on hotbar
-    if (this.hotbar && this.hotbar.handleClick(x, y, canvasWidth, canvasHeight)) {
+    if (this.hotbar && this.hotbar.handleClick(x, y, canvasWidth, canvasHeight, this.shiftHeld)) {
       return true;
     }
 
     return false; // Click was not handled
   }
 
+  public setShiftHeld(held: boolean): void {
+    this.shiftHeld = held;
+  }
+
   public handleMouseMove(x: number, y: number, canvasWidth: number, canvasHeight: number): void {
     if (this.hotbar) {
       this.hotbar.handleMouseMove(x, y, canvasWidth, canvasHeight);
+    }
+
+    if (this.inventoryPanel) {
+      this.inventoryPanel.handleMouseMove(x, y, canvasWidth, canvasHeight);
     }
 
     // Forward mouse move to fullscreen map for drag handling
@@ -775,8 +812,35 @@ export class Hud {
   }
 
   public handleMouseUp(x: number, y: number, canvasWidth: number, canvasHeight: number): void {
+    // Handle cross-drag from hotbar to inventory panel
+    if (this.hotbar && this.inventoryPanel && this.inventoryPanel.isVisible()) {
+      const hotbarDragState = (this.hotbar as any).dragState;
+      if (hotbarDragState?.isDragging) {
+        const handled = this.inventoryPanel.handleExternalDrop(hotbarDragState.slotIndex, x, y);
+        if (handled) {
+          (this.hotbar as any).dragState = null;
+          return;
+        }
+      }
+    }
+
+    // Handle cross-drag from inventory panel to hotbar
+    if (this.inventoryPanel && this.hotbar && this.inventoryPanel.isDragging()) {
+      const panelDragState = this.inventoryPanel.getDragState();
+      if (panelDragState?.isDragging) {
+        const handled = (this.hotbar as any).handleExternalDrop?.(panelDragState.slotIndex, x, y);
+        if (handled) {
+          return;
+        }
+      }
+    }
+
     if (this.hotbar) {
       this.hotbar.handleMouseUp(x, y, canvasWidth, canvasHeight);
+    }
+
+    if (this.inventoryPanel) {
+      this.inventoryPanel.handleMouseUp(x, y, canvasWidth, canvasHeight);
     }
 
     // Forward mouse up to fullscreen map for drag handling
@@ -797,6 +861,9 @@ export class Hud {
 
     if (this.hotbar) {
       this.hotbar.updateMousePosition(x, y, canvasWidth, canvasHeight);
+    }
+    if (this.inventoryPanel) {
+      this.inventoryPanel.updateMousePosition(x, y, canvasWidth, canvasHeight);
     }
     if (this.weaponsHud) {
       this.weaponsHud.updateMouse(x, y);
