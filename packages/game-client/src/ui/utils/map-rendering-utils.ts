@@ -162,4 +162,3 @@ export function mapToWorldCoordinates(
     y: playerPos.y + relativeY,
   };
 }
-

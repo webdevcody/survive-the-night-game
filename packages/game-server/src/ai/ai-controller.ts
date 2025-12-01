@@ -436,9 +436,10 @@ export class AIController {
     // Always validate combat target is still alive - clear if dead
     if (this.combatTarget?.entity) {
       const target = this.combatTarget.entity;
-      const isTargetDead = target instanceof Player
-        ? target.isDead()
-        : (target.hasExt(Destructible) && target.getExt(Destructible).isDead());
+      const isTargetDead =
+        target instanceof Player
+          ? target.isDead()
+          : target.hasExt(Destructible) && target.getExt(Destructible).isDead();
       if (isTargetDead) {
         this.combatTarget = null;
         this.forceRetarget = true;
@@ -575,7 +576,10 @@ export class AIController {
       }
     } else {
       // No living players found - wander randomly
-      if (this.timerManager.pathRecalcTimer >= AI_CONFIG.PATH_RECALC_INTERVAL * 2 || !this.movementController.getCurrentWaypoint()) {
+      if (
+        this.timerManager.pathRecalcTimer >= AI_CONFIG.PATH_RECALC_INTERVAL * 2 ||
+        !this.movementController.getCurrentWaypoint()
+      ) {
         this.timerManager.pathRecalcTimer = 0;
 
         // Pick a random direction to wander
@@ -1445,7 +1449,7 @@ export class AIController {
             this.recalculatePath();
             const waypoint = this.movementController.getCurrentWaypoint();
             if (waypoint) {
-        const vel = velocityTowards(playerPos, waypoint);
+              const vel = velocityTowards(playerPos, waypoint);
               input.dx = vel.x;
               input.dy = vel.y;
             }
@@ -1509,7 +1513,7 @@ export class AIController {
         this.recalculatePath();
         const waypoint = this.movementController.getCurrentWaypoint();
         if (waypoint) {
-        const vel = velocityTowards(playerPos, waypoint);
+          const vel = velocityTowards(playerPos, waypoint);
           input.dx = vel.x;
           input.dy = vel.y;
         }
@@ -1589,7 +1593,7 @@ export class AIController {
         this.recalculatePath();
         const waypoint = this.movementController.getCurrentWaypoint();
         if (waypoint) {
-        const vel = velocityTowards(playerPos, waypoint);
+          const vel = velocityTowards(playerPos, waypoint);
           input.dx = vel.x;
           input.dy = vel.y;
         }
@@ -1643,7 +1647,7 @@ export class AIController {
         this.recalculatePath();
         const waypoint = this.movementController.getCurrentWaypoint();
         if (waypoint) {
-        const vel = velocityTowards(playerPos, waypoint);
+          const vel = velocityTowards(playerPos, waypoint);
           input.dx = vel.x;
           input.dy = vel.y;
         }
@@ -1744,7 +1748,7 @@ export class AIController {
             this.recalculatePath();
             const waypoint = this.movementController.getCurrentWaypoint();
             if (waypoint) {
-        const vel = velocityTowards(playerPos, waypoint);
+              const vel = velocityTowards(playerPos, waypoint);
               input.dx = vel.x;
               input.dy = vel.y;
             } else {

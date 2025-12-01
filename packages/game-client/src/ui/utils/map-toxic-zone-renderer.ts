@@ -40,7 +40,14 @@ export function renderToxicZones(
     const relativeY = position.y - playerPos.y;
 
     // Convert to map coordinates
-    const mapCoords = worldToMapCoordinates(position.x, position.y, playerPos, centerX, centerY, scale);
+    const mapCoords = worldToMapCoordinates(
+      position.x,
+      position.y,
+      playerPos,
+      centerX,
+      centerY,
+      scale
+    );
     const mapWidth = size.x * scale + overlap;
     const mapHeight = size.y * scale + overlap;
 
@@ -50,4 +57,3 @@ export function renderToxicZones(
 
   ctx.restore();
 }
-

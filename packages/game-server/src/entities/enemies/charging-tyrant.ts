@@ -109,7 +109,9 @@ export class ChargingTyrant extends BossEnemy {
         this.wallCollisionTimer += deltaTime;
 
         // If we've been stuck for a short time, trigger ground slam
-        if (this.wallCollisionTimer >= getConfig().boss.CHARGING_TYRANT_WALL_COLLISION_DETECTION_TIME) {
+        if (
+          this.wallCollisionTimer >= getConfig().boss.CHARGING_TYRANT_WALL_COLLISION_DETECTION_TIME
+        ) {
           this.performGroundSlam();
           this.state = ChargingState.RECOVERING;
           this.recoveryCooldown.reset();

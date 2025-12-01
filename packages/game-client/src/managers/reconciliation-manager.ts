@@ -49,7 +49,9 @@ export class ReconciliationManager {
 
     // Store server ghost position for visualization
     const poolManager = PoolManager.getInstance();
-    (player as any).setServerGhostPosition?.(poolManager.vector2.claim(serverPosition.x, serverPosition.y));
+    (player as any).setServerGhostPosition?.(
+      poolManager.vector2.claim(serverPosition.x, serverPosition.y)
+    );
 
     // Reconciliation strategy:
     // 1. Large error (> errorThreshold): Snap immediately (emergency correction)
@@ -93,7 +95,9 @@ export class ReconciliationManager {
     const correctedY = currentPos.y + (serverPosition.y - currentPos.y) * lerpSpeed;
 
     const poolManager = PoolManager.getInstance();
-    player.getExt(ClientPositionable).setPosition(poolManager.vector2.claim(correctedX, correctedY));
+    player
+      .getExt(ClientPositionable)
+      .setPosition(poolManager.vector2.claim(correctedX, correctedY));
   }
 
   /**

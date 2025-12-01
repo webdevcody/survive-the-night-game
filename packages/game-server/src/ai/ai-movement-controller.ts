@@ -60,15 +60,9 @@ export class AIMovementController {
     recalcInterval: number = AI_CONFIG.PATH_RECALC_INTERVAL
   ): boolean {
     // Recalculate path if needed
-    if (
-      this.timerManager.pathRecalcTimer >= recalcInterval ||
-      !this.currentWaypoint
-    ) {
+    if (this.timerManager.pathRecalcTimer >= recalcInterval || !this.currentWaypoint) {
       this.timerManager.pathRecalcTimer = 0;
-      this.currentWaypoint = this.pathfinder.pathTowardsAvoidingToxic(
-        playerPos,
-        targetPos
-      );
+      this.currentWaypoint = this.pathfinder.pathTowardsAvoidingToxic(playerPos, targetPos);
 
       // If pathfinding failed, use direct path
       if (!this.currentWaypoint) {
@@ -147,11 +141,9 @@ export class AIMovementController {
 
       // Smooth with previous direction
       this.lastMovementDirection.x =
-        this.lastMovementDirection.x * smoothingFactor +
-        targetDir.x * (1 - smoothingFactor);
+        this.lastMovementDirection.x * smoothingFactor + targetDir.x * (1 - smoothingFactor);
       this.lastMovementDirection.y =
-        this.lastMovementDirection.y * smoothingFactor +
-        targetDir.y * (1 - smoothingFactor);
+        this.lastMovementDirection.y * smoothingFactor + targetDir.y * (1 - smoothingFactor);
 
       // Normalize smoothed direction
       const smoothedLength = Math.sqrt(
@@ -192,4 +184,3 @@ export class AIMovementController {
     this.lastPosition = null;
   }
 }
-

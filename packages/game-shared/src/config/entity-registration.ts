@@ -108,3 +108,5 @@ export const ENTITY_REGISTRATION_CONFIG: EntityRegistrationEntry[] = [
   { type: "toxic_gas_cloud", category: "environment" },
   { type: "toxic_biome_zone", category: "environment" },
 ];
+
+

@@ -42,4 +42,3 @@ export function buildSpawnTable(): Array<{ chance: number; entityType: string }>
 
   return spawnTable;
 }
-

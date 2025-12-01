@@ -54,7 +54,7 @@ export class ClientEventHandlers {
       hud.handleMouseMove(x, y, canvas.width, canvas.height);
     }
 
-      // Block aiming when fullscreen map is open
+    // Block aiming when fullscreen map is open
     if (!isFullscreenMapOpen) {
       // Access inputManager through private method - will need to expose getter
       const inputManager = (this.gameClient as any).inputManager;
@@ -293,4 +293,3 @@ export class ClientEventHandlers {
     return isWeapon(itemType as ItemType);
   }
 }
-

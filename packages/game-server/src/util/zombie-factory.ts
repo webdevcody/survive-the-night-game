@@ -61,9 +61,10 @@ export class ZombieFactory {
 
     // Set position if provided
     if (position) {
-      const pos = position instanceof Vector2
-        ? position
-        : PoolManager.getInstance().vector2.claim(position.x, position.y);
+      const pos =
+        position instanceof Vector2
+          ? position
+          : PoolManager.getInstance().vector2.claim(position.x, position.y);
       zombie.getExt(Positionable).setPosition(pos);
     }
 
@@ -93,4 +94,5 @@ export class ZombieFactory {
     });
   }
 }
+
 

@@ -54,4 +54,3 @@ export class AITimerManager {
     this.inventoryManagementTimer = 0;
   }
 }
-

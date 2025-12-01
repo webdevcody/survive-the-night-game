@@ -40,7 +40,8 @@ export class BossZombie extends BossEnemy {
       return;
     }
 
-    const availableSlots = getConfig().boss.BOSS_ZOMBIE_MAX_SUMMONED_MINIONS - this.summonedMinionIds.size;
+    const availableSlots =
+      getConfig().boss.BOSS_ZOMBIE_MAX_SUMMONED_MINIONS - this.summonedMinionIds.size;
     if (availableSlots <= 0) {
       return;
     }

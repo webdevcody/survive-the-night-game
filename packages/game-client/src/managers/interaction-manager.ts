@@ -1,6 +1,11 @@
 import { GameState, getEntityById } from "@/state";
 import { ClientEntityBase } from "@/extensions/client-entity";
-import { ClientCarryable, ClientInventory, ClientPlaceable, ClientPositionable } from "@/extensions";
+import {
+  ClientCarryable,
+  ClientInventory,
+  ClientPlaceable,
+  ClientPositionable,
+} from "@/extensions";
 import { getClosestInteractiveEntity } from "@/util/get-closest-interactive";
 import { getPlayer } from "@/util/get-player";
 import { distance } from "@shared/util/physics";
@@ -246,4 +251,3 @@ export class InteractionManager {
     return Math.min(1, elapsed / this.INTERACT_HOLD_DURATION);
   }
 }
-

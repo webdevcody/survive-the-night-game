@@ -1,5 +1,39 @@
 [
   {
+    "version": "0.30.0",
+    "date": "2025-12-01",
+    "changes": {
+      "features": [
+        "Added Infection game mode - new competitive mode where one player starts as Patient Zero while others defend against zombies",
+        "Implemented shared zombie lives system - zombies share a pool of lives in infection mode, creating strategic gameplay dynamics",
+        "Added voting system for game mode selection - players can vote on the next game mode after a game ends",
+        "Implemented zombie spawning mechanics - zombie players can spawn new zombies at specified locations with cooldown management",
+        "Added Human Indicators Panel - zombie players can see human targets on the map and minimap",
+        "Added Zombie Lives Panel - displays shared zombie lives remaining in infection mode",
+        "Enhanced AI state display - leaderboard now shows AI players with emoji indicators for better visual clarity",
+        "Improved map rendering - added fog of war renderer, collidable renderer, and toxic zone renderer for better visual feedback",
+        "Enhanced grenade functionality - improved battle royale strategy integration and gameplay mechanics"
+      ],
+      "bugFixes": [],
+      "refactoring": [
+        "Centralized AI configuration - moved AI settings to shared config package for better maintainability and consistency",
+        "Refactored entity management - introduced shared distance utility function for improved numerical stability and performance",
+        "Enhanced entity registration - dynamic entity registration based on shared configuration for improved modularity",
+        "Improved AI player management - dynamically adjusts AI counts based on real player presence for better game balance",
+        "Refactored entity factory pattern - streamlined entity creation with better type safety and configuration integration",
+        "Enhanced auto-pickup rules - improved rule system for determining which items can be auto-picked up",
+        "Improved entity map helpers - added utility functions for managing entity type-based maps",
+        "Refactored client event handlers - better organization and separation of concerns for event handling",
+        "Enhanced interaction manager - improved interaction logic and state management",
+        "Updated projectile balance configuration - centralized projectile settings for easier balancing"
+      ],
+      "performance": [
+        "Optimized distance calculations - shared distance utility function reduces redundant calculations across the codebase",
+        "Improved entity spawning logic - streamlined spawning process with better integration into game state"
+      ]
+    }
+  },
+  {
     "version": "0.29.0",
     "date": "2025-11-29",
     "changes": {
