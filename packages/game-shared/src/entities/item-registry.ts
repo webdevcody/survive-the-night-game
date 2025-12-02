@@ -33,7 +33,7 @@ class ItemRegistry {
     if (!config.assets.sheet) {
       throw new Error(
         `Item "${config.id}" is missing required 'sheet' property in assets. ` +
-          `All items must specify which sprite sheet to use.`
+          `All items must specify which sprite sheet to use.`,
       );
     }
     this.items.set(config.id, config);
