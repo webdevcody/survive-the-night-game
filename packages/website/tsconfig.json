@@ -2,6 +2,13 @@
   "include": ["**/*.ts", "**/*.tsx"],
   "compilerOptions": {
     "strict": false,
+    "noImplicitAny": false,
+    "strictNullChecks": false,
+    "strictFunctionTypes": false,
+    "strictBindCallApply": false,
+    "strictPropertyInitialization": false,
+    "noImplicitThis": false,
+    "alwaysStrict": false,
     "esModuleInterop": true,
     "jsx": "react-jsx",
     "module": "ESNext",
@@ -20,9 +27,5 @@
       "@client/*": ["../game-client/src/*"]
     },
     "noEmit": true
-  },
-  "references": [
-    { "path": "../game-shared" },
-    { "path": "../game-client" }
-  ]
+  }
 }
