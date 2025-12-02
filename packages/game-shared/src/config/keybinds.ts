@@ -3,6 +3,20 @@ export type KeyBindConfig = {
   moveDown: string;
   moveLeft: string;
   moveRight: string;
+  interact: string;
+  drop: string;
+  quickHeal: string;
+  teleport: string;
+  splitDrop: string;
+  weaponsHud: string;
+  quickSwitch: string;
+  sprint: string;
+  fire: string;
+  toggleInstructions: string;
+  toggleMute: string;
+  playerList: string;
+  escape: string;
+  chat: string;
 };
 
 const DEFAULT_KEYBINDS: KeyBindConfig = {
@@ -10,6 +24,20 @@ const DEFAULT_KEYBINDS: KeyBindConfig = {
   moveDown: "KeyS",
   moveLeft: "KeyA",
   moveRight: "KeyD",
+  interact: "KeyE",
+  drop: "KeyG",
+  quickHeal: "KeyH",
+  teleport: "KeyC",
+  splitDrop: "KeyX",
+  weaponsHud: "KeyF",
+  quickSwitch: "KeyQ",
+  sprint: "ShiftLeft",
+  fire: "Space",
+  toggleInstructions: "KeyI",
+  toggleMute: "KeyN",
+  playerList: "Tab",
+  escape: "Escape",
+  chat: "KeyY",
 };
 
 const STORAGE_KEY = "KEYBINDING_SETTINGS";

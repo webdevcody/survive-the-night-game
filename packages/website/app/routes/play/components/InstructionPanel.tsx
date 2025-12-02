@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Button } from "~/components/ui/button";
 import type { KeyBindConfig } from "@shared/config/keybinds";
 
@@ -7,6 +7,50 @@ interface InstructionPanelProps {
   onClose: () => void;
   keybinds: KeyBindConfig;
   onUpdateKeybinds: (changes: Partial<KeyBindConfig>) => void;
+}
+
+// Helper function to format key code for display
+function formatKeyCode(code: string): string {
+  // Remove "Key" prefix for letter keys
+  if (code.startsWith("Key")) {
+    return code.slice(3);
+  }
+  // Remove "Digit" prefix for number keys
+  if (code.startsWith("Digit")) {
+    return code.slice(5);
+  }
+  // Handle special keys
+  const specialKeys: Record<string, string> = {
+    Space: "SPACE",
+    Tab: "TAB",
+    Escape: "ESC",
+    ShiftLeft: "SHIFT",
+    ShiftRight: "SHIFT",
+    ArrowUp: "↑",
+    ArrowDown: "↓",
+    ArrowLeft: "←",
+    ArrowRight: "→",
+  };
+  return specialKeys[code] || code;
+}
+
+// Helper function to find duplicate keys
+function findDuplicates(keybinds: KeyBindConfig): Set<string> {
+  const keyCounts = new Map<string, number>();
+  const values = Object.values(keybinds);
+  
+  values.forEach((key) => {
+    keyCounts.set(key, (keyCounts.get(key) || 0) + 1);
+  });
+  
+  const duplicates = new Set<string>();
+  keyCounts.forEach((count, key) => {
+    if (count > 1) {
+      duplicates.add(key);
+    }
+  });
+  
+  return duplicates;
 }
 
 /**
@@ -52,19 +96,22 @@ export function InstructionPanel({
     };
   }, [isOpen, onClose]);
 
+  // Find duplicate keys
+  const duplicates = useMemo(() => findDuplicates(keybinds), [keybinds]);
+
   if (!isOpen) return null;
 
   function KeyBindRow({
     label,
     bind,
     onRebind,
+    isDuplicate,
   }: {
     label: string;
     bind: string;
     onRebind: (newKey: string) => void;
+    isDuplicate: boolean;
   }) {
-    // wait till user input
-
     const [waiting, setWaiting] = useState(false);
 
     useEffect(() => {
@@ -83,10 +130,17 @@ export function InstructionPanel({
       <div className="flex items-center gap-3">
         <span className="text-gray-300">{label}</span>
         <button
-          className="px-3 py-1 bg-gray-700 rounded-md text-white"
+          className={`px-3 py-1 rounded-md text-white font-mono transition-colors ${
+            isDuplicate
+              ? "bg-red-600 hover:bg-red-700 border-2 border-red-400"
+              : waiting
+                ? "bg-blue-600 hover:bg-blue-700"
+                : "bg-gray-700 hover:bg-gray-600"
+          }`}
           onClick={() => setWaiting(true)}
+          title={isDuplicate ? "This key is bound to multiple actions!" : ""}
         >
-          {waiting ? "Press anykey..." : bind}
+          {waiting ? "Press any key..." : formatKeyCode(bind)}
         </button>
       </div>
     );
@@ -105,6 +159,17 @@ export function InstructionPanel({
           </Button>
         </div>
 
+        {duplicates.size > 0 && (
+          <div className="mb-4 p-3 bg-red-900/50 border border-red-600 rounded-md">
+            <p className="text-red-300 text-sm font-semibold mb-1">
+              ⚠️ Duplicate Key Bindings Detected!
+            </p>
+            <p className="text-red-400 text-xs">
+              Some keys are bound to multiple actions. Please change the highlighted bindings.
+            </p>
+          </div>
+        )}
+
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 text-white">
           <div className="space-y-3">
             <h3 className="font-semibold text-lg text-blue-400 mb-2">Movement</h3>
@@ -113,35 +178,47 @@ export function InstructionPanel({
                 label="Move up"
                 bind={keybinds.moveUp}
                 onRebind={(code) => onUpdateKeybinds({ moveUp: code })}
+                isDuplicate={duplicates.has(keybinds.moveUp)}
               />
               <KeyBindRow
                 label="Move down"
                 bind={keybinds.moveDown}
                 onRebind={(code) => onUpdateKeybinds({ moveDown: code })}
+                isDuplicate={duplicates.has(keybinds.moveDown)}
               />
               <KeyBindRow
                 label="Move left"
                 bind={keybinds.moveLeft}
                 onRebind={(code) => onUpdateKeybinds({ moveLeft: code })}
+                isDuplicate={duplicates.has(keybinds.moveLeft)}
               />
               <KeyBindRow
                 label="Move right"
                 bind={keybinds.moveRight}
                 onRebind={(code) => onUpdateKeybinds({ moveRight: code })}
+                isDuplicate={duplicates.has(keybinds.moveRight)}
               />
-              <div className="flex justify-between">
-                <span className="text-gray-300">Sprint:</span>
-                <span className="font-mono">SHIFT</span>
-              </div>
+              <KeyBindRow
+                label="Sprint"
+                bind={keybinds.sprint}
+                onRebind={(code) => onUpdateKeybinds({ sprint: code })}
+                isDuplicate={duplicates.has(keybinds.sprint)}
+              />
             </div>
           </div>
 
           <div className="space-y-3">
             <h3 className="font-semibold text-lg text-blue-400 mb-2">Combat</h3>
             <div className="space-y-2 text-sm">
+              <KeyBindRow
+                label="Fire Weapon"
+                bind={keybinds.fire}
+                onRebind={(code) => onUpdateKeybinds({ fire: code })}
+                isDuplicate={duplicates.has(keybinds.fire)}
+              />
               <div className="flex justify-between">
-                <span className="text-gray-300">Fire Weapon:</span>
-                <span className="font-mono">LEFT CLICK</span>
+                <span className="text-gray-300">Fire Weapon (Alt):</span>
+                <span className="font-mono text-gray-500">LEFT CLICK</span>
               </div>
             </div>
           </div>
@@ -149,56 +226,84 @@ export function InstructionPanel({
           <div className="space-y-3">
             <h3 className="font-semibold text-lg text-blue-400 mb-2">Actions</h3>
             <div className="space-y-2 text-sm">
-              <div className="flex justify-between">
-                <span className="text-gray-300">Interact:</span>
-                <span className="font-mono">E</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-gray-300">Teleport to Base:</span>
-                <span className="font-mono">C (Hold)</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-gray-300">Quick Heal:</span>
-                <span className="font-mono">H</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-gray-300">Drop Item:</span>
-                <span className="font-mono">G</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-gray-300">Split Drop Item:</span>
-                <span className="font-mono">X</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-gray-300">Weapons HUD:</span>
-                <span className="font-mono">F</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-gray-300">Quick Switch Weapon:</span>
-                <span className="font-mono">Q</span>
-              </div>
+              <KeyBindRow
+                label="Interact"
+                bind={keybinds.interact}
+                onRebind={(code) => onUpdateKeybinds({ interact: code })}
+                isDuplicate={duplicates.has(keybinds.interact)}
+              />
+              <KeyBindRow
+                label="Teleport to Base"
+                bind={keybinds.teleport}
+                onRebind={(code) => onUpdateKeybinds({ teleport: code })}
+                isDuplicate={duplicates.has(keybinds.teleport)}
+              />
+              <KeyBindRow
+                label="Quick Heal"
+                bind={keybinds.quickHeal}
+                onRebind={(code) => onUpdateKeybinds({ quickHeal: code })}
+                isDuplicate={duplicates.has(keybinds.quickHeal)}
+              />
+              <KeyBindRow
+                label="Drop Item"
+                bind={keybinds.drop}
+                onRebind={(code) => onUpdateKeybinds({ drop: code })}
+                isDuplicate={duplicates.has(keybinds.drop)}
+              />
+              <KeyBindRow
+                label="Split Drop Item"
+                bind={keybinds.splitDrop}
+                onRebind={(code) => onUpdateKeybinds({ splitDrop: code })}
+                isDuplicate={duplicates.has(keybinds.splitDrop)}
+              />
+              <KeyBindRow
+                label="Weapons HUD"
+                bind={keybinds.weaponsHud}
+                onRebind={(code) => onUpdateKeybinds({ weaponsHud: code })}
+                isDuplicate={duplicates.has(keybinds.weaponsHud)}
+              />
+              <KeyBindRow
+                label="Quick Switch Weapon"
+                bind={keybinds.quickSwitch}
+                onRebind={(code) => onUpdateKeybinds({ quickSwitch: code })}
+                isDuplicate={duplicates.has(keybinds.quickSwitch)}
+              />
             </div>
           </div>
 
           <div className="space-y-3">
             <h3 className="font-semibold text-lg text-blue-400 mb-2">Interface</h3>
             <div className="space-y-2 text-sm">
-              <div className="flex justify-between">
-                <span className="text-gray-300">Chat:</span>
-                <span className="font-mono">ENTER</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-gray-300">Player List:</span>
-                <span className="font-mono">TAB</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-gray-300">Mute Sound:</span>
-                <span className="font-mono">M</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-gray-300">Controls:</span>
-                <span className="font-mono">I</span>
-              </div>
+              <KeyBindRow
+                label="Chat"
+                bind={keybinds.chat}
+                onRebind={(code) => onUpdateKeybinds({ chat: code })}
+                isDuplicate={duplicates.has(keybinds.chat)}
+              />
+              <KeyBindRow
+                label="Player List"
+                bind={keybinds.playerList}
+                onRebind={(code) => onUpdateKeybinds({ playerList: code })}
+                isDuplicate={duplicates.has(keybinds.playerList)}
+              />
+              <KeyBindRow
+                label="Mute Sound"
+                bind={keybinds.toggleMute}
+                onRebind={(code) => onUpdateKeybinds({ toggleMute: code })}
+                isDuplicate={duplicates.has(keybinds.toggleMute)}
+              />
+              <KeyBindRow
+                label="Controls"
+                bind={keybinds.toggleInstructions}
+                onRebind={(code) => onUpdateKeybinds({ toggleInstructions: code })}
+                isDuplicate={duplicates.has(keybinds.toggleInstructions)}
+              />
+              <KeyBindRow
+                label="Escape"
+                bind={keybinds.escape}
+                onRebind={(code) => onUpdateKeybinds({ escape: code })}
+                isDuplicate={duplicates.has(keybinds.escape)}
+              />
             </div>
           </div>
         </div>

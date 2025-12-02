@@ -7,7 +7,8 @@ import { SpawnPanel } from "./play/components/SpawnPanel";
 import { NameChangePanel } from "./play/components/NameChangePanel";
 import { Button } from "~/components/ui/button";
 import { DropdownMenu, DropdownMenuItem } from "~/components/ui/dropdown-menu";
-import { loadKeyBinds, saveKeyBinds, type KeyBindConfig } from "@shared/config/keybinds";
+import { getKeybindStore } from "@shared/config/keybind-store";
+import type { KeyBindConfig } from "@shared/config/keybinds";
 
 export function meta() {
   return [
@@ -33,11 +34,51 @@ function GameClientLoader() {
   const [savedDisplayName, setSavedDisplayName] = useState<string>("");
   const [currentPlayerName, setCurrentPlayerName] = useState<string>("");
 
-  const [keybinds, setkeybinds] = useState(loadKeyBinds());
+  const [keybinds, setkeybinds] = useState<KeyBindConfig>(() => {
+    if (typeof window !== "undefined") {
+      return getKeybindStore().getKeybinds();
+    }
+    // Fallback for SSR
+    return {
+      moveUp: "KeyW",
+      moveDown: "KeyS",
+      moveLeft: "KeyA",
+      moveRight: "KeyD",
+      interact: "KeyE",
+      drop: "KeyG",
+      quickHeal: "KeyH",
+      teleport: "KeyC",
+      splitDrop: "KeyX",
+      weaponsHud: "KeyF",
+      quickSwitch: "KeyQ",
+      sprint: "ShiftLeft",
+      fire: "Space",
+      toggleInstructions: "KeyI",
+      toggleMute: "KeyN",
+      playerList: "Tab",
+      escape: "Escape",
+      chat: "KeyY",
+    };
+  });
 
-  const handleUpdateKeyBinds = (changes: any) => {
-    const newBinds = saveKeyBinds(changes);
-    setkeybinds(newBinds);
+  // Subscribe to keybind changes
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    
+    const keybindStore = getKeybindStore();
+    const unsubscribe = keybindStore.subscribe((newKeybinds) => {
+      setkeybinds(newKeybinds);
+    });
+    
+    return unsubscribe;
+  }, []);
+
+  const handleUpdateKeyBinds = (changes: Partial<KeyBindConfig>) => {
+    if (typeof window !== "undefined") {
+      const keybindStore = getKeybindStore();
+      keybindStore.updateKeybinds(changes);
+      // State will be updated via subscription
+    }
   };
 
   const handleLeaveGame = () => {

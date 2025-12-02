@@ -9,7 +9,8 @@ import PoolManager from "../../../game-shared/src/util/pool-manager";
 import { getConfig } from "@shared/config";
 import { itemRegistry } from "../../../game-shared/src/entities/item-registry";
 import { isWeapon } from "@shared/util/inventory";
-import { loadKeyBinds } from "@shared/config/keybinds";
+import { getKeybindStore } from "@shared/config/keybind-store";
+import type { KeyBindConfig } from "@shared/config/keybinds";
 
 export interface InputManagerOptions {
   onCraft?: () => unknown;
@@ -94,7 +95,8 @@ export class InputManager {
   private canvas: HTMLCanvasElement | null = null;
   private fKeyHeld = false;
 
-  private keybinds = loadKeyBinds();
+  private keybinds: KeyBindConfig;
+  private unsubscribeKeybinds: (() => void) | null = null;
 
   private checkIfChanged() {
     this.hasChanged = JSON.stringify(this.inputs) !== JSON.stringify(this.lastInputs);
@@ -130,6 +132,13 @@ export class InputManager {
 
   constructor(callbacks: InputManagerOptions = {}) {
     this.callbacks = callbacks;
+    
+    // Subscribe to keybind changes
+    const keybindStore = getKeybindStore();
+    this.keybinds = keybindStore.getKeybinds();
+    this.unsubscribeKeybinds = keybindStore.subscribe((newKeybinds) => {
+      this.keybinds = newKeybinds;
+    });
     window.addEventListener("keydown", (e) => {
       this.blockBrowserKeys(e);
       // Ignore inputs when user is typing in a form element
@@ -141,14 +150,14 @@ export class InputManager {
       const eventCode = e.code;
       const eventKey = e.key.toLowerCase();
 
-      // Track F key state for weapons HUD
-      if (eventCode === "KeyF") {
+      // Track weapons HUD key state
+      if (eventCode === this.keybinds.weaponsHud) {
         this.fKeyHeld = true;
       }
 
       // Handle chat mode FIRST - block ALL game inputs when chatting
       // This must come before any other input handling to prevent hotkeys from triggering
-      if (eventKey === "y" && !this.isChatting) {
+      if (eventCode === this.keybinds.chat && !this.isChatting) {
         this.isChatting = true;
         // Clear all inputs when entering chat mode
         this.clearInputs();
@@ -183,7 +192,9 @@ export class InputManager {
       // Check if fullscreen map is open
       const isFullscreenMapOpen = callbacks.isFullscreenMapOpen?.() ?? false;
 
-      // Allow M key to toggle map even when map is open
+      // Allow map toggle key even when map is open (if it's not the same as chat key)
+      // Note: Map toggle is handled separately in the game client, not through keybinds
+      // This is kept for backward compatibility
       if (eventCode === "KeyM") {
         callbacks.onToggleMap?.();
         return;
@@ -214,104 +225,71 @@ export class InputManager {
         return;
       }
 
-      // Normal game input handling - use physical key codes for WASD
-      switch (eventCode) {
-        case "KeyH":
-          this.quickHeal();
-          break;
-        case "KeyC": {
-          // Only start teleport if player is alive and no panels are open
-          if (this.isChatting) break;
+      // Normal game input handling - use keybinds
+      if (eventCode === this.keybinds.quickHeal) {
+        this.quickHeal();
+      } else if (eventCode === this.keybinds.teleport) {
+        // Only start teleport if player is alive and no panels are open
+        if (this.isChatting) return;
 
-          const isPlayerDead = this.callbacks.isPlayerDead?.() ?? false;
-          const isMerchantPanelOpen = this.callbacks.isMerchantPanelOpen?.() ?? false;
-          const isFullscreenMapOpen = this.callbacks.isFullscreenMapOpen?.() ?? false;
+        const isPlayerDead = this.callbacks.isPlayerDead?.() ?? false;
+        const isMerchantPanelOpen = this.callbacks.isMerchantPanelOpen?.() ?? false;
+        const isFullscreenMapOpen = this.callbacks.isFullscreenMapOpen?.() ?? false;
 
-          if (!isPlayerDead && !isMerchantPanelOpen && !isFullscreenMapOpen) {
-            this.callbacks.onTeleportStart?.();
-          }
-          break;
+        if (!isPlayerDead && !isMerchantPanelOpen && !isFullscreenMapOpen) {
+          this.callbacks.onTeleportStart?.();
         }
-        case this.keybinds.moveUp:
-          callbacks.onUp?.(this.inputs);
-          break;
-        case this.keybinds.moveDown:
-          callbacks.onDown?.(this.inputs);
-          break;
-        case this.keybinds.moveLeft:
-          callbacks.onLeft?.(this.inputs);
-          break;
-        case this.keybinds.moveRight:
-          callbacks.onRight?.(this.inputs);
-          break;
-        case "ArrowUp":
-          callbacks.onUp?.(this.inputs);
-          break;
-        case "ArrowDown":
-          callbacks.onDown?.(this.inputs);
-          break;
-        case "ArrowLeft":
-          callbacks.onLeft?.(this.inputs);
-          break;
-        case "ArrowRight":
-          callbacks.onRight?.(this.inputs);
-          break;
-        case "KeyE":
-          callbacks.onInteractStart?.();
-          break;
-        case "KeyQ": {
-          // Quick switch to previous weapon
-          this.quickSwitchWeapon();
-          break;
-        }
-        case "KeyG": {
-          // Drop currently selected item
-          const currentSlot = this.currentInventorySlot - 1; // Convert to 0-indexed
-          callbacks.onDropItem?.(currentSlot);
-          break;
-        }
-        case "KeyX": {
-          // Split half of the currently selected stack (if stackable)
-          const splitSlot = this.currentInventorySlot - 1; // Convert to 0-indexed
-          if (splitSlot < 0) break;
+      } else if (eventCode === this.keybinds.moveUp) {
+        callbacks.onUp?.(this.inputs);
+      } else if (eventCode === this.keybinds.moveDown) {
+        callbacks.onDown?.(this.inputs);
+      } else if (eventCode === this.keybinds.moveLeft) {
+        callbacks.onLeft?.(this.inputs);
+      } else if (eventCode === this.keybinds.moveRight) {
+        callbacks.onRight?.(this.inputs);
+      } else if (eventCode === this.keybinds.interact) {
+        callbacks.onInteractStart?.();
+      } else if (eventCode === this.keybinds.quickSwitch) {
+        // Quick switch to previous weapon
+        this.quickSwitchWeapon();
+      } else if (eventCode === this.keybinds.drop) {
+        // Drop currently selected item
+        const currentSlot = this.currentInventorySlot - 1; // Convert to 0-indexed
+        callbacks.onDropItem?.(currentSlot);
+      } else if (eventCode === this.keybinds.splitDrop) {
+        // Split half of the currently selected stack (if stackable)
+        const splitSlot = this.currentInventorySlot - 1; // Convert to 0-indexed
+        if (splitSlot < 0) return;
 
-          const inventory = callbacks.getInventory?.();
-          if (!inventory) break;
+        const inventory = callbacks.getInventory?.();
+        if (!inventory) return;
 
-          const item = inventory[splitSlot];
-          if (!item) break;
+        const item = inventory[splitSlot];
+        if (!item) return;
 
-          const count = item.state?.count ?? 1;
-          if (count <= 1) break;
+        const count = item.state?.count ?? 1;
+        if (count <= 1) return;
 
-          const dropAmount = Math.floor(count / 2);
-          if (dropAmount <= 0) break;
+        const dropAmount = Math.floor(count / 2);
+        if (dropAmount <= 0) return;
 
-          callbacks.onDropItem?.(splitSlot, dropAmount);
-          break;
-        }
-        case "Space":
-          // Trigger attack with spacebar
-          e.preventDefault(); // Prevent page scrolling
-          this.triggerFire();
-          break;
-        case "ShiftLeft":
-        case "ShiftRight":
-          this.inputs.sprint = true;
-          break;
-        case "KeyI":
-          callbacks.onToggleInstructions?.();
-          break;
-        case "KeyN":
-          callbacks.onToggleMute?.();
-          break;
-        case "Tab":
-          e.preventDefault(); // Prevent tab from changing focus
-          callbacks.onShowPlayerList?.();
-          break;
-        case "Escape":
-          callbacks.onEscape?.();
-          break;
+        callbacks.onDropItem?.(splitSlot, dropAmount);
+      } else if (eventCode === this.keybinds.fire) {
+        // Trigger attack
+        e.preventDefault(); // Prevent page scrolling
+        this.triggerFire();
+      } else if (eventCode === this.keybinds.sprint || (this.keybinds.sprint === "ShiftLeft" && eventCode === "ShiftRight") || (this.keybinds.sprint === "ShiftRight" && eventCode === "ShiftLeft")) {
+        // Handle both left and right shift for sprint (if sprint is bound to shift)
+        this.inputs.sprint = true;
+      } else if (eventCode === this.keybinds.toggleInstructions) {
+        callbacks.onToggleInstructions?.();
+      } else if (eventCode === this.keybinds.toggleMute) {
+        callbacks.onToggleMute?.();
+      } else if (eventCode === this.keybinds.playerList) {
+        e.preventDefault(); // Prevent tab from changing focus
+        callbacks.onShowPlayerList?.();
+      } else if (eventCode === this.keybinds.escape) {
+        callbacks.onEscape?.();
       }
 
       this.checkIfChanged();
@@ -327,8 +305,8 @@ export class InputManager {
       const eventCode = e.code;
       const eventKey = e.key.toLowerCase();
 
-      // Track F key state for weapons HUD
-      if (eventCode === "KeyF") {
+      // Track weapons HUD key state
+      if (eventCode === this.keybinds.weaponsHud) {
         this.fKeyHeld = false;
       }
 
@@ -367,50 +345,28 @@ export class InputManager {
         }
       }
 
-      // Use physical key codes for WASD and other action keys
-      switch (eventCode) {
-        case "KeyC":
-          this.callbacks.onTeleportCancel?.();
-          break;
-        case this.keybinds.moveUp:
-          this.inputs.dy = this.inputs.dy === -1 ? 0 : this.inputs.dy;
-          break;
-        case this.keybinds.moveDown:
-          this.inputs.dy = this.inputs.dy === 1 ? 0 : this.inputs.dy;
-          break;
-        case this.keybinds.moveLeft:
-          this.inputs.dx = this.inputs.dx === -1 ? 0 : this.inputs.dx;
-          break;
-        case this.keybinds.moveRight:
-          this.inputs.dx = this.inputs.dx === 1 ? 0 : this.inputs.dx;
-          break;
-        case "ArrowUp":
-          this.inputs.dy = this.inputs.dy === -1 ? 0 : this.inputs.dy;
-          break;
-        case "ArrowDown":
-          this.inputs.dy = this.inputs.dy === 1 ? 0 : this.inputs.dy;
-          break;
-        case "ArrowLeft":
-          this.inputs.dx = this.inputs.dx === -1 ? 0 : this.inputs.dx;
-          break;
-        case "ArrowRight":
-          this.inputs.dx = this.inputs.dx === 1 ? 0 : this.inputs.dx;
-          break;
-        case "KeyE":
-          callbacks.onInteractEnd?.();
-          break;
-        case "Space":
-          // Release attack with spacebar
-          this.releaseFire();
-          break;
-        case "ShiftLeft":
-        case "ShiftRight":
-          this.inputs.sprint = false;
-          break;
-        case "Tab":
-          e.preventDefault(); // Prevent tab from changing focus
-          callbacks.onHidePlayerList?.();
-          break;
+      // Use keybinds for keyup handling
+      if (eventCode === this.keybinds.teleport) {
+        this.callbacks.onTeleportCancel?.();
+      } else if (eventCode === this.keybinds.moveUp) {
+        this.inputs.dy = this.inputs.dy === -1 ? 0 : this.inputs.dy;
+      } else if (eventCode === this.keybinds.moveDown) {
+        this.inputs.dy = this.inputs.dy === 1 ? 0 : this.inputs.dy;
+      } else if (eventCode === this.keybinds.moveLeft) {
+        this.inputs.dx = this.inputs.dx === -1 ? 0 : this.inputs.dx;
+      } else if (eventCode === this.keybinds.moveRight) {
+        this.inputs.dx = this.inputs.dx === 1 ? 0 : this.inputs.dx;
+      } else if (eventCode === this.keybinds.interact) {
+        callbacks.onInteractEnd?.();
+      } else if (eventCode === this.keybinds.fire) {
+        // Release attack
+        this.releaseFire();
+      } else if (eventCode === this.keybinds.sprint || (this.keybinds.sprint === "ShiftLeft" && eventCode === "ShiftRight") || (this.keybinds.sprint === "ShiftRight" && eventCode === "ShiftLeft")) {
+        // Handle both left and right shift for sprint (if sprint is bound to shift)
+        this.inputs.sprint = false;
+      } else if (eventCode === this.keybinds.playerList) {
+        e.preventDefault(); // Prevent tab from changing focus
+        callbacks.onHidePlayerList?.();
       }
 
       this.checkIfChanged();
@@ -612,6 +568,16 @@ export class InputManager {
 
   reset() {
     this.hasChanged = false;
+  }
+
+  /**
+   * Clean up resources, unsubscribe from keybind changes
+   */
+  destroy() {
+    if (this.unsubscribeKeybinds) {
+      this.unsubscribeKeybinds();
+      this.unsubscribeKeybinds = null;
+    }
   }
 
   /**
