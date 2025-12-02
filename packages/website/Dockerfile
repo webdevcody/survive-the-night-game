@@ -1,8 +1,7 @@
-FROM node:20-alpine
+FROM node:22-alpine
 
 WORKDIR /app
 COPY package*.json ./
-RUN mkdir -p ./packages/website ./packages/game-client ./packages/game-shared
 COPY packages/website/package*.json ./packages/website/
 COPY packages/game-client/package*.json ./packages/game-client/
 COPY packages/game-shared/package*.json ./packages/game-shared/
