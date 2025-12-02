@@ -9,7 +9,7 @@ RUN npm ci
 COPY . .
 # Website bundles game-client and game-shared directly from source
 RUN npm run build -w packages/website && \
-    npm ci --omit=dev -w packages/website
+    npm i -w packages/website
 WORKDIR /app/packages/website
 CMD ["npm", "run", "start"]
 
