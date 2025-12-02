@@ -448,6 +448,7 @@ export const ITEM_CONFIGS: Record<string, ItemConfig> = {
     },
     upgradeTo: "wall_level_2",
     autoPickup: false,
+    isPassthrough: true,
   },
   wall_level_2: {
     id: "wall_level_2",
@@ -471,6 +472,7 @@ export const ITEM_CONFIGS: Record<string, ItemConfig> = {
     },
     upgradeTo: "wall_level_3",
     autoPickup: false,
+    isPassthrough: true,
   },
   wall_level_3: {
     id: "wall_level_3",
@@ -493,6 +495,7 @@ export const ITEM_CONFIGS: Record<string, ItemConfig> = {
       price: 0,
     },
     autoPickup: false,
+    isPassthrough: true,
   },
   tree: {
     id: "tree",
@@ -535,6 +538,7 @@ export const ITEM_CONFIGS: Record<string, ItemConfig> = {
     },
     upgradeTo: "sentry_gun_level_2",
     autoPickup: false,
+    isPassthrough: true,
   },
   sentry_gun_level_2: {
     id: "sentry_gun_level_2",
@@ -558,6 +562,7 @@ export const ITEM_CONFIGS: Record<string, ItemConfig> = {
     },
     upgradeTo: "sentry_gun_level_3",
     autoPickup: false,
+    isPassthrough: true,
   },
   sentry_gun_level_3: {
     id: "sentry_gun_level_3",
@@ -580,5 +585,6 @@ export const ITEM_CONFIGS: Record<string, ItemConfig> = {
       price: 0,
     },
     autoPickup: false,
+    isPassthrough: true,
   },
 };

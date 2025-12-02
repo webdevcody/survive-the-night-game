@@ -12,6 +12,7 @@ import { ClientEntityBase } from "@/extensions/client-entity";
 import { Hitbox } from "@shared/util/hitbox";
 import { ReconciliationManager } from "./reconciliation-manager";
 import { ClientSnared } from "@/extensions/snared";
+import { itemRegistry } from "@shared/entities";
 
 type PredictionConfig = {
   playerSpeed: number; // pixels per second
@@ -44,7 +45,7 @@ export class PredictionManager {
     input: Input,
     deltaSeconds: number,
     collidables: number[][] | null = null,
-    entities: ClientEntityBase[] = []
+    entities: ClientEntityBase[] = [],
   ): void {
     if (deltaSeconds <= 0) return;
 
@@ -60,7 +61,7 @@ export class PredictionManager {
       // Warn if deltaTime doesn't match expected fixed timestep
       // This helps catch bugs where variable timestep is used instead of fixed
       console.warn(
-        `DeltaTime mismatch: ${deltaSeconds} vs ${expectedDelta}. Using provided deltaTime.`
+        `DeltaTime mismatch: ${deltaSeconds} vs ${expectedDelta}. Using provided deltaTime.`,
       );
     }
 
@@ -97,7 +98,7 @@ export class PredictionManager {
         nextX,
         nextY,
         collidables,
-        entities
+        entities,
       );
       if (blocked) {
         nextX = adjusted.x;
@@ -112,7 +113,7 @@ export class PredictionManager {
         nextX,
         nextY,
         collidables,
-        entities
+        entities,
       );
       if (blocked) {
         nextY = adjusted.y;
@@ -136,7 +137,7 @@ export class PredictionManager {
     proposedX: number,
     proposedY: number,
     collidables: number[][],
-    entities: ClientEntityBase[]
+    entities: ClientEntityBase[],
   ): { blocked: boolean; adjusted: { x: number; y: number } } {
     const positionable = player.getExt(ClientPositionable);
     const collidable = player.getExt(ClientCollidable);
@@ -188,18 +189,18 @@ export class PredictionManager {
 
   private overlapsAnyCollidable(
     hit: { x: number; y: number; width: number; height: number },
-    grid: number[][]
+    grid: number[][],
   ): boolean {
     const tileSize = getConfig().world.TILE_SIZE;
     const minCol = Math.max(0, Math.floor(hit.x / tileSize));
     const minRow = Math.max(0, Math.floor(hit.y / tileSize));
     const maxCol = Math.min(
       grid[0]?.length ? grid[0].length - 1 : 0,
-      Math.floor((hit.x + hit.width - 1) / tileSize)
+      Math.floor((hit.x + hit.width - 1) / tileSize),
     );
     const maxRow = Math.min(
       grid.length ? grid.length - 1 : 0,
-      Math.floor((hit.y + hit.height - 1) / tileSize)
+      Math.floor((hit.y + hit.height - 1) / tileSize),
     );
 
     for (let r = minRow; r <= maxRow; r++) {
@@ -216,7 +217,7 @@ export class PredictionManager {
   private overlapsAnyEntity(
     playerHitbox: Hitbox,
     entities: ClientEntityBase[],
-    playerEntityId: number
+    playerEntityId: number,
   ): boolean {
     for (const entity of entities) {
       // Skip the player entity itself
@@ -224,9 +225,10 @@ export class PredictionManager {
         continue;
       }
 
-      // Skip walls and sentry guns - players can walk through them
+      // Skip entities that are configured as passthrough (players can walk through them)
       const entityType = entity.getType();
-      if (entityType === "wall" || entityType === "sentry_gun") {
+      const itemConfig = itemRegistry.get(entityType);
+      if (itemConfig?.isPassthrough) {
         continue;
       }
 

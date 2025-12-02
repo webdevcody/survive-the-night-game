@@ -40,6 +40,25 @@ import InfiniteRun from "@/extensions/infinite-run";
 import Snared from "@/extensions/snared";
 import { shouldAutoPickup, attemptAutoPickup } from "@/util/auto-pickup";
 import { infectionConfig } from "@shared/config/infection-config";
+import { EntityType } from "@shared/types/entity";
+
+/**
+ * Cached list of entity types that players can pass through (collision passthrough).
+ * Includes player entity and all items configured with isPassthrough: true.
+ * This is computed once at module load time for performance.
+ */
+const PASSTHROUGH_ENTITY_TYPES: EntityType[] = (() => {
+  const passthroughTypes: EntityType[] = ["player"]; // Players can pass through other players
+
+  // Add all items configured with isPassthrough: true
+  itemRegistry.getAll().forEach((itemConfig) => {
+    if (itemConfig.isPassthrough) {
+      passthroughTypes.push(itemConfig.id as EntityType);
+    }
+  });
+
+  return passthroughTypes;
+})();
 
 export class Player extends Entity {
   private static readonly PLAYER_WIDTH = getConfig().world.TILE_SIZE;
@@ -588,13 +607,7 @@ export class Player extends Entity {
     position.x += velocity.x * deltaTime;
     this.setPosition(position);
 
-    if (
-      this.getEntityManager().isColliding(this, [
-        Entities.PLAYER,
-        Entities.WALL,
-        Entities.SENTRY_GUN,
-      ])
-    ) {
+    if (this.getEntityManager().isColliding(this, PASSTHROUGH_ENTITY_TYPES)) {
       position.x = previousX;
       this.setPosition(position);
     }
@@ -602,13 +615,7 @@ export class Player extends Entity {
     position.y += velocity.y * deltaTime;
     this.setPosition(position);
 
-    if (
-      this.getEntityManager().isColliding(this, [
-        Entities.PLAYER,
-        Entities.WALL,
-        Entities.SENTRY_GUN,
-      ])
-    ) {
+    if (this.getEntityManager().isColliding(this, PASSTHROUGH_ENTITY_TYPES)) {
       position.y = previousY;
       this.setPosition(position);
     }

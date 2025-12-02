@@ -23,6 +23,7 @@ export interface ItemConfig extends BehaviorConfigs {
   duration?: number; // Duration in seconds for consumable effects (e.g., energy drink)
   upgradeTo?: string; // If set, placing this item on an existing structure of the same type will upgrade it to this item type
   autoPickup?: boolean; // If false, item will never be auto-picked up (defaults to undefined/null for default behavior)
+  isPassthrough?: boolean; // If true, players can walk through this entity (used for collision prediction)
 }
 
 class ItemRegistry {
