@@ -1,5 +1,7 @@
 FROM node:22-alpine
 
+ARG VITE_BETTER_AUTH_URL
+
 WORKDIR /app
 COPY package*.json ./
 COPY packages/website/package*.json ./packages/website/
