@@ -1,9 +1,4 @@
-import {
-  pgTable,
-  text,
-  timestamp,
-  boolean,
-} from "drizzle-orm/pg-core";
+import { pgTable, text, timestamp, boolean } from "drizzle-orm/pg-core";
 import { relations } from "drizzle-orm";
 
 export const user = pgTable("user", {
@@ -17,11 +12,6 @@ export const user = pgTable("user", {
   isAdmin: boolean("is_admin")
     .$default(() => false)
     .notNull(),
-  stripeCustomerId: text("stripe_customer_id"),
-  subscriptionId: text("subscription_id"),
-  plan: text("plan").$type<"free" | "basic" | "pro">(),
-  subscriptionStatus: text("subscription_status").$type<"active" | "canceled" | "past_due" | "trialing" | null>(),
-  subscriptionExpiresAt: timestamp("subscription_expires_at"),
   createdAt: timestamp("created_at")
     .$defaultFn(() => /* @__PURE__ */ new Date())
     .notNull(),
@@ -66,12 +56,8 @@ export const verification = pgTable("verification", {
   identifier: text("identifier").notNull(),
   value: text("value").notNull(),
   expiresAt: timestamp("expires_at").notNull(),
-  createdAt: timestamp("created_at").$defaultFn(
-    () => /* @__PURE__ */ new Date()
-  ),
-  updatedAt: timestamp("updated_at").$defaultFn(
-    () => /* @__PURE__ */ new Date()
-  ),
+  createdAt: timestamp("created_at").$defaultFn(() => /* @__PURE__ */ new Date()),
+  updatedAt: timestamp("updated_at").$defaultFn(() => /* @__PURE__ */ new Date()),
 });
 
 // Relations
@@ -97,9 +83,7 @@ export const accountRelations = relations(account, ({ one }) => ({
 // Type exports
 export type User = typeof user.$inferSelect;
 export type CreateUserData = typeof user.$inferInsert;
-export type UpdateUserData = Partial<
-  Omit<CreateUserData, "id" | "createdAt">
->;
+export type UpdateUserData = Partial<Omit<CreateUserData, "id" | "createdAt">>;
 
 export type Session = typeof session.$inferSelect;
 export type CreateSessionData = typeof session.$inferInsert;
