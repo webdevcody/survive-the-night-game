@@ -1,8 +1,8 @@
 import { useEffect, useState, useCallback } from "react";
 // Recipes are automatically loaded from item/weapon configs (recipe.enabled === true)
-import { recipes, type Recipe, RecipeType } from "@shared/util/recipes";
+import { recipes, type Recipe, RecipeType } from "@survive-the-night/game-shared/util/recipes";
 import { cn } from "~/lib/utils";
-import { type InventoryItem } from "@shared/util/inventory";
+import { type InventoryItem } from "@survive-the-night/game-shared/util/inventory";
 
 /**
  * Formats a name by replacing underscores with spaces and converting to title case

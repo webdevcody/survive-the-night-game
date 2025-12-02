@@ -21,6 +21,10 @@ export class SummonParticle extends Particle {
     );
   }
 
+  update(_deltaTime: number): void {
+    // Animation is time-based in render, no update logic needed
+  }
+
   render(ctx: CanvasRenderingContext2D, _gameState: GameState): void {
     const elapsed = Date.now() - this.createdAt;
     if (elapsed >= this.durationMs) {

@@ -1,5 +1,5 @@
 {
-  "include": ["**/*.ts", "**/*.tsx"],
+  "include": ["**/*.ts", "**/*.tsx", "../game-client/src/**/*.ts", "../game-shared/src/**/*.ts"],
   "compilerOptions": {
     "strict": false,
     "noImplicitAny": false,
@@ -23,8 +23,9 @@
     "baseUrl": ".",
     "paths": {
       "~/*": ["./src/*"],
+      "@/*": ["../game-client/src/*"],
       "@shared/*": ["../game-shared/src/*"],
-      "@client/*": ["../game-client/src/*"]
+      "@events/*": ["../game-shared/src/events/*"]
     },
     "noEmit": true
   }

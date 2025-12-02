@@ -34,7 +34,7 @@ export class PlayerClient extends ClientEntity implements IClientEntity, Rendera
   private readonly SPRINT_ANIMATION_DURATION = 400;
   private readonly WALK_ANIMATION_DURATION = 450;
 
-  private lastRenderPosition = { x: 0, y: 0 };
+  private lastRenderPosition: Vector2 = PoolManager.getInstance().vector2.claim(0, 0);
   private isCrafting = false;
   private previousHealth: number | undefined;
   private damageFlashUntil: number = 0;

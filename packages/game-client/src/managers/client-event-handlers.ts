@@ -5,6 +5,8 @@ import { getConfig } from "@shared/config";
 import { infectionConfig } from "@shared/config/infection-config";
 import { isWeapon, ItemType } from "@shared/util/inventory";
 import { itemRegistry } from "@shared/entities";
+import Vector2 from "@shared/util/vector2";
+import PoolManager from "@shared/util/pool-manager";
 
 /**
  * Handles all canvas event listeners for the game client
@@ -261,7 +263,7 @@ export class ClientEventHandlers {
   /**
    * Convert canvas coordinates to world coordinates
    */
-  private canvasToWorld(canvasX: number, canvasY: number, canvas: HTMLCanvasElement) {
+  private canvasToWorld(canvasX: number, canvasY: number, canvas: HTMLCanvasElement): Vector2 {
     const cameraManager = (this.gameClient as any).cameraManager;
     const cameraScale = cameraManager.getScale();
     const cameraPos = cameraManager.getPosition();
@@ -271,7 +273,7 @@ export class ClientEventHandlers {
     const worldX = (canvasX - centerX) / cameraScale + cameraPos.x;
     const worldY = (canvasY - centerY) / cameraScale + cameraPos.y;
 
-    return { x: worldX, y: worldY };
+    return PoolManager.getInstance().vector2.claim(worldX, worldY);
   }
 
   /**

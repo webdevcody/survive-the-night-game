@@ -402,4 +402,10 @@ export class WeaponsHUD implements Renderable {
   getZIndex() {
     return Z_INDEX.UI + 5;
   }
+
+  selectWeaponByIndex(index: number): void {
+    if (index >= 0 && index < this.items.length) {
+      this.selectWeapon(index);
+    }
+  }
 }

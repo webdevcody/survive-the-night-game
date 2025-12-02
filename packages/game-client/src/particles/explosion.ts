@@ -28,7 +28,11 @@ export class ExplosionParticle extends Particle implements Renderable {
     this.soundManager.playPositionalSound(SOUND_TYPES_TO_MP3.EXPLOSION, this.getPosition());
   }
 
-  render(ctx: CanvasRenderingContext2D, gameState: GameState): void {
+  update(_deltaTime: number): void {
+    // Animation is time-based in render, no update logic needed
+  }
+
+  render(ctx: CanvasRenderingContext2D, _gameState: GameState): void {
     const position = this.getPosition();
     const elapsed = Date.now() - this.createdAt;
 

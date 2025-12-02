@@ -1,7 +1,7 @@
 import { Button } from "~/components/ui/button";
 import { useEditorStore } from "../-store";
 import type { Layer } from "../-types";
-import { getConfig } from "@shared/config";
+import { getConfig } from "@survive-the-night/game-shared/config";
 
 interface TilePaletteProps {
   onTileSelect: (row: number, col: number, layer: Layer) => void;

@@ -1,5 +1,5 @@
-import { EntityType, ItemType } from "../types/entity";
-import { isWeapon, isResourceItem } from "./inventory";
+import { EntityType } from "../types/entity";
+import { ItemType, isWeapon, isResourceItem } from "./inventory";
 
 /**
  * Shared auto-pickup rules logic

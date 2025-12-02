@@ -1,7 +1,7 @@
 import { useEffect, useRef } from "react";
 import { Button } from "~/components/ui/button";
 import { useEditorStore } from "../-store";
-import { getConfig } from "@shared/config";
+import { getConfig } from "@survive-the-night/game-shared/config";
 
 export function TileMapEditor() {
   const groundGrid = useEditorStore((state) => state.groundGrid);

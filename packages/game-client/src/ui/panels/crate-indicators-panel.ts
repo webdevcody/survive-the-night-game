@@ -129,7 +129,7 @@ export class CrateIndicatorsPanel extends Panel {
       }
 
       // Convert distance from pixels to feet (1 pixel = 0.1 feet, so 10 pixels = 1 foot)
-      const distanceInFeet = Math.round(distance * 0.1);
+      const distanceInFeet = Math.round(dist * 0.1);
       const distanceText = `${distanceInFeet} ft`;
 
       // Draw distance text below the sprite

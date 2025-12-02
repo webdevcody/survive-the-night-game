@@ -1,12 +1,15 @@
 {
   "name": "@survive-the-night/game-client",
   "version": "1.0.0",
-  "main": "src/client.ts",
+  "main": "./src/client.ts",
+  "types": "./src/client.ts",
   "exports": {
     ".": "./src/client.ts",
     "./scenes": "./src/scenes/index.ts"
   },
   "scripts": {
+    "build": "echo 'game-client is bundled by consumers'",
+    "dev": "tsc --watch",
     "test": "vitest"
   },
   "type": "module",

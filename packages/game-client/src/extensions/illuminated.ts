@@ -6,7 +6,7 @@ import { getConfig } from "@shared/config";
 export class ClientIlluminated extends BaseClientExtension {
   public static readonly type = ExtensionTypes.ILLUMINATED;
 
-  private radius = getConfig().world.LIGHT_RADIUS_FIRE;
+  private radius: number = getConfig().world.LIGHT_RADIUS_FIRE;
 
   public getRadius(): number {
     return this.radius;

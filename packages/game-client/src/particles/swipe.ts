@@ -27,6 +27,14 @@ export class SwipeParticle extends Particle implements Renderable {
     return Z_INDEX.PROJECTILES;
   }
 
+  onInitialized(): void {
+    // No initialization sound or effect needed for swipe particle
+  }
+
+  update(_deltaTime: number): void {
+    // Animation is time-based in render, no update logic needed
+  }
+
   render(ctx: CanvasRenderingContext2D, gameState: GameState): void {
     const position = this.getPosition();
     const elapsed = Date.now() - this.createdAt;

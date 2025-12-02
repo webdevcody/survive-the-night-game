@@ -574,7 +574,7 @@ export class Hud {
     ctx.restore();
 
     // Render weapons HUD (only when F is held)
-    this.weaponsHud.render(ctx, gameState);
+    this.weaponsHud.render(ctx);
 
     // Render game messages (player joined/died)
     this.gameMessagesPanel.render(ctx, gameState);

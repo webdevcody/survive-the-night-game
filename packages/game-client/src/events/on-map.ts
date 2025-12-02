@@ -1,10 +1,10 @@
-import { MapEvent } from "../../../game-shared/src/events/server-sent/events/map-event";
+import { MapData } from "../../../game-shared/src/events/server-sent/events/map-event";
 import { InitializationContext } from "./types";
 
-export const onMap = (context: InitializationContext, mapEvent: MapEvent) => {
-  context.gameClient.getMapManager().setMap(mapEvent.getMapData());
+export const onMap = (context: InitializationContext, mapData: MapData) => {
+  context.gameClient.getMapManager().setMap(mapData);
   // Initialize spatial grid when map is loaded
-  console.log("Received map", mapEvent.getMapData());
+  console.log("Received map", mapData);
   context.gameClient.getRenderer().initializeSpatialGrid();
   context.checkInitialization();
 };

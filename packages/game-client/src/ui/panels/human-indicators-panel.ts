@@ -5,6 +5,7 @@ import { ClientPositionable } from "@/extensions/positionable";
 import { AssetManager } from "@/managers/asset";
 import { PlayerClient } from "@/entities/player";
 import { distance } from "@shared/util/physics";
+import { Direction } from "@shared/util/direction";
 
 export interface HumanIndicatorsPanelSettings extends PanelSettings {
   arrowSize: number;
@@ -56,7 +57,7 @@ export class HumanIndicatorsPanel extends Panel {
     this.resetTransform(ctx);
 
     // Get the player sprite for display
-    const humanSprite = this.assetManager.getWithDirection("player", "down");
+    const humanSprite = this.assetManager.getWithDirection("player", Direction.Down);
 
     for (const human of humanPlayers) {
       const humanPos = human.getExt(ClientPositionable).getCenterPosition();
@@ -171,7 +172,7 @@ export class HumanIndicatorsPanel extends Panel {
       }
 
       // Convert distance from pixels to feet (1 pixel = 0.1 feet, so 10 pixels = 1 foot)
-      const distanceInFeet = Math.round(distance * 0.1);
+      const distanceInFeet = Math.round(dist * 0.1);
       const distanceText = `${distanceInFeet} ft`;
 
       // Draw distance text below the sprite

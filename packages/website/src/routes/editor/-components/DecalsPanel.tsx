@@ -1,7 +1,7 @@
 import { useEffect, useRef } from "react";
 import { Button } from "~/components/ui/button";
 import { useEditorStore } from "../-store";
-import { DECAL_REGISTRY } from "@shared/config/decals-config";
+import { DECAL_REGISTRY } from "@survive-the-night/game-shared/config/decals-config";
 import { Trash2 } from "lucide-react";
 
 export function DecalsPanel() {

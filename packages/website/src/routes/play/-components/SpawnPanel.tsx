@@ -1,9 +1,9 @@
 import { useState, useEffect, useMemo } from "react";
 import { cn } from "~/lib/utils";
 import { Button } from "~/components/ui/button";
-import { SPAWNABLE_ENTITY_TYPES, Zombies } from "@shared/constants";
-import { isWeapon } from "@shared/util/inventory";
-import { itemRegistry } from "@shared/entities/item-registry";
+import { SPAWNABLE_ENTITY_TYPES, Zombies } from "@survive-the-night/game-shared/constants";
+import { isWeapon } from "@survive-the-night/game-shared/util/inventory";
+import { itemRegistry } from "@survive-the-night/game-shared/entities/item-registry";
 
 interface SpawnPanelProps {
   gameClient: any; // GameClient type

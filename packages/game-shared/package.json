@@ -1,11 +1,22 @@
 {
   "name": "@survive-the-night/game-shared",
   "version": "1.0.0",
-  "main": "src/index.ts",
-  "types": "src/index.ts",
   "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./config": "./src/config/index.ts",
+    "./config/*": "./src/config/*.ts",
+    "./constants": "./src/constants/index.ts",
+    "./constants/*": "./src/constants/*.ts",
+    "./entities/*": "./src/entities/*.ts",
+    "./types/*": "./src/types/*.ts",
+    "./util/*": "./src/util/*.ts",
+    "./events/*": "./src/events/*.ts",
+    "./network/*": "./src/network/*.ts",
+    "./map/*": "./src/map/*.ts"
+  },
   "scripts": {
-    "build": "tsc",
+    "build": "echo 'game-shared is bundled by consumers'",
     "dev": "tsc --watch"
   },
   "keywords": [],

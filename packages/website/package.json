@@ -5,7 +5,8 @@
   "type": "module",
   "scripts": {
     "dev": "npm run db:migrate && vite dev",
-    "build": "vite build && tsc --noEmit",
+    "build": "vite build",
+    "typecheck": "tsc --noEmit",
     "start": "npm run db:migrate && node .output/server/index.mjs",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",

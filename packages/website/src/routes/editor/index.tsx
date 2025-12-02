@@ -12,7 +12,7 @@ import { TileMapEditor } from "./-components/TileMapEditor";
 import { TilePalette } from "./-components/TilePalette";
 import { ItemsModal } from "./-components/ItemsModal";
 import { CreateBiomeDialog } from "./-components/CreateBiomeDialog";
-import { getConfig } from "@shared/config";
+import { getConfig } from "@survive-the-night/game-shared/config";
 
 export const Route = createFileRoute("/editor/")({
   component: BiomeEditor,

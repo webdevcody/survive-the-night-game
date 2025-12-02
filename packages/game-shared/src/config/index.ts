@@ -22,7 +22,7 @@ import { merchantConfig, type MerchantConfig } from "./merchant-config";
 import { predictionConfig, type PredictionConfig } from "./prediction";
 import { networkConfig, type NetworkConfig } from "./network";
 import { renderConfig, type RenderConfig } from "./render-config";
-import { entityConfig, EntityConfig } from "@/config/entity-config";
+import { entityConfig, EntityConfig } from "./entity-config";
 import { votingConfig, type VotingConfig } from "./voting-config";
 import { infectionConfig, type InfectionConfig } from "./infection-config";
 import { hudConfig, type HudConfig } from "./hud-config";

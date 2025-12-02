@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { getConfig, type GameConfig } from "@shared/config";
+import { getConfig, type GameConfig } from "@survive-the-night/game-shared/config";
 
 type ConfigValue = string | number | boolean | object;
 

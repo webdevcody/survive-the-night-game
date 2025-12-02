@@ -5,6 +5,7 @@ import { ClientPositionable } from "@/extensions/positionable";
 import { AssetManager } from "@/managers/asset";
 import { SurvivorClient } from "@/entities/environment/survivor";
 import { distance } from "@shared/util/physics";
+import { Direction } from "@shared/util/direction";
 
 export interface SurvivorIndicatorsPanelSettings extends PanelSettings {
   arrowSize: number;
@@ -42,7 +43,7 @@ export class SurvivorIndicatorsPanel extends Panel {
     this.resetTransform(ctx);
 
     // Get the survivor sprite
-    const survivorSprite = this.assetManager.getWithDirection("survivor", "down");
+    const survivorSprite = this.assetManager.getWithDirection("survivor", Direction.Down);
 
     for (const survivor of survivors) {
       const survivorPos = survivor.getExt(ClientPositionable).getCenterPosition();
@@ -136,7 +137,7 @@ export class SurvivorIndicatorsPanel extends Panel {
       }
 
       // Convert distance from pixels to feet (1 pixel = 0.1 feet, so 10 pixels = 1 foot)
-      const distanceInFeet = Math.round(distance * 0.1);
+      const distanceInFeet = Math.round(dist * 0.1);
       const distanceText = `${distanceInFeet} ft`;
 
       // Draw distance text below the sprite

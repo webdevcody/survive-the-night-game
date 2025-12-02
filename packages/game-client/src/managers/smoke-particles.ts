@@ -1,7 +1,6 @@
 import { SmokeParticle } from "@/particles/smoke";
 import { GameClient } from "@/client";
 import { ImageLoader } from "@/managers/asset";
-import Vector2 from "@shared/util/vector2";
 import PoolManager from "@shared/util/pool-manager";
 import { getPlayer } from "@/util/get-player";
 import { ClientPositionable } from "@/extensions/positionable";
@@ -13,7 +12,7 @@ export class SmokeParticleManager {
   private lastSpawnTime: number = 0;
   private readonly SPAWN_INTERVAL = 100; // Spawn a particle every 50ms
   private readonly SPAWN_RADIUS = 400; // Spawn particles within 900 pixels of player (screen corners)
-  // private readonly MAX_PARTICLES = 2000; // Maximum number of active particles
+  private readonly MAX_PARTICLES = 2000; // Maximum number of active particles
   private readonly MAX_PARTICLES_PER_SPAWN = 4; // Maximum number of particles to spawn per frame
 
   // Oscillating global wind system

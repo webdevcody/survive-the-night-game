@@ -9,7 +9,7 @@ import type {
   SheetDimensions,
 } from "./-types";
 import { createEmptyGroundLayer, createEmptyCollidablesLayer, BIOME_SIZE } from "./-utils";
-import type { DecalData } from "@shared/config/decals-config";
+import type { DecalData } from "@survive-the-night/game-shared/config/decals-config";
 
 interface EditorState {
   // Grid state

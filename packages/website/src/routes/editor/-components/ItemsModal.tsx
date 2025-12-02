@@ -1,7 +1,7 @@
 import { Button } from "~/components/ui/button";
 import { useEditorStore } from "../-store";
 import { useSpawnableEntities } from "../-hooks/useEditorApi";
-import type { EntityType } from "@shared/types/entity";
+import type { EntityType } from "@survive-the-night/game-shared/types/entity";
 
 // Zombie entity types to filter out from items panel
 const ZOMBIE_ENTITIES = new Set([
