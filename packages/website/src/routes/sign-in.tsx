@@ -39,6 +39,7 @@ function RouteComponent() {
   const [showPassword, setShowPassword] = useState(false);
 
   const form = useForm<SignInForm>({
+    // @ts-ignore
     resolver: zodResolver(signInSchema),
     defaultValues: {
       email: "",

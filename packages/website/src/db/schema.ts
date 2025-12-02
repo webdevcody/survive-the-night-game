@@ -17,6 +17,11 @@ export const user = pgTable("user", {
   isAdmin: boolean("is_admin")
     .$default(() => false)
     .notNull(),
+  stripeCustomerId: text("stripe_customer_id"),
+  subscriptionId: text("subscription_id"),
+  plan: text("plan").$type<"free" | "basic" | "pro">(),
+  subscriptionStatus: text("subscription_status").$type<"active" | "canceled" | "past_due" | "trialing" | null>(),
+  subscriptionExpiresAt: timestamp("subscription_expires_at"),
   createdAt: timestamp("created_at")
     .$defaultFn(() => /* @__PURE__ */ new Date())
     .notNull(),
@@ -104,3 +109,7 @@ export type CreateAccountData = typeof account.$inferInsert;
 
 export type Verification = typeof verification.$inferSelect;
 export type CreateVerificationData = typeof verification.$inferInsert;
+
+// Subscription types
+export type SubscriptionPlan = "free" | "basic" | "pro";
+export type SubscriptionStatus = "active" | "canceled" | "past_due" | "trialing";

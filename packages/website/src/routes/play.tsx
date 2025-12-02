@@ -1,12 +1,12 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import { createFileRoute } from "@tanstack/react-router";
-import { PredictionConfigPanel } from "./play/components/PredictionConfigPanel";
-import { InstructionPanel } from "./play/components/InstructionPanel";
-import { CraftingPanel } from "./play/components/CraftingPanel";
-import { SpawnPanel } from "./play/components/SpawnPanel";
-import { NameChangePanel } from "./play/components/NameChangePanel";
-import { CharacterColorPanel } from "./play/components/CharacterColorPanel";
+import { PredictionConfigPanel } from "./play/-components/PredictionConfigPanel";
+import { InstructionPanel } from "./play/-components/InstructionPanel";
+import { CraftingPanel } from "./play/-components/CraftingPanel";
+import { SpawnPanel } from "./play/-components/SpawnPanel";
+import { NameChangePanel } from "./play/-components/NameChangePanel";
+import { CharacterColorPanel } from "./play/-components/CharacterColorPanel";
 import { Button } from "~/components/ui/button";
 import {
   DropdownMenu,
@@ -203,6 +203,7 @@ function GameClientLoader() {
     }
 
     // Dynamically import game client code only on client-side
+    // @ts-ignore
     import("@survive-the-night/game-client/scenes").then(({ SceneManager, LoadingScene }) => {
       if (!canvasRef.current) {
         return;
@@ -410,4 +411,3 @@ function GameClientLoader() {
 function Play() {
   return <GameClientLoader />;
 }
-

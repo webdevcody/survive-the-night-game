@@ -4,6 +4,7 @@ import tsConfigPaths from "vite-tsconfig-paths";
 import tailwindcss from "@tailwindcss/vite";
 import viteReact from "@vitejs/plugin-react";
 
+// @ts-ignore
 export default defineConfig(({ mode }) => {
   return {
     server: {

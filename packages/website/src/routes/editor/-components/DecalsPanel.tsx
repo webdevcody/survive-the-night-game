@@ -10,7 +10,7 @@ export function DecalsPanel() {
   const decals = useEditorStore((state) => state.decals);
   const removeDecal = useEditorStore((state) => state.removeDecal);
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const animationFrameRef = useRef<number>();
+  const animationFrameRef = useRef<number>(0);
 
   // Animate the selected decal preview
   useEffect(() => {

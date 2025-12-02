@@ -9,6 +9,7 @@ import type {
   SheetDimensions,
 } from "./-types";
 import { createEmptyGroundLayer, createEmptyCollidablesLayer, BIOME_SIZE } from "./-utils";
+import type { DecalData } from "@shared/config/decals-config";
 
 interface EditorState {
   // Grid state
@@ -63,6 +64,10 @@ interface EditorState {
   collidablesDimensions: SheetDimensions;
   sheetsLoaded: boolean;
 
+  // Decals
+  selectedDecalId: string | null;
+  decals: DecalData[];
+
   // Actions
   setGroundGrid: (grid: number[][]) => void;
   setCollidablesGrid: (grid: number[][]) => void;
@@ -92,6 +97,8 @@ interface EditorState {
   setGroundDimensions: (dimensions: SheetDimensions) => void;
   setCollidablesDimensions: (dimensions: SheetDimensions) => void;
   setSheetsLoaded: (loaded: boolean) => void;
+  setSelectedDecalId: (id: string) => void;
+  removeDecal: (index: number) => void;
 
   // Complex actions
   saveToHistory: () => void;
@@ -135,6 +142,8 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   groundDimensions: { cols: 10, rows: 3, totalTiles: 30 },
   collidablesDimensions: { cols: 10, rows: 3, totalTiles: 30 },
   sheetsLoaded: false,
+  selectedDecalId: null,
+  decals: [],
 
   // Simple setters
   setGroundGrid: (grid) => set({ groundGrid: grid }),
@@ -165,6 +174,11 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   setGroundDimensions: (dimensions) => set({ groundDimensions: dimensions }),
   setCollidablesDimensions: (dimensions) => set({ collidablesDimensions: dimensions }),
   setSheetsLoaded: (loaded) => set({ sheetsLoaded: loaded }),
+  setSelectedDecalId: (id) => set({ selectedDecalId: id }),
+  removeDecal: (index) => {
+    const { decals } = get();
+    set({ decals: decals.filter((_, i) => i !== index) });
+  },
 
   // Complex actions
   saveToHistory: () => {
