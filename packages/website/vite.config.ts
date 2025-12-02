@@ -1,14 +1,14 @@
-import { reactRouter } from "@react-router/dev/vite";
-import autoprefixer from "autoprefixer";
-import tailwindcss from "tailwindcss";
+import { tanstackStart } from "@tanstack/react-start/plugin/vite";
 import { defineConfig } from "vite";
-import tsconfigPaths from "vite-tsconfig-paths";
+import tsConfigPaths from "vite-tsconfig-paths";
+import tailwindcss from "@tailwindcss/vite";
+import viteReact from "@vitejs/plugin-react";
 
-export default defineConfig({
-  css: {
-    postcss: {
-      plugins: [tailwindcss, autoprefixer],
+export default defineConfig(({ mode }) => {
+  return {
+    server: {
+      port: 3000,
     },
-  },
-  plugins: [reactRouter(), tsconfigPaths()],
+    plugins: [tsConfigPaths(), tailwindcss(), tanstackStart(), viteReact()],
+  };
 });

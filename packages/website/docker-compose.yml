@@ -1,0 +1,15 @@
+services:
+  survive-the-night-db:
+    image: postgres:17
+    restart: always
+    container_name: survive-the-night-db
+    ports:
+      - 5432:5432
+    environment:
+      POSTGRES_PASSWORD: example
+      PGDATA: /data/postgres
+    volumes:
+      - postgres:/data/postgres
+
+volumes:
+  postgres:

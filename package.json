@@ -4,11 +4,11 @@
   "main": "index.js",
   "scripts": {
     "dev": "npm-run-all --parallel dev:*",
+    "db:up": "npm run db:up --workspace=packages/website",
     "dev:website": "npm run dev --workspace=packages/website",
     "dev:server": "npm run dev --workspace=packages/game-server",
     "dev:biome-editor": "npm run dev --workspace=packages/biome-editor-server",
     "build:server": "npm run build --workspace=packages/game-server",
-    "build:website": "npm run build --workspace=packages/website",
     "test:game-client": "npm run test --workspace=packages/game-client",
     "test:game-server": "npm run test --workspace=packages/game-server",
     "depcruiser": "depcruise ./packages --exclude \"^packages/build\" --include-only \"packages\" --output-type dot | dot -T svg > dependency-graph.svg"

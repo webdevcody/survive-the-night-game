@@ -7,14 +7,28 @@ services:
     build:
       context: .
       dockerfile: packages/website/Dockerfile
-      args:
-        - VITE_WSS_URL=wss://wss.survivethenightgame.com
     restart: unless-stopped
     ports:
       - "3005:3000"
     environment:
       - NODE_ENV=production
-      - VITE_WSS_URL=wss://wss.survivethenightgame.com
+      - DATABASE_URL=postgresql://postgres:example@postgres:5432/postgres
+    depends_on:
+      - postgres
+    networks:
+      - web
+
+  postgres:
+    image: postgres:17
+    restart: unless-stopped
+    container_name: survive-the-night-db
+    ports:
+      - "127.0.0.1:5432:5432"
+    environment:
+      POSTGRES_PASSWORD: example
+      PGDATA: /data/postgres
+    volumes:
+      - postgres_data:/data/postgres
     networks:
       - web
 
@@ -38,3 +52,4 @@ networks:
 volumes:
   caddy_data:
   caddy_config:
+  postgres_data:

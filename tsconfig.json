@@ -20,7 +20,8 @@
     { "path": "./packages/game-server" },
     { "path": "./packages/game-client" },
     { "path": "./packages/game-shared" },
-    { "path": "./packages/biome-editor-server" }
+    { "path": "./packages/biome-editor-server" },
+    { "path": "./packages/website" }
   ],
   
 }
