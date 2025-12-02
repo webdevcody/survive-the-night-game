@@ -4,6 +4,7 @@ import tsConfigPaths from "vite-tsconfig-paths";
 import tailwindcss from "@tailwindcss/vite";
 import viteReact from "@vitejs/plugin-react";
 import path from "path";
+import { nitro } from "nitro/vite";
 
 // @ts-ignore
 export default defineConfig(({ mode }) => {
@@ -12,14 +13,10 @@ export default defineConfig(({ mode }) => {
       port: 3000,
     },
     plugins: [
-      tsConfigPaths({ projects: [
-        ".",
-        "../game-client",
-        "../game-shared"
-      ]}),
+      tsConfigPaths({ projects: [".", "../game-client", "../game-shared"] }),
       tailwindcss(),
-      tanstackStart(),
-      viteReact()
+      nitro(),
+      viteReact(),
     ],
     resolve: {
       alias: {
@@ -28,7 +25,7 @@ export default defineConfig(({ mode }) => {
         // Resolve @shared/ aliases from game-shared
         "@shared/": path.resolve(__dirname, "../game-shared/src/"),
         "@events/": path.resolve(__dirname, "../game-shared/src/events/"),
-      }
-    }
+      },
+    },
   };
 });

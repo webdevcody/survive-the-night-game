@@ -40,7 +40,9 @@
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "date-fns": "^4.1.0",
+    "drizzle-orm": "^0.44.7",
     "lucide-react": "^0.554.0",
+    "nitro": "^3.0.1-alpha.1",
     "nprogress": "^0.2.0",
     "pg": "^8.16.3",
     "react": "^19.2.0",
@@ -51,7 +53,6 @@
     "sonner": "^2.0.7",
     "tailwind-merge": "^3.4.0",
     "tailwindcss-animate": "^1.0.7",
-    "drizzle-orm": "^0.44.7",
     "zod": "^4.1.12",
     "zustand": "^5.0.8"
   },
