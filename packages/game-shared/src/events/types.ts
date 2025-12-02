@@ -1,4 +1,4 @@
-import { EventType } from "@/events/events";
+import { EventType } from "./events";
 
 export interface GameEvent<T> {
   getType(): EventType;

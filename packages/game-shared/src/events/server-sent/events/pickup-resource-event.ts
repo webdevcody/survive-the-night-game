@@ -1,6 +1,6 @@
 import { EventType, ServerSentEvents } from "../../events";
-import { GameEvent } from "@/events/types";
-import { ResourceType } from "@/util/inventory";
+import { GameEvent } from "../../types";
+import { ResourceType } from "../../../util/inventory";
 import { BufferWriter, BufferReader } from "../../../util/buffer-serialization";
 import { itemTypeRegistry } from "../../../util/item-type-encoding";
 

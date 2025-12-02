@@ -1,4 +1,4 @@
-import { GameEvent } from "@/events/types";
+import { GameEvent } from "../../types";
 import { EventType, ServerSentEvents } from "../../events";
 import { BufferWriter, BufferReader } from "../../../util/buffer-serialization";
 

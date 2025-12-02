@@ -1,5 +1,5 @@
 import { EventType, ServerSentEvents } from "../../events";
-import { GameEvent } from "@/events/types";
+import { GameEvent } from "../../types";
 import { WeaponKey } from "../../../util/inventory";
 import { Direction } from "../../../util/direction";
 import { BufferWriter, BufferReader } from "../../../util/buffer-serialization";

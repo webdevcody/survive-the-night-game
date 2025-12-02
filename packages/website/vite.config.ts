@@ -3,29 +3,21 @@ import { defineConfig } from "vite";
 import tsConfigPaths from "vite-tsconfig-paths";
 import tailwindcss from "@tailwindcss/vite";
 import viteReact from "@vitejs/plugin-react";
-import path from "path";
 import { nitro } from "nitro/vite";
 
-// @ts-ignore
-export default defineConfig(({ mode }) => {
+// @ts-ignore - nitro plugin has type issues with the monorepo vite versions
+export default defineConfig(() => {
   return {
     server: {
       port: 3000,
     },
     plugins: [
-      tsConfigPaths({ projects: [".", "../game-client", "../game-shared"] }),
+      tsConfigPaths({ projects: [".", "../game-shared", "../game-client"] }),
       tailwindcss(),
+      tanstackStart(),
       nitro(),
       viteReact(),
     ],
-    resolve: {
-      alias: {
-        // Resolve @/ aliases from game-client
-        "@/": path.resolve(__dirname, "../game-client/src/"),
-        // Resolve @shared/ aliases from game-shared
-        "@shared/": path.resolve(__dirname, "../game-shared/src/"),
-        "@events/": path.resolve(__dirname, "../game-shared/src/events/"),
-      },
-    },
+    nitro: {},
   };
 });

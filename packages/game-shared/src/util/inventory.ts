@@ -1,5 +1,5 @@
-import { ItemState } from "@/types/entity";
-import { weaponRegistry, resourceRegistry } from "@/entities";
+import { ItemState } from "../types/entity";
+import { weaponRegistry, resourceRegistry } from "../entities";
 
 export type ItemType = string;
 

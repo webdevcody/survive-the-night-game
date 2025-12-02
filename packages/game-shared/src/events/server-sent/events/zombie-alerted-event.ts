@@ -1,5 +1,5 @@
 import { EventType, ServerSentEvents } from "../../events";
-import { GameEvent } from "@/events/types";
+import { GameEvent } from "../../types";
 import { BufferWriter, BufferReader } from "../../../util/buffer-serialization";
 
 export interface ZombieAlertedEventData {

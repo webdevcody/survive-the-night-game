@@ -1,4 +1,4 @@
-import { EntityType } from "@/types/entity";
+import { EntityType } from "../types/entity";
 
 // Entities constant - auto-generated from all registries
 // Auto-generation happens in entities/index.ts after all registries are populated

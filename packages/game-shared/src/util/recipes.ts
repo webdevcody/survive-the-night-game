@@ -1,7 +1,6 @@
 import { ItemType, InventoryItem, isResourceItem } from "./inventory";
-import { getConfig } from "@/config";
-import { itemRegistry } from "@/entities";
-import { weaponRegistry } from "@/entities";
+import { getConfig } from "../config";
+import { itemRegistry, weaponRegistry } from "../entities";
 
 export enum RecipeType {
   Bandage = "bandage",

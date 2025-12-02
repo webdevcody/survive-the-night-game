@@ -1,4 +1,4 @@
-import { getConfig } from "@/config";
+import { getConfig } from "../config";
 import { Hitbox } from "./hitbox";
 import Vector2 from "./vector2";
 import PoolManager from "./pool-manager";

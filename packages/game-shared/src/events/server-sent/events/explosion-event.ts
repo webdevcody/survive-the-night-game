@@ -1,6 +1,6 @@
-import { GameEvent } from "@/events/types";
-import { ServerSentEvents } from "@/events/events";
-import Vector2 from "@/util/vector2";
+import { GameEvent } from "../../types";
+import { ServerSentEvents } from "../../events";
+import Vector2 from "../../../util/vector2";
 import { BufferWriter, BufferReader } from "../../../util/buffer-serialization";
 import PoolManager from "../../../util/pool-manager";
 

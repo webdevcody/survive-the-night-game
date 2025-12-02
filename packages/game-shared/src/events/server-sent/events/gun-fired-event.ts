@@ -1,6 +1,6 @@
-import { WeaponKey } from "@/util/inventory";
+import { WeaponKey } from "../../../util/inventory";
 import { EventType, ServerSentEvents } from "../../events";
-import { GameEvent } from "@/events/types";
+import { GameEvent } from "../../types";
 import { BufferWriter, BufferReader } from "../../../util/buffer-serialization";
 
 export class GunFiredEvent implements GameEvent<number> {
