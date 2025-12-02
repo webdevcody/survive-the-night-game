@@ -40,15 +40,6 @@ export class WavePanel extends Panel {
     const isInfection = gameState.gameMode === "infection";
     let displayText: string;
     let timerText: string;
-    let modeText: string;
-
-    if (isBattleRoyale) {
-      modeText = "Mode: Royale";
-    } else if (isInfection) {
-      modeText = "Mode: Infection";
-    } else {
-      modeText = "Mode: Waves";
-    }
 
     if (isBattleRoyale) {
       // Battle Royale mode - show arena constriction timer
@@ -86,13 +77,18 @@ export class WavePanel extends Panel {
     ctx.lineWidth = this.settings.borderWidth;
     ctx.strokeRect(x, y, width, height);
 
+    // Adjust vertical positions based on whether game modes are enabled
+    const gameModesEnabled = getConfig().voting.ENABLE_GAME_MODES;
+    const textY = gameModesEnabled ? 0.25 : 0.33;
+    const timerY = gameModesEnabled ? 0.55 : 0.67;
+
     // Draw text (top)
     ctx.save();
     ctx.font = this.waveSettings.font;
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
     ctx.fillStyle = this.waveSettings.textColor;
-    ctx.fillText(displayText, x + width / 2, y + height * 0.25);
+    ctx.fillText(displayText, x + width / 2, y + height * textY);
     ctx.restore();
 
     // Draw digital timer (middle) with glow effect
@@ -105,22 +101,32 @@ export class WavePanel extends Panel {
     ctx.shadowColor = this.waveSettings.timerColor;
     ctx.shadowBlur = 10;
     ctx.fillStyle = this.waveSettings.timerColor;
-    ctx.fillText(timerText, x + width / 2, y + height * 0.55);
+    ctx.fillText(timerText, x + width / 2, y + height * timerY);
 
     // Stronger glow
     ctx.shadowBlur = 20;
-    ctx.fillText(timerText, x + width / 2, y + height * 0.55);
+    ctx.fillText(timerText, x + width / 2, y + height * timerY);
 
     ctx.restore();
 
-    // Draw game mode (bottom)
-    ctx.save();
-    ctx.font = this.waveSettings.modeFont;
-    ctx.textAlign = "center";
-    ctx.textBaseline = "middle";
-    ctx.fillStyle = this.waveSettings.modeColor;
-    ctx.fillText(modeText, x + width / 2, y + height * 0.85);
-    ctx.restore();
+    // Draw game mode (bottom) - only if game modes are enabled
+    if (gameModesEnabled) {
+      let modeText: string;
+      if (isBattleRoyale) {
+        modeText = "Mode: Royale";
+      } else if (isInfection) {
+        modeText = "Mode: Infection";
+      } else {
+        modeText = "Mode: Waves";
+      }
+      ctx.save();
+      ctx.font = this.waveSettings.modeFont;
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.fillStyle = this.waveSettings.modeColor;
+      ctx.fillText(modeText, x + width / 2, y + height * 0.85);
+      ctx.restore();
+    }
 
     this.restoreContext(ctx);
   }

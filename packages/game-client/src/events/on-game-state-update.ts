@@ -11,24 +11,18 @@ import { distance } from "@shared/util/physics";
 
 export const onGameStateUpdate = (
   context: InitializationContext,
-  gameStateEvent: GameStateEvent
+  gameStateEvent: GameStateEvent,
 ) => {
   // Don't process delta updates until we have playerId and have processed a full state
   if (
     !gameStateEvent.isFullState() &&
     (!context.hasReceivedPlayerId || !context.hasReceivedInitialState)
   ) {
-    console.log(
-      `[GameStateUpdate] Dropping delta update before initialization (playerId=${context.hasReceivedPlayerId}, initialState=${context.hasReceivedInitialState}).`
-    );
     return;
   }
 
   // Don't process full state until we have playerId
   if (gameStateEvent.isFullState() && !context.hasReceivedPlayerId) {
-    console.log(
-      `[GameStateUpdate] Dropping full state before playerId received (playerId=${context.hasReceivedPlayerId}).`
-    );
     return;
   }
 
@@ -97,11 +91,6 @@ const handleGameStateUpdate = (context: InitializationContext, gameStateEvent: G
 
   // Read entity count (first thing in buffer)
   const entityCount = reader.readUInt16();
-  if (gameStateEvent.isFullState()) {
-    console.log(
-      `[GameStateUpdate] Processing full state buffer (${entityCount} entities, ts=${timestamp})`
-    );
-  }
 
   if (gameStateEvent.isFullState()) {
     // Full state update - replace all entities
@@ -159,14 +148,10 @@ const handleGameStateUpdate = (context: InitializationContext, gameStateEvent: G
 
     // Replace all entities
     replaceAllEntities(context.gameState, createdEntities);
-    console.log(
-      `[GameStateUpdate] Applied full state (buffer) with ${createdEntities.length} entities`
-    );
 
     // Apply map data if included in the full state
     const mapData = gameStateEvent.getMapData();
     if (mapData) {
-      console.log("[GameStateUpdate] Received map data in full state");
       context.gameClient.getMapManager().setMap(mapData);
     }
 

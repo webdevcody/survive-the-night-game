@@ -49,7 +49,7 @@ export class Renderer {
     particleManager: ParticleManager,
     getPlacementManager: () => PlacementManager | null,
     getTeleportState: () => { isTeleporting: boolean; progress: number } | null,
-    getLightningBoltManager: () => { render: (ctx: CanvasRenderingContext2D) => void } | null
+    getLightningBoltManager: () => { render: (ctx: CanvasRenderingContext2D) => void } | null,
   ) {
     this.ctx = ctx;
     this.gameState = gameState;
@@ -291,20 +291,6 @@ export class Renderer {
     }
     perfTimer.end("renderTeleportProgress");
 
-    // Render pickup progress indicator above player's head
-    perfTimer.start("renderPickupProgress");
-    if (this.gameState.playerId) {
-      const player = getPlayer(this.gameState);
-      if (player && player.hasExt(ClientPositionable)) {
-        const pickupProgress = player.getPickupProgress();
-        if (pickupProgress > 0) {
-          const playerPos = player.getPosition();
-          this.hud.renderPickupProgress(this.ctx, playerPos, pickupProgress);
-        }
-      }
-    }
-    perfTimer.end("renderPickupProgress");
-
     // Render zombie spawn cooldown indicator above zombie player's head (infection mode)
     perfTimer.start("renderZombieSpawnCooldown");
     if (this.gameState.playerId && this.gameState.gameMode === "infection") {
@@ -341,21 +327,29 @@ export class Renderer {
     this.ctx.restore();
     perfTimer.end("renderUI");
 
+    // Render pickup progress indicator above player's head (rendered after UI to be on top)
+    if (this.gameState.playerId) {
+      const player = getPlayer(this.gameState);
+      if (player && player.hasExt(ClientPositionable)) {
+        const pickupProgress = player.getPickupProgress();
+        if (pickupProgress > 0) {
+          const playerPos = player.getPosition();
+          this.hud.renderPickupProgress(this.ctx, playerPos, pickupProgress);
+        }
+      }
+    }
+
     perfTimer.end("render");
 
-    // Only print stats every second
-    if (
-      DEBUG_PERFORMANCE &&
-      (!this.lastPerfLogTime || performance.now() - this.lastPerfLogTime > 5000)
-    ) {
-      // perfTimer.logStats("renderGround");
-      // perfTimer.logStats("renderCollidables");
-      // perfTimer.logStats("renderEntities");
-      // perfTimer.logStats("renderParticles");
-      // perfTimer.logStats("renderDarkness");
-      // perfTimer.logStats("renderUI");
-      // perfTimer.logStats("render");
-      // console.log("--------------------------------");
+    // Print render performance stats every 5 seconds
+    if (!this.lastPerfLogTime || performance.now() - this.lastPerfLogTime > 5000) {
+      perfTimer.logStats("renderGround");
+      perfTimer.logStats("renderCollidables");
+      perfTimer.logStats("renderEntities");
+      perfTimer.logStats("renderParticles");
+      perfTimer.logStats("renderDarkness");
+      perfTimer.logStats("renderUI");
+      perfTimer.logStats("render");
       this.lastPerfLogTime = performance.now();
     }
   }

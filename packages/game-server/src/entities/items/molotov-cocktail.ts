@@ -4,9 +4,7 @@ import Vector2 from "@/util/vector2";
 import PoolManager from "@shared/util/pool-manager";
 import Destructible from "@/extensions/destructible";
 import { Direction } from "@shared/util/direction";
-import { Cooldown } from "@/entities/util/cooldown";
 import Inventory from "@/extensions/inventory";
-import { normalizeDirection } from "@shared/util/direction";
 import Updatable from "@/extensions/updatable";
 import { ExplosionEvent } from "../../../../game-shared/src/events/server-sent/events/explosion-event";
 import { Weapon } from "@/entities/weapons/weapon";
@@ -15,13 +13,14 @@ import Interactive from "@/extensions/interactive";
 import { ItemState } from "@/types/entity";
 import { Entities } from "@/constants";
 import { getConfig } from "@shared/config";
+import { calculateProjectileVelocity } from "@/entities/weapons/helpers";
 import { distance } from "@/util/physics";
 
 export class MolotovCocktail extends Weapon {
   private static readonly EXPLOSION_RADIUS = getConfig().combat.EXPLOSION_RADIUS_MEDIUM;
   private static readonly EXPLOSION_DAMAGE = 3;
   private static readonly THROW_SPEED = getConfig().combat.THROW_SPEED;
-  private static readonly EXPLOSION_DELAY = getConfig().combat.EXPLOSION_DELAY;
+  private static readonly DEFAULT_THROW_DISTANCE = getConfig().combat.TRAVEL_DISTANCE_MEDIUM;
   private static readonly COOLDOWN = getConfig().combat.THROWABLE_COOLDOWN;
   public static readonly DEFAULT_COUNT = 1;
   private static readonly FIRE_COUNT = getConfig().combat.MOLOTOV_FIRE_COUNT;
@@ -29,14 +28,14 @@ export class MolotovCocktail extends Weapon {
 
   private velocity: Vector2 = PoolManager.getInstance().vector2.claim(0, 0);
   private isArmed: boolean = false;
-  private explosionTimer: Cooldown;
+  private traveledDistance: number = 0;
+  private targetDistance: number = MolotovCocktail.DEFAULT_THROW_DISTANCE;
   private isExploded: boolean = false;
   private interactiveExtension: Interactive | null = null;
+  private throwerId: number = 0;
 
   constructor(gameManagers: IGameManagers, itemState?: ItemState) {
     super(gameManagers, "molotov_cocktail");
-
-    this.explosionTimer = new Cooldown(MolotovCocktail.EXPLOSION_DELAY);
 
     // Add Updatable extension for molotov physics after it's thrown
     this.addExtension(new Updatable(this, this.updateMolotov.bind(this)));
@@ -68,9 +67,10 @@ export class MolotovCocktail extends Weapon {
 
   public attack(
     playerId: number,
-    position: { x: number; y: number },
+    _position: { x: number; y: number },
     facing: Direction,
-    aimAngle?: number
+    aimAngle?: number,
+    aimDistance?: number
   ): void {
     const player = this.getEntityManager().getEntityById(playerId);
     if (!player || !player.hasExt(Positionable)) return;
@@ -101,24 +101,20 @@ export class MolotovCocktail extends Weapon {
     // Set molotov position to player position
     this.getExt(Positionable).setPosition(playerPos);
 
-    // Set velocity based on aim angle if provided (mouse aiming), otherwise use facing direction
-    if (aimAngle !== undefined) {
-      const dirX = Math.cos(aimAngle);
-      const dirY = Math.sin(aimAngle);
-      const poolManager = PoolManager.getInstance();
-      this.velocity = poolManager.vector2.claim(
-        dirX * MolotovCocktail.THROW_SPEED,
-        dirY * MolotovCocktail.THROW_SPEED
-      );
+    // Set target distance if provided (mouse aiming), molotov will explode at crosshair position
+    if (aimDistance !== undefined && !isNaN(aimDistance)) {
+      this.targetDistance = aimDistance;
     } else {
-      const directionVector = normalizeDirection(facing);
-      const poolManager = PoolManager.getInstance();
-      this.velocity = poolManager.vector2.claim(directionVector.x, directionVector.y);
-      this.velocity.mul(MolotovCocktail.THROW_SPEED);
+      this.targetDistance = MolotovCocktail.DEFAULT_THROW_DISTANCE;
     }
+
+    // Set velocity using shared utility function
+    this.velocity = calculateProjectileVelocity(facing, MolotovCocktail.THROW_SPEED, aimAngle);
 
     // Arm the molotov
     this.isArmed = true;
+    this.traveledDistance = 0;
+    this.throwerId = playerId;
 
     // Remove Interactive extension - once thrown, molotovs are "live" and cannot be picked up
     if (this.interactiveExtension) {
@@ -133,21 +129,20 @@ export class MolotovCocktail extends Weapon {
   private updateMolotov(deltaTime: number): void {
     if (!this.isArmed) return;
 
-    // Update position based on velocity
-    const pos = this.getExt(Positionable).getPosition();
     const poolManager = PoolManager.getInstance();
-    const velocityScaled = poolManager.vector2.claim(this.velocity.x, this.velocity.y);
-    velocityScaled.mul(deltaTime);
-    const newPos = pos.clone().add(velocityScaled);
-    poolManager.vector2.release(velocityScaled);
-    this.getExt(Positionable).setPosition(newPos);
+    const positionable = this.getExt(Positionable);
+    const lastPosition = positionable.getPosition().clone();
 
-    // Apply friction to slow down
-    this.velocity.mul(0.95);
+    // Update position based on velocity (no friction - travels at constant speed like grenade)
+    const newPos = poolManager.vector2.claim(
+      lastPosition.x + this.velocity.x * deltaTime,
+      lastPosition.y + this.velocity.y * deltaTime
+    );
+    positionable.setPosition(newPos);
 
-    // Update explosion timer
-    this.explosionTimer.update(deltaTime);
-    if (this.explosionTimer.isReady()) {
+    // Check if molotov has reached target distance
+    this.traveledDistance += distance(lastPosition, newPos);
+    if (this.traveledDistance >= this.targetDistance) {
       this.explode();
     }
   }
@@ -162,9 +157,17 @@ export class MolotovCocktail extends Weapon {
       MolotovCocktail.EXPLOSION_RADIUS
     );
 
-    // Damage all destructible entities in explosion radius
+    // Use game mode strategy to determine valid targets
+    const strategy = this.getGameManagers().getGameServer().getGameLoop().getGameModeStrategy();
+
+    // Damage valid targets in explosion radius
     for (const entity of nearbyEntities) {
       if (!entity.hasExt(Destructible)) continue;
+
+      // Use strategy to determine if this entity should be damaged
+      if (!strategy.shouldDamageTarget(this, entity, this.throwerId)) {
+        continue;
+      }
 
       const entityPos = entity.getExt(Positionable).getCenterPosition();
       const dist = distance(position, entityPos);
@@ -173,7 +176,7 @@ export class MolotovCocktail extends Weapon {
         // Scale damage based on distance from explosion
         const damageScale = 1 - dist / MolotovCocktail.EXPLOSION_RADIUS;
         const damage = Math.ceil(MolotovCocktail.EXPLOSION_DAMAGE * damageScale);
-        entity.getExt(Destructible).damage(damage);
+        entity.getExt(Destructible).damage(damage, this.throwerId);
       }
     }
 

@@ -27,17 +27,14 @@ export class ModeCommand extends BaseCommand {
 
     switch (mode) {
       case "royale":
-        console.log("[ModeCommand] Starting Battle Royale mode");
         gameLoop.startNewGame(new BattleRoyaleModeStrategy());
         return "Starting Battle Royale mode...";
 
       case "waves":
-        console.log("[ModeCommand] Starting Waves mode");
         gameLoop.startNewGame(new WavesModeStrategy());
         return "Starting Waves mode...";
 
       case "infection":
-        console.log("[ModeCommand] Starting Infection mode");
         gameLoop.startNewGame(new InfectionModeStrategy());
         return "Starting Infection mode...";
     }

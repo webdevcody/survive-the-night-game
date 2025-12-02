@@ -9,7 +9,6 @@ export class RestartCommand extends BaseCommand {
     const { gameLoop } = context;
 
     const currentMode = gameLoop.getGameModeStrategy().getConfig().modeId;
-    console.log(`[RestartCommand] Restarting game with mode: ${currentMode}`);
 
     gameLoop.startNewGame();
 

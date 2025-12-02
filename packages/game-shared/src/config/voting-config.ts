@@ -9,6 +9,12 @@ import type { VotableGameMode } from "../types/voting";
 
 export const votingConfig = {
   /**
+   * Feature flag to enable/disable game mode voting
+   * When false: All games default to waves mode, no voting panel shown
+   */
+  ENABLE_GAME_MODES: false,
+
+  /**
    * Duration of the voting phase in milliseconds
    */
   VOTING_DURATION: 10000,

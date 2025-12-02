@@ -3,8 +3,6 @@ import { clearEntities } from "@/state";
 import { InitializationContext } from "./types";
 
 export const onGameStarted = (context: InitializationContext, event: GameStartedEvent) => {
-  console.log("[GameStarted] Server announced a new round – resetting client state");
-
   const data = event.getData();
 
   // Clear all client-side entities, particles, and spatial references
@@ -27,9 +25,7 @@ export const onGameStarted = (context: InitializationContext, event: GameStarted
 
   // Show welcome message based on game mode
   if (data.gameMode === "battle_royale") {
-    context.gameClient
-      .getHud()
-      .addMessage("Battle Royale - Last one standing wins!", "gold");
+    context.gameClient.getHud().addMessage("Battle Royale - Last one standing wins!", "gold");
   } else {
     context.gameClient
       .getHud()

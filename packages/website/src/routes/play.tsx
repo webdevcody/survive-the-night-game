@@ -78,12 +78,10 @@ function GameClientLoader() {
       if (!sceneManagerRef.current) return;
 
       const currentScene = sceneManagerRef.current.getCurrentScene();
-      console.log("Polling for game client, current scene:", currentScene?.constructor?.name);
 
       if (currentScene && typeof currentScene.getGameClient === "function") {
         const client = currentScene.getGameClient();
         if (client) {
-          console.log("Game client found!", client);
           setGameClient(client);
           clearInterval(pollGameClient);
         }

@@ -189,7 +189,7 @@ export class AIController {
 
     // If no melee weapon, check if we have any weapon at all
     const hasMeleeWeapon = inventory.some(
-      (item) => item && (item.itemType === "knife" || item.itemType === "baseball_bat")
+      (item) => item && (item.itemType === "knife" || item.itemType === "baseball_bat"),
     );
 
     // If no melee weapon, try to equip one
@@ -225,7 +225,7 @@ export class AIController {
     // Check for nearby enemies (zombies and players)
     const nearbyEntities = entityManager.getNearbyEntities(
       playerPos,
-      meleeRange + 20 // Small buffer to detect enemies slightly outside range
+      meleeRange + 20, // Small buffer to detect enemies slightly outside range
     );
 
     let closestEnemy: IEntity | null = null;
@@ -385,7 +385,7 @@ export class AIController {
     const enhancedThreatInfo = this.targetingSystem.getEnhancedThreatInfo(
       this.player,
       damageHistory,
-      weaponType
+      weaponType,
     );
     this.currentEnhancedThreatInfo = enhancedThreatInfo;
 
@@ -425,7 +425,7 @@ export class AIController {
           this.combatTarget = this.targetingSystem.findBestEnemy(
             this.player,
             damageHistory,
-            weaponType
+            weaponType,
           );
         } else if (!enhancedThreatInfo.hasNearbyEnemy) {
           this.combatTarget = null;
@@ -587,7 +587,7 @@ export class AIController {
         const wanderDist = 200 + Math.random() * 200;
         const wanderTarget = new Vector2(
           playerPos.x + Math.cos(randomAngle) * wanderDist,
-          playerPos.y + Math.sin(randomAngle) * wanderDist
+          playerPos.y + Math.sin(randomAngle) * wanderDist,
         );
 
         const waypoint = this.pathfinder.pathTowardsAvoidingToxic(playerPos, wanderTarget);
@@ -640,7 +640,7 @@ export class AIController {
         // On stuck callback - clear targets
         this.currentTarget = null;
         this.movementController.clearWaypoint();
-      }
+      },
     );
   }
 
@@ -676,7 +676,7 @@ export class AIController {
             // Drop it near the player
             const dropPos = new Vector2(
               playerPos.x + (Math.random() - 0.5) * 32,
-              playerPos.y + (Math.random() - 0.5) * 32
+              playerPos.y + (Math.random() - 0.5) * 32,
             );
             droppedEntity.getExt(Positionable).setPosition(dropPos);
             entityManager.addEntity(droppedEntity);
@@ -685,12 +685,6 @@ export class AIController {
             if (removed.state && droppedEntity.hasExt(Carryable)) {
               droppedEntity.getExt(Carryable).setItemState(removed.state);
             }
-
-            console.log(
-              `[AI] ${this.player.getDisplayName()} dropped useless ${
-                removed.itemType
-              } to free inventory space`
-            );
           }
         }
       }
@@ -743,7 +737,7 @@ export class AIController {
       this.player,
       threatInfo,
       hasLootTarget,
-      deltaTime
+      deltaTime,
     );
 
     this.lastDecision = decision;
@@ -781,7 +775,7 @@ export class AIController {
       currentState,
       stateTimer,
       isAllInMode,
-      hasLootTarget
+      hasLootTarget,
     );
 
     // Map decision to state (with hysteresis enforcement)
@@ -898,11 +892,6 @@ export class AIController {
       const weaponIndex = this.stateMachine.getBestWeaponIndex(inventory);
       if (weaponIndex > 0) {
         const newItem = inventory[weaponIndex - 1];
-        if (newItem && newItem.itemType !== currentItemType) {
-          console.log(
-            `[AI] ${this.player.getDisplayName()} switching to ${newItem.itemType} (ENGAGE)`
-          );
-        }
         this.player.selectInventoryItem(weaponIndex);
       }
     } else if (state === AIState.RETREAT) {
@@ -910,11 +899,6 @@ export class AIController {
       const bandageIndex = this.stateMachine.getBandageIndex(inventory);
       if (bandageIndex >= 0) {
         const newItem = inventory[bandageIndex];
-        if (newItem && newItem.itemType !== currentItemType) {
-          console.log(
-            `[AI] ${this.player.getDisplayName()} switching to ${newItem.itemType} (RETREAT)`
-          );
-        }
         this.player.selectInventoryItem(bandageIndex + 1);
       }
     } else if (state === AIState.HUNT) {
@@ -922,11 +906,6 @@ export class AIController {
       const weaponIndex = this.stateMachine.getBestWeaponIndex(inventory);
       if (weaponIndex > 0) {
         const newItem = inventory[weaponIndex - 1];
-        if (newItem && newItem.itemType !== currentItemType) {
-          console.log(
-            `[AI] ${this.player.getDisplayName()} switching to ${newItem.itemType} (HUNT)`
-          );
-        }
         this.player.selectInventoryItem(weaponIndex);
       }
     }
@@ -949,7 +928,7 @@ export class AIController {
           const exploredBiomes = this.explorationTracker.getExploredBiomes();
           const specialBiome = this.targetingSystem.findNearestSpecialBiome(
             this.player,
-            exploredBiomes
+            exploredBiomes,
           );
           if (specialBiome) {
             this.currentTarget = specialBiome;
@@ -989,7 +968,7 @@ export class AIController {
           const exploredBiomes = this.explorationTracker.getExploredBiomes();
           const specialBiome = this.targetingSystem.findNearestSpecialBiome(
             this.player,
-            exploredBiomes
+            exploredBiomes,
           );
           if (specialBiome) {
             this.currentTarget = specialBiome;
@@ -1150,7 +1129,7 @@ export class AIController {
           this.player,
           opportunisticItem.entity,
           this.targetingSystem,
-          "OPPORTUNISTIC"
+          "OPPORTUNISTIC",
         );
         if (result.success) {
           this.timerManager.interactTimer = 0;
@@ -1260,7 +1239,7 @@ export class AIController {
       if (!waypoint && this.currentTarget) {
         const newWaypoint = this.pathfinder.pathTowardsAvoidingToxic(
           playerPos,
-          this.currentTarget.position
+          this.currentTarget.position,
         );
         this.movementController.setCurrentWaypoint(newWaypoint);
       }
@@ -1341,7 +1320,7 @@ export class AIController {
     input: Input,
     playerPos: Vector2,
     enemyPos: Vector2,
-    dist: number
+    dist: number,
   ): void {
     const healthPercent = this.player.getHealth() / this.player.getMaxHealth();
     const kitePhase = this.stateMachine.getKitePhase();
@@ -1429,7 +1408,7 @@ export class AIController {
         const retreatTarget = calculateRetreatPosition(
           playerPos,
           enemyPos,
-          AI_CONFIG.KITE_SAFE_DISTANCE
+          AI_CONFIG.KITE_SAFE_DISTANCE,
         );
         // Always use pathfinding - find walkable waypoint
         const retreatWaypoint = this.findWalkableWaypoint(playerPos, retreatTarget);
@@ -1535,7 +1514,7 @@ export class AIController {
     input: Input,
     playerPos: Vector2,
     enemyPos: Vector2,
-    dist: number
+    dist: number,
   ): void {
     // CHASE DEFENSE: If ANY enemy is very close while disengaging, fight back
     // Check the enhanced threat info for immediate threats
@@ -1568,7 +1547,7 @@ export class AIController {
     if (safestDir) {
       disengageTarget = new Vector2(
         playerPos.x + safestDir.x * 150,
-        playerPos.y + safestDir.y * 150
+        playerPos.y + safestDir.y * 150,
       );
     } else {
       disengageTarget = calculateRetreatPosition(playerPos, enemyPos, 150);
@@ -1612,7 +1591,7 @@ export class AIController {
     input: Input,
     playerPos: Vector2,
     enemyPos: Vector2,
-    dist: number
+    dist: number,
   ): void {
     // Get safest retreat direction from enhanced threat info
     const retreatDir = this.currentEnhancedThreatInfo?.safestRetreatDirection;
@@ -1622,7 +1601,7 @@ export class AIController {
     if (retreatDir) {
       retreatTarget = new Vector2(
         playerPos.x + retreatDir.x * 150,
-        playerPos.y + retreatDir.y * 150
+        playerPos.y + retreatDir.y * 150,
       );
     } else {
       // Fallback: calculate retreat position away from enemy
@@ -1790,7 +1769,7 @@ export class AIController {
           // Calculate retreat target away from threats
           const retreatTarget = new Vector2(
             playerPos.x + safestDir.x * 300, // Longer retreat distance
-            playerPos.y + safestDir.y * 300
+            playerPos.y + safestDir.y * 300,
           );
           // Always use pathfinding - find walkable waypoint
           const retreatWaypoint = this.findWalkableWaypoint(playerPos, retreatTarget);
@@ -1843,7 +1822,7 @@ export class AIController {
       const randomAngle = Math.random() * Math.PI * 2;
       const randomTarget = new Vector2(
         playerPos.x + Math.cos(randomAngle) * 200,
-        playerPos.y + Math.sin(randomAngle) * 200
+        playerPos.y + Math.sin(randomAngle) * 200,
       );
 
       // Always use pathfinding - find walkable waypoint
@@ -1864,8 +1843,8 @@ export class AIController {
       playerPos,
       new Vector2(
         playerPos.x + Math.cos(randomAngle) * 100,
-        playerPos.y + Math.sin(randomAngle) * 100
-      )
+        playerPos.y + Math.sin(randomAngle) * 100,
+      ),
     );
     input.dx = vel.x * 0.5; // Slower movement when pathfinding fails
     input.dy = vel.y * 0.5;
@@ -1916,7 +1895,7 @@ export class AIController {
             this.player,
             this.currentTarget.entity,
             this.targetingSystem,
-            "LOOT_LEGACY"
+            "LOOT_LEGACY",
           );
           this.currentTarget = null;
         }

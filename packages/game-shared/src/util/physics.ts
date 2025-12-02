@@ -68,9 +68,6 @@ function logCacheStats(): void {
   if (now - lastLogTime >= LOG_INTERVAL) {
     const total = cacheHits + cacheMisses;
     const hitRate = total > 0 ? ((cacheHits / total) * 100).toFixed(2) : "0.00";
-    console.log(
-      `[Pathfinding Cache] Hits: ${cacheHits}, Misses: ${cacheMisses}, Hit Rate: ${hitRate}%, Size: ${pathCache.size}`
-    );
     lastLogTime = now;
   }
 }
@@ -79,7 +76,7 @@ export function pathTowards(
   a: Vector2,
   b: Vector2,
   groundLayer: number[][],
-  collidablesLayer?: number[][]
+  collidablesLayer?: number[][],
 ): Vector2 | null {
   const startX = Math.floor(a.x / getConfig().world.TILE_SIZE);
   const startY = Math.floor(a.y / getConfig().world.TILE_SIZE);
@@ -117,7 +114,7 @@ export function pathTowards(
       const poolManager = PoolManager.getInstance();
       return poolManager.vector2.claim(
         lastStep.x * getConfig().world.TILE_SIZE + getConfig().world.TILE_SIZE / 2,
-        lastStep.y * getConfig().world.TILE_SIZE + getConfig().world.TILE_SIZE / 2
+        lastStep.y * getConfig().world.TILE_SIZE + getConfig().world.TILE_SIZE / 2,
       );
     }
 
@@ -125,7 +122,7 @@ export function pathTowards(
     const poolManager = PoolManager.getInstance();
     return poolManager.vector2.claim(
       firstStep.x * getConfig().world.TILE_SIZE + getConfig().world.TILE_SIZE / 2,
-      firstStep.y * getConfig().world.TILE_SIZE + getConfig().world.TILE_SIZE / 2
+      firstStep.y * getConfig().world.TILE_SIZE + getConfig().world.TILE_SIZE / 2,
     );
   }
 
@@ -188,7 +185,7 @@ export function pathTowards(
           fullPath[fullPath.length - 1].x * getConfig().world.TILE_SIZE +
             getConfig().world.TILE_SIZE / 2,
           fullPath[fullPath.length - 1].y * getConfig().world.TILE_SIZE +
-            getConfig().world.TILE_SIZE / 2
+            getConfig().world.TILE_SIZE / 2,
         );
       }
 
@@ -196,7 +193,7 @@ export function pathTowards(
       const poolManager = PoolManager.getInstance();
       return poolManager.vector2.claim(
         firstStep.x * getConfig().world.TILE_SIZE + getConfig().world.TILE_SIZE / 2,
-        firstStep.y * getConfig().world.TILE_SIZE + getConfig().world.TILE_SIZE / 2
+        firstStep.y * getConfig().world.TILE_SIZE + getConfig().world.TILE_SIZE / 2,
       );
     }
 

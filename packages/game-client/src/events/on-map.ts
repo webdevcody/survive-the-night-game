@@ -4,7 +4,6 @@ import { InitializationContext } from "./types";
 export const onMap = (context: InitializationContext, mapData: MapData) => {
   context.gameClient.getMapManager().setMap(mapData);
   // Initialize spatial grid when map is loaded
-  console.log("Received map", mapData);
   context.gameClient.getRenderer().initializeSpatialGrid();
   context.checkInitialization();
 };

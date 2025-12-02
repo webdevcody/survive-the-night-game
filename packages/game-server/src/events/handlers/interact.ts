@@ -79,7 +79,6 @@ export function onInteract(
       return;
     }
     // If the targeted entity is invalid or out of range, fall through to fallback logic
-    console.log(`[Interact] Target entity ${data.targetEntityId} failed interaction check (exists: ${!!targetEntity})`);
   }
 
   // Get nearby entities (already filtered by distance in getNearbyEntities)

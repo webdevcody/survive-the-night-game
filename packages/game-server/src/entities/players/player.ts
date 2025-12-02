@@ -99,7 +99,7 @@ export class Player extends Entity {
         inputAimDistance: { numberType: "float64", optional: true },
         deathTime: { numberType: "float64" },
         // Note: inputSequenceNumber is not in SerializableFields, so no metadata needed
-      }
+      },
     );
 
     this.addExtension(new Inventory(this, gameManagers.getBroadcaster()));
@@ -107,7 +107,7 @@ export class Player extends Entity {
     this.addExtension(new ResourcesBag(this, gameManagers.getBroadcaster()));
     const collidableSize = poolManager.vector2.claim(
       Player.PLAYER_WIDTH - 8,
-      Player.PLAYER_WIDTH - 8
+      Player.PLAYER_WIDTH - 8,
     );
     const collidableOffset = poolManager.vector2.claim(4, 4);
     this.addExtension(new Collidable(this).setSize(collidableSize).setOffset(collidableOffset));
@@ -121,7 +121,7 @@ export class Player extends Entity {
           // Broadcast PlayerHurtEvent when player takes damage (e.g., from zombie attacks)
           this.broadcaster.broadcastEvent(new PlayerHurtEvent(this.getId()));
         })
-        .onDeath(() => this.onDeath())
+        .onDeath(() => this.onDeath()),
     );
     this.addExtension(new Updatable(this, this.updatePlayer.bind(this)));
     this.addExtension(new Movable(this));
@@ -217,7 +217,7 @@ export class Player extends Entity {
       new PlayerDeathEvent({
         playerId: this.getId(),
         displayName: this.getDisplayName(),
-      })
+      }),
     );
     this.getExt(Collidable).setEnabled(false);
   }
@@ -340,7 +340,7 @@ export class Player extends Entity {
         const poolManager = PoolManager.getInstance();
         const pos = poolManager.vector2.claim(
           position.x + offset * Math.cos(theta),
-          position.y + offset * Math.sin(theta)
+          position.y + offset * Math.sin(theta),
         );
 
         if ("setPosition" in entity) {
@@ -394,12 +394,6 @@ export class Player extends Entity {
           return;
         }
         // Consume the item (handles energy drink, bandage, and other consumables)
-        const isAI = this.serialized.get("isAI");
-        if (isAI) {
-          console.log(
-            `[AI] ${this.getDisplayName()} using ${itemType} (health: ${this.getHealth()}/${this.getMaxHealth()})`
-          );
-        }
         activeItemEntity.getExt(Consumable).consume(this.getId(), itemIndex);
         activeItemEntity.clearDirtyFlags();
         return;
@@ -416,7 +410,6 @@ export class Player extends Entity {
     // TODO: clean this up, this feels bad and unperformant
     const weaponEntity = this.getEntityManager().createEntityFromItem(activeWeapon);
     if (!weaponEntity) {
-      console.log("createEntityFromItem returned null for", activeWeapon.itemType);
       return;
     }
     // Ensure temporary weapon entity doesn't get tracked for networking
@@ -443,7 +436,7 @@ export class Player extends Entity {
           this.getCenterPosition().clone(),
           this.serialized.get("inputFacing"),
           this.serialized.get("inputAimAngle"),
-          inventoryIndex
+          inventoryIndex,
         );
         weaponEntity.clearDirtyFlags();
       }
@@ -468,7 +461,7 @@ export class Player extends Entity {
         this.getCenterPosition().clone(),
         this.serialized.get("inputFacing"),
         this.serialized.get("inputAimAngle"),
-        this.serialized.get("inputAimDistance")
+        this.serialized.get("inputAimDistance"),
       );
       weaponEntity.clearDirtyFlags();
     }
@@ -528,7 +521,7 @@ export class Player extends Entity {
     // Only set velocity from input if we're not being knocked back
     // (knockback velocity will be much higher than normal movement speed)
     const currentSpeed = Math.sqrt(
-      currentVelocity.x * currentVelocity.x + currentVelocity.y * currentVelocity.y
+      currentVelocity.x * currentVelocity.x + currentVelocity.y * currentVelocity.y,
     );
     if (currentSpeed < getConfig().player.PLAYER_SPEED * 2) {
       // Set velocity based on current input
@@ -579,8 +572,8 @@ export class Player extends Entity {
         movable.setVelocity(
           poolManager.vector2.claim(
             normalized.x * getConfig().player.PLAYER_SPEED * speedMultiplier,
-            normalized.y * getConfig().player.PLAYER_SPEED * speedMultiplier
-          )
+            normalized.y * getConfig().player.PLAYER_SPEED * speedMultiplier,
+          ),
         );
       }
     }
@@ -650,7 +643,7 @@ export class Player extends Entity {
         const oldStamina = stamina;
         const newStamina = Math.min(
           getConfig().player.MAX_STAMINA,
-          stamina + getConfig().player.STAMINA_REGEN_RATE * deltaTime
+          stamina + getConfig().player.STAMINA_REGEN_RATE * deltaTime,
         );
         this.serialized.set("stamina", newStamina);
 

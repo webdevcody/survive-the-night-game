@@ -127,7 +127,6 @@ export class ClientSocketManager {
   public connect(): Promise<void> {
     // Prevent multiple simultaneous connection attempts
     if (this.isConnecting) {
-      console.log("Connection already in progress, ignoring duplicate connect() call");
       return new Promise((resolve, reject) => {
         // Wait for the existing connection attempt to complete
         const checkInterval = setInterval(() => {
@@ -179,11 +178,6 @@ export class ClientSocketManager {
     if (attemptNumber > 0) {
       // Exponential backoff: 1s, 2s, 4s, 8s, max 10s
       const delay = Math.min(this.RECONNECT_DELAY_MS * Math.pow(2, attemptNumber - 1), 10000);
-      console.log(
-        `Retrying connection in ${delay}ms (attempt ${attemptNumber + 1}/${
-          this.MAX_CONNECTION_ATTEMPTS
-        })...`
-      );
       setTimeout(() => {
         this.performConnection(attemptNumber);
       }, delay);
@@ -201,11 +195,6 @@ export class ClientSocketManager {
       }
       return;
     }
-
-    console.log(
-      `Connecting to game server (attempt ${attemptNumber + 1}/${this.MAX_CONNECTION_ATTEMPTS})`,
-      this.serverUrl
-    );
 
     // Clean up any existing connection
     this.cleanupConnection();
@@ -225,9 +214,6 @@ export class ClientSocketManager {
 
     // Set up connection timeout
     this.connectionTimeout = setTimeout(() => {
-      console.log(
-        `Connection timeout after ${this.CONNECTION_TIMEOUT_MS}ms (attempt ${attemptNumber + 1})`
-      );
       this.cleanupConnection();
       this.isConnecting = false; // Reset connecting flag on timeout
       this.attemptConnection(attemptNumber + 1);
@@ -239,7 +225,6 @@ export class ClientSocketManager {
         return; // Already resolved, ignore duplicate calls
       }
 
-      console.log("Connected to game server", this.socket.id);
       this.isDisconnected = false;
       this.isConnecting = false; // Connection successful
       this.reconnectAttempts = 0; // Reset reconnect attempts on successful connection
@@ -276,7 +261,6 @@ export class ClientSocketManager {
 
     // Set up disconnect handler (for after successful connection)
     this.socket.on("disconnect", () => {
-      console.log("Disconnected from game server");
       this.isDisconnected = true;
       this.stopPingMeasurement();
       this.socketDisconnectHandlers.forEach((handler) => {
@@ -293,14 +277,10 @@ export class ClientSocketManager {
       const wasRecentConnection = this.lastConnectionTime > 0 && timeSinceConnection < 2000;
 
       if (!this.shouldReconnect) {
-        console.log("Reconnection disabled (likely due to version mismatch or ban)");
         return; // Don't attempt reconnect if disabled
       }
 
       if (wasRecentConnection) {
-        console.log(
-          "Skipping immediate reconnect after recent connection (likely server-side disconnect)"
-        );
         // Still attempt reconnect but with a longer delay to avoid rapid reconnection loops
         setTimeout(() => {
           if (this.shouldReconnect && this.isDisconnected && !this.isConnecting) {
@@ -326,7 +306,6 @@ export class ClientSocketManager {
 
     if (this.socket) {
       try {
-        console.log("Disconnecting from game server", this.socket.id);
         this.socket.disconnect();
       } catch (error) {
         // Ignore errors during cleanup
@@ -345,19 +324,16 @@ export class ClientSocketManager {
   public requestPlayerId(): void {
     // Request player ID from server
     // The server should respond with YOUR_ID event
-    console.log("Requesting player ID");
     this.emitClientEvent(ClientSentEvents.REQUEST_PLAYER_ID);
   }
 
   private attemptReconnect(): void {
     // Don't attempt reconnect if we're already connecting or if reconnection is disabled
     if (this.isConnecting) {
-      console.log("Already connecting, skipping reconnect attempt");
       return;
     }
 
     if (!this.shouldReconnect) {
-      console.log("Reconnection disabled, skipping reconnect attempt");
       return;
     }
 
@@ -376,22 +352,18 @@ export class ClientSocketManager {
     const delay = this.RECONNECT_DELAY_MS;
     this.reconnectAttempts++;
 
-    console.log(`Attempting to reconnect in ${delay}ms (attempt ${this.reconnectAttempts})...`);
-
     this.reconnectTimeout = setTimeout(() => {
       // Double-check that we should still reconnect
       if (!this.shouldReconnect) {
-        console.log("Reconnection was disabled during delay, cancelling reconnect");
         return;
       }
 
-      console.log("Reconnecting to game server...");
       this.connect()
         .then(() => {
           // Successfully reconnected - request fresh player ID and full game state
-          console.log("Reconnected successfully, requesting player ID and full state");
           this.requestPlayerId();
           this.sendRequestFullState();
+          this.startPingMeasurement();
         })
         .catch((error) => {
           console.error("Reconnection attempt failed:", error);
@@ -609,7 +581,6 @@ export class ClientSocketManager {
     this.isConnecting = false; // Reset connecting flag
 
     if (this.socket) {
-      console.log("Disconnecting from game server");
       this.socket.disconnect();
       this.isDisconnected = true;
     }
@@ -619,7 +590,6 @@ export class ClientSocketManager {
    * Disable reconnection (e.g., when version mismatch or ban is detected)
    */
   public disableReconnection(): void {
-    console.log("Disabling reconnection");
     this.shouldReconnect = false;
     // Clear any pending reconnect timeout
     if (this.reconnectTimeout) {

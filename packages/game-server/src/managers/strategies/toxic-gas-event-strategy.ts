@@ -101,8 +101,6 @@ export class ToxicGasEventStrategy implements IEnvironmentalEventStrategy {
     // Clear tracking arrays and grid
     this.toxicGasClouds = [];
     this.occupiedTiles.clear();
-
-    console.log(`[EnvironmentalEvent] Toxic gas event ended - removed all clouds`);
   }
 
   private shouldTriggerToxicGas(completedWaveNumber: number): boolean {
@@ -147,8 +145,6 @@ export class ToxicGasEventStrategy implements IEnvironmentalEventStrategy {
         color: "red",
       })
     );
-
-    console.log(`[EnvironmentalEvent] Toxic gas event started with ${cloudCount} clouds`);
   }
 
   /**

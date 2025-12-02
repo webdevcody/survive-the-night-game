@@ -12,6 +12,7 @@ export interface EnvironmentConfig {
   id: string;
   category: "resource" | "structure" | "obstacle";
   assets: EnvironmentAssetConfig;
+  autoPickup?: boolean; // If true, entity will be auto-picked up (defaults to undefined/null for default behavior)
 }
 
 class EnvironmentRegistry {

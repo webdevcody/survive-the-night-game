@@ -34,6 +34,7 @@ export interface WeaponConfig extends BehaviorConfigs {
   assets: WeaponAssetConfig;
   sound?: string; // Sound file name (without .mp3 extension) to play when weapon is fired
   ammoType?: string;
+  autoPickup?: boolean; // If false, weapon will never be auto-picked up (defaults to undefined/null for default behavior)
 }
 
 class WeaponRegistry {

@@ -17,6 +17,7 @@ import { SwapInventoryItemsEvent } from "./events/swap-inventory-items";
 import { InteractEvent } from "./events/interact";
 import { ChangePlayerColorEvent } from "./events/change-player-color";
 import { SpawnZombieEvent } from "./events/spawn-zombie";
+import { VoteGameModeEvent } from "./events/vote-game-mode";
 import {
   serializeEvent,
   deserializeEvent,
@@ -49,6 +50,7 @@ const eventRegistry: Record<string, IBufferWriter> = {
   [ClientSentEvents.INTERACT]: InteractEvent,
   [ClientSentEvents.CHANGE_PLAYER_COLOR]: ChangePlayerColorEvent,
   [ClientSentEvents.SPAWN_ZOMBIE]: SpawnZombieEvent,
+  [ClientSentEvents.VOTE_GAME_MODE]: VoteGameModeEvent,
 };
 
 function isClientSentEvent(event: string): event is ClientSentEventType {

@@ -17,9 +17,7 @@ import { balanceConfig } from "@shared/config/balance-config";
 /**
  * Validate merchant buy data
  */
-function validateMerchantBuyData(
-  data: unknown
-): { merchantId: number; itemIndex: number } | null {
+function validateMerchantBuyData(data: unknown): { merchantId: number; itemIndex: number } | null {
   if (typeof data !== "object" || data === null) {
     return null;
   }
@@ -55,7 +53,7 @@ function validateMerchantBuyData(
  * Validate merchant sell data
  */
 function validateMerchantSellData(
-  data: unknown
+  data: unknown,
 ): { merchantId: number; inventorySlot: number } | null {
   if (typeof data !== "object" || data === null) {
     return null;
@@ -115,7 +113,7 @@ function isStackableItem(item: InventoryItem): boolean {
  */
 function getDefaultCountForItem(
   itemType: ItemType,
-  gameManagers: IGameManagers
+  gameManagers: IGameManagers,
 ): number | undefined {
   const entityConstructor = entityOverrideRegistry.get(itemType);
   if (!entityConstructor) {
@@ -153,7 +151,7 @@ function getDefaultCountForItem(
 export function onMerchantBuy(
   context: HandlerContext,
   socket: ISocketAdapter,
-  data: { merchantId: number; itemIndex: number }
+  data: { merchantId: number; itemIndex: number },
 ): void {
   const player = context.players.get(socket.id);
   if (!player) return;
@@ -173,9 +171,6 @@ export function onMerchantBuy(
 
   // Check if player has enough coins
   if (playerCoins < totalPrice) {
-    console.log(
-      `Player ${player.getId()} tried to buy ${selectedItem.itemType} but doesn't have enough coins`
-    );
     return;
   }
 
@@ -188,7 +183,6 @@ export function onMerchantBuy(
   if (isResourceItem(itemType)) {
     // Add directly to player's resource count (this will broadcast the pickup event)
     player.addResource(itemType as ResourceType, 1);
-    console.log(`Player ${player.getId()} bought ${itemType} for ${totalPrice} coins`);
   } else {
     // Handle regular inventory items
     // Get default count for stackable items (like ammo)
@@ -220,12 +214,7 @@ export function onMerchantBuy(
             new PlayerPickedUpItemEvent({
               playerId: player.getId(),
               itemType: itemType,
-            })
-          );
-          console.log(
-            `Player ${player.getId()} bought ${itemType} and merged with existing stack (${existingCount} + ${
-              item.state.count
-            } = ${newCount})`
+            }),
           );
         }
       }
@@ -249,11 +238,9 @@ export function onMerchantBuy(
 
           // Add entity to the world so it can be picked up
           context.getEntityManager().addEntity(droppedEntity);
-          console.log(`Dropped ${itemType} on ground for player ${player.getId()}`);
         }
       } else {
         inventory.addItem(item);
-        console.log(`Player ${player.getId()} bought ${itemType} for ${totalPrice} coins`);
       }
     }
   }
@@ -262,7 +249,7 @@ export function onMerchantBuy(
 export function onMerchantSell(
   context: HandlerContext,
   socket: ISocketAdapter,
-  data: { merchantId: number; inventorySlot: number }
+  data: { merchantId: number; inventorySlot: number },
 ): void {
   const player = context.players.get(socket.id);
   if (!player) return;
@@ -304,7 +291,6 @@ export function onMerchantSell(
   const sellPrice = Math.floor(buyPrice * 0.5);
 
   if (sellPrice <= 0) {
-    console.log(`Player ${player.getId()} tried to sell ${itemType} which has no value.`);
     return;
   }
 
@@ -312,15 +298,12 @@ export function onMerchantSell(
   const gameManagers = context.getGameManagers();
   const isStackable = isStackableItem(item);
   const defaultCount = isStackable ? getDefaultCountForItem(itemType, gameManagers) : undefined;
-  const currentCount = item.state?.count ?? (isStackable ? defaultCount ?? 1 : 1);
+  const currentCount = item.state?.count ?? (isStackable ? (defaultCount ?? 1) : 1);
 
   if (isStackable && defaultCount !== undefined) {
     // Stackable item: must have at least the default count to sell
     if (currentCount < defaultCount) {
       // Not enough to sell - player needs a full stack
-      console.log(
-        `Player ${player.getId()} tried to sell ${itemType} but only has ${currentCount}/${defaultCount} (need full stack).`
-      );
       return;
     }
 
@@ -335,14 +318,10 @@ export function onMerchantSell(
     }
     // Give coins based on sell price
     player.addCoins(sellPrice);
-    console.log(
-      `Player ${player.getId()} sold ${defaultCount} ${itemType} (${currentCount} -> ${remainingCount}) for ${sellPrice} coins.`
-    );
   } else {
     // Non-stackable item: sell entire item
     inventory.removeItem(data.inventorySlot);
     player.addCoins(sellPrice);
-    console.log(`Player ${player.getId()} sold ${itemType} for ${sellPrice} coins.`);
   }
 }
 

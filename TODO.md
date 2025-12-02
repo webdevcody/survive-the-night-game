@@ -14,6 +14,7 @@ Feel free to pick any item listed out here to work on.
 
 ## DevEx
 
+- It's a pane that have to look up an item by entity type inside its corresponding registry instead of just having like a top level registry that can figure it all out for me. refactor that system. (just combine all entities into a single registry and consolidate to single one)
 - make the serialization / deserialization uniform so that I can't accidently mess up the types and cause a giant issue with how the client deserializes and breaks
 - remove socket.io from code base
 - default stack size should be defined in configs instead on the server entities constants to make it easier to configure.

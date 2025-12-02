@@ -61,10 +61,14 @@ export function calculateSeparationForce(zombie: BaseEnemy): Vector2 {
       continue;
     }
 
+    // Calculate direction away from other zombie
+    const dx = zombiePos.x - otherPos.x;
+    const dy = zombiePos.y - otherPos.y;
+
     // Inverse distance weighting - closer zombies have stronger repulsion
-    const weight = 1 / distance;
-    const normalizedDx = dx / distance;
-    const normalizedDy = dy / distance;
+    const weight = 1 / dist;
+    const normalizedDx = dx / dist;
+    const normalizedDy = dy / dist;
 
     separationX += normalizedDx * weight;
     separationY += normalizedDy * weight;

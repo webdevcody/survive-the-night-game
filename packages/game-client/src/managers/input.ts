@@ -27,7 +27,7 @@ export interface InputManagerOptions {
   onShowPlayerList?: () => void;
   onHidePlayerList?: () => void;
   onToggleChat?: () => void;
-  onChatInput?: (key: string) => void;
+  onChatInput?: (key: string, shiftKey: boolean) => void;
   onSendChat?: () => void;
   onToggleMute?: () => void;
   onToggleMap?: () => void;
@@ -178,7 +178,7 @@ export class InputManager {
           e.preventDefault();
         }
 
-        callbacks.onChatInput?.(e.key);
+        callbacks.onChatInput?.(e.key, e.shiftKey);
         return; // Block all other inputs when chatting
       }
 

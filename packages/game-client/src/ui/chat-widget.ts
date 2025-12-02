@@ -1,5 +1,6 @@
 import { GameState, getEntityById } from "@/state";
 import { PlayerClient } from "@/entities/player";
+import { CommandAutocomplete } from "./command-autocomplete";
 
 const CHAT_FONT_SIZE = 18;
 const CHAT_FONT_FAMILY = "Arial";
@@ -20,13 +21,16 @@ export class ChatWidget {
   private chatMessages: ChatMessage[] = [];
   private messageHistory: string[] = [];
   private historyIndex: number = -1;
+  private autocomplete: CommandAutocomplete;
   private readonly CHAT_MESSAGE_TIMEOUT = 10000;
   private readonly MAX_MESSAGE_LENGTH = 60;
   private readonly MAX_HISTORY_LENGTH = 50;
   private readonly CHAT_WIDTH = 840;
   private readonly CHARS_PER_LINE = 100;
 
-  constructor() {}
+  constructor() {
+    this.autocomplete = new CommandAutocomplete();
+  }
 
   public update(): void {
     // Clean up old messages
@@ -40,23 +44,59 @@ export class ChatWidget {
     this.showChatInput = !this.showChatInput;
     if (!this.showChatInput) {
       this.chatInput = ""; // Clear input when closing
+      this.autocomplete.reset(); // Reset autocomplete when closing
     } else {
       // Reset history navigation when opening chat
       this.historyIndex = -1;
     }
   }
 
-  public updateChatInput(key: string): void {
+  public updateChatInput(key: string, shiftKey: boolean = false): void {
     if (!this.showChatInput) return;
+
+    // Handle Tab for autocomplete
+    if (key === "Tab") {
+      const completed = shiftKey
+        ? this.autocomplete.handleShiftTab(this.chatInput)
+        : this.autocomplete.handleTab(this.chatInput);
+      if (completed !== null) {
+        this.chatInput = completed;
+      }
+      return;
+    }
+
+    // Handle Escape to close autocomplete suggestions
+    if (key === "Escape" && this.autocomplete.isActive()) {
+      this.autocomplete.reset();
+      return;
+    }
 
     if (key === "Backspace") {
       this.chatInput = this.chatInput.slice(0, -1);
+      this.autocomplete.handleInput(this.chatInput);
     } else if (key === "ArrowUp") {
-      this.navigateHistory(1);
+      // If autocomplete is active, navigate suggestions; otherwise navigate history
+      if (this.autocomplete.isActive()) {
+        const completed = this.autocomplete.handleArrowUp();
+        if (completed !== null) {
+          this.chatInput = completed;
+        }
+      } else {
+        this.navigateHistory(1);
+      }
     } else if (key === "ArrowDown") {
-      this.navigateHistory(-1);
+      // If autocomplete is active, navigate suggestions; otherwise navigate history
+      if (this.autocomplete.isActive()) {
+        const completed = this.autocomplete.handleArrowDown();
+        if (completed !== null) {
+          this.chatInput = completed;
+        }
+      } else {
+        this.navigateHistory(-1);
+      }
     } else if (key.length === 1 && this.chatInput.length < this.MAX_MESSAGE_LENGTH) {
       this.chatInput += key;
+      this.autocomplete.handleInput(this.chatInput);
       // Reset history navigation when user types
       this.historyIndex = -1;
     }
@@ -119,6 +159,7 @@ export class ChatWidget {
   public render(ctx: CanvasRenderingContext2D, gameState: GameState): void {
     this.renderChatMessages(ctx, gameState);
     this.renderChatInput(ctx);
+    this.renderAutocompleteSuggestions(ctx);
   }
 
   private wrapText(text: string): string[] {
@@ -271,6 +312,60 @@ export class ChatWidget {
       ctx.fillStyle = "rgba(255, 255, 255, 0.5)";
       ctx.fillText(charCount, x + width - charCountWidth - 10, textY);
     }
+  }
+
+  private renderAutocompleteSuggestions(ctx: CanvasRenderingContext2D): void {
+    if (!this.showChatInput || !this.autocomplete.isActive()) return;
+
+    const suggestions = this.autocomplete.getSuggestions();
+    const selectedIndex = this.autocomplete.getSelectedIndex();
+
+    if (suggestions.length === 0) return;
+
+    const width = this.CHAT_WIDTH;
+    const x = (ctx.canvas.width - width) / 2;
+
+    const lineHeight = 28;
+    const padding = 8;
+    const hintHeight = 24; // Space for the hint text at the bottom
+    const height = suggestions.length * lineHeight + padding * 2 + hintHeight;
+
+    // Position above the chat input instead of below
+    const y = ctx.canvas.height - CHAT_BOTTOM_MARGIN - height - 4;
+
+    // Draw background
+    ctx.fillStyle = "rgba(30, 30, 30, 0.95)";
+    this.roundRect(ctx, x, y, width, height, 8);
+    ctx.fill();
+
+    // Draw border
+    ctx.strokeStyle = "rgba(100, 100, 100, 0.8)";
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    this.roundRect(ctx, x, y, width, height, 8);
+    ctx.stroke();
+
+    // Draw suggestions
+    ctx.font = `${CHAT_FONT_SIZE}px ${CHAT_MONOSPACE_FONT_FAMILY}`;
+
+    suggestions.forEach((suggestion, index) => {
+      const itemY = y + padding + index * lineHeight;
+
+      // Highlight selected item
+      if (index === selectedIndex) {
+        ctx.fillStyle = "rgba(60, 120, 200, 0.5)";
+        ctx.fillRect(x + 4, itemY, width - 8, lineHeight);
+      }
+
+      // Draw suggestion text
+      ctx.fillStyle = index === selectedIndex ? "white" : "rgba(200, 200, 200, 0.9)";
+      ctx.fillText(suggestion, x + padding, itemY + lineHeight / 2 + 6);
+    });
+
+    // Draw hint at bottom with more spacing
+    ctx.fillStyle = "rgba(150, 150, 150, 0.7)";
+    ctx.font = `12px ${CHAT_FONT_FAMILY}`;
+    ctx.fillText("↑↓ or Tab to cycle, Escape to close", x + padding, y + height - 8);
   }
 
   // Helper method for drawing rounded rectangles

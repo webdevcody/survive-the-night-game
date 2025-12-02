@@ -235,8 +235,6 @@ export class GameLoop {
     this.votingEndTime = Date.now() + getConfig().voting.VOTING_DURATION;
     this.votes.clear();
     this.voteCounts = { waves: 0, battle_royale: 0, infection: 0 };
-    const votingSeconds = getConfig().voting.VOTING_DURATION / 1000;
-    console.log(`Voting phase started. Players have ${votingSeconds} seconds to vote.`);
   }
 
   public registerVote(socketId: string, playerId: number, mode: VotableGameMode): void {
@@ -258,7 +256,6 @@ export class GameLoop {
     // Register new vote
     this.votes.set(socketId, mode);
     this.voteCounts[mode]++;
-    console.log(`Player ${playerId} voted for ${mode}. Current votes:`, this.voteCounts);
   }
 
   private getWinningMode(): VotableGameMode {
@@ -280,7 +277,6 @@ export class GameLoop {
 
     // Random selection on tie
     const winner = winners[Math.floor(Math.random() * winners.length)];
-    console.log(`Voting ended. Winner: ${winner} (votes: ${this.voteCounts[winner]})`);
     return winner;
   }
 
@@ -304,7 +300,6 @@ export class GameLoop {
       strategy = new WavesModeStrategy();
     }
 
-    console.log(`Starting new game with mode: ${winningMode}`);
     this.startNewGame(strategy);
   }
 
@@ -327,14 +322,10 @@ export class GameLoop {
   }
 
   private onPreparationStart(): void {
-    console.log(`Preparation for wave ${this.waveNumber} started`);
-
     // Merchant shop items are now static and don't need to be reset
   }
 
   private onWaveStart(): void {
-    console.log(`Wave ${this.waveNumber} started`);
-
     // Remove all unrescued survivors at wave start
     const survivors = this.entityManager.getEntitiesByType(Entities.SURVIVOR);
     let removedCount = 0;
@@ -343,9 +334,6 @@ export class GameLoop {
         this.entityManager.removeEntity(survivor.getId());
         removedCount++;
       }
-    }
-    if (removedCount > 0) {
-      console.log(`Removed ${removedCount} unrescued survivor(s) at wave start`);
     }
 
     // Spawn crate on even waves (2, 4, 6, etc.) at a random biome
@@ -385,8 +373,6 @@ export class GameLoop {
   }
 
   private onWaveComplete(): void {
-    console.log(`Wave ${this.waveNumber} completed`);
-
     // Broadcast wave complete message
     this.socketManager.broadcastEvent(
       new GameMessageEvent({
@@ -408,7 +394,6 @@ export class GameLoop {
 
     // Check for environmental events
     if (this.environmentalEventManager) {
-      console.log(`Checking for environmental events on wave ${this.waveNumber}`);
       this.environmentalEventManager.onWaveComplete(this.waveNumber);
     }
 
@@ -503,7 +488,6 @@ export class GameLoop {
         if (elapsedTime >= this.phaseDuration) {
           if (getConfig().wave.AUTO_START_WAVES) {
             // Automatically start wave
-            console.log(`[WAVE] Preparation complete. Starting Wave ${this.waveNumber}`);
             this.waveState = WaveState.ACTIVE;
             this.phaseStartTime = currentTime;
             this.phaseDuration = getConfig().wave.WAVE_DURATION;
@@ -516,11 +500,6 @@ export class GameLoop {
         // Check if wave duration is up
         if (elapsedTime >= this.phaseDuration) {
           // Wave time expired, transition directly to preparation
-          console.log(
-            `[WAVE] Wave ${this.waveNumber} complete. Starting preparation for Wave ${
-              this.waveNumber + 1
-            }`
-          );
           this.onWaveComplete();
           this.waveState = WaveState.PREPARATION;
           this.phaseStartTime = currentTime;
@@ -531,7 +510,6 @@ export class GameLoop {
 
       case WaveState.COMPLETED:
         // This state should not be reached, but handle it just in case
-        console.log(`[WAVE] WARNING: COMPLETED state reached, transitioning to PREPARATION`);
         this.waveState = WaveState.PREPARATION;
         this.phaseStartTime = currentTime;
         this.phaseDuration = getConfig().wave.PREPARATION_DURATION;
@@ -539,7 +517,6 @@ export class GameLoop {
         break;
 
       default:
-        console.log(`[WAVE] WARNING: Unknown wave state: ${this.waveState}`);
         break;
     }
   }
@@ -554,7 +531,6 @@ export class GameLoop {
   }
 
   public endGame(result?: WinConditionResult): void {
-    console.log("Game over:", result?.message || "No message");
     this.isGameOver = true;
 
     // Notify strategy of game end
@@ -571,11 +547,18 @@ export class GameLoop {
       })
     );
 
-    // Start voting phase after showing game over for 3 seconds
-    setTimeout(() => {
-      console.log("Starting voting phase...");
-      this.startVotingPhase();
-    }, getConfig().voting.GAME_OVER_DISPLAY_DURATION);
+    // Check if game modes voting is enabled
+    if (getConfig().voting.ENABLE_GAME_MODES) {
+      // Start voting phase after showing game over
+      setTimeout(() => {
+        this.startVotingPhase();
+      }, getConfig().voting.GAME_OVER_DISPLAY_DURATION);
+    } else {
+      // Game modes disabled - restart with waves mode after 5 seconds
+      setTimeout(() => {
+        this.startNewGame(new WavesModeStrategy());
+      }, 5000);
+    }
   }
 
   private trackPerformance(updateStartTime: number) {

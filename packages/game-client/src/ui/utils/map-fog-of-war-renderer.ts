@@ -35,6 +35,11 @@ export function renderMinimapFogOfWar(
   const scaledGridSize = gridSize * (canvasWidth / 1920); // Scale based on canvas width
   const tilesPerRow = Math.ceil(scaledSize / scaledGridSize);
 
+  // Pre-calculate rounded values to avoid sub-pixel gaps
+  const roundedGridSize = Math.ceil(scaledGridSize);
+  // Add 1 pixel overlap to eliminate gaps between tiles
+  const drawSize = roundedGridSize + 1;
+
   const poolManager = PoolManager.getInstance();
   for (let ty = 0; ty < tilesPerRow; ty++) {
     for (let tx = 0; tx < tilesPerRow; tx++) {
@@ -56,13 +61,13 @@ export function renderMinimapFogOfWar(
 
       // Check if this world position is visible
       if (!isPositionVisible(worldPosVec, lightSources)) {
-        // Draw fog tile
+        // Draw fog tile - use Math.floor for position and overlap for size to prevent gaps
         ctx.fillStyle = settings.fogColor;
         ctx.fillRect(
-          minimapX - scaledGridSize / 2,
-          minimapY - scaledGridSize / 2,
-          scaledGridSize,
-          scaledGridSize
+          Math.floor(minimapX - scaledGridSize / 2),
+          Math.floor(minimapY - scaledGridSize / 2),
+          drawSize,
+          drawSize
         );
       }
       poolManager.vector2.release(worldPosVec);

@@ -4,6 +4,8 @@ import { distance } from "@shared/util/physics";
 import { AIStateHandler, AIStateContext } from "./base-state";
 import { AI_CONFIG } from "../ai-config";
 import Positionable from "@/extensions/positionable";
+import Destructible from "@/extensions/destructible";
+import { Player } from "@/entities/players/player";
 import { getEffectiveShootingRange, aimAtTarget, aimAtTargetWithInaccuracy } from "../ai-utils";
 
 /**
@@ -14,6 +16,20 @@ export class HuntStateHandler implements AIStateHandler {
     // If we have a player target in range, shoot at them
     if (context.currentTarget?.type === "player" && context.currentTarget.entity) {
       const enemy = context.currentTarget.entity;
+
+      // Check if target is dead - clear target and find new one
+      const isTargetDead = enemy instanceof Player
+        ? enemy.isDead()
+        : (enemy.hasExt(Destructible) && enemy.getExt(Destructible).isDead());
+
+      if (isTargetDead) {
+        context.setCurrentTarget(null);
+        // Move toward waypoint to find new target
+        context.moveTowardWaypoint(input, playerPos);
+        input.sprint = context.shouldSprint(false);
+        return;
+      }
+
       if (enemy.hasExt(Positionable)) {
         const enemyPos = enemy.getExt(Positionable).getCenterPosition();
         const dist = distance(playerPos, enemyPos);

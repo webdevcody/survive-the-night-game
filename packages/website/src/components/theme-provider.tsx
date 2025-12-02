@@ -40,16 +40,14 @@ export function ThemeProvider({ children, ...props }: ThemeProviderProps) {
   const setThemeMutation = useSetTheme();
 
   useEffect(() => {
-    window
-      .matchMedia("(prefers-color-scheme: dark)")
-      .addEventListener("change", (event) => {
-        if (themeQuery.data === "system") {
-          const newColorScheme = event.matches ? "dark" : "light";
-          const root = window.document.documentElement;
-          root.classList.remove("light", "dark");
-          root.classList.add(newColorScheme);
-        }
-      });
+    window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", (event) => {
+      if (themeQuery.data === "system") {
+        const newColorScheme = event.matches ? "dark" : "light";
+        const root = window.document.documentElement;
+        root.classList.remove("light", "dark");
+        root.classList.add(newColorScheme);
+      }
+    });
   }, [themeQuery.data]);
 
   useEffect(() => {
@@ -59,8 +57,7 @@ export function ThemeProvider({ children, ...props }: ThemeProviderProps) {
     root.classList.remove("light", "dark");
 
     if (theme === "system") {
-      const systemTheme = window.matchMedia("(prefers-color-scheme: dark)")
-        .matches
+      const systemTheme = window.matchMedia("(prefers-color-scheme: dark)").matches
         ? "dark"
         : "light";
 
@@ -74,14 +71,13 @@ export function ThemeProvider({ children, ...props }: ThemeProviderProps) {
   const value = {
     theme: themeQuery.data as Theme,
     setTheme: (theme: Theme) => {
-      console.log("setting theme", theme);
       setThemeMutation.mutate(
         { data: { theme } },
         {
           onSuccess: () => {
             themeQuery.refetch();
           },
-        }
+        },
       );
     },
   };
@@ -96,8 +92,7 @@ export function ThemeProvider({ children, ...props }: ThemeProviderProps) {
 export const useTheme = () => {
   const context = useContext(ThemeProviderContext);
 
-  if (context === undefined)
-    throw new Error("useTheme must be used within a ThemeProvider");
+  if (context === undefined) throw new Error("useTheme must be used within a ThemeProvider");
 
   return context;
 };

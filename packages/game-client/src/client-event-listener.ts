@@ -78,10 +78,10 @@ export class ClientEventListener {
     // Set up event listeners first, before requesting state
     // Create initialization context fresh each time to get current state values
     this.socketManager.on(ServerSentEvents.GAME_STATE_UPDATE, (e) =>
-      onGameStateUpdate(this.createInitializationContext(), e)
+      onGameStateUpdate(this.createInitializationContext(), e),
     );
     this.socketManager.on(ServerSentEvents.YOUR_ID, (e) =>
-      onYourId(this.createInitializationContext(), e)
+      onYourId(this.createInitializationContext(), e),
     );
 
     this.socketManager.on(ServerSentEvents.PLAYER_HURT, (e) => onPlayerHurt(context, e));
@@ -105,18 +105,18 @@ export class ClientEventListener {
     this.socketManager.on(ServerSentEvents.LOOT, (e) => onLoot(context, e));
     this.socketManager.on(ServerSentEvents.COIN_PICKUP, (e) => onCoinPickup(context, e));
     this.socketManager.on(ServerSentEvents.PLAYER_DROPPED_ITEM, (e) =>
-      onPlayerDroppedItem(context, e)
+      onPlayerDroppedItem(context, e),
     );
     this.socketManager.on(ServerSentEvents.PLAYER_PICKED_UP_ITEM, (e) =>
-      onPlayerPickedUpItem(context, e)
+      onPlayerPickedUpItem(context, e),
     );
     this.socketManager.on(ServerSentEvents.PLAYER_PICKED_UP_RESOURCE, (e) =>
-      onPlayerPickedUpResource(context, e)
+      onPlayerPickedUpResource(context, e),
     );
 
     this.socketManager.on(ServerSentEvents.GAME_OVER, (e) => onGameOver(context, e));
     this.socketManager.on(ServerSentEvents.GAME_STARTED, (e) =>
-      onGameStarted(this.createInitializationContext(), e)
+      onGameStarted(this.createInitializationContext(), e),
     );
     this.socketManager.on(ServerSentEvents.SERVER_UPDATING, (e) => onServerUpdating(context, e));
     this.socketManager.on(ServerSentEvents.PONG, (e) => onPong(context, e));
@@ -166,7 +166,6 @@ export class ClientEventListener {
         }
         if (value) {
           const suffix = reason ? ` (${reason})` : "";
-          console.log(`[ClientEventListener] Initial full state ready${suffix}`);
           this.clearFullStateRequestTimer("Initial full state applied");
         } else {
           this.invalidateInitialState(reason ?? "Initial state flag reset");
@@ -194,7 +193,6 @@ export class ClientEventListener {
   }
 
   private requestFullState(reason: string = "manual"): void {
-    console.log(`[ClientEventListener] Requesting full state (${reason})`);
     this.lastFullStateRequestReason = reason;
     const now = typeof performance !== "undefined" ? performance.now() : Date.now();
     this.lastFullStateRequestAt = now;
@@ -217,7 +215,7 @@ export class ClientEventListener {
         this.lastFullStateRequestAt !== null ? Math.round(now - this.lastFullStateRequestAt) : null;
       const elapsedLabel = elapsed !== null ? ` (${elapsed}ms elapsed)` : "";
       console.warn(
-        `[ClientEventListener] Still waiting for full state${elapsedLabel}. Retrying request...`
+        `[ClientEventListener] Still waiting for full state${elapsedLabel}. Retrying request...`,
       );
       this.socketManager.sendRequestFullState();
       this.scheduleFullStateTimeout();
@@ -229,19 +227,11 @@ export class ClientEventListener {
       clearTimeout(this.fullStateRequestTimer);
       this.fullStateRequestTimer = null;
     }
-    if (message) {
-      console.log(`[ClientEventListener] ${message}`);
-    }
     this.lastFullStateRequestAt = null;
     this.lastFullStateRequestReason = null;
   }
 
   private invalidateInitialState(reason: string = "unspecified"): void {
-    if (this.hasReceivedInitialState) {
-      console.warn(`[ClientEventListener] Initial state invalidated: ${reason}`);
-    } else {
-      console.log(`[ClientEventListener] Waiting for initial state (${reason})`);
-    }
     this.hasReceivedInitialState = false;
     this.interpolation.reset();
     this.clearFullStateRequestTimer();
@@ -252,8 +242,6 @@ export class ClientEventListener {
    * Used when a new game starts (players get new entity IDs) or on reconnection.
    */
   private resetAndRequestInitialization(reason: string): void {
-    console.log(`[ClientEventListener] Resetting initialization: ${reason}`);
-
     // Reset both flags - we need fresh player ID and full state
     this.hasReceivedPlayerId = false;
     this.hasReceivedInitialState = false;
@@ -261,7 +249,6 @@ export class ClientEventListener {
     this.clearFullStateRequestTimer();
 
     // Request both player ID and full state
-    console.log(`[ClientEventListener] Requesting player ID (${reason})`);
     this.socketManager.requestPlayerId();
     this.requestFullState(reason);
 

@@ -1,4 +1,3 @@
-import { Tree } from "@/entities/items/tree";
 import { Boundary } from "@/entities/environment/boundary";
 import { Car } from "@/entities/environment/car";
 import { Zombie } from "@/entities/enemies/zombie";
@@ -9,12 +8,7 @@ import Vector2 from "@/util/vector2";
 import { IEntity } from "@/entities/types";
 import PoolManager from "@shared/util/pool-manager";
 import { distance } from "@/util/physics";
-import { BigZombie } from "@/entities/enemies/big-zombie";
-import { FastZombie } from "@/entities/enemies/fast-zombie";
-import { BatZombie } from "@/entities/enemies/bat-zombie";
-import { BossZombie } from "@/entities/enemies/boss-zombie";
 import { GameMaster } from "@/managers/game-master";
-import { SpitterZombie } from "@/entities/enemies/spitter-zombie";
 import { ZombieFactory } from "@/util/zombie-factory";
 import { Merchant } from "@/entities/environment/merchant";
 import {
@@ -34,7 +28,6 @@ import {
 import type { BiomeData } from "@/world/biomes/types";
 import type { MapData } from "../../../game-shared/src/events/server-sent/events/map-event";
 import { getConfig } from "@/config";
-import { itemRegistry, weaponRegistry, resourceRegistry } from "@shared/entities";
 import { entityBlocksPlacement } from "@shared/entities/decal-registry";
 import { Entities, getZombieTypesSet } from "@shared/constants";
 import { balanceConfig } from "@shared/config/balance-config";
@@ -59,9 +52,7 @@ const CAR_TILE_ID_RIGHT = 266;
 const MERCHANT_TILE_ID = 255;
 
 // Spawn configuration
-const SPAWN_RADIUS_TILES = 4;
 const IDLE_ZOMBIE_SPAWN_CHANCE = 0.01;
-const MERCHANT_BIOME_COUNT = 2;
 
 // Survivor spawn configuration
 const SURVIVOR_SPAWN_PROBABILITY = 0.5;
@@ -161,9 +152,6 @@ export class MapManager implements IMapManager {
     }
 
     const zombieDistribution = this.gameMaster.getNumberOfZombies(waveNumber);
-    const zombiesToSpawn = zombieDistribution.total;
-
-    console.log("Spawning zombies", zombiesToSpawn);
 
     // Get campsite biome position (center biome)
     const centerBiomeX = Math.floor(MAP_SIZE / 2);
@@ -172,7 +160,7 @@ export class MapManager implements IMapManager {
     // Get all valid spawn locations in the 8 forest biomes surrounding the campsite
     let spawnLocations = this.selectCampsiteSurroundingBiomeSpawnLocations(
       centerBiomeX,
-      centerBiomeY
+      centerBiomeY,
     );
 
     if (spawnLocations.length === 0) {
@@ -256,13 +244,7 @@ export class MapManager implements IMapManager {
       console.error(
         `Zombie count mismatch! Expected: ${expectedTotal}, Actual: ${actualTotal}. ` +
           `Distribution: regular=${totalSpawned.regular}, fast=${totalSpawned.fast}, ` +
-          `big=${totalSpawned.big}, bat=${totalSpawned.bat}, spitter=${totalSpawned.spitter}`
-      );
-    } else {
-      console.log(
-        `Successfully spawned exactly ${actualTotal} zombies: ` +
-          `regular=${totalSpawned.regular}, fast=${totalSpawned.fast}, ` +
-          `big=${totalSpawned.big}, bat=${totalSpawned.bat}, spitter=${totalSpawned.spitter}`
+          `big=${totalSpawned.big}, bat=${totalSpawned.bat}, spitter=${totalSpawned.spitter}`,
       );
     }
   }
@@ -273,7 +255,7 @@ export class MapManager implements IMapManager {
    */
   private selectCampsiteSurroundingBiomeSpawnLocations(
     campsiteBiomeX: number,
-    campsiteBiomeY: number
+    campsiteBiomeY: number,
   ): Array<{ x: number; y: number }> {
     const spawnLocations: Array<{ x: number; y: number }> = [];
 
@@ -315,7 +297,7 @@ export class MapManager implements IMapManager {
   private selectZombieSpawnLocations(
     count: number,
     centerBiomeX: number,
-    centerBiomeY: number
+    centerBiomeY: number,
   ): Array<{ biomeX: number; biomeY: number }> {
     const validBiomes: Array<{ biomeX: number; biomeY: number }> = [];
 
@@ -347,7 +329,7 @@ export class MapManager implements IMapManager {
    */
   private spawnZombieAtLocation(
     location: { x: number; y: number },
-    zombieType: "regular" | "fast" | "big" | "bat" | "spitter"
+    zombieType: "regular" | "fast" | "big" | "bat" | "spitter",
   ): void {
     ZombieFactory.spawnZombieAtLocation(zombieType, location, this.getGameManagers());
   }
@@ -357,7 +339,7 @@ export class MapManager implements IMapManager {
    */
   public spawnZombiesAroundCampsite(
     zombieType: "regular" | "fast" | "big" | "bat" | "spitter",
-    count: number
+    count: number,
   ): void {
     // Get campsite biome position (center biome)
     const centerBiomeX = Math.floor(MAP_SIZE / 2);
@@ -366,7 +348,7 @@ export class MapManager implements IMapManager {
     // Get all valid spawn locations in the 8 forest biomes surrounding the campsite
     let spawnLocations = this.selectCampsiteSurroundingBiomeSpawnLocations(
       centerBiomeX,
-      centerBiomeY
+      centerBiomeY,
     );
 
     if (spawnLocations.length === 0) {
@@ -389,179 +371,20 @@ export class MapManager implements IMapManager {
           x,
           y,
         },
-        zombieType
+        zombieType,
       );
     }
 
     if (zombiesToSpawn < count) {
       console.warn(
-        `Could not spawn all ${count} zombies around campsite. Only ${zombiesToSpawn} valid positions available.`
-      );
-    } else {
-      console.log(`Successfully spawned ${zombiesToSpawn} ${zombieType} zombies around campsite.`);
-    }
-  }
-
-  private spawnZombieGroupAtLocation(
-    location: { x?: number; y?: number; biomeX?: number; biomeY?: number },
-    distribution: {
-      regular: number;
-      fast: number;
-      big: number;
-      bat: number;
-      spitter: number;
-    },
-    totalSize: number
-  ) {
-    let spawnedCount = {
-      regular: 0,
-      fast: 0,
-      big: 0,
-      bat: 0,
-      spitter: 0,
-    };
-
-    const totalZombies =
-      distribution.regular +
-      distribution.fast +
-      distribution.big +
-      distribution.bat +
-      distribution.spitter;
-
-    // Support both pixel coordinates (x, y) and biome coordinates (biomeX, biomeY)
-    let centerTileX: number;
-    let centerTileY: number;
-
-    if (location.x !== undefined && location.y !== undefined) {
-      // Convert pixel coordinates to tile coordinates
-      centerTileX = Math.floor(location.x / getConfig().world.TILE_SIZE);
-      centerTileY = Math.floor(location.y / getConfig().world.TILE_SIZE);
-    } else if (location.biomeX !== undefined && location.biomeY !== undefined) {
-      // Use biome coordinates
-      centerTileX = location.biomeX * BIOME_SIZE + Math.floor(BIOME_SIZE / 2);
-      centerTileY = location.biomeY * BIOME_SIZE + Math.floor(BIOME_SIZE / 2);
-    } else {
-      throw new Error("Invalid location: must provide either (x, y) or (biomeX, biomeY)");
-    }
-
-    // Create a spawn area around the center point (8x8 tiles)
-    const spawnAreaStartX = Math.max(0, centerTileX - SPAWN_RADIUS_TILES);
-    const spawnAreaStartY = Math.max(0, centerTileY - SPAWN_RADIUS_TILES);
-    const spawnAreaEndX = Math.min(totalSize, centerTileX + SPAWN_RADIUS_TILES);
-    const spawnAreaEndY = Math.min(totalSize, centerTileY + SPAWN_RADIUS_TILES);
-
-    // Collect all valid spawn positions in the spawn area
-    // This ensures we don't spawn on top of existing zombies or each other
-    const validSpawnPositions: Array<{ x: number; y: number }> = [];
-    const poolManager = PoolManager.getInstance();
-    const { TILE_SIZE } = getConfig().world;
-
-    for (let y = spawnAreaStartY; y < spawnAreaEndY; y++) {
-      for (let x = spawnAreaStartX; x < spawnAreaEndX; x++) {
-        // Skip if not on valid ground tile
-        const groundTile = this.groundLayer[y]?.[x];
-        const isValidGround =
-          groundTile === GROUND_TILE_ID_1 ||
-          groundTile === GROUND_TILE_ID_2 ||
-          groundTile === GROUND_TILE_ID_3 ||
-          groundTile === GROUND_TILE_ID_4;
-        const hasCollidable = this.collidablesLayer[y]?.[x] !== EMPTY_COLLIDABLE_TILE_ID;
-
-        if (!isValidGround || hasCollidable) {
-          continue;
-        }
-
-        // Check if there's already a zombie or other entity at this position
-        const position = poolManager.vector2.claim(x * TILE_SIZE, y * TILE_SIZE);
-        if (this.isPositionValidForPlacement(position, true)) {
-          validSpawnPositions.push({ x, y });
-        }
-        poolManager.vector2.release(position);
-      }
-    }
-
-    // Shuffle the valid positions for random selection
-    for (let i = validSpawnPositions.length - 1; i > 0; i--) {
-      const j = Math.floor(Math.random() * (i + 1));
-      [validSpawnPositions[i], validSpawnPositions[j]] = [
-        validSpawnPositions[j],
-        validSpawnPositions[i],
-      ];
-    }
-
-    // Spawn zombies at valid positions
-    let positionIndex = 0;
-    while (
-      positionIndex < validSpawnPositions.length &&
-      (spawnedCount.regular < distribution.regular ||
-        spawnedCount.fast < distribution.fast ||
-        spawnedCount.big < distribution.big ||
-        spawnedCount.bat < distribution.bat ||
-        spawnedCount.spitter < distribution.spitter)
-    ) {
-      const { x, y } = validSpawnPositions[positionIndex++];
-
-      // Determine which type of zombie to spawn based on remaining counts
-      if (spawnedCount.bat < distribution.bat) {
-        ZombieFactory.spawnZombieAtLocation(
-          "bat",
-          { x: x * getConfig().world.TILE_SIZE, y: y * getConfig().world.TILE_SIZE },
-          this.getGameManagers()
-        );
-        spawnedCount.bat++;
-      } else if (spawnedCount.big < distribution.big) {
-        ZombieFactory.spawnZombieAtLocation(
-          "big",
-          { x: x * getConfig().world.TILE_SIZE, y: y * getConfig().world.TILE_SIZE },
-          this.getGameManagers()
-        );
-        spawnedCount.big++;
-      } else if (spawnedCount.fast < distribution.fast) {
-        ZombieFactory.spawnZombieAtLocation(
-          "fast",
-          { x: x * getConfig().world.TILE_SIZE, y: y * getConfig().world.TILE_SIZE },
-          this.getGameManagers()
-        );
-        spawnedCount.fast++;
-      } else if (spawnedCount.regular < distribution.regular) {
-        ZombieFactory.spawnZombieAtLocation(
-          "regular",
-          { x: x * getConfig().world.TILE_SIZE, y: y * getConfig().world.TILE_SIZE },
-          this.getGameManagers()
-        );
-        spawnedCount.regular++;
-      } else if (spawnedCount.spitter < distribution.spitter) {
-        ZombieFactory.spawnZombieAtLocation(
-          "spitter",
-          { x: x * getConfig().world.TILE_SIZE, y: y * getConfig().world.TILE_SIZE },
-          this.getGameManagers()
-        );
-        spawnedCount.spitter++;
-      }
-    }
-
-    // Warn if we couldn't spawn all zombies due to lack of valid positions
-    if (
-      positionIndex >= validSpawnPositions.length &&
-      (spawnedCount.regular < distribution.regular ||
-        spawnedCount.fast < distribution.fast ||
-        spawnedCount.big < distribution.big ||
-        spawnedCount.bat < distribution.bat ||
-        spawnedCount.spitter < distribution.spitter)
-    ) {
-      const locStr =
-        location.x !== undefined
-          ? `(${location.x}, ${location.y})`
-          : `biome (${location.biomeX}, ${location.biomeY})`;
-      console.warn(
-        `Could not spawn all zombies at location ${locStr}. Only ${validSpawnPositions.length} valid positions available.`
+        `Could not spawn all ${count} zombies around campsite. Only ${zombiesToSpawn} valid positions available.`,
       );
     }
   }
 
   private spawnBossIfNeeded(
     waveNumber: number,
-    spawnLocations: Array<{ x: number; y: number }>
+    spawnLocations: Array<{ x: number; y: number }>,
   ): void {
     const bossWaveMapping = getConfig().wave.BOSS_WAVE_MAPPING as Record<number, string>;
     const bossType = bossWaveMapping[waveNumber];
@@ -627,7 +450,7 @@ export class MapManager implements IMapManager {
     this.getEntityManager().clear();
     this.getEntityManager().setMapSize(
       width * getConfig().world.TILE_SIZE,
-      height * getConfig().world.TILE_SIZE
+      height * getConfig().world.TILE_SIZE,
     );
     this.groundLayer = Array(height)
       .fill(EMPTY_GROUND_TILE_VALUE)
@@ -661,7 +484,7 @@ export class MapManager implements IMapManager {
   private generateSpatialGrid() {
     this.getEntityManager().setMapSize(
       BIOME_SIZE * MAP_SIZE * getConfig().world.TILE_SIZE,
-      BIOME_SIZE * MAP_SIZE * getConfig().world.TILE_SIZE
+      BIOME_SIZE * MAP_SIZE * getConfig().world.TILE_SIZE,
     );
   }
 
@@ -693,7 +516,7 @@ export class MapManager implements IMapManager {
   private isAdjacentToSpecialBiome(
     biomeX: number,
     biomeY: number,
-    specialBiomes: Array<{ x: number; y: number } | undefined>
+    specialBiomes: Array<{ x: number; y: number } | undefined>,
   ): boolean {
     // Check all 8 adjacent positions (cardinal + diagonal)
     const adjacentOffsets = [
@@ -722,7 +545,7 @@ export class MapManager implements IMapManager {
    * @returns A random valid position, or undefined if no valid positions exist
    */
   private selectRandomBiomePosition(
-    excludedPositions: Array<{ x: number; y: number } | undefined>
+    excludedPositions: Array<{ x: number; y: number } | undefined>,
   ): { x: number; y: number } | undefined {
     const centerBiomeX = Math.floor(MAP_SIZE / 2);
     const centerBiomeY = Math.floor(MAP_SIZE / 2);
@@ -743,7 +566,7 @@ export class MapManager implements IMapManager {
 
         // Skip any excluded positions
         const isExcluded = excludedPositions.some(
-          (pos) => pos && pos.x === biomeX && pos.y === biomeY
+          (pos) => pos && pos.x === biomeX && pos.y === biomeY,
         );
         if (isExcluded) {
           continue;
@@ -835,7 +658,7 @@ export class MapManager implements IMapManager {
               const car = new Car(this.getGameManagers());
               const carPosition = PoolManager.getInstance().vector2.claim(
                 x * getConfig().world.TILE_SIZE,
-                y * getConfig().world.TILE_SIZE
+                y * getConfig().world.TILE_SIZE,
               );
               car.getExt(Positionable).setPosition(carPosition);
               this.getEntityManager().addEntity(car);
@@ -851,8 +674,8 @@ export class MapManager implements IMapManager {
             boundary.setPosition(
               PoolManager.getInstance().vector2.claim(
                 x * getConfig().world.TILE_SIZE,
-                y * getConfig().world.TILE_SIZE
-              )
+                y * getConfig().world.TILE_SIZE,
+              ),
             );
             this.getEntityManager().addEntity(boundary);
           }
@@ -872,8 +695,8 @@ export class MapManager implements IMapManager {
           merchant.setPosition(
             PoolManager.getInstance().vector2.claim(
               x * getConfig().world.TILE_SIZE,
-              y * getConfig().world.TILE_SIZE
-            )
+              y * getConfig().world.TILE_SIZE,
+            ),
           );
           this.getEntityManager().addEntity(merchant);
         }
@@ -927,8 +750,8 @@ export class MapManager implements IMapManager {
             .setPosition(
               PoolManager.getInstance().vector2.claim(
                 x * getConfig().world.TILE_SIZE,
-                y * getConfig().world.TILE_SIZE
-              )
+                y * getConfig().world.TILE_SIZE,
+              ),
             );
           this.getEntityManager().addEntity(entity);
         }
@@ -948,8 +771,8 @@ export class MapManager implements IMapManager {
       zombie.setPosition(
         poolManager.vector2.claim(
           middleX + DEBUG_ZOMBIE_OFFSET_TILES * getConfig().world.TILE_SIZE,
-          middleY
-        )
+          middleY,
+        ),
       );
       this.getEntityManager().addEntity(zombie);
     }
@@ -990,7 +813,7 @@ export class MapManager implements IMapManager {
             const poolManager = PoolManager.getInstance();
             const position = poolManager.vector2.claim(
               x * getConfig().world.TILE_SIZE,
-              y * getConfig().world.TILE_SIZE
+              y * getConfig().world.TILE_SIZE,
             );
 
             // Validate position is valid for placement (checks for existing entities)
@@ -1058,8 +881,8 @@ export class MapManager implements IMapManager {
         .setPosition(
           PoolManager.getInstance().vector2.claim(
             position.x * getConfig().world.TILE_SIZE,
-            position.y * getConfig().world.TILE_SIZE
-          )
+            position.y * getConfig().world.TILE_SIZE,
+          ),
         );
       this.getEntityManager().addEntity(entity);
     }
@@ -1097,7 +920,7 @@ export class MapManager implements IMapManager {
 
     if (validPositions.length === 0) {
       console.warn(
-        `No valid positions to spawn survivor in biome at (${biomePosition.x}, ${biomePosition.y})`
+        `No valid positions to spawn survivor in biome at (${biomePosition.x}, ${biomePosition.y})`,
       );
       return false;
     }
@@ -1117,8 +940,8 @@ export class MapManager implements IMapManager {
       .setPosition(
         PoolManager.getInstance().vector2.claim(
           position.x * getConfig().world.TILE_SIZE,
-          position.y * getConfig().world.TILE_SIZE
-        )
+          position.y * getConfig().world.TILE_SIZE,
+        ),
       );
     this.getEntityManager().addEntity(entity);
     return true;
@@ -1170,8 +993,8 @@ export class MapManager implements IMapManager {
         .setPosition(
           PoolManager.getInstance().vector2.claim(
             position.x * getConfig().world.TILE_SIZE,
-            position.y * getConfig().world.TILE_SIZE
-          )
+            position.y * getConfig().world.TILE_SIZE,
+          ),
         );
       this.getEntityManager().addEntity(entity);
     }
@@ -1264,8 +1087,8 @@ export class MapManager implements IMapManager {
         .setPosition(
           PoolManager.getInstance().vector2.claim(
             absoluteX * getConfig().world.TILE_SIZE,
-            absoluteY * getConfig().world.TILE_SIZE
-          )
+            absoluteY * getConfig().world.TILE_SIZE,
+          ),
         );
       this.getEntityManager().addEntity(campsiteFire);
     }
@@ -1298,7 +1121,7 @@ export class MapManager implements IMapManager {
           const poolManager = PoolManager.getInstance();
           const position = poolManager.vector2.claim(
             x * getConfig().world.TILE_SIZE,
-            y * getConfig().world.TILE_SIZE
+            y * getConfig().world.TILE_SIZE,
           );
 
           // Check if this position overlaps with the car
@@ -1314,7 +1137,7 @@ export class MapManager implements IMapManager {
       const poolManager = PoolManager.getInstance();
       return poolManager.vector2.claim(
         (totalSize * getConfig().world.TILE_SIZE) / 2,
-        (totalSize * getConfig().world.TILE_SIZE) / 2
+        (totalSize * getConfig().world.TILE_SIZE) / 2,
       );
     }
 
@@ -1354,7 +1177,7 @@ export class MapManager implements IMapManager {
           const poolManager = PoolManager.getInstance();
           const position = poolManager.vector2.claim(
             x * getConfig().world.TILE_SIZE,
-            y * getConfig().world.TILE_SIZE
+            y * getConfig().world.TILE_SIZE,
           );
           validPositions.push(position);
         }
@@ -1511,7 +1334,7 @@ export class MapManager implements IMapManager {
           const poolManager = PoolManager.getInstance();
           const position = poolManager.vector2.claim(
             mapX * getConfig().world.TILE_SIZE,
-            mapY * getConfig().world.TILE_SIZE
+            mapY * getConfig().world.TILE_SIZE,
           );
 
           // Check if this position overlaps with the car
@@ -1541,7 +1364,7 @@ export class MapManager implements IMapManager {
   public isPositionValidForPlacement(
     position: Vector2,
     checkEntities: boolean = true,
-    entitySize?: number
+    entitySize?: number,
   ): boolean {
     const { TILE_SIZE } = getConfig().world;
     const size = entitySize ?? TILE_SIZE;
@@ -1576,7 +1399,7 @@ export class MapManager implements IMapManager {
       const poolManager = PoolManager.getInstance();
       const positionCenter = poolManager.vector2.claim(
         position.x + size / 2,
-        position.y + size / 2
+        position.y + size / 2,
       );
       const nearbyEntities = this.getEntityManager().getNearbyEntities(positionCenter, size);
 
@@ -1687,12 +1510,12 @@ export class MapManager implements IMapManager {
         // Check if there are any zombies at this position
         const tileCenter = poolManager.vector2.claim(
           position.x + TILE_SIZE / 2,
-          position.y + TILE_SIZE / 2
+          position.y + TILE_SIZE / 2,
         );
         const nearbyEntities = this.getEntityManager().getNearbyEntities(
           tileCenter,
           TILE_SIZE / 2,
-          zombieTypes
+          zombieTypes,
         );
 
         // Check if any nearby entities are zombies
@@ -1736,7 +1559,7 @@ export class MapManager implements IMapManager {
   public findRandomValidSpawnPosition(
     center: Vector2,
     minRadius: number,
-    maxRadius: number
+    maxRadius: number,
   ): Vector2 | null {
     // Get all empty ground tiles within max radius
     const emptyTiles = this.getEmptyGroundTiles(center, maxRadius);
@@ -1838,7 +1661,7 @@ export class MapManager implements IMapManager {
         if (center && radius !== undefined) {
           const centerPos = poolManager.vector2.claim(
             position.x + TILE_SIZE / 2,
-            position.y + TILE_SIZE / 2
+            position.y + TILE_SIZE / 2,
           );
           const dist = distance(center, centerPos);
           if (dist > radius) {
@@ -1852,12 +1675,12 @@ export class MapManager implements IMapManager {
         // Check if there are any zombies at this position
         const tileCenter = poolManager.vector2.claim(
           position.x + TILE_SIZE / 2,
-          position.y + TILE_SIZE / 2
+          position.y + TILE_SIZE / 2,
         );
         const nearbyEntities = this.getEntityManager().getNearbyEntities(
           tileCenter,
           TILE_SIZE / 2,
-          zombieTypes
+          zombieTypes,
         );
 
         // Check if any nearby entities are zombies
@@ -1932,13 +1755,11 @@ export class MapManager implements IMapManager {
         .setPosition(
           PoolManager.getInstance().vector2.claim(
             position.x * getConfig().world.TILE_SIZE,
-            position.y * getConfig().world.TILE_SIZE
-          )
+            position.y * getConfig().world.TILE_SIZE,
+          ),
         );
       this.getEntityManager().addEntity(crate);
     }
-
-    console.log(`Spawned ${cratesSpawned} crate(s) on the map`);
   }
 
   /**
@@ -1974,7 +1795,7 @@ export class MapManager implements IMapManager {
 
     if (validPositions.length === 0) {
       console.warn(
-        `No valid positions to spawn crate in biome at (${biomePosition.x}, ${biomePosition.y})`
+        `No valid positions to spawn crate in biome at (${biomePosition.x}, ${biomePosition.y})`,
       );
       return false;
     }
@@ -1990,12 +1811,11 @@ export class MapManager implements IMapManager {
       .setPosition(
         PoolManager.getInstance().vector2.claim(
           position.x * getConfig().world.TILE_SIZE,
-          position.y * getConfig().world.TILE_SIZE
-        )
+          position.y * getConfig().world.TILE_SIZE,
+        ),
       );
     this.getEntityManager().addEntity(crate);
 
-    console.log(`Spawned crate with 10 items in biome at (${biomePosition.x}, ${biomePosition.y})`);
     return true;
   }
 }

@@ -15,7 +15,6 @@ export function sendPlayerId(context: HandlerContext, socket: ISocketAdapter): v
 
   const gameMode = context.gameServer.getGameLoop().getGameModeStrategy().getConfig().modeId as "waves" | "battle_royale" | "infection";
   const yourIdEvent = new YourIdEvent(player.getId(), gameMode);
-  console.log(`[sendPlayerId] Sending player ID ${player.getId()} to socket ${socket.id}`);
   context.sendEventToSocket(socket, yourIdEvent);
 }
 

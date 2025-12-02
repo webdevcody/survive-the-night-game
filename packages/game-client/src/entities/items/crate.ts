@@ -1,9 +1,9 @@
 import { RawEntity } from "@shared/types/entity";
 import { AssetManager } from "@/managers/asset";
 import { GameState } from "@/state";
-import { Renderable, drawHealthBar, getFrameIndex } from "@/entities/util";
+import { Renderable } from "@/entities/util";
 import { ClientEntity } from "@/entities/client-entity";
-import { ClientPositionable, ClientDestructible } from "@/extensions";
+import { ClientPositionable } from "@/extensions";
 import { Z_INDEX } from "@shared/map";
 
 export class CrateClient extends ClientEntity implements Renderable {
@@ -15,46 +15,14 @@ export class CrateClient extends ClientEntity implements Renderable {
     return Z_INDEX.BUILDINGS;
   }
 
-  private getHealth(): number {
-    if (!this.hasExt(ClientDestructible)) {
-      console.warn(`Crate ${this.getId()} does not have destructible extension`);
-      return 0;
-    }
-    const destructible = this.getExt(ClientDestructible);
-    return destructible.getHealth();
-  }
-
-  private getMaxHealth(): number {
-    if (!this.hasExt(ClientDestructible)) {
-      console.warn(`Crate ${this.getId()} does not have destructible extension`);
-      return 0;
-    }
-    const destructible = this.getExt(ClientDestructible);
-    return destructible.getMaxHealth();
-  }
-
   render(ctx: CanvasRenderingContext2D, gameState: GameState): void {
     super.render(ctx, gameState);
 
     const positionable = this.getExt(ClientPositionable);
     const position = positionable.getPosition();
-    
-    if (!this.hasExt(ClientDestructible)) {
-      // If no destructible extension, just render the default image
-      const image = this.getImage();
-      ctx.drawImage(image, position.x, position.y);
-      return;
-    }
 
-    const frameIndexHealthMap = {
-      [1]: 2,
-      [2]: 1,
-      [3]: 0,
-    };
-    const frameIndex = frameIndexHealthMap[this.getHealth() as keyof typeof frameIndexHealthMap];
-    const image = this.imageLoader.getFrameIndex(this.getType(), frameIndex);
+    const image = this.getImage();
+    if (!image) return;
     ctx.drawImage(image, position.x, position.y);
-
-    drawHealthBar(ctx, position, this.getHealth(), this.getMaxHealth());
   }
 }

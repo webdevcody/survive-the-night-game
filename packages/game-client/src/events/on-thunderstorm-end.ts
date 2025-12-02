@@ -18,6 +18,4 @@ export const onThunderstormEnd = (context: ClientEventContext, event: GameMessag
 
   // Show message
   context.gameClient.getHud().addMessage(event.getMessage(), event.getColor());
-
-  console.log("[Thunderstorm] Thunderstorm ended - illumination restored, red hue restored");
 };

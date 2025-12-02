@@ -81,8 +81,6 @@ export class ThunderstormEventStrategy implements IEnvironmentalEventStrategy {
         type: ServerSentEvents.THUNDERSTORM_END as any,
       })
     );
-
-    console.log(`[EnvironmentalEvent] Thunderstorm event ended`);
   }
 
   private shouldTriggerThunderstorm(completedWaveNumber: number): boolean {
@@ -110,8 +108,6 @@ export class ThunderstormEventStrategy implements IEnvironmentalEventStrategy {
         type: ServerSentEvents.THUNDERSTORM_START as any,
       })
     );
-
-    console.log(`[EnvironmentalEvent] Thunderstorm event started`);
   }
 
   /**
@@ -131,9 +127,6 @@ export class ThunderstormEventStrategy implements IEnvironmentalEventStrategy {
       const lightningDamage = 1; // Damage amount for lightning strike
       randomPlayer.damage(lightningDamage);
       struckPlayerId = randomPlayer.getId();
-      console.log(
-        `[Thunderstorm] Lightning struck player ${struckPlayerId} for ${lightningDamage} damage`
-      );
     }
 
     // Broadcast lightning bolt event with playerId

@@ -2,7 +2,6 @@ import { clearEntities } from "@/state";
 import { ClientEventContext } from "./types";
 
 export const handleDisconnect = (context: ClientEventContext) => {
-  console.log("[ClientEventListener] Server disconnected, resetting initialization state");
   // Initialization flags are handled in the main class via callbacks or state updates if needed
   // But here we handle side effects
 

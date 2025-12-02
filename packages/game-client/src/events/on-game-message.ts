@@ -13,13 +13,11 @@ export const onGameMessage = (context: ClientEventContext, event: GameMessageEve
     message.includes("thunderstorm is approaching") ||
     message.includes("thunderstorm approaching")
   ) {
-    console.log("[GameMessage] Detected thunderstorm start event");
     onThunderstormStart(context, event);
     return;
   }
 
   if (message.includes("thunderstorm has passed") || message.includes("thunderstorm passed")) {
-    console.log("[GameMessage] Detected thunderstorm end event");
     onThunderstormEnd(context, event);
     return;
   }

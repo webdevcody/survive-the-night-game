@@ -15,15 +15,9 @@ export const onThunderstormStart = (context: ClientEventContext, event: GameMess
   // Enable rain particles
   const rainManager = context.gameClient.rainParticleManager;
   if (rainManager) {
-    console.log("[Thunderstorm] Enabling rain particles");
     rainManager.setActive(true);
-    console.log(`[Thunderstorm] Rain manager active: ${rainManager.isActive()}`);
-  } else {
-    console.error("[Thunderstorm] Rain particle manager not found!");
   }
 
   // Show message
   context.gameClient.getHud().addMessage(event.getMessage(), event.getColor());
-
-  console.log("[Thunderstorm] Thunderstorm started - illumination reduced, blue hue active");
 };

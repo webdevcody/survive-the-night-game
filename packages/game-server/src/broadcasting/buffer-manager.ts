@@ -70,7 +70,7 @@ export class BufferManager {
     hasRemovedEntities: boolean = false,
     mapData?: MapData,
     votingState?: VotingState,
-    zombieLivesState?: ZombieLivesState
+    zombieLivesState?: ZombieLivesState,
   ): void {
     // Build bitset to track which fields are present
     let bitset = 0;
@@ -198,7 +198,7 @@ export class BufferManager {
 
     if (removedIds.length > 65535) {
       throw new Error(
-        `Removed entity IDs count ${removedIds.length} exceeds UInt16 maximum (65535)`
+        `Removed entity IDs count ${removedIds.length} exceeds UInt16 maximum (65535)`,
       );
     }
     this.writer.writeUInt16(removedIds.length);
@@ -242,6 +242,5 @@ export class BufferManager {
       if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(2)}KB`;
       return `${(bytes / (1024 * 1024)).toFixed(2)}MB`;
     };
-    console.log(`GAME_STATE_UPDATE: ${formatBytes(totalBytes)}`);
   }
 }

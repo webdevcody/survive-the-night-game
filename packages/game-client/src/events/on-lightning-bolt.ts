@@ -32,10 +32,7 @@ export const onLightningBolt = (context: ClientEventContext, event: LightningBol
   const playerId = event.getPlayerId();
   if (playerId !== undefined) {
     context.gameClient.lightningBoltManager.triggerBolt(playerId);
-    console.log(`[Thunderstorm] Lightning bolt visual effect triggered for player ${playerId}`);
   }
-
-  console.log("[Thunderstorm] Lightning flash triggered");
 };
 
 /**

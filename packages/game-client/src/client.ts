@@ -352,7 +352,7 @@ export class GameClient {
           this.scrollAccumulator += this.SCROLL_THRESHOLD;
         }
       },
-      { passive: false }
+      { passive: false },
     );
 
     const getInventory = () => {
@@ -416,8 +416,8 @@ export class GameClient {
       onToggleChat: () => {
         this.hud.toggleChatInput();
       },
-      onChatInput: (key: string) => {
-        this.hud.updateChatInput(key);
+      onChatInput: (key: string, shiftKey: boolean) => {
+        this.hud.updateChatInput(key, shiftKey);
       },
       onSendChat: () => {
         const message = this.hud.getChatInput();
@@ -485,7 +485,7 @@ export class GameClient {
         const entityId = this.interactionManager.startInteractHold(
           this.gameState,
           spatialGrid,
-          (message, color) => this.hud.addMessage(message, color)
+          (message, color) => this.hud.addMessage(message, color),
         );
 
         // If entity ID returned and not placeable, send interact immediately
@@ -567,7 +567,7 @@ export class GameClient {
         if (this.socketManager) {
           this.socketManager.sendSwapItems(fromSlotIndex, toSlotIndex);
         }
-      }
+      },
     );
 
     this.gameState = {
@@ -609,7 +609,7 @@ export class GameClient {
       this.particleManager,
       () => this.getPlacementManager(),
       () => this.getTeleportState(),
-      () => this.lightningBoltManager
+      () => this.lightningBoltManager,
     );
 
     // Set renderer reference on minimap so it can use the spatial grid
@@ -625,14 +625,10 @@ export class GameClient {
     this.socketManager = new ClientSocketManager(serverUrl);
     this.clientEventListener = new ClientEventListener(this, this.socketManager);
 
-    console.log("Connecting to server");
     await this.socketManager.connect();
-    console.log("Connected to server");
 
     // Request player ID and full game state
-    console.log("Requesting player ID");
     this.socketManager.requestPlayerId();
-    console.log("Requesting full game state");
     this.socketManager.requestFullState();
 
     // Note: Rendering will start automatically when both playerId and full game state
@@ -654,7 +650,7 @@ export class GameClient {
       this.mapManager,
       () => this.getMyPlayer(),
       () => this.gameState.entities,
-      () => this.socketManager.getSocket()
+      () => this.socketManager.getSocket(),
     );
 
     // Set game client reference for sound manager
@@ -839,7 +835,7 @@ export class GameClient {
           cameraPos,
           this.ctx.canvas.width,
           this.ctx.canvas.height,
-          cameraScale
+          cameraScale,
         );
 
         // Check if facing direction changed (for mouse aiming)
@@ -869,7 +865,7 @@ export class GameClient {
             input,
             fixedDeltaTime, // Always 0.05, matching server
             mapData.collidables,
-            this.gameState.entities
+            this.gameState.entities,
           );
         }, deltaSeconds);
 
@@ -883,7 +879,7 @@ export class GameClient {
         // After prediction, smoothly reconcile towards server's authoritative position
         reconciliationManager.reconcile(
           player,
-          (player as any).serverGhostPos || player.getPosition()
+          (player as any).serverGhostPos || player.getPosition(),
         );
 
         // Update spatial grid after position changes from prediction/reconciliation
@@ -993,7 +989,7 @@ export class GameClient {
     const entityId = this.interactionManager.updateInteractHold(
       this.gameState,
       this.inputManager,
-      (message, color) => this.hud.addMessage(message, color)
+      (message, color) => this.hud.addMessage(message, color),
     );
 
     // If interaction should be triggered, send it to server
@@ -1187,7 +1183,7 @@ export class GameClient {
       // Position camera at player's center to match aim angle calculation
       this.cameraManager.translateTo(
         playerToFollow.getExt(ClientPositionable).getCenterPosition(),
-        this.gameState.dt
+        this.gameState.dt,
       );
     }
   }

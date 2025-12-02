@@ -9,6 +9,9 @@ import { PlayerClient } from "@/entities/player";
 import { SpatialGrid } from "@shared/util/spatial-grid";
 import { isAutoPickupItem } from "@/util/auto-pickup";
 
+// Client requires player to be slightly closer than server to account for latency
+const CLIENT_INTERACT_RADIUS_BUFFER = 4;
+
 /**
  * Finds the closest interactive entity to the player.
  * Uses the same logic as the server-side interaction handling.
@@ -24,7 +27,7 @@ export function getClosestInteractiveEntity(
   }
 
   const playerPos = player.getExt(ClientPositionable).getCenterPosition();
-  const maxRadius = getConfig().player.MAX_INTERACT_RADIUS;
+  const maxRadius = getConfig().player.MAX_INTERACT_RADIUS - CLIENT_INTERACT_RADIUS_BUFFER;
 
   // Get all interactive entities within range using spatial grid if available
   let candidateEntities: ClientEntityBase[];

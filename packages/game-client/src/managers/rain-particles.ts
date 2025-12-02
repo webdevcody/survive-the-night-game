@@ -25,7 +25,6 @@ export class RainParticleManager {
   }
 
   public setActive(active: boolean): void {
-    console.log(`[RainParticleManager] setActive called: ${active}`);
     this.active = active;
     if (!active) {
       this.clear();

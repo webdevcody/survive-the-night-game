@@ -711,8 +711,8 @@ export class Hud {
     this.chatWidget.toggleChatInput();
   }
 
-  public updateChatInput(key: string): void {
-    this.chatWidget.updateChatInput(key);
+  public updateChatInput(key: string, shiftKey: boolean = false): void {
+    this.chatWidget.updateChatInput(key, shiftKey);
   }
 
   public getChatInput(): string {

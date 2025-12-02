@@ -176,6 +176,7 @@ export const ITEM_CONFIGS: Record<string, ItemConfig> = {
       buyable: true,
       price: 20,
     },
+    autoPickup: false,
   },
   grenade: {
     id: "grenade",
@@ -250,6 +251,7 @@ export const ITEM_CONFIGS: Record<string, ItemConfig> = {
       y: 48,
       sheet: "items",
     },
+    autoPickup: true,
   },
   energy_drink: {
     id: "energy_drink",
@@ -281,6 +283,7 @@ export const ITEM_CONFIGS: Record<string, ItemConfig> = {
       sheet: "items",
       totalFrames: 3,
     },
+    autoPickup: true,
   },
   gallon_drum: {
     id: "gallon_drum",
@@ -295,6 +298,7 @@ export const ITEM_CONFIGS: Record<string, ItemConfig> = {
       enabled: true,
       chance: 0.03,
     },
+    autoPickup: true,
   },
   miners_hat: {
     id: "miners_hat",
@@ -343,6 +347,7 @@ export const ITEM_CONFIGS: Record<string, ItemConfig> = {
       components: [{ type: "wood", count: 4 }],
     },
     upgradeTo: "spikes_level_2",
+    autoPickup: false,
   },
   spikes_level_2: {
     id: "spikes_level_2",
@@ -365,6 +370,7 @@ export const ITEM_CONFIGS: Record<string, ItemConfig> = {
       price: 0,
     },
     upgradeTo: "spikes_level_3",
+    autoPickup: false,
   },
   spikes_level_3: {
     id: "spikes_level_3",
@@ -386,6 +392,7 @@ export const ITEM_CONFIGS: Record<string, ItemConfig> = {
       buyable: false,
       price: 0,
     },
+    autoPickup: false,
   },
   bear_trap: {
     id: "bear_trap",
@@ -413,6 +420,7 @@ export const ITEM_CONFIGS: Record<string, ItemConfig> = {
         { type: "cloth", count: 1 },
       ],
     },
+    autoPickup: false,
   },
   wall: {
     id: "wall",
@@ -439,6 +447,7 @@ export const ITEM_CONFIGS: Record<string, ItemConfig> = {
       components: [{ type: "wood", count: 2 }],
     },
     upgradeTo: "wall_level_2",
+    autoPickup: false,
   },
   wall_level_2: {
     id: "wall_level_2",
@@ -461,6 +470,7 @@ export const ITEM_CONFIGS: Record<string, ItemConfig> = {
       price: 0,
     },
     upgradeTo: "wall_level_3",
+    autoPickup: false,
   },
   wall_level_3: {
     id: "wall_level_3",
@@ -482,6 +492,7 @@ export const ITEM_CONFIGS: Record<string, ItemConfig> = {
       buyable: false,
       price: 0,
     },
+    autoPickup: false,
   },
   tree: {
     id: "tree",
@@ -523,6 +534,7 @@ export const ITEM_CONFIGS: Record<string, ItemConfig> = {
       ],
     },
     upgradeTo: "sentry_gun_level_2",
+    autoPickup: false,
   },
   sentry_gun_level_2: {
     id: "sentry_gun_level_2",
@@ -545,6 +557,7 @@ export const ITEM_CONFIGS: Record<string, ItemConfig> = {
       price: 0,
     },
     upgradeTo: "sentry_gun_level_3",
+    autoPickup: false,
   },
   sentry_gun_level_3: {
     id: "sentry_gun_level_3",
@@ -566,5 +579,6 @@ export const ITEM_CONFIGS: Record<string, ItemConfig> = {
       buyable: false,
       price: 0,
     },
+    autoPickup: false,
   },
 };

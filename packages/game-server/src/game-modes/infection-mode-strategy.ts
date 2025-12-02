@@ -61,8 +61,6 @@ export class InfectionModeStrategy implements IGameModeStrategy {
     this.gameStartTime = Date.now();
     this.lastTimeAnnouncement = 0;
 
-    console.log("[InfectionModeStrategy] Game started in Infection mode");
-
     // Initialize AI player manager and spawn initial AI players based on config
     this.aiPlayerManager = new AIPlayerManager(gameManagers);
     // Calculate initial AI count based on current real players
@@ -70,7 +68,7 @@ export class InfectionModeStrategy implements IGameModeStrategy {
     const aiConfig = getConfig().aiPlayer;
     const targetAI = Math.max(
       aiConfig.MIN_AI_PLAYERS,
-      aiConfig.TOTAL_PLAYER_THRESHOLD - realPlayerCount
+      aiConfig.TOTAL_PLAYER_THRESHOLD - realPlayerCount,
     );
     this.aiPlayerManager.spawnAIPlayers(targetAI);
 
@@ -82,7 +80,7 @@ export class InfectionModeStrategy implements IGameModeStrategy {
       new GameMessageEvent({
         message: "Infection Mode - Survive the outbreak!",
         color: "gold",
-      })
+      }),
     );
   }
 
@@ -97,7 +95,6 @@ export class InfectionModeStrategy implements IGameModeStrategy {
     const alivePlayers = players.filter((p) => !p.isDead());
 
     if (alivePlayers.length < 1) {
-      console.log("[InfectionModeStrategy] No players available for Patient Zero");
       return;
     }
 
@@ -107,17 +104,9 @@ export class InfectionModeStrategy implements IGameModeStrategy {
     this.sharedZombieLives = Math.max(1, totalDefenders * livesPerHuman);
     this.maxZombieLives = this.sharedZombieLives;
 
-    console.log(
-      `[InfectionModeStrategy] Shared zombie lives: ${this.sharedZombieLives} (${totalDefenders} defenders x ${livesPerHuman})`
-    );
-
     // Select random player as Patient Zero (can be human or AI)
     const randomIndex = Math.floor(Math.random() * alivePlayers.length);
     const patientZero = alivePlayers[randomIndex];
-
-    console.log(
-      `[InfectionModeStrategy] Selected "${patientZero.getDisplayName()}" as Patient Zero`
-    );
 
     // Convert to zombie (this also moves them outside campsite)
     this.convertToZombie(patientZero, gameManagers, true);
@@ -129,7 +118,7 @@ export class InfectionModeStrategy implements IGameModeStrategy {
       new GameMessageEvent({
         message: `${patientZero.getDisplayName()} is Patient Zero! Run!`,
         color: "red",
-      })
+      }),
     );
 
     // Broadcast zombie lives update
@@ -142,7 +131,7 @@ export class InfectionModeStrategy implements IGameModeStrategy {
   private convertToZombie(
     player: Player,
     gameManagers: IGameManagers,
-    isInitial: boolean = false
+    isInitial: boolean = false,
   ): void {
     // Set zombie state
     player.setIsZombie(true);
@@ -172,7 +161,7 @@ export class InfectionModeStrategy implements IGameModeStrategy {
         new GameMessageEvent({
           message: `${player.getDisplayName()} has been infected!`,
           color: "red",
-        })
+        }),
       );
     }
   }
@@ -181,8 +170,6 @@ export class InfectionModeStrategy implements IGameModeStrategy {
    * Respawn a zombie player (outside campsite)
    */
   private respawnZombie(player: Player, gameManagers: IGameManagers): void {
-    console.log(`[InfectionModeStrategy] Respawning zombie "${player.getDisplayName()}"`);
-
     // Re-enable collision
     if (player.hasExt(Collidable)) {
       player.getExt(Collidable).setEnabled(true);
@@ -214,10 +201,6 @@ export class InfectionModeStrategy implements IGameModeStrategy {
    * Respawn a human player (at campsite) - used for AI humans
    */
   private respawnHuman(player: Player, gameManagers: IGameManagers): void {
-    console.log(
-      `[InfectionModeStrategy] Respawning human "${player.getDisplayName()}" at campsite`
-    );
-
     // Re-enable collision
     if (player.hasExt(Collidable)) {
       player.getExt(Collidable).setEnabled(true);
@@ -277,11 +260,6 @@ export class InfectionModeStrategy implements IGameModeStrategy {
           // Only decrement if there are lives remaining
           if (this.sharedZombieLives > 0) {
             this.sharedZombieLives--;
-            console.log(
-              `[InfectionModeStrategy] Zombie "${player.getDisplayName()}" died. Lives remaining: ${
-                this.sharedZombieLives
-              }`
-            );
 
             // Broadcast lives update
             this.broadcastZombieLives(gameManagers);
@@ -291,7 +269,7 @@ export class InfectionModeStrategy implements IGameModeStrategy {
               new GameMessageEvent({
                 message: `Zombie down! ${this.sharedZombieLives} lives remaining`,
                 color: "green",
-              })
+              }),
             );
           }
         }
@@ -309,9 +287,6 @@ export class InfectionModeStrategy implements IGameModeStrategy {
           // AI humans respawn as humans (they keep defending)
           if (!this.pendingDeathConversions.has(playerId)) {
             this.pendingDeathConversions.add(playerId);
-            console.log(
-              `[InfectionModeStrategy] AI human "${player.getDisplayName()}" died, respawning as human`
-            );
           }
 
           // Respawn AI human at campsite (only after cooldown)
@@ -344,7 +319,7 @@ export class InfectionModeStrategy implements IGameModeStrategy {
       new GameMessageEvent({
         message: `Zombie Lives: ${this.sharedZombieLives}/${this.maxZombieLives}`,
         color: "yellow",
-      })
+      }),
     );
   }
 
@@ -356,7 +331,6 @@ export class InfectionModeStrategy implements IGameModeStrategy {
     }
 
     this.pendingDeathConversions.clear();
-    console.log("[InfectionModeStrategy] Game ended");
   }
 
   update(deltaTime: number, gameManagers: IGameManagers): void {
@@ -430,7 +404,7 @@ export class InfectionModeStrategy implements IGameModeStrategy {
         new GameMessageEvent({
           message,
           color,
-        })
+        }),
       );
     }
   }
@@ -612,23 +586,18 @@ export class InfectionModeStrategy implements IGameModeStrategy {
 
     const players = gameManagers.getEntityManager().getPlayerEntities() as Player[];
     const livingZombies = players.filter(
-      (p) => !p.isDead() && p.isZombie() && !p.isMarkedForRemoval()
+      (p) => !p.isDead() && p.isZombie() && !p.isMarkedForRemoval(),
     );
     const livingHumans = players.filter(
-      (p) => !p.isDead() && !p.isZombie() && !p.isMarkedForRemoval()
+      (p) => !p.isDead() && !p.isZombie() && !p.isMarkedForRemoval(),
     );
 
     // If there are no living zombies but there are humans, select a new zombie
     if (livingZombies.length === 0 && livingHumans.length > 0) {
-      console.log("[InfectionModeStrategy] No zombies remaining, selecting new Patient Zero");
 
       // Pick a random human to become zombie
       const randomIndex = Math.floor(Math.random() * livingHumans.length);
       const newZombie = livingHumans[randomIndex];
-
-      console.log(
-        `[InfectionModeStrategy] Selected "${newZombie.getDisplayName()}" as new Patient Zero`
-      );
 
       // Convert to zombie
       this.convertToZombie(newZombie, gameManagers, false);
@@ -638,7 +607,7 @@ export class InfectionModeStrategy implements IGameModeStrategy {
         new GameMessageEvent({
           message: `${newZombie.getDisplayName()} has become Patient Zero!`,
           color: "red",
-        })
+        }),
       );
     }
   }

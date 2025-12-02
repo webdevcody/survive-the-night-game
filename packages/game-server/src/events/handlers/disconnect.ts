@@ -15,7 +15,6 @@ function getRealPlayerCount(entityManager: IEntityManager): number {
 }
 
 export function onDisconnect(context: HandlerContext, socket: ISocketAdapter): void {
-  console.log("Player disconnected", socket.id);
   const player = context.players.get(socket.id);
   const displayName = context.playerDisplayNames.get(socket.id);
 
@@ -31,7 +30,6 @@ export function onDisconnect(context: HandlerContext, socket: ISocketAdapter): v
     const entityInManager = entityManager.getEntityById(playerId);
     
     if (entityInManager) {
-      console.log(`Removing player entity ${playerId} from entity manager`);
       // TODO: this is a hacker; I'd rather use this, but when I do there is a strange race condition where the round never restarts, so instead the
       entityManager.removeEntity(playerId);
       // this.getEntityManager().markEntityForRemoval(player);
@@ -57,7 +55,6 @@ export function onDisconnect(context: HandlerContext, socket: ISocketAdapter): v
     const aiManager = strategy.getAIPlayerManager?.();
     if (aiManager) {
       const realPlayerCount = getRealPlayerCount(context.getEntityManager());
-      console.log(`[onDisconnect] Adjusting AI players for ${realPlayerCount} real players`);
       aiManager.adjustAIPlayerCount(realPlayerCount);
     }
 

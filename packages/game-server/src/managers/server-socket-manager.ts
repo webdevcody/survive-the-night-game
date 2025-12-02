@@ -115,7 +115,7 @@ export class ServerSocketManager implements Broadcaster {
 
       if (!clientVersion || clientVersion !== serverVersion) {
         console.warn(
-          `Version mismatch: client version ${clientVersion} does not match server version ${serverVersion}. Socket ${socket.id} will receive mismatch event.`
+          `Version mismatch: client version ${clientVersion} does not match server version ${serverVersion}. Socket ${socket.id} will receive mismatch event.`,
         );
         // Send version mismatch event - client will handle redirect and disconnect
         const versionMismatchEvent = new VersionMismatchEvent({
@@ -244,7 +244,7 @@ export class ServerSocketManager implements Broadcaster {
 
   private broadcastPlayerJoined(player: Player): void {
     this.broadcastEvent(
-      new PlayerJoinedEvent({ playerId: player.getId(), displayName: player.getDisplayName() })
+      new PlayerJoinedEvent({ playerId: player.getId(), displayName: player.getDisplayName() }),
     );
   }
 
@@ -270,7 +270,10 @@ export class ServerSocketManager implements Broadcaster {
   public sendInitializationToAllSockets(): void {
     const sockets = Array.from(this.io.sockets.sockets.values());
     const context = this.getHandlerContext();
-    const gameMode = this.gameServer.getGameLoop().getGameModeStrategy().getConfig().modeId as "waves" | "battle_royale" | "infection";
+    const gameMode = this.gameServer.getGameLoop().getGameModeStrategy().getConfig().modeId as
+      | "waves"
+      | "battle_royale"
+      | "infection";
 
     sockets.forEach((socket) => {
       const player = this.players.get(socket.id);
@@ -297,14 +300,10 @@ export class ServerSocketManager implements Broadcaster {
 
     if (implementation === "uwebsockets") {
       // uWebSockets listens directly on the port - no HTTP server needed
-      this.io.listen(this.port, () => {
-        console.log(`Server listening on port ${this.port} (uWebSockets)`);
-      });
+      this.io.listen(this.port, () => {});
     } else {
       // Socket.IO: Listen using the HTTP server directly (which has Express attached)
-      this.httpServer.listen(this.port, () => {
-        console.log(`Server listening on port ${this.port} (Socket.IO)`);
-      });
+      this.httpServer.listen(this.port, () => {});
     }
   }
 
@@ -324,7 +323,7 @@ export class ServerSocketManager implements Broadcaster {
         } catch (error) {
           console.error(
             `Error handling event ${handlerRegistration.event} from socket ${socket.id}:`,
-            error
+            error,
           );
         }
       });

@@ -22,6 +22,7 @@ export interface ItemConfig extends BehaviorConfigs {
   wearable?: boolean; // If true, item is wearable and should be rendered as an overlay when in inventory
   duration?: number; // Duration in seconds for consumable effects (e.g., energy drink)
   upgradeTo?: string; // If set, placing this item on an existing structure of the same type will upgrade it to this item type
+  autoPickup?: boolean; // If false, item will never be auto-picked up (defaults to undefined/null for default behavior)
 }
 
 class ItemRegistry {

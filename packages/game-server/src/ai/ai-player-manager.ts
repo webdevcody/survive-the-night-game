@@ -31,8 +31,6 @@ export class AIPlayerManager {
     // Reset used names for new game
     resetUsedNames();
 
-    console.log(`[AIPlayerManager] Spawning ${count} AI players`);
-
     for (let i = 0; i < count; i++) {
       this.spawnSingleAIPlayer();
     }
@@ -72,10 +70,6 @@ export class AIPlayerManager {
 
     // Track the AI player
     this.aiPlayers.set(player.getId(), { player, controller });
-
-    console.log(
-      `[AIPlayerManager] Spawned AI player "${displayName}" (ID: ${player.getId()}) with ping ${ping}ms`
-    );
   }
 
   /**
@@ -133,9 +127,6 @@ export class AIPlayerManager {
     // Remove only completely removed AI players from tracking
     for (const id of toRemove) {
       const entry = this.aiPlayers.get(id);
-      if (entry) {
-        console.log(`[AIPlayerManager] AI player "${entry.player.getDisplayName()}" removed from game`);
-      }
       this.aiPlayers.delete(id);
     }
   }
@@ -157,7 +148,6 @@ export class AIPlayerManager {
    * Clean up all AI players (on game end)
    */
   cleanup(): void {
-    console.log(`[AIPlayerManager] Cleaning up ${this.aiPlayers.size} AI players`);
     this.aiPlayers.clear();
     resetUsedNames();
   }
@@ -187,9 +177,6 @@ export class AIPlayerManager {
     const randomId = aiIds[Math.floor(Math.random() * aiIds.length)];
     const entry = this.aiPlayers.get(randomId);
     if (entry) {
-      console.log(
-        `[AIPlayerManager] Removing AI player "${entry.player.getDisplayName()}" (ID: ${randomId}) - real player joined`
-      );
       this.gameManagers.getEntityManager().removeEntity(randomId);
       this.aiPlayers.delete(randomId);
       return true;
@@ -206,25 +193,19 @@ export class AIPlayerManager {
     const config = getConfig().aiPlayer;
     const targetAI = Math.max(
       config.MIN_AI_PLAYERS,
-      config.TOTAL_PLAYER_THRESHOLD - realPlayerCount
+      config.TOTAL_PLAYER_THRESHOLD - realPlayerCount,
     );
     const currentAI = this.aiPlayers.size;
-
-    console.log(
-      `[AIPlayerManager] Adjusting AI count: real=${realPlayerCount}, current AI=${currentAI}, target AI=${targetAI}`
-    );
 
     if (currentAI < targetAI) {
       // Need more AI players
       const toSpawn = targetAI - currentAI;
-      console.log(`[AIPlayerManager] Spawning ${toSpawn} AI player(s)`);
       for (let i = 0; i < toSpawn; i++) {
         this.spawnSingleAIPlayer();
       }
     } else if (currentAI > targetAI) {
       // Need fewer AI players
       const toRemove = currentAI - targetAI;
-      console.log(`[AIPlayerManager] Removing ${toRemove} AI player(s)`);
       for (let i = 0; i < toRemove; i++) {
         this.removeRandomAIPlayer();
       }

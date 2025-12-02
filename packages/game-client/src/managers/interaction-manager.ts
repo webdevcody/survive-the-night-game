@@ -22,6 +22,7 @@ export class InteractionManager {
   private interactHoldTargetEntityId: number | null = null;
   private interactHoldCompleted: boolean = false; // Prevent immediate restart after completion
   private readonly INTERACT_HOLD_DURATION = 500; // 0.5 seconds in milliseconds
+  private readonly CLIENT_INTERACT_RADIUS_BUFFER = 4; // Client requires player to be slightly closer than server
 
   private static lastInventoryFullMessageTime: number = 0;
   private static readonly INVENTORY_FULL_MESSAGE_COOLDOWN = 2000; // 2 seconds
@@ -35,7 +36,7 @@ export class InteractionManager {
     showInventoryFullMessage: (message: string, color: string) => void
   ): number | null {
     // Don't restart if we just completed an interact (prevent immediate restart)
-    if (this.isHoldingInteract) {
+    if (this.isHoldingInteract || this.interactHoldCompleted) {
       return null;
     }
 
@@ -98,7 +99,7 @@ export class InteractionManager {
   /**
    * Complete interact hold - called after successfully sending interact event
    */
-  completeInteractHold(): void {
+  completeInteractHold(gameState: GameState): void {
     // Mark as completed to prevent immediate restart
     this.interactHoldCompleted = true;
 
@@ -110,6 +111,12 @@ export class InteractionManager {
     this.isHoldingInteract = false;
     this.interactHoldStartTime = 0;
     this.interactHoldTargetEntityId = null;
+
+    // Reset player's pickup progress to hide the radial indicator
+    const playerEntity = getPlayer(gameState);
+    if (playerEntity) {
+      (playerEntity as any).pickupProgress = 0;
+    }
   }
 
   /**
@@ -144,11 +151,11 @@ export class InteractionManager {
       return null;
     }
 
-    // Check distance
+    // Check distance (use stricter client-side radius to account for latency)
     const playerPos = player.getCenterPosition();
     const entityPos = targetEntity.getExt(ClientPositionable).getCenterPosition();
     const dist = distance(entityPos, playerPos);
-    const maxRadius = getConfig().player.MAX_INTERACT_RADIUS;
+    const maxRadius = getConfig().player.MAX_INTERACT_RADIUS - this.CLIENT_INTERACT_RADIUS_BUFFER;
 
     if (dist > maxRadius) {
       this.cancelInteractHold(gameState);
@@ -177,11 +184,6 @@ export class InteractionManager {
 
     // If progress reaches 1.0, interact is complete
     if (progress >= 1) {
-      // Ensure progress is clamped to 1.0 for final render
-      if (playerEntity) {
-        (playerEntity as any).pickupProgress = 1.0;
-      }
-
       // Check if can pick up before sending interact
       if (targetEntity && !this.canItemBePickedUp(targetEntity, gameState)) {
         showInventoryFullMessage("Inventory full!", "red");
@@ -189,9 +191,12 @@ export class InteractionManager {
         return null;
       }
 
+      // Save entity ID before completing (completeInteractHold nulls it)
+      const entityIdToReturn = this.interactHoldTargetEntityId;
+
       // Complete the hold (prevents immediate restart)
-      this.completeInteractHold();
-      return this.interactHoldTargetEntityId;
+      this.completeInteractHold(gameState);
+      return entityIdToReturn;
     }
 
     return null;

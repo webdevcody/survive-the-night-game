@@ -113,7 +113,7 @@ export class Broadcaster {
       elapsedSeconds > 0 ? this.bytesSentThisSecond / (1024 * 1024) / elapsedSeconds : 0;
 
     console.log(
-      `[Bandwidth] ${mbPerSecond.toFixed(5)} MB/s (${this.deps.io.sockets.sockets.size} players)`
+      `[Bandwidth] ${mbPerSecond.toFixed(5)} MB/s (${this.deps.io.sockets.sockets.size} players)`,
     );
   }
 
@@ -268,7 +268,7 @@ export class Broadcaster {
       hasRemovedEntities,
       undefined, // no mapData for delta updates
       votingState,
-      zombieLivesState
+      zombieLivesState,
     );
 
     // Write removed entity IDs (only if there are any)
@@ -301,7 +301,7 @@ export class Broadcaster {
             reason: info.reason,
           })),
           changedCount,
-          entities.length
+          entities.length,
         );
       }
     }

@@ -277,7 +277,6 @@ export class Arrow extends Entity {
     this.traveledDistance += distance(lastPosition, this.getPosition());
 
     if (this.traveledDistance > MAX_TRAVEL_DISTANCE) {
-      console.log("arrow reached max distance, creating new arrow");
       this.getEntityManager().markEntityForRemoval(this);
       const arrowAmmo = new ArrowAmmo(this.getGameManagers(), {
         count: 1,

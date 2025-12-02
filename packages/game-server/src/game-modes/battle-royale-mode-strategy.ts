@@ -119,11 +119,6 @@ export class BattleRoyaleModeStrategy implements IGameModeStrategy {
     this.deathOrder = [];
     this.allBiomesToxic = false;
 
-    console.log("[BattleRoyaleModeStrategy] Game started in Battle Royale mode");
-    console.log(
-      `[BattleRoyaleModeStrategy] Map size: ${this.MAP_SIZE}, Max ring: ${this.getMaxRing()}`
-    );
-
     // Initialize the toxic gas timer to count down from TOXIC_ZONE_INTERVAL
     gameManagers.getGameServer().getGameLoop().setPhaseTimer(Date.now(), TOXIC_ZONE_INTERVAL);
 
@@ -132,7 +127,7 @@ export class BattleRoyaleModeStrategy implements IGameModeStrategy {
       new GameMessageEvent({
         message: "Battle Royale - Last one standing wins!",
         color: "gold",
-      })
+      }),
     );
 
     // Initialize AI player manager and spawn initial AI players based on config
@@ -142,7 +137,7 @@ export class BattleRoyaleModeStrategy implements IGameModeStrategy {
     const config = getConfig().aiPlayer;
     const targetAI = Math.max(
       config.MIN_AI_PLAYERS,
-      config.TOTAL_PLAYER_THRESHOLD - realPlayerCount
+      config.TOTAL_PLAYER_THRESHOLD - realPlayerCount,
     );
     this.aiPlayerManager.spawnAIPlayers(targetAI);
   }
@@ -161,8 +156,7 @@ export class BattleRoyaleModeStrategy implements IGameModeStrategy {
     return gameManagers
       .getEntityManager()
       .getPlayerEntities()
-      .filter((p) => !(p as any).serialized?.get("isAI") && !p.isMarkedForRemoval())
-      .length;
+      .filter((p) => !(p as any).serialized?.get("isAI") && !p.isMarkedForRemoval()).length;
   }
 
   onGameEnd(gameManagers: IGameManagers): void {
@@ -195,8 +189,6 @@ export class BattleRoyaleModeStrategy implements IGameModeStrategy {
       this.aiPlayerManager.cleanup();
       this.aiPlayerManager = null;
     }
-
-    console.log("[BattleRoyaleModeStrategy] Game ended");
   }
 
   update(deltaTime: number, gameManagers: IGameManagers): void {
@@ -251,16 +243,12 @@ export class BattleRoyaleModeStrategy implements IGameModeStrategy {
       return; // No one left to kill
     }
 
-    console.log(
-      `[BattleRoyaleModeStrategy] Endgame - killing ${livingPlayers.length} remaining players`
-    );
-
     // Broadcast endgame message
     gameManagers.getBroadcaster().broadcastEvent(
       new GameMessageEvent({
         message: "The toxic gas has consumed the entire arena!",
         color: "red",
-      })
+      }),
     );
 
     // Kill all living players by dealing massive damage
@@ -300,11 +288,6 @@ export class BattleRoyaleModeStrategy implements IGameModeStrategy {
         const playerId = player.getId();
         if (!this.deathOrder.includes(playerId)) {
           this.deathOrder.push(playerId);
-          console.log(
-            `[BattleRoyaleModeStrategy] Recorded death #${
-              this.deathOrder.length
-            } for ${player.getDisplayName()} (ID: ${playerId})`
-          );
         }
       }
 
@@ -337,8 +320,6 @@ export class BattleRoyaleModeStrategy implements IGameModeStrategy {
    * Respawn a zombie player who died (they stay as zombie)
    */
   private respawnZombiePlayer(player: Player, gameManagers: IGameManagers): void {
-    console.log(`[BattleRoyaleModeStrategy] ${player.getDisplayName()} (zombie) respawning`);
-
     // Re-enable collision
     if (player.hasExt(Collidable)) {
       player.getExt(Collidable).setEnabled(true);
@@ -365,8 +346,6 @@ export class BattleRoyaleModeStrategy implements IGameModeStrategy {
    * Respawn a dead player as a zombie
    */
   private respawnAsZombie(player: Player, gameManagers: IGameManagers): void {
-    console.log(`[BattleRoyaleModeStrategy] ${player.getDisplayName()} respawning as zombie`);
-
     // Convert to zombie
     player.setIsZombie(true);
 
@@ -411,7 +390,7 @@ export class BattleRoyaleModeStrategy implements IGameModeStrategy {
       new GameMessageEvent({
         message: `${player.getDisplayName()} has risen as a zombie!`,
         color: "red",
-      })
+      }),
     );
   }
 
@@ -426,7 +405,7 @@ export class BattleRoyaleModeStrategy implements IGameModeStrategy {
 
     // Filter out dead players and the current player (if already spawned)
     const livingPlayers = existingPlayers.filter(
-      (p) => !p.isDead() && p.getId() !== player.getId() && p.hasExt(Positionable)
+      (p) => !p.isDead() && p.getId() !== player.getId() && p.hasExt(Positionable),
     );
 
     // If no other players exist, validate and return a random position
@@ -460,7 +439,7 @@ export class BattleRoyaleModeStrategy implements IGameModeStrategy {
       // (spawn position is top-left corner, center is offset by half tile size)
       const candidateCenter = poolManager.vector2.claim(
         candidatePosition.x + playerCenterOffset,
-        candidatePosition.y + playerCenterOffset
+        candidatePosition.y + playerCenterOffset,
       );
 
       // Check if this position is far enough from all existing players
@@ -487,7 +466,7 @@ export class BattleRoyaleModeStrategy implements IGameModeStrategy {
     // If we couldn't find a valid position after many attempts, fall back to random
     // This can happen if the map is very crowded or small
     console.warn(
-      `[BattleRoyaleModeStrategy] Could not find spawn position with minimum distance after ${MAX_ATTEMPTS} attempts, using random position`
+      `[BattleRoyaleModeStrategy] Could not find spawn position with minimum distance after ${MAX_ATTEMPTS} attempts, using random position`,
     );
     const fallbackPosition = gameManagers.getMapManager().getRandomGrassPositionExcludingCampsite();
     // Validate fallback position (should already be valid, but double-check)
@@ -708,9 +687,6 @@ export class BattleRoyaleModeStrategy implements IGameModeStrategy {
       const selectedBiome = this.selectRandomBiomeFromCurrentRing();
       if (!selectedBiome) {
         if (spawnedBiomes.length === 0 && !this.allBiomesToxic) {
-          console.log(
-            "[BattleRoyaleModeStrategy] All biomes are now toxic - arena fully closed, triggering endgame"
-          );
           this.allBiomesToxic = true;
 
           // Broadcast final warning
@@ -718,7 +694,7 @@ export class BattleRoyaleModeStrategy implements IGameModeStrategy {
             new GameMessageEvent({
               message: "The campsite has been consumed! Last one standing wins!",
               color: "gold",
-            })
+            }),
           );
         }
         break;
@@ -734,7 +710,7 @@ export class BattleRoyaleModeStrategy implements IGameModeStrategy {
 
     // Count remaining biomes in current ring
     const remainingInRing = this.getBiomesInRing(this.currentRing).filter(
-      (b) => !this.toxicBiomes.has(`${b.x},${b.y}`)
+      (b) => !this.toxicBiomes.has(`${b.x},${b.y}`),
     ).length;
 
     // Broadcast warning with ring info
@@ -742,8 +718,8 @@ export class BattleRoyaleModeStrategy implements IGameModeStrategy {
       this.currentRing === 0
         ? "outer edge"
         : this.currentRing === this.getMaxRing()
-        ? "center"
-        : `ring ${this.currentRing}`;
+          ? "center"
+          : `ring ${this.currentRing}`;
 
     const biomeCount = spawnedBiomes.length;
     const biomeWord = biomeCount === 1 ? "zone" : "zones";
@@ -752,11 +728,7 @@ export class BattleRoyaleModeStrategy implements IGameModeStrategy {
       new GameMessageEvent({
         message: `${biomeCount} toxic ${biomeWord} spreading! (${remainingInRing} left in ${ringName})`,
         color: "red",
-      })
-    );
-
-    console.log(
-      `[BattleRoyaleModeStrategy] Spawned ${biomeCount} toxic zones in ring ${this.currentRing}, ${remainingInRing} remaining`
+      }),
     );
   }
 
@@ -854,7 +826,7 @@ export class BattleRoyaleModeStrategy implements IGameModeStrategy {
     while (this.currentRing <= maxRing) {
       const biomesInRing = this.getBiomesInRing(this.currentRing);
       const availableBiomes = biomesInRing.filter(
-        (biome) => !this.toxicBiomes.has(`${biome.x},${biome.y}`)
+        (biome) => !this.toxicBiomes.has(`${biome.x},${biome.y}`),
       );
 
       if (availableBiomes.length > 0) {
@@ -864,11 +836,6 @@ export class BattleRoyaleModeStrategy implements IGameModeStrategy {
       }
 
       // No available biomes in current ring, move to next inner ring
-      console.log(
-        `[BattleRoyaleModeStrategy] Ring ${this.currentRing} complete, moving to ring ${
-          this.currentRing + 1
-        }`
-      );
       this.currentRing++;
     }
 
@@ -905,7 +872,7 @@ export class BattleRoyaleModeStrategy implements IGameModeStrategy {
         new GameMessageEvent({
           message: "A supply crate has appeared!",
           color: "green",
-        })
+        }),
       );
     }
   }
@@ -1006,10 +973,6 @@ export class BattleRoyaleModeStrategy implements IGameModeStrategy {
     const biomeX = parseInt(biomeXStr, 10);
     const biomeY = parseInt(biomeYStr, 10);
 
-    console.log(
-      `[BattleRoyaleModeStrategy] Consolidating biome (${biomeX}, ${biomeY}) - replacing ${this.TILES_PER_BIOME} clouds with single zone`
-    );
-
     // Calculate biome bounds in world coordinates
     const biomeStartX = biomeX * this.BIOME_SIZE * this.TILE_SIZE;
     const biomeStartY = biomeY * this.BIOME_SIZE * this.TILE_SIZE;
@@ -1052,10 +1015,6 @@ export class BattleRoyaleModeStrategy implements IGameModeStrategy {
 
     // Note: We keep the occupiedTiles set as-is for checking purposes
     // but the individual clouds are gone
-
-    console.log(
-      `[BattleRoyaleModeStrategy] Consolidated biome (${biomeX}, ${biomeY}) - removed ${cloudsInBiome.length} clouds`
-    );
   }
 
   /**
@@ -1089,7 +1048,7 @@ export class BattleRoyaleModeStrategy implements IGameModeStrategy {
     position: Vector2,
     isOriginalCloud: boolean,
     canReproduce: boolean,
-    primaryDirection: { x: number; y: number }
+    primaryDirection: { x: number; y: number },
   ): boolean {
     // Check if tile is already occupied
     if (this.isTileOccupied(position)) {

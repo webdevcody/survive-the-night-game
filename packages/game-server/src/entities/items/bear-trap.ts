@@ -15,6 +15,7 @@ import Updatable from "@/extensions/updatable";
 import Movable from "@/extensions/movable";
 import Snared from "@/extensions/snared";
 import { distance } from "../../../../game-shared/src/util/physics";
+import { ItemState } from "@/types/entity";
 
 import { SerializableFields } from "@/util/serializable-fields";
 
@@ -28,16 +29,19 @@ export class BearTrap extends Entity implements IEntity {
     return PoolManager.getInstance().vector2.claim(16, 16);
   }
   private static readonly TRIGGER_RADIUS = getConfig().combat.ITEM_TRIGGER_RADIUS;
+  public static readonly DEFAULT_COUNT = 1;
   private triggerExtension: OneTimeTrigger | null = null;
   private interactiveExtension: Interactive;
 
-  constructor(gameManagers: IGameManagers) {
+  constructor(gameManagers: IGameManagers, itemState?: ItemState) {
     super(gameManagers, Entities.BEAR_TRAP);
 
     // Initialize serializable fields
     this.serialized = new SerializableFields({ isArmed: true, snaredEntityId: null }, () =>
       this.markEntityDirty()
     );
+
+    const count = itemState?.count ?? BearTrap.DEFAULT_COUNT;
 
     const poolManager = PoolManager.getInstance();
     const size = poolManager.vector2.claim(16, 16);
@@ -46,7 +50,7 @@ export class BearTrap extends Entity implements IEntity {
       .onInteract((entityId: number) => this.interact(entityId))
       .setDisplayName("bear trap");
     this.addExtension(this.interactiveExtension);
-    this.addExtension(new Carryable(this, "bear_trap" as any));
+    this.addExtension(new Carryable(this, "bear_trap" as any).setItemState({ count }));
     this.addExtension(new Placeable(this));
     this.addExtension(new Updatable(this, this.updateBearTrap.bind(this)));
 
@@ -200,10 +204,13 @@ export class BearTrap extends Entity implements IEntity {
     const isOwner = ownerId !== null && entityId === ownerId;
     const isTrappedPlayer = snaredEntityId !== null && entityId === snaredEntityId;
 
+    const carryable = this.getExt(Carryable);
+    const pickupOptions = Carryable.createStackablePickupOptions(carryable, BearTrap.DEFAULT_COUNT);
+
     // If the interacting player is trapped by this trap, they must pick it up to escape
     if (isTrappedPlayer) {
       this.releaseSnaredEntity();
-      this.getExt(Carryable).pickup(entityId);
+      carryable.pickup(entityId, pickupOptions);
       return;
     }
 
@@ -223,11 +230,11 @@ export class BearTrap extends Entity implements IEntity {
       // Enemy players (not owner) just pick up the trap, no rearm option
       // Also if owner and no snared entity, just pick it up
       this.releaseSnaredEntity();
-      this.getExt(Carryable).pickup(entityId);
+      carryable.pickup(entityId, pickupOptions);
       return;
     }
 
     // If armed, allow pickup
-    this.getExt(Carryable).pickup(entityId);
+    carryable.pickup(entityId, pickupOptions);
   }
 }

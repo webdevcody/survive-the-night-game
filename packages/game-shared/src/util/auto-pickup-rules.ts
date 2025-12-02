@@ -1,5 +1,6 @@
 import { EntityType } from "../types/entity";
 import { ItemType, isWeapon, isResourceItem } from "./inventory";
+import { itemRegistry, weaponRegistry, environmentRegistry } from "../entities";
 
 /**
  * Shared auto-pickup rules logic
@@ -45,22 +46,34 @@ export function shouldAutoPickup(context: AutoPickupContext): boolean {
     return true;
   }
 
-  // Check if it's a tree (harvestable resource) - always auto-pickup
-  if (context.entityType === "tree") {
+  // Check environment config for autoPickup setting
+  const environmentConfig = environmentRegistry.get(context.entityType);
+  if (environmentConfig?.autoPickup === true) {
     return true;
   }
-
-  // Check if it's a coin - always auto-pickup
-  if (context.entityType === "coin") {
-    return true;
+  if (environmentConfig?.autoPickup === false) {
+    return false;
   }
 
-  // Crates and barrels (gallon drums) - always auto-loot when walked over
-  if (context.entityType === "crate" || context.entityType === "gallon_drum") {
+  // Check item config for autoPickup setting
+  const itemConfig = itemRegistry.get(context.entityType);
+  if (itemConfig?.autoPickup === true) {
     return true;
   }
+  if (itemConfig?.autoPickup === false) {
+    return false;
+  }
 
-  // Weapons always require manual pickup
+  // Check weapon config for autoPickup setting
+  const weaponConfig = weaponRegistry.get(context.entityType);
+  if (weaponConfig?.autoPickup === true) {
+    return true;
+  }
+  if (weaponConfig?.autoPickup === false) {
+    return false;
+  }
+
+  // Weapons always require manual pickup (unless explicitly configured otherwise)
   if (isWeapon(context.entityType)) {
     return false;
   }
@@ -78,5 +91,3 @@ export function shouldAutoPickup(context: AutoPickupContext): boolean {
   // New item not in inventory - require manual pickup
   return false;
 }
-
-

@@ -10,6 +10,7 @@ export const ENVIRONMENT_CONFIGS: Record<string, EnvironmentConfig> = {
       y: 0,
       sheet: "items",
     },
+    autoPickup: true,
   },
   wall: {
     id: "wall",

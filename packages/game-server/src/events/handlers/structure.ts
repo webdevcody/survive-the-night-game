@@ -107,9 +107,6 @@ function findUpgradeableEntity(
     if (dx < structureSize && dy < structureSize) {
       // Check if this entity can be upgraded
       const upgradeTarget = getUpgradeTarget(placingItemType, entityType);
-      console.log(
-        `[Upgrade Check] Placing ${placingItemType} on ${entityType}, upgrade target: ${upgradeTarget}`
-      );
       if (upgradeTarget) {
         return entity;
       }
@@ -140,9 +137,6 @@ export function onPlaceStructure(
   const { MAX_PLACEMENT_RANGE, TILE_SIZE } = getConfig().world;
 
   if (dist > MAX_PLACEMENT_RANGE) {
-    console.log(
-      `Player ${player.getId()} tried to place ${data.itemType} too far away (${dist}px)`
-    );
     return;
   }
 
@@ -152,7 +146,6 @@ export function onPlaceStructure(
   const itemIndex = inventoryItems.findIndex((item) => item?.itemType === data.itemType);
 
   if (itemIndex === -1) {
-    console.log(`Player ${player.getId()} tried to place ${data.itemType} without having one`);
     return;
   }
 
@@ -167,7 +160,6 @@ export function onPlaceStructure(
     gridX < 0 ||
     gridX >= mapData.collidables[0].length
   ) {
-    console.log(`Player ${player.getId()} tried to place ${data.itemType} out of bounds`);
     return;
   }
 
@@ -206,7 +198,6 @@ export function onPlaceStructure(
     });
 
     if (!upgradedEntity) {
-      console.log(`Failed to create upgraded entity for ${upgradeTarget}`);
       return;
     }
 
@@ -218,10 +209,6 @@ export function onPlaceStructure(
     }
 
     context.getEntityManager().addEntity(upgradedEntity);
-
-    console.log(
-      `Player ${player.getId()} upgraded ${upgradeableEntity.getType()} to ${upgradeTarget} at (${existingPos.x}, ${existingPos.y})`
-    );
 
     // Broadcast build event for upgrade
     const upgradeItemConfig = itemRegistry.get(upgradeTarget);
@@ -240,7 +227,6 @@ export function onPlaceStructure(
 
   // Normal placement - check if grid position is occupied by map tile
   if (mapData.collidables[gridY][gridX] !== -1) {
-    console.log(`Player ${player.getId()} tried to place ${data.itemType} on occupied tile`);
     return;
   }
 
@@ -259,7 +245,6 @@ export function onPlaceStructure(
     const dy = Math.abs(entityPos.y - (placePos.y + structureSize / 2));
 
     if (dx < structureSize && dy < structureSize) {
-      console.log(`Player ${player.getId()} tried to place ${data.itemType} on existing entity`);
       return;
     }
   }
@@ -289,7 +274,6 @@ export function onPlaceStructure(
   });
 
   if (!placedEntity) {
-    console.log(`Failed to create entity for ${data.itemType}`);
     return;
   }
 
@@ -301,8 +285,6 @@ export function onPlaceStructure(
   }
 
   context.getEntityManager().addEntity(placedEntity);
-
-  console.log(`Player ${player.getId()} placed ${data.itemType} at (${placePos.x}, ${placePos.y})`);
 
   // Broadcast build event if item has a placeSound configured
   if (itemConfig.placeSound) {

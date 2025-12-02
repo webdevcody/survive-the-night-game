@@ -46,11 +46,9 @@ export class WavesModeStrategy implements IGameModeStrategy {
   onGameStart(gameManagers: IGameManagers): void {
     // Waves mode uses default game initialization
     // Map generation and car creation are handled by MapManager
-    console.log("[WavesModeStrategy] Game started in Waves mode");
   }
 
   onGameEnd(gameManagers: IGameManagers): void {
-    console.log("[WavesModeStrategy] Game ended");
   }
 
   update(deltaTime: number, gameManagers: IGameManagers): void {
@@ -178,14 +176,11 @@ export class WavesModeStrategy implements IGameModeStrategy {
 
   // Wave system hooks - called by GameLoop
   onWaveStart(waveNumber: number, gameManagers: IGameManagers): void {
-    console.log(`[WavesModeStrategy] Wave ${waveNumber} started`);
   }
 
   onWaveComplete(waveNumber: number, gameManagers: IGameManagers): void {
-    console.log(`[WavesModeStrategy] Wave ${waveNumber} completed`);
   }
 
   onPreparationStart(waveNumber: number, gameManagers: IGameManagers): void {
-    console.log(`[WavesModeStrategy] Preparation for wave ${waveNumber} started`);
   }
 }

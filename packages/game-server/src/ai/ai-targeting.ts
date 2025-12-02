@@ -202,6 +202,11 @@ export class AITargetingSystem {
 
       // Check if it's a zombie
       if (zombieTypes.has(entityType as any)) {
+        // Skip dead zombies - they are not threats
+        if (entity.hasExt(Destructible) && entity.getExt(Destructible).isDead()) {
+          continue;
+        }
+
         const assessment = ThreatScorer.assessThreat(
           playerPos,
           entity,

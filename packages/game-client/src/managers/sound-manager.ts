@@ -406,7 +406,6 @@ export class SoundManager {
     this.backgroundMusic = audio;
     audio.play().catch(() => {
       // Ignore autoplay errors (browser may block autoplay)
-      console.log("Background music autoplay blocked by browser");
     });
   }
 
@@ -463,7 +462,6 @@ export class SoundManager {
     this.battleMusic = audio;
     audio.play().catch(() => {
       // Ignore autoplay errors (browser may block autoplay)
-      console.log("Battle music autoplay blocked by browser");
     });
   }
 
@@ -528,7 +526,6 @@ export class SoundManager {
       // Start playing immediately
       audio.play().catch(() => {
         // Ignore autoplay errors (browser may block autoplay)
-        console.log("Campfire sound autoplay blocked by browser");
       });
     }
 
