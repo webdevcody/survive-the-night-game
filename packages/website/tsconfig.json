@@ -19,7 +19,7 @@
       "@shared/*": ["../game-shared/src/*"],
       "@client/*": ["../game-client/src/*"]
     },
-    "noEmit": false
+    "noEmit": true
   },
   "references": [
     { "path": "../game-shared" },
