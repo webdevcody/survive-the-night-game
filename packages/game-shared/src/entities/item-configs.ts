@@ -216,6 +216,7 @@ export const ITEM_CONFIGS: Record<string, ItemConfig> = {
       buyable: true,
       price: 5,
     },
+    autoPickup: false,
     recipe: {
       enabled: true,
       components: [{ type: "wood" }, { type: "cloth" }],

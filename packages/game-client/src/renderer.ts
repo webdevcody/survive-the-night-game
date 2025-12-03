@@ -21,6 +21,7 @@ import { Entities } from "@shared/constants";
 import { getConfig } from "@shared/config";
 import { getPlayer } from "./util/get-player";
 import { distance } from "@shared/util/physics";
+import { isAutoPickupItem } from "./util/auto-pickup";
 
 export class Renderer {
   private ctx: CanvasRenderingContext2D;
@@ -195,10 +196,12 @@ export class Renderer {
       }
 
       // Check if this is an interactive entity within interaction range
+      // Skip auto-pickup items - they don't need manual interaction highlighting
       if (
         entity.hasExt(ClientInteractive) &&
         entity.getId() !== player.getId() &&
-        dist <= interactRadius
+        dist <= interactRadius &&
+        !isAutoPickupItem(entity, player)
       ) {
         const isDeadPlayer =
           entity.getType() === Entities.PLAYER && entity instanceof PlayerClient && entity.isDead();

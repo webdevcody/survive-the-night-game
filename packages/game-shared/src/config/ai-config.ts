@@ -78,7 +78,7 @@ export const aiConfig = {
   /**
    * Must match player MAX_INTERACT_RADIUS
    */
-  INTERACT_RADIUS: 20,
+  INTERACT_RADIUS: 32,
 
   /**
    * ========================================================================

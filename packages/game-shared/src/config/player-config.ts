@@ -19,7 +19,7 @@ export const playerConfig = {
   /**
    * Maximum distance for interaction with objects (in pixels)
    */
-  MAX_INTERACT_RADIUS: 20,
+  MAX_INTERACT_RADIUS: 32,
 
   /**
    * Radius for automatic item pickup (in pixels)

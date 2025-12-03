@@ -258,6 +258,7 @@ export const WEAPON_CONFIGS: Record<string, WeaponConfig> = {
       cooldown: 0.5,
       cameraShakeIntensity: 0.5,
     },
+    autoPickup: true,
     assets: {
       assetPrefix: "grenade",
       spritePositions: {
@@ -292,6 +293,7 @@ export const WEAPON_CONFIGS: Record<string, WeaponConfig> = {
       sheet: "items",
     },
     sound: "pistol",
+    autoPickup: true,
     merchant: {
       enabled: true,
       buyable: true,

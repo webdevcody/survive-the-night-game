@@ -22,13 +22,13 @@ const BASE_ZOMBIES_PER_WAVE = 3;
 const ZOMBIES_PER_PLAYER_PER_WAVE = 3;
 
 const ZOMBIE_TYPES: ZombieType[] = [
-  { type: "regular", weight: 4, minWave: 1 },
-  { type: "fast", weight: 2, minWave: 2 },
-  { type: "big", weight: 3, minWave: 4 },
-  { type: "bat", weight: 3, minWave: 5 },
-  { type: "spitter", weight: 2, minWave: 6 },
-  { type: "exploding", weight: 2, minWave: 7 },
-  { type: "leaping", weight: 2, minWave: 8 },
+  { type: "regular", weight: 10, minWave: 1 },
+  { type: "fast", weight: 3, minWave: 2 },
+  { type: "big", weight: 1, minWave: 4 },
+  { type: "bat", weight: 2, minWave: 5 },
+  { type: "spitter", weight: 1, minWave: 6 },
+  { type: "exploding", weight: 1, minWave: 7 },
+  { type: "leaping", weight: 1, minWave: 8 },
 ];
 
 export class GameMaster {
