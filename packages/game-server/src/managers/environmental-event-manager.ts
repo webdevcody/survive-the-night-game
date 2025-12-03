@@ -47,6 +47,18 @@ export class EnvironmentalEventManager {
   }
 
   /**
+   * Reset all environmental events (ends any active events)
+   * Called when game restarts to ensure clean state
+   */
+  public reset(): void {
+    for (const strategy of this.strategies) {
+      if (strategy.isActive()) {
+        strategy.end();
+      }
+    }
+  }
+
+  /**
    * Get toxic gas event strategy (for backward compatibility)
    */
   public getToxicGasStrategy(): ToxicGasEventStrategy | null {

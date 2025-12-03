@@ -26,6 +26,9 @@ import { YourIdEvent } from "../../../game-shared/src/events/server-sent/events/
 import { HandlerContext, onConnection, sendFullState } from "@/events/handlers";
 import { socketEventHandlers } from "@/events/handlers/registry";
 import { serializeServerEvent } from "@shared/events/server-sent/server-event-serialization";
+import { SessionValidator } from "@/services/session-validator";
+import { UserSessionCache } from "@/services/user-session-cache";
+import { KillTracker } from "@/services/kill-tracker";
 
 /**
  * Any and all functionality related to sending server side events
@@ -48,6 +51,8 @@ export class ServerSocketManager implements Broadcaster {
   private tickPerformanceTracker: TickPerformanceTracker | null = null;
   private bufferManager: BufferManager;
   private broadcaster: BroadcastingBroadcaster;
+  private sessionValidator: SessionValidator;
+  private userSessionCache: UserSessionCache;
 
   constructor(port: number, gameServer: GameServer) {
     this.port = port;
@@ -100,8 +105,15 @@ export class ServerSocketManager implements Broadcaster {
       tickPerformanceTracker: this.tickPerformanceTracker,
     });
 
+    // Initialize session services
+    this.sessionValidator = SessionValidator.getInstance();
+    this.userSessionCache = UserSessionCache.getInstance();
+
+    // Initialize kill tracker with access to players map
+    KillTracker.getInstance().initialize(this.players);
+
     this.io.on("connection", (socket: ISocketAdapter) => {
-      const { displayName, version } = socket.handshake.query;
+      const { displayName, version, gameAuthToken } = socket.handshake.query;
 
       const rawDisplayName = displayName
         ? Array.isArray(displayName)
@@ -133,8 +145,43 @@ export class ServerSocketManager implements Broadcaster {
       // Allow multiple connections with the same display name
       // Each connection gets its own player entity
       this.playerDisplayNames.set(socket.id, filteredDisplayName || "Unknown");
+
+      // Validate game auth token if provided (synchronous - no HTTP call needed)
+      if (gameAuthToken) {
+        const tokenStr = Array.isArray(gameAuthToken)
+          ? gameAuthToken[0]
+          : gameAuthToken;
+        if (tokenStr) {
+          this.validateAndCacheSession(socket.id, tokenStr);
+        }
+      }
+
       this.onConnection(socket);
     });
+  }
+
+  /**
+   * Validate game auth token and cache the user session
+   * This is synchronous - tokens are validated locally using HMAC
+   */
+  private validateAndCacheSession(
+    socketId: string,
+    gameAuthToken: string
+  ): void {
+    const result = this.sessionValidator.validateGameAuthToken(gameAuthToken);
+
+    if (result.valid && result.userId) {
+      this.userSessionCache.setUserSession(
+        socketId,
+        result.userId,
+        gameAuthToken
+      );
+      console.log(`Socket ${socketId} authenticated as user ${result.userId}`);
+    } else {
+      console.log(
+        `Socket ${socketId} token validation failed: ${result.error}`
+      );
+    }
   }
 
   /**
@@ -150,6 +197,8 @@ export class ServerSocketManager implements Broadcaster {
       chatCommandRegistry: this.chatCommandRegistry,
       profanityMatcher: this.profanityMatcher,
       profanityCensor: this.profanityCensor,
+      sessionValidator: this.sessionValidator,
+      userSessionCache: this.userSessionCache,
       getEntityManager: () => this.getEntityManager(),
       getMapManager: () => this.getMapManager(),
       getGameManagers: () => this.getGameManagers(),

@@ -44,7 +44,7 @@ class WeaponRegistry {
     if (!config.assets.sheet) {
       throw new Error(
         `Weapon "${config.id}" is missing required 'sheet' property in assets. ` +
-          `All weapons must specify which sprite sheet to use.`
+          `All weapons must specify which sprite sheet to use.`,
       );
     }
     this.weapons.set(config.id, config);

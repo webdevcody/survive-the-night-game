@@ -8,6 +8,8 @@ import { GameEvent } from "@shared/events/types";
 import { RegExpMatcher, TextCensor } from "obscenity";
 import { ISocketAdapter } from "@shared/network/socket-adapter";
 import { PlayerColor } from "@shared/commands/commands";
+import { SessionValidator } from "@/services/session-validator";
+import { UserSessionCache } from "@/services/user-session-cache";
 
 export interface HandlerContext {
   players: Map<string, Player>;
@@ -18,6 +20,8 @@ export interface HandlerContext {
   chatCommandRegistry: CommandRegistry;
   profanityMatcher: RegExpMatcher;
   profanityCensor: TextCensor;
+  sessionValidator: SessionValidator;
+  userSessionCache: UserSessionCache;
   getEntityManager(): IEntityManager;
   getMapManager(): MapManager;
   getGameManagers(): IGameManagers;

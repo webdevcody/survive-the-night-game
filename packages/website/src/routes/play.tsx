@@ -14,6 +14,14 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "~/components/ui/dropdown-menu";
+import { getGameAuthToken } from "~/fn/game-auth";
+
+// Extend window type for game auth token
+declare global {
+  interface Window {
+    __gameAuthToken?: string | null;
+  }
+}
 
 export const Route = createFileRoute("/play")({
   component: Play,
@@ -67,6 +75,11 @@ function GameClientLoader() {
       if (savedColor) {
         setCurrentPlayerColor(savedColor);
       }
+
+      // Fetch game auth token for WebSocket authentication
+      getGameAuthToken().then(({ token }) => {
+        window.__gameAuthToken = token;
+      });
     }
   }, []);
 

@@ -193,9 +193,9 @@ function RootDocument({ children }: { children: React.ReactNode }) {
           {isPlayRoute ? (
             <>{children}</>
           ) : (
-            <div className="min-h-screen bg-background pb-20">
+            <div className="min-h-screen bg-background flex flex-col">
               <Header />
-              <main>{children}</main>
+              <main className="flex-1">{children}</main>
               <Footer />
             </div>
           )}

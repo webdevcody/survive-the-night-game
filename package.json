@@ -5,6 +5,8 @@
   "scripts": {
     "dev": "npm-run-all --parallel dev:*",
     "db:up": "npm run db:up --workspace=packages/website",
+    "db:migrate": "npm run db:migrate --workspace=packages/website",
+    "db:generate": "npm run db:generate --workspace=packages/website",
     "dev:website": "npm run dev --workspace=packages/website",
     "dev:server": "npm run dev --workspace=packages/game-server",
     "dev:biome-editor": "npm run dev --workspace=packages/biome-editor-server",
@@ -20,9 +22,8 @@
   "author": "",
   "license": "MIT",
   "description": "",
-  "dependencies": {},
   "devDependencies": {
-    "npm-run-all": "^4.1.5",
-    "dependency-cruiser": "^16.9.0"
+    "dependency-cruiser": "^16.9.0",
+    "npm-run-all": "^4.1.5"
   }
 }

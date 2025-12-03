@@ -23,6 +23,7 @@ import { balanceConfig } from "@shared/config/balance-config";
 import { Blood } from "@/entities/effects/blood";
 import { distance } from "@shared/util/physics";
 import { Player } from "@/entities/players/player";
+import { gameEventBus } from "@/services/game-event-bus";
 
 export interface MovementStrategy {
   // Return true if the strategy handled movement completely, false if it needs default movement handling
@@ -141,6 +142,15 @@ export abstract class BaseEnemy extends Entity {
     this.getGameManagers()
       .getBroadcaster()
       .broadcastEvent(new ZombieDeathEvent(this.getId(), killerId || 0));
+
+    // Emit internal event for kill tracking (decoupled from HTTP/API logic)
+    if (killerId) {
+      gameEventBus.emitZombieKilled({
+        zombieEntityId: this.getId(),
+        killerEntityId: killerId,
+        timestamp: Date.now(),
+      });
+    }
 
     // Spawn a coin when zombie dies
     this.spawnCoin();

@@ -2,9 +2,25 @@ import { Link } from "@tanstack/react-router";
 import { createFileRoute } from "@tanstack/react-router";
 import { Button } from "~/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "~/components/ui/table";
+import { Avatar, AvatarFallback, AvatarImage } from "~/components/ui/avatar";
+import { getLeaderboard } from "~/fn/leaderboard";
+import { useState, useMemo } from "react";
+import { ArrowUpDown, ArrowUp, ArrowDown, User } from "lucide-react";
 
 export const Route = createFileRoute("/leaderboard")({
   component: Leaderboard,
+  loader: async () => {
+    const stats = await getLeaderboard();
+    return { stats };
+  },
 });
 
 export function meta() {
@@ -17,21 +33,73 @@ export function meta() {
   ];
 }
 
-// Placeholder leaderboard data
-const LEADERBOARD_DATA = [
-  { rank: 1, playerName: "ZombieSlayer99", nightsSurvived: 47, kills: 2834 },
-  { rank: 2, playerName: "NightHunter", nightsSurvived: 42, kills: 2567 },
-  { rank: 3, playerName: "SurvivalKing", nightsSurvived: 38, kills: 2245 },
-  { rank: 4, playerName: "DeadShot", nightsSurvived: 35, kills: 2103 },
-  { rank: 5, playerName: "TheLastOne", nightsSurvived: 33, kills: 1998 },
-  { rank: 6, playerName: "DawnSeeker", nightsSurvived: 30, kills: 1876 },
-  { rank: 7, playerName: "CraftMaster", nightsSurvived: 28, kills: 1754 },
-  { rank: 8, playerName: "WallBuilder", nightsSurvived: 25, kills: 1632 },
-  { rank: 9, playerName: "LootGoblin", nightsSurvived: 23, kills: 1521 },
-  { rank: 10, playerName: "NoobSlayer", nightsSurvived: 20, kills: 1387 },
-];
+type LeaderboardEntry = {
+  rank: number;
+  playerName: string;
+  playerImage: string | null;
+  zombieKills: number;
+  wavesCompleted: number;
+  maxWave: number;
+};
+
+type SortKey = keyof LeaderboardEntry;
+type SortDir = "asc" | "desc";
+
+function SortableHeader({
+  label,
+  sortKey,
+  currentSort,
+  currentDir,
+  onSort,
+}: {
+  label: string;
+  sortKey: SortKey;
+  currentSort: SortKey;
+  currentDir: SortDir;
+  onSort: (key: SortKey) => void;
+}) {
+  const isActive = currentSort === sortKey;
+  return (
+    <Button variant="ghost" onClick={() => onSort(sortKey)} className="h-8 px-2 hover:bg-muted/50">
+      {label}
+      {isActive && currentDir === "asc" ? (
+        <ArrowUp className="ml-2 h-4 w-4" />
+      ) : isActive && currentDir === "desc" ? (
+        <ArrowDown className="ml-2 h-4 w-4" />
+      ) : (
+        <ArrowUpDown className="ml-2 h-4 w-4 opacity-50" />
+      )}
+    </Button>
+  );
+}
 
 function Leaderboard() {
+  const { stats } = Route.useLoaderData();
+  const [sortKey, setSortKey] = useState<SortKey>("maxWave");
+  const [sortDir, setSortDir] = useState<SortDir>("desc");
+
+  const handleSort = (key: SortKey) => {
+    if (sortKey === key) {
+      setSortDir(sortDir === "asc" ? "desc" : "asc");
+    } else {
+      setSortKey(key);
+      setSortDir("desc");
+    }
+  };
+
+  const sortedStats = useMemo(() => {
+    return [...stats].sort((a, b) => {
+      const aVal = a[sortKey];
+      const bVal = b[sortKey];
+      if (typeof aVal === "string" && typeof bVal === "string") {
+        return sortDir === "asc" ? aVal.localeCompare(bVal) : bVal.localeCompare(aVal);
+      }
+      return sortDir === "asc"
+        ? (aVal as number) - (bVal as number)
+        : (bVal as number) - (aVal as number);
+    });
+  }, [stats, sortKey, sortDir]);
+
   return (
     <div className="relative min-h-screen text-white" style={{ backgroundColor: "#00080e" }}>
       {/* Fixed background image - stays in place while scrolling */}
@@ -53,71 +121,120 @@ function Leaderboard() {
               ← Back
             </Button>
           </Link>
-          <h1 className="text-5xl font-bold text-red-600 drop-shadow-[0_0_20px_rgba(220,38,38,0.5)]">
-            Leaderboard
-          </h1>
-          <div className="w-24" /> {/* Spacer for centering */}
         </div>
 
         {/* Leaderboard Table */}
-        <div className="max-w-4xl mx-auto">
+        <div className="max-w-5xl mx-auto">
           <Card className="bg-background/95 backdrop-blur-sm border-border/50 shadow-xl">
             <CardHeader>
               <CardTitle className="text-3xl font-bold text-center">Top Survivors</CardTitle>
             </CardHeader>
-            <CardContent className="p-0">
-              <div className="overflow-hidden">
-                {/* Table Header */}
-                <div className="grid grid-cols-4 gap-4 bg-muted/50 p-4 font-bold text-foreground border-b border-border">
-                  <div className="text-center">Rank</div>
-                  <div>Player</div>
-                  <div className="text-center">Nights Survived</div>
-                  <div className="text-center">Total Kills</div>
+            <CardContent>
+              {stats.length === 0 ? (
+                <div className="text-center py-12 text-muted-foreground">
+                  <p className="text-lg">No survivors yet!</p>
+                  <p className="text-sm mt-2">
+                    Be the first to survive the night and claim your spot.
+                  </p>
                 </div>
-
-                {/* Table Rows */}
-                <div className="divide-y divide-border">
-                  {LEADERBOARD_DATA.map((player) => (
-                    <div
-                      key={player.rank}
-                      className={`grid grid-cols-4 gap-4 p-4 hover:bg-muted/30 transition-colors ${
-                        player.rank <= 3 ? "bg-yellow-500/10" : "bg-background"
-                      }`}
-                    >
-                      {/* Rank with medal for top 3 */}
-                      <div className="text-center font-bold text-foreground">
-                        {player.rank === 1 && <span className="text-2xl">🥇</span>}
-                        {player.rank === 2 && <span className="text-2xl">🥈</span>}
-                        {player.rank === 3 && <span className="text-2xl">🥉</span>}
-                        {player.rank > 3 && (
-                          <span className="text-muted-foreground">#{player.rank}</span>
-                        )}
-                      </div>
-
-                      {/* Player Name */}
-                      <div className="font-semibold text-foreground flex items-center">
-                        {player.playerName}
-                      </div>
-
-                      {/* Nights Survived */}
-                      <div className="text-center font-bold text-green-500">
-                        {player.nightsSurvived}
-                      </div>
-
-                      {/* Total Kills */}
-                      <div className="text-center font-semibold text-red-500">
-                        {player.kills.toLocaleString()}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
+              ) : (
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead className="text-center">
+                        <SortableHeader
+                          label="Rank"
+                          sortKey="rank"
+                          currentSort={sortKey}
+                          currentDir={sortDir}
+                          onSort={handleSort}
+                        />
+                      </TableHead>
+                      <TableHead>
+                        <SortableHeader
+                          label="Player"
+                          sortKey="playerName"
+                          currentSort={sortKey}
+                          currentDir={sortDir}
+                          onSort={handleSort}
+                        />
+                      </TableHead>
+                      <TableHead className="text-center">
+                        <SortableHeader
+                          label="Best Wave"
+                          sortKey="maxWave"
+                          currentSort={sortKey}
+                          currentDir={sortDir}
+                          onSort={handleSort}
+                        />
+                      </TableHead>
+                      <TableHead className="text-center">
+                        <SortableHeader
+                          label="Waves Survived"
+                          sortKey="wavesCompleted"
+                          currentSort={sortKey}
+                          currentDir={sortDir}
+                          onSort={handleSort}
+                        />
+                      </TableHead>
+                      <TableHead className="text-center">
+                        <SortableHeader
+                          label="Total Kills"
+                          sortKey="zombieKills"
+                          currentSort={sortKey}
+                          currentDir={sortDir}
+                          onSort={handleSort}
+                        />
+                      </TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {sortedStats.map((player) => (
+                      <TableRow
+                        key={player.rank}
+                        className={player.rank <= 3 ? "bg-yellow-500/10" : "bg-background"}
+                      >
+                        <TableCell className="text-center font-bold">
+                          {player.rank === 1 && <span className="text-2xl">🥇</span>}
+                          {player.rank === 2 && <span className="text-2xl">🥈</span>}
+                          {player.rank === 3 && <span className="text-2xl">🥉</span>}
+                          {player.rank > 3 && (
+                            <span className="text-muted-foreground">#{player.rank}</span>
+                          )}
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex items-center gap-3">
+                            <Avatar className="h-8 w-8">
+                              <AvatarImage src={player.playerImage || undefined} />
+                              <AvatarFallback className="bg-primary/10">
+                                {player.playerName?.charAt(0)?.toUpperCase() || (
+                                  <User className="h-4 w-4" />
+                                )}
+                              </AvatarFallback>
+                            </Avatar>
+                            <span className="font-semibold">{player.playerName}</span>
+                          </div>
+                        </TableCell>
+                        <TableCell className="text-center font-bold text-purple-500">
+                          {player.maxWave}
+                        </TableCell>
+                        <TableCell className="text-center font-bold text-green-500">
+                          {player.wavesCompleted}
+                        </TableCell>
+                        <TableCell className="text-center font-semibold text-red-500">
+                          {player.zombieKills.toLocaleString()}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              )}
             </CardContent>
           </Card>
 
           {/* Footer Note */}
           <p className="text-center text-muted-foreground mt-6 text-sm">
-            Leaderboard updates every 5 minutes
+            Click column headers to sort • Stats update in real-time
           </p>
         </div>
       </div>

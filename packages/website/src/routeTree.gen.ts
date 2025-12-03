@@ -18,6 +18,9 @@ import { Route as PlayRouteImport } from './routes/play'
 import { Route as LeaderboardRouteImport } from './routes/leaderboard'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as EditorIndexRouteImport } from './routes/editor/index'
+import { Route as ApiSessionValidateRouteImport } from './routes/api/session/validate'
+import { Route as ApiGameZombieKillRouteImport } from './routes/api/game/zombie-kill'
+import { Route as ApiGamePlayerStatsRouteImport } from './routes/api/game/player-stats'
 import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
 
 const TermsRoute = TermsRouteImport.update({
@@ -65,6 +68,21 @@ const EditorIndexRoute = EditorIndexRouteImport.update({
   path: '/editor/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiSessionValidateRoute = ApiSessionValidateRouteImport.update({
+  id: '/api/session/validate',
+  path: '/api/session/validate',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiGameZombieKillRoute = ApiGameZombieKillRouteImport.update({
+  id: '/api/game/zombie-kill',
+  path: '/api/game/zombie-kill',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiGamePlayerStatsRoute = ApiGamePlayerStatsRouteImport.update({
+  id: '/api/game/player-stats',
+  path: '/api/game/player-stats',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiAuthSplatRoute = ApiAuthSplatRouteImport.update({
   id: '/api/auth/$',
   path: '/api/auth/$',
@@ -82,6 +100,9 @@ export interface FileRoutesByFullPath {
   '/terms': typeof TermsRoute
   '/editor': typeof EditorIndexRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
+  '/api/game/player-stats': typeof ApiGamePlayerStatsRoute
+  '/api/game/zombie-kill': typeof ApiGameZombieKillRoute
+  '/api/session/validate': typeof ApiSessionValidateRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -94,6 +115,9 @@ export interface FileRoutesByTo {
   '/terms': typeof TermsRoute
   '/editor': typeof EditorIndexRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
+  '/api/game/player-stats': typeof ApiGamePlayerStatsRoute
+  '/api/game/zombie-kill': typeof ApiGameZombieKillRoute
+  '/api/session/validate': typeof ApiSessionValidateRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -107,6 +131,9 @@ export interface FileRoutesById {
   '/terms': typeof TermsRoute
   '/editor/': typeof EditorIndexRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
+  '/api/game/player-stats': typeof ApiGamePlayerStatsRoute
+  '/api/game/zombie-kill': typeof ApiGameZombieKillRoute
+  '/api/session/validate': typeof ApiSessionValidateRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -121,6 +148,9 @@ export interface FileRouteTypes {
     | '/terms'
     | '/editor'
     | '/api/auth/$'
+    | '/api/game/player-stats'
+    | '/api/game/zombie-kill'
+    | '/api/session/validate'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -133,6 +163,9 @@ export interface FileRouteTypes {
     | '/terms'
     | '/editor'
     | '/api/auth/$'
+    | '/api/game/player-stats'
+    | '/api/game/zombie-kill'
+    | '/api/session/validate'
   id:
     | '__root__'
     | '/'
@@ -145,6 +178,9 @@ export interface FileRouteTypes {
     | '/terms'
     | '/editor/'
     | '/api/auth/$'
+    | '/api/game/player-stats'
+    | '/api/game/zombie-kill'
+    | '/api/session/validate'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -158,6 +194,9 @@ export interface RootRouteChildren {
   TermsRoute: typeof TermsRoute
   EditorIndexRoute: typeof EditorIndexRoute
   ApiAuthSplatRoute: typeof ApiAuthSplatRoute
+  ApiGamePlayerStatsRoute: typeof ApiGamePlayerStatsRoute
+  ApiGameZombieKillRoute: typeof ApiGameZombieKillRoute
+  ApiSessionValidateRoute: typeof ApiSessionValidateRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -225,6 +264,27 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof EditorIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/session/validate': {
+      id: '/api/session/validate'
+      path: '/api/session/validate'
+      fullPath: '/api/session/validate'
+      preLoaderRoute: typeof ApiSessionValidateRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/game/zombie-kill': {
+      id: '/api/game/zombie-kill'
+      path: '/api/game/zombie-kill'
+      fullPath: '/api/game/zombie-kill'
+      preLoaderRoute: typeof ApiGameZombieKillRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/game/player-stats': {
+      id: '/api/game/player-stats'
+      path: '/api/game/player-stats'
+      fullPath: '/api/game/player-stats'
+      preLoaderRoute: typeof ApiGamePlayerStatsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/auth/$': {
       id: '/api/auth/$'
       path: '/api/auth/$'
@@ -246,6 +306,9 @@ const rootRouteChildren: RootRouteChildren = {
   TermsRoute: TermsRoute,
   EditorIndexRoute: EditorIndexRoute,
   ApiAuthSplatRoute: ApiAuthSplatRoute,
+  ApiGamePlayerStatsRoute: ApiGamePlayerStatsRoute,
+  ApiGameZombieKillRoute: ApiGameZombieKillRoute,
+  ApiSessionValidateRoute: ApiSessionValidateRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

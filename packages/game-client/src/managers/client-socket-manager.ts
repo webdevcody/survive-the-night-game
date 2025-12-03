@@ -42,6 +42,7 @@ import { IClientAdapter } from "@shared/network/client-adapter";
 import { createClientAdapter } from "@/network/adapter-factory";
 import { deserializeServerEvent } from "@shared/events/server-sent/server-event-serialization";
 import { getConfig } from "@shared/config";
+import { getGameAuthToken } from "@/util/cookie";
 
 export type EntityDto = { id: string } & any;
 
@@ -202,8 +203,21 @@ export class ClientSocketManager {
     // Create client adapter based on configuration and connect
     this.clientAdapter = createClientAdapter();
     const version = getConfig().meta.VERSION;
+
+    // Build connection URL with query params
+    const params = new URLSearchParams({
+      displayName,
+      version,
+    });
+
+    // Add game auth token if available (optional - allows anonymous play)
+    const gameAuthToken = getGameAuthToken();
+    if (gameAuthToken) {
+      params.set("gameAuthToken", gameAuthToken);
+    }
+
     this.socket = this.clientAdapter.connect(
-      `${this.serverUrl}?displayName=${displayName}&version=${version}`,
+      `${this.serverUrl}?${params.toString()}`,
       {
         // Ensure we create a new connection each time
         forceNew: true,

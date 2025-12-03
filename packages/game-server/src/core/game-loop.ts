@@ -50,6 +50,8 @@ import {
   InfectionModeStrategy,
 } from "@/game-modes";
 import { VotableGameMode, VotingState } from "@shared/types/voting";
+import { gameEventBus } from "@/services/game-event-bus";
+import { Player } from "@/entities/players/player";
 
 export class GameLoop {
   private lastUpdateTime: number = performance.now();
@@ -95,7 +97,7 @@ export class GameLoop {
     tickPerformanceTracker: TickPerformanceTracker,
     entityManager: EntityManager,
     mapManager: MapManager,
-    socketManager: ServerSocketManager
+    socketManager: ServerSocketManager,
   ) {
     this.tickPerformanceTracker = tickPerformanceTracker;
     this.entityManager = entityManager;
@@ -111,7 +113,7 @@ export class GameLoop {
     this.environmentalEventManager = new EnvironmentalEventManager(
       gameManagers,
       this.entityManager,
-      this.mapManager
+      this.mapManager,
     );
   }
 
@@ -192,6 +194,11 @@ export class GameLoop {
     // Clear all entities first
     this.entityManager.clear();
 
+    // Reset environmental events (end any active thunderstorms, toxic gas, etc.)
+    if (this.environmentalEventManager) {
+      this.environmentalEventManager.reset();
+    }
+
     // Generate new map
     this.mapManager.generateMap();
 
@@ -205,7 +212,10 @@ export class GameLoop {
 
     // Broadcast game started event with game mode
     // This tells clients to reset their state and wait for initialization
-    const gameMode = this.gameModeStrategy.getConfig().modeId as "waves" | "battle_royale" | "infection";
+    const gameMode = this.gameModeStrategy.getConfig().modeId as
+      | "waves"
+      | "battle_royale"
+      | "infection";
     this.socketManager.broadcastEvent(new GameStartedEvent(Date.now(), gameMode));
 
     // Send initialization data (YOUR_ID + full state) to all sockets
@@ -344,7 +354,7 @@ export class GameLoop {
           new GameMessageEvent({
             message: `Supply crate dropped at a random location!`,
             color: "green",
-          })
+          }),
         );
       }
     }
@@ -361,14 +371,14 @@ export class GameLoop {
       new GameMessageEvent({
         message: `Wave ${this.waveNumber} incoming! Get back to base!`,
         color: "red",
-      })
+      }),
     );
 
     // Broadcast wave start event for sound
     this.socketManager.broadcastEvent(
       new WaveStartEvent({
         waveNumber: this.waveNumber,
-      })
+      }),
     );
   }
 
@@ -378,8 +388,26 @@ export class GameLoop {
       new GameMessageEvent({
         message: `You survived wave ${this.waveNumber}! Start building defenses!`,
         color: "green",
-      })
+      }),
     );
+
+    // Emit wave completed event for stats tracking
+    // Get all surviving (non-dead) player entity IDs
+    const survivingPlayerIds = this.entityManager
+      .getPlayerEntities()
+      .filter((entity) => {
+        if (entity instanceof Player) {
+          return !entity.isDead();
+        }
+        return false;
+      })
+      .map((entity) => entity.getId());
+
+    gameEventBus.emitWaveCompleted({
+      waveNumber: this.waveNumber,
+      survivingPlayerIds,
+      timestamp: Date.now(),
+    });
 
     // Spawn a survivor in a random biome after wave ends
     const survivorSpawned = this.mapManager.spawnSurvivorInRandomBiome();
@@ -388,7 +416,7 @@ export class GameLoop {
         new GameMessageEvent({
           message: "A survivor signaled for help, save them!",
           color: "yellow",
-        })
+        }),
       );
     }
 
@@ -544,7 +572,7 @@ export class GameLoop {
         winnerId: result?.winnerId ?? null,
         winnerName: result?.winnerName ?? null,
         message: result?.message ?? "Game Over",
-      })
+      }),
     );
 
     // Check if game modes voting is enabled
@@ -568,8 +596,8 @@ export class GameLoop {
     if (updateDuration > TICK_RATE_MS) {
       console.warn(
         `Warning: Slow update detected - took ${updateDuration.toFixed(
-          2
-        )}ms (>${TICK_RATE_MS.toFixed(2)}ms threshold)`
+          2,
+        )}ms (>${TICK_RATE_MS.toFixed(2)}ms threshold)`,
       );
     }
   }
@@ -616,7 +644,10 @@ export class GameLoop {
 
     // Access the infection strategy's zombie lives
     const strategy = this.gameModeStrategy as any;
-    if (typeof strategy.getSharedZombieLives === "function" && typeof strategy.getMaxZombieLives === "function") {
+    if (
+      typeof strategy.getSharedZombieLives === "function" &&
+      typeof strategy.getMaxZombieLives === "function"
+    ) {
       return {
         current: strategy.getSharedZombieLives(),
         max: strategy.getMaxZombieLives(),
@@ -662,7 +693,7 @@ export class GameLoop {
             hasChanged = true;
           } else {
             hasChanged = currentKeys.some(
-              (k) => (currentValue as any)[k] !== (lastValue as any)[k]
+              (k) => (currentValue as any)[k] !== (lastValue as any)[k],
             );
           }
         }
@@ -675,7 +706,11 @@ export class GameLoop {
       if (hasChanged || (alwaysInclude && currentValue !== null && currentValue !== undefined)) {
         (stateUpdate as any)[key] = currentValue;
         // Deep copy objects to avoid reference issues
-        if (currentValue !== null && typeof currentValue === "object" && !Array.isArray(currentValue)) {
+        if (
+          currentValue !== null &&
+          typeof currentValue === "object" &&
+          !Array.isArray(currentValue)
+        ) {
           (this.lastBroadcastedState as any)[key] = { ...currentValue };
         } else {
           (this.lastBroadcastedState as any)[key] = currentValue;

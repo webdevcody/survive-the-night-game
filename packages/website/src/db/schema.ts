@@ -1,4 +1,4 @@
-import { pgTable, text, timestamp, boolean } from "drizzle-orm/pg-core";
+import { pgTable, text, timestamp, boolean, integer } from "drizzle-orm/pg-core";
 import { relations } from "drizzle-orm";
 
 export const user = pgTable("user", {
@@ -60,10 +60,36 @@ export const verification = pgTable("verification", {
   updatedAt: timestamp("updated_at").$defaultFn(() => /* @__PURE__ */ new Date()),
 });
 
+// User game stats for tracking kills, waves, etc.
+export const userStats = pgTable("user_stats", {
+  id: text("id").primaryKey(),
+  userId: text("user_id")
+    .notNull()
+    .unique()
+    .references(() => user.id, { onDelete: "cascade" }),
+  zombieKills: integer("zombie_kills").notNull().default(0),
+  wavesCompleted: integer("waves_completed").notNull().default(0),
+  maxWave: integer("max_wave").notNull().default(0),
+  createdAt: timestamp("created_at")
+    .$defaultFn(() => new Date())
+    .notNull(),
+  updatedAt: timestamp("updated_at")
+    .$defaultFn(() => new Date())
+    .notNull(),
+});
+
 // Relations
-export const userRelations = relations(user, ({ many }) => ({
+export const userRelations = relations(user, ({ many, one }) => ({
   sessions: many(session),
   accounts: many(account),
+  stats: one(userStats),
+}));
+
+export const userStatsRelations = relations(userStats, ({ one }) => ({
+  user: one(user, {
+    fields: [userStats.userId],
+    references: [user.id],
+  }),
 }));
 
 export const sessionRelations = relations(session, ({ one }) => ({
@@ -93,6 +119,9 @@ export type CreateAccountData = typeof account.$inferInsert;
 
 export type Verification = typeof verification.$inferSelect;
 export type CreateVerificationData = typeof verification.$inferInsert;
+
+export type UserStats = typeof userStats.$inferSelect;
+export type CreateUserStatsData = typeof userStats.$inferInsert;
 
 // Subscription types
 export type SubscriptionPlan = "free" | "basic" | "pro";
