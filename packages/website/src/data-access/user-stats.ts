@@ -32,10 +32,7 @@ export async function getOrCreateUserStats(userId: string): Promise<UserStats> {
 /**
  * Increment zombie kills for a user
  */
-export async function incrementZombieKills(
-  userId: string,
-  count: number = 1
-): Promise<UserStats> {
+export async function incrementZombieKills(userId: string, count: number = 1): Promise<UserStats> {
   // Use upsert pattern - insert if not exists, update if exists
   const [result] = await database
     .insert(userStats)
@@ -85,7 +82,7 @@ export async function getLeaderboardStats(limit: number = 100): Promise<
 > {
   const results = await database
     .select({
-      playerName: user.name,
+      playerName: user.displayName,
       playerImage: user.image,
       zombieKills: userStats.zombieKills,
       wavesCompleted: userStats.wavesCompleted,
@@ -116,7 +113,7 @@ export async function updatePlayerStats(
     zombieKills: number;
     wavesCompleted: number;
     maxWave: number;
-  }
+  },
 ): Promise<UserStats> {
   // Use upsert pattern - insert if not exists, update if exists
   const [result] = await database
