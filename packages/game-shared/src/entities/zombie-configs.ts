@@ -254,7 +254,7 @@ export const ZOMBIE_CONFIGS: Record<string, ZombieConfig> = {
     stats: {
       speed: 25,
       health: 20,
-      damage: 4,
+      damage: 2,
       attackCooldown: 1.25,
       attackRadius: combatConfig.ZOMBIE_ATTACK_RADIUS,
       dropChance: 1,

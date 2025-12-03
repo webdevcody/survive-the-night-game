@@ -116,7 +116,15 @@ export class GameClient {
   private scrollAccumulator: number = 0;
   private readonly SCROLL_THRESHOLD = 50; // Accumulate this much deltaY before switching slots
 
+  // Store canvas and bound event handlers for cleanup
+  private canvas: HTMLCanvasElement;
+  private boundMouseMoveHandler: ((e: MouseEvent) => void) | null = null;
+  private boundMouseDownHandler: ((e: MouseEvent) => void) | null = null;
+  private boundMouseUpHandler: ((e: MouseEvent) => void) | null = null;
+  private boundWheelHandler: ((e: WheelEvent) => void) | null = null;
+
   constructor(canvas: HTMLCanvasElement, assetManager?: AssetManager, soundManager?: SoundManager) {
+    this.canvas = canvas;
     this.ctx = canvas.getContext("2d")!;
 
     this.assetManager = assetManager || new AssetManager();
@@ -142,7 +150,7 @@ export class GameClient {
 
     // Legacy event listeners (will be removed after full migration)
     // Add mousemove event listener for UI hover interactions and aiming
-    canvas.addEventListener("mousemove", (e) => {
+    this.boundMouseMoveHandler = (e: MouseEvent) => {
       const rect = canvas.getBoundingClientRect();
 
       // Convert CSS coordinates to canvas coordinates
@@ -171,10 +179,11 @@ export class GameClient {
           this.renderer.updateMousePosition(x, y);
         }
       }
-    });
+    };
+    canvas.addEventListener("mousemove", this.boundMouseMoveHandler);
 
     // Add mousedown event listener for weapon firing
-    canvas.addEventListener("mousedown", (e) => {
+    this.boundMouseDownHandler = (e: MouseEvent) => {
       // Only handle left click
       if (e.button !== 0) return;
 
@@ -259,10 +268,11 @@ export class GameClient {
           }
         }
       }
-    });
+    };
+    canvas.addEventListener("mousedown", this.boundMouseDownHandler);
 
     // Add mouseup event listener to stop firing
-    canvas.addEventListener("mouseup", (e) => {
+    this.boundMouseUpHandler = (e: MouseEvent) => {
       if (e.button !== 0) return; // Only handle left click
 
       const rect = canvas.getBoundingClientRect();
@@ -281,79 +291,77 @@ export class GameClient {
       if (!isFullscreenMapOpen) {
         this.inputManager.releaseFire();
       }
-    });
+    };
+    canvas.addEventListener("mouseup", this.boundMouseUpHandler);
 
     // Add wheel event listener for hotbar slot switching
-    canvas.addEventListener(
-      "wheel",
-      (e) => {
-        // Prevent default scrolling behavior
-        e.preventDefault();
+    this.boundWheelHandler = (e: WheelEvent) => {
+      // Prevent default scrolling behavior
+      e.preventDefault();
 
-        // Check if player is dead
-        const player = getPlayer();
-        if (player && player.isDead()) {
-          this.scrollAccumulator = 0; // Reset accumulator
-          return;
-        }
+      // Check if player is dead
+      const player = getPlayer();
+      if (player && player.isDead()) {
+        this.scrollAccumulator = 0; // Reset accumulator
+        return;
+      }
 
-        // Check if chatting
-        if (this.inputManager.isChatInputActive()) {
-          this.scrollAccumulator = 0; // Reset accumulator
-          return;
-        }
+      // Check if chatting
+      if (this.inputManager.isChatInputActive()) {
+        this.scrollAccumulator = 0; // Reset accumulator
+        return;
+      }
 
-        // Check if merchant panel is open
-        if (this.merchantBuyPanel.isVisible()) {
-          this.scrollAccumulator = 0; // Reset accumulator
-          return;
-        }
+      // Check if merchant panel is open
+      if (this.merchantBuyPanel.isVisible()) {
+        this.scrollAccumulator = 0; // Reset accumulator
+        return;
+      }
 
-        // Check if fullscreen map is open
-        const isFullscreenMapOpen = this.hud?.isFullscreenMapOpen() ?? false;
-        if (isFullscreenMapOpen) {
-          this.scrollAccumulator = 0; // Reset accumulator
-          return;
-        }
+      // Check if fullscreen map is open
+      const isFullscreenMapOpen = this.hud?.isFullscreenMapOpen() ?? false;
+      if (isFullscreenMapOpen) {
+        this.scrollAccumulator = 0; // Reset accumulator
+        return;
+      }
 
-        // Accumulate scroll delta to handle trackpad sensitivity
-        // Trackpads send many small deltaY values, mouse wheels send larger discrete values
-        this.scrollAccumulator += e.deltaY;
+      // Accumulate scroll delta to handle trackpad sensitivity
+      // Trackpads send many small deltaY values, mouse wheels send larger discrete values
+      this.scrollAccumulator += e.deltaY;
 
-        // Only switch slots when accumulated delta exceeds threshold
-        const absAccumulator = Math.abs(this.scrollAccumulator);
-        if (absAccumulator < this.SCROLL_THRESHOLD) {
-          return; // Not enough scroll yet
-        }
+      // Only switch slots when accumulated delta exceeds threshold
+      const absAccumulator = Math.abs(this.scrollAccumulator);
+      if (absAccumulator < this.SCROLL_THRESHOLD) {
+        return; // Not enough scroll yet
+      }
 
-        // Get current slot and max slots
-        const currentSlot = this.inputManager.getCurrentInventorySlot();
-        const maxSlots = getConfig().player.MAX_INVENTORY_SLOTS;
+      // Get current slot and max slots
+      const currentSlot = this.inputManager.getCurrentInventorySlot();
+      const maxSlots = getConfig().player.MAX_INVENTORY_SLOTS;
 
-        // Determine direction: scroll up (negative deltaY) = decrement, scroll down (positive deltaY) = increment
-        const scrollDelta = this.scrollAccumulator > 0 ? 1 : -1;
-        let newSlot = currentSlot + scrollDelta;
+      // Determine direction: scroll up (negative deltaY) = decrement, scroll down (positive deltaY) = increment
+      const scrollDelta = this.scrollAccumulator > 0 ? 1 : -1;
+      let newSlot = currentSlot + scrollDelta;
 
-        // Wrap around: if at max, go to 1; if at 1, go to max
-        if (newSlot > maxSlots) {
-          newSlot = 1;
-        } else if (newSlot < 1) {
-          newSlot = maxSlots;
-        }
+      // Wrap around: if at max, go to 1; if at 1, go to max
+      if (newSlot > maxSlots) {
+        newSlot = 1;
+      } else if (newSlot < 1) {
+        newSlot = maxSlots;
+      }
 
-        // Set the new inventory slot
-        this.inputManager.setInventorySlot(newSlot);
+      // Set the new inventory slot
+      this.inputManager.setInventorySlot(newSlot);
 
-        // Reset accumulator after switching (keep remainder for smooth scrolling)
-        // Subtract threshold amount in the direction we scrolled
-        if (this.scrollAccumulator > 0) {
-          this.scrollAccumulator -= this.SCROLL_THRESHOLD;
-        } else {
-          this.scrollAccumulator += this.SCROLL_THRESHOLD;
-        }
-      },
-      { passive: false },
-    );
+      // Reset accumulator after switching (keep remainder for smooth scrolling)
+      // Subtract threshold amount in the direction we scrolled
+      if (this.scrollAccumulator > 0) {
+        this.scrollAccumulator -= this.SCROLL_THRESHOLD;
+      } else {
+        this.scrollAccumulator += this.SCROLL_THRESHOLD;
+      }
+    };
+    canvas.addEventListener("wheel", this.boundWheelHandler, { passive: false });
 
     const getInventory = () => {
       if (this.gameState.playerId) {
@@ -749,6 +757,36 @@ export class GameClient {
     this.soundManager.stopBackgroundMusic();
     // Stop battle music
     this.soundManager.stopBattleMusic();
+
+    // Clean up input manager event listeners
+    if (this.inputManager) {
+      this.inputManager.cleanup();
+    }
+
+    // Clean up client event handlers
+    if (this.eventHandlers) {
+      this.eventHandlers.cleanup();
+    }
+
+    // Clean up canvas event listeners
+    if (this.canvas) {
+      if (this.boundMouseMoveHandler) {
+        this.canvas.removeEventListener("mousemove", this.boundMouseMoveHandler);
+        this.boundMouseMoveHandler = null;
+      }
+      if (this.boundMouseDownHandler) {
+        this.canvas.removeEventListener("mousedown", this.boundMouseDownHandler);
+        this.boundMouseDownHandler = null;
+      }
+      if (this.boundMouseUpHandler) {
+        this.canvas.removeEventListener("mouseup", this.boundMouseUpHandler);
+        this.boundMouseUpHandler = null;
+      }
+      if (this.boundWheelHandler) {
+        this.canvas.removeEventListener("wheel", this.boundWheelHandler);
+        this.boundWheelHandler = null;
+      }
+    }
 
     // Disconnect from server to prevent duplicate connections
     if (this.socketManager) {

@@ -40,7 +40,7 @@ function Index() {
       <div
         className="fixed inset-0 w-full h-full"
         style={{
-          backgroundImage: "url(/splash2.jpg)",
+          backgroundImage: "url(/splash3.jpg)",
           backgroundSize: "contain",
           backgroundPosition: "top center",
           backgroundRepeat: "no-repeat",
@@ -244,26 +244,6 @@ function Index() {
               </div>
             ))}
           </div>
-        </div>
-
-        {/* Footer */}
-        <div className="text-center py-8 border-t border-slate-900">
-          <div className="flex flex-wrap justify-center gap-4 mb-4">
-            <Link
-              to="/privacy"
-              className="text-gray-500 hover:text-gray-400 text-sm transition-colors"
-            >
-              Privacy Policy
-            </Link>
-            <span className="text-gray-700">•</span>
-            <Link
-              to="/terms"
-              className="text-gray-500 hover:text-gray-400 text-sm transition-colors"
-            >
-              Terms of Service
-            </Link>
-          </div>
-          <p className="text-gray-600 text-sm">Built with TanStack Start • Socket.io • Canvas 2D</p>
         </div>
       </div>
     </div>

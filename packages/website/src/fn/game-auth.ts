@@ -1,6 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { getRequest } from "@tanstack/react-start/server";
 import { auth } from "~/utils/auth";
+import { findUserById } from "~/data-access/users";
 import crypto from "crypto";
 
 /**
@@ -18,7 +19,7 @@ export const getGameAuthToken = createServerFn({ method: "GET" }).handler(
     });
 
     if (!session?.user) {
-      return { token: null, userId: null };
+      return { token: null, userId: null, displayName: null };
     }
 
     // Create a simple signed token: base64(userId:timestamp:signature)
@@ -26,11 +27,15 @@ export const getGameAuthToken = createServerFn({ method: "GET" }).handler(
     const timestamp = Date.now();
     const expiresAt = timestamp + 5 * 60 * 1000; // 5 minutes
 
+    // Fetch user to get displayName
+    const user = await findUserById(userId);
+    const displayName = user?.displayName || user?.name || "Survivor";
+
     // Use GAME_SERVER_API_KEY as the signing secret
     const secret = process.env.GAME_SERVER_API_KEY;
     if (!secret) {
       console.warn("GAME_SERVER_API_KEY not set - game auth tokens disabled");
-      return { token: null, userId: null };
+      return { token: null, userId: null, displayName };
     }
 
     const payload = `${userId}:${expiresAt}`;
@@ -41,6 +46,6 @@ export const getGameAuthToken = createServerFn({ method: "GET" }).handler(
 
     const token = Buffer.from(`${payload}:${signature}`).toString("base64");
 
-    return { token, userId };
+    return { token, userId, displayName };
   }
 );

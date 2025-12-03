@@ -2,7 +2,7 @@ import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
 import { authClient } from "~/lib/auth-client";
 import { ModeToggle } from "./mode-toggle";
 import { Button, buttonVariants } from "./ui/button";
-import { LogOut, User, Menu } from "lucide-react";
+import { LogOut, User, Menu, Settings } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
 import { useUserAvatar } from "~/hooks/useUserAvatar";
 import {
@@ -124,6 +124,10 @@ export function Header() {
                       </div>
                     </DropdownMenuLabel>
                     <DropdownMenuSeparator />
+                    <DropdownMenuItem onClick={() => navigate({ to: "/settings" })}>
+                      <Settings className="mr-2 h-4 w-4" />
+                      <span>Settings</span>
+                    </DropdownMenuItem>
                     <DropdownMenuItem onClick={handleSignOut}>
                       <LogOut className="mr-2 h-4 w-4" />
                       <span>Log out</span>

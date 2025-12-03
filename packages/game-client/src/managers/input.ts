@@ -98,6 +98,11 @@ export class InputManager {
   private canvas: HTMLCanvasElement | null = null;
   private fKeyHeld = false;
 
+  // Store bound event handlers for cleanup
+  private boundKeydownHandler: ((e: KeyboardEvent) => void) | null = null;
+  private boundKeyupHandler: ((e: KeyboardEvent) => void) | null = null;
+  private boundFocusHandler: (() => void) | null = null;
+
   private checkIfChanged() {
     this.hasChanged = JSON.stringify(this.inputs) !== JSON.stringify(this.lastInputs);
     this.lastInputs = { ...this.inputs };
@@ -132,7 +137,9 @@ export class InputManager {
 
   constructor(callbacks: InputManagerOptions = {}) {
     this.callbacks = callbacks;
-    window.addEventListener("keydown", (e) => {
+
+    // Create and store bound handlers for cleanup
+    this.boundKeydownHandler = (e: KeyboardEvent) => {
       this.blockBrowserKeys(e);
       // Ignore inputs when user is typing in a form element
       const target = e.target as HTMLElement;
@@ -317,9 +324,9 @@ export class InputManager {
       }
 
       this.checkIfChanged();
-    });
+    };
 
-    window.addEventListener("keyup", (e) => {
+    this.boundKeyupHandler = (e: KeyboardEvent) => {
       // Ignore inputs when user is typing in a form element
       const target = e.target as HTMLElement;
       if (target.tagName === "INPUT" || target.tagName === "TEXTAREA" || target.isContentEditable) {
@@ -416,14 +423,19 @@ export class InputManager {
       }
 
       this.checkIfChanged();
-    });
+    };
 
-    window.addEventListener("focus", () => {
+    this.boundFocusHandler = () => {
       this.clearInputs();
       this.fKeyHeld = false;
       this.callbacks.onInteractEnd?.();
       this.callbacks.onTeleportCancel?.();
-    });
+    };
+
+    // Add event listeners
+    window.addEventListener("keydown", this.boundKeydownHandler);
+    window.addEventListener("keyup", this.boundKeyupHandler);
+    window.addEventListener("focus", this.boundFocusHandler);
   }
 
   private updateDirection() {
@@ -779,5 +791,24 @@ export class InputManager {
       angle: Math.atan2(dy, dx),
       distance: dist,
     };
+  }
+
+  /**
+   * Clean up all event listeners
+   * Should be called when the game client is unmounted
+   */
+  cleanup(): void {
+    if (this.boundKeydownHandler) {
+      window.removeEventListener("keydown", this.boundKeydownHandler);
+      this.boundKeydownHandler = null;
+    }
+    if (this.boundKeyupHandler) {
+      window.removeEventListener("keyup", this.boundKeyupHandler);
+      this.boundKeyupHandler = null;
+    }
+    if (this.boundFocusHandler) {
+      window.removeEventListener("focus", this.boundFocusHandler);
+      this.boundFocusHandler = null;
+    }
   }
 }

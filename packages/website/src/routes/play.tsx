@@ -77,8 +77,13 @@ function GameClientLoader() {
       }
 
       // Fetch game auth token for WebSocket authentication
-      getGameAuthToken().then(({ token }) => {
+      getGameAuthToken().then(({ token, displayName }) => {
         window.__gameAuthToken = token;
+        // Sync profile display name to localStorage if logged in
+        if (displayName) {
+          localStorage.setItem("displayName", displayName);
+          setSavedDisplayName(displayName);
+        }
       });
     }
   }, []);

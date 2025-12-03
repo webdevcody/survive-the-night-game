@@ -9,6 +9,7 @@ export const user = pgTable("user", {
     .$defaultFn(() => false)
     .notNull(),
   image: text("image"),
+  displayName: text("display_name").default("Survivor"),
   isAdmin: boolean("is_admin")
     .$default(() => false)
     .notNull(),

@@ -16,6 +16,13 @@ export class ClientEventHandlers {
   private scrollAccumulator: number = 0;
   private readonly SCROLL_THRESHOLD = 50; // Accumulate this much deltaY before switching slots
 
+  // Store canvas and bound handlers for cleanup
+  private canvas: HTMLCanvasElement | null = null;
+  private boundMouseMoveHandler: ((e: MouseEvent) => void) | null = null;
+  private boundMouseDownHandler: ((e: MouseEvent) => void) | null = null;
+  private boundMouseUpHandler: ((e: MouseEvent) => void) | null = null;
+  private boundWheelHandler: ((e: WheelEvent) => void) | null = null;
+
   constructor(gameClient: GameClient) {
     this.gameClient = gameClient;
   }
@@ -24,17 +31,51 @@ export class ClientEventHandlers {
    * Setup all event listeners on the canvas
    */
   setupEventListeners(canvas: HTMLCanvasElement): void {
+    this.canvas = canvas;
+
+    // Create bound handlers
+    this.boundMouseMoveHandler = (e: MouseEvent) => this.handleMouseMove(e, canvas);
+    this.boundMouseDownHandler = (e: MouseEvent) => this.handleMouseDown(e, canvas);
+    this.boundMouseUpHandler = (e: MouseEvent) => this.handleMouseUp(e, canvas);
+    this.boundWheelHandler = (e: WheelEvent) => this.handleWheel(e);
+
     // Mouse move event listener
-    canvas.addEventListener("mousemove", (e) => this.handleMouseMove(e, canvas));
+    canvas.addEventListener("mousemove", this.boundMouseMoveHandler);
 
     // Mouse down event listener
-    canvas.addEventListener("mousedown", (e) => this.handleMouseDown(e, canvas));
+    canvas.addEventListener("mousedown", this.boundMouseDownHandler);
 
     // Mouse up event listener
-    canvas.addEventListener("mouseup", (e) => this.handleMouseUp(e, canvas));
+    canvas.addEventListener("mouseup", this.boundMouseUpHandler);
 
     // Wheel event listener
-    canvas.addEventListener("wheel", (e) => this.handleWheel(e), { passive: false });
+    canvas.addEventListener("wheel", this.boundWheelHandler, { passive: false });
+  }
+
+  /**
+   * Clean up all event listeners
+   * Should be called when the game client is unmounted
+   */
+  cleanup(): void {
+    if (this.canvas) {
+      if (this.boundMouseMoveHandler) {
+        this.canvas.removeEventListener("mousemove", this.boundMouseMoveHandler);
+        this.boundMouseMoveHandler = null;
+      }
+      if (this.boundMouseDownHandler) {
+        this.canvas.removeEventListener("mousedown", this.boundMouseDownHandler);
+        this.boundMouseDownHandler = null;
+      }
+      if (this.boundMouseUpHandler) {
+        this.canvas.removeEventListener("mouseup", this.boundMouseUpHandler);
+        this.boundMouseUpHandler = null;
+      }
+      if (this.boundWheelHandler) {
+        this.canvas.removeEventListener("wheel", this.boundWheelHandler);
+        this.boundWheelHandler = null;
+      }
+      this.canvas = null;
+    }
   }
 
   /**

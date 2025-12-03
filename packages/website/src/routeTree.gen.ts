@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as TermsRouteImport } from './routes/terms'
 import { Route as SignUpRouteImport } from './routes/sign-up'
 import { Route as SignInRouteImport } from './routes/sign-in'
+import { Route as SettingsRouteImport } from './routes/settings'
 import { Route as PrivacyRouteImport } from './routes/privacy'
 import { Route as PricingRouteImport } from './routes/pricing'
 import { Route as PlayRouteImport } from './routes/play'
@@ -36,6 +37,11 @@ const SignUpRoute = SignUpRouteImport.update({
 const SignInRoute = SignInRouteImport.update({
   id: '/sign-in',
   path: '/sign-in',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SettingsRoute = SettingsRouteImport.update({
+  id: '/settings',
+  path: '/settings',
   getParentRoute: () => rootRouteImport,
 } as any)
 const PrivacyRoute = PrivacyRouteImport.update({
@@ -95,6 +101,7 @@ export interface FileRoutesByFullPath {
   '/play': typeof PlayRoute
   '/pricing': typeof PricingRoute
   '/privacy': typeof PrivacyRoute
+  '/settings': typeof SettingsRoute
   '/sign-in': typeof SignInRoute
   '/sign-up': typeof SignUpRoute
   '/terms': typeof TermsRoute
@@ -110,6 +117,7 @@ export interface FileRoutesByTo {
   '/play': typeof PlayRoute
   '/pricing': typeof PricingRoute
   '/privacy': typeof PrivacyRoute
+  '/settings': typeof SettingsRoute
   '/sign-in': typeof SignInRoute
   '/sign-up': typeof SignUpRoute
   '/terms': typeof TermsRoute
@@ -126,6 +134,7 @@ export interface FileRoutesById {
   '/play': typeof PlayRoute
   '/pricing': typeof PricingRoute
   '/privacy': typeof PrivacyRoute
+  '/settings': typeof SettingsRoute
   '/sign-in': typeof SignInRoute
   '/sign-up': typeof SignUpRoute
   '/terms': typeof TermsRoute
@@ -143,6 +152,7 @@ export interface FileRouteTypes {
     | '/play'
     | '/pricing'
     | '/privacy'
+    | '/settings'
     | '/sign-in'
     | '/sign-up'
     | '/terms'
@@ -158,6 +168,7 @@ export interface FileRouteTypes {
     | '/play'
     | '/pricing'
     | '/privacy'
+    | '/settings'
     | '/sign-in'
     | '/sign-up'
     | '/terms'
@@ -173,6 +184,7 @@ export interface FileRouteTypes {
     | '/play'
     | '/pricing'
     | '/privacy'
+    | '/settings'
     | '/sign-in'
     | '/sign-up'
     | '/terms'
@@ -189,6 +201,7 @@ export interface RootRouteChildren {
   PlayRoute: typeof PlayRoute
   PricingRoute: typeof PricingRoute
   PrivacyRoute: typeof PrivacyRoute
+  SettingsRoute: typeof SettingsRoute
   SignInRoute: typeof SignInRoute
   SignUpRoute: typeof SignUpRoute
   TermsRoute: typeof TermsRoute
@@ -220,6 +233,13 @@ declare module '@tanstack/react-router' {
       path: '/sign-in'
       fullPath: '/sign-in'
       preLoaderRoute: typeof SignInRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/settings': {
+      id: '/settings'
+      path: '/settings'
+      fullPath: '/settings'
+      preLoaderRoute: typeof SettingsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/privacy': {
@@ -301,6 +321,7 @@ const rootRouteChildren: RootRouteChildren = {
   PlayRoute: PlayRoute,
   PricingRoute: PricingRoute,
   PrivacyRoute: PrivacyRoute,
+  SettingsRoute: SettingsRoute,
   SignInRoute: SignInRoute,
   SignUpRoute: SignUpRoute,
   TermsRoute: TermsRoute,

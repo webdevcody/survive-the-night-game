@@ -14,3 +14,10 @@ export async function isUserAdmin(userId: string): Promise<boolean> {
 
   return userData.isAdmin;
 }
+
+export async function updateUserDisplayName(
+  userId: string,
+  displayName: string
+): Promise<void> {
+  await database.update(user).set({ displayName }).where(eq(user.id, userId));
+}
