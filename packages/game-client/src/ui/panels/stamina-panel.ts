@@ -37,7 +37,7 @@ export class StaminaPanel extends Panel {
     const { width: canvasWidth, height: canvasHeight } = ctx.canvas;
     const hudScale = calculateHudScale(canvasWidth, canvasHeight);
     const settings = this.staminaSettings.inventorySettings;
-    const slotsNumber = getConfig().player.MAX_INVENTORY_SLOTS;
+    const slotsNumber = getConfig().player.HOTBAR_SLOTS;
 
     this.resetTransform(ctx);
 

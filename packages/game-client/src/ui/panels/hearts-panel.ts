@@ -33,7 +33,7 @@ export class HeartsPanel extends Panel {
     const { width: canvasWidth, height: canvasHeight } = ctx.canvas;
     const hudScale = calculateHudScale(canvasWidth, canvasHeight);
     const settings = this.heartSettings.inventorySettings;
-    const slotsNumber = getConfig().player.MAX_INVENTORY_SLOTS;
+    const slotsNumber = getConfig().player.HOTBAR_SLOTS;
 
     this.resetTransform(ctx);
 
