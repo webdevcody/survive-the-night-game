@@ -3,7 +3,7 @@ import { HandlerContext } from "../context";
 import Positionable from "@/extensions/positionable";
 import Inventory from "@/extensions/inventory";
 import Carryable from "@/extensions/carryable";
-import { ItemType, isResourceItem, ResourceType, InventoryItem } from "@shared/util/inventory";
+import { ItemType, InventoryItem } from "@shared/util/inventory";
 import PoolManager from "@shared/util/pool-manager";
 import { Merchant } from "@/entities/environment/merchant";
 import { SocketEventHandler } from "./types";
@@ -166,82 +166,66 @@ export function onMerchantBuy(
   if (!shopItems || data.itemIndex < 0 || data.itemIndex >= shopItems.length) return;
 
   const selectedItem = shopItems[data.itemIndex];
-  const playerCoins = player.getCoins();
+  const inventory = player.getExt(Inventory);
+  const playerCoins = inventory.getTotalCount("coin");
   const totalPrice = selectedItem.price + balanceConfig.BASE_PURCHASE_PRICE;
 
-  // Check if player has enough coins
   if (playerCoins < totalPrice) {
     return;
   }
 
-  // Deduct coins
-  player.addCoins(-totalPrice);
+  if (!inventory.removeCountAcrossStacks("coin", totalPrice)) {
+    return;
+  }
 
   const itemType = selectedItem.itemType as ItemType;
 
-  // Check if this is a resource item (wood, cloth)
-  if (isResourceItem(itemType)) {
-    // Add directly to player's resource count (this will broadcast the pickup event)
-    player.addResource(itemType as ResourceType, 1);
-  } else {
-    // Handle regular inventory items
-    // Get default count for stackable items (like ammo)
-    const gameManagers = context.getGameManagers();
-    const defaultCount = getDefaultCountForItem(itemType, gameManagers);
-    const item =
-      defaultCount !== undefined ? { itemType, state: { count: defaultCount } } : { itemType };
-    const inventory = player.getExt(Inventory);
-    const items = inventory.getItems();
+  const gameManagers = context.getGameManagers();
+  const defaultCount = getDefaultCountForItem(itemType, gameManagers);
+  const item =
+    defaultCount !== undefined ? { itemType, state: { count: defaultCount } } : { itemType };
+  const items = inventory.getItems();
 
-    // Check if item is stackable and if there's an existing stack to merge into
-    const isStackable = isStackableItem(item);
-    let merged = false;
+  const isStackable = isStackableItem(item);
+  let merged = false;
 
-    if (isStackable && item.state?.count) {
-      // Find existing item of the same type
-      const existingItemIndex = items.findIndex((it) => it != null && it.itemType === itemType);
+  if (isStackable && item.state?.count) {
+    const existingItemIndex = items.findIndex((it) => it != null && it.itemType === itemType);
 
-      if (existingItemIndex >= 0) {
-        // Merge into existing stack
-        const existingItem = items[existingItemIndex];
-        if (existingItem) {
-          const existingCount = existingItem.state?.count ?? defaultCount ?? 1;
-          const newCount = existingCount + item.state.count;
-          inventory.updateItemState(existingItemIndex, { count: newCount });
-          merged = true;
-          // Broadcast pickup event for consistency with addItem
-          context.broadcastEvent(
-            new PlayerPickedUpItemEvent({
-              playerId: player.getId(),
-              itemType: itemType,
-            }),
-          );
-        }
+    if (existingItemIndex >= 0) {
+      const existingItem = items[existingItemIndex];
+      if (existingItem) {
+        const existingCount = existingItem.state?.count ?? defaultCount ?? 1;
+        const newCount = existingCount + item.state.count;
+        inventory.updateItemState(existingItemIndex, { count: newCount });
+        merged = true;
+        context.broadcastEvent(
+          new PlayerPickedUpItemEvent({
+            playerId: player.getId(),
+            itemType: itemType,
+          }),
+        );
       }
     }
+  }
 
-    // If not merged, try to add as new item or drop if inventory is full
-    if (!merged) {
-      if (inventory.isFull()) {
-        // Drop item 32 pixels down from player
-        const playerPos = player.getExt(Positionable).getPosition();
-        const poolManager = PoolManager.getInstance();
-        const dropPosition = poolManager.vector2.claim(playerPos.x, playerPos.y + 32);
-        const droppedEntity = context.getEntityManager().createEntityFromItem(item);
-        if (droppedEntity) {
-          droppedEntity.getExt(Positionable).setPosition(dropPosition);
+  if (!merged) {
+    if (inventory.isFull()) {
+      const playerPos = player.getExt(Positionable).getPosition();
+      const poolManager = PoolManager.getInstance();
+      const dropPosition = poolManager.vector2.claim(playerPos.x, playerPos.y + 32);
+      const droppedEntity = context.getEntityManager().createEntityFromItem(item);
+      if (droppedEntity) {
+        droppedEntity.getExt(Positionable).setPosition(dropPosition);
 
-          // Ensure Carryable extension has the correct state (especially for stackable items)
-          if (droppedEntity.hasExt(Carryable) && item.state) {
-            droppedEntity.getExt(Carryable).setItemState(item.state);
-          }
-
-          // Add entity to the world so it can be picked up
-          context.getEntityManager().addEntity(droppedEntity);
+        if (droppedEntity.hasExt(Carryable) && item.state) {
+          droppedEntity.getExt(Carryable).setItemState(item.state);
         }
-      } else {
-        inventory.addItem(item);
+
+        context.getEntityManager().addEntity(droppedEntity);
       }
+    } else {
+      inventory.addItem(item);
     }
   }
 }
@@ -316,12 +300,40 @@ export function onMerchantSell(
       // Remove item if count reaches 0
       inventory.removeItem(data.inventorySlot);
     }
-    // Give coins based on sell price
-    player.addCoins(sellPrice);
+    if (!inventory.addOrMergeStack({ itemType: "coin", state: { count: sellPrice } })) {
+      const playerPos = player.getExt(Positionable).getPosition();
+      const poolManager = PoolManager.getInstance();
+      const dropPosition = poolManager.vector2.claim(playerPos.x, playerPos.y + 32);
+      const coinDrop = context.getEntityManager().createEntityFromItem({
+        itemType: "coin",
+        state: { count: sellPrice },
+      });
+      if (coinDrop) {
+        coinDrop.getExt(Positionable).setPosition(dropPosition);
+        if (coinDrop.hasExt(Carryable)) {
+          coinDrop.getExt(Carryable).setItemState({ count: sellPrice });
+        }
+        context.getEntityManager().addEntity(coinDrop);
+      }
+    }
   } else {
-    // Non-stackable item: sell entire item
     inventory.removeItem(data.inventorySlot);
-    player.addCoins(sellPrice);
+    if (!inventory.addOrMergeStack({ itemType: "coin", state: { count: sellPrice } })) {
+      const playerPos = player.getExt(Positionable).getPosition();
+      const poolManager = PoolManager.getInstance();
+      const dropPosition = poolManager.vector2.claim(playerPos.x, playerPos.y + 32);
+      const coinDrop = context.getEntityManager().createEntityFromItem({
+        itemType: "coin",
+        state: { count: sellPrice },
+      });
+      if (coinDrop) {
+        coinDrop.getExt(Positionable).setPosition(dropPosition);
+        if (coinDrop.hasExt(Carryable)) {
+          coinDrop.getExt(Carryable).setItemState({ count: sellPrice });
+        }
+        context.getEntityManager().addEntity(coinDrop);
+      }
+    }
   }
 }
 

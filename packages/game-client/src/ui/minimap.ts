@@ -4,7 +4,6 @@ import { ClientPositionable } from "@/extensions/positionable";
 import { PlayerClient } from "@/entities/player";
 import { CrateClient } from "@/entities/items/crate";
 import { SurvivorClient } from "@/entities/environment/survivor";
-import { ToxicBiomeZoneClient } from "@/entities/environment/toxic-biome-zone";
 import { MapManager } from "@/managers/map";
 import { perfTimer } from "@shared/util/performance";
 import { getConfig } from "@shared/config";
@@ -20,7 +19,6 @@ import { distance } from "@shared/util/physics";
 import { calculateLightSources } from "./utils/map-rendering-utils";
 import { prerenderCollidables, renderCollidablesFromCanvas } from "./utils/map-collidable-renderer";
 import { renderMinimapFogOfWar } from "./utils/map-fog-of-war-renderer";
-import { renderToxicZones } from "./utils/map-toxic-zone-renderer";
 import type { MinimapScreenRect } from "./minimap-hud-group-layout";
 
 // Performance optimization constants - adjust these to balance quality vs performance
@@ -66,16 +64,11 @@ export const MINIMAP_SETTINGS = {
     acid: "green",
     bat: "blue",
     spitter: "purple",
-    toxicGas: "rgba(0, 255, 0, 0.5)",
   },
   indicators: {
     acid: {
       shape: "circle",
       size: 6,
-    },
-    toxicGas: {
-      shape: "rectangle",
-      size: 4,
     },
     enemy: {
       shape: "circle",
@@ -195,32 +188,12 @@ export class Minimap {
       excludeSet
     );
 
-    // For zombie players in infection mode, add ALL human players so they can hunt them
-    const isInfection = gameState.gameMode === "infection";
-    const myPlayerIsZombie = myPlayer.isZombiePlayer();
     const extendedEntities = new Set<ClientEntityBase>(allEntities);
-
-    if (isInfection && myPlayerIsZombie) {
-      // Add ALL human players for zombie players to see (they can hunt humans)
-      for (const entity of gameState.entities) {
-        if (
-          entity instanceof PlayerClient &&
-          entity.getId() !== gameState.playerId &&
-          !entity.isZombiePlayer() &&
-          entity.hasExt(ClientPositionable)
-        ) {
-          // Add all human players for zombies to track
-          extendedEntities.add(entity);
-        }
-      }
-    }
 
     // Filter entities into specific categories for efficient rendering
     const playerEntities: PlayerClient[] = [];
     const crateEntities: CrateClient[] = [];
     const survivorEntities: SurvivorClient[] = [];
-    const toxicZoneEntities: ToxicBiomeZoneClient[] = [];
-
     for (const entity of extendedEntities) {
       if (entity instanceof PlayerClient) {
         playerEntities.push(entity);
@@ -228,8 +201,6 @@ export class Minimap {
         crateEntities.push(entity);
       } else if (entity instanceof SurvivorClient) {
         survivorEntities.push(entity);
-      } else if (entity instanceof ToxicBiomeZoneClient) {
-        toxicZoneEntities.push(entity);
       }
     }
 
@@ -256,28 +227,9 @@ export class Minimap {
     this.renderCollidables(ctx, playerPos, settings, top, scaledLeft, scaledSize);
     perfTimer.end("minimap:collidables");
 
-    // Draw toxic biome zones (large areas covering entire biomes)
-    perfTimer.start("minimap:toxicZones");
-    const toxicCenterX = scaledLeft + scaledSize / 2;
-    const toxicCenterY = top + scaledSize / 2;
-    renderToxicZones(
-      ctx,
-      toxicZoneEntities,
-      playerPos,
-      { colors: { toxicGas: settings.colors.toxicGas } },
-      toxicCenterX,
-      toxicCenterY,
-      settings.scale
-    );
-    perfTimer.end("minimap:toxicZones");
-
     // Loop through nearby entities and draw them on minimap
     perfTimer.start("minimap:entities");
     const maxEntityDistance = MINIMAP_RENDER_DISTANCE.ENTITIES;
-
-    // Battle Royale: limit player visibility range (approx 200 pixels / ~12 tiles)
-    const isBattleRoyale = gameState.gameMode === "battle_royale";
-    const playerVisibilityRange = 200;
 
     for (const entity of extendedEntities) {
       if (!entity.hasExt(ClientPositionable)) continue;
@@ -295,26 +247,7 @@ export class Minimap {
       poolManager.vector2.release(playerWorldPos);
       poolManager.vector2.release(entityWorldPos);
 
-      // In Infection mode, zombie players can see ALL human players anywhere on the map
-      let shouldRender = dist <= maxEntityDistance;
-      if (!shouldRender && isInfection && myPlayerIsZombie && entity instanceof PlayerClient) {
-        const otherPlayerIsZombie = entity.isZombiePlayer();
-        // Zombies can see all human players regardless of distance
-        if (!otherPlayerIsZombie) {
-          shouldRender = true;
-        }
-      }
-
-      if (!shouldRender) continue;
-
-      // In Battle Royale, only show other players if they're within visibility range
-      if (
-        isBattleRoyale &&
-        entity instanceof PlayerClient &&
-        entity.getId() !== gameState.playerId
-      ) {
-        if (dist > playerVisibilityRange) continue;
-      }
+      if (dist > maxEntityDistance) continue;
 
       // Convert to minimap coordinates (centered on player) using scaled values
       const minimapX = scaledLeft + scaledSize / 2 + relativeX * settings.scale;
@@ -539,12 +472,6 @@ export class Minimap {
     const centerY = top + scaledSize / 2;
     const radius = scaledSize / 2;
 
-    // Battle Royale: limit player visibility range and show as red
-    const isBattleRoyale = gameState.gameMode === "battle_royale";
-    const isInfection = gameState.gameMode === "infection";
-    const myPlayerIsZombie = myPlayer.isZombiePlayer();
-    const playerVisibilityRange = 200;
-
     // Loop through player entities
     for (const entity of playerEntities) {
       if (!entity.hasExt(ClientPositionable)) continue;
@@ -559,9 +486,6 @@ export class Minimap {
       // Skip if this is the current player (distance ~0)
       const distance = Math.sqrt(relativeX * relativeX + relativeY * relativeY);
       if (distance < 10) continue; // Skip if very close (likely the same player)
-
-      // In Battle Royale, don't show directional indicators for players outside visibility range
-      if (isBattleRoyale && distance > playerVisibilityRange) continue;
 
       // Calculate scaled distance on minimap
       const scaledDistance = distance * settings.scale;
@@ -580,18 +504,7 @@ export class Minimap {
       // Draw the indicator - use a triangle pointing in the direction
       const indicatorSize = 12;
 
-      // Determine indicator color based on game mode
-      let indicatorColor = settings.colors.player;
-      if (isBattleRoyale) {
-        // In Battle Royale, other players are enemies (red)
-        indicatorColor = settings.colors.enemy;
-      } else if (isInfection) {
-        // In Infection, zombies and humans see each other as enemies
-        const otherPlayerIsZombie = entity.isZombiePlayer();
-        if (myPlayerIsZombie !== otherPlayerIsZombie) {
-          indicatorColor = settings.colors.enemy;
-        }
-      }
+      const indicatorColor = settings.colors.player;
 
       // Draw filled triangle
       ctx.fillStyle = indicatorColor;

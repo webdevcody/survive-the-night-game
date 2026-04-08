@@ -9,7 +9,7 @@ import { weaponRegistry } from "@shared/entities/weapon-registry";
 import { resourceRegistry } from "@shared/entities/resource-registry";
 import { itemRegistry } from "@shared/entities/item-registry";
 import { isWeapon } from "@shared/util/inventory";
-import { ClientResourcesBag, ClientInventory } from "@/extensions";
+import { ClientInventory } from "@/extensions";
 import { formatDisplayName } from "@/util/format";
 import { balanceConfig } from "@shared/config/balance-config";
 
@@ -482,8 +482,8 @@ export class MerchantBuyPanel implements Renderable {
     if (this.activePane === "SHOP") {
       const item = this.shopDisplayItems[this.shopSelectedIndex];
       if (item) {
-        if (player.hasExt(ClientResourcesBag)) {
-          const coins = player.getExt(ClientResourcesBag).getCoins();
+        if (player.hasExt(ClientInventory)) {
+          const coins = player.getExt(ClientInventory).getTotalCount("coin");
           if (coins >= item.price) {
             this.onBuy(this.activeMerchantId, item.originalIndex);
           }
@@ -582,8 +582,8 @@ export class MerchantBuyPanel implements Renderable {
 
     const player = this.getPlayer();
     const playerCoins =
-      player && player.hasExt(ClientResourcesBag)
-        ? player.getExt(ClientResourcesBag).getCoins()
+      player && player.hasExt(ClientInventory)
+        ? player.getExt(ClientInventory).getTotalCount("coin")
         : 0;
 
     const { width, height, padding, gap, itemSize, headerHeight, footerHeight, cornerRadius } =

@@ -68,9 +68,6 @@ import { CarClient } from "./environment/car";
 import { SurvivorClient } from "./environment/survivor";
 import { BloodClient } from "./blood";
 import { AcidClient } from "./acid";
-import { ToxicGasCloudClient } from "./environment/toxic-gas-cloud";
-import { ToxicBiomeZoneClient } from "./environment/toxic-biome-zone";
-
 type ClientEntityConstructor = new (
   data: RawEntity,
   assetManager: AssetManager,
@@ -149,8 +146,6 @@ const CLIENT_ENTITY_CONSTRUCTORS: Record<EntityType, ClientEntityConstructor> = 
   survivor: SurvivorClient,
   blood: BloodClient,
   acid: AcidClient,
-  toxic_gas_cloud: ToxicGasCloudClient,
-  toxic_biome_zone: ToxicBiomeZoneClient,
 } as Record<EntityType, ClientEntityConstructor>;
 
 /**

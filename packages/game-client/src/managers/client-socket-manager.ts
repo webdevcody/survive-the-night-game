@@ -36,7 +36,6 @@ import { BossSplitEvent } from "../../../game-shared/src/events/server-sent/even
 import { VersionMismatchEvent } from "../../../game-shared/src/events/server-sent/events/version-mismatch-event";
 import { AuthRequiredEvent } from "../../../game-shared/src/events/server-sent/events/auth-required-event";
 import { UserBannedEvent } from "../../../game-shared/src/events/server-sent/events/user-banned-event";
-import { LightningBoltEvent } from "../../../game-shared/src/events/server-sent/events/lightning-bolt-event";
 import { ISocketAdapter } from "@shared/network/socket-adapter";
 import { IClientAdapter } from "@shared/network/client-adapter";
 import { createClientAdapter } from "@/network/adapter-factory";
@@ -81,9 +80,6 @@ const SERVER_EVENT_MAP = {
   [ServerSentEvents.VERSION_MISMATCH]: VersionMismatchEvent,
   [ServerSentEvents.AUTH_REQUIRED]: AuthRequiredEvent,
   [ServerSentEvents.USER_BANNED]: UserBannedEvent,
-  [ServerSentEvents.LIGHTNING_BOLT]: LightningBoltEvent,
-  [ServerSentEvents.THUNDERSTORM_START]: GameMessageEvent,
-  [ServerSentEvents.THUNDERSTORM_END]: GameMessageEvent,
 } as const;
 
 export class ClientSocketManager {
@@ -557,10 +553,6 @@ export class ClientSocketManager {
 
   public sendPlayerColor(color: string) {
     this.emitClientEvent(ClientSentEvents.CHANGE_PLAYER_COLOR, { color });
-  }
-
-  public sendVoteGameMode(mode: string) {
-    this.emitClientEvent(ClientSentEvents.VOTE_GAME_MODE, { mode });
   }
 
   public sendSpawnZombie(x: number, y: number) {

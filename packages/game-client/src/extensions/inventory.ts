@@ -1,6 +1,7 @@
 import { ExtensionTypes } from "../../../game-shared/src/util/extension-types";
 import {
   InventoryItem,
+  ItemType,
   isWeapon,
   createEmptyEquipment,
   type PlayerEquipmentState,
@@ -47,6 +48,16 @@ export class ClientInventory extends BaseClientExtension {
       return main;
     }
     return this.getActiveWeapon(activeBagItem);
+  }
+
+  /** Sum stack counts in the bag for an item type (non-stackable counts as 1). */
+  public getTotalCount(itemType: ItemType): number {
+    let sum = 0;
+    for (const it of this.items) {
+      if (!it || it.itemType !== itemType) continue;
+      sum += it.state?.count ?? 1;
+    }
+    return sum;
   }
 
   public deserializeFromBuffer(reader: BufferReader): this {

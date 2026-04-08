@@ -8,8 +8,6 @@ import { TreeClient } from "@/entities/items/tree";
 import { ClothClient } from "@/entities/items/cloth";
 import { CrateClient } from "@/entities/items/crate";
 import { AcidProjectileClient } from "@/entities/acid-projectile";
-import { ToxicGasCloudClient } from "@/entities/environment/toxic-gas-cloud";
-import { ToxicBiomeZoneClient } from "@/entities/environment/toxic-biome-zone";
 import { GameState } from "@/state";
 
 export interface EntityMapIndicator {
@@ -29,11 +27,9 @@ export interface MapColorSettings {
     item: string;
     tree: string;
     acid: string;
-    toxicGas: string;
   };
   indicators: {
     acid: { shape: string; size: number };
-    toxicGas: { shape: string; size: number };
     enemy: { shape: string; size: number };
     player: { shape: string; size: number };
     wall: { shape: string; size: number };
@@ -85,32 +81,6 @@ export function getEntityMapColor(
 
   // Players
   if (entity instanceof PlayerClient) {
-    const isBattleRoyale = options?.gameState?.gameMode === "battle_royale";
-    const isInfection = options?.gameState?.gameMode === "infection";
-    const isMyPlayer = options?.myPlayerId !== undefined && entity.getId() === options.myPlayerId;
-
-    // In Battle Royale, other players show as red (enemies)
-    if (isBattleRoyale && !isMyPlayer) {
-      return {
-        color: settings.colors.enemy, // Red for enemy players
-        indicator: convertIndicator(settings.indicators.player),
-      };
-    }
-
-    // In Infection mode, zombies and humans see each other as enemies
-    if (isInfection && !isMyPlayer) {
-      const otherPlayerIsZombie = entity.isZombiePlayer();
-      const myPlayerIsZombie = options?.myPlayerIsZombie ?? false;
-
-      // If I'm a zombie and they're human, or I'm human and they're a zombie, show as enemy
-      if (myPlayerIsZombie !== otherPlayerIsZombie) {
-        return {
-          color: settings.colors.enemy, // Red for enemy players
-          indicator: convertIndicator(settings.indicators.player),
-        };
-      }
-    }
-
     return {
       color: settings.colors.player,
       indicator: convertIndicator(settings.indicators.player),
@@ -169,22 +139,6 @@ export function getEntityMapColor(
     return {
       color: settings.colors.acid,
       indicator: convertIndicator(settings.indicators.acid),
-    };
-  }
-
-  // Toxic gas clouds
-  if (entity instanceof ToxicGasCloudClient) {
-    return {
-      color: settings.colors.toxicGas,
-      indicator: convertIndicator(settings.indicators.toxicGas),
-    };
-  }
-
-  // Toxic biome zones (consolidated toxic zones covering entire biomes)
-  if (entity instanceof ToxicBiomeZoneClient) {
-    return {
-      color: settings.colors.toxicGas,
-      indicator: convertIndicator(settings.indicators.toxicGas),
     };
   }
 

@@ -4,7 +4,6 @@ import { GameState, getEntityById } from "@/state";
 import { MerchantBuyPanel } from "@/ui/merchant-buy-panel";
 import { Hud } from "@/ui/hud";
 import { GameOverDialogUI } from "@/ui/game-over-dialog";
-import { VotingPanel } from "@/ui/voting-panel";
 import { ParticleManager } from "./managers/particles";
 import { PlacementManager } from "./managers/placement";
 import { ClientPositionable } from "@/extensions/positionable";
@@ -30,9 +29,7 @@ export class Renderer {
   private hud: Hud;
   private merchantBuyPanel: MerchantBuyPanel;
   private gameOverDialog: GameOverDialogUI;
-  private votingPanel: VotingPanel;
   private particleManager: ParticleManager;
-  private getLightningBoltManager: () => { render: (ctx: CanvasRenderingContext2D) => void } | null;
   private getPlacementManager: () => PlacementManager | null;
   private getTeleportState: () => { isTeleporting: boolean; progress: number } | null;
   private lastPerfLogTime: number | null = null;
@@ -46,11 +43,9 @@ export class Renderer {
     hud: Hud,
     merchantBuyPanel: MerchantBuyPanel,
     gameOverDialog: GameOverDialogUI,
-    votingPanel: VotingPanel,
     particleManager: ParticleManager,
     getPlacementManager: () => PlacementManager | null,
     getTeleportState: () => { isTeleporting: boolean; progress: number } | null,
-    getLightningBoltManager: () => { render: (ctx: CanvasRenderingContext2D) => void } | null,
   ) {
     this.ctx = ctx;
     this.gameState = gameState;
@@ -58,11 +53,9 @@ export class Renderer {
     this.hud = hud;
     this.merchantBuyPanel = merchantBuyPanel;
     this.gameOverDialog = gameOverDialog;
-    this.votingPanel = votingPanel;
     this.particleManager = particleManager;
     this.getPlacementManager = getPlacementManager;
     this.getTeleportState = getTeleportState;
-    this.getLightningBoltManager = getLightningBoltManager;
     this.resizeCanvas();
   }
 
@@ -266,14 +259,6 @@ export class Renderer {
     this.particleManager.render(this.ctx);
     perfTimer.end("renderParticles");
 
-    // Render lightning bolts
-    perfTimer.start("renderLightningBolts");
-    const lightningBoltManager = this.getLightningBoltManager();
-    if (lightningBoltManager) {
-      lightningBoltManager.render(this.ctx);
-    }
-    perfTimer.end("renderLightningBolts");
-
     // Render placement ghost (if active)
     perfTimer.start("renderPlacement");
     const placementManager = this.getPlacementManager();
@@ -294,18 +279,6 @@ export class Renderer {
     }
     perfTimer.end("renderTeleportProgress");
 
-    // Render zombie spawn cooldown indicator above zombie player's head (infection mode)
-    perfTimer.start("renderZombieSpawnCooldown");
-    if (this.gameState.playerId && this.gameState.gameMode === "infection") {
-      const player = getPlayer(this.gameState);
-      if (player && player.hasExt(ClientPositionable) && player.isZombiePlayer?.()) {
-        const cooldownProgress = player.getZombieSpawnCooldownProgress?.() ?? 1;
-        const playerPos = player.getPosition();
-        this.hud.renderZombieSpawnCooldown(this.ctx, playerPos, cooldownProgress);
-      }
-    }
-    perfTimer.end("renderZombieSpawnCooldown");
-
     // Apply darkness overlay on top of everything (ground, collidables, entities)
     perfTimer.start("renderDarkness");
     this.mapManager.renderDarkness(this.ctx);
@@ -321,7 +294,6 @@ export class Renderer {
     this.hud.render(this.ctx, this.gameState);
     this.merchantBuyPanel.render(this.ctx, this.gameState);
     this.gameOverDialog.render(this.ctx, this.gameState);
-    this.votingPanel.render(this.ctx, this.gameState);
 
     // Render cursor (crosshair when weapon is equipped)
     this.renderCursor();

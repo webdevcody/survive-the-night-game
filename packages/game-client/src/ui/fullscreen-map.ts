@@ -4,7 +4,6 @@ import { ClientPositionable } from "@/extensions/positionable";
 import { CrateClient } from "@/entities/items/crate";
 import { SurvivorClient } from "@/entities/environment/survivor";
 import { PlayerClient } from "@/entities/player";
-import { ToxicBiomeZoneClient } from "@/entities/environment/toxic-biome-zone";
 import { MapManager } from "@/managers/map";
 import { getConfig } from "@shared/config";
 import { ClientIlluminated } from "@/extensions/illuminated";
@@ -16,8 +15,6 @@ import { distance } from "@shared/util/physics";
 import { calculateLightSources } from "./utils/map-rendering-utils";
 import { prerenderCollidables, renderCollidablesFromCanvas } from "./utils/map-collidable-renderer";
 import { renderFullscreenMapFogOfWar } from "./utils/map-fog-of-war-renderer";
-import { renderToxicZones } from "./utils/map-toxic-zone-renderer";
-
 const FULLSCREEN_MAP_SETTINGS = {
   padding: 180, // Padding from screen edges
   background: "rgba(0, 0, 0, 0.95)",
@@ -36,14 +33,9 @@ const FULLSCREEN_MAP_SETTINGS = {
   defaultZoomIndex: 0, // Start at 0.7 (index 2)
   colors: {
     ...MINIMAP_SETTINGS.colors,
-    toxicGas: "rgba(0, 255, 0, 0.5)",
   },
   indicators: {
     ...MINIMAP_SETTINGS.indicators,
-    toxicGas: {
-      shape: "rectangle",
-      size: 4,
-    },
   },
   biomeIndicators: MINIMAP_SETTINGS.biomeIndicators,
   fogOfWar: MINIMAP_SETTINGS.fogOfWar,
@@ -183,20 +175,6 @@ export class FullScreenMap {
 
     // Draw collidable tiles
     this.renderCollidables(ctx, effectiveCenterPos, zoom, centerX, centerY, mapWidth, mapHeight);
-
-    // Draw toxic biome zones (large areas covering entire biomes)
-    const toxicZoneEntities = gameState.entities.filter(
-      (e): e is ToxicBiomeZoneClient => e instanceof ToxicBiomeZoneClient
-    );
-    renderToxicZones(
-      ctx,
-      toxicZoneEntities,
-      effectiveCenterPos,
-      { colors: { toxicGas: settings.colors.toxicGas } },
-      centerX,
-      centerY,
-      zoom
-    );
 
     // Draw entities
     this.renderEntities(
@@ -425,17 +403,7 @@ export class FullScreenMap {
     const settings = FULLSCREEN_MAP_SETTINGS;
     const maxDistance = Math.sqrt(((mapWidth / zoom) ** 2 + (mapHeight / zoom) ** 2) / 4);
 
-    // Battle Royale: limit player visibility range (approx 200 pixels / ~12 tiles)
-    const isBattleRoyale = gameState.gameMode === "battle_royale";
-    const isInfection = gameState.gameMode === "infection";
-    const playerVisibilityRange = 200;
-
-    // Get the actual player position for distance calculations (not the map center)
     const myPlayer = getPlayer(gameState);
-    const myPlayerIsZombie = myPlayer?.isZombiePlayer() ?? false;
-    const myPlayerPos = myPlayer?.hasExt(ClientPositionable)
-      ? myPlayer.getExt(ClientPositionable).getCenterPosition()
-      : playerPos;
 
     for (const entity of gameState.entities) {
       if (!entity.hasExt(ClientPositionable)) continue;
@@ -454,31 +422,7 @@ export class FullScreenMap {
       poolManager.vector2.release(playerWorldPos);
       poolManager.vector2.release(entityWorldPos);
 
-      // In Infection mode, zombie players can see ALL human players anywhere on the map
-      let shouldRender = dist <= maxDistance;
-      if (!shouldRender && isInfection && myPlayerIsZombie && entity instanceof PlayerClient) {
-        const otherPlayerIsZombie = entity.isZombiePlayer();
-        // Zombies can see all human players regardless of distance
-        if (!otherPlayerIsZombie) {
-          shouldRender = true;
-        }
-      }
-
-      if (!shouldRender) continue;
-
-      // In Battle Royale, only show other players if they're within visibility range of the actual player
-      if (
-        isBattleRoyale &&
-        entity instanceof PlayerClient &&
-        entity.getId() !== gameState.playerId
-      ) {
-        const myPlayerWorldPos = poolManager.vector2.claim(myPlayerPos.x, myPlayerPos.y);
-        const entityWorldPos = poolManager.vector2.claim(position.x, position.y);
-        const playerDist = distance(myPlayerWorldPos, entityWorldPos);
-        poolManager.vector2.release(myPlayerWorldPos);
-        poolManager.vector2.release(entityWorldPos);
-        if (playerDist > playerVisibilityRange) continue;
-      }
+      if (dist > maxDistance) continue;
 
       const mapX = centerX + relativeX * zoom;
       const mapY = centerY + relativeY * zoom;

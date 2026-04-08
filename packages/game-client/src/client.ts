@@ -20,7 +20,6 @@ import { ResizeController } from "@/resize-controller";
 import { ClientEventListener } from "@/client-event-listener";
 import { SoundManager, SOUND_TYPES_TO_MP3 } from "@/managers/sound-manager";
 import { GameOverDialogUI } from "@/ui/game-over-dialog";
-import { VotingPanel } from "@/ui/voting-panel";
 import { Direction } from "../../game-shared/src/util/direction";
 import { Input } from "../../game-shared/src/util/input";
 import { ClientEntityBase } from "@/extensions/client-entity";
@@ -34,9 +33,6 @@ import {
 import { CampsiteFireClient } from "@/entities/environment/campsite-fire";
 import { ParticleManager } from "./managers/particles";
 import { SmokeParticleManager } from "./managers/smoke-particles";
-import { RainParticleManager } from "./managers/rain-particles";
-import { LightningBoltManager } from "./managers/lightning-bolt";
-import { updateLightningFlash } from "./events/on-lightning-bolt";
 import { PredictionManager } from "./managers/prediction";
 import { FixedTimestepSimulator } from "./managers/fixed-timestep-simulator";
 import { getConfig } from "@shared/config";
@@ -71,8 +67,6 @@ export class GameClient {
   private entityFactory: EntityFactory;
   private particleManager: ParticleManager;
   private smokeParticleManager: SmokeParticleManager;
-  public rainParticleManager: RainParticleManager;
-  public lightningBoltManager: LightningBoltManager;
   private predictionManager: PredictionManager;
   private fixedTimestepSimulator: FixedTimestepSimulator;
   private placementManager!: PlacementManager;
@@ -93,8 +87,6 @@ export class GameClient {
   private hud: Hud;
   private merchantBuyPanel: MerchantBuyPanel;
   private gameOverDialog: GameOverDialogUI;
-  private votingPanel: VotingPanel;
-
   // State
   private gameState: GameState;
   private animationFrameId: number | null = null;
@@ -123,8 +115,6 @@ export class GameClient {
     this.entityFactory = new EntityFactory(this.assetManager);
     this.particleManager = new ParticleManager(this);
     this.smokeParticleManager = new SmokeParticleManager(this, this.assetManager);
-    this.rainParticleManager = new RainParticleManager(this, this.assetManager);
-    this.lightningBoltManager = new LightningBoltManager(this);
     this.predictionManager = new PredictionManager();
     this.fixedTimestepSimulator = new FixedTimestepSimulator(getConfig().simulation.FIXED_TIMESTEP);
 
@@ -161,11 +151,6 @@ export class GameClient {
 
     this.mapManager = new MapManager(this);
     this.gameOverDialog = new GameOverDialogUI();
-    this.votingPanel = new VotingPanel({
-      onVote: (mode) => {
-        this.socketManager.sendVoteGameMode(mode);
-      },
-    });
 
     // TODO: refactor to use event emitter
     this.merchantBuyPanel = new MerchantBuyPanel(this.assetManager, {
@@ -381,10 +366,6 @@ export class GameClient {
       globalIlluminationMultiplier: 1.0,
       // Darkness hue (default: "red")
       darknessHue: "red",
-      // Voting state (null when not in voting phase)
-      votingState: null,
-      // Zombie lives state (infection mode only)
-      zombieLivesState: null,
     };
 
     this.renderer = new Renderer(
@@ -394,11 +375,9 @@ export class GameClient {
       this.hud,
       this.merchantBuyPanel,
       this.gameOverDialog,
-      this.votingPanel,
       this.particleManager,
       () => this.getPlacementManager(),
       () => this.getTeleportState(),
-      () => this.lightningBoltManager,
     );
 
     // Set renderer reference on minimap so it can use the spatial grid
@@ -500,10 +479,6 @@ export class GameClient {
 
   public getRenderer(): Renderer {
     return this.renderer;
-  }
-
-  public getVotingPanel(): VotingPanel {
-    return this.votingPanel;
   }
 
   public isChatting(): boolean {
@@ -700,9 +675,6 @@ export class GameClient {
     this.updateInteractHold();
     this.hud.update(this.gameState);
     this.smokeParticleManager.update(deltaSeconds);
-    this.rainParticleManager.update(deltaSeconds);
-    this.lightningBoltManager.update();
-    updateLightningFlash(this.gameState);
     this.updatePlayerMovementSounds();
     this.updateCampfireSounds();
     this.updateCursorVisibility();

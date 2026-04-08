@@ -16,11 +16,9 @@ import Carryable from "@/extensions/carryable";
 import Placeable from "@/extensions/placeable";
 import Groupable from "@/extensions/groupable";
 import Snared from "@/extensions/snared";
-import ResourcesBag from "@/extensions/resources-bag";
 import Poison from "@/extensions/poison";
 import AcidTrigger from "@/extensions/acid-trigger";
 import InfiniteRun from "@/extensions/infinite-run";
-import { ToxicGasCloudExtension } from "@/extensions/toxic-gas-cloud-extension";
 
 export const extensionsMap = {
   [Collidable.type]: Collidable,
@@ -41,9 +39,7 @@ export const extensionsMap = {
   [Placeable.type]: Placeable,
   [Groupable.type]: Groupable,
   [Snared.type]: Snared,
-  [ResourcesBag.type]: ResourcesBag,
   [Poison.type]: Poison,
   [AcidTrigger.type]: AcidTrigger,
   [InfiniteRun.type]: InfiniteRun,
-  [ToxicGasCloudExtension.type]: ToxicGasCloudExtension,
 } as const;

@@ -5,7 +5,6 @@ import {
   ClientMovable,
   ClientIgnitable,
   ClientInventory,
-  ClientResourcesBag,
   ClientCollidable,
 } from "@/extensions";
 import { ImageLoader, getItemAssetKey } from "@/managers/asset";
@@ -542,22 +541,22 @@ export class PlayerClient extends ClientEntity implements IClientEntity, Rendera
   }
 
   public getCoins(): number {
-    if (this.hasExt(ClientResourcesBag)) {
-      return this.getExt(ClientResourcesBag).getCoins();
+    if (this.hasExt(ClientInventory)) {
+      return this.getExt(ClientInventory).getTotalCount("coin");
     }
     return 0;
   }
 
   public getWood(): number {
-    if (this.hasExt(ClientResourcesBag)) {
-      return this.getExt(ClientResourcesBag).getWood();
+    if (this.hasExt(ClientInventory)) {
+      return this.getExt(ClientInventory).getTotalCount("wood");
     }
     return 0;
   }
 
   public getCloth(): number {
-    if (this.hasExt(ClientResourcesBag)) {
-      return this.getExt(ClientResourcesBag).getCloth();
+    if (this.hasExt(ClientInventory)) {
+      return this.getExt(ClientInventory).getTotalCount("cloth");
     }
     return 0;
   }

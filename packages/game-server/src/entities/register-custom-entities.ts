@@ -68,8 +68,6 @@ import { Car } from "@/entities/environment/car";
 import { Survivor } from "@/entities/environment/survivor";
 import { Blood } from "@/entities/effects/blood";
 import { Acid } from "@/entities/effects/acid";
-import { ToxicGasCloud } from "@/entities/environment/toxic-gas-cloud";
-import { ToxicBiomeZone } from "@/entities/environment/toxic-biome-zone";
 import { AcidProjectile } from "@/entities/projectiles/acid-projectile";
 import { Boundary } from "@/entities/environment/boundary";
 
@@ -146,8 +144,6 @@ const SERVER_ENTITY_CONSTRUCTORS: Record<EntityType, EntityConstructor> = {
   survivor: Survivor,
   blood: Blood,
   acid: Acid,
-  toxic_gas_cloud: ToxicGasCloud,
-  toxic_biome_zone: ToxicBiomeZone,
   boundary: Boundary,
 } as Record<EntityType, EntityConstructor>;
 

@@ -131,6 +131,93 @@ export default class Inventory extends ExtensionBase<InventoryFields> {
     );
   }
 
+  /**
+   * Sum stack counts in the bag for an item type (non-stackable items count as 1).
+   */
+  public getTotalCount(itemType: ItemType): number {
+    const items = this.serialized.get("items");
+    let sum = 0;
+    for (const it of items) {
+      if (!it || it.itemType !== itemType) continue;
+      sum += it.state?.count ?? 1;
+    }
+    return sum;
+  }
+
+  /**
+   * Merge into an existing stack of the same type, or add a new slot.
+   * When the bag is full, still succeeds if an existing stack can absorb the item (same as Carryable).
+   */
+  public addOrMergeStack(item: InventoryItem): boolean {
+    const items = this.serialized.get("items");
+    const addCount = item.state?.count ?? 1;
+
+    const existingItemIndex = items.findIndex(
+      (it: InventoryItem | null) => it != null && it.itemType === item.itemType
+    );
+
+    if (existingItemIndex >= 0) {
+      const existing = items[existingItemIndex];
+      if (existing) {
+        const prev = existing.state?.count ?? 1;
+        this.updateItemState(existingItemIndex, { count: prev + addCount });
+        this.broadcaster.broadcastEvent(
+          new PlayerPickedUpItemEvent({
+            playerId: this.self.getId(),
+            itemType: item.itemType,
+          })
+        );
+        return true;
+      }
+    }
+
+    if (this.isFull()) {
+      return false;
+    }
+
+    this.addItem(item);
+    return true;
+  }
+
+  /**
+   * Remove a total amount of an item type across bag stacks (e.g. paying with coins).
+   * Returns true if at least `amount` was removed.
+   */
+  public removeCountAcrossStacks(itemType: ItemType, amount: number): boolean {
+    if (amount <= 0) {
+      return true;
+    }
+
+    const items = this.serialized.get("items");
+    let remaining = amount;
+
+    for (let i = 0; i < items.length && remaining > 0; i++) {
+      const it = items[i];
+      if (!it || it.itemType !== itemType) continue;
+
+      const stackCount = it.state?.count ?? 1;
+      if (stackCount <= remaining) {
+        remaining -= stackCount;
+        items[i] = null;
+      } else {
+        const newCount = stackCount - remaining;
+        remaining = 0;
+        items[i] = {
+          ...it,
+          state: { ...it.state, count: newCount },
+        };
+      }
+    }
+
+    if (remaining > 0) {
+      return false;
+    }
+
+    this.serialized.set("items", [...items]);
+    this.markDirty();
+    return true;
+  }
+
   public removeItem(index: number): InventoryItem | undefined {
     const items = this.serialized.get("items");
     // Don't use splice - just set to null to preserve inventory positions
@@ -226,22 +313,18 @@ export default class Inventory extends ExtensionBase<InventoryFields> {
     return this.getActiveWeapon(activeBagItem);
   }
 
-  public craftRecipe(
-    recipe: RecipeType,
-    resources: { wood: number; cloth: number }
-  ): {
+  public craftRecipe(recipe: RecipeType): {
     inventory: InventoryItem[];
-    resources: { wood: number; cloth: number };
     itemToDrop?: InventoryItem;
   } {
     const items = this.serialized.get("items");
     const foundRecipe = recipes.find((it) => it.getType() === recipe);
     if (foundRecipe === undefined) {
-      return { inventory: items, resources };
+      return { inventory: items };
     }
 
     const maxSlots = getConfig().player.MAX_INVENTORY_SLOTS;
-    const result = foundRecipe.craft(items, resources, maxSlots);
+    const result = foundRecipe.craft(items, maxSlots);
     this.serialized.set("items", result.inventory);
     // Explicitly mark dirty to ensure inventory changes are broadcast
     this.markDirty();

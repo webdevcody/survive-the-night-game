@@ -18,7 +18,6 @@ import { swapInventoryItemsHandler } from "./swap-inventory-items";
 import { swapBagAndEquipmentHandler } from "./swap-bag-and-equipment";
 import { interactHandler } from "./interact";
 import { changePlayerColorHandler } from "./change-player-color";
-import { voteGameModeHandler } from "./vote-game-mode";
 import { spawnZombieHandler } from "./spawn-zombie";
 
 /**
@@ -52,6 +51,5 @@ export const socketEventHandlers: SocketEventHandler[] = [
   swapBagAndEquipmentHandler,
   interactHandler,
   changePlayerColorHandler,
-  voteGameModeHandler,
   spawnZombieHandler,
 ];

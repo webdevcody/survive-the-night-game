@@ -32,14 +32,10 @@ import {
   TICK_RATE,
   TICK_RATE_MS,
   ENABLE_PERFORMANCE_MONITORING,
-  DEFAULT_GAME_MODE,
 } from "@/config/config";
-import { getConfig } from "@shared/config";
 import { TickPerformanceTracker } from "@/util/tick-performance-tracker";
-import { EnvironmentalEventManager } from "@/managers/environmental-event-manager";
 import { IGameModeStrategy, WinConditionResult, createGameModeStrategy } from "@/game-modes";
 import type { GameModeId } from "@shared/events/server-sent/events/game-started-event";
-import { VotableGameMode, VotingState } from "@shared/types/voting";
 export class GameLoop {
   private lastUpdateTime: number = performance.now();
   private timer: ReturnType<typeof setInterval> | null = null;
@@ -51,22 +47,15 @@ export class GameLoop {
   private isGameReady: boolean = false;
   private isGameOver: boolean = false;
 
-  // Voting system state
-  private isVotingPhase: boolean = false;
-  private votingEndTime: number = 0;
-  private votes: Map<string, VotableGameMode> = new Map(); // socketId -> vote
-  private voteCounts = { open_world: 0, battle_royale: 0, infection: 0 };
-
   /** True after a full open_world start; used to resume the same map when the server was empty. */
   private openWorldSessionActive: boolean = false;
 
-  private gameModeStrategy: IGameModeStrategy = createGameModeStrategy(DEFAULT_GAME_MODE);
+  private gameModeStrategy: IGameModeStrategy = createGameModeStrategy();
 
   private tickPerformanceTracker: TickPerformanceTracker;
   private entityManager: EntityManager;
   private mapManager: MapManager;
   private socketManager: ServerSocketManager;
-  private environmentalEventManager: EnvironmentalEventManager | null = null;
   private gameManagers: any = null;
 
   private lastBroadcastedState = {
@@ -92,11 +81,6 @@ export class GameLoop {
    */
   public setGameManagers(gameManagers: any): void {
     this.gameManagers = gameManagers;
-    this.environmentalEventManager = new EnvironmentalEventManager(
-      gameManagers,
-      this.entityManager,
-      this.mapManager,
-    );
   }
 
   /**
@@ -143,10 +127,6 @@ export class GameLoop {
   public async resumeOpenWorldSession(): Promise<void> {
     this.isGameReady = true;
     this.isGameOver = false;
-    this.isVotingPhase = false;
-    this.votingEndTime = 0;
-    this.votes.clear();
-    this.voteCounts = { open_world: 0, battle_royale: 0, infection: 0 };
 
     await this.socketManager.recreatePlayersForConnectedSockets();
 
@@ -172,7 +152,6 @@ export class GameLoop {
   public async startNewGame(strategy?: IGameModeStrategy): Promise<void> {
     this.openWorldSessionActive = false;
 
-    // Set strategy if provided (used when switching game modes)
     if (strategy) {
       this.gameModeStrategy = strategy;
     }
@@ -180,23 +159,12 @@ export class GameLoop {
     this.isGameReady = true;
     this.isGameOver = false;
 
-    // Reset voting state to prevent stale values
-    this.isVotingPhase = false;
-    this.votingEndTime = 0;
-    this.votes.clear();
-    this.voteCounts = { open_world: 0, battle_royale: 0, infection: 0 };
-
     this.phaseStartTime = Date.now();
     this.phaseDuration = 0;
     this.totalZombies = 0;
 
     // Clear all entities first
     this.entityManager.clear();
-
-    // Reset environmental events (end any active thunderstorms, toxic gas, etc.)
-    if (this.environmentalEventManager) {
-      this.environmentalEventManager.reset();
-    }
 
     // Generate new map
     this.mapManager.generateMap();
@@ -211,9 +179,7 @@ export class GameLoop {
     this.socketManager.broadcastEvent(new GameStartedEvent(Date.now(), gameMode));
     this.socketManager.sendInitializationToAllSockets();
 
-    if (gameMode === "open_world") {
-      this.openWorldSessionActive = true;
-    }
+    this.openWorldSessionActive = true;
   }
 
   public setIsGameOver(isGameOver: boolean): void {
@@ -232,83 +198,6 @@ export class GameLoop {
     return this.isGameOver;
   }
 
-  // Voting system methods
-  public startVotingPhase(): void {
-    this.isVotingPhase = true;
-    this.votingEndTime = Date.now() + getConfig().voting.VOTING_DURATION;
-    this.votes.clear();
-    this.voteCounts = { open_world: 0, battle_royale: 0, infection: 0 };
-  }
-
-  public registerVote(socketId: string, playerId: number, mode: VotableGameMode): void {
-    if (!this.isVotingPhase) return;
-    if (getConfig().voting.DISABLED_MODES.includes(mode)) return;
-
-    // Check if player is AI (AI players cannot vote, but zombie players CAN)
-    const player = this.entityManager.getEntityById(playerId);
-    if (!player) return;
-    const serialized = (player as any).serialized;
-    if (serialized?.get("isAI")) return;
-
-    // Remove previous vote
-    const previousVote = this.votes.get(socketId);
-    if (previousVote) {
-      this.voteCounts[previousVote]--;
-    }
-
-    // Register new vote
-    this.votes.set(socketId, mode);
-    this.voteCounts[mode]++;
-  }
-
-  private getWinningMode(): VotableGameMode {
-    const validModes: VotableGameMode[] = ["open_world", "battle_royale", "infection"];
-    let maxVotes = -1;
-    let winners: VotableGameMode[] = [];
-
-    for (const mode of validModes) {
-      // Skip disabled modes
-      if (getConfig().voting.DISABLED_MODES.includes(mode)) continue;
-
-      if (this.voteCounts[mode] > maxVotes) {
-        maxVotes = this.voteCounts[mode];
-        winners = [mode];
-      } else if (this.voteCounts[mode] === maxVotes) {
-        winners.push(mode);
-      }
-    }
-
-    // Random selection on tie
-    const winner = winners[Math.floor(Math.random() * winners.length)];
-    return winner;
-  }
-
-  private handleVotingPhase(): void {
-    if (!this.isVotingPhase) return;
-    if (Date.now() >= this.votingEndTime) {
-      this.endVotingPhase();
-    }
-  }
-
-  private endVotingPhase(): void {
-    const winningMode = this.getWinningMode();
-    this.isVotingPhase = false;
-
-    void this.startNewGame(createGameModeStrategy(winningMode as GameModeId)).catch((err) => {
-      console.error("[GameLoop] startNewGame after voting failed:", err);
-    });
-  }
-
-  public getVotingState(): VotingState | null {
-    if (!this.isVotingPhase) return null;
-    return {
-      isVotingActive: true,
-      votingEndTime: this.votingEndTime,
-      votes: { ...this.voteCounts },
-      disabledModes: [...getConfig().voting.DISABLED_MODES],
-    };
-  }
-
   private startGameLoop(): void {
     this.timer = setInterval(() => {
       // console.profile();
@@ -319,13 +208,6 @@ export class GameLoop {
 
   private update(): void {
     if (!this.isGameReady) {
-      return;
-    }
-
-    // Handle voting phase - continue broadcasting state during voting
-    if (this.isVotingPhase) {
-      this.handleVotingPhase();
-      this.broadcastGameState();
       return;
     }
 
@@ -343,7 +225,6 @@ export class GameLoop {
     this.updateEntities(deltaTime);
     endUpdateEntities();
 
-    // Update game mode strategy (for mode-specific logic like BR toxic zones)
     if (this.gameManagers) {
       this.gameModeStrategy.update(deltaTime, this.gameManagers);
     }
@@ -406,19 +287,11 @@ export class GameLoop {
       }),
     );
 
-    // Check if game modes voting is enabled
-    if (getConfig().voting.ENABLE_GAME_MODES) {
-      // Start voting phase after showing game over
-      setTimeout(() => {
-        this.startVotingPhase();
-      }, getConfig().voting.GAME_OVER_DISPLAY_DURATION);
-    } else {
-      setTimeout(() => {
-        void this.startNewGame(createGameModeStrategy(DEFAULT_GAME_MODE)).catch((err) => {
-          console.error("[GameLoop] startNewGame after game over failed:", err);
-        });
-      }, 5000);
-    }
+    setTimeout(() => {
+      void this.startNewGame(createGameModeStrategy()).catch((err) => {
+        console.error("[GameLoop] startNewGame after game over failed:", err);
+      });
+    }, 5000);
   }
 
   private trackPerformance(updateStartTime: number) {
@@ -436,9 +309,6 @@ export class GameLoop {
 
   private updateEntities(deltaTime: number): void {
     this.entityManager.update(deltaTime);
-    if (this.environmentalEventManager) {
-      this.environmentalEventManager.update(deltaTime);
-    }
   }
 
   private getCurrentGameState(): Record<string, any> {
@@ -449,42 +319,7 @@ export class GameLoop {
       totalZombies: this.totalZombies,
     };
 
-    // Include voting state when voting is active
-    const votingState = this.getVotingState();
-    if (votingState) {
-      state.votingState = votingState;
-    }
-
-    // Include zombie lives state for infection mode
-    const zombieLivesState = this.getZombieLivesState();
-    if (zombieLivesState) {
-      state.zombieLivesState = zombieLivesState;
-    }
-
     return state;
-  }
-
-  /**
-   * Get zombie lives state for infection mode
-   */
-  private getZombieLivesState(): { current: number; max: number } | null {
-    if (this.gameModeStrategy.getConfig().modeId !== "infection") {
-      return null;
-    }
-
-    // Access the infection strategy's zombie lives
-    const strategy = this.gameModeStrategy as any;
-    if (
-      typeof strategy.getSharedZombieLives === "function" &&
-      typeof strategy.getMaxZombieLives === "function"
-    ) {
-      return {
-        current: strategy.getSharedZombieLives(),
-        max: strategy.getMaxZombieLives(),
-      };
-    }
-
-    return null;
   }
 
   private broadcastGameState(): void {
@@ -503,11 +338,7 @@ export class GameLoop {
       const currentValue = currentState[key];
       const lastValue = (this.lastBroadcastedState as any)[key];
 
-      // Always include zombieLivesState and votingState when they exist (they're important for UI)
-      // This ensures clients always have the latest values, especially after deaths
-      const alwaysInclude = key === "zombieLivesState" || key === "votingState";
-
-      // For objects (like zombieLivesState, votingState), do deep comparison
+      // For objects, do deep comparison
       let hasChanged = false;
       if (currentValue === null || currentValue === undefined) {
         hasChanged = lastValue !== currentValue;
@@ -532,8 +363,7 @@ export class GameLoop {
         hasChanged = currentValue !== lastValue;
       }
 
-      // Include if changed OR if it's a state we always include when it exists
-      if (hasChanged || (alwaysInclude && currentValue !== null && currentValue !== undefined)) {
+      if (hasChanged) {
         (stateUpdate as any)[key] = currentValue;
         // Deep copy objects to avoid reference issues
         if (

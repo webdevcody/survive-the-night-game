@@ -101,12 +101,6 @@ export function generateEntities() {
   // Add acid entity (uses blood decal for rendering but is separate entity type)
   entities["ACID"] = "acid";
 
-  // Add toxic gas cloud entity
-  entities["TOXIC_GAS_CLOUD"] = "toxic_gas_cloud";
-
-  // Add toxic biome zone entity (for performance optimization in Battle Royale)
-  entities["TOXIC_BIOME_ZONE"] = "toxic_biome_zone";
-
   return entities;
 }
 

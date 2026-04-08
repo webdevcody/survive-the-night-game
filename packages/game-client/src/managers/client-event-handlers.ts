@@ -2,7 +2,6 @@ import { GameClient } from "@/client";
 import { getPlayer } from "@/util/get-player";
 import { distance } from "@shared/util/physics";
 import { getConfig } from "@shared/config";
-import { infectionConfig } from "@shared/config/infection-config";
 import { isWeapon, ItemType } from "@shared/util/inventory";
 import { itemRegistry } from "@shared/entities";
 import Vector2 from "@shared/util/vector2";
@@ -126,19 +125,9 @@ export class ClientEventHandlers {
 
     const gameState = this.gameClient.getGameState();
     const hud = this.gameClient.getHud();
-    const votingPanel = this.gameClient.getVotingPanel();
     const merchantBuyPanel = (this.gameClient as any).merchantBuyPanel;
     const placementManager = this.gameClient.getPlacementManager();
     const isFullscreenMapOpen = hud?.isFullscreenMapOpen() ?? false;
-
-    // Check voting panel clicks first (if voting is active)
-    if (
-      gameState.votingState?.isVotingActive &&
-      votingPanel.handleClick(x, y, canvas.width, canvas.height)
-    ) {
-      placementManager?.skipNextClick();
-      return;
-    }
 
     // Check merchant panel clicks (if open)
     if (merchantBuyPanel.isVisible() && merchantBuyPanel.handleClick(x, y)) {
@@ -162,22 +151,6 @@ export class ClientEventHandlers {
     if (player && !player.isDead()) {
       // Zombie players can spawn zombies or attack with claw
       if (player.isZombiePlayer?.()) {
-        // Check if we're in infection mode
-        if (gameState.gameMode === "infection") {
-          // Convert canvas coordinates to world coordinates
-          const worldPos = this.canvasToWorld(x, y, canvas);
-          const playerPos = player.getPosition();
-          const dist = distance(playerPos, worldPos);
-
-          // Check if click is within spawn radius and cooldown is ready
-          const cooldownProgress = player.getZombieSpawnCooldownProgress?.() ?? 1;
-          if (dist <= infectionConfig.ZOMBIE_SPAWN_RADIUS && cooldownProgress >= 1) {
-            // Spawn zombie at clicked position
-            this.gameClient.getSocketManager().sendSpawnZombie(worldPos.x, worldPos.y);
-            return;
-          }
-        }
-        // If not spawning, use claw attack
         const inputManager = (this.gameClient as any).inputManager;
         inputManager.triggerFire();
         return;

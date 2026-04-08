@@ -38,9 +38,6 @@ export const ServerSentEvents = {
   VERSION_MISMATCH: "versionMismatch",
   AUTH_REQUIRED: "authRequired",
   USER_BANNED: "userBanned",
-  LIGHTNING_BOLT: "lightningBolt",
-  THUNDERSTORM_START: "thunderstormStart",
-  THUNDERSTORM_END: "thunderstormEnd",
 } as const;
 
 export const ClientSentEvents = {
@@ -66,7 +63,6 @@ export const ClientSentEvents = {
   SWAP_BAG_AND_EQUIPMENT: "swapBagAndEquipment",
   INTERACT: "interact",
   CHANGE_PLAYER_COLOR: "changePlayerColor",
-  VOTE_GAME_MODE: "voteGameMode",
   SPAWN_ZOMBIE: "spawnZombie",
 } as const;
 

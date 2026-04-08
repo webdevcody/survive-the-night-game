@@ -18,13 +18,10 @@ import { ClientTriggerable } from "@/extensions/triggerable";
 import { ClientUpdatable } from "@/extensions/updatable";
 import { ClientOneTimeTrigger } from "./one-time-trigger";
 import { ClientStatic } from "./static";
-import { ClientResourcesBag } from "./resources-bag";
 import { ClientSnared } from "./snared";
 import { ClientPoison } from "./poison";
 import { ClientAcidTrigger } from "./acid-trigger";
 import { ClientInfiniteRun } from "./infinite-run";
-import { ClientToxicGasCloudExtension } from "./toxic-gas-cloud-extension";
-import { ClientToxicBiomeZoneExtension } from "./toxic-biome-zone-extension";
 
 // remember to update the extension type ids in extension-type-encoding.ts when adding a new extension
 export const clientExtensionsMap = {
@@ -47,13 +44,10 @@ export const clientExtensionsMap = {
   [ExtensionTypes.TRIGGER_COOLDOWN_ATTACKER]: ClientTriggerCooldownAttacker,
   [ExtensionTypes.ONE_TIME_TRIGGER]: ClientOneTimeTrigger,
   [ExtensionTypes.STATIC]: ClientStatic,
-  [ExtensionTypes.RESOURCES_BAG]: ClientResourcesBag,
   [ExtensionTypes.SNARED]: ClientSnared,
   [ExtensionTypes.POISON]: ClientPoison,
   [ExtensionTypes.ACID_TRIGGER]: ClientAcidTrigger,
   [ExtensionTypes.INFINITE_RUN]: ClientInfiniteRun,
-  [ExtensionTypes.TOXIC_GAS_CLOUD]: ClientToxicGasCloudExtension,
-  [ExtensionTypes.TOXIC_BIOME_ZONE]: ClientToxicBiomeZoneExtension,
 } as const;
 
 export {
@@ -76,11 +70,8 @@ export {
   ClientTriggerCooldownAttacker,
   ClientOneTimeTrigger,
   ClientStatic,
-  ClientResourcesBag,
   ClientSnared,
   ClientPoison,
   ClientAcidTrigger,
   ClientInfiniteRun,
-  ClientToxicGasCloudExtension,
-  ClientToxicBiomeZoneExtension,
 };

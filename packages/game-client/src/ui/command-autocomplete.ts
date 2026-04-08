@@ -1,6 +1,5 @@
 import {
   COMMAND_DEFINITIONS,
-  GAME_MODES,
   CommandDefinition,
   CommandArgumentDefinition,
 } from "@shared/commands/command-definitions";
@@ -237,9 +236,6 @@ export class CommandAutocomplete {
           0,
           this.MAX_SUGGESTIONS
         );
-
-      case "mode":
-        return GAME_MODES.filter((m: string) => m.startsWith(prefixLower));
 
       default:
         return [];

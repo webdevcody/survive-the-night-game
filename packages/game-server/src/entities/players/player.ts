@@ -1,6 +1,5 @@
 import { PlayerDroppedItemEvent } from "../../../../game-shared/src/events/server-sent/events/player-dropped-item-event";
 import { PlayerHurtEvent } from "../../../../game-shared/src/events/server-sent/events/player-hurt-event";
-import { ResourceType } from "@shared/util/inventory";
 import Collidable from "@/extensions/collidable";
 import Consumable from "@/extensions/consumable";
 import Destructible from "@/extensions/destructible";
@@ -11,7 +10,6 @@ import Inventory from "@/extensions/inventory";
 import Movable from "@/extensions/movable";
 import Positionable from "@/extensions/positionable";
 import Updatable from "@/extensions/updatable";
-import ResourcesBag from "@/extensions/resources-bag";
 import { Broadcaster, IGameManagers } from "@/managers/types";
 import { Entities } from "@/constants";
 import { Entity } from "@/entities/entity";
@@ -125,7 +123,6 @@ export class Player extends Entity {
 
     this.addExtension(new Inventory(this, gameManagers.getBroadcaster()));
     const poolManager = PoolManager.getInstance();
-    this.addExtension(new ResourcesBag(this, gameManagers.getBroadcaster()));
     const collidableSize = poolManager.vector2.claim(
       Player.PLAYER_WIDTH - 8,
       Player.PLAYER_WIDTH - 8,
@@ -336,19 +333,13 @@ export class Player extends Entity {
   }
 
   craftRecipe(recipe: RecipeType): void {
-    const resourcesBag = this.getExt(ResourcesBag);
-    const resources = resourcesBag.getAllResources();
     const inventory = this.getExt(Inventory);
     const originalInventoryJson = JSON.stringify(inventory.getItems());
-    const result = inventory.craftRecipe(recipe, resources);
+    const result = inventory.craftRecipe(recipe);
 
     // Check if crafting succeeded (inventory changed or item was dropped)
     const inventoryChanged = JSON.stringify(inventory.getItems()) !== originalInventoryJson;
     const craftingSucceeded = inventoryChanged || result.itemToDrop !== undefined;
-
-    // Update player's resource counts using generic setResource
-    resourcesBag.setResource("wood", result.resources.wood);
-    resourcesBag.setResource("cloth", result.resources.cloth);
 
     // If inventory was full, drop the crafted item on the ground
     if (result.itemToDrop) {
@@ -558,16 +549,11 @@ export class Player extends Entity {
         // Check if infinite run extension is active
         const hasInfiniteRun = this.hasExt(InfiniteRun);
 
-        // Zombies cannot sprint EXCEPT in infection mode
         const isZombie = this.serialized.get("isZombie");
-        const strategy = this.getGameManagers().getGameServer().getGameLoop().getGameModeStrategy();
-        const isInfectionMode = strategy.getConfig().modeId === "infection";
-        const zombieCanSprint = isZombie && isInfectionMode;
 
-        // Can sprint if: (human with stamina) OR (zombie in infection mode with stamina)
         const stamina = this.serialized.get("stamina");
         const canSprint =
-          (!isZombie || zombieCanSprint) &&
+          !isZombie &&
           this.serialized.get("inputSprint") &&
           (hasInfiniteRun || (stamina > 0 && this.exhaustionTimer <= 0));
         const sprintMultiplier = canSprint ? getConfig().player.SPRINT_MULTIPLIER : 1;
@@ -825,69 +811,6 @@ export class Player extends Entity {
 
   getPing(): number {
     return this.serialized.get("ping");
-  }
-
-  addCoins(amount: number): void {
-    this.getExt(ResourcesBag).addCoins(amount);
-  }
-
-  getCoins(): number {
-    return this.getExt(ResourcesBag).getCoins();
-  }
-
-  /**
-   * Add a resource and broadcast pickup event if amount > 0
-   * Works with any resource type defined in RESOURCE_CONFIGS
-   */
-  addResource(resourceType: ResourceType, amount: number): void {
-    this.getExt(ResourcesBag).addResource(resourceType, amount);
-  }
-
-  /**
-   * Get the amount of a specific resource
-   */
-  getResource(resourceType: ResourceType): number {
-    return this.getExt(ResourcesBag).getResource(resourceType);
-  }
-
-  /**
-   * Set the amount of a specific resource
-   */
-  setResource(resourceType: ResourceType, amount: number): void {
-    this.getExt(ResourcesBag).setResource(resourceType, amount);
-  }
-
-  /**
-   * Remove a specific amount of a resource
-   */
-  removeResource(resourceType: ResourceType, amount: number): void {
-    this.getExt(ResourcesBag).removeResource(resourceType, amount);
-  }
-
-  // Backward compatibility getters/setters for wood
-  getWood(): number {
-    return this.getExt(ResourcesBag).getWood();
-  }
-
-  setWood(amount: number): void {
-    this.getExt(ResourcesBag).setWood(amount);
-  }
-
-  removeWood(amount: number): void {
-    this.getExt(ResourcesBag).removeWood(amount);
-  }
-
-  // Backward compatibility getters/setters for cloth
-  getCloth(): number {
-    return this.getExt(ResourcesBag).getCloth();
-  }
-
-  setCloth(amount: number): void {
-    this.getExt(ResourcesBag).setCloth(amount);
-  }
-
-  removeCloth(amount: number): void {
-    this.getExt(ResourcesBag).removeCloth(amount);
   }
 
   // Zombie spawn cooldown methods

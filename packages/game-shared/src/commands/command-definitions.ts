@@ -1,5 +1,5 @@
 // Command argument type for autocomplete
-export type CommandArgumentType = "entity" | "mode" | "string";
+export type CommandArgumentType = "entity" | "string";
 
 // Command argument definition
 export interface CommandArgumentDefinition {
@@ -33,13 +33,6 @@ export const COMMAND_DEFINITIONS: CommandDefinition[] = [
     arguments: [{ name: "entity_name", type: "entity", required: true }],
   },
   {
-    name: "mode",
-    description: "Switches the game mode and restarts",
-    usage: "/mode <royale|open|infection>",
-    requiresAdmin: true,
-    arguments: [{ name: "mode", type: "mode", required: true }],
-  },
-  {
     name: "restart",
     description: "Starts a fresh new game",
     usage: "/restart",
@@ -52,7 +45,3 @@ export const COMMAND_DEFINITIONS: CommandDefinition[] = [
     requiresAdmin: true,
   },
 ];
-
-// Game modes for autocomplete
-export const GAME_MODES = ["royale", "open", "infection"] as const;
-export type GameMode = (typeof GAME_MODES)[number];

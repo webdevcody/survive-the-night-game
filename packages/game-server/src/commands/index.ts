@@ -2,7 +2,6 @@ import { CommandRegistry } from "./command-registry";
 import { SpawnCommand } from "./spawn-command";
 import { ListEntitiesCommand } from "./list-entities-command";
 import { HelpCommand } from "./help-command";
-import { ModeCommand } from "./mode-command";
 import { RestartCommand } from "./restart-command";
 
 /**
@@ -14,7 +13,6 @@ export function createCommandRegistry(): CommandRegistry {
   // Register all commands
   registry.register(new SpawnCommand());
   registry.register(new ListEntitiesCommand());
-  registry.register(new ModeCommand());
   registry.register(new RestartCommand());
   registry.register(new HelpCommand(() => registry.getAll()));
 

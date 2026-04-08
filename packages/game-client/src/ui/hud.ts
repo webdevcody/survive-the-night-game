@@ -9,14 +9,11 @@ import { SoundManager } from "@/managers/sound-manager";
 import { AssetManager } from "@/managers/asset";
 import {
   TextPanel,
-  CarHealthPanel,
   DeathScreenPanel,
   GameMessagesPanel,
   MuteButtonPanel,
   CrateIndicatorsPanel,
   SurvivorIndicatorsPanel,
-  HumanIndicatorsPanel,
-  ZombieLivesPanel,
   ExperiencePanel,
 } from "./panels";
 import { getConfig } from "@shared/config";
@@ -92,17 +89,6 @@ const HUD_SETTINGS = {
     hoverBackground: "rgba(0, 0, 0, 0.9)",
     baseFont: 24, // Reduced from 36
   },
-  ZombieLives: {
-    padding: 10,
-    background: "rgba(0, 0, 0, 0.85)",
-    borderColor: "rgba(100, 200, 100, 0.8)", // Green border for zombie lives
-    borderWidth: 3,
-    font: "bold 28px monospace",
-    labelFont: "14px Arial",
-    textColor: "rgba(255, 255, 255, 0.9)",
-    livesColor: "rgba(100, 255, 100, 1)", // Bright green for lives count
-    marginTop: 8,
-  },
 };
 
 export class Hud {
@@ -118,15 +104,12 @@ export class Hud {
   private versionPanel: TextPanel;
   private fpsPanel: TextPanel;
   private pingPanel: TextPanel;
-  private carHealthPanel: CarHealthPanel;
   private deathScreenPanel: DeathScreenPanel;
   private gameMessagesPanel: GameMessagesPanel;
   private muteButtonPanel: MuteButtonPanel;
   private experiencePanel: ExperiencePanel;
   private crateIndicatorsPanel: CrateIndicatorsPanel;
   private survivorIndicatorsPanel: SurvivorIndicatorsPanel;
-  private humanIndicatorsPanel: HumanIndicatorsPanel;
-  private zombieLivesPanel: ZombieLivesPanel;
   private gameOverDialog: GameOverDialogUI;
   private hotbar: InventoryBarUI;
   private inventoryScreen: InventoryScreenUI;
@@ -252,23 +235,6 @@ export class Hud {
       textColor: HUD_SETTINGS.BottomRightPanels.pingColors.excellent,
     });
 
-    // Initialize car health panel (center top of screen)
-    // y position is now calculated dynamically in render() to center vertically more
-    this.carHealthPanel = new CarHealthPanel({
-      padding: 8,
-      background: "rgba(0, 0, 0, 0.85)",
-      borderColor: "rgba(255, 50, 50, 0.8)",
-      borderWidth: 3,
-      width: 200,
-      height: 16,
-      iconSize: 28,
-      iconGap: 8,
-      font: "24px Arial",
-      barBackgroundColor: "rgba(100, 0, 0, 0.5)",
-      barColor: "rgba(255, 50, 50, 1)",
-      y: 0, // Not used anymore, calculated dynamically
-    });
-
     // Initialize death screen panel
     this.deathScreenPanel = new DeathScreenPanel({
       ...HUD_SETTINGS.DeathScreen,
@@ -358,35 +324,6 @@ export class Hud {
       this.assetManager
     );
 
-    // Initialize human indicators panel (for zombie players in infection/battle royale)
-    this.humanIndicatorsPanel = new HumanIndicatorsPanel(
-      {
-        padding: 0,
-        background: "transparent",
-        borderColor: "transparent",
-        borderWidth: 0,
-        arrowSize: hudCfg.humanIndicators.arrowSize,
-        arrowDistance: hudCfg.humanIndicators.arrowDistance,
-        arrowColor: hudCfg.humanIndicators.arrowColor,
-        playerSpriteSize: hudCfg.humanIndicators.spriteSize,
-        minDistance: hudCfg.humanIndicators.minDistance,
-      },
-      this.assetManager
-    );
-
-    // Initialize zombie lives panel (for infection mode)
-    this.zombieLivesPanel = new ZombieLivesPanel({
-      padding: HUD_SETTINGS.ZombieLives.padding,
-      background: HUD_SETTINGS.ZombieLives.background,
-      borderColor: HUD_SETTINGS.ZombieLives.borderColor,
-      borderWidth: HUD_SETTINGS.ZombieLives.borderWidth,
-      font: HUD_SETTINGS.ZombieLives.font,
-      labelFont: HUD_SETTINGS.ZombieLives.labelFont,
-      textColor: HUD_SETTINGS.ZombieLives.textColor,
-      livesColor: HUD_SETTINGS.ZombieLives.livesColor,
-      x: 0, // Will be calculated in render
-      y: 0, // Will be calculated in render
-    });
   }
 
   public setRenderer(renderer: import("@/renderer").Renderer): void {
@@ -431,37 +368,12 @@ export class Hud {
     // Render indicators FIRST so they appear behind the panels that render after
     this.crateIndicatorsPanel.render(ctx, gameState);
     this.survivorIndicatorsPanel.render(ctx, gameState);
-    this.humanIndicatorsPanel.render(ctx, gameState); // Only renders for zombie players
-
-    const hudRightInset = scaleHudValue(40, width, height);
-    const carHealthTopMargin = scaleHudValue(20, width, height);
-
-    let stackBottomAboveMinimap = 0;
-    if (gameState.zombieLivesState) {
-      const zombieLivesY = carHealthTopMargin;
-      stackBottomAboveMinimap = zombieLivesY + this.zombieLivesPanel.getHeight();
-    }
 
     const minimapHudLayout = getMinimapHudLayout(width, height, {
-      waveStackBottom: stackBottomAboveMinimap,
+      waveStackBottom: 0,
     });
 
-    if (gameState.zombieLivesState) {
-      ctx.save();
-      ctx.setTransform(1, 0, 0, 1, 0, 0);
-      const zombieLivesY = carHealthTopMargin;
-      const zombieLivesWidth = this.zombieLivesPanel.getWidth(ctx, gameState);
-      const zombieLivesX = width - hudRightInset - zombieLivesWidth;
-      this.zombieLivesPanel.setPosition(zombieLivesX, zombieLivesY);
-      this.zombieLivesPanel.render(ctx, gameState);
-      ctx.restore();
-    }
-
     this.minimap.render(ctx, gameState, minimapHudLayout.minimap);
-
-    if (gameState.gameMode !== "open_world") {
-      this.carHealthPanel.render(ctx, gameState);
-    }
 
     // FPS, ping, version — bottom-right (row flows left from corner: version | ping | FPS)
     ctx.save();
@@ -523,10 +435,7 @@ export class Hud {
     // Health + stamina orbs (minimap HUD group)
     const currentPlayer = getPlayer(gameState);
     const isZombiePlayer = currentPlayer?.isZombiePlayer?.() ?? false;
-    const isInfectionMode = gameState.gameMode === "infection";
     if (!isZombiePlayer) {
-      this.hotbar.renderHealthAndStamina(ctx, gameState, minimapHudLayout);
-    } else if (isInfectionMode) {
       this.hotbar.renderHealthAndStamina(ctx, gameState, minimapHudLayout);
     }
 
@@ -586,37 +495,6 @@ export class Hud {
       y: indicatorY,
       radius: 8,
       progressColor: "rgba(100, 255, 100, 0.9)", // Green for pickup
-      borderColor: "rgba(255, 255, 255, 0.8)",
-      borderWidth: 1.5,
-      backgroundColor: "rgba(0, 0, 0, 0.7)",
-      startAngle: -Math.PI / 2, // Start from top
-    });
-  }
-
-  /**
-   * Render zombie spawn cooldown indicator above player's head
-   * Shows green progress filling up as the ability recharges
-   */
-  public renderZombieSpawnCooldown(
-    ctx: CanvasRenderingContext2D,
-    playerPosition: { x: number; y: number },
-    progress: number
-  ): void {
-    // Don't render if cooldown is ready
-    if (progress >= 1) {
-      return;
-    }
-
-    // Position above player's head (offset by player height + padding)
-    const indicatorY = playerPosition.y - 20; // 16px player height + 4px padding
-    const indicatorX = playerPosition.x + 8; // Center on player (player is 16px wide)
-
-    renderRadialProgressIndicator(ctx, {
-      progress,
-      x: indicatorX,
-      y: indicatorY,
-      radius: 8,
-      progressColor: "rgba(100, 255, 100, 0.9)", // Green for spawn cooldown
       borderColor: "rgba(255, 255, 255, 0.8)",
       borderWidth: 1.5,
       backgroundColor: "rgba(0, 0, 0, 0.7)",

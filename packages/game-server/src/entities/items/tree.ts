@@ -1,5 +1,6 @@
 import Interactive from "@/extensions/interactive";
 import Positionable from "@/extensions/positionable";
+import Inventory from "@/extensions/inventory";
 import { IGameManagers } from "@/managers/types";
 import { Entities } from "@/constants";
 import { Entity } from "@/entities/entity";
@@ -29,10 +30,11 @@ export class Tree extends Entity {
     const player = this.getEntityManager().getEntityById(entityId) as Player;
     if (!player) return;
 
-    // Increment player's wood counter (this will broadcast the pickup event)
-    player.addResource("wood", 1);
+    const inventory = player.getExt(Inventory);
+    if (!inventory.addOrMergeStack({ itemType: "wood", state: { count: 1 } })) {
+      return;
+    }
 
-    // Remove this tree from the world
     this.getEntityManager().markEntityForRemoval(this);
   }
 }

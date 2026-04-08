@@ -243,6 +243,44 @@ export const ITEM_CONFIGS: Record<string, ItemConfig> = {
       price: 10,
     },
   },
+  wood: {
+    id: "wood",
+    category: "ammo",
+    assets: {
+      assetKey: "wood",
+      x: 64,
+      y: 32,
+      sheet: "items",
+    },
+    spawn: {
+      enabled: true,
+      chance: 0.1,
+    },
+    merchant: {
+      enabled: true,
+      buyable: true,
+      price: 2,
+    },
+  },
+  cloth: {
+    id: "cloth",
+    category: "ammo",
+    assets: {
+      assetKey: "cloth",
+      x: 128,
+      y: 0,
+      sheet: "items",
+    },
+    spawn: {
+      enabled: true,
+      chance: 0.1,
+    },
+    merchant: {
+      enabled: true,
+      buyable: true,
+      price: 4,
+    },
+  },
   coin: {
     id: "coin",
     category: "consumable",

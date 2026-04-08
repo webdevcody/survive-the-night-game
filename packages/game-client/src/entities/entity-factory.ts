@@ -17,7 +17,7 @@ export class EntityFactory {
     this.assetManager = assetManager;
   }
 
-  public createEntity(data: RawEntity): ClientEntityBase {
+  public createEntity(data: RawEntity): ClientEntityBase | undefined {
     if (!data || !data.type) {
       throw new Error(`Invalid entity data: ${JSON.stringify(data)}`);
     }
@@ -53,13 +53,13 @@ export class EntityFactory {
         return null;
       },
       logCreationFailure: (type, reason) => {
-        throw new Error(`Unknown entity type: ${type} - ${reason}`);
+        console.warn(`Unknown entity type: ${type} - ${reason}`);
       },
     };
 
     const entity = createEntityWithFactory(data.type, adapter);
     if (!entity) {
-      throw new Error(`Unknown entity type: ${data.type}`);
+      return undefined;
     }
     return entity;
   }

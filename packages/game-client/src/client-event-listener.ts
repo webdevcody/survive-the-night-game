@@ -23,7 +23,6 @@ import { onLoot } from "./events/on-loot";
 import { onCoinPickup } from "./events/on-coin-pickup";
 import { onPlayerDroppedItem } from "./events/on-player-dropped-item";
 import { onPlayerPickedUpItem } from "./events/on-player-picked-up-item";
-import { onPlayerPickedUpResource } from "./events/on-player-picked-up-resource";
 import { onCarRepair } from "./events/on-car-repair";
 import { onCraft } from "./events/on-craft";
 import { onBuild } from "./events/on-build";
@@ -35,7 +34,6 @@ import { handleDisconnect } from "./events/handle-disconnect";
 import { onChatMessage } from "./events/on-chat-message";
 import { onGameMessage } from "./events/on-game-message";
 import { onGameStateUpdate } from "./events/on-game-state-update";
-import { onLightningBolt } from "./events/on-lightning-bolt";
 import { onYourId } from "./events/on-your-id";
 import { onVersionMismatch } from "./events/on-version-mismatch";
 import { onAuthRequired } from "./events/on-auth-required";
@@ -107,10 +105,6 @@ export class ClientEventListener {
     this.socketManager.on(ServerSentEvents.PLAYER_PICKED_UP_ITEM, (e) =>
       onPlayerPickedUpItem(context, e),
     );
-    this.socketManager.on(ServerSentEvents.PLAYER_PICKED_UP_RESOURCE, (e) =>
-      onPlayerPickedUpResource(context, e),
-    );
-
     this.socketManager.on(ServerSentEvents.GAME_OVER, (e) => onGameOver(context, e));
     this.socketManager.on(ServerSentEvents.GAME_STARTED, (e) =>
       onGameStarted(this.createInitializationContext(), e),
@@ -127,8 +121,6 @@ export class ClientEventListener {
     this.socketManager.on(ServerSentEvents.VERSION_MISMATCH, (e) => onVersionMismatch(context, e));
     this.socketManager.on(ServerSentEvents.AUTH_REQUIRED, (e) => onAuthRequired(context, e));
     this.socketManager.on(ServerSentEvents.USER_BANNED, (e) => onUserBanned(context, e));
-    this.socketManager.on(ServerSentEvents.LIGHTNING_BOLT, (e) => onLightningBolt(context, e));
-
     this.socketManager.onSocketDisconnect(() => {
       this.handleDisconnect();
     });

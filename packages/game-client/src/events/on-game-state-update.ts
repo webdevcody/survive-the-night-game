@@ -46,21 +46,6 @@ const handleGameStateUpdate = (context: InitializationContext, gameStateEvent: G
     context.gameState.phaseDuration = gameStateEvent.getPhaseDuration()!;
   }
 
-  // Voting state
-  const votingState = gameStateEvent.getVotingState();
-  if (votingState !== undefined) {
-    context.gameState.votingState = votingState;
-  } else if (context.gameState.votingState?.isVotingActive) {
-    // Clear voting state if it was active but no longer included in updates
-    context.gameState.votingState = null;
-  }
-
-  // Zombie lives state
-  const zombieLivesState = gameStateEvent.getZombieLivesState();
-  if (zombieLivesState !== undefined) {
-    context.gameState.zombieLivesState = zombieLivesState;
-  }
-
   // Use buffer-based deserialization
   // Buffer format: [entityCount][entities...][gameState][removedEntityIds]
   const buffer = gameStateEvent.getBuffer();
@@ -94,6 +79,13 @@ const handleGameStateUpdate = (context: InitializationContext, gameStateEvent: G
         // Create new entity with minimal data
         const entityData = { id, type };
         entity = context.gameClient.getEntityFactory().createEntity(entityData);
+        if (!entity) {
+          console.warn(
+            `[GameStateUpdate] Skipping entity id=${id} type=${type} (unknown type)`,
+          );
+          reader = reader.atOffset(entityStartOffset + entityLength);
+          continue;
+        }
         addEntity(context.gameState, entity);
       }
 
@@ -242,6 +234,13 @@ const handleGameStateUpdate = (context: InitializationContext, gameStateEvent: G
         // Add new entity
         const entityData = { id, type };
         const created = context.gameClient.getEntityFactory().createEntity(entityData);
+        if (!created) {
+          console.warn(
+            `[GameStateUpdate] Skipping new entity id=${id} type=${type} (unknown type)`,
+          );
+          reader = reader.atOffset(entityStartOffset + entityLength);
+          continue;
+        }
         // Deserialize from buffer
         created.deserializeFromBuffer(reader.atOffset(entityStartOffset));
 

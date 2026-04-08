@@ -7,10 +7,11 @@ import Vector2 from "@/util/vector2";
 import PoolManager from "@shared/util/pool-manager";
 import { ResourceConfig } from "@shared/entities/resource-registry";
 import { Player } from "@/entities/players/player";
+import Inventory from "@/extensions/inventory";
 
 /**
- * Generic resource entity that can be auto-generated from ResourceConfig
- * Resources are picked up directly and added to player resources (not inventory)
+ * Generic resource entity that can be auto-generated from ResourceConfig.
+ * Pickup merges into the player's inventory as a stackable item (item id matches resource id).
  */
 export class GenericResourceEntity extends Entity {
   public static get Size(): Vector2 {
@@ -37,10 +38,12 @@ export class GenericResourceEntity extends Entity {
     const player = this.getEntityManager().getEntityById(entityId) as Player;
     if (!player) return;
 
-    // Increment player's resource counter (this will broadcast the pickup event)
-    player.addResource(this.getType() as any, 1);
+    const inventory = player.getExt(Inventory);
+    const itemType = this.getType() as string;
+    if (!inventory.addOrMergeStack({ itemType, state: { count: 1 } })) {
+      return;
+    }
 
-    // Remove this resource from the world
     this.getEntityManager().markEntityForRemoval(this);
   }
 }

@@ -27,7 +27,6 @@ import {
   LootStateHandler,
   HuntStateHandler,
   ExploreStateHandler,
-  FleeStateHandler,
   AIStateContext,
 } from "./states";
 import { AIInteractionHelper } from "./ai-interaction-helper";
@@ -87,7 +86,6 @@ export class AIController {
   private lootHandler: LootStateHandler;
   private huntHandler: HuntStateHandler;
   private exploreHandler: ExploreStateHandler;
-  private fleeHandler: FleeStateHandler;
 
   // Stamina management
   private static readonly STAMINA_RESERVE_THRESHOLD = 0.3; // Don't sprint below 30% stamina unless urgent
@@ -111,7 +109,6 @@ export class AIController {
     this.lootHandler = new LootStateHandler();
     this.huntHandler = new HuntStateHandler();
     this.exploreHandler = new ExploreStateHandler();
-    this.fleeHandler = new FleeStateHandler();
   }
 
   /**
@@ -340,44 +337,6 @@ export class AIController {
 
     // Check if snared in bear trap and escape
     this.checkAndEscapeBearTrap();
-
-    // CRITICAL: Check if we're in a toxic zone - this takes priority over everything
-    const playerPos = this.player.getCenterPosition();
-    const isInToxicZone = this.pathfinder.isToxicPosition(playerPos);
-
-    if (isInToxicZone) {
-      // Force FLEE state - toxic zone is life or death
-      this.stateMachine.forceTransitionTo(AIState.FLEE);
-      // Clear ALL targets to focus only on escaping - no combat while fleeing
-      this.currentTarget = null;
-      this.combatTarget = null;
-      this.movementController.clearWaypoint();
-    } else if (this.stateMachine.getCurrentState() === AIState.FLEE) {
-      // We were fleeing but reached safety - return to normal behavior
-      this.stateMachine.forceTransitionTo(AIState.EXPLORE);
-    }
-
-    // FLEE state: Skip ALL combat-related logic - pure escape mode
-    // This prevents the AI from oscillating between FLEE and ENGAGE
-    const isFleeing = this.stateMachine.getCurrentState() === AIState.FLEE;
-
-    if (isFleeing) {
-      // In FLEE state - don't do any threat detection or combat targeting
-      // Just generate movement input and escape
-      this.combatTarget = null;
-      this.isInCombat = false;
-
-      // Generate and apply input (escape movement only)
-      const input = this.generateInput();
-      this.player.setInput(input);
-
-      // Update AI state for debugging
-      if (AI_CONFIG.DEBUG_SHOW_AI_STATE) {
-        const state = this.stateMachine.getCurrentState();
-        (this.player as any).serialized.set("aiState", state);
-      }
-      return; // Skip all other logic
-    }
 
     // Get ENHANCED threat info with damage-based scoring (KEY FIX)
     const damageHistory = this.threatTracker.getDamageHistory();
@@ -1081,8 +1040,8 @@ export class AIController {
   private checkOpportunisticActions(input: Input, playerPos: Vector2): boolean {
     const state = this.stateMachine.getCurrentState();
 
-    // Don't do opportunistic actions during FLEE (toxic zone emergency) or RETREAT (healing)
-    if (state === AIState.FLEE || state === AIState.RETREAT) {
+    // Don't do opportunistic actions during RETREAT (healing)
+    if (state === AIState.RETREAT) {
       return false;
     }
 
@@ -1171,16 +1130,6 @@ export class AIController {
 
     const state = this.stateMachine.getCurrentState();
     const playerPos = this.player.getCenterPosition();
-
-    // FLEE state: Skip ALL combat checks - pure escape, no fighting
-    if (state === AIState.FLEE) {
-      // Build context for state handlers
-      const context = this.buildStateContext();
-      // Only handle flee behavior - no melee attacks, no opportunistic actions
-      this.fleeHandler.handle(input, playerPos, context);
-      this.smoothMovement(input);
-      return input;
-    }
 
     // CRITICAL: Always check for enemies in melee range and attack them immediately
     // This prevents AI from ignoring enemies when stuck on top of each other

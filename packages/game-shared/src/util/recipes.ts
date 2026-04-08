@@ -1,4 +1,4 @@
-import { ItemType, InventoryItem, isResourceItem } from "./inventory";
+import { ItemType, InventoryItem } from "./inventory";
 import { getConfig } from "../config";
 import { itemRegistry, weaponRegistry } from "../entities";
 
@@ -32,20 +32,16 @@ class ConfigRecipe implements Recipe {
     return this.itemId as RecipeType;
   }
 
-  public canBeCrafted(inventory: InventoryItem[], resources: PlayerResources): boolean {
-    return recipeCanBeCrafted(this, inventory, resources);
+  public canBeCrafted(inventory: InventoryItem[]): boolean {
+    return recipeCanBeCrafted(this, inventory);
   }
 
   public components(): RecipeComponent[] {
     return this.recipeComponents;
   }
 
-  public craft(
-    inventory: InventoryItem[],
-    resources: PlayerResources,
-    maxInventorySlots?: number
-  ): CraftingResult {
-    return craftRecipe(this, inventory, resources);
+  public craft(inventory: InventoryItem[], maxInventorySlots?: number): CraftingResult {
+    return craftRecipe(this, inventory, maxInventorySlots);
   }
 
   public resultingComponent(): RecipeComponent {
@@ -132,85 +128,49 @@ export interface RecipeComponent {
   count?: number; // Optional count for stackable items (defaults to 1)
 }
 
-export interface PlayerResources {
-  wood: number;
-  cloth: number;
-}
-
 export interface CraftingResult {
   inventory: InventoryItem[];
-  resources: PlayerResources;
   itemToDrop?: InventoryItem; // Item to drop if inventory was full
 }
 
 export interface Recipe {
   getType(): RecipeType;
-  canBeCrafted: (inventory: InventoryItem[], resources: PlayerResources) => boolean;
+  canBeCrafted: (inventory: InventoryItem[]) => boolean;
   components: () => RecipeComponent[];
-  craft: (
-    inventory: InventoryItem[],
-    resources: PlayerResources,
-    maxInventorySlots?: number
-  ) => CraftingResult;
+  craft: (inventory: InventoryItem[], maxInventorySlots?: number) => CraftingResult;
   resultingComponent: () => RecipeComponent;
 }
 
 export function craftRecipe(
   recipe: Recipe,
   inventory: InventoryItem[],
-  resources: PlayerResources
+  maxInventorySlotsOverride?: number
 ): CraftingResult {
-  const newInventory: InventoryItem[] = [];
-  const newResources = { ...resources };
   const components = recipe.components();
-  const found: number[] = [];
 
-  const maxInventorySlots = getConfig().player.MAX_INVENTORY_SLOTS;
+  const maxInventorySlots =
+    maxInventorySlotsOverride ?? getConfig().player.MAX_INVENTORY_SLOTS;
 
-  // Count how many of each resource we need (respecting count property)
-  const resourceNeeds = { wood: 0, cloth: 0 };
-  for (const component of components) {
-    const count = component.count || 1;
-    if (isResourceItem(component.type)) {
-      // Dynamically handle all resource types
-      if (component.type === "wood") {
-        resourceNeeds.wood += count;
-      } else if (component.type === "cloth") {
-        resourceNeeds.cloth += count;
-      }
-      // Add new resource types here - they're automatically excluded from inventory checks below
-    }
-  }
-
-  // Check if we have enough resources
-  if (resourceNeeds.wood > resources.wood || resourceNeeds.cloth > resources.cloth) {
-    return { inventory, resources };
-  }
-
-  // Group components by type and count required amounts
-  // Exclude resource items (they're handled separately via resourceNeeds)
+  // All components (wood, cloth, ammo, etc.) come from bag stacks
   const componentNeeds: Map<ItemType, number> = new Map();
   for (const component of components) {
-    if (!isResourceItem(component.type)) {
-      const currentCount = componentNeeds.get(component.type) || 0;
-      componentNeeds.set(component.type, currentCount + (component.count || 1));
-    }
+    const currentCount = componentNeeds.get(component.type) || 0;
+    componentNeeds.set(component.type, currentCount + (component.count || 1));
   }
 
-  // Track total consumption per item type
   const totalConsumed: Map<ItemType, number> = new Map();
   for (const [itemType] of componentNeeds) {
     totalConsumed.set(itemType, 0);
   }
 
-  // Check inventory for non-resource items and consume required amounts
+  const newInventory: InventoryItem[] = [];
+
   for (let i = 0; i < inventory.length; i++) {
     const item = inventory[i];
-    if (!item) continue; // Skip null/empty inventory slots
+    if (!item) continue;
 
     const needed = componentNeeds.get(item.itemType);
     if (needed === undefined) {
-      // This item is not needed for crafting, keep it
       newInventory.push(item);
       continue;
     }
@@ -219,7 +179,6 @@ export function craftRecipe(
     const remainingNeeded = needed - alreadyConsumedTotal;
 
     if (remainingNeeded <= 0) {
-      // Already consumed enough of this item type, keep it
       newInventory.push(item);
       continue;
     }
@@ -229,7 +188,6 @@ export function craftRecipe(
     const newTotalConsumed = alreadyConsumedTotal + toConsume;
     totalConsumed.set(item.itemType, newTotalConsumed);
 
-    // If we consumed less than the full stack, add the remainder to new inventory
     if (toConsume < itemCount) {
       newInventory.push({
         ...item,
@@ -239,28 +197,20 @@ export function craftRecipe(
         },
       });
     }
-    // If we consumed the full stack, don't add it to new inventory (it's consumed)
   }
 
-  // Check if we consumed enough of each component type
   for (const [itemType, needed] of componentNeeds.entries()) {
     const consumed = totalConsumed.get(itemType) || 0;
     if (consumed < needed) {
-      return { inventory, resources };
+      return { inventory };
     }
   }
 
-  // Deduct resources
-  newResources.wood -= resourceNeeds.wood;
-  newResources.cloth -= resourceNeeds.cloth;
-
-  // Add the resulting item - check if it can stack with existing items
   const resulting = recipe.resultingComponent();
-  const resultCount = resulting.count || 1; // Support count in resultingComponent
+  const resultCount = resulting.count || 1;
   const existingItemIndex = newInventory.findIndex((item) => item?.itemType === resulting.type);
 
   if (existingItemIndex !== -1) {
-    // Stack with existing item
     const existingItem = newInventory[existingItemIndex];
     newInventory[existingItemIndex] = {
       ...existingItem,
@@ -269,16 +219,13 @@ export function craftRecipe(
         count: (existingItem.state?.count || 1) + resultCount,
       },
     };
-    return { inventory: newInventory, resources: newResources };
+    return { inventory: newInventory };
   }
 
-  // Check if inventory is full
   const currentItemCount = newInventory.filter((item) => item != null).length;
   if (currentItemCount >= maxInventorySlots) {
-    // Inventory is full, return the item to be dropped
     return {
       inventory: newInventory,
-      resources: newResources,
       itemToDrop: {
         itemType: resulting.type,
         state: { count: resultCount },
@@ -286,57 +233,26 @@ export function craftRecipe(
     };
   }
 
-  // Add as new item with count
   newInventory.push({
     itemType: resulting.type,
     state: { count: resultCount },
   });
 
-  return { inventory: newInventory, resources: newResources };
+  return { inventory: newInventory };
 }
 
-export function recipeCanBeCrafted(
-  recipe: Recipe,
-  inventory: InventoryItem[],
-  resources: PlayerResources
-): boolean {
+export function recipeCanBeCrafted(recipe: Recipe, inventory: InventoryItem[]): boolean {
   const components = recipe.components();
-  const found: number[] = [];
 
-  // Count how many of each resource we need (respecting count property)
-  const resourceNeeds = { wood: 0, cloth: 0 };
-  for (const component of components) {
-    const count = component.count || 1;
-    if (isResourceItem(component.type)) {
-      // Dynamically handle all resource types
-      if (component.type === "wood") {
-        resourceNeeds.wood += count;
-      } else if (component.type === "cloth") {
-        resourceNeeds.cloth += count;
-      }
-      // Add new resource types here - they're automatically excluded from inventory checks below
-    }
-  }
-
-  // Check if we have enough resources
-  if (resourceNeeds.wood > resources.wood || resourceNeeds.cloth > resources.cloth) {
-    return false;
-  }
-
-  // Group components by type and count required amounts
-  // Exclude resource items (they're handled separately via resourceNeeds)
   const componentNeeds: Map<ItemType, number> = new Map();
   for (const component of components) {
-    if (!isResourceItem(component.type)) {
-      const currentCount = componentNeeds.get(component.type) || 0;
-      componentNeeds.set(component.type, currentCount + (component.count || 1));
-    }
+    const currentCount = componentNeeds.get(component.type) || 0;
+    componentNeeds.set(component.type, currentCount + (component.count || 1));
   }
 
-  // Check inventory for non-resource items and verify we have enough
   const availableCounts: Map<ItemType, number> = new Map();
   for (const item of inventory) {
-    if (!item) continue; // Skip null/empty inventory slots
+    if (!item) continue;
 
     if (componentNeeds.has(item.itemType)) {
       const currentAvailable = availableCounts.get(item.itemType) || 0;
@@ -345,7 +261,6 @@ export function recipeCanBeCrafted(
     }
   }
 
-  // Check if we have enough of each component type
   for (const [itemType, needed] of componentNeeds.entries()) {
     const available = availableCounts.get(itemType) || 0;
     if (available < needed) {

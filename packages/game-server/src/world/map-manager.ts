@@ -585,16 +585,7 @@ export class MapManager implements IMapManager {
     const random = this.mapRandom();
     let cumulativeChance = 0;
 
-    // Use battle royale multiplier if in that game mode, otherwise use default
-    const gameModeConfig = this.getGameManagers()
-      .getGameServer()
-      .getGameLoop()
-      .getGameModeStrategy()
-      .getConfig();
-    const spawnMultiplier =
-      gameModeConfig.modeId === "battle_royale"
-        ? balanceConfig.BATTLE_ROYALE_ITEM_SPAWN_MULTIPLIER
-        : balanceConfig.MAP_ITEM_SPAWN_MULTIPLIER;
+    const spawnMultiplier = balanceConfig.MAP_ITEM_SPAWN_MULTIPLIER;
 
     for (const { chance, entityType } of spawnTable) {
       cumulativeChance += chance;
