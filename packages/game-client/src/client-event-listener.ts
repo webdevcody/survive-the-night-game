@@ -4,8 +4,6 @@ import { GameClient } from "@/client";
 import { ClientSocketManager } from "@/managers/client-socket-manager";
 import { GameState } from "@/state";
 import { InterpolationManager } from "@/managers/interpolation";
-import { WaveState } from "@shared/types/wave";
-
 import { onPlayerHurt } from "./events/on-player-hurt";
 import { onPlayerDeath } from "./events/on-player-death";
 import { onPlayerJoined } from "./events/on-player-joined";
@@ -27,7 +25,6 @@ import { onPlayerDroppedItem } from "./events/on-player-dropped-item";
 import { onPlayerPickedUpItem } from "./events/on-player-picked-up-item";
 import { onPlayerPickedUpResource } from "./events/on-player-picked-up-resource";
 import { onCarRepair } from "./events/on-car-repair";
-import { onWaveStart } from "./events/on-wave-start";
 import { onCraft } from "./events/on-craft";
 import { onBuild } from "./events/on-build";
 import { onGameOver } from "./events/on-game-over";
@@ -41,6 +38,7 @@ import { onGameStateUpdate } from "./events/on-game-state-update";
 import { onLightningBolt } from "./events/on-lightning-bolt";
 import { onYourId } from "./events/on-your-id";
 import { onVersionMismatch } from "./events/on-version-mismatch";
+import { onAuthRequired } from "./events/on-auth-required";
 import { onUserBanned } from "./events/on-user-banned";
 import { ClientEventContext, InitializationContext } from "./events/types";
 
@@ -51,7 +49,6 @@ export class ClientEventListener {
   private hasReceivedPlayerId = false;
   private hasReceivedInitialState = false;
   private interpolation: InterpolationManager = new InterpolationManager();
-  private previousWaveState: WaveState | undefined = undefined;
   private lastFullStateRequestAt: number | null = null;
   private lastFullStateRequestReason: string | null = null;
   private fullStateRequestTimer: ReturnType<typeof setTimeout> | null = null;
@@ -125,10 +122,10 @@ export class ClientEventListener {
     this.socketManager.on(ServerSentEvents.GAME_MESSAGE, (e) => onGameMessage(context, e));
 
     this.socketManager.on(ServerSentEvents.CAR_REPAIR, (e) => onCarRepair(context, e));
-    this.socketManager.on(ServerSentEvents.WAVE_START, (e) => onWaveStart(context, e));
     this.socketManager.on(ServerSentEvents.CRAFT, (e) => onCraft(context, e));
     this.socketManager.on(ServerSentEvents.BUILD, (e) => onBuild(context, e));
     this.socketManager.on(ServerSentEvents.VERSION_MISMATCH, (e) => onVersionMismatch(context, e));
+    this.socketManager.on(ServerSentEvents.AUTH_REQUIRED, (e) => onAuthRequired(context, e));
     this.socketManager.on(ServerSentEvents.USER_BANNED, (e) => onUserBanned(context, e));
     this.socketManager.on(ServerSentEvents.LIGHTNING_BOLT, (e) => onLightningBolt(context, e));
 
@@ -152,7 +149,6 @@ export class ClientEventListener {
     return {
       ...this.createContext(),
       interpolation: this.interpolation,
-      previousWaveState: this.previousWaveState,
       hasReceivedPlayerId: this.hasReceivedPlayerId,
       hasReceivedInitialState: this.hasReceivedInitialState,
       setHasReceivedPlayerId: (value: boolean) => {
@@ -170,9 +166,6 @@ export class ClientEventListener {
         } else {
           this.invalidateInitialState(reason ?? "Initial state flag reset");
         }
-      },
-      setPreviousWaveState: (state: WaveState | undefined) => {
-        this.previousWaveState = state;
       },
       checkInitialization: () => {
         this.checkInitialization();

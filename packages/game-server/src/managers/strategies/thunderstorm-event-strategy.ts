@@ -26,22 +26,13 @@ export class ThunderstormEventStrategy implements IEnvironmentalEventStrategy {
     this.mapManager = mapManager;
   }
 
-  public onWaveComplete(completedWaveNumber: number): void {
-    // End current event if active
+  public onPeriodicRoll(completedCycleIndex: number): void {
     if (this.active) {
       this.end();
     }
 
-    // Check if we should trigger thunderstorm event
-    if (this.shouldTriggerThunderstorm(completedWaveNumber)) {
+    if (this.shouldTriggerThunderstorm(completedCycleIndex)) {
       this.start();
-    }
-  }
-
-  public onWaveStart(): void {
-    // End thunderstorm event when wave starts
-    if (this.active) {
-      this.end();
     }
   }
 
@@ -83,9 +74,9 @@ export class ThunderstormEventStrategy implements IEnvironmentalEventStrategy {
     );
   }
 
-  private shouldTriggerThunderstorm(completedWaveNumber: number): boolean {
+  private shouldTriggerThunderstorm(completedCycleIndex: number): boolean {
     const config = environmentalEventsConfig.THUNDERSTORM;
-    if (completedWaveNumber + 1 < config.MIN_WAVE) {
+    if (completedCycleIndex + 1 < config.MIN_CYCLE) {
       return false;
     }
     return Math.random() < config.TRIGGER_CHANCE;

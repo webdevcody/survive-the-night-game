@@ -38,8 +38,6 @@ type LeaderboardEntry = {
   playerName: string;
   playerImage: string | null;
   zombieKills: number;
-  wavesCompleted: number;
-  maxWave: number;
 };
 
 type SortKey = keyof LeaderboardEntry;
@@ -75,7 +73,7 @@ function SortableHeader({
 
 function Leaderboard() {
   const { stats } = Route.useLoaderData();
-  const [sortKey, setSortKey] = useState<SortKey>("maxWave");
+  const [sortKey, setSortKey] = useState<SortKey>("zombieKills");
   const [sortDir, setSortDir] = useState<SortDir>("desc");
 
   const handleSort = (key: SortKey) => {
@@ -161,24 +159,6 @@ function Leaderboard() {
                       </TableHead>
                       <TableHead className="text-center">
                         <SortableHeader
-                          label="Best Wave"
-                          sortKey="maxWave"
-                          currentSort={sortKey}
-                          currentDir={sortDir}
-                          onSort={handleSort}
-                        />
-                      </TableHead>
-                      <TableHead className="text-center">
-                        <SortableHeader
-                          label="Waves Survived"
-                          sortKey="wavesCompleted"
-                          currentSort={sortKey}
-                          currentDir={sortDir}
-                          onSort={handleSort}
-                        />
-                      </TableHead>
-                      <TableHead className="text-center">
-                        <SortableHeader
                           label="Total Kills"
                           sortKey="zombieKills"
                           currentSort={sortKey}
@@ -214,12 +194,6 @@ function Leaderboard() {
                             </Avatar>
                             <span className="font-semibold">{player.playerName}</span>
                           </div>
-                        </TableCell>
-                        <TableCell className="text-center font-bold text-purple-500">
-                          {player.maxWave}
-                        </TableCell>
-                        <TableCell className="text-center font-bold text-green-500">
-                          {player.wavesCompleted}
                         </TableCell>
                         <TableCell className="text-center font-semibold text-red-500">
                           {player.zombieKills.toLocaleString()}

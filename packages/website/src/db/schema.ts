@@ -61,7 +61,7 @@ export const verification = pgTable("verification", {
   updatedAt: timestamp("updated_at").$defaultFn(() => /* @__PURE__ */ new Date()),
 });
 
-// User game stats for tracking kills, waves, etc.
+// User game stats for tracking kills, etc.
 export const userStats = pgTable("user_stats", {
   id: text("id").primaryKey(),
   userId: text("user_id")
@@ -69,8 +69,7 @@ export const userStats = pgTable("user_stats", {
     .unique()
     .references(() => user.id, { onDelete: "cascade" }),
   zombieKills: integer("zombie_kills").notNull().default(0),
-  wavesCompleted: integer("waves_completed").notNull().default(0),
-  maxWave: integer("max_wave").notNull().default(0),
+  experience: integer("experience").notNull().default(0),
   createdAt: timestamp("created_at")
     .$defaultFn(() => new Date())
     .notNull(),

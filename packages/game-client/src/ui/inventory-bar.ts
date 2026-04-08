@@ -11,6 +11,7 @@ import {
 import { getConfig } from "@shared/config";
 import { HeartsPanel } from "./panels/hearts-panel";
 import { StaminaPanel } from "./panels/stamina-panel";
+import type { MinimapHudLayout } from "./minimap-hud-group-layout";
 import { calculateHudScale } from "@/util/hud-scale";
 import { formatDisplayName } from "@/util/format";
 import { distance } from "@shared/util/physics";
@@ -35,24 +36,11 @@ const HOTBAR_SETTINGS = {
     activeBorderWidth: 3,
   },
   Hearts: {
-    marginBottom: 12,
-    heartSize: 28, // Reduced from 32
-    heartGap: 3,
-    font: "28px Arial", // Reduced from 32px
+    fontPx: 14,
   },
   StaminaBar: {
-    marginBottom: 6,
-    width: 180, // Reduced from 200
-    height: 20, // Reduced from 24
-    padding: 6, // Reduced from 8
-    iconSize: 28, // Reduced from 32
-    iconGap: 6, // Reduced from 8
-    font: "28px Arial", // Reduced from 32px
-    backgroundColor: "rgba(0, 0, 0, 0.7)",
-    borderColor: "rgba(255, 255, 255, 0.5)",
-    barBackgroundColor: "rgba(40, 40, 40, 0.9)",
+    fontPx: 14,
     barColor: "rgba(255, 255, 100, 0.9)",
-    borderWidth: 2,
   },
   CoinCounter: {
     marginBottom: 6,
@@ -91,7 +79,7 @@ type DragState = {
 export class InventoryBarUI implements Renderable {
   private assetManager: AssetManager;
   private inputManager: InputManager;
-  private getInventory: () => InventoryItem[];
+  private getInventory: () => (InventoryItem | null)[];
   private sendDropItem: (slotIndex: number) => void;
   private sendSwapItems: (fromSlotIndex: number, toSlotIndex: number) => void;
   private heartsPanel: HeartsPanel;
@@ -106,7 +94,7 @@ export class InventoryBarUI implements Renderable {
   public constructor(
     assetManager: AssetManager,
     inputManager: InputManager,
-    getInventory: () => InventoryItem[],
+    getInventory: () => (InventoryItem | null)[],
     sendDropItem: (slotIndex: number) => void,
     sendSwapItems: (fromSlotIndex: number, toSlotIndex: number) => void
   ) {
@@ -122,46 +110,37 @@ export class InventoryBarUI implements Renderable {
       background: "rgba(0, 0, 0, 0.7)",
       borderColor: "rgba(255, 255, 255, 0.5)",
       borderWidth: 2,
-      marginBottom: HOTBAR_SETTINGS.Hearts.marginBottom,
-      heartSize: HOTBAR_SETTINGS.Hearts.heartSize,
-      heartGap: HOTBAR_SETTINGS.Hearts.heartGap,
-      font: HOTBAR_SETTINGS.Hearts.font,
-      inventorySettings: HOTBAR_SETTINGS.Inventory,
+      fontPx: HOTBAR_SETTINGS.Hearts.fontPx,
     });
 
     this.staminaPanel = new StaminaPanel({
       padding: 8,
-      background: HOTBAR_SETTINGS.StaminaBar.backgroundColor,
-      borderColor: HOTBAR_SETTINGS.StaminaBar.borderColor,
-      borderWidth: HOTBAR_SETTINGS.StaminaBar.borderWidth,
-      marginBottom: HOTBAR_SETTINGS.StaminaBar.marginBottom,
-      width: HOTBAR_SETTINGS.StaminaBar.width,
-      height: HOTBAR_SETTINGS.StaminaBar.height,
-      iconSize: HOTBAR_SETTINGS.StaminaBar.iconSize,
-      iconGap: HOTBAR_SETTINGS.StaminaBar.iconGap,
-      font: HOTBAR_SETTINGS.StaminaBar.font,
-      barBackgroundColor: HOTBAR_SETTINGS.StaminaBar.barBackgroundColor,
+      background: "rgba(0, 0, 0, 0.7)",
+      borderColor: "rgba(255, 255, 255, 0.5)",
+      borderWidth: 2,
+      fontPx: HOTBAR_SETTINGS.StaminaBar.fontPx,
       barColor: HOTBAR_SETTINGS.StaminaBar.barColor,
-      inventorySettings: HOTBAR_SETTINGS.Inventory,
     });
 
-    // Coins panel removed - coins are now displayed in the resources panel at the top
   }
 
   public render(ctx: CanvasRenderingContext2D, gameState: GameState): void {
     this.renderInventory(ctx, gameState);
-    this.heartsPanel.render(ctx, gameState);
-    this.staminaPanel.render(ctx, gameState);
-    // Coins panel removed - coins are now displayed in the resources panel at the top
+    this.heartsPanel.render(ctx, gameState, null);
+    this.staminaPanel.render(ctx, gameState, null);
     this.renderTooltip(ctx, gameState);
   }
 
   /**
-   * Render only the health and stamina bars (used for zombie players in infection mode)
+   * Render only the health and stamina orbs (minimap HUD group layout).
    */
-  public renderHealthAndStamina(ctx: CanvasRenderingContext2D, gameState: GameState): void {
-    this.heartsPanel.render(ctx, gameState);
-    this.staminaPanel.render(ctx, gameState);
+  public renderHealthAndStamina(
+    ctx: CanvasRenderingContext2D,
+    gameState: GameState,
+    layout: MinimapHudLayout
+  ): void {
+    this.heartsPanel.render(ctx, gameState, layout);
+    this.staminaPanel.render(ctx, gameState, layout);
   }
 
   public isHovering(): boolean {
@@ -438,12 +417,10 @@ export class InventoryBarUI implements Renderable {
         ctx.fillText(`${inventoryItem.state.count}`, countX, countY);
       }
 
-      if (isWeapon(inventoryItem?.itemType)) {
+      if (inventoryItem && isWeapon(inventoryItem.itemType)) {
         const ammoType = getWeaponAmmoType(inventoryItem.itemType);
         if (ammoType) {
-          const ammoItem = this.getInventory().find(
-            (item) => item?.itemType == getWeaponAmmoType(inventoryItem.itemType)
-          );
+          const ammoItem = this.getInventory().find((item) => item?.itemType === ammoType);
           const ammoCount = ammoItem?.state?.count ?? 0;
           const ammoFontSize = slotFontSize * 0.7;
           ctx.font = `bold ${ammoFontSize}px Arial`;

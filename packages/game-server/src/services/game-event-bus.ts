@@ -6,19 +6,11 @@ import { EventEmitter } from "events";
  */
 export enum GameEventType {
   ZOMBIE_KILLED = "zombie_killed",
-  WAVE_COMPLETED = "wave_completed",
 }
 
 export interface ZombieKilledEventData {
   zombieEntityId: number;
   killerEntityId: number;
-  timestamp: number;
-}
-
-export interface WaveCompletedEventData {
-  waveNumber: number;
-  /** Array of player entity IDs who were alive when the wave completed */
-  survivingPlayerIds: number[];
   timestamp: number;
 }
 
@@ -55,27 +47,6 @@ class GameEventBus extends EventEmitter {
    */
   offZombieKilled(handler: (data: ZombieKilledEventData) => void): void {
     this.off(GameEventType.ZOMBIE_KILLED, handler);
-  }
-
-  /**
-   * Emit a wave completed event
-   */
-  emitWaveCompleted(data: WaveCompletedEventData): void {
-    this.emit(GameEventType.WAVE_COMPLETED, data);
-  }
-
-  /**
-   * Subscribe to wave completed events
-   */
-  onWaveCompleted(handler: (data: WaveCompletedEventData) => void): void {
-    this.on(GameEventType.WAVE_COMPLETED, handler);
-  }
-
-  /**
-   * Unsubscribe from wave completed events
-   */
-  offWaveCompleted(handler: (data: WaveCompletedEventData) => void): void {
-    this.off(GameEventType.WAVE_COMPLETED, handler);
   }
 }
 

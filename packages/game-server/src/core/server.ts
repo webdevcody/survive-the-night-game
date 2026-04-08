@@ -71,8 +71,8 @@ export class GameServer {
     this.gameLoop.start();
   }
 
-  public startNewGame(): void {
-    this.gameLoop.startNewGame();
+  public startNewGame(): Promise<void> {
+    return this.gameLoop.startNewGame();
   }
 
   public stop() {
@@ -81,14 +81,6 @@ export class GameServer {
 
   public broadcastEvent<T>(event: GameEvent<T>): void {
     this.socketManager.broadcastEvent(event);
-  }
-
-  public getWaveNumber(): number {
-    return this.gameLoop.getWaveNumber();
-  }
-
-  public getWaveState() {
-    return this.gameLoop.getWaveState();
   }
 
   public getPhaseStartTime(): number {

@@ -23,9 +23,6 @@ export interface GameModeConfig {
   /** Whether the car entity exists in this mode */
   readonly hasCarEntity: boolean;
 
-  /** Whether wave system is active */
-  readonly hasWaveSystem: boolean;
-
   /** Whether bosses can spawn */
   readonly hasBosses: boolean;
 
@@ -111,11 +108,6 @@ export interface IGameModeStrategy {
    * Waves mode returns car location, Battle Royale returns null
    */
   getZombieFallbackTarget(gameManagers: IGameManagers): Vector2 | null;
-
-  // Optional wave system hooks (only used by Waves mode)
-  onWaveStart?(waveNumber: number, gameManagers: IGameManagers): void;
-  onWaveComplete?(waveNumber: number, gameManagers: IGameManagers): void;
-  onPreparationStart?(waveNumber: number, gameManagers: IGameManagers): void;
 
   /**
    * Get the AI player manager for this game mode (optional).

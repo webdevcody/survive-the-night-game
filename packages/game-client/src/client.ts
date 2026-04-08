@@ -27,13 +27,11 @@ import { ClientEntityBase } from "@/extensions/client-entity";
 import { ClientDestructible } from "@/extensions/destructible";
 import {
   ClientPositionable,
-  ClientResourcesBag,
   ClientInventory,
   ClientPlaceable,
   ClientInteractive,
 } from "@/extensions";
 import { CampsiteFireClient } from "@/entities/environment/campsite-fire";
-import { WaveState } from "@shared/types/wave";
 import { ParticleManager } from "./managers/particles";
 import { SmokeParticleManager } from "./managers/smoke-particles";
 import { RainParticleManager } from "./managers/rain-particles";
@@ -47,14 +45,13 @@ import Vector2 from "@shared/util/vector2";
 import PoolManager from "@shared/util/pool-manager";
 import { getAssetSpriteInfo } from "@/managers/asset";
 import { PlacementManager } from "@/managers/placement";
-import { isWeapon, ItemType, InventoryItem } from "@shared/util/inventory";
+import { isWeapon, ItemType } from "@shared/util/inventory";
 import { getClosestInteractiveEntity } from "@/util/get-closest-interactive";
 import { getPlayer } from "@/util/get-player";
 import { Entities } from "@shared/constants";
 import { itemRegistry } from "@shared/entities";
 import { ClientCarryable } from "@/extensions";
 import { PlayerColor } from "@shared/commands/commands";
-import { infectionConfig } from "@shared/config/infection-config";
 import { TeleportManager } from "./managers/teleport-manager";
 import { InteractionManager } from "./managers/interaction-manager";
 import { ClientEventHandlers } from "./managers/client-event-handlers";
@@ -112,16 +109,7 @@ export class GameClient {
   // Cached campsite fire reference (there should only ever be one)
   private campsiteFire: CampsiteFireClient | null = null;
 
-  // Scroll accumulation for trackpad sensitivity
-  private scrollAccumulator: number = 0;
-  private readonly SCROLL_THRESHOLD = 50; // Accumulate this much deltaY before switching slots
-
-  // Store canvas and bound event handlers for cleanup
   private canvas: HTMLCanvasElement;
-  private boundMouseMoveHandler: ((e: MouseEvent) => void) | null = null;
-  private boundMouseDownHandler: ((e: MouseEvent) => void) | null = null;
-  private boundMouseUpHandler: ((e: MouseEvent) => void) | null = null;
-  private boundWheelHandler: ((e: WheelEvent) => void) | null = null;
 
   constructor(canvas: HTMLCanvasElement, assetManager?: AssetManager, soundManager?: SoundManager) {
     this.canvas = canvas;
@@ -145,223 +133,7 @@ export class GameClient {
     this.interactionManager = new InteractionManager();
     this.eventHandlers = new ClientEventHandlers(this);
 
-    // Setup event listeners
     this.eventHandlers.setupEventListeners(canvas);
-
-    // Legacy event listeners (will be removed after full migration)
-    // Add mousemove event listener for UI hover interactions and aiming
-    this.boundMouseMoveHandler = (e: MouseEvent) => {
-      const rect = canvas.getBoundingClientRect();
-
-      // Convert CSS coordinates to canvas coordinates
-      // This accounts for any CSS scaling of the canvas
-      const scaleX = canvas.width / rect.width;
-      const scaleY = canvas.height / rect.height;
-      const x = (e.clientX - rect.left) * scaleX;
-      const y = (e.clientY - rect.top) * scaleY;
-
-      // Check if fullscreen map is open
-      const isFullscreenMapOpen = this.hud?.isFullscreenMapOpen() ?? false;
-
-      // Update inventory bar hover state
-      if (this.hud) {
-        this.hud.updateMousePosition(x, y, canvas.width, canvas.height);
-        this.hud.handleMouseMove(x, y, canvas.width, canvas.height);
-      }
-
-      // Block aiming when fullscreen map is open
-      if (!isFullscreenMapOpen) {
-        // Update input manager mouse position for aiming
-        this.inputManager.updateMousePosition(x, y);
-
-        // Update renderer mouse position for cursor rendering
-        if (this.renderer) {
-          this.renderer.updateMousePosition(x, y);
-        }
-      }
-    };
-    canvas.addEventListener("mousemove", this.boundMouseMoveHandler);
-
-    // Add mousedown event listener for weapon firing
-    this.boundMouseDownHandler = (e: MouseEvent) => {
-      // Only handle left click
-      if (e.button !== 0) return;
-
-      const rect = canvas.getBoundingClientRect();
-
-      // Convert CSS coordinates to canvas coordinates
-      // This accounts for any CSS scaling of the canvas
-      const scaleX = canvas.width / rect.width;
-      const scaleY = canvas.height / rect.height;
-      const x = (e.clientX - rect.left) * scaleX;
-      const y = (e.clientY - rect.top) * scaleY;
-
-      // Check if fullscreen map is open
-      const isFullscreenMapOpen = this.hud?.isFullscreenMapOpen() ?? false;
-
-      // Check voting panel clicks first (if voting is active)
-      if (
-        this.gameState.votingState?.isVotingActive &&
-        this.votingPanel.handleClick(x, y, canvas.width, canvas.height)
-      ) {
-        this.placementManager?.skipNextClick();
-        return; // Click was handled by voting panel
-      }
-
-      // Check merchant panel clicks (if open)
-      if (this.merchantBuyPanel.isVisible() && this.merchantBuyPanel.handleClick(x, y)) {
-        this.placementManager?.skipNextClick();
-        return; // Click was handled by merchant panel
-      }
-
-      // Handle UI clicks (inventory bar, HUD mute button, etc.)
-      // HUD handles both hotbar and other UI clicks
-      if (this.hud && this.hud.handleClick(x, y, canvas.width, canvas.height)) {
-        this.placementManager?.skipNextClick();
-        return; // Click was handled by HUD
-      }
-
-      // Block weapon firing when fullscreen map is open
-      if (isFullscreenMapOpen) {
-        return;
-      }
-
-      // If click wasn't handled by UI, trigger weapon fire or consumable use
-      const player = getPlayer();
-      if (player && !player.isDead()) {
-        // Zombie players can spawn zombies or attack with claw
-        if (player.isZombiePlayer?.()) {
-          // Check if we're in infection mode
-          if (this.gameState.gameMode === "infection") {
-            // Convert canvas coordinates to world coordinates
-            const worldPos = this.canvasToWorld(x, y, canvas);
-            const playerPos = player.getPosition();
-            const dist = distance(playerPos, worldPos);
-
-            // Check if click is within spawn radius and cooldown is ready
-            const cooldownProgress = player.getZombieSpawnCooldownProgress?.() ?? 1;
-            if (dist <= infectionConfig.ZOMBIE_SPAWN_RADIUS && cooldownProgress >= 1) {
-              // Spawn zombie at clicked position
-              this.socketManager.sendSpawnZombie(worldPos.x, worldPos.y);
-              return;
-            }
-          }
-          // If not spawning, use claw attack
-          this.inputManager.triggerFire();
-          return;
-        }
-
-        const inventory = getInventory();
-        const activeSlot = this.inputManager.getCurrentInventorySlot();
-        const activeItem = inventory[activeSlot - 1];
-
-        if (activeItem) {
-          // Check if it's a weapon
-          const isWeapon = this.isWeaponItem(activeItem.itemType);
-          // Check if it's a consumable (like energy drink)
-          const itemConfig = itemRegistry.get(activeItem.itemType);
-          const isConsumable = itemConfig?.category === "consumable";
-
-          // Trigger fire for both weapons and consumables
-          if (isWeapon || isConsumable) {
-            this.inputManager.triggerFire();
-          }
-        }
-      }
-    };
-    canvas.addEventListener("mousedown", this.boundMouseDownHandler);
-
-    // Add mouseup event listener to stop firing
-    this.boundMouseUpHandler = (e: MouseEvent) => {
-      if (e.button !== 0) return; // Only handle left click
-
-      const rect = canvas.getBoundingClientRect();
-      const scaleX = canvas.width / rect.width;
-      const scaleY = canvas.height / rect.height;
-      const x = (e.clientX - rect.left) * scaleX;
-      const y = (e.clientY - rect.top) * scaleY;
-      // Check if fullscreen map is open
-      const isFullscreenMapOpen = this.hud?.isFullscreenMapOpen() ?? false;
-
-      if (this.hud) {
-        this.hud.handleMouseUp(x, y, canvas.width, canvas.height);
-      }
-
-      // Block weapon release when fullscreen map is open
-      if (!isFullscreenMapOpen) {
-        this.inputManager.releaseFire();
-      }
-    };
-    canvas.addEventListener("mouseup", this.boundMouseUpHandler);
-
-    // Add wheel event listener for hotbar slot switching
-    this.boundWheelHandler = (e: WheelEvent) => {
-      // Prevent default scrolling behavior
-      e.preventDefault();
-
-      // Check if player is dead
-      const player = getPlayer();
-      if (player && player.isDead()) {
-        this.scrollAccumulator = 0; // Reset accumulator
-        return;
-      }
-
-      // Check if chatting
-      if (this.inputManager.isChatInputActive()) {
-        this.scrollAccumulator = 0; // Reset accumulator
-        return;
-      }
-
-      // Check if merchant panel is open
-      if (this.merchantBuyPanel.isVisible()) {
-        this.scrollAccumulator = 0; // Reset accumulator
-        return;
-      }
-
-      // Check if fullscreen map is open
-      const isFullscreenMapOpen = this.hud?.isFullscreenMapOpen() ?? false;
-      if (isFullscreenMapOpen) {
-        this.scrollAccumulator = 0; // Reset accumulator
-        return;
-      }
-
-      // Accumulate scroll delta to handle trackpad sensitivity
-      // Trackpads send many small deltaY values, mouse wheels send larger discrete values
-      this.scrollAccumulator += e.deltaY;
-
-      // Only switch slots when accumulated delta exceeds threshold
-      const absAccumulator = Math.abs(this.scrollAccumulator);
-      if (absAccumulator < this.SCROLL_THRESHOLD) {
-        return; // Not enough scroll yet
-      }
-
-      // Get current slot and max slots
-      const currentSlot = this.inputManager.getCurrentInventorySlot();
-      const maxSlots = getConfig().player.MAX_INVENTORY_SLOTS;
-
-      // Determine direction: scroll up (negative deltaY) = decrement, scroll down (positive deltaY) = increment
-      const scrollDelta = this.scrollAccumulator > 0 ? 1 : -1;
-      let newSlot = currentSlot + scrollDelta;
-
-      // Wrap around: if at max, go to 1; if at 1, go to max
-      if (newSlot > maxSlots) {
-        newSlot = 1;
-      } else if (newSlot < 1) {
-        newSlot = maxSlots;
-      }
-
-      // Set the new inventory slot
-      this.inputManager.setInventorySlot(newSlot);
-
-      // Reset accumulator after switching (keep remainder for smooth scrolling)
-      // Subtract threshold amount in the direction we scrolled
-      if (this.scrollAccumulator > 0) {
-        this.scrollAccumulator -= this.SCROLL_THRESHOLD;
-      } else {
-        this.scrollAccumulator += this.SCROLL_THRESHOLD;
-      }
-    };
-    canvas.addEventListener("wheel", this.boundWheelHandler, { passive: false });
 
     const getInventory = () => {
       if (this.gameState.playerId) {
@@ -412,6 +184,10 @@ export class GameClient {
       getInventory,
       isMerchantPanelOpen: () => this.merchantBuyPanel.isVisible(),
       isFullscreenMapOpen: () => this.hud.isFullscreenMapOpen(),
+      isInventoryScreenOpen: () => this.hud.isInventoryScreenOpen(),
+      onToggleInventoryScreen: () => {
+        this.hud.toggleInventoryScreen();
+      },
       onToggleInstructions: () => {
         this.hud.toggleInstructions();
       },
@@ -534,6 +310,10 @@ export class GameClient {
         this.merchantBuyPanel.handleKeyDown(key);
       },
       onEscape: () => {
+        if (this.hud.isInventoryScreenOpen()) {
+          this.hud.setInventoryScreenOpen(false);
+          return;
+        }
         if (this.merchantBuyPanel.isVisible()) {
           this.merchantBuyPanel.close();
         }
@@ -576,6 +356,11 @@ export class GameClient {
           this.socketManager.sendSwapItems(fromSlotIndex, toSlotIndex);
         }
       },
+      (bagIndex: number, equipSlot: "head" | "mainHand") => {
+        if (this.socketManager) {
+          this.socketManager.sendSwapBagAndEquipment(bagIndex, equipSlot);
+        }
+      }
     );
 
     this.gameState = {
@@ -584,13 +369,9 @@ export class GameClient {
       entities: [],
       entityMap: new Map(),
       entitiesByType: new Map(),
-      // Game mode (default: waves)
-      gameMode: "waves",
-      // Wave system
-      waveNumber: 1,
-      waveState: WaveState.PREPARATION, // Start in preparation phase
+      gameMode: "open_world",
       phaseStartTime: Date.now(),
-      phaseDuration: getConfig().wave.FIRST_WAVE_DELAY,
+      phaseDuration: 0,
       totalZombies: 0,
       crafting: false,
       // Server time synchronization
@@ -763,29 +544,8 @@ export class GameClient {
       this.inputManager.cleanup();
     }
 
-    // Clean up client event handlers
     if (this.eventHandlers) {
       this.eventHandlers.cleanup();
-    }
-
-    // Clean up canvas event listeners
-    if (this.canvas) {
-      if (this.boundMouseMoveHandler) {
-        this.canvas.removeEventListener("mousemove", this.boundMouseMoveHandler);
-        this.boundMouseMoveHandler = null;
-      }
-      if (this.boundMouseDownHandler) {
-        this.canvas.removeEventListener("mousedown", this.boundMouseDownHandler);
-        this.boundMouseDownHandler = null;
-      }
-      if (this.boundMouseUpHandler) {
-        this.canvas.removeEventListener("mouseup", this.boundMouseUpHandler);
-        this.boundMouseUpHandler = null;
-      }
-      if (this.boundWheelHandler) {
-        this.canvas.removeEventListener("wheel", this.boundWheelHandler);
-        this.boundWheelHandler = null;
-      }
     }
 
     // Disconnect from server to prevent duplicate connections
@@ -1115,6 +875,7 @@ export class GameClient {
     if (
       this.merchantBuyPanel.isVisible() ||
       (this.hud && this.hud.isFullscreenMapOpen()) ||
+      (this.hud && this.hud.isInventoryScreenOpen()) ||
       (this.hud && this.hud.isHoveringInventory()) ||
       (this.hud && this.hud.isHoveringMuteButton()) ||
       (this.gameOverDialog && this.gameOverDialog.isGameOver()) ||
@@ -1137,22 +898,18 @@ export class GameClient {
       return;
     }
 
-    const inventory = player.getInventory();
-    if (!inventory || !Array.isArray(inventory)) {
-      this.ctx.canvas.style.cursor = "default";
-      return;
-    }
-
+    const invExt = player.getExt(ClientInventory);
     const activeSlot = this.inputManager.getCurrentInventorySlot();
-    if (activeSlot < 0 || activeSlot >= inventory.length) {
+    const maxSlots = getConfig().player.MAX_INVENTORY_SLOTS;
+    if (activeSlot < 1 || activeSlot > maxSlots) {
       this.ctx.canvas.style.cursor = "default";
       return;
     }
 
-    const activeItem = inventory[activeSlot - 1];
+    const activeBagItem = invExt.getActiveItem(activeSlot);
+    const weaponItem = invExt.resolveActiveWeapon(activeBagItem);
 
-    // Hide cursor when weapon is equipped
-    const hasWeapon = activeItem && this.isWeaponItem(activeItem.itemType);
+    const hasWeapon = weaponItem && this.isWeaponItem(weaponItem.itemType);
     this.ctx.canvas.style.cursor = hasWeapon ? "none" : "default";
   }
 
@@ -1231,62 +988,12 @@ export class GameClient {
   }
 
   /**
-   * Get crafting state for React components
-   */
-  public getCraftingState() {
-    const player = this.getMyPlayer();
-    if (!player) {
-      return {
-        resources: { wood: 0, cloth: 0 },
-        inventory: [],
-        playerId: null,
-      };
-    }
-
-    // Get resources from extension
-    let wood = 0;
-    let cloth = 0;
-    if (player.hasExt(ClientResourcesBag)) {
-      const resourcesBag = player.getExt(ClientResourcesBag);
-      wood = resourcesBag.getWood();
-      cloth = resourcesBag.getCloth();
-    }
-
-    // Safely get inventory - check if method exists (player might not be fully initialized)
-    let inventory: InventoryItem[] = [];
-    if (typeof player.getInventory === "function") {
-      inventory = player.getInventory();
-    } else if (player.hasExt(ClientInventory)) {
-      // Fallback: get inventory directly from extension if method doesn't exist
-      inventory = player.getExt(ClientInventory).getItems();
-    }
-
-    return {
-      resources: {
-        wood,
-        cloth,
-      },
-      inventory,
-      playerId: this.gameState.playerId,
-    };
-  }
-
-  /**
    * Check if the current player is a zombie (for React components)
    */
   public isPlayerZombie(): boolean {
     const player = this.getMyPlayer();
     if (!player) return false;
     return player.isZombiePlayer?.() ?? false;
-  }
-
-  /**
-   * Send craft request to server (for React components)
-   */
-  public craftRecipe(recipe: import("@shared/util/recipes").RecipeType): void {
-    if (this.socketManager) {
-      this.socketManager.sendCraftRequest(recipe);
-    }
   }
 
   /**

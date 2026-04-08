@@ -12,7 +12,11 @@ function getRealPlayerCount(entityManager: IEntityManager): number {
     .filter((p) => !(p as any).serialized?.get("isAI") && !p.isMarkedForRemoval()).length;
 }
 
-export function onConnection(context: HandlerContext, socket: ISocketAdapter): void {
+export async function onConnection(
+  context: HandlerContext,
+  socket: ISocketAdapter,
+  initialExperience: number = 0,
+): Promise<void> {
   const gameLoop = context.gameServer.getGameLoop();
 
   // Note: setupSocketListeners should be called before onConnection in ServerSocketManager
@@ -31,25 +35,29 @@ export function onConnection(context: HandlerContext, socket: ISocketAdapter): v
     .filter((entity) => !(entity as Player).isMarkedForRemoval()).length;
 
   if (totalPlayers === 0) {
-    // Start the new game (which will recreate all players including this newly connected socket)
-    context.gameServer.startNewGame();
+    const modeId = gameLoop.getGameModeStrategy().getConfig().modeId;
 
-    // After startNewGame(), recreatePlayersForConnectedSockets() should have created
-    // a player for all connected sockets including this one. Verify it exists.
+    if (modeId === "open_world" && gameLoop.isOpenWorldSessionActive()) {
+      await gameLoop.resumeOpenWorldSession();
+    } else {
+      await context.gameServer.startNewGame();
+    }
+
+    // After start/resume, verify a player exists for this socket
     let player = context.players.get(socket.id);
     if (!player) {
       // This shouldn't happen, but handle it gracefully
       console.warn(
-        `[onConnection] Player for socket ${socket.id} not found after startNewGame(), creating one`,
+        `[onConnection] Player for socket ${socket.id} not found after start/resume, creating one`,
       );
-      player = context.createPlayerForSocket(socket);
+      player = context.createPlayerForSocket(socket, initialExperience);
       context.broadcastPlayerJoined(player);
     }
 
     return;
   }
 
-  const player = context.createPlayerForSocket(socket);
+  const player = context.createPlayerForSocket(socket, initialExperience);
   context.broadcastPlayerJoined(player);
 
   // Adjust AI player count when real player joins mid-game

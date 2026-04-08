@@ -54,14 +54,17 @@ interface InventoryItem {
 
 ### Inventory Storage
 
-The inventory stores items as an **array** (`InventoryItem[]`), where:
+The inventory stores:
 
-- Array indices represent **slot positions** (0-indexed internally)
-- Empty slots are represented as `null` or `undefined`
-- The array can be **sparse** (gaps between items are allowed)
-- Maximum slots are controlled by `getConfig().player.MAX_INVENTORY_SLOTS`
+1. **Bag**: an array (`(InventoryItem | null)[]`) with up to `getConfig().player.MAX_INVENTORY_SLOTS` (40) cells for a 10×4 grid UI.
+2. **Equipment** (`head`, `mainHand`): optional slots serialized **after** the bag in the inventory extension buffer. Head accepts `itemRegistry` entries with `wearable: true`; main hand accepts weapon types (`isWeapon`). Clients move items between bag and equipment with `SWAP_BAG_AND_EQUIPMENT`; bag-only moves use `SWAP_INVENTORY_ITEMS`.
 
-**Important**: Slot selection uses **1-indexed** values (1-10) for user-facing operations, but internally uses **0-indexed** arrays.
+- Empty bag slots are `null`. The array can be sparse.
+- **Hotbar / scroll wheel** use `MAX_HOTBAR_SLOTS` (10), i.e. bag slots 1–10 (1-based).
+- **Active weapon** on the server prefers `mainHand` when set, otherwise the weapon in the selected bag slot.
+- **Instructions overlay** is toggled with **P** (was **I**; **I** opens the canvas inventory screen).
+
+Older clients/servers that only read the bag array still deserialize the prefix; mismatched versions must not be mixed in production.
 
 ## Communication Flow
 

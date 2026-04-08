@@ -31,6 +31,7 @@ export interface InputManagerOptions {
   onSendChat?: () => void;
   onToggleMute?: () => void;
   onToggleMap?: () => void;
+  onToggleInventoryScreen?: () => void;
   onMerchantKeyDown?: (key: string) => void;
   onEscape?: () => void;
   onRespawnRequest?: () => void;
@@ -39,6 +40,7 @@ export interface InputManagerOptions {
   onWeaponSelectByIndex?: (index: number) => void;
   isMerchantPanelOpen?: () => boolean;
   isFullscreenMapOpen?: () => boolean;
+  isInventoryScreenOpen?: () => boolean;
   isPlayerDead?: () => boolean;
   getInventory?: () => any[];
   onInventorySlotChanged?: (slot: number) => void;
@@ -59,6 +61,7 @@ const shouldBlock = new Set([
   "KeyE",
   "KeyF",
   "KeyH",
+  "KeyI",
   "KeyC",
   "Escape",
   "Digit1",
@@ -201,12 +204,26 @@ export class InputManager {
       // Check if merchant panel is open
       const isMerchantPanelOpen = callbacks.isMerchantPanelOpen?.() ?? false;
 
+      const isInventoryScreenOpen = callbacks.isInventoryScreenOpen?.() ?? false;
+
       // Block all inputs if fullscreen map is open (except Escape)
       if (isFullscreenMapOpen) {
         if (eventCode === "Escape") {
           callbacks.onToggleMap?.(); // Close map with Escape
         }
         return; // Block all other inputs when map is open
+      }
+
+      if (isInventoryScreenOpen) {
+        if (eventCode === "Escape" || eventCode === "KeyI") {
+          callbacks.onToggleInventoryScreen?.();
+        }
+        return;
+      }
+
+      if (eventCode === "KeyI") {
+        callbacks.onToggleInventoryScreen?.();
+        return;
       }
 
       // Handle merchant panel inputs - only allow Escape and E to close
@@ -235,8 +252,9 @@ export class InputManager {
           const isPlayerDead = this.callbacks.isPlayerDead?.() ?? false;
           const isMerchantPanelOpen = this.callbacks.isMerchantPanelOpen?.() ?? false;
           const isFullscreenMapOpen = this.callbacks.isFullscreenMapOpen?.() ?? false;
+          const isInvOpen = this.callbacks.isInventoryScreenOpen?.() ?? false;
 
-          if (!isPlayerDead && !isMerchantPanelOpen && !isFullscreenMapOpen) {
+          if (!isPlayerDead && !isMerchantPanelOpen && !isFullscreenMapOpen && !isInvOpen) {
             this.callbacks.onTeleportStart?.();
           }
           break;
@@ -308,7 +326,7 @@ export class InputManager {
         case "ShiftRight":
           this.inputs.sprint = true;
           break;
-        case "KeyI":
+        case "KeyP":
           callbacks.onToggleInstructions?.();
           break;
         case "KeyN":
@@ -355,9 +373,15 @@ export class InputManager {
         return; // Block this keyup event since it was consumed by merchant panel
       }
 
+      const isFullscreenMapOpen = callbacks.isFullscreenMapOpen?.() ?? false;
+      const isInventoryScreenOpen = callbacks.isInventoryScreenOpen?.() ?? false;
+
       // Use key for number keys (characters work the same across layouts)
-      // Only allow inventory switching when merchant panel is closed
-      if (!isMerchantPanelOpen) {
+      if (
+        !isMerchantPanelOpen &&
+        !isFullscreenMapOpen &&
+        !isInventoryScreenOpen
+      ) {
         switch (eventKey) {
           case "1":
           case "2":
@@ -483,6 +507,24 @@ export class InputManager {
         sprint: false,
       };
     }
+    if (this.callbacks.isFullscreenMapOpen?.() ?? false) {
+      return {
+        facing: this.inputs.facing,
+        dx: 0,
+        dy: 0,
+        fire: false,
+        sprint: false,
+      };
+    }
+    if (this.callbacks.isInventoryScreenOpen?.() ?? false) {
+      return {
+        facing: this.inputs.facing,
+        dx: 0,
+        dy: 0,
+        fire: false,
+        sprint: false,
+      };
+    }
     // Return a copy to prevent external modifications from affecting internal state
     // Note: aimAngle will be calculated and set externally after getting inputs
     return { ...this.inputs };
@@ -516,6 +558,24 @@ export class InputManager {
     // If merchant panel is open, return cleared inputs to prevent movement
     const isMerchantPanelOpen = this.callbacks.isMerchantPanelOpen?.() ?? false;
     if (isMerchantPanelOpen) {
+      return {
+        facing: this.inputs.facing,
+        dx: 0,
+        dy: 0,
+        fire: false,
+        sprint: false,
+      };
+    }
+    if (this.callbacks.isFullscreenMapOpen?.() ?? false) {
+      return {
+        facing: this.inputs.facing,
+        dx: 0,
+        dy: 0,
+        fire: false,
+        sprint: false,
+      };
+    }
+    if (this.callbacks.isInventoryScreenOpen?.() ?? false) {
       return {
         facing: this.inputs.facing,
         dx: 0,

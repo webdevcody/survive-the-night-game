@@ -1,5 +1,10 @@
 import { ExtensionTypes } from "../../../game-shared/src/util/extension-types";
-import { InventoryItem, isWeapon } from "../../../game-shared/src/util/inventory";
+import {
+  InventoryItem,
+  isWeapon,
+  createEmptyEquipment,
+  type PlayerEquipmentState,
+} from "../../../game-shared/src/util/inventory";
 import { BaseClientExtension } from "./base-extension";
 import { BufferReader } from "@shared/util/buffer-serialization";
 import { playerConfig } from "@shared/config";
@@ -9,10 +14,15 @@ import { readItemState } from "@shared/util/item-state-serialization";
 export class ClientInventory extends BaseClientExtension {
   public static readonly type = ExtensionTypes.INVENTORY;
 
-  private items: InventoryItem[] = [];
+  private items: (InventoryItem | null)[] = [];
+  private equipment: PlayerEquipmentState = createEmptyEquipment();
 
-  public getItems(): InventoryItem[] {
+  public getItems(): (InventoryItem | null)[] {
     return this.items;
+  }
+
+  public getEquipment(): PlayerEquipmentState {
+    return this.equipment;
   }
 
   public isFull(): boolean {
@@ -31,17 +41,42 @@ export class ClientInventory extends BaseClientExtension {
     return isWeapon(activeItem.itemType) ? activeItem : null;
   }
 
+  public resolveActiveWeapon(activeBagItem: InventoryItem | null): InventoryItem | null {
+    const main = this.equipment.mainHand;
+    if (main && isWeapon(main.itemType)) {
+      return main;
+    }
+    return this.getActiveWeapon(activeBagItem);
+  }
+
   public deserializeFromBuffer(reader: BufferReader): this {
-    // Read items array
     this.items = reader.readArray(() => {
       if (!reader.readBoolean()) {
         return null as any;
       }
       const itemType = itemTypeRegistry.decode(reader.readUInt8());
-      // Read ItemState using optimized format
       const state = readItemState(reader);
       return { itemType, state };
     });
+
+    const readNullableItem = (): InventoryItem | null => {
+      if (!reader.readBoolean()) {
+        return null;
+      }
+      const itemType = itemTypeRegistry.decode(reader.readUInt8());
+      const state = readItemState(reader);
+      return { itemType, state };
+    };
+
+    if (reader.hasMore()) {
+      this.equipment = {
+        head: readNullableItem(),
+        mainHand: readNullableItem(),
+      };
+    } else {
+      this.equipment = createEmptyEquipment();
+    }
+
     return this;
   }
 }

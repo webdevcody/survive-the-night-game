@@ -65,11 +65,12 @@ export interface IMapManager {
   getRandomGrassPosition(): Vector2;
   getRandomGrassPositionExcludingCampsite(): Vector2;
   spawnCrateInRandomBiome(): boolean;
+  tickOpenWorldZombieSpawnPoints(): void;
 }
 
 export interface IGameLoop {
   getGameModeStrategy(): IGameModeStrategy;
-  startNewGame(strategy?: IGameModeStrategy): void;
+  startNewGame(strategy?: IGameModeStrategy): Promise<void>;
   setPhaseTimer(startTime: number, duration: number): void;
 }
 

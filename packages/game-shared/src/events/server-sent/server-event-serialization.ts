@@ -28,7 +28,6 @@ import { GameOverEvent } from "./events/game-over-event";
 import { ServerUpdatingEvent } from "./events/server-updating-event";
 import { ExplosionEvent } from "./events/explosion-event";
 import { CarRepairEvent } from "./events/car-repair-event";
-import { WaveStartEvent } from "./events/wave-start-event";
 import { BuildEvent } from "./events/build-event";
 import { BossStepEvent } from "./events/boss-step-event";
 import { BossSummonEvent } from "./events/boss-summon-event";
@@ -37,6 +36,7 @@ import { GameMessageEvent } from "./events/game-message-event";
 import { UserBannedEvent } from "./events/user-banned-event";
 import { LightningBoltEvent } from "./events/lightning-bolt-event";
 import { VersionMismatchEvent } from "./events/version-mismatch-event";
+import { AuthRequiredEvent } from "./events/auth-required-event";
 import {
   serializeEvent,
   deserializeEvent,
@@ -79,7 +79,6 @@ const eventRegistry: Record<string, IBufferWriter> = {
   [ServerSentEvents.SERVER_UPDATING]: ServerUpdatingEvent,
   [ServerSentEvents.EXPLOSION]: ExplosionEvent,
   [ServerSentEvents.CAR_REPAIR]: CarRepairEvent,
-  [ServerSentEvents.WAVE_START]: WaveStartEvent,
   [ServerSentEvents.BUILD]: BuildEvent,
   [ServerSentEvents.BOSS_STEP]: BossStepEvent,
   [ServerSentEvents.BOSS_SUMMON]: BossSummonEvent,
@@ -88,6 +87,7 @@ const eventRegistry: Record<string, IBufferWriter> = {
   [ServerSentEvents.USER_BANNED]: UserBannedEvent,
   [ServerSentEvents.LIGHTNING_BOLT]: LightningBoltEvent,
   [ServerSentEvents.VERSION_MISMATCH]: VersionMismatchEvent,
+  [ServerSentEvents.AUTH_REQUIRED]: AuthRequiredEvent,
 };
 
 /**

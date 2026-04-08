@@ -1,6 +1,7 @@
 import { ISocketAdapter } from "@shared/network/socket-adapter";
 import { HandlerContext } from "../context";
 import { SocketEventHandler } from "./types";
+import { getConfig } from "@shared/config";
 
 /**
  * Validate select inventory slot data
@@ -33,8 +34,8 @@ export function onSelectInventorySlot(
   const player = context.players.get(socket.id);
   if (!player) return;
 
-  // Clamp slot index to valid range (1-10)
-  const slotIndex = Math.max(1, Math.min(10, data.slotIndex));
+  const maxSlots = getConfig().player.MAX_INVENTORY_SLOTS;
+  const slotIndex = Math.max(1, Math.min(maxSlots, data.slotIndex));
 
   // Use the existing selectInventoryItem method which handles marking inventory dirty
   player.selectInventoryItem(slotIndex);

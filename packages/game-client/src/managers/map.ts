@@ -5,7 +5,6 @@ import Vector2 from "@shared/util/vector2";
 import PoolManager from "@shared/util/pool-manager";
 import { distance } from "@shared/util/physics";
 import { getConfig } from "@shared/config";
-import { WaveState } from "@shared/types/wave";
 import { PlayerClient } from "@/entities/player";
 
 // Zombie player illumination radius (allows them to see around themselves)
@@ -461,8 +460,6 @@ export class MapManager {
     } else {
       baseDarkness = BASE_NIGHT_DARKNESS;
     }
-    const isWaveActive = gameState.waveState === WaveState.ACTIVE;
-
     // Get darkness hue from game state
     // Note: illumination multiplier is already applied to light sources in getLightSources(),
     // so we don't need to apply it again here to the light intensity
@@ -515,19 +512,9 @@ export class MapManager {
 
         // Set fill style based on wave state and darkness hue
         if (darknessHue === "blue") {
-          // Blue tint during thunderstorm (more visible blue)
-          if (isWaveActive) {
-            ctx.fillStyle = `rgba(0, 0, 50, ${finalOpacity})`;
-          } else {
-            ctx.fillStyle = `rgba(0, 0, 20, ${finalOpacity})`;
-          }
+          ctx.fillStyle = `rgba(0, 0, 20, ${finalOpacity})`;
         } else {
-          // Reddish tint during waves (default)
-          if (isWaveActive) {
-            ctx.fillStyle = `rgba(50, 0, 0, ${finalOpacity})`;
-          } else {
-            ctx.fillStyle = `rgba(20, 0, 0, ${finalOpacity})`;
-          }
+          ctx.fillStyle = `rgba(20, 0, 0, ${finalOpacity})`;
         }
 
         ctx.globalAlpha = 1; // Set to 1 since opacity is in fillStyle

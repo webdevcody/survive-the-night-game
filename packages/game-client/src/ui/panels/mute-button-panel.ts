@@ -61,7 +61,7 @@ export class MuteButtonPanel extends Panel {
     const isMuted = this.soundManager.getMuteState();
     const { height } = ctx.canvas;
 
-    // Calculate button position (to the right of minimap)
+    // Button position (updatePosition sets left/bottom from config)
     const x = this.buttonSettings.left;
     const y = height - this.buttonSettings.bottom - this.buttonSettings.height;
 

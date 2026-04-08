@@ -4,43 +4,39 @@ import { IGameManagers } from "./types";
 import { IEnvironmentalEventStrategy } from "./environmental-event-strategy";
 import { ToxicGasEventStrategy } from "./strategies/toxic-gas-event-strategy";
 import { ThunderstormEventStrategy } from "./strategies/thunderstorm-event-strategy";
+import { environmentalEventsConfig } from "@shared/config/environmental-events-config";
 
 /**
- * Manages random environmental events that occur during waves
- * Uses strategy pattern to support multiple event types
+ * Manages random environmental events using strategy pattern
  */
 export class EnvironmentalEventManager {
   private entityManager: EntityManager;
   private mapManager: MapManager;
   private gameManagers: IGameManagers;
   private strategies: IEnvironmentalEventStrategy[] = [];
+  private cycleAccumulator = 0;
+  private completedCycles = 0;
 
   constructor(gameManagers: IGameManagers, entityManager: EntityManager, mapManager: MapManager) {
     this.gameManagers = gameManagers;
     this.entityManager = entityManager;
     this.mapManager = mapManager;
 
-    // Initialize strategies
     this.strategies.push(new ToxicGasEventStrategy(gameManagers, entityManager, mapManager));
     this.strategies.push(new ThunderstormEventStrategy(gameManagers, entityManager, mapManager));
   }
 
-  public onWaveComplete(completedWaveNumber: number): void {
-    for (const strategy of this.strategies) {
-      strategy.onWaveComplete(completedWaveNumber);
-    }
-  }
-
-  public onWaveStart(): void {
-    for (const strategy of this.strategies) {
-      strategy.onWaveStart();
-    }
-  }
-
-  /**
-   * Update event manager (called every tick)
-   */
   public update(deltaTime: number): void {
+    this.cycleAccumulator += deltaTime;
+    const interval = environmentalEventsConfig.CYCLE_INTERVAL_SECONDS;
+    while (this.cycleAccumulator >= interval) {
+      this.cycleAccumulator -= interval;
+      for (const strategy of this.strategies) {
+        strategy.onPeriodicRoll(this.completedCycles);
+      }
+      this.completedCycles++;
+    }
+
     for (const strategy of this.strategies) {
       strategy.update(deltaTime);
     }
@@ -51,6 +47,8 @@ export class EnvironmentalEventManager {
    * Called when game restarts to ensure clean state
    */
   public reset(): void {
+    this.cycleAccumulator = 0;
+    this.completedCycles = 0;
     for (const strategy of this.strategies) {
       if (strategy.isActive()) {
         strategy.end();

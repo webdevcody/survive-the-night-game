@@ -28,13 +28,13 @@ import { ExplosionEvent } from "../../../game-shared/src/events/server-sent/even
 import { serializeClientEvent } from "@shared/events/client-sent/client-event-serialization";
 import { CoinPickupEvent } from "../../../game-shared/src/events/server-sent/events/coin-pickup-event";
 import { CarRepairEvent } from "../../../game-shared/src/events/server-sent/events/car-repair-event";
-import { WaveStartEvent } from "../../../game-shared/src/events/server-sent/events/wave-start-event";
 import { CraftEvent } from "../../../game-shared/src/events/server-sent/events/craft-event";
 import { BuildEvent } from "../../../game-shared/src/events/server-sent/events/build-event";
 import { BossStepEvent } from "../../../game-shared/src/events/server-sent/events/boss-step-event";
 import { BossSummonEvent } from "../../../game-shared/src/events/server-sent/events/boss-summon-event";
 import { BossSplitEvent } from "../../../game-shared/src/events/server-sent/events/boss-split-event";
 import { VersionMismatchEvent } from "../../../game-shared/src/events/server-sent/events/version-mismatch-event";
+import { AuthRequiredEvent } from "../../../game-shared/src/events/server-sent/events/auth-required-event";
 import { UserBannedEvent } from "../../../game-shared/src/events/server-sent/events/user-banned-event";
 import { LightningBoltEvent } from "../../../game-shared/src/events/server-sent/events/lightning-bolt-event";
 import { ISocketAdapter } from "@shared/network/socket-adapter";
@@ -73,13 +73,13 @@ const SERVER_EVENT_MAP = {
   [ServerSentEvents.GAME_MESSAGE]: GameMessageEvent,
   [ServerSentEvents.EXPLOSION]: ExplosionEvent,
   [ServerSentEvents.CAR_REPAIR]: CarRepairEvent,
-  [ServerSentEvents.WAVE_START]: WaveStartEvent,
   [ServerSentEvents.CRAFT]: CraftEvent,
   [ServerSentEvents.BUILD]: BuildEvent,
   [ServerSentEvents.BOSS_STEP]: BossStepEvent,
   [ServerSentEvents.BOSS_SUMMON]: BossSummonEvent,
   [ServerSentEvents.BOSS_SPLIT]: BossSplitEvent,
   [ServerSentEvents.VERSION_MISMATCH]: VersionMismatchEvent,
+  [ServerSentEvents.AUTH_REQUIRED]: AuthRequiredEvent,
   [ServerSentEvents.USER_BANNED]: UserBannedEvent,
   [ServerSentEvents.LIGHTNING_BOLT]: LightningBoltEvent,
   [ServerSentEvents.THUNDERSTORM_START]: GameMessageEvent,
@@ -191,6 +191,7 @@ export class ClientSocketManager {
     const displayName = localStorage.getItem("displayName");
 
     if (!displayName) {
+      this.isConnecting = false;
       if (this.connectionPromiseReject) {
         this.connectionPromiseReject(new Error("No display name found"));
       }
@@ -210,11 +211,18 @@ export class ClientSocketManager {
       version,
     });
 
-    // Add game auth token if available (optional - allows anonymous play)
+    // Game auth token must be set by the host (e.g. website sets window.__gameAuthToken before connect)
     const gameAuthToken = getGameAuthToken();
-    if (gameAuthToken) {
-      params.set("gameAuthToken", gameAuthToken);
+    if (!gameAuthToken) {
+      this.isConnecting = false;
+      if (this.connectionPromiseReject) {
+        this.connectionPromiseReject(
+          new Error("Missing game auth token — ensure you are signed in and the page finished loading."),
+        );
+      }
+      return;
     }
+    params.set("gameAuthToken", gameAuthToken);
 
     this.socket = this.clientAdapter.connect(
       `${this.serverUrl}?${params.toString()}`,
@@ -502,6 +510,13 @@ export class ClientSocketManager {
     this.emitClientEvent(ClientSentEvents.SWAP_INVENTORY_ITEMS, {
       fromSlotIndex,
       toSlotIndex,
+    });
+  }
+
+  public sendSwapBagAndEquipment(bagIndex: number, equipSlot: "head" | "mainHand") {
+    this.emitClientEvent(ClientSentEvents.SWAP_BAG_AND_EQUIPMENT, {
+      bagIndex,
+      equipSlot,
     });
   }
 

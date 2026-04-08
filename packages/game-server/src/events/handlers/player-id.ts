@@ -2,6 +2,7 @@ import { ISocketAdapter } from "@shared/network/socket-adapter";
 import { HandlerContext } from "../context";
 import { SocketEventHandler } from "./types";
 import { YourIdEvent } from "@shared/events/server-sent/events/your-id-event";
+import type { GameModeId } from "@shared/events/server-sent/events/game-started-event";
 
 export function sendPlayerId(context: HandlerContext, socket: ISocketAdapter): void {
   const player = context.players.get(socket.id);
@@ -13,7 +14,8 @@ export function sendPlayerId(context: HandlerContext, socket: ISocketAdapter): v
     return;
   }
 
-  const gameMode = context.gameServer.getGameLoop().getGameModeStrategy().getConfig().modeId as "waves" | "battle_royale" | "infection";
+  const gameMode = context.gameServer.getGameLoop().getGameModeStrategy().getConfig()
+    .modeId as GameModeId;
   const yourIdEvent = new YourIdEvent(player.getId(), gameMode);
   context.sendEventToSocket(socket, yourIdEvent);
 }

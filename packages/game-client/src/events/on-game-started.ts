@@ -23,9 +23,10 @@ export const onGameStarted = (context: InitializationContext, event: GameStarted
   // Set game mode from server
   context.gameState.gameMode = data.gameMode;
 
-  // Show welcome message based on game mode
   if (data.gameMode === "battle_royale") {
     context.gameClient.getHud().addMessage("Battle Royale - Last one standing wins!", "gold");
+  } else if (data.gameMode === "open_world") {
+    context.gameClient.getHud().addMessage("Explore the world. Watch your back.", "cyan");
   } else {
     context.gameClient
       .getHud()

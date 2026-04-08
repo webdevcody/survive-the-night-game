@@ -206,8 +206,6 @@ export class Broadcaster {
       this.deps.tickPerformanceTracker?.startMethod("gameStatePreparation", "broadcastGameState") ||
       (() => {});
     // Cache all gameServer getter results before creating currentGameState object
-    const waveNumber = this.deps.gameServer.getWaveNumber();
-    const waveState = this.deps.gameServer.getWaveState();
     const phaseStartTime = this.deps.gameServer.getPhaseStartTime();
     const phaseDuration = this.deps.gameServer.getPhaseDuration();
     endGameStatePrep();
@@ -234,9 +232,6 @@ export class Broadcaster {
       (() => {});
     // Get current game state (using cached values)
     const currentGameState = {
-      // Wave system
-      waveNumber,
-      waveState,
       phaseStartTime,
       phaseDuration,
     };

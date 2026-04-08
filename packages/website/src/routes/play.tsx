@@ -3,7 +3,6 @@ import { useNavigate } from "@tanstack/react-router";
 import { createFileRoute } from "@tanstack/react-router";
 import { PredictionConfigPanel } from "./play/-components/PredictionConfigPanel";
 import { InstructionPanel } from "./play/-components/InstructionPanel";
-import { CraftingPanel } from "./play/-components/CraftingPanel";
 import { SpawnPanel } from "./play/-components/SpawnPanel";
 import { NameChangePanel } from "./play/-components/NameChangePanel";
 import { CharacterColorPanel } from "./play/-components/CharacterColorPanel";
@@ -15,6 +14,10 @@ import {
   DropdownMenuTrigger,
 } from "~/components/ui/dropdown-menu";
 import { getGameAuthToken } from "~/fn/game-auth";
+import { authClient } from "~/lib/auth-client";
+import { Link } from "@tanstack/react-router";
+
+type GameAuthPhase = "idle" | "loading" | "ok" | "missing";
 
 // Extend window type for game auth token
 declare global {
@@ -41,6 +44,8 @@ export function meta() {
 // Client-only component that dynamically imports game client code
 function GameClientLoader() {
   const navigate = useNavigate();
+  const { data: session, isPending: sessionPending } = authClient.useSession();
+  const [gameAuthPhase, setGameAuthPhase] = useState<GameAuthPhase>("idle");
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const sceneManagerRef = useRef<any>(null);
   const [isClient, setIsClient] = useState(false);
@@ -52,6 +57,7 @@ function GameClientLoader() {
   const [savedDisplayName, setSavedDisplayName] = useState<string>("");
   const [currentPlayerName, setCurrentPlayerName] = useState<string>("");
   const [currentPlayerColor, setCurrentPlayerColor] = useState<string>("none");
+  const gameControlsToggleRef = useRef<HTMLSpanElement>(null);
 
   const handleLeaveGame = () => {
     // Clean up game client before leaving
@@ -63,34 +69,59 @@ function GameClientLoader() {
   };
 
   useEffect(() => {
-    // Mark as client-side after mount
     setIsClient(true);
-    // Load saved display name and color from localStorage (client-side only)
-    if (typeof window !== "undefined") {
-      const savedName = localStorage.getItem("displayName");
-      if (savedName) {
-        setSavedDisplayName(savedName);
-      }
-      const savedColor = localStorage.getItem("playerColor");
-      if (savedColor) {
-        setCurrentPlayerColor(savedColor);
-      }
+  }, []);
 
-      // Fetch game auth token for WebSocket authentication
-      getGameAuthToken().then(({ token, displayName }) => {
+  useEffect(() => {
+    if (typeof window === "undefined" || !isClient) return;
+    const savedName = localStorage.getItem("displayName");
+    if (savedName) {
+      setSavedDisplayName(savedName);
+    }
+    const savedColor = localStorage.getItem("playerColor");
+    if (savedColor) {
+      setCurrentPlayerColor(savedColor);
+    }
+  }, [isClient]);
+
+  useEffect(() => {
+    if (!sessionPending && !session) {
+      window.location.href = "/sign-in?redirect=/play";
+    }
+  }, [session, sessionPending]);
+
+  useEffect(() => {
+    if (sessionPending || !session) return;
+
+    let cancelled = false;
+    setGameAuthPhase("loading");
+
+    getGameAuthToken()
+      .then(({ token, displayName }) => {
+        if (cancelled) return;
         window.__gameAuthToken = token;
-        // Sync profile display name to localStorage if logged in
         if (displayName) {
           localStorage.setItem("displayName", displayName);
           setSavedDisplayName(displayName);
         }
+        if (!token) {
+          setGameAuthPhase("missing");
+        } else {
+          setGameAuthPhase("ok");
+        }
+      })
+      .catch(() => {
+        if (!cancelled) setGameAuthPhase("missing");
       });
-    }
-  }, []);
+
+    return () => {
+      cancelled = true;
+    };
+  }, [session, sessionPending]);
 
   // Poll for game client once scene manager is loaded
   useEffect(() => {
-    if (!isClient) return;
+    if (!isClient || gameAuthPhase !== "ok") return;
 
     const pollGameClient = setInterval(() => {
       if (!sceneManagerRef.current) return;
@@ -107,7 +138,7 @@ function GameClientLoader() {
     }, 500);
 
     return () => clearInterval(pollGameClient);
-  }, [isClient]);
+  }, [isClient, gameAuthPhase]);
 
   // Poll for current player name and color updates
   useEffect(() => {
@@ -134,35 +165,6 @@ function GameClientLoader() {
     const interval = setInterval(updatePlayerInfo, 500);
     return () => clearInterval(interval);
   }, [gameClient, isClient]);
-
-  // Handle I key for toggling instructions
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      // Don't process if user is typing in an input field
-      const target = e.target as HTMLElement;
-      if (
-        target.tagName === "INPUT" ||
-        target.tagName === "TEXTAREA" ||
-        target.isContentEditable ||
-        showNameChangePanel
-      ) {
-        return;
-      }
-
-      // Don't toggle instructions if user is chatting
-      if (gameClient && gameClient.isChatting && gameClient.isChatting()) {
-        return;
-      }
-
-      // Don't toggle instructions if user is typing username
-      if (gameClient && (e.key === "i" || e.key === "I")) {
-        setShowInstructions((prev) => !prev);
-      }
-    };
-
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [gameClient, showNameChangePanel]);
 
   // Handle ESC key to close any open panels (but not toggle)
   useEffect(() => {
@@ -214,24 +216,20 @@ function GameClientLoader() {
   }, [gameClient, showInstructions, showSpawnPanel, showNameChangePanel, showCharacterColorPanel]);
 
   useEffect(() => {
-    if (!isClient || !canvasRef.current) {
+    if (!isClient || gameAuthPhase !== "ok" || !canvasRef.current) {
       return;
     }
 
-    // Dynamically import game client code only on client-side
     // @ts-ignore
     import("@survive-the-night/game-client/scenes").then(({ SceneManager, LoadingScene }) => {
       if (!canvasRef.current) {
         return;
       }
 
-      // Create scene manager
       sceneManagerRef.current = new SceneManager(canvasRef.current);
 
-      // Store reference globally for scene transitions
       (window as any).__sceneManager = sceneManagerRef.current;
 
-      // Start with loading scene (it will handle name entry if needed)
       sceneManagerRef.current.switchScene(LoadingScene);
     });
 
@@ -241,7 +239,44 @@ function GameClientLoader() {
         delete (window as any).__sceneManager;
       }
     };
-  }, [isClient]);
+  }, [isClient, gameAuthPhase]);
+
+  if (sessionPending) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-black">
+        <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
+      </div>
+    );
+  }
+
+  if (!session) {
+    return null;
+  }
+
+  if (gameAuthPhase === "idle" || gameAuthPhase === "loading") {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-black">
+        <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
+      </div>
+    );
+  }
+
+  if (gameAuthPhase === "missing") {
+    return (
+      <div className="flex min-h-screen flex-col items-center justify-center gap-6 bg-black px-6 text-center text-white">
+        <h1 className="text-xl font-semibold">Game login is not available</h1>
+        <p className="max-w-md text-muted-foreground">
+          The server could not issue a game session token. This usually means{" "}
+          <code className="rounded bg-muted px-1 py-0.5 text-foreground">GAME_SERVER_API_KEY</code> is
+          not set in the website environment, or it does not match the game server&apos;s key. Set
+          the same secret in both services and reload.
+        </p>
+        <Link to="/" className="text-primary underline">
+          Back to home
+        </Link>
+      </div>
+    );
+  }
 
   return (
     <div className="relative flex justify-center items-center h-screen bg-black">
@@ -337,29 +372,31 @@ function GameClientLoader() {
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
-        <Button
-          variant="ghost"
-          size="icon"
-          onClick={() => setShowInstructions((prev) => !prev)}
-          className="bg-gray-800 text-white hover:bg-gray-700"
-          title="Game Controls (I)"
-        >
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            width="24"
-            height="24"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
+        <span ref={gameControlsToggleRef} className="inline-flex">
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => setShowInstructions((prev) => !prev)}
+            className="bg-gray-800 text-white hover:bg-gray-700"
+            title="Game Controls (I)"
           >
-            <circle cx="12" cy="12" r="10" />
-            <path d="M12 16v-4" />
-            <path d="M12 8h.01" />
-          </svg>
-        </Button>
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              width="24"
+              height="24"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <circle cx="12" cy="12" r="10" />
+              <path d="M12 16v-4" />
+              <path d="M12 8h.01" />
+            </svg>
+          </Button>
+        </span>
         {import.meta.env.VITE_LOCAL === "true" && (
           <>
             <Button
@@ -377,7 +414,11 @@ function GameClientLoader() {
       </div>
 
       {/* Instruction Panel Modal */}
-      <InstructionPanel isOpen={showInstructions} onClose={() => setShowInstructions(false)} />
+      <InstructionPanel
+        isOpen={showInstructions}
+        onClose={() => setShowInstructions(false)}
+        outsideClickIgnoreRef={gameControlsToggleRef}
+      />
 
       {/* Name Change Panel */}
       <NameChangePanel
@@ -408,9 +449,6 @@ function GameClientLoader() {
           }
         }}
       />
-
-      {/* Crafting Panel */}
-      {gameClient && <CraftingPanel gameClient={gameClient} />}
 
       {/* Spawn Panel (Local only) */}
       {import.meta.env.VITE_LOCAL === "true" && (

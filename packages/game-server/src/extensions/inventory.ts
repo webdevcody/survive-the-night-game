@@ -1,5 +1,13 @@
 import { Extension } from "@/extensions/types";
-import { InventoryItem, ItemType, isWeapon } from "../../../game-shared/src/util/inventory";
+import {
+  InventoryItem,
+  ItemType,
+  isWeapon,
+  canItemGoInEquipmentSlot,
+  createEmptyEquipment,
+  type EquipmentSlotKey,
+  type PlayerEquipmentState,
+} from "../../../game-shared/src/util/inventory";
 import { recipes, RecipeType } from "../../../game-shared/src/util/recipes";
 import { Broadcaster } from "@/managers/types";
 import { PlayerPickedUpItemEvent } from "../../../game-shared/src/events/server-sent/events/pickup-item-event";
@@ -58,7 +66,8 @@ const ITEM_DROP_TABLE: Array<{ itemType: ItemType; weight: number }> = [
 import { ExtensionBase } from "./extension-base";
 
 type InventoryFields = {
-  items: InventoryItem[];
+  items: (InventoryItem | null)[];
+  equipment: PlayerEquipmentState;
 };
 
 export default class Inventory extends ExtensionBase<InventoryFields> {
@@ -67,11 +76,15 @@ export default class Inventory extends ExtensionBase<InventoryFields> {
   private broadcaster: Broadcaster;
 
   public constructor(self: IEntity, broadcaster: Broadcaster) {
-    super(self, { items: [] });
+    super(self, { items: [], equipment: createEmptyEquipment() });
     this.broadcaster = broadcaster;
   }
 
-  public getItems(): InventoryItem[] {
+  public getEquipment(): PlayerEquipmentState {
+    return this.serialized.get("equipment");
+  }
+
+  public getItems(): (InventoryItem | null)[] {
     return this.serialized.get("items");
   }
 
@@ -84,7 +97,11 @@ export default class Inventory extends ExtensionBase<InventoryFields> {
 
   public hasItem(itemType: ItemType): boolean {
     const items = this.serialized.get("items");
-    return items.some((it: InventoryItem | null) => it?.itemType === itemType);
+    if (items.some((it: InventoryItem | null) => it?.itemType === itemType)) {
+      return true;
+    }
+    const eq = this.serialized.get("equipment");
+    return eq.head?.itemType === itemType || eq.mainHand?.itemType === itemType;
   }
 
   public addItem(item: InventoryItem): void {
@@ -140,27 +157,51 @@ export default class Inventory extends ExtensionBase<InventoryFields> {
   }
 
   public swapItems(fromIndex: number, toIndex: number): void {
-    const items = this.serialized.get("items");
-
-    // Validate indices are non-negative
-    if (fromIndex < 0 || toIndex < 0) {
+    const maxSlots = getConfig().player.MAX_INVENTORY_SLOTS;
+    if (fromIndex < 0 || toIndex < 0 || fromIndex >= maxSlots || toIndex >= maxSlots) {
       return;
     }
 
-    // Ensure array is large enough (expand with nulls if needed)
-    const maxIndex = Math.max(fromIndex, toIndex);
-    while (items.length <= maxIndex) {
+    const items = this.serialized.get("items");
+    while (items.length < maxSlots) {
       items.push(null);
     }
 
-    // Swap items (works for both empty slots (null) and occupied slots)
     const temp = items[fromIndex];
     items[fromIndex] = items[toIndex];
     items[toIndex] = temp;
 
-    // Update serialized (array reference changes, so assign new array to trigger dirty)
     this.serialized.set("items", [...items]);
-    // Explicitly mark dirty to ensure inventory changes are broadcast
+    this.markDirty();
+  }
+
+  /**
+   * Swap bag slot with an equipment slot. Validates the item entering equipment.
+   */
+  public swapBagAndEquipment(bagIndex: number, equipSlot: EquipmentSlotKey): void {
+    const maxSlots = getConfig().player.MAX_INVENTORY_SLOTS;
+    if (bagIndex < 0 || bagIndex >= maxSlots) {
+      return;
+    }
+
+    const items = this.serialized.get("items");
+    while (items.length < maxSlots) {
+      items.push(null);
+    }
+
+    const bagItem = items[bagIndex];
+    const equipment = this.serialized.get("equipment");
+    const equipItem = equipment[equipSlot];
+
+    if (bagItem != null && !canItemGoInEquipmentSlot(bagItem.itemType, equipSlot)) {
+      return;
+    }
+
+    items[bagIndex] = equipItem;
+    equipment[equipSlot] = bagItem;
+
+    this.serialized.set("items", [...items]);
+    this.serialized.set("equipment", { ...equipment });
     this.markDirty();
   }
 
@@ -174,6 +215,15 @@ export default class Inventory extends ExtensionBase<InventoryFields> {
   public getActiveWeapon(activeItem: InventoryItem | null): InventoryItem | null {
     if (!activeItem) return null;
     return isWeapon(activeItem.itemType) ? activeItem : null;
+  }
+
+  /** Equipped main-hand weapon if any; otherwise weapon in active bag slot. */
+  public resolveActiveWeapon(activeBagItem: InventoryItem | null): InventoryItem | null {
+    const main = this.serialized.get("equipment").mainHand;
+    if (main && isWeapon(main.itemType)) {
+      return main;
+    }
+    return this.getActiveWeapon(activeBagItem);
   }
 
   public craftRecipe(
@@ -231,20 +281,27 @@ export default class Inventory extends ExtensionBase<InventoryFields> {
 
   public clear(): void {
     const items = this.serialized.get("items");
-    if (items.length > 0) {
+    const hadItems = items.length > 0;
+    const hadEquip =
+      this.serialized.get("equipment").head != null ||
+      this.serialized.get("equipment").mainHand != null;
+    if (hadItems) {
       this.serialized.set("items", []);
-      // Explicitly mark dirty to ensure inventory changes are broadcast
+    }
+    if (hadEquip) {
+      this.serialized.set("equipment", createEmptyEquipment());
+    }
+    if (hadItems || hadEquip) {
       this.markDirty();
     }
   }
 
   public scatterItems(position: { x: number; y: number }): void {
-    const items = this.serialized.get("items");
-    const offset = 32;
-    items.forEach((item: InventoryItem | null) => {
-      if (item == null) return; // Skip null/undefined items
+    const scatterOne = (item: InventoryItem | null) => {
+      if (item == null) return;
       const entity = this.createEntityFromItem(item);
       if (!entity) return;
+      const offset = 32;
       const theta = Math.random() * 2 * Math.PI;
       const radius = Math.random() * offset;
       const poolManager = PoolManager.getInstance();
@@ -260,9 +317,17 @@ export default class Inventory extends ExtensionBase<InventoryFields> {
       }
 
       this.self.getEntityManager()?.addEntity(entity);
-    });
+    };
+
+    const items = this.serialized.get("items");
+    items.forEach((item: InventoryItem | null) => scatterOne(item));
+
+    const equipment = this.serialized.get("equipment");
+    scatterOne(equipment.head);
+    scatterOne(equipment.mainHand);
+
     this.serialized.set("items", []);
-    // Explicitly mark dirty to ensure inventory changes are broadcast
+    this.serialized.set("equipment", createEmptyEquipment());
     this.markDirty();
   }
 
@@ -281,5 +346,17 @@ export default class Inventory extends ExtensionBase<InventoryFields> {
         writeItemState(writer, item.state);
       }
     });
+    const equipment = this.serialized.get("equipment");
+    const writeSlot = (item: InventoryItem | null) => {
+      if (item === null || item === undefined) {
+        writer.writeBoolean(false);
+      } else {
+        writer.writeBoolean(true);
+        writer.writeUInt8(itemTypeRegistry.encode(item.itemType));
+        writeItemState(writer, item.state);
+      }
+    };
+    writeSlot(equipment.head);
+    writeSlot(equipment.mainHand);
   }
 }

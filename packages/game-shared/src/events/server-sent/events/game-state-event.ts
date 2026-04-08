@@ -1,14 +1,11 @@
 import { GameEvent } from "../../types";
 import { ServerSentEvents } from "../../events";
 import { RawEntity } from "../../../types/entity";
-import { WaveState } from "../../../types/wave";
 import { VotingState } from "../../../types/voting";
 import { ZombieLivesState } from "../../../types/zombie-lives";
 import { BufferReader } from "../../../util/buffer-serialization";
 import {
   GAME_STATE_BIT_TIMESTAMP,
-  GAME_STATE_BIT_WAVE_NUMBER,
-  GAME_STATE_BIT_WAVE_STATE,
   GAME_STATE_BIT_PHASE_START_TIME,
   GAME_STATE_BIT_PHASE_DURATION,
   GAME_STATE_BIT_IS_FULL_STATE,
@@ -25,7 +22,6 @@ import {
 } from "../../../util/serialization-constants";
 import { entityTypeRegistry } from "../../../util/entity-type-encoding";
 import { decodeExtensionType } from "../../../util/extension-type-encoding";
-import { decodeWaveState } from "../../../util/wave-state-encoding";
 import { MapData } from "./map-event";
 
 export interface EntityState extends RawEntity {
@@ -36,9 +32,6 @@ export interface GameStateData {
   entities: EntityState[];
   removedEntityIds?: number[];
   isFullState?: boolean;
-  // Wave system data
-  waveNumber?: number;
-  waveState?: WaveState;
   phaseStartTime?: number;
   phaseDuration?: number;
   timestamp?: number;
@@ -81,14 +74,6 @@ export class GameStateEvent implements GameEvent<GameStateData> {
 
   public getTimestamp(): number | undefined {
     return this.data.timestamp;
-  }
-
-  public getWaveNumber(): number | undefined {
-    return this.data.waveNumber;
-  }
-
-  public getWaveState(): WaveState | undefined {
-    return this.data.waveState;
   }
 
   public getPhaseStartTime(): number | undefined {
@@ -188,12 +173,6 @@ export class GameStateEvent implements GameEvent<GameStateData> {
         switch (bit) {
           case GAME_STATE_BIT_TIMESTAMP:
             gameStateData.timestamp = gameStateReader.readFloat64();
-            break;
-          case GAME_STATE_BIT_WAVE_NUMBER:
-            gameStateData.waveNumber = gameStateReader.readUInt8();
-            break;
-          case GAME_STATE_BIT_WAVE_STATE:
-            gameStateData.waveState = decodeWaveState(gameStateReader.readUInt8());
             break;
           case GAME_STATE_BIT_PHASE_START_TIME:
             gameStateData.phaseStartTime = gameStateReader.readFloat64();

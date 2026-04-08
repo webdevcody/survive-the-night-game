@@ -1,8 +1,6 @@
 import { BufferWriter } from "@shared/util/buffer-serialization";
 import {
   GAME_STATE_BIT_TIMESTAMP,
-  GAME_STATE_BIT_WAVE_NUMBER,
-  GAME_STATE_BIT_WAVE_STATE,
   GAME_STATE_BIT_PHASE_START_TIME,
   GAME_STATE_BIT_PHASE_DURATION,
   GAME_STATE_BIT_IS_FULL_STATE,
@@ -14,7 +12,6 @@ import {
 } from "@shared/util/serialization-constants";
 import { VotingState } from "@shared/types/voting";
 import { ZombieLivesState } from "@shared/types/zombie-lives";
-import { encodeWaveState } from "@shared/util/wave-state-encoding";
 import { IEntity } from "@/entities/types";
 import { GameStateData } from "../../../game-shared/src/events/server-sent/events/game-state-event";
 import { MapData } from "../../../game-shared/src/events/server-sent/events/map-event";
@@ -78,12 +75,6 @@ export class BufferManager {
     if (gameState.timestamp !== undefined) {
       bitset |= GAME_STATE_BIT_TIMESTAMP;
     }
-    if (gameState.waveNumber !== undefined) {
-      bitset |= GAME_STATE_BIT_WAVE_NUMBER;
-    }
-    if (gameState.waveState !== undefined) {
-      bitset |= GAME_STATE_BIT_WAVE_STATE;
-    }
     if (gameState.phaseStartTime !== undefined) {
       bitset |= GAME_STATE_BIT_PHASE_START_TIME;
     }
@@ -116,15 +107,6 @@ export class BufferManager {
         switch (bit) {
           case GAME_STATE_BIT_TIMESTAMP:
             this.writer.writeFloat64(gameState.timestamp!);
-            break;
-          case GAME_STATE_BIT_WAVE_NUMBER:
-            if (gameState.waveNumber! > 255) {
-              throw new Error(`waveNumber ${gameState.waveNumber} exceeds uint8 maximum (255)`);
-            }
-            this.writer.writeUInt8(gameState.waveNumber!);
-            break;
-          case GAME_STATE_BIT_WAVE_STATE:
-            this.writer.writeUInt8(encodeWaveState(gameState.waveState!));
             break;
           case GAME_STATE_BIT_PHASE_START_TIME:
             this.writer.writeFloat64(gameState.phaseStartTime!);

@@ -3,6 +3,12 @@ import { ItemType, isWeapon, isResourceItem } from "./inventory";
 import { itemRegistry, weaponRegistry, environmentRegistry } from "../entities";
 
 /**
+ * Master switch for walk-over auto-pickup. When false, `shouldAutoPickup` always resolves to false
+ * (per-type rules below are preserved for easy re-enable).
+ */
+export const AUTO_PICKUP_ENABLED = false;
+
+/**
  * Shared auto-pickup rules logic
  * Determines if an item should be auto-picked up based on entity type and inventory state
  *
@@ -36,6 +42,10 @@ export interface AutoPickupContext {
  * This is a pure function that can be used by both server and client
  */
 export function shouldAutoPickup(context: AutoPickupContext): boolean {
+  if (!AUTO_PICKUP_ENABLED) {
+    return false;
+  }
+
   // Zombie players cannot pick up anything
   if (context.isZombiePlayer) {
     return false;

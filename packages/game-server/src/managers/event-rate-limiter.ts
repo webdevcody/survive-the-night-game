@@ -30,6 +30,7 @@ export class EventRateLimiter {
     DROP_ITEM: { maxEvents: 20, windowMs: 1000 },
     CONSUME_ITEM: { maxEvents: 20, windowMs: 1000 },
     SWAP_INVENTORY_ITEMS: { maxEvents: 20, windowMs: 1000 },
+    SWAP_BAG_AND_EQUIPMENT: { maxEvents: 20, windowMs: 1000 },
     MERCHANT_BUY: { maxEvents: 20, windowMs: 1000 },
     MERCHANT_SELL: { maxEvents: 20, windowMs: 1000 },
     TELEPORT_TO_BASE: { maxEvents: 5, windowMs: 1000 },

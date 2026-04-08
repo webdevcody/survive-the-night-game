@@ -22,6 +22,26 @@ export const worldConfig = {
   MAP_SIZE: 7,
 
   /**
+   * Seed for deterministic map generation (biomes, items, idle zombies, etc.).
+   */
+  MAP_SEED: 42,
+
+  /**
+   * Open world: number of fixed zombie spawn fixtures (seeded tile picks outside campsite).
+   */
+  OPEN_WORLD_ZOMBIE_SPAWN_POINT_COUNT: 12,
+
+  /**
+   * Open world: milliseconds after a fixture zombie dies before respawning at the same tile.
+   */
+  OPEN_WORLD_ZOMBIE_RESPAWN_MS: 180_000,
+
+  /**
+   * Open world: minimum Chebyshev tile distance between fixture spawn points when picking tiles.
+   */
+  OPEN_WORLD_ZOMBIE_SPAWN_MIN_TILE_SEPARATION: 8,
+
+  /**
    * Sprite sheet width in tiles (for decals/ground.png calculations)
    */
   SHEET_WIDTH_TILES: 16,

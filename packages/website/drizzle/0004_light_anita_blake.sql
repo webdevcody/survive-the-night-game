@@ -1,0 +1,1 @@
+ALTER TABLE "user_stats" ADD COLUMN "experience" integer DEFAULT 0 NOT NULL;

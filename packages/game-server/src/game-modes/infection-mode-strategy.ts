@@ -35,7 +35,6 @@ export class InfectionModeStrategy implements IGameModeStrategy {
     friendlyFireEnabled: false, // Humans cannot damage each other
     allowRespawn: true, // Zombies respawn from shared pool
     hasCarEntity: true, // Car exists in campsite
-    hasWaveSystem: false, // No wave spawning
     hasBosses: false,
     hasSurvivors: false,
     minPlayers: 2,

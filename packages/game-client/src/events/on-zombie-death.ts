@@ -8,6 +8,14 @@ const ZOMBIE_SHAKE_MAX_INTENSITY = 4;
 
 export const onZombieDeath = (context: ClientEventContext, event: ZombieDeathEvent) => {
   if (!context.shouldProcessEntityEvent()) return;
+
+  // Killer rewards must not depend on the zombie entity still existing on the client — it may
+  // already have been removed when this event is handled, but killerId in the event is still valid.
+  const localPlayerId = context.gameClient.getGameState().playerId;
+  if (localPlayerId && event.getKillerId() === localPlayerId) {
+    context.gameClient.shakeCamera(ZOMBIE_SHAKE_MAX_INTENSITY, ZOMBIE_SHAKE_DURATION_MS);
+  }
+
   const zombie = context.gameClient.getEntityById(event.getZombieId());
   if (!zombie) return;
 
@@ -16,9 +24,4 @@ export const onZombieDeath = (context: ClientEventContext, event: ZombieDeathEve
   context.gameClient
     .getSoundManager()
     .playPositionalSound(SOUND_TYPES_TO_MP3.ZOMBIE_DEATH, zombiePosition);
-
-  const localPlayerId = context.gameClient.getGameState().playerId;
-  if (localPlayerId && event.getKillerId() === localPlayerId) {
-    context.gameClient.shakeCamera(ZOMBIE_SHAKE_MAX_INTENSITY, ZOMBIE_SHAKE_DURATION_MS);
-  }
 };

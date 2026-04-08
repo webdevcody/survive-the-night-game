@@ -8,7 +8,6 @@ import Vector2 from "@/util/vector2";
 import { IEntity } from "@/entities/types";
 import PoolManager from "@shared/util/pool-manager";
 import { distance } from "@/util/physics";
-import { GameMaster } from "@/managers/game-master";
 import { ZombieFactory } from "@/util/zombie-factory";
 import { Merchant } from "@/entities/environment/merchant";
 import {
@@ -27,13 +26,14 @@ import {
 } from "@/world/biomes";
 import type { BiomeData } from "@/world/biomes/types";
 import type { MapData } from "../../../game-shared/src/events/server-sent/events/map-event";
-import { getConfig } from "@/config";
+import { getConfig } from "@shared/config";
 import { entityBlocksPlacement } from "@shared/entities/decal-registry";
 import { Entities, getZombieTypesSet } from "@shared/constants";
 import { balanceConfig } from "@shared/config/balance-config";
 import { Crate } from "@/entities/items/crate";
 import { CampsiteFire } from "@/entities/environment/campsite-fire";
 import { buildSpawnTable } from "./spawn-table-builder";
+import { createSeededRng } from "@shared/util/seeded-rng";
 
 // Re-export from shared config for backward compatibility
 export const BIOME_SIZE = getConfig().world.BIOME_SIZE;
@@ -77,12 +77,18 @@ const EMPTY_GROUND_TILE_VALUE = 0;
 
 // buildSpawnTable moved to spawn-table-builder.ts
 
+type OpenWorldZombieSpawnPointState = {
+  tileX: number;
+  tileY: number;
+  activeZombieId: number | null;
+  respawnAtMs: number | null;
+};
+
 export class MapManager implements IMapManager {
   private groundLayer: number[][] = [];
   private collidablesLayer: number[][] = [];
   private gameManagers?: IGameManagers;
   private entityManager?: IEntityManager;
-  private gameMaster?: GameMaster;
   private farmBiomePosition?: { x: number; y: number };
   private gasStationBiomePosition?: { x: number; y: number };
   private cityBiomePosition?: { x: number; y: number };
@@ -91,13 +97,21 @@ export class MapManager implements IMapManager {
   private merchantBiomePositions: Array<{ x: number; y: number }> = [];
   private carLocation?: Vector2 | null;
   private carEntity?: IEntity | null;
+  /** Non-null only while `generateMap()` runs — deterministic layout from MAP_SEED. */
+  private mapGenRng: ReturnType<typeof createSeededRng> | null = null;
+
+  /** Fixed zombie spawn fixtures for open_world (idle zombies with respawn timers). */
+  private openWorldZombieSpawnPoints: OpenWorldZombieSpawnPointState[] = [];
 
   constructor() {}
+
+  private mapRandom(): number {
+    return this.mapGenRng !== null ? this.mapGenRng.next() : Math.random();
+  }
 
   public setGameManagers(gameManagers: IGameManagers) {
     this.gameManagers = gameManagers;
     this.entityManager = gameManagers.getEntityManager();
-    this.gameMaster = new GameMaster(gameManagers);
   }
 
   public getGameManagers(): IGameManagers {
@@ -144,109 +158,6 @@ export class MapManager implements IMapManager {
 
   public getCollidablesLayer(): number[][] {
     return this.collidablesLayer;
-  }
-
-  public spawnZombies(waveNumber: number) {
-    if (!this.gameMaster) {
-      throw new Error("MapManager: GameMaster was not set");
-    }
-
-    const zombieDistribution = this.gameMaster.getNumberOfZombies(waveNumber);
-
-    // Get campsite biome position (center biome)
-    const centerBiomeX = Math.floor(MAP_SIZE / 2);
-    const centerBiomeY = Math.floor(MAP_SIZE / 2);
-
-    // Get all valid spawn locations in the 8 forest biomes surrounding the campsite
-    let spawnLocations = this.selectCampsiteSurroundingBiomeSpawnLocations(
-      centerBiomeX,
-      centerBiomeY,
-    );
-
-    if (spawnLocations.length === 0) {
-      console.warn("No valid spawn locations found around campsite");
-      return;
-    }
-
-    // Spawn boss if needed (use first spawn location or fallback)
-    this.spawnBossIfNeeded(waveNumber, spawnLocations.length > 0 ? [spawnLocations[0]] : []);
-
-    // Shuffle spawn locations for random distribution
-    for (let i = spawnLocations.length - 1; i > 0; i--) {
-      const j = Math.floor(Math.random() * (i + 1));
-      [spawnLocations[i], spawnLocations[j]] = [spawnLocations[j], spawnLocations[i]];
-    }
-
-    // Create a list of all zombies to spawn with their types
-    const zombiesToSpawnList: Array<"regular" | "fast" | "big" | "bat" | "spitter"> = [];
-    for (let i = 0; i < zombieDistribution.regular; i++) {
-      zombiesToSpawnList.push("regular");
-    }
-    for (let i = 0; i < zombieDistribution.fast; i++) {
-      zombiesToSpawnList.push("fast");
-    }
-    for (let i = 0; i < zombieDistribution.big; i++) {
-      zombiesToSpawnList.push("big");
-    }
-    for (let i = 0; i < zombieDistribution.bat; i++) {
-      zombiesToSpawnList.push("bat");
-    }
-    for (let i = 0; i < zombieDistribution.spitter; i++) {
-      zombiesToSpawnList.push("spitter");
-    }
-
-    // Shuffle the zombie list for random type distribution
-    for (let i = zombiesToSpawnList.length - 1; i > 0; i--) {
-      const j = Math.floor(Math.random() * (i + 1));
-      [zombiesToSpawnList[i], zombiesToSpawnList[j]] = [
-        zombiesToSpawnList[j],
-        zombiesToSpawnList[i],
-      ];
-    }
-
-    // Track total spawned to verify exact count
-    let totalSpawned = {
-      regular: 0,
-      fast: 0,
-      big: 0,
-      bat: 0,
-      spitter: 0,
-    };
-
-    // Spawn each zombie at a random location, removing locations after use to prevent stacking
-    for (const zombieType of zombiesToSpawnList) {
-      if (spawnLocations.length === 0) {
-        console.warn("Ran out of spawn locations before spawning all zombies");
-        break;
-      }
-
-      // Pick a random location and remove it
-      const randomIndex = Math.floor(Math.random() * spawnLocations.length);
-      const location = spawnLocations.splice(randomIndex, 1)[0];
-
-      // Spawn the zombie at this location
-      this.spawnZombieAtLocation(location, zombieType);
-
-      // Track spawned counts
-      totalSpawned[zombieType]++;
-    }
-
-    // Verify exact count match
-    const expectedTotal = zombieDistribution.total;
-    const actualTotal =
-      totalSpawned.regular +
-      totalSpawned.fast +
-      totalSpawned.big +
-      totalSpawned.bat +
-      totalSpawned.spitter;
-
-    if (expectedTotal !== actualTotal) {
-      console.error(
-        `Zombie count mismatch! Expected: ${expectedTotal}, Actual: ${actualTotal}. ` +
-          `Distribution: regular=${totalSpawned.regular}, fast=${totalSpawned.fast}, ` +
-          `big=${totalSpawned.big}, bat=${totalSpawned.bat}, spitter=${totalSpawned.spitter}`,
-      );
-    }
   }
 
   /**
@@ -382,70 +293,6 @@ export class MapManager implements IMapManager {
     }
   }
 
-  private spawnBossIfNeeded(
-    waveNumber: number,
-    spawnLocations: Array<{ x: number; y: number }>,
-  ): void {
-    const bossWaveMapping = getConfig().wave.BOSS_WAVE_MAPPING as Record<number, string>;
-    const bossType = bossWaveMapping[waveNumber];
-
-    if (!bossType) {
-      return;
-    }
-
-    // Don't spawn if a boss is already active
-    if (this.isBossActive()) {
-      return;
-    }
-
-    const spawnPoint = spawnLocations[0] ?? this.getFallbackBossSpawnLocation();
-    this.spawnBossAt(spawnPoint, bossType);
-  }
-
-  private isBossActive(): boolean {
-    // Check for any boss zombie types
-    const bossTypes = [
-      Entities.GRAVE_TYRANT,
-      Entities.CHARGING_TYRANT,
-      Entities.ACID_FLYER,
-      Entities.SPLITTER_BOSS,
-    ];
-
-    for (const bossType of bossTypes) {
-      if (this.getEntityManager().getEntitiesByType(bossType).length > 0) {
-        return true;
-      }
-    }
-
-    return false;
-  }
-
-  private getFallbackBossSpawnLocation(): { x: number; y: number } {
-    const tileSize = getConfig().world.TILE_SIZE;
-    const totalTiles = BIOME_SIZE * MAP_SIZE;
-    const centerTile = Math.floor(totalTiles / 2);
-    return {
-      x: centerTile * tileSize,
-      y: centerTile * tileSize,
-    };
-  }
-
-  private spawnBossAt(position: { x: number; y: number }, bossType: string): void {
-    const boss = this.getEntityManager().createEntity(bossType as any);
-    if (!boss) {
-      console.warn(`Failed to spawn boss of type: ${bossType}`);
-      return;
-    }
-    if (!boss.hasExt(Positionable)) {
-      console.warn(`Boss entity ${bossType} does not have Positionable extension`);
-      return;
-    }
-    boss
-      .getExt(Positionable)
-      .setPosition(PoolManager.getInstance().vector2.claim(position.x, position.y));
-    this.getEntityManager().addEntity(boss);
-  }
-
   generateEmptyMap(width: number, height: number) {
     this.getEntityManager().clear();
     this.getEntityManager().setMapSize(
@@ -463,22 +310,32 @@ export class MapManager implements IMapManager {
   }
 
   generateMap() {
-    this.getEntityManager().clear();
-    this.carLocation = null;
-    this.carEntity = null;
-    this.generateSpatialGrid();
-    this.initializeMap();
-    this.selectRandomFarmBiomePosition();
-    this.selectRandomGasStationBiomePosition();
-    this.selectRandomCityBiomePosition();
-    this.selectRandomDockBiomePosition();
-    this.selectRandomShedBiomePosition();
-    this.fillMapWithBiomes();
-    this.createForestBoundaries();
-    this.spawnMerchants();
-    this.spawnItems();
-    this.spawnIdleZombies();
-    this.spawnDebugZombieIfEnabled();
+    this.mapGenRng = createSeededRng(getConfig().world.MAP_SEED);
+    try {
+      this.getEntityManager().clear();
+      this.openWorldZombieSpawnPoints = [];
+      this.carLocation = null;
+      this.carEntity = null;
+      this.generateSpatialGrid();
+      this.initializeMap();
+      this.selectRandomFarmBiomePosition();
+      this.selectRandomGasStationBiomePosition();
+      this.selectRandomCityBiomePosition();
+      this.selectRandomDockBiomePosition();
+      this.selectRandomShedBiomePosition();
+      this.fillMapWithBiomes();
+      this.createForestBoundaries();
+      this.spawnMerchants();
+      this.spawnItems();
+      if (this.isOpenWorldMode()) {
+        this.seedOpenWorldZombieSpawnPoints();
+      } else {
+        this.spawnIdleZombies();
+      }
+      this.spawnDebugZombieIfEnabled();
+    } finally {
+      this.mapGenRng = null;
+    }
   }
 
   private generateSpatialGrid() {
@@ -583,7 +440,7 @@ export class MapManager implements IMapManager {
 
     // Select a random position from valid positions
     if (validPositions.length > 0) {
-      const randomIndex = Math.floor(Math.random() * validPositions.length);
+      const randomIndex = Math.floor(this.mapRandom() * validPositions.length);
       return validPositions[randomIndex];
     }
 
@@ -725,7 +582,7 @@ export class MapManager implements IMapManager {
 
   private trySpawnItemAt(x: number, y: number) {
     const spawnTable = buildSpawnTable();
-    const random = Math.random();
+    const random = this.mapRandom();
     let cumulativeChance = 0;
 
     // Use battle royale multiplier if in that game mode, otherwise use default
@@ -809,7 +666,7 @@ export class MapManager implements IMapManager {
 
         // Only spawn on valid ground tiles without collidables
         if (isValidGround && !hasCollidable) {
-          if (Math.random() < IDLE_ZOMBIE_SPAWN_CHANCE) {
+          if (this.mapRandom() < IDLE_ZOMBIE_SPAWN_CHANCE) {
             const poolManager = PoolManager.getInstance();
             const position = poolManager.vector2.claim(
               x * getConfig().world.TILE_SIZE,
@@ -833,10 +690,150 @@ export class MapManager implements IMapManager {
     }
   }
 
+  private isOpenWorldMode(): boolean {
+    return (
+      this.getGameManagers().getGameServer().getGameLoop().getGameModeStrategy().getConfig()
+        .modeId === "open_world"
+    );
+  }
+
+  /**
+   * Collects map tiles eligible for open-world fixture zombies (same rules as spawnIdleZombies).
+   */
+  private collectEligibleOpenWorldZombieTiles(): { x: number; y: number }[] {
+    const totalSize = BIOME_SIZE * MAP_SIZE;
+    const centerBiomeX = Math.floor(MAP_SIZE / 2);
+    const centerBiomeY = Math.floor(MAP_SIZE / 2);
+    const campsiteMinX = centerBiomeX * BIOME_SIZE;
+    const campsiteMaxX = (centerBiomeX + 1) * BIOME_SIZE;
+    const campsiteMinY = centerBiomeY * BIOME_SIZE;
+    const campsiteMaxY = (centerBiomeY + 1) * BIOME_SIZE;
+
+    const out: { x: number; y: number }[] = [];
+    for (let y = 0; y < totalSize; y++) {
+      for (let x = 0; x < totalSize; x++) {
+        if (x >= campsiteMinX && x < campsiteMaxX && y >= campsiteMinY && y < campsiteMaxY) {
+          continue;
+        }
+        const groundTile = this.groundLayer[y][x];
+        const isValidGround =
+          groundTile === GROUND_TILE_ID_1 ||
+          groundTile === GROUND_TILE_ID_2 ||
+          groundTile === GROUND_TILE_ID_3 ||
+          groundTile === GROUND_TILE_ID_4;
+        if (!isValidGround || this.collidablesLayer[y][x] !== EMPTY_COLLIDABLE_TILE_ID) {
+          continue;
+        }
+        out.push({ x, y });
+      }
+    }
+    return out;
+  }
+
+  private shuffleTileCoords(tiles: { x: number; y: number }[]): void {
+    for (let i = tiles.length - 1; i > 0; i--) {
+      const j = Math.floor(this.mapRandom() * (i + 1));
+      [tiles[i], tiles[j]] = [tiles[j], tiles[i]];
+    }
+  }
+
+  private pickTilesWithMinChebyshevSeparation(
+    orderedCandidates: { x: number; y: number }[],
+    maxCount: number,
+    minSep: number,
+  ): { x: number; y: number }[] {
+    const picked: { x: number; y: number }[] = [];
+    for (const t of orderedCandidates) {
+      if (picked.length >= maxCount) break;
+      const ok = picked.every(
+        (p) => Math.max(Math.abs(p.x - t.x), Math.abs(p.y - t.y)) >= minSep,
+      );
+      if (ok) picked.push(t);
+    }
+    return picked;
+  }
+
+  private seedOpenWorldZombieSpawnPoints(): void {
+    const world = getConfig().world;
+    const want = world.OPEN_WORLD_ZOMBIE_SPAWN_POINT_COUNT;
+    const minSep = world.OPEN_WORLD_ZOMBIE_SPAWN_MIN_TILE_SEPARATION;
+
+    let candidates = this.collectEligibleOpenWorldZombieTiles();
+    this.shuffleTileCoords(candidates);
+    const chosen = this.pickTilesWithMinChebyshevSeparation(candidates, want, minSep);
+
+    const poolManager = PoolManager.getInstance();
+    const TILE_SIZE = world.TILE_SIZE;
+
+    for (const { x, y } of chosen) {
+      const position = poolManager.vector2.claim(x * TILE_SIZE, y * TILE_SIZE);
+      if (!this.isPositionValidForPlacement(position, true)) {
+        poolManager.vector2.release(position);
+        continue;
+      }
+
+      const zombie = ZombieFactory.createZombie("regular", this.getGameManagers(), {
+        position,
+        addToManager: true,
+        isIdle: true,
+      });
+
+      this.openWorldZombieSpawnPoints.push({
+        tileX: x,
+        tileY: y,
+        activeZombieId: zombie.getId(),
+        respawnAtMs: null,
+      });
+    }
+  }
+
+  public tickOpenWorldZombieSpawnPoints(): void {
+    if (this.openWorldZombieSpawnPoints.length === 0) {
+      return;
+    }
+
+    const world = getConfig().world;
+    const respawnMs = world.OPEN_WORLD_ZOMBIE_RESPAWN_MS;
+    const TILE_SIZE = world.TILE_SIZE;
+    const now = Date.now();
+    const em = this.getEntityManager();
+    const poolManager = PoolManager.getInstance();
+
+    for (const p of this.openWorldZombieSpawnPoints) {
+      if (p.activeZombieId !== null) {
+        const entity = em.getEntityById(p.activeZombieId);
+        if (entity && !entity.isMarkedForRemoval()) {
+          continue;
+        }
+        p.activeZombieId = null;
+        p.respawnAtMs = now + respawnMs;
+        continue;
+      }
+
+      if (p.respawnAtMs === null || now < p.respawnAtMs) {
+        continue;
+      }
+
+      const position = poolManager.vector2.claim(p.tileX * TILE_SIZE, p.tileY * TILE_SIZE);
+      if (!this.isPositionValidForPlacement(position, true)) {
+        poolManager.vector2.release(position);
+        continue;
+      }
+
+      const zombie = ZombieFactory.createZombie("regular", this.getGameManagers(), {
+        position,
+        addToManager: true,
+        isIdle: true,
+      });
+      p.activeZombieId = zombie.getId();
+      p.respawnAtMs = null;
+    }
+  }
+
   private spawnSurvivorsInBiome(biomeX: number, biomeY: number): void {
     // Spawn 1-2 survivors randomly
     const survivorCount =
-      Math.random() < SURVIVOR_SPAWN_PROBABILITY ? SURVIVOR_MIN_COUNT : SURVIVOR_MAX_COUNT;
+      this.mapRandom() < SURVIVOR_SPAWN_PROBABILITY ? SURVIVOR_MIN_COUNT : SURVIVOR_MAX_COUNT;
 
     // Collect all valid spawn positions within this biome
     const validPositions: { x: number; y: number }[] = [];
@@ -871,7 +868,7 @@ export class MapManager implements IMapManager {
       }
 
       // Pick a random position from valid positions
-      const randomIndex = Math.floor(Math.random() * validPositions.length);
+      const randomIndex = Math.floor(this.mapRandom() * validPositions.length);
       const position = validPositions[randomIndex];
       // Remove used position to avoid overlapping survivors
       validPositions.splice(randomIndex, 1);
@@ -985,7 +982,7 @@ export class MapManager implements IMapManager {
       }
 
       // Pick a random position from valid positions
-      const randomIndex = Math.floor(Math.random() * validPositions.length);
+      const randomIndex = Math.floor(this.mapRandom() * validPositions.length);
       const position = validPositions[randomIndex];
 
       entity
@@ -1061,7 +1058,7 @@ export class MapManager implements IMapManager {
     } else {
       // Place forest everywhere else
       const forestBiomes = [FOREST1, FOREST2, FOREST3, FOREST4];
-      biome = forestBiomes[Math.floor(Math.random() * forestBiomes.length)];
+      biome = forestBiomes[Math.floor(this.mapRandom() * forestBiomes.length)];
     }
 
     for (let y = 0; y < BIOME_SIZE; y++) {

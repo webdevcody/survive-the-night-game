@@ -35,7 +35,7 @@ export const COMMAND_DEFINITIONS: CommandDefinition[] = [
   {
     name: "mode",
     description: "Switches the game mode and restarts",
-    usage: "/mode <royale|waves|infection>",
+    usage: "/mode <royale|open|infection>",
     requiresAdmin: true,
     arguments: [{ name: "mode", type: "mode", required: true }],
   },
@@ -54,5 +54,5 @@ export const COMMAND_DEFINITIONS: CommandDefinition[] = [
 ];
 
 // Game modes for autocomplete
-export const GAME_MODES = ["royale", "waves", "infection"] as const;
+export const GAME_MODES = ["royale", "open", "infection"] as const;
 export type GameMode = (typeof GAME_MODES)[number];

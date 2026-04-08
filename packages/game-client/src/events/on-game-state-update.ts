@@ -4,7 +4,6 @@ import { ClientPositionable } from "@/extensions";
 import { addEntity, removeEntity as removeEntityFromState, replaceAllEntities } from "@/state";
 import { BufferReader } from "@shared/util/buffer-serialization";
 import { entityTypeRegistry } from "@shared/util/entity-type-encoding";
-import { WaveState } from "@shared/types/wave";
 import { InitializationContext } from "./types";
 import { Entities } from "@shared/constants";
 import { distance } from "@shared/util/physics";
@@ -40,23 +39,6 @@ const handleGameStateUpdate = (context: InitializationContext, gameStateEvent: G
     context.gameState.serverTimeOffset = clientTime - serverTime;
   }
 
-  // Update game state properties only if they are included in the update
-  // Wave system
-  if (gameStateEvent.getWaveNumber() !== undefined) {
-    context.gameState.waveNumber = gameStateEvent.getWaveNumber()!;
-  }
-  if (gameStateEvent.getWaveState() !== undefined) {
-    const newWaveState = gameStateEvent.getWaveState()!;
-    const oldWaveState = context.previousWaveState;
-
-    // Stop battle music when wave transitions from ACTIVE to PREPARATION
-    if (oldWaveState === WaveState.ACTIVE && newWaveState === WaveState.PREPARATION) {
-      context.gameClient.getSoundManager().stopBattleMusic();
-    }
-
-    context.gameState.waveState = newWaveState;
-    context.setPreviousWaveState(newWaveState);
-  }
   if (gameStateEvent.getPhaseStartTime() !== undefined) {
     context.gameState.phaseStartTime = gameStateEvent.getPhaseStartTime()!;
   }

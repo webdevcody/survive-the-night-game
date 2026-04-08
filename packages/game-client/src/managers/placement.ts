@@ -218,7 +218,7 @@ export class PlacementManager {
     }
 
     // Safely get inventory - check if method exists (player might not be fully initialized)
-    let inventory: InventoryItem[] = [];
+    let inventory: (InventoryItem | null)[] = [];
     if (typeof player.getInventory === "function") {
       inventory = player.getInventory();
     } else {

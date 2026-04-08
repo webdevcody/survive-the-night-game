@@ -1,5 +1,6 @@
 import { ItemState } from "../types/entity";
 import { weaponRegistry, resourceRegistry } from "../entities";
+import { itemRegistry } from "../entities/item-registry";
 
 export type ItemType = string;
 
@@ -44,4 +45,40 @@ export function getWeaponAmmoType(weaponType: ItemType): ItemType | null {
 
   const ammoType = weaponConfig.ammoType;
   return ammoType || null;
+}
+
+/** Server-backed equipment slots (v1: head + main hand) */
+export type EquipmentSlotKey = "head" | "mainHand";
+
+export interface PlayerEquipmentState {
+  head: InventoryItem | null;
+  mainHand: InventoryItem | null;
+}
+
+export function createEmptyEquipment(): PlayerEquipmentState {
+  return { head: null, mainHand: null };
+}
+
+/** Network encoding: 0 = head, 1 = mainHand */
+export function encodeEquipmentSlotKey(slot: EquipmentSlotKey): number {
+  return slot === "head" ? 0 : 1;
+}
+
+export function decodeEquipmentSlotKey(value: number): EquipmentSlotKey | null {
+  if (value === 0) return "head";
+  if (value === 1) return "mainHand";
+  return null;
+}
+
+/**
+ * Whether an item type may be placed in the given equipment slot (used when moving from bag → equip).
+ */
+export function canItemGoInEquipmentSlot(itemType: ItemType, slot: EquipmentSlotKey): boolean {
+  if (slot === "head") {
+    return itemRegistry.get(itemType)?.wearable === true;
+  }
+  if (slot === "mainHand") {
+    return isWeapon(itemType);
+  }
+  return false;
 }

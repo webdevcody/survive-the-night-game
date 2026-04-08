@@ -19,7 +19,7 @@ export abstract class Panel {
    * @param ctx - Canvas rendering context
    * @param gameState - Current game state
    */
-  public abstract render(ctx: CanvasRenderingContext2D, gameState: GameState): void;
+  public abstract render(ctx: CanvasRenderingContext2D, gameState: GameState, ...args: unknown[]): void;
 
   /**
    * Draws a panel background with border

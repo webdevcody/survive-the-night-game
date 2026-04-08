@@ -22,13 +22,16 @@ import { BufferManager } from "@/broadcasting/buffer-manager";
 import { Broadcaster as BroadcastingBroadcaster } from "@/broadcasting/broadcaster";
 import { PlayerJoinedEvent } from "../../../game-shared/src/events/server-sent/events/player-joined-event";
 import { VersionMismatchEvent } from "../../../game-shared/src/events/server-sent/events/version-mismatch-event";
+import { AuthRequiredEvent } from "../../../game-shared/src/events/server-sent/events/auth-required-event";
 import { YourIdEvent } from "../../../game-shared/src/events/server-sent/events/your-id-event";
+import type { GameModeId } from "@shared/events/server-sent/events/game-started-event";
 import { HandlerContext, onConnection, sendFullState } from "@/events/handlers";
 import { socketEventHandlers } from "@/events/handlers/registry";
 import { serializeServerEvent } from "@shared/events/server-sent/server-event-serialization";
 import { SessionValidator } from "@/services/session-validator";
 import { UserSessionCache } from "@/services/user-session-cache";
 import { KillTracker } from "@/services/kill-tracker";
+import { WEBSITE_API_URL, GAME_SERVER_API_KEY } from "@/config/env";
 
 /**
  * Any and all functionality related to sending server side events
@@ -139,6 +142,24 @@ export class ServerSocketManager implements Broadcaster {
         return;
       }
 
+      const tokenStr = gameAuthToken
+        ? Array.isArray(gameAuthToken)
+          ? gameAuthToken[0]
+          : gameAuthToken
+        : undefined;
+
+      const authResult = this.sessionValidator.validateGameAuthToken(tokenStr ?? "");
+      if (!authResult.valid || !authResult.userId) {
+        const authRequiredEvent = new AuthRequiredEvent({
+          message: authResult.error ?? "Authentication required",
+        });
+        this.sendEventToSocket(socket, authRequiredEvent);
+        socket.disconnect(true);
+        return;
+      }
+
+      const userId = authResult.userId;
+
       // Filter bad words and replace with asterisks
       const filteredDisplayName = rawDisplayName ? this.sanitizeText(rawDisplayName) : undefined;
 
@@ -146,42 +167,47 @@ export class ServerSocketManager implements Broadcaster {
       // Each connection gets its own player entity
       this.playerDisplayNames.set(socket.id, filteredDisplayName || "Unknown");
 
-      // Validate game auth token if provided (synchronous - no HTTP call needed)
-      if (gameAuthToken) {
-        const tokenStr = Array.isArray(gameAuthToken)
-          ? gameAuthToken[0]
-          : gameAuthToken;
-        if (tokenStr) {
-          this.validateAndCacheSession(socket.id, tokenStr);
-        }
-      }
+      this.userSessionCache.setUserSession(socket.id, userId, tokenStr!);
+      console.log(`Socket ${socket.id} authenticated as user ${userId}`);
 
-      this.onConnection(socket);
+      void (async () => {
+        const initialExperience = await this.fetchPersistedExperience(userId);
+        await this.onConnection(socket, initialExperience);
+      })().catch((err) => {
+        console.error(`[ServerSocketManager] onConnection failed for socket ${socket.id}:`, err);
+      });
     });
   }
 
   /**
-   * Validate game auth token and cache the user session
-   * This is synchronous - tokens are validated locally using HMAC
+   * Load persisted experience from the website DB before the player entity is created
+   * so the first game state snapshot includes the correct value.
    */
-  private validateAndCacheSession(
-    socketId: string,
-    gameAuthToken: string
-  ): void {
-    const result = this.sessionValidator.validateGameAuthToken(gameAuthToken);
-
-    if (result.valid && result.userId) {
-      this.userSessionCache.setUserSession(
-        socketId,
-        result.userId,
-        gameAuthToken
-      );
-      console.log(`Socket ${socketId} authenticated as user ${result.userId}`);
-    } else {
-      console.log(
-        `Socket ${socketId} token validation failed: ${result.error}`
-      );
+  private async fetchPersistedExperience(userId: string): Promise<number> {
+    if (!GAME_SERVER_API_KEY) {
+      return 0;
     }
+
+    const url = `${WEBSITE_API_URL}/api/game/player-experience?userId=${encodeURIComponent(userId)}`;
+
+    try {
+      const response = await fetch(url, {
+        headers: { "X-API-Key": GAME_SERVER_API_KEY },
+      });
+      if (!response.ok) {
+        console.warn(
+          `[ServerSocketManager] player-experience HTTP ${response.status} for user ${userId}`,
+        );
+        return 0;
+      }
+      const data = (await response.json()) as { experience?: number };
+      if (typeof data.experience === "number" && data.experience >= 0) {
+        return Math.floor(data.experience);
+      }
+    } catch (error) {
+      console.warn(`[ServerSocketManager] fetchPersistedExperience failed for ${userId}:`, error);
+    }
+    return 0;
   }
 
   /**
@@ -206,7 +232,8 @@ export class ServerSocketManager implements Broadcaster {
       sendEventToSocket: (socket: ISocketAdapter, event: GameEvent<any>) =>
         this.sendEventToSocket(socket, event),
       sanitizeText: (text: string) => this.sanitizeText(text),
-      createPlayerForSocket: (socket: ISocketAdapter) => this.createPlayerForSocket(socket),
+      createPlayerForSocket: (socket: ISocketAdapter, initialExperience?: number) =>
+        this.createPlayerForSocket(socket, initialExperience),
       broadcastPlayerJoined: (player: Player) => this.broadcastPlayerJoined(player),
     };
   }
@@ -270,7 +297,7 @@ export class ServerSocketManager implements Broadcaster {
     this.mapManager = mapManager;
   }
 
-  private createPlayerForSocket(socket: ISocketAdapter): Player {
+  private createPlayerForSocket(socket: ISocketAdapter, initialExperience: number = 0): Player {
     const player = new Player(this.getGameManagers());
     player.setDisplayName(this.playerDisplayNames.get(socket.id) ?? "Unknown");
 
@@ -279,6 +306,8 @@ export class ServerSocketManager implements Broadcaster {
     if (savedColor) {
       player.setPlayerColor(savedColor);
     }
+
+    player.serialized.set("experience", Math.max(0, Math.floor(initialExperience)));
 
     // Use the game mode strategy to handle player spawning
     // This allows each mode to determine spawn location (campsite for waves, random for battle royale)
@@ -297,19 +326,16 @@ export class ServerSocketManager implements Broadcaster {
     );
   }
 
-  public recreatePlayersForConnectedSockets(): void {
-    // Clear existing player map
+  public async recreatePlayersForConnectedSockets(): Promise<void> {
     this.players.clear();
 
-    // Get all connected sockets
     const sockets = Array.from(this.io.sockets.sockets.values());
 
-    // Create new players for each connected socket
-    // Note: YOUR_ID is NOT sent here - it must be sent AFTER GAME_STARTED
-    // so clients receive it after they reset their state
-    sockets.forEach((socket) => {
-      this.createPlayerForSocket(socket);
-    });
+    for (const socket of sockets) {
+      const userId = this.userSessionCache.getUserIdBySocket(socket.id);
+      const initialExperience = userId ? await this.fetchPersistedExperience(userId) : 0;
+      this.createPlayerForSocket(socket, initialExperience);
+    }
   }
 
   /**
@@ -319,10 +345,8 @@ export class ServerSocketManager implements Broadcaster {
   public sendInitializationToAllSockets(): void {
     const sockets = Array.from(this.io.sockets.sockets.values());
     const context = this.getHandlerContext();
-    const gameMode = this.gameServer.getGameLoop().getGameModeStrategy().getConfig().modeId as
-      | "waves"
-      | "battle_royale"
-      | "infection";
+    const gameMode = this.gameServer.getGameLoop().getGameModeStrategy().getConfig()
+      .modeId as GameModeId;
 
     sockets.forEach((socket) => {
       const player = this.players.get(socket.id);
@@ -379,12 +403,10 @@ export class ServerSocketManager implements Broadcaster {
     }
   }
 
-  private onConnection(socket: ISocketAdapter): void {
+  private async onConnection(socket: ISocketAdapter, initialExperience: number = 0): Promise<void> {
     const context = this.getHandlerContext();
-    // Set up socket event listeners first
     this.setupSocketListeners(socket);
-    // Then handle the connection
-    onConnection(context, socket);
+    await onConnection(context, socket, initialExperience);
   }
 
   public broadcastEvent(event: GameEvent<any>): void {

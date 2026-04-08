@@ -12,9 +12,14 @@ export const playerConfig = {
   MAX_PLAYER_HEALTH: 10,
 
   /**
-   * Maximum inventory slots
+   * Maximum bag inventory slots (10×4 grid)
    */
-  MAX_INVENTORY_SLOTS: 10,
+  MAX_INVENTORY_SLOTS: 40,
+
+  /**
+   * Hotbar / digit keys 1–0 only address the first row (slots 1–10, 1-based)
+   */
+  MAX_HOTBAR_SLOTS: 10,
 
   /**
    * Maximum distance for interaction with objects (in pixels)

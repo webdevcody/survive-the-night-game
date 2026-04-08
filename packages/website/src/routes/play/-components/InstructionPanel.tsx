@@ -1,15 +1,17 @@
-import { useEffect, useRef } from "react";
+import { type RefObject, useEffect, useRef } from "react";
 import { Button } from "~/components/ui/button";
 
 interface InstructionPanelProps {
   isOpen: boolean;
   onClose: () => void;
+  /** Clicks on this element must not count as "outside" (e.g. the toolbar toggle sits above the panel). */
+  outsideClickIgnoreRef?: RefObject<HTMLElement | null>;
 }
 
 /**
  * Panel displaying game controls and instructions
  */
-export function InstructionPanel({ isOpen, onClose }: InstructionPanelProps) {
+export function InstructionPanel({ isOpen, onClose, outsideClickIgnoreRef }: InstructionPanelProps) {
   const panelRef = useRef<HTMLDivElement>(null);
 
   // Handle ESC key to close
@@ -27,22 +29,30 @@ export function InstructionPanel({ isOpen, onClose }: InstructionPanelProps) {
   // Handle click outside to close
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
-      if (panelRef.current && !panelRef.current.contains(e.target as Node)) {
+      const target = e.target as Node;
+      if (outsideClickIgnoreRef?.current?.contains(target)) {
+        return;
+      }
+      if (panelRef.current && !panelRef.current.contains(target)) {
         onClose();
       }
     };
 
     if (isOpen) {
       // Add a small delay to prevent immediate closing when opening
-      setTimeout(() => {
+      const id = window.setTimeout(() => {
         document.addEventListener("mousedown", handleClickOutside);
       }, 100);
+      return () => {
+        window.clearTimeout(id);
+        document.removeEventListener("mousedown", handleClickOutside);
+      };
     }
 
     return () => {
       document.removeEventListener("mousedown", handleClickOutside);
     };
-  }, [isOpen, onClose]);
+  }, [isOpen, onClose, outsideClickIgnoreRef]);
 
   if (!isOpen) return null;
 

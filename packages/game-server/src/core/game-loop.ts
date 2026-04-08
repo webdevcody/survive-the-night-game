@@ -3,8 +3,7 @@
  *
  * This class handles the main game loop that runs every tick, managing:
  * - Entity updates (movement, AI, physics)
- * - Wave system (preparation phases, wave transitions, zombie spawning)
- * - Game state (wave number, phase timing, game over detection)
+ * - Game state (phase timing for battle royale, game over detection)
  * - Game state broadcasting to clients
  * - Performance tracking
  *
@@ -25,7 +24,6 @@ import {
 } from "../../../game-shared/src/events/server-sent/events/game-state-event";
 import { GameStartedEvent } from "../../../game-shared/src/events/server-sent/events/game-started-event";
 import { GameMessageEvent } from "../../../game-shared/src/events/server-sent/events/game-message-event";
-import { WaveStartEvent } from "../../../game-shared/src/events/server-sent/events/wave-start-event";
 import { GameEvent } from "@shared/events/types";
 import { EntityManager } from "@/managers/entity-manager";
 import { MapManager } from "@/world/map-manager";
@@ -38,30 +36,17 @@ import {
 } from "@/config/config";
 import { getConfig } from "@shared/config";
 import { TickPerformanceTracker } from "@/util/tick-performance-tracker";
-import { WaveState } from "@shared/types/wave";
-import { Survivor } from "@/entities/environment/survivor";
-import { Entities } from "@shared/constants";
 import { EnvironmentalEventManager } from "@/managers/environmental-event-manager";
-import {
-  IGameModeStrategy,
-  WinConditionResult,
-  WavesModeStrategy,
-  BattleRoyaleModeStrategy,
-  InfectionModeStrategy,
-} from "@/game-modes";
+import { IGameModeStrategy, WinConditionResult, createGameModeStrategy } from "@/game-modes";
+import type { GameModeId } from "@shared/events/server-sent/events/game-started-event";
 import { VotableGameMode, VotingState } from "@shared/types/voting";
-import { gameEventBus } from "@/services/game-event-bus";
-import { Player } from "@/entities/players/player";
-
 export class GameLoop {
   private lastUpdateTime: number = performance.now();
   private timer: ReturnType<typeof setInterval> | null = null;
 
-  // Wave system state
-  private waveNumber: number = getConfig().wave.START_WAVE_NUMBER;
-  private waveState: WaveState = WaveState.PREPARATION;
+  /** Phase timer (e.g. battle royale toxic zone countdown) */
   private phaseStartTime: number = Date.now();
-  private phaseDuration: number = getConfig().wave.FIRST_WAVE_DELAY;
+  private phaseDuration: number = 0;
   private totalZombies: number = 0;
   private isGameReady: boolean = false;
   private isGameOver: boolean = false;
@@ -70,13 +55,12 @@ export class GameLoop {
   private isVotingPhase: boolean = false;
   private votingEndTime: number = 0;
   private votes: Map<string, VotableGameMode> = new Map(); // socketId -> vote
-  private voteCounts = { waves: 0, battle_royale: 0, infection: 0 };
+  private voteCounts = { open_world: 0, battle_royale: 0, infection: 0 };
 
-  // Game mode strategy - initialized based on DEFAULT_GAME_MODE config
-  private gameModeStrategy: IGameModeStrategy =
-    DEFAULT_GAME_MODE === "battle_royale"
-      ? new BattleRoyaleModeStrategy()
-      : new WavesModeStrategy();
+  /** True after a full open_world start; used to resume the same map when the server was empty. */
+  private openWorldSessionActive: boolean = false;
+
+  private gameModeStrategy: IGameModeStrategy = createGameModeStrategy(DEFAULT_GAME_MODE);
 
   private tickPerformanceTracker: TickPerformanceTracker;
   private entityManager: EntityManager;
@@ -86,8 +70,6 @@ export class GameLoop {
   private gameManagers: any = null;
 
   private lastBroadcastedState = {
-    waveNumber: -1,
-    waveState: undefined as WaveState | undefined,
     phaseStartTime: -1,
     phaseDuration: -1,
     totalZombies: -1,
@@ -131,14 +113,6 @@ export class GameLoop {
     this.gameModeStrategy = strategy;
   }
 
-  public getWaveNumber(): number {
-    return this.waveNumber;
-  }
-
-  public getWaveState(): WaveState {
-    return this.waveState;
-  }
-
   public getPhaseStartTime(): number {
     return this.phaseStartTime;
   }
@@ -159,6 +133,32 @@ export class GameLoop {
     this.phaseDuration = duration;
   }
 
+  public isOpenWorldSessionActive(): boolean {
+    return this.openWorldSessionActive;
+  }
+
+  /**
+   * First player reconnected after everyone left: keep entities and map, spawn players, re-sync clients.
+   */
+  public async resumeOpenWorldSession(): Promise<void> {
+    this.isGameReady = true;
+    this.isGameOver = false;
+    this.isVotingPhase = false;
+    this.votingEndTime = 0;
+    this.votes.clear();
+    this.voteCounts = { open_world: 0, battle_royale: 0, infection: 0 };
+
+    await this.socketManager.recreatePlayersForConnectedSockets();
+
+    if (this.gameManagers) {
+      this.gameModeStrategy.onGameStart(this.gameManagers);
+    }
+
+    const gameMode = this.gameModeStrategy.getConfig().modeId as GameModeId;
+    this.socketManager.broadcastEvent(new GameStartedEvent(Date.now(), gameMode));
+    this.socketManager.sendInitializationToAllSockets();
+  }
+
   public start(): void {
     this.startGameLoop();
   }
@@ -169,7 +169,9 @@ export class GameLoop {
     }
   }
 
-  public startNewGame(strategy?: IGameModeStrategy): void {
+  public async startNewGame(strategy?: IGameModeStrategy): Promise<void> {
+    this.openWorldSessionActive = false;
+
     // Set strategy if provided (used when switching game modes)
     if (strategy) {
       this.gameModeStrategy = strategy;
@@ -182,13 +184,10 @@ export class GameLoop {
     this.isVotingPhase = false;
     this.votingEndTime = 0;
     this.votes.clear();
-    this.voteCounts = { waves: 0, battle_royale: 0, infection: 0 };
+    this.voteCounts = { open_world: 0, battle_royale: 0, infection: 0 };
 
-    // Initialize wave system (only relevant for modes with waves)
-    this.waveNumber = getConfig().wave.START_WAVE_NUMBER;
-    this.waveState = WaveState.PREPARATION;
     this.phaseStartTime = Date.now();
-    this.phaseDuration = getConfig().wave.FIRST_WAVE_DELAY;
+    this.phaseDuration = 0;
     this.totalZombies = 0;
 
     // Clear all entities first
@@ -202,25 +201,19 @@ export class GameLoop {
     // Generate new map
     this.mapManager.generateMap();
 
-    // Recreate players for all connected sockets
-    this.socketManager.recreatePlayersForConnectedSockets();
+    await this.socketManager.recreatePlayersForConnectedSockets();
 
-    // Notify strategy of game start
     if (this.gameManagers) {
       this.gameModeStrategy.onGameStart(this.gameManagers);
     }
 
-    // Broadcast game started event with game mode
-    // This tells clients to reset their state and wait for initialization
-    const gameMode = this.gameModeStrategy.getConfig().modeId as
-      | "waves"
-      | "battle_royale"
-      | "infection";
+    const gameMode = this.gameModeStrategy.getConfig().modeId as GameModeId;
     this.socketManager.broadcastEvent(new GameStartedEvent(Date.now(), gameMode));
-
-    // Send initialization data (YOUR_ID + full state) to all sockets
-    // This MUST happen AFTER GAME_STARTED so clients receive it after resetting
     this.socketManager.sendInitializationToAllSockets();
+
+    if (gameMode === "open_world") {
+      this.openWorldSessionActive = true;
+    }
   }
 
   public setIsGameOver(isGameOver: boolean): void {
@@ -244,7 +237,7 @@ export class GameLoop {
     this.isVotingPhase = true;
     this.votingEndTime = Date.now() + getConfig().voting.VOTING_DURATION;
     this.votes.clear();
-    this.voteCounts = { waves: 0, battle_royale: 0, infection: 0 };
+    this.voteCounts = { open_world: 0, battle_royale: 0, infection: 0 };
   }
 
   public registerVote(socketId: string, playerId: number, mode: VotableGameMode): void {
@@ -269,7 +262,7 @@ export class GameLoop {
   }
 
   private getWinningMode(): VotableGameMode {
-    const validModes: VotableGameMode[] = ["waves", "battle_royale", "infection"];
+    const validModes: VotableGameMode[] = ["open_world", "battle_royale", "infection"];
     let maxVotes = -1;
     let winners: VotableGameMode[] = [];
 
@@ -301,16 +294,9 @@ export class GameLoop {
     const winningMode = this.getWinningMode();
     this.isVotingPhase = false;
 
-    let strategy: IGameModeStrategy;
-    if (winningMode === "battle_royale") {
-      strategy = new BattleRoyaleModeStrategy();
-    } else if (winningMode === "infection") {
-      strategy = new InfectionModeStrategy();
-    } else {
-      strategy = new WavesModeStrategy();
-    }
-
-    this.startNewGame(strategy);
+    void this.startNewGame(createGameModeStrategy(winningMode as GameModeId)).catch((err) => {
+      console.error("[GameLoop] startNewGame after voting failed:", err);
+    });
   }
 
   public getVotingState(): VotingState | null {
@@ -329,103 +315,6 @@ export class GameLoop {
       this.update();
       // console.profileEnd();
     }, 1000 / TICK_RATE);
-  }
-
-  private onPreparationStart(): void {
-    // Merchant shop items are now static and don't need to be reset
-  }
-
-  private onWaveStart(): void {
-    // Remove all unrescued survivors at wave start
-    const survivors = this.entityManager.getEntitiesByType(Entities.SURVIVOR);
-    let removedCount = 0;
-    for (const survivor of survivors) {
-      if (survivor instanceof Survivor && !survivor.getIsRescued()) {
-        this.entityManager.removeEntity(survivor.getId());
-        removedCount++;
-      }
-    }
-
-    // Spawn crate on even waves (2, 4, 6, etc.) at a random biome
-    if (this.waveNumber % 2 === 0) {
-      const crateSpawned = this.mapManager.spawnCrateInRandomBiome();
-      if (crateSpawned) {
-        this.socketManager.broadcastEvent(
-          new GameMessageEvent({
-            message: `Supply crate dropped at a random location!`,
-            color: "green",
-          }),
-        );
-      }
-    }
-
-    this.mapManager.spawnZombies(this.waveNumber);
-
-    // Notify environmental event manager of wave start
-    if (this.environmentalEventManager) {
-      this.environmentalEventManager.onWaveStart();
-    }
-
-    // Broadcast wave start message
-    this.socketManager.broadcastEvent(
-      new GameMessageEvent({
-        message: `Wave ${this.waveNumber} incoming! Get back to base!`,
-        color: "red",
-      }),
-    );
-
-    // Broadcast wave start event for sound
-    this.socketManager.broadcastEvent(
-      new WaveStartEvent({
-        waveNumber: this.waveNumber,
-      }),
-    );
-  }
-
-  private onWaveComplete(): void {
-    // Broadcast wave complete message
-    this.socketManager.broadcastEvent(
-      new GameMessageEvent({
-        message: `You survived wave ${this.waveNumber}! Start building defenses!`,
-        color: "green",
-      }),
-    );
-
-    // Emit wave completed event for stats tracking
-    // Get all surviving (non-dead) player entity IDs
-    const survivingPlayerIds = this.entityManager
-      .getPlayerEntities()
-      .filter((entity) => {
-        if (entity instanceof Player) {
-          return !entity.isDead();
-        }
-        return false;
-      })
-      .map((entity) => entity.getId());
-
-    gameEventBus.emitWaveCompleted({
-      waveNumber: this.waveNumber,
-      survivingPlayerIds,
-      timestamp: Date.now(),
-    });
-
-    // Spawn a survivor in a random biome after wave ends
-    const survivorSpawned = this.mapManager.spawnSurvivorInRandomBiome();
-    if (survivorSpawned) {
-      this.socketManager.broadcastEvent(
-        new GameMessageEvent({
-          message: "A survivor signaled for help, save them!",
-          color: "yellow",
-        }),
-      );
-    }
-
-    // Check for environmental events
-    if (this.environmentalEventManager) {
-      this.environmentalEventManager.onWaveComplete(this.waveNumber);
-    }
-
-    this.waveNumber++;
   }
 
   private update(): void {
@@ -454,19 +343,9 @@ export class GameLoop {
     this.updateEntities(deltaTime);
     endUpdateEntities();
 
-    // Track handleWaveSystem
-    const endHandleWaveSystem = this.tickPerformanceTracker.startMethod("handleWaveSystem");
-    this.handleWaveSystem(deltaTime);
-    endHandleWaveSystem();
-
     // Update game mode strategy (for mode-specific logic like BR toxic zones)
     if (this.gameManagers) {
       this.gameModeStrategy.update(deltaTime, this.gameManagers);
-    }
-
-    // Track environmental events
-    if (this.environmentalEventManager) {
-      this.environmentalEventManager.update(deltaTime);
     }
 
     // Track handleIfGameOver
@@ -499,54 +378,6 @@ export class GameLoop {
     this.lastUpdateTime = currentTime;
 
     // TODO: print all the performance stats for each method and total server tick time averages.
-  }
-
-  private handleWaveSystem(deltaTime: number) {
-    // Skip wave system if not enabled by the current game mode
-    if (!this.gameModeStrategy.getConfig().hasWaveSystem) {
-      return;
-    }
-
-    const currentTime = Date.now();
-    const elapsedTime = (currentTime - this.phaseStartTime) / 1000;
-
-    switch (this.waveState) {
-      case WaveState.PREPARATION:
-        // Check if preparation time is up
-        if (elapsedTime >= this.phaseDuration) {
-          if (getConfig().wave.AUTO_START_WAVES) {
-            // Automatically start wave
-            this.waveState = WaveState.ACTIVE;
-            this.phaseStartTime = currentTime;
-            this.phaseDuration = getConfig().wave.WAVE_DURATION;
-            this.onWaveStart();
-          }
-        }
-        break;
-
-      case WaveState.ACTIVE:
-        // Check if wave duration is up
-        if (elapsedTime >= this.phaseDuration) {
-          // Wave time expired, transition directly to preparation
-          this.onWaveComplete();
-          this.waveState = WaveState.PREPARATION;
-          this.phaseStartTime = currentTime;
-          this.phaseDuration = getConfig().wave.PREPARATION_DURATION;
-          this.onPreparationStart();
-        }
-        break;
-
-      case WaveState.COMPLETED:
-        // This state should not be reached, but handle it just in case
-        this.waveState = WaveState.PREPARATION;
-        this.phaseStartTime = currentTime;
-        this.phaseDuration = getConfig().wave.PREPARATION_DURATION;
-        this.onPreparationStart();
-        break;
-
-      default:
-        break;
-    }
   }
 
   private handleIfGameOver(): void {
@@ -582,9 +413,10 @@ export class GameLoop {
         this.startVotingPhase();
       }, getConfig().voting.GAME_OVER_DISPLAY_DURATION);
     } else {
-      // Game modes disabled - restart with waves mode after 5 seconds
       setTimeout(() => {
-        this.startNewGame(new WavesModeStrategy());
+        void this.startNewGame(createGameModeStrategy(DEFAULT_GAME_MODE)).catch((err) => {
+          console.error("[GameLoop] startNewGame after game over failed:", err);
+        });
       }, 5000);
     }
   }
@@ -612,8 +444,6 @@ export class GameLoop {
   private getCurrentGameState(): Record<string, any> {
     const state: Record<string, any> = {
       timestamp: Date.now(),
-      waveNumber: this.waveNumber,
-      waveState: this.waveState,
       phaseStartTime: this.phaseStartTime,
       phaseDuration: this.phaseDuration,
       totalZombies: this.totalZombies,

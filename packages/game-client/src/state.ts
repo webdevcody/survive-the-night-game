@@ -1,5 +1,4 @@
 import { ClientEntityBase } from "@/extensions/client-entity";
-import { WaveState } from "@shared/types/wave";
 import { EntityType } from "@shared/types/entity";
 import { GameModeId } from "@shared/events/server-sent/events/game-started-event";
 import { VotingState } from "@shared/types/voting";
@@ -16,9 +15,6 @@ export type GameState = {
   entitiesByType: Map<EntityType, ClientEntityBase[]>;
   // Game mode
   gameMode: GameModeId;
-  // Wave system
-  waveNumber: number;
-  waveState: WaveState;
   phaseStartTime: number;
   phaseDuration: number;
   totalZombies?: number;

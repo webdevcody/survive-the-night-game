@@ -89,6 +89,7 @@ export class Player extends Entity {
         skin: SKIN_TYPES.DEFAULT,
         playerColor: PLAYER_COLORS.NONE,
         kills: 0,
+        experience: 0,
         ping: 0,
         displayName: "",
         stamina: getConfig().player.MAX_STAMINA,
@@ -111,6 +112,7 @@ export class Player extends Entity {
       () => this.markEntityDirty(),
       {
         // Define serialization metadata for number fields
+        experience: { numberType: "uint32" },
         ping: { numberType: "uint16" },
         inputFacing: { numberType: "uint8" },
         inputInventoryItem: { numberType: "uint8" },
@@ -317,7 +319,7 @@ export class Player extends Entity {
     return positionable.getPosition();
   }
 
-  getInventory(): InventoryItem[] {
+  getInventory(): (InventoryItem | null)[] {
     return this.getExt(Inventory).getItems();
   }
 
@@ -326,7 +328,7 @@ export class Player extends Entity {
   }
 
   getActiveWeapon(): InventoryItem | null {
-    return this.getExt(Inventory).getActiveWeapon(this.activeItem);
+    return this.getExt(Inventory).resolveActiveWeapon(this.activeItem);
   }
 
   setPosition(position: Vector2) {

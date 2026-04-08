@@ -18,7 +18,7 @@ export const balanceConfig = {
   MAP_ITEM_SPAWN_MULTIPLIER: 0.7,
   /**
    * Item spawn multiplier specifically for Battle Royale mode
-   * Higher than waves mode to ensure players find adequate loot
+   * Higher than default open world to ensure players find adequate loot
    */
   BATTLE_ROYALE_ITEM_SPAWN_MULTIPLIER: 1.2,
   /**

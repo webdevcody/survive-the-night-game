@@ -35,22 +35,13 @@ export class ToxicGasEventStrategy implements IEnvironmentalEventStrategy {
     this.mapManager = mapManager;
   }
 
-  public onWaveComplete(completedWaveNumber: number): void {
-    // End current event if active
+  public onPeriodicRoll(completedCycleIndex: number): void {
     if (this.active) {
       this.end();
     }
 
-    // Check if we should trigger toxic gas event
-    if (this.shouldTriggerToxicGas(completedWaveNumber)) {
+    if (this.shouldTriggerToxicGas(completedCycleIndex)) {
       this.start();
-    }
-  }
-
-  public onWaveStart(): void {
-    // End toxic gas event when wave starts
-    if (this.active) {
-      this.end();
     }
   }
 
@@ -103,9 +94,9 @@ export class ToxicGasEventStrategy implements IEnvironmentalEventStrategy {
     this.occupiedTiles.clear();
   }
 
-  private shouldTriggerToxicGas(completedWaveNumber: number): boolean {
+  private shouldTriggerToxicGas(completedCycleIndex: number): boolean {
     const config = environmentalEventsConfig.TOXIC_GAS;
-    if (completedWaveNumber + 1 < config.MIN_WAVE) {
+    if (completedCycleIndex + 1 < config.MIN_CYCLE) {
       return false;
     }
     return Math.random() < config.TRIGGER_CHANCE;

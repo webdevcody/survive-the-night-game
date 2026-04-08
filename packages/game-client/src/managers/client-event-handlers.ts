@@ -90,6 +90,7 @@ export class ClientEventHandlers {
 
     const hud = this.gameClient.getHud();
     const isFullscreenMapOpen = hud?.isFullscreenMapOpen() ?? false;
+    const isInventoryOpen = hud?.isInventoryScreenOpen() ?? false;
 
     // Update inventory bar hover state
     if (hud) {
@@ -97,8 +98,8 @@ export class ClientEventHandlers {
       hud.handleMouseMove(x, y, canvas.width, canvas.height);
     }
 
-    // Block aiming when fullscreen map is open
-    if (!isFullscreenMapOpen) {
+    // Block aiming when fullscreen map or inventory screen is open
+    if (!isFullscreenMapOpen && !isInventoryOpen) {
       // Access inputManager through private method - will need to expose getter
       const inputManager = (this.gameClient as any).inputManager;
       inputManager.updateMousePosition(x, y);
@@ -151,8 +152,8 @@ export class ClientEventHandlers {
       return;
     }
 
-    // Block weapon firing when fullscreen map is open
-    if (isFullscreenMapOpen) {
+    // Block weapon firing when fullscreen map is open or inventory screen is open
+    if (isFullscreenMapOpen || (hud && hud.isInventoryScreenOpen())) {
       return;
     }
 
@@ -266,6 +267,11 @@ export class ClientEventHandlers {
       return;
     }
 
+    if (hud?.isInventoryScreenOpen()) {
+      this.scrollAccumulator = 0;
+      return;
+    }
+
     // Accumulate scroll delta to handle trackpad sensitivity
     this.scrollAccumulator += e.deltaY;
 
@@ -277,7 +283,7 @@ export class ClientEventHandlers {
 
     // Get current slot and max slots
     const currentSlot = inputManager.getCurrentInventorySlot();
-    const maxSlots = getConfig().player.MAX_INVENTORY_SLOTS;
+    const maxSlots = getConfig().player.MAX_HOTBAR_SLOTS;
 
     // Determine direction
     const scrollDelta = this.scrollAccumulator > 0 ? 1 : -1;

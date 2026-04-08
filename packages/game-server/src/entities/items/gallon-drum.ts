@@ -27,7 +27,7 @@ export class GallonDrum extends Entity {
       new Interactive(this)
         .onInteract(this.onLooted.bind(this))
         .setDisplayName("search")
-        .setAutoPickupEnabled(true)
+        .setAutoPickupEnabled(false)
     );
   }
 

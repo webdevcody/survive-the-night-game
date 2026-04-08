@@ -10,7 +10,9 @@ export class RestartCommand extends BaseCommand {
 
     const currentMode = gameLoop.getGameModeStrategy().getConfig().modeId;
 
-    gameLoop.startNewGame();
+    void gameLoop.startNewGame().catch((err) => {
+      console.error("[RestartCommand] startNewGame failed:", err);
+    });
 
     return "Starting a fresh new game...";
   }

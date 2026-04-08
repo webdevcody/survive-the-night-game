@@ -14,6 +14,7 @@ import { DropItemEvent } from "./events/drop-item";
 import { ConsumeItemEvent } from "./events/consume-item";
 import { SelectInventorySlotEvent } from "./events/select-inventory-slot";
 import { SwapInventoryItemsEvent } from "./events/swap-inventory-items";
+import { SwapBagAndEquipmentEvent } from "./events/swap-bag-and-equipment";
 import { InteractEvent } from "./events/interact";
 import { ChangePlayerColorEvent } from "./events/change-player-color";
 import { SpawnZombieEvent } from "./events/spawn-zombie";
@@ -47,6 +48,7 @@ const eventRegistry: Record<string, IBufferWriter> = {
   [ClientSentEvents.CONSUME_ITEM]: ConsumeItemEvent,
   [ClientSentEvents.SELECT_INVENTORY_SLOT]: SelectInventorySlotEvent,
   [ClientSentEvents.SWAP_INVENTORY_ITEMS]: SwapInventoryItemsEvent,
+  [ClientSentEvents.SWAP_BAG_AND_EQUIPMENT]: SwapBagAndEquipmentEvent,
   [ClientSentEvents.INTERACT]: InteractEvent,
   [ClientSentEvents.CHANGE_PLAYER_COLOR]: ChangePlayerColorEvent,
   [ClientSentEvents.SPAWN_ZOMBIE]: SpawnZombieEvent,

@@ -12,7 +12,6 @@
  */
 
 import { metaConfig, type MetaConfig } from "./meta-config";
-import { waveConfig, type WaveConfig } from "./wave-config";
 import { worldConfig, type WorldConfig } from "./world-config";
 import { playerConfig, type PlayerConfig } from "./player-config";
 import { combatConfig, type CombatConfig } from "./combat-config";
@@ -38,7 +37,6 @@ import { aiConfig, type AiConfig, aiThreatWeights, type AiThreatWeights, getAiWe
  */
 export interface GameConfig {
   meta: MetaConfig;
-  wave: WaveConfig;
   world: WorldConfig;
   player: PlayerConfig;
   combat: CombatConfig;
@@ -66,7 +64,6 @@ export interface GameConfig {
  */
 const defaultConfig: GameConfig = {
   meta: metaConfig,
-  wave: waveConfig,
   world: worldConfig,
   player: playerConfig,
   combat: combatConfig,
@@ -131,7 +128,6 @@ export function getConfig(): GameConfig {
  */
 export {
   metaConfig,
-  waveConfig,
   worldConfig,
   playerConfig,
   combatConfig,
@@ -158,7 +154,6 @@ export {
  */
 export type {
   MetaConfig,
-  WaveConfig,
   WorldConfig,
   PlayerConfig,
   CombatConfig,

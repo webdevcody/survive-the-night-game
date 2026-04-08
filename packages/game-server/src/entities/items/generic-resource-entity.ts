@@ -29,7 +29,7 @@ export class GenericResourceEntity extends Entity {
       new Interactive(this)
         .onInteract(this.interact.bind(this))
         .setDisplayName(displayName)
-        .setAutoPickupEnabled(true)
+        .setAutoPickupEnabled(false)
     );
   }
 

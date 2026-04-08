@@ -76,8 +76,6 @@ export async function getLeaderboardStats(limit: number = 100): Promise<
     playerName: string;
     playerImage: string | null;
     zombieKills: number;
-    wavesCompleted: number;
-    maxWave: number;
   }>
 > {
   const results = await database
@@ -85,12 +83,10 @@ export async function getLeaderboardStats(limit: number = 100): Promise<
       playerName: user.displayName,
       playerImage: user.image,
       zombieKills: userStats.zombieKills,
-      wavesCompleted: userStats.wavesCompleted,
-      maxWave: userStats.maxWave,
     })
     .from(userStats)
     .innerJoin(user, eq(userStats.userId, user.id))
-    .orderBy(sql`${userStats.maxWave} DESC`)
+    .orderBy(sql`${userStats.zombieKills} DESC`)
     .limit(limit);
 
   return results.map((row, index) => ({
@@ -98,39 +94,58 @@ export async function getLeaderboardStats(limit: number = 100): Promise<
     playerName: row.playerName,
     playerImage: row.playerImage,
     zombieKills: row.zombieKills,
-    wavesCompleted: row.wavesCompleted,
-    maxWave: row.maxWave,
   }));
 }
 
 /**
- * Update player stats (kills, waves) in a single operation
- * Uses upsert pattern with conditional max_wave update
+ * Add experience points for a user (e.g. per zombie kill from game server).
+ */
+export async function addExperience(userId: string, delta: number): Promise<UserStats> {
+  const safeDelta = Math.max(0, Math.floor(delta));
+  if (safeDelta === 0) {
+    return getOrCreateUserStats(userId);
+  }
+
+  const [result] = await database
+    .insert(userStats)
+    .values({
+      id: randomUUID(),
+      userId,
+      zombieKills: 0,
+      experience: safeDelta,
+    })
+    .onConflictDoUpdate({
+      target: userStats.userId,
+      set: {
+        experience: sql`${userStats.experience} + ${safeDelta}`,
+        updatedAt: new Date(),
+      },
+    })
+    .returning();
+
+  return result;
+}
+
+/**
+ * Update player stats (kills) in a single operation
  */
 export async function updatePlayerStats(
   userId: string,
   stats: {
     zombieKills: number;
-    wavesCompleted: number;
-    maxWave: number;
   },
 ): Promise<UserStats> {
-  // Use upsert pattern - insert if not exists, update if exists
   const [result] = await database
     .insert(userStats)
     .values({
       id: randomUUID(),
       userId,
       zombieKills: stats.zombieKills,
-      wavesCompleted: stats.wavesCompleted,
-      maxWave: stats.maxWave,
     })
     .onConflictDoUpdate({
       target: userStats.userId,
       set: {
         zombieKills: sql`${userStats.zombieKills} + ${stats.zombieKills}`,
-        wavesCompleted: sql`${userStats.wavesCompleted} + ${stats.wavesCompleted}`,
-        maxWave: sql`GREATEST(${userStats.maxWave}, ${stats.maxWave})`,
         updatedAt: new Date(),
       },
     })

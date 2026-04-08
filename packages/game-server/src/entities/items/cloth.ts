@@ -21,7 +21,7 @@ export class Cloth extends Entity {
       new Interactive(this)
         .onInteract(this.interact.bind(this))
         .setDisplayName("cloth")
-        .setAutoPickupEnabled(true)
+        .setAutoPickupEnabled(false)
     );
   }
 

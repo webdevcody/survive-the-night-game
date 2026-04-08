@@ -81,7 +81,7 @@ export class Car extends Entity {
 
     // Only spawn zombies in wave mode - skip in infection mode
     const gameMode = this.getGameManagers().getGameServer().getGameLoop().getGameModeStrategy().getConfig().modeId;
-    if (gameMode !== "infection") {
+    if (gameMode !== "infection" && gameMode !== "open_world") {
       // Spawn 200 big zombies around the campsite
       this.getGameManagers().getMapManager().spawnZombiesAroundCampsite("big", 200);
       this.getGameManagers().getMapManager().spawnZombiesAroundCampsite("bat", 100);

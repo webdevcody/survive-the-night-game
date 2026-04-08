@@ -31,7 +31,8 @@ export const getGameAuthToken = createServerFn({ method: "GET" }).handler(
     const user = await findUserById(userId);
     const displayName = user?.displayName || user?.name || "Survivor";
 
-    // Use GAME_SERVER_API_KEY as the signing secret
+    // Use GAME_SERVER_API_KEY as the signing secret (same as game-server SessionValidator).
+    // Read process.env here (not a cached config object) so it respects env merged in vite.config.ts.
     const secret = process.env.GAME_SERVER_API_KEY;
     if (!secret) {
       console.warn("GAME_SERVER_API_KEY not set - game auth tokens disabled");

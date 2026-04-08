@@ -1,5 +1,4 @@
 import { IEntity } from "@/entities/types";
-import { WaveState } from "@shared/types/wave";
 import { ENABLE_PERFORMANCE_MONITORING } from "@/config/config";
 
 export interface DirtyEntityInfo {
@@ -15,9 +14,6 @@ export class EntityStateTracker {
   private dirtyEntities: Set<IEntity> = new Set();
   private dirtyEntityInfo: Map<number, DirtyEntityInfo> = new Map();
   private previousGameState: {
-    // Wave system
-    waveNumber?: number;
-    waveState?: WaveState;
     phaseStartTime?: number;
     phaseDuration?: number;
   } = {};
@@ -102,9 +98,6 @@ export class EntityStateTracker {
   }
 
   public trackGameState(gameState: {
-    // Wave system
-    waveNumber?: number;
-    waveState?: WaveState;
     phaseStartTime?: number;
     phaseDuration?: number;
   }): void {
@@ -112,9 +105,6 @@ export class EntityStateTracker {
   }
 
   public getChangedGameStateProperties(currentGameState: {
-    // Wave system
-    waveNumber?: number;
-    waveState?: WaveState;
     phaseStartTime?: number;
     phaseDuration?: number;
   }): Partial<typeof currentGameState> {

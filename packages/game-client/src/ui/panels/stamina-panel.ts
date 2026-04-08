@@ -1,25 +1,14 @@
 import { GameState } from "@/state";
 import { getPlayer } from "@/util/get-player";
-import { getConfig } from "@shared/config";
 import { Panel, PanelSettings } from "./panel";
 import { calculateHudScale } from "@/util/hud-scale";
 import { ClientInfiniteRun } from "@/extensions/infinite-run";
+import type { MinimapHudLayout } from "@/ui/minimap-hud-group-layout";
+import { renderLiquidResourceOrb } from "@/util/liquid-resource-orb";
 
 interface StaminaPanelSettings extends PanelSettings {
-  marginBottom: number;
-  width: number;
-  height: number;
-  iconSize: number;
-  iconGap: number;
-  font: string;
-  barBackgroundColor: string;
+  fontPx: number;
   barColor: string;
-  inventorySettings: {
-    screenMarginBottom: number;
-    padding: { left: number; right: number; top: number; bottom: number };
-    slotsGap: number;
-    slotSize: number;
-  };
 }
 
 export class StaminaPanel extends Panel {
@@ -30,105 +19,44 @@ export class StaminaPanel extends Panel {
     this.staminaSettings = settings;
   }
 
-  public render(ctx: CanvasRenderingContext2D, gameState: GameState): void {
+  public render(ctx: CanvasRenderingContext2D, gameState: GameState, layout: MinimapHudLayout | null): void {
     const player = getPlayer(gameState);
-    if (!player) return;
+    if (!player || !layout) return;
 
     const { width: canvasWidth, height: canvasHeight } = ctx.canvas;
     const hudScale = calculateHudScale(canvasWidth, canvasHeight);
-    const settings = this.staminaSettings.inventorySettings;
-    const slotsNumber = getConfig().player.MAX_INVENTORY_SLOTS;
 
     this.resetTransform(ctx);
 
-    // Check if inventory is displayed (not a zombie player)
-    const isZombiePlayer = player.isZombiePlayer?.() ?? false;
-    const inventoryDisplayed = !isZombiePlayer;
-
-    // Scale stamina panel dimensions
-    const scaledBarWidth = this.staminaSettings.width * hudScale;
-    const scaledBarHeight = this.staminaSettings.height * hudScale;
-    const scaledIconSize = this.staminaSettings.iconSize * hudScale;
-    const scaledIconGap = this.staminaSettings.iconGap * hudScale;
-    const scaledMarginBottom = this.staminaSettings.marginBottom * hudScale;
-    const scaledPanelPadding = this.settings.padding * hudScale;
-
-    // Calculate container width including icon
-    const barWidth = scaledBarWidth + scaledPanelPadding * 2;
-    const containerWidth = scaledIconSize + scaledIconGap + barWidth;
-    const containerHeight = Math.max(
-      scaledBarHeight + scaledPanelPadding * 2,
-      scaledIconSize + scaledPanelPadding * 2
-    );
-
-    let staminaX: number;
-    let staminaY: number;
-
-    if (inventoryDisplayed) {
-      // Calculate inventory bar position using scaled values (same as inventory-bar.ts)
-      const scaledSlotSize = settings.slotSize * hudScale;
-      const scaledSlotsGap = settings.slotsGap * hudScale;
-      const scaledPadding = {
-        left: settings.padding.left * hudScale,
-        right: settings.padding.right * hudScale,
-        top: settings.padding.top * hudScale,
-        bottom: settings.padding.bottom * hudScale,
-      };
-      const scaledScreenMarginBottom = settings.screenMarginBottom * hudScale;
-
-      const hotbarWidth =
-        slotsNumber * scaledSlotSize +
-        (slotsNumber - 1) * scaledSlotsGap +
-        scaledPadding.left +
-        scaledPadding.right;
-      const hotbarHeight = scaledSlotSize + scaledPadding.top + scaledPadding.bottom;
-      const hotbarX = canvasWidth / 2 - hotbarWidth / 2;
-      const hotbarY = canvasHeight - hotbarHeight - scaledScreenMarginBottom;
-
-      // Position stamina bar above the inventory bar, aligned to the right
-      staminaX = hotbarX + hotbarWidth - containerWidth;
-      staminaY = hotbarY - containerHeight - scaledMarginBottom;
-    } else {
-      // Position stamina bar at bottom right of center (zombie mode - side by side with hearts)
-      const scaledScreenMarginBottom = settings.screenMarginBottom * hudScale;
-      // Position to the right of center with a small gap
-      const gap = 8 * hudScale;
-      staminaX = canvasWidth / 2 + gap;
-      staminaY = canvasHeight - scaledScreenMarginBottom - containerHeight;
-    }
-
-    // Draw background with border
-    this.drawPanelBackground(ctx, staminaX, staminaY, containerWidth, containerHeight);
-
-    // Draw run icon with scaled font
-    const baseFontSize = parseInt(this.staminaSettings.font);
-    const scaledFontSize = baseFontSize * hudScale;
-    ctx.font = `${scaledFontSize}px Arial`;
-    ctx.textBaseline = "middle";
-    ctx.fillStyle = "white";
-    const iconX = staminaX + scaledPanelPadding;
-    const iconY = staminaY + containerHeight / 2;
-    ctx.fillText("🏃", iconX, iconY);
-
-    // Draw stamina bar background
-    const barContainerX = staminaX + scaledIconSize + scaledIconGap;
-    const barX = barContainerX + scaledPanelPadding;
-    const barY = staminaY + scaledPanelPadding;
-    ctx.fillStyle = this.staminaSettings.barBackgroundColor;
-    ctx.fillRect(barX, barY, scaledBarWidth, scaledBarHeight);
-
-    // Draw stamina bar fill
     const currentStamina = player.getStamina();
     const maxStamina = player.getMaxStamina();
-    const staminaPercent = currentStamina / maxStamina;
-    const fillWidth = scaledBarWidth * staminaPercent;
-
-    // Check if infinite run extension is active (blue bar)
+    const fraction = maxStamina > 0 ? currentStamina / maxStamina : 0;
     const hasInfiniteRun = player.hasExt(ClientInfiniteRun);
 
-    // Use blue color if infinite run is active, otherwise use default color
-    ctx.fillStyle = hasInfiniteRun ? "rgba(100, 150, 255, 0.9)" : this.staminaSettings.barColor;
-    ctx.fillRect(barX, barY, fillWidth, scaledBarHeight);
+    const fillColor = hasInfiniteRun
+      ? "rgba(100, 150, 255, 0.95)"
+      : this.staminaSettings.barColor;
+    const emptyColor = "rgba(30, 28, 12, 0.92)";
+    const borderColor = hasInfiniteRun ? "rgba(150, 190, 255, 0.95)" : "rgba(220, 200, 80, 0.9)";
+
+    const { cx, cy, r } = layout.staminaOrb;
+    const scaledFont = Math.max(10, Math.round(this.staminaSettings.fontPx * hudScale));
+
+    const curLabel = Number.isInteger(currentStamina) ? `${currentStamina}` : currentStamina.toFixed(0);
+    const maxLabel = Number.isInteger(maxStamina) ? `${maxStamina}` : maxStamina.toFixed(0);
+
+    renderLiquidResourceOrb(ctx, {
+      cx,
+      cy,
+      r,
+      fillFraction: fraction,
+      fillColor,
+      emptyColor,
+      borderColor,
+      borderWidth: Math.max(2, Math.round(3 * hudScale)),
+      label: `${curLabel}/${maxLabel}`,
+      font: `bold ${scaledFont}px Arial`,
+    });
 
     this.restoreContext(ctx);
   }

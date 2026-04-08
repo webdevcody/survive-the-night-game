@@ -1,18 +1,17 @@
 import { WEBSITE_API_URL, GAME_SERVER_API_KEY } from "@/config/env";
-import { gameEventBus, ZombieKilledEventData, WaveCompletedEventData } from "./game-event-bus";
+import { gameEventBus, ZombieKilledEventData } from "./game-event-bus";
 import { UserSessionCache } from "./user-session-cache";
 import { Player } from "@/entities/players/player";
+import { XP_PER_ZOMBIE_KILL } from "@shared/util/experience-level";
 
 const BATCH_INTERVAL_MS = 15000; // Send stats every 15 seconds
 
 interface PendingStats {
   zombieKills: number;
-  wavesCompleted: number;
-  maxWave: number;
 }
 
 /**
- * Stats tracker service that listens for game events (zombie kills, waves)
+ * Stats tracker service that listens for game events (zombie kills)
  * and batches them to send to the website API periodically.
  *
  * Batching reduces HTTP requests from potentially hundreds per second
@@ -52,14 +51,11 @@ export class KillTracker {
     this.playersMap = playersMap;
     this.isInitialized = true;
 
-    // Subscribe to game events
     gameEventBus.onZombieKilled(this.handleZombieKilled.bind(this));
-    gameEventBus.onWaveCompleted(this.handleWaveCompleted.bind(this));
 
-    // Start the batch send interval
     this.startBatchInterval();
 
-    console.log("KillTracker initialized with 15s batching (kills + waves)");
+    console.log("KillTracker initialized with 15s batching (kills)");
   }
 
   /**
@@ -83,7 +79,6 @@ export class KillTracker {
       clearInterval(this.batchInterval);
       this.batchInterval = null;
     }
-    // Attempt to flush any remaining stats
     this.flushPendingStats();
   }
 
@@ -93,7 +88,7 @@ export class KillTracker {
   private getOrCreatePendingStats(userId: string): PendingStats {
     let stats = this.pendingStats.get(userId);
     if (!stats) {
-      stats = { zombieKills: 0, wavesCompleted: 0, maxWave: 0 };
+      stats = { zombieKills: 0 };
       this.pendingStats.set(userId, stats);
     }
     return stats;
@@ -108,82 +103,87 @@ export class KillTracker {
       return;
     }
 
-    // Find the socket ID for the killer entity
+    const killer = this.findPlayerByEntityId(data.killerEntityId);
+    if (killer && !killer.serialized.get("isAI")) {
+      const cur = killer.serialized.get("experience") ?? 0;
+      killer.serialized.set("experience", cur + XP_PER_ZOMBIE_KILL);
+    }
+
     const socketId = this.findSocketIdByEntityId(data.killerEntityId);
     if (!socketId) {
-      // Killer might be an AI or the entity was already removed
       return;
     }
 
-    // Look up the user ID from the session cache
     const userId = this.userSessionCache.getUserIdBySocket(socketId);
     if (!userId) {
-      // Player is anonymous - don't track stats
       return;
     }
 
-    // Accumulate the kill count
     const stats = this.getOrCreatePendingStats(userId);
     stats.zombieKills++;
+
+    this.sendExperienceDeltaFireAndForget(userId, XP_PER_ZOMBIE_KILL);
+  }
+
+  private findPlayerByEntityId(entityId: number): Player | null {
+    if (!this.playersMap) {
+      return null;
+    }
+    for (const player of this.playersMap.values()) {
+      if (player.getId() === entityId) {
+        return player;
+      }
+    }
+    return null;
   }
 
   /**
-   * Handle wave completed events
-   * Accumulates wave stats for surviving players
+   * Persist experience immediately (per kill); does not block the game loop.
    */
-  private handleWaveCompleted(data: WaveCompletedEventData): void {
-    if (!this.playersMap) {
+  private sendExperienceDeltaFireAndForget(userId: string, delta: number): void {
+    if (!GAME_SERVER_API_KEY || delta <= 0) {
       return;
     }
 
-    // Award wave completion to all surviving players
-    for (const playerEntityId of data.survivingPlayerIds) {
-      const socketId = this.findSocketIdByEntityId(playerEntityId);
-      if (!socketId) {
-        continue;
-      }
-
-      const userId = this.userSessionCache.getUserIdBySocket(socketId);
-      if (!userId) {
-        // Player is anonymous - don't track stats
-        continue;
-      }
-
-      const stats = this.getOrCreatePendingStats(userId);
-      stats.wavesCompleted++;
-
-      // Track max wave reached
-      if (data.waveNumber > stats.maxWave) {
-        stats.maxWave = data.waveNumber;
-      }
-    }
+    void fetch(`${WEBSITE_API_URL}/api/game/add-experience`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "X-API-Key": GAME_SERVER_API_KEY,
+      },
+      body: JSON.stringify({ userId, experienceDelta: delta }),
+    })
+      .then(async (response) => {
+        if (!response.ok) {
+          const text = await response.text();
+          console.error(
+            `add-experience failed for user ${userId}: ${response.status} ${text}`,
+          );
+        }
+      })
+      .catch((error) => {
+        console.error(`add-experience request failed for user ${userId}:`, error);
+      });
   }
 
   /**
    * Flush all pending stats to the API
-   * Handles race conditions and failure recovery
    */
   private async flushPendingStats(): Promise<void> {
-    // Skip if already sending or nothing to send
     if (this.isSending || this.pendingStats.size === 0) {
       return;
     }
 
-    // Check if API key is configured
     if (!GAME_SERVER_API_KEY) {
-      // Clear pending stats since we can't send them
       this.pendingStats.clear();
       return;
     }
 
     this.isSending = true;
 
-    // Take a snapshot of current stats and reset the accumulator
-    // New stats that come in during sending will go to the fresh map
     const statsToSend = new Map(this.pendingStats);
     this.pendingStats.clear();
 
-    // Send stats for each user
     const failedStats: Map<string, PendingStats> = new Map();
 
     for (const [userId, stats] of statsToSend) {
@@ -191,20 +191,14 @@ export class KillTracker {
         await this.sendStatsToApi(userId, stats);
       } catch (error) {
         console.error(`Failed to send stats for user ${userId}:`, error);
-        // Track failed stats to restore later
         failedStats.set(userId, stats);
       }
     }
 
-    // Restore any failed stats back to the pending map
-    // Merge with any new stats that came in during sending
     for (const [userId, failedUserStats] of failedStats) {
       const currentStats = this.pendingStats.get(userId);
       if (currentStats) {
-        // Merge: add failed counts to new counts
         currentStats.zombieKills += failedUserStats.zombieKills;
-        currentStats.wavesCompleted += failedUserStats.wavesCompleted;
-        currentStats.maxWave = Math.max(currentStats.maxWave, failedUserStats.maxWave);
       } else {
         this.pendingStats.set(userId, failedUserStats);
       }
@@ -217,9 +211,6 @@ export class KillTracker {
     this.isSending = false;
   }
 
-  /**
-   * Find the socket ID for a given player entity ID
-   */
   private findSocketIdByEntityId(entityId: number): string | null {
     if (!this.playersMap) {
       return null;
@@ -234,9 +225,6 @@ export class KillTracker {
     return null;
   }
 
-  /**
-   * Send stats to the website API
-   */
   private async sendStatsToApi(userId: string, stats: PendingStats): Promise<void> {
     const response = await fetch(`${WEBSITE_API_URL}/api/game/player-stats`, {
       method: "POST",
@@ -247,8 +235,6 @@ export class KillTracker {
       body: JSON.stringify({
         userId,
         zombieKills: stats.zombieKills,
-        wavesCompleted: stats.wavesCompleted,
-        maxWave: stats.maxWave,
       }),
     });
 

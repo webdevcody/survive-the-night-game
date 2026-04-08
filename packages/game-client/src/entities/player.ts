@@ -16,7 +16,7 @@ import { Z_INDEX } from "@shared/map";
 import { Direction, normalizeDirection } from "../../../game-shared/src/util/direction";
 import { Hitbox } from "../../../game-shared/src/util/hitbox";
 import { Input } from "../../../game-shared/src/util/input";
-import { InventoryItem } from "../../../game-shared/src/util/inventory";
+import { InventoryItem, isWeapon } from "../../../game-shared/src/util/inventory";
 import { itemRegistry } from "@shared/entities";
 import { roundVector2, distance } from "../../../game-shared/src/util/physics";
 import { RawEntity } from "@shared/types/entity";
@@ -41,6 +41,7 @@ export class PlayerClient extends ClientEntity implements IClientEntity, Rendera
   private skin: SkinType = SKIN_TYPES.DEFAULT;
   private playerColor: PlayerColor = PLAYER_COLORS.NONE;
   private kills: number = 0;
+  private experience: number = 0;
   private ping: number = 0;
   private displayName: string = "";
   private stamina: number = 100;
@@ -79,6 +80,7 @@ export class PlayerClient extends ClientEntity implements IClientEntity, Rendera
     this.skin = data.skin || SKIN_TYPES.DEFAULT;
     this.playerColor = data.playerColor || PLAYER_COLORS.NONE;
     this.kills = data.kills || 0;
+    this.experience = (data as any).experience ?? 0;
     this.ping = data.ping || 0;
     this.displayName = data.displayName || "Unknown";
     this.stamina = data.stamina ?? 100;
@@ -100,6 +102,7 @@ export class PlayerClient extends ClientEntity implements IClientEntity, Rendera
     this.aiState = (this as any).aiState ?? "";
     this.isZombie = (this as any).isZombie ?? false;
     this.zombieSpawnCooldownProgress = (this as any).zombieSpawnCooldownProgress ?? 1;
+    this.experience = (this as any).experience ?? 0;
     // Update skin if it was changed (e.g., when converted to zombie)
     if ((this as any).skin !== undefined) {
       this.skin = (this as any).skin;
@@ -135,7 +138,7 @@ export class PlayerClient extends ClientEntity implements IClientEntity, Rendera
     return this.playerColor;
   }
 
-  getInventory(): InventoryItem[] {
+  getInventory(): (InventoryItem | null)[] {
     if (this.hasExt(ClientInventory)) {
       return this.getExt(ClientInventory).getItems();
     }
@@ -450,12 +453,21 @@ export class PlayerClient extends ClientEntity implements IClientEntity, Rendera
   }
 
   renderMinersHat(ctx: CanvasRenderingContext2D, renderPosition: Vector2) {
-    // Check for any wearable items in inventory - render the first one found
-    const wearableItem = this.getInventory().find((item) => {
-      if (item === null) return false;
-      const itemConfig = itemRegistry.get(item.itemType);
-      return itemConfig?.wearable === true;
-    });
+    let wearableItem: InventoryItem | null = null;
+    if (this.hasExt(ClientInventory)) {
+      const head = this.getExt(ClientInventory).getEquipment().head;
+      if (head && itemRegistry.get(head.itemType)?.wearable === true) {
+        wearableItem = head;
+      }
+    }
+    if (!wearableItem) {
+      wearableItem =
+        this.getInventory().find((item) => {
+          if (item === null) return false;
+          const itemConfig = itemRegistry.get(item.itemType);
+          return itemConfig?.wearable === true;
+        }) ?? null;
+    }
 
     if (wearableItem) {
       const wearableImage = this.imageLoader.get(wearableItem.itemType);
@@ -469,25 +481,40 @@ export class PlayerClient extends ClientEntity implements IClientEntity, Rendera
     // No need to update input object since inventoryItem is no longer in Input
   }
 
+  /**
+   * Held sprite: non-weapons from active bag slot; weapons prefer equipped main hand.
+   */
+  private getHeldItemForRender(): InventoryItem | null {
+    const active = this.getActiveItem();
+    if (!this.hasExt(ClientInventory)) {
+      return active;
+    }
+    const main = this.getExt(ClientInventory).getEquipment().mainHand;
+    if (active && !isWeapon(active.itemType)) {
+      return active;
+    }
+    if (main && isWeapon(main.itemType)) {
+      return main;
+    }
+    return active;
+  }
+
   renderInventoryItem(ctx: CanvasRenderingContext2D, renderPosition: Vector2) {
-    const activeItem = this.getActiveItem();
+    const activeItem = this.getHeldItemForRender();
     if (activeItem === null || activeItem === undefined) {
       return;
     }
 
-    // Ensure activeItem has a valid itemType
     if (!activeItem.itemType) {
       return;
     }
 
-    // Skip rendering held item if it's a wearable item (should show as overlay instead)
     const itemConfig = itemRegistry.get(activeItem.itemType);
     if (itemConfig?.hideWhenSelected) {
-      return; // Don't render as held item - it's worn and shown as overlay
+      return;
     }
 
     const { facing } = this.input;
-    // Ensure facing is never undefined - fallback to Right if missing
     const direction = facing ?? Direction.Right;
     const image = this.imageLoader.getWithDirection(getItemAssetKey(activeItem), direction);
     ctx.drawImage(image, renderPosition.x + 2, renderPosition.y);
@@ -495,6 +522,11 @@ export class PlayerClient extends ClientEntity implements IClientEntity, Rendera
 
   public getKills(): number {
     return this.kills;
+  }
+
+  /** Total experience from the server (synced on game state updates). */
+  public getTotalExperience(): number {
+    return this.experience;
   }
 
   public getPing(): number {
@@ -544,9 +576,8 @@ export class PlayerClient extends ClientEntity implements IClientEntity, Rendera
       return null;
     }
 
-    const inventory = this.getExt(ClientInventory).getItems();
-    // Validate slot is within inventory bounds
-    if (inputInventoryItem < 1 || inputInventoryItem > inventory.length) {
+    const maxSlots = getConfig().player.MAX_INVENTORY_SLOTS;
+    if (inputInventoryItem < 1 || inputInventoryItem > maxSlots) {
       return null;
     }
 

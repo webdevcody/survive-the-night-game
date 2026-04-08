@@ -28,6 +28,6 @@ export interface HandlerContext {
   broadcastEvent(event: GameEvent<any>): void;
   sendEventToSocket(socket: ISocketAdapter, event: GameEvent<any>): void;
   sanitizeText(text: string): string;
-  createPlayerForSocket(socket: any): Player;
+  createPlayerForSocket(socket: any, initialExperience?: number): Player;
   broadcastPlayerJoined(player: Player): void;
 }

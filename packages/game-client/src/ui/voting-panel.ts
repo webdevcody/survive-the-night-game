@@ -17,7 +17,7 @@ export class VotingPanel {
   private columnBounds: { mode: VotableGameMode; x: number; y: number; width: number; height: number }[] = [];
 
   private readonly modes: ModeColumn[] = [
-    { mode: "waves", label: "WAVES", disabled: false },
+    { mode: "open_world", label: "OPEN WORLD", disabled: false },
     { mode: "battle_royale", label: "BATTLE ROYALE", disabled: false },
     { mode: "infection", label: "INFECTION", disabled: true },
   ];

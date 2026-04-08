@@ -1,10 +1,10 @@
-export type VotableGameMode = "waves" | "battle_royale" | "infection";
+export type VotableGameMode = "open_world" | "battle_royale" | "infection";
 
 export interface VotingState {
   isVotingActive: boolean;
   votingEndTime: number; // Server timestamp when voting ends
   votes: {
-    waves: number;
+    open_world: number;
     battle_royale: number;
     infection: number;
   };

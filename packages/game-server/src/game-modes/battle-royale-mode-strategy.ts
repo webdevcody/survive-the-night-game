@@ -56,7 +56,6 @@ export class BattleRoyaleModeStrategy implements IGameModeStrategy {
     friendlyFireEnabled: true,
     allowRespawn: false,
     hasCarEntity: false,
-    hasWaveSystem: false,
     hasBosses: false,
     hasSurvivors: false,
     minPlayers: 2,

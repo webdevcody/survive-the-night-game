@@ -2,23 +2,28 @@
  * ========================================================================
  * ENVIRONMENTAL EVENTS CONFIGURATION
  * ========================================================================
- * Settings for random environmental events that occur during waves
+ * Settings for random environmental events (time-based rolls on the server)
  */
 
 export const environmentalEventsConfig = {
+  /**
+   * How often (seconds) the server evaluates toxic gas / thunderstorm rolls
+   */
+  CYCLE_INTERVAL_SECONDS: 120,
+
   /**
    * Toxic Gas Event Configuration
    */
   TOXIC_GAS: {
     /**
-     * Chance to trigger toxic gas event after wave completion (0.0 to 1.0)
+     * Chance to trigger toxic gas event on each cycle roll (0.0 to 1.0)
      */
     TRIGGER_CHANCE: 0.15,
 
     /**
-     * Minimum wave number before toxic gas can trigger (after first wave)
+     * Minimum completed cycle index before toxic gas can trigger (same semantics as former MIN_WAVE)
      */
-    MIN_WAVE: 2,
+    MIN_CYCLE: 2,
 
     /**
      * Number of initial clouds to spawn
@@ -55,14 +60,14 @@ export const environmentalEventsConfig = {
    */
   THUNDERSTORM: {
     /**
-     * Chance to trigger thunderstorm event after wave completion (0.0 to 1.0)
+     * Chance to trigger thunderstorm event on each cycle roll (0.0 to 1.0)
      */
     TRIGGER_CHANCE: 0.15,
 
     /**
-     * Minimum wave number before thunderstorm can trigger (after first wave)
+     * Minimum completed cycle index before thunderstorm can trigger
      */
-    MIN_WAVE: 2,
+    MIN_CYCLE: 2,
 
     /**
      * Duration of thunderstorm event in seconds

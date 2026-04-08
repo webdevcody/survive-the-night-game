@@ -21,7 +21,7 @@ export class Tree extends Entity {
       new Interactive(this)
         .onInteract(this.interact.bind(this))
         .setDisplayName("wood")
-        .setAutoPickupEnabled(true)
+        .setAutoPickupEnabled(false)
     );
   }
 

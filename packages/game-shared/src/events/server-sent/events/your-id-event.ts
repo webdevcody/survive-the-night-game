@@ -13,7 +13,7 @@ export class YourIdEvent implements GameEvent<YourIdEventData> {
   private readonly playerId: number;
   private readonly gameMode: GameModeId;
 
-  constructor(playerIdOrData: number | YourIdEventData, gameMode: GameModeId = "waves") {
+  constructor(playerIdOrData: number | YourIdEventData, gameMode: GameModeId = "open_world") {
     this.type = ServerSentEvents.YOUR_ID;
     if (typeof playerIdOrData === "object") {
       // Constructed from deserialized data
@@ -49,7 +49,8 @@ export class YourIdEvent implements GameEvent<YourIdEventData> {
 
   static deserializeFromBuffer(reader: BufferReader): YourIdEventData {
     const playerId = reader.readUInt16();
-    const gameMode = reader.readString() as GameModeId;
+    const raw = reader.readString();
+    const gameMode = (raw === "waves" ? "open_world" : raw) as GameModeId;
     return { playerId, gameMode };
   }
 }

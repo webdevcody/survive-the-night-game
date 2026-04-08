@@ -1,6 +1,7 @@
 import { EventType, ClientSentEvents } from "../../events";
 import { GameEvent } from "../../types";
 import { ArrayBufferWriter, BufferReader } from "../../../util/buffer-serialization";
+import { getConfig } from "../../../config";
 
 export interface SelectInventorySlotEventData {
   slotIndex: number; // 1-indexed (1-10)
@@ -27,7 +28,8 @@ export class SelectInventorySlotEvent implements GameEvent<SelectInventorySlotEv
   }
 
   static serializeToBuffer(writer: ArrayBufferWriter, data: SelectInventorySlotEventData): void {
-    writer.writeUInt8(Math.max(1, Math.min(10, data.slotIndex ?? 1)));
+    const max = getConfig().player.MAX_INVENTORY_SLOTS;
+    writer.writeUInt8(Math.max(1, Math.min(max, data.slotIndex ?? 1)));
   }
 
   static deserializeFromBuffer(reader: BufferReader): SelectInventorySlotEventData {

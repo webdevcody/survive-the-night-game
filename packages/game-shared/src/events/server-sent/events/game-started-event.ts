@@ -2,7 +2,7 @@ import { GameEvent } from "../../types";
 import { ServerSentEvents } from "../../events";
 import { BufferWriter, BufferReader } from "../../../util/buffer-serialization";
 
-export type GameModeId = "waves" | "battle_royale" | "infection";
+export type GameModeId = "battle_royale" | "infection" | "open_world";
 
 export interface GameStartedEventData {
   timestamp: number;
@@ -12,7 +12,7 @@ export interface GameStartedEventData {
 export class GameStartedEvent implements GameEvent<GameStartedEventData> {
   private readonly data: GameStartedEventData;
 
-  constructor(timestamp: number = Date.now(), gameMode: GameModeId = "waves") {
+  constructor(timestamp: number = Date.now(), gameMode: GameModeId = "open_world") {
     this.data = { timestamp, gameMode };
   }
 
@@ -35,7 +35,8 @@ export class GameStartedEvent implements GameEvent<GameStartedEventData> {
 
   static deserializeFromBuffer(reader: BufferReader): GameStartedEventData {
     const timestamp = reader.readFloat64();
-    const gameMode = reader.readString() as GameModeId;
+    const raw = reader.readString();
+    const gameMode = (raw === "waves" ? "open_world" : raw) as GameModeId;
     return { timestamp, gameMode };
   }
 }

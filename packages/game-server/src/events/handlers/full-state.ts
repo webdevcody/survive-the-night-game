@@ -8,8 +8,6 @@ export function sendFullState(context: HandlerContext, socket: ISocketAdapter): 
   const currentTime = Date.now();
 
   // Cache game state data needed for metadata serialization
-  const waveNumber = context.gameServer.getWaveNumber();
-  const waveState = context.gameServer.getWaveState();
   const phaseStartTime = context.gameServer.getPhaseStartTime();
   const phaseDuration = context.gameServer.getPhaseDuration();
 
@@ -27,8 +25,6 @@ export function sendFullState(context: HandlerContext, socket: ISocketAdapter): 
     {
       timestamp: currentTime,
       isFullState: true,
-      waveNumber,
-      waveState,
       phaseStartTime,
       phaseDuration,
     },

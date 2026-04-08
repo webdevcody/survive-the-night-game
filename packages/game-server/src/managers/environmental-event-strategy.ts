@@ -3,14 +3,9 @@
  */
 export interface IEnvironmentalEventStrategy {
   /**
-   * Called when a wave completes
+   * Called on each periodic cycle (replaces former wave-complete hook)
    */
-  onWaveComplete(completedWaveNumber: number): void;
-
-  /**
-   * Called when a wave starts
-   */
-  onWaveStart(): void;
+  onPeriodicRoll(completedCycleIndex: number): void;
 
   /**
    * Called every tick to update the event

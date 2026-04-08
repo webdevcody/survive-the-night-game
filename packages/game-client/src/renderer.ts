@@ -319,7 +319,6 @@ export class Renderer {
     this.ctx.save();
     this.ctx.setTransform(1, 0, 0, 1, 0, 0);
     this.hud.render(this.ctx, this.gameState);
-    // Crafting table is now rendered in React component (CraftingPanel.tsx)
     this.merchantBuyPanel.render(this.ctx, this.gameState);
     this.gameOverDialog.render(this.ctx, this.gameState);
     this.votingPanel.render(this.ctx, this.gameState);
@@ -393,7 +392,7 @@ export class Renderer {
       const selectedSlot = player.getSelectedInventorySlot();
       const activeSlot = selectedSlot >= 0 ? selectedSlot + 1 : 1; // Convert 0-indexed to 1-indexed
       const activeItem = inventory[activeSlot - 1];
-      hasWeapon = activeItem && isWeapon(activeItem.itemType);
+      hasWeapon = !!(activeItem && isWeapon(activeItem.itemType));
     } else {
       // If server slot data isn't available yet, check all inventory slots for any weapon
       // This handles the case where inputInventoryItem hasn't been synced from the server yet

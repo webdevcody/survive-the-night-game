@@ -21,6 +21,7 @@ import { calculateLightSources } from "./utils/map-rendering-utils";
 import { prerenderCollidables, renderCollidablesFromCanvas } from "./utils/map-collidable-renderer";
 import { renderMinimapFogOfWar } from "./utils/map-fog-of-war-renderer";
 import { renderToxicZones } from "./utils/map-toxic-zone-renderer";
+import type { MinimapScreenRect } from "./minimap-hud-group-layout";
 
 // Performance optimization constants - adjust these to balance quality vs performance
 // To view performance stats in console, run:
@@ -47,8 +48,8 @@ export const MINIMAP_RENDER_DISTANCE = {
 
 export const MINIMAP_SETTINGS = {
   size: 240, // Reduced from 280 (was 400 originally)
+  /** Inset from screen right; screen position comes from minimap-hud-group-layout + Hud. */
   right: 40,
-  bottom: 40,
   background: "rgba(0, 0, 0, 0.7)",
   scale: 0.35,
   fogOfWar: {
@@ -168,7 +169,7 @@ export class Minimap {
 
   // Light source calculation moved to map-rendering-utils
 
-  public render(ctx: CanvasRenderingContext2D, gameState: GameState): void {
+  public render(ctx: CanvasRenderingContext2D, gameState: GameState, screenRect: MinimapScreenRect): void {
     perfTimer.start("minimap:total");
     const settings = MINIMAP_SETTINGS;
     const myPlayer = getPlayer(gameState);
@@ -235,16 +236,11 @@ export class Minimap {
     ctx.save();
     ctx.setTransform(1, 0, 0, 1, 0, 0);
 
-    // Calculate scaled values based on viewport size
     const canvasWidth = ctx.canvas.width;
     const canvasHeight = ctx.canvas.height;
-    const scaledSize = scaleHudValue(settings.size, canvasWidth, canvasHeight);
-    const scaledRight = scaleHudValue(settings.right, canvasWidth, canvasHeight);
-    const scaledBottom = scaleHudValue(settings.bottom, canvasWidth, canvasHeight);
-
-    // Calculate position from bottom-right using scaled values
-    const top = canvasHeight - scaledBottom - scaledSize;
-    const scaledLeft = canvasWidth - scaledRight - scaledSize;
+    const scaledLeft = screenRect.left;
+    const top = screenRect.top;
+    const scaledSize = screenRect.size;
 
     // Create circular clip using scaled values
     ctx.beginPath();
@@ -379,12 +375,12 @@ export class Minimap {
 
     // Draw crate indicators (after fog of war so they're always visible)
     perfTimer.start("minimap:crates");
-    this.renderCrateIndicators(ctx, crateEntities, playerPos, settings, top);
+    this.renderCrateIndicators(ctx, crateEntities, playerPos, settings, top, scaledLeft, scaledSize);
     perfTimer.end("minimap:crates");
 
     // Draw survivor indicators (after fog of war so they're always visible)
     perfTimer.start("minimap:survivors");
-    this.renderSurvivorIndicators(ctx, survivorEntities, playerPos, settings, top);
+    this.renderSurvivorIndicators(ctx, survivorEntities, playerPos, settings, top, scaledLeft, scaledSize);
     perfTimer.end("minimap:survivors");
 
     // Draw radar circle border using scaled values
@@ -635,19 +631,12 @@ export class Minimap {
     crateEntities: CrateClient[],
     playerPos: { x: number; y: number },
     settings: typeof MINIMAP_SETTINGS,
-    top: number
+    top: number,
+    scaledLeft: number,
+    scaledSize: number
   ): void {
-    // Calculate scaled values for crate indicators
-    const canvasWidth = ctx.canvas.width;
-    const canvasHeight = ctx.canvas.height;
-    const scaledRight = scaleHudValue(settings.right, canvasWidth, canvasHeight);
-    const scaledSize = scaleHudValue(settings.size, canvasWidth, canvasHeight);
-    const scaledBottom = scaleHudValue(settings.bottom, canvasWidth, canvasHeight);
-    const topPos = canvasHeight - scaledBottom - scaledSize;
-    const scaledLeft = canvasWidth - scaledRight - scaledSize;
-
     const centerX = scaledLeft + scaledSize / 2;
-    const centerY = topPos + scaledSize / 2;
+    const centerY = top + scaledSize / 2;
     const maxDistance = MINIMAP_RENDER_DISTANCE.ENTITIES;
 
     // Loop through crate entities
@@ -722,19 +711,12 @@ export class Minimap {
     survivorEntities: SurvivorClient[],
     playerPos: { x: number; y: number },
     settings: typeof MINIMAP_SETTINGS,
-    top: number
+    top: number,
+    scaledLeft: number,
+    scaledSize: number
   ): void {
-    // Calculate scaled values for survivor indicators
-    const canvasWidth = ctx.canvas.width;
-    const canvasHeight = ctx.canvas.height;
-    const scaledRight = scaleHudValue(settings.right, canvasWidth, canvasHeight);
-    const scaledSize = scaleHudValue(settings.size, canvasWidth, canvasHeight);
-    const scaledBottom = scaleHudValue(settings.bottom, canvasWidth, canvasHeight);
-    const topPos = canvasHeight - scaledBottom - scaledSize;
-    const scaledLeft = canvasWidth - scaledRight - scaledSize;
-
     const centerX = scaledLeft + scaledSize / 2;
-    const centerY = topPos + scaledSize / 2;
+    const centerY = top + scaledSize / 2;
     const maxDistance = MINIMAP_RENDER_DISTANCE.ENTITIES;
 
     // Loop through survivor entities
@@ -852,7 +834,7 @@ export class Minimap {
 
     // If still not available, use fallback rendering
     if (!this.collidablesCanvas) {
-      this.renderCollidablesFallback(ctx, playerPos, settings, top, mapData.collidables);
+      this.renderCollidablesFallback(ctx, playerPos, settings, top, scaledLeft, scaledSize, mapData.collidables);
       return;
     }
 
@@ -923,6 +905,8 @@ export class Minimap {
     playerPos: { x: number; y: number },
     settings: typeof MINIMAP_SETTINGS,
     top: number,
+    scaledLeft: number,
+    scaledSize: number,
     collidables: number[][]
   ): void {
     ctx.fillStyle = settings.colors.tree;
@@ -964,13 +948,6 @@ export class Minimap {
           poolManager.vector2.release(tileWorldPos);
           if (dist > maxDistance) continue;
 
-          // Convert to minimap coordinates (centered on player)
-          // Calculate scaledLeft for fallback rendering
-          const canvasWidth = ctx.canvas.width;
-          const canvasHeight = ctx.canvas.height;
-          const scaledRight = scaleHudValue(settings.right, canvasWidth, canvasHeight);
-          const scaledSize = scaleHudValue(settings.size, canvasWidth, canvasHeight);
-          const scaledLeft = canvasWidth - scaledRight - scaledSize;
           const minimapX = scaledLeft + scaledSize / 2 + relativeX * settings.scale;
           const minimapY = top + scaledSize / 2 + relativeY * settings.scale;
 

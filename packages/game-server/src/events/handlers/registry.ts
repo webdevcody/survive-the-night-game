@@ -15,6 +15,7 @@ import { dropItemHandler } from "./drop-item";
 import { consumeItemHandler } from "./consume-item";
 import { selectInventorySlotHandler } from "./select-inventory-slot";
 import { swapInventoryItemsHandler } from "./swap-inventory-items";
+import { swapBagAndEquipmentHandler } from "./swap-bag-and-equipment";
 import { interactHandler } from "./interact";
 import { changePlayerColorHandler } from "./change-player-color";
 import { voteGameModeHandler } from "./vote-game-mode";
@@ -48,6 +49,7 @@ export const socketEventHandlers: SocketEventHandler[] = [
   consumeItemHandler,
   selectInventorySlotHandler,
   swapInventoryItemsHandler,
+  swapBagAndEquipmentHandler,
   interactHandler,
   changePlayerColorHandler,
   voteGameModeHandler,

@@ -29,7 +29,7 @@ export const Route = createFileRoute("/api/game/player-stats")({
           }
 
           const body = await request.json();
-          const { userId, zombieKills, wavesCompleted, maxWave } = body;
+          const { userId, zombieKills } = body;
 
           if (!userId || typeof userId !== "string") {
             return new Response(
@@ -38,18 +38,11 @@ export const Route = createFileRoute("/api/game/player-stats")({
             );
           }
 
-          // Normalize values - default to 0 if not provided
           const stats = {
             zombieKills:
               typeof zombieKills === "number" && zombieKills >= 0
                 ? zombieKills
                 : 0,
-            wavesCompleted:
-              typeof wavesCompleted === "number" && wavesCompleted >= 0
-                ? wavesCompleted
-                : 0,
-            maxWave:
-              typeof maxWave === "number" && maxWave >= 0 ? maxWave : 0,
           };
 
           const updatedStats = await updatePlayerStats(userId, stats);
@@ -58,8 +51,6 @@ export const Route = createFileRoute("/api/game/player-stats")({
             JSON.stringify({
               success: true,
               zombieKills: updatedStats.zombieKills,
-              wavesCompleted: updatedStats.wavesCompleted,
-              maxWave: updatedStats.maxWave,
             }),
             { status: 200, headers: { "Content-Type": "application/json" } }
           );

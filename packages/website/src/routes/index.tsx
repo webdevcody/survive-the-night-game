@@ -105,7 +105,7 @@ function Index() {
             <div className="max-w-3xl">
               <p className="text-gray-400 text-base md:text-lg leading-relaxed">
                 Team up with friends in this intense multiplayer survival game. Gather resources,
-                craft weapons, build defenses, and fight waves of zombies that grow stronger each
+                craft weapons, build defenses, and fight zombies that grow stronger as you explore
                 night.
               </p>
             </div>
