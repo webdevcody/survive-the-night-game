@@ -43,6 +43,13 @@
       "when": 1775653244739,
       "tag": "0005_elite_malcolm_colcord",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1775678610040,
+      "tag": "0006_salty_yellow_claw",
+      "breakpoints": true
     }
   ]
 }

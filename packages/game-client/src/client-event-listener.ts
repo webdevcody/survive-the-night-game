@@ -50,6 +50,7 @@ export class ClientEventListener {
   private lastFullStateRequestAt: number | null = null;
   private lastFullStateRequestReason: string | null = null;
   private fullStateRequestTimer: ReturnType<typeof setTimeout> | null = null;
+  private pendingFullStateEvent: GameStateEvent | null = null;
 
   private isInitialized(): boolean {
     return this.hasReceivedPlayerId && this.hasReceivedInitialState;
@@ -143,6 +144,7 @@ export class ClientEventListener {
       interpolation: this.interpolation,
       hasReceivedPlayerId: this.hasReceivedPlayerId,
       hasReceivedInitialState: this.hasReceivedInitialState,
+      hasReceivedInitialStateLive: () => this.hasReceivedInitialState,
       setHasReceivedPlayerId: (value: boolean) => {
         this.hasReceivedPlayerId = value;
       },
@@ -159,6 +161,17 @@ export class ClientEventListener {
           this.invalidateInitialState(reason ?? "Initial state flag reset");
         }
       },
+      queuePendingFullState: (event: GameStateEvent) => {
+        this.pendingFullStateEvent = event;
+      },
+      flushPendingFullStateAfterYourId: () => {
+        if (!this.pendingFullStateEvent) {
+          return;
+        }
+        const e = this.pendingFullStateEvent;
+        this.pendingFullStateEvent = null;
+        onGameStateUpdate(this.createInitializationContext(), e);
+      },
       checkInitialization: () => {
         this.checkInitialization();
       },
@@ -169,6 +182,7 @@ export class ClientEventListener {
   }
 
   private handleDisconnect(): void {
+    this.pendingFullStateEvent = null;
     this.invalidateInitialState("Socket disconnected");
     // Reset initialization flags so we wait for fresh data on reconnect
     this.hasReceivedPlayerId = false;
@@ -218,6 +232,7 @@ export class ClientEventListener {
 
   private invalidateInitialState(reason: string = "unspecified"): void {
     this.hasReceivedInitialState = false;
+    this.pendingFullStateEvent = null;
     this.interpolation.reset();
     this.clearFullStateRequestTimer();
   }
@@ -230,6 +245,7 @@ export class ClientEventListener {
     // Reset both flags - we need fresh player ID and full state
     this.hasReceivedPlayerId = false;
     this.hasReceivedInitialState = false;
+    this.pendingFullStateEvent = null;
     this.interpolation.reset();
     this.clearFullStateRequestTimer();
 

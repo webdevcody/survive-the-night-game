@@ -7,6 +7,8 @@ import { GunEmptyEvent } from "../../../../game-shared/src/events/server-sent/ev
 import { PlayerAttackedEvent } from "../../../../game-shared/src/events/server-sent/events/player-attacked-event";
 import Vector2 from "@/util/vector2";
 import { consumeAmmo } from "./helpers";
+import { Player } from "@/entities/players/player";
+import { getJitteredFireAngleRadians } from "@/entities/weapons/weapon-accuracy";
 
 export class GrenadeLauncher extends Weapon {
   constructor(gameManagers: IGameManagers) {
@@ -17,7 +19,7 @@ export class GrenadeLauncher extends Weapon {
     return this.getConfig().stats.cooldown;
   }
 
-  public attack(playerId: string, position: Vector2, facing: Direction, aimAngle?: number, aimDistance?: number): void {
+  public attack(playerId: number, position: Vector2, facing: Direction, aimAngle?: number, aimDistance?: number): void {
     const player = this.getEntityManager().getEntityById(playerId);
     if (!player) return;
 
@@ -36,9 +38,14 @@ export class GrenadeLauncher extends Weapon {
       grenadeProjectile.setTargetDistance(aimDistance);
     }
 
-    // Use aimAngle if provided (mouse aiming), otherwise use facing direction
-    if (aimAngle !== undefined) {
-      grenadeProjectile.setDirectionFromAngle(aimAngle);
+    let fireAngle: number | undefined;
+    if (player instanceof Player) {
+      fireAngle = getJitteredFireAngleRadians(player, aimAngle, facing, 0.08);
+    } else if (aimAngle !== undefined) {
+      fireAngle = aimAngle;
+    }
+    if (fireAngle !== undefined) {
+      grenadeProjectile.setDirectionFromAngle(fireAngle);
     } else {
       grenadeProjectile.setDirection(facing);
     }

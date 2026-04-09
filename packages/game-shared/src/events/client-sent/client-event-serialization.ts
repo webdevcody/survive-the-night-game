@@ -18,6 +18,7 @@ import { SwapBagAndEquipmentEvent } from "./events/swap-bag-and-equipment";
 import { InteractEvent } from "./events/interact";
 import { ChangePlayerColorEvent } from "./events/change-player-color";
 import { SpawnZombieEvent } from "./events/spawn-zombie";
+import { SetProgressionAllocationsEvent } from "./events/set-progression-allocations";
 import {
   serializeEvent,
   deserializeEvent,
@@ -51,6 +52,7 @@ const eventRegistry: Record<string, IBufferWriter> = {
   [ClientSentEvents.INTERACT]: InteractEvent,
   [ClientSentEvents.CHANGE_PLAYER_COLOR]: ChangePlayerColorEvent,
   [ClientSentEvents.SPAWN_ZOMBIE]: SpawnZombieEvent,
+  [ClientSentEvents.SET_PROGRESSION_ALLOCATIONS]: SetProgressionAllocationsEvent,
 };
 
 function isClientSentEvent(event: string): event is ClientSentEventType {

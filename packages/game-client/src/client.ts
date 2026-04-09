@@ -41,7 +41,7 @@ import Vector2 from "@shared/util/vector2";
 import PoolManager from "@shared/util/pool-manager";
 import { getAssetSpriteInfo } from "@/managers/asset";
 import { PlacementManager } from "@/managers/placement";
-import { isWeapon, ItemType } from "@shared/util/inventory";
+import { isWeapon, ItemType, type EquipmentSlotKey } from "@shared/util/inventory";
 import { getClosestInteractiveEntity } from "@/util/get-closest-interactive";
 import { getPlayer } from "@/util/get-player";
 import { Entities } from "@shared/constants";
@@ -341,10 +341,17 @@ export class GameClient {
           this.socketManager.sendSwapItems(fromSlotIndex, toSlotIndex);
         }
       },
-      (bagIndex: number, equipSlot: "head" | "mainHand") => {
+      (bagIndex: number, equipSlot: EquipmentSlotKey) => {
         if (this.socketManager) {
           this.socketManager.sendSwapBagAndEquipment(bagIndex, equipSlot);
         }
+      },
+      (kind: "skill" | "character", allocations: Record<string, number>) => {
+        this.socketManager?.sendProgressionAllocations(kind, allocations);
+      },
+      () => {
+        const p = getPlayer();
+        return p instanceof PlayerClient ? p : null;
       }
     );
 
@@ -947,10 +954,14 @@ export class GameClient {
     const playerToFollow = this.getMyPlayer() as PlayerClient | undefined;
 
     if (playerToFollow && playerToFollow.hasExt(ClientPositionable)) {
-      // Position camera at player's center to match aim angle calculation
+      const canvas = this.ctx.canvas;
+      const invCx = this.hud.getInventoryCameraCenterScreenX(canvas.width);
+      const screenCenter =
+        invCx != null ? { x: invCx, y: canvas.height / 2 } : undefined;
       this.cameraManager.translateTo(
         playerToFollow.getExt(ClientPositionable).getCenterPosition(),
         this.gameState.dt,
+        screenCenter,
       );
     }
   }
@@ -1003,7 +1014,8 @@ export class GameClient {
   private canvasToWorld(canvasX: number, canvasY: number, canvas: HTMLCanvasElement): Vector2 {
     const cameraScale = this.cameraManager.getScale();
     const cameraPos = this.cameraManager.getPosition();
-    const centerX = canvas.width / 2;
+    const invCx = this.hud.getInventoryCameraCenterScreenX(canvas.width);
+    const centerX = invCx != null ? invCx : canvas.width / 2;
     const centerY = canvas.height / 2;
 
     const worldX = (canvasX - centerX) / cameraScale + cameraPos.x;

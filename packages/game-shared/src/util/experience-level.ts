@@ -80,6 +80,14 @@ export type ExperienceProgress = {
   totalXp: number;
 };
 
+/**
+ * Skill points and character stat points each use this budget: level 1 → 0, level 2 → 1, etc.
+ */
+export function getProgressionPointsBudget(totalXp: number): number {
+  const level = getLevelFromTotalExperience(totalXp);
+  return Math.max(0, level - 1);
+}
+
 export function getExperienceProgress(totalXp: number): ExperienceProgress {
   const xp = Math.max(0, Math.floor(totalXp));
   let level = 1;

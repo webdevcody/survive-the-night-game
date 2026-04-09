@@ -70,7 +70,11 @@ export class CameraManager {
     this.shakeOffset.y = (Math.random() * 2 - 1) * magnitude;
   }
 
-  translateTo(position: Vector2, dt?: number): void {
+  translateTo(
+    position: Vector2,
+    dt?: number,
+    screenCenter?: { x: number; y: number },
+  ): void {
     this.targetPosition = position;
     const dist = distance(this.targetPosition, this.position);
 
@@ -97,8 +101,8 @@ export class CameraManager {
     this.updateShake();
 
     const canvas = this.ctx.canvas;
-    const centerX = canvas.width / 2;
-    const centerY = canvas.height / 2;
+    const centerX = screenCenter?.x ?? canvas.width / 2;
+    const centerY = screenCenter?.y ?? canvas.height / 2;
     const renderX = this.position.x + this.shakeOffset.x;
     const renderY = this.position.y + this.shakeOffset.y;
 

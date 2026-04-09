@@ -10,6 +10,7 @@ import { ExtensionBase } from "./extension-base";
 
 type DestructibleDeathHandler = (killerId?: number) => void;
 type DestructibleDamagedHandler = (attackerId?: number, damage?: number) => void;
+type DestructibleBeforeDamageHandler = (damage: number, attackerId?: number) => number;
 
 type DestructibleFields = {
   health: number;
@@ -22,6 +23,7 @@ export default class Destructible extends ExtensionBase<DestructibleFields> {
   private offset = PoolManager.getInstance().vector2.claim(0, 0);
   private deathHandler: DestructibleDeathHandler | null = null;
   private onDamagedHandler: DestructibleDamagedHandler | null = null;
+  private onBeforeDamageHandler: DestructibleBeforeDamageHandler | null = null;
 
   public constructor(self: IEntity) {
     super(self, { health: 0, maxHealth: 0 });
@@ -42,6 +44,12 @@ export default class Destructible extends ExtensionBase<DestructibleFields> {
     return this;
   }
 
+  /** Adjust incoming damage (e.g. evade / mitigation). Return value must be >= 0. */
+  public onBeforeDamage(handler: DestructibleBeforeDamageHandler): this {
+    this.onBeforeDamageHandler = handler;
+    return this;
+  }
+
   public setHealth(health: number): this {
     this.serialized.set("health", health);
     return this;
@@ -57,9 +65,14 @@ export default class Destructible extends ExtensionBase<DestructibleFields> {
       return;
     }
 
+    let applied = damage;
+    if (this.onBeforeDamageHandler) {
+      applied = Math.max(0, this.onBeforeDamageHandler(damage, attackerId));
+    }
+
     const currentHealth = this.serialized.get("health");
-    this.serialized.set("health", Math.max(0, currentHealth - damage));
-    this.onDamagedHandler?.(attackerId, damage);
+    this.serialized.set("health", Math.max(0, currentHealth - applied));
+    this.onDamagedHandler?.(attackerId, applied);
 
     if (this.isDead()) {
       this.deathHandler?.(attackerId);

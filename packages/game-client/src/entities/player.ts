@@ -15,7 +15,7 @@ import { Z_INDEX } from "@shared/map";
 import { Direction, normalizeDirection } from "../../../game-shared/src/util/direction";
 import { Hitbox } from "../../../game-shared/src/util/hitbox";
 import { Input } from "../../../game-shared/src/util/input";
-import { InventoryItem, isWeapon } from "../../../game-shared/src/util/inventory";
+import { InventoryItem } from "../../../game-shared/src/util/inventory";
 import { itemRegistry } from "@shared/entities";
 import { roundVector2, distance } from "../../../game-shared/src/util/physics";
 import { RawEntity } from "@shared/types/entity";
@@ -27,6 +27,12 @@ import { ClientEntity } from "./client-entity";
 import { SKIN_TYPES, SkinType, PLAYER_COLORS, PlayerColor } from "@shared/commands/commands";
 import { getDebugConfig } from "@/config/client-prediction";
 import { BufferReader } from "@shared/util/buffer-serialization";
+import {
+  sumCharacterAllocations,
+  computeMaxInventorySlots,
+} from "@shared/util/character-stats";
+import { sumSkillAllocations } from "@shared/util/skill-tree";
+import { getProgressionPointsBudget } from "@shared/util/experience-level";
 
 export class PlayerClient extends ClientEntity implements IClientEntity, Renderable {
   private readonly ARROW_LENGTH = 20;
@@ -52,6 +58,19 @@ export class PlayerClient extends ClientEntity implements IClientEntity, Rendera
   private aiState: string = ""; // Current AI state (for debugging)
   private isZombie: boolean = false; // Whether this player has become a zombie (Battle Royale)
   private zombieSpawnCooldownProgress: number = 1; // 0-1 progress for zombie spawn ability (1 = ready)
+
+  private skillSprint: number = 0;
+  private skillRegenerate: number = 0;
+  private statHealth: number = 0;
+  private statEvade: number = 0;
+  private statAccuracy: number = 0;
+  private statReloadSpeed: number = 0;
+  private statRunSpeed: number = 0;
+  private statLuck: number = 0;
+  private statStamina: number = 0;
+  private statRecovery: number = 0;
+  private statHpRecovery: number = 0;
+  private statStrength: number = 0;
 
   private input: Input = {
     facing: Direction.Right,
@@ -90,6 +109,22 @@ export class PlayerClient extends ClientEntity implements IClientEntity, Rendera
     this.aiState = (data as any).aiState ?? "";
     this.isZombie = (data as any).isZombie ?? false;
     this.zombieSpawnCooldownProgress = (data as any).zombieSpawnCooldownProgress ?? 1;
+    this.syncProgressionFromData(data as any);
+  }
+
+  private syncProgressionFromData(data: Record<string, unknown>): void {
+    this.skillSprint = Number(data.skillSprint) || 0;
+    this.skillRegenerate = Number(data.skillRegenerate) || 0;
+    this.statHealth = Number(data.statHealth) || 0;
+    this.statEvade = Number((data as any).statEvade ?? (data as any).statDefence) || 0;
+    this.statAccuracy = Number(data.statAccuracy) || 0;
+    this.statReloadSpeed = Number(data.statReloadSpeed) || 0;
+    this.statRunSpeed = Number(data.statRunSpeed) || 0;
+    this.statLuck = Number(data.statLuck) || 0;
+    this.statStamina = Number((data as any).statStamina) || 0;
+    this.statRecovery = Number((data as any).statRecovery) || 0;
+    this.statHpRecovery = Number((data as any).statHpRecovery) || 0;
+    this.statStrength = Number((data as any).statStrength) || 0;
   }
 
   public deserializeFromBuffer(reader: BufferReader): void {
@@ -102,6 +137,7 @@ export class PlayerClient extends ClientEntity implements IClientEntity, Rendera
     this.isZombie = (this as any).isZombie ?? false;
     this.zombieSpawnCooldownProgress = (this as any).zombieSpawnCooldownProgress ?? 1;
     this.experience = (this as any).experience ?? 0;
+    this.syncProgressionFromData(this as any);
     // Update skin if it was changed (e.g., when converted to zombie)
     if ((this as any).skin !== undefined) {
       this.skin = (this as any).skin;
@@ -163,6 +199,9 @@ export class PlayerClient extends ClientEntity implements IClientEntity, Rendera
   }
 
   getMaxHealth(): number {
+    if (this.hasExt(ClientDestructible)) {
+      return this.getExt(ClientDestructible).getMaxHealth();
+    }
     return getConfig().player.MAX_PLAYER_HEALTH;
   }
 
@@ -455,7 +494,8 @@ export class PlayerClient extends ClientEntity implements IClientEntity, Rendera
     let wearableItem: InventoryItem | null = null;
     if (this.hasExt(ClientInventory)) {
       const head = this.getExt(ClientInventory).getEquipment().head;
-      if (head && itemRegistry.get(head.itemType)?.wearable === true) {
+      const headCfg = head ? itemRegistry.get(head.itemType) : undefined;
+      if (head && (headCfg?.equipmentSlot === "head" || headCfg?.wearable === true)) {
         wearableItem = head;
       }
     }
@@ -480,22 +520,9 @@ export class PlayerClient extends ClientEntity implements IClientEntity, Rendera
     // No need to update input object since inventoryItem is no longer in Input
   }
 
-  /**
-   * Held sprite: non-weapons from active bag slot; weapons prefer equipped main hand.
-   */
+  /** Held sprite: active hotbar slot (weapons are not a separate equipment slot). */
   private getHeldItemForRender(): InventoryItem | null {
-    const active = this.getActiveItem();
-    if (!this.hasExt(ClientInventory)) {
-      return active;
-    }
-    const main = this.getExt(ClientInventory).getEquipment().mainHand;
-    if (active && !isWeapon(active.itemType)) {
-      return active;
-    }
-    if (main && isWeapon(main.itemType)) {
-      return main;
-    }
-    return active;
+    return this.getActiveItem();
   }
 
   renderInventoryItem(ctx: CanvasRenderingContext2D, renderPosition: Vector2) {
@@ -526,6 +553,75 @@ export class PlayerClient extends ClientEntity implements IClientEntity, Rendera
   /** Total experience from the server (synced on game state updates). */
   public getTotalExperience(): number {
     return this.experience;
+  }
+
+  public getAvailableSkillPoints(): number {
+    const budget = getProgressionPointsBudget(this.experience);
+    const spent = sumSkillAllocations({
+      sprint: this.skillSprint,
+      regenerate: this.skillRegenerate,
+    });
+    return Math.max(0, budget - spent);
+  }
+
+  public getAvailableCharacterPoints(): number {
+    const budget = getProgressionPointsBudget(this.experience);
+    const spent = sumCharacterAllocations({
+      health: this.statHealth,
+      evade: this.statEvade,
+      accuracy: this.statAccuracy,
+      reloadSpeed: this.statReloadSpeed,
+      runSpeed: this.statRunSpeed,
+      luck: this.statLuck,
+      stamina: this.statStamina,
+      recovery: this.statRecovery,
+      hpRecovery: this.statHpRecovery,
+      strength: this.statStrength,
+    });
+    return Math.max(0, budget - spent);
+  }
+
+  public getSkillSprintRank(): number {
+    return this.skillSprint;
+  }
+
+  public getSkillRegenerateRank(): number {
+    return this.skillRegenerate;
+  }
+
+  public getCharacterStat(stat: string): number {
+    switch (stat) {
+      case "health":
+        return this.statHealth;
+      case "evade":
+        return this.statEvade;
+      case "accuracy":
+        return this.statAccuracy;
+      case "reloadSpeed":
+        return this.statReloadSpeed;
+      case "runSpeed":
+        return this.statRunSpeed;
+      case "luck":
+        return this.statLuck;
+      case "stamina":
+        return this.statStamina;
+      case "recovery":
+        return this.statRecovery;
+      case "hpRecovery":
+        return this.statHpRecovery;
+      case "strength":
+        return this.statStrength;
+      default:
+        return 0;
+    }
+  }
+
+  /** Bag slot cap (matches server strength bonus). */
+  public getMaxInventorySlots(): number {
+    return computeMaxInventorySlots(
+      getConfig().player.MAX_INVENTORY_SLOTS,
+      this.statStrength,
+    );
   }
 
   public getPing(): number {
@@ -575,7 +671,7 @@ export class PlayerClient extends ClientEntity implements IClientEntity, Rendera
       return null;
     }
 
-    const maxSlots = getConfig().player.MAX_INVENTORY_SLOTS;
+    const maxSlots = this.getMaxInventorySlots();
     if (inputInventoryItem < 1 || inputInventoryItem > maxSlots) {
       return null;
     }

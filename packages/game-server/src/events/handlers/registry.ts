@@ -19,6 +19,7 @@ import { swapBagAndEquipmentHandler } from "./swap-bag-and-equipment";
 import { interactHandler } from "./interact";
 import { changePlayerColorHandler } from "./change-player-color";
 import { spawnZombieHandler } from "./spawn-zombie";
+import { setProgressionAllocationsHandler } from "./set-progression-allocations";
 
 /**
  * Registry of all socket event handlers.
@@ -52,4 +53,5 @@ export const socketEventHandlers: SocketEventHandler[] = [
   interactHandler,
   changePlayerColorHandler,
   spawnZombieHandler,
+  setProgressionAllocationsHandler,
 ];

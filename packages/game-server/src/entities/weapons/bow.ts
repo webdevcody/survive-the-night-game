@@ -8,6 +8,8 @@ import { GunFiredEvent } from "../../../../game-shared/src/events/server-sent/ev
 import { PlayerAttackedEvent } from "../../../../game-shared/src/events/server-sent/events/player-attacked-event";
 import Vector2 from "@/util/vector2";
 import { consumeAmmo } from "./helpers";
+import { Player } from "@/entities/players/player";
+import { getJitteredFireAngleRadians } from "@/entities/weapons/weapon-accuracy";
 
 export class Bow extends Weapon {
   constructor(gameManagers: IGameManagers) {
@@ -18,7 +20,7 @@ export class Bow extends Weapon {
     return this.getConfig().stats.cooldown;
   }
 
-  public attack(playerId: string, position: Vector2, facing: Direction, aimAngle?: number): void {
+  public attack(playerId: number, position: Vector2, facing: Direction, aimAngle?: number): void {
     const player = this.getEntityManager().getEntityById(playerId);
     if (!player) return;
 
@@ -32,9 +34,14 @@ export class Bow extends Weapon {
     const arrow = new Arrow(this.getGameManagers());
     arrow.setPosition(position);
 
-    // Use aimAngle if provided (mouse aiming), otherwise use facing direction
-    if (aimAngle !== undefined) {
-      arrow.setDirectionFromAngle(aimAngle);
+    let fireAngle: number | undefined;
+    if (player instanceof Player) {
+      fireAngle = getJitteredFireAngleRadians(player, aimAngle, facing, 0.11);
+    } else if (aimAngle !== undefined) {
+      fireAngle = aimAngle;
+    }
+    if (fireAngle !== undefined) {
+      arrow.setDirectionFromAngle(fireAngle);
     } else {
       arrow.setDirection(facing);
     }

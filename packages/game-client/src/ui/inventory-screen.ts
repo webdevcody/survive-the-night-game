@@ -6,6 +6,8 @@ import {
   InventoryItem,
   isWeapon,
   getWeaponAmmoType,
+  createEmptyEquipment,
+  EQUIPMENT_SLOT_KEYS,
   type EquipmentSlotKey,
   type PlayerEquipmentState,
 } from "@shared/util/inventory";
@@ -14,10 +16,57 @@ import { formatDisplayName } from "@/util/format";
 import { PlayerClient } from "@/entities/player";
 import { ClientPoison } from "@/extensions/poison";
 import { ClientInfiniteRun } from "@/extensions/infinite-run";
+import {
+  CHARACTER_STAT_KEYS,
+  computeInventoryWeightKg,
+  getItemWeightKg,
+} from "@shared/util/character-stats";
+import { SKILL_TREE_NODES, type SkillId } from "@shared/util/skill-tree";
+import { getProgressionPointsBudget } from "@shared/util/experience-level";
+import {
+  TAB_BAR_H,
+  PANEL_TAB_CONTENT_GAP,
+  characterStatPlusMinusRects,
+  characterStatRowLabelY,
+  drawCanvasUiButton,
+  panelBottomWideButtonRect,
+  skillsNodeCenter,
+  SKILLS_NODE_RADIUS,
+  tabBarHitRect,
+  uiCircleContains,
+  uiRectContains,
+} from "@/ui/canvas-ui-rect";
 
 const DRAG_THRESHOLD = 12;
+const PANEL_WIDTH_RATIO = 0.46;
+
+type InventoryTab = "inventory" | "character" | "skills";
+
+const STAT_LABELS: Record<(typeof CHARACTER_STAT_KEYS)[number], string> = {
+  health: "Health",
+  evade: "Evade (vs zombies)",
+  accuracy: "Accuracy",
+  reloadSpeed: "Reload speed",
+  runSpeed: "Run speed",
+  luck: "Luck (loot)",
+  stamina: "Stamina (max)",
+  recovery: "Stamina recovery",
+  hpRecovery: "Passive HP regen",
+  strength: "Strength (inventory)",
+};
 const GRID_COLS = 10;
-const GRID_ROWS = 4;
+
+const EQUIP_SLOT_LABELS: Record<EquipmentSlotKey, string> = {
+  head: "Head",
+  shoulders: "Shoulders",
+  torso: "Torso",
+  legs: "Legs",
+  shoes: "Shoes",
+  back: "Back",
+  hands: "Hands",
+};
+
+type EquipRect = { x: number; y: number; w: number; h: number };
 
 type DragSource =
   | { kind: "bag"; index: number }
@@ -39,11 +88,31 @@ export type InventoryScreenDeps = {
   inputManager: InputManager;
   getInventory: () => (InventoryItem | null)[];
   getEquipment: () => PlayerEquipmentState | null;
+  getMyPlayer: () => PlayerClient | null;
   sendDropItem: (slotIndex: number) => void;
   sendSwapItems: (from: number, to: number) => void;
   sendSwapBagAndEquipment: (bagIndex: number, equipSlot: EquipmentSlotKey) => void;
   sendSelectInventorySlot: (slotIndex: number) => void;
+  sendProgressionAllocations: (
+    kind: "skill" | "character",
+    allocations: Record<string, number>,
+  ) => void;
 };
+
+function buildCharacterMapFromPlayer(player: PlayerClient): Record<string, number> {
+  const o: Record<string, number> = {};
+  for (const key of CHARACTER_STAT_KEYS) {
+    o[key] = player.getCharacterStat(key);
+  }
+  return o;
+}
+
+function buildSkillMapFromPlayer(player: PlayerClient): Record<string, number> {
+  return {
+    sprint: player.getSkillSprintRank(),
+    regenerate: player.getSkillRegenerateRank(),
+  };
+}
 
 function drawBevelPanel(
   ctx: CanvasRenderingContext2D,
@@ -71,6 +140,8 @@ export class InventoryScreenUI {
   private hoveredEquipSlot: EquipmentSlotKey | null = null;
   private lastW = 0;
   private lastH = 0;
+  private activeTab: InventoryTab = "inventory";
+  private hoveredSkillId: SkillId | null = null;
 
   constructor(deps: InventoryScreenDeps) {
     this.deps = deps;
@@ -80,6 +151,7 @@ export class InventoryScreenUI {
     this.open = !this.open;
     if (!this.open) {
       this.dragState = null;
+      this.activeTab = "inventory";
     }
   }
 
@@ -87,7 +159,16 @@ export class InventoryScreenUI {
     this.open = value;
     if (!this.open) {
       this.dragState = null;
+      this.activeTab = "inventory";
     }
+  }
+
+  /** Horizontal center (screen px) for the visible gameplay column when the panel is open. */
+  public getCameraCenterScreenX(canvasWidth: number): number {
+    const pad = 20;
+    const rightW = Math.min(canvasWidth * PANEL_WIDTH_RATIO, canvasWidth - pad * 2);
+    const rightX = canvasWidth - rightW - pad;
+    return rightX / 2;
   }
 
   public isOpen(): boolean {
@@ -101,68 +182,131 @@ export class InventoryScreenUI {
     return this.isPointOverUi(pos.x, pos.y, this.lastW, this.lastH);
   }
 
-  private layout(canvasWidth: number, canvasHeight: number) {
-    const half = canvasWidth / 2;
-    const pad = 20;
-    const leftX = pad;
-    const leftW = half - pad * 2;
-    const leftY = pad;
-    const leftH = canvasHeight - pad * 2;
+  private getBagSlotCount(): number {
+    const p = this.deps.getMyPlayer();
+    return p?.getMaxInventorySlots() ?? getConfig().player.MAX_INVENTORY_SLOTS;
+  }
 
-    const rightX = half + pad;
-    const rightW = half - pad * 2;
+  private layout(canvasWidth: number, canvasHeight: number, bagSlotCount: number = getConfig().player.MAX_INVENTORY_SLOTS) {
+    const pad = 20;
+    const gridRows = Math.max(1, Math.ceil(bagSlotCount / GRID_COLS));
+    const rightW = Math.min(canvasWidth * PANEL_WIDTH_RATIO, canvasWidth - pad * 2);
+    const rightX = canvasWidth - rightW - pad;
     const rightY = pad;
     const rightH = canvasHeight - pad * 2;
 
-    const equipH = Math.min(160, rightH * 0.28);
-    const headSize = Math.min(72, equipH * 0.7);
-    const mainHandW = 56;
-    const mainHandH = equipH * 0.85;
-    const equipTop = rightY + 36;
-    const headX = rightX + rightW * 0.15;
-    const headY = equipTop + (equipH - headSize) / 2;
-    const mainX = rightX + rightW * 0.45;
-    const mainY = equipTop + (equipH - mainHandH) / 2;
+    const tabTop = rightY;
+    const contentTop = tabTop + TAB_BAR_H;
+    const contentH = rightH - TAB_BAR_H;
 
-    const gridTop = rightY + equipH + 56;
-    const gridBottom = rightY + rightH - 24;
-    const gridAvailH = Math.max(80, gridBottom - gridTop);
-    const cellGap = 6;
+    const equipTop = contentTop + PANEL_TAB_CONTENT_GAP + 30;
+    const cell = Math.min(40, Math.floor(Math.min((rightW - 32) / 4.5, (contentH * 0.5) / 7)));
+    const rowGap = 10;
+    const colGap = 10;
+    const cx = rightX + rightW * 0.5;
+
+    let y = equipTop;
+    const headRect: EquipRect = { x: cx - cell / 2, y, w: cell, h: cell };
+    y += cell + rowGap;
+
+    const shouldersW = cell * 2 + colGap;
+    const shouldersRect: EquipRect = {
+      x: cx - shouldersW / 2,
+      y,
+      w: shouldersW,
+      h: Math.floor(cell * 0.9),
+    };
+    y += shouldersRect.h + rowGap;
+
+    const torsoRowY = y;
+    const handsRect: EquipRect = {
+      x: cx - cell / 2 - colGap - cell,
+      y: torsoRowY,
+      w: cell,
+      h: cell,
+    };
+    const torsoRect: EquipRect = { x: cx - cell / 2, y: torsoRowY, w: cell, h: cell };
+    const backRect: EquipRect = {
+      x: cx + cell / 2 + colGap,
+      y: torsoRowY,
+      w: cell,
+      h: cell,
+    };
+    y += cell + rowGap;
+
+    const legsRect: EquipRect = { x: cx - cell / 2, y, w: cell, h: cell };
+    y += cell + rowGap;
+
+    const shoesRect: EquipRect = { x: cx - cell / 2, y, w: cell, h: cell };
+    y += cell + rowGap;
+
+    const bodyBottom = y;
+    const equipH = bodyBottom - equipTop + 12;
+
+    const equipRects: Record<EquipmentSlotKey, EquipRect> = {
+      head: headRect,
+      shoulders: shouldersRect,
+      torso: torsoRect,
+      legs: legsRect,
+      shoes: shoesRect,
+      back: backRect,
+      hands: handsRect,
+    };
+
+    const gridTop = contentTop + equipH + 40;
+    const gridBottom = rightY + rightH - 20;
+    const gridAvailH = Math.max(72, gridBottom - gridTop);
+    const cellGap = 5;
     const cellSize = Math.min(
-      52,
+      48,
       Math.floor((rightW - cellGap * (GRID_COLS - 1)) / GRID_COLS),
-      Math.floor((gridAvailH - cellGap * (GRID_ROWS - 1)) / GRID_ROWS)
+      Math.floor((gridAvailH - cellGap * (gridRows - 1)) / gridRows),
     );
     const gridW = GRID_COLS * cellSize + (GRID_COLS - 1) * cellGap;
-    const gridH = GRID_ROWS * cellSize + (GRID_ROWS - 1) * cellGap;
+    const gridH = gridRows * cellSize + (gridRows - 1) * cellGap;
     const gridLeft = rightX + (rightW - gridW) / 2;
 
+    const tabs = [
+      { id: "inventory" as const, label: "Inventory" },
+      { id: "character" as const, label: "Character" },
+      { id: "skills" as const, label: "Skills" },
+    ];
+    const tabCount = tabs.length;
+    const tabW = rightW / tabCount;
+    const tabX0 = rightX;
+
     return {
-      half,
-      leftX,
-      leftY,
-      leftW,
-      leftH,
       rightX,
       rightY,
       rightW,
       rightH,
+      tabTop,
+      tabBarH: TAB_BAR_H,
+      contentTop,
+      contentH,
+      tabs,
+      tabW,
+      tabX0,
       equipH,
-      headRect: { x: headX, y: headY, w: headSize, h: headSize },
-      mainHandRect: { x: mainX, y: mainY, w: mainHandW, h: mainHandH },
+      equipRects,
       gridLeft,
       gridTop,
       cellSize,
       cellGap,
       gridW,
       gridH,
+      gridRows,
+      bagSlotCount,
+      skillsOriginX: rightX + 24,
+      skillsOriginY: contentTop + PANEL_TAB_CONTENT_GAP + 8,
     };
   }
 
   private getBagIndexAt(x: number, y: number, L: ReturnType<InventoryScreenUI["layout"]>): number | null {
-    for (let row = 0; row < GRID_ROWS; row++) {
+    for (let row = 0; row < L.gridRows; row++) {
       for (let col = 0; col < GRID_COLS; col++) {
         const idx = row * GRID_COLS + col;
+        if (idx >= L.bagSlotCount) continue;
         const sx = L.gridLeft + col * (L.cellSize + L.cellGap);
         const sy = L.gridTop + row * (L.cellSize + L.cellGap);
         if (x >= sx && x <= sx + L.cellSize && y >= sy && y <= sy + L.cellSize) {
@@ -178,19 +322,148 @@ export class InventoryScreenUI {
     y: number,
     L: ReturnType<InventoryScreenUI["layout"]>
   ): EquipmentSlotKey | null {
-    const { headRect, mainHandRect } = L;
-    if (x >= headRect.x && x <= headRect.x + headRect.w && y >= headRect.y && y <= headRect.y + headRect.h) {
-      return "head";
-    }
-    if (
-      x >= mainHandRect.x &&
-      x <= mainHandRect.x + mainHandRect.w &&
-      y >= mainHandRect.y &&
-      y <= mainHandRect.y + mainHandRect.h
-    ) {
-      return "mainHand";
+    for (const key of EQUIPMENT_SLOT_KEYS) {
+      const r = L.equipRects[key];
+      if (x >= r.x && x <= r.x + r.w && y >= r.y && y <= r.y + r.h) {
+        return key;
+      }
     }
     return null;
+  }
+
+  private drawTabBar(
+    ctx: CanvasRenderingContext2D,
+    L: ReturnType<InventoryScreenUI["layout"]>,
+  ): void {
+    const panelRight = L.rightX + L.rightW;
+    const n = L.tabs.length;
+    for (let i = 0; i < n; i++) {
+      const t = L.tabs[i]!;
+      const x = L.tabX0 + i * L.tabW;
+      const w = i === n - 1 ? panelRight - x : L.tabW;
+      const y = L.tabTop;
+      const active = this.activeTab === t.id;
+      ctx.fillStyle = active ? "rgba(70, 75, 95, 0.95)" : "rgba(35, 36, 46, 0.9)";
+      ctx.fillRect(x, y, w, L.tabBarH);
+      ctx.strokeStyle = active ? "rgba(200, 210, 255, 0.9)" : "rgba(90, 95, 110, 0.7)";
+      ctx.lineWidth = 1;
+      ctx.strokeRect(x, y, w, L.tabBarH);
+      ctx.font = "bold 14px Arial";
+      ctx.fillStyle = active ? "#fff" : "#bbb";
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.fillText(t.label, x + w / 2, y + L.tabBarH / 2);
+    }
+    ctx.textBaseline = "alphabetic";
+  }
+
+  private renderCharacterTab(
+    ctx: CanvasRenderingContext2D,
+    L: ReturnType<InventoryScreenUI["layout"]>,
+    player: PlayerClient,
+  ): void {
+    const xp = player.getTotalExperience();
+    const budget = getProgressionPointsBudget(xp);
+    const avail = player.getAvailableCharacterPoints();
+    ctx.font = "16px Arial";
+    ctx.fillStyle = "#eee";
+    ctx.textAlign = "left";
+    let y = L.contentTop + PANEL_TAB_CONTENT_GAP;
+    ctx.fillText(`Character stats   (available ${avail} / budget ${budget} from level)`, L.rightX + 12, y);
+    y += 36;
+    ctx.font = "15px Arial";
+
+    for (const key of CHARACTER_STAT_KEYS) {
+      const val = player.getCharacterStat(key);
+      ctx.fillStyle = "#ddd";
+      ctx.fillText(`${STAT_LABELS[key]}`, L.rightX + 16, y);
+      ctx.fillStyle = "#aaa";
+      ctx.textAlign = "right";
+      ctx.fillText(`${val}`, L.rightX + L.rightW - 120, y);
+      ctx.textAlign = "left";
+      const { minus, plus } = characterStatPlusMinusRects(L.rightX, L.rightW, y);
+      drawCanvasUiButton(ctx, minus, "-", "compact");
+      drawCanvasUiButton(ctx, plus, "+", "compact");
+      y += 30;
+    }
+
+    const maxHp = player.getMaxHealth();
+    const hp = player.getHealth();
+    const stamina = player.getStamina();
+    const maxStamina = player.getMaxStamina();
+    y += 8;
+    ctx.fillStyle = "#9cf";
+    ctx.font = "14px Arial";
+    ctx.fillText(`Current HP: ${hp} / ${maxHp}`, L.rightX + 16, y);
+    y += 22;
+    ctx.fillText(`Stamina: ${Math.round(stamina)} / ${maxStamina}`, L.rightX + 16, y);
+    y += 22;
+    if (player.hasExt(ClientPoison)) {
+      ctx.fillStyle = "#7f7";
+      ctx.fillText("Poisoned", L.rightX + 16, y);
+      y += 22;
+    }
+    if (player.hasExt(ClientInfiniteRun)) {
+      ctx.fillStyle = "#8af";
+      ctx.fillText("Infinite run", L.rightX + 16, y);
+      y += 22;
+    }
+
+    drawCanvasUiButton(
+      ctx,
+      panelBottomWideButtonRect(L.rightX, L.rightY, L.rightW, L.rightH),
+      "Reset character stats",
+      "wide",
+    );
+  }
+
+  private renderSkillsTab(
+    ctx: CanvasRenderingContext2D,
+    L: ReturnType<InventoryScreenUI["layout"]>,
+    player: PlayerClient,
+  ): void {
+    const xp = player.getTotalExperience();
+    const budget = getProgressionPointsBudget(xp);
+    const avail = player.getAvailableSkillPoints();
+    ctx.font = "16px Arial";
+    ctx.fillStyle = "#eee";
+    ctx.textAlign = "left";
+    let ty = L.contentTop + PANEL_TAB_CONTENT_GAP;
+    ctx.fillText(`Skill tree   (available ${avail} / budget ${budget})`, L.rightX + 12, ty);
+    ty += 28;
+    ctx.font = "13px Arial";
+    ctx.fillStyle = "#aaa";
+    ctx.fillText("Click a node to unlock (when you have points). Click again to refund.", L.rightX + 12, ty);
+
+    for (const node of SKILL_TREE_NODES) {
+      const { cx, cy } = skillsNodeCenter(L.skillsOriginX, L.skillsOriginY, node.x, node.y);
+      const rank =
+        node.id === "sprint" ? player.getSkillSprintRank() : player.getSkillRegenerateRank();
+      const hover = this.hoveredSkillId === node.id;
+      ctx.beginPath();
+      ctx.arc(cx, cy, SKILLS_NODE_RADIUS, 0, Math.PI * 2);
+      ctx.fillStyle = rank > 0 ? "rgba(80, 140, 220, 0.85)" : "rgba(45, 48, 60, 0.95)";
+      ctx.fill();
+      ctx.strokeStyle = hover ? "rgba(255, 220, 120, 0.95)" : "rgba(140, 150, 170, 0.8)";
+      ctx.lineWidth = 2;
+      ctx.stroke();
+      ctx.font = "bold 13px Arial";
+      ctx.fillStyle = "#fff";
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.fillText(node.label, cx, cy - 6);
+      ctx.font = "11px Arial";
+      ctx.fillText(rank > 0 ? "Active" : "Locked", cx, cy + 10);
+    }
+    ctx.textBaseline = "alphabetic";
+    ctx.textAlign = "left";
+
+    drawCanvasUiButton(
+      ctx,
+      panelBottomWideButtonRect(L.rightX, L.rightY, L.rightW, L.rightH),
+      "Reset skills",
+      "wide",
+    );
   }
 
   public render(ctx: CanvasRenderingContext2D, gameState: GameState): void {
@@ -208,7 +481,7 @@ export class InventoryScreenUI {
 
     const w = ctx.canvas.width;
     const h = ctx.canvas.height;
-    const L = this.layout(w, h);
+    const L = this.layout(w, h, player.getMaxInventorySlots());
 
     ctx.save();
     ctx.setTransform(1, 0, 0, 1, 0, 0);
@@ -216,144 +489,138 @@ export class InventoryScreenUI {
     ctx.fillStyle = "rgba(0, 0, 0, 0.55)";
     ctx.fillRect(0, 0, w, h);
 
-    drawBevelPanel(ctx, L.leftX, L.leftY, L.leftW, L.leftH, "rgba(18, 18, 24, 0.96)");
     drawBevelPanel(ctx, L.rightX, L.rightY, L.rightW, L.rightH, "rgba(18, 18, 24, 0.96)");
 
-    ctx.font = "bold 22px Arial";
-    ctx.fillStyle = "rgba(220, 215, 200, 1)";
-    ctx.textAlign = "left";
-    ctx.fillText("Character", L.leftX + 14, L.leftY + 32);
+    this.drawTabBar(ctx, L);
 
-    ctx.fillText("Inventory", L.rightX + 14, L.rightY + 28);
-    ctx.font = "14px Arial";
-    ctx.fillStyle = "rgba(180, 180, 190, 0.9)";
-    ctx.fillText("Equipment", L.rightX + 14, L.rightY + 48);
+    if (this.activeTab === "inventory") {
+      const items = this.deps.getInventory();
+      const equipment = this.deps.getEquipment();
 
-    const maxHp = getConfig().player.MAX_PLAYER_HEALTH;
-    const hp = player.getHealth();
-    const stamina = player.getStamina();
-    const maxStamina = player.getMaxStamina();
-    let ly = L.leftY + 68;
-    ctx.font = "16px Arial";
-    ctx.fillStyle = "#eee";
-    ctx.fillText(`Health: ${hp} / ${maxHp}`, L.leftX + 16, ly);
-    ly += 28;
-    ctx.fillText(`Stamina: ${Math.round(stamina)} / ${maxStamina}`, L.leftX + 16, ly);
-    ly += 28;
-    if (player.hasExt(ClientPoison)) {
-      ctx.fillStyle = "#7f7";
-      ctx.fillText("Poisoned", L.leftX + 16, ly);
-      ly += 28;
-    }
-    if (player.hasExt(ClientInfiniteRun)) {
-      ctx.fillStyle = "#8af";
-      ctx.fillText("Infinite run", L.leftX + 16, ly);
-      ly += 28;
-    }
-    ctx.fillStyle = "#bbb";
-    ctx.font = "13px Arial";
-    ctx.fillText("I / Esc — close    P — instructions", L.leftX + 16, L.leftY + L.leftH - 20);
+      ctx.font = "14px Arial";
+      ctx.fillStyle = "rgba(180, 180, 190, 0.9)";
+      ctx.textAlign = "left";
+      ctx.fillText("Equipment", L.rightX + 14, L.contentTop + PANEL_TAB_CONTENT_GAP);
 
-    const items = this.deps.getInventory();
-    const equipment = this.deps.getEquipment();
+      const totalKg = computeInventoryWeightKg(items, equipment ?? createEmptyEquipment());
+      ctx.textAlign = "right";
+      ctx.fillText(`Weight: ${totalKg.toFixed(1)} kg`, L.rightX + L.rightW - 14, L.contentTop + PANEL_TAB_CONTENT_GAP);
+      ctx.textAlign = "left";
 
-    this.drawEquipSlot(ctx, L.headRect, equipment?.head ?? null, "Head", "head");
-    this.drawEquipSlot(ctx, L.mainHandRect, equipment?.mainHand ?? null, "Weapon", "mainHand");
+      for (const slot of EQUIPMENT_SLOT_KEYS) {
+        this.drawEquipSlot(
+          ctx,
+          L.equipRects[slot],
+          equipment?.[slot] ?? null,
+          EQUIP_SLOT_LABELS[slot],
+          slot,
+        );
+      }
 
-    const slots = getConfig().player.MAX_INVENTORY_SLOTS;
-    const activeIdx = this.deps.inputManager.getCurrentInventorySlot() - 1;
+      const slots = L.bagSlotCount;
+      const activeIdx = this.deps.inputManager.getCurrentInventorySlot() - 1;
 
-    for (let row = 0; row < GRID_ROWS; row++) {
-      for (let col = 0; col < GRID_COLS; col++) {
-        const idx = row * GRID_COLS + col;
-        if (idx >= slots) continue;
-        const sx = L.gridLeft + col * (L.cellSize + L.cellGap);
-        const sy = L.gridTop + row * (L.cellSize + L.cellGap);
-        const invItem = items[idx];
-        const isActive = activeIdx === idx;
-        const isHover = this.hoveredBagIndex === idx && !this.dragState?.isDragging;
-        const isDragSource =
-          this.dragState?.isDragging &&
-          this.dragState.source.kind === "bag" &&
-          this.dragState.source.index === idx;
-        const isTarget =
-          this.dragState?.isDragging &&
-          this.dragState.targetBagIndex === idx &&
-          this.dragState.source.kind === "bag" &&
-          this.dragState.source.index !== idx;
+      for (let row = 0; row < L.gridRows; row++) {
+        for (let col = 0; col < GRID_COLS; col++) {
+          const idx = row * GRID_COLS + col;
+          if (idx >= slots) continue;
+          const sx = L.gridLeft + col * (L.cellSize + L.cellGap);
+          const sy = L.gridTop + row * (L.cellSize + L.cellGap);
+          const invItem = items[idx];
+          const isActive = activeIdx === idx;
+          const isHover = this.hoveredBagIndex === idx && !this.dragState?.isDragging;
+          const isDragSource =
+            this.dragState?.isDragging &&
+            this.dragState.source.kind === "bag" &&
+            this.dragState.source.index === idx;
+          const isTarget =
+            this.dragState?.isDragging &&
+            this.dragState.targetBagIndex === idx &&
+            this.dragState.source.kind === "bag" &&
+            this.dragState.source.index !== idx;
 
-        ctx.fillStyle = "rgba(42, 42, 52, 0.95)";
-        ctx.fillRect(sx, sy, L.cellSize, L.cellSize);
-
-        if (isDragSource) {
-          ctx.fillStyle = "rgba(255,255,255,0.08)";
+          ctx.fillStyle = "rgba(42, 42, 52, 0.95)";
           ctx.fillRect(sx, sy, L.cellSize, L.cellSize);
-        }
 
-        ctx.strokeStyle = isTarget
-          ? "rgba(100, 200, 255, 0.95)"
-          : isActive
-            ? "rgba(255, 220, 120, 0.95)"
-            : isHover
-              ? "rgba(200, 200, 255, 0.6)"
-              : "rgba(90, 95, 110, 0.9)";
-        ctx.lineWidth = isActive || isTarget ? 2 : 1;
-        ctx.strokeRect(sx, sy, L.cellSize, L.cellSize);
+          if (isDragSource) {
+            ctx.fillStyle = "rgba(255,255,255,0.08)";
+            ctx.fillRect(sx, sy, L.cellSize, L.cellSize);
+          }
 
-        if (invItem) {
-          const img = this.deps.assetManager.get(getItemAssetKey(invItem));
-          if (img) {
-            const pad = 6;
-            ctx.save();
-            if (isDragSource) ctx.globalAlpha = 0.35;
-            ctx.drawImage(
-              img,
-              sx + pad,
-              sy + pad,
-              L.cellSize - pad * 2,
-              L.cellSize - pad * 2
-            );
-            ctx.restore();
-          }
-          if (invItem.state?.count) {
-            ctx.font = "bold 14px Arial";
-            ctx.textAlign = "right";
-            ctx.fillStyle = "#fff";
-            ctx.strokeStyle = "rgba(0,0,0,0.85)";
-            ctx.lineWidth = 2;
-            const cx = sx + L.cellSize - 4;
-            const cy = sy + L.cellSize - 4;
-            ctx.strokeText(`${invItem.state.count}`, cx, cy);
-            ctx.fillText(`${invItem.state.count}`, cx, cy);
-          }
-          if (isWeapon(invItem.itemType)) {
-            const ammoType = getWeaponAmmoType(invItem.itemType);
-            if (ammoType) {
-              const ammoItem = items.find((it) => it?.itemType === ammoType);
-              const ammoCount = ammoItem?.state?.count ?? 0;
-              ctx.font = "bold 11px Arial";
+          ctx.strokeStyle = isTarget
+            ? "rgba(100, 200, 255, 0.95)"
+            : isActive
+              ? "rgba(255, 220, 120, 0.95)"
+              : isHover
+                ? "rgba(200, 200, 255, 0.6)"
+                : "rgba(90, 95, 110, 0.9)";
+          ctx.lineWidth = isActive || isTarget ? 2 : 1;
+          ctx.strokeRect(sx, sy, L.cellSize, L.cellSize);
+
+          if (invItem) {
+            const img = this.deps.assetManager.get(getItemAssetKey(invItem));
+            if (img) {
+              const pad = 6;
+              ctx.save();
+              if (isDragSource) ctx.globalAlpha = 0.35;
+              ctx.drawImage(
+                img,
+                sx + pad,
+                sy + pad,
+                L.cellSize - pad * 2,
+                L.cellSize - pad * 2,
+              );
+              ctx.restore();
+            }
+            if (invItem.state?.count) {
+              ctx.font = "bold 14px Arial";
               ctx.textAlign = "right";
-              ctx.fillStyle = ammoCount > 0 ? "rgba(255, 255, 120, 1)" : "rgba(255, 100, 100, 1)";
-              ctx.strokeStyle = "rgba(0,0,0,0.8)";
+              ctx.fillStyle = "#fff";
+              ctx.strokeStyle = "rgba(0,0,0,0.85)";
               ctx.lineWidth = 2;
-              const ax = sx + L.cellSize - 4;
-              const ay = sy + 14;
-              ctx.strokeText(`${ammoCount}`, ax, ay);
-              ctx.fillText(`${ammoCount}`, ax, ay);
+              const cx = sx + L.cellSize - 4;
+              const cy = sy + L.cellSize - 4;
+              ctx.strokeText(`${invItem.state.count}`, cx, cy);
+              ctx.fillText(`${invItem.state.count}`, cx, cy);
+            }
+            if (isWeapon(invItem.itemType)) {
+              const ammoType = getWeaponAmmoType(invItem.itemType);
+              if (ammoType) {
+                const ammoItem = items.find((it) => it?.itemType === ammoType);
+                const ammoCount = ammoItem?.state?.count ?? 0;
+                ctx.font = "bold 11px Arial";
+                ctx.textAlign = "right";
+                ctx.fillStyle = ammoCount > 0 ? "rgba(255, 255, 120, 1)" : "rgba(255, 100, 100, 1)";
+                ctx.strokeStyle = "rgba(0,0,0,0.8)";
+                ctx.lineWidth = 2;
+                const ax = sx + L.cellSize - 4;
+                const ay = sy + 14;
+                ctx.strokeText(`${ammoCount}`, ax, ay);
+                ctx.fillText(`${ammoCount}`, ax, ay);
+              }
             }
           }
-        }
 
-        ctx.font = "11px Arial";
-        ctx.textAlign = "left";
-        ctx.fillStyle = "rgba(200,200,210,0.65)";
-        if (idx < 9) ctx.fillText(`${idx + 1}`, sx + 4, sy + 14);
-        else if (idx === 9) ctx.fillText("0", sx + 4, sy + 14);
+          ctx.font = "11px Arial";
+          ctx.textAlign = "left";
+          ctx.fillStyle = "rgba(200,200,210,0.65)";
+          if (idx < 9) ctx.fillText(`${idx + 1}`, sx + 4, sy + 14);
+          else if (idx === 9) ctx.fillText("0", sx + 4, sy + 14);
+        }
       }
+
+      this.renderDragPreview(ctx, L.cellSize);
+      this.renderTooltipFixed(ctx, items, equipment);
+    } else if (this.activeTab === "character") {
+      this.renderCharacterTab(ctx, L, player);
+    } else {
+      this.renderSkillsTab(ctx, L, player);
     }
 
-    this.renderDragPreview(ctx, L.cellSize);
-    this.renderTooltipFixed(ctx, items, equipment);
+    ctx.fillStyle = "rgba(180, 180, 190, 0.85)";
+    ctx.font = "12px Arial";
+    ctx.textAlign = "left";
+    ctx.fillText("I / Esc — close   P — instructions", L.rightX + 12, L.rightY + L.rightH - 12);
     ctx.restore();
   }
 
@@ -440,9 +707,24 @@ export class InventoryScreenUI {
       this.hoveredEquipSlot = null;
       return;
     }
-    const L = this.layout(canvasWidth, canvasHeight);
-    this.hoveredBagIndex = this.getBagIndexAt(x, y, L);
-    this.hoveredEquipSlot = this.getEquipAt(x, y, L);
+    const L = this.layout(canvasWidth, canvasHeight, this.getBagSlotCount());
+    this.hoveredSkillId = null;
+    if (this.activeTab === "inventory") {
+      this.hoveredBagIndex = this.getBagIndexAt(x, y, L);
+      this.hoveredEquipSlot = this.getEquipAt(x, y, L);
+    } else {
+      this.hoveredBagIndex = null;
+      this.hoveredEquipSlot = null;
+    }
+    if (this.activeTab === "skills") {
+      for (const node of SKILL_TREE_NODES) {
+        const { cx, cy } = skillsNodeCenter(L.skillsOriginX, L.skillsOriginY, node.x, node.y);
+        if (uiCircleContains(cx, cy, SKILLS_NODE_RADIUS, x, y)) {
+          this.hoveredSkillId = node.id;
+          break;
+        }
+      }
+    }
     if (this.dragState?.isDragging) {
       this.dragState.currentX = x;
       this.dragState.currentY = y;
@@ -468,30 +750,120 @@ export class InventoryScreenUI {
     if (!hovered) return;
 
     const name = formatDisplayName(hovered.itemType);
-    ctx.font = "bold 16px Arial";
+    const stackKg =
+      getItemWeightKg(hovered.itemType) * (hovered.state?.count ?? 1);
+    const weightLine = `${stackKg.toFixed(1)} kg`;
+
     ctx.textAlign = "center";
-    const tw = ctx.measureText(name).width;
+    ctx.font = "bold 16px Arial";
+    const wName = ctx.measureText(name).width;
+    ctx.font = "14px Arial";
+    const wWeight = ctx.measureText(weightLine).width;
+
     const pad = 8;
-    const bx = this._mx - tw / 2 - pad;
-    const by = this._my - 36;
-    const bw = tw + pad * 2;
-    const bh = 28;
+    const bw = Math.max(wName, wWeight) + pad * 2;
+    const bh = 44;
+    const bx = this._mx - bw / 2;
+    const by = this._my - bh - 10;
+
     ctx.fillStyle = "rgba(0,0,0,0.9)";
     ctx.fillRect(bx, by, bw, bh);
     ctx.strokeStyle = "rgba(255,255,255,0.4)";
     ctx.lineWidth = 1;
     ctx.strokeRect(bx, by, bw, bh);
+
+    ctx.font = "bold 16px Arial";
     ctx.fillStyle = "#fff";
     ctx.fillText(name, this._mx, by + 20);
+    ctx.font = "14px Arial";
+    ctx.fillStyle = "rgba(220, 220, 230, 0.95)";
+    ctx.fillText(weightLine, this._mx, by + 36);
   }
 
   public handleClick(x: number, y: number, canvasWidth: number, canvasHeight: number): boolean {
     if (!this.open) return false;
-    const L = this.layout(canvasWidth, canvasHeight);
-    const inLeft = x >= L.leftX && x <= L.leftX + L.leftW && y >= L.leftY && y <= L.leftY + L.leftH;
-    const inRight = x >= L.rightX && x <= L.rightX + L.rightW && y >= L.rightY && y <= L.rightY + L.rightH;
-    if (!inLeft && !inRight) {
+    const L = this.layout(canvasWidth, canvasHeight, this.getBagSlotCount());
+    const inPanel =
+      x >= L.rightX && x <= L.rightX + L.rightW && y >= L.rightY && y <= L.rightY + L.rightH;
+
+    if (x < L.rightX) {
       this.toggle();
+      return true;
+    }
+
+    if (!inPanel) {
+      this.toggle();
+      return true;
+    }
+
+    const player = this.deps.getMyPlayer();
+    if (!player) {
+      return true;
+    }
+
+    for (let i = 0; i < L.tabs.length; i++) {
+      const t = L.tabs[i]!;
+      const tr = tabBarHitRect(L.tabX0, L.tabTop, L.tabW, L.tabBarH, i, L.tabs.length, L.rightX + L.rightW);
+      if (uiRectContains(tr, x, y)) {
+        this.activeTab = t.id;
+        this.dragState = null;
+        return true;
+      }
+    }
+
+    if (this.activeTab === "character") {
+      const resetRect = panelBottomWideButtonRect(L.rightX, L.rightY, L.rightW, L.rightH);
+      if (uiRectContains(resetRect, x, y)) {
+        this.deps.sendProgressionAllocations("character", {});
+        return true;
+      }
+      for (let i = 0; i < CHARACTER_STAT_KEYS.length; i++) {
+        const key = CHARACTER_STAT_KEYS[i]!;
+        const rowY = characterStatRowLabelY(L.contentTop, i);
+        const { minus, plus } = characterStatPlusMinusRects(L.rightX, L.rightW, rowY);
+        if (uiRectContains(minus, x, y)) {
+          const m = buildCharacterMapFromPlayer(player);
+          m[key] = Math.max(0, (m[key] ?? 0) - 1);
+          this.deps.sendProgressionAllocations("character", m);
+          return true;
+        }
+        if (uiRectContains(plus, x, y)) {
+          const m = buildCharacterMapFromPlayer(player);
+          m[key] = (m[key] ?? 0) + 1;
+          this.deps.sendProgressionAllocations("character", m);
+          return true;
+        }
+      }
+      return true;
+    }
+
+    if (this.activeTab === "skills") {
+      const resetRect = panelBottomWideButtonRect(L.rightX, L.rightY, L.rightW, L.rightH);
+      if (uiRectContains(resetRect, x, y)) {
+        this.deps.sendProgressionAllocations("skill", {});
+        return true;
+      }
+      for (const node of SKILL_TREE_NODES) {
+        const { cx, cy } = skillsNodeCenter(L.skillsOriginX, L.skillsOriginY, node.x, node.y);
+        if (uiCircleContains(cx, cy, SKILLS_NODE_RADIUS, x, y)) {
+          const skills = buildSkillMapFromPlayer(player);
+          const curS = skills.sprint ?? 0;
+          const curR = skills.regenerate ?? 0;
+          if (node.id === "sprint") {
+            skills.sprint = curS > 0 ? 0 : 1;
+            if (skills.sprint && curS === 0 && player.getAvailableSkillPoints() <= 0) {
+              return true;
+            }
+          } else {
+            skills.regenerate = curR > 0 ? 0 : 1;
+            if (skills.regenerate && curR === 0 && player.getAvailableSkillPoints() <= 0) {
+              return true;
+            }
+          }
+          this.deps.sendProgressionAllocations("skill", skills);
+          return true;
+        }
+      }
       return true;
     }
 
@@ -511,7 +883,7 @@ export class InventoryScreenUI {
           targetEquipSlot: null,
         };
       }
-      if (bagIdx < getConfig().player.MAX_INVENTORY_SLOTS) {
+      if (bagIdx < (this.deps.getMyPlayer()?.getMaxInventorySlots() ?? getConfig().player.MAX_INVENTORY_SLOTS)) {
         this.deps.sendSelectInventorySlot(bagIdx + 1);
       }
       return true;
@@ -550,14 +922,14 @@ export class InventoryScreenUI {
   }
 
   public handleMouseUp(x: number, y: number, canvasWidth: number, canvasHeight: number): void {
-    if (!this.open) return;
+    if (!this.open || this.activeTab !== "inventory") return;
     const drag = this.dragState;
     this.dragState = null;
     if (!drag?.isDragging) {
       return;
     }
 
-    const L = this.layout(canvasWidth, canvasHeight);
+    const L = this.layout(canvasWidth, canvasHeight, this.getBagSlotCount());
     const bagIdx = this.getBagIndexAt(x, y, L);
     const eq = this.getEquipAt(x, y, L);
 
@@ -571,8 +943,7 @@ export class InventoryScreenUI {
         return;
       }
       const inRight = x >= L.rightX && x <= L.rightX + L.rightW && y >= L.rightY && y <= L.rightY + L.rightH;
-      const inLeft = x >= L.leftX && x <= L.leftX + L.leftW && y >= L.leftY && y <= L.leftY + L.leftH;
-      if (!inRight && !inLeft) {
+      if (!inRight) {
         this.deps.sendDropItem(drag.source.index);
       }
       return;
@@ -587,9 +958,7 @@ export class InventoryScreenUI {
 
   public isPointOverUi(x: number, y: number, canvasWidth: number, canvasHeight: number): boolean {
     if (!this.open) return false;
-    const L = this.layout(canvasWidth, canvasHeight);
-    const inLeft = x >= L.leftX && x <= L.leftX + L.leftW && y >= L.leftY && y <= L.leftY + L.leftH;
-    const inRight = x >= L.rightX && x <= L.rightX + L.rightW && y >= L.rightY && y <= L.rightY + L.rightH;
-    return inLeft || inRight;
+    const L = this.layout(canvasWidth, canvasHeight, this.getBagSlotCount());
+    return x >= L.rightX && x <= L.rightX + L.rightW && y >= L.rightY && y <= L.rightY + L.rightH;
   }
 }

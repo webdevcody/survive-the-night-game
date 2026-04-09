@@ -1,6 +1,5 @@
 import { GameState } from "@/state";
 import { getPlayer } from "@/util/get-player";
-import { getConfig } from "@shared/config";
 import { Panel, PanelSettings } from "./panel";
 import { calculateHudScale } from "@/util/hud-scale";
 import { ClientPoison } from "@/extensions/poison";
@@ -29,7 +28,7 @@ export class HeartsPanel extends Panel {
     this.resetTransform(ctx);
 
     const currentHealth = player.getHealth();
-    const maxHealth = getConfig().player.MAX_PLAYER_HEALTH;
+    const maxHealth = player.getMaxHealth();
     const fraction = maxHealth > 0 ? currentHealth / maxHealth : 0;
     const isPoisoned = player.hasExt(ClientPoison);
 

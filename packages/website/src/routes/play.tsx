@@ -45,9 +45,11 @@ export function meta() {
 function GameClientLoader() {
   const navigate = useNavigate();
   const { data: session, isPending: sessionPending } = authClient.useSession();
+  const authUserId = session?.user?.id ?? null;
   const [gameAuthPhase, setGameAuthPhase] = useState<GameAuthPhase>("idle");
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const sceneManagerRef = useRef<any>(null);
+  const bootstrappedUserIdRef = useRef<string | null>(null);
   const [isClient, setIsClient] = useState(false);
   const [showInstructions, setShowInstructions] = useState(false);
   const [showSpawnPanel, setShowSpawnPanel] = useState(false);
@@ -57,6 +59,7 @@ function GameClientLoader() {
   const [savedDisplayName, setSavedDisplayName] = useState<string>("");
   const [currentPlayerName, setCurrentPlayerName] = useState<string>("");
   const [currentPlayerColor, setCurrentPlayerColor] = useState<string>("none");
+  const [sceneLoadError, setSceneLoadError] = useState<string | null>(null);
   const gameControlsToggleRef = useRef<HTMLSpanElement>(null);
 
   const handleLeaveGame = () => {
@@ -91,7 +94,14 @@ function GameClientLoader() {
   }, [session, sessionPending]);
 
   useEffect(() => {
-    if (sessionPending || !session) return;
+    if (sessionPending || !authUserId) return;
+    if (
+      bootstrappedUserIdRef.current === authUserId &&
+      gameAuthPhase === "ok" &&
+      window.__gameAuthToken
+    ) {
+      return;
+    }
 
     let cancelled = false;
     setGameAuthPhase("loading");
@@ -105,19 +115,24 @@ function GameClientLoader() {
           setSavedDisplayName(displayName);
         }
         if (!token) {
+          bootstrappedUserIdRef.current = null;
           setGameAuthPhase("missing");
         } else {
+          bootstrappedUserIdRef.current = authUserId;
           setGameAuthPhase("ok");
         }
       })
       .catch(() => {
-        if (!cancelled) setGameAuthPhase("missing");
+        if (!cancelled) {
+          bootstrappedUserIdRef.current = null;
+          setGameAuthPhase("missing");
+        }
       });
 
     return () => {
       cancelled = true;
     };
-  }, [session, sessionPending]);
+  }, [authUserId, gameAuthPhase, sessionPending]);
 
   // Poll for game client once scene manager is loaded
   useEffect(() => {
@@ -219,27 +234,41 @@ function GameClientLoader() {
     if (!isClient || gameAuthPhase !== "ok" || !canvasRef.current) {
       return;
     }
+    if (sceneManagerRef.current) {
+      return;
+    }
 
-    // @ts-ignore
-    import("@survive-the-night/game-client/scenes").then(({ SceneManager, LoadingScene }) => {
-      if (!canvasRef.current) {
-        return;
-      }
+    setSceneLoadError(null);
+    // @ts-ignore — workspace package
+    import("@survive-the-night/game-client/scenes")
+      .then(({ SceneManager, LoadingScene }) => {
+        if (!canvasRef.current) {
+          return;
+        }
 
-      sceneManagerRef.current = new SceneManager(canvasRef.current);
+        sceneManagerRef.current = new SceneManager(canvasRef.current);
 
-      (window as any).__sceneManager = sceneManagerRef.current;
+        (window as any).__sceneManager = sceneManagerRef.current;
 
-      sceneManagerRef.current.switchScene(LoadingScene);
-    });
+        void sceneManagerRef.current.switchScene(LoadingScene);
+      })
+      .catch((err: unknown) => {
+        console.error("Failed to load game client:", err);
+        const message = err instanceof Error ? err.message : String(err);
+        setSceneLoadError(message || "Failed to load game");
+      });
 
+  }, [isClient, gameAuthPhase]);
+
+  useEffect(() => {
     return () => {
       if (sceneManagerRef.current) {
         sceneManagerRef.current.destroy();
+        sceneManagerRef.current = null;
         delete (window as any).__sceneManager;
       }
     };
-  }, [isClient, gameAuthPhase]);
+  }, []);
 
   if (sessionPending) {
     return (
@@ -278,9 +307,28 @@ function GameClientLoader() {
     );
   }
 
+  if (gameAuthPhase === "ok" && sceneLoadError) {
+    return (
+      <div className="flex min-h-screen flex-col items-center justify-center gap-4 bg-black px-6 text-center text-white">
+        <h1 className="text-xl font-semibold">Could not start the game</h1>
+        <p className="max-w-lg text-muted-foreground text-sm break-words">{sceneLoadError}</p>
+        <p className="max-w-md text-muted-foreground text-sm">
+          Check the browser console for details. Try a hard refresh or rebuild the app.
+        </p>
+        <Link to="/" className="text-primary underline">
+          Back to home
+        </Link>
+      </div>
+    );
+  }
+
   return (
-    <div className="relative flex justify-center items-center h-screen bg-black">
-      <canvas ref={canvasRef} />
+    <div className="relative flex h-screen w-screen items-center justify-center bg-black">
+      <canvas
+        ref={canvasRef}
+        className="block h-full w-full max-h-screen max-w-full"
+        style={{ minHeight: "100vh", minWidth: "100vw" }}
+      />
 
       {/* Top left controls - Game menu, Info button and Config panel */}
       <div className="fixed left-4 top-4 z-[10000] flex items-start gap-2">

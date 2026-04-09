@@ -32,6 +32,8 @@ import { SessionValidator } from "@/services/session-validator";
 import { UserSessionCache } from "@/services/user-session-cache";
 import { KillTracker } from "@/services/kill-tracker";
 import { WEBSITE_API_URL, GAME_SERVER_API_KEY } from "@/config/env";
+import type { PersistedPlayerProgress } from "@/services/player-progress-types";
+import { XP_PER_ZOMBIE_KILL } from "@shared/util/experience-level";
 
 /**
  * Any and all functionality related to sending server side events
@@ -171,8 +173,8 @@ export class ServerSocketManager implements Broadcaster {
       console.log(`Socket ${socket.id} authenticated as user ${userId}`);
 
       void (async () => {
-        const initialExperience = await this.fetchPersistedExperience(userId);
-        await this.onConnection(socket, initialExperience);
+        const progress = await this.fetchPersistedProgress(userId);
+        await this.onConnection(socket, progress);
       })().catch((err) => {
         console.error(`[ServerSocketManager] onConnection failed for socket ${socket.id}:`, err);
       });
@@ -180,12 +182,16 @@ export class ServerSocketManager implements Broadcaster {
   }
 
   /**
-   * Load persisted experience from the website DB before the player entity is created
-   * so the first game state snapshot includes the correct value.
+   * Load persisted experience and allocation progress from the website DB before the player entity is created.
    */
-  private async fetchPersistedExperience(userId: string): Promise<number> {
+  private async fetchPersistedProgress(userId: string): Promise<PersistedPlayerProgress> {
+    const empty: PersistedPlayerProgress = {
+      experience: 0,
+      skillAllocations: {},
+      characterAllocations: {},
+    };
     if (!GAME_SERVER_API_KEY) {
-      return 0;
+      return empty;
     }
 
     const url = `${WEBSITE_API_URL}/api/game/player-experience?userId=${encodeURIComponent(userId)}`;
@@ -195,19 +201,44 @@ export class ServerSocketManager implements Broadcaster {
         headers: { "X-API-Key": GAME_SERVER_API_KEY },
       });
       if (!response.ok) {
+        const errText = await response.text().catch(() => "");
         console.warn(
-          `[ServerSocketManager] player-experience HTTP ${response.status} for user ${userId}`,
+          `[ServerSocketManager] player-experience HTTP ${response.status} for user ${userId}: ${errText.slice(0, 500)}`,
         );
-        return 0;
+        return empty;
       }
-      const data = (await response.json()) as { experience?: number };
-      if (typeof data.experience === "number" && data.experience >= 0) {
-        return Math.floor(data.experience);
+      const data = (await response.json()) as {
+        experience?: unknown;
+        zombieKills?: unknown;
+        skillAllocations?: Record<string, number>;
+        characterAllocations?: Record<string, number>;
+      };
+      const rawXp = data.experience;
+      let xp =
+        typeof rawXp === "number" && Number.isFinite(rawXp)
+          ? Math.floor(rawXp)
+          : typeof rawXp === "string" && rawXp.trim() !== ""
+            ? Math.max(0, Math.floor(Number(rawXp)))
+            : 0;
+      const rawKills = data.zombieKills;
+      const kills =
+        typeof rawKills === "number" && Number.isFinite(rawKills)
+          ? Math.floor(rawKills)
+          : typeof rawKills === "string" && rawKills.trim() !== ""
+            ? Math.max(0, Math.floor(Number(rawKills)))
+            : 0;
+      if (xp <= 0 && kills > 0) {
+        xp = kills * XP_PER_ZOMBIE_KILL;
       }
+      return {
+        experience: Math.max(0, xp),
+        skillAllocations: data.skillAllocations ?? {},
+        characterAllocations: data.characterAllocations ?? {},
+      };
     } catch (error) {
-      console.warn(`[ServerSocketManager] fetchPersistedExperience failed for ${userId}:`, error);
+      console.warn(`[ServerSocketManager] fetchPersistedProgress failed for ${userId}:`, error);
     }
-    return 0;
+    return empty;
   }
 
   /**
@@ -232,8 +263,8 @@ export class ServerSocketManager implements Broadcaster {
       sendEventToSocket: (socket: ISocketAdapter, event: GameEvent<any>) =>
         this.sendEventToSocket(socket, event),
       sanitizeText: (text: string) => this.sanitizeText(text),
-      createPlayerForSocket: (socket: ISocketAdapter, initialExperience?: number) =>
-        this.createPlayerForSocket(socket, initialExperience),
+      createPlayerForSocket: (socket: ISocketAdapter, initialProgress?: PersistedPlayerProgress) =>
+        this.createPlayerForSocket(socket, initialProgress),
       broadcastPlayerJoined: (player: Player) => this.broadcastPlayerJoined(player),
     };
   }
@@ -297,7 +328,14 @@ export class ServerSocketManager implements Broadcaster {
     this.mapManager = mapManager;
   }
 
-  private createPlayerForSocket(socket: ISocketAdapter, initialExperience: number = 0): Player {
+  private createPlayerForSocket(
+    socket: ISocketAdapter,
+    initialProgress: PersistedPlayerProgress = {
+      experience: 0,
+      skillAllocations: {},
+      characterAllocations: {},
+    },
+  ): Player {
     const player = new Player(this.getGameManagers());
     player.setDisplayName(this.playerDisplayNames.get(socket.id) ?? "Unknown");
 
@@ -307,7 +345,7 @@ export class ServerSocketManager implements Broadcaster {
       player.setPlayerColor(savedColor);
     }
 
-    player.serialized.set("experience", Math.max(0, Math.floor(initialExperience)));
+    player.hydratePersistedProgress(initialProgress);
 
     // Use the game mode strategy to handle player spawning
     // This allows each mode to determine spawn location (campsite for waves, random for battle royale)
@@ -333,8 +371,10 @@ export class ServerSocketManager implements Broadcaster {
 
     for (const socket of sockets) {
       const userId = this.userSessionCache.getUserIdBySocket(socket.id);
-      const initialExperience = userId ? await this.fetchPersistedExperience(userId) : 0;
-      this.createPlayerForSocket(socket, initialExperience);
+      const progress = userId
+        ? await this.fetchPersistedProgress(userId)
+        : { experience: 0, skillAllocations: {}, characterAllocations: {} };
+      this.createPlayerForSocket(socket, progress);
     }
   }
 
@@ -403,10 +443,17 @@ export class ServerSocketManager implements Broadcaster {
     }
   }
 
-  private async onConnection(socket: ISocketAdapter, initialExperience: number = 0): Promise<void> {
+  private async onConnection(
+    socket: ISocketAdapter,
+    initialProgress: PersistedPlayerProgress = {
+      experience: 0,
+      skillAllocations: {},
+      characterAllocations: {},
+    },
+  ): Promise<void> {
     const context = this.getHandlerContext();
     this.setupSocketListeners(socket);
-    await onConnection(context, socket, initialExperience);
+    await onConnection(context, socket, initialProgress);
   }
 
   public broadcastEvent(event: GameEvent<any>): void {

@@ -30,6 +30,11 @@ export class Coin extends StackableItem {
     this.getEntityManager().getBroadcaster().broadcastEvent(new CoinPickupEvent(this.getId()));
 
     const carryable = this.getExt(Carryable);
-    carryable.pickup(entityId, Carryable.createStackablePickupOptions(carryable, this.getDefaultCount()));
+    const baseCount = this.getDefaultCount();
+    const bonus = entity.getLuckCoinPickupBonus();
+    carryable.pickup(
+      entityId,
+      Carryable.createStackablePickupOptions(carryable, baseCount + bonus),
+    );
   }
 }

@@ -4,6 +4,7 @@ import {
   ItemType,
   isWeapon,
   createEmptyEquipment,
+  EQUIPMENT_SLOT_KEYS,
   type PlayerEquipmentState,
 } from "../../../game-shared/src/util/inventory";
 import { BaseClientExtension } from "./base-extension";
@@ -26,10 +27,17 @@ export class ClientInventory extends BaseClientExtension {
     return this.equipment;
   }
 
+  public getMaxSlots(): number {
+    const e = this.clientEntity as { getMaxInventorySlots?: () => number };
+    if (typeof e.getMaxInventorySlots === "function") {
+      return e.getMaxInventorySlots();
+    }
+    return playerConfig.MAX_INVENTORY_SLOTS;
+  }
+
   public isFull(): boolean {
-    // Count non-null items instead of array length to support sparse arrays
     const itemCount = this.items.filter((item: InventoryItem | null) => item != null).length;
-    return itemCount >= playerConfig.MAX_INVENTORY_SLOTS;
+    return itemCount >= this.getMaxSlots();
   }
 
   public getActiveItem(index: number | null): InventoryItem | null {
@@ -43,10 +51,6 @@ export class ClientInventory extends BaseClientExtension {
   }
 
   public resolveActiveWeapon(activeBagItem: InventoryItem | null): InventoryItem | null {
-    const main = this.equipment.mainHand;
-    if (main && isWeapon(main.itemType)) {
-      return main;
-    }
     return this.getActiveWeapon(activeBagItem);
   }
 
@@ -80,10 +84,11 @@ export class ClientInventory extends BaseClientExtension {
     };
 
     if (reader.hasMore()) {
-      this.equipment = {
-        head: readNullableItem(),
-        mainHand: readNullableItem(),
-      };
+      const eq = createEmptyEquipment();
+      for (const key of EQUIPMENT_SLOT_KEYS) {
+        eq[key] = readNullableItem();
+      }
+      this.equipment = eq;
     } else {
       this.equipment = createEmptyEquipment();
     }

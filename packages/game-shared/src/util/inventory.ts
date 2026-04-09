@@ -1,6 +1,7 @@
 import { ItemState } from "../types/entity";
 import { weaponRegistry, resourceRegistry } from "../entities";
 import { itemRegistry } from "../entities/item-registry";
+import type { ArmorEquipmentSlotKey } from "../entities/item-registry";
 
 export type ItemType = string;
 
@@ -13,7 +14,7 @@ export type WeaponKey = string;
 
 /**
  * Type representing valid resource types
- * Derived from resource registry - any resource added to RESOURCE_CONFIGS
+ * Derived from the resource registry - any resource added to RESOURCE_CONFIGS
  * will automatically be recognized here
  */
 export type ResourceType = string;
@@ -47,26 +48,51 @@ export function getWeaponAmmoType(weaponType: ItemType): ItemType | null {
   return ammoType || null;
 }
 
-/** Server-backed equipment slots (v1: head + main hand) */
-export type EquipmentSlotKey = "head" | "mainHand";
+/** Armor / wearable slots only (weapons stay in bag / hotbar). Order is fixed for network and buffers (indices 0–6). */
+export type EquipmentSlotKey = ArmorEquipmentSlotKey;
+
+export const EQUIPMENT_SLOT_KEYS: readonly EquipmentSlotKey[] = [
+  "head",
+  "shoulders",
+  "torso",
+  "legs",
+  "shoes",
+  "back",
+  "hands",
+] as const;
 
 export interface PlayerEquipmentState {
   head: InventoryItem | null;
-  mainHand: InventoryItem | null;
+  shoulders: InventoryItem | null;
+  torso: InventoryItem | null;
+  legs: InventoryItem | null;
+  shoes: InventoryItem | null;
+  back: InventoryItem | null;
+  hands: InventoryItem | null;
 }
 
 export function createEmptyEquipment(): PlayerEquipmentState {
-  return { head: null, mainHand: null };
+  return {
+    head: null,
+    shoulders: null,
+    torso: null,
+    legs: null,
+    shoes: null,
+    back: null,
+    hands: null,
+  };
 }
 
-/** Network encoding: 0 = head, 1 = mainHand */
+/** Network encoding: index in EQUIPMENT_SLOT_KEYS (0–6). */
 export function encodeEquipmentSlotKey(slot: EquipmentSlotKey): number {
-  return slot === "head" ? 0 : 1;
+  const i = EQUIPMENT_SLOT_KEYS.indexOf(slot);
+  return i >= 0 ? i : 0;
 }
 
 export function decodeEquipmentSlotKey(value: number): EquipmentSlotKey | null {
-  if (value === 0) return "head";
-  if (value === 1) return "mainHand";
+  if (value >= 0 && value < EQUIPMENT_SLOT_KEYS.length) {
+    return EQUIPMENT_SLOT_KEYS[value]!;
+  }
   return null;
 }
 
@@ -74,11 +100,13 @@ export function decodeEquipmentSlotKey(value: number): EquipmentSlotKey | null {
  * Whether an item type may be placed in the given equipment slot (used when moving from bag → equip).
  */
 export function canItemGoInEquipmentSlot(itemType: ItemType, slot: EquipmentSlotKey): boolean {
-  if (slot === "head") {
-    return itemRegistry.get(itemType)?.wearable === true;
+  const cfg = itemRegistry.get(itemType);
+  if (cfg?.equipmentSlot === slot) {
+    return true;
   }
-  if (slot === "mainHand") {
-    return isWeapon(itemType);
+  // Legacy: wearable items without equipmentSlot only fit head
+  if (slot === "head" && cfg?.wearable === true && cfg.equipmentSlot === undefined) {
+    return true;
   }
   return false;
 }

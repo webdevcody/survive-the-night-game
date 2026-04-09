@@ -2,10 +2,46 @@ import { eq, sql } from "drizzle-orm";
 import { database } from "~/db";
 import { userStats, user, type UserStats } from "~/db/schema";
 import { randomUUID } from "crypto";
+import {
+  normalizeCharacterAllocations,
+  normalizeSkillAllocations,
+  validateCharacterAllocations,
+  validateSkillAllocations,
+} from "@survive-the-night/game-shared/util/progression-allocation";
+import { XP_PER_ZOMBIE_KILL } from "@survive-the-night/game-shared/util/experience-level";
+import type { CharacterAllocations } from "@survive-the-night/game-shared/util/character-stats";
+import type { SkillAllocations } from "@survive-the-night/game-shared/util/skill-tree";
 
 /**
  * Get user stats by user ID, creating if doesn't exist
  */
+/**
+ * Total XP for game join hydration. Coerces DB/JSON types and, if experience is still 0 but
+ * zombie kills were recorded (e.g. legacy rows or failed add-experience calls), derives XP from kills.
+ */
+export function resolveHydrationExperience(stats: UserStats): number {
+  const raw = stats.experience as unknown;
+  let xp =
+    typeof raw === "number" && Number.isFinite(raw)
+      ? Math.floor(raw)
+      : typeof raw === "string" && raw.trim() !== ""
+        ? Math.max(0, Math.floor(Number(raw)))
+        : 0;
+
+  const rawKills = stats.zombieKills as unknown;
+  const kills =
+    typeof rawKills === "number" && Number.isFinite(rawKills)
+      ? Math.floor(rawKills)
+      : typeof rawKills === "string" && rawKills.trim() !== ""
+        ? Math.max(0, Math.floor(Number(rawKills)))
+        : 0;
+
+  if (xp <= 0 && kills > 0) {
+    return kills * XP_PER_ZOMBIE_KILL;
+  }
+  return Math.max(0, xp);
+}
+
 export async function getOrCreateUserStats(userId: string): Promise<UserStats> {
   const [existing] = await database
     .select()
@@ -152,4 +188,52 @@ export async function updatePlayerStats(
     .returning();
 
   return result;
+}
+
+/**
+ * Replace skill allocations after validation against user's experience level.
+ */
+export async function setSkillAllocations(
+  userId: string,
+  raw: unknown,
+): Promise<{ ok: true; stats: UserStats } | { ok: false; error: string }> {
+  const stats = await getOrCreateUserStats(userId);
+  const allocations = normalizeSkillAllocations(raw) as SkillAllocations;
+  const err = validateSkillAllocations(allocations, stats.experience);
+  if (err) {
+    return { ok: false, error: JSON.stringify(err) };
+  }
+  const [updated] = await database
+    .update(userStats)
+    .set({
+      skillAllocations: allocations as Record<string, number>,
+      updatedAt: new Date(),
+    })
+    .where(eq(userStats.userId, userId))
+    .returning();
+  return { ok: true, stats: updated! };
+}
+
+/**
+ * Replace character stat allocations after validation against user's experience level.
+ */
+export async function setCharacterAllocations(
+  userId: string,
+  raw: unknown,
+): Promise<{ ok: true; stats: UserStats } | { ok: false; error: string }> {
+  const stats = await getOrCreateUserStats(userId);
+  const allocations = normalizeCharacterAllocations(raw) as CharacterAllocations;
+  const err = validateCharacterAllocations(allocations, stats.experience);
+  if (err) {
+    return { ok: false, error: JSON.stringify(err) };
+  }
+  const [updated] = await database
+    .update(userStats)
+    .set({
+      characterAllocations: allocations as Record<string, number>,
+      updatedAt: new Date(),
+    })
+    .where(eq(userStats.userId, userId))
+    .returning();
+  return { ok: true, stats: updated! };
 }

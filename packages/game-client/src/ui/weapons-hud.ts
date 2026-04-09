@@ -1,7 +1,7 @@
 import { Renderable } from "@/entities/util";
 import { InputManager } from "@/managers/input";
 import { AssetManager, getItemAssetKey } from "@/managers/asset";
-import { InventoryItem, type PlayerEquipmentState } from "@shared/util/inventory";
+import { InventoryItem } from "@shared/util/inventory";
 import { calculateHudScale } from "@/util/hud-scale";
 import { weaponRegistry } from "@shared/entities/weapon-registry";
 import { Z_INDEX } from "@shared/map";
@@ -30,7 +30,6 @@ export class WeaponsHUD implements Renderable {
   private input: InputManager;
   private assets: AssetManager;
   private getInventory: () => (InventoryItem | null)[];
-  private getEquipment: () => PlayerEquipmentState | null;
 
   private mouseX = 0;
   private mouseY = 0;
@@ -61,16 +60,10 @@ export class WeaponsHUD implements Renderable {
     hover: -1,
   };
 
-  constructor(
-    asset: AssetManager,
-    input: InputManager,
-    getInv: () => (InventoryItem | null)[],
-    getEquipment?: () => PlayerEquipmentState | null
-  ) {
+  constructor(asset: AssetManager, input: InputManager, getInv: () => (InventoryItem | null)[]) {
     this.assets = asset;
     this.input = input;
     this.getInventory = getInv;
-    this.getEquipment = getEquipment ?? (() => null);
     this.buildStaticData();
   }
 
@@ -173,12 +166,6 @@ export class WeaponsHUD implements Renderable {
       return true;
     }
 
-    const main = this.getEquipment()?.mainHand;
-    if (main && main.itemType === item.name) {
-      this.lastSelectedIndex = index;
-      return true;
-    }
-
     return false;
   }
 
@@ -187,16 +174,13 @@ export class WeaponsHUD implements Renderable {
   // ---------------------------------------------------------
   private updateOwnership() {
     const inv = this.getInventory();
-    const mainHand = this.getEquipment()?.mainHand;
     const count = this.items.length;
 
     let mask = "";
     for (let i = 0; i < count; i++) {
       const type = this.items[i].name;
 
-      const weaponOwned =
-        inv.some((it) => it && it.itemType === type) ||
-        (!!mainHand && mainHand.itemType === type);
+      const weaponOwned = inv.some((it) => it && it.itemType === type);
 
       mask += weaponOwned ? "1" : "0";
     }

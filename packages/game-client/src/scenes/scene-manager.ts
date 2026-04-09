@@ -1,6 +1,7 @@
 import type { Scene } from "./scene";
 import type { AssetManager } from "@/managers/asset";
 import type { SoundManager } from "@/managers/sound-manager";
+import { resizeCanvasToWindow } from "@/util/canvas-size";
 
 export class SceneManager {
   private currentScene: Scene | null = null;
@@ -15,6 +16,7 @@ export class SceneManager {
 
   constructor(canvas: HTMLCanvasElement) {
     this.canvas = canvas;
+    resizeCanvasToWindow(canvas);
   }
 
   /**

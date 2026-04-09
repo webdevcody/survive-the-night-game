@@ -10,6 +10,7 @@ import { ISocketAdapter } from "@shared/network/socket-adapter";
 import { PlayerColor } from "@shared/commands/commands";
 import { SessionValidator } from "@/services/session-validator";
 import { UserSessionCache } from "@/services/user-session-cache";
+import type { PersistedPlayerProgress } from "@/services/player-progress-types";
 
 export interface HandlerContext {
   players: Map<string, Player>;
@@ -28,6 +29,6 @@ export interface HandlerContext {
   broadcastEvent(event: GameEvent<any>): void;
   sendEventToSocket(socket: ISocketAdapter, event: GameEvent<any>): void;
   sanitizeText(text: string): string;
-  createPlayerForSocket(socket: any, initialExperience?: number): Player;
+  createPlayerForSocket(socket: any, initialProgress?: PersistedPlayerProgress): Player;
   broadcastPlayerJoined(player: Player): void;
 }

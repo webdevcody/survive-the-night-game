@@ -1,4 +1,5 @@
-import { pgTable, text, timestamp, boolean, integer } from "drizzle-orm/pg-core";
+import { pgTable, text, timestamp, boolean, integer, jsonb } from "drizzle-orm/pg-core";
+import { sql } from "drizzle-orm";
 import { relations } from "drizzle-orm";
 
 export const user = pgTable("user", {
@@ -70,6 +71,14 @@ export const userStats = pgTable("user_stats", {
     .references(() => user.id, { onDelete: "cascade" }),
   zombieKills: integer("zombie_kills").notNull().default(0),
   experience: integer("experience").notNull().default(0),
+  skillAllocations: jsonb("skill_allocations")
+    .$type<Record<string, number>>()
+    .notNull()
+    .default(sql`'{}'::jsonb`),
+  characterAllocations: jsonb("character_allocations")
+    .$type<Record<string, number>>()
+    .notNull()
+    .default(sql`'{}'::jsonb`),
   createdAt: timestamp("created_at")
     .$defaultFn(() => new Date())
     .notNull(),

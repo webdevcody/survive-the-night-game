@@ -21,6 +21,7 @@ import { getConfig } from "@shared/config";
 import { getPlayer } from "./util/get-player";
 import { distance } from "@shared/util/physics";
 import { isAutoPickupItem } from "./util/auto-pickup";
+import { resizeCanvasToWindow } from "./util/canvas-size";
 
 export class Renderer {
   private ctx: CanvasRenderingContext2D;
@@ -133,10 +134,7 @@ export class Renderer {
   public resizeCanvas(): void {
     // Force devicePixelRatio to 1 for consistent pixel-perfect rendering
     // This simplifies coordinate calculations and ensures 1:1 pixel mapping
-    this.ctx.canvas.width = window.innerWidth;
-    this.ctx.canvas.height = window.innerHeight;
-    this.ctx.canvas.style.width = `${window.innerWidth}px`;
-    this.ctx.canvas.style.height = `${window.innerHeight}px`;
+    resizeCanvasToWindow(this.ctx.canvas);
 
     this.ctx.imageSmoothingEnabled = false;
     // No scaling needed since we're using 1:1 pixel mapping

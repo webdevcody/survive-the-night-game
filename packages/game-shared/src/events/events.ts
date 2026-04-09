@@ -64,6 +64,7 @@ export const ClientSentEvents = {
   INTERACT: "interact",
   CHANGE_PLAYER_COLOR: "changePlayerColor",
   SPAWN_ZOMBIE: "spawnZombie",
+  SET_PROGRESSION_ALLOCATIONS: "setProgressionAllocations",
 } as const;
 
 export type ServerSentEventType = (typeof ServerSentEvents)[keyof typeof ServerSentEvents];

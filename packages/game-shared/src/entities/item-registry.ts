@@ -1,5 +1,15 @@
 import { BehaviorConfigs } from "./behavior-configs";
 
+/** Wearable equipment slots (same as inventory EquipmentSlotKey). */
+export type ArmorEquipmentSlotKey =
+  | "head"
+  | "shoulders"
+  | "torso"
+  | "legs"
+  | "shoes"
+  | "back"
+  | "hands";
+
 export interface ItemAssetConfig {
   assetKey: string;
   x: number;
@@ -20,10 +30,14 @@ export interface ItemConfig extends BehaviorConfigs {
   healable?: boolean; // If true, item can be used for quick heal (must also be consumable)
   lightIntensity?: number; // Light radius provided when item is equipped or in inventory (0 = no light)
   wearable?: boolean; // If true, item is wearable and should be rendered as an overlay when in inventory
+  /** When set, item may only be equipped in this slot. */
+  equipmentSlot?: ArmorEquipmentSlotKey;
   duration?: number; // Duration in seconds for consumable effects (e.g., energy drink)
   upgradeTo?: string; // If set, placing this item on an existing structure of the same type will upgrade it to this item type
   autoPickup?: boolean; // If false, item will never be auto-picked up (defaults to undefined/null for default behavior)
   isPassthrough?: boolean; // If true, players can walk through this entity (used for collision prediction)
+  /** Mass for encumbrance / stamina drain (kg per logical item; stacks multiply). Default 0.1 in code. */
+  weightKg?: number;
 }
 
 class ItemRegistry {

@@ -577,10 +577,13 @@ export class MapManager {
     if (!playerPos) {
       const player = this.gameClient.getMyPlayer();
       if (!player || !player.hasExt(ClientPositionable)) {
-        return null;
+        // Until the local player exists, show the map centered so the world isn't a black void
+        const cols = this.groundLayer[0].length;
+        const rows = this.groundLayer.length;
+        playerPos = new Vector2((cols * this.tileSize) / 2, (rows * this.tileSize) / 2);
+      } else {
+        playerPos = player.getExt(ClientPositionable).getCenterPosition();
       }
-
-      playerPos = player.getExt(ClientPositionable).getCenterPosition();
     }
 
     const distance = renderDistance ?? getConfig().render.ENTITY_RENDER_RADIUS;

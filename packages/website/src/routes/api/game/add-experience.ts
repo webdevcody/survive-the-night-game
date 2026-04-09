@@ -1,26 +1,15 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { privateEnv } from "~/config/privateEnv";
 import { addExperience } from "~/data-access/user-stats";
+import { requireGameServerApiKey } from "~/utils/game-server-api-auth";
 
 export const Route = createFileRoute("/api/game/add-experience")({
   server: {
     handlers: {
       POST: async ({ request }) => {
         try {
-          const apiKey = request.headers.get("X-API-Key");
-          if (!apiKey || apiKey !== privateEnv.GAME_SERVER_API_KEY) {
-            return new Response(JSON.stringify({ success: false, error: "Unauthorized" }), {
-              status: 401,
-              headers: { "Content-Type": "application/json" },
-            });
-          }
-
-          if (!privateEnv.GAME_SERVER_API_KEY) {
-            console.error("GAME_SERVER_API_KEY not configured");
-            return new Response(
-              JSON.stringify({ success: false, error: "Server configuration error" }),
-              { status: 500, headers: { "Content-Type": "application/json" } },
-            );
+          const authError = requireGameServerApiKey(request);
+          if (authError) {
+            return authError;
           }
 
           const body = await request.json();

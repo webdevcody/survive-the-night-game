@@ -24,7 +24,7 @@ import { InventoryScreenUI } from "./inventory-screen";
 import { WeaponsHUD } from "@/ui/weapons-hud";
 import { InputManager } from "@/managers/input";
 import { PlayerClient } from "@/entities/player";
-import { InventoryItem } from "../../../game-shared/src/util/inventory";
+import { InventoryItem, type EquipmentSlotKey } from "../../../game-shared/src/util/inventory";
 import { ClientInventory } from "@/extensions/inventory";
 import { renderRadialProgressIndicator } from "@/util/radial-progress-indicator";
 import { getMinimapHudLayout } from "./minimap-hud-group-layout";
@@ -128,7 +128,12 @@ export class Hud {
     inputManager: InputManager,
     sendDropItem: (slotIndex: number) => void,
     sendSwapItems: (fromSlotIndex: number, toSlotIndex: number) => void,
-    sendSwapBagAndEquipment: (bagIndex: number, equipSlot: "head" | "mainHand") => void
+    sendSwapBagAndEquipment: (bagIndex: number, equipSlot: EquipmentSlotKey) => void,
+    sendProgressionAllocations: (
+      kind: "skill" | "character",
+      allocations: Record<string, number>,
+    ) => void,
+    getMyPlayer: () => PlayerClient | null,
   ) {
     this.mapManager = mapManager;
     this.soundManager = soundManager;
@@ -178,21 +183,18 @@ export class Hud {
       inputManager: this.inputManager,
       getInventory,
       getEquipment,
+      getMyPlayer: getMyPlayer,
       sendDropItem,
       sendSwapItems,
       sendSwapBagAndEquipment,
       sendSelectInventorySlot: (slotIndex) => {
         this.inputManager.setInventorySlot(slotIndex);
       },
+      sendProgressionAllocations,
     });
 
     // Initialize weapons HUD
-    this.weaponsHud = new WeaponsHUD(
-      this.assetManager,
-      this.inputManager,
-      getInventory,
-      getEquipment
-    );
+    this.weaponsHud = new WeaponsHUD(this.assetManager, this.inputManager, getInventory);
 
     this.minimap = new Minimap(mapManager);
     this.fullscreenMap = new FullScreenMap(mapManager);
@@ -560,6 +562,14 @@ export class Hud {
 
   public isInventoryScreenOpen(): boolean {
     return this.inventoryScreen.isOpen();
+  }
+
+  /** When inventory is open, camera should center on the visible gameplay column (left of the panel). */
+  public getInventoryCameraCenterScreenX(canvasWidth: number): number | null {
+    if (!this.inventoryScreen.isOpen()) {
+      return null;
+    }
+    return this.inventoryScreen.getCameraCenterScreenX(canvasWidth);
   }
 
   public isHoveringMuteButton(): boolean {

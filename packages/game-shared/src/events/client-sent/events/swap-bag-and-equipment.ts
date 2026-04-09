@@ -38,7 +38,7 @@ export class SwapBagAndEquipmentEvent implements GameEvent<SwapBagAndEquipmentEv
   static deserializeFromBuffer(reader: BufferReader): SwapBagAndEquipmentEventData {
     const bagIndex = reader.readUInt8();
     const slotCode = reader.readUInt8();
-    const equipSlot = decodeEquipmentSlotKey(slotCode) ?? "mainHand";
+    const equipSlot = decodeEquipmentSlotKey(slotCode) ?? "head";
     return { bagIndex, equipSlot };
   }
 }

@@ -41,6 +41,7 @@ import { IClientAdapter } from "@shared/network/client-adapter";
 import { createClientAdapter } from "@/network/adapter-factory";
 import { deserializeServerEvent } from "@shared/events/server-sent/server-event-serialization";
 import { getConfig } from "@shared/config";
+import type { EquipmentSlotKey } from "@shared/util/inventory";
 import { getGameAuthToken } from "@/util/cookie";
 
 export type EntityDto = { id: string } & any;
@@ -509,7 +510,7 @@ export class ClientSocketManager {
     });
   }
 
-  public sendSwapBagAndEquipment(bagIndex: number, equipSlot: "head" | "mainHand") {
+  public sendSwapBagAndEquipment(bagIndex: number, equipSlot: EquipmentSlotKey) {
     this.emitClientEvent(ClientSentEvents.SWAP_BAG_AND_EQUIPMENT, {
       bagIndex,
       equipSlot,
@@ -553,6 +554,13 @@ export class ClientSocketManager {
 
   public sendPlayerColor(color: string) {
     this.emitClientEvent(ClientSentEvents.CHANGE_PLAYER_COLOR, { color });
+  }
+
+  public sendProgressionAllocations(
+    kind: "skill" | "character",
+    allocations: Record<string, number>,
+  ): void {
+    this.emitClientEvent(ClientSentEvents.SET_PROGRESSION_ALLOCATIONS, { kind, allocations });
   }
 
   public sendSpawnZombie(x: number, y: number) {

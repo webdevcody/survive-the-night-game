@@ -3,7 +3,9 @@ import { HandlerContext } from "../context";
 import Inventory from "@/extensions/inventory";
 import { SocketEventHandler } from "./types";
 import { getConfig } from "@shared/config";
-import type { EquipmentSlotKey } from "@shared/util/inventory";
+import { EQUIPMENT_SLOT_KEYS, type EquipmentSlotKey } from "@shared/util/inventory";
+
+const EQUIP_SLOT_SET = new Set<string>(EQUIPMENT_SLOT_KEYS);
 
 function validateData(data: unknown): { bagIndex: number; equipSlot: EquipmentSlotKey } | null {
   if (typeof data !== "object" || data === null) {
@@ -22,11 +24,11 @@ function validateData(data: unknown): { bagIndex: number; equipSlot: EquipmentSl
   }
 
   const equipSlot = obj.equipSlot;
-  if (equipSlot !== "head" && equipSlot !== "mainHand") {
+  if (typeof equipSlot !== "string" || !EQUIP_SLOT_SET.has(equipSlot)) {
     return null;
   }
 
-  return { bagIndex, equipSlot };
+  return { bagIndex, equipSlot: equipSlot as EquipmentSlotKey };
 }
 
 export function onSwapBagAndEquipment(

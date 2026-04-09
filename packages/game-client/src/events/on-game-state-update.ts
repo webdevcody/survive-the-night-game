@@ -20,8 +20,9 @@ export const onGameStateUpdate = (
     return;
   }
 
-  // Don't process full state until we have playerId
+  // Full state can arrive before YOUR_ID; queue and apply after player id is known (see on-your-id)
   if (gameStateEvent.isFullState() && !context.hasReceivedPlayerId) {
+    context.queuePendingFullState(gameStateEvent);
     return;
   }
 

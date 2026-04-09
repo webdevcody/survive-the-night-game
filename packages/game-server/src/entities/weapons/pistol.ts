@@ -8,6 +8,9 @@ import { GunFiredEvent } from "../../../../game-shared/src/events/server-sent/ev
 import { PlayerAttackedEvent } from "../../../../game-shared/src/events/server-sent/events/player-attacked-event";
 import Vector2 from "@/util/vector2";
 import { consumeAmmo } from "./helpers";
+import { Player } from "@/entities/players/player";
+import { Entity } from "@/entities/entity";
+import { getJitteredFireAngleRadians } from "@/entities/weapons/weapon-accuracy";
 
 export class Pistol extends Weapon {
   constructor(gameManagers: IGameManagers) {
@@ -32,9 +35,14 @@ export class Pistol extends Weapon {
     const bullet = new Bullet(this.getGameManagers());
     bullet.setPosition(position);
 
-    // Use aimAngle if provided (mouse aiming), otherwise use facing direction
-    if (aimAngle !== undefined) {
-      bullet.setDirectionFromAngle(aimAngle);
+    let fireAngle: number | undefined;
+    if (player instanceof Player) {
+      fireAngle = getJitteredFireAngleRadians(player, aimAngle, facing, 0.14);
+    } else if (aimAngle !== undefined) {
+      fireAngle = aimAngle;
+    }
+    if (fireAngle !== undefined) {
+      bullet.setDirectionFromAngle(fireAngle);
     } else {
       bullet.setDirection(facing);
     }
@@ -51,7 +59,7 @@ export class Pistol extends Weapon {
         })
       );
 
-    this.applyRecoil(player, facing, aimAngle, 0.35);
-    this.getEntityManager().getBroadcaster().broadcastEvent(new GunFiredEvent(playerId));
+    this.applyRecoil(player as unknown as Entity, facing, aimAngle, 0.35);
+    this.getEntityManager().getBroadcaster().broadcastEvent(new GunFiredEvent(playerId, "pistol"));
   }
 }

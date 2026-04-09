@@ -1,45 +1,46 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { getOrCreateUserStats, resolveHydrationExperience } from "~/data-access/user-stats";
+import { setCharacterAllocations } from "~/data-access/user-stats";
 import { requireGameServerApiKey } from "~/utils/game-server-api-auth";
 
 /**
- * Game server → website: load persisted experience for a user (hydrate Player entity on connect).
- * GET ?userId=... with X-API-Key
+ * Game server → website: persist character stat allocation map (full replace). POST with X-API-Key.
  */
-export const Route = createFileRoute("/api/game/player-experience")({
+export const Route = createFileRoute("/api/game/character-allocations")({
   server: {
     handlers: {
-      GET: async ({ request }) => {
+      POST: async ({ request }) => {
         try {
           const authError = requireGameServerApiKey(request);
           if (authError) {
             return authError;
           }
 
-          const url = new URL(request.url);
-          const userId = url.searchParams.get("userId");
-          if (!userId) {
+          const body = (await request.json()) as { userId?: string; allocations?: unknown };
+          const userId = body.userId;
+          if (!userId || typeof userId !== "string") {
             return new Response(JSON.stringify({ success: false, error: "Missing userId" }), {
               status: 400,
               headers: { "Content-Type": "application/json" },
             });
           }
 
-          const stats = await getOrCreateUserStats(userId);
-          const experience = resolveHydrationExperience(stats);
+          const result = await setCharacterAllocations(userId, body.allocations ?? {});
+          if (result.ok === false) {
+            return new Response(JSON.stringify({ success: false, error: result.error }), {
+              status: 400,
+              headers: { "Content-Type": "application/json" },
+            });
+          }
 
           return new Response(
             JSON.stringify({
               success: true,
-              experience,
-              zombieKills: stats.zombieKills ?? 0,
-              skillAllocations: stats.skillAllocations ?? {},
-              characterAllocations: stats.characterAllocations ?? {},
+              characterAllocations: result.stats.characterAllocations,
             }),
             { status: 200, headers: { "Content-Type": "application/json" } },
           );
         } catch (error) {
-          console.error("player-experience GET error:", error);
+          console.error("character-allocations POST error:", error);
           return new Response(JSON.stringify({ success: false, error: "Internal server error" }), {
             status: 500,
             headers: { "Content-Type": "application/json" },

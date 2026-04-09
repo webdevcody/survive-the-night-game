@@ -7,6 +7,8 @@ import { Direction } from "../../../../game-shared/src/util/direction";
 import Vector2 from "@/util/vector2";
 import { consumeAmmo } from "./helpers";
 import { GunEmptyEvent } from "../../../../game-shared/src/events/server-sent/events/gun-empty-event";
+import { Player } from "@/entities/players/player";
+import { normalizeDirection } from "@shared/util/direction";
 
 export class Shotgun extends Weapon {
   constructor(gameManagers: IGameManagers) {
@@ -17,7 +19,7 @@ export class Shotgun extends Weapon {
     return this.getConfig().stats.cooldown;
   }
 
-  public attack(playerId: string, position: Vector2, facing: Direction, aimAngle?: number): void {
+  public attack(playerId: number, position: Vector2, facing: Direction, aimAngle?: number): void {
     const player = this.getEntityManager().getEntityById(playerId);
     if (!player) return;
 
@@ -28,19 +30,20 @@ export class Shotgun extends Weapon {
       return; // No ammo available
     }
 
-    // Create 3 bullets with spread
+    const spreadMult = player instanceof Player ? player.getAccuracySpreadMultiplier() : 1;
+    const spreadDeg = this.getConfig().stats.spreadAngle!;
+    const v = normalizeDirection(facing);
+    const baseAngle =
+      aimAngle !== undefined ? aimAngle : Math.atan2(v.y, v.x);
+
     for (let i = -1; i <= 1; i++) {
       const bullet = new Bullet(this.getGameManagers());
       bullet.setPosition(position);
 
-      // Use aimAngle if provided (mouse aiming), otherwise use facing direction
-      if (aimAngle !== undefined) {
-        // Convert spread angle to radians and apply offset
-        const spreadRadians = (i * this.getConfig().stats.spreadAngle! * Math.PI) / 180;
-        bullet.setDirectionFromAngle(aimAngle + spreadRadians);
-      } else {
-        bullet.setDirectionWithOffset(facing, i * this.getConfig().stats.spreadAngle!);
-      }
+      const spreadRadians = ((i * spreadDeg * spreadMult) * Math.PI) / 180;
+      const jitter =
+        player instanceof Player ? (Math.random() - 0.5) * 0.06 * spreadMult : 0;
+      bullet.setDirectionFromAngle(baseAngle + spreadRadians + jitter);
 
       bullet.setShooterId(playerId);
       this.getEntityManager().addEntity(bullet);

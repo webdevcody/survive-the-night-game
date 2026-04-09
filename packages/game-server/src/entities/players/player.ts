@@ -39,6 +39,19 @@ import Snared from "@/extensions/snared";
 import { shouldAutoPickup, attemptAutoPickup } from "@/util/auto-pickup";
 import { infectionConfig } from "@shared/config/infection-config";
 import { EntityType } from "@shared/types/entity";
+import {
+  CHARACTER_STAT_MODIFIERS,
+  computeEncumbranceStaminaDrainMultiplier,
+  computeInventoryWeightKg,
+  computeMaxInventorySlots,
+  computeMaxPlayerHealth,
+  computeMaxStamina,
+  computeEvadeChance,
+  computePassiveHpRegenIntervalSeconds,
+  computeStaminaRegenMultiplier,
+} from "@shared/util/character-stats";
+import { REGENERATE_HEAL_PER_SECOND } from "@shared/util/skill-tree";
+import { getZombieTypesSet } from "@shared/constants";
 
 /**
  * Cached list of entity types that players can pass through (collision passthrough).
@@ -74,6 +87,8 @@ export class Player extends Entity {
   // Item pickup hold tracking
   private pickupHoldTimer: number = 0; // Time F has been held for pickup
   private targetPickupEntity: number | null = null; // Entity ID being targeted for pickup
+  /** Accumulator for passive HP regen (hpRecovery stat). */
+  private passiveHpRegenAccumulator = 0;
 
   constructor(gameManagers: IGameManagers) {
     super(gameManagers, Entities.PLAYER);
@@ -106,6 +121,18 @@ export class Player extends Entity {
         inputSprint: false,
         inputAimAngle: NaN, // NaN represents undefined for optional field
         inputAimDistance: NaN, // NaN represents undefined for optional field
+        skillSprint: 0,
+        skillRegenerate: 0,
+        statHealth: 0,
+        statEvade: 0,
+        statAccuracy: 0,
+        statReloadSpeed: 0,
+        statRunSpeed: 0,
+        statLuck: 0,
+        statStamina: 0,
+        statRecovery: 0,
+        statHpRecovery: 0,
+        statStrength: 0,
       },
       () => this.markEntityDirty(),
       {
@@ -117,6 +144,18 @@ export class Player extends Entity {
         inputAimAngle: { numberType: "float64", optional: true },
         inputAimDistance: { numberType: "float64", optional: true },
         deathTime: { numberType: "float64" },
+        skillSprint: { numberType: "uint8" },
+        skillRegenerate: { numberType: "uint8" },
+        statHealth: { numberType: "uint8" },
+        statEvade: { numberType: "uint8" },
+        statAccuracy: { numberType: "uint8" },
+        statReloadSpeed: { numberType: "uint8" },
+        statRunSpeed: { numberType: "uint8" },
+        statLuck: { numberType: "uint8" },
+        statStamina: { numberType: "uint8" },
+        statRecovery: { numberType: "uint8" },
+        statHpRecovery: { numberType: "uint8" },
+        statStrength: { numberType: "uint8" },
         // Note: inputSequenceNumber is not in SerializableFields, so no metadata needed
       },
     );
@@ -135,6 +174,18 @@ export class Player extends Entity {
       new Destructible(this)
         .setHealth(getConfig().player.MAX_PLAYER_HEALTH)
         .setMaxHealth(getConfig().player.MAX_PLAYER_HEALTH)
+        .onBeforeDamage((damage, attackerId) => {
+          if (attackerId !== undefined) {
+            const attacker = this.getEntityManager().getEntityById(attackerId);
+            if (attacker && getZombieTypesSet().has(attacker.getType() as any)) {
+              const ev = this.serialized.get("statEvade") ?? 0;
+              if (Math.random() < computeEvadeChance(ev)) {
+                return 0;
+              }
+            }
+          }
+          return damage;
+        })
         .onDamaged(() => {
           // Broadcast PlayerHurtEvent when player takes damage (e.g., from zombie attacks)
           this.broadcaster.broadcastEvent(new PlayerHurtEvent(this.getId()));
@@ -394,7 +445,7 @@ export class Player extends Entity {
         // Reset cooldown when switching to a consumable from a different item type
         // This ensures weapon cooldowns don't block consumable use
         if (this.fireCooldown === null || this.lastWeaponType !== itemType) {
-          this.fireCooldown = new Cooldown(0.5, true);
+          this.fireCooldown = new Cooldown(0.5 * this.getReloadCooldownMultiplier(), true);
           this.lastWeaponType = itemType;
         }
         // Add a small cooldown to prevent rapid consumption
@@ -435,7 +486,10 @@ export class Player extends Entity {
     if (customHandler) {
       // Use custom handler for special cases
       if (this.fireCooldown === null || this.lastWeaponType !== weaponType) {
-        this.fireCooldown = new Cooldown(customHandler.cooldown, true);
+        this.fireCooldown = new Cooldown(
+          customHandler.cooldown * this.getReloadCooldownMultiplier(),
+          true,
+        );
         this.lastWeaponType = weaponType;
       }
 
@@ -443,7 +497,7 @@ export class Player extends Entity {
         this.fireCooldown.reset();
         const inventoryIndex = this.serialized.get("inputInventoryItem") - 1;
         customHandler.handler(
-          weaponEntity,
+          weaponEntity as Entity,
           this.getId(),
           this.getCenterPosition().clone(),
           this.serialized.get("inputFacing"),
@@ -461,7 +515,10 @@ export class Player extends Entity {
     }
 
     if (this.fireCooldown === null || this.lastWeaponType !== weaponType) {
-      this.fireCooldown = new Cooldown(weaponEntity.getCooldown(), true);
+      this.fireCooldown = new Cooldown(
+        weaponEntity.getCooldown() * this.getReloadCooldownMultiplier(),
+        true,
+      );
       this.lastWeaponType = weaponType;
     }
 
@@ -552,19 +609,26 @@ export class Player extends Entity {
         const isZombie = this.serialized.get("isZombie");
 
         const stamina = this.serialized.get("stamina");
+        const hasSprintSkill = (this.serialized.get("skillSprint") ?? 0) > 0;
         const canSprint =
           !isZombie &&
+          hasSprintSkill &&
           this.serialized.get("inputSprint") &&
           (hasInfiniteRun || (stamina > 0 && this.exhaustionTimer <= 0));
         const sprintMultiplier = canSprint ? getConfig().player.SPRINT_MULTIPLIER : 1;
 
         // Apply zombie speed reduction (70% speed)
         const zombieMultiplier = isZombie ? getConfig().player.ZOMBIE_SPEED_MULTIPLIER : 1;
-        const speedMultiplier = sprintMultiplier * zombieMultiplier;
+        const runStat = this.serialized.get("statRunSpeed") ?? 0;
+        const runBonus = 1 + runStat * CHARACTER_STAT_MODIFIERS.runSpeedPerPoint;
+        const speedMultiplier = sprintMultiplier * zombieMultiplier * runBonus;
 
         // Drain stamina while sprinting (unless infinite run is active)
         if (canSprint && !hasInfiniteRun) {
-          const newStamina = stamina - getConfig().player.STAMINA_DRAIN_RATE * deltaTime;
+          const inventory = this.getExt(Inventory);
+          const weightKg = computeInventoryWeightKg(inventory.getItems(), inventory.getEquipment());
+          const encMult = computeEncumbranceStaminaDrainMultiplier(weightKg);
+          const newStamina = stamina - getConfig().player.STAMINA_DRAIN_RATE * encMult * deltaTime;
           this.serialized.set("stamina", Math.max(0, newStamina));
           // maxStamina doesn't change, but mark it dirty for consistency if needed
           const maxStamina = this.serialized.get("maxStamina");
@@ -623,10 +687,10 @@ export class Player extends Entity {
       this.exhaustionTimer = Math.max(0, this.exhaustionTimer - deltaTime);
     }
 
-    // Only regenerate stamina when not exhausted
+    const maxStamina = this.serialized.get("maxStamina");
     const stamina = this.serialized.get("stamina");
     const hasInfiniteRun = this.hasExt(InfiniteRun);
-    if (this.exhaustionTimer <= 0 && stamina < getConfig().player.MAX_STAMINA) {
+    if (this.exhaustionTimer <= 0 && stamina < maxStamina) {
       const inputDx = this.serialized.get("inputDx");
       const inputDy = this.serialized.get("inputDy");
       const isMoving = inputDx !== 0 || inputDy !== 0;
@@ -636,15 +700,14 @@ export class Player extends Entity {
       // Regenerate stamina when not sprinting
       if (!isSprinting) {
         const oldStamina = stamina;
+        const recMult = computeStaminaRegenMultiplier(this.serialized.get("statRecovery") ?? 0);
         const newStamina = Math.min(
-          getConfig().player.MAX_STAMINA,
-          stamina + getConfig().player.STAMINA_REGEN_RATE * deltaTime,
+          maxStamina,
+          stamina + getConfig().player.STAMINA_REGEN_RATE * recMult * deltaTime,
         );
         this.serialized.set("stamina", newStamina);
 
-        // Mark maxStamina dirty if stamina changed (for consistency)
         if (Math.abs(oldStamina - newStamina) > 0.01) {
-          const maxStamina = this.serialized.get("maxStamina");
           this.serialized.set("maxStamina", maxStamina);
         }
       }
@@ -699,6 +762,8 @@ export class Player extends Entity {
     this.handleAttack(deltaTime);
     this.handleMovement(deltaTime);
     this.handleStamina(deltaTime);
+    this.handleRegenerateHealing(deltaTime);
+    this.handlePassiveHpRegen(deltaTime);
     this.handleAutoPickup();
     this.updateLighting();
     this.updateZombieSpawnCooldown(deltaTime);
@@ -830,6 +895,151 @@ export class Player extends Entity {
 
   getZombieSpawnCooldownProgress(): number {
     return this.serialized.get("zombieSpawnCooldownProgress");
+  }
+
+  getReloadCooldownMultiplier(): number {
+    const r = this.serialized.get("statReloadSpeed") ?? 0;
+    return Math.max(
+      0.5,
+      1 - r * CHARACTER_STAT_MODIFIERS.reloadSpeedCooldownReductionPerPoint,
+    );
+  }
+
+  /** Multiplier on bullet spread / aim error (lower = more accurate). */
+  getAccuracySpreadMultiplier(): number {
+    const acc = this.serialized.get("statAccuracy") ?? 0;
+    return Math.max(0.2, 1 - acc * CHARACTER_STAT_MODIFIERS.accuracySpreadReductionPerPoint);
+  }
+
+  /** Extra coins when picking up coin entities (luck stat). */
+  getLuckCoinPickupBonus(): number {
+    const luck = this.serialized.get("statLuck") ?? 0;
+    return Math.min(3, Math.floor(luck / 4));
+  }
+
+  /**
+   * Apply skill + character allocation maps from DB (normalized keys, values 0+).
+   */
+  applyPersistedProgress(
+    skillAllocations: Record<string, number>,
+    characterAllocations: Record<string, number>,
+  ): void {
+    const sprint = Math.min(1, Math.floor(skillAllocations.sprint ?? 0));
+    const regen = Math.min(1, Math.floor(skillAllocations.regenerate ?? 0));
+    this.serialized.set("skillSprint", sprint);
+    this.serialized.set("skillRegenerate", regen);
+
+    const rawAlloc = characterAllocations as Record<string, number>;
+    const evadeRaw = rawAlloc.evade ?? rawAlloc.defence ?? 0;
+    this.serialized.set("statHealth", Math.min(99, Math.floor(characterAllocations.health ?? 0)));
+    this.serialized.set("statEvade", Math.min(99, Math.floor(evadeRaw)));
+    this.serialized.set("statAccuracy", Math.min(99, Math.floor(characterAllocations.accuracy ?? 0)));
+    this.serialized.set(
+      "statReloadSpeed",
+      Math.min(99, Math.floor(characterAllocations.reloadSpeed ?? 0)),
+    );
+    this.serialized.set("statRunSpeed", Math.min(99, Math.floor(characterAllocations.runSpeed ?? 0)));
+    this.serialized.set("statLuck", Math.min(99, Math.floor(characterAllocations.luck ?? 0)));
+    this.serialized.set("statStamina", Math.min(99, Math.floor(characterAllocations.stamina ?? 0)));
+    this.serialized.set("statRecovery", Math.min(99, Math.floor(characterAllocations.recovery ?? 0)));
+    this.serialized.set(
+      "statHpRecovery",
+      Math.min(99, Math.floor(characterAllocations.hpRecovery ?? 0)),
+    );
+    this.serialized.set("statStrength", Math.min(99, Math.floor(characterAllocations.strength ?? 0)));
+
+    this.applyDerivedStatsFromAllocations();
+  }
+
+  /** Called when connecting with persisted website data (keeps fields encapsulated). */
+  hydratePersistedProgress(progress: {
+    experience: number;
+    skillAllocations: Record<string, number>;
+    characterAllocations: Record<string, number>;
+  }): void {
+    this.serialized.set("experience", Math.max(0, Math.floor(progress.experience)));
+    this.applyPersistedProgress(progress.skillAllocations, progress.characterAllocations);
+  }
+
+  getTotalExperience(): number {
+    return this.serialized.get("experience") ?? 0;
+  }
+
+  getSkillAllocationRecord(): Record<string, number> {
+    return {
+      sprint: this.serialized.get("skillSprint") ? 1 : 0,
+      regenerate: this.serialized.get("skillRegenerate") ? 1 : 0,
+    };
+  }
+
+  getCharacterAllocationRecord(): Record<string, number> {
+    return {
+      health: this.serialized.get("statHealth") ?? 0,
+      evade: this.serialized.get("statEvade") ?? 0,
+      accuracy: this.serialized.get("statAccuracy") ?? 0,
+      reloadSpeed: this.serialized.get("statReloadSpeed") ?? 0,
+      runSpeed: this.serialized.get("statRunSpeed") ?? 0,
+      luck: this.serialized.get("statLuck") ?? 0,
+      stamina: this.serialized.get("statStamina") ?? 0,
+      recovery: this.serialized.get("statRecovery") ?? 0,
+      hpRecovery: this.serialized.get("statHpRecovery") ?? 0,
+      strength: this.serialized.get("statStrength") ?? 0,
+    };
+  }
+
+  applyDerivedStatsFromAllocations(): void {
+    const baseHp = getConfig().player.MAX_PLAYER_HEALTH;
+    const maxHp = computeMaxPlayerHealth(baseHp, this.serialized.get("statHealth") ?? 0);
+    const d = this.getExt(Destructible);
+    const cur = d.getHealth();
+    d.setMaxHealth(maxHp);
+    d.setHealth(Math.min(maxHp, Math.max(0, cur)));
+
+    const baseSt = getConfig().player.MAX_STAMINA;
+    const maxSt = computeMaxStamina(baseSt, this.serialized.get("statStamina") ?? 0);
+    const st = this.serialized.get("stamina");
+    this.serialized.set("maxStamina", maxSt);
+    this.serialized.set("stamina", Math.min(maxSt, st));
+  }
+
+  private handleRegenerateHealing(deltaTime: number): void {
+    if ((this.serialized.get("skillRegenerate") ?? 0) <= 0) {
+      return;
+    }
+    const d = this.getExt(Destructible);
+    if (d.isDead()) {
+      return;
+    }
+    d.heal(REGENERATE_HEAL_PER_SECOND * deltaTime);
+  }
+
+  private handlePassiveHpRegen(deltaTime: number): void {
+    const d = this.getExt(Destructible);
+    if (d.isDead()) {
+      return;
+    }
+    if (d.getHealth() >= d.getMaxHealth()) {
+      this.passiveHpRegenAccumulator = 0;
+      return;
+    }
+    const pts = this.serialized.get("statHpRecovery") ?? 0;
+    const interval = computePassiveHpRegenIntervalSeconds(pts);
+    this.passiveHpRegenAccumulator += deltaTime;
+    while (this.passiveHpRegenAccumulator >= interval) {
+      this.passiveHpRegenAccumulator -= interval;
+      if (d.getHealth() >= d.getMaxHealth()) {
+        break;
+      }
+      d.heal(CHARACTER_STAT_MODIFIERS.passiveHpRegenAmount);
+    }
+  }
+
+  /** Max bag slots for this player (base config + strength). */
+  getMaxInventorySlots(): number {
+    return computeMaxInventorySlots(
+      getConfig().player.MAX_INVENTORY_SLOTS,
+      this.serialized.get("statStrength") ?? 0,
+    );
   }
 
   // Base class already handles isDirty and clearDirtyFlags with the dirty fields set
