@@ -23,6 +23,7 @@ import { Route as ApiSessionValidateRouteImport } from './routes/api/session/val
 import { Route as ApiGameZombieKillRouteImport } from './routes/api/game/zombie-kill'
 import { Route as ApiGameSkillAllocationsRouteImport } from './routes/api/game/skill-allocations'
 import { Route as ApiGamePlayerStatsRouteImport } from './routes/api/game/player-stats'
+import { Route as ApiGamePlayerLastPositionRouteImport } from './routes/api/game/player-last-position'
 import { Route as ApiGamePlayerExperienceRouteImport } from './routes/api/game/player-experience'
 import { Route as ApiGameCharacterAllocationsRouteImport } from './routes/api/game/character-allocations'
 import { Route as ApiGameAddExperienceRouteImport } from './routes/api/game/add-experience'
@@ -98,6 +99,12 @@ const ApiGamePlayerStatsRoute = ApiGamePlayerStatsRouteImport.update({
   path: '/api/game/player-stats',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiGamePlayerLastPositionRoute =
+  ApiGamePlayerLastPositionRouteImport.update({
+    id: '/api/game/player-last-position',
+    path: '/api/game/player-last-position',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiGamePlayerExperienceRoute = ApiGamePlayerExperienceRouteImport.update({
   id: '/api/game/player-experience',
   path: '/api/game/player-experience',
@@ -135,6 +142,7 @@ export interface FileRoutesByFullPath {
   '/api/game/add-experience': typeof ApiGameAddExperienceRoute
   '/api/game/character-allocations': typeof ApiGameCharacterAllocationsRoute
   '/api/game/player-experience': typeof ApiGamePlayerExperienceRoute
+  '/api/game/player-last-position': typeof ApiGamePlayerLastPositionRoute
   '/api/game/player-stats': typeof ApiGamePlayerStatsRoute
   '/api/game/skill-allocations': typeof ApiGameSkillAllocationsRoute
   '/api/game/zombie-kill': typeof ApiGameZombieKillRoute
@@ -155,6 +163,7 @@ export interface FileRoutesByTo {
   '/api/game/add-experience': typeof ApiGameAddExperienceRoute
   '/api/game/character-allocations': typeof ApiGameCharacterAllocationsRoute
   '/api/game/player-experience': typeof ApiGamePlayerExperienceRoute
+  '/api/game/player-last-position': typeof ApiGamePlayerLastPositionRoute
   '/api/game/player-stats': typeof ApiGamePlayerStatsRoute
   '/api/game/skill-allocations': typeof ApiGameSkillAllocationsRoute
   '/api/game/zombie-kill': typeof ApiGameZombieKillRoute
@@ -176,6 +185,7 @@ export interface FileRoutesById {
   '/api/game/add-experience': typeof ApiGameAddExperienceRoute
   '/api/game/character-allocations': typeof ApiGameCharacterAllocationsRoute
   '/api/game/player-experience': typeof ApiGamePlayerExperienceRoute
+  '/api/game/player-last-position': typeof ApiGamePlayerLastPositionRoute
   '/api/game/player-stats': typeof ApiGamePlayerStatsRoute
   '/api/game/skill-allocations': typeof ApiGameSkillAllocationsRoute
   '/api/game/zombie-kill': typeof ApiGameZombieKillRoute
@@ -198,6 +208,7 @@ export interface FileRouteTypes {
     | '/api/game/add-experience'
     | '/api/game/character-allocations'
     | '/api/game/player-experience'
+    | '/api/game/player-last-position'
     | '/api/game/player-stats'
     | '/api/game/skill-allocations'
     | '/api/game/zombie-kill'
@@ -218,6 +229,7 @@ export interface FileRouteTypes {
     | '/api/game/add-experience'
     | '/api/game/character-allocations'
     | '/api/game/player-experience'
+    | '/api/game/player-last-position'
     | '/api/game/player-stats'
     | '/api/game/skill-allocations'
     | '/api/game/zombie-kill'
@@ -238,6 +250,7 @@ export interface FileRouteTypes {
     | '/api/game/add-experience'
     | '/api/game/character-allocations'
     | '/api/game/player-experience'
+    | '/api/game/player-last-position'
     | '/api/game/player-stats'
     | '/api/game/skill-allocations'
     | '/api/game/zombie-kill'
@@ -259,6 +272,7 @@ export interface RootRouteChildren {
   ApiGameAddExperienceRoute: typeof ApiGameAddExperienceRoute
   ApiGameCharacterAllocationsRoute: typeof ApiGameCharacterAllocationsRoute
   ApiGamePlayerExperienceRoute: typeof ApiGamePlayerExperienceRoute
+  ApiGamePlayerLastPositionRoute: typeof ApiGamePlayerLastPositionRoute
   ApiGamePlayerStatsRoute: typeof ApiGamePlayerStatsRoute
   ApiGameSkillAllocationsRoute: typeof ApiGameSkillAllocationsRoute
   ApiGameZombieKillRoute: typeof ApiGameZombieKillRoute
@@ -365,6 +379,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiGamePlayerStatsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/game/player-last-position': {
+      id: '/api/game/player-last-position'
+      path: '/api/game/player-last-position'
+      fullPath: '/api/game/player-last-position'
+      preLoaderRoute: typeof ApiGamePlayerLastPositionRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/game/player-experience': {
       id: '/api/game/player-experience'
       path: '/api/game/player-experience'
@@ -411,6 +432,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiGameAddExperienceRoute: ApiGameAddExperienceRoute,
   ApiGameCharacterAllocationsRoute: ApiGameCharacterAllocationsRoute,
   ApiGamePlayerExperienceRoute: ApiGamePlayerExperienceRoute,
+  ApiGamePlayerLastPositionRoute: ApiGamePlayerLastPositionRoute,
   ApiGamePlayerStatsRoute: ApiGamePlayerStatsRoute,
   ApiGameSkillAllocationsRoute: ApiGameSkillAllocationsRoute,
   ApiGameZombieKillRoute: ApiGameZombieKillRoute,

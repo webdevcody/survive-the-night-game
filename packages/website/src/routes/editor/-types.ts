@@ -1,8 +1,11 @@
-export type Layer = "ground" | "collidables";
+export type Layer = "ground" | "collidables" | "spawns" | "decals";
 
-export interface BiomeData {
+/** Snapshot of all layers (undo / API). */
+export interface MapLayerSnapshot {
   ground: number[][];
   collidables: number[][];
+  spawns: number[][];
+  decals: number[][];
 }
 
 export interface SheetDimensions {
@@ -21,12 +24,6 @@ export interface ClipboardData {
 export interface Position {
   row: number;
   col: number;
-}
-
-export interface BiomeInfo {
-  name: string;
-  fileName: string;
-  constantName: string;
 }
 
 export type SaveStatus = "idle" | "saving" | "saved" | "error";

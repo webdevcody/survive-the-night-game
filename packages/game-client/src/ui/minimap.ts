@@ -180,7 +180,7 @@ export class Minimap {
       return;
     }
 
-    const excludeSet = new Set(["boundary" as const]);
+    const excludeSet = new Set(["boundary" as const, "zombie_spawn_point" as const]);
     const allEntities = spatialGrid.getNearbyEntities(
       playerPos,
       MINIMAP_RENDER_DISTANCE.ENTITIES,

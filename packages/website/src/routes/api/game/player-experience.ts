@@ -35,6 +35,8 @@ export const Route = createFileRoute("/api/game/player-experience")({
               zombieKills: stats.zombieKills ?? 0,
               skillAllocations: stats.skillAllocations ?? {},
               characterAllocations: stats.characterAllocations ?? {},
+              lastTileX: stats.lastTileX ?? null,
+              lastTileY: stats.lastTileY ?? null,
             }),
             { status: 200, headers: { "Content-Type": "application/json" } },
           );

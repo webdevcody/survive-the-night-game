@@ -7,11 +7,8 @@ export function onTeleportToBase(context: HandlerContext, socket: ISocketAdapter
   if (!player) return;
   if (player.isDead()) return;
 
-  // Get campsite position from map manager
-  const campsitePosition = context.getMapManager().getRandomCampsitePosition();
-  if (campsitePosition) {
-    player.setPosition(campsitePosition);
-  }
+  const spawnPosition = context.getMapManager().getPlayerSpawnPositionForMap();
+  player.setPosition(spawnPosition);
 }
 
 export const teleportToBaseHandler: SocketEventHandler<void> = {

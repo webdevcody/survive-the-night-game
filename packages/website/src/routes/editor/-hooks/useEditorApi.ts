@@ -1,73 +1,88 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { API_ENDPOINTS } from "../-config/api";
-import type { BiomeInfo } from "../-types";
 
 // API Response Types
-interface BiomesListResponse {
-  biomes: BiomeInfo[];
-}
-
-interface BiomeDataResponse {
+interface WorldMapDataResponse {
   ground: number[][];
   collidables: number[][];
-  items?: string[];
+  spawns: number[][];
+  decals: number[][];
 }
 
 // Query Keys
 export const editorQueryKeys = {
-  biomes: ["biomes"] as const,
-  biome: (name: string) => ["biome", name] as const,
+  worldMap: ["worldMap"] as const,
   spawnableEntities: ["spawnableEntities"] as const,
 };
 
-// Hooks
-
-export function useBiomes() {
+export function useWorldMap() {
   return useQuery({
-    queryKey: editorQueryKeys.biomes,
-    queryFn: async (): Promise<BiomeInfo[]> => {
-      const response = await fetch(API_ENDPOINTS.biomes());
+    queryKey: editorQueryKeys.worldMap,
+    queryFn: async (): Promise<WorldMapDataResponse> => {
+      const response = await fetch(API_ENDPOINTS.worldMap());
       if (!response.ok) {
-        throw new Error("Failed to fetch biomes");
-      }
-      const data: BiomesListResponse = await response.json();
-      return data.biomes;
-    },
-  });
-}
-
-export function useBiome(biomeName: string | null) {
-  return useQuery({
-    queryKey: editorQueryKeys.biome(biomeName ?? ""),
-    queryFn: async (): Promise<BiomeDataResponse> => {
-      if (!biomeName) throw new Error("No biome name provided");
-
-      const response = await fetch(API_ENDPOINTS.biome(biomeName));
-      if (!response.ok) {
-        throw new Error(`Failed to load biome ${biomeName}`);
+        throw new Error("Failed to fetch world map");
       }
       return response.json();
     },
-    enabled: !!biomeName,
   });
 }
 
-export function useSaveBiome() {
+export interface ExpandWorldMapResponse {
+  mapSizeBiomes: number;
+  tileSize: number;
+}
+
+export function useExpandWorldMap() {
   const queryClient = useQueryClient();
 
   return useMutation({
     mutationFn: async ({
-      biomeName,
+      mapSizeBiomes,
+    }: {
+      mapSizeBiomes: number;
+    }): Promise<ExpandWorldMapResponse> => {
+      const response = await fetch(API_ENDPOINTS.worldMapExpand(), {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ mapSizeBiomes }),
+      });
+
+      if (!response.ok) {
+        const errBody = await response.json().catch(() => ({}));
+        throw new Error(
+          typeof errBody.error === "string" ? errBody.error : "Failed to expand world map",
+        );
+      }
+
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: editorQueryKeys.worldMap,
+      });
+    },
+  });
+}
+
+export function useSaveWorldMap() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({
       ground,
       collidables,
-      items,
+      spawns,
+      decals,
     }: {
-      biomeName: string;
       ground: number[][];
       collidables: number[][];
-      items: string[];
+      spawns: number[][];
+      decals: number[][];
     }) => {
-      const response = await fetch(API_ENDPOINTS.biome(biomeName), {
+      const response = await fetch(API_ENDPOINTS.worldMap(), {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -75,49 +90,23 @@ export function useSaveBiome() {
         body: JSON.stringify({
           ground,
           collidables,
-          items,
+          spawns,
+          decals,
         }),
       });
 
       if (!response.ok) {
-        throw new Error(`Failed to save biome ${biomeName}`);
-      }
-
-      return response.json();
-    },
-    onSuccess: (_, variables) => {
-      // Invalidate the biome query to refetch the updated data
-      queryClient.invalidateQueries({
-        queryKey: editorQueryKeys.biome(variables.biomeName),
-      });
-    },
-  });
-}
-
-export function useCreateBiome() {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: async ({ name }: { name: string }) => {
-      const response = await fetch(API_ENDPOINTS.biomes(), {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ name }),
-      });
-
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error || "Failed to create biome");
+        const errBody = await response.json().catch(() => ({}));
+        throw new Error(
+          typeof errBody.error === "string" ? errBody.error : "Failed to save world map",
+        );
       }
 
       return response.json();
     },
     onSuccess: () => {
-      // Invalidate biomes list to refetch
       queryClient.invalidateQueries({
-        queryKey: editorQueryKeys.biomes,
+        queryKey: editorQueryKeys.worldMap,
       });
     },
   });

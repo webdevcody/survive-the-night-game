@@ -17,6 +17,7 @@ export const NON_SPAWNABLE = new Set<EntityType>([
   "bullet",
   "arrow",
   "boundary",
+  "zombie_spawn_point",
   "acid_projectile",
   "grenade_projectile",
   "flame_projectile",

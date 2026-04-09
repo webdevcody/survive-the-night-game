@@ -17,7 +17,6 @@ const ZOMBIE_ENTITIES = new Set([
 export function ItemsModal() {
   const isItemsModalOpen = useEditorStore((state) => state.isItemsModalOpen);
   const setIsItemsModalOpen = useEditorStore((state) => state.setIsItemsModalOpen);
-  const currentBiome = useEditorStore((state) => state.currentBiome);
   const currentItems = useEditorStore((state) => state.currentItems);
   const addItem = useEditorStore((state) => state.addItem);
   const removeItem = useEditorStore((state) => state.removeItem);
@@ -35,9 +34,7 @@ export function ItemsModal() {
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
       <div className="bg-gray-800 rounded-lg p-6 max-w-2xl w-full mx-4 max-h-[80vh] overflow-y-auto">
         <div className="flex justify-between items-center mb-6">
-          <h2 className="text-2xl font-bold">
-            Item Spawns for {currentBiome && currentBiome.toUpperCase().replace(/-/g, " ")}
-          </h2>
+          <h2 className="text-2xl font-bold">Ground item list (not saved to world map)</h2>
           <Button
             onClick={() => setIsItemsModalOpen(false)}
             className="bg-gray-700 hover:bg-gray-600 text-white px-4 py-2"

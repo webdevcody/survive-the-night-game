@@ -212,6 +212,8 @@ export class ServerSocketManager implements Broadcaster {
         zombieKills?: unknown;
         skillAllocations?: Record<string, number>;
         characterAllocations?: Record<string, number>;
+        lastTileX?: unknown;
+        lastTileY?: unknown;
       };
       const rawXp = data.experience;
       let xp =
@@ -230,10 +232,19 @@ export class ServerSocketManager implements Broadcaster {
       if (xp <= 0 && kills > 0) {
         xp = kills * XP_PER_ZOMBIE_KILL;
       }
+      const rawLx = data.lastTileX;
+      const rawLy = data.lastTileY;
+      const lastTileX =
+        typeof rawLx === "number" && Number.isFinite(rawLx) ? Math.floor(rawLx) : null;
+      const lastTileY =
+        typeof rawLy === "number" && Number.isFinite(rawLy) ? Math.floor(rawLy) : null;
+
       return {
         experience: Math.max(0, xp),
         skillAllocations: data.skillAllocations ?? {},
         characterAllocations: data.characterAllocations ?? {},
+        lastTileX,
+        lastTileY,
       };
     } catch (error) {
       console.warn(`[ServerSocketManager] fetchPersistedProgress failed for ${userId}:`, error);

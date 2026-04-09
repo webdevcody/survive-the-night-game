@@ -52,6 +52,7 @@ import {
 } from "@shared/util/character-stats";
 import { REGENERATE_HEAL_PER_SECOND } from "@shared/util/skill-tree";
 import { getZombieTypesSet } from "@shared/constants";
+import type { PersistedPlayerProgress } from "@/services/player-progress-types";
 
 /**
  * Cached list of entity types that players can pass through (collision passthrough).
@@ -89,6 +90,8 @@ export class Player extends Entity {
   private targetPickupEntity: number | null = null; // Entity ID being targeted for pickup
   /** Accumulator for passive HP regen (hpRecovery stat). */
   private passiveHpRegenAccumulator = 0;
+  /** Open world: restored from DB on connect; consumed when placing spawn. Not serialized. */
+  private pendingLogoutSpawnTile: { x: number; y: number } | null = null;
 
   constructor(gameManagers: IGameManagers) {
     super(gameManagers, Entities.PLAYER);
@@ -316,11 +319,8 @@ export class Player extends Entity {
     const maxHealth = this.getExt(Destructible).getMaxHealth();
     this.getExt(Destructible).setHealth(maxHealth);
 
-    // Respawn at campsite
-    const campsitePosition = this.getGameManagers().getMapManager().getRandomCampsitePosition();
-    if (campsitePosition) {
-      this.setPosition(campsitePosition);
-    }
+    const spawnPosition = this.getGameManagers().getMapManager().getPlayerSpawnPositionForMap();
+    this.setPosition(spawnPosition);
   }
 
   getRespawnCooldownRemaining(): number {
@@ -952,13 +952,30 @@ export class Player extends Entity {
   }
 
   /** Called when connecting with persisted website data (keeps fields encapsulated). */
-  hydratePersistedProgress(progress: {
-    experience: number;
-    skillAllocations: Record<string, number>;
-    characterAllocations: Record<string, number>;
-  }): void {
+  hydratePersistedProgress(progress: PersistedPlayerProgress): void {
     this.serialized.set("experience", Math.max(0, Math.floor(progress.experience)));
     this.applyPersistedProgress(progress.skillAllocations, progress.characterAllocations);
+    const lx = progress.lastTileX;
+    const ly = progress.lastTileY;
+    if (
+      typeof lx === "number" &&
+      Number.isFinite(lx) &&
+      typeof ly === "number" &&
+      Number.isFinite(ly)
+    ) {
+      this.pendingLogoutSpawnTile = { x: Math.floor(lx), y: Math.floor(ly) };
+    } else {
+      this.pendingLogoutSpawnTile = null;
+    }
+  }
+
+  /**
+   * Open world: consume one-time spawn tile from persisted progress (null if none or already consumed).
+   */
+  consumePendingLogoutSpawnTile(): { x: number; y: number } | null {
+    const p = this.pendingLogoutSpawnTile;
+    this.pendingLogoutSpawnTile = null;
+    return p;
   }
 
   getTotalExperience(): number {

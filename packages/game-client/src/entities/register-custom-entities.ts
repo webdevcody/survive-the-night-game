@@ -44,6 +44,7 @@ import { SentryGunClient } from "./items/sentry-gun";
 import { SentryGunLevel2Client } from "./items/sentry-gun-level-2";
 import { SentryGunLevel3Client } from "./items/sentry-gun-level-3";
 import { BoundaryClient } from "./items/boundary";
+import { ZombieSpawnPointClient } from "./items/zombie-spawn-point";
 import { PistolAmmoClient } from "@/entities/weapons/pistol-ammo";
 import { ShotgunAmmoClient } from "@/entities/weapons/shotgun-ammo";
 import { BoltActionAmmoClient } from "@/entities/weapons/bolt-action-ammo";
@@ -123,6 +124,7 @@ const CLIENT_ENTITY_CONSTRUCTORS: Record<EntityType, ClientEntityConstructor> = 
   sentry_gun_level_2: SentryGunLevel2Client,
   sentry_gun_level_3: SentryGunLevel3Client,
   boundary: BoundaryClient,
+  zombie_spawn_point: ZombieSpawnPointClient,
   pistol_ammo: PistolAmmoClient,
   shotgun_ammo: ShotgunAmmoClient,
   bolt_action_ammo: BoltActionAmmoClient,

@@ -415,7 +415,7 @@ export class Hud {
     // Render weapons HUD (only when F is held)
     this.weaponsHud.render(ctx);
 
-    // Render game messages (player joined/died)
+    // Render transient HUD messages (loot, craft, etc.)
     this.gameMessagesPanel.render(ctx, gameState);
 
     // Level + XP (bottom-left, above mute)
@@ -506,14 +506,6 @@ export class Hud {
 
   public addMessage(message: string, color?: string): void {
     this.gameMessagesPanel.addMessage(message, color);
-  }
-
-  public showPlayerDeath(playerId: string): void {
-    this.addMessage(`${playerId} has died`, "red");
-  }
-
-  public showPlayerJoined(displayName: string): void {
-    this.addMessage(`${displayName} has joined the game`, "white");
   }
 
   public setShowPlayerList(show: boolean): void {

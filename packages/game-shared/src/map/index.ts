@@ -15,3 +15,7 @@ export const TILE_IDS = {
   FOREST: 2,
   WATER: 3,
 };
+
+export * from "./spawn-palette";
+export * from "./decal-palette";
+export * from "./world-map-resize";

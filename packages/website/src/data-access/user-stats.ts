@@ -42,6 +42,29 @@ export function resolveHydrationExperience(stats: UserStats): number {
   return Math.max(0, xp);
 }
 
+/**
+ * Persist last open-world tile indices when the player disconnects (game server).
+ */
+export async function updateLastTilePosition(
+  userId: string,
+  lastTileX: number,
+  lastTileY: number,
+): Promise<UserStats> {
+  const tx = Math.floor(lastTileX);
+  const ty = Math.floor(lastTileY);
+  await getOrCreateUserStats(userId);
+  const [updated] = await database
+    .update(userStats)
+    .set({
+      lastTileX: tx,
+      lastTileY: ty,
+      updatedAt: new Date(),
+    })
+    .where(eq(userStats.userId, userId))
+    .returning();
+  return updated!;
+}
+
 export async function getOrCreateUserStats(userId: string): Promise<UserStats> {
   const [existing] = await database
     .select()

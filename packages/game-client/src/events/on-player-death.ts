@@ -5,7 +5,6 @@ import { ClientEventContext } from "./types";
 
 export const onPlayerDeath = (context: ClientEventContext, event: PlayerDeathEvent) => {
   if (!context.shouldProcessEntityEvent()) return;
-  context.gameClient.getHud().showPlayerDeath(event.getDisplayName());
 
   const player = context.gameClient.getEntityById(event.getPlayerId());
   if (!player || !(player instanceof PlayerClient)) return;

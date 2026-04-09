@@ -148,6 +148,11 @@ export class UpdateScheduler {
       return true;
     }
 
+    // Open-world zombie fixtures: respawn timers must not depend on player distance
+    if (entityType === Entities.ZOMBIE_SPAWN_POINT) {
+      return true;
+    }
+
     // Always update projectiles (fast-moving, need frequent updates)
     if (this.PROJECTILE_TYPES.has(entityType)) {
       return true;

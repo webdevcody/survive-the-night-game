@@ -4,7 +4,7 @@
   "main": "src/index.ts",
   "scripts": {
     "dev": "tsx watch src/server.ts",
-    "build": "tsup src/server.ts",
+    "build": "tsup && (test -f src/world/world-map.json && cp src/world/world-map.json dist/world-map.json || true)",
     "test": "vitest"
   },
   "keywords": [],

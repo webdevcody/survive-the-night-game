@@ -106,7 +106,9 @@ function RootComponent() {
 function RootDocument({ children }: { children: React.ReactNode }) {
   const routerState = useRouterState();
   const prevPathnameRef = React.useRef("");
-  const isPlayRoute = routerState.location.pathname === "/play";
+  const path = routerState.location.pathname;
+  const isPlayRoute = path === "/play";
+  const isEditorRoute = path === "/editor" || path.startsWith("/editor/");
 
   React.useEffect(() => {
     const currentPathname = routerState.location.pathname;
@@ -190,7 +192,7 @@ function RootDocument({ children }: { children: React.ReactNode }) {
       </head>
       <body>
         <ThemeProvider defaultTheme="system" storageKey="vite-ui-theme">
-          {isPlayRoute ? (
+          {isPlayRoute || isEditorRoute ? (
             <>{children}</>
           ) : (
             <div className="min-h-screen bg-background flex flex-col">

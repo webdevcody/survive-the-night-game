@@ -1,20 +1,34 @@
 import { create } from "zustand";
 import type {
-  BiomeData,
   ClipboardData,
   Layer,
+  MapLayerSnapshot,
   Position,
-  BiomeInfo,
   SaveStatus,
   SheetDimensions,
 } from "./-types";
-import { createEmptyGroundLayer, createEmptyCollidablesLayer, BIOME_SIZE } from "./-utils";
+import {
+  createEmptyGroundLayer,
+  createEmptyCollidablesLayer,
+  createEmptySpawnsLayer,
+  createEmptyDecalsLayer,
+  getFullMapTileCount,
+  getMapSideLength,
+} from "./-utils";
 import type { DecalData } from "@survive-the-night/game-shared/config/decals-config";
+
+const MAX_UNDO_HISTORY = 20;
+
+function clamp(n: number, min: number, max: number): number {
+  return Math.min(max, Math.max(min, n));
+}
 
 interface EditorState {
   // Grid state
   groundGrid: number[][];
   collidablesGrid: number[][];
+  spawnsGrid: number[][];
+  decalsGrid: number[][];
   activeLayer: Layer;
   selectedTileId: number;
 
@@ -25,18 +39,9 @@ interface EditorState {
   isDragging: boolean;
   hasModifiedDuringDrag: boolean;
 
-  // Create dialog state
-  isCreateDialogOpen: boolean;
-  newBiomeName: string;
-  isCreating: boolean;
-
-  // Biome management
-  biomes: BiomeInfo[];
-  currentBiome: string | null;
   saveStatus: SaveStatus;
-  isBiomesLoaded: boolean;
 
-  // Items management
+  // Items management (legacy UI; not persisted in world-map.json)
   currentItems: string[];
   isItemsModalOpen: boolean;
 
@@ -57,7 +62,7 @@ interface EditorState {
   isFillBucketMode: boolean;
 
   // History
-  history: BiomeData[];
+  history: MapLayerSnapshot[];
 
   // Sheet dimensions
   groundDimensions: SheetDimensions;
@@ -68,21 +73,23 @@ interface EditorState {
   selectedDecalId: string | null;
   decals: DecalData[];
 
+  // Viewport camera (top-left tile visible)
+  cameraX: number;
+  cameraY: number;
+  viewportWidthTiles: number;
+  viewportHeightTiles: number;
+
   // Actions
   setGroundGrid: (grid: number[][]) => void;
   setCollidablesGrid: (grid: number[][]) => void;
+  setSpawnsGrid: (grid: number[][]) => void;
+  setDecalsGrid: (grid: number[][]) => void;
   setActiveLayer: (layer: Layer) => void;
   setSelectedTileId: (id: number) => void;
   setExportText: (text: string) => void;
   setIsDragging: (dragging: boolean) => void;
   setHasModifiedDuringDrag: (modified: boolean) => void;
-  setIsCreateDialogOpen: (open: boolean) => void;
-  setNewBiomeName: (name: string) => void;
-  setIsCreating: (creating: boolean) => void;
-  setBiomes: (biomes: BiomeInfo[]) => void;
-  setCurrentBiome: (biome: string | null) => void;
   setSaveStatus: (status: SaveStatus) => void;
-  setIsBiomesLoaded: (loaded: boolean) => void;
   setCurrentItems: (items: string[]) => void;
   setIsItemsModalOpen: (open: boolean) => void;
   setIsPaletteSelectionMode: (mode: boolean) => void;
@@ -93,12 +100,17 @@ interface EditorState {
   setGroundPaletteSelectionCurrent: (pos: Position | null) => void;
   setClipboard: (data: ClipboardData | null) => void;
   setIsFillBucketMode: (mode: boolean) => void;
-  setHistory: (history: BiomeData[]) => void;
+  setHistory: (history: MapLayerSnapshot[]) => void;
   setGroundDimensions: (dimensions: SheetDimensions) => void;
   setCollidablesDimensions: (dimensions: SheetDimensions) => void;
   setSheetsLoaded: (loaded: boolean) => void;
   setSelectedDecalId: (id: string) => void;
   removeDecal: (index: number) => void;
+
+  setCamera: (x: number, y: number) => void;
+  panCamera: (dx: number, dy: number) => void;
+  setViewportSize: (widthTiles: number, heightTiles: number) => void;
+  clampCameraToViewport: () => void;
 
   // Complex actions
   saveToHistory: () => void;
@@ -107,27 +119,30 @@ interface EditorState {
   removeItem: (index: number) => void;
   clearActiveLayer: () => void;
   switchLayer: (layer: Layer) => void;
-  handleGridCellClick: (row: number, col: number, saveHistory?: boolean) => void;
+  handleGridCellClick: (
+    row: number,
+    col: number,
+    saveHistory?: boolean,
+    /** When true (e.g. drag stroke), always paint selected tile — no toggle on matching cells. */
+    paintStroke?: boolean,
+  ) => void;
   floodFillGround: (startRow: number, startCol: number, newTileId: number) => void;
   pasteClipboard: (startRow: number, startCol: number) => void;
 }
 
+const initialSize = getFullMapTileCount();
+
 export const useEditorStore = create<EditorState>((set, get) => ({
-  // Initial state
-  groundGrid: createEmptyGroundLayer(),
-  collidablesGrid: createEmptyCollidablesLayer(),
+  groundGrid: createEmptyGroundLayer(initialSize),
+  collidablesGrid: createEmptyCollidablesLayer(initialSize),
+  spawnsGrid: createEmptySpawnsLayer(initialSize),
+  decalsGrid: createEmptyDecalsLayer(initialSize),
   activeLayer: "ground",
   selectedTileId: 0,
   exportText: "",
   isDragging: false,
   hasModifiedDuringDrag: false,
-  isCreateDialogOpen: false,
-  newBiomeName: "",
-  isCreating: false,
-  biomes: [],
-  currentBiome: null,
   saveStatus: "idle",
-  isBiomesLoaded: false,
   currentItems: [],
   isItemsModalOpen: false,
   isPaletteSelectionMode: false,
@@ -144,22 +159,21 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   sheetsLoaded: false,
   selectedDecalId: null,
   decals: [],
+  cameraX: 0,
+  cameraY: 0,
+  viewportWidthTiles: 32,
+  viewportHeightTiles: 24,
 
-  // Simple setters
   setGroundGrid: (grid) => set({ groundGrid: grid }),
   setCollidablesGrid: (grid) => set({ collidablesGrid: grid }),
+  setSpawnsGrid: (grid) => set({ spawnsGrid: grid }),
+  setDecalsGrid: (grid) => set({ decalsGrid: grid }),
   setActiveLayer: (layer) => set({ activeLayer: layer }),
   setSelectedTileId: (id) => set({ selectedTileId: id }),
   setExportText: (text) => set({ exportText: text }),
   setIsDragging: (dragging) => set({ isDragging: dragging }),
   setHasModifiedDuringDrag: (modified) => set({ hasModifiedDuringDrag: modified }),
-  setIsCreateDialogOpen: (open) => set({ isCreateDialogOpen: open }),
-  setNewBiomeName: (name) => set({ newBiomeName: name }),
-  setIsCreating: (creating) => set({ isCreating: creating }),
-  setBiomes: (biomes) => set({ biomes }),
-  setCurrentBiome: (biome) => set({ currentBiome: biome }),
   setSaveStatus: (status) => set({ saveStatus: status }),
-  setIsBiomesLoaded: (loaded) => set({ isBiomesLoaded: loaded }),
   setCurrentItems: (items) => set({ currentItems: items }),
   setIsItemsModalOpen: (open) => set({ isItemsModalOpen: open }),
   setIsPaletteSelectionMode: (mode) => set({ isPaletteSelectionMode: mode }),
@@ -180,18 +194,48 @@ export const useEditorStore = create<EditorState>((set, get) => ({
     set({ decals: decals.filter((_, i) => i !== index) });
   },
 
-  // Complex actions
-  saveToHistory: () => {
-    const { groundGrid, collidablesGrid, history } = get();
+  setCamera: (x, y) => {
+    const { viewportWidthTiles, viewportHeightTiles, groundGrid } = get();
+    const mapSize = getMapSideLength(groundGrid);
+    const maxX = Math.max(0, mapSize - viewportWidthTiles);
+    const maxY = Math.max(0, mapSize - viewportHeightTiles);
+    set({ cameraX: clamp(x, 0, maxX), cameraY: clamp(y, 0, maxY) });
+  },
+
+  panCamera: (dx, dy) => {
+    const { cameraX, cameraY } = get();
+    get().setCamera(cameraX + dx, cameraY + dy);
+  },
+
+  setViewportSize: (widthTiles, heightTiles) => {
+    set({ viewportWidthTiles: widthTiles, viewportHeightTiles: heightTiles });
+    get().clampCameraToViewport();
+  },
+
+  clampCameraToViewport: () => {
+    const { cameraX, cameraY, viewportWidthTiles, viewportHeightTiles, groundGrid } = get();
+    const mapSize = getMapSideLength(groundGrid);
+    const maxX = Math.max(0, mapSize - viewportWidthTiles);
+    const maxY = Math.max(0, mapSize - viewportHeightTiles);
     set({
-      history: [
-        ...history,
-        {
-          ground: groundGrid.map((row) => [...row]),
-          collidables: collidablesGrid.map((row) => [...row]),
-        },
-      ],
+      cameraX: clamp(cameraX, 0, maxX),
+      cameraY: clamp(cameraY, 0, maxY),
     });
+  },
+
+  saveToHistory: () => {
+    const { groundGrid, collidablesGrid, spawnsGrid, decalsGrid, history } = get();
+    const snapshot: MapLayerSnapshot = {
+      ground: groundGrid.map((row) => [...row]),
+      collidables: collidablesGrid.map((row) => [...row]),
+      spawns: spawnsGrid.map((row) => [...row]),
+      decals: decalsGrid.map((row) => [...row]),
+    };
+    let next = [...history, snapshot];
+    if (next.length > MAX_UNDO_HISTORY) {
+      next = next.slice(next.length - MAX_UNDO_HISTORY);
+    }
+    set({ history: next });
   },
 
   undo: () => {
@@ -202,6 +246,8 @@ export const useEditorStore = create<EditorState>((set, get) => ({
     set({
       groundGrid: previousState.ground,
       collidablesGrid: previousState.collidables,
+      spawnsGrid: previousState.spawns,
+      decalsGrid: previousState.decals,
       history: history.slice(0, -1),
     });
   },
@@ -217,20 +263,26 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   },
 
   clearActiveLayer: () => {
-    const { activeLayer, saveToHistory } = get();
+    const { activeLayer, saveToHistory, groundGrid } = get();
     saveToHistory();
+    const n = getMapSideLength(groundGrid);
 
     if (activeLayer === "ground") {
-      set({ groundGrid: createEmptyGroundLayer() });
+      set({ groundGrid: createEmptyGroundLayer(n) });
     } else if (activeLayer === "collidables") {
-      set({ collidablesGrid: createEmptyCollidablesLayer() });
+      set({ collidablesGrid: createEmptyCollidablesLayer(n) });
+    } else if (activeLayer === "spawns") {
+      set({ spawnsGrid: createEmptySpawnsLayer(n) });
+    } else {
+      set({ decalsGrid: createEmptyDecalsLayer(n) });
     }
   },
 
   switchLayer: (layer) => {
     set({
       activeLayer: layer,
-      selectedTileId: layer === "ground" ? 0 : -1,
+      selectedTileId:
+        layer === "ground" ? 0 : layer === "spawns" || layer === "decals" ? 0 : -1,
       isPaletteSelectionMode: false,
       isGroundPaletteSelectionMode: false,
       paletteSelectionStart: null,
@@ -242,12 +294,14 @@ export const useEditorStore = create<EditorState>((set, get) => ({
     });
   },
 
-  handleGridCellClick: (row, col, saveHistory = true) => {
+  handleGridCellClick: (row, col, saveHistory = true, paintStroke = false) => {
     const {
       activeLayer,
       selectedTileId,
       groundGrid,
       collidablesGrid,
+      spawnsGrid,
+      decalsGrid,
       clipboard,
       isFillBucketMode,
       saveToHistory,
@@ -259,19 +313,46 @@ export const useEditorStore = create<EditorState>((set, get) => ({
       saveToHistory();
     }
 
-    // If clipboard exists, paste it
     if (clipboard) {
       pasteClipboard(row, col);
       return;
     }
 
-    // If fill bucket mode is active and we're on the ground layer, do flood fill
     if (isFillBucketMode && activeLayer === "ground") {
       floodFillGround(row, col, selectedTileId);
       return;
     }
 
-    // Normal paint mode for ground/collidables
+    if (activeLayer === "spawns") {
+      const currentTileId = spawnsGrid[row][col];
+      const newTileId = paintStroke
+        ? selectedTileId
+        : currentTileId === selectedTileId && selectedTileId !== 0
+          ? 0
+          : selectedTileId;
+
+      const newGrid = spawnsGrid.map((r, rowIdx) =>
+        r.map((cell, colIdx) => (rowIdx === row && colIdx === col ? newTileId : cell)),
+      );
+      set({ spawnsGrid: newGrid });
+      return;
+    }
+
+    if (activeLayer === "decals") {
+      const currentTileId = decalsGrid[row][col];
+      const newTileId = paintStroke
+        ? selectedTileId
+        : currentTileId === selectedTileId && selectedTileId !== 0
+          ? 0
+          : selectedTileId;
+
+      const newGrid = decalsGrid.map((r, rowIdx) =>
+        r.map((cell, colIdx) => (rowIdx === row && colIdx === col ? newTileId : cell)),
+      );
+      set({ decalsGrid: newGrid });
+      return;
+    }
+
     if (activeLayer === "ground") {
       const newGrid = groundGrid.map((r, rowIdx) =>
         r.map((cell, colIdx) => (rowIdx === row && colIdx === col ? selectedTileId : cell)),
@@ -279,8 +360,11 @@ export const useEditorStore = create<EditorState>((set, get) => ({
       set({ groundGrid: newGrid });
     } else {
       const currentTileId = collidablesGrid[row][col];
-      const newTileId =
-        currentTileId === selectedTileId && selectedTileId !== -1 ? -1 : selectedTileId;
+      const newTileId = paintStroke
+        ? selectedTileId
+        : currentTileId === selectedTileId && selectedTileId !== -1
+          ? -1
+          : selectedTileId;
 
       const newGrid = collidablesGrid.map((r, rowIdx) =>
         r.map((cell, colIdx) => (rowIdx === row && colIdx === col ? newTileId : cell)),
@@ -291,7 +375,8 @@ export const useEditorStore = create<EditorState>((set, get) => ({
 
   floodFillGround: (startRow, startCol, newTileId) => {
     const { groundGrid } = get();
-    const originalTileId = groundGrid[startRow][startCol];
+    const mapSize = groundGrid.length;
+    const originalTileId = groundGrid[startRow]?.[startCol];
 
     if (originalTileId === newTileId) return;
 
@@ -307,7 +392,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
       if (visited.has(key)) continue;
       visited.add(key);
 
-      if (pos.row < 0 || pos.row >= BIOME_SIZE || pos.col < 0 || pos.col >= BIOME_SIZE) {
+      if (pos.row < 0 || pos.row >= mapSize || pos.col < 0 || pos.col >= mapSize) {
         continue;
       }
 
@@ -327,8 +412,60 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   },
 
   pasteClipboard: (startRow, startCol) => {
-    const { clipboard, groundGrid, collidablesGrid } = get();
+    const { clipboard, groundGrid, collidablesGrid, spawnsGrid, decalsGrid } = get();
     if (!clipboard) return;
+
+    const mapSize = groundGrid.length;
+
+    if (clipboard.layer === "decals") {
+      const newDecalsGrid = decalsGrid.map((row) => [...row]);
+
+      for (let row = 0; row < clipboard.height; row++) {
+        for (let col = 0; col < clipboard.width; col++) {
+          const targetRow = startRow + row;
+          const targetCol = startCol + col;
+
+          if (
+            targetRow < 0 ||
+            targetRow >= mapSize ||
+            targetCol < 0 ||
+            targetCol >= mapSize
+          ) {
+            continue;
+          }
+
+          newDecalsGrid[targetRow][targetCol] = clipboard.tiles[row][col];
+        }
+      }
+
+      set({ decalsGrid: newDecalsGrid });
+      return;
+    }
+
+    if (clipboard.layer === "spawns") {
+      const newSpawnsGrid = spawnsGrid.map((row) => [...row]);
+
+      for (let row = 0; row < clipboard.height; row++) {
+        for (let col = 0; col < clipboard.width; col++) {
+          const targetRow = startRow + row;
+          const targetCol = startCol + col;
+
+          if (
+            targetRow < 0 ||
+            targetRow >= mapSize ||
+            targetCol < 0 ||
+            targetCol >= mapSize
+          ) {
+            continue;
+          }
+
+          newSpawnsGrid[targetRow][targetCol] = clipboard.tiles[row][col];
+        }
+      }
+
+      set({ spawnsGrid: newSpawnsGrid });
+      return;
+    }
 
     if (clipboard.layer === "ground") {
       const newGroundGrid = groundGrid.map((row) => [...row]);
@@ -340,9 +477,9 @@ export const useEditorStore = create<EditorState>((set, get) => ({
 
           if (
             targetRow < 0 ||
-            targetRow >= BIOME_SIZE ||
+            targetRow >= mapSize ||
             targetCol < 0 ||
-            targetCol >= BIOME_SIZE
+            targetCol >= mapSize
           ) {
             continue;
           }
@@ -362,9 +499,9 @@ export const useEditorStore = create<EditorState>((set, get) => ({
 
           if (
             targetRow < 0 ||
-            targetRow >= BIOME_SIZE ||
+            targetRow >= mapSize ||
             targetCol < 0 ||
-            targetCol >= BIOME_SIZE
+            targetCol >= mapSize
           ) {
             continue;
           }

@@ -1,5 +1,6 @@
 import { Boundary } from "@/entities/environment/boundary";
 import { Car } from "@/entities/environment/car";
+import { ZombieSpawnPoint } from "@/entities/environment/zombie-spawn-point";
 import { Zombie } from "@/entities/enemies/zombie";
 import { DEBUG_START_ZOMBIE } from "@shared/debug";
 import { IGameManagers, IEntityManager, IMapManager } from "@/managers/types";
@@ -8,7 +9,7 @@ import Vector2 from "@/util/vector2";
 import { IEntity } from "@/entities/types";
 import PoolManager from "@shared/util/pool-manager";
 import { distance } from "@/util/physics";
-import { ZombieFactory } from "@/util/zombie-factory";
+import { ZombieFactory, type ZombieType } from "@/util/zombie-factory";
 import { Merchant } from "@/entities/environment/merchant";
 import {
   CAMPSITE,
@@ -29,11 +30,16 @@ import type { MapData } from "../../../game-shared/src/events/server-sent/events
 import { getConfig } from "@shared/config";
 import { entityBlocksPlacement } from "@shared/entities/decal-registry";
 import { Entities, getZombieTypesSet } from "@shared/constants";
-import { balanceConfig } from "@shared/config/balance-config";
 import { Crate } from "@/entities/items/crate";
 import { CampsiteFire } from "@/entities/environment/campsite-fire";
-import { buildSpawnTable } from "./spawn-table-builder";
 import { createSeededRng } from "@shared/util/seeded-rng";
+import { tryLoadWorldMapFile, validateWorldMapDimensions, type WorldMapFile } from "@/world/load-world-map";
+import {
+  SPAWN_TILE_PLAYER,
+  isEnemySpawnTile,
+  spawnTileIdToZombieType,
+} from "../../../game-shared/src/map/spawn-palette";
+import { DECAL_TILE_CAMPSITE } from "../../../game-shared/src/map/decal-palette";
 
 // Re-export from shared config for backward compatibility
 export const BIOME_SIZE = getConfig().world.BIOME_SIZE;
@@ -54,7 +60,10 @@ const MERCHANT_TILE_ID = 255;
 // Spawn configuration
 const IDLE_ZOMBIE_SPAWN_CHANCE = 0.01;
 
-// Survivor spawn configuration
+/** When false, no survivors are placed by map generation or spawn helpers. Entity type remains registered. */
+const ENABLE_SURVIVOR_SPAWNS = false;
+
+// Survivor spawn configuration (used only when ENABLE_SURVIVOR_SPAWNS is true)
 const SURVIVOR_SPAWN_PROBABILITY = 0.5;
 const SURVIVOR_MIN_COUNT = 1;
 const SURVIVOR_MAX_COUNT = 2;
@@ -75,18 +84,24 @@ const DEBUG_ZOMBIE_OFFSET_TILES = 16 * 4;
 // Map initialization
 const EMPTY_GROUND_TILE_VALUE = 0;
 
-// buildSpawnTable moved to spawn-table-builder.ts
-
-type OpenWorldZombieSpawnPointState = {
-  tileX: number;
-  tileY: number;
-  activeZombieId: number | null;
-  respawnAtMs: number | null;
-};
+/** When false, biome `items` ground pickups are skipped. Procedural map-wide item spawns are not run. */
+const ENABLE_GROUND_ITEM_SPAWNS = false;
 
 export class MapManager implements IMapManager {
   private groundLayer: number[][] = [];
   private collidablesLayer: number[][] = [];
+  /** Spawn palette layer (0 none, 1 player, 2–6 zombies); only filled when world-map.json is applied. */
+  private spawnLayer: number[][] = [];
+  /** Decal layer (e.g. campsite marker); only filled when world-map.json is applied. */
+  private decalsLayer: number[][] = [];
+  /** Biome grid coords of the campsite (procedural: center; authored: from decals layer). */
+  private campsiteBiomeX = Math.floor(MAP_SIZE / 2);
+  private campsiteBiomeY = Math.floor(MAP_SIZE / 2);
+  /** Tile coords (col, row) for the campsite fire entity — same as first campsite decal when authored. */
+  private campsiteFireTileX = Math.floor(MAP_SIZE / 2) * BIOME_SIZE + CAMPSITE_CAMPFIRE_LOCAL_X;
+  private campsiteFireTileY = Math.floor(MAP_SIZE / 2) * BIOME_SIZE + CAMPSITE_CAMPFIRE_LOCAL_Y;
+  /** True after a valid authored `world-map.json` was applied this `generateMap()`. */
+  private authoredWorldMapApplied = false;
   private gameManagers?: IGameManagers;
   private entityManager?: IEntityManager;
   private farmBiomePosition?: { x: number; y: number };
@@ -99,9 +114,6 @@ export class MapManager implements IMapManager {
   private carEntity?: IEntity | null;
   /** Non-null only while `generateMap()` runs — deterministic layout from MAP_SEED. */
   private mapGenRng: ReturnType<typeof createSeededRng> | null = null;
-
-  /** Fixed zombie spawn fixtures for open_world (idle zombies with respawn timers). */
-  private openWorldZombieSpawnPoints: OpenWorldZombieSpawnPointState[] = [];
 
   constructor() {}
 
@@ -134,14 +146,11 @@ export class MapManager implements IMapManager {
   }
 
   public getMapData(): MapData {
-    const centerBiomeX = Math.floor(MAP_SIZE / 2);
-    const centerBiomeY = Math.floor(MAP_SIZE / 2);
-
     return {
       ground: this.groundLayer,
       collidables: this.collidablesLayer,
       biomePositions: {
-        campsite: { x: centerBiomeX, y: centerBiomeY },
+        campsite: { x: this.campsiteBiomeX, y: this.campsiteBiomeY },
         farm: this.farmBiomePosition,
         gasStation: this.gasStationBiomePosition,
         city: this.cityBiomePosition,
@@ -252,14 +261,9 @@ export class MapManager implements IMapManager {
     zombieType: "regular" | "fast" | "big" | "bat" | "spitter",
     count: number,
   ): void {
-    // Get campsite biome position (center biome)
-    const centerBiomeX = Math.floor(MAP_SIZE / 2);
-    const centerBiomeY = Math.floor(MAP_SIZE / 2);
-
-    // Get all valid spawn locations in the 8 forest biomes surrounding the campsite
     let spawnLocations = this.selectCampsiteSurroundingBiomeSpawnLocations(
-      centerBiomeX,
-      centerBiomeY,
+      this.campsiteBiomeX,
+      this.campsiteBiomeY,
     );
 
     if (spawnLocations.length === 0) {
@@ -305,6 +309,12 @@ export class MapManager implements IMapManager {
     this.collidablesLayer = Array(height)
       .fill(EMPTY_GROUND_TILE_VALUE)
       .map(() => Array(width).fill(EMPTY_COLLIDABLE_TILE_ID));
+    this.spawnLayer = Array(height)
+      .fill(0)
+      .map(() => Array(width).fill(0));
+    this.decalsLayer = Array(height)
+      .fill(0)
+      .map(() => Array(width).fill(0));
     this.carLocation = null;
     this.carEntity = null;
   }
@@ -312,23 +322,36 @@ export class MapManager implements IMapManager {
   generateMap() {
     this.mapGenRng = createSeededRng(getConfig().world.MAP_SEED);
     try {
+      this.authoredWorldMapApplied = false;
       this.getEntityManager().clear();
-      this.openWorldZombieSpawnPoints = [];
       this.carLocation = null;
       this.carEntity = null;
       this.generateSpatialGrid();
       this.initializeMap();
-      this.selectRandomFarmBiomePosition();
-      this.selectRandomGasStationBiomePosition();
-      this.selectRandomCityBiomePosition();
-      this.selectRandomDockBiomePosition();
-      this.selectRandomShedBiomePosition();
-      this.fillMapWithBiomes();
+
+      const authored = tryLoadWorldMapFile();
+      if (authored && this.applyAuthoredWorldMap(authored)) {
+        this.resolveCampsiteBiomeFromDecals();
+        this.spawnCampsiteFireAtTile(this.campsiteFireTileX, this.campsiteFireTileY);
+      } else {
+        this.campsiteBiomeX = Math.floor(MAP_SIZE / 2);
+        this.campsiteBiomeY = Math.floor(MAP_SIZE / 2);
+        this.selectRandomFarmBiomePosition();
+        this.selectRandomGasStationBiomePosition();
+        this.selectRandomCityBiomePosition();
+        this.selectRandomDockBiomePosition();
+        this.selectRandomShedBiomePosition();
+        this.fillMapWithBiomes();
+      }
+
       this.createForestBoundaries();
       this.spawnMerchants();
-      this.spawnItems();
       if (this.isOpenWorldMode()) {
-        this.seedOpenWorldZombieSpawnPoints();
+        if (this.authoredWorldMapApplied) {
+          this.seedOpenWorldZombieSpawnPointsFromAuthoredLayer();
+        } else {
+          this.seedOpenWorldZombieSpawnPoints();
+        }
       } else {
         this.spawnIdleZombies();
       }
@@ -353,6 +376,192 @@ export class MapManager implements IMapManager {
     this.collidablesLayer = Array(totalSize)
       .fill(EMPTY_GROUND_TILE_VALUE)
       .map(() => Array(totalSize).fill(EMPTY_COLLIDABLE_TILE_ID));
+    this.spawnLayer = Array(totalSize)
+      .fill(0)
+      .map(() => Array(totalSize).fill(0));
+    this.decalsLayer = Array(totalSize)
+      .fill(0)
+      .map(() => Array(totalSize).fill(0));
+  }
+
+  /**
+   * Sets campsite biome from the first campsite decal (tile scan order).
+   * Fire is placed on that decal tile; if no decal, uses map-center biome and legacy local (8,7).
+   */
+  private resolveCampsiteBiomeFromDecals(): void {
+    const n = BIOME_SIZE * MAP_SIZE;
+    let bx = Math.floor(MAP_SIZE / 2);
+    let by = Math.floor(MAP_SIZE / 2);
+    let fireTx = bx * BIOME_SIZE + CAMPSITE_CAMPFIRE_LOCAL_X;
+    let fireTy = by * BIOME_SIZE + CAMPSITE_CAMPFIRE_LOCAL_Y;
+    outer: for (let y = 0; y < n; y++) {
+      for (let x = 0; x < n; x++) {
+        if (this.decalsLayer[y]?.[x] === DECAL_TILE_CAMPSITE) {
+          bx = Math.floor(x / BIOME_SIZE);
+          by = Math.floor(y / BIOME_SIZE);
+          fireTx = x;
+          fireTy = y;
+          break outer;
+        }
+      }
+    }
+    this.campsiteBiomeX = bx;
+    this.campsiteBiomeY = by;
+    this.campsiteFireTileX = fireTx;
+    this.campsiteFireTileY = fireTy;
+  }
+
+  /** When world-map.json exists and is valid, copy into layers. */
+  private applyAuthoredWorldMap(data: WorldMapFile): boolean {
+    if (!validateWorldMapDimensions(data)) {
+      console.warn("MapManager: world-map.json has invalid dimensions; using procedural generation.");
+      return false;
+    }
+    const n = BIOME_SIZE * MAP_SIZE;
+    const hasSpawns = data.spawns !== undefined && data.spawns.length === n;
+    const hasDecals = data.decals !== undefined && data.decals.length === n;
+    for (let y = 0; y < n; y++) {
+      for (let x = 0; x < n; x++) {
+        this.groundLayer[y][x] = data.ground[y][x];
+        this.collidablesLayer[y][x] = data.collidables[y][x];
+        this.spawnLayer[y][x] = hasSpawns ? data.spawns![y][x] : 0;
+        this.decalsLayer[y][x] = hasDecals ? data.decals![y][x] : 0;
+      }
+    }
+    this.authoredWorldMapApplied = true;
+    return true;
+  }
+
+  /**
+   * Player / teleport / respawn: authored map uses spawn layer id 1 with empty collidables (no campsite fallback).
+   * Procedural maps use campsite then grass.
+   */
+  public getPlayerSpawnPositionForMap(): Vector2 {
+    if (!this.authoredWorldMapApplied) {
+      return this.getRandomCampsitePosition() ?? this.getRandomGrassPosition();
+    }
+
+    const pos = this.getRandomSpawnLayerPlayerPosition();
+    if (pos) {
+      return pos;
+    }
+
+    console.warn(
+      "MapManager: authored world map has no valid player spawn tiles (spawns layer id 1 with empty collidables, not overlapping car).",
+    );
+    throw new Error("No valid player spawn markers in world-map spawns layer.");
+  }
+
+  /**
+   * Restore open-world join at a saved tile: must be in bounds, empty collidable, and not overlapping the car.
+   */
+  public tryGetPositionForSavedTile(tileX: number, tileY: number): Vector2 | null {
+    const n = BIOME_SIZE * MAP_SIZE;
+    const tx = Math.floor(tileX);
+    const ty = Math.floor(tileY);
+    if (tx < 0 || ty < 0 || tx >= n || ty >= n) {
+      return null;
+    }
+    if (this.collidablesLayer[ty]?.[tx] !== EMPTY_COLLIDABLE_TILE_ID) {
+      return null;
+    }
+    const TILE_SIZE = getConfig().world.TILE_SIZE;
+    const poolManager = PoolManager.getInstance();
+    const position = poolManager.vector2.claim(tx * TILE_SIZE, ty * TILE_SIZE);
+    if (this.doesPositionOverlapWithCar(position)) {
+      poolManager.vector2.release(position);
+      return null;
+    }
+    return position;
+  }
+
+  private getRandomSpawnLayerPlayerPosition(): Vector2 | null {
+    const n = BIOME_SIZE * MAP_SIZE;
+    const TILE_SIZE = getConfig().world.TILE_SIZE;
+    const poolManager = PoolManager.getInstance();
+    const validPositions: Vector2[] = [];
+
+    for (let y = 0; y < n; y++) {
+      for (let x = 0; x < n; x++) {
+        if (this.spawnLayer[y][x] !== SPAWN_TILE_PLAYER) {
+          continue;
+        }
+        // Authored maps use the full ground tileset; only four IDs are used for procedural
+        // "grass". Trust explicit spawn markers + collidables (same as client movement).
+        if (this.collidablesLayer[y][x] !== EMPTY_COLLIDABLE_TILE_ID) {
+          continue;
+        }
+
+        const position = poolManager.vector2.claim(x * TILE_SIZE, y * TILE_SIZE);
+        if (!this.doesPositionOverlapWithCar(position)) {
+          validPositions.push(position);
+        } else {
+          poolManager.vector2.release(position);
+        }
+      }
+    }
+
+    if (validPositions.length === 0) {
+      return null;
+    }
+
+    const randomIndex = Math.floor(Math.random() * validPositions.length);
+    return validPositions[randomIndex];
+  }
+
+  private seedOpenWorldZombieSpawnPointsFromAuthoredLayer(): void {
+    const totalSize = BIOME_SIZE * MAP_SIZE;
+
+    let anyEnemyMarker = false;
+    for (let y = 0; y < totalSize; y++) {
+      for (let x = 0; x < totalSize; x++) {
+        const id = this.spawnLayer[y][x];
+        if (!isEnemySpawnTile(id)) {
+          continue;
+        }
+        anyEnemyMarker = true;
+        const zombieType = spawnTileIdToZombieType(id);
+        if (!zombieType) {
+          continue;
+        }
+
+        const spawner = new ZombieSpawnPoint(
+          this.getGameManagers(),
+          zombieType,
+          x,
+          y,
+          true,
+        );
+        this.getEntityManager().addEntity(spawner);
+      }
+    }
+
+    if (!anyEnemyMarker) {
+      console.warn(
+        "MapManager: authored world map has no enemy spawn tiles (spawns layer ids 2–6); open-world zombie fixtures are disabled.",
+      );
+    }
+  }
+
+  /** Procedural campsite: fire at legacy local tile (8,7) inside the biome. */
+  private spawnCampsiteFireAtBiome(biomeX: number, biomeY: number) {
+    const tx = biomeX * BIOME_SIZE + CAMPSITE_CAMPFIRE_LOCAL_X;
+    const ty = biomeY * BIOME_SIZE + CAMPSITE_CAMPFIRE_LOCAL_Y;
+    this.spawnCampsiteFireAtTile(tx, ty);
+  }
+
+  /** Tile indices: `tileX` = column, `tileY` = row (matches `groundLayer[tileY][tileX]`). */
+  private spawnCampsiteFireAtTile(tileX: number, tileY: number) {
+    const campsiteFire = new CampsiteFire(this.getGameManagers());
+    campsiteFire
+      .getExt(Positionable)
+      .setPosition(
+        PoolManager.getInstance().vector2.claim(
+          tileX * getConfig().world.TILE_SIZE,
+          tileY * getConfig().world.TILE_SIZE,
+        ),
+      );
+    this.getEntityManager().addEntity(campsiteFire);
   }
 
   /**
@@ -360,9 +569,8 @@ export class MapManager implements IMapManager {
    * This is used to enforce a forest-only zone around the campsite
    */
   private isNearCampsite(biomeX: number, biomeY: number): boolean {
-    const centerBiomeX = Math.floor(MAP_SIZE / 2);
-    const centerBiomeY = Math.floor(MAP_SIZE / 2);
-    const distance = Math.abs(biomeX - centerBiomeX) + Math.abs(biomeY - centerBiomeY);
+    const distance =
+      Math.abs(biomeX - this.campsiteBiomeX) + Math.abs(biomeY - this.campsiteBiomeY);
     return distance <= CAMPSITE_PROXIMITY_DISTANCE;
   }
 
@@ -404,15 +612,13 @@ export class MapManager implements IMapManager {
   private selectRandomBiomePosition(
     excludedPositions: Array<{ x: number; y: number } | undefined>,
   ): { x: number; y: number } | undefined {
-    const centerBiomeX = Math.floor(MAP_SIZE / 2);
-    const centerBiomeY = Math.floor(MAP_SIZE / 2);
     const validPositions: { x: number; y: number }[] = [];
 
     // Collect all valid biome positions (not edges, not center, not near campsite, not excluded, not adjacent to special biomes)
     for (let biomeY = 1; biomeY < MAP_SIZE - 1; biomeY++) {
       for (let biomeX = 1; biomeX < MAP_SIZE - 1; biomeX++) {
-        // Skip the center campsite biome
-        if (biomeX === centerBiomeX && biomeY === centerBiomeY) {
+        // Skip the campsite biome
+        if (biomeX === this.campsiteBiomeX && biomeY === this.campsiteBiomeY) {
           continue;
         }
 
@@ -561,53 +767,6 @@ export class MapManager implements IMapManager {
     }
   }
 
-  private spawnItems() {
-    const totalSize = BIOME_SIZE * MAP_SIZE;
-    for (let y = 0; y < totalSize; y++) {
-      for (let x = 0; x < totalSize; x++) {
-        // Check ground layer for valid ground tiles and ensure no collidable is blocking
-        const groundTile = this.groundLayer[y][x];
-        const isValidGround =
-          groundTile === GROUND_TILE_ID_1 ||
-          groundTile === GROUND_TILE_ID_2 ||
-          groundTile === GROUND_TILE_ID_3 ||
-          groundTile === GROUND_TILE_ID_4;
-
-        if (isValidGround && this.collidablesLayer[y][x] === EMPTY_COLLIDABLE_TILE_ID) {
-          this.trySpawnItemAt(x, y);
-        }
-      }
-    }
-  }
-
-  private trySpawnItemAt(x: number, y: number) {
-    const spawnTable = buildSpawnTable();
-    const random = this.mapRandom();
-    let cumulativeChance = 0;
-
-    const spawnMultiplier = balanceConfig.MAP_ITEM_SPAWN_MULTIPLIER;
-
-    for (const { chance, entityType } of spawnTable) {
-      cumulativeChance += chance;
-      // Apply global spawn multiplier to reduce overall item spawn rate
-      if (random < cumulativeChance * spawnMultiplier) {
-        const entity = this.getEntityManager().createEntity(entityType as any);
-        if (entity) {
-          entity
-            .getExt(Positionable)
-            .setPosition(
-              PoolManager.getInstance().vector2.claim(
-                x * getConfig().world.TILE_SIZE,
-                y * getConfig().world.TILE_SIZE,
-              ),
-            );
-          this.getEntityManager().addEntity(entity);
-        }
-        break;
-      }
-    }
-  }
-
   private spawnDebugZombieIfEnabled() {
     if (DEBUG_START_ZOMBIE) {
       const totalSize = BIOME_SIZE * MAP_SIZE;
@@ -629,13 +788,10 @@ export class MapManager implements IMapManager {
   private spawnIdleZombies() {
     const totalSize = BIOME_SIZE * MAP_SIZE;
 
-    // Calculate campsite biome bounds (center biome)
-    const centerBiomeX = Math.floor(MAP_SIZE / 2);
-    const centerBiomeY = Math.floor(MAP_SIZE / 2);
-    const campsiteMinX = centerBiomeX * BIOME_SIZE;
-    const campsiteMaxX = (centerBiomeX + 1) * BIOME_SIZE;
-    const campsiteMinY = centerBiomeY * BIOME_SIZE;
-    const campsiteMaxY = (centerBiomeY + 1) * BIOME_SIZE;
+    const campsiteMinX = this.campsiteBiomeX * BIOME_SIZE;
+    const campsiteMaxX = (this.campsiteBiomeX + 1) * BIOME_SIZE;
+    const campsiteMinY = this.campsiteBiomeY * BIOME_SIZE;
+    const campsiteMaxY = (this.campsiteBiomeY + 1) * BIOME_SIZE;
 
     for (let y = 0; y < totalSize; y++) {
       for (let x = 0; x < totalSize; x++) {
@@ -693,12 +849,10 @@ export class MapManager implements IMapManager {
    */
   private collectEligibleOpenWorldZombieTiles(): { x: number; y: number }[] {
     const totalSize = BIOME_SIZE * MAP_SIZE;
-    const centerBiomeX = Math.floor(MAP_SIZE / 2);
-    const centerBiomeY = Math.floor(MAP_SIZE / 2);
-    const campsiteMinX = centerBiomeX * BIOME_SIZE;
-    const campsiteMaxX = (centerBiomeX + 1) * BIOME_SIZE;
-    const campsiteMinY = centerBiomeY * BIOME_SIZE;
-    const campsiteMaxY = (centerBiomeY + 1) * BIOME_SIZE;
+    const campsiteMinX = this.campsiteBiomeX * BIOME_SIZE;
+    const campsiteMaxX = (this.campsiteBiomeX + 1) * BIOME_SIZE;
+    const campsiteMinY = this.campsiteBiomeY * BIOME_SIZE;
+    const campsiteMaxY = (this.campsiteBiomeY + 1) * BIOME_SIZE;
 
     const out: { x: number; y: number }[] = [];
     for (let y = 0; y < totalSize; y++) {
@@ -762,66 +916,73 @@ export class MapManager implements IMapManager {
         poolManager.vector2.release(position);
         continue;
       }
-
-      const zombie = ZombieFactory.createZombie("regular", this.getGameManagers(), {
-        position,
-        addToManager: true,
-        isIdle: true,
-      });
-
-      this.openWorldZombieSpawnPoints.push({
-        tileX: x,
-        tileY: y,
-        activeZombieId: zombie.getId(),
-        respawnAtMs: null,
-      });
+      poolManager.vector2.release(position);
+      const spawner = new ZombieSpawnPoint(this.getGameManagers(), "regular", x, y, false);
+      this.getEntityManager().addEntity(spawner);
     }
   }
 
-  public tickOpenWorldZombieSpawnPoints(): void {
-    if (this.openWorldZombieSpawnPoints.length === 0) {
-      return;
+  /**
+   * Authored maps: same checks as fixture placement as player spawn markers — trust spawns layer +
+   * collidables + entity overlap, without restricting to the four procedural grass tile IDs.
+   */
+  public isAuthoredZombieFixtureSpawnValid(
+    position: Vector2,
+    checkEntities: boolean = true,
+    entitySize?: number,
+  ): boolean {
+    const { TILE_SIZE } = getConfig().world;
+    const size = entitySize ?? TILE_SIZE;
+    const gridX = Math.floor(position.x / TILE_SIZE);
+    const gridY = Math.floor(position.y / TILE_SIZE);
+    const totalSize = BIOME_SIZE * MAP_SIZE;
+
+    if (gridY < 0 || gridY >= totalSize || gridX < 0 || gridX >= totalSize) {
+      return false;
     }
 
-    const world = getConfig().world;
-    const respawnMs = world.OPEN_WORLD_ZOMBIE_RESPAWN_MS;
-    const TILE_SIZE = world.TILE_SIZE;
-    const now = Date.now();
-    const em = this.getEntityManager();
-    const poolManager = PoolManager.getInstance();
+    if (this.collidablesLayer[gridY]?.[gridX] !== EMPTY_COLLIDABLE_TILE_ID) {
+      return false;
+    }
 
-    for (const p of this.openWorldZombieSpawnPoints) {
-      if (p.activeZombieId !== null) {
-        const entity = em.getEntityById(p.activeZombieId);
-        if (entity && !entity.isMarkedForRemoval()) {
-          continue;
+    if (this.doesPositionOverlapWithCar(position)) {
+      return false;
+    }
+
+    if (checkEntities) {
+      const poolManager = PoolManager.getInstance();
+      const positionCenter = poolManager.vector2.claim(
+        position.x + size / 2,
+        position.y + size / 2,
+      );
+      const nearbyEntities = this.getEntityManager().getNearbyEntities(positionCenter, size);
+
+      for (const entity of nearbyEntities) {
+        if (!entity.hasExt(Positionable)) continue;
+
+        const entityType = entity.getType();
+        if (!entityBlocksPlacement(entityType)) continue;
+
+        const entityPos = entity.getExt(Positionable).getCenterPosition();
+        const dx = Math.abs(entityPos.x - positionCenter.x);
+        const dy = Math.abs(entityPos.y - positionCenter.y);
+
+        if (dx < size && dy < size) {
+          poolManager.vector2.release(positionCenter);
+          return false;
         }
-        p.activeZombieId = null;
-        p.respawnAtMs = now + respawnMs;
-        continue;
       }
 
-      if (p.respawnAtMs === null || now < p.respawnAtMs) {
-        continue;
-      }
-
-      const position = poolManager.vector2.claim(p.tileX * TILE_SIZE, p.tileY * TILE_SIZE);
-      if (!this.isPositionValidForPlacement(position, true)) {
-        poolManager.vector2.release(position);
-        continue;
-      }
-
-      const zombie = ZombieFactory.createZombie("regular", this.getGameManagers(), {
-        position,
-        addToManager: true,
-        isIdle: true,
-      });
-      p.activeZombieId = zombie.getId();
-      p.respawnAtMs = null;
+      poolManager.vector2.release(positionCenter);
     }
+
+    return true;
   }
 
   private spawnSurvivorsInBiome(biomeX: number, biomeY: number): void {
+    if (!ENABLE_SURVIVOR_SPAWNS) {
+      return;
+    }
     // Spawn 1-2 survivors randomly
     const survivorCount =
       this.mapRandom() < SURVIVOR_SPAWN_PROBABILITY ? SURVIVOR_MIN_COUNT : SURVIVOR_MAX_COUNT;
@@ -881,6 +1042,9 @@ export class MapManager implements IMapManager {
    * @returns true if survivor was successfully spawned, false otherwise
    */
   public spawnSurvivorInRandomBiome(): boolean {
+    if (!ENABLE_SURVIVOR_SPAWNS) {
+      return false;
+    }
     const biomePosition = this.selectRandomBiomePosition([]);
     if (!biomePosition) {
       console.warn("No valid biome position found to spawn survivor");
@@ -936,6 +1100,9 @@ export class MapManager implements IMapManager {
   }
 
   private spawnBiomeItems(biome: BiomeData, biomeX: number, biomeY: number) {
+    if (!ENABLE_GROUND_ITEM_SPAWNS) {
+      return;
+    }
     if (!biome.items || biome.items.length === 0) {
       return;
     }
@@ -1005,8 +1172,7 @@ export class MapManager implements IMapManager {
 
     // Determine which biome to place
     let biome: BiomeData;
-    if (biomeX === Math.floor(MAP_SIZE / 2) && biomeY === Math.floor(MAP_SIZE / 2)) {
-      // Place campsite at center (3,3)
+    if (biomeX === this.campsiteBiomeX && biomeY === this.campsiteBiomeY) {
       biome = CAMPSITE;
     } else if (
       this.farmBiomePosition &&
@@ -1061,24 +1227,8 @@ export class MapManager implements IMapManager {
       }
     }
 
-    // Hard-code campfire entity spawn for campsite biome
-    // Campfire position: x=8, y=7 within the biome (center of campsite)
     if (biome === CAMPSITE) {
-      const campfireLocalX = CAMPSITE_CAMPFIRE_LOCAL_X;
-      const campfireLocalY = CAMPSITE_CAMPFIRE_LOCAL_Y;
-      const absoluteX = biomeX * BIOME_SIZE + campfireLocalX;
-      const absoluteY = biomeY * BIOME_SIZE + campfireLocalY;
-
-      const campsiteFire = new CampsiteFire(this.getGameManagers());
-      campsiteFire
-        .getExt(Positionable)
-        .setPosition(
-          PoolManager.getInstance().vector2.claim(
-            absoluteX * getConfig().world.TILE_SIZE,
-            absoluteY * getConfig().world.TILE_SIZE,
-          ),
-        );
-      this.getEntityManager().addEntity(campsiteFire);
+      this.spawnCampsiteFireAtBiome(biomeX, biomeY);
     }
 
     this.spawnBiomeItems(biome, biomeX, biomeY);
@@ -1140,8 +1290,6 @@ export class MapManager implements IMapManager {
    */
   public getRandomGrassPositionExcludingCampsite(): Vector2 {
     const totalSize = BIOME_SIZE * MAP_SIZE;
-    const centerBiomeX = Math.floor(MAP_SIZE / 2);
-    const centerBiomeY = Math.floor(MAP_SIZE / 2);
     const validPositions: Vector2[] = [];
 
     // Collect all valid ground tile positions (excluding campsite biome)
@@ -1150,7 +1298,7 @@ export class MapManager implements IMapManager {
         // Check if this tile is in the campsite biome - skip if so
         const biomeX = Math.floor(x / BIOME_SIZE);
         const biomeY = Math.floor(y / BIOME_SIZE);
-        if (biomeX === centerBiomeX && biomeY === centerBiomeY) {
+        if (biomeX === this.campsiteBiomeX && biomeY === this.campsiteBiomeY) {
           continue;
         }
 
@@ -1301,15 +1449,13 @@ export class MapManager implements IMapManager {
   }
 
   public getRandomCampsitePosition(): Vector2 | null {
-    const centerBiomeX = Math.floor(MAP_SIZE / 2);
-    const centerBiomeY = Math.floor(MAP_SIZE / 2);
     const validPositions: Vector2[] = [];
 
     // Iterate through the campsite biome tiles
     for (let y = 0; y < BIOME_SIZE; y++) {
       for (let x = 0; x < BIOME_SIZE; x++) {
-        const mapY = centerBiomeY * BIOME_SIZE + y;
-        const mapX = centerBiomeX * BIOME_SIZE + x;
+        const mapY = this.campsiteBiomeY * BIOME_SIZE + y;
+        const mapX = this.campsiteBiomeX * BIOME_SIZE + x;
         // Check if it's a valid ground tile (8, 4, 14, 24) and no collidable blocking
         const groundTile = this.groundLayer[mapY][mapX];
         const isValidGround =
@@ -1426,8 +1572,6 @@ export class MapManager implements IMapManager {
    * Returns an array of Vector2 positions representing the center of each surrounding biome
    */
   public getCampsiteSurroundingBiomeCenters(): Vector2[] {
-    const centerBiomeX = Math.floor(MAP_SIZE / 2);
-    const centerBiomeY = Math.floor(MAP_SIZE / 2);
     const tileSize = getConfig().world.TILE_SIZE;
     const poolManager = PoolManager.getInstance();
     const centers: Vector2[] = [];
@@ -1440,8 +1584,8 @@ export class MapManager implements IMapManager {
           continue;
         }
 
-        const biomeX = centerBiomeX + dx;
-        const biomeY = centerBiomeY + dy;
+        const biomeX = this.campsiteBiomeX + dx;
+        const biomeY = this.campsiteBiomeY + dy;
 
         // Ensure biome is within map bounds
         if (biomeX >= 0 && biomeX < MAP_SIZE && biomeY >= 0 && biomeY < MAP_SIZE) {

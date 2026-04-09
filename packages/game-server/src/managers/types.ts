@@ -62,10 +62,22 @@ export interface IMapManager {
     count: number
   ): void;
   getRandomCampsitePosition(): Vector2 | null;
+  /** Player join / respawn / teleport-to-base when using authored world-map spawns layer. */
+  getPlayerSpawnPositionForMap(): Vector2;
+  /** If the tile is walkable (empty collidable, not overlapping car), return top-left world position; else null. */
+  tryGetPositionForSavedTile(tileX: number, tileY: number): Vector2 | null;
   getRandomGrassPosition(): Vector2;
   getRandomGrassPositionExcludingCampsite(): Vector2;
   spawnCrateInRandomBiome(): boolean;
-  tickOpenWorldZombieSpawnPoints(): void;
+  /**
+   * Authored maps: valid fixture spawn if tile is in bounds, collidable empty, not on car,
+   * and no blocking entities (ignores procedural-only grass tile IDs).
+   */
+  isAuthoredZombieFixtureSpawnValid(
+    position: Vector2,
+    checkEntities?: boolean,
+    entitySize?: number
+  ): boolean;
 }
 
 export interface IGameLoop {

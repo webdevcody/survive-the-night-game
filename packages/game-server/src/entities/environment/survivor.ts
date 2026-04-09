@@ -102,9 +102,9 @@ export class Survivor extends Entity {
     if (!this.campsiteCenter) {
       const campsitePos = this.getGameManagers().getMapManager().getRandomCampsitePosition();
       if (campsitePos) {
-        // Use campsite center (approximate center of biome)
-        const centerBiomeX = Math.floor(MAP_SIZE / 2); // MAP_SIZE / 2
-        const centerBiomeY = Math.floor(MAP_SIZE / 2);
+        const campsite = this.getGameManagers().getMapManager().getMapData().biomePositions?.campsite;
+        const centerBiomeX = campsite?.x ?? Math.floor(MAP_SIZE / 2);
+        const centerBiomeY = campsite?.y ?? Math.floor(MAP_SIZE / 2);
         const TILE_SIZE = getConfig().world.TILE_SIZE;
         const poolManager = PoolManager.getInstance();
         this.campsiteCenter = poolManager.vector2.claim(

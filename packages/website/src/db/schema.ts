@@ -79,6 +79,9 @@ export const userStats = pgTable("user_stats", {
     .$type<Record<string, number>>()
     .notNull()
     .default(sql`'{}'::jsonb`),
+  /** Open world: last tile indices when the player disconnected (alive). */
+  lastTileX: integer("last_tile_x"),
+  lastTileY: integer("last_tile_y"),
   createdAt: timestamp("created_at")
     .$defaultFn(() => new Date())
     .notNull(),

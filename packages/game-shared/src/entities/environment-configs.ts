@@ -59,6 +59,16 @@ export const ENVIRONMENT_CONFIGS: Record<string, EnvironmentConfig> = {
       sheet: "ground",
     },
   },
+  zombie_spawn_point: {
+    id: "zombie_spawn_point",
+    category: "obstacle",
+    assets: {
+      assetKey: "zombie_spawn_point",
+      x: 0,
+      y: 0,
+      sheet: "ground",
+    },
+  },
   fire: {
     id: "fire",
     category: "obstacle",

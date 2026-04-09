@@ -21,7 +21,7 @@ export class OpenWorldModeStrategy implements IGameModeStrategy {
     allowRespawn: true,
     hasCarEntity: false,
     hasBosses: false,
-    hasSurvivors: true,
+    hasSurvivors: false,
     minPlayers: 1,
   };
 
@@ -33,16 +33,21 @@ export class OpenWorldModeStrategy implements IGameModeStrategy {
 
   onGameEnd(_gameManagers: IGameManagers): void {}
 
-  update(_deltaTime: number, gameManagers: IGameManagers): void {
-    gameManagers.getMapManager().tickOpenWorldZombieSpawnPoints();
-  }
+  update(_deltaTime: number, _gameManagers: IGameManagers): void {}
 
   getPlayerSpawnPosition(_player: Player, gameManagers: IGameManagers): Vector2 {
-    const position = gameManagers.getMapManager().getRandomCampsitePosition();
-    return position ?? gameManagers.getMapManager().getRandomGrassPosition();
+    return gameManagers.getMapManager().getPlayerSpawnPositionForMap();
   }
 
   handlePlayerSpawn(player: Player, gameManagers: IGameManagers): void {
+    const pending = player.consumePendingLogoutSpawnTile();
+    if (pending) {
+      const restored = gameManagers.getMapManager().tryGetPositionForSavedTile(pending.x, pending.y);
+      if (restored) {
+        player.getExt(Positionable).setPosition(restored);
+        return;
+      }
+    }
     const spawnPosition = this.getPlayerSpawnPosition(player, gameManagers);
     player.getExt(Positionable).setPosition(spawnPosition);
   }

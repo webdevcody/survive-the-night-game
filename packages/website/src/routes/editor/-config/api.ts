@@ -3,5 +3,7 @@ const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:3002
 export const API_ENDPOINTS = {
   biomes: () => `${API_BASE_URL}/api/biomes`,
   biome: (name: string) => `${API_BASE_URL}/api/biomes/${name}`,
+  worldMap: () => `${API_BASE_URL}/api/world-map`,
+  worldMapExpand: () => `${API_BASE_URL}/api/world-map/expand`,
   spawnableEntities: () => `${API_BASE_URL}/api/entities/spawnable`,
 } as const;

@@ -1,18 +1,40 @@
-// Constants
-export const BIOME_SIZE = 16;
+import { getConfig } from "@survive-the-night/game-shared/config";
 
-// Initialize empty ground layer (16x16 grid of zeros)
-export const createEmptyGroundLayer = (): number[][] => {
-  return Array(BIOME_SIZE)
+/** Full world width/height in tiles (MAP_SIZE biomes × BIOME_SIZE tiles each). */
+export function getFullMapTileCount(): number {
+  const { BIOME_SIZE, MAP_SIZE } = getConfig().world;
+  return BIOME_SIZE * MAP_SIZE;
+}
+
+/** Prefer loaded grid size so the editor stays correct when map dimensions differ from bundled config (e.g. after expand, before HMR). */
+export function getMapSideLength(groundGrid: number[][]): number {
+  return groundGrid.length > 0 ? groundGrid.length : getFullMapTileCount();
+}
+
+export const getTilePixelSize = () => getConfig().world.TILE_SIZE * 2;
+
+export const createEmptyGroundLayer = (size: number): number[][] => {
+  return Array(size)
     .fill(0)
-    .map(() => Array(BIOME_SIZE).fill(0));
+    .map(() => Array(size).fill(0));
 };
 
-// Initialize empty collidables layer (16x16 grid of -1, meaning no collision)
-export const createEmptyCollidablesLayer = (): number[][] => {
-  return Array(BIOME_SIZE)
+export const createEmptyCollidablesLayer = (size: number): number[][] => {
+  return Array(size)
     .fill(0)
-    .map(() => Array(BIOME_SIZE).fill(-1));
+    .map(() => Array(size).fill(-1));
+};
+
+export const createEmptySpawnsLayer = (size: number): number[][] => {
+  return Array(size)
+    .fill(0)
+    .map(() => Array(size).fill(0));
+};
+
+export const createEmptyDecalsLayer = (size: number): number[][] => {
+  return Array(size)
+    .fill(0)
+    .map(() => Array(size).fill(0));
 };
 
 // Convert name to kebab-case
@@ -25,6 +47,8 @@ export const toKebabCase = (str: string): string => {
 };
 
 // Get the appropriate tilesheet image URL for the active layer
-export const getLayerImage = (layer: "ground" | "collidables") => {
-  return layer === "ground" ? "/sheets/ground.png" : "/sheets/collidables.png";
+export const getLayerImage = (layer: "ground" | "collidables" | "spawns" | "decals") => {
+  if (layer === "ground") return "/sheets/ground.png";
+  if (layer === "collidables") return "/sheets/collidables.png";
+  return "";
 };

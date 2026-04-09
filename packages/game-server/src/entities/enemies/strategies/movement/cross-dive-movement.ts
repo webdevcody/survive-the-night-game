@@ -99,12 +99,12 @@ export class AcidFlyerDiveStrategy implements MovementStrategy {
   }
 
   private initializeDive(zombie: BaseEnemy): void {
-    // Get campsite bounds (center biome)
     const mapManager = zombie.getGameManagers().getMapManager();
     const { MAP_SIZE, BIOME_SIZE, TILE_SIZE } = getConfig().world;
 
-    const centerBiomeX = Math.floor(MAP_SIZE / 2);
-    const centerBiomeY = Math.floor(MAP_SIZE / 2);
+    const campsite = mapManager.getMapData().biomePositions?.campsite;
+    const centerBiomeX = campsite?.x ?? Math.floor(MAP_SIZE / 2);
+    const centerBiomeY = campsite?.y ?? Math.floor(MAP_SIZE / 2);
 
     const campsiteCenterX = (centerBiomeX * BIOME_SIZE + BIOME_SIZE / 2) * TILE_SIZE;
     const campsiteCenterY = (centerBiomeY * BIOME_SIZE + BIOME_SIZE / 2) * TILE_SIZE;

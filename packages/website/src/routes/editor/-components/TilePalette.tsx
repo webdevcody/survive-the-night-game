@@ -2,10 +2,15 @@ import { Button } from "~/components/ui/button";
 import { useEditorStore } from "../-store";
 import type { Layer } from "../-types";
 import { getConfig } from "@survive-the-night/game-shared/config";
+import { SPAWN_PALETTE_ENTRIES } from "@survive-the-night/game-shared/map/spawn-palette";
+import { DECAL_PALETTE_ENTRIES } from "@survive-the-night/game-shared/map/decal-palette";
 
 interface TilePaletteProps {
   onTileSelect: (row: number, col: number, layer: Layer) => void;
 }
+
+const tabBtn = "flex-1 !rounded-none text-xs h-7 px-2 py-0 font-medium";
+const toolBtn = "!rounded-none text-xs h-7 px-2 gap-1 border border-gray-600";
 
 export function TilePalette({ onTileSelect }: TilePaletteProps) {
   const activeLayer = useEditorStore((state) => state.activeLayer);
@@ -179,78 +184,98 @@ export function TilePalette({ onTileSelect }: TilePaletteProps) {
   };
 
   return (
-    <div className="w-[400px]">
-      {/* Layer Tabs */}
-      <div className="flex gap-2 mb-4">
+    <div className="w-full min-w-0">
+      <div className="mb-2 flex flex-wrap border border-gray-600 divide-x divide-gray-600">
         <Button
+          size="sm"
           onClick={() => switchLayer("ground")}
-          className={`flex-1 ${
+          className={`${tabBtn} ${
             activeLayer === "ground"
               ? "bg-green-600 hover:bg-green-700"
               : "bg-gray-700 hover:bg-gray-600"
-          } text-white px-4 py-2`}
+          } text-white border-0`}
         >
           Ground
         </Button>
         <Button
+          size="sm"
           onClick={() => switchLayer("collidables")}
-          className={`flex-1 ${
+          className={`${tabBtn} ${
             activeLayer === "collidables"
               ? "bg-red-600 hover:bg-red-700"
               : "bg-gray-700 hover:bg-gray-600"
-          } text-white px-4 py-2`}
+          } text-white border-0`}
         >
           Collidables
         </Button>
+        <Button
+          size="sm"
+          onClick={() => switchLayer("spawns")}
+          className={`${tabBtn} ${
+            activeLayer === "spawns"
+              ? "bg-violet-600 hover:bg-violet-700"
+              : "bg-gray-700 hover:bg-gray-600"
+          } text-white border-0`}
+        >
+          Spawns
+        </Button>
+        <Button
+          size="sm"
+          onClick={() => switchLayer("decals")}
+          className={`${tabBtn} ${
+            activeLayer === "decals"
+              ? "bg-amber-600 hover:bg-amber-700"
+              : "bg-gray-700 hover:bg-gray-600"
+          } text-white border-0`}
+        >
+          Decals
+        </Button>
       </div>
 
-      {/* Ground Palette */}
       {activeLayer === "ground" && (
-        <div className="bg-gray-800 p-4 rounded-lg border-2 border-green-500">
-          <div className="flex justify-between items-center mb-4">
-            <div className="text-lg font-medium text-green-400">Ground Tiles</div>
-            <div className="flex gap-2">
+        <div className="border border-green-600 bg-gray-800 py-2 px-0">
+          <div className="mb-2 flex flex-wrap items-center justify-end gap-1 px-2">
+            <Button
+              onClick={() => {
+                setIsFillBucketMode(!isFillBucketMode);
+                if (!isFillBucketMode) {
+                  setIsGroundPaletteSelectionMode(false);
+                  setGroundPaletteSelectionStart(null);
+                  setGroundPaletteSelectionCurrent(null);
+                }
+              }}
+              size="sm"
+              className={`${toolBtn} ${
+                isFillBucketMode
+                  ? "bg-orange-600 hover:bg-orange-700 text-white"
+                  : "bg-gray-700 hover:bg-gray-600 text-white"
+              }`}
+              title="Flood fill"
+            >
+              Fill
+            </Button>
+            <Button
+              onClick={toggleGroundPaletteSelectionMode}
+              size="sm"
+              className={`${toolBtn} ${
+                isGroundPaletteSelectionMode
+                  ? "bg-blue-600 hover:bg-blue-700 text-white"
+                  : "bg-gray-700 hover:bg-gray-600 text-white"
+              }`}
+              title="Rectangle select"
+            >
+              {isGroundPaletteSelectionMode ? "Exit multi" : "Multi"}
+            </Button>
+            {clipboard && clipboard.layer === "ground" && (
               <Button
-                onClick={() => {
-                  setIsFillBucketMode(!isFillBucketMode);
-                  if (!isFillBucketMode) {
-                    setIsGroundPaletteSelectionMode(false);
-                    setGroundPaletteSelectionStart(null);
-                    setGroundPaletteSelectionCurrent(null);
-                  }
-                }}
+                onClick={() => setClipboard(null)}
                 size="sm"
-                className={`${
-                  isFillBucketMode
-                    ? "bg-orange-600 hover:bg-orange-700"
-                    : "bg-gray-700 hover:bg-gray-600"
-                } text-white border border-gray-600`}
-                title="Fill bucket tool - flood fill connected tiles"
+                className={`${toolBtn} bg-purple-600 hover:bg-purple-700 text-white border-purple-500`}
+                title="Clear clipboard"
               >
-                Fill Bucket
+                Clear ({clipboard.width}×{clipboard.height})
               </Button>
-              <Button
-                onClick={toggleGroundPaletteSelectionMode}
-                size="sm"
-                className={`${
-                  isGroundPaletteSelectionMode
-                    ? "bg-blue-600 hover:bg-blue-700"
-                    : "bg-gray-700 hover:bg-gray-600"
-                } text-white border border-gray-600`}
-              >
-                {isGroundPaletteSelectionMode ? "Exit Multi-Select" : "Multi-Select"}
-              </Button>
-              {clipboard && clipboard.layer === "ground" && (
-                <Button
-                  onClick={() => setClipboard(null)}
-                  size="sm"
-                  className="bg-purple-600 hover:bg-purple-700 text-white border border-purple-500"
-                  title="Clear clipboard"
-                >
-                  Clear ({clipboard.width}×{clipboard.height})
-                </Button>
-              )}
-            </div>
+            )}
           </div>
 
           <div
@@ -334,66 +359,49 @@ export function TilePalette({ onTileSelect }: TilePaletteProps) {
               </div>
             ))}
           </div>
-
-          <div className="mt-4 text-sm text-green-400">
-            {isGroundPaletteSelectionMode ? (
-              <span className="text-blue-400 font-semibold">
-                MULTI-SELECT MODE: Drag to select rectangle
-              </span>
-            ) : isFillBucketMode ? (
-              <span className="text-orange-400 font-semibold">
-                FILL BUCKET MODE: Selected Tile #{selectedTileId}
-              </span>
-            ) : (
-              <>Selected: Tile #{selectedTileId}</>
-            )}
-          </div>
         </div>
       )}
 
-      {/* Collidables Palette */}
       {activeLayer === "collidables" && (
-        <div className="bg-gray-800 p-4 rounded-lg border-2 border-red-500">
-          <div className="flex justify-between items-center mb-4">
-            <div className="text-lg font-medium text-red-400">Collidable Objects</div>
-            <div className="flex gap-2">
+        <div className="border border-red-600 bg-gray-800 py-2 px-0">
+          <div className="mb-2 flex flex-wrap items-center justify-end gap-1 px-2">
+            <Button
+              onClick={togglePaletteSelectionMode}
+              size="sm"
+              className={`${toolBtn} ${
+                isPaletteSelectionMode
+                  ? "bg-blue-600 hover:bg-blue-700 text-white"
+                  : "bg-gray-700 hover:bg-gray-600 text-white"
+              }`}
+              title="Rectangle select"
+            >
+              {isPaletteSelectionMode ? "Exit multi" : "Multi"}
+            </Button>
+            {clipboard && clipboard.layer === "collidables" && (
               <Button
-                onClick={togglePaletteSelectionMode}
+                onClick={() => setClipboard(null)}
                 size="sm"
-                className={`${
-                  isPaletteSelectionMode
-                    ? "bg-blue-600 hover:bg-blue-700"
-                    : "bg-gray-700 hover:bg-gray-600"
-                } text-white border border-gray-600`}
+                className={`${toolBtn} bg-purple-600 hover:bg-purple-700 text-white border-purple-500`}
+                title="Clear clipboard"
               >
-                {isPaletteSelectionMode ? "Exit Multi-Select" : "Multi-Select"}
+                Clear ({clipboard.width}×{clipboard.height})
               </Button>
-              {clipboard && clipboard.layer === "collidables" && (
-                <Button
-                  onClick={() => setClipboard(null)}
-                  size="sm"
-                  className="bg-purple-600 hover:bg-purple-700 text-white border border-purple-500"
-                  title="Clear clipboard"
-                >
-                  Clear ({clipboard.width}×{clipboard.height})
-                </Button>
-              )}
-              <Button
-                onClick={() => {
-                  setSelectedTileId(-1);
-                  setActiveLayer("collidables");
-                  setIsPaletteSelectionMode(false);
-                }}
-                size="sm"
-                className={`${
-                  selectedTileId === -1 && activeLayer === "collidables"
-                    ? "bg-red-600 hover:bg-red-700"
-                    : "bg-gray-700 hover:bg-gray-600"
-                } text-white border border-gray-600`}
-              >
-                Eraser
-              </Button>
-            </div>
+            )}
+            <Button
+              onClick={() => {
+                setSelectedTileId(-1);
+                setActiveLayer("collidables");
+                setIsPaletteSelectionMode(false);
+              }}
+              size="sm"
+              className={`${toolBtn} ${
+                selectedTileId === -1 && activeLayer === "collidables"
+                  ? "bg-red-600 hover:bg-red-700 text-white"
+                  : "bg-gray-700 hover:bg-gray-600 text-white"
+              }`}
+            >
+              Eraser
+            </Button>
           </div>
 
           <div
@@ -477,18 +485,77 @@ export function TilePalette({ onTileSelect }: TilePaletteProps) {
               </div>
             ))}
           </div>
+        </div>
+      )}
 
-          <div className="mt-4 text-sm text-red-400">
-            {isPaletteSelectionMode ? (
-              <span className="text-blue-400 font-semibold">
-                MULTI-SELECT MODE: Drag to select rectangle
-              </span>
-            ) : (
-              <>
-                Selected:{" "}
-                {selectedTileId === -1 ? "Eraser (remove object)" : `Tile #${selectedTileId}`}
-              </>
-            )}
+      {activeLayer === "spawns" && (
+        <div className="border border-violet-600 bg-gray-800 py-2 px-2">
+          <p className="mb-2 text-[10px] leading-tight text-gray-400">
+            Player + enemy spawn markers. Uses world-map spawns layer (no procedural fallback when
+            empty).
+          </p>
+          <div className="flex flex-wrap gap-1">
+            {SPAWN_PALETTE_ENTRIES.map((entry) => {
+              const isSelected = selectedTileId === entry.id && activeLayer === "spawns";
+              return (
+                <Button
+                  key={entry.id}
+                  size="sm"
+                  onClick={() => {
+                    setSelectedTileId(entry.id);
+                    setActiveLayer("spawns");
+                  }}
+                  className={`!rounded-none text-xs h-8 min-w-[4.5rem] px-2 border text-white ${
+                    isSelected
+                      ? "border-white ring-1 ring-white"
+                      : "border-gray-600"
+                  }`}
+                  style={{
+                    backgroundColor: entry.id === 0 ? "rgb(55 65 81)" : entry.color,
+                  }}
+                  title={entry.label}
+                >
+                  {entry.label}
+                </Button>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {activeLayer === "decals" && (
+        <div className="border border-amber-600 bg-gray-800 py-2 px-2">
+          <p className="mb-2 text-[10px] leading-tight text-gray-400">
+            Overlays on the ground layer (saved in world-map{" "}
+            <code className="text-gray-300">decals</code>). The Campsite decal is where the
+            campfire entity spawns in-game. Use the Spawns tab for player/enemy markers — separate
+            from Campsite decals.
+          </p>
+          <div className="flex flex-wrap gap-1">
+            {DECAL_PALETTE_ENTRIES.map((entry) => {
+              const isSelected = selectedTileId === entry.id && activeLayer === "decals";
+              return (
+                <Button
+                  key={entry.id}
+                  size="sm"
+                  onClick={() => {
+                    setSelectedTileId(entry.id);
+                    setActiveLayer("decals");
+                  }}
+                  className={`!rounded-none text-xs h-8 min-w-[4.5rem] px-2 border text-white ${
+                    isSelected
+                      ? "border-white ring-1 ring-white"
+                      : "border-gray-600"
+                  }`}
+                  style={{
+                    backgroundColor: entry.id === 0 ? "rgb(55 65 81)" : entry.color,
+                  }}
+                  title={entry.label}
+                >
+                  {entry.label}
+                </Button>
+              );
+            })}
           </div>
         </div>
       )}

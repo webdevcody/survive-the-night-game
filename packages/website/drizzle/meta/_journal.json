@@ -50,6 +50,13 @@
       "when": 1775678610040,
       "tag": "0006_salty_yellow_claw",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1775706403548,
+      "tag": "0007_fine_franklin_richards",
+      "breakpoints": true
     }
   ]
 }
