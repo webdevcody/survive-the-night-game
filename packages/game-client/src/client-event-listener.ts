@@ -207,13 +207,6 @@ export class ClientEventListener {
         return;
       }
 
-      const now = typeof performance !== "undefined" ? performance.now() : Date.now();
-      const elapsed =
-        this.lastFullStateRequestAt !== null ? Math.round(now - this.lastFullStateRequestAt) : null;
-      const elapsedLabel = elapsed !== null ? ` (${elapsed}ms elapsed)` : "";
-      console.warn(
-        `[ClientEventListener] Still waiting for full state${elapsedLabel}. Retrying request...`,
-      );
       this.socketManager.sendRequestFullState();
       this.scheduleFullStateTimeout();
     }, 4000);

@@ -15,7 +15,6 @@ import { ClientDestructible } from "@/extensions/destructible";
 import { perfTimer } from "@shared/util/performance";
 import { beginInteractionTextFrame, flushInteractionText } from "./util/interaction-text";
 import { PlayerClient } from "./entities/player";
-import { DEBUG_PERFORMANCE } from "@shared/debug";
 import { isWeapon } from "@shared/util/inventory";
 import { Entities } from "@shared/constants";
 import { getConfig } from "@shared/config";
@@ -36,7 +35,6 @@ export class Renderer {
   private questCompletedModal: QuestCompletedModal;
   private particleManager: ParticleManager;
   private getPlacementManager: () => PlacementManager | null;
-  private lastPerfLogTime: number | null = null;
   private mousePosition: { x: number; y: number } | null = null;
   public spatialGrid: SpatialGrid<ClientEntityBase> | null = null;
 
@@ -309,18 +307,6 @@ export class Renderer {
     this.questCompletedModal.render(this.ctx, this.gameState);
 
     perfTimer.end("render");
-
-    // Print render performance stats every 5 seconds
-    if (!this.lastPerfLogTime || performance.now() - this.lastPerfLogTime > 5000) {
-      perfTimer.logStats("renderGround");
-      perfTimer.logStats("renderCollidables");
-      perfTimer.logStats("renderEntities");
-      perfTimer.logStats("renderParticles");
-      perfTimer.logStats("renderDarkness");
-      perfTimer.logStats("renderUI");
-      perfTimer.logStats("render");
-      this.lastPerfLogTime = performance.now();
-    }
   }
 
   /**

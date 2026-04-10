@@ -122,8 +122,6 @@ export class Hud {
   private mouseY: number = 0;
   private canvasHeight: number = 0;
   private questJournalPanel: QuestJournalPanel;
-  /** Agent debug: one-line network/movement stats (see GameClient update). */
-  private debugNetLine: string = "";
 
   constructor(
     mapManager: MapManager,
@@ -376,11 +374,6 @@ export class Hud {
     this.fpsPanel.setText(`${fps} FPS`);
   }
 
-  /** Debug-only: shown above bottom-right HUD row when non-empty. */
-  public setDebugNetLine(line: string): void {
-    this.debugNetLine = line;
-  }
-
   public render(ctx: CanvasRenderingContext2D, gameState: GameState): void {
     this.currentGameState = gameState;
     const { width, height } = ctx.canvas;
@@ -427,16 +420,6 @@ export class Hud {
     (this.versionPanel as any).textSettings.x = x;
     (this.versionPanel as any).textSettings.y = rowY;
     this.versionPanel.render(ctx, gameState);
-
-    if (this.debugNetLine) {
-      ctx.save();
-      ctx.font = `${scaleHudValue(11, width, height)}px monospace`;
-      ctx.fillStyle = "rgba(255, 255, 0, 0.92)";
-      ctx.textAlign = "right";
-      ctx.textBaseline = "bottom";
-      ctx.fillText(this.debugNetLine, width - marginRight, rowY - scaleHudValue(4, width, height));
-      ctx.restore();
-    }
 
     ctx.restore();
 

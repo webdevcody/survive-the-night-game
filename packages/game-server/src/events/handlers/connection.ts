@@ -1,6 +1,5 @@
 import { ISocketAdapter } from "@shared/network/socket-adapter";
 import { HandlerContext } from "../context";
-import { Player } from "@/entities/players/player";
 import { IEntityManager } from "@/managers/types";
 import type { PersistedPlayerProgress } from "@/services/player-progress-types";
 import { sendFullState } from "./full-state";
@@ -23,45 +22,26 @@ const defaultProgress = (): PersistedPlayerProgress => ({
 
 /**
  * Client sends REQUEST_PLAYER_ID / REQUEST_FULL_STATE as soon as the transport connects.
- * While `onConnection` is awaiting `startNewGame()` / `resumeOpenWorldSession()`, the player
- * may not exist yet, so those handlers no-op. Always emit YOUR_ID + full state after the
- * socket's player row is guaranteed so the client cannot miss initialization.
+ * The world is already running before any client connects; we create the player entity here
+ * and always emit YOUR_ID + full state after the socket's player row exists.
  */
 function emitSocketInitialization(context: HandlerContext, socket: ISocketAdapter): void {
   const player = context.players.get(socket.id);
   if (!player) {
-    console.warn(
-      `[onConnection] Cannot emit YOUR_ID/full state: no player for socket ${socket.id}`,
-    );
+    console.warn(`Cannot emit YOUR_ID/full state: no player for socket ${socket.id}`);
     return;
   }
   sendPlayerId(context, socket);
   sendFullState(context, socket);
 }
 
-export async function onConnection(
+export function onConnection(
   context: HandlerContext,
   socket: ISocketAdapter,
   initialProgress: PersistedPlayerProgress = defaultProgress(),
-): Promise<void> {
+): void {
   try {
     const gameLoop = context.gameServer.getGameLoop();
-    console.log(`[onConnection] start for ${socket.id}`);
-    // #region agent log
-    fetch("http://127.0.0.1:7825/ingest/2642c761-9d6c-4bd7-b4a8-ef39e8a5fbf3", {
-      method: "POST",
-      headers: { "Content-Type": "application/json", "X-Debug-Session-Id": "65179d" },
-      body: JSON.stringify({
-        sessionId: "65179d",
-        runId: "post-fix",
-        hypothesisId: "H11",
-        location: "connection.ts:onConnection",
-        message: "onConnection entry",
-        data: { socketId: socket.id, wasReady: gameLoop.getIsGameReady() },
-        timestamp: Date.now(),
-      }),
-    }).catch(() => {});
-    // #endregion
 
     // Note: setupSocketListeners should be called before onConnection in ServerSocketManager
 
@@ -73,41 +53,9 @@ export async function onConnection(
       context.players.delete(socket.id);
     }
 
-    const totalPlayers = context
-      .getEntityManager()
-      .getPlayerEntities()
-      .filter((entity) => !(entity as Player).isMarkedForRemoval()).length;
-
-    if (totalPlayers === 0) {
-      console.log(`[onConnection] ${socket.id} totalPlayers=0 starting or resuming game`);
-      const modeId = gameLoop.getGameModeStrategy().getConfig().modeId;
-
-      if (modeId === "open_world" && gameLoop.isOpenWorldSessionActive()) {
-        await gameLoop.resumeOpenWorldSession();
-      } else {
-        await context.gameServer.startNewGame();
-      }
-
-      // After start/resume, verify a player exists for this socket
-      let player = context.players.get(socket.id);
-      if (!player) {
-        // This shouldn't happen, but handle it gracefully
-        console.warn(
-          `[onConnection] Player for socket ${socket.id} not found after start/resume, creating one`,
-        );
-        player = context.createPlayerForSocket(socket, initialProgress);
-        context.broadcastPlayerJoined(player);
-      }
-
-      console.log(`[onConnection] ${socket.id} start/resume path completed`);
-      return;
-    }
-
     const player = context.createPlayerForSocket(socket, initialProgress);
     context.broadcastPlayerJoined(player);
-    console.log(`[onConnection] ${socket.id} joined existing game`);
 
-    // Adjust AI player count when real player joins mid-game
     const strategy = gameLoop.getGameModeStrategy();
     const aiManager = strategy.getAIPlayerManager?.();
     if (aiManager) {
@@ -115,15 +63,7 @@ export async function onConnection(
       aiManager.adjustAIPlayerCount(realPlayerCount);
     }
 
-    // Ensure game mode invariants (e.g., if AI zombie was removed, pick a new zombie)
     strategy.ensureZombieExists?.(context.getGameManagers());
-
-    // Ensure the game is ready when a human player joins
-    // This handles the case where AI players exist but isGameReady was set to false
-    // when the last human player disconnected
-    if (!gameLoop.getIsGameReady()) {
-      gameLoop.setIsGameReady(true);
-    }
 
     // If the game is over (waiting for restart), also clear that flag so the player can play
     // This can happen if a player joins during the 5-second delay between games
@@ -131,27 +71,6 @@ export async function onConnection(
       gameLoop.setIsGameOver(false);
     }
   } finally {
-    console.log(`[onConnection] finally for ${socket.id}`);
     emitSocketInitialization(context, socket);
-    const gl = context.gameServer.getGameLoop();
-    // #region agent log
-    fetch("http://127.0.0.1:7825/ingest/2642c761-9d6c-4bd7-b4a8-ef39e8a5fbf3", {
-      method: "POST",
-      headers: { "Content-Type": "application/json", "X-Debug-Session-Id": "65179d" },
-      body: JSON.stringify({
-        sessionId: "65179d",
-        runId: "post-fix",
-        hypothesisId: "H12",
-        location: "connection.ts:finally",
-        message: "onConnection finally before ready guard",
-        data: {
-          socketId: socket.id,
-          playersSize: context.players.size,
-          isGameReady: gl.getIsGameReady(),
-        },
-        timestamp: Date.now(),
-      }),
-    }).catch(() => {});
-    // #endregion
   }
 }

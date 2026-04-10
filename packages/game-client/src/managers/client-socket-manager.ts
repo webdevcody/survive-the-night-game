@@ -109,16 +109,6 @@ export class ClientSocketManager {
   private shouldReconnect: boolean = true; // Flag to prevent reconnection (e.g., on version mismatch or ban)
   private lastConnectionTime: number = 0; // Track when we last successfully connected
 
-  // #region agent log — HUD + NDJSON (movement / game-state verification)
-  private debugInputTxCount = 0;
-  private debugGameStateRxCount = 0;
-  private debugLastGsEntityCount = 0;
-  private debugLastGsBufLen = 0;
-  private debugLastInputDx = 0;
-  private debugLastInputDy = 0;
-  private debugLastInputSprint = false;
-  // #endregion
-
   public on<K extends keyof typeof SERVER_EVENT_MAP>(eventType: K, handler: (event: any) => void) {
     const eventKey = eventType as string;
     if (!this.eventHandlers.has(eventKey)) {
@@ -426,61 +416,8 @@ export class ClientSocketManager {
         eventInstance = new Ctor(decodedEvent);
       }
 
-      // #region agent log
-      if (eventType === ServerSentEvents.GAME_STATE_UPDATE) {
-        this.debugGameStateRxCount++;
-        let entityCount = -1;
-        let bufLen = 0;
-        if (decodedEvent instanceof ArrayBuffer) {
-          bufLen = decodedEvent.byteLength;
-          if (bufLen >= 2) {
-            entityCount = new DataView(decodedEvent).getUint16(0, true);
-          }
-        }
-        this.debugLastGsEntityCount = entityCount;
-        this.debugLastGsBufLen = bufLen;
-        const n = this.debugGameStateRxCount;
-        if (n <= 40 || n % 120 === 0) {
-          fetch("http://127.0.0.1:7825/ingest/2642c761-9d6c-4bd7-b4a8-ef39e8a5fbf3", {
-            method: "POST",
-            headers: { "Content-Type": "application/json", "X-Debug-Session-Id": "65179d" },
-            body: JSON.stringify({
-              sessionId: "65179d",
-              runId: "pre-fix",
-              hypothesisId: "H-CLIENT-GS",
-              location: "client-socket-manager.ts:attachHandler",
-              message: "rx GAME_STATE_UPDATE",
-              data: { n, entityCount, bufLen },
-              timestamp: Date.now(),
-            }),
-          }).catch(() => {});
-        }
-      }
-      // #endregion
-
       handler(eventInstance);
     });
-  }
-
-  /** Snapshot for on-screen debug line (see Hud.setDebugNetLine). */
-  public getDebugNetSnapshot(): {
-    inputTx: number;
-    gsRx: number;
-    lastEntityCount: number;
-    lastBufLen: number;
-    lastDx: number;
-    lastDy: number;
-    lastSprint: boolean;
-  } {
-    return {
-      inputTx: this.debugInputTxCount,
-      gsRx: this.debugGameStateRxCount,
-      lastEntityCount: this.debugLastGsEntityCount,
-      lastBufLen: this.debugLastGsBufLen,
-      lastDx: this.debugLastInputDx,
-      lastDy: this.debugLastInputDy,
-      lastSprint: this.debugLastInputSprint,
-    };
   }
 
   private registerStoredHandlers(): void {
@@ -536,35 +473,9 @@ export class ClientSocketManager {
   }
 
   public sendInput(input: Input) {
-    // #region agent log
-    this.debugInputTxCount++;
-    this.debugLastInputDx = input.dx;
-    this.debugLastInputDy = input.dy;
-    this.debugLastInputSprint = input.sprint;
-    const nt = this.debugInputTxCount;
-    if (nt <= 40 || nt % 150 === 0) {
-      fetch("http://127.0.0.1:7825/ingest/2642c761-9d6c-4bd7-b4a8-ef39e8a5fbf3", {
-        method: "POST",
-        headers: { "Content-Type": "application/json", "X-Debug-Session-Id": "65179d" },
-        body: JSON.stringify({
-          sessionId: "65179d",
-          runId: "pre-fix",
-          hypothesisId: "H-CLIENT-SEND",
-          location: "client-socket-manager.ts:sendInput",
-          message: "emit PLAYER_INPUT",
-          data: {
-            nt,
-            dx: input.dx,
-            dy: input.dy,
-            sprint: input.sprint,
-            fire: input.fire,
-            facing: input.facing,
-          },
-          timestamp: Date.now(),
-        }),
-      }).catch(() => {});
+    if (!this.socket) {
+      return;
     }
-    // #endregion
     this.emitClientEvent(ClientSentEvents.PLAYER_INPUT, input);
   }
 

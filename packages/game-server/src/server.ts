@@ -6,6 +6,7 @@ import { GameServer } from "./core/server";
 import { ServerUpdatingEvent } from "../../game-shared/src/events/server-sent/events/server-updating-event";
 
 const gameServer = new GameServer();
+await gameServer.bootstrap();
 
 process.on("SIGINT", () => gameServer.stop());
 process.on("SIGTERM", () => {

@@ -13,7 +13,8 @@
  * - Entity creation/removal (handled by EntityManager)
  * - Map generation (handled by MapManager)
  *
- * The loop only runs when isGameReady is true and stops when isGameOver is true.
+ * The loop only runs simulation when isGameReady is true (false while a session is
+ * being (re)loaded) and skips updates when isGameOver is true.
  * When the game ends, it automatically restarts after 5 seconds.
  */
 import { GameOverEvent } from "../../../game-shared/src/events/server-sent/events/game-over-event";
@@ -36,8 +37,6 @@ import {
 import { TickPerformanceTracker } from "@/util/tick-performance-tracker";
 import { IGameModeStrategy, WinConditionResult, createGameModeStrategy } from "@/game-modes";
 import type { GameModeId } from "@shared/events/server-sent/events/game-started-event";
-import { Entities } from "@/constants";
-import Positionable from "@/extensions/positionable";
 export class GameLoop {
   private lastUpdateTime: number = performance.now();
   private timer: ReturnType<typeof setInterval> | null = null;
@@ -65,12 +64,6 @@ export class GameLoop {
     phaseDuration: -1,
     totalZombies: -1,
   };
-
-  // #region agent log
-  private _agentLogLastSkipMs = 0;
-  private _agentLogTickSeq = 0;
-  private _agentActiveTickSeq = 0;
-  // #endregion
 
   constructor(
     tickPerformanceTracker: TickPerformanceTracker,
@@ -133,7 +126,7 @@ export class GameLoop {
    * First player reconnected after everyone left: keep entities and map, spawn players, re-sync clients.
    */
   public async resumeOpenWorldSession(): Promise<void> {
-    this.isGameReady = true;
+    this.isGameReady = false;
     this.isGameOver = false;
 
     await this.socketManager.recreatePlayersForConnectedSockets();
@@ -145,6 +138,7 @@ export class GameLoop {
     const gameMode = this.gameModeStrategy.getConfig().modeId as GameModeId;
     this.socketManager.broadcastEvent(new GameStartedEvent(Date.now(), gameMode));
     this.socketManager.sendInitializationToAllSockets();
+    this.isGameReady = true;
   }
 
   public start(): void {
@@ -164,7 +158,7 @@ export class GameLoop {
       this.gameModeStrategy = strategy;
     }
 
-    this.isGameReady = true;
+    this.isGameReady = false;
     this.isGameOver = false;
 
     this.phaseStartTime = Date.now();
@@ -188,6 +182,7 @@ export class GameLoop {
     this.socketManager.sendInitializationToAllSockets();
 
     this.openWorldSessionActive = true;
+    this.isGameReady = true;
   }
 
   public setIsGameOver(isGameOver: boolean): void {
@@ -216,48 +211,10 @@ export class GameLoop {
 
   private update(): void {
     if (!this.isGameReady) {
-      // #region agent log
-      const t = Date.now();
-      if (t - this._agentLogLastSkipMs > 2000) {
-        this._agentLogLastSkipMs = t;
-        fetch("http://127.0.0.1:7825/ingest/2642c761-9d6c-4bd7-b4a8-ef39e8a5fbf3", {
-          method: "POST",
-          headers: { "Content-Type": "application/json", "X-Debug-Session-Id": "65179d" },
-          body: JSON.stringify({
-            sessionId: "65179d",
-            runId: "pre-fix",
-            hypothesisId: "H3",
-            location: "game-loop.ts:update",
-            message: "update skipped isGameReady=false",
-            data: { tickSeq: ++this._agentLogTickSeq },
-            timestamp: Date.now(),
-          }),
-        }).catch(() => {});
-      }
-      // #endregion
       return;
     }
 
     if (this.isGameOver) {
-      // #region agent log
-      const t2 = Date.now();
-      if (t2 - this._agentLogLastSkipMs > 2000) {
-        this._agentLogLastSkipMs = t2;
-        fetch("http://127.0.0.1:7825/ingest/2642c761-9d6c-4bd7-b4a8-ef39e8a5fbf3", {
-          method: "POST",
-          headers: { "Content-Type": "application/json", "X-Debug-Session-Id": "65179d" },
-          body: JSON.stringify({
-            sessionId: "65179d",
-            runId: "pre-fix",
-            hypothesisId: "H3",
-            location: "game-loop.ts:update",
-            message: "update skipped isGameOver=true",
-            data: {},
-            timestamp: Date.now(),
-          }),
-        }).catch(() => {});
-      }
-      // #endregion
       return;
     }
 
@@ -270,43 +227,6 @@ export class GameLoop {
     const endUpdateEntities = this.tickPerformanceTracker.startMethod("updateEntities");
     this.updateEntities(deltaTime);
     endUpdateEntities();
-
-    // #region agent log
-    this._agentActiveTickSeq++;
-    if (this._agentActiveTickSeq % 30 === 0) {
-      const players = this.entityManager
-        .getEntities()
-        .filter((e) => e.getType() === Entities.PLAYER);
-      const sample = players.slice(0, 4).map((e) => {
-        let x = NaN;
-        let y = NaN;
-        if (e.hasExt(Positionable)) {
-          const p = e.getExt(Positionable).getPosition();
-          x = p.x;
-          y = p.y;
-        }
-        return { id: e.getId(), x, y };
-      });
-      fetch("http://127.0.0.1:7825/ingest/2642c761-9d6c-4bd7-b4a8-ef39e8a5fbf3", {
-        method: "POST",
-        headers: { "Content-Type": "application/json", "X-Debug-Session-Id": "65179d" },
-        body: JSON.stringify({
-          sessionId: "65179d",
-          runId: "pre-fix",
-          hypothesisId: "H-TICK-PLAYERS",
-          location: "game-loop.ts:update",
-          message: "tick after updateEntities (player positions sample)",
-          data: {
-            tick: this._agentActiveTickSeq,
-            playerCount: players.length,
-            sample,
-            isGameReady: this.isGameReady,
-          },
-          timestamp: Date.now(),
-        }),
-      }).catch(() => {});
-    }
-    // #endregion
 
     if (this.gameManagers) {
       this.gameModeStrategy.update(deltaTime, this.gameManagers);
@@ -340,8 +260,6 @@ export class GameLoop {
 
     this.trackPerformance(updateStartTime);
     this.lastUpdateTime = currentTime;
-
-    // TODO: print all the performance stats for each method and total server tick time averages.
   }
 
   private handleIfGameOver(): void {

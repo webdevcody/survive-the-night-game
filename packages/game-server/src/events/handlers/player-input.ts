@@ -4,27 +4,6 @@ import { Input } from "@shared/util/input";
 import { SocketEventHandler } from "./types";
 import { Direction } from "@shared/util/direction";
 
-// #region agent log
-let __agentPlayerInputSeq = 0;
-function __agentLogPlayerInput(payload: {
-  message: string;
-  hypothesisId: string;
-  data: Record<string, unknown>;
-}): void {
-  fetch("http://127.0.0.1:7825/ingest/2642c761-9d6c-4bd7-b4a8-ef39e8a5fbf3", {
-    method: "POST",
-    headers: { "Content-Type": "application/json", "X-Debug-Session-Id": "65179d" },
-    body: JSON.stringify({
-      sessionId: "65179d",
-      runId: "pre-fix",
-      location: "player-input.ts",
-      timestamp: Date.now(),
-      ...payload,
-    }),
-  }).catch(() => {});
-}
-// #endregion
-
 /**
  * Validate and sanitize player input
  * Returns null if input is invalid
@@ -97,83 +76,22 @@ function validateInput(input: unknown): Input | null {
 }
 
 export function onPlayerInput(context: HandlerContext, socket: ISocketAdapter, input: unknown): void {
-  // #region agent log
-  const seq = ++__agentPlayerInputSeq;
-  const shouldLog = seq <= 25 || seq % 200 === 0;
-  const isBin =
-    typeof Buffer !== "undefined" &&
-    Buffer.isBuffer(input as Parameters<typeof Buffer.isBuffer>[0]);
-  const isAb = typeof ArrayBuffer !== "undefined" && input instanceof ArrayBuffer;
-  if (shouldLog && (isBin || isAb)) {
-    __agentLogPlayerInput({
-      message: "onPlayerInput received raw buffer (Socket.IO path may not deserialize)",
-      hypothesisId: "H6",
-      data: { seq, socketId: socket.id, isBin, isAb, len: isBin ? (input as Buffer).length : (input as ArrayBuffer).byteLength },
-    });
-  }
-  // #endregion
   const player = context.players.get(socket.id);
   if (!player) {
-    console.warn(`[onPlayerInput] No player found for socket ${socket.id}. Players in map: ${context.players.size}`);
-    // #region agent log
-    if (shouldLog) {
-      __agentLogPlayerInput({
-        message: "onPlayerInput no player",
-        hypothesisId: "H2",
-        data: { seq, socketId: socket.id, playerMapSize: context.players.size },
-      });
-    }
-    // #endregion
+    console.warn(
+      `[PlayerInput] No player for socket ${socket.id}. Players in map: ${context.players.size}`,
+    );
     return;
   }
 
   // Validate input
   const validatedInput = validateInput(input);
   if (!validatedInput) {
-    console.warn(`Invalid player input from socket ${socket.id}`);
-    // #region agent log
-    if (shouldLog) {
-      const o =
-        input && typeof input === "object"
-          ? (input as Record<string, unknown>)
-          : { _raw: String(input) };
-      __agentLogPlayerInput({
-        message: "onPlayerInput validation failed",
-        hypothesisId: "H1",
-        data: {
-          seq,
-          socketId: socket.id,
-          facing: o.facing,
-          facingType: typeof o.facing,
-          dx: o.dx,
-          dy: o.dy,
-          fire: o.fire,
-          fireType: typeof o.fire,
-          sprint: o.sprint,
-          sprintType: typeof o.sprint,
-        },
-      });
-    }
-    // #endregion
+    console.warn(
+      `[PlayerInput] Invalid payload from socket ${socket.id} playerId=${player.getId()} (see validateInput)`,
+    );
     return;
   }
-
-  // #region agent log
-  if (shouldLog) {
-    __agentLogPlayerInput({
-      message: "onPlayerInput applied",
-      hypothesisId: "H1",
-      data: {
-        seq,
-        socketId: socket.id,
-        dx: validatedInput.dx,
-        dy: validatedInput.dy,
-        sprint: validatedInput.sprint,
-        fire: validatedInput.fire,
-      },
-    });
-  }
-  // #endregion
   player.setInput(validatedInput);
 }
 

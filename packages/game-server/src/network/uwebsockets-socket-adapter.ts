@@ -6,10 +6,6 @@ import { TextDecoder } from "util";
 
 const textDecoder = new TextDecoder();
 
-// #region agent log
-let __uwsPlayerInputRx = 0;
-// #endregion
-
 /**
  * uWebSockets WebSocket type (from uWebSockets.js)
  */
@@ -125,32 +121,6 @@ export class UWebSocketsSocketAdapter implements ISocketAdapter {
           const payload = message.slice(reader.getOffset());
 
           const handlers = this.eventHandlers.get(eventName);
-          // #region agent log
-          if (eventName === "playerInput") {
-            const n = ++__uwsPlayerInputRx;
-            if (n <= 25) {
-              fetch("http://127.0.0.1:7825/ingest/2642c761-9d6c-4bd7-b4a8-ef39e8a5fbf3", {
-                method: "POST",
-                headers: { "Content-Type": "application/json", "X-Debug-Session-Id": "65179d" },
-                body: JSON.stringify({
-                  sessionId: "65179d",
-                  runId: "pre-fix",
-                  hypothesisId: "H4",
-                  location: "uwebsockets-socket-adapter.ts:handleMessage",
-                  message: "rx playerInput binary",
-                  data: {
-                    n,
-                    eventTypeId,
-                    hasHandlers: !!handlers,
-                    handlerCount: handlers?.length ?? 0,
-                    payloadLen: payload.byteLength,
-                  },
-                  timestamp: Date.now(),
-                }),
-              }).catch(() => {});
-            }
-          }
-          // #endregion
           if (handlers) {
             let handlerArgs: any[] | null = null;
             try {
@@ -159,36 +129,6 @@ export class UWebSocketsSocketAdapter implements ISocketAdapter {
               console.error(`Error deserializing client event ${eventName}:`, error);
               handlerArgs = null;
             }
-
-            // #region agent log
-            if (eventName === "playerInput" && __uwsPlayerInputRx <= 25) {
-              const a0 =
-                handlerArgs?.[0] && typeof handlerArgs[0] === "object"
-                  ? (handlerArgs[0] as Record<string, unknown>)
-                  : null;
-              fetch("http://127.0.0.1:7825/ingest/2642c761-9d6c-4bd7-b4a8-ef39e8a5fbf3", {
-                method: "POST",
-                headers: { "Content-Type": "application/json", "X-Debug-Session-Id": "65179d" },
-                body: JSON.stringify({
-                  sessionId: "65179d",
-                  runId: "pre-fix",
-                  hypothesisId: "H4",
-                  location: "uwebsockets-socket-adapter.ts:deserialize",
-                  message: "playerInput deserialize",
-                  data: {
-                    rx: __uwsPlayerInputRx,
-                    ok: handlerArgs != null,
-                    firstArgKeys: a0 ? Object.keys(a0) : [],
-                    dx: a0?.dx,
-                    dy: a0?.dy,
-                    sprint: a0?.sprint,
-                    fire: a0?.fire,
-                  },
-                  timestamp: Date.now(),
-                }),
-              }).catch(() => {});
-            }
-            // #endregion
 
             handlers.forEach((handler) => {
               try {

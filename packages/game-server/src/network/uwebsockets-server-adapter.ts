@@ -1,12 +1,9 @@
+import { EDITOR_WORLD_MAP_RELOAD_PATH } from "@/config/editor-map-reload";
 import { IServerAdapter } from "@shared/network/server-adapter";
 import { ISocketAdapter } from "@shared/network/socket-adapter";
 import { UWebSocketsSocketAdapter } from "./uwebsockets-socket-adapter";
 import { Server as HttpServer } from "http";
 import uWS from "uwebsockets.js";
-
-// #region agent log
-let __agentUwsInboundSeq = 0;
-// #endregion
 
 /**
  * uWebSockets implementation of IServerAdapter
@@ -18,33 +15,16 @@ interface WebSocketUserData {
   queryParams?: Record<string, string | string[]>;
 }
 
-/** uWebSockets may deliver Node Buffers or ArrayBuffer views; normalize for binary parsing. */
-function normalizeWsBinaryMessage(message: unknown): ArrayBuffer {
-  if (message instanceof ArrayBuffer) {
-    return message;
-  }
-  if (typeof SharedArrayBuffer !== "undefined" && message instanceof SharedArrayBuffer) {
-    const copy = new ArrayBuffer(message.byteLength);
-    new Uint8Array(copy).set(new Uint8Array(message));
-    return copy;
-  }
-  if (typeof Buffer !== "undefined" && Buffer.isBuffer(message)) {
-    const buf = message as Buffer;
-    return buf.buffer.slice(buf.byteOffset, buf.byteOffset + buf.byteLength);
-  }
-  if (ArrayBuffer.isView(message)) {
-    const v = message as ArrayBufferView;
-    return v.buffer.slice(v.byteOffset, v.byteOffset + v.byteLength);
-  }
-  throw new TypeError(`Unexpected WebSocket message type: ${typeof message}`);
-}
-
 export class UWebSocketsServerAdapter implements IServerAdapter {
   private app: uWS.TemplatedApp;
   private socketAdapters: Map<string, ISocketAdapter> = new Map();
   private connectionHandlers: Array<(socket: ISocketAdapter) => void> = [];
   private nextSocketId: number = 0;
   private wsMap: WeakMap<uWS.WebSocket<WebSocketUserData>, ISocketAdapter> = new WeakMap();
+  /** Set by ServerSocketManager when editor map reload HTTP is enabled (dev). */
+  private editorReloadWorldMapHandler:
+    | ((res: uWS.HttpResponse, req: uWS.HttpRequest) => void)
+    | null = null;
 
   constructor(
     httpServer: HttpServer | null,
@@ -55,8 +35,30 @@ export class UWebSocketsServerAdapter implements IServerAdapter {
     // Create uWebSockets app
     this.app = uWS.App({});
 
-    // Register WebSocket routes BEFORE generic HTTP (see uWebSockets.js examples/Upgrade.js).
-    // Having app.any("/*") first can steal or confuse upgrade routing so handshake query never parses.
+    // Specific HTTP routes first (registration order matters in uWebSockets).
+    this.app.post(EDITOR_WORLD_MAP_RELOAD_PATH, (res: uWS.HttpResponse, req: uWS.HttpRequest) => {
+      res.onAborted(() => {});
+      const handler = this.editorReloadWorldMapHandler;
+      if (!handler) {
+        res.writeStatus("404 Not Found");
+        res.writeHeader("Content-Type", "text/plain");
+        res.end("Not Found");
+        return;
+      }
+      handler(res, req);
+    });
+
+    // Match f2f3448: WebSocket upgrades must not get a premature HTTP response; .ws handles them.
+    this.app.any("/*", (res: uWS.HttpResponse, req: uWS.HttpRequest) => {
+      const upgradeHeader = req.getHeader("upgrade");
+      if (upgradeHeader && upgradeHeader.toLowerCase() === "websocket") {
+        return;
+      }
+      res.writeStatus("404 Not Found");
+      res.writeHeader("Content-Type", "text/plain");
+      res.end("Not Found");
+    });
+
     this.app.ws<WebSocketUserData>("/*", {
       compression: uWS.SHARED_COMPRESSOR,
       maxPayloadLength: 16 * 1024 * 1024, // 16MB
@@ -86,26 +88,6 @@ export class UWebSocketsServerAdapter implements IServerAdapter {
           }
         }
 
-        // #region agent log
-        fetch("http://127.0.0.1:7825/ingest/2642c761-9d6c-4bd7-b4a8-ef39e8a5fbf3", {
-          method: "POST",
-          headers: { "Content-Type": "application/json", "X-Debug-Session-Id": "65179d" },
-          body: JSON.stringify({
-            sessionId: "65179d",
-            runId: "post-fix",
-            hypothesisId: "H18",
-            location: "uwebsockets-server-adapter.ts:upgrade",
-            message: "upgrade parsed query params",
-            data: {
-              url: req.getUrl(),
-              queryString,
-              queryKeys: Object.keys(queryParams),
-            },
-            timestamp: Date.now(),
-          }),
-        }).catch(() => {});
-        // #endregion
-
         // Upgrade the connection and pass queryParams via userData
         res.upgrade(
           { queryParams },
@@ -123,47 +105,10 @@ export class UWebSocketsServerAdapter implements IServerAdapter {
         const userData = ws.getUserData();
         const queryParams = userData.queryParams || {};
 
-        // #region agent log
-        fetch("http://127.0.0.1:7825/ingest/2642c761-9d6c-4bd7-b4a8-ef39e8a5fbf3", {
-          method: "POST",
-          headers: { "Content-Type": "application/json", "X-Debug-Session-Id": "65179d" },
-          body: JSON.stringify({
-            sessionId: "65179d",
-            runId: "post-fix",
-            hypothesisId: "H19",
-            location: "uwebsockets-server-adapter.ts:open",
-            message: "open received query params",
-            data: {
-              socketId,
-              queryKeys: Object.keys(queryParams),
-              hasVersion: typeof queryParams.version === "string",
-              hasGameAuthToken: typeof queryParams.gameAuthToken === "string",
-            },
-            timestamp: Date.now(),
-          }),
-        }).catch(() => {});
-        // #endregion
-
         // Create adapter
         const adapter = new UWebSocketsSocketAdapter(ws as any, socketId, queryParams);
         this.socketAdapters.set(socketId, adapter);
         this.wsMap.set(ws, adapter);
-
-        // #region agent log
-        fetch("http://127.0.0.1:7825/ingest/2642c761-9d6c-4bd7-b4a8-ef39e8a5fbf3", {
-          method: "POST",
-          headers: { "Content-Type": "application/json", "X-Debug-Session-Id": "65179d" },
-          body: JSON.stringify({
-            sessionId: "65179d",
-            runId: "post-fix",
-            hypothesisId: "H20",
-            location: "uwebsockets-server-adapter.ts:open",
-            message: "dispatching connection handlers",
-            data: { socketId, handlerCount: this.connectionHandlers.length },
-            timestamp: Date.now(),
-          }),
-        }).catch(() => {});
-        // #endregion
 
         // Call connection handlers
         this.connectionHandlers.forEach((handler) => {
@@ -177,38 +122,8 @@ export class UWebSocketsServerAdapter implements IServerAdapter {
       message: (ws: uWS.WebSocket<WebSocketUserData>, message: ArrayBuffer, isBinary: boolean) => {
         const adapter = this.wsMap.get(ws);
         if (adapter) {
-          try {
-            const ab = normalizeWsBinaryMessage(message);
-            // Client always sends our wire format as binary frames, but some stacks report
-            // isBinary=false; decoding as UTF-8 breaks event framing (see debug H3 + no H4).
-            // #region agent log
-            const n = ++__agentUwsInboundSeq;
-            if (n <= 25) {
-              const u8 = new Uint8Array(ab);
-              fetch("http://127.0.0.1:7825/ingest/2642c761-9d6c-4bd7-b4a8-ef39e8a5fbf3", {
-                method: "POST",
-                headers: { "Content-Type": "application/json", "X-Debug-Session-Id": "65179d" },
-                body: JSON.stringify({
-                  sessionId: "65179d",
-                  runId: "post-fix",
-                  hypothesisId: "H-MSG-RX",
-                  location: "uwebsockets-server-adapter.ts:message",
-                  message: "inbound ws frame",
-                  data: {
-                    n,
-                    isBinary,
-                    byteLength: ab.byteLength,
-                    byte0: u8.length ? u8[0] : null,
-                  },
-                  timestamp: Date.now(),
-                }),
-              }).catch(() => {});
-            }
-            // #endregion
-            (adapter as UWebSocketsSocketAdapter).handleMessage(ab);
-          } catch (e) {
-            console.error("[uWS] Failed to normalize/dispatch message:", e);
-          }
+          // Call handleMessage on the adapter (it's a UWebSocketsSocketAdapter)
+          (adapter as any).handleMessage(message);
         }
       },
       close: (ws: uWS.WebSocket<WebSocketUserData>, code: number, message: ArrayBuffer) => {
@@ -222,13 +137,6 @@ export class UWebSocketsServerAdapter implements IServerAdapter {
           }
         }
       },
-    });
-
-    // Non-WebSocket HTTP on this port (WebSocket upgrades are handled by .ws above).
-    this.app.any("/*", (res: uWS.HttpResponse, _req: uWS.HttpRequest) => {
-      res.writeStatus("404 Not Found");
-      res.writeHeader("Content-Type", "text/plain");
-      res.end("Not Found");
     });
   }
 
@@ -289,5 +197,14 @@ export class UWebSocketsServerAdapter implements IServerAdapter {
    */
   getUnderlyingApp(): uWS.TemplatedApp {
     return this.app;
+  }
+
+  /**
+   * uWebSockets matches routes in registration order; this must be set before listen().
+   */
+  setEditorReloadWorldMapHandler(
+    handler: (res: uWS.HttpResponse, req: uWS.HttpRequest) => void
+  ): void {
+    this.editorReloadWorldMapHandler = handler;
   }
 }

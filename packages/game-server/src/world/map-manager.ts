@@ -361,7 +361,8 @@ export class MapManager implements IMapManager {
   }
 
   generateMap() {
-    this.mapGenRng = createSeededRng(getConfig().world.MAP_SEED);
+    const seed = getConfig().world.MAP_SEED;
+    this.mapGenRng = createSeededRng(seed);
     try {
       this.authoredWorldMapApplied = false;
       this.getEntityManager().clear();

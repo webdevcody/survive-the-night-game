@@ -21,10 +21,6 @@ export interface BroadcastDependencies {
  * Handles all server → client event broadcasting logic.
  * Extracted from ServerSocketManager to separate concerns.
  */
-// #region agent log
-let __agentBroadcastGsSeq = 0;
-// #endregion
-
 export class Broadcaster {
   private totalBytesSent: number = 0;
   private bytesSentThisSecond: number = 0;
@@ -324,31 +320,6 @@ export class Broadcaster {
     const buffer = this.deps.bufferManager.getBuffer();
     // this.deps.bufferManager.logStats();
     this.trackBytesSent(buffer);
-    // #region agent log
-    __agentBroadcastGsSeq++;
-    const bseq = __agentBroadcastGsSeq;
-    if (bseq <= 35 || bseq % 60 === 0) {
-      fetch("http://127.0.0.1:7825/ingest/2642c761-9d6c-4bd7-b4a8-ef39e8a5fbf3", {
-        method: "POST",
-        headers: { "Content-Type": "application/json", "X-Debug-Session-Id": "65179d" },
-        body: JSON.stringify({
-          sessionId: "65179d",
-          runId: "pre-fix",
-          hypothesisId: "H-BROADCAST-GS",
-          location: "broadcaster.ts:broadcastGameStateUpdate",
-          message: "emit GAME_STATE_UPDATE to clients",
-          data: {
-            bseq,
-            changedCount,
-            removedCount,
-            bufferBytes: buffer.byteLength,
-            sockets: this.deps.io.sockets.sockets.size,
-          },
-          timestamp: Date.now(),
-        }),
-      }).catch(() => {});
-    }
-    // #endregion
     this.deps.io.emit(event.getType(), buffer);
     endWebSocketEmit();
   }

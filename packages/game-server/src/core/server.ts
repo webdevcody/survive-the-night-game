@@ -13,8 +13,9 @@
  * - GameLoop: Runs the game tick loop, manages wave system, updates entities
  *
  * The GameServer instance is created in server.ts (the entry point) and should
- * only be instantiated once. It coordinates between all subsystems but doesn't
- * contain game logic itself - that's handled by GameLoop.
+ * only be instantiated once. Call {@link GameServer.bootstrap} after construction
+ * so the map loads and the socket listens (entry point awaits it).
+ * It coordinates between all subsystems but doesn't contain game logic itself.
  */
 import { ServerUpdatingEvent } from "../../../game-shared/src/events/server-sent/events/server-updating-event";
 import { GameEvent } from "@shared/events/types";
@@ -60,7 +61,6 @@ export class GameServer {
     this.socketManager.setGameManagers(this.gameManagers);
     this.socketManager.setTickPerformanceTracker(this.tickPerformanceTracker);
 
-    // Must exist before listen(): connection handlers call getGameLoop() immediately.
     this.gameLoop = new GameLoop(
       this.tickPerformanceTracker,
       this.entityManager,
@@ -69,7 +69,14 @@ export class GameServer {
     );
     this.gameLoop.setGameManagers(this.gameManagers);
     this.gameLoop.start();
+  }
 
+  /**
+   * Generate/load the map and start the simulation, then accept WebSocket clients.
+   * Call once after construction (see {@code server.ts}).
+   */
+  public async bootstrap(): Promise<void> {
+    await this.startNewGame();
     this.socketManager.listen();
   }
 

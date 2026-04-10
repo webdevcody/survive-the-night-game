@@ -90,7 +90,6 @@ export function onDisconnect(context: HandlerContext, socket: ISocketAdapter): v
   }
 
   // Adjust AI player count when real player leaves (add AI back if needed)
-  // Only if not the last player (game will reset otherwise)
   if (context.players.size > 0) {
     const gameLoop = context.gameServer.getGameLoop();
     const strategy = gameLoop.getGameModeStrategy();
@@ -104,25 +103,6 @@ export function onDisconnect(context: HandlerContext, socket: ISocketAdapter): v
     strategy.ensureZombieExists?.(context.getGameManagers());
   }
 
-  const isLastPlayer = context.players.size === 0;
-  if (isLastPlayer) {
-    // #region agent log
-    fetch("http://127.0.0.1:7825/ingest/2642c761-9d6c-4bd7-b4a8-ef39e8a5fbf3", {
-      method: "POST",
-      headers: { "Content-Type": "application/json", "X-Debug-Session-Id": "65179d" },
-      body: JSON.stringify({
-        sessionId: "65179d",
-        runId: "post-fix",
-        hypothesisId: "H7",
-        location: "disconnect.ts:isLastPlayer",
-        message: "setIsGameReady(false) last socket disconnected",
-        data: {},
-        timestamp: Date.now(),
-      }),
-    }).catch(() => {});
-    // #endregion
-    context.gameServer.setIsGameReady(false);
-  }
 }
 
 export const disconnectHandler: SocketEventHandler<void> = {
