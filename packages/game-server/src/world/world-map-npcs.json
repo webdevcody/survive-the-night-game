@@ -1,0 +1,185 @@
+{
+  "dialogueNpcs": [
+    {
+      "row": 126,
+      "col": 119,
+      "dialogueSessions": [
+        {
+          "when": {
+            "type": "always"
+          },
+          "lines": [
+            "Stay still, let me bandage you up."
+          ],
+          "healOnDialogueComplete": true
+        }
+      ],
+      "lines": [
+        "Stay still, let me bandage you up."
+      ],
+      "message": "Stay still, let me bandage you up.",
+      "name": "Grace"
+    },
+    {
+      "row": 126,
+      "col": 122,
+      "dialogueSessions": [
+        {
+          "when": {
+            "type": "all",
+            "conditions": [
+              {
+                "type": "quest_active_final_talk_turn_in",
+                "questId": "quest_1775824745523"
+              }
+            ]
+          },
+          "lines": [
+            "Thank you..",
+            "Now we can sleep well, at least for tonight."
+          ],
+          "completeQuestId": "quest_1775824745523"
+        },
+        {
+          "when": {
+            "type": "all",
+            "conditions": [
+              {
+                "type": "quest_active",
+                "questId": "quest_1775824745523"
+              }
+            ]
+          },
+          "lines": [
+            "you haven't killed those stumblers yet..."
+          ]
+        },
+        {
+          "when": {
+            "type": "all",
+            "conditions": [
+              {
+                "type": "quest_active",
+                "questId": "quest_1775786207543"
+              }
+            ]
+          },
+          "lines": [
+            "Where is James??",
+            "Bitten... My god...",
+            "Oh well.. there is nothing we can do.",
+            "Here is something to help you out, come back later for a task."
+          ],
+          "grantQuestId": null,
+          "completeQuestId": "quest_1775786207543"
+        },
+        {
+          "when": {
+            "type": "all",
+            "conditions": [
+              {
+                "type": "quest_completed",
+                "questId": "quest_1775786207543"
+              }
+            ]
+          },
+          "lines": [
+            "This area is starting to grow unsafe.",
+            "If you can kill at least 5 stumblers...",
+            "Maybe we could have one night of undistributed sleep."
+          ],
+          "grantQuestId": "quest_1775824745523"
+        },
+        {
+          "when": {
+            "type": "always"
+          },
+          "lines": [
+            "only God can save us..."
+          ]
+        }
+      ],
+      "lines": [
+        "only God can save us..."
+      ],
+      "message": "only God can save us...",
+      "name": "Rick"
+    },
+    {
+      "row": 152,
+      "col": 98,
+      "dialogueSessions": [
+        {
+          "when": {
+            "type": "all",
+            "conditions": [
+              {
+                "type": "quest_active_and_has_item",
+                "questId": "quest_1775826059688",
+                "itemType": "pain_pills"
+              }
+            ]
+          },
+          "lines": [
+            "ahh, that's the stuff..",
+            "thank.. you.. my... friend",
+            "Zzzzzzzzzz"
+          ],
+          "completeQuestId": "quest_1775826059688"
+        },
+        {
+          "when": {
+            "type": "all",
+            "conditions": [
+              {
+                "type": "quest_completed",
+                "questId": "quest_1775826059688"
+              }
+            ]
+          },
+          "lines": [
+            "Zzzzzz..."
+          ]
+        },
+        {
+          "when": {
+            "type": "all",
+            "conditions": [
+              {
+                "type": "quest_completed",
+                "questId": "quest_1775786207543"
+              }
+            ]
+          },
+          "lines": [
+            "You came back?!",
+            "I'm not sure how much longer I'll last.",
+            "I could really use something to help with my pain."
+          ],
+          "grantQuestId": "quest_1775826059688"
+        },
+        {
+          "when": {
+            "type": "always"
+          },
+          "lines": [
+            "Ughh, this bite hurts so bad..",
+            "You'll have to go on without me.",
+            "My friend Rick went up ahead.",
+            "Maybe y'all can team up, it's deadly out here."
+          ],
+          "grantQuestId": "quest_1775786207543"
+        }
+      ],
+      "lines": [
+        "Ughh, this bite hurts so bad..",
+        "You'll have to go on without me.",
+        "My friend Rick went up ahead.",
+        "Maybe y'all can team up, it's deadly out here."
+      ],
+      "message": "Ughh, this bite hurts so bad..",
+      "name": "James",
+      "grantQuestId": "quest_1775786207543"
+    }
+  ]
+}

@@ -1,4 +1,4 @@
-import { useEffect, useMemo } from "react";
+import { useLayoutEffect, useMemo } from "react";
 import {
   Accordion,
   AccordionContent,
@@ -18,9 +18,10 @@ import {
 } from "@survive-the-night/game-shared/map/spawn-palette";
 import type { WorldMapQuestDefinition } from "@survive-the-night/game-shared/map/quest-types";
 import {
+  DIALOGUE_NPC_MAX_AND_CLAUSES,
   DIALOGUE_NPC_MAX_SESSIONS,
   getDialogueNpcSessions,
-  type DialogueNpcCondition,
+  type DialogueNpcAtomicCondition,
   type WorldMapDialogueNpcSession,
 } from "@survive-the-night/game-shared/map/world-map-types";
 
@@ -32,26 +33,48 @@ function questSummaryLabel(questId: string | undefined, quests: WorldMapQuestDef
   return title ? title : id;
 }
 
-const CONDITION_OPTIONS: { value: DialogueNpcCondition["type"]; label: string }[] = [
-  { value: "always", label: "Always (default branch)" },
+const ATOMIC_CONDITION_OPTIONS: { value: DialogueNpcAtomicCondition["type"]; label: string }[] = [
   { value: "quest_completed", label: "Quest completed" },
   { value: "quest_active", label: "Quest active" },
   { value: "quest_not_completed", label: "Quest not completed" },
+  {
+    value: "quest_active_all_steps_done",
+    label: "Step index past last objective (rare; see “on talk step”)",
+  },
+  {
+    value: "quest_active_on_matching_talk_step",
+    label: "Active: current step is talk to this NPC",
+  },
+  {
+    value: "quest_active_final_talk_turn_in",
+    label: "Active: final quest step is talk here (finale + completeQuestId)",
+  },
   { value: "quest_active_and_has_item", label: "Quest active + has item" },
 ];
 
-function conditionType(when: WorldMapDialogueNpcSession["when"]): DialogueNpcCondition["type"] {
-  return when?.type ?? "always";
+function isDefaultWhen(when: WorldMapDialogueNpcSession["when"]): boolean {
+  return when == null || when.type === "always";
 }
 
-function questIdForCondition(when: WorldMapDialogueNpcSession["when"]): string {
-  if (!when || when.type === "always") return "";
-  return when.questId ?? "";
+function questIdForAtomic(c: DialogueNpcAtomicCondition): string {
+  return c.questId ?? "";
 }
 
-function itemTypeForCondition(when: WorldMapDialogueNpcSession["when"]): string {
-  if (when?.type === "quest_active_and_has_item") return when.itemType ?? "";
-  return "";
+function itemTypeForAtomic(c: DialogueNpcAtomicCondition): string {
+  return c.type === "quest_active_and_has_item" ? c.itemType ?? "" : "";
+}
+
+function atomicLabelLine(
+  c: DialogueNpcAtomicCondition,
+  quests: WorldMapQuestDefinition[],
+): string {
+  const opt = ATOMIC_CONDITION_OPTIONS.find((o) => o.value === c.type)?.label ?? c.type;
+  const q = questSummaryLabel(questIdForAtomic(c), quests);
+  if (c.type === "quest_active_and_has_item") {
+    const it = c.itemType?.trim();
+    return [opt, q || null, it || null].filter(Boolean).join(" · ");
+  }
+  return q ? `${opt} · ${q}` : opt;
 }
 
 function conditionTriggerSummary(
@@ -59,22 +82,35 @@ function conditionTriggerSummary(
   firstLine: string,
   quests: WorldMapQuestDefinition[],
 ): string {
-  const t = when?.type ?? "always";
-  const label = CONDITION_OPTIONS.find((o) => o.value === t)?.label ?? "Always";
-  if (t === "quest_active_and_has_item" && when?.type === "quest_active_and_has_item") {
-    const q = when.questId?.trim();
-    const qLabel = questSummaryLabel(q, quests);
-    const it = when.itemType?.trim();
-    if (qLabel && it) return `${label} · ${qLabel} · ${it}`;
-    if (qLabel) return `${label} · ${qLabel}`;
-    return label;
+  if (isDefaultWhen(when)) {
+    const preview = firstLine.trim().slice(0, 48);
+    return preview
+      ? `Always (default) — ${preview}${firstLine.length > 48 ? "…" : ""}`
+      : "Always (default)";
   }
-  if (t !== "always" && when && "questId" in when && (when as { questId?: string }).questId) {
-    const qid = (when as { questId: string }).questId;
-    return `${label} · ${questSummaryLabel(qid, quests)}`;
+  if (when.type === "all") {
+    if (when.conditions.length === 0) return "Conditional (no clauses)";
+    const parts = when.conditions.map((c) => atomicLabelLine(c, quests));
+    return `All of: ${parts.join(" · ")}`;
   }
-  const preview = firstLine.trim().slice(0, 48);
-  return preview ? `${label} — ${preview}${firstLine.length > 48 ? "…" : ""}` : label;
+  const _exhaustive: never = when;
+  return _exhaustive;
+}
+
+function makeDefaultAtomic(
+  quests: WorldMapQuestDefinition[],
+): DialogueNpcAtomicCondition {
+  const qid = (quests[0]?.id ?? "").slice(0, 64);
+  return { type: "quest_completed", questId: qid };
+}
+
+function questPickerLabel(q: WorldMapQuestDefinition): string {
+  const t = q.title.trim();
+  return t || q.id;
+}
+
+function isAuthoredQuestId(id: string, quests: WorldMapQuestDefinition[]): boolean {
+  return quests.some((q) => q.id === id);
 }
 
 export function NpcAuthoringPanel({
@@ -107,6 +143,16 @@ export function NpcAuthoringPanel({
     return ids;
   }, []);
 
+  const sortedQuestsByTitle = useMemo(
+    () =>
+      [...quests].sort((a, b) =>
+        questPickerLabel(a).localeCompare(questPickerLabel(b), undefined, {
+          sensitivity: "base",
+        }),
+      ),
+    [quests],
+  );
+
   const entry = dialogueNpcs.find((e) => e.row === row && e.col === col);
   if (!entry) {
     return (
@@ -118,29 +164,37 @@ export function NpcAuthoringPanel({
 
   const sessions = getDialogueNpcSessions(entry);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     const e = dialogueNpcs.find((x) => x.row === row && x.col === col);
     if (!e) return;
-    const fb = sortedItemIds[0];
-    if (!fb) return;
+    const fbItem = sortedItemIds[0];
+    const fallbackQuestId = quests[0]?.id?.trim().slice(0, 64) ?? "";
     const sess = getDialogueNpcSessions(e);
     let next: WorldMapDialogueNpcSession[] | null = null;
     for (let i = 0; i < sess.length; i++) {
       const s = sess[i];
-      if (conditionType(s.when) !== "quest_active_and_has_item") continue;
-      if (itemTypeForCondition(s.when).trim()) continue;
-      if (!next) next = [...sess];
-      next[i] = {
-        ...s,
-        when: {
-          type: "quest_active_and_has_item",
-          questId: (questIdForCondition(s.when) || quests[0]?.id || "quest").slice(0, 64),
-          itemType: fb.slice(0, 64),
-        },
-      };
+      if (s.when?.type !== "all") continue;
+      let changed = false;
+      const nextConds = s.when.conditions.map((c) => {
+        let c2 = c;
+        if (c.type === "quest_active_and_has_item" && fbItem && !c.itemType.trim()) {
+          changed = true;
+          c2 = { ...c2, itemType: fbItem.slice(0, 64) };
+        }
+        const qid = questIdForAtomic(c2).trim().slice(0, 64);
+        if (fallbackQuestId && !qid) {
+          changed = true;
+          c2 = { ...c2, questId: fallbackQuestId };
+        }
+        return c2;
+      });
+      if (changed) {
+        if (!next) next = [...sess];
+        next[i] = { ...s, when: { type: "all", conditions: nextConds } };
+      }
     }
     if (next) updateDialogueNpcEntry(row, col, { dialogueSessions: next });
-  }, [dialogueNpcs, row, col, quests, sortedItemIds, updateDialogueNpcEntry]);
+  }, [dialogueNpcs, row, col, sortedItemIds, quests, updateDialogueNpcEntry]);
 
   const patchSessions = (next: WorldMapDialogueNpcSession[]) => {
     updateDialogueNpcEntry(row, col, { dialogueSessions: next });
@@ -151,60 +205,109 @@ export function NpcAuthoringPanel({
     patchSessions(next);
   };
 
-  const setConditionType = (idx: number, type: DialogueNpcCondition["type"]) => {
+  const setSessionBranchKind = (idx: number, kind: "default" | "conditional") => {
     const s = sessions[idx];
     if (!s) return;
-    if (type === "always") {
+    if (kind === "default") {
       updateSession(idx, { when: { type: "always" } });
       return;
     }
-    const qid = (questIdForCondition(s.when) || quests[0]?.id || "quest").slice(0, 64);
-    if (type === "quest_completed") {
-      updateSession(idx, { when: { type: "quest_completed", questId: qid } });
-    } else if (type === "quest_active") {
-      updateSession(idx, { when: { type: "quest_active", questId: qid } });
-    } else if (type === "quest_not_completed") {
-      updateSession(idx, { when: { type: "quest_not_completed", questId: qid } });
-    } else {
-      const it = (
-        itemTypeForCondition(s.when) ||
-        sortedItemIds[0] ||
-        "bandage"
-      ).slice(0, 64);
-      updateSession(idx, {
-        when: { type: "quest_active_and_has_item", questId: qid, itemType: it },
-      });
-    }
+    const existing =
+      s.when?.type === "all" && s.when.conditions.length > 0
+        ? s.when.conditions
+        : [makeDefaultAtomic(quests)];
+    updateSession(idx, {
+      when: { type: "all", conditions: existing.slice(0, DIALOGUE_NPC_MAX_AND_CLAUSES) },
+    });
   };
 
-  const setConditionQuestId = (idx: number, questId: string) => {
-    const s = sessions[idx];
-    const t = conditionType(s.when);
-    if (t === "always") return;
-    const q = questId.trim().slice(0, 64);
-    if (t === "quest_active_and_has_item") {
-      updateSession(idx, {
-        when: {
-          type: "quest_active_and_has_item",
-          questId: q,
-          itemType: (itemTypeForCondition(s.when) || sortedItemIds[0] || "bandage").slice(0, 64),
-        },
-      });
+  const replaceConditions = (idx: number, conditions: DialogueNpcAtomicCondition[]) => {
+    const clamped = conditions.slice(0, DIALOGUE_NPC_MAX_AND_CLAUSES);
+    if (clamped.length === 0) {
+      updateSession(idx, { when: { type: "always" } });
       return;
     }
-    updateSession(idx, { when: { type: t, questId: q } });
+    updateSession(idx, { when: { type: "all", conditions: clamped } });
   };
 
-  const setConditionItemType = (idx: number, itemType: string) => {
+  const setAtomicType = (
+    idx: number,
+    clauseIdx: number,
+    type: DialogueNpcAtomicCondition["type"],
+  ) => {
     const s = sessions[idx];
-    if (conditionType(s.when) !== "quest_active_and_has_item") return;
-    updateSession(idx, {
-      when: {
-        type: "quest_active_and_has_item",
-        questId: (questIdForCondition(s.when) || quests[0]?.id || "quest").slice(0, 64),
-        itemType: itemType.trim().slice(0, 64),
-      },
+    if (s?.when?.type !== "all") return;
+    const prev = s.when.conditions[clauseIdx];
+    const qid = prev ? questIdForAtomic(prev).trim().slice(0, 64) : "";
+    const q = (qid || quests[0]?.id || "quest").slice(0, 64);
+    const itFallback = (sortedItemIds[0] || "bandage").slice(0, 64);
+    let nextC: DialogueNpcAtomicCondition;
+    if (type === "quest_active_and_has_item") {
+      const it =
+        prev?.type === "quest_active_and_has_item"
+          ? (prev.itemType.trim() || itFallback).slice(0, 64)
+          : itFallback;
+      nextC = { type: "quest_active_and_has_item", questId: q, itemType: it };
+    } else {
+      nextC = { type, questId: q };
+    }
+    const conds = s.when.conditions.map((c, j) => (j === clauseIdx ? nextC : c));
+    replaceConditions(idx, conds);
+  };
+
+  const setAtomicQuestId = (idx: number, clauseIdx: number, questId: string) => {
+    const s = sessions[idx];
+    if (s?.when?.type !== "all") return;
+    const q = questId.trim().slice(0, 64);
+    const conds = s.when.conditions.map((c, j) => {
+      if (j !== clauseIdx) return c;
+      if (c.type === "quest_active_and_has_item") {
+        return {
+          ...c,
+          questId: q,
+          itemType: (itemTypeForAtomic(c) || sortedItemIds[0] || "bandage").slice(0, 64),
+        };
+      }
+      return { ...c, questId: q } as DialogueNpcAtomicCondition;
     });
+    replaceConditions(idx, conds);
+  };
+
+  const setAtomicItemType = (idx: number, clauseIdx: number, itemType: string) => {
+    const s = sessions[idx];
+    if (s?.when?.type !== "all") return;
+    const c = s.when.conditions[clauseIdx];
+    if (c?.type !== "quest_active_and_has_item") return;
+    const conds = s.when.conditions.map((x, j) =>
+      j === clauseIdx
+        ? ({
+            type: "quest_active_and_has_item",
+            questId: questIdForAtomic(c).trim().slice(0, 64) || (quests[0]?.id || "quest").slice(0, 64),
+            itemType: itemType.trim().slice(0, 64),
+          } satisfies DialogueNpcAtomicCondition)
+        : x,
+    );
+    replaceConditions(idx, conds);
+  };
+
+  const addAtomicClause = (idx: number) => {
+    const s = sessions[idx];
+    if (s?.when?.type !== "all") return;
+    if (s.when.conditions.length >= DIALOGUE_NPC_MAX_AND_CLAUSES) return;
+    replaceConditions(idx, [...s.when.conditions, makeDefaultAtomic(quests)]);
+  };
+
+  const removeAtomicClause = (idx: number, clauseIdx: number) => {
+    const s = sessions[idx];
+    if (s?.when?.type !== "all") return;
+    if (s.when.conditions.length <= 1) {
+      setSessionBranchKind(idx, "default");
+      return;
+    }
+    replaceConditions(
+      idx,
+      s.when.conditions.filter((_, j) => j !== clauseIdx),
+    );
   };
 
   const moveSession = (idx: number, dir: -1 | 1) => {
@@ -270,8 +373,10 @@ export function NpcAuthoringPanel({
         row {row}, col {col}
       </p>
       <p className="text-[9px] leading-snug text-gray-500">
-        First matching condition wins. Put <span className="text-gray-300">Always</span> last as the
-        fallback branch.
+        States are checked <span className="text-gray-300">top to bottom</span>. The first state whose
+        condition matches is used—put <span className="text-gray-300">stricter</span> conditions{" "}
+        <span className="text-gray-300">above</span> looser ones (e.g. “quest done + active + item”
+        before “quest done” only). Put <span className="text-gray-300">Always (default)</span> last.
       </p>
       <label className="block text-[10px] font-medium text-gray-400">Display name</label>
       <input
@@ -304,8 +409,9 @@ export function NpcAuthoringPanel({
           defaultValue={sessions.length > 0 ? ["state-0"] : []}
         >
           {sessions.map((session, idx) => {
-            const ctype = conditionType(session.when);
-            const needsQuest = ctype !== "always";
+            const isDefault = isDefaultWhen(session.when);
+            const conditions =
+              session.when?.type === "all" ? session.when.conditions : ([] as DialogueNpcAtomicCondition[]);
             const linesText = session.lines.join("\n");
             const firstLine = session.lines[0] ?? "";
             const summary = conditionTriggerSummary(session.when, firstLine, quests);
@@ -366,84 +472,141 @@ export function NpcAuthoringPanel({
                   </div>
                 </div>
                 <AccordionContent className="space-y-1.5 pb-3 pt-0 text-white">
-                  <label className="block text-[9px] font-medium text-gray-500">Condition</label>
+                  <label className="block text-[9px] font-medium text-gray-500">Branch</label>
                   <select
                     className="w-full rounded border border-gray-600 bg-gray-950 px-2 py-1 text-[10px] text-gray-100"
-                    value={ctype}
+                    value={isDefault ? "default" : "conditional"}
                     onChange={(e) =>
-                      setConditionType(idx, e.target.value as DialogueNpcCondition["type"])
+                      setSessionBranchKind(idx, e.target.value === "default" ? "default" : "conditional")
                     }
                   >
-                    {CONDITION_OPTIONS.map((o) => (
-                      <option key={o.value} value={o.value}>
-                        {o.label}
-                      </option>
-                    ))}
+                    <option value="default">Always (default fallback)</option>
+                    <option value="conditional">Conditional (all clauses must match)</option>
                   </select>
-                  {needsQuest ? (
-                    <>
-                      <label className="block text-[9px] font-medium text-gray-500">Quest id</label>
-                      <input
-                        className="w-full rounded border border-gray-600 bg-gray-950 px-2 py-1 font-mono text-[10px] text-gray-100"
-                        value={questIdForCondition(session.when)}
-                        onChange={(e) => setConditionQuestId(idx, e.target.value)}
-                        maxLength={64}
-                        placeholder="e.g. main_quest_1"
-                      />
-                      {quests.length > 0 ? (
-                        <select
-                          className="mt-1 w-full rounded border border-gray-600 bg-gray-950 px-2 py-1 text-[10px] text-gray-100"
-                          value=""
-                          onChange={(e) => {
-                            const v = e.target.value;
-                            if (v) setConditionQuestId(idx, v);
-                          }}
+
+                  {!isDefault ? (
+                    <div className="space-y-2 rounded border border-gray-700/80 bg-gray-950/50 p-2">
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="text-[9px] font-medium text-gray-400">Clauses (AND)</span>
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="secondary"
+                          className="!h-5 !min-h-0 !px-1.5 !text-[9px]"
+                          disabled={conditions.length >= DIALOGUE_NPC_MAX_AND_CLAUSES}
+                          onClick={() => addAtomicClause(idx)}
                         >
-                          <option value="">Insert authored quest…</option>
-                          {quests.map((q) => (
-                            <option key={q.id} value={q.id}>
-                              {q.title} ({q.id})
-                            </option>
-                          ))}
-                        </select>
-                      ) : null}
-                    </>
-                  ) : null}
-                  {ctype === "quest_active_and_has_item" ? (
-                    <>
-                      <label className="block text-[9px] font-medium text-gray-500">
-                        Item type
-                      </label>
-                      {(() => {
-                        const cur = itemTypeForCondition(session.when).trim().slice(0, 64);
-                        const ids = sortedItemIds;
-                        const unknownCur = cur !== "" && !ids.includes(cur);
-                        const optionIds = unknownCur ? [cur, ...ids] : ids;
-                        const selectValue =
-                          cur !== "" && (ids.includes(cur) || unknownCur)
-                            ? cur
-                            : ids[0] ?? "";
-                        return (
+                          + Clause
+                        </Button>
+                      </div>
+                      {conditions.map((clause, cidx) => (
+                        <div
+                          key={cidx}
+                          className="space-y-1.5 border-b border-gray-800 pb-2 last:border-b-0 last:pb-0"
+                        >
+                          <div className="flex items-center justify-between gap-1">
+                            <span className="text-[9px] text-gray-500">Clause {cidx + 1}</span>
+                            <Button
+                              type="button"
+                              size="sm"
+                              variant="secondary"
+                              className="!h-5 !min-h-0 !px-1 !text-[9px]"
+                              onClick={() => removeAtomicClause(idx, cidx)}
+                            >
+                              Remove
+                            </Button>
+                          </div>
                           <select
-                            className="w-full rounded border border-gray-600 bg-gray-950 px-2 py-1 font-mono text-[10px] text-gray-100"
-                            value={selectValue}
-                            disabled={optionIds.length === 0}
-                            onChange={(e) => setConditionItemType(idx, e.target.value)}
+                            className="w-full rounded border border-gray-600 bg-gray-950 px-2 py-1 text-[10px] text-gray-100"
+                            value={clause.type}
+                            onChange={(e) =>
+                              setAtomicType(
+                                idx,
+                                cidx,
+                                e.target.value as DialogueNpcAtomicCondition["type"],
+                              )
+                            }
                           >
-                            {optionIds.length === 0 ? (
-                              <option value="">No item types in registry</option>
-                            ) : (
-                              optionIds.map((id) => (
-                                <option key={id} value={id}>
-                                  {unknownCur && id === cur ? `${id} (not in registry)` : id}
-                                </option>
-                              ))
-                            )}
+                            {ATOMIC_CONDITION_OPTIONS.map((o) => (
+                              <option key={o.value} value={o.value}>
+                                {o.label}
+                              </option>
+                            ))}
                           </select>
-                        );
-                      })()}
-                    </>
+                          <label className="block text-[9px] font-medium text-gray-500">Quest</label>
+                          {sortedQuestsByTitle.length === 0 ? (
+                            <p className="text-[9px] leading-snug text-amber-500/90">
+                              Add a quest in the Quests panel, then choose it here.
+                            </p>
+                          ) : (
+                            <select
+                              className="w-full rounded border border-gray-600 bg-gray-950 px-2 py-1 text-[10px] text-gray-100"
+                              value={(() => {
+                                const id = questIdForAtomic(clause).trim().slice(0, 64);
+                                if (isAuthoredQuestId(id, quests)) return id;
+                                if (id) return id;
+                                return sortedQuestsByTitle[0]?.id ?? "";
+                              })()}
+                              onChange={(e) => setAtomicQuestId(idx, cidx, e.target.value)}
+                            >
+                              {(() => {
+                                const id = questIdForAtomic(clause).trim().slice(0, 64);
+                                if (id && !isAuthoredQuestId(id, quests)) {
+                                  return (
+                                    <option value={id}>
+                                      Not in quest list (from saved map) — select a quest below
+                                    </option>
+                                  );
+                                }
+                                return null;
+                              })()}
+                              {sortedQuestsByTitle.map((q) => (
+                                <option key={q.id} value={q.id}>
+                                  {questPickerLabel(q)}
+                                </option>
+                              ))}
+                            </select>
+                          )}
+                          {clause.type === "quest_active_and_has_item" ? (
+                            <>
+                              <label className="block text-[9px] font-medium text-gray-500">
+                                Item type
+                              </label>
+                              {(() => {
+                                const cur = itemTypeForAtomic(clause).trim().slice(0, 64);
+                                const ids = sortedItemIds;
+                                const unknownCur = cur !== "" && !ids.includes(cur);
+                                const optionIds = unknownCur ? [cur, ...ids] : ids;
+                                const selectValue =
+                                  cur !== "" && (ids.includes(cur) || unknownCur)
+                                    ? cur
+                                    : ids[0] ?? "";
+                                return (
+                                  <select
+                                    className="w-full rounded border border-gray-600 bg-gray-950 px-2 py-1 font-mono text-[10px] text-gray-100"
+                                    value={selectValue}
+                                    disabled={optionIds.length === 0}
+                                    onChange={(e) => setAtomicItemType(idx, cidx, e.target.value)}
+                                  >
+                                    {optionIds.length === 0 ? (
+                                      <option value="">No item types in registry</option>
+                                    ) : (
+                                      optionIds.map((id) => (
+                                        <option key={id} value={id}>
+                                          {unknownCur && id === cur ? `${id} (not in registry)` : id}
+                                        </option>
+                                      ))
+                                    )}
+                                  </select>
+                                );
+                              })()}
+                            </>
+                          ) : null}
+                        </div>
+                      ))}
+                    </div>
                   ) : null}
+
                   <label className="block text-[9px] font-medium text-gray-500">
                     Lines (one per line)
                   </label>
@@ -471,9 +634,20 @@ export function NpcAuthoringPanel({
                     }}
                   >
                     <option value="">— None —</option>
-                    {quests.map((q) => (
+                    {(() => {
+                      const gid = (session.grantQuestId ?? "").trim();
+                      if (gid && !isAuthoredQuestId(gid, quests)) {
+                        return (
+                          <option key="__grant-orphan__" value={gid}>
+                            Not in quest list (from saved map)
+                          </option>
+                        );
+                      }
+                      return null;
+                    })()}
+                    {sortedQuestsByTitle.map((q) => (
                       <option key={q.id} value={q.id}>
-                        {q.title} ({q.id})
+                        {questPickerLabel(q)}
                       </option>
                     ))}
                   </select>
@@ -489,9 +663,20 @@ export function NpcAuthoringPanel({
                     }}
                   >
                     <option value="">— None —</option>
-                    {quests.map((q) => (
+                    {(() => {
+                      const cid = (session.completeQuestId ?? "").trim();
+                      if (cid && !isAuthoredQuestId(cid, quests)) {
+                        return (
+                          <option key="__complete-orphan__" value={cid}>
+                            Not in quest list (from saved map)
+                          </option>
+                        );
+                      }
+                      return null;
+                    })()}
+                    {sortedQuestsByTitle.map((q) => (
                       <option key={q.id} value={q.id}>
-                        {q.title} ({q.id})
+                        {questPickerLabel(q)}
                       </option>
                     ))}
                   </select>

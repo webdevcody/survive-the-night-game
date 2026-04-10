@@ -7,20 +7,54 @@ import {
 } from "./spawn-palette";
 import { DECAL_TILE_MESSAGE } from "./decal-palette";
 import type { PlayerQuestStatePayload } from "../quests/player-quest-state";
-import { emptyPlayerQuestState } from "../quests/player-quest-state";
+import { emptyPlayerQuestState, getActiveStepIndex } from "../quests/player-quest-state";
+import type { WorldMapQuestDefinition } from "./quest-types";
+import { talkToNpcStepMatchesNpc } from "./quest-types";
 
 /** Max conditional dialog sessions per NPC (bounds replicated entity size). */
 export const DIALOGUE_NPC_MAX_SESSIONS = 8;
 
+/** Max atomic clauses inside one session's `{ type: "all", conditions }` (bounds replicated entity size). */
+export const DIALOGUE_NPC_MAX_AND_CLAUSES = 8;
+
 const QUEST_ID_FIELD_MAX = 64;
 
-/** When a session matches the player's quest state (first non-default match wins; see `pickDialogueNpcSession`). */
-export type DialogueNpcCondition =
-  | { type: "always" }
+/** Single requirement inside a `{ type: "all", conditions: [...] }` branch. */
+export type DialogueNpcAtomicCondition =
   | { type: "quest_completed"; questId: string }
   | { type: "quest_active"; questId: string }
   | { type: "quest_not_completed"; questId: string }
-  | { type: "quest_active_and_has_item"; questId: string; itemType: string };
+  | { type: "quest_active_and_has_item"; questId: string; itemType: string }
+  | { type: "quest_active_all_steps_done"; questId: string }
+  /**
+   * Active quest whose **current** step is `talk_to_npc` and targets this dialogue NPC
+   * (requires {@link DialogueNpcSessionPickContext.dialogueNpc} + `getQuestDefinition`).
+   */
+  | { type: "quest_active_on_matching_talk_step"; questId: string }
+  /**
+   * Quest is active; the **last authored step** is `talk_to_npc` for this NPC; and the player is
+   * either on that step or has cleared all objectives (`step >= steps.length`) while completion is
+   * still pending. Use with `completeQuestId` on the same session so finale lines show on open and
+   * the completion pick after the talk step advances still matches.
+   */
+  | { type: "quest_active_final_talk_turn_in"; questId: string };
+
+/** Optional context when evaluating conditions that need authored quest definitions (step count). */
+export type DialogueNpcSessionPickContext = {
+  getQuestStepCount?: (questId: string) => number | undefined;
+  getQuestDefinition?: (questId: string) => WorldMapQuestDefinition | undefined;
+  /** Identity of the NPC whose session is being picked (for talk-step matching). */
+  dialogueNpc?: { displayName: string; npcKey: string };
+};
+
+/**
+ * When a session matches the player's quest state.
+ * Non-default branches use `{ type: "all", conditions }` (every atomic must match).
+ * Session list order matters: see `pickDialogueNpcSession`.
+ */
+export type DialogueNpcCondition =
+  | { type: "always" }
+  | { type: "all"; conditions: DialogueNpcAtomicCondition[] };
 
 /** One dialog branch: lines, optional grant on close, optional complete on close. */
 export interface WorldMapDialogueNpcSession {
@@ -144,46 +178,92 @@ function isDefaultCondition(when: DialogueNpcCondition | undefined): boolean {
   return when == null || when.type === "always";
 }
 
-function conditionMatchesNonDefault(
-  when: DialogueNpcCondition,
+export function atomicConditionMatches(
+  c: DialogueNpcAtomicCondition,
   st: PlayerQuestStatePayload,
   hasItemType: (itemType: string) => boolean,
+  ctx?: DialogueNpcSessionPickContext,
 ): boolean {
-  switch (when.type) {
-    case "always":
-      return false;
+  switch (c.type) {
     case "quest_completed":
-      return st.completed.includes(when.questId);
+      return st.completed.includes(c.questId);
     case "quest_active":
-      return st.active[when.questId] !== undefined;
+      return st.active[c.questId] !== undefined;
     case "quest_not_completed":
-      return !st.completed.includes(when.questId);
+      return !st.completed.includes(c.questId);
     case "quest_active_and_has_item":
-      return (
-        st.active[when.questId] !== undefined && hasItemType(when.itemType)
-      );
+      return st.active[c.questId] !== undefined && hasItemType(c.itemType);
+    case "quest_active_all_steps_done": {
+      if (st.active[c.questId] === undefined) return false;
+      const total = ctx?.getQuestStepCount?.(c.questId);
+      if (total === undefined) return false;
+      return getActiveStepIndex(st, c.questId) >= total;
+    }
+    case "quest_active_on_matching_talk_step": {
+      if (st.active[c.questId] === undefined) return false;
+      const def = ctx?.getQuestDefinition?.(c.questId);
+      const npc = ctx?.dialogueNpc;
+      if (!def || def.steps.length === 0 || !npc) return false;
+      const idx = getActiveStepIndex(st, c.questId);
+      if (idx !== def.steps.length - 1) return false;
+      const step = def.steps[idx];
+      if (!step || step.type !== "talk_to_npc") return false;
+      return talkToNpcStepMatchesNpc(step, npc.displayName, npc.npcKey);
+    }
+    case "quest_active_final_talk_turn_in": {
+      if (st.active[c.questId] === undefined) return false;
+      const def = ctx?.getQuestDefinition?.(c.questId);
+      const npc = ctx?.dialogueNpc;
+      if (!def || def.steps.length === 0 || !npc) return false;
+      const lastIdx = def.steps.length - 1;
+      const lastStep = def.steps[lastIdx];
+      if (!lastStep || lastStep.type !== "talk_to_npc") return false;
+      if (!talkToNpcStepMatchesNpc(lastStep, npc.displayName, npc.npcKey)) return false;
+      const idx = getActiveStepIndex(st, c.questId);
+      return idx === lastIdx || idx >= def.steps.length;
+    }
     default: {
-      const _exhaustive: never = when;
+      const _exhaustive: never = c;
       return _exhaustive;
     }
   }
 }
 
+function conditionMatchesNonDefault(
+  when: DialogueNpcCondition,
+  st: PlayerQuestStatePayload,
+  hasItemType: (itemType: string) => boolean,
+  ctx?: DialogueNpcSessionPickContext,
+): boolean {
+  if (when.type === "always") return false;
+  return when.conditions.every((c) => atomicConditionMatches(c, st, hasItemType, ctx));
+}
+
 /**
- * First session whose `when` is a non-default condition and matches `st`, else last default * (`when` omitted or `always`), else last session.
+ * Picks the dialog branch for the player's quest (and optional inventory) state.
+ *
+ * **First match wins:** sessions are scanned from the start of the array. The first session whose
+ * `when` is not the default (`always` / omitted) and whose condition matches is returned. Put
+ * **stricter** branches **above** looser ones (e.g. “quest A done + quest B active + has item”
+ * before “quest A done” only); otherwise a permanently-true condition (like `quest_completed`)
+ * will shadow later branches. The default / `always` fallback should be **last**.
+ *
  * @param hasItemType Bag + equipment (server `Inventory.hasItem`); omit or return false when unknown (e.g. editor preview).
+ * @param ctx Optional quest catalog for `quest_active_all_steps_done` / `quest_active_on_matching_talk_step` /
+ *   `quest_active_final_talk_turn_in`; if omitted, those conditions never match.
  */
 export function pickDialogueNpcSession(
   sessions: WorldMapDialogueNpcSession[],
   st: PlayerQuestStatePayload,
   hasItemType: (itemType: string) => boolean = () => false,
+  ctx?: DialogueNpcSessionPickContext,
 ): WorldMapDialogueNpcSession {
   if (sessions.length === 0) {
     return { when: { type: "always" }, lines: ["…"] };
   }
   for (const s of sessions) {
     const w = s.when;
-    if (!isDefaultCondition(w) && w && conditionMatchesNonDefault(w, st, hasItemType)) {
+    if (!isDefaultCondition(w) && w && conditionMatchesNonDefault(w, st, hasItemType, ctx)) {
       return s;
     }
   }
@@ -290,6 +370,55 @@ export function dialogueNpcSessionsToSerialized(
   });
 }
 
+function parseAtomicConditionFromUnknown(raw: unknown): DialogueNpcAtomicCondition | null {
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return null;
+  const w = raw as Record<string, unknown>;
+  const t = w.type;
+  if (
+    t === "quest_completed" ||
+    t === "quest_active" ||
+    t === "quest_not_completed" ||
+    t === "quest_active_all_steps_done" ||
+    t === "quest_active_on_matching_talk_step" ||
+    t === "quest_active_final_talk_turn_in"
+  ) {
+    const qid = String(w.questId ?? "")
+      .trim()
+      .slice(0, QUEST_ID_FIELD_MAX);
+    if (!qid) return null;
+    return { type: t, questId: qid };
+  }
+  if (t === "quest_active_and_has_item") {
+    const qid = String(w.questId ?? "")
+      .trim()
+      .slice(0, QUEST_ID_FIELD_MAX);
+    const itemType = String(w.itemType ?? "")
+      .trim()
+      .slice(0, QUEST_ID_FIELD_MAX);
+    if (!qid || !itemType) return null;
+    return { type: "quest_active_and_has_item", questId: qid, itemType };
+  }
+  return null;
+}
+
+function parseWhenFromSerialized(rawWhen: unknown): DialogueNpcCondition | undefined {
+  if (!rawWhen || typeof rawWhen !== "object" || Array.isArray(rawWhen)) return undefined;
+  const w = rawWhen as Record<string, unknown>;
+  const t = w.type;
+  if (t === "always") return { type: "always" };
+  if (t !== "all") return undefined;
+  const rawConds = w.conditions;
+  if (!Array.isArray(rawConds)) return undefined;
+  const conditions: DialogueNpcAtomicCondition[] = [];
+  for (const c of rawConds) {
+    if (conditions.length >= DIALOGUE_NPC_MAX_AND_CLAUSES) break;
+    const a = parseAtomicConditionFromUnknown(c);
+    if (a) conditions.push(a);
+  }
+  if (conditions.length === 0) return undefined;
+  return { type: "all", conditions };
+}
+
 export function dialogueNpcSessionsFromSerialized(
   raw: unknown,
 ): WorldMapDialogueNpcSession[] | null {
@@ -308,33 +437,7 @@ export function dialogueNpcSessionsFromSerialized(
       }
     }
     if (lines.length === 0) continue;
-    let when: DialogueNpcCondition | undefined;
-    const rawWhen = o.when;
-    if (rawWhen && typeof rawWhen === "object" && !Array.isArray(rawWhen)) {
-      const w = rawWhen as Record<string, unknown>;
-      const t = w.type;
-      if (t === "always") when = { type: "always" };
-      else if (
-        t === "quest_completed" ||
-        t === "quest_active" ||
-        t === "quest_not_completed"
-      ) {
-        const qid = String(w.questId ?? "")
-          .trim()
-          .slice(0, QUEST_ID_FIELD_MAX);
-        if (qid) when = { type: t, questId: qid } as DialogueNpcCondition;
-      } else if (t === "quest_active_and_has_item") {
-        const qid = String(w.questId ?? "")
-          .trim()
-          .slice(0, QUEST_ID_FIELD_MAX);
-        const itemType = String(w.itemType ?? "")
-          .trim()
-          .slice(0, QUEST_ID_FIELD_MAX);
-        if (qid && itemType) {
-          when = { type: "quest_active_and_has_item", questId: qid, itemType };
-        }
-      }
-    }
+    const when = parseWhenFromSerialized(o.when);
     let grantQuestId: string | null | undefined;
     const g = o.grantQuestId;
     if (g === null) grantQuestId = null;
