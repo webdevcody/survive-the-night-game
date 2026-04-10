@@ -1,5 +1,31 @@
 [
   {
+    "version": "0.40.0",
+    "date": "2026-04-10",
+    "changes": {
+      "features": [
+        "Ship open-world mode as the primary experience - removed battle royale, infection voting, toxic zones, and thunderstorm systems to focus on exploration and survival",
+        "Added persistent progression - XP and inventory changes carry across sessions with an authentication-required play flow",
+        "Added character stats and progression allocations - tune attributes and see weapon accuracy respond to your build",
+        "Added world map pipeline and editor overhaul - author maps with a reworked toolchain and persist player last positions in the world",
+        "Added quests with dialogue NPCs - grant and complete objectives through conversations, item spawn points, and editor-authored side content",
+        "Added light and message decals plus quest progress APIs - surface objectives in-world and drive quest state from the server",
+        "Added conditional NPC dialog sessions - quests can branch, grant, and complete without legacy talk_to_npc wiring",
+        "Added open-world persistence hooks for editor maps and quest sidecars so authored content survives server restarts",
+        "Zombie corpses are now explicit loot targets - interact to claim drops instead of auto coin spawns or proximity auto-loot",
+        "Improved player equipment visibility on minimap and fullscreen map - layered body overlays and clearer entity colors"
+      ],
+      "bugFixes": [
+        "Removed verbose websocket troubleshooting logs from production builds"
+      ],
+      "refactoring": [
+        "Refined quest runtime and kill tracking for open-world quest flows",
+        "Streamlined client input and game loop cleanup for long-session stability"
+      ],
+      "performance": []
+    }
+  },
+  {
     "version": "0.31.0",
     "date": "2025-12-02",
     "changes": {
