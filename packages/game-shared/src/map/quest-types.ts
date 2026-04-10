@@ -8,8 +8,7 @@ export const QUEST_MAX_REWARDS = 8;
 /** Single objective in an authored quest. */
 export type QuestStep =
   | { type: "pickup_item"; itemType: EntityType }
-  | { type: "reach_waypoint"; row: number; col: number; radiusTiles?: number }
-  | { type: "talk_to_npc"; npcRow: number; npcCol: number };
+  | { type: "reach_waypoint"; row: number; col: number; radiusTiles?: number };
 
 export type QuestReward =
   | { type: "permanent_stat"; stat: string; amount: number }
@@ -52,13 +51,9 @@ function normalizeQuestStep(raw: unknown, mapSide: number): QuestStep | null {
     }
     return { type: "reach_waypoint", row, col };
   }
+  /** Legacy `talk_to_npc` steps are dropped (use NPC dialog `completeQuestId` instead). */
   if (t === "talk_to_npc") {
-    const npcRow = o.npcRow;
-    const npcCol = o.npcCol;
-    if (typeof npcRow !== "number" || typeof npcCol !== "number") return null;
-    if (!Number.isInteger(npcRow) || !Number.isInteger(npcCol)) return null;
-    if (npcRow < 0 || npcCol < 0 || npcRow >= mapSide || npcCol >= mapSide) return null;
-    return { type: "talk_to_npc", npcRow, npcCol };
+    return null;
   }
   return null;
 }

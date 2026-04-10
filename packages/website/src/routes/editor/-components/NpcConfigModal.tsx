@@ -22,8 +22,9 @@ export function NpcConfigModal() {
         <DialogHeader>
           <DialogTitle>Dialogue NPC</DialogTitle>
           <DialogDescription className="text-gray-400">
-            Configure lines, display name, and optional quest grant for this tile. Use Relocate to
-            move it on the map (the dialog closes until you pick a tile).
+            Configure dialog states (conditions, lines), optional quest grant, and optional quest
+            completion when the conversation ends. Use Relocate to move the NPC (the dialog closes
+            until you pick a tile).
           </DialogDescription>
         </DialogHeader>
         {open ? <NpcAuthoringPanel row={row} col={col} variant="modal" /> : null}

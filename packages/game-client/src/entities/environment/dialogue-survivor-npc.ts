@@ -5,12 +5,19 @@ import { ClientEntity } from "@/entities/client-entity";
 import { Renderable } from "@/entities/util";
 import { ClientInteractive, ClientPositionable } from "@/extensions";
 import { Z_INDEX } from "@shared/map";
+import { DIALOGUE_NPC_MAX_LINE_COUNT } from "@shared/map/spawn-palette";
 import { Direction } from "@shared/util/direction";
 import { getPlayer } from "@/util/get-player";
 import { renderInteractionText } from "@/util/interaction-text";
 import { formatDisplayName } from "@/util/format";
 import { getConfig } from "@shared/config";
 import { BufferReader } from "@shared/util/buffer-serialization";
+import {
+  dialogueNpcSessionsFromSerialized,
+  pickDialogueNpcSession,
+} from "@shared/map/world-map-types";
+import type { WorldMapDialogueNpcSession } from "@shared/map/world-map-types";
+import { emptyPlayerQuestState } from "@shared/quests/player-quest-state";
 
 const BUBBLE_PAD = 6;
 const BUBBLE_MAX_W = 200;
@@ -35,9 +42,8 @@ function wrapText(ctx: CanvasRenderingContext2D, text: string, maxWidth: number)
 }
 
 export class DialogueSurvivorNpcClient extends ClientEntity implements Renderable {
-  public dialogueLines: string[] = [];
-  public dialogueLinesAfterQuestGrant: string[] = [];
-  public grantQuestId: string = "";
+  /** Resolved branches from server; legacy entities use synthesized single session. */
+  public dialogueSessions: WorldMapDialogueNpcSession[] = [];
   public displayName: string = "";
 
   constructor(data: RawEntity, assetManager: AssetManager) {
@@ -46,38 +52,57 @@ export class DialogueSurvivorNpcClient extends ClientEntity implements Renderabl
   }
 
   private syncAuthoredFields(data: RawEntity): void {
-    const raw = (data as any).dialogueLines;
-    this.dialogueLines = Array.isArray(raw)
-      ? raw.map((l: unknown) => (typeof l === "string" ? l : String(l)))
-      : [];
-    const rawAfter = (data as any).dialogueLinesAfterQuestGrant;
-    this.dialogueLinesAfterQuestGrant = Array.isArray(rawAfter)
-      ? rawAfter.map((l: unknown) => (typeof l === "string" ? l : String(l)))
-      : [];
-    this.grantQuestId = String((data as any).grantQuestId ?? "").trim();
-    this.displayName = String((data as any).displayName ?? "").trim();
-  }
-
-  /** Intro lines (before quest grant). */
-  public getDialogueLines(): string[] {
-    return this.dialogueLines.length > 0 ? this.dialogueLines : ["…"];
-  }
-
-  public getPostGrantDialogueLines(): string[] {
-    return this.dialogueLinesAfterQuestGrant;
-  }
-
-  public getTotalDialogueLineCount(): number {
-    return this.getDialogueLines().length + this.getPostGrantDialogueLines().length;
-  }
-
-  public getDialogueLineAt(globalIndex: number): string {
-    const intro = this.getDialogueLines();
-    const post = this.getPostGrantDialogueLines();
-    if (globalIndex < intro.length) {
-      return intro[globalIndex]?.trim() || "…";
+    const rawSessions = (data as Record<string, unknown>).dialogueSessions;
+    let sessions = dialogueNpcSessionsFromSerialized(rawSessions);
+    if (!sessions || sessions.length === 0) {
+      const raw = (data as Record<string, unknown>).dialogueLines;
+      let lines = Array.isArray(raw)
+        ? raw.map((l: unknown) => (typeof l === "string" ? l : String(l)))
+        : [];
+      const rawAfter = (data as Record<string, unknown>).dialogueLinesAfterQuestGrant;
+      const after = Array.isArray(rawAfter)
+        ? rawAfter.map((l: unknown) => (typeof l === "string" ? l : String(l)))
+        : [];
+      for (const x of after) {
+        if (lines.length >= DIALOGUE_NPC_MAX_LINE_COUNT) break;
+        lines.push(x);
+      }
+      const grantRaw = (data as Record<string, unknown>).grantQuestId;
+      const grantQuestId =
+        grantRaw === null || grantRaw === undefined
+          ? undefined
+          : String(grantRaw).trim() || undefined;
+      sessions = [
+        {
+          when: { type: "always" },
+          lines: lines.length > 0 ? lines : ["…"],
+          ...(grantQuestId ? { grantQuestId } : {}),
+        },
+      ];
     }
-    return post[globalIndex - intro.length]?.trim() || "…";
+    this.dialogueSessions = sessions;
+    this.displayName = String((data as Record<string, unknown>).displayName ?? "").trim();
+  }
+
+  private pickSession(gameState: GameState): WorldMapDialogueNpcSession {
+    const p = getPlayer(gameState);
+    const st = p?.getQuestProgressPayload() ?? emptyPlayerQuestState();
+    return pickDialogueNpcSession(this.dialogueSessions, st);
+  }
+
+  /** Lines for the active session. */
+  public getDialogueLines(gameState: GameState): string[] {
+    const lines = this.pickSession(gameState).lines;
+    return lines.length > 0 ? lines : ["…"];
+  }
+
+  public getTotalDialogueLineCount(gameState: GameState): number {
+    return this.getDialogueLines(gameState).length;
+  }
+
+  public getDialogueLineAt(globalIndex: number, gameState: GameState): string {
+    const intro = this.getDialogueLines(gameState);
+    return intro[globalIndex]?.trim() || "…";
   }
 
   public deserializeFromBuffer(reader: BufferReader): void {
@@ -98,7 +123,7 @@ export class DialogueSurvivorNpcClient extends ClientEntity implements Renderabl
       return;
     }
 
-    const total = this.getTotalDialogueLineCount();
+    const total = this.getTotalDialogueLineCount(gameState);
     const onLast =
       gameState.openDialogueNpcId === this.getId() &&
       total > 0 &&
@@ -134,9 +159,9 @@ export class DialogueSurvivorNpcClient extends ClientEntity implements Renderabl
     if (gameState.openDialogueNpcId !== this.getId()) {
       return;
     }
-    const total = this.getTotalDialogueLineCount();
+    const total = this.getTotalDialogueLineCount(gameState);
     const idx = Math.max(0, Math.min(gameState.dialogueLineIndex, Math.max(0, total - 1)));
-    const msg = this.getDialogueLineAt(idx);
+    const msg = this.getDialogueLineAt(idx, gameState);
     const positionable = this.getExt(ClientPositionable);
     const pos = positionable.getPosition();
     const size = positionable.getSize();
@@ -197,7 +222,7 @@ export class DialogueSurvivorNpcClient extends ClientEntity implements Renderabl
 /** Renders the open dialogue bubble after darkness so it is not dimmed by the lighting overlay. */
 export function renderOpenDialogueSpeechBubble(
   ctx: CanvasRenderingContext2D,
-  gameState: GameState
+  gameState: GameState,
 ): void {
   const id = gameState.openDialogueNpcId;
   if (id == null) return;

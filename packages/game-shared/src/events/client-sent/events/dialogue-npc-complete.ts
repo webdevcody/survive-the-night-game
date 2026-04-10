@@ -4,8 +4,6 @@ import { ArrayBufferWriter, BufferReader } from "../../../util/buffer-serializat
 
 export interface DialogueNpcCompleteEventData {
   npcEntityId: number;
-  /** When true, server only runs tryGrantQuestFromNpc (mid-dialogue); otherwise full completion (advance talk + grant). */
-  grantQuestOnly?: boolean;
 }
 
 export class DialogueNpcCompleteEvent implements GameEvent<DialogueNpcCompleteEventData> {
@@ -26,17 +24,15 @@ export class DialogueNpcCompleteEvent implements GameEvent<DialogueNpcCompleteEv
 
   static serializeToBuffer(writer: ArrayBufferWriter, data: DialogueNpcCompleteEventData): void {
     writer.writeUInt16(data.npcEntityId ?? 0);
-    // 0 = grant only, 1 = full completion (default when omitted in JSON)
-    writer.writeUInt8(data.grantQuestOnly ? 0 : 1);
+    // Legacy second byte (grant-only vs full); always full completion now.
+    writer.writeUInt8(1);
   }
 
   static deserializeFromBuffer(reader: BufferReader): DialogueNpcCompleteEventData {
     const npcEntityId = reader.readUInt16();
-    let grantQuestOnly = false;
     if (reader.hasMore()) {
-      const phase = reader.readUInt8();
-      grantQuestOnly = phase === 0;
+      reader.readUInt8();
     }
-    return { npcEntityId, grantQuestOnly };
+    return { npcEntityId };
   }
 }

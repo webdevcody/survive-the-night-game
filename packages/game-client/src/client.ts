@@ -481,7 +481,7 @@ export class GameClient {
   private closeNpcDialogueWithCompletion(npcEntityId: number): void {
     this.gameState.openDialogueNpcId = null;
     this.gameState.dialogueLineIndex = 0;
-    this.socketManager?.sendDialogueNpcComplete(npcEntityId, false);
+    this.socketManager?.sendDialogueNpcComplete(npcEntityId);
   }
 
   private advanceNpcDialogue(): void {
@@ -511,12 +511,9 @@ export class GameClient {
 
     if (openEnt.getType() !== "dialogue_survivor_npc") return;
     const npc = openEnt as DialogueSurvivorNpcClient;
-    const intro = npc.getDialogueLines();
-    const post = npc.getPostGrantDialogueLines();
-    const introLen = intro.length;
-    const postLen = post.length;
-    const hasPostGrantFlow = postLen > 0 && npc.grantQuestId !== "";
-    const total = introLen + postLen;
+    const gs = this.gameState;
+    const lines = npc.getDialogueLines(gs);
+    const total = lines.length;
     const idx = this.gameState.dialogueLineIndex;
 
     if (total === 0) {
@@ -524,23 +521,7 @@ export class GameClient {
       return;
     }
 
-    if (idx < introLen - 1) {
-      this.gameState.dialogueLineIndex++;
-      return;
-    }
-
-    if (idx === introLen - 1) {
-      if (hasPostGrantFlow) {
-        this.socketManager?.sendDialogueNpcComplete(id, true);
-        this.gameState.dialogueLineIndex++;
-        return;
-      }
-      this.closeNpcDialogueWithCompletion(id);
-      return;
-    }
-
-    const postIdx = idx - introLen;
-    if (postIdx < postLen - 1) {
+    if (idx < total - 1) {
       this.gameState.dialogueLineIndex++;
       return;
     }

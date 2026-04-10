@@ -57,8 +57,7 @@ function describeQuestStep(step: QuestStep | undefined): string {
     const r = step.radiusTiles ?? 2;
     return `Reach (${step.row}, ${step.col}) · r≤${r}`;
   }
-  if (step.type === "talk_to_npc") return `Talk to NPC @ (${step.npcRow}, ${step.npcCol})`;
-  return "";
+  return "(unknown step)";
 }
 
 const STAT_LABELS: Record<(typeof CHARACTER_STAT_KEYS)[number], string> = {

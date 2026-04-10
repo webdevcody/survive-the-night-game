@@ -12,7 +12,6 @@ import type {
   QuestReward,
   WorldMapQuestDefinition,
 } from "@survive-the-night/game-shared/map/quest-types";
-import type { WorldMapDialogueNpcEntry } from "@survive-the-night/game-shared/map/world-map-types";
 import type { EntityType } from "@survive-the-night/game-shared/types/entity";
 import { ITEM_FIXTURE_SPAWN_TYPES } from "@survive-the-night/game-shared/map/spawn-palette";
 import { getMapSideLength } from "../-utils";
@@ -32,28 +31,10 @@ const STAT_OPTIONS = [
 
 const PICKUP_TYPES = ITEM_FIXTURE_SPAWN_TYPES as readonly EntityType[];
 
-function npcSelectValue(row: number, col: number): string {
-  return `${row},${col}`;
-}
-
-function parseNpcSelectValue(v: string): { row: number; col: number } {
-  const [a, b] = v.split(",").map((x) => parseInt(x, 10));
-  return {
-    row: Number.isFinite(a) ? a : 0,
-    col: Number.isFinite(b) ? b : 0,
-  };
-}
-
-function formatNpcOptionLabel(npc: WorldMapDialogueNpcEntry): string {
-  const name = npc.name?.trim();
-  return name ? `${name} — ${npc.row}, ${npc.col}` : `NPC @ ${npc.row}, ${npc.col}`;
-}
-
 export function QuestsEditorPanel() {
   const quests = useEditorStore((state) => state.quests);
   const setQuests = useEditorStore((state) => state.setQuests);
   const groundGrid = useEditorStore((state) => state.groundGrid);
-  const dialogueNpcs = useEditorStore((state) => state.dialogueNpcs);
 
   const mapSide = getMapSideLength(groundGrid);
 
@@ -100,17 +81,10 @@ export function QuestsEditorPanel() {
   };
 
   const addStep = (questId: string, type: QuestStep["type"]) => {
-    const firstNpc = dialogueNpcs[0];
     const step: QuestStep =
       type === "pickup_item"
         ? { type: "pickup_item", itemType: "torch" as EntityType }
-        : type === "reach_waypoint"
-          ? { type: "reach_waypoint", row: 0, col: 0, radiusTiles: 2 }
-          : {
-              type: "talk_to_npc",
-              npcRow: firstNpc?.row ?? 0,
-              npcCol: firstNpc?.col ?? 0,
-            };
+        : { type: "reach_waypoint", row: 0, col: 0, radiusTiles: 2 };
     setQuests(quests.map((q) => (q.id === questId ? { ...q, steps: [...q.steps, step] } : q)));
   };
 
@@ -278,42 +252,6 @@ export function QuestsEditorPanel() {
                           />
                         </div>
                       ) : null}
-                      {s.type === "talk_to_npc" ? (
-                        <div className="flex flex-col gap-0.5">
-                          <label className="text-[9px] text-gray-500">Talk to NPC</label>
-                          <select
-                            className="w-full rounded border border-gray-600 bg-gray-900 text-[10px]"
-                            value={npcSelectValue(s.npcRow, s.npcCol)}
-                            onChange={(e) => {
-                              const { row, col } = parseNpcSelectValue(e.target.value);
-                              updateStep(q.id, i, {
-                                type: "talk_to_npc",
-                                npcRow: Math.max(0, Math.min(mapSide - 1, row)),
-                                npcCol: Math.max(0, Math.min(mapSide - 1, col)),
-                              });
-                            }}
-                          >
-                            {dialogueNpcs.length === 0 ? (
-                              <option value={npcSelectValue(s.npcRow, s.npcCol)}>
-                                No dialogue NPCs — right‑click the map (Add NPC) or use the NPCs tab
-                              </option>
-                            ) : null}
-                            {!dialogueNpcs.some((n) => n.row === s.npcRow && n.col === s.npcCol) ? (
-                              <option value={npcSelectValue(s.npcRow, s.npcCol)}>
-                                Unknown tile ({s.npcRow}, {s.npcCol})
-                              </option>
-                            ) : null}
-                            {dialogueNpcs.map((npc) => (
-                              <option
-                                key={npcSelectValue(npc.row, npc.col)}
-                                value={npcSelectValue(npc.row, npc.col)}
-                              >
-                                {formatNpcOptionLabel(npc)}
-                              </option>
-                            ))}
-                          </select>
-                        </div>
-                      ) : null}
                     </div>
                   ))}
                 </div>
@@ -335,15 +273,6 @@ export function QuestsEditorPanel() {
                     onClick={() => addStep(q.id, "reach_waypoint")}
                   >
                     + Waypoint
-                  </Button>
-                  <Button
-                    type="button"
-                    size="sm"
-                    variant="secondary"
-                    className="!h-6 !text-[9px]"
-                    onClick={() => addStep(q.id, "talk_to_npc")}
-                  >
-                    + Talk NPC
                   </Button>
                 </div>
                 <p className="mb-1 text-[10px] font-medium text-gray-300">Rewards on complete</p>

@@ -12,6 +12,11 @@ import {
   parsePlayerQuestState,
   emptyPlayerQuestState,
 } from "@shared/quests/player-quest-state";
+import {
+  dialogueNpcSessionsFromSerialized,
+  pickDialogueNpcSession,
+} from "@shared/map/world-map-types";
+import type { WorldMapDialogueNpcSession } from "@shared/map/world-map-types";
 import { queuePersistQuestProgressToWebsite } from "@/util/persist-quest-progress";
 
 function getState(player: Player): PlayerQuestStatePayload {
@@ -44,8 +49,8 @@ function applyRewards(player: Player, def: WorldMapQuestDefinition): void {
     if (r.type === "permanent_stat") {
       const key = mapStatToSerializedKey(r.stat);
       if (!key) continue;
-      const cur = player.serialized.get(key) ?? 0;
-      player.serialized.set(key, Math.min(99, Math.floor(cur + r.amount)));
+      const cur = player.getSerialized().get(key) ?? 0;
+      player.getSerialized().set(key, Math.min(99, Math.floor(cur + r.amount)));
     } else if (r.type === "item") {
       const inv = player.getExt(Inventory);
       if (!inv.isFull()) {
@@ -66,16 +71,63 @@ function finishQuest(player: Player, map: IMapManager, qid: string, st: PlayerQu
   if (def) applyRewards(player, def);
 }
 
+function getDialogueSessionsForNpcEntity(npc: DialogueSurvivorNpc): WorldMapDialogueNpcSession[] {
+  const raw = npc.getSerialized().get("dialogueSessions");
+  const parsed = dialogueNpcSessionsFromSerialized(raw);
+  if (parsed && parsed.length > 0) return parsed;
+
+  const linesRaw = npc.getSerialized().get("dialogueLines");
+  const lines = Array.isArray(linesRaw)
+    ? linesRaw.map((l: unknown) => String(l))
+    : ["…"];
+  const grantRaw = npc.getSerialized().get("grantQuestId");
+  const grantQuestId =
+    grantRaw === null || grantRaw === undefined
+      ? undefined
+      : String(grantRaw).trim() || undefined;
+  return [
+    {
+      when: { type: "always" },
+      lines,
+      ...(grantQuestId ? { grantQuestId } : {}),
+    },
+  ];
+}
+
+function pickDialogueSessionForNpcEntity(
+  npc: DialogueSurvivorNpc,
+  st: PlayerQuestStatePayload,
+): WorldMapDialogueNpcSession {
+  const sessions = getDialogueSessionsForNpcEntity(npc);
+  return pickDialogueNpcSession(sessions, st);
+}
+
 export function tryGrantQuestFromNpc(player: Player, npc: DialogueSurvivorNpc, map: IMapManager): void {
-  const grant = String(npc.getSerialized().get("grantQuestId") ?? "").trim();
+  const st = getState(player);
+  const session = pickDialogueSessionForNpcEntity(npc, st);
+  const grant = String(session.grantQuestId ?? "").trim();
   if (!grant) return;
   const def = map.getQuestDefinition(grant);
   if (!def) return;
 
-  const st = getState(player);
   if (st.completed.includes(grant) || st.active[grant] !== undefined) return;
 
   st.active[grant] = 0;
+  setState(player, st);
+}
+
+export function tryCompleteQuestFromDialogue(
+  player: Player,
+  npc: DialogueSurvivorNpc,
+  map: IMapManager,
+): void {
+  const st = getState(player);
+  const session = pickDialogueSessionForNpcEntity(npc, st);
+  const complete = String(session.completeQuestId ?? "").trim();
+  if (!complete) return;
+  const def = map.getQuestDefinition(complete);
+  if (!def) return;
+  finishQuest(player, map, complete, st);
   setState(player, st);
 }
 
@@ -89,28 +141,6 @@ export function advancePickupStep(player: Player, itemType: string, map: IMapMan
     const idx = st.active[qid] ?? 0;
     const step = def.steps[idx];
     if (!step || step.type !== "pickup_item" || step.itemType !== itemType) continue;
-    const next = idx + 1;
-    if (next >= def.steps.length) {
-      finishQuest(player, map, qid, st);
-    } else {
-      st.active[qid] = next;
-    }
-    changed = true;
-  }
-  if (changed) setState(player, st);
-}
-
-export function advanceTalkStep(player: Player, npcKey: string, map: IMapManager): void {
-  const st = getState(player);
-  const qids = Object.keys(st.active);
-  let changed = false;
-  for (const qid of qids) {
-    const def = map.getQuestDefinition(qid);
-    if (!def) continue;
-    const idx = st.active[qid] ?? 0;
-    const step = def.steps[idx];
-    if (!step || step.type !== "talk_to_npc") continue;
-    if (`${step.npcRow},${step.npcCol}` !== npcKey) continue;
     const next = idx + 1;
     if (next >= def.steps.length) {
       finishQuest(player, map, qid, st);

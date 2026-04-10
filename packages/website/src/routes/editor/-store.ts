@@ -145,17 +145,24 @@ function makeDialogueNpcEntry(
   mapSide: number,
   prev?: WorldMapDialogueNpcEntry,
 ): WorldMapDialogueNpcEntry {
+  const hasSessions = prev?.dialogueSessions && prev.dialogueSessions.length > 0;
   const lines = prev?.lines?.length
     ? [...prev.lines]
     : [prev?.message?.trim() || "Hello!"];
   const draft: WorldMapDialogueNpcEntry = {
     row,
     col,
-    lines,
+    ...(hasSessions
+      ? {
+          dialogueSessions: prev!.dialogueSessions!.map((s) => ({
+            ...s,
+            lines: [...s.lines],
+          })),
+        }
+      : { lines }),
     ...(prev?.name ? { name: prev.name } : {}),
-    ...(prev?.grantQuestId !== undefined ? { grantQuestId: prev.grantQuestId } : {}),
-    ...(prev?.linesAfterQuestGrant && prev.linesAfterQuestGrant.length > 0
-      ? { linesAfterQuestGrant: [...prev.linesAfterQuestGrant] }
+    ...(!hasSessions && prev?.grantQuestId !== undefined
+      ? { grantQuestId: prev.grantQuestId }
       : {}),
   };
   const [e] = normalizeDialogueNpcs([draft], mapSide);
@@ -263,7 +270,10 @@ interface EditorState {
     row: number,
     col: number,
     patch: Partial<
-      Pick<WorldMapDialogueNpcEntry, "name" | "lines" | "linesAfterQuestGrant" | "grantQuestId">
+      Pick<
+        WorldMapDialogueNpcEntry,
+        "name" | "lines" | "grantQuestId" | "dialogueSessions"
+      >
     >,
   ) => void;
   removeDialogueNpcAt: (row: number, col: number) => void;
