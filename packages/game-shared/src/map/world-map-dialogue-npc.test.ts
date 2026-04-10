@@ -3,6 +3,8 @@ import {
   normalizeDialogueNpcs,
   pickDialogueNpcSession,
   getDialogueNpcSessions,
+  dialogueNpcSessionsToSerialized,
+  dialogueNpcSessionsFromSerialized,
 } from "./world-map-types";
 import type { PlayerQuestStatePayload } from "../quests/player-quest-state";
 
@@ -37,6 +39,50 @@ describe("pickDialogueNpcSession", () => {
     ];
     expect(pickDialogueNpcSession(s2, st({ completed: [] })).lines[0]).toBe("not done");
     expect(pickDialogueNpcSession(s2, st({ completed: ["x"] })).lines[0]).toBe("done branch");
+  });
+
+  it("quest_active_and_has_item requires active quest and hasItemType", () => {
+    const sessions = [
+      {
+        when: {
+          type: "quest_active_and_has_item" as const,
+          questId: "q1",
+          itemType: "key",
+        },
+        lines: ["has key"],
+      },
+      { when: { type: "always" as const }, lines: ["fallback"] },
+    ];
+    const stActive = st({ active: { q1: 0 } });
+    expect(
+      pickDialogueNpcSession(sessions, stActive, () => false).lines[0],
+    ).toBe("fallback");
+    expect(
+      pickDialogueNpcSession(sessions, stActive, (t) => t === "key").lines[0],
+    ).toBe("has key");
+    expect(
+      pickDialogueNpcSession(sessions, st({}), (t) => t === "key").lines[0],
+    ).toBe("fallback");
+  });
+
+  it("round-trips quest_active_and_has_item via serialized sessions", () => {
+    const sessions = [
+      {
+        when: {
+          type: "quest_active_and_has_item" as const,
+          questId: "q",
+          itemType: "key",
+        },
+        lines: ["hi"],
+      },
+    ];
+    const raw = dialogueNpcSessionsToSerialized(sessions);
+    const back = dialogueNpcSessionsFromSerialized(raw);
+    expect(back?.[0]?.when).toEqual({
+      type: "quest_active_and_has_item",
+      questId: "q",
+      itemType: "key",
+    });
   });
 });
 
@@ -83,5 +129,30 @@ describe("normalizeDialogueNpcs dialogueSessions", () => {
     expect(sessions.length).toBe(2);
     expect(pickDialogueNpcSession(sessions, st({ completed: ["q"] })).lines[0]).toBe("thanks");
     expect(pickDialogueNpcSession(sessions, st({})).lines[0]).toBe("hello");
+  });
+
+  it("preserves healOnDialogueComplete through normalizeDialogueNpcs", () => {
+    const [e] = normalizeDialogueNpcs(
+      [
+        {
+          row: 0,
+          col: 0,
+          dialogueSessions: [
+            { when: { type: "always" }, lines: ["Rest."], healOnDialogueComplete: true },
+          ],
+        },
+      ],
+      8,
+    );
+    expect(e?.dialogueSessions?.[0].healOnDialogueComplete).toBe(true);
+  });
+
+  it("round-trips healOnDialogueComplete via serialized sessions", () => {
+    const sessions = [
+      { when: { type: "always" as const }, lines: ["Hi"], healOnDialogueComplete: true as const },
+    ];
+    const raw = dialogueNpcSessionsToSerialized(sessions);
+    const back = dialogueNpcSessionsFromSerialized(raw);
+    expect(back?.[0]?.healOnDialogueComplete).toBe(true);
   });
 });

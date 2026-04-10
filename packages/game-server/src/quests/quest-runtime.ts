@@ -3,9 +3,10 @@ import { DialogueSurvivorNpc } from "@/entities/environment/dialogue-survivor-np
 import { IEntityManager, IMapManager } from "@/managers/types";
 import { distance } from "@shared/util/physics";
 import Positionable from "@/extensions/positionable";
+import Destructible from "@/extensions/destructible";
 import { getConfig } from "@shared/config";
 import Inventory from "@/extensions/inventory";
-import type { WorldMapQuestDefinition } from "@shared/map/quest-types";
+import type { QuestReward, WorldMapQuestDefinition } from "@shared/map/quest-types";
 import type { PlayerQuestStatePayload } from "@shared/quests/player-quest-state";
 import {
   stringifyPlayerQuestState,
@@ -44,8 +45,8 @@ function mapStatToSerializedKey(stat: string): string | null {
   return m[stat] ?? null;
 }
 
-function applyRewards(player: Player, def: WorldMapQuestDefinition): void {
-  for (const r of def.rewards) {
+function applyRewardList(player: Player, rewards: QuestReward[]): void {
+  for (const r of rewards) {
     if (r.type === "permanent_stat") {
       const key = mapStatToSerializedKey(r.stat);
       if (!key) continue;
@@ -62,6 +63,10 @@ function applyRewards(player: Player, def: WorldMapQuestDefinition): void {
     }
   }
   player.applyDerivedStatsFromAllocations();
+}
+
+function applyRewards(player: Player, def: WorldMapQuestDefinition): void {
+  applyRewardList(player, def.rewards);
 }
 
 function finishQuest(player: Player, map: IMapManager, qid: string, st: PlayerQuestStatePayload): void {
@@ -96,15 +101,19 @@ function getDialogueSessionsForNpcEntity(npc: DialogueSurvivorNpc): WorldMapDial
 
 function pickDialogueSessionForNpcEntity(
   npc: DialogueSurvivorNpc,
-  st: PlayerQuestStatePayload,
+  player: Player,
 ): WorldMapDialogueNpcSession {
   const sessions = getDialogueSessionsForNpcEntity(npc);
-  return pickDialogueNpcSession(sessions, st);
+  const st = getState(player);
+  const hasItemType = player.hasExt(Inventory)
+    ? (itemType: string) => player.getExt(Inventory).hasItem(itemType)
+    : () => false;
+  return pickDialogueNpcSession(sessions, st, hasItemType);
 }
 
 export function tryGrantQuestFromNpc(player: Player, npc: DialogueSurvivorNpc, map: IMapManager): void {
   const st = getState(player);
-  const session = pickDialogueSessionForNpcEntity(npc, st);
+  const session = pickDialogueSessionForNpcEntity(npc, player);
   const grant = String(session.grantQuestId ?? "").trim();
   if (!grant) return;
   const def = map.getQuestDefinition(grant);
@@ -114,6 +123,7 @@ export function tryGrantQuestFromNpc(player: Player, npc: DialogueSurvivorNpc, m
 
   st.active[grant] = 0;
   setState(player, st);
+  applyRewardList(player, def.startRewards);
 }
 
 export function tryCompleteQuestFromDialogue(
@@ -122,13 +132,24 @@ export function tryCompleteQuestFromDialogue(
   map: IMapManager,
 ): void {
   const st = getState(player);
-  const session = pickDialogueSessionForNpcEntity(npc, st);
+  const session = pickDialogueSessionForNpcEntity(npc, player);
   const complete = String(session.completeQuestId ?? "").trim();
   if (!complete) return;
   const def = map.getQuestDefinition(complete);
   if (!def) return;
   finishQuest(player, map, complete, st);
   setState(player, st);
+}
+
+export function tryHealPlayerFromDialogueSession(player: Player, npc: DialogueSurvivorNpc): void {
+  if (player.isDead()) return;
+  const st = getState(player);
+  const session = pickDialogueSessionForNpcEntity(npc, player);
+  if (session.healOnDialogueComplete !== true) return;
+  const d = player.getExt(Destructible);
+  d.setHealth(d.getMaxHealth());
+  const maxSt = player.getSerialized().get("maxStamina") ?? getConfig().player.MAX_STAMINA;
+  player.getSerialized().set("stamina", maxSt);
 }
 
 export function advancePickupStep(player: Player, itemType: string, map: IMapManager): void {

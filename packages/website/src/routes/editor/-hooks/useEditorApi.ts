@@ -19,6 +19,19 @@ interface WorldMapDataResponse {
   spawnerMeta?: WorldMapSpawnerMetaEntry[];
 }
 
+export interface GameServerReloadInfo {
+  ok: boolean;
+  skipped?: boolean;
+  status?: number;
+  error?: string;
+}
+
+export interface SaveWorldMapResponse {
+  success?: boolean;
+  message?: string;
+  gameServerReload?: GameServerReloadInfo;
+}
+
 // Query Keys
 export const editorQueryKeys = {
   worldMap: ["worldMap"] as const,
@@ -27,6 +40,9 @@ export const editorQueryKeys = {
 export function useWorldMap() {
   return useQuery({
     queryKey: editorQueryKeys.worldMap,
+    /** Cuts down refetch noise (GET /api/world-map) in dev; save still invalidates. */
+    staleTime: 30_000,
+    refetchOnWindowFocus: false,
     queryFn: async (): Promise<WorldMapDataResponse> => {
       const response = await fetch(API_ENDPOINTS.worldMap());
       if (!response.ok) {
@@ -98,7 +114,7 @@ export function useSaveWorldMap() {
       messageDecals: WorldMapMessageDecalEntry[];
       quests: WorldMapQuestDefinition[];
       spawnerMeta: WorldMapSpawnerMetaEntry[];
-    }) => {
+    }): Promise<SaveWorldMapResponse> => {
       const response = await fetch(API_ENDPOINTS.worldMap(), {
         method: "POST",
         headers: {
@@ -123,7 +139,11 @@ export function useSaveWorldMap() {
         );
       }
 
-      return response.json();
+      const data = (await response.json()) as SaveWorldMapResponse;
+      if (import.meta.env.DEV) {
+        console.info("[editor] save map → gameServerReload:", data.gameServerReload);
+      }
+      return data;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({

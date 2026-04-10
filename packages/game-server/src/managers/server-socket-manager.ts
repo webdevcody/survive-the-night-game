@@ -3,7 +3,13 @@ import Inventory from "@/extensions/inventory";
 import { ClientSentEvents } from "@shared/events/events";
 import { GameEvent } from "@shared/events/types";
 import { GameServer } from "@/core/server";
-import { createServer } from "http";
+import {
+  EDITOR_WORLD_MAP_RELOAD_PATH,
+  isEditorMapReloadRemoteAddrAllowed,
+  isEditorWorldMapReloadHttpEnabled,
+  isValidEditorMapReloadApiKey,
+} from "@/config/editor-map-reload";
+import { createServer, type IncomingMessage, type ServerResponse } from "http";
 import { MapManager } from "@/world/map-manager";
 import { Broadcaster, IEntityManager, IGameManagers } from "@/managers/types";
 import { getConfig } from "@shared/config";
@@ -37,6 +43,27 @@ import type { PersistedPlayerProgress } from "@/services/player-progress-types";
 import { coercePlayerQuestState } from "@shared/quests/player-quest-state";
 import { XP_PER_ZOMBIE_KILL } from "@shared/util/experience-level";
 import { GameMessageEvent } from "../../../game-shared/src/events/server-sent/events/game-message-event";
+import { appendFileSync } from "node:fs";
+
+/** Debug NDJSON (session 65179d): file write so logs survive even if ingest fetch fails. */
+const AGENT_DEBUG_LOG = "/Users/webdevcody/Workspace/survive-the-night-game/.cursor/debug-65179d.log";
+
+function agentDebugNdjson(payload: Record<string, unknown>): void {
+  const line = { sessionId: "65179d", timestamp: Date.now(), ...payload };
+  try {
+    appendFileSync(AGENT_DEBUG_LOG, `${JSON.stringify(line)}\n`);
+  } catch {
+    /* ignore */
+  }
+  fetch("http://127.0.0.1:7825/ingest/2642c761-9d6c-4bd7-b4a8-ef39e8a5fbf3", {
+    method: "POST",
+    headers: { "Content-Type": "application/json", "X-Debug-Session-Id": "65179d" },
+    body: JSON.stringify(line),
+  }).catch(() => {});
+}
+
+/** Avoid blocking `onConnection` forever when the website API is down or misconfigured. */
+const PERSISTED_PROGRESS_FETCH_TIMEOUT_MS = 10_000;
 
 /**
  * Any and all functionality related to sending server side events
@@ -71,16 +98,12 @@ export class ServerSocketManager implements Broadcaster {
     // Create HTTP server for websocket adapter
     // Note: Biome editor API is now in a separate service (biome-editor-server)
     if (implementation === "socketio") {
-      // For Socket.IO, create a minimal HTTP server
       this.httpServer = createServer((req, res) => {
-        // Minimal HTTP handler - websocket server doesn't handle HTTP routes
-        res.writeHead(404, { "Content-Type": "text/plain" });
-        res.end("Not Found");
+        this.handleNodeHttpRequest(req, res);
       });
     } else {
-      // For uWebSockets, create a minimal HTTP server
+      // uWebSockets owns the game port; this Node server is never listened on.
       this.httpServer = createServer((req, res) => {
-        // Minimal HTTP handler - uWebSockets will handle everything
         res.writeHead(404, { "Content-Type": "text/plain" });
         res.end("Not Found");
       });
@@ -122,6 +145,19 @@ export class ServerSocketManager implements Broadcaster {
 
     this.io.on("connection", (socket: ISocketAdapter) => {
       const { displayName, version, gameAuthToken } = socket.handshake.query;
+      // #region agent log
+      agentDebugNdjson({
+        runId: "post-fix",
+        hypothesisId: "H0",
+        location: "server-socket-manager.ts:connection",
+        message: "connection handler entered",
+        data: {
+          socketId: socket.id,
+          queryKeys: Object.keys(socket.handshake.query),
+          versionRaw: version,
+        },
+      });
+      // #endregion
 
       const rawDisplayName = displayName
         ? Array.isArray(displayName)
@@ -134,6 +170,15 @@ export class ServerSocketManager implements Broadcaster {
       const serverVersion = getConfig().meta.VERSION;
 
       if (!clientVersion || clientVersion !== serverVersion) {
+        // #region agent log
+        agentDebugNdjson({
+          runId: "post-fix",
+          hypothesisId: "H14",
+          location: "server-socket-manager.ts:connection",
+          message: "version mismatch early exit",
+          data: { clientVersion, serverVersion, socketId: socket.id },
+        });
+        // #endregion
         console.warn(
           `Version mismatch: client version ${clientVersion} does not match server version ${serverVersion}. Socket ${socket.id} will receive mismatch event.`,
         );
@@ -155,6 +200,15 @@ export class ServerSocketManager implements Broadcaster {
 
       const authResult = this.sessionValidator.validateGameAuthToken(tokenStr ?? "");
       if (!authResult.valid || !authResult.userId) {
+        // #region agent log
+        agentDebugNdjson({
+          runId: "post-fix",
+          hypothesisId: "H15",
+          location: "server-socket-manager.ts:connection",
+          message: "auth failed early exit",
+          data: { socketId: socket.id, hasToken: Boolean(tokenStr?.length) },
+        });
+        // #endregion
         const authRequiredEvent = new AuthRequiredEvent({
           message: authResult.error ?? "Authentication required",
         });
@@ -164,6 +218,15 @@ export class ServerSocketManager implements Broadcaster {
       }
 
       const userId = authResult.userId;
+      // #region agent log
+      agentDebugNdjson({
+        runId: "post-fix",
+        hypothesisId: "H17",
+        location: "server-socket-manager.ts:connection",
+        message: "auth ok, scheduling onConnection",
+        data: { socketId: socket.id },
+      });
+      // #endregion
 
       // Filter bad words and replace with asterisks
       const filteredDisplayName = rawDisplayName ? this.sanitizeText(rawDisplayName) : undefined;
@@ -175,10 +238,74 @@ export class ServerSocketManager implements Broadcaster {
       this.userSessionCache.setUserSession(socket.id, userId, tokenStr!);
       console.log(`Socket ${socket.id} authenticated as user ${userId}`);
 
+      // Register handlers before awaiting persisted progress so early client frames
+      // (REQUEST_FULL_STATE, PLAYER_INPUT, etc.) are not dropped on the floor.
+      this.setupSocketListeners(socket);
+
       void (async () => {
+        const t0 = Date.now();
+        console.log(`[ServerSocketManager] begin persisted progress fetch for ${socket.id}`);
+        // #region agent log
+        fetch("http://127.0.0.1:7825/ingest/2642c761-9d6c-4bd7-b4a8-ef39e8a5fbf3", {
+          method: "POST",
+          headers: { "Content-Type": "application/json", "X-Debug-Session-Id": "65179d" },
+          body: JSON.stringify({
+            sessionId: "65179d",
+            runId: "post-fix",
+            hypothesisId: "H9",
+            location: "server-socket-manager.ts:connection",
+            message: "before fetchPersistedProgress",
+            data: { socketId: socket.id, userId },
+            timestamp: Date.now(),
+          }),
+        }).catch(() => {});
+        // #endregion
         const progress = await this.fetchPersistedProgress(userId);
+        console.log(
+          `[ServerSocketManager] persisted progress ready for ${socket.id} in ${Date.now() - t0}ms`,
+        );
+        // #region agent log
+        fetch("http://127.0.0.1:7825/ingest/2642c761-9d6c-4bd7-b4a8-ef39e8a5fbf3", {
+          method: "POST",
+          headers: { "Content-Type": "application/json", "X-Debug-Session-Id": "65179d" },
+          body: JSON.stringify({
+            sessionId: "65179d",
+            runId: "post-fix",
+            hypothesisId: "H10",
+            location: "server-socket-manager.ts:connection",
+            message: "after fetchPersistedProgress",
+            data: { socketId: socket.id, durationMs: Date.now() - t0 },
+            timestamp: Date.now(),
+          }),
+        }).catch(() => {});
+        // #endregion
         await this.onConnection(socket, progress);
+        console.log(`[ServerSocketManager] onConnection finished for ${socket.id}`);
+        // #region agent log
+        fetch("http://127.0.0.1:7825/ingest/2642c761-9d6c-4bd7-b4a8-ef39e8a5fbf3", {
+          method: "POST",
+          headers: { "Content-Type": "application/json", "X-Debug-Session-Id": "65179d" },
+          body: JSON.stringify({
+            sessionId: "65179d",
+            runId: "post-fix",
+            hypothesisId: "H13",
+            location: "server-socket-manager.ts:connection",
+            message: "onConnection handler finished",
+            data: { socketId: socket.id },
+            timestamp: Date.now(),
+          }),
+        }).catch(() => {});
+        // #endregion
       })().catch((err) => {
+        // #region agent log
+        agentDebugNdjson({
+          runId: "post-fix",
+          hypothesisId: "H16",
+          location: "server-socket-manager.ts:connection",
+          message: "onConnection async failed",
+          data: { socketId: socket.id, err: err instanceof Error ? err.message : String(err) },
+        });
+        // #endregion
         console.error(`[ServerSocketManager] onConnection failed for socket ${socket.id}:`, err);
       });
     });
@@ -202,6 +329,7 @@ export class ServerSocketManager implements Broadcaster {
     try {
       const response = await fetch(url, {
         headers: { "X-API-Key": GAME_SERVER_API_KEY },
+        signal: AbortSignal.timeout(PERSISTED_PROGRESS_FETCH_TIMEOUT_MS),
       });
       if (!response.ok) {
         const errText = await response.text().catch(() => "");
@@ -263,7 +391,16 @@ export class ServerSocketManager implements Broadcaster {
         questProgress: data.questProgress != null ? coercePlayerQuestState(data.questProgress) : undefined,
       };
     } catch (error) {
-      console.warn(`[ServerSocketManager] fetchPersistedProgress failed for ${userId}:`, error);
+      const isTimeout =
+        error instanceof Error &&
+        (error.name === "AbortError" || error.name === "TimeoutError");
+      if (isTimeout) {
+        console.warn(
+          `[ServerSocketManager] player-experience fetch timed out (${PERSISTED_PROGRESS_FETCH_TIMEOUT_MS}ms) for ${userId}`,
+        );
+      } else {
+        console.warn(`[ServerSocketManager] fetchPersistedProgress failed for ${userId}:`, error);
+      }
     }
     return empty;
   }
@@ -482,7 +619,6 @@ export class ServerSocketManager implements Broadcaster {
     },
   ): Promise<void> {
     const context = this.getHandlerContext();
-    this.setupSocketListeners(socket);
     await onConnection(context, socket, initialProgress);
   }
 
@@ -522,6 +658,60 @@ export class ServerSocketManager implements Broadcaster {
       }
       return;
     }
+  }
+
+  private httpPathname(req: IncomingMessage): string {
+    const raw = req.url ?? "/";
+    const q = raw.indexOf("?");
+    return q === -1 ? raw : raw.slice(0, q);
+  }
+
+  private sendJsonHttp(res: ServerResponse, status: number, body: Record<string, unknown>): void {
+    res.writeHead(status, { "Content-Type": "application/json" });
+    res.end(JSON.stringify(body));
+  }
+
+  private handleNodeHttpRequest(req: IncomingMessage, res: ServerResponse): void {
+    const pathname = this.httpPathname(req);
+    // Socket.IO registers another "request" listener; do not end the response for its paths.
+    if (pathname.startsWith("/socket.io")) {
+      return;
+    }
+
+    if (
+      isEditorWorldMapReloadHttpEnabled() &&
+      req.method === "POST" &&
+      pathname === EDITOR_WORLD_MAP_RELOAD_PATH
+    ) {
+      const remote = req.socket.remoteAddress ?? undefined;
+      if (!isEditorMapReloadRemoteAddrAllowed(remote)) {
+        console.warn(`[EditorMapReload] rejected: non-loopback remote ${remote ?? "(none)"}`);
+        this.sendJsonHttp(res, 403, { ok: false, error: "Forbidden" });
+        return;
+      }
+      const header = req.headers["x-game-server-api-key"];
+      const key = Array.isArray(header) ? header[0] : header;
+      if (!isValidEditorMapReloadApiKey(key)) {
+        console.warn("[EditorMapReload] rejected: bad or missing x-game-server-api-key");
+        this.sendJsonHttp(res, 401, { ok: false, error: "Unauthorized" });
+        return;
+      }
+      console.log("[EditorMapReload] POST accepted — running startNewGame() (reload world-map.json)");
+      void this.gameServer.startNewGame().then(
+        () => {
+          console.log("[EditorMapReload] startNewGame() finished OK");
+          this.sendJsonHttp(res, 200, { ok: true });
+        },
+        (err) => {
+          console.error("[EditorMapReload] startNewGame failed:", err);
+          this.sendJsonHttp(res, 500, { ok: false, error: "Reload failed" });
+        },
+      );
+      return;
+    }
+
+    res.writeHead(404, { "Content-Type": "text/plain" });
+    res.end("Not Found");
   }
 
   /**

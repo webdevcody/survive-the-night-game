@@ -1,4 +1,5 @@
 import { combatConfig } from "../config/combat-config";
+import { ZOMBIE_DROP_TABLE_BY_ID } from "../config/zombie-drop-tables";
 import Vector2 from "../util/vector2";
 import PoolManager from "../util/pool-manager";
 import { ZombieConfig, EntityCategories } from "./zombie-registry";
@@ -37,6 +38,7 @@ export const ZOMBIE_CONFIGS: Record<string, ZombieConfig> = {
     },
     movementStrategy: "melee",
     attackStrategy: "melee",
+    dropTable: ZOMBIE_DROP_TABLE_BY_ID.zombie,
   },
   big_zombie: {
     id: "big_zombie",
@@ -71,6 +73,7 @@ export const ZOMBIE_CONFIGS: Record<string, ZombieConfig> = {
     },
     movementStrategy: "melee",
     attackStrategy: "melee",
+    dropTable: ZOMBIE_DROP_TABLE_BY_ID.big_zombie,
   },
   fast_zombie: {
     id: "fast_zombie",
@@ -105,6 +108,7 @@ export const ZOMBIE_CONFIGS: Record<string, ZombieConfig> = {
     },
     movementStrategy: "melee",
     attackStrategy: "melee",
+    dropTable: ZOMBIE_DROP_TABLE_BY_ID.fast_zombie,
   },
   exploding_zombie: {
     id: "exploding_zombie",
@@ -139,6 +143,7 @@ export const ZOMBIE_CONFIGS: Record<string, ZombieConfig> = {
     },
     movementStrategy: "melee",
     attackStrategy: "exploding",
+    dropTable: ZOMBIE_DROP_TABLE_BY_ID.exploding_zombie,
   },
   bat_zombie: {
     id: "bat_zombie",
@@ -173,6 +178,7 @@ export const ZOMBIE_CONFIGS: Record<string, ZombieConfig> = {
     },
     movementStrategy: "flying",
     attackStrategy: "melee",
+    dropTable: ZOMBIE_DROP_TABLE_BY_ID.bat_zombie,
   },
   spitter_zombie: {
     id: "spitter_zombie",
@@ -181,7 +187,7 @@ export const ZOMBIE_CONFIGS: Record<string, ZombieConfig> = {
       speed: 25,
       health: 5,
       damage: 2,
-      attackCooldown: 1,
+      attackCooldown: 1.5,
       attackRadius: 150,
       dropChance: 0.5,
       size: PoolManager.getInstance().vector2.claim(16, 16),
@@ -207,6 +213,7 @@ export const ZOMBIE_CONFIGS: Record<string, ZombieConfig> = {
     },
     movementStrategy: "ranged",
     attackStrategy: "ranged",
+    dropTable: ZOMBIE_DROP_TABLE_BY_ID.spitter_zombie,
   },
   leaping_zombie: {
     id: "leaping_zombie",
@@ -247,6 +254,7 @@ export const ZOMBIE_CONFIGS: Record<string, ZombieConfig> = {
       leapCooldown: 3, // Cooldown between leaps
       leapDuration: 0.7, // How long the leap velocity boost lasts
     },
+    dropTable: ZOMBIE_DROP_TABLE_BY_ID.leaping_zombie,
   },
   grave_tyrant: {
     id: "grave_tyrant",
@@ -281,6 +289,11 @@ export const ZOMBIE_CONFIGS: Record<string, ZombieConfig> = {
     },
     movementStrategy: "melee",
     attackStrategy: "melee",
+    leash: {
+      wanderRadius: 420,
+      maxPlayerDistanceFromSpawn: 3200,
+      activationRadius: 200,
+    },
     boss: {
       name: "Grave Tyrant",
       nameColor: "#ff3b30",
@@ -299,6 +312,7 @@ export const ZOMBIE_CONFIGS: Record<string, ZombieConfig> = {
         intervalMs: 2000,
       },
     },
+    dropTable: ZOMBIE_DROP_TABLE_BY_ID.grave_tyrant,
   },
   charging_tyrant: {
     id: "charging_tyrant",
@@ -333,6 +347,11 @@ export const ZOMBIE_CONFIGS: Record<string, ZombieConfig> = {
     },
     movementStrategy: "melee",
     attackStrategy: "melee",
+    leash: {
+      wanderRadius: 480,
+      maxPlayerDistanceFromSpawn: 3600,
+      activationRadius: 220,
+    },
     chargeConfig: {
       chargeDistanceThreshold: 200, // Start charging when player is within this distance
       slamDistanceThreshold: 24, // Slam when within this distance of player
@@ -360,6 +379,7 @@ export const ZOMBIE_CONFIGS: Record<string, ZombieConfig> = {
         intervalMs: 1500,
       },
     },
+    dropTable: ZOMBIE_DROP_TABLE_BY_ID.charging_tyrant,
   },
   acid_flyer: {
     id: "acid_flyer",
@@ -394,6 +414,11 @@ export const ZOMBIE_CONFIGS: Record<string, ZombieConfig> = {
     },
     movementStrategy: "cross-dive",
     attackStrategy: "melee",
+    leash: {
+      wanderRadius: 400,
+      maxPlayerDistanceFromSpawn: 3400,
+      activationRadius: 220,
+    },
     crossDiveConfig: {
       approachDistance: 200,
       diveCooldownDuration: 1.5,
@@ -417,6 +442,7 @@ export const ZOMBIE_CONFIGS: Record<string, ZombieConfig> = {
         intervalMs: 1500,
       },
     },
+    dropTable: ZOMBIE_DROP_TABLE_BY_ID.acid_flyer,
   },
   splitter_boss: {
     id: "splitter_boss",
@@ -451,6 +477,11 @@ export const ZOMBIE_CONFIGS: Record<string, ZombieConfig> = {
     },
     movementStrategy: "melee",
     attackStrategy: "melee",
+    leash: {
+      wanderRadius: 400,
+      maxPlayerDistanceFromSpawn: 3000,
+      activationRadius: 200,
+    },
     splitConfig: {
       splitsRemaining: 2,
       speedMultiplierPerSplit: 1.5,
@@ -475,5 +506,6 @@ export const ZOMBIE_CONFIGS: Record<string, ZombieConfig> = {
         intervalMs: 1800,
       },
     },
+    dropTable: ZOMBIE_DROP_TABLE_BY_ID.splitter_boss,
   },
 };

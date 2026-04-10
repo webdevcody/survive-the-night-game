@@ -13,6 +13,7 @@ import {
   normalizeDialogueNpcs,
   reconcileMessageDecalsWithDecalsLayer,
   reconcileSpawnerMetaWithSpawnsLayer,
+  rewriteSpawnsLayerDialogueNpcTiles,
 } from "@survive-the-night/game-shared/map/world-map-types";
 import type { WorldMapQuestDefinition } from "@survive-the-night/game-shared/map/quest-types";
 import { normalizeQuests } from "@survive-the-night/game-shared/map/quest-types";
@@ -153,6 +154,7 @@ export async function readWorldMap(): Promise<WorldMapData> {
       }
     }
     const dialogueNpcs = normalizeDialogueNpcs(data.dialogueNpcs, n);
+    rewriteSpawnsLayerDialogueNpcTiles(spawns, dialogueNpcs);
     const messageDecals = reconcileMessageDecalsWithDecalsLayer(decals, data.messageDecals, n);
     const quests = normalizeQuests(data.quests, n);
     const spawnerMeta = reconcileSpawnerMetaWithSpawnsLayer(spawns, data.spawnerMeta);
@@ -254,6 +256,7 @@ async function readWorldMapRawFromDisk(): Promise<WorldMapData> {
     }
   }
   const dialogueNpcs = normalizeDialogueNpcs(data.dialogueNpcs, oldN);
+  rewriteSpawnsLayerDialogueNpcTiles(spawns, dialogueNpcs);
   const messageDecals = reconcileMessageDecalsWithDecalsLayer(decals, data.messageDecals, oldN);
   const quests = normalizeQuests(data.quests, oldN);
   const spawnerMeta = reconcileSpawnerMetaWithSpawnsLayer(spawns, data.spawnerMeta);

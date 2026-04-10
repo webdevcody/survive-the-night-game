@@ -31,6 +31,13 @@ const STAT_OPTIONS = [
 
 const PICKUP_TYPES = ITEM_FIXTURE_SPAWN_TYPES as readonly EntityType[];
 
+type QuestRewardListKey = "rewards" | "startRewards";
+
+const REWARD_SECTIONS: { key: QuestRewardListKey; label: string }[] = [
+  { key: "startRewards", label: "Rewards on start" },
+  { key: "rewards", label: "Rewards on complete" },
+];
+
 export function QuestsEditorPanel() {
   const quests = useEditorStore((state) => state.quests);
   const setQuests = useEditorStore((state) => state.setQuests);
@@ -51,7 +58,10 @@ export function QuestsEditorPanel() {
 
   const addQuest = () => {
     const id = `quest_${Date.now()}`;
-    setQuests([...quests, { id, title: "New quest", steps: [], rewards: [] }]);
+    setQuests([
+      ...quests,
+      { id, title: "New quest", steps: [], rewards: [], startRewards: [] },
+    ]);
   };
 
   const updateQuest = (id: string, patch: Partial<Omit<WorldMapQuestDefinition, "id">>) => {
@@ -88,31 +98,40 @@ export function QuestsEditorPanel() {
     setQuests(quests.map((q) => (q.id === questId ? { ...q, steps: [...q.steps, step] } : q)));
   };
 
-  const updateReward = (questId: string, rewardIndex: number, reward: QuestReward) => {
+  const updateReward = (
+    questId: string,
+    listKey: QuestRewardListKey,
+    rewardIndex: number,
+    reward: QuestReward,
+  ) => {
     setQuests(
       quests.map((q) => {
         if (q.id !== questId) return q;
-        const rewards = q.rewards.map((r, i) => (i === rewardIndex ? reward : r));
-        return { ...q, rewards };
+        const list = q[listKey].map((r, i) => (i === rewardIndex ? reward : r));
+        return { ...q, [listKey]: list };
       }),
     );
   };
 
-  const removeReward = (questId: string, rewardIndex: number) => {
+  const removeReward = (questId: string, listKey: QuestRewardListKey, rewardIndex: number) => {
     setQuests(
       quests.map((q) =>
-        q.id === questId ? { ...q, rewards: q.rewards.filter((_, i) => i !== rewardIndex) } : q,
+        q.id === questId
+          ? { ...q, [listKey]: q[listKey].filter((_, i) => i !== rewardIndex) }
+          : q,
       ),
     );
   };
 
-  const addReward = (questId: string, type: QuestReward["type"]) => {
+  const addReward = (questId: string, listKey: QuestRewardListKey, type: QuestReward["type"]) => {
     const reward: QuestReward =
       type === "permanent_stat"
         ? { type: "permanent_stat", stat: "health", amount: 1 }
         : { type: "item", itemType: "bandage" as EntityType, count: 1 };
     setQuests(
-      quests.map((q) => (q.id === questId ? { ...q, rewards: [...q.rewards, reward] } : q)),
+      quests.map((q) =>
+        q.id === questId ? { ...q, [listKey]: [...q[listKey], reward] } : q,
+      ),
     );
   };
 
@@ -275,117 +294,124 @@ export function QuestsEditorPanel() {
                     + Waypoint
                   </Button>
                 </div>
-                <p className="mb-1 text-[10px] font-medium text-gray-300">Rewards on complete</p>
-                <div className="space-y-2">
-                  {q.rewards.map((r, i) => (
-                    <div
-                      key={i}
-                      className="flex flex-wrap items-center gap-1 rounded border border-gray-700 bg-gray-950/80 p-1"
-                    >
-                      {r.type === "permanent_stat" ? (
-                        <>
-                          <select
-                            className="rounded border border-gray-600 bg-gray-900 text-[10px]"
-                            value={r.stat}
-                            onChange={(e) =>
-                              updateReward(q.id, i, {
-                                type: "permanent_stat",
-                                stat: e.target.value,
-                                amount: r.amount,
-                              })
-                            }
+                {REWARD_SECTIONS.map(({ key: listKey, label }) => (
+                  <div key={listKey} className="space-y-1">
+                    <p className="mb-1 text-[10px] font-medium text-gray-300">{label}</p>
+                    <div className="space-y-2">
+                      {q[listKey].map((r, i) => (
+                        <div
+                          key={i}
+                          className="flex flex-wrap items-center gap-1 rounded border border-gray-700 bg-gray-950/80 p-1"
+                        >
+                          {r.type === "permanent_stat" ? (
+                            <>
+                              <select
+                                className="rounded border border-gray-600 bg-gray-900 text-[10px]"
+                                value={r.stat}
+                                onChange={(e) =>
+                                  updateReward(q.id, listKey, i, {
+                                    type: "permanent_stat",
+                                    stat: e.target.value,
+                                    amount: r.amount,
+                                  })
+                                }
+                              >
+                                {STAT_OPTIONS.map((st) => (
+                                  <option key={st} value={st}>
+                                    {st}
+                                  </option>
+                                ))}
+                              </select>
+                              <input
+                                type="number"
+                                className="w-12 rounded border border-gray-600 bg-gray-900 text-[10px]"
+                                min={1}
+                                max={99}
+                                value={r.amount}
+                                onChange={(e) =>
+                                  updateReward(q.id, listKey, i, {
+                                    type: "permanent_stat",
+                                    stat: r.stat,
+                                    amount: Math.max(
+                                      1,
+                                      Math.min(99, parseInt(e.target.value, 10) || 1),
+                                    ),
+                                  })
+                                }
+                              />
+                            </>
+                          ) : (
+                            <>
+                              <select
+                                className="rounded border border-gray-600 bg-gray-900 text-[10px]"
+                                value={r.itemType}
+                                onChange={(e) =>
+                                  updateReward(q.id, listKey, i, {
+                                    type: "item",
+                                    itemType: e.target.value as EntityType,
+                                    count: r.count,
+                                  })
+                                }
+                              >
+                                {PICKUP_TYPES.map((t) => (
+                                  <option key={t} value={t}>
+                                    {t}
+                                  </option>
+                                ))}
+                              </select>
+                              <input
+                                type="number"
+                                className="w-10 rounded border border-gray-600 bg-gray-900 text-[10px]"
+                                min={1}
+                                max={99}
+                                value={r.count}
+                                onChange={(e) =>
+                                  updateReward(q.id, listKey, i, {
+                                    type: "item",
+                                    itemType: r.itemType,
+                                    count: Math.max(
+                                      1,
+                                      Math.min(99, parseInt(e.target.value, 10) || 1),
+                                    ),
+                                  })
+                                }
+                              />
+                            </>
+                          )}
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="secondary"
+                            className="!h-5 !px-1 !text-[9px]"
+                            onClick={() => removeReward(q.id, listKey, i)}
                           >
-                            {STAT_OPTIONS.map((st) => (
-                              <option key={st} value={st}>
-                                {st}
-                              </option>
-                            ))}
-                          </select>
-                          <input
-                            type="number"
-                            className="w-12 rounded border border-gray-600 bg-gray-900 text-[10px]"
-                            min={1}
-                            max={99}
-                            value={r.amount}
-                            onChange={(e) =>
-                              updateReward(q.id, i, {
-                                type: "permanent_stat",
-                                stat: r.stat,
-                                amount: Math.max(
-                                  1,
-                                  Math.min(99, parseInt(e.target.value, 10) || 1),
-                                ),
-                              })
-                            }
-                          />
-                        </>
-                      ) : (
-                        <>
-                          <select
-                            className="rounded border border-gray-600 bg-gray-900 text-[10px]"
-                            value={r.itemType}
-                            onChange={(e) =>
-                              updateReward(q.id, i, {
-                                type: "item",
-                                itemType: e.target.value as EntityType,
-                                count: r.count,
-                              })
-                            }
-                          >
-                            {PICKUP_TYPES.map((t) => (
-                              <option key={t} value={t}>
-                                {t}
-                              </option>
-                            ))}
-                          </select>
-                          <input
-                            type="number"
-                            className="w-10 rounded border border-gray-600 bg-gray-900 text-[10px]"
-                            min={1}
-                            max={99}
-                            value={r.count}
-                            onChange={(e) =>
-                              updateReward(q.id, i, {
-                                type: "item",
-                                itemType: r.itemType,
-                                count: Math.max(1, Math.min(99, parseInt(e.target.value, 10) || 1)),
-                              })
-                            }
-                          />
-                        </>
-                      )}
+                            ×
+                          </Button>
+                        </div>
+                      ))}
+                    </div>
+                    <div className="mt-1 flex gap-1">
                       <Button
                         type="button"
                         size="sm"
                         variant="secondary"
-                        className="!h-5 !px-1 !text-[9px]"
-                        onClick={() => removeReward(q.id, i)}
+                        className="!h-6 !text-[9px]"
+                        onClick={() => addReward(q.id, listKey, "permanent_stat")}
                       >
-                        ×
+                        + Stat
+                      </Button>
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="secondary"
+                        className="!h-6 !text-[9px]"
+                        onClick={() => addReward(q.id, listKey, "item")}
+                      >
+                        + Item
                       </Button>
                     </div>
-                  ))}
-                </div>
-                <div className="mt-1 flex gap-1">
-                  <Button
-                    type="button"
-                    size="sm"
-                    variant="secondary"
-                    className="!h-6 !text-[9px]"
-                    onClick={() => addReward(q.id, "permanent_stat")}
-                  >
-                    + Stat
-                  </Button>
-                  <Button
-                    type="button"
-                    size="sm"
-                    variant="secondary"
-                    className="!h-6 !text-[9px]"
-                    onClick={() => addReward(q.id, "item")}
-                  >
-                    + Item
-                  </Button>
-                </div>
+                  </div>
+                ))}
               </AccordionContent>
             </AccordionItem>
           ))}

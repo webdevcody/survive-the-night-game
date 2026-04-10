@@ -28,13 +28,18 @@ import {
   normalizeMessageDecals,
   reconcileMessageDecalsWithDecalsLayer,
   reconcileSpawnerMetaWithSpawnsLayer,
+  SPAWNER_META_RESPAWN_INTERVAL_SEC_MAX,
+  SPAWNER_META_RESPAWN_INTERVAL_SEC_MIN,
 } from "@survive-the-night/game-shared/map/world-map-types";
 import type { WorldMapQuestDefinition } from "@survive-the-night/game-shared/map/quest-types";
 import {
   DIALOGUE_NPC_MAX_MESSAGE_LENGTH,
   ITEM_SPAWN_TILE_ID_MIN,
   NPC_DIALOGUE_SURVIVOR_SPAWN_TILE_ID,
-  isNpcDialogueSurvivorSpawnTile,
+  SPAWNER_META_CONFIGURABLE_ENTRIES,
+  SPAWN_TILE_NONE,
+  isNpcDialogueSpawnTile,
+  isNpcHealerDialogueSpawnTile,
 } from "@survive-the-night/game-shared/map/spawn-palette";
 import { reconcileDialogueNpcsWithSpawnsLayer } from "./-utils";
 
@@ -144,7 +149,27 @@ function makeDialogueNpcEntry(
   col: number,
   mapSide: number,
   prev?: WorldMapDialogueNpcEntry,
+  spawnTileId?: number,
 ): WorldMapDialogueNpcEntry {
+  if (
+    !prev &&
+    spawnTileId !== undefined &&
+    isNpcHealerDialogueSpawnTile(spawnTileId)
+  ) {
+    const draft: WorldMapDialogueNpcEntry = {
+      row,
+      col,
+      dialogueSessions: [
+        {
+          when: { type: "always" },
+          lines: ["Rest here a moment. You'll feel better."],
+          healOnDialogueComplete: true,
+        },
+      ],
+    };
+    const [e] = normalizeDialogueNpcs([draft], mapSide);
+    return e!;
+  }
   const hasSessions = prev?.dialogueSessions && prev.dialogueSessions.length > 0;
   const lines = prev?.lines?.length
     ? [...prev.lines]
@@ -175,7 +200,7 @@ interface EditorState {
   collidablesGrid: number[][];
   spawnsGrid: number[][];
   decalsGrid: number[][];
-  /** Dialogue NPC messages keyed by spawns-layer `NPC_DIALOGUE_SURVIVOR_SPAWN_TILE_ID` tiles. */
+  /** Dialogue NPC messages keyed by spawns-layer dialogue NPC tile ids (survivor + healer). */
   dialogueNpcs: WorldMapDialogueNpcEntry[];
   /** Message text for decals-layer `DECAL_TILE_MESSAGE` cells. */
   messageDecals: WorldMapMessageDecalEntry[];
@@ -297,6 +322,10 @@ interface EditorState {
   startSpawnerRelocate: (row: number, col: number) => void;
   cancelSpawnerRelocate: () => void;
   updateSpawnerMetaAt: (row: number, col: number, name: string) => void;
+  /** Whole seconds between respawns; `null` clears override (use map defaults). */
+  updateSpawnerRespawnIntervalSecAt: (row: number, col: number, sec: number | null) => void;
+  /** Change spawns-layer tile id for this cell (player / zombie / item fixture). No-op if invalid. */
+  setSpawnerSpawnTypeAt: (row: number, col: number, newTileId: number) => void;
   /** Clear a non-dialogue spawner tile; no-op if empty or dialogue NPC tile. */
   removeSpawnerAt: (row: number, col: number) => void;
   /** Center the editor camera on a map tile (clamped to viewport). */
@@ -361,7 +390,16 @@ function applyDialogueNpcSpawnAtCell(
   const prevEntry = dialogueNpcs.find((e) => e.row === row && e.col === col);
   const newGrid = replaceCellInGrid(spawnsGrid, row, col, NPC_DIALOGUE_SURVIVOR_SPAWN_TILE_ID);
   let nextDialogue = dialogueNpcs.filter((e) => !(e.row === row && e.col === col));
-  nextDialogue = [...nextDialogue, makeDialogueNpcEntry(row, col, mapSize, prevEntry)];
+  nextDialogue = [
+    ...nextDialogue,
+    makeDialogueNpcEntry(
+      row,
+      col,
+      mapSize,
+      prevEntry,
+      NPC_DIALOGUE_SURVIVOR_SPAWN_TILE_ID,
+    ),
+  ];
   return { spawnsGrid: newGrid, dialogueNpcs: nextDialogue };
 }
 
@@ -544,14 +582,19 @@ export const useEditorStore = create<EditorState>((set, get) => ({
       npcConfigModal: cell,
       ...(cell === null ? { dialogueNpcRelocateFrom: null } : {}),
     }),
-  startDialogueNpcRelocate: (row, col) =>
+  startDialogueNpcRelocate: (row, col) => {
+    const sourceId = get().spawnsGrid[row]?.[col] ?? 0;
+    const selectedTileId = isNpcDialogueSpawnTile(sourceId)
+      ? sourceId
+      : NPC_DIALOGUE_SURVIVOR_SPAWN_TILE_ID;
     set({
       dialogueNpcRelocateFrom: { row, col },
       npcConfigModal: null,
       spawnerRelocateFrom: null,
       activeLayer: "spawns",
-      selectedTileId: NPC_DIALOGUE_SURVIVOR_SPAWN_TILE_ID,
-    }),
+      selectedTileId,
+    });
+  },
   cancelDialogueNpcRelocate: () => {
     const from = get().dialogueNpcRelocateFrom;
     set({
@@ -566,7 +609,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
     }),
   startSpawnerRelocate: (row, col) => {
     const id = get().spawnsGrid[row]?.[col] ?? 0;
-    if (id <= 0 || isNpcDialogueSurvivorSpawnTile(id)) return;
+    if (id <= 0 || isNpcDialogueSpawnTile(id)) return;
     set({
       spawnerRelocateFrom: { row, col },
       spawnerConfigModal: null,
@@ -588,17 +631,77 @@ export const useEditorStore = create<EditorState>((set, get) => ({
     const trimmed = name.trim();
     set((state) => {
       const id = state.spawnsGrid[row]?.[col] ?? 0;
-      if (id <= 0 || isNpcDialogueSurvivorSpawnTile(id)) {
+      if (id <= 0 || isNpcDialogueSpawnTile(id)) {
         return {};
       }
+      const prev = state.spawnerMeta.find((e) => e.row === row && e.col === col);
       const rest = state.spawnerMeta.filter((e) => !(e.row === row && e.col === col));
-      if (!trimmed) {
+      const respawn = prev?.respawnIntervalSec;
+      if (!trimmed && respawn === undefined) {
         return { spawnerMeta: rest };
       }
-      return {
-        spawnerMeta: [...rest, { row, col, name: trimmed.slice(0, 48) }],
-      };
+      const entry: WorldMapSpawnerMetaEntry = { row, col };
+      if (trimmed) {
+        entry.name = trimmed.slice(0, 48);
+      }
+      if (respawn !== undefined) {
+        entry.respawnIntervalSec = respawn;
+      }
+      return { spawnerMeta: [...rest, entry] };
     });
+  },
+  updateSpawnerRespawnIntervalSecAt: (row, col, sec) => {
+    set((state) => {
+      const id = state.spawnsGrid[row]?.[col] ?? 0;
+      if (id <= 0 || isNpcDialogueSpawnTile(id)) {
+        return {};
+      }
+      const prev = state.spawnerMeta.find((e) => e.row === row && e.col === col);
+      const rest = state.spawnerMeta.filter((e) => !(e.row === row && e.col === col));
+      const name = prev?.name?.trim();
+      if (sec === null) {
+        if (!name) {
+          return { spawnerMeta: rest };
+        }
+        return { spawnerMeta: [...rest, { row, col, name: name.slice(0, 48) }] };
+      }
+      const clamped = Math.round(sec);
+      if (
+        clamped < SPAWNER_META_RESPAWN_INTERVAL_SEC_MIN ||
+        clamped > SPAWNER_META_RESPAWN_INTERVAL_SEC_MAX
+      ) {
+        return {};
+      }
+      const entry: WorldMapSpawnerMetaEntry = { row, col, respawnIntervalSec: clamped };
+      if (name) {
+        entry.name = name.slice(0, 48);
+      }
+      return { spawnerMeta: [...rest, entry] };
+    });
+  },
+  setSpawnerSpawnTypeAt: (row, col, newTileId) => {
+    const { saveToHistory, spawnsGrid, dialogueNpcs, selectedSpawnCell } = get();
+    const currentId = spawnsGrid[row]?.[col] ?? 0;
+    if (currentId <= 0 || isNpcDialogueSpawnTile(currentId)) return;
+    if (
+      newTileId === SPAWN_TILE_NONE ||
+      isNpcDialogueSpawnTile(newTileId) ||
+      !SPAWNER_META_CONFIGURABLE_ENTRIES.some((e) => e.id === newTileId)
+    ) {
+      return;
+    }
+    if (newTileId === currentId) return;
+    saveToHistory();
+    const newGrid = replaceCellInGrid(spawnsGrid, row, col, newTileId);
+    const nextDialogue = dialogueNpcs.filter((e) => !(e.row === row && e.col === col));
+    set((s) => ({
+      spawnsGrid: newGrid,
+      dialogueNpcs: nextDialogue,
+      spawnerMeta: reconcileSpawnerMetaWithSpawnsLayer(newGrid, s.spawnerMeta),
+      ...(selectedSpawnCell?.row === row && selectedSpawnCell.col === col
+        ? { selectedTileId: newTileId }
+        : {}),
+    }));
   },
   removeSpawnerAt: (row, col) => {
     const {
@@ -609,7 +712,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
       spawnerRelocateFrom,
     } = get();
     const id = spawnsGrid[row]?.[col] ?? 0;
-    if (id <= 0 || isNpcDialogueSurvivorSpawnTile(id)) return;
+    if (id <= 0 || isNpcDialogueSpawnTile(id)) return;
     saveToHistory();
     const newGrid = replaceCellInGrid(spawnsGrid, row, col, 0);
     const nextRelocate =
@@ -640,9 +743,13 @@ export const useEditorStore = create<EditorState>((set, get) => ({
     get().setCamera(clamp(x, 0, maxX), clamp(y, 0, maxY));
   },
   openDialogueNpcEditor: (row, col) => {
+    const spawnId = get().spawnsGrid[row]?.[col] ?? 0;
+    const selectedTileId = isNpcDialogueSpawnTile(spawnId)
+      ? spawnId
+      : NPC_DIALOGUE_SURVIVOR_SPAWN_TILE_ID;
     set({
       activeLayer: "spawns",
-      selectedTileId: NPC_DIALOGUE_SURVIVOR_SPAWN_TILE_ID,
+      selectedTileId,
       selectedSpawnCell: { row, col },
       npcConfigModal: { row, col },
       spawnerConfigModal: null,
@@ -670,10 +777,10 @@ export const useEditorStore = create<EditorState>((set, get) => ({
     const currentId = spawnsGrid[row]?.[col] ?? 0;
     const mapSize = getMapSideLength(groundGrid);
 
-    if (isNpcDialogueSurvivorSpawnTile(currentId)) {
+    if (isNpcDialogueSpawnTile(currentId)) {
       set({
         activeLayer: "spawns",
-        selectedTileId: NPC_DIALOGUE_SURVIVOR_SPAWN_TILE_ID,
+        selectedTileId: currentId,
         selectedSpawnCell: { row, col },
         npcConfigModal: { row, col },
         spawnerConfigModal: null,
@@ -705,6 +812,9 @@ export const useEditorStore = create<EditorState>((set, get) => ({
         activeLayer: "spawns",
         selectedTileId: targetId,
         selectedSpawnCell: { row, col },
+        spawnerConfigModal: { row, col },
+        npcConfigModal: null,
+        dialogueNpcRelocateFrom: null,
         spawnerRelocateFrom: null,
         sidebarSection: "spawners",
       });
@@ -720,6 +830,9 @@ export const useEditorStore = create<EditorState>((set, get) => ({
       activeLayer: "spawns",
       selectedTileId: targetId,
       selectedSpawnCell: { row, col },
+      spawnerConfigModal: { row, col },
+      npcConfigModal: null,
+      dialogueNpcRelocateFrom: null,
       spawnerRelocateFrom: null,
       sidebarSection: "spawners",
     }));
@@ -803,6 +916,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
         ...q,
         steps: q.steps.map((s) => ({ ...s })),
         rewards: q.rewards.map((r) => ({ ...r })),
+        startRewards: (q.startRewards ?? []).map((r) => ({ ...r })),
       })),
     };
     let next = [...history, snapshot];
@@ -834,6 +948,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
         ...q,
         steps: q.steps.map((s) => ({ ...s })),
         rewards: q.rewards.map((r) => ({ ...r })),
+        startRewards: (q.startRewards ?? []).map((r) => ({ ...r })),
       })),
       history: history.slice(0, -1),
     });
@@ -916,13 +1031,18 @@ export const useEditorStore = create<EditorState>((set, get) => ({
         set({ dialogueNpcRelocateFrom: null });
         return;
       }
+      const sourceTileId = spawnsGrid[fr]?.[fc] ?? 0;
+      if (!isNpcDialogueSpawnTile(sourceTileId)) {
+        set({ dialogueNpcRelocateFrom: null });
+        return;
+      }
       saveToHistory();
       const mapSize = getMapSideLength(groundGrid);
       let newGrid = replaceCellInGrid(spawnsGrid, fr, fc, 0);
-      newGrid = replaceCellInGrid(newGrid, row, col, NPC_DIALOGUE_SURVIVOR_SPAWN_TILE_ID);
+      newGrid = replaceCellInGrid(newGrid, row, col, sourceTileId);
       const normalized = normalizeDialogueNpcs([{ ...entry, row, col }], mapSize);
       const movedEntry =
-        normalized[0] ?? makeDialogueNpcEntry(row, col, mapSize, entry);
+        normalized[0] ?? makeDialogueNpcEntry(row, col, mapSize, entry, sourceTileId);
       const nextDialogue = [
         ...dialogueNpcs.filter((e) => !(e.row === fr && e.col === fc)),
         movedEntry,
@@ -948,7 +1068,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
       const destId = spawnsGrid[row]?.[col] ?? 0;
       if (destId > 0) return;
       const sourceId = spawnsGrid[fr]?.[fc] ?? 0;
-      if (sourceId <= 0 || isNpcDialogueSurvivorSpawnTile(sourceId)) {
+      if (sourceId <= 0 || isNpcDialogueSpawnTile(sourceId)) {
         set({ spawnerRelocateFrom: null });
         return;
       }
@@ -959,8 +1079,22 @@ export const useEditorStore = create<EditorState>((set, get) => ({
       const restMeta = spawnerMeta.filter(
         (e) => !((e.row === fr && e.col === fc) || (e.row === row && e.col === col)),
       );
-      const nextSpawnerMetaRaw = metaAtSource?.name
-        ? [...restMeta, { row, col, name: metaAtSource.name }]
+      const movedName = metaAtSource?.name?.trim();
+      const hasMovedMeta =
+        !!metaAtSource &&
+        (!!movedName || metaAtSource.respawnIntervalSec !== undefined);
+      const nextSpawnerMetaRaw = hasMovedMeta
+        ? [
+            ...restMeta,
+            {
+              row,
+              col,
+              ...(movedName ? { name: movedName.slice(0, 48) } : {}),
+              ...(metaAtSource!.respawnIntervalSec !== undefined
+                ? { respawnIntervalSec: metaAtSource!.respawnIntervalSec }
+                : {}),
+            },
+          ]
         : restMeta;
       const nextDialogue = dialogueNpcs.filter(
         (e) => !((e.row === fr && e.col === fc) || (e.row === row && e.col === col)),
@@ -980,7 +1114,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
     if (!paintStroke) {
       const cur = spawnsGrid[row]?.[col] ?? 0;
       if (cur > 0) {
-        if (isNpcDialogueSurvivorSpawnTile(cur)) {
+        if (isNpcDialogueSpawnTile(cur)) {
           set({
             selectedSpawnCell: { row, col },
             npcConfigModal: { row, col },
@@ -1073,11 +1207,14 @@ export const useEditorStore = create<EditorState>((set, get) => ({
             newSpawns[r][c] = selectedTileId;
           }
         }
-        if (selectedTileId === NPC_DIALOGUE_SURVIVOR_SPAWN_TILE_ID) {
+        if (isNpcDialogueSpawnTile(selectedTileId)) {
           for (let r = r0; r < r1; r++) {
             for (let c = c0; c < c1; c++) {
               const prev = prevMap.get(`${r},${c}`);
-              nextDialogue = [...nextDialogue, makeDialogueNpcEntry(r, c, mapSize, prev)];
+              nextDialogue = [
+                ...nextDialogue,
+                makeDialogueNpcEntry(r, c, mapSize, prev, selectedTileId),
+              ];
             }
           }
         }
@@ -1104,8 +1241,11 @@ export const useEditorStore = create<EditorState>((set, get) => ({
       const mapSize = getMapSideLength(groundGrid);
       const prevEntry = dialogueNpcs.find((e) => e.row === row && e.col === col);
       let nextDialogue = dialogueNpcs.filter((e) => !(e.row === row && e.col === col));
-      if (newTileId === NPC_DIALOGUE_SURVIVOR_SPAWN_TILE_ID) {
-        nextDialogue = [...nextDialogue, makeDialogueNpcEntry(row, col, mapSize, prevEntry)];
+      if (isNpcDialogueSpawnTile(newTileId)) {
+        nextDialogue = [
+          ...nextDialogue,
+          makeDialogueNpcEntry(row, col, mapSize, prevEntry, newTileId),
+        ];
       }
       set((s) => ({
         spawnsGrid: newGrid,
@@ -1113,7 +1253,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
         spawnerMeta: reconcileSpawnerMetaWithSpawnsLayer(newGrid, s.spawnerMeta),
         spawnerConfigModal:
           s.spawnerConfigModal?.row === row && s.spawnerConfigModal?.col === col &&
-          (newTileId === 0 || isNpcDialogueSurvivorSpawnTile(newTileId))
+          (newTileId === 0 || isNpcDialogueSpawnTile(newTileId))
             ? null
             : s.spawnerConfigModal,
       }));

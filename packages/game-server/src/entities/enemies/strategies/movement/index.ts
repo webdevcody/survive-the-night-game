@@ -1,4 +1,3 @@
-export { IdleMovementStrategy } from "./idle-movement";
 export { MeleeMovementStrategy } from "./melee-movement";
 export { RangedMovementStrategy } from "./ranged-movement";
 export { LeapingMovementStrategy, LeapingState } from "./leaping-movement";

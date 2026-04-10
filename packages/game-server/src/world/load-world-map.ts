@@ -22,7 +22,7 @@ export interface WorldMapFile {
   messageDecals?: WorldMapMessageDecalEntry[];
   /** Optional authored quests (see `WorldMapQuestDefinition`). */
   quests?: WorldMapQuestDefinition[];
-  /** Optional spawner labels from the map editor (not used by the server yet). */
+  /** Optional spawner labels and respawn overrides from the map editor. */
   spawnerMeta?: WorldMapSpawnerMetaEntry[];
 }
 

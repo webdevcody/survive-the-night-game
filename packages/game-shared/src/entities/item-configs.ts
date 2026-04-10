@@ -25,6 +25,30 @@ export const ITEM_CONFIGS: Record<string, ItemConfig> = {
       components: [{ type: "cloth", count: 3 }],
     },
   },
+  pain_pills: {
+    id: "pain_pills",
+    category: "consumable",
+    assets: {
+      assetKey: "pain_pills",
+      x: 80,
+      y: 48,
+      sheet: "items",
+    },
+    healable: true,
+    spawn: {
+      enabled: true,
+      chance: 0.006,
+    },
+    merchant: {
+      enabled: true,
+      buyable: true,
+      price: 6,
+    },
+    recipe: {
+      enabled: true,
+      components: [{ type: "cloth", count: 1 }],
+    },
+  },
   pistol_ammo: {
     id: "pistol_ammo",
     category: "ammo",

@@ -17,7 +17,6 @@ import { beginInteractionTextFrame, flushInteractionText } from "./util/interact
 import { PlayerClient } from "./entities/player";
 import { DEBUG_PERFORMANCE } from "@shared/debug";
 import { isWeapon } from "@shared/util/inventory";
-import { FISTS_INVENTORY_SENTINEL } from "@shared/constants/inventory-sentinel";
 import { Entities } from "@shared/constants";
 import { getConfig } from "@shared/config";
 import { getPlayer } from "./util/get-player";
@@ -331,6 +330,11 @@ export class Renderer {
     this.mousePosition = { x, y };
   }
 
+  /** Last canvas-space mouse position when aim/crosshair updates are active, or null. */
+  public getMousePosition(): { x: number; y: number } | null {
+    return this.mousePosition;
+  }
+
   /**
    * Render crosshair cursor when a weapon is equipped
    */
@@ -344,37 +348,11 @@ export class Renderer {
     // Defensive check: ensure player has inventory extension
     if (!player.hasExt(ClientInventory)) return;
 
-    // Get player's active inventory item
     const inventory = player.getInventory();
     if (!inventory || !Array.isArray(inventory)) return;
 
-    // Check if inputInventoryItem is actually set (not undefined/null)
-    // This property comes from server and might not be initialized initially
-    const inputInventoryItem = (player as any).inputInventoryItem;
-    const hasServerSlotData = inputInventoryItem !== undefined && inputInventoryItem !== null;
-
-    let hasWeapon = false;
-
-    if (hasServerSlotData) {
-      if (inputInventoryItem === FISTS_INVENTORY_SENTINEL) {
-        hasWeapon = true;
-      } else {
-        const selectedSlot = player.getSelectedInventorySlot();
-        const activeSlot = selectedSlot >= 0 ? selectedSlot + 1 : 1;
-        const activeItem = inventory[activeSlot - 1];
-        hasWeapon = !!(activeItem && isWeapon(activeItem.itemType));
-      }
-    } else {
-      // If server slot data isn't available yet, check all inventory slots for any weapon
-      // This handles the case where inputInventoryItem hasn't been synced from the server yet
-      for (let i = 0; i < inventory.length; i++) {
-        const item = inventory[i];
-        if (item && isWeapon(item.itemType)) {
-          hasWeapon = true;
-          break;
-        }
-      }
-    }
+    const weaponItem = player.getResolvedLoadoutWeaponItem();
+    const hasWeapon = !!(weaponItem && isWeapon(weaponItem.itemType));
 
     if (!hasWeapon) return;
 

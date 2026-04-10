@@ -3,7 +3,7 @@ import { AssetManager } from "@/managers/asset";
 import { GameState, getEntityById } from "@/state";
 import { ClientEntity } from "@/entities/client-entity";
 import { Renderable } from "@/entities/util";
-import { ClientInteractive, ClientPositionable } from "@/extensions";
+import { ClientInteractive, ClientInventory, ClientPositionable } from "@/extensions";
 import { Z_INDEX } from "@shared/map";
 import { DIALOGUE_NPC_MAX_LINE_COUNT } from "@shared/map/spawn-palette";
 import { Direction } from "@shared/util/direction";
@@ -87,7 +87,11 @@ export class DialogueSurvivorNpcClient extends ClientEntity implements Renderabl
   private pickSession(gameState: GameState): WorldMapDialogueNpcSession {
     const p = getPlayer(gameState);
     const st = p?.getQuestProgressPayload() ?? emptyPlayerQuestState();
-    return pickDialogueNpcSession(this.dialogueSessions, st);
+    const hasItemType =
+      p?.hasExt(ClientInventory) === true
+        ? (itemType: string) => p.getExt(ClientInventory).hasItem(itemType)
+        : () => false;
+    return pickDialogueNpcSession(this.dialogueSessions, st, hasItemType);
   }
 
   /** Lines for the active session. */

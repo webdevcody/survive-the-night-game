@@ -1,7 +1,10 @@
 import { getConfig } from "@survive-the-night/game-shared/config";
 import type { WorldMapDialogueNpcEntry } from "@survive-the-night/game-shared/map/world-map-types";
 import { normalizeDialogueNpcs } from "@survive-the-night/game-shared/map/world-map-types";
-import { NPC_DIALOGUE_SURVIVOR_SPAWN_TILE_ID } from "@survive-the-night/game-shared/map/spawn-palette";
+import {
+  isNpcDialogueSpawnTile,
+  isNpcHealerDialogueSpawnTile,
+} from "@survive-the-night/game-shared/map/spawn-palette";
 
 /** Full world width/height in tiles (MAP_SIZE biomes × BIOME_SIZE tiles each). */
 export function getFullMapTileCount(): number {
@@ -12,6 +15,26 @@ export function getFullMapTileCount(): number {
 /** Prefer loaded grid size so the editor stays correct when map dimensions differ from bundled config (e.g. after expand, before HMR). */
 export function getMapSideLength(groundGrid: number[][]): number {
   return groundGrid.length > 0 ? groundGrid.length : getFullMapTileCount();
+}
+
+export interface EditorCameraViewport {
+  cameraX: number;
+  cameraY: number;
+  viewportWidthTiles: number;
+  viewportHeightTiles: number;
+  mapSize: number;
+}
+
+/** Whether a map cell is inside the editor's visible tile rectangle (top-left camera + viewport), clipped to the map. */
+export function isMapCellInEditorCameraView(
+  row: number,
+  col: number,
+  viewport: EditorCameraViewport,
+): boolean {
+  const { cameraX, cameraY, viewportWidthTiles, viewportHeightTiles, mapSize } = viewport;
+  const maxRow = Math.min(cameraY + viewportHeightTiles, mapSize);
+  const maxCol = Math.min(cameraX + viewportWidthTiles, mapSize);
+  return row >= cameraY && row < maxRow && col >= cameraX && col < maxCol;
 }
 
 /** Default on-screen tile size (CSS px) for the main map canvas; pinch zoom scales this. */
@@ -50,6 +73,18 @@ const defaultDialogueEntry = (row: number, col: number): WorldMapDialogueNpcEntr
   message: "Hello!",
 });
 
+const defaultHealerDialogueEntry = (row: number, col: number): WorldMapDialogueNpcEntry => ({
+  row,
+  col,
+  dialogueSessions: [
+    {
+      when: { type: "always" },
+      lines: ["Rest here a moment. You'll feel better."],
+      healOnDialogueComplete: true,
+    },
+  ],
+});
+
 /**
  * Ensures every dialogue-NPC spawn tile has a `dialogueNpcs` entry (default message if missing).
  * Preserves full authored fields (name, grantQuestId, lines) per tile when reconciling.
@@ -67,10 +102,17 @@ export function reconcileDialogueNpcsWithSpawnsLayer(
   const out: WorldMapDialogueNpcEntry[] = [];
   for (let row = 0; row < n; row++) {
     for (let col = 0; col < n; col++) {
-      if (spawns[row][col] === NPC_DIALOGUE_SURVIVOR_SPAWN_TILE_ID) {
+      const spawnId = spawns[row][col] ?? 0;
+      if (isNpcDialogueSpawnTile(spawnId)) {
         const k = `${row},${col}`;
         const prev = byKey.get(k);
-        out.push(prev ? { ...prev, row, col } : defaultDialogueEntry(row, col));
+        if (prev) {
+          out.push({ ...prev, row, col });
+        } else if (isNpcHealerDialogueSpawnTile(spawnId)) {
+          out.push(defaultHealerDialogueEntry(row, col));
+        } else {
+          out.push(defaultDialogueEntry(row, col));
+        }
       }
     }
   }

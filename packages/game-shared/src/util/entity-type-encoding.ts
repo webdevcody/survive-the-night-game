@@ -5,6 +5,11 @@ import { EntityType } from "../types/entity";
  * Entity Type Registry
  * Maps entity type strings to unique numeric IDs (0-255, 1 byte)
  * This allows efficient serialization of entity types
+ *
+ * Wire IDs follow `Object.values(Entities)` order — the same insertion order as
+ * `generateEntities()` (per-registry config order). Do **not** sort alphabetically:
+ * that renumbered every id whenever a new type appeared between existing names.
+ * Add new entity configs at the **end** of their registry / object where possible.
  */
 class EntityTypeRegistry {
   private typeToId: Map<EntityType, number> = new Map();
@@ -22,13 +27,9 @@ class EntityTypeRegistry {
 
     const entityTypes = Object.values(Entities) as EntityType[];
 
-    // Sort entity types for consistent ordering
-    const sortedTypes = [...entityTypes].sort();
-
-    // Assign IDs starting from 0
-    sortedTypes.forEach((type, index) => {
+    entityTypes.forEach((type, index) => {
       if (index > 255) {
-        throw new Error(`Too many entity types (${sortedTypes.length}). Maximum is 256 (0-255)`);
+        throw new Error(`Too many entity types (${entityTypes.length}). Maximum is 256 (0-255)`);
       }
       this.typeToId.set(type, index);
       this.idToType.set(index, type);

@@ -17,13 +17,15 @@ import { EntityType } from "@shared/types/entity";
 import { ZombieDeathEvent } from "../../../../game-shared/src/events/server-sent/events/zombie-death-event";
 import { ZombieHurtEvent } from "../../../../game-shared/src/events/server-sent/events/zombie-hurt-event";
 import { EntityCategory, EntityCategories, ZombieConfig, zombieRegistry } from "@shared/entities";
-import { IdleMovementStrategy } from "./strategies/movement/idle-movement";
 import { getConfig } from "@shared/config";
 import { balanceConfig } from "@shared/config/balance-config";
 import { Blood } from "@/entities/effects/blood";
-import { distance } from "@shared/util/physics";
+import { distance, normalizeVector, pathTowards, velocityTowards } from "@/util/physics";
 import { Player } from "@/entities/players/player";
 import { gameEventBus } from "@/services/game-event-bus";
+import Snared from "@/extensions/snared";
+import { ZombieAlertedEvent } from "../../../../game-shared/src/events/server-sent/events/zombie-alerted-event";
+import { calculateSeparationForce, blendSeparationForce } from "./strategies/separation";
 
 export interface MovementStrategy {
   // Return true if the strategy handled movement completely, false if it needs default movement handling
@@ -35,6 +37,19 @@ export interface AttackStrategy {
 }
 
 import { SerializableFields } from "@/util/serializable-fields";
+
+/** How spawn-leash handled movement this tick (flying patrol integrates position like FlyTowardsPlayerStrategy). */
+type LeashMovementMode = "chasing" | "patrol_ground" | "patrol_air";
+
+interface ResolvedLeashParams {
+  wanderRadius: number;
+  maxPlayerDistanceFromSpawn: number;
+  activationRadius: number;
+  wanderMoveDuration: number;
+  wanderPauseDuration: number;
+  wanderSpeed: number;
+  wanderLookahead: number;
+}
 
 export abstract class BaseEnemy extends Entity {
   // Internal state (not serialized)
@@ -51,6 +66,23 @@ export abstract class BaseEnemy extends Entity {
   private attackStrategy?: AttackStrategy;
   protected config: ZombieConfig;
   private hasBeenLooted: boolean = false;
+
+  /**
+   * Spawn-anchored patrol + chase leash (all enemies).
+   * Anchor is set on first live update from the zombie’s center (or via setSpawnAnchor after placement).
+   * Patrol: wander inside wanderRadius; if outside, path home. Chase starts when a player is within
+   * activationRadius of the zombie; ends when the closest player is farther than maxPlayerDistanceFromSpawn
+   * from the anchor. See entityConfig ZOMBIE_LEASH_* and optional ZombieConfig.leash overrides.
+   */
+  private spawnAnchor: Vector2 | null = null;
+  private isLeashChasing: boolean = false;
+  private leashPlayerCheckTimer: number = Math.random() * getConfig().entity.PLAYER_CHECK_INTERVAL;
+  private leashPathRecalcTimer: number =
+    Math.random() * getConfig().entity.PATH_RECALCULATION_INTERVAL;
+  private leashWaypoint: Vector2 | null = null;
+  private leashWanderTimer: number = Math.random() * getConfig().entity.ZOMBIE_LEASH_WANDER_PAUSE_DURATION;
+  private leashWanderDirection: Vector2 | null = null;
+  private leashWanderMoving: boolean = false;
 
   constructor(gameManagers: IGameManagers, entityType: EntityType, config?: ZombieConfig) {
     super(gameManagers, entityType);
@@ -77,7 +109,10 @@ export abstract class BaseEnemy extends Entity {
     const adjustedDropChance =
       this.config.stats.dropChance * balanceConfig.ZOMBIE_ITEM_DROP_MULTIPLIER;
     this.addExtension(
-      new Inventory(this, gameManagers.getBroadcaster()).addRandomItem(adjustedDropChance)
+      new Inventory(this, gameManagers.getBroadcaster()).addRandomItem(
+        adjustedDropChance,
+        this.config.dropTable
+      )
     );
     this.addExtension(
       new Destructible(this)
@@ -106,9 +141,243 @@ export abstract class BaseEnemy extends Entity {
     this.attackStrategy = strategy;
   }
 
+  /** Override the auto-captured spawn anchor (e.g. debug spawns after setPosition). */
+  setSpawnAnchor(position: Vector2): void {
+    this.spawnAnchor = position.clone();
+  }
+
   protected setCurrentWaypoint(waypoint: Vector2 | null) {
     this.currentWaypoint = waypoint;
     this.serialized.set("debugWaypoint", waypoint);
+  }
+
+  private ensureSpawnAnchor(): void {
+    if (this.spawnAnchor !== null) {
+      return;
+    }
+    this.spawnAnchor = this.getCenterPosition().clone();
+  }
+
+  private resolveLeashParams(): ResolvedLeashParams {
+    const e = getConfig().entity;
+    const o = this.config.leash;
+    return {
+      wanderRadius: o?.wanderRadius ?? e.ZOMBIE_LEASH_WANDER_RADIUS,
+      maxPlayerDistanceFromSpawn: o?.maxPlayerDistanceFromSpawn ?? e.ZOMBIE_LEASH_MAX_PLAYER_DISTANCE_FROM_SPAWN,
+      activationRadius: o?.activationRadius ?? e.IDLE_ACTIVATION_RADIUS,
+      wanderMoveDuration: o?.wanderMoveDuration ?? e.ZOMBIE_LEASH_WANDER_MOVE_DURATION,
+      wanderPauseDuration: o?.wanderPauseDuration ?? e.ZOMBIE_LEASH_WANDER_PAUSE_DURATION,
+      wanderSpeed: o?.wanderSpeed ?? e.ZOMBIE_LEASH_WANDER_SPEED,
+      wanderLookahead: o?.wanderLookahead ?? e.ZOMBIE_LEASH_WANDER_LOOKAHEAD,
+    };
+  }
+
+  private isFlyingEnemy(): boolean {
+    return (
+      this.config.movementStrategy === "flying" || this.config.movementStrategy === "cross-dive"
+    );
+  }
+
+  private resetLeashPatrolMotion(): void {
+    this.leashWaypoint = null;
+    this.leashPathRecalcTimer = 0;
+    this.leashWanderMoving = false;
+    this.leashWanderTimer = 0;
+    this.leashWanderDirection = null;
+  }
+
+  private updateLeashChasingState(deltaTime: number, params: ResolvedLeashParams): void {
+    this.leashPlayerCheckTimer += deltaTime;
+    if (this.leashPlayerCheckTimer < getConfig().entity.PLAYER_CHECK_INTERVAL) {
+      return;
+    }
+    this.leashPlayerCheckTimer = 0;
+    if (!this.spawnAnchor) {
+      return;
+    }
+
+    const prev = this.isLeashChasing;
+    const player = this.getEntityManager().getClosestAlivePlayer(this);
+
+    if (!player || !player.hasExt(Positionable)) {
+      this.isLeashChasing = false;
+    } else {
+      const playerPos = player.getExt(Positionable).getCenterPosition();
+      const zombiePos = this.getCenterPosition();
+      const distToPlayer = distance(zombiePos, playerPos);
+      const dPlayerToAnchor = distance(playerPos, this.spawnAnchor);
+      if (this.isLeashChasing) {
+        if (dPlayerToAnchor > params.maxPlayerDistanceFromSpawn) {
+          this.isLeashChasing = false;
+        }
+      } else if (distToPlayer <= params.activationRadius) {
+        this.isLeashChasing = true;
+      }
+    }
+
+    if (!prev && this.isLeashChasing) {
+      this.resetLeashPatrolMotion();
+      const zPos = this.getCenterPosition();
+      this.getGameManagers()
+        .getBroadcaster()
+        .broadcastEvent(new ZombieAlertedEvent(this.getId(), { x: zPos.x, y: zPos.y }));
+    }
+
+    if (prev && !this.isLeashChasing) {
+      this.leashWaypoint = null;
+      this.leashPathRecalcTimer = 0;
+    }
+  }
+
+  /**
+   * Patrol target for pathfinding / direct flight: spawn when outside wander disc, random wander
+   * lookahead when inside, or null when paused between wander legs.
+   */
+  private computeLeashPatrolTarget(
+    deltaTime: number,
+    zombiePos: Vector2,
+    anchor: Vector2,
+    params: ResolvedLeashParams,
+  ): Vector2 | null {
+    const distFromAnchor = distance(zombiePos, anchor);
+    if (distFromAnchor > params.wanderRadius) {
+      return anchor.clone();
+    }
+
+    this.leashWanderTimer += deltaTime;
+
+    if (this.leashWanderMoving) {
+      if (this.leashWanderTimer >= params.wanderMoveDuration) {
+        this.leashWanderMoving = false;
+        this.leashWanderTimer = 0;
+        this.leashWanderDirection = null;
+        return null;
+      }
+      if (!this.leashWanderDirection) {
+        return null;
+      }
+      const poolManager = PoolManager.getInstance();
+      const lookahead = params.wanderLookahead;
+      const t = poolManager.vector2.claim(
+        zombiePos.x + this.leashWanderDirection.x * lookahead,
+        zombiePos.y + this.leashWanderDirection.y * lookahead,
+      );
+      const d = distance(t, anchor);
+      if (d > params.wanderRadius) {
+        const scale = params.wanderRadius / d;
+        t.x = anchor.x + (t.x - anchor.x) * scale;
+        t.y = anchor.y + (t.y - anchor.y) * scale;
+      }
+      const out = t.clone();
+      poolManager.vector2.release(t);
+      return out;
+    }
+
+    if (this.leashWanderTimer >= params.wanderPauseDuration) {
+      this.leashWanderMoving = true;
+      this.leashWanderTimer = 0;
+      const angle = Math.random() * Math.PI * 2;
+      const poolManager = PoolManager.getInstance();
+      const raw = poolManager.vector2.claim(Math.cos(angle), Math.sin(angle));
+      this.leashWanderDirection = normalizeVector(raw);
+      poolManager.vector2.release(raw);
+    }
+    return null;
+  }
+
+  private applySpawnLeashBehavior(deltaTime: number): LeashMovementMode {
+    this.ensureSpawnAnchor();
+    const params = this.resolveLeashParams();
+    const zombiePos = this.getCenterPosition();
+    const anchor = this.spawnAnchor!;
+
+    this.updateLeashChasingState(deltaTime, params);
+
+    if (this.hasExt(Snared)) {
+      const poolManager = PoolManager.getInstance();
+      this.getExt(Movable).setVelocity(poolManager.vector2.claim(0, 0));
+      return "patrol_ground";
+    }
+
+    if (this.isLeashChasing) {
+      return "chasing";
+    }
+
+    const patrolTarget = this.computeLeashPatrolTarget(deltaTime, zombiePos, anchor, params);
+    const mapManager = this.getGameManagers().getMapManager();
+
+    if (this.isFlyingEnemy()) {
+      const movable = this.getExt(Movable);
+      const poolManager = PoolManager.getInstance();
+      if (!patrolTarget) {
+        movable.setVelocity(poolManager.vector2.claim(0, 0));
+        return "patrol_air";
+      }
+      const pathfindingVelocity = velocityTowards(zombiePos.clone(), patrolTarget.clone());
+      const pathfindingVelScaled = poolManager.vector2.claim(
+        pathfindingVelocity.x * params.wanderSpeed,
+        pathfindingVelocity.y * params.wanderSpeed,
+      );
+      const separationForce = calculateSeparationForce(this);
+      const finalVelocity = blendSeparationForce(pathfindingVelScaled, separationForce);
+      movable.setVelocity(finalVelocity);
+      poolManager.vector2.release(pathfindingVelScaled);
+      poolManager.vector2.release(separationForce);
+      poolManager.vector2.release(finalVelocity);
+
+      const position = this.getPosition();
+      position.x += movable.getVelocity().x * deltaTime;
+      position.y += movable.getVelocity().y * deltaTime;
+      this.setPosition(position);
+      return "patrol_air";
+    }
+
+    if (!patrolTarget) {
+      const poolManager = PoolManager.getInstance();
+      this.getExt(Movable).setVelocity(poolManager.vector2.claim(0, 0));
+      this.leashWaypoint = null;
+      return "patrol_ground";
+    }
+
+    this.leashPathRecalcTimer += deltaTime;
+    const waypointThreshold = getConfig().entity.WAYPOINT_REACHED_THRESHOLD;
+    const distWaypoint = this.leashWaypoint
+      ? zombiePos.clone().sub(this.leashWaypoint).length()
+      : Infinity;
+    const needNewWaypoint =
+      !this.leashWaypoint ||
+      distWaypoint <= waypointThreshold ||
+      this.leashPathRecalcTimer >= getConfig().entity.PATH_RECALCULATION_INTERVAL;
+
+    if (needNewWaypoint) {
+      this.leashWaypoint = pathTowards(
+        zombiePos.clone(),
+        patrolTarget.clone(),
+        mapManager.getGroundLayer(),
+        mapManager.getCollidablesLayer(),
+      );
+      this.leashPathRecalcTimer = 0;
+    }
+
+    if (this.leashWaypoint) {
+      const pathfindingVelocity = velocityTowards(zombiePos.clone(), this.leashWaypoint.clone());
+      const poolManager = PoolManager.getInstance();
+      const pathfindingVelScaled = poolManager.vector2.claim(
+        pathfindingVelocity.x * params.wanderSpeed,
+        pathfindingVelocity.y * params.wanderSpeed,
+      );
+      const separationForce = calculateSeparationForce(this);
+      const finalVelocity = blendSeparationForce(pathfindingVelScaled, separationForce);
+      this.getExt(Movable).setVelocity(finalVelocity);
+      poolManager.vector2.release(pathfindingVelScaled);
+      poolManager.vector2.release(separationForce);
+      poolManager.vector2.release(finalVelocity);
+    } else {
+      const poolManager = PoolManager.getInstance();
+      this.getExt(Movable).setVelocity(poolManager.vector2.claim(0, 0));
+    }
+
+    return "patrol_ground";
   }
 
   onDamaged(): void {
@@ -269,53 +538,45 @@ export abstract class BaseEnemy extends Entity {
       return;
     }
 
-    // Track movement strategy update
+    // Spawn leash + patrol, or delegate to movement strategy when chasing
     const endMovementStrategy =
       tickPerformanceTracker?.startMethod("movementStrategy", "updateEnemy") || (() => {});
     let handledMovement = false;
-    if (this.movementStrategy) {
-      // Let the strategy decide if it wants to handle movement completely
-      handledMovement = this.movementStrategy.update(this, deltaTime);
+    const leashMode = this.applySpawnLeashBehavior(deltaTime);
+    if (leashMode === "chasing") {
+      if (this.movementStrategy) {
+        handledMovement = this.movementStrategy.update(this, deltaTime);
+      }
+      if (!handledMovement) {
+        this.handleMovement(deltaTime);
+      }
+    } else if (leashMode === "patrol_ground") {
+      this.handleMovement(deltaTime);
     }
     endMovementStrategy();
 
-    // Track default movement handling (if needed)
     const endHandleMovement =
       tickPerformanceTracker?.startMethod("handleMovement", "updateEnemy") || (() => {});
-    if (!handledMovement) {
-      this.handleMovement(deltaTime);
-    }
     endHandleMovement();
 
-    // Track attack strategy update
-    // For idle zombies, only run attack strategy if there's a nearby player (quick check first)
-    // This avoids expensive entity queries when zombies are idle and far from players
     const endAttackStrategy =
       tickPerformanceTracker?.startMethod("attackStrategy", "updateEnemy") || (() => {});
     if (this.attackStrategy) {
-      // Quick check: if this is an idle zombie, only attack if player is nearby
-      // This prevents expensive queries when zombies are idle and far away
-      const isIdleZombie = this.movementStrategy instanceof IdleMovementStrategy;
-      if (isIdleZombie) {
-        // Quick player check before expensive attack queries
+      let shouldRunAttack = this.isLeashChasing;
+      if (!shouldRunAttack) {
         const quickPlayerCheck =
           tickPerformanceTracker?.startMethod("quickPlayerCheck", "attackStrategy") || (() => {});
         const player = this.getEntityManager().getClosestAlivePlayer(this);
         quickPlayerCheck();
-
-        // Only run attack strategy if player is nearby (within reasonable attack range)
         if (player && player.hasExt(Positionable)) {
           const playerPos = player.getExt(Positionable).getCenterPosition();
           const zombiePos = this.getCenterPosition();
           const distanceToPlayer = distance(zombiePos, playerPos);
-          const maxAttackRange = getConfig().combat.ZOMBIE_ATTACK_RADIUS + 100; // Add buffer
-
-          if (distanceToPlayer <= maxAttackRange) {
-            this.attackStrategy.update(this, deltaTime);
-          }
+          const maxAttackRange = getConfig().combat.ZOMBIE_ATTACK_RADIUS + 100;
+          shouldRunAttack = distanceToPlayer <= maxAttackRange;
         }
-      } else {
-        // Non-idle zombies always run attack strategy
+      }
+      if (shouldRunAttack) {
         this.attackStrategy.update(this, deltaTime);
       }
     }

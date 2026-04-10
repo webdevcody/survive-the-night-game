@@ -1,6 +1,51 @@
 import { weaponRegistry, type WeaponLoadoutSlotKey } from "../entities/weapon-registry";
+import type { InventoryItem } from "./inventory";
 
 export type { WeaponLoadoutSlotKey };
+
+/** Bag index and item for the weapon in the active loadout row, or null if fists / invalid. */
+export type ResolvedLoadoutWeapon = { item: InventoryItem; bagIndex1Based: number };
+
+/**
+ * Same rules as server Player.resolveAttackWeaponItem (weapon path only).
+ * Used by client held sprite, crosshair, and server combat resolution.
+ */
+export function resolveAttackWeaponFromLoadout(
+  inventory: (InventoryItem | null)[],
+  maxSlots: number,
+  activeWeaponLoadout: number,
+  weaponLoadoutPrimary: number,
+  weaponLoadoutSecondary: number,
+  weaponLoadoutMelee: number
+): ResolvedLoadoutWeapon | null {
+  const at = (idx: number): InventoryItem | null =>
+    idx >= 1 && idx <= maxSlots ? inventory[idx - 1] ?? null : null;
+
+  const lo = Math.floor(activeWeaponLoadout);
+
+  if (lo === 0) {
+    const idx = weaponLoadoutPrimary;
+    if (idx < 1) return null;
+    const item = at(idx);
+    if (!item || !itemMatchesLoadoutRow(item.itemType, 0)) return null;
+    return { item, bagIndex1Based: idx };
+  }
+  if (lo === 1) {
+    const idx = weaponLoadoutSecondary;
+    if (idx < 1) return null;
+    const item = at(idx);
+    if (!item || !itemMatchesLoadoutRow(item.itemType, 1)) return null;
+    return { item, bagIndex1Based: idx };
+  }
+  if (lo === 2) {
+    const idx = weaponLoadoutMelee;
+    if (idx < 1) return null;
+    const item = at(idx);
+    if (!item || !itemMatchesLoadoutRow(item.itemType, 2)) return null;
+    return { item, bagIndex1Based: idx };
+  }
+  return null;
+}
 
 export function weaponLoadoutSlotKeyToIndex(key: WeaponLoadoutSlotKey): 0 | 1 | 2 {
   if (key === "primary") return 0;

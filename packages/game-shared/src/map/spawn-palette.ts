@@ -1,7 +1,8 @@
 /**
  * World map `spawns` layer tile IDs (shared by editor + game-server).
  * Must stay in sync with ZombieFactory.ZombieType order for indices 2–6.
- * Item fixture tile IDs start at ITEM_SPAWN_TILE_ID_MIN (see ITEM_FIXTURE_SPAWN_TYPES).
+ * Item fixture tile IDs: ITEM_SPAWN_TILE_ID_MIN .. ITEM_SPAWN_TILE_ID_END-1 (see ITEM_FIXTURE_SPAWN_TYPES).
+ * Dialogue NPCs: fixed ids 250–251 (see rewriteSpawnsLayerDialogueNpcTiles on map load).
  */
 import { ENTITY_REGISTRATION_CONFIG } from "../config/entity-registration";
 import type { EntityType } from "../types/entity";
@@ -20,27 +21,51 @@ export type SpawnZombiePaletteType = (typeof SPAWN_ZOMBIE_TYPES)[number];
 const ITEM_FIXTURE_EXCLUDED_TYPES = new Set<EntityType>(["boundary", "crate"]);
 
 /**
- * Pickup types placeable as item spawn fixtures (registration order = stable tile IDs from 7 upward).
+ * Types that must appear **after** all other fixture types in tile-ID order.
+ * Spawns-layer tile IDs 7+ are indices into `ITEM_FIXTURE_SPAWN_TYPES`. Inserting a new type
+ * in the middle of `ENTITY_REGISTRATION_CONFIG` would shift every later index and break
+ * existing maps — so new pickup fixtures go here (append-only) until we version the map format.
  */
-export const ITEM_FIXTURE_SPAWN_TYPES: readonly EntityType[] = ENTITY_REGISTRATION_CONFIG.filter(
-  (e) =>
-    (e.category === "items" || e.category === "ammo" || e.category === "weapons") &&
-    !ITEM_FIXTURE_EXCLUDED_TYPES.has(e.type),
-).map((e) => e.type);
+const ITEM_FIXTURE_APPEND_ONLY_TYPES = new Set<EntityType>(["pain_pills"]);
+
+function buildItemFixtureSpawnTypes(): EntityType[] {
+  const registrationOrder = ENTITY_REGISTRATION_CONFIG.filter(
+    (e) =>
+      (e.category === "items" || e.category === "ammo" || e.category === "weapons") &&
+      !ITEM_FIXTURE_EXCLUDED_TYPES.has(e.type),
+  ).map((e) => e.type);
+
+  const core = registrationOrder.filter((t) => !ITEM_FIXTURE_APPEND_ONLY_TYPES.has(t));
+  const appended = registrationOrder.filter((t) => ITEM_FIXTURE_APPEND_ONLY_TYPES.has(t));
+  return [...core, ...appended];
+}
+
+/**
+ * Pickup types placeable as item spawn fixtures. Order = stable tile IDs from 7 upward
+ * (see `ITEM_FIXTURE_APPEND_ONLY_TYPES` — do not reorder existing entries).
+ */
+export const ITEM_FIXTURE_SPAWN_TYPES: readonly EntityType[] = buildItemFixtureSpawnTypes();
 
 /** First spawns-layer tile id used for item fixtures (after player + 5 zombie types). */
 export const ITEM_SPAWN_TILE_ID_MIN = 7;
 
 export const ITEM_SPAWN_TILE_COUNT = ITEM_FIXTURE_SPAWN_TYPES.length;
 
-/** One past the last item-fixture tile id (exclusive). */
+/**
+ * Exclusive end of the item-fixture id range: ids `ITEM_SPAWN_TILE_ID_MIN` .. `ITEM_SPAWN_TILE_ID_END - 1`.
+ * Dialogue NPC markers use **fixed** ids below so adding item types never collides with NPC tiles.
+ */
 export const ITEM_SPAWN_TILE_ID_END = ITEM_SPAWN_TILE_ID_MIN + ITEM_SPAWN_TILE_COUNT;
 
 /**
- * Spawns-layer tile id for a static dialogue NPC (survivor sprite). Message is stored in
- * `world-map.json` under `dialogueNpcs` (see `WorldMapDialogueNpcEntry`).
+ * Fixed spawns-layer ids for dialogue NPCs (must stay outside the item range7 .. ITEM_SPAWN_TILE_ID_END-1).
+ * Previously these were `ITEM_SPAWN_TILE_ID_END` and `+1`, which broke maps whenever a new item fixture
+ * was appended (same numeric id as the last item slot).
  */
-export const NPC_DIALOGUE_SURVIVOR_SPAWN_TILE_ID = ITEM_SPAWN_TILE_ID_END;
+export const NPC_DIALOGUE_SURVIVOR_SPAWN_TILE_ID = 250;
+
+/** Healer variant; message / heal flag live under `dialogueNpcs` in world-map.json. */
+export const NPC_HEALER_DIALOGUE_SPAWN_TILE_ID = 251;
 
 export const DEFAULT_ITEM_FIXTURE_RESPAWN_MS = 120_000;
 
@@ -94,6 +119,14 @@ export function isNpcDialogueSurvivorSpawnTile(id: number): boolean {
   return id === NPC_DIALOGUE_SURVIVOR_SPAWN_TILE_ID;
 }
 
+export function isNpcHealerDialogueSpawnTile(id: number): boolean {
+  return id === NPC_HEALER_DIALOGUE_SPAWN_TILE_ID;
+}
+
+export function isNpcDialogueSpawnTile(id: number): boolean {
+  return isNpcDialogueSurvivorSpawnTile(id) || isNpcHealerDialogueSpawnTile(id);
+}
+
 export function getItemFixtureRespawnMs(entityType: EntityType): number {
   const item = itemRegistry.get(entityType);
   if (item?.fixtureRespawnMs != null) {
@@ -108,6 +141,24 @@ export function getItemFixtureRespawnMs(entityType: EntityType): number {
     return resource.fixtureRespawnMs;
   }
   return DEFAULT_ITEM_FIXTURE_RESPAWN_MS;
+}
+
+/**
+ * Default respawn interval in whole seconds for editor display / server fallback (enemy + item fixtures only).
+ */
+export function getAuthoredSpawnerDefaultRespawnSec(spawnTileId: number): number | null {
+  if (spawnTileId <= 0 || isPlayerSpawnTile(spawnTileId)) {
+    return null;
+  }
+  if (isEnemySpawnTile(spawnTileId)) {
+    const zt = spawnTileIdToZombieType(spawnTileId);
+    return zt == null ? null : Math.round(getEnemySpawnRespawnMs(zt) / 1000);
+  }
+  if (isItemSpawnTile(spawnTileId)) {
+    const t = spawnTileIdToItemFixtureType(spawnTileId);
+    return t == null ? null : Math.round(getItemFixtureRespawnMs(t) / 1000);
+  }
+  return null;
 }
 
 export interface SpawnPaletteEntry {
@@ -152,12 +203,28 @@ const NPC_DIALOGUE_SURVIVOR_PALETTE_ENTRY: SpawnPaletteEntry = {
   color: "rgba(52,211,153,0.55)",
 };
 
-/** Full spawns-layer palette: player, zombies, item fixtures, then dialogue NPC. */
+const NPC_HEALER_DIALOGUE_PALETTE_ENTRY: SpawnPaletteEntry = {
+  id: NPC_HEALER_DIALOGUE_SPAWN_TILE_ID,
+  label: "Healer NPC",
+  color: "rgba(56,189,248,0.55)",
+};
+
+/** Full spawns-layer palette: player, zombies, item fixtures, dialogue NPCs. */
 export const SPAWN_PALETTE_ENTRIES: readonly SpawnPaletteEntry[] = [
   ...SPAWN_BASE_PALETTE_ENTRIES,
   ...ITEM_SPAWN_PALETTE_ENTRIES,
   NPC_DIALOGUE_SURVIVOR_PALETTE_ENTRY,
+  NPC_HEALER_DIALOGUE_PALETTE_ENTRY,
 ];
+
+/**
+ * Spawner tiles editable from the map editor Spawner modal (player, zombies, item fixtures).
+ * Excludes empty, dialogue NPCs, and the palette "None" entry.
+ */
+export const SPAWNER_META_CONFIGURABLE_ENTRIES: readonly SpawnPaletteEntry[] =
+  SPAWN_PALETTE_ENTRIES.filter(
+    (e) => e.id !== SPAWN_TILE_NONE && !isNpcDialogueSpawnTile(e.id),
+  );
 
 const SPAWN_TILE_SHORT: Record<number, string> = {
   [SPAWN_TILE_NONE]: "",
@@ -180,5 +247,6 @@ export function getSpawnTileShortLabel(spawnTileId: number): string {
     return short.length <= 4 ? short : short.slice(0, 4);
   }
   if (isNpcDialogueSurvivorSpawnTile(spawnTileId)) return "NPC";
+  if (isNpcHealerDialogueSpawnTile(spawnTileId)) return "HEAL";
   return "?";
 }

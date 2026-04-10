@@ -12,6 +12,12 @@ if (entity.hasExt(ClientPositionable)) {
 }
 ```
 
+### Wire protocol / stable numeric ids (game-shared)
+
+- Entity, item, event, and interactable-display-name encodings use **uint8** ids. Ids follow **registry / source declaration order**, not alphabetical sort.
+- **Append** new types at the **end** of config objects (`ITEM_CONFIGS`, `ENTITY_REGISTRATION_CONFIG` item section, `InteractableTexts`, `ServerSentEvents` / `ClientSentEvents`) so existing ids do not shift.
+- Map spawns-layer item fixtures: use `ITEM_FIXTURE_APPEND_ONLY_TYPES` in `spawn-palette.ts` for new pickups; dialogue NPC tiles are fixed **250/251**.
+
 ### When adding a new zombie entity
 
 - remember to add it to the entity manager's entityMap

@@ -46,7 +46,7 @@ export const CHARACTER_STAT_MODIFIERS = {
   /** Multiplier per recovery point: regen *= (1 + points * this) */
   staminaRecoveryPerPoint: 0.05,
   /** Base seconds between passive HP heals (before hpRecovery stat) */
-  passiveHpRegenBaseIntervalSec: 8,
+  passiveHpRegenBaseIntervalSec: 30,
   /** Minimum interval between passive heals (seconds) */
   passiveHpRegenMinIntervalSec: 2,
   /** Seconds removed from interval per hpRecovery point */

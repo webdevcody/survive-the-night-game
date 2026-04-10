@@ -1,0 +1,118 @@
+/**
+ * AI Configuration - Facade for shared config
+ *
+ * This file re-exports AI configuration from the shared config package
+ * for backward compatibility with existing AI code.
+ *
+ * All values are now centralized in @shared/config/ai-config.ts
+ */
+import { getAiWeaponRanges } from "@shared/config";
+export declare const AI_CONFIG: {
+    readonly DECISION_INTERVAL: 0.1;
+    readonly PATH_RECALC_INTERVAL: 0.3;
+    readonly INTERACT_COOLDOWN: 0.3;
+    readonly SEARCH_RADIUS: 300;
+    readonly IMMEDIATE_THREAT_RADIUS: 80;
+    readonly COMBAT_ENGAGE_RADIUS: 140;
+    readonly PLAYER_DETECTION_RADIUS: 200;
+    readonly ZOMBIE_DETECTION_RADIUS: 200;
+    readonly SHOOTING_RANGE_PISTOL: 100;
+    readonly SHOOTING_RANGE_SHOTGUN: 100;
+    readonly SHOOTING_RANGE_AK47: 100;
+    readonly SHOOTING_RANGE_BOLT_ACTION: 100;
+    readonly MELEE_RANGE: 28;
+    readonly INTERACT_RADIUS: 32;
+    readonly CRITICAL_HEALTH_THRESHOLD: 0.25;
+    readonly RETREAT_HEALTH_THRESHOLD: 0.5;
+    readonly RECOVER_HEALTH_THRESHOLD: 0.8;
+    readonly RETREAT_ENTER_HEALTH: 0.5;
+    readonly RETREAT_EXIT_HEALTH: 0.8;
+    readonly STATE_MIN_DURATION_RETREAT: 10;
+    readonly STATE_MIN_DURATION_ENGAGE: 0.5;
+    readonly STATE_MIN_DURATION_LOOT: 1;
+    readonly STATE_MIN_DURATION_HUNT: 2;
+    readonly STATE_MIN_DURATION_EXPLORE: 0.5;
+    readonly READINESS_MINIMAL: 30;
+    readonly READINESS_HUNT: 40;
+    readonly READINESS_AGGRESSIVE: 70;
+    readonly READINESS_WEIGHT_WEAPON: 35;
+    readonly READINESS_WEIGHT_AMMO: 25;
+    readonly READINESS_WEIGHT_HEALING: 25;
+    readonly READINESS_WEIGHT_HEALTH: 15;
+    readonly AMMO_LOW_THRESHOLD: 5;
+    readonly AMMO_SUFFICIENT_THRESHOLD: 15;
+    readonly BANDAGE_SUFFICIENT_COUNT: 2;
+    readonly RETREAT_PICKUP_RADIUS: 200;
+    readonly SHOOTING_INACCURACY: 0.12;
+    readonly STOP_DISTANCE_FOR_SHOOTING: 60;
+    readonly FIRE_RATE_DELAY: 0.15;
+    readonly REACTION_DELAY: 0.08;
+    readonly KITE_ATTACK_DURATION: 0.3;
+    readonly KITE_RETREAT_DURATION: 0.4;
+    readonly KITE_SAFE_DISTANCE: 80;
+    readonly MAX_KITE_CYCLES: 3;
+    readonly MIN_KITE_CYCLES: 2;
+    readonly DISENGAGE_CHANCE: 0.4;
+    readonly ESCAPE_HEALTH_THRESHOLD: 0.3;
+    readonly ESCAPE_DURATION: 3;
+    readonly STUCK_CHECK_INTERVAL: 1.5;
+    readonly STUCK_DISTANCE_THRESHOLD: 15;
+    readonly MAX_TARGET_ATTEMPTS: 3;
+    readonly INVENTORY_MANAGEMENT_INTERVAL: 2;
+    readonly OPPORTUNISTIC_PICKUP_RADIUS: 100;
+    readonly OPPORTUNISTIC_CRATE_RADIUS: 60;
+    readonly COMBAT_RETARGET_INTERVAL: 0.05;
+    readonly IDLE_RETARGET_INTERVAL: 0.2;
+    readonly DAMAGE_MEMORY_DURATION: 3000;
+    readonly CURRENT_ATTACKER_WINDOW: 500;
+    readonly SURROUNDED_THRESHOLD: 3;
+    readonly OUTNUMBERED_RETREAT_THRESHOLD: 3;
+    readonly FINISH_KILL_ENEMY_HP: 0.15;
+    readonly FINISH_KILL_MY_HP: 0.3;
+    readonly MIN_PING: 50;
+    readonly MAX_PING: 70;
+    readonly DEFAULT_AI_COUNT: 4;
+    readonly WAYPOINT_THRESHOLD: 10;
+    readonly DEBUG_SHOW_AI_STATE: true;
+    readonly PRIORITY_IMMEDIATE_THREAT: 200;
+    readonly PRIORITY_ZOMBIE_THREAT: 150;
+    readonly PRIORITY_HEALTH_URGENT: 150;
+    readonly PRIORITY_AMMO_NEEDED: 120;
+    readonly PRIORITY_PLAYER_TARGET: 120;
+    readonly PRIORITY_SPECIAL_BIOME: 95;
+    readonly PRIORITY_CRATE: 90;
+    readonly PRIORITY_GOOD_WEAPON: 85;
+    readonly PRIORITY_BARREL: 65;
+    readonly PRIORITY_ANY_WEAPON: 50;
+    readonly PRIORITY_ANY_AMMO: 40;
+    readonly PRIORITY_BANDAGE: 30;
+    readonly PRIORITY_EXPLORE: 10;
+    readonly STAMINA_RESERVE_THRESHOLD: 0.3;
+    readonly STAMINA_CRITICAL_THRESHOLD: 0.1;
+    readonly MOVEMENT_SMOOTHING_FACTOR: 0.4;
+    readonly STUCK_MOVEMENT_PENALTY: 0.5;
+    readonly PATHFINDING_SEARCH_RADIUS_TILES: 3;
+    readonly ZOMBIE_WANDER_DISTANCE_MIN: 200;
+    readonly ZOMBIE_WANDER_DISTANCE_MAX: 400;
+};
+export declare const THREAT_WEIGHTS: {
+    readonly IMMEDIATE_RANGE: 300;
+    readonly CLOSE_RANGE: 200;
+    readonly MEDIUM_RANGE: 100;
+    readonly CURRENTLY_ATTACKING: 250;
+    readonly RECENT_DAMAGE: 150;
+    readonly HIGH_DAMAGE_SOURCE: 100;
+    readonly PLAYER_BONUS: 30;
+    readonly LOW_HEALTH_ENEMY: 75;
+    readonly RANGED_THREAT: 60;
+    readonly BLOCKING_RETREAT: 80;
+    readonly FAR_AWAY_PENALTY: -100;
+    readonly DISTRACTED_ENEMY: -50;
+};
+export declare const GOOD_WEAPONS: readonly ["shotgun", "ak47", "bolt_action_rifle"];
+export declare const ALL_WEAPONS: readonly ["pistol", "shotgun", "ak47", "bolt_action_rifle", "knife"];
+export declare const WEAPON_AMMO_MAP: Record<string, string>;
+export declare const WEAPON_PRIORITY: Record<string, number>;
+export declare const MELEE_WEAPONS: readonly ["knife"];
+export declare const WEAPON_RANGES: Record<string, number>;
+export { getAiWeaponRanges };

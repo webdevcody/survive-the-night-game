@@ -1,4 +1,5 @@
 import { EntityType } from "../types/entity";
+import type { ItemType } from "../util/inventory";
 import Vector2 from "../util/vector2";
 
 export const EntityCategories = {
@@ -97,6 +98,17 @@ export interface BossMetadata {
   cameraShake?: BossCameraShakeConfig;
 }
 
+/** Optional per-enemy overrides for spawn-anchored patrol + chase leash (defaults in entityConfig). */
+export interface ZombieLeashConfig {
+  wanderRadius?: number;
+  maxPlayerDistanceFromSpawn?: number;
+  activationRadius?: number;
+  wanderMoveDuration?: number;
+  wanderPauseDuration?: number;
+  wanderSpeed?: number;
+  wanderLookahead?: number;
+}
+
 export interface ZombieConfig {
   id: EntityType;
   category: EntityCategory;
@@ -109,6 +121,10 @@ export interface ZombieConfig {
   crossDiveConfig?: CrossDiveConfig;
   splitConfig?: SplitConfig;
   boss?: BossMetadata;
+  /** When set, overrides default leash radii from shared entityConfig (bosses usually need larger values). */
+  leash?: ZombieLeashConfig;
+  /** Weighted loot when this enemy spawns with a random inventory drop (see game-server Inventory.addRandomItem). */
+  dropTable: Array<{ itemType: ItemType; weight: number }>;
 }
 
 class ZombieRegistry {

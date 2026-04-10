@@ -3,8 +3,8 @@
  * Each interactable text string is assigned a unique sequential ID (0-255).
  * This allows encoding interactable display names as uint8 instead of strings.
  *
- * When adding new interactable text, add it to the InteractableTexts object
- * and the INTERACTABLE_TEXT_IDS map.
+ * When adding new interactable text, append a new key at the **end** of `InteractableTexts`
+ * (source order defines wire ids — do not insert in the middle).
  */
 
 // All interactable text strings
@@ -32,6 +32,7 @@ export const InteractableTexts = {
   TALK: "talk",
   CLOSE: "close",
   BANDAGE: "bandage",
+  PAIN_PILLS: "pain pills",
   REINFORCED_SPIKES: "reinforced spikes",
   SPIKES: "spikes",
   WALL: "wall",
@@ -82,8 +83,8 @@ export type InteractableText = (typeof InteractableTexts)[keyof typeof Interacta
 // Sequential IDs for each interactable text (0-255)
 export const INTERACTABLE_TEXT_IDS: Record<string, number> = {};
 
-// Build IDs dynamically from InteractableTexts
-const allTexts = Object.values(InteractableTexts).sort();
+// Declaration order of `InteractableTexts` — not alphabetical (avoids renumbering on new strings).
+const allTexts = Object.values(InteractableTexts);
 allTexts.forEach((text, index) => {
   INTERACTABLE_TEXT_IDS[text] = index;
 });

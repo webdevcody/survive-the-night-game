@@ -36,6 +36,8 @@ import {
 import { TickPerformanceTracker } from "@/util/tick-performance-tracker";
 import { IGameModeStrategy, WinConditionResult, createGameModeStrategy } from "@/game-modes";
 import type { GameModeId } from "@shared/events/server-sent/events/game-started-event";
+import { Entities } from "@/constants";
+import Positionable from "@/extensions/positionable";
 export class GameLoop {
   private lastUpdateTime: number = performance.now();
   private timer: ReturnType<typeof setInterval> | null = null;
@@ -63,6 +65,12 @@ export class GameLoop {
     phaseDuration: -1,
     totalZombies: -1,
   };
+
+  // #region agent log
+  private _agentLogLastSkipMs = 0;
+  private _agentLogTickSeq = 0;
+  private _agentActiveTickSeq = 0;
+  // #endregion
 
   constructor(
     tickPerformanceTracker: TickPerformanceTracker,
@@ -208,10 +216,48 @@ export class GameLoop {
 
   private update(): void {
     if (!this.isGameReady) {
+      // #region agent log
+      const t = Date.now();
+      if (t - this._agentLogLastSkipMs > 2000) {
+        this._agentLogLastSkipMs = t;
+        fetch("http://127.0.0.1:7825/ingest/2642c761-9d6c-4bd7-b4a8-ef39e8a5fbf3", {
+          method: "POST",
+          headers: { "Content-Type": "application/json", "X-Debug-Session-Id": "65179d" },
+          body: JSON.stringify({
+            sessionId: "65179d",
+            runId: "pre-fix",
+            hypothesisId: "H3",
+            location: "game-loop.ts:update",
+            message: "update skipped isGameReady=false",
+            data: { tickSeq: ++this._agentLogTickSeq },
+            timestamp: Date.now(),
+          }),
+        }).catch(() => {});
+      }
+      // #endregion
       return;
     }
 
     if (this.isGameOver) {
+      // #region agent log
+      const t2 = Date.now();
+      if (t2 - this._agentLogLastSkipMs > 2000) {
+        this._agentLogLastSkipMs = t2;
+        fetch("http://127.0.0.1:7825/ingest/2642c761-9d6c-4bd7-b4a8-ef39e8a5fbf3", {
+          method: "POST",
+          headers: { "Content-Type": "application/json", "X-Debug-Session-Id": "65179d" },
+          body: JSON.stringify({
+            sessionId: "65179d",
+            runId: "pre-fix",
+            hypothesisId: "H3",
+            location: "game-loop.ts:update",
+            message: "update skipped isGameOver=true",
+            data: {},
+            timestamp: Date.now(),
+          }),
+        }).catch(() => {});
+      }
+      // #endregion
       return;
     }
 
@@ -224,6 +270,43 @@ export class GameLoop {
     const endUpdateEntities = this.tickPerformanceTracker.startMethod("updateEntities");
     this.updateEntities(deltaTime);
     endUpdateEntities();
+
+    // #region agent log
+    this._agentActiveTickSeq++;
+    if (this._agentActiveTickSeq % 30 === 0) {
+      const players = this.entityManager
+        .getEntities()
+        .filter((e) => e.getType() === Entities.PLAYER);
+      const sample = players.slice(0, 4).map((e) => {
+        let x = NaN;
+        let y = NaN;
+        if (e.hasExt(Positionable)) {
+          const p = e.getExt(Positionable).getPosition();
+          x = p.x;
+          y = p.y;
+        }
+        return { id: e.getId(), x, y };
+      });
+      fetch("http://127.0.0.1:7825/ingest/2642c761-9d6c-4bd7-b4a8-ef39e8a5fbf3", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "X-Debug-Session-Id": "65179d" },
+        body: JSON.stringify({
+          sessionId: "65179d",
+          runId: "pre-fix",
+          hypothesisId: "H-TICK-PLAYERS",
+          location: "game-loop.ts:update",
+          message: "tick after updateEntities (player positions sample)",
+          data: {
+            tick: this._agentActiveTickSeq,
+            playerCount: players.length,
+            sample,
+            isGameReady: this.isGameReady,
+          },
+          timestamp: Date.now(),
+        }),
+      }).catch(() => {});
+    }
+    // #endregion
 
     if (this.gameManagers) {
       this.gameModeStrategy.update(deltaTime, this.gameManagers);

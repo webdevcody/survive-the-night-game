@@ -106,6 +106,21 @@ export function onDisconnect(context: HandlerContext, socket: ISocketAdapter): v
 
   const isLastPlayer = context.players.size === 0;
   if (isLastPlayer) {
+    // #region agent log
+    fetch("http://127.0.0.1:7825/ingest/2642c761-9d6c-4bd7-b4a8-ef39e8a5fbf3", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "X-Debug-Session-Id": "65179d" },
+      body: JSON.stringify({
+        sessionId: "65179d",
+        runId: "post-fix",
+        hypothesisId: "H7",
+        location: "disconnect.ts:isLastPlayer",
+        message: "setIsGameReady(false) last socket disconnected",
+        data: {},
+        timestamp: Date.now(),
+      }),
+    }).catch(() => {});
+    // #endregion
     context.gameServer.setIsGameReady(false);
   }
 }

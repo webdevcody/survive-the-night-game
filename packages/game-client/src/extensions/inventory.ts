@@ -41,6 +41,19 @@ export class ClientInventory extends BaseClientExtension {
     return itemCount >= this.getMaxSlots();
   }
 
+  public hasItem(itemType: ItemType): boolean {
+    if (this.items.some((it: InventoryItem | null) => it?.itemType === itemType)) {
+      return true;
+    }
+    const eq = this.equipment;
+    for (const key of EQUIPMENT_SLOT_KEYS) {
+      if (eq[key]?.itemType === itemType) {
+        return true;
+      }
+    }
+    return false;
+  }
+
   public getActiveItem(index: number | null): InventoryItem | null {
     if (index === null) return null;
     if (index === FISTS_INVENTORY_SENTINEL) return null;

@@ -32,6 +32,9 @@ export interface InputManagerOptions {
   onToggleMute?: () => void;
   onToggleMap?: () => void;
   onToggleInventoryScreen?: () => void;
+  /** Opens inventory (if needed) or switches tab while the panel is open. */
+  onInventoryPanelFocusTab?: (tab: "inventory" | "character" | "skills" | "quests") => void;
+  getInventoryActiveTab?: () => "inventory" | "character" | "skills" | "quests";
   onMerchantKeyDown?: (key: string) => void;
   onEscape?: () => void;
   onRespawnRequest?: () => void;
@@ -64,6 +67,9 @@ const shouldBlock = new Set([
   "KeyH",
   "KeyI",
   "KeyJ",
+  "KeyC",
+  "KeyK",
+  "KeyQ",
   "Escape",
   "Digit1",
   "Digit2",
@@ -212,14 +218,55 @@ export class InputManager {
       }
 
       if (isInventoryScreenOpen) {
-        if (eventCode === "Escape" || eventCode === "KeyI") {
+        if (eventCode === "Escape") {
           callbacks.onToggleInventoryScreen?.();
+        } else if (eventCode === "KeyI") {
+          const tab = callbacks.getInventoryActiveTab?.() ?? "inventory";
+          if (tab === "inventory") {
+            callbacks.onToggleInventoryScreen?.();
+          } else {
+            callbacks.onInventoryPanelFocusTab?.("inventory");
+          }
+        } else if (eventCode === "KeyC") {
+          const tab = callbacks.getInventoryActiveTab?.() ?? "inventory";
+          if (tab === "character") {
+            callbacks.onToggleInventoryScreen?.();
+          } else {
+            callbacks.onInventoryPanelFocusTab?.("character");
+          }
+        } else if (eventCode === "KeyK") {
+          const tab = callbacks.getInventoryActiveTab?.() ?? "inventory";
+          if (tab === "skills") {
+            callbacks.onToggleInventoryScreen?.();
+          } else {
+            callbacks.onInventoryPanelFocusTab?.("skills");
+          }
+        } else if (eventCode === "KeyQ") {
+          const tab = callbacks.getInventoryActiveTab?.() ?? "inventory";
+          if (tab === "quests") {
+            callbacks.onToggleInventoryScreen?.();
+          } else {
+            callbacks.onInventoryPanelFocusTab?.("quests");
+          }
         }
         return;
       }
 
       if (eventCode === "KeyI") {
         callbacks.onToggleInventoryScreen?.();
+        return;
+      }
+
+      if (eventCode === "KeyC") {
+        callbacks.onInventoryPanelFocusTab?.("character");
+        return;
+      }
+      if (eventCode === "KeyK") {
+        callbacks.onInventoryPanelFocusTab?.("skills");
+        return;
+      }
+      if (eventCode === "KeyQ") {
+        callbacks.onInventoryPanelFocusTab?.("quests");
         return;
       }
 

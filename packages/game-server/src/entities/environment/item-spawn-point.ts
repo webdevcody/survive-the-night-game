@@ -17,6 +17,7 @@ export class ItemSpawnPoint extends Entity {
   private readonly tileX: number;
   private readonly tileY: number;
   private readonly useAuthoredPlacementRules: boolean;
+  private readonly respawnDelayMs: number;
   private activeItemId: number | null = null;
   private respawnAtMs: number | null = null;
 
@@ -26,12 +27,19 @@ export class ItemSpawnPoint extends Entity {
     tileX: number,
     tileY: number,
     useAuthoredPlacementRules: boolean,
+    respawnIntervalMsOverride?: number,
   ) {
     super(gameManagers, Entities.ITEM_SPAWN_POINT);
     this.itemEntityType = itemEntityType;
     this.tileX = tileX;
     this.tileY = tileY;
     this.useAuthoredPlacementRules = useAuthoredPlacementRules;
+    this.respawnDelayMs =
+      respawnIntervalMsOverride !== undefined &&
+      Number.isFinite(respawnIntervalMsOverride) &&
+      respawnIntervalMsOverride > 0
+        ? Math.round(respawnIntervalMsOverride)
+        : getItemFixtureRespawnMs(itemEntityType);
 
     const poolManager = PoolManager.getInstance();
     const TILE_SIZE = getConfig().world.TILE_SIZE;
@@ -81,7 +89,7 @@ export class ItemSpawnPoint extends Entity {
   private tick(_deltaTime: number): void {
     const em = this.getEntityManager();
     const now = Date.now();
-    const respawnMs = getItemFixtureRespawnMs(this.itemEntityType);
+    const respawnMs = this.respawnDelayMs;
 
     if (this.activeItemId !== null) {
       const entity = em.getEntityById(this.activeItemId);

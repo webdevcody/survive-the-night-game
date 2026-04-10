@@ -23,6 +23,7 @@ import { WallClient } from "@/entities/items/wall";
 import { WallLevel2Client } from "@/entities/items/wall-level-2";
 import { WallLevel3Client } from "@/entities/items/wall-level-3";
 import { BandageClient } from "@/entities/items/bandage";
+import { PainPillsClient } from "@/entities/items/pain-pills";
 import { EnergyDrinkClient } from "@/entities/items/energy-drink";
 import { ClothClient } from "@/entities/items/cloth";
 import { WoodClient } from "@/entities/items/wood";
@@ -107,6 +108,7 @@ const CLIENT_ENTITY_CONSTRUCTORS: Record<EntityType, ClientEntityConstructor> = 
   wall_level_2: WallLevel2Client,
   wall_level_3: WallLevel3Client,
   bandage: BandageClient,
+  pain_pills: PainPillsClient,
   energy_drink: EnergyDrinkClient,
   cloth: ClothClient,
   wood: WoodClient,

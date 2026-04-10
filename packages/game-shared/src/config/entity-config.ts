@@ -107,6 +107,36 @@ export const entityConfig = {
   IDLE_ACTIVATION_RADIUS: 100,
 
   /**
+   * Default wander radius from spawn anchor for enemies in patrol (pixels)
+   */
+  ZOMBIE_LEASH_WANDER_RADIUS: 120,
+
+  /**
+   * If the closest player is farther than this from the enemy spawn anchor, chase ends (pixels)
+   */
+  ZOMBIE_LEASH_MAX_PLAYER_DISTANCE_FROM_SPAWN: 480,
+
+  /**
+   * Patrol wander speed (pixels / second) when not chasing
+   */
+  ZOMBIE_LEASH_WANDER_SPEED: 30,
+
+  /**
+   * Move duration before a pause while wandering (seconds)
+   */
+  ZOMBIE_LEASH_WANDER_MOVE_DURATION: 2.0,
+
+  /**
+   * Pause duration between wander legs (seconds)
+   */
+  ZOMBIE_LEASH_WANDER_PAUSE_DURATION: 2.0,
+
+  /**
+   * Lookahead distance for ground pathfinding during wander (pixels)
+   */
+  ZOMBIE_LEASH_WANDER_LOOKAHEAD: 80,
+
+  /**
    * Melee movement stuck detection time in seconds
    */
   STUCK_DETECTION_TIME: 0.3,

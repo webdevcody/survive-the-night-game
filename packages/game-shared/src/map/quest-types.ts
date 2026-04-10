@@ -18,7 +18,10 @@ export interface WorldMapQuestDefinition {
   id: string;
   title: string;
   steps: QuestStep[];
+  /** Granted when the quest is completed (last step done). */
   rewards: QuestReward[];
+  /** Granted once when the quest becomes active (e.g. NPC grants it). */
+  startRewards: QuestReward[];
 }
 
 function clampString(s: string, max: number): string {
@@ -114,7 +117,16 @@ export function normalizeQuests(entries: unknown, mapSide: number): WorldMapQues
         if (reward) rewards.push(reward);
       }
     }
-    out.push({ id, title, steps, rewards });
+    const startRewardsRaw = o.startRewards;
+    const startRewards: QuestReward[] = [];
+    if (Array.isArray(startRewardsRaw)) {
+      for (const r of startRewardsRaw) {
+        if (startRewards.length >= QUEST_MAX_REWARDS) break;
+        const reward = normalizeQuestReward(r);
+        if (reward) startRewards.push(reward);
+      }
+    }
+    out.push({ id, title, steps, rewards, startRewards });
   }
   return out;
 }

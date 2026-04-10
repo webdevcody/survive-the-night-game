@@ -42,18 +42,21 @@ import {
   SPAWN_TILE_PLAYER,
   isEnemySpawnTile,
   isItemSpawnTile,
-  isNpcDialogueSurvivorSpawnTile,
+  isNpcDialogueSpawnTile,
   spawnTileIdToZombieType,
   spawnTileIdToItemFixtureType,
 } from "../../../game-shared/src/map/spawn-palette";
 import type {
   WorldMapDialogueNpcEntry,
   WorldMapMessageDecalEntry,
+  WorldMapSpawnerMetaEntry,
 } from "../../../game-shared/src/map/world-map-types";
 import {
   getMessageDecalLines,
   normalizeDialogueNpcs,
   reconcileMessageDecalsWithDecalsLayer,
+  reconcileSpawnerMetaWithSpawnsLayer,
+  rewriteSpawnsLayerDialogueNpcTiles,
 } from "../../../game-shared/src/map/world-map-types";
 import type { WorldMapQuestDefinition } from "../../../game-shared/src/map/quest-types";
 import { normalizeQuests } from "../../../game-shared/src/map/quest-types";
@@ -128,6 +131,8 @@ export class MapManager implements IMapManager {
   private authoredDialogueNpcs: WorldMapDialogueNpcEntry[] = [];
   /** Message decal entries aligned with `DECAL_TILE_MESSAGE` cells on the decals layer. */
   private authoredMessageDecals: WorldMapMessageDecalEntry[] = [];
+  /** Spawner labels + optional respawn overrides (reconciled to non-dialogue spawns layer cells). */
+  private authoredSpawnerMeta: WorldMapSpawnerMetaEntry[] = [];
   private authoredQuests: WorldMapQuestDefinition[] = [];
   private gameManagers?: IGameManagers;
   private entityManager?: IEntityManager;
@@ -425,6 +430,7 @@ export class MapManager implements IMapManager {
       .map(() => Array(totalSize).fill(0));
     this.authoredDialogueNpcs = [];
     this.authoredMessageDecals = [];
+    this.authoredSpawnerMeta = [];
   }
 
   /**
@@ -472,12 +478,14 @@ export class MapManager implements IMapManager {
       }
     }
     this.authoredDialogueNpcs = normalizeDialogueNpcs(data.dialogueNpcs, n);
+    rewriteSpawnsLayerDialogueNpcTiles(this.spawnLayer, this.authoredDialogueNpcs);
     this.authoredMessageDecals = reconcileMessageDecalsWithDecalsLayer(
       this.decalsLayer,
       data.messageDecals,
       n,
     );
     this.authoredQuests = normalizeQuests(data.quests, n);
+    this.authoredSpawnerMeta = reconcileSpawnerMetaWithSpawnsLayer(this.spawnLayer, data.spawnerMeta);
     this.authoredWorldMapApplied = true;
     return true;
   }
@@ -575,12 +583,18 @@ export class MapManager implements IMapManager {
           continue;
         }
 
+        const meta = this.authoredSpawnerMeta.find((e) => e.row === y && e.col === x);
+        const respawnOverrideMs =
+          meta?.respawnIntervalSec !== undefined
+            ? Math.round(meta.respawnIntervalSec * 1000)
+            : undefined;
         const spawner = new ZombieSpawnPoint(
           this.getGameManagers(),
           zombieType,
           x,
           y,
           true,
+          respawnOverrideMs,
         );
         this.getEntityManager().addEntity(spawner);
       }
@@ -607,12 +621,18 @@ export class MapManager implements IMapManager {
           continue;
         }
 
+        const meta = this.authoredSpawnerMeta.find((e) => e.row === y && e.col === x);
+        const respawnOverrideMs =
+          meta?.respawnIntervalSec !== undefined
+            ? Math.round(meta.respawnIntervalSec * 1000)
+            : undefined;
         const spawner = new ItemSpawnPoint(
           this.getGameManagers(),
           itemType,
           x,
           y,
           true,
+          respawnOverrideMs,
         );
         this.getEntityManager().addEntity(spawner);
       }
@@ -628,7 +648,7 @@ export class MapManager implements IMapManager {
 
     for (let y = 0; y < totalSize; y++) {
       for (let x = 0; x < totalSize; x++) {
-        if (!isNpcDialogueSurvivorSpawnTile(this.spawnLayer[y][x])) {
+        if (!isNpcDialogueSpawnTile(this.spawnLayer[y][x])) {
           continue;
         }
         const entry = byKey.get(`${y},${x}`);
@@ -964,7 +984,6 @@ export class MapManager implements IMapManager {
               ZombieFactory.createZombie("regular", this.getGameManagers(), {
                 position,
                 addToManager: true,
-                isIdle: true,
               });
             } else {
               // Release position if not valid

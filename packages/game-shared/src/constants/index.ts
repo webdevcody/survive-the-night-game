@@ -38,6 +38,7 @@ export const NON_SPAWNABLE = new Set<EntityType>([
 ]);
 
 // Computed lazily to avoid circular reference during module initialization
+/** Sorted for display/UI only — not used for network wire ids (see entity-type-encoding). */
 export function getSpawableEntityTypes(): EntityType[] {
   return Object.values(Entities)
     .filter((entity) => !NON_SPAWNABLE.has(entity as any))

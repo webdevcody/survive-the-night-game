@@ -4,6 +4,7 @@ import { velocityTowards } from "@shared/util/physics";
 import { AIStateHandler, AIStateContext } from "./base-state";
 import { AI_CONFIG } from "../ai-config";
 import { AIInteractionHelper } from "../ai-interaction-helper";
+import { isHealingConsumable } from "@shared/util/healing-consumables";
 
 /**
  * RETREAT state handler - flee and heal
@@ -11,11 +12,11 @@ import { AIInteractionHelper } from "../ai-interaction-helper";
 export class RetreatStateHandler implements AIStateHandler {
   handle(input: Input, playerPos: Vector2, context: AIStateContext): void {
     const inventory = context.player.getInventory();
-    const hasBandage = inventory.some((item) => item && item.itemType === "bandage");
+    const hasBandage = inventory.some((item) => item && isHealingConsumable(item.itemType));
 
-    // If we don't have a bandage, actively look for one
+    // If we don't have a healing consumable, actively look for one
     if (!hasBandage) {
-      const bandageTarget = context.targetingSystem.findNearestBandage(context.player);
+      const bandageTarget = context.targetingSystem.findNearestHealingConsumable(context.player);
 
       if (bandageTarget && bandageTarget.distance && bandageTarget.distance < AI_CONFIG.RETREAT_PICKUP_RADIUS) {
         if (
@@ -151,16 +152,15 @@ export class RetreatStateHandler implements AIStateHandler {
     const activeItem = context.player.activeItem;
 
     // Equip bandage if not already equipped
-    if (activeItem?.itemType !== "bandage") {
+    if (!activeItem || !isHealingConsumable(activeItem.itemType)) {
       const bandageIndex = context.stateMachine.getBandageIndex(inventory);
       if (bandageIndex >= 0) {
         context.player.selectInventoryItem(bandageIndex + 1);
       }
     }
 
-    // Use bandage if equipped
     const currentActiveItem = context.player.activeItem;
-    if (currentActiveItem?.itemType === "bandage") {
+    if (currentActiveItem && isHealingConsumable(currentActiveItem.itemType)) {
       input.fire = true;
     }
   }

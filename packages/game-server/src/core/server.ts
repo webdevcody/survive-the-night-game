@@ -59,8 +59,8 @@ export class GameServer {
     this.socketManager.setMapManager(this.mapManager);
     this.socketManager.setGameManagers(this.gameManagers);
     this.socketManager.setTickPerformanceTracker(this.tickPerformanceTracker);
-    this.socketManager.listen();
 
+    // Must exist before listen(): connection handlers call getGameLoop() immediately.
     this.gameLoop = new GameLoop(
       this.tickPerformanceTracker,
       this.entityManager,
@@ -69,6 +69,8 @@ export class GameServer {
     );
     this.gameLoop.setGameManagers(this.gameManagers);
     this.gameLoop.start();
+
+    this.socketManager.listen();
   }
 
   public startNewGame(): Promise<void> {

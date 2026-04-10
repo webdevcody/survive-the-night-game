@@ -1,5 +1,4 @@
 import { IGameManagers } from "@/managers/types";
-import { IEntityManager } from "@/managers/types";
 import { BaseEnemy } from "@/entities/enemies/base-enemy";
 import { Zombie } from "@/entities/enemies/zombie";
 import { BigZombie } from "@/entities/enemies/big-zombie";
@@ -17,8 +16,6 @@ export interface ZombieSpawnOptions {
   position?: Vector2 | { x: number; y: number };
   /** Whether to add the zombie to the entity manager */
   addToManager?: boolean;
-  /** For regular zombies, whether they should be idle */
-  isIdle?: boolean;
 }
 
 /**
@@ -34,13 +31,13 @@ export class ZombieFactory {
     gameManagers: IGameManagers,
     options: ZombieSpawnOptions = {}
   ): BaseEnemy {
-    const { position, addToManager = false, isIdle = false } = options;
+    const { position, addToManager = false } = options;
     let zombie: BaseEnemy;
 
     // Create the appropriate zombie type
     switch (zombieType) {
       case "regular":
-        zombie = new Zombie(gameManagers, isIdle);
+        zombie = new Zombie(gameManagers);
         break;
       case "fast":
         zombie = new FastZombie(gameManagers);
@@ -85,12 +82,10 @@ export class ZombieFactory {
     zombieType: ZombieType,
     location: { x: number; y: number },
     gameManagers: IGameManagers,
-    isIdle: boolean = false
   ): BaseEnemy {
     return this.createZombie(zombieType, gameManagers, {
       position: location,
       addToManager: true,
-      isIdle,
     });
   }
 }

@@ -55,6 +55,7 @@ export const ENTITY_REGISTRATION_CONFIG: EntityRegistrationEntry[] = [
   { type: "wall_level_2", category: "items" },
   { type: "wall_level_3", category: "items" },
   { type: "bandage", category: "items" },
+  { type: "pain_pills", category: "items" },
   { type: "energy_drink", category: "items" },
   { type: "cloth", category: "items" },
   { type: "wood", category: "items" },

@@ -4,6 +4,10 @@ import { ServerSentEvents, ClientSentEvents, EventType } from "../events/events"
  * Event Type Registry
  * Maps event type strings to unique numeric IDs (0-255, 1 byte)
  * This allows efficient serialization of event types
+ *
+ * Wire IDs follow declaration order: all `ServerSentEvents` values, then all `ClientSentEvents`.
+ * Do **not** sort alphabetically — that shifts ids when new events are added between names.
+ * Append new events at the end of those const objects.
  */
 class EventTypeRegistry {
   private typeToId: Map<EventType, number> = new Map();
@@ -19,18 +23,13 @@ class EventTypeRegistry {
       return;
     }
 
-    // Combine server and client events
     const serverEvents = Object.values(ServerSentEvents) as EventType[];
     const clientEvents = Object.values(ClientSentEvents) as EventType[];
     const allEvents = [...serverEvents, ...clientEvents];
 
-    // Sort event types for consistent ordering
-    const sortedTypes = [...allEvents].sort();
-
-    // Assign IDs starting from 0
-    sortedTypes.forEach((type, index) => {
+    allEvents.forEach((type, index) => {
       if (index > 255) {
-        throw new Error(`Too many event types (${sortedTypes.length}). Maximum is 256 (0-255)`);
+        throw new Error(`Too many event types (${allEvents.length}). Maximum is 256 (0-255)`);
       }
       this.typeToId.set(type, index);
       this.idToType.set(index, type);

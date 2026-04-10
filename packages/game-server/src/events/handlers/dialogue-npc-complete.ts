@@ -4,6 +4,7 @@ import { SocketEventHandler } from "./types";
 import {
   tryCompleteQuestFromDialogue,
   tryGrantQuestFromNpc,
+  tryHealPlayerFromDialogueSession,
   validateDialogueComplete,
 } from "@/quests/quest-runtime";
 
@@ -20,6 +21,7 @@ export function onDialogueNpcComplete(
 
   tryGrantQuestFromNpc(player, npc, map);
   tryCompleteQuestFromDialogue(player, npc, map);
+  tryHealPlayerFromDialogueSession(player, npc);
 }
 
 export const dialogueNpcCompleteHandler: SocketEventHandler<{

@@ -1,0 +1,89 @@
+import Destructible from "@/extensions/destructible";
+import Positionable from "@/extensions/positionable";
+import { getConfig } from "@shared/config";
+import { ZombieAttackedEvent } from "../../../../../../game-shared/src/events/server-sent/events/zombie-attacked-event";
+import { TargetingSystem } from "../targeting";
+import { Entities } from "@/constants";
+import { distance } from "@/util/physics";
+import PoolManager from "@shared/util/pool-manager";
+export class MeleeAttackStrategy {
+    /**
+     * Calculate the shortest distance from a point to a rectangle (AABB)
+     */
+    distanceToRect(point, rectPos, rectSize) {
+        // Find the closest point on the rectangle to the given point
+        const closestX = Math.max(rectPos.x, Math.min(point.x, rectPos.x + rectSize.x));
+        const closestY = Math.max(rectPos.y, Math.min(point.y, rectPos.y + rectSize.y));
+        // Calculate distance from point to closest point on rectangle
+        const poolManager = PoolManager.getInstance();
+        const closestPoint = poolManager.vector2.claim(closestX, closestY);
+        const dist = distance(point, closestPoint);
+        poolManager.vector2.release(closestPoint);
+        return dist;
+    }
+    update(zombie, _deltaTime) {
+        // Get performance tracker for detailed analytics
+        const entityManager = zombie.getEntityManager();
+        const tickPerformanceTracker = entityManager.tickPerformanceTracker;
+        // Track cooldown check
+        const endCooldownCheck = (tickPerformanceTracker === null || tickPerformanceTracker === void 0 ? void 0 : tickPerformanceTracker.startMethod("attackCooldownCheck", "attackStrategy")) || (() => { });
+        if (!zombie.getAttackCooldown().isReady()) {
+            endCooldownCheck();
+            return;
+        }
+        endCooldownCheck();
+        // Track entity query
+        const endEntityQuery = (tickPerformanceTracker === null || tickPerformanceTracker === void 0 ? void 0 : tickPerformanceTracker.startMethod("attackEntityQuery", "attackStrategy")) || (() => { });
+        const zombieCenter = zombie.getCenterPosition().clone();
+        const attackRadius = getConfig().combat.ZOMBIE_ATTACK_RADIUS;
+        // Get all nearby entities that can be attacked
+        // Use a larger search radius to account for rectangular hitboxes
+        const searchRadius = attackRadius + 20; // Add buffer for rectangular entities
+        const attackableEntities = TargetingSystem.findNearbyAttackableEntities(zombie, searchRadius);
+        endEntityQuery();
+        // Track distance calculations
+        const endDistanceCalc = (tickPerformanceTracker === null || tickPerformanceTracker === void 0 ? void 0 : tickPerformanceTracker.startMethod("attackDistanceCalc", "attackStrategy")) || (() => { });
+        // Find the closest entity to attack using rectangle-to-point distance
+        let closestTarget = null;
+        let closestDistance = Infinity;
+        for (const target of attackableEntities) {
+            const positionable = target.entity.getExt(Positionable);
+            const entityPos = positionable.getPosition();
+            const entitySize = positionable.getSize();
+            // Use rectangle-to-point distance for better accuracy with rectangular hitboxes
+            const distance = this.distanceToRect(zombieCenter, entityPos, entitySize);
+            if (distance < closestDistance) {
+                closestDistance = distance;
+                closestTarget = target;
+            }
+        }
+        endDistanceCalc();
+        // Track attack execution
+        const endAttackExecution = (tickPerformanceTracker === null || tickPerformanceTracker === void 0 ? void 0 : tickPerformanceTracker.startMethod("attackExecution", "attackStrategy")) || (() => { });
+        // Attack the closest entity if within range
+        // If the closest target is a car or wall, give zombies an extra 8 pixel of attack leeway.
+        let extraAttackDistance = 0;
+        if (closestTarget && closestTarget.entity.hasExt(Destructible)) {
+            const entityType = closestTarget.entity.getType();
+            // Check if the entity type is a car or wall
+            if (entityType === Entities.CAR || entityType === Entities.WALL) {
+                extraAttackDistance = 8;
+            }
+        }
+        if (closestTarget &&
+            closestTarget.entity.hasExt(Destructible) &&
+            closestDistance <= getConfig().combat.ZOMBIE_ATTACK_RADIUS + extraAttackDistance) {
+            closestTarget.entity.getExt(Destructible).damage(zombie.getAttackDamage(), zombie.getId());
+            // Call the damage hook if provided
+            if (this.onEntityDamaged) {
+                this.onEntityDamaged(closestTarget.entity);
+            }
+            zombie
+                .getGameManagers()
+                .getBroadcaster()
+                .broadcastEvent(new ZombieAttackedEvent(zombie.getId()));
+            zombie.getAttackCooldown().reset();
+        }
+        endAttackExecution();
+    }
+}

@@ -17,9 +17,12 @@ import {
   reconcileDialogueNpcsWithSpawnsLayer,
 } from "./-utils";
 import {
+  normalizeDialogueNpcs,
   reconcileMessageDecalsWithDecalsLayer,
   reconcileSpawnerMetaWithSpawnsLayer,
+  rewriteSpawnsLayerDialogueNpcTiles,
 } from "@survive-the-night/game-shared/map/world-map-types";
+import { normalizeQuests } from "@survive-the-night/game-shared/map/quest-types";
 
 export const Route = createFileRoute("/editor/")({
   component: MapEditor,
@@ -95,8 +98,10 @@ function MapEditor() {
           worldMapData.spawns?.length === n &&
           worldMapData.spawns[0]?.length === n
         ) {
-          spawnsForDialogue = worldMapData.spawns;
+          spawnsForDialogue = worldMapData.spawns.map((row) => [...row]);
         }
+        const dialogueNormalized = normalizeDialogueNpcs(worldMapData.dialogueNpcs, n);
+        rewriteSpawnsLayerDialogueNpcTiles(spawnsForDialogue, dialogueNormalized);
         useEditorStore.setState({
           spawnsGrid: spawnsForDialogue,
           spawnerMeta: reconcileSpawnerMetaWithSpawnsLayer(
@@ -107,7 +112,7 @@ function MapEditor() {
         setDialogueNpcs(
           reconcileDialogueNpcsWithSpawnsLayer(spawnsForDialogue, worldMapData.dialogueNpcs),
         );
-        setQuests(worldMapData.quests ?? []);
+        setQuests(normalizeQuests(worldMapData.quests ?? [], n));
         const decalsLoaded =
           worldMapData.decals?.length === n && worldMapData.decals[0]?.length === n
             ? worldMapData.decals

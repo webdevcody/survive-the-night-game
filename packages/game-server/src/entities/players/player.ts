@@ -56,7 +56,7 @@ import type { PersistedPlayerProgress } from "@/services/player-progress-types";
 import { UserSessionCache } from "@/services/user-session-cache";
 import { GAME_SERVER_API_KEY, WEBSITE_API_URL } from "@/config/env";
 import { weaponRegistry } from "@shared/entities/weapon-registry";
-import { itemMatchesLoadoutRow } from "@shared/util/weapon-loadout";
+import { itemMatchesLoadoutRow, resolveAttackWeaponFromLoadout } from "@shared/util/weapon-loadout";
 import { FISTS_INVENTORY_SENTINEL } from "@shared/constants/inventory-sentinel";
 import {
   emptyPlayerQuestState,
@@ -503,33 +503,16 @@ export class Player extends Entity {
   private resolveAttackWeaponItem():
     | { kind: "fists" }
     | { kind: "weapon"; item: InventoryItem; bagIndex1Based: number } {
-    const inv = this.getInventory();
-    const max = this.getMaxInventorySlots();
-    const lo = this.serialized.get("activeWeaponLoadout");
-    const at = (idx: number) => (idx >= 1 && idx <= max ? inv[idx - 1] : null);
-
-    if (lo === 0) {
-      const idx = this.serialized.get("weaponLoadoutPrimary");
-      if (idx < 1) return { kind: "fists" };
-      const item = at(idx);
-      if (!item || !itemMatchesLoadoutRow(item.itemType, 0)) return { kind: "fists" };
-      return { kind: "weapon", item, bagIndex1Based: idx };
-    }
-    if (lo === 1) {
-      const idx = this.serialized.get("weaponLoadoutSecondary");
-      if (idx < 1) return { kind: "fists" };
-      const item = at(idx);
-      if (!item || !itemMatchesLoadoutRow(item.itemType, 1)) return { kind: "fists" };
-      return { kind: "weapon", item, bagIndex1Based: idx };
-    }
-    if (lo === 2) {
-      const idx = this.serialized.get("weaponLoadoutMelee");
-      if (idx < 1) return { kind: "fists" };
-      const item = at(idx);
-      if (!item || !itemMatchesLoadoutRow(item.itemType, 2)) return { kind: "fists" };
-      return { kind: "weapon", item, bagIndex1Based: idx };
-    }
-    return { kind: "fists" };
+    const resolved = resolveAttackWeaponFromLoadout(
+      this.getInventory(),
+      this.getMaxInventorySlots(),
+      this.serialized.get("activeWeaponLoadout"),
+      this.serialized.get("weaponLoadoutPrimary"),
+      this.serialized.get("weaponLoadoutSecondary"),
+      this.serialized.get("weaponLoadoutMelee")
+    );
+    if (!resolved) return { kind: "fists" };
+    return { kind: "weapon", item: resolved.item, bagIndex1Based: resolved.bagIndex1Based };
   }
 
   private performFistAttack(): void {

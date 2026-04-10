@@ -1,5 +1,6 @@
 import { Player } from "@/entities/players/player";
 import { InventoryItem } from "@shared/util/inventory";
+import { isHealingConsumable } from "@shared/util/healing-consumables";
 import { AI_CONFIG, GOOD_WEAPONS, WEAPON_AMMO_MAP } from "./ai-config";
 
 /**
@@ -251,14 +252,14 @@ export class CombatReadinessCalculator {
    * Check if player has at least one bandage
    */
   private static hasBandage(inventory: InventoryItem[]): boolean {
-    return inventory.some((item) => item?.itemType === "bandage");
+    return inventory.some((item) => item && isHealingConsumable(item.itemType));
   }
 
   /**
    * Get total bandage count
    */
   private static getBandageCount(inventory: InventoryItem[]): number {
-    return inventory.filter((item) => item?.itemType === "bandage").length;
+    return inventory.filter((item) => item && isHealingConsumable(item.itemType)).length;
   }
 
   /**

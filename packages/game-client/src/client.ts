@@ -55,6 +55,12 @@ import { DialogueSurvivorNpcClient } from "./entities/environment/dialogue-survi
 import { MessageDecalClient } from "./entities/environment/message-decal";
 import { QuestCompletedModal, formatQuestRewardsForDisplay } from "./ui/quest-completed-modal";
 
+// #region agent log
+let __agentClientNoPos = 0;
+let __agentClientDead = 0;
+let __agentClientSendInput = 0;
+// #endregion
+
 export class GameClient {
   private ctx: CanvasRenderingContext2D;
 
@@ -177,8 +183,12 @@ export class GameClient {
       isMerchantPanelOpen: () => this.merchantBuyPanel.isVisible(),
       isFullscreenMapOpen: () => this.hud.isFullscreenMapOpen(),
       isInventoryScreenOpen: () => this.hud.isInventoryScreenOpen(),
+      getInventoryActiveTab: () => this.hud.getInventoryActiveTab(),
       onToggleInventoryScreen: () => {
         this.hud.toggleInventoryScreen();
+      },
+      onInventoryPanelFocusTab: (tab) => {
+        this.hud.focusInventoryTab(tab);
       },
       onToggleQuestJournal: () => {
         this.hud.toggleQuestJournal();
@@ -789,6 +799,24 @@ export class GameClient {
       if (isAlive) {
         // Get inputs with aim angle calculated from mouse position
         if (!player.hasExt(ClientPositionable)) {
+          // #region agent log
+          const n = ++__agentClientNoPos;
+          if (n <= 40) {
+            fetch("http://127.0.0.1:7825/ingest/2642c761-9d6c-4bd7-b4a8-ef39e8a5fbf3", {
+              method: "POST",
+              headers: { "Content-Type": "application/json", "X-Debug-Session-Id": "65179d" },
+              body: JSON.stringify({
+                sessionId: "65179d",
+                runId: "pre-fix",
+                hypothesisId: "H5",
+                location: "client.ts:update",
+                message: "early return no ClientPositionable",
+                data: { n, playerId: player.getId?.() },
+                timestamp: Date.now(),
+              }),
+            }).catch(() => {});
+          }
+          // #endregion
           return; // Player doesn't have position yet
         }
         const playerPos = player.getExt(ClientPositionable).getCenterPosition();
@@ -835,9 +863,43 @@ export class GameClient {
 
         // Send input to server when it changed, facing direction changed, or aimAngle changed
         if (this.inputManager.getHasChanged() || facingChanged || aimAngleChanged) {
+          // #region agent log
+          const ns = ++__agentClientSendInput;
+          if (ns <= 30) {
+            fetch("http://127.0.0.1:7825/ingest/2642c761-9d6c-4bd7-b4a8-ef39e8a5fbf3", {
+              method: "POST",
+              headers: { "Content-Type": "application/json", "X-Debug-Session-Id": "65179d" },
+              body: JSON.stringify({
+                sessionId: "65179d",
+                runId: "pre-fix",
+                hypothesisId: "H5",
+                location: "client.ts:update",
+                message: "sendInput",
+                data: {
+                  ns,
+                  dx: input.dx,
+                  dy: input.dy,
+                  facing: input.facing,
+                  sprint: input.sprint,
+                  fire: input.fire,
+                },
+                timestamp: Date.now(),
+              }),
+            }).catch(() => {});
+          }
+          // #endregion
           // Send input to server
           this.sendInput(input);
           this.inputManager.reset();
+        }
+
+        {
+          const snap = this.socketManager.getDebugNetSnapshot();
+          const cx = Math.round(playerPos.x);
+          const cy = Math.round(playerPos.y);
+          this.hud.setDebugNetLine(
+            `dbg net gs#${snap.gsRx} Δent${snap.lastEntityCount} ${snap.lastBufLen}b | in#${snap.inputTx} dx${snap.lastDx} dy${snap.lastDy} sp${snap.lastSprint ? 1 : 0} | pos ${cx},${cy}`,
+          );
         }
 
         // After prediction, smoothly reconcile towards server's authoritative position
@@ -850,6 +912,24 @@ export class GameClient {
         // This ensures the player is always findable in the spatial grid for rendering
         this.renderer.updateEntityInSpatialGrid(player);
       } else {
+        // #region agent log
+        const nd = ++__agentClientDead;
+        if (nd <= 15) {
+          fetch("http://127.0.0.1:7825/ingest/2642c761-9d6c-4bd7-b4a8-ef39e8a5fbf3", {
+            method: "POST",
+            headers: { "Content-Type": "application/json", "X-Debug-Session-Id": "65179d" },
+            body: JSON.stringify({
+              sessionId: "65179d",
+              runId: "pre-fix",
+              hypothesisId: "H5",
+              location: "client.ts:update",
+              message: "player not isAlive skip movement",
+              data: { nd, playerId: player.getId?.() },
+              timestamp: Date.now(),
+            }),
+          }).catch(() => {});
+        }
+        // #endregion
         // Player is dead - check if respawn cooldown has expired
         if (player.isDead()) {
           const cooldownRemaining = player.getRespawnCooldownRemaining();
@@ -997,11 +1077,11 @@ export class GameClient {
       return;
     }
 
-    const invExt = player.getExt(ClientInventory);
     const activeSlot = this.inputManager.getCurrentInventorySlot();
     const maxSlots = getConfig().player.MAX_INVENTORY_SLOTS;
     if (activeSlot === FISTS_INVENTORY_SENTINEL) {
-      this.ctx.canvas.style.cursor = "none";
+      // No custom crosshair while unarmed; keep OS cursor visible (hiding it leaves no pointer).
+      this.ctx.canvas.style.cursor = "default";
       return;
     }
     if (activeSlot < 1 || activeSlot > maxSlots) {
@@ -1009,11 +1089,15 @@ export class GameClient {
       return;
     }
 
-    const activeBagItem = invExt.getActiveItem(activeSlot);
-    const weaponItem = invExt.resolveActiveWeapon(activeBagItem);
+    const weaponItem = player.getResolvedLoadoutWeaponItem();
 
     const hasWeapon = weaponItem && this.isWeaponItem(weaponItem.itemType);
-    this.ctx.canvas.style.cursor = hasWeapon ? "none" : "default";
+    // Only hide the system cursor when the renderer will draw the crosshair (needs live mouse).
+    // Mouse updates are skipped while map/inventory are open, so position can be null — otherwise
+    // we'd hide the cursor with nothing drawn on top.
+    const mouseForCrosshair = this.getRenderer().getMousePosition();
+    const hideSystemCursor = !!(hasWeapon && mouseForCrosshair);
+    this.ctx.canvas.style.cursor = hideSystemCursor ? "none" : "default";
   }
 
   /**

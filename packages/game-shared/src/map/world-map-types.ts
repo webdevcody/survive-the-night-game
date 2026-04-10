@@ -1,7 +1,9 @@
 import {
   DIALOGUE_NPC_MAX_LINE_COUNT,
   DIALOGUE_NPC_MAX_MESSAGE_LENGTH,
-  isNpcDialogueSurvivorSpawnTile,
+  isNpcDialogueSpawnTile,
+  NPC_DIALOGUE_SURVIVOR_SPAWN_TILE_ID,
+  NPC_HEALER_DIALOGUE_SPAWN_TILE_ID,
 } from "./spawn-palette";
 import { DECAL_TILE_MESSAGE } from "./decal-palette";
 import type { PlayerQuestStatePayload } from "../quests/player-quest-state";
@@ -17,7 +19,8 @@ export type DialogueNpcCondition =
   | { type: "always" }
   | { type: "quest_completed"; questId: string }
   | { type: "quest_active"; questId: string }
-  | { type: "quest_not_completed"; questId: string };
+  | { type: "quest_not_completed"; questId: string }
+  | { type: "quest_active_and_has_item"; questId: string; itemType: string };
 
 /** One dialog branch: lines, optional grant on close, optional complete on close. */
 export interface WorldMapDialogueNpcSession {
@@ -26,6 +29,8 @@ export interface WorldMapDialogueNpcSession {
   lines: string[];
   grantQuestId?: string | null;
   completeQuestId?: string | null;
+  /** When true, server restores interacting player to full HP and stamina after dialog ends. */
+  healOnDialogueComplete?: boolean;
 }
 
 /** Editor-only labels for non-dialogue spawner tiles (zombies, items, etc.). */
@@ -33,9 +38,29 @@ export interface WorldMapSpawnerMetaEntry {
   row: number;
   col: number;
   name?: string;
+  /** Seconds between respawns for this fixture; omit to use registry / zombie-type defaults. */
+  respawnIntervalSec?: number;
 }
 
 const SPAWNER_META_NAME_MAX = 48;
+
+/** Inclusive bounds for authored `respawnIntervalSec` (whole seconds). */
+export const SPAWNER_META_RESPAWN_INTERVAL_SEC_MIN = 1;
+export const SPAWNER_META_RESPAWN_INTERVAL_SEC_MAX = 3600;
+
+function clampSpawnerMetaRespawnSec(raw: unknown): number | undefined {
+  if (typeof raw !== "number" || !Number.isFinite(raw)) {
+    return undefined;
+  }
+  const n = Math.round(raw);
+  if (
+    n < SPAWNER_META_RESPAWN_INTERVAL_SEC_MIN ||
+    n > SPAWNER_META_RESPAWN_INTERVAL_SEC_MAX
+  ) {
+    return undefined;
+  }
+  return n;
+}
 
 export function normalizeSpawnerMeta(entries: unknown, mapSide: number): WorldMapSpawnerMetaEntry[] {
   if (!Array.isArray(entries)) {
@@ -63,7 +88,18 @@ export function normalizeSpawnerMeta(entries: unknown, mapSide: number): WorldMa
     if (typeof rawName === "string" && rawName.trim()) {
       name = rawName.trim().slice(0, SPAWNER_META_NAME_MAX);
     }
-    const entry: WorldMapSpawnerMetaEntry = { row, col, ...(name !== undefined ? { name } : {}) };
+    const respawnIntervalSec = clampSpawnerMetaRespawnSec(
+      (e as WorldMapSpawnerMetaEntry).respawnIntervalSec,
+    );
+    const entry: WorldMapSpawnerMetaEntry = {
+      row,
+      col,
+      ...(name !== undefined ? { name } : {}),
+      ...(respawnIntervalSec !== undefined ? { respawnIntervalSec } : {}),
+    };
+    if (entry.name === undefined && entry.respawnIntervalSec === undefined) {
+      continue;
+    }
     byKey.set(`${row},${col}`, entry);
   }
   return [...byKey.values()].sort((a, b) => a.row - b.row || a.col - b.col);
@@ -82,7 +118,7 @@ export function reconcileSpawnerMetaWithSpawnsLayer(
     if (!row) continue;
     for (let c = 0; c < n; c++) {
       const id = row[c] ?? 0;
-      if (id > 0 && !isNpcDialogueSurvivorSpawnTile(id)) {
+      if (id > 0 && !isNpcDialogueSpawnTile(id)) {
         eligible.add(`${r},${c}`);
       }
     }
@@ -90,7 +126,7 @@ export function reconcileSpawnerMetaWithSpawnsLayer(
   return normalized.filter((e) => eligible.has(`${e.row},${e.col}`));
 }
 
-/** Optional authored dialogue NPCs (spawns layer uses `NPC_DIALOGUE_SURVIVOR_SPAWN_TILE_ID`). */
+/** Optional authored dialogue NPCs (spawns layer uses dialogue NPC tile ids from spawn-palette). */
 export interface WorldMapDialogueNpcEntry {
   row: number;
   col: number;
@@ -111,6 +147,7 @@ function isDefaultCondition(when: DialogueNpcCondition | undefined): boolean {
 function conditionMatchesNonDefault(
   when: DialogueNpcCondition,
   st: PlayerQuestStatePayload,
+  hasItemType: (itemType: string) => boolean,
 ): boolean {
   switch (when.type) {
     case "always":
@@ -121,24 +158,32 @@ function conditionMatchesNonDefault(
       return st.active[when.questId] !== undefined;
     case "quest_not_completed":
       return !st.completed.includes(when.questId);
-    default:
-      return false;
+    case "quest_active_and_has_item":
+      return (
+        st.active[when.questId] !== undefined && hasItemType(when.itemType)
+      );
+    default: {
+      const _exhaustive: never = when;
+      return _exhaustive;
+    }
   }
 }
 
 /**
  * First session whose `when` is a non-default condition and matches `st`, else last default * (`when` omitted or `always`), else last session.
+ * @param hasItemType Bag + equipment (server `Inventory.hasItem`); omit or return false when unknown (e.g. editor preview).
  */
 export function pickDialogueNpcSession(
   sessions: WorldMapDialogueNpcSession[],
   st: PlayerQuestStatePayload,
+  hasItemType: (itemType: string) => boolean = () => false,
 ): WorldMapDialogueNpcSession {
   if (sessions.length === 0) {
     return { when: { type: "always" }, lines: ["…"] };
   }
   for (const s of sessions) {
     const w = s.when;
-    if (!isDefaultCondition(w) && w && conditionMatchesNonDefault(w, st)) {
+    if (!isDefaultCondition(w) && w && conditionMatchesNonDefault(w, st, hasItemType)) {
       return s;
     }
   }
@@ -191,12 +236,35 @@ export function getDialogueNpcSessions(entry: WorldMapDialogueNpcEntry): WorldMa
   ];
 }
 
+/**
+ * Sets spawns-layer cells for every authored dialogue NPC to the stable tile ids (250 / 251).
+ * Run after loading world-map.json so coordinates in `dialogueNpcs` always match NPC markers even when
+ * historic maps used dynamic ids that now overlap item fixtures (e.g. last item slot vs old NPC id).
+ */
+export function rewriteSpawnsLayerDialogueNpcTiles(
+  spawns: number[][],
+  dialogueNpcs: WorldMapDialogueNpcEntry[],
+): void {
+  for (const e of dialogueNpcs) {
+    const row = e.row;
+    const col = e.col;
+    if (row < 0 || col < 0 || row >= spawns.length) continue;
+    const rowArr = spawns[row];
+    if (!rowArr || col >= rowArr.length) continue;
+    const isHealer = getDialogueNpcSessions(e).some((s) => s.healOnDialogueComplete === true);
+    rowArr[col] = isHealer
+      ? NPC_HEALER_DIALOGUE_SPAWN_TILE_ID
+      : NPC_DIALOGUE_SURVIVOR_SPAWN_TILE_ID;
+  }
+}
+
 /** Plain-object sessions for entity replication (JSON-serializable). */
 export type DialogueNpcSessionSerialized = {
   when?: DialogueNpcCondition;
   lines: string[];
   grantQuestId?: string;
   completeQuestId?: string;
+  healOnDialogueComplete?: boolean;
 };
 
 export function dialogueNpcSessionsToSerialized(
@@ -216,6 +284,7 @@ export function dialogueNpcSessionsToSerialized(
       ...(s.when ? { when: s.when } : {}),
       ...(grantStr ? { grantQuestId: grantStr.slice(0, QUEST_ID_FIELD_MAX) } : {}),
       ...(completeStr ? { completeQuestId: completeStr.slice(0, QUEST_ID_FIELD_MAX) } : {}),
+      ...(s.healOnDialogueComplete === true ? { healOnDialogueComplete: true } : {}),
     };
     return out;
   });
@@ -254,6 +323,16 @@ export function dialogueNpcSessionsFromSerialized(
           .trim()
           .slice(0, QUEST_ID_FIELD_MAX);
         if (qid) when = { type: t, questId: qid } as DialogueNpcCondition;
+      } else if (t === "quest_active_and_has_item") {
+        const qid = String(w.questId ?? "")
+          .trim()
+          .slice(0, QUEST_ID_FIELD_MAX);
+        const itemType = String(w.itemType ?? "")
+          .trim()
+          .slice(0, QUEST_ID_FIELD_MAX);
+        if (qid && itemType) {
+          when = { type: "quest_active_and_has_item", questId: qid, itemType };
+        }
       }
     }
     let grantQuestId: string | null | undefined;
@@ -268,11 +347,13 @@ export function dialogueNpcSessionsFromSerialized(
     else if (typeof c === "string" && c.trim()) {
       completeQuestId = c.trim().slice(0, QUEST_ID_FIELD_MAX);
     }
+    const healOnDialogueComplete = o.healOnDialogueComplete === true ? true : undefined;
     out.push({
       ...(when ? { when } : {}),
       lines,
       ...(grantQuestId !== undefined ? { grantQuestId } : {}),
       ...(completeQuestId !== undefined ? { completeQuestId } : {}),
+      ...(healOnDialogueComplete ? { healOnDialogueComplete: true } : {}),
     });
   }
   return out.length > 0 ? out : null;

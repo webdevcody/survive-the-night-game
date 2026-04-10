@@ -3,8 +3,11 @@ import { Button } from "~/components/ui/button";
 import { useEditorStore } from "../-store";
 import {
   SPAWN_PALETTE_ENTRIES,
-  isNpcDialogueSurvivorSpawnTile,
+  isNpcDialogueSpawnTile,
 } from "@survive-the-night/game-shared/map/spawn-palette";
+import { getMapSideLength, isMapCellInEditorCameraView } from "../-utils";
+
+const sectionLabel = "text-[10px] font-medium uppercase tracking-wide text-gray-500";
 
 function spawnLabel(id: number): string {
   return SPAWN_PALETTE_ENTRIES.find((e) => e.id === id)?.label ?? `Spawn ${id}`;
@@ -12,6 +15,11 @@ function spawnLabel(id: number): string {
 
 export function SpawnersListPanel() {
   const spawnsGrid = useEditorStore((state) => state.spawnsGrid);
+  const groundGrid = useEditorStore((state) => state.groundGrid);
+  const cameraX = useEditorStore((state) => state.cameraX);
+  const cameraY = useEditorStore((state) => state.cameraY);
+  const viewportWidthTiles = useEditorStore((state) => state.viewportWidthTiles);
+  const viewportHeightTiles = useEditorStore((state) => state.viewportHeightTiles);
   const spawnerMeta = useEditorStore((state) => state.spawnerMeta);
   const focusCameraOnMapCell = useEditorStore((state) => state.focusCameraOnMapCell);
   const openSpawnerMetaEditor = useEditorStore((state) => state.openSpawnerMetaEditor);
@@ -23,7 +31,7 @@ export function SpawnersListPanel() {
       if (!r) continue;
       for (let col = 0; col < r.length; col++) {
         const id = r[col] ?? 0;
-        if (id > 0 && !isNpcDialogueSurvivorSpawnTile(id)) {
+        if (id > 0 && !isNpcDialogueSpawnTile(id)) {
           out.push({ row, col, id });
         }
       }
@@ -31,6 +39,18 @@ export function SpawnersListPanel() {
     out.sort((a, b) => a.row - b.row || a.col - b.col);
     return out;
   }, [spawnsGrid]);
+
+  const { inView, rest } = useMemo(() => {
+    const mapSize = getMapSideLength(groundGrid);
+    const vp = { cameraX, cameraY, viewportWidthTiles, viewportHeightTiles, mapSize };
+    const a: typeof entries = [];
+    const b: typeof entries = [];
+    for (const e of entries) {
+      if (isMapCellInEditorCameraView(e.row, e.col, vp)) a.push(e);
+      else b.push(e);
+    }
+    return { inView: a, rest: b };
+  }, [entries, groundGrid, cameraX, cameraY, viewportWidthTiles, viewportHeightTiles]);
 
   if (entries.length === 0) {
     return (
@@ -44,62 +64,79 @@ export function SpawnersListPanel() {
     );
   }
 
+  const renderRow = ({ row, col, id }: { row: number; col: number; id: number }) => {
+    const authored = spawnerMeta.find((m) => m.row === row && m.col === col)?.name;
+    return (
+      <li
+        key={`${row}-${col}-${id}`}
+        className="flex items-center justify-between gap-2 rounded border border-violet-800/60 bg-gray-900/80 px-2 py-1.5"
+      >
+        <button
+          type="button"
+          className="min-w-0 flex-1 text-left"
+          onClick={() => openSpawnerMetaEditor(row, col)}
+        >
+          <p className="text-[10px] font-medium text-gray-200">
+            ({row}, {col})
+            {authored ? ` · ${authored}` : ""}
+          </p>
+          <p className="truncate text-[9px] text-violet-200/90">{spawnLabel(id)}</p>
+        </button>
+        <div className="flex shrink-0 gap-1">
+          <Button
+            type="button"
+            size="sm"
+            variant="secondary"
+            className="!h-6 !min-h-0 !px-2 !py-0 !text-[10px]"
+            onClick={() => focusCameraOnMapCell(row, col)}
+          >
+            Go
+          </Button>
+          <Button
+            type="button"
+            size="sm"
+            variant="secondary"
+            className="!h-6 !min-h-0 !px-2 !py-0 !text-[10px]"
+            onClick={() =>
+              useEditorStore.setState({
+                activeLayer: "spawns",
+                selectedSpawnCell: { row, col },
+                selectedTileId: id,
+              })
+            }
+          >
+            Select
+          </Button>
+        </div>
+      </li>
+    );
+  };
+
   return (
     <div className="flex min-h-0 flex-1 flex-col gap-2">
       <p className="text-[10px] text-gray-500">
-        {entries.length} spawner{entries.length === 1 ? "" : "s"} — Click a row (or a spawner tile on
-        the map) to edit the label and relocate. <span className="text-gray-400">Go</span> moves the
-        camera.
+        {entries.length} spawner{entries.length === 1 ? "" : "s"} ({inView.length} in view) — Click a
+        row (or a spawner tile on the map) to edit the label and relocate.{" "}
+        <span className="text-gray-400">Go</span> moves the camera.
       </p>
-      <ul className="min-h-0 flex-1 space-y-1.5 overflow-y-auto pr-1">
-        {entries.map(({ row, col, id }) => {
-          const authored = spawnerMeta.find((m) => m.row === row && m.col === col)?.name;
-          return (
-            <li
-              key={`${row}-${col}-${id}`}
-              className="flex items-center justify-between gap-2 rounded border border-violet-800/60 bg-gray-900/80 px-2 py-1.5"
-            >
-              <button
-                type="button"
-                className="min-w-0 flex-1 text-left"
-                onClick={() => openSpawnerMetaEditor(row, col)}
-              >
-                <p className="text-[10px] font-medium text-gray-200">
-                  ({row}, {col})
-                  {authored ? ` · ${authored}` : ""}
-                </p>
-                <p className="truncate text-[9px] text-violet-200/90">{spawnLabel(id)}</p>
-              </button>
-              <div className="flex shrink-0 gap-1">
-                <Button
-                  type="button"
-                  size="sm"
-                  variant="secondary"
-                  className="!h-6 !min-h-0 !px-2 !py-0 !text-[10px]"
-                  onClick={() => focusCameraOnMapCell(row, col)}
-                >
-                  Go
-                </Button>
-                <Button
-                  type="button"
-                  size="sm"
-                  variant="secondary"
-                  className="!h-6 !min-h-0 !px-2 !py-0 !text-[10px]"
-                  onClick={() =>
-                    useEditorStore.setState({
-                      activeLayer: "spawns",
-                      selectedSpawnCell: { row, col },
-                      selectedTileId: id,
-                    })
-                  }
-                >
-                  Select
-                </Button>
-              </div>
-            </li>
-          );
-        })}
-      </ul>
+      <div className="min-h-0 flex-1 space-y-3 overflow-y-auto pr-1">
+        <div>
+          <p className={`${sectionLabel} mb-1`}>In view</p>
+          {inView.length === 0 ? (
+            <p className="text-[10px] text-gray-600">None in current view.</p>
+          ) : (
+            <ul className="space-y-1.5">{inView.map(renderRow)}</ul>
+          )}
+        </div>
+        <div>
+          <p className={`${sectionLabel} mb-1`}>Rest of map</p>
+          {rest.length === 0 ? (
+            <p className="text-[10px] text-gray-600">All spawners are in view.</p>
+          ) : (
+            <ul className="space-y-1.5">{rest.map(renderRow)}</ul>
+          )}
+        </div>
+      </div>
     </div>
   );
 }

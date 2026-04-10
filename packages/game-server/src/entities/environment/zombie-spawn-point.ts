@@ -17,6 +17,7 @@ export class ZombieSpawnPoint extends Entity {
   private readonly tileX: number;
   private readonly tileY: number;
   private readonly useAuthoredPlacementRules: boolean;
+  private readonly respawnDelayMs: number;
   private activeZombieId: number | null = null;
   private respawnAtMs: number | null = null;
 
@@ -26,12 +27,19 @@ export class ZombieSpawnPoint extends Entity {
     tileX: number,
     tileY: number,
     useAuthoredPlacementRules: boolean,
+    respawnIntervalMsOverride?: number,
   ) {
     super(gameManagers, Entities.ZOMBIE_SPAWN_POINT);
     this.zombieType = zombieType;
     this.tileX = tileX;
     this.tileY = tileY;
     this.useAuthoredPlacementRules = useAuthoredPlacementRules;
+    this.respawnDelayMs =
+      respawnIntervalMsOverride !== undefined &&
+      Number.isFinite(respawnIntervalMsOverride) &&
+      respawnIntervalMsOverride > 0
+        ? Math.round(respawnIntervalMsOverride)
+        : getEnemySpawnRespawnMs(zombieType);
 
     const poolManager = PoolManager.getInstance();
     const TILE_SIZE = getConfig().world.TILE_SIZE;
@@ -68,11 +76,9 @@ export class ZombieSpawnPoint extends Entity {
       return;
     }
     const pos = this.getFixturePixelPosition();
-    const isIdle = this.zombieType === "regular";
     const zombie = ZombieFactory.createZombie(this.zombieType, this.getGameManagers(), {
       position: pos,
       addToManager: true,
-      isIdle,
     });
     this.activeZombieId = zombie.getId();
   }
@@ -80,7 +86,7 @@ export class ZombieSpawnPoint extends Entity {
   private tick(_deltaTime: number): void {
     const em = this.getEntityManager();
     const now = Date.now();
-    const respawnMs = getEnemySpawnRespawnMs(this.zombieType);
+    const respawnMs = this.respawnDelayMs;
 
     if (this.activeZombieId !== null) {
       const entity = em.getEntityById(this.activeZombieId);
@@ -102,11 +108,9 @@ export class ZombieSpawnPoint extends Entity {
       return;
     }
 
-    const isIdle = this.zombieType === "regular";
     const zombie = ZombieFactory.createZombie(this.zombieType, this.getGameManagers(), {
       position: pos,
       addToManager: true,
-      isIdle,
     });
     this.activeZombieId = zombie.getId();
     this.respawnAtMs = null;

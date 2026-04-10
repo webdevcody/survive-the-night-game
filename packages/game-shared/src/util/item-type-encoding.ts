@@ -6,6 +6,10 @@ import { resourceRegistry } from "../entities/resource-registry";
  * Item Type Registry
  * Maps item type strings (items, weapons, resources) to unique numeric IDs (0-255, 1 byte)
  * This allows efficient serialization of item types over the network
+ *
+ * Wire IDs are assigned in **registry registration order** (items, then weapons, then resources)
+ * — the order each registry was populated from configs. Do **not** sort alphabetically: that
+ * shifts every id when a new type is added. Prefer appending new entries to config files.
  */
 class ItemTypeRegistry {
   private typeToId: Map<string, number> = new Map();
@@ -21,35 +25,26 @@ class ItemTypeRegistry {
       return;
     }
 
-    // Collect all item types from all registries
-    const allTypes: string[] = [];
+    const orderedTypes: string[] = [];
+    const seen = new Set<string>();
+    const pushUnique = (id: string) => {
+      if (!seen.has(id)) {
+        seen.add(id);
+        orderedTypes.push(id);
+      }
+    };
 
-    // Add items
-    itemRegistry.getAll().forEach((item) => {
-      allTypes.push(item.id);
-    });
+    itemRegistry.getAll().forEach((item) => pushUnique(item.id));
+    weaponRegistry.getAll().forEach((weapon) => pushUnique(weapon.id));
+    resourceRegistry.getAll().forEach((resource) => pushUnique(resource.id));
 
-    // Add weapons
-    weaponRegistry.getAll().forEach((weapon) => {
-      allTypes.push(weapon.id);
-    });
-
-    // Add resources
-    resourceRegistry.getAll().forEach((resource) => {
-      allTypes.push(resource.id);
-    });
-
-    // Sort for consistent ordering across server/client
-    const sortedTypes = [...new Set(allTypes)].sort();
-
-    if (sortedTypes.length > 255) {
+    if (orderedTypes.length > 255) {
       throw new Error(
-        `Too many item types (${sortedTypes.length}). Maximum is 256 (0-255)`
+        `Too many item types (${orderedTypes.length}). Maximum is 256 (0-255)`
       );
     }
 
-    // Assign IDs starting from 0
-    sortedTypes.forEach((type, index) => {
+    orderedTypes.forEach((type, index) => {
       this.typeToId.set(type, index);
       this.idToType.set(index, type);
     });

@@ -22,48 +22,7 @@ import { BufferWriter } from "@shared/util/buffer-serialization";
 import { encodeExtensionType } from "@shared/util/extension-type-encoding";
 import { itemTypeRegistry } from "@shared/util/item-type-encoding";
 import { writeItemState } from "@shared/util/item-state-serialization";
-
-/**
- * Item drop table with weighted chances.
- * Higher weight = higher chance of dropping.
- */
-const ITEM_DROP_TABLE: Array<{ itemType: ItemType; weight: number }> = [
-  // Common items (high weight)
-  { itemType: "wood", weight: 25 },
-  { itemType: "cloth", weight: 25 },
-  { itemType: "bandage", weight: 15 },
-  { itemType: "coin", weight: 10 },
-
-  // Ammo (medium weight)
-  { itemType: "pistol_ammo", weight: 12 },
-  { itemType: "shotgun_ammo", weight: 12 },
-  { itemType: "arrow_ammo", weight: 12 },
-  { itemType: "bow", weight: 10 },
-  { itemType: "pistol", weight: 10 },
-
-  // Uncommon items (medium weight)
-  { itemType: "shotgun", weight: 6 },
-  { itemType: "knife", weight: 8 },
-  { itemType: "throwing_knife", weight: 8 },
-  { itemType: "wall", weight: 8 },
-  { itemType: "torch", weight: 10 },
-  { itemType: "miners_hat", weight: 8 },
-  { itemType: "spikes", weight: 7 },
-  { itemType: "grenade", weight: 5 },
-
-  // Rare items (low weight)
-  { itemType: "bolt_action_rifle", weight: 3 },
-  { itemType: "ak47", weight: 2 },
-  { itemType: "grenade_launcher", weight: 1.5 },
-  { itemType: "flamethrower", weight: 1.5 },
-  { itemType: "bolt_action_ammo", weight: 4 },
-  { itemType: "ak47_ammo", weight: 4 },
-  { itemType: "grenade_launcher_ammo", weight: 3 },
-  { itemType: "flamethrower_ammo", weight: 3 },
-  { itemType: "landmine", weight: 4 },
-  { itemType: "sentry_gun", weight: 2 },
-  { itemType: "gasoline", weight: 6 },
-];
+import { LEGACY_RANDOM_DROP_TABLE } from "@shared/config/zombie-drop-tables";
 
 import { ExtensionBase } from "./extension-base";
 
@@ -369,9 +328,12 @@ export default class Inventory extends ExtensionBase<InventoryFields> {
     return result;
   }
 
-  public addRandomItem(chance = 1): this {
+  public addRandomItem(
+    chance = 1,
+    dropTable: Array<{ itemType: ItemType; weight: number }> = LEGACY_RANDOM_DROP_TABLE
+  ): this {
     if (Math.random() < chance) {
-      const itemType = this.getWeightedRandomItem();
+      const itemType = this.getWeightedRandomItem(dropTable);
       this.addItem({ itemType });
     }
     return this;
@@ -381,23 +343,18 @@ export default class Inventory extends ExtensionBase<InventoryFields> {
    * Selects a random item from the drop table based on weighted probabilities.
    * Items with higher weights have a higher chance of being selected.
    */
-  private getWeightedRandomItem(): ItemType {
-    // Calculate total weight
-    const totalWeight = ITEM_DROP_TABLE.reduce((sum, entry) => sum + entry.weight, 0);
-
-    // Generate random number between 0 and total weight
+  private getWeightedRandomItem(dropTable: Array<{ itemType: ItemType; weight: number }>): ItemType {
+    const totalWeight = dropTable.reduce((sum, entry) => sum + entry.weight, 0);
     let random = Math.random() * totalWeight;
 
-    // Find the item that corresponds to this random value
-    for (const entry of ITEM_DROP_TABLE) {
+    for (const entry of dropTable) {
       random -= entry.weight;
       if (random <= 0) {
         return entry.itemType;
       }
     }
 
-    // Fallback (should never reach here)
-    return ITEM_DROP_TABLE[0].itemType;
+    return dropTable[0].itemType;
   }
 
   public clear(): void {

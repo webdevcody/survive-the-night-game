@@ -46,6 +46,22 @@ export async function onConnection(
 ): Promise<void> {
   try {
     const gameLoop = context.gameServer.getGameLoop();
+    console.log(`[onConnection] start for ${socket.id}`);
+    // #region agent log
+    fetch("http://127.0.0.1:7825/ingest/2642c761-9d6c-4bd7-b4a8-ef39e8a5fbf3", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "X-Debug-Session-Id": "65179d" },
+      body: JSON.stringify({
+        sessionId: "65179d",
+        runId: "post-fix",
+        hypothesisId: "H11",
+        location: "connection.ts:onConnection",
+        message: "onConnection entry",
+        data: { socketId: socket.id, wasReady: gameLoop.getIsGameReady() },
+        timestamp: Date.now(),
+      }),
+    }).catch(() => {});
+    // #endregion
 
     // Note: setupSocketListeners should be called before onConnection in ServerSocketManager
 
@@ -63,6 +79,7 @@ export async function onConnection(
       .filter((entity) => !(entity as Player).isMarkedForRemoval()).length;
 
     if (totalPlayers === 0) {
+      console.log(`[onConnection] ${socket.id} totalPlayers=0 starting or resuming game`);
       const modeId = gameLoop.getGameModeStrategy().getConfig().modeId;
 
       if (modeId === "open_world" && gameLoop.isOpenWorldSessionActive()) {
@@ -82,11 +99,13 @@ export async function onConnection(
         context.broadcastPlayerJoined(player);
       }
 
+      console.log(`[onConnection] ${socket.id} start/resume path completed`);
       return;
     }
 
     const player = context.createPlayerForSocket(socket, initialProgress);
     context.broadcastPlayerJoined(player);
+    console.log(`[onConnection] ${socket.id} joined existing game`);
 
     // Adjust AI player count when real player joins mid-game
     const strategy = gameLoop.getGameModeStrategy();
@@ -112,6 +131,27 @@ export async function onConnection(
       gameLoop.setIsGameOver(false);
     }
   } finally {
+    console.log(`[onConnection] finally for ${socket.id}`);
     emitSocketInitialization(context, socket);
+    const gl = context.gameServer.getGameLoop();
+    // #region agent log
+    fetch("http://127.0.0.1:7825/ingest/2642c761-9d6c-4bd7-b4a8-ef39e8a5fbf3", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "X-Debug-Session-Id": "65179d" },
+      body: JSON.stringify({
+        sessionId: "65179d",
+        runId: "post-fix",
+        hypothesisId: "H12",
+        location: "connection.ts:finally",
+        message: "onConnection finally before ready guard",
+        data: {
+          socketId: socket.id,
+          playersSize: context.players.size,
+          isGameReady: gl.getIsGameReady(),
+        },
+        timestamp: Date.now(),
+      }),
+    }).catch(() => {});
+    // #endregion
   }
 }

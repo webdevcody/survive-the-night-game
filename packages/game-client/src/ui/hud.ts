@@ -19,7 +19,7 @@ import {
 import { getConfig } from "@shared/config";
 import { scaleHudValue } from "@/util/hud-scale";
 import { GameOverDialogUI } from "./game-over-dialog";
-import { InventoryScreenUI } from "./inventory-screen";
+import { InventoryScreenUI, type InventoryUiTab } from "./inventory-screen";
 import { SurvivorStatusHud } from "./survivor-status-hud";
 import { LoadoutStrip } from "./loadout-strip";
 import { InputManager } from "@/managers/input";
@@ -74,7 +74,6 @@ const HUD_SETTINGS = {
     },
   },
   Experience: {
-    baseBarWidth: 200,
     baseBarHeight: 10,
     baseLabelFontPx: 16,
   },
@@ -123,6 +122,8 @@ export class Hud {
   private mouseY: number = 0;
   private canvasHeight: number = 0;
   private questJournalPanel: QuestJournalPanel;
+  /** Agent debug: one-line network/movement stats (see GameClient update). */
+  private debugNetLine: string = "";
 
   constructor(
     mapManager: MapManager,
@@ -179,14 +180,6 @@ export class Hud {
 
     this.survivorStatusHud = new SurvivorStatusHud();
 
-    this.loadoutStrip = new LoadoutStrip(
-      this.assetManager,
-      getInventory,
-      getMyPlayer,
-      sendSelectWeaponLoadout,
-      (slot) => sendSetWeaponLoadoutSlot(slot, 0)
-    );
-
     this.inventoryScreen = new InventoryScreenUI({
       assetManager: this.assetManager,
       inputManager: this.inputManager,
@@ -204,6 +197,18 @@ export class Hud {
       sendSelectWeaponLoadout,
       getAuthoredQuests: () => this.mapManager.getAuthoredQuests(),
     });
+
+    this.loadoutStrip = new LoadoutStrip(
+      this.assetManager,
+      getInventory,
+      getMyPlayer,
+      sendSelectWeaponLoadout,
+      (slot) => sendSetWeaponLoadoutSlot(slot, 0),
+      () => this.toggleInventoryScreen(),
+      () => this.isInventoryScreenOpen(),
+      () => this.inventoryScreen.getActiveTab(),
+      (tab) => this.inventoryScreen.focusTab(tab)
+    );
 
     this.minimap = new Minimap(mapManager);
     this.fullscreenMap = new FullScreenMap(mapManager);
@@ -261,7 +266,6 @@ export class Hud {
       background: "transparent",
       borderColor: "transparent",
       borderWidth: 0,
-      baseBarWidth: HUD_SETTINGS.Experience.baseBarWidth,
       baseBarHeight: HUD_SETTINGS.Experience.baseBarHeight,
       baseLabelFontPx: HUD_SETTINGS.Experience.baseLabelFontPx,
       getTotalExperience: () => {
@@ -372,6 +376,11 @@ export class Hud {
     this.fpsPanel.setText(`${fps} FPS`);
   }
 
+  /** Debug-only: shown above bottom-right HUD row when non-empty. */
+  public setDebugNetLine(line: string): void {
+    this.debugNetLine = line;
+  }
+
   public render(ctx: CanvasRenderingContext2D, gameState: GameState): void {
     this.currentGameState = gameState;
     const { width, height } = ctx.canvas;
@@ -419,6 +428,16 @@ export class Hud {
     (this.versionPanel as any).textSettings.y = rowY;
     this.versionPanel.render(ctx, gameState);
 
+    if (this.debugNetLine) {
+      ctx.save();
+      ctx.font = `${scaleHudValue(11, width, height)}px monospace`;
+      ctx.fillStyle = "rgba(255, 255, 0, 0.92)";
+      ctx.textAlign = "right";
+      ctx.textBaseline = "bottom";
+      ctx.fillText(this.debugNetLine, width - marginRight, rowY - scaleHudValue(4, width, height));
+      ctx.restore();
+    }
+
     ctx.restore();
 
     this.loadoutStrip.render(ctx, gameState);
@@ -426,7 +445,7 @@ export class Hud {
     // Render transient HUD messages (loot, craft, etc.)
     this.gameMessagesPanel.render(ctx, gameState);
 
-    // Level + XP (bottom-left, above mute)
+    // Level + XP (centered above hotbar)
     ctx.save();
     ctx.setTransform(1, 0, 0, 1, 0, 0);
     this.experiencePanel.render(ctx, gameState);
@@ -545,6 +564,14 @@ export class Hud {
     this.inventoryScreen.toggle();
   }
 
+  public focusInventoryTab(tab: InventoryUiTab): void {
+    this.inventoryScreen.focusTab(tab);
+  }
+
+  public getInventoryActiveTab(): InventoryUiTab {
+    return this.inventoryScreen.getActiveTab();
+  }
+
   public setInventoryScreenOpen(open: boolean): void {
     this.inventoryScreen.setOpen(open);
   }
@@ -572,6 +599,10 @@ export class Hud {
     canvasHeight: number,
     clickCount: number = 1
   ): boolean {
+    if (this.loadoutStrip.handleLoadoutStripPriorityClick(x, y, canvasWidth, canvasHeight)) {
+      return true;
+    }
+
     if (this.inventoryScreen.isOpen()) {
       this.inventoryScreen.handleClick(x, y, canvasWidth, canvasHeight, clickCount);
       return true;

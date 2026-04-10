@@ -48,7 +48,7 @@ import type { QuestStep } from "@shared/map/quest-types";
 const DRAG_THRESHOLD = 12;
 const PANEL_WIDTH_RATIO = 0.46;
 
-type InventoryTab = "inventory" | "character" | "skills" | "quests";
+export type InventoryUiTab = "inventory" | "character" | "skills" | "quests";
 
 function describeQuestStep(step: QuestStep | undefined): string {
   if (!step) return "(unknown step)";
@@ -163,7 +163,7 @@ export class InventoryScreenUI {
   private hoveredLoadoutSlot: 0 | 1 | 2 | null = null;
   private lastW = 0;
   private lastH = 0;
-  private activeTab: InventoryTab = "inventory";
+  private activeTab: InventoryUiTab = "inventory";
   private hoveredSkillId: SkillId | null = null;
 
   constructor(deps: InventoryScreenDeps) {
@@ -196,6 +196,17 @@ export class InventoryScreenUI {
 
   public isOpen(): boolean {
     return this.open;
+  }
+
+  public getActiveTab(): InventoryUiTab {
+    return this.activeTab;
+  }
+
+  /** Open the panel (if needed) and switch to the given tab. */
+  public focusTab(tab: InventoryUiTab): void {
+    this.open = true;
+    this.activeTab = tab;
+    this.dragState = null;
   }
 
   public isHovering(): boolean {
@@ -236,11 +247,13 @@ export class InventoryScreenUI {
         h: loadoutSlotSize,
       });
     }
-    const loadoutBlockH = 18 + loadoutSlotSize + 22;
+    // Room for 11px loadout labels (baseline r.h+14) + descenders; keep loadout block from colliding with equipment.
+    const loadoutBlockH = 18 + loadoutSlotSize + 28;
 
-    const equipTop = loadoutTop + loadoutBlockH + 12;
+    const equipTop = loadoutTop + loadoutBlockH + 26;
     const cell = Math.min(40, Math.floor(Math.min((rightW - 32) / 4.5, (contentH * 0.5) / 7)));
-    const rowGap = 10;
+    // Labels sit at rect.y-8; need enough gap so the next row's label does not overlap the slot above.
+    const rowGap = 22;
     const colGap = 10;
     const cx = rightX + rightW * 0.5;
 
@@ -248,14 +261,8 @@ export class InventoryScreenUI {
     const headRect: EquipRect = { x: cx - cell / 2, y, w: cell, h: cell };
     y += cell + rowGap;
 
-    const shouldersW = cell * 2 + colGap;
-    const shouldersRect: EquipRect = {
-      x: cx - shouldersW / 2,
-      y,
-      w: shouldersW,
-      h: Math.floor(cell * 0.9),
-    };
-    y += shouldersRect.h + rowGap;
+    const shouldersRect: EquipRect = { x: cx - cell / 2, y, w: cell, h: cell };
+    y += cell + rowGap;
 
     const torsoRowY = y;
     const handsRect: EquipRect = {
@@ -306,10 +313,10 @@ export class InventoryScreenUI {
     const gridLeft = rightX + (rightW - gridW) / 2;
 
     const tabs = [
-      { id: "inventory" as const, label: "Inventory" },
-      { id: "character" as const, label: "Character" },
-      { id: "skills" as const, label: "Skills" },
-      { id: "quests" as const, label: "Quests" },
+      { id: "inventory" as const, label: "Inventory (I)" },
+      { id: "character" as const, label: "Character (C)" },
+      { id: "skills" as const, label: "Skills (K)" },
+      { id: "quests" as const, label: "Quests (Q)" },
     ];
     const tabCount = tabs.length;
     const tabW = rightW / tabCount;
@@ -754,14 +761,6 @@ export class InventoryScreenUI {
             const pad = 6;
             ctx.drawImage(img, r.x + pad, r.y + pad, r.w - pad * 2, r.h - pad * 2);
           }
-        } else if (i === 2) {
-          ctx.font = "bold 12px Arial";
-          ctx.fillStyle = "rgba(200, 180, 150, 0.9)";
-          ctx.textAlign = "center";
-          ctx.textBaseline = "middle";
-          ctx.fillText("Fists", r.x + r.w / 2, r.y + r.h / 2);
-          ctx.textBaseline = "alphabetic";
-          ctx.textAlign = "left";
         }
         ctx.font = "11px Arial";
         ctx.fillStyle = "rgba(160, 160, 175, 0.95)";
@@ -889,7 +888,11 @@ export class InventoryScreenUI {
     ctx.fillStyle = "rgba(180, 180, 190, 0.85)";
     ctx.font = "12px Arial";
     ctx.textAlign = "left";
-    ctx.fillText("I / Esc — close   P — instructions", L.rightX + 12, L.rightY + L.rightH - 12);
+    ctx.fillText(
+      "I / C / K / Q — tab (press again on same tab to close) · Esc — close · P — instructions",
+      L.rightX + 12,
+      L.rightY + L.rightH - 12,
+    );
     ctx.restore();
   }
 

@@ -56,7 +56,7 @@ export function getMinimapHudLayout(
   const r = scaleHudValue(HOTBAR_STATUS_HUD.orbRadius, canvasW, canvasH);
   const edgeGap = scaleHudValue(HOTBAR_STATUS_HUD.gapFromStripEdge, canvasW, canvasH);
 
-  const rowCy = strip.y + strip.padding + strip.slotSize / 2;
+  const rowCy = strip.slotsY + strip.slotSize / 2;
   let healthCx = strip.x - edgeGap - r;
   let staminaCx = strip.x + strip.w + edgeGap + r;
 

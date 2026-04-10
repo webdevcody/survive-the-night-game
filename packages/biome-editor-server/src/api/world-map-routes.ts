@@ -5,6 +5,7 @@ import {
   expandWorldMap,
   type WorldMapData,
 } from "../util/world-map-file-handler.js";
+import { notifyGameServerMapReload } from "../util/notify-game-server-map-reload.js";
 
 const router = Router();
 
@@ -16,6 +17,7 @@ router.post("/world-map/expand", async (req: Request, res: Response) => {
       return;
     }
     const result = await expandWorldMap(mapSizeBiomes);
+    // MAP_SIZE in the running game process is not hot-reloaded; restart the game server after expand.
     res.json(result);
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : "Failed to expand world map";
@@ -49,7 +51,12 @@ router.post("/world-map", async (req: Request, res: Response) => {
       quests: body.quests,
       spawnerMeta: body.spawnerMeta,
     });
-    res.json({ success: true, message: "World map saved successfully" });
+    const gameServerReload = await notifyGameServerMapReload();
+    res.json({
+      success: true,
+      message: "World map saved successfully",
+      gameServerReload,
+    });
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : "Failed to save world map";
     console.error("Error saving world map:", error);

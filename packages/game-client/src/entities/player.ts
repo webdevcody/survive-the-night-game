@@ -15,7 +15,8 @@ import { Z_INDEX } from "@shared/map";
 import { Direction, normalizeDirection } from "../../../game-shared/src/util/direction";
 import { Hitbox } from "../../../game-shared/src/util/hitbox";
 import { Input } from "../../../game-shared/src/util/input";
-import { InventoryItem } from "../../../game-shared/src/util/inventory";
+import { InventoryItem, isWeapon } from "../../../game-shared/src/util/inventory";
+import { resolveAttackWeaponFromLoadout } from "@shared/util/weapon-loadout";
 import { itemRegistry } from "@shared/entities";
 import { roundVector2, distance } from "../../../game-shared/src/util/physics";
 import { RawEntity } from "@shared/types/entity";
@@ -539,9 +540,40 @@ export class PlayerClient extends ClientEntity implements IClientEntity, Rendera
     // No need to update input object since inventoryItem is no longer in Input
   }
 
-  /** Held sprite: active hotbar slot (weapons are not a separate equipment slot). */
+  /**
+   * Weapon from the active loadout row (same rules as server combat), or null if fists / invalid.
+   */
+  public getResolvedLoadoutWeaponItem(): InventoryItem | null {
+    if (!this.hasExt(ClientInventory)) return null;
+    const inv = this.getInventory();
+    const max = this.getMaxInventorySlots();
+    const p = (this as any).weaponLoadoutPrimary ?? 0;
+    const s = (this as any).weaponLoadoutSecondary ?? 0;
+    const m = (this as any).weaponLoadoutMelee ?? 0;
+    const lo = (this as any).activeWeaponLoadout ?? 0;
+    return resolveAttackWeaponFromLoadout(inv, max, lo, p, s, m)?.item ?? null;
+  }
+
+  /** Held sprite: non-weapons from selected bag slot; weapons only from loadout. */
   private getHeldItemForRender(): InventoryItem | null {
-    return this.getActiveItem();
+    const inputInventoryItem = (this as any).inputInventoryItem;
+    if (inputInventoryItem === undefined || inputInventoryItem === null) {
+      return null;
+    }
+    if (inputInventoryItem === FISTS_INVENTORY_SENTINEL) {
+      return null;
+    }
+    if (!this.hasExt(ClientInventory)) {
+      return null;
+    }
+    const bagItem = this.getExt(ClientInventory).getActiveItem(inputInventoryItem);
+    if (!bagItem) {
+      return null;
+    }
+    if (!isWeapon(bagItem.itemType)) {
+      return bagItem;
+    }
+    return this.getResolvedLoadoutWeaponItem();
   }
 
   renderInventoryItem(ctx: CanvasRenderingContext2D, renderPosition: Vector2) {

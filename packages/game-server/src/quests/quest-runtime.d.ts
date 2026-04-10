@@ -1,0 +1,11 @@
+import { Player } from "@/entities/players/player";
+import { DialogueSurvivorNpc } from "@/entities/environment/dialogue-survivor-npc";
+import { IEntityManager, IMapManager } from "@/managers/types";
+import type { PlayerQuestStatePayload } from "@shared/quests/player-quest-state";
+export declare function tryGrantQuestFromNpc(player: Player, npc: DialogueSurvivorNpc, map: IMapManager): void;
+export declare function tryCompleteQuestFromDialogue(player: Player, npc: DialogueSurvivorNpc, map: IMapManager): void;
+export declare function tryHealPlayerFromDialogueSession(player: Player, npc: DialogueSurvivorNpc): void;
+export declare function advancePickupStep(player: Player, itemType: string, map: IMapManager): void;
+export declare function tickWaypointSteps(player: Player, map: IMapManager): void;
+export declare function validateDialogueComplete(player: Player, em: IEntityManager, npcEntityId: number): DialogueSurvivorNpc | null;
+export declare function initPlayerQuestState(player: Player, payload?: PlayerQuestStatePayload): void;
