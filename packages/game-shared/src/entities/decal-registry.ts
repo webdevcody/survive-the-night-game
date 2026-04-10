@@ -88,7 +88,7 @@ export const decalRegistry = new DecalRegistry();
  * @returns true if the entity blocks placement, false otherwise
  */
 export function entityBlocksPlacement(entityType: string): boolean {
-  if (entityType === "zombie_spawn_point") {
+  if (entityType === "zombie_spawn_point" || entityType === "item_spawn_point") {
     return false;
   }
   const decalConfig = decalRegistry.get(entityType);

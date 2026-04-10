@@ -4,6 +4,8 @@ import path from "path";
 import { fileURLToPath } from "url";
 import { getConfig } from "@survive-the-night/game-shared/config";
 import { resizeSquareLayersTopLeft } from "@survive-the-night/game-shared/map/world-map-resize";
+import type { WorldMapDialogueNpcEntry } from "@survive-the-night/game-shared/map/world-map-types";
+import { normalizeDialogueNpcs } from "@survive-the-night/game-shared/map/world-map-types";
 
 const IS_PRODUCTION = process.env.NODE_ENV === "production";
 
@@ -43,6 +45,7 @@ export interface WorldMapData {
   collidables: number[][];
   spawns: number[][];
   decals: number[][];
+  dialogueNpcs?: WorldMapDialogueNpcEntry[];
 }
 
 /** Uses in-memory config (may differ from disk until server reload). Prefer disk helpers in this module. */
@@ -97,6 +100,7 @@ export function createEmptyWorldMap(): WorldMapData {
     collidables,
     spawns: createEmptySpawnsLayer(n),
     decals: createEmptyDecalsLayer(n),
+    dialogueNpcs: [],
   };
 }
 
@@ -131,7 +135,8 @@ export async function readWorldMap(): Promise<WorldMapData> {
         }
       }
     }
-    return { ground: data.ground, collidables: data.collidables, spawns, decals };
+    const dialogueNpcs = normalizeDialogueNpcs(data.dialogueNpcs, n);
+    return { ground: data.ground, collidables: data.collidables, spawns, decals, dialogueNpcs };
   } catch (e: unknown) {
     const err = e as NodeJS.ErrnoException;
     if (err.code === "ENOENT") {
@@ -219,11 +224,13 @@ async function readWorldMapRawFromDisk(): Promise<WorldMapData> {
       }
     }
   }
+  const dialogueNpcs = normalizeDialogueNpcs(data.dialogueNpcs, oldN);
   return {
     ground: data.ground,
     collidables: data.collidables,
     spawns,
     decals,
+    dialogueNpcs,
   };
 }
 
@@ -285,16 +292,21 @@ export async function expandWorldMap(mapSizeBiomes: number): Promise<ExpandWorld
     decals: 0,
   });
 
+  const expanded: WorldMapData = {
+    ...resized,
+    dialogueNpcs: raw.dialogueNpcs ?? [],
+  };
+
   const previousConfigText = await fs.readFile(WORLD_CONFIG_PATH, "utf-8");
 
   await patchWorldConfigMapSize(mapSizeBiomes);
 
   try {
-    const err = validateDimensions(resized);
+    const err = validateDimensions(expanded);
     if (err) {
       throw new Error(err);
     }
-    await fs.writeFile(WORLD_MAP_PATH!, JSON.stringify(resized, null, 2) + "\n", "utf-8");
+    await fs.writeFile(WORLD_MAP_PATH!, JSON.stringify(expanded, null, 2) + "\n", "utf-8");
   } catch (e) {
     await fs.writeFile(WORLD_CONFIG_PATH, previousConfigText, "utf-8");
     throw e;

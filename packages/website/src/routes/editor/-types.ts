@@ -1,3 +1,5 @@
+import type { WorldMapDialogueNpcEntry } from "@survive-the-night/game-shared/map/world-map-types";
+
 export type Layer = "ground" | "collidables" | "spawns" | "decals";
 
 /** Snapshot of all layers (undo / API). */
@@ -6,6 +8,7 @@ export interface MapLayerSnapshot {
   collidables: number[][];
   spawns: number[][];
   decals: number[][];
+  dialogueNpcs: WorldMapDialogueNpcEntry[];
 }
 
 export interface SheetDimensions {

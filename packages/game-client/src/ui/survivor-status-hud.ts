@@ -1,0 +1,45 @@
+import { GameState } from "@/state";
+import { Z_INDEX } from "@shared/map";
+import { HeartsPanel } from "./panels/hearts-panel";
+import { StaminaPanel } from "./panels/stamina-panel";
+import type { MinimapHudLayout } from "./minimap-hud-group-layout";
+
+/**
+ * Health + stamina orbs for survivors (extracted from former hotbar UI).
+ */
+export class SurvivorStatusHud {
+  private heartsPanel: HeartsPanel;
+  private staminaPanel: StaminaPanel;
+
+  constructor() {
+    this.heartsPanel = new HeartsPanel({
+      padding: 8,
+      background: "rgba(0, 0, 0, 0.7)",
+      borderColor: "rgba(255, 255, 255, 0.5)",
+      borderWidth: 2,
+      fontPx: 14,
+    });
+
+    this.staminaPanel = new StaminaPanel({
+      padding: 8,
+      background: "rgba(0, 0, 0, 0.7)",
+      borderColor: "rgba(255, 255, 255, 0.5)",
+      borderWidth: 2,
+      fontPx: 14,
+      barColor: "rgba(255, 255, 100, 0.9)",
+    });
+  }
+
+  public renderHealthAndStamina(
+    ctx: CanvasRenderingContext2D,
+    gameState: GameState,
+    layout: MinimapHudLayout
+  ): void {
+    this.heartsPanel.render(ctx, gameState, layout);
+    this.staminaPanel.render(ctx, gameState, layout);
+  }
+
+  getZIndex() {
+    return Z_INDEX.UI;
+  }
+}

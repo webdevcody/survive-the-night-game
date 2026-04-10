@@ -1,7 +1,13 @@
-import { useEffect, useRef } from "react";
+import {
+  useEffect,
+  useRef,
+  useCallback,
+  useState,
+  type PointerEvent as ReactPointerEvent,
+} from "react";
 import { useEditorStore } from "../-store";
 import { getConfig } from "@survive-the-night/game-shared/config";
-import { getMapSideLength, getTilePixelSize } from "../-utils";
+import { getMapSideLength } from "../-utils";
 import { SPAWN_PALETTE_ENTRIES } from "@survive-the-night/game-shared/map/spawn-palette";
 import { DECAL_PALETTE_ENTRIES } from "@survive-the-night/game-shared/map/decal-palette";
 
@@ -14,17 +20,7 @@ function isTypingTarget(el: EventTarget | null): boolean {
 
 /** Full-viewport map canvas only — UI lives in overlay panels. */
 export function TileMapEditor() {
-  const groundGrid = useEditorStore((state) => state.groundGrid);
-  const collidablesGrid = useEditorStore((state) => state.collidablesGrid);
-  const spawnsGrid = useEditorStore((state) => state.spawnsGrid);
-  const decalsGrid = useEditorStore((state) => state.decalsGrid);
   const activeLayer = useEditorStore((state) => state.activeLayer);
-  const groundDimensions = useEditorStore((state) => state.groundDimensions);
-  const collidablesDimensions = useEditorStore((state) => state.collidablesDimensions);
-  const cameraX = useEditorStore((state) => state.cameraX);
-  const cameraY = useEditorStore((state) => state.cameraY);
-  const viewportWidthTiles = useEditorStore((state) => state.viewportWidthTiles);
-  const viewportHeightTiles = useEditorStore((state) => state.viewportHeightTiles);
 
   const handleGridCellClick = useEditorStore((state) => state.handleGridCellClick);
   const saveToHistory = useEditorStore((state) => state.saveToHistory);
@@ -33,11 +29,36 @@ export function TileMapEditor() {
   const isDragging = useEditorStore((state) => state.isDragging);
   const panCamera = useEditorStore((state) => state.panCamera);
   const setViewportSize = useEditorStore((state) => state.setViewportSize);
+  const editorTilePixelSize = useEditorStore((state) => state.editorTilePixelSize);
+  const adjustEditorTilePixelSizeFromWheelPixelDelta = useEditorStore(
+    (state) => state.adjustEditorTilePixelSizeFromWheelPixelDelta,
+  );
+  const isFillBucketMode = useEditorStore((state) => state.isFillBucketMode);
+  const clipboard = useEditorStore((state) => state.clipboard);
 
   const containerRef = useRef<HTMLDivElement>(null);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const hoverCellRef = useRef<{ row: number; col: number } | null>(null);
+  const lastDragCellRef = useRef<{ row: number; col: number } | null>(null);
+  const schedulePaintRef = useRef<() => void>(() => {});
 
-  const mapSize = getMapSideLength(groundGrid);
-  const tilePx = getTilePixelSize();
+  /** Cell where pointer went down — `mouseEnter` does not fire for that cell until leaving and re-entering. */
+  const dragStartCellRef = useRef<{ row: number; col: number } | null>(null);
+  const dragPaintedInitialRef = useRef(false);
+  /** After a drag stroke, suppress the synthetic `click` so collidable/spawn toggle logic does not double-apply. */
+  const suppressNextCellClickRef = useRef(false);
+
+  /** Shift+primary-drag pans the camera; pan is decided by shift at pointerdown only. */
+  const isPanningRef = useRef(false);
+  const panLastClientRef = useRef({ x: 0, y: 0 });
+  const panPixelAccRef = useRef({ x: 0, y: 0 });
+  /** Trackpad / mouse wheel: accumulate pixel deltas, convert to tile steps (same scale as shift-drag). */
+  const wheelPanAccRef = useRef({ x: 0, y: 0 });
+
+  const [shiftHeld, setShiftHeld] = useState(false);
+  const [isPanning, setIsPanning] = useState(false);
+
+  const tilePx = editorTilePixelSize;
 
   useEffect(() => {
     const el = containerRef.current;
@@ -61,41 +82,444 @@ export function TileMapEditor() {
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
       if (isTypingTarget(e.target)) return;
-      const k = e.key.toLowerCase();
-      if (k !== "w" && k !== "a" && k !== "s" && k !== "d") return;
-      e.preventDefault();
+      if (!e.ctrlKey && !e.metaKey) {
+        const incBrush = e.code === "NumpadAdd" || e.code === "Equal";
+        const decBrush =
+          e.code === "NumpadSubtract" || e.code === "Minus";
+        if (incBrush) {
+          e.preventDefault();
+          useEditorStore.getState().incrementBrushSize();
+          return;
+        }
+        if (decBrush) {
+          e.preventDefault();
+          useEditorStore.getState().decrementBrushSize();
+          return;
+        }
+      }
       const step = e.shiftKey ? 8 : 2;
-      if (k === "w") panCamera(0, -step);
-      if (k === "s") panCamera(0, step);
-      if (k === "a") panCamera(-step, 0);
-      if (k === "d") panCamera(step, 0);
+      const k = e.key;
+      if (k === "ArrowUp" || k === "ArrowDown" || k === "ArrowLeft" || k === "ArrowRight") {
+        e.preventDefault();
+        if (k === "ArrowUp") panCamera(0, -step);
+        else if (k === "ArrowDown") panCamera(0, step);
+        else if (k === "ArrowLeft") panCamera(-step, 0);
+        else panCamera(step, 0);
+        return;
+      }
+      const lower = k.toLowerCase();
+      if (lower === "p") {
+        e.preventDefault();
+        const hover = hoverCellRef.current;
+        if (hover) {
+          useEditorStore.getState().handleGridCellClick(hover.row, hover.col, true, true, {
+            skipClipboard: true,
+            skipFillBucket: true,
+          });
+        }
+        return;
+      }
+      if (lower === "e") {
+        e.preventDefault();
+        const hover = hoverCellRef.current;
+        if (hover) {
+          const { brushSize } = useEditorStore.getState();
+          if (brushSize > 1) {
+            useEditorStore.getState().eraseGridBrush(hover.row, hover.col);
+          } else {
+            useEditorStore.getState().eraseGridCell(hover.row, hover.col);
+          }
+        }
+        return;
+      }
+      if (lower !== "w" && lower !== "a" && lower !== "s" && lower !== "d") return;
+      e.preventDefault();
+      if (lower === "w") panCamera(0, -step);
+      if (lower === "s") panCamera(0, step);
+      if (lower === "a") panCamera(-step, 0);
+      if (lower === "d") panCamera(step, 0);
     };
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
   }, [panCamera]);
 
-  const handleDragStart = () => {
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+
+    const onWheel = (e: WheelEvent) => {
+      if (isTypingTarget(e.target)) return;
+
+      if (e.ctrlKey || e.metaKey) {
+        e.preventDefault();
+        let dy = e.deltaY;
+        if (e.deltaMode === 1) {
+          dy *= 16;
+        } else if (e.deltaMode === 2) {
+          dy *= canvas.clientHeight || 1;
+        }
+        adjustEditorTilePixelSizeFromWheelPixelDelta(dy);
+        const el = containerRef.current;
+        if (el) {
+          const w = el.clientWidth;
+          const h = el.clientHeight;
+          if (w > 0 && h > 0) {
+            const tp = useEditorStore.getState().editorTilePixelSize;
+            const cols = Math.max(1, Math.floor(w / tp));
+            const rows = Math.max(1, Math.floor(h / tp));
+            setViewportSize(cols, rows);
+          }
+        }
+        return;
+      }
+
+      e.preventDefault();
+
+      let dx = e.deltaX;
+      let dy = e.deltaY;
+      if (e.deltaMode === 1) {
+        const line = 16;
+        dx *= line;
+        dy *= line;
+      } else if (e.deltaMode === 2) {
+        dx *= canvas.clientWidth || 1;
+        dy *= canvas.clientHeight || 1;
+      }
+
+      const acc = wheelPanAccRef.current;
+      acc.x += dx;
+      acc.y += dy;
+      const tp = useEditorStore.getState().editorTilePixelSize;
+      const tilesX = Math.trunc(acc.x / tp);
+      const tilesY = Math.trunc(acc.y / tp);
+      acc.x -= tilesX * tp;
+      acc.y -= tilesY * tp;
+      if (tilesX !== 0 || tilesY !== 0) {
+        panCamera(tilesX, tilesY);
+      }
+    };
+
+    canvas.addEventListener("wheel", onWheel, { passive: false });
+    return () => canvas.removeEventListener("wheel", onWheel);
+  }, [
+    panCamera,
+    tilePx,
+    setViewportSize,
+    adjustEditorTilePixelSizeFromWheelPixelDelta,
+  ]);
+
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Shift") setShiftHeld(true);
+    };
+    const onKeyUp = (e: KeyboardEvent) => {
+      if (e.key === "Shift") setShiftHeld(false);
+    };
+    const onBlur = () => setShiftHeld(false);
+    window.addEventListener("keydown", onKeyDown);
+    window.addEventListener("keyup", onKeyUp);
+    window.addEventListener("blur", onBlur);
+    return () => {
+      window.removeEventListener("keydown", onKeyDown);
+      window.removeEventListener("keyup", onKeyUp);
+      window.removeEventListener("blur", onBlur);
+    };
+  }, []);
+
+  const handleCellMouseDown = () => {
     saveToHistory();
     setIsDragging(true);
     setHasModifiedDuringDrag(false);
+    dragPaintedInitialRef.current = false;
+    lastDragCellRef.current = null;
   };
 
-  const handleDragEnd = () => {
-    setIsDragging(false);
-    setHasModifiedDuringDrag(false);
-  };
-
-  const handleGridCellEnter = (row: number, col: number) => {
-    if (isDragging) {
-      handleGridCellClick(row, col, false, true);
+  const handleCellMouseDownOnTile = (row: number, col: number) => {
+    dragStartCellRef.current = { row, col };
+    handleCellMouseDown();
+    if (activeLayer === "ground" && !isFillBucketMode && !clipboard) {
+      handleGridCellClick(row, col, false, false);
+      dragPaintedInitialRef.current = true;
+      lastDragCellRef.current = { row, col };
       setHasModifiedDuringDrag(true);
     }
   };
 
-  const endRow = Math.min(cameraY + viewportHeightTiles, mapSize);
-  const endCol = Math.min(cameraX + viewportWidthTiles, mapSize);
-  const visibleRowCount = Math.max(0, endRow - cameraY);
-  const visibleColCount = Math.max(0, endCol - cameraX);
+  const handleDragEnd = useCallback(() => {
+    const didPaintDuringDrag = useEditorStore.getState().hasModifiedDuringDrag;
+    setIsDragging(false);
+    setHasModifiedDuringDrag(false);
+    dragStartCellRef.current = null;
+    dragPaintedInitialRef.current = false;
+    lastDragCellRef.current = null;
+    if (didPaintDuringDrag) {
+      suppressNextCellClickRef.current = true;
+    }
+  }, [setHasModifiedDuringDrag, setIsDragging]);
+
+  const endPan = useCallback((canvas: HTMLCanvasElement, pointerId: number) => {
+    if (!isPanningRef.current) return;
+    isPanningRef.current = false;
+    setIsPanning(false);
+    panPixelAccRef.current = { x: 0, y: 0 };
+    if (canvas.hasPointerCapture(pointerId)) {
+      canvas.releasePointerCapture(pointerId);
+    }
+  }, []);
+
+  const handleDragStrokeAt = (row: number, col: number) => {
+    if (!useEditorStore.getState().isDragging) return;
+    if (!dragPaintedInitialRef.current && dragStartCellRef.current) {
+      const { row: sr, col: sc } = dragStartCellRef.current;
+      handleGridCellClick(sr, sc, false, true);
+      dragPaintedInitialRef.current = true;
+      setHasModifiedDuringDrag(true);
+      lastDragCellRef.current = { row: sr, col: sc };
+    }
+    const last = lastDragCellRef.current;
+    if (last && last.row === row && last.col === col) return;
+    handleGridCellClick(row, col, false, true);
+    setHasModifiedDuringDrag(true);
+    lastDragCellRef.current = { row, col };
+  };
+
+  useEffect(() => {
+    if (!isDragging) return;
+    const onUp = () => handleDragEnd();
+    window.addEventListener("pointerup", onUp);
+    return () => window.removeEventListener("pointerup", onUp);
+  }, [isDragging, handleDragEnd]);
+
+  const handleGridCellClickMaybeSuppress = (row: number, col: number) => {
+    if (suppressNextCellClickRef.current) {
+      suppressNextCellClickRef.current = false;
+      return;
+    }
+    handleGridCellClick(row, col, false);
+  };
+
+  const clientToTile = useCallback(
+    (clientX: number, clientY: number): { row: number; col: number } | null => {
+      const canvas = canvasRef.current;
+      if (!canvas) return null;
+      const rect = canvas.getBoundingClientRect();
+      const x = clientX - rect.left;
+      const y = clientY - rect.top;
+      if (x < 0 || y < 0 || x >= rect.width || y >= rect.height) return null;
+      const localCol = Math.floor(x / tilePx);
+      const localRow = Math.floor(y / tilePx);
+      const s = useEditorStore.getState();
+      const ms = getMapSideLength(s.groundGrid);
+      const er = Math.min(s.cameraY + s.viewportHeightTiles, ms);
+      const ec = Math.min(s.cameraX + s.viewportWidthTiles, ms);
+      const vrc = Math.max(0, er - s.cameraY);
+      const vcc = Math.max(0, ec - s.cameraX);
+      if (localCol < 0 || localRow < 0 || localCol >= vcc || localRow >= vrc) return null;
+      return { row: s.cameraY + localRow, col: s.cameraX + localCol };
+    },
+    [tilePx],
+  );
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+
+    let raf = 0;
+    const TILE = getConfig().world.TILE_SIZE;
+
+    const paint = () => {
+      const ctx = canvas.getContext("2d");
+      if (!ctx) return;
+      const s = useEditorStore.getState();
+      const tilePx = s.editorTilePixelSize;
+      const ground = s.groundSheetImage;
+      const collidable = s.collidablesSheetImage;
+      if (!ground?.complete || !collidable?.complete) return;
+
+      const ms = getMapSideLength(s.groundGrid);
+      const er = Math.min(s.cameraY + s.viewportHeightTiles, ms);
+      const ec = Math.min(s.cameraX + s.viewportWidthTiles, ms);
+      const vrc = Math.max(0, er - s.cameraY);
+      const vcc = Math.max(0, ec - s.cameraX);
+      const cssW = vcc * tilePx;
+      const cssH = vrc * tilePx;
+      if (cssW <= 0 || cssH <= 0) return;
+
+      const dpr = Math.min(2, window.devicePixelRatio || 1);
+      canvas.style.width = `${cssW}px`;
+      canvas.style.height = `${cssH}px`;
+      canvas.width = Math.round(cssW * dpr);
+      canvas.height = Math.round(cssH * dpr);
+
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      ctx.clearRect(0, 0, cssW, cssH);
+      ctx.imageSmoothingEnabled = false;
+
+      for (let vi = 0; vi < vrc; vi++) {
+        for (let vj = 0; vj < vcc; vj++) {
+          const rowIdx = s.cameraY + vi;
+          const colIdx = s.cameraX + vj;
+          const dx = vj * tilePx;
+          const dy = vi * tilePx;
+
+          const groundTileId = s.groundGrid[rowIdx]?.[colIdx] ?? 0;
+          const gc = groundTileId % s.groundDimensions.cols;
+          const gr = Math.floor(groundTileId / s.groundDimensions.cols);
+          ctx.drawImage(ground, gc * TILE, gr * TILE, TILE, TILE, dx, dy, tilePx, tilePx);
+
+          const collidableTileId = s.collidablesGrid[rowIdx]?.[colIdx] ?? -1;
+          if (collidableTileId !== -1) {
+            const cc = collidableTileId % s.collidablesDimensions.cols;
+            const cr = Math.floor(collidableTileId / s.collidablesDimensions.cols);
+            ctx.drawImage(collidable, cc * TILE, cr * TILE, TILE, TILE, dx, dy, tilePx, tilePx);
+          }
+
+          const spawnTileId = s.spawnsGrid[rowIdx]?.[colIdx] ?? 0;
+          if (spawnTileId > 0) {
+            const spawnEntry = SPAWN_PALETTE_ENTRIES.find((e) => e.id === spawnTileId);
+            if (spawnEntry && spawnEntry.id !== 0) {
+              ctx.save();
+              ctx.globalAlpha = s.activeLayer === "spawns" ? 0.65 : 0.28;
+              ctx.fillStyle = spawnEntry.color;
+              ctx.fillRect(dx, dy, tilePx, tilePx);
+              ctx.restore();
+            }
+          }
+
+          const decalTileId = s.decalsGrid[rowIdx]?.[colIdx] ?? 0;
+          if (decalTileId > 0) {
+            const decalEntry = DECAL_PALETTE_ENTRIES.find((e) => e.id === decalTileId);
+            if (decalEntry && decalEntry.id !== 0) {
+              ctx.save();
+              ctx.globalCompositeOperation = "screen";
+              ctx.globalAlpha = s.activeLayer === "decals" ? 0.55 : 0.22;
+              ctx.fillStyle = decalEntry.color;
+              ctx.fillRect(dx, dy, tilePx, tilePx);
+              ctx.restore();
+            }
+          }
+        }
+      }
+
+      ctx.strokeStyle = "#1f2937";
+      ctx.lineWidth = 1;
+      for (let c = 0; c <= vcc; c++) {
+        const x = c * tilePx + 0.5;
+        ctx.beginPath();
+        ctx.moveTo(x, 0);
+        ctx.lineTo(x, cssH);
+        ctx.stroke();
+      }
+      for (let r = 0; r <= vrc; r++) {
+        const y = r * tilePx + 0.5;
+        ctx.beginPath();
+        ctx.moveTo(0, y);
+        ctx.lineTo(cssW, y);
+        ctx.stroke();
+      }
+
+      const hover = hoverCellRef.current;
+      if (hover) {
+        const localRow = hover.row - s.cameraY;
+        const localCol = hover.col - s.cameraX;
+        const brushSize = s.brushSize;
+        const px0 = localCol * tilePx;
+        const py0 = localRow * tilePx;
+        const px1 = (localCol + brushSize) * tilePx;
+        const py1 = (localRow + brushSize) * tilePx;
+        const x0 = Math.max(0, px0);
+        const y0 = Math.max(0, py0);
+        const x1 = Math.min(cssW, px1);
+        const y1 = Math.min(cssH, py1);
+        if (x0 < x1 && y0 < y1) {
+          ctx.strokeStyle = "rgba(234, 179, 8, 0.8)";
+          ctx.lineWidth = 2;
+          ctx.strokeRect(x0 + 1, y0 + 1, x1 - x0 - 2, y1 - y0 - 2);
+        }
+      }
+    };
+
+    const schedulePaint = () => {
+      if (raf) return;
+      raf = requestAnimationFrame(() => {
+        raf = 0;
+        if (document.hidden) return;
+        paint();
+      });
+    };
+    schedulePaintRef.current = schedulePaint;
+
+    const unsub = useEditorStore.subscribe(schedulePaint);
+    const onResize = () => schedulePaint();
+    window.addEventListener("resize", onResize);
+    schedulePaint();
+    return () => {
+      unsub();
+      window.removeEventListener("resize", onResize);
+      if (raf) cancelAnimationFrame(raf);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- subscribe + getState() keeps paint fresh; avoid re-subscribing on every grid/camera change
+  }, []);
+
+  const onCanvasPointerMove = (e: ReactPointerEvent<HTMLCanvasElement>) => {
+    if (isPanningRef.current) {
+      const last = panLastClientRef.current;
+      const dx = e.clientX - last.x;
+      const dy = e.clientY - last.y;
+      last.x = e.clientX;
+      last.y = e.clientY;
+      const acc = panPixelAccRef.current;
+      acc.x += dx;
+      acc.y += dy;
+      const tp = useEditorStore.getState().editorTilePixelSize;
+      const tilesX = Math.trunc(acc.x / tp);
+      const tilesY = Math.trunc(acc.y / tp);
+      acc.x -= tilesX * tp;
+      acc.y -= tilesY * tp;
+      if (tilesX !== 0 || tilesY !== 0) {
+        panCamera(-tilesX, -tilesY);
+      }
+      return;
+    }
+    if (useEditorStore.getState().isDragging) {
+      const t = clientToTile(e.clientX, e.clientY);
+      if (t) {
+        handleDragStrokeAt(t.row, t.col);
+        const prev = hoverCellRef.current;
+        if (!prev || prev.row !== t.row || prev.col !== t.col) {
+          hoverCellRef.current = { row: t.row, col: t.col };
+          schedulePaintRef.current();
+        }
+      }
+      return;
+    }
+    const t = clientToTile(e.clientX, e.clientY);
+    const prev = hoverCellRef.current;
+    if (t) {
+      if (!prev || prev.row !== t.row || prev.col !== t.col) {
+        hoverCellRef.current = { row: t.row, col: t.col };
+        schedulePaintRef.current();
+      }
+    } else if (prev) {
+      hoverCellRef.current = null;
+      schedulePaintRef.current();
+    }
+  };
+
+  const onCanvasPointerLeave = () => {
+    if (isPanningRef.current) {
+      if (hoverCellRef.current) {
+        hoverCellRef.current = null;
+        schedulePaintRef.current();
+      }
+      return;
+    }
+    if (hoverCellRef.current) {
+      hoverCellRef.current = null;
+      schedulePaintRef.current();
+    }
+    handleDragEnd();
+  };
 
   return (
     <div
@@ -103,87 +527,39 @@ export function TileMapEditor() {
       className="absolute inset-0 z-0 h-full w-full overflow-hidden bg-gray-950"
     >
       <div className="absolute inset-0 overflow-auto flex items-start justify-start">
-        <div
-          className="inline-block border-2 border-gray-700 bg-black shrink-0 m-0"
-          onMouseDown={handleDragStart}
-          onMouseUp={handleDragEnd}
-          onMouseLeave={handleDragEnd}
-        >
-          {Array.from({ length: visibleRowCount }, (_, vi) => {
-            const rowIdx = cameraY + vi;
-            return (
-              <div key={rowIdx} className="flex">
-                {Array.from({ length: visibleColCount }, (_, vj) => {
-                  const colIdx = cameraX + vj;
-                  const groundTileId = groundGrid[rowIdx]?.[colIdx] ?? 0;
-                  const collidableTileId = collidablesGrid[rowIdx]?.[colIdx] ?? -1;
-                  const spawnTileId = spawnsGrid[rowIdx]?.[colIdx] ?? 0;
-                  const spawnEntry =
-                    spawnTileId > 0
-                      ? SPAWN_PALETTE_ENTRIES.find((e) => e.id === spawnTileId)
-                      : undefined;
-                  const decalTileId = decalsGrid[rowIdx]?.[colIdx] ?? 0;
-                  const decalEntry =
-                    decalTileId > 0
-                      ? DECAL_PALETTE_ENTRIES.find((e) => e.id === decalTileId)
-                      : undefined;
-
-                  return (
-                    <div
-                      key={`${rowIdx}-${colIdx}`}
-                      className="relative border border-gray-800 cursor-crosshair hover:border-yellow-500/80 transition-colors"
-                      style={{
-                        width: `${tilePx}px`,
-                        height: `${tilePx}px`,
-                      }}
-                      onClick={() => handleGridCellClick(rowIdx, colIdx, false)}
-                      onMouseEnter={() => handleGridCellEnter(rowIdx, colIdx)}
-                    >
-                      <div
-                        className="absolute inset-0"
-                        style={{
-                          backgroundImage: "url(/sheets/ground.png)",
-                          backgroundSize: `${groundDimensions.cols * getConfig().world.TILE_SIZE * 2}px ${groundDimensions.rows * getConfig().world.TILE_SIZE * 2}px`,
-                          backgroundPosition: `-${(groundTileId % groundDimensions.cols) * getConfig().world.TILE_SIZE * 2}px -${Math.floor(groundTileId / groundDimensions.cols) * getConfig().world.TILE_SIZE * 2}px`,
-                          imageRendering: "pixelated",
-                        }}
-                      />
-                      {collidableTileId !== -1 && (
-                        <div
-                          className="absolute inset-0"
-                          style={{
-                            backgroundImage: "url(/sheets/collidables.png)",
-                            backgroundSize: `${collidablesDimensions.cols * getConfig().world.TILE_SIZE * 2}px ${collidablesDimensions.rows * getConfig().world.TILE_SIZE * 2}px`,
-                            backgroundPosition: `-${(collidableTileId % collidablesDimensions.cols) * getConfig().world.TILE_SIZE * 2}px -${Math.floor(collidableTileId / collidablesDimensions.cols) * getConfig().world.TILE_SIZE * 2}px`,
-                            imageRendering: "pixelated",
-                          }}
-                        />
-                      )}
-                      {spawnEntry && spawnEntry.id !== 0 && (
-                        <div
-                          className="absolute inset-0 pointer-events-none"
-                          style={{
-                            backgroundColor: spawnEntry.color,
-                            opacity: activeLayer === "spawns" ? 0.65 : 0.28,
-                          }}
-                        />
-                      )}
-                      {decalEntry && decalEntry.id !== 0 && (
-                        <div
-                          className="absolute inset-0 pointer-events-none"
-                          style={{
-                            backgroundColor: decalEntry.color,
-                            mixBlendMode: "screen",
-                            opacity: activeLayer === "decals" ? 0.55 : 0.22,
-                          }}
-                        />
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-            );
-          })}
+        <div className="inline-block border-2 border-gray-700 bg-black shrink-0 m-0">
+          <canvas
+            ref={canvasRef}
+            className={`block select-none ${
+              isPanning ? "cursor-grabbing" : shiftHeld ? "cursor-grab" : "cursor-crosshair"
+            }`}
+            onPointerMove={onCanvasPointerMove}
+            onPointerDown={(e) => {
+              if (e.button === 0 && e.shiftKey) {
+                e.preventDefault();
+                isPanningRef.current = true;
+                setIsPanning(true);
+                panLastClientRef.current = { x: e.clientX, y: e.clientY };
+                panPixelAccRef.current = { x: 0, y: 0 };
+                suppressNextCellClickRef.current = true;
+                e.currentTarget.setPointerCapture(e.pointerId);
+                return;
+              }
+              const t = clientToTile(e.clientX, e.clientY);
+              if (t) handleCellMouseDownOnTile(t.row, t.col);
+            }}
+            onPointerUp={(e) => {
+              endPan(e.currentTarget, e.pointerId);
+            }}
+            onPointerCancel={(e) => {
+              endPan(e.currentTarget, e.pointerId);
+            }}
+            onClick={(e) => {
+              const t = clientToTile(e.clientX, e.clientY);
+              if (t) handleGridCellClickMaybeSuppress(t.row, t.col);
+            }}
+            onPointerLeave={onCanvasPointerLeave}
+          />
         </div>
       </div>
     </div>

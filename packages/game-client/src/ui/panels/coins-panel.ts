@@ -39,7 +39,7 @@ export class CoinsPanel extends Panel {
 
     this.resetTransform(ctx);
 
-    // Calculate inventory bar position using scaled values (same as inventory-bar.ts)
+    // Anchor to bottom margin using same scale as other bottom HUD elements
     const settings = this.coinsSettings.inventorySettings;
     const scaledSlotSize = settings.slotSize * hudScale;
     const scaledPadding = {

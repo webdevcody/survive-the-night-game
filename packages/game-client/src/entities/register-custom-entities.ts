@@ -45,6 +45,7 @@ import { SentryGunLevel2Client } from "./items/sentry-gun-level-2";
 import { SentryGunLevel3Client } from "./items/sentry-gun-level-3";
 import { BoundaryClient } from "./items/boundary";
 import { ZombieSpawnPointClient } from "./items/zombie-spawn-point";
+import { ItemSpawnPointClient } from "./items/item-spawn-point";
 import { PistolAmmoClient } from "@/entities/weapons/pistol-ammo";
 import { ShotgunAmmoClient } from "@/entities/weapons/shotgun-ammo";
 import { BoltActionAmmoClient } from "@/entities/weapons/bolt-action-ammo";
@@ -67,6 +68,7 @@ import { CampsiteFireClient } from "@/entities/environment/campsite-fire";
 import { MerchantClient } from "./environment/merchant";
 import { CarClient } from "./environment/car";
 import { SurvivorClient } from "./environment/survivor";
+import { DialogueSurvivorNpcClient } from "./environment/dialogue-survivor-npc";
 import { BloodClient } from "./blood";
 import { AcidClient } from "./acid";
 type ClientEntityConstructor = new (
@@ -125,6 +127,7 @@ const CLIENT_ENTITY_CONSTRUCTORS: Record<EntityType, ClientEntityConstructor> = 
   sentry_gun_level_3: SentryGunLevel3Client,
   boundary: BoundaryClient,
   zombie_spawn_point: ZombieSpawnPointClient,
+  item_spawn_point: ItemSpawnPointClient,
   pistol_ammo: PistolAmmoClient,
   shotgun_ammo: ShotgunAmmoClient,
   bolt_action_ammo: BoltActionAmmoClient,
@@ -146,6 +149,7 @@ const CLIENT_ENTITY_CONSTRUCTORS: Record<EntityType, ClientEntityConstructor> = 
   merchant: MerchantClient,
   car: CarClient,
   survivor: SurvivorClient,
+  dialogue_survivor_npc: DialogueSurvivorNpcClient,
   blood: BloodClient,
   acid: AcidClient,
 } as Record<EntityType, ClientEntityConstructor>;

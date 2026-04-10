@@ -2,6 +2,7 @@ import { ISocketAdapter } from "@shared/network/socket-adapter";
 import { HandlerContext } from "../context";
 import { SocketEventHandler } from "./types";
 import { getConfig } from "@shared/config";
+import { FISTS_INVENTORY_SENTINEL } from "@shared/constants/inventory-sentinel";
 
 /**
  * Validate select inventory slot data
@@ -35,6 +36,10 @@ export function onSelectInventorySlot(
   if (!player) return;
 
   const maxSlots = getConfig().player.MAX_INVENTORY_SLOTS;
+  if (data.slotIndex === FISTS_INVENTORY_SENTINEL) {
+    player.selectInventoryItemOnly(FISTS_INVENTORY_SENTINEL);
+    return;
+  }
   const slotIndex = Math.max(1, Math.min(maxSlots, data.slotIndex));
 
   // Use the existing selectInventoryItem method which handles marking inventory dirty

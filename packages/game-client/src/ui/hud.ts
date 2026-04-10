@@ -19,9 +19,9 @@ import {
 import { getConfig } from "@shared/config";
 import { scaleHudValue } from "@/util/hud-scale";
 import { GameOverDialogUI } from "./game-over-dialog";
-import { InventoryBarUI } from "./inventory-bar";
 import { InventoryScreenUI } from "./inventory-screen";
-import { WeaponsHUD } from "@/ui/weapons-hud";
+import { SurvivorStatusHud } from "./survivor-status-hud";
+import { LoadoutStrip } from "./loadout-strip";
 import { InputManager } from "@/managers/input";
 import { PlayerClient } from "@/entities/player";
 import { InventoryItem, type EquipmentSlotKey } from "../../../game-shared/src/util/inventory";
@@ -111,9 +111,9 @@ export class Hud {
   private crateIndicatorsPanel: CrateIndicatorsPanel;
   private survivorIndicatorsPanel: SurvivorIndicatorsPanel;
   private gameOverDialog: GameOverDialogUI;
-  private hotbar: InventoryBarUI;
+  private survivorStatusHud: SurvivorStatusHud;
+  private loadoutStrip: LoadoutStrip;
   private inventoryScreen: InventoryScreenUI;
-  private weaponsHud: WeaponsHUD;
   private inputManager: InputManager;
   private currentGameState: GameState | null = null;
   private mouseX: number = 0;
@@ -134,6 +134,8 @@ export class Hud {
       allocations: Record<string, number>,
     ) => void,
     getMyPlayer: () => PlayerClient | null,
+    sendSelectWeaponLoadout: (loadout: 0 | 1 | 2) => void,
+    sendSetWeaponLoadoutSlot: (slot: 0 | 1 | 2, bagIndex: number) => void
   ) {
     this.mapManager = mapManager;
     this.soundManager = soundManager;
@@ -142,7 +144,7 @@ export class Hud {
     this.inputManager = inputManager;
     this.chatWidget = new ChatWidget();
 
-    // Create getInventory function for hotbar that uses currentGameState
+    // Create getInventory function for HUD that uses currentGameState
     const getInventory = (): (InventoryItem | null)[] => {
       if (!this.currentGameState || !this.currentGameState.playerId) {
         return [];
@@ -169,13 +171,13 @@ export class Hud {
       return null;
     };
 
-    // Initialize hotbar (zombie health/stamina only; survivors use panels from inventory screen path)
-    this.hotbar = new InventoryBarUI(
+    this.survivorStatusHud = new SurvivorStatusHud();
+
+    this.loadoutStrip = new LoadoutStrip(
       this.assetManager,
-      this.inputManager,
       getInventory,
-      sendDropItem,
-      sendSwapItems
+      getMyPlayer,
+      sendSelectWeaponLoadout
     );
 
     this.inventoryScreen = new InventoryScreenUI({
@@ -191,10 +193,8 @@ export class Hud {
         this.inputManager.setInventorySlot(slotIndex);
       },
       sendProgressionAllocations,
+      sendSetWeaponLoadoutSlot,
     });
-
-    // Initialize weapons HUD
-    this.weaponsHud = new WeaponsHUD(this.assetManager, this.inputManager, getInventory);
 
     this.minimap = new Minimap(mapManager);
     this.fullscreenMap = new FullScreenMap(mapManager);
@@ -412,8 +412,7 @@ export class Hud {
 
     ctx.restore();
 
-    // Render weapons HUD (only when F is held)
-    this.weaponsHud.render(ctx);
+    this.loadoutStrip.render(ctx, gameState);
 
     // Render transient HUD messages (loot, craft, etc.)
     this.gameMessagesPanel.render(ctx, gameState);
@@ -438,7 +437,7 @@ export class Hud {
     const currentPlayer = getPlayer(gameState);
     const isZombiePlayer = currentPlayer?.isZombiePlayer?.() ?? false;
     if (!isZombiePlayer) {
-      this.hotbar.renderHealthAndStamina(ctx, gameState, minimapHudLayout);
+      this.survivorStatusHud.renderHealthAndStamina(ctx, gameState, minimapHudLayout);
     }
 
     // Render death screen if player is dead and game is not over
@@ -541,7 +540,7 @@ export class Hud {
     if (this.inventoryScreen?.isOpen() && this.inventoryScreen.isHovering()) {
       return true;
     }
-    return this.hotbar ? this.hotbar.isHovering() : false;
+    return false;
   }
 
   public toggleInventoryScreen(): void {
@@ -578,17 +577,12 @@ export class Hud {
       return true;
     }
 
-    // Check if click is on weapons HUD (when F is held)
-    if (this.weaponsHud.handleClick(x, y, canvasWidth, canvasHeight)) {
+    if (this.loadoutStrip.handleClick(x, y, canvasWidth, canvasHeight)) {
       return true;
     }
 
     // Check if click is on mute button
     if (this.muteButtonPanel.handleClick(x, y, canvasHeight)) {
-      return true;
-    }
-
-    if (this.hotbar && this.hotbar.handleClick(x, y, canvasWidth, canvasHeight)) {
       return true;
     }
 
@@ -598,8 +592,6 @@ export class Hud {
   public handleMouseMove(x: number, y: number, canvasWidth: number, canvasHeight: number): void {
     if (this.inventoryScreen.isOpen()) {
       this.inventoryScreen.handleMouseMove(x, y, canvasWidth, canvasHeight);
-    } else if (this.hotbar) {
-      this.hotbar.handleMouseMove(x, y, canvasWidth, canvasHeight);
     }
 
     if (this.fullscreenMap.isOpen()) {
@@ -610,8 +602,6 @@ export class Hud {
   public handleMouseUp(x: number, y: number, canvasWidth: number, canvasHeight: number): void {
     if (this.inventoryScreen.isOpen()) {
       this.inventoryScreen.handleMouseUp(x, y, canvasWidth, canvasHeight);
-    } else if (this.hotbar) {
-      this.hotbar.handleMouseUp(x, y, canvasWidth, canvasHeight);
     }
 
     if (this.fullscreenMap.isOpen()) {
@@ -631,17 +621,6 @@ export class Hud {
 
     if (this.inventoryScreen.isOpen()) {
       this.inventoryScreen.updateMousePosition(x, y, canvasWidth, canvasHeight);
-    } else if (this.hotbar) {
-      this.hotbar.updateMousePosition(x, y, canvasWidth, canvasHeight);
-    }
-    if (this.weaponsHud) {
-      this.weaponsHud.updateMouse(x, y);
-    }
-  }
-
-  public selectWeaponByIndex(index: number): void {
-    if (this.weaponsHud) {
-      this.weaponsHud.selectWeaponByIndex(index);
     }
   }
 }

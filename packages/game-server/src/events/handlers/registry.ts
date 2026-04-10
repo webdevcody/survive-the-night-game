@@ -20,6 +20,8 @@ import { interactHandler } from "./interact";
 import { changePlayerColorHandler } from "./change-player-color";
 import { spawnZombieHandler } from "./spawn-zombie";
 import { setProgressionAllocationsHandler } from "./set-progression-allocations";
+import { selectWeaponLoadoutHandler } from "./select-weapon-loadout";
+import { setWeaponLoadoutSlotHandler } from "./set-weapon-loadout-slot";
 
 /**
  * Registry of all socket event handlers.
@@ -54,4 +56,6 @@ export const socketEventHandlers: SocketEventHandler[] = [
   changePlayerColorHandler,
   spawnZombieHandler,
   setProgressionAllocationsHandler,
+  selectWeaponLoadoutHandler,
+  setWeaponLoadoutSlotHandler,
 ];

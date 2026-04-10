@@ -43,7 +43,10 @@ router.post("/world-map", async (req: Request, res: Response) => {
         .json({ error: "Invalid world map: ground, collidables, spawns, and decals required" });
       return;
     }
-    await writeWorldMap(body);
+    await writeWorldMap({
+      ...body,
+      dialogueNpcs: body.dialogueNpcs,
+    });
     res.json({ success: true, message: "World map saved successfully" });
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : "Failed to save world map";

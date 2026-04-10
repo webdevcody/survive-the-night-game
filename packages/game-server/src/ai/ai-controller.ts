@@ -36,6 +36,7 @@ import {
   getMeleeRangeWithBuffer,
   calculateRetreatPosition,
   equipMeleeWeaponForCrate,
+  equipBagSlotViaLoadout,
   calculateAimAngle,
   angleToDirection,
   aimAtTarget,
@@ -193,7 +194,8 @@ export class AIController {
     if (!hasMeleeWeapon) {
       const knifeIndex = inventory.findIndex((item) => item && item.itemType === "knife");
       if (knifeIndex >= 0) {
-        this.player.selectInventoryItem(knifeIndex + 1);
+        this.player.assignWeaponLoadoutSlot(2, knifeIndex + 1);
+        this.player.selectWeaponLoadout(2);
         meleeRange = getMeleeAttackRange({ itemType: "knife" });
       } else {
         // No melee weapon available - can't attack in melee
@@ -208,10 +210,12 @@ export class AIController {
       const batIndex = inventory.findIndex((item) => item && item.itemType === "baseball_bat");
 
       if (knifeIndex >= 0) {
-        this.player.selectInventoryItem(knifeIndex + 1);
+        this.player.assignWeaponLoadoutSlot(2, knifeIndex + 1);
+        this.player.selectWeaponLoadout(2);
         meleeRange = getMeleeAttackRange({ itemType: "knife" });
       } else if (batIndex >= 0) {
-        this.player.selectInventoryItem(batIndex + 1);
+        this.player.assignWeaponLoadoutSlot(2, batIndex + 1);
+        this.player.selectWeaponLoadout(2);
         meleeRange = getMeleeAttackRange({ itemType: "baseball_bat" });
       }
     }
@@ -847,11 +851,9 @@ export class AIController {
     const currentItemType = currentItem?.itemType;
 
     if (state === AIState.ENGAGE) {
-      // In combat - use best weapon
       const weaponIndex = this.stateMachine.getBestWeaponIndex(inventory);
       if (weaponIndex > 0) {
-        const newItem = inventory[weaponIndex - 1];
-        this.player.selectInventoryItem(weaponIndex);
+        equipBagSlotViaLoadout(this.player, weaponIndex);
       }
     } else if (state === AIState.RETREAT) {
       // Retreating - try to use bandage
@@ -861,11 +863,9 @@ export class AIController {
         this.player.selectInventoryItem(bandageIndex + 1);
       }
     } else if (state === AIState.HUNT) {
-      // Hunting - use best weapon
       const weaponIndex = this.stateMachine.getBestWeaponIndex(inventory);
       if (weaponIndex > 0) {
-        const newItem = inventory[weaponIndex - 1];
-        this.player.selectInventoryItem(weaponIndex);
+        equipBagSlotViaLoadout(this.player, weaponIndex);
       }
     }
   }

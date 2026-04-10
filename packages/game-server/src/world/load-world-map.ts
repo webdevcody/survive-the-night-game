@@ -2,6 +2,7 @@ import fs from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
 import { getConfig } from "@shared/config";
+import type { WorldMapDialogueNpcEntry } from "@shared/map/world-map-types";
 
 export interface WorldMapFile {
   ground: number[][];
@@ -10,17 +11,20 @@ export interface WorldMapFile {
   spawns?: number[][];
   /** Omitted in legacy files; treated as all zeros when missing. */
   decals?: number[][];
+  /** Optional dialogue NPC placements (see shared `WorldMapDialogueNpcEntry`). */
+  dialogueNpcs?: WorldMapDialogueNpcEntry[];
 }
 
 function resolveWorldMapJsonPath(): string {
   const cwd = process.cwd();
   const distPath = path.join(cwd, "dist", "world-map.json");
   const srcPath = path.join(cwd, "src", "world", "world-map.json");
-  if (fs.existsSync(distPath)) {
-    return distPath;
-  }
+  // Prefer src: the map editor writes here; dist is only updated on build and would stay stale.
   if (fs.existsSync(srcPath)) {
     return srcPath;
+  }
+  if (fs.existsSync(distPath)) {
+    return distPath;
   }
   try {
     const dir = path.dirname(fileURLToPath(import.meta.url));

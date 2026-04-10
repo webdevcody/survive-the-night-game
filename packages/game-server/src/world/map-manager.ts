@@ -1,6 +1,8 @@
 import { Boundary } from "@/entities/environment/boundary";
 import { Car } from "@/entities/environment/car";
 import { ZombieSpawnPoint } from "@/entities/environment/zombie-spawn-point";
+import { ItemSpawnPoint } from "@/entities/environment/item-spawn-point";
+import { DialogueSurvivorNpc } from "@/entities/environment/dialogue-survivor-npc";
 import { Zombie } from "@/entities/enemies/zombie";
 import { DEBUG_START_ZOMBIE } from "@shared/debug";
 import { IGameManagers, IEntityManager, IMapManager } from "@/managers/types";
@@ -37,8 +39,13 @@ import { tryLoadWorldMapFile, validateWorldMapDimensions, type WorldMapFile } fr
 import {
   SPAWN_TILE_PLAYER,
   isEnemySpawnTile,
+  isItemSpawnTile,
+  isNpcDialogueSurvivorSpawnTile,
   spawnTileIdToZombieType,
+  spawnTileIdToItemFixtureType,
 } from "../../../game-shared/src/map/spawn-palette";
+import type { WorldMapDialogueNpcEntry } from "../../../game-shared/src/map/world-map-types";
+import { normalizeDialogueNpcs } from "../../../game-shared/src/map/world-map-types";
 import { DECAL_TILE_CAMPSITE } from "../../../game-shared/src/map/decal-palette";
 
 // Re-export from shared config for backward compatibility
@@ -102,6 +109,8 @@ export class MapManager implements IMapManager {
   private campsiteFireTileY = Math.floor(MAP_SIZE / 2) * BIOME_SIZE + CAMPSITE_CAMPFIRE_LOCAL_Y;
   /** True after a valid authored `world-map.json` was applied this `generateMap()`. */
   private authoredWorldMapApplied = false;
+  /** Normalized dialogue NPC entries from the last applied authored map (tile row/col + message). */
+  private authoredDialogueNpcs: WorldMapDialogueNpcEntry[] = [];
   private gameManagers?: IGameManagers;
   private entityManager?: IEntityManager;
   private farmBiomePosition?: { x: number; y: number };
@@ -349,6 +358,8 @@ export class MapManager implements IMapManager {
       if (this.isOpenWorldMode()) {
         if (this.authoredWorldMapApplied) {
           this.seedOpenWorldZombieSpawnPointsFromAuthoredLayer();
+          this.seedItemSpawnPointsFromAuthoredLayer();
+          this.seedDialogueSurvivorNpcsFromAuthoredLayer();
         } else {
           this.seedOpenWorldZombieSpawnPoints();
         }
@@ -382,6 +393,7 @@ export class MapManager implements IMapManager {
     this.decalsLayer = Array(totalSize)
       .fill(0)
       .map(() => Array(totalSize).fill(0));
+    this.authoredDialogueNpcs = [];
   }
 
   /**
@@ -428,6 +440,7 @@ export class MapManager implements IMapManager {
         this.decalsLayer[y][x] = hasDecals ? data.decals![y][x] : 0;
       }
     }
+    this.authoredDialogueNpcs = normalizeDialogueNpcs(data.dialogueNpcs, n);
     this.authoredWorldMapApplied = true;
     return true;
   }
@@ -540,6 +553,51 @@ export class MapManager implements IMapManager {
       console.warn(
         "MapManager: authored world map has no enemy spawn tiles (spawns layer ids 2–6); open-world zombie fixtures are disabled.",
       );
+    }
+  }
+
+  private seedItemSpawnPointsFromAuthoredLayer(): void {
+    const totalSize = BIOME_SIZE * MAP_SIZE;
+
+    for (let y = 0; y < totalSize; y++) {
+      for (let x = 0; x < totalSize; x++) {
+        const id = this.spawnLayer[y][x];
+        if (!isItemSpawnTile(id)) {
+          continue;
+        }
+        const itemType = spawnTileIdToItemFixtureType(id);
+        if (!itemType) {
+          continue;
+        }
+
+        const spawner = new ItemSpawnPoint(
+          this.getGameManagers(),
+          itemType,
+          x,
+          y,
+          true,
+        );
+        this.getEntityManager().addEntity(spawner);
+      }
+    }
+  }
+
+  private seedDialogueSurvivorNpcsFromAuthoredLayer(): void {
+    const totalSize = BIOME_SIZE * MAP_SIZE;
+    const messageByKey = new Map<string, string>();
+    for (const e of this.authoredDialogueNpcs) {
+      messageByKey.set(`${e.row},${e.col}`, e.message);
+    }
+
+    for (let y = 0; y < totalSize; y++) {
+      for (let x = 0; x < totalSize; x++) {
+        if (!isNpcDialogueSurvivorSpawnTile(this.spawnLayer[y][x])) {
+          continue;
+        }
+        const msg = messageByKey.get(`${y},${x}`) ?? "…";
+        const npc = new DialogueSurvivorNpc(this.getGameManagers(), msg, x, y);
+        this.getEntityManager().addEntity(npc);
+      }
     }
   }
 

@@ -12,15 +12,65 @@ import {
   createEmptyCollidablesLayer,
   createEmptySpawnsLayer,
   createEmptyDecalsLayer,
+  DEFAULT_EDITOR_TILE_PIXEL_SIZE,
   getFullMapTileCount,
   getMapSideLength,
 } from "./-utils";
 import type { DecalData } from "@survive-the-night/game-shared/config/decals-config";
+import type { WorldMapDialogueNpcEntry } from "@survive-the-night/game-shared/map/world-map-types";
+import {
+  DIALOGUE_NPC_MAX_MESSAGE_LENGTH,
+  NPC_DIALOGUE_SURVIVOR_SPAWN_TILE_ID,
+} from "@survive-the-night/game-shared/map/spawn-palette";
 
 const MAX_UNDO_HISTORY = 20;
 
+export const EDITOR_BRUSH_MIN = 1;
+export const EDITOR_BRUSH_MAX = 5;
+
 function clamp(n: number, min: number, max: number): number {
   return Math.min(max, Math.max(min, n));
+}
+
+const EDITOR_TILE_PIXEL_MIN = DEFAULT_EDITOR_TILE_PIXEL_SIZE * 0.25;
+const EDITOR_TILE_PIXEL_MAX = DEFAULT_EDITOR_TILE_PIXEL_SIZE * 4;
+
+function clampEditorTilePixelSize(n: number): number {
+  const rounded = Math.round(n * 100) / 100;
+  return clamp(rounded, EDITOR_TILE_PIXEL_MIN, EDITOR_TILE_PIXEL_MAX);
+}
+
+/** Top-left (row,col), size×size, clipped to [0, mapSize). One grid deep-copy. */
+function fillRectInGrid(
+  grid: number[][],
+  row: number,
+  col: number,
+  size: number,
+  value: number,
+  mapSize: number,
+): number[][] {
+  const r0 = Math.max(0, row);
+  const c0 = Math.max(0, col);
+  const r1 = Math.min(mapSize, row + size);
+  const c1 = Math.min(mapSize, col + size);
+  const next = grid.map((r) => [...r]);
+  for (let r = r0; r < r1; r++) {
+    for (let c = c0; c < c1; c++) {
+      next[r][c] = value;
+    }
+  }
+  return next;
+}
+
+/** Immutable single-cell update without deep-copying every row (O(map side) instead of O(map area)). */
+function replaceCellInGrid(
+  grid: number[][],
+  row: number,
+  col: number,
+  value: number,
+): number[][] {
+  const newRow = grid[row].map((cell, colIdx) => (colIdx === col ? value : cell));
+  return grid.map((r, rowIdx) => (rowIdx === row ? newRow : r));
 }
 
 interface EditorState {
@@ -29,6 +79,8 @@ interface EditorState {
   collidablesGrid: number[][];
   spawnsGrid: number[][];
   decalsGrid: number[][];
+  /** Dialogue NPC messages keyed by spawns-layer `NPC_DIALOGUE_SURVIVOR_SPAWN_TILE_ID` tiles. */
+  dialogueNpcs: WorldMapDialogueNpcEntry[];
   activeLayer: Layer;
   selectedTileId: number;
 
@@ -68,6 +120,9 @@ interface EditorState {
   groundDimensions: SheetDimensions;
   collidablesDimensions: SheetDimensions;
   sheetsLoaded: boolean;
+  /** Loaded tilesheet images for canvas rendering (set when dimensions load). */
+  groundSheetImage: HTMLImageElement | null;
+  collidablesSheetImage: HTMLImageElement | null;
 
   // Decals
   selectedDecalId: string | null;
@@ -79,11 +134,25 @@ interface EditorState {
   viewportWidthTiles: number;
   viewportHeightTiles: number;
 
+  /** On-screen tile size (CSS px) for the main map canvas; pinch zoom adjusts this. */
+  editorTilePixelSize: number;
+  setEditorTilePixelSize: (n: number) => void;
+  /** `deltaY` in CSS pixels (after deltaMode normalization). Negative = zoom in (larger tiles). */
+  adjustEditorTilePixelSizeFromWheelPixelDelta: (deltaY: number) => void;
+
+  /** Square paint brush: 1–5 tiles (top-left anchored). */
+  brushSize: number;
+  incrementBrushSize: () => void;
+  decrementBrushSize: () => void;
+
   // Actions
   setGroundGrid: (grid: number[][]) => void;
   setCollidablesGrid: (grid: number[][]) => void;
   setSpawnsGrid: (grid: number[][]) => void;
   setDecalsGrid: (grid: number[][]) => void;
+  setDialogueNpcs: (entries: WorldMapDialogueNpcEntry[]) => void;
+  updateDialogueNpcMessage: (row: number, col: number, message: string) => void;
+  removeDialogueNpcAt: (row: number, col: number) => void;
   setActiveLayer: (layer: Layer) => void;
   setSelectedTileId: (id: number) => void;
   setExportText: (text: string) => void;
@@ -104,6 +173,7 @@ interface EditorState {
   setGroundDimensions: (dimensions: SheetDimensions) => void;
   setCollidablesDimensions: (dimensions: SheetDimensions) => void;
   setSheetsLoaded: (loaded: boolean) => void;
+  setSheetImages: (ground: HTMLImageElement, collidables: HTMLImageElement) => void;
   setSelectedDecalId: (id: string) => void;
   removeDecal: (index: number) => void;
 
@@ -125,8 +195,14 @@ interface EditorState {
     saveHistory?: boolean,
     /** When true (e.g. drag stroke), always paint selected tile — no toggle on matching cells. */
     paintStroke?: boolean,
+    opts?: { skipClipboard?: boolean; skipFillBucket?: boolean },
   ) => void;
+  /** Clear the hovered cell for the active layer (ground 0, collidable -1, spawn/decal 0). */
+  eraseGridCell: (row: number, col: number) => void;
+  /** Erase a brush-sized rectangle (uses `brushSize`); delegates to `eraseGridCell` when size is 1. */
+  eraseGridBrush: (row: number, col: number) => void;
   floodFillGround: (startRow: number, startCol: number, newTileId: number) => void;
+  floodFillCollidables: (startRow: number, startCol: number, newTileId: number) => void;
   pasteClipboard: (startRow: number, startCol: number) => void;
 }
 
@@ -137,6 +213,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   collidablesGrid: createEmptyCollidablesLayer(initialSize),
   spawnsGrid: createEmptySpawnsLayer(initialSize),
   decalsGrid: createEmptyDecalsLayer(initialSize),
+  dialogueNpcs: [],
   activeLayer: "ground",
   selectedTileId: 0,
   exportText: "",
@@ -157,17 +234,56 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   groundDimensions: { cols: 10, rows: 3, totalTiles: 30 },
   collidablesDimensions: { cols: 10, rows: 3, totalTiles: 30 },
   sheetsLoaded: false,
+  groundSheetImage: null,
+  collidablesSheetImage: null,
   selectedDecalId: null,
   decals: [],
   cameraX: 0,
   cameraY: 0,
   viewportWidthTiles: 32,
   viewportHeightTiles: 24,
+  editorTilePixelSize: DEFAULT_EDITOR_TILE_PIXEL_SIZE,
+  setEditorTilePixelSize: (n) => {
+    const next = clampEditorTilePixelSize(n);
+    set({ editorTilePixelSize: next });
+  },
+  adjustEditorTilePixelSizeFromWheelPixelDelta: (deltaY) => {
+    const { editorTilePixelSize } = get();
+    const next = clampEditorTilePixelSize(editorTilePixelSize - deltaY * 0.015);
+    if (next === editorTilePixelSize) return;
+    set({ editorTilePixelSize: next });
+  },
+  brushSize: EDITOR_BRUSH_MIN,
+
+  incrementBrushSize: () =>
+    set((s) => ({ brushSize: clamp(s.brushSize + 1, EDITOR_BRUSH_MIN, EDITOR_BRUSH_MAX) })),
+  decrementBrushSize: () =>
+    set((s) => ({ brushSize: clamp(s.brushSize - 1, EDITOR_BRUSH_MIN, EDITOR_BRUSH_MAX) })),
 
   setGroundGrid: (grid) => set({ groundGrid: grid }),
   setCollidablesGrid: (grid) => set({ collidablesGrid: grid }),
   setSpawnsGrid: (grid) => set({ spawnsGrid: grid }),
   setDecalsGrid: (grid) => set({ decalsGrid: grid }),
+  setDialogueNpcs: (entries) => set({ dialogueNpcs: entries }),
+  updateDialogueNpcMessage: (row, col, message) => {
+    const clamped = message.slice(0, DIALOGUE_NPC_MAX_MESSAGE_LENGTH);
+    set((state) => ({
+      dialogueNpcs: state.dialogueNpcs.map((e) =>
+        e.row === row && e.col === col ? { ...e, message: clamped } : e,
+      ),
+    }));
+  },
+  removeDialogueNpcAt: (row, col) => {
+    const { saveToHistory, spawnsGrid, dialogueNpcs } = get();
+    saveToHistory();
+    const newGrid = spawnsGrid.map((r, rowIdx) =>
+      r.map((cell, colIdx) => (rowIdx === row && colIdx === col ? 0 : cell)),
+    );
+    set({
+      spawnsGrid: newGrid,
+      dialogueNpcs: dialogueNpcs.filter((e) => !(e.row === row && e.col === col)),
+    });
+  },
   setActiveLayer: (layer) => set({ activeLayer: layer }),
   setSelectedTileId: (id) => set({ selectedTileId: id }),
   setExportText: (text) => set({ exportText: text }),
@@ -188,6 +304,8 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   setGroundDimensions: (dimensions) => set({ groundDimensions: dimensions }),
   setCollidablesDimensions: (dimensions) => set({ collidablesDimensions: dimensions }),
   setSheetsLoaded: (loaded) => set({ sheetsLoaded: loaded }),
+  setSheetImages: (ground, collidables) =>
+    set({ groundSheetImage: ground, collidablesSheetImage: collidables }),
   setSelectedDecalId: (id) => set({ selectedDecalId: id }),
   removeDecal: (index) => {
     const { decals } = get();
@@ -224,12 +342,13 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   },
 
   saveToHistory: () => {
-    const { groundGrid, collidablesGrid, spawnsGrid, decalsGrid, history } = get();
+    const { groundGrid, collidablesGrid, spawnsGrid, decalsGrid, dialogueNpcs, history } = get();
     const snapshot: MapLayerSnapshot = {
       ground: groundGrid.map((row) => [...row]),
       collidables: collidablesGrid.map((row) => [...row]),
       spawns: spawnsGrid.map((row) => [...row]),
       decals: decalsGrid.map((row) => [...row]),
+      dialogueNpcs: dialogueNpcs.map((e) => ({ ...e })),
     };
     let next = [...history, snapshot];
     if (next.length > MAX_UNDO_HISTORY) {
@@ -248,6 +367,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
       collidablesGrid: previousState.collidables,
       spawnsGrid: previousState.spawns,
       decalsGrid: previousState.decals,
+      dialogueNpcs: (previousState.dialogueNpcs ?? []).map((e) => ({ ...e })),
       history: history.slice(0, -1),
     });
   },
@@ -272,7 +392,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
     } else if (activeLayer === "collidables") {
       set({ collidablesGrid: createEmptyCollidablesLayer(n) });
     } else if (activeLayer === "spawns") {
-      set({ spawnsGrid: createEmptySpawnsLayer(n) });
+      set({ spawnsGrid: createEmptySpawnsLayer(n), dialogueNpcs: [] });
     } else {
       set({ decalsGrid: createEmptyDecalsLayer(n) });
     }
@@ -294,7 +414,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
     });
   },
 
-  handleGridCellClick: (row, col, saveHistory = true, paintStroke = false) => {
+  handleGridCellClick: (row, col, saveHistory = true, paintStroke = false, opts) => {
     const {
       activeLayer,
       selectedTileId,
@@ -307,20 +427,93 @@ export const useEditorStore = create<EditorState>((set, get) => ({
       saveToHistory,
       pasteClipboard,
       floodFillGround,
+      floodFillCollidables,
     } = get();
 
     if (saveHistory) {
       saveToHistory();
     }
 
-    if (clipboard) {
+    if (clipboard && !opts?.skipClipboard) {
       pasteClipboard(row, col);
       return;
     }
 
-    if (isFillBucketMode && activeLayer === "ground") {
+    if (!opts?.skipFillBucket && isFillBucketMode && activeLayer === "ground") {
       floodFillGround(row, col, selectedTileId);
       return;
+    }
+
+    if (!opts?.skipFillBucket && isFillBucketMode && activeLayer === "collidables") {
+      floodFillCollidables(row, col, selectedTileId);
+      return;
+    }
+
+    const { brushSize } = get();
+    if (brushSize > 1) {
+      const mapSize = getMapSideLength(groundGrid);
+      const r0 = Math.max(0, row);
+      const c0 = Math.max(0, col);
+      const r1 = Math.min(mapSize, row + brushSize);
+      const c1 = Math.min(mapSize, col + brushSize);
+      if (r0 >= r1 || c0 >= c1) return;
+
+      if (activeLayer === "ground") {
+        set({
+          groundGrid: fillRectInGrid(groundGrid, row, col, brushSize, selectedTileId, mapSize),
+        });
+        return;
+      }
+
+      if (activeLayer === "collidables") {
+        set({
+          collidablesGrid: fillRectInGrid(
+            collidablesGrid,
+            row,
+            col,
+            brushSize,
+            selectedTileId,
+            mapSize,
+          ),
+        });
+        return;
+      }
+
+      if (activeLayer === "decals") {
+        set({
+          decalsGrid: fillRectInGrid(decalsGrid, row, col, brushSize, selectedTileId, mapSize),
+        });
+        return;
+      }
+
+      if (activeLayer === "spawns") {
+        const dialogueBefore = get().dialogueNpcs;
+        const prevMap = new Map(
+          dialogueBefore.map((e) => [`${e.row},${e.col}`, e] as const),
+        );
+        let nextDialogue = dialogueBefore.filter(
+          (e) => !(e.row >= r0 && e.row < r1 && e.col >= c0 && e.col < c1),
+        );
+        const newSpawns = spawnsGrid.map((rowArr) => [...rowArr]);
+        for (let r = r0; r < r1; r++) {
+          for (let c = c0; c < c1; c++) {
+            newSpawns[r][c] = selectedTileId;
+          }
+        }
+        if (selectedTileId === NPC_DIALOGUE_SURVIVOR_SPAWN_TILE_ID) {
+          for (let r = r0; r < r1; r++) {
+            for (let c = c0; c < c1; c++) {
+              const prev = prevMap.get(`${r},${c}`);
+              nextDialogue = [
+                ...nextDialogue,
+                { row: r, col: c, message: prev?.message ?? "Hello!" },
+              ];
+            }
+          }
+        }
+        set({ spawnsGrid: newSpawns, dialogueNpcs: nextDialogue });
+        return;
+      }
     }
 
     if (activeLayer === "spawns") {
@@ -331,10 +524,18 @@ export const useEditorStore = create<EditorState>((set, get) => ({
           ? 0
           : selectedTileId;
 
-      const newGrid = spawnsGrid.map((r, rowIdx) =>
-        r.map((cell, colIdx) => (rowIdx === row && colIdx === col ? newTileId : cell)),
-      );
-      set({ spawnsGrid: newGrid });
+      const newGrid = replaceCellInGrid(spawnsGrid, row, col, newTileId);
+
+      const { dialogueNpcs } = get();
+      const prevEntry = dialogueNpcs.find((e) => e.row === row && e.col === col);
+      let nextDialogue = dialogueNpcs.filter((e) => !(e.row === row && e.col === col));
+      if (newTileId === NPC_DIALOGUE_SURVIVOR_SPAWN_TILE_ID) {
+        nextDialogue = [
+          ...nextDialogue,
+          { row, col, message: prevEntry?.message ?? "Hello!" },
+        ];
+      }
+      set({ spawnsGrid: newGrid, dialogueNpcs: nextDialogue });
       return;
     }
 
@@ -346,17 +547,13 @@ export const useEditorStore = create<EditorState>((set, get) => ({
           ? 0
           : selectedTileId;
 
-      const newGrid = decalsGrid.map((r, rowIdx) =>
-        r.map((cell, colIdx) => (rowIdx === row && colIdx === col ? newTileId : cell)),
-      );
+      const newGrid = replaceCellInGrid(decalsGrid, row, col, newTileId);
       set({ decalsGrid: newGrid });
       return;
     }
 
     if (activeLayer === "ground") {
-      const newGrid = groundGrid.map((r, rowIdx) =>
-        r.map((cell, colIdx) => (rowIdx === row && colIdx === col ? selectedTileId : cell)),
-      );
+      const newGrid = replaceCellInGrid(groundGrid, row, col, selectedTileId);
       set({ groundGrid: newGrid });
     } else {
       const currentTileId = collidablesGrid[row][col];
@@ -366,10 +563,90 @@ export const useEditorStore = create<EditorState>((set, get) => ({
           ? -1
           : selectedTileId;
 
-      const newGrid = collidablesGrid.map((r, rowIdx) =>
-        r.map((cell, colIdx) => (rowIdx === row && colIdx === col ? newTileId : cell)),
-      );
+      const newGrid = replaceCellInGrid(collidablesGrid, row, col, newTileId);
       set({ collidablesGrid: newGrid });
+    }
+  },
+
+  eraseGridCell: (row, col) => {
+    const {
+      saveToHistory,
+      activeLayer,
+      groundGrid,
+      collidablesGrid,
+      spawnsGrid,
+      decalsGrid,
+      dialogueNpcs,
+    } = get();
+    saveToHistory();
+    if (activeLayer === "ground") {
+      set({ groundGrid: replaceCellInGrid(groundGrid, row, col, 0) });
+      return;
+    }
+    if (activeLayer === "collidables") {
+      set({ collidablesGrid: replaceCellInGrid(collidablesGrid, row, col, -1) });
+      return;
+    }
+    if (activeLayer === "spawns") {
+      const newGrid = replaceCellInGrid(spawnsGrid, row, col, 0);
+      const nextDialogue = dialogueNpcs.filter((e) => !(e.row === row && e.col === col));
+      set({ spawnsGrid: newGrid, dialogueNpcs: nextDialogue });
+      return;
+    }
+    if (activeLayer === "decals") {
+      set({ decalsGrid: replaceCellInGrid(decalsGrid, row, col, 0) });
+    }
+  },
+
+  eraseGridBrush: (row, col) => {
+    const { brushSize } = get();
+    if (brushSize <= 1) {
+      get().eraseGridCell(row, col);
+      return;
+    }
+
+    const {
+      saveToHistory,
+      activeLayer,
+      groundGrid,
+      collidablesGrid,
+      spawnsGrid,
+      decalsGrid,
+      dialogueNpcs,
+    } = get();
+    saveToHistory();
+    const mapSize = getMapSideLength(groundGrid);
+    const r0 = Math.max(0, row);
+    const c0 = Math.max(0, col);
+    const r1 = Math.min(mapSize, row + brushSize);
+    const c1 = Math.min(mapSize, col + brushSize);
+    if (r0 >= r1 || c0 >= c1) return;
+
+    if (activeLayer === "ground") {
+      set({ groundGrid: fillRectInGrid(groundGrid, row, col, brushSize, 0, mapSize) });
+      return;
+    }
+    if (activeLayer === "collidables") {
+      set({
+        collidablesGrid: fillRectInGrid(collidablesGrid, row, col, brushSize, -1, mapSize),
+      });
+      return;
+    }
+    if (activeLayer === "spawns") {
+      const nextDialogue = dialogueNpcs.filter(
+        (e) => !(e.row >= r0 && e.row < r1 && e.col >= c0 && e.col < c1),
+      );
+      const newSpawns = spawnsGrid.map((rowArr) => [...rowArr]);
+      for (let r = r0; r < r1; r++) {
+        for (let c = c0; c < c1; c++) {
+          newSpawns[r][c] = 0;
+        }
+      }
+      set({ spawnsGrid: newSpawns, dialogueNpcs: nextDialogue });
+      return;
+    }
+    if (activeLayer === "decals") {
+      set({ decalsGrid: fillRectInGrid(decalsGrid, row, col, brushSize, 0, mapSize) });
     }
   },
 
@@ -409,6 +686,44 @@ export const useEditorStore = create<EditorState>((set, get) => ({
     }
 
     set({ groundGrid: newGrid });
+  },
+
+  floodFillCollidables: (startRow, startCol, newTileId) => {
+    const { collidablesGrid } = get();
+    const mapSize = collidablesGrid.length;
+    const originalTileId = collidablesGrid[startRow]?.[startCol];
+
+    if (originalTileId === newTileId) return;
+
+    const newGrid = collidablesGrid.map((row) => [...row]);
+    const queue: Position[] = [{ row: startRow, col: startCol }];
+    const visited = new Set<string>();
+
+    while (queue.length > 0) {
+      const pos = queue.shift();
+      if (!pos) break;
+
+      const key = `${pos.row},${pos.col}`;
+      if (visited.has(key)) continue;
+      visited.add(key);
+
+      if (pos.row < 0 || pos.row >= mapSize || pos.col < 0 || pos.col >= mapSize) {
+        continue;
+      }
+
+      if (newGrid[pos.row][pos.col] !== originalTileId) {
+        continue;
+      }
+
+      newGrid[pos.row][pos.col] = newTileId;
+
+      queue.push({ row: pos.row - 1, col: pos.col });
+      queue.push({ row: pos.row + 1, col: pos.col });
+      queue.push({ row: pos.row, col: pos.col - 1 });
+      queue.push({ row: pos.row, col: pos.col + 1 });
+    }
+
+    set({ collidablesGrid: newGrid });
   },
 
   pasteClipboard: (startRow, startCol) => {

@@ -3,6 +3,7 @@ import { HandlerContext } from "../context";
 import Inventory from "@/extensions/inventory";
 import Consumable from "@/extensions/consumable";
 import { ItemType } from "@shared/util/inventory";
+import { getConfig } from "@shared/config";
 import { SocketEventHandler } from "./types";
 
 /**
@@ -49,12 +50,11 @@ export function onConsumeItem(
       item = inventoryItems[itemIndex];
     }
   } else if (inputInventoryItem !== null) {
-    // Otherwise, use the currently selected inventory slot
-    // Validate that inputInventoryItem is in valid range before using
+    const maxSlots = getConfig().player.MAX_INVENTORY_SLOTS;
     if (
       typeof inputInventoryItem === "number" &&
       inputInventoryItem >= 1 &&
-      inputInventoryItem <= 10
+      inputInventoryItem <= maxSlots
     ) {
       itemIndex = inputInventoryItem - 1;
       item = inventory.getItems()[itemIndex];

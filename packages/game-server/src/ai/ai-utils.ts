@@ -9,10 +9,27 @@ import { Player } from "@/entities/players/player";
 import { InventoryItem } from "@shared/util/inventory";
 import { AIStateMachine } from "./ai-state-machine";
 import { Direction } from "@/util/direction";
+import { isMeleeWeaponType, isRangedWeaponType } from "@shared/util/weapon-loadout";
 
 /**
  * AI Utility Functions - Common logic extracted to DRY up the codebase
  */
+
+/**
+ * Assign loadout slots to a bag index and activate the matching loadout (primary vs melee).
+ */
+export function equipBagSlotViaLoadout(player: Player, bagIndex1Based: number): void {
+  const inv = player.getInventory();
+  const item = inv[bagIndex1Based - 1];
+  if (!item) return;
+  if (isRangedWeaponType(item.itemType)) {
+    player.assignWeaponLoadoutSlot(0, bagIndex1Based);
+    player.selectWeaponLoadout(0);
+  } else if (isMeleeWeaponType(item.itemType)) {
+    player.assignWeaponLoadoutSlot(2, bagIndex1Based);
+    player.selectWeaponLoadout(2);
+  }
+}
 
 /**
  * Get the effective shooting range for a weapon
@@ -223,12 +240,12 @@ export function equipMeleeWeaponForCrate(
   const knifeIndex = inventory.findIndex((item) => item && item.itemType === "knife");
 
   if (knifeIndex >= 0) {
-    player.selectInventoryItem(knifeIndex + 1);
+    player.assignWeaponLoadoutSlot(2, knifeIndex + 1);
+    player.selectWeaponLoadout(2);
   } else {
-    // Fallback to best weapon if no knife
     const weaponIndex = stateMachine.getBestWeaponIndex(inventory);
     if (weaponIndex > 0) {
-      player.selectInventoryItem(weaponIndex);
+      equipBagSlotViaLoadout(player, weaponIndex);
     }
   }
 }

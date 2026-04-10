@@ -118,11 +118,11 @@ export function InstructionPanel({ isOpen, onClose, outsideClickIgnoreRef }: Ins
                 <span className="font-mono">X</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-gray-300">Weapons HUD:</span>
-                <span className="font-mono">F</span>
+                <span className="text-gray-300">Weapon loadout:</span>
+                <span className="font-mono">1 / 2 / 3</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-gray-300">Quick Switch Weapon:</span>
+                <span className="text-gray-300">Swap primary / secondary:</span>
                 <span className="font-mono">Q</span>
               </div>
             </div>

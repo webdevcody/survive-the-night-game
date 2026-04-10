@@ -9,6 +9,7 @@ import {
 } from "../../../game-shared/src/util/inventory";
 import { BaseClientExtension } from "./base-extension";
 import { BufferReader } from "@shared/util/buffer-serialization";
+import { FISTS_INVENTORY_SENTINEL } from "@shared/constants/inventory-sentinel";
 import { playerConfig } from "@shared/config";
 import { itemTypeRegistry } from "@shared/util/item-type-encoding";
 import { readItemState } from "@shared/util/item-state-serialization";
@@ -42,6 +43,7 @@ export class ClientInventory extends BaseClientExtension {
 
   public getActiveItem(index: number | null): InventoryItem | null {
     if (index === null) return null;
+    if (index === FISTS_INVENTORY_SENTINEL) return null;
     return this.items[index - 1] ?? null;
   }
 

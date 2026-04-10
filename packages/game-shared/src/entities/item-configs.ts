@@ -211,6 +211,7 @@ export const ITEM_CONFIGS: Record<string, ItemConfig> = {
       enabled: false,
       chance: 0, // do not spawn torches, players must craft them
     },
+    fixtureRespawnMs: 180_000,
     merchant: {
       enabled: true,
       buyable: true,

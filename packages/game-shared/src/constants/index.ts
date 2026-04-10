@@ -1,5 +1,7 @@
 import { EntityType } from "../types/entity";
 
+export { FISTS_INVENTORY_SENTINEL } from "./inventory-sentinel";
+
 // Entities constant - auto-generated from all registries
 // Auto-generation happens in entities/index.ts after all registries are populated
 // This ensures adding a new item/weapon/etc. to configs automatically adds it here
@@ -18,11 +20,13 @@ export const NON_SPAWNABLE = new Set<EntityType>([
   "arrow",
   "boundary",
   "zombie_spawn_point",
+  "item_spawn_point",
   "acid_projectile",
   "grenade_projectile",
   "flame_projectile",
   "throwing_knife_projectile",
   "merchant",
+  "dialogue_survivor_npc",
   "car",
   "acid",
   "blood",

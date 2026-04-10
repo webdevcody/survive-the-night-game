@@ -17,6 +17,7 @@ import { IEntity } from "@/entities/types";
 import Vector2 from "@/util/vector2";
 import PoolManager from "@shared/util/pool-manager";
 import { getConfig } from "@/config";
+import { FISTS_INVENTORY_SENTINEL } from "@shared/constants/inventory-sentinel";
 import { BufferWriter } from "@shared/util/buffer-serialization";
 import { encodeExtensionType } from "@shared/util/extension-type-encoding";
 import { itemTypeRegistry } from "@shared/util/item-type-encoding";
@@ -75,6 +76,11 @@ export default class Inventory extends ExtensionBase<InventoryFields> {
   public static readonly type = "inventory";
 
   private broadcaster: Broadcaster;
+
+  private notifyPlayerWeaponLoadout(): void {
+    const owner = this.self as { sanitizeWeaponLoadouts?: () => void };
+    owner.sanitizeWeaponLoadouts?.();
+  }
 
   public constructor(self: IEntity, broadcaster: Broadcaster) {
     super(self, { items: [], equipment: createEmptyEquipment() });
@@ -136,6 +142,7 @@ export default class Inventory extends ExtensionBase<InventoryFields> {
     this.serialized.set("items", [...items]);
     // Explicitly mark dirty to ensure inventory changes are broadcast
     this.markDirty();
+    this.notifyPlayerWeaponLoadout();
 
     this.broadcaster.broadcastEvent(
       new PlayerPickedUpItemEvent({
@@ -229,6 +236,7 @@ export default class Inventory extends ExtensionBase<InventoryFields> {
 
     this.serialized.set("items", [...items]);
     this.markDirty();
+    this.notifyPlayerWeaponLoadout();
     return true;
   }
 
@@ -242,6 +250,7 @@ export default class Inventory extends ExtensionBase<InventoryFields> {
       this.serialized.set("items", [...items]);
       // Explicitly mark dirty to ensure inventory changes are broadcast
       this.markDirty();
+      this.notifyPlayerWeaponLoadout();
     }
     return item ?? undefined;
   }
@@ -254,6 +263,7 @@ export default class Inventory extends ExtensionBase<InventoryFields> {
       this.serialized.set("items", [...items]);
       // Explicitly mark dirty to ensure inventory changes are broadcast
       this.markDirty();
+      this.notifyPlayerWeaponLoadout();
     }
   }
 
@@ -274,6 +284,7 @@ export default class Inventory extends ExtensionBase<InventoryFields> {
 
     this.serialized.set("items", [...items]);
     this.markDirty();
+    this.notifyPlayerWeaponLoadout();
   }
 
   /**
@@ -304,10 +315,13 @@ export default class Inventory extends ExtensionBase<InventoryFields> {
     this.serialized.set("items", [...items]);
     this.serialized.set("equipment", { ...equipment });
     this.markDirty();
+    this.notifyPlayerWeaponLoadout();
   }
 
   public getActiveItem(index: number | null): InventoryItem | null {
     if (index === null) return null;
+    // Fists / unarmed selection (not a bag slot)
+    if (index === FISTS_INVENTORY_SENTINEL) return null;
     const items = this.serialized.get("items");
     // TODO: refactor this to be 0 based, why are we subtracting 1?
     return items[index - 1] ?? null;
@@ -338,6 +352,7 @@ export default class Inventory extends ExtensionBase<InventoryFields> {
     this.serialized.set("items", result.inventory);
     // Explicitly mark dirty to ensure inventory changes are broadcast
     this.markDirty();
+    this.notifyPlayerWeaponLoadout();
     return result;
   }
 
@@ -385,6 +400,7 @@ export default class Inventory extends ExtensionBase<InventoryFields> {
     }
     if (hadItems || hadEquip) {
       this.markDirty();
+      this.notifyPlayerWeaponLoadout();
     }
   }
 
@@ -422,6 +438,7 @@ export default class Inventory extends ExtensionBase<InventoryFields> {
     this.serialized.set("items", []);
     this.serialized.set("equipment", createEmptyEquipment());
     this.markDirty();
+    this.notifyPlayerWeaponLoadout();
   }
 
   private createEntityFromItem(item: InventoryItem) {

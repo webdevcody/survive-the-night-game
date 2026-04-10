@@ -53,6 +53,9 @@ import {
 import { REGENERATE_HEAL_PER_SECOND } from "@shared/util/skill-tree";
 import { getZombieTypesSet } from "@shared/constants";
 import type { PersistedPlayerProgress } from "@/services/player-progress-types";
+import { weaponRegistry } from "@shared/entities/weapon-registry";
+import { isMeleeWeaponType, isRangedWeaponType } from "@shared/util/weapon-loadout";
+import { FISTS_INVENTORY_SENTINEL } from "@shared/constants/inventory-sentinel";
 
 /**
  * Cached list of entity types that players can pass through (collision passthrough).
@@ -136,6 +139,10 @@ export class Player extends Entity {
         statRecovery: 0,
         statHpRecovery: 0,
         statStrength: 0,
+        weaponLoadoutPrimary: 1,
+        weaponLoadoutSecondary: 0,
+        weaponLoadoutMelee: 3,
+        activeWeaponLoadout: 0,
       },
       () => this.markEntityDirty(),
       {
@@ -159,6 +166,10 @@ export class Player extends Entity {
         statRecovery: { numberType: "uint8" },
         statHpRecovery: { numberType: "uint8" },
         statStrength: { numberType: "uint8" },
+        weaponLoadoutPrimary: { numberType: "uint8" },
+        weaponLoadoutSecondary: { numberType: "uint8" },
+        weaponLoadoutMelee: { numberType: "uint8" },
+        activeWeaponLoadout: { numberType: "uint8" },
         // Note: inputSequenceNumber is not in SerializableFields, so no metadata needed
       },
     );
@@ -218,6 +229,8 @@ export class Player extends Entity {
         },
       },
     ].forEach((item) => inventory.addItem(item));
+
+    this.applyWeaponLoadoutSelection();
   }
 
   get activeItem(): InventoryItem | null {
@@ -375,8 +388,173 @@ export class Player extends Entity {
     this.getExt(Inventory).clear();
   }
 
+  private resolveAttackWeaponItem():
+    | { kind: "fists" }
+    | { kind: "weapon"; item: InventoryItem; bagIndex1Based: number } {
+    const inv = this.getInventory();
+    const max = this.getMaxInventorySlots();
+    const lo = this.serialized.get("activeWeaponLoadout");
+    const at = (idx: number) => (idx >= 1 && idx <= max ? inv[idx - 1] : null);
+
+    if (lo === 0) {
+      const idx = this.serialized.get("weaponLoadoutPrimary");
+      if (idx < 1) return { kind: "fists" };
+      const item = at(idx);
+      if (!item || !isRangedWeaponType(item.itemType)) return { kind: "fists" };
+      return { kind: "weapon", item, bagIndex1Based: idx };
+    }
+    if (lo === 1) {
+      const idx = this.serialized.get("weaponLoadoutSecondary");
+      if (idx < 1) return { kind: "fists" };
+      const item = at(idx);
+      if (!item || !isRangedWeaponType(item.itemType)) return { kind: "fists" };
+      return { kind: "weapon", item, bagIndex1Based: idx };
+    }
+    if (lo === 2) {
+      const idx = this.serialized.get("weaponLoadoutMelee");
+      if (idx < 1) return { kind: "fists" };
+      const item = at(idx);
+      if (!item || !isMeleeWeaponType(item.itemType)) return { kind: "fists" };
+      return { kind: "weapon", item, bagIndex1Based: idx };
+    }
+    return { kind: "fists" };
+  }
+
+  private performFistAttack(): void {
+    const weaponKey = "fists";
+    const cfg = weaponRegistry.get(weaponKey);
+    const cooldown = cfg?.stats.cooldown ?? 0.85;
+    if (this.fireCooldown === null || this.lastWeaponType !== weaponKey) {
+      this.fireCooldown = new Cooldown(cooldown * this.getReloadCooldownMultiplier(), true);
+      this.lastWeaponType = weaponKey as ItemType;
+    }
+    if (!this.fireCooldown.isReady()) return;
+    this.fireCooldown.reset();
+    const strategy = this.getGameManagers().getGameServer().getGameLoop().getGameModeStrategy();
+    const aimAngle = this.serialized.get("inputAimAngle");
+    performMeleeAttack({
+      entityManager: this.getEntityManager(),
+      gameManagers: this.getGameManagers(),
+      attackerId: this.getId(),
+      position: this.getCenterPosition().clone(),
+      facing: this.serialized.get("inputFacing"),
+      aimAngle: isNaN(aimAngle) ? undefined : aimAngle,
+      attackRange: getConfig().combat.FIST_ATTACK_RANGE,
+      damage: cfg?.stats.damage ?? 1,
+      knockbackDistance: cfg?.stats.pushDistance,
+      weaponKey,
+      targetFilter: (entity, attackerId) => {
+        return strategy.shouldDamageTarget(this, entity, attackerId);
+      },
+    });
+  }
+
+  /** Select primary (0), secondary (1), or melee (2) loadout — same as client SELECT_WEAPON_LOADOUT. */
+  public selectWeaponLoadout(loadout: number): void {
+    const lo = Math.max(0, Math.min(2, Math.floor(loadout)));
+    this.serialized.set("activeWeaponLoadout", lo);
+    this.applyWeaponLoadoutSelection();
+  }
+
+  /**
+   * Assign a bag slot to a weapon loadout (0 = clear). Validates item type per slot.
+   * Same rules as SET_WEAPON_LOADOUT_SLOT from clients.
+   */
+  public assignWeaponLoadoutSlot(slot: number, bagIndex: number): void {
+    const max = this.getMaxInventorySlots();
+    const slotClamped = Math.max(0, Math.min(2, Math.floor(slot)));
+    const bagIndexClamped = Math.max(0, Math.min(max, Math.floor(bagIndex)));
+    const inv = this.getInventory();
+
+    if (bagIndexClamped === 0) {
+      if (slotClamped === 0) this.serialized.set("weaponLoadoutPrimary", 0);
+      else if (slotClamped === 1) this.serialized.set("weaponLoadoutSecondary", 0);
+      else this.serialized.set("weaponLoadoutMelee", 0);
+      this.applyWeaponLoadoutSelection();
+      return;
+    }
+
+    const item = inv[bagIndexClamped - 1];
+    if (!item) return;
+
+    if (slotClamped === 2) {
+      if (!isMeleeWeaponType(item.itemType)) return;
+      this.serialized.set("weaponLoadoutMelee", bagIndexClamped);
+    } else {
+      if (!isRangedWeaponType(item.itemType)) return;
+      if (slotClamped === 0) this.serialized.set("weaponLoadoutPrimary", bagIndexClamped);
+      else this.serialized.set("weaponLoadoutSecondary", bagIndexClamped);
+    }
+    this.applyWeaponLoadoutSelection();
+  }
+
+  public sanitizeWeaponLoadouts(): void {
+    const inv = this.getInventory();
+    const max = this.getMaxInventorySlots();
+    const check = (key: "weaponLoadoutPrimary" | "weaponLoadoutSecondary" | "weaponLoadoutMelee") => {
+      const idx = this.serialized.get(key);
+      if (idx < 1 || idx > max) {
+        this.serialized.set(key, 0);
+        return;
+      }
+      const item = inv[idx - 1];
+      if (!item) {
+        this.serialized.set(key, 0);
+        return;
+      }
+      const isR = isRangedWeaponType(item.itemType);
+      const isM = isMeleeWeaponType(item.itemType);
+      if (key === "weaponLoadoutMelee") {
+        if (!isM) this.serialized.set(key, 0);
+      } else {
+        if (!isR) this.serialized.set(key, 0);
+      }
+    };
+    check("weaponLoadoutPrimary");
+    check("weaponLoadoutSecondary");
+    check("weaponLoadoutMelee");
+    this.applyWeaponLoadoutSelection();
+  }
+
+  public applyWeaponLoadoutSelection(): void {
+    const lo = this.serialized.get("activeWeaponLoadout");
+    const max = this.getMaxInventorySlots();
+    const inv = this.getInventory();
+    const at = (idx: number) => (idx >= 1 && idx <= max ? inv[idx - 1] : null);
+
+    if (lo === 0) {
+      const idx = this.serialized.get("weaponLoadoutPrimary");
+      if (idx >= 1 && idx <= max && at(idx) && isRangedWeaponType(at(idx)!.itemType)) {
+        this.selectInventoryItemOnly(idx);
+        return;
+      }
+      this.selectInventoryItemOnly(FISTS_INVENTORY_SENTINEL);
+      return;
+    }
+    if (lo === 1) {
+      const idx = this.serialized.get("weaponLoadoutSecondary");
+      if (idx >= 1 && idx <= max && at(idx) && isRangedWeaponType(at(idx)!.itemType)) {
+        this.selectInventoryItemOnly(idx);
+        return;
+      }
+      this.selectInventoryItemOnly(FISTS_INVENTORY_SENTINEL);
+      return;
+    }
+    if (lo === 2) {
+      const idx = this.serialized.get("weaponLoadoutMelee");
+      if (idx >= 1 && idx <= max && at(idx) && isMeleeWeaponType(at(idx)!.itemType)) {
+        this.selectInventoryItemOnly(idx);
+        return;
+      }
+      this.selectInventoryItemOnly(FISTS_INVENTORY_SENTINEL);
+      return;
+    }
+  }
+
   getActiveWeapon(): InventoryItem | null {
-    return this.getExt(Inventory).resolveActiveWeapon(this.activeItem);
+    const resolved = this.resolveAttackWeaponItem();
+    if (resolved.kind === "weapon") return resolved.item;
+    return null;
   }
 
   setPosition(position: Vector2) {
@@ -440,7 +618,12 @@ export class Player extends Entity {
     if (activeItem) {
       const activeItemEntity = this.getEntityManager().createEntityFromItem(activeItem);
       if (activeItemEntity && activeItemEntity.hasExt(Consumable)) {
-        const itemIndex = this.serialized.get("inputInventoryItem") - 1;
+        const invSlot = this.serialized.get("inputInventoryItem");
+        if (invSlot === FISTS_INVENTORY_SENTINEL) {
+          activeItemEntity.clearDirtyFlags();
+          return;
+        }
+        const itemIndex = invSlot - 1;
         const itemType = activeItem.itemType;
         // Reset cooldown when switching to a consumable from a different item type
         // This ensures weapon cooldowns don't block consumable use
@@ -467,24 +650,25 @@ export class Player extends Entity {
       }
     }
 
-    const activeWeapon = this.getActiveWeapon();
-    if (activeWeapon === null) return;
+    const resolved = this.resolveAttackWeaponItem();
+    if (resolved.kind === "fists") {
+      this.performFistAttack();
+      return;
+    }
 
-    // TODO: clean this up, this feels bad and unperformant
+    const activeWeapon = resolved.item;
+    const inventoryIndex = resolved.bagIndex1Based - 1;
+
     const weaponEntity = this.getEntityManager().createEntityFromItem(activeWeapon);
     if (!weaponEntity) {
       return;
     }
-    // Ensure temporary weapon entity doesn't get tracked for networking
     weaponEntity.clearDirtyFlags();
 
     const weaponType = activeWeapon.itemType;
 
-    // Check if there's a custom handler registered for this weapon type
-    // (for weapons that can't extend Weapon class)
     const customHandler = weaponHandlerRegistry.get(weaponType);
     if (customHandler) {
-      // Use custom handler for special cases
       if (this.fireCooldown === null || this.lastWeaponType !== weaponType) {
         this.fireCooldown = new Cooldown(
           customHandler.cooldown * this.getReloadCooldownMultiplier(),
@@ -495,7 +679,6 @@ export class Player extends Entity {
 
       if (this.fireCooldown.isReady()) {
         this.fireCooldown.reset();
-        const inventoryIndex = this.serialized.get("inputInventoryItem") - 1;
         customHandler.handler(
           weaponEntity as Entity,
           this.getId(),
@@ -509,7 +692,6 @@ export class Player extends Entity {
       return;
     }
 
-    // Handle weapons that extend Weapon class (including grenades now)
     if (!(weaponEntity instanceof Weapon)) {
       return;
     }
@@ -524,7 +706,6 @@ export class Player extends Entity {
 
     if (this.fireCooldown.isReady()) {
       this.fireCooldown.reset();
-      // Use aimAngle if provided (mouse aiming), otherwise fall back to facing direction
       weaponEntity.attack(
         this.getId(),
         this.getCenterPosition().clone(),
@@ -819,16 +1000,27 @@ export class Player extends Entity {
     this.serialized.set("inputAimDistance", input.aimDistance ?? NaN); // NaN represents undefined
   }
 
-  selectInventoryItem(index: number) {
+  selectInventoryItemOnly(index: number): void {
     const previousSlot = this.serialized.get("inputInventoryItem");
     this.serialized.set("inputInventoryItem", index);
 
-    // Mark inventory extension as dirty when inventory slot changes
-    // This ensures other clients receive inventory data to render the active item
     if (previousSlot !== index) {
       const inventory = this.getExt(Inventory);
       this.markExtensionDirty(inventory);
     }
+  }
+
+  selectInventoryItem(index: number) {
+    this.selectInventoryItemOnly(index);
+    if (index === FISTS_INVENTORY_SENTINEL) {
+      return;
+    }
+    const p = this.serialized.get("weaponLoadoutPrimary");
+    const s = this.serialized.get("weaponLoadoutSecondary");
+    const m = this.serialized.get("weaponLoadoutMelee");
+    if (index === p) this.serialized.set("activeWeaponLoadout", 0);
+    else if (index === s) this.serialized.set("activeWeaponLoadout", 1);
+    else if (index === m) this.serialized.set("activeWeaponLoadout", 2);
   }
 
   setAsFiring(firing: boolean) {

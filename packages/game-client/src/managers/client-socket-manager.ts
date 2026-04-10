@@ -525,6 +525,14 @@ export class ClientSocketManager {
     this.emitClientEvent(ClientSentEvents.SELECT_INVENTORY_SLOT, { slotIndex });
   }
 
+  public sendSelectWeaponLoadout(loadout: number) {
+    this.emitClientEvent(ClientSentEvents.SELECT_WEAPON_LOADOUT, { loadout });
+  }
+
+  public sendSetWeaponLoadoutSlot(slot: number, bagIndex: number) {
+    this.emitClientEvent(ClientSentEvents.SET_WEAPON_LOADOUT_SLOT, { slot, bagIndex });
+  }
+
   public sendInteract(targetEntityId?: number | null) {
     this.emitClientEvent(ClientSentEvents.INTERACT, { targetEntityId });
   }

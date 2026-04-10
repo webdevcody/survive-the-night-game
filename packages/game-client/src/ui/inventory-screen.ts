@@ -23,6 +23,8 @@ import {
 } from "@shared/util/character-stats";
 import { SKILL_TREE_NODES, type SkillId } from "@shared/util/skill-tree";
 import { getProgressionPointsBudget } from "@shared/util/experience-level";
+import { FISTS_INVENTORY_SENTINEL } from "@shared/constants/inventory-sentinel";
+import { isMeleeWeaponType, isRangedWeaponType } from "@shared/util/weapon-loadout";
 import {
   TAB_BAR_H,
   PANEL_TAB_CONTENT_GAP,
@@ -81,6 +83,7 @@ type DragState = {
   isDragging: boolean;
   targetBagIndex: number | null;
   targetEquipSlot: EquipmentSlotKey | null;
+  targetLoadoutSlot: 0 | 1 | 2 | null;
 };
 
 export type InventoryScreenDeps = {
@@ -97,6 +100,7 @@ export type InventoryScreenDeps = {
     kind: "skill" | "character",
     allocations: Record<string, number>,
   ) => void;
+  sendSetWeaponLoadoutSlot: (slot: 0 | 1 | 2, bagIndex: number) => void;
 };
 
 function buildCharacterMapFromPlayer(player: PlayerClient): Record<string, number> {
@@ -138,6 +142,7 @@ export class InventoryScreenUI {
   private dragState: DragState | null = null;
   private hoveredBagIndex: number | null = null;
   private hoveredEquipSlot: EquipmentSlotKey | null = null;
+  private hoveredLoadoutSlot: 0 | 1 | 2 | null = null;
   private lastW = 0;
   private lastH = 0;
   private activeTab: InventoryTab = "inventory";
@@ -199,7 +204,23 @@ export class InventoryScreenUI {
     const contentTop = tabTop + TAB_BAR_H;
     const contentH = rightH - TAB_BAR_H;
 
-    const equipTop = contentTop + PANEL_TAB_CONTENT_GAP + 30;
+    const loadoutTop = contentTop + PANEL_TAB_CONTENT_GAP + 4;
+    const loadoutSlotSize = Math.min(44, Math.floor((rightW - 56) / 3));
+    const loadoutGap = 10;
+    const loadoutRowInnerW = 3 * loadoutSlotSize + 2 * loadoutGap;
+    const loadoutLeft = rightX + (rightW - loadoutRowInnerW) / 2;
+    const loadoutSlotRects: { x: number; y: number; w: number; h: number }[] = [];
+    for (let i = 0; i < 3; i++) {
+      loadoutSlotRects.push({
+        x: loadoutLeft + i * (loadoutSlotSize + loadoutGap),
+        y: loadoutTop + 18,
+        w: loadoutSlotSize,
+        h: loadoutSlotSize,
+      });
+    }
+    const loadoutBlockH = 18 + loadoutSlotSize + 22;
+
+    const equipTop = loadoutTop + loadoutBlockH + 12;
     const cell = Math.min(40, Math.floor(Math.min((rightW - 32) / 4.5, (contentH * 0.5) / 7)));
     const rowGap = 10;
     const colGap = 10;
@@ -253,7 +274,7 @@ export class InventoryScreenUI {
       hands: handsRect,
     };
 
-    const gridTop = contentTop + equipH + 40;
+    const gridTop = bodyBottom + 24;
     const gridBottom = rightY + rightH - 20;
     const gridAvailH = Math.max(72, gridBottom - gridTop);
     const cellGap = 5;
@@ -284,6 +305,12 @@ export class InventoryScreenUI {
       tabBarH: TAB_BAR_H,
       contentTop,
       contentH,
+      loadoutTop,
+      loadoutSlotRects,
+      loadoutSlotSize,
+      loadoutGap,
+      loadoutLeft,
+      equipTop,
       tabs,
       tabW,
       tabX0,
@@ -326,6 +353,20 @@ export class InventoryScreenUI {
       const r = L.equipRects[key];
       if (x >= r.x && x <= r.x + r.w && y >= r.y && y <= r.y + r.h) {
         return key;
+      }
+    }
+    return null;
+  }
+
+  private getLoadoutSlotAt(
+    x: number,
+    y: number,
+    L: ReturnType<InventoryScreenUI["layout"]>,
+  ): 0 | 1 | 2 | null {
+    for (let i = 0; i < L.loadoutSlotRects.length; i++) {
+      const r = L.loadoutSlotRects[i]!;
+      if (x >= r.x && x <= r.x + r.w && y >= r.y && y <= r.y + r.h) {
+        return i as 0 | 1 | 2;
       }
     }
     return null;
@@ -500,12 +541,72 @@ export class InventoryScreenUI {
       ctx.font = "14px Arial";
       ctx.fillStyle = "rgba(180, 180, 190, 0.9)";
       ctx.textAlign = "left";
-      ctx.fillText("Equipment", L.rightX + 14, L.contentTop + PANEL_TAB_CONTENT_GAP);
-
+      ctx.fillText("Weapon loadout", L.rightX + 14, L.loadoutTop);
       const totalKg = computeInventoryWeightKg(items, equipment ?? createEmptyEquipment());
       ctx.textAlign = "right";
       ctx.fillText(`Weight: ${totalKg.toFixed(1)} kg`, L.rightX + L.rightW - 14, L.contentTop + PANEL_TAB_CONTENT_GAP);
       ctx.textAlign = "left";
+
+      const pBag = (player as any).weaponLoadoutPrimary ?? 0;
+      const sBag = (player as any).weaponLoadoutSecondary ?? 0;
+      const mBag = (player as any).weaponLoadoutMelee ?? 0;
+      const activeLo = (player as any).activeWeaponLoadout ?? 0;
+      const bags: number[] = [pBag, sBag, mBag];
+      const loadoutLabels = ["1 Primary", "2 Secondary", "3 Melee"];
+
+      for (let i = 0; i < 3; i++) {
+        const r = L.loadoutSlotRects[i]!;
+        let item: InventoryItem | null = null;
+        const bag = bags[i]!;
+        if (i === 2) {
+          const it = bag >= 1 ? items[bag - 1] : null;
+          if (it && isMeleeWeaponType(it.itemType)) item = it;
+        } else if (bag >= 1) {
+          const it = items[bag - 1];
+          if (it && isRangedWeaponType(it.itemType)) item = it;
+        }
+        const isLoActive = activeLo === i;
+        const isHover = this.hoveredLoadoutSlot === i && !this.dragState?.isDragging;
+        const isDropTarget =
+          this.dragState?.isDragging &&
+          this.dragState.targetLoadoutSlot === i &&
+          this.dragState.source.kind === "bag";
+        ctx.fillStyle = "rgba(36, 36, 46, 0.98)";
+        ctx.fillRect(r.x, r.y, r.w, r.h);
+        ctx.strokeStyle = isDropTarget
+          ? "rgba(100, 200, 255, 0.95)"
+          : isLoActive
+            ? "rgba(255, 220, 120, 0.95)"
+            : isHover
+              ? "rgba(200, 200, 255, 0.7)"
+              : "rgba(90, 95, 110, 0.9)";
+        ctx.lineWidth = isLoActive || isDropTarget ? 2 : 1;
+        ctx.strokeRect(r.x, r.y, r.w, r.h);
+        if (item) {
+          const img = this.deps.assetManager.get(getItemAssetKey(item));
+          if (img) {
+            const pad = 6;
+            ctx.drawImage(img, r.x + pad, r.y + pad, r.w - pad * 2, r.h - pad * 2);
+          }
+        } else if (i === 2) {
+          ctx.font = "bold 12px Arial";
+          ctx.fillStyle = "rgba(200, 180, 150, 0.9)";
+          ctx.textAlign = "center";
+          ctx.textBaseline = "middle";
+          ctx.fillText("Fists", r.x + r.w / 2, r.y + r.h / 2);
+          ctx.textBaseline = "alphabetic";
+          ctx.textAlign = "left";
+        }
+        ctx.font = "11px Arial";
+        ctx.fillStyle = "rgba(160, 160, 175, 0.95)";
+        ctx.textAlign = "center";
+        ctx.fillText(loadoutLabels[i]!, r.x + r.w / 2, r.y + r.h + 14);
+        ctx.textAlign = "left";
+      }
+
+      ctx.font = "14px Arial";
+      ctx.fillStyle = "rgba(180, 180, 190, 0.9)";
+      ctx.fillText("Equipment", L.rightX + 14, L.equipTop - 8);
 
       for (const slot of EQUIPMENT_SLOT_KEYS) {
         this.drawEquipSlot(
@@ -518,7 +619,8 @@ export class InventoryScreenUI {
       }
 
       const slots = L.bagSlotCount;
-      const activeIdx = this.deps.inputManager.getCurrentInventorySlot() - 1;
+      const curSlot = this.deps.inputManager.getCurrentInventorySlot();
+      const activeIdx = curSlot === FISTS_INVENTORY_SENTINEL ? -1 : curSlot - 1;
 
       for (let row = 0; row < L.gridRows; row++) {
         for (let col = 0; col < GRID_COLS; col++) {
@@ -600,12 +702,6 @@ export class InventoryScreenUI {
               }
             }
           }
-
-          ctx.font = "11px Arial";
-          ctx.textAlign = "left";
-          ctx.fillStyle = "rgba(200,200,210,0.65)";
-          if (idx < 9) ctx.fillText(`${idx + 1}`, sx + 4, sy + 14);
-          else if (idx === 9) ctx.fillText("0", sx + 4, sy + 14);
         }
       }
 
@@ -703,6 +799,7 @@ export class InventoryScreenUI {
     this.lastW = canvasWidth;
     this.lastH = canvasHeight;
     if (!this.open) {
+      this.hoveredLoadoutSlot = null;
       this.hoveredBagIndex = null;
       this.hoveredEquipSlot = null;
       return;
@@ -710,9 +807,11 @@ export class InventoryScreenUI {
     const L = this.layout(canvasWidth, canvasHeight, this.getBagSlotCount());
     this.hoveredSkillId = null;
     if (this.activeTab === "inventory") {
+      this.hoveredLoadoutSlot = this.getLoadoutSlotAt(x, y, L);
       this.hoveredBagIndex = this.getBagIndexAt(x, y, L);
       this.hoveredEquipSlot = this.getEquipAt(x, y, L);
     } else {
+      this.hoveredLoadoutSlot = null;
       this.hoveredBagIndex = null;
       this.hoveredEquipSlot = null;
     }
@@ -730,6 +829,7 @@ export class InventoryScreenUI {
       this.dragState.currentY = y;
       this.dragState.targetBagIndex = this.hoveredBagIndex;
       this.dragState.targetEquipSlot = this.hoveredEquipSlot;
+      this.dragState.targetLoadoutSlot = this.hoveredLoadoutSlot;
     }
   }
 
@@ -867,6 +967,12 @@ export class InventoryScreenUI {
       return true;
     }
 
+    const loadoutHit = this.getLoadoutSlotAt(x, y, L);
+    if (loadoutHit !== null) {
+      this.deps.sendSetWeaponLoadoutSlot(loadoutHit, 0);
+      return true;
+    }
+
     const bagIdx = this.getBagIndexAt(x, y, L);
     const eq = this.getEquipAt(x, y, L);
     if (bagIdx !== null) {
@@ -881,6 +987,7 @@ export class InventoryScreenUI {
           isDragging: false,
           targetBagIndex: null,
           targetEquipSlot: null,
+          targetLoadoutSlot: null,
         };
       }
       if (bagIdx < (this.deps.getMyPlayer()?.getMaxInventorySlots() ?? getConfig().player.MAX_INVENTORY_SLOTS)) {
@@ -900,6 +1007,7 @@ export class InventoryScreenUI {
           isDragging: false,
           targetBagIndex: null,
           targetEquipSlot: null,
+          targetLoadoutSlot: null,
         };
       }
       return true;
@@ -934,6 +1042,21 @@ export class InventoryScreenUI {
     const eq = this.getEquipAt(x, y, L);
 
     if (drag.source.kind === "bag") {
+      const lo = drag.targetLoadoutSlot;
+      if (lo !== null) {
+        const items = this.deps.getInventory();
+        const item = items[drag.source.index];
+        if (item) {
+          if (lo === 2) {
+            if (isMeleeWeaponType(item.itemType)) {
+              this.deps.sendSetWeaponLoadoutSlot(2, drag.source.index + 1);
+            }
+          } else if (isRangedWeaponType(item.itemType)) {
+            this.deps.sendSetWeaponLoadoutSlot(lo, drag.source.index + 1);
+          }
+        }
+        return;
+      }
       if (bagIdx !== null && bagIdx !== drag.source.index) {
         this.deps.sendSwapItems(drag.source.index, bagIdx);
         return;

@@ -12,6 +12,11 @@ export const combatConfig = {
   KNIFE_ATTACK_RANGE: 26,
 
   /**
+   * Unarmed fist attack range (same order of magnitude as knife; slower cooldown in weapon config)
+   */
+  FIST_ATTACK_RANGE: 26,
+
+  /**
    * Baseball bat melee attack range in pixels
    */
   BASEBALL_BAT_ATTACK_RANGE: 40,

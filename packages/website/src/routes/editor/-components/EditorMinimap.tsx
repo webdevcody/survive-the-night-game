@@ -3,6 +3,8 @@ import { useEditorStore } from "../-store";
 import { getMapSideLength } from "../-utils";
 
 const MINIMAP_CSS_PX = 220;
+/** Full minimap cache rebuild is O(mapSize²); debounce so rapid painting does not block the main thread every stroke. */
+const MINIMAP_CACHE_DEBOUNCE_MS = 150;
 
 function groundFillStyle(tileId: number): string {
   const h = (tileId * 47) % 360;
@@ -17,9 +19,14 @@ function collidableFillStyle(tileId: number): string {
 export function EditorMinimap() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const cacheRef = useRef<HTMLCanvasElement | null>(null);
+  const groundGridRef = useRef<number[][]>([]);
+  const collidablesGridRef = useRef<number[][]>([]);
+  const minimapFirstCacheDoneRef = useRef(false);
 
   const groundGrid = useEditorStore((s) => s.groundGrid);
   const collidablesGrid = useEditorStore((s) => s.collidablesGrid);
+  groundGridRef.current = groundGrid;
+  collidablesGridRef.current = collidablesGrid;
   const cameraX = useEditorStore((s) => s.cameraX);
   const cameraY = useEditorStore((s) => s.cameraY);
   const viewportWidthTiles = useEditorStore((s) => s.viewportWidthTiles);
@@ -74,47 +81,56 @@ export function EditorMinimap() {
   paintRef.current = paintFromCache;
 
   useEffect(() => {
-    const size = MINIMAP_CSS_PX;
-    const dpr = Math.min(2, window.devicePixelRatio || 1);
-    const w = Math.round(size * dpr);
-    const h = Math.round(size * dpr);
+    const delay = minimapFirstCacheDoneRef.current ? MINIMAP_CACHE_DEBOUNCE_MS : 0;
+    const id = window.setTimeout(() => {
+      const g = groundGridRef.current;
+      const c = collidablesGridRef.current;
+      const ms = getMapSideLength(g);
 
-    let off = cacheRef.current;
-    if (!off) {
-      off = document.createElement("canvas");
-      cacheRef.current = off;
-    }
-    off.width = w;
-    off.height = h;
-    const octx = off.getContext("2d");
-    if (!octx) return;
+      const size = MINIMAP_CSS_PX;
+      const dpr = Math.min(2, window.devicePixelRatio || 1);
+      const w = Math.round(size * dpr);
+      const h = Math.round(size * dpr);
 
-    octx.setTransform(dpr, 0, 0, dpr, 0, 0);
-    octx.fillStyle = "rgba(0, 0, 0, 0.75)";
-    octx.fillRect(0, 0, size, size);
+      let off = cacheRef.current;
+      if (!off) {
+        off = document.createElement("canvas");
+        cacheRef.current = off;
+      }
+      off.width = w;
+      off.height = h;
+      const octx = off.getContext("2d");
+      if (!octx) return;
 
-    const tileW = size / mapSize;
-    const tileH = size / mapSize;
-    const pad = 0.6;
+      octx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      octx.fillStyle = "rgba(0, 0, 0, 0.75)";
+      octx.fillRect(0, 0, size, size);
 
-    for (let r = 0; r < mapSize; r++) {
-      const rowG = groundGrid[r];
-      const rowC = collidablesGrid[r];
-      if (!rowG || !rowC) continue;
-      for (let c = 0; c < mapSize; c++) {
-        const x = c * tileW;
-        const y = r * tileH;
-        octx.fillStyle = groundFillStyle(rowG[c] ?? 0);
-        octx.fillRect(x, y, tileW + pad, tileH + pad);
-        const cid = rowC[c];
-        if (cid !== undefined && cid !== -1) {
-          octx.fillStyle = collidableFillStyle(cid);
+      const tileW = size / ms;
+      const tileH = size / ms;
+      const pad = 0.6;
+
+      for (let r = 0; r < ms; r++) {
+        const rowG = g[r];
+        const rowC = c[r];
+        if (!rowG || !rowC) continue;
+        for (let col = 0; col < ms; col++) {
+          const x = col * tileW;
+          const y = r * tileH;
+          octx.fillStyle = groundFillStyle(rowG[col] ?? 0);
           octx.fillRect(x, y, tileW + pad, tileH + pad);
+          const cid = rowC[col];
+          if (cid !== undefined && cid !== -1) {
+            octx.fillStyle = collidableFillStyle(cid);
+            octx.fillRect(x, y, tileW + pad, tileH + pad);
+          }
         }
       }
-    }
 
-    paintRef.current();
+      minimapFirstCacheDoneRef.current = true;
+      paintRef.current();
+    }, delay);
+    return () => window.clearTimeout(id);
   }, [groundGrid, collidablesGrid, mapSize]);
 
   useEffect(() => {

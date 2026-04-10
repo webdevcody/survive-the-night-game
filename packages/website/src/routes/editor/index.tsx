@@ -9,7 +9,11 @@ import { EditorMinimap } from "./-components/EditorMinimap";
 import { EditorRightOverlay } from "./-components/EditorRightOverlay";
 import { ItemsModal } from "./-components/ItemsModal";
 import { getConfig } from "@survive-the-night/game-shared/config";
-import { createEmptySpawnsLayer, createEmptyDecalsLayer } from "./-utils";
+import {
+  createEmptySpawnsLayer,
+  createEmptyDecalsLayer,
+  reconcileDialogueNpcsWithSpawnsLayer,
+} from "./-utils";
 
 export const Route = createFileRoute("/editor/")({
   component: MapEditor,
@@ -33,10 +37,12 @@ function MapEditor() {
   const setGroundDimensions = useEditorStore((state) => state.setGroundDimensions);
   const setCollidablesDimensions = useEditorStore((state) => state.setCollidablesDimensions);
   const setSheetsLoaded = useEditorStore((state) => state.setSheetsLoaded);
+  const setSheetImages = useEditorStore((state) => state.setSheetImages);
   const setGroundGrid = useEditorStore((state) => state.setGroundGrid);
   const setCollidablesGrid = useEditorStore((state) => state.setCollidablesGrid);
   const setSpawnsGrid = useEditorStore((state) => state.setSpawnsGrid);
   const setDecalsGrid = useEditorStore((state) => state.setDecalsGrid);
+  const setDialogueNpcs = useEditorStore((state) => state.setDialogueNpcs);
   const setSaveStatus = useEditorStore((state) => state.setSaveStatus);
   const setHistory = useEditorStore((state) => state.setHistory);
   const undo = useEditorStore((state) => state.undo);
@@ -47,6 +53,7 @@ function MapEditor() {
   const collidablesGrid = useEditorStore((state) => state.collidablesGrid);
   const spawnsGrid = useEditorStore((state) => state.spawnsGrid);
   const decalsGrid = useEditorStore((state) => state.decalsGrid);
+  const dialogueNpcs = useEditorStore((state) => state.dialogueNpcs);
   const saveStatus = useEditorStore((state) => state.saveStatus);
 
   const { data: worldMapData, isPending: isWorldMapPending } = useWorldMap();
@@ -72,14 +79,19 @@ function MapEditor() {
         }
         setGroundGrid(worldMapData.ground);
         setCollidablesGrid(worldMapData.collidables);
+        let spawnsForDialogue = createEmptySpawnsLayer(n);
         if (
           worldMapData.spawns?.length === n &&
           worldMapData.spawns[0]?.length === n
         ) {
+          spawnsForDialogue = worldMapData.spawns;
           setSpawnsGrid(worldMapData.spawns);
         } else {
-          setSpawnsGrid(createEmptySpawnsLayer(n));
+          setSpawnsGrid(spawnsForDialogue);
         }
+        setDialogueNpcs(
+          reconcileDialogueNpcsWithSpawnsLayer(spawnsForDialogue, worldMapData.dialogueNpcs),
+        );
         if (
           worldMapData.decals?.length === n &&
           worldMapData.decals[0]?.length === n
@@ -107,6 +119,7 @@ function MapEditor() {
     setCollidablesGrid,
     setSpawnsGrid,
     setDecalsGrid,
+    setDialogueNpcs,
     setSaveStatus,
     setHistory,
   ]);
@@ -138,11 +151,12 @@ function MapEditor() {
 
       setGroundDimensions(groundDims);
       setCollidablesDimensions(collidablesDims);
+      setSheetImages(groundImg, collidablesImg);
       setSheetsLoaded(true);
     };
 
     loadSheetDimensions();
-  }, [setGroundDimensions, setCollidablesDimensions, setSheetsLoaded]);
+  }, [setGroundDimensions, setCollidablesDimensions, setSheetsLoaded, setSheetImages]);
 
   const saveMap = async () => {
     setSaveStatus("saving");
@@ -152,6 +166,7 @@ function MapEditor() {
         collidables: collidablesGrid,
         spawns: spawnsGrid,
         decals: decalsGrid,
+        dialogueNpcs,
       });
       setSaveStatus("saved");
       setTimeout(() => setSaveStatus("idle"), 2000);

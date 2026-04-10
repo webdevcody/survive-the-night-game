@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { API_ENDPOINTS } from "../-config/api";
+import type { WorldMapDialogueNpcEntry } from "@survive-the-night/game-shared/map/world-map-types";
 
 // API Response Types
 interface WorldMapDataResponse {
@@ -7,6 +8,7 @@ interface WorldMapDataResponse {
   collidables: number[][];
   spawns: number[][];
   decals: number[][];
+  dialogueNpcs?: WorldMapDialogueNpcEntry[];
 }
 
 // Query Keys
@@ -76,11 +78,13 @@ export function useSaveWorldMap() {
       collidables,
       spawns,
       decals,
+      dialogueNpcs,
     }: {
       ground: number[][];
       collidables: number[][];
       spawns: number[][];
       decals: number[][];
+      dialogueNpcs: WorldMapDialogueNpcEntry[];
     }) => {
       const response = await fetch(API_ENDPOINTS.worldMap(), {
         method: "POST",
@@ -92,6 +96,7 @@ export function useSaveWorldMap() {
           collidables,
           spawns,
           decals,
+          dialogueNpcs,
         }),
       });
 

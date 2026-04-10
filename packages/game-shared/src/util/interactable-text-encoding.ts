@@ -29,6 +29,8 @@ export const InteractableTexts = {
   LOOT: "loot",
   ADVANCED_SENTRY_GUN: "advanced sentry gun",
   BUY: "buy",
+  TALK: "talk",
+  CLOSE: "close",
   BANDAGE: "bandage",
   REINFORCED_SPIKES: "reinforced spikes",
   SPIKES: "spikes",

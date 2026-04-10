@@ -123,6 +123,7 @@ const handleGameStateUpdate = (context: InitializationContext, gameStateEvent: G
 
     // Replace all entities
     replaceAllEntities(context.gameState, createdEntities);
+    context.gameState.openDialogueNpcId = null;
 
     // Apply map data if included in the full state
     const mapData = gameStateEvent.getMapData();

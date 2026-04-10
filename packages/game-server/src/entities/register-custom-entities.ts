@@ -71,6 +71,7 @@ import { Acid } from "@/entities/effects/acid";
 import { AcidProjectile } from "@/entities/projectiles/acid-projectile";
 import { Boundary } from "@/entities/environment/boundary";
 import { ZombieSpawnPoint } from "@/entities/environment/zombie-spawn-point";
+import { ItemSpawnPoint } from "@/entities/environment/item-spawn-point";
 
 type EntityConstructor = new (gameManagers: IGameManagers, ...args: any[]) => Entity;
 
@@ -147,6 +148,7 @@ const SERVER_ENTITY_CONSTRUCTORS: Record<EntityType, EntityConstructor> = {
   acid: Acid,
   boundary: Boundary,
   zombie_spawn_point: ZombieSpawnPoint,
+  item_spawn_point: ItemSpawnPoint,
 } as Record<EntityType, EntityConstructor>;
 
 /**

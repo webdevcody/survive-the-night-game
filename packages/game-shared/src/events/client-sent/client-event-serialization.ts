@@ -19,6 +19,8 @@ import { InteractEvent } from "./events/interact";
 import { ChangePlayerColorEvent } from "./events/change-player-color";
 import { SpawnZombieEvent } from "./events/spawn-zombie";
 import { SetProgressionAllocationsEvent } from "./events/set-progression-allocations";
+import { SelectWeaponLoadoutEvent } from "./events/select-weapon-loadout";
+import { SetWeaponLoadoutSlotEvent } from "./events/set-weapon-loadout-slot";
 import {
   serializeEvent,
   deserializeEvent,
@@ -53,6 +55,8 @@ const eventRegistry: Record<string, IBufferWriter> = {
   [ClientSentEvents.CHANGE_PLAYER_COLOR]: ChangePlayerColorEvent,
   [ClientSentEvents.SPAWN_ZOMBIE]: SpawnZombieEvent,
   [ClientSentEvents.SET_PROGRESSION_ALLOCATIONS]: SetProgressionAllocationsEvent,
+  [ClientSentEvents.SELECT_WEAPON_LOADOUT]: SelectWeaponLoadoutEvent,
+  [ClientSentEvents.SET_WEAPON_LOADOUT_SLOT]: SetWeaponLoadoutSlotEvent,
 };
 
 function isClientSentEvent(event: string): event is ClientSentEventType {

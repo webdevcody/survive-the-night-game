@@ -149,7 +149,7 @@ export class UpdateScheduler {
     }
 
     // Open-world zombie fixtures: respawn timers must not depend on player distance
-    if (entityType === Entities.ZOMBIE_SPAWN_POINT) {
+    if (entityType === Entities.ZOMBIE_SPAWN_POINT || entityType === Entities.ITEM_SPAWN_POINT) {
       return true;
     }
 

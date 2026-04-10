@@ -45,6 +45,7 @@ import { isWeapon, ItemType, type EquipmentSlotKey } from "@shared/util/inventor
 import { getClosestInteractiveEntity } from "@/util/get-closest-interactive";
 import { getPlayer } from "@/util/get-player";
 import { Entities } from "@shared/constants";
+import { FISTS_INVENTORY_SENTINEL } from "@shared/constants/inventory-sentinel";
 import { itemRegistry } from "@shared/entities";
 import { ClientCarryable } from "@/extensions";
 import { PlayerColor } from "@shared/commands/commands";
@@ -221,8 +222,61 @@ export class GameClient {
           return;
         }
 
-        // Check if there's a merchant nearby
         const player = getPlayer();
+        const maxInteract = getConfig().player.MAX_INTERACT_RADIUS;
+
+        if (this.gameState.openDialogueNpcId != null) {
+          const openEnt = getEntityById(this.gameState, this.gameState.openDialogueNpcId);
+          if (
+            openEnt &&
+            openEnt.getType() === "dialogue_survivor_npc" &&
+            player &&
+            openEnt.hasExt(ClientPositionable) &&
+            player.hasExt(ClientPositionable)
+          ) {
+            const d = distance(
+              player.getExt(ClientPositionable).getCenterPosition(),
+              openEnt.getExt(ClientPositionable).getCenterPosition(),
+            );
+            if (d <= maxInteract) {
+              this.gameState.openDialogueNpcId = null;
+              return;
+            }
+          }
+        }
+
+        if (player) {
+          const spatialGrid = this.renderer?.spatialGrid ?? null;
+          let closest = getClosestInteractiveEntity(this.gameState, spatialGrid);
+          if (!closest && spatialGrid === null) {
+            let bestDist = Infinity;
+            let best: ClientEntityBase | null = null;
+            for (const e of getEntitiesByType(this.gameState, "dialogue_survivor_npc")) {
+              if (!e.hasExt(ClientPositionable)) continue;
+              const d = distance(
+                player.getExt(ClientPositionable).getCenterPosition(),
+                e.getExt(ClientPositionable).getCenterPosition(),
+              );
+              if (d <= maxInteract && d < bestDist) {
+                bestDist = d;
+                best = e;
+              }
+            }
+            closest = best;
+          }
+          if (closest?.getType() === "dialogue_survivor_npc" && closest.hasExt(ClientPositionable)) {
+            const d = distance(
+              player.getExt(ClientPositionable).getCenterPosition(),
+              closest.getExt(ClientPositionable).getCenterPosition(),
+            );
+            if (d <= maxInteract) {
+              this.gameState.openDialogueNpcId = closest.getId();
+              return;
+            }
+          }
+        }
+
+        // Check if there's a merchant nearby
         if (player) {
           const playerPos = player.getPosition();
           const merchants = getEntitiesByType(this.gameState, "merchant");
@@ -319,8 +373,18 @@ export class GameClient {
       onInventorySlotChanged: (slot) => {
         this.handleLocalInventorySlotChanged(slot);
       },
-      onWeaponSelectByIndex: (index) => {
-        this.hud.selectWeaponByIndex(index);
+      onSelectWeaponLoadout: (loadout) => {
+        this.socketManager?.sendSelectWeaponLoadout(loadout);
+      },
+      onQuickSwapPrimarySecondary: () => {
+        const p = getPlayer();
+        if (!p || !(p instanceof PlayerClient)) return;
+        const active = (p as any).activeWeaponLoadout ?? 0;
+        let next = 0;
+        if (active === 0) next = 1;
+        else if (active === 1) next = 0;
+        else next = 0;
+        this.socketManager?.sendSelectWeaponLoadout(next);
       },
     });
 
@@ -352,6 +416,12 @@ export class GameClient {
       () => {
         const p = getPlayer();
         return p instanceof PlayerClient ? p : null;
+      },
+      (loadout) => {
+        this.socketManager?.sendSelectWeaponLoadout(loadout);
+      },
+      (slot, bagIndex) => {
+        this.socketManager?.sendSetWeaponLoadoutSlot(slot, bagIndex);
       }
     );
 
@@ -373,6 +443,7 @@ export class GameClient {
       globalIlluminationMultiplier: 1.0,
       // Darkness hue (default: "red")
       darknessHue: "red",
+      openDialogueNpcId: null,
     };
 
     this.renderer = new Renderer(
@@ -858,8 +929,7 @@ export class GameClient {
       (this.hud && this.hud.isHoveringInventory()) ||
       (this.hud && this.hud.isHoveringMuteButton()) ||
       (this.gameOverDialog && this.gameOverDialog.isGameOver()) ||
-      this.inputManager.isChatInputActive() ||
-      this.inputManager.isFKeyHeld()
+      this.inputManager.isChatInputActive()
     ) {
       this.ctx.canvas.style.cursor = "default";
       return;
@@ -880,6 +950,10 @@ export class GameClient {
     const invExt = player.getExt(ClientInventory);
     const activeSlot = this.inputManager.getCurrentInventorySlot();
     const maxSlots = getConfig().player.MAX_INVENTORY_SLOTS;
+    if (activeSlot === FISTS_INVENTORY_SENTINEL) {
+      this.ctx.canvas.style.cursor = "none";
+      return;
+    }
     if (activeSlot < 1 || activeSlot > maxSlots) {
       this.ctx.canvas.style.cursor = "default";
       return;

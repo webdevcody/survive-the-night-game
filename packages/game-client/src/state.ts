@@ -16,6 +16,8 @@ export type GameState = {
   crafting: boolean;
   serverTimeOffset: number;
   closestInteractiveEntityId?: number | null;
+  /** When set, client shows speech bubble for this dialogue_survivor_npc entity id. */
+  openDialogueNpcId?: number | null;
   dt: number;
   globalIlluminationMultiplier: number;
   darknessHue: "red" | "blue";

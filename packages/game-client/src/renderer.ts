@@ -16,6 +16,7 @@ import { beginInteractionTextFrame, flushInteractionText } from "./util/interact
 import { PlayerClient } from "./entities/player";
 import { DEBUG_PERFORMANCE } from "@shared/debug";
 import { isWeapon } from "@shared/util/inventory";
+import { FISTS_INVENTORY_SENTINEL } from "@shared/constants/inventory-sentinel";
 import { Entities } from "@shared/constants";
 import { getConfig } from "@shared/config";
 import { getPlayer } from "./util/get-player";
@@ -358,11 +359,14 @@ export class Renderer {
     let hasWeapon = false;
 
     if (hasServerSlotData) {
-      // Use server's selected slot if available
-      const selectedSlot = player.getSelectedInventorySlot();
-      const activeSlot = selectedSlot >= 0 ? selectedSlot + 1 : 1; // Convert 0-indexed to 1-indexed
-      const activeItem = inventory[activeSlot - 1];
-      hasWeapon = !!(activeItem && isWeapon(activeItem.itemType));
+      if (inputInventoryItem === FISTS_INVENTORY_SENTINEL) {
+        hasWeapon = true;
+      } else {
+        const selectedSlot = player.getSelectedInventorySlot();
+        const activeSlot = selectedSlot >= 0 ? selectedSlot + 1 : 1;
+        const activeItem = inventory[activeSlot - 1];
+        hasWeapon = !!(activeItem && isWeapon(activeItem.itemType));
+      }
     } else {
       // If server slot data isn't available yet, check all inventory slots for any weapon
       // This handles the case where inputInventoryItem hasn't been synced from the server yet

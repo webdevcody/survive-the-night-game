@@ -33,6 +33,7 @@ import {
 } from "@shared/util/character-stats";
 import { sumSkillAllocations } from "@shared/util/skill-tree";
 import { getProgressionPointsBudget } from "@shared/util/experience-level";
+import { FISTS_INVENTORY_SENTINEL } from "@shared/constants/inventory-sentinel";
 
 export class PlayerClient extends ClientEntity implements IClientEntity, Renderable {
   private readonly ARROW_LENGTH = 20;
@@ -181,9 +182,9 @@ export class PlayerClient extends ClientEntity implements IClientEntity, Rendera
   }
 
   getSelectedInventorySlot(): number {
-    // inputInventoryItem is 1-indexed (1-10), convert to 0-indexed (0-9)
-    const slot = (this as any).inputInventoryItem ?? 1;
-    return slot - 1;
+    const raw = (this as any).inputInventoryItem ?? 1;
+    if (raw === FISTS_INVENTORY_SENTINEL) return -1;
+    return raw - 1;
   }
 
   getInput(): Input {
@@ -669,6 +670,10 @@ export class PlayerClient extends ClientEntity implements IClientEntity, Rendera
     if (!this.hasExt(ClientInventory)) {
       console.warn(`Player ${this.getId()} missing ClientInventory extension`);
       return null;
+    }
+
+    if (inputInventoryItem === FISTS_INVENTORY_SENTINEL) {
+      return { itemType: "fists" as const, state: {} };
     }
 
     const maxSlots = this.getMaxInventorySlots();

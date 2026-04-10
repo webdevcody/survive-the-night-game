@@ -106,6 +106,8 @@ export const ENTITY_REGISTRATION_CONFIG: EntityRegistrationEntry[] = [
   { type: "blood", category: "environment" },
   { type: "acid", category: "environment" },
   { type: "zombie_spawn_point", category: "environment" },
+  { type: "item_spawn_point", category: "environment" },
+  { type: "dialogue_survivor_npc", category: "environment" },
 ];
 
 

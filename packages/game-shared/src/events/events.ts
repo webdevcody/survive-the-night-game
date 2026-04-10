@@ -65,6 +65,8 @@ export const ClientSentEvents = {
   CHANGE_PLAYER_COLOR: "changePlayerColor",
   SPAWN_ZOMBIE: "spawnZombie",
   SET_PROGRESSION_ALLOCATIONS: "setProgressionAllocations",
+  SELECT_WEAPON_LOADOUT: "selectWeaponLoadout",
+  SET_WEAPON_LOADOUT_SLOT: "setWeaponLoadoutSlot",
 } as const;
 
 export type ServerSentEventType = (typeof ServerSentEvents)[keyof typeof ServerSentEvents];

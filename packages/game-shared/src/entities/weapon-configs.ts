@@ -2,6 +2,27 @@ import { WeaponConfig } from "./weapon-registry";
 
 // Use string literals instead of types to avoid circular dependency with Entities
 export const WEAPON_CONFIGS: Record<string, WeaponConfig> = {
+  /** Not a world item — used only for unarmed attacks (FX / sound / cooldown). */
+  fists: {
+    id: "fists",
+    type: "melee",
+    stats: {
+      damage: 1,
+      pushDistance: 8,
+      cooldown: 0.85,
+      cameraShakeIntensity: 0.2,
+    },
+    assets: {
+      assetPrefix: "knife",
+      spritePositions: {
+        right: { x: 16, y: 32 },
+        down: { x: 48, y: 32 },
+        up: { x: 32, y: 32 },
+      },
+      sheet: "items",
+    },
+    sound: "knife_swing",
+  },
   knife: {
     id: "knife",
     type: "melee",

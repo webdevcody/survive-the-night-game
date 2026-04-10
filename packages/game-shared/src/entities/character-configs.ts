@@ -56,4 +56,24 @@ export const CHARACTER_CONFIGS: Record<string, CharacterConfig> = {
       },
     },
   },
+  dialogue_survivor_npc: {
+    id: "dialogue_survivor_npc",
+    category: "npc",
+    assets: {
+      assetPrefix: "survivor",
+      frameLayout: {
+        startX: 0,
+        downY: 112,
+        leftY: 128,
+        upY: 96,
+        totalFrames: 3,
+        sheet: "characters",
+      },
+      deadFrame: {
+        x: 493,
+        y: 190,
+        sheet: "characters",
+      },
+    },
+  },
 };

@@ -1,9 +1,6 @@
 import { GameClient } from "@/client";
 import { getPlayer } from "@/util/get-player";
 import { distance } from "@shared/util/physics";
-import { getConfig } from "@shared/config";
-import { isWeapon, ItemType } from "@shared/util/inventory";
-import { itemRegistry } from "@shared/entities";
 import Vector2 from "@shared/util/vector2";
 import PoolManager from "@shared/util/pool-manager";
 
@@ -12,15 +9,12 @@ import PoolManager from "@shared/util/pool-manager";
  */
 export class ClientEventHandlers {
   private gameClient: GameClient;
-  private scrollAccumulator: number = 0;
-  private readonly SCROLL_THRESHOLD = 50; // Accumulate this much deltaY before switching slots
 
   // Store canvas and bound handlers for cleanup
   private canvas: HTMLCanvasElement | null = null;
   private boundMouseMoveHandler: ((e: MouseEvent) => void) | null = null;
   private boundMouseDownHandler: ((e: MouseEvent) => void) | null = null;
   private boundMouseUpHandler: ((e: MouseEvent) => void) | null = null;
-  private boundWheelHandler: ((e: WheelEvent) => void) | null = null;
 
   constructor(gameClient: GameClient) {
     this.gameClient = gameClient;
@@ -36,7 +30,6 @@ export class ClientEventHandlers {
     this.boundMouseMoveHandler = (e: MouseEvent) => this.handleMouseMove(e, canvas);
     this.boundMouseDownHandler = (e: MouseEvent) => this.handleMouseDown(e, canvas);
     this.boundMouseUpHandler = (e: MouseEvent) => this.handleMouseUp(e, canvas);
-    this.boundWheelHandler = (e: WheelEvent) => this.handleWheel(e);
 
     // Mouse move event listener
     canvas.addEventListener("mousemove", this.boundMouseMoveHandler);
@@ -46,9 +39,6 @@ export class ClientEventHandlers {
 
     // Mouse up event listener
     canvas.addEventListener("mouseup", this.boundMouseUpHandler);
-
-    // Wheel event listener
-    canvas.addEventListener("wheel", this.boundWheelHandler, { passive: false });
   }
 
   /**
@@ -68,10 +58,6 @@ export class ClientEventHandlers {
       if (this.boundMouseUpHandler) {
         this.canvas.removeEventListener("mouseup", this.boundMouseUpHandler);
         this.boundMouseUpHandler = null;
-      }
-      if (this.boundWheelHandler) {
-        this.canvas.removeEventListener("wheel", this.boundWheelHandler);
-        this.boundWheelHandler = null;
       }
       this.canvas = null;
     }
@@ -156,23 +142,8 @@ export class ClientEventHandlers {
         return;
       }
 
-      const inventory = this.getInventory();
       const inputManager = (this.gameClient as any).inputManager;
-      const activeSlot = inputManager.getCurrentInventorySlot();
-      const activeItem = inventory[activeSlot - 1];
-
-      if (activeItem) {
-        // Check if it's a weapon
-        const isWeaponItem = this.isWeaponItem(activeItem.itemType);
-        // Check if it's a consumable (like energy drink)
-        const itemConfig = itemRegistry.get(activeItem.itemType);
-        const isConsumable = itemConfig?.category === "consumable";
-
-        // Trigger fire for both weapons and consumables
-        if (isWeaponItem || isConsumable) {
-          inputManager.triggerFire();
-        }
-      }
+      inputManager.triggerFire();
     }
   }
 
@@ -203,84 +174,6 @@ export class ClientEventHandlers {
   }
 
   /**
-   * Handle wheel events for hotbar slot switching
-   */
-  private handleWheel(e: WheelEvent): void {
-    // Prevent default scrolling behavior
-    e.preventDefault();
-
-    const gameState = this.gameClient.getGameState();
-    const player = getPlayer(gameState);
-    const inputManager = (this.gameClient as any).inputManager;
-    const merchantBuyPanel = (this.gameClient as any).merchantBuyPanel;
-    const hud = this.gameClient.getHud();
-
-    // Check if player is dead
-    if (player && player.isDead()) {
-      this.scrollAccumulator = 0;
-      return;
-    }
-
-    // Check if chatting
-    if (inputManager.isChatInputActive()) {
-      this.scrollAccumulator = 0;
-      return;
-    }
-
-    // Check if merchant panel is open
-    if (merchantBuyPanel.isVisible()) {
-      this.scrollAccumulator = 0;
-      return;
-    }
-
-    // Check if fullscreen map is open
-    const isFullscreenMapOpen = hud?.isFullscreenMapOpen() ?? false;
-    if (isFullscreenMapOpen) {
-      this.scrollAccumulator = 0;
-      return;
-    }
-
-    if (hud?.isInventoryScreenOpen()) {
-      this.scrollAccumulator = 0;
-      return;
-    }
-
-    // Accumulate scroll delta to handle trackpad sensitivity
-    this.scrollAccumulator += e.deltaY;
-
-    // Only switch slots when accumulated delta exceeds threshold
-    const absAccumulator = Math.abs(this.scrollAccumulator);
-    if (absAccumulator < this.SCROLL_THRESHOLD) {
-      return;
-    }
-
-    // Get current slot and max slots
-    const currentSlot = inputManager.getCurrentInventorySlot();
-    const maxSlots = getConfig().player.MAX_HOTBAR_SLOTS;
-
-    // Determine direction
-    const scrollDelta = this.scrollAccumulator > 0 ? 1 : -1;
-    let newSlot = currentSlot + scrollDelta;
-
-    // Wrap around
-    if (newSlot > maxSlots) {
-      newSlot = 1;
-    } else if (newSlot < 1) {
-      newSlot = maxSlots;
-    }
-
-    // Set the new inventory slot
-    inputManager.setInventorySlot(newSlot);
-
-    // Reset accumulator after switching
-    if (this.scrollAccumulator > 0) {
-      this.scrollAccumulator -= this.SCROLL_THRESHOLD;
-    } else {
-      this.scrollAccumulator += this.SCROLL_THRESHOLD;
-    }
-  }
-
-  /**
    * Convert canvas coordinates to world coordinates
    */
   private canvasToWorld(canvasX: number, canvasY: number, canvas: HTMLCanvasElement): Vector2 {
@@ -299,19 +192,4 @@ export class ClientEventHandlers {
   /**
    * Get player inventory
    */
-  private getInventory() {
-    const gameState = this.gameClient.getGameState();
-    const player = getPlayer(gameState);
-    if (player) {
-      return player.getInventory();
-    }
-    return [];
-  }
-
-  /**
-   * Check if an item type is a weapon
-   */
-  private isWeaponItem(itemType: string): boolean {
-    return isWeapon(itemType as ItemType);
-  }
 }

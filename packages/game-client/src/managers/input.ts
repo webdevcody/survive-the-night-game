@@ -8,8 +8,8 @@ import Vector2 from "../../../game-shared/src/util/vector2";
 import PoolManager from "../../../game-shared/src/util/pool-manager";
 import { getConfig } from "@shared/config";
 import { itemRegistry } from "../../../game-shared/src/entities/item-registry";
-import { isWeapon } from "@shared/util/inventory";
 import { distance } from "@shared/util/physics";
+import { FISTS_INVENTORY_SENTINEL } from "@shared/constants/inventory-sentinel";
 
 export interface InputManagerOptions {
   onCraft?: () => unknown;
@@ -37,7 +37,8 @@ export interface InputManagerOptions {
   onRespawnRequest?: () => void;
   onTeleportStart?: () => void;
   onTeleportCancel?: () => void;
-  onWeaponSelectByIndex?: (index: number) => void;
+  onSelectWeaponLoadout?: (loadout: 0 | 1 | 2) => void;
+  onQuickSwapPrimarySecondary?: () => void;
   isMerchantPanelOpen?: () => boolean;
   isFullscreenMapOpen?: () => boolean;
   isInventoryScreenOpen?: () => boolean;
@@ -59,7 +60,6 @@ const shouldBlock = new Set([
   "KeyD",
   "KeyQ",
   "KeyE",
-  "KeyF",
   "KeyH",
   "KeyI",
   "KeyC",
@@ -86,11 +86,6 @@ export class InputManager {
     sprint: false,
   };
   private currentInventorySlot: number = 1; // Track locally for drop/consume
-  // Track the last two weapon slots used for quick switch (Q key)
-  // currentWeaponSlot is the most recently selected weapon slot
-  // previousWeaponSlot is the weapon slot before that
-  private currentWeaponSlot: number | null = null;
-  private previousWeaponSlot: number | null = null;
   private lastInputs = {
     ...this.inputs,
   };
@@ -99,8 +94,6 @@ export class InputManager {
   private callbacks: InputManagerOptions = {};
   private mousePosition: Vector2 | null = null;
   private canvas: HTMLCanvasElement | null = null;
-  private fKeyHeld = false;
-
   // Store bound event handlers for cleanup
   private boundKeydownHandler: ((e: KeyboardEvent) => void) | null = null;
   private boundKeyupHandler: ((e: KeyboardEvent) => void) | null = null;
@@ -152,11 +145,6 @@ export class InputManager {
 
       const eventCode = e.code;
       const eventKey = e.key.toLowerCase();
-
-      // Track F key state for weapons HUD
-      if (eventCode === "KeyF") {
-        this.fKeyHeld = true;
-      }
 
       // Handle chat mode FIRST - block ALL game inputs when chatting
       // This must come before any other input handling to prevent hotkeys from triggering
@@ -287,19 +275,30 @@ export class InputManager {
           callbacks.onInteractStart?.();
           break;
         case "KeyQ": {
-          // Quick switch to previous weapon
-          this.quickSwitchWeapon();
+          callbacks.onQuickSwapPrimarySecondary?.();
+          break;
+        }
+        case "Digit1": {
+          callbacks.onSelectWeaponLoadout?.(0);
+          break;
+        }
+        case "Digit2": {
+          callbacks.onSelectWeaponLoadout?.(1);
+          break;
+        }
+        case "Digit3": {
+          callbacks.onSelectWeaponLoadout?.(2);
           break;
         }
         case "KeyG": {
-          // Drop currently selected item
-          const currentSlot = this.currentInventorySlot - 1; // Convert to 0-indexed
+          if (this.currentInventorySlot === FISTS_INVENTORY_SENTINEL) break;
+          const currentSlot = this.currentInventorySlot - 1;
           callbacks.onDropItem?.(currentSlot);
           break;
         }
         case "KeyX": {
-          // Split half of the currently selected stack (if stackable)
-          const splitSlot = this.currentInventorySlot - 1; // Convert to 0-indexed
+          if (this.currentInventorySlot === FISTS_INVENTORY_SENTINEL) break;
+          const splitSlot = this.currentInventorySlot - 1;
           if (splitSlot < 0) break;
 
           const inventory = callbacks.getInventory?.();
@@ -354,11 +353,6 @@ export class InputManager {
       const eventCode = e.code;
       const eventKey = e.key.toLowerCase();
 
-      // Track F key state for weapons HUD
-      if (eventCode === "KeyF") {
-        this.fKeyHeld = false;
-      }
-
       // Check if merchant panel is open - block all inputs
       const isMerchantPanelOpen = callbacks.isMerchantPanelOpen?.() ?? false;
 
@@ -375,30 +369,6 @@ export class InputManager {
 
       const isFullscreenMapOpen = callbacks.isFullscreenMapOpen?.() ?? false;
       const isInventoryScreenOpen = callbacks.isInventoryScreenOpen?.() ?? false;
-
-      // Use key for number keys (characters work the same across layouts)
-      if (
-        !isMerchantPanelOpen &&
-        !isFullscreenMapOpen &&
-        !isInventoryScreenOpen
-      ) {
-        switch (eventKey) {
-          case "1":
-          case "2":
-          case "3":
-          case "4":
-          case "5":
-          case "6":
-          case "7":
-          case "8":
-          case "9":
-            this.setInventorySlot(Number.parseInt(eventKey, 10));
-            break;
-          case "0":
-            this.setInventorySlot(10); // Map "0" key to slot 10
-            break;
-        }
-      }
 
       // Use physical key codes for WASD and other action keys
       switch (eventCode) {
@@ -451,7 +421,6 @@ export class InputManager {
 
     this.boundFocusHandler = () => {
       this.clearInputs();
-      this.fKeyHeld = false;
       this.callbacks.onInteractEnd?.();
       this.callbacks.onTeleportCancel?.();
     };
@@ -603,27 +572,12 @@ export class InputManager {
 
   setInventorySlot(slot: number) {
     const maxSlots = getConfig().player.MAX_INVENTORY_SLOTS;
-    if (slot < 1 || slot > maxSlots) {
+    if (slot !== FISTS_INVENTORY_SENTINEL && (slot < 1 || slot > maxSlots)) {
       return;
     }
 
     if (this.currentInventorySlot === slot) {
       return;
-    }
-
-    const inventory = this.callbacks.getInventory?.();
-    if (inventory) {
-      // Check if the slot we're switching TO contains a weapon
-      const newItem = inventory[slot - 1];
-      if (newItem && isWeapon(newItem.itemType)) {
-        // Only track weapon slots - non-weapon selections don't affect quick switch
-        if (this.currentWeaponSlot !== slot) {
-          // Switching to a different weapon, update the weapon tracking
-          this.previousWeaponSlot = this.currentWeaponSlot;
-          this.currentWeaponSlot = slot;
-        }
-      }
-      // Non-weapon items are ignored for weapon tracking
     }
 
     this.currentInventorySlot = slot;
@@ -637,7 +591,7 @@ export class InputManager {
    */
   setInventorySlotSilent(slot: number): void {
     const maxSlots = getConfig().player.MAX_INVENTORY_SLOTS;
-    if (slot < 1 || slot > maxSlots) {
+    if (slot !== FISTS_INVENTORY_SENTINEL && (slot < 1 || slot > maxSlots)) {
       return;
     }
 
@@ -646,55 +600,11 @@ export class InputManager {
     }
 
     this.currentInventorySlot = slot;
-    // Only trigger UI update callback, not server send callback
     this.callbacks.onInventorySlotChanged?.(slot);
   }
 
   getCurrentInventorySlot(): number {
     return this.currentInventorySlot;
-  }
-
-  /**
-   * Quick switch between the last two weapons used
-   * Works even when a non-weapon item is currently selected
-   */
-  private quickSwitchWeapon(): void {
-    // Don't allow quick switch while chatting
-    if (this.isChatting) return;
-
-    const inventory = this.callbacks.getInventory?.();
-    if (!inventory) return;
-
-    // Determine which weapon slot to switch to
-    // If we're currently on the current weapon slot, switch to previous
-    // If we're on any other slot (including non-weapons), switch to current weapon
-    let targetSlot: number | null = null;
-
-    if (this.currentInventorySlot === this.currentWeaponSlot) {
-      // Currently on the most recent weapon, switch to previous weapon
-      targetSlot = this.previousWeaponSlot;
-    } else {
-      // Currently on a different slot (non-weapon or previous weapon), switch to current weapon
-      targetSlot = this.currentWeaponSlot;
-    }
-
-    if (targetSlot === null) return;
-
-    // Verify the target weapon slot still has a weapon
-    const targetItem = inventory[targetSlot - 1];
-    if (!targetItem || !isWeapon(targetItem.itemType)) {
-      // Target weapon slot no longer has a weapon, try to clean up tracking
-      if (targetSlot === this.currentWeaponSlot) {
-        this.currentWeaponSlot = this.previousWeaponSlot;
-        this.previousWeaponSlot = null;
-      } else if (targetSlot === this.previousWeaponSlot) {
-        this.previousWeaponSlot = null;
-      }
-      return;
-    }
-
-    // Switch to the target weapon
-    this.setInventorySlot(targetSlot);
   }
 
   reset() {
@@ -747,34 +657,6 @@ export class InputManager {
    */
   getMousePosition(): Vector2 | null {
     return this.mousePosition;
-  }
-
-  /**
-   * Check if F key is currently held (for weapons HUD)
-   */
-  isFKeyHeld(): boolean {
-    return this.fKeyHeld;
-  }
-
-  /**
-   * Set F key state (used to close weapons HUD programmatically)
-   */
-  setFKeyHeld(held: boolean): void {
-    this.fKeyHeld = held;
-  }
-
-  /**
-   * @deprecated Use isFKeyHeld() instead
-   */
-  isAltKeyHeld(): boolean {
-    return this.fKeyHeld;
-  }
-
-  /**
-   * @deprecated Use setFKeyHeld() instead
-   */
-  setAltKeyHeld(held: boolean): void {
-    this.fKeyHeld = held;
   }
 
   /**

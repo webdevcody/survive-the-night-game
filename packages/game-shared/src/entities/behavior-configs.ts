@@ -47,4 +47,6 @@ export interface BehaviorConfigs {
   spawn?: SpawnConfig;
   merchant?: MerchantConfig;
   recipe?: RecipeConfig;
+  /** Respawn delay for authored map item fixtures (spawns layer); overrides default when set. */
+  fixtureRespawnMs?: number;
 }
