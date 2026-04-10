@@ -1,8 +1,8 @@
 import { GAME_SERVER_API_KEY, WEBSITE_API_URL } from "@/config/env";
 import { queuePersistExperienceDeltaToWebsite } from "@/util/persist-experience-delta";
 import { gameEventBus } from "./game-event-bus";
-import { recordKillQuestProgress } from "@/quests/quest-runtime";
 import { UserSessionCache } from "./user-session-cache";
+import { recordKillQuestProgress } from "@/quests/quest-runtime";
 import { XP_PER_ZOMBIE_KILL } from "@shared/util/experience-level";
 const BATCH_INTERVAL_MS = 15000; // Send stats every 15 seconds
 /**

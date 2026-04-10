@@ -2,13 +2,13 @@ import { IGameManagers } from "@/managers/types";
 import { Entity } from "@/entities/entity";
 import { Input } from "@shared/util/input";
 import { InventoryItem, ItemType } from "@shared/util/inventory";
+import { type PlayerInventoryPersistedPayload } from "@shared/util/persisted-inventory-payload";
 import { RecipeType } from "@shared/util/recipes";
 import Vector2 from "@/util/vector2";
 import { Rectangle } from "@/util/shape";
 import { SkinType, PlayerColor } from "@shared/commands/commands";
 import type { PersistedPlayerProgress } from "@/services/player-progress-types";
 import { type PlayerQuestStatePayload } from "@shared/quests/player-quest-state";
-import type { PlayerInventoryPersistedPayload } from "@shared/util/persisted-inventory-payload";
 export declare class Player extends Entity {
     private static readonly PLAYER_WIDTH;
     private static readonly INTERACT_COOLDOWN;

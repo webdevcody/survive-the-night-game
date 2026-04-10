@@ -111,6 +111,8 @@ export class GameLoop {
         this.phaseStartTime = Date.now();
         this.phaseDuration = 0;
         this.totalZombies = 0;
+        // Delta broadcasts compare against this; reset so the first tick after reload does not use
+        // pre-reload phase/zombie snapshots (and so entity deltas are not driven by stale dirty sets).
         this.lastBroadcastedState = {
             phaseStartTime: -1,
             phaseDuration: -1,

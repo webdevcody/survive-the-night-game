@@ -8,6 +8,8 @@ import { TreeClient } from "@/entities/items/tree";
 import { ClothClient } from "@/entities/items/cloth";
 import { CrateClient } from "@/entities/items/crate";
 import { AcidProjectileClient } from "@/entities/acid-projectile";
+import { MerchantClient } from "@/entities/environment/merchant";
+import { DialogueSurvivorNpcClient } from "@/entities/environment/dialogue-survivor-npc";
 import { GameState } from "@/state";
 
 export interface EntityMapIndicator {
@@ -27,6 +29,8 @@ export interface MapColorSettings {
     item: string;
     tree: string;
     acid: string;
+    merchantNpc: string;
+    dialogueNpc: string;
   };
   indicators: {
     acid: { shape: string; size: number };
@@ -35,6 +39,7 @@ export interface MapColorSettings {
     wall: { shape: string; size: number };
     item: { shape: string; size: number };
     tree: { shape: string; size: number };
+    npc: { shape: string; size: number };
   };
 }
 
@@ -84,6 +89,20 @@ export function getEntityMapColor(
     return {
       color: settings.colors.player,
       indicator: convertIndicator(settings.indicators.player),
+    };
+  }
+
+  // Shop + dialogue NPCs (before generic carryable)
+  if (entity instanceof MerchantClient) {
+    return {
+      color: settings.colors.merchantNpc,
+      indicator: convertIndicator(settings.indicators.npc),
+    };
+  }
+  if (entity instanceof DialogueSurvivorNpcClient) {
+    return {
+      color: settings.colors.dialogueNpc,
+      indicator: convertIndicator(settings.indicators.npc),
     };
   }
 

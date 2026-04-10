@@ -16,7 +16,7 @@ import { Renderer } from "@/renderer";
 import { SpatialGrid } from "@shared/util/spatial-grid";
 import { ClientEntityBase } from "@/extensions/client-entity";
 import { distance } from "@shared/util/physics";
-import { calculateLightSources } from "./utils/map-rendering-utils";
+import { calculateLightSources, getCampsiteMapMarkerWorldPosition } from "./utils/map-rendering-utils";
 import { prerenderCollidables, renderCollidablesFromCanvas } from "./utils/map-collidable-renderer";
 import { renderMinimapFogOfWar } from "./utils/map-fog-of-war-renderer";
 import type { MinimapScreenRect } from "./minimap-hud-group-layout";
@@ -64,6 +64,8 @@ export const MINIMAP_SETTINGS = {
     acid: "green",
     bat: "blue",
     spitter: "purple",
+    merchantNpc: "#FF8C00",
+    dialogueNpc: "#BA55D3",
   },
   indicators: {
     acid: {
@@ -89,6 +91,10 @@ export const MINIMAP_SETTINGS = {
     tree: {
       shape: "rectangle",
       size: 16,
+    },
+    npc: {
+      shape: "circle",
+      size: 7,
     },
   },
   biomeIndicators: {
@@ -327,7 +333,7 @@ export class Minimap {
     ctx.arc(scaledLeft + scaledSize / 2, top + scaledSize / 2, scaledSize / 2, 0, Math.PI * 2);
     ctx.stroke();
 
-    // Draw crosshair at center (player position) using scaled values
+    // Draw crosshair at center (player / respawn-bind reference) before biome POIs so campsite H paints on top
     const crosshairSize = scaleHudValue(6, canvasWidth, canvasHeight);
     ctx.strokeStyle = settings.colors.player;
     ctx.lineWidth = 2;
@@ -338,12 +344,7 @@ export class Minimap {
     ctx.lineTo(scaledLeft + scaledSize / 2, top + scaledSize / 2 + crosshairSize);
     ctx.stroke();
 
-    // Draw biome directional indicators
-    perfTimer.start("minimap:biomes");
-    this.renderBiomeIndicators(ctx, playerPos, settings, top, scaledLeft, scaledSize);
-    perfTimer.end("minimap:biomes");
-
-    // Draw player directional indicators
+    // Draw player directional indicators before biome markers so H (campsite) stays on top
     perfTimer.start("minimap:playerIndicators");
     this.renderPlayerIndicators(
       ctx,
@@ -358,12 +359,18 @@ export class Minimap {
     );
     perfTimer.end("minimap:playerIndicators");
 
+    // Biome indicators last among icons so the campsite H is never covered by the center cross or edge arrows
+    perfTimer.start("minimap:biomes");
+    this.renderBiomeIndicators(ctx, gameState, playerPos, settings, top, scaledLeft, scaledSize);
+    perfTimer.end("minimap:biomes");
+
     ctx.restore();
     perfTimer.end("minimap:total");
   }
 
   private renderBiomeIndicators(
     ctx: CanvasRenderingContext2D,
+    gameState: GameState,
     playerPos: { x: number; y: number },
     settings: typeof MINIMAP_SETTINGS,
     top: number,
@@ -414,42 +421,51 @@ export class Minimap {
       });
     }
 
-    biomes.forEach(({ position, config }) => {
+    biomes.forEach(({ name, position, config }) => {
       if (!position) return;
 
-      // Convert biome position to world coordinates (center of biome)
-      const biomeWorldX = (position.x * BIOME_SIZE + BIOME_SIZE / 2) * TILE_SIZE;
-      const biomeWorldY = (position.y * BIOME_SIZE + BIOME_SIZE / 2) * TILE_SIZE;
+      const worldPos =
+        name === "campsite"
+          ? getCampsiteMapMarkerWorldPosition(gameState, position, BIOME_SIZE, TILE_SIZE)
+          : {
+              x: (position.x * BIOME_SIZE + BIOME_SIZE / 2) * TILE_SIZE,
+              y: (position.y * BIOME_SIZE + BIOME_SIZE / 2) * TILE_SIZE,
+            };
+      const biomeWorldX = worldPos.x;
+      const biomeWorldY = worldPos.y;
 
       // Calculate relative position to player
       const relativeX = biomeWorldX - playerPos.x;
       const relativeY = biomeWorldY - playerPos.y;
 
-      // Calculate angle from player to biome
+      // Project biome to minimap; clamp to inner circle edge when off-screen (same inset as before)
       const angle = Math.atan2(relativeY, relativeX);
-
-      // Calculate distance from center of minimap
-      const distance = Math.sqrt(relativeX * relativeX + relativeY * relativeY) * settings.scale;
-
-      // If the biome is within the minimap view, skip directional indicator
-      if (distance < radius - 30) return;
-
-      // Calculate position on the edge of the minimap circle
-      const edgeX = centerX + Math.cos(angle) * (radius - 20);
-      const edgeY = centerY + Math.sin(angle) * (radius - 20);
+      const minimapBiomeX = centerX + relativeX * settings.scale;
+      const minimapBiomeY = centerY + relativeY * settings.scale;
+      const edgeInset = 20;
+      const maxDist = radius - edgeInset;
+      const distFromCenter = Math.hypot(minimapBiomeX - centerX, minimapBiomeY - centerY);
+      const drawX =
+        distFromCenter <= maxDist
+          ? minimapBiomeX
+          : centerX + Math.cos(angle) * maxDist;
+      const drawY =
+        distFromCenter <= maxDist
+          ? minimapBiomeY
+          : centerY + Math.sin(angle) * maxDist;
 
       // Draw the indicator circle
       const indicatorSize = 18;
       ctx.fillStyle = config.color;
       ctx.beginPath();
-      ctx.arc(edgeX, edgeY, indicatorSize / 2, 0, Math.PI * 2);
+      ctx.arc(drawX, drawY, indicatorSize / 2, 0, Math.PI * 2);
       ctx.fill();
 
       // Draw white border
       ctx.strokeStyle = "white";
       ctx.lineWidth = 2;
       ctx.beginPath();
-      ctx.arc(edgeX, edgeY, indicatorSize / 2, 0, Math.PI * 2);
+      ctx.arc(drawX, drawY, indicatorSize / 2, 0, Math.PI * 2);
       ctx.stroke();
 
       // Draw the label text
@@ -457,7 +473,7 @@ export class Minimap {
       ctx.font = "bold 12px Arial";
       ctx.textAlign = "center";
       ctx.textBaseline = "middle";
-      ctx.fillText(config.label, edgeX, edgeY);
+      ctx.fillText(config.label, drawX, drawY);
     });
   }
 

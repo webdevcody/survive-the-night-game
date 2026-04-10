@@ -1,5 +1,4 @@
 import Positionable from "@/extensions/positionable";
-import Inventory from "@/extensions/inventory";
 import { getConfig } from "@shared/config";
 import { GAME_SERVER_API_KEY, WEBSITE_API_URL } from "@/config/env";
 /**
@@ -27,7 +26,7 @@ export async function persistPlayerLastPositionToWebsite(userId, player) {
         },
         body: JSON.stringify(Object.assign(Object.assign({ userId,
             lastTileX,
-            lastTileY }, (bind ? { respawnTileX: bind.x, respawnTileY: bind.y } : {})), { characterAllocations: player.getCharacterAllocationRecord(), skillAllocations: player.getSkillAllocationRecord(), savedInventory: player.getExt(Inventory).toPersistedPayload() })),
+            lastTileY }, (bind ? { respawnTileX: bind.x, respawnTileY: bind.y } : {})), { characterAllocations: player.getCharacterAllocationRecord(), skillAllocations: player.getSkillAllocationRecord(), savedInventory: player.getSavedInventoryPayload() })),
     });
     if (!res.ok) {
         const t = await res.text().catch(() => "");

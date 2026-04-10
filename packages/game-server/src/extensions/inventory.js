@@ -9,7 +9,7 @@ import { FISTS_INVENTORY_SENTINEL } from "@shared/constants/inventory-sentinel";
 import { encodeExtensionType } from "@shared/util/extension-type-encoding";
 import { itemTypeRegistry } from "@shared/util/item-type-encoding";
 import { writeItemState } from "@shared/util/item-state-serialization";
-import { LEGACY_RANDOM_DROP_TABLE } from "@shared/config/zombie-drop-tables";
+import { LEGACY_RANDOM_DROP_TABLE, resolveZombieDropStackCount, } from "@shared/config/zombie-drop-tables";
 import { ExtensionBase } from "./extension-base";
 class Inventory extends ExtensionBase {
     notifyPlayerWeaponLoadout() {
@@ -119,8 +119,9 @@ class Inventory extends ExtensionBase {
         return true;
     }
     /**
-     * Remove a total amount of an item type from bag stacks, then armor equipment slots.
-     * A stack of count 1 is cleared to null. Returns true if the full amount was removed.
+     * Remove a total amount of an item type from bag stacks, then armor equipment slots
+     * (same coverage as {@link hasItem}). A stack of count1 is cleared to `null`.
+     * Returns true if the full `amount` was removed.
      */
     removeCountAcrossStacks(itemType, amount) {
         var _a, _b, _c, _d;
@@ -292,25 +293,27 @@ class Inventory extends ExtensionBase {
     }
     addRandomItem(chance = 1, dropTable = LEGACY_RANDOM_DROP_TABLE) {
         if (Math.random() < chance) {
-            const itemType = this.getWeightedRandomItem(dropTable);
-            this.addItem({ itemType });
+            const entry = this.getWeightedRandomEntry(dropTable);
+            const count = resolveZombieDropStackCount(entry);
+            const item = count > 1 ? { itemType: entry.itemType, state: { count } } : { itemType: entry.itemType };
+            this.addItem(item);
         }
         return this;
     }
     /**
-     * Selects a random item from the drop table based on weighted probabilities.
+     * Selects a random row from the drop table based on weighted probabilities.
      * Items with higher weights have a higher chance of being selected.
      */
-    getWeightedRandomItem(dropTable) {
+    getWeightedRandomEntry(dropTable) {
         const totalWeight = dropTable.reduce((sum, entry) => sum + entry.weight, 0);
         let random = Math.random() * totalWeight;
         for (const entry of dropTable) {
             random -= entry.weight;
             if (random <= 0) {
-                return entry.itemType;
+                return entry;
             }
         }
-        return dropTable[0].itemType;
+        return dropTable[0];
     }
     /** Website / disconnect: JSON-serializable bag + equipment snapshot. */
     toPersistedPayload() {
@@ -320,7 +323,7 @@ class Inventory extends ExtensionBase {
         };
     }
     /** Apply validated snapshot (e.g. after hydrate from DB). */
-    applyPersistedPayload(payload) {
+    applyPersistedPayload(payload, options) {
         var _a;
         const coerced = coercePlayerInventoryPersistedPayload(payload);
         if (!coerced) {
@@ -334,7 +337,9 @@ class Inventory extends ExtensionBase {
         this.serialized.set("items", next);
         this.serialized.set("equipment", Object.assign({}, coerced.equipment));
         this.markDirty();
-        this.notifyPlayerWeaponLoadout();
+        if (!(options === null || options === void 0 ? void 0 : options.skipWeaponNotify)) {
+            this.notifyPlayerWeaponLoadout();
+        }
     }
     clear() {
         const items = this.serialized.get("items");

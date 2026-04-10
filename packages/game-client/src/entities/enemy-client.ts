@@ -10,7 +10,8 @@ import { AssetManager } from "@/managers/asset";
 import { GameState } from "@/state";
 import { debugDrawHitbox, drawCenterPositionWithLabel } from "@/util/debug";
 import { getPlayer } from "@/util/get-player";
-import { renderInteractionText } from "@/util/interaction-text";
+import { formatInteractKeyPrompt, renderInteractionText } from "@/util/interaction-text";
+import { isAutoPickupItem } from "@/util/auto-pickup";
 import { createFlashEffect } from "@/util/render";
 import { ClientInteractive } from "@/extensions";
 import { RawEntity } from "@shared/types/entity";
@@ -143,7 +144,51 @@ export abstract class EnemyClient extends ClientEntityBase implements IClientEnt
       ? this.renderEnemyDead(gameState, ctx, renderPosition)
       : this.renderEnemyAlive(gameState, ctx, renderPosition);
 
+    if (isDead) {
+      this.renderDeadEnemyInteractionText(ctx, gameState);
+    }
+
     this.renderDebugWaypoint(ctx);
+  }
+
+  /** Loot prompt for corpses (server adds ClientInteractive on death). */
+  private renderDeadEnemyInteractionText(ctx: CanvasRenderingContext2D, gameState: GameState): void {
+    if (!this.hasExt(ClientInteractive)) {
+      return;
+    }
+
+    const myPlayer = getPlayer(gameState);
+    if (!myPlayer || myPlayer.isZombiePlayer()) {
+      return;
+    }
+
+    if (isAutoPickupItem(this, myPlayer)) {
+      return;
+    }
+
+    const interactive = this.getExt(ClientInteractive);
+    if (interactive.getAutoPickupEnabled()) {
+      return;
+    }
+
+    const displayName = interactive.getDisplayName();
+    if (!displayName?.trim()) {
+      return;
+    }
+
+    const positionable = this.getExt(ClientPositionable);
+    const text = formatInteractKeyPrompt(displayName);
+    const isClosest = gameState.closestInteractiveEntityId === this.getId();
+
+    renderInteractionText(
+      ctx,
+      text,
+      positionable.getCenterPosition(),
+      positionable.getPosition(),
+      myPlayer.getCenterPosition(),
+      interactive.getOffset(),
+      isClosest
+    );
   }
 
   protected renderDebugWaypoint(ctx: CanvasRenderingContext2D): void {

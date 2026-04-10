@@ -26,7 +26,11 @@ import { BufferWriter } from "@shared/util/buffer-serialization";
 import { encodeExtensionType } from "@shared/util/extension-type-encoding";
 import { itemTypeRegistry } from "@shared/util/item-type-encoding";
 import { writeItemState } from "@shared/util/item-state-serialization";
-import { LEGACY_RANDOM_DROP_TABLE } from "@shared/config/zombie-drop-tables";
+import {
+  LEGACY_RANDOM_DROP_TABLE,
+  resolveZombieDropStackCount,
+  type ZombieDropTableEntry,
+} from "@shared/config/zombie-drop-tables";
 
 import { ExtensionBase } from "./extension-base";
 
@@ -361,33 +365,33 @@ export default class Inventory extends ExtensionBase<InventoryFields> {
     return result;
   }
 
-  public addRandomItem(
-    chance = 1,
-    dropTable: Array<{ itemType: ItemType; weight: number }> = LEGACY_RANDOM_DROP_TABLE
-  ): this {
+  public addRandomItem(chance = 1, dropTable: ZombieDropTableEntry[] = LEGACY_RANDOM_DROP_TABLE): this {
     if (Math.random() < chance) {
-      const itemType = this.getWeightedRandomItem(dropTable);
-      this.addItem({ itemType });
+      const entry = this.getWeightedRandomEntry(dropTable);
+      const count = resolveZombieDropStackCount(entry);
+      const item: InventoryItem =
+        count > 1 ? { itemType: entry.itemType, state: { count } } : { itemType: entry.itemType };
+      this.addItem(item);
     }
     return this;
   }
 
   /**
-   * Selects a random item from the drop table based on weighted probabilities.
+   * Selects a random row from the drop table based on weighted probabilities.
    * Items with higher weights have a higher chance of being selected.
    */
-  private getWeightedRandomItem(dropTable: Array<{ itemType: ItemType; weight: number }>): ItemType {
+  private getWeightedRandomEntry(dropTable: ZombieDropTableEntry[]): ZombieDropTableEntry {
     const totalWeight = dropTable.reduce((sum, entry) => sum + entry.weight, 0);
     let random = Math.random() * totalWeight;
 
     for (const entry of dropTable) {
       random -= entry.weight;
       if (random <= 0) {
-        return entry.itemType;
+        return entry;
       }
     }
 
-    return dropTable[0].itemType;
+    return dropTable[0];
   }
 
   /** Website / disconnect: JSON-serializable bag + equipment snapshot. */

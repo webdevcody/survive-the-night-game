@@ -1,4 +1,4 @@
-import { GameState } from "@/state";
+import { GameState, getEntitiesByType } from "@/state";
 import { ClientPositionable } from "@/extensions/positionable";
 import { PlayerClient } from "@/entities/player";
 import { ClientIlluminated } from "@/extensions/illuminated";
@@ -58,6 +58,28 @@ export function calculateLightSources(
   }
 
   return sources;
+}
+
+/**
+ * World position for the campsite (H) map marker: the actual campfire entity when present,
+ * otherwise the biome cell center (fire is offset inside the biome, so center is wrong).
+ */
+export function getCampsiteMapMarkerWorldPosition(
+  gameState: GameState,
+  campsiteBiomeCell: { x: number; y: number },
+  biomeSize: number,
+  tileSize: number
+): { x: number; y: number } {
+  const fires = getEntitiesByType(gameState, "campsite_fire");
+  for (const entity of fires) {
+    if (entity.hasExt(ClientPositionable)) {
+      return entity.getExt(ClientPositionable).getCenterPosition();
+    }
+  }
+  return {
+    x: (campsiteBiomeCell.x * biomeSize + biomeSize / 2) * tileSize,
+    y: (campsiteBiomeCell.y * biomeSize + biomeSize / 2) * tileSize,
+  };
 }
 
 export function isPositionVisible(worldPos: Vector2, lightSources: LightSource[]): boolean {

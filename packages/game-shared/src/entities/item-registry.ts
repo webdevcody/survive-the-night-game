@@ -29,7 +29,15 @@ export interface ItemConfig extends BehaviorConfigs {
   placeSound?: string; // Sound type to play when item is placed (e.g., "build"). If not set, no sound plays.
   healable?: boolean; // If true, item can be used for quick heal (must also be consumable)
   lightIntensity?: number; // Light radius provided when item is equipped or in inventory (0 = no light)
-  wearable?: boolean; // If true, item is wearable and should be rendered as an overlay when in inventory
+  /** If true, item is armor / wearable equipment (equip slots, encumbrance, etc.). */
+  wearable?: boolean;
+  /**
+   * When equipped, whether to draw this item as a sprite overlay on the player body.
+   * - true: always draw when in an equipment slot
+   * - false: never draw (e.g. invisible trinket)
+   * - undefined: draw when wearable and equipmentSlot are both set
+   */
+  rendersOnPlayerOverlay?: boolean;
   /** When set, item may only be equipped in this slot. */
   equipmentSlot?: ArmorEquipmentSlotKey;
   duration?: number; // Duration in seconds for consumable effects (e.g., energy drink)

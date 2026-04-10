@@ -374,7 +374,7 @@ export const ITEM_CONFIGS: Record<string, ItemConfig> = {
       sheet: "items",
     },
     hideWhenSelected: true, // Don't show overlay when selected since player is wearing it
-    wearable: true, // Item is wearable and should be rendered as an overlay when in inventory
+    wearable: true, // Armor: equips to head; body overlay when equipped (see player-body-overlays)
     equipmentSlot: "head",
     spawn: {
       enabled: true,

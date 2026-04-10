@@ -79,6 +79,7 @@ function applyRewardList(player, rewards) {
 function applyRewards(player, def) {
     applyRewardList(player, def.rewards);
 }
+/** Removes one stack count per `pickup_item` step (items “turned in” when the quest completes). */
 function consumePickupItemsForCompletedQuest(player, def) {
     if (!player.hasExt(Inventory))
         return;
@@ -117,15 +118,24 @@ function getDialogueSessionsForNpcEntity(npc) {
     ];
 }
 function pickDialogueSessionForNpcEntity(npc, player, map) {
+    var _a, _b;
     const sessions = getDialogueSessionsForNpcEntity(npc);
     const st = getState(player);
     const hasItemType = player.hasExt(Inventory)
         ? (itemType) => player.getExt(Inventory).hasItem(itemType)
         : () => false;
+    const npcDisplayName = String((_a = npc.getSerialized().get("displayName")) !== null && _a !== void 0 ? _a : "");
+    const npcKey = String((_b = npc.getSerialized().get("npcKey")) !== null && _b !== void 0 ? _b : "");
     return pickDialogueNpcSession(sessions, st, hasItemType, {
         getQuestStepCount: (qid) => { var _a; return (_a = map.getQuestDefinition(qid)) === null || _a === void 0 ? void 0 : _a.steps.length; },
+        getQuestDefinition: (qid) => map.getQuestDefinition(qid),
+        dialogueNpc: { displayName: npcDisplayName, npcKey },
     });
 }
+/**
+ * Advances past consecutive `pickup_item` steps when the player already holds the item
+ * (e.g. quest granted while the item was already in inventory).
+ */
 function syncActiveQuestPickupStepsWithInventory(player, map, st) {
     const hasItemType = player.hasExt(Inventory)
         ? (itemType) => player.getExt(Inventory).hasItem(itemType)
@@ -151,12 +161,18 @@ function syncActiveQuestPickupStepsWithInventory(player, map, st) {
     }
     return changed;
 }
+/**
+ * Call at the **start** of processing a finished NPC dialogue (before grant/complete).
+ * Catches up `pickup_item` progress when the player already holds the item, without
+ * running in the same turn as {@link tryGrantQuestFromNpc} (which would let {@link tryCompleteQuestFromDialogue} finish the quest in one interaction).
+ */
 export function trySyncActiveQuestPickupStepsWithInventory(player, map) {
     const st = getState(player);
     if (syncActiveQuestPickupStepsWithInventory(player, map, st)) {
         setState(player, st);
     }
 }
+/** @returns The quest id that was newly activated, or null if nothing was granted. */
 export function tryGrantQuestFromNpc(player, npc, map) {
     var _a;
     const st = getState(player);
@@ -190,16 +206,20 @@ export function tryCompleteQuestFromDialogue(player, npc, map) {
     finishQuest(player, map, complete, st);
     setState(player, st);
 }
-/** Advances active quests whose current step is `talk_to_npc` matching this NPC (after dialogue ends). */
+/**
+ * Advances active quests whose current step is `talk_to_npc` matching this NPC (after dialogue ends).
+ * `skipQuestIds`: quest ids that were **just granted** this same completion; do not advance those yet,
+ * so the "talk to NPC" objective is not auto-cleared by the same interaction that granted the quest.
+ */
 export function tryAdvanceTalkToNpcStep(player, npc, map, opts) {
-    var _a, _b;
+    var _a, _b, _c;
     const npcDisplayName = String((_a = npc.getSerialized().get("displayName")) !== null && _a !== void 0 ? _a : "");
     const npcKey = String((_b = npc.getSerialized().get("npcKey")) !== null && _b !== void 0 ? _b : "");
     const st = getState(player);
     const qids = Object.keys(st.active);
     let changed = false;
     for (const qid of qids) {
-        if ((_a = opts === null || opts === void 0 ? void 0 : opts.skipQuestIds) === null || _a === void 0 ? void 0 : _a.has(qid))
+        if ((_c = opts === null || opts === void 0 ? void 0 : opts.skipQuestIds) === null || _c === void 0 ? void 0 : _c.has(qid))
             continue;
         const def = map.getQuestDefinition(qid);
         if (!def)
@@ -247,6 +267,7 @@ export function advancePickupStep(player, itemType, map) {
         setState(player, st);
 }
 export function recordKillQuestProgress(player, enemyType, map) {
+    var _a, _b, _c;
     const st = getState(player);
     const qids = Object.keys(st.active);
     let changed = false;
@@ -264,7 +285,6 @@ export function recordKillQuestProgress(player, enemyType, map) {
         if (!Number.isFinite(need) || need < 1)
             continue;
         const entry = st.active[qid];
-        var _a, _b;
         const prev = (_b = (_a = entry.kills) === null || _a === void 0 ? void 0 : _a[enemyType]) !== null && _b !== void 0 ? _b : 0;
         const next = prev + 1;
         if (next >= need) {
@@ -273,7 +293,7 @@ export function recordKillQuestProgress(player, enemyType, map) {
         else {
             st.active[qid] = {
                 step: idx,
-                kills: Object.assign(Object.assign({}, entry.kills !== null && entry.kills !== void 0 ? entry.kills : {}), { [enemyType]: next }),
+                kills: Object.assign(Object.assign({}, ((_c = entry.kills) !== null && _c !== void 0 ? _c : {})), { [enemyType]: next }),
             };
         }
         changed = true;
@@ -282,7 +302,7 @@ export function recordKillQuestProgress(player, enemyType, map) {
         setState(player, st);
 }
 export function tickWaypointSteps(player, map) {
-    var _b;
+    var _a;
     if (!player.hasExt(Positionable))
         return;
     const pos = player.getExt(Positionable).getCenterPosition();
@@ -300,7 +320,7 @@ export function tickWaypointSteps(player, map) {
         const step = def.steps[idx];
         if (!step || step.type !== "reach_waypoint")
             continue;
-        const radius = (_b = step.radiusTiles) !== null && _b !== void 0 ? _b : 2;
+        const radius = (_a = step.radiusTiles) !== null && _a !== void 0 ? _a : 2;
         const distTiles = Math.max(Math.abs(tx - step.col), Math.abs(ty - step.row));
         if (distTiles > radius)
             continue;

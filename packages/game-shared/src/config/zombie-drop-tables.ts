@@ -1,7 +1,24 @@
 import type { ItemType } from "../util/inventory";
 
 /** Weighted loot row; higher weight = more likely when a drop succeeds. */
-export type ZombieDropTableEntry = { itemType: ItemType; weight: number };
+export type ZombieDropTableEntry = {
+  itemType: ItemType;
+  weight: number;
+  /** Stack size for stackable drops (e.g. coins). Default 1. */
+  count?: number;
+  /** Inclusive stack range; when both are set, overrides {@link count} for that roll. */
+  countMin?: number;
+  countMax?: number;
+};
+
+export function resolveZombieDropStackCount(entry: ZombieDropTableEntry): number {
+  if (entry.countMin != null && entry.countMax != null) {
+    const lo = Math.min(entry.countMin, entry.countMax);
+    const hi = Math.max(entry.countMin, entry.countMax);
+    return lo + Math.floor(Math.random() * (hi - lo + 1));
+  }
+  return entry.count ?? 1;
+}
 
 /**
  * Full random drop pool (crates, drums, survivors, and baseline for zombie variants).
@@ -53,7 +70,7 @@ export function scaleZombieDropWeights(
   defaultFactor = 1
 ): ZombieDropTableEntry[] {
   return table.map((e) => ({
-    itemType: e.itemType,
+    ...e,
     weight: e.weight * (factors[e.itemType] ?? defaultFactor),
   }));
 }

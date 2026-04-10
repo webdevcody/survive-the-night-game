@@ -11,7 +11,7 @@ import Positionable from "@/extensions/positionable";
 import Updatable from "@/extensions/updatable";
 import { Entities } from "@/constants";
 import { Entity } from "@/entities/entity";
-import { coercePlayerInventoryPersistedPayload } from "@shared/util/persisted-inventory-payload";
+import { coercePlayerInventoryPersistedPayload, } from "@shared/util/persisted-inventory-payload";
 import { normalizeVector } from "@shared/util/physics";
 import { Cooldown } from "@/entities/util/cooldown";
 import { weaponHandlerRegistry } from "@/entities/weapons/weapon-handler-registry";
@@ -1081,9 +1081,29 @@ export class Player extends Entity {
         if (progress.savedInventory != null) {
             const inv = coercePlayerInventoryPersistedPayload(progress.savedInventory);
             if (inv) {
-                this.getExt(Inventory).applyPersistedPayload(inv);
+                const hasWeaponBar = inv.weaponBar != null;
+                this.getExt(Inventory).applyPersistedPayload(inv, { skipWeaponNotify: hasWeaponBar });
+                if (hasWeaponBar && inv.weaponBar) {
+                    const wb = inv.weaponBar;
+                    this.serialized.set("inputInventoryItem", wb.inputInventoryItem);
+                    this.serialized.set("weaponLoadoutPrimary", wb.weaponLoadoutPrimary);
+                    this.serialized.set("weaponLoadoutSecondary", wb.weaponLoadoutSecondary);
+                    this.serialized.set("weaponLoadoutMelee", wb.weaponLoadoutMelee);
+                    this.serialized.set("activeWeaponLoadout", wb.activeWeaponLoadout);
+                    this.sanitizeWeaponLoadouts();
+                }
             }
         }
+    }
+    /** Full inventory snapshot for website persistence (bag, armor, weapon bar / loadouts). */
+    getSavedInventoryPayload() {
+        return Object.assign(Object.assign({}, this.getExt(Inventory).toPersistedPayload()), { weaponBar: {
+                inputInventoryItem: this.serialized.get("inputInventoryItem"),
+                weaponLoadoutPrimary: this.serialized.get("weaponLoadoutPrimary"),
+                weaponLoadoutSecondary: this.serialized.get("weaponLoadoutSecondary"),
+                weaponLoadoutMelee: this.serialized.get("weaponLoadoutMelee"),
+                activeWeaponLoadout: this.serialized.get("activeWeaponLoadout"),
+            } });
     }
     /**
      * Open world: consume one-time spawn tile from persisted progress (null if none or already consumed).

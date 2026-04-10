@@ -1,5 +1,5 @@
 import { EntityType } from "../types/entity";
-import type { ItemType } from "../util/inventory";
+import type { ZombieDropTableEntry } from "../config/zombie-drop-tables";
 import Vector2 from "../util/vector2";
 
 export const EntityCategories = {
@@ -124,7 +124,7 @@ export interface ZombieConfig {
   /** When set, overrides default leash radii from shared entityConfig (bosses usually need larger values). */
   leash?: ZombieLeashConfig;
   /** Weighted loot when this enemy spawns with a random inventory drop (see game-server Inventory.addRandomItem). */
-  dropTable: Array<{ itemType: ItemType; weight: number }>;
+  dropTable: ZombieDropTableEntry[];
 }
 
 class ZombieRegistry {

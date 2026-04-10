@@ -61,7 +61,6 @@ export declare abstract class BaseEnemy extends Entity {
     getCenterPosition(): Vector2;
     getHitbox(): Rectangle;
     onDeath(killerId?: number): void;
-    spawnCoin(): void;
     onLooted(): void;
     getPosition(): Vector2;
     setPosition(position: Vector2): void;

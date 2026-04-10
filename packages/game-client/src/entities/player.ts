@@ -16,6 +16,7 @@ import { Direction, normalizeDirection } from "../../../game-shared/src/util/dir
 import { Hitbox } from "../../../game-shared/src/util/hitbox";
 import { Input } from "../../../game-shared/src/util/input";
 import { InventoryItem, isWeapon } from "../../../game-shared/src/util/inventory";
+import { getPlayerBodyOverlayItemsInRenderOrder } from "@shared/util/player-body-overlays";
 import { resolveAttackWeaponFromLoadout } from "@shared/util/weapon-loadout";
 import { itemRegistry } from "@shared/entities";
 import { roundVector2, distance } from "../../../game-shared/src/util/physics";
@@ -364,8 +365,8 @@ export class PlayerClient extends ClientEntity implements IClientEntity, Rendera
     } else {
       ctx.drawImage(image, renderPosition.x, renderPosition.y);
 
-      // Render miners-hat overlay if in inventory
-      this.renderMinersHat(ctx, renderPosition);
+      // Equipped armor / wearables (body overlays), not bag-only items
+      this.renderEquippedBodyOverlays(ctx, renderPosition);
 
       if (this.hasExt(ClientIgnitable)) {
         const frameIndex = getFrameIndex(gameState.startedAt, {
@@ -510,27 +511,12 @@ export class PlayerClient extends ClientEntity implements IClientEntity, Rendera
     ctx.fill();
   }
 
-  renderMinersHat(ctx: CanvasRenderingContext2D, renderPosition: Vector2) {
-    let wearableItem: InventoryItem | null = null;
-    if (this.hasExt(ClientInventory)) {
-      const head = this.getExt(ClientInventory).getEquipment().head;
-      const headCfg = head ? itemRegistry.get(head.itemType) : undefined;
-      if (head && (headCfg?.equipmentSlot === "head" || headCfg?.wearable === true)) {
-        wearableItem = head;
-      }
-    }
-    if (!wearableItem) {
-      wearableItem =
-        this.getInventory().find((item) => {
-          if (item === null) return false;
-          const itemConfig = itemRegistry.get(item.itemType);
-          return itemConfig?.wearable === true;
-        }) ?? null;
-    }
-
-    if (wearableItem) {
-      const wearableImage = this.imageLoader.get(wearableItem.itemType);
-      ctx.drawImage(wearableImage, renderPosition.x, renderPosition.y);
+  renderEquippedBodyOverlays(ctx: CanvasRenderingContext2D, renderPosition: Vector2) {
+    if (!this.hasExt(ClientInventory)) return;
+    const equipment = this.getExt(ClientInventory).getEquipment();
+    for (const item of getPlayerBodyOverlayItemsInRenderOrder(equipment)) {
+      const img = this.imageLoader.get(getItemAssetKey(item));
+      ctx.drawImage(img, renderPosition.x, renderPosition.y);
     }
   }
 

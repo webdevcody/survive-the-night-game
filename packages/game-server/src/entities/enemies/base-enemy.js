@@ -2,11 +2,11 @@ import { Cooldown } from "@/entities/util/cooldown";
 import Collidable from "@/extensions/collidable";
 import Destructible from "@/extensions/destructible";
 import Groupable from "@/extensions/groupable";
+import Interactive from "@/extensions/interactive";
 import Inventory from "@/extensions/inventory";
 import Movable from "@/extensions/movable";
 import Positionable from "@/extensions/positionable";
 import Updatable from "@/extensions/updatable";
-import { Entities } from "@shared/constants";
 import { Entity } from "@/entities/entity";
 import { LootEvent } from "../../../../game-shared/src/events/server-sent/events/loot-event";
 import PoolManager from "@shared/util/pool-manager";
@@ -17,7 +17,6 @@ import { getConfig } from "@shared/config";
 import { balanceConfig } from "@shared/config/balance-config";
 import { Blood } from "@/entities/effects/blood";
 import { distance, normalizeVector, pathTowards, velocityTowards } from "@/util/physics";
-import { Player } from "@/entities/players/player";
 import { gameEventBus } from "@/services/game-event-bus";
 import Snared from "@/extensions/snared";
 import { ZombieAlertedEvent } from "../../../../game-shared/src/events/server-sent/events/zombie-alerted-event";
@@ -302,6 +301,7 @@ export class BaseEnemy extends Entity {
     }
     onDeath(killerId) {
         this.getExt(Collidable).setEnabled(false);
+        this.addExtension(new Interactive(this).onInteract(() => this.onLooted()).setDisplayName("loot"));
         this.getGameManagers()
             .getBroadcaster()
             .broadcastEvent(new ZombieDeathEvent(this.getId(), killerId || 0));
@@ -314,17 +314,8 @@ export class BaseEnemy extends Entity {
                 timestamp: Date.now(),
             });
         }
-        // Spawn a coin when zombie dies
-        this.spawnCoin();
         // Mark entity for removal if not looted
         this.getEntityManager().markEntityForRemoval(this, getConfig().entity.ENTITY_DESPAWN_TIME_MS);
-    }
-    spawnCoin() {
-        const coin = this.getEntityManager().createEntity(Entities.COIN);
-        if (coin && coin.hasExt(Positionable)) {
-            coin.getExt(Positionable).setPosition(this.getPosition());
-            this.getEntityManager().addEntity(coin);
-        }
     }
     onLooted() {
         // Prevent multiple loots
@@ -385,28 +376,6 @@ export class BaseEnemy extends Entity {
         endCooldownUpdates();
         const destructible = this.getExt(Destructible);
         if (destructible.isDead()) {
-            // Check for auto-looting when dead (only if not already looted)
-            if (!this.hasBeenLooted) {
-                const zombiePos = this.getCenterPosition();
-                const interactRadius = getConfig().player.MAX_INTERACT_RADIUS;
-                // Check for nearby alive players
-                const nearbyPlayers = this.getEntityManager()
-                    .getNearbyEntities(zombiePos, interactRadius, new Set([Entities.PLAYER]))
-                    .filter((entity) => entity instanceof Player && !entity.isDead());
-                // If any player is within interaction range, auto-loot
-                if (nearbyPlayers.length > 0) {
-                    for (const player of nearbyPlayers) {
-                        if (player instanceof Player && player.hasExt(Positionable)) {
-                            const playerPos = player.getExt(Positionable).getCenterPosition();
-                            const dist = distance(zombiePos, playerPos);
-                            if (dist <= interactRadius) {
-                                this.onLooted();
-                                return;
-                            }
-                        }
-                    }
-                }
-            }
             return;
         }
         // Spawn leash + patrol, or delegate to movement strategy when chasing

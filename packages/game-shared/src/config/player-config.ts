@@ -53,7 +53,7 @@ export const playerConfig = {
   /**
    * Stamina drain rate per second while sprinting
    */
-  STAMINA_DRAIN_RATE: 25,
+  STAMINA_DRAIN_RATE: 6.25,
 
   /**
    * Stamina regeneration rate per second when not sprinting

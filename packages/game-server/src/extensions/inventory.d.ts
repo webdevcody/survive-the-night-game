@@ -4,6 +4,7 @@ import { RecipeType } from "../../../game-shared/src/util/recipes";
 import { Broadcaster } from "@/managers/types";
 import { IEntity } from "@/entities/types";
 import { BufferWriter } from "@shared/util/buffer-serialization";
+import { type ZombieDropTableEntry } from "@shared/config/zombie-drop-tables";
 import { ExtensionBase } from "./extension-base";
 type InventoryFields = {
     items: (InventoryItem | null)[];
@@ -31,8 +32,9 @@ export default class Inventory extends ExtensionBase<InventoryFields> {
      */
     addOrMergeStack(item: InventoryItem): boolean;
     /**
-     * Remove a total amount of an item type across bag stacks (e.g. paying with coins).
-     * Returns true if at least `amount` was removed.
+     * Remove a total amount of an item type from bag stacks, then armor equipment slots
+     * (same coverage as {@link hasItem}). A stack of count1 is cleared to `null`.
+     * Returns true if the full `amount` was removed.
      */
     removeCountAcrossStacks(itemType: ItemType, amount: number): boolean;
     removeItem(index: number): InventoryItem | undefined;
@@ -56,15 +58,12 @@ export default class Inventory extends ExtensionBase<InventoryFields> {
         inventory: (InventoryItem | null)[];
         itemToDrop?: InventoryItem;
     };
-    addRandomItem(chance?: number, dropTable?: Array<{
-        itemType: ItemType;
-        weight: number;
-    }>): this;
+    addRandomItem(chance?: number, dropTable?: ZombieDropTableEntry[]): this;
     /**
-     * Selects a random item from the drop table based on weighted probabilities.
+     * Selects a random row from the drop table based on weighted probabilities.
      * Items with higher weights have a higher chance of being selected.
      */
-    private getWeightedRandomItem;
+    private getWeightedRandomEntry;
     /** Website / disconnect: JSON-serializable bag + equipment snapshot. */
     toPersistedPayload(): PlayerInventoryPersistedPayload;
     /** Apply validated snapshot (e.g. after hydrate from DB). */

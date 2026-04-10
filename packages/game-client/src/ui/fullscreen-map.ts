@@ -12,7 +12,7 @@ import PoolManager from "@shared/util/pool-manager";
 import { MINIMAP_SETTINGS } from "./minimap";
 import { getEntityMapColor } from "@/util/entity-map-colors";
 import { distance } from "@shared/util/physics";
-import { calculateLightSources } from "./utils/map-rendering-utils";
+import { calculateLightSources, getCampsiteMapMarkerWorldPosition } from "./utils/map-rendering-utils";
 import { prerenderCollidables, renderCollidablesFromCanvas } from "./utils/map-collidable-renderer";
 import { renderFullscreenMapFogOfWar } from "./utils/map-fog-of-war-renderer";
 const FULLSCREEN_MAP_SETTINGS = {
@@ -228,9 +228,25 @@ export class FullScreenMap {
       mapHeight
     );
 
+    // Player crosshair before biome POIs so campsite H (and other labels) paint on top
+    const relativeX = playerPos.x - effectiveCenterPos.x;
+    const relativeY = playerPos.y - effectiveCenterPos.y;
+    const playerScreenX = centerX + relativeX * zoom;
+    const playerScreenY = centerY + relativeY * zoom;
+    const crosshairSize = 8;
+    ctx.strokeStyle = settings.colors.player;
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.moveTo(playerScreenX - crosshairSize, playerScreenY);
+    ctx.lineTo(playerScreenX + crosshairSize, playerScreenY);
+    ctx.moveTo(playerScreenX, playerScreenY - crosshairSize);
+    ctx.lineTo(playerScreenX, playerScreenY + crosshairSize);
+    ctx.stroke();
+
     // Draw biome indicators
     this.renderBiomeIndicators(
       ctx,
+      gameState,
       effectiveCenterPos,
       zoom,
       centerX,
@@ -245,21 +261,6 @@ export class FullScreenMap {
     ctx.strokeStyle = settings.borderColor;
     ctx.lineWidth = settings.borderWidth;
     ctx.strokeRect(mapX, mapY, mapWidth, mapHeight);
-
-    // Draw player indicator at actual player position (crosshair)
-    const relativeX = playerPos.x - effectiveCenterPos.x;
-    const relativeY = playerPos.y - effectiveCenterPos.y;
-    const playerScreenX = centerX + relativeX * zoom;
-    const playerScreenY = centerY + relativeY * zoom;
-    const crosshairSize = 8;
-    ctx.strokeStyle = settings.colors.player;
-    ctx.lineWidth = 3;
-    ctx.beginPath();
-    ctx.moveTo(playerScreenX - crosshairSize, playerScreenY);
-    ctx.lineTo(playerScreenX + crosshairSize, playerScreenY);
-    ctx.moveTo(playerScreenX, playerScreenY - crosshairSize);
-    ctx.lineTo(playerScreenX, playerScreenY + crosshairSize);
-    ctx.stroke();
 
     ctx.restore();
   }
@@ -610,6 +611,7 @@ export class FullScreenMap {
 
   private renderBiomeIndicators(
     ctx: CanvasRenderingContext2D,
+    gameState: GameState,
     playerPos: { x: number; y: number },
     zoom: number,
     centerX: number,
@@ -623,29 +625,49 @@ export class FullScreenMap {
     const settings = FULLSCREEN_MAP_SETTINGS;
     const { BIOME_SIZE, TILE_SIZE } = getConfig().world;
 
-    const biomes = [
-      { position: biomePositions.farm, config: settings.biomeIndicators.farm },
-      { position: biomePositions.city, config: settings.biomeIndicators.city },
-      { position: biomePositions.gasStation, config: settings.biomeIndicators.gasStation },
-      { position: biomePositions.campsite, config: settings.biomeIndicators.campsite },
-      { position: biomePositions.dock, config: settings.biomeIndicators.dock },
-      { position: biomePositions.shed, config: settings.biomeIndicators.shed },
+    const biomes: Array<{
+      name: string;
+      position: { x: number; y: number } | undefined;
+      config: (typeof settings.biomeIndicators)[keyof typeof settings.biomeIndicators];
+    }> = [
+      { name: "farm", position: biomePositions.farm, config: settings.biomeIndicators.farm },
+      { name: "city", position: biomePositions.city, config: settings.biomeIndicators.city },
+      {
+        name: "gasStation",
+        position: biomePositions.gasStation,
+        config: settings.biomeIndicators.gasStation,
+      },
+      {
+        name: "campsite",
+        position: biomePositions.campsite,
+        config: settings.biomeIndicators.campsite,
+      },
+      { name: "dock", position: biomePositions.dock, config: settings.biomeIndicators.dock },
+      { name: "shed", position: biomePositions.shed, config: settings.biomeIndicators.shed },
     ];
 
     if (biomePositions.merchants) {
       biomePositions.merchants.forEach((merchantPos) => {
         biomes.push({
+          name: "merchant",
           position: merchantPos,
           config: settings.biomeIndicators.merchant,
         });
       });
     }
 
-    biomes.forEach(({ position, config }) => {
+    biomes.forEach(({ name, position, config }) => {
       if (!position) return;
 
-      const biomeWorldX = (position.x * BIOME_SIZE + BIOME_SIZE / 2) * TILE_SIZE;
-      const biomeWorldY = (position.y * BIOME_SIZE + BIOME_SIZE / 2) * TILE_SIZE;
+      const worldPos =
+        name === "campsite"
+          ? getCampsiteMapMarkerWorldPosition(gameState, position, BIOME_SIZE, TILE_SIZE)
+          : {
+              x: (position.x * BIOME_SIZE + BIOME_SIZE / 2) * TILE_SIZE,
+              y: (position.y * BIOME_SIZE + BIOME_SIZE / 2) * TILE_SIZE,
+            };
+      const biomeWorldX = worldPos.x;
+      const biomeWorldY = worldPos.y;
 
       const relativeX = biomeWorldX - playerPos.x;
       const relativeY = biomeWorldY - playerPos.y;
