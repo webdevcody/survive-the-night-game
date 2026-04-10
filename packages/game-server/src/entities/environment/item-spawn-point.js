@@ -9,7 +9,7 @@ import PoolManager from "@shared/util/pool-manager";
  * Authored map fixture: spawns and respawns a pickup item at a fixed tile (spawns layer tile ids from ITEM_SPAWN_TILE_ID_MIN).
  */
 export class ItemSpawnPoint extends Entity {
-    constructor(gameManagers, itemEntityType, tileX, tileY, useAuthoredPlacementRules) {
+    constructor(gameManagers, itemEntityType, tileX, tileY, useAuthoredPlacementRules, respawnIntervalMsOverride) {
         super(gameManagers, Entities.ITEM_SPAWN_POINT);
         this.activeItemId = null;
         this.respawnAtMs = null;
@@ -17,6 +17,12 @@ export class ItemSpawnPoint extends Entity {
         this.tileX = tileX;
         this.tileY = tileY;
         this.useAuthoredPlacementRules = useAuthoredPlacementRules;
+        this.respawnDelayMs =
+            respawnIntervalMsOverride !== undefined &&
+                Number.isFinite(respawnIntervalMsOverride) &&
+                respawnIntervalMsOverride > 0
+                ? Math.round(respawnIntervalMsOverride)
+                : getItemFixtureRespawnMs(itemEntityType);
         const poolManager = PoolManager.getInstance();
         const TILE_SIZE = getConfig().world.TILE_SIZE;
         const size = poolManager.vector2.claim(TILE_SIZE, TILE_SIZE);
@@ -57,7 +63,7 @@ export class ItemSpawnPoint extends Entity {
     tick(_deltaTime) {
         const em = this.getEntityManager();
         const now = Date.now();
-        const respawnMs = getItemFixtureRespawnMs(this.itemEntityType);
+        const respawnMs = this.respawnDelayMs;
         if (this.activeItemId !== null) {
             const entity = em.getEntityById(this.activeItemId);
             if (entity && !entity.isMarkedForRemoval()) {

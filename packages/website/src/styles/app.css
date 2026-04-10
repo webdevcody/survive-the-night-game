@@ -127,6 +127,19 @@
   }
 }
 
+/* Map editor only: neutral system stack for long-form UI (dialogs, selects portal to body) */
+body:has(.map-editor-ui) .map-editor-ui,
+body:has(.map-editor-ui) .map-editor-ui *,
+body:has(.map-editor-ui) [data-slot="dialog-content"],
+body:has(.map-editor-ui) [data-slot="dialog-content"] *,
+body:has(.map-editor-ui) [data-slot="select-content"],
+body:has(.map-editor-ui) [data-slot="select-content"] * {
+  font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+    "Helvetica Neue", Arial, "Noto Sans", sans-serif, "Apple Color Emoji", "Segoe UI Emoji",
+    "Segoe UI Symbol", "Noto Color Emoji" !important;
+  letter-spacing: normal !important;
+}
+
 @layer utilities {
   .animate-fadeIn {
     animation: fadeIn 0.3s ease-in-out;

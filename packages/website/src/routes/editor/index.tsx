@@ -231,7 +231,7 @@ function MapEditor() {
 
   if (!sheetsLoaded || isWorldMapPending || !worldMapData) {
     return (
-      <div className="h-screen w-screen bg-gray-900 text-white flex items-center justify-center">
+      <div className="map-editor-ui h-screen w-screen bg-gray-900 text-white flex items-center justify-center">
         <div className="text-xl">
           {!sheetsLoaded ? "Loading tilesheets..." : "Loading world map..."}
         </div>
@@ -240,7 +240,7 @@ function MapEditor() {
   }
 
   return (
-    <div className="relative h-[100dvh] w-screen overflow-hidden bg-black">
+    <div className="map-editor-ui relative h-[100dvh] w-screen overflow-hidden bg-black">
       <TileMapEditor />
 
       <div className="pointer-events-none fixed inset-0 z-30">

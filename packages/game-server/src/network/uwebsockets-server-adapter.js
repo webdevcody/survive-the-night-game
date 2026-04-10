@@ -1,3 +1,4 @@
+import { EDITOR_WORLD_MAP_RELOAD_PATH } from "@/config/editor-map-reload";
 import { UWebSocketsSocketAdapter } from "./uwebsockets-socket-adapter";
 import uWS from "uwebsockets.js";
 export class UWebSocketsServerAdapter {
@@ -7,17 +8,28 @@ export class UWebSocketsServerAdapter {
         this.connectionHandlers = [];
         this.nextSocketId = 0;
         this.wsMap = new WeakMap();
+        /** Set by ServerSocketManager when editor map reload HTTP is enabled (dev). */
+        this.editorReloadWorldMapHandler = null;
         // Create uWebSockets app
         this.app = uWS.App({});
-        // Intercept upgrade requests to capture query params
+        // Specific HTTP routes first (registration order matters in uWebSockets).
+        this.app.post(EDITOR_WORLD_MAP_RELOAD_PATH, (res, req) => {
+            res.onAborted(() => { });
+            const handler = this.editorReloadWorldMapHandler;
+            if (!handler) {
+                res.writeStatus("404 Not Found");
+                res.writeHeader("Content-Type", "text/plain");
+                res.end("Not Found");
+                return;
+            }
+            handler(res, req);
+        });
+        // Match f2f3448: WebSocket upgrades must not get a premature HTTP response; .ws handles them.
         this.app.any("/*", (res, req) => {
             const upgradeHeader = req.getHeader("upgrade");
             if (upgradeHeader && upgradeHeader.toLowerCase() === "websocket") {
-                // This is a WebSocket upgrade - we'll handle it in the ws() handler
-                // The ws() handler will be called automatically by uWebSockets
                 return;
             }
-            // Non-WebSocket HTTP requests
             res.writeStatus("404 Not Found");
             res.writeHeader("Content-Type", "text/plain");
             res.end("Not Found");
@@ -28,7 +40,14 @@ export class UWebSocketsServerAdapter {
             idleTimeout: 32,
             upgrade: (res, req, context) => {
                 // Extract query params from upgrade request
-                const queryString = req.getQuery();
+                let queryString = req.getQuery();
+                if (!queryString) {
+                    const url = req.getUrl();
+                    const q = url.indexOf("?");
+                    if (q !== -1) {
+                        queryString = url.slice(q + 1);
+                    }
+                }
                 const queryParams = {};
                 if (queryString) {
                     const params = new URLSearchParams(queryString);
@@ -139,5 +158,11 @@ export class UWebSocketsServerAdapter {
      */
     getUnderlyingApp() {
         return this.app;
+    }
+    /**
+     * uWebSockets matches routes in registration order; this must be set before listen().
+     */
+    setEditorReloadWorldMapHandler(handler) {
+        this.editorReloadWorldMapHandler = handler;
     }
 }

@@ -78,7 +78,9 @@ export function ExpandMapDialog({ open, onOpenChange }: ExpandMapDialogProps) {
             tiles are added to
             the right and bottom only (world coordinates for existing tiles do not shift). New edge
             cells use empty defaults. Updates{" "}
-            <code className="text-gray-300">world-map.json</code> and{" "}
+            <code className="text-gray-300">world-map.json</code>,{" "}
+            <code className="text-gray-300">world-map-npcs.json</code>,{" "}
+            <code className="text-gray-300">world-map-quests.json</code>, and{" "}
             <code className="text-gray-300">world-config.ts</code> on disk. Restart the game server
             before play-testing in-game.
           </DialogDescription>

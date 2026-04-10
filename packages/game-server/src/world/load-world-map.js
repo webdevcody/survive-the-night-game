@@ -2,10 +2,23 @@ import fs from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
 import { getConfig } from "@shared/config";
+import { mergeWorldMapMainWithSidecars, WORLD_MAP_NPCS_FILENAME, WORLD_MAP_QUESTS_FILENAME, } from "@shared/map/world-map-sidecars";
 function resolveWorldMapJsonPath() {
+    // Resolve next to this module first so reloads always hit the package's world-map.json
+    // regardless of process.cwd() (monorepo / IDE / alternate entrypoints).
+    let adjacentToModule = null;
+    try {
+        adjacentToModule = path.join(path.dirname(fileURLToPath(import.meta.url)), "world-map.json");
+    }
+    catch (_a) {
+        /* ignore */
+    }
+    if (adjacentToModule && fs.existsSync(adjacentToModule)) {
+        return adjacentToModule;
+    }
     const cwd = process.cwd();
-    const distPath = path.join(cwd, "dist", "world-map.json");
     const srcPath = path.join(cwd, "src", "world", "world-map.json");
+    const distPath = path.join(cwd, "dist", "world-map.json");
     // Prefer src: the map editor writes here; dist is only updated on build and would stay stale.
     if (fs.existsSync(srcPath)) {
         return srcPath;
@@ -13,12 +26,19 @@ function resolveWorldMapJsonPath() {
     if (fs.existsSync(distPath)) {
         return distPath;
     }
+    return adjacentToModule !== null && adjacentToModule !== void 0 ? adjacentToModule : srcPath;
+}
+function tryReadWorldMapSidecarSync(filePath) {
     try {
-        const dir = path.dirname(fileURLToPath(import.meta.url));
-        return path.join(dir, "world-map.json");
+        const raw = fs.readFileSync(filePath, "utf-8");
+        return JSON.parse(raw);
     }
-    catch (_a) {
-        return srcPath;
+    catch (e) {
+        const err = e;
+        if (err.code === "ENOENT") {
+            return null;
+        }
+        throw e;
     }
 }
 export function tryLoadWorldMapFile() {
@@ -26,7 +46,11 @@ export function tryLoadWorldMapFile() {
     try {
         const raw = fs.readFileSync(filePath, "utf-8");
         const data = JSON.parse(raw);
-        return data;
+        const dir = path.dirname(filePath);
+        const npcsParsed = tryReadWorldMapSidecarSync(path.join(dir, WORLD_MAP_NPCS_FILENAME));
+        const questsParsed = tryReadWorldMapSidecarSync(path.join(dir, WORLD_MAP_QUESTS_FILENAME));
+        const merged = mergeWorldMapMainWithSidecars(data, npcsParsed, questsParsed);
+        return Object.assign(Object.assign({}, data), { dialogueNpcs: merged.dialogueNpcs, quests: merged.quests });
     }
     catch (e) {
         const err = e;

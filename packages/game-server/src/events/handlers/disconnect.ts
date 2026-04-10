@@ -3,9 +3,7 @@ import { HandlerContext } from "../context";
 import { PlayerLeftEvent } from "../../../../game-shared/src/events/server-sent/events/player-left-event";
 import { SocketEventHandler } from "./types";
 import { IEntityManager } from "@/managers/types";
-import Positionable from "@/extensions/positionable";
-import { getConfig } from "@shared/config";
-import { GAME_SERVER_API_KEY, WEBSITE_API_URL } from "@/config/env";
+import { persistPlayerLastPositionToWebsite } from "@/services/persist-player-last-position";
 
 /**
  * Count real (non-AI) players in the game
@@ -22,39 +20,10 @@ export function onDisconnect(context: HandlerContext, socket: ISocketAdapter): v
   const displayName = context.playerDisplayNames.get(socket.id);
   const userId = context.userSessionCache.getUserIdBySocket(socket.id);
 
-  if (userId && player && !player.isDead() && player.hasExt(Positionable) && GAME_SERVER_API_KEY) {
-    const pos = player.getExt(Positionable).getPosition();
-    const TILE_SIZE = getConfig().world.TILE_SIZE;
-    const lastTileX = Math.floor(pos.x / TILE_SIZE);
-    const lastTileY = Math.floor(pos.y / TILE_SIZE);
-    const url = `${WEBSITE_API_URL}/api/game/player-last-position`;
-    const bind = player.getBoundRespawnTile();
-    void (async () => {
-      try {
-        const res = await fetch(url, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "X-API-Key": GAME_SERVER_API_KEY,
-          },
-          body: JSON.stringify({
-            userId,
-            lastTileX,
-            lastTileY,
-            ...(bind ? { respawnTileX: bind.x, respawnTileY: bind.y } : {}),
-            characterAllocations: player.getCharacterAllocationRecord(),
-          }),
-        });
-        if (!res.ok) {
-          const t = await res.text().catch(() => "");
-          console.warn(
-            `[onDisconnect] player-last-position HTTP ${res.status} for user ${userId}: ${t.slice(0, 300)}`,
-          );
-        }
-      } catch (e) {
-        console.warn(`[onDisconnect] player-last-position failed for user ${userId}:`, e);
-      }
-    })();
+  if (userId && player) {
+    void persistPlayerLastPositionToWebsite(userId, player).catch((e) => {
+      console.warn(`[onDisconnect] player-last-position failed for user ${userId}:`, e);
+    });
   }
 
   // Clean up session cache for authenticated users

@@ -68,7 +68,6 @@ export interface IGameLoop {
     setPhaseTimer(startTime: number, duration: number): void;
 }
 export interface IGameServer {
-    endGame(): void;
     getGameLoop(): IGameLoop;
     /** Transient HUD message for one player (GameMessageEvent → client HUD). */
     sendGameMessageToPlayerEntity(playerEntityId: number, message: string, color?: string): void;

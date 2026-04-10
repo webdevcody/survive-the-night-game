@@ -9,6 +9,10 @@ import {
   type EquipmentSlotKey,
   type PlayerEquipmentState,
 } from "../../../game-shared/src/util/inventory";
+import {
+  coercePlayerInventoryPersistedPayload,
+  type PlayerInventoryPersistedPayload,
+} from "@shared/util/persisted-inventory-payload";
 import { recipes, RecipeType } from "../../../game-shared/src/util/recipes";
 import { Broadcaster } from "@/managers/types";
 import { PlayerPickedUpItemEvent } from "../../../game-shared/src/events/server-sent/events/pickup-item-event";
@@ -160,8 +164,9 @@ export default class Inventory extends ExtensionBase<InventoryFields> {
   }
 
   /**
-   * Remove a total amount of an item type across bag stacks (e.g. paying with coins).
-   * Returns true if at least `amount` was removed.
+   * Remove a total amount of an item type from bag stacks, then armor equipment slots
+   * (same coverage as {@link hasItem}). A stack of count1 is cleared to `null`.
+   * Returns true if the full `amount` was removed.
    */
   public removeCountAcrossStacks(itemType: ItemType, amount: number): boolean {
     if (amount <= 0) {
@@ -186,6 +191,34 @@ export default class Inventory extends ExtensionBase<InventoryFields> {
           ...it,
           state: { ...it.state, count: newCount },
         };
+      }
+    }
+
+    if (remaining > 0) {
+      const equipment = this.serialized.get("equipment");
+      const nextEq: PlayerEquipmentState = { ...equipment };
+      let equipmentTouched = false;
+      for (const key of EQUIPMENT_SLOT_KEYS) {
+        if (remaining <= 0) break;
+        const it = nextEq[key];
+        if (!it || it.itemType !== itemType) continue;
+        const stackCount = it.state?.count ?? 1;
+        if (stackCount <= remaining) {
+          remaining -= stackCount;
+          nextEq[key] = null;
+          equipmentTouched = true;
+        } else {
+          const newCount = stackCount - remaining;
+          remaining = 0;
+          nextEq[key] = {
+            ...it,
+            state: { ...it.state, count: newCount },
+          };
+          equipmentTouched = true;
+        }
+      }
+      if (equipmentTouched) {
+        this.serialized.set("equipment", nextEq);
       }
     }
 
@@ -355,6 +388,36 @@ export default class Inventory extends ExtensionBase<InventoryFields> {
     }
 
     return dropTable[0].itemType;
+  }
+
+  /** Website / disconnect: JSON-serializable bag + equipment snapshot. */
+  public toPersistedPayload(): PlayerInventoryPersistedPayload {
+    return {
+      items: structuredClone(this.serialized.get("items")) as (InventoryItem | null)[],
+      equipment: structuredClone(this.serialized.get("equipment")) as PlayerEquipmentState,
+    };
+  }
+
+  /** Apply validated snapshot (e.g. after hydrate from DB). */
+  public applyPersistedPayload(
+    payload: PlayerInventoryPersistedPayload,
+    options?: { skipWeaponNotify?: boolean },
+  ): void {
+    const coerced = coercePlayerInventoryPersistedPayload(payload);
+    if (!coerced) {
+      return;
+    }
+    const max = this.getMaxSlots();
+    const next: (InventoryItem | null)[] = [];
+    for (let i = 0; i < max; i++) {
+      next.push(coerced.items[i] ?? null);
+    }
+    this.serialized.set("items", next);
+    this.serialized.set("equipment", { ...coerced.equipment });
+    this.markDirty();
+    if (!options?.skipWeaponNotify) {
+      this.notifyPlayerWeaponLoadout();
+    }
   }
 
   public clear(): void {

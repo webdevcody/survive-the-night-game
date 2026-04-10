@@ -9,8 +9,6 @@ export const onGameStarted = (context: InitializationContext, event: GameStarted
   context.gameClient.getParticleManager().clear();
   context.gameClient.getRenderer().clearSpatialGrid();
 
-  context.gameClient.getGameOverDialog().hide();
-
   context.gameState.gameMode = data.gameMode;
 
   context.resetAndRequestInitialization("GameStarted event");

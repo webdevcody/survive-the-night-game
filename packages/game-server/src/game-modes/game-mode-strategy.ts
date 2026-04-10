@@ -34,23 +34,6 @@ export interface GameModeConfig {
 }
 
 /**
- * Result of win condition check
- */
-export interface WinConditionResult {
-  /** Whether the game has ended */
-  gameEnded: boolean;
-
-  /** Winner player ID (null for team win or no winner) */
-  winnerId: number | null;
-
-  /** Winner display name */
-  winnerName: string | null;
-
-  /** Message to display */
-  message: string;
-}
-
-/**
  * Strategy interface for game mode-specific behavior
  */
 export interface IGameModeStrategy {
@@ -63,11 +46,6 @@ export interface IGameModeStrategy {
    * Called when a new game starts in this mode
    */
   onGameStart(gameManagers: IGameManagers): void;
-
-  /**
-   * Called when the game ends
-   */
-  onGameEnd(gameManagers: IGameManagers): void;
 
   /**
    * Called every game tick to update mode-specific logic
@@ -91,11 +69,6 @@ export interface IGameModeStrategy {
    * Check if a player is allowed to respawn
    */
   canPlayerRespawn(player: Player): boolean;
-
-  /**
-   * Check if the game has ended and return the result
-   */
-  checkWinCondition(gameManagers: IGameManagers): WinConditionResult;
 
   /**
    * Determine if an attacker should damage a target

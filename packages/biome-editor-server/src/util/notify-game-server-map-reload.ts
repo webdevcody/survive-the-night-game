@@ -1,6 +1,6 @@
 /**
- * After saving world-map.json, ask the game server to run the same flow as /restart so
- * `generateMap()` reloads the file and connected clients get a fresh map.
+ * After saving the world map bundle (tiles + NPC/quest sidecars), ask the game server to run
+ * the same flow as /restart so `generateMap()` reloads from disk and clients get a fresh map.
  *
  * Set NOTIFY_GAME_SERVER_ON_MAP_SAVE=false to skip. Uses GAME_SERVER_BASE_URL (default
  * http://localhost:3001) and GAME_SERVER_API_KEY (must match the game server).

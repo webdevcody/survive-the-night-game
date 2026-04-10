@@ -12,6 +12,10 @@ import { XP_PER_ZOMBIE_KILL } from "@survive-the-night/game-shared/util/experien
 import type { CharacterAllocations } from "@survive-the-night/game-shared/util/character-stats";
 import type { SkillAllocations } from "@survive-the-night/game-shared/util/skill-tree";
 import type { PlayerQuestStatePayload } from "@survive-the-night/game-shared/quests/player-quest-state";
+import {
+  coercePlayerInventoryPersistedPayload,
+  type PlayerInventoryPersistedPayload,
+} from "@survive-the-night/game-shared/util/persisted-inventory-payload";
 
 /**
  * Get user stats by user ID, creating if doesn't exist
@@ -57,6 +61,8 @@ export async function persistGameServerDisconnectSnapshot(
     lastTileY: number;
     questProgress: PlayerQuestStatePayload;
     characterAllocations: Record<string, number>;
+    skillAllocations?: Record<string, number>;
+    savedInventory?: unknown;
     /** When set (both numbers), persist bind; when both null, clear bind; when omitted, leave DB unchanged. */
     respawnTileX?: number | null;
     respawnTileY?: number | null;
@@ -68,7 +74,25 @@ export async function persistGameServerDisconnectSnapshot(
     number
   >;
 
-  const baseSet = {
+  const skillAllocations =
+    snapshot.skillAllocations !== undefined
+      ? (normalizeSkillAllocations(snapshot.skillAllocations) as Record<string, number>)
+      : undefined;
+
+  const savedInventory =
+    snapshot.savedInventory !== undefined
+      ? coercePlayerInventoryPersistedPayload(snapshot.savedInventory)
+      : undefined;
+
+  const baseSet: {
+    lastTileX: number;
+    lastTileY: number;
+    questProgress: PlayerQuestStatePayload;
+    characterAllocations: Record<string, number>;
+    skillAllocations?: Record<string, number>;
+    savedInventory?: PlayerInventoryPersistedPayload | null;
+    updatedAt: Date;
+  } = {
     lastTileX: Math.floor(snapshot.lastTileX),
     lastTileY: Math.floor(snapshot.lastTileY),
     questProgress: {
@@ -78,6 +102,13 @@ export async function persistGameServerDisconnectSnapshot(
     characterAllocations,
     updatedAt: new Date(),
   };
+
+  if (skillAllocations !== undefined) {
+    baseSet.skillAllocations = skillAllocations;
+  }
+  if (savedInventory !== undefined && savedInventory != null) {
+    baseSet.savedInventory = savedInventory;
+  }
 
   const rx = snapshot.respawnTileX;
   const ry = snapshot.respawnTileY;
@@ -172,6 +203,8 @@ export async function persistOpenWorldSessionFields(
     lastTileX: number;
     lastTileY: number;
     characterAllocations?: Record<string, number>;
+    skillAllocations?: Record<string, number>;
+    savedInventory?: unknown;
     respawnTileX?: number | null;
     respawnTileY?: number | null;
   },
@@ -183,6 +216,8 @@ export async function persistOpenWorldSessionFields(
     lastTileY: number;
     updatedAt: Date;
     characterAllocations?: Record<string, number>;
+    skillAllocations?: Record<string, number>;
+    savedInventory?: PlayerInventoryPersistedPayload | null;
     respawnTileX?: number | null;
     respawnTileY?: number | null;
   } = {
@@ -195,6 +230,20 @@ export async function persistOpenWorldSessionFields(
     setFields.characterAllocations = normalizeCharacterAllocations(
       data.characterAllocations,
     ) as Record<string, number>;
+  }
+
+  if (data.skillAllocations !== undefined) {
+    setFields.skillAllocations = normalizeSkillAllocations(data.skillAllocations) as Record<
+      string,
+      number
+    >;
+  }
+
+  if (data.savedInventory !== undefined) {
+    const coercedInv = coercePlayerInventoryPersistedPayload(data.savedInventory);
+    if (coercedInv != null) {
+      setFields.savedInventory = coercedInv;
+    }
   }
 
   const rx = data.respawnTileX;

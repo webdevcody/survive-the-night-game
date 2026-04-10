@@ -4,7 +4,7 @@
  * This class is the top-level coordinator for the game server. It:
  * - Initializes all managers (EntityManager, MapManager, ServerSocketManager, etc.)
  * - Creates and starts the GameLoop
- * - Provides the public API for game control (startNewGame, endGame, etc.)
+ * - Provides the public API for game control (startNewGame, etc.)
  * - Delegates game loop operations to GameLoop
  * - Handles server lifecycle (startup, shutdown)
  *
@@ -88,6 +88,11 @@ export class GameServer {
     this.gameLoop.stop();
   }
 
+  /** Persist open-world last tiles (and binds) for every connected player to the website DB. */
+  public persistConnectedPlayersLastPositions(): Promise<void> {
+    return this.socketManager.persistConnectedPlayersLastPositions();
+  }
+
   public broadcastEvent<T>(event: GameEvent<T>): void {
     this.socketManager.broadcastEvent(event);
   }
@@ -112,16 +117,8 @@ export class GameServer {
     return this.gameLoop.getTotalZombies();
   }
 
-  public setIsGameOver(isGameOver: boolean): void {
-    this.gameLoop.setIsGameOver(isGameOver);
-  }
-
   public setIsGameReady(isReady: boolean): void {
     this.gameLoop.setIsGameReady(isReady);
-  }
-
-  public endGame(): void {
-    this.gameLoop.endGame();
   }
 
   public getGameLoop(): GameLoop {

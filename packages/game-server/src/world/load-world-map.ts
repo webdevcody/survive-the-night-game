@@ -8,6 +8,12 @@ import type {
   WorldMapSpawnerMetaEntry,
 } from "@shared/map/world-map-types";
 import type { WorldMapQuestDefinition } from "@shared/map/quest-types";
+import {
+  mergeWorldMapMainWithSidecars,
+  WORLD_MAP_NPCS_FILENAME,
+  WORLD_MAP_QUESTS_FILENAME,
+  type WorldMapSidecarParseResult,
+} from "@shared/map/world-map-sidecars";
 
 export interface WorldMapFile {
   ground: number[][];
@@ -27,9 +33,21 @@ export interface WorldMapFile {
 }
 
 function resolveWorldMapJsonPath(): string {
+  // Resolve next to this module first so reloads always hit the package's world-map.json
+  // regardless of process.cwd() (monorepo / IDE / alternate entrypoints).
+  let adjacentToModule: string | null = null;
+  try {
+    adjacentToModule = path.join(path.dirname(fileURLToPath(import.meta.url)), "world-map.json");
+  } catch {
+    /* ignore */
+  }
+  if (adjacentToModule && fs.existsSync(adjacentToModule)) {
+    return adjacentToModule;
+  }
+
   const cwd = process.cwd();
-  const distPath = path.join(cwd, "dist", "world-map.json");
   const srcPath = path.join(cwd, "src", "world", "world-map.json");
+  const distPath = path.join(cwd, "dist", "world-map.json");
   // Prefer src: the map editor writes here; dist is only updated on build and would stay stale.
   if (fs.existsSync(srcPath)) {
     return srcPath;
@@ -37,11 +55,19 @@ function resolveWorldMapJsonPath(): string {
   if (fs.existsSync(distPath)) {
     return distPath;
   }
+  return adjacentToModule ?? srcPath;
+}
+
+function tryReadWorldMapSidecarSync(filePath: string): WorldMapSidecarParseResult {
   try {
-    const dir = path.dirname(fileURLToPath(import.meta.url));
-    return path.join(dir, "world-map.json");
-  } catch {
-    return srcPath;
+    const raw = fs.readFileSync(filePath, "utf-8");
+    return JSON.parse(raw) as unknown;
+  } catch (e: unknown) {
+    const err = e as NodeJS.ErrnoException;
+    if (err.code === "ENOENT") {
+      return null;
+    }
+    throw e;
   }
 }
 
@@ -50,7 +76,15 @@ export function tryLoadWorldMapFile(): WorldMapFile | null {
   try {
     const raw = fs.readFileSync(filePath, "utf-8");
     const data = JSON.parse(raw) as WorldMapFile;
-    return data;
+    const dir = path.dirname(filePath);
+    const npcsParsed = tryReadWorldMapSidecarSync(path.join(dir, WORLD_MAP_NPCS_FILENAME));
+    const questsParsed = tryReadWorldMapSidecarSync(path.join(dir, WORLD_MAP_QUESTS_FILENAME));
+    const merged = mergeWorldMapMainWithSidecars(data, npcsParsed, questsParsed);
+    return {
+      ...data,
+      dialogueNpcs: merged.dialogueNpcs as WorldMapFile["dialogueNpcs"],
+      quests: merged.quests as WorldMapFile["quests"],
+    };
   } catch (e: unknown) {
     const err = e as NodeJS.ErrnoException;
     if (err.code === "ENOENT") {

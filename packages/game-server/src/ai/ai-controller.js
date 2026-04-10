@@ -15,6 +15,7 @@ import { AIDecision, AIDecisionEngine } from "./ai-decision-engine";
 import { AIExplorationTracker } from "./ai-exploration-tracker";
 import { CombatReadinessCalculator } from "./ai-readiness";
 import { Entities, getZombieTypesSet } from "@shared/constants";
+import { isHealingConsumable } from "@shared/util/healing-consumables";
 import { getConfig } from "@shared/config";
 import Inventory from "@/extensions/inventory";
 import Carryable from "@/extensions/carryable";
@@ -1340,10 +1341,9 @@ export class AIController {
         var _a, _b, _c;
         // First, check if we already have a bandage - if so, just use it while retreating
         const inventory = this.player.getInventory();
-        const hasBandage = inventory.some((item) => item && item.itemType === "bandage");
-        // If we don't have a bandage, actively look for one
+        const hasBandage = inventory.some((item) => item && isHealingConsumable(item.itemType));
         if (!hasBandage) {
-            const bandageTarget = this.targetingSystem.findNearestBandage(this.player);
+            const bandageTarget = this.targetingSystem.findNearestHealingConsumable(this.player);
             // Go for bandage if it's within pickup radius
             if (bandageTarget &&
                 bandageTarget.distance &&
@@ -1396,7 +1396,7 @@ export class AIController {
                     input.sprint = this.shouldSprint(true);
                     // Try to use any bandage we already have while moving
                     const activeItem = this.player.activeItem;
-                    if ((activeItem === null || activeItem === void 0 ? void 0 : activeItem.itemType) === "bandage") {
+                    if (activeItem && isHealingConsumable(activeItem.itemType)) {
                         input.fire = true;
                     }
                     return;
@@ -1457,7 +1457,7 @@ export class AIController {
         input.sprint = this.shouldSprint(true);
         // Try to use bandage if we have one
         const activeItem = this.player.activeItem;
-        if ((activeItem === null || activeItem === void 0 ? void 0 : activeItem.itemType) === "bandage") {
+        if (activeItem && isHealingConsumable(activeItem.itemType)) {
             input.fire = true;
         }
     }

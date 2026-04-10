@@ -20,12 +20,6 @@ export const votingConfig = {
   VOTING_DURATION: 10000,
 
   /**
-   * Delay after game over before voting panel appears (in milliseconds)
-   * This allows players to see the game over dialog briefly
-   */
-  GAME_OVER_DISPLAY_DURATION: 3000,
-
-  /**
    * Game modes that are disabled and cannot be voted for
    * These will show as "Coming Soon" in the voting panel
    */

@@ -17,8 +17,39 @@ import {
 } from "@survive-the-night/game-shared/map/world-map-types";
 import type { WorldMapQuestDefinition } from "@survive-the-night/game-shared/map/quest-types";
 import { normalizeQuests } from "@survive-the-night/game-shared/map/quest-types";
+import {
+  mergeWorldMapMainWithSidecars,
+  stripWorldMapSidecarsForMainFile,
+  WORLD_MAP_NPCS_FILENAME,
+  WORLD_MAP_QUESTS_FILENAME,
+  type WorldMapSidecarParseResult,
+} from "@survive-the-night/game-shared/map/world-map-sidecars";
 
 const IS_PRODUCTION = process.env.NODE_ENV === "production";
+
+/**
+ * Resolves `packages/<pkg>/...` whether this module loads from `src/util/` (tsx dev) or `dist/`
+ * (one fewer `..` to `packages/`). Picks the candidate whose parent directory exists.
+ */
+function resolveUnderPackages(pkgRelPathFromPackages: string): string {
+  const currentDir = path.dirname(fileURLToPath(import.meta.url));
+  const viaUtil = path.join(currentDir, "..", "..", "..", pkgRelPathFromPackages);
+  const viaShallow = path.join(currentDir, "..", "..", pkgRelPathFromPackages);
+  const utilDir = path.dirname(viaUtil);
+  const shallowDir = path.dirname(viaShallow);
+  const utilOk = fsSync.existsSync(utilDir);
+  const shallowOk = fsSync.existsSync(shallowDir);
+  if (utilOk && shallowOk) {
+    return viaUtil;
+  }
+  if (utilOk) {
+    return viaUtil;
+  }
+  if (shallowOk) {
+    return viaShallow;
+  }
+  return viaUtil;
+}
 
 function getWorldMapPath(): string | null {
   if (IS_PRODUCTION) {
@@ -27,8 +58,7 @@ function getWorldMapPath(): string | null {
   if (typeof import.meta.url === "undefined") {
     return null;
   }
-  const currentDir = path.dirname(fileURLToPath(import.meta.url));
-  return path.join(currentDir, "..", "..", "..", "game-server", "src", "world", "world-map.json");
+  return resolveUnderPackages(path.join("game-server", "src", "world", "world-map.json"));
 }
 
 function getWorldConfigPath(): string | null {
@@ -38,8 +68,7 @@ function getWorldConfigPath(): string | null {
   if (typeof import.meta.url === "undefined") {
     return null;
   }
-  const currentDir = path.dirname(fileURLToPath(import.meta.url));
-  return path.join(currentDir, "..", "..", "..", "game-shared", "src", "config", "world-config.ts");
+  return resolveUnderPackages(path.join("game-shared", "src", "config", "world-config.ts"));
 }
 
 const WORLD_MAP_PATH = getWorldMapPath();
@@ -122,6 +151,19 @@ export function createEmptyWorldMap(): WorldMapData {
   };
 }
 
+async function tryReadWorldMapSidecar(filePath: string): Promise<WorldMapSidecarParseResult> {
+  try {
+    const raw = await fs.readFile(filePath, "utf-8");
+    return JSON.parse(raw) as unknown;
+  } catch (e: unknown) {
+    const err = e as NodeJS.ErrnoException;
+    if (err.code === "ENOENT") {
+      return null;
+    }
+    throw e;
+  }
+}
+
 export async function readWorldMap(): Promise<WorldMapData> {
   ensureEditorAvailable();
   try {
@@ -130,8 +172,17 @@ export async function readWorldMap(): Promise<WorldMapData> {
     if (!data.ground || !data.collidables) {
       return createEmptyWorldMap();
     }
+    const mapDir = path.dirname(WORLD_MAP_PATH!);
+    const npcsParsed = await tryReadWorldMapSidecar(path.join(mapDir, WORLD_MAP_NPCS_FILENAME));
+    const questsParsed = await tryReadWorldMapSidecar(path.join(mapDir, WORLD_MAP_QUESTS_FILENAME));
+    const merged = mergeWorldMapMainWithSidecars(data, npcsParsed, questsParsed);
+    const dataWithSidecars: Partial<WorldMapData> = {
+      ...data,
+      dialogueNpcs: merged.dialogueNpcs as WorldMapData["dialogueNpcs"],
+      quests: merged.quests as WorldMapData["quests"],
+    };
     const n = getExpectedTileCountFromDisk();
-    let spawns = data.spawns;
+    let spawns = dataWithSidecars.spawns;
     if (!spawns || spawns.length !== n) {
       spawns = createEmptySpawnsLayer(n);
     } else {
@@ -142,7 +193,7 @@ export async function readWorldMap(): Promise<WorldMapData> {
         }
       }
     }
-    let decals = data.decals;
+    let decals = dataWithSidecars.decals;
     if (!decals || decals.length !== n) {
       decals = createEmptyDecalsLayer(n);
     } else {
@@ -153,14 +204,18 @@ export async function readWorldMap(): Promise<WorldMapData> {
         }
       }
     }
-    const dialogueNpcs = normalizeDialogueNpcs(data.dialogueNpcs, n);
+    const dialogueNpcs = normalizeDialogueNpcs(dataWithSidecars.dialogueNpcs, n);
     rewriteSpawnsLayerDialogueNpcTiles(spawns, dialogueNpcs);
-    const messageDecals = reconcileMessageDecalsWithDecalsLayer(decals, data.messageDecals, n);
-    const quests = normalizeQuests(data.quests, n);
-    const spawnerMeta = reconcileSpawnerMetaWithSpawnsLayer(spawns, data.spawnerMeta);
+    const messageDecals = reconcileMessageDecalsWithDecalsLayer(
+      decals,
+      dataWithSidecars.messageDecals,
+      n,
+    );
+    const quests = normalizeQuests(dataWithSidecars.quests, n);
+    const spawnerMeta = reconcileSpawnerMetaWithSpawnsLayer(spawns, dataWithSidecars.spawnerMeta);
     return {
-      ground: data.ground,
-      collidables: data.collidables,
+      ground: dataWithSidecars.ground,
+      collidables: dataWithSidecars.collidables,
       spawns,
       decals,
       dialogueNpcs,
@@ -200,13 +255,44 @@ function validateDimensions(data: WorldMapData): string | null {
   return null;
 }
 
-export async function writeWorldMap(data: WorldMapData): Promise<void> {
-  ensureEditorAvailable();
+export interface WorldMapBundleSavedPaths {
+  main: string;
+  npcs: string;
+  quests: string;
+}
+
+async function writeWorldMapBundleToDisk(data: WorldMapData): Promise<WorldMapBundleSavedPaths> {
   const err = validateDimensions(data);
   if (err) {
     throw new Error(err);
   }
-  await fs.writeFile(WORLD_MAP_PATH!, JSON.stringify(data, null, 2) + "\n", "utf-8");
+  const mapDir = path.dirname(WORLD_MAP_PATH!);
+  const npcsPath = path.join(mapDir, WORLD_MAP_NPCS_FILENAME);
+  const questsPath = path.join(mapDir, WORLD_MAP_QUESTS_FILENAME);
+  const mainPayload = stripWorldMapSidecarsForMainFile({ ...data } as Record<string, unknown>);
+  await fs.writeFile(WORLD_MAP_PATH!, JSON.stringify(mainPayload, null, 2) + "\n", "utf-8");
+  await fs.writeFile(
+    npcsPath,
+    JSON.stringify({ dialogueNpcs: data.dialogueNpcs ?? [] }, null, 2) + "\n",
+    "utf-8",
+  );
+  await fs.writeFile(
+    questsPath,
+    JSON.stringify({ quests: data.quests ?? [] }, null, 2) + "\n",
+    "utf-8",
+  );
+  const paths: WorldMapBundleSavedPaths = {
+    main: WORLD_MAP_PATH!,
+    npcs: npcsPath,
+    quests: questsPath,
+  };
+  console.info("[biome-editor-server] World map bundle saved:\n  main: %s\n  npcs: %s\n  quests: %s", paths.main, paths.npcs, paths.quests);
+  return paths;
+}
+
+export async function writeWorldMap(data: WorldMapData): Promise<WorldMapBundleSavedPaths> {
+  ensureEditorAvailable();
+  return writeWorldMapBundleToDisk(data);
 }
 
 async function readWorldMapRawFromDisk(): Promise<WorldMapData> {
@@ -225,15 +311,24 @@ async function readWorldMapRawFromDisk(): Promise<WorldMapData> {
   if (!data.ground?.length || !data.collidables?.length) {
     return createEmptyWorldMap();
   }
-  const oldN = data.ground.length;
+  const mapDir = path.dirname(WORLD_MAP_PATH!);
+  const npcsParsed = await tryReadWorldMapSidecar(path.join(mapDir, WORLD_MAP_NPCS_FILENAME));
+  const questsParsed = await tryReadWorldMapSidecar(path.join(mapDir, WORLD_MAP_QUESTS_FILENAME));
+  const merged = mergeWorldMapMainWithSidecars(data, npcsParsed, questsParsed);
+  const dataWithSidecars: Partial<WorldMapData> = {
+    ...data,
+    dialogueNpcs: merged.dialogueNpcs as WorldMapData["dialogueNpcs"],
+    quests: merged.quests as WorldMapData["quests"],
+  };
+  const oldN = dataWithSidecars.ground!.length;
   if (
-    data.collidables.length !== oldN ||
-    data.ground.some((row) => row.length !== oldN) ||
-    data.collidables.some((row) => row.length !== oldN)
+    dataWithSidecars.collidables!.length !== oldN ||
+    dataWithSidecars.ground!.some((row) => row.length !== oldN) ||
+    dataWithSidecars.collidables!.some((row) => row.length !== oldN)
   ) {
     throw new Error("World map ground/collidables must be square and matching dimensions");
   }
-  let spawns = data.spawns;
+  let spawns = dataWithSidecars.spawns;
   if (!spawns || spawns.length !== oldN) {
     spawns = createEmptySpawnsLayer(oldN);
   } else {
@@ -244,7 +339,7 @@ async function readWorldMapRawFromDisk(): Promise<WorldMapData> {
       }
     }
   }
-  let decals = data.decals;
+  let decals = dataWithSidecars.decals;
   if (!decals || decals.length !== oldN) {
     decals = createEmptyDecalsLayer(oldN);
   } else {
@@ -255,14 +350,18 @@ async function readWorldMapRawFromDisk(): Promise<WorldMapData> {
       }
     }
   }
-  const dialogueNpcs = normalizeDialogueNpcs(data.dialogueNpcs, oldN);
+  const dialogueNpcs = normalizeDialogueNpcs(dataWithSidecars.dialogueNpcs, oldN);
   rewriteSpawnsLayerDialogueNpcTiles(spawns, dialogueNpcs);
-  const messageDecals = reconcileMessageDecalsWithDecalsLayer(decals, data.messageDecals, oldN);
-  const quests = normalizeQuests(data.quests, oldN);
-  const spawnerMeta = reconcileSpawnerMetaWithSpawnsLayer(spawns, data.spawnerMeta);
+  const messageDecals = reconcileMessageDecalsWithDecalsLayer(
+    decals,
+    dataWithSidecars.messageDecals,
+    oldN,
+  );
+  const quests = normalizeQuests(dataWithSidecars.quests, oldN);
+  const spawnerMeta = reconcileSpawnerMetaWithSpawnsLayer(spawns, dataWithSidecars.spawnerMeta);
   return {
-    ground: data.ground,
-    collidables: data.collidables,
+    ground: dataWithSidecars.ground!,
+    collidables: dataWithSidecars.collidables!,
     spawns,
     decals,
     dialogueNpcs,
@@ -290,7 +389,8 @@ export interface ExpandWorldMapResult {
 }
 
 /**
- * Expands the world map (top-left anchored padding), updates world-map.json and MAP_SIZE in world-config.ts on disk.
+ * Expands the world map (top-left anchored padding), updates the world map bundle on disk
+ * (`world-map.json` + NPC/quest sidecars) and MAP_SIZE in world-config.ts.
  */
 export async function expandWorldMap(mapSizeBiomes: number): Promise<ExpandWorldMapResult> {
   ensureEditorAvailable();
@@ -351,7 +451,7 @@ export async function expandWorldMap(mapSizeBiomes: number): Promise<ExpandWorld
     if (err) {
       throw new Error(err);
     }
-    await fs.writeFile(WORLD_MAP_PATH!, JSON.stringify(expanded, null, 2) + "\n", "utf-8");
+    await writeWorldMapBundleToDisk(expanded);
   } catch (e) {
     await fs.writeFile(WORLD_CONFIG_PATH, previousConfigText, "utf-8");
     throw e;

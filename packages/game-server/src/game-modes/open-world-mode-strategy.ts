@@ -1,8 +1,4 @@
-import {
-  IGameModeStrategy,
-  GameModeConfig,
-  WinConditionResult,
-} from "./game-mode-strategy";
+import { IGameModeStrategy, GameModeConfig } from "./game-mode-strategy";
 import { IGameManagers } from "@/managers/types";
 import { Player } from "@/entities/players/player";
 import { IEntity } from "@/entities/types";
@@ -31,8 +27,6 @@ export class OpenWorldModeStrategy implements IGameModeStrategy {
 
   onGameStart(_gameManagers: IGameManagers): void {}
 
-  onGameEnd(_gameManagers: IGameManagers): void {}
-
   update(_deltaTime: number, _gameManagers: IGameManagers): void {}
 
   getPlayerSpawnPosition(_player: Player, gameManagers: IGameManagers): Vector2 {
@@ -54,15 +48,6 @@ export class OpenWorldModeStrategy implements IGameModeStrategy {
 
   canPlayerRespawn(_player: Player): boolean {
     return true;
-  }
-
-  checkWinCondition(_gameManagers: IGameManagers): WinConditionResult {
-    return {
-      gameEnded: false,
-      winnerId: null,
-      winnerName: null,
-      message: "",
-    };
   }
 
   shouldDamageTarget(attacker: IEntity, target: IEntity, attackerId: number): boolean {

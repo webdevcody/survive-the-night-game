@@ -2,9 +2,11 @@ import { ISocketAdapter } from "@shared/network/socket-adapter";
 import { HandlerContext } from "../context";
 import { SocketEventHandler } from "./types";
 import {
+  tryAdvanceTalkToNpcStep,
   tryCompleteQuestFromDialogue,
   tryGrantQuestFromNpc,
   tryHealPlayerFromDialogueSession,
+  trySyncActiveQuestPickupStepsWithInventory,
   validateDialogueComplete,
 } from "@/quests/quest-runtime";
 
@@ -19,9 +21,16 @@ export function onDialogueNpcComplete(
   if (!npc) return;
   const map = context.getMapManager();
 
-  tryGrantQuestFromNpc(player, npc, map);
+  trySyncActiveQuestPickupStepsWithInventory(player, map);
+  const newlyGrantedQuestId = tryGrantQuestFromNpc(player, npc, map);
+  tryAdvanceTalkToNpcStep(
+    player,
+    npc,
+    map,
+    newlyGrantedQuestId ? { skipQuestIds: new Set([newlyGrantedQuestId]) } : undefined,
+  );
   tryCompleteQuestFromDialogue(player, npc, map);
-  tryHealPlayerFromDialogueSession(player, npc);
+  tryHealPlayerFromDialogueSession(player, npc, map);
 }
 
 export const dialogueNpcCompleteHandler: SocketEventHandler<{

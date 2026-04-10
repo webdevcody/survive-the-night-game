@@ -79,6 +79,21 @@
             "conditions": [
               {
                 "type": "quest_completed",
+                "questId": "quest_1775824745523"
+              }
+            ]
+          },
+          "lines": [
+            "You did more than I dared hope.",
+            "Rest when you can — we owe you that much."
+          ]
+        },
+        {
+          "when": {
+            "type": "all",
+            "conditions": [
+              {
+                "type": "quest_completed",
                 "questId": "quest_1775786207543"
               }
             ]
@@ -86,7 +101,7 @@
           "lines": [
             "This area is starting to grow unsafe.",
             "If you can kill at least 5 stumblers...",
-            "Maybe we could have one night of undistributed sleep."
+            "Maybe we could have one night of undisturbed sleep."
           ],
           "grantQuestId": "quest_1775824745523"
         },

@@ -53,6 +53,6 @@ export const GAS_STATION = {
         Entities.AK47_AMMO,
         Entities.AK47,
         Entities.BANDAGE,
-        Entities.BANDAGE
+        Entities.PAIN_PILLS
     ],
 };

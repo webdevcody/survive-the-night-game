@@ -40,7 +40,7 @@ export const CAMPSITE = {
         Entities.PISTOL,
         Entities.BANDAGE,
         Entities.BANDAGE,
-        Entities.BANDAGE,
+        Entities.PAIN_PILLS,
         Entities.PISTOL,
         Entities.PISTOL_AMMO,
         Entities.PISTOL_AMMO,

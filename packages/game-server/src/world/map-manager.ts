@@ -432,6 +432,7 @@ export class MapManager implements IMapManager {
     this.authoredDialogueNpcs = [];
     this.authoredMessageDecals = [];
     this.authoredSpawnerMeta = [];
+    this.authoredQuests = [];
   }
 
   /**

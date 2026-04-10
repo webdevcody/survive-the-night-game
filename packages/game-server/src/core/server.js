@@ -20,16 +20,27 @@ export class GameServer {
         this.socketManager.setMapManager(this.mapManager);
         this.socketManager.setGameManagers(this.gameManagers);
         this.socketManager.setTickPerformanceTracker(this.tickPerformanceTracker);
-        this.socketManager.listen();
         this.gameLoop = new GameLoop(this.tickPerformanceTracker, this.entityManager, this.mapManager, this.socketManager);
         this.gameLoop.setGameManagers(this.gameManagers);
         this.gameLoop.start();
+    }
+    /**
+     * Generate/load the map and start the simulation, then accept WebSocket clients.
+     * Call once after construction (see {@code server.ts}).
+     */
+    async bootstrap() {
+        await this.startNewGame();
+        this.socketManager.listen();
     }
     startNewGame() {
         return this.gameLoop.startNewGame();
     }
     stop() {
         this.gameLoop.stop();
+    }
+    /** Persist open-world last tiles (and binds) for every connected player to the website DB. */
+    persistConnectedPlayersLastPositions() {
+        return this.socketManager.persistConnectedPlayersLastPositions();
     }
     broadcastEvent(event) {
         this.socketManager.broadcastEvent(event);
@@ -46,14 +57,8 @@ export class GameServer {
     getTotalZombies() {
         return this.gameLoop.getTotalZombies();
     }
-    setIsGameOver(isGameOver) {
-        this.gameLoop.setIsGameOver(isGameOver);
-    }
     setIsGameReady(isReady) {
         this.gameLoop.setIsGameReady(isReady);
-    }
-    endGame() {
-        this.gameLoop.endGame();
     }
     getGameLoop() {
         return this.gameLoop;

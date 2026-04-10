@@ -1,3 +1,4 @@
+/** Biome editor HTTP API (saves world-map.json + sidecars). Default port matches `biome-editor-server`. */
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:3002";
 
 export const API_ENDPOINTS = {

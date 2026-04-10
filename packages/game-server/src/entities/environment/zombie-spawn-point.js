@@ -10,7 +10,7 @@ import PoolManager from "@shared/util/pool-manager";
  * Open-world fixture: spawns and respawns a zombie at a fixed tile (editor spawns layer or procedural picks).
  */
 export class ZombieSpawnPoint extends Entity {
-    constructor(gameManagers, zombieType, tileX, tileY, useAuthoredPlacementRules) {
+    constructor(gameManagers, zombieType, tileX, tileY, useAuthoredPlacementRules, respawnIntervalMsOverride) {
         super(gameManagers, Entities.ZOMBIE_SPAWN_POINT);
         this.activeZombieId = null;
         this.respawnAtMs = null;
@@ -18,6 +18,12 @@ export class ZombieSpawnPoint extends Entity {
         this.tileX = tileX;
         this.tileY = tileY;
         this.useAuthoredPlacementRules = useAuthoredPlacementRules;
+        this.respawnDelayMs =
+            respawnIntervalMsOverride !== undefined &&
+                Number.isFinite(respawnIntervalMsOverride) &&
+                respawnIntervalMsOverride > 0
+                ? Math.round(respawnIntervalMsOverride)
+                : getEnemySpawnRespawnMs(zombieType);
         const poolManager = PoolManager.getInstance();
         const TILE_SIZE = getConfig().world.TILE_SIZE;
         const size = poolManager.vector2.claim(TILE_SIZE, TILE_SIZE);
@@ -55,7 +61,7 @@ export class ZombieSpawnPoint extends Entity {
     tick(_deltaTime) {
         const em = this.getEntityManager();
         const now = Date.now();
-        const respawnMs = getEnemySpawnRespawnMs(this.zombieType);
+        const respawnMs = this.respawnDelayMs;
         if (this.activeZombieId !== null) {
             const entity = em.getEntityById(this.activeZombieId);
             if (entity && !entity.isMarkedForRemoval()) {

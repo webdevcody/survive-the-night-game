@@ -15,6 +15,9 @@ export function formatQuestRewardsForDisplay(rewards: QuestReward[]): string[] {
     if (r.type === "permanent_stat") {
       return `+${r.amount} ${r.stat}`;
     }
+    if (r.type === "experience") {
+      return `+${r.amount} XP`;
+    }
     return `${r.count}× ${r.itemType}`;
   });
 }

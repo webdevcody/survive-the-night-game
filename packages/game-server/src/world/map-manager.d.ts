@@ -23,6 +23,8 @@ export declare class MapManager implements IMapManager {
     private authoredDialogueNpcs;
     /** Message decal entries aligned with `DECAL_TILE_MESSAGE` cells on the decals layer. */
     private authoredMessageDecals;
+    /** Spawner labels + optional respawn overrides (reconciled to non-dialogue spawns layer cells). */
+    private authoredSpawnerMeta;
     private authoredQuests;
     private gameManagers?;
     private entityManager?;

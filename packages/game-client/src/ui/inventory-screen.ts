@@ -44,18 +44,33 @@ import {
   uiRectContains,
 } from "@/ui/canvas-ui-rect";
 import type { QuestStep } from "@shared/map/quest-types";
+import type { QuestActiveProgress } from "@shared/quests/player-quest-state";
+import { getActiveStepIndex } from "@shared/quests/player-quest-state";
 
 const DRAG_THRESHOLD = 12;
 const PANEL_WIDTH_RATIO = 0.46;
 
 export type InventoryUiTab = "inventory" | "character" | "skills" | "quests";
 
-function describeQuestStep(step: QuestStep | undefined): string {
+function describeQuestStep(
+  step: QuestStep | undefined,
+  activeEntry?: QuestActiveProgress,
+): string {
   if (!step) return "(unknown step)";
   if (step.type === "pickup_item") return `Pick up ${step.itemType}`;
   if (step.type === "reach_waypoint") {
     const r = step.radiusTiles ?? 2;
     return `Reach (${step.row}, ${step.col}) · r≤${r}`;
+  }
+  if (step.type === "kill_enemies") {
+    const cur = activeEntry?.kills?.[step.enemyType] ?? 0;
+    return `Kill ${cur}/${step.count} ${step.enemyType}`;
+  }
+  if (step.type === "talk_to_npc") {
+    if (step.npcName && step.npcKey) return `Talk to ${step.npcName} (${step.npcKey})`;
+    if (step.npcKey) return `Talk to NPC at ${step.npcKey}`;
+    if (step.npcName) return `Talk to ${step.npcName}`;
+    return "Talk to NPC";
   }
   return "(unknown step)";
 }
@@ -620,10 +635,12 @@ export class InventoryScreenUI {
         if (clipped) break;
         const def = byId.get(qid);
         const title = def?.title ?? qid;
-        const stepIdx = st.active[qid] ?? 0;
+        const stepIdx = getActiveStepIndex(st, qid);
+        const activeEntry = st.active[qid];
         const stepTotal = def?.steps.length ?? 0;
-        const step = def?.steps[stepIdx];
-        const stepSummary = describeQuestStep(step);
+        const onObjective = stepTotal > 0 && stepIdx < stepTotal;
+        const step = onObjective ? def?.steps[stepIdx] : undefined;
+        const stepSummary = describeQuestStep(step, activeEntry);
 
         ctx.fillStyle = "rgba(240, 248, 255, 0.92)";
         if (!nextBlock(lineMain)) break;
@@ -631,7 +648,13 @@ export class InventoryScreenUI {
         y += lineMain;
 
         ctx.fillStyle = "rgba(160, 170, 185, 0.9)";
-        const stepLine = `Step ${stepIdx + 1}/${Math.max(1, stepTotal)}${stepSummary ? ` · ${stepSummary}` : ""}`;
+        const progressPart =
+          stepTotal === 0
+            ? "Talk to an NPC to finish"
+            : stepIdx >= stepTotal
+              ? "Objectives done · talk to an NPC to turn in"
+              : `Step ${stepIdx + 1}/${stepTotal}`;
+        const stepLine = `${progressPart}${stepSummary ? ` · ${stepSummary}` : ""}`;
         if (!nextBlock(lineSub)) break;
         const maxW = contentW - 8;
         let drawLine = stepLine;

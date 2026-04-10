@@ -47,6 +47,13 @@ export declare class ServerSocketManager implements Broadcaster {
     private createPlayerForSocket;
     private broadcastPlayerJoined;
     recreatePlayersForConnectedSockets(): Promise<void>;
+    /** Align persisted quest journal with the current map (new/removed quest ids after reload). */
+    reconcileConnectedPlayersQuestStateWithMap(): void;
+    /**
+     * Flush all connected players' tiles to the website before process shutdown
+     * so reconnects after deploy use the last in-world position.
+     */
+    persistConnectedPlayersLastPositions(): Promise<void>;
     /**
      * Send initialization data (YOUR_ID + full state) to all connected sockets.
      * Call this AFTER broadcasting GAME_STARTED so clients receive it after resetting their state.
@@ -69,6 +76,10 @@ export declare class ServerSocketManager implements Broadcaster {
      * Same client path as broadcast HUD messages: {@code onGameMessage} → {@code Hud.addMessage}.
      */
     sendGameMessageToPlayerEntity(playerEntityId: number, message: string, color?: string): void;
+    private httpPathname;
+    private sendJsonHttp;
+    private handleNodeHttpRequest;
+    private handleEditorReloadWorldMapUws;
     /**
      * Sanitize text by replacing profane words with asterisks
      */

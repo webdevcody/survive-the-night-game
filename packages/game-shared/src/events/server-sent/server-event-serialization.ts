@@ -24,7 +24,6 @@ import { BigZombieAttackedEvent } from "./events/big-zombie-attacked-event";
 import { PlayerHurtEvent } from "./events/player-hurt-event";
 import { PlayerAttackedEvent } from "./events/player-attacked-event";
 import { GameStartedEvent } from "./events/game-started-event";
-import { GameOverEvent } from "./events/game-over-event";
 import { ServerUpdatingEvent } from "./events/server-updating-event";
 import { ExplosionEvent } from "./events/explosion-event";
 import { CarRepairEvent } from "./events/car-repair-event";
@@ -74,7 +73,6 @@ const eventRegistry: Record<string, IBufferWriter> = {
   [ServerSentEvents.PLAYER_HURT]: PlayerHurtEvent,
   [ServerSentEvents.PLAYER_ATTACKED]: PlayerAttackedEvent,
   [ServerSentEvents.GAME_STARTED]: GameStartedEvent,
-  [ServerSentEvents.GAME_OVER]: GameOverEvent,
   [ServerSentEvents.SERVER_UPDATING]: ServerUpdatingEvent,
   [ServerSentEvents.EXPLOSION]: ExplosionEvent,
   [ServerSentEvents.CAR_REPAIR]: CarRepairEvent,

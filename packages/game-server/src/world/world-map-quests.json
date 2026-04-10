@@ -1,0 +1,78 @@
+{
+  "quests": [
+    {
+      "id": "quest_1775786207543",
+      "title": "The Night is Dark",
+      "steps": [],
+      "rewards": [
+        {
+          "type": "item",
+          "itemType": "knife",
+          "count": 1
+        },
+        {
+          "type": "permanent_stat",
+          "stat": "health",
+          "amount": 1
+        },
+        {
+          "type": "experience",
+          "amount": 5
+        }
+      ],
+      "startRewards": []
+    },
+    {
+      "id": "quest_1775824745523",
+      "title": "Weary Travelers",
+      "steps": [
+        {
+          "type": "kill_enemies",
+          "enemyType": "zombie",
+          "count": 5
+        },
+        {
+          "type": "talk_to_npc",
+          "npcName": "Rick",
+          "npcKey": "126,122"
+        }
+      ],
+      "rewards": [
+        {
+          "type": "permanent_stat",
+          "stat": "health",
+          "amount": 1
+        },
+        {
+          "type": "permanent_stat",
+          "stat": "stamina",
+          "amount": 1
+        }
+      ],
+      "startRewards": []
+    },
+    {
+      "id": "quest_1775826059688",
+      "title": "Healing the Sick",
+      "steps": [
+        {
+          "type": "pickup_item",
+          "itemType": "pain_pills"
+        }
+      ],
+      "rewards": [
+        {
+          "type": "item",
+          "itemType": "coin",
+          "count": 50
+        },
+        {
+          "type": "item",
+          "itemType": "energy_drink",
+          "count": 2
+        }
+      ],
+      "startRewards": []
+    }
+  ]
+}

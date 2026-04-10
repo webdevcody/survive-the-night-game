@@ -2,7 +2,7 @@ import { EntityManager } from "@/managers/entity-manager";
 import { MapManager } from "@/world/map-manager";
 import { ServerSocketManager } from "@/managers/server-socket-manager";
 import { TickPerformanceTracker } from "@/util/tick-performance-tracker";
-import { IGameModeStrategy, WinConditionResult } from "@/game-modes";
+import { IGameModeStrategy } from "@/game-modes";
 export declare class GameLoop {
     private lastUpdateTime;
     private timer;
@@ -11,7 +11,6 @@ export declare class GameLoop {
     private phaseDuration;
     private totalZombies;
     private isGameReady;
-    private isGameOver;
     /** True after a full open_world start; used to resume the same map when the server was empty. */
     private openWorldSessionActive;
     private gameModeStrategy;
@@ -49,14 +48,10 @@ export declare class GameLoop {
     start(): void;
     stop(): void;
     startNewGame(strategy?: IGameModeStrategy): Promise<void>;
-    setIsGameOver(isGameOver: boolean): void;
     setIsGameReady(isReady: boolean): void;
     getIsGameReady(): boolean;
-    getIsGameOver(): boolean;
     private startGameLoop;
     private update;
-    private handleIfGameOver;
-    endGame(result?: WinConditionResult): void;
     private trackPerformance;
     private updateEntities;
     private getCurrentGameState;

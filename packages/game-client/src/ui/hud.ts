@@ -18,7 +18,6 @@ import {
 } from "./panels";
 import { getConfig } from "@shared/config";
 import { scaleHudValue } from "@/util/hud-scale";
-import { GameOverDialogUI } from "./game-over-dialog";
 import { InventoryScreenUI, type InventoryUiTab } from "./inventory-screen";
 import { SurvivorStatusHud } from "./survivor-status-hud";
 import { LoadoutStrip } from "./loadout-strip";
@@ -110,7 +109,6 @@ export class Hud {
   private experiencePanel: ExperiencePanel;
   private crateIndicatorsPanel: CrateIndicatorsPanel;
   private survivorIndicatorsPanel: SurvivorIndicatorsPanel;
-  private gameOverDialog: GameOverDialogUI;
   private survivorStatusHud: SurvivorStatusHud;
   private loadoutStrip: LoadoutStrip;
   private inventoryScreen: InventoryScreenUI;
@@ -127,7 +125,6 @@ export class Hud {
     mapManager: MapManager,
     soundManager: SoundManager,
     assetManager: AssetManager,
-    gameOverDialog: GameOverDialogUI,
     inputManager: InputManager,
     sendDropItem: (slotIndex: number) => void,
     sendSwapItems: (fromSlotIndex: number, toSlotIndex: number) => void,
@@ -143,7 +140,6 @@ export class Hud {
     this.mapManager = mapManager;
     this.soundManager = soundManager;
     this.assetManager = assetManager;
-    this.gameOverDialog = gameOverDialog;
     this.inputManager = inputManager;
     this.getMyPlayer = getMyPlayer;
     this.chatWidget = new ChatWidget();
@@ -451,10 +447,7 @@ export class Hud {
       this.survivorStatusHud.renderHealthAndStamina(ctx, gameState, minimapHudLayout);
     }
 
-    // Render death screen if player is dead and game is not over
-    if (!this.gameOverDialog.isGameOver()) {
-      this.deathScreenPanel.render(ctx, gameState);
-    }
+    this.deathScreenPanel.render(ctx, gameState);
 
     if (!isZombiePlayer) {
       this.inventoryScreen.render(ctx, gameState);

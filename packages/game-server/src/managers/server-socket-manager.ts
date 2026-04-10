@@ -41,7 +41,11 @@ import { UserSessionCache } from "@/services/user-session-cache";
 import { KillTracker } from "@/services/kill-tracker";
 import { WEBSITE_API_URL, GAME_SERVER_API_KEY } from "@/config/env";
 import type { PersistedPlayerProgress } from "@/services/player-progress-types";
+import { persistPlayerLastPositionToWebsite } from "@/services/persist-player-last-position";
+import Positionable from "@/extensions/positionable";
 import { coercePlayerQuestState } from "@shared/quests/player-quest-state";
+import { coercePlayerInventoryPersistedPayload } from "@shared/util/persisted-inventory-payload";
+import { reconcilePlayerQuestStateWithMap } from "@/quests/quest-runtime";
 import { XP_PER_ZOMBIE_KILL } from "@shared/util/experience-level";
 import { GameMessageEvent } from "../../../game-shared/src/events/server-sent/events/game-message-event";
 import uWS from "uwebsockets.js";
@@ -230,6 +234,7 @@ export class ServerSocketManager implements Broadcaster {
         respawnTileX?: unknown;
         respawnTileY?: unknown;
         questProgress?: unknown;
+        savedInventory?: unknown;
       };
       const rawXp = data.experience;
       let xp =
@@ -262,6 +267,15 @@ export class ServerSocketManager implements Broadcaster {
       const respawnTileY =
         typeof rawRy === "number" && Number.isFinite(rawRy) ? Math.floor(rawRy) : null;
 
+      let savedInventory: PersistedPlayerProgress["savedInventory"] = undefined;
+      const rawInv = data.savedInventory;
+      if (rawInv != null && typeof rawInv === "object") {
+        const coercedInv = coercePlayerInventoryPersistedPayload(rawInv);
+        if (coercedInv) {
+          savedInventory = coercedInv;
+        }
+      }
+
       return {
         experience: Math.max(0, xp),
         skillAllocations: data.skillAllocations ?? {},
@@ -271,6 +285,7 @@ export class ServerSocketManager implements Broadcaster {
         respawnTileX,
         respawnTileY,
         questProgress: data.questProgress != null ? coercePlayerQuestState(data.questProgress) : undefined,
+        savedInventory,
       };
     } catch (error) {
       console.warn(`[ServerSocketManager] fetchPersistedProgress failed for ${userId}:`, error);
@@ -385,7 +400,9 @@ export class ServerSocketManager implements Broadcaster {
     player.hydratePersistedProgress(initialProgress);
     player.setClientSocketId(socket.id);
 
-    player.getExt(Inventory).addItem({ itemType: "torch" });
+    if (initialProgress.savedInventory == null) {
+      player.getExt(Inventory).addItem({ itemType: "torch" });
+    }
 
     // Use the game mode strategy to handle player spawning
     // This allows each mode to determine spawn location (campsite for waves, random for battle royale)
@@ -405,6 +422,25 @@ export class ServerSocketManager implements Broadcaster {
   }
 
   public async recreatePlayersForConnectedSockets(): Promise<void> {
+    const TILE_SIZE = getConfig().world.TILE_SIZE;
+    type LiveSnap = { lastTileX: number; lastTileY: number; respawn?: { x: number; y: number } };
+    const liveBySocket = new Map<string, LiveSnap>();
+
+    for (const [socketId, player] of this.players) {
+      if (player.isDead() || !player.hasExt(Positionable)) {
+        continue;
+      }
+      const pos = player.getExt(Positionable).getPosition();
+      const lastTileX = Math.floor(pos.x / TILE_SIZE);
+      const lastTileY = Math.floor(pos.y / TILE_SIZE);
+      const bind = player.getBoundRespawnTile();
+      liveBySocket.set(socketId, {
+        lastTileX,
+        lastTileY,
+        ...(bind ? { respawn: { x: bind.x, y: bind.y } } : {}),
+      });
+    }
+
     this.players.clear();
 
     const sockets = Array.from(this.io.sockets.sockets.values());
@@ -414,8 +450,43 @@ export class ServerSocketManager implements Broadcaster {
       const progress = userId
         ? await this.fetchPersistedProgress(userId)
         : { experience: 0, skillAllocations: {}, characterAllocations: {} };
-      this.createPlayerForSocket(socket, progress);
+      const snap = liveBySocket.get(socket.id);
+      const merged: PersistedPlayerProgress = snap
+        ? {
+            ...progress,
+            lastTileX: snap.lastTileX,
+            lastTileY: snap.lastTileY,
+            ...(snap.respawn
+              ? { respawnTileX: snap.respawn.x, respawnTileY: snap.respawn.y }
+              : {}),
+          }
+        : progress;
+      this.createPlayerForSocket(socket, merged);
     }
+  }
+
+  /** Align persisted quest journal with the current map (new/removed quest ids after reload). */
+  public reconcileConnectedPlayersQuestStateWithMap(): void {
+    const map = this.getMapManager();
+    for (const player of this.players.values()) {
+      reconcilePlayerQuestStateWithMap(player, map);
+    }
+  }
+
+  /**
+   * Flush all connected players' tiles to the website before process shutdown
+   * so reconnects after deploy use the last in-world position.
+   */
+  public async persistConnectedPlayersLastPositions(): Promise<void> {
+    const tasks: Promise<void>[] = [];
+    for (const [socketId, player] of this.players) {
+      const userId = this.userSessionCache.getUserIdBySocket(socketId);
+      if (!userId) {
+        continue;
+      }
+      tasks.push(persistPlayerLastPositionToWebsite(userId, player));
+    }
+    await Promise.all(tasks);
   }
 
   /**

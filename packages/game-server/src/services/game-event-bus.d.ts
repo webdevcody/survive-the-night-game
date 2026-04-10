@@ -1,4 +1,5 @@
 import { EventEmitter } from "events";
+import type { EntityType } from "@shared/types/entity";
 /**
  * Internal game event types for server-side processing
  * These are separate from WebSocket events sent to clients
@@ -9,6 +10,7 @@ export declare enum GameEventType {
 export interface ZombieKilledEventData {
     zombieEntityId: number;
     killerEntityId: number;
+    enemyType: EntityType;
     timestamp: number;
 }
 /**

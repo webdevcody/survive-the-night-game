@@ -1,3 +1,4 @@
+import { isHealingConsumable } from "@shared/util/healing-consumables";
 import { AI_CONFIG, GOOD_WEAPONS, WEAPON_AMMO_MAP } from "./ai-config";
 /**
  * Calculates combat readiness score for AI decision making
@@ -193,13 +194,13 @@ export class CombatReadinessCalculator {
      * Check if player has at least one bandage
      */
     static hasBandage(inventory) {
-        return inventory.some((item) => (item === null || item === void 0 ? void 0 : item.itemType) === "bandage");
+        return inventory.some((item) => item && isHealingConsumable(item.itemType));
     }
     /**
      * Get total bandage count
      */
     static getBandageCount(inventory) {
-        return inventory.filter((item) => (item === null || item === void 0 ? void 0 : item.itemType) === "bandage").length;
+        return inventory.filter((item) => item && isHealingConsumable(item.itemType)).length;
     }
     /**
      * Get total ammo count for all ranged weapons

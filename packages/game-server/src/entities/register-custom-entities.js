@@ -22,6 +22,7 @@ import { Wall } from "@/entities/items/wall";
 import { WallLevel2 } from "@/entities/items/wall-level-2";
 import { WallLevel3 } from "@/entities/items/wall-level-3";
 import { Bandage } from "@/entities/items/bandage";
+import { PainPills } from "@/entities/items/pain-pills";
 import { EnergyDrink } from "@/entities/items/energy-drink";
 import { Cloth } from "@/entities/items/cloth";
 import { Wood } from "@/entities/items/wood";
@@ -99,6 +100,7 @@ const SERVER_ENTITY_CONSTRUCTORS = {
     wall_level_2: WallLevel2,
     wall_level_3: WallLevel3,
     bandage: Bandage,
+    pain_pills: PainPills,
     energy_drink: EnergyDrink,
     cloth: Cloth,
     wood: Wood,

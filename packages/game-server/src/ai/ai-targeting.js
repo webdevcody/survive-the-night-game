@@ -5,6 +5,7 @@ import Interactive from "@/extensions/interactive";
 import Destructible from "@/extensions/destructible";
 import { distance } from "@shared/util/physics";
 import { Entities, getZombieTypesSet } from "@shared/constants";
+import { isHealingConsumable } from "@shared/util/healing-consumables";
 import { AIPathfinder } from "./ai-pathfinding";
 import { AI_CONFIG, GOOD_WEAPONS, WEAPON_AMMO_MAP, WEAPON_RANGES, ALL_WEAPONS, } from "./ai-config";
 import { getConfig } from "@shared/config";
@@ -490,7 +491,7 @@ export class AITargetingSystem {
             if (priority <= 0)
                 continue;
             // Apply urgency multipliers for health and ammo items
-            if (itemType === "bandage" && needsHealth) {
+            if (isHealingConsumable(itemType) && needsHealth) {
                 priority *= healthUrgencyMultiplier;
             }
             else if (itemType.includes("ammo") && needsAmmo) {
@@ -513,18 +514,14 @@ export class AITargetingSystem {
         return bestTarget;
     }
     /**
-     * Find the nearest bandage for the AI player (used during retreat)
+     * Find the nearest healable consumable on the ground (used during retreat)
      */
-    findNearestBandage(player) {
+    findNearestHealingConsumable(player) {
         const playerPos = player.getCenterPosition();
         const inventory = player.getInventory();
         const entityManager = this.gameManagers.getEntityManager();
         const nearbyEntities = entityManager.getNearbyEntities(playerPos, AI_CONFIG.SEARCH_RADIUS);
-        // Skip if inventory is full and we can't stack bandages
-        if (!this.canPickUpItem(inventory, "bandage")) {
-            return null;
-        }
-        let nearestBandage = null;
+        let nearest = null;
         let nearestDistance = Infinity;
         for (const entity of nearbyEntities) {
             if (entity.getId() === player.getId())
@@ -534,7 +531,9 @@ export class AITargetingSystem {
             if (!entity.hasExt(Interactive))
                 continue;
             const itemType = entity.getExt(Carryable).getItemType();
-            if (itemType !== "bandage")
+            if (!isHealingConsumable(itemType))
+                continue;
+            if (!this.canPickUpItem(inventory, itemType))
                 continue;
             const entityPos = entity.getExt(Positionable).getCenterPosition();
             if (this.pathfinder.isToxicPosition(entityPos))
@@ -542,8 +541,7 @@ export class AITargetingSystem {
             const dist = distance(playerPos, entityPos);
             if (dist < nearestDistance) {
                 nearestDistance = dist;
-                // Clone position to avoid reference issues (getCenterPosition returns cached object)
-                nearestBandage = {
+                nearest = {
                     type: "item",
                     entity: entity,
                     position: new Vector2(entityPos.x, entityPos.y),
@@ -552,7 +550,7 @@ export class AITargetingSystem {
                 };
             }
         }
-        return nearestBandage;
+        return nearest;
     }
     /**
      * Find the best player target to hunt
@@ -941,8 +939,8 @@ export class AITargetingSystem {
             else if (needsAmmo && itemType.includes("ammo")) {
                 priority = AI_CONFIG.PRIORITY_AMMO_NEEDED;
             }
-            // Bandages when needed
-            else if (needsHealth && itemType === "bandage") {
+            // Healable consumables when needed
+            else if (needsHealth && isHealingConsumable(itemType)) {
                 priority = AI_CONFIG.PRIORITY_HEALTH_URGENT;
             }
             // Pistol if no good weapon
@@ -953,8 +951,8 @@ export class AITargetingSystem {
             else if (itemType.includes("ammo")) {
                 priority = AI_CONFIG.PRIORITY_ANY_AMMO;
             }
-            // Bandages (always useful)
-            else if (itemType === "bandage") {
+            // Healable consumables (always useful)
+            else if (isHealingConsumable(itemType)) {
                 priority = AI_CONFIG.PRIORITY_BANDAGE;
             }
             if (priority <= 0)
@@ -1045,7 +1043,7 @@ export class AITargetingSystem {
         }
         // Inventory is full - check if item is stackable
         const stackableTypes = [
-            "bandage", "wood", "cloth", "coin", "gasoline",
+            "bandage", "pain_pills", "wood", "cloth", "coin", "gasoline",
             "pistol_ammo", "shotgun_ammo", "ak47_ammo", "bolt_action_ammo",
             "arrow_ammo", "grenade_launcher_ammo", "flamethrower_ammo",
             "grenade", "throwing_knife", "wall", "spikes", "landmine", "sentry_gun", "torch"
@@ -1131,7 +1129,7 @@ export class AITargetingSystem {
     getLootPriority(itemType, needsWeapon, needsAmmo, needsHealth) {
         // Health when hurt - highest priority for survival
         // Note: This base priority is multiplied by urgency in findBestLootTarget
-        if (needsHealth && itemType === "bandage") {
+        if (needsHealth && isHealingConsumable(itemType)) {
             return AI_CONFIG.PRIORITY_HEALTH_URGENT;
         }
         // Ammo when needed - second highest priority for combat effectiveness
@@ -1151,8 +1149,8 @@ export class AITargetingSystem {
         if (itemType.includes("ammo")) {
             return AI_CONFIG.PRIORITY_ANY_AMMO;
         }
-        // Bandages when not hurt
-        if (itemType === "bandage") {
+        // Healable consumables when not hurt
+        if (isHealingConsumable(itemType)) {
             return AI_CONFIG.PRIORITY_BANDAGE;
         }
         // Knife is always useful

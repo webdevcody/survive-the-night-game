@@ -1,4 +1,5 @@
 import { isWeapon, canItemGoInEquipmentSlot, createEmptyEquipment, EQUIPMENT_SLOT_KEYS, } from "../../../game-shared/src/util/inventory";
+import { coercePlayerInventoryPersistedPayload, } from "@shared/util/persisted-inventory-payload";
 import { recipes } from "../../../game-shared/src/util/recipes";
 import { PlayerPickedUpItemEvent } from "../../../game-shared/src/events/server-sent/events/pickup-item-event";
 import Positionable from "@/extensions/positionable";
@@ -118,11 +119,11 @@ class Inventory extends ExtensionBase {
         return true;
     }
     /**
-     * Remove a total amount of an item type across bag stacks (e.g. paying with coins).
-     * Returns true if at least `amount` was removed.
+     * Remove a total amount of an item type from bag stacks, then armor equipment slots.
+     * A stack of count 1 is cleared to null. Returns true if the full amount was removed.
      */
     removeCountAcrossStacks(itemType, amount) {
-        var _a, _b;
+        var _a, _b, _c, _d;
         if (amount <= 0) {
             return true;
         }
@@ -141,6 +142,33 @@ class Inventory extends ExtensionBase {
                 const newCount = stackCount - remaining;
                 remaining = 0;
                 items[i] = Object.assign(Object.assign({}, it), { state: Object.assign(Object.assign({}, it.state), { count: newCount }) });
+            }
+        }
+        if (remaining > 0) {
+            const equipment = this.serialized.get("equipment");
+            const nextEq = Object.assign({}, equipment);
+            let equipmentTouched = false;
+            for (const key of EQUIPMENT_SLOT_KEYS) {
+                if (remaining <= 0)
+                    break;
+                const it = nextEq[key];
+                if (!it || it.itemType !== itemType)
+                    continue;
+                const stackCount = (_d = (_c = it.state) === null || _c === void 0 ? void 0 : _c.count) !== null && _d !== void 0 ? _d : 1;
+                if (stackCount <= remaining) {
+                    remaining -= stackCount;
+                    nextEq[key] = null;
+                    equipmentTouched = true;
+                }
+                else {
+                    const newCount = stackCount - remaining;
+                    remaining = 0;
+                    nextEq[key] = Object.assign(Object.assign({}, it), { state: Object.assign(Object.assign({}, it.state), { count: newCount }) });
+                    equipmentTouched = true;
+                }
+            }
+            if (equipmentTouched) {
+                this.serialized.set("equipment", nextEq);
             }
         }
         if (remaining > 0) {
@@ -283,6 +311,30 @@ class Inventory extends ExtensionBase {
             }
         }
         return dropTable[0].itemType;
+    }
+    /** Website / disconnect: JSON-serializable bag + equipment snapshot. */
+    toPersistedPayload() {
+        return {
+            items: structuredClone(this.serialized.get("items")),
+            equipment: structuredClone(this.serialized.get("equipment")),
+        };
+    }
+    /** Apply validated snapshot (e.g. after hydrate from DB). */
+    applyPersistedPayload(payload) {
+        var _a;
+        const coerced = coercePlayerInventoryPersistedPayload(payload);
+        if (!coerced) {
+            return;
+        }
+        const max = this.getMaxSlots();
+        const next = [];
+        for (let i = 0; i < max; i++) {
+            next.push((_a = coerced.items[i]) !== null && _a !== void 0 ? _a : null);
+        }
+        this.serialized.set("items", next);
+        this.serialized.set("equipment", Object.assign({}, coerced.equipment));
+        this.markDirty();
+        this.notifyPlayerWeaponLoadout();
     }
     clear() {
         const items = this.serialized.get("items");

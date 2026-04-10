@@ -20,7 +20,6 @@ export class OpenWorldModeStrategy {
         return this.config;
     }
     onGameStart(_gameManagers) { }
-    onGameEnd(_gameManagers) { }
     update(_deltaTime, _gameManagers) { }
     getPlayerSpawnPosition(_player, gameManagers) {
         return gameManagers.getMapManager().getPlayerSpawnPositionForMap();
@@ -39,14 +38,6 @@ export class OpenWorldModeStrategy {
     }
     canPlayerRespawn(_player) {
         return true;
-    }
-    checkWinCondition(_gameManagers) {
-        return {
-            gameEnded: false,
-            winnerId: null,
-            winnerName: null,
-            message: "",
-        };
     }
     shouldDamageTarget(attacker, target, attackerId) {
         if (target.getId() === attackerId) {

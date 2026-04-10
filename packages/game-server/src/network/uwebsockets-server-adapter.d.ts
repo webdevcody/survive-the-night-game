@@ -8,6 +8,8 @@ export declare class UWebSocketsServerAdapter implements IServerAdapter {
     private connectionHandlers;
     private nextSocketId;
     private wsMap;
+    /** Set by ServerSocketManager when editor map reload HTTP is enabled (dev). */
+    private editorReloadWorldMapHandler;
     constructor(httpServer: HttpServer | null, corsOptions?: {
         origin: string | string[];
         methods: string[];
@@ -23,4 +25,8 @@ export declare class UWebSocketsServerAdapter implements IServerAdapter {
      * Get the underlying uWebSockets app instance
      */
     getUnderlyingApp(): uWS.TemplatedApp;
+    /**
+     * uWebSockets matches routes in registration order; this must be set before listen().
+     */
+    setEditorReloadWorldMapHandler(handler: (res: uWS.HttpResponse, req: uWS.HttpRequest) => void): void;
 }

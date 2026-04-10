@@ -12,9 +12,30 @@ import type {
   QuestReward,
   WorldMapQuestDefinition,
 } from "@survive-the-night/game-shared/map/quest-types";
+import { QUEST_KILL_ENEMIES_COUNT_MAX } from "@survive-the-night/game-shared/map/quest-types";
+import { ENTITY_REGISTRATION_CONFIG } from "@survive-the-night/game-shared/config/entity-registration";
 import type { EntityType } from "@survive-the-night/game-shared/types/entity";
 import { ITEM_FIXTURE_SPAWN_TYPES } from "@survive-the-night/game-shared/map/spawn-palette";
+import type { WorldMapDialogueNpcEntry } from "@survive-the-night/game-shared/map/world-map-types";
 import { getMapSideLength } from "../-utils";
+
+function talkStepSelectValue(
+  step: Extract<QuestStep, { type: "talk_to_npc" }>,
+  npcs: WorldMapDialogueNpcEntry[],
+): string {
+  const key = step.npcKey?.trim();
+  if (key && npcs.some((e) => `${e.row},${e.col}` === key)) return key;
+  const name = step.npcName?.trim();
+  if (name) {
+    const hit = npcs.find((e) => (e.name?.trim() ?? "") === name);
+    if (hit) return `${hit.row},${hit.col}`;
+  }
+  return "";
+}
+
+function sortDialogueNpcs(npcs: WorldMapDialogueNpcEntry[]): WorldMapDialogueNpcEntry[] {
+  return [...npcs].sort((a, b) => a.row - b.row || a.col - b.col);
+}
 
 const STAT_OPTIONS = [
   "health",
@@ -31,6 +52,10 @@ const STAT_OPTIONS = [
 
 const PICKUP_TYPES = ITEM_FIXTURE_SPAWN_TYPES as readonly EntityType[];
 
+const QUEST_KILL_ENEMY_TYPES = ENTITY_REGISTRATION_CONFIG.filter(
+  (e) => e.category === "zombies",
+).map((e) => e.type) as EntityType[];
+
 type QuestRewardListKey = "rewards" | "startRewards";
 
 const REWARD_SECTIONS: { key: QuestRewardListKey; label: string }[] = [
@@ -42,8 +67,10 @@ export function QuestsEditorPanel() {
   const quests = useEditorStore((state) => state.quests);
   const setQuests = useEditorStore((state) => state.setQuests);
   const groundGrid = useEditorStore((state) => state.groundGrid);
+  const dialogueNpcs = useEditorStore((state) => state.dialogueNpcs);
 
   const mapSide = getMapSideLength(groundGrid);
+  const sortedMapNpcs = useMemo(() => sortDialogueNpcs(dialogueNpcs), [dialogueNpcs]);
 
   const sortedQuests = useMemo(
     () =>
@@ -91,10 +118,24 @@ export function QuestsEditorPanel() {
   };
 
   const addStep = (questId: string, type: QuestStep["type"]) => {
-    const step: QuestStep =
-      type === "pickup_item"
-        ? { type: "pickup_item", itemType: "torch" as EntityType }
-        : { type: "reach_waypoint", row: 0, col: 0, radiusTiles: 2 };
+    let step: QuestStep;
+    if (type === "pickup_item") {
+      step = { type: "pickup_item", itemType: "torch" as EntityType };
+    } else if (type === "reach_waypoint") {
+      step = { type: "reach_waypoint", row: 0, col: 0, radiusTiles: 2 };
+    } else if (type === "kill_enemies") {
+      const enemyType = QUEST_KILL_ENEMY_TYPES[0] ?? ("zombie" as EntityType);
+      step = { type: "kill_enemies", enemyType, count: 5 };
+    } else {
+      const first = sortedMapNpcs[0];
+      step = first
+        ? {
+            type: "talk_to_npc",
+            npcKey: `${first.row},${first.col}`,
+            ...(first.name?.trim() ? { npcName: first.name.trim() } : {}),
+          }
+        : { type: "talk_to_npc" };
+    }
     setQuests(quests.map((q) => (q.id === questId ? { ...q, steps: [...q.steps, step] } : q)));
   };
 
@@ -127,7 +168,9 @@ export function QuestsEditorPanel() {
     const reward: QuestReward =
       type === "permanent_stat"
         ? { type: "permanent_stat", stat: "health", amount: 1 }
-        : { type: "item", itemType: "bandage" as EntityType, count: 1 };
+        : type === "experience"
+          ? { type: "experience", amount: 50 }
+          : { type: "item", itemType: "bandage" as EntityType, count: 1 };
     setQuests(
       quests.map((q) =>
         q.id === questId ? { ...q, [listKey]: [...q[listKey], reward] } : q,
@@ -271,6 +314,97 @@ export function QuestsEditorPanel() {
                           />
                         </div>
                       ) : null}
+                      {s.type === "kill_enemies" ? (
+                        <div className="flex flex-wrap items-center gap-1">
+                          <select
+                            className="min-w-0 flex-1 rounded border border-gray-600 bg-gray-900 text-[10px]"
+                            value={s.enemyType}
+                            onChange={(e) =>
+                              updateStep(q.id, i, {
+                                type: "kill_enemies",
+                                enemyType: e.target.value as EntityType,
+                                count: s.count,
+                              })
+                            }
+                          >
+                            {QUEST_KILL_ENEMY_TYPES.map((t) => (
+                              <option key={t} value={t}>
+                                {t}
+                              </option>
+                            ))}
+                          </select>
+                          <input
+                            type="number"
+                            className="w-16 rounded border border-gray-600 bg-gray-900 text-[10px]"
+                            title="Kill count"
+                            min={1}
+                            max={QUEST_KILL_ENEMIES_COUNT_MAX}
+                            value={s.count}
+                            onChange={(e) =>
+                              updateStep(q.id, i, {
+                                type: "kill_enemies",
+                                enemyType: s.enemyType,
+                                count: Math.max(
+                                  1,
+                                  Math.min(
+                                    QUEST_KILL_ENEMIES_COUNT_MAX,
+                                    parseInt(e.target.value, 10) || 1,
+                                  ),
+                                ),
+                              })
+                            }
+                          />
+                        </div>
+                      ) : null}
+                      {s.type === "talk_to_npc" ? (
+                        <div className="space-y-1">
+                          <label className="block text-[9px] text-gray-500">Talk to</label>
+                          <select
+                            className="w-full rounded border border-gray-600 bg-gray-900 px-1.5 py-1 text-[10px]"
+                            value={talkStepSelectValue(s, sortedMapNpcs)}
+                            disabled={sortedMapNpcs.length === 0}
+                            onChange={(e) => {
+                              const v = e.target.value.trim();
+                              if (!v) {
+                                updateStep(q.id, i, { type: "talk_to_npc" });
+                                return;
+                              }
+                              const [rs, cs] = v.split(",");
+                              const row = parseInt(rs ?? "", 10);
+                              const col = parseInt(cs ?? "", 10);
+                              const entry = dialogueNpcs.find(
+                                (n) => n.row === row && n.col === col,
+                              );
+                              updateStep(q.id, i, {
+                                type: "talk_to_npc",
+                                npcKey: v,
+                                ...(entry?.name?.trim() ? { npcName: entry.name.trim() } : {}),
+                              });
+                            }}
+                          >
+                            <option value="">
+                              {sortedMapNpcs.length
+                                ? "Select NPC…"
+                                : "No dialogue NPCs — add one on the map"}
+                            </option>
+                            {sortedMapNpcs.map((e) => {
+                              const val = `${e.row},${e.col}`;
+                              const label = e.name?.trim()
+                                ? `${e.name.trim()} (row ${e.row}, col ${e.col})`
+                                : `Unnamed (row ${e.row}, col ${e.col})`;
+                              return (
+                                <option key={val} value={val}>
+                                  {label}
+                                </option>
+                              );
+                            })}
+                          </select>
+                          <p className="text-[9px] leading-snug text-gray-500">
+                            Completes when the player finishes that NPC&apos;s dialogue (after all
+                            lines).
+                          </p>
+                        </div>
+                      ) : null}
                     </div>
                   ))}
                 </div>
@@ -292,6 +426,24 @@ export function QuestsEditorPanel() {
                     onClick={() => addStep(q.id, "reach_waypoint")}
                   >
                     + Waypoint
+                  </Button>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="secondary"
+                    className="!h-6 !text-[9px]"
+                    onClick={() => addStep(q.id, "kill_enemies")}
+                  >
+                    + Kill enemies
+                  </Button>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="secondary"
+                    className="!h-6 !text-[9px]"
+                    onClick={() => addStep(q.id, "talk_to_npc")}
+                  >
+                    + Talk to NPC
                   </Button>
                 </div>
                 {REWARD_SECTIONS.map(({ key: listKey, label }) => (
@@ -335,6 +487,26 @@ export function QuestsEditorPanel() {
                                     amount: Math.max(
                                       1,
                                       Math.min(99, parseInt(e.target.value, 10) || 1),
+                                    ),
+                                  })
+                                }
+                              />
+                            </>
+                          ) : r.type === "experience" ? (
+                            <>
+                              <span className="text-[10px] text-gray-400">XP</span>
+                              <input
+                                type="number"
+                                className="w-20 rounded border border-gray-600 bg-gray-900 text-[10px]"
+                                min={1}
+                                max={1_000_000}
+                                value={r.amount}
+                                onChange={(e) =>
+                                  updateReward(q.id, listKey, i, {
+                                    type: "experience",
+                                    amount: Math.max(
+                                      1,
+                                      Math.min(1_000_000, parseInt(e.target.value, 10) || 1),
                                     ),
                                   })
                                 }
@@ -408,6 +580,15 @@ export function QuestsEditorPanel() {
                         onClick={() => addReward(q.id, listKey, "item")}
                       >
                         + Item
+                      </Button>
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="secondary"
+                        className="!h-6 !text-[9px]"
+                        onClick={() => addReward(q.id, listKey, "experience")}
+                      >
+                        + XP
                       </Button>
                     </div>
                   </div>

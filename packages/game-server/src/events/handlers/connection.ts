@@ -64,12 +64,6 @@ export function onConnection(
     }
 
     strategy.ensureZombieExists?.(context.getGameManagers());
-
-    // If the game is over (waiting for restart), also clear that flag so the player can play
-    // This can happen if a player joins during the 5-second delay between games
-    if (gameLoop.getIsGameOver()) {
-      gameLoop.setIsGameOver(false);
-    }
   } finally {
     emitSocketInitialization(context, socket);
   }

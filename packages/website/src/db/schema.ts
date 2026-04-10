@@ -1,6 +1,8 @@
 import { pgTable, text, timestamp, boolean, integer, jsonb } from "drizzle-orm/pg-core";
 import { sql } from "drizzle-orm";
 import { relations } from "drizzle-orm";
+import type { PlayerInventoryPersistedPayload } from "@survive-the-night/game-shared/util/persisted-inventory-payload";
+import type { PlayerQuestStatePayload } from "@survive-the-night/game-shared/quests/player-quest-state";
 
 export const user = pgTable("user", {
   id: text("id").primaryKey(),
@@ -87,9 +89,11 @@ export const userStats = pgTable("user_stats", {
   respawnTileY: integer("respawn_tile_y"),
   /** Quest journal progress (game server hydrates / persists). */
   questProgress: jsonb("quest_progress")
-    .$type<{ active: Record<string, number>; completed: string[] }>()
+    .$type<PlayerQuestStatePayload>()
     .notNull()
     .default(sql`'{"active":{},"completed":[]}'::jsonb`),
+  /** Last bag + armor equipment snapshot (game server disconnect). */
+  savedInventory: jsonb("saved_inventory").$type<PlayerInventoryPersistedPayload | null>(),
   createdAt: timestamp("created_at")
     .$defaultFn(() => new Date())
     .notNull(),

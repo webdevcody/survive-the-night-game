@@ -21,7 +21,7 @@ import { MessageDecal } from "@/entities/environment/message-decal";
 import { createSeededRng } from "@shared/util/seeded-rng";
 import { tryLoadWorldMapFile, validateWorldMapDimensions } from "@/world/load-world-map";
 import { SPAWN_TILE_PLAYER, isEnemySpawnTile, isItemSpawnTile, isNpcDialogueSpawnTile, spawnTileIdToZombieType, spawnTileIdToItemFixtureType, } from "../../../game-shared/src/map/spawn-palette";
-import { getMessageDecalLines, normalizeDialogueNpcs, reconcileMessageDecalsWithDecalsLayer, } from "../../../game-shared/src/map/world-map-types";
+import { getMessageDecalLines, normalizeDialogueNpcs, reconcileMessageDecalsWithDecalsLayer, reconcileSpawnerMetaWithSpawnsLayer, rewriteSpawnsLayerDialogueNpcTiles, } from "../../../game-shared/src/map/world-map-types";
 import { normalizeQuests } from "../../../game-shared/src/map/quest-types";
 import { DECAL_TILE_CAMPSITE, DECAL_TILE_LIGHT, DECAL_TILE_MESSAGE, } from "../../../game-shared/src/map/decal-palette";
 // Re-export from shared config for backward compatibility
@@ -78,6 +78,8 @@ export class MapManager {
         this.authoredDialogueNpcs = [];
         /** Message decal entries aligned with `DECAL_TILE_MESSAGE` cells on the decals layer. */
         this.authoredMessageDecals = [];
+        /** Spawner labels + optional respawn overrides (reconciled to non-dialogue spawns layer cells). */
+        this.authoredSpawnerMeta = [];
         this.authoredQuests = [];
         this.merchantBiomePositions = [];
         /** Non-null only while `generateMap()` runs — deterministic layout from MAP_SEED. */
@@ -242,7 +244,8 @@ export class MapManager {
         this.carEntity = null;
     }
     generateMap() {
-        this.mapGenRng = createSeededRng(getConfig().world.MAP_SEED);
+        const seed = getConfig().world.MAP_SEED;
+        this.mapGenRng = createSeededRng(seed);
         try {
             this.authoredWorldMapApplied = false;
             this.getEntityManager().clear();
@@ -307,6 +310,8 @@ export class MapManager {
             .map(() => Array(totalSize).fill(0));
         this.authoredDialogueNpcs = [];
         this.authoredMessageDecals = [];
+        this.authoredSpawnerMeta = [];
+        this.authoredQuests = [];
     }
     /**
      * Sets campsite biome from the first campsite decal (tile scan order).
@@ -353,8 +358,10 @@ export class MapManager {
             }
         }
         this.authoredDialogueNpcs = normalizeDialogueNpcs(data.dialogueNpcs, n);
+        rewriteSpawnsLayerDialogueNpcTiles(this.spawnLayer, this.authoredDialogueNpcs);
         this.authoredMessageDecals = reconcileMessageDecalsWithDecalsLayer(this.decalsLayer, data.messageDecals, n);
         this.authoredQuests = normalizeQuests(data.quests, n);
+        this.authoredSpawnerMeta = reconcileSpawnerMetaWithSpawnsLayer(this.spawnLayer, data.spawnerMeta);
         this.authoredWorldMapApplied = true;
         return true;
     }
@@ -441,7 +448,11 @@ export class MapManager {
                 if (!zombieType) {
                     continue;
                 }
-                const spawner = new ZombieSpawnPoint(this.getGameManagers(), zombieType, x, y, true);
+                const meta = this.authoredSpawnerMeta.find((e) => e.row === y && e.col === x);
+                const respawnOverrideMs = (meta === null || meta === void 0 ? void 0 : meta.respawnIntervalSec) !== undefined
+                    ? Math.round(meta.respawnIntervalSec * 1000)
+                    : undefined;
+                const spawner = new ZombieSpawnPoint(this.getGameManagers(), zombieType, x, y, true, respawnOverrideMs);
                 this.getEntityManager().addEntity(spawner);
             }
         }
@@ -461,7 +472,11 @@ export class MapManager {
                 if (!itemType) {
                     continue;
                 }
-                const spawner = new ItemSpawnPoint(this.getGameManagers(), itemType, x, y, true);
+                const meta = this.authoredSpawnerMeta.find((e) => e.row === y && e.col === x);
+                const respawnOverrideMs = (meta === null || meta === void 0 ? void 0 : meta.respawnIntervalSec) !== undefined
+                    ? Math.round(meta.respawnIntervalSec * 1000)
+                    : undefined;
+                const spawner = new ItemSpawnPoint(this.getGameManagers(), itemType, x, y, true, respawnOverrideMs);
                 this.getEntityManager().addEntity(spawner);
             }
         }

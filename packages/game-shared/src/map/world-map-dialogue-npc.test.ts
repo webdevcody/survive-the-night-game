@@ -31,6 +31,38 @@ describe("pickDialogueNpcSession", () => {
     expect(pickDialogueNpcSession(sessions, st({ completed: [] })).lines[0]).toBe("fallback");
   });
 
+  it("quest_not_active is false when quest is in active", () => {
+    const sessions = [
+      {
+        when: all([{ type: "quest_not_active", questId: "q1" }]),
+        lines: ["inactive"],
+      },
+      { when: { type: "always" as const }, lines: ["fallback"] },
+    ];
+    expect(pickDialogueNpcSession(sessions, st({ active: { q1: { step: 0 } } })).lines[0]).toBe(
+      "fallback",
+    );
+    expect(pickDialogueNpcSession(sessions, st({})).lines[0]).toBe("inactive");
+  });
+
+  it("grant-style branch with quest_not_active does not match while that quest is active", () => {
+    const sessions = [
+      {
+        when: all([
+          { type: "quest_completed", questId: "a" },
+          { type: "quest_not_completed", questId: "b" },
+          { type: "quest_not_active", questId: "b" },
+        ]),
+        lines: ["grant pitch"],
+      },
+      { when: { type: "always" as const }, lines: ["fallback"] },
+    ];
+    const midB = st({ completed: ["a"], active: { b: { step: 0 } } });
+    expect(pickDialogueNpcSession(sessions, midB).lines[0]).toBe("fallback");
+    const preB = st({ completed: ["a"] });
+    expect(pickDialogueNpcSession(sessions, preB).lines[0]).toBe("grant pitch");
+  });
+
   it("uses quest_active and quest_not_completed inside all", () => {
     const sessions = [
       { when: all([{ type: "quest_active", questId: "q1" }]), lines: ["active"] },

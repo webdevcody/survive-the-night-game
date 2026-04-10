@@ -1,5 +1,6 @@
 import type { WorldMapQuestDefinition } from "@shared/map/quest-types";
 import type { PlayerQuestStatePayload } from "@shared/quests/player-quest-state";
+import { getActiveStepIndex } from "@shared/quests/player-quest-state";
 import { calculateHudScale, scaleHudValue } from "@/util/hud-scale";
 
 export class QuestJournalPanel {
@@ -75,13 +76,25 @@ export class QuestJournalPanel {
       for (const qid of activeIds) {
         const def = byId.get(qid);
         const title = def?.title ?? qid;
-        const stepIdx = st.active[qid] ?? 0;
+        const stepIdx = getActiveStepIndex(st, qid);
         const stepTotal = def?.steps.length ?? 0;
+        const curStep = stepIdx < stepTotal ? def?.steps[stepIdx] : undefined;
+        const activeEntry = st.active[qid];
+        const killExtra =
+          curStep?.type === "kill_enemies"
+            ? ` · ${activeEntry?.kills?.[curStep.enemyType] ?? 0}/${curStep.count} ${curStep.enemyType}`
+            : "";
         ctx.fillStyle = "rgba(240, 248, 255, 0.92)";
         ctx.fillText(`${title}`, x + pad, ly);
         ly += bodySize * 1.15;
         ctx.fillStyle = "rgba(160, 170, 185, 0.9)";
-        ctx.fillText(`  Step ${stepIdx + 1}/${Math.max(1, stepTotal)}`, x + pad, ly);
+        const stepLine =
+          stepTotal === 0
+            ? "  Objectives: talk to an NPC to finish"
+            : stepIdx >= stepTotal
+              ? "  Objectives done · talk to an NPC to turn in"
+              : `  Step ${stepIdx + 1}/${stepTotal}${killExtra}`;
+        ctx.fillText(stepLine, x + pad, ly);
         ly += bodySize * 1.35;
       }
     }

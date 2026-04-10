@@ -201,7 +201,7 @@ export declare class AIStateMachine {
      */
     getKnifeIndex(inventory: InventoryItem[]): number;
     /**
-     * Get bandage index
+     * Get inventory index of best healable consumable (prefers bandage over weaker items)
      */
     getBandageIndex(inventory: InventoryItem[]): number;
 }

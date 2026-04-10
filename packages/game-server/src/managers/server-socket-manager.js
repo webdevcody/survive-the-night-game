@@ -1,6 +1,7 @@
 import { Player } from "@/entities/players/player";
 import Inventory from "@/extensions/inventory";
 import { ClientSentEvents } from "@shared/events/events";
+import { EDITOR_WORLD_MAP_RELOAD_PATH, isEditorMapReloadRemoteAddrAllowed, isEditorWorldMapReloadHttpEnabled, isValidEditorMapReloadApiKey, } from "@/config/editor-map-reload";
 import { createServer } from "http";
 import { getConfig } from "@shared/config";
 import { createCommandRegistry } from "@/commands";
@@ -19,7 +20,11 @@ import { SessionValidator } from "@/services/session-validator";
 import { UserSessionCache } from "@/services/user-session-cache";
 import { KillTracker } from "@/services/kill-tracker";
 import { WEBSITE_API_URL, GAME_SERVER_API_KEY } from "@/config/env";
+import { persistPlayerLastPositionToWebsite } from "@/services/persist-player-last-position";
+import Positionable from "@/extensions/positionable";
 import { coercePlayerQuestState } from "@shared/quests/player-quest-state";
+import { coercePlayerInventoryPersistedPayload } from "@shared/util/persisted-inventory-payload";
+import { reconcilePlayerQuestStateWithMap } from "@/quests/quest-runtime";
 import { XP_PER_ZOMBIE_KILL } from "@shared/util/experience-level";
 import { GameMessageEvent } from "../../../game-shared/src/events/server-sent/events/game-message-event";
 /**
@@ -38,17 +43,13 @@ export class ServerSocketManager {
         // Create HTTP server for websocket adapter
         // Note: Biome editor API is now in a separate service (biome-editor-server)
         if (implementation === "socketio") {
-            // For Socket.IO, create a minimal HTTP server
             this.httpServer = createServer((req, res) => {
-                // Minimal HTTP handler - websocket server doesn't handle HTTP routes
-                res.writeHead(404, { "Content-Type": "text/plain" });
-                res.end("Not Found");
+                this.handleNodeHttpRequest(req, res);
             });
         }
         else {
-            // For uWebSockets, create a minimal HTTP server
+            // uWebSockets owns the game port; this Node server is never listened on.
             this.httpServer = createServer((req, res) => {
-                // Minimal HTTP handler - uWebSockets will handle everything
                 res.writeHead(404, { "Content-Type": "text/plain" });
                 res.end("Not Found");
             });
@@ -59,6 +60,11 @@ export class ServerSocketManager {
             methods: ["GET", "POST"],
         });
         this.gameServer = gameServer;
+        if (isEditorWorldMapReloadHttpEnabled() && implementation === "uwebsockets") {
+            this.io.setEditorReloadWorldMapHandler((res, req) => {
+                this.handleEditorReloadWorldMapUws(res, req);
+            });
+        }
         // Initialize chat command registry
         this.chatCommandRegistry = createCommandRegistry();
         // Initialize profanity filter
@@ -123,9 +129,9 @@ export class ServerSocketManager {
             console.log(`Socket ${socket.id} authenticated as user ${userId}`);
             void (async () => {
                 const progress = await this.fetchPersistedProgress(userId);
-                await this.onConnection(socket, progress);
+                this.onConnection(socket, progress);
             })().catch((err) => {
-                console.error(`[ServerSocketManager] onConnection failed for socket ${socket.id}:`, err);
+                console.error("Connection handler failed:", err);
             });
         });
     }
@@ -176,6 +182,14 @@ export class ServerSocketManager {
             const rawRy = data.respawnTileY;
             const respawnTileX = typeof rawRx === "number" && Number.isFinite(rawRx) ? Math.floor(rawRx) : null;
             const respawnTileY = typeof rawRy === "number" && Number.isFinite(rawRy) ? Math.floor(rawRy) : null;
+            let savedInventory = undefined;
+            const rawInv = data.savedInventory;
+            if (rawInv != null && typeof rawInv === "object") {
+                const coercedInv = coercePlayerInventoryPersistedPayload(rawInv);
+                if (coercedInv) {
+                    savedInventory = coercedInv;
+                }
+            }
             return {
                 experience: Math.max(0, xp),
                 skillAllocations: (_a = data.skillAllocations) !== null && _a !== void 0 ? _a : {},
@@ -185,6 +199,7 @@ export class ServerSocketManager {
                 respawnTileX,
                 respawnTileY,
                 questProgress: data.questProgress != null ? coercePlayerQuestState(data.questProgress) : undefined,
+                savedInventory,
             };
         }
         catch (error) {
@@ -283,7 +298,9 @@ export class ServerSocketManager {
         }
         player.hydratePersistedProgress(initialProgress);
         player.setClientSocketId(socket.id);
-        player.getExt(Inventory).addItem({ itemType: "torch" });
+        if (initialProgress.savedInventory == null) {
+            player.getExt(Inventory).addItem({ itemType: "torch" });
+        }
         // Use the game mode strategy to handle player spawning
         // This allows each mode to determine spawn location (campsite for waves, random for battle royale)
         const gameModeStrategy = this.gameServer.getGameLoop().getGameModeStrategy();
@@ -296,6 +313,19 @@ export class ServerSocketManager {
         this.broadcastEvent(new PlayerJoinedEvent({ playerId: player.getId(), displayName: player.getDisplayName() }));
     }
     async recreatePlayersForConnectedSockets() {
+        const TILE_SIZE = getConfig().world.TILE_SIZE;
+        const liveBySocket = new Map();
+        for (const [socketId, player] of this.players) {
+            if (player.isDead() || !player.hasExt(Positionable)) {
+                continue;
+            }
+            const pos = player.getExt(Positionable).getPosition();
+            const lastTileX = Math.floor(pos.x / TILE_SIZE);
+            const lastTileY = Math.floor(pos.y / TILE_SIZE);
+            const bind = player.getBoundRespawnTile();
+            liveBySocket.set(socketId, Object.assign({ lastTileX,
+                lastTileY }, (bind ? { respawn: { x: bind.x, y: bind.y } } : {})));
+        }
         this.players.clear();
         const sockets = Array.from(this.io.sockets.sockets.values());
         for (const socket of sockets) {
@@ -303,8 +333,35 @@ export class ServerSocketManager {
             const progress = userId
                 ? await this.fetchPersistedProgress(userId)
                 : { experience: 0, skillAllocations: {}, characterAllocations: {} };
-            this.createPlayerForSocket(socket, progress);
+            const snap = liveBySocket.get(socket.id);
+            const merged = snap
+                ? Object.assign(Object.assign(Object.assign({}, progress), { lastTileX: snap.lastTileX, lastTileY: snap.lastTileY }), (snap.respawn
+                    ? { respawnTileX: snap.respawn.x, respawnTileY: snap.respawn.y }
+                    : {})) : progress;
+            this.createPlayerForSocket(socket, merged);
         }
+    }
+    /** Align persisted quest journal with the current map (new/removed quest ids after reload). */
+    reconcileConnectedPlayersQuestStateWithMap() {
+        const map = this.getMapManager();
+        for (const player of this.players.values()) {
+            reconcilePlayerQuestStateWithMap(player, map);
+        }
+    }
+    /**
+     * Flush all connected players' tiles to the website before process shutdown
+     * so reconnects after deploy use the last in-world position.
+     */
+    async persistConnectedPlayersLastPositions() {
+        const tasks = [];
+        for (const [socketId, player] of this.players) {
+            const userId = this.userSessionCache.getUserIdBySocket(socketId);
+            if (!userId) {
+                continue;
+            }
+            tasks.push(persistPlayerLastPositionToWebsite(userId, player));
+        }
+        await Promise.all(tasks);
     }
     /**
      * Send initialization data (YOUR_ID + full state) to all connected sockets.
@@ -360,14 +417,14 @@ export class ServerSocketManager {
             });
         }
     }
-    async onConnection(socket, initialProgress = {
+    onConnection(socket, initialProgress = {
         experience: 0,
         skillAllocations: {},
         characterAllocations: {},
     }) {
         const context = this.getHandlerContext();
         this.setupSocketListeners(socket);
-        await onConnection(context, socket, initialProgress);
+        onConnection(context, socket, initialProgress);
     }
     broadcastEvent(event) {
         this.broadcaster.broadcastEvent(event);
@@ -400,6 +457,75 @@ export class ServerSocketManager {
             }
             return;
         }
+    }
+    httpPathname(req) {
+        var _a;
+        const raw = (_a = req.url) !== null && _a !== void 0 ? _a : "/";
+        const q = raw.indexOf("?");
+        return q === -1 ? raw : raw.slice(0, q);
+    }
+    sendJsonHttp(res, status, body) {
+        res.writeHead(status, { "Content-Type": "application/json" });
+        res.end(JSON.stringify(body));
+    }
+    handleNodeHttpRequest(req, res) {
+        var _a;
+        const pathname = this.httpPathname(req);
+        // Socket.IO registers another "request" listener; do not end the response for its paths.
+        if (pathname.startsWith("/socket.io")) {
+            return;
+        }
+        if (isEditorWorldMapReloadHttpEnabled() &&
+            req.method === "POST" &&
+            pathname === EDITOR_WORLD_MAP_RELOAD_PATH) {
+            const remote = (_a = req.socket.remoteAddress) !== null && _a !== void 0 ? _a : undefined;
+            if (!isEditorMapReloadRemoteAddrAllowed(remote)) {
+                console.warn(`[EditorMapReload] rejected: non-loopback remote ${remote !== null && remote !== void 0 ? remote : "(none)"}`);
+                this.sendJsonHttp(res, 403, { ok: false, error: "Forbidden" });
+                return;
+            }
+            const header = req.headers["x-game-server-api-key"];
+            const key = Array.isArray(header) ? header[0] : header;
+            if (!isValidEditorMapReloadApiKey(key)) {
+                console.warn("[EditorMapReload] rejected: bad or missing x-game-server-api-key");
+                this.sendJsonHttp(res, 401, { ok: false, error: "Unauthorized" });
+                return;
+            }
+            void this.gameServer.startNewGame().then(() => {
+                this.sendJsonHttp(res, 200, { ok: true });
+            }, (err) => {
+                console.error("[EditorMapReload] startNewGame failed:", err);
+                this.sendJsonHttp(res, 500, { ok: false, error: "Reload failed" });
+            });
+            return;
+        }
+        res.writeHead(404, { "Content-Type": "text/plain" });
+        res.end("Not Found");
+    }
+    handleEditorReloadWorldMapUws(res, req) {
+        if (!isEditorWorldMapReloadHttpEnabled()) {
+            res.writeStatus("404 Not Found");
+            res.writeHeader("Content-Type", "text/plain");
+            res.end("Not Found");
+            return;
+        }
+        const key = req.getHeader("x-game-server-api-key");
+        if (!isValidEditorMapReloadApiKey(key)) {
+            res.writeStatus("401 Unauthorized");
+            res.writeHeader("Content-Type", "application/json");
+            res.end(JSON.stringify({ ok: false, error: "Unauthorized" }));
+            return;
+        }
+        void this.gameServer.startNewGame().then(() => {
+            res.writeStatus("200 OK");
+            res.writeHeader("Content-Type", "application/json");
+            res.end(JSON.stringify({ ok: true }));
+        }, (err) => {
+            console.error("[EditorMapReload] startNewGame failed:", err);
+            res.writeStatus("500 Internal Server Error");
+            res.writeHeader("Content-Type", "application/json");
+            res.end(JSON.stringify({ ok: false, error: "Reload failed" }));
+        });
     }
     /**
      * Sanitize text by replacing profane words with asterisks

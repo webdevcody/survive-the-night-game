@@ -3,7 +3,7 @@
  *
  * This class handles the main game loop that runs every tick, managing:
  * - Entity updates (movement, AI, physics)
- * - Game state (phase timing for battle royale, game over detection)
+ * - Game state (phase timing, etc.)
  * - Game state broadcasting to clients
  * - Performance tracking
  *
@@ -14,10 +14,8 @@
  * - Map generation (handled by MapManager)
  *
  * The loop only runs simulation when isGameReady is true (false while a session is
- * being (re)loaded) and skips updates when isGameOver is true.
- * When the game ends, it automatically restarts after 5 seconds.
+ * being (re)loaded).
  */
-import { GameOverEvent } from "../../../game-shared/src/events/server-sent/events/game-over-event";
 import {
   GameStateEvent,
   GameStateData,
@@ -35,7 +33,7 @@ import {
   ENABLE_PERFORMANCE_MONITORING,
 } from "@/config/config";
 import { TickPerformanceTracker } from "@/util/tick-performance-tracker";
-import { IGameModeStrategy, WinConditionResult, createGameModeStrategy } from "@/game-modes";
+import { IGameModeStrategy, createGameModeStrategy } from "@/game-modes";
 import type { GameModeId } from "@shared/events/server-sent/events/game-started-event";
 export class GameLoop {
   private lastUpdateTime: number = performance.now();
@@ -46,7 +44,6 @@ export class GameLoop {
   private phaseDuration: number = 0;
   private totalZombies: number = 0;
   private isGameReady: boolean = false;
-  private isGameOver: boolean = false;
 
   /** True after a full open_world start; used to resume the same map when the server was empty. */
   private openWorldSessionActive: boolean = false;
@@ -127,7 +124,6 @@ export class GameLoop {
    */
   public async resumeOpenWorldSession(): Promise<void> {
     this.isGameReady = false;
-    this.isGameOver = false;
 
     await this.socketManager.recreatePlayersForConnectedSockets();
 
@@ -159,11 +155,18 @@ export class GameLoop {
     }
 
     this.isGameReady = false;
-    this.isGameOver = false;
 
     this.phaseStartTime = Date.now();
     this.phaseDuration = 0;
     this.totalZombies = 0;
+
+    // Delta broadcasts compare against this; reset so the first tick after reload does not use
+    // pre-reload phase/zombie snapshots (and so entity deltas are not driven by stale dirty sets).
+    this.lastBroadcastedState = {
+      phaseStartTime: -1,
+      phaseDuration: -1,
+      totalZombies: -1,
+    };
 
     // Clear all entities first
     this.entityManager.clear();
@@ -172,6 +175,7 @@ export class GameLoop {
     this.mapManager.generateMap();
 
     await this.socketManager.recreatePlayersForConnectedSockets();
+    this.socketManager.reconcileConnectedPlayersQuestStateWithMap();
 
     if (this.gameManagers) {
       this.gameModeStrategy.onGameStart(this.gameManagers);
@@ -185,20 +189,12 @@ export class GameLoop {
     this.isGameReady = true;
   }
 
-  public setIsGameOver(isGameOver: boolean): void {
-    this.isGameOver = isGameOver;
-  }
-
   public setIsGameReady(isReady: boolean): void {
     this.isGameReady = isReady;
   }
 
   public getIsGameReady(): boolean {
     return this.isGameReady;
-  }
-
-  public getIsGameOver(): boolean {
-    return this.isGameOver;
   }
 
   private startGameLoop(): void {
@@ -211,10 +207,6 @@ export class GameLoop {
 
   private update(): void {
     if (!this.isGameReady) {
-      return;
-    }
-
-    if (this.isGameOver) {
       return;
     }
 
@@ -231,11 +223,6 @@ export class GameLoop {
     if (this.gameManagers) {
       this.gameModeStrategy.update(deltaTime, this.gameManagers);
     }
-
-    // Track handleIfGameOver
-    const endHandleIfGameOver = this.tickPerformanceTracker.startMethod("handleIfGameOver");
-    this.handleIfGameOver();
-    endHandleIfGameOver();
 
     // Track pruneEntities
     const endPruneEntities = this.tickPerformanceTracker.startMethod("pruneEntities");
@@ -260,39 +247,6 @@ export class GameLoop {
 
     this.trackPerformance(updateStartTime);
     this.lastUpdateTime = currentTime;
-  }
-
-  private handleIfGameOver(): void {
-    if (!this.gameManagers) return;
-
-    const result = this.gameModeStrategy.checkWinCondition(this.gameManagers);
-    if (result.gameEnded) {
-      this.endGame(result);
-    }
-  }
-
-  public endGame(result?: WinConditionResult): void {
-    this.isGameOver = true;
-
-    // Notify strategy of game end
-    if (this.gameManagers) {
-      this.gameModeStrategy.onGameEnd(this.gameManagers);
-    }
-
-    // Broadcast game over event with winner info
-    this.socketManager.broadcastEvent(
-      new GameOverEvent({
-        winnerId: result?.winnerId ?? null,
-        winnerName: result?.winnerName ?? null,
-        message: result?.message ?? "Game Over",
-      }),
-    );
-
-    setTimeout(() => {
-      void this.startNewGame(createGameModeStrategy()).catch((err) => {
-        console.error("[GameLoop] startNewGame after game over failed:", err);
-      });
-    }, 5000);
   }
 
   private trackPerformance(updateStartTime: number) {

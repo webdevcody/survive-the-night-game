@@ -36,6 +36,7 @@ function questSummaryLabel(questId: string | undefined, quests: WorldMapQuestDef
 const ATOMIC_CONDITION_OPTIONS: { value: DialogueNpcAtomicCondition["type"]; label: string }[] = [
   { value: "quest_completed", label: "Quest completed" },
   { value: "quest_active", label: "Quest active" },
+  { value: "quest_not_active", label: "Quest not active (not in progress)" },
   { value: "quest_not_completed", label: "Quest not completed" },
   {
     value: "quest_active_all_steps_done",

@@ -8,6 +8,7 @@ import { Rectangle } from "@/util/shape";
 import { SkinType, PlayerColor } from "@shared/commands/commands";
 import type { PersistedPlayerProgress } from "@/services/player-progress-types";
 import { type PlayerQuestStatePayload } from "@shared/quests/player-quest-state";
+import type { PlayerInventoryPersistedPayload } from "@shared/util/persisted-inventory-payload";
 export declare class Player extends Entity {
     private static readonly PLAYER_WIDTH;
     private static readonly INTERACT_COOLDOWN;
@@ -124,6 +125,8 @@ export declare class Player extends Entity {
     applyPersistedProgress(skillAllocations: Record<string, number>, characterAllocations: Record<string, number>): void;
     /** Called when connecting with persisted website data (keeps fields encapsulated). */
     hydratePersistedProgress(progress: PersistedPlayerProgress): void;
+    /** Full inventory snapshot for website persistence (bag, armor, weapon bar / loadouts). */
+    getSavedInventoryPayload(): PlayerInventoryPersistedPayload;
     /**
      * Open world: consume one-time spawn tile from persisted progress (null if none or already consumed).
      */

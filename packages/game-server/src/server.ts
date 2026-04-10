@@ -8,9 +8,22 @@ import { ServerUpdatingEvent } from "../../game-shared/src/events/server-sent/ev
 const gameServer = new GameServer();
 await gameServer.bootstrap();
 
-process.on("SIGINT", () => gameServer.stop());
-process.on("SIGTERM", () => {
+process.on("SIGINT", async () => {
+  try {
+    await gameServer.persistConnectedPlayersLastPositions();
+  } catch (e) {
+    console.warn("[SIGINT] persist player positions failed:", e);
+  }
+  gameServer.stop();
+});
+
+process.on("SIGTERM", async () => {
   console.log("Server updating...");
+  try {
+    await gameServer.persistConnectedPlayersLastPositions();
+  } catch (e) {
+    console.warn("[SIGTERM] persist player positions failed:", e);
+  }
   gameServer.broadcastEvent(new ServerUpdatingEvent());
   gameServer.stop();
 });

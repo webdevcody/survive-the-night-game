@@ -4,21 +4,35 @@ export const QUEST_ID_MAX_LENGTH = 64;
 export const QUEST_TITLE_MAX_LENGTH = 120;
 export const QUEST_MAX_STEPS = 32;
 export const QUEST_MAX_REWARDS = 8;
+/** Matches dialogue NPC `name` / serialized `displayName` (trimmed). */
+export const QUEST_TALK_NPC_NAME_MAX_LENGTH = 48;
+/** Inclusive max for `kill_enemies.count` when normalizing map JSON. */
+export const QUEST_KILL_ENEMIES_COUNT_MAX = 500;
 
 /** Single objective in an authored quest. */
 export type QuestStep =
   | { type: "pickup_item"; itemType: EntityType }
-  | { type: "reach_waypoint"; row: number; col: number; radiusTiles?: number };
+  | { type: "reach_waypoint"; row: number; col: number; radiusTiles?: number }
+  | { type: "kill_enemies"; enemyType: EntityType; count: number }
+  | {
+      type: "talk_to_npc";
+      /** Must match the NPC's authored display name (same as map entry `name`). */
+      npcName?: string;
+      /** Optional `row,col` (tile Y,X) — same encoding as entity `npcKey`; use to disambiguate duplicate names. */
+      npcKey?: string;
+    };
 
+/** Quest rewards; `experience` is persisted to website `user_stats.experience`. */
 export type QuestReward =
   | { type: "permanent_stat"; stat: string; amount: number }
-  | { type: "item"; itemType: EntityType; count: number };
+  | { type: "item"; itemType: EntityType; count: number }
+  | { type: "experience"; amount: number };
 
 export interface WorldMapQuestDefinition {
   id: string;
   title: string;
   steps: QuestStep[];
-  /** Granted when the quest is completed (last step done). */
+  /** Granted when an NPC dialogue marks the quest complete (`completeQuestId`). */
   rewards: QuestReward[];
   /** Granted once when the quest becomes active (e.g. NPC grants it). */
   startRewards: QuestReward[];
@@ -54,11 +68,65 @@ function normalizeQuestStep(raw: unknown, mapSide: number): QuestStep | null {
     }
     return { type: "reach_waypoint", row, col };
   }
-  /** Legacy `talk_to_npc` steps are dropped (use NPC dialog `completeQuestId` instead). */
   if (t === "talk_to_npc") {
-    return null;
+    const nameRaw = o.npcName ?? o.name;
+    const name =
+      typeof nameRaw === "string"
+        ? clampString(nameRaw.trim(), QUEST_TALK_NPC_NAME_MAX_LENGTH)
+        : "";
+    let npcKey: string | undefined;
+    const keyRaw = o.npcKey;
+    if (typeof keyRaw === "string" && keyRaw.trim()) {
+      const parts = keyRaw.trim().split(",");
+      if (parts.length === 2) {
+        const row = Number.parseInt(parts[0]!, 10);
+        const col = Number.parseInt(parts[1]!, 10);
+        if (
+          Number.isInteger(row) &&
+          Number.isInteger(col) &&
+          row >= 0 &&
+          col >= 0 &&
+          row < mapSide &&
+          col < mapSide
+        ) {
+          npcKey = `${row},${col}`;
+        }
+      }
+    }
+    if (!name && !npcKey) return null;
+    return {
+      type: "talk_to_npc",
+      ...(name ? { npcName: name } : {}),
+      ...(npcKey ? { npcKey } : {}),
+    };
+  }
+  if (t === "kill_enemies") {
+    const enemyType = String(o.enemyType ?? "").trim();
+    if (!enemyType) return null;
+    const countRaw = o.count;
+    if (typeof countRaw !== "number" || !Number.isFinite(countRaw)) return null;
+    const count = Math.max(1, Math.min(QUEST_KILL_ENEMIES_COUNT_MAX, Math.floor(countRaw)));
+    return { type: "kill_enemies", enemyType: enemyType as EntityType, count };
   }
   return null;
+}
+
+/** True if a `talk_to_npc` step targets this NPC (display name + optional tile key). */
+export function talkToNpcStepMatchesNpc(
+  step: Extract<QuestStep, { type: "talk_to_npc" }>,
+  npcDisplayName: string,
+  npcKey: string,
+): boolean {
+  const wantName = step.npcName?.trim() ?? "";
+  const wantKey = step.npcKey?.trim() ?? "";
+  const gotName = npcDisplayName.trim();
+  const gotKey = npcKey.trim();
+  if (wantName && wantKey) {
+    return gotName === wantName && gotKey === wantKey;
+  }
+  if (wantKey) return gotKey === wantKey;
+  if (wantName) return gotName === wantName;
+  return false;
 }
 
 function normalizeQuestReward(raw: unknown): QuestReward | null {
@@ -79,6 +147,12 @@ function normalizeQuestReward(raw: unknown): QuestReward | null {
     if (!itemType || typeof count !== "number" || !Number.isFinite(count)) return null;
     const c = Math.max(1, Math.min(99, Math.floor(count)));
     return { type: "item", itemType: itemType as EntityType, count: c };
+  }
+  if (t === "experience") {
+    const amount = o.amount;
+    if (typeof amount !== "number" || !Number.isFinite(amount)) return null;
+    const n = Math.max(1, Math.min(1_000_000, Math.floor(amount)));
+    return { type: "experience", amount: n };
   }
   return null;
 }

@@ -1,4 +1,5 @@
 import type { PlayerQuestStatePayload } from "@shared/quests/player-quest-state";
+import type { PlayerInventoryPersistedPayload } from "@shared/util/persisted-inventory-payload";
 
 export type PersistedPlayerProgress = {
   experience: number;
@@ -11,4 +12,6 @@ export type PersistedPlayerProgress = {
   respawnTileX?: number | null;
   respawnTileY?: number | null;
   questProgress?: PlayerQuestStatePayload;
+  /** Bag + equipment from website `user_stats.saved_inventory` when present. */
+  savedInventory?: PlayerInventoryPersistedPayload | null;
 };

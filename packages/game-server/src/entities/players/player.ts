@@ -15,6 +15,10 @@ import { Entities } from "@/constants";
 import { Entity } from "@/entities/entity";
 import { Input } from "@shared/util/input";
 import { InventoryItem, ItemType } from "@shared/util/inventory";
+import {
+  coercePlayerInventoryPersistedPayload,
+  type PlayerInventoryPersistedPayload,
+} from "@shared/util/persisted-inventory-payload";
 import { normalizeVector, distance } from "@shared/util/physics";
 import { RecipeType } from "@shared/util/recipes";
 import { Cooldown } from "@/entities/util/cooldown";
@@ -1309,6 +1313,37 @@ export class Player extends Entity {
       this.boundRespawnTile = null;
     }
     this.syncBoundRespawnToSerialized();
+
+    if (progress.savedInventory != null) {
+      const inv = coercePlayerInventoryPersistedPayload(progress.savedInventory);
+      if (inv) {
+        const hasWeaponBar = inv.weaponBar != null;
+        this.getExt(Inventory).applyPersistedPayload(inv, { skipWeaponNotify: hasWeaponBar });
+        if (hasWeaponBar && inv.weaponBar) {
+          const wb = inv.weaponBar;
+          this.serialized.set("inputInventoryItem", wb.inputInventoryItem);
+          this.serialized.set("weaponLoadoutPrimary", wb.weaponLoadoutPrimary);
+          this.serialized.set("weaponLoadoutSecondary", wb.weaponLoadoutSecondary);
+          this.serialized.set("weaponLoadoutMelee", wb.weaponLoadoutMelee);
+          this.serialized.set("activeWeaponLoadout", wb.activeWeaponLoadout);
+          this.sanitizeWeaponLoadouts();
+        }
+      }
+    }
+  }
+
+  /** Full inventory snapshot for website persistence (bag, armor, weapon bar / loadouts). */
+  getSavedInventoryPayload(): PlayerInventoryPersistedPayload {
+    return {
+      ...this.getExt(Inventory).toPersistedPayload(),
+      weaponBar: {
+        inputInventoryItem: this.serialized.get("inputInventoryItem"),
+        weaponLoadoutPrimary: this.serialized.get("weaponLoadoutPrimary"),
+        weaponLoadoutSecondary: this.serialized.get("weaponLoadoutSecondary"),
+        weaponLoadoutMelee: this.serialized.get("weaponLoadoutMelee"),
+        activeWeaponLoadout: this.serialized.get("activeWeaponLoadout"),
+      },
+    };
   }
 
   /**

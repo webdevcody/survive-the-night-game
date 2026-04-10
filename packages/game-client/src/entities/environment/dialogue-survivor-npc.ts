@@ -45,6 +45,8 @@ export class DialogueSurvivorNpcClient extends ClientEntity implements Renderabl
   /** Resolved branches from server; legacy entities use synthesized single session. */
   public dialogueSessions: WorldMapDialogueNpcSession[] = [];
   public displayName: string = "";
+  /** Tile key `row,col` from server (matches quest `talk_to_npc.npcKey`). */
+  public npcKey: string = "";
 
   constructor(data: RawEntity, assetManager: AssetManager) {
     super(data, assetManager);
@@ -82,6 +84,7 @@ export class DialogueSurvivorNpcClient extends ClientEntity implements Renderabl
     }
     this.dialogueSessions = sessions;
     this.displayName = String((data as Record<string, unknown>).displayName ?? "").trim();
+    this.npcKey = String((data as Record<string, unknown>).npcKey ?? "").trim();
   }
 
   private pickSession(gameState: GameState): WorldMapDialogueNpcSession {
@@ -91,7 +94,15 @@ export class DialogueSurvivorNpcClient extends ClientEntity implements Renderabl
       p?.hasExt(ClientInventory) === true
         ? (itemType: string) => p.getExt(ClientInventory).hasItem(itemType)
         : () => false;
-    return pickDialogueNpcSession(this.dialogueSessions, st, hasItemType);
+    const ctx =
+      gameState.getQuestStepCount || gameState.getQuestDefinition
+        ? {
+            getQuestStepCount: gameState.getQuestStepCount,
+            getQuestDefinition: gameState.getQuestDefinition,
+            dialogueNpc: { displayName: this.displayName, npcKey: this.npcKey },
+          }
+        : undefined;
+    return pickDialogueNpcSession(this.dialogueSessions, st, hasItemType, ctx);
   }
 
   /** Lines for the active session. */

@@ -26,9 +26,17 @@ export interface GameServerReloadInfo {
   error?: string;
 }
 
+export interface WorldMapBundleSavedPaths {
+  main: string;
+  npcs: string;
+  quests: string;
+}
+
 export interface SaveWorldMapResponse {
   success?: boolean;
   message?: string;
+  /** Absolute paths on disk (biome-editor-server); confirm the editor API wrote the bundle. */
+  savedPaths?: WorldMapBundleSavedPaths;
   gameServerReload?: GameServerReloadInfo;
 }
 
@@ -141,6 +149,7 @@ export function useSaveWorldMap() {
 
       const data = (await response.json()) as SaveWorldMapResponse;
       if (import.meta.env.DEV) {
+        console.info("[editor] save map → savedPaths:", data.savedPaths);
         console.info("[editor] save map → gameServerReload:", data.gameServerReload);
       }
       return data;

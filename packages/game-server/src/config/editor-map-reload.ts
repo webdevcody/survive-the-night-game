@@ -1,5 +1,6 @@
 /**
- * Dev/editor hook: POST reloads world-map.json from disk (same as a fresh /restart).
+ * Dev/editor hook: POST reloads the world map bundle from disk (`world-map.json` plus
+ * `world-map-npcs.json` / `world-map-quests.json` when present), same as a fresh /restart.
  * Secured with {@link GAME_SERVER_API_KEY} (header) and loopback-only in production.
  * Disable with ENABLE_EDITOR_MAP_RELOAD=false.
  */

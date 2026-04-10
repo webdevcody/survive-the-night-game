@@ -11,6 +11,7 @@ import Positionable from "@/extensions/positionable";
 import Updatable from "@/extensions/updatable";
 import { Entities } from "@/constants";
 import { Entity } from "@/entities/entity";
+import { coercePlayerInventoryPersistedPayload } from "@shared/util/persisted-inventory-payload";
 import { normalizeVector } from "@shared/util/physics";
 import { Cooldown } from "@/entities/util/cooldown";
 import { weaponHandlerRegistry } from "@/entities/weapons/weapon-handler-registry";
@@ -1077,6 +1078,12 @@ export class Player extends Entity {
             this.boundRespawnTile = null;
         }
         this.syncBoundRespawnToSerialized();
+        if (progress.savedInventory != null) {
+            const inv = coercePlayerInventoryPersistedPayload(progress.savedInventory);
+            if (inv) {
+                this.getExt(Inventory).applyPersistedPayload(inv);
+            }
+        }
     }
     /**
      * Open world: consume one-time spawn tile from persisted progress (null if none or already consumed).

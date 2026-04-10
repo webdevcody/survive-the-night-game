@@ -1,3 +1,4 @@
+import { isHealingConsumable } from "@shared/util/healing-consumables";
 import { AI_CONFIG, GOOD_WEAPONS, WEAPON_AMMO_MAP, MELEE_WEAPONS } from "./ai-config";
 import { AIDecisionEngine, AIDecision } from "./ai-decision-engine";
 /**
@@ -434,7 +435,7 @@ export class AIStateMachine {
         return inventory.some((item) => item && GOOD_WEAPONS.includes(item.itemType));
     }
     hasBandage(inventory) {
-        return inventory.some((item) => item && item.itemType === "bandage");
+        return inventory.some((item) => item && isHealingConsumable(item.itemType));
     }
     hasAmmoForWeapons(inventory) {
         var _a, _b;
@@ -544,9 +545,12 @@ export class AIStateMachine {
         return index !== -1 ? index + 1 : -1;
     }
     /**
-     * Get bandage index
+     * Get inventory index of best healable consumable (prefers bandage over weaker items)
      */
     getBandageIndex(inventory) {
-        return inventory.findIndex((item) => item && item.itemType === "bandage");
+        const bandageIdx = inventory.findIndex((item) => item && item.itemType === "bandage");
+        if (bandageIdx >= 0)
+            return bandageIdx;
+        return inventory.findIndex((item) => item && isHealingConsumable(item.itemType));
     }
 }

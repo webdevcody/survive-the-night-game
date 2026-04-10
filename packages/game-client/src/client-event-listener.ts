@@ -25,7 +25,6 @@ import { onPlayerPickedUpItem } from "./events/on-player-picked-up-item";
 import { onCarRepair } from "./events/on-car-repair";
 import { onCraft } from "./events/on-craft";
 import { onBuild } from "./events/on-build";
-import { onGameOver } from "./events/on-game-over";
 import { onGameStarted } from "./events/on-game-started";
 import { onServerUpdating } from "./events/on-server-updating";
 import { onPong } from "./events/on-pong";
@@ -104,7 +103,6 @@ export class ClientEventListener {
     this.socketManager.on(ServerSentEvents.PLAYER_PICKED_UP_ITEM, (e) =>
       onPlayerPickedUpItem(context, e),
     );
-    this.socketManager.on(ServerSentEvents.GAME_OVER, (e) => onGameOver(context, e));
     this.socketManager.on(ServerSentEvents.GAME_STARTED, (e) =>
       onGameStarted(this.createInitializationContext(), e),
     );

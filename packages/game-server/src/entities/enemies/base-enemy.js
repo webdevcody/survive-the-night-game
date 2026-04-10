@@ -310,6 +310,7 @@ export class BaseEnemy extends Entity {
             gameEventBus.emitZombieKilled({
                 zombieEntityId: this.getId(),
                 killerEntityId: killerId,
+                enemyType: this.getType(),
                 timestamp: Date.now(),
             });
         }

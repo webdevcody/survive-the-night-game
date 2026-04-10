@@ -9,7 +9,7 @@ function validateInput(input) {
         return null;
     }
     const obj = input;
-    // Validate facing — numeric bounds (Object.values on TS enums is unreliable)
+    // Validate facing — use numeric bounds (numeric enums + Object.values are unreliable across runtimes)
     const facing = obj.facing;
     if (typeof facing !== "number" ||
         !Number.isFinite(facing) ||
@@ -61,13 +61,13 @@ function validateInput(input) {
 export function onPlayerInput(context, socket, input) {
     const player = context.players.get(socket.id);
     if (!player) {
-        console.warn(`[onPlayerInput] No player found for socket ${socket.id}. Players in map: ${context.players.size}`);
+        console.warn(`[PlayerInput] No player for socket ${socket.id}. Players in map: ${context.players.size}`);
         return;
     }
     // Validate input
     const validatedInput = validateInput(input);
     if (!validatedInput) {
-        console.warn(`Invalid player input from socket ${socket.id}`);
+        console.warn(`[PlayerInput] Invalid payload from socket ${socket.id} playerId=${player.getId()} (see validateInput)`);
         return;
     }
     player.setInput(validatedInput);

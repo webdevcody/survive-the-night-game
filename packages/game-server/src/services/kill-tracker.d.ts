@@ -40,10 +40,6 @@ export declare class KillTracker {
     private handleZombieKilled;
     private findPlayerByEntityId;
     /**
-     * Persist experience immediately (per kill); does not block the game loop.
-     */
-    private sendExperienceDeltaFireAndForget;
-    /**
      * Flush all pending stats to the API
      */
     private flushPendingStats;

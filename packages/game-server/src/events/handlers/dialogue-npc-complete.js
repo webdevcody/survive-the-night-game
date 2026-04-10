@@ -1,4 +1,4 @@
-import { tryCompleteQuestFromDialogue, tryGrantQuestFromNpc, tryHealPlayerFromDialogueSession, validateDialogueComplete, } from "@/quests/quest-runtime";
+import { tryAdvanceTalkToNpcStep, tryCompleteQuestFromDialogue, tryGrantQuestFromNpc, tryHealPlayerFromDialogueSession, trySyncActiveQuestPickupStepsWithInventory, validateDialogueComplete, } from "@/quests/quest-runtime";
 export function onDialogueNpcComplete(context, socket, data) {
     const player = context.players.get(socket.id);
     if (!player || data.npcEntityId == null)
@@ -7,9 +7,11 @@ export function onDialogueNpcComplete(context, socket, data) {
     if (!npc)
         return;
     const map = context.getMapManager();
-    tryGrantQuestFromNpc(player, npc, map);
+    trySyncActiveQuestPickupStepsWithInventory(player, map);
+    const newlyGrantedQuestId = tryGrantQuestFromNpc(player, npc, map);
+    tryAdvanceTalkToNpcStep(player, npc, map, newlyGrantedQuestId ? { skipQuestIds: new Set([newlyGrantedQuestId]) } : undefined);
     tryCompleteQuestFromDialogue(player, npc, map);
-    tryHealPlayerFromDialogueSession(player, npc);
+    tryHealPlayerFromDialogueSession(player, npc, map);
 }
 export const dialogueNpcCompleteHandler = {
     event: "DIALOGUE_NPC_COMPLETE",

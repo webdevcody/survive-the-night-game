@@ -71,7 +71,7 @@ export declare class AITargetingSystem {
      */
     findBestLootTarget(player: Player): AITarget | null;
     /**
-     * Find the nearest bandage for the AI player (used during retreat)
+     * Find the nearest healable consumable on the ground (used during retreat)
      */
     findNearestHealingConsumable(player: Player): AITarget | null;
     /**

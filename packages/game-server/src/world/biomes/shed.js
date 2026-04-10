@@ -43,7 +43,7 @@ export const SHED = {
         Entities.FLAMETHROWER_AMMO,
         Entities.FLAMETHROWER,
         Entities.BANDAGE,
-        Entities.BANDAGE,
+        Entities.PAIN_PILLS,
         Entities.GRENADE,
         Entities.GRENADE,
         Entities.MOLOTOV_COCKTAIL,

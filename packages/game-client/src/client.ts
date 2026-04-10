@@ -19,7 +19,6 @@ import { ZoomController } from "@/zoom-controller";
 import { ResizeController } from "@/resize-controller";
 import { ClientEventListener } from "@/client-event-listener";
 import { SoundManager, SOUND_TYPES_TO_MP3 } from "@/managers/sound-manager";
-import { GameOverDialogUI } from "@/ui/game-over-dialog";
 import { Direction } from "../../game-shared/src/util/direction";
 import { Input } from "../../game-shared/src/util/input";
 import { ClientEntityBase } from "@/extensions/client-entity";
@@ -54,6 +53,9 @@ import { ClientEventHandlers } from "./managers/client-event-handlers";
 import { DialogueSurvivorNpcClient } from "./entities/environment/dialogue-survivor-npc";
 import { MessageDecalClient } from "./entities/environment/message-decal";
 import { QuestCompletedModal, formatQuestRewardsForDisplay } from "./ui/quest-completed-modal";
+import type { PlayerQuestStatePayload } from "@shared/quests/player-quest-state";
+import { getActiveStepIndex } from "@shared/quests/player-quest-state";
+import { formatQuestObjectiveAtStep } from "@shared/quests/quest-step-format";
 
 export class GameClient {
   private ctx: CanvasRenderingContext2D;
@@ -89,12 +91,13 @@ export class GameClient {
   private renderer: Renderer;
   private hud: Hud;
   private merchantBuyPanel: MerchantBuyPanel;
-  private gameOverDialog: GameOverDialogUI;
   private questCompletedModal: QuestCompletedModal;
   /** Tracks `completed` quest ids we've already announced (null = seed on next poll). */
   private questCompletionBaseline: Set<string> | null = null;
   /** Tracks active quest ids we've already seen (null = seed on next poll). */
   private questActiveBaseline: Set<string> | null = null;
+  /** Previous replicated quest payload (null = seed on next poll). Used to detect step advances. */
+  private questProgressBaseline: PlayerQuestStatePayload | null = null;
   // State
   private gameState: GameState;
   private animationFrameId: number | null = null;
@@ -156,7 +159,6 @@ export class GameClient {
     };
 
     this.mapManager = new MapManager(this);
-    this.gameOverDialog = new GameOverDialogUI();
     this.questCompletedModal = new QuestCompletedModal();
 
     // TODO: refactor to use event emitter
@@ -410,7 +412,6 @@ export class GameClient {
       this.mapManager,
       this.soundManager,
       this.assetManager,
-      this.gameOverDialog,
       this.inputManager,
       (slotIndex: number, amount?: number) => {
         if (this.socketManager) {
@@ -470,7 +471,6 @@ export class GameClient {
       this.mapManager,
       this.hud,
       this.merchantBuyPanel,
-      this.gameOverDialog,
       this.questCompletedModal,
       this.particleManager,
       () => this.getPlacementManager(),
@@ -572,10 +572,6 @@ export class GameClient {
     this.soundManager.setGameClient(this);
   }
 
-  public getGameOverDialog(): GameOverDialogUI {
-    return this.gameOverDialog;
-  }
-
   public getSoundManager(): SoundManager {
     return this.soundManager;
   }
@@ -632,7 +628,22 @@ export class GameClient {
   public resetQuestCompletionTracking(): void {
     this.questCompletionBaseline = null;
     this.questActiveBaseline = null;
+    this.questProgressBaseline = null;
     this.questCompletedModal.clear();
+  }
+
+  private cloneQuestPayload(st: PlayerQuestStatePayload): PlayerQuestStatePayload {
+    return {
+      completed: [...st.completed],
+      active: Object.fromEntries(
+        Object.entries(st.active).map(([qid, e]) => [
+          qid,
+          e.kills && Object.keys(e.kills).length > 0
+            ? { step: e.step, kills: { ...e.kills } }
+            : { step: e.step },
+        ]),
+      ),
+    };
   }
 
   /** After each game state update: detect newly completed quests and enqueue modals. */
@@ -644,14 +655,20 @@ export class GameClient {
     const completed = new Set(st.completed);
     const activeIds = Object.keys(st.active);
 
-    if (this.questCompletionBaseline === null || this.questActiveBaseline === null) {
+    if (
+      this.questCompletionBaseline === null ||
+      this.questActiveBaseline === null ||
+      this.questProgressBaseline === null
+    ) {
       this.questCompletionBaseline = new Set(completed);
       this.questActiveBaseline = new Set(activeIds);
+      this.questProgressBaseline = this.cloneQuestPayload(st);
       return;
     }
 
     const prevCompleted = this.questCompletionBaseline;
     const prevActive = this.questActiveBaseline;
+    const prevProgress = this.questProgressBaseline;
 
     for (const qid of completed) {
       if (!prevCompleted.has(qid)) {
@@ -672,8 +689,20 @@ export class GameClient {
       }
     }
 
+    for (const qid of activeIds) {
+      if (!prevProgress.active[qid]) continue;
+      const prevIdx = getActiveStepIndex(prevProgress, qid);
+      const curIdx = getActiveStepIndex(st, qid);
+      if (curIdx <= prevIdx) continue;
+      const def = this.mapManager.getAuthoredQuests().find((q) => q.id === qid);
+      const title = def?.title ?? qid;
+      const nextLine = formatQuestObjectiveAtStep(def, curIdx, st.active[qid]);
+      this.hud.addMessage(`${title}: ${nextLine}`, "#c9e87a");
+    }
+
     this.questCompletionBaseline = new Set(completed);
     this.questActiveBaseline = new Set(activeIds);
+    this.questProgressBaseline = this.cloneQuestPayload(st);
   }
 
   public isChatting(): boolean {
@@ -771,6 +800,12 @@ export class GameClient {
     const maxDeltaSeconds = getConfig().simulation.FIXED_TIMESTEP * 10;
     const deltaSeconds = Math.max(0, Math.min(deltaSecondsRaw, maxDeltaSeconds));
     this.gameState.dt = deltaSeconds;
+    this.gameState.getQuestStepCount = (questId: string) => {
+      const def = this.mapManager.getAuthoredQuests().find((q) => q.id === questId);
+      return def?.steps.length;
+    };
+    this.gameState.getQuestDefinition = (questId: string) =>
+      this.mapManager.getAuthoredQuests().find((q) => q.id === questId);
 
     const nowMs = Date.now();
     if (nowMs - this.lastFpsUpdate >= this.FPS_UPDATE_INTERVAL) {
@@ -983,7 +1018,6 @@ export class GameClient {
       (this.hud && this.hud.isInventoryScreenOpen()) ||
       (this.hud && this.hud.isHoveringInventory()) ||
       (this.hud && this.hud.isHoveringMuteButton()) ||
-      (this.gameOverDialog && this.gameOverDialog.isGameOver()) ||
       this.inputManager.isChatInputActive()
     ) {
       this.ctx.canvas.style.cursor = "default";

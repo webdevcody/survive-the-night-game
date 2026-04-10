@@ -1,5 +1,4 @@
 import { ServerSentEvents, ClientSentEvents } from "@shared/events/events";
-import { GameOverEvent } from "../../../game-shared/src/events/server-sent/events/game-over-event";
 import { GameStateEvent } from "../../../game-shared/src/events/server-sent/events/game-state-event";
 import { GameStartedEvent } from "../../../game-shared/src/events/server-sent/events/game-started-event";
 import { GunEmptyEvent } from "../../../game-shared/src/events/server-sent/events/gun-empty-event";
@@ -58,7 +57,6 @@ const SERVER_EVENT_MAP = {
   [ServerSentEvents.PLAYER_DROPPED_ITEM]: PlayerDroppedItemEvent,
   [ServerSentEvents.PLAYER_PICKED_UP_ITEM]: PlayerPickedUpItemEvent,
   [ServerSentEvents.PLAYER_PICKED_UP_RESOURCE]: PlayerPickedUpResourceEvent,
-  [ServerSentEvents.GAME_OVER]: GameOverEvent,
   [ServerSentEvents.GUN_EMPTY]: GunEmptyEvent,
   [ServerSentEvents.GUN_FIRED]: GunFiredEvent,
   [ServerSentEvents.ZOMBIE_ATTACKED]: ZombieAttackedEvent,

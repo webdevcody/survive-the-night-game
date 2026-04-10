@@ -1,5 +1,6 @@
 export const ServerSentEvents = {
   GAME_STATE_UPDATE: "gameStateUpdate",
+  /** @deprecated Reserved for wire id stability; not used. */
   GAME_OVER: "gameOver",
   GAME_STARTED: "gameStarted",
   PLAYER_DEATH: "playerDeath",

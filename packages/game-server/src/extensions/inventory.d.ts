@@ -1,4 +1,5 @@
 import { InventoryItem, ItemType, type EquipmentSlotKey, type PlayerEquipmentState } from "../../../game-shared/src/util/inventory";
+import { type PlayerInventoryPersistedPayload } from "@shared/util/persisted-inventory-payload";
 import { RecipeType } from "../../../game-shared/src/util/recipes";
 import { Broadcaster } from "@/managers/types";
 import { IEntity } from "@/entities/types";
@@ -64,6 +65,12 @@ export default class Inventory extends ExtensionBase<InventoryFields> {
      * Items with higher weights have a higher chance of being selected.
      */
     private getWeightedRandomItem;
+    /** Website / disconnect: JSON-serializable bag + equipment snapshot. */
+    toPersistedPayload(): PlayerInventoryPersistedPayload;
+    /** Apply validated snapshot (e.g. after hydrate from DB). */
+    applyPersistedPayload(payload: PlayerInventoryPersistedPayload, options?: {
+        skipWeaponNotify?: boolean;
+    }): void;
     clear(): void;
     scatterItems(position: {
         x: number;

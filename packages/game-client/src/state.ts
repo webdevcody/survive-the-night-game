@@ -1,4 +1,5 @@
 import { ClientEntityBase } from "@/extensions/client-entity";
+import type { WorldMapQuestDefinition } from "@shared/map/quest-types";
 import { EntityType } from "@shared/types/entity";
 import { GameModeId } from "@shared/events/server-sent/events/game-started-event";
 import { addEntityToTypeMap, removeEntityFromTypeMap } from "@shared/util/entity-map-helpers";
@@ -20,6 +21,9 @@ export type GameState = {
   openDialogueNpcId?: number | null;
   /** 0-based index into current NPC dialogue lines (client-only). */
   dialogueLineIndex: number;
+  /** Set by client each tick for dialogue branches that need authored quest step counts. */
+  getQuestStepCount?: (questId: string) => number | undefined;
+  getQuestDefinition?: (questId: string) => WorldMapQuestDefinition | undefined;
   dt: number;
   globalIlluminationMultiplier: number;
   darknessHue: "red" | "blue";

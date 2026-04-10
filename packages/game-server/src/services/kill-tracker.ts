@@ -1,7 +1,9 @@
-import { WEBSITE_API_URL, GAME_SERVER_API_KEY } from "@/config/env";
+import { GAME_SERVER_API_KEY, WEBSITE_API_URL } from "@/config/env";
+import { queuePersistExperienceDeltaToWebsite } from "@/util/persist-experience-delta";
 import { gameEventBus, ZombieKilledEventData } from "./game-event-bus";
 import { UserSessionCache } from "./user-session-cache";
 import { Player } from "@/entities/players/player";
+import { recordKillQuestProgress } from "@/quests/quest-runtime";
 import { XP_PER_ZOMBIE_KILL } from "@shared/util/experience-level";
 
 const BATCH_INTERVAL_MS = 15000; // Send stats every 15 seconds
@@ -104,9 +106,13 @@ export class KillTracker {
     }
 
     const killer = this.findPlayerByEntityId(data.killerEntityId);
-    if (killer && !killer.serialized.get("isAI")) {
-      const cur = killer.serialized.get("experience") ?? 0;
-      killer.serialized.set("experience", cur + XP_PER_ZOMBIE_KILL);
+    if (killer && !killer.getSerialized().get("isAI")) {
+      const cur = killer.getSerialized().get("experience") ?? 0;
+      killer.getSerialized().set("experience", cur + XP_PER_ZOMBIE_KILL);
+      const map = killer.getGameManagers()?.getMapManager();
+      if (map) {
+        recordKillQuestProgress(killer, data.enemyType, map);
+      }
     }
 
     const socketId = this.findSocketIdByEntityId(data.killerEntityId);
@@ -122,7 +128,7 @@ export class KillTracker {
     const stats = this.getOrCreatePendingStats(userId);
     stats.zombieKills++;
 
-    this.sendExperienceDeltaFireAndForget(userId, XP_PER_ZOMBIE_KILL);
+    queuePersistExperienceDeltaToWebsite(userId, XP_PER_ZOMBIE_KILL);
   }
 
   private findPlayerByEntityId(entityId: number): Player | null {
@@ -135,35 +141,6 @@ export class KillTracker {
       }
     }
     return null;
-  }
-
-  /**
-   * Persist experience immediately (per kill); does not block the game loop.
-   */
-  private sendExperienceDeltaFireAndForget(userId: string, delta: number): void {
-    if (!GAME_SERVER_API_KEY || delta <= 0) {
-      return;
-    }
-
-    void fetch(`${WEBSITE_API_URL}/api/game/add-experience`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "X-API-Key": GAME_SERVER_API_KEY,
-      },
-      body: JSON.stringify({ userId, experienceDelta: delta }),
-    })
-      .then(async (response) => {
-        if (!response.ok) {
-          const text = await response.text();
-          console.error(
-            `add-experience failed for user ${userId}: ${response.status} ${text}`,
-          );
-        }
-      })
-      .catch((error) => {
-        console.error(`add-experience request failed for user ${userId}:`, error);
-      });
   }
 
   /**

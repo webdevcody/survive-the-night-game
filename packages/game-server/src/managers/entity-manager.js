@@ -317,6 +317,8 @@ export class EntityManager {
         this.dirtyEntities.clear();
         this.entitiesInGrid.clear();
         this.entitiesToAddToGrid.clear();
+        this.entitiesToRemove = [];
+        this.entityStateTracker.clear();
         this.updateScheduler.clear();
         // Reset ID pool to contain all valid IDs
         this.availableIds = Array.from({ length: this.maxId + 1 }, (_, i) => i);
