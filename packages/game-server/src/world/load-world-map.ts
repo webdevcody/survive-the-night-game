@@ -4,6 +4,7 @@ import { fileURLToPath } from "url";
 import { getConfig } from "@shared/config";
 import type {
   WorldMapDialogueNpcEntry,
+  WorldMapMessageDecalEntry,
   WorldMapSpawnerMetaEntry,
 } from "@shared/map/world-map-types";
 import type { WorldMapQuestDefinition } from "@shared/map/quest-types";
@@ -17,6 +18,8 @@ export interface WorldMapFile {
   decals?: number[][];
   /** Optional dialogue NPC placements (see shared `WorldMapDialogueNpcEntry`). */
   dialogueNpcs?: WorldMapDialogueNpcEntry[];
+  /** Optional message decals (`DECAL_TILE_MESSAGE`); see `WorldMapMessageDecalEntry`. */
+  messageDecals?: WorldMapMessageDecalEntry[];
   /** Optional authored quests (see `WorldMapQuestDefinition`). */
   quests?: WorldMapQuestDefinition[];
   /** Optional spawner labels from the map editor (not used by the server yet). */

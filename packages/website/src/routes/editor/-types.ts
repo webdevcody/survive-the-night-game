@@ -1,5 +1,6 @@
 import type {
   WorldMapDialogueNpcEntry,
+  WorldMapMessageDecalEntry,
   WorldMapSpawnerMetaEntry,
 } from "@survive-the-night/game-shared/map/world-map-types";
 import type { WorldMapQuestDefinition } from "@survive-the-night/game-shared/map/quest-types";
@@ -16,6 +17,8 @@ export interface MapLayerSnapshot {
   spawns: number[][];
   decals: number[][];
   dialogueNpcs: WorldMapDialogueNpcEntry[];
+  /** Added for message decals; absent in snapshots taken before this feature. */
+  messageDecals?: WorldMapMessageDecalEntry[];
   quests: WorldMapQuestDefinition[];
   spawnerMeta: WorldMapSpawnerMetaEntry[];
 }

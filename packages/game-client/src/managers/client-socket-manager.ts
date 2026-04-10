@@ -537,8 +537,11 @@ export class ClientSocketManager {
     this.emitClientEvent(ClientSentEvents.INTERACT, { targetEntityId });
   }
 
-  public sendDialogueNpcComplete(npcEntityId: number) {
-    this.emitClientEvent(ClientSentEvents.DIALOGUE_NPC_COMPLETE, { npcEntityId });
+  public sendDialogueNpcComplete(npcEntityId: number, grantQuestOnly?: boolean) {
+    this.emitClientEvent(ClientSentEvents.DIALOGUE_NPC_COMPLETE, {
+      npcEntityId,
+      ...(grantQuestOnly ? { grantQuestOnly: true } : {}),
+    });
   }
 
   public sendChatMessage(message: string) {

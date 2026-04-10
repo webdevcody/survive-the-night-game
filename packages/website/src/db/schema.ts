@@ -82,6 +82,9 @@ export const userStats = pgTable("user_stats", {
   /** Open world: last tile indices when the player disconnected (alive). */
   lastTileX: integer("last_tile_x"),
   lastTileY: integer("last_tile_y"),
+  /** Open world: campsite-fire respawn bind (tile indices). */
+  respawnTileX: integer("respawn_tile_x"),
+  respawnTileY: integer("respawn_tile_y"),
   /** Quest journal progress (game server hydrates / persists). */
   questProgress: jsonb("quest_progress")
     .$type<{ active: Record<string, number>; completed: string[] }>()

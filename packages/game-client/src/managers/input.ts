@@ -42,9 +42,8 @@ export interface InputManagerOptions {
   isPlayerDead?: () => boolean;
   getInventory?: () => any[];
   onInventorySlotChanged?: (slot: number) => void;
-  /** When true, Space advances NPC dialogue instead of firing. */
+  /** When true, Space does not fire (NPC dialogue open). */
   isNpcDialogueOpen?: () => boolean;
-  onNpcDialogueSpaceDown?: () => void;
   onToggleQuestJournal?: () => void;
   isQuestCompletedModalOpen?: () => boolean;
   onDismissQuestCompletedModal?: () => void;
@@ -314,7 +313,6 @@ export class InputManager {
         case "Space":
           e.preventDefault(); // Prevent page scrolling
           if (callbacks.isNpcDialogueOpen?.()) {
-            callbacks.onNpcDialogueSpaceDown?.();
             break;
           }
           this.triggerFire();

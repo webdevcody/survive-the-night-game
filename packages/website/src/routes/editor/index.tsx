@@ -9,13 +9,17 @@ import { EditorMinimap } from "./-components/EditorMinimap";
 import { EditorRightOverlay } from "./-components/EditorRightOverlay";
 import { NpcConfigModal } from "./-components/NpcConfigModal";
 import { SpawnerMetaModal } from "./-components/SpawnerMetaModal";
+import { RelocateMapBanner } from "./-components/RelocateMapBanner";
 import { getConfig } from "@survive-the-night/game-shared/config";
 import {
   createEmptySpawnsLayer,
   createEmptyDecalsLayer,
   reconcileDialogueNpcsWithSpawnsLayer,
 } from "./-utils";
-import { reconcileSpawnerMetaWithSpawnsLayer } from "@survive-the-night/game-shared/map/world-map-types";
+import {
+  reconcileMessageDecalsWithDecalsLayer,
+  reconcileSpawnerMetaWithSpawnsLayer,
+} from "@survive-the-night/game-shared/map/world-map-types";
 
 export const Route = createFileRoute("/editor/")({
   component: MapEditor,
@@ -44,6 +48,7 @@ function MapEditor() {
   const setCollidablesGrid = useEditorStore((state) => state.setCollidablesGrid);
   const setDecalsGrid = useEditorStore((state) => state.setDecalsGrid);
   const setDialogueNpcs = useEditorStore((state) => state.setDialogueNpcs);
+  const setMessageDecals = useEditorStore((state) => state.setMessageDecals);
   const setQuests = useEditorStore((state) => state.setQuests);
   const setSaveStatus = useEditorStore((state) => state.setSaveStatus);
   const setHistory = useEditorStore((state) => state.setHistory);
@@ -57,6 +62,7 @@ function MapEditor() {
   const spawnsGrid = useEditorStore((state) => state.spawnsGrid);
   const decalsGrid = useEditorStore((state) => state.decalsGrid);
   const dialogueNpcs = useEditorStore((state) => state.dialogueNpcs);
+  const messageDecals = useEditorStore((state) => state.messageDecals);
   const spawnerMeta = useEditorStore((state) => state.spawnerMeta);
   const quests = useEditorStore((state) => state.quests);
   const saveStatus = useEditorStore((state) => state.saveStatus);
@@ -102,14 +108,18 @@ function MapEditor() {
           reconcileDialogueNpcsWithSpawnsLayer(spawnsForDialogue, worldMapData.dialogueNpcs),
         );
         setQuests(worldMapData.quests ?? []);
-        if (
-          worldMapData.decals?.length === n &&
-          worldMapData.decals[0]?.length === n
-        ) {
-          setDecalsGrid(worldMapData.decals);
-        } else {
-          setDecalsGrid(createEmptyDecalsLayer(n));
-        }
+        const decalsLoaded =
+          worldMapData.decals?.length === n && worldMapData.decals[0]?.length === n
+            ? worldMapData.decals
+            : createEmptyDecalsLayer(n);
+        setDecalsGrid(decalsLoaded);
+        setMessageDecals(
+          reconcileMessageDecalsWithDecalsLayer(
+            decalsLoaded,
+            worldMapData.messageDecals ?? [],
+            n,
+          ),
+        );
         clampCameraToViewport();
       } else {
         console.warn(
@@ -130,6 +140,7 @@ function MapEditor() {
     setCollidablesGrid,
     setDecalsGrid,
     setDialogueNpcs,
+    setMessageDecals,
     setQuests,
     setSaveStatus,
     setHistory,
@@ -179,6 +190,7 @@ function MapEditor() {
         spawns: spawnsGrid,
         decals: decalsGrid,
         dialogueNpcs,
+        messageDecals,
         quests,
         spawnerMeta,
       });
@@ -240,6 +252,7 @@ function MapEditor() {
 
       <NpcConfigModal />
       <SpawnerMetaModal />
+      <RelocateMapBanner />
     </div>
   );
 }

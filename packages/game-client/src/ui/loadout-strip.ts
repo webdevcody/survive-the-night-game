@@ -19,6 +19,33 @@ const STRIP = {
 
 const LABELS = ["1 Primary", "2 Secondary", "3 Melee"];
 
+export type LoadoutStripScreenLayout = {
+  scale: number;
+  slotSize: number;
+  gap: number;
+  padding: number;
+  w: number;
+  h: number;
+  x: number;
+  y: number;
+};
+
+/** Screen-space bounds for the bottom-centered weapon strip (shared with HUD layout). */
+export function getLoadoutStripScreenLayout(
+  canvasWidth: number,
+  canvasHeight: number
+): LoadoutStripScreenLayout {
+  const scale = calculateHudScale(canvasWidth, canvasHeight);
+  const slotSize = STRIP.slotSize * scale;
+  const gap = STRIP.gap * scale;
+  const padding = STRIP.padding * scale;
+  const w = 3 * slotSize + 2 * gap + padding * 2;
+  const h = slotSize + padding * 2 + 14 * scale;
+  const x = canvasWidth / 2 - w / 2;
+  const y = canvasHeight - h - STRIP.marginBottom * scale;
+  return { scale, slotSize, gap, padding, w, h, x, y };
+}
+
 export class LoadoutStrip implements Renderable {
   constructor(
     private assetManager: AssetManager,
@@ -29,15 +56,7 @@ export class LoadoutStrip implements Renderable {
   ) {}
 
   private getLayout(canvasWidth: number, canvasHeight: number) {
-    const scale = calculateHudScale(canvasWidth, canvasHeight);
-    const slotSize = STRIP.slotSize * scale;
-    const gap = STRIP.gap * scale;
-    const padding = STRIP.padding * scale;
-    const w = 3 * slotSize + 2 * gap + padding * 2;
-    const h = slotSize + padding * 2 + 14 * scale;
-    const x = canvasWidth / 2 - w / 2;
-    const y = canvasHeight - h - STRIP.marginBottom * scale;
-    return { scale, slotSize, gap, padding, w, h, x, y };
+    return getLoadoutStripScreenLayout(canvasWidth, canvasHeight);
   }
 
   private itemAtBagSlot(inv: (InventoryItem | null)[], bag1: number): InventoryItem | null {

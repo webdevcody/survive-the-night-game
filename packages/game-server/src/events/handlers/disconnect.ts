@@ -28,6 +28,7 @@ export function onDisconnect(context: HandlerContext, socket: ISocketAdapter): v
     const lastTileX = Math.floor(pos.x / TILE_SIZE);
     const lastTileY = Math.floor(pos.y / TILE_SIZE);
     const url = `${WEBSITE_API_URL}/api/game/player-last-position`;
+    const bind = player.getBoundRespawnTile();
     void (async () => {
       try {
         const res = await fetch(url, {
@@ -40,7 +41,7 @@ export function onDisconnect(context: HandlerContext, socket: ISocketAdapter): v
             userId,
             lastTileX,
             lastTileY,
-            questProgress: player.getQuestProgressPayload(),
+            ...(bind ? { respawnTileX: bind.x, respawnTileY: bind.y } : {}),
             characterAllocations: player.getCharacterAllocationRecord(),
           }),
         });

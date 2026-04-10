@@ -3,6 +3,7 @@ import { useEditorStore } from "../-store";
 import type { Layer } from "../-types";
 import { getConfig } from "@survive-the-night/game-shared/config";
 import { DECAL_PALETTE_ENTRIES } from "@survive-the-night/game-shared/map/decal-palette";
+import { MessageDecalsListPanel } from "./MessageDecalsListPanel";
 
 interface TilePaletteProps {
   onTileSelect: (row: number, col: number, layer: Layer) => void;
@@ -523,8 +524,10 @@ export function TilePalette({ onTileSelect }: TilePaletteProps) {
           <p className="mb-2 text-[10px] leading-tight text-gray-400">
             Overlays on the ground layer (saved in world-map{" "}
             <code className="text-gray-300">decals</code>). The Campsite decal is where the
-            campfire entity spawns in-game. Player, zombies, and item markers live on the spawns
-            layer — use right‑click on the map or the NPCs / Spawners sidebar tabs.
+            campfire entity spawns in-game. Light places invisible torch-equivalent illumination
+            only (no sprite). <span className="text-sky-200">Message</span> spawns a small sign
+            players can read in-game (text below). Player, zombies, and item markers live on the
+            spawns layer — use right‑click on the map or the NPCs / Spawners sidebar tabs.
           </p>
           <div className="flex flex-wrap gap-1">
             {DECAL_PALETTE_ENTRIES.map((entry) => {
@@ -552,6 +555,7 @@ export function TilePalette({ onTileSelect }: TilePaletteProps) {
               );
             })}
           </div>
+          <MessageDecalsListPanel />
         </div>
       )}
     </div>

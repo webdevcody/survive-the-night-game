@@ -5,7 +5,7 @@ import { StaminaPanel } from "./panels/stamina-panel";
 import type { MinimapHudLayout } from "./minimap-hud-group-layout";
 
 /**
- * Health + stamina orbs for survivors (extracted from former hotbar UI).
+ * Health + stamina (sprint) orbs for survivors, flanking the bottom weapon strip.
  */
 export class SurvivorStatusHud {
   private heartsPanel: HeartsPanel;

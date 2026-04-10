@@ -63,6 +63,8 @@ import { Flamethrower } from "@/entities/weapons/flamethrower";
 import { Bow } from "@/entities/weapons/bow";
 import { Fire } from "@/entities/environment/fire";
 import { CampsiteFire } from "@/entities/environment/campsite-fire";
+import { LightDecal } from "@/entities/environment/light-decal";
+import { MessageDecal } from "@/entities/environment/message-decal";
 import { Merchant } from "@/entities/environment/merchant";
 import { Car } from "@/entities/environment/car";
 import { Survivor } from "@/entities/environment/survivor";
@@ -141,6 +143,8 @@ const SERVER_ENTITY_CONSTRUCTORS: Record<EntityType, EntityConstructor> = {
   bow: Bow,
   fire: Fire,
   campsite_fire: CampsiteFire,
+  light_decal: LightDecal,
+  message_decal: MessageDecal,
   merchant: Merchant,
   car: Car,
   survivor: Survivor,

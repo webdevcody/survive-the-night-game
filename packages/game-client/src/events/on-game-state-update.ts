@@ -96,8 +96,13 @@ const handleGameStateUpdate = (context: InitializationContext, gameStateEvent: G
       // Advance reader past this entity
       reader = reader.atOffset(entityStartOffset + entityLength);
 
-      // Seed interpolation snapshots for non-local players
-      if (entity.getId() !== context.gameState.playerId && entity.hasExt(ClientPositionable)) {
+      // Seed interpolation snapshots for non-local players (skip map-static lights)
+      if (
+        entity.getId() !== context.gameState.playerId &&
+        entity.hasExt(ClientPositionable) &&
+        entity.getType() !== "light_decal" &&
+        entity.getType() !== "message_decal"
+      ) {
         const pos = entity.getExt(ClientPositionable).getPosition();
         context.interpolation.addSnapshot(entity.getId(), pos, timestamp);
       }
@@ -214,10 +219,12 @@ const handleGameStateUpdate = (context: InitializationContext, gameStateEvent: G
           existingEntity.deserializeFromBuffer(reader.atOffset(entityStartOffset));
         }
 
-        // For other players, smooth movement with interpolation
+        // For other players, smooth movement with interpolation (skip map-static lights)
         if (
           existingEntity.getId() !== context.gameState.playerId &&
-          existingEntity.hasExt(ClientPositionable)
+          existingEntity.hasExt(ClientPositionable) &&
+          existingEntity.getType() !== "light_decal" &&
+          existingEntity.getType() !== "message_decal"
         ) {
           const rawPos = existingEntity.getExt(ClientPositionable).getPosition();
           context.interpolation.addSnapshot(existingEntity.getId(), rawPos, timestamp);
@@ -248,7 +255,12 @@ const handleGameStateUpdate = (context: InitializationContext, gameStateEvent: G
         // Deserialize from buffer
         created.deserializeFromBuffer(reader.atOffset(entityStartOffset));
 
-        if (created.getId() !== context.gameState.playerId && created.hasExt(ClientPositionable)) {
+        if (
+          created.getId() !== context.gameState.playerId &&
+          created.hasExt(ClientPositionable) &&
+          created.getType() !== "light_decal" &&
+          created.getType() !== "message_decal"
+        ) {
           const pos = created.getExt(ClientPositionable).getPosition();
           context.interpolation.addSnapshot(created.getId(), pos, timestamp);
         }

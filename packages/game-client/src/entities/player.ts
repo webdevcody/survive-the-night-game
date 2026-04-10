@@ -89,6 +89,16 @@ export class PlayerClient extends ClientEntity implements IClientEntity, Rendera
     return Z_INDEX.PLAYERS;
   }
 
+  /** Tile indices for campsite-fire respawn bind; unset when no bind. */
+  getRespawnBindTile(): { x: number; y: number } | null {
+    const x = (this as any).respawnBindTileX as number | undefined;
+    const y = (this as any).respawnBindTileY as number | undefined;
+    if (typeof x === "number" && typeof y === "number") {
+      return { x, y };
+    }
+    return null;
+  }
+
   constructor(data: RawEntity, imageLoader: ImageLoader) {
     super(data, imageLoader);
     this.isCrafting = data.isCrafting;

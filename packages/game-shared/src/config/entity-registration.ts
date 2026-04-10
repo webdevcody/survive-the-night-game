@@ -100,6 +100,8 @@ export const ENTITY_REGISTRATION_CONFIG: EntityRegistrationEntry[] = [
   // Environment
   { type: "fire", category: "environment" },
   { type: "campsite_fire", category: "environment" },
+  { type: "light_decal", category: "environment" },
+  { type: "message_decal", category: "environment" },
   { type: "merchant", category: "environment" },
   { type: "car", category: "environment" },
   { type: "survivor", category: "environment" },

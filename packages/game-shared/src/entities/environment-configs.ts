@@ -103,4 +103,24 @@ export const ENVIRONMENT_CONFIGS: Record<string, EnvironmentConfig> = {
       totalFrames: 5, // 5 animation frames for campfire
     },
   },
+  light_decal: {
+    id: "light_decal",
+    category: "obstacle",
+    assets: {
+      assetKey: "light_decal",
+      x: 0,
+      y: 0,
+      sheet: "ground",
+    },
+  },
+  message_decal: {
+    id: "message_decal",
+    category: "obstacle",
+    assets: {
+      assetKey: "message_decal",
+      x: 0,
+      y: 0,
+      sheet: "ground",
+    },
+  },
 };

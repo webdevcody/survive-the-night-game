@@ -20,10 +20,13 @@ import {
 import type { DecalData } from "@survive-the-night/game-shared/config/decals-config";
 import type {
   WorldMapDialogueNpcEntry,
+  WorldMapMessageDecalEntry,
   WorldMapSpawnerMetaEntry,
 } from "@survive-the-night/game-shared/map/world-map-types";
 import {
   normalizeDialogueNpcs,
+  normalizeMessageDecals,
+  reconcileMessageDecalsWithDecalsLayer,
   reconcileSpawnerMetaWithSpawnsLayer,
 } from "@survive-the-night/game-shared/map/world-map-types";
 import type { WorldMapQuestDefinition } from "@survive-the-night/game-shared/map/quest-types";
@@ -145,7 +148,17 @@ function makeDialogueNpcEntry(
   const lines = prev?.lines?.length
     ? [...prev.lines]
     : [prev?.message?.trim() || "Hello!"];
-  const [e] = normalizeDialogueNpcs([{ row, col, lines }], mapSide);
+  const draft: WorldMapDialogueNpcEntry = {
+    row,
+    col,
+    lines,
+    ...(prev?.name ? { name: prev.name } : {}),
+    ...(prev?.grantQuestId !== undefined ? { grantQuestId: prev.grantQuestId } : {}),
+    ...(prev?.linesAfterQuestGrant && prev.linesAfterQuestGrant.length > 0
+      ? { linesAfterQuestGrant: [...prev.linesAfterQuestGrant] }
+      : {}),
+  };
+  const [e] = normalizeDialogueNpcs([draft], mapSide);
   return e!;
 }
 
@@ -157,6 +170,8 @@ interface EditorState {
   decalsGrid: number[][];
   /** Dialogue NPC messages keyed by spawns-layer `NPC_DIALOGUE_SURVIVOR_SPAWN_TILE_ID` tiles. */
   dialogueNpcs: WorldMapDialogueNpcEntry[];
+  /** Message text for decals-layer `DECAL_TILE_MESSAGE` cells. */
+  messageDecals: WorldMapMessageDecalEntry[];
   /** Optional display names for non-dialogue spawner tiles. */
   spawnerMeta: WorldMapSpawnerMetaEntry[];
   /** Authored quests saved in world-map.json. */
@@ -177,8 +192,12 @@ interface EditorState {
 
   /** Configure dialogue NPC in a modal (e.g. canvas context menu). */
   npcConfigModal: { row: number; col: number } | null;
+  /** When set, next map click (empty spawns cell) moves the dialogue NPC from this tile. */
+  dialogueNpcRelocateFrom: { row: number; col: number } | null;
   /** Configure spawner label (sidebar / list). */
   spawnerConfigModal: { row: number; col: number } | null;
+  /** When set, next map click (empty spawns cell) moves this non-dialogue spawner tile + label. */
+  spawnerRelocateFrom: { row: number; col: number } | null;
   /** Right overlay: tiles palette vs lists vs quests. */
   sidebarSection: EditorSidebarSection;
 
@@ -236,15 +255,24 @@ interface EditorState {
   setSpawnsGrid: (grid: number[][]) => void;
   setDecalsGrid: (grid: number[][]) => void;
   setDialogueNpcs: (entries: WorldMapDialogueNpcEntry[]) => void;
+  setMessageDecals: (entries: WorldMapMessageDecalEntry[]) => void;
   setSpawnerMeta: (entries: WorldMapSpawnerMetaEntry[]) => void;
   setQuests: (quests: WorldMapQuestDefinition[]) => void;
   updateDialogueNpcMessage: (row: number, col: number, message: string) => void;
   updateDialogueNpcEntry: (
     row: number,
     col: number,
-    patch: Partial<Pick<WorldMapDialogueNpcEntry, "name" | "lines" | "grantQuestId">>,
+    patch: Partial<
+      Pick<WorldMapDialogueNpcEntry, "name" | "lines" | "linesAfterQuestGrant" | "grantQuestId">
+    >,
   ) => void;
   removeDialogueNpcAt: (row: number, col: number) => void;
+  updateMessageDecalEntry: (
+    row: number,
+    col: number,
+    patch: Partial<Pick<WorldMapMessageDecalEntry, "lines" | "message">>,
+  ) => void;
+  removeMessageDecalAt: (row: number, col: number) => void;
   setSelectedSpawnCell: (cell: { row: number; col: number } | null) => void;
   setActiveLayer: (layer: Layer) => void;
   setSelectedTileId: (id: number) => void;
@@ -253,8 +281,14 @@ interface EditorState {
   setHasModifiedDuringDrag: (modified: boolean) => void;
   setSaveStatus: (status: SaveStatus) => void;
   setNpcConfigModal: (cell: { row: number; col: number } | null) => void;
+  startDialogueNpcRelocate: (row: number, col: number) => void;
+  cancelDialogueNpcRelocate: () => void;
   setSpawnerConfigModal: (cell: { row: number; col: number } | null) => void;
+  startSpawnerRelocate: (row: number, col: number) => void;
+  cancelSpawnerRelocate: () => void;
   updateSpawnerMetaAt: (row: number, col: number, name: string) => void;
+  /** Clear a non-dialogue spawner tile; no-op if empty or dialogue NPC tile. */
+  removeSpawnerAt: (row: number, col: number) => void;
   /** Center the editor camera on a map tile (clamped to viewport). */
   focusCameraOnMapCell: (row: number, col: number) => void;
   addDialogueNpcAtTile: (row: number, col: number) => void;
@@ -330,6 +364,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   spawnsGrid: createEmptySpawnsLayer(initialSize),
   decalsGrid: createEmptyDecalsLayer(initialSize),
   dialogueNpcs: [],
+  messageDecals: [],
   spawnerMeta: [],
   quests: [],
   activeLayer: "ground",
@@ -340,7 +375,9 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   hasModifiedDuringDrag: false,
   saveStatus: "idle",
   npcConfigModal: null,
+  dialogueNpcRelocateFrom: null,
   spawnerConfigModal: null,
+  spawnerRelocateFrom: null,
   sidebarSection: "tiles",
   isPaletteSelectionMode: false,
   paletteSelectionStart: null,
@@ -389,6 +426,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
     })),
   setDecalsGrid: (grid) => set({ decalsGrid: grid }),
   setDialogueNpcs: (entries) => set({ dialogueNpcs: entries }),
+  setMessageDecals: (entries) => set({ messageDecals: entries }),
   setSpawnerMeta: (entries) => set({ spawnerMeta: entries }),
   setQuests: (quests) => set({ quests }),
   updateDialogueNpcMessage: (row, col, message) => {
@@ -418,6 +456,29 @@ export const useEditorStore = create<EditorState>((set, get) => ({
       };
     });
   },
+  updateMessageDecalEntry: (row, col, patch) => {
+    set((state) => {
+      const mapSide = getMapSideLength(state.groundGrid);
+      return {
+        messageDecals: state.messageDecals.map((e) => {
+          if (e.row !== row || e.col !== col) return e;
+          const next = { ...e, ...patch };
+          const [norm] = normalizeMessageDecals([next], mapSide);
+          return norm ?? next;
+        }),
+      };
+    });
+  },
+  removeMessageDecalAt: (row, col) => {
+    const { saveToHistory, decalsGrid, messageDecals, groundGrid } = get();
+    saveToHistory();
+    const mapSize = getMapSideLength(groundGrid);
+    const newGrid = replaceCellInGrid(decalsGrid, row, col, 0);
+    set({
+      decalsGrid: newGrid,
+      messageDecals: reconcileMessageDecalsWithDecalsLayer(newGrid, messageDecals, mapSize),
+    });
+  },
   removeDialogueNpcAt: (row, col) => {
     const {
       saveToHistory,
@@ -427,15 +488,21 @@ export const useEditorStore = create<EditorState>((set, get) => ({
       npcConfigModal,
       spawnerConfigModal,
       spawnerMeta,
+      dialogueNpcRelocateFrom,
     } = get();
     saveToHistory();
     const newGrid = spawnsGrid.map((r, rowIdx) =>
       r.map((cell, colIdx) => (rowIdx === row && colIdx === col ? 0 : cell)),
     );
+    const nextRelocate =
+      dialogueNpcRelocateFrom?.row === row && dialogueNpcRelocateFrom?.col === col
+        ? null
+        : dialogueNpcRelocateFrom;
     set({
       spawnsGrid: newGrid,
       spawnerMeta: reconcileSpawnerMetaWithSpawnsLayer(newGrid, spawnerMeta),
       dialogueNpcs: dialogueNpcs.filter((e) => !(e.row === row && e.col === col)),
+      dialogueNpcRelocateFrom: nextRelocate,
       selectedSpawnCell:
         selectedSpawnCell?.row === row && selectedSpawnCell?.col === col
           ? null
@@ -453,14 +520,59 @@ export const useEditorStore = create<EditorState>((set, get) => ({
     set({
       activeLayer: layer,
       selectedSpawnCell: layer === "spawns" ? get().selectedSpawnCell : null,
+      ...(layer !== "spawns"
+        ? { dialogueNpcRelocateFrom: null, spawnerRelocateFrom: null }
+        : {}),
     }),
   setSelectedTileId: (id) => set({ selectedTileId: id }),
   setExportText: (text) => set({ exportText: text }),
   setIsDragging: (dragging) => set({ isDragging: dragging }),
   setHasModifiedDuringDrag: (modified) => set({ hasModifiedDuringDrag: modified }),
   setSaveStatus: (status) => set({ saveStatus: status }),
-  setNpcConfigModal: (cell) => set({ npcConfigModal: cell }),
-  setSpawnerConfigModal: (cell) => set({ spawnerConfigModal: cell }),
+  setNpcConfigModal: (cell) =>
+    set({
+      npcConfigModal: cell,
+      ...(cell === null ? { dialogueNpcRelocateFrom: null } : {}),
+    }),
+  startDialogueNpcRelocate: (row, col) =>
+    set({
+      dialogueNpcRelocateFrom: { row, col },
+      npcConfigModal: null,
+      spawnerRelocateFrom: null,
+      activeLayer: "spawns",
+      selectedTileId: NPC_DIALOGUE_SURVIVOR_SPAWN_TILE_ID,
+    }),
+  cancelDialogueNpcRelocate: () => {
+    const from = get().dialogueNpcRelocateFrom;
+    set({
+      dialogueNpcRelocateFrom: null,
+      ...(from ? { npcConfigModal: { row: from.row, col: from.col } } : {}),
+    });
+  },
+  setSpawnerConfigModal: (cell) =>
+    set({
+      spawnerConfigModal: cell,
+      ...(cell === null ? { spawnerRelocateFrom: null } : {}),
+    }),
+  startSpawnerRelocate: (row, col) => {
+    const id = get().spawnsGrid[row]?.[col] ?? 0;
+    if (id <= 0 || isNpcDialogueSurvivorSpawnTile(id)) return;
+    set({
+      spawnerRelocateFrom: { row, col },
+      spawnerConfigModal: null,
+      dialogueNpcRelocateFrom: null,
+      activeLayer: "spawns",
+      selectedTileId: id,
+      sidebarSection: "spawners",
+    });
+  },
+  cancelSpawnerRelocate: () => {
+    const from = get().spawnerRelocateFrom;
+    set({
+      spawnerRelocateFrom: null,
+      ...(from ? { spawnerConfigModal: { row: from.row, col: from.col } } : {}),
+    });
+  },
   setSidebarSection: (section) => set({ sidebarSection: section }),
   updateSpawnerMetaAt: (row, col, name) => {
     const trimmed = name.trim();
@@ -478,6 +590,36 @@ export const useEditorStore = create<EditorState>((set, get) => ({
       };
     });
   },
+  removeSpawnerAt: (row, col) => {
+    const {
+      saveToHistory,
+      spawnsGrid,
+      selectedSpawnCell,
+      spawnerConfigModal,
+      spawnerRelocateFrom,
+    } = get();
+    const id = spawnsGrid[row]?.[col] ?? 0;
+    if (id <= 0 || isNpcDialogueSurvivorSpawnTile(id)) return;
+    saveToHistory();
+    const newGrid = replaceCellInGrid(spawnsGrid, row, col, 0);
+    const nextRelocate =
+      spawnerRelocateFrom?.row === row && spawnerRelocateFrom?.col === col
+        ? null
+        : spawnerRelocateFrom;
+    set((s) => ({
+      spawnsGrid: newGrid,
+      spawnerMeta: reconcileSpawnerMetaWithSpawnsLayer(newGrid, s.spawnerMeta),
+      spawnerRelocateFrom: nextRelocate,
+      selectedSpawnCell:
+        selectedSpawnCell?.row === row && selectedSpawnCell?.col === col
+          ? null
+          : selectedSpawnCell,
+      spawnerConfigModal:
+        spawnerConfigModal?.row === row && spawnerConfigModal?.col === col
+          ? null
+          : spawnerConfigModal,
+    }));
+  },
   focusCameraOnMapCell: (row, col) => {
     const { viewportWidthTiles, viewportHeightTiles, groundGrid } = get();
     const mapSize = getMapSideLength(groundGrid);
@@ -494,6 +636,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
       selectedSpawnCell: { row, col },
       npcConfigModal: { row, col },
       spawnerConfigModal: null,
+      spawnerRelocateFrom: null,
       sidebarSection: "npcs",
     });
   },
@@ -505,6 +648,8 @@ export const useEditorStore = create<EditorState>((set, get) => ({
         selectedSpawnCell: { row, col },
         spawnerConfigModal: { row, col },
         npcConfigModal: null,
+        dialogueNpcRelocateFrom: null,
+        spawnerRelocateFrom: null,
         sidebarSection: "spawners" as const,
         ...(id > 0 ? { selectedTileId: id } : {}),
       };
@@ -537,6 +682,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
       selectedSpawnCell: { row, col },
       npcConfigModal: { row, col },
       spawnerConfigModal: null,
+      spawnerRelocateFrom: null,
       sidebarSection: "npcs",
     }));
   },
@@ -549,6 +695,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
         activeLayer: "spawns",
         selectedTileId: targetId,
         selectedSpawnCell: { row, col },
+        spawnerRelocateFrom: null,
         sidebarSection: "spawners",
       });
       return;
@@ -563,6 +710,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
       activeLayer: "spawns",
       selectedTileId: targetId,
       selectedSpawnCell: { row, col },
+      spawnerRelocateFrom: null,
       sidebarSection: "spawners",
     }));
   },
@@ -628,6 +776,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
       spawnsGrid,
       decalsGrid,
       dialogueNpcs,
+      messageDecals,
       spawnerMeta,
       quests,
       history,
@@ -638,6 +787,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
       spawns: spawnsGrid.map((row) => [...row]),
       decals: decalsGrid.map((row) => [...row]),
       dialogueNpcs: dialogueNpcs.map((e) => ({ ...e })),
+      messageDecals: messageDecals.map((e) => ({ ...e })),
       spawnerMeta: spawnerMeta.map((e) => ({ ...e })),
       quests: quests.map((q) => ({
         ...q,
@@ -657,12 +807,18 @@ export const useEditorStore = create<EditorState>((set, get) => ({
     if (history.length === 0) return;
 
     const previousState = history[history.length - 1];
+    const mapSide = previousState.ground.length;
+    const restoredMessageDecals =
+      previousState.messageDecals !== undefined
+        ? previousState.messageDecals.map((e) => ({ ...e }))
+        : reconcileMessageDecalsWithDecalsLayer(previousState.decals, [], mapSide);
     set({
       groundGrid: previousState.ground,
       collidablesGrid: previousState.collidables,
       spawnsGrid: previousState.spawns,
       decalsGrid: previousState.decals,
       dialogueNpcs: (previousState.dialogueNpcs ?? []).map((e) => ({ ...e })),
+      messageDecals: restoredMessageDecals,
       spawnerMeta: (previousState.spawnerMeta ?? []).map((e) => ({ ...e })),
       quests: (previousState.quests ?? []).map((q) => ({
         ...q,
@@ -689,9 +845,11 @@ export const useEditorStore = create<EditorState>((set, get) => ({
         spawnerMeta: [],
         selectedSpawnCell: null,
         spawnerConfigModal: null,
+        dialogueNpcRelocateFrom: null,
+        spawnerRelocateFrom: null,
       });
     } else {
-      set({ decalsGrid: createEmptyDecalsLayer(n) });
+      set({ decalsGrid: createEmptyDecalsLayer(n), messageDecals: [] });
     }
   },
 
@@ -709,6 +867,8 @@ export const useEditorStore = create<EditorState>((set, get) => ({
       groundPaletteSelectionCurrent: null,
       clipboard: null,
       isFillBucketMode: false,
+      dialogueNpcRelocateFrom: null,
+      spawnerRelocateFrom: null,
     });
   },
 
@@ -726,7 +886,86 @@ export const useEditorStore = create<EditorState>((set, get) => ({
       pasteClipboard,
       floodFillGround,
       floodFillCollidables,
+      dialogueNpcRelocateFrom,
+      dialogueNpcs,
+      spawnerRelocateFrom,
+      spawnerMeta,
     } = get();
+
+    if (dialogueNpcRelocateFrom) {
+      if (paintStroke) return;
+      const { row: fr, col: fc } = dialogueNpcRelocateFrom;
+      if (row === fr && col === fc) {
+        set({ dialogueNpcRelocateFrom: null });
+        return;
+      }
+      const destId = spawnsGrid[row]?.[col] ?? 0;
+      if (destId > 0) return;
+      const entry = dialogueNpcs.find((e) => e.row === fr && e.col === fc);
+      if (!entry) {
+        set({ dialogueNpcRelocateFrom: null });
+        return;
+      }
+      saveToHistory();
+      const mapSize = getMapSideLength(groundGrid);
+      let newGrid = replaceCellInGrid(spawnsGrid, fr, fc, 0);
+      newGrid = replaceCellInGrid(newGrid, row, col, NPC_DIALOGUE_SURVIVOR_SPAWN_TILE_ID);
+      const normalized = normalizeDialogueNpcs([{ ...entry, row, col }], mapSize);
+      const movedEntry =
+        normalized[0] ?? makeDialogueNpcEntry(row, col, mapSize, entry);
+      const nextDialogue = [
+        ...dialogueNpcs.filter((e) => !(e.row === fr && e.col === fc)),
+        movedEntry,
+      ];
+      set((s) => ({
+        spawnsGrid: newGrid,
+        dialogueNpcs: nextDialogue,
+        spawnerMeta: reconcileSpawnerMetaWithSpawnsLayer(newGrid, s.spawnerMeta),
+        selectedSpawnCell: { row, col },
+        npcConfigModal: { row, col },
+        dialogueNpcRelocateFrom: null,
+      }));
+      return;
+    }
+
+    if (spawnerRelocateFrom) {
+      if (paintStroke) return;
+      const { row: fr, col: fc } = spawnerRelocateFrom;
+      if (row === fr && col === fc) {
+        set({ spawnerRelocateFrom: null });
+        return;
+      }
+      const destId = spawnsGrid[row]?.[col] ?? 0;
+      if (destId > 0) return;
+      const sourceId = spawnsGrid[fr]?.[fc] ?? 0;
+      if (sourceId <= 0 || isNpcDialogueSurvivorSpawnTile(sourceId)) {
+        set({ spawnerRelocateFrom: null });
+        return;
+      }
+      saveToHistory();
+      let newGrid = replaceCellInGrid(spawnsGrid, fr, fc, 0);
+      newGrid = replaceCellInGrid(newGrid, row, col, sourceId);
+      const metaAtSource = spawnerMeta.find((e) => e.row === fr && e.col === fc);
+      const restMeta = spawnerMeta.filter(
+        (e) => !((e.row === fr && e.col === fc) || (e.row === row && e.col === col)),
+      );
+      const nextSpawnerMetaRaw = metaAtSource?.name
+        ? [...restMeta, { row, col, name: metaAtSource.name }]
+        : restMeta;
+      const nextDialogue = dialogueNpcs.filter(
+        (e) => !((e.row === fr && e.col === fc) || (e.row === row && e.col === col)),
+      );
+      set((s) => ({
+        spawnsGrid: newGrid,
+        dialogueNpcs: nextDialogue,
+        spawnerMeta: reconcileSpawnerMetaWithSpawnsLayer(newGrid, nextSpawnerMetaRaw),
+        selectedSpawnCell: { row, col },
+        spawnerConfigModal: { row, col },
+        spawnerRelocateFrom: null,
+        selectedTileId: sourceId,
+      }));
+      return;
+    }
 
     if (!paintStroke) {
       const cur = spawnsGrid[row]?.[col] ?? 0;
@@ -737,7 +976,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
             npcConfigModal: { row, col },
           });
         } else {
-          set({ selectedSpawnCell: { row, col } });
+          get().openSpawnerMetaEditor(row, col);
         }
         return;
       }
@@ -798,9 +1037,15 @@ export const useEditorStore = create<EditorState>((set, get) => ({
       }
 
       if (activeLayer === "decals") {
-        set({
-          decalsGrid: fillRectInGrid(decalsGrid, row, col, brushSize, selectedTileId, mapSize),
-        });
+        const newDecals = fillRectInGrid(decalsGrid, row, col, brushSize, selectedTileId, mapSize);
+        set((s) => ({
+          decalsGrid: newDecals,
+          messageDecals: reconcileMessageDecalsWithDecalsLayer(
+            newDecals,
+            s.messageDecals,
+            mapSize,
+          ),
+        }));
         return;
       }
 
@@ -874,7 +1119,15 @@ export const useEditorStore = create<EditorState>((set, get) => ({
           : selectedTileId;
 
       const newGrid = replaceCellInGrid(decalsGrid, row, col, newTileId);
-      set({ decalsGrid: newGrid });
+      const mapSize = getMapSideLength(groundGrid);
+      set((s) => ({
+        decalsGrid: newGrid,
+        messageDecals: reconcileMessageDecalsWithDecalsLayer(
+          newGrid,
+          s.messageDecals,
+          mapSize,
+        ),
+      }));
       return;
     }
 
@@ -916,6 +1169,9 @@ export const useEditorStore = create<EditorState>((set, get) => ({
     if (activeLayer === "spawns") {
       const newGrid = replaceCellInGrid(spawnsGrid, row, col, 0);
       const nextDialogue = dialogueNpcs.filter((e) => !(e.row === row && e.col === col));
+      const sr = get().spawnerRelocateFrom;
+      const nextSpawnerRelocate =
+        sr?.row === row && sr?.col === col ? null : sr;
       set((s) => ({
         spawnsGrid: newGrid,
         dialogueNpcs: nextDialogue,
@@ -924,11 +1180,21 @@ export const useEditorStore = create<EditorState>((set, get) => ({
           s.spawnerConfigModal?.row === row && s.spawnerConfigModal?.col === col
             ? null
             : s.spawnerConfigModal,
+        spawnerRelocateFrom: nextSpawnerRelocate,
       }));
       return;
     }
     if (activeLayer === "decals") {
-      set({ decalsGrid: replaceCellInGrid(decalsGrid, row, col, 0) });
+      const newGrid = replaceCellInGrid(decalsGrid, row, col, 0);
+      const mapSize = getMapSideLength(groundGrid);
+      set((s) => ({
+        decalsGrid: newGrid,
+        messageDecals: reconcileMessageDecalsWithDecalsLayer(
+          newGrid,
+          s.messageDecals,
+          mapSize,
+        ),
+      }));
     }
   },
 
@@ -976,23 +1242,41 @@ export const useEditorStore = create<EditorState>((set, get) => ({
           newSpawns[r][c] = 0;
         }
       }
-      set((s) => ({
-        spawnsGrid: newSpawns,
-        dialogueNpcs: nextDialogue,
-        spawnerMeta: reconcileSpawnerMetaWithSpawnsLayer(newSpawns, s.spawnerMeta),
-        spawnerConfigModal:
-          s.spawnerConfigModal &&
-          s.spawnerConfigModal.row >= r0 &&
-          s.spawnerConfigModal.row < r1 &&
-          s.spawnerConfigModal.col >= c0 &&
-          s.spawnerConfigModal.col < c1
-            ? null
-            : s.spawnerConfigModal,
-      }));
+      set((s) => {
+        const rel = s.spawnerRelocateFrom;
+        const clearRelocate =
+          rel &&
+          rel.row >= r0 &&
+          rel.row < r1 &&
+          rel.col >= c0 &&
+          rel.col < c1;
+        return {
+          spawnsGrid: newSpawns,
+          dialogueNpcs: nextDialogue,
+          spawnerMeta: reconcileSpawnerMetaWithSpawnsLayer(newSpawns, s.spawnerMeta),
+          spawnerConfigModal:
+            s.spawnerConfigModal &&
+            s.spawnerConfigModal.row >= r0 &&
+            s.spawnerConfigModal.row < r1 &&
+            s.spawnerConfigModal.col >= c0 &&
+            s.spawnerConfigModal.col < c1
+              ? null
+              : s.spawnerConfigModal,
+          spawnerRelocateFrom: clearRelocate ? null : s.spawnerRelocateFrom,
+        };
+      });
       return;
     }
     if (activeLayer === "decals") {
-      set({ decalsGrid: fillRectInGrid(decalsGrid, row, col, brushSize, 0, mapSize) });
+      const newDecals = fillRectInGrid(decalsGrid, row, col, brushSize, 0, mapSize);
+      set((s) => ({
+        decalsGrid: newDecals,
+        messageDecals: reconcileMessageDecalsWithDecalsLayer(
+          newDecals,
+          s.messageDecals,
+          mapSize,
+        ),
+      }));
     }
   },
 
@@ -1099,7 +1383,14 @@ export const useEditorStore = create<EditorState>((set, get) => ({
         }
       }
 
-      set({ decalsGrid: newDecalsGrid });
+      set((s) => ({
+        decalsGrid: newDecalsGrid,
+        messageDecals: reconcileMessageDecalsWithDecalsLayer(
+          newDecalsGrid,
+          s.messageDecals,
+          mapSize,
+        ),
+      }));
       return;
     }
 

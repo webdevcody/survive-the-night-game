@@ -107,6 +107,9 @@ export class MapManager {
     this.lightMapCache.clear();
     this.lightSourcePositions.clear();
     this.combinedLightMap = this.createEmptyLightMap();
+    // Force immediate light rebuild; else renderDarkness may skip recalc for up to
+    // LIGHT_RECALCULATION_INTERVAL ms while combinedLightMap stays all zeros.
+    this.lastLightRecalculationTime = 0;
   }
 
   getMap(): number[][] | null {
@@ -296,39 +299,34 @@ export class MapManager {
     const currentPlayerId = gameState.playerId;
     let addedCurrentPlayerLight = false;
 
-    // Add entity light sources
-    entities.forEach((entity, entityId) => {
-      const gameEntity = entity;
-      if (gameEntity.hasExt(ClientIlluminated)) {
-        // Skip entities without positionable extension (can't get position)
-        if (!gameEntity.hasExt(ClientPositionable)) return;
-        let baseRadius = gameEntity.getExt(ClientIlluminated).getRadius();
-        // Apply illumination multiplier (keep as float for smooth lighting)
-        baseRadius = baseRadius * illuminationMultiplier;
-        // Skip entities with no light (radius 0 or very small)
-        if (baseRadius <= 0) return;
-        const position = gameEntity.getExt(ClientPositionable).getCenterPosition();
-        const radius = baseRadius * radiusMultiplier;
+    // Add entity light sources (use entity id, not array index — indices shift when entities are removed)
+    for (const gameEntity of entities) {
+      if (!gameEntity.hasExt(ClientIlluminated)) continue;
+      if (!gameEntity.hasExt(ClientPositionable)) continue;
+      let baseRadius = gameEntity.getExt(ClientIlluminated).getRadius();
+      baseRadius = baseRadius * illuminationMultiplier;
+      if (baseRadius <= 0) continue;
+      const position = gameEntity.getExt(ClientPositionable).getCenterPosition();
+      const radius = baseRadius * radiusMultiplier;
 
-        if (playerPosition) {
-          const distToPlayer = distance(playerPosition, position);
-          if (distToPlayer - radius > cullDistance) {
-            return;
-          }
-        }
-
-        sources.push({
-          entityId,
-          position,
-          radius,
-        });
-
-        // Mark if we added light for the current player
-        if (entityId === currentPlayerId) {
-          addedCurrentPlayerLight = true;
+      if (playerPosition) {
+        const distToPlayer = distance(playerPosition, position);
+        if (distToPlayer - radius > cullDistance) {
+          continue;
         }
       }
-    });
+
+      const entityId = gameEntity.getId();
+      sources.push({
+        entityId,
+        position,
+        radius,
+      });
+
+      if (entityId === currentPlayerId) {
+        addedCurrentPlayerLight = true;
+      }
+    }
 
     // Add illumination for zombie players who don't have ClientIlluminated extension
     // This ensures zombie players can always see around themselves
@@ -623,6 +621,9 @@ export class MapManager {
       this.combinedLightMap[0]?.length !== this.groundLayer[0].length
     ) {
       this.combinedLightMap = this.createEmptyLightMap();
+      this.lightMapCache.clear();
+      this.lightSourcePositions.clear();
+      this.lastLightRecalculationTime = 0;
     }
   }
 

@@ -66,6 +66,7 @@ export const InteractableTexts = {
   CAR: "car",
   SURVIVOR: "survivor",
   MERCHANT: "merchant",
+  SET_RESPAWN: "set respawn",
   // Additional level-based items
   WALL_LEVEL_2: "wall level 2",
   WALL_LEVEL_3: "wall level 3",

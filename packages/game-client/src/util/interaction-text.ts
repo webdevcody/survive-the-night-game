@@ -1,8 +1,14 @@
 import { beginTextStackFrame, resolveStackedLabelY } from "@/util/text-stack";
+import { formatDisplayName } from "@/util/format";
 import { getConfig } from "@shared/config";
 import { distance } from "../../../game-shared/src/util/physics";
 import Vector2 from "@shared/util/vector2";
 import PoolManager from "@shared/util/pool-manager";
+
+/** Same pattern as world interact hints: `Repair (E)`, `Set Respawn (E)`, etc. */
+export function formatInteractKeyPrompt(displayName: string): string {
+  return `${formatDisplayName(displayName)} (${getConfig().keybindings.INTERACT})`;
+}
 
 const INTERACTION_TEXT_FONT = "6px Arial";
 const INTERACTION_TEXT_COLOR = "white";

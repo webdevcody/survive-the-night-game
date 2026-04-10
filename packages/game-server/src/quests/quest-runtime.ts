@@ -12,6 +12,7 @@ import {
   parsePlayerQuestState,
   emptyPlayerQuestState,
 } from "@shared/quests/player-quest-state";
+import { queuePersistQuestProgressToWebsite } from "@/util/persist-quest-progress";
 
 function getState(player: Player): PlayerQuestStatePayload {
   return parsePlayerQuestState(player.getSerialized().get("questStateJson"));
@@ -19,6 +20,7 @@ function getState(player: Player): PlayerQuestStatePayload {
 
 function setState(player: Player, s: PlayerQuestStatePayload): void {
   player.getSerialized().set("questStateJson", stringifyPlayerQuestState(s));
+  queuePersistQuestProgressToWebsite(player);
 }
 
 function mapStatToSerializedKey(stat: string): string | null {

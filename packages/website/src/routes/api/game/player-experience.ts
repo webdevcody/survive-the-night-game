@@ -38,6 +38,8 @@ export const Route = createFileRoute("/api/game/player-experience")({
               characterAllocations: stats.characterAllocations ?? {},
               lastTileX: stats.lastTileX ?? null,
               lastTileY: stats.lastTileY ?? null,
+              respawnTileX: stats.respawnTileX ?? null,
+              respawnTileY: stats.respawnTileY ?? null,
               questProgress: coercePlayerQuestState(stats.questProgress),
             }),
             { status: 200, headers: { "Content-Type": "application/json" } },

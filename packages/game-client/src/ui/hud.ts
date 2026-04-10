@@ -442,7 +442,7 @@ export class Hud {
     this.leaderboard.render(ctx, gameState);
     this.chatWidget.render(ctx, gameState);
 
-    // Health + stamina orbs (minimap HUD group)
+    // Health + stamina orbs (left/right of bottom loadout strip)
     const currentPlayer = getPlayer(gameState);
     const isZombiePlayer = currentPlayer?.isZombiePlayer?.() ?? false;
     if (!isZombiePlayer) {

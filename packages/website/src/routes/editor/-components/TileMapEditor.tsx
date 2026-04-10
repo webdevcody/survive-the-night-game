@@ -100,6 +100,19 @@ export function TileMapEditor() {
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
       if (isTypingTarget(e.target)) return;
+      if (e.key === "Escape") {
+        const st = useEditorStore.getState();
+        if (st.dialogueNpcRelocateFrom) {
+          e.preventDefault();
+          st.cancelDialogueNpcRelocate();
+          return;
+        }
+        if (st.spawnerRelocateFrom) {
+          e.preventDefault();
+          st.cancelSpawnerRelocate();
+          return;
+        }
+      }
       if (!e.ctrlKey && !e.metaKey && useEditorStore.getState().sidebarSection === "tiles") {
         const incBrush = e.code === "NumpadAdd" || e.code === "Equal";
         const decBrush =
@@ -482,6 +495,32 @@ export function TileMapEditor() {
           ctx.strokeStyle = "rgba(34, 211, 238, 0.95)";
           ctx.lineWidth = 3;
           ctx.strokeRect(sx + 1.5, sy + 1.5, tilePx - 3, tilePx - 3);
+        }
+      }
+
+      const relocateNpc = s.dialogueNpcRelocateFrom;
+      if (relocateNpc) {
+        const lr = relocateNpc.row - s.cameraY;
+        const lc = relocateNpc.col - s.cameraX;
+        if (lr >= 0 && lc >= 0 && lr < vrc && lc < vcc) {
+          const rx = lc * tilePx;
+          const ry = lr * tilePx;
+          ctx.strokeStyle = "rgba(251, 191, 36, 0.95)";
+          ctx.lineWidth = 3;
+          ctx.strokeRect(rx + 1.5, ry + 1.5, tilePx - 3, tilePx - 3);
+        }
+      }
+
+      const relocateSpawner = s.spawnerRelocateFrom;
+      if (relocateSpawner) {
+        const lr = relocateSpawner.row - s.cameraY;
+        const lc = relocateSpawner.col - s.cameraX;
+        if (lr >= 0 && lc >= 0 && lr < vrc && lc < vcc) {
+          const rx = lc * tilePx;
+          const ry = lr * tilePx;
+          ctx.strokeStyle = "rgba(167, 139, 250, 0.95)";
+          ctx.lineWidth = 3;
+          ctx.strokeRect(rx + 1.5, ry + 1.5, tilePx - 3, tilePx - 3);
         }
       }
 

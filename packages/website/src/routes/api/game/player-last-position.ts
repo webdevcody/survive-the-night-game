@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import {
   persistGameServerDisconnectSnapshot,
+  persistOpenWorldSessionFields,
   updateLastTilePosition,
 } from "~/data-access/user-stats";
 import { coercePlayerQuestState } from "@survive-the-night/game-shared/quests/player-quest-state";
@@ -8,8 +9,9 @@ import { requireGameServerApiKey } from "~/utils/game-server-api-auth";
 
 /**
  * Game server → website: save last open-world tile when the player disconnects.
- * POST JSON { userId, lastTileX, lastTileY, questProgress?, characterAllocations? } with X-API-Key.
- * When `questProgress` and `characterAllocations` are included, all fields are written in one update (trusted).
+ * POST JSON { userId, lastTileX, lastTileY, questProgress?, characterAllocations?, respawnTileX?, respawnTileY? } with X-API-Key.
+ * Default (disconnect): last tile + optional respawn + optional character — does **not** overwrite quest_progress (quests use /api/game/player-quest-progress).
+ * Legacy: if both questProgress and characterAllocations are sent, full snapshot including quests is written.
  */
 export const Route = createFileRoute("/api/game/player-last-position")({
   server: {
@@ -25,6 +27,8 @@ export const Route = createFileRoute("/api/game/player-last-position")({
             userId?: unknown;
             lastTileX?: unknown;
             lastTileY?: unknown;
+            respawnTileX?: unknown;
+            respawnTileY?: unknown;
             questProgress?: unknown;
             characterAllocations?: unknown;
           };
@@ -61,19 +65,64 @@ export const Route = createFileRoute("/api/game/player-last-position")({
             body.characterAllocations !== undefined &&
             body.characterAllocations !== null;
 
-          const updated = hasSnapshot
-            ? await persistGameServerDisconnectSnapshot(body.userId, {
+          let respawnTileX: number | null | undefined = undefined;
+          let respawnTileY: number | null | undefined = undefined;
+          if (body.respawnTileX !== undefined || body.respawnTileY !== undefined) {
+            const rx =
+              typeof body.respawnTileX === "number" && Number.isFinite(body.respawnTileX)
+                ? Math.floor(body.respawnTileX)
+                : null;
+            const ry =
+              typeof body.respawnTileY === "number" && Number.isFinite(body.respawnTileY)
+                ? Math.floor(body.respawnTileY)
+                : null;
+            if (rx !== null && ry !== null) {
+              respawnTileX = rx;
+              respawnTileY = ry;
+            } else {
+              respawnTileX = null;
+              respawnTileY = null;
+            }
+          }
+
+          let updated;
+          if (hasSnapshot) {
+            updated = await persistGameServerDisconnectSnapshot(body.userId, {
+              lastTileX: tx,
+              lastTileY: ty,
+              questProgress: coercePlayerQuestState(body.questProgress),
+              characterAllocations:
+                typeof body.characterAllocations === "object" &&
+                body.characterAllocations !== null &&
+                !Array.isArray(body.characterAllocations)
+                  ? (body.characterAllocations as Record<string, number>)
+                  : {},
+              ...(respawnTileX !== undefined ? { respawnTileX, respawnTileY } : {}),
+            });
+          } else {
+            const charRaw = body.characterAllocations;
+            const characterAllocations =
+              charRaw !== undefined &&
+              charRaw !== null &&
+              typeof charRaw === "object" &&
+              !Array.isArray(charRaw)
+                ? (charRaw as Record<string, number>)
+                : undefined;
+
+            const hasSideFields =
+              characterAllocations !== undefined || respawnTileX !== undefined;
+
+            if (hasSideFields) {
+              updated = await persistOpenWorldSessionFields(body.userId, {
                 lastTileX: tx,
                 lastTileY: ty,
-                questProgress: coercePlayerQuestState(body.questProgress),
-                characterAllocations:
-                  typeof body.characterAllocations === "object" &&
-                  body.characterAllocations !== null &&
-                  !Array.isArray(body.characterAllocations)
-                    ? (body.characterAllocations as Record<string, number>)
-                    : {},
-              })
-            : await updateLastTilePosition(body.userId, tx, ty);
+                ...(characterAllocations !== undefined ? { characterAllocations } : {}),
+                ...(respawnTileX !== undefined ? { respawnTileX, respawnTileY } : {}),
+              });
+            } else {
+              updated = await updateLastTilePosition(body.userId, tx, ty);
+            }
+          }
 
           return new Response(
             JSON.stringify({

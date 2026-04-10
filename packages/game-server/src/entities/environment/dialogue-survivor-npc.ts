@@ -7,7 +7,7 @@ import PoolManager from "@shared/util/pool-manager";
 import { getConfig } from "@shared/config";
 import { SerializableFields } from "@/util/serializable-fields";
 import type { WorldMapDialogueNpcEntry } from "@shared/map/world-map-types";
-import { getDialogueNpcLines } from "@shared/map/world-map-types";
+import { getDialogueNpcLines, getDialogueNpcLinesAfterQuestGrant } from "@shared/map/world-map-types";
 
 /**
  * Static NPC using the survivor sprite; dialogue is authored in world-map.json.
@@ -22,6 +22,7 @@ export class DialogueSurvivorNpc extends Entity {
     super(gameManagers, Entities.DIALOGUE_SURVIVOR_NPC);
 
     const lines = getDialogueNpcLines(entry);
+    const linesAfter = getDialogueNpcLinesAfterQuestGrant(entry);
     const grantRaw = entry.grantQuestId;
     const grantQuestId =
       grantRaw === null || grantRaw === undefined ? "" : String(grantRaw).trim();
@@ -29,6 +30,7 @@ export class DialogueSurvivorNpc extends Entity {
     this.serialized = new SerializableFields(
       {
         dialogueLines: lines,
+        dialogueLinesAfterQuestGrant: linesAfter,
         displayName: entry.name?.trim() ?? "",
         grantQuestId,
         npcKey: `${tileY},${tileX}`,

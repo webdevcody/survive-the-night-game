@@ -52,6 +52,7 @@ import { PlayerColor } from "@shared/commands/commands";
 import { InteractionManager } from "./managers/interaction-manager";
 import { ClientEventHandlers } from "./managers/client-event-handlers";
 import { DialogueSurvivorNpcClient } from "./entities/environment/dialogue-survivor-npc";
+import { MessageDecalClient } from "./entities/environment/message-decal";
 import { QuestCompletedModal, formatQuestRewardsForDisplay } from "./ui/quest-completed-modal";
 
 export class GameClient {
@@ -224,7 +225,6 @@ export class GameClient {
         inputs.facing = Direction.Left;
       },
       isNpcDialogueOpen: () => this.gameState.openDialogueNpcId != null,
-      onNpcDialogueSpaceDown: () => this.handleNpcDialogueSpace(),
       isQuestCompletedModalOpen: () => this.questCompletedModal.isOpen(),
       onDismissQuestCompletedModal: () => this.questCompletedModal.dismissCurrent(),
       onInteractStart: () => {
@@ -241,7 +241,8 @@ export class GameClient {
           const openEnt = getEntityById(this.gameState, this.gameState.openDialogueNpcId);
           if (
             openEnt &&
-            openEnt.getType() === "dialogue_survivor_npc" &&
+            (openEnt.getType() === "dialogue_survivor_npc" ||
+              openEnt.getType() === "message_decal") &&
             player &&
             openEnt.hasExt(ClientPositionable) &&
             player.hasExt(ClientPositionable)
@@ -251,12 +252,7 @@ export class GameClient {
               openEnt.getExt(ClientPositionable).getCenterPosition(),
             );
             if (d <= maxInteract) {
-              const npc = openEnt as DialogueSurvivorNpcClient;
-              const lines = npc.getDialogueLines();
-              const idx = this.gameState.dialogueLineIndex;
-              if (lines.length > 0 && idx >= lines.length - 1) {
-                this.closeNpcDialogueWithCompletion(npc.getId());
-              }
+              this.advanceNpcDialogue();
               return;
             }
           }
@@ -279,9 +275,24 @@ export class GameClient {
                 best = e;
               }
             }
+            for (const e of getEntitiesByType(this.gameState, "message_decal")) {
+              if (!e.hasExt(ClientPositionable)) continue;
+              const d = distance(
+                player.getExt(ClientPositionable).getCenterPosition(),
+                e.getExt(ClientPositionable).getCenterPosition(),
+              );
+              if (d <= maxInteract && d < bestDist) {
+                bestDist = d;
+                best = e;
+              }
+            }
             closest = best;
           }
-          if (closest?.getType() === "dialogue_survivor_npc" && closest.hasExt(ClientPositionable)) {
+          if (
+            (closest?.getType() === "dialogue_survivor_npc" ||
+              closest?.getType() === "message_decal") &&
+            closest.hasExt(ClientPositionable)
+          ) {
             const d = distance(
               player.getExt(ClientPositionable).getCenterPosition(),
               closest.getExt(ClientPositionable).getCenterPosition(),
@@ -470,24 +481,70 @@ export class GameClient {
   private closeNpcDialogueWithCompletion(npcEntityId: number): void {
     this.gameState.openDialogueNpcId = null;
     this.gameState.dialogueLineIndex = 0;
-    this.socketManager?.sendDialogueNpcComplete(npcEntityId);
+    this.socketManager?.sendDialogueNpcComplete(npcEntityId, false);
   }
 
-  private handleNpcDialogueSpace(): void {
+  private advanceNpcDialogue(): void {
     const id = this.gameState.openDialogueNpcId;
     if (id == null) return;
     const openEnt = getEntityById(this.gameState, id);
-    if (!openEnt || openEnt.getType() !== "dialogue_survivor_npc") return;
+    if (!openEnt) return;
+
+    if (openEnt.getType() === "message_decal") {
+      const sign = openEnt as MessageDecalClient;
+      const lines = sign.getMessageLines();
+      const total = lines.length;
+      const idx = this.gameState.dialogueLineIndex;
+      if (total === 0) {
+        this.gameState.openDialogueNpcId = null;
+        this.gameState.dialogueLineIndex = 0;
+        return;
+      }
+      if (idx < total - 1) {
+        this.gameState.dialogueLineIndex++;
+        return;
+      }
+      this.gameState.openDialogueNpcId = null;
+      this.gameState.dialogueLineIndex = 0;
+      return;
+    }
+
+    if (openEnt.getType() !== "dialogue_survivor_npc") return;
     const npc = openEnt as DialogueSurvivorNpcClient;
-    const lines = npc.getDialogueLines();
-    if (lines.length === 0) {
+    const intro = npc.getDialogueLines();
+    const post = npc.getPostGrantDialogueLines();
+    const introLen = intro.length;
+    const postLen = post.length;
+    const hasPostGrantFlow = postLen > 0 && npc.grantQuestId !== "";
+    const total = introLen + postLen;
+    const idx = this.gameState.dialogueLineIndex;
+
+    if (total === 0) {
       this.closeNpcDialogueWithCompletion(id);
       return;
     }
-    if (this.gameState.dialogueLineIndex < lines.length - 1) {
+
+    if (idx < introLen - 1) {
       this.gameState.dialogueLineIndex++;
       return;
     }
+
+    if (idx === introLen - 1) {
+      if (hasPostGrantFlow) {
+        this.socketManager?.sendDialogueNpcComplete(id, true);
+        this.gameState.dialogueLineIndex++;
+        return;
+      }
+      this.closeNpcDialogueWithCompletion(id);
+      return;
+    }
+
+    const postIdx = idx - introLen;
+    if (postIdx < postLen - 1) {
+      this.gameState.dialogueLineIndex++;
+      return;
+    }
+
     this.closeNpcDialogueWithCompletion(id);
   }
 

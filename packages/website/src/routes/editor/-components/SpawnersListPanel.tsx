@@ -47,8 +47,9 @@ export function SpawnersListPanel() {
   return (
     <div className="flex min-h-0 flex-1 flex-col gap-2">
       <p className="text-[10px] text-gray-500">
-        {entries.length} spawner{entries.length === 1 ? "" : "s"} — Click a row to set a name.{" "}
-        <span className="text-gray-400">Go</span> moves the camera.
+        {entries.length} spawner{entries.length === 1 ? "" : "s"} — Click a row (or a spawner tile on
+        the map) to edit the label and relocate. <span className="text-gray-400">Go</span> moves the
+        camera.
       </p>
       <ul className="min-h-0 flex-1 space-y-1.5 overflow-y-auto pr-1">
         {entries.map(({ row, col, id }) => {

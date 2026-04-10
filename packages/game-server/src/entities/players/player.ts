@@ -53,6 +53,8 @@ import {
 import { REGENERATE_HEAL_PER_SECOND } from "@shared/util/skill-tree";
 import { getZombieTypesSet } from "@shared/constants";
 import type { PersistedPlayerProgress } from "@/services/player-progress-types";
+import { UserSessionCache } from "@/services/user-session-cache";
+import { GAME_SERVER_API_KEY, WEBSITE_API_URL } from "@/config/env";
 import { weaponRegistry } from "@shared/entities/weapon-registry";
 import { itemMatchesLoadoutRow } from "@shared/util/weapon-loadout";
 import { FISTS_INVENTORY_SENTINEL } from "@shared/constants/inventory-sentinel";
@@ -102,6 +104,13 @@ export class Player extends Entity {
   private passiveHpRegenAccumulator = 0;
   /** Open world: restored from DB on connect; consumed when placing spawn. Not serialized. */
   private pendingLogoutSpawnTile: { x: number; y: number } | null = null;
+  /**
+   * Respawn tile from campsite-fire bind (hydrated from DB on connect; updated on interact).
+   * Mirrored to `respawnBindTileX` / `respawnBindTileY` for the owning client UI.
+   */
+  private boundRespawnTile: { x: number; y: number } | null = null;
+  /** Real-player client socket id (for website API persistence). AI players leave this null. */
+  private clientSocketId: string | null = null;
 
   constructor(gameManagers: IGameManagers) {
     super(gameManagers, Entities.PLAYER);
@@ -151,6 +160,8 @@ export class Player extends Entity {
         weaponLoadoutMelee: 3,
         activeWeaponLoadout: 0,
         questStateJson: stringifyPlayerQuestState(emptyPlayerQuestState()),
+        respawnBindTileX: -1,
+        respawnBindTileY: -1,
       },
       () => this.markEntityDirty(),
       {
@@ -178,6 +189,8 @@ export class Player extends Entity {
         weaponLoadoutSecondary: { numberType: "uint8" },
         weaponLoadoutMelee: { numberType: "uint8" },
         activeWeaponLoadout: { numberType: "uint8" },
+        respawnBindTileX: { numberType: "uint32", optional: true },
+        respawnBindTileY: { numberType: "uint32", optional: true },
         // Note: inputSequenceNumber is not in SerializableFields, so no metadata needed
       },
     );
@@ -321,8 +334,118 @@ export class Player extends Entity {
     const maxHealth = this.getExt(Destructible).getMaxHealth();
     this.getExt(Destructible).setHealth(maxHealth);
 
-    const spawnPosition = this.getGameManagers().getMapManager().getPlayerSpawnPositionForMap();
+    const mapManager = this.getGameManagers().getMapManager();
+    if (this.boundRespawnTile) {
+      const restored = mapManager.tryGetPositionForSavedTile(
+        this.boundRespawnTile.x,
+        this.boundRespawnTile.y,
+      );
+      if (restored) {
+        this.setPosition(restored);
+        return;
+      }
+      this.boundRespawnTile = null;
+      this.syncBoundRespawnToSerialized();
+      this.queueClearRespawnBindInDb();
+    }
+
+    const spawnPosition = mapManager.getPlayerSpawnPositionForMap();
     this.setPosition(spawnPosition);
+  }
+
+  setClientSocketId(socketId: string | null): void {
+    this.clientSocketId = socketId;
+  }
+
+  getClientSocketId(): string | null {
+    return this.clientSocketId;
+  }
+
+  getBoundRespawnTile(): { x: number; y: number } | null {
+    return this.boundRespawnTile;
+  }
+
+  setBoundRespawnTile(tileX: number, tileY: number): void {
+    this.boundRespawnTile = { x: tileX, y: tileY };
+    this.syncBoundRespawnToSerialized();
+    this.queuePersistRespawnBindToWebsite();
+  }
+
+  private syncBoundRespawnToSerialized(): void {
+    if (!this.boundRespawnTile) {
+      this.serialized.set("respawnBindTileX", -1);
+      this.serialized.set("respawnBindTileY", -1);
+      return;
+    }
+    this.serialized.set("respawnBindTileX", this.boundRespawnTile.x);
+    this.serialized.set("respawnBindTileY", this.boundRespawnTile.y);
+  }
+
+  private queuePersistRespawnBindToWebsite(): void {
+    if (!GAME_SERVER_API_KEY || !this.boundRespawnTile || !this.clientSocketId) {
+      return;
+    }
+    const userId = UserSessionCache.getInstance().getUserIdBySocket(this.clientSocketId);
+    if (!userId) {
+      return;
+    }
+    const url = `${WEBSITE_API_URL}/api/game/player-respawn-bind`;
+    const tile = this.boundRespawnTile;
+    void (async () => {
+      try {
+        const res = await fetch(url, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "X-API-Key": GAME_SERVER_API_KEY,
+          },
+          body: JSON.stringify({
+            userId,
+            respawnTileX: tile.x,
+            respawnTileY: tile.y,
+          }),
+        });
+        if (!res.ok) {
+          const t = await res.text().catch(() => "");
+          console.warn(
+            `[respawn-bind] HTTP ${res.status} for user ${userId}: ${t.slice(0, 300)}`,
+          );
+        }
+      } catch (e) {
+        console.warn(`[respawn-bind] failed for user ${userId}:`, e);
+      }
+    })();
+  }
+
+  private queueClearRespawnBindInDb(): void {
+    if (!GAME_SERVER_API_KEY || !this.clientSocketId) {
+      return;
+    }
+    const userId = UserSessionCache.getInstance().getUserIdBySocket(this.clientSocketId);
+    if (!userId) {
+      return;
+    }
+    const url = `${WEBSITE_API_URL}/api/game/player-respawn-bind`;
+    void (async () => {
+      try {
+        const res = await fetch(url, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "X-API-Key": GAME_SERVER_API_KEY,
+          },
+          body: JSON.stringify({ userId, clear: true }),
+        });
+        if (!res.ok) {
+          const t = await res.text().catch(() => "");
+          console.warn(
+            `[respawn-bind clear] HTTP ${res.status} for user ${userId}: ${t.slice(0, 300)}`,
+          );
+        }
+      } catch (e) {
+        console.warn(`[respawn-bind clear] failed for user ${userId}:`, e);
+      }
+    })();
   }
 
   getRespawnCooldownRemaining(): number {
@@ -1189,6 +1312,20 @@ export class Player extends Entity {
     } else {
       this.pendingLogoutSpawnTile = null;
     }
+
+    const rx = progress.respawnTileX;
+    const ry = progress.respawnTileY;
+    if (
+      typeof rx === "number" &&
+      Number.isFinite(rx) &&
+      typeof ry === "number" &&
+      Number.isFinite(ry)
+    ) {
+      this.boundRespawnTile = { x: Math.floor(rx), y: Math.floor(ry) };
+    } else {
+      this.boundRespawnTile = null;
+    }
+    this.syncBoundRespawnToSerialized();
   }
 
   /**

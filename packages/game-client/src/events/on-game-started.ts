@@ -13,7 +13,5 @@ export const onGameStarted = (context: InitializationContext, event: GameStarted
 
   context.gameState.gameMode = data.gameMode;
 
-  context.gameClient.getHud().addMessage("Explore the world. Watch your back.", "cyan");
-
   context.resetAndRequestInitialization("GameStarted event");
 };

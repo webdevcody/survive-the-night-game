@@ -23,6 +23,8 @@ import { Route as ApiSessionValidateRouteImport } from './routes/api/session/val
 import { Route as ApiGameZombieKillRouteImport } from './routes/api/game/zombie-kill'
 import { Route as ApiGameSkillAllocationsRouteImport } from './routes/api/game/skill-allocations'
 import { Route as ApiGamePlayerStatsRouteImport } from './routes/api/game/player-stats'
+import { Route as ApiGamePlayerRespawnBindRouteImport } from './routes/api/game/player-respawn-bind'
+import { Route as ApiGamePlayerQuestProgressRouteImport } from './routes/api/game/player-quest-progress'
 import { Route as ApiGamePlayerLastPositionRouteImport } from './routes/api/game/player-last-position'
 import { Route as ApiGamePlayerExperienceRouteImport } from './routes/api/game/player-experience'
 import { Route as ApiGameCharacterAllocationsRouteImport } from './routes/api/game/character-allocations'
@@ -99,6 +101,18 @@ const ApiGamePlayerStatsRoute = ApiGamePlayerStatsRouteImport.update({
   path: '/api/game/player-stats',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiGamePlayerRespawnBindRoute =
+  ApiGamePlayerRespawnBindRouteImport.update({
+    id: '/api/game/player-respawn-bind',
+    path: '/api/game/player-respawn-bind',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ApiGamePlayerQuestProgressRoute =
+  ApiGamePlayerQuestProgressRouteImport.update({
+    id: '/api/game/player-quest-progress',
+    path: '/api/game/player-quest-progress',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiGamePlayerLastPositionRoute =
   ApiGamePlayerLastPositionRouteImport.update({
     id: '/api/game/player-last-position',
@@ -143,6 +157,8 @@ export interface FileRoutesByFullPath {
   '/api/game/character-allocations': typeof ApiGameCharacterAllocationsRoute
   '/api/game/player-experience': typeof ApiGamePlayerExperienceRoute
   '/api/game/player-last-position': typeof ApiGamePlayerLastPositionRoute
+  '/api/game/player-quest-progress': typeof ApiGamePlayerQuestProgressRoute
+  '/api/game/player-respawn-bind': typeof ApiGamePlayerRespawnBindRoute
   '/api/game/player-stats': typeof ApiGamePlayerStatsRoute
   '/api/game/skill-allocations': typeof ApiGameSkillAllocationsRoute
   '/api/game/zombie-kill': typeof ApiGameZombieKillRoute
@@ -164,6 +180,8 @@ export interface FileRoutesByTo {
   '/api/game/character-allocations': typeof ApiGameCharacterAllocationsRoute
   '/api/game/player-experience': typeof ApiGamePlayerExperienceRoute
   '/api/game/player-last-position': typeof ApiGamePlayerLastPositionRoute
+  '/api/game/player-quest-progress': typeof ApiGamePlayerQuestProgressRoute
+  '/api/game/player-respawn-bind': typeof ApiGamePlayerRespawnBindRoute
   '/api/game/player-stats': typeof ApiGamePlayerStatsRoute
   '/api/game/skill-allocations': typeof ApiGameSkillAllocationsRoute
   '/api/game/zombie-kill': typeof ApiGameZombieKillRoute
@@ -186,6 +204,8 @@ export interface FileRoutesById {
   '/api/game/character-allocations': typeof ApiGameCharacterAllocationsRoute
   '/api/game/player-experience': typeof ApiGamePlayerExperienceRoute
   '/api/game/player-last-position': typeof ApiGamePlayerLastPositionRoute
+  '/api/game/player-quest-progress': typeof ApiGamePlayerQuestProgressRoute
+  '/api/game/player-respawn-bind': typeof ApiGamePlayerRespawnBindRoute
   '/api/game/player-stats': typeof ApiGamePlayerStatsRoute
   '/api/game/skill-allocations': typeof ApiGameSkillAllocationsRoute
   '/api/game/zombie-kill': typeof ApiGameZombieKillRoute
@@ -209,6 +229,8 @@ export interface FileRouteTypes {
     | '/api/game/character-allocations'
     | '/api/game/player-experience'
     | '/api/game/player-last-position'
+    | '/api/game/player-quest-progress'
+    | '/api/game/player-respawn-bind'
     | '/api/game/player-stats'
     | '/api/game/skill-allocations'
     | '/api/game/zombie-kill'
@@ -230,6 +252,8 @@ export interface FileRouteTypes {
     | '/api/game/character-allocations'
     | '/api/game/player-experience'
     | '/api/game/player-last-position'
+    | '/api/game/player-quest-progress'
+    | '/api/game/player-respawn-bind'
     | '/api/game/player-stats'
     | '/api/game/skill-allocations'
     | '/api/game/zombie-kill'
@@ -251,6 +275,8 @@ export interface FileRouteTypes {
     | '/api/game/character-allocations'
     | '/api/game/player-experience'
     | '/api/game/player-last-position'
+    | '/api/game/player-quest-progress'
+    | '/api/game/player-respawn-bind'
     | '/api/game/player-stats'
     | '/api/game/skill-allocations'
     | '/api/game/zombie-kill'
@@ -273,6 +299,8 @@ export interface RootRouteChildren {
   ApiGameCharacterAllocationsRoute: typeof ApiGameCharacterAllocationsRoute
   ApiGamePlayerExperienceRoute: typeof ApiGamePlayerExperienceRoute
   ApiGamePlayerLastPositionRoute: typeof ApiGamePlayerLastPositionRoute
+  ApiGamePlayerQuestProgressRoute: typeof ApiGamePlayerQuestProgressRoute
+  ApiGamePlayerRespawnBindRoute: typeof ApiGamePlayerRespawnBindRoute
   ApiGamePlayerStatsRoute: typeof ApiGamePlayerStatsRoute
   ApiGameSkillAllocationsRoute: typeof ApiGameSkillAllocationsRoute
   ApiGameZombieKillRoute: typeof ApiGameZombieKillRoute
@@ -379,6 +407,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiGamePlayerStatsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/game/player-respawn-bind': {
+      id: '/api/game/player-respawn-bind'
+      path: '/api/game/player-respawn-bind'
+      fullPath: '/api/game/player-respawn-bind'
+      preLoaderRoute: typeof ApiGamePlayerRespawnBindRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/game/player-quest-progress': {
+      id: '/api/game/player-quest-progress'
+      path: '/api/game/player-quest-progress'
+      fullPath: '/api/game/player-quest-progress'
+      preLoaderRoute: typeof ApiGamePlayerQuestProgressRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/game/player-last-position': {
       id: '/api/game/player-last-position'
       path: '/api/game/player-last-position'
@@ -433,6 +475,8 @@ const rootRouteChildren: RootRouteChildren = {
   ApiGameCharacterAllocationsRoute: ApiGameCharacterAllocationsRoute,
   ApiGamePlayerExperienceRoute: ApiGamePlayerExperienceRoute,
   ApiGamePlayerLastPositionRoute: ApiGamePlayerLastPositionRoute,
+  ApiGamePlayerQuestProgressRoute: ApiGamePlayerQuestProgressRoute,
+  ApiGamePlayerRespawnBindRoute: ApiGamePlayerRespawnBindRoute,
   ApiGamePlayerStatsRoute: ApiGamePlayerStatsRoute,
   ApiGameSkillAllocationsRoute: ApiGameSkillAllocationsRoute,
   ApiGameZombieKillRoute: ApiGameZombieKillRoute,

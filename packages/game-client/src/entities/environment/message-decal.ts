@@ -5,7 +5,6 @@ import { ClientEntity } from "@/entities/client-entity";
 import { Renderable } from "@/entities/util";
 import { ClientInteractive, ClientPositionable } from "@/extensions";
 import { Z_INDEX } from "@shared/map";
-import { Direction } from "@shared/util/direction";
 import { getPlayer } from "@/util/get-player";
 import { renderInteractionText } from "@/util/interaction-text";
 import { formatDisplayName } from "@/util/format";
@@ -34,59 +33,41 @@ function wrapText(ctx: CanvasRenderingContext2D, text: string, maxWidth: number)
   return lines.length ? lines : [""];
 }
 
-export class DialogueSurvivorNpcClient extends ClientEntity implements Renderable {
+export class MessageDecalClient extends ClientEntity implements Renderable {
   public dialogueLines: string[] = [];
-  public dialogueLinesAfterQuestGrant: string[] = [];
-  public grantQuestId: string = "";
-  public displayName: string = "";
 
   constructor(data: RawEntity, assetManager: AssetManager) {
     super(data, assetManager);
-    this.syncAuthoredFields(data);
+    this.syncLines(data);
   }
 
-  private syncAuthoredFields(data: RawEntity): void {
-    const raw = (data as any).dialogueLines;
+  private syncLines(data: RawEntity): void {
+    const raw = (data as { dialogueLines?: unknown }).dialogueLines;
     this.dialogueLines = Array.isArray(raw)
       ? raw.map((l: unknown) => (typeof l === "string" ? l : String(l)))
       : [];
-    const rawAfter = (data as any).dialogueLinesAfterQuestGrant;
-    this.dialogueLinesAfterQuestGrant = Array.isArray(rawAfter)
-      ? rawAfter.map((l: unknown) => (typeof l === "string" ? l : String(l)))
-      : [];
-    this.grantQuestId = String((data as any).grantQuestId ?? "").trim();
-    this.displayName = String((data as any).displayName ?? "").trim();
   }
 
-  /** Intro lines (before quest grant). */
-  public getDialogueLines(): string[] {
+  public getMessageLines(): string[] {
     return this.dialogueLines.length > 0 ? this.dialogueLines : ["…"];
   }
 
-  public getPostGrantDialogueLines(): string[] {
-    return this.dialogueLinesAfterQuestGrant;
+  public getLineCount(): number {
+    return this.getMessageLines().length;
   }
 
-  public getTotalDialogueLineCount(): number {
-    return this.getDialogueLines().length + this.getPostGrantDialogueLines().length;
-  }
-
-  public getDialogueLineAt(globalIndex: number): string {
-    const intro = this.getDialogueLines();
-    const post = this.getPostGrantDialogueLines();
-    if (globalIndex < intro.length) {
-      return intro[globalIndex]?.trim() || "…";
-    }
-    return post[globalIndex - intro.length]?.trim() || "…";
+  public getLineAt(index: number): string {
+    const lines = this.getMessageLines();
+    return lines[Math.max(0, Math.min(index, lines.length - 1))]?.trim() || "…";
   }
 
   public deserializeFromBuffer(reader: BufferReader): void {
     super.deserializeFromBuffer(reader);
-    this.syncAuthoredFields(this as unknown as RawEntity);
+    this.syncLines(this as unknown as RawEntity);
   }
 
   public getZIndex(): number {
-    return Z_INDEX.ITEMS;
+    return Z_INDEX.DECALS;
   }
 
   protected renderInteractionText(ctx: CanvasRenderingContext2D, gameState: GameState): void {
@@ -98,7 +79,7 @@ export class DialogueSurvivorNpcClient extends ClientEntity implements Renderabl
       return;
     }
 
-    const total = this.getTotalDialogueLineCount();
+    const total = this.getLineCount();
     const onLast =
       gameState.openDialogueNpcId === this.getId() &&
       total > 0 &&
@@ -108,7 +89,7 @@ export class DialogueSurvivorNpcClient extends ClientEntity implements Renderabl
         ? onLast
           ? "close"
           : "next"
-        : interactive.getDisplayName();
+        : "interact";
     if (!displayRaw?.trim()) {
       return;
     }
@@ -127,16 +108,13 @@ export class DialogueSurvivorNpcClient extends ClientEntity implements Renderabl
     );
   }
 
-  /**
-   * Drawn after darkness/zombie overlays (see renderer) so the bubble stays readable.
-   */
   public renderSpeechBubble(ctx: CanvasRenderingContext2D, gameState: GameState): void {
     if (gameState.openDialogueNpcId !== this.getId()) {
       return;
     }
-    const total = this.getTotalDialogueLineCount();
+    const total = this.getLineCount();
     const idx = Math.max(0, Math.min(gameState.dialogueLineIndex, Math.max(0, total - 1)));
-    const msg = this.getDialogueLineAt(idx);
+    const msg = this.getLineAt(idx);
     const positionable = this.getExt(ClientPositionable);
     const pos = positionable.getPosition();
     const size = positionable.getSize();
@@ -170,39 +148,18 @@ export class DialogueSurvivorNpcClient extends ClientEntity implements Renderabl
   }
 
   public render(ctx: CanvasRenderingContext2D, gameState: GameState): void {
-    const positionable = this.getExt(ClientPositionable);
-    const pos = positionable.getPosition();
-    const image = this.imageLoader.getWithDirection("survivor" as any, Direction.Down);
-    ctx.drawImage(image, pos.x, pos.y);
-
-    const name = this.displayName?.trim();
-    if (name) {
-      const cx = pos.x + positionable.getSize().x / 2;
-      ctx.save();
-      ctx.font = "7px Arial";
-      ctx.textAlign = "center";
-      ctx.lineWidth = 3;
-      ctx.strokeStyle = "rgba(0,0,0,0.85)";
-      ctx.fillStyle = "#f3f3f3";
-      const ny = pos.y - 4;
-      ctx.strokeText(name, cx, ny);
-      ctx.fillText(name, cx, ny);
-      ctx.restore();
-    }
-
     super.render(ctx, gameState);
   }
 }
 
-/** Renders the open dialogue bubble after darkness so it is not dimmed by the lighting overlay. */
-export function renderOpenDialogueSpeechBubble(
+export function renderOpenMessageDecalSpeechBubble(
   ctx: CanvasRenderingContext2D,
-  gameState: GameState
+  gameState: GameState,
 ): void {
   const id = gameState.openDialogueNpcId;
   if (id == null) return;
   const entity = getEntityById(gameState, id);
-  if (entity instanceof DialogueSurvivorNpcClient) {
+  if (entity instanceof MessageDecalClient) {
     entity.renderSpeechBubble(ctx, gameState);
   }
 }

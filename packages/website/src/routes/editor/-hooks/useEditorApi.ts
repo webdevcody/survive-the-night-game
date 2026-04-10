@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { API_ENDPOINTS } from "../-config/api";
 import type {
   WorldMapDialogueNpcEntry,
+  WorldMapMessageDecalEntry,
   WorldMapSpawnerMetaEntry,
 } from "@survive-the-night/game-shared/map/world-map-types";
 import type { WorldMapQuestDefinition } from "@survive-the-night/game-shared/map/quest-types";
@@ -13,6 +14,7 @@ interface WorldMapDataResponse {
   spawns: number[][];
   decals: number[][];
   dialogueNpcs?: WorldMapDialogueNpcEntry[];
+  messageDecals?: WorldMapMessageDecalEntry[];
   quests?: WorldMapQuestDefinition[];
   spawnerMeta?: WorldMapSpawnerMetaEntry[];
 }
@@ -84,6 +86,7 @@ export function useSaveWorldMap() {
       spawns,
       decals,
       dialogueNpcs,
+      messageDecals,
       quests,
       spawnerMeta,
     }: {
@@ -92,6 +95,7 @@ export function useSaveWorldMap() {
       spawns: number[][];
       decals: number[][];
       dialogueNpcs: WorldMapDialogueNpcEntry[];
+      messageDecals: WorldMapMessageDecalEntry[];
       quests: WorldMapQuestDefinition[];
       spawnerMeta: WorldMapSpawnerMetaEntry[];
     }) => {
@@ -106,6 +110,7 @@ export function useSaveWorldMap() {
           spawns,
           decals,
           dialogueNpcs,
+          messageDecals,
           quests,
           spawnerMeta,
         }),

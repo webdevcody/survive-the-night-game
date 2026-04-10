@@ -1,4 +1,5 @@
 import { Player } from "@/entities/players/player";
+import Inventory from "@/extensions/inventory";
 import { ClientSentEvents } from "@shared/events/events";
 import { GameEvent } from "@shared/events/types";
 import { GameServer } from "@/core/server";
@@ -35,6 +36,7 @@ import { WEBSITE_API_URL, GAME_SERVER_API_KEY } from "@/config/env";
 import type { PersistedPlayerProgress } from "@/services/player-progress-types";
 import { coercePlayerQuestState } from "@shared/quests/player-quest-state";
 import { XP_PER_ZOMBIE_KILL } from "@shared/util/experience-level";
+import { GameMessageEvent } from "../../../game-shared/src/events/server-sent/events/game-message-event";
 
 /**
  * Any and all functionality related to sending server side events
@@ -215,6 +217,8 @@ export class ServerSocketManager implements Broadcaster {
         characterAllocations?: Record<string, number>;
         lastTileX?: unknown;
         lastTileY?: unknown;
+        respawnTileX?: unknown;
+        respawnTileY?: unknown;
         questProgress?: unknown;
       };
       const rawXp = data.experience;
@@ -241,12 +245,21 @@ export class ServerSocketManager implements Broadcaster {
       const lastTileY =
         typeof rawLy === "number" && Number.isFinite(rawLy) ? Math.floor(rawLy) : null;
 
+      const rawRx = data.respawnTileX;
+      const rawRy = data.respawnTileY;
+      const respawnTileX =
+        typeof rawRx === "number" && Number.isFinite(rawRx) ? Math.floor(rawRx) : null;
+      const respawnTileY =
+        typeof rawRy === "number" && Number.isFinite(rawRy) ? Math.floor(rawRy) : null;
+
       return {
         experience: Math.max(0, xp),
         skillAllocations: data.skillAllocations ?? {},
         characterAllocations: data.characterAllocations ?? {},
         lastTileX,
         lastTileY,
+        respawnTileX,
+        respawnTileY,
         questProgress: data.questProgress != null ? coercePlayerQuestState(data.questProgress) : undefined,
       };
     } catch (error) {
@@ -360,6 +373,9 @@ export class ServerSocketManager implements Broadcaster {
     }
 
     player.hydratePersistedProgress(initialProgress);
+    player.setClientSocketId(socket.id);
+
+    player.getExt(Inventory).addItem({ itemType: "torch" });
 
     // Use the game mode strategy to handle player spawning
     // This allows each mode to determine spawn location (campsite for waves, random for battle royale)
@@ -484,6 +500,27 @@ export class ServerSocketManager implements Broadcaster {
       socket.emit(event.getType(), binaryBuffer);
     } else {
       console.error(`Failed to serialize event ${event.getType()} as binary buffer`);
+    }
+  }
+
+  /**
+   * Send a {@link GameMessageEvent} to the socket controlling the given player entity (if any).
+   * Same client path as broadcast HUD messages: {@code onGameMessage} → {@code Hud.addMessage}.
+   */
+  public sendGameMessageToPlayerEntity(
+    playerEntityId: number,
+    message: string,
+    color?: string,
+  ): void {
+    for (const [socketId, p] of this.players) {
+      if (p.getId() !== playerEntityId) {
+        continue;
+      }
+      const socket = this.io.sockets.sockets.get(socketId);
+      if (socket) {
+        this.sendEventToSocket(socket, new GameMessageEvent({ message, color }));
+      }
+      return;
     }
   }
 

@@ -57,6 +57,9 @@ export async function persistGameServerDisconnectSnapshot(
     lastTileY: number;
     questProgress: PlayerQuestStatePayload;
     characterAllocations: Record<string, number>;
+    /** When set (both numbers), persist bind; when both null, clear bind; when omitted, leave DB unchanged. */
+    respawnTileX?: number | null;
+    respawnTileY?: number | null;
   },
 ): Promise<UserStats> {
   await getOrCreateUserStats(userId);
@@ -64,18 +67,146 @@ export async function persistGameServerDisconnectSnapshot(
     string,
     number
   >;
+
+  const baseSet = {
+    lastTileX: Math.floor(snapshot.lastTileX),
+    lastTileY: Math.floor(snapshot.lastTileY),
+    questProgress: {
+      active: snapshot.questProgress.active,
+      completed: snapshot.questProgress.completed,
+    },
+    characterAllocations,
+    updatedAt: new Date(),
+  };
+
+  const rx = snapshot.respawnTileX;
+  const ry = snapshot.respawnTileY;
+  const hasRespawnUpdate = rx !== undefined && ry !== undefined;
+
+  const [updated] = await database
+    .update(userStats)
+    .set(
+      hasRespawnUpdate
+        ? {
+            ...baseSet,
+            respawnTileX:
+              rx !== null && ry !== null ? Math.floor(rx) : null,
+            respawnTileY:
+              rx !== null && ry !== null ? Math.floor(ry) : null,
+          }
+        : baseSet,
+    )
+    .where(eq(userStats.userId, userId))
+    .returning();
+  return updated!;
+}
+
+/**
+ * Persist campsite-fire respawn bind (game server → website).
+ */
+export async function updateRespawnBind(
+  userId: string,
+  respawnTileX: number,
+  respawnTileY: number,
+): Promise<UserStats> {
+  const tx = Math.floor(respawnTileX);
+  const ty = Math.floor(respawnTileY);
+  await getOrCreateUserStats(userId);
   const [updated] = await database
     .update(userStats)
     .set({
-      lastTileX: Math.floor(snapshot.lastTileX),
-      lastTileY: Math.floor(snapshot.lastTileY),
-      questProgress: {
-        active: snapshot.questProgress.active,
-        completed: snapshot.questProgress.completed,
-      },
-      characterAllocations,
+      respawnTileX: tx,
+      respawnTileY: ty,
       updatedAt: new Date(),
     })
+    .where(eq(userStats.userId, userId))
+    .returning();
+  return updated!;
+}
+
+/**
+ * Clear persisted respawn bind (e.g. tile became invalid).
+ */
+export async function clearRespawnBind(userId: string): Promise<UserStats> {
+  await getOrCreateUserStats(userId);
+  const [updated] = await database
+    .update(userStats)
+    .set({
+      respawnTileX: null,
+      respawnTileY: null,
+      updatedAt: new Date(),
+    })
+    .where(eq(userStats.userId, userId))
+    .returning();
+  return updated!;
+}
+
+/**
+ * Persist quest journal only (incremental updates from game server). Does not touch tiles or allocations.
+ */
+export async function updateQuestProgressOnly(
+  userId: string,
+  questProgress: PlayerQuestStatePayload,
+): Promise<UserStats> {
+  await getOrCreateUserStats(userId);
+  const [updated] = await database
+    .update(userStats)
+    .set({
+      questProgress: {
+        active: { ...questProgress.active },
+        completed: [...questProgress.completed],
+      },
+      updatedAt: new Date(),
+    })
+    .where(eq(userStats.userId, userId))
+    .returning();
+  return updated!;
+}
+
+/**
+ * Last known tile, optional character stats, optional respawn bind. Does not modify quest_progress.
+ */
+export async function persistOpenWorldSessionFields(
+  userId: string,
+  data: {
+    lastTileX: number;
+    lastTileY: number;
+    characterAllocations?: Record<string, number>;
+    respawnTileX?: number | null;
+    respawnTileY?: number | null;
+  },
+): Promise<UserStats> {
+  await getOrCreateUserStats(userId);
+
+  const setFields: {
+    lastTileX: number;
+    lastTileY: number;
+    updatedAt: Date;
+    characterAllocations?: Record<string, number>;
+    respawnTileX?: number | null;
+    respawnTileY?: number | null;
+  } = {
+    lastTileX: Math.floor(data.lastTileX),
+    lastTileY: Math.floor(data.lastTileY),
+    updatedAt: new Date(),
+  };
+
+  if (data.characterAllocations !== undefined) {
+    setFields.characterAllocations = normalizeCharacterAllocations(
+      data.characterAllocations,
+    ) as Record<string, number>;
+  }
+
+  const rx = data.respawnTileX;
+  const ry = data.respawnTileY;
+  if (rx !== undefined && ry !== undefined) {
+    setFields.respawnTileX = rx !== null && ry !== null ? Math.floor(rx) : null;
+    setFields.respawnTileY = rx !== null && ry !== null ? Math.floor(ry) : null;
+  }
+
+  const [updated] = await database
+    .update(userStats)
+    .set(setFields)
     .where(eq(userStats.userId, userId))
     .returning();
   return updated!;

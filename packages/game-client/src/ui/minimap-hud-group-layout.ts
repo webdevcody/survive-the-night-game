@@ -1,18 +1,21 @@
 import { scaleHudValue } from "@/util/hud-scale";
 import { MINIMAP_SETTINGS } from "./minimap";
+import { getLoadoutStripScreenLayout } from "./loadout-strip";
 
-/** Move the whole minimap + orb cluster by editing these values. */
+/** Move the whole minimap by editing these values. Health/stamina orbs use the hotbar group. */
 export const MINIMAP_HUD_GROUP = {
   /** Top margin when no wave / zombie-lives stack sits above the minimap */
   baseScreenTop: 40,
   /** Vertical gap between bottom of wave stack and top of minimap */
   gapBelowWaveStack: 16,
-  /** Base radius for health/stamina orbs (scaled with HUD scale) */
+} as const;
+
+/** Health (left) + stamina / sprint (right) flanking the bottom weapon strip. */
+export const HOTBAR_STATUS_HUD = {
+  /** Base radius for orbs (scaled with HUD scale) */
   orbRadius: 36,
-  /** Gap between minimap circle bottom and orb row */
-  orbGapBelowMinimap: 10,
-  /** Inset from minimap left/right edges to orb centers */
-  orbInsetFromMinimapEdge: 6,
+  /** Horizontal gap between weapon strip edge and orb center */
+  gapFromStripEdge: 14,
 } as const;
 
 export type MinimapScreenRect = { left: number; top: number; size: number };
@@ -31,8 +34,7 @@ export type GetMinimapHudLayoutOpts = {
 };
 
 /**
- * Single layout pass: minimap top-right + stamina/health orbs below left/right.
- * Horizontal alignment uses `MINIMAP_SETTINGS.right` and `.size`.
+ * Single layout pass: minimap top-right; health/stamina orbs to the left and right of the bottom hotbar.
  */
 export function getMinimapHudLayout(
   canvasW: number,
@@ -50,13 +52,18 @@ export function getMinimapHudLayout(
       ? opts.waveStackBottom + scaledGapBelowWave
       : scaledBaseTop;
 
-  const r = scaleHudValue(MINIMAP_HUD_GROUP.orbRadius, canvasW, canvasH);
-  const orbGap = scaleHudValue(MINIMAP_HUD_GROUP.orbGapBelowMinimap, canvasW, canvasH);
-  const inset = scaleHudValue(MINIMAP_HUD_GROUP.orbInsetFromMinimapEdge, canvasW, canvasH);
+  const strip = getLoadoutStripScreenLayout(canvasW, canvasH);
+  const r = scaleHudValue(HOTBAR_STATUS_HUD.orbRadius, canvasW, canvasH);
+  const edgeGap = scaleHudValue(HOTBAR_STATUS_HUD.gapFromStripEdge, canvasW, canvasH);
 
-  const rowCy = minimapTop + scaledSize + orbGap + r;
-  const healthCx = minimapLeft + inset + r;
-  const staminaCx = minimapLeft + scaledSize - inset - r;
+  const rowCy = strip.y + strip.padding + strip.slotSize / 2;
+  let healthCx = strip.x - edgeGap - r;
+  let staminaCx = strip.x + strip.w + edgeGap + r;
+
+  const minCx = r + 4;
+  const maxCx = canvasW - r - 4;
+  healthCx = Math.max(minCx, healthCx);
+  staminaCx = Math.min(maxCx, staminaCx);
 
   return {
     minimap: { left: minimapLeft, top: minimapTop, size: scaledSize },

@@ -83,6 +83,14 @@ export class GameServer {
     this.socketManager.broadcastEvent(event);
   }
 
+  public sendGameMessageToPlayerEntity(
+    playerEntityId: number,
+    message: string,
+    color?: string,
+  ): void {
+    this.socketManager.sendGameMessageToPlayerEntity(playerEntityId, message, color);
+  }
+
   public getPhaseStartTime(): number {
     return this.gameLoop.getPhaseStartTime();
   }

@@ -20,6 +20,7 @@ export function NpcAuthoringPanel({
   const updateDialogueNpcEntry = useEditorStore((state) => state.updateDialogueNpcEntry);
   const removeDialogueNpcAt = useEditorStore((state) => state.removeDialogueNpcAt);
   const setSelectedSpawnCell = useEditorStore((state) => state.setSelectedSpawnCell);
+  const startDialogueNpcRelocate = useEditorStore((state) => state.startDialogueNpcRelocate);
 
   const entry = dialogueNpcs.find((e) => e.row === row && e.col === col);
   if (!entry) {
@@ -31,12 +32,14 @@ export function NpcAuthoringPanel({
   }
 
   const linesText = getDialogueNpcLines(entry).join("\n");
+  const linesAfterText = (entry.linesAfterQuestGrant ?? []).join("\n");
+  const hasGrant = entry.grantQuestId != null && String(entry.grantQuestId).trim() !== "";
 
   return (
     <div className="space-y-2 rounded border border-emerald-700/80 bg-gray-900/90 p-2">
       <div className="flex items-center justify-between gap-2">
         <span className="text-[10px] font-medium text-emerald-300">Dialogue NPC</span>
-        <div className="flex gap-1">
+        <div className="flex flex-wrap justify-end gap-1">
           {variant !== "modal" ? (
             <Button
               type="button"
@@ -46,6 +49,17 @@ export function NpcAuthoringPanel({
               onClick={() => setSelectedSpawnCell(null)}
             >
               Deselect
+            </Button>
+          ) : null}
+          {variant === "modal" ? (
+            <Button
+              type="button"
+              size="sm"
+              variant="secondary"
+              className="!h-6 !min-h-0 !px-2 !py-0 !text-[10px]"
+              onClick={() => startDialogueNpcRelocate(row, col)}
+            >
+              Relocate
             </Button>
           ) : null}
           <Button
@@ -71,7 +85,7 @@ export function NpcAuthoringPanel({
         onChange={(e) => updateDialogueNpcEntry(row, col, { name: e.target.value || undefined })}
       />
       <label className="block text-[10px] font-medium text-gray-400">
-        Dialog lines (one per line; Space advances in-game)
+        Dialog lines (one per line; interact key advances in-game)
       </label>
       <textarea
         className="min-h-[6rem] w-full resize-y rounded border border-gray-600 bg-gray-950 px-2 py-1 font-mono text-[11px] text-gray-100"
@@ -90,7 +104,7 @@ export function NpcAuthoringPanel({
         spellCheck={true}
       />
       <label className="block text-[10px] font-medium text-gray-400">
-        Grant quest after last line (optional)
+        Grant quest after last intro line (optional)
       </label>
       <select
         className="w-full rounded border border-gray-600 bg-gray-950 px-2 py-1 text-[11px] text-gray-100"
@@ -99,6 +113,7 @@ export function NpcAuthoringPanel({
           const v = e.target.value;
           updateDialogueNpcEntry(row, col, {
             grantQuestId: v === "" ? null : v,
+            ...(v === "" ? { linesAfterQuestGrant: undefined } : {}),
           });
         }}
       >
@@ -109,6 +124,26 @@ export function NpcAuthoringPanel({
           </option>
         ))}
       </select>
+      <label className="block text-[10px] font-medium text-gray-400">
+        Lines after quest is granted (optional; requires grant above)
+      </label>
+      <textarea
+        className="min-h-[4rem] w-full resize-y rounded border border-gray-600 bg-gray-950 px-2 py-1 font-mono text-[11px] text-gray-100 disabled:opacity-50"
+        value={linesAfterText}
+        disabled={!hasGrant}
+        onChange={(e) => {
+          const raw = e.target.value.split("\n");
+          const linesAfterQuestGrant = raw
+            .map((l) => l.slice(0, DIALOGUE_NPC_MAX_MESSAGE_LENGTH))
+            .slice(0, DIALOGUE_NPC_MAX_LINE_COUNT);
+          if (linesAfterQuestGrant.length === 0 || linesAfterQuestGrant.every((l) => !l.trim())) {
+            updateDialogueNpcEntry(row, col, { linesAfterQuestGrant: undefined });
+          } else {
+            updateDialogueNpcEntry(row, col, { linesAfterQuestGrant });
+          }
+        }}
+        spellCheck={true}
+      />
     </div>
   );
 }

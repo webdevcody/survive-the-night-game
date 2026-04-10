@@ -34,6 +34,8 @@ import { entityBlocksPlacement } from "@shared/entities/decal-registry";
 import { Entities, getZombieTypesSet } from "@shared/constants";
 import { Crate } from "@/entities/items/crate";
 import { CampsiteFire } from "@/entities/environment/campsite-fire";
+import { LightDecal } from "@/entities/environment/light-decal";
+import { MessageDecal } from "@/entities/environment/message-decal";
 import { createSeededRng } from "@shared/util/seeded-rng";
 import { tryLoadWorldMapFile, validateWorldMapDimensions, type WorldMapFile } from "@/world/load-world-map";
 import {
@@ -44,11 +46,22 @@ import {
   spawnTileIdToZombieType,
   spawnTileIdToItemFixtureType,
 } from "../../../game-shared/src/map/spawn-palette";
-import type { WorldMapDialogueNpcEntry } from "../../../game-shared/src/map/world-map-types";
-import { normalizeDialogueNpcs } from "../../../game-shared/src/map/world-map-types";
+import type {
+  WorldMapDialogueNpcEntry,
+  WorldMapMessageDecalEntry,
+} from "../../../game-shared/src/map/world-map-types";
+import {
+  getMessageDecalLines,
+  normalizeDialogueNpcs,
+  reconcileMessageDecalsWithDecalsLayer,
+} from "../../../game-shared/src/map/world-map-types";
 import type { WorldMapQuestDefinition } from "../../../game-shared/src/map/quest-types";
 import { normalizeQuests } from "../../../game-shared/src/map/quest-types";
-import { DECAL_TILE_CAMPSITE } from "../../../game-shared/src/map/decal-palette";
+import {
+  DECAL_TILE_CAMPSITE,
+  DECAL_TILE_LIGHT,
+  DECAL_TILE_MESSAGE,
+} from "../../../game-shared/src/map/decal-palette";
 
 // Re-export from shared config for backward compatibility
 export const BIOME_SIZE = getConfig().world.BIOME_SIZE;
@@ -113,6 +126,8 @@ export class MapManager implements IMapManager {
   private authoredWorldMapApplied = false;
   /** Normalized dialogue NPC entries from the last applied authored map (tile row/col + message). */
   private authoredDialogueNpcs: WorldMapDialogueNpcEntry[] = [];
+  /** Message decal entries aligned with `DECAL_TILE_MESSAGE` cells on the decals layer. */
+  private authoredMessageDecals: WorldMapMessageDecalEntry[] = [];
   private authoredQuests: WorldMapQuestDefinition[] = [];
   private gameManagers?: IGameManagers;
   private entityManager?: IEntityManager;
@@ -365,6 +380,9 @@ export class MapManager implements IMapManager {
         this.fillMapWithBiomes();
       }
 
+      this.spawnLightDecalEntitiesFromDecalsLayer();
+      this.spawnMessageDecalEntitiesFromDecalsLayer();
+
       this.createForestBoundaries();
       this.spawnMerchants();
       if (this.isOpenWorldMode()) {
@@ -406,6 +424,7 @@ export class MapManager implements IMapManager {
       .fill(0)
       .map(() => Array(totalSize).fill(0));
     this.authoredDialogueNpcs = [];
+    this.authoredMessageDecals = [];
   }
 
   /**
@@ -453,6 +472,11 @@ export class MapManager implements IMapManager {
       }
     }
     this.authoredDialogueNpcs = normalizeDialogueNpcs(data.dialogueNpcs, n);
+    this.authoredMessageDecals = reconcileMessageDecalsWithDecalsLayer(
+      this.decalsLayer,
+      data.messageDecals,
+      n,
+    );
     this.authoredQuests = normalizeQuests(data.quests, n);
     this.authoredWorldMapApplied = true;
     return true;
@@ -639,6 +663,44 @@ export class MapManager implements IMapManager {
         ),
       );
     this.getEntityManager().addEntity(campsiteFire);
+  }
+
+  private spawnLightDecalEntitiesFromDecalsLayer(): void {
+    const n = BIOME_SIZE * MAP_SIZE;
+    const TILE_SIZE = getConfig().world.TILE_SIZE;
+    const poolManager = PoolManager.getInstance();
+    for (let y = 0; y < n; y++) {
+      for (let x = 0; x < n; x++) {
+        if (this.decalsLayer[y]?.[x] !== DECAL_TILE_LIGHT) {
+          continue;
+        }
+        const lightDecal = new LightDecal(this.getGameManagers());
+        lightDecal
+          .getExt(Positionable)
+          .setPosition(poolManager.vector2.claim(x * TILE_SIZE, y * TILE_SIZE));
+        this.getEntityManager().addEntity(lightDecal);
+      }
+    }
+  }
+
+  private spawnMessageDecalEntitiesFromDecalsLayer(): void {
+    const byKey = new Map<string, WorldMapMessageDecalEntry>();
+    for (const e of this.authoredMessageDecals) {
+      byKey.set(`${e.row},${e.col}`, e);
+    }
+    const n = BIOME_SIZE * MAP_SIZE;
+    for (let y = 0; y < n; y++) {
+      for (let x = 0; x < n; x++) {
+        if (this.decalsLayer[y]?.[x] !== DECAL_TILE_MESSAGE) {
+          continue;
+        }
+        const entry = byKey.get(`${y},${x}`);
+        const fallback: WorldMapMessageDecalEntry = { row: y, col: x, lines: ["Read me."] };
+        const lines = getMessageDecalLines(entry ?? fallback);
+        const decal = new MessageDecal(this.getGameManagers(), lines, x, y);
+        this.getEntityManager().addEntity(decal);
+      }
+    }
   }
 
   /**
