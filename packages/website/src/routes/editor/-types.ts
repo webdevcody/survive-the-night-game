@@ -1,6 +1,13 @@
-import type { WorldMapDialogueNpcEntry } from "@survive-the-night/game-shared/map/world-map-types";
+import type {
+  WorldMapDialogueNpcEntry,
+  WorldMapSpawnerMetaEntry,
+} from "@survive-the-night/game-shared/map/world-map-types";
+import type { WorldMapQuestDefinition } from "@survive-the-night/game-shared/map/quest-types";
 
 export type Layer = "ground" | "collidables" | "spawns" | "decals";
+
+/** Right sidebar primary section (editor overlay). */
+export type EditorSidebarSection = "tiles" | "npcs" | "spawners" | "quests";
 
 /** Snapshot of all layers (undo / API). */
 export interface MapLayerSnapshot {
@@ -9,6 +16,8 @@ export interface MapLayerSnapshot {
   spawns: number[][];
   decals: number[][];
   dialogueNpcs: WorldMapDialogueNpcEntry[];
+  quests: WorldMapQuestDefinition[];
+  spawnerMeta: WorldMapSpawnerMetaEntry[];
 }
 
 export interface SheetDimensions {

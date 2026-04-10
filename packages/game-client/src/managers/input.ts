@@ -35,16 +35,19 @@ export interface InputManagerOptions {
   onMerchantKeyDown?: (key: string) => void;
   onEscape?: () => void;
   onRespawnRequest?: () => void;
-  onTeleportStart?: () => void;
-  onTeleportCancel?: () => void;
   onSelectWeaponLoadout?: (loadout: 0 | 1 | 2) => void;
-  onQuickSwapPrimarySecondary?: () => void;
   isMerchantPanelOpen?: () => boolean;
   isFullscreenMapOpen?: () => boolean;
   isInventoryScreenOpen?: () => boolean;
   isPlayerDead?: () => boolean;
   getInventory?: () => any[];
   onInventorySlotChanged?: (slot: number) => void;
+  /** When true, Space advances NPC dialogue instead of firing. */
+  isNpcDialogueOpen?: () => boolean;
+  onNpcDialogueSpaceDown?: () => void;
+  onToggleQuestJournal?: () => void;
+  isQuestCompletedModalOpen?: () => boolean;
+  onDismissQuestCompletedModal?: () => void;
 }
 
 const shouldBlock = new Set([
@@ -58,11 +61,10 @@ const shouldBlock = new Set([
   "KeyA",
   "KeyS",
   "KeyD",
-  "KeyQ",
   "KeyE",
   "KeyH",
   "KeyI",
-  "KeyC",
+  "KeyJ",
   "Escape",
   "Digit1",
   "Digit2",
@@ -180,6 +182,14 @@ export class InputManager {
         return; // Block all other inputs when chatting
       }
 
+      if (callbacks.isQuestCompletedModalOpen?.()) {
+        if (eventCode === "Escape" || eventCode === "Space" || eventCode === "Enter") {
+          e.preventDefault();
+          callbacks.onDismissQuestCompletedModal?.();
+        }
+        return;
+      }
+
       // Check if fullscreen map is open
       const isFullscreenMapOpen = callbacks.isFullscreenMapOpen?.() ?? false;
 
@@ -233,20 +243,6 @@ export class InputManager {
         case "KeyH":
           this.quickHeal();
           break;
-        case "KeyC": {
-          // Only start teleport if player is alive and no panels are open
-          if (this.isChatting) break;
-
-          const isPlayerDead = this.callbacks.isPlayerDead?.() ?? false;
-          const isMerchantPanelOpen = this.callbacks.isMerchantPanelOpen?.() ?? false;
-          const isFullscreenMapOpen = this.callbacks.isFullscreenMapOpen?.() ?? false;
-          const isInvOpen = this.callbacks.isInventoryScreenOpen?.() ?? false;
-
-          if (!isPlayerDead && !isMerchantPanelOpen && !isFullscreenMapOpen && !isInvOpen) {
-            this.callbacks.onTeleportStart?.();
-          }
-          break;
-        }
         case "KeyW":
           callbacks.onUp?.(this.inputs);
           break;
@@ -271,13 +267,12 @@ export class InputManager {
         case "ArrowRight":
           callbacks.onRight?.(this.inputs);
           break;
+        case "KeyJ":
+          callbacks.onToggleQuestJournal?.();
+          break;
         case "KeyE":
           callbacks.onInteractStart?.();
           break;
-        case "KeyQ": {
-          callbacks.onQuickSwapPrimarySecondary?.();
-          break;
-        }
         case "Digit1": {
           callbacks.onSelectWeaponLoadout?.(0);
           break;
@@ -317,8 +312,11 @@ export class InputManager {
           break;
         }
         case "Space":
-          // Trigger attack with spacebar
           e.preventDefault(); // Prevent page scrolling
+          if (callbacks.isNpcDialogueOpen?.()) {
+            callbacks.onNpcDialogueSpaceDown?.();
+            break;
+          }
           this.triggerFire();
           break;
         case "ShiftLeft":
@@ -367,14 +365,15 @@ export class InputManager {
         return; // Block this keyup event since it was consumed by merchant panel
       }
 
+      if (callbacks.isQuestCompletedModalOpen?.()) {
+        return;
+      }
+
       const isFullscreenMapOpen = callbacks.isFullscreenMapOpen?.() ?? false;
       const isInventoryScreenOpen = callbacks.isInventoryScreenOpen?.() ?? false;
 
       // Use physical key codes for WASD and other action keys
       switch (eventCode) {
-        case "KeyC":
-          this.callbacks.onTeleportCancel?.();
-          break;
         case "KeyW":
           this.inputs.dy = this.inputs.dy === -1 ? 0 : this.inputs.dy;
           break;
@@ -403,7 +402,9 @@ export class InputManager {
           callbacks.onInteractEnd?.();
           break;
         case "Space":
-          // Release attack with spacebar
+          if (callbacks.isNpcDialogueOpen?.()) {
+            break;
+          }
           this.releaseFire();
           break;
         case "ShiftLeft":
@@ -422,7 +423,6 @@ export class InputManager {
     this.boundFocusHandler = () => {
       this.clearInputs();
       this.callbacks.onInteractEnd?.();
-      this.callbacks.onTeleportCancel?.();
     };
 
     // Add event listeners

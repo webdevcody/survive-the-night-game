@@ -1,6 +1,10 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { API_ENDPOINTS } from "../-config/api";
-import type { WorldMapDialogueNpcEntry } from "@survive-the-night/game-shared/map/world-map-types";
+import type {
+  WorldMapDialogueNpcEntry,
+  WorldMapSpawnerMetaEntry,
+} from "@survive-the-night/game-shared/map/world-map-types";
+import type { WorldMapQuestDefinition } from "@survive-the-night/game-shared/map/quest-types";
 
 // API Response Types
 interface WorldMapDataResponse {
@@ -9,12 +13,13 @@ interface WorldMapDataResponse {
   spawns: number[][];
   decals: number[][];
   dialogueNpcs?: WorldMapDialogueNpcEntry[];
+  quests?: WorldMapQuestDefinition[];
+  spawnerMeta?: WorldMapSpawnerMetaEntry[];
 }
 
 // Query Keys
 export const editorQueryKeys = {
   worldMap: ["worldMap"] as const,
-  spawnableEntities: ["spawnableEntities"] as const,
 };
 
 export function useWorldMap() {
@@ -79,12 +84,16 @@ export function useSaveWorldMap() {
       spawns,
       decals,
       dialogueNpcs,
+      quests,
+      spawnerMeta,
     }: {
       ground: number[][];
       collidables: number[][];
       spawns: number[][];
       decals: number[][];
       dialogueNpcs: WorldMapDialogueNpcEntry[];
+      quests: WorldMapQuestDefinition[];
+      spawnerMeta: WorldMapSpawnerMetaEntry[];
     }) => {
       const response = await fetch(API_ENDPOINTS.worldMap(), {
         method: "POST",
@@ -97,6 +106,8 @@ export function useSaveWorldMap() {
           spawns,
           decals,
           dialogueNpcs,
+          quests,
+          spawnerMeta,
         }),
       });
 
@@ -113,24 +124,6 @@ export function useSaveWorldMap() {
       queryClient.invalidateQueries({
         queryKey: editorQueryKeys.worldMap,
       });
-    },
-  });
-}
-
-interface SpawnableEntitiesResponse {
-  entities: string[];
-}
-
-export function useSpawnableEntities() {
-  return useQuery({
-    queryKey: editorQueryKeys.spawnableEntities,
-    queryFn: async (): Promise<string[]> => {
-      const response = await fetch(API_ENDPOINTS.spawnableEntities());
-      if (!response.ok) {
-        throw new Error("Failed to fetch spawnable entities");
-      }
-      const data: SpawnableEntitiesResponse = await response.json();
-      return data.entities;
     },
   });
 }

@@ -9,7 +9,10 @@ import { Player } from "@/entities/players/player";
 import { InventoryItem } from "@shared/util/inventory";
 import { AIStateMachine } from "./ai-state-machine";
 import { Direction } from "@/util/direction";
-import { isMeleeWeaponType, isRangedWeaponType } from "@shared/util/weapon-loadout";
+import {
+  getWeaponLoadoutSlotKey,
+  weaponLoadoutSlotKeyToIndex,
+} from "@shared/util/weapon-loadout";
 
 /**
  * AI Utility Functions - Common logic extracted to DRY up the codebase
@@ -22,13 +25,11 @@ export function equipBagSlotViaLoadout(player: Player, bagIndex1Based: number): 
   const inv = player.getInventory();
   const item = inv[bagIndex1Based - 1];
   if (!item) return;
-  if (isRangedWeaponType(item.itemType)) {
-    player.assignWeaponLoadoutSlot(0, bagIndex1Based);
-    player.selectWeaponLoadout(0);
-  } else if (isMeleeWeaponType(item.itemType)) {
-    player.assignWeaponLoadoutSlot(2, bagIndex1Based);
-    player.selectWeaponLoadout(2);
-  }
+  const key = getWeaponLoadoutSlotKey(item.itemType);
+  if (!key) return;
+  const slot = weaponLoadoutSlotKeyToIndex(key);
+  player.assignWeaponLoadoutSlot(slot, bagIndex1Based);
+  player.selectWeaponLoadout(slot);
 }
 
 /**

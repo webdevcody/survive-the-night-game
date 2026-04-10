@@ -537,6 +537,10 @@ export class ClientSocketManager {
     this.emitClientEvent(ClientSentEvents.INTERACT, { targetEntityId });
   }
 
+  public sendDialogueNpcComplete(npcEntityId: number) {
+    this.emitClientEvent(ClientSentEvents.DIALOGUE_NPC_COMPLETE, { npcEntityId });
+  }
+
   public sendChatMessage(message: string) {
     // Check if it's a command and include admin password from localStorage if available
     const isCommand = message.trim().startsWith("/");
@@ -554,10 +558,6 @@ export class ClientSocketManager {
 
   public requestRespawn() {
     this.emitClientEvent(ClientSentEvents.PLAYER_RESPAWN_REQUEST);
-  }
-
-  public sendTeleportToBase() {
-    this.emitClientEvent(ClientSentEvents.TELEPORT_TO_BASE);
   }
 
   public sendPlayerColor(color: string) {

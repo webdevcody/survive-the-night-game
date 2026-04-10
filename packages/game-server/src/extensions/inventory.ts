@@ -267,7 +267,7 @@ export default class Inventory extends ExtensionBase<InventoryFields> {
     }
   }
 
-  public swapItems(fromIndex: number, toIndex: number): void {
+  private mutateSwapBagSlots(fromIndex: number, toIndex: number): void {
     const maxSlots = this.getMaxSlots();
     if (fromIndex < 0 || toIndex < 0 || fromIndex >= maxSlots || toIndex >= maxSlots) {
       return;
@@ -283,8 +283,21 @@ export default class Inventory extends ExtensionBase<InventoryFields> {
     items[toIndex] = temp;
 
     this.serialized.set("items", [...items]);
+  }
+
+  public swapItems(fromIndex: number, toIndex: number): void {
+    this.mutateSwapBagSlots(fromIndex, toIndex);
     this.markDirty();
     this.notifyPlayerWeaponLoadout();
+  }
+
+  /**
+   * Swap two bag cells without running weapon-loadout sanitize.
+   * Caller must update loadout indices then call player.sanitizeWeaponLoadouts().
+   */
+  public swapBagSlotsDeferWeaponResync(fromIndex: number, toIndex: number): void {
+    this.mutateSwapBagSlots(fromIndex, toIndex);
+    this.markDirty();
   }
 
   /**

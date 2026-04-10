@@ -12,3 +12,14 @@ export const assertAuthenticatedFn = createServerFn({ method: "GET" }).handler(a
     throw redirect({ to: "/sign-in", search: { redirect: getRequest().url } });
   }
 });
+
+/** Use on /sign-in so logged-in users are sent to the home page. */
+export const redirectHomeIfAuthenticatedFn = createServerFn({ method: "GET" }).handler(async () => {
+  const headers = getRequest().headers;
+  const session = await auth.api.getSession({
+    headers: headers as unknown as Headers,
+  });
+  if (session) {
+    throw redirect({ to: "/" });
+  }
+});

@@ -7,7 +7,6 @@ export { onPlayerInput } from "./player-input";
 export { sendFullState } from "./full-state";
 export { setPlayerDisplayName } from "./display-name";
 export { onPlayerRespawnRequest } from "./respawn";
-export { onTeleportToBase } from "./teleport";
 export { onConnection } from "./connection";
 export { handlePing, handlePingUpdate } from "./ping";
 export { handleChat } from "./chat";

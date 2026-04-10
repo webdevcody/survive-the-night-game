@@ -122,7 +122,7 @@ export class ClientEventHandlers {
     }
 
     // Handle UI clicks (inventory bar, HUD mute button, etc.)
-    if (hud && hud.handleClick(x, y, canvas.width, canvas.height)) {
+    if (hud && hud.handleClick(x, y, canvas.width, canvas.height, e.detail)) {
       placementManager?.skipNextClick();
       return;
     }

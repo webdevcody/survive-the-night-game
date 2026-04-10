@@ -8,7 +8,10 @@ import {
 import { useEditorStore } from "../-store";
 import { getConfig } from "@survive-the-night/game-shared/config";
 import { getMapSideLength } from "../-utils";
-import { SPAWN_PALETTE_ENTRIES } from "@survive-the-night/game-shared/map/spawn-palette";
+import {
+  SPAWN_PALETTE_ENTRIES,
+  getSpawnTileShortLabel,
+} from "@survive-the-night/game-shared/map/spawn-palette";
 import { DECAL_PALETTE_ENTRIES } from "@survive-the-night/game-shared/map/decal-palette";
 
 function isTypingTarget(el: EventTarget | null): boolean {
@@ -35,6 +38,8 @@ export function TileMapEditor() {
   );
   const isFillBucketMode = useEditorStore((state) => state.isFillBucketMode);
   const clipboard = useEditorStore((state) => state.clipboard);
+  const sidebarSection = useEditorStore((state) => state.sidebarSection);
+  const canPaintTiles = sidebarSection === "tiles";
 
   const containerRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -57,6 +62,19 @@ export function TileMapEditor() {
 
   const [shiftHeld, setShiftHeld] = useState(false);
   const [isPanning, setIsPanning] = useState(false);
+  const [spawnPopover, setSpawnPopover] = useState<{
+    clientX: number;
+    clientY: number;
+    row: number;
+    col: number;
+  } | null>(null);
+  const [tileContextMenu, setTileContextMenu] = useState<{
+    clientX: number;
+    clientY: number;
+    row: number;
+    col: number;
+  } | null>(null);
+  const tileContextMenuRef = useRef<HTMLDivElement>(null);
 
   const tilePx = editorTilePixelSize;
 
@@ -82,7 +100,7 @@ export function TileMapEditor() {
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
       if (isTypingTarget(e.target)) return;
-      if (!e.ctrlKey && !e.metaKey) {
+      if (!e.ctrlKey && !e.metaKey && useEditorStore.getState().sidebarSection === "tiles") {
         const incBrush = e.code === "NumpadAdd" || e.code === "Equal";
         const decBrush =
           e.code === "NumpadSubtract" || e.code === "Minus";
@@ -109,6 +127,7 @@ export function TileMapEditor() {
       }
       const lower = k.toLowerCase();
       if (lower === "p") {
+        if (useEditorStore.getState().sidebarSection !== "tiles") return;
         e.preventDefault();
         const hover = hoverCellRef.current;
         if (hover) {
@@ -120,6 +139,7 @@ export function TileMapEditor() {
         return;
       }
       if (lower === "e") {
+        if (useEditorStore.getState().sidebarSection !== "tiles") return;
         e.preventDefault();
         const hover = hoverCellRef.current;
         if (hover) {
@@ -142,6 +162,23 @@ export function TileMapEditor() {
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
   }, [panCamera]);
+
+  useEffect(() => {
+    if (!tileContextMenu) return;
+    const onPointerDown = (e: PointerEvent) => {
+      if (tileContextMenuRef.current?.contains(e.target as Node)) return;
+      setTileContextMenu(null);
+    };
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setTileContextMenu(null);
+    };
+    document.addEventListener("pointerdown", onPointerDown, true);
+    window.addEventListener("keydown", onKeyDown);
+    return () => {
+      document.removeEventListener("pointerdown", onPointerDown, true);
+      window.removeEventListener("keydown", onKeyDown);
+    };
+  }, [tileContextMenu]);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -379,10 +416,27 @@ export function TileMapEditor() {
             const spawnEntry = SPAWN_PALETTE_ENTRIES.find((e) => e.id === spawnTileId);
             if (spawnEntry && spawnEntry.id !== 0) {
               ctx.save();
-              ctx.globalAlpha = s.activeLayer === "spawns" ? 0.65 : 0.28;
+              ctx.globalAlpha = s.activeLayer === "spawns" ? 0.65 : 0.38;
               ctx.fillStyle = spawnEntry.color;
               ctx.fillRect(dx, dy, tilePx, tilePx);
               ctx.restore();
+              const short = getSpawnTileShortLabel(spawnTileId);
+              if (short) {
+                ctx.save();
+                ctx.globalAlpha = 1;
+                ctx.fillStyle = "rgba(255,255,255,0.92)";
+                ctx.strokeStyle = "rgba(0,0,0,0.55)";
+                ctx.lineWidth = 2;
+                const fs = Math.max(8, Math.floor(tilePx * 0.2));
+                ctx.font = `600 ${fs}px ui-monospace, monospace`;
+                ctx.textAlign = "center";
+                ctx.textBaseline = "bottom";
+                const tx = dx + tilePx / 2;
+                const ty = dy + tilePx - 2;
+                ctx.strokeText(short, tx, ty);
+                ctx.fillText(short, tx, ty);
+                ctx.restore();
+              }
             }
           }
 
@@ -418,8 +472,21 @@ export function TileMapEditor() {
         ctx.stroke();
       }
 
+      const sel = s.selectedSpawnCell;
+      if (sel) {
+        const localRow = sel.row - s.cameraY;
+        const localCol = sel.col - s.cameraX;
+        if (localRow >= 0 && localCol >= 0 && localRow < vrc && localCol < vcc) {
+          const sx = localCol * tilePx;
+          const sy = localRow * tilePx;
+          ctx.strokeStyle = "rgba(34, 211, 238, 0.95)";
+          ctx.lineWidth = 3;
+          ctx.strokeRect(sx + 1.5, sy + 1.5, tilePx - 3, tilePx - 3);
+        }
+      }
+
       const hover = hoverCellRef.current;
-      if (hover) {
+      if (hover && s.sidebarSection === "tiles") {
         const localRow = hover.row - s.cameraY;
         const localCol = hover.col - s.cameraX;
         const brushSize = s.brushSize;
@@ -491,6 +558,7 @@ export function TileMapEditor() {
           schedulePaintRef.current();
         }
       }
+      setSpawnPopover(null);
       return;
     }
     const t = clientToTile(e.clientX, e.clientY);
@@ -500,9 +568,23 @@ export function TileMapEditor() {
         hoverCellRef.current = { row: t.row, col: t.col };
         schedulePaintRef.current();
       }
+      const st = useEditorStore.getState();
+      const sid = st.spawnsGrid[t.row]?.[t.col] ?? 0;
+      if (sid > 0) {
+        setSpawnPopover((p) => {
+          const next = { clientX: e.clientX + 14, clientY: e.clientY + 14, row: t.row, col: t.col };
+          if (p?.row === next.row && p?.col === next.col && p.clientX === next.clientX && p.clientY === next.clientY) {
+            return p;
+          }
+          return next;
+        });
+      } else {
+        setSpawnPopover(null);
+      }
     } else if (prev) {
       hoverCellRef.current = null;
       schedulePaintRef.current();
+      setSpawnPopover(null);
     }
   };
 
@@ -518,8 +600,38 @@ export function TileMapEditor() {
       hoverCellRef.current = null;
       schedulePaintRef.current();
     }
+    setSpawnPopover(null);
     handleDragEnd();
   };
+
+  const popoverContent = (() => {
+    if (!spawnPopover) return null;
+    const st = useEditorStore.getState();
+    const sid = st.spawnsGrid[spawnPopover.row]?.[spawnPopover.col] ?? 0;
+    if (sid <= 0) return null;
+    const entry = SPAWN_PALETTE_ENTRIES.find((e) => e.id === sid);
+    const label = entry?.label ?? `spawn ${sid}`;
+    const npc = st.dialogueNpcs.find(
+      (d) => d.row === spawnPopover.row && d.col === spawnPopover.col,
+    );
+    const extra: string[] = [`tile (${spawnPopover.row},${spawnPopover.col})`, `id ${sid}`];
+    if (npc?.name) extra.push(`name: ${npc.name}`);
+    if (npc?.grantQuestId) extra.push(`grants quest: ${npc.grantQuestId}`);
+
+    return (
+      <div
+        className="pointer-events-none fixed z-50 max-w-[220px] rounded border border-gray-600 bg-gray-900/98 px-2 py-1.5 text-[10px] text-gray-100 shadow-xl"
+        style={{ left: spawnPopover.clientX, top: spawnPopover.clientY }}
+      >
+        <p className="font-semibold text-violet-200">{label}</p>
+        <ul className="mt-0.5 list-inside list-disc text-gray-400">
+          {extra.map((x) => (
+            <li key={x}>{x}</li>
+          ))}
+        </ul>
+      </div>
+    );
+  })();
 
   return (
     <div
@@ -531,10 +643,17 @@ export function TileMapEditor() {
           <canvas
             ref={canvasRef}
             className={`block select-none ${
-              isPanning ? "cursor-grabbing" : shiftHeld ? "cursor-grab" : "cursor-crosshair"
+              isPanning
+                ? "cursor-grabbing"
+                : shiftHeld
+                  ? "cursor-grab"
+                  : canPaintTiles
+                    ? "cursor-crosshair"
+                    : "cursor-default"
             }`}
             onPointerMove={onCanvasPointerMove}
             onPointerDown={(e) => {
+              setTileContextMenu(null);
               if (e.button === 0 && e.shiftKey) {
                 e.preventDefault();
                 isPanningRef.current = true;
@@ -545,8 +664,24 @@ export function TileMapEditor() {
                 e.currentTarget.setPointerCapture(e.pointerId);
                 return;
               }
+              if (e.button !== 0) return;
               const t = clientToTile(e.clientX, e.clientY);
-              if (t) handleCellMouseDownOnTile(t.row, t.col);
+              if (!t) return;
+              if (canPaintTiles) {
+                handleCellMouseDownOnTile(t.row, t.col);
+              }
+            }}
+            onContextMenu={(e) => {
+              e.preventDefault();
+              const t = clientToTile(e.clientX, e.clientY);
+              if (!t) return;
+              setSpawnPopover(null);
+              setTileContextMenu({
+                clientX: e.clientX,
+                clientY: e.clientY,
+                row: t.row,
+                col: t.col,
+              });
             }}
             onPointerUp={(e) => {
               endPan(e.currentTarget, e.pointerId);
@@ -562,6 +697,38 @@ export function TileMapEditor() {
           />
         </div>
       </div>
+      {popoverContent}
+      {tileContextMenu ? (
+        <div
+          ref={tileContextMenuRef}
+          className="pointer-events-auto fixed z-[60] min-w-[10rem] rounded border border-gray-600 bg-gray-900 py-1 text-[11px] text-gray-100 shadow-xl"
+          style={{ left: tileContextMenu.clientX, top: tileContextMenu.clientY }}
+          role="menu"
+        >
+          <button
+            type="button"
+            role="menuitem"
+            className="block w-full px-3 py-1.5 text-left hover:bg-gray-800"
+            onClick={() => {
+              useEditorStore.getState().addDialogueNpcAtTile(tileContextMenu.row, tileContextMenu.col);
+              setTileContextMenu(null);
+            }}
+          >
+            Add NPC
+          </button>
+          <button
+            type="button"
+            role="menuitem"
+            className="block w-full px-3 py-1.5 text-left hover:bg-gray-800"
+            onClick={() => {
+              useEditorStore.getState().addItemSpawnerAtTile(tileContextMenu.row, tileContextMenu.col);
+              setTileContextMenu(null);
+            }}
+          >
+            Add spawner
+          </button>
+        </div>
+      ) : null}
     </div>
   );
 }

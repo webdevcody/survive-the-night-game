@@ -8,6 +8,7 @@ import {
   getWeaponAmmoType,
   createEmptyEquipment,
   EQUIPMENT_SLOT_KEYS,
+  canItemGoInEquipmentSlot,
   type EquipmentSlotKey,
   type PlayerEquipmentState,
 } from "@shared/util/inventory";
@@ -24,7 +25,11 @@ import {
 import { SKILL_TREE_NODES, type SkillId } from "@shared/util/skill-tree";
 import { getProgressionPointsBudget } from "@shared/util/experience-level";
 import { FISTS_INVENTORY_SENTINEL } from "@shared/constants/inventory-sentinel";
-import { isMeleeWeaponType, isRangedWeaponType } from "@shared/util/weapon-loadout";
+import {
+  getWeaponLoadoutSlotKey,
+  itemMatchesLoadoutRow,
+  weaponLoadoutSlotKeyToIndex,
+} from "@shared/util/weapon-loadout";
 import {
   TAB_BAR_H,
   PANEL_TAB_CONTENT_GAP,
@@ -38,11 +43,23 @@ import {
   uiCircleContains,
   uiRectContains,
 } from "@/ui/canvas-ui-rect";
+import type { QuestStep } from "@shared/map/quest-types";
 
 const DRAG_THRESHOLD = 12;
 const PANEL_WIDTH_RATIO = 0.46;
 
-type InventoryTab = "inventory" | "character" | "skills";
+type InventoryTab = "inventory" | "character" | "skills" | "quests";
+
+function describeQuestStep(step: QuestStep | undefined): string {
+  if (!step) return "(unknown step)";
+  if (step.type === "pickup_item") return `Pick up ${step.itemType}`;
+  if (step.type === "reach_waypoint") {
+    const r = step.radiusTiles ?? 2;
+    return `Reach (${step.row}, ${step.col}) · r≤${r}`;
+  }
+  if (step.type === "talk_to_npc") return `Talk to NPC @ (${step.npcRow}, ${step.npcCol})`;
+  return "";
+}
 
 const STAT_LABELS: Record<(typeof CHARACTER_STAT_KEYS)[number], string> = {
   health: "Health",
@@ -101,6 +118,8 @@ export type InventoryScreenDeps = {
     allocations: Record<string, number>,
   ) => void;
   sendSetWeaponLoadoutSlot: (slot: 0 | 1 | 2, bagIndex: number) => void;
+  sendSelectWeaponLoadout: (loadout: 0 | 1 | 2) => void;
+  getAuthoredQuests: () => import("@shared/map/quest-types").WorldMapQuestDefinition[];
 };
 
 function buildCharacterMapFromPlayer(player: PlayerClient): Record<string, number> {
@@ -291,6 +310,7 @@ export class InventoryScreenUI {
       { id: "inventory" as const, label: "Inventory" },
       { id: "character" as const, label: "Character" },
       { id: "skills" as const, label: "Skills" },
+      { id: "quests" as const, label: "Quests" },
     ];
     const tabCount = tabs.length;
     const tabW = rightW / tabCount;
@@ -330,6 +350,7 @@ export class InventoryScreenUI {
   }
 
   private getBagIndexAt(x: number, y: number, L: ReturnType<InventoryScreenUI["layout"]>): number | null {
+    const player = this.deps.getMyPlayer();
     for (let row = 0; row < L.gridRows; row++) {
       for (let col = 0; col < GRID_COLS; col++) {
         const idx = row * GRID_COLS + col;
@@ -337,6 +358,9 @@ export class InventoryScreenUI {
         const sx = L.gridLeft + col * (L.cellSize + L.cellGap);
         const sy = L.gridTop + row * (L.cellSize + L.cellGap);
         if (x >= sx && x <= sx + L.cellSize && y >= sy && y <= sy + L.cellSize) {
+          if (player && this.bagSlotBackedByWeaponLoadout(idx, player)) {
+            return null;
+          }
           return idx;
         }
       }
@@ -358,6 +382,15 @@ export class InventoryScreenUI {
     return null;
   }
 
+  /** Bag cells that back a weapon loadout are shown only in the loadout row (not duplicated in the grid). */
+  private bagSlotBackedByWeaponLoadout(bagIdx0: number, p: PlayerClient): boolean {
+    const b = bagIdx0 + 1;
+    const pBag = (p as any).weaponLoadoutPrimary ?? 0;
+    const sBag = (p as any).weaponLoadoutSecondary ?? 0;
+    const mBag = (p as any).weaponLoadoutMelee ?? 0;
+    return pBag === b || sBag === b || mBag === b;
+  }
+
   private getLoadoutSlotAt(
     x: number,
     y: number,
@@ -370,6 +403,24 @@ export class InventoryScreenUI {
       }
     }
     return null;
+  }
+
+  /** Double-click bag slot: armor → correct slot; weapons → their loadout row (replaces existing). */
+  private tryQuickEquipFromBag(bagIdx: number, item: InventoryItem): boolean {
+    const t = item.itemType;
+    const loadoutKey = getWeaponLoadoutSlotKey(t);
+    if (loadoutKey !== null) {
+      const row = weaponLoadoutSlotKeyToIndex(loadoutKey);
+      this.deps.sendSetWeaponLoadoutSlot(row, bagIdx + 1);
+      return true;
+    }
+    for (const slot of EQUIPMENT_SLOT_KEYS) {
+      if (canItemGoInEquipmentSlot(t, slot)) {
+        this.deps.sendSwapBagAndEquipment(bagIdx, slot);
+        return true;
+      }
+    }
+    return false;
   }
 
   private drawTabBar(
@@ -507,6 +558,125 @@ export class InventoryScreenUI {
     );
   }
 
+  private renderQuestsTab(
+    ctx: CanvasRenderingContext2D,
+    L: ReturnType<InventoryScreenUI["layout"]>,
+    player: PlayerClient,
+  ): void {
+    const progress = player.getQuestProgressPayload();
+    const quests = this.deps.getAuthoredQuests();
+    const byId = new Map(quests.map((q) => [q.id, q] as const));
+    const st = progress ?? { active: {}, completed: [] };
+
+    const padX = L.rightX + 12;
+    const contentW = L.rightW - 24;
+    let y = L.contentTop + PANEL_TAB_CONTENT_GAP;
+    const yMax = L.rightY + L.rightH - 28;
+    const lineMain = 20;
+    const lineSub = 18;
+    let clipped = false;
+
+    const nextBlock = (h: number): boolean => {
+      if (y + h > yMax) {
+        clipped = true;
+        return false;
+      }
+      return true;
+    };
+
+    ctx.textAlign = "left";
+    ctx.textBaseline = "alphabetic";
+    ctx.font = "bold 14px Arial";
+
+    if (!quests.length) {
+      ctx.fillStyle = "rgba(180, 180, 190, 0.9)";
+      if (nextBlock(lineMain)) ctx.fillText("No authored quests on this map.", padX, y);
+      return;
+    }
+
+    const activeIds = Object.keys(st.active);
+    ctx.fillStyle = "rgba(150, 220, 255, 0.95)";
+    if (nextBlock(lineMain)) {
+      ctx.fillText("Active", padX, y);
+      y += lineMain + 4;
+    }
+
+    if (!activeIds.length) {
+      ctx.font = "13px Arial";
+      ctx.fillStyle = "rgba(160, 160, 175, 0.85)";
+      if (nextBlock(lineMain)) {
+        ctx.fillText("—", padX, y);
+        y += lineMain + 8;
+      }
+    } else {
+      ctx.font = "13px Arial";
+      for (const qid of activeIds) {
+        if (clipped) break;
+        const def = byId.get(qid);
+        const title = def?.title ?? qid;
+        const stepIdx = st.active[qid] ?? 0;
+        const stepTotal = def?.steps.length ?? 0;
+        const step = def?.steps[stepIdx];
+        const stepSummary = describeQuestStep(step);
+
+        ctx.fillStyle = "rgba(240, 248, 255, 0.92)";
+        if (!nextBlock(lineMain)) break;
+        ctx.fillText(title, padX, y);
+        y += lineMain;
+
+        ctx.fillStyle = "rgba(160, 170, 185, 0.9)";
+        const stepLine = `Step ${stepIdx + 1}/${Math.max(1, stepTotal)}${stepSummary ? ` · ${stepSummary}` : ""}`;
+        if (!nextBlock(lineSub)) break;
+        const maxW = contentW - 8;
+        let drawLine = stepLine;
+        if (ctx.measureText(drawLine).width > maxW) {
+          while (drawLine.length > 8 && ctx.measureText(`${drawLine}…`).width > maxW) {
+            drawLine = drawLine.slice(0, -1);
+          }
+          drawLine = `${drawLine}…`;
+        }
+        ctx.fillText(drawLine, padX + 4, y);
+        y += lineSub + 6;
+      }
+    }
+
+    y += 4;
+    ctx.font = "bold 14px Arial";
+    ctx.fillStyle = "rgba(190, 255, 180, 0.95)";
+    if (!nextBlock(lineMain)) {
+      if (clipped) {
+        ctx.font = "12px Arial";
+        ctx.fillStyle = "rgba(180, 180, 190, 0.85)";
+        ctx.fillText("…", padX, yMax);
+      }
+      return;
+    }
+    ctx.fillText("Completed", padX, y);
+    y += lineMain + 4;
+
+    const done = st.completed.filter((id: string) => byId.has(id));
+    ctx.font = "13px Arial";
+    if (!done.length) {
+      ctx.fillStyle = "rgba(160, 160, 175, 0.85)";
+      if (nextBlock(lineMain)) ctx.fillText("—", padX, y);
+    } else {
+      for (const qid of done) {
+        if (clipped) break;
+        const def = byId.get(qid)!;
+        ctx.fillStyle = "rgba(210, 230, 210, 0.9)";
+        if (!nextBlock(lineMain)) break;
+        ctx.fillText(`\u2713 ${def.title}`, padX, y);
+        y += lineMain + 4;
+      }
+    }
+
+    if (clipped) {
+      ctx.font = "12px Arial";
+      ctx.fillStyle = "rgba(180, 180, 190, 0.85)";
+      ctx.fillText("…", padX, Math.min(y, yMax));
+    }
+  }
+
   public render(ctx: CanvasRenderingContext2D, gameState: GameState): void {
     this.lastW = ctx.canvas.width;
     this.lastH = ctx.canvas.height;
@@ -558,12 +728,9 @@ export class InventoryScreenUI {
         const r = L.loadoutSlotRects[i]!;
         let item: InventoryItem | null = null;
         const bag = bags[i]!;
-        if (i === 2) {
-          const it = bag >= 1 ? items[bag - 1] : null;
-          if (it && isMeleeWeaponType(it.itemType)) item = it;
-        } else if (bag >= 1) {
+        if (bag >= 1) {
           const it = items[bag - 1];
-          if (it && isRangedWeaponType(it.itemType)) item = it;
+          if (it && itemMatchesLoadoutRow(it.itemType, i as 0 | 1 | 2)) item = it;
         }
         const isLoActive = activeLo === i;
         const isHover = this.hoveredLoadoutSlot === i && !this.dragState?.isDragging;
@@ -628,14 +795,19 @@ export class InventoryScreenUI {
           if (idx >= slots) continue;
           const sx = L.gridLeft + col * (L.cellSize + L.cellGap);
           const sy = L.gridTop + row * (L.cellSize + L.cellGap);
-          const invItem = items[idx];
-          const isActive = activeIdx === idx;
-          const isHover = this.hoveredBagIndex === idx && !this.dragState?.isDragging;
+          const isHiddenLoadoutBagSlot = this.bagSlotBackedByWeaponLoadout(idx, player);
+          const rawBagItem = items[idx];
+          const invItem =
+            rawBagItem && !isHiddenLoadoutBagSlot ? rawBagItem : null;
+          const isActive = !isHiddenLoadoutBagSlot && activeIdx === idx;
+          const isHover = !isHiddenLoadoutBagSlot && this.hoveredBagIndex === idx && !this.dragState?.isDragging;
           const isDragSource =
+            !isHiddenLoadoutBagSlot &&
             this.dragState?.isDragging &&
             this.dragState.source.kind === "bag" &&
             this.dragState.source.index === idx;
           const isTarget =
+            !isHiddenLoadoutBagSlot &&
             this.dragState?.isDragging &&
             this.dragState.targetBagIndex === idx &&
             this.dragState.source.kind === "bag" &&
@@ -709,8 +881,10 @@ export class InventoryScreenUI {
       this.renderTooltipFixed(ctx, items, equipment);
     } else if (this.activeTab === "character") {
       this.renderCharacterTab(ctx, L, player);
-    } else {
+    } else if (this.activeTab === "skills") {
       this.renderSkillsTab(ctx, L, player);
+    } else if (this.activeTab === "quests") {
+      this.renderQuestsTab(ctx, L, player);
     }
 
     ctx.fillStyle = "rgba(180, 180, 190, 0.85)";
@@ -880,7 +1054,13 @@ export class InventoryScreenUI {
     ctx.fillText(weightLine, this._mx, by + 36);
   }
 
-  public handleClick(x: number, y: number, canvasWidth: number, canvasHeight: number): boolean {
+  public handleClick(
+    x: number,
+    y: number,
+    canvasWidth: number,
+    canvasHeight: number,
+    clickCount: number = 1
+  ): boolean {
     if (!this.open) return false;
     const L = this.layout(canvasWidth, canvasHeight, this.getBagSlotCount());
     const inPanel =
@@ -967,9 +1147,17 @@ export class InventoryScreenUI {
       return true;
     }
 
+    if (this.activeTab === "quests") {
+      return true;
+    }
+
     const loadoutHit = this.getLoadoutSlotAt(x, y, L);
     if (loadoutHit !== null) {
-      this.deps.sendSetWeaponLoadoutSlot(loadoutHit, 0);
+      if (clickCount >= 2) {
+        this.deps.sendSetWeaponLoadoutSlot(loadoutHit, 0);
+      } else {
+        this.deps.sendSelectWeaponLoadout(loadoutHit);
+      }
       return true;
     }
 
@@ -977,6 +1165,12 @@ export class InventoryScreenUI {
     const eq = this.getEquipAt(x, y, L);
     if (bagIdx !== null) {
       const item = this.deps.getInventory()[bagIdx];
+      if (item && clickCount >= 2 && this.tryQuickEquipFromBag(bagIdx, item)) {
+        if (bagIdx < (this.deps.getMyPlayer()?.getMaxInventorySlots() ?? getConfig().player.MAX_INVENTORY_SLOTS)) {
+          this.deps.sendSelectInventorySlot(bagIdx + 1);
+        }
+        return true;
+      }
       if (item) {
         this.dragState = {
           source: { kind: "bag", index: bagIdx },
@@ -1046,14 +1240,8 @@ export class InventoryScreenUI {
       if (lo !== null) {
         const items = this.deps.getInventory();
         const item = items[drag.source.index];
-        if (item) {
-          if (lo === 2) {
-            if (isMeleeWeaponType(item.itemType)) {
-              this.deps.sendSetWeaponLoadoutSlot(2, drag.source.index + 1);
-            }
-          } else if (isRangedWeaponType(item.itemType)) {
-            this.deps.sendSetWeaponLoadoutSlot(lo, drag.source.index + 1);
-          }
+        if (item && itemMatchesLoadoutRow(item.itemType, lo)) {
+          this.deps.sendSetWeaponLoadoutSlot(lo, drag.source.index + 1);
         }
         return;
       }

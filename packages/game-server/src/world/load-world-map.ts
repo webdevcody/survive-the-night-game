@@ -2,7 +2,11 @@ import fs from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
 import { getConfig } from "@shared/config";
-import type { WorldMapDialogueNpcEntry } from "@shared/map/world-map-types";
+import type {
+  WorldMapDialogueNpcEntry,
+  WorldMapSpawnerMetaEntry,
+} from "@shared/map/world-map-types";
+import type { WorldMapQuestDefinition } from "@shared/map/quest-types";
 
 export interface WorldMapFile {
   ground: number[][];
@@ -13,6 +17,10 @@ export interface WorldMapFile {
   decals?: number[][];
   /** Optional dialogue NPC placements (see shared `WorldMapDialogueNpcEntry`). */
   dialogueNpcs?: WorldMapDialogueNpcEntry[];
+  /** Optional authored quests (see `WorldMapQuestDefinition`). */
+  quests?: WorldMapQuestDefinition[];
+  /** Optional spawner labels from the map editor (not used by the server yet). */
+  spawnerMeta?: WorldMapSpawnerMetaEntry[];
 }
 
 function resolveWorldMapJsonPath(): string {

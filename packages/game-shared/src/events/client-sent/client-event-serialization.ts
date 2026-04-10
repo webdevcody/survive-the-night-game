@@ -21,6 +21,7 @@ import { SpawnZombieEvent } from "./events/spawn-zombie";
 import { SetProgressionAllocationsEvent } from "./events/set-progression-allocations";
 import { SelectWeaponLoadoutEvent } from "./events/select-weapon-loadout";
 import { SetWeaponLoadoutSlotEvent } from "./events/set-weapon-loadout-slot";
+import { DialogueNpcCompleteEvent } from "./events/dialogue-npc-complete";
 import {
   serializeEvent,
   deserializeEvent,
@@ -45,7 +46,6 @@ const eventRegistry: Record<string, IBufferWriter> = {
   [ClientSentEvents.REQUEST_FULL_STATE]: NoPayloadEvent,
   [ClientSentEvents.REQUEST_PLAYER_ID]: NoPayloadEvent,
   [ClientSentEvents.PLAYER_RESPAWN_REQUEST]: NoPayloadEvent,
-  [ClientSentEvents.TELEPORT_TO_BASE]: NoPayloadEvent,
   [ClientSentEvents.DROP_ITEM]: DropItemEvent,
   [ClientSentEvents.CONSUME_ITEM]: ConsumeItemEvent,
   [ClientSentEvents.SELECT_INVENTORY_SLOT]: SelectInventorySlotEvent,
@@ -57,6 +57,7 @@ const eventRegistry: Record<string, IBufferWriter> = {
   [ClientSentEvents.SET_PROGRESSION_ALLOCATIONS]: SetProgressionAllocationsEvent,
   [ClientSentEvents.SELECT_WEAPON_LOADOUT]: SelectWeaponLoadoutEvent,
   [ClientSentEvents.SET_WEAPON_LOADOUT_SLOT]: SetWeaponLoadoutSlotEvent,
+  [ClientSentEvents.DIALOGUE_NPC_COMPLETE]: DialogueNpcCompleteEvent,
 };
 
 function isClientSentEvent(event: string): event is ClientSentEventType {

@@ -18,6 +18,8 @@ export type GameState = {
   closestInteractiveEntityId?: number | null;
   /** When set, client shows speech bubble for this dialogue_survivor_npc entity id. */
   openDialogueNpcId?: number | null;
+  /** 0-based index into current NPC dialogue lines (client-only). */
+  dialogueLineIndex: number;
   dt: number;
   globalIlluminationMultiplier: number;
   darknessHue: "red" | "blue";

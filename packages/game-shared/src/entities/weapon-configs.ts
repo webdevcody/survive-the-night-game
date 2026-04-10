@@ -6,6 +6,7 @@ export const WEAPON_CONFIGS: Record<string, WeaponConfig> = {
   fists: {
     id: "fists",
     type: "melee",
+    loadoutSlot: "melee",
     stats: {
       damage: 1,
       pushDistance: 8,
@@ -26,6 +27,7 @@ export const WEAPON_CONFIGS: Record<string, WeaponConfig> = {
   knife: {
     id: "knife",
     type: "melee",
+    loadoutSlot: "melee",
     stats: {
       damage: 1,
       pushDistance: 12,
@@ -55,6 +57,7 @@ export const WEAPON_CONFIGS: Record<string, WeaponConfig> = {
   baseball_bat: {
     id: "baseball_bat",
     type: "melee",
+    loadoutSlot: "melee",
     stats: {
       damage: 2,
       pushDistance: 12,
@@ -84,6 +87,7 @@ export const WEAPON_CONFIGS: Record<string, WeaponConfig> = {
   pistol: {
     id: "pistol",
     type: "ranged",
+    loadoutSlot: "secondary",
     stats: {
       cooldown: 0.3,
       recoilKnockback: 80,
@@ -113,6 +117,7 @@ export const WEAPON_CONFIGS: Record<string, WeaponConfig> = {
   shotgun: {
     id: "shotgun",
     type: "ranged",
+    loadoutSlot: "primary",
     stats: {
       spreadAngle: 8,
       cooldown: 0.8,
@@ -143,6 +148,7 @@ export const WEAPON_CONFIGS: Record<string, WeaponConfig> = {
   bolt_action_rifle: {
     id: "bolt_action_rifle",
     type: "ranged",
+    loadoutSlot: "primary",
     stats: {
       cooldown: 2.0,
       cameraShakeIntensity: 1.4,
@@ -171,6 +177,7 @@ export const WEAPON_CONFIGS: Record<string, WeaponConfig> = {
   ak47: {
     id: "ak47",
     type: "ranged",
+    loadoutSlot: "primary",
     stats: {
       cooldown: 0.08,
       cameraShakeIntensity: 1.0,
@@ -199,6 +206,7 @@ export const WEAPON_CONFIGS: Record<string, WeaponConfig> = {
   grenade_launcher: {
     id: "grenade_launcher",
     type: "ranged",
+    loadoutSlot: "secondary",
     stats: {
       cooldown: 1.0,
       cameraShakeIntensity: 2.8,
@@ -223,6 +231,7 @@ export const WEAPON_CONFIGS: Record<string, WeaponConfig> = {
   flamethrower: {
     id: "flamethrower",
     type: "ranged",
+    loadoutSlot: "primary",
     stats: {
       cooldown: 0.1, // Very fast cooldown for continuous fire
       cameraShakeIntensity: 0.9,
@@ -247,6 +256,7 @@ export const WEAPON_CONFIGS: Record<string, WeaponConfig> = {
   bow: {
     id: "bow",
     type: "ranged",
+    loadoutSlot: "secondary",
     stats: {
       cooldown: 0.6,
       cameraShakeIntensity: 0.8,
@@ -275,6 +285,7 @@ export const WEAPON_CONFIGS: Record<string, WeaponConfig> = {
   grenade: {
     id: "grenade",
     type: "ranged",
+    loadoutSlot: "secondary",
     stats: {
       cooldown: 0.5,
       cameraShakeIntensity: 0.5,
@@ -300,6 +311,7 @@ export const WEAPON_CONFIGS: Record<string, WeaponConfig> = {
   molotov_cocktail: {
     id: "molotov_cocktail",
     type: "ranged",
+    loadoutSlot: "secondary",
     stats: {
       cooldown: 0.5,
       cameraShakeIntensity: 0.5,
@@ -330,6 +342,7 @@ export const WEAPON_CONFIGS: Record<string, WeaponConfig> = {
   throwing_knife: {
     id: "throwing_knife",
     type: "ranged",
+    loadoutSlot: "secondary",
     stats: {
       cooldown: 0.5,
       cameraShakeIntensity: 0.5,

@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { getOrCreateUserStats, resolveHydrationExperience } from "~/data-access/user-stats";
 import { requireGameServerApiKey } from "~/utils/game-server-api-auth";
+import { coercePlayerQuestState } from "@survive-the-night/game-shared/quests/player-quest-state";
 
 /**
  * Game server → website: load persisted experience for a user (hydrate Player entity on connect).
@@ -37,6 +38,7 @@ export const Route = createFileRoute("/api/game/player-experience")({
               characterAllocations: stats.characterAllocations ?? {},
               lastTileX: stats.lastTileX ?? null,
               lastTileY: stats.lastTileY ?? null,
+              questProgress: coercePlayerQuestState(stats.questProgress),
             }),
             { status: 200, headers: { "Content-Type": "application/json" } },
           );

@@ -38,6 +38,7 @@ export interface Broadcaster {
 }
 
 import type { MapData } from "../../game-shared/src/events/server-sent/events/map-event";
+import type { WorldMapQuestDefinition } from "@shared/map/quest-types";
 
 export interface IMapManager {
   getMap(): number[][];
@@ -62,7 +63,7 @@ export interface IMapManager {
     count: number
   ): void;
   getRandomCampsitePosition(): Vector2 | null;
-  /** Player join / respawn / teleport-to-base when using authored world-map spawns layer. */
+  /** Player join / respawn when using authored world-map spawns layer. */
   getPlayerSpawnPositionForMap(): Vector2;
   /** If the tile is walkable (empty collidable, not overlapping car), return top-left world position; else null. */
   tryGetPositionForSavedTile(tileX: number, tileY: number): Vector2 | null;
@@ -78,6 +79,7 @@ export interface IMapManager {
     checkEntities?: boolean,
     entitySize?: number
   ): boolean;
+  getQuestDefinition(id: string): WorldMapQuestDefinition | undefined;
 }
 
 export interface IGameLoop {

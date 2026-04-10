@@ -5,5 +5,4 @@ export const API_ENDPOINTS = {
   biome: (name: string) => `${API_BASE_URL}/api/biomes/${name}`,
   worldMap: () => `${API_BASE_URL}/api/world-map`,
   worldMapExpand: () => `${API_BASE_URL}/api/world-map/expand`,
-  spawnableEntities: () => `${API_BASE_URL}/api/entities/spawnable`,
 } as const;

@@ -2,7 +2,6 @@ import { ISocketAdapter } from "@shared/network/socket-adapter";
 import { HandlerContext } from "../context";
 import { SocketEventHandler } from "./types";
 import { Player } from "@/entities/players/player";
-import { ClientSentEvents } from "@shared/events/events";
 
 function validate(data: unknown): { loadout: number } | null {
   if (typeof data !== "object" || data === null) return null;
@@ -28,7 +27,7 @@ export function onSelectWeaponLoadout(
 }
 
 export const selectWeaponLoadoutHandler: SocketEventHandler<{ loadout: number }> = {
-  event: ClientSentEvents.SELECT_WEAPON_LOADOUT,
+  event: "SELECT_WEAPON_LOADOUT",
   handler: (context, socket, data) => {
     const validated = validate(data);
     if (!validated) {

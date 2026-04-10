@@ -1,3 +1,5 @@
+import type { WorldMapQuestDefinition } from "../../../map/quest-types";
+
 /**
  * Map data structure used in full game state updates.
  * Map data is now sent as part of the GAME_STATE_UPDATE event rather than a separate MAP event.
@@ -14,4 +16,6 @@ export interface MapData {
     shed?: { x: number; y: number };
     merchants?: Array<{ x: number; y: number }>;
   };
+  /** Authored quests from world-map.json (for client journal UI). */
+  quests?: WorldMapQuestDefinition[];
 }

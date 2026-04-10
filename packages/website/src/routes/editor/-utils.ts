@@ -43,8 +43,16 @@ export const createEmptyDecalsLayer = (size: number): number[][] => {
     .map(() => Array(size).fill(0));
 };
 
+const defaultDialogueEntry = (row: number, col: number): WorldMapDialogueNpcEntry => ({
+  row,
+  col,
+  lines: ["Hello!"],
+  message: "Hello!",
+});
+
 /**
  * Ensures every dialogue-NPC spawn tile has a `dialogueNpcs` entry (default message if missing).
+ * Preserves full authored fields (name, grantQuestId, lines) per tile when reconciling.
  */
 export function reconcileDialogueNpcsWithSpawnsLayer(
   spawns: number[][],
@@ -52,20 +60,21 @@ export function reconcileDialogueNpcsWithSpawnsLayer(
 ): WorldMapDialogueNpcEntry[] {
   const n = spawns.length;
   const normalized = normalizeDialogueNpcs(rawDialogue, n);
-  const byKey = new Map<string, string>();
+  const byKey = new Map<string, WorldMapDialogueNpcEntry>();
   for (const e of normalized) {
-    byKey.set(`${e.row},${e.col}`, e.message);
+    byKey.set(`${e.row},${e.col}`, e);
   }
   const out: WorldMapDialogueNpcEntry[] = [];
   for (let row = 0; row < n; row++) {
     for (let col = 0; col < n; col++) {
       if (spawns[row][col] === NPC_DIALOGUE_SURVIVOR_SPAWN_TILE_ID) {
         const k = `${row},${col}`;
-        out.push({ row, col, message: byKey.get(k) ?? "Hello!" });
+        const prev = byKey.get(k);
+        out.push(prev ? { ...prev, row, col } : defaultDialogueEntry(row, col));
       }
     }
   }
-  return out;
+  return normalizeDialogueNpcs(out, n);
 }
 
 // Convert name to kebab-case

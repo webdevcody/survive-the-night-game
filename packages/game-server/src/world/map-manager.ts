@@ -46,6 +46,8 @@ import {
 } from "../../../game-shared/src/map/spawn-palette";
 import type { WorldMapDialogueNpcEntry } from "../../../game-shared/src/map/world-map-types";
 import { normalizeDialogueNpcs } from "../../../game-shared/src/map/world-map-types";
+import type { WorldMapQuestDefinition } from "../../../game-shared/src/map/quest-types";
+import { normalizeQuests } from "../../../game-shared/src/map/quest-types";
 import { DECAL_TILE_CAMPSITE } from "../../../game-shared/src/map/decal-palette";
 
 // Re-export from shared config for backward compatibility
@@ -111,6 +113,7 @@ export class MapManager implements IMapManager {
   private authoredWorldMapApplied = false;
   /** Normalized dialogue NPC entries from the last applied authored map (tile row/col + message). */
   private authoredDialogueNpcs: WorldMapDialogueNpcEntry[] = [];
+  private authoredQuests: WorldMapQuestDefinition[] = [];
   private gameManagers?: IGameManagers;
   private entityManager?: IEntityManager;
   private farmBiomePosition?: { x: number; y: number };
@@ -167,7 +170,16 @@ export class MapManager implements IMapManager {
         shed: this.shedBiomePosition,
         merchants: this.merchantBiomePositions,
       },
+      quests: this.authoredQuests.length > 0 ? this.authoredQuests : undefined,
     };
+  }
+
+  public getAuthoredQuests(): readonly WorldMapQuestDefinition[] {
+    return this.authoredQuests;
+  }
+
+  public getQuestDefinition(id: string): WorldMapQuestDefinition | undefined {
+    return this.authoredQuests.find((q) => q.id === id);
   }
 
   public getGroundLayer(): number[][] {
@@ -441,12 +453,13 @@ export class MapManager implements IMapManager {
       }
     }
     this.authoredDialogueNpcs = normalizeDialogueNpcs(data.dialogueNpcs, n);
+    this.authoredQuests = normalizeQuests(data.quests, n);
     this.authoredWorldMapApplied = true;
     return true;
   }
 
   /**
-   * Player / teleport / respawn: authored map uses spawn layer id 1 with empty collidables (no campsite fallback).
+   * Player join / respawn: authored map uses spawn layer id 1 with empty collidables (no campsite fallback).
    * Procedural maps use campsite then grass.
    */
   public getPlayerSpawnPositionForMap(): Vector2 {
@@ -584,9 +597,9 @@ export class MapManager implements IMapManager {
 
   private seedDialogueSurvivorNpcsFromAuthoredLayer(): void {
     const totalSize = BIOME_SIZE * MAP_SIZE;
-    const messageByKey = new Map<string, string>();
+    const byKey = new Map<string, WorldMapDialogueNpcEntry>();
     for (const e of this.authoredDialogueNpcs) {
-      messageByKey.set(`${e.row},${e.col}`, e.message);
+      byKey.set(`${e.row},${e.col}`, e);
     }
 
     for (let y = 0; y < totalSize; y++) {
@@ -594,8 +607,14 @@ export class MapManager implements IMapManager {
         if (!isNpcDialogueSurvivorSpawnTile(this.spawnLayer[y][x])) {
           continue;
         }
-        const msg = messageByKey.get(`${y},${x}`) ?? "…";
-        const npc = new DialogueSurvivorNpc(this.getGameManagers(), msg, x, y);
+        const entry = byKey.get(`${y},${x}`);
+        const fallback: WorldMapDialogueNpcEntry = {
+          row: y,
+          col: x,
+          lines: ["…"],
+          message: "…",
+        };
+        const npc = new DialogueSurvivorNpc(this.getGameManagers(), entry ?? fallback, x, y);
         this.getEntityManager().addEntity(npc);
       }
     }

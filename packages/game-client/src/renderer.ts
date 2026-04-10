@@ -4,6 +4,7 @@ import { GameState, getEntityById } from "@/state";
 import { MerchantBuyPanel } from "@/ui/merchant-buy-panel";
 import { Hud } from "@/ui/hud";
 import { GameOverDialogUI } from "@/ui/game-over-dialog";
+import { QuestCompletedModal } from "@/ui/quest-completed-modal";
 import { ParticleManager } from "./managers/particles";
 import { PlacementManager } from "./managers/placement";
 import { ClientPositionable } from "@/extensions/positionable";
@@ -23,6 +24,7 @@ import { getPlayer } from "./util/get-player";
 import { distance } from "@shared/util/physics";
 import { isAutoPickupItem } from "./util/auto-pickup";
 import { resizeCanvasToWindow } from "./util/canvas-size";
+import { renderOpenDialogueSpeechBubble } from "./entities/environment/dialogue-survivor-npc";
 
 export class Renderer {
   private ctx: CanvasRenderingContext2D;
@@ -31,9 +33,9 @@ export class Renderer {
   private hud: Hud;
   private merchantBuyPanel: MerchantBuyPanel;
   private gameOverDialog: GameOverDialogUI;
+  private questCompletedModal: QuestCompletedModal;
   private particleManager: ParticleManager;
   private getPlacementManager: () => PlacementManager | null;
-  private getTeleportState: () => { isTeleporting: boolean; progress: number } | null;
   private lastPerfLogTime: number | null = null;
   private mousePosition: { x: number; y: number } | null = null;
   public spatialGrid: SpatialGrid<ClientEntityBase> | null = null;
@@ -45,9 +47,9 @@ export class Renderer {
     hud: Hud,
     merchantBuyPanel: MerchantBuyPanel,
     gameOverDialog: GameOverDialogUI,
+    questCompletedModal: QuestCompletedModal,
     particleManager: ParticleManager,
     getPlacementManager: () => PlacementManager | null,
-    getTeleportState: () => { isTeleporting: boolean; progress: number } | null,
   ) {
     this.ctx = ctx;
     this.gameState = gameState;
@@ -55,9 +57,9 @@ export class Renderer {
     this.hud = hud;
     this.merchantBuyPanel = merchantBuyPanel;
     this.gameOverDialog = gameOverDialog;
+    this.questCompletedModal = questCompletedModal;
     this.particleManager = particleManager;
     this.getPlacementManager = getPlacementManager;
-    this.getTeleportState = getTeleportState;
     this.resizeCanvas();
   }
 
@@ -266,18 +268,6 @@ export class Renderer {
     }
     perfTimer.end("renderPlacement");
 
-    // Render teleport progress indicator above player's head
-    perfTimer.start("renderTeleportProgress");
-    const teleportState = this.getTeleportState();
-    if (teleportState?.isTeleporting && this.gameState.playerId) {
-      const player = getPlayer(this.gameState);
-      if (player && player.hasExt(ClientPositionable)) {
-        const playerPos = player.getPosition();
-        this.hud.renderTeleportProgress(this.ctx, playerPos, teleportState.progress);
-      }
-    }
-    perfTimer.end("renderTeleportProgress");
-
     // Apply darkness overlay on top of everything (ground, collidables, entities)
     perfTimer.start("renderDarkness");
     this.mapManager.renderDarkness(this.ctx);
@@ -285,6 +275,9 @@ export class Renderer {
 
     // Apply zombie "undead view" overlay if player is a zombie
     this.mapManager.renderZombieOverlay(this.ctx);
+
+    // Dialogue speech bubble (world space) after darkness/zombie overlays so text stays readable
+    renderOpenDialogueSpeechBubble(this.ctx, this.gameState);
 
     // Render UI without transforms
     perfTimer.start("renderUI");
@@ -311,6 +304,8 @@ export class Renderer {
         }
       }
     }
+
+    this.questCompletedModal.render(this.ctx, this.gameState);
 
     perfTimer.end("render");
 

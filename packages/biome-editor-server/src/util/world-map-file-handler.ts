@@ -4,8 +4,16 @@ import path from "path";
 import { fileURLToPath } from "url";
 import { getConfig } from "@survive-the-night/game-shared/config";
 import { resizeSquareLayersTopLeft } from "@survive-the-night/game-shared/map/world-map-resize";
-import type { WorldMapDialogueNpcEntry } from "@survive-the-night/game-shared/map/world-map-types";
-import { normalizeDialogueNpcs } from "@survive-the-night/game-shared/map/world-map-types";
+import type {
+  WorldMapDialogueNpcEntry,
+  WorldMapSpawnerMetaEntry,
+} from "@survive-the-night/game-shared/map/world-map-types";
+import {
+  normalizeDialogueNpcs,
+  reconcileSpawnerMetaWithSpawnsLayer,
+} from "@survive-the-night/game-shared/map/world-map-types";
+import type { WorldMapQuestDefinition } from "@survive-the-night/game-shared/map/quest-types";
+import { normalizeQuests } from "@survive-the-night/game-shared/map/quest-types";
 
 const IS_PRODUCTION = process.env.NODE_ENV === "production";
 
@@ -46,6 +54,9 @@ export interface WorldMapData {
   spawns: number[][];
   decals: number[][];
   dialogueNpcs?: WorldMapDialogueNpcEntry[];
+  quests?: WorldMapQuestDefinition[];
+  /** Optional labels for non-dialogue spawner tiles (editor + future runtime use). */
+  spawnerMeta?: WorldMapSpawnerMetaEntry[];
 }
 
 /** Uses in-memory config (may differ from disk until server reload). Prefer disk helpers in this module. */
@@ -101,6 +112,8 @@ export function createEmptyWorldMap(): WorldMapData {
     spawns: createEmptySpawnsLayer(n),
     decals: createEmptyDecalsLayer(n),
     dialogueNpcs: [],
+    quests: [],
+    spawnerMeta: [],
   };
 }
 
@@ -136,7 +149,17 @@ export async function readWorldMap(): Promise<WorldMapData> {
       }
     }
     const dialogueNpcs = normalizeDialogueNpcs(data.dialogueNpcs, n);
-    return { ground: data.ground, collidables: data.collidables, spawns, decals, dialogueNpcs };
+    const quests = normalizeQuests(data.quests, n);
+    const spawnerMeta = reconcileSpawnerMetaWithSpawnsLayer(spawns, data.spawnerMeta);
+    return {
+      ground: data.ground,
+      collidables: data.collidables,
+      spawns,
+      decals,
+      dialogueNpcs,
+      quests,
+      spawnerMeta,
+    };
   } catch (e: unknown) {
     const err = e as NodeJS.ErrnoException;
     if (err.code === "ENOENT") {
@@ -225,12 +248,16 @@ async function readWorldMapRawFromDisk(): Promise<WorldMapData> {
     }
   }
   const dialogueNpcs = normalizeDialogueNpcs(data.dialogueNpcs, oldN);
+  const quests = normalizeQuests(data.quests, oldN);
+  const spawnerMeta = reconcileSpawnerMetaWithSpawnsLayer(spawns, data.spawnerMeta);
   return {
     ground: data.ground,
     collidables: data.collidables,
     spawns,
     decals,
     dialogueNpcs,
+    quests,
+    spawnerMeta,
   };
 }
 
@@ -295,6 +322,8 @@ export async function expandWorldMap(mapSizeBiomes: number): Promise<ExpandWorld
   const expanded: WorldMapData = {
     ...resized,
     dialogueNpcs: raw.dialogueNpcs ?? [],
+    quests: raw.quests ?? [],
+    spawnerMeta: reconcileSpawnerMetaWithSpawnsLayer(resized.spawns, raw.spawnerMeta),
   };
 
   const previousConfigText = await fs.readFile(WORLD_CONFIG_PATH, "utf-8");

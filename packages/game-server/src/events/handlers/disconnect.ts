@@ -36,7 +36,13 @@ export function onDisconnect(context: HandlerContext, socket: ISocketAdapter): v
             "Content-Type": "application/json",
             "X-API-Key": GAME_SERVER_API_KEY,
           },
-          body: JSON.stringify({ userId, lastTileX, lastTileY }),
+          body: JSON.stringify({
+            userId,
+            lastTileX,
+            lastTileY,
+            questProgress: player.getQuestProgressPayload(),
+            characterAllocations: player.getCharacterAllocationRecord(),
+          }),
         });
         if (!res.ok) {
           const t = await res.text().catch(() => "");

@@ -1,0 +1,1 @@
+ALTER TABLE "user_stats" ADD COLUMN "quest_progress" jsonb DEFAULT '{"active":{},"completed":[]}'::jsonb NOT NULL;

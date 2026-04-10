@@ -9,7 +9,6 @@ import { pingHandler, pingUpdateHandler } from "./ping";
 import { sendChatHandler } from "./chat";
 import { placeStructureHandler } from "./structure";
 import { playerRespawnRequestHandler } from "./respawn";
-import { teleportToBaseHandler } from "./teleport";
 import { disconnectHandler } from "./disconnect";
 import { dropItemHandler } from "./drop-item";
 import { consumeItemHandler } from "./consume-item";
@@ -22,6 +21,7 @@ import { spawnZombieHandler } from "./spawn-zombie";
 import { setProgressionAllocationsHandler } from "./set-progression-allocations";
 import { selectWeaponLoadoutHandler } from "./select-weapon-loadout";
 import { setWeaponLoadoutSlotHandler } from "./set-weapon-loadout-slot";
+import { dialogueNpcCompleteHandler } from "./dialogue-npc-complete";
 
 /**
  * Registry of all socket event handlers.
@@ -45,7 +45,6 @@ export const socketEventHandlers: SocketEventHandler[] = [
   sendChatHandler,
   placeStructureHandler,
   playerRespawnRequestHandler,
-  teleportToBaseHandler,
   disconnectHandler,
   dropItemHandler,
   consumeItemHandler,
@@ -58,4 +57,5 @@ export const socketEventHandlers: SocketEventHandler[] = [
   setProgressionAllocationsHandler,
   selectWeaponLoadoutHandler,
   setWeaponLoadoutSlotHandler,
+  dialogueNpcCompleteHandler,
 ];

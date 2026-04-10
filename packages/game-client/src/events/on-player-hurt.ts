@@ -13,13 +13,10 @@ export const onPlayerHurt = (context: ClientEventContext, event: PlayerHurtEvent
     .getSoundManager()
     .playPositionalSound(SOUND_TYPES_TO_MP3.PLAYER_HURT, playerPosition);
 
-  // Interrupt teleport if local player takes damage
   const hurtPlayerId = event.getPlayerId();
   const localPlayerId = context.gameClient.getGameState().playerId;
 
-  // Compare IDs directly - if the hurt player is the local player, interrupt teleport
   if (localPlayerId && hurtPlayerId === localPlayerId) {
     context.gameClient.shakeCamera(4, 250);
-    context.gameClient.interruptTeleport();
   }
 };

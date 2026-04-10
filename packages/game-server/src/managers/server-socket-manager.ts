@@ -33,6 +33,7 @@ import { UserSessionCache } from "@/services/user-session-cache";
 import { KillTracker } from "@/services/kill-tracker";
 import { WEBSITE_API_URL, GAME_SERVER_API_KEY } from "@/config/env";
 import type { PersistedPlayerProgress } from "@/services/player-progress-types";
+import { coercePlayerQuestState } from "@shared/quests/player-quest-state";
 import { XP_PER_ZOMBIE_KILL } from "@shared/util/experience-level";
 
 /**
@@ -214,6 +215,7 @@ export class ServerSocketManager implements Broadcaster {
         characterAllocations?: Record<string, number>;
         lastTileX?: unknown;
         lastTileY?: unknown;
+        questProgress?: unknown;
       };
       const rawXp = data.experience;
       let xp =
@@ -245,6 +247,7 @@ export class ServerSocketManager implements Broadcaster {
         characterAllocations: data.characterAllocations ?? {},
         lastTileX,
         lastTileY,
+        questProgress: data.questProgress != null ? coercePlayerQuestState(data.questProgress) : undefined,
       };
     } catch (error) {
       console.warn(`[ServerSocketManager] fetchPersistedProgress failed for ${userId}:`, error);

@@ -7,13 +7,15 @@ import { useWorldMap, useSaveWorldMap } from "./-hooks/useEditorApi";
 import { TileMapEditor } from "./-components/TileMapEditor";
 import { EditorMinimap } from "./-components/EditorMinimap";
 import { EditorRightOverlay } from "./-components/EditorRightOverlay";
-import { ItemsModal } from "./-components/ItemsModal";
+import { NpcConfigModal } from "./-components/NpcConfigModal";
+import { SpawnerMetaModal } from "./-components/SpawnerMetaModal";
 import { getConfig } from "@survive-the-night/game-shared/config";
 import {
   createEmptySpawnsLayer,
   createEmptyDecalsLayer,
   reconcileDialogueNpcsWithSpawnsLayer,
 } from "./-utils";
+import { reconcileSpawnerMetaWithSpawnsLayer } from "@survive-the-night/game-shared/map/world-map-types";
 
 export const Route = createFileRoute("/editor/")({
   component: MapEditor,
@@ -40,20 +42,23 @@ function MapEditor() {
   const setSheetImages = useEditorStore((state) => state.setSheetImages);
   const setGroundGrid = useEditorStore((state) => state.setGroundGrid);
   const setCollidablesGrid = useEditorStore((state) => state.setCollidablesGrid);
-  const setSpawnsGrid = useEditorStore((state) => state.setSpawnsGrid);
   const setDecalsGrid = useEditorStore((state) => state.setDecalsGrid);
   const setDialogueNpcs = useEditorStore((state) => state.setDialogueNpcs);
+  const setQuests = useEditorStore((state) => state.setQuests);
   const setSaveStatus = useEditorStore((state) => state.setSaveStatus);
   const setHistory = useEditorStore((state) => state.setHistory);
   const undo = useEditorStore((state) => state.undo);
   const setActiveLayer = useEditorStore((state) => state.setActiveLayer);
   const setSelectedTileId = useEditorStore((state) => state.setSelectedTileId);
+  const clampCameraToViewport = useEditorStore((state) => state.clampCameraToViewport);
 
   const groundGrid = useEditorStore((state) => state.groundGrid);
   const collidablesGrid = useEditorStore((state) => state.collidablesGrid);
   const spawnsGrid = useEditorStore((state) => state.spawnsGrid);
   const decalsGrid = useEditorStore((state) => state.decalsGrid);
   const dialogueNpcs = useEditorStore((state) => state.dialogueNpcs);
+  const spawnerMeta = useEditorStore((state) => state.spawnerMeta);
+  const quests = useEditorStore((state) => state.quests);
   const saveStatus = useEditorStore((state) => state.saveStatus);
 
   const { data: worldMapData, isPending: isWorldMapPending } = useWorldMap();
@@ -85,13 +90,18 @@ function MapEditor() {
           worldMapData.spawns[0]?.length === n
         ) {
           spawnsForDialogue = worldMapData.spawns;
-          setSpawnsGrid(worldMapData.spawns);
-        } else {
-          setSpawnsGrid(spawnsForDialogue);
         }
+        useEditorStore.setState({
+          spawnsGrid: spawnsForDialogue,
+          spawnerMeta: reconcileSpawnerMetaWithSpawnsLayer(
+            spawnsForDialogue,
+            worldMapData.spawnerMeta,
+          ),
+        });
         setDialogueNpcs(
           reconcileDialogueNpcsWithSpawnsLayer(spawnsForDialogue, worldMapData.dialogueNpcs),
         );
+        setQuests(worldMapData.quests ?? []);
         if (
           worldMapData.decals?.length === n &&
           worldMapData.decals[0]?.length === n
@@ -100,6 +110,7 @@ function MapEditor() {
         } else {
           setDecalsGrid(createEmptyDecalsLayer(n));
         }
+        clampCameraToViewport();
       } else {
         console.warn(
           "World map must be square with matching ground and collidables dimensions; got ground",
@@ -117,11 +128,12 @@ function MapEditor() {
     worldMapData,
     setGroundGrid,
     setCollidablesGrid,
-    setSpawnsGrid,
     setDecalsGrid,
     setDialogueNpcs,
+    setQuests,
     setSaveStatus,
     setHistory,
+    clampCameraToViewport,
   ]);
 
   useEffect(() => {
@@ -167,6 +179,8 @@ function MapEditor() {
         spawns: spawnsGrid,
         decals: decalsGrid,
         dialogueNpcs,
+        quests,
+        spawnerMeta,
       });
       setSaveStatus("saved");
       setTimeout(() => setSaveStatus("idle"), 2000);
@@ -224,7 +238,8 @@ function MapEditor() {
         />
       </div>
 
-      <ItemsModal />
+      <NpcConfigModal />
+      <SpawnerMetaModal />
     </div>
   );
 }

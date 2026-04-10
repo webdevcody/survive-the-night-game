@@ -1,6 +1,6 @@
 /**
  * Utility for rendering radial progress indicators
- * Used for teleport progress, pickup progress, and other hold-to-complete actions
+ * Used for pickup progress and other hold-to-complete actions
  */
 
 export interface RadialProgressIndicatorOptions {

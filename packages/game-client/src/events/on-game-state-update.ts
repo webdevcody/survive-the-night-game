@@ -124,6 +124,8 @@ const handleGameStateUpdate = (context: InitializationContext, gameStateEvent: G
     // Replace all entities
     replaceAllEntities(context.gameState, createdEntities);
     context.gameState.openDialogueNpcId = null;
+    context.gameState.dialogueLineIndex = 0;
+    context.gameClient.resetQuestCompletionTracking();
 
     // Apply map data if included in the full state
     const mapData = gameStateEvent.getMapData();
@@ -268,4 +270,6 @@ const handleGameStateUpdate = (context: InitializationContext, gameStateEvent: G
       reader = reader.atOffset(entityStartOffset + entityLength);
     }
   }
+
+  context.gameClient.pollQuestCompletionEvents();
 };

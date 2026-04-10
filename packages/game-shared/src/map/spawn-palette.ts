@@ -44,8 +44,11 @@ export const NPC_DIALOGUE_SURVIVOR_SPAWN_TILE_ID = ITEM_SPAWN_TILE_ID_END;
 
 export const DEFAULT_ITEM_FIXTURE_RESPAWN_MS = 120_000;
 
-/** Max authored dialogue length for map JSON and server spawn (chars). */
+/** Max authored dialogue length per line for map JSON and server spawn (chars). */
 export const DIALOGUE_NPC_MAX_MESSAGE_LENGTH = 1000;
+
+/** Max number of dialog lines per NPC in authored map data. */
+export const DIALOGUE_NPC_MAX_LINE_COUNT = 32;
 
 export function isPlayerSpawnTile(id: number): boolean {
   return id === SPAWN_TILE_PLAYER;
@@ -155,3 +158,27 @@ export const SPAWN_PALETTE_ENTRIES: readonly SpawnPaletteEntry[] = [
   ...ITEM_SPAWN_PALETTE_ENTRIES,
   NPC_DIALOGUE_SURVIVOR_PALETTE_ENTRY,
 ];
+
+const SPAWN_TILE_SHORT: Record<number, string> = {
+  [SPAWN_TILE_NONE]: "",
+  [SPAWN_TILE_PLAYER]: "P",
+  2: "Z1",
+  3: "Z2",
+  4: "Z3",
+  5: "Z4",
+  6: "Z5",
+};
+
+/** Short label drawn inside editor spawn cells (2–4 chars). */
+export function getSpawnTileShortLabel(spawnTileId: number): string {
+  if (spawnTileId <= 0) return "";
+  if (SPAWN_TILE_SHORT[spawnTileId]) return SPAWN_TILE_SHORT[spawnTileId]!;
+  if (isItemSpawnTile(spawnTileId)) {
+    const t = spawnTileIdToItemFixtureType(spawnTileId);
+    if (!t) return "?";
+    const short = t.replace(/_/g, "");
+    return short.length <= 4 ? short : short.slice(0, 4);
+  }
+  if (isNpcDialogueSurvivorSpawnTile(spawnTileId)) return "NPC";
+  return "?";
+}

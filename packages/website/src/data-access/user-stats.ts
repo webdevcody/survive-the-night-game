@@ -11,6 +11,7 @@ import {
 import { XP_PER_ZOMBIE_KILL } from "@survive-the-night/game-shared/util/experience-level";
 import type { CharacterAllocations } from "@survive-the-night/game-shared/util/character-stats";
 import type { SkillAllocations } from "@survive-the-night/game-shared/util/skill-tree";
+import type { PlayerQuestStatePayload } from "@survive-the-night/game-shared/quests/player-quest-state";
 
 /**
  * Get user stats by user ID, creating if doesn't exist
@@ -45,6 +46,41 @@ export function resolveHydrationExperience(stats: UserStats): number {
 /**
  * Persist last open-world tile indices when the player disconnects (game server).
  */
+/**
+ * Game server disconnect: persist last tile, quest journal, and live character stats (includes quest rewards).
+ * Character map is normalized and clamped only — no XP budget validation (trusted game-server path).
+ */
+export async function persistGameServerDisconnectSnapshot(
+  userId: string,
+  snapshot: {
+    lastTileX: number;
+    lastTileY: number;
+    questProgress: PlayerQuestStatePayload;
+    characterAllocations: Record<string, number>;
+  },
+): Promise<UserStats> {
+  await getOrCreateUserStats(userId);
+  const characterAllocations = normalizeCharacterAllocations(snapshot.characterAllocations) as Record<
+    string,
+    number
+  >;
+  const [updated] = await database
+    .update(userStats)
+    .set({
+      lastTileX: Math.floor(snapshot.lastTileX),
+      lastTileY: Math.floor(snapshot.lastTileY),
+      questProgress: {
+        active: snapshot.questProgress.active,
+        completed: snapshot.questProgress.completed,
+      },
+      characterAllocations,
+      updatedAt: new Date(),
+    })
+    .where(eq(userStats.userId, userId))
+    .returning();
+  return updated!;
+}
+
 export async function updateLastTilePosition(
   userId: string,
   lastTileX: number,

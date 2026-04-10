@@ -1,10 +1,15 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { updateLastTilePosition } from "~/data-access/user-stats";
+import {
+  persistGameServerDisconnectSnapshot,
+  updateLastTilePosition,
+} from "~/data-access/user-stats";
+import { coercePlayerQuestState } from "@survive-the-night/game-shared/quests/player-quest-state";
 import { requireGameServerApiKey } from "~/utils/game-server-api-auth";
 
 /**
  * Game server → website: save last open-world tile when the player disconnects.
- * POST JSON { userId, lastTileX, lastTileY } with X-API-Key
+ * POST JSON { userId, lastTileX, lastTileY, questProgress?, characterAllocations? } with X-API-Key.
+ * When `questProgress` and `characterAllocations` are included, all fields are written in one update (trusted).
  */
 export const Route = createFileRoute("/api/game/player-last-position")({
   server: {
@@ -20,6 +25,8 @@ export const Route = createFileRoute("/api/game/player-last-position")({
             userId?: unknown;
             lastTileX?: unknown;
             lastTileY?: unknown;
+            questProgress?: unknown;
+            characterAllocations?: unknown;
           };
 
           if (!body.userId || typeof body.userId !== "string") {
@@ -48,7 +55,25 @@ export const Route = createFileRoute("/api/game/player-last-position")({
             );
           }
 
-          const updated = await updateLastTilePosition(body.userId, tx, ty);
+          const hasSnapshot =
+            body.questProgress !== undefined &&
+            body.questProgress !== null &&
+            body.characterAllocations !== undefined &&
+            body.characterAllocations !== null;
+
+          const updated = hasSnapshot
+            ? await persistGameServerDisconnectSnapshot(body.userId, {
+                lastTileX: tx,
+                lastTileY: ty,
+                questProgress: coercePlayerQuestState(body.questProgress),
+                characterAllocations:
+                  typeof body.characterAllocations === "object" &&
+                  body.characterAllocations !== null &&
+                  !Array.isArray(body.characterAllocations)
+                    ? (body.characterAllocations as Record<string, number>)
+                    : {},
+              })
+            : await updateLastTilePosition(body.userId, tx, ty);
 
           return new Response(
             JSON.stringify({

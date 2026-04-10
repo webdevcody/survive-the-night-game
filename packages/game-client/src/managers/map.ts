@@ -6,6 +6,7 @@ import PoolManager from "@shared/util/pool-manager";
 import { distance } from "@shared/util/physics";
 import { getConfig } from "@shared/config";
 import { PlayerClient } from "@/entities/player";
+import type { WorldMapQuestDefinition } from "@shared/map/quest-types";
 
 // Zombie player illumination radius (allows them to see around themselves)
 const ZOMBIE_ILLUMINATION_RADIUS = 80;
@@ -66,6 +67,7 @@ export class MapManager {
   private collidablesTilesheet = new Image();
   private gameClient: GameClient;
   private lastRenderTime: number;
+  private authoredQuests: WorldMapQuestDefinition[] = [];
 
   constructor(gameClient: GameClient) {
     this.gameClient = gameClient;
@@ -86,10 +88,16 @@ export class MapManager {
     };
   }
 
-  setMap(mapData: { ground: number[][]; collidables: number[][]; biomePositions?: any }) {
+  setMap(mapData: {
+    ground: number[][];
+    collidables: number[][];
+    biomePositions?: any;
+    quests?: WorldMapQuestDefinition[];
+  }) {
     this.groundLayer = mapData.ground;
     this.collidablesLayer = mapData.collidables;
     this.biomePositions = mapData.biomePositions;
+    this.authoredQuests = Array.isArray(mapData.quests) ? mapData.quests : [];
 
     // Pre-render both layers once
     this.prerenderGround();
@@ -110,12 +118,18 @@ export class MapManager {
     ground: number[][] | null;
     collidables: number[][] | null;
     biomePositions?: any;
+    quests?: WorldMapQuestDefinition[];
   } {
     return {
       ground: this.groundLayer,
       collidables: this.collidablesLayer,
       biomePositions: this.biomePositions,
+      quests: this.authoredQuests.length > 0 ? this.authoredQuests : undefined,
     };
+  }
+
+  getAuthoredQuests(): WorldMapQuestDefinition[] {
+    return this.authoredQuests;
   }
 
   getBiomePositions():

@@ -27,9 +27,14 @@ export interface WeaponAssetConfig {
   sheet: string; // Required - must specify which sprite sheet to use
 }
 
+/** Which inventory weapon-loadout row this weapon equips to (UI: Primary / Secondary / Melee). */
+export type WeaponLoadoutSlotKey = "primary" | "secondary" | "melee";
+
 export interface WeaponConfig extends BehaviorConfigs {
   id: string;
   type?: "melee" | "ranged"; // Weapon type: melee for close-range weapons, ranged for projectile weapons
+  /** Required for every registered weapon (including fists). */
+  loadoutSlot: WeaponLoadoutSlotKey;
   stats: WeaponStats;
   assets: WeaponAssetConfig;
   sound?: string; // Sound file name (without .mp3 extension) to play when weapon is fired
@@ -46,6 +51,9 @@ class WeaponRegistry {
         `Weapon "${config.id}" is missing required 'sheet' property in assets. ` +
           `All weapons must specify which sprite sheet to use.`,
       );
+    }
+    if (!config.loadoutSlot) {
+      throw new Error(`Weapon "${config.id}" must set loadoutSlot (primary | secondary | melee).`);
     }
     this.weapons.set(config.id, config);
   }

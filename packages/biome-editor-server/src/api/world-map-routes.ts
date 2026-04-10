@@ -46,6 +46,8 @@ router.post("/world-map", async (req: Request, res: Response) => {
     await writeWorldMap({
       ...body,
       dialogueNpcs: body.dialogueNpcs,
+      quests: body.quests,
+      spawnerMeta: body.spawnerMeta,
     });
     res.json({ success: true, message: "World map saved successfully" });
   } catch (error: unknown) {

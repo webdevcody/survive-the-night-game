@@ -9,6 +9,8 @@ import { encodeExtensionType } from "@shared/util/extension-type-encoding";
 import { itemTypeRegistry } from "@shared/util/item-type-encoding";
 import { writeItemState } from "@shared/util/item-state-serialization";
 import { ExtensionBase } from "./extension-base";
+import { Player } from "@/entities/players/player";
+import { advancePickupStep } from "@/quests/quest-runtime";
 
 interface PickupOptions {
   state?: ItemState;
@@ -88,6 +90,9 @@ export default class Carryable extends ExtensionBase<CarryableFields> {
           const newState = options.mergeStrategy(existingItem.state ?? {}, options.state ?? {});
           inventory.updateItemState(existingItemIndex, newState);
           this.self.getEntityManager().markEntityForRemoval(this.self);
+          if (entity instanceof Player) {
+            advancePickupStep(entity, itemType, entity.getGameManagers().getMapManager());
+          }
           return true;
         }
       }
@@ -114,6 +119,10 @@ export default class Carryable extends ExtensionBase<CarryableFields> {
           itemType: itemType,
         })
       );
+
+    if (entity instanceof Player) {
+      advancePickupStep(entity, itemType, entity.getGameManagers().getMapManager());
+    }
 
     return true;
   }

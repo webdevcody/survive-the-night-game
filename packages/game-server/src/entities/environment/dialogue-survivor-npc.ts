@@ -6,18 +6,36 @@ import { Entities } from "@shared/constants";
 import PoolManager from "@shared/util/pool-manager";
 import { getConfig } from "@shared/config";
 import { SerializableFields } from "@/util/serializable-fields";
-
-const DEFAULT_DIALOGUE = "…";
+import type { WorldMapDialogueNpcEntry } from "@shared/map/world-map-types";
+import { getDialogueNpcLines } from "@shared/map/world-map-types";
 
 /**
- * Static NPC using the survivor sprite; dialogue text is authored in world-map.json.
+ * Static NPC using the survivor sprite; dialogue is authored in world-map.json.
  */
 export class DialogueSurvivorNpc extends Entity {
-  constructor(gameManagers: IGameManagers, dialogueText: string, tileX: number, tileY: number) {
+  constructor(
+    gameManagers: IGameManagers,
+    entry: WorldMapDialogueNpcEntry,
+    tileX: number,
+    tileY: number,
+  ) {
     super(gameManagers, Entities.DIALOGUE_SURVIVOR_NPC);
 
-    const text = dialogueText.trim() || DEFAULT_DIALOGUE;
-    this.serialized = new SerializableFields({ dialogueText: text }, () => this.markEntityDirty());
+    const lines = getDialogueNpcLines(entry);
+    const grantRaw = entry.grantQuestId;
+    const grantQuestId =
+      grantRaw === null || grantRaw === undefined ? "" : String(grantRaw).trim();
+
+    this.serialized = new SerializableFields(
+      {
+        dialogueLines: lines,
+        displayName: entry.name?.trim() ?? "",
+        grantQuestId,
+        npcKey: `${tileY},${tileX}`,
+      },
+      () => this.markEntityDirty(),
+      {},
+    );
 
     const poolManager = PoolManager.getInstance();
     const TILE_SIZE = getConfig().world.TILE_SIZE;

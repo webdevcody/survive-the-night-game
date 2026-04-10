@@ -49,9 +49,10 @@ import { FISTS_INVENTORY_SENTINEL } from "@shared/constants/inventory-sentinel";
 import { itemRegistry } from "@shared/entities";
 import { ClientCarryable } from "@/extensions";
 import { PlayerColor } from "@shared/commands/commands";
-import { TeleportManager } from "./managers/teleport-manager";
 import { InteractionManager } from "./managers/interaction-manager";
 import { ClientEventHandlers } from "./managers/client-event-handlers";
+import { DialogueSurvivorNpcClient } from "./entities/environment/dialogue-survivor-npc";
+import { QuestCompletedModal, formatQuestRewardsForDisplay } from "./ui/quest-completed-modal";
 
 export class GameClient {
   private ctx: CanvasRenderingContext2D;
@@ -88,6 +89,11 @@ export class GameClient {
   private hud: Hud;
   private merchantBuyPanel: MerchantBuyPanel;
   private gameOverDialog: GameOverDialogUI;
+  private questCompletedModal: QuestCompletedModal;
+  /** Tracks `completed` quest ids we've already announced (null = seed on next poll). */
+  private questCompletionBaseline: Set<string> | null = null;
+  /** Tracks active quest ids we've already seen (null = seed on next poll). */
+  private questActiveBaseline: Set<string> | null = null;
   // State
   private gameState: GameState;
   private animationFrameId: number | null = null;
@@ -95,7 +101,6 @@ export class GameClient {
   private isMounted = true;
 
   // Managers
-  private teleportManager: TeleportManager;
   private interactionManager: InteractionManager;
   private eventHandlers: ClientEventHandlers;
 
@@ -120,7 +125,6 @@ export class GameClient {
     this.fixedTimestepSimulator = new FixedTimestepSimulator(getConfig().simulation.FIXED_TIMESTEP);
 
     // Initialize managers
-    this.teleportManager = new TeleportManager();
     this.interactionManager = new InteractionManager();
     this.eventHandlers = new ClientEventHandlers(this);
 
@@ -152,6 +156,7 @@ export class GameClient {
 
     this.mapManager = new MapManager(this);
     this.gameOverDialog = new GameOverDialogUI();
+    this.questCompletedModal = new QuestCompletedModal();
 
     // TODO: refactor to use event emitter
     this.merchantBuyPanel = new MerchantBuyPanel(this.assetManager, {
@@ -173,6 +178,9 @@ export class GameClient {
       isInventoryScreenOpen: () => this.hud.isInventoryScreenOpen(),
       onToggleInventoryScreen: () => {
         this.hud.toggleInventoryScreen();
+      },
+      onToggleQuestJournal: () => {
+        this.hud.toggleQuestJournal();
       },
       onToggleInstructions: () => {
         this.hud.toggleInstructions();
@@ -215,6 +223,10 @@ export class GameClient {
         inputs.dx = -1;
         inputs.facing = Direction.Left;
       },
+      isNpcDialogueOpen: () => this.gameState.openDialogueNpcId != null,
+      onNpcDialogueSpaceDown: () => this.handleNpcDialogueSpace(),
+      isQuestCompletedModalOpen: () => this.questCompletedModal.isOpen(),
+      onDismissQuestCompletedModal: () => this.questCompletedModal.dismissCurrent(),
       onInteractStart: () => {
         // If merchant panel is open, close it (toggle functionality)
         if (this.merchantBuyPanel.isVisible()) {
@@ -239,7 +251,12 @@ export class GameClient {
               openEnt.getExt(ClientPositionable).getCenterPosition(),
             );
             if (d <= maxInteract) {
-              this.gameState.openDialogueNpcId = null;
+              const npc = openEnt as DialogueSurvivorNpcClient;
+              const lines = npc.getDialogueLines();
+              const idx = this.gameState.dialogueLineIndex;
+              if (lines.length > 0 && idx >= lines.length - 1) {
+                this.closeNpcDialogueWithCompletion(npc.getId());
+              }
               return;
             }
           }
@@ -271,6 +288,7 @@ export class GameClient {
             );
             if (d <= maxInteract) {
               this.gameState.openDialogueNpcId = closest.getId();
+              this.gameState.dialogueLineIndex = 0;
               return;
             }
           }
@@ -364,27 +382,11 @@ export class GameClient {
       onRespawnRequest: () => {
         this.socketManager.requestRespawn();
       },
-      onTeleportStart: () => {
-        this.startTeleport();
-      },
-      onTeleportCancel: () => {
-        this.cancelTeleport();
-      },
       onInventorySlotChanged: (slot) => {
         this.handleLocalInventorySlotChanged(slot);
       },
       onSelectWeaponLoadout: (loadout) => {
         this.socketManager?.sendSelectWeaponLoadout(loadout);
-      },
-      onQuickSwapPrimarySecondary: () => {
-        const p = getPlayer();
-        if (!p || !(p instanceof PlayerClient)) return;
-        const active = (p as any).activeWeaponLoadout ?? 0;
-        let next = 0;
-        if (active === 0) next = 1;
-        else if (active === 1) next = 0;
-        else next = 0;
-        this.socketManager?.sendSelectWeaponLoadout(next);
       },
     });
 
@@ -444,6 +446,7 @@ export class GameClient {
       // Darkness hue (default: "red")
       darknessHue: "red",
       openDialogueNpcId: null,
+      dialogueLineIndex: 0,
     };
 
     this.renderer = new Renderer(
@@ -453,15 +456,39 @@ export class GameClient {
       this.hud,
       this.merchantBuyPanel,
       this.gameOverDialog,
+      this.questCompletedModal,
       this.particleManager,
       () => this.getPlacementManager(),
-      () => this.getTeleportState(),
     );
 
     // Set renderer reference on minimap so it can use the spatial grid
     this.hud.setRenderer(this.renderer);
 
     this.resizeController = new ResizeController(this.renderer);
+  }
+
+  private closeNpcDialogueWithCompletion(npcEntityId: number): void {
+    this.gameState.openDialogueNpcId = null;
+    this.gameState.dialogueLineIndex = 0;
+    this.socketManager?.sendDialogueNpcComplete(npcEntityId);
+  }
+
+  private handleNpcDialogueSpace(): void {
+    const id = this.gameState.openDialogueNpcId;
+    if (id == null) return;
+    const openEnt = getEntityById(this.gameState, id);
+    if (!openEnt || openEnt.getType() !== "dialogue_survivor_npc") return;
+    const npc = openEnt as DialogueSurvivorNpcClient;
+    const lines = npc.getDialogueLines();
+    if (lines.length === 0) {
+      this.closeNpcDialogueWithCompletion(id);
+      return;
+    }
+    if (this.gameState.dialogueLineIndex < lines.length - 1) {
+      this.gameState.dialogueLineIndex++;
+      return;
+    }
+    this.closeNpcDialogueWithCompletion(id);
   }
 
   /**
@@ -557,6 +584,54 @@ export class GameClient {
 
   public getRenderer(): Renderer {
     return this.renderer;
+  }
+
+  /** Call on full game state so we don't toast quests already completed in that snapshot. */
+  public resetQuestCompletionTracking(): void {
+    this.questCompletionBaseline = null;
+    this.questActiveBaseline = null;
+    this.questCompletedModal.clear();
+  }
+
+  /** After each game state update: detect newly completed quests and enqueue modals. */
+  public pollQuestCompletionEvents(): void {
+    const player = this.getMyPlayer();
+    if (!player) return;
+
+    const st = player.getQuestProgressPayload();
+    const completed = new Set(st.completed);
+    const activeIds = Object.keys(st.active);
+
+    if (this.questCompletionBaseline === null || this.questActiveBaseline === null) {
+      this.questCompletionBaseline = new Set(completed);
+      this.questActiveBaseline = new Set(activeIds);
+      return;
+    }
+
+    const prevCompleted = this.questCompletionBaseline;
+    const prevActive = this.questActiveBaseline;
+
+    for (const qid of completed) {
+      if (!prevCompleted.has(qid)) {
+        const def = this.mapManager.getAuthoredQuests().find((q) => q.id === qid);
+        this.questCompletedModal.enqueue({
+          title: def?.title ?? qid,
+          questId: qid,
+          rewardLines: formatQuestRewardsForDisplay(def?.rewards ?? []),
+        });
+      }
+    }
+
+    for (const qid of activeIds) {
+      if (!prevActive.has(qid)) {
+        const def = this.mapManager.getAuthoredQuests().find((q) => q.id === qid);
+        const title = def?.title ?? qid;
+        this.hud.addMessage(`Quest started: ${title}`, "#d4b060");
+      }
+    }
+
+    this.questCompletionBaseline = new Set(completed);
+    this.questActiveBaseline = new Set(activeIds);
   }
 
   public isChatting(): boolean {
@@ -749,25 +824,12 @@ export class GameClient {
     }
 
     this.positionCameraOnPlayer();
-    this.updateTeleportProgress();
     this.updateInteractHold();
     this.hud.update(this.gameState);
     this.smokeParticleManager.update(deltaSeconds);
     this.updatePlayerMovementSounds();
     this.updateCampfireSounds();
     this.updateCursorVisibility();
-  }
-
-  /**
-   * Update teleport progress and send event when complete
-   */
-  private updateTeleportProgress(): void {
-    this.teleportManager.updateProgress();
-
-    // If progress reaches 1.0, teleport is complete
-    if (this.teleportManager.isComplete()) {
-      this.completeTeleport();
-    }
   }
 
   /**
@@ -846,49 +908,6 @@ export class GameClient {
     }
   }
 
-  /**
-   * Start teleport progress
-   */
-  private startTeleport(): void {
-    const player = this.getMyPlayer();
-    this.teleportManager.startTeleport(player, () => this.mapManager.getBiomePositions() ?? null);
-  }
-
-  /**
-   * Cancel teleport and reset progress
-   */
-  private cancelTeleport(): void {
-    this.teleportManager.cancelTeleport();
-  }
-
-  /**
-   * Complete teleport and send event to server
-   */
-  private completeTeleport(): void {
-    if (!this.teleportManager.completeTeleport()) {
-      return; // Teleport wasn't active
-    }
-
-    // Send teleport request to server
-    if (this.socketManager) {
-      this.socketManager.sendTeleportToBase();
-    }
-
-    // Play explosion sound immediately (client-side feedback)
-    const player = this.getMyPlayer();
-    if (player && player.hasExt(ClientPositionable)) {
-      const playerPosition = player.getExt(ClientPositionable).getCenterPosition();
-      this.soundManager.playPositionalSound(SOUND_TYPES_TO_MP3.EXPLOSION, playerPosition);
-    }
-  }
-
-  /**
-   * Interrupt teleport (called when player takes damage)
-   */
-  public interruptTeleport(): void {
-    this.teleportManager.interruptTeleport();
-  }
-
   private handleLocalInventorySlotChanged(slot: number): void {
     const player = this.getMyPlayer();
     if (player) {
@@ -908,13 +927,6 @@ export class GameClient {
     // Server slot is 1-indexed, inputManager expects 1-indexed
     // Use silent method to avoid sending update back to server
     this.inputManager.setInventorySlotSilent(slot);
-  }
-
-  /**
-   * Get teleport state for HUD rendering
-   */
-  public getTeleportState(): { isTeleporting: boolean; progress: number } {
-    return this.teleportManager.getTeleportState();
   }
 
   /**

@@ -33,7 +33,6 @@ export class EventRateLimiter {
     SWAP_BAG_AND_EQUIPMENT: { maxEvents: 20, windowMs: 1000 },
     MERCHANT_BUY: { maxEvents: 20, windowMs: 1000 },
     MERCHANT_SELL: { maxEvents: 20, windowMs: 1000 },
-    TELEPORT_TO_BASE: { maxEvents: 5, windowMs: 1000 },
     PLAYER_RESPAWN_REQUEST: { maxEvents: 5, windowMs: 1000 },
     REQUEST_FULL_STATE: { maxEvents: 5, windowMs: 1000 },
     CHANGE_PLAYER_COLOR: { maxEvents: 10, windowMs: 1000 },

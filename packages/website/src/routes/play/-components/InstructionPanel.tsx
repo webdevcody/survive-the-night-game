@@ -102,10 +102,6 @@ export function InstructionPanel({ isOpen, onClose, outsideClickIgnoreRef }: Ins
                 <span className="font-mono">E</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-gray-300">Teleport to Base:</span>
-                <span className="font-mono">C (Hold)</span>
-              </div>
-              <div className="flex justify-between">
                 <span className="text-gray-300">Quick Heal:</span>
                 <span className="font-mono">H</span>
               </div>

@@ -28,6 +28,7 @@ import { InventoryItem, type EquipmentSlotKey } from "../../../game-shared/src/u
 import { ClientInventory } from "@/extensions/inventory";
 import { renderRadialProgressIndicator } from "@/util/radial-progress-indicator";
 import { getMinimapHudLayout } from "./minimap-hud-group-layout";
+import { QuestJournalPanel } from "./quest-journal-panel";
 
 const HUD_SETTINGS = {
   GameMessages: {
@@ -115,10 +116,13 @@ export class Hud {
   private loadoutStrip: LoadoutStrip;
   private inventoryScreen: InventoryScreenUI;
   private inputManager: InputManager;
+  /** For HUD panels that need the local player entity (quests, loadout, etc.). */
+  private getMyPlayer: () => PlayerClient | null;
   private currentGameState: GameState | null = null;
   private mouseX: number = 0;
   private mouseY: number = 0;
   private canvasHeight: number = 0;
+  private questJournalPanel: QuestJournalPanel;
 
   constructor(
     mapManager: MapManager,
@@ -142,7 +146,9 @@ export class Hud {
     this.assetManager = assetManager;
     this.gameOverDialog = gameOverDialog;
     this.inputManager = inputManager;
+    this.getMyPlayer = getMyPlayer;
     this.chatWidget = new ChatWidget();
+    this.questJournalPanel = new QuestJournalPanel();
 
     // Create getInventory function for HUD that uses currentGameState
     const getInventory = (): (InventoryItem | null)[] => {
@@ -177,7 +183,8 @@ export class Hud {
       this.assetManager,
       getInventory,
       getMyPlayer,
-      sendSelectWeaponLoadout
+      sendSelectWeaponLoadout,
+      (slot) => sendSetWeaponLoadoutSlot(slot, 0)
     );
 
     this.inventoryScreen = new InventoryScreenUI({
@@ -194,6 +201,8 @@ export class Hud {
       },
       sendProgressionAllocations,
       sendSetWeaponLoadoutSlot,
+      sendSelectWeaponLoadout,
+      getAuthoredQuests: () => this.mapManager.getAuthoredQuests(),
     });
 
     this.minimap = new Minimap(mapManager);
@@ -449,33 +458,22 @@ export class Hud {
       this.inventoryScreen.render(ctx, gameState);
     }
 
+    ctx.save();
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    const my = this.getMyPlayer();
+    this.questJournalPanel.render(
+      ctx,
+      this.mapManager.getAuthoredQuests(),
+      my?.getQuestProgressPayload() ?? null,
+    );
+    ctx.restore();
+
     // Render fullscreen map on top of everything else if open
     this.fullscreenMap.render(ctx, gameState);
   }
 
-  /**
-   * Render teleport progress indicator above player's head
-   */
-  public renderTeleportProgress(
-    ctx: CanvasRenderingContext2D,
-    playerPosition: { x: number; y: number },
-    progress: number
-  ): void {
-    // Position above player's head (offset by player height + padding)
-    const indicatorY = playerPosition.y - 20; // 16px player height + 4px padding
-    const indicatorX = playerPosition.x + 8; // Center on player (player is 16px wide)
-
-    renderRadialProgressIndicator(ctx, {
-      progress,
-      x: indicatorX,
-      y: indicatorY,
-      radius: 8,
-      progressColor: "rgba(100, 200, 255, 0.9)", // Blue for teleport
-      borderColor: "rgba(255, 255, 255, 0.8)",
-      borderWidth: 1.5,
-      backgroundColor: "rgba(0, 0, 0, 0.7)",
-      startAngle: -Math.PI / 2, // Start from top
-    });
+  public toggleQuestJournal(): void {
+    this.questJournalPanel.toggle();
   }
 
   /**
@@ -567,9 +565,15 @@ export class Hud {
     return this.muteButtonPanel.isMouseOver(this.mouseX, this.mouseY, this.canvasHeight);
   }
 
-  public handleClick(x: number, y: number, canvasWidth: number, canvasHeight: number): boolean {
+  public handleClick(
+    x: number,
+    y: number,
+    canvasWidth: number,
+    canvasHeight: number,
+    clickCount: number = 1
+  ): boolean {
     if (this.inventoryScreen.isOpen()) {
-      this.inventoryScreen.handleClick(x, y, canvasWidth, canvasHeight);
+      this.inventoryScreen.handleClick(x, y, canvasWidth, canvasHeight, clickCount);
       return true;
     }
 
@@ -577,7 +581,7 @@ export class Hud {
       return true;
     }
 
-    if (this.loadoutStrip.handleClick(x, y, canvasWidth, canvasHeight)) {
+    if (this.loadoutStrip.handleClick(x, y, canvasWidth, canvasHeight, clickCount)) {
       return true;
     }
 

@@ -5,7 +5,7 @@ import { InventoryItem } from "@shared/util/inventory";
 import { calculateHudScale } from "@/util/hud-scale";
 import { Z_INDEX } from "@shared/map";
 import { PlayerClient } from "@/entities/player";
-import { isRangedWeaponType, isMeleeWeaponType } from "@shared/util/weapon-loadout";
+import { itemMatchesLoadoutRow } from "@shared/util/weapon-loadout";
 
 const STRIP = {
   marginBottom: 20,
@@ -24,7 +24,8 @@ export class LoadoutStrip implements Renderable {
     private assetManager: AssetManager,
     private getInventory: () => (InventoryItem | null)[],
     private getMyPlayer: () => PlayerClient | null,
-    private onSelectLoadout: (loadout: 0 | 1 | 2) => void
+    private onSelectLoadout: (loadout: 0 | 1 | 2) => void,
+    private clearWeaponLoadoutSlot: (slot: 0 | 1 | 2) => void
   ) {}
 
   private getLayout(canvasWidth: number, canvasHeight: number) {
@@ -77,15 +78,9 @@ export class LoadoutStrip implements Renderable {
       const sy = L.y + L.padding;
 
       let item: InventoryItem | null = null;
-      if (loadout === 2 && (bag < 1 || !this.itemAtBagSlot(inv, bag) || !isMeleeWeaponType(this.itemAtBagSlot(inv, bag)!.itemType))) {
-        item = null; // fists
-      } else if (bag >= 1) {
+      if (bag >= 1) {
         const it = this.itemAtBagSlot(inv, bag);
-        if (loadout === 2) {
-          if (it && isMeleeWeaponType(it.itemType)) item = it;
-        } else {
-          if (it && isRangedWeaponType(it.itemType)) item = it;
-        }
+        if (it && itemMatchesLoadoutRow(it.itemType, loadout)) item = it;
       }
 
       const isActive = active === loadout;
@@ -118,7 +113,13 @@ export class LoadoutStrip implements Renderable {
     ctx.restore();
   }
 
-  handleClick(x: number, y: number, canvasWidth: number, canvasHeight: number): boolean {
+  handleClick(
+    x: number,
+    y: number,
+    canvasWidth: number,
+    canvasHeight: number,
+    clickCount: number = 1
+  ): boolean {
     const player = this.getMyPlayer();
     if (!player || player.isDead()) return false;
 
@@ -129,7 +130,12 @@ export class LoadoutStrip implements Renderable {
       const sx = L.x + L.padding + i * (L.slotSize + L.gap);
       const sy = L.y + L.padding;
       if (x >= sx && x <= sx + L.slotSize && y >= sy && y <= sy + L.slotSize) {
-        this.onSelectLoadout(i as 0 | 1 | 2);
+        const slot = i as 0 | 1 | 2;
+        if (clickCount >= 2) {
+          this.clearWeaponLoadoutSlot(slot);
+        } else {
+          this.onSelectLoadout(slot);
+        }
         return true;
       }
     }

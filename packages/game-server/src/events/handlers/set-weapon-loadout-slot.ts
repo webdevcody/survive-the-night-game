@@ -2,7 +2,6 @@ import { ISocketAdapter } from "@shared/network/socket-adapter";
 import { HandlerContext } from "../context";
 import { SocketEventHandler } from "./types";
 import { Player } from "@/entities/players/player";
-import { ClientSentEvents } from "@shared/events/events";
 
 function validate(data: unknown): { slot: number; bagIndex: number } | null {
   if (typeof data !== "object" || data === null) return null;
@@ -30,7 +29,7 @@ export function onSetWeaponLoadoutSlot(
 }
 
 export const setWeaponLoadoutSlotHandler: SocketEventHandler<{ slot: number; bagIndex: number }> = {
-  event: ClientSentEvents.SET_WEAPON_LOADOUT_SLOT,
+  event: "SET_WEAPON_LOADOUT_SLOT",
   handler: (context, socket, data) => {
     const validated = validate(data);
     if (!validated) {

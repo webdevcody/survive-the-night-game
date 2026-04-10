@@ -34,6 +34,10 @@ import {
 import { sumSkillAllocations } from "@shared/util/skill-tree";
 import { getProgressionPointsBudget } from "@shared/util/experience-level";
 import { FISTS_INVENTORY_SENTINEL } from "@shared/constants/inventory-sentinel";
+import {
+  parsePlayerQuestState,
+  type PlayerQuestStatePayload,
+} from "@shared/quests/player-quest-state";
 
 export class PlayerClient extends ClientEntity implements IClientEntity, Renderable {
   private readonly ARROW_LENGTH = 20;
@@ -143,6 +147,10 @@ export class PlayerClient extends ClientEntity implements IClientEntity, Rendera
     if ((this as any).skin !== undefined) {
       this.skin = (this as any).skin;
     }
+  }
+
+  public getQuestProgressPayload(): PlayerQuestStatePayload {
+    return parsePlayerQuestState((this as any).questStateJson);
   }
 
   public isZombiePlayer(): boolean {
@@ -533,6 +541,10 @@ export class PlayerClient extends ClientEntity implements IClientEntity, Rendera
     }
 
     if (!activeItem.itemType) {
+      return;
+    }
+
+    if (activeItem.itemType === "fists") {
       return;
     }
 

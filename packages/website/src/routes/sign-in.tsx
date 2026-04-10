@@ -4,6 +4,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { useState } from "react";
 import { authClient } from "~/lib/auth-client";
+import { redirectHomeIfAuthenticatedFn } from "~/fn/guards";
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
 import {
@@ -25,6 +26,9 @@ const signInSchema = z.object({
 type SignInForm = z.infer<typeof signInSchema>;
 
 export const Route = createFileRoute("/sign-in")({
+  beforeLoad: async () => {
+    await redirectHomeIfAuthenticatedFn();
+  },
   component: RouteComponent,
   validateSearch: (search: Record<string, unknown>) => ({
     redirect: search.redirect as string | undefined,

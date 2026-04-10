@@ -54,8 +54,15 @@ import { REGENERATE_HEAL_PER_SECOND } from "@shared/util/skill-tree";
 import { getZombieTypesSet } from "@shared/constants";
 import type { PersistedPlayerProgress } from "@/services/player-progress-types";
 import { weaponRegistry } from "@shared/entities/weapon-registry";
-import { isMeleeWeaponType, isRangedWeaponType } from "@shared/util/weapon-loadout";
+import { itemMatchesLoadoutRow } from "@shared/util/weapon-loadout";
 import { FISTS_INVENTORY_SENTINEL } from "@shared/constants/inventory-sentinel";
+import {
+  emptyPlayerQuestState,
+  parsePlayerQuestState,
+  stringifyPlayerQuestState,
+  type PlayerQuestStatePayload,
+} from "@shared/quests/player-quest-state";
+import { initPlayerQuestState, tickWaypointSteps } from "@/quests/quest-runtime";
 
 /**
  * Cached list of entity types that players can pass through (collision passthrough).
@@ -143,6 +150,7 @@ export class Player extends Entity {
         weaponLoadoutSecondary: 0,
         weaponLoadoutMelee: 3,
         activeWeaponLoadout: 0,
+        questStateJson: stringifyPlayerQuestState(emptyPlayerQuestState()),
       },
       () => this.markEntityDirty(),
       {
@@ -210,25 +218,6 @@ export class Player extends Entity {
     this.addExtension(new Movable(this));
     this.addExtension(new Illuminated(this, getConfig().world.LIGHT_RADIUS_PLAYER));
     this.addExtension(new Groupable(this, "friendly"));
-
-    const inventory = this.getExt(Inventory);
-
-    [
-      { itemType: "pistol" as const },
-      {
-        itemType: "torch" as const,
-        state: {
-          count: 1,
-        },
-      },
-      { itemType: "knife" as const },
-      {
-        itemType: "pistol_ammo" as const,
-        state: {
-          count: 8,
-        },
-      },
-    ].forEach((item) => inventory.addItem(item));
 
     this.applyWeaponLoadoutSelection();
   }
@@ -400,21 +389,21 @@ export class Player extends Entity {
       const idx = this.serialized.get("weaponLoadoutPrimary");
       if (idx < 1) return { kind: "fists" };
       const item = at(idx);
-      if (!item || !isRangedWeaponType(item.itemType)) return { kind: "fists" };
+      if (!item || !itemMatchesLoadoutRow(item.itemType, 0)) return { kind: "fists" };
       return { kind: "weapon", item, bagIndex1Based: idx };
     }
     if (lo === 1) {
       const idx = this.serialized.get("weaponLoadoutSecondary");
       if (idx < 1) return { kind: "fists" };
       const item = at(idx);
-      if (!item || !isRangedWeaponType(item.itemType)) return { kind: "fists" };
+      if (!item || !itemMatchesLoadoutRow(item.itemType, 1)) return { kind: "fists" };
       return { kind: "weapon", item, bagIndex1Based: idx };
     }
     if (lo === 2) {
       const idx = this.serialized.get("weaponLoadoutMelee");
       if (idx < 1) return { kind: "fists" };
       const item = at(idx);
-      if (!item || !isMeleeWeaponType(item.itemType)) return { kind: "fists" };
+      if (!item || !itemMatchesLoadoutRow(item.itemType, 2)) return { kind: "fists" };
       return { kind: "weapon", item, bagIndex1Based: idx };
     }
     return { kind: "fists" };
@@ -459,33 +448,77 @@ export class Player extends Entity {
   /**
    * Assign a bag slot to a weapon loadout (0 = clear). Validates item type per slot.
    * Same rules as SET_WEAPON_LOADOUT_SLOT from clients.
+   * When equipping, moves/swaps bag items so the clicked slot is cleared when possible:
+   * - empty loadout: move weapon to first empty cell and point loadout there (source cleared);
+   *   if the bag is full, only the loadout pointer is set (legacy).
+   * - loadout already set: swap clicked cell with the loadout's backing cell (ref unchanged).
+   * When clearing, move the hidden backing weapon to the earliest empty visible bag cell if one exists.
    */
   public assignWeaponLoadoutSlot(slot: number, bagIndex: number): void {
     const max = this.getMaxInventorySlots();
     const slotClamped = Math.max(0, Math.min(2, Math.floor(slot)));
     const bagIndexClamped = Math.max(0, Math.min(max, Math.floor(bagIndex)));
-    const inv = this.getInventory();
+    const invExt = this.getExt(Inventory);
+    const key =
+      slotClamped === 0
+        ? "weaponLoadoutPrimary"
+        : slotClamped === 1
+          ? "weaponLoadoutSecondary"
+          : "weaponLoadoutMelee";
 
     if (bagIndexClamped === 0) {
-      if (slotClamped === 0) this.serialized.set("weaponLoadoutPrimary", 0);
-      else if (slotClamped === 1) this.serialized.set("weaponLoadoutSecondary", 0);
-      else this.serialized.set("weaponLoadoutMelee", 0);
+      const prevRef = this.serialized.get(key) as number;
+      if (prevRef >= 1 && prevRef <= max) {
+        const inv = this.getInventory();
+        let emptyIdx0: number | null = null;
+        for (let i = 0; i < max; i++) {
+          if (i === prevRef - 1) continue;
+          if (inv[i] == null) {
+            emptyIdx0 = i;
+            break;
+          }
+        }
+        if (emptyIdx0 !== null) {
+          invExt.swapBagSlotsDeferWeaponResync(prevRef - 1, emptyIdx0);
+        }
+      }
+      this.serialized.set(key, 0);
       this.applyWeaponLoadoutSelection();
       return;
     }
 
+    const inv = this.getInventory();
     const item = inv[bagIndexClamped - 1];
     if (!item) return;
 
-    if (slotClamped === 2) {
-      if (!isMeleeWeaponType(item.itemType)) return;
-      this.serialized.set("weaponLoadoutMelee", bagIndexClamped);
-    } else {
-      if (!isRangedWeaponType(item.itemType)) return;
-      if (slotClamped === 0) this.serialized.set("weaponLoadoutPrimary", bagIndexClamped);
-      else this.serialized.set("weaponLoadoutSecondary", bagIndexClamped);
+    if (!itemMatchesLoadoutRow(item.itemType, slotClamped as 0 | 1 | 2)) return;
+
+    const prevRef = this.serialized.get(key) as number;
+
+    if (prevRef === bagIndexClamped) {
+      this.applyWeaponLoadoutSelection();
+      return;
     }
-    this.applyWeaponLoadoutSelection();
+
+    if (prevRef === 0) {
+      let emptyIdx0: number | null = null;
+      for (let i = 0; i < max; i++) {
+        if (inv[i] == null) {
+          emptyIdx0 = i;
+          break;
+        }
+      }
+      if (emptyIdx0 !== null) {
+        invExt.swapBagSlotsDeferWeaponResync(bagIndexClamped - 1, emptyIdx0);
+        this.serialized.set(key, emptyIdx0 + 1);
+      } else {
+        this.serialized.set(key, bagIndexClamped);
+      }
+    } else {
+      invExt.swapBagSlotsDeferWeaponResync(prevRef - 1, bagIndexClamped - 1);
+    }
+
+    this.sanitizeWeaponLoadouts();
   }
 
   public sanitizeWeaponLoadouts(): void {
@@ -502,13 +535,8 @@ export class Player extends Entity {
         this.serialized.set(key, 0);
         return;
       }
-      const isR = isRangedWeaponType(item.itemType);
-      const isM = isMeleeWeaponType(item.itemType);
-      if (key === "weaponLoadoutMelee") {
-        if (!isM) this.serialized.set(key, 0);
-      } else {
-        if (!isR) this.serialized.set(key, 0);
-      }
+      const row = key === "weaponLoadoutPrimary" ? 0 : key === "weaponLoadoutSecondary" ? 1 : 2;
+      if (!itemMatchesLoadoutRow(item.itemType, row)) this.serialized.set(key, 0);
     };
     check("weaponLoadoutPrimary");
     check("weaponLoadoutSecondary");
@@ -524,7 +552,7 @@ export class Player extends Entity {
 
     if (lo === 0) {
       const idx = this.serialized.get("weaponLoadoutPrimary");
-      if (idx >= 1 && idx <= max && at(idx) && isRangedWeaponType(at(idx)!.itemType)) {
+      if (idx >= 1 && idx <= max && at(idx) && itemMatchesLoadoutRow(at(idx)!.itemType, 0)) {
         this.selectInventoryItemOnly(idx);
         return;
       }
@@ -533,7 +561,7 @@ export class Player extends Entity {
     }
     if (lo === 1) {
       const idx = this.serialized.get("weaponLoadoutSecondary");
-      if (idx >= 1 && idx <= max && at(idx) && isRangedWeaponType(at(idx)!.itemType)) {
+      if (idx >= 1 && idx <= max && at(idx) && itemMatchesLoadoutRow(at(idx)!.itemType, 1)) {
         this.selectInventoryItemOnly(idx);
         return;
       }
@@ -542,7 +570,7 @@ export class Player extends Entity {
     }
     if (lo === 2) {
       const idx = this.serialized.get("weaponLoadoutMelee");
-      if (idx >= 1 && idx <= max && at(idx) && isMeleeWeaponType(at(idx)!.itemType)) {
+      if (idx >= 1 && idx <= max && at(idx) && itemMatchesLoadoutRow(at(idx)!.itemType, 2)) {
         this.selectInventoryItemOnly(idx);
         return;
       }
@@ -948,6 +976,7 @@ export class Player extends Entity {
     this.handleAutoPickup();
     this.updateLighting();
     this.updateZombieSpawnCooldown(deltaTime);
+    tickWaypointSteps(this, this.getGameManagers().getMapManager());
   }
 
   private updateZombieSpawnCooldown(deltaTime: number): void {
@@ -1147,6 +1176,7 @@ export class Player extends Entity {
   hydratePersistedProgress(progress: PersistedPlayerProgress): void {
     this.serialized.set("experience", Math.max(0, Math.floor(progress.experience)));
     this.applyPersistedProgress(progress.skillAllocations, progress.characterAllocations);
+    initPlayerQuestState(this, progress.questProgress);
     const lx = progress.lastTileX;
     const ly = progress.lastTileY;
     if (
@@ -1168,6 +1198,10 @@ export class Player extends Entity {
     const p = this.pendingLogoutSpawnTile;
     this.pendingLogoutSpawnTile = null;
     return p;
+  }
+
+  getQuestProgressPayload(): PlayerQuestStatePayload {
+    return parsePlayerQuestState(this.getSerialized().get("questStateJson"));
   }
 
   getTotalExperience(): number {

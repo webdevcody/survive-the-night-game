@@ -55,7 +55,6 @@ export const ClientSentEvents = {
   MERCHANT_SELL: "merchantSell",
   PLACE_STRUCTURE: "placeStructure",
   PLAYER_RESPAWN_REQUEST: "playerRespawnRequest",
-  TELEPORT_TO_BASE: "teleportToBase",
   DROP_ITEM: "dropItem",
   CONSUME_ITEM: "consumeItem",
   SELECT_INVENTORY_SLOT: "selectInventorySlot",
@@ -67,6 +66,7 @@ export const ClientSentEvents = {
   SET_PROGRESSION_ALLOCATIONS: "setProgressionAllocations",
   SELECT_WEAPON_LOADOUT: "selectWeaponLoadout",
   SET_WEAPON_LOADOUT_SLOT: "setWeaponLoadoutSlot",
+  DIALOGUE_NPC_COMPLETE: "dialogueNpcComplete",
 } as const;
 
 export type ServerSentEventType = (typeof ServerSentEvents)[keyof typeof ServerSentEvents];
