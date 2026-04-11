@@ -2,7 +2,7 @@ import { EventType, ClientSentEvents } from "../../events";
 import { GameEvent } from "../../types";
 import { ArrayBufferWriter, BufferReader } from "../../../util/buffer-serialization";
 
-export type ProgressionAllocationKind = "skill" | "character";
+export type ProgressionAllocationKind = "ability" | "character";
 
 export interface SetProgressionAllocationsEventData {
   kind: ProgressionAllocationKind;
@@ -27,14 +27,14 @@ export class SetProgressionAllocationsEvent implements GameEvent<SetProgressionA
   }
 
   static serializeToBuffer(writer: ArrayBufferWriter, data: SetProgressionAllocationsEventData): void {
-    const kindByte = data.kind === "skill" ? 0 : 1;
+    const kindByte = data.kind === "ability" ? 0 : 1;
     writer.writeUInt8(kindByte);
     writer.writeString(JSON.stringify(data.allocations ?? {}));
   }
 
   static deserializeFromBuffer(reader: BufferReader): SetProgressionAllocationsEventData {
     const kindByte = reader.readUInt8();
-    const kind: ProgressionAllocationKind = kindByte === 0 ? "skill" : "character";
+    const kind: ProgressionAllocationKind = kindByte === 0 ? "ability" : "character";
     const raw = reader.readString();
     let allocations: Record<string, number> = {};
     try {

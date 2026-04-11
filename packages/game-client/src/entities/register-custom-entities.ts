@@ -66,6 +66,9 @@ import { BowClient } from "@/entities/weapons/bow";
 import { ThrowingKnifeProjectileClient } from "@/entities/throwing-knife-projectile";
 import { FireClient } from "@/entities/environment/fire";
 import { CampsiteFireClient } from "@/entities/environment/campsite-fire";
+import { WorkbenchClient } from "./environment/workbench";
+import { ForgeClient } from "./environment/forge";
+import { ChemistryTableClient } from "./environment/chemistry-table";
 import { LightDecalClient } from "@/entities/environment/light-decal";
 import { MessageDecalClient } from "@/entities/environment/message-decal";
 import { MerchantClient } from "./environment/merchant";
@@ -150,6 +153,9 @@ const CLIENT_ENTITY_CONSTRUCTORS: Record<EntityType, ClientEntityConstructor> = 
   bow: BowClient,
   fire: FireClient,
   campsite_fire: CampsiteFireClient,
+  workbench: WorkbenchClient,
+  forge: ForgeClient,
+  chemistry_table: ChemistryTableClient,
   light_decal: LightDecalClient,
   message_decal: MessageDecalClient,
   merchant: MerchantClient,

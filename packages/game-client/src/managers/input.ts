@@ -33,13 +33,17 @@ export interface InputManagerOptions {
   onToggleMap?: () => void;
   onToggleInventoryScreen?: () => void;
   /** Opens inventory (if needed) or switches tab while the panel is open. */
-  onInventoryPanelFocusTab?: (tab: "inventory" | "character" | "skills" | "quests") => void;
-  getInventoryActiveTab?: () => "inventory" | "character" | "skills" | "quests";
+  onInventoryPanelFocusTab?: (
+    tab: "inventory" | "character" | "abilities" | "professions" | "quests",
+  ) => void;
+  getInventoryActiveTab?: () => "inventory" | "character" | "abilities" | "professions" | "quests";
   onMerchantKeyDown?: (key: string) => void;
+  onCraftingPanelKeyDown?: (key: string) => void;
   onEscape?: () => void;
   onRespawnRequest?: () => void;
   onSelectWeaponLoadout?: (loadout: 0 | 1 | 2) => void;
   isMerchantPanelOpen?: () => boolean;
+  isCraftingPanelOpen?: () => boolean;
   isFullscreenMapOpen?: () => boolean;
   isInventoryScreenOpen?: () => boolean;
   isPlayerDead?: () => boolean;
@@ -69,6 +73,7 @@ const shouldBlock = new Set([
   "KeyJ",
   "KeyC",
   "KeyK",
+  "KeyP",
   "KeyQ",
   "Escape",
   "Digit1",
@@ -206,6 +211,7 @@ export class InputManager {
 
       // Check if merchant panel is open
       const isMerchantPanelOpen = callbacks.isMerchantPanelOpen?.() ?? false;
+      const isCraftingPanelOpen = callbacks.isCraftingPanelOpen?.() ?? false;
 
       const isInventoryScreenOpen = callbacks.isInventoryScreenOpen?.() ?? false;
 
@@ -236,10 +242,17 @@ export class InputManager {
           }
         } else if (eventCode === "KeyK") {
           const tab = callbacks.getInventoryActiveTab?.() ?? "inventory";
-          if (tab === "skills") {
+          if (tab === "abilities") {
             callbacks.onToggleInventoryScreen?.();
           } else {
-            callbacks.onInventoryPanelFocusTab?.("skills");
+            callbacks.onInventoryPanelFocusTab?.("abilities");
+          }
+        } else if (eventCode === "KeyP") {
+          const tab = callbacks.getInventoryActiveTab?.() ?? "inventory";
+          if (tab === "professions") {
+            callbacks.onToggleInventoryScreen?.();
+          } else {
+            callbacks.onInventoryPanelFocusTab?.("professions");
           }
         } else if (eventCode === "KeyQ") {
           const tab = callbacks.getInventoryActiveTab?.() ?? "inventory";
@@ -262,7 +275,11 @@ export class InputManager {
         return;
       }
       if (eventCode === "KeyK") {
-        callbacks.onInventoryPanelFocusTab?.("skills");
+        callbacks.onInventoryPanelFocusTab?.("abilities");
+        return;
+      }
+      if (eventCode === "KeyP") {
+        callbacks.onInventoryPanelFocusTab?.("professions");
         return;
       }
       if (eventCode === "KeyQ") {
@@ -281,6 +298,14 @@ export class InputManager {
           }
         }
         // Block all other inputs when merchant panel is open
+        return;
+      }
+
+      if (isCraftingPanelOpen) {
+        if (eventCode === "Escape" || eventCode === "KeyE") {
+          const key = eventCode === "Escape" ? "Escape" : "e";
+          callbacks.onCraftingPanelKeyDown?.(key);
+        }
         return;
       }
 
@@ -368,9 +393,6 @@ export class InputManager {
         case "ShiftRight":
           this.inputs.sprint = true;
           break;
-        case "KeyP":
-          callbacks.onToggleInstructions?.();
-          break;
         case "KeyN":
           callbacks.onToggleMute?.();
           break;
@@ -398,10 +420,11 @@ export class InputManager {
 
       // Check if merchant panel is open - block all inputs
       const isMerchantPanelOpen = callbacks.isMerchantPanelOpen?.() ?? false;
+      const isCraftingPanelOpen = callbacks.isCraftingPanelOpen?.() ?? false;
 
       // Block all keyup events when merchant panel is open
-      if (isMerchantPanelOpen) {
-        return; // Block all keyup events when merchant panel is open
+      if (isMerchantPanelOpen || isCraftingPanelOpen) {
+        return; // Block all keyup events when a blocking panel is open
       }
 
       // Check if this key was consumed by merchant panel during keydown
@@ -512,7 +535,8 @@ export class InputManager {
     }
     // If merchant panel is open, force all inputs to false/zero to prevent movement
     const isMerchantPanelOpen = this.callbacks.isMerchantPanelOpen?.() ?? false;
-    if (isMerchantPanelOpen) {
+    const isCraftingPanelOpen = this.callbacks.isCraftingPanelOpen?.() ?? false;
+    if (isMerchantPanelOpen || isCraftingPanelOpen) {
       return {
         facing: this.inputs.facing,
         dx: 0,

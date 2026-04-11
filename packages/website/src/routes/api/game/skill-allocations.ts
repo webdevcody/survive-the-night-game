@@ -1,9 +1,9 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { setSkillAllocations } from "~/data-access/user-stats";
+import { setAbilityAllocations } from "~/data-access/user-stats";
 import { requireGameServerApiKey } from "~/utils/game-server-api-auth";
 
 /**
- * Game server → website: persist skill allocation map (full replace). POST with X-API-Key.
+ * Legacy alias: persist ability allocation map via the old skill endpoint.
  */
 export const Route = createFileRoute("/api/game/skill-allocations")({
   server: {
@@ -24,7 +24,7 @@ export const Route = createFileRoute("/api/game/skill-allocations")({
             });
           }
 
-          const result = await setSkillAllocations(userId, body.allocations ?? {});
+          const result = await setAbilityAllocations(userId, body.allocations ?? {});
           if (result.ok === false) {
             return new Response(JSON.stringify({ success: false, error: result.error }), {
               status: 400,
@@ -35,6 +35,7 @@ export const Route = createFileRoute("/api/game/skill-allocations")({
           return new Response(
             JSON.stringify({
               success: true,
+              abilityAllocations: result.stats.abilityAllocations,
               skillAllocations: result.stats.skillAllocations,
             }),
             { status: 200, headers: { "Content-Type": "application/json" } },

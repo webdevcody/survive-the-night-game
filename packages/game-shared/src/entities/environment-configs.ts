@@ -103,6 +103,36 @@ export const ENVIRONMENT_CONFIGS: Record<string, EnvironmentConfig> = {
       totalFrames: 5, // 5 animation frames for campfire
     },
   },
+  workbench: {
+    id: "workbench",
+    category: "obstacle",
+    assets: {
+      assetKey: "workbench",
+      x: 96,
+      y: 144,
+      sheet: "items",
+    },
+  },
+  forge: {
+    id: "forge",
+    category: "obstacle",
+    assets: {
+      assetKey: "forge",
+      x: 80,
+      y: 144,
+      sheet: "items",
+    },
+  },
+  chemistry_table: {
+    id: "chemistry_table",
+    category: "obstacle",
+    assets: {
+      assetKey: "chemistry_table",
+      x: 48,
+      y: 144,
+      sheet: "items",
+    },
+  },
   light_decal: {
     id: "light_decal",
     category: "obstacle",

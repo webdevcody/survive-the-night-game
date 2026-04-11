@@ -29,7 +29,8 @@ const STRIP = {
 const PANEL_TAB_PILLS: { id: InventoryUiTab; label: string }[] = [
   { id: "inventory", label: "Items (I)" },
   { id: "character", label: "Stats (C)" },
-  { id: "skills", label: "Skills (K)" },
+  { id: "abilities", label: "Abilities (K)" },
+  { id: "professions", label: "Professions (P)" },
   { id: "quests", label: "Quests (Q)" },
 ];
 

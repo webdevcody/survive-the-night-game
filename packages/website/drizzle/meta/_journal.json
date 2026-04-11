@@ -78,6 +78,13 @@
       "when": 1775852243023,
       "tag": "0010_saved_inventory",
       "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1775920000000,
+      "tag": "0011_ability_profession_progress",
+      "breakpoints": true
     }
   ]
 }

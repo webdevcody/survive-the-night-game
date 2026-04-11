@@ -1,127 +1,12 @@
-import { ItemType, InventoryItem } from "./inventory";
 import { getConfig } from "../config";
-import { itemRegistry, weaponRegistry } from "../entities";
+import { itemRegistry, resourceRegistry, weaponRegistry } from "../entities";
+import type { CraftingStationId } from "./crafting-stations";
+import type { ProfessionId } from "./professions";
+import { PROFESSION_DEFINITIONS } from "./professions";
+import { ItemType, InventoryItem, isWeapon } from "./inventory";
 
-export enum RecipeType {
-  Bandage = "bandage",
-  Wall = "wall",
-  Spike = "spike",
-  Torch = "torch",
-  SentryGun = "sentry_gun",
-}
-
-/**
- * Recipe implementation that uses config-defined components
- * This allows recipes to be defined inline in item/weapon configs
- */
-class ConfigRecipe implements Recipe {
-  private itemId: string;
-  private recipeComponents: RecipeComponent[];
-  private resultCount: number;
-
-  constructor(itemId: string, components: RecipeComponent[], resultCount: number = 1) {
-    this.itemId = itemId;
-    this.recipeComponents = components;
-    this.resultCount = resultCount;
-  }
-
-  public getType(): RecipeType {
-    // Use the item ID as the recipe type
-    // For items that match existing RecipeType enum values, use those
-    // For new items, cast to RecipeType (the enum will be extended as needed)
-    return this.itemId as RecipeType;
-  }
-
-  public canBeCrafted(inventory: InventoryItem[]): boolean {
-    return recipeCanBeCrafted(this, inventory);
-  }
-
-  public components(): RecipeComponent[] {
-    return this.recipeComponents;
-  }
-
-  public craft(inventory: InventoryItem[], maxInventorySlots?: number): CraftingResult {
-    return craftRecipe(this, inventory, maxInventorySlots);
-  }
-
-  public resultingComponent(): RecipeComponent {
-    return {
-      type: this.itemId as ItemType,
-      count: this.resultCount,
-    };
-  }
-}
-
-/**
- * Build recipes array from config-based recipes only
- * All recipes are now defined inline in item/weapon configs
- */
-function buildRecipes(): Recipe[] {
-  const recipeList: Recipe[] = [];
-
-  // Add config-based recipes from items
-  itemRegistry.getAll().forEach((itemConfig) => {
-    if (itemConfig.recipe?.enabled && itemConfig.recipe.components) {
-      const resultCount = itemConfig.recipe.resultCount ?? 1;
-      recipeList.push(new ConfigRecipe(itemConfig.id, itemConfig.recipe.components, resultCount));
-    }
-  });
-
-  // Add config-based recipes from weapons
-  weaponRegistry.getAll().forEach((weaponConfig) => {
-    if (weaponConfig.recipe?.enabled && weaponConfig.recipe.components) {
-      const resultCount = weaponConfig.recipe.resultCount ?? 1;
-      recipeList.push(
-        new ConfigRecipe(weaponConfig.id, weaponConfig.recipe.components, resultCount)
-      );
-    }
-  });
-
-  return recipeList;
-}
-
-export const recipes: Recipe[] = buildRecipes();
-
-/**
- * Get all item/weapon IDs that have recipes enabled
- * Useful for discovering craftable items from configs
- */
-export function getCraftableItemIds(): string[] {
-  const craftableIds: string[] = [];
-
-  // Check items with recipe config
-  itemRegistry.getAll().forEach((itemConfig) => {
-    if (itemConfig.recipe?.enabled) {
-      craftableIds.push(itemConfig.id);
-    }
-  });
-
-  // Check weapons with recipe config
-  weaponRegistry.getAll().forEach((weaponConfig) => {
-    if (weaponConfig.recipe?.enabled) {
-      craftableIds.push(weaponConfig.id);
-    }
-  });
-
-  return craftableIds;
-}
-
-/**
- * Get recipe type for an item/weapon ID if it has a recipe configured
- */
-export function getRecipeTypeForItem(itemId: string): RecipeType | null {
-  const itemConfig = itemRegistry.get(itemId);
-  if (itemConfig?.recipe?.enabled && itemConfig.recipe.recipeType) {
-    return itemConfig.recipe.recipeType as RecipeType;
-  }
-
-  const weaponConfig = weaponRegistry.get(itemId as any);
-  if (weaponConfig?.recipe?.enabled && weaponConfig.recipe.recipeType) {
-    return weaponConfig.recipe.recipeType as RecipeType;
-  }
-
-  return null;
-}
+export type RecipeType = string;
+export type RecipeKind = "craft" | "scrap";
 
 export interface RecipeComponent {
   type: ItemType;
@@ -129,24 +14,27 @@ export interface RecipeComponent {
 }
 
 export interface CraftingResult {
-  inventory: InventoryItem[];
+  inventory: (InventoryItem | null)[];
   itemToDrop?: InventoryItem; // Item to drop if inventory was full
 }
 
 export interface Recipe {
-  getType(): RecipeType;
-  canBeCrafted: (inventory: InventoryItem[]) => boolean;
-  components: () => RecipeComponent[];
-  craft: (inventory: InventoryItem[], maxInventorySlots?: number) => CraftingResult;
-  resultingComponent: () => RecipeComponent;
+  id: RecipeType;
+  kind: RecipeKind;
+  result: RecipeComponent;
+  components: RecipeComponent[];
+  profession: ProfessionId | null;
+  unlockLevel: number;
+  station: CraftingStationId | null;
+  professionXp: number;
 }
 
 export function craftRecipe(
   recipe: Recipe,
-  inventory: InventoryItem[],
+  inventory: (InventoryItem | null)[],
   maxInventorySlotsOverride?: number
 ): CraftingResult {
-  const components = recipe.components();
+  const components = recipe.components;
 
   const maxInventorySlots =
     maxInventorySlotsOverride ?? getConfig().player.MAX_INVENTORY_SLOTS;
@@ -206,9 +94,8 @@ export function craftRecipe(
     }
   }
 
-  const resulting = recipe.resultingComponent();
-  const resultCount = resulting.count || 1;
-  const existingItemIndex = newInventory.findIndex((item) => item?.itemType === resulting.type);
+  const resultCount = recipe.result.count || 1;
+  const existingItemIndex = newInventory.findIndex((item) => item?.itemType === recipe.result.type);
 
   if (existingItemIndex !== -1) {
     const existingItem = newInventory[existingItemIndex];
@@ -227,22 +114,25 @@ export function craftRecipe(
     return {
       inventory: newInventory,
       itemToDrop: {
-        itemType: resulting.type,
+        itemType: recipe.result.type,
         state: { count: resultCount },
       },
     };
   }
 
   newInventory.push({
-    itemType: resulting.type,
+    itemType: recipe.result.type,
     state: { count: resultCount },
   });
 
   return { inventory: newInventory };
 }
 
-export function recipeCanBeCrafted(recipe: Recipe, inventory: InventoryItem[]): boolean {
-  const components = recipe.components();
+export function recipeCanBeCrafted(
+  recipe: Recipe,
+  inventory: (InventoryItem | null)[],
+): boolean {
+  const components = recipe.components;
 
   const componentNeeds: Map<ItemType, number> = new Map();
   for (const component of components) {
@@ -269,4 +159,307 @@ export function recipeCanBeCrafted(recipe: Recipe, inventory: InventoryItem[]): 
   }
 
   return true;
+}
+
+type ProfessionRecipeSeed = {
+  profession: ProfessionId;
+  unlockLevel: number;
+  resultCount?: number;
+  extraComponents?: RecipeComponent[];
+};
+
+const PROFESSION_COST_LADDER: Record<
+  number,
+  { primary: number; secondary: number; rare: number }
+> = {
+  1: { primary: 2, secondary: 1, rare: 0 },
+  5: { primary: 3, secondary: 2, rare: 0 },
+  9: { primary: 4, secondary: 3, rare: 1 },
+  13: { primary: 5, secondary: 4, rare: 2 },
+  17: { primary: 6, secondary: 4, rare: 3 },
+  20: { primary: 8, secondary: 5, rare: 4 },
+};
+
+const PROFESSION_RECIPE_SEEDS: Record<string, ProfessionRecipeSeed> = {
+  forager_wraps: { profession: "scavenging", unlockLevel: 1 },
+  scout_pack: { profession: "scavenging", unlockLevel: 5 },
+  tracker_boots: { profession: "scavenging", unlockLevel: 9 },
+  dust_mask: { profession: "scavenging", unlockLevel: 13 },
+  recon_poncho: { profession: "scavenging", unlockLevel: 17 },
+  survival_satchel: { profession: "scavenging", unlockLevel: 20 },
+  scrap_metal_bundle: { profession: "scrapping", unlockLevel: 1, resultCount: 1 },
+  parts_bundle: { profession: "scrapping", unlockLevel: 5, resultCount: 1 },
+  gun_parts_bundle: { profession: "scrapping", unlockLevel: 9, resultCount: 1 },
+  electronics_bundle: { profession: "scrapping", unlockLevel: 13, resultCount: 1 },
+  reclaimed_plating: { profession: "scrapping", unlockLevel: 17 },
+  reclaimer_gloves: { profession: "scrapping", unlockLevel: 20 },
+  torch: { profession: "crafting", unlockLevel: 1 },
+  wall: { profession: "crafting", unlockLevel: 5 },
+  spikes: { profession: "crafting", unlockLevel: 9 },
+  bear_trap: { profession: "crafting", unlockLevel: 13 },
+  crate: { profession: "crafting", unlockLevel: 17 },
+  gallon_drum: { profession: "crafting", unlockLevel: 20 },
+  pistol_ammo: { profession: "gunsmithing", unlockLevel: 1, resultCount: 8 },
+  throwing_knife: {
+    profession: "gunsmithing",
+    unlockLevel: 5,
+    resultCount: 5,
+    extraComponents: [{ type: "knife", count: 1 }],
+  },
+  pistol: { profession: "gunsmithing", unlockLevel: 9 },
+  shotgun_ammo: { profession: "gunsmithing", unlockLevel: 13, resultCount: 8 },
+  shotgun: { profession: "gunsmithing", unlockLevel: 17 },
+  bolt_action_rifle: { profession: "gunsmithing", unlockLevel: 20 },
+  bandage: { profession: "chemistry", unlockLevel: 1 },
+  pain_pills: { profession: "chemistry", unlockLevel: 5 },
+  energy_drink: { profession: "chemistry", unlockLevel: 9 },
+  molotov_cocktail: {
+    profession: "chemistry",
+    unlockLevel: 13,
+    resultCount: 2,
+    extraComponents: [{ type: "gasoline", count: 1 }],
+  },
+  adrenal_tonic: { profession: "chemistry", unlockLevel: 17 },
+  combat_stim: { profession: "chemistry", unlockLevel: 20 },
+  cloth_hood: { profession: "tailoring", unlockLevel: 1 },
+  patchwork_vest: { profession: "tailoring", unlockLevel: 5 },
+  stitched_pants: { profession: "tailoring", unlockLevel: 9 },
+  survivor_boots: { profession: "tailoring", unlockLevel: 13 },
+  forager_cloak: { profession: "tailoring", unlockLevel: 17 },
+  reinforced_duster: { profession: "tailoring", unlockLevel: 20 },
+  trail_mix: { profession: "cooking", unlockLevel: 1, resultCount: 2 },
+  stew_can: { profession: "cooking", unlockLevel: 5 },
+  seasoned_rations: { profession: "cooking", unlockLevel: 9 },
+  protein_plate: { profession: "cooking", unlockLevel: 13 },
+  hearty_stew: { profession: "cooking", unlockLevel: 17 },
+  campfire_feast: { profession: "cooking", unlockLevel: 20 },
+  miners_hat: { profession: "engineering", unlockLevel: 1 },
+  landmine: { profession: "engineering", unlockLevel: 5 },
+  grenade: { profession: "engineering", unlockLevel: 9 },
+  grenade_launcher_ammo: { profession: "engineering", unlockLevel: 13, resultCount: 4 },
+  flamethrower_ammo: { profession: "engineering", unlockLevel: 17, resultCount: 20 },
+  sentry_gun: {
+    profession: "engineering",
+    unlockLevel: 20,
+    extraComponents: [{ type: "pistol", count: 1 }],
+  },
+};
+
+function mergeRecipeComponents(components: RecipeComponent[]): RecipeComponent[] {
+  const counts = new Map<ItemType, number>();
+  for (const component of components) {
+    counts.set(component.type, (counts.get(component.type) ?? 0) + (component.count ?? 1));
+  }
+  return Array.from(counts.entries()).map(([type, count]) => ({ type, count }));
+}
+
+function buildProfessionRecipeComponents(seed: ProfessionRecipeSeed): RecipeComponent[] {
+  const palette = PROFESSION_DEFINITIONS[seed.profession].palette;
+  const costs = PROFESSION_COST_LADDER[seed.unlockLevel];
+  const components: RecipeComponent[] = [
+    { type: palette[0], count: costs.primary },
+    { type: palette[1], count: costs.secondary },
+  ];
+  if (costs.rare > 0) {
+    components.push({ type: palette[2], count: costs.rare });
+  }
+  if (seed.extraComponents?.length) {
+    components.push(...seed.extraComponents);
+  }
+  return mergeRecipeComponents(components);
+}
+
+function buildConfigRecipeMap(): Map<string, Recipe> {
+  const out = new Map<string, Recipe>();
+  const registerRecipe = (
+    id: string,
+    recipe:
+      | {
+          enabled: boolean;
+          components?: RecipeComponent[];
+          resultCount?: number;
+          profession?: ProfessionId;
+          unlockLevel?: number;
+          station?: CraftingStationId;
+          professionXp?: number;
+        }
+      | undefined,
+  ) => {
+    if (!recipe?.enabled || !recipe.components) {
+      return;
+    }
+    out.set(id, {
+      id,
+      kind: "craft",
+      result: { type: id as ItemType, count: recipe.resultCount ?? 1 },
+      components: mergeRecipeComponents(recipe.components),
+      profession: recipe.profession ?? null,
+      unlockLevel: recipe.unlockLevel ?? 1,
+      station: recipe.station ?? null,
+      professionXp: recipe.professionXp ?? 0,
+    });
+  };
+
+  itemRegistry.getAll().forEach((itemConfig) => registerRecipe(itemConfig.id, itemConfig.recipe));
+  weaponRegistry.getAll().forEach((weaponConfig) => registerRecipe(weaponConfig.id, weaponConfig.recipe));
+  resourceRegistry.getAll().forEach((resourceConfig) =>
+    registerRecipe(resourceConfig.id, resourceConfig.recipe),
+  );
+
+  return out;
+}
+
+function buildProfessionRecipeMap(): Map<string, Recipe> {
+  const out = new Map<string, Recipe>();
+  for (const [recipeId, seed] of Object.entries(PROFESSION_RECIPE_SEEDS)) {
+    const professionDef = PROFESSION_DEFINITIONS[seed.profession];
+    out.set(recipeId, {
+      id: recipeId,
+      kind: "craft",
+      result: { type: recipeId as ItemType, count: seed.resultCount ?? 1 },
+      components: buildProfessionRecipeComponents(seed),
+      profession: seed.profession,
+      unlockLevel: seed.unlockLevel,
+      station: professionDef.station,
+      professionXp: 6 + seed.unlockLevel,
+    });
+  }
+  return out;
+}
+
+function buildRecipes(): Recipe[] {
+  const recipeMap = buildConfigRecipeMap();
+  for (const [recipeId, recipe] of buildProfessionRecipeMap()) {
+    recipeMap.set(recipeId, recipe);
+  }
+  return Array.from(recipeMap.values());
+}
+
+export const recipes: Recipe[] = buildRecipes();
+const RECIPES_BY_ID = new Map(recipes.map((recipe) => [recipe.id, recipe] as const));
+
+export function getCraftableItemIds(): string[] {
+  return recipes.filter((recipe) => recipe.kind === "craft").map((recipe) => recipe.id);
+}
+
+export function getRecipeTypeForItem(itemId: string): RecipeType | null {
+  return RECIPES_BY_ID.has(itemId) ? itemId : null;
+}
+
+export function getRecipeById(recipeId: string): Recipe | null {
+  return RECIPES_BY_ID.get(recipeId) ?? null;
+}
+
+export function getRecipesForStation(stationId: CraftingStationId): Recipe[] {
+  return recipes.filter((recipe) => recipe.station === stationId);
+}
+
+export function getProfessionRecipeIds(professionId: ProfessionId): string[] {
+  return recipes
+    .filter((recipe) => recipe.profession === professionId)
+    .map((recipe) => recipe.id);
+}
+
+export function isRecipeUnlocked(
+  recipe: Recipe,
+  getProfessionLevel: (professionId: ProfessionId) => number,
+): boolean {
+  if (!recipe.profession) {
+    return true;
+  }
+  return getProfessionLevel(recipe.profession) >= recipe.unlockLevel;
+}
+
+export function getScrapOutputsForItem(itemType: ItemType): {
+  components: RecipeComponent[];
+  hasRareOutput: boolean;
+} | null {
+  if (itemType === "gasoline" || itemType === "bandage" || itemType === "pain_pills" || itemType === "energy_drink" || itemType === "adrenal_tonic" || itemType === "combat_stim" || itemType === "molotov_cocktail") {
+    return {
+      components: [
+        { type: "cloth", count: 1 },
+        { type: "chemical_reagents", count: 1 },
+      ],
+      hasRareOutput: true,
+    };
+  }
+
+  if (
+    itemType === "wall" ||
+    itemType === "spikes" ||
+    itemType === "bear_trap" ||
+    itemType === "torch" ||
+    itemType === "crate" ||
+    itemType === "gallon_drum" ||
+    itemType === "landmine" ||
+    itemType === "sentry_gun"
+  ) {
+    const industrial = itemType === "landmine" || itemType === "gallon_drum" || itemType === "sentry_gun";
+    return {
+      components: industrial
+        ? [
+            { type: "scrap_metal", count: 2 },
+            { type: "mechanical_parts", count: 1 },
+          ]
+        : [{ type: "wood", count: 2 }],
+      hasRareOutput: industrial,
+    };
+  }
+
+  if (
+    itemType === "miners_hat" ||
+    itemType === "forager_wraps" ||
+    itemType === "scout_pack" ||
+    itemType === "tracker_boots" ||
+    itemType === "dust_mask" ||
+    itemType === "recon_poncho" ||
+    itemType === "survival_satchel" ||
+    itemType === "reclaimed_plating" ||
+    itemType === "reclaimer_gloves" ||
+    itemType === "cloth_hood" ||
+    itemType === "patchwork_vest" ||
+    itemType === "stitched_pants" ||
+    itemType === "survivor_boots" ||
+    itemType === "forager_cloak" ||
+    itemType === "reinforced_duster"
+  ) {
+    return {
+      components: [
+        { type: "cloth", count: 1 },
+        { type: "leather_strips", count: 1 },
+      ],
+      hasRareOutput: itemType === "miners_hat" || itemType === "reclaimed_plating",
+    };
+  }
+
+  if (isWeapon(itemType)) {
+    const outputs: RecipeComponent[] = [
+      { type: "scrap_metal", count: 2 },
+      { type: "gun_parts", count: 1 },
+    ];
+    const advancedFirearms = new Set([
+      "shotgun",
+      "bolt_action_rifle",
+      "ak47",
+      "grenade_launcher",
+      "flamethrower",
+      "pistol",
+    ]);
+    const hasElectronics = advancedFirearms.has(itemType);
+    if (hasElectronics) {
+      outputs.push({ type: "electronics", count: 1 });
+    }
+    return {
+      components: outputs,
+      hasRareOutput: hasElectronics || itemType !== "knife" && itemType !== "baseball_bat",
+    };
+  }
+
+  return null;
+}
+
+export function getProfessionRecipeUnlockSeed(
+  recipeId: string,
+): ProfessionRecipeSeed | null {
+  return PROFESSION_RECIPE_SEEDS[recipeId] ?? null;
 }

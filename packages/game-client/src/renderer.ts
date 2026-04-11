@@ -2,6 +2,7 @@ import { Renderable } from "@/entities/util";
 import { MapManager } from "@/managers/map";
 import { GameState, getEntityById } from "@/state";
 import { MerchantBuyPanel } from "@/ui/merchant-buy-panel";
+import { CraftingPanel } from "@/ui/crafting-panel";
 import { Hud } from "@/ui/hud";
 import { QuestCompletedModal } from "@/ui/quest-completed-modal";
 import { ParticleManager } from "./managers/particles";
@@ -30,6 +31,7 @@ export class Renderer {
   private mapManager: MapManager;
   private hud: Hud;
   private merchantBuyPanel: MerchantBuyPanel;
+  private craftingPanel: CraftingPanel;
   private questCompletedModal: QuestCompletedModal;
   private particleManager: ParticleManager;
   private getPlacementManager: () => PlacementManager | null;
@@ -42,6 +44,7 @@ export class Renderer {
     mapManager: MapManager,
     hud: Hud,
     merchantBuyPanel: MerchantBuyPanel,
+    craftingPanel: CraftingPanel,
     questCompletedModal: QuestCompletedModal,
     particleManager: ParticleManager,
     getPlacementManager: () => PlacementManager | null,
@@ -51,6 +54,7 @@ export class Renderer {
     this.mapManager = mapManager;
     this.hud = hud;
     this.merchantBuyPanel = merchantBuyPanel;
+    this.craftingPanel = craftingPanel;
     this.questCompletedModal = questCompletedModal;
     this.particleManager = particleManager;
     this.getPlacementManager = getPlacementManager;
@@ -280,6 +284,7 @@ export class Renderer {
     this.ctx.setTransform(1, 0, 0, 1, 0, 0);
     this.hud.render(this.ctx, this.gameState);
     this.merchantBuyPanel.render(this.ctx, this.gameState);
+    this.craftingPanel.render(this.ctx, this.gameState);
 
     // Render cursor (crosshair when weapon is equipped)
     this.renderCursor();
@@ -321,6 +326,14 @@ export class Renderer {
    */
   private renderCursor(): void {
     if (!this.mousePosition) return;
+    if (
+      this.merchantBuyPanel.isVisible() ||
+      this.craftingPanel.isVisible() ||
+      this.hud.isInventoryScreenOpen() ||
+      this.hud.isFullscreenMapOpen()
+    ) {
+      return;
+    }
 
     // Check if player has a weapon equipped
     const player = getPlayer(this.gameState);

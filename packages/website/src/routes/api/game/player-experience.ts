@@ -1,5 +1,10 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { getOrCreateUserStats, resolveHydrationExperience } from "~/data-access/user-stats";
+import {
+  getOrCreateUserStats,
+  resolveHydrationAbilityAllocations,
+  resolveHydrationExperience,
+  resolveHydrationProfessionProgress,
+} from "~/data-access/user-stats";
 import { requireGameServerApiKey } from "~/utils/game-server-api-auth";
 import { coercePlayerQuestState } from "@survive-the-night/game-shared/quests/player-quest-state";
 
@@ -34,8 +39,10 @@ export const Route = createFileRoute("/api/game/player-experience")({
               success: true,
               experience,
               zombieKills: stats.zombieKills ?? 0,
+              abilityAllocations: resolveHydrationAbilityAllocations(stats),
               skillAllocations: stats.skillAllocations ?? {},
               characterAllocations: stats.characterAllocations ?? {},
+              professionProgress: resolveHydrationProfessionProgress(stats),
               lastTileX: stats.lastTileX ?? null,
               lastTileY: stats.lastTileY ?? null,
               respawnTileX: stats.respawnTileX ?? null,

@@ -45,6 +45,7 @@ import { persistPlayerLastPositionToWebsite } from "@/services/persist-player-la
 import Positionable from "@/extensions/positionable";
 import { coercePlayerQuestState } from "@shared/quests/player-quest-state";
 import { coercePlayerInventoryPersistedPayload } from "@shared/util/persisted-inventory-payload";
+import { emptyProfessionProgress, normalizeProfessionProgress } from "@shared/util/professions";
 import { reconcilePlayerQuestStateWithMap } from "@/quests/quest-runtime";
 import { XP_PER_ZOMBIE_KILL } from "@shared/util/experience-level";
 import { GameMessageEvent } from "../../../game-shared/src/events/server-sent/events/game-message-event";
@@ -204,8 +205,9 @@ export class ServerSocketManager implements Broadcaster {
   private async fetchPersistedProgress(userId: string): Promise<PersistedPlayerProgress> {
     const empty: PersistedPlayerProgress = {
       experience: 0,
-      skillAllocations: {},
+      abilityAllocations: {},
       characterAllocations: {},
+      professionProgress: emptyProfessionProgress(),
     };
     if (!GAME_SERVER_API_KEY) {
       return empty;
@@ -227,8 +229,10 @@ export class ServerSocketManager implements Broadcaster {
       const data = (await response.json()) as {
         experience?: unknown;
         zombieKills?: unknown;
+        abilityAllocations?: Record<string, number>;
         skillAllocations?: Record<string, number>;
         characterAllocations?: Record<string, number>;
+        professionProgress?: unknown;
         lastTileX?: unknown;
         lastTileY?: unknown;
         respawnTileX?: unknown;
@@ -278,8 +282,9 @@ export class ServerSocketManager implements Broadcaster {
 
       return {
         experience: Math.max(0, xp),
-        skillAllocations: data.skillAllocations ?? {},
+        abilityAllocations: data.abilityAllocations ?? data.skillAllocations ?? {},
         characterAllocations: data.characterAllocations ?? {},
+        professionProgress: normalizeProfessionProgress(data.professionProgress),
         lastTileX,
         lastTileY,
         respawnTileX,
@@ -384,8 +389,9 @@ export class ServerSocketManager implements Broadcaster {
     socket: ISocketAdapter,
     initialProgress: PersistedPlayerProgress = {
       experience: 0,
-      skillAllocations: {},
+      abilityAllocations: {},
       characterAllocations: {},
+      professionProgress: emptyProfessionProgress(),
     },
   ): Player {
     const player = new Player(this.getGameManagers());
@@ -449,7 +455,12 @@ export class ServerSocketManager implements Broadcaster {
       const userId = this.userSessionCache.getUserIdBySocket(socket.id);
       const progress = userId
         ? await this.fetchPersistedProgress(userId)
-        : { experience: 0, skillAllocations: {}, characterAllocations: {} };
+        : {
+            experience: 0,
+            abilityAllocations: {},
+            characterAllocations: {},
+            professionProgress: emptyProfessionProgress(),
+          };
       const snap = liveBySocket.get(socket.id);
       const merged: PersistedPlayerProgress = snap
         ? {
@@ -558,8 +569,9 @@ export class ServerSocketManager implements Broadcaster {
     socket: ISocketAdapter,
     initialProgress: PersistedPlayerProgress = {
       experience: 0,
-      skillAllocations: {},
+      abilityAllocations: {},
       characterAllocations: {},
+      professionProgress: emptyProfessionProgress(),
     },
   ): void {
     const context = this.getHandlerContext();

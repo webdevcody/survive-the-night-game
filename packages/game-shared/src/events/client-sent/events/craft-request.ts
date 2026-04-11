@@ -1,10 +1,11 @@
 import { EventType, ClientSentEvents } from "../../events";
 import { GameEvent } from "../../types";
 import { ArrayBufferWriter, BufferReader } from "../../../util/buffer-serialization";
-import type { RecipeType } from "../../../util/recipes";
-import { itemTypeRegistry } from "../../../util/item-type-encoding";
 
-export type CraftRequestEventData = RecipeType;
+export interface CraftRequestEventData {
+  recipeId: string;
+  stationEntityId: number;
+}
 
 export class CraftRequestEvent implements GameEvent<CraftRequestEventData> {
   private readonly type: EventType = ClientSentEvents.CRAFT_REQUEST;
@@ -22,16 +23,19 @@ export class CraftRequestEvent implements GameEvent<CraftRequestEventData> {
     return this.data;
   }
 
-  getRecipe(): RecipeType {
-    return this.data;
+  getRecipeId(): string {
+    return this.data.recipeId;
   }
 
   static serializeToBuffer(writer: ArrayBufferWriter, data: CraftRequestEventData): void {
-    writer.writeUInt8(itemTypeRegistry.encode(String(data)));
+    writer.writeString(data.recipeId);
+    writer.writeUInt32(data.stationEntityId);
   }
 
   static deserializeFromBuffer(reader: BufferReader): CraftRequestEventData {
-    return itemTypeRegistry.decode(reader.readUInt8()) as RecipeType;
+    return {
+      recipeId: reader.readString(),
+      stationEntityId: reader.readUInt32(),
+    };
   }
 }
-

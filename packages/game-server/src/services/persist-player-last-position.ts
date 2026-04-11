@@ -37,7 +37,8 @@ export async function persistPlayerLastPositionToWebsite(
       lastTileY,
       ...(bind ? { respawnTileX: bind.x, respawnTileY: bind.y } : {}),
       characterAllocations: player.getCharacterAllocationRecord(),
-      skillAllocations: player.getSkillAllocationRecord(),
+      abilityAllocations: player.getAbilityAllocationRecord(),
+      professionProgress: player.getProfessionProgressRecord(),
       savedInventory: player.getSavedInventoryPayload(),
     }),
   });

@@ -56,7 +56,7 @@ export class CampsiteFireClient extends ClientEntity implements Renderable {
     const bind = myPlayer.getRespawnBindTile();
     const alreadyBoundHere =
       bind !== null && bind.x === fireTileX && bind.y === fireTileY;
-    const displayName = alreadyBoundHere ? "interact" : baseDisplayName;
+    const displayName = alreadyBoundHere ? "craft" : baseDisplayName;
 
     const text = formatInteractKeyPrompt(displayName);
 

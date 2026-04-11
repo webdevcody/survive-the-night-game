@@ -35,6 +35,7 @@ export class Tree extends Entity {
       return;
     }
 
+    player.addProfessionXp("scavenging", 3);
     this.getEntityManager().markEntityForRemoval(this);
   }
 }

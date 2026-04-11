@@ -20,7 +20,7 @@ import {
   type PlayerInventoryPersistedPayload,
 } from "@shared/util/persisted-inventory-payload";
 import { normalizeVector, distance } from "@shared/util/physics";
-import { RecipeType } from "@shared/util/recipes";
+import type { CraftRequestEventData } from "@shared/events/client-sent/events/craft-request";
 import { Cooldown } from "@/entities/util/cooldown";
 import { weaponHandlerRegistry } from "@/entities/weapons/weapon-handler-registry";
 import { PlayerDeathEvent } from "../../../../game-shared/src/events/server-sent/events/player-death-event";
@@ -54,13 +54,21 @@ import {
   computePassiveHpRegenIntervalSeconds,
   computeStaminaRegenMultiplier,
 } from "@shared/util/character-stats";
-import { REGENERATE_HEAL_PER_SECOND } from "@shared/util/skill-tree";
+import { REGENERATE_HEAL_PER_SECOND } from "@shared/util/ability-tree";
 import { getZombieTypesSet } from "@shared/constants";
 import type { PersistedPlayerProgress } from "@/services/player-progress-types";
 import { UserSessionCache } from "@/services/user-session-cache";
 import { GAME_SERVER_API_KEY, WEBSITE_API_URL } from "@/config/env";
 import { weaponRegistry } from "@shared/entities/weapon-registry";
 import { itemMatchesLoadoutRow, resolveAttackWeaponFromLoadout } from "@shared/util/weapon-loadout";
+import {
+  emptyProfessionProgress,
+  getProfessionLevelFromXp,
+  normalizeProfessionProgress,
+  type ProfessionId,
+  type ProfessionProgress,
+} from "@shared/util/professions";
+import { getCraftingStationIdForEntityType } from "@shared/util/crafting-stations";
 import { FISTS_INVENTORY_SENTINEL } from "@shared/constants/inventory-sentinel";
 import {
   emptyPlayerQuestState,
@@ -69,6 +77,7 @@ import {
   type PlayerQuestStatePayload,
 } from "@shared/quests/player-quest-state";
 import { initPlayerQuestState, tickWaypointSteps } from "@/quests/quest-runtime";
+import { getRecipeById, getScrapOutputsForItem } from "@shared/util/recipes";
 
 /**
  * Cached list of entity types that players can pass through (collision passthrough).
@@ -147,8 +156,9 @@ export class Player extends Entity {
         inputSprint: false,
         inputAimAngle: NaN, // NaN represents undefined for optional field
         inputAimDistance: NaN, // NaN represents undefined for optional field
-        skillSprint: 0,
-        skillRegenerate: 0,
+        abilitySprint: 0,
+        abilityRegenerate: 0,
+        professionProgressJson: JSON.stringify(emptyProfessionProgress()),
         statHealth: 0,
         statEvade: 0,
         statAccuracy: 0,
@@ -177,8 +187,8 @@ export class Player extends Entity {
         inputAimAngle: { numberType: "float64", optional: true },
         inputAimDistance: { numberType: "float64", optional: true },
         deathTime: { numberType: "float64" },
-        skillSprint: { numberType: "uint8" },
-        skillRegenerate: { numberType: "uint8" },
+        abilitySprint: { numberType: "uint8" },
+        abilityRegenerate: { numberType: "uint8" },
         statHealth: { numberType: "uint8" },
         statEvade: { numberType: "uint8" },
         statAccuracy: { numberType: "uint8" },
@@ -699,10 +709,114 @@ export class Player extends Entity {
     this.getExt(Positionable).setPosition(position);
   }
 
-  craftRecipe(recipe: RecipeType): void {
+  private dropInventoryItemNearPlayer(item: InventoryItem): void {
+    const entity = this.getEntityManager()?.createEntityFromItem(item);
+    if (!entity) {
+      return;
+    }
+    const position = this.getExt(Positionable).getPosition();
+    const offset = 20;
+    const theta = Math.random() * 2 * Math.PI;
+    const poolManager = PoolManager.getInstance();
+    const pos = poolManager.vector2.claim(
+      position.x + offset * Math.cos(theta),
+      position.y + offset * Math.sin(theta),
+    );
+
+    if ("setPosition" in entity) {
+      (entity as any).setPosition(pos);
+    } else if (entity.hasExt(Positionable)) {
+      entity.getExt(Positionable).setPosition(pos);
+    }
+
+    this.getEntityManager()?.addEntity(entity);
+  }
+
+  private tryResolveCraftStation(stationEntityId: number): string | null {
+    const stationEntity = this.getEntityManager().getEntityById(stationEntityId);
+    if (!stationEntity || !stationEntity.hasExt(Positionable)) {
+      return null;
+    }
+    const stationId = getCraftingStationIdForEntityType(stationEntity.getType());
+    if (!stationId) {
+      return null;
+    }
+    if (
+      distance(this.getCenterPosition(), stationEntity.getExt(Positionable).getCenterPosition()) >
+      getConfig().player.MAX_INTERACT_RADIUS
+    ) {
+      return null;
+    }
+    return stationId;
+  }
+
+  private applyScrapRequest(slotIndex: number): boolean {
+    const inventory = this.getExt(Inventory);
+    const item = inventory.getItems()[slotIndex] ?? null;
+    if (!item) {
+      return false;
+    }
+
+    const scrap = getScrapOutputsForItem(item.itemType);
+    if (!scrap) {
+      return false;
+    }
+
+    const removed = inventory.removeItem(slotIndex);
+    if (!removed) {
+      return false;
+    }
+
+    for (const output of scrap.components) {
+      const count = output.count ?? 1;
+      const merged = inventory.addOrMergeStack({
+        itemType: output.type,
+        state: { count },
+      });
+      if (!merged) {
+        this.dropInventoryItemNearPlayer({
+          itemType: output.type,
+          state: { count },
+        });
+      }
+    }
+
+    this.addProfessionXp("scrapping", 6 + (scrap.hasRareOutput ? 4 : 0));
+    this.getGameManagers().getBroadcaster().broadcastEvent(new CraftEvent(this.getId()));
+    return true;
+  }
+
+  craftRecipe(request: CraftRequestEventData): void {
+    const stationId = this.tryResolveCraftStation(request.stationEntityId);
+    if (!stationId) {
+      this.setIsCrafting(false);
+      return;
+    }
+
+    if (request.recipeId.startsWith("scrap:")) {
+      const slotIndex = Number.parseInt(request.recipeId.slice("scrap:".length), 10);
+      if (!Number.isInteger(slotIndex) || slotIndex < 0 || stationId !== "workbench") {
+        this.setIsCrafting(false);
+        return;
+      }
+      this.applyScrapRequest(slotIndex);
+      this.setIsCrafting(false);
+      return;
+    }
+
+    const recipe = getRecipeById(request.recipeId);
+    if (!recipe || recipe.station !== stationId) {
+      this.setIsCrafting(false);
+      return;
+    }
+    if (recipe.profession && this.getProfessionLevel(recipe.profession) < recipe.unlockLevel) {
+      this.setIsCrafting(false);
+      return;
+    }
+
     const inventory = this.getExt(Inventory);
     const originalInventoryJson = JSON.stringify(inventory.getItems());
-    const result = inventory.craftRecipe(recipe);
+    const result = inventory.craftRecipe(request.recipeId);
 
     // Check if crafting succeeded (inventory changed or item was dropped)
     const inventoryChanged = JSON.stringify(inventory.getItems()) !== originalInventoryJson;
@@ -710,30 +824,14 @@ export class Player extends Entity {
 
     // If inventory was full, drop the crafted item on the ground
     if (result.itemToDrop) {
-      const entity = this.getEntityManager()?.createEntityFromItem(result.itemToDrop);
-      if (entity) {
-        const position = this.getExt(Positionable).getPosition();
-        // Add small random offset so it doesn't spawn exactly on the player
-        const offset = 20;
-        const theta = Math.random() * 2 * Math.PI;
-        const poolManager = PoolManager.getInstance();
-        const pos = poolManager.vector2.claim(
-          position.x + offset * Math.cos(theta),
-          position.y + offset * Math.sin(theta),
-        );
-
-        if ("setPosition" in entity) {
-          (entity as any).setPosition(pos);
-        } else if (entity.hasExt(Positionable)) {
-          entity.getExt(Positionable).setPosition(pos);
-        }
-
-        this.getEntityManager()?.addEntity(entity);
-      }
+      this.dropInventoryItemNearPlayer(result.itemToDrop);
     }
 
     // Broadcast craft event if crafting succeeded
     if (craftingSucceeded) {
+      if (recipe.profession) {
+        this.addProfessionXp(recipe.profession, recipe.professionXp);
+      }
       this.getGameManagers().getBroadcaster().broadcastEvent(new CraftEvent(this.getId()));
     }
 
@@ -928,7 +1026,7 @@ export class Player extends Entity {
         const isZombie = this.serialized.get("isZombie");
 
         const stamina = this.serialized.get("stamina");
-        const hasSprintSkill = (this.serialized.get("skillSprint") ?? 0) > 0;
+        const hasSprintSkill = (this.serialized.get("abilitySprint") ?? 0) > 0;
         const canSprint =
           !isZombie &&
           hasSprintSkill &&
@@ -1249,16 +1347,23 @@ export class Player extends Entity {
   }
 
   /**
-   * Apply skill + character allocation maps from DB (normalized keys, values 0+).
+   * Apply ability + character allocation maps from DB (normalized keys, values 0+).
    */
   applyPersistedProgress(
-    skillAllocations: Record<string, number>,
+    abilityAllocations: Record<string, number>,
     characterAllocations: Record<string, number>,
+    professionProgress?: Record<string, number>,
   ): void {
-    const sprint = Math.min(1, Math.floor(skillAllocations.sprint ?? 0));
-    const regen = Math.min(1, Math.floor(skillAllocations.regenerate ?? 0));
-    this.serialized.set("skillSprint", sprint);
-    this.serialized.set("skillRegenerate", regen);
+    const sprint = Math.min(1, Math.floor(abilityAllocations.sprint ?? 0));
+    const regen = Math.min(1, Math.floor(abilityAllocations.regenerate ?? 0));
+    this.serialized.set("abilitySprint", sprint);
+    this.serialized.set("abilityRegenerate", regen);
+    if (professionProgress !== undefined) {
+      this.serialized.set(
+        "professionProgressJson",
+        JSON.stringify(normalizeProfessionProgress(professionProgress)),
+      );
+    }
 
     const rawAlloc = characterAllocations as Record<string, number>;
     const evadeRaw = rawAlloc.evade ?? rawAlloc.defence ?? 0;
@@ -1285,7 +1390,11 @@ export class Player extends Entity {
   /** Called when connecting with persisted website data (keeps fields encapsulated). */
   hydratePersistedProgress(progress: PersistedPlayerProgress): void {
     this.serialized.set("experience", Math.max(0, Math.floor(progress.experience)));
-    this.applyPersistedProgress(progress.skillAllocations, progress.characterAllocations);
+    this.applyPersistedProgress(
+      progress.abilityAllocations,
+      progress.characterAllocations,
+      progress.professionProgress,
+    );
     initPlayerQuestState(this, progress.questProgress);
     const lx = progress.lastTileX;
     const ly = progress.lastTileY;
@@ -1363,11 +1472,42 @@ export class Player extends Entity {
     return this.serialized.get("experience") ?? 0;
   }
 
-  getSkillAllocationRecord(): Record<string, number> {
+  getAbilityAllocationRecord(): Record<string, number> {
     return {
-      sprint: this.serialized.get("skillSprint") ? 1 : 0,
-      regenerate: this.serialized.get("skillRegenerate") ? 1 : 0,
+      sprint: this.serialized.get("abilitySprint") ? 1 : 0,
+      regenerate: this.serialized.get("abilityRegenerate") ? 1 : 0,
     };
+  }
+
+  getSkillAllocationRecord(): Record<string, number> {
+    return this.getAbilityAllocationRecord();
+  }
+
+  getProfessionProgressRecord(): ProfessionProgress {
+    const raw = this.serialized.get("professionProgressJson");
+    if (typeof raw !== "string" || raw.trim() === "") {
+      return emptyProfessionProgress();
+    }
+    try {
+      return normalizeProfessionProgress(JSON.parse(raw));
+    } catch {
+      return emptyProfessionProgress();
+    }
+  }
+
+  getProfessionLevel(professionId: ProfessionId): number {
+    const progress = this.getProfessionProgressRecord();
+    return getProfessionLevelFromXp(progress[professionId] ?? 0);
+  }
+
+  addProfessionXp(professionId: ProfessionId, amount: number): void {
+    const safeAmount = Math.max(0, Math.floor(amount));
+    if (safeAmount <= 0) {
+      return;
+    }
+    const progress = this.getProfessionProgressRecord();
+    progress[professionId] = (progress[professionId] ?? 0) + safeAmount;
+    this.serialized.set("professionProgressJson", JSON.stringify(progress));
   }
 
   getCharacterAllocationRecord(): Record<string, number> {
@@ -1401,7 +1541,7 @@ export class Player extends Entity {
   }
 
   private handleRegenerateHealing(deltaTime: number): void {
-    if ((this.serialized.get("skillRegenerate") ?? 0) <= 0) {
+    if ((this.serialized.get("abilityRegenerate") ?? 0) <= 0) {
       return;
     }
     const d = this.getExt(Destructible);

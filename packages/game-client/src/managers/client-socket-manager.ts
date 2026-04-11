@@ -18,7 +18,7 @@ import { ZombieHurtEvent } from "../../../game-shared/src/events/server-sent/eve
 import { ZombieAlertedEvent } from "../../../game-shared/src/events/server-sent/events/zombie-alerted-event";
 import { PongEvent } from "../../../game-shared/src/events/server-sent/events/pong-event";
 import { Input } from "../../../game-shared/src/util/input";
-import { RecipeType } from "../../../game-shared/src/util/recipes";
+import type { CraftRequestEventData } from "@shared/events/client-sent/events/craft-request";
 import { ServerUpdatingEvent } from "../../../game-shared/src/events/server-sent/events/server-updating-event";
 import { ChatMessageEvent } from "../../../game-shared/src/events/server-sent/events/chat-message-event";
 import { GameMessageEvent } from "../../../game-shared/src/events/server-sent/events/game-message-event";
@@ -458,8 +458,8 @@ export class ClientSocketManager {
     this.emitClientEvent(ClientSentEvents.PING_UPDATE, latency);
   }
 
-  public sendCraftRequest(recipe: RecipeType) {
-    this.emitClientEvent(ClientSentEvents.CRAFT_REQUEST, recipe);
+  public sendCraftRequest(request: CraftRequestEventData) {
+    this.emitClientEvent(ClientSentEvents.CRAFT_REQUEST, request);
   }
 
   public sendStartCrafting() {
@@ -566,7 +566,7 @@ export class ClientSocketManager {
   }
 
   public sendProgressionAllocations(
-    kind: "skill" | "character",
+    kind: "ability" | "character",
     allocations: Record<string, number>,
   ): void {
     this.emitClientEvent(ClientSentEvents.SET_PROGRESSION_ALLOCATIONS, { kind, allocations });

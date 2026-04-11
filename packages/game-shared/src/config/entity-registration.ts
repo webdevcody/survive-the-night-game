@@ -101,6 +101,9 @@ export const ENTITY_REGISTRATION_CONFIG: EntityRegistrationEntry[] = [
   // Environment
   { type: "fire", category: "environment" },
   { type: "campsite_fire", category: "environment" },
+  { type: "workbench", category: "environment" },
+  { type: "forge", category: "environment" },
+  { type: "chemistry_table", category: "environment" },
   { type: "light_decal", category: "environment" },
   { type: "message_decal", category: "environment" },
   { type: "merchant", category: "environment" },
@@ -112,5 +115,4 @@ export const ENTITY_REGISTRATION_CONFIG: EntityRegistrationEntry[] = [
   { type: "item_spawn_point", category: "environment" },
   { type: "dialogue_survivor_npc", category: "environment" },
 ];
-
 

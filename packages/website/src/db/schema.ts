@@ -3,6 +3,7 @@ import { sql } from "drizzle-orm";
 import { relations } from "drizzle-orm";
 import type { PlayerInventoryPersistedPayload } from "@survive-the-night/game-shared/util/persisted-inventory-payload";
 import type { PlayerQuestStatePayload } from "@survive-the-night/game-shared/quests/player-quest-state";
+import type { ProfessionProgress } from "@survive-the-night/game-shared/util/professions";
 
 export const user = pgTable("user", {
   id: text("id").primaryKey(),
@@ -73,6 +74,10 @@ export const userStats = pgTable("user_stats", {
     .references(() => user.id, { onDelete: "cascade" }),
   zombieKills: integer("zombie_kills").notNull().default(0),
   experience: integer("experience").notNull().default(0),
+  abilityAllocations: jsonb("ability_allocations")
+    .$type<Record<string, number>>()
+    .notNull()
+    .default(sql`'{}'::jsonb`),
   skillAllocations: jsonb("skill_allocations")
     .$type<Record<string, number>>()
     .notNull()
@@ -81,6 +86,12 @@ export const userStats = pgTable("user_stats", {
     .$type<Record<string, number>>()
     .notNull()
     .default(sql`'{}'::jsonb`),
+  professionProgress: jsonb("profession_progress")
+    .$type<ProfessionProgress>()
+    .notNull()
+    .default(
+      sql`'{"scavenging":0,"scrapping":0,"crafting":0,"gunsmithing":0,"chemistry":0,"tailoring":0,"cooking":0,"engineering":0}'::jsonb`,
+    ),
   /** Open world: last tile indices when the player disconnected (alive). */
   lastTileX: integer("last_tile_x"),
   lastTileY: integer("last_tile_y"),

@@ -22,6 +22,7 @@ import { Route as EditorIndexRouteImport } from './routes/editor/index'
 import { Route as ApiSessionValidateRouteImport } from './routes/api/session/validate'
 import { Route as ApiGameZombieKillRouteImport } from './routes/api/game/zombie-kill'
 import { Route as ApiGameSkillAllocationsRouteImport } from './routes/api/game/skill-allocations'
+import { Route as ApiGameProfessionProgressRouteImport } from './routes/api/game/profession-progress'
 import { Route as ApiGamePlayerStatsRouteImport } from './routes/api/game/player-stats'
 import { Route as ApiGamePlayerRespawnBindRouteImport } from './routes/api/game/player-respawn-bind'
 import { Route as ApiGamePlayerQuestProgressRouteImport } from './routes/api/game/player-quest-progress'
@@ -29,6 +30,7 @@ import { Route as ApiGamePlayerLastPositionRouteImport } from './routes/api/game
 import { Route as ApiGamePlayerExperienceRouteImport } from './routes/api/game/player-experience'
 import { Route as ApiGameCharacterAllocationsRouteImport } from './routes/api/game/character-allocations'
 import { Route as ApiGameAddExperienceRouteImport } from './routes/api/game/add-experience'
+import { Route as ApiGameAbilityAllocationsRouteImport } from './routes/api/game/ability-allocations'
 import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
 
 const TermsRoute = TermsRouteImport.update({
@@ -96,6 +98,12 @@ const ApiGameSkillAllocationsRoute = ApiGameSkillAllocationsRouteImport.update({
   path: '/api/game/skill-allocations',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiGameProfessionProgressRoute =
+  ApiGameProfessionProgressRouteImport.update({
+    id: '/api/game/profession-progress',
+    path: '/api/game/profession-progress',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiGamePlayerStatsRoute = ApiGamePlayerStatsRouteImport.update({
   id: '/api/game/player-stats',
   path: '/api/game/player-stats',
@@ -135,6 +143,12 @@ const ApiGameAddExperienceRoute = ApiGameAddExperienceRouteImport.update({
   path: '/api/game/add-experience',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiGameAbilityAllocationsRoute =
+  ApiGameAbilityAllocationsRouteImport.update({
+    id: '/api/game/ability-allocations',
+    path: '/api/game/ability-allocations',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiAuthSplatRoute = ApiAuthSplatRouteImport.update({
   id: '/api/auth/$',
   path: '/api/auth/$',
@@ -153,6 +167,7 @@ export interface FileRoutesByFullPath {
   '/terms': typeof TermsRoute
   '/editor': typeof EditorIndexRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
+  '/api/game/ability-allocations': typeof ApiGameAbilityAllocationsRoute
   '/api/game/add-experience': typeof ApiGameAddExperienceRoute
   '/api/game/character-allocations': typeof ApiGameCharacterAllocationsRoute
   '/api/game/player-experience': typeof ApiGamePlayerExperienceRoute
@@ -160,6 +175,7 @@ export interface FileRoutesByFullPath {
   '/api/game/player-quest-progress': typeof ApiGamePlayerQuestProgressRoute
   '/api/game/player-respawn-bind': typeof ApiGamePlayerRespawnBindRoute
   '/api/game/player-stats': typeof ApiGamePlayerStatsRoute
+  '/api/game/profession-progress': typeof ApiGameProfessionProgressRoute
   '/api/game/skill-allocations': typeof ApiGameSkillAllocationsRoute
   '/api/game/zombie-kill': typeof ApiGameZombieKillRoute
   '/api/session/validate': typeof ApiSessionValidateRoute
@@ -176,6 +192,7 @@ export interface FileRoutesByTo {
   '/terms': typeof TermsRoute
   '/editor': typeof EditorIndexRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
+  '/api/game/ability-allocations': typeof ApiGameAbilityAllocationsRoute
   '/api/game/add-experience': typeof ApiGameAddExperienceRoute
   '/api/game/character-allocations': typeof ApiGameCharacterAllocationsRoute
   '/api/game/player-experience': typeof ApiGamePlayerExperienceRoute
@@ -183,6 +200,7 @@ export interface FileRoutesByTo {
   '/api/game/player-quest-progress': typeof ApiGamePlayerQuestProgressRoute
   '/api/game/player-respawn-bind': typeof ApiGamePlayerRespawnBindRoute
   '/api/game/player-stats': typeof ApiGamePlayerStatsRoute
+  '/api/game/profession-progress': typeof ApiGameProfessionProgressRoute
   '/api/game/skill-allocations': typeof ApiGameSkillAllocationsRoute
   '/api/game/zombie-kill': typeof ApiGameZombieKillRoute
   '/api/session/validate': typeof ApiSessionValidateRoute
@@ -200,6 +218,7 @@ export interface FileRoutesById {
   '/terms': typeof TermsRoute
   '/editor/': typeof EditorIndexRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
+  '/api/game/ability-allocations': typeof ApiGameAbilityAllocationsRoute
   '/api/game/add-experience': typeof ApiGameAddExperienceRoute
   '/api/game/character-allocations': typeof ApiGameCharacterAllocationsRoute
   '/api/game/player-experience': typeof ApiGamePlayerExperienceRoute
@@ -207,6 +226,7 @@ export interface FileRoutesById {
   '/api/game/player-quest-progress': typeof ApiGamePlayerQuestProgressRoute
   '/api/game/player-respawn-bind': typeof ApiGamePlayerRespawnBindRoute
   '/api/game/player-stats': typeof ApiGamePlayerStatsRoute
+  '/api/game/profession-progress': typeof ApiGameProfessionProgressRoute
   '/api/game/skill-allocations': typeof ApiGameSkillAllocationsRoute
   '/api/game/zombie-kill': typeof ApiGameZombieKillRoute
   '/api/session/validate': typeof ApiSessionValidateRoute
@@ -225,6 +245,7 @@ export interface FileRouteTypes {
     | '/terms'
     | '/editor'
     | '/api/auth/$'
+    | '/api/game/ability-allocations'
     | '/api/game/add-experience'
     | '/api/game/character-allocations'
     | '/api/game/player-experience'
@@ -232,6 +253,7 @@ export interface FileRouteTypes {
     | '/api/game/player-quest-progress'
     | '/api/game/player-respawn-bind'
     | '/api/game/player-stats'
+    | '/api/game/profession-progress'
     | '/api/game/skill-allocations'
     | '/api/game/zombie-kill'
     | '/api/session/validate'
@@ -248,6 +270,7 @@ export interface FileRouteTypes {
     | '/terms'
     | '/editor'
     | '/api/auth/$'
+    | '/api/game/ability-allocations'
     | '/api/game/add-experience'
     | '/api/game/character-allocations'
     | '/api/game/player-experience'
@@ -255,6 +278,7 @@ export interface FileRouteTypes {
     | '/api/game/player-quest-progress'
     | '/api/game/player-respawn-bind'
     | '/api/game/player-stats'
+    | '/api/game/profession-progress'
     | '/api/game/skill-allocations'
     | '/api/game/zombie-kill'
     | '/api/session/validate'
@@ -271,6 +295,7 @@ export interface FileRouteTypes {
     | '/terms'
     | '/editor/'
     | '/api/auth/$'
+    | '/api/game/ability-allocations'
     | '/api/game/add-experience'
     | '/api/game/character-allocations'
     | '/api/game/player-experience'
@@ -278,6 +303,7 @@ export interface FileRouteTypes {
     | '/api/game/player-quest-progress'
     | '/api/game/player-respawn-bind'
     | '/api/game/player-stats'
+    | '/api/game/profession-progress'
     | '/api/game/skill-allocations'
     | '/api/game/zombie-kill'
     | '/api/session/validate'
@@ -295,6 +321,7 @@ export interface RootRouteChildren {
   TermsRoute: typeof TermsRoute
   EditorIndexRoute: typeof EditorIndexRoute
   ApiAuthSplatRoute: typeof ApiAuthSplatRoute
+  ApiGameAbilityAllocationsRoute: typeof ApiGameAbilityAllocationsRoute
   ApiGameAddExperienceRoute: typeof ApiGameAddExperienceRoute
   ApiGameCharacterAllocationsRoute: typeof ApiGameCharacterAllocationsRoute
   ApiGamePlayerExperienceRoute: typeof ApiGamePlayerExperienceRoute
@@ -302,6 +329,7 @@ export interface RootRouteChildren {
   ApiGamePlayerQuestProgressRoute: typeof ApiGamePlayerQuestProgressRoute
   ApiGamePlayerRespawnBindRoute: typeof ApiGamePlayerRespawnBindRoute
   ApiGamePlayerStatsRoute: typeof ApiGamePlayerStatsRoute
+  ApiGameProfessionProgressRoute: typeof ApiGameProfessionProgressRoute
   ApiGameSkillAllocationsRoute: typeof ApiGameSkillAllocationsRoute
   ApiGameZombieKillRoute: typeof ApiGameZombieKillRoute
   ApiSessionValidateRoute: typeof ApiSessionValidateRoute
@@ -400,6 +428,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiGameSkillAllocationsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/game/profession-progress': {
+      id: '/api/game/profession-progress'
+      path: '/api/game/profession-progress'
+      fullPath: '/api/game/profession-progress'
+      preLoaderRoute: typeof ApiGameProfessionProgressRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/game/player-stats': {
       id: '/api/game/player-stats'
       path: '/api/game/player-stats'
@@ -449,6 +484,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiGameAddExperienceRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/game/ability-allocations': {
+      id: '/api/game/ability-allocations'
+      path: '/api/game/ability-allocations'
+      fullPath: '/api/game/ability-allocations'
+      preLoaderRoute: typeof ApiGameAbilityAllocationsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/auth/$': {
       id: '/api/auth/$'
       path: '/api/auth/$'
@@ -471,6 +513,7 @@ const rootRouteChildren: RootRouteChildren = {
   TermsRoute: TermsRoute,
   EditorIndexRoute: EditorIndexRoute,
   ApiAuthSplatRoute: ApiAuthSplatRoute,
+  ApiGameAbilityAllocationsRoute: ApiGameAbilityAllocationsRoute,
   ApiGameAddExperienceRoute: ApiGameAddExperienceRoute,
   ApiGameCharacterAllocationsRoute: ApiGameCharacterAllocationsRoute,
   ApiGamePlayerExperienceRoute: ApiGamePlayerExperienceRoute,
@@ -478,6 +521,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiGamePlayerQuestProgressRoute: ApiGamePlayerQuestProgressRoute,
   ApiGamePlayerRespawnBindRoute: ApiGamePlayerRespawnBindRoute,
   ApiGamePlayerStatsRoute: ApiGamePlayerStatsRoute,
+  ApiGameProfessionProgressRoute: ApiGameProfessionProgressRoute,
   ApiGameSkillAllocationsRoute: ApiGameSkillAllocationsRoute,
   ApiGameZombieKillRoute: ApiGameZombieKillRoute,
   ApiSessionValidateRoute: ApiSessionValidateRoute,

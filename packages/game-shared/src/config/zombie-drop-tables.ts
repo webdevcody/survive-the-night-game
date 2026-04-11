@@ -27,6 +27,15 @@ export function resolveZombieDropStackCount(entry: ZombieDropTableEntry): number
 export const LEGACY_RANDOM_DROP_TABLE: ZombieDropTableEntry[] = [
   { itemType: "wood", weight: 25 },
   { itemType: "cloth", weight: 25 },
+  { itemType: "scrap_metal", weight: 22, countMin: 1, countMax: 3 },
+  { itemType: "mechanical_parts", weight: 14, countMin: 1, countMax: 2 },
+  { itemType: "gun_parts", weight: 9, countMin: 1, countMax: 2 },
+  { itemType: "electronics", weight: 10, countMin: 1, countMax: 2 },
+  { itemType: "chemical_reagents", weight: 12, countMin: 1, countMax: 2 },
+  { itemType: "leather_strips", weight: 14, countMin: 1, countMax: 2 },
+  { itemType: "canned_food", weight: 14, countMin: 1, countMax: 2 },
+  { itemType: "wild_herbs", weight: 12, countMin: 1, countMax: 2 },
+  { itemType: "clean_water", weight: 12, countMin: 1, countMax: 2 },
   { itemType: "bandage", weight: 15 },
   { itemType: "pain_pills", weight: 10 },
   { itemType: "coin", weight: 10 },
@@ -76,6 +85,32 @@ export function scaleZombieDropWeights(
 }
 
 const L = LEGACY_RANDOM_DROP_TABLE;
+
+export const URBAN_SCAVENGE_DROP_TABLE: ZombieDropTableEntry[] = scaleZombieDropWeights(L, {
+  scrap_metal: 1.7,
+  mechanical_parts: 1.65,
+  gun_parts: 1.5,
+  electronics: 1.6,
+  chemical_reagents: 1.35,
+  leather_strips: 0.8,
+  canned_food: 0.8,
+  wild_herbs: 0.6,
+  clean_water: 0.85,
+});
+
+export const WILDERNESS_SCAVENGE_DROP_TABLE: ZombieDropTableEntry[] = scaleZombieDropWeights(L, {
+  leather_strips: 1.45,
+  canned_food: 1.45,
+  wild_herbs: 1.55,
+  clean_water: 1.45,
+  cloth: 1.15,
+  wood: 1.15,
+  scrap_metal: 0.8,
+  mechanical_parts: 0.75,
+  gun_parts: 0.6,
+  electronics: 0.65,
+  chemical_reagents: 0.85,
+});
 
 /** Distinct legacy-derived tables per zombie id (subset/reweight only). */
 export const ZOMBIE_DROP_TABLE_BY_ID: Record<string, ZombieDropTableEntry[]> = {

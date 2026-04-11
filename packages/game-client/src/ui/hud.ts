@@ -130,7 +130,7 @@ export class Hud {
     sendSwapItems: (fromSlotIndex: number, toSlotIndex: number) => void,
     sendSwapBagAndEquipment: (bagIndex: number, equipSlot: EquipmentSlotKey) => void,
     sendProgressionAllocations: (
-      kind: "skill" | "character",
+      kind: "ability" | "character",
       allocations: Record<string, number>,
     ) => void,
     getMyPlayer: () => PlayerClient | null,

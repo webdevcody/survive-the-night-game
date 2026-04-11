@@ -2,6 +2,7 @@ import { ISocketAdapter } from "@shared/network/socket-adapter";
 import { HandlerContext } from "../context";
 import { IEntityManager } from "@/managers/types";
 import type { PersistedPlayerProgress } from "@/services/player-progress-types";
+import { emptyProfessionProgress } from "@shared/util/professions";
 import { sendFullState } from "./full-state";
 import { sendPlayerId } from "./player-id";
 
@@ -16,8 +17,9 @@ function getRealPlayerCount(entityManager: IEntityManager): number {
 
 const defaultProgress = (): PersistedPlayerProgress => ({
   experience: 0,
-  skillAllocations: {},
+  abilityAllocations: {},
   characterAllocations: {},
+  professionProgress: emptyProfessionProgress(),
 });
 
 /**

@@ -1,4 +1,6 @@
 import { RecipeComponent } from "../util/recipes";
+import type { ProfessionId } from "../util/professions";
+import type { CraftingStationId } from "../util/crafting-stations";
 
 /**
  * Spawn configuration for items/weapons that can spawn randomly on the map
@@ -38,6 +40,14 @@ export interface RecipeConfig {
    * Number of items created when crafting (defaults to 1)
    */
   resultCount?: number;
+  /** Profession associated with this recipe when it is surfaced in the station UI. */
+  profession?: ProfessionId;
+  /** Minimum profession level required to unlock this recipe. */
+  unlockLevel?: number;
+  /** Required station for this recipe. */
+  station?: CraftingStationId;
+  /** Profession XP granted on successful craft. */
+  professionXp?: number;
 }
 
 /**

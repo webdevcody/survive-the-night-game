@@ -13,7 +13,11 @@ import {
   coercePlayerInventoryPersistedPayload,
   type PlayerInventoryPersistedPayload,
 } from "@shared/util/persisted-inventory-payload";
-import { recipes, RecipeType } from "../../../game-shared/src/util/recipes";
+import {
+  craftRecipe as applyRecipeCraft,
+  getRecipeById,
+  type RecipeType,
+} from "../../../game-shared/src/util/recipes";
 import { Broadcaster } from "@/managers/types";
 import { PlayerPickedUpItemEvent } from "../../../game-shared/src/events/server-sent/events/pickup-item-event";
 import Positionable from "@/extensions/positionable";
@@ -351,13 +355,13 @@ export default class Inventory extends ExtensionBase<InventoryFields> {
     itemToDrop?: InventoryItem;
   } {
     const items = this.serialized.get("items");
-    const foundRecipe = recipes.find((it) => it.getType() === recipe);
-    if (foundRecipe === undefined) {
+    const foundRecipe = getRecipeById(recipe);
+    if (!foundRecipe) {
       return { inventory: items };
     }
 
     const maxSlots = this.getMaxSlots();
-    const result = foundRecipe.craft(items as InventoryItem[], maxSlots);
+    const result = applyRecipeCraft(foundRecipe, items as InventoryItem[], maxSlots);
     this.serialized.set("items", result.inventory);
     // Explicitly mark dirty to ensure inventory changes are broadcast
     this.markDirty();

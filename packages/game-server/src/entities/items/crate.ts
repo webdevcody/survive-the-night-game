@@ -8,20 +8,29 @@ import Static from "@/extensions/static";
 import Inventory from "@/extensions/inventory";
 import Interactive from "@/extensions/interactive";
 import { LootEvent } from "../../../../game-shared/src/events/server-sent/events/loot-event";
+import { Player } from "@/entities/players/player";
+import {
+  LEGACY_RANDOM_DROP_TABLE,
+  type ZombieDropTableEntry,
+} from "@shared/config/zombie-drop-tables";
 
 export class Crate extends Entity {
   public static get Size(): Vector2 {
     return PoolManager.getInstance().vector2.claim(16, 16);
   }
 
-  constructor(gameManagers: IGameManagers, itemCount: number = 3) {
+  constructor(
+    gameManagers: IGameManagers,
+    itemCount: number = 3,
+    dropTable: ZombieDropTableEntry[] = LEGACY_RANDOM_DROP_TABLE,
+  ) {
     super(gameManagers, Entities.CRATE);
     const poolManager = PoolManager.getInstance();
     const size = poolManager.vector2.claim(16, 16);
     this.addExtension(new Positionable(this).setSize(size));
     const inventory = new Inventory(this, gameManagers.getBroadcaster());
     for (let i = 0; i < itemCount; i++) {
-      inventory.addRandomItem();
+      inventory.addRandomItem(1, dropTable);
     }
     this.addExtension(inventory);
     this.addExtension(new Static(this));
@@ -30,7 +39,13 @@ export class Crate extends Entity {
     );
   }
 
-  private onLooted(): void {
+  private onLooted(entityId?: number): void {
+    if (typeof entityId === "number") {
+      const player = this.getEntityManager().getEntityById(entityId);
+      if (player instanceof Player) {
+        player.addProfessionXp("scavenging", 6);
+      }
+    }
     const inventory = this.getExt(Inventory);
     if (inventory) {
       inventory.scatterItems(this.getExt(Positionable).getPosition());

@@ -9,6 +9,7 @@ import Updatable from "@/extensions/updatable";
 import { IGameManagers } from "@/managers/types";
 import { Entities, Zombies } from "@shared/constants";
 import { Entity } from "@/entities/entity";
+import { Player } from "@/entities/players/player";
 import Vector2 from "@/util/vector2";
 import PoolManager from "@shared/util/pool-manager";
 import { distance, normalizeVector } from "@/util/physics";
@@ -366,7 +367,7 @@ export class Survivor extends Entity {
 
     // Add interactive extension for looting
     this.addExtension(
-      new Interactive(this).onInteract(() => this.onLooted()).setDisplayName("loot")
+      new Interactive(this).onInteract((entityId) => this.onLooted(entityId)).setDisplayName("loot")
     );
 
     // Disable collision
@@ -376,7 +377,13 @@ export class Survivor extends Entity {
     this.getEntityManager().markEntityForRemoval(this, getConfig().entity.ENTITY_DESPAWN_TIME_MS);
   }
 
-  private onLooted(): void {
+  private onLooted(entityId?: number): void {
+    if (typeof entityId === "number") {
+      const player = this.getEntityManager().getEntityById(entityId);
+      if (player instanceof Player) {
+        player.addProfessionXp("scavenging", 8);
+      }
+    }
     const inventory = this.getExt(Inventory);
     if (inventory) {
       inventory.scatterItems(this.getExt(Positionable).getPosition());

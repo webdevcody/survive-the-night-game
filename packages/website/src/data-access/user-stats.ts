@@ -3,15 +3,20 @@ import { database } from "~/db";
 import { userStats, user, type UserStats } from "~/db/schema";
 import { randomUUID } from "crypto";
 import {
+  normalizeAbilityAllocations,
   normalizeCharacterAllocations,
-  normalizeSkillAllocations,
+  validateAbilityAllocations,
   validateCharacterAllocations,
-  validateSkillAllocations,
 } from "@survive-the-night/game-shared/util/progression-allocation";
 import { XP_PER_ZOMBIE_KILL } from "@survive-the-night/game-shared/util/experience-level";
 import type { CharacterAllocations } from "@survive-the-night/game-shared/util/character-stats";
-import type { SkillAllocations } from "@survive-the-night/game-shared/util/skill-tree";
+import type { AbilityAllocations } from "@survive-the-night/game-shared/util/ability-tree";
 import type { PlayerQuestStatePayload } from "@survive-the-night/game-shared/quests/player-quest-state";
+import {
+  emptyProfessionProgress,
+  normalizeProfessionProgress,
+  type ProfessionProgress,
+} from "@survive-the-night/game-shared/util/professions";
 import {
   coercePlayerInventoryPersistedPayload,
   type PlayerInventoryPersistedPayload,
@@ -47,6 +52,15 @@ export function resolveHydrationExperience(stats: UserStats): number {
   return Math.max(0, xp);
 }
 
+export function resolveHydrationAbilityAllocations(stats: UserStats): Record<string, number> {
+  const raw = stats.abilityAllocations ?? stats.skillAllocations ?? {};
+  return normalizeAbilityAllocations(raw) as Record<string, number>;
+}
+
+export function resolveHydrationProfessionProgress(stats: UserStats): ProfessionProgress {
+  return normalizeProfessionProgress(stats.professionProgress ?? emptyProfessionProgress());
+}
+
 /**
  * Persist last open-world tile indices when the player disconnects (game server).
  */
@@ -61,7 +75,9 @@ export async function persistGameServerDisconnectSnapshot(
     lastTileY: number;
     questProgress: PlayerQuestStatePayload;
     characterAllocations: Record<string, number>;
+    abilityAllocations?: Record<string, number>;
     skillAllocations?: Record<string, number>;
+    professionProgress?: ProfessionProgress;
     savedInventory?: unknown;
     /** When set (both numbers), persist bind; when both null, clear bind; when omitted, leave DB unchanged. */
     respawnTileX?: number | null;
@@ -74,10 +90,13 @@ export async function persistGameServerDisconnectSnapshot(
     number
   >;
 
-  const skillAllocations =
-    snapshot.skillAllocations !== undefined
-      ? (normalizeSkillAllocations(snapshot.skillAllocations) as Record<string, number>)
+  const abilityAllocations =
+    snapshot.abilityAllocations !== undefined || snapshot.skillAllocations !== undefined
+      ? (normalizeAbilityAllocations(
+          snapshot.abilityAllocations ?? snapshot.skillAllocations,
+        ) as Record<string, number>)
       : undefined;
+  const professionProgress = normalizeProfessionProgress(snapshot.professionProgress);
 
   const savedInventory =
     snapshot.savedInventory !== undefined
@@ -89,7 +108,9 @@ export async function persistGameServerDisconnectSnapshot(
     lastTileY: number;
     questProgress: PlayerQuestStatePayload;
     characterAllocations: Record<string, number>;
+    abilityAllocations?: Record<string, number>;
     skillAllocations?: Record<string, number>;
+    professionProgress: ProfessionProgress;
     savedInventory?: PlayerInventoryPersistedPayload | null;
     updatedAt: Date;
   } = {
@@ -100,11 +121,13 @@ export async function persistGameServerDisconnectSnapshot(
       completed: snapshot.questProgress.completed,
     },
     characterAllocations,
+    professionProgress,
     updatedAt: new Date(),
   };
 
-  if (skillAllocations !== undefined) {
-    baseSet.skillAllocations = skillAllocations;
+  if (abilityAllocations !== undefined) {
+    baseSet.abilityAllocations = abilityAllocations;
+    baseSet.skillAllocations = abilityAllocations;
   }
   if (savedInventory !== undefined && savedInventory != null) {
     baseSet.savedInventory = savedInventory;
@@ -203,7 +226,9 @@ export async function persistOpenWorldSessionFields(
     lastTileX: number;
     lastTileY: number;
     characterAllocations?: Record<string, number>;
+    abilityAllocations?: Record<string, number>;
     skillAllocations?: Record<string, number>;
+    professionProgress?: ProfessionProgress;
     savedInventory?: unknown;
     respawnTileX?: number | null;
     respawnTileY?: number | null;
@@ -216,7 +241,9 @@ export async function persistOpenWorldSessionFields(
     lastTileY: number;
     updatedAt: Date;
     characterAllocations?: Record<string, number>;
+    abilityAllocations?: Record<string, number>;
     skillAllocations?: Record<string, number>;
+    professionProgress?: ProfessionProgress;
     savedInventory?: PlayerInventoryPersistedPayload | null;
     respawnTileX?: number | null;
     respawnTileY?: number | null;
@@ -232,11 +259,16 @@ export async function persistOpenWorldSessionFields(
     ) as Record<string, number>;
   }
 
-  if (data.skillAllocations !== undefined) {
-    setFields.skillAllocations = normalizeSkillAllocations(data.skillAllocations) as Record<
-      string,
-      number
-    >;
+  if (data.abilityAllocations !== undefined || data.skillAllocations !== undefined) {
+    const abilityAllocations = normalizeAbilityAllocations(
+      data.abilityAllocations ?? data.skillAllocations,
+    ) as Record<string, number>;
+    setFields.abilityAllocations = abilityAllocations;
+    setFields.skillAllocations = abilityAllocations;
+  }
+
+  if (data.professionProgress !== undefined) {
+    setFields.professionProgress = normalizeProfessionProgress(data.professionProgress);
   }
 
   if (data.savedInventory !== undefined) {
@@ -430,22 +462,47 @@ export async function updatePlayerStats(
 }
 
 /**
- * Replace skill allocations after validation against user's experience level.
+ * Replace ability allocations after validation against user's experience level.
  */
-export async function setSkillAllocations(
+export async function setAbilityAllocations(
   userId: string,
   raw: unknown,
 ): Promise<{ ok: true; stats: UserStats } | { ok: false; error: string }> {
   const stats = await getOrCreateUserStats(userId);
-  const allocations = normalizeSkillAllocations(raw) as SkillAllocations;
-  const err = validateSkillAllocations(allocations, stats.experience);
+  const allocations = normalizeAbilityAllocations(raw) as AbilityAllocations;
+  const err = validateAbilityAllocations(allocations, stats.experience);
   if (err) {
     return { ok: false, error: JSON.stringify(err) };
   }
   const [updated] = await database
     .update(userStats)
     .set({
+      abilityAllocations: allocations as Record<string, number>,
       skillAllocations: allocations as Record<string, number>,
+      updatedAt: new Date(),
+    })
+    .where(eq(userStats.userId, userId))
+    .returning();
+  return { ok: true, stats: updated! };
+}
+
+export async function setSkillAllocations(
+  userId: string,
+  raw: unknown,
+): Promise<{ ok: true; stats: UserStats } | { ok: false; error: string }> {
+  return setAbilityAllocations(userId, raw);
+}
+
+export async function setProfessionProgress(
+  userId: string,
+  raw: unknown,
+): Promise<{ ok: true; stats: UserStats } | { ok: false; error: string }> {
+  await getOrCreateUserStats(userId);
+  const progress = normalizeProfessionProgress(raw);
+  const [updated] = await database
+    .update(userStats)
+    .set({
+      professionProgress: progress,
       updatedAt: new Date(),
     })
     .where(eq(userStats.userId, userId))

@@ -1,22 +1,27 @@
 import { describe, expect, it } from "vitest";
 import {
-  normalizeSkillAllocations,
-  validateSkillAllocations,
+  normalizeAbilityAllocations,
+  validateAbilityAllocations,
   normalizeCharacterAllocations,
   validateCharacterAllocations,
 } from "./progression-allocation";
 
 describe("progression-allocation", () => {
-  it("allows skill spend within budget from XP", () => {
+  it("allows ability spend within budget from XP", () => {
     const xp = 5;
-    const a = normalizeSkillAllocations({ sprint: 1 });
-    expect(validateSkillAllocations(a, xp)).toBeNull();
+    const a = normalizeAbilityAllocations({ sprint: 1 });
+    expect(validateAbilityAllocations(a, xp)).toBeNull();
   });
 
-  it("rejects skill overspend", () => {
+  it("rejects ability overspend", () => {
     const xp = 5;
-    const a = normalizeSkillAllocations({ sprint: 1, regenerate: 1 });
-    expect(validateSkillAllocations(a, xp)).not.toBeNull();
+    const a = normalizeAbilityAllocations({ sprint: 1, regenerate: 1 });
+    expect(validateAbilityAllocations(a, xp)).not.toBeNull();
+  });
+
+  it("rejects unknown ability keys", () => {
+    const a = normalizeAbilityAllocations({ sprint: 1, mystery: 2 });
+    expect(a).toEqual({ sprint: 1 });
   });
 
   it("allows character stat spend within budget", () => {

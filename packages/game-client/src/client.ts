@@ -11,6 +11,7 @@ import {
   removeEntity as removeEntityFromState,
 } from "@/state";
 import { MerchantBuyPanel } from "@/ui/merchant-buy-panel";
+import { CraftingPanel } from "@/ui/crafting-panel";
 import { StorageManager } from "@/managers/storage";
 import { Hud } from "@/ui/hud";
 import { EntityFactory } from "@/entities/entity-factory";
@@ -48,6 +49,7 @@ import { FISTS_INVENTORY_SENTINEL } from "@shared/constants/inventory-sentinel";
 import { itemRegistry } from "@shared/entities";
 import { ClientCarryable } from "@/extensions";
 import { PlayerColor } from "@shared/commands/commands";
+import { getCraftingStationIdForEntityType } from "@shared/util/crafting-stations";
 import { InteractionManager } from "./managers/interaction-manager";
 import { ClientEventHandlers } from "./managers/client-event-handlers";
 import { DialogueSurvivorNpcClient } from "./entities/environment/dialogue-survivor-npc";
@@ -91,6 +93,7 @@ export class GameClient {
   private renderer: Renderer;
   private hud: Hud;
   private merchantBuyPanel: MerchantBuyPanel;
+  private craftingPanel: CraftingPanel;
   private questCompletedModal: QuestCompletedModal;
   /** Tracks `completed` quest ids we've already announced (null = seed on next poll). */
   private questCompletionBaseline: Set<string> | null = null;
@@ -172,11 +175,27 @@ export class GameClient {
       },
       getCanvas: () => canvas,
     });
+    this.craftingPanel = new CraftingPanel(this.assetManager, {
+      getPlayer,
+      onCraft: (request) => {
+        this.socketManager?.sendCraftRequest(request);
+      },
+      onOpen: () => {
+        this.gameState.crafting = true;
+        this.socketManager?.sendStartCrafting();
+      },
+      onClose: () => {
+        this.gameState.crafting = false;
+        this.socketManager?.sendStopCrafting();
+      },
+      getCanvas: () => canvas,
+    });
 
     // TODO: refactor to use event emitter
     this.inputManager = new InputManager({
       getInventory,
       isMerchantPanelOpen: () => this.merchantBuyPanel.isVisible(),
+      isCraftingPanelOpen: () => this.craftingPanel.isVisible(),
       isFullscreenMapOpen: () => this.hud.isFullscreenMapOpen(),
       isInventoryScreenOpen: () => this.hud.isInventoryScreenOpen(),
       getInventoryActiveTab: () => this.hud.getInventoryActiveTab(),
@@ -237,6 +256,10 @@ export class GameClient {
         // If merchant panel is open, close it (toggle functionality)
         if (this.merchantBuyPanel.isVisible()) {
           this.merchantBuyPanel.close();
+          return;
+        }
+        if (this.craftingPanel.isVisible()) {
+          this.craftingPanel.close();
           return;
         }
 
@@ -311,28 +334,26 @@ export class GameClient {
           }
         }
 
-        // Check if there's a merchant nearby
         if (player) {
-          const playerPos = player.getPosition();
-          const merchants = getEntitiesByType(this.gameState, "merchant");
+          const closest = getClosestInteractiveEntity(
+            this.gameState,
+            this.renderer?.spatialGrid ?? null,
+          );
+          if (closest) {
+            const stationId = getCraftingStationIdForEntityType(closest.getType());
+            if (stationId) {
+              if (stationId !== "campfire" || this.canUseCampfireForCrafting(player, closest)) {
+                this.craftingPanel.open(closest.getId(), stationId);
+                return;
+              }
+            }
 
-          for (const merchantEntity of merchants) {
-            if (merchantEntity.hasExt(ClientPositionable)) {
-              const merchantPos = merchantEntity.getExt(ClientPositionable).getPosition();
-              const merchantCenterPos = merchantEntity
-                .getExt(ClientPositionable)
-                .getCenterPosition();
-              const dist = distance(playerPos, merchantCenterPos);
-
-              if (dist <= getConfig().player.MAX_INTERACT_RADIUS) {
-                // Cast to MerchantClient to access shop items
-                const merchant = merchantEntity as any;
-                const shopItems = merchant.getShopItems?.();
-                if (shopItems && shopItems.length > 0) {
-                  // Open merchant panel
-                  this.merchantBuyPanel.open(merchantEntity.getId(), shopItems);
-                  return;
-                }
+            if (closest.getType() === "merchant") {
+              const merchant = closest as any;
+              const shopItems = merchant.getShopItems?.();
+              if (shopItems && shopItems.length > 0) {
+                this.merchantBuyPanel.open(closest.getId(), shopItems);
+                return;
               }
             }
           }
@@ -383,9 +404,16 @@ export class GameClient {
       onMerchantKeyDown: (key: string) => {
         this.merchantBuyPanel.handleKeyDown(key);
       },
+      onCraftingPanelKeyDown: (key: string) => {
+        this.craftingPanel.handleKeyDown(key);
+      },
       onEscape: () => {
         if (this.hud.isInventoryScreenOpen()) {
           this.hud.setInventoryScreenOpen(false);
+          return;
+        }
+        if (this.craftingPanel.isVisible()) {
+          this.craftingPanel.close();
           return;
         }
         if (this.merchantBuyPanel.isVisible()) {
@@ -428,7 +456,7 @@ export class GameClient {
           this.socketManager.sendSwapBagAndEquipment(bagIndex, equipSlot);
         }
       },
-      (kind: "skill" | "character", allocations: Record<string, number>) => {
+      (kind: "ability" | "character", allocations: Record<string, number>) => {
         this.socketManager?.sendProgressionAllocations(kind, allocations);
       },
       () => {
@@ -471,6 +499,7 @@ export class GameClient {
       this.mapManager,
       this.hud,
       this.merchantBuyPanel,
+      this.craftingPanel,
       this.questCompletedModal,
       this.particleManager,
       () => this.getPlacementManager(),
@@ -616,6 +645,10 @@ export class GameClient {
     return this.hud;
   }
 
+  public getCraftingPanel(): CraftingPanel {
+    return this.craftingPanel;
+  }
+
   public getZoomController(): ZoomController {
     return this.zoomController;
   }
@@ -644,6 +677,19 @@ export class GameClient {
         ]),
       ),
     };
+  }
+
+  private canUseCampfireForCrafting(player: PlayerClient, entity: ClientEntityBase): boolean {
+    if (!entity.hasExt(ClientPositionable)) {
+      return false;
+    }
+    const bind = player.getRespawnBindTile();
+    if (!bind) {
+      return false;
+    }
+    const pos = entity.getExt(ClientPositionable).getPosition();
+    const tileSize = getConfig().world.TILE_SIZE;
+    return bind.x === Math.floor(pos.x / tileSize) && bind.y === Math.floor(pos.y / tileSize);
   }
 
   /** After each game state update: detect newly completed quests and enqueue modals. */
@@ -1014,6 +1060,7 @@ export class GameClient {
     // Show cursor if any UI overlay is active
     if (
       this.merchantBuyPanel.isVisible() ||
+      this.craftingPanel.isVisible() ||
       (this.hud && this.hud.isFullscreenMapOpen()) ||
       (this.hud && this.hud.isInventoryScreenOpen()) ||
       (this.hud && this.hud.isHoveringInventory()) ||

@@ -1,6 +1,7 @@
 import { ISocketAdapter } from "@shared/network/socket-adapter";
 import { HandlerContext } from "../context";
-import { RecipeType, getCraftableItemIds } from "@shared/util/recipes";
+import { getCraftableItemIds } from "@shared/util/recipes";
+import type { CraftRequestEventData } from "@shared/events/client-sent/events/craft-request";
 import { SocketEventHandler } from "./types";
 
 // Cache valid recipe types for validation - built dynamically from config-based recipes
@@ -9,22 +10,35 @@ const VALID_RECIPE_TYPES = new Set(getCraftableItemIds());
 /**
  * Validate recipe type
  */
-function validateRecipeType(recipe: unknown): RecipeType | null {
-  if (typeof recipe !== "string") {
+function validateCraftRequest(data: unknown): CraftRequestEventData | null {
+  if (!data || typeof data !== "object") {
     return null;
   }
-
-  if (!VALID_RECIPE_TYPES.has(recipe)) {
+  const raw = data as Record<string, unknown>;
+  if (typeof raw.recipeId !== "string") {
     return null;
   }
-
-  return recipe as RecipeType;
+  if (!raw.recipeId.startsWith("scrap:") && !VALID_RECIPE_TYPES.has(raw.recipeId)) {
+    return null;
+  }
+  if (
+    typeof raw.stationEntityId !== "number" ||
+    !Number.isFinite(raw.stationEntityId) ||
+    !Number.isInteger(raw.stationEntityId) ||
+    raw.stationEntityId < 0
+  ) {
+    return null;
+  }
+  return {
+    recipeId: raw.recipeId,
+    stationEntityId: raw.stationEntityId,
+  };
 }
 
 export function onCraftRequest(
   context: HandlerContext,
   socket: ISocketAdapter,
-  recipe: unknown
+  recipe: unknown,
 ): void {
   const player = context.players.get(socket.id);
   if (!player) return;
@@ -32,9 +46,9 @@ export function onCraftRequest(
   // Zombie players cannot craft
   if (player.isZombie()) return;
 
-  const validatedRecipe = validateRecipeType(recipe);
+  const validatedRecipe = validateCraftRequest(recipe);
   if (!validatedRecipe) {
-    console.warn(`Invalid craft request from socket ${socket.id}: ${recipe}`);
+    console.warn(`Invalid craft request from socket ${socket.id}: ${JSON.stringify(recipe)}`);
     return;
   }
 
@@ -55,7 +69,7 @@ export function setPlayerCrafting(
   player.setIsCrafting(isCrafting);
 }
 
-export const craftRequestHandler: SocketEventHandler<RecipeType> = {
+export const craftRequestHandler: SocketEventHandler<CraftRequestEventData> = {
   event: "CRAFT_REQUEST",
   handler: onCraftRequest,
 };
@@ -69,4 +83,3 @@ export const stopCraftingHandler: SocketEventHandler<void> = {
   event: "STOP_CRAFTING",
   handler: (context, socket) => setPlayerCrafting(context, socket, false),
 };
-

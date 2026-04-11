@@ -18,7 +18,7 @@ export function NpcConfigModal() {
 
   return (
     <Dialog open={open} onOpenChange={(next) => !next && setNpcConfigModal(null)}>
-      <DialogContent className="max-h-[85vh] overflow-y-auto rounded-none border-gray-600 bg-gray-900 text-white sm:max-w-md">
+      <DialogContent className="max-h-[85vh] overflow-y-auto rounded-none border-gray-600 bg-gray-900 text-white sm:max-w-3xl">
         <DialogHeader>
           <DialogTitle>Dialogue NPC</DialogTitle>
           <DialogDescription className="text-gray-400">

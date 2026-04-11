@@ -5,11 +5,12 @@ import {
   updateLastTilePosition,
 } from "~/data-access/user-stats";
 import { coercePlayerQuestState } from "@survive-the-night/game-shared/quests/player-quest-state";
+import { normalizeProfessionProgress } from "@survive-the-night/game-shared/util/professions";
 import { requireGameServerApiKey } from "~/utils/game-server-api-auth";
 
 /**
  * Game server → website: save last open-world tile when the player disconnects.
- * POST JSON { userId, lastTileX, lastTileY, questProgress?, characterAllocations?, skillAllocations?, savedInventory?, respawnTileX?, respawnTileY? } with X-API-Key.
+ * POST JSON { userId, lastTileX, lastTileY, questProgress?, characterAllocations?, abilityAllocations?, professionProgress?, savedInventory?, respawnTileX?, respawnTileY? } with X-API-Key.
  * Default (disconnect): last tile + optional respawn + optional character — does **not** overwrite quest_progress (quests use /api/game/player-quest-progress).
  * Legacy: if both questProgress and characterAllocations are sent, full snapshot including quests is written.
  */
@@ -31,7 +32,9 @@ export const Route = createFileRoute("/api/game/player-last-position")({
             respawnTileY?: unknown;
             questProgress?: unknown;
             characterAllocations?: unknown;
+            abilityAllocations?: unknown;
             skillAllocations?: unknown;
+            professionProgress?: unknown;
             savedInventory?: unknown;
           };
 
@@ -88,13 +91,27 @@ export const Route = createFileRoute("/api/game/player-last-position")({
           }
 
           let updated;
+          const abilityRaw = body.abilityAllocations;
           const skillRaw = body.skillAllocations;
-          const skillAllocations =
-            skillRaw !== undefined &&
-            skillRaw !== null &&
-            typeof skillRaw === "object" &&
-            !Array.isArray(skillRaw)
+          const abilityAllocations = (
+            (abilityRaw !== undefined &&
+              abilityRaw !== null &&
+              typeof abilityRaw === "object" &&
+              !Array.isArray(abilityRaw)
+              ? (abilityRaw as Record<string, number>)
+              : undefined) ??
+            (skillRaw !== undefined &&
+              skillRaw !== null &&
+              typeof skillRaw === "object" &&
+              !Array.isArray(skillRaw)
               ? (skillRaw as Record<string, number>)
+              : undefined));
+          const professionProgress =
+            body.professionProgress !== undefined &&
+            body.professionProgress !== null &&
+            typeof body.professionProgress === "object" &&
+            !Array.isArray(body.professionProgress)
+              ? normalizeProfessionProgress(body.professionProgress)
               : undefined;
 
           const savedInventory =
@@ -113,7 +130,8 @@ export const Route = createFileRoute("/api/game/player-last-position")({
                 !Array.isArray(body.characterAllocations)
                   ? (body.characterAllocations as Record<string, number>)
                   : {},
-              ...(skillAllocations !== undefined ? { skillAllocations } : {}),
+              ...(abilityAllocations !== undefined ? { abilityAllocations } : {}),
+              ...(professionProgress !== undefined ? { professionProgress } : {}),
               ...(savedInventory !== undefined ? { savedInventory } : {}),
               ...(respawnTileX !== undefined ? { respawnTileX, respawnTileY } : {}),
             });
@@ -129,7 +147,8 @@ export const Route = createFileRoute("/api/game/player-last-position")({
 
             const hasSideFields =
               characterAllocations !== undefined ||
-              skillAllocations !== undefined ||
+              abilityAllocations !== undefined ||
+              professionProgress !== undefined ||
               savedInventory !== undefined ||
               respawnTileX !== undefined;
 
@@ -138,7 +157,8 @@ export const Route = createFileRoute("/api/game/player-last-position")({
                 lastTileX: tx,
                 lastTileY: ty,
                 ...(characterAllocations !== undefined ? { characterAllocations } : {}),
-                ...(skillAllocations !== undefined ? { skillAllocations } : {}),
+                ...(abilityAllocations !== undefined ? { abilityAllocations } : {}),
+                ...(professionProgress !== undefined ? { professionProgress } : {}),
                 ...(savedInventory !== undefined ? { savedInventory } : {}),
                 ...(respawnTileX !== undefined ? { respawnTileX, respawnTileY } : {}),
               });

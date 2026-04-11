@@ -4,25 +4,29 @@ import {
   MAX_POINTS_PER_CHARACTER_STAT,
   sumCharacterAllocations,
 } from "./character-stats";
-import type { SkillAllocations } from "./skill-tree";
-import { MAX_RANK_PER_SKILL, SKILL_IDS, sumSkillAllocations } from "./skill-tree";
+import type { AbilityAllocations } from "./ability-tree";
+import {
+  ABILITY_IDS,
+  MAX_RANK_PER_ABILITY,
+  sumAbilityAllocations,
+} from "./ability-tree";
 import { getProgressionPointsBudget } from "./experience-level";
 
 export type AllocationValidationError =
-  | { kind: "overspend_skill"; max: number; spent: number }
+  | { kind: "overspend_ability"; max: number; spent: number }
   | { kind: "overspend_character"; max: number; spent: number }
-  | { kind: "invalid_skill_key"; key: string }
+  | { kind: "invalid_ability_key"; key: string }
   | { kind: "invalid_character_key"; key: string }
-  | { kind: "skill_rank_cap"; id: string; rank: number }
+  | { kind: "ability_rank_cap"; id: string; rank: number }
   | { kind: "character_stat_cap"; key: string; value: number };
 
-export function normalizeSkillAllocations(raw: unknown): SkillAllocations {
+export function normalizeAbilityAllocations(raw: unknown): AbilityAllocations {
   if (!raw || typeof raw !== "object") return {};
-  const out: SkillAllocations = {};
-  for (const id of SKILL_IDS) {
+  const out: AbilityAllocations = {};
+  for (const id of ABILITY_IDS) {
     const v = (raw as Record<string, unknown>)[id];
     if (typeof v === "number" && Number.isFinite(v)) {
-      const n = Math.max(0, Math.min(MAX_RANK_PER_SKILL, Math.floor(v)));
+      const n = Math.max(0, Math.min(MAX_RANK_PER_ABILITY, Math.floor(v)));
       if (n > 0) out[id] = n;
     }
   }
@@ -46,26 +50,26 @@ export function normalizeCharacterAllocations(raw: unknown): CharacterAllocation
   return out;
 }
 
-export function validateSkillAllocations(
-  allocations: SkillAllocations,
+export function validateAbilityAllocations(
+  allocations: AbilityAllocations,
   totalXp: number,
 ): AllocationValidationError | null {
   const max = getProgressionPointsBudget(Math.max(0, Math.floor(totalXp)));
   for (const key of Object.keys(allocations)) {
-    if (!SKILL_IDS.includes(key as (typeof SKILL_IDS)[number])) {
-      return { kind: "invalid_skill_key", key };
+    if (!ABILITY_IDS.includes(key as (typeof ABILITY_IDS)[number])) {
+      return { kind: "invalid_ability_key", key };
     }
   }
-  for (const id of SKILL_IDS) {
+  for (const id of ABILITY_IDS) {
     const r = allocations[id];
     if (r === undefined) continue;
-    if (r < 0 || r > MAX_RANK_PER_SKILL) {
-      return { kind: "skill_rank_cap", id, rank: r };
+    if (r < 0 || r > MAX_RANK_PER_ABILITY) {
+      return { kind: "ability_rank_cap", id, rank: r };
     }
   }
-  const spent = sumSkillAllocations(allocations);
+  const spent = sumAbilityAllocations(allocations);
   if (spent > max) {
-    return { kind: "overspend_skill", max, spent };
+    return { kind: "overspend_ability", max, spent };
   }
   return null;
 }
@@ -93,3 +97,8 @@ export function validateCharacterAllocations(
   }
   return null;
 }
+
+// One-release compatibility aliases while callers move to the ability naming.
+export type SkillAllocations = AbilityAllocations;
+export const normalizeSkillAllocations = normalizeAbilityAllocations;
+export const validateSkillAllocations = validateAbilityAllocations;
