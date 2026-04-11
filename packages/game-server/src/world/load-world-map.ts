@@ -14,6 +14,10 @@ import {
   WORLD_MAP_QUESTS_FILENAME,
   type WorldMapSidecarParseResult,
 } from "@shared/map/world-map-sidecars";
+import {
+  applyDialogueNpcEditorMetadataToRawDialogueNpcs,
+  parseDialogueNpcEditorMetadataFromQuestsSidecar,
+} from "@shared/map/world-map-types";
 
 export interface WorldMapFile {
   ground: number[][];
@@ -80,9 +84,17 @@ export function tryLoadWorldMapFile(): WorldMapFile | null {
     const npcsParsed = tryReadWorldMapSidecarSync(path.join(dir, WORLD_MAP_NPCS_FILENAME));
     const questsParsed = tryReadWorldMapSidecarSync(path.join(dir, WORLD_MAP_QUESTS_FILENAME));
     const merged = mergeWorldMapMainWithSidecars(data, npcsParsed, questsParsed);
+    const editorMeta = parseDialogueNpcEditorMetadataFromQuestsSidecar(questsParsed);
+    let dialogueNpcs = merged.dialogueNpcs;
+    if (editorMeta.length > 0) {
+      dialogueNpcs = applyDialogueNpcEditorMetadataToRawDialogueNpcs(
+        dialogueNpcs,
+        editorMeta,
+      ) as WorldMapFile["dialogueNpcs"];
+    }
     return {
       ...data,
-      dialogueNpcs: merged.dialogueNpcs as WorldMapFile["dialogueNpcs"],
+      dialogueNpcs,
       quests: merged.quests as WorldMapFile["quests"],
     };
   } catch (e: unknown) {

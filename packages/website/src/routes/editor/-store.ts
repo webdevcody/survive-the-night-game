@@ -183,6 +183,7 @@ function makeDialogueNpcEntry(
             ...s,
             lines: [...s.lines],
           })),
+          ...(prev!.editorGroups ? { editorGroups: { ...prev.editorGroups } } : {}),
         }
       : { lines }),
     ...(prev?.name ? { name: prev.name } : {}),
@@ -291,13 +292,13 @@ interface EditorState {
   setSpawnerMeta: (entries: WorldMapSpawnerMetaEntry[]) => void;
   setQuests: (quests: WorldMapQuestDefinition[]) => void;
   updateDialogueNpcMessage: (row: number, col: number, message: string) => void;
-  updateDialogueNpcEntry: (
+   updateDialogueNpcEntry: (
     row: number,
     col: number,
     patch: Partial<
       Pick<
         WorldMapDialogueNpcEntry,
-        "name" | "lines" | "grantQuestId" | "dialogueSessions"
+        "name" | "lines" | "grantQuestId" | "dialogueSessions" | "editorGroups"
       >
     >,
   ) => void;

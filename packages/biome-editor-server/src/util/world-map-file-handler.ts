@@ -5,12 +5,16 @@ import { fileURLToPath } from "url";
 import { getConfig } from "@survive-the-night/game-shared/config";
 import { resizeSquareLayersTopLeft } from "@survive-the-night/game-shared/map/world-map-resize";
 import type {
+  WorldMapDialogueNpcEditorMetadata,
   WorldMapDialogueNpcEntry,
   WorldMapMessageDecalEntry,
   WorldMapSpawnerMetaEntry,
 } from "@survive-the-night/game-shared/map/world-map-types";
 import {
+  applyDialogueNpcEditorMetadataToRawDialogueNpcs,
+  extractDialogueNpcEditorMetadataForQuestsJson,
   normalizeDialogueNpcs,
+  parseDialogueNpcEditorMetadataFromQuestsSidecar,
   reconcileMessageDecalsWithDecalsLayer,
   reconcileSpawnerMetaWithSpawnsLayer,
   rewriteSpawnsLayerDialogueNpcTiles,
@@ -90,6 +94,8 @@ export interface WorldMapData {
   quests?: WorldMapQuestDefinition[];
   /** Optional labels for non-dialogue spawner tiles (editor + future runtime use). */
   spawnerMeta?: WorldMapSpawnerMetaEntry[];
+  /** From `world-map-quests.json` (`dialogueNpcEditorMetadata`); merge into NPCs before `normalizeDialogueNpcs`. */
+  dialogueNpcEditorMetadata?: WorldMapDialogueNpcEditorMetadata[];
 }
 
 /** Uses in-memory config (may differ from disk until server reload). Prefer disk helpers in this module. */
@@ -176,9 +182,17 @@ export async function readWorldMap(): Promise<WorldMapData> {
     const npcsParsed = await tryReadWorldMapSidecar(path.join(mapDir, WORLD_MAP_NPCS_FILENAME));
     const questsParsed = await tryReadWorldMapSidecar(path.join(mapDir, WORLD_MAP_QUESTS_FILENAME));
     const merged = mergeWorldMapMainWithSidecars(data, npcsParsed, questsParsed);
+    const editorMeta = parseDialogueNpcEditorMetadataFromQuestsSidecar(questsParsed);
+    let mergedDialogue = merged.dialogueNpcs;
+    if (editorMeta.length > 0) {
+      mergedDialogue = applyDialogueNpcEditorMetadataToRawDialogueNpcs(
+        mergedDialogue,
+        editorMeta,
+      ) as WorldMapData["dialogueNpcs"];
+    }
     const dataWithSidecars: Partial<WorldMapData> = {
       ...data,
-      dialogueNpcs: merged.dialogueNpcs as WorldMapData["dialogueNpcs"],
+      dialogueNpcs: mergedDialogue,
       quests: merged.quests as WorldMapData["quests"],
     };
     const n = getExpectedTileCountFromDisk();
@@ -222,6 +236,7 @@ export async function readWorldMap(): Promise<WorldMapData> {
       messageDecals,
       quests,
       spawnerMeta,
+      dialogueNpcEditorMetadata: editorMeta,
     };
   } catch (e: unknown) {
     const err = e as NodeJS.ErrnoException;
@@ -276,11 +291,12 @@ async function writeWorldMapBundleToDisk(data: WorldMapData): Promise<WorldMapBu
     JSON.stringify({ dialogueNpcs: data.dialogueNpcs ?? [] }, null, 2) + "\n",
     "utf-8",
   );
-  await fs.writeFile(
-    questsPath,
-    JSON.stringify({ quests: data.quests ?? [] }, null, 2) + "\n",
-    "utf-8",
-  );
+  const editorMeta = extractDialogueNpcEditorMetadataForQuestsJson(data.dialogueNpcs);
+  const questsPayload: Record<string, unknown> = { quests: data.quests ?? [] };
+  if (editorMeta.length > 0) {
+    questsPayload.dialogueNpcEditorMetadata = editorMeta;
+  }
+  await fs.writeFile(questsPath, JSON.stringify(questsPayload, null, 2) + "\n", "utf-8");
   const paths: WorldMapBundleSavedPaths = {
     main: WORLD_MAP_PATH!,
     npcs: npcsPath,
@@ -315,9 +331,17 @@ async function readWorldMapRawFromDisk(): Promise<WorldMapData> {
   const npcsParsed = await tryReadWorldMapSidecar(path.join(mapDir, WORLD_MAP_NPCS_FILENAME));
   const questsParsed = await tryReadWorldMapSidecar(path.join(mapDir, WORLD_MAP_QUESTS_FILENAME));
   const merged = mergeWorldMapMainWithSidecars(data, npcsParsed, questsParsed);
+  const editorMeta = parseDialogueNpcEditorMetadataFromQuestsSidecar(questsParsed);
+  let mergedDialogue = merged.dialogueNpcs;
+  if (editorMeta.length > 0) {
+    mergedDialogue = applyDialogueNpcEditorMetadataToRawDialogueNpcs(
+      mergedDialogue,
+      editorMeta,
+    ) as WorldMapData["dialogueNpcs"];
+  }
   const dataWithSidecars: Partial<WorldMapData> = {
     ...data,
-    dialogueNpcs: merged.dialogueNpcs as WorldMapData["dialogueNpcs"],
+    dialogueNpcs: mergedDialogue,
     quests: merged.quests as WorldMapData["quests"],
   };
   const oldN = dataWithSidecars.ground!.length;

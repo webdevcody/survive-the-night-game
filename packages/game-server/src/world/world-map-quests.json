@@ -58,6 +58,11 @@
         {
           "type": "pickup_item",
           "itemType": "pain_pills"
+        },
+        {
+          "type": "talk_to_npc",
+          "npcName": "James",
+          "npcKey": "152,98"
         }
       ],
       "rewards": [
@@ -73,6 +78,218 @@
         }
       ],
       "startRewards": []
+    }
+  ],
+  "dialogueNpcEditorMetadata": [
+    {
+      "row": 126,
+      "col": 122,
+      "editorGroups": {
+        "dg_mnuw6tms_cg7sovql": "Stumblers"
+      },
+      "sessionEditorGroupIds": [
+        null,
+        "dg_mnuw6tms_cg7sovql",
+        "dg_mnuw6tms_cg7sovql",
+        "dg_mnuw6tms_cg7sovql",
+        null
+      ],
+      "editorDialogueSessions": [
+        {
+          "lines": [
+            "Where is James??",
+            "Bitten... My god...",
+            "Oh well.. there is nothing we can do.",
+            "Here is something to help you out, come back later for a task."
+          ],
+          "when": {
+            "type": "all",
+            "conditions": [
+              {
+                "type": "quest_active",
+                "questId": "quest_1775786207543"
+              }
+            ]
+          },
+          "grantQuestId": null,
+          "completeQuestId": "quest_1775786207543"
+        },
+        {
+          "lines": [
+            "This area is starting to grow unsafe.",
+            "If you can kill at least 5 stumblers...",
+            "Maybe we could have one night of undisturbed sleep."
+          ],
+          "when": {
+            "type": "all",
+            "conditions": [
+              {
+                "type": "quest_active",
+                "questId": "quest_1775824745523"
+              }
+            ]
+          },
+          "grantQuestId": "quest_1775824745523",
+          "editorGroupId": "dg_mnuw6tms_cg7sovql"
+        },
+        {
+          "lines": [
+            "you haven't killed those stumblers yet..."
+          ],
+          "when": {
+            "type": "all",
+            "conditions": [
+              {
+                "type": "quest_not_completed",
+                "questId": "quest_1775824745523"
+              }
+            ]
+          },
+          "editorGroupId": "dg_mnuw6tms_cg7sovql"
+        },
+        {
+          "lines": [
+            "With less stumblers walking around..",
+            "I'm hoping we can have one night of good sleep."
+          ],
+          "when": {
+            "type": "all",
+            "conditions": [
+              {
+                "type": "quest_active_final_talk_turn_in",
+                "questId": "quest_1775824745523"
+              }
+            ]
+          },
+          "completeQuestId": "quest_1775824745523",
+          "editorGroupId": "dg_mnuw6tms_cg7sovql"
+        },
+        {
+          "lines": [
+            "... this existence is futile..."
+          ],
+          "when": {
+            "type": "always"
+          }
+        }
+      ]
+    },
+    {
+      "row": 152,
+      "col": 98,
+      "editorGroups": {
+        "dg_mnuvnumu_51zmfp9y": "Healing the Sick",
+        "dg_mnuvvz3y_bv8c3vz1": "The Night is Dark"
+      },
+      "sessionEditorGroupIds": [
+        "dg_mnuvvz3y_bv8c3vz1",
+        "dg_mnuvvz3y_bv8c3vz1",
+        "dg_mnuvnumu_51zmfp9y",
+        "dg_mnuvnumu_51zmfp9y",
+        "dg_mnuvnumu_51zmfp9y",
+        "dg_mnuvnumu_51zmfp9y"
+      ],
+      "editorDialogueSessions": [
+        {
+          "lines": [
+            "Ughh, this bite hurts so bad..",
+            "You'll have to go on without me.",
+            "My friend Rick went up ahead.",
+            "Maybe y'all can team up, it's deadly out here."
+          ],
+          "when": {
+            "type": "always"
+          },
+          "grantQuestId": "quest_1775786207543",
+          "editorGroupId": "dg_mnuvvz3y_bv8c3vz1"
+        },
+        {
+          "lines": [
+            "Rick should be up ahead..."
+          ],
+          "when": {
+            "type": "all",
+            "conditions": [
+              {
+                "type": "quest_active",
+                "questId": "quest_1775786207543"
+              }
+            ]
+          },
+          "editorGroupId": "dg_mnuvvz3y_bv8c3vz1"
+        },
+        {
+          "lines": [
+            "You came back?!",
+            "I'm not sure how much longer I'll last.",
+            "I could really use something to help with my pain."
+          ],
+          "when": {
+            "type": "all",
+            "conditions": [
+              {
+                "type": "quest_completed",
+                "questId": "quest_1775786207543"
+              }
+            ]
+          },
+          "grantQuestId": "quest_1775826059688",
+          "editorGroupId": "dg_mnuvnumu_51zmfp9y"
+        },
+        {
+          "lines": [
+            "I could really use those pain pills.."
+          ],
+          "when": {
+            "type": "all",
+            "conditions": [
+              {
+                "type": "quest_active",
+                "questId": "quest_1775826059688"
+              }
+            ]
+          },
+          "editorGroupId": "dg_mnuvnumu_51zmfp9y"
+        },
+        {
+          "lines": [
+            "ahh, that's the stuff..",
+            "thank.. you.. my... friend",
+            "Zzzzzzzzzz"
+          ],
+          "when": {
+            "type": "all",
+            "conditions": [
+              {
+                "type": "quest_active_final_talk_turn_in",
+                "questId": "quest_1775826059688"
+              },
+              {
+                "type": "quest_active_and_has_item",
+                "questId": "quest_1775826059688",
+                "itemType": "pain_pills"
+              }
+            ]
+          },
+          "completeQuestId": "quest_1775826059688",
+          "editorGroupId": "dg_mnuvnumu_51zmfp9y"
+        },
+        {
+          "lines": [
+            "Zzzzzz..."
+          ],
+          "when": {
+            "type": "all",
+            "conditions": [
+              {
+                "type": "quest_completed",
+                "questId": "quest_1775826059688"
+              }
+            ]
+          },
+          "editorGroupId": "dg_mnuvnumu_51zmfp9y"
+        }
+      ]
     }
   ]
 }

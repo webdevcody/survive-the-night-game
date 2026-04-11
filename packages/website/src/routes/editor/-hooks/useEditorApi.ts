@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { API_ENDPOINTS } from "../-config/api";
 import type {
+  WorldMapDialogueNpcEditorMetadata,
   WorldMapDialogueNpcEntry,
   WorldMapMessageDecalEntry,
   WorldMapSpawnerMetaEntry,
@@ -17,6 +18,7 @@ interface WorldMapDataResponse {
   messageDecals?: WorldMapMessageDecalEntry[];
   quests?: WorldMapQuestDefinition[];
   spawnerMeta?: WorldMapSpawnerMetaEntry[];
+  dialogueNpcEditorMetadata?: WorldMapDialogueNpcEditorMetadata[];
 }
 
 export interface GameServerReloadInfo {

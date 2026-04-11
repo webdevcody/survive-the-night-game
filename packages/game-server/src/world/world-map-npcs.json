@@ -29,36 +29,6 @@
             "type": "all",
             "conditions": [
               {
-                "type": "quest_active_final_talk_turn_in",
-                "questId": "quest_1775824745523"
-              }
-            ]
-          },
-          "lines": [
-            "Thank you..",
-            "Now we can sleep well, at least for tonight."
-          ],
-          "completeQuestId": "quest_1775824745523"
-        },
-        {
-          "when": {
-            "type": "all",
-            "conditions": [
-              {
-                "type": "quest_active",
-                "questId": "quest_1775824745523"
-              }
-            ]
-          },
-          "lines": [
-            "you haven't killed those stumblers yet..."
-          ]
-        },
-        {
-          "when": {
-            "type": "all",
-            "conditions": [
-              {
                 "type": "quest_active",
                 "questId": "quest_1775786207543"
               }
@@ -78,23 +48,8 @@
             "type": "all",
             "conditions": [
               {
-                "type": "quest_completed",
+                "type": "quest_active",
                 "questId": "quest_1775824745523"
-              }
-            ]
-          },
-          "lines": [
-            "You did more than I dared hope.",
-            "Rest when you can — we owe you that much."
-          ]
-        },
-        {
-          "when": {
-            "type": "all",
-            "conditions": [
-              {
-                "type": "quest_completed",
-                "questId": "quest_1775786207543"
               }
             ]
           },
@@ -103,22 +58,58 @@
             "If you can kill at least 5 stumblers...",
             "Maybe we could have one night of undisturbed sleep."
           ],
-          "grantQuestId": "quest_1775824745523"
+          "grantQuestId": "quest_1775824745523",
+          "editorGroupId": "dg_mnuw6tms_cg7sovql"
+        },
+        {
+          "when": {
+            "type": "all",
+            "conditions": [
+              {
+                "type": "quest_not_completed",
+                "questId": "quest_1775824745523"
+              }
+            ]
+          },
+          "lines": [
+            "you haven't killed those stumblers yet..."
+          ],
+          "editorGroupId": "dg_mnuw6tms_cg7sovql"
+        },
+        {
+          "when": {
+            "type": "all",
+            "conditions": [
+              {
+                "type": "quest_active_final_talk_turn_in",
+                "questId": "quest_1775824745523"
+              }
+            ]
+          },
+          "lines": [
+            "With less stumblers walking around..",
+            "I'm hoping we can have one night of good sleep."
+          ],
+          "completeQuestId": "quest_1775824745523",
+          "editorGroupId": "dg_mnuw6tms_cg7sovql"
         },
         {
           "when": {
             "type": "always"
           },
           "lines": [
-            "only God can save us..."
+            "... this existence is futile..."
           ]
         }
       ],
       "lines": [
-        "only God can save us..."
+        "you haven't killed those stumblers yet..."
       ],
-      "message": "only God can save us...",
-      "name": "Rick"
+      "message": "you haven't killed those stumblers yet...",
+      "name": "Rick",
+      "editorGroups": {
+        "dg_mnuw6tms_cg7sovql": "Stumblers"
+      }
     },
     {
       "row": 152,
@@ -126,35 +117,31 @@
       "dialogueSessions": [
         {
           "when": {
-            "type": "all",
-            "conditions": [
-              {
-                "type": "quest_active_and_has_item",
-                "questId": "quest_1775826059688",
-                "itemType": "pain_pills"
-              }
-            ]
+            "type": "always"
           },
           "lines": [
-            "ahh, that's the stuff..",
-            "thank.. you.. my... friend",
-            "Zzzzzzzzzz"
+            "Ughh, this bite hurts so bad..",
+            "You'll have to go on without me.",
+            "My friend Rick went up ahead.",
+            "Maybe y'all can team up, it's deadly out here."
           ],
-          "completeQuestId": "quest_1775826059688"
+          "grantQuestId": "quest_1775786207543",
+          "editorGroupId": "dg_mnuvvz3y_bv8c3vz1"
         },
         {
           "when": {
             "type": "all",
             "conditions": [
               {
-                "type": "quest_completed",
-                "questId": "quest_1775826059688"
+                "type": "quest_active",
+                "questId": "quest_1775786207543"
               }
             ]
           },
           "lines": [
-            "Zzzzzz..."
-          ]
+            "Rick should be up ahead..."
+          ],
+          "editorGroupId": "dg_mnuvvz3y_bv8c3vz1"
         },
         {
           "when": {
@@ -171,19 +158,61 @@
             "I'm not sure how much longer I'll last.",
             "I could really use something to help with my pain."
           ],
-          "grantQuestId": "quest_1775826059688"
+          "grantQuestId": "quest_1775826059688",
+          "editorGroupId": "dg_mnuvnumu_51zmfp9y"
         },
         {
           "when": {
-            "type": "always"
+            "type": "all",
+            "conditions": [
+              {
+                "type": "quest_active",
+                "questId": "quest_1775826059688"
+              }
+            ]
           },
           "lines": [
-            "Ughh, this bite hurts so bad..",
-            "You'll have to go on without me.",
-            "My friend Rick went up ahead.",
-            "Maybe y'all can team up, it's deadly out here."
+            "I could really use those pain pills.."
           ],
-          "grantQuestId": "quest_1775786207543"
+          "editorGroupId": "dg_mnuvnumu_51zmfp9y"
+        },
+        {
+          "when": {
+            "type": "all",
+            "conditions": [
+              {
+                "type": "quest_active_final_talk_turn_in",
+                "questId": "quest_1775826059688"
+              },
+              {
+                "type": "quest_active_and_has_item",
+                "questId": "quest_1775826059688",
+                "itemType": "pain_pills"
+              }
+            ]
+          },
+          "lines": [
+            "ahh, that's the stuff..",
+            "thank.. you.. my... friend",
+            "Zzzzzzzzzz"
+          ],
+          "completeQuestId": "quest_1775826059688",
+          "editorGroupId": "dg_mnuvnumu_51zmfp9y"
+        },
+        {
+          "when": {
+            "type": "all",
+            "conditions": [
+              {
+                "type": "quest_completed",
+                "questId": "quest_1775826059688"
+              }
+            ]
+          },
+          "lines": [
+            "Zzzzzz..."
+          ],
+          "editorGroupId": "dg_mnuvnumu_51zmfp9y"
         }
       ],
       "lines": [
@@ -194,7 +223,11 @@
       ],
       "message": "Ughh, this bite hurts so bad..",
       "name": "James",
-      "grantQuestId": "quest_1775786207543"
+      "grantQuestId": "quest_1775786207543",
+      "editorGroups": {
+        "dg_mnuvnumu_51zmfp9y": "Healing the Sick",
+        "dg_mnuvvz3y_bv8c3vz1": "The Night is Dark"
+      }
     }
   ]
 }

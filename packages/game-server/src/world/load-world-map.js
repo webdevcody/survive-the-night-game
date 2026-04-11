@@ -3,6 +3,7 @@ import path from "path";
 import { fileURLToPath } from "url";
 import { getConfig } from "@shared/config";
 import { mergeWorldMapMainWithSidecars, WORLD_MAP_NPCS_FILENAME, WORLD_MAP_QUESTS_FILENAME, } from "@shared/map/world-map-sidecars";
+import { applyDialogueNpcEditorMetadataToRawDialogueNpcs, parseDialogueNpcEditorMetadataFromQuestsSidecar, } from "@shared/map/world-map-types";
 function resolveWorldMapJsonPath() {
     // Resolve next to this module first so reloads always hit the package's world-map.json
     // regardless of process.cwd() (monorepo / IDE / alternate entrypoints).
@@ -50,7 +51,12 @@ export function tryLoadWorldMapFile() {
         const npcsParsed = tryReadWorldMapSidecarSync(path.join(dir, WORLD_MAP_NPCS_FILENAME));
         const questsParsed = tryReadWorldMapSidecarSync(path.join(dir, WORLD_MAP_QUESTS_FILENAME));
         const merged = mergeWorldMapMainWithSidecars(data, npcsParsed, questsParsed);
-        return Object.assign(Object.assign({}, data), { dialogueNpcs: merged.dialogueNpcs, quests: merged.quests });
+        const editorMeta = parseDialogueNpcEditorMetadataFromQuestsSidecar(questsParsed);
+        let dialogueNpcs = merged.dialogueNpcs;
+        if (editorMeta.length > 0) {
+            dialogueNpcs = applyDialogueNpcEditorMetadataToRawDialogueNpcs(dialogueNpcs, editorMeta);
+        }
+        return Object.assign(Object.assign({}, data), { dialogueNpcs, quests: merged.quests });
     }
     catch (e) {
         const err = e;

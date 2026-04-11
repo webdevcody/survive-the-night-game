@@ -17,6 +17,7 @@ import {
   reconcileDialogueNpcsWithSpawnsLayer,
 } from "./-utils";
 import {
+  applyDialogueNpcEditorMetadataToRawDialogueNpcs,
   normalizeDialogueNpcs,
   reconcileMessageDecalsWithDecalsLayer,
   reconcileSpawnerMetaWithSpawnsLayer,
@@ -100,7 +101,11 @@ function MapEditor() {
         ) {
           spawnsForDialogue = worldMapData.spawns.map((row) => [...row]);
         }
-        const dialogueNormalized = normalizeDialogueNpcs(worldMapData.dialogueNpcs, n);
+        const dialogueWithQuestsMeta = applyDialogueNpcEditorMetadataToRawDialogueNpcs(
+          worldMapData.dialogueNpcs,
+          worldMapData.dialogueNpcEditorMetadata ?? [],
+        );
+        const dialogueNormalized = normalizeDialogueNpcs(dialogueWithQuestsMeta, n);
         rewriteSpawnsLayerDialogueNpcTiles(spawnsForDialogue, dialogueNormalized);
         useEditorStore.setState({
           spawnsGrid: spawnsForDialogue,
@@ -110,7 +115,7 @@ function MapEditor() {
           ),
         });
         setDialogueNpcs(
-          reconcileDialogueNpcsWithSpawnsLayer(spawnsForDialogue, worldMapData.dialogueNpcs),
+          reconcileDialogueNpcsWithSpawnsLayer(spawnsForDialogue, dialogueNormalized),
         );
         setQuests(normalizeQuests(worldMapData.quests ?? [], n));
         const decalsLoaded =

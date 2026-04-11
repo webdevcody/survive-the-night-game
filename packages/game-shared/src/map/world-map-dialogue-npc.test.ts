@@ -1,6 +1,9 @@
 import { describe, expect, it } from "vitest";
 import {
+  applyDialogueNpcEditorMetadataToRawDialogueNpcs,
+  extractDialogueNpcEditorMetadataForQuestsJson,
   normalizeDialogueNpcs,
+  parseDialogueNpcEditorMetadataFromQuestsSidecar,
   pickDialogueNpcSession,
   getDialogueNpcSessions,
   dialogueNpcSessionsToSerialized,
@@ -22,7 +25,38 @@ function all(conditions: DialogueNpcAtomicCondition[]): DialogueNpcCondition {
 }
 
 describe("pickDialogueNpcSession", () => {
-  it("picks first matching non-default condition", () => {
+  it("picks last matching non-default when several match", () => {
+    const sessions = [
+      { when: all([{ type: "quest_completed", questId: "a" }]), lines: ["done a first"] },
+      { when: all([{ type: "quest_completed", questId: "a" }]), lines: ["done a last"] },
+      { when: { type: "always" as const }, lines: ["fallback"] },
+    ];
+    expect(pickDialogueNpcSession(sessions, st({ completed: ["a"] })).lines[0]).toBe("done a last");
+    expect(pickDialogueNpcSession(sessions, st({ completed: [] })).lines[0]).toBe("fallback");
+  });
+
+  it("picks last matching branch when broader and stricter both match", () => {
+    const sessions = [
+      { when: all([{ type: "quest_active", questId: "q1" }]), lines: ["broad"] },
+      {
+        when: all([
+          { type: "quest_active", questId: "q1" },
+          {
+            type: "quest_active_and_has_item" as const,
+            questId: "q1",
+            itemType: "key",
+          },
+        ]),
+        lines: ["narrow"],
+      },
+      { when: { type: "always" as const }, lines: ["fallback"] },
+    ];
+    const stActive = st({ active: { q1: { step: 0 } } });
+    expect(pickDialogueNpcSession(sessions, stActive, () => false).lines[0]).toBe("broad");
+    expect(pickDialogueNpcSession(sessions, stActive, (t) => t === "key").lines[0]).toBe("narrow");
+  });
+
+  it("picks matching non-default when only one matches", () => {
     const sessions = [
       { when: all([{ type: "quest_completed", questId: "a" }]), lines: ["done a"] },
       { when: { type: "always" as const }, lines: ["fallback"] },
@@ -271,6 +305,29 @@ describe("pickDialogueNpcSession", () => {
     ]);
     expect(back?.[0]?.when).toBeUndefined();
   });
+
+  it("preserves legacy editorGroup in fromSerialized but strips in toSerialized", () => {
+    const raw = [
+      {
+        when: { type: "always" },
+        lines: ["hi"],
+        editorGroup: "Act 1",
+      },
+    ];
+    const from = dialogueNpcSessionsFromSerialized(raw);
+    expect(from?.[0]?.editorGroup).toBe("Act 1");
+    const ser = dialogueNpcSessionsToSerialized(from ?? []);
+    expect((ser[0] as Record<string, unknown>).editorGroup).toBeUndefined();
+  });
+
+  it("preserves editorGroupId in fromSerialized but strips in toSerialized", () => {
+    const from = dialogueNpcSessionsFromSerialized([
+      { when: { type: "always" }, lines: ["x"], editorGroupId: "my-g" },
+    ]);
+    expect(from?.[0]?.editorGroupId).toBe("my-g");
+    const ser = dialogueNpcSessionsToSerialized(from ?? []);
+    expect((ser[0] as Record<string, unknown>).editorGroupId).toBeUndefined();
+  });
 });
 
 describe("normalizeDialogueNpcs dialogueSessions", () => {
@@ -334,6 +391,56 @@ describe("normalizeDialogueNpcs dialogueSessions", () => {
     expect(e?.dialogueSessions?.[0].healOnDialogueComplete).toBe(true);
   });
 
+  it("migrates legacy editorGroup only for contiguous runs; prunes singleton groups", () => {
+    const [e] = normalizeDialogueNpcs(
+      [
+        {
+          row: 0,
+          col: 0,
+          dialogueSessions: [
+            { when: { type: "always" }, lines: ["Hi"], editorGroup: "Intro" },
+            {
+              when: { type: "all", conditions: [{ type: "quest_completed", questId: "q" }] },
+              lines: ["Bye"],
+              editorGroup: "Outro",
+            },
+          ],
+        },
+      ],
+      8,
+    );
+    expect(e?.dialogueSessions?.[0].editorGroup).toBeUndefined();
+    expect(e?.dialogueSessions?.[1].editorGroup).toBeUndefined();
+    expect(e?.dialogueSessions?.[0].editorGroupId).toBeUndefined();
+    expect(e?.dialogueSessions?.[1].editorGroupId).toBeUndefined();
+    expect(e?.editorGroups).toBeUndefined();
+  });
+
+  it("migrates contiguous legacy editorGroup rows into one editorGroupId", () => {
+    const [e] = normalizeDialogueNpcs(
+      [
+        {
+          row: 0,
+          col: 0,
+          dialogueSessions: [
+            { when: { type: "always" }, lines: ["A"], editorGroup: "Act 1" },
+            {
+              when: { type: "all", conditions: [{ type: "quest_completed", questId: "q" }] },
+              lines: ["B"],
+              editorGroup: "Act 1",
+            },
+          ],
+        },
+      ],
+      8,
+    );
+    const id0 = e?.dialogueSessions?.[0].editorGroupId;
+    const id1 = e?.dialogueSessions?.[1].editorGroupId;
+    expect(id0).toBeTruthy();
+    expect(id1).toBe(id0);
+    expect(e?.editorGroups?.[id0!]).toBe("Act 1");
+  });
+
   it("round-trips healOnDialogueComplete via serialized sessions", () => {
     const sessions = [
       { when: { type: "always" as const }, lines: ["Hi"], healOnDialogueComplete: true as const },
@@ -341,5 +448,131 @@ describe("normalizeDialogueNpcs dialogueSessions", () => {
     const raw = dialogueNpcSessionsToSerialized(sessions);
     const back = dialogueNpcSessionsFromSerialized(raw);
     expect(back?.[0]?.healOnDialogueComplete).toBe(true);
+  });
+});
+
+describe("dialogueNpcEditorMetadata (quests sidecar)", () => {
+  it("preserves spaces in editor group labels (including trailing) through normalize", () => {
+    const gid = "dg_spaced_label";
+    const [normalized] = normalizeDialogueNpcs(
+      [
+        {
+          row: 0,
+          col: 0,
+          dialogueSessions: [
+            { when: { type: "always" }, lines: ["a"], editorGroupId: gid },
+            { when: { type: "always" }, lines: ["b"], editorGroupId: gid },
+          ],
+          editorGroups: { [gid]: "The Shop " },
+        },
+      ],
+      8,
+    );
+    expect(normalized?.editorGroups?.[gid]).toBe("The Shop ");
+  });
+
+  it("extracts and parse round-trip restores editorGroupId after normalize", () => {
+    const gid = "dg_testgroup_1";
+    const [normalized] = normalizeDialogueNpcs(
+      [
+        {
+          row: 1,
+          col: 2,
+          dialogueSessions: [
+            { when: { type: "always" }, lines: ["a"], editorGroupId: gid },
+            {
+              when: { type: "all", conditions: [{ type: "quest_completed", questId: "q" }] },
+              lines: ["b"],
+              editorGroupId: gid,
+            },
+          ],
+          editorGroups: { [gid]: "My Group Label" },
+        },
+      ],
+      8,
+    );
+    const meta = extractDialogueNpcEditorMetadataForQuestsJson(normalized ? [normalized] : []);
+    expect(meta.length).toBe(1);
+    expect(meta[0]!.sessionEditorGroupIds?.length).toBe(2);
+    expect(meta[0]!.editorGroups?.[gid]).toBe("My Group Label");
+
+    const rawNpcs = [
+      {
+        row: 1,
+        col: 2,
+        dialogueSessions: [
+          { when: { type: "always" }, lines: ["a"] },
+          {
+            when: { type: "all", conditions: [{ type: "quest_completed", questId: "q" }] },
+            lines: ["b"],
+          },
+        ],
+      },
+    ];
+    const parsed = parseDialogueNpcEditorMetadataFromQuestsSidecar({
+      quests: [],
+      dialogueNpcEditorMetadata: meta,
+    });
+    const patched = applyDialogueNpcEditorMetadataToRawDialogueNpcs(rawNpcs, parsed);
+    const [again] = normalizeDialogueNpcs(patched as Parameters<typeof normalizeDialogueNpcs>[0], 8);
+    expect(again?.dialogueSessions?.[0]?.editorGroupId).toBe(gid);
+    expect(again?.dialogueSessions?.[1]?.editorGroupId).toBe(gid);
+    expect(again?.editorGroups?.[gid]).toBe("My Group Label");
+    expect(meta[0]!.editorDialogueSessions?.length).toBe(2);
+  });
+
+  it("extracts metadata for multi-session NPCs without groups (session order) and restores from sidecar", () => {
+    const [normalized] = normalizeDialogueNpcs(
+      [
+        {
+          row: 3,
+          col: 4,
+          dialogueSessions: [
+            { when: { type: "always" }, lines: ["third"] },
+            {
+              when: { type: "all", conditions: [{ type: "quest_completed", questId: "q1" }] },
+              lines: ["first"],
+            },
+            {
+              when: { type: "all", conditions: [{ type: "quest_active", questId: "q2" }] },
+              lines: ["second"],
+            },
+          ],
+        },
+      ],
+      16,
+    );
+    const meta = extractDialogueNpcEditorMetadataForQuestsJson(normalized ? [normalized] : []);
+    expect(meta.length).toBe(1);
+    expect(meta[0]!.editorDialogueSessions?.map((s) => (s.lines as string[])[0])).toEqual([
+      "third",
+      "first",
+      "second",
+    ]);
+
+    const rawNpcsWrongOrder = [
+      {
+        row: 3,
+        col: 4,
+        dialogueSessions: [
+          {
+            when: { type: "all", conditions: [{ type: "quest_active", questId: "q2" }] },
+            lines: ["second"],
+          },
+          { when: { type: "always" }, lines: ["third"] },
+          {
+            when: { type: "all", conditions: [{ type: "quest_completed", questId: "q1" }] },
+            lines: ["first"],
+          },
+        ],
+      },
+    ];
+    const parsed = parseDialogueNpcEditorMetadataFromQuestsSidecar({
+      quests: [],
+      dialogueNpcEditorMetadata: meta,
+    });
+    const patched = applyDialogueNpcEditorMetadataToRawDialogueNpcs(rawNpcsWrongOrder, parsed);
+    const [again] = normalizeDialogueNpcs(patched as Parameters<typeof normalizeDialogueNpcs>[0], 16);
+    expect(again?.dialogueSessions?.map((s) => s.lines[0])).toEqual(["third", "first", "second"]);
   });
 });
