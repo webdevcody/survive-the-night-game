@@ -2,6 +2,13 @@
  * Shared canvas HUD helpers: one rect for both drawing and hit-testing.
  */
 
+import {
+  RPG_BODY_TEXT,
+  RPG_SLOT_FILL,
+  RPG_SLOT_STROKE,
+  RPG_TAB_ACTIVE_STROKE,
+} from "@/ui/rpg-hud-theme";
+
 export type CanvasUiRect = { readonly x: number; readonly y: number; readonly w: number; readonly h: number };
 
 export function uiRectContains(r: CanvasUiRect, px: number, py: number): boolean {
@@ -81,19 +88,21 @@ export function drawCanvasUiButton(
   variant: "compact" | "wide" = "compact",
 ): void {
   if (variant === "compact") {
-    ctx.fillStyle = "rgba(50, 52, 64, 0.95)";
+    ctx.fillStyle = RPG_SLOT_FILL;
     ctx.fillRect(rect.x, rect.y, rect.w, rect.h);
-    ctx.strokeStyle = "rgba(120, 125, 140, 0.8)";
+    ctx.strokeStyle = RPG_SLOT_STROKE;
+    ctx.lineWidth = 1;
     ctx.strokeRect(rect.x, rect.y, rect.w, rect.h);
     ctx.font = "bold 14px Arial";
-    ctx.fillStyle = "#ddd";
+    ctx.fillStyle = RPG_BODY_TEXT;
   } else {
-    ctx.fillStyle = "rgba(55, 58, 72, 0.95)";
+    ctx.fillStyle = RPG_SLOT_FILL;
     ctx.fillRect(rect.x, rect.y, rect.w, rect.h);
-    ctx.strokeStyle = "rgba(160, 165, 185, 0.7)";
+    ctx.strokeStyle = RPG_TAB_ACTIVE_STROKE;
+    ctx.lineWidth = 1;
     ctx.strokeRect(rect.x, rect.y, rect.w, rect.h);
     ctx.font = "bold 14px Arial";
-    ctx.fillStyle = "#eee";
+    ctx.fillStyle = RPG_BODY_TEXT;
   }
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";

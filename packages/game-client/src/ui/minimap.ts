@@ -20,6 +20,8 @@ import { calculateLightSources, getCampsiteMapMarkerWorldPosition } from "./util
 import { prerenderCollidables, renderCollidablesFromCanvas } from "./utils/map-collidable-renderer";
 import { renderMinimapFogOfWar } from "./utils/map-fog-of-war-renderer";
 import type { MinimapScreenRect } from "./minimap-hud-group-layout";
+import { calculateHudScale } from "@/util/hud-scale";
+import { RPG_BORDER_GOLD, RPG_MINIMAP_BACKGROUND } from "@/ui/rpg-hud-theme";
 
 // Performance optimization constants - adjust these to balance quality vs performance
 // To view performance stats in console, run:
@@ -48,7 +50,7 @@ export const MINIMAP_SETTINGS = {
   size: 240, // Reduced from 280 (was 400 originally)
   /** Inset from screen right; screen position comes from minimap-hud-group-layout + Hud. */
   right: 40,
-  background: "rgba(0, 0, 0, 0.7)",
+  background: RPG_MINIMAP_BACKGROUND,
   scale: 0.35,
   fogOfWar: {
     enabled: true,
@@ -327,8 +329,8 @@ export class Minimap {
     perfTimer.end("minimap:survivors");
 
     // Draw radar circle border using scaled values
-    ctx.strokeStyle = "white";
-    ctx.lineWidth = 2;
+    ctx.strokeStyle = RPG_BORDER_GOLD;
+    ctx.lineWidth = Math.max(2, Math.round(2 * calculateHudScale(canvasWidth, canvasHeight)));
     ctx.beginPath();
     ctx.arc(scaledLeft + scaledSize / 2, top + scaledSize / 2, scaledSize / 2, 0, Math.PI * 2);
     ctx.stroke();

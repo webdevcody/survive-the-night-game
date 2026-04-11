@@ -1,6 +1,13 @@
 import { GameState } from "@/state";
 import { Panel, PanelSettings } from "./panel";
 import { getPlayer } from "@/util/get-player";
+import {
+  RPG_BORDER_GOLD,
+  RPG_METADATA_MUTED,
+  RPG_PANEL_GRADIENT_BOTTOM,
+  RPG_PANEL_GRADIENT_TOP,
+  RPG_SLOT_STROKE,
+} from "@/ui/rpg-hud-theme";
 
 export interface DeathScreenPanelSettings extends PanelSettings {
   font: string;
@@ -71,8 +78,11 @@ export class DeathScreenPanel extends Panel {
     ctx.shadowBlur = 20;
     ctx.shadowOffsetY = 4;
 
-    // Draw panel background with rounded corners
-    ctx.fillStyle = "rgba(20, 20, 25, 0.95)";
+    // Draw panel background with rounded corners (RPG navy gradient)
+    const panelGrad = ctx.createLinearGradient(x, y, x, y + panelHeight);
+    panelGrad.addColorStop(0, RPG_PANEL_GRADIENT_TOP);
+    panelGrad.addColorStop(1, RPG_PANEL_GRADIENT_BOTTOM);
+    ctx.fillStyle = panelGrad;
     this.roundRect(ctx, x, y, panelWidth, panelHeight, borderRadius);
     ctx.fill();
 
@@ -81,27 +91,25 @@ export class DeathScreenPanel extends Panel {
     ctx.shadowBlur = 0;
     ctx.shadowOffsetY = 0;
 
-    // Draw red accent border
-    ctx.strokeStyle = "rgba(180, 50, 50, 0.8)";
+    ctx.strokeStyle = RPG_BORDER_GOLD;
     ctx.lineWidth = 2;
     this.roundRect(ctx, x, y, panelWidth, panelHeight, borderRadius);
     ctx.stroke();
 
-    // Draw inner glow border
-    ctx.strokeStyle = "rgba(255, 100, 100, 0.2)";
+    ctx.strokeStyle = RPG_SLOT_STROKE;
     ctx.lineWidth = 1;
     this.roundRect(ctx, x + 4, y + 4, panelWidth - 8, panelHeight - 8, borderRadius - 2);
     ctx.stroke();
 
     // Draw skull icon or "YOU DIED" title
-    ctx.font = "bold 32px Arial";
+    ctx.font = "bold 32px Georgia";
     ctx.textAlign = "center";
     ctx.fillStyle = "rgba(200, 60, 60, 1)";
     ctx.fillText("YOU DIED", width / 2, y + 50);
 
     // Draw respawn text
     ctx.font = "18px Arial";
-    ctx.fillStyle = "rgba(180, 180, 180, 1)";
+    ctx.fillStyle = RPG_METADATA_MUTED;
     let respawnText: string;
     if (cooldownRemaining > 0) {
       respawnText = `Respawning in ${cooldownSeconds} second${cooldownSeconds !== 1 ? "s" : ""}...`;
@@ -116,7 +124,7 @@ export class DeathScreenPanel extends Panel {
     const barX = x + 30;
     const barY = y + 110;
 
-    ctx.fillStyle = "rgba(40, 40, 45, 1)";
+    ctx.fillStyle = RPG_PANEL_GRADIENT_BOTTOM;
     this.roundRect(ctx, barX, barY, barWidth, barHeight, 4);
     ctx.fill();
 
@@ -132,7 +140,7 @@ export class DeathScreenPanel extends Panel {
     }
 
     // Draw progress bar border
-    ctx.strokeStyle = "rgba(100, 100, 100, 0.5)";
+    ctx.strokeStyle = RPG_BORDER_GOLD;
     ctx.lineWidth = 1;
     this.roundRect(ctx, barX, barY, barWidth, barHeight, 4);
     ctx.stroke();

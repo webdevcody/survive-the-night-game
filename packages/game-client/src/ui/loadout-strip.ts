@@ -9,6 +9,20 @@ import { itemMatchesLoadoutRow } from "@shared/util/weapon-loadout";
 import type { CanvasUiRect } from "./canvas-ui-rect";
 import { uiRectContains } from "./canvas-ui-rect";
 import type { InventoryUiTab } from "./inventory-screen";
+import {
+  drawRpgTopAccentBar,
+  fillRpgPanelGradient,
+  RPG_BODY_TEXT,
+  RPG_METADATA_MUTED,
+  RPG_SLOT_FILL,
+  RPG_SLOT_STROKE,
+  RPG_TAB_ACTIVE_FILL,
+  RPG_TAB_ACTIVE_STROKE,
+  RPG_TAB_INACTIVE_FILL,
+  RPG_TAB_INACTIVE_STROKE,
+  RPG_TITLE_CREAM,
+  strokeRpgPanelBorder,
+} from "./rpg-hud-theme";
 
 const STRIP = {
   marginBottom: 20,
@@ -21,9 +35,7 @@ const STRIP = {
   tabRowHeight: 22,
   tabRowGap: 6,
   tabPillGap: 6,
-  bg: "rgba(0, 0, 0, 0.75)",
-  border: "rgba(255, 255, 255, 0.45)",
-  activeBorder: "rgba(255, 220, 100, 0.95)",
+  activeBorder: "rgba(255, 234, 182, 0.95)",
 };
 
 const PANEL_TAB_PILLS: { id: InventoryUiTab; label: string }[] = [
@@ -148,11 +160,9 @@ export class LoadoutStrip implements Renderable {
 
     ctx.save();
     ctx.setTransform(1, 0, 0, 1, 0, 0);
-    ctx.fillStyle = STRIP.bg;
-    ctx.strokeStyle = STRIP.border;
-    ctx.lineWidth = 2 * L.scale;
-    ctx.fillRect(L.x, L.y, L.w, L.h);
-    ctx.strokeRect(L.x, L.y, L.w, L.h);
+    fillRpgPanelGradient(ctx, L.x, L.y, L.w, L.h);
+    drawRpgTopAccentBar(ctx, L.x, L.y, L.w, Math.max(3, Math.round(4 * L.scale)));
+    strokeRpgPanelBorder(ctx, L.x, L.y, L.w, L.h, Math.max(2, Math.round(2 * L.scale)));
 
     const tabRects = getPanelTabPillRects(L);
     const invOpen = this.isInventoryScreenOpen();
@@ -161,13 +171,13 @@ export class LoadoutStrip implements Renderable {
       const pill = PANEL_TAB_PILLS[i]!;
       const r = tabRects[i]!;
       const isActive = invOpen && activeTab === pill.id;
-      ctx.fillStyle = isActive ? "rgba(70, 75, 95, 0.95)" : "rgba(35, 36, 46, 0.92)";
+      ctx.fillStyle = isActive ? RPG_TAB_ACTIVE_FILL : RPG_TAB_INACTIVE_FILL;
       ctx.fillRect(r.x, r.y, r.w, r.h);
-      ctx.strokeStyle = isActive ? "rgba(200, 210, 255, 0.85)" : STRIP.border;
+      ctx.strokeStyle = isActive ? RPG_TAB_ACTIVE_STROKE : RPG_TAB_INACTIVE_STROKE;
       ctx.lineWidth = isActive ? 2 * L.scale : 1 * L.scale;
       ctx.strokeRect(r.x, r.y, r.w, r.h);
-      ctx.font = `bold ${10 * L.scale}px Arial`;
-      ctx.fillStyle = isActive ? "#fff" : "#bbb";
+      ctx.font = `bold ${10 * L.scale}px Georgia`;
+      ctx.fillStyle = isActive ? RPG_TITLE_CREAM : RPG_METADATA_MUTED;
       ctx.textAlign = "center";
       ctx.textBaseline = "middle";
       ctx.fillText(pill.label, r.x + r.w / 2, r.y + r.h / 2);
@@ -191,9 +201,9 @@ export class LoadoutStrip implements Renderable {
       }
 
       const isActive = active === loadout;
-      ctx.strokeStyle = isActive ? STRIP.activeBorder : STRIP.border;
+      ctx.strokeStyle = isActive ? STRIP.activeBorder : RPG_SLOT_STROKE;
       ctx.lineWidth = isActive ? 3 * L.scale : 1 * L.scale;
-      ctx.fillStyle = "rgba(40, 40, 48, 0.95)";
+      ctx.fillStyle = RPG_SLOT_FILL;
       ctx.fillRect(sx, sy, L.slotSize, L.slotSize);
       ctx.strokeRect(sx, sy, L.slotSize, L.slotSize);
 
@@ -206,24 +216,24 @@ export class LoadoutStrip implements Renderable {
       }
 
       ctx.font = `${10 * L.scale}px Arial`;
-      ctx.fillStyle = "rgba(200,200,210,0.85)";
+      ctx.fillStyle = RPG_METADATA_MUTED;
       ctx.textAlign = "center";
       ctx.fillText(LABELS[i]!, sx + L.slotSize / 2, L.y + L.h - 6 * L.scale);
     }
 
     const invRect = getInventoryToggleRect(L);
-    ctx.strokeStyle = invOpen ? STRIP.activeBorder : STRIP.border;
+    ctx.strokeStyle = invOpen ? STRIP.activeBorder : RPG_SLOT_STROKE;
     ctx.lineWidth = invOpen ? 3 * L.scale : 1 * L.scale;
-    ctx.fillStyle = "rgba(40, 40, 48, 0.95)";
+    ctx.fillStyle = RPG_SLOT_FILL;
     ctx.fillRect(invRect.x, invRect.y, invRect.w, invRect.h);
     ctx.strokeRect(invRect.x, invRect.y, invRect.w, invRect.h);
     ctx.font = `bold ${12 * L.scale}px Arial`;
-    ctx.fillStyle = "rgba(220, 220, 230, 0.95)";
+    ctx.fillStyle = RPG_BODY_TEXT;
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
     ctx.fillText("Inv", invRect.x + invRect.w / 2, invRect.y + invRect.h / 2 - 2 * L.scale);
     ctx.font = `${9 * L.scale}px Arial`;
-    ctx.fillStyle = "rgba(200,200,210,0.85)";
+    ctx.fillStyle = RPG_METADATA_MUTED;
     ctx.fillText("Tab", invRect.x + invRect.w / 2, L.y + L.h - 6 * L.scale);
 
     ctx.restore();

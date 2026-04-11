@@ -52,6 +52,26 @@ import {
   type ProfessionId,
 } from "@shared/util/professions";
 import { CRAFTING_STATION_LABELS } from "@shared/util/crafting-stations";
+import { calculateHudScale } from "@/util/hud-scale";
+import {
+  drawRpgTopAccentBar,
+  fillRpgPanelGradient,
+  RPG_BODY_TEXT,
+  RPG_COUNTER_GOLD,
+  RPG_METADATA_MUTED,
+  RPG_MODAL_SCRIM,
+  RPG_PROMPT_GOLD,
+  RPG_PROMPT_TYPING,
+  RPG_SLOT_FILL,
+  RPG_SLOT_FILL_DIM,
+  RPG_SLOT_STROKE,
+  RPG_TAB_ACTIVE_FILL,
+  RPG_TAB_ACTIVE_STROKE,
+  RPG_TAB_INACTIVE_FILL,
+  RPG_TAB_INACTIVE_STROKE,
+  RPG_TITLE_CREAM,
+  strokeRpgPanelBorder,
+} from "@/ui/rpg-hud-theme";
 
 const DRAG_THRESHOLD = 12;
 const PANEL_WIDTH_RATIO = 0.46;
@@ -110,15 +130,12 @@ function drawProfessionCardChrome(
     ctx.fillStyle = g;
     ctx.fillRect(x, y, w, h);
   } else {
-    ctx.fillStyle = "rgba(27, 28, 36, 0.96)";
+    ctx.fillStyle = RPG_SLOT_FILL_DIM;
     ctx.fillRect(x, y, w, h);
   }
-  ctx.strokeStyle = "rgba(160, 160, 170, 0.85)";
+  ctx.strokeStyle = RPG_SLOT_STROKE;
   ctx.lineWidth = 2;
   ctx.strokeRect(x, y, w, h);
-  ctx.strokeStyle = "rgba(40, 40, 50, 0.9)";
-  ctx.lineWidth = 1;
-  ctx.strokeRect(x + 1, y + 1, w - 2, h - 2);
 }
 
 /** Canvas equivalent of `paint-order: stroke fill` + ~`webkit-text-stroke: Npx black`. */
@@ -133,7 +150,7 @@ function fillTextStroked(
   ctx.save();
   ctx.lineJoin = "round";
   ctx.miterLimit = 2;
-  ctx.strokeStyle = "#000";
+  ctx.strokeStyle = "rgba(6, 8, 16, 0.92)";
   ctx.lineWidth = strokeWidthPx * 2;
   ctx.strokeText(text, x, y);
   ctx.fillStyle = fillStyle;
@@ -247,22 +264,11 @@ function buildAbilityMapFromPlayer(player: PlayerClient): Record<string, number>
   };
 }
 
-function drawBevelPanel(
-  ctx: CanvasRenderingContext2D,
-  x: number,
-  y: number,
-  w: number,
-  h: number,
-  bg: string
-): void {
-  ctx.fillStyle = bg;
-  ctx.fillRect(x, y, w, h);
-  ctx.strokeStyle = "rgba(160, 160, 170, 0.85)";
-  ctx.lineWidth = 2;
-  ctx.strokeRect(x, y, w, h);
-  ctx.strokeStyle = "rgba(40, 40, 50, 0.9)";
-  ctx.lineWidth = 1;
-  ctx.strokeRect(x + 1, y + 1, w - 2, h - 2);
+function drawRpgMainPanel(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number): void {
+  const scale = calculateHudScale(ctx.canvas.width, ctx.canvas.height);
+  fillRpgPanelGradient(ctx, x, y, w, h);
+  drawRpgTopAccentBar(ctx, x, y, w, Math.max(3, Math.round(4 * scale)));
+  strokeRpgPanelBorder(ctx, x, y, w, h, Math.max(2, Math.round(2 * scale)));
 }
 
 export class InventoryScreenUI {
@@ -575,13 +581,13 @@ export class InventoryScreenUI {
       const w = i === n - 1 ? panelRight - x : L.tabW;
       const y = L.tabTop;
       const active = this.activeTab === t.id;
-      ctx.fillStyle = active ? "rgba(70, 75, 95, 0.95)" : "rgba(35, 36, 46, 0.9)";
+      ctx.fillStyle = active ? RPG_TAB_ACTIVE_FILL : RPG_TAB_INACTIVE_FILL;
       ctx.fillRect(x, y, w, L.tabBarH);
-      ctx.strokeStyle = active ? "rgba(200, 210, 255, 0.9)" : "rgba(90, 95, 110, 0.7)";
+      ctx.strokeStyle = active ? RPG_TAB_ACTIVE_STROKE : RPG_TAB_INACTIVE_STROKE;
       ctx.lineWidth = 1;
       ctx.strokeRect(x, y, w, L.tabBarH);
-      ctx.font = "bold 14px Arial";
-      ctx.fillStyle = active ? "#fff" : "#bbb";
+      ctx.font = "bold 14px Georgia";
+      ctx.fillStyle = active ? RPG_TITLE_CREAM : RPG_METADATA_MUTED;
       ctx.textAlign = "center";
       ctx.textBaseline = "middle";
       ctx.fillText(t.label, x + w / 2, y + L.tabBarH / 2);
@@ -598,7 +604,7 @@ export class InventoryScreenUI {
     const budget = getProgressionPointsBudget(xp);
     const avail = player.getAvailableCharacterPoints();
     ctx.font = "16px Arial";
-    ctx.fillStyle = "#eee";
+    ctx.fillStyle = RPG_BODY_TEXT;
     ctx.textAlign = "left";
     let y = L.contentTop + PANEL_TAB_CONTENT_GAP;
     ctx.fillText(`Character stats   (available ${avail} / budget ${budget} from level)`, L.rightX + 12, y);
@@ -607,9 +613,9 @@ export class InventoryScreenUI {
 
     for (const key of CHARACTER_STAT_KEYS) {
       const val = player.getCharacterStat(key);
-      ctx.fillStyle = "#ddd";
+      ctx.fillStyle = RPG_TITLE_CREAM;
       ctx.fillText(`${STAT_LABELS[key]}`, L.rightX + 16, y);
-      ctx.fillStyle = "#aaa";
+      ctx.fillStyle = RPG_METADATA_MUTED;
       ctx.textAlign = "right";
       ctx.fillText(`${val}`, L.rightX + L.rightW - 120, y);
       ctx.textAlign = "left";
@@ -624,19 +630,19 @@ export class InventoryScreenUI {
     const stamina = player.getStamina();
     const maxStamina = player.getMaxStamina();
     y += 8;
-    ctx.fillStyle = "#9cf";
+    ctx.fillStyle = RPG_COUNTER_GOLD;
     ctx.font = "14px Arial";
     ctx.fillText(`Current HP: ${hp} / ${maxHp}`, L.rightX + 16, y);
     y += 22;
     ctx.fillText(`Stamina: ${Math.round(stamina)} / ${maxStamina}`, L.rightX + 16, y);
     y += 22;
     if (player.hasExt(ClientPoison)) {
-      ctx.fillStyle = "#7f7";
+      ctx.fillStyle = "rgba(160, 220, 170, 0.95)";
       ctx.fillText("Poisoned", L.rightX + 16, y);
       y += 22;
     }
     if (player.hasExt(ClientInfiniteRun)) {
-      ctx.fillStyle = "#8af";
+      ctx.fillStyle = RPG_PROMPT_TYPING;
       ctx.fillText("Infinite run", L.rightX + 16, y);
       y += 22;
     }
@@ -658,13 +664,13 @@ export class InventoryScreenUI {
     const budget = getProgressionPointsBudget(xp);
     const avail = player.getAvailableAbilityPoints();
     ctx.font = "16px Arial";
-    ctx.fillStyle = "#eee";
+    ctx.fillStyle = RPG_BODY_TEXT;
     ctx.textAlign = "left";
     let ty = L.contentTop + PANEL_TAB_CONTENT_GAP;
     ctx.fillText(`Abilities   (available ${avail} / budget ${budget})`, L.rightX + 12, ty);
     ty += 28;
     ctx.font = "13px Arial";
-    ctx.fillStyle = "#aaa";
+    ctx.fillStyle = RPG_METADATA_MUTED;
     ctx.fillText("Click a node to unlock (when you have points). Click again to refund.", L.rightX + 12, ty);
 
     for (const node of ABILITY_TREE_NODES) {
@@ -674,13 +680,13 @@ export class InventoryScreenUI {
       const hover = this.hoveredAbilityId === node.id;
       ctx.beginPath();
       ctx.arc(cx, cy, SKILLS_NODE_RADIUS, 0, Math.PI * 2);
-      ctx.fillStyle = rank > 0 ? "rgba(80, 140, 220, 0.85)" : "rgba(45, 48, 60, 0.95)";
+      ctx.fillStyle = rank > 0 ? "rgba(200, 165, 95, 0.82)" : RPG_SLOT_FILL_DIM;
       ctx.fill();
-      ctx.strokeStyle = hover ? "rgba(255, 220, 120, 0.95)" : "rgba(140, 150, 170, 0.8)";
+      ctx.strokeStyle = hover ? RPG_PROMPT_GOLD : RPG_SLOT_STROKE;
       ctx.lineWidth = 2;
       ctx.stroke();
       ctx.font = "bold 13px Arial";
-      ctx.fillStyle = "#fff";
+      ctx.fillStyle = RPG_BODY_TEXT;
       ctx.textAlign = "center";
       ctx.textBaseline = "middle";
       ctx.fillText(node.label, cx, cy - 6);
@@ -743,7 +749,7 @@ export class InventoryScreenUI {
       "Professions",
       L.rightX + 12,
       L.contentTop + PANEL_TAB_CONTENT_GAP,
-      "#eee",
+      RPG_TITLE_CREAM,
       2,
     );
 
@@ -754,7 +760,7 @@ export class InventoryScreenUI {
         "Level professions through gathering, scrapping, and station crafting. Click a profession to inspect unlocks.",
         L.rightX + 12,
         L.contentTop + PANEL_TAB_CONTENT_GAP + 20,
-        "#aaa",
+        RPG_METADATA_MUTED,
         2,
       );
 
@@ -762,28 +768,35 @@ export class InventoryScreenUI {
         const details = player.getProfessionDetails(rect.id);
         const def = PROFESSION_DEFINITIONS[rect.id];
         drawProfessionCardChrome(ctx, rect.x, rect.y, rect.w, rect.h, this.professionBannerImages[rect.id]);
-        ctx.strokeStyle = "rgba(110, 120, 145, 0.7)";
+        ctx.strokeStyle = RPG_SLOT_STROKE;
         ctx.lineWidth = 1;
         ctx.strokeRect(rect.x, rect.y, rect.w, rect.h);
-        ctx.font = "bold 14px Arial";
-        fillTextStroked(ctx, def.label, rect.x + 12, rect.y + 22, "#fff", 2);
+        ctx.font = "bold 14px Georgia";
+        fillTextStroked(ctx, def.label, rect.x + 12, rect.y + 22, RPG_BODY_TEXT, 2);
         ctx.font = "12px Arial";
         fillTextStroked(
           ctx,
           `Station: ${CRAFTING_STATION_LABELS[def.station]}`,
           rect.x + 12,
           rect.y + 40,
-          "#b6bdd2",
+          RPG_METADATA_MUTED,
           2,
         );
-        fillTextStroked(ctx, `Level ${details.level}`, rect.x + 12, rect.y + 58, "#b6bdd2", 2);
-        ctx.fillStyle = "rgba(60, 66, 84, 0.95)";
+        fillTextStroked(
+          ctx,
+          `Level ${details.level}`,
+          rect.x + 12,
+          rect.y + 58,
+          RPG_METADATA_MUTED,
+          2,
+        );
+        ctx.fillStyle = "rgba(12, 14, 24, 0.95)";
         ctx.fillRect(rect.x + 12, rect.y + 66, rect.w - 24, 10);
         const fill =
           details.isMaxLevel || details.xpToNextLevel <= 0
             ? 1
             : Math.max(0, Math.min(1, details.currentXpInLevel / details.xpToNextLevel));
-        ctx.fillStyle = "rgba(100, 178, 255, 0.85)";
+        ctx.fillStyle = "rgba(200, 170, 95, 0.88)";
         ctx.fillRect(rect.x + 12, rect.y + 66, (rect.w - 24) * fill, 10);
         ctx.font = "11px Arial";
         fillTextStroked(
@@ -793,7 +806,7 @@ export class InventoryScreenUI {
             : "All unlocks discovered",
           rect.x + 12,
           rect.y + 92,
-          "#d7dded",
+          RPG_BODY_TEXT,
           2,
         );
       }
@@ -820,39 +833,39 @@ export class InventoryScreenUI {
       g.addColorStop(1, "rgba(10, 11, 16, 0.78)");
       ctx.fillStyle = g;
       ctx.fillRect(bannerX, bannerY, bannerW, bannerH);
-      ctx.strokeStyle = "rgba(110, 120, 145, 0.65)";
+      ctx.strokeStyle = RPG_SLOT_STROKE;
       ctx.lineWidth = 1;
       ctx.strokeRect(bannerX, bannerY, bannerW, bannerH);
       y = bannerY + bannerH + 14;
     } else {
       y = L.contentTop + PANEL_TAB_CONTENT_GAP + 46;
     }
-    ctx.font = "bold 20px Arial";
-    fillTextStroked(ctx, def.label, L.rightX + 12, y, "#fff", 2);
+    ctx.font = "bold 20px Georgia";
+    fillTextStroked(ctx, def.label, L.rightX + 12, y, RPG_TITLE_CREAM, 2);
     y += 24;
     ctx.font = "13px Arial";
-    fillTextStroked(ctx, def.description, L.rightX + 12, y, "#aeb6ca", 2);
+    fillTextStroked(ctx, def.description, L.rightX + 12, y, RPG_METADATA_MUTED, 2);
     y += 22;
     fillTextStroked(
       ctx,
       `Station: ${CRAFTING_STATION_LABELS[def.station]}  •  Level ${details.level}  •  XP ${details.totalXp}`,
       L.rightX + 12,
       y,
-      "#aeb6ca",
+      RPG_METADATA_MUTED,
       2,
     );
     y += 24;
-    ctx.fillStyle = "rgba(60, 66, 84, 0.95)";
+    ctx.fillStyle = "rgba(12, 14, 24, 0.95)";
     ctx.fillRect(L.rightX + 12, y, L.rightW - 24, 12);
     const fill =
       details.isMaxLevel || details.xpToNextLevel <= 0
         ? 1
         : Math.max(0, Math.min(1, details.currentXpInLevel / details.xpToNextLevel));
-    ctx.fillStyle = "rgba(100, 178, 255, 0.85)";
+    ctx.fillStyle = "rgba(200, 170, 95, 0.88)";
     ctx.fillRect(L.rightX + 12, y, (L.rightW - 24) * fill, 12);
     y += 28;
     ctx.font = "bold 14px Arial";
-    fillTextStroked(ctx, "Unlock Timeline", L.rightX + 12, y, "#fff", 2);
+    fillTextStroked(ctx, "Unlock Timeline", L.rightX + 12, y, RPG_TITLE_CREAM, 2);
     y += 22;
     ctx.font = "13px Arial";
     for (const unlock of def.unlocks) {
@@ -862,7 +875,7 @@ export class InventoryScreenUI {
         `Lv ${unlock.level}  ${unlock.label}${unlocked ? "  • unlocked" : ""}`,
         L.rightX + 18,
         y,
-        unlocked ? "#d8f3d0" : "#c3cad8",
+        unlocked ? "rgba(190, 230, 195, 0.95)" : RPG_METADATA_MUTED,
         2,
       );
       y += 20;
@@ -900,13 +913,13 @@ export class InventoryScreenUI {
     ctx.font = "bold 14px Arial";
 
     if (!quests.length) {
-      ctx.fillStyle = "rgba(180, 180, 190, 0.9)";
+      ctx.fillStyle = RPG_METADATA_MUTED;
       if (nextBlock(lineMain)) ctx.fillText("No authored quests on this map.", padX, y);
       return;
     }
 
     const activeIds = Object.keys(st.active);
-    ctx.fillStyle = "rgba(150, 220, 255, 0.95)";
+    ctx.fillStyle = RPG_COUNTER_GOLD;
     if (nextBlock(lineMain)) {
       ctx.fillText("Active", padX, y);
       y += lineMain + 4;
@@ -914,7 +927,7 @@ export class InventoryScreenUI {
 
     if (!activeIds.length) {
       ctx.font = "13px Arial";
-      ctx.fillStyle = "rgba(160, 160, 175, 0.85)";
+      ctx.fillStyle = RPG_METADATA_MUTED;
       if (nextBlock(lineMain)) {
         ctx.fillText("—", padX, y);
         y += lineMain + 8;
@@ -932,12 +945,12 @@ export class InventoryScreenUI {
         const step = onObjective ? def?.steps[stepIdx] : undefined;
         const stepSummary = describeQuestStep(step, activeEntry);
 
-        ctx.fillStyle = "rgba(240, 248, 255, 0.92)";
+        ctx.fillStyle = RPG_BODY_TEXT;
         if (!nextBlock(lineMain)) break;
         ctx.fillText(title, padX, y);
         y += lineMain;
 
-        ctx.fillStyle = "rgba(160, 170, 185, 0.9)";
+        ctx.fillStyle = RPG_METADATA_MUTED;
         const progressPart =
           stepTotal === 0
             ? "Talk to an NPC to finish"
@@ -961,11 +974,11 @@ export class InventoryScreenUI {
 
     y += 4;
     ctx.font = "bold 14px Arial";
-    ctx.fillStyle = "rgba(190, 255, 180, 0.95)";
+    ctx.fillStyle = "rgba(185, 220, 175, 0.95)";
     if (!nextBlock(lineMain)) {
       if (clipped) {
         ctx.font = "12px Arial";
-        ctx.fillStyle = "rgba(180, 180, 190, 0.85)";
+        ctx.fillStyle = RPG_METADATA_MUTED;
         ctx.fillText("…", padX, yMax);
       }
       return;
@@ -976,13 +989,13 @@ export class InventoryScreenUI {
     const done = st.completed.filter((id: string) => byId.has(id));
     ctx.font = "13px Arial";
     if (!done.length) {
-      ctx.fillStyle = "rgba(160, 160, 175, 0.85)";
+      ctx.fillStyle = RPG_METADATA_MUTED;
       if (nextBlock(lineMain)) ctx.fillText("—", padX, y);
     } else {
       for (const qid of done) {
         if (clipped) break;
         const def = byId.get(qid)!;
-        ctx.fillStyle = "rgba(210, 230, 210, 0.9)";
+        ctx.fillStyle = "rgba(195, 220, 200, 0.92)";
         if (!nextBlock(lineMain)) break;
         ctx.fillText(`\u2713 ${def.title}`, padX, y);
         y += lineMain + 4;
@@ -991,7 +1004,7 @@ export class InventoryScreenUI {
 
     if (clipped) {
       ctx.font = "12px Arial";
-      ctx.fillStyle = "rgba(180, 180, 190, 0.85)";
+      ctx.fillStyle = RPG_METADATA_MUTED;
       ctx.fillText("…", padX, Math.min(y, yMax));
     }
   }
@@ -1016,10 +1029,10 @@ export class InventoryScreenUI {
     ctx.save();
     ctx.setTransform(1, 0, 0, 1, 0, 0);
 
-    ctx.fillStyle = "rgba(0, 0, 0, 0.55)";
+    ctx.fillStyle = RPG_MODAL_SCRIM;
     ctx.fillRect(0, 0, w, h);
 
-    drawBevelPanel(ctx, L.rightX, L.rightY, L.rightW, L.rightH, "rgba(18, 18, 24, 0.96)");
+    drawRpgMainPanel(ctx, L.rightX, L.rightY, L.rightW, L.rightH);
 
     this.drawTabBar(ctx, L);
 
@@ -1028,11 +1041,12 @@ export class InventoryScreenUI {
       const equipment = this.deps.getEquipment();
 
       ctx.font = "14px Arial";
-      ctx.fillStyle = "rgba(180, 180, 190, 0.9)";
+      ctx.fillStyle = RPG_TITLE_CREAM;
       ctx.textAlign = "left";
       ctx.fillText("Weapon loadout", L.rightX + 14, L.loadoutTop);
       const totalKg = computeInventoryWeightKg(items, equipment ?? createEmptyEquipment());
       ctx.textAlign = "right";
+      ctx.fillStyle = RPG_METADATA_MUTED;
       ctx.fillText(`Weight: ${totalKg.toFixed(1)} kg`, L.rightX + L.rightW - 14, L.contentTop + PANEL_TAB_CONTENT_GAP);
       ctx.textAlign = "left";
 
@@ -1057,15 +1071,15 @@ export class InventoryScreenUI {
           this.dragState?.isDragging &&
           this.dragState.targetLoadoutSlot === i &&
           this.dragState.source.kind === "bag";
-        ctx.fillStyle = "rgba(36, 36, 46, 0.98)";
+        ctx.fillStyle = RPG_SLOT_FILL;
         ctx.fillRect(r.x, r.y, r.w, r.h);
         ctx.strokeStyle = isDropTarget
           ? "rgba(100, 200, 255, 0.95)"
           : isLoActive
-            ? "rgba(255, 220, 120, 0.95)"
+            ? "rgba(255, 234, 182, 0.95)"
             : isHover
-              ? "rgba(200, 200, 255, 0.7)"
-              : "rgba(90, 95, 110, 0.9)";
+              ? RPG_TAB_ACTIVE_STROKE
+              : RPG_SLOT_STROKE;
         ctx.lineWidth = isLoActive || isDropTarget ? 2 : 1;
         ctx.strokeRect(r.x, r.y, r.w, r.h);
         if (item) {
@@ -1076,14 +1090,14 @@ export class InventoryScreenUI {
           }
         }
         ctx.font = "11px Arial";
-        ctx.fillStyle = "rgba(160, 160, 175, 0.95)";
+        ctx.fillStyle = RPG_METADATA_MUTED;
         ctx.textAlign = "center";
         ctx.fillText(loadoutLabels[i]!, r.x + r.w / 2, r.y + r.h + 14);
         ctx.textAlign = "left";
       }
 
       ctx.font = "14px Arial";
-      ctx.fillStyle = "rgba(180, 180, 190, 0.9)";
+      ctx.fillStyle = RPG_TITLE_CREAM;
       ctx.fillText("Equipment", L.rightX + 14, L.equipTop - 8);
 
       for (const slot of EQUIPMENT_SLOT_KEYS) {
@@ -1124,7 +1138,7 @@ export class InventoryScreenUI {
             this.dragState.source.kind === "bag" &&
             this.dragState.source.index !== idx;
 
-          ctx.fillStyle = "rgba(42, 42, 52, 0.95)";
+          ctx.fillStyle = RPG_SLOT_FILL_DIM;
           ctx.fillRect(sx, sy, L.cellSize, L.cellSize);
 
           if (isDragSource) {
@@ -1135,10 +1149,10 @@ export class InventoryScreenUI {
           ctx.strokeStyle = isTarget
             ? "rgba(100, 200, 255, 0.95)"
             : isActive
-              ? "rgba(255, 220, 120, 0.95)"
+              ? "rgba(255, 234, 182, 0.95)"
               : isHover
-                ? "rgba(200, 200, 255, 0.6)"
-                : "rgba(90, 95, 110, 0.9)";
+                ? RPG_TAB_ACTIVE_STROKE
+                : RPG_SLOT_STROKE;
           ctx.lineWidth = isActive || isTarget ? 2 : 1;
           ctx.strokeRect(sx, sy, L.cellSize, L.cellSize);
 
@@ -1160,8 +1174,8 @@ export class InventoryScreenUI {
             if (invItem.state?.count) {
               ctx.font = "bold 14px Arial";
               ctx.textAlign = "right";
-              ctx.fillStyle = "#fff";
-              ctx.strokeStyle = "rgba(0,0,0,0.85)";
+              ctx.fillStyle = RPG_BODY_TEXT;
+              ctx.strokeStyle = "rgba(6,8,16,0.9)";
               ctx.lineWidth = 2;
               const cx = sx + L.cellSize - 4;
               const cy = sy + L.cellSize - 4;
@@ -1200,7 +1214,7 @@ export class InventoryScreenUI {
       this.renderQuestsTab(ctx, L, player);
     }
 
-    ctx.fillStyle = "rgba(180, 180, 190, 0.85)";
+    ctx.fillStyle = RPG_PROMPT_GOLD;
     ctx.font = "12px Arial";
     ctx.textAlign = "left";
     ctx.fillText(
@@ -1230,7 +1244,7 @@ export class InventoryScreenUI {
         this.dragState.source.kind === "equip" && this.dragState.source.slot === slot
       );
 
-    ctx.fillStyle = "rgba(36, 36, 46, 0.98)";
+    ctx.fillStyle = RPG_SLOT_FILL;
     ctx.fillRect(rect.x, rect.y, rect.w, rect.h);
     if (isDragSource) {
       ctx.fillStyle = "rgba(255,255,255,0.08)";
@@ -1239,13 +1253,13 @@ export class InventoryScreenUI {
     ctx.strokeStyle = isTarget
       ? "rgba(100, 200, 255, 0.95)"
       : isHover
-        ? "rgba(200, 200, 255, 0.7)"
-        : "rgba(120, 120, 135, 0.9)";
+        ? RPG_TAB_ACTIVE_STROKE
+        : RPG_SLOT_STROKE;
     ctx.lineWidth = 2;
     ctx.strokeRect(rect.x, rect.y, rect.w, rect.h);
 
     ctx.font = "12px Arial";
-    ctx.fillStyle = "rgba(160, 160, 175, 0.95)";
+    ctx.fillStyle = RPG_METADATA_MUTED;
     ctx.textAlign = "center";
     ctx.fillText(label, rect.x + rect.w / 2, rect.y - 8);
 
@@ -1357,17 +1371,17 @@ export class InventoryScreenUI {
     const bx = this._mx - bw / 2;
     const by = this._my - bh - 10;
 
-    ctx.fillStyle = "rgba(0,0,0,0.9)";
+    ctx.fillStyle = "rgba(6, 8, 16, 0.94)";
     ctx.fillRect(bx, by, bw, bh);
-    ctx.strokeStyle = "rgba(255,255,255,0.4)";
+    ctx.strokeStyle = RPG_SLOT_STROKE;
     ctx.lineWidth = 1;
     ctx.strokeRect(bx, by, bw, bh);
 
-    ctx.font = "bold 16px Arial";
-    ctx.fillStyle = "#fff";
+    ctx.font = "bold 16px Georgia";
+    ctx.fillStyle = RPG_TITLE_CREAM;
     ctx.fillText(name, this._mx, by + 20);
     ctx.font = "14px Arial";
-    ctx.fillStyle = "rgba(220, 220, 230, 0.95)";
+    ctx.fillStyle = RPG_METADATA_MUTED;
     ctx.fillText(weightLine, this._mx, by + 36);
   }
 

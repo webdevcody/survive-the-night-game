@@ -29,6 +29,13 @@ import { renderRadialProgressIndicator } from "@/util/radial-progress-indicator"
 import { getMinimapHudLayout } from "./minimap-hud-group-layout";
 import { QuestJournalPanel } from "./quest-journal-panel";
 import { DialoguePanel } from "./dialogue-panel";
+import {
+  RPG_BODY_TEXT,
+  RPG_BORDER_GOLD,
+  RPG_HUD_PANEL_BG,
+  RPG_PANEL_GRADIENT_TOP,
+  RPG_TITLE_CREAM,
+} from "./rpg-hud-theme";
 
 const HUD_SETTINGS = {
   GameMessages: {
@@ -37,7 +44,7 @@ const HUD_SETTINGS = {
     borderColor: "transparent",
     borderWidth: 0,
     font: "24px Arial",
-    textColor: "white",
+    textColor: RPG_BODY_TEXT,
     top: 120,
     gap: 40,
     messageTimeout: 5000,
@@ -48,9 +55,9 @@ const HUD_SETTINGS = {
     borderColor: "transparent",
     borderWidth: 0,
     font: "24px Arial",
-    textColor: "black",
-    overlayBackground: "rgba(0, 0, 0, 0.7)",
-    panelBackground: "white",
+    textColor: RPG_BODY_TEXT,
+    overlayBackground: "rgba(0, 0, 0, 0.75)",
+    panelBackground: RPG_PANEL_GRADIENT_TOP,
     text: "Press any key to respawn",
   },
   // Note: CrateIndicators, SurvivorIndicators, and HumanIndicators settings
@@ -60,12 +67,12 @@ const HUD_SETTINGS = {
     bottom: 20,
     gap: 8,
     padding: 8,
-    background: "rgba(0, 0, 0, 0.8)",
-    borderColor: "rgba(255, 255, 255, 0.5)",
+    background: RPG_HUD_PANEL_BG,
+    borderColor: RPG_BORDER_GOLD,
     borderWidth: 2,
     font: "14px Arial",
-    versionColor: "rgba(255, 255, 0, 0.8)",
-    fpsColor: "white",
+    versionColor: RPG_TITLE_CREAM,
+    fpsColor: RPG_BODY_TEXT,
     pingColors: {
       excellent: "rgb(0, 255, 0)", // Green: < 50ms
       good: "rgb(255, 255, 0)", // Yellow: 50-100ms
@@ -83,10 +90,10 @@ const HUD_SETTINGS = {
     baseBottom: 40,
     baseWidth: 40, // Reduced from 60
     baseHeight: 40, // Reduced from 60
-    background: "rgba(0, 0, 0, 0.7)",
-    borderColor: "rgba(255, 255, 255, 0.5)",
+    background: RPG_HUD_PANEL_BG,
+    borderColor: RPG_BORDER_GOLD,
     borderWidth: 2,
-    hoverBackground: "rgba(0, 0, 0, 0.9)",
+    hoverBackground: "rgba(6, 8, 16, 0.98)",
     baseFont: 24, // Reduced from 36
   },
 };

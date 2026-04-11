@@ -5,6 +5,7 @@ import { calculateHudScale } from "@/util/hud-scale";
 import { ClientInfiniteRun } from "@/extensions/infinite-run";
 import type { MinimapHudLayout } from "@/ui/minimap-hud-group-layout";
 import { renderLiquidResourceOrb } from "@/util/liquid-resource-orb";
+import { RPG_BORDER_GOLD, RPG_ORB_EMPTY } from "@/ui/rpg-hud-theme";
 
 interface StaminaPanelSettings extends PanelSettings {
   fontPx: number;
@@ -36,8 +37,8 @@ export class StaminaPanel extends Panel {
     const fillColor = hasInfiniteRun
       ? "rgba(100, 150, 255, 0.95)"
       : this.staminaSettings.barColor;
-    const emptyColor = "rgba(30, 28, 12, 0.92)";
-    const borderColor = hasInfiniteRun ? "rgba(150, 190, 255, 0.95)" : "rgba(220, 200, 80, 0.9)";
+    const emptyColor = RPG_ORB_EMPTY;
+    const borderColor = hasInfiniteRun ? "rgba(150, 190, 255, 0.95)" : RPG_BORDER_GOLD;
 
     const { cx, cy, r } = layout.staminaOrb;
     const scaledFont = Math.max(10, Math.round(this.staminaSettings.fontPx * hudScale));

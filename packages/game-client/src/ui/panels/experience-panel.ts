@@ -3,6 +3,11 @@ import { Panel, PanelSettings } from "./panel";
 import { scaleHudValue, calculateHudScale } from "@/util/hud-scale";
 import { getExperienceProgress } from "@shared/util/experience-level";
 import { getLoadoutStripScreenLayout } from "@/ui/loadout-strip";
+import {
+  RPG_BORDER_GOLD,
+  RPG_PANEL_GRADIENT_BOTTOM,
+  RPG_TITLE_CREAM,
+} from "@/ui/rpg-hud-theme";
 
 /** Space between XP bar bottom and hotbar top. */
 const GAP_ABOVE_HOTBAR = 8;
@@ -51,24 +56,24 @@ export class ExperiencePanel extends Panel {
     const labelBaseline = barTop - Math.round(6 * hudScale);
     const labelCenterX = strip.x + strip.w / 2;
 
-    ctx.font = `bold ${labelFont}px Arial`;
+    ctx.font = `bold ${labelFont}px Georgia`;
     ctx.textAlign = "center";
     ctx.textBaseline = "alphabetic";
-    ctx.fillStyle = "rgba(255, 255, 255, 0.95)";
-    ctx.strokeStyle = "rgba(0, 0, 0, 0.85)";
-    ctx.lineWidth = Math.max(2, Math.round(3 * hudScale));
     const xpHint =
       progress.xpToNextLevel > 0
         ? `Lv ${progress.level}  ${progress.currentXpInLevel}/${progress.xpToNextLevel} XP`
         : `Lv ${progress.level}  MAX`;
-    ctx.strokeText(xpHint, labelCenterX, labelBaseline);
+    ctx.fillStyle = RPG_TITLE_CREAM;
+    ctx.shadowColor = "rgba(6, 8, 16, 0.9)";
+    ctx.shadowBlur = Math.max(2, Math.round(4 * hudScale));
     ctx.fillText(xpHint, labelCenterX, labelBaseline);
+    ctx.shadowBlur = 0;
 
     const barX = strip.x;
     const barY = barTop;
 
-    ctx.fillStyle = "rgba(20, 20, 30, 0.92)";
-    ctx.strokeStyle = "rgba(180, 160, 90, 0.85)";
+    ctx.fillStyle = RPG_PANEL_GRADIENT_BOTTOM;
+    ctx.strokeStyle = RPG_BORDER_GOLD;
     ctx.lineWidth = Math.max(1, Math.round(2 * hudScale));
     ctx.fillRect(barX, barY, barW, barH);
     ctx.strokeRect(barX, barY, barW, barH);

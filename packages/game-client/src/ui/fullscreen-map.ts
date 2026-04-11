@@ -15,18 +15,27 @@ import { distance } from "@shared/util/physics";
 import { calculateLightSources, getCampsiteMapMarkerWorldPosition } from "./utils/map-rendering-utils";
 import { prerenderCollidables, renderCollidablesFromCanvas } from "./utils/map-collidable-renderer";
 import { renderFullscreenMapFogOfWar } from "./utils/map-fog-of-war-renderer";
+import {
+  drawRpgTopAccentBar,
+  fillRpgPanelGradient,
+  RPG_BODY_TEXT,
+  RPG_BORDER_GOLD,
+  RPG_METADATA_MUTED,
+  RPG_PANEL_GRADIENT_BOTTOM,
+  RPG_TITLE_CREAM,
+} from "./rpg-hud-theme";
+
 const FULLSCREEN_MAP_SETTINGS = {
   padding: 180, // Padding from screen edges
-  background: "rgba(0, 0, 0, 0.95)",
-  borderColor: "rgba(255, 255, 255, 0.8)",
+  background: RPG_PANEL_GRADIENT_BOTTOM,
+  borderColor: RPG_BORDER_GOLD,
   borderWidth: 3,
   headerHeight: 60,
-  headerBackground: "rgba(0, 0, 0, 0.95)",
-  headerFont: "bold 28px Arial",
-  headerColor: "white",
+  headerFont: "bold 28px Georgia",
+  headerColor: RPG_TITLE_CREAM,
   buttonFont: "24px Arial",
-  buttonColor: "white",
-  buttonHoverColor: "rgba(255, 255, 255, 0.2)",
+  buttonColor: RPG_BODY_TEXT,
+  buttonHoverColor: "rgba(255, 223, 155, 0.15)",
   buttonPadding: 12,
   buttonGap: 10,
   zoomLevels: [0.3, 0.5, 0.7, 1.0, 1.5, 2.0], // Available zoom levels
@@ -139,9 +148,9 @@ export class FullScreenMap {
     const mapWidth = canvasWidth - settings.padding * 2;
     const mapHeight = canvasHeight - settings.padding * 2 - settings.headerHeight;
 
-    // Draw header background
-    ctx.fillStyle = settings.headerBackground;
-    ctx.fillRect(settings.padding, settings.padding, mapWidth, settings.headerHeight);
+    // Draw header background (RPG panel style)
+    fillRpgPanelGradient(ctx, settings.padding, settings.padding, mapWidth, settings.headerHeight);
+    drawRpgTopAccentBar(ctx, settings.padding, settings.padding, mapWidth, 4);
 
     // Draw header border
     ctx.strokeStyle = settings.borderColor;
@@ -160,8 +169,7 @@ export class FullScreenMap {
     this.renderZoomControls(ctx, canvasWidth, headerY);
 
     // Draw map background
-    ctx.fillStyle = settings.background;
-    ctx.fillRect(mapX, mapY, mapWidth, mapHeight);
+    fillRpgPanelGradient(ctx, mapX, mapY, mapWidth, mapHeight);
 
     // Clip to map area
     ctx.save();
@@ -300,7 +308,7 @@ export class FullScreenMap {
     ctx.fillStyle =
       this.currentZoomIndex < FULLSCREEN_MAP_SETTINGS.zoomLevels.length - 1
         ? settings.buttonColor
-        : "rgba(255, 255, 255, 0.3)";
+        : RPG_METADATA_MUTED;
     ctx.strokeStyle = settings.borderColor;
     ctx.lineWidth = 2;
     ctx.strokeRect(zoomInX, zoomInY, buttonSize, buttonSize);
@@ -322,7 +330,7 @@ export class FullScreenMap {
       height: buttonSize,
     };
 
-    ctx.fillStyle = this.currentZoomIndex > 0 ? settings.buttonColor : "rgba(255, 255, 255, 0.3)";
+    ctx.fillStyle = this.currentZoomIndex > 0 ? settings.buttonColor : RPG_METADATA_MUTED;
     ctx.strokeStyle = settings.borderColor;
     ctx.lineWidth = 2;
     ctx.strokeRect(zoomOutX, zoomOutY, buttonSize, buttonSize);

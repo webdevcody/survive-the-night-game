@@ -3,6 +3,19 @@ import { MessageDecalClient } from "@/entities/environment/message-decal";
 import { AssetManager } from "@/managers/asset";
 import { GameState, getEntityById } from "@/state";
 import { calculateHudScale } from "@/util/hud-scale";
+import {
+  drawRpgTopAccentBar,
+  fillRpgPanelGradient,
+  RPG_BODY_TEXT,
+  RPG_COUNTER_GOLD,
+  RPG_METADATA_MUTED,
+  RPG_PROMPT_GOLD,
+  RPG_PROMPT_TYPING,
+  RPG_SLOT_FILL,
+  RPG_SLOT_STROKE,
+  RPG_TITLE_CREAM,
+  strokeRpgPanelBorder,
+} from "@/ui/rpg-hud-theme";
 import { getConfig } from "@shared/config";
 import { Direction } from "@shared/util/direction";
 
@@ -139,18 +152,9 @@ export class DialoguePanel {
     ctx.fillStyle = backgroundFade;
     ctx.fillRect(0, height - panelBottomFadeHeight, width, panelBottomFadeHeight);
 
-    const outerGradient = ctx.createLinearGradient(x, y, x, y + panelHeight);
-    outerGradient.addColorStop(0, "rgba(16, 18, 31, 0.98)");
-    outerGradient.addColorStop(1, "rgba(6, 8, 16, 0.95)");
-    ctx.fillStyle = outerGradient;
-    ctx.fillRect(x, y, panelWidth, panelHeight);
-
-    ctx.strokeStyle = "rgba(255, 234, 182, 0.8)";
-    ctx.lineWidth = Math.max(2, Math.round(2 * scale));
-    ctx.strokeRect(x, y, panelWidth, panelHeight);
-
-    ctx.fillStyle = "rgba(240, 198, 108, 0.96)";
-    ctx.fillRect(x, y, panelWidth, accentHeight);
+    fillRpgPanelGradient(ctx, x, y, panelWidth, panelHeight);
+    strokeRpgPanelBorder(ctx, x, y, panelWidth, panelHeight, Math.max(2, Math.round(2 * scale)));
+    drawRpgTopAccentBar(ctx, x, y, panelWidth, accentHeight);
 
     const contentTop = y + innerPad;
     const portraitX = x + innerPad;
@@ -170,18 +174,18 @@ export class DialoguePanel {
     ctx.font = `bold ${Math.max(14, Math.round(18 * scale))}px Georgia`;
     ctx.textBaseline = "top";
     ctx.textAlign = "left";
-    ctx.fillStyle = "#f8f2dc";
+    ctx.fillStyle = RPG_TITLE_CREAM;
     ctx.fillText(renderSnapshot.speaker, bodyX, contentTop);
 
     ctx.textAlign = "right";
-    ctx.fillStyle = "rgba(255, 215, 132, 0.88)";
+    ctx.fillStyle = RPG_COUNTER_GOLD;
     ctx.font = `bold ${Math.max(11, Math.round(13 * scale))}px Arial`;
     ctx.fillText(lineCounter, x + panelWidth - innerPad, contentTop + Math.round(2 * scale));
 
     if (renderSnapshot.showPortrait) {
-      ctx.fillStyle = "rgba(29, 35, 53, 0.98)";
+      ctx.fillStyle = RPG_SLOT_FILL;
       ctx.fillRect(portraitX, portraitY, portraitBoxSize, portraitBoxSize);
-      ctx.strokeStyle = "rgba(255, 223, 155, 0.78)";
+      ctx.strokeStyle = RPG_SLOT_STROKE;
       ctx.lineWidth = Math.max(2, Math.round(2 * scale));
       ctx.strokeRect(portraitX, portraitY, portraitBoxSize, portraitBoxSize);
 
@@ -215,7 +219,7 @@ export class DialoguePanel {
     ctx.clip();
 
     ctx.font = `${Math.max(13, Math.round(16 * scale))}px Arial`;
-    ctx.fillStyle = "#f4f7ff";
+    ctx.fillStyle = RPG_BODY_TEXT;
     const wrappedLines = wrapText(ctx, visibleText, bodyWidth);
     const lineHeight = Math.max(18, Math.round(22 * scale));
     for (let index = 0; index < wrappedLines.length; index++) {
@@ -230,7 +234,7 @@ export class DialoguePanel {
 
     ctx.font = `bold ${Math.max(10, Math.round(12 * scale))}px Arial`;
     ctx.textAlign = "left";
-    ctx.fillStyle = isFullyRevealed ? "rgba(255, 223, 155, 0.95)" : "rgba(165, 218, 255, 0.95)";
+    ctx.fillStyle = isFullyRevealed ? RPG_PROMPT_GOLD : RPG_PROMPT_TYPING;
     ctx.fillText(
       isFullyRevealed ? renderSnapshot.footer : `${interactionKey} to finish line`,
       bodyX,
@@ -238,7 +242,7 @@ export class DialoguePanel {
     );
 
     ctx.textAlign = "right";
-    ctx.fillStyle = "rgba(140, 154, 188, 0.9)";
+    ctx.fillStyle = RPG_METADATA_MUTED;
     ctx.fillText(
       isFullyRevealed ? "RPG dialogue" : "Typing...",
       x + panelWidth - innerPad,
