@@ -28,6 +28,7 @@ import { ClientInventory } from "@/extensions/inventory";
 import { renderRadialProgressIndicator } from "@/util/radial-progress-indicator";
 import { getMinimapHudLayout } from "./minimap-hud-group-layout";
 import { QuestJournalPanel } from "./quest-journal-panel";
+import { DialoguePanel } from "./dialogue-panel";
 
 const HUD_SETTINGS = {
   GameMessages: {
@@ -120,6 +121,7 @@ export class Hud {
   private mouseY: number = 0;
   private canvasHeight: number = 0;
   private questJournalPanel: QuestJournalPanel;
+  private dialoguePanel: DialoguePanel;
 
   constructor(
     mapManager: MapManager,
@@ -144,6 +146,7 @@ export class Hud {
     this.getMyPlayer = getMyPlayer;
     this.chatWidget = new ChatWidget();
     this.questJournalPanel = new QuestJournalPanel();
+    this.dialoguePanel = new DialoguePanel(this.assetManager);
 
     // Create getInventory function for HUD that uses currentGameState
     const getInventory = (): (InventoryItem | null)[] => {
@@ -370,6 +373,14 @@ export class Hud {
     this.fpsPanel.setText(`${fps} FPS`);
   }
 
+  public isDialogueLineFullyRevealed(gameState: GameState): boolean {
+    return this.dialoguePanel.isCurrentLineFullyRevealed(gameState);
+  }
+
+  public completeDialogueLine(gameState: GameState): boolean {
+    return this.dialoguePanel.completeCurrentLine(gameState);
+  }
+
   public render(ctx: CanvasRenderingContext2D, gameState: GameState): void {
     this.currentGameState = gameState;
     const { width, height } = ctx.canvas;
@@ -419,16 +430,25 @@ export class Hud {
 
     ctx.restore();
 
-    this.loadoutStrip.render(ctx, gameState);
+    const dialogueOcclusion = this.dialoguePanel.getOcclusionProgress();
+    if (dialogueOcclusion < 0.98) {
+      ctx.save();
+      ctx.globalAlpha = Math.max(0, 1 - dialogueOcclusion * 1.2);
+      this.loadoutStrip.render(ctx, gameState);
+      ctx.restore();
+    }
 
     // Render transient HUD messages (loot, craft, etc.)
     this.gameMessagesPanel.render(ctx, gameState);
 
     // Level + XP (centered above hotbar)
-    ctx.save();
-    ctx.setTransform(1, 0, 0, 1, 0, 0);
-    this.experiencePanel.render(ctx, gameState);
-    ctx.restore();
+    if (dialogueOcclusion < 0.98) {
+      ctx.save();
+      ctx.globalAlpha = Math.max(0, 1 - dialogueOcclusion * 1.25);
+      ctx.setTransform(1, 0, 0, 1, 0, 0);
+      this.experiencePanel.render(ctx, gameState);
+      ctx.restore();
+    }
 
     // Render mute button
     ctx.save();
@@ -443,7 +463,7 @@ export class Hud {
     // Health + stamina orbs (left/right of bottom loadout strip)
     const currentPlayer = getPlayer(gameState);
     const isZombiePlayer = currentPlayer?.isZombiePlayer?.() ?? false;
-    if (!isZombiePlayer) {
+    if (!isZombiePlayer && dialogueOcclusion < 0.98) {
       this.survivorStatusHud.renderHealthAndStamina(ctx, gameState, minimapHudLayout);
     }
 
@@ -462,6 +482,8 @@ export class Hud {
       my?.getQuestProgressPayload() ?? null,
     );
     ctx.restore();
+
+    this.dialoguePanel.render(ctx, gameState);
 
     // Render fullscreen map on top of everything else if open
     this.fullscreenMap.render(ctx, gameState);

@@ -22,8 +22,6 @@ import { getPlayer } from "./util/get-player";
 import { distance } from "@shared/util/physics";
 import { isAutoPickupItem } from "./util/auto-pickup";
 import { resizeCanvasToWindow } from "./util/canvas-size";
-import { renderOpenDialogueSpeechBubble } from "./entities/environment/dialogue-survivor-npc";
-import { renderOpenMessageDecalSpeechBubble } from "./entities/environment/message-decal";
 
 export class Renderer {
   private ctx: CanvasRenderingContext2D;
@@ -273,10 +271,6 @@ export class Renderer {
 
     // Apply zombie "undead view" overlay if player is a zombie
     this.mapManager.renderZombieOverlay(this.ctx);
-
-    // Dialogue speech bubble (world space) after darkness/zombie overlays so text stays readable
-    renderOpenDialogueSpeechBubble(this.ctx, this.gameState);
-    renderOpenMessageDecalSpeechBubble(this.ctx, this.gameState);
 
     // Render UI without transforms
     perfTimer.start("renderUI");

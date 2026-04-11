@@ -2,6 +2,7 @@ import { Entity } from "@/entities/entity";
 import { IGameManagers } from "@/managers/types";
 import Positionable from "@/extensions/positionable";
 import Interactive from "@/extensions/interactive";
+import Collidable from "@/extensions/collidable";
 import { Entities } from "@shared/constants";
 import PoolManager from "@shared/util/pool-manager";
 import { getConfig } from "@shared/config";
@@ -42,6 +43,11 @@ export class DialogueSurvivorNpc extends Entity {
     const topLeft = poolManager.vector2.claim(tileX * TILE_SIZE, tileY * TILE_SIZE);
 
     this.addExtension(new Positionable(this).setSize(size).setPosition(topLeft));
+    this.addExtension(
+      new Collidable(this)
+        .setSize(poolManager.vector2.claim(8, 8))
+        .setOffset(poolManager.vector2.claim(4, 4)),
+    );
     this.addExtension(
       new Interactive(this).onInteract(() => {}).setDisplayName("talk"),
     );

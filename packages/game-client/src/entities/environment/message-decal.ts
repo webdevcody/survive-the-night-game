@@ -79,6 +79,10 @@ export class MessageDecalClient extends ClientEntity implements Renderable {
       return;
     }
 
+    if (gameState.openDialogueNpcId === this.getId()) {
+      return;
+    }
+
     const total = this.getLineCount();
     const onLast =
       gameState.openDialogueNpcId === this.getId() &&
