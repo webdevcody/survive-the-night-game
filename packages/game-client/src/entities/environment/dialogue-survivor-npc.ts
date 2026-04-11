@@ -138,6 +138,10 @@ export class DialogueSurvivorNpcClient extends ClientEntity implements Renderabl
       return;
     }
 
+    if (gameState.openDialogueNpcId === this.getId()) {
+      return;
+    }
+
     const total = this.getTotalDialogueLineCount(gameState);
     const onLast =
       gameState.openDialogueNpcId === this.getId() &&
