@@ -1,4 +1,22 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
+import {
+  DndContext,
+  type DragEndEvent,
+  KeyboardSensor,
+  PointerSensor,
+  closestCenter,
+  useSensor,
+  useSensors,
+} from "@dnd-kit/core";
+import {
+  SortableContext,
+  arrayMove,
+  sortableKeyboardCoordinates,
+  useSortable,
+  verticalListSortingStrategy,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
+import { GripVertical } from "lucide-react";
 import {
   Accordion,
   AccordionContent,
@@ -64,6 +82,63 @@ const REWARD_SECTIONS: { key: QuestRewardListKey; label: string }[] = [
   { key: "rewards", label: "Rewards on complete" },
 ];
 
+function questStepSortableId(stepIndex: number): string {
+  return `step-${stepIndex}`;
+}
+
+function parseQuestStepSortableId(id: unknown): number | null {
+  const m = /^step-(\d+)$/.exec(String(id));
+  if (!m) return null;
+  const n = Number(m[1]);
+  return Number.isNaN(n) ? null : n;
+}
+
+/** After moving an item from `from` to `to`, map an index that referred into the list before the move. */
+function remapIndexAfterMove(from: number, to: number, idx: number): number {
+  if (idx === from) return to;
+  if (from < to) {
+    if (idx > from && idx <= to) return idx - 1;
+  } else if (from > to) {
+    if (idx >= to && idx < from) return idx + 1;
+  }
+  return idx;
+}
+
+function SortableQuestStepCard({
+  sortId,
+  children,
+}: {
+  sortId: string;
+  children: (dragHandle: ReactNode) => ReactNode;
+}) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
+    id: sortId,
+  });
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.92 : 1,
+    zIndex: isDragging ? 2 : 0,
+    position: isDragging ? ("relative" as const) : undefined,
+  };
+  const dragHandle = (
+    <button
+      type="button"
+      className="mt-0.5 shrink-0 touch-none rounded p-0.5 text-gray-500 hover:bg-gray-800/80 hover:text-gray-300"
+      aria-label="Drag to reorder step"
+      {...attributes}
+      {...listeners}
+    >
+      <GripVertical className="size-3.5" />
+    </button>
+  );
+  return (
+    <div ref={setNodeRef} style={style}>
+      {children(dragHandle)}
+    </div>
+  );
+}
+
 export function QuestsEditorPanel() {
   const quests = useEditorStore((state) => state.quests);
   const setQuests = useEditorStore((state) => state.setQuests);
@@ -90,6 +165,49 @@ export function QuestsEditorPanel() {
       }),
     [quests],
   );
+
+  const stepSensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
+  );
+
+  const onQuestStepDragEnd = (questId: string) => (event: DragEndEvent) => {
+    const { active, over } = event;
+    if (!over) return;
+    const activeIdx = parseQuestStepSortableId(active.id);
+    const overIdx = parseQuestStepSortableId(over.id);
+    if (activeIdx === null || overIdx === null || activeIdx === overIdx) return;
+
+    useEditorStore.setState((state) => {
+      const nextQuests = state.quests.map((q) => {
+        if (q.id !== questId) return q;
+        return { ...q, steps: arrayMove(q.steps, activeIdx, overIdx) };
+      });
+      let questWaypointPickTarget = state.questWaypointPickTarget;
+      if (questWaypointPickTarget?.questId === questId) {
+        questWaypointPickTarget = {
+          ...questWaypointPickTarget,
+          stepIndex: remapIndexAfterMove(
+            activeIdx,
+            overIdx,
+            questWaypointPickTarget.stepIndex,
+          ),
+        };
+      }
+      const focusedQuestId =
+        state.focusedQuestId && nextQuests.some((quest) => quest.id === state.focusedQuestId)
+          ? state.focusedQuestId
+          : null;
+      if (questWaypointPickTarget) {
+        const q = nextQuests.find((quest) => quest.id === questWaypointPickTarget!.questId);
+        const step = q?.steps[questWaypointPickTarget.stepIndex];
+        if (!step || step.type !== "reach_waypoint") {
+          questWaypointPickTarget = null;
+        }
+      }
+      return { quests: nextQuests, focusedQuestId, questWaypointPickTarget };
+    });
+  };
 
   useEffect(() => {
     if (!focusedQuestId) return;
@@ -291,21 +409,40 @@ export function QuestsEditorPanel() {
                   objective; you do not need an NPC session with completeQuestId.
                 </p>
                 <p className="mb-1 text-[10px] font-medium text-gray-300">Steps</p>
-                <div className="mb-2 space-y-2">
-                  {q.steps.map((s, i) => (
-                    <div key={i} className="rounded border border-gray-700 bg-gray-950/80 p-1.5">
-                      <div className="mb-1 flex items-center justify-between">
-                        <span className="text-[9px] uppercase text-gray-500">Step {i + 1}</span>
-                        <Button
-                          type="button"
-                          size="sm"
-                          variant="secondary"
-                          className="!h-5 !min-h-0 !px-1 !text-[9px]"
-                          onClick={() => removeStep(q.id, i)}
-                        >
-                          Remove
-                        </Button>
-                      </div>
+                <p className="mb-1 text-[9px] leading-snug text-gray-500">
+                  Drag the grip to reorder objectives.
+                </p>
+                <DndContext
+                  sensors={stepSensors}
+                  collisionDetection={closestCenter}
+                  onDragEnd={onQuestStepDragEnd(q.id)}
+                >
+                  <SortableContext
+                    items={q.steps.map((_, i) => questStepSortableId(i))}
+                    strategy={verticalListSortingStrategy}
+                  >
+                    <div className="mb-2 space-y-2">
+                      {q.steps.map((s, i) => (
+                        <SortableQuestStepCard key={`${q.id}-step-${i}`} sortId={questStepSortableId(i)}>
+                          {(dragHandle) => (
+                            <div className="rounded border border-gray-700 bg-gray-950/80 p-1.5">
+                              <div className="mb-1 flex items-start justify-between gap-1">
+                                <div className="flex min-w-0 items-start gap-0.5">
+                                  {dragHandle}
+                                  <span className="pt-0.5 text-[9px] uppercase text-gray-500">
+                                    Step {i + 1}
+                                  </span>
+                                </div>
+                                <Button
+                                  type="button"
+                                  size="sm"
+                                  variant="secondary"
+                                  className="!h-5 !min-h-0 shrink-0 !px-1 !text-[9px]"
+                                  onClick={() => removeStep(q.id, i)}
+                                >
+                                  Remove
+                                </Button>
+                              </div>
                       {s.type === "pickup_item" ? (
                         <select
                           className="w-full rounded border border-gray-600 bg-gray-900 text-[10px]"
@@ -497,9 +634,13 @@ export function QuestsEditorPanel() {
                           </p>
                         </div>
                       ) : null}
+                            </div>
+                          )}
+                        </SortableQuestStepCard>
+                      ))}
                     </div>
-                  ))}
-                </div>
+                  </SortableContext>
+                </DndContext>
                 <div className="mb-2 flex flex-wrap gap-1">
                   <Button
                     type="button"
