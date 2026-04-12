@@ -124,6 +124,9 @@ export class Player extends Entity {
   private boundRespawnTile: { x: number; y: number } | null = null;
   /** Real-player client socket id (for website API persistence). AI players leave this null. */
   private clientSocketId: string | null = null;
+  /** True once hydratePersistedProgress received a valid savedInventory from DB.
+   *  Prevents disconnect from overwriting a good DB row with starter/empty state. */
+  private hydratedFromDb = false;
 
   constructor(gameManagers: IGameManagers) {
     super(gameManagers, Entities.PLAYER);
@@ -1437,8 +1440,14 @@ export class Player extends Entity {
           this.serialized.set("activeWeaponLoadout", wb.activeWeaponLoadout);
           this.sanitizeWeaponLoadouts();
         }
+        this.hydratedFromDb = true;
       }
     }
+  }
+
+  /** Whether this player was fully hydrated from a persisted DB profile. */
+  isHydratedFromDb(): boolean {
+    return this.hydratedFromDb;
   }
 
   /** Full inventory snapshot for website persistence (bag, armor, weapon bar / loadouts). */

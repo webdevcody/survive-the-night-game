@@ -27,7 +27,7 @@ export class SurvivorStatusHud {
       borderColor: RPG_BORDER_GOLD,
       borderWidth: 2,
       fontPx: 14,
-      barColor: "rgba(255, 255, 100, 0.9)",
+      barColor: "rgba(178, 152, 78, 0.92)",
     });
   }
 

@@ -22,7 +22,7 @@ import { itemRegistry } from "@shared/entities";
 import { roundVector2, distance } from "../../../game-shared/src/util/physics";
 import { RawEntity } from "@shared/types/entity";
 import { IClientEntity, Renderable, getFrameIndex, drawHealthBar } from "@/entities/util";
-import { getConfig } from "@shared/config";
+import { getConfig, playerConfig } from "@shared/config";
 import Vector2 from "@shared/util/vector2";
 import PoolManager from "@shared/util/pool-manager";
 import { ClientEntity } from "./client-entity";
@@ -64,8 +64,8 @@ export class PlayerClient extends ClientEntity implements IClientEntity, Rendera
   private experience: number = 0;
   private ping: number = 0;
   private displayName: string = "";
-  private stamina: number = 100;
-  private maxStamina: number = 100;
+  private stamina: number = playerConfig.MAX_STAMINA;
+  private maxStamina: number = playerConfig.MAX_STAMINA;
   private pickupProgress: number = 0; // Client-only field for interact hold progress
   private serverGhostPos: Vector2 | null = null;
   private deathTime: number = 0; // Timestamp when player died, 0 means not dead
@@ -127,8 +127,8 @@ export class PlayerClient extends ClientEntity implements IClientEntity, Rendera
     this.experience = (data as any).experience ?? 0;
     this.ping = data.ping || 0;
     this.displayName = data.displayName || "Unknown";
-    this.stamina = data.stamina ?? 100;
-    this.maxStamina = data.maxStamina ?? 100;
+    this.stamina = data.stamina ?? playerConfig.MAX_STAMINA;
+    this.maxStamina = data.maxStamina ?? playerConfig.MAX_STAMINA;
     this.pickupProgress = data.pickupProgress ?? 0;
     this.deathTime = data.deathTime ?? 0;
     this.isAI = (data as any).isAI ?? false;

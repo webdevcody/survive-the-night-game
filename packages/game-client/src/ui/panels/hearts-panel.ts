@@ -33,7 +33,7 @@ export class HeartsPanel extends Panel {
     const fraction = maxHealth > 0 ? currentHealth / maxHealth : 0;
     const isPoisoned = player.hasExt(ClientPoison);
 
-    const fillColor = isPoisoned ? "rgba(80, 200, 90, 0.95)" : "rgba(200, 50, 55, 0.95)";
+    const fillColor = isPoisoned ? "rgba(80, 200, 90, 0.95)" : "rgba(132, 14, 26, 0.96)";
     const emptyColor = RPG_ORB_EMPTY;
     const borderColor = isPoisoned ? "rgba(120, 220, 130, 0.95)" : RPG_BORDER_GOLD;
 

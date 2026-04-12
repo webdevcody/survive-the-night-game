@@ -34,6 +34,7 @@ import { BossSummonEvent } from "../../../game-shared/src/events/server-sent/eve
 import { BossSplitEvent } from "../../../game-shared/src/events/server-sent/events/boss-split-event";
 import { VersionMismatchEvent } from "../../../game-shared/src/events/server-sent/events/version-mismatch-event";
 import { AuthRequiredEvent } from "../../../game-shared/src/events/server-sent/events/auth-required-event";
+import { ProfileLoadFailedEvent } from "../../../game-shared/src/events/server-sent/events/profile-load-failed-event";
 import { UserBannedEvent } from "../../../game-shared/src/events/server-sent/events/user-banned-event";
 import { ISocketAdapter } from "@shared/network/socket-adapter";
 import { IClientAdapter } from "@shared/network/client-adapter";
@@ -79,6 +80,7 @@ const SERVER_EVENT_MAP = {
   [ServerSentEvents.VERSION_MISMATCH]: VersionMismatchEvent,
   [ServerSentEvents.AUTH_REQUIRED]: AuthRequiredEvent,
   [ServerSentEvents.USER_BANNED]: UserBannedEvent,
+  [ServerSentEvents.PROFILE_LOAD_FAILED]: ProfileLoadFailedEvent,
 } as const;
 
 export class ClientSocketManager {

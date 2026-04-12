@@ -46,9 +46,9 @@ export const playerConfig = {
   SPRINT_MULTIPLIER: 1.5,
 
   /**
-   * Maximum stamina points
+   * Maximum stamina points (base; character stat points add on top)
    */
-  MAX_STAMINA: 100,
+  MAX_STAMINA: 20,
 
   /**
    * Stamina drain rate per second while sprinting

@@ -356,6 +356,14 @@ export class InputManager {
           callbacks.onSelectWeaponLoadout?.(2);
           break;
         }
+        case "Digit4": {
+          this.setInventorySlot(4);
+          break;
+        }
+        case "Digit5": {
+          this.setInventorySlot(5);
+          break;
+        }
         case "KeyG": {
           if (this.currentInventorySlot === FISTS_INVENTORY_SENTINEL) break;
           const currentSlot = this.currentInventorySlot - 1;

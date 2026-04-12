@@ -35,6 +35,7 @@ import { onGameStateUpdate } from "./events/on-game-state-update";
 import { onYourId } from "./events/on-your-id";
 import { onVersionMismatch } from "./events/on-version-mismatch";
 import { onAuthRequired } from "./events/on-auth-required";
+import { onProfileLoadFailed } from "./events/on-profile-load-failed";
 import { onUserBanned } from "./events/on-user-banned";
 import { ClientEventContext, InitializationContext } from "./events/types";
 
@@ -117,6 +118,9 @@ export class ClientEventListener {
     this.socketManager.on(ServerSentEvents.BUILD, (e) => onBuild(context, e));
     this.socketManager.on(ServerSentEvents.VERSION_MISMATCH, (e) => onVersionMismatch(context, e));
     this.socketManager.on(ServerSentEvents.AUTH_REQUIRED, (e) => onAuthRequired(context, e));
+    this.socketManager.on(ServerSentEvents.PROFILE_LOAD_FAILED, (e) =>
+      onProfileLoadFailed(context, e),
+    );
     this.socketManager.on(ServerSentEvents.USER_BANNED, (e) => onUserBanned(context, e));
     this.socketManager.onSocketDisconnect(() => {
       this.handleDisconnect();

@@ -119,8 +119,9 @@ export class AIController {
    */
   private shouldSprint(isUrgent: boolean = false): boolean {
     // Access stamina through the player's serialized fields
-    const stamina = (this.player as any).serialized?.get("stamina") ?? 100;
-    const maxStamina = (this.player as any).serialized?.get("maxStamina") ?? 100;
+    const stamina = (this.player as any).serialized?.get("stamina") ?? getConfig().player.MAX_STAMINA;
+    const maxStamina =
+      (this.player as any).serialized?.get("maxStamina") ?? getConfig().player.MAX_STAMINA;
     const staminaPercent = stamina / maxStamina;
 
     // Critical stamina - only sprint if escaping for survival
