@@ -97,6 +97,23 @@ export function decodeEquipmentSlotKey(value: number): EquipmentSlotKey | null {
 }
 
 /**
+ * Client encodes equipment drops as DROP_ITEM with slotIndex = base + equipment key index.
+ * Bag slots must remain below this base (see player MAX_INVENTORY_SLOTS).
+ */
+export const DROP_ITEM_WIRE_EQUIPMENT_INDEX_BASE = 240;
+
+export function encodeDropItemFromEquipmentSlot(slot: EquipmentSlotKey): number {
+  return DROP_ITEM_WIRE_EQUIPMENT_INDEX_BASE + encodeEquipmentSlotKey(slot);
+}
+
+export function tryDecodeDropItemEquipmentSlot(slotIndex: number): EquipmentSlotKey | null {
+  if (slotIndex < DROP_ITEM_WIRE_EQUIPMENT_INDEX_BASE) {
+    return null;
+  }
+  return decodeEquipmentSlotKey(slotIndex - DROP_ITEM_WIRE_EQUIPMENT_INDEX_BASE);
+}
+
+/**
  * Whether an item type may be placed in the given equipment slot (used when moving from bag → equip).
  */
 export function canItemGoInEquipmentSlot(itemType: ItemType, slot: EquipmentSlotKey): boolean {

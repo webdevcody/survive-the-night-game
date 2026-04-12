@@ -42,7 +42,10 @@ import { IClientAdapter } from "@shared/network/client-adapter";
 import { createClientAdapter } from "@/network/adapter-factory";
 import { deserializeServerEvent } from "@shared/events/server-sent/server-event-serialization";
 import { getConfig } from "@shared/config";
-import type { EquipmentSlotKey } from "@shared/util/inventory";
+import {
+  encodeDropItemFromEquipmentSlot,
+  type EquipmentSlotKey,
+} from "@shared/util/inventory";
 import type { BankActionEventData } from "@shared/events/client-sent/events/bank-action";
 import { getGameAuthToken } from "@/util/cookie";
 
@@ -507,6 +510,12 @@ export class ClientSocketManager {
           }
         : { slotIndex };
     this.emitClientEvent(ClientSentEvents.DROP_ITEM, payload);
+  }
+
+  public sendDropFromEquipment(equipSlot: EquipmentSlotKey) {
+    this.emitClientEvent(ClientSentEvents.DROP_ITEM, {
+      slotIndex: encodeDropItemFromEquipmentSlot(equipSlot),
+    });
   }
 
   public sendSwapItems(fromSlotIndex: number, toSlotIndex: number) {

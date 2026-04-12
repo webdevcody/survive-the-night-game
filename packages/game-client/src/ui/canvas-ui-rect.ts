@@ -24,6 +24,9 @@ const TAB_BAR_H = 48;
 /** Vertical gap between tab bar and panel body (inventory / character / skills). */
 export const PANEL_TAB_CONTENT_GAP = 26;
 
+/** Baseline step between character stat rows (must match `renderCharacterTab` in inventory-screen). */
+export const CHARACTER_STAT_ROW_STEP_PX = 38;
+
 /** Right-anchored +/- buttons on the character stats tab (must match handleClick). */
 export function characterStatPlusMinusRects(
   rightX: number,
@@ -42,7 +45,7 @@ export function characterStatPlusMinusRects(
 /** Y position of the stat label baseline for row `index` (0-based) on the character tab. */
 export function characterStatRowLabelY(contentTop: number, index: number): number {
   const firstRowY = contentTop + PANEL_TAB_CONTENT_GAP + 36;
-  return firstRowY + index * 30;
+  return firstRowY + index * CHARACTER_STAT_ROW_STEP_PX;
 }
 
 export function panelBottomWideButtonRect(rightX: number, rightY: number, rightW: number, rightH: number): CanvasUiRect {

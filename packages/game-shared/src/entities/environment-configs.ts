@@ -108,8 +108,8 @@ export const ENVIRONMENT_CONFIGS: Record<string, EnvironmentConfig> = {
     category: "obstacle",
     assets: {
       assetKey: "workbench",
-      x: 96,
-      y: 144,
+      x: 32,
+      y: 224,
       sheet: "items",
     },
   },
@@ -118,8 +118,8 @@ export const ENVIRONMENT_CONFIGS: Record<string, EnvironmentConfig> = {
     category: "obstacle",
     assets: {
       assetKey: "forge",
-      x: 80,
-      y: 144,
+      x: 16,
+      y: 224,
       sheet: "items",
     },
   },
@@ -128,8 +128,8 @@ export const ENVIRONMENT_CONFIGS: Record<string, EnvironmentConfig> = {
     category: "obstacle",
     assets: {
       assetKey: "chemistry_table",
-      x: 48,
-      y: 144,
+      x: 0,
+      y: 224,
       sheet: "items",
     },
   },

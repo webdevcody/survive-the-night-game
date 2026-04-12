@@ -2,7 +2,6 @@ import { ISocketAdapter } from "@shared/network/socket-adapter";
 import { HandlerContext } from "../context";
 import Inventory from "@/extensions/inventory";
 import { SocketEventHandler } from "./types";
-import { getConfig } from "@shared/config";
 import { EQUIPMENT_SLOT_KEYS, type EquipmentSlotKey } from "@shared/util/inventory";
 
 const EQUIP_SLOT_SET = new Set<string>(EQUIPMENT_SLOT_KEYS);
@@ -40,7 +39,7 @@ export function onSwapBagAndEquipment(
   if (!player) return;
 
   const inventory = player.getExt(Inventory);
-  const maxSlots = getConfig().player.MAX_INVENTORY_SLOTS;
+  const maxSlots = inventory.getMaxSlots();
   if (data.bagIndex < 0 || data.bagIndex >= maxSlots) {
     return;
   }

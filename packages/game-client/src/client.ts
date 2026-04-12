@@ -512,6 +512,12 @@ export class GameClient {
       },
       (data) => {
         this.socketManager?.sendBankAction(data);
+      },
+      (itemType) => {
+        this.socketManager?.sendConsumeItem(itemType);
+      },
+      (equipSlot) => {
+        this.socketManager?.sendDropFromEquipment(equipSlot);
       }
     );
     this.hud.setDialogueQuestChoiceHandler((action) => {

@@ -315,6 +315,53 @@
           "editorGroupId": "dg_mnuvnumu_51zmfp9y"
         }
       ]
+    },
+    {
+      "row": 168,
+      "col": 75,
+      "editorDialogueSessions": [
+        {
+          "lines": [
+            "That fence is buying us time, not safety.",
+            "There's a blocked path west of here that might still be usable.",
+            "Check it for me, then come back and tell me what you saw."
+          ],
+          "when": {
+            "type": "always"
+          },
+          "grantQuestId": "quest_fence_scout"
+        },
+        {
+          "lines": [
+            "Head west and look for the blocked path.",
+            "If it is still open, we may have a way out when the dead push through."
+          ],
+          "when": {
+            "type": "all",
+            "conditions": [
+              {
+                "type": "quest_active",
+                "questId": "quest_fence_scout"
+              }
+            ]
+          }
+        },
+        {
+          "lines": [
+            "Good. Then we still have options if this fence gives up.",
+            "Take this and keep moving."
+          ],
+          "when": {
+            "type": "all",
+            "conditions": [
+              {
+                "type": "quest_completed",
+                "questId": "quest_fence_scout"
+              }
+            ]
+          }
+        }
+      ]
     }
   ]
 }

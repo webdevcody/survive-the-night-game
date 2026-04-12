@@ -1,5 +1,4 @@
 import Inventory from "@/extensions/inventory";
-import { getConfig } from "@shared/config";
 import { EQUIPMENT_SLOT_KEYS } from "@shared/util/inventory";
 const EQUIP_SLOT_SET = new Set(EQUIPMENT_SLOT_KEYS);
 function validateData(data) {
@@ -24,7 +23,7 @@ export function onSwapBagAndEquipment(context, socket, data) {
     if (!player)
         return;
     const inventory = player.getExt(Inventory);
-    const maxSlots = getConfig().player.MAX_INVENTORY_SLOTS;
+    const maxSlots = inventory.getMaxSlots();
     if (data.bagIndex < 0 || data.bagIndex >= maxSlots) {
         return;
     }

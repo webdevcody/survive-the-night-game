@@ -155,6 +155,8 @@ export class Hud {
     sendSelectWeaponLoadout: (loadout: 0 | 1 | 2) => void,
     sendSetWeaponLoadoutSlot: (slot: 0 | 1 | 2 | 3 | 4, bagIndex: number) => void,
     sendBankAction: (data: BankActionEventData) => void,
+    sendConsumeItem: (itemType: string | null) => void,
+    sendDropFromEquipment: (equipSlot: EquipmentSlotKey) => void,
   ) {
     this.mapManager = mapManager;
     this.soundManager = soundManager;
@@ -223,6 +225,8 @@ export class Hud {
       sendSetWeaponLoadoutSlot,
       sendSelectWeaponLoadout,
       sendBankAction,
+      sendConsumeItem,
+      sendDropFromEquipment,
       getAuthoredQuests: () => this.mapManager.getAuthoredQuests(),
     });
 

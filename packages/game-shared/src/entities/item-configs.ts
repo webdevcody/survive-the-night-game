@@ -366,7 +366,7 @@ export const ITEM_CONFIGS: Record<string, ItemConfig> = {
   },
   miners_hat: {
     id: "miners_hat",
-    category: "consumable",
+    category: "armor",
     assets: {
       assetKey: "miners_hat",
       x: 48,
@@ -654,7 +654,7 @@ export const ITEM_CONFIGS: Record<string, ItemConfig> = {
   },
   forager_wraps: {
     id: "forager_wraps",
-    category: "consumable",
+    category: "armor",
     assets: {
       assetKey: "forager_wraps",
       x: 64,
@@ -670,7 +670,7 @@ export const ITEM_CONFIGS: Record<string, ItemConfig> = {
   },
   scout_pack: {
     id: "scout_pack",
-    category: "consumable",
+    category: "armor",
     assets: {
       assetKey: "scout_pack",
       x: 80,
@@ -686,7 +686,7 @@ export const ITEM_CONFIGS: Record<string, ItemConfig> = {
   },
   tracker_boots: {
     id: "tracker_boots",
-    category: "consumable",
+    category: "armor",
     assets: {
       assetKey: "tracker_boots",
       x: 96,
@@ -702,7 +702,7 @@ export const ITEM_CONFIGS: Record<string, ItemConfig> = {
   },
   dust_mask: {
     id: "dust_mask",
-    category: "consumable",
+    category: "armor",
     assets: {
       assetKey: "dust_mask",
       x: 112,
@@ -718,7 +718,7 @@ export const ITEM_CONFIGS: Record<string, ItemConfig> = {
   },
   recon_poncho: {
     id: "recon_poncho",
-    category: "consumable",
+    category: "armor",
     assets: {
       assetKey: "recon_poncho",
       x: 128,
@@ -734,7 +734,7 @@ export const ITEM_CONFIGS: Record<string, ItemConfig> = {
   },
   survival_satchel: {
     id: "survival_satchel",
-    category: "consumable",
+    category: "armor",
     assets: {
       assetKey: "survival_satchel",
       x: 144,
@@ -750,7 +750,7 @@ export const ITEM_CONFIGS: Record<string, ItemConfig> = {
   },
   reclaimed_plating: {
     id: "reclaimed_plating",
-    category: "consumable",
+    category: "armor",
     assets: {
       assetKey: "reclaimed_plating",
       x: 0,
@@ -766,7 +766,7 @@ export const ITEM_CONFIGS: Record<string, ItemConfig> = {
   },
   reclaimer_gloves: {
     id: "reclaimer_gloves",
-    category: "consumable",
+    category: "armor",
     assets: {
       assetKey: "reclaimer_gloves",
       x: 16,
@@ -806,7 +806,7 @@ export const ITEM_CONFIGS: Record<string, ItemConfig> = {
   },
   cloth_hood: {
     id: "cloth_hood",
-    category: "consumable",
+    category: "armor",
     assets: {
       assetKey: "cloth_hood",
       x: 64,
@@ -822,7 +822,7 @@ export const ITEM_CONFIGS: Record<string, ItemConfig> = {
   },
   patchwork_vest: {
     id: "patchwork_vest",
-    category: "consumable",
+    category: "armor",
     assets: {
       assetKey: "patchwork_vest",
       x: 80,
@@ -838,7 +838,7 @@ export const ITEM_CONFIGS: Record<string, ItemConfig> = {
   },
   stitched_pants: {
     id: "stitched_pants",
-    category: "consumable",
+    category: "armor",
     assets: {
       assetKey: "stitched_pants",
       x: 96,
@@ -854,7 +854,7 @@ export const ITEM_CONFIGS: Record<string, ItemConfig> = {
   },
   survivor_boots: {
     id: "survivor_boots",
-    category: "consumable",
+    category: "armor",
     assets: {
       assetKey: "survivor_boots",
       x: 112,
@@ -870,7 +870,7 @@ export const ITEM_CONFIGS: Record<string, ItemConfig> = {
   },
   forager_cloak: {
     id: "forager_cloak",
-    category: "consumable",
+    category: "armor",
     assets: {
       assetKey: "forager_cloak",
       x: 128,
@@ -886,7 +886,7 @@ export const ITEM_CONFIGS: Record<string, ItemConfig> = {
   },
   reinforced_duster: {
     id: "reinforced_duster",
-    category: "consumable",
+    category: "armor",
     assets: {
       assetKey: "reinforced_duster",
       x: 144,

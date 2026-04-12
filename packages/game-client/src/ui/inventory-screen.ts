@@ -9,6 +9,7 @@ import {
   createEmptyEquipment,
   EQUIPMENT_SLOT_KEYS,
   canItemGoInEquipmentSlot,
+  decodeEquipmentSlotKey,
   encodeEquipmentSlotKey,
   type EquipmentSlotKey,
   type PlayerEquipmentState,
@@ -39,6 +40,7 @@ import {
   PANEL_TAB_CONTENT_GAP,
   characterStatPlusMinusRects,
   characterStatRowLabelY,
+  CHARACTER_STAT_ROW_STEP_PX,
   drawCanvasUiButton,
   panelBottomWideButtonRect,
   skillsNodeCenter,
@@ -90,6 +92,14 @@ function easeOutCubic(value: number): number {
 function professionBannerUrl(id: ProfessionId): string {
   return `/ui/professions/profession-${id}-banner.png`;
 }
+
+/** 160×16 strip; frames follow `CHARACTER_STAT_KEYS` order in character-stats.ts */
+const CHARACTER_STAT_ICON_SHEET_URL = "/ui/character-stat-icons.png";
+/** Source tile size in the PNG (each frame is 16×16). */
+const CHARACTER_STAT_ICON_SHEET_PX = 16;
+/** Drawn size on the character tab (2× upscale, nearest-neighbor). */
+const CHARACTER_STAT_ICON_DRAW_PX = 32;
+const CHARACTER_STAT_ICON_TEXT_GAP = 8;
 
 /** Scale-crop image to fill a rectangle (object-cover). */
 function drawImageCover(
@@ -259,9 +269,11 @@ export type InventoryScreenDeps = {
   getBank: () => (InventoryItem | null)[];
   getMyPlayer: () => PlayerClient | null;
   sendDropItem: (slotIndex: number) => void;
+  sendDropFromEquipment: (equipSlot: EquipmentSlotKey) => void;
   sendSwapItems: (from: number, to: number) => void;
   sendSwapBagAndEquipment: (bagIndex: number, equipSlot: EquipmentSlotKey) => void;
   sendSelectInventorySlot: (slotIndex: number) => void;
+  sendConsumeItem: (itemType: string | null) => void;
   sendProgressionAllocations: (
     kind: "ability" | "character",
     allocations: Record<string, number>,
@@ -322,10 +334,13 @@ export class InventoryScreenUI {
   private selectedProfessionId: ProfessionId | null = null;
   private professionBannerImages: Partial<Record<ProfessionId, HTMLImageElement>> = {};
   private professionBannersPreloadStarted = false;
+  private characterStatIconSheet: HTMLImageElement | null = null;
+  private characterStatIconsPreloadStarted = false;
 
   constructor(deps: InventoryScreenDeps) {
     this.deps = deps;
     this.preloadProfessionBanners();
+    this.preloadCharacterStatIcons();
   }
 
   private preloadProfessionBanners(): void {
@@ -339,6 +354,17 @@ export class InventoryScreenUI {
         this.professionBannerImages[id] = img;
       };
     }
+  }
+
+  private preloadCharacterStatIcons(): void {
+    if (this.characterStatIconsPreloadStarted) return;
+    this.characterStatIconsPreloadStarted = true;
+    const img = new Image();
+    img.decoding = "async";
+    img.src = CHARACTER_STAT_ICON_SHEET_URL;
+    img.onload = () => {
+      this.characterStatIconSheet = img;
+    };
   }
 
   public toggle(): void {
@@ -795,7 +821,7 @@ export class InventoryScreenUI {
     return pBag === b || sBag === b || mBag === b || c4 === b || c5 === b;
   }
 
-  /** Double-click bag slot: armor → equipment, weapons/consumables → bottom quick bar. */
+  /** Double-click bag slot: weapons -> loadout, wearables -> equipment, consumables -> quick bar. */
   private tryQuickEquipFromBag(bagIdx: number, item: InventoryItem): boolean {
     const t = item.itemType;
     const loadoutKey = getWeaponLoadoutSlotKey(t);
@@ -803,6 +829,12 @@ export class InventoryScreenUI {
       const row = weaponLoadoutSlotKeyToIndex(loadoutKey);
       this.deps.sendSetWeaponLoadoutSlot(row, bagIdx + 1);
       return true;
+    }
+    for (const slot of EQUIPMENT_SLOT_KEYS) {
+      if (canItemGoInEquipmentSlot(t, slot)) {
+        this.deps.sendSwapBagAndEquipment(bagIdx, slot);
+        return true;
+      }
     }
     if (itemMatchesConsumableLoadout(t)) {
       const p = this.deps.getMyPlayer();
@@ -819,12 +851,6 @@ export class InventoryScreenUI {
       }
       this.deps.sendSetWeaponLoadoutSlot(3, bagIdx + 1);
       return true;
-    }
-    for (const slot of EQUIPMENT_SLOT_KEYS) {
-      if (canItemGoInEquipmentSlot(t, slot)) {
-        this.deps.sendSwapBagAndEquipment(bagIdx, slot);
-        return true;
-      }
     }
     return false;
   }
@@ -871,10 +897,33 @@ export class InventoryScreenUI {
     y += 36;
     ctx.font = "15px Arial";
 
-    for (const key of CHARACTER_STAT_KEYS) {
+    const statIconSheet = this.characterStatIconSheet;
+    const statIconsReady =
+      statIconSheet && statIconSheet.complete && statIconSheet.naturalWidth > 0;
+    const statLabelX =
+      L.rightX + 16 + CHARACTER_STAT_ICON_DRAW_PX + CHARACTER_STAT_ICON_TEXT_GAP;
+
+    for (let si = 0; si < CHARACTER_STAT_KEYS.length; si++) {
+      const key = CHARACTER_STAT_KEYS[si]!;
       const val = player.getCharacterStat(key);
+      if (statIconsReady) {
+        ctx.save();
+        ctx.imageSmoothingEnabled = false;
+        ctx.drawImage(
+          statIconSheet,
+          si * CHARACTER_STAT_ICON_SHEET_PX,
+          0,
+          CHARACTER_STAT_ICON_SHEET_PX,
+          CHARACTER_STAT_ICON_SHEET_PX,
+          L.rightX + 16,
+          y - 22,
+          CHARACTER_STAT_ICON_DRAW_PX,
+          CHARACTER_STAT_ICON_DRAW_PX,
+        );
+        ctx.restore();
+      }
       ctx.fillStyle = RPG_TITLE_CREAM;
-      ctx.fillText(`${STAT_LABELS[key]}`, L.rightX + 16, y);
+      ctx.fillText(`${STAT_LABELS[key]}`, statLabelX, y);
       ctx.fillStyle = RPG_METADATA_MUTED;
       ctx.textAlign = "right";
       ctx.fillText(`${val}`, L.rightX + L.rightW - 120, y);
@@ -882,7 +931,7 @@ export class InventoryScreenUI {
       const { minus, plus } = characterStatPlusMinusRects(L.rightX, L.rightW, y);
       drawCanvasUiButton(ctx, minus, "-", "compact");
       drawCanvasUiButton(ctx, plus, "+", "compact");
-      y += 30;
+      y += CHARACTER_STAT_ROW_STEP_PX;
     }
 
     const maxHp = player.getMaxHealth();
@@ -1944,7 +1993,7 @@ export class InventoryScreenUI {
   }
 
   public handleRightClick(x: number, y: number, canvasWidth: number, canvasHeight: number): boolean {
-    if (!this.isOpen() || this.activeTab !== "inventory" || !this.bankLockerId) {
+    if (!this.isOpen() || this.activeTab !== "inventory") {
       return false;
     }
     const L = this.layout(canvasWidth, canvasHeight, this.getBagSlotCount());
@@ -2027,26 +2076,15 @@ export class InventoryScreenUI {
     return rows;
   }
 
+  /**
+   * Bank action 4 equip indices: armor0–6, weapon/consumable loadout rows 7–11.
+   * Only weapons (loadout) and armor are "Equip" in the menu; consumables use Use or double-click → quick bar.
+   */
   private resolveEquipMenuIndex(item: InventoryItem): number | null {
     const t = item.itemType;
     const loadoutKey = getWeaponLoadoutSlotKey(t);
     if (loadoutKey !== null) {
       return 7 + weaponLoadoutSlotKeyToIndex(loadoutKey);
-    }
-    if (itemMatchesConsumableLoadout(t)) {
-      const p = this.deps.getMyPlayer();
-      if (!p) {
-        return 10;
-      }
-      const c4 = (p as any).loadoutConsumable4 ?? 0;
-      const c5 = (p as any).loadoutConsumable5 ?? 0;
-      if (c4 === 0) {
-        return 10;
-      }
-      if (c5 === 0) {
-        return 11;
-      }
-      return 10;
     }
     for (const slot of EQUIPMENT_SLOT_KEYS) {
       if (canItemGoInEquipmentSlot(t, slot)) {
@@ -2061,10 +2099,6 @@ export class InventoryScreenUI {
       return false;
     }
     const lid = this.bankLockerId;
-    if (!lid) {
-      this.ctxMenu = null;
-      return false;
-    }
     const { menuX, menuY, menuW, menuH } = this.getContextMenuRect();
     if (x < menuX || x > menuX + menuW || y < menuY || y > menuY + menuH) {
       this.ctxMenu = null;
@@ -2088,6 +2122,34 @@ export class InventoryScreenUI {
         : t.kind === "bag"
           ? this.deps.getInventory()[t.index]
           : this.deps.getEquipment()?.[t.slot] ?? null;
+
+    if (!lid) {
+      if (label === "Drop" && t.kind === "bag") {
+        this.deps.sendDropItem(t.index);
+      } else if (label === "Drop" && t.kind === "equip") {
+        this.deps.sendDropFromEquipment(t.slot);
+      } else if (label === "Use" && item && t.kind === "bag") {
+        this.deps.sendSelectInventorySlot(t.index + 1);
+        this.deps.sendConsumeItem(null);
+      } else if (label === "Equip" && item && t.kind === "bag") {
+        const eqIdx = this.resolveEquipMenuIndex(item);
+        if (eqIdx != null) {
+          if (eqIdx <= 6) {
+            const slot = decodeEquipmentSlotKey(eqIdx);
+            if (slot) {
+              this.deps.sendSwapBagAndEquipment(t.index, slot);
+            }
+          } else if (eqIdx >= 7 && eqIdx <= 11) {
+            this.deps.sendSetWeaponLoadoutSlot(
+              (eqIdx - 7) as 0 | 1 | 2 | 3 | 4,
+              t.index + 1,
+            );
+          }
+        }
+      }
+      this.ctxMenu = null;
+      return true;
+    }
 
     if (label === "Withdraw" && t.kind === "bank") {
       send({ lockerEntityId: lid, action: 1, source: 1, slotIndex: t.index, equipSlotIndex: 255 });

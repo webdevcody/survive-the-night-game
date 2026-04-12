@@ -105,7 +105,7 @@ function firstEmptyBankIndex(bank: Bank): number | null {
   return null;
 }
 
-function dropItemNearPlayerFacing(player: Player, itemToDrop: InventoryItem): void {
+export function dropItemNearPlayerFacing(player: Player, itemToDrop: InventoryItem): void {
   const entityManager = player.getEntityManager();
   const droppedEntity = entityManager.createEntityFromItem(itemToDrop);
   if (!droppedEntity) {

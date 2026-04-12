@@ -8,7 +8,11 @@ import { SocketEventHandler } from "./types";
 import { PlayerDroppedItemEvent } from "@/events/server-sent/events/player-dropped-item-event";
 import { HandlerContext } from "@/events/context";
 import { itemRegistry } from "@shared/entities/item-registry";
-import { InventoryItem } from "@shared/util/inventory";
+import {
+  InventoryItem,
+  tryDecodeDropItemEquipmentSlot,
+} from "@shared/util/inventory";
+import { dropItemNearPlayerFacing } from "./bank-action";
 import { getConfig } from "@shared/config";
 import { distance } from "@/util/physics";
 
@@ -82,6 +86,18 @@ export function onDropItem(
   if (!player) return;
 
   const inventory = player.getExt(Inventory);
+
+  const equipSlot = tryDecodeDropItemEquipmentSlot(data.slotIndex);
+  if (equipSlot) {
+    const eqItem = inventory.takeEquipmentItem(equipSlot);
+    if (!eqItem) {
+      return;
+    }
+    inventory.markDirty();
+    dropItemNearPlayerFacing(player, eqItem);
+    return;
+  }
+
   const items = inventory.getItems();
 
   const index = data.slotIndex;

@@ -31,6 +31,17 @@ import { type InventoryItem, type ItemType } from "@shared/util/inventory";
 type PanelRect = { x: number; y: number; w: number; h: number };
 type FilterValue = "all" | ProfessionId;
 
+/** 144×16 strip: frame0 = All, then PROFESSION_IDS order (see generate-crafting-tab-icons.py). */
+const CRAFTING_TAB_ICON_URL = "/ui/crafting-tab-icons.png";
+const CRAFTING_TAB_ICON_SHEET_PX = 16;
+const CRAFTING_TAB_ICON_DRAW_PX = 24;
+
+function craftingTabIconSheetIndex(filter: FilterValue): number {
+  if (filter === "all") return 0;
+  const i = PROFESSION_IDS.indexOf(filter);
+  return i < 0 ? 0 : i + 1;
+}
+
 type RecipeEntry = {
   key: string;
   kind: "recipe";
@@ -57,6 +68,7 @@ type CraftingPanelOptions = {
 
 const PANEL = {
   width: 980,
+  /** Default / max height; actual panel height shrinks when the recipe preview is short. */
   height: 680,
   padding: 22,
   gutter: 20,
@@ -67,6 +79,12 @@ const PANEL = {
   entryHeight: 60,
   entryGap: 8,
   buttonHeight: 48,
+  /** Minimum list viewport so a few recipe rows stay visible when the panel compacts. */
+  listViewportMinHeight: 340,
+  /** Strip at the bottom of the list when scrollable; keeps "Showing x–y of z" off the last row. */
+  listScrollFooterHeight: 24,
+  detailButtonGap: 12,
+  detailBottomPadding: 18,
 };
 
 function clamp(value: number, min: number, max: number): number {
@@ -104,11 +122,26 @@ export class CraftingPanel implements Renderable {
   private filterRects: Array<{ rect: PanelRect; filter: FilterValue }> = [];
   private entryRects: Array<{ rect: PanelRect; key: string }> = [];
   private wheelHandler: ((e: WheelEvent) => void) | null = null;
+  private craftingTabIconSheet: HTMLImageElement | null = null;
+  private craftingTabIconsPreloadStarted = false;
 
   constructor(
     private assetManager: AssetManager,
     private options: CraftingPanelOptions,
-  ) {}
+  ) {
+    this.preloadCraftingTabIcons();
+  }
+
+  private preloadCraftingTabIcons(): void {
+    if (this.craftingTabIconsPreloadStarted) return;
+    this.craftingTabIconsPreloadStarted = true;
+    const img = new Image();
+    img.decoding = "async";
+    img.src = CRAFTING_TAB_ICON_URL;
+    img.onload = () => {
+      this.craftingTabIconSheet = img;
+    };
+  }
 
   public getZIndex(): number {
     return Z_INDEX.UI + 1;
@@ -229,7 +262,21 @@ export class CraftingPanel implements Renderable {
     const inventory = player.getInventory();
     const entries = this.buildEntries(inventory);
     const selectedEntry = this.ensureSelectedEntry(entries);
-    const bounds = this.getPanelBounds(ctx.canvas.width, ctx.canvas.height);
+
+    const headerBlock = PANEL.headerHeight + PANEL.filterHeight + PANEL.filterGap * 2;
+    const maxInner =
+      PANEL.height - PANEL.padding * 2 - headerBlock;
+    const detailsSpan = selectedEntry ? this.getDetailsInnerHeight(selectedEntry) : 0;
+    const naturalRightColH =
+      selectedEntry === null
+        ? PANEL.listViewportMinHeight
+        : detailsSpan + PANEL.detailButtonGap + PANEL.buttonHeight + PANEL.detailBottomPadding;
+    const innerContentH = Math.min(
+      maxInner,
+      Math.max(PANEL.listViewportMinHeight, naturalRightColH),
+    );
+
+    const bounds = this.getPanelBounds(ctx.canvas.width, ctx.canvas.height, innerContentH);
     this.panelBounds = bounds;
 
     const leftX = bounds.x + PANEL.padding;
@@ -238,12 +285,15 @@ export class CraftingPanel implements Renderable {
     const rightX = leftX + PANEL.leftWidth + PANEL.gutter;
     const rightW = bounds.w - PANEL.padding * 2 - PANEL.leftWidth - PANEL.gutter;
 
-    const listY = leftY + PANEL.headerHeight + PANEL.filterHeight + PANEL.filterGap * 2;
-    const listH = leftH - PANEL.headerHeight - PANEL.filterHeight - PANEL.filterGap * 2;
-    const visibleRows = Math.max(
-      1,
-      Math.floor((listH + PANEL.entryGap) / (PANEL.entryHeight + PANEL.entryGap)),
-    );
+    const listY = leftY + headerBlock;
+    const listH = leftH - headerBlock;
+    const rowStride = PANEL.entryHeight + PANEL.entryGap;
+    const visibleRowsIfFull = Math.max(1, Math.floor((listH + PANEL.entryGap) / rowStride));
+    let visibleRows = visibleRowsIfFull;
+    if (entries.length > visibleRowsIfFull) {
+      const listBodyH = listH - PANEL.listScrollFooterHeight;
+      visibleRows = Math.max(1, Math.floor((listBodyH + PANEL.entryGap) / rowStride));
+    }
     const maxScroll = Math.max(0, entries.length - visibleRows);
     this.scrollOffset = clamp(this.scrollOffset, 0, maxScroll);
 
@@ -284,9 +334,19 @@ export class CraftingPanel implements Renderable {
     this.filterRects = [];
     let filterX = leftX;
     const filterY = leftY + PANEL.headerHeight;
+    const iconSheet = this.craftingTabIconSheet;
+    const iconsReady = iconSheet && iconSheet.complete && iconSheet.naturalWidth > 0;
+    const iconDraw = CRAFTING_TAB_ICON_DRAW_PX;
+    const iconPadL = 6;
+    const iconGap = 6;
+    const iconPadR = 8;
+    ctx.font = "bold 12px Arial";
     for (const filter of filters) {
       const label = filter === "all" ? "All" : getProfessionLabel(filter);
-      const width = Math.max(64, label.length * 8 + 24);
+      const labelW = ctx.measureText(label).width;
+      const width = Math.ceil(
+        Math.max(72, iconPadL + iconDraw + iconGap + labelW + iconPadR),
+      );
       const rect = { x: filterX, y: filterY, w: width, h: PANEL.filterHeight };
       this.filterRects.push({ rect, filter });
       const active = this.activeFilter === filter;
@@ -294,11 +354,29 @@ export class CraftingPanel implements Renderable {
       ctx.fillRect(rect.x, rect.y, rect.w, rect.h);
       ctx.strokeStyle = active ? "rgba(255, 232, 182, 0.95)" : "rgba(123, 138, 165, 0.6)";
       ctx.strokeRect(rect.x, rect.y, rect.w, rect.h);
+      const midY = rect.y + rect.h / 2;
+      if (iconsReady) {
+        const si = craftingTabIconSheetIndex(filter);
+        ctx.save();
+        ctx.imageSmoothingEnabled = false;
+        ctx.drawImage(
+          iconSheet,
+          si * CRAFTING_TAB_ICON_SHEET_PX,
+          0,
+          CRAFTING_TAB_ICON_SHEET_PX,
+          CRAFTING_TAB_ICON_SHEET_PX,
+          rect.x + iconPadL,
+          midY - iconDraw / 2,
+          iconDraw,
+          iconDraw,
+        );
+        ctx.restore();
+      }
       ctx.font = "bold 12px Arial";
       ctx.fillStyle = active ? "#1b2532" : "#d9e4f2";
-      ctx.textAlign = "center";
+      ctx.textAlign = "left";
       ctx.textBaseline = "middle";
-      ctx.fillText(label, rect.x + rect.w / 2, rect.y + rect.h / 2);
+      ctx.fillText(label, rect.x + iconPadL + iconDraw + iconGap, midY);
       filterX += rect.w + PANEL.filterGap;
     }
     ctx.textAlign = "left";
@@ -323,22 +401,24 @@ export class CraftingPanel implements Renderable {
     if (entries.length > visibleRows) {
       ctx.font = "11px Arial";
       ctx.fillStyle = "#90a4be";
+      ctx.textBaseline = "bottom";
       ctx.fillText(
         `Showing ${this.scrollOffset + 1}-${Math.min(entries.length, this.scrollOffset + visibleRows)} of ${entries.length}`,
         leftX + 10,
-        listY + listH - 10,
+        listY + listH - 6,
       );
+      ctx.textBaseline = "alphabetic";
     }
 
     ctx.fillStyle = "rgba(16, 22, 32, 0.82)";
-    ctx.fillRect(rightX, leftY, rightW, leftH);
+    ctx.fillRect(rightX, listY, rightW, listH);
     ctx.strokeStyle = "rgba(115, 129, 154, 0.55)";
-    ctx.strokeRect(rightX, leftY, rightW, leftH);
+    ctx.strokeRect(rightX, listY, rightW, listH);
 
     if (!selectedEntry) {
       ctx.font = "16px Arial";
       ctx.fillStyle = "#d2d9e6";
-      ctx.fillText("No recipes available at this station yet.", rightX + 20, leftY + 36);
+      ctx.fillText("No recipes available at this station yet.", rightX + 20, listY + 36);
       ctx.restore();
       return;
     }
@@ -347,18 +427,23 @@ export class CraftingPanel implements Renderable {
     this.renderDetails(
       ctx,
       rightX,
-      leftY,
+      listY,
       rightW,
-      leftH,
+      listH,
       selectedEntry,
       inventory,
       player,
       actionEnabled,
     );
 
+    const useBottomAlignedCraftButton = naturalRightColH > listH + 0.5;
+    const craftButtonY = useBottomAlignedCraftButton
+      ? listY + listH - PANEL.buttonHeight - PANEL.detailBottomPadding
+      : listY + detailsSpan + PANEL.detailButtonGap;
+
     this.craftButtonRect = {
       x: rightX + rightW - 220,
-      y: leftY + leftH - PANEL.buttonHeight - 18,
+      y: craftButtonY,
       w: 196,
       h: PANEL.buttonHeight,
     };
@@ -373,13 +458,29 @@ export class CraftingPanel implements Renderable {
     ctx.restore();
   }
 
-  private getPanelBounds(canvasWidth: number, canvasHeight: number): PanelRect {
+  private getPanelBounds(
+    canvasWidth: number,
+    canvasHeight: number,
+    innerContentHeight: number,
+  ): PanelRect {
+    const headerBlock = PANEL.headerHeight + PANEL.filterHeight + PANEL.filterGap * 2;
+    const panelH = PANEL.padding * 2 + headerBlock + innerContentHeight;
     return {
       x: Math.floor((canvasWidth - PANEL.width) / 2),
-      y: Math.floor((canvasHeight - PANEL.height) / 2),
+      y: Math.floor((canvasHeight - panelH) / 2),
       w: PANEL.width,
-      h: PANEL.height,
+      h: panelH,
     };
+  }
+
+  /** Pixel height of the detail block from its top `y` through the last status line (matches `renderDetails`). */
+  private getDetailsInnerHeight(entry: CraftingEntry): number {
+    if (entry.kind === "recipe") {
+      const n = entry.recipe.components.length;
+      return 225 + 22 * n;
+    }
+    const m = entry.outputs.components.length;
+    return 256 + 22 * m;
   }
 
   private contains(rect: PanelRect, x: number, y: number): boolean {
@@ -521,18 +622,36 @@ export class CraftingPanel implements Renderable {
     selected: boolean,
   ): void {
     const enabled = this.canExecuteEntry(entry, inventory, player);
-    ctx.fillStyle = selected
-      ? "rgba(62, 84, 116, 0.95)"
-      : "rgba(30, 38, 53, 0.94)";
+    const professionLocked =
+      entry.kind === "recipe" &&
+      !isRecipeUnlocked(entry.recipe, (professionId) => player.getProfessionLevel(professionId));
+
+    if (professionLocked) {
+      ctx.fillStyle = selected
+        ? "rgba(44, 50, 60, 0.96)"
+        : "rgba(22, 26, 32, 0.94)";
+      ctx.strokeStyle = selected ? "rgba(200, 175, 115, 0.65)" : "rgba(88, 98, 112, 0.45)";
+    } else {
+      ctx.fillStyle = selected
+        ? "rgba(62, 84, 116, 0.95)"
+        : "rgba(30, 38, 53, 0.94)";
+      ctx.strokeStyle = selected ? "rgba(255, 211, 120, 0.95)" : "rgba(110, 126, 148, 0.5)";
+    }
     ctx.fillRect(rect.x, rect.y, rect.w, rect.h);
-    ctx.strokeStyle = selected ? "rgba(255, 211, 120, 0.95)" : "rgba(110, 126, 148, 0.5)";
     ctx.strokeRect(rect.x, rect.y, rect.w, rect.h);
 
     const iconItemType = entry.kind === "recipe" ? entry.recipe.result.type : entry.item.itemType;
+    if (professionLocked) {
+      ctx.save();
+      ctx.filter = "grayscale(1) brightness(0.72)";
+    }
     this.drawItemIcon(ctx, iconItemType, rect.x + 10, rect.y + 8, 44);
+    if (professionLocked) {
+      ctx.restore();
+    }
 
     ctx.font = "bold 14px Arial";
-    ctx.fillStyle = "#f4f7fb";
+    ctx.fillStyle = professionLocked ? "#8f9bab" : "#f4f7fb";
     ctx.textAlign = "left";
     ctx.fillText(
       entry.kind === "recipe" ? formatDisplayName(entry.recipe.result.type) : `Scrap ${formatDisplayName(entry.item.itemType)}`,
@@ -541,7 +660,7 @@ export class CraftingPanel implements Renderable {
     );
 
     ctx.font = "12px Arial";
-    ctx.fillStyle = "#b8c6d9";
+    ctx.fillStyle = professionLocked ? "#6c788a" : "#b8c6d9";
     if (entry.kind === "recipe") {
       const status = enabled
         ? "Ready to craft"
