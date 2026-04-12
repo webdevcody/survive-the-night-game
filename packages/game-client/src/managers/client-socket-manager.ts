@@ -35,6 +35,7 @@ import { BossSplitEvent } from "../../../game-shared/src/events/server-sent/even
 import { VersionMismatchEvent } from "../../../game-shared/src/events/server-sent/events/version-mismatch-event";
 import { AuthRequiredEvent } from "../../../game-shared/src/events/server-sent/events/auth-required-event";
 import { ProfileLoadFailedEvent } from "../../../game-shared/src/events/server-sent/events/profile-load-failed-event";
+import { PlayerLevelUpEvent } from "../../../game-shared/src/events/server-sent/events/player-level-up-event";
 import { UserBannedEvent } from "../../../game-shared/src/events/server-sent/events/user-banned-event";
 import { ISocketAdapter } from "@shared/network/socket-adapter";
 import { IClientAdapter } from "@shared/network/client-adapter";
@@ -42,6 +43,7 @@ import { createClientAdapter } from "@/network/adapter-factory";
 import { deserializeServerEvent } from "@shared/events/server-sent/server-event-serialization";
 import { getConfig } from "@shared/config";
 import type { EquipmentSlotKey } from "@shared/util/inventory";
+import type { BankActionEventData } from "@shared/events/client-sent/events/bank-action";
 import { getGameAuthToken } from "@/util/cookie";
 
 export type EntityDto = { id: string } & any;
@@ -81,6 +83,7 @@ const SERVER_EVENT_MAP = {
   [ServerSentEvents.AUTH_REQUIRED]: AuthRequiredEvent,
   [ServerSentEvents.USER_BANNED]: UserBannedEvent,
   [ServerSentEvents.PROFILE_LOAD_FAILED]: ProfileLoadFailedEvent,
+  [ServerSentEvents.PLAYER_LEVEL_UP]: PlayerLevelUpEvent,
 } as const;
 
 export class ClientSocketManager {
@@ -524,6 +527,10 @@ export class ClientSocketManager {
     this.emitClientEvent(ClientSentEvents.CONSUME_ITEM, { itemType });
   }
 
+  public sendUseLoadoutConsumable(which: 0 | 1) {
+    this.emitClientEvent(ClientSentEvents.USE_LOADOUT_CONSUMABLE, { which });
+  }
+
   public sendSelectInventorySlot(slotIndex: number) {
     this.emitClientEvent(ClientSentEvents.SELECT_INVENTORY_SLOT, { slotIndex });
   }
@@ -579,6 +586,10 @@ export class ClientSocketManager {
 
   public sendSpawnZombie(x: number, y: number) {
     this.emitClientEvent(ClientSentEvents.SPAWN_ZOMBIE, { x, y });
+  }
+
+  public sendBankAction(data: BankActionEventData) {
+    this.emitClientEvent(ClientSentEvents.BANK_ACTION, data);
   }
 
   public getSocket(): ISocketAdapter {

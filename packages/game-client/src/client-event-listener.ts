@@ -36,6 +36,7 @@ import { onYourId } from "./events/on-your-id";
 import { onVersionMismatch } from "./events/on-version-mismatch";
 import { onAuthRequired } from "./events/on-auth-required";
 import { onProfileLoadFailed } from "./events/on-profile-load-failed";
+import { onPlayerLevelUp } from "./events/on-player-level-up";
 import { onUserBanned } from "./events/on-user-banned";
 import { ClientEventContext, InitializationContext } from "./events/types";
 
@@ -121,6 +122,7 @@ export class ClientEventListener {
     this.socketManager.on(ServerSentEvents.PROFILE_LOAD_FAILED, (e) =>
       onProfileLoadFailed(context, e),
     );
+    this.socketManager.on(ServerSentEvents.PLAYER_LEVEL_UP, (e) => onPlayerLevelUp(context, e));
     this.socketManager.on(ServerSentEvents.USER_BANNED, (e) => onUserBanned(context, e));
     this.socketManager.onSocketDisconnect(() => {
       this.handleDisconnect();

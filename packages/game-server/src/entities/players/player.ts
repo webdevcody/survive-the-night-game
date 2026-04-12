@@ -7,6 +7,7 @@ import Groupable from "@/extensions/groupable";
 import Illuminated from "@/extensions/illuminated";
 import Interactive from "@/extensions/interactive";
 import Inventory from "@/extensions/inventory";
+import Bank from "@/extensions/bank";
 import Movable from "@/extensions/movable";
 import Positionable from "@/extensions/positionable";
 import Updatable from "@/extensions/updatable";
@@ -19,6 +20,10 @@ import {
   coercePlayerInventoryPersistedPayload,
   type PlayerInventoryPersistedPayload,
 } from "@shared/util/persisted-inventory-payload";
+import {
+  coercePlayerBankPersistedPayload,
+  type PlayerBankPersistedPayload,
+} from "@shared/util/persisted-bank-payload";
 import { normalizeVector, distance } from "@shared/util/physics";
 import type { CraftRequestEventData } from "@shared/events/client-sent/events/craft-request";
 import { Cooldown } from "@/entities/util/cooldown";
@@ -26,6 +31,7 @@ import { weaponHandlerRegistry } from "@/entities/weapons/weapon-handler-registr
 import { PlayerDeathEvent } from "../../../../game-shared/src/events/server-sent/events/player-death-event";
 import { CraftEvent } from "../../../../game-shared/src/events/server-sent/events/craft-event";
 import { PlayerAttackedEvent } from "../../../../game-shared/src/events/server-sent/events/player-attacked-event";
+import { PlayerLevelUpEvent } from "../../../../game-shared/src/events/server-sent/events/player-level-up-event";
 import { getConfig } from "@shared/config";
 import Vector2 from "@/util/vector2";
 import PoolManager from "@shared/util/pool-manager";
@@ -60,6 +66,7 @@ import type { PersistedPlayerProgress } from "@/services/player-progress-types";
 import { UserSessionCache } from "@/services/user-session-cache";
 import { GAME_SERVER_API_KEY, WEBSITE_API_URL } from "@/config/env";
 import { weaponRegistry } from "@shared/entities/weapon-registry";
+import { itemMatchesConsumableLoadout } from "@shared/util/consumable-loadout";
 import { itemMatchesLoadoutRow, resolveAttackWeaponFromLoadout } from "@shared/util/weapon-loadout";
 import {
   emptyProfessionProgress,
@@ -78,6 +85,8 @@ import {
 } from "@shared/quests/player-quest-state";
 import { initPlayerQuestState, tickWaypointSteps } from "@/quests/quest-runtime";
 import { getRecipeById, getScrapOutputsForItem } from "@shared/util/recipes";
+import { getLevelFromTotalExperience } from "@shared/util/experience-level";
+import { sendPlayerHudMessage } from "@/util/send-player-hud-message";
 
 /**
  * Cached list of entity types that players can pass through (collision passthrough).
@@ -176,6 +185,8 @@ export class Player extends Entity {
         weaponLoadoutSecondary: 0,
         weaponLoadoutMelee: 3,
         activeWeaponLoadout: 0,
+        loadoutConsumable4: 4,
+        loadoutConsumable5: 5,
         questStateJson: stringifyPlayerQuestState(emptyPlayerQuestState()),
         respawnBindTileX: -1,
         respawnBindTileY: -1,
@@ -206,6 +217,8 @@ export class Player extends Entity {
         weaponLoadoutSecondary: { numberType: "uint8" },
         weaponLoadoutMelee: { numberType: "uint8" },
         activeWeaponLoadout: { numberType: "uint8" },
+        loadoutConsumable4: { numberType: "uint8" },
+        loadoutConsumable5: { numberType: "uint8" },
         respawnBindTileX: { numberType: "uint32", optional: true },
         respawnBindTileY: { numberType: "uint32", optional: true },
         // Note: inputSequenceNumber is not in SerializableFields, so no metadata needed
@@ -213,6 +226,7 @@ export class Player extends Entity {
     );
 
     this.addExtension(new Inventory(this, gameManagers.getBroadcaster()));
+    this.addExtension(new Bank(this));
     const poolManager = PoolManager.getInstance();
     const collidableSize = poolManager.vector2.claim(
       Player.PLAYER_WIDTH - 8,
@@ -513,6 +527,95 @@ export class Player extends Entity {
     return this.getExt(Inventory).getItems();
   }
 
+  private findEmptyVisibleBagIndex(
+    preferEnd: boolean,
+    excludedBagIndices: readonly number[] = [],
+    excludedLoadoutKeys: readonly (
+      | "weaponLoadoutPrimary"
+      | "weaponLoadoutSecondary"
+      | "weaponLoadoutMelee"
+      | "loadoutConsumable4"
+      | "loadoutConsumable5"
+    )[] = [],
+  ): number | null {
+    const max = this.getMaxInventorySlots();
+    const inv = this.getInventory();
+    const excludedBags = new Set(excludedBagIndices);
+    const excludedKeys = new Set(excludedLoadoutKeys);
+    const loadoutKeys = [
+      "weaponLoadoutPrimary",
+      "weaponLoadoutSecondary",
+      "weaponLoadoutMelee",
+      "loadoutConsumable4",
+      "loadoutConsumable5",
+    ] as const;
+
+    const isVisibleBagIndex = (bagIdx0: number): boolean => {
+      const bagIndex1Based = bagIdx0 + 1;
+      for (const key of loadoutKeys) {
+        if (excludedKeys.has(key)) {
+          continue;
+        }
+        if ((this.serialized.get(key) as number) === bagIndex1Based) {
+          return false;
+        }
+      }
+      return true;
+    };
+
+    if (preferEnd) {
+      for (let i = max - 1; i >= 0; i--) {
+        if (excludedBags.has(i) || !isVisibleBagIndex(i) || inv[i] != null) {
+          continue;
+        }
+        return i;
+      }
+      return null;
+    }
+
+    for (let i = 0; i < max; i++) {
+      if (excludedBags.has(i) || !isVisibleBagIndex(i) || inv[i] != null) {
+        continue;
+      }
+      return i;
+    }
+
+    return null;
+  }
+
+  private compactLoadoutBackedItemsToBagEnd(): void {
+    const max = this.getMaxInventorySlots();
+    const invExt = this.getExt(Inventory);
+    const loadoutKeys = [
+      "weaponLoadoutPrimary",
+      "weaponLoadoutSecondary",
+      "weaponLoadoutMelee",
+      "loadoutConsumable4",
+      "loadoutConsumable5",
+    ] as const;
+
+    for (const key of loadoutKeys) {
+      const bagIndex1Based = this.serialized.get(key) as number;
+      if (bagIndex1Based < 1 || bagIndex1Based > max) {
+        continue;
+      }
+
+      const bagIdx0 = bagIndex1Based - 1;
+      const inv = this.getInventory();
+      if (inv[bagIdx0] == null) {
+        continue;
+      }
+
+      const hiddenIdx0 = this.findEmptyVisibleBagIndex(true, [bagIdx0], [key]);
+      if (hiddenIdx0 === null || hiddenIdx0 <= bagIdx0) {
+        continue;
+      }
+
+      invExt.swapBagSlotsDeferWeaponResync(bagIdx0, hiddenIdx0);
+      this.serialized.set(key, hiddenIdx0 + 1);
+    }
+  }
+
   clearInventory(): void {
     this.getExt(Inventory).clear();
   }
@@ -572,15 +675,22 @@ export class Player extends Entity {
    * Assign a bag slot to a weapon loadout (0 = clear). Validates item type per slot.
    * Same rules as SET_WEAPON_LOADOUT_SLOT from clients.
    * When equipping, moves/swaps bag items so the clicked slot is cleared when possible:
-   * - empty loadout: move weapon to first empty cell and point loadout there (source cleared);
+   * - empty loadout: move weapon to the last empty visible cell and point loadout there (source
+   *   cleared, keeping the visible bag packed from the front);
    *   if the bag is full, only the loadout pointer is set (legacy).
    * - loadout already set: swap clicked cell with the loadout's backing cell (ref unchanged).
    * When clearing, move the hidden backing weapon to the earliest empty visible bag cell if one exists.
    */
   public assignWeaponLoadoutSlot(slot: number, bagIndex: number): void {
     const max = this.getMaxInventorySlots();
-    const slotClamped = Math.max(0, Math.min(2, Math.floor(slot)));
+    const slotClamped = Math.max(0, Math.min(4, Math.floor(slot)));
     const bagIndexClamped = Math.max(0, Math.min(max, Math.floor(bagIndex)));
+
+    if (slotClamped >= 3) {
+      this.assignConsumableLoadoutSlot(slotClamped as 3 | 4, bagIndexClamped);
+      return;
+    }
+
     const invExt = this.getExt(Inventory);
     const key =
       slotClamped === 0
@@ -592,15 +702,7 @@ export class Player extends Entity {
     if (bagIndexClamped === 0) {
       const prevRef = this.serialized.get(key) as number;
       if (prevRef >= 1 && prevRef <= max) {
-        const inv = this.getInventory();
-        let emptyIdx0: number | null = null;
-        for (let i = 0; i < max; i++) {
-          if (i === prevRef - 1) continue;
-          if (inv[i] == null) {
-            emptyIdx0 = i;
-            break;
-          }
-        }
+        const emptyIdx0 = this.findEmptyVisibleBagIndex(false, [prevRef - 1], [key]);
         if (emptyIdx0 !== null) {
           invExt.swapBagSlotsDeferWeaponResync(prevRef - 1, emptyIdx0);
         }
@@ -624,16 +726,10 @@ export class Player extends Entity {
     }
 
     if (prevRef === 0) {
-      let emptyIdx0: number | null = null;
-      for (let i = 0; i < max; i++) {
-        if (inv[i] == null) {
-          emptyIdx0 = i;
-          break;
-        }
-      }
-      if (emptyIdx0 !== null) {
-        invExt.swapBagSlotsDeferWeaponResync(bagIndexClamped - 1, emptyIdx0);
-        this.serialized.set(key, emptyIdx0 + 1);
+      const hiddenIdx0 = this.findEmptyVisibleBagIndex(true);
+      if (hiddenIdx0 !== null) {
+        invExt.swapBagSlotsDeferWeaponResync(bagIndexClamped - 1, hiddenIdx0);
+        this.serialized.set(key, hiddenIdx0 + 1);
       } else {
         this.serialized.set(key, bagIndexClamped);
       }
@@ -642,6 +738,70 @@ export class Player extends Entity {
     }
 
     this.sanitizeWeaponLoadouts();
+  }
+
+  private assignConsumableLoadoutSlot(slot: 3 | 4, bagIndex: number): void {
+    const max = this.getMaxInventorySlots();
+    const bagIndexClamped = Math.max(0, Math.min(max, Math.floor(bagIndex)));
+    const key: "loadoutConsumable4" | "loadoutConsumable5" =
+      slot === 3 ? "loadoutConsumable4" : "loadoutConsumable5";
+    const invExt = this.getExt(Inventory);
+
+    if (bagIndexClamped === 0) {
+      const prevRef = this.serialized.get(key) as number;
+      if (prevRef >= 1 && prevRef <= max) {
+        const emptyIdx0 = this.findEmptyVisibleBagIndex(false, [prevRef - 1], [key]);
+        if (emptyIdx0 !== null) {
+          invExt.swapBagSlotsDeferWeaponResync(prevRef - 1, emptyIdx0);
+        }
+      }
+      this.serialized.set(key, 0);
+      return;
+    }
+
+    const inv = this.getInventory();
+    const item = inv[bagIndexClamped - 1];
+    if (!item) return;
+    if (!itemMatchesConsumableLoadout(item.itemType)) return;
+
+    const prevRef = this.serialized.get(key) as number;
+
+    if (prevRef === bagIndexClamped) {
+      return;
+    }
+
+    if (prevRef === 0) {
+      const hiddenIdx0 = this.findEmptyVisibleBagIndex(true);
+      if (hiddenIdx0 !== null) {
+        invExt.swapBagSlotsDeferWeaponResync(bagIndexClamped - 1, hiddenIdx0);
+        this.serialized.set(key, hiddenIdx0 + 1);
+      } else {
+        this.serialized.set(key, bagIndexClamped);
+      }
+    } else {
+      invExt.swapBagSlotsDeferWeaponResync(prevRef - 1, bagIndexClamped - 1);
+    }
+
+    this.sanitizeConsumableLoadouts();
+  }
+
+  private sanitizeConsumableLoadouts(): void {
+    const inv = this.getInventory();
+    const max = this.getMaxInventorySlots();
+    const check = (key: "loadoutConsumable4" | "loadoutConsumable5") => {
+      const idx = this.serialized.get(key) as number;
+      if (idx < 1 || idx > max) {
+        this.serialized.set(key, 0);
+        return;
+      }
+      const item = inv[idx - 1];
+      if (!item || !itemMatchesConsumableLoadout(item.itemType)) {
+        this.serialized.set(key, 0);
+      }
+    };
+    check("loadoutConsumable4");
+    check("loadoutConsumable5");
+    this.compactLoadoutBackedItemsToBagEnd();
   }
 
   public sanitizeWeaponLoadouts(): void {
@@ -664,6 +824,7 @@ export class Player extends Entity {
     check("weaponLoadoutPrimary");
     check("weaponLoadoutSecondary");
     check("weaponLoadoutMelee");
+    this.sanitizeConsumableLoadouts();
     this.applyWeaponLoadoutSelection();
   }
 
@@ -1438,9 +1599,18 @@ export class Player extends Entity {
           this.serialized.set("weaponLoadoutSecondary", wb.weaponLoadoutSecondary);
           this.serialized.set("weaponLoadoutMelee", wb.weaponLoadoutMelee);
           this.serialized.set("activeWeaponLoadout", wb.activeWeaponLoadout);
+          this.serialized.set("loadoutConsumable4", wb.loadoutConsumable4 ?? 4);
+          this.serialized.set("loadoutConsumable5", wb.loadoutConsumable5 ?? 5);
           this.sanitizeWeaponLoadouts();
         }
         this.hydratedFromDb = true;
+      }
+    }
+
+    if (progress.savedBank != null) {
+      const bankPayload = coercePlayerBankPersistedPayload(progress.savedBank);
+      if (bankPayload) {
+        this.getExt(Bank).applyPersistedPayload(bankPayload);
       }
     }
   }
@@ -1460,8 +1630,14 @@ export class Player extends Entity {
         weaponLoadoutSecondary: this.serialized.get("weaponLoadoutSecondary"),
         weaponLoadoutMelee: this.serialized.get("weaponLoadoutMelee"),
         activeWeaponLoadout: this.serialized.get("activeWeaponLoadout"),
+        loadoutConsumable4: this.serialized.get("loadoutConsumable4"),
+        loadoutConsumable5: this.serialized.get("loadoutConsumable5"),
       },
     };
+  }
+
+  getSavedBankPayload(): PlayerBankPersistedPayload {
+    return this.getExt(Bank).toPersistedPayload();
   }
 
   /**
@@ -1475,6 +1651,33 @@ export class Player extends Entity {
 
   getQuestProgressPayload(): PlayerQuestStatePayload {
     return parsePlayerQuestState(this.getSerialized().get("questStateJson"));
+  }
+
+  addExperience(amount: number): boolean {
+    const safeAmount = Math.max(0, Math.floor(amount));
+    if (safeAmount <= 0) {
+      return false;
+    }
+
+    const previousXp = this.getTotalExperience();
+    const previousLevel = getLevelFromTotalExperience(previousXp);
+    const nextXp = previousXp + safeAmount;
+
+    this.serialized.set("experience", nextXp);
+
+    const nextLevel = getLevelFromTotalExperience(nextXp);
+    if (nextLevel > previousLevel) {
+      this.broadcaster.broadcastEvent(new PlayerLevelUpEvent(this.getId()));
+      sendPlayerHudMessage(
+        this.getGameManagers(),
+        this.getId(),
+        `LEVELED UP! You've reached level ${nextLevel}`,
+        "#ffd166",
+      );
+      return true;
+    }
+
+    return false;
   }
 
   getTotalExperience(): number {

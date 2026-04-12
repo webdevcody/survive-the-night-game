@@ -79,8 +79,7 @@ function applyRewardList(player: Player, rewards: QuestReward[]): void {
       case "experience": {
         const n = Math.floor(r.amount);
         if (n <= 0) break;
-        const cur = player.getSerialized().get("experience") ?? 0;
-        player.getSerialized().set("experience", cur + n);
+        player.addExperience(n);
         const socketId = player.getClientSocketId();
         if (!socketId) break;
         const userId = UserSessionCache.getInstance().getUserIdBySocket(socketId);

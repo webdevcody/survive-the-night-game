@@ -40,6 +40,7 @@ export const ServerSentEvents = {
   AUTH_REQUIRED: "authRequired",
   USER_BANNED: "userBanned",
   PROFILE_LOAD_FAILED: "profileLoadFailed",
+  PLAYER_LEVEL_UP: "playerLevelUp",
 } as const;
 
 export const ClientSentEvents = {
@@ -69,6 +70,10 @@ export const ClientSentEvents = {
   SELECT_WEAPON_LOADOUT: "selectWeaponLoadout",
   SET_WEAPON_LOADOUT_SLOT: "setWeaponLoadoutSlot",
   DIALOGUE_NPC_COMPLETE: "dialogueNpcComplete",
+  /** Consume from loadout consumable slot (key 4 / 5) without changing selected inventory or weapon row. */
+  USE_LOADOUT_CONSUMABLE: "useLoadoutConsumable",
+  /** Bank / locker: stash, withdraw, drop, use, equip (validated against locker proximity). */
+  BANK_ACTION: "bankAction",
 } as const;
 
 export type ServerSentEventType = (typeof ServerSentEvents)[keyof typeof ServerSentEvents];

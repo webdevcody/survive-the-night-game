@@ -107,8 +107,7 @@ export class KillTracker {
 
     const killer = this.findPlayerByEntityId(data.killerEntityId);
     if (killer && !killer.getSerialized().get("isAI")) {
-      const cur = killer.getSerialized().get("experience") ?? 0;
-      killer.getSerialized().set("experience", cur + XP_PER_ZOMBIE_KILL);
+      killer.addExperience(XP_PER_ZOMBIE_KILL);
       const map = killer.getGameManagers()?.getMapManager();
       if (map) {
         recordKillQuestProgress(killer, data.enemyType, map);
