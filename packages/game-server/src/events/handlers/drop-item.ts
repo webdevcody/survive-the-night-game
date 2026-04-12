@@ -169,7 +169,11 @@ export function onDropItem(
     finalCount = itemToDrop.state.count;
   }
 
-  carryable.setItemState({ count: finalCount });
+  const carryState = { ...(itemToDrop.state ?? {}) };
+  if (isStackableItem(itemToDrop)) {
+    carryState.count = finalCount;
+  }
+  carryable.setItemState(carryState);
 
   // -------------------------------------------------------
   // COMBINE LOGIC

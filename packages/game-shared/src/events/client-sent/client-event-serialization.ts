@@ -62,6 +62,7 @@ const eventRegistry: Record<string, IBufferWriter> = {
   [ClientSentEvents.DIALOGUE_NPC_COMPLETE]: DialogueNpcCompleteEvent,
   [ClientSentEvents.USE_LOADOUT_CONSUMABLE]: UseLoadoutConsumableEvent,
   [ClientSentEvents.BANK_ACTION]: BankActionEvent,
+  [ClientSentEvents.RELOAD_WEAPON]: NoPayloadEvent,
 };
 
 function isClientSentEvent(event: string): event is ClientSentEventType {

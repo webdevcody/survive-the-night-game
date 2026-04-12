@@ -272,6 +272,13 @@ export class Renderer {
     // Apply zombie "undead view" overlay if player is a zombie
     this.mapManager.renderZombieOverlay(this.ctx);
 
+    // World-space reload indicators render after darkness so they stay readable at night.
+    for (const entity of this.gameState.entities) {
+      if (entity instanceof PlayerClient) {
+        entity.renderReloadProgressIndicator(this.ctx, this.gameState);
+      }
+    }
+
     // Render UI without transforms
     perfTimer.start("renderUI");
     this.ctx.save();

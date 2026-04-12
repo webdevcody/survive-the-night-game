@@ -68,7 +68,7 @@ type CraftingPanelOptions = {
 
 const PANEL = {
   width: 980,
-  /** Default / max height; actual panel height shrinks when the recipe preview is short. */
+  /** Fixed target height; details scroll instead of resizing the panel. */
   height: 680,
   padding: 22,
   gutter: 20,
@@ -115,12 +115,17 @@ export class CraftingPanel implements Renderable {
   private activeFilter: FilterValue = "all";
   private selectedEntryKey: string | null = null;
   private scrollOffset = 0;
+  private detailScrollOffset = 0;
 
   private panelBounds: PanelRect | null = null;
+  private listViewportRect: PanelRect | null = null;
+  private detailViewportRect: PanelRect | null = null;
   private closeButtonRect: PanelRect | null = null;
   private craftButtonRect: PanelRect | null = null;
   private filterRects: Array<{ rect: PanelRect; filter: FilterValue }> = [];
   private entryRects: Array<{ rect: PanelRect; key: string }> = [];
+  private listMaxScroll = 0;
+  private detailMaxScroll = 0;
   private wheelHandler: ((e: WheelEvent) => void) | null = null;
   private craftingTabIconSheet: HTMLImageElement | null = null;
   private craftingTabIconsPreloadStarted = false;
@@ -158,6 +163,7 @@ export class CraftingPanel implements Renderable {
     const stationProfessions = this.getStationProfessions(stationId);
     this.activeFilter = stationProfessions.length > 1 ? "all" : (stationProfessions[0] ?? "all");
     this.scrollOffset = 0;
+    this.detailScrollOffset = 0;
     this.selectedEntryKey = null;
     this.setupWheelHandler();
     if (!wasVisible) {
@@ -172,11 +178,16 @@ export class CraftingPanel implements Renderable {
     this.activeFilter = "all";
     this.selectedEntryKey = null;
     this.scrollOffset = 0;
+    this.detailScrollOffset = 0;
     this.panelBounds = null;
+    this.listViewportRect = null;
+    this.detailViewportRect = null;
     this.closeButtonRect = null;
     this.craftButtonRect = null;
     this.filterRects = [];
     this.entryRects = [];
+    this.listMaxScroll = 0;
+    this.detailMaxScroll = 0;
     this.removeWheelHandler();
     if (wasVisible) {
       this.options.onClose?.();
@@ -222,6 +233,7 @@ export class CraftingPanel implements Renderable {
       if (this.contains(filterRegion.rect, x, y)) {
         this.activeFilter = filterRegion.filter;
         this.scrollOffset = 0;
+        this.detailScrollOffset = 0;
         this.selectedEntryKey = null;
         return true;
       }
@@ -229,6 +241,9 @@ export class CraftingPanel implements Renderable {
 
     for (const entryRegion of this.entryRects) {
       if (this.contains(entryRegion.rect, x, y)) {
+        if (this.selectedEntryKey !== entryRegion.key) {
+          this.detailScrollOffset = 0;
+        }
         this.selectedEntryKey = entryRegion.key;
         return true;
       }
@@ -263,20 +278,7 @@ export class CraftingPanel implements Renderable {
     const entries = this.buildEntries(inventory);
     const selectedEntry = this.ensureSelectedEntry(entries);
 
-    const headerBlock = PANEL.headerHeight + PANEL.filterHeight + PANEL.filterGap * 2;
-    const maxInner =
-      PANEL.height - PANEL.padding * 2 - headerBlock;
-    const detailsSpan = selectedEntry ? this.getDetailsInnerHeight(selectedEntry) : 0;
-    const naturalRightColH =
-      selectedEntry === null
-        ? PANEL.listViewportMinHeight
-        : detailsSpan + PANEL.detailButtonGap + PANEL.buttonHeight + PANEL.detailBottomPadding;
-    const innerContentH = Math.min(
-      maxInner,
-      Math.max(PANEL.listViewportMinHeight, naturalRightColH),
-    );
-
-    const bounds = this.getPanelBounds(ctx.canvas.width, ctx.canvas.height, innerContentH);
+    const bounds = this.getPanelBounds(ctx.canvas.width, ctx.canvas.height);
     this.panelBounds = bounds;
 
     const leftX = bounds.x + PANEL.padding;
@@ -285,8 +287,10 @@ export class CraftingPanel implements Renderable {
     const rightX = leftX + PANEL.leftWidth + PANEL.gutter;
     const rightW = bounds.w - PANEL.padding * 2 - PANEL.leftWidth - PANEL.gutter;
 
+    const headerBlock = PANEL.headerHeight + PANEL.filterHeight + PANEL.filterGap * 2;
     const listY = leftY + headerBlock;
     const listH = leftH - headerBlock;
+    this.listViewportRect = { x: leftX, y: listY, w: PANEL.leftWidth, h: listH };
     const rowStride = PANEL.entryHeight + PANEL.entryGap;
     const visibleRowsIfFull = Math.max(1, Math.floor((listH + PANEL.entryGap) / rowStride));
     let visibleRows = visibleRowsIfFull;
@@ -295,6 +299,7 @@ export class CraftingPanel implements Renderable {
       visibleRows = Math.max(1, Math.floor((listBodyH + PANEL.entryGap) / rowStride));
     }
     const maxScroll = Math.max(0, entries.length - visibleRows);
+    this.listMaxScroll = maxScroll;
     this.scrollOffset = clamp(this.scrollOffset, 0, maxScroll);
 
     ctx.save();
@@ -415,7 +420,14 @@ export class CraftingPanel implements Renderable {
     ctx.strokeStyle = "rgba(115, 129, 154, 0.55)";
     ctx.strokeRect(rightX, listY, rightW, listH);
 
+    const craftButtonY = listY + listH - PANEL.buttonHeight - PANEL.detailBottomPadding;
+    const detailViewportH = Math.max(0, craftButtonY - listY - PANEL.detailButtonGap);
+    this.detailViewportRect = { x: rightX, y: listY, w: rightW, h: detailViewportH };
+
     if (!selectedEntry) {
+      this.detailScrollOffset = 0;
+      this.detailMaxScroll = 0;
+      this.craftButtonRect = null;
       ctx.font = "16px Arial";
       ctx.fillStyle = "#d2d9e6";
       ctx.fillText("No recipes available at this station yet.", rightX + 20, listY + 36);
@@ -423,23 +435,44 @@ export class CraftingPanel implements Renderable {
       return;
     }
 
+    const detailsSpan = this.getDetailsInnerHeight(selectedEntry);
+    this.detailMaxScroll = Math.max(0, detailsSpan - detailViewportH);
+    this.detailScrollOffset = clamp(this.detailScrollOffset, 0, this.detailMaxScroll);
+
     const actionEnabled = this.canExecuteEntry(selectedEntry, inventory, player);
+    ctx.save();
+    ctx.beginPath();
+    ctx.rect(rightX + 1, listY + 1, Math.max(0, rightW - 2), Math.max(0, detailViewportH - 2));
+    ctx.clip();
     this.renderDetails(
       ctx,
       rightX,
-      listY,
+      listY - this.detailScrollOffset,
       rightW,
-      listH,
+      detailViewportH,
       selectedEntry,
       inventory,
       player,
       actionEnabled,
     );
+    ctx.restore();
 
-    const useBottomAlignedCraftButton = naturalRightColH > listH + 0.5;
-    const craftButtonY = useBottomAlignedCraftButton
-      ? listY + listH - PANEL.buttonHeight - PANEL.detailBottomPadding
-      : listY + detailsSpan + PANEL.detailButtonGap;
+    if (this.detailMaxScroll > 0) {
+      const track = {
+        x: rightX + rightW - 9,
+        y: listY + 10,
+        w: 4,
+        h: Math.max(24, detailViewportH - 20),
+      };
+      ctx.fillStyle = "rgba(115, 129, 154, 0.28)";
+      ctx.fillRect(track.x, track.y, track.w, track.h);
+      const thumbH = Math.max(24, Math.round((detailViewportH / detailsSpan) * track.h));
+      const thumbTravel = Math.max(0, track.h - thumbH);
+      const thumbY =
+        track.y + (this.detailScrollOffset / Math.max(1, this.detailMaxScroll)) * thumbTravel;
+      ctx.fillStyle = "rgba(255, 211, 120, 0.88)";
+      ctx.fillRect(track.x, thumbY, track.w, thumbH);
+    }
 
     this.craftButtonRect = {
       x: rightX + rightW - 220,
@@ -461,10 +494,8 @@ export class CraftingPanel implements Renderable {
   private getPanelBounds(
     canvasWidth: number,
     canvasHeight: number,
-    innerContentHeight: number,
   ): PanelRect {
-    const headerBlock = PANEL.headerHeight + PANEL.filterHeight + PANEL.filterGap * 2;
-    const panelH = PANEL.padding * 2 + headerBlock + innerContentHeight;
+    const panelH = Math.min(PANEL.height, canvasHeight - PANEL.padding * 2);
     return {
       x: Math.floor((canvasWidth - PANEL.width) / 2),
       y: Math.floor((canvasHeight - panelH) / 2),
@@ -535,27 +566,35 @@ export class CraftingPanel implements Renderable {
       });
     }
 
+    const getEntrySortLevel = (entry: CraftingEntry): number => {
+      if (entry.kind === "recipe") {
+        return entry.recipe.unlockLevel;
+      }
+      // Scrap actions have no profession-gated unlock in the current UI, so keep them in
+      // the lowest bucket instead of inheriting the source item's recipe level.
+      return 1;
+    };
+
+    const getEntrySortLabel = (entry: CraftingEntry): string => {
+      return entry.kind === "recipe"
+        ? formatDisplayName(entry.recipe.result.type)
+        : `Scrap ${formatDisplayName(entry.item.itemType)}`;
+    };
+
     return entries.sort((left, right) => {
-      if (left.kind !== right.kind) {
-        return left.kind === "recipe" ? -1 : 1;
+      const leftLevel = getEntrySortLevel(left);
+      const rightLevel = getEntrySortLevel(right);
+      if (leftLevel !== rightLevel) {
+        return leftLevel - rightLevel;
       }
-      if (left.kind === "recipe" && right.kind === "recipe") {
-        if (left.recipe.unlockLevel !== right.recipe.unlockLevel) {
-          return left.recipe.unlockLevel - right.recipe.unlockLevel;
-        }
-        return formatDisplayName(left.recipe.result.type).localeCompare(
-          formatDisplayName(right.recipe.result.type),
-        );
-      }
-      return formatDisplayName((left as ScrapEntry).item.itemType).localeCompare(
-        formatDisplayName((right as ScrapEntry).item.itemType),
-      );
+      return getEntrySortLabel(left).localeCompare(getEntrySortLabel(right));
     });
   }
 
   private ensureSelectedEntry(entries: CraftingEntry[]): CraftingEntry | null {
     if (entries.length === 0) {
       this.selectedEntryKey = null;
+      this.detailScrollOffset = 0;
       return null;
     }
 
@@ -565,6 +604,9 @@ export class CraftingPanel implements Renderable {
       return current;
     }
 
+    if (this.selectedEntryKey !== entries[0]!.key) {
+      this.detailScrollOffset = 0;
+    }
     this.selectedEntryKey = entries[0]!.key;
     return entries[0]!;
   }
@@ -625,12 +667,18 @@ export class CraftingPanel implements Renderable {
     const professionLocked =
       entry.kind === "recipe" &&
       !isRecipeUnlocked(entry.recipe, (professionId) => player.getProfessionLevel(professionId));
+    const missingMaterials = entry.kind === "recipe" && !professionLocked && !enabled;
 
     if (professionLocked) {
       ctx.fillStyle = selected
         ? "rgba(44, 50, 60, 0.96)"
         : "rgba(22, 26, 32, 0.94)";
       ctx.strokeStyle = selected ? "rgba(200, 175, 115, 0.65)" : "rgba(88, 98, 112, 0.45)";
+    } else if (missingMaterials) {
+      ctx.fillStyle = selected
+        ? "rgba(108, 64, 72, 0.96)"
+        : "rgba(56, 31, 37, 0.94)";
+      ctx.strokeStyle = selected ? "rgba(255, 179, 179, 0.92)" : "rgba(194, 110, 110, 0.55)";
     } else {
       ctx.fillStyle = selected
         ? "rgba(62, 84, 116, 0.95)"
@@ -651,7 +699,7 @@ export class CraftingPanel implements Renderable {
     }
 
     ctx.font = "bold 14px Arial";
-    ctx.fillStyle = professionLocked ? "#8f9bab" : "#f4f7fb";
+    ctx.fillStyle = professionLocked ? "#8f9bab" : missingMaterials ? "#ffb6b6" : "#f4f7fb";
     ctx.textAlign = "left";
     ctx.fillText(
       entry.kind === "recipe" ? formatDisplayName(entry.recipe.result.type) : `Scrap ${formatDisplayName(entry.item.itemType)}`,
@@ -660,7 +708,7 @@ export class CraftingPanel implements Renderable {
     );
 
     ctx.font = "12px Arial";
-    ctx.fillStyle = professionLocked ? "#6c788a" : "#b8c6d9";
+    ctx.fillStyle = professionLocked ? "#6c788a" : missingMaterials ? "#f0b0b0" : "#b8c6d9";
     if (entry.kind === "recipe") {
       const status = enabled
         ? "Ready to craft"
@@ -881,20 +929,31 @@ export class CraftingPanel implements Renderable {
         return;
       }
 
-      if (this.panelBounds) {
-        const rect = canvas.getBoundingClientRect();
-        const scaleX = canvas.width / rect.width;
-        const scaleY = canvas.height / rect.height;
-        const x = (event.clientX - rect.left) * scaleX;
-        const y = (event.clientY - rect.top) * scaleY;
-        if (!this.contains(this.panelBounds, x, y)) {
-          return;
-        }
+      const rect = canvas.getBoundingClientRect();
+      const scaleX = canvas.width / rect.width;
+      const scaleY = canvas.height / rect.height;
+      const x = (event.clientX - rect.left) * scaleX;
+      const y = (event.clientY - rect.top) * scaleY;
+
+      if (this.panelBounds && !this.contains(this.panelBounds, x, y)) {
+        return;
       }
 
-      event.preventDefault();
-      const delta = event.deltaY > 0 ? 1 : -1;
-      this.scrollOffset = Math.max(0, this.scrollOffset + delta);
+      if (this.detailViewportRect && this.contains(this.detailViewportRect, x, y) && this.detailMaxScroll > 0) {
+        event.preventDefault();
+        this.detailScrollOffset = clamp(
+          this.detailScrollOffset + event.deltaY,
+          0,
+          this.detailMaxScroll,
+        );
+        return;
+      }
+
+      if (this.listMaxScroll > 0) {
+        event.preventDefault();
+        const delta = event.deltaY > 0 ? 1 : -1;
+        this.scrollOffset = clamp(this.scrollOffset + delta, 0, this.listMaxScroll);
+      }
     };
 
     canvas.addEventListener("wheel", this.wheelHandler, { passive: false });

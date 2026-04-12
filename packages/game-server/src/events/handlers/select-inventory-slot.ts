@@ -1,7 +1,6 @@
 import { ISocketAdapter } from "@shared/network/socket-adapter";
 import { HandlerContext } from "../context";
 import { SocketEventHandler } from "./types";
-import { getConfig } from "@shared/config";
 import { FISTS_INVENTORY_SENTINEL } from "@shared/constants/inventory-sentinel";
 
 /**
@@ -35,7 +34,7 @@ export function onSelectInventorySlot(
   const player = context.players.get(socket.id);
   if (!player) return;
 
-  const maxSlots = getConfig().player.MAX_INVENTORY_SLOTS;
+  const maxSlots = player.getMaxInventorySlots();
   if (data.slotIndex === FISTS_INVENTORY_SENTINEL) {
     player.selectInventoryItemOnly(FISTS_INVENTORY_SENTINEL);
     return;

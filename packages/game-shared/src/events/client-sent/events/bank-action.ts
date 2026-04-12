@@ -14,7 +14,7 @@ export interface BankActionEventData {
   source: BankActionSource;
   /** Bag or bank slot (0-based). Ignored when source is equipment (use equipSlotIndex). */
   slotIndex: number;
-  /** Equipment slot index (EQUIPMENT_SLOT_KEYS) when source is equipment; else 255. */
+  /** Equipment slot index 0-6 for armor or 7-11 for loadout rows when action is equip; else 255. */
   equipSlotIndex: number;
 }
 

@@ -2,7 +2,6 @@ import { ISocketAdapter } from "@shared/network/socket-adapter";
 import { HandlerContext } from "../context";
 import Inventory from "@/extensions/inventory";
 import { SocketEventHandler } from "./types";
-import { getConfig } from "@shared/config";
 
 /**
  * Validate swap inventory items data
@@ -49,8 +48,8 @@ export function onSwapInventoryItems(
 
   const inventory = player.getExt(Inventory);
 
-  // Validate indices against config
-  const maxSlots = getConfig().player.MAX_INVENTORY_SLOTS;
+  // Validate indices against the player's current bag size (base + strength).
+  const maxSlots = inventory.getMaxSlots();
   if (
     data.fromSlotIndex < 0 ||
     data.toSlotIndex < 0 ||

@@ -3,7 +3,6 @@ import { HandlerContext } from "../context";
 import Inventory from "@/extensions/inventory";
 import Consumable from "@/extensions/consumable";
 import { ItemType } from "@shared/util/inventory";
-import { getConfig } from "@shared/config";
 import { SocketEventHandler } from "./types";
 
 /**
@@ -50,7 +49,7 @@ export function onConsumeItem(
       item = inventoryItems[itemIndex];
     }
   } else if (inputInventoryItem !== null) {
-    const maxSlots = getConfig().player.MAX_INVENTORY_SLOTS;
+    const maxSlots = inventory.getMaxSlots();
     if (
       typeof inputInventoryItem === "number" &&
       inputInventoryItem >= 1 &&

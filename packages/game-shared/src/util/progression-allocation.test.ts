@@ -5,6 +5,7 @@ import {
   normalizeCharacterAllocations,
   validateCharacterAllocations,
 } from "./progression-allocation";
+import { MAX_POINTS_PER_CHARACTER_STAT } from "./character-stats";
 
 describe("progression-allocation", () => {
   it("allows ability spend within budget from XP", () => {
@@ -28,5 +29,20 @@ describe("progression-allocation", () => {
     const xp = 12;
     const a = normalizeCharacterAllocations({ health: 1, evade: 1 });
     expect(validateCharacterAllocations(a, xp)).toBeNull();
+  });
+
+  it("clamps character stats to the shared max cap", () => {
+    const a = normalizeCharacterAllocations({ health: 999 });
+    expect(a.health).toBe(MAX_POINTS_PER_CHARACTER_STAT);
+  });
+
+  it("rejects character stats above the shared max cap", () => {
+    expect(
+      validateCharacterAllocations({ health: MAX_POINTS_PER_CHARACTER_STAT + 1 }, 9999),
+    ).toEqual({
+      kind: "character_stat_cap",
+      key: "health",
+      value: MAX_POINTS_PER_CHARACTER_STAT + 1,
+    });
   });
 });

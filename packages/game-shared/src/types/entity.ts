@@ -22,4 +22,5 @@ export type EntityType = (typeof Entities)[keyof typeof Entities];
 export interface ItemState {
   count?: number;
   health?: number;
+  loadedAmmo?: number;
 }

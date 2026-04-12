@@ -14,6 +14,16 @@ export interface WeaponStats {
    * Camera shake intensity to apply on the client when this weapon is used.
    */
   cameraShakeIntensity?: number;
+  /**
+   * Number of rounds / shots that can be fired before a reload is required.
+   * Only applies to weapons that consume ammo.
+   */
+  magazineSize?: number;
+  /**
+   * Base reload duration in seconds before reload-speed modifiers.
+   * Only applies to weapons that consume ammo.
+   */
+  reloadDuration?: number;
 }
 
 export interface WeaponAssetConfig {

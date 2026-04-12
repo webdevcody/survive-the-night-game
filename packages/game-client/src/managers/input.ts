@@ -44,6 +44,7 @@ export interface InputManagerOptions {
   onSelectWeaponLoadout?: (loadout: 0 | 1 | 2) => void;
   /** Keys 4 / 5: consume assigned loadout consumable without changing selected bag or weapon row. */
   onUseLoadoutConsumable?: (which: 0 | 1) => void;
+  onReloadWeapon?: () => void;
   isMerchantPanelOpen?: () => boolean;
   isCraftingPanelOpen?: () => boolean;
   isFullscreenMapOpen?: () => boolean;
@@ -57,6 +58,8 @@ export interface InputManagerOptions {
   onToggleQuestJournal?: () => void;
   isQuestCompletedModalOpen?: () => boolean;
   onDismissQuestCompletedModal?: () => void;
+  getMaxInventorySlots?: () => number;
+  isBankOpen?: () => boolean;
 }
 
 const shouldBlock = new Set([
@@ -78,6 +81,7 @@ const shouldBlock = new Set([
   "KeyK",
   "KeyP",
   "KeyQ",
+  "KeyR",
   "Escape",
   "Digit1",
   "Digit2",
@@ -89,6 +93,21 @@ const shouldBlock = new Set([
   "Digit8",
   "Digit9",
   "Digit0",
+]);
+
+const suppressedGameplayKeys = new Set([
+  "Space",
+  "ShiftLeft",
+  "ShiftRight",
+  "ArrowUp",
+  "ArrowDown",
+  "ArrowLeft",
+  "ArrowRight",
+  "KeyW",
+  "KeyA",
+  "KeyS",
+  "KeyD",
+  "KeyR",
 ]);
 
 export class InputManager {
@@ -109,6 +128,7 @@ export class InputManager {
   private callbacks: InputManagerOptions = {};
   private mousePosition: Vector2 | null = null;
   private canvas: HTMLCanvasElement | null = null;
+  private lastMovementSuppressed = false;
   // Store bound event handlers for cleanup
   private boundKeydownHandler: ((e: KeyboardEvent) => void) | null = null;
   private boundKeyupHandler: ((e: KeyboardEvent) => void) | null = null;
@@ -117,6 +137,45 @@ export class InputManager {
   private checkIfChanged() {
     this.hasChanged = JSON.stringify(this.inputs) !== JSON.stringify(this.lastInputs);
     this.lastInputs = { ...this.inputs };
+  }
+
+  private getMaxInventorySlots(): number {
+    return this.callbacks.getMaxInventorySlots?.() ?? getConfig().player.MAX_INVENTORY_SLOTS;
+  }
+
+  private hasLiveGameplayInput(): boolean {
+    return this.inputs.dx !== 0 || this.inputs.dy !== 0 || this.inputs.fire || this.inputs.sprint;
+  }
+
+  private isMovementSuppressed(): boolean {
+    return (
+      this.isChatting ||
+      (this.callbacks.isMerchantPanelOpen?.() ?? false) ||
+      (this.callbacks.isCraftingPanelOpen?.() ?? false) ||
+      (this.callbacks.isBankOpen?.() ?? false) ||
+      (this.callbacks.isNpcDialogueOpen?.() ?? false) ||
+      (this.callbacks.isFullscreenMapOpen?.() ?? false) ||
+      (this.callbacks.isQuestCompletedModalOpen?.() ?? false)
+    );
+  }
+
+  private syncMovementSuppression(): boolean {
+    const isSuppressed = this.isMovementSuppressed();
+    if (isSuppressed && !this.lastMovementSuppressed && this.hasLiveGameplayInput()) {
+      this.clearInputs();
+    }
+    this.lastMovementSuppressed = isSuppressed;
+    return isSuppressed;
+  }
+
+  private getSuppressedInputs(): Input {
+    return {
+      facing: this.inputs.facing,
+      dx: 0,
+      dy: 0,
+      fire: false,
+      sprint: false,
+    };
   }
 
   private quickHeal() {
@@ -195,6 +254,8 @@ export class InputManager {
         return; // Block all other inputs when chatting
       }
 
+      this.syncMovementSuppression();
+
       if (callbacks.isQuestCompletedModalOpen?.()) {
         if (eventCode === "Escape" || eventCode === "Space" || eventCode === "Enter") {
           e.preventDefault();
@@ -215,6 +276,8 @@ export class InputManager {
       // Check if merchant panel is open
       const isMerchantPanelOpen = callbacks.isMerchantPanelOpen?.() ?? false;
       const isCraftingPanelOpen = callbacks.isCraftingPanelOpen?.() ?? false;
+      const isBankOpen = callbacks.isBankOpen?.() ?? false;
+      const isNpcDialogueOpen = callbacks.isNpcDialogueOpen?.() ?? false;
 
       const isInventoryScreenOpen = callbacks.isInventoryScreenOpen?.() ?? false;
 
@@ -317,6 +380,10 @@ export class InputManager {
         return;
       }
 
+      if ((isBankOpen || isNpcDialogueOpen) && suppressedGameplayKeys.has(eventCode)) {
+        return;
+      }
+
       // Normal game input handling - use physical key codes for WASD
       switch (eventCode) {
         case "KeyH":
@@ -370,6 +437,10 @@ export class InputManager {
         }
         case "Digit5": {
           callbacks.onUseLoadoutConsumable?.(1);
+          break;
+        }
+        case "KeyR": {
+          callbacks.onReloadWeapon?.();
           break;
         }
         case "KeyG": {
@@ -433,6 +504,8 @@ export class InputManager {
 
       const eventCode = e.code;
       const eventKey = e.key.toLowerCase();
+
+      this.syncMovementSuppression();
 
       // Check if merchant panel is open - block all inputs
       const isMerchantPanelOpen = callbacks.isMerchantPanelOpen?.() ?? false;
@@ -539,36 +612,8 @@ export class InputManager {
   }
 
   getInputs() {
-    // If chatting, force all inputs to false/zero to prevent movement
-    if (this.isChatting) {
-      return {
-        facing: this.inputs.facing,
-        dx: 0,
-        dy: 0,
-        fire: false,
-        sprint: false,
-      };
-    }
-    // If merchant panel is open, force all inputs to false/zero to prevent movement
-    const isMerchantPanelOpen = this.callbacks.isMerchantPanelOpen?.() ?? false;
-    const isCraftingPanelOpen = this.callbacks.isCraftingPanelOpen?.() ?? false;
-    if (isMerchantPanelOpen || isCraftingPanelOpen) {
-      return {
-        facing: this.inputs.facing,
-        dx: 0,
-        dy: 0,
-        fire: false,
-        sprint: false,
-      };
-    }
-    if (this.callbacks.isFullscreenMapOpen?.() ?? false) {
-      return {
-        facing: this.inputs.facing,
-        dx: 0,
-        dy: 0,
-        fire: false,
-        sprint: false,
-      };
+    if (this.syncMovementSuppression()) {
+      return this.getSuppressedInputs();
     }
     // Return a copy to prevent external modifications from affecting internal state
     // Note: aimAngle will be calculated and set externally after getting inputs
@@ -590,35 +635,8 @@ export class InputManager {
     canvasHeight: number,
     cameraScale: number = 1
   ): Input {
-    // If chatting, return cleared inputs (same as getInputs)
-    if (this.isChatting) {
-      return {
-        facing: this.inputs.facing,
-        dx: 0,
-        dy: 0,
-        fire: false,
-        sprint: false,
-      };
-    }
-    // If merchant panel is open, return cleared inputs to prevent movement
-    const isMerchantPanelOpen = this.callbacks.isMerchantPanelOpen?.() ?? false;
-    if (isMerchantPanelOpen) {
-      return {
-        facing: this.inputs.facing,
-        dx: 0,
-        dy: 0,
-        fire: false,
-        sprint: false,
-      };
-    }
-    if (this.callbacks.isFullscreenMapOpen?.() ?? false) {
-      return {
-        facing: this.inputs.facing,
-        dx: 0,
-        dy: 0,
-        fire: false,
-        sprint: false,
-      };
+    if (this.syncMovementSuppression()) {
+      return this.getSuppressedInputs();
     }
     const inputs: Input = { ...this.inputs };
     const aimInfo = this.calculateAimInfo(
@@ -638,7 +656,7 @@ export class InputManager {
   }
 
   setInventorySlot(slot: number) {
-    const maxSlots = getConfig().player.MAX_INVENTORY_SLOTS;
+    const maxSlots = this.getMaxInventorySlots();
     if (slot !== FISTS_INVENTORY_SENTINEL && (slot < 1 || slot > maxSlots)) {
       return;
     }
@@ -657,7 +675,7 @@ export class InputManager {
    * Used when syncing from server to avoid circular updates
    */
   setInventorySlotSilent(slot: number): void {
-    const maxSlots = getConfig().player.MAX_INVENTORY_SLOTS;
+    const maxSlots = this.getMaxInventorySlots();
     if (slot !== FISTS_INVENTORY_SENTINEL && (slot < 1 || slot > maxSlots)) {
       return;
     }
@@ -682,11 +700,7 @@ export class InputManager {
    * Trigger weapon fire (for mouse click)
    */
   triggerFire() {
-    // Don't allow firing while chatting
-    if (this.isChatting) return;
-    // Don't allow firing when merchant panel is open
-    const isMerchantPanelOpen = this.callbacks.isMerchantPanelOpen?.() ?? false;
-    if (isMerchantPanelOpen) return;
+    if (this.syncMovementSuppression()) return;
     this.inputs.fire = true;
     this.hasChanged = true;
   }
@@ -695,11 +709,7 @@ export class InputManager {
    * Release weapon fire (for mouse release)
    */
   releaseFire() {
-    // Don't allow firing while chatting
-    if (this.isChatting) return;
-    // Don't allow firing when merchant panel is open
-    const isMerchantPanelOpen = this.callbacks.isMerchantPanelOpen?.() ?? false;
-    if (isMerchantPanelOpen) return;
+    if (this.syncMovementSuppression()) return;
     this.inputs.fire = false;
     this.hasChanged = true;
   }

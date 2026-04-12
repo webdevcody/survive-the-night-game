@@ -11,12 +11,18 @@ import {
 import { ImageLoader, getItemAssetKey } from "@/managers/asset";
 import { GameState } from "@/state";
 import { debugDrawHitbox, drawCenterPositionWithLabel } from "@/util/debug";
+import { renderRadialProgressIndicator } from "@/util/radial-progress-indicator";
 import { createFlashEffect } from "@/util/render";
 import { Z_INDEX } from "@shared/map";
 import { Direction, normalizeDirection } from "../../../game-shared/src/util/direction";
 import { Hitbox } from "../../../game-shared/src/util/hitbox";
 import { Input } from "../../../game-shared/src/util/input";
-import { InventoryItem, isWeapon } from "../../../game-shared/src/util/inventory";
+import {
+  InventoryItem,
+  getWeaponAmmoType,
+  getWeaponMagazineSize,
+  isWeapon,
+} from "../../../game-shared/src/util/inventory";
 import { getPlayerBodyOverlayItemsInRenderOrder } from "@shared/util/player-body-overlays";
 import { resolveAttackWeaponFromLoadout } from "@shared/util/weapon-loadout";
 import { itemRegistry } from "@shared/entities";
@@ -74,6 +80,8 @@ export class PlayerClient extends ClientEntity implements IClientEntity, Rendera
   private aiState: string = ""; // Current AI state (for debugging)
   private isZombie: boolean = false; // Whether this player has become a zombie (Battle Royale)
   private zombieSpawnCooldownProgress: number = 1; // 0-1 progress for zombie spawn ability (1 = ready)
+  private isReloading: boolean = false;
+  private reloadProgress: number = 0;
 
   private abilitySprint: number = 0;
   private abilityRegenerate: number = 0;
@@ -136,6 +144,8 @@ export class PlayerClient extends ClientEntity implements IClientEntity, Rendera
     this.aiState = (data as any).aiState ?? "";
     this.isZombie = (data as any).isZombie ?? false;
     this.zombieSpawnCooldownProgress = (data as any).zombieSpawnCooldownProgress ?? 1;
+    this.isReloading = Boolean((data as any).isReloading);
+    this.reloadProgress = Number((data as any).reloadProgress) || 0;
     this.syncProgressionFromData(data as any);
   }
 
@@ -174,6 +184,8 @@ export class PlayerClient extends ClientEntity implements IClientEntity, Rendera
     this.aiState = (this as any).aiState ?? "";
     this.isZombie = (this as any).isZombie ?? false;
     this.zombieSpawnCooldownProgress = (this as any).zombieSpawnCooldownProgress ?? 1;
+    this.isReloading = Boolean((this as any).isReloading);
+    this.reloadProgress = Number((this as any).reloadProgress) || 0;
     this.experience = (this as any).experience ?? 0;
     this.syncProgressionFromData(this as any);
     // Update skin if it was changed (e.g., when converted to zombie)
@@ -548,6 +560,33 @@ export class PlayerClient extends ClientEntity implements IClientEntity, Rendera
     }
   }
 
+  public renderReloadProgressIndicator(ctx: CanvasRenderingContext2D, gameState: GameState): void {
+    if (!this.isReloading || this.reloadProgress <= 0 || this.isDead()) {
+      return;
+    }
+
+    const renderPosition = this.getPosition();
+    const isLocalPlayer = gameState.playerId === this.getId();
+    let indicatorY = renderPosition.y - 6;
+    if (!isLocalPlayer && this.displayName) {
+      indicatorY -= 6;
+    }
+    if (!isLocalPlayer && this.isAI && this.aiState) {
+      indicatorY -= 6;
+    }
+
+    renderRadialProgressIndicator(ctx, {
+      progress: this.reloadProgress,
+      x: renderPosition.x + 8,
+      y: indicatorY,
+      radius: 6,
+      progressColor: "rgba(255, 214, 102, 0.95)",
+      borderColor: "rgba(255, 246, 214, 0.85)",
+      borderWidth: 1.25,
+      backgroundColor: "rgba(18, 12, 8, 0.72)",
+    });
+  }
+
   public setLocalInventorySlot(slot: number): void {
     // This method is called when server updates the slot
     // The slot is already set via deserializeProperty for inputInventoryItem
@@ -566,6 +605,45 @@ export class PlayerClient extends ClientEntity implements IClientEntity, Rendera
     const m = (this as any).weaponLoadoutMelee ?? 0;
     const lo = (this as any).activeWeaponLoadout ?? 0;
     return resolveAttackWeaponFromLoadout(inv, max, lo, p, s, m)?.item ?? null;
+  }
+
+  public isReloadingWeapon(): boolean {
+    return this.isReloading;
+  }
+
+  public getReloadProgress(): number {
+    return this.reloadProgress;
+  }
+
+  public getActiveWeaponAmmoState():
+    | { clip: number; reserve: number; magazineSize: number }
+    | null {
+    if (!this.hasExt(ClientInventory)) {
+      return null;
+    }
+
+    const activeItem = this.getActiveItem();
+    if (!activeItem || !isWeapon(activeItem.itemType)) {
+      return null;
+    }
+
+    const ammoType = getWeaponAmmoType(activeItem.itemType);
+    const magazineSize = getWeaponMagazineSize(activeItem.itemType);
+    if (!ammoType || magazineSize == null) {
+      return null;
+    }
+
+    const rawLoadedAmmo = activeItem.state?.loadedAmmo;
+    const clip =
+      typeof rawLoadedAmmo === "number" && Number.isFinite(rawLoadedAmmo)
+        ? Math.max(0, Math.min(magazineSize, Math.floor(rawLoadedAmmo)))
+        : magazineSize;
+
+    return {
+      clip,
+      reserve: this.getExt(ClientInventory).getTotalCount(ammoType),
+      magazineSize,
+    };
   }
 
   /** Held sprite: non-weapons from selected bag slot; weapons only from loadout. */

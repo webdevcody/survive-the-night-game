@@ -1,7 +1,6 @@
 import { EventType, ClientSentEvents } from "../../events";
 import { GameEvent } from "../../types";
 import { ArrayBufferWriter, BufferReader } from "../../../util/buffer-serialization";
-import { getConfig } from "../../../config";
 
 /**
  * slot: 0 = primary, 1 = secondary, 2 = melee, 3 = consumable (key 4), 4 = consumable (key 5).
@@ -28,10 +27,9 @@ export class SetWeaponLoadoutSlotEvent implements GameEvent<SetWeaponLoadoutSlot
     return this.data;
   }
 
-   static serializeToBuffer(writer: ArrayBufferWriter, data: SetWeaponLoadoutSlotEventData): void {
-    const max = getConfig().player.MAX_INVENTORY_SLOTS;
+  static serializeToBuffer(writer: ArrayBufferWriter, data: SetWeaponLoadoutSlotEventData): void {
     const slot = Math.max(0, Math.min(4, Math.floor(data.slot ?? 0)));
-    const bag = Math.max(0, Math.min(max, Math.floor(data.bagIndex ?? 0)));
+    const bag = Math.max(0, Math.min(255, Math.floor(data.bagIndex ?? 0)));
     writer.writeUInt8(slot);
     writer.writeUInt8(bag);
   }

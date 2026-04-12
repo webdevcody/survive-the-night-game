@@ -48,6 +48,28 @@ export function getWeaponAmmoType(weaponType: ItemType): ItemType | null {
   return ammoType || null;
 }
 
+export function getWeaponMagazineSize(weaponType: ItemType): number | null {
+  const weaponConfig = weaponRegistry.get(weaponType);
+  const magazineSize = weaponConfig?.stats.magazineSize;
+  if (typeof magazineSize !== "number" || !Number.isFinite(magazineSize) || magazineSize <= 0) {
+    return null;
+  }
+  return Math.max(1, Math.floor(magazineSize));
+}
+
+export function getWeaponReloadDuration(weaponType: ItemType): number | null {
+  const weaponConfig = weaponRegistry.get(weaponType);
+  const reloadDuration = weaponConfig?.stats.reloadDuration;
+  if (
+    typeof reloadDuration !== "number" ||
+    !Number.isFinite(reloadDuration) ||
+    reloadDuration <= 0
+  ) {
+    return null;
+  }
+  return reloadDuration;
+}
+
 /** Armor / wearable slots only (weapons stay in bag / hotbar). Order is fixed for network and buffers (indices 0–6). */
 export type EquipmentSlotKey = ArmorEquipmentSlotKey;
 

@@ -4,7 +4,6 @@ import { SocketEventHandler } from "./types";
 import { Player } from "@/entities/players/player";
 import Inventory from "@/extensions/inventory";
 import Consumable from "@/extensions/consumable";
-import { getConfig } from "@shared/config";
 import { itemMatchesConsumableLoadout } from "@shared/util/consumable-loadout";
 
 function validate(data: unknown): { which: 0 | 1 } | null {
@@ -26,10 +25,9 @@ export function onUseLoadoutConsumable(
 
   const key = data.which === 0 ? "loadoutConsumable4" : "loadoutConsumable5";
   const bag = player.serialized.get(key);
-  const maxSlots = getConfig().player.MAX_INVENTORY_SLOTS;
-  if (typeof bag !== "number" || bag < 1 || bag > maxSlots) return;
-
   const inventory = player.getExt(Inventory);
+  const maxSlots = inventory.getMaxSlots();
+  if (typeof bag !== "number" || bag < 1 || bag > maxSlots) return;
   const itemIndex = bag - 1;
   const item = inventory.getItems()[itemIndex];
   if (!item || !itemMatchesConsumableLoadout(item.itemType)) return;

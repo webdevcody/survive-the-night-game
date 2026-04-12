@@ -103,9 +103,11 @@ export default class Carryable extends ExtensionBase<CarryableFields> {
       return false;
     }
 
+    const pickupState = options?.state ?? this.getItemState();
+
     inventory.addItem({
       itemType: itemType,
-      state: options?.state,
+      state: pickupState,
     });
 
     this.self.getEntityManager().markEntityForRemoval(this.self);

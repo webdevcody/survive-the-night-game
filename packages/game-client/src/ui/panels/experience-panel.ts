@@ -63,9 +63,11 @@ export class ExperiencePanel extends Panel {
     ctx.font = `bold ${labelFont}px Georgia`;
     ctx.textAlign = "center";
     ctx.textBaseline = "alphabetic";
+    const xpRemaining =
+      progress.xpToNextLevel > 0 ? progress.xpToNextLevel - progress.currentXpInLevel : 0;
     const xpHint =
       progress.xpToNextLevel > 0
-        ? `Lv ${progress.level}  ${progress.currentXpInLevel}/${progress.xpToNextLevel} XP`
+        ? `Lv ${progress.level}  ${xpRemaining} XP to level up`
         : `Lv ${progress.level}  MAX`;
     ctx.fillStyle = RPG_TITLE_CREAM;
     ctx.shadowColor = "rgba(6, 8, 16, 0.9)";

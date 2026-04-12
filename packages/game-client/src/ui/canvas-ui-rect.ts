@@ -6,7 +6,9 @@ import {
   RPG_BODY_TEXT,
   RPG_SLOT_FILL,
   RPG_SLOT_STROKE,
+  RPG_TAB_ACTIVE_FILL,
   RPG_TAB_ACTIVE_STROKE,
+  RPG_TITLE_CREAM,
 } from "@/ui/rpg-hud-theme";
 
 export type CanvasUiRect = { readonly x: number; readonly y: number; readonly w: number; readonly h: number };
@@ -27,6 +29,9 @@ export const PANEL_TAB_CONTENT_GAP = 26;
 /** Baseline step between character stat rows (must match `renderCharacterTab` in inventory-screen). */
 export const CHARACTER_STAT_ROW_STEP_PX = 38;
 
+/** Space for each loop-group title row (Survivability, Combat, …) above that group’s stats. */
+export const CHARACTER_STAT_GROUP_HEADER_BLOCK_PX = 26;
+
 /** Right-anchored +/- buttons on the character stats tab (must match handleClick). */
 export function characterStatPlusMinusRects(
   rightX: number,
@@ -40,12 +45,6 @@ export function characterStatPlusMinusRects(
     minus: { x: rightX + rightW - 100, y, w: btnW, h: btnH },
     plus: { x: rightX + rightW - 60, y, w: btnW, h: btnH },
   };
-}
-
-/** Y position of the stat label baseline for row `index` (0-based) on the character tab. */
-export function characterStatRowLabelY(contentTop: number, index: number): number {
-  const firstRowY = contentTop + PANEL_TAB_CONTENT_GAP + 36;
-  return firstRowY + index * CHARACTER_STAT_ROW_STEP_PX;
 }
 
 export function panelBottomWideButtonRect(rightX: number, rightY: number, rightW: number, rightH: number): CanvasUiRect {
@@ -89,15 +88,17 @@ export function drawCanvasUiButton(
   rect: CanvasUiRect,
   label: string,
   variant: "compact" | "wide" = "compact",
+  options?: { pressed?: boolean },
 ): void {
+  const isPressed = options?.pressed === true;
   if (variant === "compact") {
-    ctx.fillStyle = RPG_SLOT_FILL;
+    ctx.fillStyle = isPressed ? RPG_TAB_ACTIVE_FILL : RPG_SLOT_FILL;
     ctx.fillRect(rect.x, rect.y, rect.w, rect.h);
-    ctx.strokeStyle = RPG_SLOT_STROKE;
-    ctx.lineWidth = 1;
+    ctx.strokeStyle = isPressed ? RPG_TAB_ACTIVE_STROKE : RPG_SLOT_STROKE;
+    ctx.lineWidth = isPressed ? 2 : 1;
     ctx.strokeRect(rect.x, rect.y, rect.w, rect.h);
     ctx.font = "bold 14px Arial";
-    ctx.fillStyle = RPG_BODY_TEXT;
+    ctx.fillStyle = isPressed ? RPG_TITLE_CREAM : RPG_BODY_TEXT;
   } else {
     ctx.fillStyle = RPG_SLOT_FILL;
     ctx.fillRect(rect.x, rect.y, rect.w, rect.h);
@@ -109,7 +110,8 @@ export function drawCanvasUiButton(
   }
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
-  ctx.fillText(label, rect.x + rect.w / 2, rect.y + rect.h / 2);
+  const labelYOffset = isPressed ? 1 : 0;
+  ctx.fillText(label, rect.x + rect.w / 2, rect.y + rect.h / 2 + labelYOffset);
   ctx.textAlign = "left";
   ctx.textBaseline = "alphabetic";
 }

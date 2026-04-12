@@ -26,6 +26,7 @@ import type { WorldMapDialogueNpcSession } from "@shared/map/world-map-types";
 import { queuePersistQuestProgressToWebsite } from "@/util/persist-quest-progress";
 import { queuePersistExperienceDeltaToWebsite } from "@/util/persist-experience-delta";
 import { UserSessionCache } from "@/services/user-session-cache";
+import { MAX_POINTS_PER_CHARACTER_STAT } from "@shared/util/character-stats";
 
 function getState(player: Player): PlayerQuestStatePayload {
   return parsePlayerQuestState(player.getSerialized().get("questStateJson"));
@@ -63,7 +64,9 @@ function applyRewardList(player: Player, rewards: QuestReward[]): void {
         const key = mapStatToSerializedKey(r.stat);
         if (!key) break;
         const cur = player.getSerialized().get(key) ?? 0;
-        player.getSerialized().set(key, Math.min(99, Math.floor(cur + r.amount)));
+        player
+          .getSerialized()
+          .set(key, Math.min(MAX_POINTS_PER_CHARACTER_STAT, Math.floor(cur + r.amount)));
         break;
       }
       case "item": {

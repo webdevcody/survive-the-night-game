@@ -540,6 +540,10 @@ export class ClientSocketManager {
     this.emitClientEvent(ClientSentEvents.USE_LOADOUT_CONSUMABLE, { which });
   }
 
+  public sendReloadWeapon() {
+    this.emitClientEvent(ClientSentEvents.RELOAD_WEAPON);
+  }
+
   public sendSelectInventorySlot(slotIndex: number) {
     this.emitClientEvent(ClientSentEvents.SELECT_INVENTORY_SLOT, { slotIndex });
   }

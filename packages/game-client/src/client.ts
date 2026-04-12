@@ -195,8 +195,15 @@ export class GameClient {
     // TODO: refactor to use event emitter
     this.inputManager = new InputManager({
       getInventory,
+      getMaxInventorySlots: () => {
+        const player = getPlayer();
+        return player instanceof PlayerClient
+          ? player.getMaxInventorySlots()
+          : getConfig().player.MAX_INVENTORY_SLOTS;
+      },
       isMerchantPanelOpen: () => this.merchantBuyPanel.isVisible(),
       isCraftingPanelOpen: () => this.craftingPanel.isVisible(),
+      isBankOpen: () => this.hud.isBankOpen(),
       isFullscreenMapOpen: () => this.hud.isFullscreenMapOpen(),
       isInventoryScreenOpen: () => this.hud.isInventoryScreenOpen(),
       getCameraCenterScreenX: (canvasWidth: number) =>
@@ -473,6 +480,9 @@ export class GameClient {
           which === 0 ? (p as any).loadoutConsumable4 : (p as any).loadoutConsumable5;
         if (typeof bag !== "number" || bag < 1) return;
         this.socketManager?.sendUseLoadoutConsumable(which);
+      },
+      onReloadWeapon: () => {
+        this.socketManager?.sendReloadWeapon();
       },
     });
 
@@ -1183,7 +1193,7 @@ export class GameClient {
     }
 
     const activeSlot = this.inputManager.getCurrentInventorySlot();
-    const maxSlots = getConfig().player.MAX_INVENTORY_SLOTS;
+    const maxSlots = player.getMaxInventorySlots();
     if (activeSlot === FISTS_INVENTORY_SENTINEL) {
       // No custom crosshair while unarmed; keep OS cursor visible (hiding it leaves no pointer).
       this.ctx.canvas.style.cursor = "default";

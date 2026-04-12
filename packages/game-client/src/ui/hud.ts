@@ -20,7 +20,7 @@ import { getConfig } from "@shared/config";
 import { scaleHudValue } from "@/util/hud-scale";
 import { InventoryScreenUI, type InventoryUiTab } from "./inventory-screen";
 import { SurvivorStatusHud } from "./survivor-status-hud";
-import { LoadoutStrip } from "./loadout-strip";
+import { LoadoutStrip, getLoadoutStripScreenLayout } from "./loadout-strip";
 import { InputManager } from "@/managers/input";
 import { PlayerClient } from "@/entities/player";
 import { InventoryItem, type EquipmentSlotKey } from "../../../game-shared/src/util/inventory";
@@ -38,7 +38,9 @@ import { DialoguePanel } from "./dialogue-panel";
 import {
   RPG_BODY_TEXT,
   RPG_BORDER_GOLD,
+  RPG_COUNTER_GOLD,
   RPG_HUD_PANEL_BG,
+  RPG_METADATA_MUTED,
   RPG_PANEL_GRADIENT_TOP,
   RPG_TITLE_CREAM,
 } from "./rpg-hud-theme";
@@ -418,6 +420,48 @@ export class Hud {
     this.onDialogueQuestChoice = handler;
   }
 
+  private renderAmmoCounter(
+    ctx: CanvasRenderingContext2D,
+    player: PlayerClient,
+    centerX: number,
+    canvasWidth: number,
+    canvasHeight: number,
+  ): void {
+    const ammoState = player.getActiveWeaponAmmoState();
+    if (!ammoState) {
+      return;
+    }
+
+    const layout = getLoadoutStripScreenLayout(canvasWidth, canvasHeight, centerX);
+    const clipLabel = `${ammoState.clip}`;
+    const reserveLabel = ` / ${ammoState.reserve}`;
+    const clipFont = `bold ${Math.max(20, Math.round(24 * layout.scale))}px Arial`;
+    const reserveFont = `bold ${Math.max(12, Math.round(15 * layout.scale))}px Arial`;
+    const baseX = layout.x + layout.w - 2 * layout.scale;
+    const baseY = layout.y - 8 * layout.scale;
+
+    ctx.save();
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.textAlign = "right";
+    ctx.textBaseline = "alphabetic";
+    ctx.strokeStyle = "rgba(6, 8, 16, 0.95)";
+    ctx.lineWidth = Math.max(2, Math.round(3 * layout.scale));
+
+    ctx.font = reserveFont;
+    const reserveWidth = ctx.measureText(reserveLabel).width;
+
+    ctx.font = clipFont;
+    ctx.fillStyle = player.isReloadingWeapon() ? RPG_COUNTER_GOLD : RPG_TITLE_CREAM;
+    ctx.strokeText(clipLabel, baseX - reserveWidth, baseY);
+    ctx.fillText(clipLabel, baseX - reserveWidth, baseY);
+
+    ctx.font = reserveFont;
+    ctx.fillStyle = RPG_METADATA_MUTED;
+    ctx.strokeText(reserveLabel, baseX, baseY);
+    ctx.fillText(reserveLabel, baseX, baseY);
+    ctx.restore();
+  }
+
   public render(ctx: CanvasRenderingContext2D, gameState: GameState): void {
     this.currentGameState = gameState;
     const { width, height } = ctx.canvas;
@@ -435,6 +479,7 @@ export class Hud {
 
     this.minimap.render(ctx, gameState, minimapHudLayout.minimap);
     const myPlayer = this.getMyPlayer();
+    const isZombiePlayer = myPlayer?.isZombiePlayer?.() ?? false;
     if (!this.questJournalPanel.isVisible()) {
       this.activeQuestTrackerPanel.render(
         ctx,
@@ -498,6 +543,10 @@ export class Hud {
       ctx.restore();
     }
 
+    if (!isZombiePlayer && dialogueOcclusion < 0.98 && myPlayer) {
+      this.renderAmmoCounter(ctx, myPlayer, hotbarCenterX, width, height);
+    }
+
     // Render mute button
     ctx.save();
     ctx.setTransform(1, 0, 0, 1, 0, 0);
@@ -509,8 +558,6 @@ export class Hud {
     this.chatWidget.render(ctx, gameState);
 
     // Health + stamina orbs (left/right of bottom loadout strip)
-    const currentPlayer = getPlayer(gameState);
-    const isZombiePlayer = currentPlayer?.isZombiePlayer?.() ?? false;
     if (!isZombiePlayer && dialogueOcclusion < 0.98) {
       this.survivorStatusHud.renderHealthAndStamina(ctx, gameState, minimapHudLayout);
     }

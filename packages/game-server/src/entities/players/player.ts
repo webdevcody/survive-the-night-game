@@ -32,6 +32,7 @@ import { PlayerDeathEvent } from "../../../../game-shared/src/events/server-sent
 import { CraftEvent } from "../../../../game-shared/src/events/server-sent/events/craft-event";
 import { PlayerAttackedEvent } from "../../../../game-shared/src/events/server-sent/events/player-attacked-event";
 import { PlayerLevelUpEvent } from "../../../../game-shared/src/events/server-sent/events/player-level-up-event";
+import { GunEmptyEvent } from "../../../../game-shared/src/events/server-sent/events/gun-empty-event";
 import { getConfig } from "@shared/config";
 import Vector2 from "@/util/vector2";
 import PoolManager from "@shared/util/pool-manager";
@@ -42,7 +43,11 @@ import { itemRegistry } from "@shared/entities";
 import { Blood } from "@/entities/effects/blood";
 import { SerializableFields } from "@/util/serializable-fields";
 import { Direction } from "@/util/direction";
-import { performMeleeAttack } from "@/entities/weapons/helpers";
+import {
+  countAmmoInInventory,
+  consumeAmmoCount,
+  performMeleeAttack,
+} from "@/entities/weapons/helpers";
 import { Weapon } from "../weapons/weapon";
 import InfiniteRun from "@/extensions/infinite-run";
 import Snared from "@/extensions/snared";
@@ -51,6 +56,7 @@ import { infectionConfig } from "@shared/config/infection-config";
 import { EntityType } from "@shared/types/entity";
 import {
   CHARACTER_STAT_MODIFIERS,
+  MAX_POINTS_PER_CHARACTER_STAT,
   computeEncumbranceStaminaDrainMultiplier,
   computeInventoryWeightKg,
   computeMaxInventorySlots,
@@ -87,6 +93,11 @@ import { initPlayerQuestState, tickWaypointSteps } from "@/quests/quest-runtime"
 import { getRecipeById, getScrapOutputsForItem } from "@shared/util/recipes";
 import { getLevelFromTotalExperience } from "@shared/util/experience-level";
 import { sendPlayerHudMessage } from "@/util/send-player-hud-message";
+import {
+  getWeaponAmmoType,
+  getWeaponMagazineSize,
+  getWeaponReloadDuration,
+} from "@shared/util/inventory";
 
 /**
  * Cached list of entity types that players can pass through (collision passthrough).
@@ -106,6 +117,14 @@ const PASSTHROUGH_ENTITY_TYPES: EntityType[] = (() => {
   return passthroughTypes;
 })();
 
+type ReloadableWeaponContext = {
+  item: InventoryItem;
+  bagIndex1Based: number;
+  ammoType: ItemType;
+  magazineSize: number;
+  reloadDuration: number;
+};
+
 export class Player extends Entity {
   private static readonly PLAYER_WIDTH = getConfig().world.TILE_SIZE;
   private static readonly INTERACT_COOLDOWN = getConfig().entity.PLAYER_INTERACT_COOLDOWN;
@@ -114,10 +133,14 @@ export class Player extends Entity {
 
   // Internal state
   private fireCooldown = new Cooldown(0.4, true);
+  private reloadCooldown: Cooldown | null = null;
   private interactCooldown = new Cooldown(Player.INTERACT_COOLDOWN, true);
   private zombieSpawnCooldown = new Cooldown(infectionConfig.ZOMBIE_SPAWN_COOLDOWN_MS / 1000, true); // Convert ms to seconds
   private broadcaster: Broadcaster;
   private lastWeaponType: ItemType | null = null;
+  private reloadDurationSeconds = 0;
+  private reloadBagIndex1Based: number | null = null;
+  private reloadWeaponType: ItemType | null = null;
   private exhaustionTimer: number = 0; // Time remaining before stamina can regenerate
   // Item pickup hold tracking
   private pickupHoldTimer: number = 0; // Time F has been held for pickup
@@ -159,6 +182,8 @@ export class Player extends Entity {
         aiState: "", // Current AI state (for debugging)
         isZombie: false, // Whether this player has become a zombie (Battle Royale)
         zombieSpawnCooldownProgress: 1, // 0-1 progress for zombie spawn ability (1 = ready)
+        isReloading: false,
+        reloadProgress: 0,
         // Input fields stored individually for efficient serialization
         inputFacing: Direction.Right,
         inputDx: 0,
@@ -201,6 +226,7 @@ export class Player extends Entity {
         inputAimAngle: { numberType: "float64", optional: true },
         inputAimDistance: { numberType: "float64", optional: true },
         deathTime: { numberType: "float64" },
+        reloadProgress: { numberType: "float64" },
         abilitySprint: { numberType: "uint8" },
         abilityRegenerate: { numberType: "uint8" },
         statHealth: { numberType: "uint8" },
@@ -322,6 +348,7 @@ export class Player extends Entity {
 
   onDeath(): void {
     this.setIsCrafting(false);
+    this.cancelReload();
 
     // In Battle Royale mode, drop all inventory items on death
     const strategy = this.getGameManagers().getGameServer().getGameLoop().getGameModeStrategy();
@@ -635,14 +662,180 @@ export class Player extends Entity {
     return { kind: "weapon", item: resolved.item, bagIndex1Based: resolved.bagIndex1Based };
   }
 
+  private getReloadContextForBagSlot(
+    bagIndex1Based: number,
+    expectedWeaponType?: ItemType | null,
+  ): ReloadableWeaponContext | null {
+    const inventory = this.getExt(Inventory);
+    const maxSlots = inventory.getMaxSlots();
+    if (bagIndex1Based < 1 || bagIndex1Based > maxSlots) {
+      return null;
+    }
+
+    const item = inventory.getItems()[bagIndex1Based - 1] ?? null;
+    if (!item) {
+      return null;
+    }
+
+    if (expectedWeaponType && item.itemType !== expectedWeaponType) {
+      return null;
+    }
+
+    const ammoType = getWeaponAmmoType(item.itemType);
+    const magazineSize = getWeaponMagazineSize(item.itemType);
+    const reloadDuration = getWeaponReloadDuration(item.itemType);
+    if (!ammoType || magazineSize == null || reloadDuration == null) {
+      return null;
+    }
+
+    return {
+      item,
+      bagIndex1Based,
+      ammoType,
+      magazineSize,
+      reloadDuration,
+    };
+  }
+
+  private getTrackedReloadContext(): ReloadableWeaponContext | null {
+    if (this.reloadBagIndex1Based == null || this.reloadWeaponType == null) {
+      return null;
+    }
+    return this.getReloadContextForBagSlot(this.reloadBagIndex1Based, this.reloadWeaponType);
+  }
+
+  private getWeaponLoadedAmmo(item: InventoryItem, magazineSize: number): number {
+    const raw = item.state?.loadedAmmo;
+    if (typeof raw !== "number" || !Number.isFinite(raw)) {
+      return magazineSize;
+    }
+    return Math.max(0, Math.min(magazineSize, Math.floor(raw)));
+  }
+
+  private setWeaponLoadedAmmo(context: ReloadableWeaponContext, loadedAmmo: number): void {
+    this.getExt(Inventory).updateItemState(context.bagIndex1Based - 1, {
+      ...(context.item.state ?? {}),
+      loadedAmmo: Math.max(0, Math.min(context.magazineSize, Math.floor(loadedAmmo))),
+    });
+  }
+
+  private getWeaponReserveAmmo(context: ReloadableWeaponContext): number {
+    return countAmmoInInventory(this.getExt(Inventory), context.ammoType);
+  }
+
+  private canReload(context: ReloadableWeaponContext): boolean {
+    const loadedAmmo = this.getWeaponLoadedAmmo(context.item, context.magazineSize);
+    if (loadedAmmo >= context.magazineSize) {
+      return false;
+    }
+    return this.getWeaponReserveAmmo(context) > 0;
+  }
+
+  private cancelReload(): void {
+    this.reloadCooldown = null;
+    this.reloadDurationSeconds = 0;
+    this.reloadBagIndex1Based = null;
+    this.reloadWeaponType = null;
+    this.serialized.set("isReloading", false);
+    this.serialized.set("reloadProgress", 0);
+  }
+
+  private beginReload(context: ReloadableWeaponContext): boolean {
+    if (!this.canReload(context)) {
+      return false;
+    }
+
+    if (
+      this.serialized.get("isReloading") &&
+      this.reloadBagIndex1Based === context.bagIndex1Based &&
+      this.reloadWeaponType === context.item.itemType
+    ) {
+      return false;
+    }
+
+    if (this.serialized.get("isReloading")) {
+      this.cancelReload();
+    }
+
+    const reloadDurationSeconds =
+      context.reloadDuration * this.getReloadDurationMultiplier();
+    this.reloadCooldown = new Cooldown(reloadDurationSeconds);
+    this.reloadDurationSeconds = reloadDurationSeconds;
+    this.reloadBagIndex1Based = context.bagIndex1Based;
+    this.reloadWeaponType = context.item.itemType;
+    this.serialized.set("isReloading", true);
+    this.serialized.set("reloadProgress", 0);
+    return true;
+  }
+
+  public requestReload(): boolean {
+    if (this.isDead() || this.isZombie()) {
+      return false;
+    }
+
+    const activeItem = this.activeItem;
+    const currentSlot = this.serialized.get("inputInventoryItem");
+    if (!activeItem || currentSlot === FISTS_INVENTORY_SENTINEL) {
+      return false;
+    }
+
+    const context = this.getReloadContextForBagSlot(currentSlot, activeItem.itemType);
+    if (!context) {
+      return false;
+    }
+
+    return this.beginReload(context);
+  }
+
+  private updateReload(deltaTime: number): void {
+    if (!this.serialized.get("isReloading")) {
+      return;
+    }
+
+    const context = this.getTrackedReloadContext();
+    const currentSlot = this.serialized.get("inputInventoryItem");
+    if (!context || currentSlot !== context.bagIndex1Based || !this.reloadCooldown) {
+      this.cancelReload();
+      return;
+    }
+
+    this.reloadCooldown.update(deltaTime);
+    const totalDuration = Math.max(0.0001, this.reloadDurationSeconds);
+    const progress = Math.max(
+      0,
+      Math.min(1, 1 - this.reloadCooldown.getRemainingTime() / totalDuration),
+    );
+    this.serialized.set("reloadProgress", progress);
+
+    if (!this.reloadCooldown.isReady()) {
+      return;
+    }
+
+    const loadedAmmo = this.getWeaponLoadedAmmo(context.item, context.magazineSize);
+    const missingAmmo = context.magazineSize - loadedAmmo;
+    if (missingAmmo > 0) {
+      const consumed = consumeAmmoCount(this.getExt(Inventory), context.ammoType, missingAmmo);
+      if (consumed > 0) {
+        this.setWeaponLoadedAmmo(context, loadedAmmo + consumed);
+      }
+    }
+
+    this.cancelReload();
+  }
+
+  private ensureFireCooldown(weaponType: ItemType, cooldownSeconds: number): void {
+    if (this.lastWeaponType === weaponType) {
+      return;
+    }
+    this.fireCooldown = new Cooldown(cooldownSeconds, true);
+    this.lastWeaponType = weaponType;
+  }
+
   private performFistAttack(): void {
     const weaponKey = "fists";
     const cfg = weaponRegistry.get(weaponKey);
     const cooldown = cfg?.stats.cooldown ?? 0.85;
-    if (this.fireCooldown === null || this.lastWeaponType !== weaponKey) {
-      this.fireCooldown = new Cooldown(cooldown * this.getReloadCooldownMultiplier(), true);
-      this.lastWeaponType = weaponKey as ItemType;
-    }
+    this.ensureFireCooldown(weaponKey as ItemType, cooldown);
     if (!this.fireCooldown.isReady()) return;
     this.fireCooldown.reset();
     const strategy = this.getGameManagers().getGameServer().getGameLoop().getGameModeStrategy();
@@ -1004,6 +1197,9 @@ export class Player extends Entity {
 
   handleAttack(deltaTime: number) {
     this.fireCooldown.update(deltaTime);
+    this.updateReload(deltaTime);
+
+    if (this.serialized.get("isReloading")) return;
 
     if (!this.serialized.get("inputFire")) return;
 
@@ -1027,10 +1223,7 @@ export class Player extends Entity {
         const itemType = activeItem.itemType;
         // Reset cooldown when switching to a consumable from a different item type
         // This ensures weapon cooldowns don't block consumable use
-        if (this.fireCooldown === null || this.lastWeaponType !== itemType) {
-          this.fireCooldown = new Cooldown(0.5 * this.getReloadCooldownMultiplier(), true);
-          this.lastWeaponType = itemType;
-        }
+        this.ensureFireCooldown(itemType, 0.5);
         // Add a small cooldown to prevent rapid consumption
         if (this.fireCooldown.isReady()) {
           this.fireCooldown.reset();
@@ -1069,13 +1262,7 @@ export class Player extends Entity {
 
     const customHandler = weaponHandlerRegistry.get(weaponType);
     if (customHandler) {
-      if (this.fireCooldown === null || this.lastWeaponType !== weaponType) {
-        this.fireCooldown = new Cooldown(
-          customHandler.cooldown * this.getReloadCooldownMultiplier(),
-          true,
-        );
-        this.lastWeaponType = weaponType;
-      }
+      this.ensureFireCooldown(weaponType, customHandler.cooldown);
 
       if (this.fireCooldown.isReady()) {
         this.fireCooldown.reset();
@@ -1096,24 +1283,58 @@ export class Player extends Entity {
       return;
     }
 
-    if (this.fireCooldown === null || this.lastWeaponType !== weaponType) {
-      this.fireCooldown = new Cooldown(
-        weaponEntity.getCooldown() * this.getReloadCooldownMultiplier(),
-        true,
-      );
-      this.lastWeaponType = weaponType;
+    this.ensureFireCooldown(weaponType, weaponEntity.getCooldown());
+
+    const reloadContext = this.getReloadContextForBagSlot(resolved.bagIndex1Based, weaponType);
+    if (reloadContext) {
+      const loadedAmmo = this.getWeaponLoadedAmmo(reloadContext.item, reloadContext.magazineSize);
+      if (loadedAmmo <= 0) {
+        if (this.beginReload(reloadContext)) {
+          return;
+        }
+        if (!this.fireCooldown.isReady()) {
+          return;
+        }
+        this.fireCooldown.reset();
+        this.broadcaster.broadcastEvent(new GunEmptyEvent(this.getId()));
+        return;
+      }
     }
 
-    if (this.fireCooldown.isReady()) {
-      this.fireCooldown.reset();
-      weaponEntity.attack(
-        this.getId(),
-        this.getCenterPosition().clone(),
-        this.serialized.get("inputFacing"),
-        this.serialized.get("inputAimAngle"),
-        this.serialized.get("inputAimDistance"),
+    if (!this.fireCooldown.isReady()) {
+      return;
+    }
+
+    this.fireCooldown.reset();
+
+    if (reloadContext) {
+      const loadedAmmo = this.getWeaponLoadedAmmo(reloadContext.item, reloadContext.magazineSize);
+      this.setWeaponLoadedAmmo(reloadContext, loadedAmmo - 1);
+    }
+
+    weaponEntity.attack(
+      this.getId(),
+      this.getCenterPosition().clone(),
+      this.serialized.get("inputFacing"),
+      this.serialized.get("inputAimAngle"),
+      this.serialized.get("inputAimDistance"),
+    );
+    weaponEntity.clearDirtyFlags();
+
+    if (reloadContext) {
+      const updatedContext = this.getReloadContextForBagSlot(
+        reloadContext.bagIndex1Based,
+        reloadContext.item.itemType,
       );
-      weaponEntity.clearDirtyFlags();
+      if (updatedContext) {
+        const remainingAmmo = this.getWeaponLoadedAmmo(
+          updatedContext.item,
+          updatedContext.magazineSize,
+        );
+        if (remainingAmmo <= 0) {
+          this.beginReload(updatedContext);
+        }
+      }
     }
   }
 
@@ -1406,6 +1627,7 @@ export class Player extends Entity {
     this.serialized.set("inputInventoryItem", index);
 
     if (previousSlot !== index) {
+      this.cancelReload();
       const inventory = this.getExt(Inventory);
       this.markExtensionDirty(inventory);
     }
@@ -1490,7 +1712,8 @@ export class Player extends Entity {
     return this.serialized.get("zombieSpawnCooldownProgress");
   }
 
-  getReloadCooldownMultiplier(): number {
+  /** Multiplier on weapon reload duration from the `reloadSpeed` stat (lower is faster). */
+  getReloadDurationMultiplier(): number {
     const r = this.serialized.get("statReloadSpeed") ?? 0;
     return Math.max(
       0.5,
@@ -1518,6 +1741,8 @@ export class Player extends Entity {
     characterAllocations: Record<string, number>,
     professionProgress?: Record<string, number>,
   ): void {
+    const clampCharacterStat = (value: number): number =>
+      Math.min(MAX_POINTS_PER_CHARACTER_STAT, Math.floor(value));
     const sprint = Math.min(1, Math.floor(abilityAllocations.sprint ?? 0));
     const regen = Math.min(1, Math.floor(abilityAllocations.regenerate ?? 0));
     this.serialized.set("abilitySprint", sprint);
@@ -1531,22 +1756,22 @@ export class Player extends Entity {
 
     const rawAlloc = characterAllocations as Record<string, number>;
     const evadeRaw = rawAlloc.evade ?? rawAlloc.defence ?? 0;
-    this.serialized.set("statHealth", Math.min(99, Math.floor(characterAllocations.health ?? 0)));
-    this.serialized.set("statEvade", Math.min(99, Math.floor(evadeRaw)));
-    this.serialized.set("statAccuracy", Math.min(99, Math.floor(characterAllocations.accuracy ?? 0)));
+    this.serialized.set("statHealth", clampCharacterStat(characterAllocations.health ?? 0));
+    this.serialized.set("statEvade", clampCharacterStat(evadeRaw));
+    this.serialized.set("statAccuracy", clampCharacterStat(characterAllocations.accuracy ?? 0));
     this.serialized.set(
       "statReloadSpeed",
-      Math.min(99, Math.floor(characterAllocations.reloadSpeed ?? 0)),
+      clampCharacterStat(characterAllocations.reloadSpeed ?? 0),
     );
-    this.serialized.set("statRunSpeed", Math.min(99, Math.floor(characterAllocations.runSpeed ?? 0)));
-    this.serialized.set("statLuck", Math.min(99, Math.floor(characterAllocations.luck ?? 0)));
-    this.serialized.set("statStamina", Math.min(99, Math.floor(characterAllocations.stamina ?? 0)));
-    this.serialized.set("statRecovery", Math.min(99, Math.floor(characterAllocations.recovery ?? 0)));
+    this.serialized.set("statRunSpeed", clampCharacterStat(characterAllocations.runSpeed ?? 0));
+    this.serialized.set("statLuck", clampCharacterStat(characterAllocations.luck ?? 0));
+    this.serialized.set("statStamina", clampCharacterStat(characterAllocations.stamina ?? 0));
+    this.serialized.set("statRecovery", clampCharacterStat(characterAllocations.recovery ?? 0));
     this.serialized.set(
       "statHpRecovery",
-      Math.min(99, Math.floor(characterAllocations.hpRecovery ?? 0)),
+      clampCharacterStat(characterAllocations.hpRecovery ?? 0),
     );
-    this.serialized.set("statStrength", Math.min(99, Math.floor(characterAllocations.strength ?? 0)));
+    this.serialized.set("statStrength", clampCharacterStat(characterAllocations.strength ?? 0));
 
     this.applyDerivedStatsFromAllocations();
   }

@@ -22,8 +22,8 @@ export function isCharacterStatKey(k: string): k is CharacterStatKey {
   return (CHARACTER_STAT_KEYS as readonly string[]).includes(k);
 }
 
-/** Max points per stat (optional cap). */
-export const MAX_POINTS_PER_CHARACTER_STAT = 99;
+/** Max points per stat (temporary tuning cap). */
+export const MAX_POINTS_PER_CHARACTER_STAT = 10;
 
 /** Tuning: per allocated point effect (server applies these). */
 export const CHARACTER_STAT_MODIFIERS = {
@@ -35,7 +35,7 @@ export const CHARACTER_STAT_MODIFIERS = {
   evadeChancePerPoint: 0.007,
   /** Spread angle multiplier per point (lower = more accurate): spread *= max(0.2, 1 - accuracy * this) */
   accuracySpreadReductionPerPoint: 0.06,
-  /** Cooldown multiplier per point: cooldown *= max(0.5, 1 - reloadSpeed * this) */
+  /** Reload duration multiplier per point: reload time *= max(0.5, 1 - reloadSpeed * this) */
   reloadSpeedCooldownReductionPerPoint: 0.05,
   /** Move speed multiplier per point */
   runSpeedPerPoint: 0.03,

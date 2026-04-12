@@ -1,4 +1,3 @@
-import { getConfig } from "@shared/config";
 import { FISTS_INVENTORY_SENTINEL } from "@shared/constants/inventory-sentinel";
 /**
  * Validate select inventory slot data
@@ -21,7 +20,7 @@ export function onSelectInventorySlot(context, socket, data) {
     const player = context.players.get(socket.id);
     if (!player)
         return;
-    const maxSlots = getConfig().player.MAX_INVENTORY_SLOTS;
+    const maxSlots = player.getMaxInventorySlots();
     if (data.slotIndex === FISTS_INVENTORY_SENTINEL) {
         player.selectInventoryItemOnly(FISTS_INVENTORY_SENTINEL);
         return;

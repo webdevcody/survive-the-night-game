@@ -146,13 +146,9 @@ export class ClientEventHandlers {
       return;
     }
 
-    // Block weapon firing when fullscreen map, inventory, crafting, or NPC dialogue is open
-    if (
-      isFullscreenMapOpen ||
-      (hud && hud.isInventoryScreenOpen()) ||
-      craftingPanel.isVisible() ||
-      isNpcDialogueOpen
-    ) {
+    // Block weapon firing when fullscreen map, crafting, or NPC dialogue is open.
+    // Inventory screen clicks are handled above; clicks on the gameplay column still fire.
+    if (isFullscreenMapOpen || craftingPanel.isVisible() || isNpcDialogueOpen) {
       return;
     }
 

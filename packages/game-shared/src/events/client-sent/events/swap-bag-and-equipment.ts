@@ -1,7 +1,6 @@
 import { EventType, ClientSentEvents } from "../../events";
 import { GameEvent } from "../../types";
 import { ArrayBufferWriter, BufferReader } from "../../../util/buffer-serialization";
-import { getConfig } from "../../../config";
 import {
   decodeEquipmentSlotKey,
   encodeEquipmentSlotKey,
@@ -30,15 +29,14 @@ export class SwapBagAndEquipmentEvent implements GameEvent<SwapBagAndEquipmentEv
   }
 
   static serializeToBuffer(writer: ArrayBufferWriter, data: SwapBagAndEquipmentEventData): void {
-    const maxSlots = getConfig().player.MAX_INVENTORY_SLOTS;
-    writer.writeUInt8(Math.max(0, Math.min(maxSlots - 1, data.bagIndex ?? 0)));
+    writer.writeUInt8(Math.max(0, Math.min(255, data.bagIndex ?? 0)));
     writer.writeUInt8(encodeEquipmentSlotKey(data.equipSlot));
   }
 
   static deserializeFromBuffer(reader: BufferReader): SwapBagAndEquipmentEventData {
     const bagIndex = reader.readUInt8();
     const slotCode = reader.readUInt8();
-    const equipSlot = decodeEquipmentSlotKey(slotCode) ?? "head";
+    const equipSlot = (decodeEquipmentSlotKey(slotCode) ?? "__invalid__") as EquipmentSlotKey;
     return { bagIndex, equipSlot };
   }
 }

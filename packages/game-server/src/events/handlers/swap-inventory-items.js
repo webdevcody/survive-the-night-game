@@ -1,5 +1,4 @@
 import Inventory from "@/extensions/inventory";
-import { getConfig } from "@shared/config";
 /**
  * Validate swap inventory items data
  */
@@ -29,8 +28,8 @@ export function onSwapInventoryItems(context, socket, data) {
     if (!player)
         return;
     const inventory = player.getExt(Inventory);
-    // Validate indices against config
-    const maxSlots = getConfig().player.MAX_INVENTORY_SLOTS;
+    // Validate indices against the player's current bag size (base + strength).
+    const maxSlots = inventory.getMaxSlots();
     if (data.fromSlotIndex < 0 ||
         data.toSlotIndex < 0 ||
         data.fromSlotIndex >= maxSlots ||

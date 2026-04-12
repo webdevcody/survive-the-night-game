@@ -24,6 +24,7 @@ import { setWeaponLoadoutSlotHandler } from "./set-weapon-loadout-slot";
 import { dialogueNpcCompleteHandler } from "./dialogue-npc-complete";
 import { useLoadoutConsumableHandler } from "./use-loadout-consumable";
 import { bankActionHandler } from "./bank-action";
+import { reloadWeaponHandler } from "./reload-weapon";
 
 /**
  * Registry of all socket event handlers.
@@ -62,4 +63,5 @@ export const socketEventHandlers: SocketEventHandler[] = [
   dialogueNpcCompleteHandler,
   useLoadoutConsumableHandler,
   bankActionHandler,
+  reloadWeaponHandler,
 ];

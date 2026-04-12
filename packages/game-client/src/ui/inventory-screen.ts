@@ -24,8 +24,14 @@ import { ClientPoison } from "@/extensions/poison";
 import { ClientInfiniteRun } from "@/extensions/infinite-run";
 import {
   CHARACTER_STAT_KEYS,
+  CHARACTER_STAT_MODIFIERS,
+  MAX_POINTS_PER_CHARACTER_STAT,
+  computeEvadeChance,
   computeInventoryWeightKg,
+  computePassiveHpRegenIntervalSeconds,
+  computeStaminaRegenMultiplier,
   getItemWeightKg,
+  type CharacterStatKey,
 } from "@shared/util/character-stats";
 import { ABILITY_TREE_NODES, type AbilityId } from "@shared/util/ability-tree";
 import { getProgressionPointsBudget } from "@shared/util/experience-level";
@@ -39,7 +45,7 @@ import {
   TAB_BAR_H,
   PANEL_TAB_CONTENT_GAP,
   characterStatPlusMinusRects,
-  characterStatRowLabelY,
+  CHARACTER_STAT_GROUP_HEADER_BLOCK_PX,
   CHARACTER_STAT_ROW_STEP_PX,
   drawCanvasUiButton,
   panelBottomWideButtonRect,
@@ -100,6 +106,161 @@ const CHARACTER_STAT_ICON_SHEET_PX = 16;
 /** Drawn size on the character tab (2× upscale, nearest-neighbor). */
 const CHARACTER_STAT_ICON_DRAW_PX = 32;
 const CHARACTER_STAT_ICON_TEXT_GAP = 8;
+const CHARACTER_STAT_INFO_BADGE_RADIUS = 8;
+/** Space between group title text end and the info badge (center sits after this gap). */
+const CHARACTER_STAT_GROUP_TITLE_TO_INFO_GAP_PX = 8;
+
+let measureBold14GeorgiaCanvas: HTMLCanvasElement | null = null;
+function measureBold14GeorgiaWidth(text: string): number {
+  if (typeof document === "undefined") {
+    return text.length * 8.5;
+  }
+  if (!measureBold14GeorgiaCanvas) {
+    measureBold14GeorgiaCanvas = document.createElement("canvas");
+  }
+  const c = measureBold14GeorgiaCanvas.getContext("2d");
+  if (!c) return text.length * 8.5;
+  c.font = "bold 14px Georgia";
+  return c.measureText(text).width;
+}
+
+function characterStatInfoBadge(rightX: number, rightW: number, rowLabelY: number) {
+  return {
+    cx: rightX + rightW - 150,
+    cy: rowLabelY - 6,
+    r: CHARACTER_STAT_INFO_BADGE_RADIUS,
+  };
+}
+
+function formatTooltipPercent(value: number, digits = 0): string {
+  return `${(value * 100).toFixed(digits)}%`;
+}
+
+function formatTooltipNumber(value: number, digits = 2): string {
+  return Number(value.toFixed(digits)).toString();
+}
+
+function getCharacterStatTooltipLines(key: CharacterStatKey, points: number): string[] {
+  switch (key) {
+    case "health":
+      return [
+        `+${CHARACTER_STAT_MODIFIERS.healthPerPoint} max HP per point.`,
+        `Current bonus: +${points * CHARACTER_STAT_MODIFIERS.healthPerPoint} max HP.`,
+      ];
+    case "evade": {
+      const chance = computeEvadeChance(points);
+      return [
+        "Zombie hits can deal 0 damage.",
+        `+${formatTooltipPercent(CHARACTER_STAT_MODIFIERS.evadeChancePerPoint, 1)} evade per point, up to ${formatTooltipPercent(CHARACTER_STAT_MODIFIERS.evadeMaxChance)} max.`,
+        `Current evade chance: ${formatTooltipPercent(chance, 1)}.`,
+      ];
+    }
+    case "accuracy": {
+      const spreadMultiplier = Math.max(
+        0.2,
+        1 - points * CHARACTER_STAT_MODIFIERS.accuracySpreadReductionPerPoint,
+      );
+      return [
+        "Tightens ranged weapon spread.",
+        `-${formatTooltipPercent(CHARACTER_STAT_MODIFIERS.accuracySpreadReductionPerPoint)} spread per point, down to 20% of base.`,
+        `Current spread: ${formatTooltipPercent(spreadMultiplier)} of base.`,
+      ];
+    }
+    case "reloadSpeed": {
+      const cooldownMultiplier = Math.max(
+        0.5,
+        1 - points * CHARACTER_STAT_MODIFIERS.reloadSpeedCooldownReductionPerPoint,
+      );
+      return [
+        "Reduces weapon reload duration.",
+        `-${formatTooltipPercent(CHARACTER_STAT_MODIFIERS.reloadSpeedCooldownReductionPerPoint)} reload time per point, down to 50% of base.`,
+        `Current reload time: ${formatTooltipPercent(cooldownMultiplier)} of base.`,
+      ];
+    }
+    case "runSpeed":
+      return [
+        `+${formatTooltipPercent(CHARACTER_STAT_MODIFIERS.runSpeedPerPoint)} move speed per point.`,
+        `Current bonus: +${formatTooltipPercent(points * CHARACTER_STAT_MODIFIERS.runSpeedPerPoint)}.`,
+      ];
+    case "luck": {
+      const bonus = Math.min(3, Math.floor(points / 4));
+      return [
+        "Coin pickups grant +1 extra coin every 4 points.",
+        `Current bonus: +${bonus} coin${bonus === 1 ? "" : "s"} per pickup.`,
+        "Loot rarity is not affected yet.",
+      ];
+    }
+    case "stamina":
+      return [
+        `+${CHARACTER_STAT_MODIFIERS.staminaMaxPerPoint} max stamina per point.`,
+        `Current bonus: +${points * CHARACTER_STAT_MODIFIERS.staminaMaxPerPoint} max stamina.`,
+      ];
+    case "recovery": {
+      const regenMultiplier = computeStaminaRegenMultiplier(points);
+      return [
+        "Increases stamina regeneration.",
+        `+${formatTooltipPercent(CHARACTER_STAT_MODIFIERS.staminaRecoveryPerPoint)} regen per point.`,
+        `Current regen: ${formatTooltipPercent(regenMultiplier)} of base.`,
+      ];
+    }
+    case "hpRecovery": {
+      const interval = computePassiveHpRegenIntervalSeconds(points);
+      return [
+        `Passively heals ${formatTooltipNumber(CHARACTER_STAT_MODIFIERS.passiveHpRegenAmount)} HP each tick.`,
+        `-${formatTooltipNumber(CHARACTER_STAT_MODIFIERS.passiveHpRegenIntervalReductionPerPoint)}s between ticks per point, min ${formatTooltipNumber(CHARACTER_STAT_MODIFIERS.passiveHpRegenMinIntervalSec)}s.`,
+        `Current tick interval: ${formatTooltipNumber(interval)}s.`,
+      ];
+    }
+    case "strength":
+      return [
+        `+${CHARACTER_STAT_MODIFIERS.strengthSlotsPerPoint} inventory slot per point.`,
+        `Current bonus: +${points * CHARACTER_STAT_MODIFIERS.strengthSlotsPerPoint} slot${points === 1 ? "" : "s"}.`,
+      ];
+  }
+}
+
+/** One-line live effect for the character tab (next to each stat label). */
+function formatCharacterStatInlineSummary(key: CharacterStatKey, player: PlayerClient): string {
+  const points = Math.max(0, Math.floor(player.getCharacterStat(key)));
+  switch (key) {
+    case "health":
+      return `${Math.round(player.getHealth())} / ${player.getMaxHealth()} HP`;
+    case "stamina":
+      return `${Math.round(player.getStamina())} / ${player.getMaxStamina()} stamina`;
+    case "evade":
+      return `${formatTooltipPercent(computeEvadeChance(points), 1)} evade`;
+    case "accuracy": {
+      const spreadMultiplier = Math.max(
+        0.2,
+        1 - points * CHARACTER_STAT_MODIFIERS.accuracySpreadReductionPerPoint,
+      );
+      return `Spread ${formatTooltipPercent(spreadMultiplier)} of base`;
+    }
+    case "reloadSpeed": {
+      const cooldownMultiplier = Math.max(
+        0.5,
+        1 - points * CHARACTER_STAT_MODIFIERS.reloadSpeedCooldownReductionPerPoint,
+      );
+      return `Reload ${formatTooltipPercent(cooldownMultiplier)} of base`;
+    }
+    case "runSpeed":
+      return `+${formatTooltipPercent(points * CHARACTER_STAT_MODIFIERS.runSpeedPerPoint)} move speed`;
+    case "luck": {
+      const bonus = Math.min(3, Math.floor(points / 4));
+      return `+${bonus} coin${bonus === 1 ? "" : "s"}/pickup`;
+    }
+    case "recovery": {
+      const regenMultiplier = computeStaminaRegenMultiplier(points);
+      return `Regen ${formatTooltipPercent(regenMultiplier)} of base`;
+    }
+    case "hpRecovery": {
+      const interval = computePassiveHpRegenIntervalSeconds(points);
+      return `Heal every ${formatTooltipNumber(interval)}s`;
+    }
+    case "strength":
+      return `${player.getMaxInventorySlots()} bag slots`;
+  }
+}
 
 /** Scale-crop image to fill a rectangle (object-cover). */
 function drawImageCover(
@@ -214,12 +375,52 @@ const STAT_LABELS: Record<(typeof CHARACTER_STAT_KEYS)[number], string> = {
   accuracy: "Accuracy",
   reloadSpeed: "Reload speed",
   runSpeed: "Run speed",
-  luck: "Luck (loot)",
+  luck: "Luck (coins)",
   stamina: "Stamina (max)",
   recovery: "Stamina recovery",
   hpRecovery: "Passive HP regen",
   strength: "Strength (inventory)",
 };
+
+/** Loop-based groups for the character tab (each stat appears exactly once). */
+const CHARACTER_STAT_LOOP_GROUPS: ReadonlyArray<{
+  title: string;
+  infoLines: readonly string[];
+  keys: readonly CharacterStatKey[];
+}> = [
+  {
+    title: "Survivability",
+    infoLines: [
+      "Useful when you want to last longer in fights and recover between engagements.",
+      "Improves max HP, dodge chance vs zombies, and passive healing over time.",
+    ],
+    keys: ["health", "evade", "hpRecovery"],
+  },
+  {
+    title: "Combat",
+    infoLines: [
+      "Useful when you want to deal damage more reliably and act faster in fights.",
+      "Tightens ranged spread and reduces cooldowns for weapons, melee, and consumables.",
+    ],
+    keys: ["accuracy", "reloadSpeed"],
+  },
+  {
+    title: "Mobility",
+    infoLines: [
+      "Useful for moving around the map and sprinting more effectively.",
+      "Raises run speed, max stamina, and stamina regen. Heavy loads still drain sprint faster.",
+    ],
+    keys: ["runSpeed", "stamina", "recovery"],
+  },
+  {
+    title: "Carry & loot",
+    infoLines: [
+      "Useful when you want to haul more gear and get more from pickups.",
+      "Adds inventory slots and bonus coins from coin pickups.",
+    ],
+    keys: ["strength", "luck"],
+  },
+];
 const WIDE_GRID_COLS = 5;
 const NARROW_GRID_COLS = 4;
 
@@ -331,6 +532,9 @@ export class InventoryScreenUI {
   private lastH = 0;
   private activeTab: InventoryUiTab = "inventory";
   private hoveredAbilityId: AbilityId | null = null;
+  private hoveredCharacterStatKey: CharacterStatKey | null = null;
+  /** Index into `CHARACTER_STAT_LOOP_GROUPS` when hovering a group info badge. */
+  private hoveredCharacterStatGroupIndex: number | null = null;
   private selectedProfessionId: ProfessionId | null = null;
   private professionBannerImages: Partial<Record<ProfessionId, HTMLImageElement>> = {};
   private professionBannersPreloadStarted = false;
@@ -383,6 +587,7 @@ export class InventoryScreenUI {
     if (!this.open) {
       this.dragState = null;
       this.activeTab = "inventory";
+      this.hoveredCharacterStatKey = null;
       this.selectedProfessionId = null;
       this.bankLockerId = null;
       this.ctxMenu = null;
@@ -821,6 +1026,22 @@ export class InventoryScreenUI {
     return pBag === b || sBag === b || mBag === b || c4 === b || c5 === b;
   }
 
+  private getFirstEmptyVisibleBagIndex(): number | null {
+    const items = this.deps.getInventory();
+    const player = this.deps.getMyPlayer();
+    const maxSlots = player?.getMaxInventorySlots() ?? getConfig().player.MAX_INVENTORY_SLOTS;
+    for (let i = 0; i < maxSlots; i++) {
+      if (items[i] != null) {
+        continue;
+      }
+      if (player && this.bagSlotBackedByAnyLoadout(i, player)) {
+        continue;
+      }
+      return i;
+    }
+    return null;
+  }
+
   /** Double-click bag slot: weapons -> loadout, wearables -> equipment, consumables -> quick bar. */
   private tryQuickEquipFromBag(bagIdx: number, item: InventoryItem): boolean {
     const t = item.itemType;
@@ -855,6 +1076,16 @@ export class InventoryScreenUI {
     return false;
   }
 
+  private tryUnequipToBag(slot: EquipmentSlotKey): boolean {
+    const bagIdx = this.getFirstEmptyVisibleBagIndex();
+    if (bagIdx == null) {
+      return false;
+    }
+    this.dragState = null;
+    this.deps.sendSwapBagAndEquipment(bagIdx, slot);
+    return true;
+  }
+
   private drawTabBar(
     ctx: CanvasRenderingContext2D,
     L: ReturnType<InventoryScreenUI["layout"]>,
@@ -881,6 +1112,57 @@ export class InventoryScreenUI {
     ctx.textBaseline = "alphabetic";
   }
 
+  /**
+   * Positions for the character stats tab: loop groups, then rows in display order.
+   */
+  private characterStatPanelLayout(
+    contentTop: number,
+    rightX: number,
+  ): {
+    rows: Array<{ key: CharacterStatKey; rowLabelY: number }>;
+    groups: Array<{
+      title: string;
+      infoLines: readonly string[];
+      titleBaselineY: number;
+      infoBadge: { cx: number; cy: number; r: number };
+    }>;
+    firstSummaryY: number;
+  } {
+    const rows: Array<{ key: CharacterStatKey; rowLabelY: number }> = [];
+    const groups: Array<{
+      title: string;
+      infoLines: readonly string[];
+      titleBaselineY: number;
+      infoBadge: { cx: number; cy: number; r: number };
+    }> = [];
+    let y = contentTop + PANEL_TAB_CONTENT_GAP + 36;
+    const titleLeftX = rightX + 16;
+    for (const g of CHARACTER_STAT_LOOP_GROUPS) {
+      const titleW = measureBold14GeorgiaWidth(g.title);
+      const badgeCx =
+        titleLeftX +
+        titleW +
+        CHARACTER_STAT_GROUP_TITLE_TO_INFO_GAP_PX +
+        CHARACTER_STAT_INFO_BADGE_RADIUS;
+      groups.push({
+        title: g.title,
+        infoLines: g.infoLines,
+        titleBaselineY: y,
+        infoBadge: {
+          cx: badgeCx,
+          cy: y - 6,
+          r: CHARACTER_STAT_INFO_BADGE_RADIUS,
+        },
+      });
+      y += CHARACTER_STAT_GROUP_HEADER_BLOCK_PX;
+      for (const key of g.keys) {
+        rows.push({ key, rowLabelY: y });
+        y += CHARACTER_STAT_ROW_STEP_PX;
+      }
+    }
+    return { rows, groups, firstSummaryY: y };
+  }
+
   private renderCharacterTab(
     ctx: CanvasRenderingContext2D,
     L: ReturnType<InventoryScreenUI["layout"]>,
@@ -897,54 +1179,103 @@ export class InventoryScreenUI {
     y += 36;
     ctx.font = "15px Arial";
 
+    const layout = this.characterStatPanelLayout(L.contentTop, L.rightX);
     const statIconSheet = this.characterStatIconSheet;
     const statIconsReady =
       statIconSheet && statIconSheet.complete && statIconSheet.naturalWidth > 0;
     const statLabelX =
       L.rightX + 16 + CHARACTER_STAT_ICON_DRAW_PX + CHARACTER_STAT_ICON_TEXT_GAP;
+    const groupTitleLeftX = L.rightX + 16;
 
-    for (let si = 0; si < CHARACTER_STAT_KEYS.length; si++) {
-      const key = CHARACTER_STAT_KEYS[si]!;
-      const val = player.getCharacterStat(key);
-      if (statIconsReady) {
-        ctx.save();
-        ctx.imageSmoothingEnabled = false;
-        ctx.drawImage(
-          statIconSheet,
-          si * CHARACTER_STAT_ICON_SHEET_PX,
-          0,
-          CHARACTER_STAT_ICON_SHEET_PX,
-          CHARACTER_STAT_ICON_SHEET_PX,
-          L.rightX + 16,
-          y - 22,
-          CHARACTER_STAT_ICON_DRAW_PX,
-          CHARACTER_STAT_ICON_DRAW_PX,
-        );
-        ctx.restore();
-      }
-      ctx.fillStyle = RPG_TITLE_CREAM;
-      ctx.fillText(`${STAT_LABELS[key]}`, statLabelX, y);
-      ctx.fillStyle = RPG_METADATA_MUTED;
-      ctx.textAlign = "right";
-      ctx.fillText(`${val}`, L.rightX + L.rightW - 120, y);
+    let rowIdx = 0;
+    for (let gi = 0; gi < CHARACTER_STAT_LOOP_GROUPS.length; gi++) {
+      const gDef = CHARACTER_STAT_LOOP_GROUPS[gi]!;
+      const gLayout = layout.groups[gi]!;
+      const groupHover = this.hoveredCharacterStatGroupIndex === gi;
+      ctx.font = "bold 14px Georgia";
+      ctx.fillStyle = RPG_PROMPT_GOLD;
       ctx.textAlign = "left";
-      const { minus, plus } = characterStatPlusMinusRects(L.rightX, L.rightW, y);
-      drawCanvasUiButton(ctx, minus, "-", "compact");
-      drawCanvasUiButton(ctx, plus, "+", "compact");
-      y += CHARACTER_STAT_ROW_STEP_PX;
+      ctx.textBaseline = "alphabetic";
+      ctx.fillText(gLayout.title, groupTitleLeftX, gLayout.titleBaselineY);
+      ctx.beginPath();
+      ctx.arc(gLayout.infoBadge.cx, gLayout.infoBadge.cy, gLayout.infoBadge.r, 0, Math.PI * 2);
+      ctx.fillStyle = groupHover ? RPG_PROMPT_GOLD : "rgba(28, 34, 52, 0.98)";
+      ctx.fill();
+      ctx.strokeStyle = groupHover ? RPG_TITLE_CREAM : RPG_SLOT_STROKE;
+      ctx.lineWidth = 1;
+      ctx.stroke();
+      ctx.font = "bold 11px Arial";
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.fillStyle = groupHover ? "rgba(15, 18, 26, 0.98)" : RPG_BODY_TEXT;
+      ctx.fillText("?", gLayout.infoBadge.cx, gLayout.infoBadge.cy + 0.5);
+      ctx.textAlign = "left";
+      ctx.textBaseline = "alphabetic";
+
+      for (let ki = 0; ki < gDef.keys.length; ki++) {
+        const row = layout.rows[rowIdx]!;
+        rowIdx++;
+        const key = row.key;
+        y = row.rowLabelY;
+        const val = player.getCharacterStat(key);
+        const isAtMax = val >= MAX_POINTS_PER_CHARACTER_STAT;
+        const si = CHARACTER_STAT_KEYS.indexOf(key);
+        if (statIconsReady && si >= 0) {
+          ctx.save();
+          ctx.imageSmoothingEnabled = false;
+          ctx.drawImage(
+            statIconSheet,
+            si * CHARACTER_STAT_ICON_SHEET_PX,
+            0,
+            CHARACTER_STAT_ICON_SHEET_PX,
+            CHARACTER_STAT_ICON_SHEET_PX,
+            L.rightX + 16,
+            y - 22,
+            CHARACTER_STAT_ICON_DRAW_PX,
+            CHARACTER_STAT_ICON_DRAW_PX,
+          );
+          ctx.restore();
+        }
+        ctx.font = "15px Arial";
+        ctx.fillStyle = RPG_TITLE_CREAM;
+        const labelStr = STAT_LABELS[key];
+        ctx.fillText(labelStr, statLabelX, y);
+        const inlineSummary = formatCharacterStatInlineSummary(key, player);
+        const labelW = ctx.measureText(labelStr).width;
+        ctx.fillStyle = RPG_METADATA_MUTED;
+        ctx.font = "13px Arial";
+        ctx.fillText(`  ·  ${inlineSummary}`, statLabelX + labelW, y);
+        const infoBadge = characterStatInfoBadge(L.rightX, L.rightW, y);
+        const infoHover = this.hoveredCharacterStatKey === key;
+        ctx.beginPath();
+        ctx.arc(infoBadge.cx, infoBadge.cy, infoBadge.r, 0, Math.PI * 2);
+        ctx.fillStyle = infoHover ? RPG_PROMPT_GOLD : "rgba(28, 34, 52, 0.98)";
+        ctx.fill();
+        ctx.strokeStyle = infoHover ? RPG_TITLE_CREAM : RPG_SLOT_STROKE;
+        ctx.lineWidth = 1;
+        ctx.stroke();
+        ctx.font = "bold 11px Arial";
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        ctx.fillStyle = infoHover ? "rgba(15, 18, 26, 0.98)" : RPG_BODY_TEXT;
+        ctx.fillText("?", infoBadge.cx, infoBadge.cy + 0.5);
+        ctx.textAlign = "left";
+        ctx.textBaseline = "alphabetic";
+        ctx.font = "15px Arial";
+        ctx.fillStyle = RPG_METADATA_MUTED;
+        ctx.textAlign = "right";
+        ctx.fillText(`${val}`, L.rightX + L.rightW - 120, y);
+        ctx.textAlign = "left";
+        const { minus, plus } = characterStatPlusMinusRects(L.rightX, L.rightW, y);
+        drawCanvasUiButton(ctx, minus, "-", "compact");
+        if (!isAtMax) {
+          drawCanvasUiButton(ctx, plus, "+", "compact");
+        }
+      }
     }
 
-    const maxHp = player.getMaxHealth();
-    const hp = player.getHealth();
-    const stamina = player.getStamina();
-    const maxStamina = player.getMaxStamina();
+    y = layout.firstSummaryY;
     y += 8;
-    ctx.fillStyle = RPG_COUNTER_GOLD;
-    ctx.font = "14px Arial";
-    ctx.fillText(`Current HP: ${hp} / ${maxHp}`, L.rightX + 16, y);
-    y += 22;
-    ctx.fillText(`Stamina: ${Math.round(stamina)} / ${maxStamina}`, L.rightX + 16, y);
-    y += 22;
     if (player.hasExt(ClientPoison)) {
       ctx.fillStyle = "rgba(160, 220, 170, 0.95)";
       ctx.fillText("Poisoned", L.rightX + 16, y);
@@ -1548,15 +1879,14 @@ export class InventoryScreenUI {
       this.renderQuestsTab(ctx, L, player);
     }
 
-    ctx.fillStyle = RPG_PROMPT_GOLD;
-    ctx.font = "12px Arial";
-    ctx.textAlign = "left";
-    ctx.fillText(
-      "I / C / K / P / Q — tab (press again on same tab to close) · Esc — close",
-      L.rightX + 12,
-      L.rightY + L.rightH - 12,
-    );
     ctx.restore();
+    if (this.activeTab === "character") {
+      if (this.hoveredCharacterStatKey) {
+        this.renderCharacterStatTooltip(ctx, player);
+      } else if (this.hoveredCharacterStatGroupIndex !== null) {
+        this.renderCharacterStatGroupTooltip(ctx);
+      }
+    }
     this.renderContextMenu(ctx);
   }
 
@@ -1641,11 +1971,15 @@ export class InventoryScreenUI {
     if (!this.isOpen()) {
       this.hoveredBagIndex = null;
       this.hoveredEquipSlot = null;
+      this.hoveredCharacterStatKey = null;
+      this.hoveredCharacterStatGroupIndex = null;
       return;
     }
     const L = this.layout(canvasWidth, canvasHeight, this.getBagSlotCount());
     const lx = this.toPanelLocalX(x, L.rightW);
     this.hoveredAbilityId = null;
+    this.hoveredCharacterStatKey = null;
+    this.hoveredCharacterStatGroupIndex = null;
     if (this.activeTab === "inventory") {
       this.hoveredBagIndex = this.getBagIndexAt(lx, y, L);
       this.hoveredEquipSlot = this.getEquipAt(lx, y, L);
@@ -1659,6 +1993,25 @@ export class InventoryScreenUI {
       this.hoveredBagIndex = null;
       this.hoveredEquipSlot = null;
       this.hoveredBankSlotIndex = null;
+    }
+    if (this.activeTab === "character") {
+      const statLayout = this.characterStatPanelLayout(L.contentTop, L.rightX);
+      for (const row of statLayout.rows) {
+        const infoBadge = characterStatInfoBadge(L.rightX, L.rightW, row.rowLabelY);
+        if (uiCircleContains(infoBadge.cx, infoBadge.cy, infoBadge.r, lx, y)) {
+          this.hoveredCharacterStatKey = row.key;
+          break;
+        }
+      }
+      if (this.hoveredCharacterStatKey === null) {
+        for (let gi = 0; gi < statLayout.groups.length; gi++) {
+          const b = statLayout.groups[gi]!.infoBadge;
+          if (uiCircleContains(b.cx, b.cy, b.r, lx, y)) {
+            this.hoveredCharacterStatGroupIndex = gi;
+            break;
+          }
+        }
+      }
     }
     if (this.activeTab === "abilities") {
       for (const node of ABILITY_TREE_NODES) {
@@ -1724,6 +2077,109 @@ export class InventoryScreenUI {
     ctx.font = "14px Arial";
     ctx.fillStyle = RPG_METADATA_MUTED;
     ctx.fillText(weightLine, this._mx, by + 36);
+  }
+
+  private renderCharacterStatTooltip(ctx: CanvasRenderingContext2D, player: PlayerClient): void {
+    const key = this.hoveredCharacterStatKey;
+    if (!key) {
+      return;
+    }
+
+    const points = player.getCharacterStat(key);
+    const title = `${STAT_LABELS[key]} · ${points}/${MAX_POINTS_PER_CHARACTER_STAT} pts`;
+    const lines = getCharacterStatTooltipLines(key, points);
+    const pad = 10;
+    const titleLineHeight = 20;
+    const bodyLineHeight = 17;
+    const minWidth = 250;
+
+    ctx.save();
+    ctx.font = "bold 15px Georgia";
+    let boxWidth = ctx.measureText(title).width;
+    ctx.font = "13px Arial";
+    for (const line of lines) {
+      boxWidth = Math.max(boxWidth, ctx.measureText(line).width);
+    }
+    boxWidth = Math.max(minWidth, boxWidth + pad * 2);
+    const boxHeight = pad * 2 + titleLineHeight + lines.length * bodyLineHeight;
+
+    let boxX = Math.min(this._mx + 16, this.lastW - boxWidth - 8);
+    boxX = Math.max(8, boxX);
+    let boxY = this._my - boxHeight - 12;
+    if (boxY < 8) {
+      boxY = Math.min(this._my + 16, this.lastH - boxHeight - 8);
+    }
+    boxY = Math.max(8, boxY);
+
+    ctx.fillStyle = "rgba(6, 8, 16, 0.96)";
+    ctx.fillRect(boxX, boxY, boxWidth, boxHeight);
+    ctx.strokeStyle = RPG_SLOT_STROKE;
+    ctx.lineWidth = 1;
+    ctx.strokeRect(boxX, boxY, boxWidth, boxHeight);
+
+    ctx.font = "bold 15px Georgia";
+    ctx.fillStyle = RPG_TITLE_CREAM;
+    ctx.textAlign = "left";
+    ctx.textBaseline = "alphabetic";
+    ctx.fillText(title, boxX + pad, boxY + pad + 14);
+
+    ctx.font = "13px Arial";
+    ctx.fillStyle = RPG_BODY_TEXT;
+    for (let i = 0; i < lines.length; i++) {
+      ctx.fillText(lines[i]!, boxX + pad, boxY + pad + titleLineHeight + 14 + i * bodyLineHeight);
+    }
+    ctx.restore();
+  }
+
+  private renderCharacterStatGroupTooltip(ctx: CanvasRenderingContext2D): void {
+    const gi = this.hoveredCharacterStatGroupIndex;
+    if (gi === null) return;
+    const g = CHARACTER_STAT_LOOP_GROUPS[gi];
+    if (!g) return;
+
+    const title = g.title;
+    const lines = g.infoLines;
+    const pad = 10;
+    const titleLineHeight = 20;
+    const bodyLineHeight = 17;
+    const minWidth = 260;
+
+    ctx.save();
+    ctx.font = "bold 15px Georgia";
+    let boxWidth = ctx.measureText(title).width;
+    ctx.font = "13px Arial";
+    for (const line of lines) {
+      boxWidth = Math.max(boxWidth, ctx.measureText(line).width);
+    }
+    boxWidth = Math.max(minWidth, boxWidth + pad * 2);
+    const boxHeight = pad * 2 + titleLineHeight + lines.length * bodyLineHeight;
+
+    let boxX = Math.min(this._mx + 16, this.lastW - boxWidth - 8);
+    boxX = Math.max(8, boxX);
+    let boxY = this._my - boxHeight - 12;
+    if (boxY < 8) {
+      boxY = Math.min(this._my + 16, this.lastH - boxHeight - 8);
+    }
+    boxY = Math.max(8, boxY);
+
+    ctx.fillStyle = "rgba(6, 8, 16, 0.96)";
+    ctx.fillRect(boxX, boxY, boxWidth, boxHeight);
+    ctx.strokeStyle = RPG_SLOT_STROKE;
+    ctx.lineWidth = 1;
+    ctx.strokeRect(boxX, boxY, boxWidth, boxHeight);
+
+    ctx.font = "bold 15px Georgia";
+    ctx.fillStyle = RPG_TITLE_CREAM;
+    ctx.textAlign = "left";
+    ctx.textBaseline = "alphabetic";
+    ctx.fillText(title, boxX + pad, boxY + pad + 14);
+
+    ctx.font = "13px Arial";
+    ctx.fillStyle = RPG_BODY_TEXT;
+    for (let i = 0; i < lines.length; i++) {
+      ctx.fillText(lines[i]!, boxX + pad, boxY + pad + titleLineHeight + 14 + i * bodyLineHeight);
+    }
+    ctx.restore();
   }
 
   public handleClick(
@@ -1792,19 +2248,22 @@ export class InventoryScreenUI {
         this.deps.sendProgressionAllocations("character", {});
         return true;
       }
-      for (let i = 0; i < CHARACTER_STAT_KEYS.length; i++) {
-        const key = CHARACTER_STAT_KEYS[i]!;
-        const rowY = characterStatRowLabelY(L.contentTop, i);
-        const { minus, plus } = characterStatPlusMinusRects(L.rightX, L.rightW, rowY);
+      const statLayout = this.characterStatPanelLayout(L.contentTop, L.rightX);
+      for (const row of statLayout.rows) {
+        const key = row.key;
+        const { minus, plus } = characterStatPlusMinusRects(L.rightX, L.rightW, row.rowLabelY);
         if (uiRectContains(minus, lx, y)) {
           const m = buildCharacterMapFromPlayer(player);
           m[key] = Math.max(0, (m[key] ?? 0) - 1);
           this.deps.sendProgressionAllocations("character", m);
           return true;
         }
-        if (uiRectContains(plus, lx, y)) {
+        if (
+          player.getCharacterStat(key) < MAX_POINTS_PER_CHARACTER_STAT &&
+          uiRectContains(plus, lx, y)
+        ) {
           const m = buildCharacterMapFromPlayer(player);
-          m[key] = (m[key] ?? 0) + 1;
+          m[key] = Math.min(MAX_POINTS_PER_CHARACTER_STAT, (m[key] ?? 0) + 1);
           this.deps.sendProgressionAllocations("character", m);
           return true;
         }
@@ -1907,6 +2366,9 @@ export class InventoryScreenUI {
     }
     if (eq) {
       const item = this.deps.getEquipment()?.[eq];
+      if (item && clickCount >= 2 && this.tryUnequipToBag(eq)) {
+        return true;
+      }
       if (item) {
         this.dragState = {
           source: { kind: "equip", slot: eq },
@@ -2069,10 +2531,16 @@ export class InventoryScreenUI {
       }
       return rows;
     }
-    if (lockerId != null) {
-      rows.push("Stash");
+    if (target.kind === "equip") {
+      if (lockerId != null) {
+        rows.push("Stash");
+      }
+      if (this.getFirstEmptyVisibleBagIndex() != null) {
+        rows.push("Unequip");
+      }
+      rows.push("Drop");
+      return rows;
     }
-    rows.push("Drop");
     return rows;
   }
 
@@ -2122,6 +2590,12 @@ export class InventoryScreenUI {
         : t.kind === "bag"
           ? this.deps.getInventory()[t.index]
           : this.deps.getEquipment()?.[t.slot] ?? null;
+
+    if (label === "Unequip" && t.kind === "equip") {
+      this.tryUnequipToBag(t.slot);
+      this.ctxMenu = null;
+      return true;
+    }
 
     if (!lid) {
       if (label === "Drop" && t.kind === "bag") {

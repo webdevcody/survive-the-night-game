@@ -116,7 +116,11 @@ export function dropItemNearPlayerFacing(player: Player, itemToDrop: InventoryIt
   if (itemToDrop.state && typeof itemToDrop.state.count === "number") {
     finalCount = itemToDrop.state.count;
   }
-  carryable.setItemState({ count: finalCount });
+  const carryState = { ...(itemToDrop.state ?? {}) };
+  if (isStackableItem(itemToDrop)) {
+    carryState.count = finalCount;
+  }
+  carryable.setItemState(carryState);
 
   const pool = PoolManager.getInstance();
   const playerPos = player.getPosition();

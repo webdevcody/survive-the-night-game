@@ -1,6 +1,7 @@
 import Positionable from "@/extensions/positionable";
 import Destructible from "@/extensions/destructible";
 import { Direction, normalizeDirection, angleToDirection } from "@/util/direction";
+import { ItemType } from "@shared/util/inventory";
 import { IEntity } from "../types";
 import { IEntityManager, IGameManagers } from "@/managers/types";
 import Vector2 from "@/util/vector2";
@@ -70,6 +71,30 @@ export function consumeAmmo(inventory: Inventory, ammoType: string): boolean {
   }
 
   return true;
+}
+
+export function countAmmoInInventory(inventory: Inventory, ammoType: ItemType): number {
+  let total = 0;
+  for (const item of inventory.getItems()) {
+    if (!item || item.itemType !== ammoType) continue;
+    total += item.state?.count ?? 1;
+  }
+  return total;
+}
+
+export function consumeAmmoCount(inventory: Inventory, ammoType: ItemType, amount: number): number {
+  if (amount <= 0) {
+    return 0;
+  }
+
+  const available = countAmmoInInventory(inventory, ammoType);
+  const toConsume = Math.min(available, Math.floor(amount));
+  if (toConsume <= 0) {
+    return 0;
+  }
+
+  const removed = inventory.removeCountAcrossStacks(ammoType, toConsume);
+  return removed ? toConsume : 0;
 }
 
 /**

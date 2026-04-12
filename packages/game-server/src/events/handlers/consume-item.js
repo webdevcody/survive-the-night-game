@@ -1,6 +1,5 @@
 import Inventory from "@/extensions/inventory";
 import Consumable from "@/extensions/consumable";
-import { getConfig } from "@shared/config";
 /**
  * Validate consume item data
  */
@@ -34,7 +33,7 @@ export function onConsumeItem(context, socket, data) {
         }
     }
     else if (inputInventoryItem !== null) {
-        const maxSlots = getConfig().player.MAX_INVENTORY_SLOTS;
+        const maxSlots = inventory.getMaxSlots();
         if (typeof inputInventoryItem === "number" &&
             inputInventoryItem >= 1 &&
             inputInventoryItem <= maxSlots) {
