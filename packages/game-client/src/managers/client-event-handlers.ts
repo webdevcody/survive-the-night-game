@@ -39,6 +39,8 @@ export class ClientEventHandlers {
 
     // Mouse up event listener
     canvas.addEventListener("mouseup", this.boundMouseUpHandler);
+
+    canvas.addEventListener("contextmenu", (e) => e.preventDefault());
   }
 
   /**
@@ -75,7 +77,6 @@ export class ClientEventHandlers {
 
     const hud = this.gameClient.getHud();
     const isFullscreenMapOpen = hud?.isFullscreenMapOpen() ?? false;
-    const isInventoryOpen = hud?.isInventoryScreenOpen() ?? false;
     const isCraftingPanelOpen = this.gameClient.getCraftingPanel().isVisible();
 
     // Update inventory bar hover state
@@ -84,8 +85,10 @@ export class ClientEventHandlers {
       hud.handleMouseMove(x, y, canvas.width, canvas.height);
     }
 
-    // Block aiming when fullscreen map or a blocking panel is open
-    if (!isFullscreenMapOpen && !isInventoryOpen && !isCraftingPanelOpen) {
+    const isHoveringInventory = hud?.isHoveringInventory() ?? false;
+
+    // Allow world aim updates while inventory is open, but not while hovering its UI.
+    if (!isFullscreenMapOpen && !isCraftingPanelOpen && !isHoveringInventory) {
       // Access inputManager through private method - will need to expose getter
       const inputManager = (this.gameClient as any).inputManager;
       inputManager.updateMousePosition(x, y);
@@ -101,14 +104,22 @@ export class ClientEventHandlers {
    * Handle mouse down events
    */
   private handleMouseDown(e: MouseEvent, canvas: HTMLCanvasElement): void {
-    // Only handle left click
-    if (e.button !== 0) return;
-
     const rect = canvas.getBoundingClientRect();
     const scaleX = canvas.width / rect.width;
     const scaleY = canvas.height / rect.height;
     const x = (e.clientX - rect.left) * scaleX;
     const y = (e.clientY - rect.top) * scaleY;
+
+    if (e.button === 2) {
+      e.preventDefault();
+      const hud = this.gameClient.getHud();
+      if (hud?.handleInventoryContextClick(x, y, canvas.width, canvas.height)) {
+        return;
+      }
+      return;
+    }
+
+    if (e.button !== 0) return;
 
     const gameState = this.gameClient.getGameState();
     const hud = this.gameClient.getHud();

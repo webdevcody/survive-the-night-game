@@ -21,6 +21,10 @@ import {
   coercePlayerInventoryPersistedPayload,
   type PlayerInventoryPersistedPayload,
 } from "@survive-the-night/game-shared/util/persisted-inventory-payload";
+import {
+  coercePlayerBankPersistedPayload,
+  type PlayerBankPersistedPayload,
+} from "@survive-the-night/game-shared/util/persisted-bank-payload";
 
 /**
  * Get user stats by user ID, creating if doesn't exist
@@ -79,6 +83,7 @@ export async function persistGameServerDisconnectSnapshot(
     skillAllocations?: Record<string, number>;
     professionProgress?: ProfessionProgress;
     savedInventory?: unknown;
+    savedBank?: unknown;
     /** When set (both numbers), persist bind; when both null, clear bind; when omitted, leave DB unchanged. */
     respawnTileX?: number | null;
     respawnTileY?: number | null;
@@ -103,6 +108,11 @@ export async function persistGameServerDisconnectSnapshot(
       ? coercePlayerInventoryPersistedPayload(snapshot.savedInventory)
       : undefined;
 
+  const savedBank =
+    snapshot.savedBank !== undefined
+      ? coercePlayerBankPersistedPayload(snapshot.savedBank)
+      : undefined;
+
   const baseSet: {
     lastTileX: number;
     lastTileY: number;
@@ -112,6 +122,7 @@ export async function persistGameServerDisconnectSnapshot(
     skillAllocations?: Record<string, number>;
     professionProgress: ProfessionProgress;
     savedInventory?: PlayerInventoryPersistedPayload | null;
+    savedBank?: PlayerBankPersistedPayload | null;
     updatedAt: Date;
   } = {
     lastTileX: Math.floor(snapshot.lastTileX),
@@ -131,6 +142,9 @@ export async function persistGameServerDisconnectSnapshot(
   }
   if (savedInventory !== undefined && savedInventory != null) {
     baseSet.savedInventory = savedInventory;
+  }
+  if (savedBank !== undefined && savedBank != null) {
+    baseSet.savedBank = savedBank;
   }
 
   const rx = snapshot.respawnTileX;
@@ -230,6 +244,7 @@ export async function persistOpenWorldSessionFields(
     skillAllocations?: Record<string, number>;
     professionProgress?: ProfessionProgress;
     savedInventory?: unknown;
+    savedBank?: unknown;
     respawnTileX?: number | null;
     respawnTileY?: number | null;
   },
@@ -245,6 +260,7 @@ export async function persistOpenWorldSessionFields(
     skillAllocations?: Record<string, number>;
     professionProgress?: ProfessionProgress;
     savedInventory?: PlayerInventoryPersistedPayload | null;
+    savedBank?: PlayerBankPersistedPayload | null;
     respawnTileX?: number | null;
     respawnTileY?: number | null;
   } = {
@@ -275,6 +291,13 @@ export async function persistOpenWorldSessionFields(
     const coercedInv = coercePlayerInventoryPersistedPayload(data.savedInventory);
     if (coercedInv != null) {
       setFields.savedInventory = coercedInv;
+    }
+  }
+
+  if (data.savedBank !== undefined) {
+    const coercedBank = coercePlayerBankPersistedPayload(data.savedBank);
+    if (coercedBank != null) {
+      setFields.savedBank = coercedBank;
     }
   }
 

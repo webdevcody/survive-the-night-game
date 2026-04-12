@@ -61,6 +61,9 @@ import { Flamethrower } from "@/entities/weapons/flamethrower";
 import { Bow } from "@/entities/weapons/bow";
 import { Fire } from "@/entities/environment/fire";
 import { CampsiteFire } from "@/entities/environment/campsite-fire";
+import { Workbench } from "@/entities/environment/workbench";
+import { Forge } from "@/entities/environment/forge";
+import { ChemistryTable } from "@/entities/environment/chemistry-table";
 import { LightDecal } from "@/entities/environment/light-decal";
 import { MessageDecal } from "@/entities/environment/message-decal";
 import { Merchant } from "@/entities/environment/merchant";
@@ -139,6 +142,9 @@ const SERVER_ENTITY_CONSTRUCTORS = {
     bow: Bow,
     fire: Fire,
     campsite_fire: CampsiteFire,
+    workbench: Workbench,
+    forge: Forge,
+    chemistry_table: ChemistryTable,
     light_decal: LightDecal,
     message_decal: MessageDecal,
     merchant: Merchant,

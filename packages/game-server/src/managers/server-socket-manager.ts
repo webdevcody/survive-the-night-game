@@ -49,6 +49,7 @@ import {
 import Positionable from "@/extensions/positionable";
 import { coercePlayerQuestState } from "@shared/quests/player-quest-state";
 import { coercePlayerInventoryPersistedPayload } from "@shared/util/persisted-inventory-payload";
+import { coercePlayerBankPersistedPayload } from "@shared/util/persisted-bank-payload";
 import { emptyProfessionProgress, normalizeProfessionProgress } from "@shared/util/professions";
 import { reconcilePlayerQuestStateWithMap } from "@/quests/quest-runtime";
 import { XP_PER_ZOMBIE_KILL } from "@shared/util/experience-level";
@@ -269,6 +270,7 @@ export class ServerSocketManager implements Broadcaster {
         respawnTileY?: unknown;
         questProgress?: unknown;
         savedInventory?: unknown;
+        savedBank?: unknown;
       };
       const rawXp = data.experience;
       let xp =
@@ -316,6 +318,18 @@ export class ServerSocketManager implements Broadcaster {
         return { ok: false, message: ServerSocketManager.PROFILE_LOAD_USER_MESSAGE };
       }
 
+      let savedBank: NonNullable<PersistedPlayerProgress["savedBank"]> | undefined;
+      const rawBank = data.savedBank;
+      if (rawBank != null && typeof rawBank === "object") {
+        const coercedBank = coercePlayerBankPersistedPayload(rawBank);
+        if (coercedBank) {
+          savedBank = coercedBank;
+        }
+      }
+      if (savedBank == null) {
+        savedBank = coercePlayerBankPersistedPayload({ items: [] })!;
+      }
+
       return {
         ok: true,
         progress: {
@@ -330,6 +344,7 @@ export class ServerSocketManager implements Broadcaster {
           questProgress:
             data.questProgress != null ? coercePlayerQuestState(data.questProgress) : undefined,
           savedInventory,
+          savedBank,
         },
       };
     } catch (error) {
@@ -480,6 +495,7 @@ export class ServerSocketManager implements Broadcaster {
         professionProgress: player.getProfessionProgressRecord(),
         questProgress: player.getQuestProgressPayload(),
         savedInventory: player.getSavedInventoryPayload(),
+        savedBank: player.getSavedBankPayload(),
       };
       if (!player.isDead() && player.hasExt(Positionable)) {
         const lastTile = getPersistablePlayerLastTile(player);

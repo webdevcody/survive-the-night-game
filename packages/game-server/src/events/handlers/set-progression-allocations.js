@@ -1,10 +1,10 @@
 import { WEBSITE_API_URL, GAME_SERVER_API_KEY } from "@/config/env";
-import { normalizeCharacterAllocations, normalizeSkillAllocations, validateCharacterAllocations, validateSkillAllocations, } from "@shared/util/progression-allocation";
-async function persistSkillAllocations(userId, allocations) {
+import { normalizeAbilityAllocations, normalizeCharacterAllocations, validateAbilityAllocations, validateCharacterAllocations, } from "@shared/util/progression-allocation";
+async function persistAbilityAllocations(userId, allocations) {
     if (!GAME_SERVER_API_KEY)
         return false;
     try {
-        const res = await fetch(`${WEBSITE_API_URL}/api/game/skill-allocations`, {
+        const res = await fetch(`${WEBSITE_API_URL}/api/game/ability-allocations`, {
             method: "POST",
             headers: {
                 "Content-Type": "application/json",
@@ -15,7 +15,7 @@ async function persistSkillAllocations(userId, allocations) {
         return res.ok;
     }
     catch (e) {
-        console.error("[setProgressionAllocations] skill persist failed", e);
+        console.error("[setProgressionAllocations] ability persist failed", e);
         return false;
     }
 }
@@ -49,17 +49,17 @@ export function setProgressionAllocations(context, socket, payload) {
     }
     const xp = player.getTotalExperience();
     void (async () => {
-        if (payload.kind === "skill") {
-            const normalized = normalizeSkillAllocations(payload.allocations);
-            const err = validateSkillAllocations(normalized, xp);
+        if (payload.kind === "ability") {
+            const normalized = normalizeAbilityAllocations(payload.allocations);
+            const err = validateAbilityAllocations(normalized, xp);
             if (err) {
-                console.warn("[setProgressionAllocations] skill validation failed", err);
+                console.warn("[setProgressionAllocations] ability validation failed", err);
                 return;
             }
-            player.applyPersistedProgress(normalized, player.getCharacterAllocationRecord());
-            const ok = await persistSkillAllocations(userId, normalized);
+            player.applyPersistedProgress(normalized, player.getCharacterAllocationRecord(), player.getProfessionProgressRecord());
+            const ok = await persistAbilityAllocations(userId, normalized);
             if (!ok && GAME_SERVER_API_KEY) {
-                console.warn("[setProgressionAllocations] skill allocations applied in-memory but website persist failed (check API key / website)");
+                console.warn("[setProgressionAllocations] ability allocations applied in-memory but website persist failed (check API key / website)");
             }
             return;
         }
@@ -69,7 +69,7 @@ export function setProgressionAllocations(context, socket, payload) {
             console.warn("[setProgressionAllocations] character validation failed", err);
             return;
         }
-        player.applyPersistedProgress(player.getSkillAllocationRecord(), normalized);
+        player.applyPersistedProgress(player.getAbilityAllocationRecord(), normalized, player.getProfessionProgressRecord());
         const ok = await persistCharacterAllocations(userId, normalized);
         if (!ok && GAME_SERVER_API_KEY) {
             console.warn("[setProgressionAllocations] character allocations applied in-memory but website persist failed (check API key / website)");

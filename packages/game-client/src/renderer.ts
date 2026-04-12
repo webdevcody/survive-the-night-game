@@ -323,7 +323,7 @@ export class Renderer {
     if (
       this.merchantBuyPanel.isVisible() ||
       this.craftingPanel.isVisible() ||
-      this.hud.isInventoryScreenOpen() ||
+      this.hud.isHoveringInventory() ||
       this.hud.isFullscreenMapOpen()
     ) {
       return;

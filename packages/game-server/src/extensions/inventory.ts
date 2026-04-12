@@ -53,6 +53,11 @@ export default class Inventory extends ExtensionBase<InventoryFields> {
     owner.sanitizeWeaponLoadouts?.();
   }
 
+  private compactPlayerLoadoutBackedItems(): void {
+    const owner = this.self as { compactLoadoutBackedItemsToBagEnd?: () => void };
+    owner.compactLoadoutBackedItemsToBagEnd?.();
+  }
+
   public constructor(self: IEntity, broadcaster: Broadcaster) {
     super(self, { items: [], equipment: createEmptyEquipment() });
     this.broadcaster = broadcaster;
@@ -98,6 +103,7 @@ export default class Inventory extends ExtensionBase<InventoryFields> {
   public addItem(item: InventoryItem): void {
     if (this.isFull()) return;
 
+    this.compactPlayerLoadoutBackedItems();
     const items = this.serialized.get("items");
 
     // Find first empty slot (null/undefined) to fill
@@ -303,6 +309,56 @@ export default class Inventory extends ExtensionBase<InventoryFields> {
   /**
    * Swap bag slot with an equipment slot. Validates the item entering equipment.
    */
+  /**
+   * Set a bag cell directly (e.g. bank withdraw). Keeps array length aligned with max slots.
+   */
+  public setBagSlot(bagIndex: number, item: InventoryItem | null): void {
+    const maxSlots = this.getMaxSlots();
+    if (bagIndex < 0 || bagIndex >= maxSlots) {
+      return;
+    }
+    const items = this.serialized.get("items");
+    while (items.length < maxSlots) {
+      items.push(null);
+    }
+    items[bagIndex] = item;
+    this.serialized.set("items", [...items]);
+    this.markDirty();
+    this.notifyPlayerWeaponLoadout();
+  }
+
+  public clearEquipmentSlot(slot: EquipmentSlotKey): void {
+    const equipment = this.serialized.get("equipment");
+    if (equipment[slot] == null) {
+      return;
+    }
+    this.serialized.set("equipment", { ...equipment, [slot]: null });
+    this.markDirty();
+    this.notifyPlayerWeaponLoadout();
+  }
+
+  public takeEquipmentItem(slot: EquipmentSlotKey): InventoryItem | undefined {
+    const equipment = this.serialized.get("equipment");
+    const item = equipment[slot];
+    if (item == null) {
+      return undefined;
+    }
+    this.serialized.set("equipment", { ...equipment, [slot]: null });
+    this.markDirty();
+    this.notifyPlayerWeaponLoadout();
+    return item;
+  }
+
+  public setEquipmentSlot(slot: EquipmentSlotKey, item: InventoryItem | null): void {
+    if (item != null && !canItemGoInEquipmentSlot(item.itemType, slot)) {
+      return;
+    }
+    const equipment = this.serialized.get("equipment");
+    this.serialized.set("equipment", { ...equipment, [slot]: item });
+    this.markDirty();
+    this.notifyPlayerWeaponLoadout();
+  }
+
   public swapBagAndEquipment(bagIndex: number, equipSlot: EquipmentSlotKey): void {
     const maxSlots = this.getMaxSlots();
     if (bagIndex < 0 || bagIndex >= maxSlots) {

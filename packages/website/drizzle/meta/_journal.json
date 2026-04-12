@@ -85,6 +85,13 @@
       "when": 1775920000000,
       "tag": "0011_ability_profession_progress",
       "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1776000000000,
+      "tag": "0012_saved_bank",
+      "breakpoints": true
     }
   ]
 }

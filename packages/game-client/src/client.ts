@@ -199,6 +199,8 @@ export class GameClient {
       isCraftingPanelOpen: () => this.craftingPanel.isVisible(),
       isFullscreenMapOpen: () => this.hud.isFullscreenMapOpen(),
       isInventoryScreenOpen: () => this.hud.isInventoryScreenOpen(),
+      getCameraCenterScreenX: (canvasWidth: number) =>
+        this.hud.getInventoryCameraCenterScreenX(canvasWidth),
       getInventoryActiveTab: () => this.hud.getInventoryActiveTab(),
       onToggleInventoryScreen: () => {
         this.hud.toggleInventoryScreen();
@@ -345,6 +347,29 @@ export class GameClient {
             this.renderer?.spatialGrid ?? null,
           );
           if (closest) {
+            if (closest.getType() === Entities.LOCKER) {
+              if (
+                player.hasExt(ClientPositionable) &&
+                closest.hasExt(ClientPositionable) &&
+                distance(
+                  player.getExt(ClientPositionable).getCenterPosition(),
+                  closest.getExt(ClientPositionable).getCenterPosition(),
+                ) <= maxInteract
+              ) {
+                if (this.hud.isBankOpen()) {
+                  if (this.hud.shouldCloseFullInventoryWhenTogglingBank()) {
+                    this.hud.setInventoryScreenOpen(false);
+                  } else {
+                    this.hud.closeBank();
+                  }
+                  return;
+                }
+                const inventoryWasAlreadyOpen = this.hud.isInventoryScreenOpen();
+                this.hud.setInventoryScreenOpen(true);
+                this.hud.openBank(closest.getId(), inventoryWasAlreadyOpen);
+                return;
+              }
+            }
             const stationId = getCraftingStationIdForEntityType(closest.getType());
             if (stationId) {
               if (stationId !== "campfire" || this.canUseCampfireForCrafting(player, closest)) {
@@ -441,6 +466,14 @@ export class GameClient {
       onSelectWeaponLoadout: (loadout) => {
         this.socketManager?.sendSelectWeaponLoadout(loadout);
       },
+      onUseLoadoutConsumable: (which) => {
+        const p = getPlayer();
+        if (!p || !(p instanceof PlayerClient)) return;
+        const bag =
+          which === 0 ? (p as any).loadoutConsumable4 : (p as any).loadoutConsumable5;
+        if (typeof bag !== "number" || bag < 1) return;
+        this.socketManager?.sendUseLoadoutConsumable(which);
+      },
     });
 
     // Create HUD after inputManager is initialized
@@ -476,6 +509,9 @@ export class GameClient {
       },
       (slot, bagIndex) => {
         this.socketManager?.sendSetWeaponLoadoutSlot(slot, bagIndex);
+      },
+      (data) => {
+        this.socketManager?.sendBankAction(data);
       }
     );
     this.hud.setDialogueQuestChoiceHandler((action) => {
@@ -1120,7 +1156,6 @@ export class GameClient {
       this.merchantBuyPanel.isVisible() ||
       this.craftingPanel.isVisible() ||
       (this.hud && this.hud.isFullscreenMapOpen()) ||
-      (this.hud && this.hud.isInventoryScreenOpen()) ||
       (this.hud && this.hud.isHoveringInventory()) ||
       (this.hud && this.hud.isHoveringMuteButton()) ||
       this.inputManager.isChatInputActive()
@@ -1156,9 +1191,7 @@ export class GameClient {
     const weaponItem = player.getResolvedLoadoutWeaponItem();
 
     const hasWeapon = weaponItem && this.isWeaponItem(weaponItem.itemType);
-    // Only hide the system cursor when the renderer will draw the crosshair (needs live mouse).
-    // Mouse updates are skipped while map/inventory are open, so position can be null — otherwise
-    // we'd hide the cursor with nothing drawn on top.
+    // Only hide the system cursor when the renderer has a live mouse position for drawing the crosshair.
     const mouseForCrosshair = this.getRenderer().getMousePosition();
     const hideSystemCursor = !!(hasWeapon && mouseForCrosshair);
     this.ctx.canvas.style.cursor = hideSystemCursor ? "none" : "default";

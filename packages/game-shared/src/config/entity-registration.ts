@@ -104,6 +104,7 @@ export const ENTITY_REGISTRATION_CONFIG: EntityRegistrationEntry[] = [
   { type: "workbench", category: "environment" },
   { type: "forge", category: "environment" },
   { type: "chemistry_table", category: "environment" },
+  { type: "locker", category: "environment" },
   { type: "light_decal", category: "environment" },
   { type: "message_decal", category: "environment" },
   { type: "merchant", category: "environment" },

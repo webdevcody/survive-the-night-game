@@ -70,8 +70,8 @@ export class AIController {
     shouldSprint(isUrgent = false) {
         var _a, _b, _c, _d;
         // Access stamina through the player's serialized fields
-        const stamina = (_b = (_a = this.player.serialized) === null || _a === void 0 ? void 0 : _a.get("stamina")) !== null && _b !== void 0 ? _b : 100;
-        const maxStamina = (_d = (_c = this.player.serialized) === null || _c === void 0 ? void 0 : _c.get("maxStamina")) !== null && _d !== void 0 ? _d : 100;
+        const stamina = (_b = (_a = this.player.serialized) === null || _a === void 0 ? void 0 : _a.get("stamina")) !== null && _b !== void 0 ? _b : getConfig().player.MAX_STAMINA;
+        const maxStamina = (_d = (_c = this.player.serialized) === null || _c === void 0 ? void 0 : _c.get("maxStamina")) !== null && _d !== void 0 ? _d : getConfig().player.MAX_STAMINA;
         const staminaPercent = stamina / maxStamina;
         // Critical stamina - only sprint if escaping for survival
         if (staminaPercent < AIController.STAMINA_CRITICAL_THRESHOLD) {

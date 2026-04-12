@@ -44,6 +44,8 @@ export type MinimapHudLayout = {
 export type GetMinimapHudLayoutOpts = {
   /** Pixel Y of the bottom edge of content above the minimap (wave + optional zombie lives), or 0 */
   waveStackBottom: number;
+  /** Optional centerline for the bottom hotbar/orb group. */
+  hotbarCenterX?: number;
 };
 
 /**
@@ -97,7 +99,7 @@ export function getMinimapHudLayout(
     })),
   };
 
-  const strip = getLoadoutStripScreenLayout(canvasW, canvasH);
+  const strip = getLoadoutStripScreenLayout(canvasW, canvasH, opts.hotbarCenterX);
   const r = scaleHudValue(HOTBAR_STATUS_HUD.orbRadius, canvasW, canvasH);
   const edgeGap = scaleHudValue(HOTBAR_STATUS_HUD.gapFromStripEdge, canvasW, canvasH);
 

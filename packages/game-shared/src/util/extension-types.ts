@@ -24,6 +24,7 @@ export const ExtensionTypes = {
   POISON: "poison",
   ACID_TRIGGER: "acid-trigger",
   INFINITE_RUN: "infinite-run",
+  BANK: "bank",
 } as const;
 
 export type ExtensionType = (typeof ExtensionTypes)[keyof typeof ExtensionTypes];

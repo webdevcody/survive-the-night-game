@@ -8,6 +8,7 @@ import Positionable from "@/extensions/positionable";
 import Updatable from "@/extensions/updatable";
 import { Entities, Zombies } from "@shared/constants";
 import { Entity } from "@/entities/entity";
+import { Player } from "@/entities/players/player";
 import PoolManager from "@shared/util/pool-manager";
 import { distance, normalizeVector } from "@/util/physics";
 import { Cooldown } from "../util/cooldown";
@@ -272,13 +273,19 @@ export class Survivor extends Entity {
         const poolManager = PoolManager.getInstance();
         this.getExt(Movable).setVelocity(poolManager.vector2.claim(0, 0));
         // Add interactive extension for looting
-        this.addExtension(new Interactive(this).onInteract(() => this.onLooted()).setDisplayName("loot"));
+        this.addExtension(new Interactive(this).onInteract((entityId) => this.onLooted(entityId)).setDisplayName("loot"));
         // Disable collision
         this.getExt(Collidable).setEnabled(false);
         // Mark entity for removal if not looted
         this.getEntityManager().markEntityForRemoval(this, getConfig().entity.ENTITY_DESPAWN_TIME_MS);
     }
-    onLooted() {
+    onLooted(entityId) {
+        if (typeof entityId === "number") {
+            const player = this.getEntityManager().getEntityById(entityId);
+            if (player instanceof Player) {
+                player.addProfessionXp("scavenging", 8);
+            }
+        }
         const inventory = this.getExt(Inventory);
         if (inventory) {
             inventory.scatterItems(this.getExt(Positionable).getPosition());

@@ -22,6 +22,8 @@ import { SetProgressionAllocationsEvent } from "./events/set-progression-allocat
 import { SelectWeaponLoadoutEvent } from "./events/select-weapon-loadout";
 import { SetWeaponLoadoutSlotEvent } from "./events/set-weapon-loadout-slot";
 import { DialogueNpcCompleteEvent } from "./events/dialogue-npc-complete";
+import { UseLoadoutConsumableEvent } from "./events/use-loadout-consumable";
+import { BankActionEvent } from "./events/bank-action";
 import {
   serializeEvent,
   deserializeEvent,
@@ -58,6 +60,8 @@ const eventRegistry: Record<string, IBufferWriter> = {
   [ClientSentEvents.SELECT_WEAPON_LOADOUT]: SelectWeaponLoadoutEvent,
   [ClientSentEvents.SET_WEAPON_LOADOUT_SLOT]: SetWeaponLoadoutSlotEvent,
   [ClientSentEvents.DIALOGUE_NPC_COMPLETE]: DialogueNpcCompleteEvent,
+  [ClientSentEvents.USE_LOADOUT_CONSUMABLE]: UseLoadoutConsumableEvent,
+  [ClientSentEvents.BANK_ACTION]: BankActionEvent,
 };
 
 function isClientSentEvent(event: string): event is ClientSentEventType {

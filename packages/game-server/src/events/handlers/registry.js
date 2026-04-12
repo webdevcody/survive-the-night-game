@@ -21,6 +21,7 @@ import { setProgressionAllocationsHandler } from "./set-progression-allocations"
 import { selectWeaponLoadoutHandler } from "./select-weapon-loadout";
 import { setWeaponLoadoutSlotHandler } from "./set-weapon-loadout-slot";
 import { dialogueNpcCompleteHandler } from "./dialogue-npc-complete";
+import { useLoadoutConsumableHandler } from "./use-loadout-consumable";
 /**
  * Registry of all socket event handlers.
  * To add a new event handler:
@@ -56,4 +57,5 @@ export const socketEventHandlers = [
     selectWeaponLoadoutHandler,
     setWeaponLoadoutSlotHandler,
     dialogueNpcCompleteHandler,
+    useLoadoutConsumableHandler,
 ];

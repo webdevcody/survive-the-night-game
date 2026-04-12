@@ -26,6 +26,7 @@ export class EventRateLimiter {
             PLACE_STRUCTURE: { maxEvents: 20, windowMs: 1000 },
             DROP_ITEM: { maxEvents: 20, windowMs: 1000 },
             CONSUME_ITEM: { maxEvents: 20, windowMs: 1000 },
+            USE_LOADOUT_CONSUMABLE: { maxEvents: 20, windowMs: 1000 },
             SWAP_INVENTORY_ITEMS: { maxEvents: 20, windowMs: 1000 },
             SWAP_BAG_AND_EQUIPMENT: { maxEvents: 20, windowMs: 1000 },
             MERCHANT_BUY: { maxEvents: 20, windowMs: 1000 },

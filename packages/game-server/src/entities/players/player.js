@@ -12,7 +12,7 @@ import Updatable from "@/extensions/updatable";
 import { Entities } from "@/constants";
 import { Entity } from "@/entities/entity";
 import { coercePlayerInventoryPersistedPayload, } from "@shared/util/persisted-inventory-payload";
-import { normalizeVector } from "@shared/util/physics";
+import { normalizeVector, distance } from "@shared/util/physics";
 import { Cooldown } from "@/entities/util/cooldown";
 import { weaponHandlerRegistry } from "@/entities/weapons/weapon-handler-registry";
 import { PlayerDeathEvent } from "../../../../game-shared/src/events/server-sent/events/player-death-event";
@@ -31,15 +31,19 @@ import Snared from "@/extensions/snared";
 import { shouldAutoPickup, attemptAutoPickup } from "@/util/auto-pickup";
 import { infectionConfig } from "@shared/config/infection-config";
 import { CHARACTER_STAT_MODIFIERS, computeEncumbranceStaminaDrainMultiplier, computeInventoryWeightKg, computeMaxInventorySlots, computeMaxPlayerHealth, computeMaxStamina, computeEvadeChance, computePassiveHpRegenIntervalSeconds, computeStaminaRegenMultiplier, } from "@shared/util/character-stats";
-import { REGENERATE_HEAL_PER_SECOND } from "@shared/util/skill-tree";
+import { REGENERATE_HEAL_PER_SECOND } from "@shared/util/ability-tree";
 import { getZombieTypesSet } from "@shared/constants";
 import { UserSessionCache } from "@/services/user-session-cache";
 import { GAME_SERVER_API_KEY, WEBSITE_API_URL } from "@/config/env";
 import { weaponRegistry } from "@shared/entities/weapon-registry";
+import { itemMatchesConsumableLoadout } from "@shared/util/consumable-loadout";
 import { itemMatchesLoadoutRow, resolveAttackWeaponFromLoadout } from "@shared/util/weapon-loadout";
+import { emptyProfessionProgress, getProfessionLevelFromXp, normalizeProfessionProgress, } from "@shared/util/professions";
+import { getCraftingStationIdForEntityType } from "@shared/util/crafting-stations";
 import { FISTS_INVENTORY_SENTINEL } from "@shared/constants/inventory-sentinel";
 import { emptyPlayerQuestState, parsePlayerQuestState, stringifyPlayerQuestState, } from "@shared/quests/player-quest-state";
 import { initPlayerQuestState, tickWaypointSteps } from "@/quests/quest-runtime";
+import { getRecipeById, getScrapOutputsForItem } from "@shared/util/recipes";
 /**
  * Cached list of entity types that players can pass through (collision passthrough).
  * Includes player entity and all items configured with isPassthrough: true.
@@ -78,6 +82,9 @@ export class Player extends Entity {
         this.boundRespawnTile = null;
         /** Real-player client socket id (for website API persistence). AI players leave this null. */
         this.clientSocketId = null;
+        /** True once hydratePersistedProgress received a valid savedInventory from DB.
+         *  Prevents disconnect from overwriting a good DB row with starter/empty state. */
+        this.hydratedFromDb = false;
         this.broadcaster = gameManagers.getBroadcaster();
         // Initialize serializable fields with default values
         // Input fields are stored individually for efficient serialization
@@ -105,8 +112,9 @@ export class Player extends Entity {
             inputSprint: false,
             inputAimAngle: NaN, // NaN represents undefined for optional field
             inputAimDistance: NaN, // NaN represents undefined for optional field
-            skillSprint: 0,
-            skillRegenerate: 0,
+            abilitySprint: 0,
+            abilityRegenerate: 0,
+            professionProgressJson: JSON.stringify(emptyProfessionProgress()),
             statHealth: 0,
             statEvade: 0,
             statAccuracy: 0,
@@ -121,6 +129,8 @@ export class Player extends Entity {
             weaponLoadoutSecondary: 0,
             weaponLoadoutMelee: 3,
             activeWeaponLoadout: 0,
+            loadoutConsumable4: 4,
+            loadoutConsumable5: 5,
             questStateJson: stringifyPlayerQuestState(emptyPlayerQuestState()),
             respawnBindTileX: -1,
             respawnBindTileY: -1,
@@ -133,8 +143,8 @@ export class Player extends Entity {
             inputAimAngle: { numberType: "float64", optional: true },
             inputAimDistance: { numberType: "float64", optional: true },
             deathTime: { numberType: "float64" },
-            skillSprint: { numberType: "uint8" },
-            skillRegenerate: { numberType: "uint8" },
+            abilitySprint: { numberType: "uint8" },
+            abilityRegenerate: { numberType: "uint8" },
             statHealth: { numberType: "uint8" },
             statEvade: { numberType: "uint8" },
             statAccuracy: { numberType: "uint8" },
@@ -149,6 +159,8 @@ export class Player extends Entity {
             weaponLoadoutSecondary: { numberType: "uint8" },
             weaponLoadoutMelee: { numberType: "uint8" },
             activeWeaponLoadout: { numberType: "uint8" },
+            loadoutConsumable4: { numberType: "uint8" },
+            loadoutConsumable5: { numberType: "uint8" },
             respawnBindTileX: { numberType: "uint32", optional: true },
             respawnBindTileY: { numberType: "uint32", optional: true },
             // Note: inputSequenceNumber is not in SerializableFields, so no metadata needed
@@ -403,6 +415,75 @@ export class Player extends Entity {
     getInventory() {
         return this.getExt(Inventory).getItems();
     }
+    findEmptyVisibleBagIndex(preferEnd, excludedBagIndices = [], excludedLoadoutKeys = []) {
+        const max = this.getMaxInventorySlots();
+        const inv = this.getInventory();
+        const excludedBags = new Set(excludedBagIndices);
+        const excludedKeys = new Set(excludedLoadoutKeys);
+        const loadoutKeys = [
+            "weaponLoadoutPrimary",
+            "weaponLoadoutSecondary",
+            "weaponLoadoutMelee",
+            "loadoutConsumable4",
+            "loadoutConsumable5",
+        ];
+        const isVisibleBagIndex = (bagIdx0) => {
+            const bagIndex1Based = bagIdx0 + 1;
+            for (const key of loadoutKeys) {
+                if (excludedKeys.has(key)) {
+                    continue;
+                }
+                if (this.serialized.get(key) === bagIndex1Based) {
+                    return false;
+                }
+            }
+            return true;
+        };
+        if (preferEnd) {
+            for (let i = max - 1; i >= 0; i--) {
+                if (excludedBags.has(i) || !isVisibleBagIndex(i) || inv[i] != null) {
+                    continue;
+                }
+                return i;
+            }
+            return null;
+        }
+        for (let i = 0; i < max; i++) {
+            if (excludedBags.has(i) || !isVisibleBagIndex(i) || inv[i] != null) {
+                continue;
+            }
+            return i;
+        }
+        return null;
+    }
+    compactLoadoutBackedItemsToBagEnd() {
+        const max = this.getMaxInventorySlots();
+        const invExt = this.getExt(Inventory);
+        const loadoutKeys = [
+            "weaponLoadoutPrimary",
+            "weaponLoadoutSecondary",
+            "weaponLoadoutMelee",
+            "loadoutConsumable4",
+            "loadoutConsumable5",
+        ];
+        for (const key of loadoutKeys) {
+            const bagIndex1Based = this.serialized.get(key);
+            if (bagIndex1Based < 1 || bagIndex1Based > max) {
+                continue;
+            }
+            const bagIdx0 = bagIndex1Based - 1;
+            const inv = this.getInventory();
+            if (inv[bagIdx0] == null) {
+                continue;
+            }
+            const hiddenIdx0 = this.findEmptyVisibleBagIndex(true, [bagIdx0], [key]);
+            if (hiddenIdx0 === null || hiddenIdx0 <= bagIdx0) {
+                continue;
+            }
+            invExt.swapBagSlotsDeferWeaponResync(bagIdx0, hiddenIdx0);
+            this.serialized.set(key, hiddenIdx0 + 1);
+        }
+    }
     clearInventory() {
         this.getExt(Inventory).clear();
     }
@@ -452,15 +533,20 @@ export class Player extends Entity {
      * Assign a bag slot to a weapon loadout (0 = clear). Validates item type per slot.
      * Same rules as SET_WEAPON_LOADOUT_SLOT from clients.
      * When equipping, moves/swaps bag items so the clicked slot is cleared when possible:
-     * - empty loadout: move weapon to first empty cell and point loadout there (source cleared);
+     * - empty loadout: move weapon to the last empty visible cell and point loadout there (source
+     *   cleared, keeping the visible bag packed from the front);
      *   if the bag is full, only the loadout pointer is set (legacy).
      * - loadout already set: swap clicked cell with the loadout's backing cell (ref unchanged).
      * When clearing, move the hidden backing weapon to the earliest empty visible bag cell if one exists.
      */
     assignWeaponLoadoutSlot(slot, bagIndex) {
         const max = this.getMaxInventorySlots();
-        const slotClamped = Math.max(0, Math.min(2, Math.floor(slot)));
+        const slotClamped = Math.max(0, Math.min(4, Math.floor(slot)));
         const bagIndexClamped = Math.max(0, Math.min(max, Math.floor(bagIndex)));
+        if (slotClamped >= 3) {
+            this.assignConsumableLoadoutSlot(slotClamped, bagIndexClamped);
+            return;
+        }
         const invExt = this.getExt(Inventory);
         const key = slotClamped === 0
             ? "weaponLoadoutPrimary"
@@ -470,16 +556,7 @@ export class Player extends Entity {
         if (bagIndexClamped === 0) {
             const prevRef = this.serialized.get(key);
             if (prevRef >= 1 && prevRef <= max) {
-                const inv = this.getInventory();
-                let emptyIdx0 = null;
-                for (let i = 0; i < max; i++) {
-                    if (i === prevRef - 1)
-                        continue;
-                    if (inv[i] == null) {
-                        emptyIdx0 = i;
-                        break;
-                    }
-                }
+                const emptyIdx0 = this.findEmptyVisibleBagIndex(false, [prevRef - 1], [key]);
                 if (emptyIdx0 !== null) {
                     invExt.swapBagSlotsDeferWeaponResync(prevRef - 1, emptyIdx0);
                 }
@@ -500,16 +577,10 @@ export class Player extends Entity {
             return;
         }
         if (prevRef === 0) {
-            let emptyIdx0 = null;
-            for (let i = 0; i < max; i++) {
-                if (inv[i] == null) {
-                    emptyIdx0 = i;
-                    break;
-                }
-            }
-            if (emptyIdx0 !== null) {
-                invExt.swapBagSlotsDeferWeaponResync(bagIndexClamped - 1, emptyIdx0);
-                this.serialized.set(key, emptyIdx0 + 1);
+            const hiddenIdx0 = this.findEmptyVisibleBagIndex(true);
+            if (hiddenIdx0 !== null) {
+                invExt.swapBagSlotsDeferWeaponResync(bagIndexClamped - 1, hiddenIdx0);
+                this.serialized.set(key, hiddenIdx0 + 1);
             }
             else {
                 this.serialized.set(key, bagIndexClamped);
@@ -519,6 +590,65 @@ export class Player extends Entity {
             invExt.swapBagSlotsDeferWeaponResync(prevRef - 1, bagIndexClamped - 1);
         }
         this.sanitizeWeaponLoadouts();
+    }
+    assignConsumableLoadoutSlot(slot, bagIndex) {
+        const max = this.getMaxInventorySlots();
+        const bagIndexClamped = Math.max(0, Math.min(max, Math.floor(bagIndex)));
+        const key = slot === 3 ? "loadoutConsumable4" : "loadoutConsumable5";
+        const invExt = this.getExt(Inventory);
+        if (bagIndexClamped === 0) {
+            const prevRef = this.serialized.get(key);
+            if (prevRef >= 1 && prevRef <= max) {
+                const emptyIdx0 = this.findEmptyVisibleBagIndex(false, [prevRef - 1], [key]);
+                if (emptyIdx0 !== null) {
+                    invExt.swapBagSlotsDeferWeaponResync(prevRef - 1, emptyIdx0);
+                }
+            }
+            this.serialized.set(key, 0);
+            return;
+        }
+        const inv = this.getInventory();
+        const item = inv[bagIndexClamped - 1];
+        if (!item)
+            return;
+        if (!itemMatchesConsumableLoadout(item.itemType))
+            return;
+        const prevRef = this.serialized.get(key);
+        if (prevRef === bagIndexClamped) {
+            return;
+        }
+        if (prevRef === 0) {
+            const hiddenIdx0 = this.findEmptyVisibleBagIndex(true);
+            if (hiddenIdx0 !== null) {
+                invExt.swapBagSlotsDeferWeaponResync(bagIndexClamped - 1, hiddenIdx0);
+                this.serialized.set(key, hiddenIdx0 + 1);
+            }
+            else {
+                this.serialized.set(key, bagIndexClamped);
+            }
+        }
+        else {
+            invExt.swapBagSlotsDeferWeaponResync(prevRef - 1, bagIndexClamped - 1);
+        }
+        this.sanitizeConsumableLoadouts();
+    }
+    sanitizeConsumableLoadouts() {
+        const inv = this.getInventory();
+        const max = this.getMaxInventorySlots();
+        const check = (key) => {
+            const idx = this.serialized.get(key);
+            if (idx < 1 || idx > max) {
+                this.serialized.set(key, 0);
+                return;
+            }
+            const item = inv[idx - 1];
+            if (!item || !itemMatchesConsumableLoadout(item.itemType)) {
+                this.serialized.set(key, 0);
+            }
+        };
+        check("loadoutConsumable4");
+        check("loadoutConsumable5");
+        this.compactLoadoutBackedItemsToBagEnd();
     }
     sanitizeWeaponLoadouts() {
         const inv = this.getInventory();
@@ -541,6 +671,7 @@ export class Player extends Entity {
         check("weaponLoadoutPrimary");
         check("weaponLoadoutSecondary");
         check("weaponLoadoutMelee");
+        this.sanitizeConsumableLoadouts();
         this.applyWeaponLoadoutSelection();
     }
     applyWeaponLoadoutSelection() {
@@ -585,35 +716,112 @@ export class Player extends Entity {
     setPosition(position) {
         this.getExt(Positionable).setPosition(position);
     }
-    craftRecipe(recipe) {
+    dropInventoryItemNearPlayer(item) {
+        var _a, _b;
+        const entity = (_a = this.getEntityManager()) === null || _a === void 0 ? void 0 : _a.createEntityFromItem(item);
+        if (!entity) {
+            return;
+        }
+        const position = this.getExt(Positionable).getPosition();
+        const offset = 20;
+        const theta = Math.random() * 2 * Math.PI;
+        const poolManager = PoolManager.getInstance();
+        const pos = poolManager.vector2.claim(position.x + offset * Math.cos(theta), position.y + offset * Math.sin(theta));
+        if ("setPosition" in entity) {
+            entity.setPosition(pos);
+        }
+        else if (entity.hasExt(Positionable)) {
+            entity.getExt(Positionable).setPosition(pos);
+        }
+        (_b = this.getEntityManager()) === null || _b === void 0 ? void 0 : _b.addEntity(entity);
+    }
+    tryResolveCraftStation(stationEntityId) {
+        const stationEntity = this.getEntityManager().getEntityById(stationEntityId);
+        if (!stationEntity || !stationEntity.hasExt(Positionable)) {
+            return null;
+        }
+        const stationId = getCraftingStationIdForEntityType(stationEntity.getType());
+        if (!stationId) {
+            return null;
+        }
+        if (distance(this.getCenterPosition(), stationEntity.getExt(Positionable).getCenterPosition()) >
+            getConfig().player.MAX_INTERACT_RADIUS) {
+            return null;
+        }
+        return stationId;
+    }
+    applyScrapRequest(slotIndex) {
         var _a, _b;
         const inventory = this.getExt(Inventory);
+        const item = (_a = inventory.getItems()[slotIndex]) !== null && _a !== void 0 ? _a : null;
+        if (!item) {
+            return false;
+        }
+        const scrap = getScrapOutputsForItem(item.itemType);
+        if (!scrap) {
+            return false;
+        }
+        const removed = inventory.removeItem(slotIndex);
+        if (!removed) {
+            return false;
+        }
+        for (const output of scrap.components) {
+            const count = (_b = output.count) !== null && _b !== void 0 ? _b : 1;
+            const merged = inventory.addOrMergeStack({
+                itemType: output.type,
+                state: { count },
+            });
+            if (!merged) {
+                this.dropInventoryItemNearPlayer({
+                    itemType: output.type,
+                    state: { count },
+                });
+            }
+        }
+        this.addProfessionXp("scrapping", 6 + (scrap.hasRareOutput ? 4 : 0));
+        this.getGameManagers().getBroadcaster().broadcastEvent(new CraftEvent(this.getId()));
+        return true;
+    }
+    craftRecipe(request) {
+        const stationId = this.tryResolveCraftStation(request.stationEntityId);
+        if (!stationId) {
+            this.setIsCrafting(false);
+            return;
+        }
+        if (request.recipeId.startsWith("scrap:")) {
+            const slotIndex = Number.parseInt(request.recipeId.slice("scrap:".length), 10);
+            if (!Number.isInteger(slotIndex) || slotIndex < 0 || stationId !== "workbench") {
+                this.setIsCrafting(false);
+                return;
+            }
+            this.applyScrapRequest(slotIndex);
+            this.setIsCrafting(false);
+            return;
+        }
+        const recipe = getRecipeById(request.recipeId);
+        if (!recipe || recipe.station !== stationId) {
+            this.setIsCrafting(false);
+            return;
+        }
+        if (recipe.profession && this.getProfessionLevel(recipe.profession) < recipe.unlockLevel) {
+            this.setIsCrafting(false);
+            return;
+        }
+        const inventory = this.getExt(Inventory);
         const originalInventoryJson = JSON.stringify(inventory.getItems());
-        const result = inventory.craftRecipe(recipe);
+        const result = inventory.craftRecipe(request.recipeId);
         // Check if crafting succeeded (inventory changed or item was dropped)
         const inventoryChanged = JSON.stringify(inventory.getItems()) !== originalInventoryJson;
         const craftingSucceeded = inventoryChanged || result.itemToDrop !== undefined;
         // If inventory was full, drop the crafted item on the ground
         if (result.itemToDrop) {
-            const entity = (_a = this.getEntityManager()) === null || _a === void 0 ? void 0 : _a.createEntityFromItem(result.itemToDrop);
-            if (entity) {
-                const position = this.getExt(Positionable).getPosition();
-                // Add small random offset so it doesn't spawn exactly on the player
-                const offset = 20;
-                const theta = Math.random() * 2 * Math.PI;
-                const poolManager = PoolManager.getInstance();
-                const pos = poolManager.vector2.claim(position.x + offset * Math.cos(theta), position.y + offset * Math.sin(theta));
-                if ("setPosition" in entity) {
-                    entity.setPosition(pos);
-                }
-                else if (entity.hasExt(Positionable)) {
-                    entity.getExt(Positionable).setPosition(pos);
-                }
-                (_b = this.getEntityManager()) === null || _b === void 0 ? void 0 : _b.addEntity(entity);
-            }
+            this.dropInventoryItemNearPlayer(result.itemToDrop);
         }
         // Broadcast craft event if crafting succeeded
         if (craftingSucceeded) {
+            if (recipe.profession) {
+                this.addProfessionXp(recipe.profession, recipe.professionXp);
+            }
             this.getGameManagers().getBroadcaster().broadcastEvent(new CraftEvent(this.getId()));
         }
         this.setIsCrafting(false);
@@ -768,7 +976,7 @@ export class Player extends Entity {
                 const hasInfiniteRun = this.hasExt(InfiniteRun);
                 const isZombie = this.serialized.get("isZombie");
                 const stamina = this.serialized.get("stamina");
-                const hasSprintSkill = ((_a = this.serialized.get("skillSprint")) !== null && _a !== void 0 ? _a : 0) > 0;
+                const hasSprintSkill = ((_a = this.serialized.get("abilitySprint")) !== null && _a !== void 0 ? _a : 0) > 0;
                 const canSprint = !isZombie &&
                     hasSprintSkill &&
                     this.serialized.get("inputSprint") &&
@@ -1028,14 +1236,17 @@ export class Player extends Entity {
         return Math.min(3, Math.floor(luck / 4));
     }
     /**
-     * Apply skill + character allocation maps from DB (normalized keys, values 0+).
+     * Apply ability + character allocation maps from DB (normalized keys, values 0+).
      */
-    applyPersistedProgress(skillAllocations, characterAllocations) {
+    applyPersistedProgress(abilityAllocations, characterAllocations, professionProgress) {
         var _a, _b, _c, _d, _e, _f, _g, _h, _j, _k, _l, _m, _o;
-        const sprint = Math.min(1, Math.floor((_a = skillAllocations.sprint) !== null && _a !== void 0 ? _a : 0));
-        const regen = Math.min(1, Math.floor((_b = skillAllocations.regenerate) !== null && _b !== void 0 ? _b : 0));
-        this.serialized.set("skillSprint", sprint);
-        this.serialized.set("skillRegenerate", regen);
+        const sprint = Math.min(1, Math.floor((_a = abilityAllocations.sprint) !== null && _a !== void 0 ? _a : 0));
+        const regen = Math.min(1, Math.floor((_b = abilityAllocations.regenerate) !== null && _b !== void 0 ? _b : 0));
+        this.serialized.set("abilitySprint", sprint);
+        this.serialized.set("abilityRegenerate", regen);
+        if (professionProgress !== undefined) {
+            this.serialized.set("professionProgressJson", JSON.stringify(normalizeProfessionProgress(professionProgress)));
+        }
         const rawAlloc = characterAllocations;
         const evadeRaw = (_d = (_c = rawAlloc.evade) !== null && _c !== void 0 ? _c : rawAlloc.defence) !== null && _d !== void 0 ? _d : 0;
         this.serialized.set("statHealth", Math.min(99, Math.floor((_e = characterAllocations.health) !== null && _e !== void 0 ? _e : 0)));
@@ -1052,8 +1263,9 @@ export class Player extends Entity {
     }
     /** Called when connecting with persisted website data (keeps fields encapsulated). */
     hydratePersistedProgress(progress) {
+        var _a, _b;
         this.serialized.set("experience", Math.max(0, Math.floor(progress.experience)));
-        this.applyPersistedProgress(progress.skillAllocations, progress.characterAllocations);
+        this.applyPersistedProgress(progress.abilityAllocations, progress.characterAllocations, progress.professionProgress);
         initPlayerQuestState(this, progress.questProgress);
         const lx = progress.lastTileX;
         const ly = progress.lastTileY;
@@ -1090,10 +1302,17 @@ export class Player extends Entity {
                     this.serialized.set("weaponLoadoutSecondary", wb.weaponLoadoutSecondary);
                     this.serialized.set("weaponLoadoutMelee", wb.weaponLoadoutMelee);
                     this.serialized.set("activeWeaponLoadout", wb.activeWeaponLoadout);
+                    this.serialized.set("loadoutConsumable4", (_a = wb.loadoutConsumable4) !== null && _a !== void 0 ? _a : 4);
+                    this.serialized.set("loadoutConsumable5", (_b = wb.loadoutConsumable5) !== null && _b !== void 0 ? _b : 5);
                     this.sanitizeWeaponLoadouts();
                 }
+                this.hydratedFromDb = true;
             }
         }
+    }
+    /** Whether this player was fully hydrated from a persisted DB profile. */
+    isHydratedFromDb() {
+        return this.hydratedFromDb;
     }
     /** Full inventory snapshot for website persistence (bag, armor, weapon bar / loadouts). */
     getSavedInventoryPayload() {
@@ -1103,6 +1322,8 @@ export class Player extends Entity {
                 weaponLoadoutSecondary: this.serialized.get("weaponLoadoutSecondary"),
                 weaponLoadoutMelee: this.serialized.get("weaponLoadoutMelee"),
                 activeWeaponLoadout: this.serialized.get("activeWeaponLoadout"),
+                loadoutConsumable4: this.serialized.get("loadoutConsumable4"),
+                loadoutConsumable5: this.serialized.get("loadoutConsumable5"),
             } });
     }
     /**
@@ -1120,11 +1341,41 @@ export class Player extends Entity {
         var _a;
         return (_a = this.serialized.get("experience")) !== null && _a !== void 0 ? _a : 0;
     }
-    getSkillAllocationRecord() {
+    getAbilityAllocationRecord() {
         return {
-            sprint: this.serialized.get("skillSprint") ? 1 : 0,
-            regenerate: this.serialized.get("skillRegenerate") ? 1 : 0,
+            sprint: this.serialized.get("abilitySprint") ? 1 : 0,
+            regenerate: this.serialized.get("abilityRegenerate") ? 1 : 0,
         };
+    }
+    getSkillAllocationRecord() {
+        return this.getAbilityAllocationRecord();
+    }
+    getProfessionProgressRecord() {
+        const raw = this.serialized.get("professionProgressJson");
+        if (typeof raw !== "string" || raw.trim() === "") {
+            return emptyProfessionProgress();
+        }
+        try {
+            return normalizeProfessionProgress(JSON.parse(raw));
+        }
+        catch (_a) {
+            return emptyProfessionProgress();
+        }
+    }
+    getProfessionLevel(professionId) {
+        var _a;
+        const progress = this.getProfessionProgressRecord();
+        return getProfessionLevelFromXp((_a = progress[professionId]) !== null && _a !== void 0 ? _a : 0);
+    }
+    addProfessionXp(professionId, amount) {
+        var _a;
+        const safeAmount = Math.max(0, Math.floor(amount));
+        if (safeAmount <= 0) {
+            return;
+        }
+        const progress = this.getProfessionProgressRecord();
+        progress[professionId] = ((_a = progress[professionId]) !== null && _a !== void 0 ? _a : 0) + safeAmount;
+        this.serialized.set("professionProgressJson", JSON.stringify(progress));
     }
     getCharacterAllocationRecord() {
         var _a, _b, _c, _d, _e, _f, _g, _h, _j, _k;
@@ -1157,7 +1408,7 @@ export class Player extends Entity {
     }
     handleRegenerateHealing(deltaTime) {
         var _a;
-        if (((_a = this.serialized.get("skillRegenerate")) !== null && _a !== void 0 ? _a : 0) <= 0) {
+        if (((_a = this.serialized.get("abilityRegenerate")) !== null && _a !== void 0 ? _a : 0) <= 0) {
             return;
         }
         const d = this.getExt(Destructible);

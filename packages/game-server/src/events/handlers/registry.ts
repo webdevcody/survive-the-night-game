@@ -22,6 +22,8 @@ import { setProgressionAllocationsHandler } from "./set-progression-allocations"
 import { selectWeaponLoadoutHandler } from "./select-weapon-loadout";
 import { setWeaponLoadoutSlotHandler } from "./set-weapon-loadout-slot";
 import { dialogueNpcCompleteHandler } from "./dialogue-npc-complete";
+import { useLoadoutConsumableHandler } from "./use-loadout-consumable";
+import { bankActionHandler } from "./bank-action";
 
 /**
  * Registry of all socket event handlers.
@@ -58,4 +60,6 @@ export const socketEventHandlers: SocketEventHandler[] = [
   selectWeaponLoadoutHandler,
   setWeaponLoadoutSlotHandler,
   dialogueNpcCompleteHandler,
+  useLoadoutConsumableHandler,
+  bankActionHandler,
 ];

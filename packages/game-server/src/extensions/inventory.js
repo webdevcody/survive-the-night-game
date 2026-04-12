@@ -1,6 +1,6 @@
 import { isWeapon, canItemGoInEquipmentSlot, createEmptyEquipment, EQUIPMENT_SLOT_KEYS, } from "../../../game-shared/src/util/inventory";
 import { coercePlayerInventoryPersistedPayload, } from "@shared/util/persisted-inventory-payload";
-import { recipes } from "../../../game-shared/src/util/recipes";
+import { craftRecipe as applyRecipeCraft, getRecipeById, } from "../../../game-shared/src/util/recipes";
 import { PlayerPickedUpItemEvent } from "../../../game-shared/src/events/server-sent/events/pickup-item-event";
 import Positionable from "@/extensions/positionable";
 import PoolManager from "@shared/util/pool-manager";
@@ -16,6 +16,11 @@ class Inventory extends ExtensionBase {
         var _a;
         const owner = this.self;
         (_a = owner.sanitizeWeaponLoadouts) === null || _a === void 0 ? void 0 : _a.call(owner);
+    }
+    compactPlayerLoadoutBackedItems() {
+        var _a;
+        const owner = this.self;
+        (_a = owner.compactLoadoutBackedItemsToBagEnd) === null || _a === void 0 ? void 0 : _a.call(owner);
     }
     constructor(self, broadcaster) {
         super(self, { items: [], equipment: createEmptyEquipment() });
@@ -57,6 +62,7 @@ class Inventory extends ExtensionBase {
     addItem(item) {
         if (this.isFull())
             return;
+        this.compactPlayerLoadoutBackedItems();
         const items = this.serialized.get("items");
         // Find first empty slot (null/undefined) to fill
         const emptySlotIndex = items.findIndex((it) => it == null);
@@ -279,12 +285,12 @@ class Inventory extends ExtensionBase {
     }
     craftRecipe(recipe) {
         const items = this.serialized.get("items");
-        const foundRecipe = recipes.find((it) => it.getType() === recipe);
-        if (foundRecipe === undefined) {
+        const foundRecipe = getRecipeById(recipe);
+        if (!foundRecipe) {
             return { inventory: items };
         }
         const maxSlots = this.getMaxSlots();
-        const result = foundRecipe.craft(items, maxSlots);
+        const result = applyRecipeCraft(foundRecipe, items, maxSlots);
         this.serialized.set("items", result.inventory);
         // Explicitly mark dirty to ensure inventory changes are broadcast
         this.markDirty();

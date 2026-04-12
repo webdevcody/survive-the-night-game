@@ -3,11 +3,12 @@ import { Entity } from "@/entities/entity";
 import { Input } from "@shared/util/input";
 import { InventoryItem, ItemType } from "@shared/util/inventory";
 import { type PlayerInventoryPersistedPayload } from "@shared/util/persisted-inventory-payload";
-import { RecipeType } from "@shared/util/recipes";
+import type { CraftRequestEventData } from "@shared/events/client-sent/events/craft-request";
 import Vector2 from "@/util/vector2";
 import { Rectangle } from "@/util/shape";
 import { SkinType, PlayerColor } from "@shared/commands/commands";
 import type { PersistedPlayerProgress } from "@/services/player-progress-types";
+import { type ProfessionId, type ProfessionProgress } from "@shared/util/professions";
 import { type PlayerQuestStatePayload } from "@shared/quests/player-quest-state";
 export declare class Player extends Entity {
     private static readonly PLAYER_WIDTH;
@@ -33,6 +34,9 @@ export declare class Player extends Entity {
     private boundRespawnTile;
     /** Real-player client socket id (for website API persistence). AI players leave this null. */
     private clientSocketId;
+    /** True once hydratePersistedProgress received a valid savedInventory from DB.
+     *  Prevents disconnect from overwriting a good DB row with starter/empty state. */
+    private hydratedFromDb;
     constructor(gameManagers: IGameManagers);
     get activeItem(): InventoryItem | null;
     setIsCrafting(isCrafting: boolean): void;
@@ -66,6 +70,8 @@ export declare class Player extends Entity {
     getVelocity(): Vector2;
     getPosition(): Vector2;
     getInventory(): (InventoryItem | null)[];
+    private findEmptyVisibleBagIndex;
+    private compactLoadoutBackedItemsToBagEnd;
     clearInventory(): void;
     private resolveAttackWeaponItem;
     private performFistAttack;
@@ -75,17 +81,23 @@ export declare class Player extends Entity {
      * Assign a bag slot to a weapon loadout (0 = clear). Validates item type per slot.
      * Same rules as SET_WEAPON_LOADOUT_SLOT from clients.
      * When equipping, moves/swaps bag items so the clicked slot is cleared when possible:
-     * - empty loadout: move weapon to first empty cell and point loadout there (source cleared);
+     * - empty loadout: move weapon to the last empty visible cell and point loadout there (source
+     *   cleared, keeping the visible bag packed from the front);
      *   if the bag is full, only the loadout pointer is set (legacy).
      * - loadout already set: swap clicked cell with the loadout's backing cell (ref unchanged).
      * When clearing, move the hidden backing weapon to the earliest empty visible bag cell if one exists.
      */
     assignWeaponLoadoutSlot(slot: number, bagIndex: number): void;
+    private assignConsumableLoadoutSlot;
+    private sanitizeConsumableLoadouts;
     sanitizeWeaponLoadouts(): void;
     applyWeaponLoadoutSelection(): void;
     getActiveWeapon(): InventoryItem | null;
     setPosition(position: Vector2): void;
-    craftRecipe(recipe: RecipeType): void;
+    private dropInventoryItemNearPlayer;
+    private tryResolveCraftStation;
+    private applyScrapRequest;
+    craftRecipe(request: CraftRequestEventData): void;
     handleAttack(deltaTime: number): void;
     private handleZombieClawAttack;
     handleMovement(deltaTime: number): void;
@@ -120,11 +132,13 @@ export declare class Player extends Entity {
     /** Extra coins when picking up coin entities (luck stat). */
     getLuckCoinPickupBonus(): number;
     /**
-     * Apply skill + character allocation maps from DB (normalized keys, values 0+).
+     * Apply ability + character allocation maps from DB (normalized keys, values 0+).
      */
-    applyPersistedProgress(skillAllocations: Record<string, number>, characterAllocations: Record<string, number>): void;
+    applyPersistedProgress(abilityAllocations: Record<string, number>, characterAllocations: Record<string, number>, professionProgress?: Record<string, number>): void;
     /** Called when connecting with persisted website data (keeps fields encapsulated). */
     hydratePersistedProgress(progress: PersistedPlayerProgress): void;
+    /** Whether this player was fully hydrated from a persisted DB profile. */
+    isHydratedFromDb(): boolean;
     /** Full inventory snapshot for website persistence (bag, armor, weapon bar / loadouts). */
     getSavedInventoryPayload(): PlayerInventoryPersistedPayload;
     /**
@@ -136,7 +150,11 @@ export declare class Player extends Entity {
     } | null;
     getQuestProgressPayload(): PlayerQuestStatePayload;
     getTotalExperience(): number;
+    getAbilityAllocationRecord(): Record<string, number>;
     getSkillAllocationRecord(): Record<string, number>;
+    getProfessionProgressRecord(): ProfessionProgress;
+    getProfessionLevel(professionId: ProfessionId): number;
+    addProfessionXp(professionId: ProfessionId, amount: number): void;
     getCharacterAllocationRecord(): Record<string, number>;
     applyDerivedStatsFromAllocations(): void;
     private handleRegenerateHealing;

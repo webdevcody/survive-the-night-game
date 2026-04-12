@@ -28,8 +28,10 @@ export declare class ServerSocketManager implements Broadcaster {
     private sessionValidator;
     private userSessionCache;
     constructor(port: number, gameServer: GameServer);
+    private static readonly PROFILE_LOAD_USER_MESSAGE;
     /**
      * Load persisted experience and allocation progress from the website DB before the player entity is created.
+     * When GAME_SERVER_API_KEY is set, failure is explicit (caller must refuse connection).
      */
     private fetchPersistedProgress;
     /**

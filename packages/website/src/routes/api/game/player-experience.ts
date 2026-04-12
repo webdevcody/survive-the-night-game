@@ -8,6 +8,8 @@ import {
 import { requireGameServerApiKey } from "~/utils/game-server-api-auth";
 import { coercePlayerQuestState } from "@survive-the-night/game-shared/quests/player-quest-state";
 
+const STARTER_SAVED_BANK = { items: [] as (null | unknown)[] };
+
 const STARTER_SAVED_INVENTORY = {
   items: [
     { itemType: "torch" },
@@ -33,7 +35,7 @@ const STARTER_SAVED_INVENTORY = {
  *
  * Creates a user_stats row on first connect so every authenticated player has a profile.
  * New rows include a starter savedInventory (torch) so the game-server savedInventory
- * validation never sees null for a legitimate first-time player.
+ * validation never sees null for a legitimate first-time player. savedBank defaults to empty.
  */
 export const Route = createFileRoute("/api/game/player-experience")({
   server: {
@@ -72,6 +74,7 @@ export const Route = createFileRoute("/api/game/player-experience")({
               respawnTileY: stats.respawnTileY ?? null,
               questProgress: coercePlayerQuestState(stats.questProgress),
               savedInventory: stats.savedInventory ?? STARTER_SAVED_INVENTORY,
+              savedBank: stats.savedBank ?? STARTER_SAVED_BANK,
             }),
             { status: 200, headers: { "Content-Type": "application/json" } },
           );

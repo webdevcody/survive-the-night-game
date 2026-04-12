@@ -4,7 +4,7 @@
  *
  * Usage:
  *   const serialized = new SerializableFields(
- *     { ping: 0, stamina: 100 },
+ *     { ping: 0, stamina: 20 },
  *     () => entity.markDirty(),
  *     { ping: { numberType: 'uint16' } }
  *   );

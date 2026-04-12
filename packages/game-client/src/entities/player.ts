@@ -6,6 +6,7 @@ import {
   ClientIgnitable,
   ClientInventory,
   ClientCollidable,
+  ClientBank,
 } from "@/extensions";
 import { ImageLoader, getItemAssetKey } from "@/managers/asset";
 import { GameState } from "@/state";
@@ -217,6 +218,13 @@ export class PlayerClient extends ClientEntity implements IClientEntity, Rendera
   getInventory(): (InventoryItem | null)[] {
     if (this.hasExt(ClientInventory)) {
       return this.getExt(ClientInventory).getItems();
+    }
+    return [];
+  }
+
+  getBankItems(): (InventoryItem | null)[] {
+    if (this.hasExt(ClientBank)) {
+      return this.getExt(ClientBank).getItems();
     }
     return [];
   }

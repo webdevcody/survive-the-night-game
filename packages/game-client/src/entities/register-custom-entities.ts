@@ -69,6 +69,7 @@ import { CampsiteFireClient } from "@/entities/environment/campsite-fire";
 import { WorkbenchClient } from "./environment/workbench";
 import { ForgeClient } from "./environment/forge";
 import { ChemistryTableClient } from "./environment/chemistry-table";
+import { LockerClient } from "./environment/locker";
 import { LightDecalClient } from "@/entities/environment/light-decal";
 import { MessageDecalClient } from "@/entities/environment/message-decal";
 import { MerchantClient } from "./environment/merchant";
@@ -156,6 +157,7 @@ const CLIENT_ENTITY_CONSTRUCTORS: Record<EntityType, ClientEntityConstructor> = 
   workbench: WorkbenchClient,
   forge: ForgeClient,
   chemistry_table: ChemistryTableClient,
+  locker: LockerClient,
   light_decal: LightDecalClient,
   message_decal: MessageDecalClient,
   merchant: MerchantClient,

@@ -12,6 +12,7 @@ import { Broadcaster as BroadcastingBroadcaster } from "@/broadcasting/broadcast
 import { PlayerJoinedEvent } from "../../../game-shared/src/events/server-sent/events/player-joined-event";
 import { VersionMismatchEvent } from "../../../game-shared/src/events/server-sent/events/version-mismatch-event";
 import { AuthRequiredEvent } from "../../../game-shared/src/events/server-sent/events/auth-required-event";
+import { ProfileLoadFailedEvent } from "../../../game-shared/src/events/server-sent/events/profile-load-failed-event";
 import { YourIdEvent } from "../../../game-shared/src/events/server-sent/events/your-id-event";
 import { onConnection, sendFullState } from "@/events/handlers";
 import { socketEventHandlers } from "@/events/handlers/registry";
@@ -20,10 +21,11 @@ import { SessionValidator } from "@/services/session-validator";
 import { UserSessionCache } from "@/services/user-session-cache";
 import { KillTracker } from "@/services/kill-tracker";
 import { WEBSITE_API_URL, GAME_SERVER_API_KEY } from "@/config/env";
-import { persistPlayerLastPositionToWebsite } from "@/services/persist-player-last-position";
+import { getPersistablePlayerLastTile, persistPlayerLastPositionToWebsite, } from "@/services/persist-player-last-position";
 import Positionable from "@/extensions/positionable";
 import { coercePlayerQuestState } from "@shared/quests/player-quest-state";
 import { coercePlayerInventoryPersistedPayload } from "@shared/util/persisted-inventory-payload";
+import { emptyProfessionProgress, normalizeProfessionProgress } from "@shared/util/professions";
 import { reconcilePlayerQuestStateWithMap } from "@/quests/quest-runtime";
 import { XP_PER_ZOMBIE_KILL } from "@shared/util/experience-level";
 import { GameMessageEvent } from "../../../game-shared/src/events/server-sent/events/game-message-event";
@@ -120,33 +122,44 @@ export class ServerSocketManager {
                 return;
             }
             const userId = authResult.userId;
-            // Filter bad words and replace with asterisks
             const filteredDisplayName = rawDisplayName ? this.sanitizeText(rawDisplayName) : undefined;
-            // Allow multiple connections with the same display name
-            // Each connection gets its own player entity
-            this.playerDisplayNames.set(socket.id, filteredDisplayName || "Unknown");
-            this.userSessionCache.setUserSession(socket.id, userId, tokenStr);
-            console.log(`Socket ${socket.id} authenticated as user ${userId}`);
             void (async () => {
-                const progress = await this.fetchPersistedProgress(userId);
-                this.onConnection(socket, progress);
+                const loaded = await this.fetchPersistedProgress(userId);
+                if (!loaded.ok) {
+                    console.warn(`[ServerSocketManager] Refusing connection for user ${userId}: persisted profile not loaded.`);
+                    this.sendEventToSocket(socket, new ProfileLoadFailedEvent({
+                        message: loaded.message,
+                    }));
+                    socket.disconnect(true);
+                    return;
+                }
+                this.playerDisplayNames.set(socket.id, filteredDisplayName || "Unknown");
+                this.userSessionCache.setUserSession(socket.id, userId, tokenStr);
+                console.log(`Socket ${socket.id} authenticated as user ${userId}`);
+                this.onConnection(socket, loaded.progress);
             })().catch((err) => {
                 console.error("Connection handler failed:", err);
+                this.sendEventToSocket(socket, new ProfileLoadFailedEvent({
+                    message: "Could not load your saved progress. Please try again in a moment.",
+                }));
+                socket.disconnect(true);
             });
         });
     }
     /**
      * Load persisted experience and allocation progress from the website DB before the player entity is created.
+     * When GAME_SERVER_API_KEY is set, failure is explicit (caller must refuse connection).
      */
     async fetchPersistedProgress(userId) {
-        var _a, _b;
+        var _a, _b, _c;
         const empty = {
             experience: 0,
-            skillAllocations: {},
+            abilityAllocations: {},
             characterAllocations: {},
+            professionProgress: emptyProfessionProgress(),
         };
         if (!GAME_SERVER_API_KEY) {
-            return empty;
+            return { ok: true, progress: empty };
         }
         const url = `${WEBSITE_API_URL}/api/game/player-experience?userId=${encodeURIComponent(userId)}`;
         try {
@@ -156,7 +169,7 @@ export class ServerSocketManager {
             if (!response.ok) {
                 const errText = await response.text().catch(() => "");
                 console.warn(`[ServerSocketManager] player-experience HTTP ${response.status} for user ${userId}: ${errText.slice(0, 500)}`);
-                return empty;
+                return { ok: false, message: ServerSocketManager.PROFILE_LOAD_USER_MESSAGE };
             }
             const data = (await response.json());
             const rawXp = data.experience;
@@ -190,22 +203,30 @@ export class ServerSocketManager {
                     savedInventory = coercedInv;
                 }
             }
+            if (savedInventory == null) {
+                console.warn(`[ServerSocketManager] player-experience missing valid savedInventory for user ${userId}.`);
+                return { ok: false, message: ServerSocketManager.PROFILE_LOAD_USER_MESSAGE };
+            }
             return {
-                experience: Math.max(0, xp),
-                skillAllocations: (_a = data.skillAllocations) !== null && _a !== void 0 ? _a : {},
-                characterAllocations: (_b = data.characterAllocations) !== null && _b !== void 0 ? _b : {},
-                lastTileX,
-                lastTileY,
-                respawnTileX,
-                respawnTileY,
-                questProgress: data.questProgress != null ? coercePlayerQuestState(data.questProgress) : undefined,
-                savedInventory,
+                ok: true,
+                progress: {
+                    experience: Math.max(0, xp),
+                    abilityAllocations: (_b = (_a = data.abilityAllocations) !== null && _a !== void 0 ? _a : data.skillAllocations) !== null && _b !== void 0 ? _b : {},
+                    characterAllocations: (_c = data.characterAllocations) !== null && _c !== void 0 ? _c : {},
+                    professionProgress: normalizeProfessionProgress(data.professionProgress),
+                    lastTileX,
+                    lastTileY,
+                    respawnTileX,
+                    respawnTileY,
+                    questProgress: data.questProgress != null ? coercePlayerQuestState(data.questProgress) : undefined,
+                    savedInventory,
+                },
             };
         }
         catch (error) {
             console.warn(`[ServerSocketManager] fetchPersistedProgress failed for ${userId}:`, error);
+            return { ok: false, message: ServerSocketManager.PROFILE_LOAD_USER_MESSAGE };
         }
-        return empty;
     }
     /**
      * Get handler context for passing to handler functions
@@ -285,8 +306,9 @@ export class ServerSocketManager {
     }
     createPlayerForSocket(socket, initialProgress = {
         experience: 0,
-        skillAllocations: {},
+        abilityAllocations: {},
         characterAllocations: {},
+        professionProgress: emptyProfessionProgress(),
     }) {
         var _a;
         const player = new Player(this.getGameManagers());
@@ -313,32 +335,56 @@ export class ServerSocketManager {
         this.broadcastEvent(new PlayerJoinedEvent({ playerId: player.getId(), displayName: player.getDisplayName() }));
     }
     async recreatePlayersForConnectedSockets() {
-        const TILE_SIZE = getConfig().world.TILE_SIZE;
         const liveBySocket = new Map();
         for (const [socketId, player] of this.players) {
-            if (player.isDead() || !player.hasExt(Positionable)) {
-                continue;
-            }
-            const pos = player.getExt(Positionable).getPosition();
-            const lastTileX = Math.floor(pos.x / TILE_SIZE);
-            const lastTileY = Math.floor(pos.y / TILE_SIZE);
             const bind = player.getBoundRespawnTile();
-            liveBySocket.set(socketId, Object.assign({ lastTileX,
-                lastTileY }, (bind ? { respawn: { x: bind.x, y: bind.y } } : {})));
+            const snap = {
+                experience: player.getTotalExperience(),
+                abilityAllocations: player.getAbilityAllocationRecord(),
+                characterAllocations: player.getCharacterAllocationRecord(),
+                professionProgress: player.getProfessionProgressRecord(),
+                questProgress: player.getQuestProgressPayload(),
+                savedInventory: player.getSavedInventoryPayload(),
+            };
+            if (!player.isDead() && player.hasExt(Positionable)) {
+                const lastTile = getPersistablePlayerLastTile(player);
+                if (lastTile) {
+                    snap.lastTileX = lastTile.x;
+                    snap.lastTileY = lastTile.y;
+                }
+            }
+            if (bind) {
+                snap.respawnTileX = bind.x;
+                snap.respawnTileY = bind.y;
+            }
+            liveBySocket.set(socketId, snap);
         }
         this.players.clear();
         const sockets = Array.from(this.io.sockets.sockets.values());
+        const anonProgress = {
+            experience: 0,
+            abilityAllocations: {},
+            characterAllocations: {},
+            professionProgress: emptyProfessionProgress(),
+        };
         for (const socket of sockets) {
-            const userId = this.userSessionCache.getUserIdBySocket(socket.id);
-            const progress = userId
-                ? await this.fetchPersistedProgress(userId)
-                : { experience: 0, skillAllocations: {}, characterAllocations: {} };
             const snap = liveBySocket.get(socket.id);
-            const merged = snap
-                ? Object.assign(Object.assign(Object.assign({}, progress), { lastTileX: snap.lastTileX, lastTileY: snap.lastTileY }), (snap.respawn
-                    ? { respawnTileX: snap.respawn.x, respawnTileY: snap.respawn.y }
-                    : {})) : progress;
-            this.createPlayerForSocket(socket, merged);
+            if (snap) {
+                this.createPlayerForSocket(socket, snap);
+                continue;
+            }
+            const userId = this.userSessionCache.getUserIdBySocket(socket.id);
+            const loaded = userId
+                ? await this.fetchPersistedProgress(userId)
+                : { ok: true, progress: anonProgress };
+            if (!loaded.ok) {
+                console.warn(`[ServerSocketManager] Kicking socket ${socket.id} during map reload: persisted profile not loaded.`);
+                this.sendEventToSocket(socket, new ProfileLoadFailedEvent({ message: loaded.message }));
+                this.userSessionCache.removeSocket(socket.id);
+                socket.disconnect(true);
+                continue;
+            }
+            this.createPlayerForSocket(socket, loaded.progress);
         }
     }
     /** Align persisted quest journal with the current map (new/removed quest ids after reload). */
@@ -419,8 +465,9 @@ export class ServerSocketManager {
     }
     onConnection(socket, initialProgress = {
         experience: 0,
-        skillAllocations: {},
+        abilityAllocations: {},
         characterAllocations: {},
+        professionProgress: emptyProfessionProgress(),
     }) {
         const context = this.getHandlerContext();
         this.setupSocketListeners(socket);
@@ -535,3 +582,4 @@ export class ServerSocketManager {
         return this.profanityCensor.applyTo(text, matches);
     }
 }
+ServerSocketManager.PROFILE_LOAD_USER_MESSAGE = "Could not load your saved progress. Please try again in a moment.";

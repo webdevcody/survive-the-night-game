@@ -17,6 +17,11 @@ export const playerConfig = {
   MAX_INVENTORY_SLOTS: 40,
 
   /**
+   * Personal bank slots (locker storage); matches bag grid size by default.
+   */
+  MAX_BANK_SLOTS: 40,
+
+  /**
    * Hotbar / digit keys 1–0 only address the first row (slots 1–10, 1-based)
    */
   MAX_HOTBAR_SLOTS: 10,

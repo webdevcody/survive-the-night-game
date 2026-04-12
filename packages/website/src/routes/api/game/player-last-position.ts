@@ -10,7 +10,7 @@ import { requireGameServerApiKey } from "~/utils/game-server-api-auth";
 
 /**
  * Game server → website: save last open-world tile when the player disconnects.
- * POST JSON { userId, lastTileX, lastTileY, questProgress?, characterAllocations?, abilityAllocations?, professionProgress?, savedInventory?, respawnTileX?, respawnTileY? } with X-API-Key.
+ * POST JSON { userId, lastTileX, lastTileY, questProgress?, characterAllocations?, abilityAllocations?, professionProgress?, savedInventory?, savedBank?, respawnTileX?, respawnTileY? } with X-API-Key.
  * Default (disconnect): last tile + optional respawn + optional character — does **not** overwrite quest_progress (quests use /api/game/player-quest-progress).
  * Legacy: if both questProgress and characterAllocations are sent, full snapshot including quests is written.
  */
@@ -36,6 +36,7 @@ export const Route = createFileRoute("/api/game/player-last-position")({
             skillAllocations?: unknown;
             professionProgress?: unknown;
             savedInventory?: unknown;
+            savedBank?: unknown;
           };
 
           if (!body.userId || typeof body.userId !== "string") {
@@ -119,6 +120,9 @@ export const Route = createFileRoute("/api/game/player-last-position")({
               ? body.savedInventory
               : undefined;
 
+          const savedBank =
+            body.savedBank !== undefined && body.savedBank !== null ? body.savedBank : undefined;
+
           if (hasSnapshot) {
             updated = await persistGameServerDisconnectSnapshot(body.userId, {
               lastTileX: tx,
@@ -133,6 +137,7 @@ export const Route = createFileRoute("/api/game/player-last-position")({
               ...(abilityAllocations !== undefined ? { abilityAllocations } : {}),
               ...(professionProgress !== undefined ? { professionProgress } : {}),
               ...(savedInventory !== undefined ? { savedInventory } : {}),
+              ...(savedBank !== undefined ? { savedBank } : {}),
               ...(respawnTileX !== undefined ? { respawnTileX, respawnTileY } : {}),
             });
           } else {
@@ -150,6 +155,7 @@ export const Route = createFileRoute("/api/game/player-last-position")({
               abilityAllocations !== undefined ||
               professionProgress !== undefined ||
               savedInventory !== undefined ||
+              savedBank !== undefined ||
               respawnTileX !== undefined;
 
             if (hasSideFields) {
@@ -160,6 +166,7 @@ export const Route = createFileRoute("/api/game/player-last-position")({
                 ...(abilityAllocations !== undefined ? { abilityAllocations } : {}),
                 ...(professionProgress !== undefined ? { professionProgress } : {}),
                 ...(savedInventory !== undefined ? { savedInventory } : {}),
+                ...(savedBank !== undefined ? { savedBank } : {}),
                 ...(respawnTileX !== undefined ? { respawnTileX, respawnTileY } : {}),
               });
             } else {

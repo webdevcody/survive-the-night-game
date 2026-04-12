@@ -133,6 +133,16 @@ export const ENVIRONMENT_CONFIGS: Record<string, EnvironmentConfig> = {
       sheet: "items",
     },
   },
+  locker: {
+    id: "locker",
+    category: "obstacle",
+    assets: {
+      assetKey: "locker",
+      x: 0,
+      y: 0,
+      sheet: "locker",
+    },
+  },
   light_decal: {
     id: "light_decal",
     category: "obstacle",

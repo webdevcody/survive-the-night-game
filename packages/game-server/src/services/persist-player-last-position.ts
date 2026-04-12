@@ -72,6 +72,7 @@ export async function persistPlayerLastPositionToWebsite(
       abilityAllocations: player.getAbilityAllocationRecord(),
       professionProgress: player.getProfessionProgressRecord(),
       savedInventory: player.getSavedInventoryPayload(),
+      savedBank: player.getSavedBankPayload(),
     }),
   });
 

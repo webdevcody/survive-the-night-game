@@ -26,6 +26,7 @@ export class Tree extends Entity {
         if (!inventory.addOrMergeStack({ itemType: "wood", state: { count: 1 } })) {
             return;
         }
+        player.addProfessionXp("scavenging", 3);
         this.getEntityManager().markEntityForRemoval(this);
     }
 }

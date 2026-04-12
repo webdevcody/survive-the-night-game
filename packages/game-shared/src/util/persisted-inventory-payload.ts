@@ -20,6 +20,10 @@ export type PersistedWeaponBarState = {
   weaponLoadoutSecondary: number;
   weaponLoadoutMelee: number;
   activeWeaponLoadout: number;
+  /** 1-based bag index for hotbar key 4 consumable; 0 = unset */
+  loadoutConsumable4?: number;
+  /** 1-based bag index for hotbar key 5 consumable; 0 = unset */
+  loadoutConsumable5?: number;
 };
 
 export type PlayerInventoryPersistedPayload = {
@@ -100,12 +104,23 @@ function coerceWeaponBar(
     if (n >= 1 && n <= maxSlots) inputInventoryItem = n;
   }
 
+  let loadoutConsumable4 = 4;
+  let loadoutConsumable5 = 5;
+  if (Object.prototype.hasOwnProperty.call(o, "loadoutConsumable4")) {
+    loadoutConsumable4 = clampLoadoutIdx("loadoutConsumable4");
+  }
+  if (Object.prototype.hasOwnProperty.call(o, "loadoutConsumable5")) {
+    loadoutConsumable5 = clampLoadoutIdx("loadoutConsumable5");
+  }
+
   return {
     inputInventoryItem,
     weaponLoadoutPrimary: clampLoadoutIdx("weaponLoadoutPrimary"),
     weaponLoadoutSecondary: clampLoadoutIdx("weaponLoadoutSecondary"),
     weaponLoadoutMelee: clampLoadoutIdx("weaponLoadoutMelee"),
     activeWeaponLoadout,
+    loadoutConsumable4,
+    loadoutConsumable5,
   };
 }
 

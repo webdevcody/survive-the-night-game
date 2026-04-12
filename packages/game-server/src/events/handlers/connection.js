@@ -1,3 +1,4 @@
+import { emptyProfessionProgress } from "@shared/util/professions";
 import { sendFullState } from "./full-state";
 import { sendPlayerId } from "./player-id";
 /**
@@ -10,8 +11,9 @@ function getRealPlayerCount(entityManager) {
 }
 const defaultProgress = () => ({
     experience: 0,
-    skillAllocations: {},
+    abilityAllocations: {},
     characterAllocations: {},
+    professionProgress: emptyProfessionProgress(),
 });
 /**
  * Client sends REQUEST_PLAYER_ID / REQUEST_FULL_STATE as soon as the transport connects.

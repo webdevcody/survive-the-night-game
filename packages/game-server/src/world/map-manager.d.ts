@@ -45,6 +45,7 @@ export declare class MapManager implements IMapManager {
     getEntityManager(): IEntityManager;
     getMap(): number[][];
     getMapData(): MapData;
+    private getScavengeDropTableForBiome;
     getAuthoredQuests(): readonly WorldMapQuestDefinition[];
     getQuestDefinition(id: string): WorldMapQuestDefinition | undefined;
     getGroundLayer(): number[][];
@@ -119,6 +120,7 @@ export declare class MapManager implements IMapManager {
     private fillMapWithBiomes;
     private createForestBoundaries;
     private spawnMerchants;
+    private spawnCraftingStations;
     private spawnDebugZombieIfEnabled;
     private spawnIdleZombies;
     private isOpenWorldMode;

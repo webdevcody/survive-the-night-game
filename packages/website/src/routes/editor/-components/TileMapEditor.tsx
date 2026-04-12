@@ -12,7 +12,12 @@ import {
   SPAWN_PALETTE_ENTRIES,
   getSpawnTileShortLabel,
 } from "@survive-the-night/game-shared/map/spawn-palette";
-import { DECAL_PALETTE_ENTRIES } from "@survive-the-night/game-shared/map/decal-palette";
+import {
+  DECAL_PALETTE_ENTRIES,
+  DECAL_TILE_MESSAGE,
+  getDecalPaletteShortLabel,
+} from "@survive-the-night/game-shared/map/decal-palette";
+import { getMessageDecalLines } from "@survive-the-night/game-shared/map/world-map-types";
 
 function isTypingTarget(el: EventTarget | null): boolean {
   if (!el || !(el instanceof HTMLElement)) return false;
@@ -462,6 +467,57 @@ export function TileMapEditor() {
               ctx.globalAlpha = s.activeLayer === "decals" ? 0.55 : 0.22;
               ctx.fillStyle = decalEntry.color;
               ctx.fillRect(dx, dy, tilePx, tilePx);
+              ctx.restore();
+              let decalShort =
+                decalTileId === DECAL_TILE_MESSAGE
+                  ? (() => {
+                      const entry = s.messageDecals.find(
+                        (e) => e.row === rowIdx && e.col === colIdx,
+                      );
+                      const first = getMessageDecalLines(
+                        entry ?? { row: rowIdx, col: colIdx, lines: ["…"] },
+                      )[0]?.trim();
+                      const t = first && first.length > 0 ? first : "…";
+                      const maxLen = Math.max(4, Math.floor(tilePx / 5));
+                      return t.length <= maxLen ? t : `${t.slice(0, Math.max(1, maxLen - 1))}…`;
+                    })()
+                  : getDecalPaletteShortLabel(decalTileId);
+              if (decalShort) {
+                ctx.save();
+                ctx.globalAlpha = 1;
+                ctx.fillStyle = "rgba(255,255,255,0.92)";
+                ctx.strokeStyle = "rgba(0,0,0,0.55)";
+                ctx.lineWidth = 2;
+                const fs = Math.max(8, Math.floor(tilePx * 0.2));
+                ctx.font = `600 ${fs}px ui-monospace, monospace`;
+                ctx.textAlign = "center";
+                ctx.textBaseline = "bottom";
+                const tx = dx + tilePx / 2;
+                const ty = dy + tilePx - 2;
+                ctx.strokeText(decalShort, tx, ty);
+                ctx.fillText(decalShort, tx, ty);
+                ctx.restore();
+              }
+            } else {
+              ctx.save();
+              ctx.globalCompositeOperation = "screen";
+              ctx.globalAlpha = s.activeLayer === "decals" ? 0.45 : 0.2;
+              ctx.fillStyle = "rgba(148, 163, 184, 0.55)";
+              ctx.fillRect(dx, dy, tilePx, tilePx);
+              ctx.restore();
+              ctx.save();
+              ctx.globalAlpha = 1;
+              ctx.fillStyle = "rgba(255,255,255,0.92)";
+              ctx.strokeStyle = "rgba(0,0,0,0.55)";
+              ctx.lineWidth = 2;
+              const fs = Math.max(8, Math.floor(tilePx * 0.2));
+              ctx.font = `600 ${fs}px ui-monospace, monospace`;
+              ctx.textAlign = "center";
+              ctx.textBaseline = "bottom";
+              const tx = dx + tilePx / 2;
+              const ty = dy + tilePx - 2;
+              ctx.strokeText("?", tx, ty);
+              ctx.fillText("?", tx, ty);
               ctx.restore();
             }
           }

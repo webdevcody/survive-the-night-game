@@ -39,6 +39,7 @@ const SPRITE_SHEETS = {
   items: "/sheets/items-sheet.png",
   characters: "/sheets/characters-sheet.png",
   ground: "/sheets/ground.png",
+  locker: "/sheets/locker.png",
 } as const;
 
 type SheetName = keyof typeof SPRITE_SHEETS;
@@ -319,7 +320,7 @@ function generateCharacterAssets(): Record<string, AssetDefinition> {
 
 function generateEnvironmentAssets(): Record<string, AssetDefinition> {
   // Filter out entities that use special sheets not in the standard asset system
-  const standardSheets = new Set(["default", "items", "characters", "ground"]);
+  const standardSheets = new Set(["default", "items", "characters", "ground", "locker"]);
 
   return generateSimpleAssets(
     environmentRegistry.getAll(),

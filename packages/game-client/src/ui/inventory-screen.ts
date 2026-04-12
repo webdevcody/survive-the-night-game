@@ -1,4 +1,4 @@
-import { GameState } from "@/state";
+import { GameState, getEntityById } from "@/state";
 import { getPlayer } from "@/util/get-player";
 import { InputManager } from "@/managers/input";
 import { AssetManager, getItemAssetKey } from "@/managers/asset";
@@ -9,12 +9,16 @@ import {
   createEmptyEquipment,
   EQUIPMENT_SLOT_KEYS,
   canItemGoInEquipmentSlot,
+  encodeEquipmentSlotKey,
   type EquipmentSlotKey,
   type PlayerEquipmentState,
 } from "@shared/util/inventory";
-import { getConfig } from "@shared/config";
+import type { BankActionEventData } from "@shared/events/client-sent/events/bank-action";
+import { itemRegistry } from "@shared/entities/item-registry";
+import { getConfig, playerConfig } from "@shared/config";
 import { formatDisplayName } from "@/util/format";
 import { PlayerClient } from "@/entities/player";
+import { ClientPositionable } from "@/extensions/positionable";
 import { ClientPoison } from "@/extensions/poison";
 import { ClientInfiniteRun } from "@/extensions/infinite-run";
 import {
@@ -25,9 +29,9 @@ import {
 import { ABILITY_TREE_NODES, type AbilityId } from "@shared/util/ability-tree";
 import { getProgressionPointsBudget } from "@shared/util/experience-level";
 import { FISTS_INVENTORY_SENTINEL } from "@shared/constants/inventory-sentinel";
+import { itemMatchesConsumableLoadout } from "@shared/util/consumable-loadout";
 import {
   getWeaponLoadoutSlotKey,
-  itemMatchesLoadoutRow,
   weaponLoadoutSlotKeyToIndex,
 } from "@shared/util/weapon-loadout";
 import {
@@ -53,6 +57,7 @@ import {
 } from "@shared/util/professions";
 import { CRAFTING_STATION_LABELS } from "@shared/util/crafting-stations";
 import { calculateHudScale } from "@/util/hud-scale";
+import { distance } from "@shared/util/physics";
 import {
   drawRpgTopAccentBar,
   fillRpgPanelGradient,
@@ -205,7 +210,8 @@ const STAT_LABELS: Record<(typeof CHARACTER_STAT_KEYS)[number], string> = {
   hpRecovery: "Passive HP regen",
   strength: "Strength (inventory)",
 };
-const GRID_COLS = 10;
+const WIDE_GRID_COLS = 5;
+const NARROW_GRID_COLS = 4;
 
 const EQUIP_SLOT_LABELS: Record<EquipmentSlotKey, string> = {
   head: "Head",
@@ -232,7 +238,17 @@ type DragState = {
   isDragging: boolean;
   targetBagIndex: number | null;
   targetEquipSlot: EquipmentSlotKey | null;
-  targetLoadoutSlot: 0 | 1 | 2 | null;
+};
+
+type BankCtxTarget =
+  | { kind: "bank"; index: number }
+  | { kind: "bag"; index: number }
+  | { kind: "equip"; slot: EquipmentSlotKey };
+
+type CtxMenuState = {
+  x: number;
+  y: number;
+  target: BankCtxTarget;
 };
 
 export type InventoryScreenDeps = {
@@ -240,6 +256,7 @@ export type InventoryScreenDeps = {
   inputManager: InputManager;
   getInventory: () => (InventoryItem | null)[];
   getEquipment: () => PlayerEquipmentState | null;
+  getBank: () => (InventoryItem | null)[];
   getMyPlayer: () => PlayerClient | null;
   sendDropItem: (slotIndex: number) => void;
   sendSwapItems: (from: number, to: number) => void;
@@ -249,8 +266,9 @@ export type InventoryScreenDeps = {
     kind: "ability" | "character",
     allocations: Record<string, number>,
   ) => void;
-  sendSetWeaponLoadoutSlot: (slot: 0 | 1 | 2, bagIndex: number) => void;
+  sendSetWeaponLoadoutSlot: (slot: 0 | 1 | 2 | 3 | 4, bagIndex: number) => void;
   sendSelectWeaponLoadout: (loadout: 0 | 1 | 2) => void;
+  sendBankAction: (data: BankActionEventData) => void;
   getAuthoredQuests: () => import("@shared/map/quest-types").WorldMapQuestDefinition[];
 };
 
@@ -280,11 +298,23 @@ export class InventoryScreenUI {
   private open = false;
   private visibilityProgress = 0;
   private lastVisibilityAnimationAt = 0;
+  /** 0–1: bank panel slides in from the left (independent of main panel when closing bank only). */
+  private bankVisibilityProgress = 0;
+  private lastBankVisibilityAnimationAt = 0;
   private deps: InventoryScreenDeps;
   private dragState: DragState | null = null;
   private hoveredBagIndex: number | null = null;
   private hoveredEquipSlot: EquipmentSlotKey | null = null;
-  private hoveredLoadoutSlot: 0 | 1 | 2 | null = null;
+  /** Nearest locker entity id while bank UI is open. */
+  private bankLockerId: number | null = null;
+  /**
+   * True if the current inventory session was started by pressing E on a locker while the
+   * inventory panel was closed (so E again closes bank + full inventory). Sticky until the
+   * inventory panel fully closes; not cleared when only the bank panel closes.
+   */
+  private inventoryOpenedViaBankOnly = false;
+  private hoveredBankSlotIndex: number | null = null;
+  private ctxMenu: CtxMenuState | null = null;
   private lastW = 0;
   private lastH = 0;
   private activeTab: InventoryUiTab = "inventory";
@@ -312,21 +342,70 @@ export class InventoryScreenUI {
   }
 
   public toggle(): void {
-    this.open = !this.open;
-    if (!this.open) {
-      this.dragState = null;
-      this.activeTab = "inventory";
-      this.selectedProfessionId = null;
-    }
+    this.setOpen(!this.open);
   }
 
   public setOpen(value: boolean): void {
+    if (value) {
+      if (!this.open) {
+        this.inventoryOpenedViaBankOnly = false;
+        this.bankVisibilityProgress = 0;
+        this.lastBankVisibilityAnimationAt = 0;
+      }
+    }
     this.open = value;
     if (!this.open) {
       this.dragState = null;
       this.activeTab = "inventory";
       this.selectedProfessionId = null;
+      this.bankLockerId = null;
+      this.ctxMenu = null;
     }
+  }
+
+  public openBank(lockerEntityId: number, inventoryWasAlreadyOpen: boolean): void {
+    this.bankLockerId = lockerEntityId;
+    this.ctxMenu = null;
+    this.open = true;
+    this.activeTab = "inventory";
+    if (!inventoryWasAlreadyOpen) {
+      this.inventoryOpenedViaBankOnly = true;
+    }
+  }
+
+  public closeBank(): void {
+    this.bankLockerId = null;
+    this.ctxMenu = null;
+  }
+
+  private maybeCloseBankIfOutOfRange(gameState: GameState, player: PlayerClient): void {
+    if (this.bankLockerId == null) {
+      return;
+    }
+    const locker = getEntityById(gameState, this.bankLockerId);
+    const maxR = getConfig().player.MAX_INTERACT_RADIUS;
+    if (
+      !locker ||
+      !locker.hasExt(ClientPositionable) ||
+      !player.hasExt(ClientPositionable)
+    ) {
+      this.closeBank();
+      return;
+    }
+    const p = player.getExt(ClientPositionable).getCenterPosition();
+    const q = locker.getExt(ClientPositionable).getCenterPosition();
+    if (distance(p, q) > maxR) {
+      this.closeBank();
+    }
+  }
+
+  public isBankOpen(): boolean {
+    return this.bankLockerId != null;
+  }
+
+  /** When true, pressing E at the locker to dismiss the bank should also close the inventory panel. */
+  public shouldCloseFullInventoryWhenTogglingBank(): boolean {
+    return this.inventoryOpenedViaBankOnly;
   }
 
   /**
@@ -339,7 +418,14 @@ export class InventoryScreenUI {
     }
     const rightW = Math.min(canvasWidth * PANEL_WIDTH_RATIO, canvasWidth - LAYOUT_PAD_PX * 2);
     const rightX = canvasWidth - rightW - LAYOUT_PAD_PX;
-    const openCenter = rightX / 2;
+    const leftX = LAYOUT_PAD_PX;
+    const withBankCenter = (leftX + rightW + rightX) / 2;
+    const withoutBankCenter = rightX / 2;
+    const bankEased = easeOutCubic(this.bankVisibilityProgress);
+    // If the inventory session started from E at the locker, keep the camera centered for the
+    // whole session, including the close animation.
+    const bankBlend = this.inventoryOpenedViaBankOnly ? 1 : bankEased;
+    const openCenter = withoutBankCenter + (withBankCenter - withoutBankCenter) * bankBlend;
     const eased = easeOutCubic(this.visibilityProgress);
     const defaultCenter = canvasWidth / 2;
     return defaultCenter + (openCenter - defaultCenter) * eased;
@@ -356,9 +442,18 @@ export class InventoryScreenUI {
 
   /** Open the panel (if needed) and switch to the given tab. */
   public focusTab(tab: InventoryUiTab): void {
+    if (!this.open) {
+      this.inventoryOpenedViaBankOnly = false;
+      this.bankVisibilityProgress = 0;
+      this.lastBankVisibilityAnimationAt = 0;
+    }
     this.open = true;
     this.activeTab = tab;
     this.dragState = null;
+    if (tab !== "inventory") {
+      this.bankLockerId = null;
+      this.ctxMenu = null;
+    }
     if (tab !== "professions") {
       this.selectedProfessionId = null;
     }
@@ -378,7 +473,6 @@ export class InventoryScreenUI {
 
   private layout(canvasWidth: number, canvasHeight: number, bagSlotCount: number = getConfig().player.MAX_INVENTORY_SLOTS) {
     const pad = LAYOUT_PAD_PX;
-    const gridRows = Math.max(1, Math.ceil(bagSlotCount / GRID_COLS));
     const rightW = Math.min(canvasWidth * PANEL_WIDTH_RATIO, canvasWidth - pad * 2);
     const rightX = canvasWidth - rightW - pad;
     const rightY = pad;
@@ -388,58 +482,70 @@ export class InventoryScreenUI {
     const contentTop = tabTop + TAB_BAR_H;
     const contentH = rightH - TAB_BAR_H;
 
-    const loadoutTop = contentTop + PANEL_TAB_CONTENT_GAP + 4;
-    const loadoutSlotSize = Math.min(44, Math.floor((rightW - 56) / 3));
-    const loadoutGap = 10;
-    const loadoutRowInnerW = 3 * loadoutSlotSize + 2 * loadoutGap;
-    const loadoutLeft = rightX + (rightW - loadoutRowInnerW) / 2;
-    const loadoutSlotRects: { x: number; y: number; w: number; h: number }[] = [];
-    for (let i = 0; i < 3; i++) {
-      loadoutSlotRects.push({
-        x: loadoutLeft + i * (loadoutSlotSize + loadoutGap),
-        y: loadoutTop + 18,
-        w: loadoutSlotSize,
-        h: loadoutSlotSize,
-      });
-    }
-    // Room for 11px loadout labels (baseline r.h+14) + descenders; keep loadout block from colliding with equipment.
-    const loadoutBlockH = 18 + loadoutSlotSize + 28;
+    const sectionTop = contentTop + PANEL_TAB_CONTENT_GAP + 6;
+    const sectionBottom = rightY + rightH - 36;
+    const sectionTitleY = sectionTop + 14;
+    const sectionContentTop = sectionTop + 26;
+    const sectionGap = Math.max(12, Math.min(20, Math.round(rightW * 0.02)));
+    const sectionPadX = Math.max(12, Math.round(rightW * 0.02));
+    const sectionInnerW = rightW - sectionPadX * 2;
+    const inventorySectionW = Math.floor((sectionInnerW - sectionGap) * 0.6);
+    const equipmentSectionW = sectionInnerW - inventorySectionW - sectionGap;
+    const inventorySectionX = rightX + sectionPadX;
+    const equipmentSectionX = inventorySectionX + inventorySectionW + sectionGap;
+    const gridCols = inventorySectionW >= 260 ? WIDE_GRID_COLS : NARROW_GRID_COLS;
+    const gridRows = Math.max(1, Math.ceil(bagSlotCount / gridCols));
+    const cellGap = 6;
+    const gridAvailH = Math.max(72, sectionBottom - sectionContentTop);
+    const cellSize = Math.min(
+      56,
+      Math.floor((inventorySectionW - cellGap * (gridCols - 1)) / gridCols),
+      Math.floor((gridAvailH - cellGap * (gridRows - 1)) / gridRows),
+    );
+    const gridW = gridCols * cellSize + (gridCols - 1) * cellGap;
+    const gridH = gridRows * cellSize + (gridRows - 1) * cellGap;
+    const gridLeft = inventorySectionX;
+    const gridTop = sectionContentTop + Math.max(0, Math.floor((sectionBottom - sectionContentTop - gridH) / 2));
 
-    const equipTop = loadoutTop + loadoutBlockH + 26;
-    const cell = Math.min(40, Math.floor(Math.min((rightW - 32) / 4.5, (contentH * 0.5) / 7)));
-    // Labels sit at rect.y-8; need enough gap so the next row's label does not overlap the slot above.
-    const rowGap = 22;
-    const colGap = 10;
-    const cx = rightX + rightW * 0.5;
+    // Labels sit at rect.y-8; keep enough vertical gap so the next label does not clip the slot above.
+    const equipColGap = Math.max(10, Math.round(Math.max(32, equipmentSectionW * 0.06)));
+    const maxEquipCellByWidth = Math.floor((equipmentSectionW - equipColGap * 2) / 3);
+    const maxEquipCellByHeight = Math.floor((sectionBottom - sectionContentTop) / 6.6);
+    const equipCell = Math.max(22, Math.min(54, maxEquipCellByWidth, maxEquipCellByHeight));
+    const rowGap = Math.max(14, Math.round(equipCell * 0.38));
+    const colGap = Math.max(10, Math.round(equipCell * 0.22));
+    const equipUsedH = equipCell * 5 + rowGap * 4;
+    const equipTop = sectionContentTop + Math.max(0, Math.floor((sectionBottom - sectionContentTop - equipUsedH) / 2));
+    const cx = equipmentSectionX + equipmentSectionW * 0.5;
 
     let y = equipTop;
-    const headRect: EquipRect = { x: cx - cell / 2, y, w: cell, h: cell };
-    y += cell + rowGap;
+    const headRect: EquipRect = { x: cx - equipCell / 2, y, w: equipCell, h: equipCell };
+    y += equipCell + rowGap;
 
-    const shouldersRect: EquipRect = { x: cx - cell / 2, y, w: cell, h: cell };
-    y += cell + rowGap;
+    const shouldersRect: EquipRect = { x: cx - equipCell / 2, y, w: equipCell, h: equipCell };
+    y += equipCell + rowGap;
 
     const torsoRowY = y;
     const handsRect: EquipRect = {
-      x: cx - cell / 2 - colGap - cell,
+      x: cx - equipCell / 2 - colGap - equipCell,
       y: torsoRowY,
-      w: cell,
-      h: cell,
+      w: equipCell,
+      h: equipCell,
     };
-    const torsoRect: EquipRect = { x: cx - cell / 2, y: torsoRowY, w: cell, h: cell };
+    const torsoRect: EquipRect = { x: cx - equipCell / 2, y: torsoRowY, w: equipCell, h: equipCell };
     const backRect: EquipRect = {
-      x: cx + cell / 2 + colGap,
+      x: cx + equipCell / 2 + colGap,
       y: torsoRowY,
-      w: cell,
-      h: cell,
+      w: equipCell,
+      h: equipCell,
     };
-    y += cell + rowGap;
+    y += equipCell + rowGap;
 
-    const legsRect: EquipRect = { x: cx - cell / 2, y, w: cell, h: cell };
-    y += cell + rowGap;
+    const legsRect: EquipRect = { x: cx - equipCell / 2, y, w: equipCell, h: equipCell };
+    y += equipCell + rowGap;
 
-    const shoesRect: EquipRect = { x: cx - cell / 2, y, w: cell, h: cell };
-    y += cell + rowGap;
+    const shoesRect: EquipRect = { x: cx - equipCell / 2, y, w: equipCell, h: equipCell };
+    y += equipCell + rowGap;
 
     const bodyBottom = y;
     const equipH = bodyBottom - equipTop + 12;
@@ -453,19 +559,6 @@ export class InventoryScreenUI {
       back: backRect,
       hands: handsRect,
     };
-
-    const gridTop = bodyBottom + 24;
-    const gridBottom = rightY + rightH - 20;
-    const gridAvailH = Math.max(72, gridBottom - gridTop);
-    const cellGap = 5;
-    const cellSize = Math.min(
-      48,
-      Math.floor((rightW - cellGap * (GRID_COLS - 1)) / GRID_COLS),
-      Math.floor((gridAvailH - cellGap * (gridRows - 1)) / gridRows),
-    );
-    const gridW = GRID_COLS * cellSize + (GRID_COLS - 1) * cellGap;
-    const gridH = gridRows * cellSize + (gridRows - 1) * cellGap;
-    const gridLeft = rightX + (rightW - gridW) / 2;
 
     const tabs = [
       { id: "inventory" as const, label: "Inventory (I)" },
@@ -487,11 +580,11 @@ export class InventoryScreenUI {
       tabBarH: TAB_BAR_H,
       contentTop,
       contentH,
-      loadoutTop,
-      loadoutSlotRects,
-      loadoutSlotSize,
-      loadoutGap,
-      loadoutLeft,
+      sectionTitleY,
+      inventorySectionX,
+      inventorySectionW,
+      equipmentSectionX,
+      equipmentSectionW,
       equipTop,
       tabs,
       tabW,
@@ -504,11 +597,122 @@ export class InventoryScreenUI {
       cellGap,
       gridW,
       gridH,
+      gridCols,
       gridRows,
       bagSlotCount,
       skillsOriginX: rightX + 24,
       skillsOriginY: contentTop + PANEL_TAB_CONTENT_GAP + 8,
     };
+  }
+
+  private layoutBank(canvasWidth: number, canvasHeight: number) {
+    const pad = LAYOUT_PAD_PX;
+    const rightW = Math.min(canvasWidth * PANEL_WIDTH_RATIO, canvasWidth - pad * 2);
+    const rightH = canvasHeight - pad * 2;
+    const rightY = pad;
+    const bankX = pad;
+    const bankCols = WIDE_GRID_COLS;
+    const bankSlots = playerConfig.MAX_BANK_SLOTS;
+    const bankRows = Math.max(1, Math.ceil(bankSlots / bankCols));
+    const tabTop = rightY;
+    const contentTop = tabTop + TAB_BAR_H;
+    const sectionContentTop = contentTop + PANEL_TAB_CONTENT_GAP + 32;
+    const sectionBottom = rightY + rightH - 36;
+    const sectionPadX = Math.max(12, Math.round(rightW * 0.02));
+    const innerW = rightW - sectionPadX * 2;
+    const cellGap = 6;
+    const gridAvailH = Math.max(72, sectionBottom - sectionContentTop);
+    const cellSize = Math.min(
+      56,
+      Math.floor((innerW - cellGap * (bankCols - 1)) / bankCols),
+      Math.floor((gridAvailH - cellGap * (bankRows - 1)) / bankRows),
+    );
+    const gridW = bankCols * cellSize + (bankCols - 1) * cellGap;
+    const gridH = bankRows * cellSize + (bankRows - 1) * cellGap;
+    const gridLeft =
+      bankX + sectionPadX + Math.max(0, Math.floor((innerW - gridW) / 2));
+    const gridTop = sectionContentTop + Math.max(0, Math.floor((sectionBottom - sectionContentTop - gridH) / 2));
+    const titleY = contentTop + 12;
+    return {
+      bankX,
+      bankY: rightY,
+      bankW: rightW,
+      bankH: rightH,
+      titleY,
+      gridLeft,
+      gridTop,
+      cellSize,
+      cellGap,
+      gridCols: bankCols,
+      gridRows: bankRows,
+      bankSlots,
+    };
+  }
+
+  /** Horizontal translate for bank layer: negative while closed so the panel sits off the left edge. */
+  private getBankSlideOffsetPx(bankW: number): number {
+    const eased = easeOutCubic(this.bankVisibilityProgress);
+    return -Math.round((1 - eased) * (bankW + LAYOUT_PAD_PX));
+  }
+
+  private bankPanelContainsScreenPoint(
+    x: number,
+    y: number,
+    canvasWidth: number,
+    canvasHeight: number,
+  ): boolean {
+    if (this.activeTab !== "inventory" || this.bankVisibilityProgress <= 0.001) {
+      return false;
+    }
+    const B = this.layoutBank(canvasWidth, canvasHeight);
+    const left = LAYOUT_PAD_PX + this.getBankSlideOffsetPx(B.bankW);
+    return (
+      x >= left &&
+      x <= left + B.bankW &&
+      y >= B.bankY &&
+      y <= B.bankY + B.bankH
+    );
+  }
+
+  private stepBankVisibility(now: number): void {
+    const wantBank = this.bankLockerId != null && this.activeTab === "inventory";
+    const target = wantBank ? 1 : 0;
+    const dtSeconds =
+      this.lastBankVisibilityAnimationAt > 0
+        ? Math.min(0.05, (now - this.lastBankVisibilityAnimationAt) / 1000)
+        : 1 / 60;
+    this.lastBankVisibilityAnimationAt = now;
+
+    const speed = wantBank ? INVENTORY_PANEL_OPEN_SPEED : INVENTORY_PANEL_CLOSE_SPEED;
+    const step = dtSeconds * speed;
+
+    if (this.bankVisibilityProgress < target) {
+      this.bankVisibilityProgress = Math.min(target, this.bankVisibilityProgress + step);
+    } else if (this.bankVisibilityProgress > target) {
+      this.bankVisibilityProgress = Math.max(target, this.bankVisibilityProgress - step);
+    }
+  }
+
+  private getBankSlotIndexAt(
+    screenX: number,
+    screenY: number,
+    B: ReturnType<InventoryScreenUI["layoutBank"]>,
+  ): number | null {
+    const x = screenX - this.getBankSlideOffsetPx(B.bankW);
+    for (let row = 0; row < B.gridRows; row++) {
+      for (let col = 0; col < B.gridCols; col++) {
+        const idx = row * B.gridCols + col;
+        if (idx >= B.bankSlots) {
+          continue;
+        }
+        const sx = B.gridLeft + col * (B.cellSize + B.cellGap);
+        const sy = B.gridTop + row * (B.cellSize + B.cellGap);
+        if (x >= sx && x <= sx + B.cellSize && screenY >= sy && screenY <= sy + B.cellSize) {
+          return idx;
+        }
+      }
+    }
+    return null;
   }
 
   private stepVisibility(isOpen: boolean, now: number): void {
@@ -527,6 +731,14 @@ export class InventoryScreenUI {
     } else if (this.visibilityProgress > target) {
       this.visibilityProgress = Math.max(target, this.visibilityProgress - step);
     }
+
+    if (!isOpen && this.visibilityProgress <= 0.001) {
+      this.visibilityProgress = 0;
+      this.lastVisibilityAnimationAt = 0;
+      this.inventoryOpenedViaBankOnly = false;
+      this.bankVisibilityProgress = 0;
+      this.lastBankVisibilityAnimationAt = 0;
+    }
   }
 
   /** Slide offset (px): panel moves right by this amount; 0 when fully open. */
@@ -542,13 +754,13 @@ export class InventoryScreenUI {
   private getBagIndexAt(x: number, y: number, L: ReturnType<InventoryScreenUI["layout"]>): number | null {
     const player = this.deps.getMyPlayer();
     for (let row = 0; row < L.gridRows; row++) {
-      for (let col = 0; col < GRID_COLS; col++) {
-        const idx = row * GRID_COLS + col;
+      for (let col = 0; col < L.gridCols; col++) {
+        const idx = row * L.gridCols + col;
         if (idx >= L.bagSlotCount) continue;
         const sx = L.gridLeft + col * (L.cellSize + L.cellGap);
         const sy = L.gridTop + row * (L.cellSize + L.cellGap);
         if (x >= sx && x <= sx + L.cellSize && y >= sy && y <= sy + L.cellSize) {
-          if (player && this.bagSlotBackedByWeaponLoadout(idx, player)) {
+          if (player && this.bagSlotBackedByAnyLoadout(idx, player)) {
             return null;
           }
           return idx;
@@ -572,36 +784,40 @@ export class InventoryScreenUI {
     return null;
   }
 
-  /** Bag cells that back a weapon loadout are shown only in the loadout row (not duplicated in the grid). */
-  private bagSlotBackedByWeaponLoadout(bagIdx0: number, p: PlayerClient): boolean {
+  /** Bag cells assigned to the bottom quick bar are hidden from the bag grid. */
+  private bagSlotBackedByAnyLoadout(bagIdx0: number, p: PlayerClient): boolean {
     const b = bagIdx0 + 1;
     const pBag = (p as any).weaponLoadoutPrimary ?? 0;
     const sBag = (p as any).weaponLoadoutSecondary ?? 0;
     const mBag = (p as any).weaponLoadoutMelee ?? 0;
-    return pBag === b || sBag === b || mBag === b;
+    const c4 = (p as any).loadoutConsumable4 ?? 0;
+    const c5 = (p as any).loadoutConsumable5 ?? 0;
+    return pBag === b || sBag === b || mBag === b || c4 === b || c5 === b;
   }
 
-  private getLoadoutSlotAt(
-    x: number,
-    y: number,
-    L: ReturnType<InventoryScreenUI["layout"]>,
-  ): 0 | 1 | 2 | null {
-    for (let i = 0; i < L.loadoutSlotRects.length; i++) {
-      const r = L.loadoutSlotRects[i]!;
-      if (x >= r.x && x <= r.x + r.w && y >= r.y && y <= r.y + r.h) {
-        return i as 0 | 1 | 2;
-      }
-    }
-    return null;
-  }
-
-  /** Double-click bag slot: armor → correct slot; weapons → their loadout row (replaces existing). */
+  /** Double-click bag slot: armor → equipment, weapons/consumables → bottom quick bar. */
   private tryQuickEquipFromBag(bagIdx: number, item: InventoryItem): boolean {
     const t = item.itemType;
     const loadoutKey = getWeaponLoadoutSlotKey(t);
     if (loadoutKey !== null) {
       const row = weaponLoadoutSlotKeyToIndex(loadoutKey);
       this.deps.sendSetWeaponLoadoutSlot(row, bagIdx + 1);
+      return true;
+    }
+    if (itemMatchesConsumableLoadout(t)) {
+      const p = this.deps.getMyPlayer();
+      if (!p) return false;
+      const c4 = (p as any).loadoutConsumable4 ?? 0;
+      const c5 = (p as any).loadoutConsumable5 ?? 0;
+      if (c4 === 0) {
+        this.deps.sendSetWeaponLoadoutSlot(3, bagIdx + 1);
+        return true;
+      }
+      if (c5 === 0) {
+        this.deps.sendSetWeaponLoadoutSlot(4, bagIdx + 1);
+        return true;
+      }
+      this.deps.sendSetWeaponLoadoutSlot(3, bagIdx + 1);
       return true;
     }
     for (const slot of EQUIPMENT_SLOT_KEYS) {
@@ -1059,6 +1275,7 @@ export class InventoryScreenUI {
 
     const now = performance.now();
     this.stepVisibility(this.open, now);
+    this.stepBankVisibility(now);
 
     if (this.visibilityProgress <= 0.001) {
       return;
@@ -1069,32 +1286,77 @@ export class InventoryScreenUI {
     const h = ctx.canvas.height;
 
     if (!player || !(player instanceof PlayerClient)) {
+      if (this.bankLockerId != null) {
+        this.closeBank();
+      }
       if (this.open) {
         return;
       }
       const L = this.layout(w, h, getConfig().player.MAX_INVENTORY_SLOTS);
       const slidePx = this.getPanelSlidePxFromRightW(L.rightW);
-      const eased = easeOutCubic(this.visibilityProgress);
       ctx.save();
       ctx.setTransform(1, 0, 0, 1, 0, 0);
-      ctx.fillStyle = `rgba(0, 0, 0, ${0.55 * eased})`;
-      ctx.fillRect(0, 0, w, h);
       ctx.translate(slidePx, 0);
       drawRpgMainPanel(ctx, L.rightX, L.rightY, L.rightW, L.rightH);
       ctx.restore();
       return;
     }
 
+    this.maybeCloseBankIfOutOfRange(gameState, player);
+
     const L = this.layout(w, h, player.getMaxInventorySlots());
-    const eased = easeOutCubic(this.visibilityProgress);
     const slidePx = this.getPanelSlidePxFromRightW(L.rightW);
+
+    if (this.activeTab === "inventory" && this.bankVisibilityProgress > 0.001) {
+      const B = this.layoutBank(w, h);
+      const bankSlide = this.getBankSlideOffsetPx(B.bankW);
+      ctx.save();
+      ctx.setTransform(1, 0, 0, 1, 0, 0);
+      ctx.translate(bankSlide, 0);
+      drawRpgMainPanel(ctx, B.bankX, B.bankY, B.bankW, B.bankH);
+      ctx.font = "14px Arial";
+      ctx.fillStyle = RPG_TITLE_CREAM;
+      ctx.textAlign = "left";
+      ctx.fillText("Bank", B.bankX + 12, B.titleY);
+      const bankItems = this.deps.getBank();
+      for (let row = 0; row < B.gridRows; row++) {
+        for (let col = 0; col < B.gridCols; col++) {
+          const idx = row * B.gridCols + col;
+          if (idx >= B.bankSlots) {
+            continue;
+          }
+          const sx = B.gridLeft + col * (B.cellSize + B.cellGap);
+          const sy = B.gridTop + row * (B.cellSize + B.cellGap);
+          const invItem = bankItems[idx] ?? null;
+          const isHover = this.hoveredBankSlotIndex === idx && !this.dragState?.isDragging;
+          ctx.fillStyle = RPG_SLOT_FILL_DIM;
+          ctx.fillRect(sx, sy, B.cellSize, B.cellSize);
+          ctx.strokeStyle = isHover ? RPG_TAB_ACTIVE_STROKE : RPG_SLOT_STROKE;
+          ctx.lineWidth = 1;
+          ctx.strokeRect(sx, sy, B.cellSize, B.cellSize);
+          if (invItem) {
+            const img = this.deps.assetManager.get(getItemAssetKey(invItem));
+            if (img) {
+              const pad = 6;
+              ctx.drawImage(img, sx + pad, sy + pad, B.cellSize - pad * 2, B.cellSize - pad * 2);
+            }
+            if (invItem.state?.count) {
+              ctx.font = "bold 14px Arial";
+              ctx.textAlign = "right";
+              ctx.fillStyle = RPG_BODY_TEXT;
+              ctx.strokeStyle = "rgba(6,8,16,0.9)";
+              ctx.lineWidth = 2;
+              ctx.strokeText(`${invItem.state.count}`, sx + B.cellSize - 4, sy + B.cellSize - 4);
+              ctx.fillText(`${invItem.state.count}`, sx + B.cellSize - 4, sy + B.cellSize - 4);
+            }
+          }
+        }
+      }
+      ctx.restore();
+    }
 
     ctx.save();
     ctx.setTransform(1, 0, 0, 1, 0, 0);
-
-    ctx.fillStyle = `rgba(0, 0, 0, ${0.55 * eased})`;
-    ctx.fillRect(0, 0, w, h);
-
     ctx.translate(slidePx, 0);
 
     drawRpgMainPanel(ctx, L.rightX, L.rightY, L.rightW, L.rightH);
@@ -1108,62 +1370,20 @@ export class InventoryScreenUI {
       ctx.font = "14px Arial";
       ctx.fillStyle = RPG_TITLE_CREAM;
       ctx.textAlign = "left";
-      ctx.fillText("Weapon loadout", L.rightX + 14, L.loadoutTop);
       const totalKg = computeInventoryWeightKg(items, equipment ?? createEmptyEquipment());
+      ctx.fillText("Inventory", L.inventorySectionX, L.sectionTitleY);
       ctx.textAlign = "right";
       ctx.fillStyle = RPG_METADATA_MUTED;
-      ctx.fillText(`Weight: ${totalKg.toFixed(1)} kg`, L.rightX + L.rightW - 14, L.contentTop + PANEL_TAB_CONTENT_GAP);
+      ctx.fillText(
+        `Weight: ${totalKg.toFixed(1)} kg`,
+        L.inventorySectionX + L.inventorySectionW,
+        L.sectionTitleY,
+      );
       ctx.textAlign = "left";
-
-      const pBag = (player as any).weaponLoadoutPrimary ?? 0;
-      const sBag = (player as any).weaponLoadoutSecondary ?? 0;
-      const mBag = (player as any).weaponLoadoutMelee ?? 0;
-      const activeLo = (player as any).activeWeaponLoadout ?? 0;
-      const bags: number[] = [pBag, sBag, mBag];
-      const loadoutLabels = ["1 Primary", "2 Secondary", "3 Melee"];
-
-      for (let i = 0; i < 3; i++) {
-        const r = L.loadoutSlotRects[i]!;
-        let item: InventoryItem | null = null;
-        const bag = bags[i]!;
-        if (bag >= 1) {
-          const it = items[bag - 1];
-          if (it && itemMatchesLoadoutRow(it.itemType, i as 0 | 1 | 2)) item = it;
-        }
-        const isLoActive = activeLo === i;
-        const isHover = this.hoveredLoadoutSlot === i && !this.dragState?.isDragging;
-        const isDropTarget =
-          this.dragState?.isDragging &&
-          this.dragState.targetLoadoutSlot === i &&
-          this.dragState.source.kind === "bag";
-        ctx.fillStyle = RPG_SLOT_FILL;
-        ctx.fillRect(r.x, r.y, r.w, r.h);
-        ctx.strokeStyle = isDropTarget
-          ? "rgba(100, 200, 255, 0.95)"
-          : isLoActive
-            ? "rgba(255, 234, 182, 0.95)"
-            : isHover
-              ? RPG_TAB_ACTIVE_STROKE
-              : RPG_SLOT_STROKE;
-        ctx.lineWidth = isLoActive || isDropTarget ? 2 : 1;
-        ctx.strokeRect(r.x, r.y, r.w, r.h);
-        if (item) {
-          const img = this.deps.assetManager.get(getItemAssetKey(item));
-          if (img) {
-            const pad = 6;
-            ctx.drawImage(img, r.x + pad, r.y + pad, r.w - pad * 2, r.h - pad * 2);
-          }
-        }
-        ctx.font = "11px Arial";
-        ctx.fillStyle = RPG_METADATA_MUTED;
-        ctx.textAlign = "center";
-        ctx.fillText(loadoutLabels[i]!, r.x + r.w / 2, r.y + r.h + 14);
-        ctx.textAlign = "left";
-      }
 
       ctx.font = "14px Arial";
       ctx.fillStyle = RPG_TITLE_CREAM;
-      ctx.fillText("Equipment", L.rightX + 14, L.equipTop - 8);
+      ctx.fillText("Equipment", L.equipmentSectionX, L.sectionTitleY);
 
       for (const slot of EQUIPMENT_SLOT_KEYS) {
         this.drawEquipSlot(
@@ -1180,12 +1400,12 @@ export class InventoryScreenUI {
       const activeIdx = curSlot === FISTS_INVENTORY_SENTINEL ? -1 : curSlot - 1;
 
       for (let row = 0; row < L.gridRows; row++) {
-        for (let col = 0; col < GRID_COLS; col++) {
-          const idx = row * GRID_COLS + col;
+        for (let col = 0; col < L.gridCols; col++) {
+          const idx = row * L.gridCols + col;
           if (idx >= slots) continue;
           const sx = L.gridLeft + col * (L.cellSize + L.cellGap);
           const sy = L.gridTop + row * (L.cellSize + L.cellGap);
-          const isHiddenLoadoutBagSlot = this.bagSlotBackedByWeaponLoadout(idx, player);
+          const isHiddenLoadoutBagSlot = this.bagSlotBackedByAnyLoadout(idx, player);
           const rawBagItem = items[idx];
           const invItem =
             rawBagItem && !isHiddenLoadoutBagSlot ? rawBagItem : null;
@@ -1288,6 +1508,7 @@ export class InventoryScreenUI {
       L.rightY + L.rightH - 12,
     );
     ctx.restore();
+    this.renderContextMenu(ctx);
   }
 
   private drawEquipSlot(
@@ -1369,7 +1590,6 @@ export class InventoryScreenUI {
     this.lastW = canvasWidth;
     this.lastH = canvasHeight;
     if (!this.isOpen()) {
-      this.hoveredLoadoutSlot = null;
       this.hoveredBagIndex = null;
       this.hoveredEquipSlot = null;
       return;
@@ -1378,13 +1598,18 @@ export class InventoryScreenUI {
     const lx = this.toPanelLocalX(x, L.rightW);
     this.hoveredAbilityId = null;
     if (this.activeTab === "inventory") {
-      this.hoveredLoadoutSlot = this.getLoadoutSlotAt(lx, y, L);
       this.hoveredBagIndex = this.getBagIndexAt(lx, y, L);
       this.hoveredEquipSlot = this.getEquipAt(lx, y, L);
+      if (this.bankLockerId != null) {
+        const B = this.layoutBank(canvasWidth, canvasHeight);
+        this.hoveredBankSlotIndex = this.getBankSlotIndexAt(x, y, B);
+      } else {
+        this.hoveredBankSlotIndex = null;
+      }
     } else {
-      this.hoveredLoadoutSlot = null;
       this.hoveredBagIndex = null;
       this.hoveredEquipSlot = null;
+      this.hoveredBankSlotIndex = null;
     }
     if (this.activeTab === "abilities") {
       for (const node of ABILITY_TREE_NODES) {
@@ -1400,7 +1625,6 @@ export class InventoryScreenUI {
       this.dragState.currentY = y;
       this.dragState.targetBagIndex = this.hoveredBagIndex;
       this.dragState.targetEquipSlot = this.hoveredEquipSlot;
-      this.dragState.targetLoadoutSlot = this.hoveredLoadoutSlot;
     }
   }
 
@@ -1417,6 +1641,8 @@ export class InventoryScreenUI {
       hovered = items[this.hoveredBagIndex] ?? null;
     } else if (this.hoveredEquipSlot) {
       hovered = equipment?.[this.hoveredEquipSlot] ?? null;
+    } else if (this.hoveredBankSlotIndex !== null) {
+      hovered = this.deps.getBank()[this.hoveredBankSlotIndex] ?? null;
     }
     if (!hovered) return;
 
@@ -1459,6 +1685,9 @@ export class InventoryScreenUI {
     clickCount: number = 1
   ): boolean {
     if (!this.isOpen()) return false;
+    if (this.ctxMenu && this.handleContextMenuClick(x, y)) {
+      return true;
+    }
     const L = this.layout(canvasWidth, canvasHeight, this.getBagSlotCount());
     const lx = this.toPanelLocalX(x, L.rightW);
     const inPanel =
@@ -1466,15 +1695,31 @@ export class InventoryScreenUI {
       lx <= L.rightX + L.rightW &&
       y >= L.rightY &&
       y <= L.rightY + L.rightH;
+    const onBankPanel =
+      this.bankLockerId != null && this.bankPanelContainsScreenPoint(x, y, canvasWidth, canvasHeight);
 
-    if (lx < L.rightX) {
-      this.toggle();
-      return true;
+    if (!inPanel && !onBankPanel) {
+      this.ctxMenu = null;
+      return false;
     }
 
-    if (!inPanel) {
-      this.toggle();
-      return true;
+    if (onBankPanel && this.bankLockerId && this.activeTab === "inventory") {
+      const B = this.layoutBank(canvasWidth, canvasHeight);
+      const bIdx = this.getBankSlotIndexAt(x, y, B);
+      if (bIdx !== null && clickCount >= 2) {
+        this.deps.sendBankAction({
+          lockerEntityId: this.bankLockerId,
+          action: 1,
+          source: 1,
+          slotIndex: bIdx,
+          equipSlotIndex: 255,
+        });
+        return true;
+      }
+      this.ctxMenu = null;
+      if (!inPanel) {
+        return true;
+      }
     }
 
     const player = this.deps.getMyPlayer();
@@ -1574,20 +1819,20 @@ export class InventoryScreenUI {
       return true;
     }
 
-    const loadoutHit = this.getLoadoutSlotAt(lx, y, L);
-    if (loadoutHit !== null) {
-      if (clickCount >= 2) {
-        this.deps.sendSetWeaponLoadoutSlot(loadoutHit, 0);
-      } else {
-        this.deps.sendSelectWeaponLoadout(loadoutHit);
-      }
-      return true;
-    }
-
-    const bagIdx = this.getBagIndexAt(x, y, L);
-    const eq = this.getEquipAt(x, y, L);
+    const bagIdx = this.getBagIndexAt(lx, y, L);
+    const eq = this.getEquipAt(lx, y, L);
     if (bagIdx !== null) {
       const item = this.deps.getInventory()[bagIdx];
+      if (item && clickCount >= 2 && this.bankLockerId != null) {
+        this.deps.sendBankAction({
+          lockerEntityId: this.bankLockerId,
+          action: 0,
+          source: 0,
+          slotIndex: bagIdx,
+          equipSlotIndex: 255,
+        });
+        return true;
+      }
       if (item && clickCount >= 2 && this.tryQuickEquipFromBag(bagIdx, item)) {
         if (bagIdx < (this.deps.getMyPlayer()?.getMaxInventorySlots() ?? getConfig().player.MAX_INVENTORY_SLOTS)) {
           this.deps.sendSelectInventorySlot(bagIdx + 1);
@@ -1604,7 +1849,6 @@ export class InventoryScreenUI {
           isDragging: false,
           targetBagIndex: null,
           targetEquipSlot: null,
-          targetLoadoutSlot: null,
         };
       }
       if (bagIdx < (this.deps.getMyPlayer()?.getMaxInventorySlots() ?? getConfig().player.MAX_INVENTORY_SLOTS)) {
@@ -1624,7 +1868,6 @@ export class InventoryScreenUI {
           isDragging: false,
           targetBagIndex: null,
           targetEquipSlot: null,
-          targetLoadoutSlot: null,
         };
       }
       return true;
@@ -1660,15 +1903,6 @@ export class InventoryScreenUI {
     const eq = this.getEquipAt(lx, y, L);
 
     if (drag.source.kind === "bag") {
-      const lo = drag.targetLoadoutSlot;
-      if (lo !== null) {
-        const items = this.deps.getInventory();
-        const item = items[drag.source.index];
-        if (item && itemMatchesLoadoutRow(item.itemType, lo)) {
-          this.deps.sendSetWeaponLoadoutSlot(lo, drag.source.index + 1);
-        }
-        return;
-      }
       if (bagIdx !== null && bagIdx !== drag.source.index) {
         this.deps.sendSwapItems(drag.source.index, bagIdx);
         return;
@@ -1696,6 +1930,231 @@ export class InventoryScreenUI {
     if (!this.isOpen()) return false;
     const L = this.layout(canvasWidth, canvasHeight, this.getBagSlotCount());
     const lx = this.toPanelLocalX(x, L.rightW);
-    return lx >= L.rightX && lx <= L.rightX + L.rightW && y >= L.rightY && y <= L.rightY + L.rightH;
+    if (lx >= L.rightX && lx <= L.rightX + L.rightW && y >= L.rightY && y <= L.rightY + L.rightH) {
+      return true;
+    }
+    if (this.bankPanelContainsScreenPoint(x, y, canvasWidth, canvasHeight)) {
+      return true;
+    }
+    if (this.ctxMenu) {
+      const { menuX, menuY, menuW, menuH } = this.getContextMenuRect();
+      return x >= menuX && x <= menuX + menuW && y >= menuY && y <= menuY + menuH;
+    }
+    return false;
+  }
+
+  public handleRightClick(x: number, y: number, canvasWidth: number, canvasHeight: number): boolean {
+    if (!this.isOpen() || this.activeTab !== "inventory" || !this.bankLockerId) {
+      return false;
+    }
+    const L = this.layout(canvasWidth, canvasHeight, this.getBagSlotCount());
+    const lx = this.toPanelLocalX(x, L.rightW);
+    const onBank = this.bankLockerId != null && this.bankPanelContainsScreenPoint(x, y, canvasWidth, canvasHeight);
+    if (onBank && this.bankLockerId) {
+      const B = this.layoutBank(canvasWidth, canvasHeight);
+      const idx = this.getBankSlotIndexAt(x, y, B);
+      const it = idx != null ? this.deps.getBank()[idx] : null;
+      this.ctxMenu = it && idx != null ? { x, y, target: { kind: "bank", index: idx } } : null;
+      return true;
+    }
+    const bagIdx = this.getBagIndexAt(lx, y, L);
+    if (bagIdx !== null) {
+      const it = this.deps.getInventory()[bagIdx];
+      this.ctxMenu = it ? { x, y, target: { kind: "bag", index: bagIdx } } : null;
+      return true;
+    }
+    const eq = this.getEquipAt(lx, y, L);
+    if (eq) {
+      const it = this.deps.getEquipment()?.[eq];
+      this.ctxMenu = it ? { x, y, target: { kind: "equip", slot: eq } } : null;
+      return true;
+    }
+    this.ctxMenu = null;
+    return false;
+  }
+
+  private getContextMenuRect(): { menuX: number; menuY: number; menuW: number; menuH: number } {
+    const rowH = 26;
+    const pad = 6;
+    const labels = this.ctxMenu ? this.buildContextMenuLabels(this.ctxMenu.target) : [];
+    const menuW = 140;
+    const menuH = pad * 2 + labels.length * rowH;
+    let menuX = this.ctxMenu!.x;
+    let menuY = this.ctxMenu!.y;
+    if (menuX + menuW > this.lastW - 4) {
+      menuX = this.lastW - menuW - 4;
+    }
+    if (menuY + menuH > this.lastH - 4) {
+      menuY = this.lastH - menuH - 4;
+    }
+    return { menuX, menuY, menuW, menuH };
+  }
+
+  private buildContextMenuLabels(target: BankCtxTarget): string[] {
+    const lockerId = this.bankLockerId;
+    const rows: string[] = [];
+    if (target.kind === "bank") {
+      rows.push("Withdraw", "Drop");
+      const it = this.deps.getBank()[target.index];
+      if (it && itemRegistry.get(it.itemType)?.category === "consumable") {
+        rows.push("Use");
+      }
+      const eqIdx = it ? this.resolveEquipMenuIndex(it) : null;
+      if (eqIdx != null) {
+        rows.push("Equip");
+      }
+      return rows;
+    }
+    if (target.kind === "bag") {
+      if (lockerId != null) {
+        rows.push("Stash");
+      }
+      rows.push("Drop");
+      const it = this.deps.getInventory()[target.index];
+      if (it && itemRegistry.get(it.itemType)?.category === "consumable") {
+        rows.push("Use");
+      }
+      const eqIdx = it ? this.resolveEquipMenuIndex(it) : null;
+      if (eqIdx != null) {
+        rows.push("Equip");
+      }
+      return rows;
+    }
+    if (lockerId != null) {
+      rows.push("Stash");
+    }
+    rows.push("Drop");
+    return rows;
+  }
+
+  private resolveEquipMenuIndex(item: InventoryItem): number | null {
+    const t = item.itemType;
+    const loadoutKey = getWeaponLoadoutSlotKey(t);
+    if (loadoutKey !== null) {
+      return 7 + weaponLoadoutSlotKeyToIndex(loadoutKey);
+    }
+    if (itemMatchesConsumableLoadout(t)) {
+      const p = this.deps.getMyPlayer();
+      if (!p) {
+        return 10;
+      }
+      const c4 = (p as any).loadoutConsumable4 ?? 0;
+      const c5 = (p as any).loadoutConsumable5 ?? 0;
+      if (c4 === 0) {
+        return 10;
+      }
+      if (c5 === 0) {
+        return 11;
+      }
+      return 10;
+    }
+    for (const slot of EQUIPMENT_SLOT_KEYS) {
+      if (canItemGoInEquipmentSlot(t, slot)) {
+        return encodeEquipmentSlotKey(slot);
+      }
+    }
+    return null;
+  }
+
+  private handleContextMenuClick(x: number, y: number): boolean {
+    if (!this.ctxMenu) {
+      return false;
+    }
+    const lid = this.bankLockerId;
+    if (!lid) {
+      this.ctxMenu = null;
+      return false;
+    }
+    const { menuX, menuY, menuW, menuH } = this.getContextMenuRect();
+    if (x < menuX || x > menuX + menuW || y < menuY || y > menuY + menuH) {
+      this.ctxMenu = null;
+      return false;
+    }
+    const rowH = 26;
+    const pad = 6;
+    const labels = this.buildContextMenuLabels(this.ctxMenu.target);
+    const relY = y - menuY - pad;
+    const row = Math.floor(relY / rowH);
+    if (row < 0 || row >= labels.length) {
+      return true;
+    }
+    const label = labels[row]!;
+    const t = this.ctxMenu.target;
+    const send = (data: BankActionEventData) => this.deps.sendBankAction(data);
+
+    const item =
+      t.kind === "bank"
+        ? this.deps.getBank()[t.index]
+        : t.kind === "bag"
+          ? this.deps.getInventory()[t.index]
+          : this.deps.getEquipment()?.[t.slot] ?? null;
+
+    if (label === "Withdraw" && t.kind === "bank") {
+      send({ lockerEntityId: lid, action: 1, source: 1, slotIndex: t.index, equipSlotIndex: 255 });
+    } else if (label === "Stash" && t.kind === "bag") {
+      send({ lockerEntityId: lid, action: 0, source: 0, slotIndex: t.index, equipSlotIndex: 255 });
+    } else if (label === "Stash" && t.kind === "equip") {
+      send({
+        lockerEntityId: lid,
+        action: 0,
+        source: 2,
+        slotIndex: encodeEquipmentSlotKey(t.slot),
+        equipSlotIndex: 255,
+      });
+    } else if (label === "Drop") {
+      if (t.kind === "bank") {
+        send({ lockerEntityId: lid, action: 2, source: 1, slotIndex: t.index, equipSlotIndex: 255 });
+      } else if (t.kind === "bag") {
+        send({ lockerEntityId: lid, action: 2, source: 0, slotIndex: t.index, equipSlotIndex: 255 });
+      } else {
+        send({
+          lockerEntityId: lid,
+          action: 2,
+          source: 2,
+          slotIndex: encodeEquipmentSlotKey(t.slot),
+          equipSlotIndex: 255,
+        });
+      }
+    } else if (label === "Use" && item) {
+      if (t.kind === "bank") {
+        send({ lockerEntityId: lid, action: 3, source: 1, slotIndex: t.index, equipSlotIndex: 255 });
+      } else if (t.kind === "bag") {
+        send({ lockerEntityId: lid, action: 3, source: 0, slotIndex: t.index, equipSlotIndex: 255 });
+      }
+    } else if (label === "Equip" && item) {
+      const eqIdx = this.resolveEquipMenuIndex(item);
+      if (eqIdx != null) {
+        if (t.kind === "bank") {
+          send({ lockerEntityId: lid, action: 4, source: 1, slotIndex: t.index, equipSlotIndex: eqIdx });
+        } else if (t.kind === "bag") {
+          send({ lockerEntityId: lid, action: 4, source: 0, slotIndex: t.index, equipSlotIndex: eqIdx });
+        }
+      }
+    }
+
+    this.ctxMenu = null;
+    return true;
+  }
+
+  private renderContextMenu(ctx: CanvasRenderingContext2D): void {
+    if (!this.ctxMenu) {
+      return;
+    }
+    const { menuX, menuY, menuW, menuH } = this.getContextMenuRect();
+    const labels = this.buildContextMenuLabels(this.ctxMenu.target);
+    const rowH = 26;
+    const pad = 6;
+    ctx.fillStyle = "rgba(6, 8, 16, 0.96)";
+    ctx.fillRect(menuX, menuY, menuW, menuH);
+    ctx.strokeStyle = RPG_SLOT_STROKE;
+    ctx.lineWidth = 1;
+    ctx.strokeRect(menuX, menuY, menuW, menuH);
+    ctx.font = "14px Arial";
+    ctx.textAlign = "left";
+    for (let i = 0; i < labels.length; i++) {
+      const ly = menuY + pad + i * rowH + 18;
+      ctx.fillStyle = RPG_TITLE_CREAM;
+      ctx.fillText(labels[i]!, menuX + 8, ly);
+    }
   }
 }

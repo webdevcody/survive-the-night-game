@@ -25,6 +25,8 @@ import { InputManager } from "@/managers/input";
 import { PlayerClient } from "@/entities/player";
 import { InventoryItem, type EquipmentSlotKey } from "../../../game-shared/src/util/inventory";
 import { ClientInventory } from "@/extensions/inventory";
+import { ClientBank } from "@/extensions/bank";
+import type { BankActionEventData } from "@shared/events/client-sent/events/bank-action";
 import { renderRadialProgressIndicator } from "@/util/radial-progress-indicator";
 import { getMinimapHudLayout } from "./minimap-hud-group-layout";
 import {
@@ -151,7 +153,8 @@ export class Hud {
     ) => void,
     getMyPlayer: () => PlayerClient | null,
     sendSelectWeaponLoadout: (loadout: 0 | 1 | 2) => void,
-    sendSetWeaponLoadoutSlot: (slot: 0 | 1 | 2, bagIndex: number) => void
+    sendSetWeaponLoadoutSlot: (slot: 0 | 1 | 2 | 3 | 4, bagIndex: number) => void,
+    sendBankAction: (data: BankActionEventData) => void,
   ) {
     this.mapManager = mapManager;
     this.soundManager = soundManager;
@@ -190,6 +193,17 @@ export class Hud {
       return null;
     };
 
+    const getBank = (): (InventoryItem | null)[] => {
+      if (!this.currentGameState || !this.currentGameState.playerId) {
+        return [];
+      }
+      const entity = getEntityById(this.currentGameState, this.currentGameState.playerId);
+      if (entity instanceof PlayerClient && entity.hasExt(ClientBank)) {
+        return entity.getExt(ClientBank).getItems();
+      }
+      return [];
+    };
+
     this.survivorStatusHud = new SurvivorStatusHud();
 
     this.inventoryScreen = new InventoryScreenUI({
@@ -197,6 +211,7 @@ export class Hud {
       inputManager: this.inputManager,
       getInventory,
       getEquipment,
+      getBank,
       getMyPlayer: getMyPlayer,
       sendDropItem,
       sendSwapItems,
@@ -207,6 +222,7 @@ export class Hud {
       sendProgressionAllocations,
       sendSetWeaponLoadoutSlot,
       sendSelectWeaponLoadout,
+      sendBankAction,
       getAuthoredQuests: () => this.mapManager.getAuthoredQuests(),
     });
 
@@ -216,8 +232,6 @@ export class Hud {
       getMyPlayer,
       sendSelectWeaponLoadout,
       (slot) => sendSetWeaponLoadoutSlot(slot, 0),
-      () => this.inputManager.getCurrentInventorySlot(),
-      (bagIndex) => this.inputManager.setInventorySlot(bagIndex),
     );
 
     this.minimap = new Minimap(mapManager);
@@ -403,6 +417,7 @@ export class Hud {
   public render(ctx: CanvasRenderingContext2D, gameState: GameState): void {
     this.currentGameState = gameState;
     const { width, height } = ctx.canvas;
+    const hotbarCenterX = this.inventoryScreen.getCameraCenterScreenX(width) ?? width / 2;
 
     // Render indicators FIRST so they appear behind the panels that render after
     this.crateIndicatorsPanel.render(ctx, gameState);
@@ -411,6 +426,7 @@ export class Hud {
     const dialogueOcclusion = this.dialoguePanel.getOcclusionProgress();
     const minimapHudLayout = getMinimapHudLayout(width, height, {
       waveStackBottom: 0,
+      hotbarCenterX,
     });
 
     this.minimap.render(ctx, gameState, minimapHudLayout.minimap);
@@ -462,7 +478,7 @@ export class Hud {
     if (dialogueOcclusion < 0.98) {
       ctx.save();
       ctx.globalAlpha = Math.max(0, 1 - dialogueOcclusion * 1.2);
-      this.loadoutStrip.render(ctx, gameState);
+      this.loadoutStrip.render(ctx, gameState, hotbarCenterX);
       ctx.restore();
     }
 
@@ -474,7 +490,7 @@ export class Hud {
       ctx.save();
       ctx.globalAlpha = Math.max(0, 1 - dialogueOcclusion * 1.25);
       ctx.setTransform(1, 0, 0, 1, 0, 0);
-      this.experiencePanel.render(ctx, gameState);
+      this.experiencePanel.render(ctx, gameState, hotbarCenterX);
       ctx.restore();
     }
 
@@ -613,6 +629,31 @@ export class Hud {
     this.inventoryScreen.setOpen(open);
   }
 
+  public openBank(lockerEntityId: number, inventoryWasAlreadyOpen: boolean): void {
+    this.inventoryScreen.openBank(lockerEntityId, inventoryWasAlreadyOpen);
+  }
+
+  public closeBank(): void {
+    this.inventoryScreen.closeBank();
+  }
+
+  public isBankOpen(): boolean {
+    return this.inventoryScreen.isBankOpen();
+  }
+
+  public shouldCloseFullInventoryWhenTogglingBank(): boolean {
+    return this.inventoryScreen.shouldCloseFullInventoryWhenTogglingBank();
+  }
+
+  public handleInventoryContextClick(
+    x: number,
+    y: number,
+    canvasWidth: number,
+    canvasHeight: number,
+  ): boolean {
+    return this.inventoryScreen.handleRightClick(x, y, canvasWidth, canvasHeight);
+  }
+
   public isInventoryScreenOpen(): boolean {
     return this.inventoryScreen.isOpen();
   }
@@ -631,7 +672,7 @@ export class Hud {
     y: number,
     canvasWidth: number,
     canvasHeight: number,
-    clickCount: number = 1
+    clickCount: number = 1,
   ): boolean {
     if (this.currentGameState) {
       const action = this.dialoguePanel.handleClick(x, y, this.currentGameState);
@@ -640,9 +681,11 @@ export class Hud {
         return true;
       }
     }
+    const hotbarCenterX = this.inventoryScreen.getCameraCenterScreenX(canvasWidth) ?? canvasWidth / 2;
     if (this.inventoryScreen.isOpen()) {
-      this.inventoryScreen.handleClick(x, y, canvasWidth, canvasHeight, clickCount);
-      return true;
+      if (this.inventoryScreen.handleClick(x, y, canvasWidth, canvasHeight, clickCount)) {
+        return true;
+      }
     }
 
     const my = this.getMyPlayer();
@@ -659,7 +702,7 @@ export class Hud {
       return true;
     }
 
-    if (this.loadoutStrip.handleClick(x, y, canvasWidth, canvasHeight, clickCount)) {
+    if (this.loadoutStrip.handleClick(x, y, canvasWidth, canvasHeight, clickCount, hotbarCenterX)) {
       return true;
     }
 

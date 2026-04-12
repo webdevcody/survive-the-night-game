@@ -27,13 +27,17 @@ export class ExperiencePanel extends Panel {
     this.barSettings = settings;
   }
 
-  public render(ctx: CanvasRenderingContext2D, _gameState: GameState): void {
+  public render(
+    ctx: CanvasRenderingContext2D,
+    _gameState: GameState,
+    hotbarCenterX?: number,
+  ): void {
     this.resetTransform(ctx);
 
     const { width: canvasWidth, height: canvasHeight } = ctx.canvas;
     const hudScale = calculateHudScale(canvasWidth, canvasHeight);
 
-    const strip = getLoadoutStripScreenLayout(canvasWidth, canvasHeight);
+    const strip = getLoadoutStripScreenLayout(canvasWidth, canvasHeight, hotbarCenterX);
     const gap = scaleHudValue(GAP_ABOVE_HOTBAR, canvasWidth, canvasHeight);
 
     const barW = strip.w;

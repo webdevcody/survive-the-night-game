@@ -4,14 +4,27 @@ const VALID_RECIPE_TYPES = new Set(getCraftableItemIds());
 /**
  * Validate recipe type
  */
-function validateRecipeType(recipe) {
-    if (typeof recipe !== "string") {
+function validateCraftRequest(data) {
+    if (!data || typeof data !== "object") {
         return null;
     }
-    if (!VALID_RECIPE_TYPES.has(recipe)) {
+    const raw = data;
+    if (typeof raw.recipeId !== "string") {
         return null;
     }
-    return recipe;
+    if (!raw.recipeId.startsWith("scrap:") && !VALID_RECIPE_TYPES.has(raw.recipeId)) {
+        return null;
+    }
+    if (typeof raw.stationEntityId !== "number" ||
+        !Number.isFinite(raw.stationEntityId) ||
+        !Number.isInteger(raw.stationEntityId) ||
+        raw.stationEntityId < 0) {
+        return null;
+    }
+    return {
+        recipeId: raw.recipeId,
+        stationEntityId: raw.stationEntityId,
+    };
 }
 export function onCraftRequest(context, socket, recipe) {
     const player = context.players.get(socket.id);
@@ -20,9 +33,9 @@ export function onCraftRequest(context, socket, recipe) {
     // Zombie players cannot craft
     if (player.isZombie())
         return;
-    const validatedRecipe = validateRecipeType(recipe);
+    const validatedRecipe = validateCraftRequest(recipe);
     if (!validatedRecipe) {
-        console.warn(`Invalid craft request from socket ${socket.id}: ${recipe}`);
+        console.warn(`Invalid craft request from socket ${socket.id}: ${JSON.stringify(recipe)}`);
         return;
     }
     player.craftRecipe(validatedRecipe);

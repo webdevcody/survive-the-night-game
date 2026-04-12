@@ -35,7 +35,7 @@ export class AIPlayerManager {
         // Mark as AI player
         player.serialized.set("isAI", true);
         // AI uses sprint without requiring the progression unlock
-        player.serialized.set("skillSprint", 1);
+        player.serialized.set("abilitySprint", 1);
         // Set realistic ping (50-70ms)
         const ping = AI_CONFIG.MIN_PING + Math.floor(Math.random() * (AI_CONFIG.MAX_PING - AI_CONFIG.MIN_PING));
         player.setPing(ping);

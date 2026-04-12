@@ -16,6 +16,9 @@ import { entityBlocksPlacement } from "@shared/entities/decal-registry";
 import { Entities, getZombieTypesSet } from "@shared/constants";
 import { Crate } from "@/entities/items/crate";
 import { CampsiteFire } from "@/entities/environment/campsite-fire";
+import { Workbench } from "@/entities/environment/workbench";
+import { Forge } from "@/entities/environment/forge";
+import { ChemistryTable } from "@/entities/environment/chemistry-table";
 import { LightDecal } from "@/entities/environment/light-decal";
 import { MessageDecal } from "@/entities/environment/message-decal";
 import { createSeededRng } from "@shared/util/seeded-rng";
@@ -23,7 +26,8 @@ import { tryLoadWorldMapFile, validateWorldMapDimensions } from "@/world/load-wo
 import { SPAWN_TILE_PLAYER, isEnemySpawnTile, isItemSpawnTile, isNpcDialogueSpawnTile, spawnTileIdToZombieType, spawnTileIdToItemFixtureType, } from "../../../game-shared/src/map/spawn-palette";
 import { getMessageDecalLines, normalizeDialogueNpcs, reconcileMessageDecalsWithDecalsLayer, reconcileSpawnerMetaWithSpawnsLayer, rewriteSpawnsLayerDialogueNpcTiles, } from "../../../game-shared/src/map/world-map-types";
 import { normalizeQuests } from "../../../game-shared/src/map/quest-types";
-import { DECAL_TILE_CAMPSITE, DECAL_TILE_LIGHT, DECAL_TILE_MESSAGE, } from "../../../game-shared/src/map/decal-palette";
+import { DECAL_TILE_CAMPSITE, DECAL_TILE_CHEMISTRY_TABLE, DECAL_TILE_FORGE, DECAL_TILE_LIGHT, DECAL_TILE_MESSAGE, DECAL_TILE_WORKBENCH, } from "../../../game-shared/src/map/decal-palette";
+import { URBAN_SCAVENGE_DROP_TABLE, WILDERNESS_SCAVENGE_DROP_TABLE, } from "@shared/config/zombie-drop-tables";
 // Re-export from shared config for backward compatibility
 export const BIOME_SIZE = getConfig().world.BIOME_SIZE;
 export const MAP_SIZE = getConfig().world.MAP_SIZE;
@@ -123,6 +127,24 @@ export class MapManager {
             },
             quests: this.authoredQuests.length > 0 ? this.authoredQuests : undefined,
         };
+    }
+    getScavengeDropTableForBiome(biomeX, biomeY) {
+        if ((this.cityBiomePosition &&
+            biomeX === this.cityBiomePosition.x &&
+            biomeY === this.cityBiomePosition.y) ||
+            (this.gasStationBiomePosition &&
+                biomeX === this.gasStationBiomePosition.x &&
+                biomeY === this.gasStationBiomePosition.y) ||
+            this.merchantBiomePositions.some((pos) => pos.x === biomeX && pos.y === biomeY)) {
+            return URBAN_SCAVENGE_DROP_TABLE;
+        }
+        if ((this.farmBiomePosition &&
+            biomeX === this.farmBiomePosition.x &&
+            biomeY === this.farmBiomePosition.y) ||
+            (biomeX === this.campsiteBiomeX && biomeY === this.campsiteBiomeY)) {
+            return WILDERNESS_SCAVENGE_DROP_TABLE;
+        }
+        return WILDERNESS_SCAVENGE_DROP_TABLE;
     }
     getAuthoredQuests() {
         return this.authoredQuests;
@@ -272,6 +294,7 @@ export class MapManager {
             this.spawnMessageDecalEntitiesFromDecalsLayer();
             this.createForestBoundaries();
             this.spawnMerchants();
+            this.spawnCraftingStations();
             if (this.isOpenWorldMode()) {
                 if (this.authoredWorldMapApplied) {
                     this.seedOpenWorldZombieSpawnPointsFromAuthoredLayer();
@@ -710,6 +733,49 @@ export class MapManager {
                     const merchant = new Merchant(this.getGameManagers());
                     merchant.setPosition(PoolManager.getInstance().vector2.claim(x * getConfig().world.TILE_SIZE, y * getConfig().world.TILE_SIZE));
                     this.getEntityManager().addEntity(merchant);
+                }
+            }
+        }
+    }
+    spawnCraftingStations() {
+        var _a;
+        const tileSize = getConfig().world.TILE_SIZE;
+        // Scan decals layer for authored station placements.
+        let authoredCount = 0;
+        if (this.authoredWorldMapApplied) {
+            const totalSize = BIOME_SIZE * MAP_SIZE;
+            const stationDecals = [
+                { ctor: Workbench, tileId: DECAL_TILE_WORKBENCH },
+                { ctor: Forge, tileId: DECAL_TILE_FORGE },
+                { ctor: ChemistryTable, tileId: DECAL_TILE_CHEMISTRY_TABLE },
+            ];
+            for (let y = 0; y < totalSize; y++) {
+                for (let x = 0; x < totalSize; x++) {
+                    const cellId = (_a = this.decalsLayer[y]) === null || _a === void 0 ? void 0 : _a[x];
+                    const match = stationDecals.find((s) => s.tileId === cellId);
+                    if (!match)
+                        continue;
+                    const entity = new match.ctor(this.getGameManagers());
+                    entity.setPosition(PoolManager.getInstance().vector2.claim(x * tileSize, y * tileSize));
+                    this.getEntityManager().addEntity(entity);
+                    authoredCount++;
+                }
+            }
+        }
+        // Fallback: place one set per merchant biome when no authored stations exist.
+        if (authoredCount === 0) {
+            for (const biome of this.merchantBiomePositions) {
+                const baseX = biome.x * BIOME_SIZE;
+                const baseY = biome.y * BIOME_SIZE;
+                const stations = [
+                    { ctor: Workbench, x: baseX + 5, y: baseY + 5 },
+                    { ctor: Forge, x: baseX + 6, y: baseY + 5 },
+                    { ctor: ChemistryTable, x: baseX + 7, y: baseY + 5 },
+                ];
+                for (const station of stations) {
+                    const entity = new station.ctor(this.getGameManagers());
+                    entity.setPosition(PoolManager.getInstance().vector2.claim(station.x * tileSize, station.y * tileSize));
+                    this.getEntityManager().addEntity(entity);
                 }
             }
         }
@@ -1591,7 +1657,7 @@ export class MapManager {
         for (let i = 0; i < cratesSpawned; i++) {
             const randomIndex = Math.floor(Math.random() * validPositions.length);
             const position = validPositions.splice(randomIndex, 1)[0]; // Remove to avoid duplicates
-            const crate = new Crate(this.getGameManagers());
+            const crate = new Crate(this.getGameManagers(), 3, this.getScavengeDropTableForBiome(Math.floor(position.x / BIOME_SIZE), Math.floor(position.y / BIOME_SIZE)));
             crate
                 .getExt(Positionable)
                 .setPosition(PoolManager.getInstance().vector2.claim(position.x * getConfig().world.TILE_SIZE, position.y * getConfig().world.TILE_SIZE));
@@ -1633,7 +1699,7 @@ export class MapManager {
         const randomIndex = Math.floor(Math.random() * validPositions.length);
         const position = validPositions[randomIndex];
         // Spawn crate with 10 items
-        const crate = new Crate(this.getGameManagers(), 10);
+        const crate = new Crate(this.getGameManagers(), 10, this.getScavengeDropTableForBiome(biomePosition.x, biomePosition.y));
         crate
             .getExt(Positionable)
             .setPosition(PoolManager.getInstance().vector2.claim(position.x * getConfig().world.TILE_SIZE, position.y * getConfig().world.TILE_SIZE));

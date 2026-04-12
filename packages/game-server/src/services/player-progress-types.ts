@@ -1,6 +1,7 @@
 import type { ProfessionProgress } from "@shared/util/professions";
 import type { PlayerQuestStatePayload } from "@shared/quests/player-quest-state";
 import type { PlayerInventoryPersistedPayload } from "@shared/util/persisted-inventory-payload";
+import type { PlayerBankPersistedPayload } from "@shared/util/persisted-bank-payload";
 
 export type PersistedPlayerProgress = {
   experience: number;
@@ -16,4 +17,6 @@ export type PersistedPlayerProgress = {
   questProgress?: PlayerQuestStatePayload;
   /** Bag + equipment from website `user_stats.saved_inventory` when present. */
   savedInventory?: PlayerInventoryPersistedPayload | null;
+  /** Personal bank from website `user_stats.saved_bank` when present. */
+  savedBank?: PlayerBankPersistedPayload | null;
 };

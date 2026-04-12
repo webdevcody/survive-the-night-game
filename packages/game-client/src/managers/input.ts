@@ -42,10 +42,13 @@ export interface InputManagerOptions {
   onEscape?: () => void;
   onRespawnRequest?: () => void;
   onSelectWeaponLoadout?: (loadout: 0 | 1 | 2) => void;
+  /** Keys 4 / 5: consume assigned loadout consumable without changing selected bag or weapon row. */
+  onUseLoadoutConsumable?: (which: 0 | 1) => void;
   isMerchantPanelOpen?: () => boolean;
   isCraftingPanelOpen?: () => boolean;
   isFullscreenMapOpen?: () => boolean;
   isInventoryScreenOpen?: () => boolean;
+  getCameraCenterScreenX?: (canvasWidth: number) => number | null;
   isPlayerDead?: () => boolean;
   getInventory?: () => any[];
   onInventorySlotChanged?: (slot: number) => void;
@@ -224,6 +227,7 @@ export class InputManager {
       }
 
       if (isInventoryScreenOpen) {
+        let handledInventoryHotkey = true;
         if (eventCode === "Escape") {
           callbacks.onToggleInventoryScreen?.();
         } else if (eventCode === "KeyI") {
@@ -261,8 +265,12 @@ export class InputManager {
           } else {
             callbacks.onInventoryPanelFocusTab?.("quests");
           }
+        } else {
+          handledInventoryHotkey = false;
         }
-        return;
+        if (handledInventoryHotkey) {
+          return;
+        }
       }
 
       if (eventCode === "KeyI") {
@@ -357,11 +365,11 @@ export class InputManager {
           break;
         }
         case "Digit4": {
-          this.setInventorySlot(4);
+          callbacks.onUseLoadoutConsumable?.(0);
           break;
         }
         case "Digit5": {
-          this.setInventorySlot(5);
+          callbacks.onUseLoadoutConsumable?.(1);
           break;
         }
         case "KeyG": {
@@ -562,15 +570,6 @@ export class InputManager {
         sprint: false,
       };
     }
-    if (this.callbacks.isInventoryScreenOpen?.() ?? false) {
-      return {
-        facing: this.inputs.facing,
-        dx: 0,
-        dy: 0,
-        fire: false,
-        sprint: false,
-      };
-    }
     // Return a copy to prevent external modifications from affecting internal state
     // Note: aimAngle will be calculated and set externally after getting inputs
     return { ...this.inputs };
@@ -613,15 +612,6 @@ export class InputManager {
       };
     }
     if (this.callbacks.isFullscreenMapOpen?.() ?? false) {
-      return {
-        facing: this.inputs.facing,
-        dx: 0,
-        dy: 0,
-        fire: false,
-        sprint: false,
-      };
-    }
-    if (this.callbacks.isInventoryScreenOpen?.() ?? false) {
       return {
         facing: this.inputs.facing,
         dx: 0,
@@ -785,7 +775,7 @@ export class InputManager {
     // Canvas dimensions are also in canvas pixels (1:1 mapping)
 
     // Get the center of the canvas
-    const logicalCenterX = canvasWidth / 2;
+    const logicalCenterX = this.callbacks.getCameraCenterScreenX?.(canvasWidth) ?? canvasWidth / 2;
     const logicalCenterY = canvasHeight / 2;
 
     // Mouse position is already in logical pixels (1:1 mapping)

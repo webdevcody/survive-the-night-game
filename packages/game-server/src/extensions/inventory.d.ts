@@ -1,6 +1,6 @@
 import { InventoryItem, ItemType, type EquipmentSlotKey, type PlayerEquipmentState } from "../../../game-shared/src/util/inventory";
 import { type PlayerInventoryPersistedPayload } from "@shared/util/persisted-inventory-payload";
-import { RecipeType } from "../../../game-shared/src/util/recipes";
+import { type RecipeType } from "../../../game-shared/src/util/recipes";
 import { Broadcaster } from "@/managers/types";
 import { IEntity } from "@/entities/types";
 import { BufferWriter } from "@shared/util/buffer-serialization";
@@ -14,6 +14,7 @@ export default class Inventory extends ExtensionBase<InventoryFields> {
     static readonly type = "inventory";
     private broadcaster;
     private notifyPlayerWeaponLoadout;
+    private compactPlayerLoadoutBackedItems;
     constructor(self: IEntity, broadcaster: Broadcaster);
     getEquipment(): PlayerEquipmentState;
     getItems(): (InventoryItem | null)[];

@@ -115,6 +115,7 @@ export const InteractableTexts = {
   FORGE: "forge",
   CHEMISTRY_TABLE: "chemistry table",
   CRAFT: "craft",
+  BANK: "locker",
 } as const;
 
 export type InteractableText = (typeof InteractableTexts)[keyof typeof InteractableTexts];
