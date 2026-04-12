@@ -40,7 +40,13 @@ import {
   sumCharacterAllocations,
   computeMaxInventorySlots,
 } from "@shared/util/character-stats";
-import { sumAbilityAllocations } from "@shared/util/ability-tree";
+import {
+  ABILITY_IDS,
+  ABILITY_SERIALIZED_FIELD_BY_ID,
+  type AbilityId,
+  emptyAbilityAllocations,
+  sumAbilityAllocations,
+} from "@shared/util/ability-tree";
 import { getProgressionPointsBudget } from "@shared/util/experience-level";
 import { FISTS_INVENTORY_SENTINEL } from "@shared/constants/inventory-sentinel";
 import {
@@ -55,6 +61,10 @@ import {
   type ProfessionId,
   type ProfessionProgress,
 } from "@shared/util/professions";
+import {
+  getAccessibleInventorySlotCount,
+  getUnlockedVisibleBagSlots,
+} from "@shared/util/ability-effects";
 
 export class PlayerClient extends ClientEntity implements IClientEntity, Renderable {
   private readonly ARROW_LENGTH = 20;
@@ -83,8 +93,7 @@ export class PlayerClient extends ClientEntity implements IClientEntity, Rendera
   private isReloading: boolean = false;
   private reloadProgress: number = 0;
 
-  private abilitySprint: number = 0;
-  private abilityRegenerate: number = 0;
+  private abilityRanks: Record<AbilityId, number> = emptyAbilityAllocations();
   private professionProgress: ProfessionProgress = emptyProfessionProgress();
   private statHealth: number = 0;
   private statEvade: number = 0;
@@ -103,6 +112,7 @@ export class PlayerClient extends ClientEntity implements IClientEntity, Rendera
     dy: 0,
     fire: false,
     sprint: false,
+    sneak: false,
   };
 
   public getZIndex(): number {
@@ -129,6 +139,7 @@ export class PlayerClient extends ClientEntity implements IClientEntity, Rendera
       dy: 0,
       fire: false,
       sprint: false,
+      sneak: false,
     };
     this.skin = data.skin || SKIN_TYPES.DEFAULT;
     this.playerColor = data.playerColor || PLAYER_COLORS.NONE;
@@ -150,9 +161,20 @@ export class PlayerClient extends ClientEntity implements IClientEntity, Rendera
   }
 
   private syncProgressionFromData(data: Record<string, unknown>): void {
-    this.abilitySprint = Number((data as any).abilitySprint ?? (data as any).skillSprint) || 0;
-    this.abilityRegenerate =
-      Number((data as any).abilityRegenerate ?? (data as any).skillRegenerate) || 0;
+    const nextAbilityRanks = emptyAbilityAllocations();
+    for (const abilityId of ABILITY_IDS) {
+      const serializedField = ABILITY_SERIALIZED_FIELD_BY_ID[abilityId];
+      const legacyField =
+        abilityId === "sprint"
+          ? "skillSprint"
+          : abilityId === "regenerate"
+            ? "skillRegenerate"
+            : undefined;
+      nextAbilityRanks[abilityId] = Number(
+        data[serializedField] ?? (legacyField ? data[legacyField] : undefined),
+      ) || 0;
+    }
+    this.abilityRanks = nextAbilityRanks;
     const rawProfessionProgress = (data as any).professionProgressJson;
     if (typeof rawProfessionProgress === "string" && rawProfessionProgress.trim() !== "") {
       try {
@@ -704,10 +726,7 @@ export class PlayerClient extends ClientEntity implements IClientEntity, Rendera
 
   public getAvailableAbilityPoints(): number {
     const budget = getProgressionPointsBudget(this.experience);
-    const spent = sumAbilityAllocations({
-      sprint: this.abilitySprint,
-      regenerate: this.abilityRegenerate,
-    });
+    const spent = sumAbilityAllocations(this.abilityRanks);
     return Math.max(0, budget - spent);
   }
 
@@ -732,12 +751,24 @@ export class PlayerClient extends ClientEntity implements IClientEntity, Rendera
     return Math.max(0, budget - spent);
   }
 
+  public getAbilityRank(abilityId: AbilityId): number {
+    return this.abilityRanks[abilityId] ?? 0;
+  }
+
+  public hasAbility(abilityId: AbilityId): boolean {
+    return this.getAbilityRank(abilityId) > 0;
+  }
+
+  public getAbilityAllocationRecord(): Record<AbilityId, number> {
+    return { ...this.abilityRanks };
+  }
+
   public getAbilitySprintRank(): number {
-    return this.abilitySprint;
+    return this.getAbilityRank("sprint");
   }
 
   public getAbilityRegenerateRank(): number {
-    return this.abilityRegenerate;
+    return this.getAbilityRank("regenerate");
   }
 
   public getSkillSprintRank(): number {
@@ -793,6 +824,18 @@ export class PlayerClient extends ClientEntity implements IClientEntity, Rendera
       getConfig().player.MAX_INVENTORY_SLOTS,
       this.statStrength,
     );
+  }
+
+  public getAccessibleInventorySlotCount(): number {
+    return getAccessibleInventorySlotCount(this.getMaxInventorySlots(), this.abilityRanks);
+  }
+
+  public getUnlockedVisibleBagSlotCount(): number {
+    return getUnlockedVisibleBagSlots(this.getMaxInventorySlots(), this.abilityRanks);
+  }
+
+  public isInventorySlotLocked(bagIndex0: number): boolean {
+    return bagIndex0 >= this.getAccessibleInventorySlotCount();
   }
 
   public getPing(): number {
@@ -863,6 +906,7 @@ export class PlayerClient extends ClientEntity implements IClientEntity, Rendera
       dy: (this as any).inputDy ?? 0,
       fire: (this as any).inputFire ?? false,
       sprint: (this as any).inputSprint ?? false,
+      sneak: (this as any).inputSneak ?? false,
       // NaN represents undefined for aimAngle
       aimAngle: inputAimAngle === undefined || isNaN(inputAimAngle) ? undefined : inputAimAngle,
     };

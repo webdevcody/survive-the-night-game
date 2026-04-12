@@ -1,4 +1,5 @@
 import { Direction } from "@/util/direction";
+import { ItemType } from "@shared/util/inventory";
 import { IEntity } from "../types";
 import { IEntityManager, IGameManagers } from "@/managers/types";
 import Vector2 from "@/util/vector2";
@@ -9,6 +10,8 @@ export declare function knockBack(entityManager: IEntityManager, entity: IEntity
  * Returns true if ammo was successfully consumed, false otherwise.
  */
 export declare function consumeAmmo(inventory: Inventory, ammoType: string): boolean;
+export declare function countAmmoInInventory(inventory: Inventory, ammoType: ItemType): number;
+export declare function consumeAmmoCount(inventory: Inventory, ammoType: ItemType, amount: number): number;
 /**
  * Calculate velocity vector from an aim angle (radians) and speed.
  * @param aimAngle Angle in radians (0 = right, PI/2 = down, PI = left, 3PI/2 = up)

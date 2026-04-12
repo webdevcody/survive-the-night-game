@@ -100,9 +100,121 @@
       ],
       "startRewards": [],
       "completionType": "final_step"
+    },
+    {
+      "id": "quest_1775977610190",
+      "title": "Lost in the Woods",
+      "steps": [
+        {
+          "type": "talk_to_npc",
+          "npcName": "Sophia",
+          "npcKey": "49,103"
+        },
+        {
+          "type": "talk_to_npc",
+          "npcName": "George",
+          "npcKey": "84,143"
+        }
+      ],
+      "rewards": [
+        {
+          "type": "experience",
+          "amount": 15
+        }
+      ],
+      "startRewards": [
+        {
+          "type": "item",
+          "itemType": "shotgun_ammo",
+          "count": 1
+        },
+        {
+          "type": "item",
+          "itemType": "shotgun",
+          "count": 1
+        }
+      ],
+      "completionType": "dialogue_npc"
     }
   ],
   "dialogueNpcEditorMetadata": [
+    {
+      "row": 49,
+      "col": 103,
+      "editorDialogueSessions": [
+        {
+          "lines": [
+            "I'm so glad you found me! These things, these monsters, were chasing us.",
+            "I tripped and couldn't make it back to my dad.",
+            "Come with you!? No! I will stay here until my dad finds me, let him know where I am."
+          ],
+          "when": {
+            "type": "all",
+            "conditions": [
+              {
+                "type": "quest_active",
+                "questId": "quest_1775977610190"
+              }
+            ]
+          }
+        },
+        {
+          "lines": [
+            "Please, go tell my dad you found me"
+          ],
+          "when": {
+            "type": "all",
+            "conditions": [
+              {
+                "type": "quest_not_completed",
+                "questId": "quest_1775977610190"
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "row": 84,
+      "col": 143,
+      "editorDialogueSessions": [
+        {
+          "lines": [
+            "Please, you have to help me find my daughter.",
+            "She was right behind me holding my hand, but something must have grabbed her.",
+            "I know she is still in the forest, you have to help me find here.  Take my shotgun, I'm sure it'll help you in their."
+          ],
+          "when": {
+            "type": "always"
+          },
+          "grantQuestId": "quest_1775977610190"
+        },
+        {
+          "lines": [
+            "Oh that stubborn girl! I should have known she wouldn't go with a stranger.",
+            "At least I know exactly how to get to her. Thank you kind stranger."
+          ],
+          "when": {
+            "type": "all",
+            "conditions": [
+              {
+                "type": "quest_active_final_talk_turn_in",
+                "questId": "quest_1775977610190"
+              }
+            ]
+          },
+          "completeQuestId": "quest_1775977610190"
+        },
+        {
+          "lines": [
+            "Thanks again kind stranger."
+          ],
+          "when": {
+            "type": "always"
+          }
+        }
+      ]
+    },
     {
       "row": 126,
       "col": 122,

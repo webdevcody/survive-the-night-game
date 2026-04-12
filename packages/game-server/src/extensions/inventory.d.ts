@@ -20,6 +20,8 @@ export default class Inventory extends ExtensionBase<InventoryFields> {
     getItems(): (InventoryItem | null)[];
     /** Bag slot cap (base + player strength when attached to a Player). */
     getMaxSlots(): number;
+    /** Full storage capacity, including currently locked slots preserved in saved inventories. */
+    getStorageSlots(): number;
     isFull(): boolean;
     hasItem(itemType: ItemType): boolean;
     addItem(item: InventoryItem): void;
@@ -50,6 +52,13 @@ export default class Inventory extends ExtensionBase<InventoryFields> {
     /**
      * Swap bag slot with an equipment slot. Validates the item entering equipment.
      */
+    /**
+     * Set a bag cell directly (e.g. bank withdraw). Keeps array length aligned with max slots.
+     */
+    setBagSlot(bagIndex: number, item: InventoryItem | null): void;
+    clearEquipmentSlot(slot: EquipmentSlotKey): void;
+    takeEquipmentItem(slot: EquipmentSlotKey): InventoryItem | undefined;
+    setEquipmentSlot(slot: EquipmentSlotKey, item: InventoryItem | null): void;
     swapBagAndEquipment(bagIndex: number, equipSlot: EquipmentSlotKey): void;
     getActiveItem(index: number | null): InventoryItem | null;
     getActiveWeapon(activeItem: InventoryItem | null): InventoryItem | null;

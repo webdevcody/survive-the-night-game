@@ -8,7 +8,10 @@ import {
   validateAbilityAllocations,
   validateCharacterAllocations,
 } from "@survive-the-night/game-shared/util/progression-allocation";
-import { XP_PER_ZOMBIE_KILL } from "@survive-the-night/game-shared/util/experience-level";
+import {
+  XP_PER_ZOMBIE_KILL,
+  getLevelFromTotalExperience,
+} from "@survive-the-night/game-shared/util/experience-level";
 import type { CharacterAllocations } from "@survive-the-night/game-shared/util/character-stats";
 import type { AbilityAllocations } from "@survive-the-night/game-shared/util/ability-tree";
 import type { PlayerQuestStatePayload } from "@survive-the-night/game-shared/quests/player-quest-state";
@@ -29,12 +32,8 @@ import {
 /**
  * Get user stats by user ID, creating if doesn't exist
  */
-/**
- * Total XP for game join hydration. Coerces DB/JSON types and, if experience is still 0 but
- * zombie kills were recorded (e.g. legacy rows or failed add-experience calls), derives XP from kills.
- */
-export function resolveHydrationExperience(stats: UserStats): number {
-  const raw = stats.experience as unknown;
+function resolvePersistedExperience(rawExperience: unknown, rawKills: unknown): number {
+  const raw = rawExperience as unknown;
   let xp =
     typeof raw === "number" && Number.isFinite(raw)
       ? Math.floor(raw)
@@ -42,7 +41,6 @@ export function resolveHydrationExperience(stats: UserStats): number {
         ? Math.max(0, Math.floor(Number(raw)))
         : 0;
 
-  const rawKills = stats.zombieKills as unknown;
   const kills =
     typeof rawKills === "number" && Number.isFinite(rawKills)
       ? Math.floor(rawKills)
@@ -54,6 +52,14 @@ export function resolveHydrationExperience(stats: UserStats): number {
     return kills * XP_PER_ZOMBIE_KILL;
   }
   return Math.max(0, xp);
+}
+
+/**
+ * Total XP for game join hydration. Coerces DB/JSON types and, if experience is still 0 but
+ * zombie kills were recorded (e.g. legacy rows or failed add-experience calls), derives XP from kills.
+ */
+export function resolveHydrationExperience(stats: UserStats): number {
+  return resolvePersistedExperience(stats.experience, stats.zombieKills);
 }
 
 export function resolveHydrationAbilityAllocations(stats: UserStats): Record<string, number> {
@@ -405,6 +411,8 @@ export async function getLeaderboardStats(limit: number = 100): Promise<
     rank: number;
     playerName: string;
     playerImage: string | null;
+    level: number;
+    experience: number;
     zombieKills: number;
   }>
 > {
@@ -412,6 +420,7 @@ export async function getLeaderboardStats(limit: number = 100): Promise<
     .select({
       playerName: user.displayName,
       playerImage: user.image,
+      experience: userStats.experience,
       zombieKills: userStats.zombieKills,
     })
     .from(userStats)
@@ -419,12 +428,17 @@ export async function getLeaderboardStats(limit: number = 100): Promise<
     .orderBy(sql`${userStats.zombieKills} DESC`)
     .limit(limit);
 
-  return results.map((row, index) => ({
-    rank: index + 1,
-    playerName: row.playerName,
-    playerImage: row.playerImage,
-    zombieKills: row.zombieKills,
-  }));
+  return results.map((row, index) => {
+    const experience = resolvePersistedExperience(row.experience, row.zombieKills);
+    return {
+      rank: index + 1,
+      playerName: row.playerName,
+      playerImage: row.playerImage,
+      level: getLevelFromTotalExperience(experience),
+      experience,
+      zombieKills: row.zombieKills,
+    };
+  });
 }
 
 /**

@@ -502,6 +502,7 @@ export class AIController {
       dy: 0,
       fire: false,
       sprint: false,
+      sneak: false,
       aimAngle: undefined,
     };
 
@@ -1127,6 +1128,7 @@ export class AIController {
       dy: 0,
       fire: false,
       sprint: false,
+      sneak: false,
       aimAngle: undefined,
     };
 

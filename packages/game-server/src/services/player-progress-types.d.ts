@@ -16,5 +16,6 @@ export type PersistedPlayerProgress = {
     questProgress?: PlayerQuestStatePayload;
     /** Bag + equipment from website `user_stats.saved_inventory` when present. */
     savedInventory?: PlayerInventoryPersistedPayload | null;
+    /** Personal bank from website `user_stats.saved_bank` when present. */
     savedBank?: PlayerBankPersistedPayload | null;
 };

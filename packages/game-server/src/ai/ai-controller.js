@@ -393,6 +393,7 @@ export class AIController {
             dy: 0,
             fire: false,
             sprint: false,
+            sneak: false,
             aimAngle: undefined,
         };
         // If we found a target, pathfind to them and attack
@@ -903,6 +904,7 @@ export class AIController {
             dy: 0,
             fire: false,
             sprint: false,
+            sneak: false,
             aimAngle: undefined,
         };
         const state = this.stateMachine.getCurrentState();

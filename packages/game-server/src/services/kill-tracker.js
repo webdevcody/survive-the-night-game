@@ -79,15 +79,14 @@ export class KillTracker {
      * Accumulates kills in the pending stats for batch sending
      */
     handleZombieKilled(data) {
-        var _a, _b;
+        var _a;
         if (!this.playersMap) {
             return;
         }
         const killer = this.findPlayerByEntityId(data.killerEntityId);
         if (killer && !killer.getSerialized().get("isAI")) {
-            const cur = (_a = killer.getSerialized().get("experience")) !== null && _a !== void 0 ? _a : 0;
-            killer.getSerialized().set("experience", cur + XP_PER_ZOMBIE_KILL);
-            const map = (_b = killer.getGameManagers()) === null || _b === void 0 ? void 0 : _b.getMapManager();
+            killer.addExperience(XP_PER_ZOMBIE_KILL);
+            const map = (_a = killer.getGameManagers()) === null || _a === void 0 ? void 0 : _a.getMapManager();
             if (map) {
                 recordKillQuestProgress(killer, data.enemyType, map);
             }

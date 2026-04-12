@@ -544,6 +544,10 @@ export class ClientSocketManager {
     this.emitClientEvent(ClientSentEvents.RELOAD_WEAPON);
   }
 
+  public sendRequestCombatRoll(angle: number) {
+    this.emitClientEvent(ClientSentEvents.REQUEST_COMBAT_ROLL, { angle });
+  }
+
   public sendSelectInventorySlot(slotIndex: number) {
     this.emitClientEvent(ClientSentEvents.SELECT_INVENTORY_SLOT, { slotIndex });
   }

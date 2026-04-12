@@ -5,6 +5,8 @@ import { Direction } from "@shared/util/direction";
 import PoolManager from "@shared/util/pool-manager";
 import { PlayerDroppedItemEvent } from "@/events/server-sent/events/player-dropped-item-event";
 import { itemRegistry } from "@shared/entities/item-registry";
+import { tryDecodeDropItemEquipmentSlot, } from "@shared/util/inventory";
+import { dropItemNearPlayerFacing } from "./bank-action";
 import { getConfig } from "@shared/config";
 import { distance } from "@/util/physics";
 /**
@@ -55,10 +57,21 @@ function isStackableItem(item) {
     return false;
 }
 export function onDropItem(context, socket, data) {
+    var _a;
     const player = context.players.get(socket.id);
     if (!player)
         return;
     const inventory = player.getExt(Inventory);
+    const equipSlot = tryDecodeDropItemEquipmentSlot(data.slotIndex);
+    if (equipSlot) {
+        const eqItem = inventory.takeEquipmentItem(equipSlot);
+        if (!eqItem) {
+            return;
+        }
+        inventory.markDirty();
+        dropItemNearPlayerFacing(player, eqItem);
+        return;
+    }
     const items = inventory.getItems();
     const index = data.slotIndex;
     const item = items[index];
@@ -118,7 +131,11 @@ export function onDropItem(context, socket, data) {
     if (itemToDrop.state && typeof itemToDrop.state.count === "number") {
         finalCount = itemToDrop.state.count;
     }
-    carryable.setItemState({ count: finalCount });
+    const carryState = Object.assign({}, ((_a = itemToDrop.state) !== null && _a !== void 0 ? _a : {}));
+    if (isStackableItem(itemToDrop)) {
+        carryState.count = finalCount;
+    }
+    carryable.setItemState(carryState);
     // -------------------------------------------------------
     // COMBINE LOGIC
     // -------------------------------------------------------

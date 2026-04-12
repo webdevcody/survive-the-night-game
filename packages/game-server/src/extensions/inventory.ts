@@ -73,6 +73,21 @@ export default class Inventory extends ExtensionBase<InventoryFields> {
 
   /** Bag slot cap (base + player strength when attached to a Player). */
   public getMaxSlots(): number {
+    const owner = this.self as {
+      getAccessibleInventorySlotCount?: () => number;
+      getMaxInventorySlots?: () => number;
+    };
+    if (typeof owner.getAccessibleInventorySlotCount === "function") {
+      return owner.getAccessibleInventorySlotCount();
+    }
+    if (typeof owner.getMaxInventorySlots === "function") {
+      return owner.getMaxInventorySlots();
+    }
+    return getConfig().player.MAX_INVENTORY_SLOTS;
+  }
+
+  /** Full storage capacity, including currently locked slots preserved in saved inventories. */
+  public getStorageSlots(): number {
     const owner = this.self as { getMaxInventorySlots?: () => number };
     if (typeof owner.getMaxInventorySlots === "function") {
       return owner.getMaxInventorySlots();
@@ -82,7 +97,9 @@ export default class Inventory extends ExtensionBase<InventoryFields> {
 
   public isFull(): boolean {
     const items = this.serialized.get("items");
-    const itemCount = items.filter((item: InventoryItem | null) => item != null).length;
+    const itemCount = items
+      .slice(0, this.getMaxSlots())
+      .filter((item: InventoryItem | null) => item != null).length;
     return itemCount >= this.getMaxSlots();
   }
 
@@ -105,14 +122,17 @@ export default class Inventory extends ExtensionBase<InventoryFields> {
 
     this.compactPlayerLoadoutBackedItems();
     const items = this.serialized.get("items");
+    const maxSlots = this.getMaxSlots();
+    while (items.length < maxSlots) {
+      items.push(null);
+    }
 
     // Find first empty slot (null/undefined) to fill
-    const emptySlotIndex = items.findIndex((it: InventoryItem | null) => it == null);
+    const emptySlotIndex = items.findIndex(
+      (it: InventoryItem | null, index: number) => index < maxSlots && it == null
+    );
     if (emptySlotIndex !== -1) {
       items[emptySlotIndex] = item;
-    } else {
-      // No empty slots, push to end
-      items.push(item);
     }
 
     // Update serialized (array reference changes, so assign new array to trigger dirty)
@@ -149,9 +169,11 @@ export default class Inventory extends ExtensionBase<InventoryFields> {
   public addOrMergeStack(item: InventoryItem): boolean {
     const items = this.serialized.get("items");
     const addCount = item.state?.count ?? 1;
+    const maxSlots = this.getMaxSlots();
 
     const existingItemIndex = items.findIndex(
-      (it: InventoryItem | null) => it != null && it.itemType === item.itemType
+      (it: InventoryItem | null, index: number) =>
+        index < maxSlots && it != null && it.itemType === item.itemType
     );
 
     if (existingItemIndex >= 0) {
@@ -189,8 +211,9 @@ export default class Inventory extends ExtensionBase<InventoryFields> {
 
     const items = this.serialized.get("items");
     let remaining = amount;
+    const maxSlots = this.getMaxSlots();
 
-    for (let i = 0; i < items.length && remaining > 0; i++) {
+    for (let i = 0; i < items.length && i < maxSlots && remaining > 0; i++) {
       const it = items[i];
       if (!it || it.itemType !== itemType) continue;
 
@@ -350,7 +373,14 @@ export default class Inventory extends ExtensionBase<InventoryFields> {
   }
 
   public setEquipmentSlot(slot: EquipmentSlotKey, item: InventoryItem | null): void {
-    if (item != null && !canItemGoInEquipmentSlot(item.itemType, slot)) {
+    const owner = this.self as {
+      canEquipItemToSlot?: (itemType: ItemType, equipSlot: EquipmentSlotKey) => boolean;
+    };
+    if (
+      item != null &&
+      (!canItemGoInEquipmentSlot(item.itemType, slot) ||
+        owner.canEquipItemToSlot?.(item.itemType, slot) === false)
+    ) {
       return;
     }
     const equipment = this.serialized.get("equipment");
@@ -373,8 +403,15 @@ export default class Inventory extends ExtensionBase<InventoryFields> {
     const bagItem = items[bagIndex];
     const equipment = this.serialized.get("equipment");
     const equipItem = equipment[equipSlot];
+    const owner = this.self as {
+      canEquipItemToSlot?: (itemType: ItemType, equipSlot: EquipmentSlotKey) => boolean;
+    };
 
-    if (bagItem != null && !canItemGoInEquipmentSlot(bagItem.itemType, equipSlot)) {
+    if (
+      bagItem != null &&
+      (!canItemGoInEquipmentSlot(bagItem.itemType, equipSlot) ||
+        owner.canEquipItemToSlot?.(bagItem.itemType, equipSlot) === false)
+    ) {
       return;
     }
 
@@ -471,7 +508,7 @@ export default class Inventory extends ExtensionBase<InventoryFields> {
     if (!coerced) {
       return;
     }
-    const max = this.getMaxSlots();
+    const max = this.getStorageSlots();
     const next: (InventoryItem | null)[] = [];
     for (let i = 0; i < max; i++) {
       next.push(coerced.items[i] ?? null);

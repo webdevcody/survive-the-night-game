@@ -29,7 +29,13 @@ export class ClientInventory extends BaseClientExtension {
   }
 
   public getMaxSlots(): number {
-    const e = this.clientEntity as { getMaxInventorySlots?: () => number };
+    const e = this.clientEntity as {
+      getAccessibleInventorySlotCount?: () => number;
+      getMaxInventorySlots?: () => number;
+    };
+    if (typeof e.getAccessibleInventorySlotCount === "function") {
+      return e.getAccessibleInventorySlotCount();
+    }
     if (typeof e.getMaxInventorySlots === "function") {
       return e.getMaxInventorySlots();
     }
@@ -37,7 +43,9 @@ export class ClientInventory extends BaseClientExtension {
   }
 
   public isFull(): boolean {
-    const itemCount = this.items.filter((item: InventoryItem | null) => item != null).length;
+    const itemCount = this.items
+      .slice(0, this.getMaxSlots())
+      .filter((item: InventoryItem | null) => item != null).length;
     return itemCount >= this.getMaxSlots();
   }
 

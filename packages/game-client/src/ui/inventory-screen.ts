@@ -19,6 +19,7 @@ import type { BankActionEventData } from "@shared/events/client-sent/events/bank
 import { itemRegistry } from "@shared/entities/item-registry";
 import { getConfig, playerConfig } from "@shared/config";
 import { formatDisplayName } from "@/util/format";
+import { calculateHudScale } from "@/util/hud-scale";
 import { PlayerClient } from "@/entities/player";
 import { ClientPositionable } from "@/extensions/positionable";
 import { ClientPoison } from "@/extensions/poison";
@@ -34,7 +35,17 @@ import {
   getItemWeightKg,
   type CharacterStatKey,
 } from "@shared/util/character-stats";
-import { ABILITY_TREE_NODES, type AbilityId } from "@shared/util/ability-tree";
+import {
+  ABILITY_TREE_NODES,
+  ABILITY_DEFINITIONS,
+  ABILITY_IDS,
+  MAX_RANK_PER_ABILITY,
+  type AbilityId,
+} from "@shared/util/ability-tree";
+import {
+  LOADOUT_RESERVED_BAG_SLOT_COUNT,
+  getMaxVisibleBagSlots,
+} from "@shared/util/ability-effects";
 import { getProgressionPointsBudget } from "@shared/util/experience-level";
 import { FISTS_INVENTORY_SENTINEL } from "@shared/constants/inventory-sentinel";
 import { itemMatchesConsumableLoadout } from "@shared/util/consumable-loadout";
@@ -49,12 +60,11 @@ import {
   CHARACTER_STAT_GROUP_HEADER_BLOCK_PX,
   CHARACTER_STAT_ROW_STEP_PX,
   drawCanvasUiButton,
-  skillsNodeCenter,
-  SKILLS_NODE_RADIUS,
   tabBarHitRect,
   uiCircleContains,
   uiRectContains,
 } from "@/ui/canvas-ui-rect";
+import { renderUnspentProgressionBadge } from "./minimap-inventory-menu";
 import { getQuestObjectiveLine } from "./quest-display";
 import {
   PROFESSION_DEFINITIONS,
@@ -62,7 +72,6 @@ import {
   type ProfessionId,
 } from "@shared/util/professions";
 import { CRAFTING_STATION_LABELS } from "@shared/util/crafting-stations";
-import { calculateHudScale } from "@/util/hud-scale";
 import { distance } from "@shared/util/physics";
 import {
   drawRpgTopAccentBar,
@@ -318,6 +327,64 @@ function drawProfessionCardChrome(
   ctx.strokeRect(x, y, w, h);
 }
 
+function hexToRgba(hex: string, alpha: number): string {
+  const clean = hex.replace("#", "");
+  if (clean.length !== 6) {
+    return `rgba(255, 255, 255, ${alpha})`;
+  }
+  const r = Number.parseInt(clean.slice(0, 2), 16);
+  const g = Number.parseInt(clean.slice(2, 4), 16);
+  const b = Number.parseInt(clean.slice(4, 6), 16);
+  return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+}
+
+function wrapTextLines(
+  ctx: CanvasRenderingContext2D,
+  text: string,
+  maxWidth: number,
+  maxLines: number,
+): string[] {
+  if (!text.trim()) {
+    return [];
+  }
+  const words = text.trim().split(/\s+/);
+  const lines: string[] = [];
+  let currentLine = "";
+
+  for (const word of words) {
+    const nextLine = currentLine ? `${currentLine} ${word}` : word;
+    if (ctx.measureText(nextLine).width <= maxWidth || currentLine.length === 0) {
+      currentLine = nextLine;
+      continue;
+    }
+    lines.push(currentLine);
+    currentLine = word;
+    if (lines.length === maxLines - 1) {
+      break;
+    }
+  }
+
+  if (currentLine) {
+    lines.push(currentLine);
+  }
+
+  if (lines.length > maxLines) {
+    lines.length = maxLines;
+  }
+
+  const consumedWords = lines.join(" ").split(/\s+/).length;
+  if (consumedWords < words.length && lines.length > 0) {
+    const lastIndex = lines.length - 1;
+    let lastLine = lines[lastIndex]!;
+    while (lastLine.length > 0 && ctx.measureText(`${lastLine}...`).width > maxWidth) {
+      lastLine = lastLine.slice(0, -1).trimEnd();
+    }
+    lines[lastIndex] = lastLine ? `${lastLine}...` : "...";
+  }
+
+  return lines;
+}
+
 /** Canvas equivalent of `paint-order: stroke fill` + ~`webkit-text-stroke: Npx black`. */
 function fillTextStroked(
   ctx: CanvasRenderingContext2D,
@@ -399,6 +466,8 @@ const CHARACTER_STAT_LOOP_GROUPS: ReadonlyArray<{
 ];
 const WIDE_GRID_COLS = 5;
 const NARROW_GRID_COLS = 4;
+const ABILITY_CARD_COLS = 4;
+const ABILITY_CARD_GAP = 12;
 
 const EQUIP_SLOT_LABELS: Record<EquipmentSlotKey, string> = {
   head: "Head",
@@ -470,10 +539,11 @@ function buildCharacterMapFromPlayer(player: PlayerClient): Record<string, numbe
 }
 
 function buildAbilityMapFromPlayer(player: PlayerClient): Record<string, number> {
-  return {
-    sprint: player.getAbilitySprintRank(),
-    regenerate: player.getAbilityRegenerateRank(),
-  };
+  const abilities: Record<string, number> = {};
+  for (const abilityId of ABILITY_IDS) {
+    abilities[abilityId] = player.getAbilityRank(abilityId);
+  }
+  return abilities;
 }
 
 function drawRpgMainPanel(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number): void {
@@ -516,11 +586,14 @@ export class InventoryScreenUI {
   private professionBannersPreloadStarted = false;
   private characterStatIconSheet: HTMLImageElement | null = null;
   private characterStatIconsPreloadStarted = false;
+  private abilityIconImages: Partial<Record<AbilityId, HTMLImageElement>> = {};
+  private abilityIconsPreloadStarted = false;
 
   constructor(deps: InventoryScreenDeps) {
     this.deps = deps;
     this.preloadProfessionBanners();
     this.preloadCharacterStatIcons();
+    this.preloadAbilityIcons();
   }
 
   private preloadProfessionBanners(): void {
@@ -547,6 +620,21 @@ export class InventoryScreenUI {
     };
   }
 
+  private preloadAbilityIcons(): void {
+    if (this.abilityIconsPreloadStarted) {
+      return;
+    }
+    this.abilityIconsPreloadStarted = true;
+    for (const abilityId of ABILITY_IDS) {
+      const img = new Image();
+      img.decoding = "async";
+      img.src = ABILITY_DEFINITIONS[abilityId].iconPath;
+      img.onload = () => {
+        this.abilityIconImages[abilityId] = img;
+      };
+    }
+  }
+
   public toggle(): void {
     this.setOpen(!this.open);
   }
@@ -563,6 +651,7 @@ export class InventoryScreenUI {
     if (!this.open) {
       this.dragState = null;
       this.activeTab = "inventory";
+      this.hoveredAbilityId = null;
       this.hoveredCharacterStatKey = null;
       this.selectedProfessionId = null;
       this.bankLockerId = null;
@@ -661,6 +750,9 @@ export class InventoryScreenUI {
       this.bankLockerId = null;
       this.ctxMenu = null;
     }
+    if (tab !== "abilities") {
+      this.hoveredAbilityId = null;
+    }
     if (tab !== "professions") {
       this.selectedProfessionId = null;
     }
@@ -675,10 +767,39 @@ export class InventoryScreenUI {
 
   private getBagSlotCount(): number {
     const p = this.deps.getMyPlayer();
-    return p?.getMaxInventorySlots() ?? getConfig().player.MAX_INVENTORY_SLOTS;
+    const totalSlots = p?.getMaxInventorySlots() ?? getConfig().player.MAX_INVENTORY_SLOTS;
+    return getMaxVisibleBagSlots(totalSlots);
   }
 
-  private layout(canvasWidth: number, canvasHeight: number, bagSlotCount: number = getConfig().player.MAX_INVENTORY_SLOTS) {
+  private getUnlockedVisibleBagSlotCount(player: PlayerClient | null = this.deps.getMyPlayer()): number {
+    if (player) {
+      return player.getUnlockedVisibleBagSlotCount();
+    }
+    return this.getBagSlotCount();
+  }
+
+  private getStorageBagIndexForVisibleSlot(
+    visibleBagIndex: number,
+    player: PlayerClient | null = this.deps.getMyPlayer(),
+  ): number {
+    const unlockedVisibleSlots = this.getUnlockedVisibleBagSlotCount(player);
+    return visibleBagIndex < unlockedVisibleSlots
+      ? visibleBagIndex
+      : visibleBagIndex + LOADOUT_RESERVED_BAG_SLOT_COUNT;
+  }
+
+  private isVisibleBagSlotLocked(
+    visibleBagIndex: number,
+    player: PlayerClient | null = this.deps.getMyPlayer(),
+  ): boolean {
+    return visibleBagIndex >= this.getUnlockedVisibleBagSlotCount(player);
+  }
+
+  private layout(
+    canvasWidth: number,
+    canvasHeight: number,
+    bagSlotCount: number = getMaxVisibleBagSlots(getConfig().player.MAX_INVENTORY_SLOTS),
+  ) {
     const pad = LAYOUT_PAD_PX;
     const rightW = Math.min(canvasWidth * PANEL_WIDTH_RATIO, canvasWidth - pad * 2);
     const rightX = canvasWidth - rightW - pad;
@@ -810,6 +931,29 @@ export class InventoryScreenUI {
       skillsOriginX: rightX + 24,
       skillsOriginY: contentTop + PANEL_TAB_CONTENT_GAP + 8,
     };
+  }
+
+  private abilityCardRects(L: ReturnType<InventoryScreenUI["layout"]>) {
+    const rows = Math.max(1, Math.ceil(ABILITY_TREE_NODES.length / ABILITY_CARD_COLS));
+    const startX = L.rightX + 12;
+    const startY = L.contentTop + PANEL_TAB_CONTENT_GAP + 96;
+    const availableW = L.rightW - 24;
+    const availableH = L.rightY + L.rightH - 18 - startY;
+    const cardW = Math.floor(
+      (availableW - ABILITY_CARD_GAP * (ABILITY_CARD_COLS - 1)) / ABILITY_CARD_COLS,
+    );
+    const cardH = Math.max(96, Math.floor((availableH - ABILITY_CARD_GAP * (rows - 1)) / rows));
+    return ABILITY_TREE_NODES.map((node, index) => {
+      const col = index % ABILITY_CARD_COLS;
+      const row = Math.floor(index / ABILITY_CARD_COLS);
+      return {
+        id: node.id,
+        x: startX + col * (cardW + ABILITY_CARD_GAP),
+        y: startY + row * (cardH + ABILITY_CARD_GAP),
+        w: cardW,
+        h: cardH,
+      };
+    });
   }
 
   private layoutBank(canvasWidth: number, canvasHeight: number) {
@@ -962,15 +1106,19 @@ export class InventoryScreenUI {
     const player = this.deps.getMyPlayer();
     for (let row = 0; row < L.gridRows; row++) {
       for (let col = 0; col < L.gridCols; col++) {
-        const idx = row * L.gridCols + col;
-        if (idx >= L.bagSlotCount) continue;
+        const visibleBagIndex = row * L.gridCols + col;
+        if (visibleBagIndex >= L.bagSlotCount) continue;
         const sx = L.gridLeft + col * (L.cellSize + L.cellGap);
         const sy = L.gridTop + row * (L.cellSize + L.cellGap);
         if (x >= sx && x <= sx + L.cellSize && y >= sy && y <= sy + L.cellSize) {
-          if (player && this.bagSlotBackedByAnyLoadout(idx, player)) {
+          if (this.isVisibleBagSlotLocked(visibleBagIndex, player)) {
             return null;
           }
-          return idx;
+          const storageBagIndex = this.getStorageBagIndexForVisibleSlot(visibleBagIndex, player);
+          if (player && this.bagSlotBackedByAnyLoadout(storageBagIndex, player)) {
+            return null;
+          }
+          return storageBagIndex;
         }
       }
     }
@@ -1005,15 +1153,16 @@ export class InventoryScreenUI {
   private getFirstEmptyVisibleBagIndex(): number | null {
     const items = this.deps.getInventory();
     const player = this.deps.getMyPlayer();
-    const maxSlots = player?.getMaxInventorySlots() ?? getConfig().player.MAX_INVENTORY_SLOTS;
-    for (let i = 0; i < maxSlots; i++) {
-      if (items[i] != null) {
+    const unlockedVisibleSlots = this.getUnlockedVisibleBagSlotCount(player);
+    for (let visibleBagIndex = 0; visibleBagIndex < unlockedVisibleSlots; visibleBagIndex++) {
+      const storageBagIndex = this.getStorageBagIndexForVisibleSlot(visibleBagIndex, player);
+      if (items[storageBagIndex] != null) {
         continue;
       }
-      if (player && this.bagSlotBackedByAnyLoadout(i, player)) {
+      if (player && this.bagSlotBackedByAnyLoadout(storageBagIndex, player)) {
         continue;
       }
-      return i;
+      return storageBagIndex;
     }
     return null;
   }
@@ -1065,7 +1214,9 @@ export class InventoryScreenUI {
   private drawTabBar(
     ctx: CanvasRenderingContext2D,
     L: ReturnType<InventoryScreenUI["layout"]>,
+    player: PlayerClient,
   ): void {
+    const hudScale = calculateHudScale(ctx.canvas.width, ctx.canvas.height);
     const panelRight = L.rightX + L.rightW;
     const n = L.tabs.length;
     for (let i = 0; i < n; i++) {
@@ -1084,6 +1235,20 @@ export class InventoryScreenUI {
       ctx.textAlign = "center";
       ctx.textBaseline = "middle";
       ctx.fillText(t.label, x + w / 2, y + L.tabBarH / 2);
+
+      const badgeR = Math.max(4, Math.round(Math.min(6, 4.5 * hudScale)));
+      const badgePad = Math.max(2, Math.round(1.5 * hudScale));
+      const badgeCx = x + w - badgePad - badgeR;
+      const badgeCy = y + badgePad + badgeR;
+      if (t.id === "character" && player.getAvailableCharacterPoints() > 0) {
+        renderUnspentProgressionBadge(ctx, badgeCx, badgeCy, badgeR);
+      } else if (
+        t.id === "abilities" &&
+        player.getAvailableAbilityPoints() > 0 &&
+        ABILITY_IDS.some((abilityId) => player.getAbilityRank(abilityId) < MAX_RANK_PER_ABILITY)
+      ) {
+        renderUnspentProgressionBadge(ctx, badgeCx, badgeCy, badgeR);
+      }
     }
     ctx.textBaseline = "alphabetic";
   }
@@ -1243,7 +1408,7 @@ export class InventoryScreenUI {
         ctx.fillText(`${val}`, L.rightX + L.rightW - 120, y);
         ctx.textAlign = "left";
         const { plus } = characterStatPlusMinusRects(L.rightX, L.rightW, y);
-        if (!isAtMax) {
+        if (!isAtMax && avail > 0) {
           drawCanvasUiButton(ctx, plus, "+", "compact");
         }
       }
@@ -1272,35 +1437,102 @@ export class InventoryScreenUI {
     const xp = player.getTotalExperience();
     const budget = getProgressionPointsBudget(xp);
     const avail = player.getAvailableAbilityPoints();
+    const focusedAbilityId = this.hoveredAbilityId ?? ABILITY_TREE_NODES[0]?.id ?? "sprint";
+    const focusedAbility = ABILITY_DEFINITIONS[focusedAbilityId];
     ctx.font = "16px Arial";
     ctx.fillStyle = RPG_BODY_TEXT;
     ctx.textAlign = "left";
     let ty = L.contentTop + PANEL_TAB_CONTENT_GAP;
     ctx.fillText(`Abilities   (available ${avail} / budget ${budget})`, L.rightX + 12, ty);
-    ty += 28;
+    ty += 24;
     ctx.font = "13px Arial";
+    ctx.fillStyle = avail > 0 ? RPG_PROMPT_TYPING : RPG_METADATA_MUTED;
+    ctx.fillText("Click a locked card to spend 1 point and unlock it.", L.rightX + 12, ty);
+    ty += 18;
+    ctx.font = "bold 13px Georgia";
+    ctx.fillStyle = focusedAbility.accentColor;
+    ctx.fillText(focusedAbility.label, L.rightX + 12, ty);
+    ty += 16;
+    ctx.font = "12px Arial";
     ctx.fillStyle = RPG_METADATA_MUTED;
-    ctx.fillText("Click a node to unlock when you have available ability points.", L.rightX + 12, ty);
+    for (const line of wrapTextLines(ctx, focusedAbility.description, L.rightW - 24, 2)) {
+      ctx.fillText(line, L.rightX + 12, ty);
+      ty += 14;
+    }
 
-    for (const node of ABILITY_TREE_NODES) {
-      const { cx, cy } = skillsNodeCenter(L.skillsOriginX, L.skillsOriginY, node.x, node.y);
-      const rank =
-        node.id === "sprint" ? player.getAbilitySprintRank() : player.getAbilityRegenerateRank();
-      const hover = this.hoveredAbilityId === node.id;
-      ctx.beginPath();
-      ctx.arc(cx, cy, SKILLS_NODE_RADIUS, 0, Math.PI * 2);
-      ctx.fillStyle = rank > 0 ? "rgba(200, 165, 95, 0.82)" : RPG_SLOT_FILL_DIM;
-      ctx.fill();
-      ctx.strokeStyle = hover ? RPG_PROMPT_GOLD : RPG_SLOT_STROKE;
-      ctx.lineWidth = 2;
-      ctx.stroke();
-      ctx.font = "bold 13px Arial";
-      ctx.fillStyle = RPG_BODY_TEXT;
+    for (const card of this.abilityCardRects(L)) {
+      const def = ABILITY_DEFINITIONS[card.id];
+      const unlocked = player.getAbilityRank(card.id) > 0;
+      const hover = this.hoveredAbilityId === card.id;
+      const fill = ctx.createLinearGradient(card.x, card.y, card.x, card.y + card.h);
+      fill.addColorStop(0, unlocked ? hexToRgba(def.accentColor, 0.32) : "rgba(26, 29, 38, 0.98)");
+      fill.addColorStop(1, unlocked ? hexToRgba(def.accentColor, 0.14) : "rgba(12, 14, 20, 0.98)");
+      ctx.fillStyle = fill;
+      ctx.fillRect(card.x, card.y, card.w, card.h);
+      if (!unlocked) {
+        ctx.fillStyle = "rgba(6, 8, 16, 0.35)";
+        ctx.fillRect(card.x, card.y, card.w, card.h);
+      }
+      ctx.strokeStyle = hover
+        ? def.accentColor
+        : unlocked
+          ? hexToRgba(def.accentColor, 0.92)
+          : RPG_SLOT_STROKE;
+      ctx.lineWidth = hover || unlocked ? 2 : 1;
+      ctx.strokeRect(card.x, card.y, card.w, card.h);
+
+      const iconSize = Math.max(30, Math.min(44, card.w - 24, Math.floor(card.h * 0.3)));
+      const iconX = card.x + Math.floor((card.w - iconSize) / 2);
+      const iconY = card.y + 12;
+      const icon = this.abilityIconImages[card.id];
+      const hasIcon = Boolean(icon && icon.complete && icon.naturalWidth > 0);
+      if (hasIcon) {
+        ctx.save();
+        ctx.globalAlpha = unlocked ? 1 : 0.72;
+        ctx.drawImage(icon!, iconX, iconY, iconSize, iconSize);
+        ctx.restore();
+      } else {
+        ctx.fillStyle = hexToRgba(def.accentColor, unlocked ? 0.28 : 0.18);
+        ctx.fillRect(iconX, iconY, iconSize, iconSize);
+        ctx.strokeStyle = hexToRgba(def.accentColor, 0.8);
+        ctx.lineWidth = 1;
+        ctx.strokeRect(iconX, iconY, iconSize, iconSize);
+        ctx.font = `bold ${Math.max(16, Math.floor(iconSize * 0.44))}px Georgia`;
+        ctx.fillStyle = unlocked ? RPG_TITLE_CREAM : RPG_METADATA_MUTED;
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        ctx.fillText(def.label.charAt(0), iconX + iconSize / 2, iconY + iconSize / 2 + 1);
+      }
+
+      const textX = card.x + 10;
+      let textY = iconY + iconSize + 18;
+      ctx.font = "bold 13px Georgia";
       ctx.textAlign = "center";
-      ctx.textBaseline = "middle";
-      ctx.fillText(node.label, cx, cy - 6);
+      ctx.textBaseline = "alphabetic";
+      ctx.fillStyle = RPG_BODY_TEXT;
+      const labelLines = wrapTextLines(ctx, def.label, card.w - 20, 2);
+      for (const line of labelLines) {
+        fillTextStroked(ctx, line, card.x + card.w / 2, textY, RPG_BODY_TEXT, 1);
+        textY += 15;
+      }
+
       ctx.font = "11px Arial";
-      ctx.fillText(rank > 0 ? "Active" : "Locked", cx, cy + 10);
+      ctx.fillStyle = RPG_METADATA_MUTED;
+      ctx.textAlign = "left";
+      const descMaxLines = Math.max(1, Math.floor((card.y + card.h - 38 - textY) / 13));
+      for (const line of wrapTextLines(ctx, def.description, card.w - 20, descMaxLines)) {
+        ctx.fillText(line, textX, textY);
+        textY += 13;
+      }
+
+      ctx.font = "bold 11px Arial";
+      ctx.textAlign = "center";
+      ctx.fillStyle = unlocked ? def.accentColor : avail > 0 ? RPG_PROMPT_GOLD : RPG_METADATA_MUTED;
+      ctx.fillText(
+        unlocked ? "Unlocked" : avail > 0 ? "1 point to unlock" : "Locked",
+        card.x + card.w / 2,
+        card.y + card.h - 10,
+      );
     }
     ctx.textBaseline = "alphabetic";
     ctx.textAlign = "left";
@@ -1623,7 +1855,7 @@ export class InventoryScreenUI {
       if (this.open) {
         return;
       }
-      const L = this.layout(w, h, getConfig().player.MAX_INVENTORY_SLOTS);
+      const L = this.layout(w, h, this.getBagSlotCount());
       const slidePx = this.getPanelSlidePxFromRightW(L.rightW);
       ctx.save();
       ctx.setTransform(1, 0, 0, 1, 0, 0);
@@ -1635,7 +1867,7 @@ export class InventoryScreenUI {
 
     this.maybeCloseBankIfOutOfRange(gameState, player);
 
-    const L = this.layout(w, h, player.getMaxInventorySlots());
+    const L = this.layout(w, h, this.getBagSlotCount());
     const slidePx = this.getPanelSlidePxFromRightW(L.rightW);
 
     if (this.activeTab === "inventory" && this.bankVisibilityProgress > 0.001) {
@@ -1692,7 +1924,7 @@ export class InventoryScreenUI {
 
     drawRpgMainPanel(ctx, L.rightX, L.rightY, L.rightW, L.rightH);
 
-    this.drawTabBar(ctx, L);
+    this.drawTabBar(ctx, L, player);
 
     if (this.activeTab === "inventory") {
       const items = this.deps.getInventory();
@@ -1732,29 +1964,36 @@ export class InventoryScreenUI {
 
       for (let row = 0; row < L.gridRows; row++) {
         for (let col = 0; col < L.gridCols; col++) {
-          const idx = row * L.gridCols + col;
-          if (idx >= slots) continue;
+          const visibleBagIndex = row * L.gridCols + col;
+          if (visibleBagIndex >= slots) continue;
+          const storageBagIndex = this.getStorageBagIndexForVisibleSlot(visibleBagIndex, player);
           const sx = L.gridLeft + col * (L.cellSize + L.cellGap);
           const sy = L.gridTop + row * (L.cellSize + L.cellGap);
-          const isHiddenLoadoutBagSlot = this.bagSlotBackedByAnyLoadout(idx, player);
-          const rawBagItem = items[idx];
-          const invItem =
-            rawBagItem && !isHiddenLoadoutBagSlot ? rawBagItem : null;
-          const isActive = !isHiddenLoadoutBagSlot && activeIdx === idx;
-          const isHover = !isHiddenLoadoutBagSlot && this.hoveredBagIndex === idx && !this.dragState?.isDragging;
+          const isLockedVisibleSlot = this.isVisibleBagSlotLocked(visibleBagIndex, player);
+          const isHiddenLoadoutBagSlot = this.bagSlotBackedByAnyLoadout(storageBagIndex, player);
+          const rawBagItem = items[storageBagIndex];
+          const invItem = rawBagItem && !isHiddenLoadoutBagSlot && !isLockedVisibleSlot ? rawBagItem : null;
+          const isActive = !isHiddenLoadoutBagSlot && !isLockedVisibleSlot && activeIdx === storageBagIndex;
+          const isHover =
+            !isHiddenLoadoutBagSlot &&
+            !isLockedVisibleSlot &&
+            this.hoveredBagIndex === storageBagIndex &&
+            !this.dragState?.isDragging;
           const isDragSource =
             !isHiddenLoadoutBagSlot &&
+            !isLockedVisibleSlot &&
             this.dragState?.isDragging &&
             this.dragState.source.kind === "bag" &&
-            this.dragState.source.index === idx;
+            this.dragState.source.index === storageBagIndex;
           const isTarget =
             !isHiddenLoadoutBagSlot &&
+            !isLockedVisibleSlot &&
             this.dragState?.isDragging &&
-            this.dragState.targetBagIndex === idx &&
+            this.dragState.targetBagIndex === storageBagIndex &&
             this.dragState.source.kind === "bag" &&
-            this.dragState.source.index !== idx;
+            this.dragState.source.index !== storageBagIndex;
 
-          ctx.fillStyle = RPG_SLOT_FILL_DIM;
+          ctx.fillStyle = isLockedVisibleSlot ? "rgba(18, 20, 28, 0.96)" : RPG_SLOT_FILL_DIM;
           ctx.fillRect(sx, sy, L.cellSize, L.cellSize);
 
           if (isDragSource) {
@@ -1771,6 +2010,14 @@ export class InventoryScreenUI {
                 : RPG_SLOT_STROKE;
           ctx.lineWidth = isActive || isTarget ? 2 : 1;
           ctx.strokeRect(sx, sy, L.cellSize, L.cellSize);
+
+          if (isLockedVisibleSlot) {
+            ctx.font = "bold 10px Arial";
+            ctx.textAlign = "center";
+            ctx.fillStyle = "rgba(170, 176, 190, 0.58)";
+            ctx.fillText("Locked", sx + L.cellSize / 2, sy + L.cellSize / 2 + 4);
+            continue;
+          }
 
           if (invItem) {
             const img = this.deps.assetManager.get(getItemAssetKey(invItem));
@@ -1927,6 +2174,7 @@ export class InventoryScreenUI {
     if (!this.isOpen()) {
       this.hoveredBagIndex = null;
       this.hoveredEquipSlot = null;
+      this.hoveredAbilityId = null;
       this.hoveredCharacterStatKey = null;
       this.hoveredCharacterStatGroupIndex = null;
       return;
@@ -1970,10 +2218,9 @@ export class InventoryScreenUI {
       }
     }
     if (this.activeTab === "abilities") {
-      for (const node of ABILITY_TREE_NODES) {
-        const { cx, cy } = skillsNodeCenter(L.skillsOriginX, L.skillsOriginY, node.x, node.y);
-        if (uiCircleContains(cx, cy, SKILLS_NODE_RADIUS, lx, y)) {
-          this.hoveredAbilityId = node.id;
+      for (const card of this.abilityCardRects(L)) {
+        if (uiRectContains(card, lx, y)) {
+          this.hoveredAbilityId = card.id;
           break;
         }
       }
@@ -2204,6 +2451,7 @@ export class InventoryScreenUI {
         const key = row.key;
         const { plus } = characterStatPlusMinusRects(L.rightX, L.rightW, row.rowLabelY);
         if (
+          player.getAvailableCharacterPoints() > 0 &&
           player.getCharacterStat(key) < MAX_POINTS_PER_CHARACTER_STAT &&
           uiRectContains(plus, lx, y)
         ) {
@@ -2217,21 +2465,12 @@ export class InventoryScreenUI {
     }
 
     if (this.activeTab === "abilities") {
-      for (const node of ABILITY_TREE_NODES) {
-        const { cx, cy } = skillsNodeCenter(L.skillsOriginX, L.skillsOriginY, node.x, node.y);
-        if (uiCircleContains(cx, cy, SKILLS_NODE_RADIUS, lx, y)) {
+      for (const card of this.abilityCardRects(L)) {
+        if (uiRectContains(card, lx, y)) {
           const abilities = buildAbilityMapFromPlayer(player);
-          const curS = abilities.sprint ?? 0;
-          const curR = abilities.regenerate ?? 0;
-          if (node.id === "sprint") {
-            if (curS > 0) return true;
-            if (player.getAvailableAbilityPoints() <= 0) return true;
-            abilities.sprint = 1;
-          } else {
-            if (curR > 0) return true;
-            if (player.getAvailableAbilityPoints() <= 0) return true;
-            abilities.regenerate = 1;
-          }
+          if ((abilities[card.id] ?? 0) > 0) return true;
+          if (player.getAvailableAbilityPoints() <= 0) return true;
+          abilities[card.id] = 1;
           this.deps.sendProgressionAllocations("ability", abilities);
           return true;
         }

@@ -42,7 +42,7 @@ import { SkinType, SKIN_TYPES, PlayerColor, PLAYER_COLORS } from "@shared/comman
 import { itemRegistry } from "@shared/entities";
 import { Blood } from "@/entities/effects/blood";
 import { SerializableFields } from "@/util/serializable-fields";
-import { Direction } from "@/util/direction";
+import { Direction, angleToDirection } from "@/util/direction";
 import {
   countAmmoInInventory,
   consumeAmmoCount,
@@ -66,7 +66,13 @@ import {
   computePassiveHpRegenIntervalSeconds,
   computeStaminaRegenMultiplier,
 } from "@shared/util/character-stats";
-import { REGENERATE_HEAL_PER_SECOND } from "@shared/util/ability-tree";
+import {
+  ABILITY_IDS,
+  ABILITY_SERIALIZED_FIELD_BY_ID,
+  type AbilityId,
+  emptyAbilityAllocations,
+  REGENERATE_HEAL_PER_SECOND,
+} from "@shared/util/ability-tree";
 import { getZombieTypesSet } from "@shared/constants";
 import type { PersistedPlayerProgress } from "@/services/player-progress-types";
 import { UserSessionCache } from "@/services/user-session-cache";
@@ -98,6 +104,46 @@ import {
   getWeaponMagazineSize,
   getWeaponReloadDuration,
 } from "@shared/util/inventory";
+import {
+  ADRENALINE_SPEED_MULTIPLIER,
+  AIM_FOR_THE_KNEE_CHANCE,
+  AIM_FOR_THE_KNEE_DURATION_SECONDS,
+  AIM_FOR_THE_KNEE_SPEED_MULTIPLIER,
+  BASE_UNLOCKED_VISIBLE_BAG_SLOTS,
+  BRAWLER_DAMAGE_BONUS,
+  BRAWLER_KNOCKBACK_BONUS,
+  COMBAT_ROLL_COOLDOWN_SECONDS,
+  COMBAT_ROLL_DISTANCE,
+  COMBAT_ROLL_STAMINA_COST,
+  COMBAT_ROLL_STEP_SIZE,
+  COMBAT_SHIELD_DAMAGE_REDUCTION,
+  COUNTER_ATTACK_CHANCE,
+  COUNTER_ATTACK_DAMAGE,
+  DETOX_MAX_DAMAGE_MULTIPLIER,
+  HEAD_SHOT_BONUS_DAMAGE,
+  HEAD_SHOT_CHANCE,
+  LOADOUT_RESERVED_BAG_SLOT_COUNT,
+  SNEAK_MOVE_SPEED_MULTIPLIER,
+  TRACK_STAR_MAX_STAMINA_BONUS,
+  TRACK_STAR_SPEED_MULTIPLIER,
+  TRACK_STAR_STAMINA_REGEN_BONUS,
+  getAccessibleInventorySlotCount,
+  getUnlockedVisibleBagSlots,
+  getZombieDetectionRadiusMultiplier as getPlayerZombieDetectionRadiusMultiplier,
+  hasUnlockedAbility,
+  isAdrenalineActive,
+} from "@shared/util/ability-effects";
+import { BaseEnemy } from "@/entities/enemies/base-enemy";
+
+const PLAYER_LOADOUT_KEYS = [
+  "weaponLoadoutPrimary",
+  "weaponLoadoutSecondary",
+  "weaponLoadoutMelee",
+  "loadoutConsumable4",
+  "loadoutConsumable5",
+] as const;
+
+type PlayerLoadoutKey = (typeof PLAYER_LOADOUT_KEYS)[number];
 
 /**
  * Cached list of entity types that players can pass through (collision passthrough).
@@ -142,6 +188,7 @@ export class Player extends Entity {
   private reloadBagIndex1Based: number | null = null;
   private reloadWeaponType: ItemType | null = null;
   private exhaustionTimer: number = 0; // Time remaining before stamina can regenerate
+  private combatRollCooldown = new Cooldown(COMBAT_ROLL_COOLDOWN_SECONDS, true);
   // Item pickup hold tracking
   private pickupHoldTimer: number = 0; // Time F has been held for pickup
   private targetPickupEntity: number | null = null; // Entity ID being targeted for pickup
@@ -191,10 +238,25 @@ export class Player extends Entity {
         inputFire: false,
         inputInventoryItem: 1, // Still tracked for consume/drop when itemType is null
         inputSprint: false,
+        inputSneak: false,
         inputAimAngle: NaN, // NaN represents undefined for optional field
         inputAimDistance: NaN, // NaN represents undefined for optional field
         abilitySprint: 0,
         abilityRegenerate: 0,
+        abilityAdrenaline: 0,
+        abilityStealth: 0,
+        abilityPackRat: 0,
+        abilityHercules: 0,
+        abilityCombatShield: 0,
+        abilityTrackStar: 0,
+        abilityCombatRoll: 0,
+        abilityBrawler: 0,
+        abilityHeadShot: 0,
+        abilityAimForTheKnee: 0,
+        abilityDetox: 0,
+        abilityLockPicking: 0,
+        abilityCounterAttack: 0,
+        abilitySneak: 0,
         professionProgressJson: JSON.stringify(emptyProfessionProgress()),
         statHealth: 0,
         statEvade: 0,
@@ -229,6 +291,20 @@ export class Player extends Entity {
         reloadProgress: { numberType: "float64" },
         abilitySprint: { numberType: "uint8" },
         abilityRegenerate: { numberType: "uint8" },
+        abilityAdrenaline: { numberType: "uint8" },
+        abilityStealth: { numberType: "uint8" },
+        abilityPackRat: { numberType: "uint8" },
+        abilityHercules: { numberType: "uint8" },
+        abilityCombatShield: { numberType: "uint8" },
+        abilityTrackStar: { numberType: "uint8" },
+        abilityCombatRoll: { numberType: "uint8" },
+        abilityBrawler: { numberType: "uint8" },
+        abilityHeadShot: { numberType: "uint8" },
+        abilityAimForTheKnee: { numberType: "uint8" },
+        abilityDetox: { numberType: "uint8" },
+        abilityLockPicking: { numberType: "uint8" },
+        abilityCounterAttack: { numberType: "uint8" },
+        abilitySneak: { numberType: "uint8" },
         statHealth: { numberType: "uint8" },
         statEvade: { numberType: "uint8" },
         statAccuracy: { numberType: "uint8" },
@@ -267,16 +343,31 @@ export class Player extends Entity {
         .setHealth(getConfig().player.MAX_PLAYER_HEALTH)
         .setMaxHealth(getConfig().player.MAX_PLAYER_HEALTH)
         .onBeforeDamage((damage, attackerId) => {
+          let adjustedDamage = damage;
+          let zombieMeleeAttacker: Entity | null = null;
           if (attackerId !== undefined) {
             const attacker = this.getEntityManager().getEntityById(attackerId);
             if (attacker && getZombieTypesSet().has(attacker.getType() as any)) {
+              zombieMeleeAttacker = attacker as Entity;
               const ev = this.serialized.get("statEvade") ?? 0;
               if (Math.random() < computeEvadeChance(ev)) {
                 return 0;
               }
             }
           }
-          return damage;
+          if (this.isCombatShieldEquipped()) {
+            adjustedDamage = Math.max(0, adjustedDamage - COMBAT_SHIELD_DAMAGE_REDUCTION);
+          }
+          if (
+            adjustedDamage > 0 &&
+            zombieMeleeAttacker &&
+            this.hasAbility("counterAttack") &&
+            Math.random() < COUNTER_ATTACK_CHANCE &&
+            zombieMeleeAttacker.hasExt(Destructible)
+          ) {
+            zombieMeleeAttacker.getExt(Destructible).damage(COUNTER_ATTACK_DAMAGE, this.getId());
+          }
+          return adjustedDamage;
         })
         .onDamaged(() => {
           // Broadcast PlayerHurtEvent when player takes damage (e.g., from zombie attacks)
@@ -554,32 +645,139 @@ export class Player extends Entity {
     return this.getExt(Inventory).getItems();
   }
 
+  getAbilityRank(abilityId: AbilityId): number {
+    return Math.max(0, Number(this.serialized.get(ABILITY_SERIALIZED_FIELD_BY_ID[abilityId]) ?? 0));
+  }
+
+  hasAbility(abilityId: AbilityId): boolean {
+    return this.getAbilityRank(abilityId) > 0;
+  }
+
+  private buildAbilityAllocationRecord(): Record<AbilityId, number> {
+    const allocations = emptyAbilityAllocations();
+    for (const abilityId of ABILITY_IDS) {
+      allocations[abilityId] = this.getAbilityRank(abilityId);
+    }
+    return allocations;
+  }
+
+  isSneaking(): boolean {
+    return !this.isZombie() && this.hasAbility("sneak") && Boolean(this.serialized.get("inputSneak"));
+  }
+
+  getUnlockedVisibleBagSlotCount(): number {
+    return getUnlockedVisibleBagSlots(this.getMaxInventorySlots(), this.buildAbilityAllocationRecord());
+  }
+
+  getAccessibleInventorySlotCount(): number {
+    return getAccessibleInventorySlotCount(
+      this.getMaxInventorySlots(),
+      this.buildAbilityAllocationRecord(),
+    );
+  }
+
+  private isBagSlotAccessible1Based(bagIndex1Based: number): boolean {
+    return bagIndex1Based >= 1 && bagIndex1Based <= this.getAccessibleInventorySlotCount();
+  }
+
+  private getPreferredLoadoutBackingSlots1Based(): number[] {
+    const accessibleMax = this.getAccessibleInventorySlotCount();
+    return PLAYER_LOADOUT_KEYS.map((_, index) => Math.max(1, accessibleMax - index));
+  }
+
+  private swapTrackedLoadoutBagSlots(from1Based: number, to1Based: number): void {
+    if (from1Based === to1Based) {
+      return;
+    }
+    const invExt = this.getExt(Inventory);
+    invExt.swapBagSlotsDeferWeaponResync(from1Based - 1, to1Based - 1);
+    for (const key of PLAYER_LOADOUT_KEYS) {
+      const current = this.serialized.get(key) as number;
+      if (current === from1Based) {
+        this.serialized.set(key, to1Based);
+      } else if (current === to1Based) {
+        this.serialized.set(key, from1Based);
+      }
+    }
+  }
+
+  private rehomeLoadoutBackedItemsWithinAccessibleRange(): void {
+    const inventory = this.getInventory();
+    const totalMax = this.getMaxInventorySlots();
+    const preferredSlots = this.getPreferredLoadoutBackingSlots1Based();
+    for (let i = 0; i < PLAYER_LOADOUT_KEYS.length; i++) {
+      const key = PLAYER_LOADOUT_KEYS[i]!;
+      const current = this.serialized.get(key) as number;
+      if (current < 1 || current > totalMax) {
+        continue;
+      }
+      if (inventory[current - 1] == null) {
+        continue;
+      }
+      const desired = preferredSlots[i] ?? current;
+      if (desired < 1 || desired > totalMax || current === desired) {
+        continue;
+      }
+      this.swapTrackedLoadoutBagSlots(current, desired);
+    }
+  }
+
+  public getZombieDetectionRadiusMultiplier(): number {
+    return getPlayerZombieDetectionRadiusMultiplier(
+      this.buildAbilityAllocationRecord(),
+      this.isSneaking(),
+    );
+  }
+
+  private isCombatShieldEquipped(): boolean {
+    return (
+      this.hasAbility("combatShield") &&
+      this.getExt(Inventory).getEquipment().hands?.itemType === "combat_shield"
+    );
+  }
+
+  public canEquipItemToSlot(itemType: ItemType, equipSlot: string): boolean {
+    if (equipSlot !== "hands" || itemType !== "combat_shield") {
+      return true;
+    }
+    return this.hasAbility("combatShield");
+  }
+
+  public canOpenLockedCrates(): boolean {
+    return this.hasAbility("lockPicking");
+  }
+
+  public getModifiedRangedDamage(baseDamage: number): number {
+    let damage = baseDamage;
+    if (this.hasAbility("headShot") && Math.random() < HEAD_SHOT_CHANCE) {
+      damage += HEAD_SHOT_BONUS_DAMAGE;
+    }
+    return damage;
+  }
+
+  public applyRangedHitEffects(target: Entity): void {
+    if (
+      this.hasAbility("aimForTheKnee") &&
+      target instanceof BaseEnemy &&
+      Math.random() < AIM_FOR_THE_KNEE_CHANCE
+    ) {
+      target.applyMaim(AIM_FOR_THE_KNEE_DURATION_SECONDS, AIM_FOR_THE_KNEE_SPEED_MULTIPLIER);
+    }
+  }
+
   private findEmptyVisibleBagIndex(
     preferEnd: boolean,
     excludedBagIndices: readonly number[] = [],
-    excludedLoadoutKeys: readonly (
-      | "weaponLoadoutPrimary"
-      | "weaponLoadoutSecondary"
-      | "weaponLoadoutMelee"
-      | "loadoutConsumable4"
-      | "loadoutConsumable5"
-    )[] = [],
+    excludedLoadoutKeys: readonly PlayerLoadoutKey[] = [],
   ): number | null {
-    const max = this.getMaxInventorySlots();
+    const max = this.getAccessibleInventorySlotCount();
     const inv = this.getInventory();
     const excludedBags = new Set(excludedBagIndices);
     const excludedKeys = new Set(excludedLoadoutKeys);
-    const loadoutKeys = [
-      "weaponLoadoutPrimary",
-      "weaponLoadoutSecondary",
-      "weaponLoadoutMelee",
-      "loadoutConsumable4",
-      "loadoutConsumable5",
-    ] as const;
 
     const isVisibleBagIndex = (bagIdx0: number): boolean => {
       const bagIndex1Based = bagIdx0 + 1;
-      for (const key of loadoutKeys) {
+      for (const key of PLAYER_LOADOUT_KEYS) {
         if (excludedKeys.has(key)) {
           continue;
         }
@@ -611,36 +809,7 @@ export class Player extends Entity {
   }
 
   private compactLoadoutBackedItemsToBagEnd(): void {
-    const max = this.getMaxInventorySlots();
-    const invExt = this.getExt(Inventory);
-    const loadoutKeys = [
-      "weaponLoadoutPrimary",
-      "weaponLoadoutSecondary",
-      "weaponLoadoutMelee",
-      "loadoutConsumable4",
-      "loadoutConsumable5",
-    ] as const;
-
-    for (const key of loadoutKeys) {
-      const bagIndex1Based = this.serialized.get(key) as number;
-      if (bagIndex1Based < 1 || bagIndex1Based > max) {
-        continue;
-      }
-
-      const bagIdx0 = bagIndex1Based - 1;
-      const inv = this.getInventory();
-      if (inv[bagIdx0] == null) {
-        continue;
-      }
-
-      const hiddenIdx0 = this.findEmptyVisibleBagIndex(true, [bagIdx0], [key]);
-      if (hiddenIdx0 === null || hiddenIdx0 <= bagIdx0) {
-        continue;
-      }
-
-      invExt.swapBagSlotsDeferWeaponResync(bagIdx0, hiddenIdx0);
-      this.serialized.set(key, hiddenIdx0 + 1);
-    }
+    this.rehomeLoadoutBackedItemsWithinAccessibleRange();
   }
 
   clearInventory(): void {
@@ -840,6 +1009,7 @@ export class Player extends Entity {
     this.fireCooldown.reset();
     const strategy = this.getGameManagers().getGameServer().getGameLoop().getGameModeStrategy();
     const aimAngle = this.serialized.get("inputAimAngle");
+    const hasBrawler = this.hasAbility("brawler");
     performMeleeAttack({
       entityManager: this.getEntityManager(),
       gameManagers: this.getGameManagers(),
@@ -848,8 +1018,8 @@ export class Player extends Entity {
       facing: this.serialized.get("inputFacing"),
       aimAngle: isNaN(aimAngle) ? undefined : aimAngle,
       attackRange: getConfig().combat.FIST_ATTACK_RANGE,
-      damage: cfg?.stats.damage ?? 1,
-      knockbackDistance: cfg?.stats.pushDistance,
+      damage: (cfg?.stats.damage ?? 1) + (hasBrawler ? BRAWLER_DAMAGE_BONUS : 0),
+      knockbackDistance: (cfg?.stats.pushDistance ?? 0) + (hasBrawler ? BRAWLER_KNOCKBACK_BONUS : 0),
       weaponKey,
       targetFilter: (entity, attackerId) => {
         return strategy.shouldDamageTarget(this, entity, attackerId);
@@ -875,7 +1045,7 @@ export class Player extends Entity {
    * When clearing, move the hidden backing weapon to the earliest empty visible bag cell if one exists.
    */
   public assignWeaponLoadoutSlot(slot: number, bagIndex: number): void {
-    const max = this.getMaxInventorySlots();
+    const max = this.getAccessibleInventorySlotCount();
     const slotClamped = Math.max(0, Math.min(4, Math.floor(slot)));
     const bagIndexClamped = Math.max(0, Math.min(max, Math.floor(bagIndex)));
 
@@ -934,7 +1104,7 @@ export class Player extends Entity {
   }
 
   private assignConsumableLoadoutSlot(slot: 3 | 4, bagIndex: number): void {
-    const max = this.getMaxInventorySlots();
+    const max = this.getAccessibleInventorySlotCount();
     const bagIndexClamped = Math.max(0, Math.min(max, Math.floor(bagIndex)));
     const key: "loadoutConsumable4" | "loadoutConsumable5" =
       slot === 3 ? "loadoutConsumable4" : "loadoutConsumable5";
@@ -1409,12 +1579,12 @@ export class Player extends Entity {
         const hasInfiniteRun = this.hasExt(InfiniteRun);
 
         const isZombie = this.serialized.get("isZombie");
-
+        const isSneaking = this.isSneaking();
         const stamina = this.serialized.get("stamina");
-        const hasSprintSkill = (this.serialized.get("abilitySprint") ?? 0) > 0;
         const canSprint =
           !isZombie &&
-          hasSprintSkill &&
+          this.hasAbility("sprint") &&
+          !isSneaking &&
           this.serialized.get("inputSprint") &&
           (hasInfiniteRun || (stamina > 0 && this.exhaustionTimer <= 0));
         const sprintMultiplier = canSprint ? getConfig().player.SPRINT_MULTIPLIER : 1;
@@ -1423,7 +1593,19 @@ export class Player extends Entity {
         const zombieMultiplier = isZombie ? getConfig().player.ZOMBIE_SPEED_MULTIPLIER : 1;
         const runStat = this.serialized.get("statRunSpeed") ?? 0;
         const runBonus = 1 + runStat * CHARACTER_STAT_MODIFIERS.runSpeedPerPoint;
-        const speedMultiplier = sprintMultiplier * zombieMultiplier * runBonus;
+        const adrenalineMultiplier =
+          this.hasAbility("adrenaline") && isAdrenalineActive(this.getHealth(), this.getMaxHealth())
+            ? ADRENALINE_SPEED_MULTIPLIER
+            : 1;
+        const trackStarMultiplier = this.hasAbility("trackStar") ? TRACK_STAR_SPEED_MULTIPLIER : 1;
+        const sneakMultiplier = isSneaking ? SNEAK_MOVE_SPEED_MULTIPLIER : 1;
+        const speedMultiplier =
+          sprintMultiplier *
+          zombieMultiplier *
+          runBonus *
+          adrenalineMultiplier *
+          trackStarMultiplier *
+          sneakMultiplier;
 
         // Drain stamina while sprinting (unless infinite run is active)
         if (canSprint && !hasInfiniteRun) {
@@ -1496,16 +1678,25 @@ export class Player extends Entity {
       const inputDx = this.serialized.get("inputDx");
       const inputDy = this.serialized.get("inputDy");
       const isMoving = inputDx !== 0 || inputDy !== 0;
+      const isSneaking = this.isSneaking();
       const isSprinting =
-        this.serialized.get("inputSprint") && isMoving && (hasInfiniteRun || stamina > 0);
+        !this.isZombie() &&
+        this.hasAbility("sprint") &&
+        !isSneaking &&
+        this.serialized.get("inputSprint") &&
+        isMoving &&
+        (hasInfiniteRun || stamina > 0);
 
       // Regenerate stamina when not sprinting
       if (!isSprinting) {
         const oldStamina = stamina;
         const recMult = computeStaminaRegenMultiplier(this.serialized.get("statRecovery") ?? 0);
+        const baseRegen =
+          getConfig().player.STAMINA_REGEN_RATE +
+          (this.hasAbility("trackStar") ? TRACK_STAR_STAMINA_REGEN_BONUS : 0);
         const newStamina = Math.min(
           maxStamina,
-          stamina + getConfig().player.STAMINA_REGEN_RATE * recMult * deltaTime,
+          stamina + baseRegen * recMult * deltaTime,
         );
         this.serialized.set("stamina", newStamina);
 
@@ -1561,6 +1752,7 @@ export class Player extends Entity {
       return;
     }
 
+    this.combatRollCooldown.update(deltaTime);
     this.handleAttack(deltaTime);
     this.handleMovement(deltaTime);
     this.handleStamina(deltaTime);
@@ -1618,8 +1810,92 @@ export class Player extends Entity {
     this.serialized.set("inputDy", input.dy ?? 0);
     this.serialized.set("inputFire", input.fire ?? false);
     this.serialized.set("inputSprint", input.sprint ?? false);
+    this.serialized.set("inputSneak", (input as Input & { sneak?: boolean }).sneak ?? false);
     this.serialized.set("inputAimAngle", input.aimAngle ?? NaN); // NaN represents undefined
     this.serialized.set("inputAimDistance", input.aimDistance ?? NaN); // NaN represents undefined
+  }
+
+  requestCombatRoll(aimAngle?: number): boolean {
+    if (
+      this.isDead() ||
+      this.isZombie() ||
+      this.hasExt(Snared) ||
+      !this.hasAbility("combatRoll") ||
+      !this.combatRollCooldown.isReady()
+    ) {
+      return false;
+    }
+
+    const currentStamina = this.serialized.get("stamina");
+    if (currentStamina < COMBAT_ROLL_STAMINA_COST) {
+      return false;
+    }
+
+    let resolvedAngle =
+      typeof aimAngle === "number" && Number.isFinite(aimAngle)
+        ? aimAngle
+        : this.serialized.get("inputAimAngle");
+    if (typeof resolvedAngle !== "number" || !Number.isFinite(resolvedAngle)) {
+      const dx = this.serialized.get("inputDx");
+      const dy = this.serialized.get("inputDy");
+      if (dx !== 0 || dy !== 0) {
+        resolvedAngle = Math.atan2(dy, dx);
+      } else {
+        switch (this.serialized.get("inputFacing")) {
+          case Direction.Left:
+            resolvedAngle = Math.PI;
+            break;
+          case Direction.Up:
+            resolvedAngle = -Math.PI / 2;
+            break;
+          case Direction.Down:
+            resolvedAngle = Math.PI / 2;
+            break;
+          default:
+            resolvedAngle = 0;
+            break;
+        }
+      }
+    }
+
+    this.performCombatRollMovement(resolvedAngle);
+    this.combatRollCooldown.reset();
+    this.serialized.set("stamina", Math.max(0, currentStamina - COMBAT_ROLL_STAMINA_COST));
+    this.serialized.set("inputFacing", angleToDirection(resolvedAngle));
+    return true;
+  }
+
+  private performCombatRollMovement(angle: number): void {
+    const position = this.getPosition();
+    const stepCount = Math.max(1, Math.ceil(COMBAT_ROLL_DISTANCE / COMBAT_ROLL_STEP_SIZE));
+    const stepDistance = COMBAT_ROLL_DISTANCE / stepCount;
+    const stepX = Math.cos(angle) * stepDistance;
+    const stepY = Math.sin(angle) * stepDistance;
+
+    for (let i = 0; i < stepCount; i++) {
+      const previousX = position.x;
+      const previousY = position.y;
+
+      position.x += stepX;
+      this.setPosition(position);
+      if (this.getEntityManager().isColliding(this, PASSTHROUGH_ENTITY_TYPES)) {
+        position.x = previousX;
+        this.setPosition(position);
+      }
+
+      position.y += stepY;
+      this.setPosition(position);
+      if (this.getEntityManager().isColliding(this, PASSTHROUGH_ENTITY_TYPES)) {
+        position.y = previousY;
+        this.setPosition(position);
+      }
+
+      if (position.x === previousX && position.y === previousY) {
+        break;
+      }
+    }
+
+    this.getExt(Movable).setVelocity(PoolManager.getInstance().vector2.claim(0, 0));
   }
 
   selectInventoryItemOnly(index: number): void {
@@ -1743,10 +2019,10 @@ export class Player extends Entity {
   ): void {
     const clampCharacterStat = (value: number): number =>
       Math.min(MAX_POINTS_PER_CHARACTER_STAT, Math.floor(value));
-    const sprint = Math.min(1, Math.floor(abilityAllocations.sprint ?? 0));
-    const regen = Math.min(1, Math.floor(abilityAllocations.regenerate ?? 0));
-    this.serialized.set("abilitySprint", sprint);
-    this.serialized.set("abilityRegenerate", regen);
+    for (const abilityId of ABILITY_IDS) {
+      const field = ABILITY_SERIALIZED_FIELD_BY_ID[abilityId];
+      this.serialized.set(field, Math.min(1, Math.floor(abilityAllocations[abilityId] ?? 0)));
+    }
     if (professionProgress !== undefined) {
       this.serialized.set(
         "professionProgressJson",
@@ -1826,8 +2102,8 @@ export class Player extends Entity {
           this.serialized.set("activeWeaponLoadout", wb.activeWeaponLoadout);
           this.serialized.set("loadoutConsumable4", wb.loadoutConsumable4 ?? 4);
           this.serialized.set("loadoutConsumable5", wb.loadoutConsumable5 ?? 5);
-          this.sanitizeWeaponLoadouts();
         }
+        this.sanitizeWeaponLoadouts();
         this.hydratedFromDb = true;
       }
     }
@@ -1910,10 +2186,7 @@ export class Player extends Entity {
   }
 
   getAbilityAllocationRecord(): Record<string, number> {
-    return {
-      sprint: this.serialized.get("abilitySprint") ? 1 : 0,
-      regenerate: this.serialized.get("abilityRegenerate") ? 1 : 0,
-    };
+    return this.buildAbilityAllocationRecord();
   }
 
   getSkillAllocationRecord(): Record<string, number> {
@@ -1971,14 +2244,16 @@ export class Player extends Entity {
     d.setHealth(Math.min(maxHp, Math.max(0, cur)));
 
     const baseSt = getConfig().player.MAX_STAMINA;
-    const maxSt = computeMaxStamina(baseSt, this.serialized.get("statStamina") ?? 0);
+    const maxSt =
+      computeMaxStamina(baseSt, this.serialized.get("statStamina") ?? 0) +
+      (this.hasAbility("trackStar") ? TRACK_STAR_MAX_STAMINA_BONUS : 0);
     const st = this.serialized.get("stamina");
     this.serialized.set("maxStamina", maxSt);
     this.serialized.set("stamina", Math.min(maxSt, st));
   }
 
   private handleRegenerateHealing(deltaTime: number): void {
-    if ((this.serialized.get("abilityRegenerate") ?? 0) <= 0) {
+    if (!this.hasAbility("regenerate")) {
       return;
     }
     const d = this.getExt(Destructible);
@@ -2009,7 +2284,7 @@ export class Player extends Entity {
     }
   }
 
-  /** Max bag slots for this player (base config + strength). */
+  /** Total storage slots for this player (base config + strength). */
   getMaxInventorySlots(): number {
     return computeMaxInventorySlots(
       getConfig().player.MAX_INVENTORY_SLOTS,

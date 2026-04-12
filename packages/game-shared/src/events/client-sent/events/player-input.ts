@@ -39,6 +39,7 @@ export class PlayerInputEvent implements GameEvent<PlayerInputEventData> {
     if (input.sprint) bitset |= 1 << 1;
     if (hasAimAngle) bitset |= 1 << 2;
     if (hasAimDistance) bitset |= 1 << 3;
+    if (input.sneak) bitset |= 1 << 4;
     writer.writeUInt8(bitset);
 
     // facing: uint8 (Direction enum)
@@ -76,6 +77,7 @@ export class PlayerInputEvent implements GameEvent<PlayerInputEventData> {
     const sprint = (bitset & (1 << 1)) !== 0;
     const hasAimAngle = (bitset & (1 << 2)) !== 0;
     const hasAimDistance = (bitset & (1 << 3)) !== 0;
+    const sneak = (bitset & (1 << 4)) !== 0;
 
     // facing: uint8
     const facing = reader.readUInt8() as Direction;
@@ -108,6 +110,7 @@ export class PlayerInputEvent implements GameEvent<PlayerInputEventData> {
       dy,
       fire,
       sprint,
+      sneak,
       aimAngle,
       aimDistance,
     };

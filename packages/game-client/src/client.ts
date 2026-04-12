@@ -199,7 +199,7 @@ export class GameClient {
       getMaxInventorySlots: () => {
         const player = getPlayer();
         return player instanceof PlayerClient
-          ? player.getMaxInventorySlots()
+          ? player.getAccessibleInventorySlotCount()
           : getConfig().player.MAX_INVENTORY_SLOTS;
       },
       isMerchantPanelOpen: () => this.merchantBuyPanel.isVisible(),
@@ -484,6 +484,25 @@ export class GameClient {
       },
       onReloadWeapon: () => {
         this.socketManager?.sendReloadWeapon();
+      },
+      onRequestCombatRoll: (fallbackFacing) => {
+        const player = getPlayer();
+        if (!player || !player.hasExt(ClientPositionable)) {
+          return;
+        }
+        const playerPos = player.getExt(ClientPositionable).getCenterPosition();
+        const cameraPos = this.cameraManager.getPosition();
+        const cameraScale = this.cameraManager.getScale();
+        const aimInfo = this.inputManager.calculateAimInfo(
+          playerPos,
+          cameraPos,
+          this.ctx.canvas.width,
+          this.ctx.canvas.height,
+          cameraScale,
+        );
+        this.socketManager?.sendRequestCombatRoll(
+          aimInfo?.angle ?? this.directionToAngle(fallbackFacing),
+        );
       },
     });
 
@@ -1352,6 +1371,20 @@ export class GameClient {
     const worldY = (canvasY - centerY) / cameraScale + cameraPos.y;
 
     return PoolManager.getInstance().vector2.claim(worldX, worldY);
+  }
+
+  private directionToAngle(direction: Direction): number {
+    switch (direction) {
+      case Direction.Up:
+        return -Math.PI / 2;
+      case Direction.Down:
+        return Math.PI / 2;
+      case Direction.Left:
+        return Math.PI;
+      case Direction.Right:
+      default:
+        return 0;
+    }
   }
 
   /**

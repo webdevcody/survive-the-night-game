@@ -35,7 +35,7 @@ class Carryable extends ExtensionBase {
         };
     }
     pickup(entityId, options) {
-        var _a, _b;
+        var _a, _b, _c;
         const itemType = this.serialized.get("itemType");
         // Prevent crash if itemType is null (entity may be in invalid state)
         if (!itemType) {
@@ -72,9 +72,10 @@ class Carryable extends ExtensionBase {
         if (inventory.isFull()) {
             return false;
         }
+        const pickupState = (_c = options === null || options === void 0 ? void 0 : options.state) !== null && _c !== void 0 ? _c : this.getItemState();
         inventory.addItem({
             itemType: itemType,
-            state: options === null || options === void 0 ? void 0 : options.state,
+            state: pickupState,
         });
         this.self.getEntityManager().markEntityForRemoval(this.self);
         this.self

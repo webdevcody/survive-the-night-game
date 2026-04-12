@@ -9,6 +9,27 @@ import {
 } from "./rpg-hud-theme";
 import { calculateHudScale } from "@/util/hud-scale";
 
+/** Red circle with white "!" — `cx`,`cy` is the circle center. */
+export function renderUnspentProgressionBadge(
+  ctx: CanvasRenderingContext2D,
+  cx: number,
+  cy: number,
+  radiusPx: number,
+): void {
+  const r = Math.max(3, radiusPx);
+  ctx.save();
+  ctx.beginPath();
+  ctx.arc(cx, cy, r, 0, Math.PI * 2);
+  ctx.fillStyle = "#d32f2f";
+  ctx.fill();
+  ctx.fillStyle = "#ffffff";
+  ctx.font = `800 ${Math.max(8, Math.round(r * 1.35))}px system-ui, "Segoe UI", sans-serif`;
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  ctx.fillText("!", cx, cy + Math.max(0.5, Math.round(0.06 * r)));
+  ctx.restore();
+}
+
 /** Vertical inventory panel shortcuts (emoji icons); order is top → bottom. */
 export const MINIMAP_INVENTORY_MENU_ENTRIES: { tab: InventoryUiTab; emoji: string }[] = [
   { tab: "inventory", emoji: "\u{1F392}" },
@@ -27,7 +48,12 @@ export type MinimapInventoryMenuLayout = {
 export function renderMinimapInventoryMenu(
   ctx: CanvasRenderingContext2D,
   layout: MinimapInventoryMenuLayout,
-  opts: { panelOpen: boolean; activeTab: InventoryUiTab },
+  opts: {
+    panelOpen: boolean;
+    activeTab: InventoryUiTab;
+    showCharacterUnspentBadge?: boolean;
+    showAbilitiesUnspentBadge?: boolean;
+  },
 ): void {
   const hudScale = calculateHudScale(ctx.canvas.width, ctx.canvas.height);
   const lineW = Math.max(2, Math.round(2 * hudScale));
@@ -67,6 +93,16 @@ export function renderMinimapInventoryMenu(
     ctx.fillText(hint, r.x + r.w / 2, r.y + r.h - Math.max(2, Math.round(3 * hudScale)));
     ctx.textAlign = "left";
     ctx.textBaseline = "alphabetic";
+
+    const badgeR = Math.max(5, Math.round(4.5 * hudScale));
+    const badgePad = Math.max(2, Math.round(2 * hudScale));
+    const badgeCx = r.x + r.w - badgePad - badgeR;
+    const badgeCy = r.y + badgePad + badgeR;
+    if (b.tab === "character" && opts.showCharacterUnspentBadge) {
+      renderUnspentProgressionBadge(ctx, badgeCx, badgeCy, badgeR);
+    } else if (b.tab === "abilities" && opts.showAbilitiesUnspentBadge) {
+      renderUnspentProgressionBadge(ctx, badgeCx, badgeCy, badgeR);
+    }
   }
 
   ctx.restore();

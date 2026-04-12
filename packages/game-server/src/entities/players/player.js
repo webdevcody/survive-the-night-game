@@ -6,32 +6,36 @@ import Groupable from "@/extensions/groupable";
 import Illuminated from "@/extensions/illuminated";
 import Interactive from "@/extensions/interactive";
 import Inventory from "@/extensions/inventory";
+import Bank from "@/extensions/bank";
 import Movable from "@/extensions/movable";
 import Positionable from "@/extensions/positionable";
 import Updatable from "@/extensions/updatable";
 import { Entities } from "@/constants";
 import { Entity } from "@/entities/entity";
 import { coercePlayerInventoryPersistedPayload, } from "@shared/util/persisted-inventory-payload";
+import { coercePlayerBankPersistedPayload, } from "@shared/util/persisted-bank-payload";
 import { normalizeVector, distance } from "@shared/util/physics";
 import { Cooldown } from "@/entities/util/cooldown";
 import { weaponHandlerRegistry } from "@/entities/weapons/weapon-handler-registry";
 import { PlayerDeathEvent } from "../../../../game-shared/src/events/server-sent/events/player-death-event";
 import { CraftEvent } from "../../../../game-shared/src/events/server-sent/events/craft-event";
+import { PlayerLevelUpEvent } from "../../../../game-shared/src/events/server-sent/events/player-level-up-event";
+import { GunEmptyEvent } from "../../../../game-shared/src/events/server-sent/events/gun-empty-event";
 import { getConfig } from "@shared/config";
 import PoolManager from "@shared/util/pool-manager";
 import { SKIN_TYPES, PLAYER_COLORS } from "@shared/commands/commands";
 import { itemRegistry } from "@shared/entities";
 import { Blood } from "@/entities/effects/blood";
 import { SerializableFields } from "@/util/serializable-fields";
-import { Direction } from "@/util/direction";
-import { performMeleeAttack } from "@/entities/weapons/helpers";
+import { Direction, angleToDirection } from "@/util/direction";
+import { countAmmoInInventory, consumeAmmoCount, performMeleeAttack, } from "@/entities/weapons/helpers";
 import { Weapon } from "../weapons/weapon";
 import InfiniteRun from "@/extensions/infinite-run";
 import Snared from "@/extensions/snared";
 import { shouldAutoPickup, attemptAutoPickup } from "@/util/auto-pickup";
 import { infectionConfig } from "@shared/config/infection-config";
-import { CHARACTER_STAT_MODIFIERS, computeEncumbranceStaminaDrainMultiplier, computeInventoryWeightKg, computeMaxInventorySlots, computeMaxPlayerHealth, computeMaxStamina, computeEvadeChance, computePassiveHpRegenIntervalSeconds, computeStaminaRegenMultiplier, } from "@shared/util/character-stats";
-import { REGENERATE_HEAL_PER_SECOND } from "@shared/util/ability-tree";
+import { CHARACTER_STAT_MODIFIERS, MAX_POINTS_PER_CHARACTER_STAT, computeEncumbranceStaminaDrainMultiplier, computeInventoryWeightKg, computeMaxInventorySlots, computeMaxPlayerHealth, computeMaxStamina, computeEvadeChance, computePassiveHpRegenIntervalSeconds, computeStaminaRegenMultiplier, } from "@shared/util/character-stats";
+import { ABILITY_IDS, ABILITY_SERIALIZED_FIELD_BY_ID, emptyAbilityAllocations, REGENERATE_HEAL_PER_SECOND, } from "@shared/util/ability-tree";
 import { getZombieTypesSet } from "@shared/constants";
 import { UserSessionCache } from "@/services/user-session-cache";
 import { GAME_SERVER_API_KEY, WEBSITE_API_URL } from "@/config/env";
@@ -44,6 +48,18 @@ import { FISTS_INVENTORY_SENTINEL } from "@shared/constants/inventory-sentinel";
 import { emptyPlayerQuestState, parsePlayerQuestState, stringifyPlayerQuestState, } from "@shared/quests/player-quest-state";
 import { initPlayerQuestState, tickWaypointSteps } from "@/quests/quest-runtime";
 import { getRecipeById, getScrapOutputsForItem } from "@shared/util/recipes";
+import { getLevelFromTotalExperience } from "@shared/util/experience-level";
+import { sendPlayerHudMessage } from "@/util/send-player-hud-message";
+import { getWeaponAmmoType, getWeaponMagazineSize, getWeaponReloadDuration, } from "@shared/util/inventory";
+import { ADRENALINE_SPEED_MULTIPLIER, AIM_FOR_THE_KNEE_CHANCE, AIM_FOR_THE_KNEE_DURATION_SECONDS, AIM_FOR_THE_KNEE_SPEED_MULTIPLIER, BRAWLER_DAMAGE_BONUS, BRAWLER_KNOCKBACK_BONUS, COMBAT_ROLL_COOLDOWN_SECONDS, COMBAT_ROLL_DISTANCE, COMBAT_ROLL_STAMINA_COST, COMBAT_ROLL_STEP_SIZE, COMBAT_SHIELD_DAMAGE_REDUCTION, COUNTER_ATTACK_CHANCE, COUNTER_ATTACK_DAMAGE, HEAD_SHOT_BONUS_DAMAGE, HEAD_SHOT_CHANCE, TRACK_STAR_MAX_STAMINA_BONUS, TRACK_STAR_SPEED_MULTIPLIER, TRACK_STAR_STAMINA_REGEN_BONUS, getAccessibleInventorySlotCount, getUnlockedVisibleBagSlots, getZombieDetectionRadiusMultiplier as getPlayerZombieDetectionRadiusMultiplier, isAdrenalineActive, } from "@shared/util/ability-effects";
+import { BaseEnemy } from "@/entities/enemies/base-enemy";
+const PLAYER_LOADOUT_KEYS = [
+    "weaponLoadoutPrimary",
+    "weaponLoadoutSecondary",
+    "weaponLoadoutMelee",
+    "loadoutConsumable4",
+    "loadoutConsumable5",
+];
 /**
  * Cached list of entity types that players can pass through (collision passthrough).
  * Includes player entity and all items configured with isPassthrough: true.
@@ -64,10 +80,15 @@ export class Player extends Entity {
         super(gameManagers, Entities.PLAYER);
         // Internal state
         this.fireCooldown = new Cooldown(0.4, true);
+        this.reloadCooldown = null;
         this.interactCooldown = new Cooldown(Player.INTERACT_COOLDOWN, true);
         this.zombieSpawnCooldown = new Cooldown(infectionConfig.ZOMBIE_SPAWN_COOLDOWN_MS / 1000, true); // Convert ms to seconds
         this.lastWeaponType = null;
+        this.reloadDurationSeconds = 0;
+        this.reloadBagIndex1Based = null;
+        this.reloadWeaponType = null;
         this.exhaustionTimer = 0; // Time remaining before stamina can regenerate
+        this.combatRollCooldown = new Cooldown(COMBAT_ROLL_COOLDOWN_SECONDS, true);
         // Item pickup hold tracking
         this.pickupHoldTimer = 0; // Time F has been held for pickup
         this.targetPickupEntity = null; // Entity ID being targeted for pickup
@@ -103,6 +124,8 @@ export class Player extends Entity {
             aiState: "", // Current AI state (for debugging)
             isZombie: false, // Whether this player has become a zombie (Battle Royale)
             zombieSpawnCooldownProgress: 1, // 0-1 progress for zombie spawn ability (1 = ready)
+            isReloading: false,
+            reloadProgress: 0,
             // Input fields stored individually for efficient serialization
             inputFacing: Direction.Right,
             inputDx: 0,
@@ -110,10 +133,25 @@ export class Player extends Entity {
             inputFire: false,
             inputInventoryItem: 1, // Still tracked for consume/drop when itemType is null
             inputSprint: false,
+            inputSneak: false,
             inputAimAngle: NaN, // NaN represents undefined for optional field
             inputAimDistance: NaN, // NaN represents undefined for optional field
             abilitySprint: 0,
             abilityRegenerate: 0,
+            abilityAdrenaline: 0,
+            abilityStealth: 0,
+            abilityPackRat: 0,
+            abilityHercules: 0,
+            abilityCombatShield: 0,
+            abilityTrackStar: 0,
+            abilityCombatRoll: 0,
+            abilityBrawler: 0,
+            abilityHeadShot: 0,
+            abilityAimForTheKnee: 0,
+            abilityDetox: 0,
+            abilityLockPicking: 0,
+            abilityCounterAttack: 0,
+            abilitySneak: 0,
             professionProgressJson: JSON.stringify(emptyProfessionProgress()),
             statHealth: 0,
             statEvade: 0,
@@ -143,8 +181,23 @@ export class Player extends Entity {
             inputAimAngle: { numberType: "float64", optional: true },
             inputAimDistance: { numberType: "float64", optional: true },
             deathTime: { numberType: "float64" },
+            reloadProgress: { numberType: "float64" },
             abilitySprint: { numberType: "uint8" },
             abilityRegenerate: { numberType: "uint8" },
+            abilityAdrenaline: { numberType: "uint8" },
+            abilityStealth: { numberType: "uint8" },
+            abilityPackRat: { numberType: "uint8" },
+            abilityHercules: { numberType: "uint8" },
+            abilityCombatShield: { numberType: "uint8" },
+            abilityTrackStar: { numberType: "uint8" },
+            abilityCombatRoll: { numberType: "uint8" },
+            abilityBrawler: { numberType: "uint8" },
+            abilityHeadShot: { numberType: "uint8" },
+            abilityAimForTheKnee: { numberType: "uint8" },
+            abilityDetox: { numberType: "uint8" },
+            abilityLockPicking: { numberType: "uint8" },
+            abilityCounterAttack: { numberType: "uint8" },
+            abilitySneak: { numberType: "uint8" },
             statHealth: { numberType: "uint8" },
             statEvade: { numberType: "uint8" },
             statAccuracy: { numberType: "uint8" },
@@ -166,6 +219,7 @@ export class Player extends Entity {
             // Note: inputSequenceNumber is not in SerializableFields, so no metadata needed
         });
         this.addExtension(new Inventory(this, gameManagers.getBroadcaster()));
+        this.addExtension(new Bank(this));
         const poolManager = PoolManager.getInstance();
         const collidableSize = poolManager.vector2.claim(Player.PLAYER_WIDTH - 8, Player.PLAYER_WIDTH - 8);
         const collidableOffset = poolManager.vector2.claim(4, 4);
@@ -177,16 +231,29 @@ export class Player extends Entity {
             .setMaxHealth(getConfig().player.MAX_PLAYER_HEALTH)
             .onBeforeDamage((damage, attackerId) => {
             var _a;
+            let adjustedDamage = damage;
+            let zombieMeleeAttacker = null;
             if (attackerId !== undefined) {
                 const attacker = this.getEntityManager().getEntityById(attackerId);
                 if (attacker && getZombieTypesSet().has(attacker.getType())) {
+                    zombieMeleeAttacker = attacker;
                     const ev = (_a = this.serialized.get("statEvade")) !== null && _a !== void 0 ? _a : 0;
                     if (Math.random() < computeEvadeChance(ev)) {
                         return 0;
                     }
                 }
             }
-            return damage;
+            if (this.isCombatShieldEquipped()) {
+                adjustedDamage = Math.max(0, adjustedDamage - COMBAT_SHIELD_DAMAGE_REDUCTION);
+            }
+            if (adjustedDamage > 0 &&
+                zombieMeleeAttacker &&
+                this.hasAbility("counterAttack") &&
+                Math.random() < COUNTER_ATTACK_CHANCE &&
+                zombieMeleeAttacker.hasExt(Destructible)) {
+                zombieMeleeAttacker.getExt(Destructible).damage(COUNTER_ATTACK_DAMAGE, this.getId());
+            }
+            return adjustedDamage;
         })
             .onDamaged(() => {
             // Broadcast PlayerHurtEvent when player takes damage (e.g., from zombie attacks)
@@ -243,6 +310,7 @@ export class Player extends Entity {
     }
     onDeath() {
         this.setIsCrafting(false);
+        this.cancelReload();
         // In Battle Royale mode, drop all inventory items on death
         const strategy = this.getGameManagers().getGameServer().getGameLoop().getGameModeStrategy();
         if (!strategy.getConfig().allowRespawn) {
@@ -415,21 +483,112 @@ export class Player extends Entity {
     getInventory() {
         return this.getExt(Inventory).getItems();
     }
+    getAbilityRank(abilityId) {
+        var _a;
+        return Math.max(0, Number((_a = this.serialized.get(ABILITY_SERIALIZED_FIELD_BY_ID[abilityId])) !== null && _a !== void 0 ? _a : 0));
+    }
+    hasAbility(abilityId) {
+        return this.getAbilityRank(abilityId) > 0;
+    }
+    buildAbilityAllocationRecord() {
+        const allocations = emptyAbilityAllocations();
+        for (const abilityId of ABILITY_IDS) {
+            allocations[abilityId] = this.getAbilityRank(abilityId);
+        }
+        return allocations;
+    }
+    isSneaking() {
+        return !this.isZombie() && this.hasAbility("sneak") && Boolean(this.serialized.get("inputSneak"));
+    }
+    getUnlockedVisibleBagSlotCount() {
+        return getUnlockedVisibleBagSlots(this.getMaxInventorySlots(), this.buildAbilityAllocationRecord());
+    }
+    getAccessibleInventorySlotCount() {
+        return getAccessibleInventorySlotCount(this.getMaxInventorySlots(), this.buildAbilityAllocationRecord());
+    }
+    isBagSlotAccessible1Based(bagIndex1Based) {
+        return bagIndex1Based >= 1 && bagIndex1Based <= this.getAccessibleInventorySlotCount();
+    }
+    getPreferredLoadoutBackingSlots1Based() {
+        const accessibleMax = this.getAccessibleInventorySlotCount();
+        return PLAYER_LOADOUT_KEYS.map((_, index) => Math.max(1, accessibleMax - index));
+    }
+    swapTrackedLoadoutBagSlots(from1Based, to1Based) {
+        if (from1Based === to1Based) {
+            return;
+        }
+        const invExt = this.getExt(Inventory);
+        invExt.swapBagSlotsDeferWeaponResync(from1Based - 1, to1Based - 1);
+        for (const key of PLAYER_LOADOUT_KEYS) {
+            const current = this.serialized.get(key);
+            if (current === from1Based) {
+                this.serialized.set(key, to1Based);
+            }
+            else if (current === to1Based) {
+                this.serialized.set(key, from1Based);
+            }
+        }
+    }
+    rehomeLoadoutBackedItemsWithinAccessibleRange() {
+        var _a;
+        const inventory = this.getInventory();
+        const totalMax = this.getMaxInventorySlots();
+        const preferredSlots = this.getPreferredLoadoutBackingSlots1Based();
+        for (let i = 0; i < PLAYER_LOADOUT_KEYS.length; i++) {
+            const key = PLAYER_LOADOUT_KEYS[i];
+            const current = this.serialized.get(key);
+            if (current < 1 || current > totalMax) {
+                continue;
+            }
+            if (inventory[current - 1] == null) {
+                continue;
+            }
+            const desired = (_a = preferredSlots[i]) !== null && _a !== void 0 ? _a : current;
+            if (desired < 1 || desired > totalMax || current === desired) {
+                continue;
+            }
+            this.swapTrackedLoadoutBagSlots(current, desired);
+        }
+    }
+    getZombieDetectionRadiusMultiplier() {
+        return getPlayerZombieDetectionRadiusMultiplier(this.buildAbilityAllocationRecord(), this.isSneaking());
+    }
+    isCombatShieldEquipped() {
+        var _a;
+        return (this.hasAbility("combatShield") &&
+            ((_a = this.getExt(Inventory).getEquipment().hands) === null || _a === void 0 ? void 0 : _a.itemType) === "combat_shield");
+    }
+    canEquipItemToSlot(itemType, equipSlot) {
+        if (equipSlot !== "hands" || itemType !== "combat_shield") {
+            return true;
+        }
+        return this.hasAbility("combatShield");
+    }
+    canOpenLockedCrates() {
+        return this.hasAbility("lockPicking");
+    }
+    getModifiedRangedDamage(baseDamage) {
+        let damage = baseDamage;
+        if (this.hasAbility("headShot") && Math.random() < HEAD_SHOT_CHANCE) {
+            damage += HEAD_SHOT_BONUS_DAMAGE;
+        }
+        return damage;
+    }
+    applyRangedHitEffects(target) {
+        if (this.hasAbility("aimForTheKnee") &&
+            target instanceof BaseEnemy &&
+            Math.random() < AIM_FOR_THE_KNEE_CHANCE) {
+            target.applyMaim(AIM_FOR_THE_KNEE_DURATION_SECONDS, AIM_FOR_THE_KNEE_SPEED_MULTIPLIER);
+        }
+    }
     findEmptyVisibleBagIndex(preferEnd, excludedBagIndices = [], excludedLoadoutKeys = []) {
-        const max = this.getMaxInventorySlots();
+        const max = this.getAccessibleInventorySlotCount();
         const inv = this.getInventory();
         const excludedBags = new Set(excludedBagIndices);
         const excludedKeys = new Set(excludedLoadoutKeys);
-        const loadoutKeys = [
-            "weaponLoadoutPrimary",
-            "weaponLoadoutSecondary",
-            "weaponLoadoutMelee",
-            "loadoutConsumable4",
-            "loadoutConsumable5",
-        ];
         const isVisibleBagIndex = (bagIdx0) => {
             const bagIndex1Based = bagIdx0 + 1;
-            for (const key of loadoutKeys) {
+            for (const key of PLAYER_LOADOUT_KEYS) {
                 if (excludedKeys.has(key)) {
                     continue;
                 }
@@ -457,32 +616,7 @@ export class Player extends Entity {
         return null;
     }
     compactLoadoutBackedItemsToBagEnd() {
-        const max = this.getMaxInventorySlots();
-        const invExt = this.getExt(Inventory);
-        const loadoutKeys = [
-            "weaponLoadoutPrimary",
-            "weaponLoadoutSecondary",
-            "weaponLoadoutMelee",
-            "loadoutConsumable4",
-            "loadoutConsumable5",
-        ];
-        for (const key of loadoutKeys) {
-            const bagIndex1Based = this.serialized.get(key);
-            if (bagIndex1Based < 1 || bagIndex1Based > max) {
-                continue;
-            }
-            const bagIdx0 = bagIndex1Based - 1;
-            const inv = this.getInventory();
-            if (inv[bagIdx0] == null) {
-                continue;
-            }
-            const hiddenIdx0 = this.findEmptyVisibleBagIndex(true, [bagIdx0], [key]);
-            if (hiddenIdx0 === null || hiddenIdx0 <= bagIdx0) {
-                continue;
-            }
-            invExt.swapBagSlotsDeferWeaponResync(bagIdx0, hiddenIdx0);
-            this.serialized.set(key, hiddenIdx0 + 1);
-        }
+        this.rehomeLoadoutBackedItemsWithinAccessibleRange();
     }
     clearInventory() {
         this.getExt(Inventory).clear();
@@ -493,20 +627,152 @@ export class Player extends Entity {
             return { kind: "fists" };
         return { kind: "weapon", item: resolved.item, bagIndex1Based: resolved.bagIndex1Based };
     }
+    getReloadContextForBagSlot(bagIndex1Based, expectedWeaponType) {
+        var _a;
+        const inventory = this.getExt(Inventory);
+        const maxSlots = inventory.getMaxSlots();
+        if (bagIndex1Based < 1 || bagIndex1Based > maxSlots) {
+            return null;
+        }
+        const item = (_a = inventory.getItems()[bagIndex1Based - 1]) !== null && _a !== void 0 ? _a : null;
+        if (!item) {
+            return null;
+        }
+        if (expectedWeaponType && item.itemType !== expectedWeaponType) {
+            return null;
+        }
+        const ammoType = getWeaponAmmoType(item.itemType);
+        const magazineSize = getWeaponMagazineSize(item.itemType);
+        const reloadDuration = getWeaponReloadDuration(item.itemType);
+        if (!ammoType || magazineSize == null || reloadDuration == null) {
+            return null;
+        }
+        return {
+            item,
+            bagIndex1Based,
+            ammoType,
+            magazineSize,
+            reloadDuration,
+        };
+    }
+    getTrackedReloadContext() {
+        if (this.reloadBagIndex1Based == null || this.reloadWeaponType == null) {
+            return null;
+        }
+        return this.getReloadContextForBagSlot(this.reloadBagIndex1Based, this.reloadWeaponType);
+    }
+    getWeaponLoadedAmmo(item, magazineSize) {
+        var _a;
+        const raw = (_a = item.state) === null || _a === void 0 ? void 0 : _a.loadedAmmo;
+        if (typeof raw !== "number" || !Number.isFinite(raw)) {
+            return magazineSize;
+        }
+        return Math.max(0, Math.min(magazineSize, Math.floor(raw)));
+    }
+    setWeaponLoadedAmmo(context, loadedAmmo) {
+        var _a;
+        this.getExt(Inventory).updateItemState(context.bagIndex1Based - 1, Object.assign(Object.assign({}, ((_a = context.item.state) !== null && _a !== void 0 ? _a : {})), { loadedAmmo: Math.max(0, Math.min(context.magazineSize, Math.floor(loadedAmmo))) }));
+    }
+    getWeaponReserveAmmo(context) {
+        return countAmmoInInventory(this.getExt(Inventory), context.ammoType);
+    }
+    canReload(context) {
+        const loadedAmmo = this.getWeaponLoadedAmmo(context.item, context.magazineSize);
+        if (loadedAmmo >= context.magazineSize) {
+            return false;
+        }
+        return this.getWeaponReserveAmmo(context) > 0;
+    }
+    cancelReload() {
+        this.reloadCooldown = null;
+        this.reloadDurationSeconds = 0;
+        this.reloadBagIndex1Based = null;
+        this.reloadWeaponType = null;
+        this.serialized.set("isReloading", false);
+        this.serialized.set("reloadProgress", 0);
+    }
+    beginReload(context) {
+        if (!this.canReload(context)) {
+            return false;
+        }
+        if (this.serialized.get("isReloading") &&
+            this.reloadBagIndex1Based === context.bagIndex1Based &&
+            this.reloadWeaponType === context.item.itemType) {
+            return false;
+        }
+        if (this.serialized.get("isReloading")) {
+            this.cancelReload();
+        }
+        const reloadDurationSeconds = context.reloadDuration * this.getReloadDurationMultiplier();
+        this.reloadCooldown = new Cooldown(reloadDurationSeconds);
+        this.reloadDurationSeconds = reloadDurationSeconds;
+        this.reloadBagIndex1Based = context.bagIndex1Based;
+        this.reloadWeaponType = context.item.itemType;
+        this.serialized.set("isReloading", true);
+        this.serialized.set("reloadProgress", 0);
+        return true;
+    }
+    requestReload() {
+        if (this.isDead() || this.isZombie()) {
+            return false;
+        }
+        const activeItem = this.activeItem;
+        const currentSlot = this.serialized.get("inputInventoryItem");
+        if (!activeItem || currentSlot === FISTS_INVENTORY_SENTINEL) {
+            return false;
+        }
+        const context = this.getReloadContextForBagSlot(currentSlot, activeItem.itemType);
+        if (!context) {
+            return false;
+        }
+        return this.beginReload(context);
+    }
+    updateReload(deltaTime) {
+        if (!this.serialized.get("isReloading")) {
+            return;
+        }
+        const context = this.getTrackedReloadContext();
+        const currentSlot = this.serialized.get("inputInventoryItem");
+        if (!context || currentSlot !== context.bagIndex1Based || !this.reloadCooldown) {
+            this.cancelReload();
+            return;
+        }
+        this.reloadCooldown.update(deltaTime);
+        const totalDuration = Math.max(0.0001, this.reloadDurationSeconds);
+        const progress = Math.max(0, Math.min(1, 1 - this.reloadCooldown.getRemainingTime() / totalDuration));
+        this.serialized.set("reloadProgress", progress);
+        if (!this.reloadCooldown.isReady()) {
+            return;
+        }
+        const loadedAmmo = this.getWeaponLoadedAmmo(context.item, context.magazineSize);
+        const missingAmmo = context.magazineSize - loadedAmmo;
+        if (missingAmmo > 0) {
+            const consumed = consumeAmmoCount(this.getExt(Inventory), context.ammoType, missingAmmo);
+            if (consumed > 0) {
+                this.setWeaponLoadedAmmo(context, loadedAmmo + consumed);
+            }
+        }
+        this.cancelReload();
+    }
+    ensureFireCooldown(weaponType, cooldownSeconds) {
+        if (this.lastWeaponType === weaponType) {
+            return;
+        }
+        this.fireCooldown = new Cooldown(cooldownSeconds, true);
+        this.lastWeaponType = weaponType;
+    }
     performFistAttack() {
-        var _a, _b;
+        var _a, _b, _c;
         const weaponKey = "fists";
         const cfg = weaponRegistry.get(weaponKey);
         const cooldown = (_a = cfg === null || cfg === void 0 ? void 0 : cfg.stats.cooldown) !== null && _a !== void 0 ? _a : 1.7;
-        if (this.fireCooldown === null || this.lastWeaponType !== weaponKey) {
-            this.fireCooldown = new Cooldown(cooldown * this.getReloadCooldownMultiplier(), true);
-            this.lastWeaponType = weaponKey;
-        }
+        this.ensureFireCooldown(weaponKey, cooldown);
         if (!this.fireCooldown.isReady())
             return;
         this.fireCooldown.reset();
         const strategy = this.getGameManagers().getGameServer().getGameLoop().getGameModeStrategy();
         const aimAngle = this.serialized.get("inputAimAngle");
+        const hasBrawler = this.hasAbility("brawler");
         performMeleeAttack({
             entityManager: this.getEntityManager(),
             gameManagers: this.getGameManagers(),
@@ -515,8 +781,8 @@ export class Player extends Entity {
             facing: this.serialized.get("inputFacing"),
             aimAngle: isNaN(aimAngle) ? undefined : aimAngle,
             attackRange: getConfig().combat.FIST_ATTACK_RANGE,
-            damage: (_b = cfg === null || cfg === void 0 ? void 0 : cfg.stats.damage) !== null && _b !== void 0 ? _b : 1,
-            knockbackDistance: cfg === null || cfg === void 0 ? void 0 : cfg.stats.pushDistance,
+            damage: ((_b = cfg === null || cfg === void 0 ? void 0 : cfg.stats.damage) !== null && _b !== void 0 ? _b : 1) + (hasBrawler ? BRAWLER_DAMAGE_BONUS : 0),
+            knockbackDistance: ((_c = cfg === null || cfg === void 0 ? void 0 : cfg.stats.pushDistance) !== null && _c !== void 0 ? _c : 0) + (hasBrawler ? BRAWLER_KNOCKBACK_BONUS : 0),
             weaponKey,
             targetFilter: (entity, attackerId) => {
                 return strategy.shouldDamageTarget(this, entity, attackerId);
@@ -540,7 +806,7 @@ export class Player extends Entity {
      * When clearing, move the hidden backing weapon to the earliest empty visible bag cell if one exists.
      */
     assignWeaponLoadoutSlot(slot, bagIndex) {
-        const max = this.getMaxInventorySlots();
+        const max = this.getAccessibleInventorySlotCount();
         const slotClamped = Math.max(0, Math.min(4, Math.floor(slot)));
         const bagIndexClamped = Math.max(0, Math.min(max, Math.floor(bagIndex)));
         if (slotClamped >= 3) {
@@ -592,7 +858,7 @@ export class Player extends Entity {
         this.sanitizeWeaponLoadouts();
     }
     assignConsumableLoadoutSlot(slot, bagIndex) {
-        const max = this.getMaxInventorySlots();
+        const max = this.getAccessibleInventorySlotCount();
         const bagIndexClamped = Math.max(0, Math.min(max, Math.floor(bagIndex)));
         const key = slot === 3 ? "loadoutConsumable4" : "loadoutConsumable5";
         const invExt = this.getExt(Inventory);
@@ -828,6 +1094,9 @@ export class Player extends Entity {
     }
     handleAttack(deltaTime) {
         this.fireCooldown.update(deltaTime);
+        this.updateReload(deltaTime);
+        if (this.serialized.get("isReloading"))
+            return;
         if (!this.serialized.get("inputFire"))
             return;
         // Zombie players can only use claw attacks
@@ -849,10 +1118,7 @@ export class Player extends Entity {
                 const itemType = activeItem.itemType;
                 // Reset cooldown when switching to a consumable from a different item type
                 // This ensures weapon cooldowns don't block consumable use
-                if (this.fireCooldown === null || this.lastWeaponType !== itemType) {
-                    this.fireCooldown = new Cooldown(0.5 * this.getReloadCooldownMultiplier(), true);
-                    this.lastWeaponType = itemType;
-                }
+                this.ensureFireCooldown(itemType, 0.5);
                 // Add a small cooldown to prevent rapid consumption
                 if (this.fireCooldown.isReady()) {
                     this.fireCooldown.reset();
@@ -887,10 +1153,7 @@ export class Player extends Entity {
         const weaponType = activeWeapon.itemType;
         const customHandler = weaponHandlerRegistry.get(weaponType);
         if (customHandler) {
-            if (this.fireCooldown === null || this.lastWeaponType !== weaponType) {
-                this.fireCooldown = new Cooldown(customHandler.cooldown * this.getReloadCooldownMultiplier(), true);
-                this.lastWeaponType = weaponType;
-            }
+            this.ensureFireCooldown(weaponType, customHandler.cooldown);
             if (this.fireCooldown.isReady()) {
                 this.fireCooldown.reset();
                 customHandler.handler(weaponEntity, this.getId(), this.getCenterPosition().clone(), this.serialized.get("inputFacing"), this.serialized.get("inputAimAngle"), inventoryIndex);
@@ -901,14 +1164,40 @@ export class Player extends Entity {
         if (!(weaponEntity instanceof Weapon)) {
             return;
         }
-        if (this.fireCooldown === null || this.lastWeaponType !== weaponType) {
-            this.fireCooldown = new Cooldown(weaponEntity.getCooldown() * this.getReloadCooldownMultiplier(), true);
-            this.lastWeaponType = weaponType;
+        this.ensureFireCooldown(weaponType, weaponEntity.getCooldown());
+        const reloadContext = this.getReloadContextForBagSlot(resolved.bagIndex1Based, weaponType);
+        if (reloadContext) {
+            const loadedAmmo = this.getWeaponLoadedAmmo(reloadContext.item, reloadContext.magazineSize);
+            if (loadedAmmo <= 0) {
+                if (this.beginReload(reloadContext)) {
+                    return;
+                }
+                if (!this.fireCooldown.isReady()) {
+                    return;
+                }
+                this.fireCooldown.reset();
+                this.broadcaster.broadcastEvent(new GunEmptyEvent(this.getId()));
+                return;
+            }
         }
-        if (this.fireCooldown.isReady()) {
-            this.fireCooldown.reset();
-            weaponEntity.attack(this.getId(), this.getCenterPosition().clone(), this.serialized.get("inputFacing"), this.serialized.get("inputAimAngle"), this.serialized.get("inputAimDistance"));
-            weaponEntity.clearDirtyFlags();
+        if (!this.fireCooldown.isReady()) {
+            return;
+        }
+        this.fireCooldown.reset();
+        if (reloadContext) {
+            const loadedAmmo = this.getWeaponLoadedAmmo(reloadContext.item, reloadContext.magazineSize);
+            this.setWeaponLoadedAmmo(reloadContext, loadedAmmo - 1);
+        }
+        weaponEntity.attack(this.getId(), this.getCenterPosition().clone(), this.serialized.get("inputFacing"), this.serialized.get("inputAimAngle"), this.serialized.get("inputAimDistance"));
+        weaponEntity.clearDirtyFlags();
+        if (reloadContext) {
+            const updatedContext = this.getReloadContextForBagSlot(reloadContext.bagIndex1Based, reloadContext.item.itemType);
+            if (updatedContext) {
+                const remainingAmmo = this.getWeaponLoadedAmmo(updatedContext.item, updatedContext.magazineSize);
+                if (remainingAmmo <= 0) {
+                    this.beginReload(updatedContext);
+                }
+            }
         }
     }
     handleZombieClawAttack() {
@@ -949,7 +1238,7 @@ export class Player extends Entity {
         });
     }
     handleMovement(deltaTime) {
-        var _a, _b;
+        var _a;
         const movable = this.getExt(Movable);
         // If snared (e.g., by bear trap), cannot move at all
         if (this.hasExt(Snared)) {
@@ -975,18 +1264,29 @@ export class Player extends Entity {
                 // Check if infinite run extension is active
                 const hasInfiniteRun = this.hasExt(InfiniteRun);
                 const isZombie = this.serialized.get("isZombie");
+                const isSneaking = this.isSneaking();
                 const stamina = this.serialized.get("stamina");
-                const hasSprintSkill = ((_a = this.serialized.get("abilitySprint")) !== null && _a !== void 0 ? _a : 0) > 0;
                 const canSprint = !isZombie &&
-                    hasSprintSkill &&
+                    this.hasAbility("sprint") &&
+                    !isSneaking &&
                     this.serialized.get("inputSprint") &&
                     (hasInfiniteRun || (stamina > 0 && this.exhaustionTimer <= 0));
                 const sprintMultiplier = canSprint ? getConfig().player.SPRINT_MULTIPLIER : 1;
                 // Apply zombie speed reduction (70% speed)
                 const zombieMultiplier = isZombie ? getConfig().player.ZOMBIE_SPEED_MULTIPLIER : 1;
-                const runStat = (_b = this.serialized.get("statRunSpeed")) !== null && _b !== void 0 ? _b : 0;
+                const runStat = (_a = this.serialized.get("statRunSpeed")) !== null && _a !== void 0 ? _a : 0;
                 const runBonus = 1 + runStat * CHARACTER_STAT_MODIFIERS.runSpeedPerPoint;
-                const speedMultiplier = sprintMultiplier * zombieMultiplier * runBonus;
+                const adrenalineMultiplier = this.hasAbility("adrenaline") && isAdrenalineActive(this.getHealth(), this.getMaxHealth())
+                    ? ADRENALINE_SPEED_MULTIPLIER
+                    : 1;
+                const trackStarMultiplier = this.hasAbility("trackStar") ? TRACK_STAR_SPEED_MULTIPLIER : 1;
+                const sneakMultiplier = isSneaking ? SNEAK_MOVE_SPEED_MULTIPLIER : 1;
+                const speedMultiplier = sprintMultiplier *
+                    zombieMultiplier *
+                    runBonus *
+                    adrenalineMultiplier *
+                    trackStarMultiplier *
+                    sneakMultiplier;
                 // Drain stamina while sprinting (unless infinite run is active)
                 if (canSprint && !hasInfiniteRun) {
                     const inventory = this.getExt(Inventory);
@@ -1042,12 +1342,20 @@ export class Player extends Entity {
             const inputDx = this.serialized.get("inputDx");
             const inputDy = this.serialized.get("inputDy");
             const isMoving = inputDx !== 0 || inputDy !== 0;
-            const isSprinting = this.serialized.get("inputSprint") && isMoving && (hasInfiniteRun || stamina > 0);
+            const isSneaking = this.isSneaking();
+            const isSprinting = !this.isZombie() &&
+                this.hasAbility("sprint") &&
+                !isSneaking &&
+                this.serialized.get("inputSprint") &&
+                isMoving &&
+                (hasInfiniteRun || stamina > 0);
             // Regenerate stamina when not sprinting
             if (!isSprinting) {
                 const oldStamina = stamina;
                 const recMult = computeStaminaRegenMultiplier((_a = this.serialized.get("statRecovery")) !== null && _a !== void 0 ? _a : 0);
-                const newStamina = Math.min(maxStamina, stamina + getConfig().player.STAMINA_REGEN_RATE * recMult * deltaTime);
+                const baseRegen = getConfig().player.STAMINA_REGEN_RATE +
+                    (this.hasAbility("trackStar") ? TRACK_STAR_STAMINA_REGEN_BONUS : 0);
+                const newStamina = Math.min(maxStamina, stamina + baseRegen * recMult * deltaTime);
                 this.serialized.set("stamina", newStamina);
                 if (Math.abs(oldStamina - newStamina) > 0.01) {
                     this.serialized.set("maxStamina", maxStamina);
@@ -1091,6 +1399,7 @@ export class Player extends Entity {
         if (this.isDead()) {
             return;
         }
+        this.combatRollCooldown.update(deltaTime);
         this.handleAttack(deltaTime);
         this.handleMovement(deltaTime);
         this.handleStamina(deltaTime);
@@ -1134,20 +1443,93 @@ export class Player extends Entity {
         illuminated.setRadius(totalLightIntensity);
     }
     setInput(input) {
-        var _a, _b, _c, _d, _e, _f, _g;
+        var _a, _b, _c, _d, _e, _f, _g, _h;
         // Map input object to individual serialized fields
         this.serialized.set("inputFacing", (_a = input.facing) !== null && _a !== void 0 ? _a : Direction.Right);
         this.serialized.set("inputDx", (_b = input.dx) !== null && _b !== void 0 ? _b : 0);
         this.serialized.set("inputDy", (_c = input.dy) !== null && _c !== void 0 ? _c : 0);
         this.serialized.set("inputFire", (_d = input.fire) !== null && _d !== void 0 ? _d : false);
         this.serialized.set("inputSprint", (_e = input.sprint) !== null && _e !== void 0 ? _e : false);
-        this.serialized.set("inputAimAngle", (_f = input.aimAngle) !== null && _f !== void 0 ? _f : NaN); // NaN represents undefined
-        this.serialized.set("inputAimDistance", (_g = input.aimDistance) !== null && _g !== void 0 ? _g : NaN); // NaN represents undefined
+        this.serialized.set("inputSneak", (_f = input.sneak) !== null && _f !== void 0 ? _f : false);
+        this.serialized.set("inputAimAngle", (_g = input.aimAngle) !== null && _g !== void 0 ? _g : NaN); // NaN represents undefined
+        this.serialized.set("inputAimDistance", (_h = input.aimDistance) !== null && _h !== void 0 ? _h : NaN); // NaN represents undefined
+    }
+    requestCombatRoll(aimAngle) {
+        if (this.isDead() ||
+            this.isZombie() ||
+            this.hasExt(Snared) ||
+            !this.hasAbility("combatRoll") ||
+            !this.combatRollCooldown.isReady()) {
+            return false;
+        }
+        const currentStamina = this.serialized.get("stamina");
+        if (currentStamina < COMBAT_ROLL_STAMINA_COST) {
+            return false;
+        }
+        let resolvedAngle = typeof aimAngle === "number" && Number.isFinite(aimAngle)
+            ? aimAngle
+            : this.serialized.get("inputAimAngle");
+        if (typeof resolvedAngle !== "number" || !Number.isFinite(resolvedAngle)) {
+            const dx = this.serialized.get("inputDx");
+            const dy = this.serialized.get("inputDy");
+            if (dx !== 0 || dy !== 0) {
+                resolvedAngle = Math.atan2(dy, dx);
+            }
+            else {
+                switch (this.serialized.get("inputFacing")) {
+                    case Direction.Left:
+                        resolvedAngle = Math.PI;
+                        break;
+                    case Direction.Up:
+                        resolvedAngle = -Math.PI / 2;
+                        break;
+                    case Direction.Down:
+                        resolvedAngle = Math.PI / 2;
+                        break;
+                    default:
+                        resolvedAngle = 0;
+                        break;
+                }
+            }
+        }
+        this.performCombatRollMovement(resolvedAngle);
+        this.combatRollCooldown.reset();
+        this.serialized.set("stamina", Math.max(0, currentStamina - COMBAT_ROLL_STAMINA_COST));
+        this.serialized.set("inputFacing", angleToDirection(resolvedAngle));
+        return true;
+    }
+    performCombatRollMovement(angle) {
+        const position = this.getPosition();
+        const stepCount = Math.max(1, Math.ceil(COMBAT_ROLL_DISTANCE / COMBAT_ROLL_STEP_SIZE));
+        const stepDistance = COMBAT_ROLL_DISTANCE / stepCount;
+        const stepX = Math.cos(angle) * stepDistance;
+        const stepY = Math.sin(angle) * stepDistance;
+        for (let i = 0; i < stepCount; i++) {
+            const previousX = position.x;
+            const previousY = position.y;
+            position.x += stepX;
+            this.setPosition(position);
+            if (this.getEntityManager().isColliding(this, PASSTHROUGH_ENTITY_TYPES)) {
+                position.x = previousX;
+                this.setPosition(position);
+            }
+            position.y += stepY;
+            this.setPosition(position);
+            if (this.getEntityManager().isColliding(this, PASSTHROUGH_ENTITY_TYPES)) {
+                position.y = previousY;
+                this.setPosition(position);
+            }
+            if (position.x === previousX && position.y === previousY) {
+                break;
+            }
+        }
+        this.getExt(Movable).setVelocity(PoolManager.getInstance().vector2.claim(0, 0));
     }
     selectInventoryItemOnly(index) {
         const previousSlot = this.serialized.get("inputInventoryItem");
         this.serialized.set("inputInventoryItem", index);
         if (previousSlot !== index) {
+            this.cancelReload();
             const inventory = this.getExt(Inventory);
             this.markExtensionDirty(inventory);
         }
@@ -1218,7 +1600,8 @@ export class Player extends Entity {
     getZombieSpawnCooldownProgress() {
         return this.serialized.get("zombieSpawnCooldownProgress");
     }
-    getReloadCooldownMultiplier() {
+    /** Multiplier on weapon reload duration from the `reloadSpeed` stat (lower is faster). */
+    getReloadDurationMultiplier() {
         var _a;
         const r = (_a = this.serialized.get("statReloadSpeed")) !== null && _a !== void 0 ? _a : 0;
         return Math.max(0.5, 1 - r * CHARACTER_STAT_MODIFIERS.reloadSpeedCooldownReductionPerPoint);
@@ -1239,26 +1622,27 @@ export class Player extends Entity {
      * Apply ability + character allocation maps from DB (normalized keys, values 0+).
      */
     applyPersistedProgress(abilityAllocations, characterAllocations, professionProgress) {
-        var _a, _b, _c, _d, _e, _f, _g, _h, _j, _k, _l, _m, _o;
-        const sprint = Math.min(1, Math.floor((_a = abilityAllocations.sprint) !== null && _a !== void 0 ? _a : 0));
-        const regen = Math.min(1, Math.floor((_b = abilityAllocations.regenerate) !== null && _b !== void 0 ? _b : 0));
-        this.serialized.set("abilitySprint", sprint);
-        this.serialized.set("abilityRegenerate", regen);
+        var _a, _b, _c, _d, _e, _f, _g, _h, _j, _k, _l, _m;
+        const clampCharacterStat = (value) => Math.min(MAX_POINTS_PER_CHARACTER_STAT, Math.floor(value));
+        for (const abilityId of ABILITY_IDS) {
+            const field = ABILITY_SERIALIZED_FIELD_BY_ID[abilityId];
+            this.serialized.set(field, Math.min(1, Math.floor((_a = abilityAllocations[abilityId]) !== null && _a !== void 0 ? _a : 0)));
+        }
         if (professionProgress !== undefined) {
             this.serialized.set("professionProgressJson", JSON.stringify(normalizeProfessionProgress(professionProgress)));
         }
         const rawAlloc = characterAllocations;
-        const evadeRaw = (_d = (_c = rawAlloc.evade) !== null && _c !== void 0 ? _c : rawAlloc.defence) !== null && _d !== void 0 ? _d : 0;
-        this.serialized.set("statHealth", Math.min(99, Math.floor((_e = characterAllocations.health) !== null && _e !== void 0 ? _e : 0)));
-        this.serialized.set("statEvade", Math.min(99, Math.floor(evadeRaw)));
-        this.serialized.set("statAccuracy", Math.min(99, Math.floor((_f = characterAllocations.accuracy) !== null && _f !== void 0 ? _f : 0)));
-        this.serialized.set("statReloadSpeed", Math.min(99, Math.floor((_g = characterAllocations.reloadSpeed) !== null && _g !== void 0 ? _g : 0)));
-        this.serialized.set("statRunSpeed", Math.min(99, Math.floor((_h = characterAllocations.runSpeed) !== null && _h !== void 0 ? _h : 0)));
-        this.serialized.set("statLuck", Math.min(99, Math.floor((_j = characterAllocations.luck) !== null && _j !== void 0 ? _j : 0)));
-        this.serialized.set("statStamina", Math.min(99, Math.floor((_k = characterAllocations.stamina) !== null && _k !== void 0 ? _k : 0)));
-        this.serialized.set("statRecovery", Math.min(99, Math.floor((_l = characterAllocations.recovery) !== null && _l !== void 0 ? _l : 0)));
-        this.serialized.set("statHpRecovery", Math.min(99, Math.floor((_m = characterAllocations.hpRecovery) !== null && _m !== void 0 ? _m : 0)));
-        this.serialized.set("statStrength", Math.min(99, Math.floor((_o = characterAllocations.strength) !== null && _o !== void 0 ? _o : 0)));
+        const evadeRaw = (_c = (_b = rawAlloc.evade) !== null && _b !== void 0 ? _b : rawAlloc.defence) !== null && _c !== void 0 ? _c : 0;
+        this.serialized.set("statHealth", clampCharacterStat((_d = characterAllocations.health) !== null && _d !== void 0 ? _d : 0));
+        this.serialized.set("statEvade", clampCharacterStat(evadeRaw));
+        this.serialized.set("statAccuracy", clampCharacterStat((_e = characterAllocations.accuracy) !== null && _e !== void 0 ? _e : 0));
+        this.serialized.set("statReloadSpeed", clampCharacterStat((_f = characterAllocations.reloadSpeed) !== null && _f !== void 0 ? _f : 0));
+        this.serialized.set("statRunSpeed", clampCharacterStat((_g = characterAllocations.runSpeed) !== null && _g !== void 0 ? _g : 0));
+        this.serialized.set("statLuck", clampCharacterStat((_h = characterAllocations.luck) !== null && _h !== void 0 ? _h : 0));
+        this.serialized.set("statStamina", clampCharacterStat((_j = characterAllocations.stamina) !== null && _j !== void 0 ? _j : 0));
+        this.serialized.set("statRecovery", clampCharacterStat((_k = characterAllocations.recovery) !== null && _k !== void 0 ? _k : 0));
+        this.serialized.set("statHpRecovery", clampCharacterStat((_l = characterAllocations.hpRecovery) !== null && _l !== void 0 ? _l : 0));
+        this.serialized.set("statStrength", clampCharacterStat((_m = characterAllocations.strength) !== null && _m !== void 0 ? _m : 0));
         this.applyDerivedStatsFromAllocations();
     }
     /** Called when connecting with persisted website data (keeps fields encapsulated). */
@@ -1304,9 +1688,15 @@ export class Player extends Entity {
                     this.serialized.set("activeWeaponLoadout", wb.activeWeaponLoadout);
                     this.serialized.set("loadoutConsumable4", (_a = wb.loadoutConsumable4) !== null && _a !== void 0 ? _a : 4);
                     this.serialized.set("loadoutConsumable5", (_b = wb.loadoutConsumable5) !== null && _b !== void 0 ? _b : 5);
-                    this.sanitizeWeaponLoadouts();
                 }
+                this.sanitizeWeaponLoadouts();
                 this.hydratedFromDb = true;
+            }
+        }
+        if (progress.savedBank != null) {
+            const bankPayload = coercePlayerBankPersistedPayload(progress.savedBank);
+            if (bankPayload) {
+                this.getExt(Bank).applyPersistedPayload(bankPayload);
             }
         }
     }
@@ -1326,6 +1716,9 @@ export class Player extends Entity {
                 loadoutConsumable5: this.serialized.get("loadoutConsumable5"),
             } });
     }
+    getSavedBankPayload() {
+        return this.getExt(Bank).toPersistedPayload();
+    }
     /**
      * Open world: consume one-time spawn tile from persisted progress (null if none or already consumed).
      */
@@ -1337,15 +1730,29 @@ export class Player extends Entity {
     getQuestProgressPayload() {
         return parsePlayerQuestState(this.getSerialized().get("questStateJson"));
     }
+    addExperience(amount) {
+        const safeAmount = Math.max(0, Math.floor(amount));
+        if (safeAmount <= 0) {
+            return false;
+        }
+        const previousXp = this.getTotalExperience();
+        const previousLevel = getLevelFromTotalExperience(previousXp);
+        const nextXp = previousXp + safeAmount;
+        this.serialized.set("experience", nextXp);
+        const nextLevel = getLevelFromTotalExperience(nextXp);
+        if (nextLevel > previousLevel) {
+            this.broadcaster.broadcastEvent(new PlayerLevelUpEvent(this.getId()));
+            sendPlayerHudMessage(this.getGameManagers(), this.getId(), `LEVELED UP! You've reached level ${nextLevel}`, "#ffd166");
+            return true;
+        }
+        return false;
+    }
     getTotalExperience() {
         var _a;
         return (_a = this.serialized.get("experience")) !== null && _a !== void 0 ? _a : 0;
     }
     getAbilityAllocationRecord() {
-        return {
-            sprint: this.serialized.get("abilitySprint") ? 1 : 0,
-            regenerate: this.serialized.get("abilityRegenerate") ? 1 : 0,
-        };
+        return this.buildAbilityAllocationRecord();
     }
     getSkillAllocationRecord() {
         return this.getAbilityAllocationRecord();
@@ -1401,14 +1808,14 @@ export class Player extends Entity {
         d.setMaxHealth(maxHp);
         d.setHealth(Math.min(maxHp, Math.max(0, cur)));
         const baseSt = getConfig().player.MAX_STAMINA;
-        const maxSt = computeMaxStamina(baseSt, (_b = this.serialized.get("statStamina")) !== null && _b !== void 0 ? _b : 0);
+        const maxSt = computeMaxStamina(baseSt, (_b = this.serialized.get("statStamina")) !== null && _b !== void 0 ? _b : 0) +
+            (this.hasAbility("trackStar") ? TRACK_STAR_MAX_STAMINA_BONUS : 0);
         const st = this.serialized.get("stamina");
         this.serialized.set("maxStamina", maxSt);
         this.serialized.set("stamina", Math.min(maxSt, st));
     }
     handleRegenerateHealing(deltaTime) {
-        var _a;
-        if (((_a = this.serialized.get("abilityRegenerate")) !== null && _a !== void 0 ? _a : 0) <= 0) {
+        if (!this.hasAbility("regenerate")) {
             return;
         }
         const d = this.getExt(Destructible);
@@ -1438,7 +1845,7 @@ export class Player extends Entity {
             d.heal(CHARACTER_STAT_MODIFIERS.passiveHpRegenAmount);
         }
     }
-    /** Max bag slots for this player (base config + strength). */
+    /** Total storage slots for this player (base config + strength). */
     getMaxInventorySlots() {
         var _a;
         return computeMaxInventorySlots(getConfig().player.MAX_INVENTORY_SLOTS, (_a = this.serialized.get("statStrength")) !== null && _a !== void 0 ? _a : 0);

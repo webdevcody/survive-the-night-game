@@ -36,6 +36,7 @@ export interface AttackStrategy {
 }
 
 import { SerializableFields } from "@/util/serializable-fields";
+import { Entities } from "@/constants";
 
 /** How spawn-leash handled movement this tick (flying patrol integrates position like FlyTowardsPlayerStrategy). */
 type LeashMovementMode = "chasing" | "patrol_ground" | "patrol_air";
@@ -82,6 +83,8 @@ export abstract class BaseEnemy extends Entity {
   private leashWanderTimer: number = Math.random() * getConfig().entity.ZOMBIE_LEASH_WANDER_PAUSE_DURATION;
   private leashWanderDirection: Vector2 | null = null;
   private leashWanderMoving: boolean = false;
+  private maimRemainingSeconds = 0;
+  private maimSpeedMultiplier = 1;
 
   constructor(gameManagers: IGameManagers, entityType: EntityType, config?: ZombieConfig) {
     super(gameManagers, entityType);
@@ -185,6 +188,61 @@ export abstract class BaseEnemy extends Entity {
     this.leashWanderDirection = null;
   }
 
+  public applyMaim(durationSeconds: number, speedMultiplier: number): void {
+    this.maimRemainingSeconds = Math.max(this.maimRemainingSeconds, Math.max(0, durationSeconds));
+    this.maimSpeedMultiplier = Math.min(this.maimSpeedMultiplier, Math.max(0, speedMultiplier));
+  }
+
+  private getClosestAggroCandidate(searchRadius: number): {
+    entity: Entity;
+    distanceToZombie: number;
+    distanceToAnchor: number;
+  } | null {
+    if (!Number.isFinite(searchRadius) || searchRadius <= 0 || !this.spawnAnchor) {
+      return null;
+    }
+
+    const zombiePos = this.getCenterPosition();
+    const nearbyPlayers = this
+      .getEntityManager()
+      .getNearbyEntities(zombiePos, searchRadius, new Set([Entities.PLAYER]));
+
+    let closest: { entity: Entity; distanceToZombie: number; distanceToAnchor: number } | null = null;
+
+    for (const entity of nearbyPlayers) {
+      if (!(entity instanceof Entity) || !entity.hasExt(Positionable) || !entity.hasExt(Destructible)) {
+        continue;
+      }
+      if (entity.getExt(Destructible).isDead()) {
+        continue;
+      }
+
+      const playerLike = entity as Entity & {
+        getZombieDetectionRadiusMultiplier?: () => number;
+      };
+      const detectionMultiplier =
+        typeof playerLike.getZombieDetectionRadiusMultiplier === "function"
+          ? playerLike.getZombieDetectionRadiusMultiplier()
+          : 1;
+      if (detectionMultiplier <= 0) {
+        continue;
+      }
+
+      const playerPos = entity.getExt(Positionable).getCenterPosition();
+      const distanceToZombie = distance(zombiePos, playerPos);
+      if (distanceToZombie > searchRadius * detectionMultiplier) {
+        continue;
+      }
+
+      const distanceToAnchor = distance(playerPos, this.spawnAnchor);
+      if (!closest || distanceToZombie < closest.distanceToZombie) {
+        closest = { entity, distanceToZombie, distanceToAnchor };
+      }
+    }
+
+    return closest;
+  }
+
   private updateLeashChasingState(deltaTime: number, params: ResolvedLeashParams): void {
     this.leashPlayerCheckTimer += deltaTime;
     if (this.leashPlayerCheckTimer < getConfig().entity.PLAYER_CHECK_INTERVAL) {
@@ -196,22 +254,20 @@ export abstract class BaseEnemy extends Entity {
     }
 
     const prev = this.isLeashChasing;
-    const player = this.getEntityManager().getClosestAlivePlayer(this);
-
-    if (!player || !player.hasExt(Positionable)) {
-      this.isLeashChasing = false;
-    } else {
-      const playerPos = player.getExt(Positionable).getCenterPosition();
-      const zombiePos = this.getCenterPosition();
-      const distToPlayer = distance(zombiePos, playerPos);
-      const dPlayerToAnchor = distance(playerPos, this.spawnAnchor);
-      if (this.isLeashChasing) {
-        if (dPlayerToAnchor > params.maxPlayerDistanceFromSpawn) {
+    if (this.isLeashChasing) {
+      const closestAlivePlayer = this.getEntityManager().getClosestAlivePlayer(this);
+      if (!closestAlivePlayer || !closestAlivePlayer.hasExt(Positionable)) {
+        this.isLeashChasing = false;
+      } else {
+        const playerPos = closestAlivePlayer.getExt(Positionable).getCenterPosition();
+        const distanceToAnchor = distance(playerPos, this.spawnAnchor);
+        if (distanceToAnchor > params.maxPlayerDistanceFromSpawn) {
           this.isLeashChasing = false;
         }
-      } else if (distToPlayer <= params.activationRadius) {
-        this.isLeashChasing = true;
       }
+    } else {
+      const player = this.getClosestAggroCandidate(params.activationRadius);
+      this.isLeashChasing = player != null;
     }
 
     if (!prev && this.isLeashChasing) {
@@ -499,6 +555,12 @@ export abstract class BaseEnemy extends Entity {
       tickPerformanceTracker?.startMethod("cooldownUpdates", "updateEnemy") || (() => {});
     this.attackCooldown.update(deltaTime);
     this.pathRecalculationTimer += deltaTime;
+    if (this.maimRemainingSeconds > 0) {
+      this.maimRemainingSeconds = Math.max(0, this.maimRemainingSeconds - deltaTime);
+      if (this.maimRemainingSeconds <= 0) {
+        this.maimSpeedMultiplier = 1;
+      }
+    }
     endCooldownUpdates();
 
     const destructible = this.getExt(Destructible);
@@ -534,14 +596,11 @@ export abstract class BaseEnemy extends Entity {
       if (!shouldRunAttack) {
         const quickPlayerCheck =
           tickPerformanceTracker?.startMethod("quickPlayerCheck", "attackStrategy") || (() => {});
-        const player = this.getEntityManager().getClosestAlivePlayer(this);
+        const player = this.getClosestAggroCandidate(getConfig().combat.ZOMBIE_ATTACK_RADIUS + 100);
         quickPlayerCheck();
-        if (player && player.hasExt(Positionable)) {
-          const playerPos = player.getExt(Positionable).getCenterPosition();
-          const zombiePos = this.getCenterPosition();
-          const distanceToPlayer = distance(zombiePos, playerPos);
+        if (player) {
           const maxAttackRange = getConfig().combat.ZOMBIE_ATTACK_RADIUS + 100;
-          shouldRunAttack = distanceToPlayer <= maxAttackRange;
+          shouldRunAttack = player.distanceToZombie <= maxAttackRange;
         }
       }
       if (shouldRunAttack) {
@@ -560,7 +619,7 @@ export abstract class BaseEnemy extends Entity {
   }
 
   getSpeed(): number {
-    return this.speed;
+    return this.speed * this.maimSpeedMultiplier;
   }
 
   getCategory(): EntityCategory {

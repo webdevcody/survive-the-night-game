@@ -4,13 +4,16 @@ import { IEntityManager, IMapManager } from "@/managers/types";
 import type { EntityType } from "@shared/types/entity";
 import type { PlayerQuestStatePayload } from "@shared/quests/player-quest-state";
 /**
+ * For quests with `completionType: final_step`, applies completion rewards as soon as
+ * `step >= steps.length` (all objectives satisfied). No-op for other completion modes.
+ */
+export declare function tryAutoCompleteQuestsOnFinalStep(player: Player, map: IMapManager): void;
+/**
  * Call at the **start** of processing a finished NPC dialogue (before grant/complete).
  * Catches up `pickup_item` progress when the player already holds the item, without
  * running in the same turn as {@link tryGrantQuestFromNpc} (which would let {@link tryCompleteQuestFromDialogue} finish the quest in one interaction).
  */
 export declare function trySyncActiveQuestPickupStepsWithInventory(player: Player, map: IMapManager): void;
-/** For `completionType: final_step`, finishes quests as soon as all steps are cleared. */
-export declare function tryAutoCompleteQuestsOnFinalStep(player: Player, map: IMapManager): void;
 /** @returns The quest id that was newly activated, or null if nothing was granted. */
 export declare function tryGrantQuestFromNpc(player: Player, npc: DialogueSurvivorNpc, map: IMapManager, acceptQuest?: boolean): string | null;
 export declare function tryCompleteQuestFromDialogue(player: Player, npc: DialogueSurvivorNpc, map: IMapManager): void;

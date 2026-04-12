@@ -18,6 +18,7 @@ export interface InputManagerOptions {
   onUp?: (inputs: Input) => void;
   onLeft?: (inputs: Input) => void;
   onRight?: (inputs: Input) => void;
+  onRequestCombatRoll?: (fallbackFacing: Direction) => void;
   onInteractStart?: () => void;
   onInteractEnd?: () => void;
   onSelectInventorySlot?: (slotIndex: number) => void;
@@ -97,6 +98,8 @@ const shouldBlock = new Set([
 
 const suppressedGameplayKeys = new Set([
   "Space",
+  "ControlLeft",
+  "ControlRight",
   "ShiftLeft",
   "ShiftRight",
   "ArrowUp",
@@ -110,6 +113,8 @@ const suppressedGameplayKeys = new Set([
   "KeyR",
 ]);
 
+const COMBAT_ROLL_DOUBLE_TAP_WINDOW_MS = 260;
+
 export class InputManager {
   private hasChanged = false;
   private inputs: Input = {
@@ -118,6 +123,7 @@ export class InputManager {
     dy: 0,
     fire: false,
     sprint: false,
+    sneak: false,
   };
   private currentInventorySlot: number = 1; // Track locally for drop/consume
   private lastInputs = {
@@ -129,6 +135,7 @@ export class InputManager {
   private mousePosition: Vector2 | null = null;
   private canvas: HTMLCanvasElement | null = null;
   private lastMovementSuppressed = false;
+  private lastDirectionalTapAt: Partial<Record<Direction, number>> = {};
   // Store bound event handlers for cleanup
   private boundKeydownHandler: ((e: KeyboardEvent) => void) | null = null;
   private boundKeyupHandler: ((e: KeyboardEvent) => void) | null = null;
@@ -144,7 +151,13 @@ export class InputManager {
   }
 
   private hasLiveGameplayInput(): boolean {
-    return this.inputs.dx !== 0 || this.inputs.dy !== 0 || this.inputs.fire || this.inputs.sprint;
+    return (
+      this.inputs.dx !== 0 ||
+      this.inputs.dy !== 0 ||
+      this.inputs.fire ||
+      this.inputs.sprint ||
+      this.inputs.sneak
+    );
   }
 
   private isMovementSuppressed(): boolean {
@@ -175,7 +188,24 @@ export class InputManager {
       dy: 0,
       fire: false,
       sprint: false,
+      sneak: false,
     };
+  }
+
+  private noteDirectionalTap(direction: Direction, timestampMs: number, isRepeat: boolean): void {
+    if (isRepeat) {
+      return;
+    }
+    const lastTap = this.lastDirectionalTapAt[direction];
+    this.lastDirectionalTapAt[direction] = timestampMs;
+    if (
+      typeof lastTap === "number" &&
+      timestampMs - lastTap > 0 &&
+      timestampMs - lastTap <= COMBAT_ROLL_DOUBLE_TAP_WINDOW_MS
+    ) {
+      this.lastDirectionalTapAt[direction] = -Infinity;
+      this.callbacks.onRequestCombatRoll?.(direction);
+    }
   }
 
   private quickHeal() {
@@ -391,27 +421,35 @@ export class InputManager {
           break;
         case "KeyW":
           callbacks.onUp?.(this.inputs);
+          this.noteDirectionalTap(Direction.Up, e.timeStamp, e.repeat);
           break;
         case "KeyS":
           callbacks.onDown?.(this.inputs);
+          this.noteDirectionalTap(Direction.Down, e.timeStamp, e.repeat);
           break;
         case "KeyA":
           callbacks.onLeft?.(this.inputs);
+          this.noteDirectionalTap(Direction.Left, e.timeStamp, e.repeat);
           break;
         case "KeyD":
           callbacks.onRight?.(this.inputs);
+          this.noteDirectionalTap(Direction.Right, e.timeStamp, e.repeat);
           break;
         case "ArrowUp":
           callbacks.onUp?.(this.inputs);
+          this.noteDirectionalTap(Direction.Up, e.timeStamp, e.repeat);
           break;
         case "ArrowDown":
           callbacks.onDown?.(this.inputs);
+          this.noteDirectionalTap(Direction.Down, e.timeStamp, e.repeat);
           break;
         case "ArrowLeft":
           callbacks.onLeft?.(this.inputs);
+          this.noteDirectionalTap(Direction.Left, e.timeStamp, e.repeat);
           break;
         case "ArrowRight":
           callbacks.onRight?.(this.inputs);
+          this.noteDirectionalTap(Direction.Right, e.timeStamp, e.repeat);
           break;
         case "KeyJ":
           callbacks.onToggleQuestJournal?.();
@@ -479,6 +517,10 @@ export class InputManager {
         case "ShiftLeft":
         case "ShiftRight":
           this.inputs.sprint = true;
+          break;
+        case "ControlLeft":
+        case "ControlRight":
+          this.inputs.sneak = true;
           break;
         case "KeyN":
           callbacks.onToggleMute?.();
@@ -568,6 +610,10 @@ export class InputManager {
         case "ShiftRight":
           this.inputs.sprint = false;
           break;
+        case "ControlLeft":
+        case "ControlRight":
+          this.inputs.sneak = false;
+          break;
         case "Tab":
           e.preventDefault(); // Prevent tab from changing focus
           callbacks.onHidePlayerList?.();
@@ -600,6 +646,7 @@ export class InputManager {
     this.inputs.dy = 0;
     this.inputs.fire = false;
     this.inputs.sprint = false;
+    this.inputs.sneak = false;
     this.checkIfChanged();
   }
 

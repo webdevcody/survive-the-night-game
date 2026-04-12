@@ -51,6 +51,12 @@ function validateInput(input: unknown): Input | null {
     return null;
   }
 
+  // Validate sneak - must be a boolean
+  const sneak = obj.sneak;
+  if (typeof sneak !== "boolean") {
+    return null;
+  }
+
   // Validate aimAngle - optional, but if present must be a finite number
   const aimAngle = obj.aimAngle;
   if (aimAngle !== undefined && (typeof aimAngle !== "number" || !Number.isFinite(aimAngle))) {
@@ -70,6 +76,7 @@ function validateInput(input: unknown): Input | null {
     dy: Math.max(-1, Math.min(1, dy)), // Clamp to -1 to 1
     fire,
     sprint,
+    sneak,
     aimAngle: aimAngle !== undefined ? (aimAngle as number) : undefined,
     aimDistance: aimDistance !== undefined ? Math.min(1000, aimDistance as number) : undefined, // Clamp to max 1000
   };

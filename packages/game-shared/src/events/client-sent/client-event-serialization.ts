@@ -24,6 +24,7 @@ import { SetWeaponLoadoutSlotEvent } from "./events/set-weapon-loadout-slot";
 import { DialogueNpcCompleteEvent } from "./events/dialogue-npc-complete";
 import { UseLoadoutConsumableEvent } from "./events/use-loadout-consumable";
 import { BankActionEvent } from "./events/bank-action";
+import { RequestCombatRollEvent } from "./events/request-combat-roll";
 import {
   serializeEvent,
   deserializeEvent,
@@ -63,6 +64,7 @@ const eventRegistry: Record<string, IBufferWriter> = {
   [ClientSentEvents.USE_LOADOUT_CONSUMABLE]: UseLoadoutConsumableEvent,
   [ClientSentEvents.BANK_ACTION]: BankActionEvent,
   [ClientSentEvents.RELOAD_WEAPON]: NoPayloadEvent,
+  [ClientSentEvents.REQUEST_COMBAT_ROLL]: RequestCombatRollEvent,
 };
 
 function isClientSentEvent(event: string): event is ClientSentEventType {

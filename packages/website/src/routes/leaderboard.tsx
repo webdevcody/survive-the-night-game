@@ -37,10 +37,12 @@ type LeaderboardEntry = {
   rank: number;
   playerName: string;
   playerImage: string | null;
+  level: number;
+  experience: number;
   zombieKills: number;
 };
 
-type SortKey = keyof LeaderboardEntry;
+type SortKey = "rank" | "playerName" | "level" | "experience" | "zombieKills";
 type SortDir = "asc" | "desc";
 
 function SortableHeader({
@@ -122,7 +124,7 @@ function Leaderboard() {
         </div>
 
         {/* Leaderboard Table */}
-        <div className="max-w-5xl mx-auto">
+        <div className="max-w-6xl mx-auto">
           <Card className="bg-background/95 backdrop-blur-sm border-border/50 shadow-xl">
             <CardHeader>
               <CardTitle className="text-3xl font-bold text-center">Top Survivors</CardTitle>
@@ -136,72 +138,98 @@ function Leaderboard() {
                   </p>
                 </div>
               ) : (
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead className="text-center">
-                        <SortableHeader
-                          label="Rank"
-                          sortKey="rank"
-                          currentSort={sortKey}
-                          currentDir={sortDir}
-                          onSort={handleSort}
-                        />
-                      </TableHead>
-                      <TableHead>
-                        <SortableHeader
-                          label="Player"
-                          sortKey="playerName"
-                          currentSort={sortKey}
-                          currentDir={sortDir}
-                          onSort={handleSort}
-                        />
-                      </TableHead>
-                      <TableHead className="text-center">
-                        <SortableHeader
-                          label="Total Kills"
-                          sortKey="zombieKills"
-                          currentSort={sortKey}
-                          currentDir={sortDir}
-                          onSort={handleSort}
-                        />
-                      </TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {sortedStats.map((player) => (
-                      <TableRow
-                        key={player.rank}
-                        className={player.rank <= 3 ? "bg-yellow-500/10" : "bg-background"}
-                      >
-                        <TableCell className="text-center font-bold">
-                          {player.rank === 1 && <span className="text-2xl">🥇</span>}
-                          {player.rank === 2 && <span className="text-2xl">🥈</span>}
-                          {player.rank === 3 && <span className="text-2xl">🥉</span>}
-                          {player.rank > 3 && (
-                            <span className="text-muted-foreground">#{player.rank}</span>
-                          )}
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex items-center gap-3">
-                            <Avatar className="h-8 w-8">
-                              <AvatarImage src={player.playerImage || undefined} />
-                              <AvatarFallback className="bg-primary/10">
-                                {player.playerName?.charAt(0)?.toUpperCase() || (
-                                  <User className="h-4 w-4" />
-                                )}
-                              </AvatarFallback>
-                            </Avatar>
-                            <span className="font-semibold">{player.playerName}</span>
-                          </div>
-                        </TableCell>
-                        <TableCell className="text-center font-semibold text-red-500">
-                          {player.zombieKills.toLocaleString()}
-                        </TableCell>
+                <div className="overflow-x-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead className="text-center whitespace-nowrap">
+                          <SortableHeader
+                            label="Rank"
+                            sortKey="rank"
+                            currentSort={sortKey}
+                            currentDir={sortDir}
+                            onSort={handleSort}
+                          />
+                        </TableHead>
+                        <TableHead className="whitespace-nowrap">
+                          <SortableHeader
+                            label="Player"
+                            sortKey="playerName"
+                            currentSort={sortKey}
+                            currentDir={sortDir}
+                            onSort={handleSort}
+                          />
+                        </TableHead>
+                        <TableHead className="text-center whitespace-nowrap">
+                          <SortableHeader
+                            label="Level"
+                            sortKey="level"
+                            currentSort={sortKey}
+                            currentDir={sortDir}
+                            onSort={handleSort}
+                          />
+                        </TableHead>
+                        <TableHead className="text-center whitespace-nowrap">
+                          <SortableHeader
+                            label="Experience"
+                            sortKey="experience"
+                            currentSort={sortKey}
+                            currentDir={sortDir}
+                            onSort={handleSort}
+                          />
+                        </TableHead>
+                        <TableHead className="text-center whitespace-nowrap">
+                          <SortableHeader
+                            label="Total Kills"
+                            sortKey="zombieKills"
+                            currentSort={sortKey}
+                            currentDir={sortDir}
+                            onSort={handleSort}
+                          />
+                        </TableHead>
                       </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
+                    </TableHeader>
+                    <TableBody>
+                      {sortedStats.map((player) => (
+                        <TableRow
+                          key={player.rank}
+                          className={player.rank <= 3 ? "bg-yellow-500/10" : "bg-background"}
+                        >
+                          <TableCell className="text-center font-bold whitespace-nowrap">
+                            {player.rank === 1 && <span className="text-2xl">🥇</span>}
+                            {player.rank === 2 && <span className="text-2xl">🥈</span>}
+                            {player.rank === 3 && <span className="text-2xl">🥉</span>}
+                            {player.rank > 3 && (
+                              <span className="text-muted-foreground">#{player.rank}</span>
+                            )}
+                          </TableCell>
+                          <TableCell className="whitespace-nowrap">
+                            <div className="flex items-center gap-3">
+                              <Avatar className="h-8 w-8">
+                                <AvatarImage src={player.playerImage || undefined} />
+                                <AvatarFallback className="bg-primary/10">
+                                  {player.playerName?.charAt(0)?.toUpperCase() || (
+                                    <User className="h-4 w-4" />
+                                  )}
+                                </AvatarFallback>
+                              </Avatar>
+                              <span className="font-semibold">{player.playerName}</span>
+                            </div>
+                          </TableCell>
+                          <TableCell className="text-center font-semibold text-emerald-400 whitespace-nowrap">
+                            {player.level.toLocaleString()}
+                          </TableCell>
+                          <TableCell className="text-center font-semibold text-sky-400 whitespace-nowrap">
+                            {player.experience.toLocaleString()}
+                          </TableCell>
+                          <TableCell className="text-center font-semibold text-red-500 whitespace-nowrap">
+                            {player.zombieKills.toLocaleString()}
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
               )}
             </CardContent>
           </Card>

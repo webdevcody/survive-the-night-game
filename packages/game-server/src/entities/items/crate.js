@@ -8,12 +8,15 @@ import Interactive from "@/extensions/interactive";
 import { LootEvent } from "../../../../game-shared/src/events/server-sent/events/loot-event";
 import { Player } from "@/entities/players/player";
 import { LEGACY_RANDOM_DROP_TABLE, } from "@shared/config/zombie-drop-tables";
+import { LOCKED_CRATE_CHANCE } from "@shared/util/ability-effects";
+import { sendPlayerHudMessage } from "@/util/send-player-hud-message";
 export class Crate extends Entity {
     static get Size() {
         return PoolManager.getInstance().vector2.claim(16, 16);
     }
     constructor(gameManagers, itemCount = 3, dropTable = LEGACY_RANDOM_DROP_TABLE) {
         super(gameManagers, Entities.CRATE);
+        this.isLocked = Math.random() < LOCKED_CRATE_CHANCE;
         const poolManager = PoolManager.getInstance();
         const size = poolManager.vector2.claim(16, 16);
         this.addExtension(new Positionable(this).setSize(size));
@@ -23,9 +26,18 @@ export class Crate extends Entity {
         }
         this.addExtension(inventory);
         this.addExtension(new Static(this));
-        this.addExtension(new Interactive(this).onInteract(this.onLooted.bind(this)).setDisplayName("search"));
+        this.addExtension(new Interactive(this)
+            .onInteract(this.onLooted.bind(this))
+            .setDisplayName(this.isLocked ? "pick lock" : "search"));
     }
     onLooted(entityId) {
+        if (this.isLocked && typeof entityId === "number") {
+            const player = this.getEntityManager().getEntityById(entityId);
+            if (player instanceof Player && !player.canOpenLockedCrates()) {
+                sendPlayerHudMessage(this.getGameManagers(), player.getId(), "Locked crate. Unlock Lock Picking to open it.", "#d9915d");
+                return;
+            }
+        }
         if (typeof entityId === "number") {
             const player = this.getEntityManager().getEntityById(entityId);
             if (player instanceof Player) {

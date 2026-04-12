@@ -18,6 +18,7 @@ import {
   ExperiencePanel,
 } from "./panels";
 import { getConfig } from "@shared/config";
+import { MAX_RANK_PER_ABILITY } from "@shared/util/ability-tree";
 import { scaleHudValue } from "@/util/hud-scale";
 import { InventoryScreenUI, type InventoryUiTab } from "./inventory-screen";
 import { SurvivorStatusHud } from "./survivor-status-hud";
@@ -606,6 +607,13 @@ export class Hud {
       renderMinimapInventoryMenu(ctx, minimapHudLayout.inventoryMenu, {
         panelOpen: this.inventoryScreen.isOpen(),
         activeTab: this.inventoryScreen.getActiveTab(),
+        showCharacterUnspentBadge:
+          playerForMenu != null && playerForMenu.getAvailableCharacterPoints() > 0,
+        showAbilitiesUnspentBadge:
+          playerForMenu != null &&
+          playerForMenu.getAvailableAbilityPoints() > 0 &&
+          (playerForMenu.getAbilitySprintRank() < MAX_RANK_PER_ABILITY ||
+            playerForMenu.getAbilityRegenerateRank() < MAX_RANK_PER_ABILITY),
       });
       ctx.restore();
     }

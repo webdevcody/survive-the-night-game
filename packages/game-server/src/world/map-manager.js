@@ -19,6 +19,7 @@ import { CampsiteFire } from "@/entities/environment/campsite-fire";
 import { Workbench } from "@/entities/environment/workbench";
 import { Forge } from "@/entities/environment/forge";
 import { ChemistryTable } from "@/entities/environment/chemistry-table";
+import { Locker } from "@/entities/environment/locker";
 import { LightDecal } from "@/entities/environment/light-decal";
 import { MessageDecal } from "@/entities/environment/message-decal";
 import { createSeededRng } from "@shared/util/seeded-rng";
@@ -26,7 +27,7 @@ import { tryLoadWorldMapFile, validateWorldMapDimensions } from "@/world/load-wo
 import { SPAWN_TILE_PLAYER, isEnemySpawnTile, isItemSpawnTile, isNpcDialogueSpawnTile, spawnTileIdToZombieType, spawnTileIdToItemFixtureType, } from "../../../game-shared/src/map/spawn-palette";
 import { getMessageDecalLines, normalizeDialogueNpcs, reconcileMessageDecalsWithDecalsLayer, reconcileSpawnerMetaWithSpawnsLayer, rewriteSpawnsLayerDialogueNpcTiles, } from "../../../game-shared/src/map/world-map-types";
 import { normalizeQuests } from "../../../game-shared/src/map/quest-types";
-import { DECAL_TILE_CAMPSITE, DECAL_TILE_CHEMISTRY_TABLE, DECAL_TILE_FORGE, DECAL_TILE_LIGHT, DECAL_TILE_MESSAGE, DECAL_TILE_WORKBENCH, } from "../../../game-shared/src/map/decal-palette";
+import { DECAL_TILE_CAMPSITE, DECAL_TILE_CHEMISTRY_TABLE, DECAL_TILE_FORGE, DECAL_TILE_LIGHT, DECAL_TILE_MESSAGE, DECAL_TILE_WORKBENCH, DECAL_TILE_LOCKER, } from "../../../game-shared/src/map/decal-palette";
 import { URBAN_SCAVENGE_DROP_TABLE, WILDERNESS_SCAVENGE_DROP_TABLE, } from "@shared/config/zombie-drop-tables";
 // Re-export from shared config for backward compatibility
 export const BIOME_SIZE = getConfig().world.BIOME_SIZE;
@@ -748,6 +749,7 @@ export class MapManager {
                 { ctor: Workbench, tileId: DECAL_TILE_WORKBENCH },
                 { ctor: Forge, tileId: DECAL_TILE_FORGE },
                 { ctor: ChemistryTable, tileId: DECAL_TILE_CHEMISTRY_TABLE },
+                { ctor: Locker, tileId: DECAL_TILE_LOCKER },
             ];
             for (let y = 0; y < totalSize; y++) {
                 for (let x = 0; x < totalSize; x++) {

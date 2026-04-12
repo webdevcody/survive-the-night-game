@@ -54,6 +54,28 @@ export function consumeAmmo(inventory, ammoType) {
     }
     return true;
 }
+export function countAmmoInInventory(inventory, ammoType) {
+    var _a, _b;
+    let total = 0;
+    for (const item of inventory.getItems()) {
+        if (!item || item.itemType !== ammoType)
+            continue;
+        total += (_b = (_a = item.state) === null || _a === void 0 ? void 0 : _a.count) !== null && _b !== void 0 ? _b : 1;
+    }
+    return total;
+}
+export function consumeAmmoCount(inventory, ammoType, amount) {
+    if (amount <= 0) {
+        return 0;
+    }
+    const available = countAmmoInInventory(inventory, ammoType);
+    const toConsume = Math.min(available, Math.floor(amount));
+    if (toConsume <= 0) {
+        return 0;
+    }
+    const removed = inventory.removeCountAcrossStacks(ammoType, toConsume);
+    return removed ? toConsume : 0;
+}
 /**
  * Calculate velocity vector from an aim angle (radians) and speed.
  * @param aimAngle Angle in radians (0 = right, PI/2 = down, PI = left, 3PI/2 = up)

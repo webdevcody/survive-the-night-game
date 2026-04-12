@@ -20,7 +20,7 @@ export function onSelectInventorySlot(context, socket, data) {
     const player = context.players.get(socket.id);
     if (!player)
         return;
-    const maxSlots = player.getMaxInventorySlots();
+    const maxSlots = player.getAccessibleInventorySlotCount();
     if (data.slotIndex === FISTS_INVENTORY_SENTINEL) {
         player.selectInventoryItemOnly(FISTS_INVENTORY_SENTINEL);
         return;

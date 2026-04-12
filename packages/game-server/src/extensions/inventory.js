@@ -35,6 +35,17 @@ class Inventory extends ExtensionBase {
     /** Bag slot cap (base + player strength when attached to a Player). */
     getMaxSlots() {
         const owner = this.self;
+        if (typeof owner.getAccessibleInventorySlotCount === "function") {
+            return owner.getAccessibleInventorySlotCount();
+        }
+        if (typeof owner.getMaxInventorySlots === "function") {
+            return owner.getMaxInventorySlots();
+        }
+        return getConfig().player.MAX_INVENTORY_SLOTS;
+    }
+    /** Full storage capacity, including currently locked slots preserved in saved inventories. */
+    getStorageSlots() {
+        const owner = this.self;
         if (typeof owner.getMaxInventorySlots === "function") {
             return owner.getMaxInventorySlots();
         }
@@ -42,7 +53,9 @@ class Inventory extends ExtensionBase {
     }
     isFull() {
         const items = this.serialized.get("items");
-        const itemCount = items.filter((item) => item != null).length;
+        const itemCount = items
+            .slice(0, this.getMaxSlots())
+            .filter((item) => item != null).length;
         return itemCount >= this.getMaxSlots();
     }
     hasItem(itemType) {
@@ -64,14 +77,14 @@ class Inventory extends ExtensionBase {
             return;
         this.compactPlayerLoadoutBackedItems();
         const items = this.serialized.get("items");
+        const maxSlots = this.getMaxSlots();
+        while (items.length < maxSlots) {
+            items.push(null);
+        }
         // Find first empty slot (null/undefined) to fill
-        const emptySlotIndex = items.findIndex((it) => it == null);
+        const emptySlotIndex = items.findIndex((it, index) => index < maxSlots && it == null);
         if (emptySlotIndex !== -1) {
             items[emptySlotIndex] = item;
-        }
-        else {
-            // No empty slots, push to end
-            items.push(item);
         }
         // Update serialized (array reference changes, so assign new array to trigger dirty)
         this.serialized.set("items", [...items]);
@@ -105,7 +118,8 @@ class Inventory extends ExtensionBase {
         var _a, _b, _c, _d;
         const items = this.serialized.get("items");
         const addCount = (_b = (_a = item.state) === null || _a === void 0 ? void 0 : _a.count) !== null && _b !== void 0 ? _b : 1;
-        const existingItemIndex = items.findIndex((it) => it != null && it.itemType === item.itemType);
+        const maxSlots = this.getMaxSlots();
+        const existingItemIndex = items.findIndex((it, index) => index < maxSlots && it != null && it.itemType === item.itemType);
         if (existingItemIndex >= 0) {
             const existing = items[existingItemIndex];
             if (existing) {
@@ -136,7 +150,8 @@ class Inventory extends ExtensionBase {
         }
         const items = this.serialized.get("items");
         let remaining = amount;
-        for (let i = 0; i < items.length && remaining > 0; i++) {
+        const maxSlots = this.getMaxSlots();
+        for (let i = 0; i < items.length && i < maxSlots && remaining > 0; i++) {
             const it = items[i];
             if (!it || it.itemType !== itemType)
                 continue;
@@ -241,7 +256,58 @@ class Inventory extends ExtensionBase {
     /**
      * Swap bag slot with an equipment slot. Validates the item entering equipment.
      */
+    /**
+     * Set a bag cell directly (e.g. bank withdraw). Keeps array length aligned with max slots.
+     */
+    setBagSlot(bagIndex, item) {
+        const maxSlots = this.getMaxSlots();
+        if (bagIndex < 0 || bagIndex >= maxSlots) {
+            return;
+        }
+        const items = this.serialized.get("items");
+        while (items.length < maxSlots) {
+            items.push(null);
+        }
+        items[bagIndex] = item;
+        this.serialized.set("items", [...items]);
+        this.markDirty();
+        this.notifyPlayerWeaponLoadout();
+    }
+    clearEquipmentSlot(slot) {
+        const equipment = this.serialized.get("equipment");
+        if (equipment[slot] == null) {
+            return;
+        }
+        this.serialized.set("equipment", Object.assign(Object.assign({}, equipment), { [slot]: null }));
+        this.markDirty();
+        this.notifyPlayerWeaponLoadout();
+    }
+    takeEquipmentItem(slot) {
+        const equipment = this.serialized.get("equipment");
+        const item = equipment[slot];
+        if (item == null) {
+            return undefined;
+        }
+        this.serialized.set("equipment", Object.assign(Object.assign({}, equipment), { [slot]: null }));
+        this.markDirty();
+        this.notifyPlayerWeaponLoadout();
+        return item;
+    }
+    setEquipmentSlot(slot, item) {
+        var _a;
+        const owner = this.self;
+        if (item != null &&
+            (!canItemGoInEquipmentSlot(item.itemType, slot) ||
+                ((_a = owner.canEquipItemToSlot) === null || _a === void 0 ? void 0 : _a.call(owner, item.itemType, slot)) === false)) {
+            return;
+        }
+        const equipment = this.serialized.get("equipment");
+        this.serialized.set("equipment", Object.assign(Object.assign({}, equipment), { [slot]: item }));
+        this.markDirty();
+        this.notifyPlayerWeaponLoadout();
+    }
     swapBagAndEquipment(bagIndex, equipSlot) {
+        var _a;
         const maxSlots = this.getMaxSlots();
         if (bagIndex < 0 || bagIndex >= maxSlots) {
             return;
@@ -253,7 +319,10 @@ class Inventory extends ExtensionBase {
         const bagItem = items[bagIndex];
         const equipment = this.serialized.get("equipment");
         const equipItem = equipment[equipSlot];
-        if (bagItem != null && !canItemGoInEquipmentSlot(bagItem.itemType, equipSlot)) {
+        const owner = this.self;
+        if (bagItem != null &&
+            (!canItemGoInEquipmentSlot(bagItem.itemType, equipSlot) ||
+                ((_a = owner.canEquipItemToSlot) === null || _a === void 0 ? void 0 : _a.call(owner, bagItem.itemType, equipSlot)) === false)) {
             return;
         }
         items[bagIndex] = equipItem;
@@ -335,7 +404,7 @@ class Inventory extends ExtensionBase {
         if (!coerced) {
             return;
         }
-        const max = this.getMaxSlots();
+        const max = this.getStorageSlots();
         const next = [];
         for (let i = 0; i < max; i++) {
             next.push((_a = coerced.items[i]) !== null && _a !== void 0 ? _a : null);

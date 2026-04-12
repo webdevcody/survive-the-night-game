@@ -84,13 +84,10 @@ describe("pickDialogueNpcSession", () => {
       {
         when: all([
           { type: "quest_completed", questId: "a" },
+          { type: "quest_not_completed", questId: "b" },
           { type: "quest_not_active", questId: "b" },
         ]),
         lines: ["grant pitch"],
-      },
-      {
-        when: all([{ type: "quest_completed", questId: "b" }]),
-        lines: ["b done"],
       },
       { when: { type: "always" as const }, lines: ["fallback"] },
     ];
@@ -98,11 +95,9 @@ describe("pickDialogueNpcSession", () => {
     expect(pickDialogueNpcSession(sessions, midB).lines[0]).toBe("fallback");
     const preB = st({ completed: ["a"] });
     expect(pickDialogueNpcSession(sessions, preB).lines[0]).toBe("grant pitch");
-    const bothDone = st({ completed: ["a", "b"] });
-    expect(pickDialogueNpcSession(sessions, bothDone).lines[0]).toBe("b done");
   });
 
-  it("uses quest_active inside all", () => {
+  it("uses quest_active and quest_not_completed inside all", () => {
     const sessions = [
       { when: all([{ type: "quest_active", questId: "q1" }]), lines: ["active"] },
       { when: { type: "always" as const }, lines: ["default"] },
@@ -111,6 +106,13 @@ describe("pickDialogueNpcSession", () => {
       "active",
     );
     expect(pickDialogueNpcSession(sessions, st({})).lines[0]).toBe("default");
+
+    const s2 = [
+      { when: all([{ type: "quest_not_completed", questId: "x" }]), lines: ["not done"] },
+      { when: { type: "always" as const }, lines: ["done branch"] },
+    ];
+    expect(pickDialogueNpcSession(s2, st({ completed: [] })).lines[0]).toBe("not done");
+    expect(pickDialogueNpcSession(s2, st({ completed: ["x"] })).lines[0]).toBe("done branch");
   });
 
   it("quest_active_all_steps_done matches when step index reaches authored step count", () => {

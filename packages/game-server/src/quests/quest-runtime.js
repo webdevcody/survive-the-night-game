@@ -4,12 +4,13 @@ import Positionable from "@/extensions/positionable";
 import Destructible from "@/extensions/destructible";
 import { getConfig } from "@shared/config";
 import Inventory from "@/extensions/inventory";
-import { talkToNpcStepMatchesNpc } from "@shared/map/quest-types";
+import { getQuestCompletionType, talkToNpcStepMatchesNpc } from "@shared/map/quest-types";
 import { stringifyPlayerQuestState, parsePlayerQuestState, emptyPlayerQuestState, getActiveStepIndex, sanitizeActiveProgressAgainstQuestDefinition, activeQuestProgressEquals, } from "@shared/quests/player-quest-state";
 import { dialogueNpcSessionsFromSerialized, pickDialogueNpcSession, } from "@shared/map/world-map-types";
 import { queuePersistQuestProgressToWebsite } from "@/util/persist-quest-progress";
 import { queuePersistExperienceDeltaToWebsite } from "@/util/persist-experience-delta";
 import { UserSessionCache } from "@/services/user-session-cache";
+import { MAX_POINTS_PER_CHARACTER_STAT } from "@shared/util/character-stats";
 function getState(player) {
     return parsePlayerQuestState(player.getSerialized().get("questStateJson"));
 }
@@ -37,7 +38,7 @@ function mapStatToSerializedKey(stat) {
     return (_a = m[stat]) !== null && _a !== void 0 ? _a : null;
 }
 function applyRewardList(player, rewards) {
-    var _a, _b;
+    var _a;
     for (const r of rewards) {
         switch (r.type) {
             case "permanent_stat": {
@@ -45,7 +46,9 @@ function applyRewardList(player, rewards) {
                 if (!key)
                     break;
                 const cur = (_a = player.getSerialized().get(key)) !== null && _a !== void 0 ? _a : 0;
-                player.getSerialized().set(key, Math.min(99, Math.floor(cur + r.amount)));
+                player
+                    .getSerialized()
+                    .set(key, Math.min(MAX_POINTS_PER_CHARACTER_STAT, Math.floor(cur + r.amount)));
                 break;
             }
             case "item": {
@@ -62,8 +65,7 @@ function applyRewardList(player, rewards) {
                 const n = Math.floor(r.amount);
                 if (n <= 0)
                     break;
-                const cur = (_b = player.getSerialized().get("experience")) !== null && _b !== void 0 ? _b : 0;
-                player.getSerialized().set("experience", cur + n);
+                player.addExperience(n);
                 const socketId = player.getClientSocketId();
                 if (!socketId)
                     break;
@@ -99,6 +101,28 @@ function finishQuest(player, map, qid, st) {
         consumePickupItemsForCompletedQuest(player, def);
         applyRewards(player, def);
     }
+}
+/**
+ * For quests with `completionType: final_step`, applies completion rewards as soon as
+ * `step >= steps.length` (all objectives satisfied). No-op for other completion modes.
+ */
+export function tryAutoCompleteQuestsOnFinalStep(player, map) {
+    const st = getState(player);
+    let changed = false;
+    for (const qid of Object.keys(st.active)) {
+        const def = map.getQuestDefinition(qid);
+        if (!def)
+            continue;
+        if (getQuestCompletionType(def) !== "final_step")
+            continue;
+        const idx = getActiveStepIndex(st, qid);
+        if (idx < def.steps.length)
+            continue;
+        finishQuest(player, map, qid, st);
+        changed = true;
+    }
+    if (changed)
+        setState(player, st);
 }
 function getDialogueSessionsForNpcEntity(npc) {
     const raw = npc.getSerialized().get("dialogueSessions");
@@ -171,6 +195,7 @@ export function trySyncActiveQuestPickupStepsWithInventory(player, map) {
     if (syncActiveQuestPickupStepsWithInventory(player, map, st)) {
         setState(player, st);
     }
+    tryAutoCompleteQuestsOnFinalStep(player, map);
 }
 /** @returns The quest id that was newly activated, or null if nothing was granted. */
 export function tryGrantQuestFromNpc(player, npc, map, acceptQuest = true) {
@@ -189,7 +214,9 @@ export function tryGrantQuestFromNpc(player, npc, map, acceptQuest = true) {
         return null;
     setActiveStepIndex(st, grant, 0);
     applyRewardList(player, def.startRewards);
+    syncActiveQuestPickupStepsWithInventory(player, map, st);
     setState(player, st);
+    tryAutoCompleteQuestsOnFinalStep(player, map);
     return grant;
 }
 export function tryCompleteQuestFromDialogue(player, npc, map) {
@@ -237,6 +264,7 @@ export function tryAdvanceTalkToNpcStep(player, npc, map, opts) {
     }
     if (changed)
         setState(player, st);
+    tryAutoCompleteQuestsOnFinalStep(player, map);
 }
 export function tryHealPlayerFromDialogueSession(player, npc, map) {
     var _a;
@@ -267,6 +295,7 @@ export function advancePickupStep(player, itemType, map) {
     }
     if (changed)
         setState(player, st);
+    tryAutoCompleteQuestsOnFinalStep(player, map);
 }
 export function recordKillQuestProgress(player, enemyType, map) {
     var _a, _b, _c;
@@ -302,6 +331,7 @@ export function recordKillQuestProgress(player, enemyType, map) {
     }
     if (changed)
         setState(player, st);
+    tryAutoCompleteQuestsOnFinalStep(player, map);
 }
 export function tickWaypointSteps(player, map) {
     var _a;
@@ -331,6 +361,7 @@ export function tickWaypointSteps(player, map) {
     }
     if (changed)
         setState(player, st);
+    tryAutoCompleteQuestsOnFinalStep(player, map);
 }
 export function validateDialogueComplete(player, em, npcEntityId) {
     const ent = em.getEntityById(npcEntityId);
@@ -385,4 +416,5 @@ export function reconcilePlayerQuestStateWithMap(player, map) {
     if (changed) {
         setState(player, st);
     }
+    tryAutoCompleteQuestsOnFinalStep(player, map);
 }

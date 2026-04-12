@@ -75,6 +75,7 @@ export const ClientSentEvents = {
   /** Bank / locker: stash, withdraw, drop, use, equip (validated against locker proximity). */
   BANK_ACTION: "bankAction",
   RELOAD_WEAPON: "reloadWeapon",
+  REQUEST_COMBAT_ROLL: "requestCombatRoll",
 } as const;
 
 export type ServerSentEventType = (typeof ServerSentEvents)[keyof typeof ServerSentEvents];

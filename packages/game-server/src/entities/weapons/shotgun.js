@@ -1,9 +1,6 @@
 import { PlayerAttackedEvent } from "../../../../game-shared/src/events/server-sent/events/player-attacked-event";
-import Inventory from "@/extensions/inventory";
 import { Bullet } from "@/entities/projectiles/bullet";
 import { Weapon } from "@/entities/weapons/weapon";
-import { consumeAmmo } from "./helpers";
-import { GunEmptyEvent } from "../../../../game-shared/src/events/server-sent/events/gun-empty-event";
 import { Player } from "@/entities/players/player";
 import { normalizeDirection } from "@shared/util/direction";
 export class Shotgun extends Weapon {
@@ -17,11 +14,6 @@ export class Shotgun extends Weapon {
         const player = this.getEntityManager().getEntityById(playerId);
         if (!player)
             return;
-        const inventory = player.getExt(Inventory);
-        if (!consumeAmmo(inventory, "shotgun_ammo")) {
-            this.getEntityManager().getBroadcaster().broadcastEvent(new GunEmptyEvent(playerId));
-            return; // No ammo available
-        }
         const spreadMult = player instanceof Player ? player.getAccuracySpreadMultiplier() : 1;
         const spreadDeg = this.getConfig().stats.spreadAngle;
         const v = normalizeDirection(facing);

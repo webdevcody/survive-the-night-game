@@ -1,6 +1,93 @@
 {
   "dialogueNpcs": [
     {
+      "row": 49,
+      "col": 103,
+      "dialogueSessions": [
+        {
+          "when": {
+            "type": "all",
+            "conditions": [
+              {
+                "type": "quest_active",
+                "questId": "quest_1775977610190"
+              }
+            ]
+          },
+          "lines": [
+            "I'm so glad you found me! These things, these monsters, were chasing us.",
+            "I tripped and couldn't make it back to my dad.",
+            "Come with you!? No! I will stay here until my dad finds me, let him know where I am."
+          ]
+        },
+        {
+          "when": {
+            "type": "all",
+            "conditions": [
+              {
+                "type": "quest_not_completed",
+                "questId": "quest_1775977610190"
+              }
+            ]
+          },
+          "lines": [
+            "Please, go tell my dad you found me"
+          ]
+        }
+      ],
+      "lines": [
+        "Please, go tell my dad you found me"
+      ],
+      "message": "Please, go tell my dad you found me",
+      "name": "Sophia"
+    },
+    {
+      "row": 84,
+      "col": 143,
+      "dialogueSessions": [
+        {
+          "when": {
+            "type": "always"
+          },
+          "lines": [
+            "Please, you have to help me find my daughter.",
+            "She was right behind me holding my hand, but something must have grabbed her.",
+            "I know she is still in the forest, you have to help me find here.  Take my shotgun, I'm sure it'll help you in their."
+          ],
+          "grantQuestId": "quest_1775977610190"
+        },
+        {
+          "when": {
+            "type": "all",
+            "conditions": [
+              {
+                "type": "quest_active_final_talk_turn_in",
+                "questId": "quest_1775977610190"
+              }
+            ]
+          },
+          "lines": [
+            "Oh that stubborn girl! I should have known she wouldn't go with a stranger.",
+            "At least I know exactly how to get to her. Thank you kind stranger."
+          ],
+          "completeQuestId": "quest_1775977610190"
+        },
+        {
+          "when": {
+            "type": "always"
+          },
+          "lines": [
+            "Thanks again kind stranger."
+          ]
+        }
+      ],
+      "lines": [
+        "Thanks again kind stranger."
+      ],
+      "message": "Thanks again kind stranger.",
+      "name": "George"
+    },
+    {
       "row": 126,
       "col": 119,
       "dialogueSessions": [

@@ -7,6 +7,7 @@ import { Entities } from "@shared/constants";
 import { getConfig } from "@shared/config";
 import { Player } from "@/entities/players/player";
 import { distance } from "@/util/physics";
+import { DETOX_MAX_DAMAGE_MULTIPLIER } from "@shared/util/ability-effects";
 class AcidTrigger extends ExtensionBase {
     constructor(self, options) {
         var _a, _b, _c;
@@ -63,7 +64,10 @@ class AcidTrigger extends ExtensionBase {
             if (centerDistance < AcidTrigger.RADIUS) {
                 // Add poison extension if player doesn't already have it
                 if (!entity.hasExt(Poison)) {
-                    entity.addExtension(new Poison(entity, this.poisonMaxDamage, this.poisonDamagePerTick, this.poisonDamageInterval));
+                    const poisonMaxDamage = entity instanceof Player && entity.hasAbility("detox")
+                        ? this.poisonMaxDamage * DETOX_MAX_DAMAGE_MULTIPLIER
+                        : this.poisonMaxDamage;
+                    entity.addExtension(new Poison(entity, poisonMaxDamage, this.poisonDamagePerTick, this.poisonDamageInterval));
                 }
                 this.triggerCooldown.reset();
                 break;

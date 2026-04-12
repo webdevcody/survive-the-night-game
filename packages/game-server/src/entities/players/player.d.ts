@@ -3,10 +3,12 @@ import { Entity } from "@/entities/entity";
 import { Input } from "@shared/util/input";
 import { InventoryItem, ItemType } from "@shared/util/inventory";
 import { type PlayerInventoryPersistedPayload } from "@shared/util/persisted-inventory-payload";
+import { type PlayerBankPersistedPayload } from "@shared/util/persisted-bank-payload";
 import type { CraftRequestEventData } from "@shared/events/client-sent/events/craft-request";
 import Vector2 from "@/util/vector2";
 import { Rectangle } from "@/util/shape";
 import { SkinType, PlayerColor } from "@shared/commands/commands";
+import { type AbilityId } from "@shared/util/ability-tree";
 import type { PersistedPlayerProgress } from "@/services/player-progress-types";
 import { type ProfessionId, type ProfessionProgress } from "@shared/util/professions";
 import { type PlayerQuestStatePayload } from "@shared/quests/player-quest-state";
@@ -16,11 +18,16 @@ export declare class Player extends Entity {
     private static readonly PICKUP_HOLD_DURATION;
     private static readonly RESPAWN_COOLDOWN_MS;
     private fireCooldown;
+    private reloadCooldown;
     private interactCooldown;
     private zombieSpawnCooldown;
     private broadcaster;
     private lastWeaponType;
+    private reloadDurationSeconds;
+    private reloadBagIndex1Based;
+    private reloadWeaponType;
     private exhaustionTimer;
+    private combatRollCooldown;
     private pickupHoldTimer;
     private targetPickupEntity;
     /** Accumulator for passive HP regen (hpRecovery stat). */
@@ -70,10 +77,37 @@ export declare class Player extends Entity {
     getVelocity(): Vector2;
     getPosition(): Vector2;
     getInventory(): (InventoryItem | null)[];
+    getAbilityRank(abilityId: AbilityId): number;
+    hasAbility(abilityId: AbilityId): boolean;
+    private buildAbilityAllocationRecord;
+    isSneaking(): boolean;
+    getUnlockedVisibleBagSlotCount(): number;
+    getAccessibleInventorySlotCount(): number;
+    private isBagSlotAccessible1Based;
+    private getPreferredLoadoutBackingSlots1Based;
+    private swapTrackedLoadoutBagSlots;
+    private rehomeLoadoutBackedItemsWithinAccessibleRange;
+    getZombieDetectionRadiusMultiplier(): number;
+    private isCombatShieldEquipped;
+    canEquipItemToSlot(itemType: ItemType, equipSlot: string): boolean;
+    canOpenLockedCrates(): boolean;
+    getModifiedRangedDamage(baseDamage: number): number;
+    applyRangedHitEffects(target: Entity): void;
     private findEmptyVisibleBagIndex;
     private compactLoadoutBackedItemsToBagEnd;
     clearInventory(): void;
     private resolveAttackWeaponItem;
+    private getReloadContextForBagSlot;
+    private getTrackedReloadContext;
+    private getWeaponLoadedAmmo;
+    private setWeaponLoadedAmmo;
+    private getWeaponReserveAmmo;
+    private canReload;
+    private cancelReload;
+    private beginReload;
+    requestReload(): boolean;
+    private updateReload;
+    private ensureFireCooldown;
     private performFistAttack;
     /** Select primary (0), secondary (1), or melee (2) loadout — same as client SELECT_WEAPON_LOADOUT. */
     selectWeaponLoadout(loadout: number): void;
@@ -109,6 +143,8 @@ export declare class Player extends Entity {
     private updateZombieSpawnCooldown;
     private updateLighting;
     setInput(input: Input): void;
+    requestCombatRoll(aimAngle?: number): boolean;
+    private performCombatRollMovement;
     selectInventoryItemOnly(index: number): void;
     selectInventoryItem(index: number): void;
     setAsFiring(firing: boolean): void;
@@ -126,7 +162,8 @@ export declare class Player extends Entity {
     resetZombieSpawnCooldown(): void;
     setZombieSpawnReady(): void;
     getZombieSpawnCooldownProgress(): number;
-    getReloadCooldownMultiplier(): number;
+    /** Multiplier on weapon reload duration from the `reloadSpeed` stat (lower is faster). */
+    getReloadDurationMultiplier(): number;
     /** Multiplier on bullet spread / aim error (lower = more accurate). */
     getAccuracySpreadMultiplier(): number;
     /** Extra coins when picking up coin entities (luck stat). */
@@ -141,6 +178,7 @@ export declare class Player extends Entity {
     isHydratedFromDb(): boolean;
     /** Full inventory snapshot for website persistence (bag, armor, weapon bar / loadouts). */
     getSavedInventoryPayload(): PlayerInventoryPersistedPayload;
+    getSavedBankPayload(): PlayerBankPersistedPayload;
     /**
      * Open world: consume one-time spawn tile from persisted progress (null if none or already consumed).
      */
@@ -149,6 +187,7 @@ export declare class Player extends Entity {
         y: number;
     } | null;
     getQuestProgressPayload(): PlayerQuestStatePayload;
+    addExperience(amount: number): boolean;
     getTotalExperience(): number;
     getAbilityAllocationRecord(): Record<string, number>;
     getSkillAllocationRecord(): Record<string, number>;
@@ -159,6 +198,6 @@ export declare class Player extends Entity {
     applyDerivedStatsFromAllocations(): void;
     private handleRegenerateHealing;
     private handlePassiveHpRegen;
-    /** Max bag slots for this player (base config + strength). */
+    /** Total storage slots for this player (base config + strength). */
     getMaxInventorySlots(): number;
 }

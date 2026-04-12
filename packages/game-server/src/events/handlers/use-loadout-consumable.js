@@ -4,7 +4,8 @@ import { itemMatchesConsumableLoadout } from "@shared/util/consumable-loadout";
 function validate(data) {
     if (typeof data !== "object" || data === null)
         return null;
-    const which = data.which;
+    const obj = data;
+    const which = obj.which;
     if (which !== 0 && which !== 1)
         return null;
     return { which };

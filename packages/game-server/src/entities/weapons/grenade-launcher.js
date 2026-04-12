@@ -1,9 +1,6 @@
-import Inventory from "@/extensions/inventory";
 import { GrenadeProjectile } from "@/entities/projectiles/grenade-projectile";
 import { Weapon } from "@/entities/weapons/weapon";
-import { GunEmptyEvent } from "../../../../game-shared/src/events/server-sent/events/gun-empty-event";
 import { PlayerAttackedEvent } from "../../../../game-shared/src/events/server-sent/events/player-attacked-event";
-import { consumeAmmo } from "./helpers";
 import { Player } from "@/entities/players/player";
 import { getJitteredFireAngleRadians } from "@/entities/weapons/weapon-accuracy";
 export class GrenadeLauncher extends Weapon {
@@ -17,11 +14,6 @@ export class GrenadeLauncher extends Weapon {
         const player = this.getEntityManager().getEntityById(playerId);
         if (!player)
             return;
-        const inventory = player.getExt(Inventory);
-        if (!consumeAmmo(inventory, "grenade_launcher_ammo")) {
-            this.getEntityManager().getBroadcaster().broadcastEvent(new GunEmptyEvent(playerId));
-            return;
-        }
         const grenadeProjectile = new GrenadeProjectile(this.getGameManagers());
         grenadeProjectile.setPosition(position);
         // Set target distance if provided (mouse aiming), grenade will explode at crosshair position

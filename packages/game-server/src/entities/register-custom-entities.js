@@ -64,6 +64,7 @@ import { CampsiteFire } from "@/entities/environment/campsite-fire";
 import { Workbench } from "@/entities/environment/workbench";
 import { Forge } from "@/entities/environment/forge";
 import { ChemistryTable } from "@/entities/environment/chemistry-table";
+import { Locker } from "@/entities/environment/locker";
 import { LightDecal } from "@/entities/environment/light-decal";
 import { MessageDecal } from "@/entities/environment/message-decal";
 import { Merchant } from "@/entities/environment/merchant";
@@ -145,6 +146,7 @@ const SERVER_ENTITY_CONSTRUCTORS = {
     workbench: Workbench,
     forge: Forge,
     chemistry_table: ChemistryTable,
+    locker: Locker,
     light_decal: LightDecal,
     message_decal: MessageDecal,
     merchant: Merchant,

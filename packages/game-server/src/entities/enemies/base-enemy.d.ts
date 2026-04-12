@@ -40,6 +40,8 @@ export declare abstract class BaseEnemy extends Entity {
     private leashWanderTimer;
     private leashWanderDirection;
     private leashWanderMoving;
+    private maimRemainingSeconds;
+    private maimSpeedMultiplier;
     constructor(gameManagers: IGameManagers, entityType: EntityType, config?: ZombieConfig);
     setMovementStrategy(strategy: MovementStrategy): void;
     setAttackStrategy(strategy: AttackStrategy): void;
@@ -50,6 +52,8 @@ export declare abstract class BaseEnemy extends Entity {
     private resolveLeashParams;
     private isFlyingEnemy;
     private resetLeashPatrolMotion;
+    applyMaim(durationSeconds: number, speedMultiplier: number): void;
+    private getClosestAggroCandidate;
     private updateLeashChasingState;
     /**
      * Patrol target for pathfinding / direct flight: spawn when outside wander disc, random wander

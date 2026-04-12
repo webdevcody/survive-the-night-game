@@ -241,11 +241,15 @@ export class Bullet extends Entity {
         this.getEntityManager().markEntityForRemoval(this);
         const destructible = target.getExt(Destructible);
         const wasAlive = !destructible.isDead();
-        destructible.damage(this.damage, this.shooterId);
+        const shooter = this.getEntityManager().getEntityById(this.shooterId);
+        const damage = shooter instanceof Player ? shooter.getModifiedRangedDamage(this.damage) : this.damage;
+        destructible.damage(damage, this.shooterId);
+        if (shooter instanceof Player && target instanceof Entity) {
+          shooter.applyRangedHitEffects(target);
+        }
 
         // If the target died from this hit, increment the shooter's kill count
         if (wasAlive && destructible.isDead()) {
-          const shooter = this.getEntityManager().getEntityById(this.shooterId);
           if (shooter instanceof Player) {
             shooter.incrementKills();
           }

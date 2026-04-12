@@ -149,8 +149,12 @@ export class Arrow extends Entity {
                 this.getEntityManager().markEntityForRemoval(this);
                 const destructible = target.getExt(Destructible);
                 const wasAlive = !destructible.isDead();
-                // Deal 1 damage
-                destructible.damage(1, this.shooterId);
+                const shooter = this.getEntityManager().getEntityById(this.shooterId);
+                const damage = shooter instanceof Player ? shooter.getModifiedRangedDamage(1) : 1;
+                destructible.damage(damage, this.shooterId);
+                if (shooter instanceof Player && target instanceof Entity) {
+                    shooter.applyRangedHitEffects(target);
+                }
                 // Add arrow to target's inventory (stacking) if it has one
                 if (target.hasExt(Inventory)) {
                     const inventory = target.getExt(Inventory);
@@ -175,7 +179,6 @@ export class Arrow extends Entity {
                 }
                 // If the target died from this hit, increment the shooter's kill count
                 if (wasAlive && destructible.isDead()) {
-                    const shooter = this.getEntityManager().getEntityById(this.shooterId);
                     if (shooter instanceof Player) {
                         shooter.incrementKills();
                     }

@@ -47,7 +47,7 @@ export async function persistPlayerLastPositionToWebsite(userId, player) {
             "Content-Type": "application/json",
             "X-API-Key": GAME_SERVER_API_KEY,
         },
-        body: JSON.stringify(Object.assign(Object.assign({ userId, lastTileX: lastTile.x, lastTileY: lastTile.y }, (bind ? { respawnTileX: bind.x, respawnTileY: bind.y } : {})), { characterAllocations: player.getCharacterAllocationRecord(), abilityAllocations: player.getAbilityAllocationRecord(), professionProgress: player.getProfessionProgressRecord(), savedInventory: player.getSavedInventoryPayload() })),
+        body: JSON.stringify(Object.assign(Object.assign({ userId, lastTileX: lastTile.x, lastTileY: lastTile.y }, (bind ? { respawnTileX: bind.x, respawnTileY: bind.y } : {})), { characterAllocations: player.getCharacterAllocationRecord(), abilityAllocations: player.getAbilityAllocationRecord(), professionProgress: player.getProfessionProgressRecord(), savedInventory: player.getSavedInventoryPayload(), savedBank: player.getSavedBankPayload() })),
     });
     if (!res.ok) {
         const t = await res.text().catch(() => "");
