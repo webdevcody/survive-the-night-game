@@ -79,7 +79,7 @@ export const ABILITY_DEFINITIONS: Record<AbilityId, AbilityDefinition> = {
   },
   hercules: {
     label: "Hercules",
-    description: "Unlock every remaining bag slot.",
+    description: "Unlock 15 more bag slots.",
     iconPath: "/ui/abilities/ability-hercules.png",
     accentColor: "#cf9350",
   },
@@ -97,7 +97,7 @@ export const ABILITY_DEFINITIONS: Record<AbilityId, AbilityDefinition> = {
   },
   combatRoll: {
     label: "Combat Roll",
-    description: "Double-tap a movement key to roll toward your aim with a cooldown.",
+    description: "Double-tap W, A, S, or D to roll in that direction (cooldown).",
     iconPath: "/ui/abilities/ability-combat-roll.png",
     accentColor: "#8dd3c7",
   },

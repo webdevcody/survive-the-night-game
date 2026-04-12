@@ -100,7 +100,7 @@ export class Car extends Entity {
     }
 
     // Remove the car entity immediately (car is static, so it won't be processed by pruneEntities)
-    this.getEntityManager().removeEntity(this.getId());
+    this.getEntityManager().despawnEntity(this.getId(), "immediate");
 
     // Clear the map manager's car cache
     const mapManager = this.getGameManagers().getMapManager() as any;

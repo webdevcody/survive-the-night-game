@@ -32,6 +32,12 @@ The client tracks this with two flags:
 - `hasReceivedPlayerId` - set when YOUR_ID is received
 - `hasReceivedInitialState` - set when full state is processed
 
+A `ConnectionLifecycle` state (`disconnected` → `awaitingIdentity` → `awaitingFullState` → `ready`) in `ClientEventListener` mirrors the same contract so ordering is enforced in one place.
+
+**First connect:** the server pushes YOUR_ID + full state after `onConnection` (see `player-session-lifecycle.ts`). The client does **not** send `REQUEST_PLAYER_ID` / `REQUEST_FULL_STATE` on first connect.
+
+**Reconnect / `GAME_STARTED`:** the client requests player id + full state (with retry), since the transport may come up before the listener has fresh identity.
+
 ## Event Flow
 
 ### When a Player First Connects

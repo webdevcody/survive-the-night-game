@@ -286,7 +286,7 @@ export class MapManager {
     cullDistance: number = DARKNESS_RENDER_DISTANCE
   ): LightSourceWithId[] {
     const sources: LightSourceWithId[] = [];
-    const entities = this.gameClient.getGameState().entities;
+    const entities = this.gameClient.getGameState().getEntities();
     const currentTime = Date.now();
     const pulseOffset = Math.sin(currentTime * PULSE_SPEED);
     const radiusMultiplier = 1 + pulseOffset * PULSE_INTENSITY;

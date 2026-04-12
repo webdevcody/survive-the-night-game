@@ -5,82 +5,116 @@ import { EntityType } from "@shared/types/entity";
 import { GameModeId } from "@shared/events/server-sent/events/game-started-event";
 import { addEntityToTypeMap, removeEntityFromTypeMap } from "@shared/util/entity-map-helpers";
 
-export type GameState = {
-  startedAt: number;
-  playerId: number;
-  entities: ClientEntityBase[];
-  entityMap: Map<number, ClientEntityBase>;
-  entitiesByType: Map<EntityType, ClientEntityBase[]>;
-  gameMode: GameModeId;
-  phaseStartTime: number;
-  phaseDuration: number;
-  totalZombies?: number;
-  crafting: boolean;
-  serverTimeOffset: number;
-  closestInteractiveEntityId?: number | null;
+const EMPTY_ENTITIES = Object.freeze([]) as readonly ClientEntityBase[];
+
+export class GameState {
+  public startedAt = Date.now();
+  public playerId = 0;
+  public gameMode: GameModeId = "open_world";
+  public phaseStartTime = Date.now();
+  public phaseDuration = 0;
+  public totalZombies?: number = 0;
+  public crafting = false;
+  public serverTimeOffset = 0;
+  public closestInteractiveEntityId?: number | null;
   /** When set, client shows speech bubble for this dialogue_survivor_npc entity id. */
-  openDialogueNpcId?: number | null;
+  public openDialogueNpcId?: number | null = null;
   /** 0-based index into current NPC dialogue lines (client-only). */
-  dialogueLineIndex: number;
-   /** Set by client each tick for dialogue branches that need authored quest step counts. */
-  getQuestStepCount?: (questId: string) => number | undefined;
-  getQuestDefinition?: (questId: string) => WorldMapQuestDefinition | undefined;
+  public dialogueLineIndex = 0;
+  /** Set by client each tick for dialogue branches that need authored quest step counts. */
+  public getQuestStepCount?: (questId: string) => number | undefined;
+  public getQuestDefinition?: (questId: string) => WorldMapQuestDefinition | undefined;
   /**
    * Filled each tick from the first active quest (same as the on-screen tracker).
    * Used by HUD edge arrows, map pins, and NPC highlight markers.
    */
-  questNavigationTarget?: QuestNavigationTarget | null;
-  dt: number;
-  globalIlluminationMultiplier: number;
-  darknessHue: "red" | "blue";
-};
+  public questNavigationTarget?: QuestNavigationTarget | null;
+  public dt = 0;
+  public globalIlluminationMultiplier = 1.0;
+  public darknessHue: "red" | "blue" = "red";
 
-export function getEntityById(gameState: GameState, id: number): ClientEntityBase | undefined {
-  return gameState.entityMap.get(id);
+  private entities: ClientEntityBase[] = [];
+  private readonly entityMap = new Map<number, ClientEntityBase>();
+  private readonly entitiesByType = new Map<EntityType, ClientEntityBase[]>();
+
+  public getEntities(): readonly ClientEntityBase[] {
+    return this.entities;
+  }
+
+  public getEntitiesByType(type: EntityType): readonly ClientEntityBase[] {
+    return this.entitiesByType.get(type) ?? EMPTY_ENTITIES;
+  }
+
+  public getEntityById(id: number): ClientEntityBase | undefined {
+    return this.entityMap.get(id);
+  }
+
+  public hasEntity(id: number): boolean {
+    return this.entityMap.has(id);
+  }
+
+  public addEntity(entity: ClientEntityBase): void {
+    if (this.entityMap.has(entity.getId())) {
+      console.warn(`[Client] addEntity called for existing ID ${entity.getId()}. removing old entity.`);
+      this.removeEntity(entity.getId());
+    }
+
+    this.entities.push(entity);
+    this.entityMap.set(entity.getId(), entity);
+    addEntityToTypeMap(entity, this.entitiesByType);
+  }
+
+  public removeEntity(id: number): void {
+    const entity = this.entityMap.get(id);
+    if (!entity) {
+      return;
+    }
+
+    const index = this.entities.findIndex((e) => e.getId() === id);
+    if (index !== -1) {
+      this.entities.splice(index, 1);
+    }
+    this.entityMap.delete(id);
+    removeEntityFromTypeMap(entity, this.entitiesByType);
+  }
+
+  public clearEntities(): void {
+    this.entities = [];
+    this.entityMap.clear();
+    this.entitiesByType.clear();
+  }
+
+  public replaceAllEntities(entities: readonly ClientEntityBase[]): void {
+    this.entities = [...entities];
+    this.entityMap.clear();
+    this.entitiesByType.clear();
+    for (const entity of this.entities) {
+      this.entityMap.set(entity.getId(), entity);
+      addEntityToTypeMap(entity, this.entitiesByType);
+    }
+  }
 }
 
-export function getEntitiesByType(gameState: GameState, type: EntityType): ClientEntityBase[] {
-  return gameState.entitiesByType.get(type) ?? [];
+export function getEntityById(gameState: GameState, id: number): ClientEntityBase | undefined {
+  return gameState.getEntityById(id);
+}
+
+export function getEntitiesByType(gameState: GameState, type: EntityType): readonly ClientEntityBase[] {
+  return gameState.getEntitiesByType(type);
 }
 
 export function addEntity(gameState: GameState, entity: ClientEntityBase): void {
-  if (gameState.entityMap.has(entity.getId())) {
-    console.warn(`[Client] addEntity called for existing ID ${entity.getId()}. removing old entity.`);
-    removeEntity(gameState, entity.getId());
-  }
-
-  gameState.entities.push(entity);
-  gameState.entityMap.set(entity.getId(), entity);
-
-  addEntityToTypeMap(entity, gameState.entitiesByType);
+  gameState.addEntity(entity);
 }
 
 export function removeEntity(gameState: GameState, id: number): void {
-  const entity = gameState.entityMap.get(id);
-  if (entity) {
-    const index = gameState.entities.findIndex((e) => e.getId() === id);
-    if (index !== -1) {
-      gameState.entities.splice(index, 1);
-    }
-    gameState.entityMap.delete(id);
-
-    removeEntityFromTypeMap(entity, gameState.entitiesByType);
-  }
+  gameState.removeEntity(id);
 }
 
 export function clearEntities(gameState: GameState): void {
-  gameState.entities = [];
-  gameState.entityMap.clear();
-  gameState.entitiesByType.clear();
+  gameState.clearEntities();
 }
 
-export function replaceAllEntities(gameState: GameState, entities: ClientEntityBase[]): void {
-  gameState.entities = entities;
-  gameState.entityMap.clear();
-  gameState.entitiesByType.clear();
-  entities.forEach((entity) => {
-    gameState.entityMap.set(entity.getId(), entity);
-
-    addEntityToTypeMap(entity, gameState.entitiesByType);
-  });
+export function replaceAllEntities(gameState: GameState, entities: readonly ClientEntityBase[]): void {
+  gameState.replaceAllEntities(entities);
 }

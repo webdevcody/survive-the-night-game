@@ -403,6 +403,11 @@ export class Player extends Entity {
     return this.serialized.get("isZombie");
   }
 
+  /** Bot / BR filler players; mirrored in serialized `isAI` for replication. */
+  isAIControlled(): boolean {
+    return Boolean(this.serialized.get("isAI"));
+  }
+
   setIsZombie(value: boolean): void {
     this.serialized.set("isZombie", value);
     if (value) {
@@ -661,8 +666,14 @@ export class Player extends Entity {
     return allocations;
   }
 
+  /** Ability + input: zombie detection and other sneak perks. */
   isSneaking(): boolean {
     return !this.isZombie() && this.hasAbility("sneak") && Boolean(this.serialized.get("inputSneak"));
+  }
+
+  /** Sneak key held (movement slow / no sprint) for any non-zombie; does not require the Sneak ability. */
+  isSneakInputActive(): boolean {
+    return !this.isZombie() && Boolean(this.serialized.get("inputSneak"));
   }
 
   getUnlockedVisibleBagSlotCount(): number {
@@ -992,6 +1003,42 @@ export class Player extends Entity {
     this.cancelReload();
   }
 
+  /**
+   * Reuses `reloadProgress` (0→1 fill) for melee swing cooldown so clients can show the same radial
+   * as magazine reloads. Only serialized while `isReloading` is false; reload owns the field when true.
+   */
+  private syncMeleeSwingProgressIndicator(): void {
+    if (this.serialized.get("isReloading")) {
+      return;
+    }
+    if (this.isDead()) {
+      this.serialized.set("reloadProgress", 0);
+      return;
+    }
+    if (this.fireCooldown.isReady()) {
+      this.serialized.set("reloadProgress", 0);
+      return;
+    }
+    const showMeleeSwing =
+      this.isZombie() ||
+      (this.lastWeaponType != null &&
+        weaponRegistry.get(this.lastWeaponType)?.type === "melee");
+    if (!showMeleeSwing) {
+      this.serialized.set("reloadProgress", 0);
+      return;
+    }
+    const duration = this.fireCooldown.getDuration();
+    if (duration <= 0) {
+      this.serialized.set("reloadProgress", 0);
+      return;
+    }
+    const progress = Math.max(
+      0,
+      Math.min(1, 1 - this.fireCooldown.getRemainingTime() / duration),
+    );
+    this.serialized.set("reloadProgress", progress);
+  }
+
   private ensureFireCooldown(weaponType: ItemType, cooldownSeconds: number): void {
     if (this.lastWeaponType === weaponType) {
       return;
@@ -1003,7 +1050,7 @@ export class Player extends Entity {
   private performFistAttack(): void {
     const weaponKey = "fists";
     const cfg = weaponRegistry.get(weaponKey);
-    const cooldown = cfg?.stats.cooldown ?? 1.7;
+    const cooldown = cfg?.stats.cooldown ?? 1.45;
     this.ensureFireCooldown(weaponKey as ItemType, cooldown);
     if (!this.fireCooldown.isReady()) return;
     this.fireCooldown.reset();
@@ -1368,6 +1415,7 @@ export class Player extends Entity {
   handleAttack(deltaTime: number) {
     this.fireCooldown.update(deltaTime);
     this.updateReload(deltaTime);
+    this.syncMeleeSwingProgressIndicator();
 
     if (this.serialized.get("isReloading")) return;
 
@@ -1579,12 +1627,12 @@ export class Player extends Entity {
         const hasInfiniteRun = this.hasExt(InfiniteRun);
 
         const isZombie = this.serialized.get("isZombie");
-        const isSneaking = this.isSneaking();
+        const sneakInputActive = this.isSneakInputActive();
         const stamina = this.serialized.get("stamina");
         const canSprint =
           !isZombie &&
           this.hasAbility("sprint") &&
-          !isSneaking &&
+          !sneakInputActive &&
           this.serialized.get("inputSprint") &&
           (hasInfiniteRun || (stamina > 0 && this.exhaustionTimer <= 0));
         const sprintMultiplier = canSprint ? getConfig().player.SPRINT_MULTIPLIER : 1;
@@ -1598,7 +1646,7 @@ export class Player extends Entity {
             ? ADRENALINE_SPEED_MULTIPLIER
             : 1;
         const trackStarMultiplier = this.hasAbility("trackStar") ? TRACK_STAR_SPEED_MULTIPLIER : 1;
-        const sneakMultiplier = isSneaking ? SNEAK_MOVE_SPEED_MULTIPLIER : 1;
+        const sneakMultiplier = sneakInputActive ? SNEAK_MOVE_SPEED_MULTIPLIER : 1;
         const speedMultiplier =
           sprintMultiplier *
           zombieMultiplier *
@@ -1678,11 +1726,11 @@ export class Player extends Entity {
       const inputDx = this.serialized.get("inputDx");
       const inputDy = this.serialized.get("inputDy");
       const isMoving = inputDx !== 0 || inputDy !== 0;
-      const isSneaking = this.isSneaking();
+      const sneakInputActive = this.isSneakInputActive();
       const isSprinting =
         !this.isZombie() &&
         this.hasAbility("sprint") &&
-        !isSneaking &&
+        !sneakInputActive &&
         this.serialized.get("inputSprint") &&
         isMoving &&
         (hasInfiniteRun || stamina > 0);

@@ -277,6 +277,63 @@ export class PlayerClient extends ClientEntity implements IClientEntity, Rendera
     this.input = input;
   }
 
+  /**
+   * Matches server Player.isSneaking: Sneak ability + sneak input, not a zombie.
+   * Local player uses live input; others use serialized inputSneak.
+   */
+  isSneaking(gameState: GameState): boolean {
+    if (this.isZombie) return false;
+    if (!this.hasAbility("sneak")) return false;
+    if (gameState.playerId === this.getId()) {
+      return Boolean(this.input.sneak);
+    }
+    return Boolean((this as any).inputSneak);
+  }
+
+  private getCurrentRenderImage(gameState: GameState): HTMLImageElement {
+    const { facing } = this.input;
+    const isMoving = this.getVelocity().x !== 0 || this.getVelocity().y !== 0;
+    const assetKey = this.getPlayerAssetKey();
+
+    if (this.isDead()) {
+      return this.imageLoader.getWithDirection(assetKey, Direction.Down);
+    }
+    if (!isMoving) {
+      return this.imageLoader.getWithDirection(assetKey, facing);
+    }
+
+    const animationDuration = this.input.sprint
+      ? this.SPRINT_ANIMATION_DURATION
+      : this.WALK_ANIMATION_DURATION;
+    const frameIndex = getFrameIndex(gameState.startedAt, {
+      duration: animationDuration,
+      frames: 3,
+    });
+    return this.imageLoader.getFrameWithDirection(assetKey, facing, frameIndex);
+  }
+
+  private getCurrentRenderBounds(gameState: GameState): { x: number; y: number; w: number; h: number } {
+    const image = this.getCurrentRenderImage(gameState);
+    return {
+      x: Math.round(this.lastRenderPosition.x),
+      y: Math.round(this.lastRenderPosition.y),
+      w: image.width,
+      h: image.height,
+    };
+  }
+
+  /** Drawn after the night/darkness overlay so the icon stays visible. */
+  public renderSneakStatusAfterDarkness(ctx: CanvasRenderingContext2D, gameState: GameState): void {
+    if (!this.isSneaking(gameState) || this.isDead()) {
+      return;
+    }
+    const { x, y, w, h } = this.getCurrentRenderBounds(gameState);
+    const icon = this.imageLoader.get("icon_sneak_closed");
+    const ix = Math.round(x + w / 2 - icon.width / 2);
+    const iy = Math.round(y + h);
+    ctx.drawImage(icon, ix, iy);
+  }
+
   getIsCrafting(): boolean {
     return this.isCrafting;
   }
@@ -374,27 +431,7 @@ export class PlayerClient extends ClientEntity implements IClientEntity, Rendera
     this.previousHealth = currentHealth;
 
     const targetPosition = this.getPosition();
-    const { facing } = this.input;
-    const isMoving = this.getVelocity().x !== 0 || this.getVelocity().y !== 0;
-
-    let image: HTMLImageElement;
-    const assetKey = this.getPlayerAssetKey();
-
-    if (this.isDead()) {
-      image = this.imageLoader.getWithDirection(assetKey, Direction.Down);
-    } else if (!isMoving) {
-      image = this.imageLoader.getWithDirection(assetKey, facing);
-    } else {
-      // Faster animation when sprinting
-      const animationDuration = this.input.sprint
-        ? this.SPRINT_ANIMATION_DURATION
-        : this.WALK_ANIMATION_DURATION;
-      const frameIndex = getFrameIndex(gameState.startedAt, {
-        duration: animationDuration,
-        frames: 3,
-      });
-      image = this.imageLoader.getFrameWithDirection(assetKey, facing, frameIndex);
-    }
+    const image = this.getCurrentRenderImage(gameState);
     const dist = distance(targetPosition, this.lastRenderPosition);
 
     if (dist > 100) {
@@ -587,7 +624,7 @@ export class PlayerClient extends ClientEntity implements IClientEntity, Rendera
       return;
     }
 
-    const renderPosition = this.getPosition();
+    const renderPosition = this.getCurrentRenderBounds(gameState);
     const isLocalPlayer = gameState.playerId === this.getId();
     let indicatorY = renderPosition.y - 6;
     if (!isLocalPlayer && this.displayName) {

@@ -37,4 +37,8 @@ export class Cooldown {
   getRemainingTime(): number {
     return this.timeRemaining;
   }
+
+  getDuration(): number {
+    return this.duration;
+  }
 }

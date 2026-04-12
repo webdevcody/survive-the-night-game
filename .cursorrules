@@ -26,6 +26,10 @@ if (entity.hasExt(ClientPositionable)) {
 - update entity factory on client
 - update the map manager's to spawn the new zombie type
 
+### game-server TypeScript
+
+- Source lives in `.ts` only under `packages/game-server/src`. `tsconfig` uses **`noEmit: true`** so `tsc` must not write `.js` next to sources (use `tsx` / `tsup`). Do not commit `.js`, `.js.map`, or a `.d.ts` next to the same-named `.ts` under `src/`. `npm test` in that package runs `check:ts-sources` first.
+
 ### React Route 7
 
 - anything in the website package, remember I'm using react router 7. please refer to the docs for how to do things.

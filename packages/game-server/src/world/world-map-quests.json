@@ -28,6 +28,12 @@
       "title": "Weary Travelers",
       "steps": [
         {
+          "type": "reach_waypoint",
+          "row": 110,
+          "col": 123,
+          "radiusTiles": 3
+        },
+        {
           "type": "kill_enemies",
           "enemyType": "zombie",
           "count": 5

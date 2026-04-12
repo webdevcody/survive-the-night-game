@@ -48,9 +48,9 @@ export class AIPlayerManager {
     player.setDisplayName(displayName);
 
     // Mark as AI player
-    (player as any).serialized.set("isAI", true);
+    player.getSerialized().set("isAI", true);
     // AI uses sprint without requiring the progression unlock
-    (player as any).serialized.set("abilitySprint", 1);
+    player.getSerialized().set("abilitySprint", 1);
 
     // Set realistic ping (50-70ms)
     const ping =
@@ -179,7 +179,7 @@ export class AIPlayerManager {
     const randomId = aiIds[Math.floor(Math.random() * aiIds.length)];
     const entry = this.aiPlayers.get(randomId);
     if (entry) {
-      this.gameManagers.getEntityManager().removeEntity(randomId);
+      this.gameManagers.getEntityManager().despawnEntity(randomId, "immediate");
       this.aiPlayers.delete(randomId);
       return true;
     }

@@ -4,32 +4,15 @@ import { ClientPositionable } from "@/extensions";
 import { addEntity, removeEntity as removeEntityFromState, replaceAllEntities } from "@/state";
 import { BufferReader } from "@shared/util/buffer-serialization";
 import { entityTypeRegistry } from "@shared/util/entity-type-encoding";
-import { InitializationContext } from "./types";
+import { GameStateUpdateContext } from "./types";
 import { Entities } from "@shared/constants";
 import { distance } from "@shared/util/physics";
 
-export const onGameStateUpdate = (
-  context: InitializationContext,
+/** Apply a game state buffer after the listener has gated init ordering. */
+export const applyGameStateUpdateBuffer = (
+  context: GameStateUpdateContext,
   gameStateEvent: GameStateEvent,
 ) => {
-  // Don't process delta updates until we have playerId and have processed a full state
-  if (
-    !gameStateEvent.isFullState() &&
-    (!context.hasReceivedPlayerId || !context.hasReceivedInitialState)
-  ) {
-    return;
-  }
-
-  // Full state can arrive before YOUR_ID; queue and apply after player id is known (see on-your-id)
-  if (gameStateEvent.isFullState() && !context.hasReceivedPlayerId) {
-    context.queuePendingFullState(gameStateEvent);
-    return;
-  }
-
-  handleGameStateUpdate(context, gameStateEvent);
-};
-
-const handleGameStateUpdate = (context: InitializationContext, gameStateEvent: GameStateEvent) => {
   const timestamp = gameStateEvent.getTimestamp() ?? Date.now();
 
   // Calculate server time offset: clientTime - serverTime
@@ -75,7 +58,7 @@ const handleGameStateUpdate = (context: InitializationContext, gameStateEvent: G
       const type = entityTypeRegistry.decode(typeId);
 
       // Check if entity already exists
-      let entity = context.gameState.entityMap.get(id);
+      let entity = context.gameState.getEntityById(id);
       if (!entity) {
         // Create new entity with minimal data
         const entityData = { id, type };
@@ -153,7 +136,7 @@ const handleGameStateUpdate = (context: InitializationContext, gameStateEvent: G
 
     // Remove entities that were deleted
     removedIds.forEach((id) => {
-      const entity = context.gameState.entityMap.get(id);
+      const entity = context.gameState.getEntityById(id);
       if (entity) {
         context.gameClient.getRenderer().removeEntityFromSpatialGrid(entity);
       }
@@ -172,7 +155,7 @@ const handleGameStateUpdate = (context: InitializationContext, gameStateEvent: G
       const typeId = idReader.readUInt8();
       const type = entityTypeRegistry.decode(typeId);
 
-      const existingEntity = context.gameState.entityMap.get(id);
+      const existingEntity = context.gameState.getEntityById(id);
       if (existingEntity) {
         // Track if position might have changed
         const hadPosition = existingEntity.hasExt(ClientPositionable);

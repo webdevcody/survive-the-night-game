@@ -485,24 +485,12 @@ export class GameClient {
       onReloadWeapon: () => {
         this.socketManager?.sendReloadWeapon();
       },
-      onRequestCombatRoll: (fallbackFacing) => {
+      onRequestCombatRoll: (rollDirection) => {
         const player = getPlayer();
         if (!player || !player.hasExt(ClientPositionable)) {
           return;
         }
-        const playerPos = player.getExt(ClientPositionable).getCenterPosition();
-        const cameraPos = this.cameraManager.getPosition();
-        const cameraScale = this.cameraManager.getScale();
-        const aimInfo = this.inputManager.calculateAimInfo(
-          playerPos,
-          cameraPos,
-          this.ctx.canvas.width,
-          this.ctx.canvas.height,
-          cameraScale,
-        );
-        this.socketManager?.sendRequestCombatRoll(
-          aimInfo?.angle ?? this.directionToAngle(fallbackFacing),
-        );
+        this.socketManager?.sendRequestCombatRoll(this.directionToAngle(rollDirection));
       },
     });
 
@@ -559,27 +547,7 @@ export class GameClient {
       this.closeNpcDialogueWithCompletion(offer.npcEntityId, action === "accept");
     });
 
-    this.gameState = {
-      startedAt: Date.now(),
-      playerId: 0,
-      entities: [],
-      entityMap: new Map(),
-      entitiesByType: new Map(),
-      gameMode: "open_world",
-      phaseStartTime: Date.now(),
-      phaseDuration: 0,
-      totalZombies: 0,
-      crafting: false,
-      // Server time synchronization
-      serverTimeOffset: 0, // Will be calculated when receiving game state updates
-      dt: 0,
-      // Global illumination multiplier (default: 1.0)
-      globalIlluminationMultiplier: 1.0,
-      // Darkness hue (default: "red")
-      darknessHue: "red",
-      openDialogueNpcId: null,
-      dialogueLineIndex: 0,
-    };
+    this.gameState = new GameState();
 
     this.renderer = new Renderer(
       this.ctx,
@@ -699,13 +667,8 @@ export class GameClient {
 
     await this.socketManager.connect();
 
-    // Request player ID and full game state
-    this.socketManager.requestPlayerId();
-    this.socketManager.requestFullState();
-
-    // Note: Rendering will start automatically when both playerId and full game state
-    // are received, handled by checkInitialization() in ClientEventListener
-    // The flags are tracked in socketManager and checked by the event handlers
+    // Server pushes YOUR_ID + full state on connect (see player-session-lifecycle).
+    this.clientEventListener.onTransportConnected();
 
     this.socketManager.startPingMeasurement();
 
@@ -721,7 +684,7 @@ export class GameClient {
       this.cameraManager,
       this.mapManager,
       () => this.getMyPlayer(),
-      () => this.gameState.entities,
+      () => this.gameState.getEntities(),
       () => this.socketManager.getSocket(),
     );
 
@@ -1052,7 +1015,7 @@ export class GameClient {
             input,
             fixedDeltaTime, // Always 0.05, matching server
             mapData.collidables,
-            this.gameState.entities,
+            this.gameState.getEntities(),
           );
         }, deltaSeconds);
 
@@ -1284,7 +1247,7 @@ export class GameClient {
    */
   private updateCampfireSounds(): void {
     // Find campsite fire if we don't have a cached reference or if it's been removed
-    if (!this.campsiteFire || !this.gameState.entityMap.has(this.campsiteFire.getId())) {
+    if (!this.campsiteFire || !this.gameState.hasEntity(this.campsiteFire.getId())) {
       this.campsiteFire =
         (getEntitiesByType(this.gameState, Entities.CAMPFIRE)[0] as CampsiteFireClient) || null;
     }

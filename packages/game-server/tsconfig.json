@@ -1,24 +1,17 @@
 {
   "compilerOptions": {
     "target": "ES2017",
-    "lib": ["dom", "dom.iterable", "esnext"],
-    "allowJs": true,
+    "lib": ["ES2021"],
+    "allowJs": false,
     "skipLibCheck": true,
     "strict": true,
-    "noEmit": false,
+    "noEmit": true,
     "esModuleInterop": true,
     "module": "esnext",
     "moduleResolution": "bundler",
     "resolveJsonModule": true,
     "isolatedModules": true,
-    "composite": true,
-    "jsx": "preserve",
     "incremental": true,
-    "plugins": [
-      {
-        "name": "next"
-      }
-    ],
     "baseUrl": ".",
     "paths": {
       "@/*": ["./src/*", "../game-shared/src/*"],
@@ -26,11 +19,6 @@
       "@shared/*": ["../game-shared/src/*"]
     }
   },
-  "include": ["src/**/*", "tests/**/*"],
-  "references": [
-    {
-      "path": "../game-shared"
-    }
-  ],
-  "exclude": ["node_modules"]
+  "include": ["src/**/*"],
+  "exclude": ["node_modules", "dist"]
 }

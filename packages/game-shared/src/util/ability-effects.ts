@@ -6,7 +6,10 @@ type DetectionAllocations = Pick<AbilityAllocations, "stealth" | "sneak">;
 
 export const LOADOUT_RESERVED_BAG_SLOT_COUNT = 5;
 export const BASE_UNLOCKED_VISIBLE_BAG_SLOTS = 5;
-export const PACK_RAT_UNLOCKED_VISIBLE_BAG_SLOTS = 20;
+/** Each of Pack Rat and Hercules unlocks this many extra visible bag slots (beyond base). */
+export const ABILITY_EXTRA_VISIBLE_BAG_SLOTS = 15;
+export const PACK_RAT_UNLOCKED_VISIBLE_BAG_SLOTS =
+  BASE_UNLOCKED_VISIBLE_BAG_SLOTS + ABILITY_EXTRA_VISIBLE_BAG_SLOTS;
 
 export const ADRENALINE_HEALTH_THRESHOLD_FRACTION = 0.2;
 export const ADRENALINE_SPEED_MULTIPLIER = 1.2;
@@ -26,10 +29,10 @@ export const DETOX_MAX_DAMAGE_MULTIPLIER = 0.5;
 export const COUNTER_ATTACK_CHANCE = 0.5;
 export const COUNTER_ATTACK_DAMAGE = 2;
 export const COMBAT_SHIELD_DAMAGE_REDUCTION = 1;
-export const COMBAT_ROLL_DISTANCE = 48;
-export const COMBAT_ROLL_COOLDOWN_SECONDS = 1.35;
+export const COMBAT_ROLL_DISTANCE = 36;
+export const COMBAT_ROLL_COOLDOWN_SECONDS = 1.65;
 export const COMBAT_ROLL_STEP_SIZE = 4;
-export const COMBAT_ROLL_STAMINA_COST = 6;
+export const COMBAT_ROLL_STAMINA_COST = 8;
 export const LOCKED_CRATE_CHANCE = 0.35;
 
 export function hasUnlockedAbility(
@@ -45,13 +48,14 @@ export function getMaxVisibleBagSlots(totalInventorySlots: number): number {
 }
 
 export function getBaseUnlockedVisibleBagSlots(allocations: InventoryUnlockAllocations): number {
-  if (hasUnlockedAbility(allocations, "hercules")) {
-    return playerConfig.MAX_INVENTORY_SLOTS - LOADOUT_RESERVED_BAG_SLOT_COUNT;
-  }
+  let slots = BASE_UNLOCKED_VISIBLE_BAG_SLOTS;
   if (hasUnlockedAbility(allocations, "packRat")) {
-    return PACK_RAT_UNLOCKED_VISIBLE_BAG_SLOTS;
+    slots += ABILITY_EXTRA_VISIBLE_BAG_SLOTS;
   }
-  return BASE_UNLOCKED_VISIBLE_BAG_SLOTS;
+  if (hasUnlockedAbility(allocations, "hercules")) {
+    slots += ABILITY_EXTRA_VISIBLE_BAG_SLOTS;
+  }
+  return slots;
 }
 
 export function getUnlockedVisibleBagSlots(

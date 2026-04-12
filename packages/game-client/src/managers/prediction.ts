@@ -13,6 +13,7 @@ import { Hitbox } from "@shared/util/hitbox";
 import { ReconciliationManager } from "./reconciliation-manager";
 import { ClientSnared } from "@/extensions/snared";
 import { itemRegistry } from "@shared/entities";
+import { SNEAK_MOVE_SPEED_MULTIPLIER } from "@shared/util/ability-effects";
 
 type PredictionConfig = {
   playerSpeed: number; // pixels per second
@@ -45,7 +46,7 @@ export class PredictionManager {
     input: Input,
     deltaSeconds: number,
     collidables: number[][] | null = null,
-    entities: ClientEntityBase[] = [],
+    entities: readonly ClientEntityBase[] = [],
   ): void {
     if (deltaSeconds <= 0) return;
 
@@ -80,10 +81,12 @@ export class PredictionManager {
     const direction = normalizeVector(poolManager.vector2.claim(input.dx, input.dy));
 
     // Check if player can sprint based on stamina (must match server logic)
+    const sneakInput = !player.isZombiePlayer() && input.sneak;
     const hasStamina = player.getStamina() > 0;
-    const canSprint = input.sprint && hasStamina;
+    const canSprint = input.sprint && hasStamina && !sneakInput;
     const config = this.getConfig();
-    const speedMultiplier = canSprint ? config.sprintMultiplier : 1;
+    const speedMultiplier =
+      (canSprint ? config.sprintMultiplier : 1) * (sneakInput ? SNEAK_MOVE_SPEED_MULTIPLIER : 1);
 
     const speed = config.playerSpeed * speedMultiplier;
     let moveX = direction.x * speed * deltaSeconds;
@@ -137,7 +140,7 @@ export class PredictionManager {
     proposedX: number,
     proposedY: number,
     collidables: number[][],
-    entities: ClientEntityBase[],
+    entities: readonly ClientEntityBase[],
   ): { blocked: boolean; adjusted: { x: number; y: number } } {
     const positionable = player.getExt(ClientPositionable);
     const collidable = player.getExt(ClientCollidable);
@@ -216,7 +219,7 @@ export class PredictionManager {
 
   private overlapsAnyEntity(
     playerHitbox: Hitbox,
-    entities: ClientEntityBase[],
+    entities: readonly ClientEntityBase[],
     playerEntityId: number,
   ): boolean {
     for (const entity of entities) {

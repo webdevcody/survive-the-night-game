@@ -34,6 +34,7 @@ export class Renderer {
   private particleManager: ParticleManager;
   private getPlacementManager: () => PlacementManager | null;
   private mousePosition: { x: number; y: number } | null = null;
+  private renderedPlayersThisFrame: PlayerClient[] = [];
   public spatialGrid: SpatialGrid<ClientEntityBase> | null = null;
 
   constructor(
@@ -84,7 +85,7 @@ export class Renderer {
     });
 
     // Add all existing entities to the grid
-    const entities = this.gameState.entities;
+    const entities = this.gameState.getEntities();
     for (let i = 0; i < entities.length; i++) {
       const entity = entities[i];
       if (entity.hasExt(ClientPositionable)) {
@@ -223,6 +224,9 @@ export class Renderer {
     for (const entity of entitiesToRender) {
       try {
         entity.render(this.ctx, this.gameState);
+        if (entity instanceof PlayerClient) {
+          this.renderedPlayersThisFrame.push(entity);
+        }
       } catch (error) {
         console.error(`Error rendering entity ${entity.constructor.name}:`, error);
       }
@@ -231,6 +235,7 @@ export class Renderer {
 
   public render(): void {
     perfTimer.start("render");
+    this.renderedPlayersThisFrame.length = 0;
 
     this.clearCanvas();
 
@@ -272,11 +277,26 @@ export class Renderer {
     // Apply zombie "undead view" overlay if player is a zombie
     this.mapManager.renderZombieOverlay(this.ctx);
 
+    const localPlayer = getPlayer(this.gameState);
+    if (
+      localPlayer &&
+      localPlayer.isSneaking(this.gameState) &&
+      !localPlayer.isDead()
+    ) {
+      this.ctx.save();
+      this.ctx.setTransform(1, 0, 0, 1, 0, 0);
+      this.ctx.fillStyle = "rgba(0, 0, 0, 0.22)";
+      this.ctx.fillRect(0, 0, this.ctx.canvas.width, this.ctx.canvas.height);
+      this.ctx.restore();
+    }
+
+    for (const player of this.renderedPlayersThisFrame) {
+      player.renderSneakStatusAfterDarkness(this.ctx, this.gameState);
+    }
+
     // World-space reload indicators render after darkness so they stay readable at night.
-    for (const entity of this.gameState.entities) {
-      if (entity instanceof PlayerClient) {
-        entity.renderReloadProgressIndicator(this.ctx, this.gameState);
-      }
+    for (const player of this.renderedPlayersThisFrame) {
+      player.renderReloadProgressIndicator(this.ctx, this.gameState);
     }
 
     // Render UI without transforms

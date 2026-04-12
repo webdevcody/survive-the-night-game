@@ -40,6 +40,7 @@ const SPRITE_SHEETS = {
   characters: "/sheets/characters-sheet.png",
   ground: "/sheets/ground.png",
   locker: "/sheets/locker.png",
+  ui_sneak_icon: "/ui/sneak-eye-closed.png",
 } as const;
 
 type SheetName = keyof typeof SPRITE_SHEETS;
@@ -332,7 +333,7 @@ function generateEnvironmentAssets(): Record<string, AssetDefinition> {
 // Combined Asset Map
 // ============================================================================
 
-export const assetsMap = {
+export const assetsMap: Record<string, AssetDefinition> = {
   ...generateWeaponAssets(),
   ...generateSimpleAssets(itemRegistry.getAll()),
   ...generateSimpleAssets(resourceRegistry.getAll()),
@@ -341,11 +342,13 @@ export const assetsMap = {
   ...generateDecalAssets(),
   ...generateZombieAssets(),
   ...generateCharacterAssets(),
-} as const;
+  icon_sneak_closed: defineAsset(0, 0, "ui_sneak_icon", { width: 16, height: 16 }),
+};
 
-export type Asset = keyof typeof assetsMap;
+/** Runtime keys live in {@link assetsMap}; kept as string so spreads from registries type-check. */
+export type Asset = string;
 
-export const assetsCache = {} as { [K in Asset]: HTMLImageElement };
+export const assetsCache = {} as Record<string, HTMLImageElement>;
 
 // ============================================================================
 // Image Loader Interface

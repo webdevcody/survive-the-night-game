@@ -29,6 +29,6 @@ export interface HandlerContext {
   broadcastEvent(event: GameEvent<any>): void;
   sendEventToSocket(socket: ISocketAdapter, event: GameEvent<any>): void;
   sanitizeText(text: string): string;
-  createPlayerForSocket(socket: any, initialProgress?: PersistedPlayerProgress): Player;
+  createPlayerForSocket(socket: ISocketAdapter, initialProgress?: PersistedPlayerProgress): Player;
   broadcastPlayerJoined(player: Player): void;
 }

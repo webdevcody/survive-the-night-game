@@ -41,7 +41,7 @@ export class PlacementManager {
     private cameraManager: CameraManager,
     private mapManager: MapManager,
     private getPlayer: () => PlayerClient | null,
-    private getEntities: () => ClientEntityBase[],
+    private getEntities: () => readonly ClientEntityBase[],
     private getSocket: () => ISocketAdapter
   ) {
     this.setupMouseTracking();

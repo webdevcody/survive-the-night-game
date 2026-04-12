@@ -8,7 +8,7 @@ import { distance } from "@/util/physics";
 import { IEntity } from "@/entities/types";
 import { EntityType, ItemState } from "@shared/types/entity";
 import { EntityFinder } from "@/managers/entity-finder";
-import { IGameManagers, IEntityManager, Broadcaster } from "@/managers/types";
+import { IGameManagers, IEntityManager, Broadcaster, DespawnMode } from "@/managers/types";
 import { EntityStateTracker } from "./entity-state-tracker";
 import Vector2 from "@/util/vector2";
 import { BaseEnemy } from "@/entities/enemies/base-enemy";
@@ -146,7 +146,7 @@ export class EntityManager implements IEntityManager {
         `[Server] CRITICAL: addEntity called for existing ID ${entity.getId()}. Force cleaning up old entity to prevent corruption.`
       );
       // Remove the old entity to clean up lists/maps
-      this.removeEntity(entity.getId());
+      this.despawnEntity(entity.getId(), "immediate");
 
       // removeEntity puts the ID back into availableIds for reuse.
       // But we are strictly using this ID right now for the new entity.
@@ -219,6 +219,22 @@ export class EntityManager implements IEntityManager {
       id: entity.getId(),
       expiration: Date.now() + expiration,
     });
+  }
+
+  /**
+   * Single entry point for removing entities from the simulation.
+   * - immediate: same as removeEntity (replication + lists updated now)
+   * - endOfTick: queued for pruneEntities (timed or next-tick despawn)
+   */
+  despawnEntity(entityId: number, mode: DespawnMode, expirationMs = 0): void {
+    if (mode === "immediate") {
+      this.removeEntity(entityId);
+      return;
+    }
+    const entity = this.entityMap.get(entityId);
+    if (entity) {
+      this.markEntityForRemoval(entity, expirationMs);
+    }
   }
 
   removeEntity(entityId: number) {

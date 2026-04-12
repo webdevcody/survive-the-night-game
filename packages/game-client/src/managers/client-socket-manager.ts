@@ -114,6 +114,12 @@ export class ClientSocketManager {
   private isConnecting: boolean = false; // Track if we're currently attempting to connect
   private shouldReconnect: boolean = true; // Flag to prevent reconnection (e.g., on version mismatch or ban)
   private lastConnectionTime: number = 0; // Track when we last successfully connected
+  /** Optional: ClientEventListener registers full init + retry after transport reconnect. */
+  private reconnectResyncHandler?: () => void;
+
+  public setReconnectResyncHandler(handler: () => void): void {
+    this.reconnectResyncHandler = handler;
+  }
 
   public on<K extends keyof typeof SERVER_EVENT_MAP>(eventType: K, handler: (event: any) => void) {
     const eventKey = eventType as string;
@@ -385,9 +391,12 @@ export class ClientSocketManager {
 
       this.connect()
         .then(() => {
-          // Successfully reconnected - request fresh player ID and full game state
-          this.requestPlayerId();
-          this.sendRequestFullState();
+          if (this.reconnectResyncHandler) {
+            this.reconnectResyncHandler();
+          } else {
+            this.requestPlayerId();
+            this.sendRequestFullState();
+          }
           this.startPingMeasurement();
         })
         .catch((error) => {

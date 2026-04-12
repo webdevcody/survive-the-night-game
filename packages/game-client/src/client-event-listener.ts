@@ -1,5 +1,6 @@
 import { ServerSentEvents } from "@shared/events/events";
 import { GameStateEvent } from "../../game-shared/src/events/server-sent/events/game-state-event";
+import { YourIdEvent } from "../../game-shared/src/events/server-sent/events/your-id-event";
 import { GameClient } from "@/client";
 import { ClientSocketManager } from "@/managers/client-socket-manager";
 import { GameState } from "@/state";
@@ -31,14 +32,19 @@ import { onPong } from "./events/on-pong";
 import { handleDisconnect } from "./events/handle-disconnect";
 import { onChatMessage } from "./events/on-chat-message";
 import { onGameMessage } from "./events/on-game-message";
-import { onGameStateUpdate } from "./events/on-game-state-update";
-import { onYourId } from "./events/on-your-id";
+import { applyGameStateUpdateBuffer } from "./events/on-game-state-update";
 import { onVersionMismatch } from "./events/on-version-mismatch";
 import { onAuthRequired } from "./events/on-auth-required";
 import { onProfileLoadFailed } from "./events/on-profile-load-failed";
 import { onPlayerLevelUp } from "./events/on-player-level-up";
 import { onUserBanned } from "./events/on-user-banned";
-import { ClientEventContext, InitializationContext } from "./events/types";
+import {
+  ClientEventContext,
+  GameStateUpdateContext,
+  InitializationContext,
+} from "./events/types";
+
+type ConnectionLifecycle = "disconnected" | "awaitingIdentity" | "awaitingFullState" | "ready";
 
 export class ClientEventListener {
   private socketManager: ClientSocketManager;
@@ -47,19 +53,14 @@ export class ClientEventListener {
   private hasReceivedPlayerId = false;
   private hasReceivedInitialState = false;
   private interpolation: InterpolationManager = new InterpolationManager();
-  private lastFullStateRequestAt: number | null = null;
-  private lastFullStateRequestReason: string | null = null;
   private fullStateRequestTimer: ReturnType<typeof setTimeout> | null = null;
   private pendingFullStateEvent: GameStateEvent | null = null;
+  private connectionLifecycle: ConnectionLifecycle = "disconnected";
 
   private isInitialized(): boolean {
     return this.hasReceivedPlayerId && this.hasReceivedInitialState;
   }
 
-  /**
-   * Guards against processing events that depend on entities before initial state is received.
-   * Returns true if the event should be processed, false if it should be ignored.
-   */
   private shouldProcessEntityEvent(): boolean {
     return this.hasReceivedInitialState;
   }
@@ -71,14 +72,8 @@ export class ClientEventListener {
 
     const context = this.createContext();
 
-    // Set up event listeners first, before requesting state
-    // Create initialization context fresh each time to get current state values
-    this.socketManager.on(ServerSentEvents.GAME_STATE_UPDATE, (e) =>
-      onGameStateUpdate(this.createInitializationContext(), e),
-    );
-    this.socketManager.on(ServerSentEvents.YOUR_ID, (e) =>
-      onYourId(this.createInitializationContext(), e),
-    );
+    this.socketManager.on(ServerSentEvents.GAME_STATE_UPDATE, (e) => this.routeGameStateUpdate(e));
+    this.socketManager.on(ServerSentEvents.YOUR_ID, (e) => this.handleYourId(e));
 
     this.socketManager.on(ServerSentEvents.PLAYER_HURT, (e) => onPlayerHurt(context, e));
     this.socketManager.on(ServerSentEvents.PLAYER_DEATH, (e) => onPlayerDeath(context, e));
@@ -125,8 +120,98 @@ export class ClientEventListener {
     this.socketManager.on(ServerSentEvents.PLAYER_LEVEL_UP, (e) => onPlayerLevelUp(context, e));
     this.socketManager.on(ServerSentEvents.USER_BANNED, (e) => onUserBanned(context, e));
     this.socketManager.onSocketDisconnect(() => {
-      this.handleDisconnect();
+      this.handleSocketDisconnect();
     });
+
+    this.socketManager.setReconnectResyncHandler(() => {
+      this.requestInitializationAfterReconnect();
+    });
+  }
+
+  /**
+   * Call after the transport has connected. Server pushes YOUR_ID + full state on connect;
+   * reconnect uses {@link requestInitializationAfterReconnect} instead.
+   */
+  public onTransportConnected(): void {
+    this.connectionLifecycle = "awaitingIdentity";
+  }
+
+  private buildGameStateApplyContext(): GameStateUpdateContext {
+    return {
+      gameClient: this.gameClient,
+      gameState: this.gameState,
+      interpolation: this.interpolation,
+      hasReceivedPlayerId: this.hasReceivedPlayerId,
+      hasReceivedInitialState: this.hasReceivedInitialState,
+      setHasReceivedInitialState: (value: boolean, reason?: string) => {
+        const changed = this.hasReceivedInitialState !== value;
+        this.hasReceivedInitialState = value;
+        if (!changed) {
+          return;
+        }
+        if (value) {
+          this.clearFullStateRequestTimer("Initial full state applied");
+        } else {
+          this.invalidateInitialState(reason ?? "Initial state flag reset");
+        }
+      },
+      checkInitialization: () => this.checkInitialization(),
+    };
+  }
+
+  private routeGameStateUpdate(gameStateEvent: GameStateEvent): void {
+    if (
+      !gameStateEvent.isFullState() &&
+      (!this.hasReceivedPlayerId || !this.hasReceivedInitialState)
+    ) {
+      return;
+    }
+
+    if (gameStateEvent.isFullState() && !this.hasReceivedPlayerId) {
+      this.pendingFullStateEvent = gameStateEvent;
+      return;
+    }
+
+    applyGameStateUpdateBuffer(this.buildGameStateApplyContext(), gameStateEvent);
+    this.syncLifecycleAfterBuffer();
+  }
+
+  private handleYourId(yourIdEvent: YourIdEvent): void {
+    this.gameState.playerId = yourIdEvent.getPlayerId();
+    this.gameState.gameMode = yourIdEvent.getGameMode();
+    this.hasReceivedPlayerId = true;
+    this.connectionLifecycle = "awaitingFullState";
+
+    this.flushPendingFullStateAfterYourId();
+
+    if (!this.hasReceivedInitialState) {
+      this.requestFullState("your id received");
+    }
+    this.checkInitialization();
+    this.syncLifecycleAfterBuffer();
+  }
+
+  private flushPendingFullStateAfterYourId(): void {
+    if (!this.pendingFullStateEvent) {
+      return;
+    }
+    const e = this.pendingFullStateEvent;
+    this.pendingFullStateEvent = null;
+    applyGameStateUpdateBuffer(this.buildGameStateApplyContext(), e);
+    this.syncLifecycleAfterBuffer();
+  }
+
+  private syncLifecycleAfterBuffer(): void {
+    if (this.connectionLifecycle === "disconnected") {
+      return;
+    }
+    if (this.hasReceivedPlayerId && this.hasReceivedInitialState) {
+      this.connectionLifecycle = "ready";
+    } else if (this.hasReceivedPlayerId) {
+      this.connectionLifecycle = "awaitingFullState";
+    } else {
+      this.connectionLifecycle = "awaitingIdentity";
+    }
   }
 
   private createContext(): ClientEventContext {
@@ -143,60 +228,31 @@ export class ClientEventListener {
   private createInitializationContext(): InitializationContext {
     return {
       ...this.createContext(),
-      interpolation: this.interpolation,
-      hasReceivedPlayerId: this.hasReceivedPlayerId,
-      hasReceivedInitialState: this.hasReceivedInitialState,
-      hasReceivedInitialStateLive: () => this.hasReceivedInitialState,
+      ...this.buildGameStateApplyContext(),
       setHasReceivedPlayerId: (value: boolean) => {
         this.hasReceivedPlayerId = value;
-      },
-      setHasReceivedInitialState: (value: boolean, reason?: string) => {
-        const changed = this.hasReceivedInitialState !== value;
-        this.hasReceivedInitialState = value;
-        if (!changed) {
-          return;
-        }
-        if (value) {
-          const suffix = reason ? ` (${reason})` : "";
-          this.clearFullStateRequestTimer("Initial full state applied");
-        } else {
-          this.invalidateInitialState(reason ?? "Initial state flag reset");
-        }
       },
       queuePendingFullState: (event: GameStateEvent) => {
         this.pendingFullStateEvent = event;
       },
-      flushPendingFullStateAfterYourId: () => {
-        if (!this.pendingFullStateEvent) {
-          return;
-        }
-        const e = this.pendingFullStateEvent;
-        this.pendingFullStateEvent = null;
-        onGameStateUpdate(this.createInitializationContext(), e);
-      },
-      checkInitialization: () => {
-        this.checkInitialization();
-      },
+      flushPendingFullStateAfterYourId: () => this.flushPendingFullStateAfterYourId(),
       resetAndRequestInitialization: (reason: string) => {
         this.resetAndRequestInitialization(reason);
       },
     };
   }
 
-  private handleDisconnect(): void {
+  private handleSocketDisconnect(): void {
     this.pendingFullStateEvent = null;
+    this.connectionLifecycle = "disconnected";
     this.invalidateInitialState("Socket disconnected");
-    // Reset initialization flags so we wait for fresh data on reconnect
     this.hasReceivedPlayerId = false;
+    this.gameState.playerId = 0;
 
-    // Handle side effects
     handleDisconnect(this.createContext());
   }
 
   private requestFullState(reason: string = "manual"): void {
-    this.lastFullStateRequestReason = reason;
-    const now = typeof performance !== "undefined" ? performance.now() : Date.now();
-    this.lastFullStateRequestAt = now;
     this.socketManager.sendRequestFullState();
     this.scheduleFullStateTimeout();
   }
@@ -216,13 +272,11 @@ export class ClientEventListener {
     }, 4000);
   }
 
-  private clearFullStateRequestTimer(message?: string): void {
+  private clearFullStateRequestTimer(_message?: string): void {
     if (this.fullStateRequestTimer) {
       clearTimeout(this.fullStateRequestTimer);
       this.fullStateRequestTimer = null;
     }
-    this.lastFullStateRequestAt = null;
-    this.lastFullStateRequestReason = null;
   }
 
   private invalidateInitialState(reason: string = "unspecified"): void {
@@ -232,19 +286,15 @@ export class ClientEventListener {
     this.clearFullStateRequestTimer();
   }
 
-  /**
-   * Resets initialization state and requests both player ID and full game state.
-   * Used when a new game starts (players get new entity IDs) or on reconnection.
-   */
   private resetAndRequestInitialization(reason: string): void {
-    // Reset both flags - we need fresh player ID and full state
     this.hasReceivedPlayerId = false;
     this.hasReceivedInitialState = false;
     this.pendingFullStateEvent = null;
+    this.gameState.playerId = 0;
     this.interpolation.reset();
     this.clearFullStateRequestTimer();
+    this.connectionLifecycle = "awaitingIdentity";
 
-    // Request both player ID and full state
     this.socketManager.requestPlayerId();
     this.requestFullState(reason);
 
@@ -254,9 +304,22 @@ export class ClientEventListener {
     }
   }
 
-  private checkInitialization() {
+  /** Used by ClientSocketManager after a successful reconnect (with retry timer). */
+  private requestInitializationAfterReconnect(): void {
+    this.pendingFullStateEvent = null;
+    this.hasReceivedPlayerId = false;
+    this.hasReceivedInitialState = false;
+    this.gameState.playerId = 0;
+    this.interpolation.reset();
+    this.clearFullStateRequestTimer();
+    this.connectionLifecycle = "awaitingIdentity";
+
+    this.socketManager.requestPlayerId();
+    this.requestFullState("transport reconnected");
+  }
+
+  private checkInitialization(): void {
     if (this.isInitialized()) {
-      // All required data received, start the game
       this.gameClient.start();
     }
   }

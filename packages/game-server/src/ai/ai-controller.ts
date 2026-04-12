@@ -263,7 +263,7 @@ export class AIController {
     }
 
     // Check players
-    const players = entityManager.getPlayerEntities() as Player[];
+    const players = entityManager.getPlayerEntities();
     for (const otherPlayer of players) {
       if (otherPlayer.getId() === this.player.getId()) continue;
       if (otherPlayer.isDead()) continue;
@@ -477,7 +477,7 @@ export class AIController {
     const entityManager = this.gameManagers.getEntityManager();
 
     // Find the closest living non-zombie player
-    const players = entityManager.getPlayerEntities() as Player[];
+    const players = entityManager.getPlayerEntities();
     let closestPlayer: Player | null = null;
     let closestDistance = Infinity;
 

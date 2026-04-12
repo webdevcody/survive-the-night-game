@@ -5,12 +5,18 @@ import { IEntity } from "@/entities/types";
 import { EntityType } from "@/types/entity";
 import { EntityStateTracker } from "./entity-state-tracker";
 import { IGameModeStrategy } from "@/game-modes/game-mode-strategy";
+import type { Player } from "@/entities/players/player";
+
+/** How an entity leaves the world: next tick boundary vs right now (replication + lists). */
+export type DespawnMode = "immediate" | "endOfTick";
 
 export interface IEntityManager {
   generateEntityId(): number;
   addEntity(entity: IEntity): void;
   markEntityForRemoval(entity: IEntity, expiration?: number): void;
   removeEntity(entityId: number): void;
+  /** Preferred API: one policy for disconnect vs timed despawn vs immediate removal. */
+  despawnEntity(entityId: number, mode: DespawnMode, expirationMs?: number): void;
   createEntityFromItem(item: InventoryItem): IEntity | null;
   isColliding(entity: IEntity, IEntityTypes?: EntityType[]): IEntity | null;
   getClosestAlivePlayer(entity: IEntity): IEntity | null;
@@ -23,7 +29,7 @@ export interface IEntityManager {
     sourceEntity: IEntity,
     ignoreTypes?: EntityType[]
   ): IEntity | null;
-  getPlayerEntities(): IEntity[];
+  getPlayerEntities(): Player[];
   getEntitiesToRemove(): Array<{ id: number; expiration: number }>;
   clear(): void;
   update(deltaTime: number): void;

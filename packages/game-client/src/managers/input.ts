@@ -18,7 +18,8 @@ export interface InputManagerOptions {
   onUp?: (inputs: Input) => void;
   onLeft?: (inputs: Input) => void;
   onRight?: (inputs: Input) => void;
-  onRequestCombatRoll?: (fallbackFacing: Direction) => void;
+  /** Double-tap W/A/S/D only; roll direction matches that key. */
+  onRequestCombatRoll?: (rollDirection: Direction) => void;
   onInteractStart?: () => void;
   onInteractEnd?: () => void;
   onSelectInventorySlot?: (slotIndex: number) => void;
@@ -114,6 +115,7 @@ const suppressedGameplayKeys = new Set([
 ]);
 
 const COMBAT_ROLL_DOUBLE_TAP_WINDOW_MS = 260;
+const COMBAT_ROLL_DOUBLE_TAP_KEY_CODES = new Set(["KeyW", "KeyA", "KeyS", "KeyD"]);
 
 export class InputManager {
   private hasChanged = false;
@@ -135,7 +137,8 @@ export class InputManager {
   private mousePosition: Vector2 | null = null;
   private canvas: HTMLCanvasElement | null = null;
   private lastMovementSuppressed = false;
-  private lastDirectionalTapAt: Partial<Record<Direction, number>> = {};
+  /** Last keydown time per physical WASD key for combat roll double-tap. */
+  private lastWasdCombatRollTapAt: Partial<Record<string, number>> = {};
   // Store bound event handlers for cleanup
   private boundKeydownHandler: ((e: KeyboardEvent) => void) | null = null;
   private boundKeyupHandler: ((e: KeyboardEvent) => void) | null = null;
@@ -192,19 +195,24 @@ export class InputManager {
     };
   }
 
-  private noteDirectionalTap(direction: Direction, timestampMs: number, isRepeat: boolean): void {
-    if (isRepeat) {
+  private noteWasdCombatRollDoubleTap(
+    eventCode: string,
+    rollDirection: Direction,
+    timestampMs: number,
+    isRepeat: boolean,
+  ): void {
+    if (!COMBAT_ROLL_DOUBLE_TAP_KEY_CODES.has(eventCode) || isRepeat) {
       return;
     }
-    const lastTap = this.lastDirectionalTapAt[direction];
-    this.lastDirectionalTapAt[direction] = timestampMs;
+    const lastTap = this.lastWasdCombatRollTapAt[eventCode];
+    this.lastWasdCombatRollTapAt[eventCode] = timestampMs;
     if (
       typeof lastTap === "number" &&
       timestampMs - lastTap > 0 &&
       timestampMs - lastTap <= COMBAT_ROLL_DOUBLE_TAP_WINDOW_MS
     ) {
-      this.lastDirectionalTapAt[direction] = -Infinity;
-      this.callbacks.onRequestCombatRoll?.(direction);
+      this.lastWasdCombatRollTapAt[eventCode] = -Infinity;
+      this.callbacks.onRequestCombatRoll?.(rollDirection);
     }
   }
 
@@ -421,35 +429,31 @@ export class InputManager {
           break;
         case "KeyW":
           callbacks.onUp?.(this.inputs);
-          this.noteDirectionalTap(Direction.Up, e.timeStamp, e.repeat);
+          this.noteWasdCombatRollDoubleTap(eventCode, Direction.Up, e.timeStamp, e.repeat);
           break;
         case "KeyS":
           callbacks.onDown?.(this.inputs);
-          this.noteDirectionalTap(Direction.Down, e.timeStamp, e.repeat);
+          this.noteWasdCombatRollDoubleTap(eventCode, Direction.Down, e.timeStamp, e.repeat);
           break;
         case "KeyA":
           callbacks.onLeft?.(this.inputs);
-          this.noteDirectionalTap(Direction.Left, e.timeStamp, e.repeat);
+          this.noteWasdCombatRollDoubleTap(eventCode, Direction.Left, e.timeStamp, e.repeat);
           break;
         case "KeyD":
           callbacks.onRight?.(this.inputs);
-          this.noteDirectionalTap(Direction.Right, e.timeStamp, e.repeat);
+          this.noteWasdCombatRollDoubleTap(eventCode, Direction.Right, e.timeStamp, e.repeat);
           break;
         case "ArrowUp":
           callbacks.onUp?.(this.inputs);
-          this.noteDirectionalTap(Direction.Up, e.timeStamp, e.repeat);
           break;
         case "ArrowDown":
           callbacks.onDown?.(this.inputs);
-          this.noteDirectionalTap(Direction.Down, e.timeStamp, e.repeat);
           break;
         case "ArrowLeft":
           callbacks.onLeft?.(this.inputs);
-          this.noteDirectionalTap(Direction.Left, e.timeStamp, e.repeat);
           break;
         case "ArrowRight":
           callbacks.onRight?.(this.inputs);
-          this.noteDirectionalTap(Direction.Right, e.timeStamp, e.repeat);
           break;
         case "KeyJ":
           callbacks.onToggleQuestJournal?.();

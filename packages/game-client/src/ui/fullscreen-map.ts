@@ -1,4 +1,4 @@
-import { GameState } from "@/state";
+import { GameState, getEntitiesByType } from "@/state";
 import { getPlayer } from "@/util/get-player";
 import { ClientPositionable } from "@/extensions/positionable";
 import { CrateClient } from "@/entities/items/crate";
@@ -197,7 +197,7 @@ export class FullScreenMap {
     );
 
     // Draw fog of war
-    const lightSources = calculateLightSources(gameState.entities, gameState);
+    const lightSources = calculateLightSources(gameState.getEntities(), gameState);
     renderFullscreenMapFogOfWar(
       ctx,
       effectiveCenterPos,
@@ -426,7 +426,7 @@ export class FullScreenMap {
 
     const myPlayer = getPlayer(gameState);
 
-    for (const entity of gameState.entities) {
+    for (const entity of gameState.getEntities()) {
       if (!entity.hasExt(ClientPositionable)) continue;
 
       const positionable = entity.getExt(ClientPositionable);
@@ -491,8 +491,7 @@ export class FullScreenMap {
   ): void {
     const maxDistance = Math.sqrt(((mapWidth / zoom) ** 2 + (mapHeight / zoom) ** 2) / 4);
 
-    // Loop through all entities to find crates
-    for (const entity of gameState.entities) {
+    for (const entity of getEntitiesByType(gameState, "crate")) {
       if (!(entity instanceof CrateClient)) continue;
       if (!entity.hasExt(ClientPositionable)) continue;
 
@@ -569,8 +568,7 @@ export class FullScreenMap {
   ): void {
     const maxDistance = Math.sqrt(((mapWidth / zoom) ** 2 + (mapHeight / zoom) ** 2) / 4);
 
-    // Loop through all entities to find survivors
-    for (const entity of gameState.entities) {
+    for (const entity of getEntitiesByType(gameState, "survivor")) {
       if (!(entity instanceof SurvivorClient)) continue;
       if (!entity.hasExt(ClientPositionable)) continue;
 

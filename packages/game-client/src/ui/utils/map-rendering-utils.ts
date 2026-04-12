@@ -1,4 +1,4 @@
-import { GameState, getEntitiesByType } from "@/state";
+import { GameState, getEntitiesByType, getEntityById } from "@/state";
 import { ClientPositionable } from "@/extensions/positionable";
 import { PlayerClient } from "@/entities/player";
 import { ClientIlluminated } from "@/extensions/illuminated";
@@ -26,13 +26,13 @@ export interface MapRenderingSettings {
  * Calculate light sources from entities for fog of war rendering
  */
 export function calculateLightSources(
-  entities: ClientEntityBase[],
+  entities: readonly ClientEntityBase[],
   gameState: GameState
 ): LightSource[] {
   const sources: LightSource[] = [];
   let addedCurrentPlayerLight = false;
 
-  const currentPlayer = entities.find((e) => e.getId() === gameState.playerId);
+  const currentPlayer = getEntityById(gameState, gameState.playerId);
 
   for (const entity of entities) {
     if (entity.hasExt(ClientIlluminated) && entity.hasExt(ClientPositionable)) {

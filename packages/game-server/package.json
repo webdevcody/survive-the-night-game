@@ -5,6 +5,8 @@
   "scripts": {
     "dev": "tsx watch src/server.ts",
     "build": "tsup && (test -f src/world/world-map.json && cp src/world/world-map.json dist/world-map.json || true) && (test -f src/world/world-map-npcs.json && cp src/world/world-map-npcs.json dist/world-map-npcs.json || true) && (test -f src/world/world-map-quests.json && cp src/world/world-map-quests.json dist/world-map-quests.json || true)",
+    "check:ts-sources": "node ./scripts/check-ts-sources.mjs",
+    "pretest": "npm run check:ts-sources",
     "test": "vitest"
   },
   "keywords": [],

@@ -120,7 +120,7 @@ export class AITargetingSystem {
     const friendlyFireEnabled = strategy.getConfig().friendlyFireEnabled;
     const isZombiePlayer = player.isZombie();
 
-    const players = entityManager.getPlayerEntities() as Player[];
+    const players = entityManager.getPlayerEntities();
     for (const otherPlayer of players) {
       if (otherPlayer.getId() === player.getId()) continue;
       if (otherPlayer.isDead()) continue;
@@ -237,7 +237,7 @@ export class AITargetingSystem {
     const strategy = this.gameManagers.getGameServer().getGameLoop().getGameModeStrategy();
     const friendlyFireEnabled = strategy.getConfig().friendlyFireEnabled;
 
-    const players = entityManager.getPlayerEntities() as Player[];
+    const players = entityManager.getPlayerEntities();
     const isZombieAI = player.isZombie();
     for (const otherPlayer of players) {
       if (otherPlayer.getId() === player.getId()) continue;
@@ -477,7 +477,7 @@ export class AITargetingSystem {
     const strategy = this.gameManagers.getGameServer().getGameLoop().getGameModeStrategy();
     const friendlyFireEnabled = strategy.getConfig().friendlyFireEnabled;
 
-    const players = entityManager.getPlayerEntities() as Player[];
+    const players = entityManager.getPlayerEntities();
     for (const otherPlayer of players) {
       if (otherPlayer.getId() === player.getId()) continue;
       if (otherPlayer.isDead()) continue;
@@ -729,7 +729,7 @@ export class AITargetingSystem {
   findBestPlayerTarget(player: Player): AITarget | null {
     const playerPos = player.getCenterPosition();
     const entityManager = this.gameManagers.getEntityManager();
-    const players = entityManager.getPlayerEntities() as Player[];
+    const players = entityManager.getPlayerEntities();
     const isZombieAI = player.isZombie();
 
     // Get game mode settings to determine if we should target other players
@@ -794,7 +794,7 @@ export class AITargetingSystem {
     let retreatY = 0;
 
     // Add repulsion from nearby players
-    const players = entityManager.getPlayerEntities() as Player[];
+    const players = entityManager.getPlayerEntities();
     for (const otherPlayer of players) {
       if (otherPlayer.getId() === player.getId() || otherPlayer.isDead()) continue;
 
@@ -997,7 +997,7 @@ export class AITargetingSystem {
     // Calculate repulsion from nearby players to prevent clustering
     let repulsionX = 0;
     let repulsionY = 0;
-    const players = entityManager.getPlayerEntities() as Player[];
+    const players = entityManager.getPlayerEntities();
     for (const otherPlayer of players) {
       if (otherPlayer.getId() === player.getId() || otherPlayer.isDead()) continue;
 

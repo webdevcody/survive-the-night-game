@@ -106,7 +106,7 @@ export class KillTracker {
     }
 
     const killer = this.findPlayerByEntityId(data.killerEntityId);
-    if (killer && !killer.getSerialized().get("isAI")) {
+    if (killer && !killer.isAIControlled()) {
       killer.addExperience(XP_PER_ZOMBIE_KILL);
       const map = killer.getGameManagers()?.getMapManager();
       if (map) {
