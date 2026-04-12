@@ -205,7 +205,9 @@ export function tryGrantQuestFromNpc(
   player: Player,
   npc: DialogueSurvivorNpc,
   map: IMapManager,
+  acceptQuest: boolean = true,
 ): string | null {
+  if (!acceptQuest) return null;
   const st = getState(player);
   const session = pickDialogueSessionForNpcEntity(npc, player, map);
   const grant = String(session.grantQuestId ?? "").trim();

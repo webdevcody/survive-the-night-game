@@ -3,7 +3,9 @@ import { HandlerContext } from "../context";
 import { SocketEventHandler } from "./types";
 export declare function onDialogueNpcComplete(context: HandlerContext, socket: ISocketAdapter, data: {
     npcEntityId: number;
+    acceptQuest?: boolean;
 }): void;
 export declare const dialogueNpcCompleteHandler: SocketEventHandler<{
     npcEntityId: number;
+    acceptQuest?: boolean;
 }>;

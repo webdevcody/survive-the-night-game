@@ -173,8 +173,10 @@ export function trySyncActiveQuestPickupStepsWithInventory(player, map) {
     }
 }
 /** @returns The quest id that was newly activated, or null if nothing was granted. */
-export function tryGrantQuestFromNpc(player, npc, map) {
+export function tryGrantQuestFromNpc(player, npc, map, acceptQuest = true) {
     var _a;
+    if (!acceptQuest)
+        return null;
     const st = getState(player);
     const session = pickDialogueSessionForNpcEntity(npc, player, map);
     const grant = String((_a = session.grantQuestId) !== null && _a !== void 0 ? _a : "").trim();

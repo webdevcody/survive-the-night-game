@@ -42,6 +42,26 @@ function clampString(s: string, max: number): string {
   return s.length > max ? s.slice(0, max) : s;
 }
 
+/**
+ * Starter quest shape used by editor flows so a freshly created quest is immediately valid and
+ * won't get stuck as a zero-step entry if it is assigned to an NPC before further editing.
+ */
+export function createQuestDefinitionDraft(
+  id: string,
+  title: string = "New quest",
+): WorldMapQuestDefinition {
+  const safeId = clampString(String(id ?? "").trim() || "quest", QUEST_ID_MAX_LENGTH);
+  const safeTitle = clampString(String(title ?? "").trim() || "New quest", QUEST_TITLE_MAX_LENGTH);
+
+  return {
+    id: safeId,
+    title: safeTitle,
+    steps: [{ type: "pickup_item", itemType: "bandage" as EntityType }],
+    rewards: [],
+    startRewards: [],
+  };
+}
+
 function normalizeQuestStep(raw: unknown, mapSide: number): QuestStep | null {
   if (!raw || typeof raw !== "object") return null;
   const o = raw as Record<string, unknown>;

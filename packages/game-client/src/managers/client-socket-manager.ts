@@ -540,8 +540,11 @@ export class ClientSocketManager {
     this.emitClientEvent(ClientSentEvents.INTERACT, { targetEntityId });
   }
 
-  public sendDialogueNpcComplete(npcEntityId: number) {
-    this.emitClientEvent(ClientSentEvents.DIALOGUE_NPC_COMPLETE, { npcEntityId });
+  public sendDialogueNpcComplete(npcEntityId: number, acceptQuest?: boolean) {
+    this.emitClientEvent(ClientSentEvents.DIALOGUE_NPC_COMPLETE, {
+      npcEntityId,
+      ...(acceptQuest === undefined ? {} : { acceptQuest }),
+    });
   }
 
   public sendChatMessage(message: string) {
