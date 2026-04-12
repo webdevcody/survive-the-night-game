@@ -4,6 +4,7 @@ import { ArrayBufferWriter, BufferReader } from "../../../util/buffer-serializat
 
 export interface DialogueNpcCompleteEventData {
   npcEntityId: number;
+  acceptQuest?: boolean;
 }
 
 export class DialogueNpcCompleteEvent implements GameEvent<DialogueNpcCompleteEventData> {
@@ -24,15 +25,15 @@ export class DialogueNpcCompleteEvent implements GameEvent<DialogueNpcCompleteEv
 
   static serializeToBuffer(writer: ArrayBufferWriter, data: DialogueNpcCompleteEventData): void {
     writer.writeUInt16(data.npcEntityId ?? 0);
-    // Legacy second byte (grant-only vs full); always full completion now.
-    writer.writeUInt8(1);
+    writer.writeUInt8(data.acceptQuest === false ? 0 : 1);
   }
 
   static deserializeFromBuffer(reader: BufferReader): DialogueNpcCompleteEventData {
     const npcEntityId = reader.readUInt16();
+    let acceptQuest: boolean | undefined;
     if (reader.hasMore()) {
-      reader.readUInt8();
+      acceptQuest = reader.readUInt8() !== 0;
     }
-    return { npcEntityId };
+    return acceptQuest === undefined ? { npcEntityId } : { npcEntityId, acceptQuest };
   }
 }

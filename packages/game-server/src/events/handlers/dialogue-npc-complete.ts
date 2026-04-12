@@ -13,7 +13,7 @@ import {
 export function onDialogueNpcComplete(
   context: HandlerContext,
   socket: ISocketAdapter,
-  data: { npcEntityId: number },
+  data: { npcEntityId: number; acceptQuest?: boolean },
 ): void {
   const player = context.players.get(socket.id);
   if (!player || data.npcEntityId == null) return;
@@ -22,7 +22,7 @@ export function onDialogueNpcComplete(
   const map = context.getMapManager();
 
   trySyncActiveQuestPickupStepsWithInventory(player, map);
-  const newlyGrantedQuestId = tryGrantQuestFromNpc(player, npc, map);
+  const newlyGrantedQuestId = tryGrantQuestFromNpc(player, npc, map, data.acceptQuest !== false);
   tryAdvanceTalkToNpcStep(
     player,
     npc,
@@ -35,11 +35,16 @@ export function onDialogueNpcComplete(
 
 export const dialogueNpcCompleteHandler: SocketEventHandler<{
   npcEntityId: number;
+  acceptQuest?: boolean;
 }> = {
   event: "DIALOGUE_NPC_COMPLETE",
   handler: (context, socket, data) => {
     const id = data?.npcEntityId;
     if (typeof id !== "number" || !Number.isInteger(id)) return;
-    onDialogueNpcComplete(context, socket, { npcEntityId: id });
+    if (data?.acceptQuest !== undefined && typeof data.acceptQuest !== "boolean") return;
+    onDialogueNpcComplete(context, socket, {
+      npcEntityId: id,
+      acceptQuest: data?.acceptQuest,
+    });
   },
 };

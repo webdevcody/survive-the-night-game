@@ -228,6 +228,61 @@
         "dg_mnuvnumu_51zmfp9y": "Healing the Sick",
         "dg_mnuvvz3y_bv8c3vz1": "The Night is Dark"
       }
+    },
+    {
+      "row": 168,
+      "col": 75,
+      "dialogueSessions": [
+        {
+          "when": {
+            "type": "always"
+          },
+          "lines": [
+            "That fence is buying us time, not safety.",
+            "There's a blocked path west of here that might still be usable.",
+            "Check it for me, then come back and tell me what you saw."
+          ],
+          "grantQuestId": "quest_fence_scout"
+        },
+        {
+          "when": {
+            "type": "all",
+            "conditions": [
+              {
+                "type": "quest_active",
+                "questId": "quest_fence_scout"
+              }
+            ]
+          },
+          "lines": [
+            "Head west and look for the blocked path.",
+            "If it is still open, we may have a way out when the dead push through."
+          ]
+        },
+        {
+          "when": {
+            "type": "all",
+            "conditions": [
+              {
+                "type": "quest_completed",
+                "questId": "quest_fence_scout"
+              }
+            ]
+          },
+          "lines": [
+            "Good. Then we still have options if this fence gives up.",
+            "Take this and keep moving."
+          ]
+        }
+      ],
+      "lines": [
+        "That fence is buying us time, not safety.",
+        "There's a blocked path west of here that might still be usable.",
+        "Check it for me, then come back and tell me what you saw."
+      ],
+      "message": "That fence is buying us time, not safety.",
+      "name": "Mason",
+      "grantQuestId": "quest_fence_scout"
     }
   ]
 }

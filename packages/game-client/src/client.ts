@@ -58,6 +58,7 @@ import { QuestCompletedModal, formatQuestRewardsForDisplay } from "./ui/quest-co
 import type { PlayerQuestStatePayload } from "@shared/quests/player-quest-state";
 import { getActiveStepIndex } from "@shared/quests/player-quest-state";
 import { formatQuestObjectiveAtStep } from "@shared/quests/quest-step-format";
+import { getQuestObjectiveLine } from "./ui/quest-display";
 
 export class GameClient {
   private ctx: CanvasRenderingContext2D;
@@ -412,6 +413,9 @@ export class GameClient {
         this.craftingPanel.handleKeyDown(key);
       },
       onEscape: () => {
+        if (this.declineOpenNpcQuestOffer()) {
+          return;
+        }
         if (this.hud.isInventoryScreenOpen()) {
           this.hud.setInventoryScreenOpen(false);
           return;
@@ -474,6 +478,14 @@ export class GameClient {
         this.socketManager?.sendSetWeaponLoadoutSlot(slot, bagIndex);
       }
     );
+    this.hud.setDialogueQuestChoiceHandler((action) => {
+      const offer = this.getOpenNpcQuestOffer();
+      if (!offer || !this.hud.isDialogueLineFullyRevealed(this.gameState)) {
+        return;
+      }
+
+      this.closeNpcDialogueWithCompletion(offer.npcEntityId, action === "accept");
+    });
 
     this.gameState = {
       startedAt: Date.now(),
@@ -515,10 +527,44 @@ export class GameClient {
     this.resizeController = new ResizeController(this.renderer);
   }
 
-  private closeNpcDialogueWithCompletion(npcEntityId: number): void {
+  private closeNpcDialogueWithCompletion(npcEntityId: number, acceptQuest?: boolean): void {
     this.gameState.openDialogueNpcId = null;
     this.gameState.dialogueLineIndex = 0;
-    this.socketManager?.sendDialogueNpcComplete(npcEntityId);
+    this.socketManager?.sendDialogueNpcComplete(npcEntityId, acceptQuest);
+  }
+
+  private getOpenNpcQuestOffer(): { npcEntityId: number } | null {
+    const npcEntityId = this.gameState.openDialogueNpcId;
+    if (npcEntityId == null) {
+      return null;
+    }
+
+    const entity = getEntityById(this.gameState, npcEntityId);
+    if (!(entity instanceof DialogueSurvivorNpcClient)) {
+      return null;
+    }
+
+    const lines = entity.getDialogueLines(this.gameState);
+    if (lines.length <= 0 || this.gameState.dialogueLineIndex < lines.length - 1) {
+      return null;
+    }
+
+    const questId = entity.getPendingQuestOfferId(this.gameState);
+    if (!questId) {
+      return null;
+    }
+
+    return { npcEntityId };
+  }
+
+  private declineOpenNpcQuestOffer(): boolean {
+    const offer = this.getOpenNpcQuestOffer();
+    if (!offer || !this.hud.isDialogueLineFullyRevealed(this.gameState)) {
+      return false;
+    }
+
+    this.closeNpcDialogueWithCompletion(offer.npcEntityId, false);
+    return true;
   }
 
   private advanceNpcDialogue(): void {
@@ -560,6 +606,12 @@ export class GameClient {
 
     if (idx < total - 1) {
       this.gameState.dialogueLineIndex++;
+      return;
+    }
+
+    const questOfferId = npc.getPendingQuestOfferId(gs);
+    if (questOfferId) {
+      this.closeNpcDialogueWithCompletion(id, true);
       return;
     }
 
@@ -735,7 +787,9 @@ export class GameClient {
       if (!prevActive.has(qid)) {
         const def = this.mapManager.getAuthoredQuests().find((q) => q.id === qid);
         const title = def?.title ?? qid;
+        const objective = getQuestObjectiveLine(def, st, qid);
         this.hud.addMessage(`Quest started: ${title}`, "#d4b060");
+        this.hud.addMessage(objective, "#9ad7ff");
       }
     }
 

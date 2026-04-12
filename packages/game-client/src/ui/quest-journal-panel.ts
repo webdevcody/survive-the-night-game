@@ -11,6 +11,7 @@ import {
   RPG_TITLE_CREAM,
   strokeRpgPanelBorder,
 } from "@/ui/rpg-hud-theme";
+import { describeQuestStep } from "./quest-display";
 
 export class QuestJournalPanel {
   private visible = false;
@@ -85,23 +86,14 @@ export class QuestJournalPanel {
         const title = def?.title ?? qid;
         const stepIdx = getActiveStepIndex(st, qid);
         const stepTotal = def?.steps.length ?? 0;
-        const curStep = stepIdx < stepTotal ? def?.steps[stepIdx] : undefined;
-        const activeEntry = st.active[qid];
-        const killExtra =
-          curStep?.type === "kill_enemies"
-            ? ` · ${activeEntry?.kills?.[curStep.enemyType] ?? 0}/${curStep.count} ${curStep.enemyType}`
-            : "";
         ctx.fillStyle = RPG_BODY_TEXT;
         ctx.fillText(`${title}`, x + pad, ly);
         ly += bodySize * 1.15;
         ctx.fillStyle = RPG_METADATA_MUTED;
-        const stepLine =
-          stepTotal === 0
-            ? "  Objectives: talk to an NPC to finish"
-            : stepIdx >= stepTotal
-              ? "  Objectives done · talk to an NPC to turn in"
-              : `  Step ${stepIdx + 1}/${stepTotal}${killExtra}`;
-        ctx.fillText(stepLine, x + pad, ly);
+        ctx.fillText(`  Step ${stepIdx + 1}/${Math.max(1, stepTotal)}`, x + pad, ly);
+        ly += bodySize * 1.1;
+        const stepSummary = describeQuestStep(def?.steps[stepIdx], st.active[qid]);
+        ctx.fillText(`  ${stepSummary}`, x + pad, ly);
         ly += bodySize * 1.35;
       }
     }

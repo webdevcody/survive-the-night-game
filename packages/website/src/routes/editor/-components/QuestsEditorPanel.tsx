@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   Accordion,
   AccordionContent,
@@ -66,8 +66,12 @@ const REWARD_SECTIONS: { key: QuestRewardListKey; label: string }[] = [
 export function QuestsEditorPanel() {
   const quests = useEditorStore((state) => state.quests);
   const setQuests = useEditorStore((state) => state.setQuests);
+  const createQuestDraft = useEditorStore((state) => state.createQuestDraft);
+  const focusedQuestId = useEditorStore((state) => state.focusedQuestId);
+  const setFocusedQuestId = useEditorStore((state) => state.setFocusedQuestId);
   const groundGrid = useEditorStore((state) => state.groundGrid);
   const dialogueNpcs = useEditorStore((state) => state.dialogueNpcs);
+  const [openQuestIds, setOpenQuestIds] = useState<string[]>([]);
 
   const mapSide = getMapSideLength(groundGrid);
   const sortedMapNpcs = useMemo(() => sortDialogueNpcs(dialogueNpcs), [dialogueNpcs]);
@@ -83,13 +87,22 @@ export function QuestsEditorPanel() {
     [quests],
   );
 
-  const addQuest = () => {
-    const id = `quest_${Date.now()}`;
-    setQuests([
-      ...quests,
-      { id, title: "New quest", steps: [], rewards: [], startRewards: [] },
-    ]);
-  };
+  useEffect(() => {
+    if (!focusedQuestId) return;
+    setOpenQuestIds((current) =>
+      current.includes(focusedQuestId) ? current : [...current, focusedQuestId],
+    );
+    if (typeof document === "undefined") return;
+    requestAnimationFrame(() => {
+      document
+        .getElementById(`editor-quest-${focusedQuestId}`)
+        ?.scrollIntoView({ block: "center", behavior: "smooth" });
+    });
+  }, [focusedQuestId]);
+
+  useEffect(() => {
+    setOpenQuestIds((current) => current.filter((id) => quests.some((quest) => quest.id === id)));
+  }, [quests]);
 
   const updateQuest = (id: string, patch: Partial<Omit<WorldMapQuestDefinition, "id">>) => {
     setQuests(quests.map((q) => (q.id === id ? { ...q, ...patch } : q)));
@@ -188,7 +201,12 @@ export function QuestsEditorPanel() {
       </div>
       <div className="flex items-center justify-between gap-2">
         <p className="text-xs font-medium text-gray-300">Quests</p>
-        <Button size="sm" className="!h-7 !text-[10px]" onClick={addQuest} type="button">
+        <Button
+          size="sm"
+          className="!h-7 !text-[10px]"
+          onClick={() => createQuestDraft()}
+          type="button"
+        >
           Add quest
         </Button>
       </div>
@@ -197,13 +215,32 @@ export function QuestsEditorPanel() {
       ) : (
         <Accordion
           type="multiple"
+          value={openQuestIds}
+          onValueChange={(value) => {
+            setOpenQuestIds(value);
+            if (focusedQuestId && !value.includes(focusedQuestId)) {
+              setFocusedQuestId(null);
+            }
+          }}
           className="max-h-[70vh] overflow-y-auto rounded border border-indigo-800/80 bg-gray-900/80 pr-1"
         >
           {sortedQuests.map((q) => (
-            <AccordionItem key={q.id} value={q.id} className="border-gray-700/60 px-2">
+            <AccordionItem
+              key={q.id}
+              id={`editor-quest-${q.id}`}
+              value={q.id}
+              className={`border-gray-700/60 px-2 ${
+                focusedQuestId === q.id ? "bg-indigo-950/40 ring-1 ring-indigo-500/60" : ""
+              }`}
+            >
               <AccordionTrigger className="py-2.5 text-xs text-gray-100 hover:no-underline [&>svg]:size-3.5 [&>svg]:shrink-0 [&>svg]:text-gray-400">
-                <span className="truncate pr-2 text-left font-medium">
-                  {q.title.trim() || "Untitled quest"}
+                <span className="block truncate pr-2 text-left">
+                  {focusedQuestId === q.id ? (
+                    <span className="mb-0.5 block text-[9px] uppercase tracking-wide text-indigo-300">
+                      Selected from NPC editor
+                    </span>
+                  ) : null}
+                  <span className="font-medium">{q.title.trim() || "Untitled quest"}</span>
                 </span>
               </AccordionTrigger>
               <AccordionContent className="space-y-2 pb-3 pt-0 text-white">

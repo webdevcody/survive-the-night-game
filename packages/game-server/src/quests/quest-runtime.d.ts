@@ -10,7 +10,7 @@ import type { PlayerQuestStatePayload } from "@shared/quests/player-quest-state"
  */
 export declare function trySyncActiveQuestPickupStepsWithInventory(player: Player, map: IMapManager): void;
 /** @returns The quest id that was newly activated, or null if nothing was granted. */
-export declare function tryGrantQuestFromNpc(player: Player, npc: DialogueSurvivorNpc, map: IMapManager): string | null;
+export declare function tryGrantQuestFromNpc(player: Player, npc: DialogueSurvivorNpc, map: IMapManager, acceptQuest?: boolean): string | null;
 export declare function tryCompleteQuestFromDialogue(player: Player, npc: DialogueSurvivorNpc, map: IMapManager): void;
 /**
  * Advances active quests whose current step is `talk_to_npc` matching this NPC (after dialogue ends).

@@ -187,7 +187,6 @@ function describeQuestStep(
   }
   return "(unknown step)";
 }
-
 const STAT_LABELS: Record<(typeof CHARACTER_STAT_KEYS)[number], string> = {
   health: "Health",
   evade: "Evade (vs zombies)",

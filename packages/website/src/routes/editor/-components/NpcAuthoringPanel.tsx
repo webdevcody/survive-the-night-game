@@ -59,6 +59,24 @@ function questSummaryLabel(questId: string | undefined, quests: WorldMapQuestDef
   return title ? title : id;
 }
 
+function questOptionsForSelect(
+  questId: string | null | undefined,
+  quests: WorldMapQuestDefinition[],
+): WorldMapQuestDefinition[] {
+  const id = questId?.trim() ?? "";
+  if (!id || quests.some((quest) => quest.id === id)) {
+    return quests;
+  }
+  return [{ id, title: `${id} (missing)`, steps: [], rewards: [], startRewards: [] }, ...quests];
+}
+
+function npcQuestDraftTitle(name: string | undefined, row: number, col: number): string {
+  const trimmed = name?.trim();
+  if (trimmed) {
+    return trimmed.endsWith("s") ? `${trimmed}' quest` : `${trimmed}'s quest`;
+  }
+  return `Quest for NPC ${row},${col}`;
+}
 const ATOMIC_CONDITION_OPTIONS: { value: DialogueNpcAtomicCondition["type"]; label: string }[] = [
   { value: "quest_completed", label: "Quest completed" },
   { value: "quest_active", label: "Quest active" },
@@ -354,6 +372,10 @@ export function NpcAuthoringPanel({
   const updateDialogueNpcEntry = useEditorStore((state) => state.updateDialogueNpcEntry);
   const removeDialogueNpcAt = useEditorStore((state) => state.removeDialogueNpcAt);
   const setSelectedSpawnCell = useEditorStore((state) => state.setSelectedSpawnCell);
+  const createQuestDraft = useEditorStore((state) => state.createQuestDraft);
+  const setFocusedQuestId = useEditorStore((state) => state.setFocusedQuestId);
+  const setSidebarSection = useEditorStore((state) => state.setSidebarSection);
+  const setNpcConfigModal = useEditorStore((state) => state.setNpcConfigModal);
   const sortedItemIds = useMemo(() => {
     const seen = new Set<string>();
     const ids: string[] = [];
@@ -648,6 +670,28 @@ export function NpcAuthoringPanel({
     patchSessions(sessions.filter((_, i) => i !== idx));
   };
 
+  const openQuestEditor = (questId: string | null | undefined) => {
+    const id = questId?.trim() ?? "";
+    if (!id) return;
+    setFocusedQuestId(id);
+    setSidebarSection("quests");
+    if (variant === "modal") {
+      setNpcConfigModal(null);
+    }
+  };
+
+  const createAndAssignQuest = (idx: number, field: "grantQuestId" | "completeQuestId") => {
+    const id = createQuestDraft(npcQuestDraftTitle(entry.name, row, col));
+    if (field === "grantQuestId") {
+      updateSession(idx, { grantQuestId: id });
+    } else {
+      updateSession(idx, { completeQuestId: id });
+    }
+    setSidebarSection("quests");
+    if (variant === "modal") {
+      setNpcConfigModal(null);
+    }
+  };
   const fieldInputClass =
     "w-full rounded-md border border-gray-600 bg-gray-950 px-2.5 py-2 text-sm text-gray-100";
 
@@ -846,6 +890,17 @@ export function NpcAuthoringPanel({
                         const linesText = session.lines.join("\n");
                         const firstLine = session.lines[0] ?? "";
                         const summary = conditionTriggerSummary(session.when, firstLine, quests);
+                        const grantQuestOptions = questOptionsForSelect(session.grantQuestId, quests);
+                        const completeQuestOptions = questOptionsForSelect(
+                          session.completeQuestId,
+                          quests,
+                        );
+                        const hasGrantQuestDefinition =
+                          !!session.grantQuestId?.trim() &&
+                          quests.some((quest) => quest.id === session.grantQuestId);
+                        const hasCompleteQuestDefinition =
+                          !!session.completeQuestId?.trim() &&
+                          quests.some((quest) => quest.id === session.completeQuestId);
                         const preview = dialogueLinesPreview(session.lines);
                         const stateTab = stateDetailTabByIdx[idx] ?? "dialog";
                         const linesSummaryExpanded = linesSummaryExpandedByIdx[idx] ?? false;
@@ -1280,23 +1335,33 @@ export function NpcAuthoringPanel({
                             }}
                           >
                             <option value="">— None —</option>
-                            {(() => {
-                              const gid = (session.grantQuestId ?? "").trim();
-                              if (gid && !isAuthoredQuestId(gid, quests)) {
-                                return (
-                                  <option key="__grant-orphan__" value={gid}>
-                                    Not in quest list (from saved map)
-                                  </option>
-                                );
-                              }
-                              return null;
-                            })()}
-                            {sortedQuestsByTitle.map((q) => (
+                            {grantQuestOptions.map((q) => (
                               <option key={q.id} value={q.id}>
                                 {questPickerLabel(q)}
                               </option>
                             ))}
                           </select>
+                          <div className="mt-2 flex flex-wrap gap-2">
+                            <Button
+                              type="button"
+                              size="sm"
+                              variant="secondary"
+                              className="min-h-8 text-xs"
+                              onClick={() => createAndAssignQuest(idx, "grantQuestId")}
+                            >
+                              New quest
+                            </Button>
+                            <Button
+                              type="button"
+                              size="sm"
+                              variant="secondary"
+                              className="min-h-8 text-xs"
+                              disabled={!hasGrantQuestDefinition}
+                              onClick={() => openQuestEditor(session.grantQuestId)}
+                            >
+                              Open quest
+                            </Button>
+                          </div>
                         </div>
                         <div>
                           <label
@@ -1315,23 +1380,33 @@ export function NpcAuthoringPanel({
                             }}
                           >
                             <option value="">— None —</option>
-                            {(() => {
-                              const cid = (session.completeQuestId ?? "").trim();
-                              if (cid && !isAuthoredQuestId(cid, quests)) {
-                                return (
-                                  <option key="__complete-orphan__" value={cid}>
-                                    Not in quest list (from saved map)
-                                  </option>
-                                );
-                              }
-                              return null;
-                            })()}
-                            {sortedQuestsByTitle.map((q) => (
+                            {completeQuestOptions.map((q) => (
                               <option key={q.id} value={q.id}>
                                 {questPickerLabel(q)}
                               </option>
                             ))}
                           </select>
+                          <div className="mt-2 flex flex-wrap gap-2">
+                            <Button
+                              type="button"
+                              size="sm"
+                              variant="secondary"
+                              className="min-h-8 text-xs"
+                              onClick={() => createAndAssignQuest(idx, "completeQuestId")}
+                            >
+                              New quest
+                            </Button>
+                            <Button
+                              type="button"
+                              size="sm"
+                              variant="secondary"
+                              className="min-h-8 text-xs"
+                              disabled={!hasCompleteQuestDefinition}
+                              onClick={() => openQuestEditor(session.completeQuestId)}
+                            >
+                              Open quest
+                            </Button>
+                          </div>
                         </div>
                         <div className="flex items-start gap-2 pt-1">
                           <input

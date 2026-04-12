@@ -36,6 +36,7 @@ import {
   RPG_PANEL_GRADIENT_TOP,
   RPG_TITLE_CREAM,
 } from "./rpg-hud-theme";
+import { ActiveQuestTrackerPanel } from "./active-quest-tracker-panel";
 
 const HUD_SETTINGS = {
   GameMessages: {
@@ -129,6 +130,8 @@ export class Hud {
   private canvasHeight: number = 0;
   private questJournalPanel: QuestJournalPanel;
   private dialoguePanel: DialoguePanel;
+  private activeQuestTrackerPanel: ActiveQuestTrackerPanel;
+  private onDialogueQuestChoice: ((action: "accept" | "decline") => void) | null = null;
 
   constructor(
     mapManager: MapManager,
@@ -154,6 +157,7 @@ export class Hud {
     this.chatWidget = new ChatWidget();
     this.questJournalPanel = new QuestJournalPanel();
     this.dialoguePanel = new DialoguePanel(this.assetManager);
+    this.activeQuestTrackerPanel = new ActiveQuestTrackerPanel();
 
     // Create getInventory function for HUD that uses currentGameState
     const getInventory = (): (InventoryItem | null)[] => {
@@ -388,6 +392,12 @@ export class Hud {
     return this.dialoguePanel.completeCurrentLine(gameState);
   }
 
+  public setDialogueQuestChoiceHandler(
+    handler: ((action: "accept" | "decline") => void) | null,
+  ): void {
+    this.onDialogueQuestChoice = handler;
+  }
+
   public render(ctx: CanvasRenderingContext2D, gameState: GameState): void {
     this.currentGameState = gameState;
     const { width, height } = ctx.canvas;
@@ -401,6 +411,15 @@ export class Hud {
     });
 
     this.minimap.render(ctx, gameState, minimapHudLayout.minimap);
+    const myPlayer = this.getMyPlayer();
+    if (!this.questJournalPanel.isVisible()) {
+      this.activeQuestTrackerPanel.render(
+        ctx,
+        this.mapManager.getAuthoredQuests(),
+        myPlayer?.getQuestProgressPayload() ?? null,
+        minimapHudLayout.minimap,
+      );
+    }
 
     // FPS, ping, version — bottom-right (row flows left from corner: version | ping | FPS)
     ctx.save();
@@ -482,11 +501,10 @@ export class Hud {
 
     ctx.save();
     ctx.setTransform(1, 0, 0, 1, 0, 0);
-    const my = this.getMyPlayer();
     this.questJournalPanel.render(
       ctx,
       this.mapManager.getAuthoredQuests(),
-      my?.getQuestProgressPayload() ?? null,
+      myPlayer?.getQuestProgressPayload() ?? null,
     );
     ctx.restore();
 
@@ -604,6 +622,14 @@ export class Hud {
     canvasHeight: number,
     clickCount: number = 1
   ): boolean {
+    if (this.currentGameState) {
+      const action = this.dialoguePanel.handleClick(x, y, this.currentGameState);
+      if (action) {
+        this.onDialogueQuestChoice?.(action);
+        return true;
+      }
+    }
+
     if (this.loadoutStrip.handleLoadoutStripPriorityClick(x, y, canvasWidth, canvasHeight)) {
       return true;
     }
@@ -658,6 +684,7 @@ export class Hud {
     this.mouseX = x;
     this.mouseY = y;
     this.canvasHeight = canvasHeight;
+    this.dialoguePanel.updateMousePosition(x, y);
 
     if (this.inventoryScreen.isOpen()) {
       this.inventoryScreen.updateMousePosition(x, y, canvasWidth, canvasHeight);

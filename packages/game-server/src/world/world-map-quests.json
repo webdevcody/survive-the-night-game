@@ -78,6 +78,31 @@
         }
       ],
       "startRewards": []
+    },
+    {
+      "id": "quest_fence_scout",
+      "title": "Check the Blocked Path",
+      "steps": [
+        {
+          "type": "reach_waypoint",
+          "row": 154,
+          "col": 65,
+          "radiusTiles": 2
+        }
+      ],
+      "rewards": [
+        {
+          "type": "item",
+          "itemType": "energy_drink",
+          "count": 1
+        },
+        {
+          "type": "item",
+          "itemType": "coin",
+          "count": 20
+        }
+      ],
+      "startRewards": []
     }
   ],
   "dialogueNpcEditorMetadata": [

@@ -8,7 +8,7 @@ export function onDialogueNpcComplete(context, socket, data) {
         return;
     const map = context.getMapManager();
     trySyncActiveQuestPickupStepsWithInventory(player, map);
-    const newlyGrantedQuestId = tryGrantQuestFromNpc(player, npc, map);
+    const newlyGrantedQuestId = tryGrantQuestFromNpc(player, npc, map, data.acceptQuest !== false);
     tryAdvanceTalkToNpcStep(player, npc, map, newlyGrantedQuestId ? { skipQuestIds: new Set([newlyGrantedQuestId]) } : undefined);
     tryCompleteQuestFromDialogue(player, npc, map);
     tryHealPlayerFromDialogueSession(player, npc, map);
@@ -19,6 +19,11 @@ export const dialogueNpcCompleteHandler = {
         const id = data === null || data === void 0 ? void 0 : data.npcEntityId;
         if (typeof id !== "number" || !Number.isInteger(id))
             return;
-        onDialogueNpcComplete(context, socket, { npcEntityId: id });
+        if ((data === null || data === void 0 ? void 0 : data.acceptQuest) !== undefined && typeof data.acceptQuest !== "boolean")
+            return;
+        onDialogueNpcComplete(context, socket, {
+            npcEntityId: id,
+            acceptQuest: data === null || data === void 0 ? void 0 : data.acceptQuest,
+        });
     },
 };
