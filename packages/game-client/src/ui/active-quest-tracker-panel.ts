@@ -1,9 +1,15 @@
 import type { GameState } from "@/state";
+import type { PlayerClient } from "@/entities/player";
+import { ClientPositionable } from "@/extensions/positionable";
+import { calculateHudScale, scaleHudValue } from "@/util/hud-scale";
 import type { WorldMapQuestDefinition } from "@shared/map/quest-types";
 import type { PlayerQuestStatePayload } from "@shared/quests/player-quest-state";
-import { calculateHudScale, scaleHudValue } from "@/util/hud-scale";
 import type { MinimapScreenRect } from "./minimap-hud-group-layout";
-import { getQuestObjectiveLine } from "./quest-display";
+import {
+  getQuestTrackerDistanceTiles,
+  getQuestTrackerHeading,
+} from "./quest-tracker-target";
+import { resolvePrimaryQuestTrackerForPlayer } from "./quest-tracker-runtime";
 
 function wrapText(ctx: CanvasRenderingContext2D, text: string, maxWidth: number): string[] {
   const words = text.split(/\s+/);
@@ -33,22 +39,16 @@ function wrapText(ctx: CanvasRenderingContext2D, text: string, maxWidth: number)
 export class ActiveQuestTrackerPanel {
   public render(
     ctx: CanvasRenderingContext2D,
+    gameState: GameState,
+    player: PlayerClient | null,
     quests: readonly WorldMapQuestDefinition[],
     progress: PlayerQuestStatePayload | null,
     minimapRect: MinimapScreenRect,
-    gameState?: GameState | null,
   ): void {
-    const st = progress ?? { active: {}, completed: [] };
-    const activeIds = Object.keys(st.active);
-    if (activeIds.length === 0) {
+    const tracker = resolvePrimaryQuestTrackerForPlayer(gameState, player, quests, progress);
+    if (!tracker) {
       return;
     }
-
-    const activeQuestId = activeIds[0]!;
-    const def = quests.find((quest) => quest.id === activeQuestId);
-    const title = def?.title?.trim() || activeQuestId;
-    const objective = getQuestObjectiveLine(def, st, activeQuestId, gameState);
-    const extraQuestCount = Math.max(0, activeIds.length - 1);
 
     const { width: canvasW, height: canvasH } = ctx.canvas;
     const hudScale = calculateHudScale(canvasW, canvasH);
@@ -74,7 +74,31 @@ export class ActiveQuestTrackerPanel {
     ctx.textBaseline = "top";
 
     ctx.font = `${bodyFontPx}px Arial`;
-    const wrappedObjective = wrapText(ctx, objective, textWidth);
+    const wrappedObjective = wrapText(ctx, tracker.objective, textWidth);
+    const targetLabel = tracker.target
+      ? `${tracker.target.kind === "turn_in" ? "Turn in" : "Go to"}: ${tracker.target.label}`
+      : null;
+    const wrappedTargetLabel = targetLabel ? wrapText(ctx, targetLabel, textWidth) : [];
+    const detailLines: string[] = [];
+    if (tracker.target && player?.hasExt(ClientPositionable)) {
+      const playerPos = player.getExt(ClientPositionable).getCenterPosition();
+      const heading = getQuestTrackerHeading(
+        playerPos.x,
+        playerPos.y,
+        tracker.target.worldX,
+        tracker.target.worldY,
+      );
+      const distanceTiles = getQuestTrackerDistanceTiles(
+        playerPos.x,
+        playerPos.y,
+        tracker.target.worldX,
+        tracker.target.worldY,
+      );
+      const roundedDistance =
+        distanceTiles >= 10 ? Math.round(distanceTiles).toString() : distanceTiles.toFixed(1);
+      detailLines.push(`${heading.glyph} ${heading.cardinal} · ${roundedDistance} tiles`);
+      detailLines.push(`Tile ${tracker.target.tileRow}, ${tracker.target.tileCol}`);
+    }
     const panelHeight =
       panelPad * 2 +
       headerFontPx +
@@ -82,7 +106,13 @@ export class ActiveQuestTrackerPanel {
       titleFontPx +
       scaleHudValue(6, canvasW, canvasH) +
       wrappedObjective.length * lineHeight +
-      (extraQuestCount > 0 ? lineHeight : 0);
+      (wrappedTargetLabel.length > 0
+        ? scaleHudValue(6, canvasW, canvasH) + wrappedTargetLabel.length * lineHeight
+        : 0) +
+      (detailLines.length > 0
+        ? scaleHudValue(4, canvasW, canvasH) + detailLines.length * lineHeight
+        : 0) +
+      (tracker.extraQuestCount > 0 ? lineHeight : 0);
 
     const gradient = ctx.createLinearGradient(x, y, x, y + panelHeight);
     gradient.addColorStop(0, "rgba(17, 25, 40, 0.96)");
@@ -104,7 +134,7 @@ export class ActiveQuestTrackerPanel {
     textY += headerFontPx + scaleHudValue(8, canvasW, canvasH);
     ctx.font = `bold ${titleFontPx}px Arial`;
     ctx.fillStyle = "rgba(245, 249, 255, 0.98)";
-    ctx.fillText(title, x + panelPad, textY);
+    ctx.fillText(tracker.title, x + panelPad, textY);
 
     textY += titleFontPx + scaleHudValue(6, canvasW, canvasH);
     ctx.font = `${bodyFontPx}px Arial`;
@@ -114,9 +144,27 @@ export class ActiveQuestTrackerPanel {
       textY += lineHeight;
     }
 
-    if (extraQuestCount > 0) {
+    if (wrappedTargetLabel.length > 0) {
+      textY += scaleHudValue(6, canvasW, canvasH);
+      ctx.fillStyle = "rgba(255, 223, 155, 0.95)";
+      for (const line of wrappedTargetLabel) {
+        ctx.fillText(line, x + panelPad, textY);
+        textY += lineHeight;
+      }
+    }
+
+    if (detailLines.length > 0) {
+      textY += scaleHudValue(4, canvasW, canvasH);
+      ctx.fillStyle = "rgba(154, 222, 255, 0.92)";
+      for (const line of detailLines) {
+        ctx.fillText(line, x + panelPad, textY);
+        textY += lineHeight;
+      }
+    }
+
+    if (tracker.extraQuestCount > 0) {
       ctx.fillStyle = "rgba(140, 156, 180, 0.9)";
-      ctx.fillText(`+${extraQuestCount} more active`, x + panelPad, textY);
+      ctx.fillText(`+${tracker.extraQuestCount} more active`, x + panelPad, textY);
     }
 
     ctx.restore();

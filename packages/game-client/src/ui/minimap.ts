@@ -22,6 +22,7 @@ import { renderMinimapFogOfWar } from "./utils/map-fog-of-war-renderer";
 import type { MinimapScreenRect } from "./minimap-hud-group-layout";
 import { calculateHudScale } from "@/util/hud-scale";
 import { RPG_BORDER_GOLD, RPG_MINIMAP_BACKGROUND, RPG_TITLE_CREAM } from "@/ui/rpg-hud-theme";
+import { resolvePrimaryQuestTrackerForPlayer } from "./quest-tracker-runtime";
 
 // Performance optimization constants - adjust these to balance quality vs performance
 // To view performance stats in console, run:
@@ -328,19 +329,6 @@ export class Minimap {
     this.renderSurvivorIndicators(ctx, survivorEntities, playerPos, settings, top, scaledLeft, scaledSize);
     perfTimer.end("minimap:survivors");
 
-    perfTimer.start("minimap:questNav");
-    this.renderQuestNavigationMarker(
-      ctx,
-      gameState,
-      playerPos,
-      settings,
-      top,
-      scaledLeft,
-      scaledSize,
-      myPlayer,
-    );
-    perfTimer.end("minimap:questNav");
-
     // Draw radar circle border using scaled values
     ctx.strokeStyle = RPG_BORDER_GOLD;
     ctx.lineWidth = Math.max(2, Math.round(2 * calculateHudScale(canvasWidth, canvasHeight)));
@@ -379,6 +367,10 @@ export class Minimap {
     this.renderBiomeIndicators(ctx, gameState, playerPos, settings, top, scaledLeft, scaledSize);
     perfTimer.end("minimap:biomes");
 
+    perfTimer.start("minimap:questNav");
+    this.renderQuestTargetIndicator(ctx, gameState, myPlayer, settings, top, scaledLeft, scaledSize);
+    perfTimer.end("minimap:questNav");
+
     ctx.restore();
 
     const tileRow = Math.floor(playerPos.y / this.tileSize);
@@ -401,6 +393,69 @@ export class Minimap {
     ctx.restore();
 
     perfTimer.end("minimap:total");
+  }
+
+  private renderQuestTargetIndicator(
+    ctx: CanvasRenderingContext2D,
+    gameState: GameState,
+    myPlayer: PlayerClient,
+    settings: typeof MINIMAP_SETTINGS,
+    top: number,
+    scaledLeft: number,
+    scaledSize: number
+  ): void {
+    const tracker = resolvePrimaryQuestTrackerForPlayer(
+      gameState,
+      myPlayer,
+      this.mapManager.getAuthoredQuests(),
+      myPlayer.getQuestProgressPayload()
+    );
+    if (!tracker?.target || !myPlayer.hasExt(ClientPositionable)) {
+      return;
+    }
+
+    const playerPos = myPlayer.getExt(ClientPositionable).getCenterPosition();
+    const centerX = scaledLeft + scaledSize / 2;
+    const centerY = top + scaledSize / 2;
+    const radius = scaledSize / 2;
+    const relativeX = tracker.target.worldX - playerPos.x;
+    const relativeY = tracker.target.worldY - playerPos.y;
+    const angle = Math.atan2(relativeY, relativeX);
+    const projectedX = centerX + relativeX * settings.scale;
+    const projectedY = centerY + relativeY * settings.scale;
+    const edgeInset = 16;
+    const maxDist = radius - edgeInset;
+    const distFromCenter = Math.hypot(projectedX - centerX, projectedY - centerY);
+    const drawX =
+      distFromCenter <= maxDist ? projectedX : centerX + Math.cos(angle) * maxDist;
+    const drawY =
+      distFromCenter <= maxDist ? projectedY : centerY + Math.sin(angle) * maxDist;
+    const isTurnIn = tracker.target.kind === "turn_in";
+    const pulse = 1 + Math.sin(Date.now() * 0.01) * 0.12;
+    const markerRadius = 8 * pulse;
+
+    ctx.save();
+    ctx.fillStyle = isTurnIn ? "rgba(99, 240, 174, 0.22)" : "rgba(255, 216, 107, 0.22)";
+    ctx.beginPath();
+    ctx.arc(drawX, drawY, markerRadius + 4, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.strokeStyle = isTurnIn ? "rgba(99, 240, 174, 0.95)" : "rgba(255, 216, 107, 0.95)";
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(drawX, drawY - markerRadius);
+    ctx.lineTo(drawX + markerRadius, drawY);
+    ctx.lineTo(drawX, drawY + markerRadius);
+    ctx.lineTo(drawX - markerRadius, drawY);
+    ctx.closePath();
+    ctx.stroke();
+
+    ctx.fillStyle = "rgba(255, 255, 255, 0.96)";
+    ctx.font = "bold 10px Arial";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillText(isTurnIn ? "?" : "!", drawX, drawY + 0.5);
+    ctx.restore();
   }
 
   private renderBiomeIndicators(
@@ -746,59 +801,6 @@ export class Minimap {
       ctx.stroke();
       ctx.strokeRect(minimapX - iconSize / 6, minimapY - iconSize / 6, iconSize / 3, iconSize / 2);
     }
-  }
-
-  private renderQuestNavigationMarker(
-    ctx: CanvasRenderingContext2D,
-    gameState: GameState,
-    playerPos: { x: number; y: number },
-    settings: typeof MINIMAP_SETTINGS,
-    top: number,
-    scaledLeft: number,
-    scaledSize: number,
-    myPlayer: PlayerClient,
-  ): void {
-    if (myPlayer.isZombiePlayer()) {
-      return;
-    }
-    const target = gameState.questNavigationTarget;
-    if (!target) {
-      return;
-    }
-
-    const centerX = scaledLeft + scaledSize / 2;
-    const centerY = top + scaledSize / 2;
-    const radius = scaledSize / 2;
-
-    const relativeX = target.worldX - playerPos.x;
-    const relativeY = target.worldY - playerPos.y;
-    const angle = Math.atan2(relativeY, relativeX);
-    const minimapX = centerX + relativeX * settings.scale;
-    const minimapY = centerY + relativeY * settings.scale;
-
-    const edgeInset = 18;
-    const maxDist = radius - edgeInset;
-    const distFromCenter = Math.hypot(minimapX - centerX, minimapY - centerY);
-    const drawX =
-      distFromCenter <= maxDist ? minimapX : centerX + Math.cos(angle) * maxDist;
-    const drawY =
-      distFromCenter <= maxDist ? minimapY : centerY + Math.sin(angle) * maxDist;
-
-    const pulse = 0.72 + 0.28 * Math.sin(performance.now() / 300);
-    ctx.save();
-    ctx.fillStyle = `rgba(255, 214, 120, ${pulse})`;
-    ctx.strokeStyle = "rgba(255, 255, 255, 0.95)";
-    ctx.lineWidth = 2;
-    ctx.beginPath();
-    const s = 8;
-    ctx.moveTo(drawX, drawY - s);
-    ctx.lineTo(drawX + s, drawY);
-    ctx.lineTo(drawX, drawY + s);
-    ctx.lineTo(drawX - s, drawY);
-    ctx.closePath();
-    ctx.fill();
-    ctx.stroke();
-    ctx.restore();
   }
 
   // renderToxicZones and renderFogOfWar moved to shared utilities
