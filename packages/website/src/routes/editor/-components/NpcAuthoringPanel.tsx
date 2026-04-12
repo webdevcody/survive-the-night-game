@@ -81,7 +81,6 @@ const ATOMIC_CONDITION_OPTIONS: { value: DialogueNpcAtomicCondition["type"]; lab
   { value: "quest_completed", label: "Quest completed" },
   { value: "quest_active", label: "Quest active" },
   { value: "quest_not_active", label: "Quest not active (not in progress)" },
-  { value: "quest_not_completed", label: "Quest not completed" },
   {
     value: "quest_active_all_steps_done",
     label: "Step index past last objective (rare; see “on talk step”)",

@@ -253,7 +253,46 @@ export class DialogueSurvivorNpcClient extends ClientEntity implements Renderabl
       ctx.restore();
     }
 
+    this.renderQuestObjectiveMarker(ctx, gameState, pos, positionable.getSize().x);
+
     super.render(ctx, gameState);
+  }
+
+  /** Bouncing marker when this NPC is the current quest waypoint (talk / turn-in). */
+  private renderQuestObjectiveMarker(
+    ctx: CanvasRenderingContext2D,
+    gameState: GameState,
+    pos: { x: number; y: number },
+    width: number,
+  ): void {
+    const t = gameState.questNavigationTarget;
+    if (!t?.npcEntityId || t.npcEntityId !== this.getId()) {
+      return;
+    }
+    if (gameState.openDialogueNpcId === this.getId()) {
+      return;
+    }
+
+    const cx = pos.x + width / 2;
+    const bounce = Math.sin(performance.now() / 220) * 4;
+    const baseY = pos.y - 20 - bounce;
+
+    ctx.save();
+    ctx.translate(cx, baseY);
+    const pulse = 0.78 + 0.22 * Math.sin(performance.now() / 260);
+    ctx.fillStyle = `rgba(255, 220, 120, ${pulse})`;
+    ctx.strokeStyle = "rgba(40, 25, 8, 0.92)";
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    const r = 5;
+    ctx.moveTo(0, -r * 1.65);
+    ctx.lineTo(r, -r * 0.15);
+    ctx.lineTo(0, r * 1.15);
+    ctx.lineTo(-r, -r * 0.15);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+    ctx.restore();
   }
 }
 

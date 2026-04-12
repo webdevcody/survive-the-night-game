@@ -3,21 +3,22 @@
     {
       "id": "quest_1775786207543",
       "title": "The Night is Dark",
-      "steps": [],
+      "steps": [
+        {
+          "type": "talk_to_npc",
+          "npcName": "Rick",
+          "npcKey": "126,122"
+        }
+      ],
       "rewards": [
-        {
-          "type": "item",
-          "itemType": "knife",
-          "count": 1
-        },
-        {
-          "type": "permanent_stat",
-          "stat": "health",
-          "amount": 1
-        },
         {
           "type": "experience",
           "amount": 5
+        },
+        {
+          "type": "item",
+          "itemType": "bandage",
+          "count": 2
         }
       ],
       "startRewards": []
@@ -81,28 +82,24 @@
     },
     {
       "id": "quest_fence_scout",
-      "title": "Check the Blocked Path",
+      "title": "Finding Salvation",
       "steps": [
         {
           "type": "reach_waypoint",
-          "row": 154,
-          "col": 65,
-          "radiusTiles": 2
+          "row": 158,
+          "col": 98,
+          "radiusTiles": 1
         }
       ],
       "rewards": [
         {
           "type": "item",
-          "itemType": "energy_drink",
+          "itemType": "knife",
           "count": 1
-        },
-        {
-          "type": "item",
-          "itemType": "coin",
-          "count": 20
         }
       ],
-      "startRewards": []
+      "startRewards": [],
+      "completionType": "final_step"
     }
   ],
   "dialogueNpcEditorMetadata": [
@@ -114,6 +111,7 @@
       },
       "sessionEditorGroupIds": [
         null,
+        "dg_mnuw6tms_cg7sovql",
         "dg_mnuw6tms_cg7sovql",
         "dg_mnuw6tms_cg7sovql",
         "dg_mnuw6tms_cg7sovql",
@@ -131,7 +129,7 @@
             "type": "all",
             "conditions": [
               {
-                "type": "quest_active",
+                "type": "quest_active_final_talk_turn_in",
                 "questId": "quest_1775786207543"
               }
             ]
@@ -149,7 +147,11 @@
             "type": "all",
             "conditions": [
               {
-                "type": "quest_active",
+                "type": "quest_completed",
+                "questId": "quest_1775786207543"
+              },
+              {
+                "type": "quest_not_active",
                 "questId": "quest_1775824745523"
               }
             ]
@@ -159,13 +161,30 @@
         },
         {
           "lines": [
-            "you haven't killed those stumblers yet..."
+            "... this existence is futile..."
           ],
           "when": {
             "type": "all",
             "conditions": [
               {
-                "type": "quest_not_completed",
+                "type": "quest_completed",
+                "questId": "quest_1775824745523"
+              }
+            ]
+          },
+          "editorGroupId": "dg_mnuw6tms_cg7sovql"
+        },
+        {
+          "lines": [
+            "This area is starting to grow unsafe.",
+            "If you can kill at least 5 stumblers...",
+            "Maybe we could have one night of undisturbed sleep."
+          ],
+          "when": {
+            "type": "all",
+            "conditions": [
+              {
+                "type": "quest_active",
                 "questId": "quest_1775824745523"
               }
             ]
@@ -317,24 +336,30 @@
       ]
     },
     {
-      "row": 168,
-      "col": 75,
+      "row": 155,
+      "col": 68,
+      "editorGroups": {
+        "dg_mnvb4vi8_60s5c2j9": "Finding Salvation"
+      },
+      "sessionEditorGroupIds": [
+        "dg_mnvb4vi8_60s5c2j9",
+        "dg_mnvb4vi8_60s5c2j9"
+      ],
       "editorDialogueSessions": [
         {
           "lines": [
-            "That fence is buying us time, not safety.",
-            "There's a blocked path west of here that might still be usable.",
-            "Check it for me, then come back and tell me what you saw."
+            "Damn... there is no way we can get through this blockade.",
+            "We really need to find a way to get to Eatonville.  I know they will have enough supplies for us to last a bit longer.  We are going to starve if we don't find a way."
           ],
           "when": {
             "type": "always"
           },
-          "grantQuestId": "quest_fence_scout"
+          "grantQuestId": "quest_fence_scout",
+          "editorGroupId": "dg_mnvb4vi8_60s5c2j9"
         },
         {
           "lines": [
-            "Head west and look for the blocked path.",
-            "If it is still open, we may have a way out when the dead push through."
+            "Don't be scared man, I'm sure you'll find a way."
           ],
           "when": {
             "type": "all",
@@ -344,22 +369,8 @@
                 "questId": "quest_fence_scout"
               }
             ]
-          }
-        },
-        {
-          "lines": [
-            "Good. Then we still have options if this fence gives up.",
-            "Take this and keep moving."
-          ],
-          "when": {
-            "type": "all",
-            "conditions": [
-              {
-                "type": "quest_completed",
-                "questId": "quest_fence_scout"
-              }
-            ]
-          }
+          },
+          "editorGroupId": "dg_mnvb4vi8_60s5c2j9"
         }
       ]
     }

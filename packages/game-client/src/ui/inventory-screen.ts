@@ -6,6 +6,7 @@ import {
   InventoryItem,
   isWeapon,
   getWeaponAmmoType,
+  getWeaponMagazineSize,
   createEmptyEquipment,
   EQUIPMENT_SLOT_KEYS,
   canItemGoInEquipmentSlot,
@@ -48,16 +49,13 @@ import {
   CHARACTER_STAT_GROUP_HEADER_BLOCK_PX,
   CHARACTER_STAT_ROW_STEP_PX,
   drawCanvasUiButton,
-  panelBottomWideButtonRect,
   skillsNodeCenter,
   SKILLS_NODE_RADIUS,
   tabBarHitRect,
   uiCircleContains,
   uiRectContains,
 } from "@/ui/canvas-ui-rect";
-import type { QuestStep } from "@shared/map/quest-types";
-import type { QuestActiveProgress } from "@shared/quests/player-quest-state";
-import { getActiveStepIndex } from "@shared/quests/player-quest-state";
+import { getQuestObjectiveLine } from "./quest-display";
 import {
   PROFESSION_DEFINITIONS,
   PROFESSION_IDS,
@@ -347,28 +345,6 @@ export type InventoryUiTab =
   | "professions"
   | "quests";
 
-function describeQuestStep(
-  step: QuestStep | undefined,
-  activeEntry?: QuestActiveProgress,
-): string {
-  if (!step) return "(unknown step)";
-  if (step.type === "pickup_item") return `Pick up ${step.itemType}`;
-  if (step.type === "reach_waypoint") {
-    const r = step.radiusTiles ?? 2;
-    return `Reach (${step.row}, ${step.col}) · r≤${r}`;
-  }
-  if (step.type === "kill_enemies") {
-    const cur = activeEntry?.kills?.[step.enemyType] ?? 0;
-    return `Kill ${cur}/${step.count} ${step.enemyType}`;
-  }
-  if (step.type === "talk_to_npc") {
-    if (step.npcName && step.npcKey) return `Talk to ${step.npcName} (${step.npcKey})`;
-    if (step.npcKey) return `Talk to NPC at ${step.npcKey}`;
-    if (step.npcName) return `Talk to ${step.npcName}`;
-    return "Talk to NPC";
-  }
-  return "(unknown step)";
-}
 const STAT_LABELS: Record<(typeof CHARACTER_STAT_KEYS)[number], string> = {
   health: "Health",
   evade: "Evade (vs zombies)",
@@ -1266,8 +1242,7 @@ export class InventoryScreenUI {
         ctx.textAlign = "right";
         ctx.fillText(`${val}`, L.rightX + L.rightW - 120, y);
         ctx.textAlign = "left";
-        const { minus, plus } = characterStatPlusMinusRects(L.rightX, L.rightW, y);
-        drawCanvasUiButton(ctx, minus, "-", "compact");
+        const { plus } = characterStatPlusMinusRects(L.rightX, L.rightW, y);
         if (!isAtMax) {
           drawCanvasUiButton(ctx, plus, "+", "compact");
         }
@@ -1287,12 +1262,6 @@ export class InventoryScreenUI {
       y += 22;
     }
 
-    drawCanvasUiButton(
-      ctx,
-      panelBottomWideButtonRect(L.rightX, L.rightY, L.rightW, L.rightH),
-      "Reset character stats",
-      "wide",
-    );
   }
 
   private renderAbilitiesTab(
@@ -1311,7 +1280,7 @@ export class InventoryScreenUI {
     ty += 28;
     ctx.font = "13px Arial";
     ctx.fillStyle = RPG_METADATA_MUTED;
-    ctx.fillText("Click a node to unlock (when you have points). Click again to refund.", L.rightX + 12, ty);
+    ctx.fillText("Click a node to unlock when you have available ability points.", L.rightX + 12, ty);
 
     for (const node of ABILITY_TREE_NODES) {
       const { cx, cy } = skillsNodeCenter(L.skillsOriginX, L.skillsOriginY, node.x, node.y);
@@ -1335,13 +1304,6 @@ export class InventoryScreenUI {
     }
     ctx.textBaseline = "alphabetic";
     ctx.textAlign = "left";
-
-    drawCanvasUiButton(
-      ctx,
-      panelBottomWideButtonRect(L.rightX, L.rightY, L.rightW, L.rightH),
-      "Reset abilities",
-      "wide",
-    );
   }
 
   private professionCardRects(L: ReturnType<InventoryScreenUI["layout"]>) {
@@ -1526,6 +1488,7 @@ export class InventoryScreenUI {
     ctx: CanvasRenderingContext2D,
     L: ReturnType<InventoryScreenUI["layout"]>,
     player: PlayerClient,
+    gameState: GameState,
   ): void {
     const progress = player.getQuestProgressPayload();
     const quests = this.deps.getAuthoredQuests();
@@ -1578,12 +1541,7 @@ export class InventoryScreenUI {
         if (clipped) break;
         const def = byId.get(qid);
         const title = def?.title ?? qid;
-        const stepIdx = getActiveStepIndex(st, qid);
-        const activeEntry = st.active[qid];
-        const stepTotal = def?.steps.length ?? 0;
-        const onObjective = stepTotal > 0 && stepIdx < stepTotal;
-        const step = onObjective ? def?.steps[stepIdx] : undefined;
-        const stepSummary = describeQuestStep(step, activeEntry);
+        const stepLine = getQuestObjectiveLine(def, st, qid, gameState);
 
         ctx.fillStyle = RPG_BODY_TEXT;
         if (!nextBlock(lineMain)) break;
@@ -1591,13 +1549,6 @@ export class InventoryScreenUI {
         y += lineMain;
 
         ctx.fillStyle = RPG_METADATA_MUTED;
-        const progressPart =
-          stepTotal === 0
-            ? "Talk to an NPC to finish"
-            : stepIdx >= stepTotal
-              ? "Objectives done · talk to an NPC to turn in"
-              : `Step ${stepIdx + 1}/${stepTotal}`;
-        const stepLine = `${progressPart}${stepSummary ? ` · ${stepSummary}` : ""}`;
         if (!nextBlock(lineSub)) break;
         const maxW = contentW - 8;
         let drawLine = stepLine;
@@ -1849,18 +1800,23 @@ export class InventoryScreenUI {
             }
             if (isWeapon(invItem.itemType)) {
               const ammoType = getWeaponAmmoType(invItem.itemType);
-              if (ammoType) {
-                const ammoItem = items.find((it) => it?.itemType === ammoType);
-                const ammoCount = ammoItem?.state?.count ?? 0;
+              const magazineSize = getWeaponMagazineSize(invItem.itemType);
+              if (ammoType && magazineSize != null) {
+                const rawLoaded = invItem.state?.loadedAmmo;
+                const clipCount =
+                  typeof rawLoaded === "number" && Number.isFinite(rawLoaded)
+                    ? Math.max(0, Math.min(magazineSize, Math.floor(rawLoaded)))
+                    : magazineSize;
                 ctx.font = "bold 11px Arial";
                 ctx.textAlign = "right";
-                ctx.fillStyle = ammoCount > 0 ? "rgba(255, 255, 120, 1)" : "rgba(255, 100, 100, 1)";
+                ctx.fillStyle =
+                  clipCount > 0 ? "rgba(255, 255, 120, 1)" : "rgba(255, 100, 100, 1)";
                 ctx.strokeStyle = "rgba(0,0,0,0.8)";
                 ctx.lineWidth = 2;
                 const ax = sx + L.cellSize - 4;
                 const ay = sy + 14;
-                ctx.strokeText(`${ammoCount}`, ax, ay);
-                ctx.fillText(`${ammoCount}`, ax, ay);
+                ctx.strokeText(`${clipCount}`, ax, ay);
+                ctx.fillText(`${clipCount}`, ax, ay);
               }
             }
           }
@@ -1876,7 +1832,7 @@ export class InventoryScreenUI {
     } else if (this.activeTab === "professions") {
       this.renderProfessionsTab(ctx, L, player);
     } else if (this.activeTab === "quests") {
-      this.renderQuestsTab(ctx, L, player);
+      this.renderQuestsTab(ctx, L, player, gameState);
     }
 
     ctx.restore();
@@ -2243,21 +2199,10 @@ export class InventoryScreenUI {
     }
 
     if (this.activeTab === "character") {
-      const resetRect = panelBottomWideButtonRect(L.rightX, L.rightY, L.rightW, L.rightH);
-      if (uiRectContains(resetRect, lx, y)) {
-        this.deps.sendProgressionAllocations("character", {});
-        return true;
-      }
       const statLayout = this.characterStatPanelLayout(L.contentTop, L.rightX);
       for (const row of statLayout.rows) {
         const key = row.key;
-        const { minus, plus } = characterStatPlusMinusRects(L.rightX, L.rightW, row.rowLabelY);
-        if (uiRectContains(minus, lx, y)) {
-          const m = buildCharacterMapFromPlayer(player);
-          m[key] = Math.max(0, (m[key] ?? 0) - 1);
-          this.deps.sendProgressionAllocations("character", m);
-          return true;
-        }
+        const { plus } = characterStatPlusMinusRects(L.rightX, L.rightW, row.rowLabelY);
         if (
           player.getCharacterStat(key) < MAX_POINTS_PER_CHARACTER_STAT &&
           uiRectContains(plus, lx, y)
@@ -2272,11 +2217,6 @@ export class InventoryScreenUI {
     }
 
     if (this.activeTab === "abilities") {
-      const resetRect = panelBottomWideButtonRect(L.rightX, L.rightY, L.rightW, L.rightH);
-      if (uiRectContains(resetRect, lx, y)) {
-        this.deps.sendProgressionAllocations("ability", {});
-        return true;
-      }
       for (const node of ABILITY_TREE_NODES) {
         const { cx, cy } = skillsNodeCenter(L.skillsOriginX, L.skillsOriginY, node.x, node.y);
         if (uiCircleContains(cx, cy, SKILLS_NODE_RADIUS, lx, y)) {
@@ -2284,19 +2224,13 @@ export class InventoryScreenUI {
           const curS = abilities.sprint ?? 0;
           const curR = abilities.regenerate ?? 0;
           if (node.id === "sprint") {
-            abilities.sprint = curS > 0 ? 0 : 1;
-            if (abilities.sprint && curS === 0 && player.getAvailableAbilityPoints() <= 0) {
-              return true;
-            }
+            if (curS > 0) return true;
+            if (player.getAvailableAbilityPoints() <= 0) return true;
+            abilities.sprint = 1;
           } else {
-            abilities.regenerate = curR > 0 ? 0 : 1;
-            if (
-              abilities.regenerate &&
-              curR === 0 &&
-              player.getAvailableAbilityPoints() <= 0
-            ) {
-              return true;
-            }
+            if (curR > 0) return true;
+            if (player.getAvailableAbilityPoints() <= 0) return true;
+            abilities.regenerate = 1;
           }
           this.deps.sendProgressionAllocations("ability", abilities);
           return true;

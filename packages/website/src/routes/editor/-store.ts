@@ -31,7 +31,7 @@ import {
   SPAWNER_META_RESPAWN_INTERVAL_SEC_MAX,
   SPAWNER_META_RESPAWN_INTERVAL_SEC_MIN,
 } from "@survive-the-night/game-shared/map/world-map-types";
-import type { WorldMapQuestDefinition } from "@survive-the-night/game-shared/map/quest-types";
+import type { QuestStep, WorldMapQuestDefinition } from "@survive-the-night/game-shared/map/quest-types";
 import { createQuestDefinitionDraft } from "@survive-the-night/game-shared/map/quest-types";
 import {
   DIALOGUE_NPC_MAX_MESSAGE_LENGTH,
@@ -231,6 +231,8 @@ interface EditorState {
   selectedTileId: number;
   /** Spawn layer: selected tile for inspector (row/col in full map). */
   selectedSpawnCell: { row: number; col: number } | null;
+  /** Decals layer: selected tile for Delete / second-click toggle (row/col in full map). */
+  selectedDecalCell: { row: number; col: number } | null;
 
   // Export state
   exportText: string;
@@ -249,6 +251,8 @@ interface EditorState {
   spawnerConfigModal: { row: number; col: number } | null;
   /** When set, next map click (empty spawns cell) moves this non-dialogue spawner tile + label. */
   spawnerRelocateFrom: { row: number; col: number } | null;
+  /** When set, next map click sets `reach_waypoint` row/col for this quest step. */
+  questWaypointPickTarget: { questId: string; stepIndex: number } | null;
   /** Right overlay: tiles palette vs lists vs quests. */
   sidebarSection: EditorSidebarSection;
 
@@ -342,6 +346,8 @@ interface EditorState {
   setSpawnerConfigModal: (cell: { row: number; col: number } | null) => void;
   startSpawnerRelocate: (row: number, col: number) => void;
   cancelSpawnerRelocate: () => void;
+  startQuestWaypointPick: (questId: string, stepIndex: number) => void;
+  cancelQuestWaypointPick: () => void;
   updateSpawnerMetaAt: (row: number, col: number, name: string) => void;
   /** Whole seconds between respawns; `null` clears override (use map defaults). */
   updateSpawnerRespawnIntervalSecAt: (row: number, col: number, sec: number | null) => void;
@@ -440,6 +446,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   activeLayer: "ground",
   selectedTileId: 0,
   selectedSpawnCell: null,
+  selectedDecalCell: null,
   exportText: "",
   isDragging: false,
   hasModifiedDuringDrag: false,
@@ -448,6 +455,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   dialogueNpcRelocateFrom: null,
   spawnerConfigModal: null,
   spawnerRelocateFrom: null,
+  questWaypointPickTarget: null,
   sidebarSection: "tiles",
   isPaletteSelectionMode: false,
   paletteSelectionStart: null,
@@ -499,13 +507,21 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   setMessageDecals: (entries) => set({ messageDecals: entries }),
   setSpawnerMeta: (entries) => set({ spawnerMeta: entries }),
   setQuests: (quests) =>
-    set((state) => ({
-      quests,
-      focusedQuestId:
+    set((state) => {
+      const focusedQuestId =
         state.focusedQuestId && quests.some((quest) => quest.id === state.focusedQuestId)
           ? state.focusedQuestId
-          : null,
-    })),
+          : null;
+      let questWaypointPickTarget = state.questWaypointPickTarget;
+      if (questWaypointPickTarget) {
+        const q = quests.find((quest) => quest.id === questWaypointPickTarget!.questId);
+        const step = q?.steps[questWaypointPickTarget.stepIndex];
+        if (!step || step.type !== "reach_waypoint") {
+          questWaypointPickTarget = null;
+        }
+      }
+      return { quests, focusedQuestId, questWaypointPickTarget };
+    }),
   createQuestDraft: (title) => {
     const quests = get().quests;
     const id = createUniqueQuestId(quests);
@@ -605,8 +621,13 @@ export const useEditorStore = create<EditorState>((set, get) => ({
     set({
       activeLayer: layer,
       selectedSpawnCell: layer === "spawns" ? get().selectedSpawnCell : null,
+      selectedDecalCell: layer === "decals" ? get().selectedDecalCell : null,
       ...(layer !== "spawns"
-        ? { dialogueNpcRelocateFrom: null, spawnerRelocateFrom: null }
+        ? {
+            dialogueNpcRelocateFrom: null,
+            spawnerRelocateFrom: null,
+            questWaypointPickTarget: null,
+          }
         : {}),
     }),
   setSelectedTileId: (id) => set({ selectedTileId: id }),
@@ -628,6 +649,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
       dialogueNpcRelocateFrom: { row, col },
       npcConfigModal: null,
       spawnerRelocateFrom: null,
+      questWaypointPickTarget: null,
       activeLayer: "spawns",
       selectedTileId,
     });
@@ -651,6 +673,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
       spawnerRelocateFrom: { row, col },
       spawnerConfigModal: null,
       dialogueNpcRelocateFrom: null,
+      questWaypointPickTarget: null,
       activeLayer: "spawns",
       selectedTileId: id,
       sidebarSection: "spawners",
@@ -663,6 +686,17 @@ export const useEditorStore = create<EditorState>((set, get) => ({
       ...(from ? { spawnerConfigModal: { row: from.row, col: from.col } } : {}),
     });
   },
+  startQuestWaypointPick: (questId, stepIndex) => {
+    const quest = get().quests.find((q) => q.id === questId);
+    const step = quest?.steps[stepIndex];
+    if (!step || step.type !== "reach_waypoint") return;
+    set({
+      questWaypointPickTarget: { questId, stepIndex },
+      dialogueNpcRelocateFrom: null,
+      spawnerRelocateFrom: null,
+    });
+  },
+  cancelQuestWaypointPick: () => set({ questWaypointPickTarget: null }),
   setSidebarSection: (section) => set({ sidebarSection: section }),
   updateSpawnerMetaAt: (row, col, name) => {
     const trimmed = name.trim();
@@ -791,6 +825,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
       npcConfigModal: { row, col },
       spawnerConfigModal: null,
       spawnerRelocateFrom: null,
+      questWaypointPickTarget: null,
       sidebarSection: "npcs",
     });
   },
@@ -804,6 +839,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
         npcConfigModal: null,
         dialogueNpcRelocateFrom: null,
         spawnerRelocateFrom: null,
+        questWaypointPickTarget: null,
         sidebarSection: "spawners" as const,
         ...(id > 0 ? { selectedTileId: id } : {}),
       };
@@ -1009,9 +1045,14 @@ export const useEditorStore = create<EditorState>((set, get) => ({
         spawnerConfigModal: null,
         dialogueNpcRelocateFrom: null,
         spawnerRelocateFrom: null,
+        questWaypointPickTarget: null,
       });
     } else {
-      set({ decalsGrid: createEmptyDecalsLayer(n), messageDecals: [] });
+      set({
+        decalsGrid: createEmptyDecalsLayer(n),
+        messageDecals: [],
+        selectedDecalCell: null,
+      });
     }
   },
 
@@ -1021,6 +1062,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
       selectedTileId:
         layer === "ground" ? 0 : layer === "spawns" || layer === "decals" ? 0 : -1,
       selectedSpawnCell: layer === "spawns" ? get().selectedSpawnCell : null,
+      selectedDecalCell: layer === "decals" ? get().selectedDecalCell : null,
       isPaletteSelectionMode: false,
       isGroundPaletteSelectionMode: false,
       paletteSelectionStart: null,
@@ -1031,6 +1073,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
       isFillBucketMode: false,
       dialogueNpcRelocateFrom: null,
       spawnerRelocateFrom: null,
+      questWaypointPickTarget: null,
     });
   },
 
@@ -1052,6 +1095,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
       dialogueNpcs,
       spawnerRelocateFrom,
       spawnerMeta,
+      questWaypointPickTarget,
     } = get();
 
     if (dialogueNpcRelocateFrom) {
@@ -1141,10 +1185,37 @@ export const useEditorStore = create<EditorState>((set, get) => ({
         dialogueNpcs: nextDialogue,
         spawnerMeta: reconcileSpawnerMetaWithSpawnsLayer(newGrid, nextSpawnerMetaRaw),
         selectedSpawnCell: { row, col },
-        spawnerConfigModal: { row, col },
+        spawnerConfigModal: null,
         spawnerRelocateFrom: null,
         selectedTileId: sourceId,
       }));
+      return;
+    }
+
+    if (questWaypointPickTarget) {
+      if (paintStroke) return;
+      const mapSize = getMapSideLength(groundGrid);
+      const r = clamp(row, 0, mapSize - 1);
+      const c = clamp(col, 0, mapSize - 1);
+      set((s) => {
+        const t = s.questWaypointPickTarget;
+        if (!t) return {};
+        const quest = s.quests.find((q) => q.id === t.questId);
+        if (!quest) return { questWaypointPickTarget: null };
+        const curStep = quest.steps[t.stepIndex];
+        if (!curStep || curStep.type !== "reach_waypoint") {
+          return { questWaypointPickTarget: null };
+        }
+        const nextStep: QuestStep = { ...curStep, row: r, col: c };
+        return {
+          quests: s.quests.map((q) =>
+            q.id !== t.questId
+              ? q
+              : { ...q, steps: q.steps.map((st, i) => (i === t.stepIndex ? nextStep : st)) },
+          ),
+          questWaypointPickTarget: null,
+        };
+      });
       return;
     }
 
@@ -1162,6 +1233,23 @@ export const useEditorStore = create<EditorState>((set, get) => ({
         return;
       }
       set({ selectedSpawnCell: null });
+    }
+
+    if (!paintStroke && activeLayer === "decals") {
+      const currentTileId = decalsGrid[row][col];
+      if (currentTileId <= 0) {
+        set({ selectedDecalCell: null });
+      } else {
+        const samePalette = selectedTileId === currentTileId && selectedTileId !== 0;
+        const prevSel = get().selectedDecalCell;
+        const isReselectSameCell =
+          prevSel?.row === row && prevSel?.col === col;
+        if (samePalette && !isReselectSameCell) {
+          set({ selectedDecalCell: { row, col } });
+          return;
+        }
+        set({ selectedDecalCell: null });
+      }
     }
 
     if (get().sidebarSection !== "tiles") {
@@ -1220,6 +1308,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
       if (activeLayer === "decals") {
         const newDecals = fillRectInGrid(decalsGrid, row, col, brushSize, selectedTileId, mapSize);
         set((s) => ({
+          selectedDecalCell: null,
           decalsGrid: newDecals,
           messageDecals: reconcileMessageDecalsWithDecalsLayer(
             newDecals,
@@ -1374,7 +1463,11 @@ export const useEditorStore = create<EditorState>((set, get) => ({
     if (activeLayer === "decals") {
       const newGrid = replaceCellInGrid(decalsGrid, row, col, 0);
       const mapSize = getMapSideLength(groundGrid);
+      const sel = get().selectedDecalCell;
+      const clearSel =
+        sel?.row === row && sel?.col === col ? { selectedDecalCell: null } : {};
       set((s) => ({
+        ...clearSel,
         decalsGrid: newGrid,
         messageDecals: reconcileMessageDecalsWithDecalsLayer(
           newGrid,
@@ -1456,7 +1549,17 @@ export const useEditorStore = create<EditorState>((set, get) => ({
     }
     if (activeLayer === "decals") {
       const newDecals = fillRectInGrid(decalsGrid, row, col, brushSize, 0, mapSize);
+      const sel = get().selectedDecalCell;
+      const clearSel =
+        sel &&
+        sel.row >= r0 &&
+        sel.row < r1 &&
+        sel.col >= c0 &&
+        sel.col < c1
+          ? { selectedDecalCell: null }
+          : {};
       set((s) => ({
+        ...clearSel,
         decalsGrid: newDecals,
         messageDecals: reconcileMessageDecalsWithDecalsLayer(
           newDecals,

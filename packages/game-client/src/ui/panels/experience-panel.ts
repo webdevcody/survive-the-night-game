@@ -27,10 +27,14 @@ export class ExperiencePanel extends Panel {
     this.barSettings = settings;
   }
 
+  /**
+   * @param xpBarLeftPx — Left edge of the XP bar (label is centered on this block). Defaults to strip left (full strip width).
+   */
   public render(
     ctx: CanvasRenderingContext2D,
     _gameState: GameState,
     hotbarCenterX?: number,
+    xpBarLeftPx?: number,
   ): void {
     this.resetTransform(ctx);
 
@@ -38,9 +42,7 @@ export class ExperiencePanel extends Panel {
     const hudScale = calculateHudScale(canvasWidth, canvasHeight);
 
     const strip = getLoadoutStripScreenLayout(canvasWidth, canvasHeight, hotbarCenterX);
-    const gap = scaleHudValue(GAP_ABOVE_HOTBAR, canvasWidth, canvasHeight);
 
-    const barW = strip.w;
     const barH = scaleHudValue(this.barSettings.baseBarHeight, canvasWidth, canvasHeight);
     const labelFont = Math.max(
       10,
@@ -54,11 +56,19 @@ export class ExperiencePanel extends Panel {
         ? Math.min(1, progress.currentXpInLevel / progress.xpToNextLevel)
         : 1;
 
-    // Stack: label above bar; bar sits `gap` px above the hotbar (same width, centered with strip)
+    const gap = scaleHudValue(GAP_ABOVE_HOTBAR, canvasWidth, canvasHeight);
+    const rightPad = Math.max(1, Math.round(2 * strip.scale));
+    const barLeft = xpBarLeftPx ?? strip.x;
+    const barW = Math.max(
+      40,
+      strip.x + strip.w - barLeft - rightPad,
+    );
+
+    // Stack: label above bar; bar sits `gap` px above the hotbar
     const barBottom = strip.y - gap;
     const barTop = barBottom - barH;
     const labelBaseline = barTop - Math.round(6 * hudScale);
-    const labelCenterX = strip.x + strip.w / 2;
+    const labelCenterX = barLeft + barW / 2;
 
     ctx.font = `bold ${labelFont}px Georgia`;
     ctx.textAlign = "center";
@@ -75,20 +85,19 @@ export class ExperiencePanel extends Panel {
     ctx.fillText(xpHint, labelCenterX, labelBaseline);
     ctx.shadowBlur = 0;
 
-    const barX = strip.x;
     const barY = barTop;
 
     ctx.fillStyle = RPG_PANEL_GRADIENT_BOTTOM;
     ctx.strokeStyle = RPG_BORDER_GOLD;
     ctx.lineWidth = Math.max(1, Math.round(2 * hudScale));
-    ctx.fillRect(barX, barY, barW, barH);
-    ctx.strokeRect(barX, barY, barW, barH);
+    ctx.fillRect(barLeft, barY, barW, barH);
+    ctx.strokeRect(barLeft, barY, barW, barH);
 
     const innerPad = Math.max(1, Math.round(2 * hudScale));
     const innerW = Math.max(0, barW - innerPad * 2);
     const innerH = Math.max(0, barH - innerPad * 2);
     ctx.fillStyle = "rgba(90, 200, 120, 0.95)";
-    ctx.fillRect(barX + innerPad, barY + innerPad, innerW * fill, innerH);
+    ctx.fillRect(barLeft + innerPad, barY + innerPad, innerW * fill, innerH);
 
     this.restoreContext(ctx);
   }

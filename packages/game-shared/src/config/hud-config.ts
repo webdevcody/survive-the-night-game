@@ -42,6 +42,16 @@ export const hudConfig = {
     /** Minimum distance (in pixels) before showing indicator - increase to hide when closer */
     minDistance: 300,
   },
+
+  /**
+   * Quest objective pointer (first active quest: waypoint or NPC).
+   */
+  questNavigationIndicators: {
+    arrowSize: 30,
+    arrowDistance: 60,
+    arrowColor: "rgba(255, 214, 120, 0.95)",
+    minDistance: 96,
+  },
 } as const;
 
 export type HudConfig = typeof hudConfig;

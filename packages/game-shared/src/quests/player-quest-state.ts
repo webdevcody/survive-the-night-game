@@ -11,8 +11,8 @@ export interface QuestActiveProgress {
 export interface PlayerQuestStatePayload {
   /**
    * questId → progress. `step` is the 0-based step index while objectives remain.
-   * When equal to that quest’s `steps.length`, all objectives are done; the quest stays active
-   * until an NPC dialogue session’s `completeQuestId` marks it done (completion rewards apply only then).
+   * When equal to that quest’s `steps.length`, all objectives are done. What happens next depends on
+   * the quest’s `completionType` (`dialogue_npc` vs `final_step`); see game-server quest runtime.
    */
   active: Record<string, QuestActiveProgress>;
   completed: string[];

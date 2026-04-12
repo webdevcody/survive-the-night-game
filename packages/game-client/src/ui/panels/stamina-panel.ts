@@ -23,6 +23,7 @@ export class StaminaPanel extends Panel {
   public render(ctx: CanvasRenderingContext2D, gameState: GameState, layout: MinimapHudLayout | null): void {
     const player = getPlayer(gameState);
     if (!player || !layout) return;
+    if (player.getAbilitySprintRank() <= 0) return;
 
     const { width: canvasWidth, height: canvasHeight } = ctx.canvas;
     const hudScale = calculateHudScale(canvasWidth, canvasHeight);

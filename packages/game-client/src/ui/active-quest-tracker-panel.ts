@@ -1,3 +1,4 @@
+import type { GameState } from "@/state";
 import type { WorldMapQuestDefinition } from "@shared/map/quest-types";
 import type { PlayerQuestStatePayload } from "@shared/quests/player-quest-state";
 import { calculateHudScale, scaleHudValue } from "@/util/hud-scale";
@@ -35,6 +36,7 @@ export class ActiveQuestTrackerPanel {
     quests: readonly WorldMapQuestDefinition[],
     progress: PlayerQuestStatePayload | null,
     minimapRect: MinimapScreenRect,
+    gameState?: GameState | null,
   ): void {
     const st = progress ?? { active: {}, completed: [] };
     const activeIds = Object.keys(st.active);
@@ -45,7 +47,7 @@ export class ActiveQuestTrackerPanel {
     const activeQuestId = activeIds[0]!;
     const def = quests.find((quest) => quest.id === activeQuestId);
     const title = def?.title?.trim() || activeQuestId;
-    const objective = getQuestObjectiveLine(def, st, activeQuestId);
+    const objective = getQuestObjectiveLine(def, st, activeQuestId, gameState);
     const extraQuestCount = Math.max(0, activeIds.length - 1);
 
     const { width: canvasW, height: canvasH } = ctx.canvas;

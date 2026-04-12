@@ -14,6 +14,7 @@ import {
   MuteButtonPanel,
   CrateIndicatorsPanel,
   SurvivorIndicatorsPanel,
+  QuestIndicatorsPanel,
   ExperiencePanel,
 } from "./panels";
 import { getConfig } from "@shared/config";
@@ -126,6 +127,7 @@ export class Hud {
   private experiencePanel: ExperiencePanel;
   private crateIndicatorsPanel: CrateIndicatorsPanel;
   private survivorIndicatorsPanel: SurvivorIndicatorsPanel;
+  private questIndicatorsPanel: QuestIndicatorsPanel;
   private survivorStatusHud: SurvivorStatusHud;
   private loadoutStrip: LoadoutStrip;
   private inventoryScreen: InventoryScreenUI;
@@ -369,6 +371,16 @@ export class Hud {
       this.assetManager
     );
 
+    this.questIndicatorsPanel = new QuestIndicatorsPanel({
+      padding: 0,
+      background: "transparent",
+      borderColor: "transparent",
+      borderWidth: 0,
+      arrowSize: hudCfg.questNavigationIndicators.arrowSize,
+      arrowDistance: hudCfg.questNavigationIndicators.arrowDistance,
+      arrowColor: hudCfg.questNavigationIndicators.arrowColor,
+      minDistance: hudCfg.questNavigationIndicators.minDistance,
+    });
   }
 
   public setRenderer(renderer: import("@/renderer").Renderer): void {
@@ -420,16 +432,17 @@ export class Hud {
     this.onDialogueQuestChoice = handler;
   }
 
+  /** Draws clip / reserve above the hotbar; returns right edge of the text, or null if hidden. */
   private renderAmmoCounter(
     ctx: CanvasRenderingContext2D,
     player: PlayerClient,
     centerX: number,
     canvasWidth: number,
     canvasHeight: number,
-  ): void {
+  ): number | null {
     const ammoState = player.getActiveWeaponAmmoState();
     if (!ammoState) {
-      return;
+      return null;
     }
 
     const layout = getLoadoutStripScreenLayout(canvasWidth, canvasHeight, centerX);
@@ -437,29 +450,32 @@ export class Hud {
     const reserveLabel = ` / ${ammoState.reserve}`;
     const clipFont = `bold ${Math.max(20, Math.round(24 * layout.scale))}px Arial`;
     const reserveFont = `bold ${Math.max(12, Math.round(15 * layout.scale))}px Arial`;
-    const baseX = layout.x + layout.w - 2 * layout.scale;
+    const baseX = layout.x + 2 * layout.scale;
     const baseY = layout.y - 8 * layout.scale;
 
     ctx.save();
     ctx.setTransform(1, 0, 0, 1, 0, 0);
-    ctx.textAlign = "right";
+    ctx.textAlign = "left";
     ctx.textBaseline = "alphabetic";
     ctx.strokeStyle = "rgba(6, 8, 16, 0.95)";
     ctx.lineWidth = Math.max(2, Math.round(3 * layout.scale));
 
-    ctx.font = reserveFont;
-    const reserveWidth = ctx.measureText(reserveLabel).width;
-
     ctx.font = clipFont;
     ctx.fillStyle = player.isReloadingWeapon() ? RPG_COUNTER_GOLD : RPG_TITLE_CREAM;
-    ctx.strokeText(clipLabel, baseX - reserveWidth, baseY);
-    ctx.fillText(clipLabel, baseX - reserveWidth, baseY);
+    ctx.strokeText(clipLabel, baseX, baseY);
+    ctx.fillText(clipLabel, baseX, baseY);
+    const clipWidth = ctx.measureText(clipLabel).width;
 
     ctx.font = reserveFont;
     ctx.fillStyle = RPG_METADATA_MUTED;
-    ctx.strokeText(reserveLabel, baseX, baseY);
-    ctx.fillText(reserveLabel, baseX, baseY);
+    const reserveX = baseX + clipWidth;
+    ctx.strokeText(reserveLabel, reserveX, baseY);
+    ctx.fillText(reserveLabel, reserveX, baseY);
+
+    const reserveWidth = ctx.measureText(reserveLabel).width;
+    const rightEdge = reserveX + reserveWidth;
     ctx.restore();
+    return rightEdge;
   }
 
   public render(ctx: CanvasRenderingContext2D, gameState: GameState): void {
@@ -470,6 +486,7 @@ export class Hud {
     // Render indicators FIRST so they appear behind the panels that render after
     this.crateIndicatorsPanel.render(ctx, gameState);
     this.survivorIndicatorsPanel.render(ctx, gameState);
+    this.questIndicatorsPanel.render(ctx, gameState);
 
     const dialogueOcclusion = this.dialoguePanel.getOcclusionProgress();
     const minimapHudLayout = getMinimapHudLayout(width, height, {
@@ -486,6 +503,7 @@ export class Hud {
         this.mapManager.getAuthoredQuests(),
         myPlayer?.getQuestProgressPayload() ?? null,
         minimapHudLayout.minimap,
+        gameState,
       );
     }
 
@@ -534,17 +552,21 @@ export class Hud {
     // Render transient HUD messages (loot, craft, etc.)
     this.gameMessagesPanel.render(ctx, gameState);
 
-    // Level + XP (centered above hotbar)
+    // Ammo (left above hotbar) then XP bar to its right
     if (dialogueOcclusion < 0.98) {
       ctx.save();
       ctx.globalAlpha = Math.max(0, 1 - dialogueOcclusion * 1.25);
       ctx.setTransform(1, 0, 0, 1, 0, 0);
-      this.experiencePanel.render(ctx, gameState, hotbarCenterX);
+      const stripLayout = getLoadoutStripScreenLayout(width, height, hotbarCenterX);
+      let xpBarLeftPx = stripLayout.x + 2 * stripLayout.scale;
+      if (!isZombiePlayer && myPlayer) {
+        const ammoRight = this.renderAmmoCounter(ctx, myPlayer, hotbarCenterX, width, height);
+        if (ammoRight !== null) {
+          xpBarLeftPx = ammoRight + 8 * stripLayout.scale;
+        }
+      }
+      this.experiencePanel.render(ctx, gameState, hotbarCenterX, xpBarLeftPx);
       ctx.restore();
-    }
-
-    if (!isZombiePlayer && dialogueOcclusion < 0.98 && myPlayer) {
-      this.renderAmmoCounter(ctx, myPlayer, hotbarCenterX, width, height);
     }
 
     // Render mute button
@@ -570,6 +592,7 @@ export class Hud {
       ctx,
       this.mapManager.getAuthoredQuests(),
       myPlayer?.getQuestProgressPayload() ?? null,
+      gameState,
     );
     ctx.restore();
 

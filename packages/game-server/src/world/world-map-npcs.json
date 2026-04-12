@@ -29,7 +29,7 @@
             "type": "all",
             "conditions": [
               {
-                "type": "quest_active",
+                "type": "quest_active_final_talk_turn_in",
                 "questId": "quest_1775786207543"
               }
             ]
@@ -48,7 +48,11 @@
             "type": "all",
             "conditions": [
               {
-                "type": "quest_active",
+                "type": "quest_completed",
+                "questId": "quest_1775786207543"
+              },
+              {
+                "type": "quest_not_active",
                 "questId": "quest_1775824745523"
               }
             ]
@@ -66,13 +70,30 @@
             "type": "all",
             "conditions": [
               {
-                "type": "quest_not_completed",
+                "type": "quest_completed",
                 "questId": "quest_1775824745523"
               }
             ]
           },
           "lines": [
-            "you haven't killed those stumblers yet..."
+            "... this existence is futile..."
+          ],
+          "editorGroupId": "dg_mnuw6tms_cg7sovql"
+        },
+        {
+          "when": {
+            "type": "all",
+            "conditions": [
+              {
+                "type": "quest_active",
+                "questId": "quest_1775824745523"
+              }
+            ]
+          },
+          "lines": [
+            "This area is starting to grow unsafe.",
+            "If you can kill at least 5 stumblers...",
+            "Maybe we could have one night of undisturbed sleep."
           ],
           "editorGroupId": "dg_mnuw6tms_cg7sovql"
         },
@@ -103,9 +124,9 @@
         }
       ],
       "lines": [
-        "you haven't killed those stumblers yet..."
+        "... this existence is futile..."
       ],
-      "message": "you haven't killed those stumblers yet...",
+      "message": "... this existence is futile...",
       "name": "Rick",
       "editorGroups": {
         "dg_mnuw6tms_cg7sovql": "Stumblers"
@@ -230,19 +251,19 @@
       }
     },
     {
-      "row": 168,
-      "col": 75,
+      "row": 155,
+      "col": 68,
       "dialogueSessions": [
         {
           "when": {
             "type": "always"
           },
           "lines": [
-            "That fence is buying us time, not safety.",
-            "There's a blocked path west of here that might still be usable.",
-            "Check it for me, then come back and tell me what you saw."
+            "Damn... there is no way we can get through this blockade.",
+            "We really need to find a way to get to Eatonville.  I know they will have enough supplies for us to last a bit longer.  We are going to starve if we don't find a way."
           ],
-          "grantQuestId": "quest_fence_scout"
+          "grantQuestId": "quest_fence_scout",
+          "editorGroupId": "dg_mnvb4vi8_60s5c2j9"
         },
         {
           "when": {
@@ -255,34 +276,21 @@
             ]
           },
           "lines": [
-            "Head west and look for the blocked path.",
-            "If it is still open, we may have a way out when the dead push through."
-          ]
-        },
-        {
-          "when": {
-            "type": "all",
-            "conditions": [
-              {
-                "type": "quest_completed",
-                "questId": "quest_fence_scout"
-              }
-            ]
-          },
-          "lines": [
-            "Good. Then we still have options if this fence gives up.",
-            "Take this and keep moving."
-          ]
+            "Don't be scared man, I'm sure you'll find a way."
+          ],
+          "editorGroupId": "dg_mnvb4vi8_60s5c2j9"
         }
       ],
       "lines": [
-        "That fence is buying us time, not safety.",
-        "There's a blocked path west of here that might still be usable.",
-        "Check it for me, then come back and tell me what you saw."
+        "Damn... there is no way we can get through this blockade.",
+        "We really need to find a way to get to Eatonville.  I know they will have enough supplies for us to last a bit longer.  We are going to starve if we don't find a way."
       ],
-      "message": "That fence is buying us time, not safety.",
+      "message": "Damn... there is no way we can get through this blockade.",
       "name": "Mason",
-      "grantQuestId": "quest_fence_scout"
+      "grantQuestId": "quest_fence_scout",
+      "editorGroups": {
+        "dg_mnvb4vi8_60s5c2j9": "Finding Salvation"
+      }
     }
   ]
 }

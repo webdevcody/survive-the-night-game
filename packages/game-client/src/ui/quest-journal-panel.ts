@@ -1,4 +1,6 @@
+import type { GameState } from "@/state";
 import type { WorldMapQuestDefinition } from "@shared/map/quest-types";
+import { getQuestCompletionType } from "@shared/map/quest-types";
 import type { PlayerQuestStatePayload } from "@shared/quests/player-quest-state";
 import { getActiveStepIndex } from "@shared/quests/player-quest-state";
 import { calculateHudScale, scaleHudValue } from "@/util/hud-scale";
@@ -11,7 +13,7 @@ import {
   RPG_TITLE_CREAM,
   strokeRpgPanelBorder,
 } from "@/ui/rpg-hud-theme";
-import { describeQuestStep } from "./quest-display";
+import { describeQuestStep, getQuestTurnInNpcLabel } from "./quest-display";
 
 export class QuestJournalPanel {
   private visible = false;
@@ -32,6 +34,7 @@ export class QuestJournalPanel {
     ctx: CanvasRenderingContext2D,
     quests: WorldMapQuestDefinition[],
     progress: PlayerQuestStatePayload | null,
+    gameState?: GameState | null,
   ): void {
     if (!this.visible) return;
 
@@ -86,14 +89,31 @@ export class QuestJournalPanel {
         const title = def?.title ?? qid;
         const stepIdx = getActiveStepIndex(st, qid);
         const stepTotal = def?.steps.length ?? 0;
+        const completion = def ? getQuestCompletionType(def) : "dialogue_npc";
+        const onObjective = stepTotal > 0 && stepIdx < stepTotal;
         ctx.fillStyle = RPG_BODY_TEXT;
         ctx.fillText(`${title}`, x + pad, ly);
         ly += bodySize * 1.15;
         ctx.fillStyle = RPG_METADATA_MUTED;
-        ctx.fillText(`  Step ${stepIdx + 1}/${Math.max(1, stepTotal)}`, x + pad, ly);
-        ly += bodySize * 1.1;
-        const stepSummary = describeQuestStep(def?.steps[stepIdx], st.active[qid]);
-        ctx.fillText(`  ${stepSummary}`, x + pad, ly);
+        if (onObjective) {
+          ctx.fillText(`  Step ${stepIdx + 1}/${stepTotal}`, x + pad, ly);
+          ly += bodySize * 1.1;
+          const stepSummary = describeQuestStep(def?.steps[stepIdx], st.active[qid], gameState);
+          ctx.fillText(`  ${stepSummary}`, x + pad, ly);
+        } else {
+          const turnInNpcLabel = getQuestTurnInNpcLabel(gameState, qid) ?? "an NPC";
+          const status =
+            stepTotal === 0
+              ? completion === "final_step"
+                ? "Completes when accepted"
+                : `Talk to ${turnInNpcLabel} to finish`
+              : stepIdx >= stepTotal
+                ? completion === "final_step"
+                  ? "All objectives complete"
+                  : `Objectives done — talk to ${turnInNpcLabel} to turn in`
+                : "—";
+          ctx.fillText(`  ${status}`, x + pad, ly);
+        }
         ly += bodySize * 1.35;
       }
     }

@@ -189,6 +189,10 @@ export function DecalsPanel() {
         <ul className="list-disc list-inside space-y-1">
           <li>Select a decal from the list above</li>
           <li>Click on the grid to place it</li>
+          <li>
+            Click a placed tile (same decal on palette) to select it, then press Delete or Backspace to
+            remove
+          </li>
           <li>Decals render above ground/collidables</li>
           <li>Animations play automatically in-game</li>
           <li>Light-emitting decals illuminate surroundings</li>

@@ -4,14 +4,17 @@ import { useEditorStore } from "../-store";
 export function RelocateMapBanner() {
   const npcFrom = useEditorStore((s) => s.dialogueNpcRelocateFrom);
   const spawnerFrom = useEditorStore((s) => s.spawnerRelocateFrom);
+  const questPick = useEditorStore((s) => s.questWaypointPickTarget);
 
-  if (!npcFrom && !spawnerFrom) return null;
+  if (!npcFrom && !spawnerFrom && !questPick) return null;
 
   let label: string;
   if (npcFrom) {
     label = `Relocate dialogue NPC from (${npcFrom.row}, ${npcFrom.col}) — click an empty spawns tile. Press Esc to cancel.`;
-  } else {
+  } else if (spawnerFrom) {
     label = `Relocate spawner from (${spawnerFrom.row}, ${spawnerFrom.col}) — click an empty spawns tile. Press Esc to cancel.`;
+  } else {
+    label = `Pick quest waypoint — click a map tile to set row/col for this step. Press Esc to cancel.`;
   }
 
   return (

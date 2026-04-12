@@ -497,7 +497,7 @@ export class Player extends Entity {
         var _a, _b;
         const weaponKey = "fists";
         const cfg = weaponRegistry.get(weaponKey);
-        const cooldown = (_a = cfg === null || cfg === void 0 ? void 0 : cfg.stats.cooldown) !== null && _a !== void 0 ? _a : 0.85;
+        const cooldown = (_a = cfg === null || cfg === void 0 ? void 0 : cfg.stats.cooldown) !== null && _a !== void 0 ? _a : 1.7;
         if (this.fireCooldown === null || this.lastWeaponType !== weaponKey) {
             this.fireCooldown = new Cooldown(cooldown * this.getReloadCooldownMultiplier(), true);
             this.lastWeaponType = weaponKey;

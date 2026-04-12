@@ -21,7 +21,7 @@ import { prerenderCollidables, renderCollidablesFromCanvas } from "./utils/map-c
 import { renderMinimapFogOfWar } from "./utils/map-fog-of-war-renderer";
 import type { MinimapScreenRect } from "./minimap-hud-group-layout";
 import { calculateHudScale } from "@/util/hud-scale";
-import { RPG_BORDER_GOLD, RPG_MINIMAP_BACKGROUND } from "@/ui/rpg-hud-theme";
+import { RPG_BORDER_GOLD, RPG_MINIMAP_BACKGROUND, RPG_TITLE_CREAM } from "@/ui/rpg-hud-theme";
 
 // Performance optimization constants - adjust these to balance quality vs performance
 // To view performance stats in console, run:
@@ -328,6 +328,19 @@ export class Minimap {
     this.renderSurvivorIndicators(ctx, survivorEntities, playerPos, settings, top, scaledLeft, scaledSize);
     perfTimer.end("minimap:survivors");
 
+    perfTimer.start("minimap:questNav");
+    this.renderQuestNavigationMarker(
+      ctx,
+      gameState,
+      playerPos,
+      settings,
+      top,
+      scaledLeft,
+      scaledSize,
+      myPlayer,
+    );
+    perfTimer.end("minimap:questNav");
+
     // Draw radar circle border using scaled values
     ctx.strokeStyle = RPG_BORDER_GOLD;
     ctx.lineWidth = Math.max(2, Math.round(2 * calculateHudScale(canvasWidth, canvasHeight)));
@@ -367,6 +380,26 @@ export class Minimap {
     perfTimer.end("minimap:biomes");
 
     ctx.restore();
+
+    const tileRow = Math.floor(playerPos.y / this.tileSize);
+    const tileCol = Math.floor(playerPos.x / this.tileSize);
+    const tileLabel = `Tile ${tileRow}, ${tileCol}`;
+    const labelFontPx = Math.max(11, Math.round(scaleHudValue(13, canvasWidth, canvasHeight)));
+    const labelPad = scaleHudValue(6, canvasWidth, canvasHeight);
+    ctx.save();
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.font = `${labelFontPx}px Arial`;
+    ctx.textAlign = "center";
+    ctx.textBaseline = "bottom";
+    const labelX = scaledLeft + scaledSize / 2;
+    const labelY = top - labelPad;
+    ctx.strokeStyle = "rgba(6, 8, 16, 0.92)";
+    ctx.lineWidth = Math.max(2, Math.round(2.5 * calculateHudScale(canvasWidth, canvasHeight)));
+    ctx.fillStyle = RPG_TITLE_CREAM;
+    ctx.strokeText(tileLabel, labelX, labelY);
+    ctx.fillText(tileLabel, labelX, labelY);
+    ctx.restore();
+
     perfTimer.end("minimap:total");
   }
 
@@ -713,6 +746,59 @@ export class Minimap {
       ctx.stroke();
       ctx.strokeRect(minimapX - iconSize / 6, minimapY - iconSize / 6, iconSize / 3, iconSize / 2);
     }
+  }
+
+  private renderQuestNavigationMarker(
+    ctx: CanvasRenderingContext2D,
+    gameState: GameState,
+    playerPos: { x: number; y: number },
+    settings: typeof MINIMAP_SETTINGS,
+    top: number,
+    scaledLeft: number,
+    scaledSize: number,
+    myPlayer: PlayerClient,
+  ): void {
+    if (myPlayer.isZombiePlayer()) {
+      return;
+    }
+    const target = gameState.questNavigationTarget;
+    if (!target) {
+      return;
+    }
+
+    const centerX = scaledLeft + scaledSize / 2;
+    const centerY = top + scaledSize / 2;
+    const radius = scaledSize / 2;
+
+    const relativeX = target.worldX - playerPos.x;
+    const relativeY = target.worldY - playerPos.y;
+    const angle = Math.atan2(relativeY, relativeX);
+    const minimapX = centerX + relativeX * settings.scale;
+    const minimapY = centerY + relativeY * settings.scale;
+
+    const edgeInset = 18;
+    const maxDist = radius - edgeInset;
+    const distFromCenter = Math.hypot(minimapX - centerX, minimapY - centerY);
+    const drawX =
+      distFromCenter <= maxDist ? minimapX : centerX + Math.cos(angle) * maxDist;
+    const drawY =
+      distFromCenter <= maxDist ? minimapY : centerY + Math.sin(angle) * maxDist;
+
+    const pulse = 0.72 + 0.28 * Math.sin(performance.now() / 300);
+    ctx.save();
+    ctx.fillStyle = `rgba(255, 214, 120, ${pulse})`;
+    ctx.strokeStyle = "rgba(255, 255, 255, 0.95)";
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    const s = 8;
+    ctx.moveTo(drawX, drawY - s);
+    ctx.lineTo(drawX + s, drawY);
+    ctx.lineTo(drawX, drawY + s);
+    ctx.lineTo(drawX - s, drawY);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+    ctx.restore();
   }
 
   // renderToxicZones and renderFogOfWar moved to shared utilities

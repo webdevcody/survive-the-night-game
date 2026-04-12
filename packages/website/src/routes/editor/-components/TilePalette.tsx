@@ -527,7 +527,9 @@ export function TilePalette({ onTileSelect }: TilePaletteProps) {
             campfire entity spawns in-game. Light places invisible torch-equivalent illumination
             only (no sprite). <span className="text-sky-200">Message</span> spawns a small sign
             players can read in-game (text below). Player, zombies, and item markers live on the
-            spawns layer — use right‑click on the map or the NPCs / Spawners sidebar tabs.
+            spawns layer — use right‑click on the map or the NPCs / Spawners sidebar tabs. Select a
+            placed decal (click with that decal active on the palette) and press Delete or Backspace to
+            remove it.
           </p>
           <div className="flex flex-wrap gap-1">
             {DECAL_PALETTE_ENTRIES.map((entry) => {

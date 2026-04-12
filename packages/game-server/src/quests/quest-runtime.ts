@@ -7,7 +7,7 @@ import Destructible from "@/extensions/destructible";
 import { getConfig } from "@shared/config";
 import Inventory from "@/extensions/inventory";
 import type { QuestReward, WorldMapQuestDefinition } from "@shared/map/quest-types";
-import { talkToNpcStepMatchesNpc } from "@shared/map/quest-types";
+import { getQuestCompletionType, talkToNpcStepMatchesNpc } from "@shared/map/quest-types";
 import type { EntityType } from "@shared/types/entity";
 import type { PlayerQuestStatePayload } from "@shared/quests/player-quest-state";
 import {
@@ -118,6 +118,25 @@ function finishQuest(player: Player, map: IMapManager, qid: string, st: PlayerQu
   }
 }
 
+/**
+ * For quests with `completionType: final_step`, applies completion rewards as soon as
+ * `step >= steps.length` (all objectives satisfied). No-op for other completion modes.
+ */
+export function tryAutoCompleteQuestsOnFinalStep(player: Player, map: IMapManager): void {
+  const st = getState(player);
+  let changed = false;
+  for (const qid of Object.keys(st.active)) {
+    const def = map.getQuestDefinition(qid);
+    if (!def) continue;
+    if (getQuestCompletionType(def) !== "final_step") continue;
+    const idx = getActiveStepIndex(st, qid);
+    if (idx < def.steps.length) continue;
+    finishQuest(player, map, qid, st);
+    changed = true;
+  }
+  if (changed) setState(player, st);
+}
+
 function getDialogueSessionsForNpcEntity(npc: DialogueSurvivorNpc): WorldMapDialogueNpcSession[] {
   const raw = npc.getSerialized().get("dialogueSessions");
   const parsed = dialogueNpcSessionsFromSerialized(raw);
@@ -200,6 +219,7 @@ export function trySyncActiveQuestPickupStepsWithInventory(player: Player, map: 
   if (syncActiveQuestPickupStepsWithInventory(player, map, st)) {
     setState(player, st);
   }
+  tryAutoCompleteQuestsOnFinalStep(player, map);
 }
 
 /** @returns The quest id that was newly activated, or null if nothing was granted. */
@@ -221,7 +241,9 @@ export function tryGrantQuestFromNpc(
 
   setActiveStepIndex(st, grant, 0);
   applyRewardList(player, def.startRewards);
+  syncActiveQuestPickupStepsWithInventory(player, map, st);
   setState(player, st);
+  tryAutoCompleteQuestsOnFinalStep(player, map);
   return grant;
 }
 
@@ -270,6 +292,7 @@ export function tryAdvanceTalkToNpcStep(
     changed = true;
   }
   if (changed) setState(player, st);
+  tryAutoCompleteQuestsOnFinalStep(player, map);
 }
 
 export function tryHealPlayerFromDialogueSession(
@@ -300,6 +323,7 @@ export function advancePickupStep(player: Player, itemType: string, map: IMapMan
     changed = true;
   }
   if (changed) setState(player, st);
+  tryAutoCompleteQuestsOnFinalStep(player, map);
 }
 
 export function recordKillQuestProgress(
@@ -333,6 +357,7 @@ export function recordKillQuestProgress(
     changed = true;
   }
   if (changed) setState(player, st);
+  tryAutoCompleteQuestsOnFinalStep(player, map);
 }
 
 export function tickWaypointSteps(player: Player, map: IMapManager): void {
@@ -358,6 +383,7 @@ export function tickWaypointSteps(player: Player, map: IMapManager): void {
     changed = true;
   }
   if (changed) setState(player, st);
+  tryAutoCompleteQuestsOnFinalStep(player, map);
 }
 
 export function validateDialogueComplete(
@@ -421,4 +447,5 @@ export function reconcilePlayerQuestStateWithMap(player: Player, map: IMapManage
   if (changed) {
     setState(player, st);
   }
+  tryAutoCompleteQuestsOnFinalStep(player, map);
 }

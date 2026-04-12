@@ -834,7 +834,7 @@ export class Player extends Entity {
   private performFistAttack(): void {
     const weaponKey = "fists";
     const cfg = weaponRegistry.get(weaponKey);
-    const cooldown = cfg?.stats.cooldown ?? 0.85;
+    const cooldown = cfg?.stats.cooldown ?? 1.7;
     this.ensureFireCooldown(weaponKey as ItemType, cooldown);
     if (!this.fireCooldown.isReady()) return;
     this.fireCooldown.reset();

@@ -11,6 +11,7 @@ import { getMapSideLength } from "../-utils";
 import {
   SPAWN_PALETTE_ENTRIES,
   getSpawnTileShortLabel,
+  isNpcDialogueSpawnTile,
 } from "@survive-the-night/game-shared/map/spawn-palette";
 import {
   DECAL_PALETTE_ENTRIES,
@@ -44,7 +45,9 @@ export function TileMapEditor() {
   const isFillBucketMode = useEditorStore((state) => state.isFillBucketMode);
   const clipboard = useEditorStore((state) => state.clipboard);
   const sidebarSection = useEditorStore((state) => state.sidebarSection);
+  const questWaypointPickTarget = useEditorStore((state) => state.questWaypointPickTarget);
   const canPaintTiles = sidebarSection === "tiles";
+  const questWaypointPickActive = Boolean(questWaypointPickTarget);
 
   const containerRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -67,6 +70,8 @@ export function TileMapEditor() {
 
   const [shiftHeld, setShiftHeld] = useState(false);
   const [isPanning, setIsPanning] = useState(false);
+  /** Map tile under the cursor (full map row/col); cleared when pointer leaves the canvas. */
+  const [hoverTileCoords, setHoverTileCoords] = useState<{ row: number; col: number } | null>(null);
   const [spawnPopover, setSpawnPopover] = useState<{
     clientX: number;
     clientY: number;
@@ -115,6 +120,11 @@ export function TileMapEditor() {
         if (st.spawnerRelocateFrom) {
           e.preventDefault();
           st.cancelSpawnerRelocate();
+          return;
+        }
+        if (st.questWaypointPickTarget) {
+          e.preventDefault();
+          st.cancelQuestWaypointPick();
           return;
         }
       }
@@ -169,6 +179,19 @@ export function TileMapEditor() {
           }
         }
         return;
+      }
+      if (e.key === "Delete" || e.key === "Backspace") {
+        const st = useEditorStore.getState();
+        if (
+          st.sidebarSection === "tiles" &&
+          st.activeLayer === "decals" &&
+          st.selectedDecalCell
+        ) {
+          e.preventDefault();
+          const { row, col } = st.selectedDecalCell;
+          useEditorStore.getState().eraseGridCell(row, col);
+          return;
+        }
       }
       if (lower !== "w" && lower !== "a" && lower !== "s" && lower !== "d") return;
       e.preventDefault();
@@ -290,6 +313,7 @@ export function TileMapEditor() {
   };
 
   const handleCellMouseDownOnTile = (row: number, col: number) => {
+    if (useEditorStore.getState().questWaypointPickTarget) return;
     dragStartCellRef.current = { row, col };
     handleCellMouseDown();
     if (activeLayer === "ground" && !isFillBucketMode && !clipboard) {
@@ -323,6 +347,7 @@ export function TileMapEditor() {
   }, []);
 
   const handleDragStrokeAt = (row: number, col: number) => {
+    if (useEditorStore.getState().questWaypointPickTarget) return;
     if (!useEditorStore.getState().isDragging) return;
     if (!dragPaintedInitialRef.current && dragStartCellRef.current) {
       const { row: sr, col: sc } = dragStartCellRef.current;
@@ -438,7 +463,21 @@ export function TileMapEditor() {
               ctx.fillStyle = spawnEntry.color;
               ctx.fillRect(dx, dy, tilePx, tilePx);
               ctx.restore();
-              const short = getSpawnTileShortLabel(spawnTileId);
+              const short = (() => {
+                if (isNpcDialogueSpawnTile(spawnTileId)) {
+                  const npc = s.dialogueNpcs.find(
+                    (e) => e.row === rowIdx && e.col === colIdx,
+                  );
+                  const n = npc?.name?.trim();
+                  if (n) {
+                    const maxLen = Math.max(4, Math.floor(tilePx / 5));
+                    return n.length <= maxLen
+                      ? n
+                      : `${n.slice(0, Math.max(1, maxLen - 1))}…`;
+                  }
+                }
+                return getSpawnTileShortLabel(spawnTileId);
+              })();
               if (short) {
                 ctx.save();
                 ctx.globalAlpha = 1;
@@ -554,6 +593,19 @@ export function TileMapEditor() {
         }
       }
 
+      const dsel = s.selectedDecalCell;
+      if (dsel && s.activeLayer === "decals") {
+        const dlRow = dsel.row - s.cameraY;
+        const dlCol = dsel.col - s.cameraX;
+        if (dlRow >= 0 && dlCol >= 0 && dlRow < vrc && dlCol < vcc) {
+          const sx = dlCol * tilePx;
+          const sy = dlRow * tilePx;
+          ctx.strokeStyle = "rgba(251, 191, 36, 0.95)";
+          ctx.lineWidth = 3;
+          ctx.strokeRect(sx + 1.5, sy + 1.5, tilePx - 3, tilePx - 3);
+        }
+      }
+
       const relocateNpc = s.dialogueNpcRelocateFrom;
       if (relocateNpc) {
         const lr = relocateNpc.row - s.cameraY;
@@ -575,6 +627,19 @@ export function TileMapEditor() {
           const rx = lc * tilePx;
           const ry = lr * tilePx;
           ctx.strokeStyle = "rgba(167, 139, 250, 0.95)";
+          ctx.lineWidth = 3;
+          ctx.strokeRect(rx + 1.5, ry + 1.5, tilePx - 3, tilePx - 3);
+        }
+      }
+
+      const hoverPickCell = hoverCellRef.current;
+      if (s.questWaypointPickTarget && hoverPickCell) {
+        const lr = hoverPickCell.row - s.cameraY;
+        const lc = hoverPickCell.col - s.cameraX;
+        if (lr >= 0 && lc >= 0 && lr < vrc && lc < vcc) {
+          const rx = lc * tilePx;
+          const ry = lr * tilePx;
+          ctx.strokeStyle = "rgba(129, 140, 248, 0.95)";
           ctx.lineWidth = 3;
           ctx.strokeRect(rx + 1.5, ry + 1.5, tilePx - 3, tilePx - 3);
         }
@@ -650,6 +715,7 @@ export function TileMapEditor() {
         const prev = hoverCellRef.current;
         if (!prev || prev.row !== t.row || prev.col !== t.col) {
           hoverCellRef.current = { row: t.row, col: t.col };
+          setHoverTileCoords({ row: t.row, col: t.col });
           schedulePaintRef.current();
         }
       }
@@ -661,6 +727,7 @@ export function TileMapEditor() {
     if (t) {
       if (!prev || prev.row !== t.row || prev.col !== t.col) {
         hoverCellRef.current = { row: t.row, col: t.col };
+        setHoverTileCoords({ row: t.row, col: t.col });
         schedulePaintRef.current();
       }
       const st = useEditorStore.getState();
@@ -678,6 +745,7 @@ export function TileMapEditor() {
       }
     } else if (prev) {
       hoverCellRef.current = null;
+      setHoverTileCoords(null);
       schedulePaintRef.current();
       setSpawnPopover(null);
     }
@@ -687,12 +755,14 @@ export function TileMapEditor() {
     if (isPanningRef.current) {
       if (hoverCellRef.current) {
         hoverCellRef.current = null;
+        setHoverTileCoords(null);
         schedulePaintRef.current();
       }
       return;
     }
     if (hoverCellRef.current) {
       hoverCellRef.current = null;
+      setHoverTileCoords(null);
       schedulePaintRef.current();
     }
     setSpawnPopover(null);
@@ -733,6 +803,21 @@ export function TileMapEditor() {
       ref={containerRef}
       className="absolute inset-0 z-0 h-full w-full overflow-hidden bg-gray-950"
     >
+      <div
+        className="pointer-events-none absolute left-2 top-2 z-20 select-none rounded border border-gray-600 bg-gray-900/92 px-2 py-1 font-mono text-[11px] tabular-nums text-gray-200 shadow-md"
+        aria-live="polite"
+      >
+        {hoverTileCoords ? (
+          <>
+            <span className="text-gray-500">tile </span>
+            <span className="text-cyan-200/95">
+              ({hoverTileCoords.row}, {hoverTileCoords.col})
+            </span>
+          </>
+        ) : (
+          <span className="text-gray-500">tile —</span>
+        )}
+      </div>
       <div className="absolute inset-0 overflow-auto flex items-start justify-start">
         <div className="inline-block border-2 border-gray-700 bg-black shrink-0 m-0">
           <canvas
@@ -742,7 +827,7 @@ export function TileMapEditor() {
                 ? "cursor-grabbing"
                 : shiftHeld
                   ? "cursor-grab"
-                  : canPaintTiles
+                  : canPaintTiles || questWaypointPickActive
                     ? "cursor-crosshair"
                     : "cursor-default"
             }`}

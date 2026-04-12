@@ -59,6 +59,7 @@ import type { PlayerQuestStatePayload } from "@shared/quests/player-quest-state"
 import { getActiveStepIndex } from "@shared/quests/player-quest-state";
 import { formatQuestObjectiveAtStep } from "@shared/quests/quest-step-format";
 import { getQuestObjectiveLine } from "./ui/quest-display";
+import { resolveQuestNavigationTarget } from "@/util/resolve-quest-navigation-target";
 
 export class GameClient {
   private ctx: CanvasRenderingContext2D;
@@ -839,7 +840,7 @@ export class GameClient {
       if (!prevActive.has(qid)) {
         const def = this.mapManager.getAuthoredQuests().find((q) => q.id === qid);
         const title = def?.title ?? qid;
-        const objective = getQuestObjectiveLine(def, st, qid);
+        const objective = getQuestObjectiveLine(def, st, qid, this.gameState);
         this.hud.addMessage(`Quest started: ${title}`, "#d4b060");
         this.hud.addMessage(objective, "#9ad7ff");
       }
@@ -852,7 +853,10 @@ export class GameClient {
       if (curIdx <= prevIdx) continue;
       const def = this.mapManager.getAuthoredQuests().find((q) => q.id === qid);
       const title = def?.title ?? qid;
-      const nextLine = formatQuestObjectiveAtStep(def, curIdx, st.active[qid]);
+      const nextLine =
+        def && curIdx >= def.steps.length
+          ? getQuestObjectiveLine(def, st, qid, this.gameState)
+          : formatQuestObjectiveAtStep(def, curIdx, st.active[qid]);
       this.hud.addMessage(`${title}: ${nextLine}`, "#c9e87a");
     }
 
@@ -962,6 +966,11 @@ export class GameClient {
     };
     this.gameState.getQuestDefinition = (questId: string) =>
       this.mapManager.getAuthoredQuests().find((q) => q.id === questId);
+
+    this.gameState.questNavigationTarget = resolveQuestNavigationTarget(
+      this.gameState,
+      this.getMyPlayer(),
+    );
 
     const nowMs = Date.now();
     if (nowMs - this.lastFpsUpdate >= this.FPS_UPDATE_INTERVAL) {

@@ -28,7 +28,6 @@ export type DialogueNpcAtomicCondition =
   | { type: "quest_active"; questId: string }
   /** True when the quest id is absent from {@link PlayerQuestStatePayload.active}. */
   | { type: "quest_not_active"; questId: string }
-  | { type: "quest_not_completed"; questId: string }
   | { type: "quest_active_and_has_item"; questId: string; itemType: string }
   | { type: "quest_active_all_steps_done"; questId: string }
   /**
@@ -227,8 +226,6 @@ export function atomicConditionMatches(
       return st.active[c.questId] !== undefined;
     case "quest_not_active":
       return st.active[c.questId] === undefined;
-    case "quest_not_completed":
-      return !st.completed.includes(c.questId);
     case "quest_active_and_has_item":
       return st.active[c.questId] !== undefined && hasItemType(c.itemType);
     case "quest_active_all_steps_done": {
@@ -420,7 +417,6 @@ function parseAtomicConditionFromUnknown(raw: unknown): DialogueNpcAtomicConditi
     t === "quest_completed" ||
     t === "quest_active" ||
     t === "quest_not_active" ||
-    t === "quest_not_completed" ||
     t === "quest_active_all_steps_done" ||
     t === "quest_active_on_matching_talk_step" ||
     t === "quest_active_final_talk_turn_in"

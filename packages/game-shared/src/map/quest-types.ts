@@ -28,14 +28,29 @@ export type QuestReward =
   | { type: "item"; itemType: EntityType; count: number }
   | { type: "experience"; amount: number };
 
+/**
+ * How completion rewards are applied after all objectives are cleared (`step >= steps.length`).
+ * - `dialogue_npc`: player must close an NPC dialogue whose session has `completeQuestId` (legacy).
+ * - `final_step`: rewards apply as soon as the last step is satisfied (no turn-in dialogue).
+ */
+export type QuestCompletionType = "dialogue_npc" | "final_step";
+
 export interface WorldMapQuestDefinition {
   id: string;
   title: string;
   steps: QuestStep[];
-  /** Granted when an NPC dialogue marks the quest complete (`completeQuestId`). */
+  /**
+   * Defaults to `dialogue_npc` when omitted (see {@link getQuestCompletionType}).
+   */
+  completionType?: QuestCompletionType;
+  /** Granted when the quest completes (see `completionType`). */
   rewards: QuestReward[];
   /** Granted once when the quest becomes active (e.g. NPC grants it). */
   startRewards: QuestReward[];
+}
+
+export function getQuestCompletionType(def: WorldMapQuestDefinition): QuestCompletionType {
+  return def.completionType === "final_step" ? "final_step" : "dialogue_npc";
 }
 
 function clampString(s: string, max: number): string {
@@ -57,6 +72,7 @@ export function createQuestDefinitionDraft(
     id: safeId,
     title: safeTitle,
     steps: [{ type: "pickup_item", itemType: "bandage" as EntityType }],
+    completionType: "dialogue_npc",
     rewards: [],
     startRewards: [],
   };
@@ -220,7 +236,21 @@ export function normalizeQuests(entries: unknown, mapSide: number): WorldMapQues
         if (reward) startRewards.push(reward);
       }
     }
-    out.push({ id, title, steps, rewards, startRewards });
+    const rawCt = o.completionType;
+    const completionType: QuestCompletionType | undefined =
+      rawCt === "final_step"
+        ? "final_step"
+        : rawCt === "dialogue_npc"
+          ? "dialogue_npc"
+          : undefined;
+    out.push({
+      id,
+      title,
+      steps,
+      rewards,
+      startRewards,
+      ...(completionType ? { completionType } : {}),
+    });
   }
   return out;
 }

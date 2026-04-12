@@ -263,6 +263,18 @@ export class FullScreenMap {
       mapHeight
     );
 
+    // Quest objective (waypoint / NPC) — after POIs so the marker stays visible
+    this.renderQuestNavigationMarker(
+      ctx,
+      gameState,
+      effectiveCenterPos,
+      zoom,
+      centerX,
+      centerY,
+      mapWidth,
+      mapHeight
+    );
+
     ctx.restore(); // Restore from clip
 
     // Draw map border
@@ -615,6 +627,58 @@ export class FullScreenMap {
       ctx.stroke();
       ctx.strokeRect(mapX - iconSize / 6, mapY - iconSize / 6, iconSize / 3, iconSize / 2);
     }
+  }
+
+  private renderQuestNavigationMarker(
+    ctx: CanvasRenderingContext2D,
+    gameState: GameState,
+    playerPos: { x: number; y: number },
+    zoom: number,
+    centerX: number,
+    centerY: number,
+    mapWidth: number,
+    mapHeight: number,
+  ): void {
+    const myPlayer = getPlayer(gameState);
+    if (!myPlayer || myPlayer.isZombiePlayer()) {
+      return;
+    }
+    const target = gameState.questNavigationTarget;
+    if (!target) {
+      return;
+    }
+
+    const maxDistance = Math.sqrt(((mapWidth / zoom) ** 2 + (mapHeight / zoom) ** 2) / 4);
+    const poolManager = PoolManager.getInstance();
+    const playerWorldPos = poolManager.vector2.claim(playerPos.x, playerPos.y);
+    const targetWorldPos = poolManager.vector2.claim(target.worldX, target.worldY);
+    const dist = distance(playerWorldPos, targetWorldPos);
+    poolManager.vector2.release(playerWorldPos);
+    poolManager.vector2.release(targetWorldPos);
+    if (dist > maxDistance) {
+      return;
+    }
+
+    const relativeX = target.worldX - playerPos.x;
+    const relativeY = target.worldY - playerPos.y;
+    const screenX = centerX + relativeX * zoom;
+    const screenY = centerY + relativeY * zoom;
+
+    const pulse = 0.72 + 0.28 * Math.sin(performance.now() / 300);
+    const s = 12 * Math.max(0.5, zoom);
+    ctx.save();
+    ctx.fillStyle = `rgba(255, 214, 120, ${pulse})`;
+    ctx.strokeStyle = "rgba(255, 255, 255, 0.95)";
+    ctx.lineWidth = 2 * Math.max(0.5, zoom);
+    ctx.beginPath();
+    ctx.moveTo(screenX, screenY - s);
+    ctx.lineTo(screenX + s, screenY);
+    ctx.lineTo(screenX, screenY + s);
+    ctx.lineTo(screenX - s, screenY);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+    ctx.restore();
   }
 
   private renderBiomeIndicators(

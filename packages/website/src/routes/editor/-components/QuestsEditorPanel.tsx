@@ -10,6 +10,7 @@ import { useEditorStore } from "../-store";
 import type {
   QuestStep,
   QuestReward,
+  QuestCompletionType,
   WorldMapQuestDefinition,
 } from "@survive-the-night/game-shared/map/quest-types";
 import { QUEST_KILL_ENEMIES_COUNT_MAX } from "@survive-the-night/game-shared/map/quest-types";
@@ -71,6 +72,9 @@ export function QuestsEditorPanel() {
   const setFocusedQuestId = useEditorStore((state) => state.setFocusedQuestId);
   const groundGrid = useEditorStore((state) => state.groundGrid);
   const dialogueNpcs = useEditorStore((state) => state.dialogueNpcs);
+  const questWaypointPickTarget = useEditorStore((state) => state.questWaypointPickTarget);
+  const startQuestWaypointPick = useEditorStore((state) => state.startQuestWaypointPick);
+  const cancelQuestWaypointPick = useEditorStore((state) => state.cancelQuestWaypointPick);
   const [openQuestIds, setOpenQuestIds] = useState<string[]>([]);
 
   const mapSide = getMapSideLength(groundGrid);
@@ -109,6 +113,7 @@ export function QuestsEditorPanel() {
   };
 
   const removeQuest = (id: string) => {
+    if (questWaypointPickTarget?.questId === id) cancelQuestWaypointPick();
     setQuests(quests.filter((q) => q.id !== id));
   };
 
@@ -123,6 +128,7 @@ export function QuestsEditorPanel() {
   };
 
   const removeStep = (questId: string, stepIndex: number) => {
+    if (questWaypointPickTarget?.questId === questId) cancelQuestWaypointPick();
     setQuests(
       quests.map((q) =>
         q.id === questId ? { ...q, steps: q.steps.filter((_, i) => i !== stepIndex) } : q,
@@ -264,6 +270,26 @@ export function QuestsEditorPanel() {
                   value={q.title}
                   onChange={(e) => updateQuest(q.id, { title: e.target.value })}
                 />
+                <label className="text-[10px] text-gray-400">Completion</label>
+                <select
+                  className="mb-2 w-full rounded border border-gray-600 bg-gray-950 px-2 py-1 text-[11px]"
+                  value={(q.completionType ?? "dialogue_npc") as QuestCompletionType}
+                  onChange={(e) => {
+                    const v = e.target.value as QuestCompletionType;
+                    updateQuest(q.id, {
+                      completionType: v === "dialogue_npc" ? undefined : v,
+                    });
+                  }}
+                >
+                  <option value="dialogue_npc">
+                    Turn in via NPC dialogue (completeQuestId on a session)
+                  </option>
+                  <option value="final_step">Auto-complete when the last step is done</option>
+                </select>
+                <p className="mb-2 text-[9px] leading-snug text-gray-500">
+                  Auto-complete grants &quot;Rewards on complete&quot; immediately after the final
+                  objective; you do not need an NPC session with completeQuestId.
+                </p>
                 <p className="mb-1 text-[10px] font-medium text-gray-300">Steps</p>
                 <div className="mb-2 space-y-2">
                   {q.steps.map((s, i) => (
@@ -299,56 +325,85 @@ export function QuestsEditorPanel() {
                         </select>
                       ) : null}
                       {s.type === "reach_waypoint" ? (
-                        <div className="flex flex-wrap gap-1">
-                          <input
-                            type="number"
-                            className="w-16 rounded border border-gray-600 bg-gray-900 text-[10px]"
-                            min={0}
-                            max={mapSide - 1}
-                            value={s.row}
-                            onChange={(e) =>
-                              updateStep(q.id, i, {
-                                ...s,
-                                row: Math.max(
-                                  0,
-                                  Math.min(mapSide - 1, parseInt(e.target.value, 10) || 0),
-                                ),
-                              })
-                            }
-                          />
-                          <input
-                            type="number"
-                            className="w-16 rounded border border-gray-600 bg-gray-900 text-[10px]"
-                            min={0}
-                            max={mapSide - 1}
-                            value={s.col}
-                            onChange={(e) =>
-                              updateStep(q.id, i, {
-                                ...s,
-                                col: Math.max(
-                                  0,
-                                  Math.min(mapSide - 1, parseInt(e.target.value, 10) || 0),
-                                ),
-                              })
-                            }
-                          />
-                          <input
-                            type="number"
-                            className="w-14 rounded border border-gray-600 bg-gray-900 text-[10px]"
-                            title="radius tiles"
-                            min={1}
-                            max={8}
-                            value={s.radiusTiles ?? 2}
-                            onChange={(e) =>
-                              updateStep(q.id, i, {
-                                ...s,
-                                radiusTiles: Math.max(
-                                  1,
-                                  Math.min(8, parseInt(e.target.value, 10) || 2),
-                                ),
-                              })
-                            }
-                          />
+                        <div className="space-y-1">
+                          <div className="flex flex-wrap items-center gap-1">
+                            <input
+                              type="number"
+                              className="w-16 rounded border border-gray-600 bg-gray-900 text-[10px]"
+                              min={0}
+                              max={mapSide - 1}
+                              aria-label="Waypoint row"
+                              value={s.row}
+                              onChange={(e) =>
+                                updateStep(q.id, i, {
+                                  ...s,
+                                  row: Math.max(
+                                    0,
+                                    Math.min(mapSide - 1, parseInt(e.target.value, 10) || 0),
+                                  ),
+                                })
+                              }
+                            />
+                            <input
+                              type="number"
+                              className="w-16 rounded border border-gray-600 bg-gray-900 text-[10px]"
+                              min={0}
+                              max={mapSide - 1}
+                              aria-label="Waypoint column"
+                              value={s.col}
+                              onChange={(e) =>
+                                updateStep(q.id, i, {
+                                  ...s,
+                                  col: Math.max(
+                                    0,
+                                    Math.min(mapSide - 1, parseInt(e.target.value, 10) || 0),
+                                  ),
+                                })
+                              }
+                            />
+                            <input
+                              type="number"
+                              className="w-14 rounded border border-gray-600 bg-gray-900 text-[10px]"
+                              title="radius tiles"
+                              min={1}
+                              max={8}
+                              value={s.radiusTiles ?? 2}
+                              onChange={(e) =>
+                                updateStep(q.id, i, {
+                                  ...s,
+                                  radiusTiles: Math.max(
+                                    1,
+                                    Math.min(8, parseInt(e.target.value, 10) || 2),
+                                  ),
+                                })
+                              }
+                            />
+                            {questWaypointPickTarget?.questId === q.id &&
+                            questWaypointPickTarget.stepIndex === i ? (
+                              <Button
+                                type="button"
+                                size="sm"
+                                variant="secondary"
+                                className="!h-6 !text-[9px]"
+                                onClick={() => cancelQuestWaypointPick()}
+                              >
+                                Cancel pick
+                              </Button>
+                            ) : (
+                              <Button
+                                type="button"
+                                size="sm"
+                                variant="secondary"
+                                className="!h-6 !text-[9px]"
+                                onClick={() => startQuestWaypointPick(q.id, i)}
+                              >
+                                Target
+                              </Button>
+                            )}
+                          </div>
+                          <p className="text-[9px] leading-snug text-gray-500">
+                            Row and column are map tile indices. Use Target, then click the map.
+                          </p>
                         </div>
                       ) : null}
                       {s.type === "kill_enemies" ? (
