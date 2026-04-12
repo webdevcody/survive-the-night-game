@@ -39,6 +39,7 @@ export const ServerSentEvents = {
   VERSION_MISMATCH: "versionMismatch",
   AUTH_REQUIRED: "authRequired",
   USER_BANNED: "userBanned",
+  PROFILE_LOAD_FAILED: "profileLoadFailed",
 } as const;
 
 export const ClientSentEvents = {

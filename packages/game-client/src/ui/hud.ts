@@ -27,6 +27,10 @@ import { InventoryItem, type EquipmentSlotKey } from "../../../game-shared/src/u
 import { ClientInventory } from "@/extensions/inventory";
 import { renderRadialProgressIndicator } from "@/util/radial-progress-indicator";
 import { getMinimapHudLayout } from "./minimap-hud-group-layout";
+import {
+  hitTestMinimapInventoryMenu,
+  renderMinimapInventoryMenu,
+} from "./minimap-inventory-menu";
 import { QuestJournalPanel } from "./quest-journal-panel";
 import { DialoguePanel } from "./dialogue-panel";
 import {
@@ -208,10 +212,8 @@ export class Hud {
       getMyPlayer,
       sendSelectWeaponLoadout,
       (slot) => sendSetWeaponLoadoutSlot(slot, 0),
-      () => this.toggleInventoryScreen(),
-      () => this.isInventoryScreenOpen(),
-      () => this.inventoryScreen.getActiveTab(),
-      (tab) => this.inventoryScreen.focusTab(tab)
+      () => this.inputManager.getCurrentInventorySlot(),
+      (bagIndex) => this.inputManager.setInventorySlot(bagIndex),
     );
 
     this.minimap = new Minimap(mapManager);
@@ -396,6 +398,7 @@ export class Hud {
     this.crateIndicatorsPanel.render(ctx, gameState);
     this.survivorIndicatorsPanel.render(ctx, gameState);
 
+    const dialogueOcclusion = this.dialoguePanel.getOcclusionProgress();
     const minimapHudLayout = getMinimapHudLayout(width, height, {
       waveStackBottom: 0,
     });
@@ -437,7 +440,6 @@ export class Hud {
 
     ctx.restore();
 
-    const dialogueOcclusion = this.dialoguePanel.getOcclusionProgress();
     if (dialogueOcclusion < 0.98) {
       ctx.save();
       ctx.globalAlpha = Math.max(0, 1 - dialogueOcclusion * 1.2);
@@ -476,10 +478,6 @@ export class Hud {
 
     this.deathScreenPanel.render(ctx, gameState);
 
-    if (!isZombiePlayer) {
-      this.inventoryScreen.render(ctx, gameState);
-    }
-
     ctx.save();
     ctx.setTransform(1, 0, 0, 1, 0, 0);
     const my = this.getMyPlayer();
@@ -491,6 +489,22 @@ export class Hud {
     ctx.restore();
 
     this.dialoguePanel.render(ctx, gameState);
+
+    // Inventory tab shortcuts (minimap column): over NPC dialogue / chat scrim; panel draws after so it sits on top
+    const playerForMenu = getPlayer(gameState);
+    if (!(playerForMenu?.isZombiePlayer?.() ?? false)) {
+      ctx.save();
+      ctx.setTransform(1, 0, 0, 1, 0, 0);
+      renderMinimapInventoryMenu(ctx, minimapHudLayout.inventoryMenu, {
+        panelOpen: this.inventoryScreen.isOpen(),
+        activeTab: this.inventoryScreen.getActiveTab(),
+      });
+      ctx.restore();
+    }
+
+    if (!isZombiePlayer) {
+      this.inventoryScreen.render(ctx, gameState);
+    }
 
     // Render fullscreen map on top of everything else if open
     this.fullscreenMap.render(ctx, gameState);
@@ -587,9 +601,6 @@ export class Hud {
 
   /** When inventory is open, camera should center on the visible gameplay column (left of the panel). */
   public getInventoryCameraCenterScreenX(canvasWidth: number): number | null {
-    if (!this.inventoryScreen.isOpen()) {
-      return null;
-    }
     return this.inventoryScreen.getCameraCenterScreenX(canvasWidth);
   }
 
@@ -604,13 +615,19 @@ export class Hud {
     canvasHeight: number,
     clickCount: number = 1
   ): boolean {
-    if (this.loadoutStrip.handleLoadoutStripPriorityClick(x, y, canvasWidth, canvasHeight)) {
-      return true;
-    }
-
     if (this.inventoryScreen.isOpen()) {
       this.inventoryScreen.handleClick(x, y, canvasWidth, canvasHeight, clickCount);
       return true;
+    }
+
+    const my = this.getMyPlayer();
+    if (!my?.isZombiePlayer?.()) {
+      const layout = getMinimapHudLayout(canvasWidth, canvasHeight, { waveStackBottom: 0 });
+      const tab = hitTestMinimapInventoryMenu(layout.inventoryMenu, x, y);
+      if (tab) {
+        this.inventoryScreen.focusTab(tab);
+        return true;
+      }
     }
 
     if (this.fullscreenMap.handleClick(x, y)) {

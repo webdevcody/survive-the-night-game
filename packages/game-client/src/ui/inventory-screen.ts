@@ -59,7 +59,6 @@ import {
   RPG_BODY_TEXT,
   RPG_COUNTER_GOLD,
   RPG_METADATA_MUTED,
-  RPG_MODAL_SCRIM,
   RPG_PROMPT_GOLD,
   RPG_PROMPT_TYPING,
   RPG_SLOT_FILL,
@@ -75,6 +74,13 @@ import {
 
 const DRAG_THRESHOLD = 12;
 const PANEL_WIDTH_RATIO = 0.46;
+const LAYOUT_PAD_PX = 20;
+const INVENTORY_PANEL_OPEN_SPEED = 7;
+const INVENTORY_PANEL_CLOSE_SPEED = 10;
+
+function easeOutCubic(value: number): number {
+  return 1 - Math.pow(1 - value, 3);
+}
 
 function professionBannerUrl(id: ProfessionId): string {
   return `/ui/professions/profession-${id}-banner.png`;
@@ -273,6 +279,8 @@ function drawRpgMainPanel(ctx: CanvasRenderingContext2D, x: number, y: number, w
 
 export class InventoryScreenUI {
   private open = false;
+  private visibilityProgress = 0;
+  private lastVisibilityAnimationAt = 0;
   private deps: InventoryScreenDeps;
   private dragState: DragState | null = null;
   private hoveredBagIndex: number | null = null;
@@ -322,16 +330,25 @@ export class InventoryScreenUI {
     }
   }
 
-  /** Horizontal center (screen px) for the visible gameplay column when the panel is open. */
-  public getCameraCenterScreenX(canvasWidth: number): number {
-    const pad = 20;
-    const rightW = Math.min(canvasWidth * PANEL_WIDTH_RATIO, canvasWidth - pad * 2);
-    const rightX = canvasWidth - rightW - pad;
-    return rightX / 2;
+  /**
+   * Horizontal center (screen px) for the visible gameplay column while the panel is open
+   * or closing. Lerps to canvas center as the close animation finishes.
+   */
+  public getCameraCenterScreenX(canvasWidth: number): number | null {
+    if (this.visibilityProgress <= 0.001) {
+      return null;
+    }
+    const rightW = Math.min(canvasWidth * PANEL_WIDTH_RATIO, canvasWidth - LAYOUT_PAD_PX * 2);
+    const rightX = canvasWidth - rightW - LAYOUT_PAD_PX;
+    const openCenter = rightX / 2;
+    const eased = easeOutCubic(this.visibilityProgress);
+    const defaultCenter = canvasWidth / 2;
+    return defaultCenter + (openCenter - defaultCenter) * eased;
   }
 
+  /** True while the panel is shown or playing its open/close slide animation. */
   public isOpen(): boolean {
-    return this.open;
+    return this.open || this.visibilityProgress > 0.001;
   }
 
   public getActiveTab(): InventoryUiTab {
@@ -349,7 +366,7 @@ export class InventoryScreenUI {
   }
 
   public isHovering(): boolean {
-    if (!this.open) return false;
+    if (!this.isOpen()) return false;
     const pos = this.deps.inputManager.getMousePosition();
     if (!pos || !this.lastW || !this.lastH) return false;
     return this.isPointOverUi(pos.x, pos.y, this.lastW, this.lastH);
@@ -361,7 +378,7 @@ export class InventoryScreenUI {
   }
 
   private layout(canvasWidth: number, canvasHeight: number, bagSlotCount: number = getConfig().player.MAX_INVENTORY_SLOTS) {
-    const pad = 20;
+    const pad = LAYOUT_PAD_PX;
     const gridRows = Math.max(1, Math.ceil(bagSlotCount / GRID_COLS));
     const rightW = Math.min(canvasWidth * PANEL_WIDTH_RATIO, canvasWidth - pad * 2);
     const rightX = canvasWidth - rightW - pad;
@@ -493,6 +510,34 @@ export class InventoryScreenUI {
       skillsOriginX: rightX + 24,
       skillsOriginY: contentTop + PANEL_TAB_CONTENT_GAP + 8,
     };
+  }
+
+  private stepVisibility(isOpen: boolean, now: number): void {
+    const dtSeconds =
+      this.lastVisibilityAnimationAt > 0
+        ? Math.min(0.05, (now - this.lastVisibilityAnimationAt) / 1000)
+        : 1 / 60;
+    this.lastVisibilityAnimationAt = now;
+
+    const target = isOpen ? 1 : 0;
+    const speed = isOpen ? INVENTORY_PANEL_OPEN_SPEED : INVENTORY_PANEL_CLOSE_SPEED;
+    const step = dtSeconds * speed;
+
+    if (this.visibilityProgress < target) {
+      this.visibilityProgress = Math.min(target, this.visibilityProgress + step);
+    } else if (this.visibilityProgress > target) {
+      this.visibilityProgress = Math.max(target, this.visibilityProgress - step);
+    }
+  }
+
+  /** Slide offset (px): panel moves right by this amount; 0 when fully open. */
+  private getPanelSlidePxFromRightW(rightW: number): number {
+    const eased = easeOutCubic(this.visibilityProgress);
+    return Math.round((1 - eased) * (rightW + LAYOUT_PAD_PX));
+  }
+
+  private toPanelLocalX(screenX: number, rightW: number): number {
+    return screenX - this.getPanelSlidePxFromRightW(rightW);
   }
 
   private getBagIndexAt(x: number, y: number, L: ReturnType<InventoryScreenUI["layout"]>): number | null {
@@ -1013,24 +1058,45 @@ export class InventoryScreenUI {
     this.lastW = ctx.canvas.width;
     this.lastH = ctx.canvas.height;
 
-    if (!this.open) {
+    const now = performance.now();
+    this.stepVisibility(this.open, now);
+
+    if (this.visibilityProgress <= 0.001) {
       return;
     }
 
     const player = getPlayer(gameState);
+    const w = ctx.canvas.width;
+    const h = ctx.canvas.height;
+
     if (!player || !(player instanceof PlayerClient)) {
+      if (this.open) {
+        return;
+      }
+      const L = this.layout(w, h, getConfig().player.MAX_INVENTORY_SLOTS);
+      const slidePx = this.getPanelSlidePxFromRightW(L.rightW);
+      const eased = easeOutCubic(this.visibilityProgress);
+      ctx.save();
+      ctx.setTransform(1, 0, 0, 1, 0, 0);
+      ctx.fillStyle = `rgba(0, 0, 0, ${0.55 * eased})`;
+      ctx.fillRect(0, 0, w, h);
+      ctx.translate(slidePx, 0);
+      drawRpgMainPanel(ctx, L.rightX, L.rightY, L.rightW, L.rightH);
+      ctx.restore();
       return;
     }
 
-    const w = ctx.canvas.width;
-    const h = ctx.canvas.height;
     const L = this.layout(w, h, player.getMaxInventorySlots());
+    const eased = easeOutCubic(this.visibilityProgress);
+    const slidePx = this.getPanelSlidePxFromRightW(L.rightW);
 
     ctx.save();
     ctx.setTransform(1, 0, 0, 1, 0, 0);
 
-    ctx.fillStyle = RPG_MODAL_SCRIM;
+    ctx.fillStyle = `rgba(0, 0, 0, ${0.55 * eased})`;
     ctx.fillRect(0, 0, w, h);
+
+    ctx.translate(slidePx, 0);
 
     drawRpgMainPanel(ctx, L.rightX, L.rightY, L.rightW, L.rightH);
 
@@ -1303,18 +1369,19 @@ export class InventoryScreenUI {
     this._my = y;
     this.lastW = canvasWidth;
     this.lastH = canvasHeight;
-    if (!this.open) {
+    if (!this.isOpen()) {
       this.hoveredLoadoutSlot = null;
       this.hoveredBagIndex = null;
       this.hoveredEquipSlot = null;
       return;
     }
     const L = this.layout(canvasWidth, canvasHeight, this.getBagSlotCount());
+    const lx = this.toPanelLocalX(x, L.rightW);
     this.hoveredAbilityId = null;
     if (this.activeTab === "inventory") {
-      this.hoveredLoadoutSlot = this.getLoadoutSlotAt(x, y, L);
-      this.hoveredBagIndex = this.getBagIndexAt(x, y, L);
-      this.hoveredEquipSlot = this.getEquipAt(x, y, L);
+      this.hoveredLoadoutSlot = this.getLoadoutSlotAt(lx, y, L);
+      this.hoveredBagIndex = this.getBagIndexAt(lx, y, L);
+      this.hoveredEquipSlot = this.getEquipAt(lx, y, L);
     } else {
       this.hoveredLoadoutSlot = null;
       this.hoveredBagIndex = null;
@@ -1323,7 +1390,7 @@ export class InventoryScreenUI {
     if (this.activeTab === "abilities") {
       for (const node of ABILITY_TREE_NODES) {
         const { cx, cy } = skillsNodeCenter(L.skillsOriginX, L.skillsOriginY, node.x, node.y);
-        if (uiCircleContains(cx, cy, SKILLS_NODE_RADIUS, x, y)) {
+        if (uiCircleContains(cx, cy, SKILLS_NODE_RADIUS, lx, y)) {
           this.hoveredAbilityId = node.id;
           break;
         }
@@ -1392,12 +1459,16 @@ export class InventoryScreenUI {
     canvasHeight: number,
     clickCount: number = 1
   ): boolean {
-    if (!this.open) return false;
+    if (!this.isOpen()) return false;
     const L = this.layout(canvasWidth, canvasHeight, this.getBagSlotCount());
+    const lx = this.toPanelLocalX(x, L.rightW);
     const inPanel =
-      x >= L.rightX && x <= L.rightX + L.rightW && y >= L.rightY && y <= L.rightY + L.rightH;
+      lx >= L.rightX &&
+      lx <= L.rightX + L.rightW &&
+      y >= L.rightY &&
+      y <= L.rightY + L.rightH;
 
-    if (x < L.rightX) {
+    if (lx < L.rightX) {
       this.toggle();
       return true;
     }
@@ -1415,7 +1486,7 @@ export class InventoryScreenUI {
     for (let i = 0; i < L.tabs.length; i++) {
       const t = L.tabs[i]!;
       const tr = tabBarHitRect(L.tabX0, L.tabTop, L.tabW, L.tabBarH, i, L.tabs.length, L.rightX + L.rightW);
-      if (uiRectContains(tr, x, y)) {
+      if (uiRectContains(tr, lx, y)) {
         this.activeTab = t.id;
         this.dragState = null;
         return true;
@@ -1424,7 +1495,7 @@ export class InventoryScreenUI {
 
     if (this.activeTab === "character") {
       const resetRect = panelBottomWideButtonRect(L.rightX, L.rightY, L.rightW, L.rightH);
-      if (uiRectContains(resetRect, x, y)) {
+      if (uiRectContains(resetRect, lx, y)) {
         this.deps.sendProgressionAllocations("character", {});
         return true;
       }
@@ -1432,13 +1503,13 @@ export class InventoryScreenUI {
         const key = CHARACTER_STAT_KEYS[i]!;
         const rowY = characterStatRowLabelY(L.contentTop, i);
         const { minus, plus } = characterStatPlusMinusRects(L.rightX, L.rightW, rowY);
-        if (uiRectContains(minus, x, y)) {
+        if (uiRectContains(minus, lx, y)) {
           const m = buildCharacterMapFromPlayer(player);
           m[key] = Math.max(0, (m[key] ?? 0) - 1);
           this.deps.sendProgressionAllocations("character", m);
           return true;
         }
-        if (uiRectContains(plus, x, y)) {
+        if (uiRectContains(plus, lx, y)) {
           const m = buildCharacterMapFromPlayer(player);
           m[key] = (m[key] ?? 0) + 1;
           this.deps.sendProgressionAllocations("character", m);
@@ -1450,13 +1521,13 @@ export class InventoryScreenUI {
 
     if (this.activeTab === "abilities") {
       const resetRect = panelBottomWideButtonRect(L.rightX, L.rightY, L.rightW, L.rightH);
-      if (uiRectContains(resetRect, x, y)) {
+      if (uiRectContains(resetRect, lx, y)) {
         this.deps.sendProgressionAllocations("ability", {});
         return true;
       }
       for (const node of ABILITY_TREE_NODES) {
         const { cx, cy } = skillsNodeCenter(L.skillsOriginX, L.skillsOriginY, node.x, node.y);
-        if (uiCircleContains(cx, cy, SKILLS_NODE_RADIUS, x, y)) {
+        if (uiCircleContains(cx, cy, SKILLS_NODE_RADIUS, lx, y)) {
           const abilities = buildAbilityMapFromPlayer(player);
           const curS = abilities.sprint ?? 0;
           const curR = abilities.regenerate ?? 0;
@@ -1485,7 +1556,7 @@ export class InventoryScreenUI {
     if (this.activeTab === "professions") {
       if (!this.selectedProfessionId) {
         for (const rect of this.professionCardRects(L)) {
-          if (uiRectContains(rect, x, y)) {
+          if (uiRectContains(rect, lx, y)) {
             this.selectedProfessionId = rect.id;
             return true;
           }
@@ -1494,7 +1565,7 @@ export class InventoryScreenUI {
       }
 
       const backRect = this.professionBackRect(L);
-      if (uiRectContains(backRect, x, y)) {
+      if (uiRectContains(backRect, lx, y)) {
         this.selectedProfessionId = null;
       }
       return true;
@@ -1504,7 +1575,7 @@ export class InventoryScreenUI {
       return true;
     }
 
-    const loadoutHit = this.getLoadoutSlotAt(x, y, L);
+    const loadoutHit = this.getLoadoutSlotAt(lx, y, L);
     if (loadoutHit !== null) {
       if (clickCount >= 2) {
         this.deps.sendSetWeaponLoadoutSlot(loadoutHit, 0);
@@ -1577,7 +1648,7 @@ export class InventoryScreenUI {
   }
 
   public handleMouseUp(x: number, y: number, canvasWidth: number, canvasHeight: number): void {
-    if (!this.open || this.activeTab !== "inventory") return;
+    if (!this.isOpen() || this.activeTab !== "inventory") return;
     const drag = this.dragState;
     this.dragState = null;
     if (!drag?.isDragging) {
@@ -1585,8 +1656,9 @@ export class InventoryScreenUI {
     }
 
     const L = this.layout(canvasWidth, canvasHeight, this.getBagSlotCount());
-    const bagIdx = this.getBagIndexAt(x, y, L);
-    const eq = this.getEquipAt(x, y, L);
+    const lx = this.toPanelLocalX(x, L.rightW);
+    const bagIdx = this.getBagIndexAt(lx, y, L);
+    const eq = this.getEquipAt(lx, y, L);
 
     if (drag.source.kind === "bag") {
       const lo = drag.targetLoadoutSlot;
@@ -1606,7 +1678,8 @@ export class InventoryScreenUI {
         this.deps.sendSwapBagAndEquipment(drag.source.index, eq);
         return;
       }
-      const inRight = x >= L.rightX && x <= L.rightX + L.rightW && y >= L.rightY && y <= L.rightY + L.rightH;
+      const inRight =
+        lx >= L.rightX && lx <= L.rightX + L.rightW && y >= L.rightY && y <= L.rightY + L.rightH;
       if (!inRight) {
         this.deps.sendDropItem(drag.source.index);
       }
@@ -1621,8 +1694,9 @@ export class InventoryScreenUI {
   }
 
   public isPointOverUi(x: number, y: number, canvasWidth: number, canvasHeight: number): boolean {
-    if (!this.open) return false;
+    if (!this.isOpen()) return false;
     const L = this.layout(canvasWidth, canvasHeight, this.getBagSlotCount());
-    return x >= L.rightX && x <= L.rightX + L.rightW && y >= L.rightY && y <= L.rightY + L.rightH;
+    const lx = this.toPanelLocalX(x, L.rightW);
+    return lx >= L.rightX && lx <= L.rightX + L.rightW && y >= L.rightY && y <= L.rightY + L.rightH;
   }
 }

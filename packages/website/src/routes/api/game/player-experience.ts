@@ -8,9 +8,32 @@ import {
 import { requireGameServerApiKey } from "~/utils/game-server-api-auth";
 import { coercePlayerQuestState } from "@survive-the-night/game-shared/quests/player-quest-state";
 
+const STARTER_SAVED_INVENTORY = {
+  items: [
+    { itemType: "torch" },
+    null, null, null, null, null, null, null, null, null,
+    null, null, null, null, null, null, null, null, null, null,
+    null, null, null, null, null, null, null, null, null, null,
+    null, null, null, null, null, null, null, null, null, null,
+  ],
+  equipment: {
+    head: null,
+    shoulders: null,
+    torso: null,
+    legs: null,
+    shoes: null,
+    back: null,
+    hands: null,
+  },
+};
+
 /**
  * Game server → website: load persisted experience for a user (hydrate Player entity on connect).
  * GET ?userId=... with X-API-Key
+ *
+ * Creates a user_stats row on first connect so every authenticated player has a profile.
+ * New rows include a starter savedInventory (torch) so the game-server savedInventory
+ * validation never sees null for a legitimate first-time player.
  */
 export const Route = createFileRoute("/api/game/player-experience")({
   server: {
@@ -48,7 +71,7 @@ export const Route = createFileRoute("/api/game/player-experience")({
               respawnTileX: stats.respawnTileX ?? null,
               respawnTileY: stats.respawnTileY ?? null,
               questProgress: coercePlayerQuestState(stats.questProgress),
-              savedInventory: stats.savedInventory ?? null,
+              savedInventory: stats.savedInventory ?? STARTER_SAVED_INVENTORY,
             }),
             { status: 200, headers: { "Content-Type": "application/json" } },
           );

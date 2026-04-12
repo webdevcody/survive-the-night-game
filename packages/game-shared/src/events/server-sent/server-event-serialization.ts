@@ -35,6 +35,7 @@ import { GameMessageEvent } from "./events/game-message-event";
 import { UserBannedEvent } from "./events/user-banned-event";
 import { VersionMismatchEvent } from "./events/version-mismatch-event";
 import { AuthRequiredEvent } from "./events/auth-required-event";
+import { ProfileLoadFailedEvent } from "./events/profile-load-failed-event";
 import {
   serializeEvent,
   deserializeEvent,
@@ -84,6 +85,7 @@ const eventRegistry: Record<string, IBufferWriter> = {
   [ServerSentEvents.USER_BANNED]: UserBannedEvent,
   [ServerSentEvents.VERSION_MISMATCH]: VersionMismatchEvent,
   [ServerSentEvents.AUTH_REQUIRED]: AuthRequiredEvent,
+  [ServerSentEvents.PROFILE_LOAD_FAILED]: ProfileLoadFailedEvent,
 };
 
 /**

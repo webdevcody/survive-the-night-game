@@ -2,6 +2,31 @@ import Positionable from "@/extensions/positionable";
 import { Player } from "@/entities/players/player";
 import { getConfig } from "@shared/config";
 import { GAME_SERVER_API_KEY, WEBSITE_API_URL } from "@/config/env";
+import PoolManager from "@shared/util/pool-manager";
+
+export function getPersistablePlayerLastTile(
+  player: Player,
+): { x: number; y: number } | null {
+  if (!player.hasExt(Positionable)) {
+    return null;
+  }
+
+  const TILE_SIZE = getConfig().world.TILE_SIZE;
+  const center = player.getCenterPosition();
+  const lastTileX = Math.floor(center.x / TILE_SIZE);
+  const lastTileY = Math.floor(center.y / TILE_SIZE);
+  const restoredPosition = player
+    .getGameManagers()
+    .getMapManager()
+    .tryGetPositionForSavedTile(lastTileX, lastTileY);
+
+  if (!restoredPosition) {
+    return null;
+  }
+
+  PoolManager.getInstance().vector2.release(restoredPosition);
+  return { x: lastTileX, y: lastTileY };
+}
 
 /**
  * Writes the player's current tile and optional campsite bind to the website DB
@@ -14,14 +39,21 @@ export async function persistPlayerLastPositionToWebsite(
   if (!GAME_SERVER_API_KEY) {
     return;
   }
+  if (!player.isHydratedFromDb()) {
+    return;
+  }
   if (player.isDead() || !player.hasExt(Positionable)) {
     return;
   }
 
-  const pos = player.getExt(Positionable).getPosition();
-  const TILE_SIZE = getConfig().world.TILE_SIZE;
-  const lastTileX = Math.floor(pos.x / TILE_SIZE);
-  const lastTileY = Math.floor(pos.y / TILE_SIZE);
+  const lastTile = getPersistablePlayerLastTile(player);
+  if (!lastTile) {
+    console.warn(
+      `[persistPlayerLastPositionToWebsite] skipping invalid last tile for user ${userId}`,
+    );
+    return;
+  }
+
   const bind = player.getBoundRespawnTile();
   const url = `${WEBSITE_API_URL}/api/game/player-last-position`;
 
@@ -33,8 +65,8 @@ export async function persistPlayerLastPositionToWebsite(
     },
     body: JSON.stringify({
       userId,
-      lastTileX,
-      lastTileY,
+      lastTileX: lastTile.x,
+      lastTileY: lastTile.y,
       ...(bind ? { respawnTileX: bind.x, respawnTileY: bind.y } : {}),
       characterAllocations: player.getCharacterAllocationRecord(),
       abilityAllocations: player.getAbilityAllocationRecord(),

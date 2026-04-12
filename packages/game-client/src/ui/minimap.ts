@@ -49,7 +49,7 @@ export const MINIMAP_RENDER_DISTANCE = {
 export const MINIMAP_SETTINGS = {
   size: 240, // Reduced from 280 (was 400 originally)
   /** Inset from screen right; screen position comes from minimap-hud-group-layout + Hud. */
-  right: 40,
+  right: 52,
   background: RPG_MINIMAP_BACKGROUND,
   scale: 0.35,
   fogOfWar: {

@@ -31,6 +31,7 @@ import { Broadcaster as BroadcastingBroadcaster } from "@/broadcasting/broadcast
 import { PlayerJoinedEvent } from "../../../game-shared/src/events/server-sent/events/player-joined-event";
 import { VersionMismatchEvent } from "../../../game-shared/src/events/server-sent/events/version-mismatch-event";
 import { AuthRequiredEvent } from "../../../game-shared/src/events/server-sent/events/auth-required-event";
+import { ProfileLoadFailedEvent } from "../../../game-shared/src/events/server-sent/events/profile-load-failed-event";
 import { YourIdEvent } from "../../../game-shared/src/events/server-sent/events/your-id-event";
 import type { GameModeId } from "@shared/events/server-sent/events/game-started-event";
 import { HandlerContext, onConnection, sendFullState } from "@/events/handlers";
@@ -41,7 +42,10 @@ import { UserSessionCache } from "@/services/user-session-cache";
 import { KillTracker } from "@/services/kill-tracker";
 import { WEBSITE_API_URL, GAME_SERVER_API_KEY } from "@/config/env";
 import type { PersistedPlayerProgress } from "@/services/player-progress-types";
-import { persistPlayerLastPositionToWebsite } from "@/services/persist-player-last-position";
+import {
+  getPersistablePlayerLastTile,
+  persistPlayerLastPositionToWebsite,
+} from "@/services/persist-player-last-position";
 import Positionable from "@/extensions/positionable";
 import { coercePlayerQuestState } from "@shared/quests/player-quest-state";
 import { coercePlayerInventoryPersistedPayload } from "@shared/util/persisted-inventory-payload";
@@ -180,29 +184,55 @@ export class ServerSocketManager implements Broadcaster {
 
       const userId = authResult.userId;
 
-      // Filter bad words and replace with asterisks
       const filteredDisplayName = rawDisplayName ? this.sanitizeText(rawDisplayName) : undefined;
 
-      // Allow multiple connections with the same display name
-      // Each connection gets its own player entity
-      this.playerDisplayNames.set(socket.id, filteredDisplayName || "Unknown");
-
-      this.userSessionCache.setUserSession(socket.id, userId, tokenStr!);
-      console.log(`Socket ${socket.id} authenticated as user ${userId}`);
-
       void (async () => {
-        const progress = await this.fetchPersistedProgress(userId);
-        this.onConnection(socket, progress);
+        const loaded = await this.fetchPersistedProgress(userId);
+        if (!loaded.ok) {
+          console.warn(
+            `[ServerSocketManager] Refusing connection for user ${userId}: persisted profile not loaded.`,
+          );
+          this.sendEventToSocket(
+            socket,
+            new ProfileLoadFailedEvent({
+              message: loaded.message,
+            }),
+          );
+          socket.disconnect(true);
+          return;
+        }
+
+        this.playerDisplayNames.set(socket.id, filteredDisplayName || "Unknown");
+        this.userSessionCache.setUserSession(socket.id, userId, tokenStr!);
+        console.log(`Socket ${socket.id} authenticated as user ${userId}`);
+
+        this.onConnection(socket, loaded.progress);
       })().catch((err) => {
         console.error("Connection handler failed:", err);
+        this.sendEventToSocket(
+          socket,
+          new ProfileLoadFailedEvent({
+            message:
+              "Could not load your saved progress. Please try again in a moment.",
+          }),
+        );
+        socket.disconnect(true);
       });
     });
   }
 
+  private static readonly PROFILE_LOAD_USER_MESSAGE =
+    "Could not load your saved progress. Please try again in a moment.";
+
   /**
    * Load persisted experience and allocation progress from the website DB before the player entity is created.
+   * When GAME_SERVER_API_KEY is set, failure is explicit (caller must refuse connection).
    */
-  private async fetchPersistedProgress(userId: string): Promise<PersistedPlayerProgress> {
+  private async fetchPersistedProgress(
+    userId: string,
+  ): Promise<
+    { ok: true; progress: PersistedPlayerProgress } | { ok: false; message: string }
+  > {
     const empty: PersistedPlayerProgress = {
       experience: 0,
       abilityAllocations: {},
@@ -210,7 +240,7 @@ export class ServerSocketManager implements Broadcaster {
       professionProgress: emptyProfessionProgress(),
     };
     if (!GAME_SERVER_API_KEY) {
-      return empty;
+      return { ok: true, progress: empty };
     }
 
     const url = `${WEBSITE_API_URL}/api/game/player-experience?userId=${encodeURIComponent(userId)}`;
@@ -224,7 +254,7 @@ export class ServerSocketManager implements Broadcaster {
         console.warn(
           `[ServerSocketManager] player-experience HTTP ${response.status} for user ${userId}: ${errText.slice(0, 500)}`,
         );
-        return empty;
+        return { ok: false, message: ServerSocketManager.PROFILE_LOAD_USER_MESSAGE };
       }
       const data = (await response.json()) as {
         experience?: unknown;
@@ -279,23 +309,33 @@ export class ServerSocketManager implements Broadcaster {
           savedInventory = coercedInv;
         }
       }
+      if (savedInventory == null) {
+        console.warn(
+          `[ServerSocketManager] player-experience missing valid savedInventory for user ${userId}.`,
+        );
+        return { ok: false, message: ServerSocketManager.PROFILE_LOAD_USER_MESSAGE };
+      }
 
       return {
-        experience: Math.max(0, xp),
-        abilityAllocations: data.abilityAllocations ?? data.skillAllocations ?? {},
-        characterAllocations: data.characterAllocations ?? {},
-        professionProgress: normalizeProfessionProgress(data.professionProgress),
-        lastTileX,
-        lastTileY,
-        respawnTileX,
-        respawnTileY,
-        questProgress: data.questProgress != null ? coercePlayerQuestState(data.questProgress) : undefined,
-        savedInventory,
+        ok: true,
+        progress: {
+          experience: Math.max(0, xp),
+          abilityAllocations: data.abilityAllocations ?? data.skillAllocations ?? {},
+          characterAllocations: data.characterAllocations ?? {},
+          professionProgress: normalizeProfessionProgress(data.professionProgress),
+          lastTileX,
+          lastTileY,
+          respawnTileX,
+          respawnTileY,
+          questProgress:
+            data.questProgress != null ? coercePlayerQuestState(data.questProgress) : undefined,
+          savedInventory,
+        },
       };
     } catch (error) {
       console.warn(`[ServerSocketManager] fetchPersistedProgress failed for ${userId}:`, error);
+      return { ok: false, message: ServerSocketManager.PROFILE_LOAD_USER_MESSAGE };
     }
-    return empty;
   }
 
   /**
@@ -428,51 +468,70 @@ export class ServerSocketManager implements Broadcaster {
   }
 
   public async recreatePlayersForConnectedSockets(): Promise<void> {
-    const TILE_SIZE = getConfig().world.TILE_SIZE;
-    type LiveSnap = { lastTileX: number; lastTileY: number; respawn?: { x: number; y: number } };
+    type LiveSnap = PersistedPlayerProgress;
     const liveBySocket = new Map<string, LiveSnap>();
 
     for (const [socketId, player] of this.players) {
-      if (player.isDead() || !player.hasExt(Positionable)) {
-        continue;
-      }
-      const pos = player.getExt(Positionable).getPosition();
-      const lastTileX = Math.floor(pos.x / TILE_SIZE);
-      const lastTileY = Math.floor(pos.y / TILE_SIZE);
       const bind = player.getBoundRespawnTile();
-      liveBySocket.set(socketId, {
-        lastTileX,
-        lastTileY,
-        ...(bind ? { respawn: { x: bind.x, y: bind.y } } : {}),
-      });
+      const snap: LiveSnap = {
+        experience: player.getTotalExperience(),
+        abilityAllocations: player.getAbilityAllocationRecord(),
+        characterAllocations: player.getCharacterAllocationRecord(),
+        professionProgress: player.getProfessionProgressRecord(),
+        questProgress: player.getQuestProgressPayload(),
+        savedInventory: player.getSavedInventoryPayload(),
+      };
+      if (!player.isDead() && player.hasExt(Positionable)) {
+        const lastTile = getPersistablePlayerLastTile(player);
+        if (lastTile) {
+          snap.lastTileX = lastTile.x;
+          snap.lastTileY = lastTile.y;
+        }
+      }
+      if (bind) {
+        snap.respawnTileX = bind.x;
+        snap.respawnTileY = bind.y;
+      }
+      liveBySocket.set(socketId, snap);
     }
 
     this.players.clear();
 
     const sockets = Array.from(this.io.sockets.sockets.values());
 
+    const anonProgress: PersistedPlayerProgress = {
+      experience: 0,
+      abilityAllocations: {},
+      characterAllocations: {},
+      professionProgress: emptyProfessionProgress(),
+    };
+
     for (const socket of sockets) {
-      const userId = this.userSessionCache.getUserIdBySocket(socket.id);
-      const progress = userId
-        ? await this.fetchPersistedProgress(userId)
-        : {
-            experience: 0,
-            abilityAllocations: {},
-            characterAllocations: {},
-            professionProgress: emptyProfessionProgress(),
-          };
       const snap = liveBySocket.get(socket.id);
-      const merged: PersistedPlayerProgress = snap
-        ? {
-            ...progress,
-            lastTileX: snap.lastTileX,
-            lastTileY: snap.lastTileY,
-            ...(snap.respawn
-              ? { respawnTileX: snap.respawn.x, respawnTileY: snap.respawn.y }
-              : {}),
-          }
-        : progress;
-      this.createPlayerForSocket(socket, merged);
+      if (snap) {
+        this.createPlayerForSocket(socket, snap);
+        continue;
+      }
+
+      const userId = this.userSessionCache.getUserIdBySocket(socket.id);
+      const loaded = userId
+        ? await this.fetchPersistedProgress(userId)
+        : { ok: true as const, progress: anonProgress };
+
+      if (!loaded.ok) {
+        console.warn(
+          `[ServerSocketManager] Kicking socket ${socket.id} during map reload: persisted profile not loaded.`,
+        );
+        this.sendEventToSocket(
+          socket,
+          new ProfileLoadFailedEvent({ message: loaded.message }),
+        );
+        this.userSessionCache.removeSocket(socket.id);
+        socket.disconnect(true);
+        continue;
+      }
+
+      this.createPlayerForSocket(socket, loaded.progress);
     }
   }
 
