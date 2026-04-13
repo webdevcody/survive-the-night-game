@@ -1,13 +1,17 @@
-import { useMemo } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Button } from "~/components/ui/button";
+import { Input } from "~/components/ui/input";
 import { useEditorStore } from "../-store";
 import {
   SPAWN_PALETTE_ENTRIES,
+  SPAWNER_META_CONFIGURABLE_ENTRIES,
   isNpcDialogueSpawnTile,
 } from "@survive-the-night/game-shared/map/spawn-palette";
 import { getMapSideLength, isMapCellInEditorCameraView } from "../-utils";
 
 const sectionLabel = "text-[10px] font-medium uppercase tracking-wide text-gray-500";
+const modeBtn =
+  "!rounded-none text-xs h-7 px-2 min-w-0 border-0 shadow-none flex-1";
 
 function spawnLabel(id: number): string {
   return SPAWN_PALETTE_ENTRIES.find((e) => e.id === id)?.label ?? `Spawn ${id}`;
@@ -23,6 +27,39 @@ export function SpawnersListPanel() {
   const spawnerMeta = useEditorStore((state) => state.spawnerMeta);
   const focusCameraOnMapCell = useEditorStore((state) => state.focusCameraOnMapCell);
   const openSpawnerMetaEditor = useEditorStore((state) => state.openSpawnerMetaEditor);
+  const spawnerSidebarMode = useEditorStore((state) => state.spawnerSidebarMode);
+  const spawnerPlaceTileId = useEditorStore((state) => state.spawnerPlaceTileId);
+  const setSpawnerSidebarMode = useEditorStore((state) => state.setSpawnerSidebarMode);
+  const setSpawnerPlaceTileId = useEditorStore((state) => state.setSpawnerPlaceTileId);
+
+  const [typeaheadOpen, setTypeaheadOpen] = useState(false);
+  const [typeaheadQuery, setTypeaheadQuery] = useState("");
+  const comboRef = useRef<HTMLDivElement>(null);
+
+  const filteredPlaceTypes = useMemo(() => {
+    const q = typeaheadQuery.trim().toLowerCase();
+    if (!q) return [...SPAWNER_META_CONFIGURABLE_ENTRIES];
+    return SPAWNER_META_CONFIGURABLE_ENTRIES.filter((e) =>
+      e.label.toLowerCase().includes(q),
+    );
+  }, [typeaheadQuery]);
+
+  useEffect(() => {
+    if (spawnerSidebarMode !== "place") return;
+    const id = useEditorStore.getState().spawnerPlaceTileId;
+    const entry = id != null ? SPAWNER_META_CONFIGURABLE_ENTRIES.find((e) => e.id === id) : null;
+    setTypeaheadQuery(entry?.label ?? "");
+  }, [spawnerSidebarMode]);
+
+  useEffect(() => {
+    if (!typeaheadOpen) return;
+    const onDoc = (e: MouseEvent) => {
+      if (comboRef.current?.contains(e.target as Node)) return;
+      setTypeaheadOpen(false);
+    };
+    document.addEventListener("mousedown", onDoc, true);
+    return () => document.removeEventListener("mousedown", onDoc, true);
+  }, [typeaheadOpen]);
 
   const entries = useMemo(() => {
     const out: { row: number; col: number; id: number }[] = [];
@@ -51,18 +88,6 @@ export function SpawnersListPanel() {
     }
     return { inView: a, rest: b };
   }, [entries, groundGrid, cameraX, cameraY, viewportWidthTiles, viewportHeightTiles]);
-
-  if (entries.length === 0) {
-    return (
-      <p className="text-[10px] text-gray-500">
-        No spawners (player, zombies, or item fixtures) on the map. Right-click a tile and choose{" "}
-        <span className="text-violet-300">Add spawner</span> on the map (first item type in the
-        registry). Use <span className="text-gray-300">Go</span> to move the camera,{" "}
-        <span className="text-gray-300">Select</span> to highlight on the map.
-        Dialogue NPCs are under NPCs.
-      </p>
-    );
-  }
 
   const renderRow = ({ row, col, id }: { row: number; col: number; id: number }) => {
     const authored = spawnerMeta.find((m) => m.row === row && m.col === col)?.name;
@@ -114,29 +139,145 @@ export function SpawnersListPanel() {
 
   return (
     <div className="flex min-h-0 flex-1 flex-col gap-2">
-      <p className="text-[10px] text-gray-500">
-        {entries.length} spawner{entries.length === 1 ? "" : "s"} ({inView.length} in view) — Click a
-        row (or a spawner tile on the map) to edit the label and relocate.{" "}
-        <span className="text-gray-400">Go</span> moves the camera.
-      </p>
-      <div className="min-h-0 flex-1 space-y-3 overflow-y-auto pr-1">
-        <div>
-          <p className={`${sectionLabel} mb-1`}>In view</p>
-          {inView.length === 0 ? (
-            <p className="text-[10px] text-gray-600">None in current view.</p>
-          ) : (
-            <ul className="space-y-1.5">{inView.map(renderRow)}</ul>
-          )}
-        </div>
-        <div>
-          <p className={`${sectionLabel} mb-1`}>Rest of map</p>
-          {rest.length === 0 ? (
-            <p className="text-[10px] text-gray-600">All spawners are in view.</p>
-          ) : (
-            <ul className="space-y-1.5">{rest.map(renderRow)}</ul>
-          )}
+      <div>
+        <p className={`${sectionLabel} mb-1`}>Map interaction</p>
+        <div
+          className="grid min-w-0 grid-cols-2 gap-0.5 rounded border border-gray-600 bg-gray-950/60 p-0.5"
+          role="radiogroup"
+          aria-label="Spawner map mode"
+        >
+          <Button
+            type="button"
+            size="sm"
+            role="radio"
+            aria-checked={spawnerSidebarMode === "select"}
+            onClick={() => setSpawnerSidebarMode("select")}
+            className={`${modeBtn} ${
+              spawnerSidebarMode === "select"
+                ? "bg-slate-600 text-white hover:bg-slate-500"
+                : "bg-transparent text-gray-400 hover:bg-gray-800/80 hover:text-gray-200"
+            }`}
+          >
+            Select
+          </Button>
+          <Button
+            type="button"
+            size="sm"
+            role="radio"
+            aria-checked={spawnerSidebarMode === "place"}
+            onClick={() => setSpawnerSidebarMode("place")}
+            className={`${modeBtn} ${
+              spawnerSidebarMode === "place"
+                ? "bg-slate-600 text-white hover:bg-slate-500"
+                : "bg-transparent text-gray-400 hover:bg-gray-800/80 hover:text-gray-200"
+            }`}
+          >
+            Place
+          </Button>
         </div>
       </div>
+
+      {spawnerSidebarMode === "place" ? (
+        <div className="space-y-1">
+          <p className={`${sectionLabel}`}>Spawner type</p>
+          <div ref={comboRef} className="relative">
+            <Input
+              type="text"
+              autoComplete="off"
+              placeholder="Search type…"
+              value={typeaheadQuery}
+              onChange={(e) => {
+                const v = e.target.value;
+                setTypeaheadQuery(v);
+                setTypeaheadOpen(true);
+                const trimmed = v.trim();
+                if (!trimmed) {
+                  setSpawnerPlaceTileId(null);
+                  return;
+                }
+                const match = SPAWNER_META_CONFIGURABLE_ENTRIES.find(
+                  (x) => x.label.toLowerCase() === trimmed.toLowerCase(),
+                );
+                setSpawnerPlaceTileId(match?.id ?? null);
+              }}
+              onFocus={() => setTypeaheadOpen(true)}
+              className="h-8 rounded-none border-gray-600 bg-gray-950/80 text-[11px] text-gray-100 placeholder:text-gray-500"
+            />
+            {typeaheadOpen ? (
+              <ul
+                className="absolute left-0 right-0 top-full z-50 mt-0.5 max-h-40 overflow-y-auto rounded border border-gray-600 bg-gray-900 py-0.5 shadow-xl"
+                role="listbox"
+              >
+                {filteredPlaceTypes.length === 0 ? (
+                  <li className="px-2 py-1.5 text-[10px] text-gray-500">No matches</li>
+                ) : (
+                  filteredPlaceTypes.map((e) => (
+                    <li key={e.id}>
+                      <button
+                        type="button"
+                        role="option"
+                        className="w-full px-2 py-1.5 text-left text-[11px] text-gray-200 hover:bg-gray-800"
+                        onMouseDown={(ev) => ev.preventDefault()}
+                        onClick={() => {
+                          setSpawnerPlaceTileId(e.id);
+                          setTypeaheadQuery(e.label);
+                          setTypeaheadOpen(false);
+                        }}
+                      >
+                        {e.label}
+                      </button>
+                    </li>
+                  ))
+                )}
+              </ul>
+            ) : null}
+          </div>
+          <p className="text-[10px] text-gray-500">
+            {spawnerPlaceTileId != null && spawnerPlaceTileId > 0 ? (
+              <>
+                Click an <span className="text-gray-300">empty</span> map cell to place. Esc clears
+                the type. Occupied cells still open the editor in this mode.
+              </>
+            ) : (
+              <>Choose a spawner type above, then click the map.</>
+            )}
+          </p>
+        </div>
+      ) : null}
+
+      {entries.length === 0 ? (
+        <p className="text-[10px] text-gray-500">
+          No spawners on the map yet. Use <span className="text-gray-300">Place</span> above,
+          or right-click the map → <span className="text-violet-300">Add spawner</span>. Dialogue
+          NPCs are under NPCs.
+        </p>
+      ) : (
+        <>
+          <p className="text-[10px] text-gray-500">
+            {entries.length} spawner{entries.length === 1 ? "" : "s"} ({inView.length} in view) —
+            In <span className="text-gray-400">Select</span>, click a row or a spawner on the map to
+            edit. <span className="text-gray-400">Go</span> moves the camera.
+          </p>
+          <div className="min-h-0 flex-1 space-y-3 overflow-y-auto pr-1">
+            <div>
+              <p className={`${sectionLabel} mb-1`}>In view</p>
+              {inView.length === 0 ? (
+                <p className="text-[10px] text-gray-600">None in current view.</p>
+              ) : (
+                <ul className="space-y-1.5">{inView.map(renderRow)}</ul>
+              )}
+            </div>
+            <div>
+              <p className={`${sectionLabel} mb-1`}>Rest of map</p>
+              {rest.length === 0 ? (
+                <p className="text-[10px] text-gray-600">All spawners are in view.</p>
+              ) : (
+                <ul className="space-y-1.5">{rest.map(renderRow)}</ul>
+              )}
+            </div>
+          </div>
+        </>
+      )}
     </div>
   );
 }

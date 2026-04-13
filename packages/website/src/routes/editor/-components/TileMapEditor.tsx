@@ -46,8 +46,15 @@ export function TileMapEditor() {
   const clipboard = useEditorStore((state) => state.clipboard);
   const sidebarSection = useEditorStore((state) => state.sidebarSection);
   const questWaypointPickTarget = useEditorStore((state) => state.questWaypointPickTarget);
+  const spawnerSidebarMode = useEditorStore((state) => state.spawnerSidebarMode);
+  const spawnerPlaceTileId = useEditorStore((state) => state.spawnerPlaceTileId);
   const canPaintTiles = sidebarSection === "tiles";
   const questWaypointPickActive = Boolean(questWaypointPickTarget);
+  const spawnerPlaceActive =
+    sidebarSection === "spawners" &&
+    spawnerSidebarMode === "place" &&
+    spawnerPlaceTileId != null &&
+    spawnerPlaceTileId > 0;
 
   const containerRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -125,6 +132,15 @@ export function TileMapEditor() {
         if (st.questWaypointPickTarget) {
           e.preventDefault();
           st.cancelQuestWaypointPick();
+          return;
+        }
+        if (
+          st.sidebarSection === "spawners" &&
+          st.spawnerSidebarMode === "place" &&
+          st.spawnerPlaceTileId != null
+        ) {
+          e.preventDefault();
+          st.setSpawnerPlaceTileId(null);
           return;
         }
       }
@@ -645,6 +661,23 @@ export function TileMapEditor() {
         }
       }
 
+      const placeSpawnerPick =
+        s.sidebarSection === "spawners" &&
+        s.spawnerSidebarMode === "place" &&
+        s.spawnerPlaceTileId != null &&
+        s.spawnerPlaceTileId > 0;
+      if (placeSpawnerPick && hoverPickCell) {
+        const lr = hoverPickCell.row - s.cameraY;
+        const lc = hoverPickCell.col - s.cameraX;
+        if (lr >= 0 && lc >= 0 && lr < vrc && lc < vcc) {
+          const rx = lc * tilePx;
+          const ry = lr * tilePx;
+          ctx.strokeStyle = "rgba(167, 139, 250, 0.95)";
+          ctx.lineWidth = 3;
+          ctx.strokeRect(rx + 1.5, ry + 1.5, tilePx - 3, tilePx - 3);
+        }
+      }
+
       const hover = hoverCellRef.current;
       if (hover && s.sidebarSection === "tiles") {
         const localRow = hover.row - s.cameraY;
@@ -827,7 +860,7 @@ export function TileMapEditor() {
                 ? "cursor-grabbing"
                 : shiftHeld
                   ? "cursor-grab"
-                  : canPaintTiles || questWaypointPickActive
+                  : canPaintTiles || questWaypointPickActive || spawnerPlaceActive
                     ? "cursor-crosshair"
                     : "cursor-default"
             }`}

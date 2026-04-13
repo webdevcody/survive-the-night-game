@@ -255,6 +255,10 @@ interface EditorState {
   questWaypointPickTarget: { questId: string; stepIndex: number } | null;
   /** Right overlay: tiles palette vs lists vs quests. */
   sidebarSection: EditorSidebarSection;
+  /** Spawners tab: map click selects/opens editor vs places the chosen type. */
+  spawnerSidebarMode: "select" | "place";
+  /** Spawns-layer tile id to paint in place mode (`SPAWNER_META_CONFIGURABLE_ENTRIES`). */
+  spawnerPlaceTileId: number | null;
 
   // Palette selection (collidables)
   isPaletteSelectionMode: boolean;
@@ -364,6 +368,8 @@ interface EditorState {
   /** Open spawner metadata modal and spawns sidebar (no grid change). */
   openSpawnerMetaEditor: (row: number, col: number) => void;
   setSidebarSection: (section: EditorSidebarSection) => void;
+  setSpawnerSidebarMode: (mode: "select" | "place") => void;
+  setSpawnerPlaceTileId: (id: number | null) => void;
   setIsPaletteSelectionMode: (mode: boolean) => void;
   setPaletteSelectionStart: (pos: Position | null) => void;
   setPaletteSelectionCurrent: (pos: Position | null) => void;
@@ -457,6 +463,8 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   spawnerRelocateFrom: null,
   questWaypointPickTarget: null,
   sidebarSection: "tiles",
+  spawnerSidebarMode: "select",
+  spawnerPlaceTileId: null,
   isPaletteSelectionMode: false,
   paletteSelectionStart: null,
   paletteSelectionCurrent: null,
@@ -697,7 +705,23 @@ export const useEditorStore = create<EditorState>((set, get) => ({
     });
   },
   cancelQuestWaypointPick: () => set({ questWaypointPickTarget: null }),
-  setSidebarSection: (section) => set({ sidebarSection: section }),
+  setSidebarSection: (section) =>
+    set((s) =>
+      s.sidebarSection === section
+        ? {}
+        : {
+            sidebarSection: section,
+            ...(section !== "spawners"
+              ? { spawnerSidebarMode: "select" as const, spawnerPlaceTileId: null }
+              : {}),
+          },
+    ),
+  setSpawnerSidebarMode: (mode) =>
+    set({
+      spawnerSidebarMode: mode,
+      ...(mode === "place" ? { activeLayer: "spawns" } : {}),
+    }),
+  setSpawnerPlaceTileId: (id) => set({ spawnerPlaceTileId: id }),
   updateSpawnerMetaAt: (row, col, name) => {
     const trimmed = name.trim();
     set((state) => {
@@ -1096,6 +1120,9 @@ export const useEditorStore = create<EditorState>((set, get) => ({
       spawnerRelocateFrom,
       spawnerMeta,
       questWaypointPickTarget,
+      sidebarSection,
+      spawnerSidebarMode,
+      spawnerPlaceTileId,
     } = get();
 
     if (dialogueNpcRelocateFrom) {
@@ -1180,14 +1207,15 @@ export const useEditorStore = create<EditorState>((set, get) => ({
       const nextDialogue = dialogueNpcs.filter(
         (e) => !((e.row === fr && e.col === fc) || (e.row === row && e.col === col)),
       );
+
       set((s) => ({
         spawnsGrid: newGrid,
         dialogueNpcs: nextDialogue,
         spawnerMeta: reconcileSpawnerMetaWithSpawnsLayer(newGrid, nextSpawnerMetaRaw),
-        selectedSpawnCell: { row, col },
-        spawnerConfigModal: null,
         spawnerRelocateFrom: null,
-        selectedTileId: sourceId,
+        selectedSpawnCell: { row, col },
+        spawnerConfigModal: { row, col },
+        npcConfigModal: null,
       }));
       return;
     }
@@ -1249,6 +1277,42 @@ export const useEditorStore = create<EditorState>((set, get) => ({
           return;
         }
         set({ selectedDecalCell: null });
+      }
+    }
+
+    if (
+      !paintStroke &&
+      sidebarSection === "spawners" &&
+      spawnerSidebarMode === "place" &&
+      spawnerPlaceTileId != null &&
+      spawnerPlaceTileId > 0 &&
+      SPAWNER_META_CONFIGURABLE_ENTRIES.some((e) => e.id === spawnerPlaceTileId)
+    ) {
+      const curEmpty = (spawnsGrid[row]?.[col] ?? 0) === 0;
+      if (curEmpty) {
+        saveToHistory();
+        const newTileId = spawnerPlaceTileId;
+        const newGrid = replaceCellInGrid(spawnsGrid, row, col, newTileId);
+        const mapSize = getMapSideLength(groundGrid);
+        const prevEntry = dialogueNpcs.find((e) => e.row === row && e.col === col);
+        let nextDialogue = dialogueNpcs.filter((e) => !(e.row === row && e.col === col));
+        if (isNpcDialogueSpawnTile(newTileId)) {
+          nextDialogue = [
+            ...nextDialogue,
+            makeDialogueNpcEntry(row, col, mapSize, prevEntry, newTileId),
+          ];
+        }
+        set((s) => ({
+          activeLayer: "spawns",
+          spawnsGrid: newGrid,
+          dialogueNpcs: nextDialogue,
+          spawnerMeta: reconcileSpawnerMetaWithSpawnsLayer(newGrid, s.spawnerMeta),
+          selectedSpawnCell: { row, col },
+          selectedTileId: newTileId,
+          spawnerConfigModal: null,
+          npcConfigModal: null,
+        }));
+        return;
       }
     }
 
