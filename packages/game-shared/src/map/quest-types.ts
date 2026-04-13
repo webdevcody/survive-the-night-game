@@ -47,6 +47,11 @@ export interface WorldMapQuestDefinition {
   rewards: QuestReward[];
   /** Granted once when the quest becomes active (e.g. NPC grants it). */
   startRewards: QuestReward[];
+  /**
+   * Map editor only: when true, the quest list uses main-quest styling (color).
+   * Omitted or false = side quest styling. Not read by game runtime.
+   */
+  editorIsMainQuest?: boolean;
 }
 
 export function getQuestCompletionType(def: WorldMapQuestDefinition): QuestCompletionType {
@@ -243,6 +248,7 @@ export function normalizeQuests(entries: unknown, mapSide: number): WorldMapQues
         : rawCt === "dialogue_npc"
           ? "dialogue_npc"
           : undefined;
+    const editorIsMainQuest = o.editorIsMainQuest === true;
     out.push({
       id,
       title,
@@ -250,6 +256,7 @@ export function normalizeQuests(entries: unknown, mapSide: number): WorldMapQues
       rewards,
       startRewards,
       ...(completionType ? { completionType } : {}),
+      ...(editorIsMainQuest ? { editorIsMainQuest: true } : {}),
     });
   }
   return out;

@@ -86,6 +86,17 @@ function questStepSortableId(stepIndex: number): string {
   return `step-${stepIndex}`;
 }
 
+function questListSortableId(questId: string): string {
+  return `quest:${questId}`;
+}
+
+function parseQuestListSortableId(id: unknown): string | null {
+  const s = String(id);
+  if (!s.startsWith("quest:")) return null;
+  const rest = s.slice("quest:".length);
+  return rest.length > 0 ? rest : null;
+}
+
 function parseQuestStepSortableId(id: unknown): number | null {
   const m = /^step-(\d+)$/.exec(String(id));
   if (!m) return null;
@@ -139,6 +150,45 @@ function SortableQuestStepCard({
   );
 }
 
+function SortableQuestRow({
+  questId,
+  children,
+}: {
+  questId: string;
+  children: (dragHandle: ReactNode) => ReactNode;
+}) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
+    id: questListSortableId(questId),
+  });
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.92 : 1,
+    zIndex: isDragging ? 3 : 0,
+    position: isDragging ? ("relative" as const) : undefined,
+  };
+  const dragHandle = (
+    <button
+      type="button"
+      className="mt-2 shrink-0 touch-none rounded p-0.5 text-gray-500 hover:bg-gray-800/80 hover:text-gray-300"
+      aria-label="Drag to reorder quest"
+      {...attributes}
+      {...listeners}
+    >
+      <GripVertical className="size-3.5" />
+    </button>
+  );
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      className="flex items-stretch gap-0.5 border-b border-gray-700/60 last:border-b-0"
+    >
+      {children(dragHandle)}
+    </div>
+  );
+}
+
 export function QuestsEditorPanel() {
   const quests = useEditorStore((state) => state.quests);
   const setQuests = useEditorStore((state) => state.setQuests);
@@ -155,21 +205,24 @@ export function QuestsEditorPanel() {
   const mapSide = getMapSideLength(groundGrid);
   const sortedMapNpcs = useMemo(() => sortDialogueNpcs(dialogueNpcs), [dialogueNpcs]);
 
-  const sortedQuests = useMemo(
-    () =>
-      [...quests].sort((a, b) => {
-        const byTitle = a.title
-          .trim()
-          .localeCompare(b.title.trim(), undefined, { sensitivity: "base" });
-        return byTitle !== 0 ? byTitle : a.id.localeCompare(b.id);
-      }),
-    [quests],
-  );
-
-  const stepSensors = useSensors(
+  const dndSensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
   );
+
+  const onQuestListDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+    if (!over) return;
+    const activeId = parseQuestListSortableId(active.id);
+    const overId = parseQuestListSortableId(over.id);
+    if (!activeId || !overId || activeId === overId) return;
+
+    const current = useEditorStore.getState().quests;
+    const idxA = current.findIndex((q) => q.id === activeId);
+    const idxB = current.findIndex((q) => q.id === overId);
+    if (idxA < 0 || idxB < 0 || idxA === idxB) return;
+    setQuests(arrayMove(current, idxA, idxB));
+  };
 
   const onQuestStepDragEnd = (questId: string) => (event: DragEndEvent) => {
     const { active, over } = event;
@@ -187,11 +240,7 @@ export function QuestsEditorPanel() {
       if (questWaypointPickTarget?.questId === questId) {
         questWaypointPickTarget = {
           ...questWaypointPickTarget,
-          stepIndex: remapIndexAfterMove(
-            activeIdx,
-            overIdx,
-            questWaypointPickTarget.stepIndex,
-          ),
+          stepIndex: remapIndexAfterMove(activeIdx, overIdx, questWaypointPickTarget.stepIndex),
         };
       }
       const focusedQuestId =
@@ -294,9 +343,7 @@ export function QuestsEditorPanel() {
   const removeReward = (questId: string, listKey: QuestRewardListKey, rewardIndex: number) => {
     setQuests(
       quests.map((q) =>
-        q.id === questId
-          ? { ...q, [listKey]: q[listKey].filter((_, i) => i !== rewardIndex) }
-          : q,
+        q.id === questId ? { ...q, [listKey]: q[listKey].filter((_, i) => i !== rewardIndex) } : q,
       ),
     );
   };
@@ -309,9 +356,7 @@ export function QuestsEditorPanel() {
           ? { type: "experience", amount: 50 }
           : { type: "item", itemType: "bandage" as EntityType, count: 1 };
     setQuests(
-      quests.map((q) =>
-        q.id === questId ? { ...q, [listKey]: [...q[listKey], reward] } : q,
-      ),
+      quests.map((q) => (q.id === questId ? { ...q, [listKey]: [...q[listKey], reward] } : q)),
     );
   };
 
@@ -320,7 +365,8 @@ export function QuestsEditorPanel() {
       <div className="rounded border border-gray-600/80 bg-gray-950/50 px-2 py-2">
         <p className="text-[11px] font-medium text-gray-200">Quest definitions</p>
         <p className="mt-0.5 text-[10px] leading-snug text-gray-500">
-          Saved with the world map when you use Save under Map file.
+          Saved with the world map when you use Save under Map file. Drag the left grip to reorder
+          quests; order is only for the editor list (quests are identified by id in-game).
         </p>
       </div>
       <div className="flex items-center justify-between gap-2">
@@ -337,499 +383,569 @@ export function QuestsEditorPanel() {
       {quests.length === 0 ? (
         <p className="text-[10px] text-gray-500">No quests yet. Add one for NPCs to grant.</p>
       ) : (
-        <Accordion
-          type="multiple"
-          value={openQuestIds}
-          onValueChange={(value) => {
-            setOpenQuestIds(value);
-            if (focusedQuestId && !value.includes(focusedQuestId)) {
-              setFocusedQuestId(null);
-            }
-          }}
-          className="max-h-[70vh] overflow-y-auto rounded border border-indigo-800/80 bg-gray-900/80 pr-1"
+        <DndContext
+          sensors={dndSensors}
+          collisionDetection={closestCenter}
+          onDragEnd={onQuestListDragEnd}
         >
-          {sortedQuests.map((q) => (
-            <AccordionItem
-              key={q.id}
-              id={`editor-quest-${q.id}`}
-              value={q.id}
-              className={`border-gray-700/60 px-2 ${
-                focusedQuestId === q.id ? "bg-indigo-950/40 ring-1 ring-indigo-500/60" : ""
-              }`}
+          <SortableContext
+            items={quests.map((q) => questListSortableId(q.id))}
+            strategy={verticalListSortingStrategy}
+          >
+            <Accordion
+              type="multiple"
+              value={openQuestIds}
+              onValueChange={(value) => {
+                setOpenQuestIds(value);
+                if (focusedQuestId && !value.includes(focusedQuestId)) {
+                  setFocusedQuestId(null);
+                }
+              }}
+              className="max-h-[70vh] overflow-y-auto rounded border border-indigo-800/80 bg-gray-900/80 pr-1"
             >
-              <AccordionTrigger className="py-2.5 text-xs text-gray-100 hover:no-underline [&>svg]:size-3.5 [&>svg]:shrink-0 [&>svg]:text-gray-400">
-                <span className="block truncate pr-2 text-left">
-                  {focusedQuestId === q.id ? (
-                    <span className="mb-0.5 block text-[9px] uppercase tracking-wide text-indigo-300">
-                      Selected from NPC editor
-                    </span>
-                  ) : null}
-                  <span className="font-medium">{q.title.trim() || "Untitled quest"}</span>
-                </span>
-              </AccordionTrigger>
-              <AccordionContent className="space-y-2 pb-3 pt-0 text-white">
-                <div className="flex flex-wrap items-center justify-between gap-2 border-b border-gray-700/50 pb-2">
-                  <p className="font-mono text-[10px] text-gray-400">
-                    id: <span className="text-gray-200">{q.id}</span>
-                  </p>
-                  <Button
-                    type="button"
-                    size="sm"
-                    variant="secondary"
-                    className="!h-6 !text-[10px]"
-                    onClick={() => removeQuest(q.id)}
-                  >
-                    Delete
-                  </Button>
-                </div>
-                <label className="text-[10px] text-gray-400">Title</label>
-                <input
-                  className="mb-2 w-full rounded border border-gray-600 bg-gray-950 px-2 py-1 text-[11px]"
-                  value={q.title}
-                  onChange={(e) => updateQuest(q.id, { title: e.target.value })}
-                />
-                <label className="text-[10px] text-gray-400">Completion</label>
-                <select
-                  className="mb-2 w-full rounded border border-gray-600 bg-gray-950 px-2 py-1 text-[11px]"
-                  value={(q.completionType ?? "dialogue_npc") as QuestCompletionType}
-                  onChange={(e) => {
-                    const v = e.target.value as QuestCompletionType;
-                    updateQuest(q.id, {
-                      completionType: v === "dialogue_npc" ? undefined : v,
-                    });
-                  }}
-                >
-                  <option value="dialogue_npc">
-                    Turn in via NPC dialogue (completeQuestId on a session)
-                  </option>
-                  <option value="final_step">Auto-complete when the last step is done</option>
-                </select>
-                <p className="mb-2 text-[9px] leading-snug text-gray-500">
-                  Auto-complete grants &quot;Rewards on complete&quot; immediately after the final
-                  objective; you do not need an NPC session with completeQuestId.
-                </p>
-                <p className="mb-1 text-[10px] font-medium text-gray-300">Steps</p>
-                <p className="mb-1 text-[9px] leading-snug text-gray-500">
-                  Drag the grip to reorder objectives.
-                </p>
-                <DndContext
-                  sensors={stepSensors}
-                  collisionDetection={closestCenter}
-                  onDragEnd={onQuestStepDragEnd(q.id)}
-                >
-                  <SortableContext
-                    items={q.steps.map((_, i) => questStepSortableId(i))}
-                    strategy={verticalListSortingStrategy}
-                  >
-                    <div className="mb-2 space-y-2">
-                      {q.steps.map((s, i) => (
-                        <SortableQuestStepCard key={`${q.id}-step-${i}`} sortId={questStepSortableId(i)}>
-                          {(dragHandle) => (
-                            <div className="rounded border border-gray-700 bg-gray-950/80 p-1.5">
-                              <div className="mb-1 flex items-start justify-between gap-1">
-                                <div className="flex min-w-0 items-start gap-0.5">
-                                  {dragHandle}
-                                  <span className="pt-0.5 text-[9px] uppercase text-gray-500">
-                                    Step {i + 1}
-                                  </span>
-                                </div>
+              {quests.map((q, questOrdinal) => {
+                const isEditorMain = q.editorIsMainQuest === true;
+                return (
+                <SortableQuestRow key={q.id} questId={q.id}>
+                  {(questDragHandle) => (
+                    <>
+                      {questDragHandle}
+                      <AccordionItem
+                        id={`editor-quest-${q.id}`}
+                        value={q.id}
+                        className={`min-w-0 flex-1 border-0 px-2 ${
+                          focusedQuestId === q.id
+                            ? "bg-indigo-950/40 ring-1 ring-indigo-500/60"
+                            : isEditorMain
+                              ? "border-l-2 border-l-amber-500/65 bg-amber-950/20"
+                              : ""
+                        }`}
+                      >
+                        <AccordionTrigger
+                          className={`py-2.5 text-xs hover:no-underline [&>svg]:size-3.5 [&>svg]:shrink-0 [&>svg]:text-gray-400 ${
+                            isEditorMain ? "text-amber-100" : "text-gray-100"
+                          }`}
+                        >
+                          <span className="block truncate pr-2 text-left">
+                            {focusedQuestId === q.id ? (
+                              <span className="mb-0.5 block text-[9px] uppercase tracking-wide text-indigo-300">
+                                Selected from NPC editor
+                              </span>
+                            ) : null}
+                            <span className="font-medium">
+                              {questOrdinal + 1}. {q.title.trim() || "Untitled quest"}
+                            </span>
+                          </span>
+                        </AccordionTrigger>
+                        <AccordionContent className="space-y-2 pb-3 pt-0 text-white">
+                          <div className="flex flex-wrap items-center justify-between gap-2 border-b border-gray-700/50 pb-2">
+                            <p className="font-mono text-[10px] text-gray-400">
+                              id: <span className="text-gray-200">{q.id}</span>
+                            </p>
+                            <Button
+                              type="button"
+                              size="sm"
+                              variant="secondary"
+                              className="!h-6 !text-[10px]"
+                              onClick={() => removeQuest(q.id)}
+                            >
+                              Delete
+                            </Button>
+                          </div>
+                          <label className="text-[10px] text-gray-400">Title</label>
+                          <input
+                            className="mb-2 w-full rounded border border-gray-600 bg-gray-950 px-2 py-1 text-[11px]"
+                            value={q.title}
+                            onChange={(e) => updateQuest(q.id, { title: e.target.value })}
+                          />
+                          <label className="text-[10px] text-gray-400">Editor display</label>
+                          <select
+                            className="mb-2 w-full rounded border border-gray-600 bg-gray-950 px-2 py-1 text-[11px]"
+                            value={q.editorIsMainQuest ? "main" : "side"}
+                            onChange={(e) =>
+                              updateQuest(q.id, {
+                                editorIsMainQuest:
+                                  e.target.value === "main" ? true : undefined,
+                              })
+                            }
+                          >
+                            <option value="side">Side quest</option>
+                            <option value="main">Main quest</option>
+                          </select>
+                          <p className="mb-2 text-[9px] leading-snug text-gray-500">
+                            Colors the quest row in this panel only; not used in-game.
+                          </p>
+                          <label className="text-[10px] text-gray-400">Completion</label>
+                          <select
+                            className="mb-2 w-full rounded border border-gray-600 bg-gray-950 px-2 py-1 text-[11px]"
+                            value={(q.completionType ?? "dialogue_npc") as QuestCompletionType}
+                            onChange={(e) => {
+                              const v = e.target.value as QuestCompletionType;
+                              updateQuest(q.id, {
+                                completionType: v === "dialogue_npc" ? undefined : v,
+                              });
+                            }}
+                          >
+                            <option value="dialogue_npc">
+                              Turn in via NPC dialogue (completeQuestId on a session)
+                            </option>
+                            <option value="final_step">
+                              Auto-complete when the last step is done
+                            </option>
+                          </select>
+                          <p className="mb-2 text-[9px] leading-snug text-gray-500">
+                            Auto-complete grants &quot;Rewards on complete&quot; immediately after
+                            the final objective; you do not need an NPC session with
+                            completeQuestId.
+                          </p>
+                          <p className="mb-1 text-[10px] font-medium text-gray-300">Steps</p>
+                          <p className="mb-1 text-[9px] leading-snug text-gray-500">
+                            Drag the grip to reorder objectives.
+                          </p>
+                          <DndContext
+                            sensors={dndSensors}
+                            collisionDetection={closestCenter}
+                            onDragEnd={onQuestStepDragEnd(q.id)}
+                          >
+                            <SortableContext
+                              items={q.steps.map((_, i) => questStepSortableId(i))}
+                              strategy={verticalListSortingStrategy}
+                            >
+                              <div className="mb-2 space-y-2">
+                                {q.steps.map((s, i) => (
+                                  <SortableQuestStepCard
+                                    key={`${q.id}-step-${i}`}
+                                    sortId={questStepSortableId(i)}
+                                  >
+                                    {(dragHandle) => (
+                                      <div className="rounded border border-gray-700 bg-gray-950/80 p-1.5">
+                                        <div className="mb-1 flex items-start justify-between gap-1">
+                                          <div className="flex min-w-0 items-start gap-0.5">
+                                            {dragHandle}
+                                            <span className="pt-0.5 text-[9px] uppercase text-gray-500">
+                                              Step {i + 1}
+                                            </span>
+                                          </div>
+                                          <Button
+                                            type="button"
+                                            size="sm"
+                                            variant="secondary"
+                                            className="!h-5 !min-h-0 shrink-0 !px-1 !text-[9px]"
+                                            onClick={() => removeStep(q.id, i)}
+                                          >
+                                            Remove
+                                          </Button>
+                                        </div>
+                                        {s.type === "pickup_item" ? (
+                                          <select
+                                            className="w-full rounded border border-gray-600 bg-gray-900 text-[10px]"
+                                            value={s.itemType}
+                                            onChange={(e) =>
+                                              updateStep(q.id, i, {
+                                                type: "pickup_item",
+                                                itemType: e.target.value as EntityType,
+                                              })
+                                            }
+                                          >
+                                            {PICKUP_TYPES.map((t) => (
+                                              <option key={t} value={t}>
+                                                {t}
+                                              </option>
+                                            ))}
+                                          </select>
+                                        ) : null}
+                                        {s.type === "reach_waypoint" ? (
+                                          <div className="space-y-1">
+                                            <div className="flex flex-wrap items-center gap-1">
+                                              <input
+                                                type="number"
+                                                className="w-16 rounded border border-gray-600 bg-gray-900 text-[10px]"
+                                                min={0}
+                                                max={mapSide - 1}
+                                                aria-label="Waypoint row"
+                                                value={s.row}
+                                                onChange={(e) =>
+                                                  updateStep(q.id, i, {
+                                                    ...s,
+                                                    row: Math.max(
+                                                      0,
+                                                      Math.min(
+                                                        mapSide - 1,
+                                                        parseInt(e.target.value, 10) || 0,
+                                                      ),
+                                                    ),
+                                                  })
+                                                }
+                                              />
+                                              <input
+                                                type="number"
+                                                className="w-16 rounded border border-gray-600 bg-gray-900 text-[10px]"
+                                                min={0}
+                                                max={mapSide - 1}
+                                                aria-label="Waypoint column"
+                                                value={s.col}
+                                                onChange={(e) =>
+                                                  updateStep(q.id, i, {
+                                                    ...s,
+                                                    col: Math.max(
+                                                      0,
+                                                      Math.min(
+                                                        mapSide - 1,
+                                                        parseInt(e.target.value, 10) || 0,
+                                                      ),
+                                                    ),
+                                                  })
+                                                }
+                                              />
+                                              <input
+                                                type="number"
+                                                className="w-14 rounded border border-gray-600 bg-gray-900 text-[10px]"
+                                                title="radius tiles"
+                                                min={1}
+                                                max={8}
+                                                value={s.radiusTiles ?? 2}
+                                                onChange={(e) =>
+                                                  updateStep(q.id, i, {
+                                                    ...s,
+                                                    radiusTiles: Math.max(
+                                                      1,
+                                                      Math.min(
+                                                        8,
+                                                        parseInt(e.target.value, 10) || 2,
+                                                      ),
+                                                    ),
+                                                  })
+                                                }
+                                              />
+                                              {questWaypointPickTarget?.questId === q.id &&
+                                              questWaypointPickTarget.stepIndex === i ? (
+                                                <Button
+                                                  type="button"
+                                                  size="sm"
+                                                  variant="secondary"
+                                                  className="!h-6 !text-[9px]"
+                                                  onClick={() => cancelQuestWaypointPick()}
+                                                >
+                                                  Cancel pick
+                                                </Button>
+                                              ) : (
+                                                <Button
+                                                  type="button"
+                                                  size="sm"
+                                                  variant="secondary"
+                                                  className="!h-6 !text-[9px]"
+                                                  onClick={() => startQuestWaypointPick(q.id, i)}
+                                                >
+                                                  Target
+                                                </Button>
+                                              )}
+                                            </div>
+                                            <p className="text-[9px] leading-snug text-gray-500">
+                                              Row and column are map tile indices. Use Target, then
+                                              click the map.
+                                            </p>
+                                          </div>
+                                        ) : null}
+                                        {s.type === "kill_enemies" ? (
+                                          <div className="flex flex-wrap items-center gap-1">
+                                            <select
+                                              className="min-w-0 flex-1 rounded border border-gray-600 bg-gray-900 text-[10px]"
+                                              value={s.enemyType}
+                                              onChange={(e) =>
+                                                updateStep(q.id, i, {
+                                                  type: "kill_enemies",
+                                                  enemyType: e.target.value as EntityType,
+                                                  count: s.count,
+                                                })
+                                              }
+                                            >
+                                              {QUEST_KILL_ENEMY_TYPES.map((t) => (
+                                                <option key={t} value={t}>
+                                                  {t}
+                                                </option>
+                                              ))}
+                                            </select>
+                                            <input
+                                              type="number"
+                                              className="w-16 rounded border border-gray-600 bg-gray-900 text-[10px]"
+                                              title="Kill count"
+                                              min={1}
+                                              max={QUEST_KILL_ENEMIES_COUNT_MAX}
+                                              value={s.count}
+                                              onChange={(e) =>
+                                                updateStep(q.id, i, {
+                                                  type: "kill_enemies",
+                                                  enemyType: s.enemyType,
+                                                  count: Math.max(
+                                                    1,
+                                                    Math.min(
+                                                      QUEST_KILL_ENEMIES_COUNT_MAX,
+                                                      parseInt(e.target.value, 10) || 1,
+                                                    ),
+                                                  ),
+                                                })
+                                              }
+                                            />
+                                          </div>
+                                        ) : null}
+                                        {s.type === "talk_to_npc" ? (
+                                          <div className="space-y-1">
+                                            <label className="block text-[9px] text-gray-500">
+                                              Talk to
+                                            </label>
+                                            <select
+                                              className="w-full rounded border border-gray-600 bg-gray-900 px-1.5 py-1 text-[10px]"
+                                              value={talkStepSelectValue(s, sortedMapNpcs)}
+                                              disabled={sortedMapNpcs.length === 0}
+                                              onChange={(e) => {
+                                                const v = e.target.value.trim();
+                                                if (!v) {
+                                                  updateStep(q.id, i, { type: "talk_to_npc" });
+                                                  return;
+                                                }
+                                                const [rs, cs] = v.split(",");
+                                                const row = parseInt(rs ?? "", 10);
+                                                const col = parseInt(cs ?? "", 10);
+                                                const entry = dialogueNpcs.find(
+                                                  (n) => n.row === row && n.col === col,
+                                                );
+                                                updateStep(q.id, i, {
+                                                  type: "talk_to_npc",
+                                                  npcKey: v,
+                                                  ...(entry?.name?.trim()
+                                                    ? { npcName: entry.name.trim() }
+                                                    : {}),
+                                                });
+                                              }}
+                                            >
+                                              <option value="">
+                                                {sortedMapNpcs.length
+                                                  ? "Select NPC…"
+                                                  : "No dialogue NPCs — add one on the map"}
+                                              </option>
+                                              {sortedMapNpcs.map((e) => {
+                                                const val = `${e.row},${e.col}`;
+                                                const label = e.name?.trim()
+                                                  ? `${e.name.trim()} (row ${e.row}, col ${e.col})`
+                                                  : `Unnamed (row ${e.row}, col ${e.col})`;
+                                                return (
+                                                  <option key={val} value={val}>
+                                                    {label}
+                                                  </option>
+                                                );
+                                              })}
+                                            </select>
+                                            <p className="text-[9px] leading-snug text-gray-500">
+                                              Completes when the player finishes that NPC&apos;s
+                                              dialogue (after all lines).
+                                            </p>
+                                          </div>
+                                        ) : null}
+                                      </div>
+                                    )}
+                                  </SortableQuestStepCard>
+                                ))}
+                              </div>
+                            </SortableContext>
+                          </DndContext>
+                          <div className="mb-2 flex flex-wrap gap-1">
+                            <Button
+                              type="button"
+                              size="sm"
+                              variant="secondary"
+                              className="!h-6 !text-[9px]"
+                              onClick={() => addStep(q.id, "pickup_item")}
+                            >
+                              + Pickup
+                            </Button>
+                            <Button
+                              type="button"
+                              size="sm"
+                              variant="secondary"
+                              className="!h-6 !text-[9px]"
+                              onClick={() => addStep(q.id, "reach_waypoint")}
+                            >
+                              + Waypoint
+                            </Button>
+                            <Button
+                              type="button"
+                              size="sm"
+                              variant="secondary"
+                              className="!h-6 !text-[9px]"
+                              onClick={() => addStep(q.id, "kill_enemies")}
+                            >
+                              + Kill enemies
+                            </Button>
+                            <Button
+                              type="button"
+                              size="sm"
+                              variant="secondary"
+                              className="!h-6 !text-[9px]"
+                              onClick={() => addStep(q.id, "talk_to_npc")}
+                            >
+                              + Talk to NPC
+                            </Button>
+                          </div>
+                          {REWARD_SECTIONS.map(({ key: listKey, label }) => (
+                            <div key={listKey} className="space-y-1">
+                              <p className="mb-1 text-[10px] font-medium text-gray-300">{label}</p>
+                              <div className="space-y-2">
+                                {q[listKey].map((r, i) => (
+                                  <div
+                                    key={i}
+                                    className="flex flex-wrap items-center gap-1 rounded border border-gray-700 bg-gray-950/80 p-1"
+                                  >
+                                    {r.type === "permanent_stat" ? (
+                                      <>
+                                        <select
+                                          className="rounded border border-gray-600 bg-gray-900 text-[10px]"
+                                          value={r.stat}
+                                          onChange={(e) =>
+                                            updateReward(q.id, listKey, i, {
+                                              type: "permanent_stat",
+                                              stat: e.target.value,
+                                              amount: r.amount,
+                                            })
+                                          }
+                                        >
+                                          {STAT_OPTIONS.map((st) => (
+                                            <option key={st} value={st}>
+                                              {st}
+                                            </option>
+                                          ))}
+                                        </select>
+                                        <input
+                                          type="number"
+                                          className="w-12 rounded border border-gray-600 bg-gray-900 text-[10px]"
+                                          min={1}
+                                          max={99}
+                                          value={r.amount}
+                                          onChange={(e) =>
+                                            updateReward(q.id, listKey, i, {
+                                              type: "permanent_stat",
+                                              stat: r.stat,
+                                              amount: Math.max(
+                                                1,
+                                                Math.min(99, parseInt(e.target.value, 10) || 1),
+                                              ),
+                                            })
+                                          }
+                                        />
+                                      </>
+                                    ) : r.type === "experience" ? (
+                                      <>
+                                        <span className="text-[10px] text-gray-400">XP</span>
+                                        <input
+                                          type="number"
+                                          className="w-20 rounded border border-gray-600 bg-gray-900 text-[10px]"
+                                          min={1}
+                                          max={1_000_000}
+                                          value={r.amount}
+                                          onChange={(e) =>
+                                            updateReward(q.id, listKey, i, {
+                                              type: "experience",
+                                              amount: Math.max(
+                                                1,
+                                                Math.min(
+                                                  1_000_000,
+                                                  parseInt(e.target.value, 10) || 1,
+                                                ),
+                                              ),
+                                            })
+                                          }
+                                        />
+                                      </>
+                                    ) : (
+                                      <>
+                                        <select
+                                          className="rounded border border-gray-600 bg-gray-900 text-[10px]"
+                                          value={r.itemType}
+                                          onChange={(e) =>
+                                            updateReward(q.id, listKey, i, {
+                                              type: "item",
+                                              itemType: e.target.value as EntityType,
+                                              count: r.count,
+                                            })
+                                          }
+                                        >
+                                          {PICKUP_TYPES.map((t) => (
+                                            <option key={t} value={t}>
+                                              {t}
+                                            </option>
+                                          ))}
+                                        </select>
+                                        <input
+                                          type="number"
+                                          className="w-10 rounded border border-gray-600 bg-gray-900 text-[10px]"
+                                          min={1}
+                                          max={99}
+                                          value={r.count}
+                                          onChange={(e) =>
+                                            updateReward(q.id, listKey, i, {
+                                              type: "item",
+                                              itemType: r.itemType,
+                                              count: Math.max(
+                                                1,
+                                                Math.min(99, parseInt(e.target.value, 10) || 1),
+                                              ),
+                                            })
+                                          }
+                                        />
+                                      </>
+                                    )}
+                                    <Button
+                                      type="button"
+                                      size="sm"
+                                      variant="secondary"
+                                      className="!h-5 !px-1 !text-[9px]"
+                                      onClick={() => removeReward(q.id, listKey, i)}
+                                    >
+                                      ×
+                                    </Button>
+                                  </div>
+                                ))}
+                              </div>
+                              <div className="mt-1 flex gap-1">
                                 <Button
                                   type="button"
                                   size="sm"
                                   variant="secondary"
-                                  className="!h-5 !min-h-0 shrink-0 !px-1 !text-[9px]"
-                                  onClick={() => removeStep(q.id, i)}
+                                  className="!h-6 !text-[9px]"
+                                  onClick={() => addReward(q.id, listKey, "permanent_stat")}
                                 >
-                                  Remove
+                                  + Stat
+                                </Button>
+                                <Button
+                                  type="button"
+                                  size="sm"
+                                  variant="secondary"
+                                  className="!h-6 !text-[9px]"
+                                  onClick={() => addReward(q.id, listKey, "item")}
+                                >
+                                  + Item
+                                </Button>
+                                <Button
+                                  type="button"
+                                  size="sm"
+                                  variant="secondary"
+                                  className="!h-6 !text-[9px]"
+                                  onClick={() => addReward(q.id, listKey, "experience")}
+                                >
+                                  + XP
                                 </Button>
                               </div>
-                      {s.type === "pickup_item" ? (
-                        <select
-                          className="w-full rounded border border-gray-600 bg-gray-900 text-[10px]"
-                          value={s.itemType}
-                          onChange={(e) =>
-                            updateStep(q.id, i, {
-                              type: "pickup_item",
-                              itemType: e.target.value as EntityType,
-                            })
-                          }
-                        >
-                          {PICKUP_TYPES.map((t) => (
-                            <option key={t} value={t}>
-                              {t}
-                            </option>
-                          ))}
-                        </select>
-                      ) : null}
-                      {s.type === "reach_waypoint" ? (
-                        <div className="space-y-1">
-                          <div className="flex flex-wrap items-center gap-1">
-                            <input
-                              type="number"
-                              className="w-16 rounded border border-gray-600 bg-gray-900 text-[10px]"
-                              min={0}
-                              max={mapSide - 1}
-                              aria-label="Waypoint row"
-                              value={s.row}
-                              onChange={(e) =>
-                                updateStep(q.id, i, {
-                                  ...s,
-                                  row: Math.max(
-                                    0,
-                                    Math.min(mapSide - 1, parseInt(e.target.value, 10) || 0),
-                                  ),
-                                })
-                              }
-                            />
-                            <input
-                              type="number"
-                              className="w-16 rounded border border-gray-600 bg-gray-900 text-[10px]"
-                              min={0}
-                              max={mapSide - 1}
-                              aria-label="Waypoint column"
-                              value={s.col}
-                              onChange={(e) =>
-                                updateStep(q.id, i, {
-                                  ...s,
-                                  col: Math.max(
-                                    0,
-                                    Math.min(mapSide - 1, parseInt(e.target.value, 10) || 0),
-                                  ),
-                                })
-                              }
-                            />
-                            <input
-                              type="number"
-                              className="w-14 rounded border border-gray-600 bg-gray-900 text-[10px]"
-                              title="radius tiles"
-                              min={1}
-                              max={8}
-                              value={s.radiusTiles ?? 2}
-                              onChange={(e) =>
-                                updateStep(q.id, i, {
-                                  ...s,
-                                  radiusTiles: Math.max(
-                                    1,
-                                    Math.min(8, parseInt(e.target.value, 10) || 2),
-                                  ),
-                                })
-                              }
-                            />
-                            {questWaypointPickTarget?.questId === q.id &&
-                            questWaypointPickTarget.stepIndex === i ? (
-                              <Button
-                                type="button"
-                                size="sm"
-                                variant="secondary"
-                                className="!h-6 !text-[9px]"
-                                onClick={() => cancelQuestWaypointPick()}
-                              >
-                                Cancel pick
-                              </Button>
-                            ) : (
-                              <Button
-                                type="button"
-                                size="sm"
-                                variant="secondary"
-                                className="!h-6 !text-[9px]"
-                                onClick={() => startQuestWaypointPick(q.id, i)}
-                              >
-                                Target
-                              </Button>
-                            )}
-                          </div>
-                          <p className="text-[9px] leading-snug text-gray-500">
-                            Row and column are map tile indices. Use Target, then click the map.
-                          </p>
-                        </div>
-                      ) : null}
-                      {s.type === "kill_enemies" ? (
-                        <div className="flex flex-wrap items-center gap-1">
-                          <select
-                            className="min-w-0 flex-1 rounded border border-gray-600 bg-gray-900 text-[10px]"
-                            value={s.enemyType}
-                            onChange={(e) =>
-                              updateStep(q.id, i, {
-                                type: "kill_enemies",
-                                enemyType: e.target.value as EntityType,
-                                count: s.count,
-                              })
-                            }
-                          >
-                            {QUEST_KILL_ENEMY_TYPES.map((t) => (
-                              <option key={t} value={t}>
-                                {t}
-                              </option>
-                            ))}
-                          </select>
-                          <input
-                            type="number"
-                            className="w-16 rounded border border-gray-600 bg-gray-900 text-[10px]"
-                            title="Kill count"
-                            min={1}
-                            max={QUEST_KILL_ENEMIES_COUNT_MAX}
-                            value={s.count}
-                            onChange={(e) =>
-                              updateStep(q.id, i, {
-                                type: "kill_enemies",
-                                enemyType: s.enemyType,
-                                count: Math.max(
-                                  1,
-                                  Math.min(
-                                    QUEST_KILL_ENEMIES_COUNT_MAX,
-                                    parseInt(e.target.value, 10) || 1,
-                                  ),
-                                ),
-                              })
-                            }
-                          />
-                        </div>
-                      ) : null}
-                      {s.type === "talk_to_npc" ? (
-                        <div className="space-y-1">
-                          <label className="block text-[9px] text-gray-500">Talk to</label>
-                          <select
-                            className="w-full rounded border border-gray-600 bg-gray-900 px-1.5 py-1 text-[10px]"
-                            value={talkStepSelectValue(s, sortedMapNpcs)}
-                            disabled={sortedMapNpcs.length === 0}
-                            onChange={(e) => {
-                              const v = e.target.value.trim();
-                              if (!v) {
-                                updateStep(q.id, i, { type: "talk_to_npc" });
-                                return;
-                              }
-                              const [rs, cs] = v.split(",");
-                              const row = parseInt(rs ?? "", 10);
-                              const col = parseInt(cs ?? "", 10);
-                              const entry = dialogueNpcs.find(
-                                (n) => n.row === row && n.col === col,
-                              );
-                              updateStep(q.id, i, {
-                                type: "talk_to_npc",
-                                npcKey: v,
-                                ...(entry?.name?.trim() ? { npcName: entry.name.trim() } : {}),
-                              });
-                            }}
-                          >
-                            <option value="">
-                              {sortedMapNpcs.length
-                                ? "Select NPC…"
-                                : "No dialogue NPCs — add one on the map"}
-                            </option>
-                            {sortedMapNpcs.map((e) => {
-                              const val = `${e.row},${e.col}`;
-                              const label = e.name?.trim()
-                                ? `${e.name.trim()} (row ${e.row}, col ${e.col})`
-                                : `Unnamed (row ${e.row}, col ${e.col})`;
-                              return (
-                                <option key={val} value={val}>
-                                  {label}
-                                </option>
-                              );
-                            })}
-                          </select>
-                          <p className="text-[9px] leading-snug text-gray-500">
-                            Completes when the player finishes that NPC&apos;s dialogue (after all
-                            lines).
-                          </p>
-                        </div>
-                      ) : null}
                             </div>
-                          )}
-                        </SortableQuestStepCard>
-                      ))}
-                    </div>
-                  </SortableContext>
-                </DndContext>
-                <div className="mb-2 flex flex-wrap gap-1">
-                  <Button
-                    type="button"
-                    size="sm"
-                    variant="secondary"
-                    className="!h-6 !text-[9px]"
-                    onClick={() => addStep(q.id, "pickup_item")}
-                  >
-                    + Pickup
-                  </Button>
-                  <Button
-                    type="button"
-                    size="sm"
-                    variant="secondary"
-                    className="!h-6 !text-[9px]"
-                    onClick={() => addStep(q.id, "reach_waypoint")}
-                  >
-                    + Waypoint
-                  </Button>
-                  <Button
-                    type="button"
-                    size="sm"
-                    variant="secondary"
-                    className="!h-6 !text-[9px]"
-                    onClick={() => addStep(q.id, "kill_enemies")}
-                  >
-                    + Kill enemies
-                  </Button>
-                  <Button
-                    type="button"
-                    size="sm"
-                    variant="secondary"
-                    className="!h-6 !text-[9px]"
-                    onClick={() => addStep(q.id, "talk_to_npc")}
-                  >
-                    + Talk to NPC
-                  </Button>
-                </div>
-                {REWARD_SECTIONS.map(({ key: listKey, label }) => (
-                  <div key={listKey} className="space-y-1">
-                    <p className="mb-1 text-[10px] font-medium text-gray-300">{label}</p>
-                    <div className="space-y-2">
-                      {q[listKey].map((r, i) => (
-                        <div
-                          key={i}
-                          className="flex flex-wrap items-center gap-1 rounded border border-gray-700 bg-gray-950/80 p-1"
-                        >
-                          {r.type === "permanent_stat" ? (
-                            <>
-                              <select
-                                className="rounded border border-gray-600 bg-gray-900 text-[10px]"
-                                value={r.stat}
-                                onChange={(e) =>
-                                  updateReward(q.id, listKey, i, {
-                                    type: "permanent_stat",
-                                    stat: e.target.value,
-                                    amount: r.amount,
-                                  })
-                                }
-                              >
-                                {STAT_OPTIONS.map((st) => (
-                                  <option key={st} value={st}>
-                                    {st}
-                                  </option>
-                                ))}
-                              </select>
-                              <input
-                                type="number"
-                                className="w-12 rounded border border-gray-600 bg-gray-900 text-[10px]"
-                                min={1}
-                                max={99}
-                                value={r.amount}
-                                onChange={(e) =>
-                                  updateReward(q.id, listKey, i, {
-                                    type: "permanent_stat",
-                                    stat: r.stat,
-                                    amount: Math.max(
-                                      1,
-                                      Math.min(99, parseInt(e.target.value, 10) || 1),
-                                    ),
-                                  })
-                                }
-                              />
-                            </>
-                          ) : r.type === "experience" ? (
-                            <>
-                              <span className="text-[10px] text-gray-400">XP</span>
-                              <input
-                                type="number"
-                                className="w-20 rounded border border-gray-600 bg-gray-900 text-[10px]"
-                                min={1}
-                                max={1_000_000}
-                                value={r.amount}
-                                onChange={(e) =>
-                                  updateReward(q.id, listKey, i, {
-                                    type: "experience",
-                                    amount: Math.max(
-                                      1,
-                                      Math.min(1_000_000, parseInt(e.target.value, 10) || 1),
-                                    ),
-                                  })
-                                }
-                              />
-                            </>
-                          ) : (
-                            <>
-                              <select
-                                className="rounded border border-gray-600 bg-gray-900 text-[10px]"
-                                value={r.itemType}
-                                onChange={(e) =>
-                                  updateReward(q.id, listKey, i, {
-                                    type: "item",
-                                    itemType: e.target.value as EntityType,
-                                    count: r.count,
-                                  })
-                                }
-                              >
-                                {PICKUP_TYPES.map((t) => (
-                                  <option key={t} value={t}>
-                                    {t}
-                                  </option>
-                                ))}
-                              </select>
-                              <input
-                                type="number"
-                                className="w-10 rounded border border-gray-600 bg-gray-900 text-[10px]"
-                                min={1}
-                                max={99}
-                                value={r.count}
-                                onChange={(e) =>
-                                  updateReward(q.id, listKey, i, {
-                                    type: "item",
-                                    itemType: r.itemType,
-                                    count: Math.max(
-                                      1,
-                                      Math.min(99, parseInt(e.target.value, 10) || 1),
-                                    ),
-                                  })
-                                }
-                              />
-                            </>
-                          )}
-                          <Button
-                            type="button"
-                            size="sm"
-                            variant="secondary"
-                            className="!h-5 !px-1 !text-[9px]"
-                            onClick={() => removeReward(q.id, listKey, i)}
-                          >
-                            ×
-                          </Button>
-                        </div>
-                      ))}
-                    </div>
-                    <div className="mt-1 flex gap-1">
-                      <Button
-                        type="button"
-                        size="sm"
-                        variant="secondary"
-                        className="!h-6 !text-[9px]"
-                        onClick={() => addReward(q.id, listKey, "permanent_stat")}
-                      >
-                        + Stat
-                      </Button>
-                      <Button
-                        type="button"
-                        size="sm"
-                        variant="secondary"
-                        className="!h-6 !text-[9px]"
-                        onClick={() => addReward(q.id, listKey, "item")}
-                      >
-                        + Item
-                      </Button>
-                      <Button
-                        type="button"
-                        size="sm"
-                        variant="secondary"
-                        className="!h-6 !text-[9px]"
-                        onClick={() => addReward(q.id, listKey, "experience")}
-                      >
-                        + XP
-                      </Button>
-                    </div>
-                  </div>
-                ))}
-              </AccordionContent>
-            </AccordionItem>
-          ))}
-        </Accordion>
+                          ))}
+                        </AccordionContent>
+                      </AccordionItem>
+                    </>
+                  )}
+                </SortableQuestRow>
+                );
+              })}
+            </Accordion>
+          </SortableContext>
+        </DndContext>
       )}
     </div>
   );

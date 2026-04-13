@@ -41,3 +41,22 @@ describe("normalizeQuests completionType", () => {
     expect(out[0]?.completionType).toBeUndefined();
   });
 });
+
+describe("normalizeQuests editorIsMainQuest", () => {
+  const n = 256;
+  const base = { id: "q", title: "Q", steps: [], rewards: [], startRewards: [] };
+
+  it("sets editorIsMainQuest only when true", () => {
+    const out = normalizeQuests(
+      [
+        { ...base, id: "main", editorIsMainQuest: true },
+        { ...base, id: "side", editorIsMainQuest: false },
+        { ...base, id: "legacy" },
+      ],
+      n,
+    );
+    expect(out.find((q) => q.id === "main")?.editorIsMainQuest).toBe(true);
+    expect(out.find((q) => q.id === "side")?.editorIsMainQuest).toBeUndefined();
+    expect(out.find((q) => q.id === "legacy")?.editorIsMainQuest).toBeUndefined();
+  });
+});

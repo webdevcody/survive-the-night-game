@@ -56,7 +56,8 @@ function questSummaryLabel(questId: string | undefined, quests: WorldMapQuestDef
   if (!id) return "";
   const def = quests.find((q) => q.id === id);
   const title = def?.title?.trim();
-  return title ? title : id;
+  const label = title ? title : id;
+  return def?.editorIsMainQuest ? `★ ${label}` : label;
 }
 
 function questOptionsForSelect(
@@ -147,7 +148,8 @@ function makeDefaultAtomic(
 
 function questPickerLabel(q: WorldMapQuestDefinition): string {
   const t = q.title.trim();
-  return t || q.id;
+  const base = t || q.id;
+  return q.editorIsMainQuest ? `★ ${base}` : base;
 }
 
 function isAuthoredQuestId(id: string, quests: WorldMapQuestDefinition[]): boolean {
