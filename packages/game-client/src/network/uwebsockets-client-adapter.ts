@@ -11,8 +11,7 @@ export class UWebSocketsClientAdapter implements IClientAdapter {
   private nextSocketId: number = 0;
 
   connect(url: string, options?: IClientConnectionOptions): ISocketAdapter {
-    // Convert Socket.IO URL format to WebSocket URL format
-    // e.g., "http://localhost:3001" -> "ws://localhost:3001"
+    // Convert HTTP(S) URLs to WebSocket URLs for the browser transport.
     let wsUrl = url;
     if (wsUrl.startsWith("http://")) {
       wsUrl = wsUrl.replace("http://", "ws://");

@@ -4,12 +4,10 @@ import { ClientSentEvents } from "@shared/events/events";
 import { GameEvent } from "@shared/events/types";
 import { GameServer } from "@/core/server";
 import {
-  EDITOR_WORLD_MAP_RELOAD_PATH,
-  isEditorMapReloadRemoteAddrAllowed,
   isEditorWorldMapReloadHttpEnabled,
   isValidEditorMapReloadApiKey,
 } from "@/config/editor-map-reload";
-import { createServer, type IncomingMessage, type ServerResponse } from "http";
+import { createServer } from "http";
 import { MapManager } from "@/world/map-manager";
 import { Broadcaster, IEntityManager, IGameManagers } from "@/managers/types";
 import { getConfig } from "@shared/config";
@@ -66,7 +64,6 @@ export class ServerSocketManager implements Broadcaster {
   private playerDisplayNames: Map<string, string> = new Map();
   private playerColors: Map<string, PlayerColor> = new Map();
   private port: number;
-  private httpServer: any;
   private entityManager?: IEntityManager;
   private mapManager?: MapManager;
   private gameServer: GameServer;
@@ -84,31 +81,20 @@ export class ServerSocketManager implements Broadcaster {
     this.port = port;
     this.bufferManager = new BufferManager();
 
-    const implementation = getConfig().network.WEBSOCKET_IMPLEMENTATION;
+    // uWebSockets owns the game port; this Node server only satisfies the shared adapter interface.
+    const httpServer = createServer((req, res) => {
+      res.writeHead(404, { "Content-Type": "text/plain" });
+      res.end("Not Found");
+    });
 
-    // Create HTTP server for websocket adapter
-    // Note: Biome editor API is now in a separate service (biome-editor-server)
-    if (implementation === "socketio") {
-      this.httpServer = createServer((req, res) => {
-        this.handleNodeHttpRequest(req, res);
-      });
-    } else {
-      // uWebSockets owns the game port; this Node server is never listened on.
-      this.httpServer = createServer((req, res) => {
-        res.writeHead(404, { "Content-Type": "text/plain" });
-        res.end("Not Found");
-      });
-    }
-
-    // Create server adapter based on configuration
-    this.io = createServerAdapter(this.httpServer, {
+    this.io = createServerAdapter(httpServer, {
       origin: "*",
       methods: ["GET", "POST"],
     });
 
     this.gameServer = gameServer;
 
-    if (isEditorWorldMapReloadHttpEnabled() && implementation === "uwebsockets") {
+    if (isEditorWorldMapReloadHttpEnabled()) {
       (this.io as UWebSocketsServerAdapter).setEditorReloadWorldMapHandler((res, req) => {
         this.handleEditorReloadWorldMapUws(res, req);
       });
@@ -606,15 +592,7 @@ export class ServerSocketManager implements Broadcaster {
   }
 
   public listen(): void {
-    const implementation = getConfig().network.WEBSOCKET_IMPLEMENTATION;
-
-    if (implementation === "uwebsockets") {
-      // uWebSockets listens directly on the port - no HTTP server needed
-      this.io.listen(this.port, () => {});
-    } else {
-      // Socket.IO: Listen using the HTTP server directly (which has Express attached)
-      this.httpServer.listen(this.port, () => {});
-    }
+    this.io.listen(this.port, () => {});
   }
 
   private setupSocketListeners(socket: ISocketAdapter): void {
@@ -690,58 +668,6 @@ export class ServerSocketManager implements Broadcaster {
       }
       return;
     }
-  }
-
-  private httpPathname(req: IncomingMessage): string {
-    const raw = req.url ?? "/";
-    const q = raw.indexOf("?");
-    return q === -1 ? raw : raw.slice(0, q);
-  }
-
-  private sendJsonHttp(res: ServerResponse, status: number, body: Record<string, unknown>): void {
-    res.writeHead(status, { "Content-Type": "application/json" });
-    res.end(JSON.stringify(body));
-  }
-
-  private handleNodeHttpRequest(req: IncomingMessage, res: ServerResponse): void {
-    const pathname = this.httpPathname(req);
-    // Socket.IO registers another "request" listener; do not end the response for its paths.
-    if (pathname.startsWith("/socket.io")) {
-      return;
-    }
-
-    if (
-      isEditorWorldMapReloadHttpEnabled() &&
-      req.method === "POST" &&
-      pathname === EDITOR_WORLD_MAP_RELOAD_PATH
-    ) {
-      const remote = req.socket.remoteAddress ?? undefined;
-      if (!isEditorMapReloadRemoteAddrAllowed(remote)) {
-        console.warn(`[EditorMapReload] rejected: non-loopback remote ${remote ?? "(none)"}`);
-        this.sendJsonHttp(res, 403, { ok: false, error: "Forbidden" });
-        return;
-      }
-      const header = req.headers["x-game-server-api-key"];
-      const key = Array.isArray(header) ? header[0] : header;
-      if (!isValidEditorMapReloadApiKey(key)) {
-        console.warn("[EditorMapReload] rejected: bad or missing x-game-server-api-key");
-        this.sendJsonHttp(res, 401, { ok: false, error: "Unauthorized" });
-        return;
-      }
-      void this.gameServer.startNewGame().then(
-        () => {
-          this.sendJsonHttp(res, 200, { ok: true });
-        },
-        (err) => {
-          console.error("[EditorMapReload] startNewGame failed:", err);
-          this.sendJsonHttp(res, 500, { ok: false, error: "Reload failed" });
-        },
-      );
-      return;
-    }
-
-    res.writeHead(404, { "Content-Type": "text/plain" });
-    res.end("Not Found");
   }
 
   private handleEditorReloadWorldMapUws(res: uWS.HttpResponse, req: uWS.HttpRequest): void {

@@ -26,7 +26,6 @@
     "@survive-the-night/game-shared": "*",
     "dotenv": "^16.4.7",
     "obscenity": "^0.4.5",
-    "socket.io": "^4.8.1",
     "uwebsockets.js": "github:uNetworking/uWebSockets.js#v20.56.0"
   }
 }
