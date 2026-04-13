@@ -41,6 +41,7 @@ import { MolotovCocktailClient } from "./items/molotov-cocktail";
 import { ThrowingKnifeClient } from "./items/throwing-knife";
 import { CrateClient } from "./items/crate";
 import { GallonDrumClient } from "./items/gallon-drum";
+import { SignClient } from "./items/sign";
 import { SentryGunClient } from "./items/sentry-gun";
 import { SentryGunLevel2Client } from "./items/sentry-gun-level-2";
 import { SentryGunLevel3Client } from "./items/sentry-gun-level-3";
@@ -70,6 +71,7 @@ import { WorkbenchClient } from "./environment/workbench";
 import { ForgeClient } from "./environment/forge";
 import { ChemistryTableClient } from "./environment/chemistry-table";
 import { LockerClient } from "./environment/locker";
+import { AuctionHouseClient } from "./environment/auction-house";
 import { LightDecalClient } from "@/entities/environment/light-decal";
 import { MessageDecalClient } from "@/entities/environment/message-decal";
 import { MerchantClient } from "./environment/merchant";
@@ -130,6 +132,7 @@ const CLIENT_ENTITY_CONSTRUCTORS: Record<EntityType, ClientEntityConstructor> = 
   throwing_knife: ThrowingKnifeClient,
   crate: CrateClient,
   gallon_drum: GallonDrumClient,
+  sign: SignClient,
   sentry_gun: SentryGunClient,
   sentry_gun_level_2: SentryGunLevel2Client,
   sentry_gun_level_3: SentryGunLevel3Client,
@@ -164,6 +167,7 @@ const CLIENT_ENTITY_CONSTRUCTORS: Record<EntityType, ClientEntityConstructor> = 
   car: CarClient,
   survivor: SurvivorClient,
   dialogue_survivor_npc: DialogueSurvivorNpcClient,
+  auction_house: AuctionHouseClient,
   blood: BloodClient,
   acid: AcidClient,
 } as Record<EntityType, ClientEntityConstructor>;

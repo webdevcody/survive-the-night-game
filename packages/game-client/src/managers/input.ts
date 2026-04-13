@@ -26,6 +26,9 @@ export interface InputStateQueries {
   isInventoryScreenOpen?: () => boolean;
   isNpcDialogueOpen?: () => boolean;
   isQuestCompletedModalOpen?: () => boolean;
+  isBlockingModalOpen?: () => boolean;
+  /** If the sign read modal is open, close it and return true so interact (E) does not fall through. */
+  tryCloseSignReadModalOnInteractKey?: () => boolean;
   isPlayerDead?: () => boolean;
 }
 
@@ -34,8 +37,6 @@ export interface InputEventMap {
   toggleInventoryScreen: void;
   inventoryPanelFocusTab: { tab: InventoryUiTab };
   toggleQuestJournal: void;
-  showPlayerList: void;
-  hidePlayerList: void;
   toggleChat: void;
   chatInput: { key: string; shiftKey: boolean };
   sendChat: void;
@@ -169,7 +170,8 @@ export class InputManager {
       (this.queries.isBankOpen?.() ?? false) ||
       (this.queries.isNpcDialogueOpen?.() ?? false) ||
       (this.queries.isFullscreenMapOpen?.() ?? false) ||
-      (this.queries.isQuestCompletedModalOpen?.() ?? false)
+      (this.queries.isQuestCompletedModalOpen?.() ?? false) ||
+      (this.queries.isBlockingModalOpen?.() ?? false)
     );
   }
 
@@ -245,10 +247,14 @@ export class InputManager {
 
     // Create and store bound handlers for cleanup
     this.boundKeydownHandler = (e: KeyboardEvent) => {
-      this.blockBrowserKeys(e);
-      // Ignore inputs when user is typing in a form element
       const target = e.target as HTMLElement;
-      if (target.tagName === "INPUT" || target.tagName === "TEXTAREA" || target.isContentEditable) {
+      const isFormTyping =
+        target.tagName === "INPUT" || target.tagName === "TEXTAREA" || target.isContentEditable;
+      // Don't steal digit/WASD/etc. from real form fields (auction modal, chat, etc.)
+      if (!isFormTyping) {
+        this.blockBrowserKeys(e);
+      }
+      if (isFormTyping) {
         return;
       }
 
@@ -293,6 +299,14 @@ export class InputManager {
           e.preventDefault();
           this.emit("dismissQuestCompletedModal");
         }
+        return;
+      }
+
+      if (eventCode === "KeyE" && queries.tryCloseSignReadModalOnInteractKey?.()) {
+        return;
+      }
+
+      if (queries.isBlockingModalOpen?.()) {
         return;
       }
 
@@ -515,10 +529,6 @@ export class InputManager {
         case "KeyN":
           this.emit("toggleMute");
           break;
-        case "Tab":
-          e.preventDefault();
-          this.emit("showPlayerList");
-          break;
         case "Escape":
           this.emit("escape");
           break;
@@ -551,6 +561,10 @@ export class InputManager {
       }
 
       if (queries.isQuestCompletedModalOpen?.()) {
+        return;
+      }
+
+      if (queries.isBlockingModalOpen?.()) {
         return;
       }
 
@@ -595,10 +609,6 @@ export class InputManager {
         case "ControlLeft":
         case "ControlRight":
           this.inputs.sneak = false;
-          break;
-        case "Tab":
-          e.preventDefault();
-          this.emit("hidePlayerList");
           break;
       }
 

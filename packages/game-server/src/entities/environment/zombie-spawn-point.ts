@@ -4,7 +4,7 @@ import Positionable from "@/extensions/positionable";
 import Updatable from "@/extensions/updatable";
 import { Entities } from "@/constants";
 import { ZombieFactory, type ZombieType } from "@/util/zombie-factory";
-import { getEnemySpawnRespawnMs } from "@shared/map/spawn-palette";
+import { getZombieSpawnFixtureRespawnMs } from "@shared/map/spawn-palette";
 import { getConfig } from "@shared/config";
 import Vector2 from "@/util/vector2";
 import PoolManager from "@shared/util/pool-manager";
@@ -39,7 +39,7 @@ export class ZombieSpawnPoint extends Entity {
       Number.isFinite(respawnIntervalMsOverride) &&
       respawnIntervalMsOverride > 0
         ? Math.round(respawnIntervalMsOverride)
-        : getEnemySpawnRespawnMs(zombieType);
+        : getZombieSpawnFixtureRespawnMs(zombieType);
 
     const poolManager = PoolManager.getInstance();
     const TILE_SIZE = getConfig().world.TILE_SIZE;

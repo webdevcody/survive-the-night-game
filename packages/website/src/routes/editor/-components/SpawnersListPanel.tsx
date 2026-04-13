@@ -1,11 +1,15 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
 import { useEditorStore } from "../-store";
 import {
   SPAWN_PALETTE_ENTRIES,
   SPAWNER_META_CONFIGURABLE_ENTRIES,
+  SPAWNER_META_TYPEAHEAD_GROUP_LABEL,
+  SPAWNER_META_TYPEAHEAD_GROUP_ORDER,
+  getSpawnerMetaTypeaheadGroupId,
   isNpcDialogueSpawnTile,
+  isPlayerSpawnTile,
 } from "@survive-the-night/game-shared/map/spawn-palette";
 import { getMapSideLength, isMapCellInEditorCameraView } from "../-utils";
 
@@ -36,13 +40,38 @@ export function SpawnersListPanel() {
   const [typeaheadQuery, setTypeaheadQuery] = useState("");
   const comboRef = useRef<HTMLDivElement>(null);
 
-  const filteredPlaceTypes = useMemo(() => {
+  const { playerPlaceOptions, groupedPlaceTypes } = useMemo(() => {
     const q = typeaheadQuery.trim().toLowerCase();
-    if (!q) return [...SPAWNER_META_CONFIGURABLE_ENTRIES];
-    return SPAWNER_META_CONFIGURABLE_ENTRIES.filter((e) =>
-      e.label.toLowerCase().includes(q),
-    );
+    const filtered = !q
+      ? [...SPAWNER_META_CONFIGURABLE_ENTRIES]
+      : SPAWNER_META_CONFIGURABLE_ENTRIES.filter((e) => e.label.toLowerCase().includes(q));
+
+    const playerOpts = filtered.filter((e) => isPlayerSpawnTile(e.id));
+    const rest = filtered.filter((e) => !isPlayerSpawnTile(e.id));
+
+    const buckets = new Map<
+      (typeof SPAWNER_META_TYPEAHEAD_GROUP_ORDER)[number],
+      typeof filtered
+    >();
+    for (const gid of SPAWNER_META_TYPEAHEAD_GROUP_ORDER) {
+      buckets.set(gid, []);
+    }
+    for (const e of rest) {
+      const gid = getSpawnerMetaTypeaheadGroupId(e.id);
+      if (gid != null) {
+        buckets.get(gid)!.push(e);
+      }
+    }
+    const groups = SPAWNER_META_TYPEAHEAD_GROUP_ORDER.map((gid) => ({
+      id: gid,
+      label: SPAWNER_META_TYPEAHEAD_GROUP_LABEL[gid],
+      entries: buckets.get(gid)!,
+    })).filter((g) => g.entries.length > 0);
+    return { playerPlaceOptions: playerOpts, groupedPlaceTypes: groups };
   }, [typeaheadQuery]);
+
+  const typeaheadHasResults =
+    playerPlaceOptions.length > 0 || groupedPlaceTypes.length > 0;
 
   useEffect(() => {
     if (spawnerSidebarMode !== "place") return;
@@ -205,29 +234,58 @@ export function SpawnersListPanel() {
             />
             {typeaheadOpen ? (
               <ul
-                className="absolute left-0 right-0 top-full z-50 mt-0.5 max-h-40 overflow-y-auto rounded border border-gray-600 bg-gray-900 py-0.5 shadow-xl"
+                className="absolute left-0 right-0 top-full z-50 mt-0.5 max-h-80 overflow-y-auto rounded border border-gray-600 bg-gray-900 py-0.5 shadow-xl"
                 role="listbox"
               >
-                {filteredPlaceTypes.length === 0 ? (
+                {!typeaheadHasResults ? (
                   <li className="px-2 py-1.5 text-[10px] text-gray-500">No matches</li>
                 ) : (
-                  filteredPlaceTypes.map((e) => (
-                    <li key={e.id}>
-                      <button
-                        type="button"
-                        role="option"
-                        className="w-full px-2 py-1.5 text-left text-[11px] text-gray-200 hover:bg-gray-800"
-                        onMouseDown={(ev) => ev.preventDefault()}
-                        onClick={() => {
-                          setSpawnerPlaceTileId(e.id);
-                          setTypeaheadQuery(e.label);
-                          setTypeaheadOpen(false);
-                        }}
-                      >
-                        {e.label}
-                      </button>
-                    </li>
-                  ))
+                  <>
+                    {playerPlaceOptions.map((e) => (
+                      <li key={e.id}>
+                        <button
+                          type="button"
+                          role="option"
+                          className="w-full px-2 py-1.5 text-left text-[11px] text-gray-200 hover:bg-gray-800"
+                          onMouseDown={(ev) => ev.preventDefault()}
+                          onClick={() => {
+                            setSpawnerPlaceTileId(e.id);
+                            setTypeaheadQuery(e.label);
+                            setTypeaheadOpen(false);
+                          }}
+                        >
+                          {e.label}
+                        </button>
+                      </li>
+                    ))}
+                    {groupedPlaceTypes.map((group) => (
+                      <Fragment key={group.id}>
+                        <li
+                          role="presentation"
+                          className="sticky top-0 z-10 border-b border-gray-800 bg-gray-900 px-2 py-1 text-[9px] font-medium uppercase tracking-wide text-gray-500"
+                        >
+                          {group.label}
+                        </li>
+                        {group.entries.map((e) => (
+                          <li key={e.id}>
+                            <button
+                              type="button"
+                              role="option"
+                              className="w-full px-2 py-1.5 pl-3 text-left text-[11px] text-gray-200 hover:bg-gray-800"
+                              onMouseDown={(ev) => ev.preventDefault()}
+                              onClick={() => {
+                                setSpawnerPlaceTileId(e.id);
+                                setTypeaheadQuery(e.label);
+                                setTypeaheadOpen(false);
+                              }}
+                            >
+                              {e.label}
+                            </button>
+                          </li>
+                        ))}
+                      </Fragment>
+                    ))}
+                  </>
                 )}
               </ul>
             ) : null}

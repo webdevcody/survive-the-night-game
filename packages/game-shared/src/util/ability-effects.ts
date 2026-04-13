@@ -42,6 +42,19 @@ export function hasUnlockedAbility(
   return Number(allocations[abilityId] ?? 0) > 0;
 }
 
+/** Sneak only applies for human players who unlocked it and are actively holding the input. */
+export function isSneakActive({
+  isZombie,
+  hasSneakAbility,
+  isSneakInputActive,
+}: {
+  isZombie: boolean;
+  hasSneakAbility: boolean;
+  isSneakInputActive: boolean;
+}): boolean {
+  return !isZombie && hasSneakAbility && isSneakInputActive;
+}
+
 export function getMaxVisibleBagSlots(totalInventorySlots: number): number {
   const total = Math.max(0, Math.floor(totalInventorySlots));
   return Math.max(0, total - LOADOUT_RESERVED_BAG_SLOT_COUNT);

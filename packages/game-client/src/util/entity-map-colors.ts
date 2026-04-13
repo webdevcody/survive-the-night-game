@@ -53,20 +53,59 @@ export interface MapColorOptions {
   myPlayerIsZombie?: boolean;
 }
 
+/** POI markers that stay visible on explored-but-unseen (fogged) parts of the map. */
+export function isStrategicMapPoiEntity(entity: ClientEntityBase): boolean {
+  return (
+    entity instanceof CraftingStationClient ||
+    entity instanceof CampsiteFireClient ||
+    entity instanceof MerchantClient ||
+    entity instanceof DialogueSurvivorNpcClient
+  );
+}
+
+function firstLetterGlyph(displayName: string, fallback: string): string {
+  const s = displayName.trim();
+  if (!s) return fallback;
+  const cp = s.codePointAt(0);
+  if (cp === undefined) return fallback;
+  return String.fromCodePoint(cp).toLocaleUpperCase();
+}
+
+/** Short label drawn on crafting stations / fire on minimap and full map. */
+export function getMapPoiGlyph(entity: ClientEntityBase): string | null {
+  if (entity instanceof MerchantClient) {
+    return "M";
+  }
+  if (entity instanceof DialogueSurvivorNpcClient) {
+    return firstLetterGlyph(entity.displayName, "?");
+  }
+  if (entity instanceof CampsiteFireClient) {
+    return "\u25B3";
+  }
+  if (entity instanceof CraftingStationClient) {
+    switch (entity.getType()) {
+      case "workbench":
+        return "W";
+      case "chemistry_table":
+        return "C";
+      case "forge":
+        return "F";
+      case "locker":
+        return "L";
+      case "auction_house":
+        return "A";
+      default:
+        return "T";
+    }
+  }
+  return null;
+}
+
 /**
  * Determines the color and indicator settings for an entity on the map.
  * This function centralizes the logic for entity coloring so it can be reused
  * across minimap and fullscreen map implementations.
- *
- * @param entity - The entity to determine color for
- * @param settings - Map color settings containing colors and indicators
- * @param options - Optional settings including gameState for mode-specific logic
- * @returns EntityMapIndicator with color and indicator, or null if entity should be skipped
  */
-export function isHostileMapMarker(entity: ClientEntityBase): boolean {
-  return entity.getCategory() === EntityCategories.ZOMBIE;
-}
-
 export function getEntityMapColor(
   entity: ClientEntityBase,
   settings: MapColorSettings,

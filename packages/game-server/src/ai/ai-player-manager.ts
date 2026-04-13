@@ -61,7 +61,7 @@ export class AIPlayerManager {
     const strategy = this.gameManagers.getGameServer().getGameLoop().getGameModeStrategy();
     strategy.handlePlayerSpawn(player, this.gameManagers);
 
-    // Add player to entity manager (makes them appear on leaderboard)
+    // Add player to entity manager (makes them appear as a networked player entity)
     this.gameManagers.getEntityManager().addEntity(player);
 
     // Create AI controller for this player

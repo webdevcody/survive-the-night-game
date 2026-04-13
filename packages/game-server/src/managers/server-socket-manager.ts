@@ -8,6 +8,8 @@ import {
   isValidEditorMapReloadApiKey,
 } from "@/config/editor-map-reload";
 import { createServer } from "http";
+import { randomUUID } from "crypto";
+import os from "os";
 import { MapManager } from "@/world/map-manager";
 import { Broadcaster, IEntityManager, IGameManagers } from "@/managers/types";
 import { getConfig } from "@shared/config";
@@ -30,6 +32,7 @@ import { PlayerJoinedEvent } from "../../../game-shared/src/events/server-sent/e
 import { VersionMismatchEvent } from "../../../game-shared/src/events/server-sent/events/version-mismatch-event";
 import { AuthRequiredEvent } from "../../../game-shared/src/events/server-sent/events/auth-required-event";
 import { ProfileLoadFailedEvent } from "../../../game-shared/src/events/server-sent/events/profile-load-failed-event";
+import { DuplicateActiveSessionEvent } from "../../../game-shared/src/events/server-sent/events/duplicate-active-session-event";
 import { YourIdEvent } from "../../../game-shared/src/events/server-sent/events/your-id-event";
 import type { GameModeId } from "@shared/events/server-sent/events/game-started-event";
 import { HandlerContext, onConnection, sendFullState } from "@/events/handlers";
@@ -44,6 +47,11 @@ import {
   getPersistablePlayerLastTile,
   persistPlayerLastPositionToWebsite,
 } from "@/services/persist-player-last-position";
+import {
+  claimPlayerGameSessionToWebsite,
+  heartbeatPlayerGameSessionToWebsite,
+  releasePlayerGameSessionToWebsite,
+} from "@/services/persist-player-game-session";
 import Positionable from "@/extensions/positionable";
 import { coercePlayerQuestState } from "@shared/quests/player-quest-state";
 import { coercePlayerInventoryPersistedPayload } from "@shared/util/persisted-inventory-payload";
@@ -77,9 +85,18 @@ export class ServerSocketManager implements Broadcaster {
   private broadcaster: BroadcastingBroadcaster;
   private sessionValidator: SessionValidator;
   private userSessionCache: UserSessionCache;
+  /** Identifies this game-server process for distributed session leases (env or host:port:pid). */
+  private readonly gameServerInstanceId: string;
+  /** socketId -> lease heartbeat row */
+  private leaseHeartbeatBySocket: Map<string, { userId: string; gameSessionId: string }> =
+    new Map();
+  private leaseHeartbeatTimer: ReturnType<typeof setInterval> | null = null;
+  private static readonly LEASE_HEARTBEAT_INTERVAL_MS = 45_000;
 
   constructor(port: number, gameServer: GameServer) {
     this.port = port;
+    this.gameServerInstanceId =
+      process.env.GAME_SERVER_INSTANCE_ID?.trim() || `${os.hostname()}:${port}:${process.pid}`;
     this.bufferManager = new BufferManager();
 
     // uWebSockets owns the game port; this Node server only satisfies the shared adapter interface.
@@ -190,8 +207,29 @@ export class ServerSocketManager implements Broadcaster {
           return;
         }
 
+        const gameSessionId = randomUUID();
+        const claimed = await claimPlayerGameSessionToWebsite(
+          userId,
+          gameSessionId,
+          this.gameServerInstanceId,
+        );
+        if (!claimed.ok) {
+          const message =
+            claimed.reason === "active_session"
+              ? "This account is already playing the game in another tab or session. Close that session and try again."
+              : "Could not verify your game session. Please try again in a moment.";
+          console.warn(
+            `[ServerSocketManager] Refusing connection for user ${userId}: game session claim failed (${claimed.reason}).`,
+          );
+          this.sendEventToSocket(socket, new DuplicateActiveSessionEvent({ message }));
+          socket.disconnect(true);
+          return;
+        }
+
         this.playerDisplayNames.set(socket.id, filteredDisplayName || "Unknown");
-        this.userSessionCache.setUserSession(socket.id, userId, tokenStr!);
+        this.userSessionCache.setUserSession(socket.id, userId, tokenStr!, { gameSessionId });
+        this.registerLeaseHeartbeat(socket.id, userId, gameSessionId);
+        this.ensureLeaseHeartbeatLoop();
         console.log(`Socket ${socket.id} authenticated as user ${userId}`);
 
         this.onConnection(socket, loaded.progress);
@@ -366,6 +404,7 @@ export class ServerSocketManager implements Broadcaster {
       profanityCensor: this.profanityCensor,
       sessionValidator: this.sessionValidator,
       userSessionCache: this.userSessionCache,
+      notifyDistributedSessionSocketClosing: (s) => this.handleDistributedSessionSocketClosing(s),
       getEntityManager: () => this.getEntityManager(),
       getMapManager: () => this.getMapManager(),
       getGameManagers: () => this.getGameManagers(),
@@ -541,6 +580,12 @@ export class ServerSocketManager implements Broadcaster {
           socket,
           new ProfileLoadFailedEvent({ message: loaded.message }),
         );
+        const kickUserId = this.userSessionCache.getUserIdBySocket(socket.id);
+        const kickLease = this.userSessionCache.getGameSessionLeaseBySocket(socket.id);
+        if (kickUserId && kickLease) {
+          void releasePlayerGameSessionToWebsite(kickUserId, kickLease.gameSessionId);
+        }
+        this.clearLeaseHeartbeat(socket.id);
         this.userSessionCache.removeSocket(socket.id);
         socket.disconnect(true);
         continue;
@@ -572,6 +617,69 @@ export class ServerSocketManager implements Broadcaster {
       tasks.push(persistPlayerLastPositionToWebsite(userId, player));
     }
     await Promise.all(tasks);
+  }
+
+  /**
+   * Release distributed session leases for all sockets (graceful shutdown).
+   */
+  public async releaseAllDistributedGameSessionLeases(): Promise<void> {
+    const tasks: Promise<void>[] = [];
+    for (const socketId of this.userSessionCache.getAuthenticatedSocketIds()) {
+      const userId = this.userSessionCache.getUserIdBySocket(socketId);
+      const lease = this.userSessionCache.getGameSessionLeaseBySocket(socketId);
+      if (userId && lease) {
+        tasks.push(releasePlayerGameSessionToWebsite(userId, lease.gameSessionId));
+      }
+    }
+    this.leaseHeartbeatBySocket.clear();
+    if (this.leaseHeartbeatTimer) {
+      clearInterval(this.leaseHeartbeatTimer);
+      this.leaseHeartbeatTimer = null;
+    }
+    await Promise.all(tasks);
+  }
+
+  private registerLeaseHeartbeat(socketId: string, userId: string, gameSessionId: string): void {
+    this.leaseHeartbeatBySocket.set(socketId, { userId, gameSessionId });
+  }
+
+  private clearLeaseHeartbeat(socketId: string): void {
+    this.leaseHeartbeatBySocket.delete(socketId);
+  }
+
+  private handleDistributedSessionSocketClosing(socket: ISocketAdapter): void {
+    this.clearLeaseHeartbeat(socket.id);
+  }
+
+  private ensureLeaseHeartbeatLoop(): void {
+    if (this.leaseHeartbeatTimer) {
+      return;
+    }
+    this.leaseHeartbeatTimer = setInterval(() => {
+      void this.runLeaseHeartbeats();
+    }, ServerSocketManager.LEASE_HEARTBEAT_INTERVAL_MS);
+  }
+
+  private async runLeaseHeartbeats(): Promise<void> {
+    const entries = Array.from(this.leaseHeartbeatBySocket.entries());
+    for (const [socketId, { userId, gameSessionId }] of entries) {
+      const { stillOwner } = await heartbeatPlayerGameSessionToWebsite(userId, gameSessionId);
+      if (stillOwner) {
+        continue;
+      }
+      const socket = this.io.sockets.sockets.get(socketId);
+      if (socket) {
+        this.sendEventToSocket(
+          socket,
+          new DuplicateActiveSessionEvent({
+            message:
+              "Your game session is no longer valid. Another connection may have taken over this account.",
+          }),
+        );
+        socket.disconnect(true);
+      }
+      this.clearLeaseHeartbeat(socketId);
+    }
   }
 
   /**
@@ -619,14 +727,14 @@ export class ServerSocketManager implements Broadcaster {
           : ClientSentEvents[handlerRegistration.event as keyof typeof ClientSentEvents];
 
       socket.on(eventName, (payload: any) => {
-        try {
-          handlerRegistration.handler(context, socket, payload);
-        } catch (error) {
-          console.error(
-            `Error handling event ${handlerRegistration.event} from socket ${socket.id}:`,
-            error,
-          );
-        }
+        void Promise.resolve()
+          .then(() => handlerRegistration.handler(context, socket, payload))
+          .catch((error) => {
+            console.error(
+              `Error handling event ${handlerRegistration.event} from socket ${socket.id}:`,
+              error,
+            );
+          });
       });
     }
   }

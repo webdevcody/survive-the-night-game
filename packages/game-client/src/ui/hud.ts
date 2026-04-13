@@ -4,7 +4,6 @@ import { MapManager } from "@/managers/map";
 import { ChatWidget } from "./chat-widget";
 import { Minimap } from "./minimap";
 import { FullScreenMap } from "./fullscreen-map";
-import { Leaderboard } from "./leaderboard";
 import { SoundManager } from "@/managers/sound-manager";
 import { AssetManager } from "@/managers/asset";
 import {
@@ -12,6 +11,7 @@ import {
   DeathScreenPanel,
   GameMessagesPanel,
   MuteButtonPanel,
+  PlayersOnlinePanel,
   ExitGameButtonPanel,
   CrateIndicatorsPanel,
   SurvivorIndicatorsPanel,
@@ -30,6 +30,10 @@ import { InventoryItem, type EquipmentSlotKey } from "../../../game-shared/src/u
 import { ClientInventory } from "@/extensions/inventory";
 import { ClientBank } from "@/extensions/bank";
 import type { BankActionEventData } from "@shared/events/client-sent/events/bank-action";
+import type { AuctionActionEventData } from "../../../game-shared/src/events/client-sent/events/auction-action";
+import type { SetSignTextEventData } from "@shared/events/client-sent/events/set-sign-text";
+import type { SplitInventoryStackEventData } from "@shared/events/client-sent/events/split-inventory-stack";
+import type { AuctionHouseSnapshotPayload } from "../../../game-shared/src/util/auction-types";
 import { renderRadialProgressIndicator } from "@/util/radial-progress-indicator";
 import { getMinimapHudLayout } from "./minimap-hud-group-layout";
 import {
@@ -48,6 +52,7 @@ import {
   RPG_TITLE_CREAM,
 } from "./rpg-hud-theme";
 import { ActiveQuestTrackerPanel } from "./active-quest-tracker-panel";
+import { SignReadModal } from "./sign-modals";
 
 const HUD_SETTINGS = {
   GameMessages: {
@@ -108,6 +113,15 @@ const HUD_SETTINGS = {
     hoverBackground: "rgba(6, 8, 16, 0.98)",
     baseFont: 24, // Reduced from 36
   },
+  PlayersOnline: {
+    baseFontPx: 14,
+    baseGapFromMute: 8,
+    basePadX: 10,
+    background: RPG_HUD_PANEL_BG,
+    borderColor: RPG_BORDER_GOLD,
+    borderWidth: 2,
+    textColor: RPG_TITLE_CREAM,
+  },
   ExitGameButton: {
     baseLeft: 16,
     baseTop: 16,
@@ -133,8 +147,12 @@ export interface HudOptions {
   sendSelectWeaponLoadout: (loadout: 0 | 1 | 2) => void;
   sendSetWeaponLoadoutSlot: (slot: 0 | 1 | 2 | 3 | 4, bagIndex: number) => void;
   sendBankAction: (data: BankActionEventData) => void;
-  sendConsumeItem: (itemType: string | null) => void;
+  sendAuctionAction: (data: AuctionActionEventData) => void;
+  sendSplitInventoryStack: (data: SplitInventoryStackEventData) => void;
+  sendSetSignText: (data: SetSignTextEventData) => void;
+  sendConsumeItem: (itemType: string | null, slotIndex?: number) => void;
   sendDropFromEquipment: (equipSlot: EquipmentSlotKey) => void;
+  sendInteract: (targetEntityId: number) => void;
   onRequestExitGame?: () => void;
 }
 
@@ -144,7 +162,6 @@ export class Hud {
   private currentFps: number = 0;
   private minimap: Minimap;
   private fullscreenMap: FullScreenMap;
-  private leaderboard: Leaderboard;
   private soundManager: SoundManager;
   private assetManager: AssetManager;
   private versionPanel: TextPanel;
@@ -153,6 +170,7 @@ export class Hud {
   private deathScreenPanel: DeathScreenPanel;
   private gameMessagesPanel: GameMessagesPanel;
   private muteButtonPanel: MuteButtonPanel;
+  private playersOnlinePanel: PlayersOnlinePanel;
   private exitGameButtonPanel: ExitGameButtonPanel | null = null;
   private experiencePanel: ExperiencePanel;
   private crateIndicatorsPanel: CrateIndicatorsPanel;
@@ -172,6 +190,9 @@ export class Hud {
   private dialoguePanel: DialoguePanel;
   private activeQuestTrackerPanel: ActiveQuestTrackerPanel;
   private onDialogueQuestChoice: ((action: "accept" | "decline") => void) | null = null;
+  private auctionSnapshot: AuctionHouseSnapshotPayload | null = null;
+  private signReadModal: SignReadModal | null = null;
+  private sendInteract: (targetEntityId: number) => void;
 
   constructor(options: HudOptions) {
     this.mapManager = options.mapManager;
@@ -179,6 +200,7 @@ export class Hud {
     this.assetManager = options.assetManager;
     this.inputManager = options.inputManager;
     this.getMyPlayer = options.getMyPlayer;
+    this.sendInteract = options.sendInteract;
     const {
       sendDropItem,
       sendSwapItems,
@@ -187,6 +209,8 @@ export class Hud {
       sendSelectWeaponLoadout,
       sendSetWeaponLoadoutSlot,
       sendBankAction,
+      sendSplitInventoryStack,
+      sendSetSignText,
       sendConsumeItem,
       sendDropFromEquipment,
       onRequestExitGame,
@@ -246,16 +270,17 @@ export class Hud {
       sendDropItem,
       sendSwapItems,
       sendSwapBagAndEquipment,
-      sendSelectInventorySlot: (slotIndex) => {
-        this.inputManager.setInventorySlot(slotIndex);
-      },
       sendProgressionAllocations,
       sendSetWeaponLoadoutSlot,
       sendSelectWeaponLoadout,
       sendBankAction,
+      sendSetSignText,
       sendConsumeItem,
       sendDropFromEquipment,
+      sendSplitInventoryStack,
       getAuthoredQuests: () => this.mapManager.getAuthoredQuests(),
+      sendAuctionAction: options.sendAuctionAction,
+      getAuctionSnapshot: () => this.auctionSnapshot,
     });
 
     this.loadoutStrip = new LoadoutStrip(
@@ -268,7 +293,6 @@ export class Hud {
 
     this.minimap = new Minimap(this.mapManager);
     this.fullscreenMap = new FullScreenMap(this.mapManager);
-    this.leaderboard = new Leaderboard();
 
     // Initialize bottom right panels
     this.versionPanel = new TextPanel({
@@ -362,6 +386,18 @@ export class Hud {
       }
     );
 
+    const po = HUD_SETTINGS.PlayersOnline;
+    this.playersOnlinePanel = new PlayersOnlinePanel({
+      padding: HUD_SETTINGS.BottomRightPanels.padding,
+      background: po.background,
+      borderColor: po.borderColor,
+      borderWidth: po.borderWidth,
+      textColor: po.textColor,
+      baseFontPx: po.baseFontPx,
+      baseGapFromMute: po.baseGapFromMute,
+      basePadX: po.basePadX,
+    });
+
     if (onRequestExitGame) {
       const eg = HUD_SETTINGS.ExitGameButton;
       this.exitGameButtonPanel = new ExitGameButtonPanel(
@@ -443,6 +479,11 @@ export class Hud {
     this.currentGameState = gameState;
     this.gameMessagesPanel.update();
     this.chatWidget.update();
+  }
+
+  /** Run once per frame before camera + input (see InventoryScreenUI.tickPanelAnimations). */
+  public tickPanelAnimations(now: number): void {
+    this.inventoryScreen.tickPanelAnimations(now);
   }
 
   public toggleFullscreenMap(): void {
@@ -629,10 +670,11 @@ export class Hud {
     ctx.save();
     ctx.setTransform(1, 0, 0, 1, 0, 0);
     this.muteButtonPanel.updatePosition(width, height);
+    this.playersOnlinePanel.updatePosition(width, height, this.muteButtonPanel.getLayout());
     this.muteButtonPanel.render(ctx, gameState);
+    this.playersOnlinePanel.render(ctx, gameState);
     ctx.restore();
 
-    this.leaderboard.render(ctx, gameState);
     this.chatWidget.render(ctx, gameState);
 
     // Health + stamina orbs (left/right of bottom loadout strip)
@@ -714,10 +756,6 @@ export class Hud {
     this.gameMessagesPanel.addMessage(message, color);
   }
 
-  public setShowPlayerList(show: boolean): void {
-    this.leaderboard.setShow(show);
-  }
-
   // Delegate chat methods to ChatWidget
   public toggleChatInput(): void {
     this.chatWidget.toggleChatInput();
@@ -770,6 +808,15 @@ export class Hud {
     this.inventoryScreen.openBank(lockerEntityId, inventoryWasAlreadyOpen);
   }
 
+  public openAuction(auctionHouseEntityId: number, inventoryWasAlreadyOpen: boolean): void {
+    this.inventoryScreen.openAuction(auctionHouseEntityId, inventoryWasAlreadyOpen);
+  }
+
+  /** Latest auction house snapshot from server (for inventory UI). */
+  public applyAuctionSnapshot(snapshot: AuctionHouseSnapshotPayload): void {
+    this.auctionSnapshot = snapshot;
+  }
+
   public closeBank(): void {
     this.inventoryScreen.closeBank();
   }
@@ -793,6 +840,36 @@ export class Hud {
 
   public isInventoryScreenOpen(): boolean {
     return this.inventoryScreen.isOpen();
+  }
+
+  public isBlockingModalOpen(): boolean {
+    return this.signReadModal !== null || this.inventoryScreen.isBlockingModalOpen();
+  }
+
+  public isSignReadModalOpen(): boolean {
+    return this.signReadModal !== null && this.signReadModal.isOpen();
+  }
+
+  public closeSignReadModal(): void {
+    this.signReadModal?.close();
+    this.signReadModal = null;
+  }
+
+  public openSignReadModal(message: string, signEntityId: number): void {
+    this.signReadModal?.close();
+    this.signReadModal = new SignReadModal(
+      {
+        title: "Sign",
+        message,
+        onPickUp: () => {
+          this.sendInteract(signEntityId);
+        },
+      },
+      () => {
+        this.signReadModal = null;
+      },
+    );
+    this.signReadModal.open();
   }
 
   /** When inventory is open, camera should center on the visible gameplay column (left of the panel). */

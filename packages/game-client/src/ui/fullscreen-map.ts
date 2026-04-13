@@ -9,14 +9,13 @@ import { getConfig } from "@shared/config";
 import Vector2 from "@shared/util/vector2";
 import PoolManager from "@shared/util/pool-manager";
 import { MINIMAP_SETTINGS } from "./minimap";
-import { getEntityMapColor, isHostileMapMarker } from "@/util/entity-map-colors";
-import { distance } from "@shared/util/physics";
 import {
-  calculateLightSources,
-  getCampsiteMapMarkerWorldPositions,
-  isPositionVisible,
-  type LightSource,
-} from "./utils/map-rendering-utils";
+  getEntityMapColor,
+  getMapPoiGlyph,
+  isStrategicMapPoiEntity,
+} from "@/util/entity-map-colors";
+import { distance } from "@shared/util/physics";
+import { getCampsiteMapMarkerWorldPositions } from "./utils/map-rendering-utils";
 import { prerenderCollidables, renderCollidablesFromCanvas } from "./utils/map-collidable-renderer";
 import { renderFullscreenMapFogOfWar } from "./utils/map-fog-of-war-renderer";
 import {
@@ -174,8 +173,6 @@ export class FullScreenMap {
     const centerX = mapX + mapWidth / 2;
     const centerY = mapY + mapHeight / 2;
 
-    const lightSources = calculateLightSources(gameState.getEntities(), gameState);
-
     // Draw collidable tiles
     this.renderCollidables(ctx, effectiveCenterPos, zoom, centerX, centerY, mapWidth, mapHeight);
 
@@ -188,15 +185,14 @@ export class FullScreenMap {
       centerX,
       centerY,
       mapWidth,
-      mapHeight,
-      lightSources
+      mapHeight
     );
 
     // Draw fog of war
     renderFullscreenMapFogOfWar(
       ctx,
       effectiveCenterPos,
-      lightSources,
+      (wx, wy) => this.mapManager.isWorldPositionInPlayerMapVision(wx, wy),
       settings.fogOfWar,
       this.mapManager.getMapExplorationPayload(),
       this.tileSize,
@@ -429,8 +425,7 @@ export class FullScreenMap {
     centerX: number,
     centerY: number,
     mapWidth: number,
-    mapHeight: number,
-    lightSources: LightSource[]
+    mapHeight: number
   ): void {
     const settings = FULLSCREEN_MAP_SETTINGS;
     const maxDistance = Math.sqrt(((mapWidth / zoom) ** 2 + (mapHeight / zoom) ** 2) / 4);
@@ -464,7 +459,8 @@ export class FullScreenMap {
         poolManager.vector2.release(entityWorldPos);
         continue;
       }
-      if (isHostileMapMarker(entity) && !isPositionVisible(entityWorldPos, lightSources)) {
+      const inPlayerVision = this.mapManager.isWorldPositionInPlayerMapVision(position.x, position.y);
+      if (!isStrategicMapPoiEntity(entity) && !inPlayerVision) {
         poolManager.vector2.release(entityWorldPos);
         continue;
       }
@@ -485,8 +481,32 @@ export class FullScreenMap {
       }
 
       const { color, indicator } = mapIndicator;
+      const glyph = getMapPoiGlyph(entity);
+      const z = Math.max(0.5, zoom);
 
-      if (color && indicator) {
+      if (glyph && color) {
+        // Match fullscreen biome markers (campsite H):28× zoom disc,18× zoom bold label
+        const poiDiameter = 28 * z;
+        const poiR = poiDiameter / 2;
+        const fontPx = Math.round(18 * z);
+        ctx.fillStyle = color;
+        ctx.beginPath();
+        ctx.arc(mapX, mapY, poiR, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.strokeStyle = "white";
+        ctx.lineWidth = 2 * z;
+        ctx.beginPath();
+        ctx.arc(mapX, mapY, poiR, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.font = `bold ${fontPx}px Arial`;
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        ctx.lineWidth = Math.max(2, Math.round(3 * z));
+        ctx.strokeStyle = "rgba(0, 0, 0, 0.82)";
+        ctx.fillStyle = "rgba(255, 255, 255, 0.96)";
+        ctx.strokeText(glyph, mapX, mapY);
+        ctx.fillText(glyph, mapX, mapY);
+      } else if (color && indicator) {
         ctx.fillStyle = color;
         const size = indicator.size * Math.max(1, zoom);
         const halfSize = size / 2;
@@ -539,6 +559,9 @@ export class FullScreenMap {
           Math.floor(position.y / this.tileSize),
         )
       ) {
+        continue;
+      }
+      if (!this.mapManager.isWorldPositionInPlayerMapVision(position.x, position.y)) {
         continue;
       }
 
@@ -627,6 +650,9 @@ export class FullScreenMap {
       ) {
         continue;
       }
+      if (!this.mapManager.isWorldPositionInPlayerMapVision(position.x, position.y)) {
+        continue;
+      }
 
       const mapX = centerX + relativeX * zoom;
       const mapY = centerY + relativeY * zoom;
@@ -695,6 +721,9 @@ export class FullScreenMap {
         Math.floor(target.worldY / this.tileSize),
       )
     ) {
+      return;
+    }
+    if (!this.mapManager.isWorldPositionInPlayerMapVision(target.worldX, target.worldY)) {
       return;
     }
 

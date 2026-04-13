@@ -25,6 +25,7 @@ import {
   type Recipe,
   type RecipeComponent,
 } from "@shared/util/recipes";
+import { getMerchantBuyPriceForEntityType } from "@shared/util/merchant-pricing";
 import { distance } from "@shared/util/physics";
 import { type InventoryItem, type ItemType } from "@shared/util/inventory";
 
@@ -575,6 +576,13 @@ export class CraftingPanel implements Renderable {
       return 1;
     };
 
+    const getEntryValueScore = (entry: CraftingEntry): number => {
+      if (entry.kind === "recipe") {
+        return getMerchantBuyPriceForEntityType(entry.recipe.result.type);
+      }
+      return getMerchantBuyPriceForEntityType(entry.item.itemType);
+    };
+
     const getEntrySortLabel = (entry: CraftingEntry): string => {
       return entry.kind === "recipe"
         ? formatDisplayName(entry.recipe.result.type)
@@ -582,10 +590,18 @@ export class CraftingPanel implements Renderable {
     };
 
     return entries.sort((left, right) => {
+      const leftVal = getEntryValueScore(left);
+      const rightVal = getEntryValueScore(right);
+      if (rightVal !== leftVal) {
+        return rightVal - leftVal;
+      }
       const leftLevel = getEntrySortLevel(left);
       const rightLevel = getEntrySortLevel(right);
       if (leftLevel !== rightLevel) {
         return leftLevel - rightLevel;
+      }
+      if (left.kind !== right.kind) {
+        return left.kind === "recipe" ? -1 : 1;
       }
       return getEntrySortLabel(left).localeCompare(getEntrySortLabel(right));
     });

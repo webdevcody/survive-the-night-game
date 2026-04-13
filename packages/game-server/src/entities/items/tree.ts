@@ -7,6 +7,7 @@ import { Entity } from "@/entities/entity";
 import Vector2 from "@/util/vector2";
 import PoolManager from "@shared/util/pool-manager";
 import { Player } from "@/entities/players/player";
+import { PlayerPickedUpItemEvent } from "@shared/events/server-sent/events/pickup-item-event";
 
 export class Tree extends Entity {
   public static get Size(): Vector2 {
@@ -31,10 +32,30 @@ export class Tree extends Entity {
     if (!player) return;
 
     const inventory = player.getExt(Inventory);
-    if (!inventory.addOrMergeStack({ itemType: "wood", state: { count: 1 } })) {
-      return;
+    const itemType = "wood";
+    const pickupMaxSlots = inventory.getPickupMaxSlots();
+    const existingItemIndex = inventory.findItemIndex(itemType, pickupMaxSlots);
+    if (existingItemIndex >= 0) {
+      const existingItem = inventory.getItems()[existingItemIndex];
+      if (!existingItem) {
+        return;
+      }
+      const currentCount = existingItem.state?.count ?? 0;
+      inventory.updateItemState(existingItemIndex, { count: currentCount + 1 });
+    } else {
+      const emptySlotIndex = inventory.findFirstEmptyBagSlot(pickupMaxSlots);
+      if (emptySlotIndex < 0) {
+        return;
+      }
+      inventory.setBagSlot(emptySlotIndex, { itemType, state: { count: 1 } });
     }
 
+    this.getEntityManager().getBroadcaster().broadcastEvent(
+      new PlayerPickedUpItemEvent({
+        playerId: player.getId(),
+        itemType,
+      })
+    );
     player.addProfessionXp("scavenging", 3);
     this.getEntityManager().markEntityForRemoval(this);
   }

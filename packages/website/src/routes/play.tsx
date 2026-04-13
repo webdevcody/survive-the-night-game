@@ -4,6 +4,7 @@ import { PredictionConfigPanel } from "./play/-components/PredictionConfigPanel"
 import { SpawnPanel } from "./play/-components/SpawnPanel";
 import { Button } from "~/components/ui/button";
 import { getGameAuthToken } from "~/fn/game-auth";
+import { requireSessionForPlayFn } from "~/fn/guards";
 import { authClient } from "~/lib/auth-client";
 type GameAuthPhase = "idle" | "loading" | "ok" | "missing";
 
@@ -15,7 +16,13 @@ declare global {
 }
 
 export const Route = createFileRoute("/play")({
+  beforeLoad: async () => {
+    await requireSessionForPlayFn();
+  },
   component: Play,
+  validateSearch: (search: Record<string, unknown>) => ({
+    error: typeof search.error === "string" ? search.error : undefined,
+  }),
 });
 
 export function meta() {
@@ -32,7 +39,12 @@ export function meta() {
 // Client-only component that dynamically imports game client code
 function GameClientLoader() {
   const navigate = useNavigate();
-  const { data: session, isPending: sessionPending } = authClient.useSession();
+  const { error: playSearchError } = Route.useSearch();
+  const {
+    data: session,
+    isPending: sessionPending,
+    error: sessionError,
+  } = authClient.useSession();
   const authUserId = session?.user?.id ?? null;
   const [gameAuthPhase, setGameAuthPhase] = useState<GameAuthPhase>("idle");
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -51,15 +63,25 @@ function GameClientLoader() {
     navigate({ to: "/" });
   };
 
+  const handleTryPlayAgain = () => {
+    window.location.href = "/play";
+  };
+
+  const handleSignOutFromPlay = async () => {
+    await authClient.signOut();
+    navigate({ to: "/" });
+  };
+
   useEffect(() => {
     setIsClient(true);
   }, []);
 
   useEffect(() => {
-    if (!sessionPending && !session) {
+    if (sessionPending) return;
+    if (!session || sessionError) {
       window.location.href = "/sign-in?redirect=/play";
     }
-  }, [session, sessionPending]);
+  }, [session, sessionPending, sessionError]);
 
   useEffect(() => {
     if (sessionPending || !authUserId) return;
@@ -198,8 +220,36 @@ function GameClientLoader() {
     );
   }
 
-  if (!session) {
+  if (!session || sessionError) {
     return null;
+  }
+
+  if (playSearchError === "duplicateSession") {
+    return (
+      <div className="flex min-h-screen flex-col items-center justify-center gap-6 bg-black px-6 text-center text-white">
+        <h1 className="text-xl font-semibold">Already playing</h1>
+        <p className="max-w-lg text-muted-foreground text-sm">
+          Your account already has an active game session open (for example in another browser tab or on
+          another device). Only one session is allowed at a time. Close the other session or sign out there,
+          then try again.
+        </p>
+        <p className="max-w-lg text-muted-foreground text-xs">
+          If you are sure nothing else is running, wait a few minutes — stale locks clear automatically after
+          inactivity — then use Try again.
+        </p>
+        <div className="flex flex-wrap items-center justify-center gap-3">
+          <Button type="button" onClick={handleTryPlayAgain}>
+            Try again
+          </Button>
+          <Button type="button" variant="secondary" onClick={handleSignOutFromPlay}>
+            Sign out
+          </Button>
+          <Button type="button" variant="outline" asChild>
+            <Link to="/">Back to home</Link>
+          </Button>
+        </div>
+      </div>
+    );
   }
 
   if (gameAuthPhase === "idle" || gameAuthPhase === "loading") {

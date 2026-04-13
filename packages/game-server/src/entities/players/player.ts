@@ -111,6 +111,7 @@ import {
   getWeaponAmmoType,
   getWeaponMagazineSize,
   getWeaponReloadDuration,
+  isStackableInventoryItem,
 } from "@shared/util/inventory";
 import {
   ADRENALINE_SPEED_MULTIPLIER,
@@ -140,6 +141,7 @@ import {
   getZombieDetectionRadiusMultiplier as getPlayerZombieDetectionRadiusMultiplier,
   hasUnlockedAbility,
   isAdrenalineActive,
+  isSneakActive,
 } from "@shared/util/ability-effects";
 import { BaseEnemy } from "@/entities/enemies/base-enemy";
 
@@ -756,14 +758,18 @@ export class Player extends Entity {
     return allocations;
   }
 
-  /** Ability + input: zombie detection and other sneak perks. */
+  /** Sneak currently applied: unlocked, held, and not a zombie. */
   isSneaking(): boolean {
-    return !this.isZombie() && this.hasAbility("sneak") && Boolean(this.serialized.get("inputSneak"));
+    return isSneakActive({
+      isZombie: this.isZombie(),
+      hasSneakAbility: this.hasAbility("sneak"),
+      isSneakInputActive: Boolean(this.serialized.get("inputSneak")),
+    });
   }
 
-  /** Sneak key held (movement slow / no sprint) for any non-zombie; does not require the Sneak ability. */
+  /** Effective sneak input used by movement and stamina logic. */
   isSneakInputActive(): boolean {
-    return !this.isZombie() && Boolean(this.serialized.get("inputSneak"));
+    return this.isSneaking();
   }
 
   getUnlockedVisibleBagSlotCount(): number {
@@ -907,6 +913,39 @@ export class Player extends Entity {
     }
 
     return null;
+  }
+
+  public splitInventoryStack(slotIndex0: number, quantity: number): boolean {
+    const clampedSlotIndex = Math.floor(slotIndex0);
+    const clampedQuantity = Math.floor(quantity);
+    const maxSlots = this.getAccessibleInventorySlotCount();
+    if (clampedSlotIndex < 0 || clampedSlotIndex >= maxSlots || clampedQuantity < 1) {
+      return false;
+    }
+
+    const inventory = this.getExt(Inventory);
+    const item = inventory.getItems()[clampedSlotIndex] ?? null;
+    if (!item || !isStackableInventoryItem(item)) {
+      return false;
+    }
+
+    const stackCount = Math.max(1, Math.floor(item.state?.count ?? 1));
+    if (stackCount <= 1 || clampedQuantity >= stackCount) {
+      return false;
+    }
+
+    const targetBagIndex = this.findEmptyVisibleBagIndex(false, [clampedSlotIndex]);
+    if (targetBagIndex == null) {
+      return false;
+    }
+
+    const splitItem = inventory.removeItemCountFromBagSlot(clampedSlotIndex, clampedQuantity);
+    if (!splitItem) {
+      return false;
+    }
+
+    inventory.setBagSlot(targetBagIndex, splitItem);
+    return true;
   }
 
   private compactLoadoutBackedItemsToBagEnd(): void {

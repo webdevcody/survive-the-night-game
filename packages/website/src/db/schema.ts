@@ -6,6 +6,7 @@ import type { PlayerBankPersistedPayload } from "@survive-the-night/game-shared/
 import type { MapExplorationPersistedPayload } from "@survive-the-night/game-shared/util/map-exploration-payload";
 import type { PlayerQuestStatePayload } from "@survive-the-night/game-shared/quests/player-quest-state";
 import type { ProfessionProgress } from "@survive-the-night/game-shared/util/professions";
+import type { ItemState } from "@survive-the-night/game-shared/types/entity";
 
 export const user = pgTable("user", {
   id: text("id").primaryKey(),
@@ -25,6 +26,14 @@ export const user = pgTable("user", {
   updatedAt: timestamp("updated_at")
     .$defaultFn(() => /* @__PURE__ */ new Date())
     .notNull(),
+  /** Last time this account started a claimed game session (distributed lease claim). */
+  lastGameLoginAt: timestamp("last_game_login_at", { withTimezone: true }),
+  /** Opaque lease id for the single active game WebSocket session (see game-server player-session API). */
+  activeGameSessionId: text("active_game_session_id"),
+  /** Game server instance id that owns the lease (env GAME_SERVER_INSTANCE_ID or fallback). */
+  activeGameServerId: text("active_game_server_id"),
+  /** Server heartbeats while the owning socket is connected; used for stale-lease recovery. */
+  activeGameHeartbeatAt: timestamp("active_game_heartbeat_at", { withTimezone: true }),
 });
 
 export const session = pgTable("session", {
@@ -111,12 +120,32 @@ export const userStats = pgTable("user_stats", {
   savedBank: jsonb("saved_bank").$type<PlayerBankPersistedPayload | null>(),
   /** Sparse chunked minimap exploration (game server). */
   mapExploration: jsonb("map_exploration").$type<MapExplorationPersistedPayload | null>(),
+  /** Coins from auction sales waiting to be claimed in-game at an auction house. */
+  auctionClaimableCoins: integer("auction_claimable_coins").notNull().default(0),
   createdAt: timestamp("created_at")
     .$defaultFn(() => new Date())
     .notNull(),
   updatedAt: timestamp("updated_at")
     .$defaultFn(() => new Date())
     .notNull(),
+});
+
+export const auctionHouseListing = pgTable("auction_house_listing", {
+  id: text("id").primaryKey(),
+  sellerUserId: text("seller_user_id")
+    .notNull()
+    .references(() => user.id, { onDelete: "cascade" }),
+  itemType: text("item_type").notNull(),
+  itemState: jsonb("item_state").$type<ItemState | null>(),
+  price: integer("price").notNull(),
+  itemCategory: text("item_category").notNull(),
+  status: text("status").notNull().default("active"),
+  buyerUserId: text("buyer_user_id"),
+  createdAt: timestamp("created_at", { withTimezone: true })
+    .$defaultFn(() => new Date())
+    .notNull(),
+  soldAt: timestamp("sold_at", { withTimezone: true }),
+  cancelledAt: timestamp("cancelled_at", { withTimezone: true }),
 });
 
 // Relations

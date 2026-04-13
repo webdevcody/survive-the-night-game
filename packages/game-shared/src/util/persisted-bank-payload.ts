@@ -4,6 +4,7 @@ import { resourceRegistry } from "../entities/resource-registry";
 import { weaponRegistry } from "../entities/weapon-registry";
 import type { ItemState } from "../types/entity";
 import type { InventoryItem } from "./inventory";
+import { coerceSignMessage } from "./sign-message";
 
 export type PlayerBankPersistedPayload = {
   items: (InventoryItem | null)[];
@@ -25,6 +26,10 @@ function coerceItemState(raw: unknown): ItemState | undefined {
   }
   if (typeof o.health === "number" && Number.isFinite(o.health)) {
     out.health = Math.max(0, o.health);
+  }
+  const message = coerceSignMessage(o.message);
+  if (message) {
+    out.message = message;
   }
   return Object.keys(out).length > 0 ? out : undefined;
 }

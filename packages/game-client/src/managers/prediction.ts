@@ -13,7 +13,7 @@ import { Hitbox } from "@shared/util/hitbox";
 import { ReconciliationManager } from "./reconciliation-manager";
 import { ClientSnared } from "@/extensions/snared";
 import { itemRegistry } from "@shared/entities";
-import { SNEAK_MOVE_SPEED_MULTIPLIER } from "@shared/util/ability-effects";
+import { isSneakActive, SNEAK_MOVE_SPEED_MULTIPLIER } from "@shared/util/ability-effects";
 
 type PredictionConfig = {
   playerSpeed: number; // pixels per second
@@ -81,7 +81,11 @@ export class PredictionManager {
     const direction = normalizeVector(poolManager.vector2.claim(input.dx, input.dy));
 
     // Check if player can sprint based on stamina (must match server logic)
-    const sneakInput = !player.isZombiePlayer() && input.sneak;
+    const sneakInput = isSneakActive({
+      isZombie: player.isZombiePlayer(),
+      hasSneakAbility: player.hasAbility("sneak"),
+      isSneakInputActive: input.sneak,
+    });
     const hasStamina = player.getStamina() > 0;
     const canSprint = input.sprint && hasStamina && !sneakInput;
     const config = this.getConfig();

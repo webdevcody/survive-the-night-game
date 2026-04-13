@@ -37,6 +37,8 @@ import { VersionMismatchEvent } from "./events/version-mismatch-event";
 import { AuthRequiredEvent } from "./events/auth-required-event";
 import { ProfileLoadFailedEvent } from "./events/profile-load-failed-event";
 import { PlayerLevelUpEvent } from "./events/player-level-up-event";
+import { AuctionSnapshotEvent } from "./events/auction-snapshot-event";
+import { DuplicateActiveSessionEvent } from "./events/duplicate-active-session-event";
 import {
   serializeEvent,
   deserializeEvent,
@@ -88,6 +90,8 @@ const eventRegistry: Record<string, IBufferWriter> = {
   [ServerSentEvents.AUTH_REQUIRED]: AuthRequiredEvent,
   [ServerSentEvents.PROFILE_LOAD_FAILED]: ProfileLoadFailedEvent,
   [ServerSentEvents.PLAYER_LEVEL_UP]: PlayerLevelUpEvent,
+  [ServerSentEvents.AUCTION_SNAPSHOT]: AuctionSnapshotEvent,
+  [ServerSentEvents.DUPLICATE_ACTIVE_SESSION]: DuplicateActiveSessionEvent,
 };
 
 /**

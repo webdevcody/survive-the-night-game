@@ -11,17 +11,16 @@ import { ClientIlluminated } from "@/extensions/illuminated";
 import Vector2 from "@shared/util/vector2";
 import PoolManager from "@shared/util/pool-manager";
 import { scaleHudValue } from "@/util/hud-scale";
-import { getEntityMapColor } from "@/util/entity-map-colors";
+import {
+  getEntityMapColor,
+  getMapPoiGlyph,
+  isStrategicMapPoiEntity,
+} from "@/util/entity-map-colors";
 import { Renderer } from "@/renderer";
 import { SpatialGrid } from "@shared/util/spatial-grid";
 import { ClientEntityBase } from "@/extensions/client-entity";
 import { distance } from "@shared/util/physics";
-import {
-  calculateLightSources,
-  getCampsiteMapMarkerWorldPositions,
-  isPositionVisible,
-} from "./utils/map-rendering-utils";
-import { isHostileMapMarker } from "@/util/entity-map-colors";
+import { getCampsiteMapMarkerWorldPositions } from "./utils/map-rendering-utils";
 import { prerenderCollidables, renderCollidablesFromCanvas } from "./utils/map-collidable-renderer";
 import { renderMinimapFogOfWar } from "./utils/map-fog-of-war-renderer";
 import type { MinimapScreenRect } from "./minimap-hud-group-layout";
@@ -250,7 +249,6 @@ export class Minimap {
     // Loop through nearby entities and draw them on minimap
     perfTimer.start("minimap:entities");
     const maxEntityDistance = MINIMAP_RENDER_DISTANCE.ENTITIES;
-    const lightSources = calculateLightSources(Array.from(extendedEntities), gameState);
 
     for (const entity of extendedEntities) {
       if (!entity.hasExt(ClientPositionable)) continue;
@@ -278,7 +276,8 @@ export class Minimap {
         poolManager.vector2.release(entityWorldPos);
         continue;
       }
-      if (isHostileMapMarker(entity) && !isPositionVisible(entityWorldPos, lightSources)) {
+      const inPlayerVision = this.mapManager.isWorldPositionInPlayerMapVision(position.x, position.y);
+      if (!isStrategicMapPoiEntity(entity) && !inPlayerVision) {
         poolManager.vector2.release(entityWorldPos);
         continue;
       }
@@ -300,13 +299,36 @@ export class Minimap {
       }
 
       const { color, indicator } = mapIndicator;
+      const glyph = getMapPoiGlyph(entity);
+      const hudScale = calculateHudScale(canvasWidth, canvasHeight);
 
-      if (color && indicator) {
+      if (glyph && color) {
+        // Match biome POI sizing (e.g. campsite H): ~18px disc + bold 12px label, HUD-scaled
+        const poiDiameter = scaleHudValue(18, canvasWidth, canvasHeight);
+        const poiR = Math.max(6, poiDiameter / 2);
+        const fontPx = Math.max(10, scaleHudValue(12, canvasWidth, canvasHeight));
+        ctx.fillStyle = color;
+        ctx.beginPath();
+        ctx.arc(minimapX, minimapY, poiR, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.strokeStyle = "white";
+        ctx.lineWidth = Math.max(2, Math.round(2 * hudScale));
+        ctx.beginPath();
+        ctx.arc(minimapX, minimapY, poiR, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.font = `bold ${fontPx}px Arial`;
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        ctx.lineWidth = Math.max(2, Math.round(2.5 * hudScale));
+        ctx.strokeStyle = "rgba(0, 0, 0, 0.82)";
+        ctx.fillStyle = "rgba(255, 255, 255, 0.96)";
+        ctx.strokeText(glyph, minimapX, minimapY);
+        ctx.fillText(glyph, minimapX, minimapY);
+      } else if (color && indicator) {
         ctx.fillStyle = color;
         const size = indicator.size;
         const halfSize = size / 2;
 
-        // Draw indicator based on shape
         if (indicator.shape === "circle") {
           ctx.beginPath();
           ctx.arc(minimapX, minimapY, halfSize, 0, Math.PI * 2);
@@ -326,7 +348,7 @@ export class Minimap {
     renderMinimapFogOfWar(
       ctx,
       playerPos,
-      lightSources,
+      (wx, wy) => this.mapManager.isWorldPositionInPlayerMapVision(wx, wy),
       settings.fogOfWar,
       this.mapManager.getMapExplorationPayload(),
       this.tileSize,
@@ -588,6 +610,9 @@ export class Minimap {
       ) {
         continue;
       }
+      if (!this.mapManager.isWorldPositionInPlayerMapVision(position.x, position.y)) {
+        continue;
+      }
 
       // Calculate scaled distance on minimap
       const scaledDistance = distance * settings.scale;
@@ -680,6 +705,9 @@ export class Minimap {
       ) {
         continue;
       }
+      if (!this.mapManager.isWorldPositionInPlayerMapVision(position.x, position.y)) {
+        continue;
+      }
 
       // Convert to minimap coordinates (centered on player) - using scaled center
       const minimapX = centerX + relativeX * settings.scale;
@@ -769,6 +797,9 @@ export class Minimap {
       ) {
         continue;
       }
+      if (!this.mapManager.isWorldPositionInPlayerMapVision(position.x, position.y)) {
+        continue;
+      }
 
       // Convert to minimap coordinates (centered on player) - using scaled center
       const minimapX = centerX + relativeX * settings.scale;
@@ -837,6 +868,9 @@ export class Minimap {
         Math.floor(target.worldY / this.tileSize),
       )
     ) {
+      return;
+    }
+    if (!this.mapManager.isWorldPositionInPlayerMapVision(target.worldX, target.worldY)) {
       return;
     }
 

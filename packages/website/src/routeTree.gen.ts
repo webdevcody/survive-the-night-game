@@ -24,12 +24,14 @@ import { Route as ApiGameZombieKillRouteImport } from './routes/api/game/zombie-
 import { Route as ApiGameSkillAllocationsRouteImport } from './routes/api/game/skill-allocations'
 import { Route as ApiGameProfessionProgressRouteImport } from './routes/api/game/profession-progress'
 import { Route as ApiGamePlayerStatsRouteImport } from './routes/api/game/player-stats'
+import { Route as ApiGamePlayerSessionRouteImport } from './routes/api/game/player-session'
 import { Route as ApiGamePlayerRespawnBindRouteImport } from './routes/api/game/player-respawn-bind'
 import { Route as ApiGamePlayerQuestProgressRouteImport } from './routes/api/game/player-quest-progress'
 import { Route as ApiGamePlayerMapExplorationRouteImport } from './routes/api/game/player-map-exploration'
 import { Route as ApiGamePlayerLastPositionRouteImport } from './routes/api/game/player-last-position'
 import { Route as ApiGamePlayerExperienceRouteImport } from './routes/api/game/player-experience'
 import { Route as ApiGameCharacterAllocationsRouteImport } from './routes/api/game/character-allocations'
+import { Route as ApiGameAuctionHouseRouteImport } from './routes/api/game/auction-house'
 import { Route as ApiGameAddExperienceRouteImport } from './routes/api/game/add-experience'
 import { Route as ApiGameAbilityAllocationsRouteImport } from './routes/api/game/ability-allocations'
 import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
@@ -110,6 +112,11 @@ const ApiGamePlayerStatsRoute = ApiGamePlayerStatsRouteImport.update({
   path: '/api/game/player-stats',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiGamePlayerSessionRoute = ApiGamePlayerSessionRouteImport.update({
+  id: '/api/game/player-session',
+  path: '/api/game/player-session',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiGamePlayerRespawnBindRoute =
   ApiGamePlayerRespawnBindRouteImport.update({
     id: '/api/game/player-respawn-bind',
@@ -145,6 +152,11 @@ const ApiGameCharacterAllocationsRoute =
     path: '/api/game/character-allocations',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ApiGameAuctionHouseRoute = ApiGameAuctionHouseRouteImport.update({
+  id: '/api/game/auction-house',
+  path: '/api/game/auction-house',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiGameAddExperienceRoute = ApiGameAddExperienceRouteImport.update({
   id: '/api/game/add-experience',
   path: '/api/game/add-experience',
@@ -176,12 +188,14 @@ export interface FileRoutesByFullPath {
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/game/ability-allocations': typeof ApiGameAbilityAllocationsRoute
   '/api/game/add-experience': typeof ApiGameAddExperienceRoute
+  '/api/game/auction-house': typeof ApiGameAuctionHouseRoute
   '/api/game/character-allocations': typeof ApiGameCharacterAllocationsRoute
   '/api/game/player-experience': typeof ApiGamePlayerExperienceRoute
   '/api/game/player-last-position': typeof ApiGamePlayerLastPositionRoute
   '/api/game/player-map-exploration': typeof ApiGamePlayerMapExplorationRoute
   '/api/game/player-quest-progress': typeof ApiGamePlayerQuestProgressRoute
   '/api/game/player-respawn-bind': typeof ApiGamePlayerRespawnBindRoute
+  '/api/game/player-session': typeof ApiGamePlayerSessionRoute
   '/api/game/player-stats': typeof ApiGamePlayerStatsRoute
   '/api/game/profession-progress': typeof ApiGameProfessionProgressRoute
   '/api/game/skill-allocations': typeof ApiGameSkillAllocationsRoute
@@ -202,12 +216,14 @@ export interface FileRoutesByTo {
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/game/ability-allocations': typeof ApiGameAbilityAllocationsRoute
   '/api/game/add-experience': typeof ApiGameAddExperienceRoute
+  '/api/game/auction-house': typeof ApiGameAuctionHouseRoute
   '/api/game/character-allocations': typeof ApiGameCharacterAllocationsRoute
   '/api/game/player-experience': typeof ApiGamePlayerExperienceRoute
   '/api/game/player-last-position': typeof ApiGamePlayerLastPositionRoute
   '/api/game/player-map-exploration': typeof ApiGamePlayerMapExplorationRoute
   '/api/game/player-quest-progress': typeof ApiGamePlayerQuestProgressRoute
   '/api/game/player-respawn-bind': typeof ApiGamePlayerRespawnBindRoute
+  '/api/game/player-session': typeof ApiGamePlayerSessionRoute
   '/api/game/player-stats': typeof ApiGamePlayerStatsRoute
   '/api/game/profession-progress': typeof ApiGameProfessionProgressRoute
   '/api/game/skill-allocations': typeof ApiGameSkillAllocationsRoute
@@ -229,12 +245,14 @@ export interface FileRoutesById {
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/game/ability-allocations': typeof ApiGameAbilityAllocationsRoute
   '/api/game/add-experience': typeof ApiGameAddExperienceRoute
+  '/api/game/auction-house': typeof ApiGameAuctionHouseRoute
   '/api/game/character-allocations': typeof ApiGameCharacterAllocationsRoute
   '/api/game/player-experience': typeof ApiGamePlayerExperienceRoute
   '/api/game/player-last-position': typeof ApiGamePlayerLastPositionRoute
   '/api/game/player-map-exploration': typeof ApiGamePlayerMapExplorationRoute
   '/api/game/player-quest-progress': typeof ApiGamePlayerQuestProgressRoute
   '/api/game/player-respawn-bind': typeof ApiGamePlayerRespawnBindRoute
+  '/api/game/player-session': typeof ApiGamePlayerSessionRoute
   '/api/game/player-stats': typeof ApiGamePlayerStatsRoute
   '/api/game/profession-progress': typeof ApiGameProfessionProgressRoute
   '/api/game/skill-allocations': typeof ApiGameSkillAllocationsRoute
@@ -257,12 +275,14 @@ export interface FileRouteTypes {
     | '/api/auth/$'
     | '/api/game/ability-allocations'
     | '/api/game/add-experience'
+    | '/api/game/auction-house'
     | '/api/game/character-allocations'
     | '/api/game/player-experience'
     | '/api/game/player-last-position'
     | '/api/game/player-map-exploration'
     | '/api/game/player-quest-progress'
     | '/api/game/player-respawn-bind'
+    | '/api/game/player-session'
     | '/api/game/player-stats'
     | '/api/game/profession-progress'
     | '/api/game/skill-allocations'
@@ -283,12 +303,14 @@ export interface FileRouteTypes {
     | '/api/auth/$'
     | '/api/game/ability-allocations'
     | '/api/game/add-experience'
+    | '/api/game/auction-house'
     | '/api/game/character-allocations'
     | '/api/game/player-experience'
     | '/api/game/player-last-position'
     | '/api/game/player-map-exploration'
     | '/api/game/player-quest-progress'
     | '/api/game/player-respawn-bind'
+    | '/api/game/player-session'
     | '/api/game/player-stats'
     | '/api/game/profession-progress'
     | '/api/game/skill-allocations'
@@ -309,12 +331,14 @@ export interface FileRouteTypes {
     | '/api/auth/$'
     | '/api/game/ability-allocations'
     | '/api/game/add-experience'
+    | '/api/game/auction-house'
     | '/api/game/character-allocations'
     | '/api/game/player-experience'
     | '/api/game/player-last-position'
     | '/api/game/player-map-exploration'
     | '/api/game/player-quest-progress'
     | '/api/game/player-respawn-bind'
+    | '/api/game/player-session'
     | '/api/game/player-stats'
     | '/api/game/profession-progress'
     | '/api/game/skill-allocations'
@@ -336,12 +360,14 @@ export interface RootRouteChildren {
   ApiAuthSplatRoute: typeof ApiAuthSplatRoute
   ApiGameAbilityAllocationsRoute: typeof ApiGameAbilityAllocationsRoute
   ApiGameAddExperienceRoute: typeof ApiGameAddExperienceRoute
+  ApiGameAuctionHouseRoute: typeof ApiGameAuctionHouseRoute
   ApiGameCharacterAllocationsRoute: typeof ApiGameCharacterAllocationsRoute
   ApiGamePlayerExperienceRoute: typeof ApiGamePlayerExperienceRoute
   ApiGamePlayerLastPositionRoute: typeof ApiGamePlayerLastPositionRoute
   ApiGamePlayerMapExplorationRoute: typeof ApiGamePlayerMapExplorationRoute
   ApiGamePlayerQuestProgressRoute: typeof ApiGamePlayerQuestProgressRoute
   ApiGamePlayerRespawnBindRoute: typeof ApiGamePlayerRespawnBindRoute
+  ApiGamePlayerSessionRoute: typeof ApiGamePlayerSessionRoute
   ApiGamePlayerStatsRoute: typeof ApiGamePlayerStatsRoute
   ApiGameProfessionProgressRoute: typeof ApiGameProfessionProgressRoute
   ApiGameSkillAllocationsRoute: typeof ApiGameSkillAllocationsRoute
@@ -456,6 +482,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiGamePlayerStatsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/game/player-session': {
+      id: '/api/game/player-session'
+      path: '/api/game/player-session'
+      fullPath: '/api/game/player-session'
+      preLoaderRoute: typeof ApiGamePlayerSessionRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/game/player-respawn-bind': {
       id: '/api/game/player-respawn-bind'
       path: '/api/game/player-respawn-bind'
@@ -498,6 +531,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiGameCharacterAllocationsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/game/auction-house': {
+      id: '/api/game/auction-house'
+      path: '/api/game/auction-house'
+      fullPath: '/api/game/auction-house'
+      preLoaderRoute: typeof ApiGameAuctionHouseRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/game/add-experience': {
       id: '/api/game/add-experience'
       path: '/api/game/add-experience'
@@ -536,12 +576,14 @@ const rootRouteChildren: RootRouteChildren = {
   ApiAuthSplatRoute: ApiAuthSplatRoute,
   ApiGameAbilityAllocationsRoute: ApiGameAbilityAllocationsRoute,
   ApiGameAddExperienceRoute: ApiGameAddExperienceRoute,
+  ApiGameAuctionHouseRoute: ApiGameAuctionHouseRoute,
   ApiGameCharacterAllocationsRoute: ApiGameCharacterAllocationsRoute,
   ApiGamePlayerExperienceRoute: ApiGamePlayerExperienceRoute,
   ApiGamePlayerLastPositionRoute: ApiGamePlayerLastPositionRoute,
   ApiGamePlayerMapExplorationRoute: ApiGamePlayerMapExplorationRoute,
   ApiGamePlayerQuestProgressRoute: ApiGamePlayerQuestProgressRoute,
   ApiGamePlayerRespawnBindRoute: ApiGamePlayerRespawnBindRoute,
+  ApiGamePlayerSessionRoute: ApiGamePlayerSessionRoute,
   ApiGamePlayerStatsRoute: ApiGamePlayerStatsRoute,
   ApiGameProfessionProgressRoute: ApiGameProfessionProgressRoute,
   ApiGameSkillAllocationsRoute: ApiGameSkillAllocationsRoute,

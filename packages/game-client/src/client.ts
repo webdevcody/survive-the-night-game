@@ -55,6 +55,7 @@ import { DialogueManager } from "./managers/dialogue-manager";
 import { QuestCompletedModal } from "./ui/quest-completed-modal";
 import { QuestNotificationTracker } from "./managers/quest-notification-tracker";
 import { resolveQuestNavigationTarget } from "@/util/resolve-quest-navigation-target";
+import { SignClient } from "@/entities/items/sign";
 
 export class GameClient {
   private ctx: CanvasRenderingContext2D;
@@ -205,6 +206,14 @@ export class GameClient {
       getInventoryActiveTab: () => this.hud.getInventoryActiveTab(),
       isNpcDialogueOpen: () => this.gameState.openDialogueNpcId != null,
       isQuestCompletedModalOpen: () => this.questCompletedModal.isOpen(),
+      isBlockingModalOpen: () => this.hud?.isBlockingModalOpen() ?? false,
+      tryCloseSignReadModalOnInteractKey: () => {
+        if (!this.hud?.isSignReadModalOpen()) {
+          return false;
+        }
+        this.hud.closeSignReadModal();
+        return true;
+      },
       isPlayerDead: () => {
         const player = getPlayer();
         return player ? player.isDead() : false;
@@ -244,11 +253,23 @@ export class GameClient {
       sendBankAction: (data) => {
         this.socketManager?.sendBankAction(data);
       },
-      sendConsumeItem: (itemType) => {
-        this.socketManager?.sendConsumeItem(itemType);
+      sendAuctionAction: (data) => {
+        this.socketManager?.sendAuctionAction(data);
+      },
+      sendSplitInventoryStack: (data) => {
+        this.socketManager?.sendSplitInventoryStack(data);
+      },
+      sendSetSignText: (data) => {
+        this.socketManager?.sendSetSignText(data);
+      },
+      sendConsumeItem: (itemType, slotIndex) => {
+        this.socketManager?.sendConsumeItem(itemType, slotIndex);
       },
       sendDropFromEquipment: (equipSlot) => {
         this.socketManager?.sendDropFromEquipment(equipSlot);
+      },
+      sendInteract: (targetEntityId) => {
+        this.socketManager?.sendInteract(targetEntityId);
       },
       onRequestExitGame,
     });
@@ -307,8 +328,6 @@ export class GameClient {
     im.on("toggleInventoryScreen", () => this.hud.toggleInventoryScreen());
     im.on("inventoryPanelFocusTab", ({ tab }) => this.hud.focusInventoryTab(tab));
     im.on("toggleQuestJournal", () => this.hud.toggleQuestJournal());
-    im.on("showPlayerList", () => this.hud.setShowPlayerList(true));
-    im.on("hidePlayerList", () => this.hud.setShowPlayerList(false));
     im.on("toggleMap", () => this.hud.toggleFullscreenMap());
     im.on("toggleMute", () => this.soundManager.toggleMute());
     im.on("dismissQuestCompletedModal", () => this.questCompletedModal.dismissCurrent());
@@ -401,6 +420,19 @@ export class GameClient {
     if (player) {
       const closest = getClosestInteractiveEntity(this.gameState, this.renderer?.spatialGrid ?? null);
       if (closest) {
+        if (
+          closest.getType() === "sign" &&
+          closest instanceof SignClient &&
+          player.hasExt(ClientPositionable) &&
+          closest.hasExt(ClientPositionable) &&
+          distance(
+            player.getExt(ClientPositionable).getCenterPosition(),
+            closest.getExt(ClientPositionable).getCenterPosition(),
+          ) <= maxInteract
+        ) {
+          this.hud.openSignReadModal(closest.getDisplayMessage(), closest.getId());
+          return;
+        }
         if (closest.getType() === Entities.LOCKER) {
           if (
             player.hasExt(ClientPositionable) &&
@@ -421,6 +453,29 @@ export class GameClient {
             const inventoryWasAlreadyOpen = this.hud.isInventoryScreenOpen();
             this.hud.setInventoryScreenOpen(true);
             this.hud.openBank(closest.getId(), inventoryWasAlreadyOpen);
+            return;
+          }
+        }
+        if (closest.getType() === Entities.AUCTION_HOUSE) {
+          if (
+            player.hasExt(ClientPositionable) &&
+            closest.hasExt(ClientPositionable) &&
+            distance(
+              player.getExt(ClientPositionable).getCenterPosition(),
+              closest.getExt(ClientPositionable).getCenterPosition(),
+            ) <= maxInteract
+          ) {
+            if (this.hud.isBankOpen()) {
+              if (this.hud.shouldCloseFullInventoryWhenTogglingBank()) {
+                this.hud.setInventoryScreenOpen(false);
+              } else {
+                this.hud.closeBank();
+              }
+              return;
+            }
+            const inventoryWasAlreadyOpen = this.hud.isInventoryScreenOpen();
+            this.hud.setInventoryScreenOpen(true);
+            this.hud.openAuction(closest.getId(), inventoryWasAlreadyOpen);
             return;
           }
         }
@@ -682,6 +737,8 @@ export class GameClient {
     const maxDeltaSeconds = getConfig().simulation.FIXED_TIMESTEP * 10;
     const deltaSeconds = Math.max(0, Math.min(deltaSecondsRaw, maxDeltaSeconds));
     this.gameState.dt = deltaSeconds;
+
+    this.hud.tickPanelAnimations(now);
 
     this.gameState.questNavigationTarget = resolveQuestNavigationTarget(
       this.gameState,

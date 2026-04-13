@@ -36,6 +36,8 @@ import { VersionMismatchEvent } from "../../../game-shared/src/events/server-sen
 import { AuthRequiredEvent } from "../../../game-shared/src/events/server-sent/events/auth-required-event";
 import { ProfileLoadFailedEvent } from "../../../game-shared/src/events/server-sent/events/profile-load-failed-event";
 import { PlayerLevelUpEvent } from "../../../game-shared/src/events/server-sent/events/player-level-up-event";
+import { AuctionSnapshotEvent } from "../../../game-shared/src/events/server-sent/events/auction-snapshot-event";
+import { DuplicateActiveSessionEvent } from "../../../game-shared/src/events/server-sent/events/duplicate-active-session-event";
 import { UserBannedEvent } from "../../../game-shared/src/events/server-sent/events/user-banned-event";
 import { ISocketAdapter } from "@shared/network/socket-adapter";
 import { IClientAdapter } from "@shared/network/client-adapter";
@@ -47,6 +49,9 @@ import {
   type EquipmentSlotKey,
 } from "@shared/util/inventory";
 import type { BankActionEventData } from "@shared/events/client-sent/events/bank-action";
+import type { AuctionActionEventData } from "../../../game-shared/src/events/client-sent/events/auction-action";
+import type { SetSignTextEventData } from "@shared/events/client-sent/events/set-sign-text";
+import type { SplitInventoryStackEventData } from "@shared/events/client-sent/events/split-inventory-stack";
 import { getGameAuthToken } from "@/util/cookie";
 
 export type EntityDto = { id: string } & any;
@@ -87,6 +92,8 @@ const SERVER_EVENT_MAP = {
   [ServerSentEvents.USER_BANNED]: UserBannedEvent,
   [ServerSentEvents.PROFILE_LOAD_FAILED]: ProfileLoadFailedEvent,
   [ServerSentEvents.PLAYER_LEVEL_UP]: PlayerLevelUpEvent,
+  [ServerSentEvents.AUCTION_SNAPSHOT]: AuctionSnapshotEvent,
+  [ServerSentEvents.DUPLICATE_ACTIVE_SESSION]: DuplicateActiveSessionEvent,
 } as const;
 
 export class ClientSocketManager {
@@ -541,8 +548,11 @@ export class ClientSocketManager {
     });
   }
 
-  public sendConsumeItem(itemType: string | null) {
-    this.emitClientEvent(ClientSentEvents.CONSUME_ITEM, { itemType });
+  public sendConsumeItem(itemType: string | null, slotIndex?: number) {
+    this.emitClientEvent(ClientSentEvents.CONSUME_ITEM, {
+      itemType,
+      ...(slotIndex === undefined ? {} : { slotIndex }),
+    });
   }
 
   public sendUseLoadoutConsumable(which: 0 | 1) {
@@ -618,6 +628,18 @@ export class ClientSocketManager {
     this.emitClientEvent(ClientSentEvents.BANK_ACTION, data);
   }
 
+  public sendAuctionAction(data: AuctionActionEventData) {
+    this.emitClientEvent(ClientSentEvents.AUCTION_ACTION, data);
+  }
+
+  public sendSplitInventoryStack(data: SplitInventoryStackEventData) {
+    this.emitClientEvent(ClientSentEvents.SPLIT_INVENTORY_STACK, data);
+  }
+
+  public sendSetSignText(data: SetSignTextEventData) {
+    this.emitClientEvent(ClientSentEvents.SET_SIGN_TEXT, data);
+  }
+
   public getSocket(): ISocketAdapter {
     return this.socket;
   }
@@ -676,5 +698,10 @@ export class ClientSocketManager {
       clearTimeout(this.reconnectTimeout);
       this.reconnectTimeout = null;
     }
+  }
+
+  /** When false, transport closed deliberately (e.g. duplicate session); skip generic reconnect HUD copy. */
+  public getShouldReconnect(): boolean {
+    return this.shouldReconnect;
   }
 }

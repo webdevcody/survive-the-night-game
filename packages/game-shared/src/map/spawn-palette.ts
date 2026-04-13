@@ -1,11 +1,14 @@
 /**
  * World map `spawns` layer tile IDs (shared by editor + game-server).
- * Must stay in sync with ZombieFactory.ZombieType order for indices 2–6.
+ * Zombie palette tile IDs 2–6 map to standard types (see SPAWN_ZOMBIE_TYPES).
+ * Extended enemies / bosses: fixed ids 252+ (append-only; outside item range; after NPC 250–251).
  * Item fixture tile IDs: ITEM_SPAWN_TILE_ID_MIN .. ITEM_SPAWN_TILE_ID_END-1 (see ITEM_FIXTURE_SPAWN_TYPES).
  * Dialogue NPCs: fixed ids 250–251 (see rewriteSpawnsLayerDialogueNpcTiles on map load).
  */
-import { ENTITY_REGISTRATION_CONFIG } from "../config/entity-registration";
+import { ENTITY_REGISTRATION_CONFIG, type EntityCategory } from "../config/entity-registration";
 import type { EntityType } from "../types/entity";
+import { CRAFT_RECIPE_COMPONENT_ENTITY_TYPES } from "../util/recipes";
+import { getMerchantBuyPriceForEntityType } from "../util/merchant-pricing";
 import { itemRegistry } from "../entities/item-registry";
 import { weaponRegistry } from "../entities/weapon-registry";
 import { resourceRegistry } from "../entities/resource-registry";
@@ -28,6 +31,23 @@ const ITEM_FIXTURE_EXCLUDED_TYPES = new Set<EntityType>(["boundary", "crate"]);
  */
 const ITEM_FIXTURE_APPEND_ONLY_TYPES = new Set<EntityType>(["pain_pills"]);
 
+/**
+ * Recipe ingredients (and similar pickup types) that are not part of the registration-order fixture list
+ * still get stable tile ids appended at the end (see {@link buildItemFixtureSpawnTypes}).
+ */
+
+/** True if this type can be spawned as a map pickup via item / weapon / resource configs. */
+function isRegistryPickupFixtureCandidate(type: EntityType): boolean {
+  if (ITEM_FIXTURE_EXCLUDED_TYPES.has(type)) {
+    return false;
+  }
+  return (
+    itemRegistry.has(type) ||
+    weaponRegistry.has(type) ||
+    resourceRegistry.has(type)
+  );
+}
+
 function buildItemFixtureSpawnTypes(): EntityType[] {
   const registrationOrder = ENTITY_REGISTRATION_CONFIG.filter(
     (e) =>
@@ -37,12 +57,26 @@ function buildItemFixtureSpawnTypes(): EntityType[] {
 
   const core = registrationOrder.filter((t) => !ITEM_FIXTURE_APPEND_ONLY_TYPES.has(t));
   const appended = registrationOrder.filter((t) => ITEM_FIXTURE_APPEND_ONLY_TYPES.has(t));
-  return [...core, ...appended];
+  const base = [...core, ...appended];
+  const baseSet = new Set(base);
+
+  const recipeIngredientAppend = [...CRAFT_RECIPE_COMPONENT_ENTITY_TYPES]
+    .filter((t) => !baseSet.has(t) && isRegistryPickupFixtureCandidate(t))
+    .sort((a, b) => {
+      const pa = getMerchantBuyPriceForEntityType(a);
+      const pb = getMerchantBuyPriceForEntityType(b);
+      if (pb !== pa) {
+        return pb - pa;
+      }
+      return a.localeCompare(b);
+    });
+
+  return [...base, ...recipeIngredientAppend];
 }
 
 /**
  * Pickup types placeable as item spawn fixtures. Order = stable tile IDs from 7 upward
- * (see `ITEM_FIXTURE_APPEND_ONLY_TYPES` — do not reorder existing entries).
+ * (registration order + {@link ITEM_FIXTURE_APPEND_ONLY_TYPES} + recipe-ingredient append list).
  */
 export const ITEM_FIXTURE_SPAWN_TYPES: readonly EntityType[] = buildItemFixtureSpawnTypes();
 
@@ -66,6 +100,12 @@ export const NPC_DIALOGUE_SURVIVOR_SPAWN_TILE_ID = 250;
 
 /** Healer variant; message / heal flag live under `dialogueNpcs` in world-map.json. */
 export const NPC_HEALER_DIALOGUE_SPAWN_TILE_ID = 251;
+
+/**
+ * Grave Tyrant spawner tile id (first extended-enemy slot; keep stable for existing maps).
+ * @deprecated Prefer {@link EXTENDED_ZOMBIE_SPAWN_FIXTURES}.
+ */
+export const BOSS_ZOMBIE_SPAWN_TILE_ID = 252;
 
 export const DEFAULT_ITEM_FIXTURE_RESPAWN_MS = 120_000;
 
@@ -91,6 +131,97 @@ export function spawnTileIdToZombieType(id: number): SpawnZombiePaletteType | nu
   return SPAWN_ZOMBIE_TYPES[id - 2];
 }
 
+export const EXTENDED_ZOMBIE_SPAWN_KINDS = [
+  "grave_tyrant",
+  "charging_tyrant",
+  "acid_flyer",
+  "splitter_boss",
+  "exploding_zombie",
+  "leaping_zombie",
+] as const;
+
+export type ExtendedZombieSpawnFixtureKind = (typeof EXTENDED_ZOMBIE_SPAWN_KINDS)[number];
+
+/**
+ * Authored extended / boss enemy markers on the spawns layer (fixed tile ids; append new rows only).
+ * `editorGroup` drives the spawner panel typeahead sections (boss vs extra zombie variants).
+ */
+export const EXTENDED_ZOMBIE_SPAWN_FIXTURES: readonly {
+  readonly id: number;
+  readonly kind: ExtendedZombieSpawnFixtureKind;
+  readonly editorGroup: "zombies" | "boss";
+  readonly label: string;
+  readonly shortLabel: string;
+  readonly color: string;
+}[] = [
+  {
+    id: 252,
+    kind: "grave_tyrant",
+    editorGroup: "boss",
+    label: "Grave Tyrant",
+    shortLabel: "GT",
+    color: "rgba(220,38,127,0.55)",
+  },
+  {
+    id: 253,
+    kind: "charging_tyrant",
+    editorGroup: "boss",
+    label: "Charging Tyrant (tank)",
+    shortLabel: "TNK",
+    color: "rgba(185,28,28,0.55)",
+  },
+  {
+    id: 254,
+    kind: "acid_flyer",
+    editorGroup: "boss",
+    label: "Acid Flyer",
+    shortLabel: "ACD",
+    color: "rgba(101,163,13,0.55)",
+  },
+  {
+    id: 255,
+    kind: "splitter_boss",
+    editorGroup: "boss",
+    label: "Splitter Boss",
+    shortLabel: "SPL",
+    color: "rgba(147,51,234,0.55)",
+  },
+  {
+    id: 256,
+    kind: "exploding_zombie",
+    editorGroup: "zombies",
+    label: "Exploding zombie",
+    shortLabel: "BOOM",
+    color: "rgba(245,158,11,0.5)",
+  },
+  {
+    id: 257,
+    kind: "leaping_zombie",
+    editorGroup: "zombies",
+    label: "Leaping zombie",
+    shortLabel: "LEAP",
+    color: "rgba(14,165,233,0.5)",
+  },
+];
+
+const EXTENDED_SPAWN_TILE_TO_KIND: ReadonlyMap<number, ExtendedZombieSpawnFixtureKind> = new Map(
+  EXTENDED_ZOMBIE_SPAWN_FIXTURES.map((e) => [e.id, e.kind]),
+);
+
+/** Tile ids 2–6 (standard) or fixed extended ids (see {@link EXTENDED_ZOMBIE_SPAWN_FIXTURES}). */
+export function spawnTileIdToZombieFixtureKind(id: number): ZombieSpawnFixtureKind | null {
+  const palette = spawnTileIdToZombieType(id);
+  if (palette != null) {
+    return palette;
+  }
+  const ext = EXTENDED_SPAWN_TILE_TO_KIND.get(id);
+  return ext ?? null;
+}
+
+export function isZombieSpawnFixtureTile(id: number): boolean {
+  return spawnTileIdToZombieFixtureKind(id) != null;
+}
+
 /** Milliseconds after a fixture zombie dies before respawning at the same tile (per palette type). */
 export const ENEMY_SPAWN_RESPAWN_MS_BY_TYPE: Record<SpawnZombiePaletteType, number> = {
   regular: 180_000,
@@ -100,8 +231,25 @@ export const ENEMY_SPAWN_RESPAWN_MS_BY_TYPE: Record<SpawnZombiePaletteType, numb
   spitter: 200_000,
 };
 
+/** Standard palette zombies (2–6) plus fixed-tile extended enemies (see {@link EXTENDED_ZOMBIE_SPAWN_FIXTURES}). */
+export type ZombieSpawnFixtureKind = SpawnZombiePaletteType | ExtendedZombieSpawnFixtureKind;
+
+export const ZOMBIE_SPAWN_FIXTURE_RESPAWN_MS: Record<ZombieSpawnFixtureKind, number> = {
+  ...ENEMY_SPAWN_RESPAWN_MS_BY_TYPE,
+  grave_tyrant: 600_000,
+  charging_tyrant: 600_000,
+  acid_flyer: 480_000,
+  splitter_boss: 600_000,
+  exploding_zombie: 200_000,
+  leaping_zombie: 160_000,
+};
+
+export function getZombieSpawnFixtureRespawnMs(kind: ZombieSpawnFixtureKind): number {
+  return ZOMBIE_SPAWN_FIXTURE_RESPAWN_MS[kind];
+}
+
 export function getEnemySpawnRespawnMs(type: SpawnZombiePaletteType): number {
-  return ENEMY_SPAWN_RESPAWN_MS_BY_TYPE[type];
+  return getZombieSpawnFixtureRespawnMs(type);
 }
 
 export function isItemSpawnTile(id: number): boolean {
@@ -150,9 +298,9 @@ export function getAuthoredSpawnerDefaultRespawnSec(spawnTileId: number): number
   if (spawnTileId <= 0 || isPlayerSpawnTile(spawnTileId)) {
     return null;
   }
-  if (isEnemySpawnTile(spawnTileId)) {
-    const zt = spawnTileIdToZombieType(spawnTileId);
-    return zt == null ? null : Math.round(getEnemySpawnRespawnMs(zt) / 1000);
+  const zKind = spawnTileIdToZombieFixtureKind(spawnTileId);
+  if (zKind != null) {
+    return Math.round(getZombieSpawnFixtureRespawnMs(zKind) / 1000);
   }
   if (isItemSpawnTile(spawnTileId)) {
     const t = spawnTileIdToItemFixtureType(spawnTileId);
@@ -197,6 +345,13 @@ export const ITEM_SPAWN_PALETTE_ENTRIES: readonly SpawnPaletteEntry[] = ITEM_FIX
   }),
 );
 
+const EXTENDED_ZOMBIE_SPAWN_PALETTE_ENTRIES: readonly SpawnPaletteEntry[] =
+  EXTENDED_ZOMBIE_SPAWN_FIXTURES.map((e) => ({
+    id: e.id,
+    label: e.label,
+    color: e.color,
+  }));
+
 const NPC_DIALOGUE_SURVIVOR_PALETTE_ENTRY: SpawnPaletteEntry = {
   id: NPC_DIALOGUE_SURVIVOR_SPAWN_TILE_ID,
   label: "Dialogue NPC",
@@ -212,6 +367,7 @@ const NPC_HEALER_DIALOGUE_PALETTE_ENTRY: SpawnPaletteEntry = {
 /** Full spawns-layer palette: player, zombies, item fixtures, dialogue NPCs. */
 export const SPAWN_PALETTE_ENTRIES: readonly SpawnPaletteEntry[] = [
   ...SPAWN_BASE_PALETTE_ENTRIES,
+  ...EXTENDED_ZOMBIE_SPAWN_PALETTE_ENTRIES,
   ...ITEM_SPAWN_PALETTE_ENTRIES,
   NPC_DIALOGUE_SURVIVOR_PALETTE_ENTRY,
   NPC_HEALER_DIALOGUE_PALETTE_ENTRY,
@@ -225,6 +381,76 @@ export const SPAWNER_META_CONFIGURABLE_ENTRIES: readonly SpawnPaletteEntry[] =
   SPAWN_PALETTE_ENTRIES.filter(
     (e) => e.id !== SPAWN_TILE_NONE && !isNpcDialogueSpawnTile(e.id),
   );
+
+/**
+ * Spawn-type groups for the editor spawner panel typeahead (fixtures are split by registration category).
+ * Player spawn (tile id 1) is shown above these groups without a section header.
+ */
+export type SpawnerMetaTypeaheadGroupId =
+  | "zombies"
+  | "boss"
+  | "weapons"
+  | "ammo"
+  | "crafting"
+  | "items";
+
+export const SPAWNER_META_TYPEAHEAD_GROUP_ORDER: readonly SpawnerMetaTypeaheadGroupId[] = [
+  "zombies",
+  "boss",
+  "weapons",
+  "ammo",
+  "crafting",
+  "items",
+] as const;
+
+export const SPAWNER_META_TYPEAHEAD_GROUP_LABEL: Record<SpawnerMetaTypeaheadGroupId, string> = {
+  zombies: "Zombies",
+  boss: "Boss",
+  weapons: "Weapons",
+  ammo: "Ammo",
+  crafting: "Crafting",
+  items: "Items",
+};
+
+function itemFixtureCategory(entityType: EntityType): EntityCategory | null {
+  const reg = ENTITY_REGISTRATION_CONFIG.find((e) => e.type === entityType);
+  return reg?.category ?? null;
+}
+
+/**
+ * Classifies a spawns-layer tile for grouped typeahead UIs (editor).
+ * Returns null for the player spawn tile — render that row separately (ungrouped).
+ */
+export function getSpawnerMetaTypeaheadGroupId(
+  spawnTileId: number,
+): SpawnerMetaTypeaheadGroupId | null {
+  if (isPlayerSpawnTile(spawnTileId)) {
+    return null;
+  }
+  if (isEnemySpawnTile(spawnTileId)) {
+    return "zombies";
+  }
+  const ext = EXTENDED_ZOMBIE_SPAWN_FIXTURES.find((e) => e.id === spawnTileId);
+  if (ext) {
+    return ext.editorGroup;
+  }
+  if (isItemSpawnTile(spawnTileId)) {
+    const t = spawnTileIdToItemFixtureType(spawnTileId);
+    if (t) {
+      if (CRAFT_RECIPE_COMPONENT_ENTITY_TYPES.has(t)) {
+        return "crafting";
+      }
+      const cat = itemFixtureCategory(t);
+      if (cat === "weapons") {
+        return "weapons";
+      }
+      if (cat === "ammo") {
+        return "ammo";
+      }
+    }
+  }
+  return "items";
+}
 
 const SPAWN_TILE_SHORT: Record<number, string> = {
   [SPAWN_TILE_NONE]: "",
@@ -246,6 +472,8 @@ export function getSpawnTileShortLabel(spawnTileId: number): string {
     const short = t.replace(/_/g, "");
     return short.length <= 4 ? short : short.slice(0, 4);
   }
+  const extShort = EXTENDED_ZOMBIE_SPAWN_FIXTURES.find((e) => e.id === spawnTileId);
+  if (extShort) return extShort.shortLabel;
   if (isNpcDialogueSurvivorSpawnTile(spawnTileId)) return "NPC";
   if (isNpcHealerDialogueSpawnTile(spawnTileId)) return "HEAL";
   return "?";

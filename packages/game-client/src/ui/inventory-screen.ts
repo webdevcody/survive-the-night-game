@@ -14,8 +14,20 @@ import {
   encodeEquipmentSlotKey,
   type EquipmentSlotKey,
   type PlayerEquipmentState,
+  canBagAcceptItem,
+  isStackableInventoryItem,
 } from "@shared/util/inventory";
 import type { BankActionEventData } from "@shared/events/client-sent/events/bank-action";
+import type { SetSignTextEventData } from "@shared/events/client-sent/events/set-sign-text";
+import type { AuctionActionEventData } from "../../../game-shared/src/events/client-sent/events/auction-action";
+import {
+  AUCTION_MAX_PRICE,
+  AUCTION_MIN_PRICE,
+  type AuctionHouseSnapshotPayload,
+  type AuctionListingSnapshot,
+  canListItemFromBag,
+} from "../../../game-shared/src/util/auction-types";
+import type { AuctionItemCategory } from "../../../game-shared/src/util/auction-item-category";
 import { itemRegistry } from "@shared/entities/item-registry";
 import { getConfig, playerConfig } from "@shared/config";
 import { formatDisplayName } from "@/util/format";
@@ -69,6 +81,8 @@ import {
 } from "@/ui/canvas-ui-rect";
 import { renderUnspentProgressionBadge } from "./minimap-inventory-menu";
 import { getQuestObjectiveLine } from "./quest-display";
+import { SignTextModal } from "./sign-modals";
+import { getSignInventoryDisplayName } from "@shared/util/sign-message";
 import {
   PROFESSION_DEFINITIONS,
   PROFESSION_IDS,
@@ -80,8 +94,10 @@ import {
   drawRpgTopAccentBar,
   fillRpgPanelGradient,
   RPG_BODY_TEXT,
+  RPG_BORDER_GOLD,
   RPG_COUNTER_GOLD,
   RPG_METADATA_MUTED,
+  RPG_MODAL_SCRIM,
   RPG_PROMPT_GOLD,
   RPG_PROMPT_TYPING,
   RPG_SLOT_FILL,
@@ -98,6 +114,52 @@ import {
 const DRAG_THRESHOLD = 12;
 const PANEL_WIDTH_RATIO = 0.46;
 const LAYOUT_PAD_PX = 20;
+/** Auction claim control: pinned top-right of bank panel; tabs leave this horizontal band clear. */
+const AUCTION_CLAIM_BTN_W = 108;
+const AUCTION_CLAIM_BTN_H = 22;
+const AUCTION_CLAIM_BTN_TOP = 10;
+const AUCTION_CLAIM_BTN_RIGHT_INSET = 10;
+const AUCTION_TAB_RIGHT_RESERVE_FOR_CLAIM =
+  AUCTION_CLAIM_BTN_W + AUCTION_CLAIM_BTN_RIGHT_INSET + 8;
+
+const AUCTION_MODAL_INPUT_INVALID_BORDER = "rgba(220, 100, 100, 0.95)";
+
+/** Non-negative integer string (no decimals, no empty). */
+function parseAuctionModalUintString(raw: string): { ok: true; value: number } | { ok: false } {
+  const t = raw.trim();
+  if (t === "" || !/^\d+$/.test(t)) {
+    return { ok: false };
+  }
+  const value = Number(t);
+  if (!Number.isSafeInteger(value)) {
+    return { ok: false };
+  }
+  return { ok: true, value };
+}
+
+function styleAuctionModalButton(el: HTMLButtonElement, variant: "primary" | "secondary"): void {
+  const base =
+    "font:bold 14px Arial,system-ui,sans-serif;padding:8px 18px;min-width:92px;border-radius:4px;cursor:pointer;box-sizing:border-box;transition:filter 0.12s ease;";
+  if (variant === "secondary") {
+    el.style.cssText =
+      base +
+      `background:${RPG_SLOT_FILL};color:${RPG_BODY_TEXT};border:1px solid ${RPG_SLOT_STROKE};`;
+  } else {
+    el.style.cssText =
+      base +
+      `background:${RPG_TAB_ACTIVE_FILL};color:${RPG_TITLE_CREAM};border:2px solid ${RPG_TAB_ACTIVE_STROKE};`;
+  }
+  el.onmouseenter = () => {
+    el.style.filter = "brightness(1.08)";
+  };
+  el.onmouseleave = () => {
+    el.style.filter = "";
+  };
+}
+
+function auctionModalTextInputStyle(): string {
+  return `width:100%;padding:8px;font-size:16px;box-sizing:border-box;border-radius:4px;border:1px solid ${RPG_SLOT_STROKE};background:${RPG_SLOT_FILL_DIM};color:${RPG_BODY_TEXT};outline:none;font-family:Georgia,system-ui,sans-serif;`;
+}
 const INVENTORY_PANEL_OPEN_SPEED = 7;
 const INVENTORY_PANEL_CLOSE_SPEED = 10;
 
@@ -502,7 +564,8 @@ type DragState = {
 type BankCtxTarget =
   | { kind: "bank"; index: number }
   | { kind: "bag"; index: number }
-  | { kind: "equip"; slot: EquipmentSlotKey };
+  | { kind: "equip"; slot: EquipmentSlotKey }
+  | { kind: "auction"; listingIndex: number };
 
 type CtxMenuState = {
   x: number;
@@ -521,8 +584,7 @@ export type InventoryScreenDeps = {
   sendDropFromEquipment: (equipSlot: EquipmentSlotKey) => void;
   sendSwapItems: (from: number, to: number) => void;
   sendSwapBagAndEquipment: (bagIndex: number, equipSlot: EquipmentSlotKey) => void;
-  sendSelectInventorySlot: (slotIndex: number) => void;
-  sendConsumeItem: (itemType: string | null) => void;
+  sendConsumeItem: (itemType: string | null, slotIndex?: number) => void;
   sendProgressionAllocations: (
     kind: "ability" | "character",
     allocations: Record<string, number>,
@@ -530,6 +592,10 @@ export type InventoryScreenDeps = {
   sendSetWeaponLoadoutSlot: (slot: 0 | 1 | 2 | 3 | 4, bagIndex: number) => void;
   sendSelectWeaponLoadout: (loadout: 0 | 1 | 2) => void;
   sendBankAction: (data: BankActionEventData) => void;
+  sendAuctionAction: (data: AuctionActionEventData) => void;
+  sendSplitInventoryStack: (data: { slotIndex: number; quantity: number }) => void;
+  sendSetSignText: (data: SetSignTextEventData) => void;
+  getAuctionSnapshot: () => AuctionHouseSnapshotPayload | null;
   getAuthoredQuests: () => import("@shared/map/quest-types").WorldMapQuestDefinition[];
 };
 
@@ -569,6 +635,15 @@ export class InventoryScreenUI {
   private hoveredEquipSlot: EquipmentSlotKey | null = null;
   /** Nearest locker entity id while bank UI is open. */
   private bankLockerId: number | null = null;
+  /** Auction house entity id while auction UI is open (mutually exclusive with bank). */
+  private auctionHouseId: number | null = null;
+  private auctionCategoryFilter: AuctionItemCategory | "all" = "all";
+  private auctionTabRects: { id: AuctionItemCategory | "all"; x: number; y: number; w: number; h: number }[] =
+    [];
+  private claimButtonRect: { x: number; y: number; w: number; h: number } | null = null;
+  private auctionPriceModal: AuctionPriceModal | null = null;
+  private splitStackModal: SplitStackQuantityModal | null = null;
+  private signTextModal: SignTextModal | null = null;
   /**
    * True if the current inventory session was started by pressing E on a locker while the
    * inventory panel was closed (so E again closes bank + full inventory). Sticky until the
@@ -597,6 +672,19 @@ export class InventoryScreenUI {
     this.preloadProfessionBanners();
     this.preloadCharacterStatIcons();
     this.preloadAbilityIcons();
+  }
+
+  private closeInventoryModals(): void {
+    this.auctionPriceModal?.close();
+    this.auctionPriceModal = null;
+    this.splitStackModal?.close();
+    this.splitStackModal = null;
+    this.signTextModal?.close();
+    this.signTextModal = null;
+  }
+
+  public isBlockingModalOpen(): boolean {
+    return this.auctionPriceModal !== null || this.splitStackModal !== null || this.signTextModal !== null;
   }
 
   private preloadProfessionBanners(): void {
@@ -656,11 +744,15 @@ export class InventoryScreenUI {
       this.hoveredCharacterStatKey = null;
       this.selectedProfessionId = null;
       this.bankLockerId = null;
+      this.auctionHouseId = null;
+      this.closeInventoryModals();
       this.ctxMenu = null;
     }
   }
 
   public openBank(lockerEntityId: number, inventoryWasAlreadyOpen: boolean): void {
+    this.closeInventoryModals();
+    this.auctionHouseId = null;
     this.bankLockerId = lockerEntityId;
     this.ctxMenu = null;
     this.open = true;
@@ -670,34 +762,62 @@ export class InventoryScreenUI {
     }
   }
 
+  public openAuction(auctionHouseEntityId: number, inventoryWasAlreadyOpen: boolean): void {
+    this.closeInventoryModals();
+    this.bankLockerId = null;
+    this.auctionHouseId = auctionHouseEntityId;
+    this.ctxMenu = null;
+    this.open = true;
+    this.activeTab = "inventory";
+    if (!inventoryWasAlreadyOpen) {
+      this.inventoryOpenedViaBankOnly = true;
+    }
+    this.requestAuctionSnapshot();
+  }
+
   public closeBank(): void {
     this.bankLockerId = null;
+    this.auctionHouseId = null;
+    this.closeInventoryModals();
     this.ctxMenu = null;
   }
 
+  private requestAuctionSnapshot(): void {
+    if (this.auctionHouseId == null) return;
+    this.deps.sendAuctionAction({
+      auctionHouseEntityId: this.auctionHouseId,
+      kind: "snapshot",
+      bagSlotIndex: 0,
+      price: 0,
+      listingId: "",
+      listQuantity: 0,
+    });
+  }
+
   private maybeCloseBankIfOutOfRange(gameState: GameState, player: PlayerClient): void {
-    if (this.bankLockerId == null) {
+    const entityId = this.bankLockerId ?? this.auctionHouseId;
+    if (entityId == null) {
       return;
     }
-    const locker = getEntityById(gameState, this.bankLockerId);
+    const ent = getEntityById(gameState, entityId);
     const maxR = getConfig().player.MAX_INTERACT_RADIUS;
     if (
-      !locker ||
-      !locker.hasExt(ClientPositionable) ||
+      !ent ||
+      !ent.hasExt(ClientPositionable) ||
       !player.hasExt(ClientPositionable)
     ) {
       this.closeBank();
       return;
     }
     const p = player.getExt(ClientPositionable).getCenterPosition();
-    const q = locker.getExt(ClientPositionable).getCenterPosition();
+    const q = ent.getExt(ClientPositionable).getCenterPosition();
     if (distance(p, q) > maxR) {
       this.closeBank();
     }
   }
 
   public isBankOpen(): boolean {
-    return this.bankLockerId != null;
+    return this.bankLockerId != null || this.auctionHouseId != null;
   }
 
   /** When true, pressing E at the locker to dismiss the bank should also close the inventory panel. */
@@ -733,6 +853,15 @@ export class InventoryScreenUI {
     return this.open || this.visibilityProgress > 0.001;
   }
 
+  /**
+   * Advance open/close and bank slide progress once per frame before camera + aim run.
+   * (Previously this ran at render time, so gameplay used stale progress vs the drawn panel.)
+   */
+  public tickPanelAnimations(now: number): void {
+    this.stepVisibility(this.open, now);
+    this.stepBankVisibility(now);
+  }
+
   public getActiveTab(): InventoryUiTab {
     return this.activeTab;
   }
@@ -749,6 +878,8 @@ export class InventoryScreenUI {
     this.dragState = null;
     if (tab !== "inventory") {
       this.bankLockerId = null;
+      this.auctionHouseId = null;
+      this.closeInventoryModals();
       this.ctxMenu = null;
     }
     if (tab !== "abilities") {
@@ -1027,7 +1158,9 @@ export class InventoryScreenUI {
   }
 
   private stepBankVisibility(now: number): void {
-    const wantBank = this.bankLockerId != null && this.activeTab === "inventory";
+    const wantBank =
+      (this.bankLockerId != null || this.auctionHouseId != null) &&
+      this.activeTab === "inventory";
     const target = wantBank ? 1 : 0;
     const dtSeconds =
       this.lastBankVisibilityAnimationAt > 0
@@ -1166,6 +1299,14 @@ export class InventoryScreenUI {
       return storageBagIndex;
     }
     return null;
+  }
+
+  private canSplitBagStack(item: InventoryItem | null): boolean {
+    if (!item || !isStackableInventoryItem(item)) {
+      return false;
+    }
+    const stackCount = item.state?.count ?? 1;
+    return stackCount > 1 && this.getFirstEmptyVisibleBagIndex() != null;
   }
 
   /** Double-click bag slot: weapons -> loadout, wearables -> equipment, consumables -> quick bar. */
@@ -1850,10 +1991,6 @@ export class InventoryScreenUI {
     this.lastW = ctx.canvas.width;
     this.lastH = ctx.canvas.height;
 
-    const now = performance.now();
-    this.stepVisibility(this.open, now);
-    this.stepBankVisibility(now);
-
     if (this.visibilityProgress <= 0.001) {
       return;
     }
@@ -1863,7 +2000,7 @@ export class InventoryScreenUI {
     const h = ctx.canvas.height;
 
     if (!player || !(player instanceof PlayerClient)) {
-      if (this.bankLockerId != null) {
+      if (this.bankLockerId != null || this.auctionHouseId != null) {
         this.closeBank();
       }
       if (this.open) {
@@ -1894,37 +2031,138 @@ export class InventoryScreenUI {
       ctx.font = "14px Arial";
       ctx.fillStyle = RPG_TITLE_CREAM;
       ctx.textAlign = "left";
-      ctx.fillText("Bank", B.bankX + 12, B.titleY);
-      const bankItems = this.deps.getBank();
-      for (let row = 0; row < B.gridRows; row++) {
-        for (let col = 0; col < B.gridCols; col++) {
-          const idx = row * B.gridCols + col;
-          if (idx >= B.bankSlots) {
-            continue;
-          }
-          const sx = B.gridLeft + col * (B.cellSize + B.cellGap);
-          const sy = B.gridTop + row * (B.cellSize + B.cellGap);
-          const invItem = bankItems[idx] ?? null;
-          const isHover = this.hoveredBankSlotIndex === idx && !this.dragState?.isDragging;
-          ctx.fillStyle = RPG_SLOT_FILL_DIM;
-          ctx.fillRect(sx, sy, B.cellSize, B.cellSize);
-          ctx.strokeStyle = isHover ? RPG_TAB_ACTIVE_STROKE : RPG_SLOT_STROKE;
-          ctx.lineWidth = 1;
-          ctx.strokeRect(sx, sy, B.cellSize, B.cellSize);
-          if (invItem) {
-            const img = this.deps.assetManager.get(getItemAssetKey(invItem));
-            if (img) {
-              const pad = 6;
-              ctx.drawImage(img, sx + pad, sy + pad, B.cellSize - pad * 2, B.cellSize - pad * 2);
+      if (this.auctionHouseId != null) {
+        ctx.fillText("Auction House", B.bankX + 12, B.titleY);
+        const snap = this.deps.getAuctionSnapshot();
+        const claimable = snap?.claimableCoins ?? 0;
+        this.auctionTabRects = this.layoutAuctionCategoryTabs(
+          B,
+          claimable > 0 ? AUCTION_TAB_RIGHT_RESERVE_FOR_CLAIM : 0,
+        );
+        for (const tab of this.auctionTabRects) {
+          const on = tab.id === this.auctionCategoryFilter;
+          ctx.fillStyle = on ? RPG_TAB_ACTIVE_FILL : RPG_TAB_INACTIVE_FILL;
+          ctx.fillRect(tab.x, tab.y, tab.w, tab.h);
+          ctx.strokeStyle = on ? RPG_TAB_ACTIVE_STROKE : RPG_TAB_INACTIVE_STROKE;
+          ctx.strokeRect(tab.x, tab.y, tab.w, tab.h);
+          ctx.fillStyle = RPG_TITLE_CREAM;
+          ctx.font = "12px Arial";
+          ctx.textAlign = "center";
+          ctx.fillText(
+            tab.id === "all" ? "All" : tab.id === "weapon" ? "Wpn" : tab.id === "ammo" ? "Ammo" : tab.id === "resource" ? "Res" : "Item",
+            tab.x + tab.w / 2,
+            tab.y + 15,
+          );
+        }
+        const listings = this.getFilteredAuctionListings();
+        this.claimButtonRect = null;
+        if (claimable > 0) {
+          const cx = B.bankX + B.bankW - AUCTION_CLAIM_BTN_W - AUCTION_CLAIM_BTN_RIGHT_INSET;
+          const cy = B.bankY + AUCTION_CLAIM_BTN_TOP;
+          this.claimButtonRect = {
+            x: cx,
+            y: cy,
+            w: AUCTION_CLAIM_BTN_W,
+            h: AUCTION_CLAIM_BTN_H,
+          };
+          ctx.fillStyle = RPG_TAB_INACTIVE_FILL;
+          ctx.fillRect(cx, cy, AUCTION_CLAIM_BTN_W, AUCTION_CLAIM_BTN_H);
+          ctx.strokeStyle = RPG_TAB_ACTIVE_STROKE;
+          ctx.strokeRect(cx, cy, AUCTION_CLAIM_BTN_W, AUCTION_CLAIM_BTN_H);
+          ctx.fillStyle = RPG_COUNTER_GOLD;
+          ctx.font = "12px Arial";
+          ctx.textAlign = "center";
+          ctx.fillText(
+            `Claim ${claimable}`,
+            cx + AUCTION_CLAIM_BTN_W / 2,
+            cy + 16,
+          );
+        }
+        ctx.textAlign = "left";
+        for (let row = 0; row < B.gridRows; row++) {
+          for (let col = 0; col < B.gridCols; col++) {
+            const idx = row * B.gridCols + col;
+            if (idx >= B.bankSlots) {
+              continue;
             }
-            if (invItem.state?.count) {
-              ctx.font = "bold 14px Arial";
-              ctx.textAlign = "right";
-              ctx.fillStyle = RPG_BODY_TEXT;
-              ctx.strokeStyle = "rgba(6,8,16,0.9)";
+            const sx = B.gridLeft + col * (B.cellSize + B.cellGap);
+            const sy = B.gridTop + row * (B.cellSize + B.cellGap);
+            const listing = listings[idx];
+            const isHover = this.hoveredBankSlotIndex === idx && !this.dragState?.isDragging;
+            const invItem: InventoryItem | null = listing
+              ? { itemType: listing.itemType, ...(listing.itemState ? { state: listing.itemState } : {}) }
+              : null;
+            let blocked = false;
+            if (listing && !listing.isOwnListing) {
+              blocked = this.isAuctionListingBlocked(listing, player);
+            }
+            ctx.fillStyle = blocked ? "rgba(80, 24, 24, 0.55)" : RPG_SLOT_FILL_DIM;
+            ctx.fillRect(sx, sy, B.cellSize, B.cellSize);
+            ctx.strokeStyle = isHover ? RPG_TAB_ACTIVE_STROKE : RPG_SLOT_STROKE;
+            ctx.lineWidth = 1;
+            ctx.strokeRect(sx, sy, B.cellSize, B.cellSize);
+            if (invItem) {
+              const img = this.deps.assetManager.get(getItemAssetKey(invItem));
+              if (img) {
+                const pad = 6;
+                ctx.drawImage(img, sx + pad, sy + pad, B.cellSize - pad * 2, B.cellSize - pad * 2);
+              }
+              if (invItem.state?.count) {
+                ctx.font = "bold 14px Arial";
+                ctx.textAlign = "right";
+                ctx.fillStyle = RPG_BODY_TEXT;
+                ctx.strokeStyle = "rgba(6,8,16,0.9)";
+                ctx.lineWidth = 2;
+                ctx.strokeText(`${invItem.state.count}`, sx + B.cellSize - 4, sy + B.cellSize - 4);
+                ctx.fillText(`${invItem.state.count}`, sx + B.cellSize - 4, sy + B.cellSize - 4);
+              }
+            }
+            if (listing) {
+              ctx.font = "bold 11px Arial";
+              ctx.textAlign = "center";
+              ctx.fillStyle = blocked ? "rgba(255,160,160,0.95)" : RPG_COUNTER_GOLD;
+              ctx.strokeStyle = "rgba(6,8,16,0.85)";
               ctx.lineWidth = 2;
-              ctx.strokeText(`${invItem.state.count}`, sx + B.cellSize - 4, sy + B.cellSize - 4);
-              ctx.fillText(`${invItem.state.count}`, sx + B.cellSize - 4, sy + B.cellSize - 4);
+              const p = listing.price;
+              const pt = `${p}c`;
+              ctx.strokeText(pt, sx + B.cellSize / 2, sy + 12);
+              ctx.fillText(pt, sx + B.cellSize / 2, sy + 12);
+            }
+          }
+        }
+      } else {
+        ctx.fillText("Bank", B.bankX + 12, B.titleY);
+        const bankItems = this.deps.getBank();
+        for (let row = 0; row < B.gridRows; row++) {
+          for (let col = 0; col < B.gridCols; col++) {
+            const idx = row * B.gridCols + col;
+            if (idx >= B.bankSlots) {
+              continue;
+            }
+            const sx = B.gridLeft + col * (B.cellSize + B.cellGap);
+            const sy = B.gridTop + row * (B.cellSize + B.cellGap);
+            const invItem = bankItems[idx] ?? null;
+            const isHover = this.hoveredBankSlotIndex === idx && !this.dragState?.isDragging;
+            ctx.fillStyle = RPG_SLOT_FILL_DIM;
+            ctx.fillRect(sx, sy, B.cellSize, B.cellSize);
+            ctx.strokeStyle = isHover ? RPG_TAB_ACTIVE_STROKE : RPG_SLOT_STROKE;
+            ctx.lineWidth = 1;
+            ctx.strokeRect(sx, sy, B.cellSize, B.cellSize);
+            if (invItem) {
+              const img = this.deps.assetManager.get(getItemAssetKey(invItem));
+              if (img) {
+                const pad = 6;
+                ctx.drawImage(img, sx + pad, sy + pad, B.cellSize - pad * 2, B.cellSize - pad * 2);
+              }
+              if (invItem.state?.count) {
+                ctx.font = "bold 14px Arial";
+                ctx.textAlign = "right";
+                ctx.fillStyle = RPG_BODY_TEXT;
+                ctx.strokeStyle = "rgba(6,8,16,0.9)";
+                ctx.lineWidth = 2;
+                ctx.strokeText(`${invItem.state.count}`, sx + B.cellSize - 4, sy + B.cellSize - 4);
+                ctx.fillText(`${invItem.state.count}`, sx + B.cellSize - 4, sy + B.cellSize - 4);
+              }
             }
           }
         }
@@ -2201,7 +2439,7 @@ export class InventoryScreenUI {
     if (this.activeTab === "inventory") {
       this.hoveredBagIndex = this.getBagIndexAt(lx, y, L);
       this.hoveredEquipSlot = this.getEquipAt(lx, y, L);
-      if (this.bankLockerId != null) {
+      if (this.bankLockerId != null || this.auctionHouseId != null) {
         const B = this.layoutBank(canvasWidth, canvasHeight);
         this.hoveredBankSlotIndex = this.getBankSlotIndexAt(x, y, B);
       } else {
@@ -2256,29 +2494,45 @@ export class InventoryScreenUI {
     if (this.dragState?.isDragging) return;
 
     let hovered: InventoryItem | null = null;
+    let auctionPriceLine: string | null = null;
     if (this.hoveredBagIndex !== null) {
       hovered = items[this.hoveredBagIndex] ?? null;
     } else if (this.hoveredEquipSlot) {
       hovered = equipment?.[this.hoveredEquipSlot] ?? null;
     } else if (this.hoveredBankSlotIndex !== null) {
-      hovered = this.deps.getBank()[this.hoveredBankSlotIndex] ?? null;
+      if (this.auctionHouseId != null) {
+        const list = this.getFilteredAuctionListings()[this.hoveredBankSlotIndex];
+        if (list) {
+          hovered = {
+            itemType: list.itemType,
+            ...(list.itemState ? { state: list.itemState } : {}),
+          };
+          const p = list.price;
+          auctionPriceLine = `Price: ${p}c${list.isOwnListing ? " (yours)" : ""}`;
+        }
+      } else {
+        hovered = this.deps.getBank()[this.hoveredBankSlotIndex] ?? null;
+      }
     }
     if (!hovered) return;
 
-    const name = formatDisplayName(hovered.itemType);
+    const name =
+      getSignInventoryDisplayName(hovered) ?? formatDisplayName(hovered.itemType);
     const stackKg =
       getItemWeightKg(hovered.itemType) * (hovered.state?.count ?? 1);
     const weightLine = `${stackKg.toFixed(1)} kg`;
 
     ctx.textAlign = "center";
     ctx.font = "bold 16px Arial";
+    const priceLine = auctionPriceLine ?? "";
     const wName = ctx.measureText(name).width;
     ctx.font = "14px Arial";
     const wWeight = ctx.measureText(weightLine).width;
+    const wPrice = priceLine ? ctx.measureText(priceLine).width : 0;
 
     const pad = 8;
-    const bw = Math.max(wName, wWeight) + pad * 2;
-    const bh = 44;
+    const bw = Math.max(wName, wWeight, wPrice) + pad * 2;
+    const bh = 44 + (priceLine ? 18 : 0);
     const bx = this._mx - bw / 2;
     const by = this._my - bh - 10;
 
@@ -2294,6 +2548,10 @@ export class InventoryScreenUI {
     ctx.font = "14px Arial";
     ctx.fillStyle = RPG_METADATA_MUTED;
     ctx.fillText(weightLine, this._mx, by + 36);
+    if (priceLine) {
+      ctx.fillStyle = RPG_COUNTER_GOLD;
+      ctx.fillText(priceLine, this._mx, by + 54);
+    }
   }
 
   private renderCharacterStatTooltip(ctx: CanvasRenderingContext2D, player: PlayerClient): void {
@@ -2418,29 +2676,69 @@ export class InventoryScreenUI {
       y >= L.rightY &&
       y <= L.rightY + L.rightH;
     const onBankPanel =
-      this.bankLockerId != null && this.bankPanelContainsScreenPoint(x, y, canvasWidth, canvasHeight);
+      this.isBankOpen() && this.bankPanelContainsScreenPoint(x, y, canvasWidth, canvasHeight);
 
     if (!inPanel && !onBankPanel) {
       this.ctxMenu = null;
       return false;
     }
 
-    if (onBankPanel && this.bankLockerId && this.activeTab === "inventory") {
-      const B = this.layoutBank(canvasWidth, canvasHeight);
-      const bIdx = this.getBankSlotIndexAt(x, y, B);
-      if (bIdx !== null && clickCount >= 2) {
-        this.deps.sendBankAction({
-          lockerEntityId: this.bankLockerId,
-          action: 1,
-          source: 1,
-          slotIndex: bIdx,
-          equipSlotIndex: 255,
-        });
-        return true;
-      }
-      this.ctxMenu = null;
-      if (!inPanel) {
-        return true;
+    if (onBankPanel && this.activeTab === "inventory") {
+      if (this.auctionHouseId != null) {
+        const p = this.deps.getMyPlayer();
+        if (this.hitTestClaimButton(x, y, canvasWidth, canvasHeight)) {
+          this.deps.sendAuctionAction({
+            auctionHouseEntityId: this.auctionHouseId,
+            kind: "claim",
+            bagSlotIndex: 0,
+            price: 0,
+            listingId: "",
+            listQuantity: 0,
+          });
+          return true;
+        }
+        const tab = this.hitTestAuctionTab(x, y, canvasWidth, canvasHeight);
+        if (tab != null) {
+          this.auctionCategoryFilter = tab;
+          return true;
+        }
+        const B = this.layoutBank(canvasWidth, canvasHeight);
+        const bIdx = this.getBankSlotIndexAt(x, y, B);
+        if (bIdx !== null && clickCount >= 2 && p) {
+          const list = this.getFilteredAuctionListings()[bIdx];
+          if (list && !list.isOwnListing && !this.isAuctionListingBlocked(list, p)) {
+            this.deps.sendAuctionAction({
+              auctionHouseEntityId: this.auctionHouseId,
+              kind: "buy",
+              bagSlotIndex: 0,
+              price: 0,
+              listingId: list.id,
+              listQuantity: 0,
+            });
+          }
+          return true;
+        }
+        this.ctxMenu = null;
+        if (!inPanel) {
+          return true;
+        }
+      } else if (this.bankLockerId != null) {
+        const B = this.layoutBank(canvasWidth, canvasHeight);
+        const bIdx = this.getBankSlotIndexAt(x, y, B);
+        if (bIdx !== null && clickCount >= 2) {
+          this.deps.sendBankAction({
+            lockerEntityId: this.bankLockerId,
+            action: 1,
+            source: 1,
+            slotIndex: bIdx,
+            equipSlotIndex: 255,
+          });
+          return true;
+        }
+        this.ctxMenu = null;
+        if (!inPanel) {
+          return true;
+        }
       }
     }
 
@@ -2528,10 +2826,11 @@ export class InventoryScreenUI {
         });
         return true;
       }
+      if (item && clickCount >= 2 && this.auctionHouseId != null && canListItemFromBag(item)) {
+        this.openAuctionSellForBagIndex(bagIdx);
+        return true;
+      }
       if (item && clickCount >= 2 && this.tryQuickEquipFromBag(bagIdx, item)) {
-        if (bagIdx < (this.deps.getMyPlayer()?.getMaxInventorySlots() ?? getConfig().player.MAX_INVENTORY_SLOTS)) {
-          this.deps.sendSelectInventorySlot(bagIdx + 1);
-        }
         return true;
       }
       if (item) {
@@ -2545,9 +2844,6 @@ export class InventoryScreenUI {
           targetBagIndex: null,
           targetEquipSlot: null,
         };
-      }
-      if (bagIdx < (this.deps.getMyPlayer()?.getMaxInventorySlots() ?? getConfig().player.MAX_INVENTORY_SLOTS)) {
-        this.deps.sendSelectInventorySlot(bagIdx + 1);
       }
       return true;
     }
@@ -2647,8 +2943,16 @@ export class InventoryScreenUI {
     }
     const L = this.layout(canvasWidth, canvasHeight, this.getBagSlotCount());
     const lx = this.toPanelLocalX(x, L.rightW);
-    const onBank = this.bankLockerId != null && this.bankPanelContainsScreenPoint(x, y, canvasWidth, canvasHeight);
-    if (onBank && this.bankLockerId) {
+    const onBank = this.isBankOpen() && this.bankPanelContainsScreenPoint(x, y, canvasWidth, canvasHeight);
+    if (onBank && this.auctionHouseId != null) {
+      const B = this.layoutBank(canvasWidth, canvasHeight);
+      const idx = this.getBankSlotIndexAt(x, y, B);
+      const list = idx != null ? this.getFilteredAuctionListings()[idx] : undefined;
+      this.ctxMenu =
+        list && idx != null ? { x, y, target: { kind: "auction", listingIndex: idx } } : null;
+      return true;
+    }
+    if (onBank && this.bankLockerId != null) {
       const B = this.layoutBank(canvasWidth, canvasHeight);
       const idx = this.getBankSlotIndexAt(x, y, B);
       const it = idx != null ? this.deps.getBank()[idx] : null;
@@ -2703,13 +3007,30 @@ export class InventoryScreenUI {
       }
       return rows;
     }
+    if (target.kind === "auction") {
+      const list = this.getFilteredAuctionListings()[target.listingIndex];
+      if (!list) {
+        return [];
+      }
+      return list.isOwnListing ? ["Retrieve"] : ["Buy"];
+    }
     if (target.kind === "bag") {
+      const it = this.deps.getInventory()[target.index];
       if (lockerId != null) {
         rows.push("Stash");
       }
+      if (this.auctionHouseId != null) {
+        if (it && canListItemFromBag(it)) {
+          rows.push("Sell");
+        }
+      }
+      if (this.canSplitBagStack(it)) {
+        rows.push("Split");
+      }
       rows.push("Drop");
-      const it = this.deps.getInventory()[target.index];
-      if (it && itemRegistry.get(it.itemType)?.category === "consumable") {
+      if (it?.itemType === "sign") {
+        rows.push("Write");
+      } else if (it && itemRegistry.get(it.itemType)?.category === "consumable") {
         rows.push("Use");
       }
       const eqIdx = it ? this.resolveEquipMenuIndex(it) : null;
@@ -2771,6 +3092,37 @@ export class InventoryScreenUI {
     const t = this.ctxMenu.target;
     const send = (data: BankActionEventData) => this.deps.sendBankAction(data);
 
+    if (t.kind === "auction") {
+      const ah = this.auctionHouseId;
+      const list = this.getFilteredAuctionListings()[t.listingIndex];
+      if (ah && list) {
+        if (label === "Buy" && !list.isOwnListing) {
+          const p = this.deps.getMyPlayer();
+          if (p && !this.isAuctionListingBlocked(list, p)) {
+            this.deps.sendAuctionAction({
+              auctionHouseEntityId: ah,
+              kind: "buy",
+              bagSlotIndex: 0,
+              price: 0,
+              listingId: list.id,
+              listQuantity: 0,
+            });
+          }
+        } else if (label === "Retrieve" && list.isOwnListing) {
+          this.deps.sendAuctionAction({
+            auctionHouseEntityId: ah,
+            kind: "cancel",
+            bagSlotIndex: 0,
+            price: 0,
+            listingId: list.id,
+            listQuantity: 0,
+          });
+        }
+      }
+      this.ctxMenu = null;
+      return true;
+    }
+
     const item =
       t.kind === "bank"
         ? this.deps.getBank()[t.index]
@@ -2785,13 +3137,18 @@ export class InventoryScreenUI {
     }
 
     if (!lid) {
-      if (label === "Drop" && t.kind === "bag") {
+      if (label === "Sell" && t.kind === "bag" && this.auctionHouseId != null) {
+        this.openAuctionSellForBagIndex(t.index);
+      } else if (label === "Split" && t.kind === "bag") {
+        this.openSplitStackForBagIndex(t.index);
+      } else if (label === "Drop" && t.kind === "bag") {
         this.deps.sendDropItem(t.index);
       } else if (label === "Drop" && t.kind === "equip") {
         this.deps.sendDropFromEquipment(t.slot);
+      } else if (label === "Write" && item?.itemType === "sign" && t.kind === "bag") {
+        this.openSignTextForBagIndex(t.index);
       } else if (label === "Use" && item && t.kind === "bag") {
-        this.deps.sendSelectInventorySlot(t.index + 1);
-        this.deps.sendConsumeItem(null);
+        this.deps.sendConsumeItem(null, t.index);
       } else if (label === "Equip" && item && t.kind === "bag") {
         const eqIdx = this.resolveEquipMenuIndex(item);
         if (eqIdx != null) {
@@ -2812,7 +3169,11 @@ export class InventoryScreenUI {
       return true;
     }
 
-    if (label === "Withdraw" && t.kind === "bank") {
+    if (label === "Sell" && t.kind === "bag" && this.auctionHouseId != null) {
+      this.openAuctionSellForBagIndex(t.index);
+    } else if (label === "Split" && t.kind === "bag") {
+      this.openSplitStackForBagIndex(t.index);
+    } else if (label === "Withdraw" && t.kind === "bank") {
       send({ lockerEntityId: lid, action: 1, source: 1, slotIndex: t.index, equipSlotIndex: 255 });
     } else if (label === "Stash" && t.kind === "bag") {
       send({ lockerEntityId: lid, action: 0, source: 0, slotIndex: t.index, equipSlotIndex: 255 });
@@ -2859,6 +3220,179 @@ export class InventoryScreenUI {
     return true;
   }
 
+  private openAuctionSellForBagIndex(bagIndex: number): void {
+    if (this.auctionHouseId == null) {
+      return;
+    }
+    const item = this.deps.getInventory()[bagIndex] ?? null;
+    if (!item) {
+      return;
+    }
+    const stackCount = item.state?.count ?? 1;
+    const showQuantity = isStackableInventoryItem(item) && stackCount > 1;
+    this.closeInventoryModals();
+    const ah = this.auctionHouseId;
+    this.auctionPriceModal = new AuctionPriceModal(
+      {
+        showQuantity,
+        maxStackQuantity: stackCount,
+        onConfirm: (price, listQuantity) => {
+          this.deps.sendAuctionAction({
+            auctionHouseEntityId: ah,
+            kind: "list",
+            bagSlotIndex: bagIndex,
+            price,
+            listingId: "",
+            listQuantity,
+          });
+          this.auctionPriceModal = null;
+        },
+      },
+      () => {
+        this.auctionPriceModal = null;
+      },
+    );
+    this.auctionPriceModal.open();
+  }
+
+  private openSplitStackForBagIndex(bagIndex: number): void {
+    const item = this.deps.getInventory()[bagIndex] ?? null;
+    if (!item || !this.canSplitBagStack(item)) {
+      return;
+    }
+    const stackCount = Math.max(1, Math.floor(item.state?.count ?? 1));
+    const maxSplitQuantity = stackCount - 1;
+    this.closeInventoryModals();
+    this.splitStackModal = new SplitStackQuantityModal(
+      {
+        maxSplitQuantity,
+        onConfirm: (quantity) => {
+          this.deps.sendSplitInventoryStack({
+            slotIndex: bagIndex,
+            quantity,
+          });
+          this.splitStackModal = null;
+        },
+      },
+      () => {
+        this.splitStackModal = null;
+      },
+    );
+    this.splitStackModal.open();
+  }
+
+  private openSignTextForBagIndex(bagIndex: number): void {
+    const item = this.deps.getInventory()[bagIndex] ?? null;
+    if (!item || item.itemType !== "sign") {
+      return;
+    }
+    this.closeInventoryModals();
+    this.signTextModal = new SignTextModal(
+      {
+        initialMessage: typeof item.state?.message === "string" ? item.state.message : "",
+        onConfirm: (message) => {
+          this.deps.sendSetSignText({
+            slotIndex: bagIndex,
+            message,
+          });
+          this.deps.sendDropItem(bagIndex);
+          this.signTextModal = null;
+        },
+      },
+      () => {
+        this.signTextModal = null;
+      },
+    );
+    this.signTextModal.open();
+  }
+
+  private getFilteredAuctionListings(): AuctionListingSnapshot[] {
+    const snap = this.deps.getAuctionSnapshot();
+    if (!snap?.listings) {
+      return [];
+    }
+    if (this.auctionCategoryFilter === "all") {
+      return snap.listings;
+    }
+    return snap.listings.filter(
+      (l: AuctionListingSnapshot) => l.itemCategory === this.auctionCategoryFilter,
+    );
+  }
+
+  private isAuctionListingBlocked(listing: AuctionListingSnapshot, player: PlayerClient): boolean {
+    if (listing.isOwnListing) {
+      return false;
+    }
+    const invItems = player.getInventory();
+    const maxSlots = player.getAccessibleInventorySlotCount();
+    const bought: InventoryItem = {
+      itemType: listing.itemType,
+      ...(listing.itemState ? { state: listing.itemState } : {}),
+    };
+    if (player.getCoins() < listing.price) {
+      return true;
+    }
+    return !canBagAcceptItem(invItems, maxSlots, bought);
+  }
+
+  private layoutAuctionCategoryTabs(
+    B: ReturnType<InventoryScreenUI["layoutBank"]>,
+    /** Horizontal space to leave empty on the right (e.g. for the claim button). */
+    rightReservePx: number,
+  ): { id: AuctionItemCategory | "all"; x: number; y: number; w: number; h: number }[] {
+    const ids: (AuctionItemCategory | "all")[] = ["all", "weapon", "ammo", "item", "resource"];
+    const gap = 4;
+    const h = 20;
+    const leftPad = 12;
+    const rightPad = 12 + Math.max(0, rightReservePx);
+    const w = Math.floor(
+      (B.bankW - leftPad - rightPad - gap * (ids.length - 1)) / ids.length,
+    );
+    let x = B.bankX + leftPad;
+    const y = B.titleY + 8;
+    return ids.map((id) => {
+      const r = { id, x, y, w, h };
+      x += w + gap;
+      return r;
+    });
+  }
+
+  private hitTestAuctionTab(
+    screenX: number,
+    screenY: number,
+    canvasWidth: number,
+    canvasHeight: number,
+  ): (AuctionItemCategory | "all") | null {
+    if (this.auctionHouseId == null) {
+      return null;
+    }
+    const B = this.layoutBank(canvasWidth, canvasHeight);
+    const lx = screenX - this.getBankSlideOffsetPx(B.bankW);
+    const ly = screenY;
+    for (const t of this.auctionTabRects) {
+      if (lx >= t.x && lx <= t.x + t.w && ly >= t.y && ly <= t.y + t.h) {
+        return t.id;
+      }
+    }
+    return null;
+  }
+
+  private hitTestClaimButton(
+    screenX: number,
+    screenY: number,
+    canvasWidth: number,
+    canvasHeight: number,
+  ): boolean {
+    const r = this.claimButtonRect;
+    if (!r || this.auctionHouseId == null) {
+      return false;
+    }
+    const B = this.layoutBank(canvasWidth, canvasHeight);
+    const lx = screenX - this.getBankSlideOffsetPx(B.bankW);
+    const ly = screenY;
+    return lx >= r.x && lx <= r.x + r.w && ly >= r.y && ly <= r.y + r.h;
+  }
+
   private renderContextMenu(ctx: CanvasRenderingContext2D): void {
     if (!this.ctxMenu) {
       return;
@@ -2879,5 +3413,308 @@ export class InventoryScreenUI {
       ctx.fillStyle = RPG_TITLE_CREAM;
       ctx.fillText(labels[i]!, menuX + 8, ly);
     }
+  }
+}
+
+/** Lightweight DOM overlay for auction listing price (game keys ignored while input focused). */
+class AuctionPriceModal {
+  private root: HTMLDivElement | null = null;
+
+  constructor(
+    private readonly opts: {
+      showQuantity: boolean;
+      maxStackQuantity: number;
+      onConfirm: (price: number, listQuantity: number) => void;
+    },
+    private readonly onCancel: () => void,
+  ) {}
+
+  open(): void {
+    if (typeof document === "undefined") {
+      return;
+    }
+    const inputStyle = auctionModalTextInputStyle();
+    const wrap = document.createElement("div");
+    wrap.style.cssText = `position:fixed;inset:0;background:${RPG_MODAL_SCRIM};z-index:99999;display:flex;align-items:center;justify-content:center;`;
+    const box = document.createElement("div");
+    box.style.cssText = `background:linear-gradient(180deg, rgba(16,18,31,0.98) 0%, rgba(6,8,16,0.95) 100%);border:2px solid ${RPG_BORDER_GOLD};padding:16px;border-radius:8px;min-width:280px;color:${RPG_TITLE_CREAM};font-family:Georgia,system-ui,sans-serif;box-shadow:0 8px 28px rgba(0,0,0,0.45);`;
+    const title = document.createElement("div");
+    title.textContent = "Sell at auction";
+    title.style.cssText = `margin-bottom:10px;font-weight:600;color:${RPG_TITLE_CREAM};`;
+    const priceLabel = document.createElement("label");
+    priceLabel.textContent = "Price (coins)";
+    priceLabel.style.cssText = `display:block;font-size:13px;margin-bottom:4px;color:${RPG_METADATA_MUTED};`;
+    const priceInput = document.createElement("input");
+    priceInput.type = "text";
+    priceInput.inputMode = "numeric";
+    priceInput.autocomplete = "off";
+    priceInput.value = "10";
+    priceInput.style.cssText = inputStyle;
+
+    const errEl = document.createElement("div");
+    errEl.style.cssText = `min-height:18px;margin-top:8px;font-size:12px;color:${AUCTION_MODAL_INPUT_INVALID_BORDER};line-height:1.35;`;
+
+    const clearFieldAlert = (el: HTMLInputElement) => {
+      el.style.border = `1px solid ${RPG_SLOT_STROKE}`;
+    };
+    const showFieldAlert = (el: HTMLInputElement) => {
+      el.style.border = `1px solid ${AUCTION_MODAL_INPUT_INVALID_BORDER}`;
+    };
+
+    let qtyInput: HTMLInputElement | null = null;
+    const stackMax = Math.max(1, Math.floor(this.opts.maxStackQuantity));
+
+    if (this.opts.showQuantity) {
+      const qtyLabel = document.createElement("label");
+      qtyLabel.textContent = `Quantity (1–${stackMax})`;
+      qtyLabel.style.cssText = `display:block;font-size:13px;margin:10px 0 4px;color:${RPG_METADATA_MUTED};`;
+      qtyInput = document.createElement("input");
+      qtyInput.type = "text";
+      qtyInput.inputMode = "numeric";
+      qtyInput.autocomplete = "off";
+      qtyInput.value = String(stackMax);
+      qtyInput.style.cssText = inputStyle;
+      qtyInput.addEventListener("input", () => {
+        errEl.textContent = "";
+        clearFieldAlert(qtyInput!);
+      });
+      box.appendChild(title);
+      box.appendChild(priceLabel);
+      box.appendChild(priceInput);
+      box.appendChild(qtyLabel);
+      box.appendChild(qtyInput);
+    } else {
+      box.appendChild(title);
+      box.appendChild(priceLabel);
+      box.appendChild(priceInput);
+    }
+
+    priceInput.addEventListener("input", () => {
+      errEl.textContent = "";
+      clearFieldAlert(priceInput);
+    });
+
+    const trySubmit = (): boolean => {
+      errEl.textContent = "";
+      clearFieldAlert(priceInput);
+      if (qtyInput) {
+        clearFieldAlert(qtyInput);
+      }
+
+      const priceParsed = parseAuctionModalUintString(priceInput.value);
+      if (!priceParsed.ok) {
+        errEl.textContent =
+          priceInput.value.trim() === ""
+            ? "Enter a price in coins."
+            : "Price must be a whole number (no decimals or symbols).";
+        showFieldAlert(priceInput);
+        return false;
+      }
+      if (priceParsed.value < AUCTION_MIN_PRICE) {
+        errEl.textContent = `Price is too low (minimum ${AUCTION_MIN_PRICE.toLocaleString()}).`;
+        showFieldAlert(priceInput);
+        return false;
+      }
+      if (priceParsed.value > AUCTION_MAX_PRICE) {
+        errEl.textContent = `Price cannot exceed ${AUCTION_MAX_PRICE.toLocaleString()} coins.`;
+        showFieldAlert(priceInput);
+        return false;
+      }
+
+      let listQuantity = 0;
+      if (qtyInput) {
+        const qParsed = parseAuctionModalUintString(qtyInput.value);
+        if (!qParsed.ok) {
+          errEl.textContent =
+            qtyInput.value.trim() === ""
+              ? "Enter how many to list."
+              : "Quantity must be a whole number (no decimals or symbols).";
+          showFieldAlert(qtyInput);
+          return false;
+        }
+        if (qParsed.value < 1 || qParsed.value > stackMax) {
+          errEl.textContent = `Quantity must be between 1 and ${stackMax}.`;
+          showFieldAlert(qtyInput);
+          return false;
+        }
+        listQuantity = qParsed.value;
+      }
+
+      this.close();
+      this.opts.onConfirm(priceParsed.value, listQuantity);
+      return true;
+    };
+
+    const row = document.createElement("div");
+    row.style.cssText = "display:flex;gap:10px;margin-top:14px;justify-content:flex-end;align-items:center;";
+    const cancel = document.createElement("button");
+    cancel.textContent = "Cancel";
+    cancel.type = "button";
+    styleAuctionModalButton(cancel, "secondary");
+    const ok = document.createElement("button");
+    ok.textContent = "List";
+    ok.type = "button";
+    styleAuctionModalButton(ok, "primary");
+
+    const finishCancel = () => {
+      this.close();
+      this.onCancel();
+    };
+    ok.onclick = () => {
+      trySubmit();
+    };
+    cancel.onclick = finishCancel;
+    wrap.onclick = (e) => {
+      if (e.target === wrap) {
+        finishCancel();
+      }
+    };
+    box.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") {
+        e.preventDefault();
+        trySubmit();
+      }
+    });
+    row.appendChild(cancel);
+    row.appendChild(ok);
+    box.appendChild(errEl);
+    box.appendChild(row);
+    wrap.appendChild(box);
+    document.body.appendChild(wrap);
+    this.root = wrap;
+    queueMicrotask(() => priceInput.focus());
+  }
+
+  close(): void {
+    this.root?.remove();
+    this.root = null;
+  }
+}
+
+class SplitStackQuantityModal {
+  private root: HTMLDivElement | null = null;
+
+  constructor(
+    private readonly opts: {
+      maxSplitQuantity: number;
+      onConfirm: (quantity: number) => void;
+    },
+    private readonly onCancel: () => void,
+  ) {}
+
+  open(): void {
+    if (typeof document === "undefined") {
+      return;
+    }
+    const maxSplitQuantity = Math.max(1, Math.floor(this.opts.maxSplitQuantity));
+    const inputStyle = auctionModalTextInputStyle();
+    const wrap = document.createElement("div");
+    wrap.style.cssText = `position:fixed;inset:0;background:${RPG_MODAL_SCRIM};z-index:99999;display:flex;align-items:center;justify-content:center;`;
+    const box = document.createElement("div");
+    box.style.cssText = `background:linear-gradient(180deg, rgba(16,18,31,0.98) 0%, rgba(6,8,16,0.95) 100%);border:2px solid ${RPG_BORDER_GOLD};padding:16px;border-radius:8px;min-width:280px;color:${RPG_TITLE_CREAM};font-family:Georgia,system-ui,sans-serif;box-shadow:0 8px 28px rgba(0,0,0,0.45);`;
+
+    const title = document.createElement("div");
+    title.textContent = "Split stack";
+    title.style.cssText = `margin-bottom:10px;font-weight:600;color:${RPG_TITLE_CREAM};`;
+
+    const qtyLabel = document.createElement("label");
+    qtyLabel.textContent = `Quantity (1-${maxSplitQuantity})`;
+    qtyLabel.style.cssText = `display:block;font-size:13px;margin-bottom:4px;color:${RPG_METADATA_MUTED};`;
+
+    const qtyInput = document.createElement("input");
+    qtyInput.type = "text";
+    qtyInput.inputMode = "numeric";
+    qtyInput.autocomplete = "off";
+    qtyInput.value = String(Math.max(1, Math.floor(maxSplitQuantity / 2)));
+    qtyInput.style.cssText = inputStyle;
+
+    const errEl = document.createElement("div");
+    errEl.style.cssText = `min-height:18px;margin-top:8px;font-size:12px;color:${AUCTION_MODAL_INPUT_INVALID_BORDER};line-height:1.35;`;
+
+    const clearFieldAlert = () => {
+      qtyInput.style.border = `1px solid ${RPG_SLOT_STROKE}`;
+    };
+    const showFieldAlert = () => {
+      qtyInput.style.border = `1px solid ${AUCTION_MODAL_INPUT_INVALID_BORDER}`;
+    };
+
+    qtyInput.addEventListener("input", () => {
+      errEl.textContent = "";
+      clearFieldAlert();
+    });
+
+    const trySubmit = (): boolean => {
+      errEl.textContent = "";
+      clearFieldAlert();
+      const parsed = parseAuctionModalUintString(qtyInput.value);
+      if (!parsed.ok) {
+        errEl.textContent =
+          qtyInput.value.trim() === ""
+            ? "Enter how many to split."
+            : "Quantity must be a whole number (no decimals or symbols).";
+        showFieldAlert();
+        return false;
+      }
+      if (parsed.value < 1 || parsed.value > maxSplitQuantity) {
+        errEl.textContent = `Quantity must be between 1 and ${maxSplitQuantity}.`;
+        showFieldAlert();
+        return false;
+      }
+      this.close();
+      this.opts.onConfirm(parsed.value);
+      return true;
+    };
+
+    const row = document.createElement("div");
+    row.style.cssText = "display:flex;gap:10px;margin-top:14px;justify-content:flex-end;align-items:center;";
+    const cancel = document.createElement("button");
+    cancel.textContent = "Cancel";
+    cancel.type = "button";
+    styleAuctionModalButton(cancel, "secondary");
+    const ok = document.createElement("button");
+    ok.textContent = "Split";
+    ok.type = "button";
+    styleAuctionModalButton(ok, "primary");
+
+    const finishCancel = () => {
+      this.close();
+      this.onCancel();
+    };
+
+    ok.onclick = () => {
+      trySubmit();
+    };
+    cancel.onclick = finishCancel;
+    wrap.onclick = (e) => {
+      if (e.target === wrap) {
+        finishCancel();
+      }
+    };
+    box.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") {
+        e.preventDefault();
+        trySubmit();
+      }
+    });
+
+    box.appendChild(title);
+    box.appendChild(qtyLabel);
+    box.appendChild(qtyInput);
+    row.appendChild(cancel);
+    row.appendChild(ok);
+    box.appendChild(errEl);
+    box.appendChild(row);
+    wrap.appendChild(box);
+    document.body.appendChild(wrap);
+    this.root = wrap;
+    queueMicrotask(() => {
+      qtyInput.focus();
+      qtyInput.select();
+    });
+  }
+
+  close(): void {
+    this.root?.remove();
+    this.root = null;
   }
 }

@@ -3,6 +3,7 @@ import { PlayerClient } from "@/entities/player";
 import { SOUND_TYPES_TO_MP3 } from "@/managers/sound-manager";
 import { SwipeParticle } from "@/particles/swipe";
 import { weaponRegistry, WeaponConfig } from "@shared/entities";
+import { weaponLoadoutSlotKeyToIndex } from "@shared/util/weapon-loadout";
 import { ClientEventContext } from "./types";
 
 const WEAPON_SHAKE_DURATION_MS = 140;
@@ -45,6 +46,12 @@ export const onPlayerAttacked = (context: ClientEventContext, event: PlayerAttac
   // Play weapon sound if configured
   if (weaponConfig?.sound) {
     context.gameClient.playPositionalSound(weaponConfig.sound as any, playerPosition);
+  }
+
+  const cooldownSec = weaponConfig?.stats.cooldown;
+  if (weaponConfig && typeof cooldownSec === "number" && cooldownSec > 0) {
+    const row = weaponLoadoutSlotKeyToIndex(weaponConfig.loadoutSlot);
+    player.startWeaponLoadoutCooldown(row, cooldownSec);
   }
 
   // Show swipe animation for melee weapons

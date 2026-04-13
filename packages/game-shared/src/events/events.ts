@@ -41,6 +41,9 @@ export const ServerSentEvents = {
   USER_BANNED: "userBanned",
   PROFILE_LOAD_FAILED: "profileLoadFailed",
   PLAYER_LEVEL_UP: "playerLevelUp",
+  AUCTION_SNAPSHOT: "auctionSnapshot",
+  /** Another tab or server already holds the active game session for this account. */
+  DUPLICATE_ACTIVE_SESSION: "duplicateActiveSession",
 } as const;
 
 export const ClientSentEvents = {
@@ -76,6 +79,9 @@ export const ClientSentEvents = {
   BANK_ACTION: "bankAction",
   RELOAD_WEAPON: "reloadWeapon",
   REQUEST_COMBAT_ROLL: "requestCombatRoll",
+  AUCTION_ACTION: "auctionAction",
+  SPLIT_INVENTORY_STACK: "splitInventoryStack",
+  SET_SIGN_TEXT: "setSignText",
 } as const;
 
 export type ServerSentEventType = (typeof ServerSentEvents)[keyof typeof ServerSentEvents];

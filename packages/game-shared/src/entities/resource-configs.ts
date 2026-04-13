@@ -271,4 +271,31 @@ export const RESOURCE_CONFIGS: Record<string, ResourceConfig> = {
       price: 0,
     },
   },
+  paper: {
+    id: "paper",
+    assets: {
+      assetKey: "paper",
+      x: 96,
+      y: 208,
+      sheet: "items",
+    },
+    spawn: {
+      enabled: false,
+      chance: 0,
+    },
+    merchant: {
+      enabled: true,
+      buyable: true,
+      price: 2,
+    },
+    recipe: {
+      enabled: true,
+      components: [{ type: "cloth", count: 1 }],
+      resultCount: 2,
+      profession: "crafting",
+      unlockLevel: 1,
+      station: "workbench",
+      professionXp: 4,
+    },
+  },
 };

@@ -4,6 +4,7 @@ import type { CraftingStationId } from "./crafting-stations";
 import type { ProfessionId } from "./professions";
 import { PROFESSION_DEFINITIONS } from "./professions";
 import { ItemType, InventoryItem, isWeapon } from "./inventory";
+import type { EntityType } from "../types/entity";
 
 export type RecipeType = string;
 export type RecipeKind = "craft" | "scrap";
@@ -27,6 +28,22 @@ export interface Recipe {
   unlockLevel: number;
   station: CraftingStationId | null;
   professionXp: number;
+}
+
+/**
+ * Certain crafted items carry per-instance state and must never be collapsed into a shared stack.
+ */
+const NON_STACKING_CRAFT_RESULT_TYPES = new Set<ItemType>(["sign"]);
+
+function createCraftResultItem(result: RecipeComponent): InventoryItem {
+  const resultCount = result.count || 1;
+  if (NON_STACKING_CRAFT_RESULT_TYPES.has(result.type) && resultCount === 1) {
+    return { itemType: result.type };
+  }
+  return {
+    itemType: result.type,
+    state: { count: resultCount },
+  };
 }
 
 export function craftRecipe(
@@ -95,35 +112,34 @@ export function craftRecipe(
   }
 
   const resultCount = recipe.result.count || 1;
-  const existingItemIndex = newInventory.findIndex((item) => item?.itemType === recipe.result.type);
+  const craftedResultItem = createCraftResultItem(recipe.result);
+  const canMergeCraftResult = !NON_STACKING_CRAFT_RESULT_TYPES.has(recipe.result.type);
 
-  if (existingItemIndex !== -1) {
-    const existingItem = newInventory[existingItemIndex];
-    newInventory[existingItemIndex] = {
-      ...existingItem,
-      state: {
-        ...existingItem.state,
-        count: (existingItem.state?.count || 1) + resultCount,
-      },
-    };
-    return { inventory: newInventory };
+  if (canMergeCraftResult) {
+    const existingItemIndex = newInventory.findIndex((item) => item?.itemType === recipe.result.type);
+
+    if (existingItemIndex !== -1) {
+      const existingItem = newInventory[existingItemIndex];
+      newInventory[existingItemIndex] = {
+        ...existingItem,
+        state: {
+          ...existingItem.state,
+          count: (existingItem.state?.count || 1) + resultCount,
+        },
+      };
+      return { inventory: newInventory };
+    }
   }
 
   const currentItemCount = newInventory.filter((item) => item != null).length;
   if (currentItemCount >= maxInventorySlots) {
     return {
       inventory: newInventory,
-      itemToDrop: {
-        itemType: recipe.result.type,
-        state: { count: resultCount },
-      },
+      itemToDrop: craftedResultItem,
     };
   }
 
-  newInventory.push({
-    itemType: recipe.result.type,
-    state: { count: resultCount },
-  });
+  newInventory.push(craftedResultItem);
 
   return { inventory: newInventory };
 }
@@ -337,6 +353,23 @@ function buildRecipes(): Recipe[] {
 
 export const recipes: Recipe[] = buildRecipes();
 const RECIPES_BY_ID = new Map(recipes.map((recipe) => [recipe.id, recipe] as const));
+
+function buildCraftRecipeComponentEntityTypes(): ReadonlySet<EntityType> {
+  const out = new Set<EntityType>();
+  for (const recipe of recipes) {
+    if (recipe.kind !== "craft") {
+      continue;
+    }
+    for (const c of recipe.components) {
+      out.add(c.type as EntityType);
+    }
+  }
+  return out;
+}
+
+/** Item / weapon / resource types that appear as ingredients in at least one craft recipe. */
+export const CRAFT_RECIPE_COMPONENT_ENTITY_TYPES: ReadonlySet<EntityType> =
+  buildCraftRecipeComponentEntityTypes();
 
 export function getCraftableItemIds(): string[] {
   return recipes.filter((recipe) => recipe.kind === "craft").map((recipe) => recipe.id);

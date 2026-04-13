@@ -8,9 +8,39 @@ import { BufferWriter } from "@shared/util/buffer-serialization";
 import { encodeExtensionType } from "@shared/util/extension-type-encoding";
 import { itemTypeRegistry } from "@shared/util/item-type-encoding";
 import { writeItemState } from "@shared/util/item-state-serialization";
+import {
+  canItemGoInEquipmentSlot,
+  EQUIPMENT_SLOT_KEYS,
+  type EquipmentSlotKey,
+} from "@shared/util/inventory";
 import { ExtensionBase } from "./extension-base";
 import { Player } from "@/entities/players/player";
 import { advancePickupStep } from "@/quests/quest-runtime";
+
+function tryAutoEquipWearableFromBag(
+  entity: IEntity,
+  inventory: Inventory,
+  bagIndex: number,
+  itemType: ItemType,
+): void {
+  const equipment = inventory.getEquipment();
+  const owner = entity as {
+    canEquipItemToSlot?: (itemType: ItemType, equipSlot: EquipmentSlotKey) => boolean;
+  };
+  for (const slot of EQUIPMENT_SLOT_KEYS) {
+    if (equipment[slot] != null) {
+      continue;
+    }
+    if (!canItemGoInEquipmentSlot(itemType, slot)) {
+      continue;
+    }
+    if (owner.canEquipItemToSlot?.(itemType, slot) === false) {
+      continue;
+    }
+    inventory.swapBagAndEquipment(bagIndex, slot);
+    return;
+  }
+}
 
 interface PickupOptions {
   state?: ItemState;
@@ -74,16 +104,14 @@ export default class Carryable extends ExtensionBase<CarryableFields> {
     }
 
     const inventory = entity.getExt(Inventory);
-
-    if (inventory.isFull() && !options?.mergeStrategy) {
+    const pickupMaxSlots = inventory.getPickupMaxSlots();
+    if (pickupMaxSlots <= 0) {
       return false;
     }
 
     // If we have a merge strategy and existing item, merge instead of adding new
     if (options?.mergeStrategy) {
-      const existingItemIndex = inventory
-        .getItems()
-        .findIndex((item) => item != null && item.itemType === itemType);
+      const existingItemIndex = inventory.findItemIndex(itemType, pickupMaxSlots);
       if (existingItemIndex >= 0) {
         const existingItem = inventory.getItems()[existingItemIndex];
         if (existingItem) {
@@ -99,16 +127,19 @@ export default class Carryable extends ExtensionBase<CarryableFields> {
     }
 
     // Otherwise add as new item
-    if (inventory.isFull()) {
+    const emptySlotIndex = inventory.findFirstEmptyBagSlot(pickupMaxSlots);
+    if (emptySlotIndex < 0) {
       return false;
     }
 
     const pickupState = options?.state ?? this.getItemState();
 
-    inventory.addItem({
+    inventory.setBagSlot(emptySlotIndex, {
       itemType: itemType,
       state: pickupState,
     });
+
+    tryAutoEquipWearableFromBag(entity, inventory, emptySlotIndex, itemType);
 
     this.self.getEntityManager().markEntityForRemoval(this.self);
 

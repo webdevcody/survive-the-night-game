@@ -64,6 +64,7 @@ import {
 import {
   getAccessibleInventorySlotCount,
   getUnlockedVisibleBagSlots,
+  isSneakActive,
 } from "@shared/util/ability-effects";
 
 export class PlayerClient extends ClientEntity implements IClientEntity, Renderable {
@@ -92,6 +93,9 @@ export class PlayerClient extends ClientEntity implements IClientEntity, Rendera
   private zombieSpawnCooldownProgress: number = 1; // 0-1 progress for zombie spawn ability (1 = ready)
   private isReloading: boolean = false;
   private reloadProgress: number = 0;
+  /** Client-only: per loadout row (primary / secondary / melee), same timing as melee radial. */
+  private weaponLoadoutCooldownStartedAt: [number, number, number] = [0, 0, 0];
+  private weaponLoadoutCooldownMs: [number, number, number] = [0, 0, 0];
 
   private abilityRanks: Record<AbilityId, number> = emptyAbilityAllocations();
   private professionProgress: ProfessionProgress = emptyProfessionProgress();
@@ -282,12 +286,16 @@ export class PlayerClient extends ClientEntity implements IClientEntity, Rendera
    * Local player uses live input; others use serialized inputSneak.
    */
   isSneaking(gameState: GameState): boolean {
-    if (this.isZombie) return false;
-    if (!this.hasAbility("sneak")) return false;
-    if (gameState.playerId === this.getId()) {
-      return Boolean(this.input.sneak);
-    }
-    return Boolean((this as any).inputSneak);
+    const isSneakInputActive =
+      gameState.playerId === this.getId()
+        ? Boolean(this.input.sneak)
+        : Boolean((this as any).inputSneak);
+
+    return isSneakActive({
+      isZombie: this.isZombie,
+      hasSneakAbility: this.hasAbility("sneak"),
+      isSneakInputActive,
+    });
   }
 
   private getCurrentRenderImage(gameState: GameState): HTMLImageElement {
@@ -672,6 +680,35 @@ export class PlayerClient extends ClientEntity implements IClientEntity, Rendera
 
   public getReloadProgress(): number {
     return this.reloadProgress;
+  }
+
+  public startWeaponLoadoutCooldown(loadoutRow: 0 | 1 | 2, cooldownSeconds: number): void {
+    const durationMs = Math.max(0, cooldownSeconds * 1000);
+    if (durationMs <= 0) {
+      this.weaponLoadoutCooldownStartedAt[loadoutRow] = 0;
+      this.weaponLoadoutCooldownMs[loadoutRow] = 0;
+      return;
+    }
+    this.weaponLoadoutCooldownStartedAt[loadoutRow] = Date.now();
+    this.weaponLoadoutCooldownMs[loadoutRow] = durationMs;
+  }
+
+  public getWeaponLoadoutCooldownProgress(loadoutRow: 0 | 1 | 2): number {
+    if (this.isDead()) {
+      return 0;
+    }
+    const startedAt = this.weaponLoadoutCooldownStartedAt[loadoutRow];
+    const durationMs = this.weaponLoadoutCooldownMs[loadoutRow];
+    if (startedAt <= 0 || durationMs <= 0) {
+      return 0;
+    }
+
+    const elapsedMs = Date.now() - startedAt;
+    if (elapsedMs <= 0 || elapsedMs >= durationMs) {
+      return 0;
+    }
+
+    return Math.max(0, Math.min(1, elapsedMs / durationMs));
   }
 
   public getActiveWeaponAmmoState():

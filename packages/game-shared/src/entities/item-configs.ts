@@ -972,4 +972,35 @@ export const ITEM_CONFIGS: Record<string, ItemConfig> = {
     spawn: { enabled: false, chance: 0 },
     merchant: { enabled: false, buyable: false, price: 0 },
   },
+  sign: {
+    id: "sign",
+    category: "structure",
+    assets: {
+      assetKey: "sign",
+      x: 112,
+      y: 208,
+      sheet: "items",
+    },
+    spawn: {
+      enabled: false,
+      chance: 0,
+    },
+    merchant: {
+      enabled: false,
+      buyable: false,
+      price: 0,
+    },
+    recipe: {
+      enabled: true,
+      components: [
+        { type: "wood", count: 1 },
+        { type: "paper", count: 1 },
+      ],
+      profession: "crafting",
+      unlockLevel: 1,
+      station: "workbench",
+      professionXp: 6,
+    },
+    autoPickup: false,
+  },
 };

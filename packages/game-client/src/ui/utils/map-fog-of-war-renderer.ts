@@ -3,7 +3,7 @@ import { distance } from "@shared/util/physics";
 import { getConfig } from "@shared/config";
 import type { MapExplorationPersistedPayload } from "@shared/util/map-exploration-payload";
 import { isTileExplored } from "@shared/util/map-exploration-payload";
-import { LightSource, isPositionVisible, mapToWorldCoordinates } from "./map-rendering-utils";
+import { mapToWorldCoordinates } from "./map-rendering-utils";
 
 export interface FogOfWarSettings {
   enabled: boolean;
@@ -19,7 +19,7 @@ export interface FogOfWarSettings {
 export function renderMinimapFogOfWar(
   ctx: CanvasRenderingContext2D,
   playerPos: { x: number; y: number },
-  lightSources: LightSource[],
+  isWorldPositionVisibleToLocalPlayer: (worldX: number, worldY: number) => boolean,
   settings: FogOfWarSettings,
   exploration: MapExplorationPersistedPayload | null,
   tileSize: number,
@@ -77,7 +77,7 @@ export function renderMinimapFogOfWar(
           drawSize,
           drawSize
         );
-      } else if (!isPositionVisible(worldPosVec, lightSources)) {
+      } else if (!isWorldPositionVisibleToLocalPlayer(worldPos.x, worldPos.y)) {
         ctx.fillStyle = settings.exploredUnlitFogColor;
         ctx.fillRect(
           Math.floor(minimapX - scaledGridSize / 2),
@@ -97,7 +97,7 @@ export function renderMinimapFogOfWar(
 export function renderFullscreenMapFogOfWar(
   ctx: CanvasRenderingContext2D,
   playerPos: { x: number; y: number },
-  lightSources: LightSource[],
+  isWorldPositionVisibleToLocalPlayer: (worldX: number, worldY: number) => boolean,
   settings: FogOfWarSettings,
   exploration: MapExplorationPersistedPayload | null,
   tileSize: number,
@@ -132,7 +132,7 @@ export function renderFullscreenMapFogOfWar(
       if (!explored) {
         ctx.fillStyle = settings.unexploredFogColor;
         ctx.fillRect(screenX - gridSize / 2, screenY - gridSize / 2, gridSize, gridSize);
-      } else if (!isPositionVisible(worldPosVec, lightSources)) {
+      } else if (!isWorldPositionVisibleToLocalPlayer(worldPos.x, worldPos.y)) {
         ctx.fillStyle = settings.exploredUnlitFogColor;
         ctx.fillRect(screenX - gridSize / 2, screenY - gridSize / 2, gridSize, gridSize);
       }

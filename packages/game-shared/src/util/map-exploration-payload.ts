@@ -183,6 +183,77 @@ export function revealTilesInCircle(
   return modifiedKeys;
 }
 
+/**
+ * Reveal tiles in a world region where `lightMap[row][col] >= threshold`.
+ * `lightMap` is indexed [tileY][tileX] (row = y, col = x), matching {@link isTileExplored} tileX/tileY.
+ */
+export function revealTilesFromLightMapRegion(
+  payload: MapExplorationPersistedPayload,
+  lightMap: number[][],
+  threshold: number,
+  rowMin: number,
+  rowMax: number,
+  colMin: number,
+  colMax: number,
+): string[] {
+  const { chunkSize, rows, cols } = payload;
+  const byteLen = getChunkByteSize(chunkSize);
+  const chunkBuffers = new Map<string, Uint8Array>();
+  const modifiedKeys: string[] = [];
+
+  const getBuffer = (ck: string): Uint8Array => {
+    let buf = chunkBuffers.get(ck);
+    if (!buf) {
+      const existing = payload.chunks[ck];
+      if (existing) {
+        buf = decodeChunkBitsToBuffer(existing, byteLen);
+      } else {
+        buf = new Uint8Array(byteLen);
+      }
+      chunkBuffers.set(ck, buf);
+    }
+    return buf;
+  };
+
+  const r0 = Math.max(0, rowMin);
+  const r1 = Math.min(rows - 1, rowMax);
+  const c0 = Math.max(0, colMin);
+  const c1 = Math.min(cols - 1, colMax);
+
+  for (let ty = r0; ty <= r1; ty++) {
+    const lmRow = lightMap[ty];
+    if (!lmRow) continue;
+    for (let tx = c0; tx <= c1; tx++) {
+      if ((lmRow[tx] ?? 0) < threshold) continue;
+
+      const cx = Math.floor(tx / chunkSize);
+      const cy = Math.floor(ty / chunkSize);
+      const lx = tx - cx * chunkSize;
+      const ly = ty - cy * chunkSize;
+      const bitIndex = ly * chunkSize + lx;
+      const byteIndex = bitIndex >> 3;
+      const bit = bitIndex & 7;
+      const ck = chunkKey(cx, cy);
+      const buf = getBuffer(ck);
+      const mask = 1 << bit;
+      if ((buf[byteIndex]! & mask) !== 0) continue;
+      buf[byteIndex]! |= mask;
+      if (!modifiedKeys.includes(ck)) {
+        modifiedKeys.push(ck);
+      }
+    }
+  }
+
+  for (const ck of modifiedKeys) {
+    const buf = chunkBuffers.get(ck);
+    if (buf) {
+      payload.chunks[ck] = encodeChunkBits(buf);
+    }
+  }
+
+  return modifiedKeys;
+}
+
 export function isTileExplored(
   payload: MapExplorationPersistedPayload,
   tileX: number,

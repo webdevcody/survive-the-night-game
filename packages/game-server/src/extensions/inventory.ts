@@ -3,6 +3,7 @@ import {
   InventoryItem,
   ItemType,
   isWeapon,
+  isStackableInventoryItem,
   canItemGoInEquipmentSlot,
   createEmptyEquipment,
   EQUIPMENT_SLOT_KEYS,
@@ -95,6 +96,38 @@ export default class Inventory extends ExtensionBase<InventoryFields> {
     return getConfig().player.MAX_INVENTORY_SLOTS;
   }
 
+  /**
+   * Ground pickups should only occupy the currently unlocked visible bag cells,
+   * not hidden loadout-reserved storage or still-locked bag rows.
+   */
+  public getPickupMaxSlots(): number {
+    const owner = this.self as { getUnlockedVisibleBagSlotCount?: () => number };
+    if (typeof owner.getUnlockedVisibleBagSlotCount === "function") {
+      return owner.getUnlockedVisibleBagSlotCount();
+    }
+    return this.getMaxSlots();
+  }
+
+  public findItemIndex(itemType: ItemType, maxSlots: number = this.getMaxSlots()): number {
+    const items = this.serialized.get("items");
+    for (let i = 0; i < maxSlots; i++) {
+      if (items[i]?.itemType === itemType) {
+        return i;
+      }
+    }
+    return -1;
+  }
+
+  public findFirstEmptyBagSlot(maxSlots: number = this.getMaxSlots()): number {
+    const items = this.serialized.get("items");
+    for (let i = 0; i < maxSlots; i++) {
+      if (items[i] == null) {
+        return i;
+      }
+    }
+    return -1;
+  }
+
   public isFull(): boolean {
     const items = this.serialized.get("items");
     const itemCount = items
@@ -170,11 +203,14 @@ export default class Inventory extends ExtensionBase<InventoryFields> {
     const items = this.serialized.get("items");
     const addCount = item.state?.count ?? 1;
     const maxSlots = this.getMaxSlots();
+    const stackable = isStackableInventoryItem(item);
 
-    const existingItemIndex = items.findIndex(
-      (it: InventoryItem | null, index: number) =>
-        index < maxSlots && it != null && it.itemType === item.itemType
-    );
+    const existingItemIndex = stackable
+      ? items.findIndex(
+          (it: InventoryItem | null, index: number) =>
+            index < maxSlots && it != null && it.itemType === item.itemType
+        )
+      : -1;
 
     if (existingItemIndex >= 0) {
       const existing = items[existingItemIndex];
@@ -282,6 +318,42 @@ export default class Inventory extends ExtensionBase<InventoryFields> {
       this.notifyPlayerWeaponLoadout();
     }
     return item ?? undefined;
+  }
+
+  /**
+   * Remove `count` from a single bag stack; returns the removed stack as its own item.
+   * Fails if the slot is empty or `count` is not in (0, stackSize].
+   */
+  public removeItemCountFromBagSlot(index: number, count: number): InventoryItem | undefined {
+    const maxSlots = this.getMaxSlots();
+    if (index < 0 || index >= maxSlots || count <= 0) {
+      return undefined;
+    }
+    const items = this.serialized.get("items");
+    while (items.length < maxSlots) {
+      items.push(null);
+    }
+    const item = items[index];
+    if (!item) {
+      return undefined;
+    }
+    const stackSize = item.state?.count ?? 1;
+    if (count > stackSize) {
+      return undefined;
+    }
+    if (count === stackSize) {
+      return this.removeItem(index);
+    }
+    const prev = item.state ? { ...item.state } : {};
+    const remaining = stackSize - count;
+    items[index] = {
+      ...item,
+      state: { ...prev, count: remaining },
+    };
+    this.serialized.set("items", [...items]);
+    this.markDirty();
+    this.notifyPlayerWeaponLoadout();
+    return { itemType: item.itemType, state: { ...prev, count } };
   }
 
   public updateItemState(index: number, state: any): void {

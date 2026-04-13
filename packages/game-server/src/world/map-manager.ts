@@ -38,17 +38,18 @@ import { Workbench } from "@/entities/environment/workbench";
 import { Forge } from "@/entities/environment/forge";
 import { ChemistryTable } from "@/entities/environment/chemistry-table";
 import { Locker } from "@/entities/environment/locker";
+import { AuctionHouse } from "@/entities/environment/auction-house";
 import { LightDecal } from "@/entities/environment/light-decal";
 import { MessageDecal } from "@/entities/environment/message-decal";
 import { createSeededRng } from "@shared/util/seeded-rng";
 import { tryLoadWorldMapFile, validateWorldMapDimensions, type WorldMapFile } from "@/world/load-world-map";
 import {
   SPAWN_TILE_PLAYER,
-  isEnemySpawnTile,
   isItemSpawnTile,
   isNpcDialogueSpawnTile,
-  spawnTileIdToZombieType,
+  isZombieSpawnFixtureTile,
   spawnTileIdToItemFixtureType,
+  spawnTileIdToZombieFixtureKind,
 } from "../../../game-shared/src/map/spawn-palette";
 import type {
   WorldMapDialogueNpcEntry,
@@ -73,6 +74,7 @@ import {
   DECAL_TILE_WORKBENCH,
   DECAL_TILE_LOCKER,
   DECAL_TILE_SHOPKEEPER,
+  DECAL_TILE_AUCTION_HOUSE,
 } from "../../../game-shared/src/map/decal-palette";
 import { COLLIDABLE_TILE_MERCHANT } from "../../../game-shared/src/map/collidable-tile-ids";
 import {
@@ -639,12 +641,12 @@ export class MapManager implements IMapManager {
     for (let y = 0; y < totalSize; y++) {
       for (let x = 0; x < totalSize; x++) {
         const id = this.spawnLayer[y][x];
-        if (!isEnemySpawnTile(id)) {
+        if (!isZombieSpawnFixtureTile(id)) {
           continue;
         }
         anyEnemyMarker = true;
-        const zombieType = spawnTileIdToZombieType(id);
-        if (!zombieType) {
+        const zombieKind = spawnTileIdToZombieFixtureKind(id);
+        if (!zombieKind) {
           continue;
         }
 
@@ -655,7 +657,7 @@ export class MapManager implements IMapManager {
             : undefined;
         const spawner = new ZombieSpawnPoint(
           this.getGameManagers(),
-          zombieType,
+          zombieKind,
           x,
           y,
           true,
@@ -667,7 +669,7 @@ export class MapManager implements IMapManager {
 
     if (!anyEnemyMarker) {
       console.warn(
-        "MapManager: authored world map has no enemy spawn tiles (spawns layer ids 2–6); open-world zombie fixtures are disabled.",
+        "MapManager: authored world map has no zombie spawn tiles (spawns layer standard ids 2–6 or extended252+); open-world zombie fixtures are disabled.",
       );
     }
   }
@@ -1015,12 +1017,13 @@ export class MapManager implements IMapManager {
     let authoredCount = 0;
     if (this.authoredWorldMapApplied) {
       const totalSize = BIOME_SIZE * MAP_SIZE;
-      const stationDecals: Array<{ ctor: typeof Workbench; tileId: number }> = [
+      const stationDecals = [
         { ctor: Workbench, tileId: DECAL_TILE_WORKBENCH },
         { ctor: Forge, tileId: DECAL_TILE_FORGE },
         { ctor: ChemistryTable, tileId: DECAL_TILE_CHEMISTRY_TABLE },
         { ctor: Locker, tileId: DECAL_TILE_LOCKER },
-      ];
+        { ctor: AuctionHouse, tileId: DECAL_TILE_AUCTION_HOUSE },
+      ] as const;
       for (let y = 0; y < totalSize; y++) {
         for (let x = 0; x < totalSize; x++) {
           const cellId = this.decalsLayer[y]?.[x];

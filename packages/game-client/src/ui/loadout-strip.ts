@@ -3,6 +3,7 @@ import { Renderable } from "@/entities/util";
 import { AssetManager, getItemAssetKey } from "@/managers/asset";
 import { InventoryItem } from "@shared/util/inventory";
 import { calculateHudScale } from "@/util/hud-scale";
+import { renderRadialProgressIndicator } from "@/util/radial-progress-indicator";
 import { Z_INDEX } from "@shared/map";
 import { PlayerClient } from "@/entities/player";
 import { itemMatchesLoadoutRow } from "@shared/util/weapon-loadout";
@@ -72,6 +73,127 @@ function drawHotbarStackCount(
   ctx.fillText(label, cx, cy);
 }
 
+function drawRoundedRectPath(
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  w: number,
+  h: number,
+  radius: number,
+): void {
+  const r = Math.max(0, Math.min(radius, w / 2, h / 2));
+  ctx.beginPath();
+  ctx.moveTo(x + r, y);
+  ctx.lineTo(x + w - r, y);
+  ctx.quadraticCurveTo(x + w, y, x + w, y + r);
+  ctx.lineTo(x + w, y + h - r);
+  ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+  ctx.lineTo(x + r, y + h);
+  ctx.quadraticCurveTo(x, y + h, x, y + h - r);
+  ctx.lineTo(x, y + r);
+  ctx.quadraticCurveTo(x, y, x + r, y);
+  ctx.closePath();
+}
+
+function drawFistsPlaceholderIcon(
+  ctx: CanvasRenderingContext2D,
+  r: CanvasUiRect,
+  scale: number,
+): void {
+  const fistW = 10 * scale;
+  const fistH = 12 * scale;
+  const wristW = 4 * scale;
+  const wristH = 5 * scale;
+  const gap = 4 * scale;
+  const centerX = r.x + r.w / 2;
+  const topY = r.y + r.h / 2 - fistH / 2 - 2 * scale;
+  const leftFistX = centerX - gap / 2 - fistW;
+  const rightFistX = centerX + gap / 2;
+
+  ctx.save();
+  ctx.lineWidth = Math.max(1, 1.2 * scale);
+  ctx.strokeStyle = "rgba(82, 60, 40, 0.95)";
+
+  for (const fistX of [leftFistX, rightFistX]) {
+    drawRoundedRectPath(ctx, fistX, topY, fistW, fistH, 2.5 * scale);
+    ctx.fillStyle = "rgba(245, 229, 195, 0.95)";
+    ctx.fill();
+    ctx.stroke();
+
+    drawRoundedRectPath(
+      ctx,
+      fistX + (fistW - wristW) / 2,
+      topY + fistH - scale,
+      wristW,
+      wristH,
+      1.2 * scale,
+    );
+    ctx.fillStyle = "rgba(223, 198, 158, 0.95)";
+    ctx.fill();
+    ctx.stroke();
+
+    ctx.beginPath();
+    const firstKnuckleX = fistX + fistW / 3;
+    const secondKnuckleX = fistX + (2 * fistW) / 3;
+    const knuckleTop = topY + 3 * scale;
+    const knuckleBottom = topY + 7 * scale;
+    ctx.moveTo(firstKnuckleX, knuckleTop);
+    ctx.lineTo(firstKnuckleX, knuckleBottom);
+    ctx.moveTo(secondKnuckleX, knuckleTop);
+    ctx.lineTo(secondKnuckleX, knuckleBottom);
+    ctx.stroke();
+  }
+
+  ctx.restore();
+}
+
+function drawSlotItemIcon(
+  ctx: CanvasRenderingContext2D,
+  assetManager: AssetManager,
+  r: CanvasUiRect,
+  scale: number,
+  item: InventoryItem | null,
+): void {
+  if (!item) {
+    return;
+  }
+
+  const img = assetManager.get(getItemAssetKey(item));
+  if (!img) {
+    return;
+  }
+
+  const pad = 6 * scale;
+  ctx.drawImage(img, r.x + pad, r.y + pad, r.w - pad * 2, r.h - pad * 2);
+}
+
+function drawWeaponLoadoutCooldownOverlay(
+  ctx: CanvasRenderingContext2D,
+  r: CanvasUiRect,
+  scale: number,
+  progress: number,
+): void {
+  if (progress <= 0) {
+    return;
+  }
+
+  ctx.save();
+  const inset = 2 * scale;
+  ctx.fillStyle = "rgba(6, 8, 16, 0.26)";
+  ctx.fillRect(r.x + inset, r.y + inset, r.w - inset * 2, r.h - inset * 2);
+  renderRadialProgressIndicator(ctx, {
+    progress,
+    x: r.x + r.w / 2,
+    y: r.y + r.h / 2,
+    radius: Math.max(12 * scale, Math.min(r.w, r.h) * 0.28),
+    progressColor: "rgba(255, 214, 102, 0.92)",
+    borderColor: "rgba(255, 246, 214, 0.88)",
+    borderWidth: Math.max(1.25, 1.4 * scale),
+    backgroundColor: "rgba(16, 12, 8, 0.76)",
+  });
+  ctx.restore();
+}
+
 /** Screen-space bounds for the bottom-centered weapon strip (shared with HUD layout). */
 export function getLoadoutStripScreenLayout(
   canvasWidth: number,
@@ -133,7 +255,6 @@ export class LoadoutStrip implements Renderable {
     const s = (player as any).weaponLoadoutSecondary ?? 0;
     const m = (player as any).weaponLoadoutMelee ?? 0;
     const active = (player as any).activeWeaponLoadout ?? 0;
-
     ctx.save();
     ctx.setTransform(1, 0, 0, 1, 0, 0);
     fillRpgPanelGradient(ctx, L.x, L.y, L.w, L.h);
@@ -157,6 +278,7 @@ export class LoadoutStrip implements Renderable {
           const it = this.itemAtBagSlot(inv, bag);
           if (it && itemMatchesLoadoutRow(it.itemType, loadout)) item = it;
         }
+        const showFistsFallback = loadout === 2 && item == null;
 
         const isActive = active === loadout;
         ctx.strokeStyle = isActive ? STRIP.activeBorder : RPG_SLOT_STROKE;
@@ -166,12 +288,15 @@ export class LoadoutStrip implements Renderable {
         ctx.strokeRect(r.x, r.y, r.w, r.h);
 
         if (item) {
-          const img = this.assetManager.get(getItemAssetKey(item));
-          if (img) {
-            const pad = 6 * L.scale;
-            ctx.drawImage(img, r.x + pad, r.y + pad, r.w - pad * 2, r.h - pad * 2);
-          }
+          drawSlotItemIcon(ctx, this.assetManager, r, L.scale, item);
           drawHotbarStackCount(ctx, r, item, L.scale);
+        } else if (showFistsFallback) {
+          drawFistsPlaceholderIcon(ctx, r, L.scale);
+        }
+
+        const loadoutCooldownProgress = player.getWeaponLoadoutCooldownProgress(loadout);
+        if (loadoutCooldownProgress > 0) {
+          drawWeaponLoadoutCooldownOverlay(ctx, r, L.scale, loadoutCooldownProgress);
         }
 
         ctx.font = `${10 * L.scale}px Arial`;
@@ -188,11 +313,7 @@ export class LoadoutStrip implements Renderable {
         ctx.strokeRect(r.x, r.y, r.w, r.h);
 
         if (item) {
-          const img = this.assetManager.get(getItemAssetKey(item));
-          if (img) {
-            const pad = 6 * L.scale;
-            ctx.drawImage(img, r.x + pad, r.y + pad, r.w - pad * 2, r.h - pad * 2);
-          }
+          drawSlotItemIcon(ctx, this.assetManager, r, L.scale, item);
           drawHotbarStackCount(ctx, r, item, L.scale);
         }
 

@@ -15,6 +15,11 @@ async function main() {
     } catch (e) {
       console.warn("[SIGINT] persist player positions failed:", e);
     }
+    try {
+      await gameServer.releaseAllDistributedGameSessionLeases();
+    } catch (e) {
+      console.warn("[SIGINT] release game session leases failed:", e);
+    }
     gameServer.stop();
   });
 
@@ -24,6 +29,11 @@ async function main() {
       await gameServer.persistConnectedPlayersLastPositions();
     } catch (e) {
       console.warn("[SIGTERM] persist player positions failed:", e);
+    }
+    try {
+      await gameServer.releaseAllDistributedGameSessionLeases();
+    } catch (e) {
+      console.warn("[SIGTERM] release game session leases failed:", e);
     }
     gameServer.broadcastEvent(new ServerUpdatingEvent());
     gameServer.stop();

@@ -6,6 +6,8 @@ import { itemTypeToUInt16, uint16ToItemType } from "./utils";
 
 export interface ConsumeItemEventData {
   itemType: ItemType | null; // null means consume from current inventory slot
+  /** Optional explicit bag slot index (0-based) for consuming from a clicked inventory slot. */
+  slotIndex?: number;
 }
 
 export class ConsumeItemEvent implements GameEvent<ConsumeItemEventData> {
@@ -34,12 +36,24 @@ export class ConsumeItemEvent implements GameEvent<ConsumeItemEventData> {
     if (hasItemType) {
       writer.writeUInt16(itemTypeToUInt16(data.itemType));
     }
+    const hasSlotIndex = data.slotIndex !== undefined && data.slotIndex !== null;
+    writer.writeUInt8(hasSlotIndex ? 1 : 0);
+    if (hasSlotIndex) {
+      writer.writeUInt8(Math.max(0, Math.min(255, Math.floor(data.slotIndex ?? 0))));
+    }
   }
 
   static deserializeFromBuffer(reader: BufferReader): ConsumeItemEventData {
     const hasItemType = reader.readUInt8() !== 0;
     const itemType = hasItemType ? uint16ToItemType(reader.readUInt16()) : null;
-    return { itemType };
+    let slotIndex: number | undefined;
+    if (reader.hasMore()) {
+      const hasSlotIndex = reader.readUInt8() !== 0;
+      if (hasSlotIndex && reader.hasMore()) {
+        slotIndex = reader.readUInt8();
+      }
+    }
+    return { itemType, slotIndex };
   }
 }
 

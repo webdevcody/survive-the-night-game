@@ -371,6 +371,29 @@ def spr_feast() -> Image.Image:
     return im
 
 
+def spr_paper() -> Image.Image:
+    im = new_tile()
+    d = ImageDraw.Draw(im)
+    outline_rect(d, (4, 3, 11, 12), CRM)
+    d.polygon([(9, 3), (11, 5), (9, 5)], fill=WHI, outline=BLK)
+    d.line([(6, 6), (9, 6)], fill=M1, width=1)
+    d.line([(6, 8), (9, 8)], fill=M1, width=1)
+    d.line([(6, 10), (8, 10)], fill=M1, width=1)
+    return im
+
+
+def spr_sign() -> Image.Image:
+    im = new_tile()
+    d = ImageDraw.Draw(im)
+    outline_rect(d, (3, 3, 12, 8), W1)
+    outline_rect(d, (5, 4, 10, 7), CRM)
+    d.point((8, 5), RD2)
+    d.line([(6, 6), (9, 6)], fill=M1, width=1)
+    d.rectangle((7, 8, 8, 14), fill=W0, outline=BLK)
+    d.rectangle((6, 13, 9, 14), fill=W2, outline=BLK)
+    return im
+
+
 PATCHES: list[tuple[int, int, callable]] = [
     (16, 160, spr_scrap_metal),
     (32, 160, spr_mechanical_parts),
@@ -407,6 +430,8 @@ PATCHES: list[tuple[int, int, callable]] = [
     (48, 208, spr_protein),
     (64, 208, spr_hearty_stew),
     (80, 208, spr_feast),
+    (96, 208, spr_paper),
+    (112, 208, spr_sign),
 ]
 
 

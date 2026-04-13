@@ -43,6 +43,7 @@ import { MolotovCocktail } from "@/entities/items/molotov-cocktail";
 import { ThrowingKnife } from "@/entities/items/throwing-knife";
 import { Crate } from "@/entities/items/crate";
 import { GallonDrum } from "@/entities/items/gallon-drum";
+import { Sign } from "@/entities/items/sign";
 import { SentryGun } from "@/entities/items/sentry-gun";
 import { SentryGunLevel2 } from "@/entities/items/sentry-gun-level-2";
 import { SentryGunLevel3 } from "@/entities/items/sentry-gun-level-3";
@@ -68,6 +69,7 @@ import { Workbench } from "@/entities/environment/workbench";
 import { Forge } from "@/entities/environment/forge";
 import { ChemistryTable } from "@/entities/environment/chemistry-table";
 import { Locker } from "@/entities/environment/locker";
+import { AuctionHouse } from "@/entities/environment/auction-house";
 import { LightDecal } from "@/entities/environment/light-decal";
 import { MessageDecal } from "@/entities/environment/message-decal";
 import { Merchant } from "@/entities/environment/merchant";
@@ -128,6 +130,7 @@ const SERVER_ENTITY_CONSTRUCTORS: Record<EntityType, EntityConstructor> = {
   throwing_knife: ThrowingKnife,
   crate: Crate,
   gallon_drum: GallonDrum,
+  sign: Sign,
   sentry_gun: SentryGun,
   sentry_gun_level_2: SentryGunLevel2,
   sentry_gun_level_3: SentryGunLevel3,
@@ -163,6 +166,7 @@ const SERVER_ENTITY_CONSTRUCTORS: Record<EntityType, EntityConstructor> = {
   boundary: Boundary,
   zombie_spawn_point: ZombieSpawnPoint,
   item_spawn_point: ItemSpawnPoint,
+  auction_house: AuctionHouse,
 } as Record<EntityType, EntityConstructor>;
 
 /**

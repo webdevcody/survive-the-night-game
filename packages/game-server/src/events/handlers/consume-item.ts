@@ -8,7 +8,7 @@ import { SocketEventHandler } from "./types";
 /**
  * Validate consume item data
  */
-function validateConsumeItemData(data: unknown): { itemType: ItemType | null } | null {
+function validateConsumeItemData(data: unknown): { itemType: ItemType | null; slotIndex?: number } | null {
   if (typeof data !== "object" || data === null) {
     return null;
   }
@@ -21,13 +21,26 @@ function validateConsumeItemData(data: unknown): { itemType: ItemType | null } |
     return null;
   }
 
-  return { itemType: itemType as ItemType | null };
+  const slotIndex = obj.slotIndex;
+  if (slotIndex !== undefined && slotIndex !== null) {
+    if (
+      typeof slotIndex !== "number" ||
+      !Number.isFinite(slotIndex) ||
+      !Number.isInteger(slotIndex) ||
+      slotIndex < 0
+    ) {
+      return null;
+    }
+    return { itemType: itemType as ItemType | null, slotIndex };
+  }
+
+  return { itemType: itemType as ItemType | null, slotIndex: undefined };
 }
 
 export function onConsumeItem(
   context: HandlerContext,
   socket: ISocketAdapter,
-  data: { itemType: ItemType | null }
+  data: { itemType: ItemType | null; slotIndex?: number }
 ): void {
   const player = context.players.get(socket.id);
   if (!player) return;
@@ -37,8 +50,14 @@ export function onConsumeItem(
   const inventory = player.getExt(Inventory);
   const inputInventoryItem = player.serialized.get("inputInventoryItem");
 
-  // If itemType is specified, find the first item of that type
-  if (data.itemType !== null) {
+  if (typeof data.slotIndex === "number") {
+    const maxSlots = inventory.getMaxSlots();
+    if (data.slotIndex >= 0 && data.slotIndex < maxSlots) {
+      itemIndex = data.slotIndex;
+      item = inventory.getItems()[itemIndex];
+    }
+  } else if (data.itemType !== null) {
+    // If itemType is specified, find the first item of that type
     const inventoryItems = inventory.getItems();
     const foundIndex = inventoryItems.findIndex(
       (invItem) => invItem?.itemType === data.itemType
@@ -70,7 +89,7 @@ export function onConsumeItem(
   }
 }
 
-export const consumeItemHandler: SocketEventHandler<{ itemType: ItemType | null }> = {
+export const consumeItemHandler: SocketEventHandler<{ itemType: ItemType | null; slotIndex?: number }> = {
   event: "CONSUME_ITEM",
   handler: (context, socket, data) => {
     const validated = validateConsumeItemData(data);

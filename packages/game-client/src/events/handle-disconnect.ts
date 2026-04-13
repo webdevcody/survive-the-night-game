@@ -14,6 +14,7 @@ export const handleDisconnect = (context: ClientEventContext) => {
   // Clear spatial grid to remove stale entity references
   context.gameClient.getRenderer().clearSpatialGrid();
 
-  // Show message to user
-  context.gameClient.getHud().addMessage("Disconnected from server. Reconnecting...", "yellow");
+  if (context.socketManager.getShouldReconnect()) {
+    context.gameClient.getHud().addMessage("Disconnected from server. Reconnecting...", "yellow");
+  }
 };

@@ -8,6 +8,7 @@ import PoolManager from "@shared/util/pool-manager";
 import { ResourceConfig } from "@shared/entities/resource-registry";
 import { Player } from "@/entities/players/player";
 import Inventory from "@/extensions/inventory";
+import { PlayerPickedUpItemEvent } from "@shared/events/server-sent/events/pickup-item-event";
 
 /**
  * Generic resource entity that can be auto-generated from ResourceConfig.
@@ -40,10 +41,29 @@ export class GenericResourceEntity extends Entity {
 
     const inventory = player.getExt(Inventory);
     const itemType = this.getType() as string;
-    if (!inventory.addOrMergeStack({ itemType, state: { count: 1 } })) {
-      return;
+    const pickupMaxSlots = inventory.getPickupMaxSlots();
+    const existingItemIndex = inventory.findItemIndex(itemType, pickupMaxSlots);
+    if (existingItemIndex >= 0) {
+      const existingItem = inventory.getItems()[existingItemIndex];
+      if (!existingItem) {
+        return;
+      }
+      const currentCount = existingItem.state?.count ?? 0;
+      inventory.updateItemState(existingItemIndex, { count: currentCount + 1 });
+    } else {
+      const emptySlotIndex = inventory.findFirstEmptyBagSlot(pickupMaxSlots);
+      if (emptySlotIndex < 0) {
+        return;
+      }
+      inventory.setBagSlot(emptySlotIndex, { itemType, state: { count: 1 } });
     }
 
+    this.getEntityManager().getBroadcaster().broadcastEvent(
+      new PlayerPickedUpItemEvent({
+        playerId: player.getId(),
+        itemType,
+      })
+    );
     this.getEntityManager().markEntityForRemoval(this);
   }
 }

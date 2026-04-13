@@ -22,17 +22,24 @@ import {
 } from "@survive-the-night/game-shared/map/world-map-types";
 import {
   SPAWNER_META_CONFIGURABLE_ENTRIES,
+  SPAWNER_META_TYPEAHEAD_GROUP_LABEL,
+  SPAWNER_META_TYPEAHEAD_GROUP_ORDER,
   getAuthoredSpawnerDefaultRespawnSec,
-  isItemSpawnTile,
+  getSpawnerMetaTypeaheadGroupId,
   isNpcDialogueSpawnTile,
   isPlayerSpawnTile,
 } from "@survive-the-night/game-shared/map/spawn-palette";
 
-const SPAWNER_TYPE_SELECT_BASE_ENTRIES = SPAWNER_META_CONFIGURABLE_ENTRIES.filter(
-  (e) => !isItemSpawnTile(e.id),
-);
-const SPAWNER_TYPE_SELECT_ITEM_ENTRIES = SPAWNER_META_CONFIGURABLE_ENTRIES.filter((e) =>
-  isItemSpawnTile(e.id),
+function configurableEntriesForGroup(
+  group: (typeof SPAWNER_META_TYPEAHEAD_GROUP_ORDER)[number],
+) {
+  return SPAWNER_META_CONFIGURABLE_ENTRIES.filter(
+    (e) => getSpawnerMetaTypeaheadGroupId(e.id) === group,
+  );
+}
+
+const SPAWNER_TYPE_SELECT_PLAYER_ENTRIES = SPAWNER_META_CONFIGURABLE_ENTRIES.filter((e) =>
+  isPlayerSpawnTile(e.id),
 );
 
 export function SpawnerMetaModal() {
@@ -107,30 +114,42 @@ export function SpawnerMetaModal() {
                 <SelectValue />
               </SelectTrigger>
               <SelectContent className="max-h-[min(24rem,60vh)] border-gray-600 bg-gray-900 text-gray-100">
-                <SelectGroup>
-                  <SelectLabel className="text-[10px] text-gray-500">Player & zombies</SelectLabel>
-                  {SPAWNER_TYPE_SELECT_BASE_ENTRIES.map((e) => (
-                    <SelectItem
-                      key={e.id}
-                      value={String(e.id)}
-                      className="cursor-pointer text-[11px] focus:bg-gray-800 focus:text-gray-100"
-                    >
-                      {e.label}
-                    </SelectItem>
-                  ))}
-                </SelectGroup>
-                <SelectGroup>
-                  <SelectLabel className="text-[10px] text-gray-500">Item fixtures</SelectLabel>
-                  {SPAWNER_TYPE_SELECT_ITEM_ENTRIES.map((e) => (
-                    <SelectItem
-                      key={e.id}
-                      value={String(e.id)}
-                      className="cursor-pointer text-[11px] focus:bg-gray-800 focus:text-gray-100"
-                    >
-                      {e.label}
-                    </SelectItem>
-                  ))}
-                </SelectGroup>
+                {SPAWNER_TYPE_SELECT_PLAYER_ENTRIES.length > 0 ? (
+                  <SelectGroup>
+                    <SelectLabel className="text-[10px] text-gray-500">Player</SelectLabel>
+                    {SPAWNER_TYPE_SELECT_PLAYER_ENTRIES.map((e) => (
+                      <SelectItem
+                        key={e.id}
+                        value={String(e.id)}
+                        className="cursor-pointer text-[11px] focus:bg-gray-800 focus:text-gray-100"
+                      >
+                        {e.label}
+                      </SelectItem>
+                    ))}
+                  </SelectGroup>
+                ) : null}
+                {SPAWNER_META_TYPEAHEAD_GROUP_ORDER.map((groupId) => {
+                  const groupEntries = configurableEntriesForGroup(groupId);
+                  if (groupEntries.length === 0) {
+                    return null;
+                  }
+                  return (
+                    <SelectGroup key={groupId}>
+                      <SelectLabel className="text-[10px] text-gray-500">
+                        {SPAWNER_META_TYPEAHEAD_GROUP_LABEL[groupId]}
+                      </SelectLabel>
+                      {groupEntries.map((e) => (
+                        <SelectItem
+                          key={e.id}
+                          value={String(e.id)}
+                          className="cursor-pointer text-[11px] focus:bg-gray-800 focus:text-gray-100"
+                        >
+                          {e.label}
+                        </SelectItem>
+                      ))}
+                    </SelectGroup>
+                  );
+                })}
               </SelectContent>
             </Select>
             {showRespawnInterval ? (

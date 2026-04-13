@@ -93,6 +93,11 @@ export class GameServer {
     return this.socketManager.persistConnectedPlayersLastPositions();
   }
 
+  /** Clear distributed game-session leases in the website DB (graceful shutdown). */
+  public releaseAllDistributedGameSessionLeases(): Promise<void> {
+    return this.socketManager.releaseAllDistributedGameSessionLeases();
+  }
+
   public broadcastEvent<T>(event: GameEvent<T>): void {
     this.socketManager.broadcastEvent(event);
   }

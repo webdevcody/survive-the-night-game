@@ -37,7 +37,9 @@ import { onVersionMismatch } from "./events/on-version-mismatch";
 import { onAuthRequired } from "./events/on-auth-required";
 import { onProfileLoadFailed } from "./events/on-profile-load-failed";
 import { onPlayerLevelUp } from "./events/on-player-level-up";
+import { onAuctionSnapshot } from "./events/on-auction-snapshot";
 import { onUserBanned } from "./events/on-user-banned";
+import { onDuplicateActiveSession } from "./events/on-duplicate-active-session";
 import {
   ClientEventContext,
   GameStateUpdateContext,
@@ -118,7 +120,11 @@ export class ClientEventListener {
       onProfileLoadFailed(context, e),
     );
     this.socketManager.on(ServerSentEvents.PLAYER_LEVEL_UP, (e) => onPlayerLevelUp(context, e));
+    this.socketManager.on(ServerSentEvents.AUCTION_SNAPSHOT, (e) => onAuctionSnapshot(context, e));
     this.socketManager.on(ServerSentEvents.USER_BANNED, (e) => onUserBanned(context, e));
+    this.socketManager.on(ServerSentEvents.DUPLICATE_ACTIVE_SESSION, (e) =>
+      onDuplicateActiveSession(context, e),
+    );
     this.socketManager.onSocketDisconnect(() => {
       this.handleSocketDisconnect();
     });

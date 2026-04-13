@@ -55,6 +55,16 @@ export class MuteButtonPanel extends Panel {
     this.buttonSettings.font = `${muteFont}px Arial`;
   }
 
+  /** Pixel layout after `updatePosition` (bottom offset is from canvas bottom). */
+  public getLayout(): { left: number; bottom: number; width: number; height: number } {
+    return {
+      left: this.buttonSettings.left,
+      bottom: this.buttonSettings.bottom,
+      width: this.buttonSettings.width,
+      height: this.buttonSettings.height,
+    };
+  }
+
   public render(ctx: CanvasRenderingContext2D, gameState: GameState): void {
     this.resetTransform(ctx);
 

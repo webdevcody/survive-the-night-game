@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { ArrayBufferWriter, BufferReader } from "../../../util/buffer-serialization";
 import { FISTS_INVENTORY_SENTINEL } from "../../../constants/inventory-sentinel";
 import { SelectInventorySlotEvent } from "./select-inventory-slot";
+import { SplitInventoryStackEvent } from "./split-inventory-stack";
 import { SetWeaponLoadoutSlotEvent } from "./set-weapon-loadout-slot";
 import { SwapBagAndEquipmentEvent } from "./swap-bag-and-equipment";
 import { SwapInventoryItemsEvent } from "./swap-inventory-items";
@@ -42,6 +43,13 @@ describe("inventory event wire encoding", () => {
       new BufferReader(loadoutWriter.getBuffer()),
     );
     expect(loadoutData).toEqual({ slot: 3, bagIndex: 57 });
+
+    const splitWriter = new ArrayBufferWriter();
+    SplitInventoryStackEvent.serializeToBuffer(splitWriter, { slotIndex: 57, quantity: 999 });
+    const splitData = SplitInventoryStackEvent.deserializeFromBuffer(
+      new BufferReader(splitWriter.getBuffer()),
+    );
+    expect(splitData).toEqual({ slotIndex: 57, quantity: 999 });
   });
 
   it("does not coerce invalid equipment slot bytes to head", () => {

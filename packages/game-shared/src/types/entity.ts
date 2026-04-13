@@ -23,4 +23,5 @@ export interface ItemState {
   count?: number;
   health?: number;
   loadedAmmo?: number;
+  message?: string;
 }

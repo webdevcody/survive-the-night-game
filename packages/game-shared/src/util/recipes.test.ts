@@ -1,5 +1,12 @@
 import { describe, expect, it } from "vitest";
-import { getRecipesForStation, getScrapOutputsForItem, isRecipeUnlocked, recipeCanBeCrafted } from "./recipes";
+import {
+  craftRecipe,
+  getRecipeById,
+  getRecipesForStation,
+  getScrapOutputsForItem,
+  isRecipeUnlocked,
+  recipeCanBeCrafted,
+} from "./recipes";
 
 describe("recipes", () => {
   it("maps professions to their station recipes", () => {
@@ -44,6 +51,22 @@ describe("recipes", () => {
     expect(getScrapOutputsForItem("cloth_hood")?.components).toEqual([
       { type: "cloth", count: 1 },
       { type: "leather_strips", count: 1 },
+    ]);
+  });
+
+  it("keeps crafted signs as separate inventory items", () => {
+    const signRecipe = getRecipeById("sign");
+    expect(signRecipe).toBeTruthy();
+
+    const result = craftRecipe(signRecipe!, [
+      { itemType: "sign", state: { message: "Old warning" } },
+      { itemType: "paper", state: { count: 1 } },
+      { itemType: "wood", state: { count: 1 } },
+    ]);
+
+    expect(result.inventory).toEqual([
+      { itemType: "sign", state: { message: "Old warning" } },
+      { itemType: "sign" },
     ]);
   });
 });

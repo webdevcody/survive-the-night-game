@@ -26,6 +26,9 @@ import { useLoadoutConsumableHandler } from "./use-loadout-consumable";
 import { bankActionHandler } from "./bank-action";
 import { reloadWeaponHandler } from "./reload-weapon";
 import { requestCombatRollHandler } from "./request-combat-roll";
+import { auctionActionHandler } from "./auction-action";
+import { splitInventoryStackHandler } from "./split-inventory-stack";
+import { setSignTextHandler } from "./set-sign-text";
 
 /**
  * Registry of all socket event handlers.
@@ -66,4 +69,7 @@ export const socketEventHandlers: SocketEventHandler[] = [
   bankActionHandler,
   reloadWeaponHandler,
   requestCombatRollHandler,
+  auctionActionHandler,
+  splitInventoryStackHandler,
+  setSignTextHandler,
 ];

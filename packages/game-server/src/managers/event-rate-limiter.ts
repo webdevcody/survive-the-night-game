@@ -33,6 +33,7 @@ export class EventRateLimiter {
     BANK_ACTION: { maxEvents: 40, windowMs: 1000 },
     SWAP_INVENTORY_ITEMS: { maxEvents: 20, windowMs: 1000 },
     SWAP_BAG_AND_EQUIPMENT: { maxEvents: 20, windowMs: 1000 },
+    SPLIT_INVENTORY_STACK: { maxEvents: 20, windowMs: 1000 },
     MERCHANT_BUY: { maxEvents: 20, windowMs: 1000 },
     MERCHANT_SELL: { maxEvents: 20, windowMs: 1000 },
     PLAYER_RESPAWN_REQUEST: { maxEvents: 5, windowMs: 1000 },

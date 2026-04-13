@@ -23,6 +23,8 @@ export interface HandlerContext {
   profanityCensor: TextCensor;
   sessionValidator: SessionValidator;
   userSessionCache: UserSessionCache;
+  /** Stop distributed-session heartbeat tracking for this socket (before cache remove). */
+  notifyDistributedSessionSocketClosing?: (socket: ISocketAdapter) => void;
   getEntityManager(): IEntityManager;
   getMapManager(): MapManager;
   getGameManagers(): IGameManagers;

@@ -4,10 +4,12 @@ import { ItemState } from "../types/entity";
  * ItemState Serialization Utilities
  *
  * Optimized binary format for ItemState:
- * - 1 byte: flags (bit 0 = has count, bit 1 = has health, bit 2 = has loaded ammo)
+ * - 1 byte: flags (bit 0 = has count, bit 1 = has health, bit 2 = has loaded ammo,
+ *   bit 3 = has sign message)
  * - If has count: 2 bytes (UInt16) - supports 0-65535
  * - If has health: 1 byte (UInt8) - supports 0-255
  * - If has loaded ammo: 2 bytes (UInt16) - supports 0-65535
+ * - If has message: 4-byte length prefix + UTF-8 string bytes
  *
  * Total: 1-6 bytes vs ~21+ bytes with writeRecord/Float64
  *
@@ -23,6 +25,7 @@ import { ItemState } from "../types/entity";
 const FLAG_HAS_COUNT = 0x01;
 const FLAG_HAS_HEALTH = 0x02;
 const FLAG_HAS_LOADED_AMMO = 0x04;
+const FLAG_HAS_MESSAGE = 0x08;
 
 /**
  * Writer interface (matches both BufferWriter and ArrayBufferWriter)
@@ -30,6 +33,7 @@ const FLAG_HAS_LOADED_AMMO = 0x04;
 interface ItemStateWriter {
   writeUInt8(value: number): void;
   writeUInt16(value: number): void;
+  writeString(value: string): void;
 }
 
 /**
@@ -38,6 +42,7 @@ interface ItemStateWriter {
 interface ItemStateReader {
   readUInt8(): number;
   readUInt16(): number;
+  readString(): string;
 }
 
 /**
@@ -61,6 +66,9 @@ export function writeItemState(writer: ItemStateWriter, state: ItemState | undef
   if (state.loadedAmmo !== undefined && state.loadedAmmo !== null) {
     flags |= FLAG_HAS_LOADED_AMMO;
   }
+  if (typeof state.message === "string" && state.message.length > 0) {
+    flags |= FLAG_HAS_MESSAGE;
+  }
 
   writer.writeUInt8(flags);
 
@@ -79,6 +87,10 @@ export function writeItemState(writer: ItemStateWriter, state: ItemState | undef
   if (flags & FLAG_HAS_LOADED_AMMO) {
     const loadedAmmo = Math.max(0, Math.min(65535, Math.round(state.loadedAmmo!)));
     writer.writeUInt16(loadedAmmo);
+  }
+
+  if (flags & FLAG_HAS_MESSAGE) {
+    writer.writeString(state.message!);
   }
 }
 
@@ -101,6 +113,10 @@ export function readItemState(reader: ItemStateReader): ItemState {
 
   if (flags & FLAG_HAS_LOADED_AMMO) {
     state.loadedAmmo = reader.readUInt16();
+  }
+
+  if (flags & FLAG_HAS_MESSAGE) {
+    state.message = reader.readString();
   }
 
   return state;

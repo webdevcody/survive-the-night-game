@@ -25,6 +25,9 @@ import { DialogueNpcCompleteEvent } from "./events/dialogue-npc-complete";
 import { UseLoadoutConsumableEvent } from "./events/use-loadout-consumable";
 import { BankActionEvent } from "./events/bank-action";
 import { RequestCombatRollEvent } from "./events/request-combat-roll";
+import { AuctionActionEvent } from "./events/auction-action";
+import { SplitInventoryStackEvent } from "./events/split-inventory-stack";
+import { SetSignTextEvent } from "./events/set-sign-text";
 import {
   serializeEvent,
   deserializeEvent,
@@ -65,6 +68,9 @@ const eventRegistry: Record<string, IBufferWriter> = {
   [ClientSentEvents.BANK_ACTION]: BankActionEvent,
   [ClientSentEvents.RELOAD_WEAPON]: NoPayloadEvent,
   [ClientSentEvents.REQUEST_COMBAT_ROLL]: RequestCombatRollEvent,
+  [ClientSentEvents.AUCTION_ACTION]: AuctionActionEvent,
+  [ClientSentEvents.SPLIT_INVENTORY_STACK]: SplitInventoryStackEvent,
+  [ClientSentEvents.SET_SIGN_TEXT]: SetSignTextEvent,
 };
 
 function isClientSentEvent(event: string): event is ClientSentEventType {

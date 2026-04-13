@@ -1,5 +1,5 @@
 import { Extension } from "@/extensions/types";
-import type { InventoryItem, ItemType } from "@shared/util/inventory";
+import { isStackableInventoryItem, type InventoryItem, type ItemType } from "@shared/util/inventory";
 import { getConfig } from "@/config";
 import { BufferWriter } from "@shared/util/buffer-serialization";
 import { encodeExtensionType } from "@shared/util/extension-type-encoding";
@@ -54,10 +54,11 @@ export default class Bank extends ExtensionBase<BankFields> implements Extension
   public addOrMergeStack(item: InventoryItem): boolean {
     const items = this.serialized.get("items");
     const addCount = item.state?.count ?? 1;
+    const stackable = isStackableInventoryItem(item);
 
-    const existingItemIndex = items.findIndex(
-      (it: InventoryItem | null) => it != null && it.itemType === item.itemType,
-    );
+    const existingItemIndex = stackable
+      ? items.findIndex((it: InventoryItem | null) => it != null && it.itemType === item.itemType)
+      : -1;
 
     if (existingItemIndex >= 0) {
       const existing = items[existingItemIndex];

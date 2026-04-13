@@ -13,7 +13,7 @@ import {
   getDefaultMapExplorationPayload,
   isCompatibleExplorationPayload,
   isTileExplored as isTileExploredInPayload,
-  revealTilesInCircle,
+  revealTilesFromLightMapRegion,
 } from "@shared/util/map-exploration-payload";
 
 // Zombie player illumination radius (allows them to see around themselves)
@@ -61,6 +61,8 @@ export class MapManager {
   private lightMapCache: Map<number, number[][]> = new Map(); // Cache per entity ID
   private lightSourcePositions: Map<number, { x: number; y: number }> = new Map(); // Grid positions per entity
   private combinedLightMap: number[][] = []; // Final combined light map
+  /** Propagated sight from the local player only (LOS + falloff), for map fog / exploration. */
+  private playerVisionLightMap: number[][] = [];
   private lastLightRecalculationTime: number = 0;
   private readonly LIGHT_RECALCULATION_INTERVAL = 300;
   private previousIlluminationMultiplier: number = 1.0; // Track previous multiplier to detect changes
@@ -118,6 +120,7 @@ export class MapManager {
     this.lightMapCache.clear();
     this.lightSourcePositions.clear();
     this.combinedLightMap = this.createEmptyLightMap();
+    this.playerVisionLightMap = [];
     // Force immediate light rebuild; else renderDarkness may skip recalc for up to
     // LIGHT_RECALCULATION_INTERVAL ms while combinedLightMap stays all zeros.
     this.lastLightRecalculationTime = 0;
@@ -196,11 +199,20 @@ export class MapManager {
     return isTileExploredInPayload(this.mapExploration, tileX, tileY);
   }
 
-  tickLocalMapExplorationReveal(player: PlayerClient | null): void {
-    if (!this.mapExploration || !player || !player.hasExt(ClientPositionable)) return;
-    if (player.hasExt(ClientDestructible) && player.getExt(ClientDestructible).isDead()) return;
+  /**
+   * Whether the local player's current propagated sight reaches this world pixel
+   * (same LOS rules as world lighting: walls attenuate; tile id 3 blocks more).
+   */
+  isWorldPositionInPlayerMapVision(worldX: number, worldY: number): boolean {
+    if (!this.groundLayer?.length || !this.playerVisionLightMap.length) return false;
+    const t = this.worldToTile(worldX, worldY);
+    if (!this.isValidTile(t.row, t.col)) return false;
+    return (this.playerVisionLightMap[t.row]?.[t.col] ?? 0) >= MIN_LIGHT_INTENSITY;
+  }
 
-    const center = player.getExt(ClientPositionable).getCenterPosition();
+  private buildPlayerMapLightSource(player: PlayerClient): LightSource | null {
+    if (!player.hasExt(ClientPositionable)) return null;
+    const position = player.getExt(ClientPositionable).getCenterPosition();
     let radiusPx = 0;
     if (player.hasExt(ClientIlluminated)) {
       radiusPx = player.getExt(ClientIlluminated).getRadius();
@@ -211,8 +223,37 @@ export class MapManager {
     if (radiusPx <= 0) {
       radiusPx = Math.min(64, getConfig().world.LIGHT_RADIUS_PLAYER);
     }
+    const illuminationMultiplier = this.gameClient.getGameState().globalIlluminationMultiplier ?? 1.0;
+    radiusPx *= illuminationMultiplier;
+    return { position, radius: radiusPx };
+  }
 
-    revealTilesInCircle(this.mapExploration, center.x, center.y, radiusPx, this.tileSize);
+  tickLocalMapExplorationReveal(player: PlayerClient | null): void {
+    if (!this.mapExploration || !player || !player.hasExt(ClientPositionable)) return;
+    if (player.hasExt(ClientDestructible) && player.getExt(ClientDestructible).isDead()) {
+      this.playerVisionLightMap = [];
+      return;
+    }
+    if (!this.groundLayer) return;
+
+    const source = this.buildPlayerMapLightSource(player);
+    if (!source) return;
+
+    const rows = this.groundLayer.length;
+    const cols = this.groundLayer[0].length;
+    this.playerVisionLightMap = this.calculateSingleLightPropagation(source, rows, cols);
+
+    const startTile = this.worldToTile(source.position.x, source.position.y);
+    const rTiles = Math.ceil(source.radius / this.tileSize) + 3;
+    revealTilesFromLightMapRegion(
+      this.mapExploration,
+      this.playerVisionLightMap,
+      MIN_LIGHT_INTENSITY,
+      startTile.row - rTiles,
+      startTile.row + rTiles,
+      startTile.col - rTiles,
+      startTile.col + rTiles,
+    );
   }
 
   // Convert world coordinates to tile indices

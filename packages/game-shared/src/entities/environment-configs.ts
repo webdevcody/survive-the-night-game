@@ -133,12 +133,24 @@ export const ENVIRONMENT_CONFIGS: Record<string, EnvironmentConfig> = {
       sheet: "items",
     },
   },
+  /** First 16×16 cell on `locker.png` (sheet is 32×16: locker | auction_house). */
   locker: {
     id: "locker",
     category: "obstacle",
     assets: {
       assetKey: "locker",
       x: 0,
+      y: 0,
+      sheet: "locker",
+    },
+  },
+  /** Second 16×16 cell on `locker.png`. */
+  auction_house: {
+    id: "auction_house",
+    category: "obstacle",
+    assets: {
+      assetKey: "auction_house",
+      x: 16,
       y: 0,
       sheet: "locker",
     },

@@ -6,6 +6,7 @@ import { ISocketAdapter } from "@shared/network/socket-adapter";
 import { HandlerContext } from "@/events/context";
 import { PlayerLeftEvent } from "../../../game-shared/src/events/server-sent/events/player-left-event";
 import { persistPlayerLastPositionToWebsite } from "@/services/persist-player-last-position";
+import { releasePlayerGameSessionToWebsite } from "@/services/persist-player-game-session";
 import { sendFullState } from "@/events/handlers/full-state";
 import { sendPlayerId } from "@/events/handlers/player-id";
 import type { IEntityManager } from "@/managers/types";
@@ -64,11 +65,18 @@ export function performPlayerDisconnect(context: HandlerContext, socket: ISocket
   const player = context.players.get(socket.id);
   const displayName = context.playerDisplayNames.get(socket.id);
   const userId = context.userSessionCache.getUserIdBySocket(socket.id);
+  const gameLease = context.userSessionCache.getGameSessionLeaseBySocket(socket.id);
 
   if (userId && player) {
     void persistPlayerLastPositionToWebsite(userId, player).catch((e) => {
       console.warn(`[performPlayerDisconnect] player-last-position failed for user ${userId}:`, e);
     });
+  }
+
+  context.notifyDistributedSessionSocketClosing?.(socket);
+
+  if (userId && gameLease) {
+    void releasePlayerGameSessionToWebsite(userId, gameLease.gameSessionId);
   }
 
   context.userSessionCache.removeSocket(socket.id);

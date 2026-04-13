@@ -1,65 +1,5 @@
-import { GameState, getEntitiesByType, getEntityById } from "@/state";
+import { GameState, getEntitiesByType } from "@/state";
 import { ClientPositionable } from "@/extensions/positionable";
-import { PlayerClient } from "@/entities/player";
-import { ClientIlluminated } from "@/extensions/illuminated";
-import Vector2 from "@shared/util/vector2";
-import { distance } from "@shared/util/physics";
-import { ClientEntityBase } from "@/extensions/client-entity";
-
-export interface LightSource {
-  position: Vector2;
-  radius: number;
-}
-
-export interface MapRenderingSettings {
-  colors: {
-    [key: string]: string;
-  };
-  fogOfWar: {
-    enabled: boolean;
-    unexploredFogColor: string;
-    exploredUnlitFogColor: string;
-  };
-  scale?: number;
-}
-
-/**
- * Calculate light sources from entities for fog of war rendering
- */
-export function calculateLightSources(
-  entities: readonly ClientEntityBase[],
-  gameState: GameState
-): LightSource[] {
-  const sources: LightSource[] = [];
-  let addedCurrentPlayerLight = false;
-
-  const currentPlayer = getEntityById(gameState, gameState.playerId);
-
-  for (const entity of entities) {
-    if (entity.hasExt(ClientIlluminated) && entity.hasExt(ClientPositionable)) {
-      const radius = entity.getExt(ClientIlluminated).getRadius();
-      if (radius <= 0) continue;
-      const position = entity.getExt(ClientPositionable).getCenterPosition();
-      sources.push({ position, radius });
-
-      if (entity.getId() === gameState.playerId) {
-        addedCurrentPlayerLight = true;
-      }
-    }
-  }
-
-  if (!addedCurrentPlayerLight && gameState.playerId) {
-    if (currentPlayer instanceof PlayerClient && currentPlayer.isZombiePlayer?.()) {
-      if (currentPlayer.hasExt(ClientPositionable)) {
-        const position = currentPlayer.getExt(ClientPositionable).getCenterPosition();
-        const radius = 80;
-        sources.push({ position, radius });
-      }
-    }
-  }
-
-  return sources;
-}
 
 /**
  * World positions for campsite (H) map markers: one per `campsite_fire` entity when present,
@@ -69,7 +9,7 @@ export function getCampsiteMapMarkerWorldPositions(
   gameState: GameState,
   campsiteBiomeCell: { x: number; y: number },
   biomeSize: number,
-  tileSize: number
+  tileSize: number,
 ): Array<{ x: number; y: number }> {
   const fires = getEntitiesByType(gameState, "campsite_fire");
   const out: Array<{ x: number; y: number }> = [];
@@ -94,21 +34,9 @@ export function getCampsiteMapMarkerWorldPosition(
   gameState: GameState,
   campsiteBiomeCell: { x: number; y: number },
   biomeSize: number,
-  tileSize: number
+  tileSize: number,
 ): { x: number; y: number } {
   return getCampsiteMapMarkerWorldPositions(gameState, campsiteBiomeCell, biomeSize, tileSize)[0];
-}
-
-export function isPositionVisible(worldPos: Vector2, lightSources: LightSource[]): boolean {
-  for (const source of lightSources) {
-    const radius = source.radius / Math.sqrt(2);
-    const dist = distance(worldPos, source.position);
-
-    if (dist <= radius) {
-      return true;
-    }
-  }
-  return false;
 }
 
 export function worldToMapCoordinates(
@@ -117,7 +45,7 @@ export function worldToMapCoordinates(
   playerPos: { x: number; y: number },
   centerX: number,
   centerY: number,
-  scale: number
+  scale: number,
 ): { x: number; y: number } {
   const relativeX = worldX - playerPos.x;
   const relativeY = worldY - playerPos.y;
@@ -133,7 +61,7 @@ export function mapToWorldCoordinates(
   playerPos: { x: number; y: number },
   centerX: number,
   centerY: number,
-  scale: number
+  scale: number,
 ): { x: number; y: number } {
   const relativeX = (mapX - centerX) / scale;
   const relativeY = (mapY - centerY) / scale;
