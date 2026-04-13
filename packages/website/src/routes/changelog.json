@@ -1,5 +1,28 @@
 [
   {
+    "version": "0.33.0",
+    "date": "2026-04-12",
+    "changes": {
+      "features": [
+        "Expanded quest and map authoring with navigation hints, NPC offers, editor step reordering, dialogue groups, conditional steps, and main-quest list styling",
+        "Added crafting stations and professions with progression persistence, a crafting tab, stat icons, and consumable loadouts",
+        "Added bank and locker storage with inventory improvements including weapon reload flow and clearer item state handling",
+        "Unified the canvas HUD with an RPG-styled presentation for dialogue alongside quest notifications and event feedback",
+        "Added NPC dialogue panel with collision, a dialogue manager on the client, and richer quest HUD surfaces",
+        "Added combat roll alongside world updates that refresh inventory UI, minimap, and related HUD behavior",
+        "Added level-up confetti broadcasts and HUD toasts for clearer progression moments",
+        "Replaced Socket.IO adapters with uWebSockets as the standard real-time networking stack",
+        "Surfaced profile load failures with a dedicated client event and refined minimap and inventory persistence feedback"
+      ],
+      "bugFixes": [],
+      "refactoring": [
+        "Refactored client session lifecycle, initialization, and GameState encapsulation for cleaner long-session behavior",
+        "Expanded automated client event tests around inventory flows and item state"
+      ],
+      "performance": []
+    }
+  },
+  {
     "version": "0.32.0",
     "date": "2026-04-10",
     "changes": {
