@@ -1,12 +1,16 @@
-import Vector2 from "@shared/util/vector2";
 import PoolManager from "@shared/util/pool-manager";
 import { distance } from "@shared/util/physics";
 import { getConfig } from "@shared/config";
+import type { MapExplorationPersistedPayload } from "@shared/util/map-exploration-payload";
+import { isTileExplored } from "@shared/util/map-exploration-payload";
 import { LightSource, isPositionVisible, mapToWorldCoordinates } from "./map-rendering-utils";
 
 export interface FogOfWarSettings {
   enabled: boolean;
-  fogColor: string;
+  /** Tiles the player has never visited stay fully hidden. */
+  unexploredFogColor: string;
+  /** Explored but not currently lit: gray veil so terrain stays readable. */
+  exploredUnlitFogColor: string;
 }
 
 /**
@@ -17,6 +21,8 @@ export function renderMinimapFogOfWar(
   playerPos: { x: number; y: number },
   lightSources: LightSource[],
   settings: FogOfWarSettings,
+  exploration: MapExplorationPersistedPayload | null,
+  tileSize: number,
   centerX: number,
   centerY: number,
   radius: number,
@@ -59,10 +65,20 @@ export function renderMinimapFogOfWar(
       const worldPos = mapToWorldCoordinates(minimapX, minimapY, playerPos, centerX, centerY, scale);
       const worldPosVec = poolManager.vector2.claim(worldPos.x, worldPos.y);
 
-      // Check if this world position is visible
-      if (!isPositionVisible(worldPosVec, lightSources)) {
-        // Draw fog tile - use Math.floor for position and overlap for size to prevent gaps
-        ctx.fillStyle = settings.fogColor;
+      const worldTileX = Math.floor(worldPos.x / tileSize);
+      const worldTileY = Math.floor(worldPos.y / tileSize);
+      const explored =
+        exploration != null && isTileExplored(exploration, worldTileX, worldTileY);
+      if (!explored) {
+        ctx.fillStyle = settings.unexploredFogColor;
+        ctx.fillRect(
+          Math.floor(minimapX - scaledGridSize / 2),
+          Math.floor(minimapY - scaledGridSize / 2),
+          drawSize,
+          drawSize
+        );
+      } else if (!isPositionVisible(worldPosVec, lightSources)) {
+        ctx.fillStyle = settings.exploredUnlitFogColor;
         ctx.fillRect(
           Math.floor(minimapX - scaledGridSize / 2),
           Math.floor(minimapY - scaledGridSize / 2),
@@ -83,6 +99,8 @@ export function renderFullscreenMapFogOfWar(
   playerPos: { x: number; y: number },
   lightSources: LightSource[],
   settings: FogOfWarSettings,
+  exploration: MapExplorationPersistedPayload | null,
+  tileSize: number,
   zoom: number,
   centerX: number,
   centerY: number,
@@ -107,8 +125,15 @@ export function renderFullscreenMapFogOfWar(
       const worldPos = mapToWorldCoordinates(screenX, screenY, playerPos, centerX, centerY, zoom);
       const worldPosVec = poolManager.vector2.claim(worldPos.x, worldPos.y);
 
-      if (!isPositionVisible(worldPosVec, lightSources)) {
-        ctx.fillStyle = settings.fogColor;
+      const worldTileX = Math.floor(worldPos.x / tileSize);
+      const worldTileY = Math.floor(worldPos.y / tileSize);
+      const explored =
+        exploration != null && isTileExplored(exploration, worldTileX, worldTileY);
+      if (!explored) {
+        ctx.fillStyle = settings.unexploredFogColor;
+        ctx.fillRect(screenX - gridSize / 2, screenY - gridSize / 2, gridSize, gridSize);
+      } else if (!isPositionVisible(worldPosVec, lightSources)) {
+        ctx.fillStyle = settings.exploredUnlitFogColor;
         ctx.fillRect(screenX - gridSize / 2, screenY - gridSize / 2, gridSize, gridSize);
       }
       poolManager.vector2.release(worldPosVec);

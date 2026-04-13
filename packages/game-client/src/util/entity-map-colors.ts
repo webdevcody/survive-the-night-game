@@ -2,6 +2,8 @@ import { ClientEntityBase } from "@/extensions/client-entity";
 import { ClientCarryable } from "@/extensions/carryable";
 import { ClientDestructible } from "@/extensions/destructible";
 import { EntityCategories } from "@shared/entities";
+import { CraftingStationClient } from "@/entities/environment/crafting-station";
+import { CampsiteFireClient } from "@/entities/environment/campsite-fire";
 import { PlayerClient } from "@/entities/player";
 import { WallClient } from "@/entities/items/wall";
 import { TreeClient } from "@/entities/items/tree";
@@ -31,6 +33,8 @@ export interface MapColorSettings {
     acid: string;
     merchantNpc: string;
     dialogueNpc: string;
+    craftingStation: string;
+    campsiteFire: string;
   };
   indicators: {
     acid: { shape: string; size: number };
@@ -59,6 +63,10 @@ export interface MapColorOptions {
  * @param options - Optional settings including gameState for mode-specific logic
  * @returns EntityMapIndicator with color and indicator, or null if entity should be skipped
  */
+export function isHostileMapMarker(entity: ClientEntityBase): boolean {
+  return entity.getCategory() === EntityCategories.ZOMBIE;
+}
+
 export function getEntityMapColor(
   entity: ClientEntityBase,
   settings: MapColorSettings,
@@ -102,6 +110,20 @@ export function getEntityMapColor(
   if (entity instanceof DialogueSurvivorNpcClient) {
     return {
       color: settings.colors.dialogueNpc,
+      indicator: convertIndicator(settings.indicators.npc),
+    };
+  }
+
+  if (entity instanceof CraftingStationClient) {
+    return {
+      color: settings.colors.craftingStation,
+      indicator: convertIndicator(settings.indicators.npc),
+    };
+  }
+
+  if (entity instanceof CampsiteFireClient) {
+    return {
+      color: settings.colors.campsiteFire,
       indicator: convertIndicator(settings.indicators.npc),
     };
   }

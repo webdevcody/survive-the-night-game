@@ -26,7 +26,12 @@ export class GameScene extends Scene {
     }
 
     // Create game client with pre-loaded managers
-    this.gameClient = new GameClient(canvas, assetManager, soundManager);
+    this.gameClient = new GameClient(
+      canvas,
+      assetManager,
+      soundManager,
+      sceneManager?.getOnRequestExitGame()
+    );
   }
 
   async init(): Promise<void> {

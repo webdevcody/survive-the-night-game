@@ -75,6 +75,14 @@ import {
 } from "@shared/util/ability-tree";
 import { getZombieTypesSet } from "@shared/constants";
 import type { PersistedPlayerProgress } from "@/services/player-progress-types";
+import {
+  coerceMapExplorationPayload,
+  getDefaultMapExplorationPayload,
+  isCompatibleExplorationPayload,
+  revealTilesInCircle,
+  type MapExplorationPersistedPayload,
+} from "@shared/util/map-exploration-payload";
+import { queuePersistMapExplorationToWebsite } from "@/util/persist-map-exploration";
 import { UserSessionCache } from "@/services/user-session-cache";
 import { GAME_SERVER_API_KEY, WEBSITE_API_URL } from "@/config/env";
 import { weaponRegistry } from "@shared/entities/weapon-registry";
@@ -206,6 +214,11 @@ export class Player extends Entity {
   /** True once hydratePersistedProgress received a valid savedInventory from DB.
    *  Prevents disconnect from overwriting a good DB row with starter/empty state. */
   private hydratedFromDb = false;
+
+  private static readonly MAP_EXPLORATION_CHUNK_SIZE = 16;
+  private mapExplorationState: MapExplorationPersistedPayload;
+  private mapExplorationDirty = false;
+  private lastMapExplorationPersistMs = 0;
 
   constructor(gameManagers: IGameManagers) {
     super(gameManagers, Entities.PLAYER);
@@ -381,6 +394,83 @@ export class Player extends Entity {
     this.addExtension(new Groupable(this, "friendly"));
 
     this.applyWeaponLoadoutSelection();
+
+    this.mapExplorationState = getDefaultMapExplorationPayload(
+      getConfig().world,
+      Player.MAP_EXPLORATION_CHUNK_SIZE,
+    );
+  }
+
+  public getMapExplorationPayload(): MapExplorationPersistedPayload {
+    return this.mapExplorationState;
+  }
+
+  public markMapExplorationDirty(): void {
+    this.mapExplorationDirty = true;
+  }
+
+  private applyHydratedMapExploration(raw: unknown | null | undefined): void {
+    const expected = getDefaultMapExplorationPayload(
+      getConfig().world,
+      Player.MAP_EXPLORATION_CHUNK_SIZE,
+    );
+    const coerced = raw != null ? coerceMapExplorationPayload(raw) : null;
+    if (
+      coerced &&
+      isCompatibleExplorationPayload(
+        coerced,
+        expected.worldKey,
+        expected.rows,
+        expected.cols,
+        expected.chunkSize,
+      )
+    ) {
+      this.mapExplorationState = coerced;
+    } else {
+      this.mapExplorationState = expected;
+    }
+    this.mapExplorationDirty = false;
+  }
+
+  private tickMapExplorationReveal(): void {
+    if (this.isDead() || !this.hasExt(Positionable)) {
+      return;
+    }
+    const center = this.getCenterPosition();
+    let radiusPx = 0;
+    if (this.hasExt(Illuminated)) {
+      radiusPx = this.getExt(Illuminated).getRadius();
+    }
+    if (radiusPx <= 0 && this.isZombie()) {
+      radiusPx = 80;
+    }
+    if (radiusPx <= 0) {
+      radiusPx = Math.min(64, getConfig().world.LIGHT_RADIUS_PLAYER);
+    }
+    const tileSize = getConfig().world.TILE_SIZE;
+    const modified = revealTilesInCircle(
+      this.mapExplorationState,
+      center.x,
+      center.y,
+      radiusPx,
+      tileSize,
+    );
+    if (modified.length > 0) {
+      this.mapExplorationDirty = true;
+    }
+  }
+
+  private tryFlushMapExplorationPersist(): void {
+    if (!this.mapExplorationDirty || !this.isHydratedFromDb()) {
+      return;
+    }
+    const now = Date.now();
+    if (now - this.lastMapExplorationPersistMs < 20_000) {
+      return;
+    }
+    this.lastMapExplorationPersistMs = now;
+    this.mapExplorationDirty = false;
+    queuePersistMapExplorationToWebsite(this);
   }
 
   get activeItem(): InventoryItem | null {
@@ -1810,6 +1900,8 @@ export class Player extends Entity {
     this.updateLighting();
     this.updateZombieSpawnCooldown(deltaTime);
     tickWaypointSteps(this, this.getGameManagers().getMapManager());
+    this.tickMapExplorationReveal();
+    this.tryFlushMapExplorationPersist();
   }
 
   private updateZombieSpawnCooldown(deltaTime: number): void {
@@ -2162,6 +2254,8 @@ export class Player extends Entity {
         this.getExt(Bank).applyPersistedPayload(bankPayload);
       }
     }
+
+    this.applyHydratedMapExploration(progress.mapExploration);
   }
 
   /** Whether this player was fully hydrated from a persisted DB profile. */

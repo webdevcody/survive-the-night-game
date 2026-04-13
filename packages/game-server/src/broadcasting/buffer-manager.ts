@@ -8,6 +8,7 @@ import {
   GAME_STATE_BIT_MAP_DATA,
   GAME_STATE_BIT_VOTING_STATE,
   GAME_STATE_BIT_ZOMBIE_LIVES_STATE,
+  GAME_STATE_BIT_MAP_EXPLORATION,
   GAME_STATE_FIELD_BITS,
 } from "@shared/util/serialization-constants";
 import { VotingState } from "@shared/types/voting";
@@ -15,6 +16,7 @@ import { ZombieLivesState } from "@shared/types/zombie-lives";
 import { IEntity } from "@/entities/types";
 import { GameStateData } from "../../../game-shared/src/events/server-sent/events/game-state-event";
 import { MapData } from "../../../game-shared/src/events/server-sent/events/map-event";
+import type { MapExplorationPersistedPayload } from "@shared/util/map-exploration-payload";
 
 /**
  * Centralized buffer manager for serializing game state to buffers.
@@ -96,12 +98,15 @@ export class BufferManager {
     if (zombieLivesState !== undefined) {
       bitset |= GAME_STATE_BIT_ZOMBIE_LIVES_STATE;
     }
+    if (gameState.mapExploration !== undefined) {
+      bitset |= GAME_STATE_BIT_MAP_EXPLORATION;
+    }
 
     // Write bitset as UInt16 (to support more than 8 flags)
     this.writer.writeUInt16(bitset);
 
     // Iterate through bits deterministically and write only fields that are set
-    // Note: REMOVED_ENTITY_IDS, MAP_DATA, VOTING_STATE, and ZOMBIE_LIVES_STATE are handled separately after the loop
+    // Note: REMOVED_ENTITY_IDS, MAP_DATA, VOTING_STATE, ZOMBIE_LIVES_STATE, MAP_EXPLORATION are handled separately after the loop
     for (const bit of GAME_STATE_FIELD_BITS) {
       if (bitset & bit) {
         switch (bit) {
@@ -132,6 +137,9 @@ export class BufferManager {
           case GAME_STATE_BIT_ZOMBIE_LIVES_STATE:
             // This bit is handled separately in writeZombieLivesState
             // We don't write anything here, just track that zombie lives state exists
+            break;
+          case GAME_STATE_BIT_MAP_EXPLORATION:
+            // Handled in writeMapExploration
             break;
         }
       }
@@ -165,6 +173,13 @@ export class BufferManager {
     // Write current and max as UInt16 values (more efficient than JSON)
     this.writer.writeUInt16(zombieLivesState.current);
     this.writer.writeUInt16(zombieLivesState.max);
+  }
+
+  /**
+   * Write per-player map exploration (after zombie lives state in wire order).
+   */
+  writeMapExploration(payload: MapExplorationPersistedPayload): void {
+    this.writer.writeString(JSON.stringify(payload));
   }
 
   /**

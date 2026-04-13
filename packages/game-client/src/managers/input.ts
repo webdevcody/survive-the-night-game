@@ -34,7 +34,6 @@ export interface InputEventMap {
   toggleInventoryScreen: void;
   inventoryPanelFocusTab: { tab: InventoryUiTab };
   toggleQuestJournal: void;
-  toggleInstructions: void;
   showPlayerList: void;
   hidePlayerList: void;
   toggleChat: void;

@@ -16,7 +16,12 @@ import { Renderer } from "@/renderer";
 import { SpatialGrid } from "@shared/util/spatial-grid";
 import { ClientEntityBase } from "@/extensions/client-entity";
 import { distance } from "@shared/util/physics";
-import { calculateLightSources, getCampsiteMapMarkerWorldPosition } from "./utils/map-rendering-utils";
+import {
+  calculateLightSources,
+  getCampsiteMapMarkerWorldPosition,
+  isPositionVisible,
+} from "./utils/map-rendering-utils";
+import { isHostileMapMarker } from "@/util/entity-map-colors";
 import { prerenderCollidables, renderCollidablesFromCanvas } from "./utils/map-collidable-renderer";
 import { renderMinimapFogOfWar } from "./utils/map-fog-of-war-renderer";
 import type { MinimapScreenRect } from "./minimap-hud-group-layout";
@@ -54,7 +59,8 @@ export const MINIMAP_SETTINGS = {
   scale: 0.35,
   fogOfWar: {
     enabled: true,
-    fogColor: "rgba(0, 0, 0, 1.0)", // Fully opaque black for unexplored areas
+    unexploredFogColor: "rgba(0, 0, 0, 1.0)",
+    exploredUnlitFogColor: "rgba(72, 74, 88, 0.58)",
   },
   colors: {
     enemy: "red",
@@ -68,6 +74,8 @@ export const MINIMAP_SETTINGS = {
     spitter: "purple",
     merchantNpc: "#FF8C00",
     dialogueNpc: "#BA55D3",
+    craftingStation: "#2EC4B6",
+    campsiteFire: "#FF7F50",
   },
   indicators: {
     acid: {
@@ -242,6 +250,7 @@ export class Minimap {
     // Loop through nearby entities and draw them on minimap
     perfTimer.start("minimap:entities");
     const maxEntityDistance = MINIMAP_RENDER_DISTANCE.ENTITIES;
+    const lightSources = calculateLightSources(Array.from(extendedEntities), gameState);
 
     for (const entity of extendedEntities) {
       if (!entity.hasExt(ClientPositionable)) continue;
@@ -257,9 +266,23 @@ export class Minimap {
       const entityWorldPos = poolManager.vector2.claim(position.x, position.y);
       const dist = distance(playerWorldPos, entityWorldPos);
       poolManager.vector2.release(playerWorldPos);
-      poolManager.vector2.release(entityWorldPos);
 
-      if (dist > maxEntityDistance) continue;
+      if (dist > maxEntityDistance) {
+        poolManager.vector2.release(entityWorldPos);
+        continue;
+      }
+
+      const txi = Math.floor(position.x / this.tileSize);
+      const tyi = Math.floor(position.y / this.tileSize);
+      if (!this.mapManager.isTileExplored(txi, tyi)) {
+        poolManager.vector2.release(entityWorldPos);
+        continue;
+      }
+      if (isHostileMapMarker(entity) && !isPositionVisible(entityWorldPos, lightSources)) {
+        poolManager.vector2.release(entityWorldPos);
+        continue;
+      }
+      poolManager.vector2.release(entityWorldPos);
 
       // Convert to minimap coordinates (centered on player) using scaled values
       const minimapX = scaledLeft + scaledSize / 2 + relativeX * settings.scale;
@@ -297,7 +320,6 @@ export class Minimap {
 
     // Draw fog of war overlay
     perfTimer.start("minimap:fogOfWar");
-    const lightSources = calculateLightSources(Array.from(extendedEntities), gameState);
     const fogCenterX = scaledLeft + scaledSize / 2;
     const fogCenterY = top + scaledSize / 2;
     const radius = scaledSize / 2;
@@ -306,6 +328,8 @@ export class Minimap {
       playerPos,
       lightSources,
       settings.fogOfWar,
+      this.mapManager.getMapExplorationPayload(),
+      this.tileSize,
       fogCenterX,
       fogCenterY,
       radius,
@@ -469,6 +493,15 @@ export class Minimap {
       const biomeWorldX = worldPos.x;
       const biomeWorldY = worldPos.y;
 
+      if (
+        !this.mapManager.isTileExplored(
+          Math.floor(biomeWorldX / TILE_SIZE),
+          Math.floor(biomeWorldY / TILE_SIZE),
+        )
+      ) {
+        return;
+      }
+
       // Calculate relative position to player
       const relativeX = biomeWorldX - playerPos.x;
       const relativeY = biomeWorldY - playerPos.y;
@@ -541,6 +574,15 @@ export class Minimap {
       // Skip if this is the current player (distance ~0)
       const distance = Math.sqrt(relativeX * relativeX + relativeY * relativeY);
       if (distance < 10) continue; // Skip if very close (likely the same player)
+
+      if (
+        !this.mapManager.isTileExplored(
+          Math.floor(position.x / this.tileSize),
+          Math.floor(position.y / this.tileSize),
+        )
+      ) {
+        continue;
+      }
 
       // Calculate scaled distance on minimap
       const scaledDistance = distance * settings.scale;
@@ -625,6 +667,15 @@ export class Minimap {
       poolManager.vector2.release(entityWorldPos);
       if (dist > maxDistance) continue;
 
+      if (
+        !this.mapManager.isTileExplored(
+          Math.floor(position.x / this.tileSize),
+          Math.floor(position.y / this.tileSize),
+        )
+      ) {
+        continue;
+      }
+
       // Convert to minimap coordinates (centered on player) - using scaled center
       const minimapX = centerX + relativeX * settings.scale;
       const minimapY = centerY + relativeY * settings.scale;
@@ -705,6 +756,15 @@ export class Minimap {
       poolManager.vector2.release(entityWorldPos);
       if (dist > maxDistance) continue;
 
+      if (
+        !this.mapManager.isTileExplored(
+          Math.floor(position.x / this.tileSize),
+          Math.floor(position.y / this.tileSize),
+        )
+      ) {
+        continue;
+      }
+
       // Convert to minimap coordinates (centered on player) - using scaled center
       const minimapX = centerX + relativeX * settings.scale;
       const minimapY = centerY + relativeY * settings.scale;
@@ -763,6 +823,15 @@ export class Minimap {
     }
     const target = gameState.questNavigationTarget;
     if (!target) {
+      return;
+    }
+
+    if (
+      !this.mapManager.isTileExplored(
+        Math.floor(target.worldX / this.tileSize),
+        Math.floor(target.worldY / this.tileSize),
+      )
+    ) {
       return;
     }
 

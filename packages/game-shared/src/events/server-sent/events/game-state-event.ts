@@ -13,6 +13,7 @@ import {
   GAME_STATE_BIT_MAP_DATA,
   GAME_STATE_BIT_VOTING_STATE,
   GAME_STATE_BIT_ZOMBIE_LIVES_STATE,
+  GAME_STATE_BIT_MAP_EXPLORATION,
   GAME_STATE_FIELD_BITS,
   FIELD_TYPE_STRING,
   FIELD_TYPE_NUMBER,
@@ -23,6 +24,7 @@ import {
 import { entityTypeRegistry } from "../../../util/entity-type-encoding";
 import { decodeExtensionType } from "../../../util/extension-type-encoding";
 import { MapData } from "./map-event";
+import type { MapExplorationPersistedPayload } from "../../../util/map-exploration-payload";
 
 export interface EntityState extends RawEntity {
   id: number;
@@ -41,6 +43,8 @@ export interface GameStateData {
   votingState?: VotingState;
   // Zombie lives state (included during infection mode)
   zombieLivesState?: ZombieLivesState;
+  /** Per-player explored map chunks (full state only, owning socket). */
+  mapExploration?: MapExplorationPersistedPayload;
 }
 
 export class GameStateEvent implements GameEvent<GameStateData> {
@@ -94,6 +98,10 @@ export class GameStateEvent implements GameEvent<GameStateData> {
 
   public getZombieLivesState(): ZombieLivesState | undefined {
     return this.data.zombieLivesState;
+  }
+
+  public getMapExploration(): MapExplorationPersistedPayload | undefined {
+    return this.data.mapExploration;
   }
 
   /**
@@ -157,13 +165,14 @@ export class GameStateEvent implements GameEvent<GameStateData> {
     const bitset = gameStateReader.readUInt16();
 
     // Iterate through bits deterministically and read only fields that are set
-    // Note: REMOVED_ENTITY_IDS, MAP_DATA, VOTING_STATE, and ZOMBIE_LIVES_STATE bits are handled separately after the loop
+    // Note: REMOVED_ENTITY_IDS, MAP_DATA, VOTING_STATE, ZOMBIE_LIVES_STATE, MAP_EXPLORATION bits are handled separately after the loop
     for (const bit of GAME_STATE_FIELD_BITS) {
       if (
         bit === GAME_STATE_BIT_REMOVED_ENTITY_IDS ||
         bit === GAME_STATE_BIT_MAP_DATA ||
         bit === GAME_STATE_BIT_VOTING_STATE ||
-        bit === GAME_STATE_BIT_ZOMBIE_LIVES_STATE
+        bit === GAME_STATE_BIT_ZOMBIE_LIVES_STATE ||
+        bit === GAME_STATE_BIT_MAP_EXPLORATION
       ) {
         // Skip these bits in the loop - they're handled separately after
         continue;
@@ -223,6 +232,15 @@ export class GameStateEvent implements GameEvent<GameStateData> {
       const current = gameStateReader.readUInt16();
       const max = gameStateReader.readUInt16();
       gameStateData.zombieLivesState = { current, max };
+    }
+
+    if (bitset & GAME_STATE_BIT_MAP_EXPLORATION) {
+      const explorationJson = gameStateReader.readString();
+      try {
+        gameStateData.mapExploration = JSON.parse(explorationJson);
+      } catch (e) {
+        console.error("Failed to parse map exploration:", e);
+      }
     }
 
     const event = new GameStateEvent(gameStateData as GameStateData);

@@ -12,6 +12,7 @@ import {
   DeathScreenPanel,
   GameMessagesPanel,
   MuteButtonPanel,
+  ExitGameButtonPanel,
   CrateIndicatorsPanel,
   SurvivorIndicatorsPanel,
   QuestIndicatorsPanel,
@@ -107,6 +108,16 @@ const HUD_SETTINGS = {
     hoverBackground: "rgba(6, 8, 16, 0.98)",
     baseFont: 24, // Reduced from 36
   },
+  ExitGameButton: {
+    baseLeft: 16,
+    baseTop: 16,
+    baseWidth: 88,
+    baseHeight: 40,
+    baseFont: 16,
+    background: RPG_HUD_PANEL_BG,
+    borderColor: RPG_BORDER_GOLD,
+    borderWidth: 2,
+  },
 };
 
 export interface HudOptions {
@@ -124,10 +135,10 @@ export interface HudOptions {
   sendBankAction: (data: BankActionEventData) => void;
   sendConsumeItem: (itemType: string | null) => void;
   sendDropFromEquipment: (equipSlot: EquipmentSlotKey) => void;
+  onRequestExitGame?: () => void;
 }
 
 export class Hud {
-  private showInstructions: boolean = false;
   private mapManager: MapManager;
   private chatWidget: ChatWidget;
   private currentFps: number = 0;
@@ -142,6 +153,7 @@ export class Hud {
   private deathScreenPanel: DeathScreenPanel;
   private gameMessagesPanel: GameMessagesPanel;
   private muteButtonPanel: MuteButtonPanel;
+  private exitGameButtonPanel: ExitGameButtonPanel | null = null;
   private experiencePanel: ExperiencePanel;
   private crateIndicatorsPanel: CrateIndicatorsPanel;
   private survivorIndicatorsPanel: SurvivorIndicatorsPanel;
@@ -177,6 +189,7 @@ export class Hud {
       sendBankAction,
       sendConsumeItem,
       sendDropFromEquipment,
+      onRequestExitGame,
     } = options;
     this.chatWidget = new ChatWidget();
     this.questJournalPanel = new QuestJournalPanel();
@@ -349,6 +362,34 @@ export class Hud {
       }
     );
 
+    if (onRequestExitGame) {
+      const eg = HUD_SETTINGS.ExitGameButton;
+      this.exitGameButtonPanel = new ExitGameButtonPanel(
+        {
+          padding: HUD_SETTINGS.BottomRightPanels.padding,
+          background: eg.background,
+          borderColor: eg.borderColor,
+          borderWidth: eg.borderWidth,
+          left: 0,
+          top: 0,
+          width: 0,
+          height: 0,
+          font: `${eg.baseFont}px Arial`,
+        },
+        {
+          baseLeft: eg.baseLeft,
+          baseTop: eg.baseTop,
+          baseWidth: eg.baseWidth,
+          baseHeight: eg.baseHeight,
+          baseFont: eg.baseFont,
+          background: eg.background,
+          borderColor: eg.borderColor,
+          borderWidth: eg.borderWidth,
+        },
+        onRequestExitGame
+      );
+    }
+
     // Initialize crate indicators panel (using config values)
     const hudCfg = getConfig().hud;
     this.crateIndicatorsPanel = new CrateIndicatorsPanel(
@@ -402,10 +443,6 @@ export class Hud {
     this.currentGameState = gameState;
     this.gameMessagesPanel.update();
     this.chatWidget.update();
-  }
-
-  public toggleInstructions(): void {
-    this.showInstructions = !this.showInstructions;
   }
 
   public toggleFullscreenMap(): void {
@@ -498,6 +535,14 @@ export class Hud {
     this.crateIndicatorsPanel.render(ctx, gameState);
     this.survivorIndicatorsPanel.render(ctx, gameState);
     this.questIndicatorsPanel.render(ctx, gameState);
+
+    if (this.exitGameButtonPanel) {
+      ctx.save();
+      ctx.setTransform(1, 0, 0, 1, 0, 0);
+      this.exitGameButtonPanel.updatePosition(width, height);
+      this.exitGameButtonPanel.render(ctx, gameState);
+      ctx.restore();
+    }
 
     const dialogueOcclusion = this.dialoguePanel.getOcclusionProgress();
     const minimapHudLayout = getMinimapHudLayout(width, height, {
@@ -759,6 +804,13 @@ export class Hud {
     return this.muteButtonPanel.isMouseOver(this.mouseX, this.mouseY, this.canvasHeight);
   }
 
+  public isHoveringExitGameButton(): boolean {
+    if (!this.exitGameButtonPanel) {
+      return false;
+    }
+    return this.exitGameButtonPanel.isMouseOver(this.mouseX, this.mouseY);
+  }
+
   public handleClick(
     x: number,
     y: number,
@@ -766,6 +818,9 @@ export class Hud {
     canvasHeight: number,
     clickCount: number = 1,
   ): boolean {
+    if (this.exitGameButtonPanel?.handleClick(x, y)) {
+      return true;
+    }
     if (this.currentGameState) {
       const action = this.dialoguePanel.handleClick(x, y, this.currentGameState);
       if (action) {

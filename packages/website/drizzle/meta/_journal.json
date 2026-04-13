@@ -92,6 +92,13 @@
       "when": 1776000000000,
       "tag": "0012_saved_bank",
       "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1776100000000,
+      "tag": "0013_map_exploration",
+      "breakpoints": true
     }
   ]
 }

@@ -3,6 +3,10 @@ import type { AssetManager } from "@/managers/asset";
 import type { SoundManager } from "@/managers/sound-manager";
 import { resizeCanvasToWindow } from "@/util/canvas-size";
 
+export type SceneManagerOptions = {
+  onRequestExitGame?: () => void;
+};
+
 export class SceneManager {
   private currentScene: Scene | null = null;
   private canvas: HTMLCanvasElement;
@@ -13,10 +17,16 @@ export class SceneManager {
   // Shared resources across scenes
   private sharedAssetManager?: AssetManager;
   private sharedSoundManager?: SoundManager;
+  private onRequestExitGame?: () => void;
 
-  constructor(canvas: HTMLCanvasElement) {
+  constructor(canvas: HTMLCanvasElement, options?: SceneManagerOptions) {
     this.canvas = canvas;
+    this.onRequestExitGame = options?.onRequestExitGame;
     resizeCanvasToWindow(canvas);
+  }
+
+  public getOnRequestExitGame(): (() => void) | undefined {
+    return this.onRequestExitGame;
   }
 
   /**

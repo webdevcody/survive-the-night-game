@@ -6,13 +6,17 @@ import { SurvivorClient } from "@/entities/environment/survivor";
 import { PlayerClient } from "@/entities/player";
 import { MapManager } from "@/managers/map";
 import { getConfig } from "@shared/config";
-import { ClientIlluminated } from "@/extensions/illuminated";
 import Vector2 from "@shared/util/vector2";
 import PoolManager from "@shared/util/pool-manager";
 import { MINIMAP_SETTINGS } from "./minimap";
-import { getEntityMapColor } from "@/util/entity-map-colors";
+import { getEntityMapColor, isHostileMapMarker } from "@/util/entity-map-colors";
 import { distance } from "@shared/util/physics";
-import { calculateLightSources, getCampsiteMapMarkerWorldPosition } from "./utils/map-rendering-utils";
+import {
+  calculateLightSources,
+  getCampsiteMapMarkerWorldPosition,
+  isPositionVisible,
+  type LightSource,
+} from "./utils/map-rendering-utils";
 import { prerenderCollidables, renderCollidablesFromCanvas } from "./utils/map-collidable-renderer";
 import { renderFullscreenMapFogOfWar } from "./utils/map-fog-of-war-renderer";
 import {
@@ -181,6 +185,8 @@ export class FullScreenMap {
     const centerX = mapX + mapWidth / 2;
     const centerY = mapY + mapHeight / 2;
 
+    const lightSources = calculateLightSources(gameState.getEntities(), gameState);
+
     // Draw collidable tiles
     this.renderCollidables(ctx, effectiveCenterPos, zoom, centerX, centerY, mapWidth, mapHeight);
 
@@ -193,16 +199,18 @@ export class FullScreenMap {
       centerX,
       centerY,
       mapWidth,
-      mapHeight
+      mapHeight,
+      lightSources
     );
 
     // Draw fog of war
-    const lightSources = calculateLightSources(gameState.getEntities(), gameState);
     renderFullscreenMapFogOfWar(
       ctx,
       effectiveCenterPos,
       lightSources,
       settings.fogOfWar,
+      this.mapManager.getMapExplorationPayload(),
+      this.tileSize,
       zoom,
       centerX,
       centerY,
@@ -419,7 +427,8 @@ export class FullScreenMap {
     centerX: number,
     centerY: number,
     mapWidth: number,
-    mapHeight: number
+    mapHeight: number,
+    lightSources: LightSource[]
   ): void {
     const settings = FULLSCREEN_MAP_SETTINGS;
     const maxDistance = Math.sqrt(((mapWidth / zoom) ** 2 + (mapHeight / zoom) ** 2) / 4);
@@ -441,9 +450,23 @@ export class FullScreenMap {
       const dist = distance(playerWorldPos, entityWorldPos);
       poolManager.vector2.release(relativePos);
       poolManager.vector2.release(playerWorldPos);
-      poolManager.vector2.release(entityWorldPos);
 
-      if (dist > maxDistance) continue;
+      if (dist > maxDistance) {
+        poolManager.vector2.release(entityWorldPos);
+        continue;
+      }
+
+      const txi = Math.floor(position.x / this.tileSize);
+      const tyi = Math.floor(position.y / this.tileSize);
+      if (!this.mapManager.isTileExplored(txi, tyi)) {
+        poolManager.vector2.release(entityWorldPos);
+        continue;
+      }
+      if (isHostileMapMarker(entity) && !isPositionVisible(entityWorldPos, lightSources)) {
+        poolManager.vector2.release(entityWorldPos);
+        continue;
+      }
+      poolManager.vector2.release(entityWorldPos);
 
       const mapX = centerX + relativeX * zoom;
       const mapY = centerY + relativeY * zoom;
@@ -507,6 +530,15 @@ export class FullScreenMap {
       poolManager.vector2.release(playerWorldPos);
       poolManager.vector2.release(entityWorldPos);
       if (dist > maxDistance) continue;
+
+      if (
+        !this.mapManager.isTileExplored(
+          Math.floor(position.x / this.tileSize),
+          Math.floor(position.y / this.tileSize),
+        )
+      ) {
+        continue;
+      }
 
       const mapX = centerX + relativeX * zoom;
       const mapY = centerY + relativeY * zoom;
@@ -585,6 +617,15 @@ export class FullScreenMap {
       poolManager.vector2.release(entityWorldPos);
       if (dist > maxDistance) continue;
 
+      if (
+        !this.mapManager.isTileExplored(
+          Math.floor(position.x / this.tileSize),
+          Math.floor(position.y / this.tileSize),
+        )
+      ) {
+        continue;
+      }
+
       const mapX = centerX + relativeX * zoom;
       const mapY = centerY + relativeY * zoom;
 
@@ -643,6 +684,15 @@ export class FullScreenMap {
     }
     const target = gameState.questNavigationTarget;
     if (!target) {
+      return;
+    }
+
+    if (
+      !this.mapManager.isTileExplored(
+        Math.floor(target.worldX / this.tileSize),
+        Math.floor(target.worldY / this.tileSize),
+      )
+    ) {
       return;
     }
 
@@ -738,6 +788,15 @@ export class FullScreenMap {
             };
       const biomeWorldX = worldPos.x;
       const biomeWorldY = worldPos.y;
+
+      if (
+        !this.mapManager.isTileExplored(
+          Math.floor(biomeWorldX / TILE_SIZE),
+          Math.floor(biomeWorldY / TILE_SIZE),
+        )
+      ) {
+        return;
+      }
 
       const relativeX = biomeWorldX - playerPos.x;
       const relativeY = biomeWorldY - playerPos.y;

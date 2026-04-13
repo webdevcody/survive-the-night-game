@@ -15,6 +15,8 @@ export const DECAL_TILE_FORGE = 5;
 export const DECAL_TILE_CHEMISTRY_TABLE = 6;
 /** Personal bank locker (spawned entity + interact). */
 export const DECAL_TILE_LOCKER = 7;
+/** Spawns a merchant (shop) entity at this tile; client draws `COLLIDABLE_TILE_MERCHANT` from collidables.png. */
+export const DECAL_TILE_SHOPKEEPER = 8;
 
 export interface DecalPaletteEntry {
   id: number;
@@ -32,6 +34,7 @@ export const DECAL_PALETTE_ENTRIES: readonly DecalPaletteEntry[] = [
   { id: DECAL_TILE_FORGE, label: "Forge", color: "rgba(239, 68, 68, 0.45)" },
   { id: DECAL_TILE_CHEMISTRY_TABLE, label: "Chem Table", color: "rgba(52, 211, 153, 0.45)" },
   { id: DECAL_TILE_LOCKER, label: "Locker", color: "rgba(148, 163, 184, 0.5)" },
+  { id: DECAL_TILE_SHOPKEEPER, label: "Shopkeeper", color: "rgba(196, 181, 253, 0.5)" },
 ] as const;
 
 /** Short text drawn inside each decal cell in the map editor (message tiles use line preview instead). */
@@ -44,6 +47,7 @@ const DECAL_TILE_SHORT: Record<number, string> = {
   [DECAL_TILE_FORGE]: "FORG",
   [DECAL_TILE_CHEMISTRY_TABLE]: "CHEM",
   [DECAL_TILE_LOCKER]: "BNK",
+  [DECAL_TILE_SHOPKEEPER]: "SHOP",
 };
 
 /**

@@ -48,6 +48,7 @@ import Positionable from "@/extensions/positionable";
 import { coercePlayerQuestState } from "@shared/quests/player-quest-state";
 import { coercePlayerInventoryPersistedPayload } from "@shared/util/persisted-inventory-payload";
 import { coercePlayerBankPersistedPayload } from "@shared/util/persisted-bank-payload";
+import { coerceMapExplorationPayload } from "@shared/util/map-exploration-payload";
 import { emptyProfessionProgress, normalizeProfessionProgress } from "@shared/util/professions";
 import { reconcilePlayerQuestStateWithMap } from "@/quests/quest-runtime";
 import { XP_PER_ZOMBIE_KILL } from "@shared/util/experience-level";
@@ -257,6 +258,7 @@ export class ServerSocketManager implements Broadcaster {
         questProgress?: unknown;
         savedInventory?: unknown;
         savedBank?: unknown;
+        mapExploration?: unknown;
       };
       const rawXp = data.experience;
       let xp =
@@ -316,6 +318,15 @@ export class ServerSocketManager implements Broadcaster {
         savedBank = coercePlayerBankPersistedPayload({ items: [] })!;
       }
 
+      let mapExploration: PersistedPlayerProgress["mapExploration"] = undefined;
+      const rawExpl = data.mapExploration;
+      if (rawExpl != null && typeof rawExpl === "object") {
+        const coercedEx = coerceMapExplorationPayload(rawExpl);
+        if (coercedEx) {
+          mapExploration = coercedEx;
+        }
+      }
+
       return {
         ok: true,
         progress: {
@@ -331,6 +342,7 @@ export class ServerSocketManager implements Broadcaster {
             data.questProgress != null ? coercePlayerQuestState(data.questProgress) : undefined,
           savedInventory,
           savedBank,
+          mapExploration,
         },
       };
     } catch (error) {
@@ -482,6 +494,7 @@ export class ServerSocketManager implements Broadcaster {
         questProgress: player.getQuestProgressPayload(),
         savedInventory: player.getSavedInventoryPayload(),
         savedBank: player.getSavedBankPayload(),
+        mapExploration: player.getMapExplorationPayload(),
       };
       if (!player.isDead() && player.hasExt(Positionable)) {
         const lastTile = getPersistablePlayerLastTile(player);

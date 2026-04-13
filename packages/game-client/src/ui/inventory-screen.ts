@@ -39,6 +39,9 @@ import {
   ABILITY_TREE_NODES,
   ABILITY_DEFINITIONS,
   ABILITY_IDS,
+  ABILITY_ICON_SHEET_TILE_PX,
+  ABILITY_ICON_SHEET_URL,
+  getAbilityIconSheetFrameIndex,
   MAX_RANK_PER_ABILITY,
   type AbilityId,
 } from "@shared/util/ability-tree";
@@ -586,7 +589,7 @@ export class InventoryScreenUI {
   private professionBannersPreloadStarted = false;
   private characterStatIconSheet: HTMLImageElement | null = null;
   private characterStatIconsPreloadStarted = false;
-  private abilityIconImages: Partial<Record<AbilityId, HTMLImageElement>> = {};
+  private abilityIconSheet: HTMLImageElement | null = null;
   private abilityIconsPreloadStarted = false;
 
   constructor(deps: InventoryScreenDeps) {
@@ -625,14 +628,12 @@ export class InventoryScreenUI {
       return;
     }
     this.abilityIconsPreloadStarted = true;
-    for (const abilityId of ABILITY_IDS) {
-      const img = new Image();
-      img.decoding = "async";
-      img.src = ABILITY_DEFINITIONS[abilityId].iconPath;
-      img.onload = () => {
-        this.abilityIconImages[abilityId] = img;
-      };
-    }
+    const img = new Image();
+    img.decoding = "async";
+    img.src = ABILITY_ICON_SHEET_URL;
+    img.onload = () => {
+      this.abilityIconSheet = img;
+    };
   }
 
   public toggle(): void {
@@ -1484,12 +1485,25 @@ export class InventoryScreenUI {
       const iconSize = Math.max(30, Math.min(44, card.w - 24, Math.floor(card.h * 0.3)));
       const iconX = card.x + Math.floor((card.w - iconSize) / 2);
       const iconY = card.y + 12;
-      const icon = this.abilityIconImages[card.id];
-      const hasIcon = Boolean(icon && icon.complete && icon.naturalWidth > 0);
-      if (hasIcon) {
+      const sheet = this.abilityIconSheet;
+      const sheetReady = Boolean(sheet && sheet.complete && sheet.naturalWidth > 0);
+      if (sheetReady) {
+        const fi = getAbilityIconSheetFrameIndex(card.id);
+        const sx = fi * ABILITY_ICON_SHEET_TILE_PX;
         ctx.save();
         ctx.globalAlpha = unlocked ? 1 : 0.72;
-        ctx.drawImage(icon!, iconX, iconY, iconSize, iconSize);
+        ctx.imageSmoothingEnabled = false;
+        ctx.drawImage(
+          sheet!,
+          sx,
+          0,
+          ABILITY_ICON_SHEET_TILE_PX,
+          ABILITY_ICON_SHEET_TILE_PX,
+          iconX,
+          iconY,
+          iconSize,
+          iconSize,
+        );
         ctx.restore();
       } else {
         ctx.fillStyle = hexToRgba(def.accentColor, unlocked ? 0.28 : 0.18);

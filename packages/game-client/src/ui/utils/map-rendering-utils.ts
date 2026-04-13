@@ -17,7 +17,8 @@ export interface MapRenderingSettings {
   };
   fogOfWar: {
     enabled: boolean;
-    fogColor: string;
+    unexploredFogColor: string;
+    exploredUnlitFogColor: string;
   };
   scale?: number;
 }

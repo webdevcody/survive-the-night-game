@@ -110,7 +110,12 @@ export class GameClient {
 
   private canvas: HTMLCanvasElement;
 
-  constructor(canvas: HTMLCanvasElement, assetManager?: AssetManager, soundManager?: SoundManager) {
+  constructor(
+    canvas: HTMLCanvasElement,
+    assetManager?: AssetManager,
+    soundManager?: SoundManager,
+    onRequestExitGame?: () => void
+  ) {
     this.canvas = canvas;
     this.ctx = canvas.getContext("2d")!;
 
@@ -249,6 +254,7 @@ export class GameClient {
       sendDropFromEquipment: (equipSlot) => {
         this.socketManager?.sendDropFromEquipment(equipSlot);
       },
+      onRequestExitGame,
     });
     this.hud.setDialogueQuestChoiceHandler((action) => {
       const offer = this.dialogueManager.getOpenQuestOffer(this.gameState);
@@ -305,7 +311,6 @@ export class GameClient {
     im.on("toggleInventoryScreen", () => this.hud.toggleInventoryScreen());
     im.on("inventoryPanelFocusTab", ({ tab }) => this.hud.focusInventoryTab(tab));
     im.on("toggleQuestJournal", () => this.hud.toggleQuestJournal());
-    im.on("toggleInstructions", () => this.hud.toggleInstructions());
     im.on("showPlayerList", () => this.hud.setShowPlayerList(true));
     im.on("hidePlayerList", () => this.hud.setShowPlayerList(false));
     im.on("toggleMap", () => this.hud.toggleFullscreenMap());
@@ -781,6 +786,8 @@ export class GameClient {
       }
     }
 
+    this.mapManager.tickLocalMapExplorationReveal(this.getMyPlayer());
+
     this.positionCameraOnPlayer();
     this.updateInteractHold();
     this.hud.update(this.gameState);
@@ -898,6 +905,7 @@ export class GameClient {
       (this.hud && this.hud.isFullscreenMapOpen()) ||
       (this.hud && this.hud.isHoveringInventory()) ||
       (this.hud && this.hud.isHoveringMuteButton()) ||
+      (this.hud && this.hud.isHoveringExitGameButton()) ||
       this.inputManager.isChatInputActive()
     ) {
       this.ctx.canvas.style.cursor = "default";

@@ -2,6 +2,7 @@ import type { ProfessionProgress } from "@shared/util/professions";
 import type { PlayerQuestStatePayload } from "@shared/quests/player-quest-state";
 import type { PlayerInventoryPersistedPayload } from "@shared/util/persisted-inventory-payload";
 import type { PlayerBankPersistedPayload } from "@shared/util/persisted-bank-payload";
+import type { MapExplorationPersistedPayload } from "@shared/util/map-exploration-payload";
 
 export type PersistedPlayerProgress = {
   experience: number;
@@ -19,4 +20,6 @@ export type PersistedPlayerProgress = {
   savedInventory?: PlayerInventoryPersistedPayload | null;
   /** Personal bank from website `user_stats.saved_bank` when present. */
   savedBank?: PlayerBankPersistedPayload | null;
+  /** Sparse chunked minimap exploration from `user_stats.map_exploration`. */
+  mapExploration?: MapExplorationPersistedPayload | null;
 };

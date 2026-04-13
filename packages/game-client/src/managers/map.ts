@@ -1,12 +1,20 @@
 import { GameClient } from "@/client";
 import { DEBUG_MAP_BOUNDS } from "@shared/debug";
-import { ClientIlluminated, ClientPositionable } from "@/extensions";
+import { ClientDestructible, ClientIlluminated, ClientPositionable } from "@/extensions";
 import Vector2 from "@shared/util/vector2";
 import PoolManager from "@shared/util/pool-manager";
 import { distance } from "@shared/util/physics";
 import { getConfig } from "@shared/config";
 import { PlayerClient } from "@/entities/player";
 import type { WorldMapQuestDefinition } from "@shared/map/quest-types";
+import type { MapExplorationPersistedPayload } from "@shared/util/map-exploration-payload";
+import {
+  coerceMapExplorationPayload,
+  getDefaultMapExplorationPayload,
+  isCompatibleExplorationPayload,
+  isTileExplored as isTileExploredInPayload,
+  revealTilesInCircle,
+} from "@shared/util/map-exploration-payload";
 
 // Zombie player illumination radius (allows them to see around themselves)
 const ZOMBIE_ILLUMINATION_RADIUS = 80;
@@ -38,6 +46,9 @@ interface LightSourceWithId extends LightSource {
 }
 
 export class MapManager {
+  private static readonly MAP_EXPLORATION_CHUNK_SIZE = 16;
+  private mapExploration: MapExplorationPersistedPayload | null = null;
+
   private tileSize = getConfig().world.TILE_SIZE;
   private groundLayer: number[][] | null = null;
   private collidablesLayer: number[][] | null = null;
@@ -110,6 +121,11 @@ export class MapManager {
     // Force immediate light rebuild; else renderDarkness may skip recalc for up to
     // LIGHT_RECALCULATION_INTERVAL ms while combinedLightMap stays all zeros.
     this.lastLightRecalculationTime = 0;
+
+    this.mapExploration = getDefaultMapExplorationPayload(
+      getConfig().world,
+      MapManager.MAP_EXPLORATION_CHUNK_SIZE,
+    );
   }
 
   getMap(): number[][] | null {
@@ -147,6 +163,56 @@ export class MapManager {
       }
     | undefined {
     return this.biomePositions;
+  }
+
+  applyHydratedMapExploration(raw: unknown | null | undefined): void {
+    const expected = getDefaultMapExplorationPayload(
+      getConfig().world,
+      MapManager.MAP_EXPLORATION_CHUNK_SIZE,
+    );
+    const coerced = raw != null ? coerceMapExplorationPayload(raw) : null;
+    if (
+      coerced &&
+      isCompatibleExplorationPayload(
+        coerced,
+        expected.worldKey,
+        expected.rows,
+        expected.cols,
+        expected.chunkSize,
+      )
+    ) {
+      this.mapExploration = coerced;
+    } else {
+      this.mapExploration = expected;
+    }
+  }
+
+  getMapExplorationPayload(): MapExplorationPersistedPayload | null {
+    return this.mapExploration;
+  }
+
+  isTileExplored(tileX: number, tileY: number): boolean {
+    if (!this.mapExploration) return false;
+    return isTileExploredInPayload(this.mapExploration, tileX, tileY);
+  }
+
+  tickLocalMapExplorationReveal(player: PlayerClient | null): void {
+    if (!this.mapExploration || !player || !player.hasExt(ClientPositionable)) return;
+    if (player.hasExt(ClientDestructible) && player.getExt(ClientDestructible).isDead()) return;
+
+    const center = player.getExt(ClientPositionable).getCenterPosition();
+    let radiusPx = 0;
+    if (player.hasExt(ClientIlluminated)) {
+      radiusPx = player.getExt(ClientIlluminated).getRadius();
+    }
+    if (radiusPx <= 0 && player.isZombiePlayer()) {
+      radiusPx = ZOMBIE_ILLUMINATION_RADIUS;
+    }
+    if (radiusPx <= 0) {
+      radiusPx = Math.min(64, getConfig().world.LIGHT_RADIUS_PLAYER);
+    }
+
+    revealTilesInCircle(this.mapExploration, center.x, center.y, radiusPx, this.tileSize);
   }
 
   // Convert world coordinates to tile indices

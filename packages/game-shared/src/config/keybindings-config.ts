@@ -15,7 +15,6 @@ export const keybindingsConfig = {
   SPRINT: "shift",
   CHAT: "y",
   TOGGLE_MUTE: "m",
-  TOGGLE_INSTRUCTIONS: "p",
   PLAYER_LIST: "tab",
   WEAPON_LOADOUT_PRIMARY: "1",
   WEAPON_LOADOUT_SECONDARY: "2",

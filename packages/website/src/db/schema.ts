@@ -3,6 +3,7 @@ import { sql } from "drizzle-orm";
 import { relations } from "drizzle-orm";
 import type { PlayerInventoryPersistedPayload } from "@survive-the-night/game-shared/util/persisted-inventory-payload";
 import type { PlayerBankPersistedPayload } from "@survive-the-night/game-shared/util/persisted-bank-payload";
+import type { MapExplorationPersistedPayload } from "@survive-the-night/game-shared/util/map-exploration-payload";
 import type { PlayerQuestStatePayload } from "@survive-the-night/game-shared/quests/player-quest-state";
 import type { ProfessionProgress } from "@survive-the-night/game-shared/util/professions";
 
@@ -108,6 +109,8 @@ export const userStats = pgTable("user_stats", {
   savedInventory: jsonb("saved_inventory").$type<PlayerInventoryPersistedPayload | null>(),
   /** Personal bank (bag-only) snapshot from game server. */
   savedBank: jsonb("saved_bank").$type<PlayerBankPersistedPayload | null>(),
+  /** Sparse chunked minimap exploration (game server). */
+  mapExploration: jsonb("map_exploration").$type<MapExplorationPersistedPayload | null>(),
   createdAt: timestamp("created_at")
     .$defaultFn(() => new Date())
     .notNull(),

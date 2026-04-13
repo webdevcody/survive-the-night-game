@@ -40,8 +40,8 @@ export const ENVIRONMENT_CONFIGS: Record<string, EnvironmentConfig> = {
     id: "merchant",
     category: "obstacle",
     assets: {
-      // Note: Merchant has no visible sprite - it's an interactive entity only
-      // Spawned from tile ID 255 in collidables layer
+      // Client draws COLLIDABLE_TILE_MERCHANT from collidables.png (MerchantClient).
+      // Server: collidables layer or DECAL_TILE_SHOPKEEPER on decals layer.
       assetKey: "merchant",
       x: 0,
       y: 0,

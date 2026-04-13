@@ -37,6 +37,7 @@ export const Route = createFileRoute("/api/game/player-last-position")({
             professionProgress?: unknown;
             savedInventory?: unknown;
             savedBank?: unknown;
+            mapExploration?: unknown;
           };
 
           if (!body.userId || typeof body.userId !== "string") {
@@ -139,6 +140,7 @@ export const Route = createFileRoute("/api/game/player-last-position")({
               ...(savedInventory !== undefined ? { savedInventory } : {}),
               ...(savedBank !== undefined ? { savedBank } : {}),
               ...(respawnTileX !== undefined ? { respawnTileX, respawnTileY } : {}),
+              ...(body.mapExploration !== undefined ? { mapExploration: body.mapExploration } : {}),
             });
           } else {
             const charRaw = body.characterAllocations;
@@ -156,7 +158,8 @@ export const Route = createFileRoute("/api/game/player-last-position")({
               professionProgress !== undefined ||
               savedInventory !== undefined ||
               savedBank !== undefined ||
-              respawnTileX !== undefined;
+              respawnTileX !== undefined ||
+              body.mapExploration !== undefined;
 
             if (hasSideFields) {
               updated = await persistOpenWorldSessionFields(body.userId, {
@@ -168,6 +171,7 @@ export const Route = createFileRoute("/api/game/player-last-position")({
                 ...(savedInventory !== undefined ? { savedInventory } : {}),
                 ...(savedBank !== undefined ? { savedBank } : {}),
                 ...(respawnTileX !== undefined ? { respawnTileX, respawnTileY } : {}),
+                ...(body.mapExploration !== undefined ? { mapExploration: body.mapExploration } : {}),
               });
             } else {
               updated = await updateLastTilePosition(body.userId, tx, ty);

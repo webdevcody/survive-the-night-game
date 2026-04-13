@@ -120,6 +120,9 @@ export const applyGameStateUpdateBuffer = (
     if (mapData) {
       context.gameClient.getMapManager().setMap(mapData);
     }
+    context.gameClient
+      .getMapManager()
+      .applyHydratedMapExploration(gameStateEvent.getMapExploration() ?? null);
 
     // Rebuild spatial grid for full state update
     context.gameClient.getRenderer().initializeSpatialGrid();

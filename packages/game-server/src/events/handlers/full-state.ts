@@ -14,6 +14,9 @@ export function sendFullState(context: HandlerContext, socket: ISocketAdapter): 
   // Get map data to include in full state
   const mapData = context.getMapManager().getMapData();
 
+  const playerForSocket = context.players.get(socket.id);
+  const mapExploration = playerForSocket?.getMapExplorationPayload();
+
   // Serialize full state to buffer
   // Pass onlyDirty=false to serialize all fields and all extensions with all their data
   context.bufferManager.clear();
@@ -27,12 +30,16 @@ export function sendFullState(context: HandlerContext, socket: ISocketAdapter): 
       isFullState: true,
       phaseStartTime,
       phaseDuration,
+      ...(mapExploration ? { mapExploration } : {}),
     },
     false, // No removed entities in full state
     mapData // Include map data in full state
   );
   context.bufferManager.writeRemovedEntityIds([]);
   context.bufferManager.writeMapData(mapData);
+  if (mapExploration) {
+    context.bufferManager.writeMapExploration(mapExploration);
+  }
 
   const buffer = context.bufferManager.getBuffer();
   // this.bufferManager.logStats();

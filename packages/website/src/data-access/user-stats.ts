@@ -28,6 +28,12 @@ import {
   coercePlayerBankPersistedPayload,
   type PlayerBankPersistedPayload,
 } from "@survive-the-night/game-shared/util/persisted-bank-payload";
+import {
+  coerceMapExplorationPayload,
+  mergeExplorationChunks,
+  isCompatibleExplorationPayload,
+  type MapExplorationPersistedPayload,
+} from "@survive-the-night/game-shared/util/map-exploration-payload";
 
 /**
  * Get user stats by user ID, creating if doesn't exist
@@ -71,6 +77,87 @@ export function resolveHydrationProfessionProgress(stats: UserStats): Profession
   return normalizeProfessionProgress(stats.professionProgress ?? emptyProfessionProgress());
 }
 
+const MAX_MAP_EXPLORATION_CHUNK_KEYS = 4096;
+const MAX_MAP_EXPLORATION_JSON_CHARS = 1_500_000;
+
+function mergeMapExplorationRows(
+  stored: MapExplorationPersistedPayload | null | undefined,
+  incoming: MapExplorationPersistedPayload,
+): MapExplorationPersistedPayload {
+  if (
+    !stored ||
+    !isCompatibleExplorationPayload(
+      stored,
+      incoming.worldKey,
+      incoming.rows,
+      incoming.cols,
+      incoming.chunkSize,
+    )
+  ) {
+    return {
+      ...incoming,
+      chunks: { ...incoming.chunks },
+    };
+  }
+  const merged: MapExplorationPersistedPayload = {
+    ...stored,
+    chunks: { ...stored.chunks },
+  };
+  mergeExplorationChunks(merged, incoming.chunks);
+  if (Object.keys(merged.chunks).length > MAX_MAP_EXPLORATION_CHUNK_KEYS) {
+    const keys = Object.keys(merged.chunks).slice(0, MAX_MAP_EXPLORATION_CHUNK_KEYS);
+    const trimmed: Record<string, string> = {};
+    for (const k of keys) {
+      trimmed[k] = merged.chunks[k]!;
+    }
+    merged.chunks = trimmed;
+  }
+  return merged;
+}
+
+/**
+ * Merge sparse map exploration chunks (game server incremental or disconnect).
+ */
+export async function persistMapExplorationMerge(
+  userId: string,
+  incomingRaw: unknown,
+): Promise<UserStats> {
+  const incoming = coerceMapExplorationPayload(incomingRaw);
+  if (!incoming) {
+    throw new Error("Invalid map exploration payload");
+  }
+  if (Object.keys(incoming.chunks).length > MAX_MAP_EXPLORATION_CHUNK_KEYS) {
+    throw new Error("Too many map exploration chunks");
+  }
+  const json = JSON.stringify(incoming);
+  if (json.length > MAX_MAP_EXPLORATION_JSON_CHARS) {
+    throw new Error("Map exploration payload too large");
+  }
+
+  await getOrCreateUserStats(userId);
+  const [row] = await database
+    .select({ mapExploration: userStats.mapExploration })
+    .from(userStats)
+    .where(eq(userStats.userId, userId))
+    .limit(1);
+
+  const merged = mergeMapExplorationRows(
+    row?.mapExploration as MapExplorationPersistedPayload | null | undefined,
+    incoming,
+  );
+  const mergedJson = JSON.stringify(merged);
+  if (mergedJson.length > MAX_MAP_EXPLORATION_JSON_CHARS) {
+    throw new Error("Merged map exploration too large");
+  }
+
+  const [updated] = await database
+    .update(userStats)
+    .set({ mapExploration: merged, updatedAt: new Date() })
+    .where(eq(userStats.userId, userId))
+    .returning();
+  return updated!;
+}
+
 /**
  * Persist last open-world tile indices when the player disconnects (game server).
  */
@@ -93,6 +180,7 @@ export async function persistGameServerDisconnectSnapshot(
     /** When set (both numbers), persist bind; when both null, clear bind; when omitted, leave DB unchanged. */
     respawnTileX?: number | null;
     respawnTileY?: number | null;
+    mapExploration?: unknown;
   },
 ): Promise<UserStats> {
   await getOrCreateUserStats(userId);
@@ -129,6 +217,7 @@ export async function persistGameServerDisconnectSnapshot(
     professionProgress: ProfessionProgress;
     savedInventory?: PlayerInventoryPersistedPayload | null;
     savedBank?: PlayerBankPersistedPayload | null;
+    mapExploration?: MapExplorationPersistedPayload | null;
     updatedAt: Date;
   } = {
     lastTileX: Math.floor(snapshot.lastTileX),
@@ -151,6 +240,21 @@ export async function persistGameServerDisconnectSnapshot(
   }
   if (savedBank !== undefined && savedBank != null) {
     baseSet.savedBank = savedBank;
+  }
+
+  if (snapshot.mapExploration !== undefined) {
+    const inc = coerceMapExplorationPayload(snapshot.mapExploration);
+    if (inc) {
+      const [cur] = await database
+        .select({ mapExploration: userStats.mapExploration })
+        .from(userStats)
+        .where(eq(userStats.userId, userId))
+        .limit(1);
+      baseSet.mapExploration = mergeMapExplorationRows(
+        cur?.mapExploration as MapExplorationPersistedPayload | null | undefined,
+        inc,
+      );
+    }
   }
 
   const rx = snapshot.respawnTileX;
@@ -253,6 +357,7 @@ export async function persistOpenWorldSessionFields(
     savedBank?: unknown;
     respawnTileX?: number | null;
     respawnTileY?: number | null;
+    mapExploration?: unknown;
   },
 ): Promise<UserStats> {
   await getOrCreateUserStats(userId);
@@ -269,6 +374,7 @@ export async function persistOpenWorldSessionFields(
     savedBank?: PlayerBankPersistedPayload | null;
     respawnTileX?: number | null;
     respawnTileY?: number | null;
+    mapExploration?: MapExplorationPersistedPayload | null;
   } = {
     lastTileX: Math.floor(data.lastTileX),
     lastTileY: Math.floor(data.lastTileY),
@@ -312,6 +418,21 @@ export async function persistOpenWorldSessionFields(
   if (rx !== undefined && ry !== undefined) {
     setFields.respawnTileX = rx !== null && ry !== null ? Math.floor(rx) : null;
     setFields.respawnTileY = rx !== null && ry !== null ? Math.floor(ry) : null;
+  }
+
+  if (data.mapExploration !== undefined) {
+    const inc = coerceMapExplorationPayload(data.mapExploration);
+    if (inc) {
+      const [cur] = await database
+        .select({ mapExploration: userStats.mapExploration })
+        .from(userStats)
+        .where(eq(userStats.userId, userId))
+        .limit(1);
+      setFields.mapExploration = mergeMapExplorationRows(
+        cur?.mapExploration as MapExplorationPersistedPayload | null | undefined,
+        inc,
+      );
+    }
   }
 
   const [updated] = await database

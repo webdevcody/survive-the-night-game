@@ -42,108 +42,100 @@ export const ABILITY_SERIALIZED_FIELD_BY_ID: Record<AbilityId, string> = {
 export type AbilityDefinition = {
   label: string;
   description: string;
-  iconPath: string;
   accentColor: string;
 };
+
+/** 256×16 strip; frames follow `ABILITY_IDS` order (see `scripts/generate-ability-icons.py`). */
+export const ABILITY_ICON_SHEET_URL = "/ui/ability-icons.png";
+/** Source tile size in the PNG (each frame is 16×16). */
+export const ABILITY_ICON_SHEET_TILE_PX = 16;
 
 export const ABILITY_DEFINITIONS: Record<AbilityId, AbilityDefinition> = {
   sprint: {
     label: "Sprint",
     description: "Unlock sprinting while you still have stamina.",
-    iconPath: "/ui/abilities/ability-sprint.png",
     accentColor: "#d9a44d",
   },
   regenerate: {
     label: "Regenerate",
     description: "Passively heal a small amount while alive.",
-    iconPath: "/ui/abilities/ability-regenerate.png",
     accentColor: "#73c77a",
   },
   adrenaline: {
     label: "Adrenaline",
     description: "Move faster while below 20% health.",
-    iconPath: "/ui/abilities/ability-adrenaline.png",
     accentColor: "#d55454",
   },
   stealth: {
     label: "Stealth",
     description: "Reduce the range where zombies notice you.",
-    iconPath: "/ui/abilities/ability-stealth.png",
     accentColor: "#5aa27d",
   },
   packRat: {
     label: "Pack Rat",
     description: "Unlock 15 more bag slots.",
-    iconPath: "/ui/abilities/ability-pack-rat.png",
     accentColor: "#b48749",
   },
   hercules: {
     label: "Hercules",
     description: "Unlock 15 more bag slots.",
-    iconPath: "/ui/abilities/ability-hercules.png",
     accentColor: "#cf9350",
   },
   combatShield: {
     label: "Combat Shield",
     description: "Lets you equip a combat shield in your hands slot.",
-    iconPath: "/ui/abilities/ability-combat-shield.png",
     accentColor: "#7d90d2",
   },
   trackStar: {
     label: "Track Star",
     description: "Gain max stamina, regen, and a movement boost.",
-    iconPath: "/ui/abilities/ability-track-star.png",
     accentColor: "#7fb1ff",
   },
   combatRoll: {
     label: "Combat Roll",
     description: "Double-tap W, A, S, or D to roll in that direction (cooldown).",
-    iconPath: "/ui/abilities/ability-combat-roll.png",
     accentColor: "#8dd3c7",
   },
   brawler: {
     label: "Brawler",
     description: "Fists deal bonus damage and extra knockback.",
-    iconPath: "/ui/abilities/ability-brawler.png",
     accentColor: "#c9825a",
   },
   headShot: {
     label: "Head Shot",
     description: "Ranged hits have a 10% chance to deal +2 damage.",
-    iconPath: "/ui/abilities/ability-head-shot.png",
     accentColor: "#c85353",
   },
   aimForTheKnee: {
     label: "Aim For The Knee",
     description: "Ranged hits can maim zombies and cut their speed in half.",
-    iconPath: "/ui/abilities/ability-aim-for-the-knee.png",
     accentColor: "#9eb264",
   },
   detox: {
     label: "Detox",
     description: "Poison effects expire in half the usual time.",
-    iconPath: "/ui/abilities/ability-detox.png",
     accentColor: "#66c29d",
   },
   lockPicking: {
     label: "Lock Picking",
     description: "Open locked crates that other survivors cannot.",
-    iconPath: "/ui/abilities/ability-lock-picking.png",
     accentColor: "#ccb36d",
   },
   counterAttack: {
     label: "Counter Attack",
     description: "Melee attackers can take damage back when they hit you.",
-    iconPath: "/ui/abilities/ability-counter-attack.png",
     accentColor: "#d27a6a",
   },
   sneak: {
     label: "Sneak",
     description: "Hold Ctrl to move slowly without aggroing zombies.",
-    iconPath: "/ui/abilities/ability-sneak.png",
     accentColor: "#6a8d74",
   },
 };
+
+export function getAbilityIconSheetFrameIndex(id: AbilityId): number {
+  return ABILITY_IDS.indexOf(id);
+}
 
 export function isAbilityId(value: string): value is AbilityId {
   return (ABILITY_IDS as readonly string[]).includes(value);

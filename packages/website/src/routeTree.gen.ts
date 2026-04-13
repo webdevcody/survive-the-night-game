@@ -26,6 +26,7 @@ import { Route as ApiGameProfessionProgressRouteImport } from './routes/api/game
 import { Route as ApiGamePlayerStatsRouteImport } from './routes/api/game/player-stats'
 import { Route as ApiGamePlayerRespawnBindRouteImport } from './routes/api/game/player-respawn-bind'
 import { Route as ApiGamePlayerQuestProgressRouteImport } from './routes/api/game/player-quest-progress'
+import { Route as ApiGamePlayerMapExplorationRouteImport } from './routes/api/game/player-map-exploration'
 import { Route as ApiGamePlayerLastPositionRouteImport } from './routes/api/game/player-last-position'
 import { Route as ApiGamePlayerExperienceRouteImport } from './routes/api/game/player-experience'
 import { Route as ApiGameCharacterAllocationsRouteImport } from './routes/api/game/character-allocations'
@@ -121,6 +122,12 @@ const ApiGamePlayerQuestProgressRoute =
     path: '/api/game/player-quest-progress',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ApiGamePlayerMapExplorationRoute =
+  ApiGamePlayerMapExplorationRouteImport.update({
+    id: '/api/game/player-map-exploration',
+    path: '/api/game/player-map-exploration',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiGamePlayerLastPositionRoute =
   ApiGamePlayerLastPositionRouteImport.update({
     id: '/api/game/player-last-position',
@@ -172,6 +179,7 @@ export interface FileRoutesByFullPath {
   '/api/game/character-allocations': typeof ApiGameCharacterAllocationsRoute
   '/api/game/player-experience': typeof ApiGamePlayerExperienceRoute
   '/api/game/player-last-position': typeof ApiGamePlayerLastPositionRoute
+  '/api/game/player-map-exploration': typeof ApiGamePlayerMapExplorationRoute
   '/api/game/player-quest-progress': typeof ApiGamePlayerQuestProgressRoute
   '/api/game/player-respawn-bind': typeof ApiGamePlayerRespawnBindRoute
   '/api/game/player-stats': typeof ApiGamePlayerStatsRoute
@@ -197,6 +205,7 @@ export interface FileRoutesByTo {
   '/api/game/character-allocations': typeof ApiGameCharacterAllocationsRoute
   '/api/game/player-experience': typeof ApiGamePlayerExperienceRoute
   '/api/game/player-last-position': typeof ApiGamePlayerLastPositionRoute
+  '/api/game/player-map-exploration': typeof ApiGamePlayerMapExplorationRoute
   '/api/game/player-quest-progress': typeof ApiGamePlayerQuestProgressRoute
   '/api/game/player-respawn-bind': typeof ApiGamePlayerRespawnBindRoute
   '/api/game/player-stats': typeof ApiGamePlayerStatsRoute
@@ -223,6 +232,7 @@ export interface FileRoutesById {
   '/api/game/character-allocations': typeof ApiGameCharacterAllocationsRoute
   '/api/game/player-experience': typeof ApiGamePlayerExperienceRoute
   '/api/game/player-last-position': typeof ApiGamePlayerLastPositionRoute
+  '/api/game/player-map-exploration': typeof ApiGamePlayerMapExplorationRoute
   '/api/game/player-quest-progress': typeof ApiGamePlayerQuestProgressRoute
   '/api/game/player-respawn-bind': typeof ApiGamePlayerRespawnBindRoute
   '/api/game/player-stats': typeof ApiGamePlayerStatsRoute
@@ -250,6 +260,7 @@ export interface FileRouteTypes {
     | '/api/game/character-allocations'
     | '/api/game/player-experience'
     | '/api/game/player-last-position'
+    | '/api/game/player-map-exploration'
     | '/api/game/player-quest-progress'
     | '/api/game/player-respawn-bind'
     | '/api/game/player-stats'
@@ -275,6 +286,7 @@ export interface FileRouteTypes {
     | '/api/game/character-allocations'
     | '/api/game/player-experience'
     | '/api/game/player-last-position'
+    | '/api/game/player-map-exploration'
     | '/api/game/player-quest-progress'
     | '/api/game/player-respawn-bind'
     | '/api/game/player-stats'
@@ -300,6 +312,7 @@ export interface FileRouteTypes {
     | '/api/game/character-allocations'
     | '/api/game/player-experience'
     | '/api/game/player-last-position'
+    | '/api/game/player-map-exploration'
     | '/api/game/player-quest-progress'
     | '/api/game/player-respawn-bind'
     | '/api/game/player-stats'
@@ -326,6 +339,7 @@ export interface RootRouteChildren {
   ApiGameCharacterAllocationsRoute: typeof ApiGameCharacterAllocationsRoute
   ApiGamePlayerExperienceRoute: typeof ApiGamePlayerExperienceRoute
   ApiGamePlayerLastPositionRoute: typeof ApiGamePlayerLastPositionRoute
+  ApiGamePlayerMapExplorationRoute: typeof ApiGamePlayerMapExplorationRoute
   ApiGamePlayerQuestProgressRoute: typeof ApiGamePlayerQuestProgressRoute
   ApiGamePlayerRespawnBindRoute: typeof ApiGamePlayerRespawnBindRoute
   ApiGamePlayerStatsRoute: typeof ApiGamePlayerStatsRoute
@@ -456,6 +470,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiGamePlayerQuestProgressRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/game/player-map-exploration': {
+      id: '/api/game/player-map-exploration'
+      path: '/api/game/player-map-exploration'
+      fullPath: '/api/game/player-map-exploration'
+      preLoaderRoute: typeof ApiGamePlayerMapExplorationRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/game/player-last-position': {
       id: '/api/game/player-last-position'
       path: '/api/game/player-last-position'
@@ -518,6 +539,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiGameCharacterAllocationsRoute: ApiGameCharacterAllocationsRoute,
   ApiGamePlayerExperienceRoute: ApiGamePlayerExperienceRoute,
   ApiGamePlayerLastPositionRoute: ApiGamePlayerLastPositionRoute,
+  ApiGamePlayerMapExplorationRoute: ApiGamePlayerMapExplorationRoute,
   ApiGamePlayerQuestProgressRoute: ApiGamePlayerQuestProgressRoute,
   ApiGamePlayerRespawnBindRoute: ApiGamePlayerRespawnBindRoute,
   ApiGamePlayerStatsRoute: ApiGamePlayerStatsRoute,

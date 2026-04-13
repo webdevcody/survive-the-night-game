@@ -72,7 +72,9 @@ import {
   DECAL_TILE_MESSAGE,
   DECAL_TILE_WORKBENCH,
   DECAL_TILE_LOCKER,
+  DECAL_TILE_SHOPKEEPER,
 } from "../../../game-shared/src/map/decal-palette";
+import { COLLIDABLE_TILE_MERCHANT } from "../../../game-shared/src/map/collidable-tile-ids";
 import {
   URBAN_SCAVENGE_DROP_TABLE,
   WILDERNESS_SCAVENGE_DROP_TABLE,
@@ -93,8 +95,6 @@ const GROUND_TILE_ID_4 = 24;
 const EMPTY_COLLIDABLE_TILE_ID = -1;
 const CAR_TILE_ID_LEFT = 265;
 const CAR_TILE_ID_RIGHT = 266;
-const MERCHANT_TILE_ID = 255;
-
 // Spawn configuration
 const IDLE_ZOMBIE_SPAWN_CHANCE = 0.01;
 
@@ -952,20 +952,37 @@ export class MapManager implements IMapManager {
 
   private spawnMerchants() {
     const totalSize = BIOME_SIZE * MAP_SIZE;
+    const TILE_SIZE = getConfig().world.TILE_SIZE;
+    const poolManager = PoolManager.getInstance();
+    const merchantTileKeys = new Set<string>();
+
     for (let y = 0; y < totalSize; y++) {
       for (let x = 0; x < totalSize; x++) {
-        // Check collidables layer for merchant tile
-        const collidableTileId = this.collidablesLayer[y][x];
-        if (collidableTileId === MERCHANT_TILE_ID) {
-          const merchant = new Merchant(this.getGameManagers());
-          merchant.setPosition(
-            PoolManager.getInstance().vector2.claim(
-              x * getConfig().world.TILE_SIZE,
-              y * getConfig().world.TILE_SIZE,
-            ),
-          );
-          this.getEntityManager().addEntity(merchant);
+        if (this.decalsLayer[y]?.[x] !== DECAL_TILE_SHOPKEEPER) {
+          continue;
         }
+        const key = `${x},${y}`;
+        merchantTileKeys.add(key);
+        const merchant = new Merchant(this.getGameManagers());
+        merchant.setPosition(poolManager.vector2.claim(x * TILE_SIZE, y * TILE_SIZE));
+        this.getEntityManager().addEntity(merchant);
+      }
+    }
+
+    for (let y = 0; y < totalSize; y++) {
+      for (let x = 0; x < totalSize; x++) {
+        const collidableTileId = this.collidablesLayer[y][x];
+        if (collidableTileId !== COLLIDABLE_TILE_MERCHANT) {
+          continue;
+        }
+        const key = `${x},${y}`;
+        if (merchantTileKeys.has(key)) {
+          continue;
+        }
+        merchantTileKeys.add(key);
+        const merchant = new Merchant(this.getGameManagers());
+        merchant.setPosition(poolManager.vector2.claim(x * TILE_SIZE, y * TILE_SIZE));
+        this.getEntityManager().addEntity(merchant);
       }
     }
   }
