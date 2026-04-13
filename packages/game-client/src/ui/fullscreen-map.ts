@@ -24,6 +24,7 @@ import {
   RPG_PANEL_GRADIENT_BOTTOM,
   RPG_TITLE_CREAM,
 } from "./rpg-hud-theme";
+import { resolvePrimaryQuestTrackerForPlayer } from "./quest-tracker-runtime";
 
 const FULLSCREEN_MAP_SETTINGS = {
   padding: 180, // Padding from screen edges
@@ -263,10 +264,10 @@ export class FullScreenMap {
       mapHeight
     );
 
-    // Quest objective (waypoint / NPC) — after POIs so the marker stays visible
-    this.renderQuestNavigationMarker(
+    this.renderQuestTargetIndicator(
       ctx,
       gameState,
+      myPlayer,
       effectiveCenterPos,
       zoom,
       centerX,
@@ -347,6 +348,68 @@ export class FullScreenMap {
     ctx.lineWidth = 2;
     ctx.strokeRect(zoomOutX, zoomOutY, buttonSize, buttonSize);
     ctx.fillText("-", zoomOutX + buttonSize / 2, buttonY);
+  }
+
+  private renderQuestTargetIndicator(
+    ctx: CanvasRenderingContext2D,
+    gameState: GameState,
+    myPlayer: PlayerClient,
+    centerWorldPos: { x: number; y: number },
+    zoom: number,
+    centerX: number,
+    centerY: number,
+    mapWidth: number,
+    mapHeight: number
+  ): void {
+    const tracker = resolvePrimaryQuestTrackerForPlayer(
+      gameState,
+      myPlayer,
+      this.mapManager.getAuthoredQuests(),
+      myPlayer.getQuestProgressPayload()
+    );
+    if (!tracker?.target) {
+      return;
+    }
+
+    const offsetX = (tracker.target.worldX - centerWorldPos.x) * zoom;
+    const offsetY = (tracker.target.worldY - centerWorldPos.y) * zoom;
+    const inset = 18;
+    const clampedOffsetX = Math.max(
+      -(mapWidth / 2 - inset),
+      Math.min(mapWidth / 2 - inset, offsetX)
+    );
+    const clampedOffsetY = Math.max(
+      -(mapHeight / 2 - inset),
+      Math.min(mapHeight / 2 - inset, offsetY)
+    );
+    const drawX = centerX + clampedOffsetX;
+    const drawY = centerY + clampedOffsetY;
+    const isTurnIn = tracker.target.kind === "turn_in";
+    const pulse = 1 + Math.sin(Date.now() * 0.01) * 0.12;
+    const markerRadius = 12 * Math.max(0.85, zoom) * pulse;
+
+    ctx.save();
+    ctx.fillStyle = isTurnIn ? "rgba(99, 240, 174, 0.18)" : "rgba(255, 216, 107, 0.18)";
+    ctx.beginPath();
+    ctx.arc(drawX, drawY, markerRadius + 6, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.strokeStyle = isTurnIn ? "rgba(99, 240, 174, 0.98)" : "rgba(255, 216, 107, 0.98)";
+    ctx.lineWidth = 2.5;
+    ctx.beginPath();
+    ctx.moveTo(drawX, drawY - markerRadius);
+    ctx.lineTo(drawX + markerRadius, drawY);
+    ctx.lineTo(drawX, drawY + markerRadius);
+    ctx.lineTo(drawX - markerRadius, drawY);
+    ctx.closePath();
+    ctx.stroke();
+
+    ctx.fillStyle = "#ffffff";
+    ctx.font = `bold ${Math.max(12, Math.round(12 * Math.max(1, zoom)))}px Arial`;
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillText(isTurnIn ? "?" : "!", drawX, drawY + 0.5);
+    ctx.restore();
   }
 
   private prerenderCollidables(): void {
@@ -625,58 +688,6 @@ export class FullScreenMap {
       ctx.stroke();
       ctx.strokeRect(mapX - iconSize / 6, mapY - iconSize / 6, iconSize / 3, iconSize / 2);
     }
-  }
-
-  private renderQuestNavigationMarker(
-    ctx: CanvasRenderingContext2D,
-    gameState: GameState,
-    playerPos: { x: number; y: number },
-    zoom: number,
-    centerX: number,
-    centerY: number,
-    mapWidth: number,
-    mapHeight: number,
-  ): void {
-    const myPlayer = getPlayer(gameState);
-    if (!myPlayer || myPlayer.isZombiePlayer()) {
-      return;
-    }
-    const target = gameState.questNavigationTarget;
-    if (!target) {
-      return;
-    }
-
-    const maxDistance = Math.sqrt(((mapWidth / zoom) ** 2 + (mapHeight / zoom) ** 2) / 4);
-    const poolManager = PoolManager.getInstance();
-    const playerWorldPos = poolManager.vector2.claim(playerPos.x, playerPos.y);
-    const targetWorldPos = poolManager.vector2.claim(target.worldX, target.worldY);
-    const dist = distance(playerWorldPos, targetWorldPos);
-    poolManager.vector2.release(playerWorldPos);
-    poolManager.vector2.release(targetWorldPos);
-    if (dist > maxDistance) {
-      return;
-    }
-
-    const relativeX = target.worldX - playerPos.x;
-    const relativeY = target.worldY - playerPos.y;
-    const screenX = centerX + relativeX * zoom;
-    const screenY = centerY + relativeY * zoom;
-
-    const pulse = 0.72 + 0.28 * Math.sin(performance.now() / 300);
-    const s = 12 * Math.max(0.5, zoom);
-    ctx.save();
-    ctx.fillStyle = `rgba(255, 214, 120, ${pulse})`;
-    ctx.strokeStyle = "rgba(255, 255, 255, 0.95)";
-    ctx.lineWidth = 2 * Math.max(0.5, zoom);
-    ctx.beginPath();
-    ctx.moveTo(screenX, screenY - s);
-    ctx.lineTo(screenX + s, screenY);
-    ctx.lineTo(screenX, screenY + s);
-    ctx.lineTo(screenX - s, screenY);
-    ctx.closePath();
-    ctx.fill();
-    ctx.stroke();
-    ctx.restore();
   }
 
   private renderBiomeIndicators(
