@@ -9,9 +9,7 @@ export const onPlayerHurt = (context: ClientEventContext, event: PlayerHurtEvent
   if (!player || !(player instanceof PlayerClient)) return;
 
   const playerPosition = player.getCenterPosition();
-  context.gameClient
-    .getSoundManager()
-    .playPositionalSound(SOUND_TYPES_TO_MP3.PLAYER_HURT, playerPosition);
+  context.gameClient.playPositionalSound(SOUND_TYPES_TO_MP3.PLAYER_HURT, playerPosition);
 
   const hurtPlayerId = event.getPlayerId();
   const localPlayerId = context.gameClient.getGameState().playerId;

@@ -10,7 +10,8 @@ export const onBossSplit = (context: ClientEventContext, event: BossSplitEvent) 
   positions.forEach((pos) => {
     const particle = new SummonParticle(
       context.gameClient.getImageLoader(),
-      context.gameClient.getSoundManager()
+      context.gameClient.getSoundManager(),
+      context.gameClient.getMyPlayer()?.getCenterPosition()
     );
     particle.setPosition(new Vector2(pos.x, pos.y));
     particle.onInitialized();

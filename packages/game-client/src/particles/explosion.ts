@@ -4,20 +4,23 @@ import { Z_INDEX } from "@shared/map";
 import { getFrameIndex, Renderable } from "@/entities/util";
 import { Particle, ParticleTypes } from "./particle";
 import { SOUND_TYPES_TO_MP3, SoundManager } from "@/managers/sound-manager";
+import Vector2 from "@shared/util/vector2";
 
 export class ExplosionParticle extends Particle implements Renderable {
   private duration: number;
   private frames: number;
   private createdAt: number;
   private soundManager: SoundManager;
+  private listenerPosition?: Vector2;
 
-  constructor(imageLoader: ImageLoader, soundManager: SoundManager) {
+  constructor(imageLoader: ImageLoader, soundManager: SoundManager, listenerPosition?: Vector2) {
     super(ParticleTypes.EXPLOSION, imageLoader);
     this.duration = 400; // 400ms for explosion animation
     this.frames = 4;
     this.createdAt = Date.now();
 
     this.soundManager = soundManager;
+    this.listenerPosition = listenerPosition;
   }
 
   public getZIndex(): number {
@@ -25,7 +28,7 @@ export class ExplosionParticle extends Particle implements Renderable {
   }
 
   onInitialized() {
-    this.soundManager.playPositionalSound(SOUND_TYPES_TO_MP3.EXPLOSION, this.getPosition());
+    this.soundManager.playPositionalSound(SOUND_TYPES_TO_MP3.EXPLOSION, this.getPosition(), this.listenerPosition);
   }
 
   update(_deltaTime: number): void {

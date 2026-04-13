@@ -94,14 +94,14 @@ export class DialogueSurvivorNpcClient extends ClientEntity implements Renderabl
       p?.hasExt(ClientInventory) === true
         ? (itemType: string) => p.getExt(ClientInventory).hasItem(itemType)
         : () => false;
-    const ctx =
-      gameState.getQuestStepCount || gameState.getQuestDefinition
-        ? {
-            getQuestStepCount: gameState.getQuestStepCount,
-            getQuestDefinition: gameState.getQuestDefinition,
-            dialogueNpc: { displayName: this.displayName, npcKey: this.npcKey },
-          }
-        : undefined;
+    const src = gameState.questDataSource;
+    const ctx = src
+      ? {
+          getQuestStepCount: (qid: string) => src.getQuestStepCount(qid),
+          getQuestDefinition: (qid: string) => src.getQuestDefinition(qid),
+          dialogueNpc: { displayName: this.displayName, npcKey: this.npcKey },
+        }
+      : undefined;
     return pickDialogueNpcSession(this.dialogueSessions, st, hasItemType, ctx);
   }
 

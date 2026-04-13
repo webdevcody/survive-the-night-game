@@ -9,7 +9,5 @@ export const onGunEmpty = (context: ClientEventContext, event: GunEmptyEvent) =>
   if (!player || !(player instanceof PlayerClient)) return;
 
   const playerPosition = player.getCenterPosition();
-  context.gameClient
-    .getSoundManager()
-    .playPositionalSound(SOUND_TYPES_TO_MP3.GUN_EMPTY, playerPosition);
+  context.gameClient.playPositionalSound(SOUND_TYPES_TO_MP3.GUN_EMPTY, playerPosition);
 };

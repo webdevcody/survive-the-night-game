@@ -32,7 +32,8 @@ export const onExplosion = (context: ClientEventContext, event: ExplosionEvent) 
   if (!context.shouldProcessEntityEvent()) return;
   const particle = new ExplosionParticle(
     context.gameClient.getImageLoader(),
-    context.gameClient.getSoundManager()
+    context.gameClient.getSoundManager(),
+    context.gameClient.getMyPlayer()?.getCenterPosition()
   );
   const serialized = event.serialize();
   const explosionPosition = new Vector2(serialized.position.x, serialized.position.y);

@@ -11,58 +11,56 @@ import { itemRegistry } from "../../../game-shared/src/entities/item-registry";
 import { distance } from "@shared/util/physics";
 import { FISTS_INVENTORY_SENTINEL } from "@shared/constants/inventory-sentinel";
 
-export interface InputManagerOptions {
-  onCraft?: () => unknown;
-  onDown?: (inputs: Input) => void;
-  onFire?: (inputs: Input) => void;
-  onUp?: (inputs: Input) => void;
-  onLeft?: (inputs: Input) => void;
-  onRight?: (inputs: Input) => void;
-  /** Double-tap W/A/S/D only; roll direction matches that key. */
-  onRequestCombatRoll?: (rollDirection: Direction) => void;
-  onInteractStart?: () => void;
-  onInteractEnd?: () => void;
-  onSelectInventorySlot?: (slotIndex: number) => void;
-  onConsumeItem?: (itemType: string | null) => void;
-  onDropItem?: (slotIndex: number, amount?: number) => void;
-  onToggleInstructions?: () => void;
-  onShowPlayerList?: () => void;
-  onHidePlayerList?: () => void;
-  onToggleChat?: () => void;
-  onChatInput?: (key: string, shiftKey: boolean) => void;
-  onSendChat?: () => void;
-  onToggleMute?: () => void;
-  onToggleMap?: () => void;
-  onToggleInventoryScreen?: () => void;
-  /** Opens inventory (if needed) or switches tab while the panel is open. */
-  onInventoryPanelFocusTab?: (
-    tab: "inventory" | "character" | "abilities" | "professions" | "quests",
-  ) => void;
-  getInventoryActiveTab?: () => "inventory" | "character" | "abilities" | "professions" | "quests";
-  onMerchantKeyDown?: (key: string) => void;
-  onCraftingPanelKeyDown?: (key: string) => void;
-  onEscape?: () => void;
-  onRespawnRequest?: () => void;
-  onSelectWeaponLoadout?: (loadout: 0 | 1 | 2) => void;
-  /** Keys 4 / 5: consume assigned loadout consumable without changing selected bag or weapon row. */
-  onUseLoadoutConsumable?: (which: 0 | 1) => void;
-  onReloadWeapon?: () => void;
+export type InventoryUiTab = "inventory" | "character" | "abilities" | "professions" | "quests";
+
+/** State queries InputManager needs to determine input behavior. */
+export interface InputStateQueries {
+  getInventory?: () => any[];
+  getMaxInventorySlots?: () => number;
+  getInventoryActiveTab?: () => InventoryUiTab;
+  getCameraCenterScreenX?: (canvasWidth: number) => number | null;
   isMerchantPanelOpen?: () => boolean;
   isCraftingPanelOpen?: () => boolean;
+  isBankOpen?: () => boolean;
   isFullscreenMapOpen?: () => boolean;
   isInventoryScreenOpen?: () => boolean;
-  getCameraCenterScreenX?: (canvasWidth: number) => number | null;
-  isPlayerDead?: () => boolean;
-  getInventory?: () => any[];
-  onInventorySlotChanged?: (slot: number) => void;
-  /** When true, Space does not fire (NPC dialogue open). */
   isNpcDialogueOpen?: () => boolean;
-  onToggleQuestJournal?: () => void;
   isQuestCompletedModalOpen?: () => boolean;
-  onDismissQuestCompletedModal?: () => void;
-  getMaxInventorySlots?: () => number;
-  isBankOpen?: () => boolean;
+  isPlayerDead?: () => boolean;
 }
+
+/** Typed events emitted by InputManager. */
+export interface InputEventMap {
+  toggleInventoryScreen: void;
+  inventoryPanelFocusTab: { tab: InventoryUiTab };
+  toggleQuestJournal: void;
+  toggleInstructions: void;
+  showPlayerList: void;
+  hidePlayerList: void;
+  toggleChat: void;
+  chatInput: { key: string; shiftKey: boolean };
+  sendChat: void;
+  toggleMute: void;
+  toggleMap: void;
+  interactStart: void;
+  interactEnd: void;
+  selectInventorySlot: { slot: number };
+  consumeItem: { itemType: string | null };
+  dropItem: { slot: number; amount?: number };
+  merchantKeyDown: { key: string };
+  craftingPanelKeyDown: { key: string };
+  escape: void;
+  respawnRequest: void;
+  selectWeaponLoadout: { loadout: 0 | 1 | 2 };
+  useLoadoutConsumable: { which: 0 | 1 };
+  reloadWeapon: void;
+  requestCombatRoll: { direction: Direction };
+  inventorySlotChanged: { slot: number };
+  dismissQuestCompletedModal: void;
+}
+
+type InputEventHandler<K extends keyof InputEventMap> =
+  InputEventMap[K] extends void ? () => void : (data: InputEventMap[K]) => void;
 
 const shouldBlock = new Set([
   "Space",
@@ -133,7 +131,8 @@ export class InputManager {
   };
   private isChatting = false;
   private merchantPanelConsumedKeys = new Set<string>();
-  private callbacks: InputManagerOptions = {};
+  private queries: InputStateQueries = {};
+  private eventListeners = new Map<string, Set<Function>>();
   private mousePosition: Vector2 | null = null;
   private canvas: HTMLCanvasElement | null = null;
   private lastMovementSuppressed = false;
@@ -150,7 +149,7 @@ export class InputManager {
   }
 
   private getMaxInventorySlots(): number {
-    return this.callbacks.getMaxInventorySlots?.() ?? getConfig().player.MAX_INVENTORY_SLOTS;
+    return this.queries.getMaxInventorySlots?.() ?? getConfig().player.MAX_INVENTORY_SLOTS;
   }
 
   private hasLiveGameplayInput(): boolean {
@@ -166,12 +165,12 @@ export class InputManager {
   private isMovementSuppressed(): boolean {
     return (
       this.isChatting ||
-      (this.callbacks.isMerchantPanelOpen?.() ?? false) ||
-      (this.callbacks.isCraftingPanelOpen?.() ?? false) ||
-      (this.callbacks.isBankOpen?.() ?? false) ||
-      (this.callbacks.isNpcDialogueOpen?.() ?? false) ||
-      (this.callbacks.isFullscreenMapOpen?.() ?? false) ||
-      (this.callbacks.isQuestCompletedModalOpen?.() ?? false)
+      (this.queries.isMerchantPanelOpen?.() ?? false) ||
+      (this.queries.isCraftingPanelOpen?.() ?? false) ||
+      (this.queries.isBankOpen?.() ?? false) ||
+      (this.queries.isNpcDialogueOpen?.() ?? false) ||
+      (this.queries.isFullscreenMapOpen?.() ?? false) ||
+      (this.queries.isQuestCompletedModalOpen?.() ?? false)
     );
   }
 
@@ -212,12 +211,12 @@ export class InputManager {
       timestampMs - lastTap <= COMBAT_ROLL_DOUBLE_TAP_WINDOW_MS
     ) {
       this.lastWasdCombatRollTapAt[eventCode] = -Infinity;
-      this.callbacks.onRequestCombatRoll?.(rollDirection);
+      this.emit("requestCombatRoll", { direction: rollDirection });
     }
   }
 
   private quickHeal() {
-    const inventory = this.callbacks.getInventory?.() || [];
+    const inventory = this.queries.getInventory?.() || [];
     if (inventory.length === 0) return;
 
     // Find first consumable and healable item in inventory
@@ -228,8 +227,7 @@ export class InputManager {
     });
 
     if (healableItem) {
-      // Send consume event with the healable item type
-      this.callbacks.onConsumeItem?.(healableItem.itemType);
+      this.emit("consumeItem", { itemType: healableItem.itemType });
     }
   }
 
@@ -243,8 +241,8 @@ export class InputManager {
     }
   }
 
-  constructor(callbacks: InputManagerOptions = {}) {
-    this.callbacks = callbacks;
+  constructor(queries: InputStateQueries = {}) {
+    this.queries = queries;
 
     // Create and store bound handlers for cleanup
     this.boundKeydownHandler = (e: KeyboardEvent) => {
@@ -259,12 +257,10 @@ export class InputManager {
       const eventKey = e.key.toLowerCase();
 
       // Handle chat mode FIRST - block ALL game inputs when chatting
-      // This must come before any other input handling to prevent hotkeys from triggering
       if (eventKey === "y" && !this.isChatting) {
         this.isChatting = true;
-        // Clear all inputs when entering chat mode
         this.clearInputs();
-        callbacks.onToggleChat?.();
+        this.emit("toggleChat");
         return;
       }
 
@@ -272,99 +268,94 @@ export class InputManager {
       if (this.isChatting) {
         if (eventKey === "escape") {
           this.isChatting = false;
-          callbacks.onToggleChat?.();
+          this.emit("toggleChat");
           return;
         }
 
         if (eventKey === "enter") {
           this.isChatting = false;
-          callbacks.onSendChat?.();
-          callbacks.onToggleChat?.();
+          this.emit("sendChat");
+          this.emit("toggleChat");
           return;
         }
 
-        // Prevent default behavior for arrow keys to avoid page scrolling
         if (e.key === "ArrowUp" || e.key === "ArrowDown") {
           e.preventDefault();
         }
 
-        callbacks.onChatInput?.(e.key, e.shiftKey);
-        return; // Block all other inputs when chatting
+        this.emit("chatInput", { key: e.key, shiftKey: e.shiftKey });
+        return;
       }
 
       this.syncMovementSuppression();
 
-      if (callbacks.isQuestCompletedModalOpen?.()) {
+      if (queries.isQuestCompletedModalOpen?.()) {
         if (eventCode === "Escape" || eventCode === "Space" || eventCode === "Enter") {
           e.preventDefault();
-          callbacks.onDismissQuestCompletedModal?.();
+          this.emit("dismissQuestCompletedModal");
         }
         return;
       }
 
-      // Check if fullscreen map is open
-      const isFullscreenMapOpen = callbacks.isFullscreenMapOpen?.() ?? false;
+      const isFullscreenMapOpen = queries.isFullscreenMapOpen?.() ?? false;
 
-      // Allow M key to toggle map even when map is open
       if (eventCode === "KeyM") {
-        callbacks.onToggleMap?.();
+        this.emit("toggleMap");
         return;
       }
 
-      // Check if merchant panel is open
-      const isMerchantPanelOpen = callbacks.isMerchantPanelOpen?.() ?? false;
-      const isCraftingPanelOpen = callbacks.isCraftingPanelOpen?.() ?? false;
-      const isBankOpen = callbacks.isBankOpen?.() ?? false;
-      const isNpcDialogueOpen = callbacks.isNpcDialogueOpen?.() ?? false;
+      const isMerchantPanelOpen = queries.isMerchantPanelOpen?.() ?? false;
+      const isCraftingPanelOpen = queries.isCraftingPanelOpen?.() ?? false;
+      const isBankOpen = queries.isBankOpen?.() ?? false;
+      const isNpcDialogueOpen = queries.isNpcDialogueOpen?.() ?? false;
 
-      const isInventoryScreenOpen = callbacks.isInventoryScreenOpen?.() ?? false;
+      const isInventoryScreenOpen = queries.isInventoryScreenOpen?.() ?? false;
 
-      // Block all inputs if fullscreen map is open (except Escape)
       if (isFullscreenMapOpen) {
         if (eventCode === "Escape") {
-          callbacks.onToggleMap?.(); // Close map with Escape
+          this.emit("toggleMap");
         }
-        return; // Block all other inputs when map is open
+        return;
       }
 
       if (isInventoryScreenOpen) {
         let handledInventoryHotkey = true;
         if (eventCode === "Escape") {
-          callbacks.onToggleInventoryScreen?.();
+          this.emit("toggleInventoryScreen");
         } else if (eventCode === "KeyI") {
-          const tab = callbacks.getInventoryActiveTab?.() ?? "inventory";
+          const tab = queries.getInventoryActiveTab?.() ?? "inventory";
           if (tab === "inventory") {
-            callbacks.onToggleInventoryScreen?.();
+            this.emit("toggleInventoryScreen");
           } else {
-            callbacks.onInventoryPanelFocusTab?.("inventory");
+            this.emit("inventoryPanelFocusTab", { tab: "inventory" });
           }
         } else if (eventCode === "KeyC") {
-          const tab = callbacks.getInventoryActiveTab?.() ?? "inventory";
+          const tab = queries.getInventoryActiveTab?.() ?? "inventory";
           if (tab === "character") {
-            callbacks.onToggleInventoryScreen?.();
+            this.emit("toggleInventoryScreen");
           } else {
-            callbacks.onInventoryPanelFocusTab?.("character");
+            this.emit("inventoryPanelFocusTab", { tab: "character" });
           }
         } else if (eventCode === "KeyK") {
-          const tab = callbacks.getInventoryActiveTab?.() ?? "inventory";
+          const tab = queries.getInventoryActiveTab?.() ?? "inventory";
           if (tab === "abilities") {
-            callbacks.onToggleInventoryScreen?.();
+            this.emit("toggleInventoryScreen");
           } else {
-            callbacks.onInventoryPanelFocusTab?.("abilities");
+            this.emit("inventoryPanelFocusTab", { tab: "abilities" });
           }
         } else if (eventCode === "KeyP") {
-          const tab = callbacks.getInventoryActiveTab?.() ?? "inventory";
+          const tab = queries.getInventoryActiveTab?.() ?? "inventory";
           if (tab === "professions") {
-            callbacks.onToggleInventoryScreen?.();
+            this.emit("toggleInventoryScreen");
           } else {
-            callbacks.onInventoryPanelFocusTab?.("professions");
+            this.emit("inventoryPanelFocusTab", { tab: "professions" });
           }
         } else if (eventCode === "KeyQ") {
-          const tab = callbacks.getInventoryActiveTab?.() ?? "inventory";
+          const tab = queries.getInventoryActiveTab?.() ?? "inventory";
           if (tab === "quests") {
-            callbacks.onToggleInventoryScreen?.();
+            this.emit("toggleInventoryScreen");
           } else {
-            callbacks.onInventoryPanelFocusTab?.("quests");
+            this.emit("inventoryPanelFocusTab", { tab: "quests" });
           }
         } else {
           handledInventoryHotkey = false;
@@ -375,45 +366,39 @@ export class InputManager {
       }
 
       if (eventCode === "KeyI") {
-        callbacks.onToggleInventoryScreen?.();
+        this.emit("toggleInventoryScreen");
         return;
       }
 
       if (eventCode === "KeyC") {
-        callbacks.onInventoryPanelFocusTab?.("character");
+        this.emit("inventoryPanelFocusTab", { tab: "character" });
         return;
       }
       if (eventCode === "KeyK") {
-        callbacks.onInventoryPanelFocusTab?.("abilities");
+        this.emit("inventoryPanelFocusTab", { tab: "abilities" });
         return;
       }
       if (eventCode === "KeyP") {
-        callbacks.onInventoryPanelFocusTab?.("professions");
+        this.emit("inventoryPanelFocusTab", { tab: "professions" });
         return;
       }
       if (eventCode === "KeyQ") {
-        callbacks.onInventoryPanelFocusTab?.("quests");
+        this.emit("inventoryPanelFocusTab", { tab: "quests" });
         return;
       }
 
-      // Handle merchant panel inputs - only allow Escape and E to close
       if (isMerchantPanelOpen) {
-        // Only allow Escape or E keys to close the menu
         if (eventCode === "Escape" || eventCode === "KeyE") {
-          if (callbacks.onMerchantKeyDown) {
-            // Convert event code to a format the panel understands
-            const key = eventCode === "Escape" ? "Escape" : "e";
-            callbacks.onMerchantKeyDown(key);
-          }
+          const key = eventCode === "Escape" ? "Escape" : "e";
+          this.emit("merchantKeyDown", { key });
         }
-        // Block all other inputs when merchant panel is open
         return;
       }
 
       if (isCraftingPanelOpen) {
         if (eventCode === "Escape" || eventCode === "KeyE") {
           const key = eventCode === "Escape" ? "Escape" : "e";
-          callbacks.onCraftingPanelKeyDown?.(key);
+          this.emit("craftingPanelKeyDown", { key });
         }
         return;
       }
@@ -422,73 +407,75 @@ export class InputManager {
         return;
       }
 
-      // Normal game input handling - use physical key codes for WASD
+      // Normal game input handling
       switch (eventCode) {
         case "KeyH":
           this.quickHeal();
           break;
         case "KeyW":
-          callbacks.onUp?.(this.inputs);
+          this.inputs.dy = -1;
+          this.inputs.facing = Direction.Up;
           this.noteWasdCombatRollDoubleTap(eventCode, Direction.Up, e.timeStamp, e.repeat);
           break;
         case "KeyS":
-          callbacks.onDown?.(this.inputs);
+          this.inputs.dy = 1;
+          this.inputs.facing = Direction.Down;
           this.noteWasdCombatRollDoubleTap(eventCode, Direction.Down, e.timeStamp, e.repeat);
           break;
         case "KeyA":
-          callbacks.onLeft?.(this.inputs);
+          this.inputs.dx = -1;
+          this.inputs.facing = Direction.Left;
           this.noteWasdCombatRollDoubleTap(eventCode, Direction.Left, e.timeStamp, e.repeat);
           break;
         case "KeyD":
-          callbacks.onRight?.(this.inputs);
+          this.inputs.dx = 1;
+          this.inputs.facing = Direction.Right;
           this.noteWasdCombatRollDoubleTap(eventCode, Direction.Right, e.timeStamp, e.repeat);
           break;
         case "ArrowUp":
-          callbacks.onUp?.(this.inputs);
+          this.inputs.dy = -1;
+          this.inputs.facing = Direction.Up;
           break;
         case "ArrowDown":
-          callbacks.onDown?.(this.inputs);
+          this.inputs.dy = 1;
+          this.inputs.facing = Direction.Down;
           break;
         case "ArrowLeft":
-          callbacks.onLeft?.(this.inputs);
+          this.inputs.dx = -1;
+          this.inputs.facing = Direction.Left;
           break;
         case "ArrowRight":
-          callbacks.onRight?.(this.inputs);
+          this.inputs.dx = 1;
+          this.inputs.facing = Direction.Right;
           break;
         case "KeyJ":
-          callbacks.onToggleQuestJournal?.();
+          this.emit("toggleQuestJournal");
           break;
         case "KeyE":
-          callbacks.onInteractStart?.();
+          this.emit("interactStart");
           break;
-        case "Digit1": {
-          callbacks.onSelectWeaponLoadout?.(0);
+        case "Digit1":
+          this.emit("selectWeaponLoadout", { loadout: 0 });
           break;
-        }
-        case "Digit2": {
-          callbacks.onSelectWeaponLoadout?.(1);
+        case "Digit2":
+          this.emit("selectWeaponLoadout", { loadout: 1 });
           break;
-        }
-        case "Digit3": {
-          callbacks.onSelectWeaponLoadout?.(2);
+        case "Digit3":
+          this.emit("selectWeaponLoadout", { loadout: 2 });
           break;
-        }
-        case "Digit4": {
-          callbacks.onUseLoadoutConsumable?.(0);
+        case "Digit4":
+          this.emit("useLoadoutConsumable", { which: 0 });
           break;
-        }
-        case "Digit5": {
-          callbacks.onUseLoadoutConsumable?.(1);
+        case "Digit5":
+          this.emit("useLoadoutConsumable", { which: 1 });
           break;
-        }
-        case "KeyR": {
-          callbacks.onReloadWeapon?.();
+        case "KeyR":
+          this.emit("reloadWeapon");
           break;
-        }
         case "KeyG": {
           if (this.currentInventorySlot === FISTS_INVENTORY_SENTINEL) break;
           const currentSlot = this.currentInventorySlot - 1;
-          callbacks.onDropItem?.(currentSlot);
+          this.emit("dropItem", { slot: currentSlot });
           break;
         }
         case "KeyX": {
@@ -496,7 +483,7 @@ export class InputManager {
           const splitSlot = this.currentInventorySlot - 1;
           if (splitSlot < 0) break;
 
-          const inventory = callbacks.getInventory?.();
+          const inventory = queries.getInventory?.();
           if (!inventory) break;
 
           const item = inventory[splitSlot];
@@ -508,12 +495,12 @@ export class InputManager {
           const dropAmount = Math.floor(count / 2);
           if (dropAmount <= 0) break;
 
-          callbacks.onDropItem?.(splitSlot, dropAmount);
+          this.emit("dropItem", { slot: splitSlot, amount: dropAmount });
           break;
         }
         case "Space":
-          e.preventDefault(); // Prevent page scrolling
-          if (callbacks.isNpcDialogueOpen?.()) {
+          e.preventDefault();
+          if (queries.isNpcDialogueOpen?.()) {
             break;
           }
           this.triggerFire();
@@ -527,14 +514,14 @@ export class InputManager {
           this.inputs.sneak = true;
           break;
         case "KeyN":
-          callbacks.onToggleMute?.();
+          this.emit("toggleMute");
           break;
         case "Tab":
-          e.preventDefault(); // Prevent tab from changing focus
-          callbacks.onShowPlayerList?.();
+          e.preventDefault();
+          this.emit("showPlayerList");
           break;
         case "Escape":
-          callbacks.onEscape?.();
+          this.emit("escape");
           break;
       }
 
@@ -542,7 +529,6 @@ export class InputManager {
     };
 
     this.boundKeyupHandler = (e: KeyboardEvent) => {
-      // Ignore inputs when user is typing in a form element
       const target = e.target as HTMLElement;
       if (target.tagName === "INPUT" || target.tagName === "TEXTAREA" || target.isContentEditable) {
         return;
@@ -553,29 +539,22 @@ export class InputManager {
 
       this.syncMovementSuppression();
 
-      // Check if merchant panel is open - block all inputs
-      const isMerchantPanelOpen = callbacks.isMerchantPanelOpen?.() ?? false;
-      const isCraftingPanelOpen = callbacks.isCraftingPanelOpen?.() ?? false;
+      const isMerchantPanelOpen = queries.isMerchantPanelOpen?.() ?? false;
+      const isCraftingPanelOpen = queries.isCraftingPanelOpen?.() ?? false;
 
-      // Block all keyup events when merchant panel is open
       if (isMerchantPanelOpen || isCraftingPanelOpen) {
-        return; // Block all keyup events when a blocking panel is open
-      }
-
-      // Check if this key was consumed by merchant panel during keydown
-      if (this.merchantPanelConsumedKeys.has(eventKey)) {
-        this.merchantPanelConsumedKeys.delete(eventKey);
-        return; // Block this keyup event since it was consumed by merchant panel
-      }
-
-      if (callbacks.isQuestCompletedModalOpen?.()) {
         return;
       }
 
-      const isFullscreenMapOpen = callbacks.isFullscreenMapOpen?.() ?? false;
-      const isInventoryScreenOpen = callbacks.isInventoryScreenOpen?.() ?? false;
+      if (this.merchantPanelConsumedKeys.has(eventKey)) {
+        this.merchantPanelConsumedKeys.delete(eventKey);
+        return;
+      }
 
-      // Use physical key codes for WASD and other action keys
+      if (queries.isQuestCompletedModalOpen?.()) {
+        return;
+      }
+
       switch (eventCode) {
         case "KeyW":
           this.inputs.dy = this.inputs.dy === -1 ? 0 : this.inputs.dy;
@@ -602,10 +581,10 @@ export class InputManager {
           this.inputs.dx = this.inputs.dx === 1 ? 0 : this.inputs.dx;
           break;
         case "KeyE":
-          callbacks.onInteractEnd?.();
+          this.emit("interactEnd");
           break;
         case "Space":
-          if (callbacks.isNpcDialogueOpen?.()) {
+          if (queries.isNpcDialogueOpen?.()) {
             break;
           }
           this.releaseFire();
@@ -619,8 +598,8 @@ export class InputManager {
           this.inputs.sneak = false;
           break;
         case "Tab":
-          e.preventDefault(); // Prevent tab from changing focus
-          callbacks.onHidePlayerList?.();
+          e.preventDefault();
+          this.emit("hidePlayerList");
           break;
       }
 
@@ -629,7 +608,7 @@ export class InputManager {
 
     this.boundFocusHandler = () => {
       this.clearInputs();
-      this.callbacks.onInteractEnd?.();
+      this.emit("interactEnd");
     };
 
     // Add event listeners
@@ -717,8 +696,8 @@ export class InputManager {
     }
 
     this.currentInventorySlot = slot;
-    this.callbacks.onSelectInventorySlot?.(slot);
-    this.callbacks.onInventorySlotChanged?.(slot);
+    this.emit("selectInventorySlot", { slot });
+    this.emit("inventorySlotChanged", { slot });
   }
 
   /**
@@ -736,7 +715,7 @@ export class InputManager {
     }
 
     this.currentInventorySlot = slot;
-    this.callbacks.onInventorySlotChanged?.(slot);
+    this.emit("inventorySlotChanged", { slot });
   }
 
   getCurrentInventorySlot(): number {
@@ -836,7 +815,7 @@ export class InputManager {
     // Canvas dimensions are also in canvas pixels (1:1 mapping)
 
     // Get the center of the canvas
-    const logicalCenterX = this.callbacks.getCameraCenterScreenX?.(canvasWidth) ?? canvasWidth / 2;
+    const logicalCenterX = this.queries.getCameraCenterScreenX?.(canvasWidth) ?? canvasWidth / 2;
     const logicalCenterY = canvasHeight / 2;
 
     // Mouse position is already in logical pixels (1:1 mapping)
@@ -861,6 +840,28 @@ export class InputManager {
       angle: Math.atan2(dy, dx),
       distance: dist,
     };
+  }
+
+  // --- Typed event emitter ---
+
+  on<K extends keyof InputEventMap>(event: K, handler: InputEventHandler<K>): void {
+    if (!this.eventListeners.has(event)) this.eventListeners.set(event, new Set());
+    this.eventListeners.get(event)!.add(handler);
+  }
+
+  off<K extends keyof InputEventMap>(event: K, handler: InputEventHandler<K>): void {
+    this.eventListeners.get(event)?.delete(handler);
+  }
+
+  private emit<K extends keyof InputEventMap>(
+    event: K,
+    ...args: InputEventMap[K] extends void ? [] : [InputEventMap[K]]
+  ): void {
+    const handlers = this.eventListeners.get(event);
+    if (!handlers) return;
+    for (const fn of handlers) {
+      (fn as Function)(...args);
+    }
   }
 
   /**

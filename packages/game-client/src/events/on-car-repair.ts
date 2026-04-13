@@ -13,5 +13,5 @@ export const onCarRepair = (context: ClientEventContext, event: CarRepairEvent) 
   if (!car || !car.hasExt(ClientPositionable)) return;
 
   const carPosition = car.getExt(ClientPositionable).getCenterPosition();
-  context.gameClient.getSoundManager().playPositionalSound(SOUND_TYPES_TO_MP3.REPAIR, carPosition);
+  context.gameClient.playPositionalSound(SOUND_TYPES_TO_MP3.REPAIR, carPosition);
 };

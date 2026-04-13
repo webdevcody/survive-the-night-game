@@ -9,7 +9,5 @@ export const onCraft = (context: ClientEventContext, event: CraftEvent) => {
   if (!player || !player.hasExt(ClientPositionable)) return;
 
   const playerPosition = player.getExt(ClientPositionable).getCenterPosition();
-  context.gameClient
-    .getSoundManager()
-    .playPositionalSound(SOUND_TYPES_TO_MP3.CRAFT, playerPosition);
+  context.gameClient.playPositionalSound(SOUND_TYPES_TO_MP3.CRAFT, playerPosition);
 };

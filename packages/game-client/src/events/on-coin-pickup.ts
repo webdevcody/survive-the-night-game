@@ -9,7 +9,5 @@ export const onCoinPickup = (context: ClientEventContext, event: CoinPickupEvent
   if (!coin) return;
 
   const coinPosition = coin.getExt(ClientPositionable).getCenterPosition();
-  context.gameClient
-    .getSoundManager()
-    .playPositionalSound(SOUND_TYPES_TO_MP3.COIN_PICKUP, coinPosition);
+  context.gameClient.playPositionalSound(SOUND_TYPES_TO_MP3.COIN_PICKUP, coinPosition);
 };

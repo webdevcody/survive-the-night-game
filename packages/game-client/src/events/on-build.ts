@@ -11,6 +11,6 @@ export const onBuild = (context: ClientEventContext, event: BuildEvent) => {
 
   // Only play sound if it's a valid sound type
   if (soundType && Object.values(SOUND_TYPES_TO_MP3).includes(soundType as any)) {
-    context.gameClient.getSoundManager().playPositionalSound(soundType, position);
+    context.gameClient.playPositionalSound(soundType, position);
   }
 };

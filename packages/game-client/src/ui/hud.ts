@@ -109,6 +109,23 @@ const HUD_SETTINGS = {
   },
 };
 
+export interface HudOptions {
+  mapManager: MapManager;
+  soundManager: SoundManager;
+  assetManager: AssetManager;
+  inputManager: InputManager;
+  getMyPlayer: () => PlayerClient | null;
+  sendDropItem: (slotIndex: number, amount?: number) => void;
+  sendSwapItems: (fromSlotIndex: number, toSlotIndex: number) => void;
+  sendSwapBagAndEquipment: (bagIndex: number, equipSlot: EquipmentSlotKey) => void;
+  sendProgressionAllocations: (kind: "ability" | "character", allocations: Record<string, number>) => void;
+  sendSelectWeaponLoadout: (loadout: 0 | 1 | 2) => void;
+  sendSetWeaponLoadoutSlot: (slot: 0 | 1 | 2 | 3 | 4, bagIndex: number) => void;
+  sendBankAction: (data: BankActionEventData) => void;
+  sendConsumeItem: (itemType: string | null) => void;
+  sendDropFromEquipment: (equipSlot: EquipmentSlotKey) => void;
+}
+
 export class Hud {
   private showInstructions: boolean = false;
   private mapManager: MapManager;
@@ -144,30 +161,23 @@ export class Hud {
   private activeQuestTrackerPanel: ActiveQuestTrackerPanel;
   private onDialogueQuestChoice: ((action: "accept" | "decline") => void) | null = null;
 
-  constructor(
-    mapManager: MapManager,
-    soundManager: SoundManager,
-    assetManager: AssetManager,
-    inputManager: InputManager,
-    sendDropItem: (slotIndex: number) => void,
-    sendSwapItems: (fromSlotIndex: number, toSlotIndex: number) => void,
-    sendSwapBagAndEquipment: (bagIndex: number, equipSlot: EquipmentSlotKey) => void,
-    sendProgressionAllocations: (
-      kind: "ability" | "character",
-      allocations: Record<string, number>,
-    ) => void,
-    getMyPlayer: () => PlayerClient | null,
-    sendSelectWeaponLoadout: (loadout: 0 | 1 | 2) => void,
-    sendSetWeaponLoadoutSlot: (slot: 0 | 1 | 2 | 3 | 4, bagIndex: number) => void,
-    sendBankAction: (data: BankActionEventData) => void,
-    sendConsumeItem: (itemType: string | null) => void,
-    sendDropFromEquipment: (equipSlot: EquipmentSlotKey) => void,
-  ) {
-    this.mapManager = mapManager;
-    this.soundManager = soundManager;
-    this.assetManager = assetManager;
-    this.inputManager = inputManager;
-    this.getMyPlayer = getMyPlayer;
+  constructor(options: HudOptions) {
+    this.mapManager = options.mapManager;
+    this.soundManager = options.soundManager;
+    this.assetManager = options.assetManager;
+    this.inputManager = options.inputManager;
+    this.getMyPlayer = options.getMyPlayer;
+    const {
+      sendDropItem,
+      sendSwapItems,
+      sendSwapBagAndEquipment,
+      sendProgressionAllocations,
+      sendSelectWeaponLoadout,
+      sendSetWeaponLoadoutSlot,
+      sendBankAction,
+      sendConsumeItem,
+      sendDropFromEquipment,
+    } = options;
     this.chatWidget = new ChatWidget();
     this.questJournalPanel = new QuestJournalPanel();
     this.dialoguePanel = new DialoguePanel(this.assetManager);
@@ -219,7 +229,7 @@ export class Hud {
       getInventory,
       getEquipment,
       getBank,
-      getMyPlayer: getMyPlayer,
+      getMyPlayer: this.getMyPlayer,
       sendDropItem,
       sendSwapItems,
       sendSwapBagAndEquipment,
@@ -238,13 +248,13 @@ export class Hud {
     this.loadoutStrip = new LoadoutStrip(
       this.assetManager,
       getInventory,
-      getMyPlayer,
+      this.getMyPlayer,
       sendSelectWeaponLoadout,
       (slot) => sendSetWeaponLoadoutSlot(slot, 0),
     );
 
-    this.minimap = new Minimap(mapManager);
-    this.fullscreenMap = new FullScreenMap(mapManager);
+    this.minimap = new Minimap(this.mapManager);
+    this.fullscreenMap = new FullScreenMap(this.mapManager);
     this.leaderboard = new Leaderboard();
 
     // Initialize bottom right panels

@@ -9,7 +9,5 @@ export const onPlayerDroppedItem = (context: ClientEventContext, event: PlayerDr
   if (!player || !(player instanceof PlayerClient)) return;
 
   const playerPosition = player.getCenterPosition();
-  context.gameClient
-    .getSoundManager()
-    .playPositionalSound(SOUND_TYPES_TO_MP3.DROP_ITEM, playerPosition);
+  context.gameClient.playPositionalSound(SOUND_TYPES_TO_MP3.DROP_ITEM, playerPosition);
 };

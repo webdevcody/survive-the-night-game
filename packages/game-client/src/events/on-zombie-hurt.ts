@@ -9,7 +9,5 @@ export const onZombieHurt = (context: ClientEventContext, event: ZombieHurtEvent
   if (!zombie) return;
 
   const zombiePosition = (zombie as unknown as ZombieClient).getCenterPosition();
-  context.gameClient
-    .getSoundManager()
-    .playPositionalSound(SOUND_TYPES_TO_MP3.ZOMBIE_HURT, zombiePosition);
+  context.gameClient.playPositionalSound(SOUND_TYPES_TO_MP3.ZOMBIE_HURT, zombiePosition);
 };

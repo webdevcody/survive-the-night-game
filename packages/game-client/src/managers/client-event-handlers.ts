@@ -1,6 +1,5 @@
 import { GameClient } from "@/client";
 import { getPlayer } from "@/util/get-player";
-import { distance } from "@shared/util/physics";
 import Vector2 from "@shared/util/vector2";
 import PoolManager from "@shared/util/pool-manager";
 
@@ -89,9 +88,7 @@ export class ClientEventHandlers {
 
     // Allow world aim updates while inventory is open, but not while hovering its UI.
     if (!isFullscreenMapOpen && !isCraftingPanelOpen && !isHoveringInventory) {
-      // Access inputManager through private method - will need to expose getter
-      const inputManager = (this.gameClient as any).inputManager;
-      inputManager.updateMousePosition(x, y);
+      this.gameClient.getInputManager().updateMousePosition(x, y);
 
       const renderer = this.gameClient.getRenderer();
       if (renderer) {
@@ -123,7 +120,7 @@ export class ClientEventHandlers {
 
     const gameState = this.gameClient.getGameState();
     const hud = this.gameClient.getHud();
-    const merchantBuyPanel = (this.gameClient as any).merchantBuyPanel;
+    const merchantBuyPanel = this.gameClient.getMerchantBuyPanel();
     const craftingPanel = this.gameClient.getCraftingPanel();
     const placementManager = this.gameClient.getPlacementManager();
     const isFullscreenMapOpen = hud?.isFullscreenMapOpen() ?? false;
@@ -162,8 +159,7 @@ export class ClientEventHandlers {
         return;
       }
 
-      const inputManager = (this.gameClient as any).inputManager;
-      inputManager.triggerFire();
+      this.gameClient.getInputManager().triggerFire();
     }
   }
 
@@ -190,8 +186,7 @@ export class ClientEventHandlers {
 
     // Block weapon release when fullscreen map is open
     if (!isFullscreenMapOpen && !isCraftingPanelOpen && !isNpcDialogueOpen) {
-      const inputManager = (this.gameClient as any).inputManager;
-      inputManager.releaseFire();
+      this.gameClient.getInputManager().releaseFire();
     }
   }
 
@@ -199,7 +194,7 @@ export class ClientEventHandlers {
    * Convert canvas coordinates to world coordinates
    */
   private canvasToWorld(canvasX: number, canvasY: number, canvas: HTMLCanvasElement): Vector2 {
-    const cameraManager = (this.gameClient as any).cameraManager;
+    const cameraManager = this.gameClient.getCameraManager();
     const cameraScale = cameraManager.getScale();
     const cameraPos = cameraManager.getPosition();
     const centerX = canvas.width / 2;

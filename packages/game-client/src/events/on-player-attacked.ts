@@ -44,9 +44,7 @@ export const onPlayerAttacked = (context: ClientEventContext, event: PlayerAttac
 
   // Play weapon sound if configured
   if (weaponConfig?.sound) {
-    context.gameClient
-      .getSoundManager()
-      .playPositionalSound(weaponConfig.sound as any, playerPosition);
+    context.gameClient.playPositionalSound(weaponConfig.sound as any, playerPosition);
   }
 
   // Show swipe animation for melee weapons

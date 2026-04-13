@@ -76,7 +76,7 @@ export function resolveQuestNavigationTarget(
     return null;
   }
 
-  const def = gameState.getQuestDefinition?.(questId);
+  const def = gameState.questDataSource?.getQuestDefinition(questId);
   const need = getTrackedQuestNavigationNeed(st, def, questId);
 
   const TILE = getConfig().world.TILE_SIZE;

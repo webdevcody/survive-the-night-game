@@ -1,5 +1,10 @@
 import { ClientEntityBase } from "@/extensions/client-entity";
 import type { WorldMapQuestDefinition } from "@shared/map/quest-types";
+
+export interface QuestDataSource {
+  getQuestStepCount(questId: string): number | undefined;
+  getQuestDefinition(questId: string): WorldMapQuestDefinition | undefined;
+}
 import type { QuestNavigationTarget } from "@shared/quests/quest-navigation-need";
 import { EntityType } from "@shared/types/entity";
 import { GameModeId } from "@shared/events/server-sent/events/game-started-event";
@@ -21,9 +26,8 @@ export class GameState {
   public openDialogueNpcId?: number | null = null;
   /** 0-based index into current NPC dialogue lines (client-only). */
   public dialogueLineIndex = 0;
-  /** Set by client each tick for dialogue branches that need authored quest step counts. */
-  public getQuestStepCount?: (questId: string) => number | undefined;
-  public getQuestDefinition?: (questId: string) => WorldMapQuestDefinition | undefined;
+  /** Quest data lookups — set once after map load, not per-frame. */
+  public questDataSource: QuestDataSource | null = null;
   /**
    * Filled each tick from the first active quest (same as the on-screen tracker).
    * Used by HUD edge arrows, map pins, and NPC highlight markers.

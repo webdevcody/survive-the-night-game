@@ -8,7 +8,8 @@ export const onBossSummon = (context: ClientEventContext, event: BossSummonEvent
   summons.forEach((summon) => {
     const particle = new SummonParticle(
       context.gameClient.getImageLoader(),
-      context.gameClient.getSoundManager()
+      context.gameClient.getSoundManager(),
+      context.gameClient.getMyPlayer()?.getCenterPosition()
     );
     particle.setPosition(new Vector2(summon.x, summon.y));
     particle.onInitialized();

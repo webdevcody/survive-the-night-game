@@ -14,12 +14,8 @@ export const onZombieAttacked = (context: ClientEventContext, event: ZombieAttac
   const zombiePosition = zombieClient.getCenterPosition().clone();
 
   // Play attack sounds
-  context.gameClient
-    .getSoundManager()
-    .playPositionalSound(SOUND_TYPES_TO_MP3.ZOMBIE_ATTACKED, zombiePosition);
-  context.gameClient
-    .getSoundManager()
-    .playPositionalSound(SOUND_TYPES_TO_MP3.ZOMBIE_HURT, zombiePosition);
+  context.gameClient.playPositionalSound(SOUND_TYPES_TO_MP3.ZOMBIE_ATTACKED, zombiePosition);
+  context.gameClient.playPositionalSound(SOUND_TYPES_TO_MP3.ZOMBIE_HURT, zombiePosition);
 
   // Add swing animation
   const velocity = zombieClient.getVelocity();

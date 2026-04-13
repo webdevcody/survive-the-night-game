@@ -12,5 +12,5 @@ export const onLoot = (context: ClientEventContext, event: LootEvent) => {
   if (!positionable) return;
 
   const lootPosition = positionable.getCenterPosition();
-  context.gameClient.getSoundManager().playPositionalSound(SOUND_TYPES_TO_MP3.LOOT, lootPosition);
+  context.gameClient.playPositionalSound(SOUND_TYPES_TO_MP3.LOOT, lootPosition);
 };

@@ -10,7 +10,5 @@ export const onPlayerDeath = (context: ClientEventContext, event: PlayerDeathEve
   if (!player || !(player instanceof PlayerClient)) return;
 
   const playerPosition = player.getCenterPosition();
-  context.gameClient
-    .getSoundManager()
-    .playPositionalSound(SOUND_TYPES_TO_MP3.PLAYER_DEATH, playerPosition);
+  context.gameClient.playPositionalSound(SOUND_TYPES_TO_MP3.PLAYER_DEATH, playerPosition);
 };

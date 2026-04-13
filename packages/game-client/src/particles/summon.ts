@@ -2,22 +2,26 @@ import { Particle, ParticleTypes } from "./particle";
 import { GameState } from "@/state";
 import { SOUND_TYPES_TO_MP3, SoundManager } from "@/managers/sound-manager";
 import { ImageLoader } from "@/managers/asset";
+import Vector2 from "@shared/util/vector2";
 
 export class SummonParticle extends Particle {
   private readonly durationMs = 650;
   private readonly createdAt: number;
   private readonly soundManager: SoundManager;
+  private readonly listenerPosition?: Vector2;
 
-  constructor(imageLoader: ImageLoader, soundManager: SoundManager) {
+  constructor(imageLoader: ImageLoader, soundManager: SoundManager, listenerPosition?: Vector2) {
     super(ParticleTypes.SUMMON, imageLoader);
     this.soundManager = soundManager;
+    this.listenerPosition = listenerPosition;
     this.createdAt = Date.now();
   }
 
   onInitialized(): void {
     this.soundManager.playPositionalSound(
       SOUND_TYPES_TO_MP3.ZOMBIE_HURT,
-      this.getPosition()
+      this.getPosition(),
+      this.listenerPosition
     );
   }
 
