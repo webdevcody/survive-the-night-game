@@ -1,5 +1,26 @@
 [
   {
+    "version": "0.34.0",
+    "date": "2026-04-13",
+    "changes": {
+      "features": [
+        "Added auction house flow with server handlers, shared events, website API routes, Drizzle migrations, and merchant pricing helpers",
+        "Added in-world signs with editable text, sign modals on the client, and persistence-oriented item state",
+        "Persist map exploration across sessions with server sync; minimap and full map fog respect player line-of-sight instead of distant lights",
+        "Strategic map POIs (crafting stations, fires, merchants, dialogue NPCs) stay visible on explored terrain with clearer markers and name-based NPC labels",
+        "Added split-inventory-stack client event and handling for cleaner inventory management",
+        "Added duplicate-active-session detection and game-session lease plumbing to reduce conflicting logins",
+        "Biome editor spawner tab supports place mode with typeahead and map click placement"
+      ],
+      "bugFixes": [],
+      "refactoring": [
+        "Tuned Position2 wire scale and related map marker / world data alignment",
+        "Removed legacy leaderboard surface in favor of newer HUD panels where applicable"
+      ],
+      "performance": []
+    }
+  },
+  {
     "version": "0.33.0",
     "date": "2026-04-12",
     "changes": {
