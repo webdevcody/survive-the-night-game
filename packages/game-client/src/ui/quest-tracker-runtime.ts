@@ -8,20 +8,31 @@ import {
   type QuestTrackerNpcCandidate,
 } from "./quest-tracker-target";
 
+function getQuestTrackerCompletionIds(
+  dialogueSessions: readonly { completeQuestId?: string | null }[],
+): string[] {
+  const ids = new Set<string>();
+  for (const session of dialogueSessions) {
+    const questId = String(session.completeQuestId ?? "").trim();
+    if (!questId) continue;
+    ids.add(questId);
+  }
+  return [...ids];
+}
+
 export function collectQuestTrackerNpcCandidates(gameState: GameState): QuestTrackerNpcCandidate[] {
   const out: QuestTrackerNpcCandidate[] = [];
   for (const entity of getEntitiesByType(gameState, "dialogue_survivor_npc")) {
     if (!(entity instanceof DialogueSurvivorNpcClient)) continue;
     if (!entity.hasExt(ClientPositionable)) continue;
     const position = entity.getExt(ClientPositionable).getCenterPosition();
-    const session = entity.getActiveDialogueSession(gameState);
-    const completesQuestId = String(session.completeQuestId ?? "").trim() || undefined;
+    const completesQuestIds = getQuestTrackerCompletionIds(entity.dialogueSessions);
     out.push({
       displayName: entity.displayName.trim(),
       npcKey: entity.npcKey.trim(),
       worldX: position.x,
       worldY: position.y,
-      ...(completesQuestId ? { completesQuestId } : {}),
+      ...(completesQuestIds.length > 0 ? { completesQuestIds } : {}),
     });
   }
   return out;

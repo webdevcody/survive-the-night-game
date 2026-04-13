@@ -88,6 +88,36 @@ describe("quest-tracker-target", () => {
     });
   });
 
+  it("resolves turn-in target when the quest is completed by a non-active dialogue branch", () => {
+    const quests = [
+      {
+        id: "intro",
+        title: "Scout",
+        steps: [{ type: "pickup_item", itemType: "bandage" }],
+        rewards: [],
+        startRewards: [],
+      },
+    ];
+    const progress = activeProgress(1);
+    const candidates: QuestTrackerNpcCandidate[] = [
+      {
+        displayName: "Quartermaster",
+        npcKey: "7,8",
+        worldX: 160,
+        worldY: 144,
+        completesQuestIds: ["other_quest", "intro"],
+      },
+    ];
+
+    const resolution = resolvePrimaryQuestTracker(quests, progress, 0, 0, candidates);
+    expect(resolution?.target).toMatchObject({
+      kind: "turn_in",
+      label: "Quartermaster",
+      tileRow: 7,
+      tileCol: 8,
+    });
+  });
+
   it("computes heading and tile distance", () => {
     expect(getQuestTrackerHeading(0, 0, 64, -64)).toMatchObject({
       cardinal: "NE",

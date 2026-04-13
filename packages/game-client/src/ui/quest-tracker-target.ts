@@ -12,6 +12,7 @@ export interface QuestTrackerNpcCandidate {
   worldX: number;
   worldY: number;
   completesQuestId?: string;
+  completesQuestIds?: readonly string[];
 }
 
 export interface QuestTrackerTarget {
@@ -180,7 +181,12 @@ function resolveTurnInTarget(
   playerWorldX: number,
   playerWorldY: number,
 ): QuestTrackerTarget | null {
-  const turnInCandidates = candidates.filter((candidate) => candidate.completesQuestId === questId);
+  const turnInCandidates = candidates.filter((candidate) => {
+    if (candidate.completesQuestId === questId) {
+      return true;
+    }
+    return candidate.completesQuestIds?.includes(questId) === true;
+  });
   const nearest = chooseClosestNpcCandidate(turnInCandidates, playerWorldX, playerWorldY);
   if (!nearest) return null;
   return createTarget(
