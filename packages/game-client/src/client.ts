@@ -30,7 +30,6 @@ import {
   ClientPlaceable,
   ClientInteractive,
 } from "@/extensions";
-import { CampsiteFireClient } from "@/entities/environment/campsite-fire";
 import { ParticleManager } from "./managers/particles";
 import { SmokeParticleManager } from "./managers/smoke-particles";
 import { PredictionManager } from "./managers/prediction";
@@ -104,9 +103,6 @@ export class GameClient {
   private interactionManager: InteractionManager;
   private eventHandlers: ClientEventHandlers;
   private dialogueManager: DialogueManager;
-
-  // Cached campsite fire reference (there should only ever be one)
-  private campsiteFire: CampsiteFireClient | null = null;
 
   private canvas: HTMLCanvasElement;
 
@@ -992,18 +988,16 @@ export class GameClient {
    * The sound is always playing on loop, we just adjust the volume
    */
   private updateCampfireSounds(): void {
-    // Find campsite fire if we don't have a cached reference or if it's been removed
-    if (!this.campsiteFire || !this.gameState.hasEntity(this.campsiteFire.getId())) {
-      this.campsiteFire =
-        (getEntitiesByType(this.gameState, Entities.CAMPFIRE)[0] as CampsiteFireClient) || null;
+    const fires = getEntitiesByType(this.gameState, Entities.CAMPSITE_FIRE);
+    const positions: Vector2[] = [];
+    for (const entity of fires) {
+      if (entity.hasExt(ClientPositionable)) {
+        positions.push(entity.getExt(ClientPositionable).getPosition());
+      }
     }
-
-    // Update sound volume if campsite fire exists
-    if (this.campsiteFire && this.campsiteFire.hasExt(ClientPositionable)) {
-      const position = this.campsiteFire.getExt(ClientPositionable).getPosition();
-      this.soundManager.updateCampfireSoundVolume(position, this.getListenerPosition());
+    if (positions.length > 0) {
+      this.soundManager.updateCampfireSoundVolume(positions, this.getListenerPosition());
     } else {
-      // No campsite fire exists, stop the sound
       this.soundManager.stopCampfireSound();
     }
   }

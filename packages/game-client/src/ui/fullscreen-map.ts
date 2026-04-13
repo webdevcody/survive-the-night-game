@@ -13,7 +13,7 @@ import { getEntityMapColor, isHostileMapMarker } from "@/util/entity-map-colors"
 import { distance } from "@shared/util/physics";
 import {
   calculateLightSources,
-  getCampsiteMapMarkerWorldPosition,
+  getCampsiteMapMarkerWorldPositions,
   isPositionVisible,
   type LightSource,
 } from "./utils/map-rendering-utils";
@@ -30,20 +30,24 @@ import {
 } from "./rpg-hud-theme";
 
 const FULLSCREEN_MAP_SETTINGS = {
-  padding: 180, // Padding from screen edges
+  /** Inset from canvas edges for the outer frame (0 = true edge-to-edge map). */
+  edgeInset: 0,
+  /** Right margin for zoom controls from the canvas edge. */
+  controlsEdgeMargin: 16,
   background: RPG_PANEL_GRADIENT_BOTTOM,
   borderColor: RPG_BORDER_GOLD,
-  borderWidth: 3,
-  headerHeight: 60,
-  headerFont: "bold 28px Georgia",
+  borderWidth: 2,
+  headerHeight: 44,
+  headerFont: "bold 22px Georgia",
   headerColor: RPG_TITLE_CREAM,
-  buttonFont: "24px Arial",
+  buttonFont: "20px Arial",
   buttonColor: RPG_BODY_TEXT,
   buttonHoverColor: "rgba(255, 223, 155, 0.15)",
   buttonPadding: 12,
   buttonGap: 10,
-  zoomLevels: [0.3, 0.5, 0.7, 1.0, 1.5, 2.0], // Available zoom levels
-  defaultZoomIndex: 0, // Start at 0.7 (index 2)
+  zoomLevels: [0.1, 0.3, 0.5, 0.7, 1.0, 1.5, 2.0],
+  /** Default 0.3 — same as before 10% min zoom was added */
+  defaultZoomIndex: 1,
   colors: {
     ...MINIMAP_SETTINGS.colors,
   },
@@ -145,34 +149,19 @@ export class FullScreenMap {
 
     const canvasWidth = ctx.canvas.width;
     const canvasHeight = ctx.canvas.height;
+    const inset = settings.edgeInset;
 
-    // Calculate map area dimensions
-    const mapX = settings.padding;
-    const mapY = settings.padding + settings.headerHeight;
-    const mapWidth = canvasWidth - settings.padding * 2;
-    const mapHeight = canvasHeight - settings.padding * 2 - settings.headerHeight;
+    // Full-screen map panel (header is drawn on top afterward)
+    const outerX = inset;
+    const outerY = inset;
+    const outerW = canvasWidth - inset * 2;
+    const outerH = canvasHeight - inset * 2;
+    const mapX = outerX;
+    const mapY = outerY;
+    const mapWidth = outerW;
+    const mapHeight = outerH;
 
-    // Draw header background (RPG panel style)
-    fillRpgPanelGradient(ctx, settings.padding, settings.padding, mapWidth, settings.headerHeight);
-    drawRpgTopAccentBar(ctx, settings.padding, settings.padding, mapWidth, 4);
-
-    // Draw header border
-    ctx.strokeStyle = settings.borderColor;
-    ctx.lineWidth = settings.borderWidth;
-    ctx.strokeRect(settings.padding, settings.padding, mapWidth, settings.headerHeight);
-
-    // Draw header text
-    ctx.fillStyle = settings.headerColor;
-    ctx.font = settings.headerFont;
-    ctx.textAlign = "left";
-    ctx.textBaseline = "middle";
-    const headerY = settings.padding + settings.headerHeight / 2;
-    ctx.fillText("Map (Press M to close)", settings.padding + 20, headerY);
-
-    // Draw zoom controls in header (right side)
-    this.renderZoomControls(ctx, canvasWidth, headerY);
-
-    // Draw map background
+    // Map fills the entire outer panel; header overlays the top strip
     fillRpgPanelGradient(ctx, mapX, mapY, mapWidth, mapHeight);
 
     // Clip to map area
@@ -290,12 +279,26 @@ export class FullScreenMap {
     ctx.lineWidth = settings.borderWidth;
     ctx.strokeRect(mapX, mapY, mapWidth, mapHeight);
 
+    // Compact header over the top of the map (full-width overlay)
+    fillRpgPanelGradient(ctx, outerX, outerY, outerW, settings.headerHeight);
+    drawRpgTopAccentBar(ctx, outerX, outerY, outerW, 3);
+    ctx.strokeStyle = settings.borderColor;
+    ctx.lineWidth = settings.borderWidth;
+    ctx.strokeRect(outerX, outerY, outerW, settings.headerHeight);
+    ctx.fillStyle = settings.headerColor;
+    ctx.font = settings.headerFont;
+    ctx.textAlign = "left";
+    ctx.textBaseline = "middle";
+    const headerY = outerY + settings.headerHeight / 2;
+    ctx.fillText("Map (Press M to close)", outerX + 16, headerY);
+    this.renderZoomControls(ctx, outerX + outerW, headerY);
+
     ctx.restore();
   }
 
   private renderZoomControls(
     ctx: CanvasRenderingContext2D,
-    canvasWidth: number,
+    panelRight: number,
     headerY: number
   ): void {
     const settings = FULLSCREEN_MAP_SETTINGS;
@@ -305,8 +308,7 @@ export class FullScreenMap {
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
 
-    // Calculate the rightmost position for the zoom controls (inside the map bounds)
-    const mapRight = canvasWidth - settings.padding;
+    const mapRight = panelRight - settings.controlsEdgeMargin;
     const buttonSize = 30;
 
     // Zoom level text
@@ -779,49 +781,54 @@ export class FullScreenMap {
     biomes.forEach(({ name, position, config }) => {
       if (!position) return;
 
-      const worldPos =
+      const worldPositions =
         name === "campsite"
-          ? getCampsiteMapMarkerWorldPosition(gameState, position, BIOME_SIZE, TILE_SIZE)
-          : {
-              x: (position.x * BIOME_SIZE + BIOME_SIZE / 2) * TILE_SIZE,
-              y: (position.y * BIOME_SIZE + BIOME_SIZE / 2) * TILE_SIZE,
-            };
-      const biomeWorldX = worldPos.x;
-      const biomeWorldY = worldPos.y;
+          ? getCampsiteMapMarkerWorldPositions(gameState, position, BIOME_SIZE, TILE_SIZE)
+          : [
+              {
+                x: (position.x * BIOME_SIZE + BIOME_SIZE / 2) * TILE_SIZE,
+                y: (position.y * BIOME_SIZE + BIOME_SIZE / 2) * TILE_SIZE,
+              },
+            ];
 
-      if (
-        !this.mapManager.isTileExplored(
-          Math.floor(biomeWorldX / TILE_SIZE),
-          Math.floor(biomeWorldY / TILE_SIZE),
-        )
-      ) {
-        return;
+      for (const worldPos of worldPositions) {
+        const biomeWorldX = worldPos.x;
+        const biomeWorldY = worldPos.y;
+
+        if (
+          !this.mapManager.isTileExplored(
+            Math.floor(biomeWorldX / TILE_SIZE),
+            Math.floor(biomeWorldY / TILE_SIZE),
+          )
+        ) {
+          continue;
+        }
+
+        const relativeX = biomeWorldX - playerPos.x;
+        const relativeY = biomeWorldY - playerPos.y;
+
+        const biomeX = centerX + relativeX * zoom;
+        const biomeY = centerY + relativeY * zoom;
+
+        // Only draw if within map bounds
+        const indicatorSize = 28 * Math.max(0.5, zoom);
+        ctx.fillStyle = config.color;
+        ctx.beginPath();
+        ctx.arc(biomeX, biomeY, indicatorSize / 2, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.strokeStyle = "white";
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.arc(biomeX, biomeY, indicatorSize / 2, 0, Math.PI * 2);
+        ctx.stroke();
+
+        ctx.fillStyle = config.iconColor;
+        ctx.font = `bold ${Math.round(18 * Math.max(0.5, zoom))}px Arial`;
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        ctx.fillText(config.label, biomeX, biomeY);
       }
-
-      const relativeX = biomeWorldX - playerPos.x;
-      const relativeY = biomeWorldY - playerPos.y;
-
-      const biomeX = centerX + relativeX * zoom;
-      const biomeY = centerY + relativeY * zoom;
-
-      // Only draw if within map bounds
-      const indicatorSize = 28 * Math.max(0.5, zoom);
-      ctx.fillStyle = config.color;
-      ctx.beginPath();
-      ctx.arc(biomeX, biomeY, indicatorSize / 2, 0, Math.PI * 2);
-      ctx.fill();
-
-      ctx.strokeStyle = "white";
-      ctx.lineWidth = 2;
-      ctx.beginPath();
-      ctx.arc(biomeX, biomeY, indicatorSize / 2, 0, Math.PI * 2);
-      ctx.stroke();
-
-      ctx.fillStyle = config.iconColor;
-      ctx.font = `bold ${Math.round(18 * Math.max(0.5, zoom))}px Arial`;
-      ctx.textAlign = "center";
-      ctx.textBaseline = "middle";
-      ctx.fillText(config.label, biomeX, biomeY);
     });
   }
 
@@ -856,10 +863,9 @@ export class FullScreenMap {
     if (!this.isVisible) return false;
 
     const settings = FULLSCREEN_MAP_SETTINGS;
-    const mapX = settings.padding;
-    const mapY = settings.padding + settings.headerHeight;
+    const mapY = settings.edgeInset + settings.headerHeight;
 
-    // Check if click is within map bounds (excluding header)
+    // Check if click is within map bounds (excluding header overlay)
     // We need canvas dimensions, but we can estimate or store them
     // For now, we'll check if it's below the header
     if (y < mapY) return false; // Above map area (header)

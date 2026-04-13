@@ -62,25 +62,41 @@ export function calculateLightSources(
 }
 
 /**
- * World position for the campsite (H) map marker: the actual campfire entity when present,
- * otherwise the biome cell center (fire is offset inside the biome, so center is wrong).
+ * World positions for campsite (H) map markers: one per `campsite_fire` entity when present,
+ * otherwise a single fallback at the biome cell center.
  */
+export function getCampsiteMapMarkerWorldPositions(
+  gameState: GameState,
+  campsiteBiomeCell: { x: number; y: number },
+  biomeSize: number,
+  tileSize: number
+): Array<{ x: number; y: number }> {
+  const fires = getEntitiesByType(gameState, "campsite_fire");
+  const out: Array<{ x: number; y: number }> = [];
+  for (const entity of fires) {
+    if (entity.hasExt(ClientPositionable)) {
+      const c = entity.getExt(ClientPositionable).getCenterPosition();
+      out.push({ x: c.x, y: c.y });
+    }
+  }
+  if (out.length > 0) {
+    return out;
+  }
+  return [
+    {
+      x: (campsiteBiomeCell.x * biomeSize + biomeSize / 2) * tileSize,
+      y: (campsiteBiomeCell.y * biomeSize + biomeSize / 2) * tileSize,
+    },
+  ];
+}
+
 export function getCampsiteMapMarkerWorldPosition(
   gameState: GameState,
   campsiteBiomeCell: { x: number; y: number },
   biomeSize: number,
   tileSize: number
 ): { x: number; y: number } {
-  const fires = getEntitiesByType(gameState, "campsite_fire");
-  for (const entity of fires) {
-    if (entity.hasExt(ClientPositionable)) {
-      return entity.getExt(ClientPositionable).getCenterPosition();
-    }
-  }
-  return {
-    x: (campsiteBiomeCell.x * biomeSize + biomeSize / 2) * tileSize,
-    y: (campsiteBiomeCell.y * biomeSize + biomeSize / 2) * tileSize,
-  };
+  return getCampsiteMapMarkerWorldPositions(gameState, campsiteBiomeCell, biomeSize, tileSize)[0];
 }
 
 export function isPositionVisible(worldPos: Vector2, lightSources: LightSource[]): boolean {

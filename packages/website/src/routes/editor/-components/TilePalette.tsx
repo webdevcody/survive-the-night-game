@@ -523,8 +523,8 @@ export function TilePalette({ onTileSelect }: TilePaletteProps) {
         <div className="border border-gray-500 bg-gray-800 py-2 px-2">
           <p className="mb-2 text-[10px] leading-tight text-gray-400">
             Overlays on the ground layer (saved in world-map{" "}
-            <code className="text-gray-300">decals</code>). The Campsite decal is where the
-            campfire entity spawns in-game. Light places invisible torch-equivalent illumination
+            <code className="text-gray-300">decals</code>). Each Campsite decal spawns a campfire
+            entity in-game. Light places invisible torch-equivalent illumination
             only (no sprite). <span className="text-sky-200">Message</span> spawns a small sign
             players can read in-game (text below). Player, zombies, and item markers live on the
             spawns layer — use right‑click on the map or the NPCs / Spawners sidebar tabs. Select a

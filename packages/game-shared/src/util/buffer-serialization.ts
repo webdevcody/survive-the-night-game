@@ -1,6 +1,8 @@
 import Vector2 from "./vector2";
 import PoolManager from "./pool-manager";
 
+const POSITION2_SCALE = 4;
+
 /**
  * BufferWriter - Server-side buffer writing utility
  * Writes data to Node.js Buffer with automatic growth
@@ -126,19 +128,15 @@ export class BufferWriter {
   }
 
   /**
-   * Write a Position2 (2 Int16 values with 10x scaling)
-   * Range: -3000.0 to 3000.0 (scaled to -30000 to 30000)
-   * Precision: 0.1 units
+   * Write a Position2 (2 Int16 values with reduced scaling)
+   * Range: about -8192.0 to 8191.75 world units
+   * Precision: 0.25 units
    * Size: 4 bytes (vs 16 bytes for Vector2)
    */
   writePosition2(value: Vector2): void {
-    // Scale by 10: -3000.0 to 3000.0 becomes -30000 to 30000
-    // Clamp to int16 range: -32768 to 32767
-    const scale = 10;
-    const scaledX = Math.round(value.x * scale);
-    const scaledY = Math.round(value.y * scale);
+    const scaledX = Math.round(value.x * POSITION2_SCALE);
+    const scaledY = Math.round(value.y * POSITION2_SCALE);
 
-    // Clamp to int16 range
     const clampedX = Math.max(-32768, Math.min(32767, scaledX));
     const clampedY = Math.max(-32768, Math.min(32767, scaledY));
 
@@ -335,9 +333,8 @@ export class MonitoredBufferWriter {
   writePosition2(value: Vector2, label?: string): void {
     if (label) {
       // Log each component separately
-      const scale = 10;
-      const scaledX = Math.round(value.x * scale);
-      const scaledY = Math.round(value.y * scale);
+      const scaledX = Math.round(value.x * POSITION2_SCALE);
+      const scaledY = Math.round(value.y * POSITION2_SCALE);
       const clampedX = Math.max(-32768, Math.min(32767, scaledX));
       const clampedY = Math.max(-32768, Math.min(32767, scaledY));
       this.writeInt16(clampedX, label ? `${label}.X` : undefined);
@@ -558,15 +555,14 @@ export class BufferReader {
   }
 
   /**
-   * Read a Position2 (2 Int16 values with 10x scaling)
+   * Read a Position2 (2 Int16 values with reduced scaling)
    * Converts scaled integers back to float values
-   * Range: -3000.0 to 3000.0 (from -30000 to 30000)
-   * Precision: 0.1 units
+   * Range: about -8192.0 to 8191.75 world units
+   * Precision: 0.25 units
    */
   readPosition2(): Vector2 {
-    const scale = 10;
-    const x = this.readInt16() / scale;
-    const y = this.readInt16() / scale;
+    const x = this.readInt16() / POSITION2_SCALE;
+    const y = this.readInt16() / POSITION2_SCALE;
     return PoolManager.getInstance().vector2.claim(x, y);
   }
 
@@ -734,19 +730,15 @@ export class ArrayBufferWriter {
   }
 
   /**
-   * Write a Position2 (2 Int16 values with 10x scaling)
-   * Range: -3000.0 to 3000.0 (scaled to -30000 to 30000)
-   * Precision: 0.1 units
+   * Write a Position2 (2 Int16 values with reduced scaling)
+   * Range: about -8192.0 to 8191.75 world units
+   * Precision: 0.25 units
    * Size: 4 bytes (vs 16 bytes for Vector2)
    */
   writePosition2(value: { x: number; y: number }): void {
-    // Scale by 10: -3000.0 to 3000.0 becomes -30000 to 30000
-    // Clamp to int16 range: -32768 to 32767
-    const scale = 10;
-    const scaledX = Math.round(value.x * scale);
-    const scaledY = Math.round(value.y * scale);
+    const scaledX = Math.round(value.x * POSITION2_SCALE);
+    const scaledY = Math.round(value.y * POSITION2_SCALE);
 
-    // Clamp to int16 range
     const clampedX = Math.max(-32768, Math.min(32767, scaledX));
     const clampedY = Math.max(-32768, Math.min(32767, scaledY));
 

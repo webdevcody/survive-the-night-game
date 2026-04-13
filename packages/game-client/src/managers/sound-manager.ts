@@ -458,7 +458,10 @@ export class SoundManager {
    * Update campfire sound volume based on distance from player
    * The sound is always playing on loop, we just adjust the volume
    */
-  public updateCampfireSoundVolume(position: Vector2 | null, listenerPosition: Vector2 | null): void {
+  public updateCampfireSoundVolume(
+    position: Vector2 | null | Vector2[],
+    listenerPosition: Vector2 | null
+  ): void {
     if (this.isMuted || DEBUG_DISABLE_SOUNDS) {
       // If muted, stop the sound
       if (this.campfireSound) {
@@ -468,7 +471,13 @@ export class SoundManager {
       return;
     }
 
-    if (!listenerPosition || !position) {
+    const positions = Array.isArray(position)
+      ? position
+      : position
+        ? [position]
+        : [];
+
+    if (!listenerPosition || positions.length === 0) {
       // No listener or no campsite fire position, stop the sound
       if (this.campfireSound) {
         this.campfireSound.pause();
@@ -506,10 +515,15 @@ export class SoundManager {
       });
     }
 
-    // Calculate volume based on distance
-    const dist = distance(listenerPosition, position);
     const baseVolume = this.getBaseVolume(SOUND_TYPES_TO_MP3.CAMPFIRE);
-    const volume = baseVolume * linearFalloff(dist, 200) * DEBUG_VOLUME_REDUCTION;
+    let volume = 0;
+    for (const p of positions) {
+      const dist = distance(listenerPosition, p);
+      const v = baseVolume * linearFalloff(dist, 200) * DEBUG_VOLUME_REDUCTION;
+      if (v > volume) {
+        volume = v;
+      }
+    }
 
     this.campfireSound.volume = volume;
 

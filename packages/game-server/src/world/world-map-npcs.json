@@ -89,26 +89,6 @@
     },
     {
       "row": 126,
-      "col": 119,
-      "dialogueSessions": [
-        {
-          "when": {
-            "type": "always"
-          },
-          "lines": [
-            "Stay still, let me bandage you up."
-          ],
-          "healOnDialogueComplete": true
-        }
-      ],
-      "lines": [
-        "Stay still, let me bandage you up."
-      ],
-      "message": "Stay still, let me bandage you up.",
-      "name": "Grace"
-    },
-    {
-      "row": 126,
       "col": 122,
       "dialogueSessions": [
         {

@@ -135,7 +135,7 @@ export class MapManager implements IMapManager {
   /** Biome grid coords of the campsite (procedural: center; authored: from decals layer). */
   private campsiteBiomeX = Math.floor(MAP_SIZE / 2);
   private campsiteBiomeY = Math.floor(MAP_SIZE / 2);
-  /** Tile coords (col, row) for the campsite fire entity — same as first campsite decal when authored. */
+  /** Tile coords (col, row) for fallback campsite fire when authored map has no campsite decals. */
   private campsiteFireTileX = Math.floor(MAP_SIZE / 2) * BIOME_SIZE + CAMPSITE_CAMPFIRE_LOCAL_X;
   private campsiteFireTileY = Math.floor(MAP_SIZE / 2) * BIOME_SIZE + CAMPSITE_CAMPFIRE_LOCAL_Y;
   /** True after a valid authored `world-map.json` was applied this `generateMap()`. */
@@ -415,7 +415,7 @@ export class MapManager implements IMapManager {
       const authored = tryLoadWorldMapFile();
       if (authored && this.applyAuthoredWorldMap(authored)) {
         this.resolveCampsiteBiomeFromDecals();
-        this.spawnCampsiteFireAtTile(this.campsiteFireTileX, this.campsiteFireTileY);
+        this.spawnCampsiteFiresFromDecalsLayer();
       } else {
         this.campsiteBiomeX = Math.floor(MAP_SIZE / 2);
         this.campsiteBiomeY = Math.floor(MAP_SIZE / 2);
@@ -478,8 +478,9 @@ export class MapManager implements IMapManager {
   }
 
   /**
-   * Sets campsite biome from the first campsite decal (tile scan order).
-   * Fire is placed on that decal tile; if no decal, uses map-center biome and legacy local (8,7).
+   * Sets "primary" campsite biome from the first campsite decal (tile scan order) for legacy
+   * logic (zombie waves, scavenge tables, isNearCampsite). Campfire entities spawn on every
+   * campsite decal via {@link spawnCampsiteFiresFromDecalsLayer}.
    */
   private resolveCampsiteBiomeFromDecals(): void {
     const n = BIOME_SIZE * MAP_SIZE;
@@ -502,6 +503,26 @@ export class MapManager implements IMapManager {
     this.campsiteBiomeY = by;
     this.campsiteFireTileX = fireTx;
     this.campsiteFireTileY = fireTy;
+  }
+
+  /**
+   * Spawns a {@link CampsiteFire} on each campsite decal. If there are none, spawns one at the
+   * fallback tile from {@link resolveCampsiteBiomeFromDecals} (map center + legacy local).
+   */
+  private spawnCampsiteFiresFromDecalsLayer(): void {
+    const n = BIOME_SIZE * MAP_SIZE;
+    let any = false;
+    for (let y = 0; y < n; y++) {
+      for (let x = 0; x < n; x++) {
+        if (this.decalsLayer[y]?.[x] === DECAL_TILE_CAMPSITE) {
+          this.spawnCampsiteFireAtTile(x, y);
+          any = true;
+        }
+      }
+    }
+    if (!any) {
+      this.spawnCampsiteFireAtTile(this.campsiteFireTileX, this.campsiteFireTileY);
+    }
   }
 
   /** When world-map.json exists and is valid, copy into layers. */

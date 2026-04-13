@@ -18,7 +18,7 @@ import { ClientEntityBase } from "@/extensions/client-entity";
 import { distance } from "@shared/util/physics";
 import {
   calculateLightSources,
-  getCampsiteMapMarkerWorldPosition,
+  getCampsiteMapMarkerWorldPositions,
   isPositionVisible,
 } from "./utils/map-rendering-utils";
 import { isHostileMapMarker } from "@/util/entity-map-colors";
@@ -483,65 +483,70 @@ export class Minimap {
     biomes.forEach(({ name, position, config }) => {
       if (!position) return;
 
-      const worldPos =
+      const worldPositions =
         name === "campsite"
-          ? getCampsiteMapMarkerWorldPosition(gameState, position, BIOME_SIZE, TILE_SIZE)
-          : {
-              x: (position.x * BIOME_SIZE + BIOME_SIZE / 2) * TILE_SIZE,
-              y: (position.y * BIOME_SIZE + BIOME_SIZE / 2) * TILE_SIZE,
-            };
-      const biomeWorldX = worldPos.x;
-      const biomeWorldY = worldPos.y;
+          ? getCampsiteMapMarkerWorldPositions(gameState, position, BIOME_SIZE, TILE_SIZE)
+          : [
+              {
+                x: (position.x * BIOME_SIZE + BIOME_SIZE / 2) * TILE_SIZE,
+                y: (position.y * BIOME_SIZE + BIOME_SIZE / 2) * TILE_SIZE,
+              },
+            ];
 
-      if (
-        !this.mapManager.isTileExplored(
-          Math.floor(biomeWorldX / TILE_SIZE),
-          Math.floor(biomeWorldY / TILE_SIZE),
-        )
-      ) {
-        return;
+      for (const worldPos of worldPositions) {
+        const biomeWorldX = worldPos.x;
+        const biomeWorldY = worldPos.y;
+
+        if (
+          !this.mapManager.isTileExplored(
+            Math.floor(biomeWorldX / TILE_SIZE),
+            Math.floor(biomeWorldY / TILE_SIZE),
+          )
+        ) {
+          continue;
+        }
+
+        // Calculate relative position to player
+        const relativeX = biomeWorldX - playerPos.x;
+        const relativeY = biomeWorldY - playerPos.y;
+
+        // Project biome to minimap; clamp to inner circle edge when off-screen (same inset as before)
+        const angle = Math.atan2(relativeY, relativeX);
+        const minimapBiomeX = centerX + relativeX * settings.scale;
+        const minimapBiomeY = centerY + relativeY * settings.scale;
+        const edgeInset = 20;
+        const maxDist = radius - edgeInset;
+        const distFromCenter = Math.hypot(minimapBiomeX - centerX, minimapBiomeY - centerY);
+        const drawX =
+          distFromCenter <= maxDist
+            ? minimapBiomeX
+            : centerX + Math.cos(angle) * maxDist;
+        const drawY =
+          distFromCenter <= maxDist
+            ? minimapBiomeY
+            : centerY + Math.sin(angle) * maxDist;
+
+        // Draw the indicator circle
+        const indicatorSize = 18;
+        ctx.fillStyle = config.color;
+        ctx.beginPath();
+        ctx.arc(drawX, drawY, indicatorSize / 2, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Draw white border
+        ctx.strokeStyle = "white";
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.arc(drawX, drawY, indicatorSize / 2, 0, Math.PI * 2);
+        ctx.stroke();
+
+        // Draw the label text
+        ctx.fillStyle = config.iconColor;
+        ctx.font = "bold 12px Arial";
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        ctx.fillText(config.label, drawX, drawY);
       }
-
-      // Calculate relative position to player
-      const relativeX = biomeWorldX - playerPos.x;
-      const relativeY = biomeWorldY - playerPos.y;
-
-      // Project biome to minimap; clamp to inner circle edge when off-screen (same inset as before)
-      const angle = Math.atan2(relativeY, relativeX);
-      const minimapBiomeX = centerX + relativeX * settings.scale;
-      const minimapBiomeY = centerY + relativeY * settings.scale;
-      const edgeInset = 20;
-      const maxDist = radius - edgeInset;
-      const distFromCenter = Math.hypot(minimapBiomeX - centerX, minimapBiomeY - centerY);
-      const drawX =
-        distFromCenter <= maxDist
-          ? minimapBiomeX
-          : centerX + Math.cos(angle) * maxDist;
-      const drawY =
-        distFromCenter <= maxDist
-          ? minimapBiomeY
-          : centerY + Math.sin(angle) * maxDist;
-
-      // Draw the indicator circle
-      const indicatorSize = 18;
-      ctx.fillStyle = config.color;
-      ctx.beginPath();
-      ctx.arc(drawX, drawY, indicatorSize / 2, 0, Math.PI * 2);
-      ctx.fill();
-
-      // Draw white border
-      ctx.strokeStyle = "white";
-      ctx.lineWidth = 2;
-      ctx.beginPath();
-      ctx.arc(drawX, drawY, indicatorSize / 2, 0, Math.PI * 2);
-      ctx.stroke();
-
-      // Draw the label text
-      ctx.fillStyle = config.iconColor;
-      ctx.font = "bold 12px Arial";
-      ctx.textAlign = "center";
-      ctx.textBaseline = "middle";
-      ctx.fillText(config.label, drawX, drawY);
     });
   }
 
