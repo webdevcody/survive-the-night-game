@@ -87,7 +87,12 @@ import { UserSessionCache } from "@/services/user-session-cache";
 import { GAME_SERVER_API_KEY, WEBSITE_API_URL } from "@/config/env";
 import { weaponRegistry } from "@shared/entities/weapon-registry";
 import { itemMatchesConsumableLoadout } from "@shared/util/consumable-loadout";
-import { itemMatchesLoadoutRow, resolveAttackWeaponFromLoadout } from "@shared/util/weapon-loadout";
+import {
+  getWeaponLoadoutSlotKey,
+  itemMatchesLoadoutRow,
+  resolveAttackWeaponFromLoadout,
+  weaponLoadoutSlotKeyToIndex,
+} from "@shared/util/weapon-loadout";
 import {
   emptyProfessionProgress,
   getProfessionLevelFromXp,
@@ -872,12 +877,20 @@ export class Player extends Entity {
     }
   }
 
+  /**
+   * @param restrictToUnlockedGridSlotsOnly When true, only indices below {@link getUnlockedVisibleBagSlotCount}
+   *   are considered (player-visible bag cells). Use for unequip/split so items are not parked in loadout-reserved tail.
+   */
   private findEmptyVisibleBagIndex(
     preferEnd: boolean,
     excludedBagIndices: readonly number[] = [],
     excludedLoadoutKeys: readonly PlayerLoadoutKey[] = [],
+    restrictToUnlockedGridSlotsOnly: boolean = false,
   ): number | null {
     const max = this.getAccessibleInventorySlotCount();
+    const loopEnd = restrictToUnlockedGridSlotsOnly
+      ? Math.min(max, this.getUnlockedVisibleBagSlotCount())
+      : max;
     const inv = this.getInventory();
     const excludedBags = new Set(excludedBagIndices);
     const excludedKeys = new Set(excludedLoadoutKeys);
@@ -896,7 +909,7 @@ export class Player extends Entity {
     };
 
     if (preferEnd) {
-      for (let i = max - 1; i >= 0; i--) {
+      for (let i = loopEnd - 1; i >= 0; i--) {
         if (excludedBags.has(i) || !isVisibleBagIndex(i) || inv[i] != null) {
           continue;
         }
@@ -905,7 +918,7 @@ export class Player extends Entity {
       return null;
     }
 
-    for (let i = 0; i < max; i++) {
+    for (let i = 0; i < loopEnd; i++) {
       if (excludedBags.has(i) || !isVisibleBagIndex(i) || inv[i] != null) {
         continue;
       }
@@ -934,7 +947,7 @@ export class Player extends Entity {
       return false;
     }
 
-    const targetBagIndex = this.findEmptyVisibleBagIndex(false, [clampedSlotIndex]);
+    const targetBagIndex = this.findEmptyVisibleBagIndex(false, [clampedSlotIndex], [], true);
     if (targetBagIndex == null) {
       return false;
     }
@@ -1213,12 +1226,9 @@ export class Player extends Entity {
   /**
    * Assign a bag slot to a weapon loadout (0 = clear). Validates item type per slot.
    * Same rules as SET_WEAPON_LOADOUT_SLOT from clients.
-   * When equipping, moves/swaps bag items so the clicked slot is cleared when possible:
-   * - empty loadout: move weapon to the last empty visible cell and point loadout there (source
-   *   cleared, keeping the visible bag packed from the front);
-   *   if the bag is full, only the loadout pointer is set (legacy).
-   * - loadout already set: swap clicked cell with the loadout's backing cell (ref unchanged).
-   * When clearing, move the hidden backing weapon to the earliest empty visible bag cell if one exists.
+   * When equipping, moves/swaps bag items so the clicked slot is cleared when possible.
+   * When clearing (bagIndex 0), the backing item is swapped into an empty **unlocked visible** bag cell;
+   * if none exists, the clear is rejected (no-op) so items are not stranded in loadout-reserved cells.
    */
   public assignWeaponLoadoutSlot(slot: number, bagIndex: number): void {
     const max = this.getAccessibleInventorySlotCount();
@@ -1241,10 +1251,11 @@ export class Player extends Entity {
     if (bagIndexClamped === 0) {
       const prevRef = this.serialized.get(key) as number;
       if (prevRef >= 1 && prevRef <= max) {
-        const emptyIdx0 = this.findEmptyVisibleBagIndex(false, [prevRef - 1], [key]);
-        if (emptyIdx0 !== null) {
-          invExt.swapBagSlotsDeferWeaponResync(prevRef - 1, emptyIdx0);
+        const emptyIdx0 = this.findEmptyVisibleBagIndex(false, [prevRef - 1], [key], true);
+        if (emptyIdx0 === null) {
+          return;
         }
+        invExt.swapBagSlotsDeferWeaponResync(prevRef - 1, emptyIdx0);
       }
       this.serialized.set(key, 0);
       this.applyWeaponLoadoutSelection();
@@ -1279,6 +1290,29 @@ export class Player extends Entity {
     this.sanitizeWeaponLoadouts();
   }
 
+  /**
+   * If a weapon enters the bag and its loadout row (primary / secondary / melee) is unset, assign
+   * that hotbar row and select it. Invoked from {@link Inventory.addItem} / {@link Inventory.setBagSlot}
+   * (locker/bank placements opt out via placement options on `Inventory`).
+   */
+  public tryAutoEquipPickedUpWeaponIfLoadoutRowEmpty(itemType: ItemType, bagIndex0: number): void {
+    const loadoutKey = getWeaponLoadoutSlotKey(itemType);
+    if (loadoutKey == null) return;
+    const row = weaponLoadoutSlotKeyToIndex(loadoutKey);
+    const key =
+      row === 0
+        ? "weaponLoadoutPrimary"
+        : row === 1
+          ? "weaponLoadoutSecondary"
+          : "weaponLoadoutMelee";
+    if (this.serialized.get(key) !== 0) return;
+    this.assignWeaponLoadoutSlot(row, bagIndex0 + 1);
+    const ref = this.serialized.get(key) as number;
+    if (ref >= 1) {
+      this.selectInventoryItem(ref);
+    }
+  }
+
   private assignConsumableLoadoutSlot(slot: 3 | 4, bagIndex: number): void {
     const max = this.getAccessibleInventorySlotCount();
     const bagIndexClamped = Math.max(0, Math.min(max, Math.floor(bagIndex)));
@@ -1289,10 +1323,11 @@ export class Player extends Entity {
     if (bagIndexClamped === 0) {
       const prevRef = this.serialized.get(key) as number;
       if (prevRef >= 1 && prevRef <= max) {
-        const emptyIdx0 = this.findEmptyVisibleBagIndex(false, [prevRef - 1], [key]);
-        if (emptyIdx0 !== null) {
-          invExt.swapBagSlotsDeferWeaponResync(prevRef - 1, emptyIdx0);
+        const emptyIdx0 = this.findEmptyVisibleBagIndex(false, [prevRef - 1], [key], true);
+        if (emptyIdx0 === null) {
+          return;
         }
+        invExt.swapBagSlotsDeferWeaponResync(prevRef - 1, emptyIdx0);
       }
       this.serialized.set(key, 0);
       return;

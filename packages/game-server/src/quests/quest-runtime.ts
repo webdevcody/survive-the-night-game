@@ -72,6 +72,7 @@ function applyRewardList(player: Player, rewards: QuestReward[]): void {
       case "item": {
         const inv = player.getExt(Inventory);
         if (!inv.isFull()) {
+          // New bag items: shared weapon hotbar auto-equip lives in Inventory.addItem.
           inv.addItem({
             itemType: r.itemType,
             state: r.count > 1 ? { count: r.count } : undefined,

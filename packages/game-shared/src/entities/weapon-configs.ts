@@ -10,7 +10,7 @@ export const WEAPON_CONFIGS: Record<string, WeaponConfig> = {
     stats: {
       damage: 1,
       pushDistance: 8,
-      cooldown: 1.45,
+      cooldown: 0.8,
       cameraShakeIntensity: 0.2,
     },
     assets: {
@@ -31,7 +31,7 @@ export const WEAPON_CONFIGS: Record<string, WeaponConfig> = {
     stats: {
       damage: 1,
       pushDistance: 12,
-      cooldown: 1.0,
+      cooldown: 0.5,
       cameraShakeIntensity: 0.35,
     },
     assets: {

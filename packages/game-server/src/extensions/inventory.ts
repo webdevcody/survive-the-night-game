@@ -44,6 +44,26 @@ type InventoryFields = {
   equipment: PlayerEquipmentState;
 };
 
+/**
+ * Options for {@link Inventory.addItem}, {@link Inventory.addOrMergeStack}, and {@link Inventory.setBagSlot}.
+ * Keeps locker vs world behavior explicit (locker: no auto-equip, new items only in pickup-visible cells).
+ */
+export type InventoryPlacementOptions = {
+  /**
+   * When false, skip assigning an empty weapon loadout row for this placement.
+   * @default true
+   */
+  autoEquipWeaponIfLoadoutEmpty?: boolean;
+  /**
+   * When set, {@link addItem} only uses the first empty cell with index strictly less than this value
+   * (e.g. {@link getPickupMaxSlots} for locker withdrawals). If no such cell exists, addItem is a no-op.
+   */
+  maxEmptySlotSearchExclusive?: number;
+};
+
+/** @inheritdoc InventoryPlacementOptions */
+export type SetBagSlotOptions = InventoryPlacementOptions;
+
 export default class Inventory extends ExtensionBase<InventoryFields> {
   public static readonly type = "inventory";
 
@@ -52,6 +72,17 @@ export default class Inventory extends ExtensionBase<InventoryFields> {
   private notifyPlayerWeaponLoadout(): void {
     const owner = this.self as { sanitizeWeaponLoadouts?: () => void };
     owner.sanitizeWeaponLoadouts?.();
+  }
+
+  /**
+   * Weapon hotbar auto-equip when an item lands in a bag cell. Invoked from {@link addItem} and
+   * {@link setBagSlot} unless {@link InventoryPlacementOptions.autoEquipWeaponIfLoadoutEmpty} is false.
+   */
+  private maybeAutoEquipNewWeaponInBagSlot(bagIndex0: number, item: InventoryItem): void {
+    const owner = this.self as {
+      tryAutoEquipPickedUpWeaponIfLoadoutRowEmpty?: (itemType: ItemType, bagIndex0: number) => void;
+    };
+    owner.tryAutoEquipPickedUpWeaponIfLoadoutRowEmpty?.(item.itemType, bagIndex0);
   }
 
   private compactPlayerLoadoutBackedItems(): void {
@@ -150,29 +181,41 @@ export default class Inventory extends ExtensionBase<InventoryFields> {
     return false;
   }
 
-  public addItem(item: InventoryItem): void {
-    if (this.isFull()) return;
+  /** @returns false if no eligible empty cell (see {@link InventoryPlacementOptions.maxEmptySlotSearchExclusive}). */
+  public addItem(item: InventoryItem, options?: InventoryPlacementOptions): boolean {
+    if (this.isFull()) {
+      return false;
+    }
 
     this.compactPlayerLoadoutBackedItems();
     const items = this.serialized.get("items");
     const maxSlots = this.getMaxSlots();
+    const searchCap = Math.min(
+      maxSlots,
+      options?.maxEmptySlotSearchExclusive ?? maxSlots,
+    );
     while (items.length < maxSlots) {
       items.push(null);
     }
 
-    // Find first empty slot (null/undefined) to fill
     const emptySlotIndex = items.findIndex(
-      (it: InventoryItem | null, index: number) => index < maxSlots && it == null
+      (it: InventoryItem | null, index: number) => index < searchCap && it == null
     );
-    if (emptySlotIndex !== -1) {
-      items[emptySlotIndex] = item;
+    if (emptySlotIndex === -1) {
+      return false;
     }
 
-    // Update serialized (array reference changes, so assign new array to trigger dirty)
+    items[emptySlotIndex] = item;
+
     this.serialized.set("items", [...items]);
-    // Explicitly mark dirty to ensure inventory changes are broadcast
     this.markDirty();
     this.notifyPlayerWeaponLoadout();
+
+    const allowAutoEquip =
+      options?.autoEquipWeaponIfLoadoutEmpty === undefined || options.autoEquipWeaponIfLoadoutEmpty;
+    if (allowAutoEquip) {
+      this.maybeAutoEquipNewWeaponInBagSlot(emptySlotIndex, item);
+    }
 
     this.broadcaster.broadcastEvent(
       new PlayerPickedUpItemEvent({
@@ -180,6 +223,7 @@ export default class Inventory extends ExtensionBase<InventoryFields> {
         itemType: item.itemType,
       })
     );
+    return true;
   }
 
   /**
@@ -199,7 +243,7 @@ export default class Inventory extends ExtensionBase<InventoryFields> {
    * Merge into an existing stack of the same type, or add a new slot.
    * When the bag is full, still succeeds if an existing stack can absorb the item (same as Carryable).
    */
-  public addOrMergeStack(item: InventoryItem): boolean {
+  public addOrMergeStack(item: InventoryItem, options?: InventoryPlacementOptions): boolean {
     const items = this.serialized.get("items");
     const addCount = item.state?.count ?? 1;
     const maxSlots = this.getMaxSlots();
@@ -231,8 +275,7 @@ export default class Inventory extends ExtensionBase<InventoryFields> {
       return false;
     }
 
-    this.addItem(item);
-    return true;
+    return this.addItem(item, options);
   }
 
   /**
@@ -407,7 +450,7 @@ export default class Inventory extends ExtensionBase<InventoryFields> {
   /**
    * Set a bag cell directly (e.g. bank withdraw). Keeps array length aligned with max slots.
    */
-  public setBagSlot(bagIndex: number, item: InventoryItem | null): void {
+  public setBagSlot(bagIndex: number, item: InventoryItem | null, options?: SetBagSlotOptions): void {
     const maxSlots = this.getMaxSlots();
     if (bagIndex < 0 || bagIndex >= maxSlots) {
       return;
@@ -420,6 +463,12 @@ export default class Inventory extends ExtensionBase<InventoryFields> {
     this.serialized.set("items", [...items]);
     this.markDirty();
     this.notifyPlayerWeaponLoadout();
+    const allowAutoEquip =
+      item != null &&
+      (options?.autoEquipWeaponIfLoadoutEmpty === undefined || options.autoEquipWeaponIfLoadoutEmpty);
+    if (allowAutoEquip) {
+      this.maybeAutoEquipNewWeaponInBagSlot(bagIndex, item);
+    }
   }
 
   public clearEquipmentSlot(slot: EquipmentSlotKey): void {

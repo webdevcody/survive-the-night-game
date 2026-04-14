@@ -41,7 +41,13 @@ import { serializeServerEvent } from "@shared/events/server-sent/server-event-se
 import { SessionValidator } from "@/services/session-validator";
 import { UserSessionCache } from "@/services/user-session-cache";
 import { KillTracker } from "@/services/kill-tracker";
-import { WEBSITE_API_URL, GAME_SERVER_API_KEY } from "@/config/env";
+import { WEBSITE_API_URL, GAME_SERVER_API_KEY, GAME_SERVER_ID } from "@/config/env";
+import {
+  clearServerSessionLeasesOnWebsite,
+  heartbeatGameServerRegistryOnWebsite,
+  isGameServerRegistryConfigured,
+  registerGameServerToWebsite,
+} from "@/services/game-server-registry-api";
 import type { PersistedPlayerProgress } from "@/services/player-progress-types";
 import {
   getPersistablePlayerLastTile,
@@ -92,11 +98,14 @@ export class ServerSocketManager implements Broadcaster {
     new Map();
   private leaseHeartbeatTimer: ReturnType<typeof setInterval> | null = null;
   private static readonly LEASE_HEARTBEAT_INTERVAL_MS = 45_000;
+  private registryHeartbeatTimer: ReturnType<typeof setInterval> | null = null;
+  private static readonly REGISTRY_HEARTBEAT_INTERVAL_MS = 30_000;
 
   constructor(port: number, gameServer: GameServer) {
     this.port = port;
-    this.gameServerInstanceId =
-      process.env.GAME_SERVER_INSTANCE_ID?.trim() || `${os.hostname()}:${port}:${process.pid}`;
+    this.gameServerInstanceId = /^\d+$/.test(GAME_SERVER_ID)
+      ? GAME_SERVER_ID
+      : process.env.GAME_SERVER_INSTANCE_ID?.trim() || `${os.hostname()}:${port}:${process.pid}`;
     this.bufferManager = new BufferManager();
 
     // uWebSockets owns the game port; this Node server only satisfies the shared adapter interface.
@@ -636,6 +645,10 @@ export class ServerSocketManager implements Broadcaster {
       clearInterval(this.leaseHeartbeatTimer);
       this.leaseHeartbeatTimer = null;
     }
+    if (this.registryHeartbeatTimer) {
+      clearInterval(this.registryHeartbeatTimer);
+      this.registryHeartbeatTimer = null;
+    }
     await Promise.all(tasks);
   }
 
@@ -714,6 +727,37 @@ export class ServerSocketManager implements Broadcaster {
 
   public listen(): void {
     this.io.listen(this.port, () => {});
+  }
+
+  /**
+   * Before accepting WebSockets: clear stale session leases for this stable server id (if configured),
+   * register in the website server list (if configured), and start registry heartbeats.
+   */
+  public async runPreListenWebsiteBootstrap(): Promise<void> {
+    if (GAME_SERVER_API_KEY && /^\d+$/.test(GAME_SERVER_ID)) {
+      try {
+        await clearServerSessionLeasesOnWebsite(this.gameServerInstanceId);
+      } catch (e) {
+        console.warn(
+          "[bootstrap] clear_server_leases failed (website may be down; start packages/website first):",
+          e instanceof Error ? e.message : e,
+        );
+      }
+    }
+
+    if (isGameServerRegistryConfigured()) {
+      await registerGameServerToWebsite(this.port);
+      this.ensureRegistryHeartbeatLoop();
+    }
+  }
+
+  private ensureRegistryHeartbeatLoop(): void {
+    if (this.registryHeartbeatTimer) {
+      return;
+    }
+    this.registryHeartbeatTimer = setInterval(() => {
+      void heartbeatGameServerRegistryOnWebsite(this.port);
+    }, ServerSocketManager.REGISTRY_HEARTBEAT_INTERVAL_MS);
   }
 
   private setupSocketListeners(socket: ISocketAdapter): void {

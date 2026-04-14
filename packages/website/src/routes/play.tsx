@@ -1,12 +1,26 @@
 import { useEffect, useRef, useState } from "react";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { PredictionConfigPanel } from "./play/-components/PredictionConfigPanel";
+import { WorldPickerPanel } from "./play/-components/WorldPickerPanel";
 import { SpawnPanel } from "./play/-components/SpawnPanel";
 import { Button } from "~/components/ui/button";
+import { measureGameServerHealthPingMs, SELECTED_GAME_SERVER_WS_URL_KEY } from "~/utils/game-server-connect";
 import { getGameAuthToken } from "~/fn/game-auth";
 import { requireSessionForPlayFn } from "~/fn/guards";
 import { authClient } from "~/lib/auth-client";
 type GameAuthPhase = "idle" | "loading" | "ok" | "missing";
+
+function parseWorldSearchParam(value: unknown): number | undefined {
+  if (value === undefined || value === null || value === "") {
+    return undefined;
+  }
+  const s = typeof value === "string" ? value : String(value);
+  const n = parseInt(s, 10);
+  if (!Number.isFinite(n) || n < 1) {
+    return undefined;
+  }
+  return n;
+}
 
 // Extend window type for game auth token
 declare global {
@@ -22,6 +36,10 @@ export const Route = createFileRoute("/play")({
   component: Play,
   validateSearch: (search: Record<string, unknown>) => ({
     error: typeof search.error === "string" ? search.error : undefined,
+    // `server` accepted for older bookmarks only; prefer `world`.
+    world: parseWorldSearchParam(
+      search.world !== undefined && search.world !== "" ? search.world : search.server,
+    ),
   }),
 });
 
@@ -39,7 +57,7 @@ export function meta() {
 // Client-only component that dynamically imports game client code
 function GameClientLoader() {
   const navigate = useNavigate();
-  const { error: playSearchError } = Route.useSearch();
+  const { error: playSearchError, world: bookmarkedWorldId } = Route.useSearch();
   const {
     data: session,
     isPending: sessionPending,
@@ -54,6 +72,13 @@ function GameClientLoader() {
   const [showSpawnPanel, setShowSpawnPanel] = useState(false);
   const [gameClient, setGameClient] = useState<any>(null);
   const [sceneLoadError, setSceneLoadError] = useState<string | null>(null);
+  const [serverRegistry, setServerRegistry] = useState<{
+    loaded: boolean;
+    servers: Array<{ id: number; displayName: string | null; publicWsUrl: string }>;
+  }>({ loaded: false, servers: [] });
+  const [serverPickResolved, setServerPickResolved] = useState(false);
+  const [serverPings, setServerPings] = useState<Record<number, number | null>>({});
+  const [bookmarkedWorldNotice, setBookmarkedWorldNotice] = useState<string | null>(null);
 
   const handleLeaveGame = () => {
     if (sceneManagerRef.current) {
@@ -63,8 +88,17 @@ function GameClientLoader() {
     navigate({ to: "/" });
   };
 
+  const playSearchForRetry = () => ({
+    ...(playSearchError ? { error: playSearchError } : {}),
+    ...(bookmarkedWorldId !== undefined ? { world: bookmarkedWorldId } : {}),
+  });
+
   const handleTryPlayAgain = () => {
-    window.location.href = "/play";
+    void navigate({
+      to: "/play",
+      search: playSearchForRetry(),
+      replace: true,
+    });
   };
 
   const handleSignOutFromPlay = async () => {
@@ -79,7 +113,11 @@ function GameClientLoader() {
   useEffect(() => {
     if (sessionPending) return;
     if (!session || sessionError) {
-      window.location.href = "/sign-in?redirect=/play";
+      const redirectTarget =
+        typeof window !== "undefined"
+          ? `${window.location.pathname}${window.location.search}`
+          : "/play";
+      window.location.href = `/sign-in?redirect=${encodeURIComponent(redirectTarget)}`;
     }
   }, [session, sessionPending, sessionError]);
 
@@ -123,9 +161,112 @@ function GameClientLoader() {
     };
   }, [authUserId, gameAuthPhase, sessionPending]);
 
+  useEffect(() => {
+    if (gameAuthPhase !== "ok") {
+      setServerRegistry({ loaded: false, servers: [] });
+      setServerPickResolved(false);
+      setServerPings({});
+      return;
+    }
+    let cancelled = false;
+    setServerRegistry({ loaded: false, servers: [] });
+    setServerPickResolved(false);
+    fetch("/api/game/servers/")
+      .then((r) => r.json())
+      .then((data: { servers?: unknown }) => {
+        if (cancelled) return;
+        const servers = Array.isArray(data.servers) ? data.servers : [];
+        const normalized = servers
+          .filter(
+            (s): s is { id: number; displayName: string | null; publicWsUrl: string } =>
+              s &&
+              typeof s === "object" &&
+              typeof (s as { id: unknown }).id === "number" &&
+              typeof (s as { publicWsUrl: unknown }).publicWsUrl === "string",
+          )
+          .map((s) => ({
+            id: s.id,
+            displayName: typeof s.displayName === "string" ? s.displayName : null,
+            publicWsUrl: s.publicWsUrl,
+          }));
+        setServerRegistry({ loaded: true, servers: normalized });
+        if (normalized.length === 0) {
+          setServerPickResolved(true);
+        }
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setServerRegistry({ loaded: true, servers: [] });
+          setServerPickResolved(true);
+        }
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [gameAuthPhase]);
+
+  useEffect(() => {
+    if (!serverRegistry.loaded || serverRegistry.servers.length === 0 || serverPickResolved) {
+      return;
+    }
+    let cancelled = false;
+    void (async () => {
+      const entries = await Promise.all(
+        serverRegistry.servers.map(
+          async (s) => [s.id, await measureGameServerHealthPingMs(s.publicWsUrl)] as const,
+        ),
+      );
+      if (!cancelled) {
+        setServerPings(Object.fromEntries(entries));
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [serverRegistry, serverPickResolved]);
+
+  useEffect(() => {
+    if (!serverRegistry.loaded || serverPickResolved) {
+      return;
+    }
+    if (serverRegistry.servers.length === 0) {
+      return;
+    }
+    if (bookmarkedWorldId === undefined) {
+      return;
+    }
+    const row = serverRegistry.servers.find((s) => s.id === bookmarkedWorldId);
+    if (!row) {
+      return;
+    }
+    try {
+      sessionStorage.setItem(SELECTED_GAME_SERVER_WS_URL_KEY, row.publicWsUrl.trim());
+    } catch {
+      /* ignore */
+    }
+    setServerPickResolved(true);
+  }, [serverRegistry, bookmarkedWorldId, serverPickResolved]);
+
+  useEffect(() => {
+    if (!serverRegistry.loaded || serverRegistry.servers.length === 0) {
+      setBookmarkedWorldNotice(null);
+      return;
+    }
+    if (bookmarkedWorldId === undefined || serverPickResolved) {
+      setBookmarkedWorldNotice(null);
+      return;
+    }
+    const row = serverRegistry.servers.find((s) => s.id === bookmarkedWorldId);
+    setBookmarkedWorldNotice(
+      row
+        ? null
+        : `World id ${bookmarkedWorldId} is not in the list right now — it may be offline or not registered.`,
+    );
+  }, [serverRegistry, bookmarkedWorldId, serverPickResolved]);
+
   // Poll for game client once scene manager is loaded
   useEffect(() => {
-    if (!isClient || gameAuthPhase !== "ok") return;
+    if (!isClient || gameAuthPhase !== "ok" || !serverPickResolved) return;
 
     const pollGameClient = setInterval(() => {
       if (!sceneManagerRef.current) return;
@@ -142,7 +283,7 @@ function GameClientLoader() {
     }, 500);
 
     return () => clearInterval(pollGameClient);
-  }, [isClient, gameAuthPhase]);
+  }, [isClient, gameAuthPhase, serverPickResolved]);
 
   // Handle ESC key to close any open panels (but not toggle)
   useEffect(() => {
@@ -172,7 +313,7 @@ function GameClientLoader() {
   }, [gameClient, showSpawnPanel]);
 
   useEffect(() => {
-    if (!isClient || gameAuthPhase !== "ok" || !canvasRef.current) {
+    if (!isClient || gameAuthPhase !== "ok" || !serverPickResolved || !canvasRef.current) {
       return;
     }
     if (sceneManagerRef.current) {
@@ -200,7 +341,7 @@ function GameClientLoader() {
         const message = err instanceof Error ? err.message : String(err);
         setSceneLoadError(message || "Failed to load game");
       });
-  }, [isClient, gameAuthPhase]);
+  }, [isClient, gameAuthPhase, serverPickResolved]);
 
   useEffect(() => {
     return () => {
@@ -235,7 +376,8 @@ function GameClientLoader() {
         </p>
         <p className="max-w-lg text-muted-foreground text-xs">
           If you are sure nothing else is running, wait a few minutes — stale locks clear automatically after
-          inactivity — then use Try again.
+          inactivity — then use Try again. If your operator uses fixed world ids, a world restart
+          usually clears stale locks on the next boot.
         </p>
         <div className="flex flex-wrap items-center justify-center gap-3">
           <Button type="button" onClick={handleTryPlayAgain}>
@@ -274,6 +416,45 @@ function GameClientLoader() {
           Back to home
         </Link>
       </div>
+    );
+  }
+
+  if (gameAuthPhase === "ok" && !serverRegistry.loaded) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-black">
+        <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
+      </div>
+    );
+  }
+
+  if (
+    gameAuthPhase === "ok" &&
+    serverRegistry.loaded &&
+    !serverPickResolved &&
+    serverRegistry.servers.length > 0
+  ) {
+    return (
+      <WorldPickerPanel
+        worlds={serverRegistry.servers}
+        pings={serverPings}
+        bookmarkNotice={bookmarkedWorldNotice}
+        onContinueWithSelection={({ publicWsUrl, worldId }) => {
+          try {
+            sessionStorage.setItem(SELECTED_GAME_SERVER_WS_URL_KEY, publicWsUrl.trim());
+          } catch {
+            /* ignore quota / private mode */
+          }
+          void navigate({
+            to: "/play",
+            search: (prev) => ({
+              error: prev.error,
+              world: worldId,
+            }),
+            replace: true,
+          });
+          setServerPickResolved(true);
+        }}
+      />
     );
   }
 

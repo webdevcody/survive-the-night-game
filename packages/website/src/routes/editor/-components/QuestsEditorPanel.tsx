@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import {
   DndContext,
   type DragEndEvent,
@@ -24,6 +24,8 @@ import {
   AccordionTrigger,
 } from "~/components/ui/accordion";
 import { Button } from "~/components/ui/button";
+import { Input } from "~/components/ui/input";
+import { cn } from "~/lib/utils";
 import { useEditorStore } from "../-store";
 import type {
   QuestStep,
@@ -81,6 +83,160 @@ const REWARD_SECTIONS: { key: QuestRewardListKey; label: string }[] = [
   { key: "startRewards", label: "Rewards on start" },
   { key: "rewards", label: "Rewards on complete" },
 ];
+
+type QuestTypeaheadOption = { value: string; label: string };
+
+const EDITOR_DISPLAY_OPTIONS: QuestTypeaheadOption[] = [
+  { value: "side", label: "Side quest" },
+  { value: "main", label: "Main quest" },
+];
+
+const PICKUP_TYPEAHEAD_OPTIONS: QuestTypeaheadOption[] = PICKUP_TYPES.map((t) => ({
+  value: t,
+  label: t,
+}));
+
+const KILL_ENEMY_TYPEAHEAD_OPTIONS: QuestTypeaheadOption[] = QUEST_KILL_ENEMY_TYPES.map((t) => ({
+  value: t,
+  label: t,
+}));
+
+const STAT_REWARD_TYPEAHEAD_OPTIONS: QuestTypeaheadOption[] = STAT_OPTIONS.map((st) => ({
+  value: st,
+  label: st,
+}));
+
+const COMPLETION_TYPE_OPTIONS: QuestTypeaheadOption[] = [
+  {
+    value: "dialogue_npc",
+    label: "Turn in via NPC dialogue (completeQuestId on a session)",
+  },
+  { value: "final_step", label: "Auto-complete when the last step is done" },
+];
+
+function QuestOptionTypeahead({
+  value,
+  onValueChange,
+  options,
+  placeholder = "Search…",
+  disabled = false,
+  size = "default",
+  inputClassName,
+  listClassName,
+}: {
+  value: string;
+  onValueChange: (next: string) => void;
+  options: readonly QuestTypeaheadOption[];
+  placeholder?: string;
+  disabled?: boolean;
+  size?: "default" | "compact";
+  inputClassName?: string;
+  listClassName?: string;
+}) {
+  const comboRef = useRef<HTMLDivElement>(null);
+  const [open, setOpen] = useState(false);
+  const [query, setQuery] = useState("");
+
+  const selectedLabel = useMemo(
+    () => options.find((o) => o.value === value)?.label ?? "",
+    [options, value],
+  );
+
+  useEffect(() => {
+    if (!open) setQuery(selectedLabel);
+  }, [selectedLabel, open]);
+
+  useEffect(() => {
+    if (!open) return;
+    const onDoc = (e: MouseEvent) => {
+      if (comboRef.current?.contains(e.target as Node)) return;
+      setOpen(false);
+    };
+    document.addEventListener("mousedown", onDoc, true);
+    return () => document.removeEventListener("mousedown", onDoc, true);
+  }, [open]);
+
+  const filtered = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    if (!q) return [...options];
+    return options.filter((o) => o.label.toLowerCase().includes(q));
+  }, [options, query]);
+
+  const allowsEmpty = options.some((o) => o.value === "");
+  const hasResults = filtered.length > 0;
+  const compact = size === "compact";
+  const rowText = compact ? "text-[10px]" : "text-[11px]";
+
+  return (
+    <div ref={comboRef} className="relative">
+      <Input
+        type="text"
+        autoComplete="off"
+        placeholder={placeholder}
+        disabled={disabled}
+        value={query}
+        onChange={(e) => {
+          const v = e.target.value;
+          setQuery(v);
+          setOpen(true);
+          const trimmed = v.trim();
+          if (!trimmed) {
+            if (allowsEmpty) onValueChange("");
+            return;
+          }
+          const exact = options.find(
+            (o) => o.label.toLowerCase() === trimmed.toLowerCase(),
+          );
+          if (exact) onValueChange(exact.value);
+        }}
+        onFocus={() => {
+          if (!disabled) setOpen(true);
+        }}
+        className={cn(
+          "rounded border-gray-600 bg-gray-950 px-2 py-1 text-gray-100 placeholder:text-gray-500",
+          compact ? "h-7 text-[10px]" : "h-8 text-[11px]",
+          inputClassName,
+        )}
+        aria-expanded={open}
+        aria-haspopup="listbox"
+      />
+      {open && !disabled ? (
+        <ul
+          className={cn(
+            "absolute left-0 right-0 top-full z-50 mt-0.5 max-h-60 overflow-y-auto rounded border border-gray-600 bg-gray-900 py-0.5 shadow-xl",
+            listClassName,
+          )}
+          role="listbox"
+        >
+          {!hasResults ? (
+            <li className={cn("px-2 py-1.5 text-gray-500", rowText)}>No matches</li>
+          ) : (
+            filtered.map((o) => (
+              <li key={o.value === "" ? "__empty" : o.value}>
+                <button
+                  type="button"
+                  role="option"
+                  aria-selected={o.value === value}
+                  className={cn(
+                    "w-full px-2 py-1.5 text-left text-gray-200 hover:bg-gray-800",
+                    rowText,
+                  )}
+                  onMouseDown={(ev) => ev.preventDefault()}
+                  onClick={() => {
+                    onValueChange(o.value);
+                    setOpen(false);
+                  }}
+                >
+                  {o.label}
+                </button>
+              </li>
+            ))
+          )}
+        </ul>
+      ) : null}
+    </div>
+  );
+}
 
 function questStepSortableId(stepIndex: number): string {
   return `step-${stepIndex}`;
@@ -204,6 +360,27 @@ export function QuestsEditorPanel() {
 
   const mapSide = getMapSideLength(groundGrid);
   const sortedMapNpcs = useMemo(() => sortDialogueNpcs(dialogueNpcs), [dialogueNpcs]);
+
+  const npcTalkTypeaheadOptions = useMemo((): QuestTypeaheadOption[] => {
+    const head: QuestTypeaheadOption[] = [
+      {
+        value: "",
+        label: sortedMapNpcs.length
+          ? "Select NPC…"
+          : "No dialogue NPCs — add one on the map",
+      },
+    ];
+    return [
+      ...head,
+      ...sortedMapNpcs.map((e) => {
+        const val = `${e.row},${e.col}`;
+        const label = e.name?.trim()
+          ? `${e.name.trim()} (row ${e.row}, col ${e.col})`
+          : `Unnamed (row ${e.row}, col ${e.col})`;
+        return { value: val, label };
+      }),
+    ];
+  }, [sortedMapNpcs]);
 
   const dndSensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
@@ -453,46 +630,41 @@ export function QuestsEditorPanel() {
                             </Button>
                           </div>
                           <label className="text-[10px] text-gray-400">Title</label>
-                          <input
-                            className="mb-2 w-full rounded border border-gray-600 bg-gray-950 px-2 py-1 text-[11px]"
+                          <Input
+                            className="mb-2 h-8 rounded border-gray-600 bg-gray-950 px-2 py-1 text-[11px] text-gray-100"
                             value={q.title}
                             onChange={(e) => updateQuest(q.id, { title: e.target.value })}
                           />
                           <label className="text-[10px] text-gray-400">Editor display</label>
-                          <select
-                            className="mb-2 w-full rounded border border-gray-600 bg-gray-950 px-2 py-1 text-[11px]"
-                            value={q.editorIsMainQuest ? "main" : "side"}
-                            onChange={(e) =>
-                              updateQuest(q.id, {
-                                editorIsMainQuest:
-                                  e.target.value === "main" ? true : undefined,
-                              })
-                            }
-                          >
-                            <option value="side">Side quest</option>
-                            <option value="main">Main quest</option>
-                          </select>
+                          <div className="mb-2">
+                            <QuestOptionTypeahead
+                              value={q.editorIsMainQuest ? "main" : "side"}
+                              onValueChange={(v) =>
+                                updateQuest(q.id, {
+                                  editorIsMainQuest: v === "main" ? true : undefined,
+                                })
+                              }
+                              options={EDITOR_DISPLAY_OPTIONS}
+                              placeholder="Search main / side…"
+                            />
+                          </div>
                           <p className="mb-2 text-[9px] leading-snug text-gray-500">
                             Colors the quest row in this panel only; not used in-game.
                           </p>
                           <label className="text-[10px] text-gray-400">Completion</label>
-                          <select
-                            className="mb-2 w-full rounded border border-gray-600 bg-gray-950 px-2 py-1 text-[11px]"
-                            value={(q.completionType ?? "dialogue_npc") as QuestCompletionType}
-                            onChange={(e) => {
-                              const v = e.target.value as QuestCompletionType;
-                              updateQuest(q.id, {
-                                completionType: v === "dialogue_npc" ? undefined : v,
-                              });
-                            }}
-                          >
-                            <option value="dialogue_npc">
-                              Turn in via NPC dialogue (completeQuestId on a session)
-                            </option>
-                            <option value="final_step">
-                              Auto-complete when the last step is done
-                            </option>
-                          </select>
+                          <div className="mb-2">
+                            <QuestOptionTypeahead
+                              value={q.completionType ?? "dialogue_npc"}
+                              onValueChange={(v) => {
+                                const typed = v as QuestCompletionType;
+                                updateQuest(q.id, {
+                                  completionType: typed === "dialogue_npc" ? undefined : typed,
+                                });
+                              }}
+                              options={COMPLETION_TYPE_OPTIONS}
+                              placeholder="Search completion type…"
+                            />
+                          </div>
                           <p className="mb-2 text-[9px] leading-snug text-gray-500">
                             Auto-complete grants &quot;Rewards on complete&quot; immediately after
                             the final objective; you do not need an NPC session with
@@ -537,22 +709,19 @@ export function QuestsEditorPanel() {
                                           </Button>
                                         </div>
                                         {s.type === "pickup_item" ? (
-                                          <select
-                                            className="w-full rounded border border-gray-600 bg-gray-900 text-[10px]"
+                                          <QuestOptionTypeahead
+                                            size="compact"
                                             value={s.itemType}
-                                            onChange={(e) =>
+                                            onValueChange={(v) =>
                                               updateStep(q.id, i, {
                                                 type: "pickup_item",
-                                                itemType: e.target.value as EntityType,
+                                                itemType: v as EntityType,
                                               })
                                             }
-                                          >
-                                            {PICKUP_TYPES.map((t) => (
-                                              <option key={t} value={t}>
-                                                {t}
-                                              </option>
-                                            ))}
-                                          </select>
+                                            options={PICKUP_TYPEAHEAD_OPTIONS}
+                                            placeholder="Search item…"
+                                            listClassName="max-h-48"
+                                          />
                                         ) : null}
                                         {s.type === "reach_waypoint" ? (
                                           <div className="space-y-1">
@@ -648,23 +817,22 @@ export function QuestsEditorPanel() {
                                         ) : null}
                                         {s.type === "kill_enemies" ? (
                                           <div className="flex flex-wrap items-center gap-1">
-                                            <select
-                                              className="min-w-0 flex-1 rounded border border-gray-600 bg-gray-900 text-[10px]"
-                                              value={s.enemyType}
-                                              onChange={(e) =>
-                                                updateStep(q.id, i, {
-                                                  type: "kill_enemies",
-                                                  enemyType: e.target.value as EntityType,
-                                                  count: s.count,
-                                                })
-                                              }
-                                            >
-                                              {QUEST_KILL_ENEMY_TYPES.map((t) => (
-                                                <option key={t} value={t}>
-                                                  {t}
-                                                </option>
-                                              ))}
-                                            </select>
+                                            <div className="min-w-0 flex-1">
+                                              <QuestOptionTypeahead
+                                                size="compact"
+                                                value={s.enemyType}
+                                                onValueChange={(v) =>
+                                                  updateStep(q.id, i, {
+                                                    type: "kill_enemies",
+                                                    enemyType: v as EntityType,
+                                                    count: s.count,
+                                                  })
+                                                }
+                                                options={KILL_ENEMY_TYPEAHEAD_OPTIONS}
+                                                placeholder="Search enemy…"
+                                                listClassName="max-h-48"
+                                              />
+                                            </div>
                                             <input
                                               type="number"
                                               className="w-16 rounded border border-gray-600 bg-gray-900 text-[10px]"
@@ -693,17 +861,17 @@ export function QuestsEditorPanel() {
                                             <label className="block text-[9px] text-gray-500">
                                               Talk to
                                             </label>
-                                            <select
-                                              className="w-full rounded border border-gray-600 bg-gray-900 px-1.5 py-1 text-[10px]"
+                                            <QuestOptionTypeahead
+                                              size="compact"
                                               value={talkStepSelectValue(s, sortedMapNpcs)}
                                               disabled={sortedMapNpcs.length === 0}
-                                              onChange={(e) => {
-                                                const v = e.target.value.trim();
-                                                if (!v) {
+                                              onValueChange={(v) => {
+                                                const trimmed = v.trim();
+                                                if (!trimmed) {
                                                   updateStep(q.id, i, { type: "talk_to_npc" });
                                                   return;
                                                 }
-                                                const [rs, cs] = v.split(",");
+                                                const [rs, cs] = trimmed.split(",");
                                                 const row = parseInt(rs ?? "", 10);
                                                 const col = parseInt(cs ?? "", 10);
                                                 const entry = dialogueNpcs.find(
@@ -711,30 +879,16 @@ export function QuestsEditorPanel() {
                                                 );
                                                 updateStep(q.id, i, {
                                                   type: "talk_to_npc",
-                                                  npcKey: v,
+                                                  npcKey: trimmed,
                                                   ...(entry?.name?.trim()
                                                     ? { npcName: entry.name.trim() }
                                                     : {}),
                                                 });
                                               }}
-                                            >
-                                              <option value="">
-                                                {sortedMapNpcs.length
-                                                  ? "Select NPC…"
-                                                  : "No dialogue NPCs — add one on the map"}
-                                              </option>
-                                              {sortedMapNpcs.map((e) => {
-                                                const val = `${e.row},${e.col}`;
-                                                const label = e.name?.trim()
-                                                  ? `${e.name.trim()} (row ${e.row}, col ${e.col})`
-                                                  : `Unnamed (row ${e.row}, col ${e.col})`;
-                                                return (
-                                                  <option key={val} value={val}>
-                                                    {label}
-                                                  </option>
-                                                );
-                                              })}
-                                            </select>
+                                              options={npcTalkTypeaheadOptions}
+                                              placeholder="Search NPC…"
+                                              listClassName="max-h-48"
+                                            />
                                             <p className="text-[9px] leading-snug text-gray-500">
                                               Completes when the player finishes that NPC&apos;s
                                               dialogue (after all lines).
@@ -797,23 +951,20 @@ export function QuestsEditorPanel() {
                                   >
                                     {r.type === "permanent_stat" ? (
                                       <>
-                                        <select
-                                          className="rounded border border-gray-600 bg-gray-900 text-[10px]"
+                                        <QuestOptionTypeahead
+                                          size="compact"
                                           value={r.stat}
-                                          onChange={(e) =>
+                                          onValueChange={(v) =>
                                             updateReward(q.id, listKey, i, {
                                               type: "permanent_stat",
-                                              stat: e.target.value,
+                                              stat: v,
                                               amount: r.amount,
                                             })
                                           }
-                                        >
-                                          {STAT_OPTIONS.map((st) => (
-                                            <option key={st} value={st}>
-                                              {st}
-                                            </option>
-                                          ))}
-                                        </select>
+                                          options={STAT_REWARD_TYPEAHEAD_OPTIONS}
+                                          placeholder="Stat…"
+                                          listClassName="max-h-48"
+                                        />
                                         <input
                                           type="number"
                                           className="w-12 rounded border border-gray-600 bg-gray-900 text-[10px]"
@@ -857,23 +1008,20 @@ export function QuestsEditorPanel() {
                                       </>
                                     ) : (
                                       <>
-                                        <select
-                                          className="rounded border border-gray-600 bg-gray-900 text-[10px]"
+                                        <QuestOptionTypeahead
+                                          size="compact"
                                           value={r.itemType}
-                                          onChange={(e) =>
+                                          onValueChange={(v) =>
                                             updateReward(q.id, listKey, i, {
                                               type: "item",
-                                              itemType: e.target.value as EntityType,
+                                              itemType: v as EntityType,
                                               count: r.count,
                                             })
                                           }
-                                        >
-                                          {PICKUP_TYPES.map((t) => (
-                                            <option key={t} value={t}>
-                                              {t}
-                                            </option>
-                                          ))}
-                                        </select>
+                                          options={PICKUP_TYPEAHEAD_OPTIONS}
+                                          placeholder="Item…"
+                                          listClassName="max-h-48"
+                                        />
                                         <input
                                           type="number"
                                           className="w-10 rounded border border-gray-600 bg-gray-900 text-[10px]"

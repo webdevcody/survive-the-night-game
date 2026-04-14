@@ -343,9 +343,23 @@
             ]
           },
           "lines": [
-            "Don't be scared man, I'm sure you'll find a way."
+            "Don't be scared, I'm sure you'll find a way."
           ],
           "editorGroupId": "dg_mnvb4vi8_60s5c2j9"
+        },
+        {
+          "when": {
+            "type": "all",
+            "conditions": [
+              {
+                "type": "quest_completed",
+                "questId": "quest_fence_scout"
+              }
+            ]
+          },
+          "lines": [
+            "There is hope after all!"
+          ]
         }
       ],
       "lines": [

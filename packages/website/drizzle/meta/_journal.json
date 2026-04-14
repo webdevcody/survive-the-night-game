@@ -113,6 +113,13 @@
       "when": 1776300000000,
       "tag": "0015_game_session_lease",
       "breakpoints": true
+    },
+    {
+      "idx": 16,
+      "version": "7",
+      "when": 1776400000000,
+      "tag": "0016_game_server_registry",
+      "breakpoints": true
     }
   ]
 }

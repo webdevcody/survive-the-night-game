@@ -2,7 +2,7 @@
   "quests": [
     {
       "id": "quest_fence_scout",
-      "title": "Finding Salvation",
+      "title": "Finding a Way",
       "steps": [
         {
           "type": "reach_waypoint",
@@ -69,14 +69,14 @@
       ],
       "rewards": [
         {
-          "type": "permanent_stat",
-          "stat": "health",
-          "amount": 1
+          "type": "item",
+          "itemType": "pistol",
+          "count": 1
         },
         {
-          "type": "permanent_stat",
-          "stat": "stamina",
-          "amount": 1
+          "type": "item",
+          "itemType": "pistol_ammo",
+          "count": 16
         }
       ],
       "startRewards": [],
@@ -464,7 +464,8 @@
       },
       "sessionEditorGroupIds": [
         "dg_mnvb4vi8_60s5c2j9",
-        "dg_mnvb4vi8_60s5c2j9"
+        "dg_mnvb4vi8_60s5c2j9",
+        null
       ],
       "editorDialogueSessions": [
         {
@@ -480,7 +481,7 @@
         },
         {
           "lines": [
-            "Don't be scared man, I'm sure you'll find a way."
+            "Don't be scared, I'm sure you'll find a way."
           ],
           "when": {
             "type": "all",
@@ -492,6 +493,20 @@
             ]
           },
           "editorGroupId": "dg_mnvb4vi8_60s5c2j9"
+        },
+        {
+          "lines": [
+            "There is hope after all!"
+          ],
+          "when": {
+            "type": "all",
+            "conditions": [
+              {
+                "type": "quest_completed",
+                "questId": "quest_fence_scout"
+              }
+            ]
+          }
         }
       ]
     }

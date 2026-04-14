@@ -22,7 +22,7 @@ export const requireSessionForPlayFn = createServerFn({ method: "GET" }).handler
   if (!session) {
     throw redirect({
       to: "/sign-in",
-      search: { redirect: "/play" },
+      search: { redirect: getRequest().url },
     });
   }
 });

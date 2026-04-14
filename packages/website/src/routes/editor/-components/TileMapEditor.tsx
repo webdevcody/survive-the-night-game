@@ -814,7 +814,14 @@ export function TileMapEditor() {
     );
     const extra: string[] = [`tile (${spawnPopover.row},${spawnPopover.col})`, `id ${sid}`];
     if (npc?.name) extra.push(`name: ${npc.name}`);
-    if (npc?.grantQuestId) extra.push(`grants quest: ${npc.grantQuestId}`);
+    if (npc?.grantQuestId) {
+      const granted = st.quests.find((q) => q.id === npc.grantQuestId);
+      extra.push(
+        granted?.title
+          ? `grants quest: ${granted.title} (${npc.grantQuestId})`
+          : `grants quest: ${npc.grantQuestId}`,
+      );
+    }
 
     return (
       <div

@@ -23,6 +23,7 @@ import { Direction } from "@shared/util/direction";
 import PoolManager from "@shared/util/pool-manager";
 import { PlayerDroppedItemEvent } from "@shared/events/server-sent/events/player-dropped-item-event";
 import { Player } from "@/entities/players/player";
+import type { InventoryPlacementOptions } from "@/extensions/inventory";
 
 function isStackableItem(item: InventoryItem): boolean {
   if (item.state && typeof item.state.count === "number") {
@@ -84,15 +85,17 @@ function assertLockerInRange(player: Player, lockerEntityId: number): boolean {
   );
 }
 
-function firstEmptyBagIndex(inv: Inventory): number | null {
-  const max = inv.getMaxSlots();
-  const items = inv.getItems();
-  for (let i = 0; i < max; i++) {
-    if (items[i] == null) {
-      return i;
-    }
-  }
-  return null;
+/** Locker → bag: same usable cells as ground pickups; never auto-equip weapons from locker. */
+function lockerToBagPlacementOptions(inv: Inventory): InventoryPlacementOptions {
+  return {
+    autoEquipWeaponIfLoadoutEmpty: false,
+    maxEmptySlotSearchExclusive: inv.getPickupMaxSlots(),
+  };
+}
+
+function firstEmptyPickupBagSlot(inv: Inventory): number | null {
+  const idx = inv.findFirstEmptyBagSlot(inv.getPickupMaxSlots());
+  return idx >= 0 ? idx : null;
 }
 
 function firstEmptyBankIndex(bank: Bank): number | null {
@@ -237,14 +240,11 @@ function bankWithdrawToBag(player: Player, bank: Bank, inv: Inventory, bankIndex
   if (!item) {
     return;
   }
-  const empty = firstEmptyBagIndex(inv);
-  if (empty === null) {
-    bank.setBankSlot(bankIndex, item);
+  const lockerOpts = lockerToBagPlacementOptions(inv);
+  if (inv.addOrMergeStack(item, lockerOpts)) {
     return;
   }
-  if (!inv.addOrMergeStack(item)) {
-    inv.setBagSlot(empty, item);
-  }
+  bank.setBankSlot(bankIndex, item);
 }
 
 function bankDropFromSource(
@@ -303,12 +303,13 @@ function bankUseFromSource(
     return;
   }
 
-  const empty = firstEmptyBagIndex(inv);
+  const lockerOpts = lockerToBagPlacementOptions(inv);
+  const empty = firstEmptyPickupBagSlot(inv);
   if (empty === null) {
     if (restoreBankIdx !== null) {
       bank.setBankSlot(restoreBankIdx, item);
     } else if (source === 0) {
-      inv.setBagSlot(slotIndex, item);
+      inv.setBagSlot(slotIndex, item, { autoEquipWeaponIfLoadoutEmpty: false });
     } else {
       const slot = decodeEquipmentSlotKey(slotIndex);
       if (slot) {
@@ -318,14 +319,14 @@ function bankUseFromSource(
     return;
   }
 
-  inv.setBagSlot(empty, item);
+  inv.setBagSlot(empty, item, lockerOpts);
   const entity = player.getEntityManager().createEntityFromItem(item);
   if (!entity || !entity.hasExt(Consumable)) {
     inv.removeItem(empty);
     if (restoreBankIdx !== null) {
       bank.setBankSlot(restoreBankIdx, item);
     } else if (source === 0) {
-      inv.setBagSlot(slotIndex, item);
+      inv.setBagSlot(slotIndex, item, { autoEquipWeaponIfLoadoutEmpty: false });
     } else {
       const slot = decodeEquipmentSlotKey(slotIndex);
       if (slot) {
@@ -366,17 +367,18 @@ function bankEquipFromSource(
   const loadoutRow = equipSlotIndex >= 7 && equipSlotIndex <= 11 ? equipSlotIndex - 7 : null;
   const armorSlot = equipSlotIndex <= 6 ? decodeEquipmentSlotKey(equipSlotIndex) : null;
 
-  const empty = firstEmptyBagIndex(inv);
+  const lockerOpts = lockerToBagPlacementOptions(inv);
+  const empty = firstEmptyPickupBagSlot(inv);
   if (empty === null) {
     if (restoreBankIdx !== null) {
       bank.setBankSlot(restoreBankIdx, item);
     } else if (restoreBagIdx !== null) {
-      inv.setBagSlot(restoreBagIdx, item);
+      inv.setBagSlot(restoreBagIdx, item, { autoEquipWeaponIfLoadoutEmpty: false });
     }
     return;
   }
 
-  inv.setBagSlot(empty, item);
+  inv.setBagSlot(empty, item, lockerOpts);
 
   if (loadoutRow !== null) {
     if (loadoutRow <= 2) {
@@ -385,7 +387,7 @@ function bankEquipFromSource(
         if (restoreBankIdx !== null) {
           bank.setBankSlot(restoreBankIdx, item);
         } else if (restoreBagIdx !== null) {
-          inv.setBagSlot(restoreBagIdx, item);
+          inv.setBagSlot(restoreBagIdx, item, { autoEquipWeaponIfLoadoutEmpty: false });
         }
         return;
       }
@@ -395,7 +397,7 @@ function bankEquipFromSource(
         if (restoreBankIdx !== null) {
           bank.setBankSlot(restoreBankIdx, item);
         } else if (restoreBagIdx !== null) {
-          inv.setBagSlot(restoreBagIdx, item);
+          inv.setBagSlot(restoreBagIdx, item, { autoEquipWeaponIfLoadoutEmpty: false });
         }
         return;
       }
@@ -409,7 +411,7 @@ function bankEquipFromSource(
     if (restoreBankIdx !== null) {
       bank.setBankSlot(restoreBankIdx, item);
     } else if (restoreBagIdx !== null) {
-      inv.setBagSlot(restoreBagIdx, item);
+      inv.setBagSlot(restoreBagIdx, item, { autoEquipWeaponIfLoadoutEmpty: false });
     }
     return;
   }
@@ -419,7 +421,7 @@ function bankEquipFromSource(
     if (restoreBankIdx !== null) {
       bank.setBankSlot(restoreBankIdx, item);
     } else if (restoreBagIdx !== null) {
-      inv.setBagSlot(restoreBagIdx, item);
+      inv.setBagSlot(restoreBagIdx, item, { autoEquipWeaponIfLoadoutEmpty: false });
     }
     return;
   }

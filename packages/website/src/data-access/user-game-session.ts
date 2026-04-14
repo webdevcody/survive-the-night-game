@@ -101,3 +101,19 @@ export async function releaseGameSessionLease(userId: string, sessionId: string)
     })
     .where(and(eq(user.id, userId), eq(user.activeGameSessionId, sessionId)));
 }
+
+/**
+ * Clear all active game session leases for users last tied to this game server id (crash/restart recovery).
+ */
+export async function clearGameSessionLeasesForServerId(serverId: string): Promise<void> {
+  const now = new Date();
+  await database
+    .update(user)
+    .set({
+      activeGameSessionId: null,
+      activeGameServerId: null,
+      activeGameHeartbeatAt: null,
+      updatedAt: now,
+    })
+    .where(eq(user.activeGameServerId, serverId));
+}

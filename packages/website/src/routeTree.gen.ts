@@ -19,6 +19,7 @@ import { Route as PlayRouteImport } from './routes/play'
 import { Route as LeaderboardRouteImport } from './routes/leaderboard'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as EditorIndexRouteImport } from './routes/editor/index'
+import { Route as PlayWorldWorldIdRouteImport } from './routes/play/world/$worldId'
 import { Route as ApiSessionValidateRouteImport } from './routes/api/session/validate'
 import { Route as ApiGameZombieKillRouteImport } from './routes/api/game/zombie-kill'
 import { Route as ApiGameSkillAllocationsRouteImport } from './routes/api/game/skill-allocations'
@@ -35,6 +36,9 @@ import { Route as ApiGameAuctionHouseRouteImport } from './routes/api/game/aucti
 import { Route as ApiGameAddExperienceRouteImport } from './routes/api/game/add-experience'
 import { Route as ApiGameAbilityAllocationsRouteImport } from './routes/api/game/ability-allocations'
 import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
+import { Route as ApiGameServersIndexRouteImport } from './routes/api/game/servers/index'
+import { Route as ApiGameServersRegisterRouteImport } from './routes/api/game/servers/register'
+import { Route as ApiGameServersHeartbeatRouteImport } from './routes/api/game/servers/heartbeat'
 
 const TermsRoute = TermsRouteImport.update({
   id: '/terms',
@@ -85,6 +89,11 @@ const EditorIndexRoute = EditorIndexRouteImport.update({
   id: '/editor/',
   path: '/editor/',
   getParentRoute: () => rootRouteImport,
+} as any)
+const PlayWorldWorldIdRoute = PlayWorldWorldIdRouteImport.update({
+  id: '/world/$worldId',
+  path: '/world/$worldId',
+  getParentRoute: () => PlayRoute,
 } as any)
 const ApiSessionValidateRoute = ApiSessionValidateRouteImport.update({
   id: '/api/session/validate',
@@ -173,11 +182,26 @@ const ApiAuthSplatRoute = ApiAuthSplatRouteImport.update({
   path: '/api/auth/$',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiGameServersIndexRoute = ApiGameServersIndexRouteImport.update({
+  id: '/api/game/servers/',
+  path: '/api/game/servers/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiGameServersRegisterRoute = ApiGameServersRegisterRouteImport.update({
+  id: '/api/game/servers/register',
+  path: '/api/game/servers/register',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiGameServersHeartbeatRoute = ApiGameServersHeartbeatRouteImport.update({
+  id: '/api/game/servers/heartbeat',
+  path: '/api/game/servers/heartbeat',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/leaderboard': typeof LeaderboardRoute
-  '/play': typeof PlayRoute
+  '/play': typeof PlayRouteWithChildren
   '/pricing': typeof PricingRoute
   '/privacy': typeof PrivacyRoute
   '/settings': typeof SettingsRoute
@@ -201,11 +225,15 @@ export interface FileRoutesByFullPath {
   '/api/game/skill-allocations': typeof ApiGameSkillAllocationsRoute
   '/api/game/zombie-kill': typeof ApiGameZombieKillRoute
   '/api/session/validate': typeof ApiSessionValidateRoute
+  '/play/world/$worldId': typeof PlayWorldWorldIdRoute
+  '/api/game/servers/heartbeat': typeof ApiGameServersHeartbeatRoute
+  '/api/game/servers/register': typeof ApiGameServersRegisterRoute
+  '/api/game/servers': typeof ApiGameServersIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/leaderboard': typeof LeaderboardRoute
-  '/play': typeof PlayRoute
+  '/play': typeof PlayRouteWithChildren
   '/pricing': typeof PricingRoute
   '/privacy': typeof PrivacyRoute
   '/settings': typeof SettingsRoute
@@ -229,12 +257,16 @@ export interface FileRoutesByTo {
   '/api/game/skill-allocations': typeof ApiGameSkillAllocationsRoute
   '/api/game/zombie-kill': typeof ApiGameZombieKillRoute
   '/api/session/validate': typeof ApiSessionValidateRoute
+  '/play/world/$worldId': typeof PlayWorldWorldIdRoute
+  '/api/game/servers/heartbeat': typeof ApiGameServersHeartbeatRoute
+  '/api/game/servers/register': typeof ApiGameServersRegisterRoute
+  '/api/game/servers': typeof ApiGameServersIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/leaderboard': typeof LeaderboardRoute
-  '/play': typeof PlayRoute
+  '/play': typeof PlayRouteWithChildren
   '/pricing': typeof PricingRoute
   '/privacy': typeof PrivacyRoute
   '/settings': typeof SettingsRoute
@@ -258,6 +290,10 @@ export interface FileRoutesById {
   '/api/game/skill-allocations': typeof ApiGameSkillAllocationsRoute
   '/api/game/zombie-kill': typeof ApiGameZombieKillRoute
   '/api/session/validate': typeof ApiSessionValidateRoute
+  '/play/world/$worldId': typeof PlayWorldWorldIdRoute
+  '/api/game/servers/heartbeat': typeof ApiGameServersHeartbeatRoute
+  '/api/game/servers/register': typeof ApiGameServersRegisterRoute
+  '/api/game/servers/': typeof ApiGameServersIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -288,6 +324,10 @@ export interface FileRouteTypes {
     | '/api/game/skill-allocations'
     | '/api/game/zombie-kill'
     | '/api/session/validate'
+    | '/play/world/$worldId'
+    | '/api/game/servers/heartbeat'
+    | '/api/game/servers/register'
+    | '/api/game/servers'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -316,6 +356,10 @@ export interface FileRouteTypes {
     | '/api/game/skill-allocations'
     | '/api/game/zombie-kill'
     | '/api/session/validate'
+    | '/play/world/$worldId'
+    | '/api/game/servers/heartbeat'
+    | '/api/game/servers/register'
+    | '/api/game/servers'
   id:
     | '__root__'
     | '/'
@@ -344,12 +388,16 @@ export interface FileRouteTypes {
     | '/api/game/skill-allocations'
     | '/api/game/zombie-kill'
     | '/api/session/validate'
+    | '/play/world/$worldId'
+    | '/api/game/servers/heartbeat'
+    | '/api/game/servers/register'
+    | '/api/game/servers/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   LeaderboardRoute: typeof LeaderboardRoute
-  PlayRoute: typeof PlayRoute
+  PlayRoute: typeof PlayRouteWithChildren
   PricingRoute: typeof PricingRoute
   PrivacyRoute: typeof PrivacyRoute
   SettingsRoute: typeof SettingsRoute
@@ -373,6 +421,9 @@ export interface RootRouteChildren {
   ApiGameSkillAllocationsRoute: typeof ApiGameSkillAllocationsRoute
   ApiGameZombieKillRoute: typeof ApiGameZombieKillRoute
   ApiSessionValidateRoute: typeof ApiSessionValidateRoute
+  ApiGameServersHeartbeatRoute: typeof ApiGameServersHeartbeatRoute
+  ApiGameServersRegisterRoute: typeof ApiGameServersRegisterRoute
+  ApiGameServersIndexRoute: typeof ApiGameServersIndexRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -446,6 +497,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/editor'
       preLoaderRoute: typeof EditorIndexRouteImport
       parentRoute: typeof rootRouteImport
+    }
+    '/play/world/$worldId': {
+      id: '/play/world/$worldId'
+      path: '/world/$worldId'
+      fullPath: '/play/world/$worldId'
+      preLoaderRoute: typeof PlayWorldWorldIdRouteImport
+      parentRoute: typeof PlayRoute
     }
     '/api/session/validate': {
       id: '/api/session/validate'
@@ -559,13 +617,44 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiAuthSplatRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/game/servers/': {
+      id: '/api/game/servers/'
+      path: '/api/game/servers'
+      fullPath: '/api/game/servers'
+      preLoaderRoute: typeof ApiGameServersIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/game/servers/register': {
+      id: '/api/game/servers/register'
+      path: '/api/game/servers/register'
+      fullPath: '/api/game/servers/register'
+      preLoaderRoute: typeof ApiGameServersRegisterRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/game/servers/heartbeat': {
+      id: '/api/game/servers/heartbeat'
+      path: '/api/game/servers/heartbeat'
+      fullPath: '/api/game/servers/heartbeat'
+      preLoaderRoute: typeof ApiGameServersHeartbeatRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
+
+interface PlayRouteChildren {
+  PlayWorldWorldIdRoute: typeof PlayWorldWorldIdRoute
+}
+
+const PlayRouteChildren: PlayRouteChildren = {
+  PlayWorldWorldIdRoute: PlayWorldWorldIdRoute,
+}
+
+const PlayRouteWithChildren = PlayRoute._addFileChildren(PlayRouteChildren)
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   LeaderboardRoute: LeaderboardRoute,
-  PlayRoute: PlayRoute,
+  PlayRoute: PlayRouteWithChildren,
   PricingRoute: PricingRoute,
   PrivacyRoute: PrivacyRoute,
   SettingsRoute: SettingsRoute,
@@ -589,6 +678,9 @@ const rootRouteChildren: RootRouteChildren = {
   ApiGameSkillAllocationsRoute: ApiGameSkillAllocationsRoute,
   ApiGameZombieKillRoute: ApiGameZombieKillRoute,
   ApiSessionValidateRoute: ApiSessionValidateRoute,
+  ApiGameServersHeartbeatRoute: ApiGameServersHeartbeatRoute,
+  ApiGameServersRegisterRoute: ApiGameServersRegisterRoute,
+  ApiGameServersIndexRoute: ApiGameServersIndexRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

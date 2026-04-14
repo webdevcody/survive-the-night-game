@@ -35,6 +35,26 @@ export class UWebSocketsServerAdapter implements IServerAdapter {
     // Create uWebSockets app
     this.app = uWS.App({});
 
+    const corsHealth = (res: uWS.HttpResponse) => {
+      res.writeHeader("Access-Control-Allow-Origin", "*");
+      res.writeHeader("Access-Control-Allow-Methods", "GET, OPTIONS");
+    };
+
+    this.app.options("/health", (res: uWS.HttpResponse) => {
+      res.onAborted(() => {});
+      corsHealth(res);
+      res.writeStatus("204 No Content");
+      res.end();
+    });
+
+    this.app.get("/health", (res: uWS.HttpResponse) => {
+      res.onAborted(() => {});
+      res.writeStatus("200 OK");
+      res.writeHeader("Content-Type", "text/plain");
+      corsHealth(res);
+      res.end("ok");
+    });
+
     // Specific HTTP routes first (registration order matters in uWebSockets).
     this.app.post(EDITOR_WORLD_MAP_RELOAD_PATH, (res: uWS.HttpResponse, req: uWS.HttpRequest) => {
       res.onAborted(() => {});

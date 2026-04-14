@@ -77,6 +77,7 @@ export class GameServer {
    */
   public async bootstrap(): Promise<void> {
     await this.startNewGame();
+    await this.socketManager.runPreListenWebsiteBootstrap();
     this.socketManager.listen();
   }
 

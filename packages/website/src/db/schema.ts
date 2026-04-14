@@ -130,6 +130,21 @@ export const userStats = pgTable("user_stats", {
     .notNull(),
 });
 
+/** Self-registered game servers (browser uses public_ws_url to connect). */
+export const gameServer = pgTable("game_server", {
+  id: integer("id").primaryKey(),
+  publicWsUrl: text("public_ws_url").notNull(),
+  displayName: text("display_name"),
+  listenPort: integer("listen_port"),
+  lastSeenAt: timestamp("last_seen_at", { withTimezone: true }).notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true })
+    .$defaultFn(() => new Date())
+    .notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true })
+    .$defaultFn(() => new Date())
+    .notNull(),
+});
+
 export const auctionHouseListing = pgTable("auction_house_listing", {
   id: text("id").primaryKey(),
   sellerUserId: text("seller_user_id")
@@ -192,6 +207,9 @@ export type CreateVerificationData = typeof verification.$inferInsert;
 
 export type UserStats = typeof userStats.$inferSelect;
 export type CreateUserStatsData = typeof userStats.$inferInsert;
+
+export type GameServerRow = typeof gameServer.$inferSelect;
+export type CreateGameServerRow = typeof gameServer.$inferInsert;
 
 // Subscription types
 export type SubscriptionPlan = "free" | "basic" | "pro";

@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import {
   claimGameSessionLease,
+  clearGameSessionLeasesForServerId,
   heartbeatGameSessionLease,
   releaseGameSessionLease,
 } from "~/data-access/user-game-session";
@@ -9,6 +10,7 @@ import { requireGameServerApiKey } from "~/utils/game-server-api-auth";
 /**
  * Game server → website: distributed single-active-session lease per user.
  * POST JSON { action, userId, sessionId, serverId? } with X-API-Key.
+ * action clear_server_leases: { action, serverId } clears leases for that game server id (boot recovery).
  */
 export const Route = createFileRoute("/api/game/player-session")({
   server: {
@@ -28,6 +30,20 @@ export const Route = createFileRoute("/api/game/player-session")({
           };
 
           const action = body.action;
+          if (action === "clear_server_leases") {
+            if (!body.serverId || typeof body.serverId !== "string") {
+              return new Response(JSON.stringify({ success: false, error: "Missing serverId" }), {
+                status: 400,
+                headers: { "Content-Type": "application/json" },
+              });
+            }
+            await clearGameSessionLeasesForServerId(body.serverId);
+            return new Response(JSON.stringify({ success: true }), {
+              status: 200,
+              headers: { "Content-Type": "application/json" },
+            });
+          }
+
           if (action !== "claim" && action !== "heartbeat" && action !== "release") {
             return new Response(JSON.stringify({ success: false, error: "Invalid action" }), {
               status: 400,

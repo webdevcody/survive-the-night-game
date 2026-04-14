@@ -16,6 +16,38 @@ import {
 import { ExtensionBase } from "./extension-base";
 import { Player } from "@/entities/players/player";
 import { advancePickupStep } from "@/quests/quest-runtime";
+import {
+  getWeaponLoadoutSlotKey,
+  weaponLoadoutSlotKeyToIndex,
+} from "@shared/util/weapon-loadout";
+
+/**
+ * When the unlocked visible grid is full, still allow ground pickup if the item is a weapon whose
+ * hotbar row is empty and there is space in loadout-reserved bag cells (same accessible range as
+ * {@link Inventory.getMaxSlots} for players).
+ */
+function canPlaceWeaponInLoadoutReservedBagBecauseRowEmpty(
+  entity: IEntity,
+  itemType: ItemType,
+): boolean {
+  const loadoutKey = getWeaponLoadoutSlotKey(itemType);
+  if (loadoutKey == null) {
+    return false;
+  }
+  const row = weaponLoadoutSlotKeyToIndex(loadoutKey);
+  const key =
+    row === 0
+      ? "weaponLoadoutPrimary"
+      : row === 1
+        ? "weaponLoadoutSecondary"
+        : "weaponLoadoutMelee";
+  const ser = (entity as { getSerialized?: () => { get: (k: string) => unknown } }).getSerialized?.();
+  if (!ser) {
+    return false;
+  }
+  const ref = ser.get(key);
+  return ref === 0;
+}
 
 function tryAutoEquipWearableFromBag(
   entity: IEntity,
@@ -126,14 +158,22 @@ export default class Carryable extends ExtensionBase<CarryableFields> {
       }
     }
 
-    // Otherwise add as new item
-    const emptySlotIndex = inventory.findFirstEmptyBagSlot(pickupMaxSlots);
+    // Otherwise add as new item: prefer unlocked visible cells, then loadout-reserved tail if this
+    // weapon can auto-equip to an empty hotbar row (visible grid may be full).
+    let emptySlotIndex = inventory.findFirstEmptyBagSlot(pickupMaxSlots);
+    if (
+      emptySlotIndex < 0 &&
+      canPlaceWeaponInLoadoutReservedBagBecauseRowEmpty(entity, itemType)
+    ) {
+      emptySlotIndex = inventory.findFirstEmptyBagSlot(inventory.getMaxSlots());
+    }
     if (emptySlotIndex < 0) {
       return false;
     }
 
     const pickupState = options?.state ?? this.getItemState();
 
+    // setBagSlot may auto-fill an empty weapon hotbar row; wearable-to-armor swap runs next on the same cell index.
     inventory.setBagSlot(emptySlotIndex, {
       itemType: itemType,
       state: pickupState,

@@ -8,6 +8,10 @@ import Inventory from "./inventory";
 type TestPlayerEntity = IEntity & {
   getAccessibleInventorySlotCount(): number;
   getUnlockedVisibleBagSlotCount(): number;
+  getSerialized?: () => { get: (k: string) => unknown };
+  tryAutoEquipPickedUpWeaponIfLoadoutRowEmpty?: (t: string, i: number) => void;
+  sanitizeWeaponLoadouts?: () => void;
+  compactLoadoutBackedItemsToBagEnd?: () => void;
 };
 
 function createEntity(overrides: Partial<IEntity>): IEntity {
@@ -44,6 +48,8 @@ function createCarryablePickupHarness(itemType: string) {
     getId: () => 1,
     getAccessibleInventorySlotCount: () => 10,
     getUnlockedVisibleBagSlotCount: () => 5,
+    sanitizeWeaponLoadouts: () => {},
+    compactLoadoutBackedItemsToBagEnd: () => {},
     getExt: <T>(ext: { new (...args: any[]): T }): T => {
       if (ext === Inventory) {
         return inventory as T;
@@ -133,5 +139,59 @@ describe("Carryable pickup bag locking", () => {
     expect(entityManager.markEntityForRemoval).toHaveBeenCalledTimes(1);
     expect(inventory.getItems()[0]).toEqual({ itemType: "dust_mask", state: {} });
     expect(inventory.getEquipment().head?.itemType).toBe("miners_hat");
+  });
+
+  it("picks up a melee weapon into loadout-reserved bag space when visible grid is full and melee hotbar is empty", () => {
+    const broadcaster = {
+      broadcastEvent: vi.fn(),
+    } as unknown as Broadcaster;
+
+    let inventory!: Inventory;
+    const loadout = {
+      weaponLoadoutPrimary: 0,
+      weaponLoadoutSecondary: 0,
+      weaponLoadoutMelee: 0,
+    };
+
+    const player = createEntity({
+      getId: () => 1,
+      getAccessibleInventorySlotCount: () => 10,
+      getUnlockedVisibleBagSlotCount: () => 5,
+      getSerialized: () => ({
+        get: (k: string) => loadout[k as keyof typeof loadout] ?? 0,
+      }),
+      tryAutoEquipPickedUpWeaponIfLoadoutRowEmpty: vi.fn(),
+      sanitizeWeaponLoadouts: () => {},
+      compactLoadoutBackedItemsToBagEnd: () => {},
+      getExt: <T>(ext: { new (...args: any[]): T }): T => {
+        if (ext === Inventory) {
+          return inventory as T;
+        }
+        throw new Error("Extension not found");
+      },
+    }) as TestPlayerEntity;
+
+    const entityManager = {
+      getEntityById: (entityId: number) => (entityId === 1 ? player : null),
+      getBroadcaster: () => broadcaster,
+      markEntityForRemoval: vi.fn(),
+    } as unknown as IEntityManager;
+
+    const pickupEntity = createEntity({
+      getId: () => 99,
+      getEntityManager: () => entityManager,
+    });
+
+    inventory = new Inventory(player, broadcaster);
+    const carryable = new Carryable(pickupEntity, "knife");
+
+    for (let i = 0; i < 5; i++) {
+      inventory.setBagSlot(i, { itemType: `filled_${i}` });
+    }
+
+    expect(carryable.pickup(1)).toBe(true);
+    expect(entityManager.markEntityForRemoval).toHaveBeenCalledTimes(1);
+    expect(inventory.getItems()[5]?.itemType).toBe("knife");
+    expect(player.tryAutoEquipPickedUpWeaponIfLoadoutRowEmpty).toHaveBeenCalledWith("knife", 5);
   });
 });

@@ -2,6 +2,22 @@ import { Scene } from "./scene";
 import { GameClient } from "@/client";
 import type { SceneManager } from "./scene-manager";
 
+/** Must match packages/website/src/utils/game-server-connect.ts */
+const SELECTED_GAME_SERVER_WS_URL_KEY = "stn:selectedGameServerWsUrl";
+
+function readSelectedGameServerWsUrl(): string | null {
+  if (typeof window === "undefined") {
+    return null;
+  }
+  try {
+    const v = sessionStorage.getItem(SELECTED_GAME_SERVER_WS_URL_KEY);
+    const t = v?.trim();
+    return t ? t : null;
+  } catch {
+    return null;
+  }
+}
+
 export class GameScene extends Scene {
   private gameClient: GameClient;
   private serverUrl: string;
@@ -15,7 +31,9 @@ export class GameScene extends Scene {
     const host = isBrowser ? window.location.hostname || "localhost" : "localhost";
     const protocol = isBrowser && window.location.protocol === "https:" ? "wss" : "ws";
     const defaultServerUrl = `${protocol}://${host}:3001`;
-    this.serverUrl = import.meta.env.VITE_WSS_URL?.trim() || defaultServerUrl;
+    const fromPicker = readSelectedGameServerWsUrl();
+    this.serverUrl =
+      fromPicker || import.meta.env.VITE_WSS_URL?.trim() || defaultServerUrl;
 
     // Get loaded asset and sound managers from scene manager
     const assetManager = sceneManager?.getAssetManager();
