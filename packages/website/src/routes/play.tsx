@@ -210,18 +210,29 @@ function GameClientLoader() {
       return;
     }
     let cancelled = false;
-    void (async () => {
+    let measureGen = 0;
+
+    const measureOnce = async () => {
+      const gen = ++measureGen;
       const entries = await Promise.all(
         serverRegistry.servers.map(
           async (s) => [s.id, await measureGameServerHealthPingMs(s.publicWsUrl)] as const,
         ),
       );
-      if (!cancelled) {
+      if (!cancelled && gen === measureGen) {
         setServerPings(Object.fromEntries(entries));
       }
-    })();
+    };
+
+    void measureOnce();
+    const intervalMs = 5000;
+    const intervalId = window.setInterval(() => {
+      void measureOnce();
+    }, intervalMs);
+
     return () => {
       cancelled = true;
+      window.clearInterval(intervalId);
     };
   }, [serverRegistry, serverPickResolved]);
 
