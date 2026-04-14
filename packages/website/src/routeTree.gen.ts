@@ -19,6 +19,7 @@ import { Route as PlayRouteImport } from './routes/play'
 import { Route as LeaderboardRouteImport } from './routes/leaderboard'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as EditorIndexRouteImport } from './routes/editor/index'
+import { Route as ApiHealthRouteImport } from './routes/api/health'
 import { Route as PlayWorldWorldIdRouteImport } from './routes/play/world/$worldId'
 import { Route as ApiSessionValidateRouteImport } from './routes/api/session/validate'
 import { Route as ApiGameZombieKillRouteImport } from './routes/api/game/zombie-kill'
@@ -88,6 +89,11 @@ const IndexRoute = IndexRouteImport.update({
 const EditorIndexRoute = EditorIndexRouteImport.update({
   id: '/editor/',
   path: '/editor/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiHealthRoute = ApiHealthRouteImport.update({
+  id: '/api/health',
+  path: '/api/health',
   getParentRoute: () => rootRouteImport,
 } as any)
 const PlayWorldWorldIdRoute = PlayWorldWorldIdRouteImport.update({
@@ -208,6 +214,7 @@ export interface FileRoutesByFullPath {
   '/sign-in': typeof SignInRoute
   '/sign-up': typeof SignUpRoute
   '/terms': typeof TermsRoute
+  '/api/health': typeof ApiHealthRoute
   '/editor': typeof EditorIndexRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/game/ability-allocations': typeof ApiGameAbilityAllocationsRoute
@@ -240,6 +247,7 @@ export interface FileRoutesByTo {
   '/sign-in': typeof SignInRoute
   '/sign-up': typeof SignUpRoute
   '/terms': typeof TermsRoute
+  '/api/health': typeof ApiHealthRoute
   '/editor': typeof EditorIndexRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/game/ability-allocations': typeof ApiGameAbilityAllocationsRoute
@@ -273,6 +281,7 @@ export interface FileRoutesById {
   '/sign-in': typeof SignInRoute
   '/sign-up': typeof SignUpRoute
   '/terms': typeof TermsRoute
+  '/api/health': typeof ApiHealthRoute
   '/editor/': typeof EditorIndexRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/game/ability-allocations': typeof ApiGameAbilityAllocationsRoute
@@ -307,6 +316,7 @@ export interface FileRouteTypes {
     | '/sign-in'
     | '/sign-up'
     | '/terms'
+    | '/api/health'
     | '/editor'
     | '/api/auth/$'
     | '/api/game/ability-allocations'
@@ -339,6 +349,7 @@ export interface FileRouteTypes {
     | '/sign-in'
     | '/sign-up'
     | '/terms'
+    | '/api/health'
     | '/editor'
     | '/api/auth/$'
     | '/api/game/ability-allocations'
@@ -371,6 +382,7 @@ export interface FileRouteTypes {
     | '/sign-in'
     | '/sign-up'
     | '/terms'
+    | '/api/health'
     | '/editor/'
     | '/api/auth/$'
     | '/api/game/ability-allocations'
@@ -404,6 +416,7 @@ export interface RootRouteChildren {
   SignInRoute: typeof SignInRoute
   SignUpRoute: typeof SignUpRoute
   TermsRoute: typeof TermsRoute
+  ApiHealthRoute: typeof ApiHealthRoute
   EditorIndexRoute: typeof EditorIndexRoute
   ApiAuthSplatRoute: typeof ApiAuthSplatRoute
   ApiGameAbilityAllocationsRoute: typeof ApiGameAbilityAllocationsRoute
@@ -496,6 +509,13 @@ declare module '@tanstack/react-router' {
       path: '/editor'
       fullPath: '/editor'
       preLoaderRoute: typeof EditorIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/health': {
+      id: '/api/health'
+      path: '/api/health'
+      fullPath: '/api/health'
+      preLoaderRoute: typeof ApiHealthRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/play/world/$worldId': {
@@ -661,6 +681,7 @@ const rootRouteChildren: RootRouteChildren = {
   SignInRoute: SignInRoute,
   SignUpRoute: SignUpRoute,
   TermsRoute: TermsRoute,
+  ApiHealthRoute: ApiHealthRoute,
   EditorIndexRoute: EditorIndexRoute,
   ApiAuthSplatRoute: ApiAuthSplatRoute,
   ApiGameAbilityAllocationsRoute: ApiGameAbilityAllocationsRoute,
