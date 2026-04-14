@@ -6,6 +6,70 @@ import {
   WEBSITE_API_URL,
 } from "@/config/env";
 
+const WEBSITE_REGISTRY_RETRY_ATTEMPTS = 10;
+const WEBSITE_REGISTRY_RETRY_INITIAL_DELAY_MS = 500;
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+/**
+ * During deploy, the website may return HTML (404 SPA), 5xx, or stale API behavior until routes are live.
+ * Do not retry permanent client errors (auth / wrong key).
+ */
+function isRetryableWebsiteRegistryHttpStatus(status: number): boolean {
+  if (status === 401 || status === 403) {
+    return false;
+  }
+  if (status >= 500 && status <= 599) {
+    return true;
+  }
+  if (status === 404 || status === 408 || status === 429) {
+    return true;
+  }
+  // Deploy race: older website build or request shape mismatch; may succeed after rollout.
+  if (status === 400) {
+    return true;
+  }
+  return false;
+}
+
+async function fetchWebsiteRegistryWithRetry(
+  label: string,
+  doFetch: () => Promise<Response>,
+): Promise<Response> {
+  for (let attempt = 0; attempt < WEBSITE_REGISTRY_RETRY_ATTEMPTS; attempt++) {
+    try {
+      const response = await doFetch();
+      if (response.ok) {
+        return response;
+      }
+      const canRetry =
+        attempt < WEBSITE_REGISTRY_RETRY_ATTEMPTS - 1 &&
+        isRetryableWebsiteRegistryHttpStatus(response.status);
+      if (!canRetry) {
+        return response;
+      }
+      const delayMs = WEBSITE_REGISTRY_RETRY_INITIAL_DELAY_MS * 2 ** attempt;
+      console.warn(
+        `[${label}] HTTP ${response.status} (attempt ${attempt + 1}/${WEBSITE_REGISTRY_RETRY_ATTEMPTS}), retrying in ${delayMs}ms`,
+      );
+      await sleep(delayMs);
+    } catch (e) {
+      if (attempt === WEBSITE_REGISTRY_RETRY_ATTEMPTS - 1) {
+        throw e;
+      }
+      const delayMs = WEBSITE_REGISTRY_RETRY_INITIAL_DELAY_MS * 2 ** attempt;
+      console.warn(
+        `[${label}] request failed (attempt ${attempt + 1}/${WEBSITE_REGISTRY_RETRY_ATTEMPTS}), retrying in ${delayMs}ms:`,
+        e instanceof Error ? e.message : e,
+      );
+      await sleep(delayMs);
+    }
+  }
+  throw new Error(`[${label}] retry loop exhausted`);
+}
+
 function isConnectionRefused(error: unknown): boolean {
   const e = error as { cause?: { code?: string; errors?: Array<{ code?: string }> } };
   if (e?.cause?.code === "ECONNREFUSED") {
@@ -51,14 +115,16 @@ export async function registerGameServerToWebsite(listenPort: number): Promise<v
 
   let response: Response;
   try {
-    response = await fetch(url, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "X-API-Key": GAME_SERVER_API_KEY,
-      },
-      body: JSON.stringify(body),
-    });
+    response = await fetchWebsiteRegistryWithRetry("registerGameServerToWebsite", () =>
+      fetch(url, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "X-API-Key": GAME_SERVER_API_KEY,
+        },
+        body: JSON.stringify(body),
+      }),
+    );
   } catch (e) {
     if (isConnectionRefused(e)) {
       throw new Error(`[registerGameServerToWebsite] ${websiteUnreachableMessage()}`, { cause: e });
@@ -85,17 +151,19 @@ export async function clearServerSessionLeasesOnWebsite(serverId: string): Promi
   const url = `${WEBSITE_API_URL}/api/game/player-session`;
   let response: Response;
   try {
-    response = await fetch(url, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "X-API-Key": GAME_SERVER_API_KEY,
-      },
-      body: JSON.stringify({
-        action: "clear_server_leases",
-        serverId,
+    response = await fetchWebsiteRegistryWithRetry("clearServerSessionLeasesOnWebsite", () =>
+      fetch(url, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "X-API-Key": GAME_SERVER_API_KEY,
+        },
+        body: JSON.stringify({
+          action: "clear_server_leases",
+          serverId,
+        }),
       }),
-    });
+    );
   } catch (e) {
     if (isConnectionRefused(e)) {
       throw new Error(`[clearServerSessionLeasesOnWebsite] ${websiteUnreachableMessage()}`, {
