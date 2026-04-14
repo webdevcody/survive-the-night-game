@@ -56,9 +56,6 @@ export class GameScene extends Scene {
     // Connect to server
     await this.gameClient.connectToServer(this.serverUrl);
 
-    // Start the game
-    this.gameClient.start();
-
     // Start background music
     this.gameClient.getSoundManager().playBackgroundMusic();
   }

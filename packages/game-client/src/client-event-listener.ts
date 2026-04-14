@@ -55,7 +55,7 @@ export class ClientEventListener {
   private hasReceivedPlayerId = false;
   private hasReceivedInitialState = false;
   private interpolation: InterpolationManager = new InterpolationManager();
-  private fullStateRequestTimer: ReturnType<typeof setTimeout> | null = null;
+  private initializationRequestTimer: ReturnType<typeof setTimeout> | null = null;
   private pendingFullStateEvent: GameStateEvent | null = null;
   private connectionLifecycle: ConnectionLifecycle = "disconnected";
 
@@ -140,6 +140,7 @@ export class ClientEventListener {
    */
   public onTransportConnected(): void {
     this.connectionLifecycle = "awaitingIdentity";
+    this.scheduleInitializationTimeout();
   }
 
   private buildGameStateApplyContext(): GameStateUpdateContext {
@@ -156,7 +157,7 @@ export class ClientEventListener {
           return;
         }
         if (value) {
-          this.clearFullStateRequestTimer("Initial full state applied");
+          this.clearInitializationRequestTimer("Initial full state applied");
         } else {
           this.invalidateInitialState(reason ?? "Initial state flag reset");
         }
@@ -260,28 +261,33 @@ export class ClientEventListener {
 
   private requestFullState(reason: string = "manual"): void {
     this.socketManager.sendRequestFullState();
-    this.scheduleFullStateTimeout();
+    this.scheduleInitializationTimeout();
   }
 
-  private scheduleFullStateTimeout(): void {
-    if (this.fullStateRequestTimer) {
-      clearTimeout(this.fullStateRequestTimer);
+  private scheduleInitializationTimeout(): void {
+    if (this.initializationRequestTimer) {
+      clearTimeout(this.initializationRequestTimer);
     }
-    this.fullStateRequestTimer = setTimeout(() => {
-      if (this.hasReceivedInitialState) {
-        this.clearFullStateRequestTimer();
+    this.initializationRequestTimer = setTimeout(() => {
+      if (this.isInitialized()) {
+        this.clearInitializationRequestTimer();
         return;
       }
 
-      this.socketManager.sendRequestFullState();
-      this.scheduleFullStateTimeout();
+      if (!this.hasReceivedPlayerId) {
+        this.socketManager.requestPlayerId();
+      }
+      if (!this.hasReceivedInitialState) {
+        this.socketManager.sendRequestFullState();
+      }
+      this.scheduleInitializationTimeout();
     }, 4000);
   }
 
-  private clearFullStateRequestTimer(_message?: string): void {
-    if (this.fullStateRequestTimer) {
-      clearTimeout(this.fullStateRequestTimer);
-      this.fullStateRequestTimer = null;
+  private clearInitializationRequestTimer(_message?: string): void {
+    if (this.initializationRequestTimer) {
+      clearTimeout(this.initializationRequestTimer);
+      this.initializationRequestTimer = null;
     }
   }
 
@@ -289,7 +295,7 @@ export class ClientEventListener {
     this.hasReceivedInitialState = false;
     this.pendingFullStateEvent = null;
     this.interpolation.reset();
-    this.clearFullStateRequestTimer();
+    this.clearInitializationRequestTimer();
   }
 
   private resetAndRequestInitialization(reason: string): void {
@@ -298,7 +304,7 @@ export class ClientEventListener {
     this.pendingFullStateEvent = null;
     this.gameState.playerId = 0;
     this.interpolation.reset();
-    this.clearFullStateRequestTimer();
+    this.clearInitializationRequestTimer();
     this.connectionLifecycle = "awaitingIdentity";
 
     this.socketManager.requestPlayerId();
@@ -317,7 +323,7 @@ export class ClientEventListener {
     this.hasReceivedInitialState = false;
     this.gameState.playerId = 0;
     this.interpolation.reset();
-    this.clearFullStateRequestTimer();
+    this.clearInitializationRequestTimer();
     this.connectionLifecycle = "awaitingIdentity";
 
     this.socketManager.requestPlayerId();
