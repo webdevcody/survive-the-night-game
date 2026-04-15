@@ -40,7 +40,6 @@ import {
   hitTestMinimapInventoryMenu,
   renderMinimapInventoryMenu,
 } from "./minimap-inventory-menu";
-import { QuestJournalPanel } from "./quest-journal-panel";
 import { DialoguePanel } from "./dialogue-panel";
 import {
   RPG_BODY_TEXT,
@@ -189,7 +188,6 @@ export class Hud {
   private mouseX: number = 0;
   private mouseY: number = 0;
   private canvasHeight: number = 0;
-  private questJournalPanel: QuestJournalPanel;
   private dialoguePanel: DialoguePanel;
   private activeQuestTrackerPanel: ActiveQuestTrackerPanel;
   private onDialogueQuestChoice: ((action: "accept" | "decline") => void) | null = null;
@@ -219,7 +217,6 @@ export class Hud {
       onRequestExitGame,
     } = options;
     this.chatWidget = new ChatWidget();
-    this.questJournalPanel = new QuestJournalPanel();
     this.dialoguePanel = new DialoguePanel(this.assetManager);
     this.activeQuestTrackerPanel = new ActiveQuestTrackerPanel();
 
@@ -599,15 +596,13 @@ export class Hud {
     this.minimap.render(ctx, gameState, minimapHudLayout.minimap);
     const myPlayer = this.getMyPlayer();
     const isZombiePlayer = myPlayer?.isZombiePlayer?.() ?? false;
-    if (!this.questJournalPanel.isVisible()) {
-      this.activeQuestTrackerPanel.render(
-        ctx,
-        this.mapManager.getAuthoredQuests(),
-        myPlayer?.getQuestProgressPayload() ?? null,
-        minimapHudLayout.minimap,
-        gameState,
-      );
-    }
+    this.activeQuestTrackerPanel.render(
+      ctx,
+      this.mapManager.getAuthoredQuests(),
+      myPlayer?.getQuestProgressPayload() ?? null,
+      minimapHudLayout.minimap,
+      gameState,
+    );
 
     // FPS, ping, version — bottom-right (row flows left from corner: version | ping | FPS)
     ctx.save();
@@ -690,16 +685,6 @@ export class Hud {
 
     this.deathScreenPanel.render(ctx, gameState);
 
-    ctx.save();
-    ctx.setTransform(1, 0, 0, 1, 0, 0);
-    this.questJournalPanel.render(
-      ctx,
-      this.mapManager.getAuthoredQuests(),
-      myPlayer?.getQuestProgressPayload() ?? null,
-      gameState,
-    );
-    ctx.restore();
-
     this.dialoguePanel.render(ctx, gameState);
 
     // Inventory tab shortcuts (minimap column): over NPC dialogue / chat scrim; panel draws after so it sits on top
@@ -727,10 +712,6 @@ export class Hud {
 
     // Render fullscreen map on top of everything else if open
     this.fullscreenMap.render(ctx, gameState);
-  }
-
-  public toggleQuestJournal(): void {
-    this.questJournalPanel.toggle();
   }
 
   /**

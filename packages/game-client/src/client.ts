@@ -328,7 +328,6 @@ export class GameClient {
     // HUD toggles
     im.on("toggleInventoryScreen", () => this.hud.toggleInventoryScreen());
     im.on("inventoryPanelFocusTab", ({ tab }) => this.hud.focusInventoryTab(tab));
-    im.on("toggleQuestJournal", () => this.hud.toggleQuestJournal());
     im.on("toggleMap", () => this.hud.toggleFullscreenMap());
     im.on("toggleMute", () => this.soundManager.toggleMute());
     im.on("dismissQuestCompletedModal", () => this.questCompletedModal.dismissCurrent());

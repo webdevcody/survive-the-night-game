@@ -41,7 +41,6 @@ export interface InputStateQueries {
 export interface InputEventMap {
   toggleInventoryScreen: void;
   inventoryPanelFocusTab: { tab: InventoryUiTab };
-  toggleQuestJournal: void;
   toggleChat: void;
   toggleChatPanel: void;
   chatInput: { key: string; shiftKey: boolean };
@@ -81,7 +80,6 @@ const shouldBlock = new Set([
   "KeyE",
   "KeyH",
   "KeyI",
-  "KeyJ",
   "KeyC",
   "KeyK",
   "KeyP",
@@ -470,9 +468,6 @@ export class InputManager {
         case "ArrowRight":
           this.inputs.dx = 1;
           this.inputs.facing = Direction.Right;
-          break;
-        case "KeyJ":
-          this.emit("toggleQuestJournal");
           break;
         case "KeyE":
           this.emit("interactStart");
