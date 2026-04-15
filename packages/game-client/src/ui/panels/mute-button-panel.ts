@@ -5,7 +5,7 @@ import { scaleHudValue } from "@/util/hud-scale";
 
 export interface MuteButtonPanelSettings extends PanelSettings {
   left: number;
-  bottom: number;
+  top: number;
   width: number;
   height: number;
   font: string;
@@ -16,6 +16,8 @@ export interface MuteButtonConfig {
   baseWidth: number;
   baseHeight: number;
   baseFont: number;
+  /** Horizontal gap between exit button right edge and mute (base px, scaled). */
+  baseGapFromExit: number;
   background: string;
   borderColor: string;
   borderWidth: number;
@@ -39,27 +41,30 @@ export class MuteButtonPanel extends Panel {
   }
 
   /**
-   * Update button position and size based on screen dimensions
+   * Top row: immediately to the right of the exit anchor (same `top` as exit).
    */
-  public updatePosition(canvasWidth: number, canvasHeight: number): void {
+  public updatePosition(
+    canvasWidth: number,
+    canvasHeight: number,
+    exitAnchor: { left: number; top: number; width: number; height: number }
+  ): void {
     const muteWidth = scaleHudValue(this.config.baseWidth, canvasWidth, canvasHeight);
     const muteHeight = scaleHudValue(this.config.baseHeight, canvasWidth, canvasHeight);
     const muteFont = scaleHudValue(this.config.baseFont, canvasWidth, canvasHeight);
-    const muteLeft = scaleHudValue(20, canvasWidth, canvasHeight); // 20px from left edge
-    const muteBottom = scaleHudValue(20, canvasWidth, canvasHeight); // 40px from bottom edge
+    const gap = scaleHudValue(this.config.baseGapFromExit, canvasWidth, canvasHeight);
 
-    this.buttonSettings.left = muteLeft;
-    this.buttonSettings.bottom = muteBottom;
+    this.buttonSettings.left = exitAnchor.left + exitAnchor.width + gap;
+    this.buttonSettings.top = exitAnchor.top + (exitAnchor.height - muteHeight) / 2;
     this.buttonSettings.width = muteWidth;
     this.buttonSettings.height = muteHeight;
     this.buttonSettings.font = `${muteFont}px Arial`;
   }
 
-  /** Pixel layout after `updatePosition` (bottom offset is from canvas bottom). */
-  public getLayout(): { left: number; bottom: number; width: number; height: number } {
+  /** Pixel layout after `updatePosition`. */
+  public getLayout(): { left: number; top: number; width: number; height: number } {
     return {
       left: this.buttonSettings.left,
-      bottom: this.buttonSettings.bottom,
+      top: this.buttonSettings.top,
       width: this.buttonSettings.width,
       height: this.buttonSettings.height,
     };
@@ -69,11 +74,8 @@ export class MuteButtonPanel extends Panel {
     this.resetTransform(ctx);
 
     const isMuted = this.soundManager.getMuteState();
-    const { height } = ctx.canvas;
-
-    // Button position (updatePosition sets left/bottom from config)
     const x = this.buttonSettings.left;
-    const y = height - this.buttonSettings.bottom - this.buttonSettings.height;
+    const y = this.buttonSettings.top;
 
     // Draw button background
     ctx.fillStyle = this.buttonSettings.background;
@@ -98,9 +100,9 @@ export class MuteButtonPanel extends Panel {
     this.restoreContext(ctx);
   }
 
-  public handleClick(x: number, y: number, canvasHeight: number): boolean {
+  public handleClick(x: number, y: number, _canvasHeight: number): boolean {
     const buttonX = this.buttonSettings.left;
-    const buttonY = canvasHeight - this.buttonSettings.bottom - this.buttonSettings.height;
+    const buttonY = this.buttonSettings.top;
 
     if (
       x >= buttonX &&
@@ -115,9 +117,9 @@ export class MuteButtonPanel extends Panel {
     return false;
   }
 
-  public isMouseOver(x: number, y: number, canvasHeight: number): boolean {
+  public isMouseOver(x: number, y: number, _canvasHeight: number): boolean {
     const buttonX = this.buttonSettings.left;
-    const buttonY = canvasHeight - this.buttonSettings.bottom - this.buttonSettings.height;
+    const buttonY = this.buttonSettings.top;
 
     return (
       x >= buttonX &&

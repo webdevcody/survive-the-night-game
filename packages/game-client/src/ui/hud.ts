@@ -101,9 +101,8 @@ const HUD_SETTINGS = {
     baseLabelFontPx: 16,
   },
   MuteButton: {
-    // Base values - scaled in MuteButtonPanel.updatePosition (button is bottom-left of screen)
-    baseLeft: 300,
-    baseBottom: 40,
+    // Base values - scaled in MuteButtonPanel.updatePosition (top row, right of exit)
+    baseGapFromExit: 8,
     baseWidth: 40, // Reduced from 60
     baseHeight: 40, // Reduced from 60
     background: RPG_HUD_PANEL_BG,
@@ -124,9 +123,8 @@ const HUD_SETTINGS = {
   ExitGameButton: {
     baseLeft: 16,
     baseTop: 16,
-    baseWidth: 88,
+    baseWidth: 40,
     baseHeight: 40,
-    baseFont: 16,
     background: RPG_HUD_PANEL_BG,
     borderColor: RPG_BORDER_GOLD,
     borderWidth: 2,
@@ -371,7 +369,7 @@ export class Hud {
         borderColor: HUD_SETTINGS.MuteButton.borderColor,
         borderWidth: HUD_SETTINGS.MuteButton.borderWidth,
         left: 0, // Will be set dynamically
-        bottom: 0, // Will be set dynamically
+        top: 0, // Will be set dynamically
         width: 0, // Will be set dynamically
         height: 0, // Will be set dynamically
         font: `${HUD_SETTINGS.MuteButton.baseFont}px Arial`, // Will be scaled dynamically
@@ -382,6 +380,7 @@ export class Hud {
         baseWidth: HUD_SETTINGS.MuteButton.baseWidth,
         baseHeight: HUD_SETTINGS.MuteButton.baseHeight,
         baseFont: HUD_SETTINGS.MuteButton.baseFont,
+        baseGapFromExit: HUD_SETTINGS.MuteButton.baseGapFromExit,
         background: HUD_SETTINGS.MuteButton.background,
         borderColor: HUD_SETTINGS.MuteButton.borderColor,
         borderWidth: HUD_SETTINGS.MuteButton.borderWidth,
@@ -413,14 +412,12 @@ export class Hud {
           top: 0,
           width: 0,
           height: 0,
-          font: `${eg.baseFont}px Arial`,
         },
         {
           baseLeft: eg.baseLeft,
           baseTop: eg.baseTop,
           baseWidth: eg.baseWidth,
           baseHeight: eg.baseHeight,
-          baseFont: eg.baseFont,
           background: eg.background,
           borderColor: eg.borderColor,
           borderWidth: eg.borderWidth,
@@ -494,6 +491,20 @@ export class Hud {
 
   public isFullscreenMapOpen(): boolean {
     return this.fullscreenMap.isOpen();
+  }
+
+  /** Exit button rect from HUD settings (matches `ExitGameButtonPanel` when present). */
+  private computeExitAnchorLayout(
+    width: number,
+    height: number
+  ): { left: number; top: number; width: number; height: number } {
+    const eg = HUD_SETTINGS.ExitGameButton;
+    return {
+      left: scaleHudValue(eg.baseLeft, width, height),
+      top: scaleHudValue(eg.baseTop, width, height),
+      width: scaleHudValue(eg.baseWidth, width, height),
+      height: scaleHudValue(eg.baseHeight, width, height),
+    };
   }
 
   private getPingColor(ping: number): string {
@@ -666,12 +677,13 @@ export class Hud {
       ctx.restore();
     }
 
-    // Render mute button
+    // Top-left: mute + players (same row as exit); chat toggle sits under exit (see ChatWidget)
     ctx.save();
     ctx.setTransform(1, 0, 0, 1, 0, 0);
-    this.muteButtonPanel.updatePosition(width, height);
+    const exitAnchor = this.computeExitAnchorLayout(width, height);
+    this.muteButtonPanel.updatePosition(width, height, exitAnchor);
     this.playersOnlinePanel.updatePosition(width, height, this.muteButtonPanel.getLayout());
-    this.chatWidget.setToggleBottomReserve(this.muteButtonPanel.getLayout());
+    this.chatWidget.setExitAnchoredToggle(exitAnchor, width, height);
     this.muteButtonPanel.render(ctx, gameState);
     this.playersOnlinePanel.render(ctx, gameState);
     ctx.restore();
@@ -895,8 +907,9 @@ export class Hud {
     const scaleY = canvas.height / rect.height;
     const x = (event.clientX - rect.left) * scaleX;
     const y = (event.clientY - rect.top) * scaleY;
-    this.muteButtonPanel.updatePosition(canvas.width, canvas.height);
-    this.chatWidget.setToggleBottomReserve(this.muteButtonPanel.getLayout());
+    const exitAnchor = this.computeExitAnchorLayout(canvas.width, canvas.height);
+    this.muteButtonPanel.updatePosition(canvas.width, canvas.height, exitAnchor);
+    this.chatWidget.setExitAnchoredToggle(exitAnchor, canvas.width, canvas.height);
     return this.chatWidget.handleWheel(x, y, event.deltaY, canvas.width, canvas.height);
   }
 
@@ -917,8 +930,9 @@ export class Hud {
     if (this.exitGameButtonPanel?.handleClick(x, y)) {
       return true;
     }
-    this.muteButtonPanel.updatePosition(canvasWidth, canvasHeight);
-    this.chatWidget.setToggleBottomReserve(this.muteButtonPanel.getLayout());
+    const exitAnchor = this.computeExitAnchorLayout(canvasWidth, canvasHeight);
+    this.muteButtonPanel.updatePosition(canvasWidth, canvasHeight, exitAnchor);
+    this.chatWidget.setExitAnchoredToggle(exitAnchor, canvasWidth, canvasHeight);
     if (this.chatWidget.handleToggleButtonClick(x, y, canvasHeight)) {
       return true;
     }

@@ -13,7 +13,7 @@ export interface PlayersOnlinePanelSettings extends PanelSettings {
 export class PlayersOnlinePanel extends Panel {
   private readonly panelSettings: PlayersOnlinePanelSettings;
   private left = 0;
-  private bottom = 0;
+  private top = 0;
   private height = 0;
   private padX = 0;
   private font = "14px Arial";
@@ -26,14 +26,14 @@ export class PlayersOnlinePanel extends Panel {
   public updatePosition(
     canvasWidth: number,
     canvasHeight: number,
-    muteLayout: { left: number; bottom: number; width: number; height: number }
+    muteLayout: { left: number; top: number; width: number; height: number }
   ): void {
     const gap = scaleHudValue(this.panelSettings.baseGapFromMute, canvasWidth, canvasHeight);
     this.padX = scaleHudValue(this.panelSettings.basePadX, canvasWidth, canvasHeight);
     const fontPx = scaleHudValue(this.panelSettings.baseFontPx, canvasWidth, canvasHeight);
     this.font = `${fontPx}px Arial`;
     this.left = muteLayout.left + muteLayout.width + gap;
-    this.bottom = muteLayout.bottom;
+    this.top = muteLayout.top;
     this.height = muteLayout.height;
   }
 
@@ -42,13 +42,11 @@ export class PlayersOnlinePanel extends Panel {
 
     const count = getEntitiesByType(gameState, Entities.PLAYER).length;
     const label = `Players online: ${count}`;
-    const { height: canvasH } = ctx.canvas;
-
     ctx.font = this.font;
     const textWidth = ctx.measureText(label).width;
     const boxWidth = textWidth + this.padX * 2;
     const x = this.left;
-    const y = canvasH - this.bottom - this.height;
+    const y = this.top;
 
     this.drawPanelBackground(ctx, x, y, boxWidth, this.height);
 

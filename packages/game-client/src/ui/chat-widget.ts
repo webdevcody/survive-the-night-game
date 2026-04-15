@@ -2,6 +2,7 @@ import { formatDistanceToNow } from "date-fns";
 import { GameState, getEntityById } from "@/state";
 import { PlayerClient } from "@/entities/player";
 import { drawHudFlatPanel, RPG_METADATA_MUTED, RPG_TITLE_CREAM } from "@/ui/rpg-hud-theme";
+import { scaleHudValue } from "@/util/hud-scale";
 import { CommandAutocomplete } from "./command-autocomplete";
 
 const CHAT_FONT_SIZE = 14;
@@ -16,13 +17,15 @@ const CHAT_BODY_LINE_HEIGHT = 20;
 const CHAT_PANEL_MAX_WIDTH = 300;
 const CHAT_INPUT_PLACEHOLDER = "Press Y to start typing your message";
 const CHAT_LEFT_MARGIN = 12;
-/** Top inset so the centered chat column clears the exit / top HUD. */
+/** Top inset so the chat column clears the top HUD when the toggle is unusually low. */
 const CHAT_COLUMN_MIN_TOP = 48;
-/** Space between the chat column and the hide-chat / mute row. */
-const CHAT_COLUMN_GAP_ABOVE_TOGGLE = 8;
-const CHAT_TOGGLE_BTN = { w: 148, h: 32, left: 12, bottom: 12 } as const;
-/** Gap between mute/players row (top) and chat toggle (bottom edge), in px. */
-const CHAT_TOGGLE_GAP_ABOVE_MUTE_ROW = 8;
+/** Space between the open-chat toggle (below) and the message column (below that). */
+const CHAT_COLUMN_GAP_BELOW_TOGGLE = 8;
+const CHAT_TOGGLE_BTN = { w: 148, h: 32 } as const;
+/** Gap between exit button bottom and chat toggle top (base px, scaled). */
+const CHAT_TOGGLE_GAP_BELOW_EXIT = 8;
+/** Keep the chat stack above bottom HUD (loadout / orbs). Base px, scaled. */
+const CHAT_BAND_BOTTOM_RESERVE = 110;
 /** Fixed-height message list when the chat panel is open; content scrolls inside. */
 const CHAT_MESSAGES_VIEWPORT_HEIGHT = 220;
 /** Cap stored chat lines so memory stays bounded. */
@@ -40,8 +43,16 @@ export class ChatWidget {
   private showChatInput: boolean = false;
   /** Tab-toggled message list + input chrome; default closed. */
   private chatPanelOpen: boolean = false;
-  /** Distance from canvas bottom to toggle button bottom; synced from HUD so we sit above mute/players row. */
-  private toggleBottomFromCanvasBottom: number = CHAT_TOGGLE_BTN.bottom;
+  private layoutCanvasW: number = 0;
+  private layoutCanvasH: number = 0;
+  private toggleLayout: { x: number; y: number; w: number; h: number } = {
+    x: CHAT_LEFT_MARGIN,
+    y: CHAT_COLUMN_MIN_TOP,
+    w: CHAT_TOGGLE_BTN.w,
+    h: CHAT_TOGGLE_BTN.h,
+  };
+  /** Message column X; matches exit / toggle left when anchored. */
+  private chatColumnLeft: number = CHAT_LEFT_MARGIN;
   private chatInput: string = "";
   private chatMessages: ChatMessage[] = [];
   private messageHistory: string[] = [];
@@ -61,13 +72,25 @@ export class ChatWidget {
   }
 
   /**
-   * Place the toggle above the mute + players-online strip (same bottom/height as mute layout).
+   * Place the chat toggle directly under the exit button; message column aligns to the same X.
    */
-  public setToggleBottomReserve(
-    muteLayout: { bottom: number; height: number },
-    gapPx: number = CHAT_TOGGLE_GAP_ABOVE_MUTE_ROW
+  public setExitAnchoredToggle(
+    exitLayout: { left: number; top: number; width: number; height: number },
+    canvasWidth: number,
+    canvasHeight: number
   ): void {
-    this.toggleBottomFromCanvasBottom = muteLayout.bottom + muteLayout.height + gapPx;
+    this.layoutCanvasW = canvasWidth;
+    this.layoutCanvasH = canvasHeight;
+    const gap = scaleHudValue(CHAT_TOGGLE_GAP_BELOW_EXIT, canvasWidth, canvasHeight);
+    const w = scaleHudValue(CHAT_TOGGLE_BTN.w, canvasWidth, canvasHeight);
+    const h = scaleHudValue(CHAT_TOGGLE_BTN.h, canvasWidth, canvasHeight);
+    this.toggleLayout = {
+      x: exitLayout.left,
+      y: exitLayout.top + exitLayout.height + gap,
+      w,
+      h,
+    };
+    this.chatColumnLeft = exitLayout.left;
   }
 
   public isChatPanelOpen(): boolean {
@@ -111,8 +134,8 @@ export class ChatWidget {
   /**
    * Bottom-left toggle: returns true if the click was consumed.
    */
-  public handleToggleButtonClick(x: number, y: number, canvasHeight: number): boolean {
-    const b = this.getToggleButtonRect(canvasHeight);
+  public handleToggleButtonClick(x: number, y: number, _canvasHeight: number): boolean {
+    const b = this.getToggleButtonRect();
     if (x < b.x || x > b.x + b.w || y < b.y || y > b.y + b.h) {
       return false;
     }
@@ -228,7 +251,7 @@ export class ChatWidget {
   }
 
   private getPanelX(): number {
-    return CHAT_LEFT_MARGIN;
+    return this.chatColumnLeft;
   }
 
   /**
@@ -238,15 +261,20 @@ export class ChatWidget {
    * `CHAT_COLUMN_MIN_TOP` and entirely above the hide-chat control (see `bandBottom`).
    * (Centering only inside the band skews upward because the band ends well above the canvas midpoint.)
    */
-  private getChatColumnLayout(canvasHeight: number): {
+  private getChatColumnLayout(canvasWidth: number, canvasHeight: number): {
     panelTop: number;
     panelH: number;
     inputTopY: number;
   } {
-    const toggleTopY =
-      canvasHeight - this.toggleBottomFromCanvasBottom - CHAT_TOGGLE_BTN.h;
-    const bandBottom = toggleTopY - CHAT_COLUMN_GAP_ABOVE_TOGGLE;
-    const bandH = Math.max(0, bandBottom - CHAT_COLUMN_MIN_TOP);
+    const { y: toggleTopY, h: toggleH } = this.toggleLayout;
+    const toggleBottomY = toggleTopY + toggleH;
+    const bandTop = Math.max(
+      CHAT_COLUMN_MIN_TOP,
+      toggleBottomY + CHAT_COLUMN_GAP_BELOW_TOGGLE
+    );
+    const bandBottom =
+      canvasHeight - scaleHudValue(CHAT_BAND_BOTTOM_RESERVE, canvasWidth, canvasHeight);
+    const bandH = Math.max(0, bandBottom - bandTop);
 
     const desiredMsgH = CHAT_MESSAGES_VIEWPORT_HEIGHT;
     let msgH = Math.min(desiredMsgH, Math.max(0, bandH - CHAT_INPUT_HEIGHT));
@@ -256,7 +284,7 @@ export class ChatWidget {
     }
     const combinedH = msgH + CHAT_INPUT_HEIGHT;
 
-    const minTop = CHAT_COLUMN_MIN_TOP;
+    const minTop = bandTop;
     const maxTop = bandBottom - combinedH;
     const idealTop = (canvasHeight - combinedH) / 2;
     const panelTop =
@@ -277,7 +305,7 @@ export class ChatWidget {
     }
     const w = CHAT_PANEL_MAX_WIDTH;
     const x = this.getPanelX();
-    const { panelTop, panelH } = this.getChatColumnLayout(canvasHeight);
+    const { panelTop, panelH } = this.getChatColumnLayout(_canvasWidth, canvasHeight);
     return { x, y: panelTop, w, h: panelH };
   }
 
@@ -306,17 +334,12 @@ export class ChatWidget {
     return true;
   }
 
-  private getToggleButtonRect(canvasHeight: number): { x: number; y: number; w: number; h: number } {
-    return {
-      x: CHAT_TOGGLE_BTN.left,
-      y: canvasHeight - this.toggleBottomFromCanvasBottom - CHAT_TOGGLE_BTN.h,
-      w: CHAT_TOGGLE_BTN.w,
-      h: CHAT_TOGGLE_BTN.h,
-    };
+  private getToggleButtonRect(): { x: number; y: number; w: number; h: number } {
+    return { ...this.toggleLayout };
   }
 
   private renderChatToggleButton(ctx: CanvasRenderingContext2D): void {
-    const { x, y, w, h } = this.getToggleButtonRect(ctx.canvas.height);
+    const { x, y, w, h } = this.getToggleButtonRect();
     const { width: cw, height: ch } = ctx.canvas;
     drawHudFlatPanel(ctx, x, y, w, h, cw, ch);
     ctx.save();
@@ -486,7 +509,7 @@ export class ChatWidget {
 
     const width = CHAT_PANEL_MAX_WIDTH;
     const x = this.getPanelX();
-    const y = this.getChatColumnLayout(ctx.canvas.height).inputTopY;
+    const y = this.getChatColumnLayout(ctx.canvas.width, ctx.canvas.height).inputTopY;
     const { width: cw, height: ch } = ctx.canvas;
 
     drawHudFlatPanel(ctx, x, y, width, CHAT_INPUT_HEIGHT, cw, ch);
@@ -546,7 +569,7 @@ export class ChatWidget {
     const hintHeight = 22;
     const height = suggestions.length * lineHeight + padding * 2 + hintHeight;
 
-    const y = this.getChatColumnLayout(ctx.canvas.height).inputTopY - height - 4;
+    const y = this.getChatColumnLayout(ctx.canvas.width, ctx.canvas.height).inputTopY - height - 4;
 
     ctx.fillStyle = "rgba(30, 30, 30, 0.95)";
     this.fillRoundRect(ctx, x, y, width, height, 8);
